@@ -107,12 +107,13 @@ export const claudeCmd = () => process.env.TELLCUT_CLAUDE ?? 'claude';
  * The environment Tellcut runs claude in (the page chat, setup and doctor). A process started from a Claude Code session carries
  * that session's variables (CLAUDECODE, CLAUDE_CODE_SESSION_ID, _ENTRYPOINT, _MESSAGING_SOCKET, CLAUDE_PID, CLAUDE_EFFORT…, a
  * list that grows with each release): every CLAUDE* is dropped except the user's own setup (where the login lives, Git Bash on
- * Windows, a token login, Bedrock or Vertex), and so is ANTHROPIC_API_KEY: Tellcut uses the user's Claude Code login, never an
+ * Windows, a token login, Bedrock, Vertex or Foundry), and so is ANTHROPIC_API_KEY: Tellcut uses the user's Claude Code login, never an
  * API key (chat spec §1.2). So are an API gateway's key, address and headers and a model picked in the shell (review4: a server
- * started from such a shell ran the page chat on API billing, on another model); the Bedrock/Vertex settings stay with their switches.
+ * started from such a shell ran the page chat on API billing, on another model): every ANTHROPIC_ name with MODEL in it; the
+ * Bedrock/Vertex/Foundry settings stay with their switches.
  */
-const KEEP_CLAUDE_VARS = new Set(['CLAUDE_CONFIG_DIR', 'CLAUDE_CODE_GIT_BASH_PATH', 'CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX']);
-const DROP_ANTHROPIC = /^ANTHROPIC_(API_KEY|AUTH_TOKEN|BASE_URL|CUSTOM_HEADERS|MODEL|SMALL_FAST_MODEL|DEFAULT_\w+_MODEL)$/i;
+const KEEP_CLAUDE_VARS = new Set(['CLAUDE_CONFIG_DIR', 'CLAUDE_CODE_GIT_BASH_PATH', 'CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_USE_FOUNDRY']);
+const DROP_ANTHROPIC = /^ANTHROPIC_(API_KEY|AUTH_TOKEN|BASE_URL|CUSTOM_HEADERS|\w*MODEL\w*)$/i;
 export function claudeEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const [k, v] of Object.entries(base)) if ((!/^CLAUDE/i.test(k) || KEEP_CLAUDE_VARS.has(k.toUpperCase())) && !DROP_ANTHROPIC.test(k)) env[k] = v;

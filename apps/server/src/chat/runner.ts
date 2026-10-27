@@ -1,5 +1,5 @@
 // One headless Claude Code run per chat message (spec 2026-10-16-in-editor-chat §3.2), locked down to the tools Tellcut
-// needs: project settings only (no user plugins or hooks), five tools, the tellcut commands allowed, nothing else asked.
+// needs: no settings files (only its own --settings: no user or project permissions, plugins or hooks), five tools, the tellcut commands allowed, nothing else asked.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
@@ -34,7 +34,7 @@ const absRule = (dir: string) => `Read(//${dir.replace(/\\/g, '/').replace(/^([A
  *  configDir: CLAUDE_CONFIG_DIR when the login lives there (chatEnv keeps it), kept from Read like ~/.claude */
 export function claudeArgs(o: { session: string; resume: boolean; promptFile: string; settingsFile?: string; configDir?: string }): string[] {
   return ['-p', '--input-format', 'text', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-    '--permission-mode', 'dontAsk', '--setting-sources', 'project', '--disable-slash-commands', '--strict-mcp-config',
+    '--permission-mode', 'dontAsk', '--setting-sources', '', '--disable-slash-commands', '--strict-mcp-config',
     // Glob lists a folder (read-only): without it the chat tried `ls` every turn and was refused
     '--tools', 'Read,Write,Edit,Bash,Glob',
     '--allowedTools', 'Bash(npm run tellcut *)', 'Bash(npm run new *)', 'Bash(npm run inspect *)', 'Bash(npm run cut *)', 'Bash(npm run check *)', 'Bash(npm run voice *)', 'Bash(npm run score *)', 'Bash(npm run tokens *)', 'Read', 'Glob',
@@ -45,6 +45,7 @@ export function claudeArgs(o: { session: string; resume: boolean; promptFile: st
     'Write(projects/*/proposal.json)', 'Edit(projects/*/proposal.json)',
     // guardrails, not a sandbox (spec §1.2): secrets and npm's shell override stay out of reach
     '--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Read(~/.aws/**)', 'Read(~/.config/**)', 'Read(~/AppData/**)', 'Bash(*--script-shell*)',
+    'Read(~/.npmrc)', 'Read(~/.git-credentials)', 'Read(~/.netrc)', 'Read(~/.docker/**)', 'Read(~/.kube/**)', 'Read(~/.azure/**)', 'Read(~/.gnupg/**)',
     // the Claude account file, the outside sources' API keys (sources.local.json, not in git), a login kept elsewhere
     'Read(~/.claude.json)', 'Read(./sources.local.json)', ...(o.configDir ? [absRule(o.configDir)] : []),
     // a second lock only: --tools already leaves Agent and Skill out and --disable-slash-commands turns skills off; kept in
@@ -204,7 +205,8 @@ export class ChatRunner {
     const release = tryLock(turnLock(file));
     if (!release) return false;
     // a reply that finished while the server was down goes back in first (the conversation reads in order)
-    const read = readThread(file), th: ChatThread = closeDangling(withRecovered(read) ?? read);
+    let th: ChatThread;
+    try { const read = readThread(file); th = closeDangling(withRecovered(read) ?? read); } catch (e) { release(); throw e; }
     const { preset, lang, auto, sources } = o;
     th.messages.push({ role: 'user', text, time: new Date().toISOString(), ...(preset ? { preset } : {}), ...(auto ? { auto } : {}) });
     if (lang) th.lang = lang;

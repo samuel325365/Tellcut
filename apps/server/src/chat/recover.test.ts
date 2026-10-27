@@ -23,6 +23,13 @@ const thread = (extra: object[] = []): any => ({ sessionId: SID, started: true, 
   { role: 'user', text: '剪', time: '2026-10-17T17:00:00.000Z' }, { role: 'assistant', text: '好', time: '2026-10-17T17:01:00.000Z', status: 'done' },
   { role: 'user', text: '（自動訊息）素材分析做完了…', time: '2026-10-17T17:30:00.000Z' }, ...extra] });
 
+test('a session log that cannot be read (locked, gone, a folder) recovers nothing instead of throwing: the turn lock would stay held', () => {
+  const h = mkdtempSync(join(tmpdir(), 'rec-'));
+  mkdirSync(join(h, '.claude', 'projects', 'C--x-tellcut', `${SID}.jsonl`), { recursive: true });
+  expect(recoverReply(thread(), { home: h })).toBeNull();
+  expect(withRecovered(thread(), { home: h })).toBeNull();
+});
+
 test('a reply that finished while the server was down is rebuilt from the session log: its words, steps, tokens and price', () => {
   const h = home([
     say('2026-10-17T17:00:30.000Z', 'm0', [{ type: 'text', text: '舊的回覆' }]),                                   // before the message: not part of it

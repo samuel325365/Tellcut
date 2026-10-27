@@ -128,7 +128,7 @@ export function createHttp(o: HttpOptions): Http {
         throw fail('temporary', (e as Error).name === 'TimeoutError' ? '下載中斷（逾時 10 分鐘）' : `下載中斷（${(e as Error).message}）`);
       }
       closeSync(fd);
-      if (over) { rmSync(part, { force: true }); throw new Error(`檔案超過上限 ${Math.round(d.maxBytes / 1e6)} MB：${url}`); }
+      if (over) { rmSync(part, { force: true }); throw new Error(`檔案超過上限 ${Math.round(d.maxBytes / 1e6)} MB：${url.split('?')[0]}`); }   // no query: a key may ride in it
       renameRetry(part, dest);
       return { bytes, type };
     },

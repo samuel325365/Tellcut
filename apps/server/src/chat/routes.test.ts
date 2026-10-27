@@ -18,13 +18,15 @@ const FAKE = `node "${fileURLToPath(new URL('./fake-claude.mjs', import.meta.url
 async function lines(res: Response): Promise<any[]> { return (await res.text()).trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); }
 const post = (b: unknown) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
 
-test('claude runs locked down: project settings only, five tools, tellcut commands allowed, the prompt file appended', () => {
+test('claude runs locked down: no settings files (only its own --settings), five tools, tellcut commands allowed, the prompt file appended', () => {
   const a = claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' });
-  expect(a).toEqual(expect.arrayContaining(['-p', '--permission-mode', 'dontAsk', '--setting-sources', 'project', '--disable-slash-commands', '--strict-mcp-config',
+  expect(a).toEqual(expect.arrayContaining(['-p', '--permission-mode', 'dontAsk', '--setting-sources', '', '--disable-slash-commands', '--strict-mcp-config',
     '--tools', 'Read,Write,Edit,Bash,Glob', 'Bash(npm run tellcut *)', 'Bash(npm run check *)', 'Write(projects/*/cut.ts)', 'Write(projects/*/fx/*.js)', 'Edit(projects/*/fx/*.js)', 'Bash(npm run voice *)', 'Bash(npm run score *)', 'Write(projects/*/narration.json)', 'Write(projects/*/score/*.js)', 'Write(projects/*/proposal.json)', '--append-system-prompt-file', 'P.md', '--session-id', 'u']));
   expect(claudeArgs({ session: 'u', resume: true, promptFile: 'P.md' })).toEqual(expect.arrayContaining(['--resume', 'u']));
   // guardrails: secrets and npm's shell override stay out of reach
   expect(claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' })).toEqual(expect.arrayContaining(['--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Bash(*--script-shell*)', 'Agent', 'Skill']));
+  // and the other places a home folder keeps tokens and passwords
+  expect(claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' })).toEqual(expect.arrayContaining(['Read(~/.npmrc)', 'Read(~/.git-credentials)', 'Read(~/.netrc)', 'Read(~/.docker/**)', 'Read(~/.kube/**)', 'Read(~/.azure/**)', 'Read(~/.gnupg/**)']));
 });
 
 test('the account file, the API keys of the outside sources and a relocated Claude config folder are not readable either', () => {
@@ -569,8 +571,13 @@ test('a thread another server (same projects/) is replying in is busy here too: 
     // the other server took the thread and saved the user's message; its reply is still running
     const file = join(root, 'demo', '.history', 'chat', 'chat.json');
     mkdirSync(join(root, 'demo', '.history', 'chat'), { recursive: true });
-    writeFileSync(file, JSON.stringify({ messages: [{ role: 'user', text: '剪短', time: new Date().toISOString() }], sessionId: 's1', started: true }));
+    writeFileSync(file, JSON.stringify({ messages: [{ role: 'user', text: '剪短', time: new Date().toISOString() }], sessionId: '11111111-2222-4333-8444-555555555555', started: true }));
     writeFileSync(`${file}.lock`, JSON.stringify({ pid: other.pid, started: Date.now() }));
+    // its reply already ended in Claude's log, but the other server has not saved it yet: that server writes it, not this one
+    const logs = join(root, '.claude-config', 'projects', 'x');
+    mkdirSync(logs, { recursive: true });
+    writeFileSync(join(logs, '11111111-2222-4333-8444-555555555555.jsonl'), JSON.stringify({ type: 'assistant', timestamp: new Date(Date.now() + 1000).toISOString(), message: { id: 'm', stop_reason: 'end_turn', content: [{ type: 'text', text: '剪好了' }] } }));
+    process.env.CLAUDE_CONFIG_DIR = join(root, '.claude-config');
     const r = await fetch(`${base}/api/chat/demo/messages`, post({ text: 'x' }));
     expect([r.status, (await r.json()).code]).toEqual([409, 'chat.busy']);
     const got = (await (await fetch(`${base}/api/chat/demo`)).json()).thread;
@@ -579,5 +586,5 @@ test('a thread another server (same projects/) is replying in is busy here too: 
     const del = await fetch(`${base}/api/chat/demo`, { method: 'DELETE' });
     expect([del.status, (await del.json()).code]).toEqual([409, 'chat.busy']);
     expect(JSON.parse(readFileSync(file, 'utf8')).messages).toHaveLength(1);
-  } finally { other.kill(); await app.close(); }
+  } finally { other.kill(); await app.close(); delete process.env.CLAUDE_CONFIG_DIR; }
 });

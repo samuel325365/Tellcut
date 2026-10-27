@@ -38,12 +38,12 @@ test('a models folder of the user\u2019s own (TELLCUT_MODELS_DIR) also holds the
 
 test("claude runs without the calling session's variables but keeps the user's own login and setup", () => {
   const env = claudeEnv({ PATH: 'p', CLAUDECODE: '1', CLAUDE_CODE_SESSION_ID: 's', CLAUDE_CODE_ENTRYPOINT: 'cli', ANTHROPIC_API_KEY: 'k',
-    CLAUDE_CONFIG_DIR: 'c', CLAUDE_CODE_GIT_BASH_PATH: 'b', CLAUDE_CODE_OAUTH_TOKEN: 't', CLAUDE_CODE_USE_BEDROCK: '1', CLAUDE_CODE_USE_VERTEX: '1' });
-  expect(env).toEqual({ PATH: 'p', CLAUDE_CONFIG_DIR: 'c', CLAUDE_CODE_GIT_BASH_PATH: 'b', CLAUDE_CODE_OAUTH_TOKEN: 't', CLAUDE_CODE_USE_BEDROCK: '1', CLAUDE_CODE_USE_VERTEX: '1' });
+    CLAUDE_CONFIG_DIR: 'c', CLAUDE_CODE_GIT_BASH_PATH: 'b', CLAUDE_CODE_OAUTH_TOKEN: 't', CLAUDE_CODE_USE_BEDROCK: '1', CLAUDE_CODE_USE_VERTEX: '1', CLAUDE_CODE_USE_FOUNDRY: '1' });
+  expect(env).toEqual({ PATH: 'p', CLAUDE_CONFIG_DIR: 'c', CLAUDE_CODE_GIT_BASH_PATH: 'b', CLAUDE_CODE_OAUTH_TOKEN: 't', CLAUDE_CODE_USE_BEDROCK: '1', CLAUDE_CODE_USE_VERTEX: '1', CLAUDE_CODE_USE_FOUNDRY: '1' });
 });
 
 test('a shell set up for an API gateway does not carry it into claude: no other key, endpoint or model than the login’s', () => {
   const env = claudeEnv({ PATH: 'p', ANTHROPIC_AUTH_TOKEN: 'gw', ANTHROPIC_BASE_URL: 'https://gw', ANTHROPIC_MODEL: 'm', ANTHROPIC_SMALL_FAST_MODEL: 's',
-    ANTHROPIC_DEFAULT_SONNET_MODEL: 'd', ANTHROPIC_CUSTOM_HEADERS: 'h', anthropic_base_url: 'x', ANTHROPIC_VERTEX_PROJECT_ID: 'v', ANTHROPIC_BEDROCK_BASE_URL: 'bb' });
+    ANTHROPIC_DEFAULT_SONNET_MODEL: 'd', ANTHROPIC_DEFAULT_OPUS_MODEL_NAME: 'n', ANTHROPIC_CUSTOM_MODEL_OPTION: 'o', ANTHROPIC_CUSTOM_HEADERS: 'h', anthropic_base_url: 'x', ANTHROPIC_VERTEX_PROJECT_ID: 'v', ANTHROPIC_BEDROCK_BASE_URL: 'bb' });
   expect(env).toEqual({ PATH: 'p', ANTHROPIC_VERTEX_PROJECT_ID: 'v', ANTHROPIC_BEDROCK_BASE_URL: 'bb' });   // what the kept Bedrock/Vertex switches need
 });

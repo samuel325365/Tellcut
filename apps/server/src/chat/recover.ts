@@ -41,8 +41,10 @@ export function recoverReply(t: ChatThread, o: { home?: string; now?: number; qu
   if (!log) return null;
   const since = Date.parse(waiting.time);
   const texts: string[] = [], tools: ChatTool[] = [], usage = new Map<string, any>();
-  let lastTime = '', total: number | undefined, ended = false;
-  for (const line of readFileSync(log, 'utf8').split(/\r?\n/)) {
+  let lastTime = '', total: number | undefined, ended = false, text: string, mtime: number;
+  // a log that cannot be read (antivirus holding it, rotated away) recovers nothing: a throw here left the turn lock held
+  try { text = readFileSync(log, 'utf8'); mtime = statSync(log).mtimeMs; } catch { return null; }
+  for (const line of text.split(/\r?\n/)) {
     let e: any;
     try { e = JSON.parse(line); } catch { continue; }
     if (e?.type === 'cost-state' && typeof e.totalCostUSD === 'number') { total = e.totalCostUSD; continue; }
@@ -56,7 +58,7 @@ export function recoverReply(t: ChatThread, o: { home?: string; now?: number; qu
     }
   }
   if (!texts.length) return null;
-  if (!ended && (o.now ?? Date.now()) - statSync(log).mtimeMs < (o.quietMs ?? QUIET_MS)) return null;
+  if (!ended && (o.now ?? Date.now()) - mtime < (o.quietMs ?? QUIET_MS)) return null;
   const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0), sum = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0 };
   for (const u of usage.values()) { sum.input += n(u.input_tokens); sum.cacheWrite += n(u.cache_creation_input_tokens); sum.cacheRead += n(u.cache_read_input_tokens); sum.output += n(u.output_tokens); }
   const cost = total !== undefined && t.spentIn === t.sessionId && t.spent !== undefined ? Math.round(Math.max(0, total - t.spent) * 1e6) / 1e6 : undefined;

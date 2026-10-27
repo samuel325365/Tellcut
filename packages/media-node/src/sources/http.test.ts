@@ -123,6 +123,10 @@ test('a download is written whole; one over maxBytes stops and leaves no file', 
   const big = join(dir, 'b.mp3');
   await expect(h({}).download('https://media.example/b.mp3', big, { maxBytes: 10 })).rejects.toThrow('檔案超過上限');
   expect([existsSync(big), readdirSync(dirname(big)).filter((f) => f.endsWith('.part'))]).toEqual([false, []]);
+  // the message names the file, never its query (a Carto tile URL carries the user's key)
+  reply(200, 'x'.repeat(20), 'image/png');
+  const e = await h({}).download('https://tiles.example/1/2/3.png?api_key=SECRET', join(dir, 't.png'), { maxBytes: 10 }).catch((x: Error) => x.message);
+  expect([e, String(e).includes('SECRET')]).toEqual([expect.stringContaining('https://tiles.example/1/2/3.png'), false]);
 });
 
 test('a download that answers with a web page is temporary; a missing file is missing', async () => {

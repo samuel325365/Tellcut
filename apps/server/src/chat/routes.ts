@@ -54,13 +54,14 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
 
   r.get('/api/chat/:thread', (_req, res, { thread }) => {
     threadOf(thread);
-    const running = runner.running(thread);
+    const running = runner.running(thread), elsewhere = runner.elsewhere(thread);
     let t = readThread(file(thread));
-    // a reply that finished while the server was down is put back from Claude's own log (and kept)
-    const back = running ? null : withRecovered(t);
+    // a reply that finished while the server was down is put back from Claude's own log (and kept); one another server
+    // runs is that server's to save (put back here too, it appeared twice)
+    const back = running || elsewhere ? null : withRecovered(t);
     if (back) { writeThread(file(thread), back); t = back; }
     // a turn another server runs is not over either: its last message is not "interrupted"
-    sendJson(res, 200, { thread: running || runner.elsewhere(thread) ? t : closeDangling(t), running, analyzing: analyzing(thread), analysis: analysis(thread) });
+    sendJson(res, 200, { thread: running || elsewhere ? t : closeDangling(t), running, analyzing: analyzing(thread), analysis: analysis(thread) });
   });
 
   r.post('/api/chat/:thread/messages', async (req, res, { thread }) => {
