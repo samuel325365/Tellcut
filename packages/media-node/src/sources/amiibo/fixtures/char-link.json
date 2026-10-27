@@ -1,0 +1,55 @@
+{
+ "amiibo": [
+  {
+   "amiiboSeries": "Super Smash Bros.",
+   "character": "Link",
+   "gameSeries": "The Legend of Zelda",
+   "head": "01000000",
+   "image": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/images/icon_01000000-00040002.png",
+   "imgwebp": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/webp/icon_01000000-00040002.webp",
+   "name": "Link",
+   "release": {
+    "au": "2014-11-29",
+    "eu": "2014-11-28",
+    "jp": "2014-12-06",
+    "na": "2014-11-21"
+   },
+   "tail": "00040002",
+   "type": "Figure"
+  },
+  {
+   "amiiboSeries": "Legend Of Zelda",
+   "character": "Link",
+   "gameSeries": "The Legend of Zelda",
+   "head": "01000000",
+   "image": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/images/icon_01000000-03530902.png",
+   "imgwebp": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/webp/icon_01000000-03530902.webp",
+   "name": "Link - Archer",
+   "release": {
+    "au": "2017-03-03",
+    "eu": "2017-03-03",
+    "jp": "2017-03-03",
+    "na": "2017-03-03"
+   },
+   "tail": "03530902",
+   "type": "Figure"
+  },
+  {
+   "amiiboSeries": "Legend Of Zelda",
+   "character": "Link",
+   "gameSeries": "The Legend of Zelda",
+   "head": "01000000",
+   "image": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/images/icon_01000000-034f0902.png",
+   "imgwebp": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/webp/icon_01000000-034f0902.webp",
+   "name": "8-Bit Link",
+   "release": {
+    "au": "2016-12-03",
+    "eu": "2016-12-02",
+    "jp": "2016-12-01",
+    "na": "2016-12-02"
+   },
+   "tail": "034f0902",
+   "type": "Figure"
+  }
+ ]
+}

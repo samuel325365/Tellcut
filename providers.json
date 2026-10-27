@@ -1,0 +1,33 @@
+{
+  "tts": {
+    "use": "edge",
+    "options": {
+      "edge": {
+        "version": "7.3.1",
+        "voice": "zh-TW-HsiaoChenNeural"
+      }
+    }
+  },
+  "transcribe": {
+    "use": "faster-whisper",
+    "options": {
+      "faster-whisper": {
+        "model": "large-v3-turbo"
+      }
+    }
+  },
+  "ocr": {
+    "use": "windows",
+    "options": {
+      "windows": {
+        "lang": "zh-Hant-TW"
+      }
+    }
+  },
+  "faces": {
+    "use": "mediapipe",
+    "options": {
+      "mediapipe": {}
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "contact": "",
+  "sources": {
+    "wikimedia": { "enabled": true },
+    "freesound": { "enabled": true, "keyEnv": "FREESOUND_API_KEY" },
+    "bbc-sfx": { "enabled": false, "unofficial": true },
+    "incompetech": { "enabled": false, "unofficial": true },
+    "maps": { "enabled": true },
+    "carto": { "enabled": true, "keyEnv": "CARTO_API_KEY" },
+    "nasa": { "enabled": true },
+    "pixabay": { "enabled": true, "keyEnv": "PIXABAY_API_KEY" },
+    "pokeapi": { "enabled": true },
+    "amiibo": { "enabled": true },
+    "game-wikis": { "enabled": true },
+    "hp-api": { "enabled": true },
+    "anime": { "enabled": true },
+    "countries": { "enabled": true },
+    "mealdb": { "enabled": true },
+    "cocktaildb": { "enabled": true },
+    "steam": { "enabled": false, "unofficial": true }
+  }
+}

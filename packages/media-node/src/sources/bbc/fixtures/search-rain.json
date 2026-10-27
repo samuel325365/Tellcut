@@ -1,0 +1,67 @@
+{
+ "total": 2991,
+ "results": [
+  {
+   "id": "07043376",
+   "description": "Driving rain on window. (Interior acoustic.)",
+   "duration": 290933.333,
+   "categories": [
+    {
+     "className": "Nature",
+     "p": 0.999999,
+     "textCoverage": 0.999999
+    }
+   ],
+   "tags": [
+    "rain",
+    "window",
+    "interior",
+    "weather",
+    "storms",
+    "acoustic"
+   ],
+   "additionalMetadata": {
+    "cdName": "Weather 2 - Storms",
+    "locationText": "",
+    "originalCategory": "Weather 2 - Storms",
+    "additionalCategory": "Nature"
+   },
+   "fileSizes": {
+    "wavFileSize": "51321408",
+    "mp3FileSize": "4656639"
+   }
+  },
+  {
+   "id": "07043377",
+   "description": "Rain on window, with water dripping off roof. (Interior acoustic.)",
+   "duration": 232820,
+   "categories": [
+    {
+     "className": "Nature",
+     "p": 0.999999,
+     "textCoverage": 0.999999
+    }
+   ],
+   "tags": [
+    "rain",
+    "window",
+    "water",
+    "roof",
+    "interior",
+    "weather",
+    "storms",
+    "acoustic"
+   ],
+   "additionalMetadata": {
+    "cdName": "Weather 2 - Storms",
+    "locationText": "",
+    "originalCategory": "Weather 2 - Storms",
+    "additionalCategory": "Nature"
+   },
+   "fileSizes": {
+    "wavFileSize": "41070216",
+    "mp3FileSize": "3726702"
+   }
+  }
+ ]
+}

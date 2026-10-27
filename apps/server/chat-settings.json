@@ -1,0 +1,3 @@
+{
+  "claudeMdExcludes": ["**/CLAUDE.md", "**/CLAUDE.local.md", "**/AGENTS.md", "**/.claude/rules/**"]
+}

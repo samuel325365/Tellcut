@@ -1,0 +1,19 @@
+# Tellcut's Python tools (tools/py): transcription, photos, contact sheets, beats, downloads. Run only through uv, with
+# everything kept inside tellcut/ (the environment, Python itself, the cache): see packages/media-node/src/deps.ts.
+[project]
+name = "tellcut"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "av<19",
+    "faster-whisper>=1.2.1",
+    "mediapipe>=0.10.14",
+    "numpy>=2.5",
+    "opencc-python-reimplemented>=0.1.7",
+    "pillow>=12.3",
+    "pillow-heif>=1.8.1",
+    "yt-dlp>=2026.8.19",
+]
+
+[tool.uv]
+package = false

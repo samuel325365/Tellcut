@@ -1,0 +1,90 @@
+// End-to-end for the layout: a laptop-sized window (1536×864) shows a big preview for landscape and portrait projects.
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { chromium, type Browser, type Page } from 'playwright-core';
+import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
+import { demoProject, makeSource, startApp } from '../../server/src/test-utils.ts';
+
+const CHROME = chromePath();
+const root = join(TELLCUT_ROOT, 'projects/_e2e5');
+const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
+let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser, page: Page;
+const poll = <T>(fn: () => T, timeout = 10000) => expect.poll(fn, { timeout, interval: 100 });
+const frameBox = async () => (await page.locator('iframe').boundingBox())!;
+const stageBox = async () => (await page.frameLocator('iframe').locator('#stage').boundingBox())!;
+
+beforeAll(async () => {
+  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
+  rmSync(root, { recursive: true, force: true });
+  for (const [id, width, height] of [['wide', 1920, 1080], ['tall', 1080, 1920], ['aud', 1920, 1080]] as const) {
+    mkdirSync(join(root, id), { recursive: true });
+    await makeSource(join(root, id, 'src.mp4'));
+    const p = demoProject();
+    Object.assign(p.meta, { width, height, duration: 2 });
+    if (id === 'aud') p.tracks.push({ id: 'mus', kind: 'audio', name: 'Music', gain: 0, items: [] } as any);
+    writeFileSync(join(root, id, 'project.json'), JSON.stringify(p, null, 2));
+  }
+  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist }));
+  browser = await chromium.launch({ executablePath: CHROME, headless: true });
+  page = await browser.newPage({ viewport: { width: 1536, height: 864 }, locale: 'zh-TW' });
+}, 120000);
+
+// closing Chrome can take ~25 s while other e2e files render exports in parallel (0.2 s alone)
+afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+
+test('landscape: the preview takes most of the height; dragging the splitter and F resize it', async () => {
+  await page.goto(`${base}/editor/?id=wide`);
+  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  const h0 = (await frameBox()).height;
+  expect(h0).toBeGreaterThan(420);                                   // was 335 in the old 45% layout
+  const sp = (await page.locator('[data-splitter="rows"]').boundingBox())!;
+  await page.mouse.move(sp.x + 300, sp.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(sp.x + 300, sp.y - 98, { steps: 5 });
+  await page.mouse.up();
+  await poll(async () => (await frameBox()).height).toBeLessThan(h0 - 80);
+  await page.keyboard.press('f');
+  await poll(async () => (await frameBox()).height).toBeGreaterThan(700);
+  await page.keyboard.press('f');
+  await page.locator('[data-splitter="rows"]').dblclick();
+  await poll(async () => Math.round((await frameBox()).height)).toBe(Math.round(h0));
+}, 60000);
+
+test('portrait: the preview is a full-height column, so the 9:16 video is shown large', async () => {
+  await page.goto(`${base}/editor/?id=tall`);
+  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  await poll(async () => (await stageBox()).height).toBeGreaterThan(700);   // was about 335 tall when the preview sat above the timeline
+  expect(await page.locator('[data-side] [data-tab]').count()).toBe(3);   // 素材、屬性、對話
+}, 60000);
+test('item labels fit inside compact rows (CJK glyphs are taller)', async () => {
+  await page.goto(`${base}/editor/?id=wide`);
+  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  const it = (await page.locator('[data-item-id="f"]').boundingBox())!, label = (await page.locator('[data-item-id="f"] .label').boundingBox())!;
+  expect(label.y).toBeGreaterThanOrEqual(it.y);
+  expect(label.y + label.height).toBeLessThanOrEqual(it.y + it.height);
+}, 60000);
+
+test('a track header shown with its delete button keeps the delete clear of the other buttons', async () => {
+  await page.goto(`${base}/editor/?id=wide`);
+  await page.waitForSelector('[data-row="v"] .head');
+  for (const row of ['v', 'o']) {
+    await page.hover(`[data-row="${row}"] .head .tname`);
+    const del = (await page.locator(`[data-row="${row}"] [data-track-delete]`).boundingBox())!;
+    expect(del).not.toBeNull();
+    for (const sel of ['[data-mute]', '[data-magnet]']) {
+      const loc = page.locator(`[data-row="${row}"] ${sel}`);
+      if (!(await loc.count())) continue;   // the overlay track has no magnet button
+      const b = (await loc.boundingBox())!;
+      const overlap = del.x < b.x + b.width && b.x < del.x + del.width && del.y < b.y + b.height && b.y < del.y + del.height;
+      expect(overlap, `${row}: × over ${sel}`).toBe(false);
+    }
+  }
+});
+
+test('an audio track header leaves its name room to read (not clipped to a letter)', async () => {
+  await page.goto(`${base}/editor/?id=aud`);
+  await page.waitForSelector('[data-row="mus"] .head');
+  const name = (await page.locator('[data-row="mus"] .head .tname').boundingBox())!;
+  expect(name.width).toBeGreaterThanOrEqual(40);
+  expect(await page.locator('[data-row="mus"] .head .tname').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);   // "Music" is not cut off
+}, 60000);

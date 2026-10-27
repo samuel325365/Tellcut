@@ -1,0 +1,81 @@
+{
+ "total": 10,
+ "items": [
+  {
+   "type": "app",
+   "name": "艾爾登法環",
+   "id": 1245620,
+   "price": {
+    "currency": "TWD",
+    "initial": 179000,
+    "final": 179000
+   },
+   "tiny_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/capsule_231x87.jpg?t=1790290043",
+   "metascore": "94",
+   "platforms": {
+    "windows": true,
+    "mac": false,
+    "linux": false
+   },
+   "streamingvideo": false,
+   "controller_support": "full"
+  },
+  {
+   "type": "app",
+   "name": "艾爾登法環 黑夜君臨",
+   "id": 2622380,
+   "price": {
+    "currency": "TWD",
+    "initial": 119000,
+    "final": 119000
+   },
+   "tiny_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2622380/8ebc4260af27bc55ba8b88982fd7eb7f970d43c9/capsule_231x87.jpg?t=1791488960",
+   "metascore": "",
+   "platforms": {
+    "windows": true,
+    "mac": false,
+    "linux": false
+   },
+   "streamingvideo": false,
+   "controller_support": "full"
+  },
+  {
+   "type": "app",
+   "name": "艾爾登法環 黃金樹幽影",
+   "id": 2778580,
+   "price": {
+    "currency": "TWD",
+    "initial": 119000,
+    "final": 119000
+   },
+   "tiny_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2778580/capsule_231x87.jpg?t=1787586064",
+   "metascore": "92",
+   "platforms": {
+    "windows": true,
+    "mac": false,
+    "linux": false
+   },
+   "streamingvideo": false,
+   "controller_support": "full"
+  },
+  {
+   "type": "app",
+   "name": "ELDEN RING Tarnished Pack",
+   "id": 3655690,
+   "price": {
+    "currency": "TWD",
+    "initial": 15000,
+    "final": 15000
+   },
+   "tiny_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3655690/c6fd066656060ea1d8bd540873beb90762dafdc9/capsule_231x87.jpg?t=1788321529",
+   "metascore": "",
+   "platforms": {
+    "windows": true,
+    "mac": false,
+    "linux": false
+   },
+   "streamingvideo": false,
+   "controller_support": "full"
+  }
+ ]
+}

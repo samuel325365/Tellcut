@@ -1,0 +1,35 @@
+{
+  "total": 3, "totalHits": 3,
+  "hits": [
+    {
+      "id": 307249, "pageURL": "https://pixabay.com/videos/id-307249/", "type": "film",
+      "tags": "latte art, coffee pouring, barista", "duration": 8, "user": "Poor-Designer",
+      "videos": {
+        "large": { "url": "https://cdn.pixabay.com/video/2025/09/30/307249_large.mp4", "width": 3840, "height": 2160, "size": 40000000, "thumbnail": "https://cdn.pixabay.com/video/2025/09/30/307249_large.jpg" },
+        "medium": { "url": "https://cdn.pixabay.com/video/2025/09/30/307249_medium.mp4", "width": 1920, "height": 1080, "size": 12000000, "thumbnail": "https://cdn.pixabay.com/video/2025/09/30/307249_medium.jpg" },
+        "small": { "url": "https://cdn.pixabay.com/video/2025/09/30/307249_small.mp4", "width": 1280, "height": 720, "size": 6000000, "thumbnail": "https://cdn.pixabay.com/video/2025/09/30/307249_small.jpg" },
+        "tiny": { "url": "https://cdn.pixabay.com/video/2025/09/30/307249_tiny.mp4", "width": 960, "height": 540, "size": 3000000, "thumbnail": "https://cdn.pixabay.com/video/2025/09/30/307249_tiny.jpg" }
+      }
+    },
+    {
+      "id": 401001, "pageURL": "https://pixabay.com/videos/id-401001/", "type": "film",
+      "tags": "bakery, bread, oven", "duration": 14, "user": "Tall-Shots",
+      "videos": {
+        "large": { "url": "https://cdn.pixabay.com/video/2026/01/02/401001_large.mp4", "width": 2160, "height": 3840, "size": 50000000, "thumbnail": "https://cdn.pixabay.com/video/2026/01/02/401001_large.jpg" },
+        "medium": { "url": "https://cdn.pixabay.com/video/2026/01/02/401001_medium.mp4", "width": 1080, "height": 1920, "size": 15000000, "thumbnail": "https://cdn.pixabay.com/video/2026/01/02/401001_medium.jpg" },
+        "small": { "url": "https://cdn.pixabay.com/video/2026/01/02/401001_small.mp4", "width": 720, "height": 1280, "size": 7000000, "thumbnail": "https://cdn.pixabay.com/video/2026/01/02/401001_small.jpg" },
+        "tiny": { "url": "https://cdn.pixabay.com/video/2026/01/02/401001_tiny.mp4", "width": 540, "height": 960, "size": 3000000, "thumbnail": "https://cdn.pixabay.com/video/2026/01/02/401001_tiny.jpg" }
+      }
+    },
+    {
+      "id": 326949, "pageURL": "https://pixabay.com/videos/id-326949/", "type": "film",
+      "tags": "coffee, pouring coffee, top view, ai generated", "duration": 20, "user": "Solarselle77",
+      "videos": {
+        "large": { "url": "", "width": 0, "height": 0, "size": 0, "thumbnail": "" },
+        "medium": { "url": "https://cdn.pixabay.com/video/2026/01/10/326949_medium.mp4", "width": 2560, "height": 1440, "size": 20000000, "thumbnail": "https://cdn.pixabay.com/video/2026/01/10/326949_medium.jpg" },
+        "small": { "url": "https://cdn.pixabay.com/video/2026/01/10/326949_small.mp4", "width": 1280, "height": 720, "size": 6000000, "thumbnail": "https://cdn.pixabay.com/video/2026/01/10/326949_small.jpg" },
+        "tiny": { "url": "https://cdn.pixabay.com/video/2026/01/10/326949_tiny.mp4", "width": 960, "height": 540, "size": 3000000, "thumbnail": "https://cdn.pixabay.com/video/2026/01/10/326949_tiny.jpg" }
+      }
+    }
+  ]
+}

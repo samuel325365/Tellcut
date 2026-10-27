@@ -1,0 +1,1734 @@
+[
+ {
+  "name": {
+   "common": "Japan",
+   "official": "Japan",
+   "native": {
+    "jpn": {
+     "official": "日本",
+     "common": "日本"
+    }
+   }
+  },
+  "tld": [
+   ".jp",
+   ".みんな"
+  ],
+  "cca2": "JP",
+  "ccn3": "392",
+  "cca3": "JPN",
+  "cioc": "JPN",
+  "independent": true,
+  "status": "officially-assigned",
+  "unMember": true,
+  "unRegionalGroup": "Asia and the Pacific Group",
+  "currencies": {
+   "JPY": {
+    "name": "Japanese yen",
+    "symbol": "¥"
+   }
+  },
+  "idd": {
+   "root": "+8",
+   "suffixes": [
+    "1"
+   ]
+  },
+  "capital": [
+   "Tokyo"
+  ],
+  "altSpellings": [
+   "JP",
+   "Nippon",
+   "Nihon"
+  ],
+  "region": "Asia",
+  "subregion": "Eastern Asia",
+  "languages": {
+   "jpn": "Japanese"
+  },
+  "translations": {
+   "ara": {
+    "official": "اليابان",
+    "common": "اليابان"
+   },
+   "bre": {
+    "official": "Japan",
+    "common": "Japan"
+   },
+   "ces": {
+    "official": "Japonsko",
+    "common": "Japonsko"
+   },
+   "deu": {
+    "official": "Japan",
+    "common": "Japan"
+   },
+   "est": {
+    "official": "Jaapan",
+    "common": "Jaapan"
+   },
+   "fin": {
+    "official": "Japani",
+    "common": "Japani"
+   },
+   "fra": {
+    "official": "Japon",
+    "common": "Japon"
+   },
+   "hrv": {
+    "official": "Japan",
+    "common": "Japan"
+   },
+   "hun": {
+    "official": "Japán",
+    "common": "Japán"
+   },
+   "ita": {
+    "official": "Giappone",
+    "common": "Giappone"
+   },
+   "jpn": {
+    "official": "日本国",
+    "common": "日本"
+   },
+   "kor": {
+    "official": "일본국",
+    "common": "일본"
+   },
+   "nld": {
+    "official": "Japan",
+    "common": "Japan"
+   },
+   "per": {
+    "official": "ژاپن",
+    "common": "ژاپن"
+   },
+   "pol": {
+    "official": "Japonia",
+    "common": "Japonia"
+   },
+   "por": {
+    "official": "Japão",
+    "common": "Japão"
+   },
+   "rus": {
+    "official": "Япония",
+    "common": "Япония"
+   },
+   "slk": {
+    "official": "Japonsko",
+    "common": "Japonsko"
+   },
+   "spa": {
+    "official": "Japón",
+    "common": "Japón"
+   },
+   "srp": {
+    "official": "Japan",
+    "common": "Japan"
+   },
+   "swe": {
+    "official": "Japan",
+    "common": "Japan"
+   },
+   "tur": {
+    "official": "Japonya",
+    "common": "Japonya"
+   },
+   "urd": {
+    "official": "جاپان",
+    "common": "جاپان"
+   },
+   "zho": {
+    "official": "日本国",
+    "common": "日本"
+   }
+  },
+  "latlng": [
+   36,
+   138
+  ],
+  "landlocked": false,
+  "borders": [],
+  "area": 377930,
+  "flag": "🇯🇵",
+  "demonyms": {
+   "eng": {
+    "f": "Japanese",
+    "m": "Japanese"
+   },
+   "fra": {
+    "f": "Japonaise",
+    "m": "Japonais"
+   }
+  }
+ },
+ {
+  "name": {
+   "common": "South Korea",
+   "official": "Republic of Korea",
+   "native": {
+    "kor": {
+     "official": "대한민국",
+     "common": "한국"
+    }
+   }
+  },
+  "tld": [
+   ".kr",
+   ".한국"
+  ],
+  "cca2": "KR",
+  "ccn3": "410",
+  "cca3": "KOR",
+  "cioc": "KOR",
+  "independent": true,
+  "status": "officially-assigned",
+  "unMember": true,
+  "unRegionalGroup": "Asia and the Pacific Group",
+  "currencies": {
+   "KRW": {
+    "name": "South Korean won",
+    "symbol": "₩"
+   }
+  },
+  "idd": {
+   "root": "+8",
+   "suffixes": [
+    "2"
+   ]
+  },
+  "capital": [
+   "Seoul"
+  ],
+  "altSpellings": [
+   "KR",
+   "Korea, Republic of",
+   "Republic of Korea",
+   "남한",
+   "남조선"
+  ],
+  "region": "Asia",
+  "subregion": "Eastern Asia",
+  "languages": {
+   "kor": "Korean"
+  },
+  "translations": {
+   "ara": {
+    "official": "جمهورية كوريا",
+    "common": "كوريا الجنوبية"
+   },
+   "bre": {
+    "official": "Republik Korea",
+    "common": "Korea ar Su"
+   },
+   "ces": {
+    "official": "Korejská republika",
+    "common": "Jižní Korea"
+   },
+   "deu": {
+    "official": "Republik Korea",
+    "common": "Südkorea"
+   },
+   "est": {
+    "official": "Korea Vabariik",
+    "common": "Lõuna-Korea"
+   },
+   "fin": {
+    "official": "Korean tasavalta",
+    "common": "Etelä-Korea"
+   },
+   "fra": {
+    "official": "République de Corée",
+    "common": "Corée du Sud"
+   },
+   "hrv": {
+    "official": "Republika Koreja",
+    "common": "Južna Koreja"
+   },
+   "hun": {
+    "official": "Koreai Köztársaság",
+    "common": "Dél-Korea"
+   },
+   "ita": {
+    "official": "Repubblica di Corea",
+    "common": "Corea del Sud"
+   },
+   "jpn": {
+    "official": "大韓民国",
+    "common": "韓国"
+   },
+   "kor": {
+    "official": "대한민국",
+    "common": "한국"
+   },
+   "nld": {
+    "official": "Republiek Korea",
+    "common": "Zuid-Korea"
+   },
+   "per": {
+    "official": "جمهوری کره",
+    "common": "کرهٔ جنوبی"
+   },
+   "pol": {
+    "official": "Republika Korei",
+    "common": "Korea Południowa"
+   },
+   "por": {
+    "official": "República da Coreia",
+    "common": "Coreia do Sul"
+   },
+   "rus": {
+    "official": "Республика Корея",
+    "common": "Южная Корея"
+   },
+   "slk": {
+    "official": "Kórejská republika",
+    "common": "Južná Kórea"
+   },
+   "spa": {
+    "official": "República de Corea",
+    "common": "Corea del Sur"
+   },
+   "srp": {
+    "official": "Republika Koreja",
+    "common": "Južna Koreja"
+   },
+   "swe": {
+    "official": "Republiken Korea",
+    "common": "Sydkorea"
+   },
+   "tur": {
+    "official": "Kore Cumhuriyeti",
+    "common": "Güney Kore"
+   },
+   "urd": {
+    "official": "جمہوریہ کوریا ",
+    "common": "جنوبی کوریا"
+   },
+   "zho": {
+    "official": "大韩民国",
+    "common": "韩国"
+   }
+  },
+  "latlng": [
+   37,
+   127.5
+  ],
+  "landlocked": false,
+  "borders": [
+   "PRK"
+  ],
+  "area": 100210,
+  "flag": "🇰🇷",
+  "demonyms": {
+   "eng": {
+    "f": "South Korean",
+    "m": "South Korean"
+   },
+   "fra": {
+    "f": "Sud-coréenne",
+    "m": "Sud-coréen"
+   }
+  }
+ },
+ {
+  "name": {
+   "common": "Montenegro",
+   "official": "Montenegro",
+   "native": {
+    "cnr": {
+     "official": "Црна Гора",
+     "common": "Црна Гора"
+    }
+   }
+  },
+  "tld": [
+   ".me"
+  ],
+  "cca2": "ME",
+  "ccn3": "499",
+  "cca3": "MNE",
+  "cioc": "MNE",
+  "independent": true,
+  "status": "officially-assigned",
+  "unMember": true,
+  "unRegionalGroup": "Eastern European Group",
+  "currencies": {
+   "EUR": {
+    "name": "Euro",
+    "symbol": "€"
+   }
+  },
+  "idd": {
+   "root": "+3",
+   "suffixes": [
+    "82"
+   ]
+  },
+  "capital": [
+   "Podgorica"
+  ],
+  "altSpellings": [
+   "ME",
+   "Crna Gora"
+  ],
+  "region": "Europe",
+  "subregion": "Southeast Europe",
+  "languages": {
+   "cnr": "Montenegrin"
+  },
+  "translations": {
+   "ara": {
+    "official": "الجبل الاسود",
+    "common": "الجبل الاسود"
+   },
+   "bre": {
+    "official": "Republik Montenegro",
+    "common": "Montenegro"
+   },
+   "ces": {
+    "official": "Černá Hora",
+    "common": "Černá Hora"
+   },
+   "deu": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "est": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "fin": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "fra": {
+    "official": "Monténégro",
+    "common": "Monténégro"
+   },
+   "hrv": {
+    "official": "Crna Gora",
+    "common": "Crna Gora"
+   },
+   "hun": {
+    "official": "Montenegró",
+    "common": "Montenegró"
+   },
+   "ita": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "jpn": {
+    "official": "モンテネグロ",
+    "common": "モンテネグロ"
+   },
+   "kor": {
+    "official": "몬테네그로",
+    "common": "몬테네그로"
+   },
+   "nld": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "per": {
+    "official": "مونته‌نگرو",
+    "common": "مونته‌نگرو"
+   },
+   "pol": {
+    "official": "Czarnogóra",
+    "common": "Czarnogóra"
+   },
+   "por": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "rus": {
+    "official": "Черногория",
+    "common": "Черногория"
+   },
+   "slk": {
+    "official": "Čierna Hora",
+    "common": "Čierna Hora"
+   },
+   "spa": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "srp": {
+    "official": "Crna Gora",
+    "common": "Crna Gora"
+   },
+   "swe": {
+    "official": "Montenegro",
+    "common": "Montenegro"
+   },
+   "tur": {
+    "official": "Karadağ",
+    "common": "Karadağ"
+   },
+   "urd": {
+    "official": "مونٹینیگرو",
+    "common": "مونٹینیگرو"
+   },
+   "zho": {
+    "official": "黑山",
+    "common": "黑山"
+   }
+  },
+  "latlng": [
+   42.5,
+   19.3
+  ],
+  "landlocked": false,
+  "borders": [
+   "ALB",
+   "BIH",
+   "HRV",
+   "UNK",
+   "SRB"
+  ],
+  "area": 13812,
+  "flag": "🇲🇪",
+  "demonyms": {
+   "eng": {
+    "f": "Montenegrin",
+    "m": "Montenegrin"
+   },
+   "fra": {
+    "f": "Monténégrine",
+    "m": "Monténégrin"
+   }
+  }
+ },
+ {
+  "name": {
+   "common": "Niger",
+   "official": "Republic of Niger",
+   "native": {
+    "fra": {
+     "official": "République du Niger",
+     "common": "Niger"
+    }
+   }
+  },
+  "tld": [
+   ".ne"
+  ],
+  "cca2": "NE",
+  "ccn3": "562",
+  "cca3": "NER",
+  "cioc": "NIG",
+  "independent": true,
+  "status": "officially-assigned",
+  "unMember": true,
+  "unRegionalGroup": "African Group",
+  "currencies": {
+   "XOF": {
+    "name": "West African CFA franc",
+    "symbol": "Fr"
+   }
+  },
+  "idd": {
+   "root": "+2",
+   "suffixes": [
+    "27"
+   ]
+  },
+  "capital": [
+   "Niamey"
+  ],
+  "altSpellings": [
+   "NE",
+   "Nijar"
+  ],
+  "region": "Africa",
+  "subregion": "Western Africa",
+  "languages": {
+   "fra": "French"
+  },
+  "translations": {
+   "ara": {
+    "official": "جمهورية النيجر",
+    "common": "النيجر"
+   },
+   "bre": {
+    "official": "Republik Niger",
+    "common": "Niger"
+   },
+   "ces": {
+    "official": "Nigerská republika",
+    "common": "Niger"
+   },
+   "deu": {
+    "official": "Republik Niger",
+    "common": "Niger"
+   },
+   "est": {
+    "official": "Nigeri Vabariik",
+    "common": "Niger"
+   },
+   "fin": {
+    "official": "Nigerin tasavalta",
+    "common": "Niger"
+   },
+   "fra": {
+    "official": "République du Niger",
+    "common": "Niger"
+   },
+   "hrv": {
+    "official": "Republika Niger",
+    "common": "Niger"
+   },
+   "hun": {
+    "official": "Nigeri Köztársaság",
+    "common": "Niger"
+   },
+   "ita": {
+    "official": "Repubblica del Niger",
+    "common": "Niger"
+   },
+   "jpn": {
+    "official": "ニジェール共和国",
+    "common": "ニジェール"
+   },
+   "kor": {
+    "official": "니제르 공화국",
+    "common": "니제르"
+   },
+   "nld": {
+    "official": "Republiek Niger",
+    "common": "Niger"
+   },
+   "per": {
+    "official": "جمهوری نیجر",
+    "common": "نیجر"
+   },
+   "pol": {
+    "official": "Republika Nigru",
+    "common": "Niger"
+   },
+   "por": {
+    "official": "República do Níger",
+    "common": "Níger"
+   },
+   "rus": {
+    "official": "Республика Нигер",
+    "common": "Нигер"
+   },
+   "slk": {
+    "official": "Nigérská republika",
+    "common": "Niger"
+   },
+   "spa": {
+    "official": "República de Níger",
+    "common": "Níger"
+   },
+   "srp": {
+    "official": "Republika Niger",
+    "common": "Niger"
+   },
+   "swe": {
+    "official": "Republiken Niger",
+    "common": "Niger"
+   },
+   "tur": {
+    "official": "Nijer Cumhuriyeti",
+    "common": "Nijer"
+   },
+   "urd": {
+    "official": "جمہوریہ نائجر",
+    "common": "نائجر"
+   },
+   "zho": {
+    "official": "尼日尔共和国",
+    "common": "尼日尔"
+   }
+  },
+  "latlng": [
+   16,
+   8
+  ],
+  "landlocked": true,
+  "borders": [
+   "DZA",
+   "BEN",
+   "BFA",
+   "TCD",
+   "LBY",
+   "MLI",
+   "NGA"
+  ],
+  "area": 1267000,
+  "flag": "🇳🇪",
+  "demonyms": {
+   "eng": {
+    "f": "Nigerien",
+    "m": "Nigerien"
+   },
+   "fra": {
+    "f": "Nigérienne",
+    "m": "Nigérien"
+   }
+  }
+ },
+ {
+  "name": {
+   "common": "Nigeria",
+   "official": "Federal Republic of Nigeria",
+   "native": {
+    "eng": {
+     "official": "Federal Republic of Nigeria",
+     "common": "Nigeria"
+    }
+   }
+  },
+  "tld": [
+   ".ng"
+  ],
+  "cca2": "NG",
+  "ccn3": "566",
+  "cca3": "NGA",
+  "cioc": "NGR",
+  "independent": true,
+  "status": "officially-assigned",
+  "unMember": true,
+  "unRegionalGroup": "African Group",
+  "currencies": {
+   "NGN": {
+    "name": "Nigerian naira",
+    "symbol": "₦"
+   }
+  },
+  "idd": {
+   "root": "+2",
+   "suffixes": [
+    "34"
+   ]
+  },
+  "capital": [
+   "Abuja"
+  ],
+  "altSpellings": [
+   "NG",
+   "Nijeriya",
+   "Naíjíríà",
+   "Federal Republic of Nigeria"
+  ],
+  "region": "Africa",
+  "subregion": "Western Africa",
+  "languages": {
+   "eng": "English"
+  },
+  "translations": {
+   "ara": {
+    "official": "جمهورية نيجيريا الاتحادية",
+    "common": "نيجيريا"
+   },
+   "bre": {
+    "official": "Republik Kevreadel Nigeria",
+    "common": "Nigeria"
+   },
+   "ces": {
+    "official": "Nigerijská federativní republika",
+    "common": "Nigérie"
+   },
+   "deu": {
+    "official": "Bundesrepublik Nigeria",
+    "common": "Nigeria"
+   },
+   "est": {
+    "official": "Nigeeria Liitvabariik",
+    "common": "Nigeeria"
+   },
+   "fin": {
+    "official": "Nigerian liittotasavalta",
+    "common": "Nigeria"
+   },
+   "fra": {
+    "official": "République fédérale du Nigeria",
+    "common": "Nigéria"
+   },
+   "hrv": {
+    "official": "Savezna Republika Nigerija",
+    "common": "Nigerija"
+   },
+   "hun": {
+    "official": "Nigéria",
+    "common": "Nigéria"
+   },
+   "ita": {
+    "official": "Repubblica federale di Nigeria",
+    "common": "Nigeria"
+   },
+   "jpn": {
+    "official": "ナイジェリア連邦共和国",
+    "common": "ナイジェリア"
+   },
+   "kor": {
+    "official": "나이지리아 연방 공화국",
+    "common": "나이지리아"
+   },
+   "nld": {
+    "official": "Federale Republiek Nigeria",
+    "common": "Nigeria"
+   },
+   "per": {
+    "official": "جمهوری فدرال نیجریه",
+    "common": "نیجریه"
+   },
+   "pol": {
+    "official": "Federalna Republika Nigerii",
+    "common": "Nigeria"
+   },
+   "por": {
+    "official": "República Federal da Nigéria",
+    "common": "Nigéria"
+   },
+   "rus": {
+    "official": "Федеративная Республика Нигерия",
+    "common": "Нигерия"
+   },
+   "slk": {
+    "official": "Nigérijská federatívna republika",
+    "common": "Nigéria"
+   },
+   "spa": {
+    "official": "República Federal de Nigeria",
+    "common": "Nigeria"
+   },
+   "srp": {
+    "official": "Savezna Republika Nigerija",
+    "common": "Nigerija"
+   },
+   "swe": {
+    "official": "Förbundsrepubliken Nigeria",
+    "common": "Nigeria"
+   },
+   "tur": {
+    "official": "Nijerya Federal Cumhuriyeti",
+    "common": "Nijerya"
+   },
+   "urd": {
+    "official": "وفاقی جمہوریہ نائجیریا",
+    "common": "نائجیریا"
+   },
+   "zho": {
+    "official": "尼日利亚联邦共和国",
+    "common": "尼日利亚"
+   }
+  },
+  "latlng": [
+   10,
+   8
+  ],
+  "landlocked": false,
+  "borders": [
+   "BEN",
+   "CMR",
+   "TCD",
+   "NER"
+  ],
+  "area": 923768,
+  "flag": "🇳🇬",
+  "demonyms": {
+   "eng": {
+    "f": "Nigerian",
+    "m": "Nigerian"
+   },
+   "fra": {
+    "f": "Nigériane",
+    "m": "Nigérian"
+   }
+  }
+ },
+ {
+  "name": {
+   "common": "New Zealand",
+   "official": "New Zealand",
+   "native": {
+    "eng": {
+     "official": "New Zealand",
+     "common": "New Zealand"
+    },
+    "mri": {
+     "official": "Aotearoa",
+     "common": "Aotearoa"
+    },
+    "nzs": {
+     "official": "New Zealand",
+     "common": "New Zealand"
+    }
+   }
+  },
+  "tld": [
+   ".nz"
+  ],
+  "cca2": "NZ",
+  "ccn3": "554",
+  "cca3": "NZL",
+  "cioc": "NZL",
+  "independent": true,
+  "status": "officially-assigned",
+  "unMember": true,
+  "unRegionalGroup": "Western European and Others Group",
+  "currencies": {
+   "NZD": {
+    "name": "New Zealand dollar",
+    "symbol": "$"
+   }
+  },
+  "idd": {
+   "root": "+6",
+   "suffixes": [
+    "4"
+   ]
+  },
+  "capital": [
+   "Wellington"
+  ],
+  "altSpellings": [
+   "NZ",
+   "Aotearoa"
+  ],
+  "region": "Oceania",
+  "subregion": "Australia and New Zealand",
+  "languages": {
+   "eng": "English",
+   "mri": "Māori",
+   "nzs": "New Zealand Sign Language"
+  },
+  "translations": {
+   "ara": {
+    "official": "نيوزيلندا",
+    "common": "نيوزيلندا"
+   },
+   "bre": {
+    "official": "Zeland-Nevez",
+    "common": "Zeland-Nevez"
+   },
+   "ces": {
+    "official": "Nový Zéland",
+    "common": "Nový Zéland"
+   },
+   "deu": {
+    "official": "Neuseeland",
+    "common": "Neuseeland"
+   },
+   "est": {
+    "official": "Uus-Meremaa",
+    "common": "Uus-Meremaa"
+   },
+   "fin": {
+    "official": "Uusi-Seelanti",
+    "common": "Uusi-Seelanti"
+   },
+   "fra": {
+    "official": "Nouvelle-Zélande",
+    "common": "Nouvelle-Zélande"
+   },
+   "hrv": {
+    "official": "Novi Zeland",
+    "common": "Novi Zeland"
+   },
+   "hun": {
+    "official": "Új-Zéland",
+    "common": "Új-Zéland"
+   },
+   "ita": {
+    "official": "Nuova Zelanda",
+    "common": "Nuova Zelanda"
+   },
+   "jpn": {
+    "official": "ニュージーランド",
+    "common": "ニュージーランド"
+   },
+   "kor": {
+    "official": "뉴질랜드",
+    "common": "뉴질랜드"
+   },
+   "nld": {
+    "official": "Nieuw Zeeland",
+    "common": "Nieuw-Zeeland"
+   },
+   "per": {
+    "official": "نیوزیلند",
+    "common": "نیوزیلند"
+   },
+   "pol": {
+    "official": "Nowa Zelandia",
+    "common": "Nowa Zelandia"
+   },
+   "por": {
+    "official": "nova Zelândia",
+    "common": "Nova Zelândia"
+   },
+   "rus": {
+    "official": "Новая Зеландия",
+    "common": "Новая Зеландия"
+   },
+   "slk": {
+    "official": "Nový Zéland",
+    "common": "Nový Zéland"
+   },
+   "spa": {
+    "official": "nueva Zelanda",
+    "common": "Nueva Zelanda"
+   },
+   "srp": {
+    "official": "Novi Zeland",
+    "common": "Novi Zeland"
+   },
+   "swe": {
+    "official": "Nya Zeeland",
+    "common": "Nya Zeeland"
+   },
+   "tur": {
+    "official": "Yeni Zelanda",
+    "common": "Yeni Zelanda"
+   },
+   "urd": {
+    "official": "نیوزی لینڈ",
+    "common": "نیوزی لینڈ"
+   },
+   "zho": {
+    "official": "新西兰",
+    "common": "新西兰"
+   }
+  },
+  "latlng": [
+   -41,
+   174
+  ],
+  "landlocked": false,
+  "borders": [],
+  "area": 270467,
+  "flag": "🇳🇿",
+  "demonyms": {
+   "eng": {
+    "f": "New Zealander",
+    "m": "New Zealander"
+   },
+   "fra": {
+    "f": "Neo-Zélandaise",
+    "m": "Neo-Zélandais"
+   }
+  }
+ },
+ {
+  "name": {
+   "common": "Taiwan",
+   "official": "Republic of China (Taiwan)",
+   "native": {
+    "zho": {
+     "official": "中華民國",
+     "common": "台灣"
+    }
+   }
+  },
+  "tld": [
+   ".tw",
+   ".台灣",
+   ".台湾"
+  ],
+  "cca2": "TW",
+  "ccn3": "158",
+  "cca3": "TWN",
+  "cioc": "TPE",
+  "independent": false,
+  "status": "officially-assigned",
+  "unMember": false,
+  "unRegionalGroup": "",
+  "currencies": {
+   "TWD": {
+    "name": "New Taiwan dollar",
+    "symbol": "$"
+   }
+  },
+  "idd": {
+   "root": "+8",
+   "suffixes": [
+    "86"
+   ]
+  },
+  "capital": [
+   "Taipei"
+  ],
+  "altSpellings": [
+   "TW",
+   "Táiwān",
+   "Republic of China",
+   "中華民國",
+   "Zhōnghuá Mínguó",
+   "Chinese Taipei"
+  ],
+  "region": "Asia",
+  "subregion": "Eastern Asia",
+  "languages": {
+   "zho": "Chinese"
+  },
+  "translations": {
+   "ara": {
+    "official": "جمهورية الصين (تايوان)",
+    "common": "تايوان"
+   },
+   "bre": {
+    "official": "Republik Sina (Taiwan)",
+    "common": "Taiwan"
+   },
+   "ces": {
+    "official": "Čínská republika",
+    "common": "Tchaj-wan"
+   },
+   "deu": {
+    "official": "Republik China (Taiwan)",
+    "common": "Taiwan"
+   },
+   "est": {
+    "official": "Taiwani",
+    "common": "Taiwan"
+   },
+   "fin": {
+    "official": "Kiinan tasavalta",
+    "common": "Taiwan"
+   },
+   "fra": {
+    "official": "République de Chine (Taïwan)",
+    "common": "Taïwan"
+   },
+   "hrv": {
+    "official": "Republika Kina",
+    "common": "Tajvan"
+   },
+   "hun": {
+    "official": "Kínai Köztársaság",
+    "common": "Tajvan"
+   },
+   "ita": {
+    "official": "Repubblica cinese (Taiwan)",
+    "common": "Taiwan"
+   },
+   "jpn": {
+    "official": "台湾",
+    "common": "中華民国"
+   },
+   "kor": {
+    "official": "중화민국",
+    "common": "대만"
+   },
+   "nld": {
+    "official": "Republiek China (Taiwan)",
+    "common": "Taiwan"
+   },
+   "per": {
+    "official": "جمهوری چین",
+    "common": "تایوان"
+   },
+   "pol": {
+    "official": "Republika Chińska (Tajwan)",
+    "common": "Tajwan"
+   },
+   "por": {
+    "official": "República da China",
+    "common": "Ilha Formosa"
+   },
+   "rus": {
+    "official": "Китайская Республика",
+    "common": "Тайвань"
+   },
+   "slk": {
+    "official": "Čínska republika",
+    "common": "Taiwan"
+   },
+   "spa": {
+    "official": "República de China en Taiwán",
+    "common": "Taiwán"
+   },
+   "srp": {
+    "official": "Republika Kina (Tajvan)",
+    "common": "Tajvan"
+   },
+   "swe": {
+    "official": "Republiken Kina",
+    "common": "Taiwan"
+   },
+   "tur": {
+    "official": "çin Cumhuriyeti (Tayvan)",
+    "common": "Tayvan"
+   },
+   "urd": {
+    "official": "جمہوریہ چین (تائیوان)",
+    "common": "تائیوان"
+   },
+   "zho": {
+    "official": "中華民國",
+    "common": "台灣"
+   }
+  },
+  "latlng": [
+   23.5,
+   121
+  ],
+  "landlocked": false,
+  "borders": [],
+  "area": 36193,
+  "flag": "🇹🇼",
+  "demonyms": {
+   "eng": {
+    "f": "Taiwanese",
+    "m": "Taiwanese"
+   },
+   "fra": {
+    "f": "Taïwanaise",
+    "m": "Taïwanais"
+   }
+  }
+ },
+ {
+  "name": {
+   "common": "United States",
+   "official": "United States of America",
+   "native": {
+    "eng": {
+     "official": "United States of America",
+     "common": "United States"
+    }
+   }
+  },
+  "tld": [
+   ".us"
+  ],
+  "cca2": "US",
+  "ccn3": "840",
+  "cca3": "USA",
+  "cioc": "USA",
+  "independent": true,
+  "status": "officially-assigned",
+  "unMember": true,
+  "unRegionalGroup": "Western European and Others Group",
+  "currencies": {
+   "USD": {
+    "name": "United States dollar",
+    "symbol": "$"
+   }
+  },
+  "idd": {
+   "root": "+1",
+   "suffixes": [
+    "201",
+    "202",
+    "203",
+    "205",
+    "206",
+    "207",
+    "208",
+    "209",
+    "210",
+    "212",
+    "213",
+    "214",
+    "215",
+    "216",
+    "217",
+    "218",
+    "219",
+    "220",
+    "223",
+    "224",
+    "225",
+    "227",
+    "228",
+    "229",
+    "231",
+    "234",
+    "239",
+    "240",
+    "248",
+    "251",
+    "252",
+    "253",
+    "254",
+    "256",
+    "260",
+    "262",
+    "267",
+    "269",
+    "270",
+    "272",
+    "274",
+    "276",
+    "279",
+    "281",
+    "283",
+    "301",
+    "302",
+    "303",
+    "304",
+    "305",
+    "307",
+    "308",
+    "309",
+    "310",
+    "312",
+    "313",
+    "314",
+    "315",
+    "316",
+    "317",
+    "318",
+    "319",
+    "320",
+    "321",
+    "323",
+    "325",
+    "326",
+    "327",
+    "330",
+    "331",
+    "332",
+    "334",
+    "336",
+    "337",
+    "339",
+    "341",
+    "346",
+    "347",
+    "351",
+    "352",
+    "360",
+    "361",
+    "364",
+    "380",
+    "385",
+    "386",
+    "401",
+    "402",
+    "404",
+    "405",
+    "406",
+    "407",
+    "408",
+    "409",
+    "410",
+    "412",
+    "413",
+    "414",
+    "415",
+    "417",
+    "419",
+    "423",
+    "424",
+    "425",
+    "430",
+    "432",
+    "434",
+    "435",
+    "440",
+    "442",
+    "443",
+    "445",
+    "447",
+    "448",
+    "458",
+    "463",
+    "464",
+    "469",
+    "470",
+    "475",
+    "478",
+    "479",
+    "480",
+    "484",
+    "500",
+    "501",
+    "502",
+    "503",
+    "504",
+    "505",
+    "507",
+    "508",
+    "509",
+    "510",
+    "512",
+    "513",
+    "515",
+    "516",
+    "517",
+    "518",
+    "520",
+    "521",
+    "522",
+    "523",
+    "524",
+    "525",
+    "526",
+    "527",
+    "528",
+    "529",
+    "530",
+    "531",
+    "532",
+    "533",
+    "534",
+    "535",
+    "538",
+    "539",
+    "540",
+    "541",
+    "542",
+    "543",
+    "544",
+    "545",
+    "546",
+    "547",
+    "549",
+    "550",
+    "551",
+    "552",
+    "553",
+    "554",
+    "556",
+    "557",
+    "558",
+    "559",
+    "561",
+    "562",
+    "563",
+    "564",
+    "566",
+    "567",
+    "569",
+    "570",
+    "571",
+    "572",
+    "573",
+    "574",
+    "575",
+    "577",
+    "578",
+    "580",
+    "582",
+    "585",
+    "586",
+    "588",
+    "589",
+    "601",
+    "602",
+    "603",
+    "605",
+    "606",
+    "607",
+    "608",
+    "609",
+    "610",
+    "612",
+    "614",
+    "615",
+    "616",
+    "617",
+    "618",
+    "619",
+    "620",
+    "623",
+    "626",
+    "628",
+    "629",
+    "630",
+    "631",
+    "636",
+    "640",
+    "641",
+    "646",
+    "650",
+    "651",
+    "656",
+    "657",
+    "659",
+    "660",
+    "661",
+    "662",
+    "667",
+    "669",
+    "678",
+    "679",
+    "680",
+    "681",
+    "682",
+    "689",
+    "700",
+    "701",
+    "702",
+    "703",
+    "704",
+    "706",
+    "707",
+    "708",
+    "710",
+    "712",
+    "713",
+    "714",
+    "715",
+    "716",
+    "717",
+    "718",
+    "719",
+    "720",
+    "724",
+    "725",
+    "726",
+    "727",
+    "730",
+    "731",
+    "732",
+    "734",
+    "737",
+    "740",
+    "743",
+    "747",
+    "754",
+    "757",
+    "760",
+    "762",
+    "763",
+    "765",
+    "769",
+    "770",
+    "771",
+    "772",
+    "773",
+    "774",
+    "775",
+    "779",
+    "781",
+    "785",
+    "786",
+    "801",
+    "802",
+    "803",
+    "804",
+    "805",
+    "806",
+    "808",
+    "810",
+    "812",
+    "813",
+    "814",
+    "815",
+    "816",
+    "817",
+    "818",
+    "820",
+    "826",
+    "828",
+    "830",
+    "831",
+    "832",
+    "838",
+    "839",
+    "840",
+    "843",
+    "845",
+    "847",
+    "848",
+    "850",
+    "854",
+    "856",
+    "857",
+    "858",
+    "859",
+    "860",
+    "862",
+    "863",
+    "864",
+    "865",
+    "870",
+    "872",
+    "878",
+    "901",
+    "903",
+    "904",
+    "906",
+    "907",
+    "908",
+    "909",
+    "910",
+    "912",
+    "913",
+    "914",
+    "915",
+    "916",
+    "917",
+    "918",
+    "919",
+    "920",
+    "925",
+    "928",
+    "929",
+    "930",
+    "931",
+    "934",
+    "936",
+    "937",
+    "938",
+    "940",
+    "941",
+    "943",
+    "945",
+    "947",
+    "948",
+    "949",
+    "951",
+    "952",
+    "954",
+    "956",
+    "959",
+    "970",
+    "971",
+    "972",
+    "973",
+    "975",
+    "978",
+    "979",
+    "980",
+    "983",
+    "984",
+    "985",
+    "986",
+    "989"
+   ]
+  },
+  "capital": [
+   "Washington D.C."
+  ],
+  "altSpellings": [
+   "US",
+   "USA",
+   "United States of America"
+  ],
+  "region": "Americas",
+  "subregion": "North America",
+  "languages": {
+   "eng": "English"
+  },
+  "translations": {
+   "ara": {
+    "official": "الولايات المتحدة الامريكية",
+    "common": "الولايات المتحدة"
+   },
+   "bre": {
+    "official": "Stadoù-Unanet Amerika",
+    "common": "Stadoù-Unanet"
+   },
+   "ces": {
+    "official": "Spojené státy americké",
+    "common": "Spojené státy"
+   },
+   "deu": {
+    "official": "Vereinigte Staaten von Amerika",
+    "common": "Vereinigte Staaten"
+   },
+   "est": {
+    "official": "Ameerika Ühendriigid",
+    "common": "Ameerika Ühendriigid"
+   },
+   "fin": {
+    "official": "Amerikan yhdysvallat",
+    "common": "Yhdysvallat"
+   },
+   "fra": {
+    "official": "Les états-unis d'Amérique",
+    "common": "États-Unis"
+   },
+   "hrv": {
+    "official": "Sjedinjene Države Amerike",
+    "common": "Sjedinjene Američke Države"
+   },
+   "hun": {
+    "official": "Amerikai Egyesült Államok",
+    "common": "Amerikai Egyesült Államok"
+   },
+   "ita": {
+    "official": "Stati Uniti d'America",
+    "common": "Stati Uniti d'America"
+   },
+   "jpn": {
+    "official": "アメリカ合衆国",
+    "common": "アメリカ"
+   },
+   "kor": {
+    "official": "아메리카 합중국",
+    "common": "미국"
+   },
+   "nld": {
+    "official": "Verenigde Staten van Amerika",
+    "common": "Verenigde Staten"
+   },
+   "per": {
+    "official": "ایالات متحده آمریکا",
+    "common": "ایالات متحده آمریکا"
+   },
+   "pol": {
+    "official": "Stany Zjednoczone Ameryki",
+    "common": "Stany Zjednoczone"
+   },
+   "por": {
+    "official": "Estados Unidos da América",
+    "common": "Estados Unidos"
+   },
+   "rus": {
+    "official": "Соединенные Штаты Америки",
+    "common": "Соединённые Штаты Америки"
+   },
+   "slk": {
+    "official": "Spojené štáty americké",
+    "common": "Spojené štáty americké"
+   },
+   "spa": {
+    "official": "Estados Unidos de América",
+    "common": "Estados Unidos"
+   },
+   "srp": {
+    "official": "Sjedinjene Američke Države",
+    "common": "SAD"
+   },
+   "swe": {
+    "official": "Amerikas förenta stater",
+    "common": "USA"
+   },
+   "tur": {
+    "official": "Amerika Birleşik Devletleri",
+    "common": "Amerika Birleşik Devletleri"
+   },
+   "urd": {
+    "official": "ریاستہائے متحدہ امریکا",
+    "common": "ریاستہائے متحدہ"
+   },
+   "zho": {
+    "official": "美利坚合众国",
+    "common": "美国"
+   }
+  },
+  "latlng": [
+   38,
+   -97
+  ],
+  "landlocked": false,
+  "borders": [
+   "CAN",
+   "MEX"
+  ],
+  "area": 9372610,
+  "flag": "🇺🇸",
+  "demonyms": {
+   "eng": {
+    "f": "American",
+    "m": "American"
+   },
+   "fra": {
+    "f": "Américaine",
+    "m": "Américain"
+   }
+  }
+ }
+]

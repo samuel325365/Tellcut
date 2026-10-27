@@ -1,0 +1,161 @@
+// Field edits from the properties panel, the library and crop mode. Every result must still validate.
+import { plainCopy as plain } from '../util.ts';
+import { AudioItemZ, MusicItemZ, OverlayItemZ, SceneItemZ, SfxItemZ, VideoItemZ, type AnyItem, type Crop, type Project, type TrackKind, type Transform } from '../schema.ts';
+import { CommandError, findItem, fitFades, followTrim, mediaRate, ownSounds, r6, scaleChildren, sourceNeed, uniqueId } from './core.ts';
+import { cropAt } from '../geometry.ts';
+
+const ITEM_Z = { video: VideoItemZ, scene: SceneItemZ, overlay: OverlayItemZ, music: MusicItemZ, audio: AudioItemZ, sfx: SfxItemZ } as const;
+const BASE: Record<TrackKind, string> = { video: 'clip', music: 'music', audio: 'audio', sfx: 'sfx', scene: 'scene', overlay: 'fx' };
+const AUDIO_KINDS = new Set<TrackKind>(['music', 'audio', 'sfx']);
+const VISUAL_KINDS = new Set<TrackKind>(['scene', 'video', 'overlay']);
+
+/** Validates one item of a track kind against the schema and the project (sources, media, in-point). */
+export function checkItem(p: Project, kind: TrackKind, raw: Record<string, unknown>): AnyItem {
+  const r = ITEM_Z[kind].safeParse(raw);
+  if (!r.success) throw new CommandError(r.error.issues.map((i) => `${i.path.join('.') || 'item'}: ${i.message}`).join('; '));
+  const it = r.data as any;
+  if (!(it.end > it.start)) throw new CommandError('end: end must be greater than start');
+  if ('source' in it) {
+    const s = p.sources[it.source];
+    if (!s) throw new CommandError(`source: unknown source "${it.source}"`);
+    if (it.in >= s.duration) throw new CommandError(`in: ${it.in} s is past the end of source "${it.source}" (${s.duration} s)`);
+  }
+  const len = it.end - it.start, n3 = (v: number) => Math.round(v * 1000) / 1000;
+  if ((kind === 'music' || kind === 'audio') && it.fadeIn + it.fadeOut > len + 1e-6)
+    throw new CommandError(`fadeIn: fade-in plus fade-out (${n3(it.fadeIn + it.fadeOut)} s) is longer than the clip (${n3(len)} s)`);
+  if ((kind === 'video' || kind === 'audio') && p.sources[it.source]) {
+    // the source time the clip plays: after freezeAt a video holds one frame
+    const used = sourceNeed(kind, it);
+    const has = p.sources[it.source].duration;
+    // speed/rate are rounded to 1e-6 (r6): allow that rounding over the clip length
+    if (it.in + used > has + 1e-6 * (1 + len)) throw new CommandError(`end: the clip runs past the end of source "${it.source}" (needs ${n3(it.in + used)} s, has ${n3(has)} s)`);
+  }
+  if ('media' in it && !(it.media in p.media)) throw new CommandError(`media: unknown media "${it.media}"`);
+  return it;
+}
+
+
+/** Sets fields of one item (undefined removes a field); id cannot change; children follow a length change the way a trim moves them. */
+export function updateItem(p: Project, a: { id: string; patch: Record<string, unknown> }) {
+  const f = findItem(p, a.id), it = f.item as any;
+  if ('id' in a.patch && a.patch.id !== a.id) throw new CommandError('id: an item id cannot be changed');
+  const next = { ...plain(it), ...a.patch };
+  for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+  // a new length from the panel keeps the fades inside the clip unless the fades themselves are being set
+  const fitsFades = !('fadeIn' in a.patch || 'fadeOut' in a.patch);
+  if (fitsFades) fitFades(f.track, next);
+  checkItem(p, f.track.kind, next);
+  const oldLen = it.end - it.start, oldIn = it.in;
+  // a media clip at its old speed: its own sound follows a new in-point and length, the other children stay on the same picture
+  const media = mediaRate(f.track, f.item) !== null && !('speed' in a.patch) && !('rate' in a.patch);
+  const own = media ? ownSounds(p, it.id) : [];
+  for (const [k, v] of Object.entries(a.patch)) { if (v === undefined) delete it[k]; else it[k] = plain(v); }
+  if (fitsFades) fitFades(f.track, it);
+  if (!media) { scaleChildren(p, it.id, oldLen, it.end - it.start); return; }
+  for (const c of own) c.in = r6(c.in + it.in - oldIn);
+  followTrim(p, it.id, oldLen, it.end - it.start, 0);
+}
+
+/** Appends a validated item to a track; returns its id (a free one based on the item's id or the track kind). */
+export function addItem(p: Project, a: { track: string; item: Record<string, unknown> }): string {
+  const t = p.tracks.find((x) => x.id === a.track);
+  // the page chat once guessed a "v2" and did not know a track can be added in the same proposal
+  if (!t) throw new CommandError(`No track "${a.track}" (tracks: ${p.tracks.map((x) => x.id).join(', ')}; a new one: addTrack {kind, name?, as} first, then use its "$name")`);
+  const id = uniqueId(p, typeof a.item.id === 'string' ? a.item.id : BASE[t.kind]);
+  (t.items as AnyItem[]).push(plain(checkItem(p, t.kind, { ...a.item, id })));
+  return id;
+}
+
+/** Adds an empty track: visual kinds become the topmost visual layer, audio kinds go last. */
+export function addTrack(p: Project, a: { kind: TrackKind; name?: string }): string {
+  const id = uniqueId(p, a.kind);
+  const track: any = { id, kind: a.kind, items: [], ...(a.name ? { name: a.name } : {}), ...(AUDIO_KINDS.has(a.kind) ? { gain: 0 } : {}) };
+  if (VISUAL_KINDS.has(a.kind)) {
+    const lastVisual = p.tracks.reduce((at, t, i) => (VISUAL_KINDS.has(t.kind) ? i : at), -1);
+    p.tracks.splice(lastVisual + 1, 0, track);
+  } else p.tracks.push(track);
+  return id;
+}
+
+/** Track bus: mute on any track (visual = hidden), gain (-60..+12 dB) and solo on audio tracks. */
+export function setTrack(p: Project, a: { id: string; patch: { gain?: number; muted?: boolean; solo?: boolean; name?: string } }) {
+  const t = p.tracks.find((x) => x.id === a.id) as any;
+  if (!t) throw new CommandError(`No track "${a.id}"`);
+  const audio = AUDIO_KINDS.has(t.kind);
+  if (!audio && (a.patch.gain !== undefined || a.patch.solo !== undefined)) throw new CommandError(`Track "${a.id}" (${t.kind}) has no bus gain or solo`);
+  if (a.patch.gain !== undefined) t.gain = Math.round(Math.min(12, Math.max(-60, a.patch.gain)) * 10) / 10;
+  if (a.patch.muted !== undefined) t.muted = a.patch.muted;
+  if (a.patch.solo !== undefined) t.solo = a.patch.solo;
+  if (a.patch.name !== undefined) t.name = a.patch.name;
+}
+
+/** Which crop crop mode edits: the clip's first frame, its last, or a keyframe by index. */
+export type CropWhich = 'from' | 'to' | number;
+
+const clampCrop = (c: Crop) => { const k = (v: number, lo: number, hi: number) => r6(Math.min(hi, Math.max(lo, v))); return { x: k(c.x, 0, 1), y: k(c.y, 0, 1), zoom: k(c.zoom, 1, 8) }; };
+const videoOf = (p: Project, id: string) => {
+  const f = findItem(p, id);
+  if (f.track.kind !== 'video') throw new CommandError('Only video clips have a crop');
+  return f.item as any;
+};
+
+export function setCrop(p: Project, a: { id: string; which: CropWhich; crop: Crop }) {
+  const it = videoOf(p, a.id), c = clampCrop(a.crop);
+  if (typeof a.which === 'number') {
+    const k = it.crop.keys?.[a.which];
+    if (!k) throw new CommandError(`No crop keyframe ${a.which}`);
+    Object.assign(k, c);
+  } else it.crop[a.which] = c;
+}
+
+/** Inserts a crop keyframe at clip-local `t` holding the crop shown there now; returns its index. */
+export function addCropKey(p: Project, a: { id: string; t: number }): number {
+  const it = videoOf(p, a.id), len = it.end - it.start, t = r6(a.t);
+  if (!(t > 0 && t < len)) throw new CommandError('A crop keyframe must be inside the clip (not at its start or end)');
+  const keys: Array<{ t: number }> = (it.crop.keys ??= []);
+  if (keys.some((k) => Math.abs(k.t - t) < 1e-3)) throw new CommandError('There is already a crop keyframe at this time');
+  keys.push({ t, ...clampCrop(cropAt(it.crop, t, len)) });
+  keys.sort((x, y) => x.t - y.t);
+  return keys.findIndex((k) => k.t === t);
+}
+
+export function removeCropKey(p: Project, a: { id: string; index: number }) {
+  const it = videoOf(p, a.id);
+  if (!it.crop.keys?.[a.index]) throw new CommandError(`No crop keyframe ${a.index}`);
+  it.crop.keys.splice(a.index, 1);
+  if (!it.crop.keys.length) delete it.crop.keys;
+}
+
+/** Moves / scales a scene or overlay item (preview handles, properties panel); null puts it back. */
+export function setTransform(p: Project, a: { id: string; transform: Transform | null }) {
+  const f = findItem(p, a.id);
+  if (f.track.kind !== 'scene' && f.track.kind !== 'overlay') throw new CommandError('Only scene and overlay items can be moved or scaled');
+  const it = f.item as any;
+  if (!a.transform) { delete it.transform; return; }
+  const c = (v: number, lo: number, hi: number) => Math.round(Math.min(hi, Math.max(lo, v)) * 1e4) / 1e4;
+  const t = a.transform, old = it.transform as Transform | undefined;
+  const next: Transform = { x: c(t.x, -1, 1), y: c(t.y, -1, 1), scale: c(t.scale, 0.05, 10), ox: c(t.ox ?? 0.5, 0, 1), oy: c(t.oy ?? 0.5, 0, 1) };
+  // a moving layer (toolkit phase 5): moving or scaling it carries its whole path along; keys given anew replace it;
+  // `keys: []` stops it moving
+  let keys = t.keys;
+  if (old?.keys?.length && (!keys || JSON.stringify(keys) === JSON.stringify(old.keys))) {
+    // a new origin O' keeps the picture with T' = T + (1 − s)(O − O'): each key by its own scale; what is left is the move
+    const ox0 = old.ox ?? 0.5, oy0 = old.oy ?? 0.5, ex = ox0 - next.ox!, ey = oy0 - next.oy!;
+    const dx = next.x - old.x - (1 - old.scale) * ex, dy = next.y - old.y - (1 - old.scale) * ey, k = next.scale / old.scale;
+    keys = old.keys.map((q) => ({ t: q.t, x: c(q.x + (1 - q.scale) * ex + dx, -1, 1), y: c(q.y + (1 - q.scale) * ey + dy, -1, 1), scale: c(q.scale * k, 0.05, 10) }));
+  }
+  it.transform = keys?.length ? { ...next, keys: keys.map((q) => ({ t: q.t, x: c(q.x, -1, 1), y: c(q.y, -1, 1), scale: c(q.scale, 0.05, 10) })) } : next;
+}
+
+/** Another shot for a video clip: same place and length on the timeline (its own sound swaps with it). */
+export function swapSource(p: Project, a: { id: string; source: string; in: number }) {
+  const f = findItem(p, a.id), it = f.item as any;
+  if (f.track.kind !== 'video') throw new CommandError('只有影片片段可以換素材');
+  const src = p.sources[a.source];
+  if (!src) throw new CommandError(`沒有素材「${a.source}」`);
+  const need = sourceNeed(f.track.kind, it), have = src.duration - a.in;
+  if (a.in < 0 || have + 1e-6 < need) throw new CommandError(`「${a.source}」從 ${a.in} 秒起只有 ${Math.max(0, have).toFixed(2)} 秒，片段需要 ${need.toFixed(2)} 秒`);
+  const own = ownSounds(p, it.id);
+  for (const c of own) { c.source = a.source; c.in = r6(a.in); }
+  it.source = a.source; it.in = r6(a.in);
+}

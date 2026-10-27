@@ -1,0 +1,72 @@
+{
+ "amiibo": [
+  {
+   "amiiboSeries": "Mario Sports Superstars",
+   "character": "Yoshi",
+   "gameSeries": "Mario Sports Superstars",
+   "head": "09c40401",
+   "image": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/images/icon_09c40401-02800e02.png",
+   "imgwebp": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/webp/icon_09c40401-02800e02.webp",
+   "name": "Yoshi - Golf",
+   "release": {
+    "au": "2017-03-11",
+    "eu": "2017-03-10",
+    "jp": "2017-03-30",
+    "na": "2017-03-24"
+   },
+   "tail": "02800e02",
+   "type": "Card"
+  },
+  {
+   "amiiboSeries": "Super Smash Bros.",
+   "character": "Yoshi",
+   "gameSeries": "Super Mario",
+   "head": "00030000",
+   "image": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/images/icon_00030000-00020002.png",
+   "imgwebp": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/webp/icon_00030000-00020002.webp",
+   "name": "Yoshi",
+   "release": {
+    "au": "2014-11-29",
+    "eu": "2014-11-28",
+    "jp": "2014-12-06",
+    "na": "2014-11-21"
+   },
+   "tail": "00020002",
+   "type": "Figure"
+  },
+  {
+   "amiiboSeries": "Yoshi's Woolly World",
+   "character": "Yoshi",
+   "gameSeries": "Super Mario",
+   "head": "00030102",
+   "image": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/images/icon_00030102-023e0302.png",
+   "imgwebp": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/webp/icon_00030102-023e0302.webp",
+   "name": "Mega Yarn Yoshi",
+   "release": {
+    "au": "2015-11-28",
+    "eu": "2015-11-27",
+    "jp": "2015-12-10",
+    "na": "2015-11-15"
+   },
+   "tail": "023e0302",
+   "type": "Yarn"
+  },
+  {
+   "amiiboSeries": "Super Mario Bros.",
+   "character": "Yoshi",
+   "gameSeries": "Super Mario",
+   "head": "00030000",
+   "image": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/images/icon_00030000-00370102.png",
+   "imgwebp": "https://raw.githubusercontent.com/8bitDream/AmiiboAPI/master/webp/icon_00030000-00370102.webp",
+   "name": "Yoshi",
+   "release": {
+    "au": "2015-03-21",
+    "eu": "2015-03-20",
+    "jp": "2015-03-12",
+    "na": "2015-03-20"
+   },
+   "tail": "00370102",
+   "type": "Figure"
+  }
+ ]
+}

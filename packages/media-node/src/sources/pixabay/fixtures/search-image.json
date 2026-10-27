@@ -1,0 +1,42 @@
+{
+  "total": 3,
+  "totalHits": 3,
+  "hits": [
+    {
+      "id": 501001,
+      "pageURL": "https://pixabay.com/photos/bakery-bread-501001/",
+      "type": "photo",
+      "tags": "bakery, bread, croissant",
+      "user": "Crumb",
+      "previewURL": "https://cdn.pixabay.com/photo/2026/01/01/bakery-501001_150.jpg",
+      "webformatURL": "https://pixabay.com/get/g501001_640.jpg",
+      "largeImageURL": "https://pixabay.com/get/g501001_1280.jpg",
+      "imageWidth": 6000,
+      "imageHeight": 4000
+    },
+    {
+      "id": 501002,
+      "pageURL": "https://pixabay.com/photos/flour-hands-501002/",
+      "type": "photo",
+      "tags": "flour, hands, dough",
+      "user": "Kneader",
+      "previewURL": "https://cdn.pixabay.com/photo/2026/01/01/flour-501002_150.jpg",
+      "webformatURL": "https://pixabay.com/get/g501002_640.jpg",
+      "largeImageURL": "https://pixabay.com/get/g501002_1280.jpg",
+      "imageWidth": 1280,
+      "imageHeight": 853
+    },
+    {
+      "id": 501003,
+      "pageURL": "https://pixabay.com/photos/cake-501003/",
+      "type": "photo",
+      "tags": "cake, bakery, ai generated",
+      "user": "Gen",
+      "previewURL": "https://cdn.pixabay.com/photo/2026/01/01/cake-501003_150.jpg",
+      "webformatURL": "https://pixabay.com/get/g501003_640.jpg",
+      "largeImageURL": "https://pixabay.com/get/g501003_1280.jpg",
+      "imageWidth": 2000,
+      "imageHeight": 3000
+    }
+  ]
+}

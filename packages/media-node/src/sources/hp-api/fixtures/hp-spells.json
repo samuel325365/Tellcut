@@ -1,0 +1,22 @@
+[
+ {
+  "id": "06485500-d023-4799-93fd-77f2c3341aa3",
+  "name": "Accio",
+  "description": "Summons objects"
+ },
+ {
+  "id": "317ff981-ad65-421e-92fb-5f6647d95232",
+  "name": "Expecto patronum",
+  "description": "The Patronus Charm is a powerful projection of hope and happiness that drives away Dementors; a corpeal Patronus takes the the respective animal form of the caster, while a non-corpeal appears as a wisp of light; at 13, Harry Potter was the youngest known witch or wizard to prouduce a corpeal Patronus"
+ },
+ {
+  "id": "678474e6-fb30-4bf0-a18c-228f6b36592d",
+  "name": "Expelliarmus",
+  "description": "Forces an opponent to drop whatever's in their possession"
+ },
+ {
+  "id": "3b7a10ce-3339-4a36-9493-292c8775e47b",
+  "name": "Lumos",
+  "description": "Illuminates the caster's wand"
+ }
+]

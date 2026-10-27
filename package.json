@@ -1,0 +1,63 @@
+{
+  "name": "tellcut",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:fast": "vitest run --project fast",
+    "test:browser": "vitest run --project browser",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:player": "npm run build -w @tellcut/player",
+    "build:editor": "npm run build -w @tellcut/editor",
+    "dev:editor": "npm run dev -w @tellcut/editor",
+    "prepare:project": "tsx tools/prepare.ts",
+    "render": "tsx tools/render.ts",
+    "batch:render": "tsx tools/batch/render.ts",
+    "batch:qc": "tsx tools/batch/qc.ts",
+    "new": "tsx tools/new.ts",
+    "inspect": "tsx tools/inspect.ts",
+    "export-project": "tsx tools/export-project.ts",
+    "import-project": "tsx tools/export-project.ts",
+    "cut": "tsx tools/cut.ts",
+    "server": "tsx apps/server/src/main.ts",
+    "server:restart": "tsx tools/server-restart.ts",
+    "blocks:index": "tsx tools/blocks-index.ts",
+    "dev:install": "tsx tools/dev-install.ts",
+    "tellcut": "tsx tools/tellcut.ts",
+    "tokens": "tsx tools/tokens.ts",
+    "check": "tsx tools/check.ts",
+    "golden": "tsx tools/golden.ts",
+    "promote": "tsx tools/promote.ts",
+    "providers": "tsx tools/providers.ts",
+    "sources": "tsx tools/sources.ts",
+    "setup": "node tools/setup-boot.mjs",
+    "doctor": "tsx tools/doctor.ts",
+    "handover": "tsx tools/handover.ts",
+    "voice": "tsx tools/voice.ts",
+    "score": "tsx tools/score.ts",
+    "promote-style": "tsx tools/promote-style.ts",
+    "fonts": "tsx tools/fonts.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/pngjs": "6.0.5",
+    "jsdom": "25.0.1",
+    "playwright-core": "1.49.1",
+    "pngjs": "7.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vitest": "2.1.8"
+  },
+  "dependencies": {
+    "zod": "3.23.8"
+  }
+}

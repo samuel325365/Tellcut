@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>Tellcut Player</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; color: #fff; font-family: "Segoe UI", "Noto Sans TC", sans-serif; overflow: hidden; }
+    #viewport { position: absolute; inset: 0 0 64px 0; display: flex; align-items: center; justify-content: center; }
+    #stage { flex: none; transform-origin: center center; }
+    #controls { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; gap: 16px; align-items: center; padding: 0 20px; background: #1c1c1e; }
+    #controls button { font: 600 15px "Segoe UI", sans-serif; color: #fff; background: #0a84ff; border: 0; border-radius: 10px; padding: 9px 16px; cursor: pointer; }
+    #controls input { flex: 1; }
+    #clock { font: 14px Consolas, monospace; color: #aaa; min-width: 120px; text-align: right; }
+    body.render #controls { display: none; }
+    body.render #viewport { inset: 0; display: block; }
+    body.render #stage { transform: none !important; }
+    body.embed #controls { display: none; }
+    body.embed #viewport { inset: 0; }
+    .crop-view video { object-fit: fill; }
+    /* "Preview: Smooth": the frosted-glass layers are what slows the preview (spec §11); export never sets this */
+    .sel-box { position: absolute; display: none; border: 1.5px solid #0a84ff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); cursor: move; z-index: 10; }
+    .sel-h { position: absolute; width: 10px; height: 10px; background: #fff; border: 1.5px solid #0a84ff; }
+    .sel-h[data-corner="nw"] { left: -6px; top: -6px; cursor: nwse-resize; } .sel-h[data-corner="se"] { right: -6px; bottom: -6px; cursor: nwse-resize; }
+    .sel-h[data-corner="ne"] { right: -6px; top: -6px; cursor: nesw-resize; } .sel-h[data-corner="sw"] { left: -6px; bottom: -6px; cursor: nesw-resize; }
+    .text-edit { position: absolute; z-index: 12; font: 16px "Segoe UI", "Noto Sans TC", sans-serif; padding: 4px 6px; color: #000; background: #fff; border: 2px solid #0a84ff; border-radius: 4px; }
+    textarea.text-edit { min-height: 64px; }
+    .tool-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 12; display: none; background: rgba(0,0,0,.8); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+    body.draft #stage * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  </style>
+</head>
+<body>
+  <div id="viewport"><div id="stage"></div></div>
+  <div id="controls"><button id="play">▶ Play</button><input id="scrub" type="range" min="0" max="1000" value="0"><span id="clock"></span></div>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

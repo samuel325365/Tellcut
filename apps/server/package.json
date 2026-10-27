@@ -1,0 +1,14 @@
+{
+  "name": "@tellcut/server",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@tellcut/engine": "*",
+    "@tellcut/media-node": "*",
+    "@tellcut/plugins": "*",
+    "zod": "3.23.8",
+    "@tellcut/protocol": "*"
+  }
+}

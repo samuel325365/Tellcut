@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tellcut</title>
+  <!-- the tab icon inline: otherwise the browser asks the server for /favicon.ico and logs a 404 -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a84ff'/%3E%3Cpath d='M12 9l12 7-12 7z' fill='white'/%3E%3C/svg%3E">
+  <!-- the home page and the gallery pick light or dark before the first paint (theme.tsx); the editor (?id=) stays dark.
+       First, once: settings saved while the app was called Studio (studio.*) move to their tellcut.* names -->
+  <script>try{for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i);if(k&&k.indexOf('studio.')===0){var n='tellcut.'+k.slice(7);if(localStorage.getItem(n)===null)localStorage.setItem(n,localStorage.getItem(k));localStorage.removeItem(k)}}}catch(e){}try{if(!/[?&]id=/.test(location.search)){var t=localStorage.getItem('tellcut.theme');document.documentElement.dataset.theme=t==='light'||t==='dark'?t:matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}}catch(e){}</script>
+  <link rel="stylesheet" href="/player/fonts/fonts.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="./src/main.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+{
+ "1245620": {
+  "success": true,
+  "data": {
+   "type": "game",
+   "name": "艾爾登法環",
+   "steam_appid": 1245620,
+   "short_description": "艾爾登法環是以正統黑暗奇幻世界為舞台的動作RPG遊戲。 走進遼闊的場景與地下迷宮探索未知，挑戰困難重重的險境，享受克服困境時的成就感吧。 不僅如此，登場角色之間的利害關係譜成的群像劇，更是不容錯過。",
+   "header_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg?t=1790290043",
+   "developers": [
+    "FromSoftware, Inc."
+   ],
+   "publishers": [
+    "FromSoftware, Inc.",
+    "Bandai Namco Entertainment"
+   ],
+   "price_overview": {
+    "currency": "TWD",
+    "initial": 179000,
+    "final": 179000,
+    "discount_percent": 0,
+    "initial_formatted": "",
+    "final_formatted": "NT$ 1,790"
+   },
+   "metacritic": {
+    "score": 94,
+    "url": "https://www.metacritic.com/game/pc/elden-ring?ftag=MCD-06-10aaa1f"
+   },
+   "genres": [
+    {
+     "id": "1",
+     "description": "動作"
+    },
+    {
+     "id": "3",
+     "description": "角色扮演"
+    }
+   ],
+   "screenshots": [
+    {
+     "id": 0,
+     "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/ss_943bf6fe62352757d9070c1d33e50b92fe8539f1.600x338.jpg?t=1790290043",
+     "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/ss_943bf6fe62352757d9070c1d33e50b92fe8539f1.1920x1080.jpg?t=1790290043"
+    },
+    {
+     "id": 1,
+     "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/ss_dcdac9e4b26ac0ee5248bfd2967d764fd00cdb42.600x338.jpg?t=1790290043",
+     "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/ss_dcdac9e4b26ac0ee5248bfd2967d764fd00cdb42.1920x1080.jpg?t=1790290043"
+    },
+    {
+     "id": 2,
+     "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/ss_3c41384a24d86dddd58a8f61db77f9dc0bfda8b5.600x338.jpg?t=1790290043",
+     "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/ss_3c41384a24d86dddd58a8f61db77f9dc0bfda8b5.1920x1080.jpg?t=1790290043"
+    }
+   ],
+   "movies": [
+    {
+     "id": 256867718,
+     "name": "ELDEN RING CGI Trailer - TC",
+     "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/256867718/movie.293x165.jpg?t=1645830843",
+     "dash_av1": "https://video.akamai.steamstatic.com/store_trailers/1245620/429295/20260f46aa8b82ceef1a48bc5781bb5de08f7e93/1750650318/dash_av1.mpd?t=1645830843",
+     "dash_h264": "https://video.akamai.steamstatic.com/store_trailers/1245620/429295/20260f46aa8b82ceef1a48bc5781bb5de08f7e93/1750650318/dash_h264.mpd?t=1645830843",
+     "hls_h264": "https://video.akamai.steamstatic.com/store_trailers/1245620/429295/20260f46aa8b82ceef1a48bc5781bb5de08f7e93/1750650318/hls_264_master.m3u8?t=1645830843",
+     "highlight": true
+    },
+    {
+     "id": 257002650,
+     "name": "ELDEN RING Shadow of the Erdtree - Gameplay Reveal Trailer",
+     "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/257002650/movie.293x165.jpg?t=1709086258",
+     "dash_av1": "https://video.akamai.steamstatic.com/store_trailers/1245620/665332/4021bcd03e70a49cb23b598f5407b8290152f9e2/1750650652/dash_av1.mpd?t=1709086258",
+     "dash_h264": "https://video.akamai.steamstatic.com/store_trailers/1245620/665332/4021bcd03e70a49cb23b598f5407b8290152f9e2/1750650652/dash_h264.mpd?t=1709086258",
+     "hls_h264": "https://video.akamai.steamstatic.com/store_trailers/1245620/665332/4021bcd03e70a49cb23b598f5407b8290152f9e2/1750650652/hls_264_master.m3u8?t=1709086258",
+     "highlight": true
+    }
+   ],
+   "recommendations": {
+    "total": 834631
+   },
+   "release_date": {
+    "coming_soon": false,
+    "date": "2022 年 2 月 24 日"
+   }
+  }
+ }
+}

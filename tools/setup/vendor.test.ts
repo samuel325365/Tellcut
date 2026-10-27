@@ -1,0 +1,38 @@
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ensureVendor, installedVersion, systemTar, type VendorItem } from './vendor.ts';
+
+/** a zip holding tool-1.0/bin/tool.exe, made with the same Windows tar setup uses */
+function makeZip() {
+  const d = mkdtempSync(join(tmpdir(), 'vz-'));
+  mkdirSync(join(d, 'tool-1.0', 'bin'), { recursive: true });
+  writeFileSync(join(d, 'tool-1.0', 'bin', 'tool.exe'), 'not really a program');
+  execFileSync(systemTar(), ['-a', '-cf', join(d, 'tool.zip'), '-C', d, 'tool-1.0']);
+  return readFileSync(join(d, 'tool.zip'));
+}
+
+test('a download whose hash matches is unpacked into vendor/<dest> once; the same version is kept after that', async () => {
+  const zip = makeZip(), vendor = mkdtempSync(join(tmpdir(), 'vendor-'));
+  const item: VendorItem = { version: '1.0', url: 'https://x/tool.zip', sha256: createHash('sha256').update(zip).digest('hex'), dest: 'tool', check: 'bin/tool.exe', strip: 'tool-1.0' };
+  let fetched = 0;
+  const fakeFetch = (async () => { fetched++; return new Response(zip); }) as unknown as typeof fetch;
+  expect(await ensureVendor('tool', item, vendor, { fetch: fakeFetch })).toBe('installed');
+  expect(readFileSync(join(vendor, 'tool', 'bin', 'tool.exe'), 'utf8')).toBe('not really a program');
+  expect(installedVersion(vendor, item)).toBe('1.0');
+  expect(await ensureVendor('tool', item, vendor, { fetch: fakeFetch })).toBe('kept');
+  expect(fetched).toBe(1);
+  expect(await ensureVendor('tool', { ...item, version: '1.1' }, vendor, { fetch: fakeFetch })).toBe('installed');   // a newer pin replaces it
+  expect(fetched).toBe(2);
+});
+
+test('a download with the wrong hash, or a failed one, never reaches vendor/', async () => {
+  const zip = makeZip(), vendor = mkdtempSync(join(tmpdir(), 'vendor-'));
+  const item: VendorItem = { version: '1.0', url: 'https://x/tool.zip', sha256: '0'.repeat(64), dest: 'tool', check: 'bin/tool.exe', strip: 'tool-1.0' };
+  await expect(ensureVendor('tool', item, vendor, { fetch: (async () => new Response(zip)) as unknown as typeof fetch })).rejects.toThrow(/SHA-256/);
+  await expect(ensureVendor('tool', item, vendor, { fetch: (async () => new Response('gone', { status: 404 })) as unknown as typeof fetch })).rejects.toThrow(/HTTP 404/);
+  expect(existsSync(join(vendor, 'tool'))).toBe(false);
+  expect(existsSync(join(vendor, '.download-tool'))).toBe(false);
+});

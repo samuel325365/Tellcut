@@ -1,0 +1,2370 @@
+{
+  "version": 1,
+  "meta": {
+    "name": "烘焙圖文教學",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 127.1,
+    "plugins": [],
+    "fx": [
+      "fx/bookart.js"
+    ],
+    "theme": {
+      "palette": {
+        "ink": "#4a3426",
+        "paper": "#fffaf1",
+        "accent": "#c8794a",
+        "accent2": "#8fae9a",
+        "hl": "#f3d27a"
+      },
+      "fonts": {
+        "display": "Noto Sans TC",
+        "body": "Noto Sans TC"
+      },
+      "safe": {
+        "top": 0.07,
+        "bottom": 0.1,
+        "side": 0.06
+      },
+      "radius": 18,
+      "stroke": 3
+    },
+    "background": "#000",
+    "videoScale": "transform",
+    "cut": {
+      "crf": 18,
+      "preset": "medium"
+    },
+    "mix": {
+      "master": 0.9,
+      "compressor": {
+        "threshold": -14,
+        "ratio": 3,
+        "attack": 0.01,
+        "release": 0.2
+      },
+      "reverb": {
+        "seconds": 1.6,
+        "send": 0.35
+      }
+    }
+  },
+  "sources": {
+    "baking": {
+      "path": "../../../sources/input_baking4/baking.mp4",
+      "duration": 426.411,
+      "width": 1280,
+      "height": 720,
+      "kind": "video",
+      "taken": "2026-10-18T22:40:16",
+      "takenGuess": true,
+      "audio": true
+    }
+  },
+  "media": {
+    "score-pluck": {
+      "path": "media/score-pluck.wav",
+      "duration": 128.029
+    }
+  },
+  "grids": [
+    {
+      "id": "music",
+      "at": 0,
+      "bpm": 112
+    }
+  ],
+  "tracks": [
+    {
+      "id": "bg",
+      "name": "背景",
+      "kind": "scene",
+      "items": [
+        {
+          "id": "scene",
+          "start": 0,
+          "end": 127.1,
+          "type": "common.backdrop",
+          "params": {
+            "pattern": "solid",
+            "color": "#f3e9da"
+          }
+        }
+      ]
+    },
+    {
+      "id": "v1",
+      "name": "主軌",
+      "kind": "video",
+      "magnetic": true,
+      "items": [
+        {
+          "id": "clip",
+          "start": 0,
+          "end": 2.8,
+          "source": "baking",
+          "in": 389.6,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-2",
+          "start": 2.8,
+          "end": 9.9,
+          "source": "baking",
+          "in": 0,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-3",
+          "start": 9.9,
+          "end": 13.4,
+          "source": "baking",
+          "in": 12.7,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-4",
+          "start": 13.4,
+          "end": 18.2,
+          "source": "baking",
+          "in": 40,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-5",
+          "start": 18.2,
+          "end": 21.3,
+          "source": "baking",
+          "in": 50.2,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-6",
+          "start": 21.3,
+          "end": 23.5,
+          "source": "baking",
+          "in": 56.2,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-7",
+          "start": 23.5,
+          "end": 26.9,
+          "source": "baking",
+          "in": 63.6,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-8",
+          "start": 26.9,
+          "end": 32.5,
+          "source": "baking",
+          "in": 70.4,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-9",
+          "start": 32.5,
+          "end": 37.4,
+          "source": "baking",
+          "in": 88,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-10",
+          "start": 37.4,
+          "end": 42,
+          "source": "baking",
+          "in": 105.5,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-11",
+          "start": 42,
+          "end": 49.7,
+          "source": "baking",
+          "in": 117.5,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-12",
+          "start": 49.7,
+          "end": 55.7,
+          "source": "baking",
+          "in": 133.1,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-13",
+          "start": 55.7,
+          "end": 60.3,
+          "source": "baking",
+          "in": 166.6,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-14",
+          "start": 60.3,
+          "end": 64.1,
+          "source": "baking",
+          "in": 178.1,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-15",
+          "start": 64.1,
+          "end": 69.1,
+          "source": "baking",
+          "in": 182,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-16",
+          "start": 69.1,
+          "end": 75.3,
+          "source": "baking",
+          "in": 203.8,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-17",
+          "start": 75.3,
+          "end": 80.7,
+          "source": "baking",
+          "in": 227.4,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-18",
+          "start": 80.7,
+          "end": 85.7,
+          "source": "baking",
+          "in": 237,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-19",
+          "start": 85.7,
+          "end": 90.7,
+          "source": "baking",
+          "in": 253,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-20",
+          "start": 90.7,
+          "end": 95.7,
+          "source": "baking",
+          "in": 276.4,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-21",
+          "start": 95.7,
+          "end": 101.6,
+          "source": "baking",
+          "in": 288.8,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-22",
+          "start": 101.6,
+          "end": 107.6,
+          "source": "baking",
+          "in": 325.3,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-23",
+          "start": 107.6,
+          "end": 115.6,
+          "source": "baking",
+          "in": 344.4,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-24",
+          "start": 115.6,
+          "end": 119,
+          "source": "baking",
+          "in": 366,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-25",
+          "start": 119,
+          "end": 121.8,
+          "source": "baking",
+          "in": 398.2,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        },
+        {
+          "id": "clip-26",
+          "start": 121.8,
+          "end": 127.1,
+          "source": "baking",
+          "in": 403,
+          "speed": 1,
+          "frame": [
+            0.49,
+            0.17,
+            0.47,
+            0.47
+          ],
+          "crop": {
+            "from": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            },
+            "to": {
+              "x": 0.5,
+              "y": 0.5,
+              "zoom": 1
+            }
+          },
+          "interp": "none",
+          "radius": 18
+        }
+      ]
+    },
+    {
+      "id": "panel",
+      "name": "面板外框",
+      "kind": "overlay",
+      "items": [
+        {
+          "id": "fx-54",
+          "start": 0,
+          "end": 127.1,
+          "type": "common.panel",
+          "params": {
+            "x": 0.49,
+            "y": 0.17,
+            "w": 0.47,
+            "h": 0.47,
+            "radius": 18,
+            "shadow": 8,
+            "tape": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "text",
+      "name": "文字",
+      "kind": "overlay",
+      "items": [
+        {
+          "id": "fx",
+          "start": 0,
+          "end": 7.1,
+          "parent": "clip-2",
+          "type": "common.caption",
+          "params": {
+            "text": "天氣變暖了，來做點下午茶點心吧",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-2",
+          "start": 0,
+          "end": 3.5,
+          "parent": "clip-3",
+          "type": "common.caption",
+          "params": {
+            "text": "這次的主角是巧克力豆司康，開始囉！",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-3",
+          "start": 0,
+          "end": 13.4,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "cover"
+            },
+            "tip": "",
+            "no": "",
+            "title": "巧克力豆司康",
+            "detail": "8 塊・烤 18 分鐘・新手也能做",
+            "enter": "deal"
+          }
+        },
+        {
+          "id": "fx-4",
+          "start": 0.1,
+          "end": 4.4,
+          "parent": "clip-4",
+          "type": "common.caption",
+          "params": {
+            "text": "先量好一杯半的麵粉",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-5",
+          "start": 13.4,
+          "end": 18.2,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "flour"
+            },
+            "tip": "先倒進大碗裡",
+            "no": "1",
+            "title": "準備麵粉",
+            "detail": "中筋麵粉 1½ 杯"
+          }
+        },
+        {
+          "id": "fx-6",
+          "start": 13.4,
+          "end": 18.2,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 0,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-7",
+          "start": 0.1,
+          "end": 2.9,
+          "parent": "clip-5",
+          "type": "common.caption",
+          "params": {
+            "text": "加入一小匙半的泡打粉",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-8",
+          "start": 0.1,
+          "end": 1.9,
+          "parent": "clip-6",
+          "type": "common.caption",
+          "params": {
+            "text": "再加一點點鹽",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-9",
+          "start": 0.2,
+          "end": 3.2,
+          "parent": "clip-7",
+          "type": "common.caption",
+          "params": {
+            "text": "用打蛋器拌勻",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-10",
+          "start": 18.2,
+          "end": 26.9,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "sugar"
+            },
+            "tip": "加完用打蛋器拌勻，不要結塊",
+            "no": "2",
+            "title": "加泡打粉和鹽",
+            "detail": "泡打粉 1½ 小匙・鹽 ½ 小匙"
+          }
+        },
+        {
+          "id": "fx-11",
+          "start": 18.2,
+          "end": 26.9,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 0,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-12",
+          "start": 0,
+          "end": 5.5,
+          "parent": "clip-8",
+          "type": "common.caption",
+          "params": {
+            "text": "奶油要用冰的，兩大匙",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-13",
+          "start": 0,
+          "end": 4.9,
+          "parent": "clip-9",
+          "type": "common.caption",
+          "params": {
+            "text": "用指尖把奶油搓進粉裡",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-14",
+          "start": 0,
+          "end": 4.6,
+          "parent": "clip-10",
+          "type": "common.caption",
+          "params": {
+            "text": "搓到像粗粗的沙子就可以",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-15",
+          "start": 26.9,
+          "end": 42,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "butter"
+            },
+            "tip": "搓到像粗砂的樣子",
+            "no": "3",
+            "title": "搓入冷奶油",
+            "detail": "冷奶油 2 大匙"
+          }
+        },
+        {
+          "id": "fx-16",
+          "start": 26.9,
+          "end": 42,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 0,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-17",
+          "start": 0,
+          "end": 7.6,
+          "parent": "clip-11",
+          "type": "common.caption",
+          "params": {
+            "text": "倒入半杯無糖優格",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-18",
+          "start": 42,
+          "end": 49.7,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "cream",
+              "tint": "#fbf8f2"
+            },
+            "tip": "選無糖原味的",
+            "no": "4",
+            "title": "拌入優格",
+            "detail": "無糖優格 ½ 杯"
+          }
+        },
+        {
+          "id": "fx-19",
+          "start": 42,
+          "end": 49.7,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 1,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-20",
+          "start": 0,
+          "end": 6,
+          "parent": "clip-12",
+          "type": "common.caption",
+          "params": {
+            "text": "甜味交給三大匙蜂蜜",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-21",
+          "start": 49.7,
+          "end": 55.7,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "cream",
+              "tint": "#c98a3e"
+            },
+            "tip": "想甜一點可以多加一匙",
+            "no": "5",
+            "title": "加蜂蜜",
+            "detail": "蜂蜜 3 大匙"
+          }
+        },
+        {
+          "id": "fx-22",
+          "start": 49.7,
+          "end": 55.7,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 1,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-23",
+          "start": 0.1,
+          "end": 4.6,
+          "parent": "clip-13",
+          "type": "common.caption",
+          "params": {
+            "text": "牛奶也是三大匙",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-24",
+          "start": 0.1,
+          "end": 3.8,
+          "parent": "clip-14",
+          "type": "common.caption",
+          "params": {
+            "text": "最後滴一小匙香草精",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-25",
+          "start": 55.7,
+          "end": 64.1,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "cream",
+              "tint": "#ffffff"
+            },
+            "tip": "香草精一點點就很香",
+            "no": "6",
+            "title": "加牛奶和香草",
+            "detail": "牛奶 3 大匙・香草精 1 小匙"
+          }
+        },
+        {
+          "id": "fx-26",
+          "start": 55.7,
+          "end": 64.1,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 1,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-27",
+          "start": 0,
+          "end": 5,
+          "parent": "clip-15",
+          "type": "common.caption",
+          "params": {
+            "text": "拌到看不見乾粉就停手",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-28",
+          "start": 64.1,
+          "end": 69.1,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "stir"
+            },
+            "tip": "拌太久口感會變硬",
+            "no": "7",
+            "title": "拌成麵團",
+            "detail": "看不見乾粉就停"
+          }
+        },
+        {
+          "id": "fx-29",
+          "start": 64.1,
+          "end": 69.1,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 2,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-30",
+          "start": 0,
+          "end": 6.2,
+          "parent": "clip-16",
+          "type": "common.caption",
+          "params": {
+            "text": "倒進四分之一杯巧克力豆",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-31",
+          "start": 69.1,
+          "end": 75.3,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "chips"
+            },
+            "tip": "加完再拌一下",
+            "no": "8",
+            "title": "加巧克力豆",
+            "detail": "巧克力豆 ¼ 杯"
+          }
+        },
+        {
+          "id": "fx-32",
+          "start": 69.1,
+          "end": 75.3,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 2,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-33",
+          "start": 0.1,
+          "end": 5.3,
+          "parent": "clip-17",
+          "type": "common.caption",
+          "params": {
+            "text": "烤箱先預熱到 200 度",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-34",
+          "start": 0,
+          "end": 5,
+          "parent": "clip-18",
+          "type": "common.caption",
+          "params": {
+            "text": "烤盤鋪上一張烘焙紙",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-35",
+          "start": 75.3,
+          "end": 85.7,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "bake"
+            },
+            "tip": "烤盤鋪烘焙紙或矽膠墊",
+            "no": "9",
+            "title": "預熱、鋪烤盤",
+            "detail": "烤箱預熱 200°C"
+          }
+        },
+        {
+          "id": "fx-36",
+          "start": 75.3,
+          "end": 85.7,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 2,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-37",
+          "start": 0,
+          "end": 5,
+          "parent": "clip-19",
+          "type": "common.caption",
+          "params": {
+            "text": "把麵團拍成厚厚的圓餅",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-38",
+          "start": 0,
+          "end": 3.4,
+          "parent": "clip-20",
+          "type": "common.caption",
+          "params": {
+            "text": "手上沾點麵粉比較不黏",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-39",
+          "start": 3.4,
+          "end": 5,
+          "parent": "clip-20",
+          "type": "common.caption",
+          "params": {
+            "text": "形狀不用太完美",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-40",
+          "start": 85.7,
+          "end": 95.7,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "shape"
+            },
+            "tip": "手沾點麵粉就不黏",
+            "no": "10",
+            "title": "整成圓餅",
+            "detail": "厚約 2 公分的圓餅"
+          }
+        },
+        {
+          "id": "fx-41",
+          "start": 85.7,
+          "end": 95.7,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 2,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-42",
+          "start": 0,
+          "end": 5.9,
+          "parent": "clip-21",
+          "type": "common.caption",
+          "params": {
+            "text": "用刀切成八等份",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-43",
+          "start": 95.7,
+          "end": 101.6,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "cut"
+            },
+            "tip": "先切開，烤好才分得開",
+            "no": "11",
+            "title": "切成 8 塊",
+            "detail": "像切披薩一樣切 8 等份"
+          }
+        },
+        {
+          "id": "fx-44",
+          "start": 95.7,
+          "end": 101.6,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 2,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-45",
+          "start": 0,
+          "end": 6,
+          "parent": "clip-22",
+          "type": "common.caption",
+          "params": {
+            "text": "表面刷一層薄薄的牛奶",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-46",
+          "start": 101.6,
+          "end": 107.6,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "brush"
+            },
+            "tip": "每個地方都刷到",
+            "no": "12",
+            "title": "刷上牛奶",
+            "detail": "表面刷一層牛奶"
+          }
+        },
+        {
+          "id": "fx-47",
+          "start": 101.6,
+          "end": 107.6,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 3,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-48",
+          "start": 0,
+          "end": 8,
+          "parent": "clip-23",
+          "type": "common.caption",
+          "params": {
+            "text": "烤十八分鐘，表面金黃就好",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-49",
+          "start": 107.6,
+          "end": 119,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "bake"
+            },
+            "tip": "拿烤盤記得戴隔熱手套",
+            "no": "13",
+            "title": "進烤箱",
+            "detail": "200°C 烤 18 分鐘"
+          }
+        },
+        {
+          "id": "fx-50",
+          "start": 107.6,
+          "end": 119,
+          "type": "common.progress",
+          "params": {
+            "mode": "tabs",
+            "labels": "乾料,濕料,塑形,烘烤",
+            "step": 3,
+            "align": "right",
+            "size": 3,
+            "y": 0.085
+          }
+        },
+        {
+          "id": "fx-51",
+          "start": 0,
+          "end": 5.3,
+          "parent": "clip-26",
+          "type": "common.caption",
+          "params": {
+            "text": "外酥內軟，配杯茶剛剛好！",
+            "style": "plain",
+            "size": 4.6,
+            "color": "#4a3426",
+            "animIn": "fade"
+          },
+          "transform": {
+            "x": 0.22499999999999998,
+            "y": -0.13,
+            "scale": 1,
+            "ox": 0.5,
+            "oy": 0.5
+          }
+        },
+        {
+          "id": "fx-52",
+          "start": 119,
+          "end": 127.1,
+          "type": "common.card",
+          "params": {
+            "x": 0.04,
+            "y": 0.17,
+            "w": 0.41,
+            "h": 0.7,
+            "tilt": -0.6,
+            "art": "fx.bookart",
+            "artParams": {
+              "scene": "eat"
+            },
+            "tip": "",
+            "no": "",
+            "title": "開動！",
+            "detail": "外酥內軟、配茶剛好"
+          }
+        },
+        {
+          "id": "fx-53",
+          "start": 0,
+          "end": 127.1,
+          "type": "common.header",
+          "params": {
+            "no": "食譜",
+            "text": "小麥老師的巧克力豆司康",
+            "size": 3.4,
+            "ink": "#4a3426",
+            "outline": "#fffaf1",
+            "y": 0.07
+          }
+        }
+      ]
+    },
+    {
+      "id": "music",
+      "name": "音樂",
+      "gain": -3,
+      "kind": "music",
+      "items": [
+        {
+          "id": "music-2",
+          "start": 0,
+          "end": 127.1,
+          "gain": -12,
+          "envelope": [
+            [
+              0,
+              -10
+            ],
+            [
+              119,
+              -10
+            ],
+            [
+              119.25,
+              0
+            ],
+            [
+              121.58,
+              0
+            ],
+            [
+              121.83,
+              -10
+            ],
+            [
+              127.1,
+              -10
+            ],
+            [
+              127.35,
+              0
+            ]
+          ],
+          "fadeIn": 0,
+          "fadeOut": 1.2,
+          "media": "score-pluck",
+          "in": 0,
+          "toEnd": true
+        }
+      ]
+    },
+    {
+      "id": "orig",
+      "name": "原音",
+      "gain": 0,
+      "kind": "audio",
+      "items": [
+        {
+          "id": "audio",
+          "start": 0,
+          "end": 2.8,
+          "parent": "clip",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 389.6,
+          "rate": 1
+        },
+        {
+          "id": "audio-2",
+          "start": 0,
+          "end": 7.1,
+          "parent": "clip-2",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 0,
+          "rate": 1
+        },
+        {
+          "id": "audio-3",
+          "start": 0,
+          "end": 3.5,
+          "parent": "clip-3",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 12.7,
+          "rate": 1
+        },
+        {
+          "id": "audio-4",
+          "start": 0,
+          "end": 4.8,
+          "parent": "clip-4",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 40,
+          "rate": 1
+        },
+        {
+          "id": "audio-5",
+          "start": 0,
+          "end": 3.1,
+          "parent": "clip-5",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 50.2,
+          "rate": 1
+        },
+        {
+          "id": "audio-6",
+          "start": 0,
+          "end": 2.2,
+          "parent": "clip-6",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 56.2,
+          "rate": 1
+        },
+        {
+          "id": "audio-7",
+          "start": 0,
+          "end": 3.4,
+          "parent": "clip-7",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 63.6,
+          "rate": 1
+        },
+        {
+          "id": "audio-8",
+          "start": 0,
+          "end": 5.6,
+          "parent": "clip-8",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 70.4,
+          "rate": 1
+        },
+        {
+          "id": "audio-9",
+          "start": 0,
+          "end": 4.9,
+          "parent": "clip-9",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 88,
+          "rate": 1
+        },
+        {
+          "id": "audio-10",
+          "start": 0,
+          "end": 4.6,
+          "parent": "clip-10",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 105.5,
+          "rate": 1
+        },
+        {
+          "id": "audio-11",
+          "start": 0,
+          "end": 7.7,
+          "parent": "clip-11",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 117.5,
+          "rate": 1
+        },
+        {
+          "id": "audio-12",
+          "start": 0,
+          "end": 6,
+          "parent": "clip-12",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 133.1,
+          "rate": 1
+        },
+        {
+          "id": "audio-13",
+          "start": 0,
+          "end": 4.6,
+          "parent": "clip-13",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 166.6,
+          "rate": 1
+        },
+        {
+          "id": "audio-14",
+          "start": 0,
+          "end": 3.8,
+          "parent": "clip-14",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 178.1,
+          "rate": 1
+        },
+        {
+          "id": "audio-15",
+          "start": 0,
+          "end": 5,
+          "parent": "clip-15",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 182,
+          "rate": 1
+        },
+        {
+          "id": "audio-16",
+          "start": 0,
+          "end": 6.2,
+          "parent": "clip-16",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 203.8,
+          "rate": 1
+        },
+        {
+          "id": "audio-17",
+          "start": 0,
+          "end": 5.4,
+          "parent": "clip-17",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 227.4,
+          "rate": 1
+        },
+        {
+          "id": "audio-18",
+          "start": 0,
+          "end": 5,
+          "parent": "clip-18",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 237,
+          "rate": 1
+        },
+        {
+          "id": "audio-19",
+          "start": 0,
+          "end": 5,
+          "parent": "clip-19",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 253,
+          "rate": 1
+        },
+        {
+          "id": "audio-20",
+          "start": 0,
+          "end": 5,
+          "parent": "clip-20",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 276.4,
+          "rate": 1
+        },
+        {
+          "id": "audio-21",
+          "start": 0,
+          "end": 5.9,
+          "parent": "clip-21",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 288.8,
+          "rate": 1
+        },
+        {
+          "id": "audio-22",
+          "start": 0,
+          "end": 6,
+          "parent": "clip-22",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 325.3,
+          "rate": 1
+        },
+        {
+          "id": "audio-23",
+          "start": 0,
+          "end": 8,
+          "parent": "clip-23",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 344.4,
+          "rate": 1
+        },
+        {
+          "id": "audio-24",
+          "start": 0,
+          "end": 3.4,
+          "parent": "clip-24",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 366,
+          "rate": 1
+        },
+        {
+          "id": "audio-25",
+          "start": 0,
+          "end": 2.8,
+          "parent": "clip-25",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 398.2,
+          "rate": 1
+        },
+        {
+          "id": "audio-26",
+          "start": 0,
+          "end": 5.3,
+          "parent": "clip-26",
+          "gain": 0,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "source": "baking",
+          "in": 403,
+          "rate": 1
+        }
+      ]
+    },
+    {
+      "id": "sfx",
+      "name": "音效",
+      "gain": 0,
+      "kind": "sfx",
+      "items": [
+        {
+          "id": "sfx-2",
+          "start": 13.4,
+          "end": 13.9,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-3",
+          "start": 18.2,
+          "end": 18.7,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-4",
+          "start": 26.9,
+          "end": 27.4,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-5",
+          "start": 42,
+          "end": 42.5,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-6",
+          "start": 49.7,
+          "end": 50.2,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-7",
+          "start": 55.7,
+          "end": 56.2,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-8",
+          "start": 64.1,
+          "end": 64.6,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-9",
+          "start": 69.1,
+          "end": 69.6,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-10",
+          "start": 75.3,
+          "end": 75.8,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-11",
+          "start": 85.7,
+          "end": 86.2,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-12",
+          "start": 95.7,
+          "end": 96.2,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-13",
+          "start": 101.6,
+          "end": 102.1,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-14",
+          "start": 107.6,
+          "end": 108.1,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        },
+        {
+          "id": "sfx-15",
+          "start": 119,
+          "end": 119.5,
+          "type": "common.whoosh",
+          "params": {},
+          "gain": -24
+        }
+      ]
+    }
+  ]
+}
