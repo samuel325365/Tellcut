@@ -3,13 +3,16 @@
 // (tellcut logo puts it in media/brand/): an SVG three can extrude is extruded in its own colours; anything else (a PNG, a JPG,
 // an SVG with text or a picture inside) becomes a plate — 12 layered cut-outs for a see-through picture, a rounded slab with the
 // picture on its face for an opaque one. The name: Latin letters extruded from Inter 700 (INTER_3D), other characters (Chinese,
-// Japanese) as layered cut-outs. Timings follow the spike's S5 (3-tellcut-film/scene.js), all from `hit`.
-import { clamp, eBack, eIO3, eOut3, eOut5, h, type ItemType, lerp } from '@tellcut/engine';
+// Japanese) as layered cut-outs. Timings follow the spike's S5 (3-tellcut-film/scene.js), all from `hit`. entrance gather (the
+// spike's rings of dots collapsing into the icon, 1-tellcut-3d-only/scene.js S4): the mark's own picture as dots, out in space,
+// spiralling in and settling into the mark at `hit`, where the solid mark takes over; everything after `hit` is as land.
+import { clamp, eBack, eIO3, eOut3, eOut5, h, type ItemType, lerp, mulberry32 } from '@tellcut/engine';
 import type * as T from 'three';
 import { drawBlurLine, loadLineFaces } from './brand-text.ts';
 import { ghostLayer, ghostLines, type GhostLine } from './text.ts';
 import type { Glyphs } from './three/glyphs.ts';
 import { INTER_3D, type ThreeKit } from './three/kit.ts';
+import { softDot } from './three/parts.ts';
 
 export const LOGO_FOV = 36;
 /** the logo's height, the plate's depth, the letters' size and depth, the gap between the logo and the name */
@@ -17,13 +20,18 @@ export const LOGO_FOV = 36;
 const MARK_H = 1.3, PLATE_D = 0.18, LETTER = 0.86, LETTER_EM = 1.2, LETTER_D = 0.14, GAP = 0.4, TRACK = -0.012, CJK_W = 0.92, SPACE_W = 0.3;
 /** seconds the camera takes to push in, from hit - 0.75 */
 const CAMERA_S = 5;
+/** gather: the longest the dots take to come in (shorter when hit is earlier: they start at the item's start), when the solid
+ *  mark comes in under them before hit, how long they take to fade after it */
+const GATHER_S = 1.6, SOLID_S = 0.15, FADE_S = 0.35;
 
-interface P { logo: string; mode: 'auto' | 'extrude' | 'plate'; name: string; tagline: string; url: string; hit: number; color: string; ink: string; split: number; bg: string; font: string }
+interface P { logo: string; mode: 'auto' | 'extrude' | 'plate'; entrance: 'land' | 'gather'; name: string; tagline: string; url: string; hit: number; color: string; ink: string; split: number; bg: string; font: string }
 interface Letter { g: T.Group; x: number; w: number }
+/** the gather entrance's dots: where each one ends (on the mark's face), where it starts (an offset from there), its delay and swirl */
+interface Swarm { points: T.Points<T.BufferGeometry, T.PointsMaterial>; n: number; to: Float32Array; from: Float32Array; delay: Float32Array; spin: Float32Array }
 interface S {
   cv: HTMLCanvasElement; ghost: HTMLElement; p: P; W: number; H: number; kit?: ThreeKit; url: string;
   img: HTMLImageElement | null; svg: string | null; font: Glyphs | null;
-  gl?: { scene: T.Scene; cam: T.PerspectiveCamera; mark: T.Group; markW: number; hasMark: boolean; letters: Letter[]; wordW: number; sweep: T.PointLight; parts: Array<{ dispose(): void }> };
+  gl?: { scene: T.Scene; cam: T.PerspectiveCamera; mark: T.Group; markW: number; hasMark: boolean; letters: Letter[]; wordW: number; sweep: T.PointLight; swarm?: Swarm; parts: Array<{ dispose(): void }> };
 }
 
 const LATIN = /^[!-ɏ]$/;
@@ -31,10 +39,11 @@ const extOf = (path: string) => (/\.([a-z0-9]+)$/i.exec(path)?.[1] ?? '').toLowe
 
 export const logo: ItemType<P, S> = {
   type: 'common.logo', label: '立體商標出場', category: 'moment', kind: 'overlay', three: true,
-  doc: '品牌片的片尾：商標在 3D 裡回彈落定、一道光掃過，往旁邊讓位給一個字一個字立起的名稱，最後標語和網址從模糊變清楚；SVG 直接擠出成立體，PNG／JPG 做成照外形切的立體板，沒有商標只放名稱；英文字母擠出、中文字做成有厚度的切字（商標先用 npm run tellcut -- logo 放進 media/brand/）',
+  doc: '品牌片的片尾：商標在 3D 裡回彈落定、一道光掃過，往旁邊讓位給一個字一個字立起的名稱，最後標語和網址從模糊變清楚；SVG 直接擠出成立體，PNG／JPG 做成照外形切的立體板，沒有商標只放名稱；英文字母擠出、中文字做成有厚度的切字；entrance gather：商標化成光點從四周旋進來，在 hit 聚成商標（商標先用 npm run tellcut -- logo 放進 media/brand/）',
   params: [
     { key: 'logo', label: '商標檔（專案裡的路徑，例如 media/brand/logo.svg；空＝只有名稱）', type: 'string', default: '' },
     { key: 'mode', label: '做法（auto 和 extrude 相同：能擠出的 SVG 就擠出、其他做立體板；plate 一律做立體板）', type: 'enum', options: ['auto', 'extrude', 'plate'], default: 'auto' },
+    { key: 'entrance', label: '商標進場（land 從側面轉進來回彈落定；gather 商標化成一顆顆光點從四周旋進來聚成商標；兩種都在 hit 落定，之後相同；沒有商標時都是 land）', type: 'enum', options: ['land', 'gather'], default: 'land' },
     { key: 'name', label: '名稱（字標）', type: 'string', default: '' },
     { key: 'tagline', label: '標語', type: 'string', default: '' },
     { key: 'url', label: '網址（照原字）', type: 'string', default: '' },
@@ -127,12 +136,17 @@ function build3d(s: S, kit: ThreeKit) {
   scene.add(key, rim, sweep);
   // the logo
   const mark = new T3.Group(); mark.name = 'logo-mark'; scene.add(mark);
-  let markW = 0;
+  let markW = 0, fills: SvgFill[] | null = null;
   if (p.logo) {
-    const ext = extOf(p.logo), extruded = ext === 'svg' && p.mode !== 'plate' && s.svg && !/<(image|text|clipPath|mask)\b/i.test(s.svg) ? extrude(kit, s.svg, mark, parts) : 0;
+    const ext = extOf(p.logo);
+    fills = ext === 'svg' && p.mode !== 'plate' && s.svg && !/<(image|text|clipPath|mask)\b/i.test(s.svg) ? svgFills(kit, s.svg) : null;
+    const extruded = fills ? extrude(kit, fills, mark, parts) : 0;
+    if (!extruded) fills = null;
     markW = extruded || (s.img ? plate(kit, s.img, ext, p.color, mark, parts) : 0);
   }
   mark.visible = markW > 0;
+  const swarm = p.entrance === 'gather' && markW > 0 ? gather(kit, s, markW, fills, parts) : undefined;
+  if (swarm) scene.add(swarm.points);
   // the name
   const letters: Letter[] = [];
   let x = 0;
@@ -152,25 +166,36 @@ function build3d(s: S, kit: ThreeKit) {
     letters.push({ g, x, w });
     x += w + TRACK;
   }
-  s.gl = { scene, cam, mark, markW, hasMark: markW > 0, letters, wordW: letters.length ? x - TRACK : 0, sweep, parts };
+  s.gl = { scene, cam, mark, markW, hasMark: markW > 0, letters, wordW: letters.length ? x - TRACK : 0, sweep, swarm, parts };
 }
 
-/** the SVG's filled shapes extruded in their own colours, 1.3 high, centred on the group; its width. 0 (a plate instead) when
- *  there is nothing to extrude, or when some shape is only a stroke or fills with a gradient: those would vanish or turn white */
-function extrude(kit: ThreeKit, svg: string, mark: T.Group, parts: Array<{ dispose(): void }>): number {
-  const T3 = kit.THREE, data = new kit.addons.SVGLoader().parse(svg), inner = new T3.Group();
-  const filled: Array<{ fill: string; shapes: T.Shape[] }> = [];
+type SvgFill = { fill: string; shapes: T.Shape[] };
+
+/** the SVG's filled shapes in their own colours; null (a plate instead) when there is nothing to extrude, or when some shape is
+ *  only a stroke or fills with a gradient: those would vanish or turn white */
+function svgFills(kit: ThreeKit, svg: string): SvgFill[] | null {
+  const data = new kit.addons.SVGLoader().parse(svg), filled: SvgFill[] = [];
   for (const path of data.paths) {
     const st = (path.userData as { style?: { fill?: string; stroke?: string } } | undefined)?.style ?? {};
     const fill = st.fill ?? '#000', stroke = st.stroke ?? 'none';
-    if (fill === 'none') { if (stroke !== 'none') return 0; continue; }
-    if (fill.startsWith('url(')) return 0;
+    if (fill === 'none') { if (stroke !== 'none') return null; continue; }
+    if (fill.startsWith('url(')) return null;
     const shapes = kit.addons.SVGLoader.createShapes(path);
     if (shapes.length) filled.push({ fill, shapes });
   }
-  if (!filled.length) return 0;
-  const box = new T3.Box2();
+  return filled.length ? filled : null;
+}
+
+/** the shapes' bounding box (SVG units, y down) */
+function fillsBox(kit: ThreeKit, filled: SvgFill[]): T.Box2 {
+  const box = new kit.THREE.Box2();
   for (const { shapes } of filled) for (const sh of shapes) for (const pt of sh.getPoints()) box.expandByPoint(pt);
+  return box;
+}
+
+/** the filled shapes extruded in their own colours, 1.3 high, centred on the group; its width */
+function extrude(kit: ThreeKit, filled: SvgFill[], mark: T.Group, parts: Array<{ dispose(): void }>): number {
+  const T3 = kit.THREE, inner = new T3.Group(), box = fillsBox(kit, filled);
   const size = box.getSize(new T3.Vector2()), sc = MARK_H / (size.y || 1), d = PLATE_D / sc;
   filled.forEach(({ fill, shapes }, k) => {
     // one depth for every shape; each later one a hair in front of the one under it (no z-fighting where they overlap)
@@ -222,6 +247,81 @@ function cutout(kit: ThreeKit, ch: string, colour: string, g: T.Group, parts: Ar
   }
 }
 
+/** the mark's face as a small picture: the extruded SVG's shapes in their fills, or the plate's own picture; null without a 2D canvas */
+function markPicture(kit: ThreeKit, s: S, fills: SvgFill[] | null, markW: number): { px: Uint8ClampedArray; w: number; h: number } | null {
+  const wide = markW >= MARK_H, w = Math.max(8, Math.round(wide ? 160 : (160 * markW) / MARK_H)), h = Math.max(8, Math.round(wide ? (160 * MARK_H) / markW : 160));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  if (!g) return null;
+  try {
+    g.clearRect(0, 0, w, h);
+    if (fills) {
+      const box = fillsBox(kit, fills), sx = w / (box.max.x - box.min.x || 1), sy = h / (box.max.y - box.min.y || 1);
+      for (const { fill, shapes } of fills) for (const sh of shapes) {
+        const { shape, holes } = sh.extractPoints(8);
+        g.beginPath();
+        for (const ring of [shape, ...holes]) ring.forEach((pt, i) => { const X = (pt.x - box.min.x) * sx, Y = (pt.y - box.min.y) * sy; if (i) g.lineTo(X, Y); else g.moveTo(X, Y); });
+        g.fillStyle = fill; g.fill('evenodd');
+      }
+    } else if (s.img) g.drawImage(s.img, 0, 0, w, h);
+    return { px: g.getImageData(0, 0, w, h).data, w, h };
+  } catch { return null; }
+}
+
+/** the gather entrance's dots: up to 2400 points on the mark's face in its own colours (the main colour when its picture cannot be
+ *  read), each starting 2.4–5.6 out in space; a fixed seed, so every frame and every render are the same */
+function gather(kit: ThreeKit, s: S, markW: number, fills: SvgFill[] | null, parts: Array<{ dispose(): void }>): Swarm {
+  const T3 = kit.THREE, max = Math.round(clamp(markW * MARK_H * 700, 600, 2400)), rnd = mulberry32(11), pic = markPicture(kit, s, fills, markW);
+  const to = new Float32Array(max * 3), from = new Float32Array(max * 3), col = new Float32Array(max * 3), delay = new Float32Array(max), spin = new Float32Array(max);
+  const c = new T3.Color(), main = new T3.Color(s.p.color);
+  let n = 0;
+  for (let tries = 0; n < max && tries < max * 60; tries++) {
+    const u = rnd(), v = rnd();
+    if (pic) {
+      const i = (Math.min(pic.h - 1, Math.floor(v * pic.h)) * pic.w + Math.min(pic.w - 1, Math.floor(u * pic.w))) * 4;
+      if (pic.px[i + 3] < 128) continue;
+      c.setRGB(pic.px[i] / 255, pic.px[i + 1] / 255, pic.px[i + 2] / 255, T3.SRGBColorSpace);
+    } else c.copy(main);
+    to.set([(u - 0.5) * markW, (0.5 - v) * MARK_H, PLATE_D / 2 + 0.03], n * 3);
+    col.set([c.r, c.g, c.b], n * 3);
+    // out in every direction, less so in depth (the camera is in front)
+    const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1), r = 2.4 + 3.2 * rnd();
+    from.set([Math.sin(b) * Math.cos(a) * r, Math.sin(b) * Math.sin(a) * r, Math.cos(b) * r * 0.6], n * 3);
+    delay[n] = rnd(); spin[n] = 1 + 0.8 * rnd();
+    n++;
+  }
+  const geo = new T3.BufferGeometry();
+  geo.setAttribute('position', new T3.BufferAttribute(new Float32Array(max * 3), 3));
+  geo.setAttribute('color', new T3.BufferAttribute(col, 3));
+  geo.setDrawRange(0, n);
+  // about 7 px across at the camera's distance in a 1080 frame; on a dark background they add up to a glow where they crowd
+  const dark = new T3.Color(s.p.bg).getHSL({ h: 0, s: 0, l: 0 }).l < 0.5;
+  const dot = softDot(T3), mat = new T3.PointsMaterial({ size: 0.12, map: dot, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: dark ? T3.AdditiveBlending : T3.NormalBlending });
+  const points = new T3.Points(geo, mat);
+  points.name = 'logo-gather'; points.frustumCulled = false;
+  parts.push(geo, dot, mat);
+  return { points, n, to, from, delay, spin };
+}
+
+/** the dots at time t: each spirals in from its start and settles on its place at hit (later starters move faster), riding with
+ *  the mark (its place and turn, not its size); they fade in as they set off and out after hit, as the solid mark takes over */
+function poseSwarm(sw: Swarm, mark: T.Group, t: number, hit: number) {
+  const span = Math.min(hit, GATHER_S), g0 = hit - span, a = clamp((t - g0) / (0.25 * span)) * (1 - clamp((t - hit) / FADE_S));
+  sw.points.visible = a > 0.003;
+  sw.points.material.opacity = a;
+  if (!sw.points.visible) return;
+  sw.points.position.copy(mark.position); sw.points.rotation.copy(mark.rotation);
+  const attr = sw.points.geometry.getAttribute('position') as T.BufferAttribute, pos = attr.array as Float32Array;
+  for (let i = 0; i < sw.n; i++) {
+    const d = sw.delay[i] * 0.35 * span, k = 1 - eIO3(clamp((t - g0 - d) / (span - d))), ang = sw.spin[i] * k, cs = Math.cos(ang), sn = Math.sin(ang);
+    const fx = sw.from[i * 3], fy = sw.from[i * 3 + 1], fz = sw.from[i * 3 + 2];
+    pos[i * 3] = sw.to[i * 3] + (fx * cs - fy * sn) * k;
+    pos[i * 3 + 1] = sw.to[i * 3 + 1] + (fx * sn + fy * cs) * k;
+    pos[i * 3 + 2] = sw.to[i * 3 + 2] + fz * k;
+  }
+  attr.needsUpdate = true;
+}
+
 /** the 3D world at item time `t` (the camera first); where the name stands, for its transparent copy */
 function pose(s: S, t: number, W: number, H: number): GhostLine | null {
   const gl = s.gl!, p = s.p, hit = p.hit, i0 = hit - 0.75;
@@ -239,12 +339,15 @@ function pose(s: S, t: number, W: number, H: number): GhostLine | null {
   gl.cam.lookAt(0, 0.12, 0);
   gl.cam.updateProjectionMatrix();
   // the logo lands, then slides aside for the name
-  const gs = eBack(clamp((t - i0) / 0.75), 1.15), slide = named && has ? eIO3(clamp((t - (hit + 0.35)) / 0.8)) : 0;
+  // gather: the solid mark comes in under the dots just before hit, full size at hit; land: the bounce from i0, full size at hit
+  const gather = !!gl.swarm, solid = hit - SOLID_S;
+  const gs = gather ? lerp(0.9, 1, eOut3(clamp((t - solid) / SOLID_S))) : eBack(clamp((t - i0) / 0.75), 1.15), slide = named && has ? eIO3(clamp((t - (hit + 0.35)) / 0.8)) : 0;
   const markX = -total / 2 + gl.markW / 2;
-  gl.mark.visible = has && t >= i0;
+  gl.mark.visible = has && t >= (gather ? solid : i0);
   gl.mark.scale.setScalar(Math.max(0.001, gs));
   gl.mark.position.set(lerp(0, markX, slide), 0.3, 0);
   gl.mark.rotation.set(0.2 * (1 - clamp(gs)) - 0.035 * Math.sin(t * 0.8) * gs, lerp(-1.35, 0, eOut5(clamp((t - i0) / 1.9))) + 0.045 * Math.sin(t * 0.6) * clamp((t - hit) / 0.6), 0);
+  if (gl.swarm) poseSwarm(gl.swarm, gl.mark, t, hit);
   // the letters rise one by one
   const x0 = has ? markX + gl.markW / 2 + GAP : -total / 2;
   let shown = 0;

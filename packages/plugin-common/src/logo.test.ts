@@ -239,3 +239,54 @@ test('edgeColour averages the outer ring only', () => {
   }) }) }));
   expect(edgeColour(document.createElement('img'))).toBe('#c81010');
 });
+
+// promotion E2: entrance gather
+const dots = (s: THREE.Scene) => s.getObjectByName('logo-gather') as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | undefined;
+const dotsAt = (s: THREE.Scene) => { const d = dots(s)!, a = d.geometry.getAttribute('position').array as Float32Array; return Array.from(a.slice(0, d.geometry.drawRange.count * 3)); };
+
+test('gather: dots spiral in from far out and settle on the mark at hit, where the solid mark comes in full size', async () => {
+  const { at } = await stage({ logo: 'media/brand/logo.svg', name: 'Tellcut', hit: 1.6, entrance: 'gather' }, { files: SVG });
+  // far out at the start, fading in
+  let s = at(0.3);
+  expect(dots(s)!.visible).toBe(true);
+  expect(mark(s).visible).toBe(false);
+  expect(Math.max(...dotsAt(s).map(Math.abs))).toBeGreaterThan(2);
+  // at hit: every dot on the mark's face (1.3 high, as wide as the mark), the mark itself full size
+  s = at(1.6);
+  const p = dotsAt(s);
+  for (let i = 0; i < p.length; i += 3) { expect(Math.abs(p[i])).toBeLessThanOrEqual(0.65 + 1e-6); expect(Math.abs(p[i + 1])).toBeLessThanOrEqual(0.65 + 1e-6); }
+  expect(mark(s).visible).toBe(true);
+  expect(mark(s).scale.x).toBeCloseTo(1, 6);
+  expect(mark(at(1.6 - 0.2)).visible).toBe(false);
+  // gone once the solid mark has taken over
+  expect(dots(at(1.6 + 0.4))!.visible).toBe(false);
+});
+
+test('gather: after hit everything is as the default landing (slide, letters, camera)', async () => {
+  const land = await stage({ logo: 'media/brand/logo.svg', name: 'Tellcut', hit: 1.2 }, { files: SVG });
+  const gather = await stage({ logo: 'media/brand/logo.svg', name: 'Tellcut', hit: 1.2, entrance: 'gather' }, { files: SVG });
+  const pose = (s: THREE.Scene) => JSON.stringify([mark(s).matrixWorld.elements.map((v) => +v.toFixed(6)), letters(s).map((l) => l.position.toArray()), s.getObjectByName('logo-camera')!.position.toArray()]);
+  for (const t of [1.2, 1.6, 2.5, 4]) expect(pose(gather.at(t))).toBe(pose(land.at(t)));
+  expect(dots(land.at(0.8))).toBeUndefined();
+});
+
+test("gather with the brand recipe's hit 0.75: the dots come in from the item's start and still land at hit", async () => {
+  const { at } = await stage({ logo: 'media/brand/logo.svg', name: 'Tellcut', hit: 0.75, entrance: 'gather' }, { files: SVG });
+  expect(dots(at(0))!.visible).toBe(false);   // opacity 0 on the first frame, then in
+  expect(dots(at(0.1))!.visible).toBe(true);
+  const p = dotsAt(at(0.75));
+  expect(Math.max(...p.filter((_, i) => i % 3 !== 2).map(Math.abs))).toBeLessThanOrEqual(0.65 + 1e-6);
+  expect(mark(at(0.75)).scale.x).toBeCloseTo(1, 6);
+});
+
+test('gather: the same time gives the same dots; a picture logo gives dots in its colours on its opaque pixels only; no logo, no dots', async () => {
+  const a = await stage({ logo: 'media/brand/logo.svg', hit: 1.6, entrance: 'gather' }, { files: SVG });
+  const one = JSON.stringify(dotsAt(a.at(1.1))); a.at(0.2);
+  expect(JSON.stringify(dotsAt(a.at(1.1)))).toBe(one);
+  alpha = 0;   // every other pixel see-through, the rest mid grey
+  const s = (await stage({ logo: 'media/brand/logo.png', hit: 1, entrance: 'gather' })).at(1), d = dots(s)!;
+  const col = d.geometry.getAttribute('color').array as Float32Array, grey = new THREE.Color().setRGB(128 / 255, 128 / 255, 128 / 255, THREE.SRGBColorSpace).r;
+  expect(d.geometry.drawRange.count).toBeGreaterThan(500);
+  expect(col[0]).toBeCloseTo(grey, 5);
+  expect(dots((await stage({ name: 'ACME', entrance: 'gather' })).at(0.5))).toBeUndefined();
+});

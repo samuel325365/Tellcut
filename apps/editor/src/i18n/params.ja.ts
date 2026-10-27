@@ -1478,6 +1478,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.wall.color": {"name":"数字の色"},
   "common.logo.logo": {"name":"ロゴファイル","hint":"プロジェクト内のパス（例 media/brand/logo.svg）。空なら名前だけ"},
   "common.logo.mode": {"name":"作り方","hint":"auto と extrude は同じ：押し出せる SVG なら押し出し、それ以外は板に。plate は常に板"},
+  "common.logo.entrance": {"name":"登場","hint":"land：ロゴが横から回り込み、弾んで着地。gather：ロゴが光の粒になって四方から渦を巻いて集まり、ロゴになる。どちらも hit で着地し、その後は同じ。ロゴがなければ常に land"},
   "common.logo.name": {"name":"名前","hint":"ワードマーク"},
   "common.logo.tagline": {"name":"タグライン"},
   "common.logo.url": {"name":"URL","hint":"書いたとおりに表示"},

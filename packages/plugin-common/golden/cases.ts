@@ -451,6 +451,12 @@ export const cases: Case[] = [
   { name: 'logo-png', type: 'common.logo', sources: { logo: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, len: 4,
     params: { logo: 'media/golden-logo.png', name: '麥田烘焙 Bakery', color: '#c8752a', tagline: '每天清晨四點揉麵' }, at: [3.6], wide: true },
   { name: 'logo-name', type: 'common.logo', params: { name: 'ACME' }, len: 3, at: [2.0] },
+  // entrance gather: the mark's dots spiral in and settle into it at hit (an SVG in its fills; a picture in its own colours, with the
+  // brand recipe's early hit 0.75 right after a dolly out)
+  { name: 'logo-gather-svg', type: 'common.logo', sources: { logo: { file: 'fixtures/tellcut.svg', width: 32, height: 32 } }, len: 4,
+    params: { logo: 'media/golden-logo.svg', entrance: 'gather', name: 'Tellcut', split: 4, hit: 1.6 }, at: [0.4, 1.1, 1.6, 2.4], wide: true },
+  { name: 'logo-gather-png', type: 'common.logo', sources: { logo: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, len: 3,
+    params: { logo: 'media/golden-logo.png', entrance: 'gather', name: 'Bakery', color: '#c8752a' }, at: [0.3, 0.6] },
   // the pictures as a 3D wall (glide, then the push into the focus tile) and as a turning ball; a tall and a square picture
   { name: 'wall-wall', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { cols: 9, rows: 5, push: 0.4, count: 696, countLabel: 'clips.' }, len: 6, at: [0.3, 2.5, 5.9], wide: true },
   // the wall in 9:16: covering the frame top to bottom while gliding, the pushed-in tile across the width at the end

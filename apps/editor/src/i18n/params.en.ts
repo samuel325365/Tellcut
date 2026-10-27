@@ -1478,6 +1478,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.wall.color": {"name":"Number colour"},
   "common.logo.logo": {"name":"Logo file","hint":"A path in the project, e.g. media/brand/logo.svg; empty: the name only"},
   "common.logo.mode": {"name":"How","hint":"auto and extrude are the same: an SVG that can be extruded is extruded, anything else becomes a plate; plate always makes a plate"},
+  "common.logo.entrance": {"name":"Entrance","hint":"land: the logo turns in from the side and lands with a bounce; gather: the logo as points of light that spiral in from all around and gather into it. Both land at hit and are the same after it; with no logo, always land"},
   "common.logo.name": {"name":"Name","hint":"The wordmark"},
   "common.logo.tagline": {"name":"Tagline"},
   "common.logo.url": {"name":"Web address","hint":"Shown as written"},
