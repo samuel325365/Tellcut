@@ -98,8 +98,8 @@ export function formatTotals(t: Totals): string {
     row('新輸入', t.input), row('快取寫入', t.cacheWrite), row('快取讀取', t.cacheRead), row('輸出', t.output), row('合計', total),
     ...(t.cacheWrite1h !== undefined ? [`快取寫入裡 1 小時快取 ${t.cacheWrite1h.toLocaleString('en-US')}、5 分鐘快取 ${(t.cacheWrite - t.cacheWrite1h).toLocaleString('en-US')}`] : []),
     ...(t.rewrites !== undefined ? [`整段重寫（快取過期後整段對話重新寫入）${t.rewrites} 次`] : []),
-    ...(t.priced && t.cost !== undefined ? [`Claude API 價格 ≈ US$${t.cost.toFixed(2)}（${t.priced} 則有價錢紀錄）`] : []),
-    ...(t.usd !== undefined && t.measured ? [`照牌價估計 ≈ US$${t.usd.toFixed(2)}${unpricedNote(t)}`] : [])].join('\n');
+    ...(t.priced && t.cost !== undefined ? [`改用 Claude API 約 US$${t.cost.toFixed(2)}（${t.priced} 則有 API 換算紀錄；訂閱方案不另外收費）`] : []),
+    ...(t.usd !== undefined && t.measured ? [`照 Claude API 牌價估計約 US$${t.usd.toFixed(2)}${unpricedNote(t)}`] : [])].join('\n');
 }
 
 /** a session file and the subagents it ran: [name, totals] per file, the session itself first */
@@ -113,7 +113,7 @@ export function sessionAndSubagents(file: string): Array<[string, Totals]> {
 
 export function formatLine(name: string, t: Totals): string {
   const total = t.input + t.cacheWrite + t.cacheRead + t.output;
-  return `${name}：${(total / 1e6).toFixed(1)} M token、整段重寫 ${t.rewrites ?? 0} 次${t.usd !== undefined ? `、≈ US$${t.usd.toFixed(2)}` : ''}${unpricedNote(t)}`;
+  return `${name}：${(total / 1e6).toFixed(1)} M token、整段重寫 ${t.rewrites ?? 0} 次${t.usd !== undefined ? `、改用 Claude API 約 US$${t.usd.toFixed(2)}` : ''}${unpricedNote(t)}`;
 }
 
 /** the --subagents report: one line per conversation, then the sum (replies of models outside PRICES are left out and counted) */
@@ -121,7 +121,7 @@ export function formatSubagents(all: Array<[string, Totals]>): string {
   const usd = all.reduce((s, [, t]) => s + (t.usd ?? 0), 0), unpriced = all.reduce((s, [, t]) => s + (t.unpriced ?? 0), 0);
   const models = [...new Set(all.flatMap(([, t]) => t.unknownModels ?? []))];
   return [...all.map(([k, t]) => formatLine(k, t)),
-    `合計 ${all.length} 個對話，≈ US$${usd.toFixed(2)}${unpriced ? `（${unpriced} 則用了價格表以外的模型 ${models.join('、')}，沒算進去）` : ''}`].join('\n');
+    `合計 ${all.length} 個對話，改用 Claude API 約 US$${usd.toFixed(2)}${unpriced ? `（${unpriced} 則用了價格表以外的模型 ${models.join('、')}，沒算進去）` : ''}`].join('\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

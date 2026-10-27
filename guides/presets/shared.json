@@ -27,16 +27,16 @@
           },
           "prompt": "No library: use no shared block (common.*), no c.recipe(...), no built-in or library music style and nothing from score-library/; write every effect, music style and synthesised sound as this project's own (fx modules, a project score style, c.sfxFile). Avoid the Cut methods that quietly add common blocks, or pass your own type: c.panel, polaroids, censorSpeech's defaults, c.voiceCaptions (pass { type: 'fx.xxx' }), c.sfx('common.*'). A picked style that names shared blocks still sets the look: rebuild that look as this project's own fx. Outside assets are allowed. When done, project.json must contain no \"common.\".",
           "hint": {
-            "zh": "完全不用積木庫，每個特效、配樂和音效都為這支片從頭寫。整支片會更有自己的樣子，但製作時間比較長、費用比較高（常常多好幾美元），第一次寫的效果也可能比較粗糙。勾選的風格也會照樣子重寫。",
-            "en": "Nothing from the library: every effect, piece of music and sound is written from scratch for this film. More its own, but it takes longer and costs more (often several US dollars more), and first attempts can be rougher. Picked styles are rebuilt the same way.",
-            "ja": "ライブラリを一切使わず、エフェクト・音楽・効果音をすべてこの動画のために一から作ります。より個性的になりますが、時間と費用がかかり（数ドル多くかかることも）、初回は仕上がりが粗くなることがあります。選んだスタイルも同じように作り直します。"
+            "zh": "完全不用積木庫，每個特效、配樂和音效都為這支片從頭寫。整支片會更有自己的樣子，但製作時間比較長、用掉的 token 多很多（訂閱方案的用量額度消耗得比較快），第一次寫的效果也可能比較粗糙。勾選的風格也會照樣子重寫。",
+            "en": "Nothing from the library: every effect, piece of music and sound is written from scratch for this film. More its own, but it takes longer and uses many more tokens (a subscription's usage limits run down faster), and first attempts can be rougher. Picked styles are rebuilt the same way.",
+            "ja": "ライブラリを一切使わず、エフェクト・音楽・効果音をすべてこの動画のために一から作ります。より個性的になりますが、時間がかかり、トークンをかなり多く使います（サブスクリプションの使用量上限に早く達します）。初回は仕上がりが粗くなることもあります。選んだスタイルも同じように作り直します。"
           }
         }
       ],
       "autoHint": {
-        "zh": "建議選這個。積木庫（Tellcut 現成的特效、配樂風格和音效）有合適的就直接用，沒有合適的才為這支片新寫。比較快、比較省錢，品質也比較穩。",
-        "en": "Recommended. Uses the library (Tellcut's ready-made effects, music styles and sounds) where something fits, and writes new ones only where nothing does. Faster, cheaper and more reliable.",
-        "ja": "おすすめ。ライブラリ（Tellcut の既製エフェクト・音楽スタイル・効果音）に合うものがあればそのまま使い、なければこの動画のために新しく作ります。速く、安く、仕上がりも安定します。"
+        "zh": "建議選這個。積木庫（Tellcut 現成的特效、配樂風格和音效）有合適的就直接用，沒有合適的才為這支片新寫。比較快、用的 token 比較少，品質也比較穩。",
+        "en": "Recommended. Uses the library (Tellcut's ready-made effects, music styles and sounds) where something fits, and writes new ones only where nothing does. Faster, uses fewer tokens and is more reliable.",
+        "ja": "おすすめ。ライブラリ（Tellcut の既製エフェクト・音楽スタイル・効果音）に合うものがあればそのまま使い、なければこの動画のために新しく作ります。速く、トークンも少なく、仕上がりも安定します。"
       }
     }
   ]

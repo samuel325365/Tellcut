@@ -35,16 +35,16 @@ const num = (n: number) => n.toLocaleString('en-US');
 /** tokens in the language's own unit: 萬 / 万 (10,000) for zh and ja, k (1,000) for en */
 export const tokensText = (n: number, lang: Lang = getLang()) => n < 10000 ? t('chat.tokens', { n: num(n) }, lang)
   : t('chat.tokensBig', { n: (n / (lang === 'en' ? 1000 : 10000)).toFixed(1) }, lang);
-/** what Claude Code says the reply would cost at Claude API prices */
-export const costText = (usd: number) => `≈ US$${usd < 0.01 ? usd.toFixed(3) : usd.toFixed(2)}`;
+/** what Claude Code says the tokens would cost at Claude API prices — never what was charged: on a subscription nothing is */
+export const costText = (usd: number) => t('chat.apiPrice', { usd: `US$${usd < 0.01 ? usd.toFixed(3) : usd.toFixed(2)}` });
 const total = (u: Usage) => u.input + u.cacheWrite + u.cacheRead + u.output;
+/** one reply: its tokens; the API price only in the tooltip (the film's estimate is the thread total) */
 function UsageLine({ u }: { u: Usage }) {
   const tip = t('chat.usageTip', { input: num(u.input), cacheWrite: num(u.cacheWrite), cacheRead: num(u.cacheRead), output: num(u.output) });
-  const full = u.cost !== undefined ? `${tip}\n${t('chat.priceNote')}` : tip;
-  return <div class="usage" data-usage data-tip={full} aria-label={full}>
-    {tokensText(total(u))}{u.cost !== undefined ? ` · ${costText(u.cost)}` : ''}</div>;
+  const full = u.cost !== undefined ? `${tip}\n${costText(u.cost)}\n${t('chat.priceNote')}` : tip;
+  return <div class="usage" data-usage data-tip={full} aria-label={full}>{tokensText(total(u))}</div>;
 }
-/** the whole thread so far: tokens and, for the replies that recorded it, the price */
+/** the whole thread so far: tokens and, for the replies that recorded it, what they would cost at Claude API prices */
 function ThreadTotal({ messages }: { messages: ChatMessage[] }) {
   const us = messages.map((m) => m.usage).filter((u): u is Usage => !!u);
   if (us.length < 2) return null;

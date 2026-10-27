@@ -73,7 +73,7 @@ test('a reply shows the tokens it used (total, details on hover); a reply withou
   expect(u[0].getAttribute('data-tip')).toBe('新輸入 30、快取寫入 2,400、快取讀取 9,570、輸出 300');
 });
 
-test('a reply shows its Claude API price when Claude Code reported one; the thread shows its total', async () => {
+test('a reply shows only its tokens (the Claude API price is in its tooltip); the thread total says what it would cost at API prices', async () => {
   const root = document.createElement('div');
   const s = session({ messages: [
     { role: 'user', text: '剪', time: 't' },
@@ -83,9 +83,11 @@ test('a reply shows its Claude API price when Claude Code reported one; the thre
     { role: 'assistant', text: '好', time: 't', status: 'done', usage: { input: 0, cacheWrite: 0, cacheRead: 0, output: 100, cost: 0.004 } },
   ] });
   await act(() => render(<ChatPanel session={s} />, root));
-  const u = [...root.querySelectorAll<HTMLElement>('[data-usage]:not([data-thread-total])')].map((e) => e.textContent);
-  expect(u).toEqual(['≈ 1.0 萬 token', '≈ 1.2 萬 token · ≈ US$0.46', '≈ 100 token · ≈ US$0.004']);
-  expect(root.querySelector('[data-thread-total]')!.textContent).toBe('這串對話合計 ≈ 2.2 萬 token · ≈ US$0.46（1 則較早的回覆沒有價錢紀錄）');
+  const u = [...root.querySelectorAll<HTMLElement>('[data-usage]:not([data-thread-total])')];
+  expect(u.map((e) => e.textContent)).toEqual(['≈ 1.0 萬 token', '≈ 1.2 萬 token', '≈ 100 token']);
+  expect(u[1].getAttribute('data-tip')).toBe('新輸入 30、快取寫入 2,400、快取讀取 9,570、輸出 300\n改用 Claude API 約 US$0.46\n用訂閱方案（Pro／Max）時不另外收費，只算進用量額度；這個金額是同樣用量改走 Claude API 計價時大約的價錢');
+  expect(u[0].getAttribute('data-tip')).not.toContain('US$');
+  expect(root.querySelector('[data-thread-total]')!.textContent).toBe('這串對話合計 ≈ 2.2 萬 token · 改用 Claude API 約 US$0.46（1 則較早的回覆沒有 API 換算紀錄）');
 });
 
 const TRAVEL: any = { id: 'travel', order: 1, mine: false, color: '#2f8cff', name: { zh: '旅行精華', en: 'Travel Highlights' }, summary: { zh: 's' },

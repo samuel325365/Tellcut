@@ -249,13 +249,18 @@ Or set environment variables instead, which win over the file: `PIXABAY_API_KEY`
 
 ---
 
-## What it costs
+## Usage and cost
 
-Tellcut is free. The agent's work counts toward your Claude account's usage. Under every reply you'll see how many tokens that turn used and roughly what it would cost at Claude API prices.
+Tellcut is free. The agent runs on your own Claude login, so what it uses depends on how you sign in:
 
-| For example | At Claude API prices |
-|---|---|
-| A 30–40 second short | about US$1 |
+- **A subscription (Pro / Max):** nothing extra is charged; the work counts toward your plan's usage limits.
+- **An API key:** you pay per token at Claude API prices.
+
+Under every reply you'll see how many tokens it used; the conversation total also shows roughly what that would cost at Claude API prices.
+
+| For example (made in the page chat) | Tokens | At Claude API prices |
+|---|---|---|
+| A 1-minute travel short | about 2.5–5.5 million | about US$2–3 |
 
 ## Limitations
 
