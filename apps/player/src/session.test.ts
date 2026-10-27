@@ -235,6 +235,26 @@ function setup3d() {
 }
 beforeEach(() => { built = []; late = []; });
 
+test('crop mode asked for while a 3D project is still loading three waits for the new stage instead of throwing', async () => {
+  let open!: () => void;
+  const gate = new Promise<void>((r) => (open = r)), errors: string[] = [];
+  const resolver: any = { video: () => ({ url: 'http://h/a.jpg', time: 0 }), rate: () => 1, still: () => '', image: () => 'http://h/a.jpg' };
+  const host = document.createElement('div'), stageEl = document.createElement('div');
+  host.appendChild(stageEl);
+  const s = new PreviewSession({ stageEl, resolver, projectUrl: 'http://h/p.json',
+    onTime() {}, onEnded() {}, onError: (_id, m) => errors.push(m), raf: () => {}, makeAudioContext: () => fakeCtx(), loadThree: async () => { await gate; return KIT; }, plugins: extra });
+  const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+  const p = { ...with3d, sources: { s: { kind: 'image', path: 'a.jpg', duration: 20, width: 320, height: 180 } },
+    tracks: [{ id: 'v', kind: 'video', items: [{ id: 'v1', source: 's', in: 0, speed: 1, start: 0, end: 4, frame: [0, 0, 1, 1], crop, interp: 'none' }] }, ...with3d.tracks] };
+  const loading = s.load(p);
+  await new Promise((r) => setTimeout(r, 0));
+  expect(() => s.cropMode({ itemId: 'v1', which: 'from' })).not.toThrow();
+  open();
+  await loading;
+  expect(errors).toEqual([]);
+  expect(stageEl.style.visibility).toBe('hidden');   // the crop view is up, over the new stage
+});
+
 test('a project with no 3D item never loads three', async () => {
   const { s, loadThree } = setup3d();
   await s.load(project);

@@ -111,8 +111,9 @@ export class MediaPool implements MediaApi {
 
   private seek(v: HTMLVideoElement, target: number): Promise<boolean> {
     return new Promise((res) => {
-      const timer = setTimeout(() => res(false), this.opts.seekTimeout ?? 3000);
-      v.addEventListener('seeked', () => { clearTimeout(timer); res(true); }, { once: true });
+      const done = () => { clearTimeout(timer); res(true); };
+      const timer = setTimeout(() => { v.removeEventListener('seeked', done); res(false); }, this.opts.seekTimeout ?? 3000);
+      v.addEventListener('seeked', done, { once: true });
       v.currentTime = target;
     });
   }
@@ -125,11 +126,14 @@ export class MediaPool implements MediaApi {
     if (!busy.length) return Promise.resolve();
     return new Promise<void>((res) => {
       let left = busy.length;
-      const timer = setTimeout(() => res(), timeout);
+      const off: Array<() => void> = [];
+      const timer = setTimeout(() => { for (const f of off) f(); res(); }, timeout);
       const one = () => { if (--left <= 0) { clearTimeout(timer); res(); } };
       for (const v of busy) {
-        const done = () => { v.removeEventListener('seeked', done); v.removeEventListener('loadeddata', done); one(); };
+        const stop = () => { v.removeEventListener('seeked', done); v.removeEventListener('loadeddata', done); };
+        const done = () => { stop(); one(); };
         v.addEventListener('seeked', done); v.addEventListener('loadeddata', done);
+        off.push(stop);
       }
     });
   }

@@ -50,6 +50,9 @@ export class PreviewSession {
   private crop: CropView | null = null;
   private frames = 0;
   private cropSel: CropSel | null = null;
+  /** load() is between the new project and its stage (fx, three.js load): a crop asked for then waits for the stage */
+  private loading = false;
+  private cropLater = false;
   private raf: (f: () => void) => void;
   private audioOffline = (url: string, e: Error) => this.d.onError(undefined, `Audio not available (${e.message}): ${url}`);
   constructor(private d: SessionDeps) {
@@ -60,6 +63,15 @@ export class PreviewSession {
   }
 
   async load(raw: unknown): Promise<number> {
+    this.loading = true;
+    try { await this.build(raw); } finally { this.loading = false; }
+    this.t = 0;
+    await this.show();
+    if (this.cropLater) { this.cropLater = false; if (this.cropSel) this.showCrop(); }
+    return this.project.meta.duration;
+  }
+
+  private async build(raw: unknown) {
     this.pause();
     const p = parseProject(raw);
     const fx = await importFx(this.d.projectUrl, p.meta.fx, Date.now());
@@ -79,9 +91,6 @@ export class PreviewSession {
     this.audio = this.makeAudio(p);
     await Promise.all([this.pool.preload(this.stage.mediaRefs()), this.stage.ready(), this.audio.load(undefined, this.audioOffline)]);
     void this.audio.prepare().catch(() => {});   // decode now, not on the first play
-    this.t = 0;
-    await this.show();
-    return p.meta.duration;
   }
 
   async patch(raw: unknown) {
@@ -178,6 +187,7 @@ export class PreviewSession {
   }
 
   private showCrop() {
+    if (this.loading) { this.cropLater = true; return; }
     const sel = this.cropSel!, p = this.project;
     const found = p.tracks.flatMap((t) => (t.kind === 'video' ? (t.items as VideoItem[]) : [])).find((i) => i.id === sel.itemId);
     if (!found) { this.cropMode(null); this.d.onError(sel.itemId, 'Crop mode: the clip no longer exists'); return; }
@@ -220,7 +230,7 @@ export class PreviewSession {
 
   private makeAudio(p: Project) {
     const a = new AudioEngine(planAudio(p, this.stage.times, this.d.resolver, this.d.projectUrl), this.registry.sfx, p.meta.mix, p.meta.duration, this.d.makeAudioContext);
-    a.onDecodeError = (k, e) => this.d.onError(undefined, `音檔無法解碼，播放時略過（${k}）：${e.message}`);
+    a.onDecodeError = (k, e) => this.d.onError(undefined, `Audio could not be decoded, skipped when playing (${k}): ${e.message}`);
     return a;
   }
 }

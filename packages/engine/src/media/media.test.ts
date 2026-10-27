@@ -179,6 +179,19 @@ test('settled waits for a preview video still seeking, and gives up after the ti
   expect(Date.now() - t0).toBeLessThan(500);
 });
 
+test('a seek or a settle that times out takes its listeners off the video (they piled up until the event came)', async () => {
+  const resolver: any = { video: () => ({ url: 'http://h/a.mp4', time: 1 }), rate: () => 1 };
+  const pool = new MediaPool(resolver, { render: false, fps: 30, seekTimeout: 10 });
+  const v = pool.video({ source: 's', in: 0, out: 5, speed: 1, interp: 'none' }, document.createElement('div'), 1);
+  Object.defineProperty(v, 'seeking', { get: () => true });
+  const live = new Map<string, Set<unknown>>();
+  const add = v.addEventListener.bind(v), remove = v.removeEventListener.bind(v);
+  v.addEventListener = ((type: string, f: any, o?: any) => { (live.get(type) ?? live.set(type, new Set()).get(type)!).add(f); add(type, f, o); }) as any;
+  v.removeEventListener = ((type: string, f: any, o?: any) => { live.get(type)?.delete(f); remove(type, f, o); }) as any;
+  for (let i = 0; i < 3; i++) { await pool.settled(10); await (pool as any).seek(v, 2); }
+  expect([live.get('seeked')?.size ?? 0, live.get('loadeddata')?.size ?? 0]).toEqual([0, 0]);
+});
+
 test('preview preload never reloads an element that is only seeking (a reload resets it to 0 s); an errored one is tried again', async () => {
   const resolver: any = { video: () => ({ url: 'http://h/a.mp4', time: 1 }), rate: () => 1 };
   const pool = new MediaPool(resolver, { render: false, fps: 30, preloadTimeout: 2000 });
