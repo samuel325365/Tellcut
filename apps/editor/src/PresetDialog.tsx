@@ -52,8 +52,9 @@ export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose }
       <div class="preset-field" data-field={f.id}>
         <span class="preset-field-name" data-tip={f.hint ? pickText(f.hint, lang) : undefined}>{pickText(f.name, lang) ?? f.id}</span>
         {asButtons(f, lang)
-          ? <span class="preset-seg">{[{ id: AUTO, label: t('preset.auto') }, ...f.options.map((o) => ({ id: o.id, label: name(o) }))].map((o) => (
-            <button type="button" data-option={o.id} class={o.id === AUTO ? 'auto' : undefined} aria-pressed={v === o.id ? 'true' : 'false'} onClick={() => set(f.id, o.id)}>{o.label}</button>))}</span>
+          ? <span class="preset-seg">{[{ id: AUTO, label: t('preset.auto'), hint: f.autoHint }, ...f.options.map((o) => ({ id: o.id, label: name(o), hint: o.hint }))].map((o) => (
+            <button type="button" data-option={o.id} class={o.id === AUTO ? 'auto' : undefined} aria-pressed={v === o.id ? 'true' : 'false'} data-tip={o.hint ? pickText(o.hint, lang) : undefined}
+              onClick={() => set(f.id, o.id)}>{o.label}</button>))}</span>
           : <select data-field-select class={v === AUTO ? 'auto' : undefined} value={v} onChange={(e) => set(f.id, (e.target as HTMLSelectElement).value)}>
             <option value={AUTO}>{t('preset.auto')}</option>
             {f.options.map((o) => <option value={o.id}>{name(o)}</option>)}

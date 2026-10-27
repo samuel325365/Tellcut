@@ -100,6 +100,8 @@ test('every preset starts its form with Making › Effects: Auto (the library wh
     const f = p.fields[0];
     expect([f?.id, f?.group?.zh, f?.options.map((o) => o.id)], p.id).toEqual(['library', '製作', ['none']]);
     expect(p.fields.filter((x) => x.id === 'library'), p.id).toHaveLength(1);
+    // both choices explain themselves on hover, in all three languages
+    for (const h of [f.autoHint, f.options[0].hint]) expect(Object.keys(h ?? {}).sort(), p.id).toEqual(['en', 'ja', 'zh']);
   }
   const none = presets()[0].fields[0].options[0].prompt;
   expect(none).toMatch(/common\./);                                              // no shared block: says what that means

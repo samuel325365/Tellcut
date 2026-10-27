@@ -17,8 +17,8 @@ const text = z.object({ zh: z.string(), en: z.string(), ja: z.string() }).partia
 // an option id may be a ratio like 9:16; `auto` is every field's own default (not chosen), never written in the file
 const OPTION = /^[a-z0-9][a-z0-9:-]{0,40}$/;
 const field = z.object({
-  id: z.string().regex(ID), name: text, hint: text.optional(), group: text.optional(), seconds: z.boolean().optional(),
-  options: z.array(z.object({ id: z.string().regex(OPTION).refine((x) => x !== 'auto', 'auto is the default, not an option'), name: text, prompt: z.string() })).min(1)
+  id: z.string().regex(ID), name: text, hint: text.optional(), autoHint: text.optional(), group: text.optional(), seconds: z.boolean().optional(),
+  options: z.array(z.object({ id: z.string().regex(OPTION).refine((x) => x !== 'auto', 'auto is the default, not an option'), name: text, hint: text.optional(), prompt: z.string() })).min(1)
     .refine((o) => new Set(o.map((x) => x.id)).size === o.length, 'option ids repeat'),
 });
 const list = z.object({ zh: z.array(z.string()), en: z.array(z.string()), ja: z.array(z.string()) }).partial();

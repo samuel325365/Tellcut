@@ -80,7 +80,7 @@ const CUSTOM: any = { id: 'custom', order: 0, mine: false, color: '#888', name: 
     { id: 'framing', name: { zh: '構圖' }, group: { zh: '畫面' }, hint: { zh: '主要畫面怎麼擺' },
       options: [opt('full', '滿版'), opt('inset', '置中留邊'), opt('split', '上下分割'), opt('side', '左右並排'), opt('pip', '畫中畫')] },
     { id: 'length', name: { zh: '長度' }, group: { zh: '畫面' }, seconds: true, options: [opt('15', '15 秒'), opt('30', '30 秒')] },
-    { id: 'pace', name: { zh: '節奏' }, group: { zh: '聲音' }, options: [opt('slow', '慢'), opt('fast', '快')] },
+    { id: 'pace', name: { zh: '節奏' }, group: { zh: '聲音' }, autoHint: { zh: '看素材決定' }, options: [{ ...opt('slow', '慢'), hint: { zh: '鏡頭久一點' } }, opt('fast', '快')] },
   ],
   examples: [{ zh: '復古底片感' }, { zh: '黑底白字' }] };
 
@@ -109,6 +109,8 @@ test('the form shows groups, short fields as buttons, long ones as a select, all
   expect([...select('length').options].map((o) => o.value)).toEqual(['auto', '15', '30', 'own']);
   expect(row('framing').querySelector('[data-tip]')!.getAttribute('data-tip')).toBe('主要畫面怎麼擺');
   expect(d.querySelector('[data-style]')).toBeNull();
+  // an option button (and Auto) may have its own tooltip
+  expect([...row('pace').querySelectorAll('[data-option]')].map((b) => b.getAttribute('data-tip'))).toEqual(['看素材決定', '鏡頭久一點', null]);
 });
 
 test('confirm hands back only what was changed, and the picked examples', async () => {

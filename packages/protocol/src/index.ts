@@ -40,10 +40,11 @@ export type L10n<T = string> = Partial<Record<Lang, T>>;
 /** the text in `lang`, else English, else Chinese */
 export function pickText<T>(x: L10n<T> | undefined, lang: Lang): T | undefined { return x?.[lang] ?? x?.en ?? x?.zh; }
 export interface PresetStyleInfo { id: string; name: L10n; desc: L10n; custom?: boolean }
-export interface PresetOptionInfo { id: string; name: L10n }
+/** `hint`: the tooltip of the option */
+export interface PresetOptionInfo { id: string; name: L10n; hint?: L10n }
 /** a field of a preset's form (spec 2026-10-24-custom-preset §3): it starts on auto (no option); `seconds`: the user may type a length
- *  of their own; `group`: the heading it sits under (fields next to each other with the same one share it) */
-export interface PresetFieldInfo { id: string; name: L10n; hint?: L10n; group?: L10n; seconds?: boolean; options: PresetOptionInfo[] }
+ *  of their own; `group`: the heading it sits under (fields next to each other with the same one share it); `autoHint`: the tooltip of its Auto */
+export interface PresetFieldInfo { id: string; name: L10n; hint?: L10n; autoHint?: L10n; group?: L10n; seconds?: boolean; options: PresetOptionInfo[] }
 /** what the home page shows of a preset (its prompts stay on the server); `sources`: the outside sources (API menu ids) the menu
  *  ticks when the preset is picked; `length` (seconds, shortest and longest) and `ratios` (`9:16`…): what `check` compares the film with */
 export interface PresetInfo {

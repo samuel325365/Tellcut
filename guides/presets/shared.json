@@ -1,10 +1,43 @@
 {
   "fields": [
-    { "id": "library", "group": { "zh": "製作", "en": "Making", "ja": "制作" },
-      "name": { "zh": "特效", "en": "Effects", "ja": "エフェクト" },
-      "hint": { "zh": "自動：積木庫有合適的就用，沒有就為這支片新寫。全部現做：不用積木庫裡現成的特效、配樂風格和音效，每一樣都為這支片新寫，比較獨特，但比較花時間和費用。", "en": "Auto: the library's ready-made pieces where they fit, new ones written for this film where none does. All new: none of the library's effects, music styles or sounds; everything is written for this film. More its own, but takes longer and costs more.", "ja": "自動：ブロックライブラリに合うものがあれば使い、なければこの動画のために新しく作ります。すべて新規作成：ライブラリの既製エフェクト・音楽スタイル・効果音を使わず、すべて新しく作ります。個性は出ますが、時間と費用がかかります。" },
+    {
+      "id": "library",
+      "group": {
+        "zh": "製作",
+        "en": "Making",
+        "ja": "制作"
+      },
+      "name": {
+        "zh": "特效",
+        "en": "Effects",
+        "ja": "エフェクト"
+      },
+      "hint": {
+        "zh": "片裡的特效、配樂風格和音效從哪裡來",
+        "en": "Where the film's effects, music style and sounds come from",
+        "ja": "動画のエフェクト・音楽スタイル・効果音をどこから用意するか"
+      },
       "options": [
-        { "id": "none", "name": { "zh": "全部現做", "en": "All new", "ja": "すべて新規" }, "prompt": "No library: use no shared block (common.*), no c.recipe(...), no built-in or library music style and nothing from score-library/; write every effect, music style and synthesised sound as this project's own (fx modules, a project score style, c.sfxFile). Avoid the Cut methods that quietly add common blocks, or pass your own type: c.panel, polaroids, censorSpeech's defaults, c.voiceCaptions (pass { type: 'fx.xxx' }), c.sfx('common.*'). A picked style that names shared blocks still sets the look: rebuild that look as this project's own fx. Outside assets are allowed. When done, project.json must contain no \"common.\"." }
-      ] }
+        {
+          "id": "none",
+          "name": {
+            "zh": "全部現做",
+            "en": "All new",
+            "ja": "すべて新規"
+          },
+          "prompt": "No library: use no shared block (common.*), no c.recipe(...), no built-in or library music style and nothing from score-library/; write every effect, music style and synthesised sound as this project's own (fx modules, a project score style, c.sfxFile). Avoid the Cut methods that quietly add common blocks, or pass your own type: c.panel, polaroids, censorSpeech's defaults, c.voiceCaptions (pass { type: 'fx.xxx' }), c.sfx('common.*'). A picked style that names shared blocks still sets the look: rebuild that look as this project's own fx. Outside assets are allowed. When done, project.json must contain no \"common.\".",
+          "hint": {
+            "zh": "完全不用積木庫，每個特效、配樂和音效都為這支片從頭寫。整支片會更有自己的樣子，但製作時間比較長、費用比較高（常常多好幾美元），第一次寫的效果也可能比較粗糙。勾選的風格也會照樣子重寫。",
+            "en": "Nothing from the library: every effect, piece of music and sound is written from scratch for this film. More its own, but it takes longer and costs more (often several US dollars more), and first attempts can be rougher. Picked styles are rebuilt the same way.",
+            "ja": "ライブラリを一切使わず、エフェクト・音楽・効果音をすべてこの動画のために一から作ります。より個性的になりますが、時間と費用がかかり（数ドル多くかかることも）、初回は仕上がりが粗くなることがあります。選んだスタイルも同じように作り直します。"
+          }
+        }
+      ],
+      "autoHint": {
+        "zh": "建議選這個。積木庫（Tellcut 現成的特效、配樂風格和音效）有合適的就直接用，沒有合適的才為這支片新寫。比較快、比較省錢，品質也比較穩。",
+        "en": "Recommended. Uses the library (Tellcut's ready-made effects, music styles and sounds) where something fits, and writes new ones only where nothing does. Faster, cheaper and more reliable.",
+        "ja": "おすすめ。ライブラリ（Tellcut の既製エフェクト・音楽スタイル・効果音）に合うものがあればそのまま使い、なければこの動画のために新しく作ります。速く、安く、仕上がりも安定します。"
+      }
+    }
   ]
 }

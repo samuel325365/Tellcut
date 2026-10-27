@@ -665,7 +665,9 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .chat .api-btn .n { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--h-accent); color: #fff; font-size: 11px; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums; }
 .api-pop { position: absolute; z-index: 30; left: 0; display: flex; flex-direction: column; background: linear-gradient(var(--h-raise), var(--h-raise)), var(--h-bg); color: var(--h-text); border: 1px solid var(--h-line-strong);
   border-radius: 14px; box-shadow: 0 16px 40px var(--h-shadow-focus); font-size: 13.5px; overflow: hidden; text-align: left; }
+/* height: max-content — with only `bottom` set, Chrome sized the box to its min-content (an 88 px sliver in the editor); the max-height caps it */
 .api-pop.down { top: calc(100% + 8px); } .api-pop.up { bottom: calc(100% + 8px); }
+.api-pop { height: max-content; } .api-pop .pop-body { min-height: 0; }
 .api-pop.home { right: 0; max-height: min(360px, 55vh, var(--room, 100vh)); }
 .api-pop.editor { width: 340px; max-height: min(620px, 70vh, var(--room, 100vh)); }
 .api-pop .pop-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; border-bottom: 1px solid var(--h-line); }
