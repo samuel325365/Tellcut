@@ -278,6 +278,19 @@ test("a project another tab's home chat made meanwhile is not taken: only the on
   } finally { await app.close(); delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
+test('two tabs racing for one id: the reply that lost moves to the project it did make, not the one the other already moved into', async () => {
+  // (the brand acceptance films 2 and 3: both tried maitian-bakery, one made maitian-bakery-2, and its conversation stayed on the home page)
+  const root = makeProjects();
+  process.env.FAKE_CLAUDE_PROJECTS = root;
+  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  try {
+    const ev = await lines(await fetch(`${base}/api/chat/home-tab3cccc/messages`, post({ text: '搶先 bakery 建專案 bakery-2' })));
+    expect(ev.at(-1)).toMatchObject({ moved: 'bakery-2' });
+    expect((await (await fetch(`${base}/api/chat/bakery`)).json()).thread.messages[0].text).toBe('別人的');   // the other tab's, untouched
+    expect((await (await fetch(`${base}/api/chat/bakery-2`)).json()).thread.messages.length).toBeGreaterThan(1);
+  } finally { await app.close(); delete process.env.FAKE_CLAUDE_PROJECTS; }
+});
+
 test('the projects a turn touched: npm run new, and paths under projects/', () => {
   const t = (detail: string) => ({ kind: 'run' as const, label: '', detail });
   expect([...touchedProjects([t('npm run new -- r3-uk "D:\\旅遊" --size 1080x1920'), t('C:\\s\\tellcut\\projects\\r3-uk\\cut.ts'), t('npm run cut -- other'), t('projects/fish/fx/a.js')])].sort()).toEqual(['fish', 'r3-uk']);

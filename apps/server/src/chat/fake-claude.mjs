@@ -1,7 +1,7 @@
 // A stand-in for headless Claude Code in the chat tests: the same stream-json shapes as `claude -p` (plan 18 "實測").
 // stdin decides the script: 「慢」 streams slowly (to stop it), 「壞」 fails on stderr, anything else answers 「收到：<last line>」.
 // Each run appends { argv, stdin } to $FAKE_CLAUDE_LOG.
-import { appendFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 let stdin = '';
@@ -27,12 +27,21 @@ process.stdin.on('end', async () => {
     mkdirSync(join(process.env.FAKE_CLAUDE_PROJECTS, id), { recursive: true });
     copyFileSync(join(process.env.FAKE_CLAUDE_PROJECTS, 'demo', 'project.json'), join(process.env.FAKE_CLAUDE_PROJECTS, id, 'project.json'));
   };
-  const made = /建專案 ([\w -]+)/.exec(stdin), elsewhere = /別處建 ([\w-]+)/.exec(stdin);
+  // 「搶先 x」: another tab's home chat made x meanwhile and has already moved into it (x has its conversation); this run tried the
+  // same id first (its tool names x), and x is the project touched last
+  const made = /建專案 ([\w -]+)/.exec(stdin), elsewhere = /別處建 ([\w-]+)/.exec(stdin), taken = /搶先 ([\w-]+)/.exec(stdin);
   if (elsewhere && process.env.FAKE_CLAUDE_PROJECTS) make(elsewhere[1]);
+  if (taken && process.env.FAKE_CLAUDE_PROJECTS) {
+    make(taken[1]);
+    mkdirSync(join(process.env.FAKE_CLAUDE_PROJECTS, taken[1], '.history', 'chat'), { recursive: true });
+    writeFileSync(join(process.env.FAKE_CLAUDE_PROJECTS, taken[1], '.history', 'chat', 'chat.json'), JSON.stringify({ sessionId: '22222222-2222-4222-8222-222222222222', started: true, messages: [{ role: 'user', text: '別人的', time: 't' }] }));
+    out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `toolu_try_${taken[1]}`, name: 'Bash', input: { command: `npm run new -- ${taken[1]} D:/footage` } }] }, session_id: session });
+  }
   if (made && process.env.FAKE_CLAUDE_PROJECTS) for (const id of made[1].trim().split(/\s+/)) {
     make(id);
     out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `toolu_new_${id}`, name: 'Bash', input: { command: `npm run new -- ${id} D:/footage` } }] }, session_id: session });
   }
+  if (taken && process.env.FAKE_CLAUDE_PROJECTS) { const t = new Date(Date.now() + 60_000); utimesSync(join(process.env.FAKE_CLAUDE_PROJECTS, taken[1], 'project.json'), t, t); }
   // after the projects it makes: a slow turn that made one is still running (the delete refuses it)
   if (stdin.includes('慢')) {
     for (let i = 0; i < 30; i++) { delta(`字${i}`); await new Promise((r) => setTimeout(r, 100)); }

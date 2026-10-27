@@ -156,13 +156,14 @@ export class ChatRunner {
    * named in the note. This home conversation keeps only the note. The project's id, or null.
    */
   private handOver(thread: string, home: ChatThread, before: Set<string>, tools: ChatTool[]): string | null {
-    // only projects this turn made: another home chat (a second tab) may be making one at the same time
-    const mine = touchedProjects(tools), dir = this.o.projectsDir, made = [...projectIds(dir)].filter((id) => !before.has(id) && mine.has(id));
+    // only projects this turn made: another home chat (a second tab) may be making one at the same time. One that already has a
+    // conversation is that tab's, even when this turn's tools named it (both tried the same id and this one fell back to `<id>-2`)
+    const mine = touchedProjects(tools), dir = this.o.projectsDir;
+    const made = [...projectIds(dir)].filter((id) => !before.has(id) && mine.has(id) && !existsSync(chatFile(dir, id)));
     if (!made.length) return null;
     const touched = (id: string) => { try { return statSync(join(dir, id, 'project.json')).mtimeMs; } catch { return 0; } };
     const built = made.filter((id) => existsSync(join(dir, id, 'cut.ts')));
     const id = (built.length ? built : made).sort((a, b) => touched(b) - touched(a))[0], target = chatFile(dir, id);
-    if (existsSync(target)) return null;
     const name = (pid: string) => { try { return JSON.parse(readFileSync(join(dir, pid, 'project.json'), 'utf8')).meta?.name || pid; } catch { return pid; } };
     const others = made.filter((x) => x !== id);
     writeThread(target, home);
