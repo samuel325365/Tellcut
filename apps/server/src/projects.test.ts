@@ -108,6 +108,7 @@ test('the editor and the player pages run scripts only from this server and cann
       const r = await fetch(`${s.base}${page}`);
       expect(r.status).toBe(200);
       expect(r.headers.get('content-security-policy')).toMatch(/script-src 'self'.*frame-ancestors 'self'/);
+      expect(r.headers.get('content-security-policy')).not.toContain('unsafe-inline');   // no inline script runs, even one slipped in
     }
   } finally { await s.app.close(); }
 });

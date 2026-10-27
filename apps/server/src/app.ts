@@ -36,8 +36,8 @@ export interface AppOptions { projectsDir: string; playerDist?: string; editorDi
 // a page may change things only from this server's own address: the editor's Vite dev server proxies /api here keeping its
 // Host (127.0.0.1:5173), so its pages still match; a page on any other local port (another dev server, a notebook) does not
 const ownOrigin = (origin: string, host: string | undefined) => origin.toLowerCase() === `http://${(host ?? '').toLowerCase()}`;
-// the editor and the player: scripts only from here (the editor's one inline script stays), never inside another site's frame
-const PAGE_CSP = "script-src 'self' 'unsafe-inline'; frame-ancestors 'self'";
+// the editor and the player: script files only from here (no inline script), never inside another site's frame
+const PAGE_CSP = "script-src 'self'; frame-ancestors 'self'";
 
 export function createApp(o: AppOptions) {
   const store = new ProjectStore(o.projectsDir);
