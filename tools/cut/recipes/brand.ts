@@ -34,6 +34,22 @@ type X = z.output<typeof Content>;
 type S = z.output<typeof Shot>;
 const hookShots = (x: X): S[] => x.hook.flatMap((h) => h.shots ?? [h.shot!]);
 
+/** a proof line over about 24 columns (a CJK character counts two) breaks in two where it is nearest its middle: at a space, or
+ *  after a Chinese or Japanese comma or full stop; the spike set "Your footage stays / on your computer." that way, left of the ball */
+export function wrapProof(text: string): string {
+  const cols = (s: string) => [...s].reduce((n, ch) => n + (/[⺀-鿿＀-￯]/.test(ch) ? 2 : 1), 0);
+  if (text.includes('\n') || cols(text) <= 24) return text;
+  const chars = [...text], half = cols(text) / 2;
+  let best = -1, bestD = Infinity, at = 0;
+  chars.forEach((ch, i) => {
+    at += cols(ch);
+    const cut = ch === ' ' ? i : /[，、。,；]/.test(ch) && i < chars.length - 1 ? i + 1 : -1;
+    if (cut > 0 && Math.abs(at - half) < bestD) { bestD = Math.abs(at - half); best = cut; }
+  });
+  if (best < 0) return text;
+  return `${chars.slice(0, best).join('').trimEnd()}\n${chars.slice(best).join('').trimStart()}`;
+}
+
 /** the footage rules (spec §4): every main shot different, a source at most twice and 3 s apart, enough distinct sources, wall photos apart */
 function checkFootage(c: Cut, x: X) {
   const main = [...hookShots(x), ...x.beats.map((b) => b.shot), ...(x.weAre.shot ? [x.weAre.shot] : [])];
@@ -143,9 +159,9 @@ export const brand: Recipe<typeof Content> = {
       const len = 2 * B, each = len / x.proof.length;
       const tiles = x.wall?.tiles.join(',') ?? [...hookShots(x), ...x.beats.map((b) => b.shot)].map((s) => `${s.src}@${s.from}`).join(',');
       // the words sit on the left: in a landscape frame the ball moves right to leave them room (the spike's layout)
-      c.effect('common.wall', { at: t, len, look: 'sphere', tiles, ...(W > H ? { x: 0.68 } : {}) });
+      c.effect('common.wall', { at: t, len, look: 'sphere', tiles, ...(W > H ? { x: 0.7 } : {}) });
       x.proof.forEach((p, i) => {
-        c.effect('common.headline', { at: t + i * each, len: each, look: 'proof', text: p.big ?? p.line ?? '', sub: p.label, size: 100, bg: 'none' });
+        c.effect('common.headline', { at: t + i * each, len: each, look: 'proof', text: p.big ?? wrapProof(p.line ?? ''), sub: p.label, size: 100, bg: 'none' });
         c.sfx('common.thud', { at: t + i * each, len: 0.4, gain: -12 });
       });
       parts.proof = [t, t + len];

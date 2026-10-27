@@ -281,7 +281,7 @@ test('brand lays the parts on bars at 80 BPM: hook, wall, beats with a dolly in,
   expect(items(c, 'common.wall').map((w) => [w.params.look ?? 'wall', w.start, w.end])).toEqual([['wall', 7.5, 12], ['sphere', 27, 33]]);
   expect(items(c, 'common.wall')[0].params).toMatchObject({ tiles: 'p1,p2,p3,p4,p5,p6', count: 696, countLabel: 'clips.', push: 0 });
   // the proof's words are on the left, so the ball moves right in a landscape frame (centred in a tall one)
-  expect(items(c, 'common.wall')[1].params.x).toBe(0.68);
+  expect(items(c, 'common.wall')[1].params.x).toBe(0.7);
   expect(items(c, 'common.dolly').map((d) => [d.params.dir, d.start, d.end])).toEqual([['in', 12, 13.5], ['out', 36, 37.5]]);
   expect(items(c, 'common.headline').filter((h) => h.params.look === 'proof').map((h) => [h.start, h.end, h.params.text, h.params.sub])).toEqual([[27, 30, '90+', 'BUILT-IN EFFECTS AND SOUNDS'], [30, 33, 'Your footage stays\non your computer.', '']]);
   expect(items(c, 'common.headline').filter((h) => h.params.look === 'brand').map((h) => h.params.text)).toEqual(['We film everything.', 'It stays on our phones.', 'It watches every clip.', 'Captions on the beat.', 'It checks its own work.', 'We are Tellcut.']);
@@ -398,6 +398,17 @@ test('a hook line with shots cuts between them on the half bar; every hook shot 
   const short: any = BRAND(); short.hook = x.hook; short.beats[2].shot = { src: 'v7', from: 20 }; short.weAre.shot = { src: 'v1', from: 20 };
   expect(() => brandCut().recipe('brand', short)).toThrow(/還差 1 段不同的素材/);
   expect(() => brandCut().recipe('brand', { ...BRAND(), hook: [{ text: 'x' }] } as any)).toThrow(/shot.*shots/);
+});
+
+test('a long proof line breaks in two near its middle (a space, or after a comma in Chinese) so it stays left of the ball', () => {
+  const c = brandCut();
+  c.recipe('brand', { ...BRAND(), proof: [{ line: 'Your footage stays on your computer.' }, { line: '好麵包不用花俏，只要時間和耐心。' }, { line: 'Made by hand.' }] });
+  expect(items(c, 'common.headline').filter((h) => h.params.look === 'proof').map((h) => h.params.text))
+    .toEqual(['Your footage stays\non your computer.', '好麵包不用花俏，\n只要時間和耐心。', 'Made by hand.']);
+  // one the user already broke stays as it is
+  const kept = brandCut();
+  kept.recipe('brand', { ...BRAND(), proof: [{ line: 'Your footage\nstays on your computer.' }] });
+  expect(items(kept, 'common.headline').find((h) => h.params.look === 'proof')!.params.text).toBe('Your footage\nstays on your computer.');
 });
 
 test('a beat with show puts that block over its shot, showing what the line says', () => {
