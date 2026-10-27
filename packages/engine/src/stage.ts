@@ -16,7 +16,7 @@ import { itemMediaIssues } from './validate.ts';
 type Common = { id: string; el: HTMLElement; sig: string; muted: boolean };
 type Layer =
   | (Common & { kind: 'video'; frame: HTMLElement; holder: HTMLElement; kb: HTMLElement | null; img: HTMLImageElement | null; item: VideoItem; ref: MediaRef })
-  | (Common & { kind: 'plugin'; slot: HTMLElement; item: SceneItem; params: Record<string, any>; type: ItemType; state: unknown; shown?: boolean })
+  | (Common & { kind: 'plugin'; slot: HTMLElement; item: SceneItem; params: Record<string, any>; type: ItemType; state: unknown; shown?: boolean; readied?: Promise<void> })
   | (Common & { kind: 'missing' });
 
 /** sig without the transform: moving or scaling a layer restyles it instead of rebuilding it (Kyoto scenes are heavy). */
@@ -270,11 +270,14 @@ export class Stage {
     });
   }
 
-  /** Every plugin item's own assets loaded. A failure fails an export (strict) and is reported in a preview. */
+  /** Every plugin item's own assets loaded. A failure fails an export (strict) and is reported in a preview.
+   *  Once per layer: a preview edit keeps the unchanged layers, and their ready (a three.js scene for wall/globe/logo) must not
+   *  run again over the old state. A failed load is forgotten, so the next edit tries it again. */
   async ready(): Promise<void> {
     await Promise.all(this.layers.map(async (L) => {
       if (L.kind !== 'plugin' || !L.type.ready) return;
-      try { await L.type.ready(L.state); } catch (e) {
+      try { await (L.readied ??= L.type.ready(L.state)); } catch (e) {
+        L.readied = undefined;
         const m = e instanceof Error ? e.message : String(e);
         if (this.opts.strict) throw new Error(`${L.id}: ${m}`);
         this.opts.onError?.(L.id, m);

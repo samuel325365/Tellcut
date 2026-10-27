@@ -368,6 +368,29 @@ test('in strict (export) mode a plugin item whose assets fail to load fails stag
   await expect(st.ready()).rejects.toThrow(/b1.*no art/);
 });
 
+test('an item kept through an edit is not made ready again; a rebuilt one is, and a failed load is tried again', async () => {
+  // preview patches call ready() on every edit: wall/globe/logo built their three.js scene again each time and leaked the old one
+  const calls: string[] = [];
+  let fail = true;
+  const reg = createRegistry([corePlugin, { id: 'r', items: [
+    { type: 'r.art', label: 'a', kind: 'overlay', params: [{ key: 'n', label: 'n', type: 'number', default: 0 }], build: (c: any) => ({ id: c.item.id }), draw() {},
+      ready: async (s: any) => { calls.push(s.id); if (s.id === 'x' && fail) throw new Error('not yet'); } },
+  ] } as any]);
+  const p = project();
+  p.tracks[1].items = [{ id: 'k', type: 'r.art', start: 0, end: 1, params: { n: 1 } }, { id: 'e', type: 'r.art', start: 0, end: 1, params: { n: 1 } }, { id: 'x', type: 'r.art', start: 0, end: 1, params: {} }];
+  const st = new Stage(document.createElement('div'), reg, fakeMedia(), { onError: () => {} });
+  st.load(p);
+  await st.ready();
+  expect(calls.sort()).toEqual(['e', 'k', 'x']);
+  calls.length = 0;
+  fail = false;
+  const q = structuredClone(p);
+  q.tracks[1].items[1].params.n = 2;
+  st.update(q);
+  await st.ready();
+  expect(calls.sort()).toEqual(['e', 'x']);
+});
+
 test('a preview stage tilts a zooming video by 0.02° so the browser draws it at sub-pixel positions instead of snapping it', () => {
   // a layer that is only scaled gets snapped to whole pixels: a slow zoom then jumps back and forth (seen at 150% display scaling)
   const kbOf = (zoom: number, subpixelZoom?: boolean) => {

@@ -95,6 +95,10 @@ export const wipe: ItemType<P, S> = {
     freeCanvas(s.cv, s.curl?.shade);
     for (const sh of s.curl ? [s.curl.frontSheet, s.curl.ghostSheet] : []) if (sh.art?.type.hide) sh.art.type.hide(sh.art.state);
   },
+  // the hosted blocks' GPU things, as the stage would free them (common.card does the same)
+  dispose(s) {
+    for (const sh of s.curl ? [s.curl.frontSheet, s.curl.ghostSheet] : []) disposeArt(sh);
+  },
   draw(ctx, s) {
     const curl = ctx.params.mode === 'curl';
     cssCamel(s.wrap, { display: curl ? 'none' : 'block' });
@@ -196,6 +200,10 @@ function curlState(ctx: Parameters<typeof wipe.draw>[0], s: S): CurlS {
   return s.curl;
 }
 
+function disposeArt(sh: Sheet) {
+  if (sh.art?.type.dispose) sh.art.type.dispose(sh.art.state);
+}
+
 /** the old page's sheet: the colour, the still in its window, the hosted block drawn at artAt */
 function drawSheet(ctx: Parameters<typeof wipe.draw>[0], sh: Sheet, key: string, changed: boolean) {
   const p = ctx.params, { W, H } = ctx, r = curlWindow(p, W, H, ctx.theme.safe);
@@ -206,6 +214,7 @@ function drawSheet(ctx: Parameters<typeof wipe.draw>[0], sh: Sheet, key: string,
   const type = p.art && p.art !== wipe.type ? ctx.types?.(p.art) : undefined;
   if (changed) {
     if (sh.art?.type.hide) sh.art.type.hide(sh.art.state);
+    disposeArt(sh);
     sh.art?.root.remove(); sh.art = undefined;
     if (type) {
       const params = withDefaults(type.params, (p.artParams ?? {}) as Record<string, unknown>, ctx.theme), root = h('div', null, null, sh.root);
