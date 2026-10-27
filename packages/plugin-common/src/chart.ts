@@ -3,7 +3,7 @@
 // a gap bracket and a baseline; fd-hakka's hkStat: a big number counting up over bars that grow, the first circled), pie (fd-quotes'
 // fx.pie: slices coloured in one after another, a tag under it), people (fd-hakka's hkPeople and parenting-brain's brainAge: little
 // people flipping over, the first k in colour and circled, "10 人中有 4 人"), rank (parenting-brain's dayRank: a ranking with one row
-// lit and tagged "第 12 名"), balance (chili's and parenting-brain's scales: weights drop into the pans and the beam tips to the heavier
+// lit and tagged "第 12 名"; `reveal: 'up'` and the tie brackets from seoul-bbq's podium: the last place first, the winner last), balance (chili's and parenting-brain's scales: weights drop into the pans and the beam tips to the heavier
 // side), table (fd-caibao's fx.table: the rules drawn, the cells rising in diagonal order) and line (parenting-brain's ledgerStrip:
 // one or two curves drawn along with a playhead, marks on them, a baseline).
 // `look` clean draws flat shapes in the theme colours; hand draws them with the pens of sketch.ts (marker, crayon, pencil, ballpoint;
@@ -28,7 +28,7 @@ type Pen = 'marker' | 'crayon' | 'pencil' | 'ballpoint';
 export interface ChartP {
   kind: ChartKind; look: Look; pen: Pen; boil: number; title: string; data: string; unit: string; hl: string; mark: 'none' | 'circle';
   compare: 'none' | 'ratio' | 'gap'; note: string; base: string; stat: string; source: string; n: number; k: number; axis: string; marks: string;
-  dir: 'h' | 'v'; at: number; grow: number; card: boolean; x: number; y: number; w: number; h: number;
+  dir: 'h' | 'v'; at: number; grow: number; card: boolean; x: number; y: number; w: number; h: number; reveal: 'down' | 'up'; tie: string;
   ink: string; paper: string; color: string; accent: string; tag: string; colors: string; font: string;
 }
 
@@ -388,23 +388,49 @@ export function ranks(rows: Row[]): number[] {
   return rows.map((r) => { if (r.gap) return 0; const own = parseNum(r.show).v; if (Number.isInteger(own)) k = own; return k++; });
 }
 
+/** the runs of rows that share a rank (ties), as [first, last] row indices; gaps and single rows are not runs */
+export function tieRuns(rk: number[]): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < rk.length;) {
+    let j = i;
+    while (j + 1 < rk.length && rk[i] > 0 && rk[j + 1] === rk[i]) j++;
+    if (j > i) out.push([i, j]);
+    i = j + 1;
+  }
+  return out;
+}
+/** when each ranking row starts to show. down: top to bottom, `step` apart (as always). up (the seoul-bbq short's podium): the last
+ *  place first and the winner last, rows that share a rank (and a ⋯ gap) together, a half step more before the top group; the top
+ *  group lands at at + grow */
+export function rankStarts(rk: number[], reveal: 'down' | 'up', at: number, grow: number): number[] {
+  const m = rk.length;
+  if (reveal !== 'up') { const step = Math.min(0.12, 1 / Math.max(1, m)); return rk.map((_, i) => at + i * step); }
+  const group: number[] = [];
+  rk.forEach((r, i) => group.push(i === 0 ? 0 : group[i - 1] + (r > 0 && r === rk[i - 1] ? 0 : 1)));
+  const n = (group[m - 1] ?? 0) + 1, step = n > 1 ? Math.max(0, grow) / (n - 0.5) : 0;
+  return group.map((g) => at + (n - 1 - g) * step + (g === 0 && n > 1 ? step * 0.5 : 0));
+}
+
 function planRank(e: Env) {
   const { p, F, C, local } = e, u = F.u, b = F.body, rows = chartRows(p.data).filter((r) => r.gap || r.label), m = rows.length;
   if (!m) return;
-  const rk = ranks(rows), hasV = rows.some((r) => !r.gap && Number.isFinite(r.value)), dec = Math.max(0, ...rows.map((r) => r.dec)), group = rows.some((r) => r.group);
+  const up = p.reveal === 'up', rk = ranks(rows), runs = String(p.tie ?? '').trim() ? tieRuns(rk) : [], starts = rankStarts(rk, up ? 'up' : 'down', p.at, p.grow), hasV = rows.some((r) => !r.gap && Number.isFinite(r.value)), dec = Math.max(0, ...rows.map((r) => r.dec)), group = rows.some((r) => r.group);
   const rowH = Math.min(b.h / m, 118 * u), y0 = b.y + (b.h - rowH * m) / 2, ls = Math.min(44 * u, rowH * 0.46), br = Math.min(rowH * 0.36, 30 * u);
   const hlRow = (() => { const s = String(p.hl ?? '').trim(); if (s === 'max' || s === 'min') { const vi = hlIndex(s, rows.map((r) => (r.gap || !Number.isFinite(r.value) ? (s === 'max' ? -Infinity : Infinity) : r.value))); return vi; } return hlIndex(s, rows.map(() => 0)); })();
   const vals = rows.map((r) => r.value), fin = vals.filter(Number.isFinite), hi = Math.max(...fin, 0), mn = Math.min(...fin, hi);
   const lo = mn >= 0 && hi > 0 && mn / hi < 0.5 ? 0 : hi === mn ? mn - 1 : mn - (hi - mn) * 0.35;
+  // the tie brackets (a bracket on the right of the rows that share a rank, the `tie` word left of it) take a column of their own
+  const tieS = Math.min(ls * 0.8, 36 * u), tieW = runs.length ? Math.min(textW(p.tie, tieS) + 50 * u, b.w * 0.3) : 0, tieX = b.x + b.w - 4 * u;
   const labelX = b.x + 2 * br + 18 * u, valStr = (i: number, f: number) => `${fmtNum(vals[i] * f, dec, group)}${p.unit}`;
   const valW = hasV ? Math.max(...rows.map((r, i) => (Number.isFinite(vals[i]) ? textW(valStr(i, 1), ls) : 0))) + 18 * u : 0;
-  const labelW = Math.min(Math.max(...rows.map((r) => (r.gap ? 0 : textW(r.label, ls)))), (b.w - 2 * br - 18 * u) * (hasV ? 0.42 : 1));
-  const barX = labelX + labelW + 20 * u, barW = Math.max(0, b.x + b.w - valW - barX), bt = rowH * 0.5;
-  const step = Math.min(0.12, 1 / m), tEnd = p.at + (m - 1) * step + 0.7;
+  const labelW = Math.min(Math.max(...rows.map((r) => (r.gap ? 0 : textW(r.label, ls)))), (b.w - 2 * br - 18 * u - tieW) * (hasV ? 0.42 : 1));
+  const barX = labelX + labelW + 20 * u, barW = Math.max(0, b.x + b.w - tieW - valW - barX), bt = rowH * 0.5;
+  const tEnd = Math.max(...starts) + 0.7;
   rows.forEach((r, i) => {
-    const t0 = p.at + i * step, a = eOut3(prog(local, t0, t0 + 0.35)), dx = -(1 - a) * 60 * u, cy = y0 + rowH * (i + 0.5), lit = i === hlRow;
+    const t0 = starts[i], a = eOut3(prog(local, t0, t0 + 0.35)), dx = -(1 - a) * 60 * u, cy = y0 + rowH * (i + 0.5), lit = i === hlRow;
     if (r.gap) { T(e, { id: `l${i}`, text: '⋯', x: labelX + labelW / 2 + dx, y: cy, size: ls, align: 'c', color: C.dim, weight: 700, a }); return; }
-    M(e, { t: 'dot', x: b.x + br + dx, y: cy, r: br, fill: lit ? C.accent : C.color, seed: 81 + i, a });
+    // revealed upward, each rank badge pops in as its row arrives
+    M(e, { t: 'dot', x: b.x + br + dx, y: cy, r: br * (up ? pop(local, t0, 0.3) : 1), fill: lit ? C.accent : C.color, seed: 81 + i, a });
     T(e, { id: `n${i}`, text: String(rk[i]), x: b.x + br + dx, y: cy, size: fitSize(String(rk[i]), br * 1.15, br * 1.7), align: 'c', color: onColor(lit ? C.accent : C.color, C), weight: 900, a });
     T(e, { id: `l${i}`, text: r.label, x: labelX + dx, y: cy, size: fitSize(r.label, ls, labelW), align: 'l', color: lit ? C.accent : C.ink, weight: lit ? 900 : 700, a });
     if (!Number.isFinite(vals[i])) return;
@@ -415,9 +441,14 @@ function planRank(e: Env) {
   if (hlRow >= 0 && !rows[hlRow].gap) {
     const note = p.note || `第 ${rk[hlRow]} 名`, cy = y0 + rowH * (hlRow + 0.5), size = fitSize(note, Math.min(54 * u, rowH * 0.62), b.w * 0.42);
     const tw = textW(note, size) + size * 0.9, endX = Number.isFinite(vals[hlRow]) ? barX + ((vals[hlRow] - lo) / (hi - lo || 1)) * barW + valW + 24 * u : labelX + textW(rows[hlRow].label, ls) + 30 * u;
-    T(e, { id: 'note', text: note, x: Math.min(endX + tw / 2, b.x + b.w - tw / 2), y: cy, size, align: 'c', color: onColor(C.tag, C), weight: 900, bg: C.tag, a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd), rot: -3 });
+    T(e, { id: 'note', text: note, x: Math.min(endX + tw / 2, b.x + b.w - tieW - tw / 2), y: cy, size, align: 'c', color: onColor(C.tag, C), weight: 900, bg: C.tag, a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd), rot: -3 });
     if (p.mark === 'circle') M(e, { t: 'loop', cx: labelX + labelW / 2 - 10 * u, cy, rx: labelW / 2 + br + 30 * u, ry: rowH * 0.62, line: C.accent, lw: 5 * u, prog: eOut3(prog(local, tEnd + 0.1, tEnd + 0.5)), seed: 35 });
   }
+  runs.forEach(([i, j], k) => {
+    const t0 = starts[i] + 0.2, f = eOut3(prog(local, t0, t0 + 0.35)), y1 = y0 + rowH * (i + 0.18), y2 = y0 + rowH * (j + 0.82), arm = Math.min(22 * u, tieW * 0.25);
+    if (f > 0) M(e, { t: 'path', pts: [[tieX - arm, y1], [tieX, y1], [tieX, y2], [tieX - arm, y2]], line: C.color, lw: 5 * u, prog: f, seed: 61 + k });
+    T(e, { id: `tie${k}`, text: p.tie, x: tieX - arm - 10 * u, y: (y1 + y2) / 2, size: fitSize(p.tie, tieS, tieW - arm - 14 * u), align: 'r', color: C.ink, weight: 900, a: f });
+  });
 }
 
 /** how many blocks each pan gets: the numbers themselves when they are small whole numbers, else up to 5 by share */
@@ -757,7 +788,7 @@ const weightOf = (look: Look, w: number) => (look === 'hand' ? (w >= 700 ? 700 :
 
 export const chart: ItemType<ChartP, S> = {
   type: 'common.chart', label: '資料圖表', category: 'number', kind: 'overlay',
-  doc: '資料圖表卡，kind 換圖：bars 長條長出來、數字往上跳（dir h 橫條／v 直條；compare ratio 標「× 6.7」倍數、gap 標差距括號；base 一條基準虛線；stat 一行大數字往上跳）、pie 圓餅一片一片塗上（note 掛在下面的標籤）、people 一排小人一個個翻牌、前 k 個上色被圈起來（10 人中有 4 人）、rank 排名清單、亮起一列並掛「第 12 名」、balance 天秤（兩邊砝碼掉進盤子、往重的那邊傾斜）、table 對照表（線畫出來、格子沿對角線浮上來）、line 一兩條曲線隨時間畫出（播放頭、曲線上的標記、基準線）；data 一行一筆「名稱|數值|顯示的字」，hl 亮哪一筆（max、min 或第幾筆）、mark circle 把它圈起來，title 標題、source 資料來源、時間 at 相對項目開始；look clean 簡潔（theme 色）、hand 手繪（pen 選 marker 麥克筆／crayon 蠟筆／pencil 鉛筆／ballpoint 原子筆，boil 抖動）、woodcut 木刻排線羊皮紙；數據、統計、比較、排名、比例、趨勢',
+  doc: '資料圖表卡，kind 換圖：bars 長條長出來、數字往上跳（dir h 橫條／v 直條；compare ratio 標「× 6.7」倍數、gap 標差距括號；base 一條基準虛線；stat 一行大數字往上跳）、pie 圓餅一片一片塗上（note 掛在下面的標籤）、people 一排小人一個個翻牌、前 k 個上色被圈起來（10 人中有 4 人）、rank 排名清單、亮起一列並掛「第 12 名」（reveal up 從最後一名往上一列列揭曉、同名次一起、第一名最後；名次相同的列右邊一道括號標 tie 並列）、balance 天秤（兩邊砝碼掉進盤子、往重的那邊傾斜）、table 對照表（線畫出來、格子沿對角線浮上來）、line 一兩條曲線隨時間畫出（播放頭、曲線上的標記、基準線）；data 一行一筆「名稱|數值|顯示的字」，hl 亮哪一筆（max、min 或第幾筆）、mark circle 把它圈起來，title 標題、source 資料來源、時間 at 相對項目開始；look clean 簡潔（theme 色）、hand 手繪（pen 選 marker 麥克筆／crayon 蠟筆／pencil 鉛筆／ballpoint 原子筆，boil 抖動）、woodcut 木刻排線羊皮紙；數據、統計、比較、排名、比例、趨勢',
   params: [
     { key: 'kind', label: '圖（bars 長條、pie 圓餅、people 人形圖、rank 排名、balance 天秤、table 對照表、line 曲線）', type: 'enum', options: [...CHART_KINDS], default: 'bars' },
     { key: 'look', label: '樣子（clean 簡潔、hand 手繪、woodcut 木刻排線）', type: 'enum', options: ['clean', 'hand', 'woodcut'], default: 'clean' },
@@ -777,9 +808,11 @@ export const chart: ItemType<ChartP, S> = {
     { key: 'k', label: '上色的人數（people）', type: 'number', min: 0, max: 200, step: 1, default: 4 },
     { key: 'axis', label: '橫軸兩端「起|迄」（line）', type: 'string', default: '' },
     { key: 'marks', label: '曲線上的標記，一行一個「位置 0–1|第幾條線|符號」（line）', type: 'text', default: '' },
+    { key: 'reveal', label: '排名出現的順序（rank；down 由上往下、up 從最後一名往上揭曉，同名次一起出來、第一名最後）', type: 'enum', options: ['down', 'up'], default: 'down' },
+    { key: 'tie', label: '名次相同的列旁邊括號標的字（rank；空＝不標）', type: 'string', default: '並列' },
     { key: 'dir', label: '長條方向（bars；h 橫、v 直）', type: 'enum', options: ['h', 'v'], default: 'h' },
     { key: 'at', label: '開始動的時間（秒，相對項目開始）', type: 'number', min: 0, max: 30, step: 0.05, default: 0.3 },
-    { key: 'grow', label: '長出來／畫出來的時間（秒；line 是播放頭走完全程的時間）', type: 'number', min: 0.1, max: 600, step: 0.1, default: 1.2 },
+    { key: 'grow', label: '長出來／畫出來的時間（秒；line 是播放頭走完全程的時間；rank 的 reveal up 是最後一名到第一名出來的時間）', type: 'number', min: 0.1, max: 600, step: 0.1, default: 1.2 },
     { key: 'card', label: '底卡', type: 'bool', default: true },
     { key: 'x', label: '中心 x（畫面寬比例；-1＝安全區中間）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
     { key: 'y', label: '中心 y（畫面高比例；-1＝安全區中間）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },

@@ -23,6 +23,9 @@ const TABLE = '|A 店|B 店|C 店\n價格|35 元|45 元|40 元\n內餡|高麗菜
 const FAKE = (zoom: number) => ({ file: 'fixtures/fake-map.png', width: 360, height: 640, map: { center: [19.937, 50.061] as [number, number], zoom, credit: 'Golden test map (made up)' } });
 const MAPS = { wide: FAKE(12), city: FAKE(14) };
 const SQUARE = '廣場|Rynek|19.9385|50.0638, 公園|Park|19.9308|50.0681';
+/** group D (seoul-bbq): a charcoal-fire palette and a bakery ranking with a tie for second */
+const EMBER = { palette: { ink: '#17120f', paper: '#fff4e2', accent: '#ff5a1f', accent2: '#f4c34f', hl: '#f4c34f' } };
+const BAKERY = 'Garlic cream||1\nMatcha roll||2\nCurry bun||2\nMelon pan||3\nBaguette||4';
 const LEDGER = '當下帳|0.5,0.75,0.3,0.62,0.4,0.7,0.35,0.6\n長期帳|0.2,0.3,0.42,0.5,0.6,0.68,0.75,0.8';
 
 /** common.notify's tones: a dark system note, a hidden preview, an accent card with a gloss; a chat that grows up */
@@ -488,4 +491,11 @@ export const cases: Case[] = [
   { name: 'slip-fly', type: 'common.slip', params: { no: '02', noLabel: 'RULE', title: "Don't share your last name", sub: 'it makes you harder to find', y: 0.52, slot: 1, slots: 3 }, at: [0.6, 2.7], bg: '#20262d' },
   { name: 'outro-episode', type: 'common.outro', params: { look: 'episode', lines: 'The Morning\nPodcast', ep: 'Episode 12 · with a guest', cta: 'Full episode on YouTube', credit: 'The Morning Podcast · E12 · CC BY' }, at: [0.3, 2.0], theme: AMBER, bg: '#5a7d8c' },
   { name: 'wide-outro-episode', type: 'common.outro', params: { look: 'episode', lines: 'The Morning\nPodcast', ep: 'Episode 12 · with a guest', cta: 'Full episode on YouTube', credit: 'The Morning Podcast · E12 · CC BY' }, at: [2.0], wide: true, theme: AMBER, bg: '#5a7d8c' },
+  // group D (seoul-bbq): a ranking revealed from the last place up with ties, the ember (charcoal-fire) dish label and verdict stamp
+  { name: 'chart-rank-up', type: 'common.chart', params: { kind: 'rank', reveal: 'up', title: 'Bakery ranking', data: BAKERY, unit: '', hl: '1', note: 'No. 1', tie: 'TIED', source: '' }, at: [0.8, 2.6] },
+  { name: 'wide-chart-rank-up', type: 'common.chart', params: { kind: 'rank', reveal: 'up', title: 'Bakery ranking', data: BAKERY, unit: '', hl: '1', note: 'No. 1', tie: 'TIED', source: '' }, at: [2.6], wide: true, theme: EMBER, bg: '#3a2a20' },
+  { name: 'tag-ember', type: 'common.tag', params: { look: 'ember', tags: 'BLACK PORK BELLY,Charcoal grill · upstairs', size: 3.2, x: 0.12, y: 0.17 }, at: [0.3, 1.5], theme: EMBER, bg: '#5a4636' },
+  { name: 'wide-tag-ember', type: 'common.tag', params: { look: 'ember', tags: 'PORK NECK', size: 4.5, x: 0.08, y: 0.12 }, at: [1.5], wide: true, theme: EMBER, bg: '#5a4636' },
+  { name: 'stamp-ember', type: 'common.stamp', params: { shape: 'ember', text: 'GREAT', size: 6, angle: -4, x: 0.4, y: 0.6 }, at: [0.1, 1.5], theme: EMBER, bg: '#5a4636' },
+  { name: 'wide-stamp-ember', type: 'common.stamp', params: { shape: 'ember', head: 'VERDICT', text: 'Worth the queue', size: 9, angle: -4 }, at: [1.5], wide: true, theme: EMBER, bg: '#5a4636' },
 ];
