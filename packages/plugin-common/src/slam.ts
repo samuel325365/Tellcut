@@ -4,6 +4,8 @@
 // From the uk-beat short's fx.word: an accent bar wiped open under the words, and a slow drift (zoom) once they have landed.
 // From the food-deep short: look 'led' (fx.slam: red glowing words on a black LED board with a dot grid), enter 'chars' (fx.title: the
 // characters pop up one by one), a kicker on a coloured chip sliding in from the left, and a dark shade behind the words.
+// From the katie-sweet16 short's fx.wish: look 'gold' (big italic Playfair words filled with a champagne-gold gradient, a dark soft glow
+// around them and a warm flash of light as they land; a shout, a wish, a name).
 import { clamp, cssCamel, eBack, eOut3, frameOf, h, prog, rng, type ItemType } from '@tellcut/engine';
 import { layoutMarkup } from './markup.ts';
 import { runBox, setRuns, type RunBox } from './runs.ts';
@@ -12,7 +14,7 @@ import { isClear, luma, withAlpha } from './color.ts';
 interface P {
   text: string; size: number; font: string; color: string; hl: string; outline: string; y: number; tilt: number; popDur: number; shake: number;
   stagger: number; hlScale: number; kicker: string; after: string; enter: 'pop' | 'press' | 'chars'; shadow: string; bar: string; drift: number;
-  look: 'plain' | 'led'; ledColor: string; kickerBg: string; shade: number;
+  look: 'plain' | 'led' | 'gold'; ledColor: string; kickerBg: string; shade: number;
 }
 interface S { box: HTMLElement; text: RunBox; kicker: HTMLElement; after: HTMLElement; bar: HTMLElement; grid: HTMLElement; shade: HTMLElement }
 
@@ -20,6 +22,17 @@ interface S { box: HTMLElement; text: RunBox; kicker: HTMLElement; after: HTMLEl
 const onChip = (c: string) => ((luma(c) ?? 0) * 255 > 150 ? '#1b1410' : '#ffffff');
 /** character i popping up at `local` (enter chars): 0.12 s in, one every 0.06 s, each over 0.22 s */
 export const charPop = (i: number, local: number) => { const q = clamp((local - 0.12 - i * 0.06) / 0.22); return { q, opacity: clamp((local - 0.12 - i * 0.06) / 0.1), lift: 1 - clamp(eBack(q, 1.7)), scale: 0.6 + 0.4 * eBack(q, 1.7) }; };
+
+/** look gold: the words filled with a champagne-gold gradient (clipped to the letters), a dark soft glow around them and a warm flash
+ *  of light that dies out over the 0.8 s after the start; the other looks clear all of it */
+export function goldFill(gold: boolean, local: number, k: number): Record<string, string> {
+  if (!gold) return { backgroundImage: 'none', webkitBackgroundClip: 'border-box', backgroundClip: 'border-box', filter: 'none' };
+  const flash = Math.max(0, 1 - local / 0.8);
+  return {
+    backgroundImage: 'linear-gradient(180deg, #fff3d6 0%, #f3dca6 55%, #d8b06a 100%)', webkitBackgroundClip: 'text', backgroundClip: 'text',
+    filter: `drop-shadow(0 ${(4 * k).toFixed(1)}px ${(18 * k).toFixed(1)}px rgba(12,6,22,0.9))${flash > 0 ? ` drop-shadow(0 0 ${(40 * k * flash).toFixed(1)}px rgba(255,230,170,${(0.9 * flash).toFixed(3)}))` : ''}`,
+  };
+}
 
 /** how far line i has landed: each line pops in `popDur` seconds, `stagger` seconds after the one before */
 export const lineLand = (i: number, local: number, popDur: number, stagger: number) => prog(local, i * stagger, i * stagger + popDur);
@@ -46,7 +59,7 @@ export const slam: ItemType<P, S> = {
     { key: 'shadow', label: '錯位陰影顏色（透明＝沒有）', type: 'color', default: '#00000000' },
     { key: 'bar', label: '字下面刷開的色槓（透明＝沒有）', type: 'color', default: '#00000000' },
     { key: 'drift', label: '落定後慢慢放大（到結束時多幾倍，0＝不動）', type: 'number', min: 0, max: 0.5, step: 0.01, default: 0 },
-    { key: 'look', label: '樣子（plain 描邊大字、led 黑色 LED 看板發光字）', type: 'enum', options: ['plain', 'led'], default: 'plain' },
+    { key: 'look', label: '樣子（plain 描邊大字、led 黑色 LED 看板發光字、gold 香檳金漸層的斜體襯線大字，落下時一陣暖光）', type: 'enum', options: ['plain', 'led', 'gold'], default: 'plain' },
     { key: 'ledColor', label: 'LED 字的顏色（led）', type: 'color', default: '#ff3b2a' },
     { key: 'kickerBg', label: '上方小字的色塊（透明＝沒有；有色塊時從左滑進）', type: 'color', default: '#00000000' },
     { key: 'shade', label: '字後面壓暗（0–1）', type: 'number', min: 0, max: 1, step: 0.05, default: 0 },
@@ -66,7 +79,7 @@ export const slam: ItemType<P, S> = {
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, px = (p.size / 100) * H;
     const hs = Math.max(1, p.hlScale ?? 1), fit = layoutMarkup(p.text, (W * (1 - 2 * theme.safe.side)) / px / hs, 3);
-    const stagger = Math.max(0, p.stagger ?? 0), press = p.enter === 'press', chars = p.enter === 'chars', led = p.look === 'led';
+    const stagger = Math.max(0, p.stagger ?? 0), press = p.enter === 'press', chars = p.enter === 'chars', led = p.look === 'led', gold = p.look === 'gold';
     setRuns(s.text, fit.lines, p.hl, { ...(hs !== 1 ? { hlScale: hs } : {}), ...(chars ? { perChar: true } : {}) });
     if (chars) ([...s.text.el.querySelectorAll('span')] as HTMLElement[]).forEach((el, i) => { const c = charPop(i, ctx.local); cssCamel(el, { opacity: String(c.opacity), transform: `translateY(${(c.lift * 60 * k).toFixed(1)}px) scale(${c.scale.toFixed(3)})` }); });
     const land = (q: number) => (press ? 1.5 - 0.5 * eOut3(q) : 0.4 + 0.6 * eBack(q, 2.2));
@@ -79,13 +92,15 @@ export const slam: ItemType<P, S> = {
     const out = 1 - prog(ctx.local, ctx.dur - 0.15, ctx.dur);
     cssCamel(s.box, {
       top: `${p.y * H}px`, opacity: String(Math.min(1, pop * (press ? 2 : 4)) * out),
-      textShadow: led ? `0 0 ${10 * k}px ${p.ledColor}, 0 0 ${28 * k}px ${withAlpha(p.ledColor, 0.6)}` : isClear(p.shadow) ? 'none' : `0.04em 0.05em 0 ${p.shadow}`,
+      textShadow: led ? `0 0 ${10 * k}px ${p.ledColor}, 0 0 ${28 * k}px ${withAlpha(p.ledColor, 0.6)}` : gold || isClear(p.shadow) ? 'none' : `0.04em 0.05em 0 ${p.shadow}`,
       transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${p.tilt}deg) scale(${scale})`,
-      fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${(px * fit.scale).toFixed(2)}px`, color: led ? p.ledColor : p.color,
-      webkitTextStroke: led ? '0' : `${theme.stroke * 1.4 * k}px ${p.outline}`, paintOrder: 'stroke fill',
+      fontFamily: gold ? `'Playfair Display', '${p.font}', 'Noto Serif TC', serif` : `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${(px * fit.scale).toFixed(2)}px`,
+      color: led ? p.ledColor : gold ? 'transparent' : p.color, fontStyle: gold ? 'italic' : 'normal',
+      webkitTextStroke: led ? '0' : gold ? `${2.5 * k}px rgba(70,40,10,0.65)` : `${theme.stroke * 1.4 * k}px ${p.outline}`, paintOrder: 'stroke fill',
       ...(led ? { padding: `${0.11 * px}px ${0.31 * px}px`, borderRadius: `${16 * k}px`, background: '#090404', letterSpacing: '0.05em',
         boxShadow: `inset 0 0 0 ${3 * k}px #4a1a12, 0 ${12 * k}px ${30 * k}px rgba(0,0,0,.6)` }
         : { padding: '0', borderRadius: '0', background: 'none', letterSpacing: 'normal', boxShadow: 'none' }),
+      ...goldFill(gold, ctx.local, k),   // after the background shorthand, which would clear it
     });
     // led: a grid of dark dots over the letters
     cssCamel(s.grid, { display: led ? 'block' : 'none', backgroundImage: `radial-gradient(circle, rgba(9,4,4,0) ${2.2 * k}px, rgba(9,4,4,.55) ${2.6 * k}px)`, backgroundSize: `${7 * k}px ${7 * k}px` });

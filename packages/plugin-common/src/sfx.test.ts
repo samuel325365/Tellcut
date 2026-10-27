@@ -1,7 +1,7 @@
 import { withDefaults } from '@tellcut/engine';
 import { SFX_CATEGORY } from '@tellcut/protocol';
 import { renderAir, renderShing } from './sfx.ts';
-import { renderBuzz, renderCamBeep, renderHush, renderRecv, renderRewind, renderSend, commonSfx, renderBoing, renderChime, renderClink, renderCoin, renderCry, renderDrip, renderFanfare, renderFlap, renderFootstep, renderKnock, renderPour, renderScribble, renderSizzle, renderTape, scaleStep, renderRingBell, renderFlip, renderSlide, renderAlarm, renderBeep, renderPrint, renderClunk, renderTear, renderRattle, renderDingDong, renderCash, renderDeflate, renderExplode, renderFastForward, renderPage, renderPowerUp, renderScratch, renderXylo, renderDing, renderError, renderImpact, renderPop, renderRiser, renderShutter, renderThud, renderTick, renderTyping, renderWhoosh } from './sfx.ts';
+import { renderBuzz, renderCamBeep, renderHush, renderRecv, renderRewind, renderSend, commonSfx, renderBoing, renderChime, renderClink, renderCoin, renderCry, renderDrip, renderThunder, renderFanfare, renderFlap, renderFootstep, renderKnock, renderPour, renderScribble, renderSizzle, renderTape, scaleStep, renderRingBell, renderFlip, renderSlide, renderAlarm, renderBeep, renderPrint, renderClunk, renderTear, renderRattle, renderDingDong, renderCash, renderDeflate, renderExplode, renderFastForward, renderPage, renderPowerUp, renderScratch, renderXylo, renderDing, renderError, renderImpact, renderPop, renderRiser, renderShutter, renderThud, renderTick, renderTyping, renderWhoosh } from './sfx.ts';
 
 const SR = 48000;
 const peak = (x: Float32Array) => x.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
@@ -42,7 +42,7 @@ test('shapes: the riser grows, the impact dies away, the whoosh peaks in the mid
 
 test('the sound effects: ids, lengths from their params, and a buffer played at the asked time', () => {
   expect(commonSfx.map((s) => s.type)).toEqual(['beep', 'whoosh', 'impact', 'shing', 'air', 'riser', 'pop', 'thud', 'tick', 'ding', 'error', 'shutter', 'typing', 'cash', 'deflate', 'scratch', 'powerup', 'alarm', 'explode', 'ffwd', 'page', 'slide', 'flip', 'xylo', 'print', 'clunk', 'tear', 'rattle', 'dingdong', 'ringbell',
-    'chime', 'coin', 'fanfare', 'knock', 'boing', 'footstep', 'flap', 'whirr', 'scribble', 'tape', 'clink', 'drip', 'sizzle', 'pour', 'cry', 'buzz', 'send', 'recv', 'hush', 'rewind'].map((n) => `common.${n}`));
+    'chime', 'coin', 'fanfare', 'knock', 'boing', 'footstep', 'flap', 'whirr', 'scribble', 'tape', 'clink', 'drip', 'sizzle', 'pour', 'cry', 'thunder', 'buzz', 'send', 'recv', 'hush', 'rewind'].map((n) => `common.${n}`));
   for (const s of commonSfx) expect(s.doc, s.type).toBeTruthy();
   const by = (n: string) => commonSfx.find((s) => s.type === `common.${n}`)!;
   expect(by('beep').duration({ dur: 0.7, freq: 1000 })).toBe(0.7);
@@ -186,7 +186,7 @@ function played(type: string, params: Record<string, unknown> = {}): Float32Arra
   s.synth(ctx, { out: node(), verb: node(), noise: null } as any, 0, withDefaults(s.params, params));
   return out;
 }
-const PACK = ['chime', 'coin', 'fanfare', 'knock', 'boing', 'footstep', 'flap', 'whirr', 'scribble', 'tape', 'clink', 'drip', 'sizzle', 'pour', 'cry'];
+const PACK = ['chime', 'coin', 'fanfare', 'knock', 'boing', 'footstep', 'flap', 'whirr', 'scribble', 'tape', 'clink', 'drip', 'sizzle', 'pour', 'cry', 'thunder'];
 
 test('every common sound effect has a doc and a category the gallery and the catalog know', () => {
   for (const s of commonSfx) {
@@ -197,7 +197,7 @@ test('every common sound effect has a doc and a category the gallery and the cat
 
 test('the sound pack: each one in range, finite, the same every time, as long as its duration says (with its defaults and with other params)', () => {
   const other: Record<string, Record<string, unknown>> = { chime: { notes: 6, chip: true }, knock: { knocks: 4, gap: 0.3 }, footstep: { steps: 2, soft: true }, flap: { flaps: 3 },
-    whirr: { dur: 1.5 }, scribble: { dur: 1.2, crayon: true }, tape: { press: false }, clink: { glass: true }, drip: { drops: 3 }, sizzle: { dur: 0.6 }, pour: { dur: 3 }, cry: { times: 3 },
+    whirr: { dur: 1.5 }, scribble: { dur: 1.2, crayon: true }, tape: { press: false }, clink: { glass: true }, drip: { drops: 3 }, sizzle: { dur: 0.6 }, pour: { dur: 3 }, cry: { times: 3 }, thunder: { seed: 8 },
     coin: { pitch: 600 }, fanfare: { pitch: 392 }, boing: { pitch: 300 } };
   for (const n of PACK) for (const params of [{}, other[n]]) {
     const type = `common.${n}`, a = played(type, params), b = played(type, params), s = commonSfx.find((x) => x.type === type)!;
@@ -342,4 +342,18 @@ test('the riser (SFX-MOV-02) never clips and its loudest stretch sits with the o
     if (d >= 1.6) expect(loudest(x), `${d} s`).toBeGreaterThan(-18);   // still heard as a build, not lost under the music
     expect(loudest(x), `${d} s`).toBeLessThan(-12);
   }
+});
+
+test('thunder (katie-sweet16): a low rumble that rolls away, the same for a seed, another roll for another seed', () => {
+  const a = renderThunder(SR, 3), n = a.length;
+  expect(n).toBe(Math.ceil(3.2 * SR));
+  expect([...renderThunder(SR, 3).slice(0, 4000)]).toEqual([...a.slice(0, 4000)]);
+  expect([...renderThunder(SR, 4).slice(20000, 20100)]).not.toEqual([...a.slice(20000, 20100)]);
+  // loud early, rolled away by the end
+  expect(rms(a, 0, n * 0.25 | 0)).toBeGreaterThan(rms(a, n * 0.75 | 0, n) * 3);
+  // low: far fewer zero crossings than white noise would have (about one in two samples)
+  expect(crossings(a.slice(SR, 2 * SR))).toBeLessThan(SR * 0.05);
+  // at another rate it keeps its length and level
+  expect(renderThunder(44100).length).toBe(Math.ceil(3.2 * 44100));
+  expect(peak(renderThunder(44100))).toBeGreaterThan(0.3);
 });

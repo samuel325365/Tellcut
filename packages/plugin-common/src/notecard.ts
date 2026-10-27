@@ -2,7 +2,9 @@
 // the title, a line or two, labelled fields), a checklist ticked item by item, a title page (a big name underlined in red, a
 // subtitle, a Latin name), or a "done!" page with a heart. Promoted from the baking-steps short's recipe card (fx.step,
 // fx.ingredients, fx.hook, fx.finale). With `card` off it writes on the card that common.paper painted under the video.
-import { clamp, cssCamel, eOut3 as ease, h, textEm, type ItemType } from '@tellcut/engine';
+// `tick` (the todo-vlog short's fx.todolist): the list is already written, the card slides in from the left, the items before item
+// `tick` are ticked and highlighted, item `tick` is ticked now with a highlighter stroke after it, and the card slides out again.
+import { clamp, cssCamel, eIn3, eOut3 as ease, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { canvasAt } from './inkline.ts';
 import {
   backOut, CARD_W, cardBox, cardParams, drawTexts, handCircle, handFamily, handPath, handRect, heart, LATIN, paintCard, RULE, RULE0, textLayer,
@@ -14,6 +16,7 @@ type Mode = 'step' | 'list' | 'title' | 'done';
 interface P {
   mode: Mode; no: string; title: string; text: string; fields: string; items: string; every: number; count: string; sub: string; latin: string; note: string;
   card: boolean; x: number; y: number; w: number; h: number; tilt: number; font: string; ink: string; accent: string; paper: string; rule: string;
+  tick: number; marker: string;
 }
 interface S { wrap: HTMLElement; cv: HTMLCanvasElement; txt: TextLayer }
 
@@ -29,6 +32,16 @@ export function listSlot(i: number, n: number): { col: number; row: number } {
   return { col: Math.floor(i / rows), row: i % rows };
 }
 
+/** list with tick: the card's sideways offset — sliding in from `off` px to the left over 0.32 s (overshooting a little), out again the
+ *  same way in the last 0.3 s */
+export const tickSlide = (local: number, dur: number, off: number) => -off * (1 - backOut(local / 0.32)) - off * eIn3(prog(local, dur - 0.3, dur));
+/** list with tick: item i's tick strokes (k1, k2) and highlighter (0–1) when item `now` (0-based) is the one ticked at 0.45 s */
+export function tickState(i: number, now: number, local: number): { k1: number; k2: number; marker: number } {
+  if (i < now) return { k1: 1, k2: 1, marker: 1 };
+  if (i > now) return { k1: 0, k2: 0, marker: 0 };
+  return { k1: clamp((local - 0.45) / 0.14), k2: clamp((local - 0.59) / 0.18), marker: clamp((local - 0.7) / 0.3) };
+}
+
 /** when the step card's parts start writing: title, the text lines, the fields */
 export function stepTimes(title: string, lines: string[]) {
   let t = 0.2 + writeTime(title, 16) - 0.05;
@@ -38,7 +51,7 @@ export function stepTimes(title: string, lines: string[]) {
 
 export const notecard: ItemType<P, S> = {
   type: 'common.notecard', label: '手寫索引卡', category: 'card', kind: 'overlay',
-  doc: '一張橫線索引卡，內容用手寫字一筆一筆寫上去：step（紅筆圈的編號、標題、一兩行說明、「標籤|內容」欄位）、list（核取方塊逐項打勾）、title（大字菜名畫紅線、副標、外文名）、done（「完成！」＋手畫愛心）；食譜、教學、手帳風；card 關掉就寫在 common.paper 畫好的卡上',
+  doc: '一張橫線索引卡，內容用手寫字一筆一筆寫上去：step（紅筆圈的編號、標題、一兩行說明、「標籤|內容」欄位）、list（核取方塊逐項打勾；tick 是待辦清單打勾：清單已寫好，卡片從左邊滑進來，前面幾項已打勾、畫了螢光筆，第 tick 項現在打勾、螢光筆劃過，再滑出去）、title（大字菜名畫紅線、副標、外文名）、done（「完成！」＋手畫愛心）；食譜、教學、手帳風；card 關掉就寫在 common.paper 畫好的卡上',
   params: [
     { key: 'mode', label: '頁面', type: 'enum', options: ['step', 'list', 'title', 'done'], default: 'step' },
     { key: 'no', label: '編號（step）', type: 'string', default: '3' },
@@ -58,6 +71,8 @@ export const notecard: ItemType<P, S> = {
     { key: 'accent', label: '紅筆顏色', type: 'color', default: '#c2533b', theme: 'palette.accent' },
     { key: 'paper', label: '卡片紙色', type: 'color', default: '#fbf7ee', theme: 'palette.paper' },
     { key: 'rule', label: '橫線顏色', type: 'color', default: '#9db6c6' },
+    { key: 'tick', label: '這次打勾的項目（list；第幾項，從 1 數；0＝每項寫上就打勾）：清單已經寫好，卡片從左邊滑進來，前面的項目已經打勾、畫了螢光筆，這一項在 0.45 秒打勾、螢光筆劃過，最後卡片滑出去', type: 'number', min: 0, max: 8, step: 1, default: 0 },
+    { key: 'marker', label: '螢光筆顏色（list 的 tick）', type: 'color', default: '#cef260' },
   ],
   build(ctx) {
     const wrap = h('div', null, null, ctx.root), cv = h('canvas', null, null, wrap);
@@ -68,8 +83,9 @@ export const notecard: ItemType<P, S> = {
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, b = cardBox(p, W, H, theme.safe), u = b.u, ch = b.h / u;
     const fam = handFamily(p.font), pencil = withAlpha(p.ink, 0.62), red = p.accent;
-    const out = p.mode === 'done' ? 1 : clamp((dur - local) / 0.28);
-    cssCamel(s.wrap, { left: `${b.x0}px`, top: `${b.y0}px`, width: `${b.w}px`, height: `${b.h}px`, transform: `rotate(${p.tilt}deg)`,
+    const ticking = p.mode === 'list' && p.tick >= 1, out = p.mode === 'done' || ticking ? 1 : clamp((dur - local) / 0.28);
+    const slide = ticking ? tickSlide(local, dur, b.x0 + b.w + 60 * u) : 0;
+    cssCamel(s.wrap, { left: `${b.x0}px`, top: `${b.y0}px`, width: `${b.w}px`, height: `${b.h}px`, transform: `${ticking ? `translateX(${slide.toFixed(1)}px) ` : ''}rotate(${p.tilt}deg)`,
       boxShadow: p.card ? `0 ${10 * u}px ${26 * u}px rgba(60,40,20,0.28)` : 'none' });
     const g = canvasAt(s.cv, b.w, b.h);
     g.save(); g.scale(u, u);
@@ -95,17 +111,22 @@ export const notecard: ItemType<P, S> = {
       });
     } else if (p.mode === 'list') {
       const items = parseItems(p.items).slice(0, 8);
-      txt({ text: p.title, x: 52, y: 90, px: 60, weight: 700, t0: 0.05, cps: 10 });
-      if (p.count) txt({ text: p.count.replace('{n}', String(items.length)), x: CARD_W - 52, y: 88, px: 36, color: pencil, align: 'right', t0: 0.3, cps: 10 });
+      // ticking: everything is written already (no t0), only the ticks and the highlighter move
+      const w0 = (t0: number, cps: number) => (ticking ? {} : { t0, cps });
+      txt({ text: p.title, x: 52, y: 90, px: 60, weight: 700, ...w0(0.05, 10) });
+      if (p.count) txt({ text: p.count.replace('{n}', String(items.length)), x: CARD_W - 52, y: 88, px: 36, color: pencil, align: 'right', ...w0(0.3, 10) });
       items.forEach((name, i) => {
-        const { col, row } = listSlot(i, items.length), x = 52 + col * 450, y = RULE0 + RULE * (row + 1) - 14, t0 = 0.45 + i * p.every, e = ease(clamp((local - t0) / 0.25));
+        const { col, row } = listSlot(i, items.length), x = 52 + col * 450, y = RULE0 + RULE * (row + 1) - 14, t0 = 0.45 + i * p.every, e = ticking ? 1 : ease(clamp((local - t0) / 0.25));
         if (e <= 0) return;
+        const tk = ticking ? tickState(i, Math.round(p.tick) - 1, local) : null;
+        if (tk && tk.marker > 0) { g.globalAlpha = 0.88 * out; g.fillStyle = p.marker; g.fillRect(x + 46, y - 38, (textEm(name) * 44 + 16) * tk.marker, 48); g.globalAlpha = out; }
         g.globalAlpha = e * out; g.strokeStyle = p.ink; g.lineWidth = 2.6; handRect(g, x, y - 34, 36, 36, 1.4, i + 3); g.stroke(); g.globalAlpha = out;
         g.strokeStyle = red; g.lineWidth = 4.4;
-        tick(g, x, y - 34, 36, clamp((local - t0 - 0.12) / 0.14), clamp((local - t0 - 0.26) / 0.18));
-        txt({ text: name, x: x + 54, y, px: 44, t0: t0 + 0.05, cps: 26 });
+        if (tk) tick(g, x, y - 34, 36, tk.k1, tk.k2);
+        else tick(g, x, y - 34, 36, clamp((local - t0 - 0.12) / 0.14), clamp((local - t0 - 0.26) / 0.18));
+        txt({ text: name, x: x + 54, y, px: 44, ...w0(t0 + 0.05, 26) });
       });
-      if (p.note) txt({ text: p.note, x: 52, y: RULE0 + RULE * 5 - 16, px: 32, color: pencil, t0: 0.6 + items.length * p.every, cps: 30 });
+      if (p.note) txt({ text: p.note, x: 52, y: RULE0 + RULE * 5 - 16, px: 32, color: pencil, t0: ticking ? 0.9 : 0.6 + items.length * p.every, cps: 30 });
     } else if (p.mode === 'title') {
       // the name is there from the first frame (an opening): it only settles in
       const e = ease(clamp(local / 0.35)), half = Math.min(420, (textEm(p.title) * 150) / 2 + 10);

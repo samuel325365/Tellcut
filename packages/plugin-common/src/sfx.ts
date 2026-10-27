@@ -634,6 +634,23 @@ export function renderRewind(sr: number, dur = 0.7): Float32Array {
   return fade(normalize(x, 0.6), sr, 3);
 }
 
+/** distant thunder (the katie-sweet16 short's fx.thunder): brown noise through two low-passes (about 300 and 450 Hz) swelling in over
+ *  0.08 s and rolling away over 3 s with a slow wobble, a soft crack of raw noise in the first third of a second; `seed` picks the roll */
+export function renderThunder(sr: number, seed = 3): Float32Array {
+  const x = zeros(sr, 3.2), r = rng(Math.max(1, Math.round(seed)) * 7919 + 13), k = (f: number) => 1 - Math.exp((-TAU * f) / sr);
+  const k1 = k(306), k2 = k(458), leak = Math.exp((-TAU * 150) / sr);
+  let b = 0, lp = 0, lp2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const t = i / sr, w = r() * 2 - 1;
+    b = b * leak + w * 0.02;                     // brown-ish noise
+    lp += (b - lp) * k1; lp2 += (lp - lp2) * k2;
+    const env = Math.min(1, t / 0.08) * Math.exp(-t * 1.1) * (1 + 0.5 * Math.sin(t * 7.3) * Math.exp(-t * 0.8));
+    const crack = t < 0.35 ? w * 0.0133 * Math.exp(-t * 14) : 0;
+    x[i] = (lp2 + crack) * env;
+  }
+  return fade(normalize(x, 0.85), sr, 20);
+}
+
 type Bus = { out: AudioNode; verb: AudioNode; noise: AudioBuffer };
 /** play `x` at `at` through the bus; `send` is how much goes to the reverb too */
 /** a boxing-ring bell (the podcast-versus short's score): a hard strike of inharmonic partials with a long shimmer, `strikes` times
@@ -771,6 +788,8 @@ export const commonSfx: SfxType[] = [
   { type: 'common.cry', label: '嬰兒哭', category: 'life', doc: '卡通的嬰兒哭聲「哇～啊～」（聲數、音高可調，柔和不刺耳）；嬰兒、育兒、崩潰、哭哭',
     params: [num('times', '幾聲', 2, 1, 6, 1), num('pitch', '音高 (Hz)', 520, 250, 1000, 5)],
     duration: (p) => Math.min(6, n2(p, 'times')) * 0.75, lookback: LONG, synth: (c, b, at, p) => play(c, b, at, renderCry(c.sampleRate, p.times, p.pitch), 0.1) },
+  { type: 'common.thunder', label: '遠雷', category: 'life', doc: '遠處的雷聲：開頭輕輕一聲裂響，接著低沉的隆隆聲滾開約三秒（seed 換一種滾法）；暴風雨、天色變暗、壞消息、閃電；配 common.ambient 的 sky 天色和它的閃電',
+    params: [num('seed', '種子（換一種滾法）', 3, 1, 999, 1)], duration: () => 3.2, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderThunder(c.sampleRate, p.seed), 0.2) },
   // ---- the phone and the camcorder (2026-10-23)
   { type: 'common.buzz', label: '手機震動', category: 'alert', doc: '手機放在桌上震動的「嗡—嗡—」（次數可調）；來電、通知、訊息進來、被已讀不回、心裡一震；配 common.touch',
     params: [num('pulses', '震幾下', 2, 1, 8, 1)], duration: (p) => Math.min(8, n2(p, 'pulses')) * 0.34 - 0.08, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderBuzz(c.sampleRate, p.pulses)) },

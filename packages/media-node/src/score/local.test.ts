@@ -226,3 +226,28 @@ test('every style in the library is named in guides/workflow.md, where the page 
   const l = await loadAllStyles();
   expect(Object.keys(l.styles).filter((id) => !guide.includes(`\`${id}\``))).toEqual([]);
 });
+
+test('library: candle-glow (katie-sweet16) follows its cues — minor at low, silent at shout, only a pad at quiet — and fits any length without them', async () => {
+  const { composeEvents } = await import('./styles.ts');
+  const { rng } = await import('./synth.ts');
+  const s = (await loadAllStyles()).styles['candle-glow'], bar = 240 / 72;
+  expect(s).toBeDefined();
+  const cues = { low: 4 * bar, bright: 8 * bar, wait: 12 * bar, shout: 14 * bar, party: 16 * bar, quiet: 20 * bar, tender: 22 * bar };
+  const ev = composeEvents(s, { bpm: 72, key: 'D', bars: 26, rng: rng(1), cues });
+  const within = (a: number, b: number) => ev.filter((e) => e.t >= a * bar - 1e-6 && e.t < b * bar - 1e-6);
+  // low: no plucked pulse and no shaker, and its chords sit on B minor's notes (B D F#) or G (G B D) or F# minor
+  expect(within(4, 8).some((e) => e.inst === 'pluck' || e.inst === 'shaker')).toBe(false);
+  expect(within(4, 8).some((e) => e.inst === 'sub')).toBe(true);
+  // the shout: nothing for 2.4 s, then it plays again before the party cue
+  expect(ev.filter((e) => e.t >= cues.shout - 1e-6 && e.t < cues.shout + 2.4 - 1e-6)).toEqual([]);
+  // the party grooves (shaker, soft snare); quiet keeps only pad and sub; tender is piano and celesta
+  expect(within(16, 20).some((e) => e.inst === 'softSnare')).toBe(true);
+  expect(new Set(within(20, 22).map((e) => e.inst))).toEqual(new Set(['pad']));
+  expect(within(22, 25).every((e) => e.inst === 'epiano' || e.inst === 'bell')).toBe(true);
+  // without cues: every bar plays, the last bar is a rolled chord
+  for (const bars of [4, 12, 40]) {
+    const plain = composeEvents(s, { bpm: 72, key: 'D', bars, rng: rng(1) }), end = (bars - 1) * bar;
+    for (let b = 0; b < bars; b++) expect(plain.some((e) => e.t >= b * bar - 1e-6 && e.t < (b + 1) * bar - 1e-6), `${bars} bar ${b}`).toBe(true);
+    expect(plain.filter((e) => e.t >= end - 1e-6).length, String(bars)).toBeGreaterThanOrEqual(5);
+  }
+});

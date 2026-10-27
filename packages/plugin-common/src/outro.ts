@@ -1,6 +1,8 @@
 // common.outro — an end card that sends viewers on: a paper page, a few big lines stamped down one per beat (【word】 on an
 // accent chip), a row of numbered dots (the last ones still ?), and a hand-drawn arrow drawn to the link that bounces on
 // the beat. Promoted from the zhongli-food short's fx.outro; for any short that points to the full video, a profile or a link.
+// look 'credits' (the katie-sweet16 short's fx.keepsake): a celebration's closing credits — the lines fade up one a beat over a soft dark
+// veil, plain lines bold, *lines in stars* italic in the highlight colour, _lines in underscores_ small and letter-spaced.
 import { clamp, cssCamel, eBack, eOut3 as eOut, h, prog, type ItemType } from '@tellcut/engine';
 import { canvasAt, penPath, freeCanvas } from './inkline.ts';
 import { emParts, fitPx, nl } from './text.ts';
@@ -8,9 +10,9 @@ import { withAlpha } from './color.ts';
 
 interface P {
   lines: string; cta: string; tipX: number; tipY: number; dots: number; hidden: number; beat: number; x: number; cover: number;
-  font: string; lineFont: string; paper: string; ink: string; accent: string; hl: string;
+  font: string; lineFont: string; paper: string; ink: string; accent: string; hl: string; look: 'cta' | 'credits'; y: number;
 }
-interface S { bg: HTMLElement; cv: HTMLCanvasElement; lines: HTMLElement[]; dots: HTMLElement[]; cta: HTMLElement; key: string }
+interface S { bg: HTMLElement; cv: HTMLCanvasElement; lines: HTMLElement[]; dots: HTMLElement[]; cta: HTMLElement; key: string; cred: HTMLElement; ckey: string; veil: HTMLElement }
 
 const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 const LINE = 221;   // one line's height in u (the original's 11.5 % of a 9:16 frame)
@@ -28,7 +30,7 @@ export function outroLayout(lines: number, W: number, H: number, safe: { top: nu
 
 export const outro: ItemType<P, S> = {
   type: 'common.outro', label: '片尾導流', category: 'moment', kind: 'overlay',
-  doc: '片尾導流卡：紙色底，幾行大字跟著拍子一行一行蓋下來（【詞】放進主色小牌），下面一排編號圓點（最後幾個打問號），手繪箭頭畫向連結並隨拍點彈跳；導去原片、主頁、留言、下一集',
+  doc: '片尾導流卡：紙色底，幾行大字跟著拍子一行一行蓋下來（【詞】放進主色小牌），下面一排編號圓點（最後幾個打問號），手繪箭頭畫向連結並隨拍點彈跳；導去原片、主頁、留言、下一集；look credits 是慶生、婚禮、畢業的片尾感謝名單：lines 每行一拍淡入（*星號包住* 的行是高亮色斜體、_底線包住_ 的行是加寬字距的小字，其他是粗體名字），字後面一層暗色薄紗（cover 調濃淡），y 是名單中心的高度；片頭的名字用 common.headline 的 look name',
   params: [
     { key: 'lines', label: '大字（每行一句，【詞】強調）', type: 'text', default: '完整路線\n和【6 家店名】\n都在原片' },
     { key: 'cta', label: '箭頭旁小字', type: 'string', default: '點這裡看完整版' },
@@ -44,17 +46,26 @@ export const outro: ItemType<P, S> = {
     { key: 'paper', label: '紙色', type: 'color', default: '#f4ebdd', theme: 'palette.paper' },
     { key: 'ink', label: '墨色', type: 'color', default: '#1e1712', theme: 'palette.ink' },
     { key: 'accent', label: '主色（箭頭、小牌、圓點）', type: 'color', default: '#d9442b', theme: 'palette.accent' },
-    { key: 'hl', label: '問號顏色', type: 'color', default: '#f0b429', theme: 'palette.hl' },
+    { key: 'hl', label: '問號顏色（credits：*斜體行* 的顏色）', type: 'color', default: '#f0b429', theme: 'palette.hl' },
+    { key: 'look', label: '樣子（cta 導流卡；credits 慶生、婚禮的片尾名單：每行一拍淡入，*星號包住* 的行是高亮色斜體、_底線包住_ 的行是加寬字距的小字，其他是粗體名字；cover 是字後面暗色薄紗的濃度）', type: 'enum', options: ['cta', 'credits'], default: 'cta' },
+    { key: 'y', label: '名單中心的高度（credits；畫面高比例，-1＝安全區正中間）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
   ],
   build(ctx) {
     const bg = h('div', null, null, ctx.root), cv = h('canvas', null, null, ctx.root), cta = h('div', null, null, ctx.root);
     cssCamel(bg, { position: 'absolute', inset: '0' });
     cssCamel(cv, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
     cssCamel(cta, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1', transformOrigin: '0 50%', fontWeight: '900' });
-    return { bg, cv, lines: [], dots: [], cta, key: '' };
+    const veil = h('div', null, null, ctx.root), cred = h('div', null, null, ctx.root);
+    cssCamel(veil, { position: 'absolute', inset: '0', display: 'none', background: 'radial-gradient(ellipse at 50% 50%, rgba(8,6,14,0.75), rgba(8,6,14,0.35))' });
+    cssCamel(cred, { position: 'absolute', left: '0', right: '0', display: 'none', flexDirection: 'column', alignItems: 'center', textAlign: 'center' });
+    return { bg, cv, lines: [], dots: [], cta, key: '', cred, ckey: '', veil };
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
+    const credits = ctx.params.look === 'credits';
+    cssCamel(s.cred, { display: credits ? 'flex' : 'none' });
+    cssCamel(s.veil, { display: credits ? 'block' : 'none' });
+    if (credits) { drawCredits(ctx, s); return; }
     const p = ctx.params, { W, H, theme, local } = ctx, texts = outroLines(p.lines), nd = Math.max(0, Math.min(9, Math.round(p.dots)));
     const L = outroLayout(texts.length, W, H, theme.safe), u = L.u, cx = p.x * W, S = Math.min(W, H);
     const key = JSON.stringify([texts, nd, p.accent, p.paper]);
@@ -73,13 +84,13 @@ export const outro: ItemType<P, S> = {
       s.dots = Array.from({ length: nd }, () => { const e = h('div', null, null, ctx.root); cssCamel(e, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1', fontWeight: '900', transform: 'translate(-50%, -50%)' }); return e; });
       ctx.root.appendChild(s.cta);
     }
-    cssCamel(s.bg, { background: p.paper, opacity: String(prog(local, 0, 0.2) * clamp(p.cover)),
+    cssCamel(s.bg, { display: 'block', background: p.paper, opacity: String(prog(local, 0, 0.2) * clamp(p.cover)),
       backgroundImage: `radial-gradient(${withAlpha(p.ink, 0.08)} ${2.2 * u}px, transparent ${2.6 * u}px)`, backgroundSize: `${34 * u}px ${34 * u}px` });
     // the lines land one a beat: big and tilted first, then settled
     const room = W * (1 - 2 * theme.safe.side);
     s.lines.forEach((d, i) => {
       const q = prog(local, 0.15 + i * p.beat, 0.15 + i * p.beat + 0.22), plain = texts[i].replace(/[【】]/g, ''), big = texts[i].includes('【');
-      cssCamel(d, { left: `${cx}px`, top: `${L.top + i * LINE * u}px`, color: p.ink, fontFamily: `'${p.lineFont}', 'Noto Serif TC', serif`,
+      cssCamel(d, { display: 'block', left: `${cx}px`, top: `${L.top + i * LINE * u}px`, color: p.ink, fontFamily: `'${p.lineFont}', 'Noto Serif TC', serif`,
         fontSize: `${fitPx(plain, (big ? 142 : 128) * u, room)}px`, opacity: String(clamp(q * 4)),
         transform: `translateX(-50%) scale(${1 + (1 - eOut(q)) * 0.9}) rotate(${(1 - eOut(q)) * (i % 2 ? 4 : -4)}deg)` });
     });
@@ -115,3 +126,45 @@ export const outro: ItemType<P, S> = {
       transform: `rotate(-4deg) translateX(${(1 - eOut(pc)) * 40 * u}px)` });
   },
 };
+
+// ---- look credits ------------------------------------------------------------------------------------------------------------------
+export type CreditKind = 'name' | 'italic' | 'small';
+/** one credits line: "*with love*" italic, "_Music: …_" small, anything else a name */
+export function creditLine(line: string): { kind: CreditKind; text: string } {
+  const t = line.trim();
+  if (t.length > 2 && t.startsWith('*') && t.endsWith('*')) return { kind: 'italic', text: t.slice(1, -1).trim() };
+  if (t.length > 2 && t.startsWith('_') && t.endsWith('_')) return { kind: 'small', text: t.slice(1, -1).trim() };
+  return { kind: 'name', text: t };
+}
+/** how far credits line i has faded up at `local`: 0.3 s in, one a beat, each over 0.9 s */
+export const creditIn = (i: number, local: number, beat: number) => eOut(prog(local, 0.3 + i * beat, 1.2 + i * beat));
+
+/** the credits' serif: Playfair Display unless the line font was changed from the default */
+const creditFace = (font: string) => (font === 'Noto Serif TC' ? 'Playfair Display' : font);
+
+function drawCredits(ctx: Parameters<typeof outro.draw>[0], s: S) {
+  const p = ctx.params, { W, H, theme, local, dur } = ctx, u = Math.min(W, H) / 1080, room = W * (1 - 2 * theme.safe.side);
+  for (const el of [...s.lines, ...s.dots]) cssCamel(el, { display: 'none' });
+  cssCamel(s.cta, { display: 'none' });
+  freeCanvas(s.cv);
+  const lines = outroLines(p.lines).map(creditLine), out = 1 - prog(local, dur - 0.4, dur);
+  // a soft dark veil so the words read on any picture: cover sets how dark
+  cssCamel(s.bg, { display: 'none' });
+  cssCamel(s.veil, { opacity: String(clamp(p.cover) * 0.75 * prog(local, 0, 0.6) * out) });
+  const key = JSON.stringify(lines);
+  if (s.ckey !== key) {   // one div a line, rebuilt only when the lines change
+    s.ckey = key;
+    s.cred.replaceChildren(...lines.map((l) => { const d = h('div'); d.textContent = l.text; cssCamel(d, { whiteSpace: 'pre', lineHeight: '1.2' }); return d; }));
+  }
+  const serif = `'${creditFace(p.lineFont)}', 'Noto Serif TC', serif`;
+  ([...s.cred.children] as HTMLElement[]).forEach((d, i) => {
+    const l = lines[i], q = creditIn(i, local, p.beat), base = l.kind === 'name' ? 54 : l.kind === 'italic' ? 50 : 46;
+    cssCamel(d, { fontFamily: l.kind === 'small' ? `'Cormorant Garamond', ${serif}` : serif, fontWeight: l.kind === 'name' ? '700' : '500',
+      fontStyle: l.kind === 'italic' ? 'italic' : 'normal', fontSize: `${fitPx(l.text, base * u, room).toFixed(2)}px`, color: l.kind === 'italic' ? p.hl : p.paper,
+      letterSpacing: l.kind === 'small' ? `${(3 * u).toFixed(2)}px` : 'normal', marginTop: i ? `${((l.kind === 'small' ? 10 : 16) * u).toFixed(1)}px` : '0',
+      textShadow: `0 0 ${(18 * u).toFixed(1)}px rgba(6,4,14,0.95), 0 ${(2 * u).toFixed(1)}px ${(6 * u).toFixed(1)}px rgba(6,4,14,0.8)`,
+      opacity: String(q * (l.kind === 'small' ? 0.88 : 1)), transform: `translateY(${((1 - q) * 12 * u).toFixed(2)}px)` });
+  });
+  const cy = p.y >= 0 ? p.y * H : ((theme.safe.top + 1 - theme.safe.bottom) / 2) * H;
+  cssCamel(s.cred, { top: `${cy.toFixed(1)}px`, transform: 'translateY(-50%)', opacity: String(out) });
+}

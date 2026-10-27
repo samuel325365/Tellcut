@@ -5,15 +5,17 @@
 // growing under the words as they are written, `no` circled in red pen at the left of the first one; the strips land with a bounce.
 // look "pin" (t2-map's fx.tag and the atlas pins): a teardrop map pin drops onto (x, y) — its tip — with a label card above it
 // (the first tag, the second a small line under it); `check` ticks the pin's head at that second.
+// look "day" (the todo-vlog short's fx.daystamp): a torn paper label at (x, y) with a strip of tape on its corner — the first tag big in an
+// italic serif ("Day 2"), underlined in the accent pen, the second handwritten under it (a time, the weather); it pops in with a turn.
 // look "glass" (the brand film): frosted panels one after another; `stack` puts them in a column, `check` ticks each one in the accent
 // colour that many seconds after it appears (the spike's "It checks its own work." list).
-import { clamp, cssCamel, eBack, eOut3, h, prog, type ItemType } from '@tellcut/engine';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { clamp, cssCamel, eBack, eOut3, h, prog, rng, type ItemType } from '@tellcut/engine';
+import { canvasAt, freeCanvas, penPath } from './inkline.ts';
 import { handCircle, handFamily, tape } from './hand.ts';
 import { mapPin } from './geo.ts';
 import { withAlpha } from './color.ts';
 
-interface P { tags: string; x: number; y: number; size: number; gap: number; font: string; ink: string; c1: string; c2: string; c3: string; look: 'pill' | 'label' | 'tape' | 'pin' | 'glass'; no: string; check: number; handFont: string; step: number; stack: boolean }
+interface P { tags: string; x: number; y: number; size: number; gap: number; font: string; ink: string; c1: string; c2: string; c3: string; look: 'pill' | 'label' | 'tape' | 'pin' | 'glass' | 'day'; no: string; check: number; handFont: string; step: number; stack: boolean }
 interface Strip { el: HTMLElement; cv: HTMLCanvasElement; txt: HTMLElement; sub: HTMLElement }
 interface S { row: HTMLElement; pills: HTMLElement[]; marks: HTMLElement[]; key: string; wrap: HTMLElement; strips: Strip[]; skey: string; pin: HTMLCanvasElement }
 
@@ -27,7 +29,7 @@ export const pinTimes = (local: number, check: number) => ({ drop: eOut3(prog(lo
 
 export const tag: ItemType<P, S> = {
   type: 'common.tag', label: '膠囊標籤', category: 'chapter', kind: 'overlay',
-  doc: '一排小膠囊標籤（逗號分隔），一個接一個彈出；標題下面的重點小字：認證、類型、價位、距離；look: label 是方塊相連的地點＋日期標籤（深底白字加強調色邊、螢光底日期），一拍內從左刷進來；look: tape 是紙膠帶標籤：每個標籤用手寫字寫在一條米色紙膠帶上、字底下長出一道螢光筆，no 用紅筆圈在第一條左邊（店號、站號），膠帶彈一下貼上（筆記本、手帳、散步地圖）；look: pin 是圖釘標籤：一根水滴形圖釘落在 x、y（釘尖），上方一張標籤卡（第一個標籤，第二個是下面一行小字），check 那一秒在圖釘頭上打勾（地圖、到過的地方、景點）；look: glass 是毛玻璃標籤（品牌片），stack 直排，check 每個標籤出現後幾秒打上主色的勾（檢查清單、做到的事）',
+  doc: '一排小膠囊標籤（逗號分隔），一個接一個彈出；標題下面的重點小字：認證、類型、價位、距離；look: label 是方塊相連的地點＋日期標籤（深底白字加強調色邊、螢光底日期），一拍內從左刷進來；look: tape 是紙膠帶標籤：每個標籤用手寫字寫在一條米色紙膠帶上、字底下長出一道螢光筆，no 用紅筆圈在第一條左邊（店號、站號），膠帶彈一下貼上（筆記本、手帳、散步地圖）；look: pin 是圖釘標籤：一根水滴形圖釘落在 x、y（釘尖），上方一張標籤卡（第一個標籤，第二個是下面一行小字），check 那一秒在圖釘頭上打勾（地圖、到過的地方、景點）；look: glass 是毛玻璃標籤（品牌片），stack 直排，check 每個標籤出現後幾秒打上主色的勾（檢查清單、做到的事）；look: day 是手帳的日期標：x、y 一張撕邊小紙條，角上貼一段膠帶，第一個標籤是斜體大字（Day 2、07:30），筆畫一道底線，第二個是手寫小字（天氣、地點），彈一下轉正貼上（vlog 的第幾天、一天的時間軸、旅行日記）',
   params: [
     { key: 'tags', label: '標籤（用逗號分隔）', type: 'string', default: '標籤一,標籤二' },
     { key: 'x', label: '左邊 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.06 },
@@ -39,12 +41,12 @@ export const tag: ItemType<P, S> = {
     { key: 'c1', label: '膠囊顏色一', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'c2', label: '膠囊顏色二', type: 'color', default: '#2ec4b6', theme: 'palette.accent2' },
     { key: 'c3', label: '膠囊顏色三', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
-    { key: 'look', label: '樣子（pill 膠囊、label 方塊相連的地點日期標籤、tape 紙膠帶手寫標籤、pin 圖釘標籤、glass 毛玻璃標籤）', type: 'enum', options: ['pill', 'label', 'tape', 'pin', 'glass'], default: 'pill' },
+    { key: 'look', label: '樣子（pill 膠囊、label 方塊相連的地點日期標籤、tape 紙膠帶手寫標籤、pin 圖釘標籤、glass 毛玻璃標籤、day 手帳日期標：撕邊小紙條上第一個標籤是斜體大字、第二個是手寫小字）', type: 'enum', options: ['pill', 'label', 'tape', 'pin', 'glass', 'day'], default: 'pill' },
     { key: 'no', label: '紅筆圈起來的號碼（tape：第一條膠帶左邊；空＝沒有）', type: 'string', default: '' },
     { key: 'check', label: '打勾的秒數（pin：相對項目開始；glass：每個標籤出現後幾秒；-1＝不打勾）', type: 'number', min: -1, max: 60, step: 0.05, default: -1 },
     { key: 'step', label: '一個接一個出現的間隔（秒；glass）', type: 'number', min: 0.02, max: 3, step: 0.01, default: 0.12 },
     { key: 'stack', label: '直排（glass；一個在一個下面）', type: 'bool', default: false },
-    { key: 'handFont', label: '手寫字型（tape、pin）', type: 'string', default: 'LXGW WenKai TC' },
+    { key: 'handFont', label: '手寫字型（tape、pin、day）', type: 'string', default: 'LXGW WenKai TC' },
   ],
   build(ctx) {
     const row = h('div', null, null, ctx.root), wrap = h('div', null, null, ctx.root), pin = h('canvas', null, null, wrap) as HTMLCanvasElement;
@@ -56,9 +58,9 @@ export const tag: ItemType<P, S> = {
   hide(s) { freeCanvas(s.pin, ...s.strips.map((x) => x.cv)); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, px = (p.size / 100) * H;
-    const extra = p.look === 'tape' || p.look === 'pin';
+    const extra = p.look === 'tape' || p.look === 'pin' || p.look === 'day';
     cssCamel(s.wrap, { display: extra ? 'block' : 'none' });
-    if (extra) { cssCamel(s.row, { display: 'none' }); if (p.look === 'tape') drawTape(ctx, s, k, px); else drawPin(ctx, s, k, px); return; }
+    if (extra) { cssCamel(s.row, { display: 'none' }); if (p.look === 'tape') drawTape(ctx, s, k, px); else if (p.look === 'day') drawDay(ctx, s, px); else drawPin(ctx, s, k, px); return; }
     cssCamel(s.row, { display: 'flex' });
     const ticks = p.look === 'glass' && p.check >= 0, key = `${ticks ? 'v' : ''}|${p.tags}`;
     if (s.key !== key) {   // rebuild the pills only when the list (or whether they are ticked) changed
@@ -177,4 +179,36 @@ function drawPin(ctx: Ctx, s: S, k: number, px: number) {
     background: `linear-gradient(${p.c1}, ${p.c1}) ${0.3 * px}px calc(100% - ${0.12 * px}px) / calc(100% - ${0.6 * px}px) ${0.06 * px}px no-repeat, ${theme.palette.paper}`,
     border: `${Math.max(2, 0.06 * px)}px solid ${p.ink}`, borderRadius: `${0.3 * px}px`, boxShadow: `${4 * k}px ${6 * k}px 0 rgba(0,0,0,0.25)`,
     opacity: String(out), transformOrigin: '50% 100%', transform: `translate(-50%, -100%) scale(${Math.max(0, tm.label).toFixed(4)})` });
+}
+
+/** look day: how far the label has popped in (0.34 s, overshooting), the underline drawn (from 0.2 s over 0.3 s) and the fade at the end */
+export const dayTimes = (local: number, dur: number) => ({ pop: eBack(prog(local, 0, 0.34), 1.5), line: prog(local, 0.2, 0.5), out: prog(local, dur - 0.25, dur) });
+
+/** look day: the torn label at (x, y), the first tag big in an italic serif, the second handwritten under it, a strip of tape on the
+ *  corner; the sizes are the original's at 1080 × 1920, scaled by the size param (1.8 % of the frame height = as made) */
+function drawDay(ctx: Ctx, s: S, px: number) {
+  const p = ctx.params, { W, H, theme, local, dur } = ctx, [big = '', sub = ''] = listOf(p.tags), q = px / 34.56, tm = dayTimes(local, dur);
+  strips(s, `day|${p.tags}`, 1, false);
+  cssCamel(s.pin, { display: 'none' });
+  const st = s.strips[0];
+  st.txt.textContent = big; st.sub.textContent = sub;
+  cssCamel(st.txt, { left: `${26 * q}px`, top: `${12 * q}px`, transform: 'none', fontFamily: `'Playfair Display', '${p.font}', 'Noto Serif TC', serif`, fontStyle: 'italic',
+    fontSize: `${64 * q}px`, fontWeight: '700', color: p.ink, clipPath: 'none' });
+  cssCamel(st.sub, { display: sub ? 'block' : 'none', left: `${28 * q}px`, top: `${92 * q}px`, transform: 'none', fontFamily: handFamily(p.handFont), fontSize: `${48 * q}px`,
+    fontWeight: '400', color: p.ink, opacity: '1' });
+  const dw = st.txt.offsetWidth, w = Math.max(dw, sub ? st.sub.offsetWidth : 0) + 56 * q, hh = (sub ? 150 : 96) * q, m = 40 * q, sc = 0.7 + 0.3 * tm.pop;
+  cssCamel(st.el, { display: tm.out >= 1 ? 'none' : 'block', left: `${p.x * W + 10 * q}px`, top: `${p.y * H}px`, width: `${w}px`, height: `${hh}px`, opacity: String(1 - tm.out),
+    transformOrigin: '0 50%', transform: `scale(${sc.toFixed(4)}) rotate(${(-0.045 * tm.pop - 0.2 * (1 - tm.pop)).toFixed(4)}rad)` });
+  cssCamel(st.cv, { display: 'block', left: `${-m}px`, top: `${-m}px`, width: `${w + 2 * m}px`, height: `${hh + 2 * m}px`, filter: 'none' });
+  const g = canvasAt(st.cv, w + 2 * m, hh + 2 * m);
+  g.save(); g.translate(m, m);
+  // the label, its right edge torn, a soft shadow under it
+  g.save(); g.shadowColor = 'rgba(35,22,12,0.35)'; g.shadowBlur = 22 * q; g.shadowOffsetY = 8 * q; g.fillStyle = theme.palette.paper;
+  const r = rng(7); g.beginPath(); g.moveTo(0, 0); g.lineTo(w, 0);
+  for (let y = 0; y <= hh; y += 10 * q) g.lineTo(w - r() * 7 * q, y);
+  g.lineTo(0, hh); g.closePath(); g.fill(); g.restore();
+  tape(g, 22 * q, 6 * q, 70 * q, 26 * q, -0.6, withAlpha(p.c1, 0.55), 7);
+  // the underline under the big word, in the accent pen
+  if (tm.line > 0) penPath(g, [[28 * q, 86 * q], [28 * q + dw * 0.5, 82 * q], [28 * q + dw, 87 * q]], 5 * q, p.c1, 4, tm.line);
+  g.restore();
 }

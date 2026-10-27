@@ -1,16 +1,20 @@
 // common.headline — the documentary title card, from krakow-square's fx.headline (a serif headline and a line under it between two
 // thin rules, over a dark band or a black frame), with uk-parallax's serifcap (letter-spaced serif, a soft shadow, rising in) and
 // uk-dv's dvTitle (the letters coming in one by one: `type`). The rules grow out from the middle while the card rises in.
+// look 'name' (the katie-sweet16 short's fx.title): a celebration's name title — a big italic serif name whose letters rise in one
+// after another, one shimmer of light across it, a gold rule drawing out from a dot under it, and a letter-spaced line below.
 import { abs, clamp, cssCamel, eOut3, h, type ItemType, prog, textEm } from '@tellcut/engine';
 import { countUp, drawBlurLine, loadLineFaces } from './brand-text.ts';
 import { ghostLayer, ghostLines, nl, type GhostLine } from './text.ts';
-import { withAlpha } from './color.ts';
+import { mixHex, withAlpha } from './color.ts';
 
 interface P {
   text: string; sub: string; y: number; size: number; spacing: number; bg: 'none' | 'band' | 'black'; rules: boolean; type: number;
-  font: string; color: string; line: string; ground: string; look: 'doc' | 'brand' | 'proof';
+  font: string; color: string; line: string; ground: string; look: 'doc' | 'brand' | 'proof' | 'name';
 }
-interface S { ground: HTMLElement; box: HTMLElement; r1: HTMLElement; r2: HTMLElement; main: HTMLElement; sub: HTMLElement; cv: HTMLCanvasElement; ghost: HTMLElement; p: P }
+interface S { ground: HTMLElement; box: HTMLElement; r1: HTMLElement; r2: HTMLElement; main: HTMLElement; sub: HTMLElement; cv: HTMLCanvasElement; ghost: HTMLElement; p: P; nm: NameEls }
+/** look name's parts: the group (name, rule with its dot, the line under it), centred on y */
+interface NameEls { box: HTMLElement; name: HTMLElement; rule: HTMLElement; dot: HTMLElement; sub: HTMLElement; key: string }
 
 /** the text's lines (a typed "\\n" too) */
 const linesOf = (s: string) => nl(s).split('\n');
@@ -33,7 +37,7 @@ function setTyped(el: HTMLElement, lines: string[], n: number) {
 
 export const headline: ItemType<P, S> = {
   type: 'common.headline', label: '明體標題卡', category: 'text', kind: 'overlay',
-  doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來；歷史、紀錄片、散文、旅行的章節開場',
+  doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來；歷史、紀錄片、散文、旅行的章節開場；look name 是慶生、婚禮、畢業的名字片頭：斜體襯線的大名字（text）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；片尾的感謝名單用 common.outro 的 look credits',
   params: [
     { key: 'text', label: '大字（可換行）', type: 'text', default: '一座廣場的七百年' },
     { key: 'sub', label: '小字（空＝不顯示）', type: 'text', default: '第一章　規劃' },
@@ -47,7 +51,7 @@ export const headline: ItemType<P, S> = {
     { key: 'color', label: '大字顏色', type: 'color', default: '#f3e9d2', theme: 'palette.paper' },
     { key: 'line', label: '小字與細線的顏色', type: 'color', default: '#d9b13b' },
     { key: 'ground', label: '橫帶／黑底的顏色', type: 'color', default: '#0f0b08' },
-    { key: 'look', label: '樣子（doc 紀錄片標題卡；brand 品牌片：左下角一行一行從模糊變清楚，小字變成上方的小標；proof 品牌片的證明：左邊一個往上數的大數字，小字是下方加寬字距的標籤）', type: 'enum', options: ['doc', 'brand', 'proof'], default: 'doc' },
+    { key: 'look', label: '樣子（doc 紀錄片標題卡；brand 品牌片：左下角一行一行從模糊變清楚，小字變成上方的小標；proof 品牌片的證明：左邊一個往上數的大數字，小字是下方加寬字距的標籤；name 慶生、婚禮的名字片頭：斜體襯線大名字一個字母一個字母浮上來、一道光掃過，下面一條細線從中間的小圓點長出來，再一行加寬字距的小字）', type: 'enum', options: ['doc', 'brand', 'proof', 'name'], default: 'doc' },
   ],
   build(ctx) {
     const ground = abs(ctx.root, { left: '0', right: '0', pointerEvents: 'none' });
@@ -58,7 +62,7 @@ export const headline: ItemType<P, S> = {
     cssCamel(sub, { whiteSpace: 'pre', fontWeight: '700', lineHeight: '1.25' });
     const cv = h('canvas', null, null, ctx.root) as HTMLCanvasElement;
     cssCamel(cv, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', display: 'none' });
-    return { ground, box, r1, r2, main, sub, cv, ghost: ghostLayer(ctx.root), p: ctx.params };
+    return { ground, box, r1, r2, main, sub, cv, ghost: ghostLayer(ctx.root), p: ctx.params, nm: nameEls(ctx.root) };
   },
   async ready(s) {
     // look brand draws on a canvas: its faces loaded first
@@ -68,8 +72,12 @@ export const headline: ItemType<P, S> = {
   },
   draw(ctx, s) {
     const brand = ctx.params.look === 'brand' || ctx.params.look === 'proof';
+    const named = ctx.params.look === 'name';
     for (const e of [s.ground, s.box]) cssCamel(e, { visibility: brand ? 'hidden' : '' });
+    cssCamel(s.box, { display: named ? 'none' : '' });
+    cssCamel(s.nm.box, { display: named ? 'flex' : 'none' });
     cssCamel(s.cv, { display: brand ? 'block' : 'none' });
+    if (named) { ghostLines(s.ghost, []); drawName(ctx, s); return; }
     // the canvas looks' words for check and the editor: transparent copies over the canvas
     ghostLines(s.ghost, brand ? (ctx.params.look === 'proof' ? drawProof(ctx, s) : drawBrand(ctx, s)) : []);
     if (brand) return;
@@ -160,3 +168,64 @@ function drawBrand(ctx: Parameters<typeof headline.draw>[0], s: S): GhostLine[] 
   return [...out, ...lines.map((l, i) => drawBlurLine(g, { text: l, x, y: first + i * gap, size, family, weight: 300, color: p.color }, local, 0.2 + i * 0.35, dur))];
 }
 
+
+// ---- look name ----------------------------------------------------------------------------------------------------------------------
+function nameEls(root: HTMLElement): NameEls {
+  const box = abs(root, { left: '0', right: '0', display: 'none', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' });
+  const name = h('div', null, null, box), rule = h('div', null, null, box), dot = h('div', null, null, rule), sub = h('div', null, null, box);
+  cssCamel(name, { whiteSpace: 'pre', lineHeight: '1.2', fontStyle: 'italic', fontWeight: '700' });
+  cssCamel(rule, { position: 'relative' });
+  cssCamel(dot, { position: 'absolute', left: '50%', top: '50%', borderRadius: '50%' });
+  cssCamel(sub, { whiteSpace: 'pre', lineHeight: '1.2', fontWeight: '500' });
+  return { box, name, rule, dot, sub, key: '' };
+}
+
+/** look name: how far letter i of the name has risen in (0.15 s in, one every 0.09 s, each over 0.7 s) */
+export const nameLetter = (i: number, local: number) => eOut3(prog(local, 0.15 + i * 0.09, 0.85 + i * 0.09));
+/** look name: where the shimmer's middle is across the name (0–1 from 1.3 s over 1.2 s), or null when there is none */
+export const nameShimmer = (local: number): number | null => (local > 1.3 && local < 2.5 ? (local - 1.3) / 1.2 : null);
+
+/** look name's face: Playfair Display unless the font was changed from the documentary serif */
+const nameFace = (font: string) => (font === 'Noto Serif TC' ? 'Playfair Display' : font);
+
+function drawName(ctx: Parameters<typeof headline.draw>[0], s: S) {
+  const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, n = s.nm;
+  const text = linesOf(p.text).join(' ').trim(), sub = linesOf(p.sub).join(' ').trim(), room = W * (1 - 2 * theme.safe.side);
+  const family = `'${nameFace(p.font)}', 'Noto Serif TC', serif`;
+  // the name's size: 1.9× the size param (in px at a 1080 short side), shrunk to fit across the safe area
+  const fs = Math.min((p.size / 100) * 190 * k, room / Math.max(0.5, textEm(text) * 1.02)), sfs = Math.max(fs * 0.29, 26 * k);
+  const out = clamp((dur - local) / 0.7);
+  if (n.key !== text) {   // one span a letter, rebuilt only when the name changes
+    n.key = text;
+    n.name.replaceChildren(...[...text].map((c) => { const sp = h('span'); sp.textContent = c; cssCamel(sp, { display: 'inline-block', whiteSpace: 'pre' }); return sp; }));
+  }
+  const spans = [...n.name.children] as HTMLElement[], sh = nameShimmer(local), total = n.name.offsetWidth || fs * textEm(text);
+  spans.forEach((sp, i) => {
+    const q = nameLetter(i, local), band = sh === null ? null : sh * (total + 1.4 * fs) - 0.7 * fs - sp.offsetLeft;
+    cssCamel(sp, { opacity: String(q), transform: `translateY(${((1 - q) * 0.19 * fs).toFixed(2)}px)`,
+      ...(band === null ? { color: p.color, backgroundImage: 'none', webkitBackgroundClip: 'border-box', backgroundClip: 'border-box' }
+        : { color: 'transparent', webkitBackgroundClip: 'text', backgroundClip: 'text',
+          backgroundImage: `linear-gradient(90deg, ${p.color} ${(band - 0.6 * fs).toFixed(1)}px, ${mixHex(p.line, '#ffffff', 0.55)} ${band.toFixed(1)}px, ${p.color} ${(band + 0.6 * fs).toFixed(1)}px)` }) });
+  });
+  // a soft dark glow behind the words (filter, so it also follows the shimmer's clipped letters)
+  const glow = `drop-shadow(0 ${(6 * k).toFixed(1)}px ${(22 * k).toFixed(1)}px rgba(10,6,20,0.7))`;
+  cssCamel(n.name, { fontFamily: family, fontSize: `${fs.toFixed(2)}px`, filter: glow });
+  // the rule draws out from its dot, then the line under it opens its spacing as it fades in
+  const rk = eOut3(prog(local, 0.7, 1.7)), sk = eOut3(prog(local, 1.0, 1.9));
+  cssCamel(n.rule, { width: `${(600 * k * rk).toFixed(1)}px`, height: `${Math.max(1, 3 * k).toFixed(2)}px`, background: p.line, marginTop: `${(0.02 * fs).toFixed(1)}px`, overflow: 'visible' });
+  cssCamel(n.dot, { width: `${(12 * k * rk).toFixed(2)}px`, height: `${(12 * k * rk).toFixed(2)}px`, background: p.line, transform: 'translate(-50%, -50%)' });
+  n.sub.textContent = sub;
+  const track = (14 + (1 - sk) * 10) * k;
+  cssCamel(n.sub, { display: sub ? 'block' : 'none', fontFamily: `'Cormorant Garamond', ${family}`, fontSize: `${sfs.toFixed(2)}px`, color: p.color, opacity: String(sk),
+    letterSpacing: `${track.toFixed(2)}px`, textIndent: `${track.toFixed(2)}px`, marginTop: `${(0.25 * sfs).toFixed(1)}px`, filter: glow });
+  const cy = p.y >= 0 ? p.y * H : ((theme.safe.top + 1 - theme.safe.bottom) / 2) * H;
+  cssCamel(n.box, { top: `${cy.toFixed(1)}px`, transform: 'translateY(-50%)', opacity: String(out) });
+  // the ground as in look doc: a dark band behind the group, the whole frame black, or nothing
+  const hgt = n.box.offsetHeight + 1.2 * fs, a = eOut3(prog(local, 0, 0.6)) * out;
+  if (p.bg === 'black') cssCamel(s.ground, { display: 'block', top: '0', bottom: '0', height: 'auto', transform: 'none', background: p.ground, opacity: String(clamp(eOut3(prog(local, 0, 0.2)) * out)) });
+  else if (p.bg === 'band') {
+    const c = withAlpha(p.ground, 0.55);
+    cssCamel(s.ground, { display: 'block', top: `${cy}px`, bottom: 'auto', height: `${hgt}px`, transform: 'translateY(-50%)', opacity: String(a),
+      background: `linear-gradient(180deg, ${withAlpha(p.ground, 0)}, ${c} 25%, ${c} 75%, ${withAlpha(p.ground, 0)})` });
+  } else cssCamel(s.ground, { display: 'none' });
+}

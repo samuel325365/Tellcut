@@ -466,4 +466,15 @@ export const cases: Case[] = [
   { name: 'headline-brand-long', type: 'common.headline', params: { look: 'brand', text: 'We film every trip, every first, every day.\nAll of it.', sub: 'WHAT WE DO' }, len: 3, at: [1.4] },
   // the brand film's proof: a big number counting up with its label
   { name: 'headline-proof', type: 'common.headline', params: { look: 'proof', text: '90+', sub: 'BUILT-IN EFFECTS AND SOUNDS' }, len: 3, at: [0.3, 1.6], wide: true },
+  // group C (katie-sweet16, todo-vlog): the sky, the name title and credits, gold words, the ticked to-do list, paper strips, the day label
+  { name: 'ambient-sky', type: 'common.ambient', params: { look: 'sky', stops: '0:1, 1.2:3:1, 2.2:5:0.6', flash: '0.5' }, len: 3, at: [0.55, 1.6, 2.9] },
+  { name: 'wide-ambient-sky', type: 'common.ambient', params: { look: 'sky', stops: '0:2, 1:4:1', flash: '' }, len: 3, at: [2.5], wide: true },
+  { name: 'headline-name', type: 'common.headline', params: { look: 'name', text: 'Happy Birthday', sub: 'SWEET SIXTEEN' }, len: 4, at: [0.5, 1.9, 3.0], bg: '#6b5a48' },
+  { name: 'wide-headline-name', type: 'common.headline', params: { look: 'name', text: 'Happy Birthday', sub: 'SWEET SIXTEEN', bg: 'none' }, len: 4, at: [3.0], wide: true, bg: '#6b5a48' },
+  { name: 'outro-credits', type: 'common.outro', params: { look: 'credits', lines: '*With love to everyone who came*\nMom & Dad\nGrandma & Grandpa\n*and all the friends*\n_Music: original score_', beat: 0.4 }, len: 4, at: [0.6, 3.0], bg: '#6b5a48' },
+  { name: 'slam-gold', type: 'common.slam', params: { look: 'gold', text: 'Surprise!', tilt: 0, size: 8 }, at: [0.15, 1.5], bg: '#3a2f45' },
+  { name: 'notecard-tick', type: 'common.notecard', params: { mode: 'list', title: 'to-do list', items: 'unpack|clean the house|edit videos|workout|returns|grocery shop', tick: 3, count: '', note: '' }, at: [0.2, 0.62, 1.4], bg: '#e7d8bd' },
+  { name: 'caption-strip', type: 'common.caption', params: { text: 'Today I finally cleaned the whole kitchen', style: 'strip', size: 3.2, words: [[0, 5], [0.3, 7], [0.5, 15], [0.9, 23], [1.2, 27], [1.4, 33], [1.7, 41]] }, at: [1.0, 2.5], bg: '#7a6650' },
+  { name: 'tag-day', type: 'common.tag', params: { look: 'day', tags: 'Day 2,15° · rain', x: 0.08, y: 0.12 }, at: [0.1, 1.5], bg: '#6d7f92' },
+  { name: 'wide-tag-day', type: 'common.tag', params: { look: 'day', tags: 'Day 2,15° · rain', x: 0.06, y: 0.1, size: 3 }, at: [1.5], wide: true, bg: '#6d7f92' },
 ];

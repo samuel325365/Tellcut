@@ -14,6 +14,8 @@
 // lines, with `name` (Q, A) in a square badge at the left of the first line; a speaker above 0 fills the badge in the accent colour.
 // styles 'auto' and 'big' (t2-reels's fx.reelsCap): a social app's automatic caption (white on a dark rounded box, popping in
 // from 0.88×) and its big sticker words (handwriting in the highlight colour with a thick ink outline, popping in from 0.6×).
+// style 'strip' (the todo-vlog short's fx.saycap): ink words printed on strips of paper, one strip a line, each tilted a little the
+// other way; with `words` the word being said gets a highlighter stroke behind it instead of changing colour.
 import { animState, clamp, cssCamel, eBack, eOut3, h, lerp, prog, type ItemType, type Theme } from '@tellcut/engine';
 import { layoutMarkup } from './markup.ts';
 import { runBox, setRuns, type RunBox } from './runs.ts';
@@ -21,7 +23,7 @@ import { canvasAt, freeCanvas } from './inkline.ts';
 import { grainBegin, grainEnd, scribbleFill, type GrainLayer, type Pt } from './sketch.ts';
 
 interface P {
-  text: string; style: 'outline' | 'plain' | 'box' | 'bubble' | 'ticket' | 'crayon' | 'bar' | 'qa' | 'auto' | 'big'; styleFont: string; y: number; tint: boolean; size: number; font: string; color: string; hl: string; outline: string; boxBg: string; bubbleBg: string;
+  text: string; style: 'outline' | 'plain' | 'box' | 'bubble' | 'ticket' | 'crayon' | 'bar' | 'qa' | 'auto' | 'big' | 'strip'; styleFont: string; y: number; tint: boolean; size: number; font: string; color: string; hl: string; outline: string; boxBg: string; bubbleBg: string;
   position: 'bottom' | 'center' | 'top'; animIn: string; animOut: string; animDur: number; words: Array<[number, number]>; speaker: number; name: string;
   hlScale: number; tag: string; gloss: string; quote: boolean; fill: boolean; role: string; align: 'center' | 'left'; point: 'none' | 'up' | 'down' | 'left' | 'right';
 }
@@ -59,10 +61,10 @@ export const styleFontOf = (style: string, styleFont: string) => styleFont || (s
 
 export const caption: ItemType<P, S> = {
   type: 'common.caption', label: '字幕（共用）', category: 'text', kind: 'overlay',
-  doc: '一句字幕：描邊／純字／底框／氣泡（米白底粗黑框、強調字用主色）／ticket（印在一小條鋸齒撕邊的收據紙上、從下面彈出來）、crayon（墨色字壓在一條用蠟筆塗出來的高亮色底帶上，繪本、手作風）、bar（深色圓角橫條、左側一條 accent2 色條，像搜尋摘要）、qa（雜誌訪談字幕：靠左的襯線字壓在從下往上的深色漸層上，name 放進第一行左邊的方形徽章，例如 Q、A；speaker 大於 0 時徽章是主色）、auto（社群平台的自動字幕：深色圓角底白字，從 0.88 倍彈出）、big（社群平台的大字貼圖：手寫字、高亮色、粗黑描邊，放大 1.25 倍，從 0.6 倍彈出）十種樣式；y 可以把字幕下緣釘在任何高度（例如影片窗下緣）；name＋speaker 標出誰在說（tint 關掉時字不變色、只有名字小牌換色；role 在名字旁加小字身分）；fill 配 words 是整句先淡淡出現、講到的字一個個亮起來不再暗回去；align left 靠左對齊；point 把名字放進字幕左邊一塊說話人顏色的小牌，箭頭指向說話的人（上下分割的對談）；【詞】會變高亮色、{詞} 會被打碼成符號；避開短影音的下緣與側邊安全區',
+  doc: '一句字幕：描邊／純字／底框／氣泡（米白底粗黑框、強調字用主色）／ticket（印在一小條鋸齒撕邊的收據紙上、從下面彈出來）、crayon（墨色字壓在一條用蠟筆塗出來的高亮色底帶上，繪本、手作風）、bar（深色圓角橫條、左側一條 accent2 色條，像搜尋摘要）、qa（雜誌訪談字幕：靠左的襯線字壓在從下往上的深色漸層上，name 放進第一行左邊的方形徽章，例如 Q、A；speaker 大於 0 時徽章是主色）、auto（社群平台的自動字幕：深色圓角底白字，從 0.88 倍彈出）、big（社群平台的大字貼圖：手寫字、高亮色、粗黑描邊，放大 1.25 倍，從 0.6 倍彈出）、strip（手帳風：一行一條微歪的米色紙條、墨色字，配 words 時講到的詞後面刷一道高亮色螢光筆）十一種樣式；y 可以把字幕下緣釘在任何高度（例如影片窗下緣）；name＋speaker 標出誰在說（tint 關掉時字不變色、只有名字小牌換色；role 在名字旁加小字身分）；fill 配 words 是整句先淡淡出現、講到的字一個個亮起來不再暗回去；align left 靠左對齊；point 把名字放進字幕左邊一塊說話人顏色的小牌，箭頭指向說話的人（上下分割的對談）；【詞】會變高亮色、{詞} 會被打碼成符號；避開短影音的下緣與側邊安全區',
   params: [
     { key: 'text', label: '文字（【高亮】、{打碼}）', type: 'text', default: '字幕' },
-    { key: 'style', label: '樣式（crayon：蠟筆塗的高亮色底帶；bar 搜尋摘要條、qa 訪談字幕、auto 自動字幕、big 大字貼圖）', type: 'enum', options: ['outline', 'plain', 'box', 'bubble', 'ticket', 'crayon', 'bar', 'qa', 'auto', 'big'], default: 'outline' },
+    { key: 'style', label: '樣式（crayon：蠟筆塗的高亮色底帶；bar 搜尋摘要條、qa 訪談字幕、auto 自動字幕、big 大字貼圖、strip 一行一條微歪的紙條、講到的詞後面刷螢光筆）', type: 'enum', options: ['outline', 'plain', 'box', 'bubble', 'ticket', 'crayon', 'bar', 'qa', 'auto', 'big', 'strip'], default: 'outline' },
     { key: 'size', label: '字級（畫面高 %）', type: 'number', min: 1, max: 20, step: 0.1, default: 4.6 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.body' },
     { key: 'color', label: '文字顏色', type: 'color', default: '#ffffff' },
@@ -117,13 +119,14 @@ export const caption: ItemType<P, S> = {
     const bar = p.style === 'bar', qa = p.style === 'qa', auto = p.style === 'auto', big = p.style === 'big';
     const pop = p.animIn === 'pop', st = animState(pop ? { ...p, animIn: 'none' } : p, ctx.local, ctx.dur, W, H), px = (p.size / 100) * H * (big ? 1.25 : 1), hs = Math.max(1, p.hlScale ?? 1);
     // a box or bubble takes 0.6 em of padding each side and its border out of the room the words have
-    const ticket = p.style === 'ticket', crayon = p.style === 'crayon', framed = p.style === 'box' || p.style === 'bubble' || ticket || crayon, width = W * (1 - 2 * theme.safe.side);
+    const ticket = p.style === 'ticket', crayon = p.style === 'crayon', strip = p.style === 'strip', framed = p.style === 'box' || p.style === 'bubble' || ticket || crayon || strip, width = W * (1 - 2 * theme.safe.side);
     const hasWords = Array.isArray(p.words) && p.words.length > 0, fill = !!p.fill && hasWords, point = p.point && p.point !== 'none', left = p.align === 'left' || qa;
     const lit = hasWords && !fill ? karaokeRange(p.words, ctx.local) : null;
     // the speaker chip of `point` takes 2.05 em at the left
     const extra = bar ? 1.65 : auto ? 0.96 : qa ? 1.45 : 0;
     const room = (extra ? width - extra * px : framed ? width - 1.2 * px - (p.style === 'bubble' ? 2 * theme.stroke * k : 0) : width) - (point ? 2.05 * px : 0), fit = layoutMarkup(p.quote ? `“${p.text}”` : p.text, room / px / hs, 2, st.typed, lit);
-    setRuns(s.text, fit.lines, p.style === 'bubble' || crayon ? theme.palette.accent : big ? p.color : p.hl, { perChar: pop || fill, hlScale: hs });
+    setRuns(s.text, fit.lines, p.style === 'bubble' || crayon ? theme.palette.accent : big ? p.color : strip ? p.outline : p.hl, { perChar: pop || fill, hlScale: hs });
+    if (strip) paperStrips(s.text.el, p, left, k);
     if (pop) {
       const chars = [...s.text.el.querySelectorAll('span')] as HTMLElement[];
       chars.forEach((el, i) => { const c = popAt(i, chars.length, ctx.local); cssCamel(el, { opacity: String(c.opacity), transform: `translateY(${(c.rise * 34 * k).toFixed(2)}px) scale(${c.scale.toFixed(4)})` }); });
@@ -183,8 +186,8 @@ export const caption: ItemType<P, S> = {
     cssCamel(s.box, {
       top: place.top, bottom: place.bottom, maxWidth: `${width}px`, opacity: String(st.opacity * (auto || big ? pq : 1)), left: left ? `${theme.safe.side * W}px` : '50%', textAlign: left ? 'left' : 'center',
       transform: `translate(${left ? `${st.x}px` : `calc(-50% + ${st.x}px)`}, calc(${place.yAnchor} + ${st.y}px))${pin}`, transformOrigin: auto || big ? '50% 50%' : left ? '0 100%' : '50% 100%', clipPath: teeth,
-      fontFamily: `'${sfont || p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${(px * fit.scale).toFixed(2)}px`, fontWeight: bar || auto || qa || big ? '700' : '900', fontStyle: p.quote ? 'italic' : 'normal',
-      color: p.style === 'bubble' || ticket || crayon ? p.outline : big ? p.hl : ink,
+      fontFamily: `'${sfont || p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${(px * fit.scale).toFixed(2)}px`, fontWeight: bar || auto || qa || big || strip ? '700' : '900', fontStyle: p.quote ? 'italic' : 'normal',
+      color: p.style === 'bubble' || ticket || crayon || strip ? p.outline : big ? p.hl : ink,
       textShadow: big ? `0 ${6 * k}px ${18 * k}px rgba(0,0,0,0.45)` : qa ? `0 ${4 * k}px ${12 * k}px rgba(0,0,0,0.8)` : '',
       webkitTextStroke: stroke ? `${stroke}px ${p.outline}` : '0', paintOrder: 'stroke fill',
       background: p.style === 'box' || auto ? p.boxBg : p.style === 'bubble' || ticket ? p.bubbleBg
@@ -206,6 +209,17 @@ export const caption: ItemType<P, S> = {
     }
   },
 };
+
+/** style 'strip': each line its own strip of paper (bubbleBg) with a soft shadow, tilted −0.8° and 0.7° in turn; the highlighted words
+ *  (【word】 and, with `words`, the one being said) on a highlighter stroke in the highlight colour, in ink like the rest */
+export const stripTilt = (line: number) => (line % 2 ? 0.7 : -0.8);
+function paperStrips(el: HTMLElement, p: P, left: boolean, k: number) {
+  ([...el.children] as HTMLElement[]).forEach((line, i) => {
+    cssCamel(line, { display: 'table', margin: `${i ? '0.2em' : '0'} ${left ? '0' : 'auto'} 0`, padding: '0.06em 0.42em 0.1em', background: p.bubbleBg, borderRadius: `${8 * k}px`,
+      boxShadow: `0 ${5 * k}px ${16 * k}px rgba(20,12,6,0.3)`, transform: `rotate(${stripTilt(i)}deg)` });
+    for (const sp of line.children as HTMLCollectionOf<HTMLElement>) if (sp.style.color) cssCamel(sp, { background: p.hl, boxShadow: `0 0 0 0.08em ${p.hl}`, borderRadius: '0.12em' });
+  });
+}
 
 /** style 'crayon': the band scribbled in the highlight colour over 0.15 s, a slightly crooked quad a little bigger than the box */
 function drawBand(s: S, p: P, local: number, k: number) {
