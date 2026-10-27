@@ -1461,6 +1461,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.wall.look": {"name":"Look","hint":"wall: a wall; sphere: a ball"},
   "common.wall.tiles": {"name":"Pictures","hint":"source id@seconds, comma-separated; empty: every video and photo (not the stitched maps), each at its middle second"},
   "common.wall.cols": {"name":"Wall columns"},
+  "common.wall.x": {"name":"Ball centre x","hint":"sphere; fraction of the frame width, 0.5 = middle; move it aside when words sit next to it"},
   "common.wall.rows": {"name":"Wall rows"},
   "common.wall.focus": {"name":"Tile pushed into","hint":"Counted from 0; -1: the middle tile"},
   "common.wall.push": {"name":"Push share","hint":"The last share of the time the camera pushes into the tile; 0: no push"},

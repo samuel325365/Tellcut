@@ -142,7 +142,8 @@ export const brand: Recipe<typeof Content> = {
     if (x.proof.length) {
       const len = 2 * B, each = len / x.proof.length;
       const tiles = x.wall?.tiles.join(',') ?? [...hookShots(x), ...x.beats.map((b) => b.shot)].map((s) => `${s.src}@${s.from}`).join(',');
-      c.effect('common.wall', { at: t, len, look: 'sphere', tiles });
+      // the words sit on the left: in a landscape frame the ball moves right to leave them room (the spike's layout)
+      c.effect('common.wall', { at: t, len, look: 'sphere', tiles, ...(W > H ? { x: 0.68 } : {}) });
       x.proof.forEach((p, i) => {
         c.effect('common.headline', { at: t + i * each, len: each, look: 'proof', text: p.big ?? p.line ?? '', sub: p.label, size: 100, bg: 'none' });
         c.sfx('common.thud', { at: t + i * each, len: 0.4, gain: -12 });

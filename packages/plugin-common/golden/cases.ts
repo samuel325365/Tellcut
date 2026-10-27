@@ -450,6 +450,7 @@ export const cases: Case[] = [
   { name: 'wall-wall', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { cols: 9, rows: 5, push: 0.4, count: 696, countLabel: 'clips.' }, len: 6, at: [0.3, 2.5, 5.9], wide: true },
   // the wall in 9:16: covering the frame top to bottom while gliding, the pushed-in tile across the width at the end
   { name: 'wall-tall', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { cols: 9, rows: 5, push: 0.4 }, len: 6, at: [1.0, 5.9] },
+  { name: 'wall-sphere-right', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { look: 'sphere', x: 0.68 }, len: 3, at: [1.5], wide: true },
   { name: 'wall-sphere', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { look: 'sphere' }, len: 3, at: [1.5] },
   // the dotted globe: two origins, a home, two arcs (the Colombian one waits for the turn), the globe turning to Taipei
   { name: 'globe-coffee', type: 'common.globe', len: 3, wide: true, at: [0.5, 2.8], params: GLOBE },

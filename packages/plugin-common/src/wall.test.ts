@@ -90,6 +90,21 @@ test('sphere: tiles facing away are faded, those facing the camera are not', asy
   expect(Math.max(...ops)).toBeGreaterThan(0.95);
 });
 
+test('sphere x moves the ball across the frame (proof words on the left, the ball on the right) and it still fades its far side', async () => {
+  const r = (await stage({ look: 'sphere', x: 0.7 })).at(2), ball = tiles(r.scene)[0].parent!;
+  const c = new THREE.Vector3(); ball.getWorldPosition(c);
+  r.cam.updateMatrixWorld(true);
+  expect(c.clone().project(r.cam).x).toBeCloseTo(0.4, 2);   // 0.7 of the width in NDC
+  const ops = tiles(r.scene).map((t) => faceOf(t).material.opacity);
+  const mid = (await stage({ look: 'sphere' })).at(2), cm = new THREE.Vector3();
+  tiles(mid.scene)[0].parent!.getWorldPosition(cm);
+  expect(cm.x).toBe(0);
+  // the far side fades as much as on a centred ball (faded by the ball's own centre, not the world's)
+  const lit = (sc: THREE.Scene) => tiles(sc).map((t) => faceOf(t).material.opacity).filter((o) => o > 0.95).length;
+  expect(Math.abs(lit(r.scene) - lit(mid.scene))).toBeLessThanOrEqual(2);
+  expect(ops.filter((o) => o < 0.05).length).toBeGreaterThan(40);
+});
+
 test('the same time draws the same picture state', async () => {
   const { at } = await stage({ look: 'sphere' });
   const pose = () => JSON.stringify(tiles(at(2.2).scene).slice(0, 5).map((t) => t.matrixWorld.elements.map((v) => +v.toFixed(5))));

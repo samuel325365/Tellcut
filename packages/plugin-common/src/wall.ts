@@ -13,7 +13,7 @@ const TW = 1.22, TH = (TW * 9) / 16, GAP = 0.16, WALL_Z = -3, FACE_Z = 0.0235, B
 
 interface P {
   look: 'wall' | 'sphere'; tiles: string; cols: number; rows: number; focus: number; push: number; dim: number; bg: string;
-  floor: boolean; dust: number; count: number; countLabel: string; bloom: number; font: string; color: string;
+  floor: boolean; dust: number; count: number; countLabel: string; bloom: number; font: string; color: string; x: number;
 }
 interface Tile { g: T.Group; face: T.Mesh<T.PlaneGeometry, T.MeshBasicMaterial>; slab: T.Mesh; home: T.Vector3 }
 interface S {
@@ -45,6 +45,7 @@ export const wall: ItemType<P, S> = {
     { key: 'tiles', label: '畫面（素材 id@秒，逗號分隔；空＝專案所有影片和照片，各取中間那一秒，拼好的地圖不算）', type: 'text', default: '' },
     { key: 'cols', label: '牆的欄數', type: 'number', min: 1, max: 30, step: 1, default: 13 },
     { key: 'rows', label: '牆的列數', type: 'number', min: 1, max: 15, step: 1, default: 7 },
+    { key: 'x', label: '球心的左右位置（sphere；畫面寬比例，0.5＝正中間；旁邊有字時移到另一邊）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'focus', label: '推近的那一格（從 0 數；-1＝中間那格）', type: 'number', min: -1, max: 400, step: 1, default: -1 },
     { key: 'push', label: '最後多少比例的時間推向那一格（0＝不推）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.6 },
     { key: 'dim', label: '其他格子的亮度', type: 'number', min: 0, max: 1, step: 0.05, default: 0.45 },
@@ -191,11 +192,13 @@ function pose(s: S, t: number, dur: number, fps: number, W: number, H: number): 
     const grow = eOut5(clamp(t / 1.2));
     gl.ball.scale.setScalar(lerp(0.7, 1, grow));
     gl.ball.rotation.set(0.25, t * 0.16, 0.05);
+    // across the frame by x: at the ball's depth the frame is 2·tan·back·aspect wide (the camera stays put, so words beside it keep their place)
+    gl.ball.position.x = (p.x - 0.5) * 2 * tan * back * aspect;
     gl.ball.updateMatrixWorld(true);
     const wp = new T3.Vector3(), nrm = new T3.Vector3(), toCam = new T3.Vector3();
     for (const tile of gl.tiles) {
       // only the side facing the camera: tiles fade out as they turn away
-      tile.g.getWorldPosition(wp); nrm.copy(wp).normalize(); toCam.copy(gl.cam.position).sub(wp).normalize();
+      tile.g.getWorldPosition(wp); nrm.copy(wp).sub(gl.ball.position).normalize(); toCam.copy(gl.cam.position).sub(wp).normalize();
       const f = clamp((nrm.dot(toCam) - 0.05) / 0.45);
       tile.face.material.opacity = grow * f; (tile.slab.material as T.Material).opacity = grow * f;
       tile.face.material.color.setScalar(tile.face.material.map ? lerp(0.45, 0.95, f) : 0.2);

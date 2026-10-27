@@ -280,6 +280,8 @@ test('brand lays the parts on bars at 80 BPM: hook, wall, beats with a dolly in,
   expect(startsOf(c)).toEqual([['v1', 0, 3], ['v2', 3, 4.5], ['v3', 13.5, 4.5], ['v4', 18, 4.5], ['v5', 22.5, 4.5], ['v6', 33, 3]]);
   expect(items(c, 'common.wall').map((w) => [w.params.look ?? 'wall', w.start, w.end])).toEqual([['wall', 7.5, 12], ['sphere', 27, 33]]);
   expect(items(c, 'common.wall')[0].params).toMatchObject({ tiles: 'p1,p2,p3,p4,p5,p6', count: 696, countLabel: 'clips.', push: 0 });
+  // the proof's words are on the left, so the ball moves right in a landscape frame (centred in a tall one)
+  expect(items(c, 'common.wall')[1].params.x).toBe(0.68);
   expect(items(c, 'common.dolly').map((d) => [d.params.dir, d.start, d.end])).toEqual([['in', 12, 13.5], ['out', 36, 37.5]]);
   expect(items(c, 'common.headline').filter((h) => h.params.look === 'proof').map((h) => [h.start, h.end, h.params.text, h.params.sub])).toEqual([[27, 30, '90+', 'BUILT-IN EFFECTS AND SOUNDS'], [30, 33, 'Your footage stays\non your computer.', '']]);
   expect(items(c, 'common.headline').filter((h) => h.params.look === 'brand').map((h) => h.params.text)).toEqual(['We film everything.', 'It stays on our phones.', 'It watches every clip.', 'Captions on the beat.', 'It checks its own work.', 'We are Tellcut.']);
@@ -361,6 +363,7 @@ test('a 9:16 film lays out too', () => {
   expect(r.duration).toBe(45.75);
   expect(startsOf(c).map((s) => s[0])).toEqual(['v1', 'v2', 'v3', 'v4', 'v5', 'v6']);
   expect(items(c, 'common.wall')).toHaveLength(2);
+  expect(items(c, 'common.wall')[1].params.x).toBeUndefined();
   expect(items(c, 'common.logo')).toHaveLength(1);
 });
 

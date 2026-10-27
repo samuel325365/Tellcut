@@ -1461,6 +1461,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.wall.look": {"name":"見た目","hint":"wall は壁、sphere は球"},
   "common.wall.tiles": {"name":"画像","hint":"素材 id@秒をカンマ区切りで。空ならすべての動画と写真（つなぎ合わせた地図は除く）の真ん中の 1 秒"},
   "common.wall.cols": {"name":"壁の列数"},
+  "common.wall.x": {"name":"球の中心の左右位置","hint":"sphere。画面の幅に対する比率、0.5＝中央。横に文字があるときは反対側へ"},
   "common.wall.rows": {"name":"壁の行数"},
   "common.wall.focus": {"name":"寄るタイル","hint":"0 から数える。-1 は真ん中"},
   "common.wall.push": {"name":"寄る時間の割合","hint":"最後のこの割合の時間でタイルへ寄る。0 なら寄らない"},
