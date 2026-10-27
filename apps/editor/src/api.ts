@@ -85,7 +85,7 @@ export const api = {
   proposal: (id: string) => req<unknown>(`/api/projects/${enc(id)}/proposal`),
   proposalResult: (id: string, b: { id: string; outcome: 'accepted' | 'rejected' | 'stale'; reason?: string }) =>
     req<unknown>(`/api/projects/${enc(id)}/proposal/result`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
-  /** the import browser (home page): places and folder listings from the server (paths only) */
+  /** the import browser (home page, editor chat): places and folder listings from the server (paths only) */
   places: () => req<{ places: import('./ImportDialog.tsx').Place[] }>('/api/fs/places'),
   fsList: (path: string) => req<{ path: string; parent: string | null; entries: any[] }>(`/api/fs/list?path=${enc(path)}`),
   /** Chat (spec 2026-10-16-in-editor-chat §3.3): a thread, and its turns streamed back as NDJSON chat events. */

@@ -155,7 +155,7 @@ test('on the editor surface labels are English and explanations follow the langu
     const root = document.createElement('div');
     await act(() => render(<ChatPanel session={session({ messages })} surface={surface} onAttach={() => {}} />, root));
     expect(root.querySelector('[data-chat-send]')!.getAttribute('data-tip')).toBe(DICTS.ja['chat.send']);
-    expect(root.querySelector('[data-attach]')!.getAttribute('aria-label')).toBe(DICTS.ja['chat.attach']);
+    expect(root.querySelector('[data-attach]')!.getAttribute('aria-label')).toBe(DICTS.ja[surface === 'editor' ? 'chat.attachEditor' : 'chat.attach']);
     expect(root.querySelector('[data-chat-input]')!.getAttribute('placeholder')).toBe(DICTS.ja['chat.phReply']);
     expect(root.querySelector('[data-steps]')!.textContent).toContain(t('chat.steps', { n: 1 }));
     expect(root.querySelector('[data-steps]')!.textContent).toMatch(/[ぁ-ヿ]/);

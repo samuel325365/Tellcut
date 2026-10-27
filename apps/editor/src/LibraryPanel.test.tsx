@@ -5,9 +5,8 @@ import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
 import { createStore, initialState } from './store.ts';
 import { LibraryPanel } from './LibraryPanel.tsx';
 
-test('lists sources with their scene segments, sound effects and overlays of the project plugins; click picks, double-click auditions, the button adds', async () => {
+test('lists sources with their scene segments, every sound effect and block; click picks, double-click auditions, the button adds', async () => {
   const p = fixture();
-  p.meta.plugins = ['x'];
   p.tracks.push({ id: 'ov', kind: 'overlay', items: [{ id: 't1', type: 'x.title', start: 0, end: 1, params: {} }] } as any);
   const store = createStore({ ...initialState('t'), project: p, cuts: { s: [12.5] }, peaks: { 'media:m': { rate: 100, peaks: new Array(6000).fill(0) } } });
   const calls: any[] = [];
@@ -19,8 +18,9 @@ test('lists sources with their scene segments, sound effects and overlays of the
   const editor: any = { store, registry, audition: (m: any) => calls.push(['audition', m]), addMaterial: (m: any) => calls.push(['add', m]) };
   const root = document.createElement('div');
   await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
-  expect([...root.querySelectorAll('[data-add-sfx]')].map((e) => (e as HTMLElement).dataset.addSfx)).toEqual(['x.tap']);
-  expect([...root.querySelectorAll('[data-add-overlay]')].map((e) => (e as HTMLElement).dataset.addOverlay)).toEqual(['core.flash', 'x.title']);
+  // meta.plugins (empty in every real project) no longer hides anything
+  expect([...root.querySelectorAll('[data-add-sfx]')].map((e) => (e as HTMLElement).dataset.addSfx)).toEqual(['x.tap', 'y.boom']);
+  expect([...root.querySelectorAll('[data-add-overlay]')].map((e) => (e as HTMLElement).dataset.addOverlay)).toEqual(['core.flash', 'x.title', 'y.other', 'x.block']);
   const segs = [...root.querySelectorAll<HTMLElement>('[data-add-source="s"]')];
   expect(segs.map((e) => e.dataset.range)).toEqual(['0-12.5', '12.5-30']);
   const music = root.querySelector<HTMLElement>('[data-add-music="m"]')!;
@@ -72,6 +72,43 @@ test('a photo is one Photo entry; music shows its tempo', async () => {
   await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
   expect([...root.querySelectorAll<HTMLElement>('[data-add-source="ph"]')].map((e) => e.textContent)).toEqual(['Photo']);
   expect(root.querySelector('[data-add-music="m"]')!.textContent).toContain('120 BPM');
+});
+
+test('blocks come in groups (this project, built-in, the shared categories); the search narrows them and opens the groups', async () => {
+  const store = createStore({ ...initialState('t'), project: fixture() });
+  const types = [{ type: 'common.slam', label: '大字', kind: 'overlay', category: 'text', doc: '一個字砸進畫面' }, { type: 'core.flash', label: '閃白', kind: 'overlay' },
+    { type: 'fx.mine', label: '我的特效', kind: 'overlay' }, { type: 'common.paper', label: '紙', kind: 'scene', category: 'look' }];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [] } };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const groups = () => [...root.querySelectorAll<HTMLDetailsElement>('[data-lib-group^="block:"]')].map((d) => [d.dataset.libGroup, d.open]);
+  expect(groups()).toEqual([['block:fx', true], ['block:core', true], ['block:text', false], ['block:look', false]]);
+  const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  await act(() => { search.value = '砸進'; search.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect(groups()).toEqual([['block:text', true]]);
+});
+
+test('replace: a picked block takes the place of the selected one of the same kind; a background can only replace', async () => {
+  const p: any = fixture();
+  p.tracks.push({ id: 'ov', kind: 'overlay', items: [{ id: 'a', type: 'core.flash', start: 0, end: 1, params: {} }, { id: 'bg', type: 'x.paper', start: 0, end: 1, params: {} }] });
+  const types = [{ type: 'core.flash', label: '閃白', kind: 'overlay', params: [] }, { type: 'x.slam', label: '大字', kind: 'overlay', params: [] }, { type: 'x.paper', label: '紙', kind: 'scene', params: [] }];
+  const store = createStore({ ...initialState('t'), project: p, selection: ['a'] });
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfx: () => undefined, sfxTypes: () => [] },
+    audition() {}, addMaterial: (m: any) => calls.push(['add', m]), replaceBlock: (id: string, type: string) => calls.push(['replace', id, type]) };
+  const root = document.createElement('div');
+  const draw = (s = store.get()) => act(() => render(<LibraryPanel editor={editor} s={s} />, root));
+  await draw();
+  const swap = () => root.querySelector<HTMLButtonElement>('[data-replace-picked]')!, add = () => root.querySelector<HTMLButtonElement>('[data-add-picked]')!;
+  expect(swap().disabled).toBe(true);
+  await act(() => { root.querySelector<HTMLElement>('[data-add-overlay="x.slam"]')!.click(); });
+  await act(() => { swap().click(); });
+  // the background: it cannot be added, and cannot replace an overlay, only a background
+  await act(() => { root.querySelector<HTMLElement>('[data-add-overlay="x.paper"]')!.click(); });
+  expect([add().disabled, swap().disabled]).toEqual([true, true]);
+  await draw({ ...store.get(), selection: ['bg'] });
+  expect(swap().disabled).toBe(true);           // already this one
+  expect(calls).toEqual([['replace', 'a', 'x.slam']]);
 });
 
 test('block names in the library are English labels in every language; a project block keeps its own name', async () => {

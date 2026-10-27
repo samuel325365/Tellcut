@@ -78,11 +78,10 @@ test("travel's styles that still need new effects say so (notifications: common.
 
 test('custom: the form the spec lists (spec 2026-10-24-custom-preset §4)', () => {
   const all = presets(), custom = all.find((p) => p.id === 'custom')!;
-  expect(custom.fields.map((f) => f.id)).toEqual(['ratio', 'resolution', 'length', 'framing', 'inserts', 'opening', 'ending', 'voice', 'music', 'pace', 'captions', 'caption-lang', 'library']);
-  expect(custom.fields.map((f) => f.options.length)).toEqual([4, 3, 4, 5, 4, 4, 4, 3, 6, 3, 3, 3, 2]);
+  // Making › Effects (shared.json) comes first
+  expect(custom.fields.map((f) => f.id)).toEqual(['library', 'ratio', 'resolution', 'length', 'framing', 'inserts', 'opening', 'ending', 'voice', 'music', 'pace', 'captions', 'caption-lang']);
+  expect(custom.fields.map((f) => f.options.length)).toEqual([1, 4, 3, 4, 5, 4, 4, 4, 3, 6, 3, 3, 3]);
   const field = (id: string) => custom.fields.find((f) => f.id === id)!;
-  expect(field('library').options.map((o) => o.id)).toEqual(['library', 'none']);
-  expect(field('library').options[1].prompt).toMatch(/common\./);              // no shared block: says what that means
   expect(custom.fit).toEqual({});                                                 // the form says it all: no "good when you have"
   expect(custom.poster).toBe('/api/presets/custom/poster.jpg');
   expect(field('ratio').options.map((o) => o.id)).toEqual(['9:16', '1:1', '4:5', '16:9']);
@@ -94,6 +93,17 @@ test('custom: the form the spec lists (spec 2026-10-24-custom-preset §4)', () =
   expect([custom.styles, custom.sources]).toEqual([[], []]);
   expect(custom.prompt).not.toMatch(/below|genre/i);
   expect(Math.min(...all.filter((p) => p !== custom).map((p) => p.order))).toBeGreaterThan(custom.order);
+});
+
+test('every preset starts its form with Making › Effects: Auto (the library where it fits, new where not) or All new', () => {
+  for (const p of presets()) {
+    const f = p.fields[0];
+    expect([f?.id, f?.group?.zh, f?.options.map((o) => o.id)], p.id).toEqual(['library', '製作', ['none']]);
+    expect(p.fields.filter((x) => x.id === 'library'), p.id).toHaveLength(1);
+  }
+  const none = presets()[0].fields[0].options[0].prompt;
+  expect(none).toMatch(/common\./);                                              // no shared block: says what that means
+  expect(none).toMatch(/style .*rebuild that look/);                            // a ticked style built on shared blocks is rebuilt
 });
 
 test('brand: the five v1 styles, 45–90 s at 16:9, Pixabay and Freesound, and the rules that make it work without footage', () => {

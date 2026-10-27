@@ -148,7 +148,11 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .hbar .hthumb:hover { background: #6a6f7a; }
 .library .segs button.picked, .library .lib-item.picked { background: var(--accent); border-color: var(--accent); color: #fff; }
 .library .lib-add { position: sticky; bottom: -8px; margin: 10px -10px -8px; padding: 8px 10px; background: var(--panel); border-top: 1px solid var(--line); }
-.library .lib-add button { width: 100%; }
+.library .lib-add button { width: 100%; } .library .lib-add button + button { margin-top: 6px; }
+.library .lib-search { width: 100%; box-sizing: border-box; margin: 10px 0 2px; padding: 4px 8px; font-size: 12px; }
+.library .lib-group > summary { padding: 3px 0; color: var(--dim); font-size: 11.5px; cursor: pointer; user-select: none; }
+.library .lib-group > summary small { margin-left: 6px; opacity: .7; font-variant-numeric: tabular-nums; }
+.library .lib-group[open] { margin-bottom: 4px; }
 .library .lib-add button:disabled { opacity: .5; cursor: default; }
 .library .lib-add button.primary { background: var(--accent); border-color: var(--accent); }
 .audition-banner { box-sizing: border-box; background: rgba(10,132,255,.92); color: #fff; padding: 4px 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; }
@@ -607,7 +611,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .preset-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .preset-facts span { padding: 3px 9px; border-radius: 8px; background: var(--s-raise-2); font-size: 12.5px; }
 .preset-body h5 { margin: 10px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--s-faint); }
-.preset-fit { margin: 0; padding-left: 18px; line-height: 1.6; }
+.preset-fit { margin: 0; padding-left: 18px; line-height: 1.6; } .preset-fit + .preset-form { margin-top: 12px; }
 .preset-styles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
 .preset-styles label { display: flex; gap: 6px; align-items: flex-start; font-size: 13.5px; cursor: pointer; }
 .preset-styles input { margin-top: 3px; accent-color: var(--s-accent); }
@@ -661,8 +665,9 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .chat .api-btn .n { min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--h-accent); color: #fff; font-size: 11px; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums; }
 .api-pop { position: absolute; z-index: 30; left: 0; display: flex; flex-direction: column; background: linear-gradient(var(--h-raise), var(--h-raise)), var(--h-bg); color: var(--h-text); border: 1px solid var(--h-line-strong);
   border-radius: 14px; box-shadow: 0 16px 40px var(--h-shadow-focus); font-size: 13.5px; overflow: hidden; text-align: left; }
-.api-pop.down { top: calc(100% + 8px); right: 0; max-height: min(360px, 55vh); }
-.api-pop.up { bottom: calc(100% + 8px); width: 340px; max-height: min(620px, 70vh); }
+.api-pop.down { top: calc(100% + 8px); } .api-pop.up { bottom: calc(100% + 8px); }
+.api-pop.home { right: 0; max-height: min(360px, 55vh, var(--room, 100vh)); }
+.api-pop.editor { width: 340px; max-height: min(620px, 70vh, var(--room, 100vh)); }
 .api-pop .pop-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; border-bottom: 1px solid var(--h-line); }
 .api-pop .pop-head b { font-size: 13.5px; }
 .api-pop .pop-head span { color: var(--h-faint); font-size: 12px; }

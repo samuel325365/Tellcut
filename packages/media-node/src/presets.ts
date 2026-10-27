@@ -1,5 +1,6 @@
 // Presets (spec 2026-10-23-presets-and-languages §3): guides/presets/<id>/preset.md in git, projects/_presets/my-*/preset.md the
-// user's own. A JSON frontmatter holds what people read (three languages); the body is the English prompt Claude gets. Read by the
+// user's own; guides/presets/shared.json the form fields every one of them has. A JSON frontmatter holds what people read (three
+// languages); the body is the English prompt Claude gets. Read by the
 // server (the home page, the chat) and by `check` (the length and ratios a preset asks for); the routes are apps/server/src/presets.ts.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -65,9 +66,22 @@ function readDir(root: string, mine: boolean): Preset[] {
   return out;
 }
 
-/** every preset: the repo's by order, then the user's by id (read afresh each time: a few small files) */
+/** guides/presets/shared.json: the fields every preset's form starts with (Making › Effects), so they are written once */
+export const SHARED_FILE = 'shared.json';
+const Shared = z.object({ fields: z.array(field).default([]) });
+function sharedFields(root: string): PresetField[] {
+  const file = join(root, SHARED_FILE);
+  if (!existsSync(file)) return [];
+  try { return Shared.parse(JSON.parse(readFileSync(file, 'utf8').replace(/^﻿/, ''))).fields; }
+  catch (e) { console.warn(`${file}: ${(e as Error).message}; the shared fields are left out`); return []; }
+}
+
+/** every preset: the repo's by order, then the user's by id (read afresh each time: a few small files); each with the shared
+ *  fields first, unless it has a field of the same id itself */
 export function loadPresets(dirs: PresetDirs): Preset[] {
-  return [...readDir(dirs.repo, false).sort((a, b) => a.order - b.order), ...readDir(dirs.user, true)];
+  const shared = sharedFields(dirs.repo);
+  return [...readDir(dirs.repo, false).sort((a, b) => a.order - b.order), ...readDir(dirs.user, true)]
+    .map((p) => ({ ...p, fields: [...shared.filter((s) => !p.fields.some((f) => f.id === s.id)), ...p.fields] }));
 }
 
 export function findPreset(dirs: PresetDirs, id: string): Preset | null {

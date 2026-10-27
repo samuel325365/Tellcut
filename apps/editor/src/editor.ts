@@ -2,6 +2,7 @@
 import { runOps, summarize, type Op, magneticGaps, setMagnetic, detach as detachCmd, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform } from '@tellcut/engine';
 import { keyAction, type Action } from './keys.ts';
 import { ChatSession } from './chat.ts';
+import type { FsApi } from './ImportDialog.tsx';
 import { dragRecipe, planDrag, type DragPlan, type DragStart, type Mods } from './timeline/drag.ts';
 import { materialOf, planAudition, type Material } from './audition.ts';
 import { FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll } from './timeline/geometry.ts';
@@ -33,11 +34,14 @@ export class Editor {
   private autosave: Autosave | null = null;
   /** this project's chat (spec 2026-10-16-in-editor-chat §2.2) */
   chat: ChatSession;
+  /** the folder browser behind the chat's ＋ (absent with a test api that has none) */
+  readonly fs: FsApi | undefined;
 
   constructor(public id: string, private deps: { api: Api; bridge: BridgeLike; registry?: Registry; /** the registry for a project, with its own fx (absent: `registry` as is) */ registryFor?: (p: Project) => Promise<Registry>; storage?: { getItem(k: string): string | null; setItem(k: string, v: string): void }; clipboard?: { writeText(t: string): Promise<void> } }) {
     this.store = createStore(initialState(id));
     this.reg = deps.registry;
     this.chat = new ChatSession(id, deps.api as any);
+    this.fs = typeof (deps.api as any).fsList === 'function' ? deps.api as unknown as FsApi : undefined;
     try { if (this.storage?.getItem('tellcut.quality') === 'draft') this.store.set({ quality: 'draft' }); } catch { /* storage blocked */ }
     try {
       const saved = JSON.parse(this.storage?.getItem('tellcut.layout') ?? 'null');
@@ -728,6 +732,17 @@ export class Editor {
     return this.addTo('sfx', { type, start: t, end: t + Math.max(dur, 1 / (this.s.project?.meta.fps ?? 30)), params: {}, gain: 0 });
   }
 
+  /** The library's "replace": the block becomes another of the same kind (a picture block for one that sits the same way
+   *  over or under the video, a sound for a sound), in the same place and length, keeping the parameters both have. */
+  replaceBlock(id: string, type: string): boolean {
+    const why = replaceProblem(this.registry, this.s.project, id, type);
+    if (why) { this.set({ notice: why }); return false; }
+    const f = allItems(this.s.project!).find((x) => x.item.id === id)!, it = f.item as any, sfx = f.track.kind === 'sfx';
+    const keys = new Set((sfx ? this.registry?.sfx(type) : this.registry?.item(type))!.params.map((d) => d.key));
+    const params = Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => keys.has(k)));
+    return this.update(id, { type, params });
+  }
+
   addOverlay(type: string) {
     const why = uniqueBlock(this.registry, this.s.project!, type);
     if (why) { this.set({ notice: why }); return false; }
@@ -793,6 +808,18 @@ export class Editor {
 export function uniqueBlock(registry: Pick<Registry, 'item'> | undefined, p: Project, type: string): string {
   const def = registry?.item(type);
   return def?.unique && allItems(p).some((x) => (x.item as any).type === type) ? say('ed.unique', { label: blockText(type, { label: def.label, doc: '' }, 'en').label }) : '';
+}
+
+/** Why the item cannot become `type` ('' when it can): it must be a block or sound, the new one of the same kind and not a
+ *  one-per-film block already used elsewhere. Also what the library's replace button says. */
+export function replaceProblem(registry: Pick<Registry, 'item' | 'sfx'> | undefined, p: Project | null | undefined, id: string | undefined, type: string): string {
+  const f = p && id ? allItems(p).find((x) => x.item.id === id) : undefined, it = f?.item as any;
+  if (!f || typeof it.type !== 'string') return say('ed.replacePick');
+  if (it.type === type) return say('ed.replaceSame');
+  if (f.track.kind === 'sfx') return registry?.sfx(type) ? '' : say('ed.replaceKind');
+  const from = registry?.item(it.type), to = registry?.item(type);
+  if (!to || (from && from.kind !== to.kind)) return say('ed.replaceKind');
+  return registry ? uniqueBlock(registry, p!, type) : '';
 }
 
 /** Length of a music file from its waveform (peaks per second), if known. */

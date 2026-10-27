@@ -133,11 +133,11 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
   const fieldCount = Object.keys(preset?.fields ?? {}).length;
   const send = () => {
     if (!canSend) return;
-    void session.send(withAttachments(text, attachments), preset ? { id: preset.info.id, styles: preset.styles, ...(fieldCount ? { fields: preset.fields } : {}) } : undefined);
+    void session.send(withAttachments(text, attachments, surface),preset ? { id: preset.info.id, styles: preset.styles, ...(fieldCount ? { fields: preset.fields } : {}) } : undefined);
     setText('');
     onSent?.();
   };
-  const empty = !s.messages.length && !s.partial;
+  const empty = !s.messages.length && !s.partial, attachKey = surface === 'editor' ? 'chat.attachEditor' : 'chat.attach';
   const composer = (
     <div class={`composer${empty && welcome ? ' big' : ''}`}>
       {(attachments.length > 0 || preset) && <div class="chips">{preset && <span class="chip preset-tag" data-preset-tag style={{ '--preset': preset.info.color }}>
@@ -152,7 +152,7 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
         onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !(e as any).isComposing) { e.preventDefault(); send(); } }} />
       <div class="composer-bar">
-        {onAttach && <button class="icon-btn" data-attach data-tip={t('chat.attach')} aria-label={t('chat.attach')} onClick={onAttach}><IconPlus /></button>}
+        {onAttach && <button class="icon-btn" data-attach data-tip={t(attachKey)} aria-label={t(attachKey)} onClick={onAttach}><IconPlus /></button>}
         {/* the count on the button and the names in its tip: no tag above the words (a new row made the home page's centred welcome jump) */}
         {session.picksSources && <button class="api-btn" data-api aria-expanded={picking} data-tip={picked.length ? `${t('api.tagTip')}\n${pickedNames.join('、')}` : t('api.buttonTip')}
           aria-label={t('api.buttonTip')} onClick={() => setPicking(!picking)}>

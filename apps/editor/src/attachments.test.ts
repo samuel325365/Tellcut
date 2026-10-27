@@ -7,6 +7,12 @@ test('attached material goes after the words as one full path per line; material
   expect(withAttachments('只有字', [])).toBe('只有字');
 });
 
+test('in the editor, material alone asks to use it in this film, not for a new project', () => {
+  const a = [{ path: 'D:\\x\\menu.jpg', name: 'menu.jpg', kind: 'image' as const }];
+  expect(withAttachments('', a, 'editor')).toBe('看看這些素材，用在這支片裡\n\n素材：\n- D:\\x\\menu.jpg');
+  expect(withAttachments('換成這張', a, 'editor')).toBe('換成這張\n\n素材：\n- D:\\x\\menu.jpg');
+});
+
 test('the default words and the header follow the UI language', async () => {
   const { setLang } = await import('./i18n/lang.ts');
   const a = [{ path: '/mnt/x', name: 'x', kind: 'dir' as const }];

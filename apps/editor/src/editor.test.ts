@@ -368,6 +368,23 @@ test('a unique overlay type cannot be added twice', async () => {
   expect(ed.store.get().notice).toBe('「片尾」在專案裡只能有一個');
 });
 
+test('replaceBlock swaps the type in place, keeps the shared parameters and refuses another kind', async () => {
+  const block = (type: string, kind: string, keys: string[]) => ({ type, label: type, kind, params: keys.map((key) => ({ key, label: key, type: 'string', default: '' })), build: () => null, draw: () => {} });
+  const registry = createRegistry([corePlugin, { id: 'x', items: [block('x.a', 'overlay', ['text', 'color']), block('x.b', 'overlay', ['text', 'size']), block('x.bg', 'scene', [])] } as any]);
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge, registry });
+  await ed.open();
+  ed.seek(2);
+  expect(ed.addOverlay('x.a')).toBe(true);
+  const id = ed.store.get().selection[0];
+  ed.updateParam(id, 'text', 'Hi'); ed.updateParam(id, 'color', '#f00');
+  expect(ed.replaceBlock(id, 'x.b')).toBe(true);
+  const it: any = ed.store.get().project!.tracks.flatMap((t) => t.items as any[]).find((x: any) => x.id === id);
+  expect([it.type, it.start, it.end, it.params]).toEqual(['x.b', 2, 4, { text: 'Hi' }]);
+  expect(ed.replaceBlock(id, 'x.bg')).toBe(false);
+  expect(ed.store.get().notice).toBe('只能換成同一類：畫面上的特效換特效、背景或框換背景或框、音效換音效');
+});
+
 test('pressing export twice while it is starting starts one export and shows no error', async () => {
   let starts = 0;
   const { api, bridge } = fakes({

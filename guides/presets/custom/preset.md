@@ -104,13 +104,6 @@
         { "id": "zh", "name": { "zh": "繁體中文", "en": "Traditional Chinese", "ja": "繁体字中国語" }, "prompt": "Text on screen in Traditional Chinese." },
         { "id": "en", "name": { "zh": "英文", "en": "English", "ja": "英語" }, "prompt": "Text on screen in English." },
         { "id": "ja", "name": { "zh": "日文", "en": "Japanese", "ja": "日本語" }, "prompt": "Text on screen in Japanese." }
-      ] },
-    { "id": "library", "group": { "zh": "製作", "en": "Making", "ja": "制作" },
-      "name": { "zh": "特效", "en": "Effects", "ja": "エフェクト" },
-      "hint": { "zh": "全部現做：不用積木庫裡現成的特效、配樂風格和音效，每一樣都為這支片新寫。比較獨特，但比較花時間和費用。", "en": "All made new: none of the library's ready-made effects, music styles or sounds; everything is written for this film. More its own, but takes longer and costs more.", "ja": "すべて新規作成：ブロックライブラリの既製エフェクト・音楽スタイル・効果音を使わず、この動画のためにすべて新しく作ります。個性は出ますが、時間と費用がかかります。" },
-      "options": [
-        { "id": "library", "name": { "zh": "用積木庫", "en": "Library", "ja": "ライブラリ" }, "prompt": "Use the shared blocks (common.*) and library music styles where they fit, as usual." },
-        { "id": "none", "name": { "zh": "全部現做", "en": "All new", "ja": "すべて新規" }, "prompt": "No library: use no shared block (common.*), no c.recipe(...), no built-in or library music style and nothing from score-library/; write every effect, music style and synthesised sound as this project's own (fx modules, a project score style, c.sfxFile). Avoid the Cut methods that quietly add common blocks, or pass your own type: c.panel, polaroids, censorSpeech's defaults, c.voiceCaptions (pass { type: 'fx.xxx' }), c.sfx('common.*'). Outside assets are allowed. When done, project.json must contain no \"common.\"." }
       ] }
   ],
   "examples": [

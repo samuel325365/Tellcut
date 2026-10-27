@@ -1,8 +1,8 @@
 // The chat's API menu (spec 2026-10-24-api-picker §4): the outside sources in their groups, ticked for this conversation — the
-// agent may use only those. A popover under the composer on the home page (down), above it in the editor (up: it floats over the
-// timeline); a tick counts from the next message (the page keeps the ticks and sends them with each one), Esc or a click outside closes it. Sources that cannot be used here are greyed out with the
+// agent may use only those. A popover under the composer on the home page (down; up when the composer is at the bottom of a
+// conversation), above it in the editor (up: it floats over the timeline); a tick counts from the next message (the page keeps the ticks and sends them with each one), Esc or a click outside closes it. Sources that cannot be used here are greyed out with the
 // reason.
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { SOURCE_CATEGORIES, type SourceInfo } from '@tellcut/protocol';
 import { DICTS, t, uiLabel, type Key } from './i18n/index.ts';
 import { IconCheck } from './icons.tsx';
@@ -39,9 +39,20 @@ export function SourcePicker({ rows, error, picked, onToggle, onClear, onClose, 
     document.addEventListener('keydown', key);
     return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', key); };
   }, [onClose]);
+  // the home composer sits mid-page on an empty chat but at the bottom of a conversation: open down only when there is room
+  // below, else up; either way no taller than the room on that side
+  const [room, setRoom] = useState<{ up: boolean; px: number } | null>(null);
+  useLayoutEffect(() => {
+    const at = (box.current?.offsetParent as HTMLElement | null)?.getBoundingClientRect();
+    if (!at) return;
+    const below = innerHeight - at.bottom - 16, above = at.top - 16;
+    const up = surface === 'editor' || (below < 240 && above > below);
+    setRoom({ up, px: Math.max(120, Math.floor(up ? above : below)) });
+  }, [surface]);
   const usable = (rows ?? []).filter((r) => r.available), n = usable.filter((r) => picked.includes(r.id)).length;
   return (
-    <div class={`api-pop ${surface === 'editor' ? 'up' : 'down'}`} data-api-picker role="dialog" aria-label={uiLabel('api.title', surface)} ref={box}>
+    <div class={`api-pop ${surface} ${room?.up ?? surface === 'editor' ? 'up' : 'down'}`} style={room ? { '--room': `${room.px}px` } : undefined}
+      data-api-picker role="dialog" aria-label={uiLabel('api.title', surface)} ref={box}>
       <div class="pop-head">
         <b>{uiLabel('api.title', surface)}</b>
         <span data-api-count>{n ? uiLabel('api.count', surface, { n }) : uiLabel('api.none', surface)}</span>

@@ -1,4 +1,4 @@
-// The import browser (home page): folders on this PC listed by the server; picked files and folders come back as paths.
+// The import browser (home page and the editor chat): folders on this PC listed by the server; picked files and folders come back as paths.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Attachment } from './attachments.ts';
 import { IconUp, IconX, kindIcon } from './icons.tsx';

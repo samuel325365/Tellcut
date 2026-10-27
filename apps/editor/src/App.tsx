@@ -10,12 +10,27 @@ import { ExportPanel } from './ExportPanel.tsx';
 import { ProposalBar } from './ProposalBar.tsx';
 import { AskAgent } from './AskAgent.tsx';
 import { ChatPanel } from './ChatPanel.tsx';
+import { ImportDialog } from './ImportDialog.tsx';
+import type { Attachment } from './attachments.ts';
 import { HelpPanel } from './HelpPanel.tsx';
 import { keyAction } from './keys.ts';
 import { gridFor, orientationOf, previewWFromX, sideWFromX, sideWidth, splitFromY, type Layout } from './layout.ts';
 import type { Editor } from './editor.ts';
 import type { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
+
+/** the project chat, with ＋ to attach photos or footage from this PC (as paths, like the home page) */
+function EditorChat({ editor }: { editor: Editor }) {
+  const [importing, setImporting] = useState(false);
+  const [atts, setAtts] = useState<Attachment[]>([]);
+  const add = (a: Attachment[]) => setAtts([...atts, ...a.filter((x) => !atts.some((y) => y.path === x.path))]);
+  const fs = editor.fs;
+  return <>
+    <ChatPanel session={editor.chat} surface="editor" hint={t('ed.chatHint')} attachments={atts} onAttach={fs && (() => setImporting(true))}
+      onDetach={(i) => setAtts(atts.filter((_, k) => k !== i))} onSent={() => setAtts([])} />
+    {importing && fs && <ImportDialog api={fs} surface="editor" onAdd={add} onClose={() => setImporting(false)} />}
+  </>;
+}
 
 const useViewSize = () => {
   const [v, setV] = useState({ w: innerWidth, h: innerHeight });
@@ -96,7 +111,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   const library = <LibraryPanel editor={editor} s={s} />, props = <PropertiesPanel editor={editor} s={s} />;
   const chat = editor.chat && <div class="chat-tab"><div class="chat-head"><span>Project chat</span>
     <button {...{ 'data-tip': t('ed.chatClearTip'), 'aria-label': t('ed.chatClearTip') }} onClick={() => { if (confirm(t('ed.chatClearConfirm'))) void editor.chat.clear(); }}>Clear</button></div>
-    <ChatPanel session={editor.chat} surface="editor" hint={t('ed.chatHint')} /></div>;
+    <EditorChat editor={editor} /></div>;
   return (
     <div class={`editor ${portrait ? 'portrait' : 'landscape'}`} ref={root} style={{ gridTemplateAreas: g.areas, gridTemplateColumns: g.columns, gridTemplateRows: g.rows }}>
       <Toolbar s={s} editor={editor} noticeHere={!(portrait ? !l.libClosed && l.sideTab === 'props' : !l.propsClosed)} />
