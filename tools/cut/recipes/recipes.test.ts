@@ -284,14 +284,15 @@ test('brand lays the parts on bars at 80 BPM: hook, wall, beats with a dolly in,
   expect(items(c, 'common.headline').filter((h) => h.params.look === 'proof').map((h) => [h.start, h.end, h.params.text, h.params.sub])).toEqual([[27, 30, '90+', 'BUILT-IN EFFECTS AND SOUNDS'], [30, 33, 'Your footage stays\non your computer.', '']]);
   expect(items(c, 'common.headline').filter((h) => h.params.look === 'brand').map((h) => h.params.text)).toEqual(['We film everything.', 'It stays on our phones.', 'It watches every clip.', 'Captions on the beat.', 'It checks its own work.', 'We are Tellcut.']);
   const logo = items(c, 'common.logo')[0];
-  expect([logo.start, logo.end, logo.params]).toEqual([37.5, 46.5, expect.objectContaining({ logo: 'media/brand/logo.svg', name: 'Tellcut', split: 4, hit: 3 })]);
+  // the mark starts the moment the dolly out ends (hit 0.75: it pops from the logo's first frame), no dark gap before it
+  expect([logo.start, logo.end, logo.params]).toEqual([37.5, 45.75, expect.objectContaining({ logo: 'media/brand/logo.svg', name: 'Tellcut', split: 4, hit: 0.75 })]);
   expect(items(c, 'common.tag').map((t) => [t.start, t.params.look, t.params.tags, +t.params.step.toFixed(4), t.params.size])).toEqual([[13.5 + 0.9, 'glass', 'Street,Tram,Morning light', 0.5625, 4.5]]);
   // the glass tags are at least 48 px high: 4.5 % of a 1080 frame, 2.5 % of a 1920 one
   const tall = brandCut(1080, 1920);
   tall.recipe('brand', BRAND());
   expect(items(tall, 'common.tag')[0].params.size).toBe(2.5);
-  expect(r.duration).toBe(46.5);
-  expect(r.parts).toMatchObject({ hook: [0, 7.5], wall: [7.5, 12], beats: [13.5, 27], proof: [27, 33], weAre: [33, 37.5], logo: [37.5, 46.5] });
+  expect(r.duration).toBe(45.75);
+  expect(r.parts).toMatchObject({ hook: [0, 7.5], wall: [7.5, 12], beats: [13.5, 27], proof: [27, 33], weAre: [33, 37.5], logo: [37.5, 45.75] });
 });
 
 test('no proof leaves the part out and the rest moves up', () => {
@@ -300,7 +301,7 @@ test('no proof leaves the part out and the rest moves up', () => {
   expect(items(c, 'common.wall').map((w) => w.params.look ?? 'wall')).toEqual(['wall']);
   expect(items(c, 'common.headline').some((h) => h.params.look === 'proof')).toBe(false);
   expect(r.parts.proof).toBeUndefined();
-  expect(r.duration).toBe(40.5);
+  expect(r.duration).toBe(39.75);
 });
 
 test('too few distinct shots is an error that says how many more', () => {
@@ -332,7 +333,7 @@ test('music: cinematic 80 Dm by default with the level curve; sound effects at t
   expect((c as any).scoreReq).toMatchObject({ style: 'cinematic', bpm: 80, key: 'Dm', seed: 1 });
   const curve = (c as any).curve as Array<[number, number]>;
   expect(curve[0]).toEqual([0, 0.8]);
-  expect(curve).toEqual(expect.arrayContaining([[7.1, 0.8], [7.8, 0.62], [11.4, 0.55], [12, 0.82], [13.5, 1], [14.5, 0.86], [27, 0.86], [27.5, 0.74], [33, 0.74], [38.3, 0.6], [40.45, 0.7], [40.55, 1], [46.5, 0.95]]));
+  expect(curve).toEqual(expect.arrayContaining([[7.1, 0.8], [7.8, 0.62], [11.4, 0.55], [12, 0.82], [13.5, 1], [14.5, 0.86], [27, 0.86], [27.5, 0.74], [33, 0.74], [36.05, 0.6], [38.2, 0.7], [38.3, 1], [45.75, 0.95]]));
   expect(curve.every((p, i) => !i || p[0] >= curve[i - 1][0])).toBe(true);
   const at = (type: string) => items(c, type).map((s) => +s.start.toFixed(4));
   expect(at('common.air')).toEqual([7.5]);
@@ -340,9 +341,9 @@ test('music: cinematic 80 Dm by default with the level curve; sound effects at t
   expect(at('common.tick')).toEqual([14.4, 14.9625, 15.525]);
   expect(items(c, 'common.ding').map((d) => [d.start, d.params.step, d.params.scale])).toEqual([[13.5, 0, 'pentatonic'], [18, 1, 'pentatonic'], [22.5, 2, 'pentatonic']]);
   expect(at('common.thud')).toEqual([27, 30]);
-  expect(at('common.riser')).toEqual([38.9]);
-  expect(at('common.impact')).toEqual([40.5]);
-  expect(at('common.shing')).toEqual([40.5]);
+  expect(at('common.riser')).toEqual([36.65]);
+  expect(at('common.impact')).toEqual([38.25]);
+  expect(at('common.shing')).toEqual([38.25]);
 });
 
 test('cinemascope adds the letterbox and keeps headline y above the bottom bar', () => {
@@ -357,7 +358,7 @@ test('cinemascope adds the letterbox and keeps headline y above the bottom bar',
 
 test('a 9:16 film lays out too', () => {
   const c = brandCut(1080, 1920), r = c.recipe('brand', BRAND()) as any;
-  expect(r.duration).toBe(46.5);
+  expect(r.duration).toBe(45.75);
   expect(startsOf(c).map((s) => s[0])).toEqual(['v1', 'v2', 'v3', 'v4', 'v5', 'v6']);
   expect(items(c, 'common.wall')).toHaveLength(2);
   expect(items(c, 'common.logo')).toHaveLength(1);
@@ -380,5 +381,26 @@ test('the brand film saves: every block and sound it places is known, the music 
   c.recipe('brand', { ...BRAND(), style: 'cinemascope' });
   const p = await c.save();
   expect(track(p, 'music')[0]).toMatchObject({ media: 'score-cinematic' });
-  expect(p.meta.duration).toBeCloseTo(46.5, 3);
+  expect(p.meta.duration).toBeCloseTo(45.75, 3);
+});
+
+test('a hook line with shots cuts between them on the half bar; every hook shot counts toward the distinct footage', () => {
+  const x: any = BRAND();
+  x.hook = [{ text: 'We film everything.', shots: [{ src: 'v1' }, { src: 'v7', from: 2 }] }, { text: 'It stays on our phones.', shots: [{ src: 'v2', from: 4 }, { src: 'v8' }] }];
+  const c = brandCut(), r = c.recipe('brand', x) as any;
+  expect(startsOf(c).slice(0, 4)).toEqual([['v1', 0, 1.5], ['v7', 1.5, 1.5], ['v2', 3, 2.25], ['v8', 5.25, 2.25]]);
+  expect(items(c, 'common.headline').filter((h) => h.params.look === 'brand').slice(0, 2).map((h) => [h.start, h.end])).toEqual([[0.2, 3], [3.2, 7.5]]);
+  expect(r.parts.hook).toEqual([0, 7.5]);
+  // four hook shots + three beats = 7 distinct needed: a beat and "we are" on hook sources leave v1 v7 v2 v8 v3 v4, one short
+  const short: any = BRAND(); short.hook = x.hook; short.beats[2].shot = { src: 'v7', from: 20 }; short.weAre.shot = { src: 'v1', from: 20 };
+  expect(() => brandCut().recipe('brand', short)).toThrow(/還差 1 段不同的素材/);
+  expect(() => brandCut().recipe('brand', { ...BRAND(), hook: [{ text: 'x' }] } as any)).toThrow(/shot.*shots/);
+});
+
+test('a beat with show puts that block over its shot, showing what the line says', () => {
+  const x: any = BRAND();
+  x.beats[2].show = { type: 'common.notecard', params: { mode: 'list', items: 'No black frames|No clipped audio' } };
+  const c = brandCut();
+  c.recipe('brand', x);
+  expect(items(c, 'common.notecard').map((n) => [n.start, +(n.end - n.start).toFixed(3), n.params.items])).toEqual([[22.5 + 0.9, 3.4, 'No black frames|No clipped audio']]);
 });

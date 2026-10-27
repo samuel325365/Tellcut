@@ -74,6 +74,27 @@ test('glass tags come one step apart (the spike: every three quarters of a beat)
   expect(op().every((x) => x > 0.95)).toBe(true);
 });
 
+test('glass stack with check: a column of tags, each ticked in the accent colour check seconds after it appears (the spike\'s checklist)', async () => {
+  const { root, st } = await stage(tag as ItemType, { look: 'glass', tags: 'No black frames, No clipped audio', step: 0.5, check: 0.4, stack: true, c1: '#2f8cff' });
+  const row = () => [...root.querySelectorAll<HTMLElement>('div')].find((d) => d.style.display === 'flex')!;
+  const marks = () => [...root.querySelectorAll<HTMLElement>('[data-tick]')];
+  st.draw(0.3);
+  expect(row().style.flexDirection).toBe('column');
+  const pills = [...root.querySelectorAll<HTMLElement>('div')].filter((d) => ['No black frames', 'No clipped audio'].includes(d.textContent ?? ''));
+  expect(pills.length).toBe(2);
+  expect(marks().length).toBe(2);
+  expect(marks().map((m) => Number(m.dataset.tick))).toEqual([0, 0]);
+  st.draw(0.75);   // the first ticked by 0.65, the second appears at 0.5 and ticks from 0.9
+  const [a, b] = marks().map((m) => Number(m.dataset.tick));
+  expect(a).toBeGreaterThan(0.95);
+  expect(b).toBe(0);
+  expect(marks()[0].style.background).toMatch(/47, ?140, ?255|#2f8cff/i);
+  // without check: no marks, and a row as before
+  const plain = await stage(tag as ItemType, { look: 'glass', tags: 'Street, Tram' });
+  plain.st.draw(1);
+  expect(plain.root.querySelectorAll('[data-tick]').length).toBe(0);
+});
+
 test('film letterbox 2.39 on 16:9 draws bars of (H - W/2.39)/2 each; on a frame 2.39 or wider none', async () => {
   const { root, st } = await stage(film as ItemType, { letterbox: 2.39, grain: 0 });
   st.draw(1);

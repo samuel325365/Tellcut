@@ -5,15 +5,17 @@
 // growing under the words as they are written, `no` circled in red pen at the left of the first one; the strips land with a bounce.
 // look "pin" (t2-map's fx.tag and the atlas pins): a teardrop map pin drops onto (x, y) — its tip — with a label card above it
 // (the first tag, the second a small line under it); `check` ticks the pin's head at that second.
+// look "glass" (the brand film): frosted panels one after another; `stack` puts them in a column, `check` ticks each one in the accent
+// colour that many seconds after it appears (the spike's "It checks its own work." list).
 import { clamp, cssCamel, eBack, eOut3, h, prog, type ItemType } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { handCircle, handFamily, tape } from './hand.ts';
 import { mapPin } from './geo.ts';
 import { withAlpha } from './color.ts';
 
-interface P { tags: string; x: number; y: number; size: number; gap: number; font: string; ink: string; c1: string; c2: string; c3: string; look: 'pill' | 'label' | 'tape' | 'pin' | 'glass'; no: string; check: number; handFont: string; step: number }
+interface P { tags: string; x: number; y: number; size: number; gap: number; font: string; ink: string; c1: string; c2: string; c3: string; look: 'pill' | 'label' | 'tape' | 'pin' | 'glass'; no: string; check: number; handFont: string; step: number; stack: boolean }
 interface Strip { el: HTMLElement; cv: HTMLCanvasElement; txt: HTMLElement; sub: HTMLElement }
-interface S { row: HTMLElement; pills: HTMLElement[]; key: string; wrap: HTMLElement; strips: Strip[]; skey: string; pin: HTMLCanvasElement }
+interface S { row: HTMLElement; pills: HTMLElement[]; marks: HTMLElement[]; key: string; wrap: HTMLElement; strips: Strip[]; skey: string; pin: HTMLCanvasElement }
 
 /** look tape: when strip i lands (0.12 s apart) and how far its words are written (12 characters a second after 0.15 s) */
 export function tapeTimes(i: number, chars: number, local: number) {
@@ -25,7 +27,7 @@ export const pinTimes = (local: number, check: number) => ({ drop: eOut3(prog(lo
 
 export const tag: ItemType<P, S> = {
   type: 'common.tag', label: '膠囊標籤', category: 'chapter', kind: 'overlay',
-  doc: '一排小膠囊標籤（逗號分隔），一個接一個彈出；標題下面的重點小字：認證、類型、價位、距離；look: label 是方塊相連的地點＋日期標籤（深底白字加強調色邊、螢光底日期），一拍內從左刷進來；look: tape 是紙膠帶標籤：每個標籤用手寫字寫在一條米色紙膠帶上、字底下長出一道螢光筆，no 用紅筆圈在第一條左邊（店號、站號），膠帶彈一下貼上（筆記本、手帳、散步地圖）；look: pin 是圖釘標籤：一根水滴形圖釘落在 x、y（釘尖），上方一張標籤卡（第一個標籤，第二個是下面一行小字），check 那一秒在圖釘頭上打勾（地圖、到過的地方、景點）',
+  doc: '一排小膠囊標籤（逗號分隔），一個接一個彈出；標題下面的重點小字：認證、類型、價位、距離；look: label 是方塊相連的地點＋日期標籤（深底白字加強調色邊、螢光底日期），一拍內從左刷進來；look: tape 是紙膠帶標籤：每個標籤用手寫字寫在一條米色紙膠帶上、字底下長出一道螢光筆，no 用紅筆圈在第一條左邊（店號、站號），膠帶彈一下貼上（筆記本、手帳、散步地圖）；look: pin 是圖釘標籤：一根水滴形圖釘落在 x、y（釘尖），上方一張標籤卡（第一個標籤，第二個是下面一行小字），check 那一秒在圖釘頭上打勾（地圖、到過的地方、景點）；look: glass 是毛玻璃標籤（品牌片），stack 直排，check 每個標籤出現後幾秒打上主色的勾（檢查清單、做到的事）',
   params: [
     { key: 'tags', label: '標籤（用逗號分隔）', type: 'string', default: '標籤一,標籤二' },
     { key: 'x', label: '左邊 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.06 },
@@ -39,8 +41,9 @@ export const tag: ItemType<P, S> = {
     { key: 'c3', label: '膠囊顏色三', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
     { key: 'look', label: '樣子（pill 膠囊、label 方塊相連的地點日期標籤、tape 紙膠帶手寫標籤、pin 圖釘標籤、glass 毛玻璃標籤）', type: 'enum', options: ['pill', 'label', 'tape', 'pin', 'glass'], default: 'pill' },
     { key: 'no', label: '紅筆圈起來的號碼（tape：第一條膠帶左邊；空＝沒有）', type: 'string', default: '' },
-    { key: 'check', label: '圖釘打勾的秒數（pin；相對項目開始，-1＝不打勾）', type: 'number', min: -1, max: 60, step: 0.05, default: -1 },
+    { key: 'check', label: '打勾的秒數（pin：相對項目開始；glass：每個標籤出現後幾秒；-1＝不打勾）', type: 'number', min: -1, max: 60, step: 0.05, default: -1 },
     { key: 'step', label: '一個接一個出現的間隔（秒；glass）', type: 'number', min: 0.02, max: 3, step: 0.01, default: 0.12 },
+    { key: 'stack', label: '直排（glass；一個在一個下面）', type: 'bool', default: false },
     { key: 'handFont', label: '手寫字型（tape、pin）', type: 'string', default: 'LXGW WenKai TC' },
   ],
   build(ctx) {
@@ -48,7 +51,7 @@ export const tag: ItemType<P, S> = {
     cssCamel(row, { position: 'absolute', display: 'flex', alignItems: 'center', whiteSpace: 'pre', fontWeight: '900' });
     cssCamel(wrap, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', display: 'none', pointerEvents: 'none' });
     cssCamel(pin, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
-    return { row, pills: [], key: '', wrap, strips: [], skey: '', pin };
+    return { row, pills: [], marks: [], key: '', wrap, strips: [], skey: '', pin };
   },
   hide(s) { freeCanvas(s.pin, ...s.strips.map((x) => x.cv)); },
   draw(ctx, s) {
@@ -57,16 +60,28 @@ export const tag: ItemType<P, S> = {
     cssCamel(s.wrap, { display: extra ? 'block' : 'none' });
     if (extra) { cssCamel(s.row, { display: 'none' }); if (p.look === 'tape') drawTape(ctx, s, k, px); else drawPin(ctx, s, k, px); return; }
     cssCamel(s.row, { display: 'flex' });
-    if (s.key !== p.tags) {   // rebuild the pills only when the list changed
-      s.key = p.tags;
+    const ticks = p.look === 'glass' && p.check >= 0, key = `${ticks ? 'v' : ''}|${p.tags}`;
+    if (s.key !== key) {   // rebuild the pills only when the list (or whether they are ticked) changed
+      s.key = key;
       s.row.innerHTML = '';
-      s.pills = p.tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean).map((t) => { const e = h('div', null, null, s.row); e.textContent = t; return e; });
+      s.marks = [];
+      s.pills = p.tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean).map((t) => {
+        const e = h('div', null, null, s.row);
+        if (ticks) {   // an empty circle before the words (no text of its own, so the pill's text stays the tag), a tick drawn by two borders
+          const m = h('span', null, null, e), v = h('span', null, null, m);
+          cssCamel(m, { display: 'inline-block', position: 'relative', width: '1em', height: '1em', borderRadius: '50%', marginRight: '0.55em', verticalAlign: '-0.16em', boxSizing: 'border-box' });
+          cssCamel(v, { position: 'absolute', left: '0.34em', top: '0.17em', width: '0.26em', height: '0.5em', borderRight: '0.12em solid #ffffff', borderBottom: '0.12em solid #ffffff', transform: 'rotate(45deg)' });
+          s.marks.push(m);
+        }
+        e.append(t);
+        return e;
+      });
     }
     const colors = [p.c1, p.c2, p.c3], out = 1 - prog(ctx.local, ctx.dur - 0.2, ctx.dur);
     if (p.look === 'label') {
       // joined blocks: the first on ink with an accent edge, then the highlight colour, then the second accent; wiped in from the left
       const w = eOut3(prog(ctx.local, 0, 0.1));
-      cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: '0', opacity: String(out),
+      cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: '0', opacity: String(out), flexDirection: 'row',
         alignItems: 'stretch', boxShadow: `0 ${5 * k}px ${16 * k}px rgba(0,0,0,.35)`, transform: `translateX(${((1 - w) * -60 * k).toFixed(2)}px)`, clipPath: `inset(0 ${((1 - w) * 100).toFixed(2)}% 0 0)` });
       s.pills.forEach((e, i) => {
         const bg = i === 0 ? p.ink : [p.c3, p.c2][(i - 1) % 2];
@@ -75,15 +90,22 @@ export const tag: ItemType<P, S> = {
       });
       return;
     }
-    cssCamel(s.row, { alignItems: 'center', boxShadow: 'none', transform: 'none', clipPath: 'none' });
+    cssCamel(s.row, { alignItems: 'center', boxShadow: 'none', transform: 'none', clipPath: 'none', flexDirection: 'row' });
     if (p.look === 'glass') {
       // frosted panels (the brand film): the picture under each one blurred, a dark veil, a hairline edge; one after another
-      cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: `${p.gap}em`, opacity: String(out) });
+      cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: `${p.gap}em`, opacity: String(out),
+        flexDirection: p.stack ? 'column' : 'row', alignItems: p.stack ? 'flex-start' : 'center' });
       s.pills.forEach((e, i) => {
         const a = eOut3(prog(ctx.local, i * p.step, i * p.step + 0.35));
         cssCamel(e, { lineHeight: '', display: '', alignItems: '', background: 'rgba(14,16,22,0.38)', color: '#ffffff', fontWeight: '500', fontSize: '0.8em',
           padding: '0.35em 0.85em', borderRadius: '0.45em', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(12px)', webkitBackdropFilter: 'blur(12px)',
           boxShadow: `0 ${6 * k}px ${18 * k}px rgba(0,0,0,0.25)`, opacity: String(a), transform: `translateY(${((1 - a) * 10 * k).toFixed(2)}px)` });
+        const m = s.marks[i];
+        if (!m) return;
+        const v = eOut3(prog(ctx.local, i * p.step + p.check, i * p.step + p.check + 0.25));
+        m.dataset.tick = v.toFixed(3);
+        cssCamel(m, { background: v > 0 ? withAlpha(p.c1, v) : 'transparent', border: `${Math.max(1, 2 * k)}px solid ${v > 0.5 ? p.c1 : 'rgba(255,255,255,0.55)'}` });
+        cssCamel(m.firstElementChild as HTMLElement, { opacity: String(v), transform: `rotate(45deg) scale(${(0.4 + 0.6 * v).toFixed(3)})` });
       });
       return;
     }

@@ -457,6 +457,7 @@ export const cases: Case[] = [
   { name: 'globe-tall', type: 'common.globe', len: 3, at: [0.5, 2.8], params: GLOBE },
   // the brand film's looks: lines from a blur bottom-left, frosted tags, a 2.39 letterbox
   { name: 'headline-brand', type: 'common.headline', params: { look: 'brand', text: 'We film everything.\nEvery trip.', sub: 'WHAT WE DO' }, len: 3, at: [0.3, 1.4], wide: true },
+  { name: 'tag-glass-check', type: 'common.tag', params: { look: 'glass', tags: 'No black frames, Captions match the speech, No clipped audio', x: 0.6, y: 0.3, size: 3.6, step: 0.5, check: 0.4, stack: true }, len: 3, at: [0.7, 2], wide: true },
   { name: 'tag-glass', type: 'common.tag', params: { look: 'glass', tags: 'Street, Tram, Morning light', x: 0.08, y: 0.3, size: 4.5 }, len: 3, at: [1.2], wide: true },
   { name: 'film-letterbox', type: 'common.film', params: { letterbox: 2.39, grain: 0.15 }, len: 3, at: [1.0], wide: true },
   // the spike's grain: grey noise by overlay (strong here, to be seen on a flat ground), the vignette and bars drawn normally
