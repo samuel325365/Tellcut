@@ -6,12 +6,13 @@ import { ABOVE, DEV_DIR, foreign, generated, plan, refusal } from './dev-install
 // dev/ is the maintainers' private repo: a public clone has no dev/claude, so the tests that read it are skipped
 const withDev = existsSync(DEV_DIR) ? test : test.skip;
 
-withDev('the copies go to the .claude folder above tellcut/ by default: the skill and the agent, each with its frontmatter', () => {
+withDev('the copies go to the .claude folder above tellcut/ by default: the skill and the agent, each with its frontmatter, and the maintainers\' CLAUDE.md', () => {
   const mine = plan();
   expect(mine.map(([f]) => f.split(sep).slice(-3).join('/'))).toEqual(expect.arrayContaining(['.claude/agents/video-maker.md', 'skills/batch-videos/SKILL.md']));
   for (const [f, text] of mine) {
     expect(f.startsWith(ABOVE + sep)).toBe(true);
-    expect(text).toMatch(/^---\r?\nname: [\w-]+\r?\ndescription: /);
+    if (f.endsWith(`${sep}CLAUDE.md`)) expect(text).toContain('npm run dev:install');   // the note on where it comes from
+    else expect(text).toMatch(/^---\r?\nname: [\w-]+\r?\ndescription: /);
   }
 });
 

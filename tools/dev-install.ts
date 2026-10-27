@@ -1,4 +1,5 @@
-// The developers' Claude Code tools (batch-videos skill, video-maker subagent; review3 R3-L1). Their text lives once, in
+// The developers' Claude Code tools (batch-videos skill, video-maker subagent; review3 R3-L1) and the maintainers' own
+// .claude/CLAUDE.md (what only they need; tellcut/CLAUDE.md is the public one). Their text lives once, in
 // tellcut/dev/claude/; Claude Code only finds skills and agents in the .claude folder of the folder a session starts in (agents are
 // not looked up in folders below it). Developers start sessions in the folder above tellcut/ (Video-Editing/), so the copies go
 // there, out of any repo. Not into tellcut/.claude by default: a session above that touches tellcut files would load the skill a

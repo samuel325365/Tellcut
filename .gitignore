@@ -32,6 +32,7 @@ Thumbs.db
 # copies npm run dev:install -- --here writes for sessions started in tellcut/ (the text lives in dev/claude/)
 .claude/agents/video-maker.md
 .claude/skills/batch-videos/
+.claude/CLAUDE.md
 
 # maintainers only: a private folder with its own repo — specs, plans, TODO, batch skill/agent
 /dev/
