@@ -38,10 +38,10 @@
       "name": { "zh": "年表回顧", "en": "Timeline of years", "ja": "年表で振り返る" },
       "desc": { "zh": "年份一格格往前，照片依年代出現。", "en": "Years tick forward and photos appear in order.", "ja": "年が進み、写真が年代順に現れる。" },
       "prompt": "A timeline of years ticks forward; photos from each year appear in turn." },
-    { "id": "slow-title", "custom": true,
+    { "id": "slow-title",
       "name": { "zh": "名字片頭與片尾名單", "en": "Name title and credits", "ja": "名前のタイトルとクレジット" },
       "desc": { "zh": "開頭放主角的名字，結尾像電影一樣列出感謝名單。", "en": "The guest of honour's name opens it, and thank-you credits roll at the end.", "ja": "冒頭に主役の名前、最後は映画のようにお礼のクレジットを流す。" },
-      "prompt": "An elegant name title at the start and slow thank-you credits at the end." }
+      "prompt": "An elegant name title at the start (common.headline look: 'name': the name as text, the occasion as sub, e.g. SWEET SIXTEEN) and slow thank-you credits at the end (common.outro look: 'credits': one line a beat; *a line in stars* is an italic heading, _a line in underscores_ a small credit such as the music)." }
   ]
 }
 ---

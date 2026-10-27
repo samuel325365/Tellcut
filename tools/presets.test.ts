@@ -135,3 +135,12 @@ test('brand starts from the brand recipe, with footage minimums, wall photos and
   expect(wf).toMatch(/`brand` brand film/);
   expect(wf).toMatch(/a preset may allow more/i);
 });
+
+test("celebration's name title and vlog's time stamps and notes have their blocks now (2026-10-27, group C): not custom, and they name them", () => {
+  const style = (p: string, s: string) => presets().find((x) => x.id === p)!.styles.find((x) => x.id === s)!;
+  for (const [p, s, blocks] of [['celebration', 'slow-title', ["common.headline look: 'name'", "common.outro look: 'credits'"]], ['vlog', 'day-clock', ["common.tag look: 'day'"]],
+    ['vlog', 'handwritten-notes', ["common.tag look: 'tape'", "common.caption style: 'strip'"]]] as const) {
+    expect(style(p, s).custom, `${p}.${s}`).toBeFalsy();
+    for (const b of blocks) expect(style(p, s).prompt, `${p}.${s}`).toContain(b);
+  }
+});
