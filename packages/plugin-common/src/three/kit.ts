@@ -14,6 +14,7 @@ import type { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPas
 import type ClipperLibType from 'clipper-lib';
 import type * as Opentype from 'opentype.js';
 import { glyphsFrom, type Glyphs } from './glyphs.ts';
+import { dust, floor, glassBar, videoSlab, type Dust, type DustOptions, type Floor, type FloorOptions, type GlassBar, type GlassBarOptions, type Slab, type SlabOptions } from './parts.ts';
 import { coverUv } from './uv.ts';
 
 type Three = typeof import('three');
@@ -49,6 +50,17 @@ export interface ThreeKit {
   fillDistance(faceH: number, fovDeg: number): number;
   /** UV repeat and offset that show the part of a srcW×srcH picture a w×h box shows with this crop (as coverPlacement) */
   coverUv: typeof coverUv;
+  // ready-made parts (three/parts.ts): build them once in build()/ready(), add `.group` / `.points` to the scene, free with dispose()
+  /** a rounded glass slab with a picture or a clip on its face (common.wall's tile): map = a still's texture or
+   *  mediaTexture(video).texture; cover(srcW, srcH) crops it; slabs of one size share `geometry` */
+  videoSlab(o: SlabOptions): Slab;
+  /** a glass bar (a pill by default) whose face is a canvas: paint((g, w, h) => …) draws the glass and then your content (a typed
+   *  prompt, a label) */
+  glassBar(o: GlassBarOptions): GlassBar;
+  /** drifting dust (common.wall's): 600 soft motes from a fixed seed; pose(t) in draw() */
+  dust(o?: DustOptions): Dust;
+  /** a reflective floor at height y with a veil of the background over it (common.wall's); frame = [W, H] in pixels */
+  floor(o: FloorOptions): Floor;
 }
 
 /** a glow pass chain for one size: strength set before each render */
@@ -96,6 +108,10 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
   };
   return {
     THREE, addons, coverUv,
+    videoSlab: (so) => videoSlab(THREE, addons.RoundedBoxGeometry, coverUv, so),
+    glassBar: (go) => glassBar(THREE, go),
+    dust: (d) => dust(THREE, d),
+    floor: (fo) => floor(THREE, addons.Reflector, fo),
     render(scene, camera, w, h, ro = {}) {
       const r = renderer();
       if (!r) return null;

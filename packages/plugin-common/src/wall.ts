@@ -2,24 +2,25 @@
 // curved wall the camera glides across and then pushes into one tile until it fills the frame's width; look sphere, 90 tiles on a
 // slowly turning ball whose far side fades. Each tile shows a still of a source, cropped by cover (a tall clip is not squashed).
 // Built from the spike (3-tellcut-film/scene.js: tile(), the wall and the proof sphere, the floor, the dust, "696 clips.").
-import { clamp, coverPlacement, eIO3, eOut5, h, type ItemType, lerp, mulberry32, type Project } from '@tellcut/engine';
+import { clamp, coverPlacement, eIO3, eOut5, h, type ItemType, lerp, type Project } from '@tellcut/engine';
 import { drawBlurLine } from './brand-text.ts';
 import { ghostLayer, ghostLines, type GhostLine } from './text.ts';
 import type * as T from 'three';
 import type { ThreeKit } from './three/kit.ts';
+import type { Dust, Floor, Slab } from './three/parts.ts';
 
 export const WALL_FOV = 36;
-const TW = 1.22, TH = (TW * 9) / 16, GAP = 0.16, WALL_Z = -3, FACE_Z = 0.0235, BALL_TW = 0.62, BALL_N = 90, BALL_R = 3;
+const TW = 1.22, TH = (TW * 9) / 16, GAP = 0.16, WALL_Z = -3, BALL_TW = 0.62, BALL_N = 90, BALL_R = 3;
 
 interface P {
   look: 'wall' | 'sphere'; tiles: string; cols: number; rows: number; focus: number; push: number; dim: number; bg: string;
   floor: boolean; dust: number; count: number; countLabel: string; bloom: number; font: string; color: string; x: number;
 }
-interface Tile { g: T.Group; face: T.Mesh<T.PlaneGeometry, T.MeshBasicMaterial>; slab: T.Mesh; home: T.Vector3 }
+interface Tile { g: T.Group; face: T.Mesh<T.PlaneGeometry, T.MeshBasicMaterial>; slab: T.Mesh; home: T.Vector3; part: Slab }
 interface S {
   cv: HTMLCanvasElement; ghost: HTMLElement; p: P; W: number; H: number; kit?: ThreeKit;
   pics: Array<{ img: HTMLImageElement; w: number; h: number }>;
-  gl?: { scene: T.Scene; cam: T.PerspectiveCamera; ball: T.Group; tiles: Tile[]; parts: Array<{ dispose(): void }>; dust: T.Points<T.BufferGeometry, T.PointsMaterial>; floor?: T.Object3D[] };
+  gl?: { scene: T.Scene; cam: T.PerspectiveCamera; ball: T.Group; tiles: Tile[]; parts: Array<{ dispose(): void }>; dust: Dust; floor?: Floor };
 }
 
 
@@ -116,17 +117,14 @@ function build3d(s: S, kit: ThreeKit) {
     return tex;
   });
   const sphere = p.look === 'sphere', tw = sphere ? BALL_TW : TW, th = (tw * 9) / 16;
-  const slabGeo = new kit.addons.RoundedBoxGeometry(tw + 0.06, th + 0.06, 0.045, 4, 0.03), faceGeo = new T3.PlaneGeometry(tw, th);
-  parts.push(slabGeo, faceGeo);
   const ball = new T3.Group(); scene.add(ball);
   const n = sphere ? BALL_N : Math.max(1, p.cols) * Math.max(1, p.rows), tiles: Tile[] = [];
   for (let k = 0; k < n; k++) {
-    const g = new T3.Group(); g.name = `wall-tile-${k}`;
-    const slabMat = new T3.MeshPhysicalMaterial({ color: 0x0e1117, roughness: 0.22, metalness: 0.25, clearcoat: 1, clearcoatRoughness: 0.08, transparent: sphere });
-    const faceMat = new T3.MeshBasicMaterial({ map: maps.length ? maps[k % maps.length] : null, color: maps.length ? 0xffffff : 0x2a2f38, toneMapped: false, transparent: sphere });
-    const slab = new T3.Mesh(slabGeo, slabMat), face = new T3.Mesh(faceGeo, faceMat);
-    face.name = 'wall-face'; face.position.z = FACE_Z;
-    g.add(slab, face); parts.push(slabMat, faceMat);
+    // the kit's slab (the spike's tile): the first one makes the geometry, the rest share it
+    const part = kit.videoSlab({ w: tw, h: th, map: maps.length ? maps[k % maps.length] : null, transparent: sphere, geometry: tiles[0]?.part.geometry });
+    const { group: g, slab, face } = part;
+    g.name = `wall-tile-${k}`; face.name = 'wall-face';
+    parts.push(part);
     let home: T.Vector3;
     if (sphere) {
       // a golden-angle spiral over the ball, each tile facing out
@@ -140,29 +138,19 @@ function build3d(s: S, kit: ThreeKit) {
       g.position.copy(home); g.rotation.y = Math.atan(0.06 * x);
       scene.add(g);
     }
-    tiles.push({ g, face, slab, home });
+    tiles.push({ g, face, slab, home, part });
   }
   // the spike's floor: a reflector under the wall with a veil of the background over it
-  let floor: T.Object3D[] | undefined;
+  let floor: Floor | undefined;
   if (!sphere && p.floor) {
-    const y = -(Math.max(1, p.rows) * (TH + GAP)) / 2 - 0.25, geo = new T3.PlaneGeometry(80, 80);
-    const mirror = new kit.addons.Reflector(geo, { textureWidth: Math.round(s.W / 2), textureHeight: Math.round(s.H / 2), color: 0x2a2f38 });
-    mirror.name = 'wall-floor'; mirror.rotation.x = -Math.PI / 2; mirror.position.y = y;
-    const veilMat = new T3.MeshBasicMaterial({ color: p.bg, transparent: true, opacity: 0.55 }), veil = new T3.Mesh(geo, veilMat);
-    veil.name = 'wall-floor-veil'; veil.rotation.x = -Math.PI / 2; veil.position.y = y + 0.002;
-    scene.add(mirror, veil); parts.push(geo, veilMat, { dispose: () => mirror.dispose() });
-    floor = [mirror, veil];
+    floor = kit.floor({ y: -(Math.max(1, p.rows) * (TH + GAP)) / 2 - 0.25, bg: p.bg, frame: [s.W, s.H] });
+    floor.mirror.name = 'wall-floor'; floor.veil.name = 'wall-floor-veil';
+    scene.add(floor.group); parts.push(floor);
   }
   // the spike's dust: 600 soft points from a fixed seed, drifting with time
-  const rnd = mulberry32(7), pos = new Float32Array(600 * 3);
-  for (let i = 0; i < 600; i++) { pos[i * 3] = (rnd() - 0.5) * 34; pos[i * 3 + 1] = (rnd() - 0.5) * 18; pos[i * 3 + 2] = -20 + rnd() * 26; }
-  const dotPx = new Uint8Array(32 * 32 * 4);
-  for (let i = 0; i < 32 * 32; i++) { const dx = (i % 32) - 15.5, dy = Math.floor(i / 32) - 15.5, a = clamp(1 - Math.hypot(dx, dy) / 16); dotPx.set([255, 255, 255, Math.round(255 * a * a)], i * 4); }
-  const dot = new T3.DataTexture(dotPx, 32, 32); dot.needsUpdate = true;
-  const dustGeo = new T3.BufferGeometry(); dustGeo.setAttribute('position', new T3.BufferAttribute(pos, 3));
-  const dustMat = new T3.PointsMaterial({ color: 0x9cc8ff, size: 0.045, map: dot, transparent: true, opacity: 0.35, depthWrite: false, blending: T3.AdditiveBlending });
-  const dust = new T3.Points(dustGeo, dustMat); dust.name = 'wall-dust'; scene.add(dust);
-  parts.push(dot, dustGeo, dustMat);
+  const dust = kit.dust();
+  dust.points.name = 'wall-dust'; scene.add(dust.points);
+  parts.push(dust);
   s.gl = { scene, cam, ball, tiles, parts, dust, floor };
 }
 
@@ -184,8 +172,8 @@ function drawCount(g: CanvasRenderingContext2D, p: P, t: number, dur: number, W:
 function pose(s: S, t: number, dur: number, fps: number, W: number, H: number): number {
   const gl = s.gl!, p = s.p, T3 = s.kit!.THREE, aspect = W / H, tan = Math.tan((WALL_FOV * Math.PI) / 360);
   gl.cam.aspect = aspect;
-  gl.dust.rotation.y = t * 0.01; gl.dust.position.y = t * 0.025;
-  gl.dust.material.opacity = 0.35 * (p.dust / 0.4);
+  gl.dust.pose(t);
+  gl.dust.points.material.opacity = 0.35 * (p.dust / 0.4);
   if (p.look === 'sphere') {
     const back = Math.max(10, (BALL_R * 1.2) / (tan * Math.min(1, aspect)));
     gl.cam.position.set(0, 0.15, back); gl.cam.lookAt(0, 0, 0); gl.cam.updateProjectionMatrix();
@@ -200,11 +188,10 @@ function pose(s: S, t: number, dur: number, fps: number, W: number, H: number): 
       // only the side facing the camera: tiles fade out as they turn away
       tile.g.getWorldPosition(wp); nrm.copy(wp).sub(gl.ball.position).normalize(); toCam.copy(gl.cam.position).sub(wp).normalize();
       const f = clamp((nrm.dot(toCam) - 0.05) / 0.45);
-      tile.face.material.opacity = grow * f; (tile.slab.material as T.Material).opacity = grow * f;
+      tile.part.setOpacity(grow * f);
       tile.face.material.color.setScalar(tile.face.material.map ? lerp(0.45, 0.95, f) : 0.2);
-      tile.g.visible = grow * f > 0.003;
     }
-    gl.dust.visible = p.dust > 0;
+    gl.dust.points.visible = p.dust > 0;
     return 0;
   }
   const cols = Math.max(1, p.cols), rows = Math.max(1, p.rows), focus = p.focus >= 0 && p.focus < gl.tiles.length ? p.focus : Math.floor(rows / 2) * cols + Math.floor(cols / 2);
@@ -225,8 +212,8 @@ function pose(s: S, t: number, dur: number, fps: number, W: number, H: number): 
   gl.cam.updateProjectionMatrix();
   gl.tiles.forEach((tl, i) => { tl.face.material.color.setScalar(tl.face.material.map ? (i === focus ? 1 : lerp(1, p.dim, k > 0 ? k : 0.4)) : 0.2); });
   // as the spike: no dust or floor in the push, only the tile
-  gl.dust.visible = p.dust > 0 && k < 0.5;
-  for (const o of gl.floor ?? []) o.visible = k < 0.5;
+  gl.dust.points.visible = p.dust > 0 && k < 0.5;
+  if (gl.floor) gl.floor.group.visible = k < 0.5;
   return k;
 }
 
