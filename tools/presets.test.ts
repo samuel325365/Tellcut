@@ -144,3 +144,10 @@ test("celebration's name title and vlog's time stamps and notes have their block
     for (const b of blocks) expect(style(p, s).prompt, `${p}.${s}`).toContain(b);
   }
 });
+
+test("podcast's solo framing and end card name their blocks (2026-10-28, group B)", () => {
+  const p = presets().find((x) => x.id === 'podcast')!;
+  expect(p.styles.find((x) => x.id === 'solo')!.prompt).toContain("common.duo mode: 'solo'");
+  const body = readFileSync(join(TELLCUT_ROOT, 'guides', 'presets', 'podcast', 'preset.md'), 'utf8');
+  for (const b of ["common.outro look: 'episode'", 'outroWindow', "common.progress mode: 'slots'", 'common.slip']) expect(body).toContain(b);
+});

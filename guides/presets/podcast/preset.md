@@ -29,7 +29,7 @@
     { "id": "solo",
       "name": { "zh": "跟著說話的人切", "en": "Cut to whoever speaks", "ja": "話す人に切り替え" },
       "desc": { "zh": "全畫面只放正在說話的人，換人說就切過去。", "en": "Full frame on whoever is talking, cutting when the speaker changes.", "ja": "話している人を全画面に、話者が変わると切り替え。" },
-      "prompt": "Solo framing: full frame on the current speaker (the source's own close-up, or c.view around their face from a wide shot), cut on speaker change, never faster than the conversation; hold a short listener reaction now and then." },
+      "prompt": "Solo framing: full frame on the current speaker (the source's own close-up, or c.view around their face from a wide shot), cut on speaker change, never faster than the conversation; hold a short listener reaction now and then. For a framed look, common.duo mode: 'solo' (every clip with frame = duoWindow('a', params), segs from who speaks when: the window's ring takes the speaker's colour, each name chip shows on that person's first turn)." },
     { "id": "big-captions",
       "name": { "zh": "逐字大字幕", "en": "Word-by-word captions", "ja": "一語ずつの大きな字幕" },
       "desc": { "zh": "粗體大字幕，依說話的人分色。", "en": "Bold captions, coloured by speaker.", "ja": "太い大きな字幕、話者ごとに色分け。" },
@@ -54,6 +54,6 @@ Goal: the best exchange of an episode as a short that makes people want the full
 - Word-by-word captions; two people talking at once are never merged into one caption. Captions are in the language spoken; if the film's language differs, translate them with c.lines, timed to the original phrases.
 - Cuts follow the conversation, never faster than it; reaction shots of the listener are welcome. Trim filler and false starts only where the cut is not heard.
 - Reframe 16:9 to 9:16 around faces; never cut off heads. Cover or crop the show's own burned-in titles and lower thirds.
-- End with the show name or a "full episode" card.
+- End with the show name or a "full episode" card: common.outro look: 'episode' (the show name, a 16:9 window for a last clip with frame = outroWindow(params, W, H), the episode line, a button). When the exchange is a list (three rules, five tips), a common.progress mode: 'slots' row of numbered cards fills as each point is made, and a common.slip stub with slot flies into its card.
 - Do not clip other people's shows unless the user says they have the rights.
 - Styles the user picked are listed below; if none, choose 1–2 that suit the material.
