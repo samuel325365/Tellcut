@@ -64,7 +64,7 @@ export interface EditorState {
   proposal: { id: string; label: string; summary: string[]; lines?: SummaryLine[]; warnings: string[]; changed: string[] } | null;
   /** project.json was changed outside the editor (§5): offer a reload */
   diskChanged: boolean;
-  /** the 「交給 Claude」 dialog (spec 2026-10-16-right-click-claude §2): what it was opened on and how far it got */
+  /** the "Ask Agent…" dialog (spec 2026-10-16-right-click-claude §2): what it was opened on and how far it got */
   ask: { selection: string[]; playhead: number; state: 'edit' | 'sending' | 'copied' | 'manual'; message?: string; error?: string } | null;
 }
 

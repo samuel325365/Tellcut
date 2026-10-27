@@ -62,7 +62,7 @@ Run this first:
 npm run doctor
 ```
 
-It only checks; it doesn't install anything. It lists what's wrong and how to fix it. Common cases:
+It only checks; it doesn't install anything. It lists what's wrong and how to fix it. Its output (like `npm run setup`'s) is in Traditional Chinese. Common cases:
 
 | Problem | What to do |
 |---|---|
@@ -71,7 +71,7 @@ It only checks; it doesn't install anything. It lists what's wrong and how to fi
 | Downloads fail (a company network blocks them) | Run `npm run setup` again. If your network goes through a proxy, set `HTTPS_PROXY` and `NODE_USE_ENV_PROXY=1` first. If it still fails, install ffmpeg 8 and uv yourself and point `TELLCUT_FFMPEG`, `TELLCUT_FFPROBE` and `TELLCUT_UV` at them; setup won't download them again |
 | The picture doesn't match the code, or an export uses an old effect | `npm run build:player`, then `npm run build:editor` |
 | The port is already in use | `npm run server -- --port <another number>` |
-| "Text recognition" is crossed (no zh-Hant-TW text recognition) | In Windows Settings → Time & language → Language & region, add "Chinese (Traditional, Taiwan)" and install "Optical character recognition" in its language options. Tellcut works without it; `check` just can't tell whether bleeped words show through the source's own subtitles |
+| "Text recognition" (「文字辨識」) is crossed (no zh-Hant-TW text recognition) | In Windows Settings → Time & language → Language & region, add "Chinese (Traditional, Taiwan)" and install "Optical character recognition" in its language options. Tellcut works without it; `check` just can't tell whether bleeped words show through the source's own subtitles |
 
 Environment variables you can set:
 

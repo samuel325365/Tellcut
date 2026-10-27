@@ -186,12 +186,12 @@ A preset is a starting direction for one kind of film. Click its card under the 
 
 ```powershell
 npm run setup     # downloads the tools and models Tellcut needs (10–20 minutes)
-npm run server    # then open http://127.0.0.1:5174/ in your browser
+npm run server    # then open http://127.0.0.1:5174/editor/ in your browser
 ```
 
 Import footage in the chat on the right of the home page and tell the agent what you'd like to make. The full walkthrough, with troubleshooting, is in **[INSTALL.md](INSTALL.md)**. If something isn't working, `npm run doctor` lists what's missing and how to fix it.
 
-The interface comes in English, 中文 and 日本語; switch with **中 / EN / 日** at the top of the home page. Button labels in the editor are always English; tooltips and help follow your language.
+The interface comes in English, 中文 and 日本語; switch with **中 / EN / 日** at the top right of the home page. Button labels in the editor are always English; tooltips and help follow your language.
 
 > Your footage and your films stay on your computer. When you chat with the agent, your messages and the frames it needs to look at are sent to Anthropic.
 

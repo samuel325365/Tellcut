@@ -186,7 +186,7 @@ Tellcut 把這些工作交給 Agent，決定權留在你手上。你說想要什
 
 ```powershell
 npm run setup     # 自動下載需要的工具和模型（約 10～20 分鐘）
-npm run server    # 再用瀏覽器打開 http://127.0.0.1:5174/
+npm run server    # 再用瀏覽器打開 http://127.0.0.1:5174/editor/
 ```
 
 在首頁右邊的對話框匯入素材，跟 Agent 說你想做什麼樣的片。完整步驟和疑難排解在 **[INSTALL.md](INSTALL.md)**（英文）；出問題時先跑 `npm run doctor`，它會列出哪裡沒裝好、怎麼修。

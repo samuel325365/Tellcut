@@ -1,4 +1,4 @@
-// 「交給 Claude」requests (spec 2026-10-16-right-click-claude §3): one JSON per request in .history/requests/, newest 50 kept.
+// "Ask Agent…" requests (spec 2026-10-16-right-click-claude §3): one JSON per request in .history/requests/, newest 50 kept.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 

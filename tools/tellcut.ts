@@ -4,7 +4,7 @@
 //   npm run tellcut -- frames <id> [--proposal] [--full] --at 1.5,3   (stills 960 on the long side unless --full)
 //   npm run tellcut -- logo <id> <file> [--name <name>]   (the brand logo into media/brand/: extrudable or not, its colours, how to use it)
 //   npm run tellcut -- seams <id>   (every common.dolly's handoff to its clip: average colour within 1 and PSNR at least 30 dB pass)
-//   npm run tellcut -- request <id> [--id <request id>] [--frames [--full]]   (the editor's 「交給 Claude」)
+//   npm run tellcut -- request <id> [--id <request id>] [--frames [--full]]   (the editor's "Ask Agent…")
 //   npm run tellcut -- catalog [type | handle | --find <words>]   (every block that can go in a project; one type's params; a search)
 //   npm run tellcut -- recipe [name] / cut-api            (a recipe's content format / the Cut API at a glance)
 //   npm run tellcut -- assets sources|source|search|get|credits …   (outside media: sound effects, music…; see tools/assets.ts)
@@ -61,7 +61,7 @@ function itemLines(p: Project): Map<string, string> {
   return out;
 }
 
-/** A 「交給 Claude」 request as Claude reads it (spec 2026-10-16-right-click-claude §4): the instruction, the selection, and
+/** An "Ask Agent…" request as Claude reads it (spec 2026-10-16-right-click-claude §4): the instruction, the selection, and
  *  for each piece of footage involved how the film uses its source, its scenes, contact sheets and speech — from the
  *  analysis cache only (never re-analysed here). */
 export function describeRequest(dir: string, p: Project, r: AskRequest, projectText: string): string {
@@ -208,7 +208,7 @@ async function main(argv: string[]) {
         if (r.status !== 200) throw new Error(r.body.error ?? `HTTP ${r.status}`);
         printProposal(r.body, s.connected);
       } else printProposal(proposeOnDisk(dir, body.label, body.ops), false);
-      // the draft the chat wrote is sent: left there (kao1 kept one) it read like a proposal still waiting (R3-H8). The one
+      // the draft the chat wrote is sent: left there (a demo project kept one) it read like a proposal still waiting (R3-H8). The one
       // waiting is .history/proposals/current.json.
       if (src !== '-' && resolve(src) === join(dir, 'proposal.json')) rmSync(resolve(src), { force: true });
       return;

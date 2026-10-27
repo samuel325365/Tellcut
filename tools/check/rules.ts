@@ -94,7 +94,7 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
     const near = heard.filter((h) => h.t[1] > c.t[0] - 10 && h.t[0] < c.t[1] + 10).map((h) => ({ h, sim: similarity(c.text, h.text) }));
     const top = Math.max(0, ...near.map((x) => x.sim));
     if (top < 0.6) continue;
-    // a phrase said more than once is the time it is nearest to (kao1's 這個深度 was matched to its first time, 10 s earlier)
+    // a phrase said more than once is the time it is nearest to (a demo's 這個深度 was matched to its first time, 10 s earlier)
     const mid = (t: [number, number]) => (t[0] + t[1]) / 2;
     const best = near.filter((x) => x.sim >= top - 0.1).sort((a, b) => Math.abs(mid(a.h.t) - mid(c.t)) - Math.abs(mid(b.h.t) - mid(c.t)))[0];
     matched.add(best.h);

@@ -1,4 +1,4 @@
-// POST /api/projects/:id/requests — the editor's 「交給 Claude」(spec 2026-10-16-right-click-claude §3).
+// POST /api/projects/:id/requests — the editor's "Ask Agent…" (spec 2026-10-16-right-click-claude §3).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { allItems, resolveTimes } from '@tellcut/engine';

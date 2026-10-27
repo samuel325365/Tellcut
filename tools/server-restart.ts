@@ -36,7 +36,7 @@ const get = async (url: string): Promise<any> => {
   return res.json();
 };
 
-/** what still runs on the server: ["分析：food-deep（analyze）", "聊天：kao1"]; null when no Tellcut server answers */
+/** what still runs on the server: ["分析：food-deep（analyze）", "聊天：demo1"]; null when no Tellcut server answers */
 async function busy(base: string): Promise<string[] | null> {
   let jobs: Array<{ kind: string; project?: string; status: string }>;
   try { jobs = await get(`${base}/api/jobs`); } catch { return null; }

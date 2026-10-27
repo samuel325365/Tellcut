@@ -101,7 +101,7 @@ export const api = {
   chatClear: (thread: string) => req<{ ok: true }>(`/api/chat/${enc(thread)}`, { method: 'DELETE' }),
   /** the API menu (spec 2026-10-24-api-picker §3): every outside source */
   sources: () => req<{ sources: SourceInfo[] }>('/api/sources'),
-  /** 「交給 Claude」: stores the request; the server adds its time range (spec 2026-10-16-right-click-claude §3) */
+  /** "Ask Agent…": stores the request; the server adds its time range (spec 2026-10-16-right-click-claude §3) */
   request: (id: string, b: { text: string; selection: string[]; playhead: number }) =>
     req<{ id: string; range: [number, number] | null }>(`/api/projects/${enc(id)}/requests`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
   editorState: (id: string, b: { selection: string[]; playhead: number }) =>

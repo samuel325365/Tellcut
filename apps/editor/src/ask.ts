@@ -1,4 +1,4 @@
-// 「交給 Claude」(spec 2026-10-16-right-click-claude §2): the dialog's list and the message copied for the chat.
+// "Ask Agent…" (spec 2026-10-16-right-click-claude §2): the dialog's list and the message copied for the chat.
 import { allItems, resolveTimes, type Project } from '@tellcut/engine';
 import type { Lang } from '@tellcut/protocol';
 import { t } from './i18n/index.ts';

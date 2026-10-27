@@ -1,4 +1,4 @@
-// Right-click 「交給 Claude…」 (spec 2026-10-16-right-click-claude §2), out of editor.ts (review B3): the dialog's states, storing the
+// Right-click "Ask Agent…" (spec 2026-10-16-right-click-claude §2), out of editor.ts (review B3): the dialog's states, storing the
 // request on the server, then handing the message to this project's chat (or the clipboard).
 import { askMessage } from '../ask.ts';
 import type { Api } from '../api.ts';

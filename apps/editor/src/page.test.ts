@@ -20,7 +20,7 @@ test('the home page and the gallery pick their theme before the first paint; the
   expect(run('', 'light', false)).toBe('light');
   expect(run('?gallery', null, true)).toBe('light');
   expect(run('', null, false)).toBe('dark');
-  expect(run('?id=kao1', 'light', true)).toBeUndefined();
+  expect(run('?id=demo1', 'light', true)).toBeUndefined();
 });
 
 test('settings saved under the old name (studio.*) move to tellcut.* once, before the theme is read; a newer tellcut.* one wins', () => {
