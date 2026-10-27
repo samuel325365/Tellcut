@@ -186,6 +186,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'MUS-20': 'style:steelpan-bossa',
   'MUS-21': 'style:walking-pizz',
   'MUS-22': 'style:candle-glow',
+  'MUS-23': 'style:night-studio',
   'RCP-01': 'recipe:travel',
   'RCP-02': 'recipe:hook',
   'RCP-03': 'recipe:montage',

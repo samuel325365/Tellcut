@@ -251,3 +251,27 @@ test('library: candle-glow (katie-sweet16) follows its cues — minor at low, si
     expect(plain.filter((e) => e.t >= end - 1e-6).length, String(bars)).toBeGreaterThanOrEqual(5);
   }
 });
+
+test('library: night-studio (amber-podcast) is a quiet talk bed — soft chords every bar, nothing loud, a held chord at the end — and the source project keeps loading its own studio-hush', async () => {
+  const { composeEvents } = await import('./styles.ts');
+  const { rng } = await import('./synth.ts');
+  const s = (await loadAllStyles()).styles['night-studio'], bar = 240 / 84;
+  expect(s).toBeDefined();
+  for (const bars of [4, 12, 40]) {
+    const ev = composeEvents(s, { bpm: 84, key: 'Dm', bars, rng: rng(4) }), end = (bars - 1) * bar;
+    for (let b = 0; b < bars; b++) expect(ev.some((e) => e.inst === 'epiano' && e.t >= b * bar - 1e-6 && e.t < (b + 1) * bar - 1e-6), `${bars} bar ${b}`).toBe(true);
+    expect(Math.max(...ev.map((e) => e.vel))).toBeLessThanOrEqual(0.45);
+    expect(ev.filter((e) => e.t >= end - 1e-6 && e.inst === 'epiano').length, String(bars)).toBeGreaterThanOrEqual(4);
+    expect(ev.filter((e) => e.t >= end - 1e-6).every((e) => e.inst !== 'shaker')).toBe(true);
+  }
+  // the source project keeps its own copy under its own id (a library style of the same id would win and stop it loading)
+  const dir = mkdtempSync(join(tmpdir(), 'tellcut-hush-'));
+  try {
+    mkdirSync(join(dir, 'score'));
+    writeFileSync(join(dir, 'score', 'studio-hush.js'), 'export default { id: "studio-hush", label: "x", defaults: { bpm: 84, key: "Dm" }, build: (c) => [{ t: 0, inst: "pad", vel: 0.1, pan: 0, midi: 62, dur: c.bar }] };\n');
+    const both = await loadAllStyles(dir);
+    expect(both.errors).toEqual([]);
+    expect(both.styles['studio-hush'].file.startsWith(dir)).toBe(true);
+    expect(both.styles['night-studio']).toBeDefined();
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

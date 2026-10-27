@@ -5,6 +5,8 @@ export interface Case { name: string; type: string; params?: Record<string, unkn
 
 /** the palettes of the two podcast shorts */
 const QUOTE = { palette: { accent: '#ff4f2a', accent2: '#7fd4c8', paper: '#f4ecdc', ink: '#121015' } };
+/** the amber-podcast short's palette */
+const AMBER = { palette: { accent: '#f4a62a', accent2: '#f4a62a', ink: '#0d1014', paper: '#f3ebdd', hl: '#f4a62a' } };
 const VS = { palette: { accent2: '#3d7bff', accent: '#ff5c7a', hl: '#ffd23f', ink: '#0d0f1a', paper: '#f7f4ee' } };
 /** the hand-drawn kit's looks: the crayon picture book (fd-tangyuan), the squared notebook (fd-map), white marker on black (fd-quotes),
  *  pencil on cream (fishing1) */
@@ -478,4 +480,12 @@ export const cases: Case[] = [
   { name: 'caption-strip', type: 'common.caption', params: { text: 'Today I finally cleaned the whole kitchen', style: 'strip', size: 3.2, words: [[0, 5], [0.3, 7], [0.5, 15], [0.9, 23], [1.2, 27], [1.4, 33], [1.7, 41]] }, at: [1.0, 2.5], bg: '#7a6650' },
   { name: 'tag-day', type: 'common.tag', params: { look: 'day', tags: 'Day 2,15° · rain', x: 0.08, y: 0.12 }, at: [0.1, 1.5], bg: '#6d7f92' },
   { name: 'wide-tag-day', type: 'common.tag', params: { look: 'day', tags: 'Day 2,15° · rain', x: 0.06, y: 0.1, size: 3 }, at: [1.5], wide: true, bg: '#6d7f92' },
+  // group B (amber-podcast): the solo speaker window, the numbered slots and a stub flying into one, the show's end card
+  { name: 'duo-solo', type: 'common.duo', params: { mode: 'solo', top: 0.177, band: 0, foot: 0.167, label: 'EP 12', topic: 'Three rules for posting online', nameA: 'ALEX', roleA: 'GUEST', nameB: 'SAM', roleB: 'HOST', colorB: '#b9a5f7', segs: '0-1.4|a\n1.5-2.9|b' }, at: [0.6, 2.0], theme: AMBER, bg: '#3f6a73' },
+  { name: 'wide-duo-solo', type: 'common.duo', params: { mode: 'solo', top: 0.12, band: 0, foot: 0.05, label: '', topic: '', nameA: 'ALEX', roleA: 'GUEST', colorB: '#b9a5f7', segs: '0-1.4|a\n1.5-2.9|b' }, at: [0.6], wide: true, theme: AMBER, bg: '#3f6a73' },
+  { name: 'progress-slots', type: 'common.progress', params: { mode: 'slots', labels: 'Home,Name,Later', fills: '0.3,1.2', pulses: '2.2|0' }, at: [0.15, 1.3, 2.4], theme: AMBER, bg: '#20262d' },
+  { name: 'wide-progress-slots', type: 'common.progress', params: { mode: 'slots', labels: 'Home,Name,Later', fills: '0.3,1.2,1.8' }, at: [2.4], wide: true, theme: AMBER, bg: '#20262d' },
+  { name: 'slip-fly', type: 'common.slip', params: { no: '02', noLabel: 'RULE', title: "Don't share your last name", sub: 'it makes you harder to find', y: 0.52, slot: 1, slots: 3 }, at: [0.6, 2.7], bg: '#20262d' },
+  { name: 'outro-episode', type: 'common.outro', params: { look: 'episode', lines: 'The Morning\nPodcast', ep: 'Episode 12 · with a guest', cta: 'Full episode on YouTube', credit: 'The Morning Podcast · E12 · CC BY' }, at: [0.3, 2.0], theme: AMBER, bg: '#5a7d8c' },
+  { name: 'wide-outro-episode', type: 'common.outro', params: { look: 'episode', lines: 'The Morning\nPodcast', ep: 'Episode 12 · with a guest', cta: 'Full episode on YouTube', credit: 'The Morning Podcast · E12 · CC BY' }, at: [2.0], wide: true, theme: AMBER, bg: '#5a7d8c' },
 ];

@@ -90,6 +90,7 @@ export { chatWindow, chatPoint } from './chat.ts';
 export { searchWindow, searchPoint } from './search.ts';
 export { casefileWindow } from './casefile.ts';
 export { magazineWindow } from './magazine.ts';
+export { outroWindow } from './outro.ts';
 export { loadThreeKit } from './three/load.ts';
 import { INTER_3D } from './three/kit.ts';
 export { INTER_3D, type ThreeKit } from './three/kit.ts';
