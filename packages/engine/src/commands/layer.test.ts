@@ -9,7 +9,7 @@ test('moveTrack reorders a track inside its group (pictures or sound) only', () 
   expect(ids(run(fixture(), moveTrack, { id: 'sc', to: 2 }))).toEqual(['v', 'v2', 'sc', 'mu', 'au', 'fx']);
   expect(ids(run(fixture(), moveTrack, { id: 'fx', to: 0 }))).toEqual(['sc', 'v', 'v2', 'fx', 'mu', 'au']);
   expect(() => run(fixture(), moveTrack, { id: 'sc', to: 3 })).toThrow(CommandError);    // 3 picture tracks: 0–2
-  expect(() => run(fixture(), moveTrack, { id: 'nope', to: 0 })).toThrow(/沒有軌道/);
+  expect(() => run(fixture(), moveTrack, { id: 'nope', to: 0 })).toThrow(/No track/);
 });
 
 test('removeTrack removes the track, its items and their children on other tracks', () => {
@@ -25,7 +25,7 @@ test('restackItem steps over the nearest item that overlaps it; refuses when non
   expect(down.tracks[1].items.map((i) => i.id)).toEqual(['c2', 'c1']);
   expect([restackTarget(down, 'c2', 'down'), restackTarget(down, 'c2', 'up')]).toEqual([-1, 1]);
   expect(run(down, restackItem, { id: 'c2', dir: 'up' }).tracks[1].items.map((i) => i.id)).toEqual(['c1', 'c2']);
-  expect(() => run(fixture(), restackItem, { id: 'c1', dir: 'up' })).toThrow(/沒有重疊在上層/);   // c2 starts at 4
+  expect(() => run(fixture(), restackItem, { id: 'c1', dir: 'up' })).toThrow(/No overlapping item above/);   // c2 starts at 4
   // an item that does not overlap is skipped: one press always changes what is seen
   const q: any = fixture(); item(q, 'c2').start = 3.5;
   q.tracks[1].items.splice(1, 0, { id: 'x', source: 's', in: 0, speed: 1, start: 12, end: 14, crop: { from: still, to: still } });

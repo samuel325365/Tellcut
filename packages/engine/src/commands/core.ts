@@ -2,7 +2,10 @@
 // the editor wraps it with immer to record undo patches; tests run it on a structuredClone.
 import type { AnyItem, AudioItem, Project, Track, VideoItem } from '../schema.ts';
 
-export class CommandError extends Error {}
+/** A refused edit. message: English (agents read it through propose); code + params: the editor's translated notice (err.cmd.<code>). */
+export class CommandError extends Error {
+  constructor(message: string, readonly code?: string, readonly params?: Record<string, string | number>) { super(message); }
+}
 export interface Found { track: Track; ti: number; item: AnyItem; ii: number }
 
 /** Rounds to a microsecond so repeated edits keep project.json tidy. */

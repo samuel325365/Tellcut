@@ -16,6 +16,8 @@ import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { errText, t as say } from './i18n/index.ts';
+import { blockText } from './i18n/blocks.ts';
+import { paramText } from './i18n/params.ts';
 
 type Recipe = (d: Project) => void;
 /** A proposal as the server sends it (media-node's Proposal, without the node imports). */
@@ -162,7 +164,7 @@ export class Editor {
       this.set({ notice: '' });
       return true;
     } catch (e) {
-      if (e instanceof CommandError) { this.set({ notice: e.message }); return false; }
+      if (e instanceof CommandError) { this.set({ notice: errText(e) }); return false; }
       throw e;
     }
   }
@@ -179,9 +181,9 @@ export class Editor {
     // an emptied field (undefined) puts the default back
     if (value === undefined) { const params = { ...it.params }; delete params[key]; return this.update(id, { params }); }
     if (def?.type === 'number' && (typeof value !== 'number' || (def.min !== undefined && value < def.min) || (def.max !== undefined && value > def.max))) {
-      this.set({ notice: say('ed.numRange', { label: def.label, min: def.min ?? '−∞', max: def.max ?? '∞' }) }); return false;
+      this.set({ notice: say('ed.numRange', { label: paramText(it.type, key, def.label, 'en').name, min: def.min ?? '−∞', max: def.max ?? '∞' }) }); return false;
     }
-    if (def?.type === 'enum' && !def.options.includes(value as string)) { this.set({ notice: say('ed.enumOnly', { label: def.label, options: def.options.join(say('ed.listSep')) }) }); return false; }
+    if (def?.type === 'enum' && !def.options.includes(value as string)) { this.set({ notice: say('ed.enumOnly', { label: paramText(it.type, key, def.label, 'en').name, options: def.options.join(say('ed.listSep')) }) }); return false; }
     return this.update(id, { params: { ...it.params, [key]: value } });
   }
   /** Position and size of a scene/overlay item (panel fields, preview handles). */
@@ -407,13 +409,13 @@ export class Editor {
     this.changed(this.history.project, false);
     await this.report(p.id, 'rejected');
   }
-  // ---------------------------------------------------------------- 交給 Claude (spec 2026-10-16-right-click-claude §2; editor/ask-flow.ts)
+  // ---------------------------------------------------------------- Ask Agent… (spec 2026-10-16-right-click-claude §2; editor/ask-flow.ts)
   private askFlow: AskFlow | undefined;
   private get ask() {
     return (this.askFlow ??= new AskFlow({ id: this.id, api: this.deps.api, store: this.store, chat: this.chat, clipboard: this.deps.clipboard,
       settle: async () => this.autosave?.settle(), select: (ids) => this.select(ids, { reveal: false }), setLayout: (patch) => this.setLayout(patch) }));
   }
-  /** Right-click 「交給 Claude…」: on an item outside the selection it becomes the selection; empty space = the playhead. */
+  /** Right-click "Ask Agent…": on an item outside the selection it becomes the selection; empty space = the playhead. */
   openAsk(itemId?: string) { this.ask.open(itemId); }
   closeAsk() { this.ask.close(); }
   /** 「送出」: the request is stored, then the same message goes into this project's chat (the 對話 tab opens). */
@@ -531,7 +533,7 @@ export class Editor {
     // the player alone gets the audition project: the timeline and the panels keep showing the real one
     let shown: Project;
     try { shown = this.history!.preview(plan.recipe); }
-    catch (e) { if (e instanceof CommandError) { this.set({ notice: e.message }); return false; } throw e; }
+    catch (e) { if (e instanceof CommandError) { this.set({ notice: errText(e) }); return false; } throw e; }
     this.deps.bridge.patch(shown);
     this.live = null;
     this.aud = { material: m, addable, back, scroll: this.s.scroll, from: plan.from, until: plan.until };
@@ -790,7 +792,7 @@ export class Editor {
 /** Why a unique item type cannot be added again, or '' when it can. */
 export function uniqueBlock(registry: Pick<Registry, 'item'> | undefined, p: Project, type: string): string {
   const def = registry?.item(type);
-  return def?.unique && allItems(p).some((x) => (x.item as any).type === type) ? say('ed.unique', { label: def.label }) : '';
+  return def?.unique && allItems(p).some((x) => (x.item as any).type === type) ? say('ed.unique', { label: blockText(type, { label: def.label, doc: '' }, 'en').label }) : '';
 }
 
 /** Length of a music file from its waveform (peaks per second), if known. */

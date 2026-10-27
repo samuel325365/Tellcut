@@ -150,11 +150,11 @@ export function setTransform(p: Project, a: { id: string; transform: Transform |
 /** Another shot for a video clip: same place and length on the timeline (its own sound swaps with it). */
 export function swapSource(p: Project, a: { id: string; source: string; in: number }) {
   const f = findItem(p, a.id), it = f.item as any;
-  if (f.track.kind !== 'video') throw new CommandError('只有影片片段可以換素材');
+  if (f.track.kind !== 'video') throw new CommandError('Only video clips can swap footage', 'cmd.swapVideoOnly');
   const src = p.sources[a.source];
-  if (!src) throw new CommandError(`沒有素材「${a.source}」`);
+  if (!src) throw new CommandError(`No source "${a.source}"`, 'cmd.noSource', { source: a.source });
   const need = sourceNeed(f.track.kind, it), have = src.duration - a.in;
-  if (a.in < 0 || have + 1e-6 < need) throw new CommandError(`「${a.source}」從 ${a.in} 秒起只有 ${Math.max(0, have).toFixed(2)} 秒，片段需要 ${need.toFixed(2)} 秒`);
+  if (a.in < 0 || have + 1e-6 < need) throw new CommandError(`"${a.source}" has only ${Math.max(0, have).toFixed(2)} s from ${a.in} s; the clip needs ${need.toFixed(2)} s`, 'cmd.sourceShort', { source: a.source, in: a.in, have: Math.max(0, have).toFixed(2), need: need.toFixed(2) });
   const own = ownSounds(p, it.id);
   for (const c of own) { c.source = a.source; c.in = r6(a.in); }
   it.source = a.source; it.in = r6(a.in);

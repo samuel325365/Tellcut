@@ -108,7 +108,7 @@ export function magneticGaps(p: Project, id: string): { count: number; shift: nu
 
 export function setMagnetic(p: Project, a: { id: string; on: boolean }) {
   const t: any = p.tracks.find((x) => x.id === a.id);
-  if (!t || t.kind !== 'video') throw new CommandError(`「${a.id}」不是影片軌`);
+  if (!t || t.kind !== 'video') throw new CommandError(`"${a.id}" is not a video track`, 'cmd.notVideoTrack', { id: a.id });
   if (!a.on) { delete t.magnetic; return; }
   for (const x of p.tracks as any[]) if (x !== t) delete x.magnetic;
   t.magnetic = true;
@@ -120,10 +120,10 @@ export function setMagnetic(p: Project, a: { id: string; on: boolean }) {
 
 export function attach(p: Project, a: { id: string; to: string }) {
   const f = findItem(p, a.id), to = findItem(p, a.to);
-  if (to.item.id === f.item.id) throw new CommandError('不能掛在自己身上');
+  if (to.item.id === f.item.id) throw new CommandError('An item cannot be attached to itself', 'cmd.attachSelf');
   for (let x: AnyItem | undefined = to.item; x?.parent !== undefined; x = findItem(p, x.parent).item)
-    if (x.parent === f.item.id) throw new CommandError('不能掛在掛在它身上的項目上');
-  if ((f.track as any).magnetic) throw new CommandError('磁吸軌上的片段不能掛在別的項目上');
+    if (x.parent === f.item.id) throw new CommandError('Cannot attach to an item that is attached to it', 'cmd.attachLoop');
+  if ((f.track as any).magnetic) throw new CommandError('Clips on the magnetic track cannot be attached to other items', 'cmd.attachMagnetic');
   const times = resolveTimes(p), r = times.get(a.id)!, base = times.get(a.to)!.start;
   f.item.parent = a.to; f.item.start = r6(r.start - base); f.item.end = r6(r.end - base);
 }

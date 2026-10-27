@@ -7,12 +7,12 @@ import { blockText } from './i18n/blocks.ts';
 export type { GalleryBlock, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
 export type Tab = 'blocks' | 'sfx' | 'styles' | 'recipes';
 
-/** the looks the preview can show a block in (the project theme the common blocks read) */
-export const THEMES: Record<string, { label: string; theme?: Record<string, unknown> }> = {
-  none: { label: '預設' },
-  warm: { label: '暖色', theme: { palette: { accent: '#ff6b35', accent2: '#2ec4b6', hl: '#ffd23f', ink: '#3b2314', paper: '#fff3e0' } } },
-  cool: { label: '冷色', theme: { palette: { accent: '#3a86ff', accent2: '#8338ec', hl: '#8ecae6', ink: '#14213d', paper: '#f1f5ff' } } },
-  mono: { label: '黑白', theme: { palette: { accent: '#111111', accent2: '#555555', hl: '#ffffff', ink: '#111111', paper: '#f5f5f5' }, radius: 4 } },
+/** the looks the preview can show a block in (the project theme the common blocks read); their names are the gallery.theme.<id> texts */
+export const THEMES: Record<string, { theme?: Record<string, unknown> }> = {
+  none: {},
+  warm: { theme: { palette: { accent: '#ff6b35', accent2: '#2ec4b6', hl: '#ffd23f', ink: '#3b2314', paper: '#fff3e0' } } },
+  cool: { theme: { palette: { accent: '#3a86ff', accent2: '#8338ec', hl: '#8ecae6', ink: '#14213d', paper: '#f1f5ff' } } },
+  mono: { theme: { palette: { accent: '#111111', accent2: '#555555', hl: '#ffffff', ink: '#111111', paper: '#f5f5f5' }, radius: 4 } },
 };
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.2 } };

@@ -41,12 +41,12 @@ test('errors name the op and its place, and leave the project untouched', () => 
 test('swapSource changes the shot, keeps the length, and refuses a source too short from that point', () => {
   const r = applyOps(fixture(), [{ op: 'swapSource', id: 'c1', source: 's', in: 20 }]);
   expect(item(r.project, 'c1')).toMatchObject({ source: 's', in: 20, start: 0, end: 4 });
-  expect(() => applyOps(fixture(), [{ op: 'swapSource', id: 'c1', source: 's', in: 28 }])).toThrow(/只有 2\.00 秒/);
+  expect(() => applyOps(fixture(), [{ op: 'swapSource', id: 'c1', source: 's', in: 28 }])).toThrow(/has only 2\.00 s/);
 });
 
 test('swapSource counts a held clip by the source it plays before freezeAt (c2: 3 s × speed 2)', () => {
   expect(item(applyOps(fixture(), [{ op: 'swapSource', id: 'c2', source: 's', in: 24 }]).project, 'c2')).toMatchObject({ in: 24, start: 4, end: 8 });
-  expect(() => applyOps(fixture(), [{ op: 'swapSource', id: 'c2', source: 's', in: 25 }])).toThrow(/需要 6\.00 秒/);
+  expect(() => applyOps(fixture(), [{ op: 'swapSource', id: 'c2', source: 's', in: 25 }])).toThrow(/needs 6\.00 s/);
 });
 
 test('a project as read from disk (defaults left out) is filled in first: the summary names only what the ops changed', () => {

@@ -50,7 +50,7 @@ test('setCrossfade fades the earlier song out and the later one in over the over
   const off = run(on, setCrossfade, { id: 'm2', on: false });
   expect([item(off, 'm1').fadeOut, item(off, 'm2').fadeIn]).toEqual([0, 0]);
   expect(() => run(fixture(), setCrossfade, { id: 'm1', on: true })).toThrow(CommandError);   // nothing before it
-  expect(() => run(dissolving(), setCrossfade, { id: 'c2', on: true })).toThrow(/音樂與音訊/);
+  expect(() => run(dissolving(), setCrossfade, { id: 'c2', on: true })).toThrow(/music and audio/);
 });
 
 test('relink: a linked crossfade follows the overlap; the clip\'s other fade gives way when the clip is too short', () => {

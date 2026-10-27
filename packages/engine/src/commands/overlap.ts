@@ -39,9 +39,9 @@ function crossfade(a: any, b: any, ov: number) {
 /** Crossfade on (fades = the overlap) or off (both 0); `id` is the later clip B. */
 export function setCrossfade(p: Project, a: { id: string; on: boolean }) {
   const f = findItem(p, a.id);
-  if (f.track.kind !== 'music' && f.track.kind !== 'audio') throw new CommandError('只有音樂與音訊片段可以交叉淡化');
+  if (f.track.kind !== 'music' && f.track.kind !== 'audio') throw new CommandError('Only music and audio clips can crossfade', 'cmd.crossfadeAudioOnly');
   const pair = overlapPairs(p).get(a.id);
-  if (!pair) throw new CommandError(`「${a.id}」沒有和前一段重疊`);
+  if (!pair) throw new CommandError(`"${a.id}" does not overlap the clip before it`, 'cmd.noOverlapPrev', { id: a.id });
   const A: any = findItem(p, pair.a).item, B: any = f.item;
   if (a.on) crossfade(A, B, pair.ov); else { A.fadeOut = 0; B.fadeIn = 0; }
 }

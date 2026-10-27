@@ -116,7 +116,7 @@ test('attach and detach keep the item where it is in time', () => {
 
 test('an item cannot be attached to something that hangs on it (a loop of parents)', () => {
   const p = go(mag(), attach, { id: 'free', to: 'cap' });   // free hangs on cap, cap on c2
-  expect(() => go(p, attach, { id: 'cap', to: 'free' })).toThrow('不能掛在掛在它身上的項目');
+  expect(() => go(p, attach, { id: 'cap', to: 'free' })).toThrow('Cannot attach to an item that is attached to it');
 });
 
 test('an end card after the last clip keeps the film that long and follows the end when a clip gets shorter', () => {

@@ -12,9 +12,9 @@ import { plainCopy as plain } from '../util.ts';
 /** Moves a track to place `to` of its group (0 = first in project.tracks: the lowest picture layer). */
 export function moveTrack(p: Project, a: { id: string; to: number }) {
   const t = p.tracks.find((x) => x.id === a.id);
-  if (!t) throw new CommandError(`沒有軌道「${a.id}」`);
+  if (!t) throw new CommandError(`No track "${a.id}"`, 'cmd.noTrack', { id: a.id });
   const slots = p.tracks.map((x, i) => (groupOf(x) === groupOf(t) ? i : -1)).filter((i) => i >= 0);
-  if (!Number.isInteger(a.to) || a.to < 0 || a.to >= slots.length) throw new CommandError(`軌道位置 ${a.to} 超出範圍（0–${slots.length - 1}）`);
+  if (!Number.isInteger(a.to) || a.to < 0 || a.to >= slots.length) throw new CommandError(`Track position ${a.to} is out of range (0–${slots.length - 1})`, 'cmd.trackPlace', { to: a.to, max: slots.length - 1 });
   const order = slots.map((i) => p.tracks[i]);
   const from = order.indexOf(t);
   if (from === a.to) return;
@@ -27,7 +27,7 @@ export function moveTrack(p: Project, a: { id: string; to: number }) {
 /** Deletes a track with its items (and, as deleteItems does, their children on other tracks). */
 export function removeTrack(p: Project, a: { id: string }) {
   const i = p.tracks.findIndex((x) => x.id === a.id);
-  if (i < 0) throw new CommandError(`沒有軌道「${a.id}」`);
+  if (i < 0) throw new CommandError(`No track "${a.id}"`, 'cmd.noTrack', { id: a.id });
   const own = (p.tracks[i].items as AnyItem[]).map((x) => x.id);
   if (own.length) deleteItems(p, { ids: own });
   p.tracks.splice(p.tracks.findIndex((x) => x.id === a.id), 1);
@@ -52,7 +52,7 @@ export function restackTarget(p: Pick<Project, 'tracks'>, id: string, dir: 'up' 
 /** Moves an item just above (or below) the nearest item of its track that overlaps it: one visible step. */
 export function restackItem(p: Project, a: { id: string; dir: 'up' | 'down' }) {
   const f = findItem(p, a.id), j = restackTarget(p, a.id, a.dir);
-  if (j < 0) throw new CommandError(a.dir === 'up' ? '沒有重疊在上層的片段' : '沒有重疊在下層的片段');
+  if (j < 0) throw new CommandError(a.dir === 'up' ? 'No overlapping item above' : 'No overlapping item below', a.dir === 'up' ? 'cmd.noOverlapUp' : 'cmd.noOverlapDown');
   const list = f.track.items as AnyItem[];
   const [moved] = list.splice(f.ii, 1);
   // up: the removal shifted the target down by one, so j is right after it; down: j is right before it
