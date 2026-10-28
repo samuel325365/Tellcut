@@ -475,3 +475,34 @@ test('the playhead head drags the playhead', async () => {
   window.dispatchEvent(new MouseEvent('mouseup', { clientX: 176 + 150 }));
   expect(calls.filter((c) => c[0] === 'seek').at(-1)![1]).toBeCloseTo(3);
 });
+
+test('track headers: eye on picture tracks, speaker on sound tracks, a lock on every track; the delete button is off while locked', async () => {
+  const { root, editor } = mount({ locked: ['v'] });
+  const calls: any[] = [];
+  editor.toggleLock = (id: string) => calls.push(id);
+  await act(() => render(<Timeline editor={editor} />, root));
+  const row = (id: string) => root.querySelector<HTMLElement>(`[data-row="${id}"]`)!;
+  expect(row('v').querySelector('[data-mute]')!.getAttribute('data-icon')).toBe('eye');
+  expect(row('mu').querySelector('[data-mute]')!.getAttribute('data-icon')).toBe('speaker');
+  expect(root.querySelectorAll('[data-lock]').length).toBe(6);
+  expect(row('v').querySelector('[data-lock]')!.classList.contains('on')).toBe(true);
+  expect(row('v').classList.contains('locked')).toBe(true);
+  expect(row('v').querySelector<HTMLButtonElement>('[data-track-delete]')!.disabled).toBe(true);
+  expect(row('sc').querySelector<HTMLButtonElement>('[data-track-delete]')!.disabled).toBe(false);
+  row('sc').querySelector<HTMLElement>('[data-lock]')!.click();
+  expect(calls).toEqual(['sc']);
+});
+
+test('a clip on a locked track neither drags nor selects; its volume line takes no clicks', async () => {
+  const { root, editor, calls } = mount({ locked: ['v', 'mu'], selection: ['m1'] });
+  const log: string[] = [];
+  editor.beginDrag = () => log.push('begin');
+  editor.apply = () => { log.push('apply'); return true; };
+  await act(() => render(<Timeline editor={editor} />, root));
+  const c1 = root.querySelector<HTMLElement>('[data-item-id="c1"]')!;
+  c1.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 20, clientY: 60 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 80, clientY: 60 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 80, clientY: 60 }));
+  expect([log, calls.filter((c) => c[0] === 'select')]).toEqual([[], []]);
+  expect(root.querySelector('[data-item-id="m1"] [data-env-line]')).toBeNull();
+});

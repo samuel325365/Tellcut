@@ -34,8 +34,9 @@ export function copyItems(p: Project, ids: string[], projectId: string): Clip {
 /** Pastes at t: each item on its own track (else the first track of its kind, else a new one), new ids, children on the new
  *  ids. Clips from the magnetic track go after the magnetic clip under t (or at the end) and the rest keep their timing to
  *  them (the editor's settle packs the track and pushes the later clips). Without a magnetic track the film's length is
- *  fixed: what runs past the end is cut there, what would start at or after it is left out. Returns the new top-level ids. */
-export function pasteItems(p: Project, a: { clip: Clip; t: number }): string[] {
+ *  fixed: what runs past the end is cut there, what would start at or after it is left out. skip: tracks not pasted onto
+ *  (the editor's locked ones). Returns the new top-level ids. */
+export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: ReadonlySet<string> }): string[] {
   const { entries } = a.clip, mag = magneticTrack(p), copied = new Set(entries.map((e) => e.item.id));
   const isTop = (e: ClipEntry) => e.item.parent === undefined || !copied.has(e.item.parent);
   const magTops = mag ? entries.filter((e) => isTop(e) && e.track === mag.id && e.kind === 'video') : [];
@@ -59,7 +60,8 @@ export function pasteItems(p: Project, a: { clip: Clip; t: number }): string[] {
     }
     if (base + it.start >= end - TIME_EPS) continue;
     if (base + it.end > end) it.end = r6(end - base);
-    let track = p.tracks.find((t) => t.id === e.track && t.kind === e.kind) ?? p.tracks.find((t) => t.kind === e.kind);
+    const open = p.tracks.filter((t) => !a.skip?.has(t.id));
+    let track = open.find((t) => t.id === e.track && t.kind === e.kind) ?? open.find((t) => t.kind === e.kind);
     if (!track) { const id = addTrack(p, { kind: e.kind }); track = p.tracks.find((t) => t.id === id)!; }
     it.id = uniqueId(p, e.item.id);
     fitFades(track, it);

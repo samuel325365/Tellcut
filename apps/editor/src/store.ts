@@ -68,12 +68,15 @@ export interface EditorState {
   ask: { selection: string[]; playhead: number; state: 'edit' | 'sending' | 'copied' | 'manual'; message?: string; error?: string } | null;
   /** Ctrl+C's copy (engine copyItems), in memory only: it pastes into the project it came from */
   clipboard: Clip | null;
+  /** track ids locked against the user's own mouse and keys (per project, remembered in the browser; the Agent's proposals
+   *  are not held back) */
+  locked: string[];
 }
 
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
-  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null,
+  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
 });
 
 export interface Store<S> { get(): S; set(patch: Partial<S> | ((s: S) => Partial<S>)): void; subscribe(fn: () => void): () => void }

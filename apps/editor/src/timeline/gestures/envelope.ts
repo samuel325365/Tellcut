@@ -8,7 +8,7 @@ import { follow, type GestureCtx } from './follow.ts';
 export function startEnvelopeDrag(e: MouseEvent, g: GestureCtx): boolean {
   const target = e.target as HTMLElement, el = target.closest<HTMLElement>('[data-item-id]');
   const envEl = target.closest('[data-env-index], [data-env-line], [data-fade]');
-  if (!envEl || !el) return false;
+  if (!envEl || !el || g.locked.has(el.dataset.track!)) return false;
   e.preventDefault(); e.stopPropagation();
   const id = el.dataset.itemId!, it: any = allItems(g.p).find((x) => x.item.id === id)!.item;
   const box = (el.querySelector('svg.env') ?? el).getBoundingClientRect(), h = box.height || 1;   // the line's own box: the clip border is 1 px

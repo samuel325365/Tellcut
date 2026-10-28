@@ -14,6 +14,8 @@ export interface GestureCtx {
   selection: string[];
   /** a client x on the lanes → seconds */
   tAt: (clientX: number) => number;
+  /** locked track ids: their clips take no press */
+  locked: ReadonlySet<string>;
 }
 
 /** Window listeners for one drag. It ends on mouseup, and also when a move comes with no button down or the window loses

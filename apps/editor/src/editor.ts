@@ -52,14 +52,15 @@ export class Editor {
     } catch { /* storage blocked or garbled */ }
     const b = deps.bridge;
     b.onReady = () => { this.set({ playerReady: true }); b.seek(this.s.playhead); b.quality(this.s.quality); if (this.s.crop) b.cropMode(this.s.crop); b.select(this.s.selection.length === 1 ? this.s.selection[0] : null); };
-    b.onPick = (id) => this.select(id ? [id] : []);
+    b.onPick = (id) => { if (!id || !this.isLocked(id)) this.select(id ? [id] : []); };
     // dragging on the preview: live while moving, one undo step on release (like crop mode)
     b.onTransformChange = (m) => {
+      if (this.isLocked(m.itemId)) { if (m.final) this.set({ notice: say('ed.lockedNotice') }); return; }
       const recipe = (d: Project) => setTransformCmd(d, { id: m.itemId, transform: m.transform });
       // the release is the drag's step: what it previewed is done with (a later commitLive brought an undone drag back)
       if (m.final) { this.live = null; this.apply(recipe); } else this.livePreview(recipe);
     };
-    b.onParamEdit = (m) => { this.updateParam(m.itemId, m.key, m.value); };
+    b.onParamEdit = (m) => { if (this.isLocked(m.itemId)) { this.set({ notice: say('ed.lockedNotice') }); return; } this.updateParam(m.itemId, m.key, m.value); };
     b.onTime = (t) => {
       if (this.stale(t)) return;
       this.set({ playhead: t });
@@ -137,6 +138,10 @@ export class Editor {
         const saved = JSON.parse(this.storage?.getItem(this.collapseKey) ?? '[]');
         this.set({ collapsed: Array.isArray(saved) ? saved.filter((x) => p.tracks.some((t) => t.id === x)) : [] });
       } catch { this.set({ collapsed: [] }); }
+      try {
+        const locked = JSON.parse(this.storage?.getItem(this.lockKey) ?? '[]');
+        this.set({ locked: Array.isArray(locked) ? locked.filter((x) => p.tracks.some((t) => t.id === x)) : [] });
+      } catch { this.set({ locked: [] }); }
       this.deps.bridge.load(p);
       this.prop = null;
       this.set({ proposal: null, diskChanged: false });
@@ -206,6 +211,25 @@ export class Editor {
   /** Track bus: mute (visual = hidden), solo, gain (spec §4.4). */
   setTrack(id: string, patch: { gain?: number; muted?: boolean; solo?: boolean }) { return this.apply((d) => setTrackCmd(d, { id, patch })); }
   private get collapseKey() { return `tellcut.collapsed.${this.id}`; }
+  private get lockKey() { return `tellcut.locked.${this.id}`; }
+  /** Locks or unlocks a track against the user's own edits (spec 2026-10-28-timeline-refresh A3); what was selected on it is let go. */
+  toggleLock(id: string) {
+    const cur = new Set(this.s.locked), on = !cur.has(id);
+    if (on) cur.add(id); else cur.delete(id);
+    this.setLocked([...cur]);
+    if (on) { const p = this.s.project, tr = p?.tracks.find((t) => t.id === id), own = new Set(((tr?.items ?? []) as any[]).map((i) => i.id)); if (this.s.selection.some((x) => own.has(x))) this.select(this.s.selection.filter((x) => !own.has(x))); }
+  }
+  private setLocked(ids: string[]) {
+    this.set({ locked: ids });
+    try { this.storage?.setItem(this.lockKey, JSON.stringify(ids)); } catch { /* not remembered */ }
+  }
+  /** whether the item sits on a locked track */
+  isLocked(itemId: string): boolean {
+    const p = this.s.project;
+    if (!p || !this.s.locked.length) return false;
+    const tr = p.tracks.find((t) => (t.items as any[]).some((i) => i.id === itemId));
+    return !!tr && this.s.locked.includes(tr.id);
+  }
   /** A thin row for a track; sameKind (Shift): every track of its kind, opened if any of them is collapsed. Remembered per project. */
   toggleCollapse(id: string, sameKind = false) {
     const p = this.s.project, t = p?.tracks.find((x) => x.id === id);
@@ -254,7 +278,7 @@ export class Editor {
   }
 
   /** Tracks the cutting keys pass over (A3 fills it with the locked ones). */
-  protected skipTracks(): ReadonlySet<string> { return new Set(); }
+  protected skipTracks(): ReadonlySet<string> { return new Set(this.s.locked); }
 
   /** Q / W (spec 2026-10-28-timeline-refresh A2): cut the clips at the playhead from their start (left) or to their end
    *  (right), one undo step. On the magnetic track the gap closes and, after Q, the playhead stays on the frame it showed. */
@@ -292,7 +316,7 @@ export class Editor {
     if (!clip || !this.s.project) return false;
     if (clip.project !== this.id) { this.set({ notice: say('ed.pasteOtherProject') }); return false; }
     let made: string[] = [];
-    const ok = this.apply((d) => { made = pasteItems(d, { clip, t }); });
+    const ok = this.apply((d) => { made = pasteItems(d, { clip, t, skip: this.skipTracks() }); });
     if (ok) this.select(made);
     return ok;
   }
@@ -556,6 +580,7 @@ export class Editor {
     this.set({ project: p, canUndo: !!this.history?.canUndo, canRedo: !!this.history?.canRedo, selection, playerError: '' });
     // a deleted track leaves the collapsed list
     if (this.s.collapsed.some((x) => !p.tracks.some((t) => t.id === x))) this.setCollapsed(this.s.collapsed.filter((x) => p.tracks.some((t) => t.id === x)));
+    if (this.s.locked.some((x) => !p.tracks.some((t) => t.id === x))) this.setLocked(this.s.locked.filter((x) => p.tracks.some((t) => t.id === x)));
     if (selection.length !== before.length) this.deps.bridge.select(selection.length === 1 ? selection[0] : null);
     this.deps.bridge.patch(p);
     if (commit) this.autosave?.schedule(p);
@@ -764,7 +789,10 @@ export class Editor {
         return;
       case 'split': {
         let made: string[] = [];
-        if (this.apply((d) => { made = split(d, { t: s.playhead, ids: s.selection.length ? s.selection : undefined }); }) && made.length) this.select(made);
+        // with nothing selected every clip under the playhead is cut, except on locked tracks
+        const open = s.selection.length ? s.selection : s.locked.length && s.project
+          ? s.project.tracks.filter((tr) => !s.locked.includes(tr.id)).flatMap((tr) => (tr.items as any[]).map((i) => i.id)) : undefined;
+        if (this.apply((d) => { made = split(d, { t: s.playhead, ids: open }); }) && made.length) this.select(made);
         return;
       }
       case 'delete': case 'rippleDelete': {
@@ -853,6 +881,7 @@ export class Editor {
   }
 
   select(ids: string[], o: { reveal?: boolean } = {}) {
+    if (this.s.locked.length) ids = ids.filter((id) => !this.isLocked(id));   // a locked track's items are not picked by the user
     const changed = ids.length !== this.s.selection.length || ids.some((id, i) => id !== this.s.selection[i]);
     this.set(changed ? { selection: ids, notice: '' } : { selection: ids });   // a notice is about the previous selection
     this.deps.bridge.select(ids.length === 1 ? ids[0] : null);

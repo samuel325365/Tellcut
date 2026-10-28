@@ -134,10 +134,10 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .env .fade-handle { fill: #fff; cursor: ew-resize; }
 .row .head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; box-sizing: border-box; }
 .row .head .tname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row .head .bus { display: flex; gap: 3px; align-items: center; }
-.row .head .bus button { padding: 0 5px; font-size: 10px; line-height: 16px; }
+.row .head .bus { display: flex; gap: 2px; align-items: center; }
+.row .head .bus button { padding: 0 4px; font-size: 10px; line-height: 16px; }
 .row .head .bus button.on { background: var(--sel); color: #000; }
-.row .head .bus input { width: 38px; font-size: 10px; padding: 0 3px; color: var(--text); background: #15161a; border: 1px solid #3a3d44; border-radius: 3px; }
+.row .head .bus input { width: 30px; font-size: 10px; padding: 0 3px; color: var(--text); background: #15161a; border: 1px solid #3a3d44; border-radius: 3px; }
 .toolbar button.primary { background: var(--accent); border-color: var(--accent); }
 .export-panel { position: fixed; top: 44px; right: 12px; width: 380px; max-height: 70vh; overflow: auto; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
 .export-panel header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -153,6 +153,9 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 /* the bar under the tracks: zoom slider (under the track names) + horizontal scrollbar (under the lanes) */
 /* the tool tray over the ruler (30 px: .playhead starts under it) */
 .timeline > .tl-tray { flex: none; height: 30px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; padding: 0 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.row .head button.icon { width: 18px; height: 18px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.row.locked .item { opacity: .55; cursor: not-allowed; }
+.row .head .tdel:disabled { opacity: .3; cursor: not-allowed; }
 .tl-tray .sep { width: 1px; height: 18px; margin: 0 4px; background: var(--line); }
 .tl-tray .grow { flex: 1; }
 .tl-tray .tool { width: 26px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; }

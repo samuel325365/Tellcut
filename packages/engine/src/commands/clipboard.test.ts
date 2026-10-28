@@ -83,3 +83,12 @@ test('magnetic: pasted after the clip under the playhead, later clips pushed rig
   expect(times.get('cap-2')).toEqual({ start: 9, end: 10 });
   expect(p.meta.duration).toBe(16);                                                  // the film got longer
 });
+
+test('skip: a paste passes over the listed (locked) tracks, onto another of the kind or a new one', () => {
+  const p = fixture(), clip = copyItems(p, ['c1'], 'demo');
+  pasteItems(p, { clip, t: 10, skip: new Set(['v']) });
+  expect(ids(p, 'v2')).toEqual(['c1-2']);
+  const q = fixture(), c2 = copyItems(q, ['c1'], 'demo');
+  pasteItems(q, { clip: c2, t: 10, skip: new Set(['v', 'v2']) });
+  expect(q.tracks.filter((t) => t.kind === 'video').length).toBe(3);
+});

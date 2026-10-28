@@ -8,6 +8,7 @@ export function startItemDrag(e: MouseEvent, g: GestureCtx): boolean {
   const target = e.target as HTMLElement, el = target.closest<HTMLElement>('[data-item-id]');
   if (!el) return false;
   e.preventDefault();
+  if (g.locked.has(el.dataset.track!)) return true;    // locked: no select, no drag
   const rect = g.rowsEl.getBoundingClientRect(), y = (cy: number) => cy - rect.top;
   const id = el.dataset.itemId!, grip = (target.dataset.edge as 'start' | 'end' | undefined) ?? 'body';
   const sel = e.shiftKey ? (g.selection.includes(id) ? g.selection.filter((i) => i !== id) : [...g.selection, id]) : g.selection.includes(id) ? g.selection : [id];

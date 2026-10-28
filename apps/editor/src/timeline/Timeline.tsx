@@ -20,13 +20,14 @@ import { startMarquee, type Marquee } from './gestures/marquee.ts';
 import { startTrackDrag } from './gestures/track.ts';
 import { startScrollbarDrag } from './gestures/scrollbar.ts';
 import { ToolTray } from './ToolTray.tsx';
+import { IconEye, IconEyeOff, IconLock, IconMagnet, IconSpeaker, IconSpeakerOff, IconUnlock } from '../icons.tsx';
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
 const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
 export function Timeline({ editor }: { editor: Editor }) {
   // everything but the playhead: playback must not re-render every row 60×/s
   const s = useStoreSelector(editor.store, (x) => ({ project: x.project, pps: x.pps, scroll: x.scroll, selection: x.selection, guide: x.guide,
-    offline: x.offline, thumbs: x.thumbs, peaks: x.peaks, trackSize: x.layout.trackSize, collapsed: x.collapsed, proposal: x.proposal }));
+    offline: x.offline, thumbs: x.thumbs, peaks: x.peaks, trackSize: x.layout.trackSize, collapsed: x.collapsed, proposal: x.proposal, locked: x.locked }));
   const p = s.project!;
   const times = useMemo(() => resolveTimes(p), [p]);
   // the track area's height (set by the layout, not by the rows, so filling it cannot feed back); 0 until measured
@@ -125,7 +126,8 @@ export function Timeline({ editor }: { editor: Editor }) {
 
   const [marquee, setMarquee] = useState<Marquee | null>(null);
   const rowsEl = useRef<HTMLDivElement>(null);
-  const gesture = (): GestureCtx => ({ editor, p, times, rows: () => rowsRef.current, view, rowsEl: rowsEl.current!, selection: s.selection, tAt });
+  const lockedSet = new Set(s.locked);
+  const gesture = (): GestureCtx => ({ editor, p, times, rows: () => rowsRef.current, view, rowsEl: rowsEl.current!, selection: s.selection, tAt, locked: lockedSet });
   const onRowsDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
     const g = gesture();
@@ -199,22 +201,30 @@ export function Timeline({ editor }: { editor: Editor }) {
       <div class="rows" ref={rowsEl} style={{ height: `${height}px` }} onMouseDown={onRowsDown as any} onDblClick={onRowsDblClick as any} onContextMenu={onCtx as any}>
         {beats.map((b) => { const x = timeToX(b, view); return x >= 0 && x <= width ? <span class="beat" style={{ left: `${HEADER_W + x}px` }} /> : null; })}
         {rows.map((r) => (
-          <div class={`row k-${r.track.kind}${s.collapsed.includes(r.track.id) ? ' collapsed' : ''}`} data-row={r.track.id} data-track-id={r.track.id} style={{ top: `${r.y}px`, height: `${r.h}px` }}>
+          <div class={`row k-${r.track.kind}${s.collapsed.includes(r.track.id) ? ' collapsed' : ''}${lockedSet.has(r.track.id) ? ' locked' : ''}`} data-row={r.track.id} data-track-id={r.track.id} style={{ top: `${r.y}px`, height: `${r.h}px` }}>
             <div class="head" style={{ width: `${HEADER_W}px` }}>
               <span class="grip" data-track-grip={r.track.id} {...tip(t('ed.gripTip'))} onMouseDown={(e) => trackDrag(e as any, r.track)}>⋮⋮</span>
               <span class="tname" {...tip(t('ed.tnameTip', { name: trackLabel(r.track.name ?? r.track.id) }))}
                 onMouseDown={(e) => e.stopPropagation()} onClick={(e) => editor.toggleCollapse(r.track.id, e.shiftKey)}>{trackLabel(r.track.name ?? r.track.id)}</span>
               <span class="bus">
-                {r.track.kind === 'video' && <button data-magnet class={(r.track as any).magnetic ? 'on' : ''} {...tip(t('ed.magnetTip'))}
-                  onMouseDown={(e) => e.stopPropagation()} onClick={() => editor.toggleMagnetic(r.track.id)}>Mag</button>}
-                <button data-mute class={r.track.muted ? 'on' : ''} {...tip(t('ed.muteTip'))} onMouseDown={(e) => e.stopPropagation()} onClick={() => editor.toggleTrack(r.track.id, 'muted')}>M</button>
+                {r.track.kind === 'video' && <button class={`icon${(r.track as any).magnetic ? ' on' : ''}`} data-magnet {...tip(t('ed.magnetTip'))}
+                  onMouseDown={(e) => e.stopPropagation()} onClick={() => editor.toggleMagnetic(r.track.id)}><IconMagnet size={13} /></button>}
+                {(() => {
+                  // a picture track's mute hides it (eye), a sound track's silences it (speaker)
+                  const pic = r.track.kind === 'scene' || r.track.kind === 'video' || r.track.kind === 'overlay', off = !!r.track.muted;
+                  const Icon = pic ? (off ? IconEyeOff : IconEye) : (off ? IconSpeakerOff : IconSpeaker);
+                  return <button class={`icon${off ? ' on' : ''}`} data-mute data-icon={pic ? 'eye' : 'speaker'} {...tip(t(pic ? 'ed.hideTip' : 'ed.muteTip'))}
+                    onMouseDown={(e) => e.stopPropagation()} onClick={() => editor.toggleTrack(r.track.id, 'muted')}><Icon size={13} /></button>;
+                })()}
+                <button class={`icon${lockedSet.has(r.track.id) ? ' on' : ''}`} data-lock {...tip(t('ed.lockTip'))} onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => editor.toggleLock(r.track.id)}>{lockedSet.has(r.track.id) ? <IconLock size={13} /> : <IconUnlock size={13} />}</button>
                 {'gain' in r.track && <>
                   <button data-solo class={(r.track as any).solo ? 'on' : ''} {...tip(t('ed.soloTip'))} onMouseDown={(e) => e.stopPropagation()} onClick={() => editor.toggleTrack(r.track.id, 'solo')}>S</button>
                   <input data-bus-gain type="number" step={0.5} value={(r.track as any).gain ?? 0} {...tip(t('ed.gainTip'))} onMouseDown={(e) => e.stopPropagation()}
                     onChange={(e) => editor.setTrack(r.track.id, { gain: Number((e.target as HTMLInputElement).value) })} />
                 </>}
               </span>
-              <button class="tdel" data-track-delete={r.track.id} {...tip(t('ed.trackDelTip'))} onMouseDown={(e) => e.stopPropagation()} onClick={() => deleteTrack(r.track)}>×</button>
+              <button class="tdel" data-track-delete={r.track.id} disabled={lockedSet.has(r.track.id)} {...tip(t('ed.trackDelTip'))} onMouseDown={(e) => e.stopPropagation()} onClick={() => deleteTrack(r.track)}>×</button>
             </div>
             <div class="lane" style={{ left: `${HEADER_W}px` }}>
               {(r.track.items as AnyItem[]).map((it) => {
@@ -229,7 +239,7 @@ export function Timeline({ editor }: { editor: Editor }) {
                 } else {
                   const peaks = r.track.kind === 'audio' ? s.peaks[`source:${x.source}`] : r.track.kind === 'music' ? s.peaks[`media:${x.media}`] : undefined;
                   if (peaks) media = <Wave info={peaks} from={x.in} dur={len * (x.rate ?? 1)} width={len * s.pps} height={h} />;
-                  if (r.track.kind === 'audio' || r.track.kind === 'music') media = <>{media}<EnvelopeLayer item={x} len={len} pps={s.pps} h={h} active={s.selection.includes(it.id)} /></>;
+                  if (r.track.kind === 'audio' || r.track.kind === 'music') media = <>{media}<EnvelopeLayer item={x} len={len} pps={s.pps} h={h} active={s.selection.includes(it.id) && !lockedSet.has(r.track.id)} /></>;
                 }
                 return <ItemBlock key={it.id} item={it} track={r.track} name={itemName(it, r.track.kind, reg, lang)} look={itemLook(it, r.track.kind, reg)} strip={strip} media={media} left={timeToX(tm.start, view)} top={lane * r.laneH} width={len * s.pps} height={h0}
                   selected={s.selection.includes(it.id)} offline={'source' in it && s.offline.includes(x.source)}
@@ -270,9 +280,9 @@ export function Timeline({ editor }: { editor: Editor }) {
 /** The tray subscribes on its own: it needs the playhead (what is under it), but while playing it keeps the last stopped
  *  one, so playback does not redraw it every frame. */
 function TrayBox({ editor, addTrack, zoom }: { editor: Editor; addTrack: any; zoom: any }) {
-  const s = useStoreSelector(editor.store, (x) => ({ project: x.project, selection: x.selection, layout: x.layout, playhead: x.playing ? null : x.playhead }));
+  const s = useStoreSelector(editor.store, (x) => ({ project: x.project, selection: x.selection, layout: x.layout, locked: x.locked, playhead: x.playing ? null : x.playhead }));
   const last = useRef(0);
   if (s.playhead !== null) last.current = s.playhead;
-  return <ToolTray editor={editor} s={{ ...s, playhead: last.current }} skip={NO_SKIP} addTrack={addTrack} zoom={zoom} />;
+  const skip = useMemo(() => new Set(s.locked), [s.locked]);
+  return <ToolTray editor={editor} s={{ ...s, playhead: last.current }} skip={skip} addTrack={addTrack} zoom={zoom} />;
 }
-const NO_SKIP: ReadonlySet<string> = new Set();

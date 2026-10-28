@@ -1,4 +1,4 @@
-import { corePlugin, createRegistry, deleteItems, findItem, moveEnvelopePoint, moveItems } from '@tellcut/engine';
+import { corePlugin, createRegistry, deleteItems, findItem, moveEnvelopePoint, moveItems, resolveTimes } from '@tellcut/engine';
 import { t } from './i18n/index.ts';
 import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
 import { ApiError } from './api.ts';
@@ -1591,4 +1591,70 @@ test('jumpCut and stepFrames move the playhead by cuts and by frames', async () 
   expect(ed.store.get().playhead).toBe(4);
   ed.stepFrames(10);
   expect(ed.store.get().playhead).toBeCloseTo(4.4);             // 25 fps
+});
+
+const ids = (ed: Editor, track: string) => (ed.store.get().project!.tracks.find((t) => t.id === track)!.items as any[]).map((i) => i.id);
+
+test('a locked track: its items cannot be selected (click, marquee, Ctrl+A), split, cut with Q/W or pasted onto', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.select(['c1']); ed.copy();
+  ed.toggleLock('v');
+  expect(ed.store.get().selection).toEqual([]);                     // locking let go of the selected clip
+  ed.select(['c1', 'blk']);
+  expect(ed.store.get().selection).toEqual(['blk']);
+  ed.selectAll();
+  expect(ed.store.get().selection.some((id) => id === 'c1' || id === 'c2')).toBe(false);
+  ed.select([]); ed.seek(2); ed.run('split');
+  expect(ids(ed, 'v')).toEqual(['c1', 'c2']);                       // the locked clip was not cut
+  expect(ids(ed, 'au').length).toBe(2);                             // a1 (1–3) was
+  expect(ed.deleteSide('left')).toBe(false);                        // nothing unlocked to cut under the playhead
+  ed.seek(10);
+  expect(ed.paste()).toBe(true);
+  expect(ids(ed, 'v')).toEqual(['c1', 'c2']);
+  expect(ids(ed, 'v2')).toEqual(['c1-2']);                          // onto the other video track instead
+});
+
+test('a locked track: a preview pick does not select it; a transform or text edit from the preview is not applied and shows the notice', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.toggleLock('sc');
+  bridge.onPick('blk');
+  expect(ed.store.get().selection).toEqual([]);
+  const before = ed.store.get().project;
+  bridge.onTransformChange({ itemId: 'blk', transform: { x: 0.2, y: 0, scale: 1 }, final: true });
+  expect(ed.store.get().project).toBe(before);
+  expect(ed.store.get().notice).toBe(t('ed.lockedNotice'));
+  ed.store.set({ notice: '' });
+  bridge.onParamEdit({ itemId: 'blk', key: 'text', value: 'x' });
+  expect(ed.store.get().project).toBe(before);
+  expect(ed.store.get().notice).toBe(t('ed.lockedNotice'));
+});
+
+test('a magnetic ripple still moves children hung on a locked track; an Agent-style edit still changes a locked item', async () => {
+  const { api, bridge } = fakes({ project: async () => { const p: any = magneticFixture(); p.tracks.push({ id: 'o', kind: 'overlay', items: [{ id: 'cap', type: 'x.cap', start: 0, end: 1, params: {}, parent: 'c2' }] }); return p; } });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.toggleLock('o');
+  ed.select(['c1']); ed.run('rippleDelete');
+  const p = ed.store.get().project!;
+  expect([(findItem(p, 'cap').item as any).parent, resolveTimes(p).get('cap')!.start]).toEqual(['c2', 0]);
+  expect(ed.apply((d) => { (findItem(d, 'cap').item as any).end = 0.5; })).toBe(true);   // what a proposal does: not blocked
+});
+
+test('locks are remembered per project and dropped when the track is deleted', async () => {
+  const mem: Record<string, string> = {};
+  const storage = { getItem: (k: string) => mem[k] ?? null, setItem: (k: string, v: string) => { mem[k] = v; } };
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge, storage });
+  await ed.open();
+  ed.toggleLock('v2');
+  const again = new Editor('demo', { api, bridge, storage });
+  await again.open();
+  expect(again.store.get().locked).toEqual(['v2']);
+  again.removeTrack('v2');
+  expect(again.store.get().locked).toEqual([]);
+  expect(JSON.parse(mem['tellcut.locked.demo'])).toEqual([]);
 });
