@@ -26,11 +26,14 @@ export async function makePhoneVideo(out: string, o: { seconds?: number; created
   return out;
 }
 
-/** A gray video whose sound is Windows' built-in English speech saying `text`. */
+/** A gray video whose sound is the system's built-in English speech saying `text` (Windows' System.Speech, macOS' say). */
 export async function makeTalkingVideo(out: string, text: string) {
   const wav = out.replace(/\.mp4$/, '.speech.wav');
-  const say = `Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SetOutputToWaveFile('${wav.replace(/'/g, "''")}'); $s.Speak('${text.replace(/'/g, "''")}'); $s.Dispose()`;
-  await promisify(execFile)('powershell', ['-NoProfile', '-NonInteractive', '-Command', say]);
+  if (process.platform === 'darwin') await promisify(execFile)('say', ['-v', 'Samantha', '-o', wav, '--data-format=LEI16@22050', text]);
+  else {
+    const say = `Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SetOutputToWaveFile('${wav.replace(/'/g, "''")}'); $s.Speak('${text.replace(/'/g, "''")}'); $s.Dispose()`;
+    await promisify(execFile)('powershell', ['-NoProfile', '-NonInteractive', '-Command', say]);
+  }
   await ffmpeg(['-f', 'lavfi', '-i', 'color=c=gray:s=640x360:r=30', '-i', wav, '-shortest', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', out]);
   rmSync(wav, { force: true });
   return out;

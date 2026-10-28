@@ -1,5 +1,5 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeProjects, startApp } from './test-utils.ts';
 
@@ -40,12 +40,15 @@ test('places carry a code (and the drive letter) so the page can word them in it
   const { app, base } = await startApp({ projectsDir: makeProjects() });
   try {
     const p = await (await fetch(`${base}/api/fs/places`)).json();
-    const codes = ['desktop', 'downloads', 'videos', 'pictures', 'documents', 'music', 'sources', 'drive', 'root'];
+    const codes = ['desktop', 'downloads', 'videos', 'pictures', 'documents', 'music', 'sources', 'drive', 'volume', 'root'];
     for (const x of p.places) { expect(codes).toContain(x.key); expect(typeof x.label).toBe('string'); }
     if (process.platform === 'win32') {
       const d = p.places.find((x: any) => x.key === 'drive');
       expect(d.drive).toMatch(/^[A-Z]$/);
     }
+    // macOS: the startup disk's own entry in /Volumes (a link to /) is not listed twice
+    if (process.platform === 'darwin') for (const v of p.places.filter((x: any) => x.key === 'volume')) expect(v.path).toMatch(/^\/Volumes\/[^/]+$/);
+    if (process.platform === 'darwin' && existsSync(join(homedir(), 'Movies'))) expect(p.places.find((x: any) => x.key === 'videos')?.path).toBe(join(homedir(), 'Movies'));
   } finally { await app.close(); }
 });
 

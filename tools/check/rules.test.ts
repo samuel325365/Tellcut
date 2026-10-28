@@ -358,15 +358,15 @@ test('a clip whose frame is off screen: all of it an error (pixels named), more 
 });
 
 test('footage and music outside tellcut/ are named once: handing tellcut/ over or backing it up leaves them behind (R3-H8)', () => {
-  const p = project([]);
-  p.sources = { a: { path: '../../../sources/trip/a.mp4', duration: 5 } as any, b: { path: 'media/b.mp4', duration: 5 } as any, c: { path: 'D:/Trips/c.mp4', duration: 5 } as any };
+  const p = project([]), win = process.platform === 'win32', root = win ? 'C:/s/tellcut' : '/s/tellcut';
+  p.sources = { a: { path: '../../../sources/trip/a.mp4', duration: 5 } as any, b: { path: 'media/b.mp4', duration: 5 } as any, c: { path: win ? 'D:/Trips/c.mp4' : '/Volumes/Trips/c.mp4', duration: 5 } as any };
   p.media = { m: { path: '../../../music/song.mp3' } as any, v: { path: 'media/voice/1.wav' } as any };
-  const f = outsideFiles(p, 'C:/s/tellcut/projects/x', 'C:/s/tellcut');
+  const f = outsideFiles(p, `${root}/projects/x`, root);
   expect(f).toHaveLength(1);
   expect(f[0]).toMatchObject({ level: 'note' });
   expect(f[0].msg).toContain('3 個檔案在 tellcut 資料夾外面');
   expect(f[0].msg).toContain('a、c、m');
-  expect(outsideFiles({ ...p, sources: {}, media: {} }, 'C:/s/tellcut/projects/x', 'C:/s/tellcut')).toEqual([]);
+  expect(outsideFiles({ ...p, sources: {}, media: {} }, `${root}/projects/x`, root)).toEqual([]);
 });
 
 test('the preset the project was made from: off its length or ratio is a warning (the user may have asked for it), a preset that is gone a note', () => {

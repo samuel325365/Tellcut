@@ -1,6 +1,6 @@
 // The home page's import browser: what is in a folder on this PC (names, kinds, sizes — never file contents). Browsers do
 // not give a page real file paths, so the page browses through these two read-only routes and hands the paths on.
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
@@ -10,12 +10,14 @@ import { HttpError, sendJson, type Router } from './http.ts';
 const collator = new Intl.Collator('zh-Hant', { sensitivity: 'base', numeric: true });
 
 // `key` (and `drive`, the letter) lets the page word a place in its own language; `label` stays for older pages
-export type PlaceKey = 'desktop' | 'downloads' | 'videos' | 'pictures' | 'documents' | 'music' | 'sources' | 'drive' | 'root';
+// a macOS volume (`volume`) is worded by its own name, the label
+export type PlaceKey = 'desktop' | 'downloads' | 'videos' | 'pictures' | 'documents' | 'music' | 'sources' | 'drive' | 'volume' | 'root';
 export type Place = { key: PlaceKey; label: string; path: string; kind: 'home' | 'repo' | 'drive'; drive?: string };
 
 export function places(): Place[] {
   const home = homedir(), out: Place[] = [];
-  for (const [key, label, name] of [['desktop', '桌面', 'Desktop'], ['downloads', '下載', 'Downloads'], ['videos', '影片', 'Videos'], ['pictures', '圖片', 'Pictures'], ['documents', '文件', 'Documents'], ['music', '音樂', 'Music']] as const) {
+  const videos = process.platform === 'darwin' ? 'Movies' : 'Videos';
+  for (const [key, label, name] of [['desktop', '桌面', 'Desktop'], ['downloads', '下載', 'Downloads'], ['videos', '影片', videos], ['pictures', '圖片', 'Pictures'], ['documents', '文件', 'Documents'], ['music', '音樂', 'Music']] as const) {
     const p = join(home, name);
     if (existsSync(p)) out.push({ key, label, path: p, kind: 'home' });
   }
@@ -24,7 +26,15 @@ export function places(): Place[] {
   if (existsSync(src)) out.push({ key: 'sources', label: '素材資料夾（sources）', path: src, kind: 'repo' });
   if (process.platform === 'win32') {
     for (let c = 67; c <= 90; c++) { const p = `${String.fromCharCode(c)}:\\`; if (existsSync(p)) out.push({ key: 'drive', drive: String.fromCharCode(c), label: `本機磁碟 ${String.fromCharCode(c)}:`, path: p, kind: 'drive' }); }
-  } else out.push({ key: 'root', label: '根目錄', path: '/', kind: 'drive' });
+  } else {
+    // macOS: the startup disk is / itself; other disks, card readers and phones mount under /Volumes
+    if (process.platform === 'darwin') {
+      let vols: string[] = [];
+      try { vols = readdirSync('/Volumes').filter((v) => !v.startsWith('.')); } catch { /* none */ }
+      for (const v of vols) { const p = join('/Volumes', v); try { if (realpathSync(p) !== '/') out.push({ key: 'volume', label: v, path: p, kind: 'drive' }); } catch { /* gone */ } }
+    }
+    out.push({ key: 'root', label: '根目錄', path: '/', kind: 'drive' });
+  }
   return out;
 }
 

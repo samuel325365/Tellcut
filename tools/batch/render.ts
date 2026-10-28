@@ -27,9 +27,10 @@ export function parseArgs(argv: string[]): { id: string; slots: number; extra: s
 }
 
 // one command string for the shell (an args array with shell: true is DEP0190 on Node 24). cmd.exe takes no \" escape inside
-// quotes and expands %VAR% there, so an argument with a character it acts on is refused (project ids and render options never have one)
-const UNSAFE = /["%^&|<>\r\n]/;
-const quote = (a: string) => { if (UNSAFE.test(a)) throw new Error(`參數不能有 " % ^ & | < > 或換行：${JSON.stringify(a)}`); return `"${a}"`; };
+// quotes and expands %VAR% there, and sh expands $ and ` there, so an argument with a character either acts on is refused
+// (project ids and render options never have one)
+const UNSAFE = /["%^&|<>$`\r\n]/;
+const quote = (a: string) => { if (UNSAFE.test(a)) throw new Error(`參數不能有 " % ^ & | < > $ \` 或換行：${JSON.stringify(a)}`); return `"${a}"`; };
 export const npmCommand = (args: string[]) => `npm run -s ${args.map(quote).join(' ')}`;
 
 /** the npm scripts a queued render runs, in order. Only render: it takes the project's export lock and then prepares the clips
