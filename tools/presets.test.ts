@@ -149,6 +149,9 @@ test('brand films start from the brand: the brand card, the site, the form, no d
   expect(b.prompt).toMatch(/user's message .* form .* website .* logo/i);           // the order of the sources
   expect(b.prompt).toMatch(/company name in the film's language/i);
   expect(b.prompt).toMatch(/common\.tone[^.]*colou?r[^.]*brand/i);
+  // both of common.tone's colours: its edge default is a dark brown that tints a technical film's corners (final review #3)
+  expect(b.prompt).toMatch(/common\.tone[^.]*\bcolor\b[^.]*\bedge\b[^.]*brand/i);
+  expect(b.styles.find((s) => s.id === 'cinemascope')!.prompt).toMatch(/common\.tone[^.]*\bcolor\b[^.]*\bedge\b/i);
   expect(b.prompt).not.toMatch(/warm light|warm dusk|warm sunsets?|Inter for Latin|Noto Sans TC for Chinese|pile, the wall|the ball of the 3D|default when no style/i);
   expect(b.prompt).not.toMatch(/c\.recipe|common\.(logo|wall|dolly|globe)/);
   for (const s of b.styles) expect(s.prompt, s.id).not.toMatch(/default when no style|warmer grade|recipe/i);
