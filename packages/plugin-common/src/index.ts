@@ -89,7 +89,7 @@ export { magazineWindow } from './magazine.ts';
 export { outroWindow } from './outro.ts';
 export { loadThreeKit } from './three/load.ts';
 import { INTER_3D } from './three/kit.ts';
-export { INTER_3D, type ThreeKit } from './three/kit.ts';
+export { CJK_3D, INTER_3D, type ThreeKit } from './three/kit.ts';
 
 export const commonItems: ItemType[] = [backdrop, ambient, shader, panel, badge, tag, burst, speedlines, caption, slam, censor, stamp, pen, sparkle, emoji, header, glitch, progress, meter, scoreboard, receipt, tripclock, route, card, countdown, list, rating, info, polaroid, mystery, outro, film, tone, paper, notecard, handwrite, gauge, hangtag, strike, timelapse, routeboard, mapjump, ticket, snap, stations, postcard, postmark, frame, dotmatrix, digits, printer, rolldoor, callout, slip, quote, wipe, duo, versus, chart, touch, headline, mapcam, worldmap, notify, lockscreen, reels, comments, story, album, chat, search, camcorder, casefile, magazine] as ItemType[];
 export const commonPlugin: Plugin = { id: 'common', items: commonItems, sfx: commonSfx, fonts: ['Noto Sans TC:wght@500;700;900', 'Noto Sans JP:wght@400;500;700;900', 'Noto Serif TC:wght@500;700;900', 'LXGW WenKai TC:wght@400;700', 'Cormorant Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500', 'JetBrains Mono:wght@400;700', 'Huninn', 'Inter:wght@300;400;600;700', 'VT323', 'Playfair Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900',

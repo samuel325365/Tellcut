@@ -3,6 +3,7 @@
 //   npm run tellcut -- propose <id> <file.json | ->      (file: { "label": "…", "ops": [ … ] }; the page chat writes projects/<id>/proposal.json)
 //   npm run tellcut -- frames <id> [--proposal] [--full] --at 1.5,3   (stills 960 on the long side unless --full)
 //   npm run tellcut -- logo <id> <file>   (the brand logo into media/brand/: extrudable or not, its colours, how to use it)
+//   npm run tellcut -- font3d <sans|serif|round>   (the Chinese TTF for 3D type, downloaded when first needed: word3d's cjk)
 //   npm run tellcut -- request <id> [--id <request id>] [--frames [--full]]   (the editor's "Ask Agent…")
 //   npm run tellcut -- catalog [type | handle | --find <words>]   (every block that can go in a project; one type's params; a search)
 //   npm run tellcut -- recipe [name] / cut-api            (a recipe's content format / the Cut API at a glance)
@@ -20,6 +21,7 @@ import { handleOf } from '@tellcut/protocol';
 import { describeRecipe } from './cut/recipes/index.ts';
 import { formatCutApi } from './cut/api-doc.ts';
 import { assetsCommand } from './assets.ts';
+import { ensureFont3d, type Feel } from './font3d.ts';
 import { Usage } from './usage.ts';
 
 const f2 = (v: number) => v.toFixed(2);
@@ -178,7 +180,15 @@ async function main(argv: string[]) {
   }
   if (cmd === 'recipe') { console.log(describeRecipe(id)); return; }
   if (cmd === 'cut-api') { console.log(formatCutApi()); return; }
-  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api');
+  if (cmd === 'font3d') {
+    if (!id) throw new Usage('用法：npm run tellcut -- font3d <sans|serif|round>（黑體、明體、圓體，跟著品牌的字感）');
+    const pub = join(TELLCUT_ROOT, 'apps/player/public/fonts/files'), dist = join(TELLCUT_ROOT, 'apps/player/dist');
+    const { file, downloaded } = await ensureFont3d(id as Feel, { dirs: existsSync(dist) ? [pub, join(dist, 'fonts/files')] : [pub], log: console.log });
+    console.log(`${file}${downloaded ? '' : '（已經有了）'}`);
+    console.log(`中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { glyphs: await kit.loadFont('Inter-700.ttf'), cjk })`);
+    return;
+  }
+  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>');
   const dir = join(TELLCUT_ROOT, 'projects', id);
   const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };
   switch (cmd) {

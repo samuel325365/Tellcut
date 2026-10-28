@@ -31,6 +31,9 @@ export interface ThreeAddons {
 
 /** the TTF the 3D letters are extruded from (fonts/files/, downloaded by npm run fonts; no @font-face): kit.loadFont(INTER_3D) */
 export const INTER_3D = 'Inter-700.ttf';
+/** the Chinese TTFs 3D type is extruded from, one per type feel (word3d's cjk): fonts/files/, downloaded when a project needs one
+ *  by `npm run tellcut -- font3d <feel>` (5-10 MB each, so not in npm run fonts): kit.loadFont(CJK_3D.sans) */
+export const CJK_3D = { sans: 'NotoSansTC-900.ttf', serif: 'NotoSerifTC-900.ttf', round: 'Huninn-400.ttf' } as const;
 
 export interface ThreeKit {
   THREE: Three;
