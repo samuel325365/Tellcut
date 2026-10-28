@@ -271,6 +271,17 @@ describe('pacing rules (2026-10-18)', () => {
     const varied = project([{ id: 'main', kind: 'video', items: [[0, 2], [2, 3], [3, 6], [6, 8], [8, 10]].map(([a, b], i) => clip(`c${i}`, a, b, { in: a })) }]);
     expect(modelChecks(varied, ok)).toEqual([]);
   });
+
+  test('equal shots cut on the half bars of the music grid are cutting to the music, not a slideshow', () => {
+    // 80 BPM: a half bar is 1.5 s
+    const cuts = (at: number, len: number) => [0, 1, 2, 3, 4].map((k) => clip(`c${k}`, at + k * len, at + (k + 1) * len, { in: k * 3 }));
+    const slideshow = (items: any[], grids: any[]) => msgs(modelChecks({ ...project([{ id: 'main', kind: 'video', items }], { duration: 30 }), grids }, ok)).filter((m) => m.includes('幻燈片'));
+    expect(slideshow(cuts(0, 1.5), [{ id: 'music', at: 0, bpm: 80 }])).toEqual([]);
+    expect(slideshow(cuts(3, 4.5), [{ id: 'music', at: 0, bpm: 80 }])).toEqual([]);
+    // off the half bar (a beat in), another tempo, or past the grid's end: still a note
+    for (const g of [{ id: 'music', at: 0.75, bpm: 80 }, { id: 'music', at: 0, bpm: 97 }, { id: 'music', at: 0, bpm: 80, until: 4.5 }])
+      expect(slideshow(cuts(0, 1.5), [g]), JSON.stringify(g)).toEqual([expect.stringMatching(/^note 0-7.5 連續 5 個鏡頭/)]);
+  });
 });
 
 test('a clip whose frame is off screen: all of it an error (pixels named), more than half a warning, a little bleed fine', () => {

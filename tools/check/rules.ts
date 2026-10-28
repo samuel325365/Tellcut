@@ -169,11 +169,15 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
     if (p.sources[c.source]?.kind === 'image' && s[1] - s[0] > 4 && same('x') && same('y') && same('zoom') && !c.crop.keys?.length)
       out.push({ level: 'warn', t: s, ids: [c.id], msg: `照片 ${c.id} 停了 ${(s[1] - s[0]).toFixed(1)} 秒完全沒動：加推近或平移（crop 的 from／to），或縮短` });
   }
-  // five or more shots in a row of the same length: a slideshow rhythm
+  // five or more shots in a row of the same length: a slideshow rhythm, unless every cut lands on a half bar of the music's grid
+  // (a brand film's hook cut on the half bar, its beats a bar and a half each: cutting to the music, 2026-10-28)
+  const onHalfBar = (t: number) => p.grids.some((g) => { const half = 120 / g.bpm, k = (t - g.at) / half;
+    return t >= g.at - 0.04 && (g.until === undefined || t <= g.until + 0.04) && Math.abs(k - Math.round(k)) * half < 0.04; });
   for (let i = 0; i < shots.length; ) {
     let j = i + 1, lo = shots[i].s[1] - shots[i].s[0], hi = lo;
     while (j < shots.length) { const d = shots[j].s[1] - shots[j].s[0]; if (Math.max(hi, d) > Math.min(lo, d) * 1.08) break; lo = Math.min(lo, d); hi = Math.max(hi, d); j++; }
-    if (j - i >= 5) out.push({ level: 'note', t: [shots[i].s[0], shots[j - 1].s[1]], ids: shots.slice(i, j).map((x) => x.c.id), msg: `連續 ${j - i} 個鏡頭都差不多 ${lo.toFixed(1)} 秒長，節奏像幻燈片：重要的鏡頭停久一點、過場的短一點` });
+    const onMusic = [...shots.slice(i, j).map((x) => x.s[0]), shots[j - 1].s[1]].every(onHalfBar);
+    if (j - i >= 5 && !onMusic) out.push({ level: 'note', t: [shots[i].s[0], shots[j - 1].s[1]], ids: shots.slice(i, j).map((x) => x.c.id), msg: `連續 ${j - i} 個鏡頭都差不多 ${lo.toFixed(1)} 秒長，節奏像幻燈片：重要的鏡頭停久一點、過場的短一點` });
     i = j;
   }
   // toolkit phase 2b: the common blocks take their look from the project theme
