@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT, createProject, makeClicks, makePhoto, makeTalkingVideo, probeDuration } from '@tellcut/media-node';
+import { chromePath, TELLCUT_ROOT, createProject, makeClicks, makePhoneVideo, makePhoto, makeTalkingVideo, probeDuration } from '@tellcut/media-node';
 import { Cut } from '../../../tools/cut/cut.ts';
 import { sse, startApp } from '../../server/src/test-utils.ts';
 
@@ -57,3 +57,24 @@ test('the whole thing exports', async () => {
   expect(last.status).toBe('done');
   expect(await probeDuration(join(root, 'trip', last.result.file))).toBeCloseTo(disk().meta.duration, 0);
 }, 600000);
+
+test('Import in the media panel adds footage and music that analyse in the background, without the Agent', async () => {
+  const more = join(root, '_more');
+  mkdirSync(more, { recursive: true });
+  await makePhoneVideo(join(more, 'more.mp4'), { created: '2026-03-07T01:12:00Z' });
+  await makeClicks(join(more, 'beat.wav'), { bpm: 100, seconds: 12 });
+  await page.click('[data-import-media]');
+  await page.fill('[data-path]', more);
+  await page.press('[data-path]', 'Enter');
+  await page.locator('[data-entry="beat.wav"] input').check();
+  await page.locator('[data-entry="more.mp4"] input').check();
+  await page.click('[data-add]');
+  await poll(() => page.locator('[data-add-source="more"]').count()).toBeGreaterThan(0);
+  await poll(() => disk().sources.more?.kind).toBe('video');
+  expect(disk().media.beat.path).toBe('../_more/beat.wav');
+  await poll(() => page.locator('[data-add-source="more"] .seg-thumb').count(), 120000).toBeGreaterThan(0);
+  await poll(() => page.locator('[data-add-music="beat"]').textContent(), 120000).toContain('BPM');
+  await page.reload();
+  await page.waitForSelector('[data-player="ready"]', { timeout: 60000 });
+  expect(await page.locator('[data-add-music="beat"]').count()).toBe(1);
+}, 300000);

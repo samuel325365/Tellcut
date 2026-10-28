@@ -71,7 +71,7 @@ You can switch between these at any time. Nothing the agent does overwrites what
 
 <p align="center"><img src="docs/readme/editor.jpg" alt="The Tellcut editor: media, preview and a layered timeline" width="100%"></p>
 
-**2. Fix it on the timeline.** It works like any editor: split clips, swap in another shot from the media panel, change the volume, edit a caption. Every change can be undone.
+**2. Fix it on the timeline.** It works like any editor: split clips, swap in another shot from the media panel (or bring in more from your PC with **Import**), change the volume, edit a caption. Every change can be undone.
 
 **3. Ask for changes.** Type in the chat, or select part of the timeline, right-click and choose **Ask Agent…** to describe what that part needs. The agent shows you a preview first. Nothing changes until you press **Accept**.
 
