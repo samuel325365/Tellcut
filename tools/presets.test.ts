@@ -112,8 +112,8 @@ test('brand: the five v1 styles, 45–90 s at 16:9, Pixabay and Freesound, and t
   const b = presets().find((p) => p.id === 'brand')!;
   expect(b.styles.map((s) => s.id)).toEqual(['real-3d', 'cinemascope', 'voiceover', 'globe', 'social-cut']);
   expect([b.length, b.ratios, b.sources]).toEqual([[45, 90], ['16:9'], ['pixabay', 'freesound']]);
-  // the body names what the earlier plans built, so the agent uses them
-  for (const s of ['tellcut -- logo', 'common.logo', 'c.dolly', 'common.wall', "look: 'brand'", 'assets search']) expect(b.prompt, s).toContain(s);
+  // the body names the tools the film is made with
+  for (const s of ['tellcut -- logo', 'ThreeKit', 'three: true', 'assets search', 'tellcut -- frames']) expect(b.prompt, s).toContain(s);
   // the rules the spec sets (§4)
   expect(b.prompt).toMatch(/only numbers .* in the user's (own )?(text|words)/i);
   expect(b.prompt).toMatch(/search .* before .* (script|copy)/i);
@@ -122,17 +122,21 @@ test('brand: the five v1 styles, 45–90 s at 16:9, Pixabay and Freesound, and t
   expect(b.styles.find((s) => s.id === 'cinemascope')!.prompt).toMatch(/between the bars/i);
 });
 
-// brand plan 5: start from the recipe, enough distinct footage, wall photos apart, a larger picture budget
-test('brand starts from the brand recipe, with footage minimums, wall photos and its own picture budget', () => {
+// 2026-10-28: the recipe-made films fell short of the spike and a film written for its company came close, so every brand film is
+// written for its company (the recipe and its blocks are gone); footage minimums, one look, no stock clichés, its own picture budget
+test('brand films are written for their company, with footage minimums, one look and its own picture budget', () => {
   const b = presets().find((p) => p.id === 'brand')!;
-  for (const s of ["c.recipe('brand'", 'recipe brand', '--kind image']) expect(b.prompt, s).toContain(s);
+  expect(b.prompt).toMatch(/no recipe and no shared block/i);
+  expect(b.prompt).not.toMatch(/c\.recipe|common\.(logo|wall|dolly|globe)|c\.dolly/);
+  for (const s of ['storyboard.md', '--kind image']) expect(b.prompt, s).toContain(s);
+  expect(b.prompt).toMatch(/each beat acted out/i);
   expect(b.prompt).toMatch(/at least 12 distinct clips/i);
   expect(b.prompt).toMatch(/no shot twice/i);
-  expect(b.prompt).toMatch(/about 25 pictures/i);
-  expect(b.styles.find((s) => s.id === 'real-3d')!.prompt).toMatch(/scene/);
-  expect(b.styles.find((s) => s.id === 'cinemascope')!.prompt).toContain("style: 'cinemascope'");
+  expect(b.prompt).toMatch(/stock clichés/i);
+  expect(b.prompt).toMatch(/one look for the whole film/i);
+  expect(b.prompt).toMatch(/about 40 pictures/i);
+  for (const s of b.styles) expect(s.prompt, s.id).not.toMatch(/recipe|common\.(logo|wall|dolly|globe)/);
   const wf = readFileSync(join(TELLCUT_ROOT, 'guides/workflow.md'), 'utf8');
-  expect(wf).toMatch(/`brand` brand film/);
   expect(wf).toMatch(/a preset may allow more/i);
 });
 
