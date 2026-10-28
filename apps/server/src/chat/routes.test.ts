@@ -18,6 +18,13 @@ const FAKE = `node "${fileURLToPath(new URL('./fake-claude.mjs', import.meta.url
 async function lines(res: Response): Promise<any[]> { return (await res.text()).trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); }
 const post = (b: unknown) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
 
+test('every project file the chat may write is one its system prompt names (else the chat believes it is refused)', () => {
+  const prompt = readFileSync(join(TELLCUT_ROOT, 'apps/server/chat-prompt.md'), 'utf8');
+  const files = claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' }).flatMap((a) => /^Write\(projects\/\*\/(.+)\)$/.exec(a)?.[1] ?? []);
+  expect(files).toContain('brand.md');
+  for (const f of files) expect(prompt, f).toContain(`\`${f}\``);
+});
+
 test('claude runs locked down: no settings files (only its own --settings), five tools, tellcut commands allowed, the prompt file appended', () => {
   const a = claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' });
   expect(a).toEqual(expect.arrayContaining(['-p', '--permission-mode', 'dontAsk', '--setting-sources', '', '--disable-slash-commands', '--strict-mcp-config',
