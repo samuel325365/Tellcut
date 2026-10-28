@@ -20,6 +20,7 @@ Run every command in the `tellcut/` folder. Look up blocks with `catalog` and cu
 | `npm run voice -- <id>` / `npm run score -- --styles <id>` | Narration voice / list music styles (see "Narration and music") |
 | `npm run tellcut -- assets …` | Outside assets: music, sound effects, pictures, maps, fact checks (see "Outside assets") |
 | `npm run tellcut -- logo <id> <file>` | A brand logo (SVG, PNG, JPG, WebP) into `media/brand/`: whether it extrudes (an SVG of filled shapes) or becomes a cut-out plate, its colours (for `c.theme`), the file's path to open and look at, how to build it in 3D (`kit.loadMark` in an fx), and a warning when its main colour hardly shows on the theme's ink (then use a light/dark background for the logo, or a light/dark version of it) |
+| `npm run tellcut -- site <id> <url>` | A company's website: its first screen as `media/brand/site.png` (open it and look), the colours the page is painted in (most first), the fonts of its heading and text, its title and description, into `media/brand/site.json`; a site that cannot be read (offline, blocked, a login) says so in one line, and the film is made from the logo and the introduction |
 
 ## Look at pictures sparingly
 

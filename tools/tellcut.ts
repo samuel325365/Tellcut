@@ -4,6 +4,7 @@
 //   npm run tellcut -- frames <id> [--proposal] [--full] --at 1.5,3   (stills 960 on the long side unless --full)
 //   npm run tellcut -- logo <id> <file>   (the brand logo into media/brand/: extrudable or not, its colours, how to use it)
 //   npm run tellcut -- font3d <sans|serif|round>   (the Chinese TTF for 3D type, downloaded when first needed: word3d's cjk)
+//   npm run tellcut -- site <id> <url>   (a company's website into media/brand/: its first screen, colours and fonts)
 //   npm run tellcut -- request <id> [--id <request id>] [--frames [--full]]   (the editor's "Ask Agent…")
 //   npm run tellcut -- catalog [type | handle | --find <words>]   (every block that can go in a project; one type's params; a search)
 //   npm run tellcut -- recipe [name] / cut-api            (a recipe's content format / the Cut API at a glance)
@@ -22,6 +23,7 @@ import { describeRecipe } from './cut/recipes/index.ts';
 import { formatCutApi } from './cut/api-doc.ts';
 import { assetsCommand } from './assets.ts';
 import { ensureFont3d, type Feel } from './font3d.ts';
+import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
 
 const f2 = (v: number) => v.toFixed(2);
@@ -188,7 +190,7 @@ async function main(argv: string[]) {
     console.log(`中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { glyphs: await kit.loadFont('Inter-700.ttf'), cjk })`);
     return;
   }
-  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>');
+  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>');
   const dir = join(TELLCUT_ROOT, 'projects', id);
   const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };
   switch (cmd) {
@@ -267,6 +269,19 @@ async function main(argv: string[]) {
       console.log(`做成 3D（專案 fx，three: true）：build() 記下 ctx.three 和 ctx.media.fileUrl('${path}')，ready() 裡 const mark = await kit.loadMark(網址)，把 mark.group 加進場景；名稱用 kit.word3d`);
       const warn = logoContrastWarning(info, resolveTheme(readProject(dir).meta.theme).palette.ink);
       if (warn) console.log(warn);
+      return;
+    }
+    case 'site': {
+      const url = rest.find((a) => !a.startsWith('--'));
+      if (!url) throw new Usage('用法：npm run tellcut -- site <專案> <官網網址>');
+      if (!existsSync(join(dir, 'project.json'))) throw new Error(`找不到專案 ${id}（projects/${id}/project.json 不存在）`);
+      const s = await readSite(/^https?:\/\//i.test(url) ? url : `https://${url}`, dir);
+      console.log(`官網：${s.title || s.url}${s.description ? `——${s.description}` : ''}`);
+      console.log(`看首頁截圖：${join(dir, s.screenshot)}`);
+      console.log(`主要顏色（畫面上用得多的在前）：${s.colors.join('、') || '（看不出來）'}`);
+      console.log(`字體：標題 ${s.fonts.heading ?? '（沒有標題）'}，內文 ${s.fonts.body ?? '（看不出來）'}`);
+      if (s.image) console.log(`分享圖（og:image）：${s.image}`);
+      console.log('字體不在 Tellcut 的字型裡時，從 workflow 的 Fonts 清單挑最接近的。');
       return;
     }
     case 'request': {
