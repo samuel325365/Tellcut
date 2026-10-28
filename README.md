@@ -170,7 +170,6 @@ A preset is a starting direction for one kind of film. Click its card under the 
 | **Celebration Film** | Wedding, birthday, graduation or farewell photos and clips, cut into a film to play on the day |
 | **Brand Film** | A brand film with 3D and real footage from just a logo and a paragraph about the company |
 | **Animated Explainer** | One idea explained with diagrams and text, with or without footage of your own |
-| **Auto** | Not sure? The agent decides |
 
 ---
 

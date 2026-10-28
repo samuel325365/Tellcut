@@ -9,9 +9,9 @@ const RULE = "These are defaults. If the user's message conflicts with any of th
 const presets = () => loadPresets({ repo: join(TELLCUT_ROOT, 'guides', 'presets'), user: mkdtempSync(join(tmpdir(), 'nopresets-')) });
 const LANGS = ['zh', 'en', 'ja'] as const;
 
-test('the repo has the ten presets, in order', () => {
+test('the repo has the nine presets, in order', () => {
   const all = presets();
-  expect(all.map((p) => p.id)).toEqual(['custom', 'travel', 'clips', 'podcast', 'food', 'vlog', 'celebration', 'brand', 'explainer', 'auto']);
+  expect(all.map((p) => p.id)).toEqual(['custom', 'travel', 'clips', 'podcast', 'food', 'vlog', 'celebration', 'brand', 'explainer']);
   expect(new Set(all.map((p) => p.order)).size).toBe(all.length);
 });
 
@@ -51,22 +51,21 @@ test("a preset's default APIs are sources there are (the API menu ticks them whe
   for (const id of ['travel', 'food', 'vlog', 'celebration', 'podcast', 'clips']) expect(presets().find((p) => p.id === id)!.sources, id).not.toContain('pixabay');
 });
 
-test("every preset but auto and custom has the length and ratios check compares with, and its facts say the same", () => {
+test("every preset but custom has the length and ratios check compares with, and its facts say the same", () => {
   // "30–150 s", "1–3 min", "45 s–3 min": the first number takes the second's unit when it has none
   const seconds = (fact: string) => { const m = /(\d+)(?: (s|min))?–(\d+) (s|min)/.exec(fact); if (!m) return null; const u = (x?: string) => (x === 'min' ? 60 : 1); return [+m[1] * u(m[2] ?? m[4]), +m[3] * u(m[4])]; };
-  for (const p of presets().filter((x) => x.id !== 'auto' && x.id !== 'custom')) {
+  for (const p of presets().filter((x) => x.id !== 'custom')) {
     expect(p.length, p.id).toBeTruthy();
     expect(p.ratios?.length, p.id).toBeTruthy();
     expect(p.facts.en!.map(seconds).filter(Boolean), p.id).toEqual([p.length]);
     for (const r of p.ratios!) expect(p.facts.en!.join(' '), `${p.id} ${r}`).toContain(r);
   }
-  for (const id of ['auto', 'custom']) { const p = presets().find((x) => x.id === id)!; expect([p.length, p.ratios], id).toEqual([undefined, undefined]); }
+  const custom = presets().find((x) => x.id === 'custom')!;
+  expect([custom.length, custom.ratios]).toEqual([undefined, undefined]);
 });
 
-test('auto names no genre and has no styles', () => {
-  const auto = presets().find((p) => p.id === 'auto')!;
-  expect(auto.styles).toEqual([]);
-  expect(auto.prompt).not.toMatch(/genre/i);
+test('travel holds its whole direction and skips the genre cards (2026-10-28); the others still use them until reviewed', () => {
+  expect(presets().filter((p) => !p.genres).map((p) => p.id)).toEqual(['travel']);
 });
 
 test("travel's styles that still need new effects say so (notifications: common.notify + common.lockscreen, social: common.reels + common.comments + common.story since 2026-10-23, phone-album: common.album since 2026-10-24, magazine: common.magazine + common.wipe curl since 2026-10-24, chat: common.chat since 2026-10-24, search: common.search since 2026-10-24; none is custom any more)", () => {

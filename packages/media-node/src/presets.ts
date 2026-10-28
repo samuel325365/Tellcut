@@ -10,7 +10,7 @@ import { TELLCUT_ROOT } from './paths.ts';
 
 export interface PresetDirs { repo: string; user: string }
 export type PresetField = Omit<PresetFieldInfo, 'options'> & { options: Array<PresetFieldInfo['options'][number] & { prompt: string }> };
-export interface Preset extends Omit<PresetInfo, 'styles' | 'fields'> { prompt: string; file: string; styles: Array<PresetStyleInfo & { prompt: string }>; fields: PresetField[] }
+export interface Preset extends Omit<PresetInfo, 'styles' | 'fields'> { prompt: string; file: string; genres: boolean; styles: Array<PresetStyleInfo & { prompt: string }>; fields: PresetField[] }
 
 const ID = /^[a-z0-9][a-z0-9-]{0,40}$/;
 const text = z.object({ zh: z.string(), en: z.string(), ja: z.string() }).partial().refine((x) => Object.keys(x).length > 0, 'needs a language');
@@ -33,6 +33,8 @@ const Front = z.object({
   // what `check` compares the film with (the facts say the same in words): seconds [shortest, longest], and the ratios it may be
   length: z.tuple([z.number().positive(), z.number().positive()]).refine(([a, b]) => a <= b, 'shortest first').optional(),
   ratios: z.array(z.string().regex(/^[1-9]\d*:[1-9]\d*$/, 'like 9:16')).min(1).optional(),
+  // false: the preset holds the film's whole direction, so Claude skips the genre cards (workflow.md step 3)
+  genres: z.boolean().default(true),
 });
 
 /** `file`: where the preset.md is, relative to tellcut/ when inside it (Claude reads it from there) */
@@ -90,7 +92,7 @@ export function findPreset(dirs: PresetDirs, id: string): Preset | null {
 }
 
 /** what the page gets: the prompts left out */
-export const presetInfo = ({ prompt: _p, file: _f, styles, fields, ...p }: Preset): PresetInfo => ({ ...p, styles: styles.map(({ prompt: _s, ...s }) => s),
+export const presetInfo = ({ prompt: _p, file: _f, genres: _g, styles, fields, ...p }: Preset): PresetInfo => ({ ...p, styles: styles.map(({ prompt: _s, ...s }) => s),
   fields: fields.map(({ options, ...f }) => ({ ...f, options: options.map(({ prompt: _o, ...o }) => o) })) });
 
 // the form's options are the user's, but what they say in the message still wins (spec 2026-10-24-custom-preset §2)
@@ -122,11 +124,13 @@ function setFields(p: Preset, raw?: Record<string, string>) {
   });
 }
 
+const NO_GENRES = 'This preset is the whole direction of the film: skip choosing a genre and do not read guides/genres/.';
+
 /** What Claude gets ahead of the user's words: the preset's prompt, the prompts of the styles ticked in its dialog and the options set in its form. */
 export function presetBlock(p: Preset, styles: string[], fields?: Record<string, string>): string {
   const picked = p.styles.filter((s) => styles.includes(s.id)), set = setFields(p, fields);
   const name = p.name.en ?? p.name.zh ?? p.id;
-  return [`<preset id="${p.id}" name="${name}">`, p.prompt,
+  return [`<preset id="${p.id}" name="${name}">`, p.prompt, ...(p.genres ? [] : [NO_GENRES]),
     ...(picked.length ? ['', 'Styles the user picked:', ...picked.map((s) => `- ${s.name.en ?? s.name.zh ?? s.id}: ${s.prompt}`)] : []),
     ...(set.length ? ['', `${OPTIONS_HEAD}:`, ...set.map((x) => `- ${x.name}: ${x.prompt}`)] : []), '</preset>'].join('\n');
 }

@@ -20,6 +20,7 @@
   },
   "length": [30, 150],
   "ratios": ["9:16"],
+  "genres": false,
   "sources": ["maps", "carto", "wikimedia", "countries", "freesound", "incompetech"],
   "styles": [
     { "id": "phone-album",

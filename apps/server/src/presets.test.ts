@@ -127,6 +127,15 @@ test('presetBlock wraps the prompt and the picked styles', () => {
   expect(missingPresetBlock('gone')).toContain('The preset "gone" the user picked is gone');
 });
 
+test('a preset with "genres": false tells Claude to skip the genre cards', () => {
+  const p = parsePreset(doc(FRONT, 'These are defaults.\nGoal: x.\n'), 'travel', false);
+  expect(p.genres).toBe(true);
+  expect(presetBlock(p, [])).not.toContain('guides/genres');
+  const own = parsePreset(doc({ ...FRONT, genres: false }, 'These are defaults.\nGoal: x.\n'), 'travel', false);
+  expect(presetBlock(own, [])).toContain('Goal: x.\nThis preset is the whole direction of the film: skip choosing a genre and do not read guides/genres/.');
+  expect(() => parsePreset(doc({ ...FRONT, genres: 'no' }), 'travel', false)).toThrow(/genres/);
+});
+
 test('a preset.md saved with a BOM (PowerShell) still reads', () => {
   const p = parsePreset('\uFEFF' + doc(FRONT), 'travel', false);
   expect(p.name.en).toBe('Travel Highlights');
