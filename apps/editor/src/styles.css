@@ -97,10 +97,14 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .row .lane { position: absolute; top: 2px; right: 0; bottom: 2px; }
 .beat { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.05); pointer-events: none; }
 .item { position: absolute; top: 0; border-radius: 4px; overflow: hidden; background: #3a5a8c; border: 1px solid rgba(255,255,255,.15); cursor: grab; z-index: 0; }   /* a stacking context: its layers (env, overlap, transition) stay under the track headers */
-.item.k-scene { background: #6b4fa0; } .item.k-overlay { background: #9c6b2f; } .item.k-music { background: #2f7d5b; } .item.k-audio { background: #2f6f7d; } .item.k-sfx { background: #7d2f5b; }
+.item.k-scene { background: #6b4fa0; } .item.k-overlay { background: #9c6b2f; }
+/* blocks by gallery category (timeline/names.ts Tone); the same in both themes, like the track colours */
+.item.tone-words { background: #9c6b2f; } .item.tone-layout { background: #84732a; } .item.tone-place { background: #9a4a36; }
+.item.tone-look { background: #6b4fa0; } .item.tone-moment { background: #a8456a; } .item.tone-fx { background: #565c69; }
+.item .label .glyph { flex: none; margin-right: 3px; opacity: .9; } .item.k-music { background: #2f7d5b; } .item.k-audio { background: #2f6f7d; } .item.k-sfx { background: #7d2f5b; }
 .item.sel { outline: 2px solid var(--sel); z-index: 1; }
 .item.offline { background: repeating-linear-gradient(45deg, #5a1f1f 0 8px, #3a1414 8px 16px); }
-.item .label { position: absolute; left: 6px; top: 0; bottom: 0; display: flex; align-items: center; font-size: 11px; line-height: 1.15; white-space: nowrap; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.item .label { position: absolute; left: 6px; right: 4px; top: 0; bottom: 0; display: flex; align-items: center; font-size: 11px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000; pointer-events: none; }
 .item [data-edge] { position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 4; }   /* above the overlap and the transition block: trimming into a dissolve works */
 .item [data-edge="start"] { left: 0; } .item [data-edge="end"] { right: 0; }
 .playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: #ff375f; pointer-events: none; z-index: 5; }

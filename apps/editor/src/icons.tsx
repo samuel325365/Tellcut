@@ -27,3 +27,24 @@ export const IconCheck = I('M5 12.5l4.5 4.5L19 7.5');
 export const IconPlug = I(['M9 2v6M15 2v6', 'M6 8h12v4a6 6 0 0 1-12 0z', 'M12 18v4']);
 
 export const kindIcon = (kind: string) => kind === 'dir' ? IconFolder : kind === 'video' ? IconFilm : kind === 'image' ? IconImage : kind === 'audio' ? IconMusic : kind === 'drive' ? IconDrive : IconFile;
+
+// Timeline clip glyphs (timeline/names.ts Glyph), drawn small before the clip's name.
+const GLYPHS: Record<string, string[]> = {
+  words: ['M5 6h14', 'M12 6v13'],
+  layout: ['M4 5h16v14H4z', 'M4 10h16'],
+  place: ['M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10z', 'M12 11h.01'],
+  look: ['M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z', 'M12 4v16'],
+  moment: ['M12 3v5', 'M12 16v5', 'M3 12h5', 'M16 12h5'],
+  fx: ['M12 3l2.5 6H21l-5 4 2 7-6-4-6 4 2-7-5-4h6.5z'],
+  scene: ['M4 5h16v14H4z', 'M4 15l4-4 4 4 4-6 4 6'],
+  video: ['M4 5h16v14H4z', 'M8 5v14M16 5v14'],
+  music: ['M9 18V6l11-2v12', 'M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3z', 'M20 16a3 3 0 1 1-3-3 3 3 0 0 1 3 3z'],
+  audio: ['M3 12h2', 'M7 8v8', 'M11 5v14', 'M15 8v8', 'M19 11v2'],
+  sfx: ['M13 3L5 14h6l-1 7 8-11h-6z'],
+};
+export const GlyphIcon = ({ glyph, size = 12 }: { glyph: string; size?: number }) => (
+  <svg class="glyph" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    {(GLYPHS[glyph] ?? GLYPHS.fx).map((d) => <path d={d} />)}
+  </svg>
+);

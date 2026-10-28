@@ -12,6 +12,8 @@ import { EnvelopeLayer } from './EnvelopeLayer.tsx';
 import { yToDb } from './envelope.ts';
 import { t } from '../i18n/index.ts';
 import { trackLabel } from '../trackNames.ts';
+import { getLang } from '../i18n/lang.ts';
+import { itemLook, itemName } from './names.ts';
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
 const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
@@ -222,7 +224,7 @@ export function Timeline({ editor }: { editor: Editor }) {
     if (doomed.size && !confirm(t('ed.trackDelConfirm', { name: trackLabel(tr.name ?? tr.id), n: own.length, more: more ? t('ed.trackDelMore', { m: more }) : '' }))) return;
     editor.removeTrack(tr.id);
   };
-  const mine = new Set(['core', ...p.meta.plugins]);
+  const mine = new Set(['core', ...p.meta.plugins]), lang = getLang(), reg = editor.registry;
   const kinds: Array<[string, string]> = [['video', 'Video track'], ['overlay', 'Effects track'],
     ...((editor.registry?.itemTypes?.() ?? []).some((t: any) => t.kind === 'scene' && mine.has(t.type.split('.')[0])) ? [['scene', 'Scene track'] as [string, string]] : []),
     ['music', 'Music track'], ['audio', 'Audio track'], ['sfx', 'SFX track']];
@@ -303,7 +305,7 @@ export function Timeline({ editor }: { editor: Editor }) {
                   if (peaks) media = <Wave info={peaks} from={x.in} dur={len * (x.rate ?? 1)} width={len * s.pps} height={h} />;
                   if (r.track.kind === 'audio' || r.track.kind === 'music') media = <>{media}<EnvelopeLayer item={x} len={len} pps={s.pps} h={h} /></>;
                 }
-                return <ItemBlock key={it.id} item={it} track={r.track} left={timeToX(tm.start, view)} top={lane * r.laneH} width={len * s.pps} height={h}
+                return <ItemBlock key={it.id} item={it} track={r.track} name={itemName(it, r.track.kind, reg, lang)} look={itemLook(it, r.track.kind, reg)} left={timeToX(tm.start, view)} top={lane * r.laneH} width={len * s.pps} height={h}
                   selected={s.selection.includes(it.id)} offline={'source' in it && s.offline.includes(x.source)}
                   marks={[s.proposal?.changed.includes(it.id) ? 'proposed' : '', over.has(it.id) ? 'hanging' : ''].filter(Boolean).join(' ')}>
                   {media}
