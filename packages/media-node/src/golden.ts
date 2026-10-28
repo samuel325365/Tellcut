@@ -1,7 +1,10 @@
 // Golden stills (toolkit phase 2b): a block drawn at a few moments, compared with the picture saved last time it looked right.
 // Pictures are kept small (270×480) so the files stay light and fonts/anti-aliasing differences between machines stay below the tolerance.
 // macOS draws text and emoji differently enough (CoreText, Apple's emoji) to pass it: its own pictures of those cases are kept in
-// a darwin/ folder beside the shared ones, which stay Windows' and are never rewritten from a Mac.
+// a darwin/ folder beside the shared ones, which stay Windows' and are never rewritten from a Mac. Each own picture counts only
+// beside the shared picture it was made against (darwin/shared.json keeps that one's hash): once Windows updates the shared
+// picture, the Mac's old copy is ignored until a Mac update makes it again.
+import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
@@ -68,8 +71,15 @@ export const goldenFile = (c: GoldenCase, t: number) => `${c.name}-t${t.toFixed(
  * Draw every case and compare it with `goldenDir`. A missing golden is reported as `new` (written with `update`);
  * a picture that differs is `changed` (rewritten with `update`). `work` is a folder under the repo (the player is served from it).
  */
+/** which shared picture (its hash; null: none) each of a system's own pictures was made beside */
+type MadeBeside = Record<string, string | null>;
+const besideFile = (platformDir: string) => join(platformDir, 'shared.json');
+const hashOf = (file: string) => (existsSync(file) ? createHash('sha256').update(readFileSync(file)).digest('hex') : null);
+
 export async function runGolden(cases: GoldenCase[], o: { registry: Registry; goldenDir: string; platformDir?: string; work: string; update?: boolean; log?: (s: string) => void;
   /** where the cases' pictures are (default goldenDir; the gallery's translated thumbnails are kept apart from them) */ sourceDir?: string }): Promise<GoldenResult[]> {
+  const beside: MadeBeside = o.platformDir && existsSync(besideFile(o.platformDir)) ? JSON.parse(readFileSync(besideFile(o.platformDir), 'utf8')) : {};
+  let besideChanged = false;
   mkdirSync(o.work, { recursive: true });
   mkdirSync(o.goldenDir, { recursive: true });
   const tmp = mkdtempSync(join(tmpdir(), 'golden-')), out: GoldenResult[] = [];
@@ -87,16 +97,19 @@ export async function runGolden(cases: GoldenCase[], o: { registry: Registry; go
             // A system with pictures of its own matches either its own or the shared one (Windows' may have moved on since).
             // An update writes its own folder only, and only where it differs from the shared picture: the shared pictures
             // stay Windows', and a new case gets its shared one from an update there.
-            const raw = await rawOf(fresh, sizeOf(c));
-            const vsShared = existsSync(shared) ? diffShare(raw, await rawOf(shared, sizeOf(c))) : null;
-            const vsOwn = existsSync(own) ? diffShare(raw, await rawOf(own, sizeOf(c))) : null;
+            const raw = await rawOf(fresh, sizeOf(c)), sharedHash = hashOf(shared);
+            // an own picture made beside another shared picture than today's is out of date: as if there were none
+            const ownValid = existsSync(own) && name in beside && beside[name] === sharedHash;
+            const vsShared = sharedHash !== null ? diffShare(raw, await rawOf(shared, sizeOf(c))) : null;
+            const vsOwn = ownValid ? diffShare(raw, await rawOf(own, sizeOf(c))) : null;
             const known = [vsShared, vsOwn].filter((x): x is number => x !== null), best = known.length ? Math.min(...known) : null;
             if (!o.update) { out.push(best === null ? { file: name, status: 'new', share: 1 } : { file: name, status: best <= GOLDEN_SHARE ? 'ok' : 'changed', share: best }); continue; }
             if (vsShared !== null && vsShared <= GOLDEN_SHARE) {
-              if (vsOwn !== null) rmSync(own, { force: true });
-              out.push({ file: name, status: vsOwn !== null ? 'updated' : 'ok', share: vsShared });
+              const had = existsSync(own) || name in beside;
+              if (had) { rmSync(own, { force: true }); delete beside[name]; besideChanged = true; }
+              out.push({ file: name, status: had ? 'updated' : 'ok', share: vsShared });
             } else if (vsOwn === 0) out.push({ file: name, status: 'ok', share: 0 });
-            else { await save(own); out.push({ file: name, status: 'updated', share: vsOwn ?? vsShared ?? 0 }); }
+            else { await save(own); beside[name] = sharedHash; besideChanged = true; out.push({ file: name, status: 'updated', share: vsOwn ?? vsShared ?? 0 }); }
             continue;
           }
           const gold = shared;
@@ -111,7 +124,14 @@ export async function runGolden(cases: GoldenCase[], o: { registry: Registry; go
       });
     }
     return out;
-  } finally { rmSync(tmp, { recursive: true, force: true }); }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+    // kept even when a later case failed: the pictures written so far are on disk
+    if (o.platformDir && besideChanged) {
+      mkdirSync(o.platformDir, { recursive: true });
+      writeFileSync(besideFile(o.platformDir), `${JSON.stringify(Object.fromEntries(Object.entries(beside).sort(([a], [b]) => a.localeCompare(b))), null, 2)}\n`);
+    }
+  }
 }
 
 export const goldenSummary = (r: GoldenResult[]) => r.filter((x) => x.status !== 'ok').map((x) => `${x.file}：${{ new: '還沒有 golden', changed: `畫面變了（${(x.share * 100).toFixed(1)}% 的像素不同）`, updated: '已更新', ok: '' }[x.status]}`);

@@ -66,6 +66,12 @@ test('a system with pictures of its own (macOS) keeps them beside the shared one
   expect(await statuses('#f00', { ...mac, update: true })).toEqual(['ok']);
   expect(readFileSync(join(dir, file))).toEqual(sharedBytes);
   expect(await statuses('#f00', mac)).toEqual(['ok']);
-  // Windows moved the shared picture on and the Mac now draws like it: ok, though its own copy is the old look
-  expect(await statuses('#fff', mac)).toEqual(['ok']);
+  // Windows moves the shared picture on (to blue): the Mac's own copy was made beside the white one, so it no longer counts —
+  // the old red look is changed again, the new one ok, and a Mac update makes its own copy beside the new shared picture
+  expect(await statuses('#00f', { ...win, update: true })).toEqual(['updated']);
+  expect(await statuses('#f00', mac)).toEqual(['changed']);
+  expect(await statuses('#00f', mac)).toEqual(['ok']);
+  expect(await statuses('#f00', { ...mac, update: true })).toEqual(['updated']);
+  expect(await statuses('#f00', mac)).toEqual(['ok']);
+  expect(Object.keys(JSON.parse(readFileSync(join(own, 'shared.json'), 'utf8')))).toEqual([file]);
 }, 180000);
