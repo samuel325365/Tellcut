@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createProject, sourceId } from './ingest.ts';
+import { createProject, expandInputs, ingestFiles, sourceId } from './ingest.ts';
 import { makeClicks, makeHeic, makePhoneVideo, makePhoto } from './test-media.ts';
 
 const root = mkdtempSync(join(tmpdir(), 'ingest-')), src = join(root, 'trip'), projects = join(root, 'projects');
@@ -36,6 +36,26 @@ test('a folder and a URL become a project: photos (HEIC converted), videos, musi
   expect(r.skipped.some((s) => s.includes('notes.txt'))).toBe(true);
   expect(existsSync(join(projects, 'trip', 'media', 'IMG_0001.jpg'))).toBe(true);
 }, 180000);
+
+test('ingestFiles registers the same entries as a new project, with ids clear of the taken ones', async () => {
+  const used = new Set(['clip']);
+  const r = await ingestFiles(join(projects, 'x'), expandInputs([src]).files, used);
+  expect(Object.keys(r.sources).sort()).toEqual(['clip-2', 'img_0001', 'src', 'src-2']);
+  expect(r.music.song).toEqual({ path: '../../trip/song.wav' });
+  expect(r.sources['clip-2']).toMatchObject({ kind: 'video', width: 360, height: 640, audio: true, path: '../../trip/clip.mp4' });
+  expect(r.sources.src).toMatchObject({ kind: 'image', width: 900, height: 1200, taken: '2026-03-07T10:30:00', gps: [35, 135.7], duration: 3600 });
+  expect(r.skipped.map((s) => s.code)).toEqual(['import.notMedia']);
+  expect(r.skipped[0].message).toContain('notes.txt');
+  expect(used.has('clip-2')).toBe(true);
+}, 180000);
+
+test('expandInputs walks folders once, drops repeats and reports missing paths', () => {
+  const clip = join(src, 'clip.mp4');
+  const r = expandInputs([src, process.platform === 'win32' ? clip.toUpperCase() : clip, join(src, 'nope.mp4')]);
+  expect(r.files.filter((f) => f.toLowerCase() === clip.toLowerCase())).toHaveLength(1);
+  expect(r.files.some((f) => f.endsWith('IMG_0001.HEIC'))).toBe(true);
+  expect(r.skipped.map((s) => s.code)).toEqual(['import.notFound']);
+});
 
 test('an existing project is kept unless --force; then the old one goes to .history', async () => {
   await expect(createProject({ id: 'trip', inputs: [src], projectsDir: projects })).rejects.toThrow(/already exists/);

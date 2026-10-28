@@ -50,6 +50,51 @@ function freeName(file: string): string {
   for (let n = 2; ; n++) { const f = file.replace(/(\.\w+)$/, `-${n}$1`); if (!existsSync(f)) return f; }
 }
 
+/** a file left out of a project, and why: `code` + `params` for the editor to word it, `message` in English for the CLI */
+export interface Skipped { path: string; code: 'import.notFound' | 'import.notMedia' | 'import.failed' | 'import.url'; params?: Record<string, string>; message: string }
+export type ProjectSource = Project['sources'][string];
+export interface Ingested { sources: Record<string, ProjectSource>; music: Record<string, { path: string }>; skipped: Skipped[] }
+
+/** the same file named twice (a folder and a file in it, or in another case on Windows) counts once */
+export const samePath = (f: string) => (process.platform === 'win32' ? resolve(f).toLowerCase() : resolve(f));
+
+/** Folders walked into their files (code-point order), in the order given; paths that are not there are skipped. URLs are the caller's. */
+export function expandInputs(inputs: string[]): { files: string[]; skipped: Skipped[] } {
+  const files: string[] = [], skipped: Skipped[] = [], seen = new Set<string>();
+  for (const input of inputs) {
+    const p = resolve(input);
+    if (!existsSync(p)) { skipped.push({ path: input, code: 'import.notFound', params: { path: input }, message: `${input}: not found` }); continue; }
+    for (const f of statSync(p).isDirectory() ? walk(p) : [p]) { const k = samePath(f); if (!seen.has(k)) { seen.add(k); files.push(f); } }
+  }
+  return { files, skipped };
+}
+
+/** Every usable video, photo and sound among `files`, as project.json entries for the project in `dir` (paths relative to it):
+ *  HEIC photos converted into <dir>/media/, ids kept clear of `used` (and added to it). Shared by `new` and the editor's Import. */
+export async function ingestFiles(dir: string, files: string[], used: Set<string>, o: { log?: (s: string) => void; onFile?: (done: number, total: number) => void } = {}): Promise<Ingested> {
+  const sources: Record<string, ProjectSource> = {}, music: Record<string, { path: string }> = {}, skipped: Skipped[] = [], log = o.log ?? (() => {});
+  const rel = (f: string) => relative(dir, f).split(sep).join('/'), media = join(dir, 'media');
+  const usable = files.filter((f) => {
+    if (kindOf(f)) return true;
+    skipped.push({ path: f, code: 'import.notMedia', params: { path: f }, message: `${f}: not a video, photo or audio file` });
+    return false;
+  });
+  for (const [i, f] of usable.entries()) {
+    try {
+      let path = f;
+      if (/\.(heic|heif)$/i.test(f)) { mkdirSync(media, { recursive: true }); path = freeName(join(media, basename(f).replace(/\.\w+$/, '.jpg'))); await heicToJpg(f, path); }
+      const info = await probeMedia(path), id = sourceId(f, used);
+      if (info.kind === 'audio') { music[id] = { path: rel(path) }; log(`音樂 ${id}`); continue; }
+      sources[id] = { path: rel(path), duration: Math.round(info.duration * 1000) / 1000, width: info.width, height: info.height, kind: info.kind,
+        ...(info.taken ? { taken: info.taken } : {}), ...(info.takenOffset ? { takenOffset: info.takenOffset } : {}), ...(info.takenGuess ? { takenGuess: true } : {}), ...(info.gps ? { gps: info.gps } : {}),
+        ...(info.kind === 'video' ? { audio: info.audio } : {}) } as ProjectSource;
+      log(`${info.kind === 'image' ? '照片' : '影片'} ${id}`);
+    } catch (e) { skipped.push({ path: f, code: 'import.failed', params: { path: f, why: (e as Error).message }, message: `${f}: ${(e as Error).message}` }); }
+    finally { o.onFile?.(i + 1, usable.length); }
+  }
+  return { sources, music, skipped };
+}
+
 export async function createProject(o: IngestOptions): Promise<{ project: Project; file: string; skipped: string[] }> {
   if (!ID.test(o.id)) throw new Error(`Invalid project id "${o.id}" (letters, digits, - and _)`);
   const dir = join(o.projectsDir, o.id), file = join(dir, 'project.json'), media = join(dir, 'media'), log = o.log ?? (() => {});
@@ -61,25 +106,14 @@ export async function createProject(o: IngestOptions): Promise<{ project: Projec
       try { mkdirSync(media, { recursive: true }); files.push(await (o.download ?? ytDlp)(input, media, !!o.audioUrls)); } catch (e) { skipped.push(`${input}: ${(e as Error).message}`); }
       continue;
     }
-    const p = resolve(input);
-    if (!existsSync(p)) { skipped.push(`${input}: not found`); continue; }
-    files.push(...(statSync(p).isDirectory() ? walk(p) : [p]));
+    const x = expandInputs([input]);
+    files.push(...x.files);
+    skipped.push(...x.skipped.map((s) => s.message));
   }
-  const sources: Record<string, unknown> = {}, music: Record<string, { path: string }> = {}, used = new Set<string>();
-  const rel = (f: string) => relative(dir, f).split(sep).join('/');
-  for (const f of files) {
-    if (!kindOf(f)) { skipped.push(`${f}: not a video, photo or audio file`); continue; }
-    try {
-      let path = f;
-      if (/\.(heic|heif)$/i.test(f)) { mkdirSync(media, { recursive: true }); path = freeName(join(media, basename(f).replace(/\.\w+$/, '.jpg'))); await heicToJpg(f, path); }
-      const info = await probeMedia(path), id = sourceId(f, used);
-      if (info.kind === 'audio') { music[id] = { path: rel(path) }; log(`音樂 ${id}`); continue; }
-      sources[id] = { path: rel(path), duration: Math.round(info.duration * 1000) / 1000, width: info.width, height: info.height, kind: info.kind,
-        ...(info.taken ? { taken: info.taken } : {}), ...(info.takenOffset ? { takenOffset: info.takenOffset } : {}), ...(info.takenGuess ? { takenGuess: true } : {}), ...(info.gps ? { gps: info.gps } : {}),
-        ...(info.kind === 'video' ? { audio: info.audio } : {}) };
-      log(`${info.kind === 'image' ? '照片' : '影片'} ${id}`);
-    } catch (e) { skipped.push(`${f}: ${(e as Error).message}`); }
-  }
+  const seen = new Set<string>(), once = files.filter((f) => !seen.has(samePath(f)) && !!seen.add(samePath(f)));
+  const got = await ingestFiles(dir, once, new Set<string>(), { log });
+  const { sources, music } = got;
+  skipped.push(...got.skipped.map((s) => s.message));
   if (!o.blank && !Object.keys(sources).length && !Object.keys(music).length) throw new Error(`No usable media found${skipped.length ? `:\n  ${skipped.join('\n  ')}` : ''}`);
   const all = Object.values(sources) as Array<{ width: number; height: number }>;
   const [width, height] = o.size ?? (all.filter((s) => s.height > s.width).length > all.length / 2 ? [1080, 1920] : [1920, 1080]);
