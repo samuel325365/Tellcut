@@ -4,5 +4,11 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "exports": { ".": "./src/index.ts" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "motion-dom": "12.43.0",
+    "motion-utils": "12.39.0"
+  }
 }

@@ -440,6 +440,18 @@ test('ctx.types finds other registered item types (a block hosting another, like
   expect(seen).toEqual(['core.flash', undefined]);
 });
 
+test('ctx.motion reaches build and draw (fx get their springs from it)', () => {
+  const seen: number[] = [];
+  const fx = { id: 'm', items: [{ type: 'm.bob', label: 'm', kind: 'overlay' as const, params: [],
+    build: (ctx: any) => { seen.push(ctx.motion.spring({ duration: 0.5 })(0)); return null; },
+    draw: (ctx: any) => { seen.push(ctx.motion.spring({ duration: 0.5 })(ctx.local)); } }] };
+  const p = project(); p.tracks.push({ id: 'x', kind: 'overlay', items: [{ id: 'mm', type: 'm.bob', start: 0, end: 10, params: {} }] });
+  const st = new Stage(document.createElement('div'), createRegistry([corePlugin, fx]), fakeMedia());
+  st.load(p);
+  st.draw(5);
+  expect(seen).toEqual([0, 1]);
+});
+
 test('past freezeAt the clip is drawn as held (the preview keeps it paused on that frame)', () => {
   const root = document.createElement('div');
   const media = fakeMedia();

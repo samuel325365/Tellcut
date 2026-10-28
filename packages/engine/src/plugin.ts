@@ -1,5 +1,6 @@
 import type { Crop, Project, SceneItem } from './schema.ts';
 import type { Theme } from './theme.ts';
+import type { MotionKit } from './motion.ts';
 
 /** `theme`: a dotted path into the project theme ("palette.accent") the default comes from when the project sets one.
  *  `themeIfSet`: take that field only when the project's own theme sets it, never the theme's built-in default — for a block whose
@@ -43,6 +44,8 @@ export interface ItemCtx<P = Record<string, any>> {
   grades: Record<string, string>;
   /** the ThreeKit of @tellcut/plugin-common, set for every item once the project uses a type marked `three` */
   three?: unknown;
+  /** springs, easings, stagger and interpolate (motion.ts), all in seconds: how fx, which may not import, get them */
+  motion: MotionKit;
 }
 
 /** a shared block's group in the catalog and in the page chat's block index (names: BLOCK_CATEGORY in @tellcut/protocol) */

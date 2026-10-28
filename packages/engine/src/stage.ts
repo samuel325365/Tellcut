@@ -10,6 +10,7 @@ import { resolveTheme } from './theme.ts';
 import type { MediaPool } from './media/pool.ts';
 import { videoRefOf } from './media/refs.ts';
 import { cssCamel, h, showCamel } from './util.ts';
+import { motion } from './motion.ts';
 import { itemMediaIssues } from './validate.ts';
 
 /** sig = the item's JSON: update() compares content, since projects posted into the preview iframe are copies. */
@@ -206,7 +207,7 @@ export class Stage {
     const tm = this.times.get(item.id)!;
     const { width: W, height: H, fps } = this.project.meta;
     return { t, local: t - tm.start, dur: tm.end - tm.start, item, params, root, top, project: this.project, media: this.media, W, H, fps, theme: resolveTheme(this.project.meta.theme, this.project.meta), types: this.types,
-      grades: this.registry.grades ?? {}, ...(this.opts.three !== undefined ? { three: this.opts.three } : {}) };
+      grades: this.registry.grades ?? {}, motion, ...(this.opts.three !== undefined ? { three: this.opts.three } : {}) };
   }
 
   draw(t: number) {

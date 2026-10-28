@@ -2,6 +2,7 @@ export const ENGINE_VERSION = 1 as const;
 export * from './schema.ts';
 export * from './time.ts';
 export * from './util.ts';
+export { motion, type MotionKit, type Spring, type SpringOpts, type EaseFn } from './motion.ts';
 export * from './geometry.ts';
 export * from './plugin.ts';
 export * from './registry.ts';
