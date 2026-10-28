@@ -9,7 +9,7 @@ import { FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll } from './timeline/geometry.ts
 import { ApiError, type Api } from './api.ts';
 import { Autosave } from './autosave.ts';
 import { History } from './history.ts';
-import { orientationOf, sanitizeLayout, WIDEST_PREVIEW, type Layout } from './layout.ts';
+import { orientationOf, previewWOf, sanitizeLayout, sizePatch, WIDEST_PREVIEW, type Layout } from './layout.ts';
 import { createStore, initialState, type EditorState, type PeakInfo, type Store } from './store.ts';
 import type { PlayerBridge } from './bridge.ts';
 import type { Proposal } from '@tellcut/protocol';
@@ -93,8 +93,8 @@ export class Editor {
   setLayout(patch: Partial<Layout>) {
     const layout = { ...this.s.layout, ...patch };
     this.set({ layout });
-    const { split, previewW, libClosed, propsClosed, trackSize, snap, sideW } = layout;
-    try { this.storage?.setItem('tellcut.layout', JSON.stringify({ split, previewW, libClosed, propsClosed, trackSize, snap, sideW })); } catch { /* not remembered */ }
+    const { split, previewW, libClosed, propsClosed, trackSize, snap, sideW, arrange } = layout;
+    try { this.storage?.setItem('tellcut.layout', JSON.stringify({ split, previewW, libClosed, propsClosed, trackSize, snap, sideW, arrange })); } catch { /* not remembered */ }
   }
 
   setQuality(v: 'full' | 'draft') {
@@ -653,7 +653,7 @@ export class Editor {
       case 'exitCrop': return this.exitCrop();
       case 'maxPreview':
         // portrait: the preview column grows as wide as the timeline allows (gridFor clamps it), or back to its default
-        if (s.project && orientationOf(s.project.meta) === 'portrait') return this.setLayout({ previewW: s.layout.previewW === WIDEST_PREVIEW ? null : WIDEST_PREVIEW });
+        if (s.project && orientationOf(s.project.meta) === 'portrait') return this.setLayout(sizePatch(s.layout, s.project.meta, { previewW: previewWOf(s.layout, s.project.meta) === WIDEST_PREVIEW ? null : WIDEST_PREVIEW }));
         return this.setLayout({ maxPreview: !s.layout.maxPreview });
       case 'zoomFit': return this.zoomToFit();
       case 'help': return this.toggleHelp();

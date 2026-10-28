@@ -497,9 +497,9 @@ test('the layout is remembered per browser; F toggles the large preview; selecti
   const storage = { getItem: (k: string) => mem[k] ?? null, setItem: (k: string, v: string) => { mem[k] = v; } };
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge, storage });
-  expect(ed.store.get().layout).toMatchObject({ split: 0.7, trackSize: 'standard', maxPreview: false, sideTab: 'library', sideW: 380 });   // not the transient bits; the panel width is kept
+  expect(ed.store.get().layout).toMatchObject({ split: { landscape: 0.7, portrait: 0.7 }, trackSize: 'standard', maxPreview: false, sideTab: 'library', sideW: 380 });   // not the transient bits; the panel width is kept
   ed.setLayout({ libClosed: true });
-  expect(JSON.parse(mem['tellcut.layout'])).toEqual({ split: 0.7, previewW: null, libClosed: true, propsClosed: false, trackSize: 'standard', snap: true, sideW: 380 });
+  expect(JSON.parse(mem['tellcut.layout'])).toEqual({ split: { landscape: 0.7, portrait: 0.7 }, previewW: { landscape: null, portrait: null }, libClosed: true, propsClosed: false, trackSize: 'standard', snap: true, sideW: 380, arrange: { landscape: 'auto', portrait: 'auto' } });
   ed.run('maxPreview');
   expect(ed.store.get().layout.maxPreview).toBe(true);
   await ed.open();
@@ -855,9 +855,9 @@ test('F in a portrait project widens the preview column as far as the timeline a
   const ed = new Editor('demo', { api, bridge });
   await ed.open();
   ed.run('maxPreview');
-  expect(ed.store.get().layout.previewW).toBe(10000);
+  expect(ed.store.get().layout.previewW).toEqual({ landscape: null, portrait: 10000 });
   ed.run('maxPreview');
-  expect(ed.store.get().layout.previewW).toBe(null);
+  expect(ed.store.get().layout.previewW.portrait).toBe(null);
 });
 test('tracks collapse one by one or by kind (Shift), remembered per project; deleted tracks drop out of the memory', async () => {
   const mem = new Map<string, string>(), storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v); } };
@@ -1489,4 +1489,17 @@ test('a changed-on-disk this page caused itself is ignored; one from another tab
   expect(ed.store.get().diskChanged).toBe(false);
   L.send({ type: 'changed-on-disk', by: 'other' });
   expect(ed.store.get().diskChanged).toBe(true);
+});
+
+test('the chosen arrangement is remembered with the layout and read back by a new editor', () => {
+  const mem: Record<string, string> = {};
+  const storage = { getItem: (k: string) => mem[k] ?? null, setItem: (k: string, v: string) => { mem[k] = v; } };
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge, storage });
+  ed.setLayout({ arrange: { landscape: 'side', portrait: 'stacked' }, previewW: { landscape: 640, portrait: null } });
+  const saved = JSON.parse(mem['tellcut.layout']);
+  expect(saved.arrange).toEqual({ landscape: 'side', portrait: 'stacked' });
+  expect(saved.previewW).toEqual({ landscape: 640, portrait: null });
+  const again = new Editor('demo', { api, bridge, storage });
+  expect(again.store.get().layout).toMatchObject({ arrange: { landscape: 'side', portrait: 'stacked' }, previewW: { landscape: 640, portrait: null } });
 });

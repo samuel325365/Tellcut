@@ -91,11 +91,11 @@ test('dragging the splitter restyles only the grid while moving and stores the s
   const sp = root.querySelector<HTMLElement>('[data-splitter="rows"]')!;
   sp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientY: 400 }));
   window.dispatchEvent(new MouseEvent('mousemove', { clientY: 500, buttons: 1 }));
-  expect([ed.store.get().layout.split, grid().style.gridTemplateRows]).toEqual([null, '40px minmax(160px, 0.56fr) 6px minmax(80px, 0.44fr)']);
+  expect([ed.store.get().layout.split.landscape, grid().style.gridTemplateRows]).toEqual([null, '40px minmax(160px, 0.56fr) 6px minmax(80px, 0.44fr)']);
   await act(() => { window.dispatchEvent(new MouseEvent('mouseup', { clientY: 500 })); });
-  expect(ed.store.get().layout.split).toBeCloseTo(460 / 818, 3);
+  expect(ed.store.get().layout.split.landscape).toBeCloseTo(460 / 818, 3);
   await act(() => { sp.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); });
-  expect(ed.store.get().layout.split).toBeNull();
+  expect(ed.store.get().layout.split.landscape).toBeNull();
 });
 
 test('a splitter drag ends when the window loses focus or the button is found released (Alt+Tab mid-drag)', async () => {
@@ -105,7 +105,7 @@ test('a splitter drag ends when the window loses focus or the button is found re
   sp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientY: 400 }));
   window.dispatchEvent(new MouseEvent('mousemove', { clientY: 500, buttons: 1 }));
   await act(() => { window.dispatchEvent(new Event('blur')); });
-  expect([document.body.classList.contains('resizing'), ed.store.get().layout.split]).toEqual([false, expect.closeTo(460 / 818, 3)]);
+  expect([document.body.classList.contains('resizing'), ed.store.get().layout.split.landscape]).toEqual([false, expect.closeTo(460 / 818, 3)]);
   sp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientY: 400 }));
   window.dispatchEvent(new MouseEvent('mousemove', { clientY: 300, buttons: 0 }));    // the button went up outside the window
   expect(document.body.classList.contains('resizing')).toBe(false);

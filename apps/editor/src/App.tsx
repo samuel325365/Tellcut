@@ -14,7 +14,7 @@ import { ImportDialog } from './ImportDialog.tsx';
 import type { Attachment } from './attachments.ts';
 import { HelpPanel } from './HelpPanel.tsx';
 import { keyAction } from './keys.ts';
-import { gridFor, orientationOf, previewWFromX, sideWFromX, sideWidth, splitFromY, type Layout } from './layout.ts';
+import { gridFor, orientationOf, previewWFromX, sideWFromX, sideWidth, sizePatch, splitFromY, type Layout } from './layout.ts';
 import type { Editor } from './editor.ts';
 import type { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
@@ -50,7 +50,8 @@ function Splitter({ dir, editor, root, side = 0, meta, view }: { dir: 'rows' | '
     let last: Partial<Layout> | null = null;
     const move = (m: MouseEvent) => {
       if (m.buttons === 0) { up(); return; }   // released outside the window (Alt+Tab, another app)
-      last = dir === 'rows' ? { split: splitFromY(m.clientY, r.top, r.height), maxPreview: false } : { previewW: previewWFromX(m.clientX, r.right, r.width, side) };
+      const l = editor.store.get().layout;
+      last = dir === 'rows' ? { ...sizePatch(l, meta, { split: splitFromY(m.clientY, r.top, r.height) }), maxPreview: false } : sizePatch(l, meta, { previewW: previewWFromX(m.clientX, r.right, r.width, side) });
       const g = gridFor({ ...editor.store.get().layout, ...last }, meta, view);
       el.style.gridTemplateColumns = g.columns; el.style.gridTemplateRows = g.rows;
     };
@@ -61,7 +62,7 @@ function Splitter({ dir, editor, root, side = 0, meta, view }: { dir: 'rows' | '
     };
     addEventListener('mousemove', move); addEventListener('mouseup', up); addEventListener('blur', up);
   };
-  const reset = () => editor.setLayout(dir === 'rows' ? { split: null, maxPreview: false } : { previewW: null });
+  const reset = () => { const l = editor.store.get().layout; editor.setLayout(dir === 'rows' ? { ...sizePatch(l, meta, { split: null }), maxPreview: false } : sizePatch(l, meta, { previewW: null })); };
   return <div class={`splitter ${dir}`} data-splitter={dir} data-tip={t('ed.splitTip')} aria-label={t('ed.splitTip')} onMouseDown={down as any} onDblClick={reset} />;
 }
 
