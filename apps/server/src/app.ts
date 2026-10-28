@@ -17,6 +17,7 @@ import { requestRoutes } from './requests.ts';
 import { ChatRunner } from './chat/runner.ts';
 import { chatRoutes } from './chat/routes.ts';
 import { fsRoutes } from './fs.ts';
+import { importRoutes } from './import.ts';
 import { presetRoutes } from './presets.ts';
 import type { PresetDirs } from '@tellcut/media-node';
 import { sourceRoutes } from './sources.ts';
@@ -62,6 +63,7 @@ export function createApp(o: AppOptions) {
   analyzed = chatRoutes(r, store, chat, queue, presetDirs).afterAnalysis;
   deleteRoutes(r, store, { queue, chat, live });
   fsRoutes(r);
+  importRoutes(r, store);
   const all: Array<[string, string | undefined]> = [['/player/', o.playerDist], ['/editor/', o.editorDist]];
   const mounts = all.filter((m): m is [string, string] => !!m[1]).map(([prefix, dir]) => [prefix, resolve(dir)] as const);
   const server: Server = createServer(async (req, res) => {
