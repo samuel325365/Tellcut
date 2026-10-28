@@ -1503,3 +1503,12 @@ test('the chosen arrangement is remembered with the layout and read back by a ne
   const again = new Editor('demo', { api, bridge, storage });
   expect(again.store.get().layout).toMatchObject({ arrange: { landscape: 'side', portrait: 'stacked' }, previewW: { landscape: 640, portrait: null } });
 });
+
+test('cycleLayout steps Auto → Stacked → Side → Auto for the project orientation only', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  const seen = [1, 2, 3].map(() => { ed.run('layout'); return ed.store.get().layout.arrange.landscape; });
+  expect(seen).toEqual(['stacked', 'side', 'auto']);
+  expect(ed.store.get().layout.arrange.portrait).toBe('auto');
+});

@@ -14,7 +14,7 @@ import { ImportDialog } from './ImportDialog.tsx';
 import type { Attachment } from './attachments.ts';
 import { HelpPanel } from './HelpPanel.tsx';
 import { keyAction } from './keys.ts';
-import { gridFor, orientationOf, previewWFromX, sideWFromX, sideWidth, sizePatch, splitFromY, type Layout } from './layout.ts';
+import { arrangementOf, gridFor, previewWFromX, sideWFromX, sideWidth, sizePatch, splitFromY, type Layout } from './layout.ts';
 import type { Editor } from './editor.ts';
 import type { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
@@ -104,7 +104,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   }, [editor]);
   if (s.error) return <ErrorView error={s.error} history={s.history} onRestore={(n) => void editor.restore(n)} failed={s.restoreError} />;
   if (!s.project) return <div class="loading">{t('ed.loading')}</div>;
-  const l = s.layout, portrait = orientationOf(s.project.meta) === 'portrait', g = gridFor(l, s.project.meta, view);
+  const l = s.layout, side = arrangementOf(l, s.project.meta) === 'side', g = gridFor(l, s.project.meta, view);
   const expander = (which: 'library' | 'props', area: string) => (
     <button class="expander" data-expand={which} style={{ gridArea: area }} data-tip={t(which === 'library' ? 'ed.openLibrary' : 'ed.openProps')} aria-label={t(which === 'library' ? 'ed.openLibrary' : 'ed.openProps')}
       onClick={() => editor.setLayout(which === 'library' ? { libClosed: false } : { propsClosed: false })}>{which === 'library' ? '»' : '«'}</button>
@@ -114,9 +114,9 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
     <button {...{ 'data-tip': t('ed.chatClearTip'), 'aria-label': t('ed.chatClearTip') }} onClick={() => { if (confirm(t('ed.chatClearConfirm'))) void editor.chat.clear(); }}>Clear</button></div>
     <EditorChat editor={editor} /></div>;
   return (
-    <div class={`editor ${portrait ? 'portrait' : 'landscape'}`} ref={root} style={{ gridTemplateAreas: g.areas, gridTemplateColumns: g.columns, gridTemplateRows: g.rows }}>
-      <Toolbar s={s} editor={editor} noticeHere={!(portrait ? !l.libClosed && l.sideTab === 'props' : !l.propsClosed)} />
-      {portrait ? <>
+    <div class={`editor ${side ? 'layout-side' : 'layout-stacked'}`} ref={root} style={{ gridTemplateAreas: g.areas, gridTemplateColumns: g.columns, gridTemplateRows: g.rows }}>
+      <Toolbar s={s} editor={editor} noticeHere={!(side ? !l.libClosed && l.sideTab === 'props' : !l.propsClosed)} />
+      {side ? <>
         {l.libClosed ? expander('library', 'sd') : (
           <aside class="side" data-side>
             <div class="tabs">

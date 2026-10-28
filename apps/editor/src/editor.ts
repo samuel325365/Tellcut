@@ -9,7 +9,7 @@ import { FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll } from './timeline/geometry.ts
 import { ApiError, type Api } from './api.ts';
 import { Autosave } from './autosave.ts';
 import { History } from './history.ts';
-import { orientationOf, previewWOf, sanitizeLayout, sizePatch, WIDEST_PREVIEW, type Layout } from './layout.ts';
+import { arrangementOf, nextArrange, orientationOf, previewWOf, sanitizeLayout, sizePatch, WIDEST_PREVIEW, type Layout } from './layout.ts';
 import { createStore, initialState, type EditorState, type PeakInfo, type Store } from './store.ts';
 import type { PlayerBridge } from './bridge.ts';
 import type { Proposal } from '@tellcut/protocol';
@@ -95,6 +95,14 @@ export class Editor {
     this.set({ layout });
     const { split, previewW, libClosed, propsClosed, trackSize, snap, sideW, arrange } = layout;
     try { this.storage?.setItem('tellcut.layout', JSON.stringify({ split, previewW, libClosed, propsClosed, trackSize, snap, sideW, arrange })); } catch { /* not remembered */ }
+  }
+
+  /** The Layout button and Ctrl+\: Auto → Stacked → Side for this project's orientation only. */
+  cycleLayout() {
+    const p = this.s.project;
+    if (!p) return;
+    const o = orientationOf(p.meta), a = this.s.layout.arrange;
+    this.setLayout({ arrange: { ...a, [o]: nextArrange(a[o]) }, maxPreview: false });
   }
 
   setQuality(v: 'full' | 'draft') {
@@ -652,10 +660,11 @@ export class Editor {
       case 'redo': return this.redo();
       case 'exitCrop': return this.exitCrop();
       case 'maxPreview':
-        // portrait: the preview column grows as wide as the timeline allows (gridFor clamps it), or back to its default
-        if (s.project && orientationOf(s.project.meta) === 'portrait') return this.setLayout(sizePatch(s.layout, s.project.meta, { previewW: previewWOf(s.layout, s.project.meta) === WIDEST_PREVIEW ? null : WIDEST_PREVIEW }));
+        // side layout: the preview column grows as wide as the timeline allows (gridFor clamps it), or back to its default
+        if (s.project && arrangementOf(s.layout, s.project.meta) === 'side') return this.setLayout(sizePatch(s.layout, s.project.meta, { previewW: previewWOf(s.layout, s.project.meta) === WIDEST_PREVIEW ? null : WIDEST_PREVIEW }));
         return this.setLayout({ maxPreview: !s.layout.maxPreview });
       case 'zoomFit': return this.zoomToFit();
+      case 'layout': return this.cycleLayout();
       case 'help': return this.toggleHelp();
       case 'raise': case 'lower':
         if (s.selection.length === 1) this.restack(s.selection[0], a === 'raise' ? 'up' : 'down');

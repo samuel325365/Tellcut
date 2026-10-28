@@ -1,6 +1,6 @@
 // Keyboard shortcuts (spec §4.2, §4.5). Never active while typing in a text field.
 export const ACTIONS = ['playPause', 'back', 'pause', 'play', 'prevFrame', 'nextFrame', 'home', 'end', 'split', 'delete', 'rippleDelete',
-  'undo', 'redo', 'exitCrop', 'maxPreview', 'raise', 'lower', 'zoomFit', 'help'] as const;
+  'undo', 'redo', 'exitCrop', 'maxPreview', 'raise', 'lower', 'zoomFit', 'help', 'layout'] as const;
 export type Action = (typeof ACTIONS)[number];
 interface KeyLike { key: string; code: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean; target?: EventTarget | null }
 
@@ -18,6 +18,7 @@ export function keyAction(e: KeyLike): Action | null {
     if (key === 'y') return 'redo';
     if (key === ']') return 'raise';
     if (key === '[') return 'lower';
+    if (key === '\\') return 'layout';
     return null;
   }
   if (e.code === 'Space' || key === ' ') return 'playPause';

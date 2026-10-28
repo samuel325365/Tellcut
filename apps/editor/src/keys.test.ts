@@ -32,3 +32,8 @@ test('Ctrl+] and Ctrl+[ move the selected item a layer up or down', () => {
   expect([k(']', { ctrlKey: true }), k('[', { ctrlKey: true })]).toEqual(['raise', 'lower']);
 });
 test('\\ zooms the timeline to the whole project', () => { expect(k('\\')).toBe('zoomFit'); });
+
+test('Ctrl+\\ cycles the layout; \\ alone still zooms to fit', () => {
+  expect(k('\\', { ctrlKey: true })).toBe('layout');
+  expect(k('\\')).toBe('zoomFit');
+});

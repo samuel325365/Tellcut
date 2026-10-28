@@ -1,7 +1,7 @@
 import { isTerminal } from './api.ts';
 import type { EditorState } from './store.ts';
 import { LiveMeter } from './Meter.tsx';
-import { orientationOf, previewWOf, WIDEST_PREVIEW } from './layout.ts';
+import { arrangementOf, nextArrange, orientationOf, previewWOf, WIDEST_PREVIEW } from './layout.ts';
 import { t } from './i18n/index.ts';
 
 const SAVE_KEY = { saved: 'ed.save.saved', pending: 'ed.save.pending', saving: 'ed.save.saving', error: 'ed.save.error' } as const;
@@ -28,8 +28,16 @@ export function Toolbar({ s, editor, noticeHere = false }: { s: EditorState; edi
         onClick={() => editor.setLayout({ snap: !s.layout.snap })}>Snap: {s.layout.snap ? 'On' : 'Off'}</button>
       <button data-track-size {...tip(t('ed.trackSizeTip'))} onClick={() => editor.setLayout({ trackSize: s.layout.trackSize === 'compact' ? 'standard' : 'compact' })}>Tracks: {s.layout.trackSize === 'compact' ? 'Compact' : 'Standard'}</button>
       {s.project && (() => {
-        const portrait = orientationOf(s.project.meta) === 'portrait', on = portrait ? previewWOf(s.layout, s.project.meta) === WIDEST_PREVIEW : s.layout.maxPreview;
-        return <button data-max-preview class={on ? 'on' : ''} {...tip(t(portrait ? 'ed.widenTip' : 'ed.enlargeTip'))} onClick={() => editor.run('maxPreview')}>⤢ {portrait ? 'Widen preview' : 'Enlarge preview'}</button>;
+        // the tip says what the layout is now and what a click makes it (Auto names what it would pick)
+        const o = orientationOf(s.project.meta), choice = s.layout.arrange[o], now = arrangementOf(s.layout, s.project.meta), next = nextArrange(choice);
+        const word = (a: string) => t(a === 'side' ? 'ed.layoutSide' : a === 'stacked' ? 'ed.layoutStacked' : 'ed.layoutAuto');
+        const nextText = next === 'auto' ? `${word('auto')} (${word(o === 'portrait' ? 'side' : 'stacked')})` : word(next);
+        return <button data-layout {...tip(t('ed.layoutTip', { now: word(now), next: nextText }))}
+          onClick={() => editor.run('layout')}>Layout: {choice === 'auto' ? 'Auto' : choice === 'side' ? 'Side' : 'Stacked'}</button>;
+      })()}
+      {s.project && (() => {
+        const side = arrangementOf(s.layout, s.project.meta) === 'side', on = side ? previewWOf(s.layout, s.project.meta) === WIDEST_PREVIEW : s.layout.maxPreview;
+        return <button data-max-preview class={on ? 'on' : ''} {...tip(t(side ? 'ed.widenTip' : 'ed.enlargeTip'))} onClick={() => editor.run('maxPreview')}>⤢ {side ? 'Widen preview' : 'Enlarge preview'}</button>;
       })()}
       <select data-quality value={s.quality} {...tip(t('ed.qualityTip'))} onChange={(e) => editor.setQuality((e.target as HTMLSelectElement).value)}>
         <option value="full">Preview: Full</option><option value="draft">Preview: Smooth</option>

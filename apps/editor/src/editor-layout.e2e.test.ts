@@ -88,3 +88,47 @@ test('an audio track header leaves its name room to read (not clipped to a lette
   expect(name.width).toBeGreaterThanOrEqual(40);
   expect(await page.locator('[data-row="mus"] .head .tname').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);   // "Music" is not cut off
 }, 60000);
+
+const layoutLabel = () => page.locator('[data-layout]').innerText();
+const arranged = () => page.locator('.editor').evaluate((el) => (el.classList.contains('layout-side') ? 'side' : el.classList.contains('layout-stacked') ? 'stacked' : '?'));
+const open = async (id: string) => { await page.goto(`${base}/editor/?id=${id}`); await page.waitForSelector('[data-player="ready"]', { timeout: 30000 }); };
+
+test('the Layout button cycles Auto → Stacked → Side for this orientation only, and is remembered', async () => {
+  await open('wide');
+  expect([await arranged(), await layoutLabel()]).toEqual(['stacked', 'Layout: Auto']);
+  await page.locator('[data-layout]').click();
+  expect([await arranged(), await layoutLabel()]).toEqual(['stacked', 'Layout: Stacked']);
+  await page.locator('[data-layout]').click();
+  await poll(arranged).toBe('side');
+  expect(await layoutLabel()).toBe('Layout: Side');
+  expect(await page.locator('[data-side] [data-tab]').count()).toBe(3);
+  await open('wide');
+  expect(await arranged()).toBe('side');                       // remembered
+  await open('tall');
+  expect([await arranged(), await layoutLabel()]).toEqual(['side', 'Layout: Auto']);   // the portrait choice is its own
+  await page.keyboard.press('Control+Backslash');                // Ctrl+backslash does what the button does
+  await poll(arranged).toBe('stacked');
+  await open('wide');
+  expect(await arranged()).toBe('side');                       // not touched by the portrait choice
+  // back to Auto for both, for the other tests
+  await page.keyboard.press('Control+Backslash');
+  await poll(layoutLabel).toBe('Layout: Auto');
+  await open('tall');
+  await page.keyboard.press('Control+Backslash'); await page.keyboard.press('Control+Backslash');
+  await poll(layoutLabel).toBe('Layout: Auto');
+}, 90000);
+
+test('switching layouts keeps the panels: Properties in side → Media in stacked; Chat stays Chat', async () => {
+  await open('tall');
+  await page.locator('[data-side] [data-tab="props"]').click();
+  await page.locator('[data-layout]').click();                 // Auto → Stacked
+  await poll(arranged).toBe('stacked');
+  expect(await page.locator('[data-tab="library"]').getAttribute('class')).toContain('on');
+  expect(await page.locator('.panel-wrap.pr').count()).toBe(1);
+  await page.locator('[data-tab="chat"]').click();
+  await page.locator('[data-layout]').click();                 // Stacked → Side
+  await poll(arranged).toBe('side');
+  expect(await page.locator('[data-side] [data-tab="chat"]').getAttribute('class')).toContain('on');
+  await page.locator('[data-layout]').click();                 // Side → Auto
+  await poll(layoutLabel).toBe('Layout: Auto');
+}, 90000);

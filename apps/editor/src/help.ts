@@ -25,6 +25,7 @@ export const SHORTCUTS: Shortcut[] = [
   { label: 'Ctrl+]', ev: { key: ']', ctrlKey: true }, action: 'raise', desc: 'help.k.raise' },
   { label: 'Ctrl+[', ev: { key: '[', ctrlKey: true }, action: 'lower', desc: 'help.k.lower' },
   { label: '\\', ev: { key: '\\' }, action: 'zoomFit', desc: 'help.k.zoomFit' },
+  { label: 'Ctrl+\\', ev: { key: '\\', ctrlKey: true }, action: 'layout', desc: 'help.k.layout' },
   { label: '? / F1', ev: { key: '?' }, action: 'help', desc: 'help.k.help' },
 ];
 
@@ -34,8 +35,8 @@ export interface Section { title: string; items: Array<[string, Key]> }
 export const SECTIONS: Section[] = [
   { title: 'Layout', items: [
     ['Toolbar', 'help.0.0'],
-    ['Landscape project', 'help.0.1'],
-    ['Portrait project', 'help.0.2'],
+    ['Stacked layout', 'help.0.1'],
+    ['Side layout', 'help.0.2'],
     ['Remembered settings', 'help.0.3'],
   ] },
   { title: 'Playback', items: [

@@ -55,7 +55,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .side > .tab-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; } .side > .tab-pane[hidden] { display: none; }
 .side > .tab-pane > aside { flex: 1; min-height: 0; border: 0; }
 .toolbar-notice { color: var(--off); max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.editor.portrait > .timeline { border-top: 0; }
+.editor.layout-side > .timeline { border-top: 0; }
 .toolbar button.on { background: var(--accent); border-color: var(--accent); }
 .library, .props { overflow: auto; background: var(--panel); padding: 8px 10px; }
 .library { border-right: 1px solid var(--line); } .props { border-left: 1px solid var(--line); }
