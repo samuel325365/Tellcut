@@ -4,6 +4,7 @@ import { act } from 'preact/test-utils';
 import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
 import { createStore, initialState } from './store.ts';
 import { LibraryPanel } from './LibraryPanel.tsx';
+import { t } from './i18n/index.ts';
 
 test('lists sources with their scene segments, every sound effect and block; click picks, double-click auditions, the button adds', async () => {
   const p = fixture();
@@ -121,4 +122,21 @@ test('block names in the library are English labels in every language; a project
   await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
   expect(root.querySelector('[data-add-overlay="core.flash"]')!.textContent).toBe('Flash');
   expect(root.querySelector('[data-add-overlay="fx.mine"]')!.textContent).toBe('我的特效');
+});
+
+test('the Import button shows only when this PC can be browsed; it opens the file browser, and the note shows progress and the result', async () => {
+  const p = fixture();
+  const store = createStore({ ...initialState('t'), project: p });
+  const registry = { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={{ store, registry }} s={store.get()} />, root));
+  expect(root.querySelector('[data-import-media]')).toBeNull();
+  const fs = { places: async () => ({ places: [] }), fsList: async () => ({ path: 'C:/', parent: null, entries: [] }) };
+  await act(() => render(<LibraryPanel editor={{ store, registry, fs }} s={{ ...store.get(), importing: { done: 1, total: 3 } }} />, root));
+  const button = root.querySelector<HTMLButtonElement>('[data-import-media]')!;
+  expect([button.disabled, root.querySelector('[data-import-note]')!.textContent]).toEqual([true, t('ed.importing', { done: 1, total: 3 })]);
+  await act(() => render(<LibraryPanel editor={{ store, registry, fs }} s={{ ...store.get(), importNote: 'Added 2 files.' }} />, root));
+  expect(root.querySelector('[data-import-note]')!.textContent).toBe('Added 2 files.');
+  await act(() => { root.querySelector<HTMLButtonElement>('[data-import-media]')!.click(); });
+  expect(root.querySelector('[data-import]')).not.toBeNull();
 });

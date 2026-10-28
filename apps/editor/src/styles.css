@@ -120,6 +120,9 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .wave { position: absolute; left: 0; top: 0; pointer-events: none; }
 .marquee { position: absolute; border: 1px dashed var(--sel); background: rgba(255,214,10,.08); pointer-events: none; z-index: 6; }
 .library h4 { margin: 10px 0 6px; color: var(--dim); font-size: 12px; }
+.library .lib-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.library .lib-head button { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; font-size: 11px; }
+.library .lib-note { margin: 0 0 8px; color: var(--dim); font-size: 11px; line-height: 1.4; }
 .library .src { margin-bottom: 8px; } .library .src-name { margin-bottom: 4px; } .library .src-name small { color: var(--dim); }
 .library .segs { display: flex; flex-wrap: wrap; gap: 4px; } .library .segs button, .library .lib-item { padding: 2px 6px; font-size: 11px; }
 .library .lib-item { display: block; width: 100%; text-align: left; margin: 2px 0; }

@@ -13,6 +13,8 @@ import { t, type Key } from './i18n/index.ts';
 import { matches } from './gallery.ts';
 import { blockText } from './i18n/blocks.ts';
 import { tip } from './tip.ts';
+import { ImportDialog } from './ImportDialog.tsx';
+import { IconPlus } from './icons.tsx';
 
 /** a button's hover text with the gallery handle of a shared block or sound in front (MRK-03 · double-click to audition) */
 /** a block's name in the library: an English editor label (project blocks, fx.*, keep their own) */
@@ -48,6 +50,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const blocks = groupsOf((reg?.itemTypes() ?? []).filter(hit), Object.keys(BLOCK_CATEGORY), 'block');
   const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hit), Object.keys(SFX_CATEGORY), 'sfx');
   const [picked, setPicked] = useState<{ key: string; m: Material } | null>(null);
+  const [browsing, setBrowsing] = useState(false);
   /** the click/double-click handlers and the highlight of one library entry */
   const shown = new Set<string>();
   const pick = (key: string, m: Material, base = 'lib-item') => (shown.add(key), {
@@ -57,7 +60,12 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   });
   return (
     <aside class="library">
-      <h4>Media</h4>
+      {/* Import (spec 2026-10-29-media-import): files from this PC straight into the project, without the Agent */}
+      <div class="lib-head"><h4>Media</h4>{editor.fs && (
+        <button data-import-media disabled={!!s.importing} {...tip(t('ed.importTip'))} onClick={() => setBrowsing(true)}><IconPlus size={12} /> Import</button>
+      )}</div>
+      {(s.importing || s.importNote) && <p class="lib-note" data-import-note>{s.importing ? t('ed.importing', s.importing) : s.importNote}</p>}
+      {browsing && editor.fs && <ImportDialog api={editor.fs} surface="editor" onAdd={(a) => void editor.importMedia(a.map((x) => x.path))} onClose={() => setBrowsing(false)} />}
       {Object.entries(p.sources).map(([id, src]) => (
         <div class="src">
           <div class="src-name">{id} <small>{src.kind === 'image' ? 'Photo' : formatTime(src.duration)}{s.offline.includes(id) ? ` · ${t('ed.libOffline')}` : ''}</small></div>
