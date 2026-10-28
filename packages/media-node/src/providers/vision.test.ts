@@ -56,7 +56,7 @@ test('macOS OCR hands Vision the image list and its languages, and reads its lin
 });
 
 const CJK_FONT = ['/System/Library/Fonts/STHeiti Medium.ttc', '/System/Library/Fonts/Hiragino Sans GB.ttc', '/System/Library/Fonts/PingFang.ttc'].find(existsSync);
-// drawing the caption needs an ffmpeg with drawtext (Homebrew's own has none; the ffmpeg tap's does)
+// drawing the caption needs an ffmpeg with drawtext (Homebrew's plain ffmpeg has none; ffmpeg-full does)
 const drawtext = () => { try { return /\bdrawtext\b/.test(execFileSync(ffmpegPath(), ['-hide_banner', '-filters'], { encoding: 'utf8' })); } catch { return false; } };
 test.skipIf(process.platform !== 'darwin' || !CJK_FONT || !drawtext())('macOS OCR reads a caption drawn on a frame (this Mac)', async () => {
   const d = mkdtempSync(join(tmpdir(), 'vocr-')), img = join(d, 'cap.png');

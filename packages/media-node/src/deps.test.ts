@@ -32,6 +32,9 @@ test('on macOS the vendored programs have no .exe and PATH is split on colons', 
   const vendored = join('/t/tellcut/vendor', 'uv', 'uv'), brew = join('/opt/homebrew/bin', 'ffmpeg');
   expect(locate(UV, mac([vendored]))).toEqual({ path: vendored, from: 'vendor' });
   expect(locate(FFMPEG, mac([brew], { PATH: '/usr/bin:/opt/homebrew/bin' }))).toEqual({ path: brew, from: 'path' });
+  // Homebrew's ffmpeg-full (with vid.stab) is keg-only: found in its own folder, ahead of the plain ffmpeg on PATH
+  const full = join('/opt/homebrew/opt/ffmpeg-full/bin', 'ffmpeg');
+  if (process.platform === 'darwin') expect(locate(FFMPEG, mac([brew, full], { PATH: '/opt/homebrew/bin' }))).toEqual({ path: full, from: 'known' });
   expect(onPathDirs('claude', mac([join('/Users/u/.local/bin', 'claude.cmd')], { PATH: '/Users/u/.local/bin' }))).toBeNull();
 });
 

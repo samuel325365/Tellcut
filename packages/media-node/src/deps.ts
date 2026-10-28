@@ -60,15 +60,14 @@ export function need(spec: ExeSpec, l: LookupEnv = live()): string {
 }
 
 const programFiles = (l: LookupEnv) => [l.env.ProgramFiles, l.env['ProgramFiles(x86)'], l.env.LOCALAPPDATA].filter((x): x is string => !!x);
-const MAC = process.platform === 'darwin';
 // on macOS setup downloads uv only: no ffmpeg build for macOS both has vid.stab (stabilised cuts) and stays at a pinned version,
-// so ffmpeg comes from Homebrew's ffmpeg tap, built with it
-const FFMPEG_INSTALL = MAC
-  ? '用 Homebrew 的 ffmpeg tap 安裝含防手震（vid.stab）的版本（見 INSTALL.md 的 On a Mac）：brew tap homebrew-ffmpeg/ffmpeg; brew trust --formula homebrew-ffmpeg/ffmpeg/ffmpeg; brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-libvidstab'
+// so ffmpeg is Homebrew's ffmpeg-full (keg-only, so found in its own folder before the plain ffmpeg on PATH, which has no vid.stab)
+const FFMPEG_INSTALL = process.platform === 'darwin' ? '用 Homebrew 安裝含防手震（vid.stab）的完整版：brew install ffmpeg-full'
   : '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/ffmpeg）';
+const ffmpegFull = (n: string) => (process.platform === 'darwin' ? ['/opt/homebrew', '/usr/local'].map((d) => join(d, 'opt', 'ffmpeg-full', 'bin', n)) : []);
 
-export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: [join('ffmpeg', 'bin', 'ffmpeg')], path: 'ffmpeg', install: FFMPEG_INSTALL };
-export const FFPROBE: ExeSpec = { name: 'ffprobe', env: 'TELLCUT_FFPROBE', vendor: [join('ffmpeg', 'bin', 'ffprobe')], path: 'ffprobe', install: FFMPEG_INSTALL };
+export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: [join('ffmpeg', 'bin', 'ffmpeg')], known: ffmpegFull('ffmpeg'), path: 'ffmpeg', install: FFMPEG_INSTALL };
+export const FFPROBE: ExeSpec = { name: 'ffprobe', env: 'TELLCUT_FFPROBE', vendor: [join('ffmpeg', 'bin', 'ffprobe')], known: ffmpegFull('ffprobe'), path: 'ffprobe', install: FFMPEG_INSTALL };
 export const UV: ExeSpec = { name: 'uv', env: 'TELLCUT_UV', vendor: [join('uv', 'uv')], path: 'uv', install: '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/uv）' };
 const MAC_CHROME = join('Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome');
 export const chromeSpec = (l: LookupEnv = live()): ExeSpec => ({
