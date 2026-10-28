@@ -1,7 +1,8 @@
 // ThreeKit's parts for a brand's own mark and name in 3D (from the common.logo block, retired 2026-10-28; a project fx builds its
 // logo with these now): an SVG of filled shapes extruded in its own colours, any other picture as a plate (12 cut-out layers when
 // it has a see-through background, a rounded slab with the picture on its face when not), and a word whose Latin letters are
-// extruded from a TTF (kit.loadFont) and whose other characters (Chinese, Japanese) are thick cut slabs. Each is built once in
+// extruded from a TTF (kit.loadFont), whose Chinese is extruded from a Chinese TTF (tellcut font3d) and whose other characters
+// (Japanese) are thick cut slabs. Each is built once in
 // ready(), posed in draw(), freed with its own dispose(). Like parts.ts, only types come from three here: the module is passed in.
 import type * as T from 'three';
 import type { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
@@ -155,6 +156,9 @@ export async function loadMark(THREE: Three, Loader: typeof SVGLoader, RoundedBo
 export interface WordOptions {
   /** the TTF's letters (await kit.loadFont(INTER_3D) in ready()); without it every character is a cut slab */
   glyphs?: Glyphs | null;
+  /** a Chinese TTF's characters (await kit.loadFont of a `tellcut font3d` file, CJK_3D): Chinese extruded like Latin letters;
+   *  without it, or for a character it lacks, a cut slab */
+  cjk?: Glyphs | null;
   /** the em in scene units (1.2: Inter's capitals stand about 0.86), the letters' depth (0.14) */
   em?: number; depth?: number;
   /** each letter's colour (#e9ecf1); `colorAt(k)` per character index (k counts spaces too) wins over it */
@@ -185,22 +189,21 @@ export interface Word {
 /** a Latin character a TTF can draw (Latin-1 and Latin Extended) */
 const LATIN = /^[!-ɏ]$/;
 
-/** A word in 3D: Latin letters extruded from `glyphs`, every other character (Chinese, Japanese, a letter the font lacks) a thick
- *  cut slab: 6 layers of a canvas drawing, about a capital's size. */
+/** A word in 3D: Latin letters extruded from `glyphs`, Chinese from `cjk`, every other character (Japanese, a letter the fonts lack)
+ *  a thick cut slab: 6 layers of a canvas drawing, about a capital's size. */
 export function word3d(THREE: Three, text: string, o: WordOptions = {}): Word {
-  const em = o.em ?? 1.2, depth = o.depth ?? 0.14, track = o.track ?? -0.012, space = o.space ?? 0.3, glyphs = o.glyphs ?? null;
+  const em = o.em ?? 1.2, depth = o.depth ?? 0.14, track = o.track ?? -0.012, space = o.space ?? 0.3, glyphs = o.glyphs ?? null, cjk = o.cjk ?? null;
   const cut = em * 0.77, parts: Array<{ dispose(): void }> = [], group = new THREE.Group(), letters: Letter[] = [];
   let x = 0;
   for (const [k, ch] of [...text].entries()) {
     if (ch === ' ') { x += space; continue; }
     const colour = o.colorAt?.(k) ?? o.color ?? 0xe9ecf1, g = new THREE.Group();
-    const shapes = glyphs && LATIN.test(ch) && glyphs.has(ch) ? glyphs.shapes(ch, em) : [];
+    const from = LATIN.test(ch) ? (glyphs?.has(ch) ? glyphs : null) : cjk?.has(ch) ? cjk : null;
+    const shapes = from ? from.shapes(ch, em) : [];
     let w: number;
-    if (shapes.length && glyphs) {
-      const geo = new THREE.ExtrudeGeometry(shapes, { depth, curveSegments: 10, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3 });
-      const mat = new THREE.MeshPhysicalMaterial({ color: colour, roughness: 0.32, clearcoat: 0.8, envMapIntensity: 0.5 });
-      g.add(new THREE.Mesh(geo, mat)); parts.push(geo, mat);
-      w = glyphs.advance(ch, em);
+    if (shapes.length && from) {
+      extrude(THREE, shapes, colour, depth, g, parts);
+      w = from.advance(ch, em);
     } else {
       cutSlab(THREE, ch, colour, cut, depth, o.font ?? '900 220px "Noto Sans TC", sans-serif', g, parts);
       // the slab sits where a capital would: from a little under the baseline to about cap height
@@ -217,6 +220,13 @@ export function word3d(THREE: Three, text: string, o: WordOptions = {}): Word {
     x += w + track;
   }
   return { group, letters, w: letters.length ? x - track : 0, cap: em * 0.717, dispose: disposeAll(parts) };
+}
+
+/** a letter's outlines extruded, bevelled and lacquered in its colour */
+function extrude(THREE: Three, shapes: T.Shape[], colour: T.ColorRepresentation, depth: number, g: T.Group, parts: Array<{ dispose(): void }>) {
+  const geo = new THREE.ExtrudeGeometry(shapes, { depth, curveSegments: 10, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3 });
+  const mat = new THREE.MeshPhysicalMaterial({ color: colour, roughness: 0.32, clearcoat: 0.8, envMapIntensity: 0.5 });
+  g.add(new THREE.Mesh(geo, mat)); parts.push(geo, mat);
 }
 
 /** a character as 6 cut-out layers of a canvas drawing, `size` square, `depth` deep, centred on the group's origin */

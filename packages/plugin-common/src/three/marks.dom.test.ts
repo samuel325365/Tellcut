@@ -124,3 +124,29 @@ test('dispose frees the geometries', () => {
   kit().word3d('A', { glyphs: FONT }).dispose();
   expect(spy.mock.calls.length).toBeGreaterThanOrEqual(3);
 });
+
+// a CJK font whose every Han character is a 0.9 em box, 1 em wide
+const CJK = { has: (c: string) => /\p{Script=Han}/u.test(c), advance: (_c: string, em: number) => em,
+  shapes: (_c: string, em: number) => [new THREE.Shape([new THREE.Vector2(0, -0.1 * em), new THREE.Vector2(em * 0.9, -0.1 * em), new THREE.Vector2(em * 0.9, em * 0.8), new THREE.Vector2(0, em * 0.8)])] };
+
+test('word3d: with a CJK font, Chinese characters are extruded like Latin letters', () => {
+  const w = kit().word3d('剪輯', { cjk: CJK, color: '#ff0000' });
+  for (const l of w.letters) {
+    expect(meshes(l.g)).toHaveLength(1);
+    expect(meshes(l.g)[0].geometry.type).toBe('ExtrudeGeometry');
+    expect((meshes(l.g)[0].material as THREE.MeshPhysicalMaterial).color.getHexString()).toBe('ff0000');
+  }
+  expect(w.letters[1].x).toBeCloseTo(w.letters[0].x + 1.2 + (-0.012), 5);   // em 1.2 default, advance = em, track default
+});
+
+test('a character the CJK font lacks falls back to a cut slab', () => {
+  const w = kit().word3d('剪「あ」', { cjk: CJK });
+  expect(w.letters.map((l) => meshes(l.g).length)).toEqual([1, 6, 6, 6]);
+});
+
+test('mixed Latin and CJK share one baseline, left to right', () => {
+  const w = kit().word3d('AB 剪', { glyphs: FONT, cjk: CJK });
+  const xs = w.letters.map((l) => l.x);
+  expect([...xs].sort((a, b) => a - b)).toEqual(xs);
+  for (const l of w.letters) expect(l.g.position.y).toBe(0);
+});
