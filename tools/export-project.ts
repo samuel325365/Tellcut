@@ -1,8 +1,8 @@
 // A project as one zip, and back (review3 R3-H1: projects/ is not in git, and there was no way to hand a film over or back it up).
 //   npm run export-project -- <id> [--media] [--out <file.zip>]     → tellcut/backups/<id>-<date>-<time>.zip
 //   npm run import-project -- <file.zip> [--as <new id>]            → projects/<id>/
-// The zip holds one folder, <id>/: project.json, cut.ts, narration.json, storyboard.md, fx/, score/ and .history/ (versions,
-// proposals, the chat). --media adds media/ and the footage that lives outside the project (D:\Trips…, tellcut/sources/…), copied
+// The zip holds one folder, <id>/: project.json, cut.ts, narration.json, storyboard.md, brand.md (a brand film's brand card), fx/,
+// score/ and .history/ (versions, proposals, the chat). --media adds media/ and the footage that lives outside the project (D:\Trips…, tellcut/sources/…), copied
 // into media/linked/ with project.json pointing there, so the zip stands on its own. cache/ is made again; exports/ are the films
 // themselves (copy them as they are).
 import { spawnSync } from 'node:child_process';
@@ -17,7 +17,7 @@ export interface ExportPlan { files: Array<{ from: string; to: string }>; projec
 
 // cache/cut-state.json is the one cache file kept: what the last cut wrote, so a cut after the import still notices the
 // editor's edits (without it, it wrote over them without asking)
-const OWN = ['cut.ts', 'narration.json', 'storyboard.md', 'cache/cut-state.json'], OWN_DIRS = ['fx', 'score', '.history'];
+const OWN = ['cut.ts', 'narration.json', 'storyboard.md', 'brand.md', 'cache/cut-state.json'], OWN_DIRS = ['fx', 'score', '.history'];
 /** every file under `dir`/`sub`, as paths relative to `dir` with / */
 const walk = (dir: string, sub: string): string[] => {
   const at = join(dir, sub);

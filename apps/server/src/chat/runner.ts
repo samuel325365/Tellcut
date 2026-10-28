@@ -39,8 +39,8 @@ export function claudeArgs(o: { session: string; resume: boolean; promptFile: st
     '--tools', 'Read,Write,Edit,Bash,Glob',
     '--allowedTools', 'Bash(npm run tellcut *)', 'Bash(npm run new *)', 'Bash(npm run inspect *)', 'Bash(npm run cut *)', 'Bash(npm run check *)', 'Bash(npm run voice *)', 'Bash(npm run score *)', 'Bash(npm run tokens *)', 'Read', 'Glob',
     'Write(projects/*/cut.ts)', 'Edit(projects/*/cut.ts)', 'Write(projects/*/fx/*.js)', 'Edit(projects/*/fx/*.js)', 'Write(projects/*/fx/*.mjs)', 'Edit(projects/*/fx/*.mjs)',
-    // narration text, the storyboard (review3 R3-H8) and a project's own music styles (toolkit phase 3); promoting a style stays with Claude Code
-    'Write(projects/*/narration.json)', 'Edit(projects/*/narration.json)', 'Write(projects/*/storyboard.md)', 'Edit(projects/*/storyboard.md)', 'Write(projects/*/score/*.js)', 'Edit(projects/*/score/*.js)',
+    // narration text, the storyboard (review3 R3-H8), the brand card (a brand film, 2026-10-28) and a project's own music styles (toolkit phase 3); promoting a style stays with Claude Code
+    'Write(projects/*/narration.json)', 'Edit(projects/*/narration.json)', 'Write(projects/*/storyboard.md)', 'Edit(projects/*/storyboard.md)', 'Write(projects/*/brand.md)', 'Edit(projects/*/brand.md)', 'Write(projects/*/score/*.js)', 'Edit(projects/*/score/*.js)',
     // a proposal's ops are written to a file first: pipes (echo … | propose -) are refused like every compound command
     'Write(projects/*/proposal.json)', 'Edit(projects/*/proposal.json)',
     // guardrails, not a sandbox (spec §1.2): secrets and npm's shell override stay out of reach

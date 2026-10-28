@@ -10,7 +10,7 @@ function world() {
   mkdirSync(join(root, 'footage'), { recursive: true });
   const project = { version: 1, meta: { name: '旅行' }, sources: { a: { path: '../../../footage/a.mp4' }, b: { path: 'media/b.mp4' } }, media: { v: { path: 'media/voice/1.wav' } }, tracks: [] };
   const put = (f: string, s = f) => writeFileSync(join(dir, f), s);
-  put('project.json', JSON.stringify(project)); put('cut.ts'); put('narration.json'); put('storyboard.md'); put('fx/ring.js'); put('score/waltz.js');
+  put('project.json', JSON.stringify(project)); put('cut.ts'); put('narration.json'); put('storyboard.md'); put('brand.md'); put('fx/ring.js'); put('score/waltz.js');
   put('media/b.mp4'); put('media/voice/1.wav'); put('.history/chat/chat.json'); put('.history/chat/chat.json.lock'); put('.history/chat/chat.json.123.tmp'); put('cache/proxy.mp4'); put('cache/cut-state.json'); put('exports/film.mp4');   // the lock and .tmp: a chat turn running as it was zipped
   writeFileSync(join(root, 'footage', 'a.mp4'), 'footage a');
   return { root, tellcut, dir };
@@ -20,7 +20,7 @@ test('what an export holds: the project\'s own files and history; --media adds m
   const { dir } = world(), project = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
   const own = exportPlan(dir, project, { media: false });
   // cut-state.json goes too: without it the imported project's next cut wrote over the editor's edits without asking
-  expect(own.files.map((f) => f.to).sort()).toEqual(['.history/chat/chat.json', 'cache/cut-state.json', 'cut.ts', 'fx/ring.js', 'narration.json', 'score/waltz.js', 'storyboard.md']);
+  expect(own.files.map((f) => f.to).sort()).toEqual(['.history/chat/chat.json', 'brand.md', 'cache/cut-state.json', 'cut.ts', 'fx/ring.js', 'narration.json', 'score/waltz.js', 'storyboard.md']);
   expect(own.project).toEqual(project);                                       // paths untouched: the footage is not in the zip
   expect(own.outside).toEqual(['a']);
   const all = exportPlan(dir, project, { media: true });
@@ -41,6 +41,7 @@ test('export then import: the project comes back whole under its id or a new one
   expect(JSON.parse(readFileSync(join(back, 'project.json'), 'utf8')).sources.a.path).toBe('media/linked/a-a.mp4');
   expect(readFileSync(join(back, 'media/linked/a-a.mp4'), 'utf8')).toBe('footage a');
   expect(readFileSync(join(back, 'storyboard.md'), 'utf8')).toBe('storyboard.md');
+  expect(readFileSync(join(back, 'brand.md'), 'utf8')).toBe('brand.md');
   expect(() => importProject(zip, other)).toThrow('trip');
   expect(importProject(zip, other, 'trip-2')).toBe(join(other, 'trip-2'));
   expect(() => importProject(zip, join(tellcut, 'projects'), 'bad id!')).toThrow();
