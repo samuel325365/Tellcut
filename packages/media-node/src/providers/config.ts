@@ -9,7 +9,7 @@ const CapabilityZ = z.object({
   /** options by provider id (voice, model folder, pinned version …) */
   options: z.record(z.record(z.unknown())).default({}),
 });
-const OCR_DEFAULT = { use: 'windows', options: { windows: { lang: 'zh-Hant-TW' } } };
+const OCR_DEFAULT = { use: 'system', options: { system: { lang: 'zh-Hant-TW' } } };
 const FACES_DEFAULT = { use: 'mediapipe', options: { mediapipe: {} } };
 // ocr and faces came later (toolkit phase 5): a providers.json written before them still loads, with their defaults
 export const ProvidersConfigZ = z.object({ tts: CapabilityZ, transcribe: CapabilityZ, ocr: CapabilityZ.default(OCR_DEFAULT), faces: CapabilityZ.default(FACES_DEFAULT) });
