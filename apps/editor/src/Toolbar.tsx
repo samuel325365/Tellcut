@@ -24,9 +24,6 @@ export function Toolbar({ s, editor, noticeHere = false }: { s: EditorState; edi
       {s.analyzing > 0 && <span class="analyzing">{t('ed.analyzing', { n: s.analyzing })}</span>}
       {noticeHere && s.notice && <span class="toolbar-notice" data-toolbar-notice {...tip(s.notice)}>{s.notice}</span>}
       {s.playerError && <span class="player-error" {...tip(s.playerError)}>{t('ed.previewError')}</span>}
-      <button data-snap class={s.layout.snap ? 'on' : ''} {...tip(t('ed.snapTip'))}
-        onClick={() => editor.setLayout({ snap: !s.layout.snap })}>Snap: {s.layout.snap ? 'On' : 'Off'}</button>
-      <button data-track-size {...tip(t('ed.trackSizeTip'))} onClick={() => editor.setLayout({ trackSize: s.layout.trackSize === 'compact' ? 'standard' : 'compact' })}>Tracks: {s.layout.trackSize === 'compact' ? 'Compact' : 'Standard'}</button>
       {s.project && (() => {
         // the tip says what the layout is now and what a click makes it (Auto names what it would pick)
         const o = orientationOf(s.project.meta), choice = s.layout.arrange[o], now = arrangementOf(s.layout, s.project.meta), next = nextArrange(choice);

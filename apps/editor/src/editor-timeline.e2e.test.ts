@@ -88,3 +88,34 @@ test('with text selected on the page, Ctrl+C copies the text, not the clips', as
   await page.waitForTimeout(300);
   expect(await itemCount()).toBe(n0);                                   // nothing was copied, so nothing pasted
 }, 60000);
+
+test('the tray: buttons do what their keys do; a tool that cannot act is greyed and says why', async () => {
+  await open('dense');
+  const tool = (id: string) => page.locator(`[data-tool="${id}"]`);
+  await page.locator('[data-ruler]').click({ position: { x: 176 + 20, y: 5 } });          // the playhead near 0, inside c0 (clear of its head)
+  await expect.poll(async () => tool('deleteLeft').getAttribute('aria-disabled')).toBe('false');
+  expect(await tool('delete').getAttribute('aria-disabled')).toBe('true');                  // nothing selected
+  expect(await tool('delete').getAttribute('data-tip')).toContain('先選取片段');                // the reason, in the UI language
+  const n0 = await itemCount();
+  await tool('split').click();
+  await poll(itemCount).toBeGreaterThan(n0);                                                 // split cut the clips under the playhead
+  await tool('delete').click();                                                              // still greyed: nothing happens
+  await page.locator('[data-item-id="h0"]').click();
+  await poll(async () => tool('duplicate').getAttribute('aria-disabled')).toBe('false');
+  const n1 = await itemCount();
+  await tool('duplicate').click();
+  await poll(itemCount).toBe(n1 + 1);
+  expect(await page.locator('.tl-tray [data-snap]').count()).toBe(1);                      // snap and track height moved here
+  expect(await page.locator('.toolbar [data-snap]').count()).toBe(0);
+}, 60000);
+
+test('the razor on the playhead splits; it is not drawn when the playhead is scrolled out of view', async () => {
+  await open('dense');
+  await page.locator('[data-ruler]').click({ position: { x: 176 + 40, y: 5 } });
+  const n0 = await itemCount();
+  await page.locator('[data-razor]').click();
+  await poll(itemCount).toBeGreaterThan(n0);
+  await page.locator('[data-zoom]').fill('100');                                            // zoomed right in: the playhead…
+  await page.locator('[data-hscroll]').click({ position: { x: 600, y: 5 } });               // …is paged out of view
+  await poll(() => page.locator('[data-razor]').count()).toBe(0);
+}, 60000);

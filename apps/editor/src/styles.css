@@ -110,8 +110,10 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .label { position: absolute; left: 6px; right: 4px; top: 0; bottom: 0; display: flex; align-items: center; font-size: 11px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000; pointer-events: none; }
 .item [data-edge] { position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 4; }   /* above the overlap and the transition block: trimming into a dissolve works */
 .item [data-edge="start"] { left: 0; } .item [data-edge="end"] { right: 0; }
-.playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: #ff375f; pointer-events: none; z-index: 5; }
+.playhead { position: absolute; top: 30px; bottom: 0; width: 1px; background: #ff375f; pointer-events: none; z-index: 5; }
 .playhead-head { position: absolute; top: 0; left: -6px; width: 0; height: 0; border-left: 6.5px solid transparent; border-right: 6.5px solid transparent; border-top: 10px solid #ff375f; pointer-events: auto; cursor: ew-resize; }
+.playhead-razor { position: absolute; top: 26px; left: -9px; width: 19px; height: 17px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid #ff375f; background: var(--panel); color: #ff6b88; pointer-events: auto; cursor: pointer; }
+.playhead-razor:hover { background: #ff375f; color: #fff; }
 .playhead-head::before { content: ''; position: absolute; left: -8px; top: -12px; width: 16px; height: 16px; }   /* a bigger target than the triangle */
 .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--sel); pointer-events: none; z-index: 4; }
 .item .thumb { position: absolute; top: 0; bottom: 0; background-repeat: no-repeat; opacity: .85; pointer-events: none; }
@@ -149,6 +151,14 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .overlap { position: absolute; top: 0; bottom: 0; z-index: 1; cursor: pointer; background: repeating-linear-gradient(135deg, rgba(255,255,255,.35) 0 4px, transparent 4px 8px); background-size: var(--w, 100%) 100%; background-repeat: no-repeat; border-left: 1px dashed rgba(255,255,255,.6); box-sizing: border-box; }
 .item .overlap.inert { cursor: default; }
 /* the bar under the tracks: zoom slider (under the track names) + horizontal scrollbar (under the lanes) */
+/* the tool tray over the ruler (30 px: .playhead starts under it) */
+.timeline > .tl-tray { flex: none; height: 30px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; padding: 0 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.tl-tray .sep { width: 1px; height: 18px; margin: 0 4px; background: var(--line); }
+.tl-tray .grow { flex: 1; }
+.tl-tray .tool { width: 26px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.tl-tray .tool[aria-disabled="true"] { opacity: .35; cursor: default; }
+.tl-tray select { width: auto; font-size: 12px; }
+.tl-tray input[type=range] { width: 120px; accent-color: var(--accent); }
 .timeline > .hbar { flex: none; display: flex; height: 18px; background: var(--panel); border-top: 1px solid var(--line); position: relative; z-index: 6; }
 .hbar .zoom { flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 4px; padding: 0 6px; color: var(--dim); font-size: 11px; border-right: 1px solid var(--line); }
 .hbar .zoom input { flex: 1; min-width: 0; height: 12px; margin: 0; accent-color: var(--accent); }

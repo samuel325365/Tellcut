@@ -69,12 +69,12 @@ test('editor labels are English in every language; tooltips follow it', async ()
   const labels: string[] = [], tips: string[] = [];
   for (const locale of ['zh-TW', 'en-US', 'ja-JP']) {
     const page = await open(locale, '/editor/?id=lang', '[data-player="ready"]');
-    labels.push(await page.evaluate(`[...document.querySelectorAll('.toolbar button, .toolbar select, .tabs button, [role=tab]')].map((e) => e.textContent.trim()).join('|')`));
-    // no control is clipped: the zoom select ("+ Track") and the header buttons show their whole text
-    const clipped = await page.evaluate(`[...document.querySelectorAll('.hbar select, .row .head button')].filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.className + ':' + e.textContent)`);
+    labels.push(await page.evaluate(`[...document.querySelectorAll('.toolbar button, .toolbar select, .tl-tray button, .tl-tray select, .tabs button, [role=tab]')].map((e) => e.textContent.trim()).join('|')`));
+    // no control is clipped: the tray's "+ Track" select and the header buttons show their whole text
+    const clipped = await page.evaluate(`[...document.querySelectorAll('.tl-tray select, .row .head button')].filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.className + ':' + e.textContent)`);
     expect(clipped).toEqual([]);
     // a <select> never reports its clipped text through scrollWidth: compare the widest option (measured) with the box minus the arrow
-    const short = await page.evaluate(`[...document.querySelectorAll('.hbar select')].filter((s) => { const c = document.createElement('canvas').getContext('2d'); c.font = getComputedStyle(s).font; const w = Math.max(...[...s.options].map((o) => c.measureText(o.textContent).width)); return s.clientWidth < w + 20; }).map((s) => s.clientWidth + ':' + [...s.options].map((o) => o.textContent).join('/'))`);
+    const short = await page.evaluate(`[...document.querySelectorAll('.tl-tray select')].filter((s) => { const c = document.createElement('canvas').getContext('2d'); c.font = getComputedStyle(s).font; const w = Math.max(...[...s.options].map((o) => c.measureText(o.textContent).width)); return s.clientWidth < w + 20; }).map((s) => s.clientWidth + ':' + [...s.options].map((o) => o.textContent).join('/'))`);
     expect(short).toEqual([]);
     await page.hover('[data-snap]');
     await page.waitForSelector('[data-tooltip]');

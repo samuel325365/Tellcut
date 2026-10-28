@@ -48,3 +48,11 @@ export const GlyphIcon = ({ glyph, size = 12 }: { glyph: string; size?: number }
     {(GLYPHS[glyph] ?? GLYPHS.fx).map((d) => <path d={d} />)}
   </svg>
 );
+
+// the timeline tray's tools
+export const IconScissors = I(['M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M20 4L8.1 15.9', 'M14.5 14.5L20 20', 'M8.1 8.1L12 12']);
+export const IconCutLeft = I(['M14 4v16', 'M4 8h6v8H4', 'M18 8l-4 4 4 4']);
+export const IconCutRight = I(['M10 4v16', 'M20 8h-6v8h6', 'M6 8l4 4-4 4']);
+export const IconRipple = I(['M4 7h16', 'M6 7l1 13h10l1-13', 'M3 13h5', 'M16 13h5']);
+export const IconCopy = I(['M9 9h11v11H9z', 'M5 15H4V4h11v1']);
+export const IconMinus = I('M5 12h14');

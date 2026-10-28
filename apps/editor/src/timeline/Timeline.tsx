@@ -19,6 +19,7 @@ import { startItemDrag } from './gestures/item.ts';
 import { startMarquee, type Marquee } from './gestures/marquee.ts';
 import { startTrackDrag } from './gestures/track.ts';
 import { startScrollbarDrag } from './gestures/scrollbar.ts';
+import { ToolTray } from './ToolTray.tsx';
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
 const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
@@ -170,8 +171,24 @@ export function Timeline({ editor }: { editor: Editor }) {
     editor.setView({ ...zoomAround(view, pps / s.pps, anchor), pps });
   };
 
+  const addTrackMenu = (
+    <select data-add-track {...tip(t('ed.addTrackTip'))} value="" onChange={(e) => {
+      const el = e.target as HTMLSelectElement, k = el.value;
+      el.value = '';
+      if (k) editor.addTrackOf(k as any);
+    }}>
+      <option value="">+ Track</option>
+      {kinds.map(([k, label]) => <option value={k}>{label}</option>)}
+    </select>
+  );
+  const zoomControls = <>
+    <input type="range" data-zoom min={0} max={100} step={1} value={Math.round(zoomFromPps(s.pps))} {...tip(t('ed.zoomTip'))} onInput={onZoom as any} />
+    <button data-zoom-fit {...tip(t('ed.zoomFitTip'))} onClick={() => editor.zoomToFit()}>⇔</button>
+  </>;
+
   return (
     <section class="timeline" ref={box} onWheel={onWheel as any}>
+      <TrayBox editor={editor} addTrack={addTrackMenu} zoom={zoomControls} />
       <div class="ruler" data-ruler style={{ height: `${RULER_H}px` }} onMouseDown={scrubFrom as any}>
         {rulerTicks(view, width).map((k) => (
           <span class={k.major ? 'tick major' : 'tick'} style={{ left: `${HEADER_W + timeToX(k.t, view)}px` }}>{k.major ? formatTime(k.t) : ''}</span>
@@ -240,23 +257,22 @@ export function Timeline({ editor }: { editor: Editor }) {
         {ctx.hung && <button onClick={() => { editor.detach(ctx.id!); setCtx(null); }}>Detach</button>}
       </div>}
       <div class="hbar" data-hbar>
-        <div class="zoom" style={{ width: `${HEADER_W}px` }}>
-          <select data-add-track {...tip(t('ed.addTrackTip'))} value="" onChange={(e) => {
-            const el = e.target as HTMLSelectElement, k = el.value;
-            el.value = '';
-            if (k) editor.addTrackOf(k as any);
-          }}>
-            <option value="">+ Track</option>
-            {kinds.map(([k, label]) => <option value={k}>{label}</option>)}
-          </select>
-          <input type="range" data-zoom min={0} max={100} step={1} value={Math.round(zoomFromPps(s.pps))} {...tip(t('ed.zoomTip'))} onInput={onZoom as any} />
-          <button data-zoom-fit {...tip(t('ed.zoomFitTip'))} onClick={() => editor.zoomToFit()}>⇔</button>
-        </div>
+        <div class="zoom" style={{ width: `${HEADER_W}px` }} />
         <div class="hscroll" data-hscroll {...tip(t('ed.hscrollTip'))} onMouseDown={onBarDown as any}>
           <span class="hthumb" data-hthumb style={{ left: `${thumb.left}px`, width: `${thumb.width}px` }} />
         </div>
       </div>
-      <Playhead editor={editor} onGrab={scrubFrom} />
+      <Playhead editor={editor} onGrab={scrubFrom} width={width} />
     </section>
   );
 }
+
+/** The tray subscribes on its own: it needs the playhead (what is under it), but while playing it keeps the last stopped
+ *  one, so playback does not redraw it every frame. */
+function TrayBox({ editor, addTrack, zoom }: { editor: Editor; addTrack: any; zoom: any }) {
+  const s = useStoreSelector(editor.store, (x) => ({ project: x.project, selection: x.selection, layout: x.layout, playhead: x.playing ? null : x.playhead }));
+  const last = useRef(0);
+  if (s.playhead !== null) last.current = s.playhead;
+  return <ToolTray editor={editor} s={{ ...s, playhead: last.current }} skip={NO_SKIP} addTrack={addTrack} zoom={zoom} />;
+}
+const NO_SKIP: ReadonlySet<string> = new Set();
