@@ -7,6 +7,8 @@ export function formatTime(t: number, precise = false): string {
 }
 
 export const HEADER_W = 176, RULER_H = 24, ROW_GAP = 2;
+/** A media clip at least STRIP_MIN_H tall gets a name strip STRIP_H tall over its thumbnails or waveform (A1). */
+export const STRIP_MIN_H = 32, STRIP_H = 14;
 export const ROW_H: Record<TrackKind, number> = { video: 56, scene: 36, overlay: 28, music: 44, audio: 44, sfx: 24 };
 /** Compact rows (the default): Wedding's 13 overlay tracks shrink from 364 px to 260 px. */
 export const ROW_H_COMPACT: Record<TrackKind, number> = { video: 44, scene: 28, overlay: 20, music: 36, audio: 36, sfx: 20 };

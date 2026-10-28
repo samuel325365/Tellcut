@@ -7,6 +7,8 @@ import type { Glyph, Tone } from './names.ts';
 export interface ItemBlockProps { item: AnyItem; track: Track; left: number; top?: number; width: number; height: number; selected: boolean; offline: boolean; children?: any;
   /** what the clip is called on the timeline (names.ts itemName) and its glyph and tone (itemLook) */
   name: string; look: { glyph: Glyph; tone: Tone | null };
+  /** a tall media clip: the name on a strip, its `media` (thumbnails, waveform, volume line) in the body under it */
+  strip?: boolean; media?: any;
   /** extra state classes: proposed (changed by Claude's pending proposal), hanging (past the end of its clip) */
   marks?: string }
 
@@ -15,15 +17,19 @@ const NAME_MIN_W = 26;
 /** the hover text: name, then the type id and gallery handle of a shared block or sound (MRK-03), and the id */
 const titleOf = (it: any, name: string) => { const h = it.type && handleOf(it.type); return `${name}${it.type && it.type !== name ? ` · ${it.type}` : ''}${h ? ` · ${h}` : ''} (${it.id})`; };
 
-export function ItemBlock({ item, track, left, top, width, height, selected, offline, children, name, look, marks }: ItemBlockProps) {
+export function ItemBlock({ item, track, left, top, width, height, selected, offline, children, name, look, strip, media, marks }: ItemBlockProps) {
   // a narrow clip: the two grips must not cover each other
   const grip = `${Math.max(2, Math.min(6, Math.round(width / 3)))}px`;
   const title = titleOf(item, name);
   return (
-    <div class={`item k-${track.kind}${look.tone ? ` tone-${look.tone}` : ''}${selected ? ' sel' : ''}${offline ? ' offline' : ''}${marks ? ` ${marks}` : ''}`} data-item-id={item.id} data-track={track.id}
+    <div class={`item k-${track.kind}${strip ? ' striped' : ''}${look.tone ? ` tone-${look.tone}` : ''}${selected ? ' sel' : ''}${offline ? ' offline' : ''}${marks ? ` ${marks}` : ''}`} data-item-id={item.id} data-track={track.id}
       style={{ left: `${left}px`, top: `${top ?? 0}px`, width: `${Math.max(4, width)}px`, height: `${height}px` }} data-tip={title} aria-label={title}>
+      {strip ? <span class="body">{media}</span> : media}
       {children}
-      {width >= NAME_MIN_W && <span class="label">{offline ? t('ed.offline') : ''}<GlyphIcon glyph={look.glyph} />{name}</span>}
+      {(() => {
+        const label = width >= NAME_MIN_W && <span class="label">{offline ? t('ed.offline') : ''}<GlyphIcon glyph={look.glyph} />{name}</span>;
+        return strip ? <span class="strip">{label}</span> : label;
+      })()}
       {track.kind !== 'sfx' && <><i data-edge="start" style={{ width: grip }} /><i data-edge="end" style={{ width: grip }} /></>}
     </div>
   );

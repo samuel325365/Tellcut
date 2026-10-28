@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'preact/hooks';
 import { addEnvelopePoint, allItems, beatTimes, moveEnvelopePoint, overlapPairs, removeEnvelopePoint, resolveTimes, setFade, type AnyItem, type Track, magneticTrack, overruns } from '@tellcut/engine';
 import type { Editor } from '../editor.ts';
 import { useStoreSelector } from '../store.ts';
-import { HEADER_W, ROW_H, ROW_H_COMPACT, fitHeights, RULER_H, formatTime, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, fitHeights, RULER_H, formatTime, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 import { itemsInRect } from './drag.ts';
 import { ItemBlock } from './ItemBlock.tsx';
 import { Playhead } from './Playhead.tsx';
@@ -307,7 +307,8 @@ export function Timeline({ editor }: { editor: Editor }) {
             <div class="lane" style={{ left: `${HEADER_W}px` }}>
               {(r.track.items as AnyItem[]).map((it) => {
                 const tm = times.get(it.id)!;
-                const x = it as any, len = tm.end - tm.start, h = r.laneH - 4, lane = r.lanes.get(it.id) ?? 0;
+                const x = it as any, len = tm.end - tm.start, h0 = r.laneH - 4, lane = r.lanes.get(it.id) ?? 0;
+                const strip = (r.track.kind === 'video' || r.track.kind === 'audio' || r.track.kind === 'music') && h0 >= STRIP_MIN_H, h = strip ? h0 - STRIP_H : h0;
                 let media: any = null;
                 if (r.track.kind === 'video' && s.thumbs[x.source]) {
                   const info = s.thumbs[x.source];
@@ -316,12 +317,11 @@ export function Timeline({ editor }: { editor: Editor }) {
                 } else {
                   const peaks = r.track.kind === 'audio' ? s.peaks[`source:${x.source}`] : r.track.kind === 'music' ? s.peaks[`media:${x.media}`] : undefined;
                   if (peaks) media = <Wave info={peaks} from={x.in} dur={len * (x.rate ?? 1)} width={len * s.pps} height={h} />;
-                  if (r.track.kind === 'audio' || r.track.kind === 'music') media = <>{media}<EnvelopeLayer item={x} len={len} pps={s.pps} h={h} /></>;
+                  if (r.track.kind === 'audio' || r.track.kind === 'music') media = <>{media}<EnvelopeLayer item={x} len={len} pps={s.pps} h={h} active={s.selection.includes(it.id)} /></>;
                 }
-                return <ItemBlock key={it.id} item={it} track={r.track} name={itemName(it, r.track.kind, reg, lang)} look={itemLook(it, r.track.kind, reg)} left={timeToX(tm.start, view)} top={lane * r.laneH} width={len * s.pps} height={h}
+                return <ItemBlock key={it.id} item={it} track={r.track} name={itemName(it, r.track.kind, reg, lang)} look={itemLook(it, r.track.kind, reg)} strip={strip} media={media} left={timeToX(tm.start, view)} top={lane * r.laneH} width={len * s.pps} height={h0}
                   selected={s.selection.includes(it.id)} offline={'source' in it && s.offline.includes(x.source)}
                   marks={[s.proposal?.changed.includes(it.id) ? 'proposed' : '', over.has(it.id) ? 'hanging' : ''].filter(Boolean).join(' ')}>
-                  {media}
                   {r.track.kind === 'video' && x.transitionIn && x.transitionIn.type !== 'cut' && x.transitionIn.dur > 0 &&
                     <span class={`trans t-${x.transitionIn.type}`} data-transition={it.id} style={{ width: `${Math.max(10, x.transitionIn.dur * s.pps)}px` }}
                       {...tip(t('ed.transTip', { kind: t(x.transitionIn.type === 'slide' ? 'ed.transSlide' : 'ed.transDissolve'), dur: x.transitionIn.dur }))}>
@@ -361,7 +361,7 @@ export function Timeline({ editor }: { editor: Editor }) {
           <span class="hthumb" data-hthumb style={{ left: `${thumb.left}px`, width: `${thumb.width}px` }} />
         </div>
       </div>
-      <Playhead editor={editor} />
+      <Playhead editor={editor} onGrab={scrubFrom} />
     </section>
   );
 }

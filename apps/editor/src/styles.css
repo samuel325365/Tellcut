@@ -99,8 +99,11 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item { position: absolute; top: 0; border-radius: 4px; overflow: hidden; background: #3a5a8c; border: 1px solid rgba(255,255,255,.15); cursor: grab; z-index: 0; }   /* a stacking context: its layers (env, overlap, transition) stay under the track headers */
 .item.k-scene { background: #6b4fa0; } .item.k-overlay { background: #9c6b2f; }
 /* blocks by gallery category (timeline/names.ts Tone); the same in both themes, like the track colours */
-.item.tone-words { background: #9c6b2f; } .item.tone-layout { background: #84732a; } .item.tone-place { background: #9a4a36; }
+.item.tone-words { background: #9c6b2f; } .item.tone-layout { background: #5560b0; } .item.tone-place { background: #9a4a36; }
 .item.tone-look { background: #6b4fa0; } .item.tone-moment { background: #a8456a; } .item.tone-fx { background: #565c69; }
+.item .strip { position: absolute; left: 0; right: 0; top: 0; height: 14px; background: rgba(0,0,0,.28); pointer-events: none; }
+.item .strip .label { font-size: 10px; }
+.item .body { position: absolute; left: 0; right: 0; top: 14px; bottom: 0; }
 .item .label .glyph { flex: none; margin-right: 3px; opacity: .9; } .item.k-music { background: #2f7d5b; } .item.k-audio { background: #2f6f7d; } .item.k-sfx { background: #7d2f5b; }
 .item.sel { outline: 2px solid var(--sel); z-index: 1; }
 .item.offline { background: repeating-linear-gradient(45deg, #5a1f1f 0 8px, #3a1414 8px 16px); }
@@ -108,6 +111,8 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item [data-edge] { position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 4; }   /* above the overlap and the transition block: trimming into a dissolve works */
 .item [data-edge="start"] { left: 0; } .item [data-edge="end"] { right: 0; }
 .playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: #ff375f; pointer-events: none; z-index: 5; }
+.playhead-head { position: absolute; top: 0; left: -6px; width: 0; height: 0; border-left: 6.5px solid transparent; border-right: 6.5px solid transparent; border-top: 10px solid #ff375f; pointer-events: auto; cursor: ew-resize; }
+.playhead-head::before { content: ''; position: absolute; left: -8px; top: -12px; width: 16px; height: 16px; }   /* a bigger target than the triangle */
 .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--sel); pointer-events: none; z-index: 4; }
 .item .thumb { position: absolute; top: 0; bottom: 0; background-repeat: no-repeat; opacity: .85; pointer-events: none; }
 .item .wave { position: absolute; left: 0; top: 0; pointer-events: none; }

@@ -66,7 +66,8 @@ test('properties panel, crop mode, library, envelope and bus edits reach project
   await page.click('[data-add-picked]');
   await poll(() => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => i.type === 'core.flash').length).toBe(2);
 
-  // envelope: clicking the volume line adds a control point
+  // envelope: on the selected clip, clicking the volume line adds a control point (a first click only selects it)
+  await page.locator('[data-item-id="m"]').click({ position: { x: 4, y: 4 } });
   const line = await page.locator('[data-item-id="m"] [data-env-line]').boundingBox();
   await page.mouse.click(line!.x + line!.width / 2, line!.y + line!.height / 2);
   await poll(() => track('mu').items[0].envelope?.length ?? 0).toBe(1);

@@ -49,7 +49,7 @@ test('moving the playhead does not re-render the whole timeline', async () => {
 });
 
 test('double-clicking an envelope point removes it; dragging a fade handle previews then commits', async () => {
-  const { root, editor } = mount();
+  const { root, editor } = mount({ selection: ['m1'] });
   const live: any[] = [];
   editor.apply = (r: any) => { live.push(['apply', r]); return true; };
   editor.livePreview = (r: any) => live.push(['preview', r]);
@@ -131,7 +131,7 @@ test('a right click on the ruler does not move the playhead', async () => {
 });
 
 test('a click on the volume line is measured from the line itself, not the clip border', async () => {
-  const { root, editor } = mount();
+  const { root, editor } = mount({ selection: ['m1'] });
   let recipe: any = null;
   editor.apply = (r: any) => { recipe = r; return true; };
   await act(() => render(<Timeline editor={editor} />, root));
@@ -396,7 +396,7 @@ test('old default track names show in English; project.json keeps them', async (
 });
 
 test('a clip, envelope or marquee drag ends when the window loses focus or a move finds the button released (Alt+Tab mid-drag)', async () => {
-  const { root, editor, calls } = mount();
+  const { root, editor, calls } = mount({ selection: ['m1'] });
   const log: string[] = [];
   editor.beginDrag = () => log.push('begin');
   editor.dragTo = () => log.push('drag');
@@ -435,4 +435,43 @@ test('a clip, envelope or marquee drag ends when the window loses focus or a mov
   window.dispatchEvent(new MouseEvent('mouseup', { clientX: 176 + 400, clientY: 90 }));
   expect([calls.filter((c) => c[0] === 'select').length, calls.filter((c) => c[0] === 'seek')]).toEqual([sel, []]);
   expect(root.querySelector('.marquee')).toBeNull();
+});
+
+test('envelope points and fade handles show only on the selected clip; a click on an unselected clip selects it, adds no point', async () => {
+  const { root, editor, calls } = mount();
+  let applied = 0;
+  editor.apply = () => { applied++; return true; };
+  await act(() => render(<Timeline editor={editor} />, root));
+  const m1 = () => root.querySelector<HTMLElement>('[data-item-id="m1"]')!;
+  expect([m1().querySelectorAll('circle').length, m1().querySelectorAll('[data-fade]').length, m1().querySelectorAll('[data-env-line]').length]).toEqual([0, 0, 0]);
+  expect(m1().querySelector('.env-line')).not.toBeNull();                 // the line itself is still drawn
+  m1().dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 200, clientY: 170 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 200, clientY: 170 }));
+  expect([calls.find((c) => c[0] === 'select')?.[1], applied]).toEqual([['m1'], 0]);
+  const sel = mount({ selection: ['m1'] });
+  await act(() => render(<Timeline editor={sel.editor} />, sel.root));
+  const b = sel.root.querySelector<HTMLElement>('[data-item-id="m1"]')!;
+  expect([b.querySelectorAll('circle').length, b.querySelectorAll('[data-fade]').length]).toEqual([3, 2]);
+});
+
+test('a tall media clip has a name strip over its thumbnails; a short one keeps the label over them', async () => {
+  const tall = mount();
+  await act(() => render(<Timeline editor={tall.editor} />, tall.root));
+  const c1 = tall.root.querySelector<HTMLElement>('[data-item-id="c1"]')!;
+  expect(c1.querySelector('.strip .label')).not.toBeNull();
+  expect(c1.querySelector('.body')).not.toBeNull();
+  expect(tall.root.querySelector('[data-item-id="blk"] .strip')).toBeNull();      // a block is all name: no strip
+  const folded = mount({ collapsed: ['v'] });
+  await act(() => render(<Timeline editor={folded.editor} />, folded.root));
+  expect(folded.root.querySelector('[data-item-id="c1"] .strip')).toBeNull();
+});
+
+test('the playhead head drags the playhead', async () => {
+  const { root, editor, calls } = mount({ playhead: 2 });
+  await act(() => render(<Timeline editor={editor} />, root));
+  const head = root.querySelector<HTMLElement>('[data-playhead-head]')!;
+  head.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 176 + 100 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 176 + 150 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 176 + 150 }));
+  expect(calls.filter((c) => c[0] === 'seek').at(-1)![1]).toBeCloseTo(3);
 });
