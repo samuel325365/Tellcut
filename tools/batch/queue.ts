@@ -55,6 +55,16 @@ export function takeSlot(dir: string, slots: number, label: string, pid = proces
         continue;   // not put back: try the slot again from the start
       }
       if (!isStale(slot, alive)) break;
+      if (process.platform !== 'win32') {
+        // macOS / Linux: a rename there replaces an empty folder, so moving slots aside (below) can swap a contender's new
+        // slot for the one put back, and both hold it. Instead one process at a time takes over, through a gate folder:
+        // inside it the slot is judged again and removed only when stale, then everyone races for it with mkdir alone.
+        const gate = `${slot}.takeover`;
+        try { mkdirSync(gate); } catch { if (age(gate) > OWNERLESS_MS) drop(gate); nap(5 + Math.random() * 20); continue; }
+        try { if (isStale(slot, alive)) rmSync(slot, { recursive: true, force: true }); } finally { drop(gate); }
+        attempt--;   // the takeover itself is no failed try
+        continue;
+      }
       // Take it over: move it aside first. Of several processes doing this at once only one rename succeeds; removing
       // it in place would let a late remover delete the slot the first one just re-made.
       const aside = `${slot}.stale-${pid}`;
