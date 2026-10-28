@@ -1,6 +1,6 @@
 // ThreeKit's ready-made parts (promotion E1; from the brand spikes and the Tellcut film fx): a rounded slab with a picture or a
-// clip on its face (common.wall's tile), a glass bar with a canvas face (a prompt bar, a label in space), drifting dust and a
-// reflective floor (common.wall's). Each is built once in build()/ready(), posed in draw() from the time alone, and freed with
+// clip on its face (a tile of a photo wall), a glass bar with a canvas face (a prompt bar, a label in space), drifting dust and a
+// reflective floor. Each is built once in build()/ready(), posed in draw() from the time alone, and freed with
 // its own dispose(). Like kit.ts, only types come from three here: the module is passed in.
 import { clamp, mulberry32 } from '@tellcut/engine';
 import type * as T from 'three';

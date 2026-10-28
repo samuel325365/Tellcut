@@ -15,6 +15,7 @@ import type ClipperLibType from 'clipper-lib';
 import type * as Opentype from 'opentype.js';
 import { glyphsFrom, type Glyphs } from './glyphs.ts';
 import { dust, floor, glassBar, videoSlab, type Dust, type DustOptions, type Floor, type FloorOptions, type GlassBar, type GlassBarOptions, type Slab, type SlabOptions } from './parts.ts';
+import { loadMark, pictureMark, svgMark, word3d, type LoadMarkOptions, type Mark, type MarkOptions, type PictureMarkOptions, type Word, type WordOptions } from './marks.ts';
 import { coverUv } from './uv.ts';
 
 type Three = typeof import('three');
@@ -28,7 +29,7 @@ export interface ThreeAddons {
   clipper: typeof ClipperLibType;
 }
 
-/** the TTF the 3D letters are extruded from (fonts/files/, downloaded by npm run fonts; no @font-face) */
+/** the TTF the 3D letters are extruded from (fonts/files/, downloaded by npm run fonts; no @font-face): kit.loadFont(INTER_3D) */
 export const INTER_3D = 'Inter-700.ttf';
 
 export interface ThreeKit {
@@ -51,16 +52,29 @@ export interface ThreeKit {
   /** UV repeat and offset that show the part of a srcW×srcH picture a w×h box shows with this crop (as coverPlacement) */
   coverUv: typeof coverUv;
   // ready-made parts (three/parts.ts): build them once in build()/ready(), add `.group` / `.points` to the scene, free with dispose()
-  /** a rounded glass slab with a picture or a clip on its face (common.wall's tile): map = a still's texture or
+  /** a rounded glass slab with a picture or a clip on its face (a tile of a photo wall): map = a still's texture or
    *  mediaTexture(video).texture; cover(srcW, srcH) crops it; slabs of one size share `geometry` */
   videoSlab(o: SlabOptions): Slab;
   /** a glass bar (a pill by default) whose face is a canvas: paint((g, w, h) => …) draws the glass and then your content (a typed
    *  prompt, a label) */
   glassBar(o: GlassBarOptions): GlassBar;
-  /** drifting dust (common.wall's): 600 soft motes from a fixed seed; pose(t) in draw() */
+  /** drifting dust: 600 soft motes from a fixed seed; pose(t) in draw() */
   dust(o?: DustOptions): Dust;
-  /** a reflective floor at height y with a veil of the background over it (common.wall's); frame = [W, H] in pixels */
+  /** a reflective floor at height y with a veil of the background over it; frame = [W, H] in pixels */
   floor(o: FloorOptions): Floor;
+  // a brand's own mark and name (three/marks.ts), for a logo end card made from the user's file
+  /** the logo file at `url` (ctx.media.fileUrl('media/brand/logo.svg')) as a mark h tall, centred: an SVG of filled shapes
+   *  extruded in its own colours, anything else a plate (plate: true makes even an extrudable SVG one); null when unreadable.
+   *  Call it in ready(). */
+  loadMark(url: string, o?: LoadMarkOptions): Promise<Mark | null>;
+  /** an SVG's text extruded in its own colours; null when it cannot be extruded (stroke-only shapes, gradients, text, pictures) */
+  svgMark(svg: string, o?: MarkOptions): Mark | null;
+  /** a loaded picture as a plate: 12 cut-out layers when it has a see-through background, else a rounded slab with the picture on
+   *  its face and sides in its edge colour */
+  pictureMark(img: HTMLImageElement | HTMLCanvasElement, o?: PictureMarkOptions): Mark;
+  /** a word in 3D: Latin letters extruded from o.glyphs (await loadFont(INTER_3D)), other characters (Chinese, Japanese) as thick
+   *  cut slabs; each letter posed and faded on its own (letters[k].g, setOpacity) */
+  word3d(text: string, o?: WordOptions): Word;
 }
 
 /** a glow pass chain for one size: strength set before each render */
@@ -112,6 +126,10 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
     glassBar: (go) => glassBar(THREE, go),
     dust: (d) => dust(THREE, d),
     floor: (fo) => floor(THREE, addons.Reflector, fo),
+    loadMark: (url, mo) => loadMark(THREE, addons.SVGLoader, addons.RoundedBoxGeometry, url, mo),
+    svgMark: (svg, mo) => svgMark(THREE, addons.SVGLoader, svg, mo),
+    pictureMark: (img, mo) => pictureMark(THREE, addons.RoundedBoxGeometry, img, mo),
+    word3d: (text, wo) => word3d(THREE, text, wo),
     render(scene, camera, w, h, ro = {}) {
       const r = renderer();
       if (!r) return null;
