@@ -64,7 +64,8 @@ const programFiles = (l: LookupEnv) => [l.env.ProgramFiles, l.env['ProgramFiles(
 // so ffmpeg is Homebrew's ffmpeg-full (keg-only, so found in its own folder before the plain ffmpeg on PATH, which has no vid.stab)
 const FFMPEG_INSTALL = process.platform === 'darwin' ? '用 Homebrew 安裝含防手震（vid.stab）的完整版：brew install ffmpeg-full'
   : '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/ffmpeg）';
-const ffmpegFull = (n: string) => (process.platform === 'darwin' ? ['/opt/homebrew', '/usr/local'].map((d) => join(d, 'opt', 'ffmpeg-full', 'bin', n)) : []);
+const BREW = [...new Set([process.env.HOMEBREW_PREFIX, '/opt/homebrew', '/usr/local'].filter((d): d is string => !!d))];
+const ffmpegFull = (n: string) => (process.platform === 'darwin' ? BREW.map((d) => join(d, 'opt', 'ffmpeg-full', 'bin', n)) : []);
 
 export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: [join('ffmpeg', 'bin', 'ffmpeg')], known: ffmpegFull('ffmpeg'), path: 'ffmpeg', install: FFMPEG_INSTALL };
 export const FFPROBE: ExeSpec = { name: 'ffprobe', env: 'TELLCUT_FFPROBE', vendor: [join('ffmpeg', 'bin', 'ffprobe')], known: ffmpegFull('ffprobe'), path: 'ffprobe', install: FFMPEG_INSTALL };

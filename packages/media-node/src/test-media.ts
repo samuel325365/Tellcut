@@ -29,7 +29,8 @@ export async function makePhoneVideo(out: string, o: { seconds?: number; created
 /** A gray video whose sound is the system's built-in English speech saying `text` (Windows' System.Speech, macOS' say). */
 export async function makeTalkingVideo(out: string, text: string) {
   const wav = out.replace(/\.mp4$/, '.speech.wav');
-  if (process.platform === 'darwin') await promisify(execFile)('say', ['-v', 'Samantha', '-o', wav, '--data-format=LEI16@22050', text]);
+  // Samantha: the US English voice every Mac has; the system's default voice may be another language's
+  if (process.platform === 'darwin') await promisify(execFile)('say', ['-v', 'Samantha', '-o', wav, '--data-format=LEI16@22050', text]).catch(() => promisify(execFile)('say', ['-o', wav, '--data-format=LEI16@22050', text]));
   else {
     const say = `Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SetOutputToWaveFile('${wav.replace(/'/g, "''")}'); $s.Speak('${text.replace(/'/g, "''")}'); $s.Dispose()`;
     await promisify(execFile)('powershell', ['-NoProfile', '-NonInteractive', '-Command', say]);

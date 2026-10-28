@@ -64,8 +64,8 @@ test('fonts: a full fonts.css from an older install, but without the TTF the 3D 
 });
 
 test('Windows and macOS are both supported systems; anything else is told so', () => {
-  expect(checkPlatform('win32', '10.0.26100')).toMatchObject({ ok: true, detail: 'Windows（10.0.26100）' });
-  expect(checkPlatform('darwin', '25.5.0')).toMatchObject({ ok: true, detail: 'macOS（Darwin 25.5.0）' });
+  expect(checkPlatform('win32', '10.0.26100')).toEqual({ name: 'Windows', ok: true, detail: 'win32' });   // as before macOS support
+  expect(checkPlatform('darwin', '25.5.0')).toEqual({ name: 'macOS', ok: true, detail: 'Darwin 25.5.0' });
   expect(checkPlatform('linux', '6.1')).toMatchObject({ ok: false });
 });
 

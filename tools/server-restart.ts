@@ -6,7 +6,7 @@
 // 3. Starts the server (what `npm run server` runs) on its own (Windows: in a hidden console), in a clean environment: a server started from a Claude Code session would
 //    otherwise hand that session's variables to every page chat (claudeEnv). Output goes to .cache/server-<port>.log (and .err.log).
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readdirSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { claudeEnv, DEFAULT_PORT, killTree, readServerInfo, TELLCUT_ROOT } from '@tellcut/media-node';
@@ -53,8 +53,17 @@ async function busy(base: string): Promise<string[] | null> {
 
 const WIN = process.platform === 'win32';
 const netstat = () => { try { return execFileSync('netstat', ['-ano', '-p', 'TCP'], { encoding: 'utf8', windowsHide: true }); } catch { return ''; } };
-// lsof exits 1 when nothing listens
-const lsof = (port: number) => { try { return execFileSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'], { encoding: 'utf8' }); } catch { return ''; } };
+// lsof exits 1 with no output when nothing listens; one that cannot run at all must not read as a free port (the new server
+// would fail on it, and the old one, still answering, would pass for the restarted one)
+const LSOF = existsSync('/usr/sbin/lsof') ? '/usr/sbin/lsof' : 'lsof';
+const lsof = (port: number) => {
+  try { return execFileSync(LSOF, ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'], { encoding: 'utf8' }); }
+  catch (e) {
+    const x = e as NodeJS.ErrnoException & { status?: number; stdout?: string };
+    if (x.status === 1 && !x.stdout) return '';
+    throw new Error(`lsof 跑不起來，看不出埠 ${port} 上有誰：${x.message}`);
+  }
+};
 const onPort = (port: number) => (WIN ? listeners(netstat(), port) : lsofListeners(lsof(port)));
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -81,18 +90,22 @@ async function main() {
     console.log(`停掉了埠 ${port} 上的程序 ${pid}`);
   }
   for (let i = 0; i < 50 && onPort(port).length; i++) await pause(200);
-  // one that ignored SIGTERM for 10 seconds
-  if (!WIN) for (const pid of onPort(port)) killTree(pid, 'SIGKILL');
-  for (let i = 0; i < 10 && onPort(port).length; i++) await pause(200);
+  if (!WIN) {
+    // one that ignored SIGTERM for 10 seconds
+    for (const pid of onPort(port)) killTree(pid, 'SIGKILL');
+    for (let i = 0; i < 10 && onPort(port).length; i++) await pause(200);
+  }
   if (onPort(port).length) { console.error(`埠 ${port} 還被佔著，沒有重開`); process.exit(1); }
 
   const logDir = join(TELLCUT_ROOT, '.cache'), log = join(logDir, `server-${port}.log`), err = join(logDir, `server-${port}.err.log`);
   mkdirSync(logDir, { recursive: true });
   const args = ['--import', 'tsx', 'apps/server/src/main.ts', '--port', String(port)];
   if (!WIN) {
-    // what `npm run server` runs, as node itself, in a session of its own so it outlives this terminal; output to the log files
-    const child = spawn(process.execPath, args, { cwd: TELLCUT_ROOT, env: claudeEnv(), detached: true, stdio: ['ignore', openSync(log, 'a'), openSync(err, 'a')] });
-    child.unref();
+    // what `npm run server` runs, as node itself, in a session of its own so it outlives this terminal; output to the log files,
+    // started afresh each time as Start-Process does on Windows
+    const out = openSync(log, 'w'), errOut = openSync(err, 'w');
+    spawn(process.execPath, args, { cwd: TELLCUT_ROOT, env: claudeEnv(), detached: true, stdio: ['ignore', out, errOut] }).unref();
+    closeSync(out); closeSync(errOut);
   } else {
     // What `npm run server` runs, as node itself, in a console of its own that stays hidden: a detached process has no console,
     // so every ffmpeg or ffprobe it runs would flash a window of its own; with a hidden console they all share that one.

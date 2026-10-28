@@ -67,7 +67,7 @@ test.skipIf(process.platform !== 'darwin' || !CJK_FONT || !drawtext())('macOS OC
   expect(r.lines[0].box[1]).toBeGreaterThan(550);   // where it was drawn: top-left origin, as on Windows
 }, 300000);
 
-test.skipIf(!win || !existsSync(faceModel()))('MediaPipe runs over a batch (this PC; a blank frame has no face)', async () => {
+test.skipIf(!(win || process.platform === 'darwin') || !existsSync(faceModel()))('MediaPipe runs over a batch (this PC or Mac; a blank frame has no face)', async () => {
   const d = mkdtempSync(join(tmpdir(), 'vfaces-')), img = join(d, 'blank.png');
   await run(['-f', 'lavfi', '-i', 'color=gray:s=640x360:d=1', '-frames:v', '1', img]);
   expect(await mediapipeFaces().detect([img])).toEqual([[]]);

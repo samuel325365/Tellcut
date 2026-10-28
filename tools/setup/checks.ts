@@ -29,12 +29,12 @@ const where = (spec: ExeSpec) => locate(spec);
 const fromLabel = { env: '環境變數', vendor: 'tellcut/vendor', known: '安裝位置', path: 'PATH' } as const;
 
 export function checkPlatform(platform: NodeJS.Platform = process.platform, release = osRelease()): Check {
-  if (platform === 'win32') return { name: '作業系統', ok: true, detail: `Windows（${release}）` };
-  if (platform === 'darwin') return { name: '作業系統', ok: true, detail: `macOS（Darwin ${release}）` };
+  if (platform === 'win32') return { name: 'Windows', ok: true, detail: platform };
+  if (platform === 'darwin') return { name: 'macOS', ok: true, detail: `Darwin ${release}` };
   return { name: '作業系統', ok: false, detail: `這台是 ${platform}`, fix: 'Tellcut 支援 Windows 10／11 與 macOS' };
 }
 
-/** `ffmpeg -filters` lists vidstabdetect and vidstabtransform: stabilised cuts need them (Homebrew's own ffmpeg has neither) */
+/** `ffmpeg -filters` lists vidstabdetect and vidstabtransform: stabilised cuts need them (Homebrew's plain ffmpeg has neither) */
 export const hasVidstab = (filters: string) => /\bvidstabdetect\b/.test(filters) && /\bvidstabtransform\b/.test(filters);
 
 export function checkNode(): Check {
@@ -60,11 +60,13 @@ export async function checkFfmpeg(): Promise<Check[]> {
   const ff = await exeVersion(FFMPEG, ['-hide_banner', '-version']);
   if (ff.ok) {
     const major = ffmpegMajor(ff.detail);
-    if (major !== null && major < 8) Object.assign(ff, { ok: false, fix: `要 ffmpeg 8 以上（這個是 ${major}）：${FFMPEG.install}` });
+    if (major !== null && major < 8) Object.assign(ff, { ok: false, fix: `要 ffmpeg 8 以上（這個是 ${major}）：${process.platform === 'darwin' ? FFMPEG.install : 'npm run setup 會下載到 tellcut/vendor'}` });
   }
-  if (ff.ok) {
-    const filters = await run(locate(FFMPEG)!.path, ['-hide_banner', '-filters'], { windowsHide: true, timeout: 60000 }).then((r) => r.stdout, () => '');
-    if (!hasVidstab(filters)) Object.assign(ff, { ok: false, detail: `${ff.detail}：沒有防手震（vid.stab）`, fix: FFMPEG.install });
+  // macOS only: Windows' vendored build has vid.stab, and a Mac's plain Homebrew ffmpeg does not
+  if (ff.ok && process.platform === 'darwin') {
+    const filters = await run(locate(FFMPEG)!.path, ['-hide_banner', '-filters'], { timeout: 60000 }).then((r) => r.stdout, () => null);
+    if (filters === null) ff.detail += '（看不出有沒有防手震 vid.stab：ffmpeg -filters 跑不起來）';
+    else if (!hasVidstab(filters)) Object.assign(ff, { ok: false, detail: `${ff.detail}：沒有防手震（vid.stab）`, fix: FFMPEG.install });
   }
   return [ff, await exeVersion(FFPROBE, ['-hide_banner', '-version'])];
 }

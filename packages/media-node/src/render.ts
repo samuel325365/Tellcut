@@ -100,6 +100,11 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
     await guard(page.evaluate((a) => (window as any)[a].ready, api), { signal: o.signal, ms: o.readyTimeout ?? 300000, what: 'Player loading' });
     const { fps, duration, loudness } = await page.evaluate((a) => ({ fps: (window as any)[a].fps, duration: (window as any)[a].duration, loudness: (window as any)[a].loudness }), api);
     const cdp = await page.context().newCDPSession(page);
+    if (MAC) {
+      // the padding must cover what the hidden window leaves unpainted: a clipped capture past it would be cut off silently
+      const full = Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'png' })).data, 'base64');
+      if (full.readUInt32BE(20) < size.h) throw new Error(`Chrome paints only ${full.readUInt32BE(20)} of the ${size.h} px stage (MAC_PAD ${MAC_PAD} is too small)`);
+    }
     const shot = async (format: 'png' | 'jpeg') =>
       Buffer.from((await cdp.send('Page.captureScreenshot', { format, quality: format === 'jpeg' ? 95 : undefined, optimizeForSpeed: true,
         ...(MAC ? { clip: { x: 0, y: 0, width: size.w, height: size.h, scale: 1 } } : {}) } as any)).data, 'base64');

@@ -2,7 +2,7 @@
 
 For developers and anyone who wants the command line: every command, the project folder format and the code architecture. The general introduction is the [README](../README.md) (Chinese version [README.zh-TW.md](../README.zh-TW.md)).
 
-Tellcut is a video editor you use in a local browser (Node 24 + TypeScript, Windows only).
+Tellcut is a video editor you use in a local browser (Node 24 + TypeScript, Windows and macOS).
 Beside it is an agent (currently Claude Code): with a "generation toolkit" (first-cut scripts, blocks, recipes, voice-over, score, checks) it makes a video from your footage, and you then fine-tune it on the timeline and export.
 The whole program lives in this `tellcut/` folder and can be taken away on its own.
 

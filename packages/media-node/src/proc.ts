@@ -20,9 +20,10 @@ export function descendants(ps: string, pid: number): number[] {
   return [...out, pid];
 }
 
-/** Ends `pid` and its children. The caller makes sure it still runs: an exited pid may be another process's by now. */
-export function killTree(pid: number, signal: NodeJS.Signals = 'SIGKILL', run: typeof spawn = spawn) {
-  if (process.platform === 'win32') { run('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true }).on('error', () => {}); return; }
+/** Ends `pid` and its children. The caller makes sure it still runs: an exited pid may be another process's by now.
+ *  `fallback`: what to do on Windows when taskkill itself cannot start. */
+export function killTree(pid: number, signal: NodeJS.Signals = 'SIGKILL', run: typeof spawn = spawn, fallback: () => void = () => {}) {
+  if (process.platform === 'win32') { run('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true }).on('error', fallback); return; }
   let ps = '';
   try { ps = execFileSync('ps', ['-A', '-o', 'pid=', '-o', 'ppid='], { encoding: 'utf8' }); } catch { /* no ps: the process alone */ }
   for (const p of descendants(ps, pid)) { try { process.kill(p, signal); } catch { /* gone already */ } }

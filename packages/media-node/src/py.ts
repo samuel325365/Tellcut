@@ -19,7 +19,7 @@ export function runUv(args: string[], o: { input?: string; signal?: AbortSignal 
     const stop = () => {
       aborted = true;
       if (p.exitCode !== null || p.signalCode !== null) return;   // gone: its pid may be another process's by now
-      if (p.pid) killTree(p.pid);
+      if (p.pid) killTree(p.pid, 'SIGKILL', spawn, () => p.kill());
       else p.kill('SIGKILL');
     };
     o.signal?.addEventListener('abort', stop, { once: true });

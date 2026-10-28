@@ -2,7 +2,7 @@
 // tools (swiftc). tools/mac/ocr.swift is built once into .cache/bin (named by its hash, so an edit builds it again); one run per
 // batch, never one per image. Its output is the same JSON line per image as Windows' tools/ps/ocr.ps1.
 import { execFile, spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,7 +26,7 @@ async function binary(): Promise<string> {
   const bin = join(BIN_DIR, `ocr-vision-${hash}`);
   if (existsSync(bin)) return bin;
   mkdirSync(BIN_DIR, { recursive: true });
-  const tmp = `${bin}.${process.pid}.partial`;
+  const tmp = `${bin}.${process.pid}-${randomUUID()}.partial`;
   try { await promisify(execFile)('xcrun', ['swiftc', '-O', SCRIPT, '-o', tmp], { timeout: 300000 }); }
   catch (e) { rmSync(tmp, { force: true }); throw new Error(`編譯 ocr.swift 失敗（要有 Xcode 命令列工具：xcode-select --install）：${(e as Error).message.slice(0, 200)}`); }
   renameSync(tmp, bin);   // two builds at once: the last rename wins, both are the same program
