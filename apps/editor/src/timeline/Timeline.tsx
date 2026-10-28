@@ -1,35 +1,27 @@
 import { useMemo, useRef, useState, useEffect } from 'preact/hooks';
-import { addEnvelopePoint, allItems, beatTimes, moveEnvelopePoint, overlapPairs, removeEnvelopePoint, resolveTimes, setFade, type AnyItem, type Track, magneticTrack, overruns } from '@tellcut/engine';
+import { allItems, beatTimes, overlapPairs, removeEnvelopePoint, resolveTimes, type AnyItem, type Track, magneticTrack, overruns } from '@tellcut/engine';
 import type { Editor } from '../editor.ts';
 import { useStoreSelector } from '../store.ts';
 import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, fitHeights, RULER_H, formatTime, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
-import { itemsInRect } from './drag.ts';
 import { ItemBlock } from './ItemBlock.tsx';
 import { Playhead } from './Playhead.tsx';
 import { thumbTiles } from './thumbs.ts';
 import { Wave } from './Wave.tsx';
 import { EnvelopeLayer } from './EnvelopeLayer.tsx';
-import { yToDb } from './envelope.ts';
 import { t } from '../i18n/index.ts';
 import { trackLabel } from '../trackNames.ts';
 import { getLang } from '../i18n/lang.ts';
 import { itemLook, itemName } from './names.ts';
+import type { GestureCtx } from './gestures/follow.ts';
+import { startTransitionDrag, watchOverlapClick } from './gestures/transition.ts';
+import { startEnvelopeDrag } from './gestures/envelope.ts';
+import { startItemDrag } from './gestures/item.ts';
+import { startMarquee, type Marquee } from './gestures/marquee.ts';
+import { startTrackDrag } from './gestures/track.ts';
+import { startScrollbarDrag } from './gestures/scrollbar.ts';
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
 const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
-/** Window listeners for one drag. It ends on mouseup, and also when a move comes with no button down or the window loses
- *  focus (released outside it: Alt+Tab, another app) — the drag stopped following there, and no event means `up()`
- *  without one (a release that was never seen is not a click). */
-function follow(move: ((m: MouseEvent) => void) | null, up: (m?: MouseEvent) => void) {
-  const mv = (m: MouseEvent) => { if (m.buttons === 0) { end(); return; } move?.(m); };
-  const end = (m?: MouseEvent) => {
-    removeEventListener('mousemove', mv); removeEventListener('mouseup', release); removeEventListener('blur', lost);
-    up(m);
-  };
-  const release = (m: MouseEvent) => end(m), lost = () => end();
-  addEventListener('mousemove', mv); addEventListener('mouseup', release); addEventListener('blur', lost);
-}
-
 export function Timeline({ editor }: { editor: Editor }) {
   // everything but the playhead: playback must not re-render every row 60×/s
   const s = useStoreSelector(editor.store, (x) => ({ project: x.project, pps: x.pps, scroll: x.scroll, selection: x.selection, guide: x.guide,
@@ -130,105 +122,21 @@ export function Timeline({ editor }: { editor: Editor }) {
     addEventListener('mousemove', move); addEventListener('mouseup', up);
   };
 
-  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const [marquee, setMarquee] = useState<Marquee | null>(null);
   const rowsEl = useRef<HTMLDivElement>(null);
-  const mods = (e: MouseEvent) => ({ alt: e.altKey, ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
+  const gesture = (): GestureCtx => ({ editor, p, times, rows: () => rowsRef.current, view, rowsEl: rowsEl.current!, selection: s.selection, tAt });
   const onRowsDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
-    const rect = rowsEl.current!.getBoundingClientRect(), y = (cy: number) => cy - rect.top, x = (cx: number) => cx - rect.left - HEADER_W;
-    const target = e.target as HTMLElement, el = target.closest<HTMLElement>('[data-item-id]');
-    // transition block: its right edge sets the length (live, one undo step on release); a click selects the clip
-    const trEl = target.closest<HTMLElement>('[data-transition]');
-    if (trEl && el) {
-      e.preventDefault(); e.stopPropagation();
-      const id = trEl.dataset.transition!;
-      if (!target.hasAttribute('data-transition-edge')) { editor.select([id]); return; }
-      // relative to where the drag began: a short transition's block is drawn wider than it is
-      const dur0 = (allItems(p).find((x) => x.item.id === id)?.item as any)?.transitionIn?.dur ?? 0;
-      follow((m) => editor.previewTransitionDur(id, dur0 + (m.clientX - e.clientX) / s.pps), () => editor.commitLive());
-      return;
-    }
-    // an overlap: a click (no drag) adds a dissolve or toggles a crossfade; a drag still moves the clip under it
-    const ovEl = target.closest<HTMLElement>('[data-overlap]');
-    if (ovEl) follow(null, (m) => {
-      if (m && Math.abs(m.clientX - e.clientX) < 3 && Math.abs(m.clientY - e.clientY) < 3) editor.overlapClick(ovEl.dataset.overlap!);
-    });
-    // volume line, control points and fade handles come before the clip drag (spec §4.4)
-    const envEl = target.closest('[data-env-index], [data-env-line], [data-fade]');
-    if (envEl && el) {
-      e.preventDefault(); e.stopPropagation();
-      const id = el.dataset.itemId!, it: any = allItems(p).find((x) => x.item.id === id)!.item;
-      const box = (el.querySelector('svg.env') ?? el).getBoundingClientRect(), h = box.height || 1;   // the line's own box: the clip border is 1 px
-      const at = (m: MouseEvent) => ({ t: (m.clientX - box.left) / s.pps, db: yToDb(m.clientY - box.top, h) });
-      const index = envEl.getAttribute('data-env-index'), fade = envEl.getAttribute('data-fade') as 'in' | 'out' | null;
-      let moved = false;
-      const move = (m: MouseEvent) => {
-        moved = true;
-        const pt = at(m);
-        if (index !== null) editor.livePreview((d: any) => moveEnvelopePoint(d, { id, index: Number(index), t: pt.t, db: pt.db }));
-        else if (fade) editor.livePreview((d: any) => setFade(d, { id, edge: fade, dur: fade === 'in' ? pt.t : it.end - it.start - pt.t }));
-      };
-      follow(move, (m) => {
-        if (moved && (index !== null || fade)) editor.commitLive();
-        else if (m && !moved && envEl.hasAttribute('data-env-line')) { const pt = at(m); editor.apply((d: any) => addEnvelopePoint(d, { id, t: pt.t, db: pt.db })); }
-      });
-      return;
-    }
-    if (el) {
-      e.preventDefault();
-      const id = el.dataset.itemId!, grip = (target.dataset.edge as 'start' | 'end' | undefined) ?? 'body';
-      const sel = e.shiftKey ? (s.selection.includes(id) ? s.selection.filter((i) => i !== id) : [...s.selection, id]) : s.selection.includes(id) ? s.selection : [id];
-      editor.select(sel);
-      let started = false;
-      const move = (m: MouseEvent) => {
-        if (!started && Math.abs(m.clientX - e.clientX) < 3 && Math.abs(m.clientY - e.clientY) < 3) return;
-        if (!started) { started = true; editor.beginDrag({ grip, id, mods: mods(e), selection: sel }); }
-        const row = rowAt(rowsRef.current, y(m.clientY));
-        // changing track only for a single item (moveItems refuses more)
-        editor.dragTo(m.clientX - e.clientX, mods(m), row && row.track.id !== el.dataset.track && sel.length <= 1 ? row.track.id : undefined);
-      };
-      follow(move, () => { if (started) editor.endDrag(); });
-      return;
-    }
-    if (x(e.clientX) < 0) return;
-    // a click on an empty spot moves the playhead there; only a drag of 3 px or more draws a marquee
-    const start = { x0: x(e.clientX), y0: y(e.clientY) };
-    let dragged = false;
-    const move = (m: MouseEvent) => {
-      if (!dragged && Math.abs(m.clientX - e.clientX) < 3 && Math.abs(m.clientY - e.clientY) < 3) return;
-      dragged = true;
-      const r = { ...start, x1: x(m.clientX), y1: y(m.clientY) };
-      setMarquee(r);
-      editor.select(itemsInRect(p, times, rows, view, r));
-    };
-    if (!e.shiftKey) editor.select([]);
-    follow(move, (m) => {
-      setMarquee(null);
-      if (m && !dragged) editor.seek(tAt(m.clientX));
-    });
+    const g = gesture();
+    if (startTransitionDrag(e, g)) return;
+    watchOverlapClick(e, g);
+    if (startEnvelopeDrag(e, g) || startItemDrag(e, g)) return;
+    startMarquee(e, g, setMarquee);
   };
 
   // double-click: a volume point is removed; any other spot of an item auditions it
-  // track order (spec 2026-10-14 §5.3): the grip drags a track onto another of its group (pictures / sound)
-  const groupOf = (k: string) => (k === 'scene' || k === 'video' || k === 'overlay' ? 'picture' : 'sound');
   const [drop, setDrop] = useState<number | null>(null);   // y of the insertion line while a track is dragged
-  const trackDrag = (e: MouseEvent, track: Track) => {
-    if (e.button !== 0) return;
-    e.preventDefault(); e.stopPropagation();
-    const top = rowsEl.current!.getBoundingClientRect().top;
-    const target = (m: MouseEvent) => { const r = rowAt(rowsRef.current, m.clientY - top); return r && groupOf(r.track.kind) === groupOf(track.kind) ? r : null; };
-    const move = (m: MouseEvent) => {
-      const r = target(m), src = rowsRef.current.find((x) => x.track.id === track.id)!;
-      setDrop(r ? (r.y > src.y ? r.y + r.h : r.y) : null);
-    };
-    const up = (m: MouseEvent) => {
-      removeEventListener('mousemove', move); removeEventListener('mouseup', up); setDrop(null);
-      const r = target(m);
-      if (!r || r.track.id === track.id) return;
-      editor.moveTrack(track.id, p.tracks.filter((t) => groupOf(t.kind) === groupOf(track.kind)).findIndex((t) => t.id === r.track.id));
-    };
-    addEventListener('mousemove', move); addEventListener('mouseup', up);
-  };
+  const trackDrag = (e: MouseEvent, track: Track) => startTrackDrag(e, gesture(), track, setDrop);
   const deleteTrack = (tr: Track) => {
     const own = (tr.items as AnyItem[]).map((i) => i.id), doomed = new Set(own), all = allItems(p);
     // items on other tracks parented (directly or not) to this track's items go with them
@@ -254,20 +162,7 @@ export function Timeline({ editor }: { editor: Editor }) {
 
   // the bar under the tracks: a scrollbar over the whole project (drag the thumb, click beside it for a page) and the zoom
   const thumb = scrollThumb(view, p.meta.duration, width), span = p.meta.duration + 1;
-  const onBarDown = (e: MouseEvent) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const onThumb = (e.target as HTMLElement).hasAttribute('data-hthumb'), page = width / s.pps;
-    if (!onThumb) {
-      const x = e.clientX - (e.currentTarget as HTMLElement).getBoundingClientRect().left;
-      editor.setView({ scroll: s.scroll + (x < thumb.left ? -page : page) });
-      return;
-    }
-    const from = s.scroll;
-    const move = (m: MouseEvent) => editor.setView({ scroll: from + ((m.clientX - e.clientX) * span) / width });
-    const up = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', up); };
-    addEventListener('mousemove', move); addEventListener('mouseup', up);
-  };
+  const onBarDown = (e: MouseEvent) => startScrollbarDrag(e, editor, { thumb, width, span, scroll: s.scroll, pps: s.pps });
   // the slider zooms around the playhead when it is in view, else around the middle
   const onZoom = (e: Event) => {
     const pps = ppsFromZoom(Number((e.target as HTMLInputElement).value)), ph = timeToX(editor.store.get().playhead, view);
