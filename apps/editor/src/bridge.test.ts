@@ -106,3 +106,11 @@ test('a seek or play goes out after the waiting patch: the player plays the proj
   b.patch({ v: 1 }); b.seek(2); b.play(2);
   expect(sent.slice(-3).map((m) => m.type)).toEqual(['patch', 'seek', 'play']);
 });
+
+test('a boot is reported (the preview restarted: the editor must not take the old player as ready)', () => {
+  const { b } = setup();
+  let boots = 0;
+  b.onBoot = () => { boots++; };
+  b.handle({ type: 'boot' }); b.handle({ type: 'ready', duration: 1 }); b.handle({ type: 'boot' });
+  expect(boots).toBe(2);
+});

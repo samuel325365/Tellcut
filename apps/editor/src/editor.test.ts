@@ -1679,3 +1679,20 @@ test('M with nothing that can be muted says so', async () => {
   expect(ed.toggleItemMute()).toBe(false);
   expect(ed.store.get().notice).toBe(t('ed.nothingToMute'));
 });
+
+test('a restarted preview (the Layout button moves it) is not ready until it says so, and goes on playing if Play was pressed meanwhile', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  bridge.onReady(1);
+  bridge.onBoot();                                              // the iframe reloaded
+  expect(ed.store.get().playerReady).toBe(false);
+  ed.seek(0.5);
+  ed.play();                                                    // the new player is not ready: the bridge drops this
+  bridge.calls.length = 0;
+  bridge.onReady(1);
+  expect(ed.store.get().playerReady).toBe(true);
+  const plays = bridge.calls.filter((c: any[]) => c[0] === 'play');
+  expect(plays.length).toBe(1);
+  expect(plays[0][1]).toBeCloseTo(0.5, 1);                     // from the playhead (the editor's clock may have moved it on a hair)
+});

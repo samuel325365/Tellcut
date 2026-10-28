@@ -9,6 +9,8 @@ export type ParamEditMsg = Omit<Extract<PlayerMsg, { type: 'paramEdit' }>, 'type
 
 export class PlayerBridge {
   onReady: (duration: number) => void = () => {};
+  /** the player (re)started: a reloaded iframe is not ready until it says so again */
+  onBoot: () => void = () => {};
   onTime: (t: number) => void = () => {};
   onEnded: () => void = () => {};
   onError: (message: string) => void = () => {};
@@ -34,7 +36,7 @@ export class PlayerBridge {
   attach(win: { postMessage(m: unknown, origin: string): void }) { this.target = win; }
 
   handle(m: PlayerMsg) {
-    if (m.type === 'boot') { this.booted = true; this.ready = false; if (this.latest) { this.pending = null; this.post({ type: 'load', project: this.latest }); } }
+    if (m.type === 'boot') { this.booted = true; this.ready = false; this.onBoot(); if (this.latest) { this.pending = null; this.post({ type: 'load', project: this.latest }); } }
     else if (m.type === 'ready') { this.ready = true; this.onReady(m.duration); this.flush(); }
     else if (m.type === 'time') this.onTime(m.t);
     else if (m.type === 'ended') this.onEnded();

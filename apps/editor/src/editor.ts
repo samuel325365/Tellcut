@@ -28,7 +28,7 @@ type Recipe = (d: Project) => void;
 export type ProposalView = Pick<Proposal, 'id' | 'label' | 'ops' | 'summary' | 'warnings'> & { status?: string };
 /** Actions that only change the view: an audition goes on through them. */
 const AUDITION_PASS = new Set<Action>(['maxPreview', 'zoomFit', 'help']);
-type BridgeLike = Pick<PlayerBridge, 'load' | 'patch' | 'seek' | 'play' | 'pause' | 'cropMode' | 'quality' | 'select'> & Partial<Pick<PlayerBridge, 'onReady' | 'onTime' | 'onEnded' | 'onError' | 'onKey' | 'onCropChange' | 'onLevel' | 'onPick' | 'onTransformChange' | 'onParamEdit'>>;
+type BridgeLike = Pick<PlayerBridge, 'load' | 'patch' | 'seek' | 'play' | 'pause' | 'cropMode' | 'quality' | 'select'> & Partial<Pick<PlayerBridge, 'onBoot' | 'onReady' | 'onTime' | 'onEnded' | 'onError' | 'onKey' | 'onCropChange' | 'onLevel' | 'onPick' | 'onTransformChange' | 'onParamEdit'>>;
 
 export class Editor {
   store: Store<EditorState>;
@@ -51,7 +51,13 @@ export class Editor {
       if (saved) this.store.set({ layout: sanitizeLayout(saved) });
     } catch { /* storage blocked or garbled */ }
     const b = deps.bridge;
-    b.onReady = () => { this.set({ playerReady: true }); b.seek(this.s.playhead); b.quality(this.s.quality); if (this.s.crop) b.cropMode(this.s.crop); b.select(this.s.selection.length === 1 ? this.s.selection[0] : null); };
+    // a preview that restarts (the Layout button moves its iframe, which reloads it) is not ready until it says so; Play pressed
+    // meanwhile never reached it, so a ready player goes on playing if the editor is playing
+    b.onBoot = () => this.set({ playerReady: false });
+    b.onReady = () => {
+      this.set({ playerReady: true }); b.seek(this.s.playhead); b.quality(this.s.quality); if (this.s.crop) b.cropMode(this.s.crop); b.select(this.s.selection.length === 1 ? this.s.selection[0] : null);
+      if (this.s.playing) b.play(this.s.playhead);
+    };
     b.onPick = (id) => { if (!id || !this.isLocked(id)) this.select(id ? [id] : []); };
     // dragging on the preview: live while moving, one undo step on release (like crop mode)
     b.onTransformChange = (m) => {

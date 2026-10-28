@@ -132,3 +132,22 @@ test('switching layouts keeps the panels: Properties in side → Media in stacke
   await page.locator('[data-layout]').click();                 // Side → Auto
   await poll(layoutLabel).toBe('Layout: Auto');
 }, 90000);
+
+test('after switching the layout the preview still plays (the moved iframe gets a new window; the bridge follows it)', async () => {
+  await open('wide');
+  await page.bringToFront();
+  await page.locator('[data-layout]').click();                 // Auto → Stacked: same layout
+  await page.locator('[data-layout]').click();                 // Stacked → Side: the preview moves, its iframe reloads
+  await poll(arranged).toBe('side');
+  const clock = () => page.locator('.clock').innerText();
+  const before = await clock();
+  await page.locator('[data-transport="play"]').click();                 // right away, while the new player may still be starting
+  await poll(clock, 10000).not.toBe(before);
+  await page.locator('[data-transport="play"]').click();       // pause
+  await page.locator('[data-layout]').click();                 // Side → Auto (stacked): moves back, plays again
+  await poll(layoutLabel).toBe('Layout: Auto');
+  const again = await clock();
+  await page.locator('[data-transport="play"]').click();
+  await poll(clock, 10000).not.toBe(again);
+  await page.locator('[data-transport="play"]').click();
+}, 90000);

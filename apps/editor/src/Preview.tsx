@@ -11,9 +11,16 @@ const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
 export function Preview({ editor, bridge, s }: { editor: Editor; bridge: PlayerBridge; s: EditorState }) {
   const frame = useRef<HTMLIFrameElement>(null);
   useEffect(() => {
-    const win = frame.current!.contentWindow!;
-    bridge.attach(win);
-    const on = (e: MessageEvent) => { if (e.origin === location.origin && e.source === win) bridge.handle(e.data); };
+    bridge.attach(frame.current!.contentWindow!);
+    // the iframe's window is not fixed: an iframe moved in the page (the Layout button puts the preview elsewhere) reloads
+    // with a new one, while this component stays. So messages are checked against the window it has now, and the bridge
+    // follows it — the reloaded player's 'boot' then gets the project and later messages reach it.
+    const on = (e: MessageEvent) => {
+      const win = frame.current?.contentWindow;
+      if (e.origin !== location.origin || !win || e.source !== win) return;
+      bridge.attach(win);
+      bridge.handle(e.data);
+    };
     addEventListener('message', on);
     return () => removeEventListener('message', on);
   }, [bridge]);
