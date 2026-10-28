@@ -140,6 +140,22 @@ test('brand films are written for their company, with footage minimums, one look
   expect(wf).toMatch(/a preset may allow more/i);
 });
 
+test('brand films start from the brand: the brand card, the site, the form, no default look (2026-10-28 rethink)', () => {
+  const b = presets().find((p) => p.id === 'brand')!;
+  expect(b.fields.map((f) => f.id)).toEqual(['library', 'tone', 'type']);
+  expect(b.fields[1].options.map((o) => o.id)).toEqual(['tech', 'warm', 'premium', 'playful']);
+  expect(b.fields[2].options.map((o) => o.id)).toEqual(['sans', 'serif', 'round']);
+  for (const s of ['brand.md', 'tellcut -- site', 'tellcut -- font3d', 'storyboard.md', '--kind image']) expect(b.prompt, s).toContain(s);
+  expect(b.prompt).toMatch(/user's message .* form .* website .* logo/i);           // the order of the sources
+  expect(b.prompt).toMatch(/company name in the film's language/i);
+  expect(b.prompt).toMatch(/common\.tone[^.]*colou?r[^.]*brand/i);
+  expect(b.prompt).not.toMatch(/warm light|warm dusk|warm sunsets?|Inter for Latin|Noto Sans TC for Chinese|pile, the wall|the ball of the 3D|default when no style/i);
+  expect(b.prompt).not.toMatch(/c\.recipe|common\.(logo|wall|dolly|globe)/);
+  for (const s of b.styles) expect(s.prompt, s.id).not.toMatch(/default when no style|warmer grade|recipe/i);
+  expect(b.facts.en!.join(' ')).not.toMatch(/3D/);
+  expect(b.summary.en).not.toMatch(/3D/);
+});
+
 test("celebration's name title and vlog's time stamps and notes have their blocks now (2026-10-27, group C): not custom, and they name them", () => {
   const style = (p: string, s: string) => presets().find((x) => x.id === p)!.styles.find((x) => x.id === s)!;
   for (const [p, s, blocks] of [['celebration', 'slow-title', ["common.headline look: 'name'", "common.outro look: 'credits'"]], ['vlog', 'day-clock', ["common.tag look: 'day'"]],
