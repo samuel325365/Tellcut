@@ -1,6 +1,6 @@
 import { resolveTimes } from '../time.ts';
 import { CommandError, uniqueId } from './core.ts';
-import { addCropKey, addItem, addTrack, removeCropKey, setCrop, setTrack, setTransform, updateItem } from './edit.ts';
+import { addCropKey, addItem, addSources, addTrack, removeCropKey, setCrop, setTrack, setTransform, updateItem } from './edit.ts';
 import { rateStretch, trimEnd } from './trim.ts';
 import { split } from './split.ts';
 import { fixture, item, run } from './test-fixture.ts';
@@ -13,6 +13,18 @@ test('updateItem applies valid fields and refuses invalid ones with the reason',
   expect(() => run(fixture(), updateItem, { id: 'c2', patch: { in: 30 } })).toThrow(/in: .*past the end of source/);
   expect(() => run(fixture(), updateItem, { id: 'c2', patch: { id: 'x' } })).toThrow(CommandError);
   expect(item(run(fixture(), updateItem, { id: 'c2', patch: { transitionIn: undefined } }), 'c2').transitionIn).toBeUndefined();
+});
+
+test('addSources adds footage and music, skips paths already there, refuses a taken id', () => {
+  const clip = { path: 'n.mp4', duration: 5, width: 1920, height: 1080, kind: 'video' as const, audio: true };
+  const d = structuredClone(fixture());
+  expect(addSources(d, { sources: { n: clip }, media: { song: { path: 'song.wav' } } })).toEqual(['n', 'song']);
+  expect([d.sources.n.path, d.media.song.path]).toEqual(['n.mp4', 'song.wav']);
+  // the fixture's source s is s.mp4: the same file in another case is already there
+  const again = structuredClone(fixture());
+  expect(addSources(again, { sources: { n2: { ...clip, path: 'S.MP4' } } })).toEqual([]);
+  expect(again).toEqual(fixture());
+  expect(() => run(fixture(), addSources, { sources: { s: { ...clip, path: 'other.mp4' } } })).toThrow(CommandError);
 });
 
 test('changing a block length through updateItem scales its children', () => {

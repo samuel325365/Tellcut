@@ -77,6 +77,24 @@ export function addTrack(p: Project, a: { kind: TrackKind; name?: string }): str
   return id;
 }
 
+/** Footage, photos and music brought in from this PC (the media panel's Import): a file the project already has (by path,
+ *  in any case) is left out; a taken id is refused. Returns the ids added. */
+export function addSources(p: Project, a: { sources?: Project['sources']; media?: Project['media'] }): string[] {
+  const key = (path: string) => path.replace(/\\/g, '/').toLowerCase();
+  const have = new Set([...Object.values(p.sources), ...Object.values(p.media)].map((x) => key(x.path)));
+  const added: string[] = [];
+  for (const [map, into] of [[a.sources ?? {}, p.sources], [a.media ?? {}, p.media]] as const) {
+    for (const [id, entry] of Object.entries(map)) {
+      if (id in p.sources || id in p.media) throw new CommandError(`Source "${id}" already exists`, 'sourceExists', { id });
+      if (have.has(key(entry.path))) continue;
+      have.add(key(entry.path));
+      (into as Record<string, unknown>)[id] = plain(entry);
+      added.push(id);
+    }
+  }
+  return added;
+}
+
 /** Track bus: mute on any track (visual = hidden), gain (-60..+12 dB) and solo on audio tracks. */
 export function setTrack(p: Project, a: { id: string; patch: { gain?: number; muted?: boolean; solo?: boolean; name?: string } }) {
   const t = p.tracks.find((x) => x.id === a.id) as any;
