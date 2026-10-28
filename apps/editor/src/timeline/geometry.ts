@@ -46,6 +46,35 @@ export function layoutRows(p: Project, times: Times = resolveTimes(p), heights: 
     return r;
   });
 }
+/** The tallest a lane of each kind grows to when rows fill the timeline (about twice the standard height). */
+export const ROW_H_MAX: Record<TrackKind, number> = { video: 96, scene: 72, overlay: 56, music: 88, audio: 88, sfx: 48 };
+/** Lane heights that fill `avail` px (spec 2026-10-28-timeline-refresh A1): every kind grows by one factor from `base`, a kind
+ *  stops at ROW_H_MAX and the others share what is left; collapsed rows keep COLLAPSED_H. No room to spare: `base` as is. */
+export function fitHeights(p: Project, times: Times, base: Record<TrackKind, number>, collapsed: ReadonlySet<string>, avail: number): Record<TrackKind, number> {
+  const rows = layoutRows(p, times, base, collapsed), units: Partial<Record<TrackKind, number>> = {};
+  let fixed = Math.max(0, rows.length - 1) * ROW_GAP;
+  for (const r of rows) {
+    if (collapsed.has(r.track.id)) { fixed += COLLAPSED_H; continue; }
+    units[r.track.kind] = (units[r.track.kind] ?? 0) + r.h / r.laneH;
+  }
+  const kinds = Object.keys(units) as TrackKind[];
+  const natural = fixed + kinds.reduce((a, k) => a + base[k] * units[k]!, 0);
+  if (!kinds.length || avail <= natural) return base;
+  // grow everything by k; a kind that would pass its cap is pinned there and k is worked out again for the rest
+  const capped = new Set<TrackKind>();
+  let k = 1;
+  for (;;) {
+    const free = avail - fixed - kinds.filter((x) => capped.has(x)).reduce((a, x) => a + ROW_H_MAX[x] * units[x]!, 0);
+    const grow = kinds.filter((x) => !capped.has(x)).reduce((a, x) => a + base[x] * units[x]!, 0);
+    k = grow > 0 ? free / grow : Infinity;
+    const over = kinds.filter((x) => !capped.has(x) && base[x] * k >= ROW_H_MAX[x]);
+    if (!over.length) break;
+    over.forEach((x) => capped.add(x));
+  }
+  const out = { ...base };
+  for (const x of Object.keys(base) as TrackKind[]) out[x] = Math.max(base[x], Math.min(ROW_H_MAX[x], Math.floor(base[x] * k + 1e-6)));
+  return out;
+}
 export const rowAt = (rows: Row[], y: number) => rows.find((r) => y >= r.y && y < r.y + r.h) ?? null;
 
 export const timeToX = (t: number, v: View) => (t - v.scroll) * v.pps;

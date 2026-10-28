@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'preact/hooks';
 import { addEnvelopePoint, allItems, beatTimes, moveEnvelopePoint, overlapPairs, removeEnvelopePoint, resolveTimes, setFade, type AnyItem, type Track, magneticTrack, overruns } from '@tellcut/engine';
 import type { Editor } from '../editor.ts';
 import { useStoreSelector } from '../store.ts';
-import { HEADER_W, ROW_H, ROW_H_COMPACT, RULER_H, formatTime, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { HEADER_W, ROW_H, ROW_H_COMPACT, fitHeights, RULER_H, formatTime, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 import { itemsInRect } from './drag.ts';
 import { ItemBlock } from './ItemBlock.tsx';
 import { Playhead } from './Playhead.tsx';
@@ -36,7 +36,20 @@ export function Timeline({ editor }: { editor: Editor }) {
     offline: x.offline, thumbs: x.thumbs, peaks: x.peaks, trackSize: x.layout.trackSize, collapsed: x.collapsed, proposal: x.proposal }));
   const p = s.project!;
   const times = useMemo(() => resolveTimes(p), [p]);
-  const rows = useMemo(() => layoutRows(p, times, s.trackSize === 'compact' ? ROW_H_COMPACT : ROW_H, new Set(s.collapsed)), [p, times, s.trackSize, s.collapsed]);
+  // the track area's height (set by the layout, not by the rows, so filling it cannot feed back); 0 until measured
+  const tracksEl = useRef<HTMLDivElement>(null), [availH, setAvailH] = useState(0);
+  useEffect(() => {
+    const el = tracksEl.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => { if (el.clientHeight > 0) setAvailH(el.clientHeight); });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // compact / standard are the least the rows get; with room to spare they grow to fill the track area (A1)
+  const rows = useMemo(() => {
+    const base = s.trackSize === 'compact' ? ROW_H_COMPACT : ROW_H, folded = new Set(s.collapsed);
+    return layoutRows(p, times, availH > 0 ? fitHeights(p, times, base, folded, availH) : base, folded);
+  }, [p, times, s.trackSize, s.collapsed, availH]);
   const rowsRef = useRef(rows); rowsRef.current = rows;   // drags read the rows as they are now (lanes reflow while dragging)
   const beats = useMemo(() => beatTimes(p), [p]);
   // each same-track overlap is drawn on the item on top (spec 2026-10-14 §5.3): at B's start, or inside A when A is on top
@@ -270,7 +283,7 @@ export function Timeline({ editor }: { editor: Editor }) {
         ))}
       </div>
       {/* only the tracks scroll vertically: the ruler stays on top (small screens could not reach the lower tracks) */}
-      <div class="tracks" data-tracks>
+      <div class="tracks" data-tracks ref={tracksEl}>
       <div class="rows" ref={rowsEl} style={{ height: `${height}px` }} onMouseDown={onRowsDown as any} onDblClick={onRowsDblClick as any} onContextMenu={onCtx as any}>
         {beats.map((b) => { const x = timeToX(b, view); return x >= 0 && x <= width ? <span class="beat" style={{ left: `${HEADER_W + x}px` }} /> : null; })}
         {rows.map((r) => (

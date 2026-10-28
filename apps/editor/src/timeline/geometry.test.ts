@@ -1,5 +1,6 @@
 import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
-import { COLLAPSED_H, layoutRows, maxScroll, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { resolveTimes } from '@tellcut/engine';
+import { COLLAPSED_H, ROW_H, ROW_H_MAX, fitHeights, layoutRows, maxScroll, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 
 test('visual tracks are listed top layer first, audio tracks after', () => {
   const rows = layoutRows(fixture());
@@ -54,4 +55,20 @@ test('a collapsed track is a thin row with every item in it', () => {
   const rows = layoutRows(p, undefined, undefined, new Set(['v']));
   const v = rows.find((r) => r.track.id === 'v')!, next = rows[rows.indexOf(v) + 1];
   expect([v.h, v.laneH, [...v.lanes.values()], next.y]).toEqual([COLLAPSED_H, COLLAPSED_H, [0, 0], v.y + COLLAPSED_H + 2]);
+});
+
+test('fitHeights: rows grow evenly to fill the timeline, never past ROW_H_MAX; collapsed rows stay thin', () => {
+  const p = fixture(), times = resolveTimes(p), none = new Set<string>();
+  const total = (h: typeof ROW_H, c = none) => { const rows = layoutRows(p, times, h, c); const l = rows[rows.length - 1]; return l.y + l.h; };
+  const h0 = total(ROW_H), gaps = 2 * (layoutRows(p, times, ROW_H).length - 1);
+  expect(fitHeights(p, times, ROW_H, none, h0 - 50)).toEqual(ROW_H);                      // no room to spare: as they are
+  expect(fitHeights(p, times, ROW_H, none, 10000)).toEqual(ROW_H_MAX);                    // lots of room: every kind at its cap
+  const k15 = fitHeights(p, times, ROW_H, none, gaps + 1.5 * (h0 - gaps));
+  expect([k15.video, k15.scene, k15.music, k15.audio, k15.sfx]).toEqual([84, 54, 66, 66, 36]);
+  const k18 = fitHeights(p, times, ROW_H, none, gaps + 1.8 * (h0 - gaps));
+  expect(k18.video).toBe(96);                                                              // capped; the others take the rest
+  expect(Math.abs(total(k18) - (gaps + 1.8 * (h0 - gaps)))).toBeLessThanOrEqual(6);
+  const folded = new Set(['mu']), avail = total(ROW_H, folded) + 100;
+  expect(Math.abs(total(fitHeights(p, times, ROW_H, folded, avail), folded) - avail)).toBeLessThanOrEqual(6);
+  expect(layoutRows(p, times, fitHeights(p, times, ROW_H, folded, avail), folded).find((r) => r.track.id === 'mu')!.h).toBe(COLLAPSED_H);
 });
