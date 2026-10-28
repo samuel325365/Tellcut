@@ -17,6 +17,7 @@ import type { PlayerBridge } from './bridge.ts';
 import type { Proposal } from '@tellcut/protocol';
 import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
+import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { errText, t as say } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
@@ -138,7 +139,8 @@ export class Editor {
       this.history = new History(p);
       this.autosave?.dispose();   // a reload: the previous session's unsaved edit must not be written over the reloaded project
       // a 409: another tab or Claude wrote a newer version first; this one's edits wait like after any outside change
-      this.autosave = new Autosave({ save: async (x) => { try { await this.deps.api.save(this.id, x); } catch (e) { if (e instanceof ApiError && e.status === 409) this.outside(); throw e; } }, onStatus: (save, err) => this.set({ save, saveError: err ?? '' }) });
+      this.autosave = new Autosave({ save: async (x) => { try { await this.deps.api.save(this.id, x); } catch (e) { if (e instanceof ApiError && e.status === 409) this.outside(); throw e; } }, onStatus: (save, err) => { this.set({ save, saveError: err ?? '' }); if (save === 'saved') this.analyzeWaiting(); } });
+      this.waitingAnalysis = [];   // a reload analyses everything
       this.set({ project: p, error: null, pps: Math.max(5, Math.min(400, (innerWidthSafe() - 160) / p.meta.duration)), scroll: 0 });
       try {
         const saved = JSON.parse(this.storage?.getItem(this.collapseKey) ?? '[]');
@@ -939,7 +941,16 @@ export class Editor {
   /** An export started before a reload keeps running on the server: show and follow it again. */
   private resumeExport() { return this.exportsCtl.resume(); }
   /** Requests source analysis and loads thumbnails/peaks as they become available. */
-  analyze() { return analyzeProject({ id: this.id, api: this.deps.api, store: this.store }); }
+  analyze(only?: string[]) { return analyzeProject({ id: this.id, api: this.deps.api, store: this.store }, only); }
+
+  /** imported sources and music whose save was held (the changed-on-disk bar): analysed once a save goes through */
+  private waitingAnalysis: string[] = [];
+  private analyzeWaiting() { const ids = this.waitingAnalysis; if (!ids.length) return; this.waitingAnalysis = []; void this.analyze(ids); }
+  /** The media panel's Import: files from this PC added to the project as one undoable edit, then analysed in the background. */
+  importMedia(paths: string[]) {
+    return importMedia({ id: this.id, api: this.deps.api, store: this.store, apply: (r) => this.apply(r), settle: () => this.autosave?.settle() ?? Promise.resolve(false),
+      analyze: (only) => this.analyze(only), later: (ids) => { this.waitingAnalysis.push(...ids); } }, paths);
+  }
 }
 
 /** Why a unique item type cannot be added again, or '' when it can. */

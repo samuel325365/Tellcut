@@ -1696,3 +1696,66 @@ test('a restarted preview (the Layout button moves it) is not ready until it say
   expect(plays.length).toBe(1);
   expect(plays[0][1]).toBeCloseTo(0.5, 1);                     // from the playhead (the editor's clock may have moved it on a hair)
 });
+
+describe('the media panel Import', () => {
+  const clip = { path: '../in/new.mp4', duration: 5, width: 1920, height: 1080, kind: 'video', audio: true };
+  const answer = (over: Record<string, unknown> = {}) => ({ sources: { new: clip }, media: { song: { path: '../in/song.wav' } }, skipped: [], same: [], ...over });
+
+  test('adds the media in one undoable step, saves, then analyses only the new ones', async () => {
+    const calls: string[] = [], asked: any[] = [];
+    const { api, bridge, saved } = fakes({
+      importMedia: async (_id: string, b: any, on: any) => { calls.push('import'); asked.push(b); on(1, 2); return answer(); },
+      save: async (_: string, p: unknown) => { calls.push('save'); saved.push(p); },
+      analyze: async () => { calls.push('analyze'); return { jobs: [], missing: [] }; },
+      thumbs: async (_: string, src: string) => { calls.push(`thumbs:${src}`); throw new ApiError(404, 'x'); },
+    });
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    await vi.runAllTimersAsync();
+    calls.length = 0;
+    await ed.importMedia(['D:/in']);
+    expect(asked[0]).toEqual({ paths: ['D:/in'], taken: ['s', 'a', 'm'], have: [{ id: 's', path: 's.mp4' }, { id: 'a', path: 'a.wav' }, { id: 'm', path: 'm.mp3' }] });
+    expect(calls).toEqual(['import', 'save', 'analyze', 'thumbs:new']);
+    expect((saved.at(-1) as any).sources.new.path).toBe('../in/new.mp4');
+    expect(ed.store.get().importNote).toBe(t('ed.imported', { n: 2 }));
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(ed.store.get().importNote).toBe('');
+    ed.undo();
+    expect([ed.store.get().project!.sources.new, ed.store.get().project!.media.song]).toEqual([undefined, undefined]);
+  });
+
+  test('while saves are held by an outside change, the analysis waits for the save', async () => {
+    let refuse = true, analysed = 0;
+    const { api, bridge } = fakes({
+      importMedia: async () => answer(),
+      save: async () => { if (refuse) throw new ApiError(409, 'changed'); },
+      analyze: async () => { analysed++; return { jobs: [], missing: [] }; },
+    });
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    await vi.runAllTimersAsync();
+    analysed = 0;
+    await ed.importMedia(['D:/in']);
+    expect([ed.store.get().diskChanged, analysed, !!ed.store.get().project!.sources.new]).toEqual([true, 0, true]);
+    refuse = false;
+    ed.ignoreDisk();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(analysed).toBe(1);
+  });
+
+  test('nothing usable: no edit, and the note says what was left out and what was there already', async () => {
+    const { api, bridge } = fakes({
+      importMedia: async () => answer({ sources: {}, media: {}, skipped: [{ path: 'D:/in/notes.txt', code: 'import.notMedia', message: 'x' }], same: [{ path: 'D:/in/s.mp4', id: 's' }] }),
+    });
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    await ed.importMedia(['D:/in']);
+    expect(ed.store.get().canUndo).toBe(false);
+    const note = ed.store.get().importNote;
+    expect(note).toContain('notes.txt');
+    expect(note).toContain(t('err.import.notMedia'));
+    expect(note).toContain(t('ed.importSame', { list: 's.mp4' }));
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(ed.store.get().importNote).toBe(note);   // what was left out stays
+  });
+});

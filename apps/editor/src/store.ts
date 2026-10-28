@@ -34,6 +34,10 @@ export interface EditorState {
   analyzing: number;
   /** why the last edit was refused (shown in the properties panel) */
   notice: string;
+  /** the media panel's Import while it runs: files looked at so far */
+  importing: { done: number; total: number } | null;
+  /** what the last Import added and left out (worded), shown under the Media heading; empty = nothing to say */
+  importNote: string;
   /** crop mode: the clip and which crop (from, to or a keyframe index) */
   crop: { itemId: string; which: 'from' | 'to' | number; t?: number } | null;
   /** scene-change times per source (from analysis), for the library's segments */
@@ -76,7 +80,7 @@ export interface EditorState {
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
-  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
+  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', importing: null, importNote: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
 });
 
 export interface Store<S> { get(): S; set(patch: Partial<S> | ((s: S) => Partial<S>)): void; subscribe(fn: () => void): () => void }

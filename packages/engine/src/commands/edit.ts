@@ -85,7 +85,7 @@ export function addSources(p: Project, a: { sources?: Project['sources']; media?
   const added: string[] = [];
   for (const [map, into] of [[a.sources ?? {}, p.sources], [a.media ?? {}, p.media]] as const) {
     for (const [id, entry] of Object.entries(map)) {
-      if (id in p.sources || id in p.media) throw new CommandError(`Source "${id}" already exists`, 'sourceExists', { id });
+      if (id in p.sources || id in p.media) throw new CommandError(`Source "${id}" already exists`, 'cmd.sourceExists', { id });
       if (have.has(key(entry.path))) continue;
       have.add(key(entry.path));
       (into as Record<string, unknown>)[id] = plain(entry);

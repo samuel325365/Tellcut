@@ -3,14 +3,17 @@
 import { ApiError, type Api } from '../api.ts';
 import type { EditorState, Store } from '../store.ts';
 
-/** Requests source analysis and loads thumbnails/peaks as they become available. */
-export async function analyzeProject(c: { id: string; api: Api; store: Store<EditorState> }) {
+/** Requests source analysis and loads thumbnails/peaks as they become available. only: just these sources and music (an import
+ *  adds a few to a project whose others are loaded already). */
+export async function analyzeProject(c: { id: string; api: Api; store: Store<EditorState> }, only?: string[]) {
   const p = c.store.get().project;
   if (!p) return;
   let res: { jobs: Array<{ id: string; label: string }>; missing: string[]; extras?: Array<{ id: string; kind: string; label: string }> };
   try { res = await c.api.analyze(c.id); } catch { return; }
-  c.store.set({ offline: res.missing, analyzing: res.jobs.length });
-  const jobFor = new Map(res.jobs.map((j) => [j.label, j.id]));
+  const mine = (x: string) => !only || only.includes(x);
+  c.store.set((s) => (only ? { offline: [...new Set([...s.offline, ...res.missing])], analyzing: s.analyzing + res.jobs.filter((j) => mine(j.label)).length }
+    : { offline: res.missing, analyzing: res.jobs.length }));
+  const jobFor = new Map(res.jobs.filter((j) => mine(j.label)).map((j) => [j.label, j.id]));
   const loadSource = async (src: string) => {
     // its analysis is still running: wait for it first (asking now only gets a 409, red in the browser console)
     const running = jobFor.get(src);
@@ -33,9 +36,9 @@ export async function analyzeProject(c: { id: string; api: Api; store: Store<Edi
     }
     if (jobFor.has(src)) { jobFor.delete(src); c.store.set((s) => ({ analyzing: Math.max(0, s.analyzing - 1) })); }
   };
-  const music = new Set(Object.keys(p.media));   // every music file: the library shows their lengths
+  const music = new Set(Object.keys(p.media).filter(mine));   // every music file: the library shows their lengths
   await Promise.all([
-    ...Object.keys(p.sources).filter((src) => !res.missing.includes(src)).map(loadSource),
+    ...Object.keys(p.sources).filter((src) => mine(src) && !res.missing.includes(src)).map(loadSource),
     ...[...music].map(async (m) => {
       try { const peaks = await c.api.musicPeaks(c.id, m); c.store.set((s) => ({ peaks: { ...s.peaks, [`media:${m}`]: peaks } })); } catch { /* offline music: no waveform */ }
       // beats: now, or once this music's beats job (queued by analyze) is done

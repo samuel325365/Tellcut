@@ -12,6 +12,8 @@ export { isTerminal, type JobStatus } from '@tellcut/protocol';
 export type JobView = Pick<JobInfo, 'id' | 'label' | 'status' | 'progress' | 'message' | 'log' | 'error'> & { result?: { file: string; log: string; seconds: number } };
 export interface ExportEntry { file: string; url: string; size: number; mtime: number; log: string | null }
 /** A file inside the project folder, e.g. exports/<name>.mp4 (each path segment encoded). */
+/** one import's answer: entries for project.json, the files left out (code + params for errText) and those already in the project */
+export interface ImportResult { sources: Record<string, any>; media: Record<string, { path: string }>; skipped: Array<{ path: string; code: string; params?: Record<string, string>; message: string }>; same: Array<{ path: string; id: string }> }
 export const fileUrl = (id: string, rel: string) => `/api/projects/${encodeURIComponent(id)}/files/${rel.split('/').map(encodeURIComponent).join('/')}`;
 
 const enc = encodeURIComponent;
@@ -85,6 +87,17 @@ export const api = {
   proposal: (id: string) => req<unknown>(`/api/projects/${enc(id)}/proposal`),
   proposalResult: (id: string, b: { id: string; outcome: 'accepted' | 'rejected' | 'stale'; reason?: string }) =>
     req<unknown>(`/api/projects/${enc(id)}/proposal/result`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
+  /** the media panel's Import (spec 2026-10-29-media-import): files looked at and named by the server, NDJSON progress then the result;
+   *  project.json is not written (the editor adds them as an edit) */
+  importMedia: async (id: string, b: { paths: string[]; taken: string[]; have: Array<{ id: string; path: string }> }, onProgress?: (done: number, total: number) => void): Promise<ImportResult> => {
+    let out: ImportResult | null = null, err: { error: string; code?: string; params?: Record<string, string> } | null = null;
+    await ndjson(`/api/projects/${enc(id)}/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }, (e) => {
+      if (e.progress !== undefined) onProgress?.(e.progress, e.total); else if (e.done) out = e; else if (e.error) err = e;
+    });
+    if (err) { const x = err as { error: string; code?: string; params?: Record<string, string> }; throw new ApiError(500, x.error, [], x.code, x.params); }
+    if (!out) throw new ApiError(500, 'The import ended without a result');
+    return out;
+  },
   /** the import browser (home page, editor chat): places and folder listings from the server (paths only) */
   places: () => req<{ places: import('./ImportDialog.tsx').Place[] }>('/api/fs/places'),
   fsList: (path: string) => req<{ path: string; parent: string | null; entries: any[] }>(`/api/fs/list?path=${enc(path)}`),
