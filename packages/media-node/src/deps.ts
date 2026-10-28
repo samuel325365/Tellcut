@@ -15,7 +15,7 @@ export interface ExeSpec {
   name: string;
   /** the environment variable that overrides everything */
   env: string;
-  /** candidates inside tellcut/vendor (relative) */
+  /** candidates inside tellcut/vendor (relative, without Windows' .exe: it is added there) */
   vendor?: string[];
   /** absolute candidates in the usual install folders */
   known?: string[];
@@ -47,7 +47,7 @@ export function onPathDirs(cmd: string, l: LookupEnv): string | null {
 export function locate(spec: ExeSpec, l: LookupEnv = live()): { path: string; from: 'env' | 'vendor' | 'known' | 'path' } | null {
   const own = l.env[spec.env];
   if (own) return { path: own, from: 'env' };   // taken as given; a wrong one fails loudly when it runs
-  for (const v of spec.vendor ?? []) { const p = join(l.vendorDir, v); if (l.exists(p)) return { path: p, from: 'vendor' }; }
+  for (const v of spec.vendor ?? []) { const p = join(l.vendorDir, l.platform === 'win32' ? `${v}.exe` : v); if (l.exists(p)) return { path: p, from: 'vendor' }; }
   for (const p of spec.known ?? []) if (l.exists(p)) return { path: p, from: 'known' };
   if (spec.path) { const p = onPathDirs(spec.path, l); if (p) return { path: p, from: 'path' }; }
   return null;
@@ -59,15 +59,22 @@ export function need(spec: ExeSpec, l: LookupEnv = live()): string {
   return f.path;
 }
 
-const exe = (n: string) => (process.platform === 'win32' ? `${n}.exe` : n);
 const programFiles = (l: LookupEnv) => [l.env.ProgramFiles, l.env['ProgramFiles(x86)'], l.env.LOCALAPPDATA].filter((x): x is string => !!x);
+const MAC = process.platform === 'darwin';
+// on macOS setup downloads uv only: no ffmpeg build for macOS both has vid.stab (stabilised cuts) and stays at a pinned version,
+// so ffmpeg comes from Homebrew's ffmpeg tap, built with it
+const FFMPEG_INSTALL = MAC
+  ? '用 Homebrew 安裝含防手震（vid.stab）的版本：brew uninstall --ignore-dependencies ffmpeg; brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-libvidstab'
+  : '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/ffmpeg）';
 
-export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: [join('ffmpeg', 'bin', exe('ffmpeg'))], path: 'ffmpeg', install: '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/ffmpeg）' };
-export const FFPROBE: ExeSpec = { name: 'ffprobe', env: 'TELLCUT_FFPROBE', vendor: [join('ffmpeg', 'bin', exe('ffprobe'))], path: 'ffprobe', install: '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/ffmpeg）' };
-export const UV: ExeSpec = { name: 'uv', env: 'TELLCUT_UV', vendor: [join('uv', exe('uv'))], path: 'uv', install: '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/uv）' };
+export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: [join('ffmpeg', 'bin', 'ffmpeg')], path: 'ffmpeg', install: FFMPEG_INSTALL };
+export const FFPROBE: ExeSpec = { name: 'ffprobe', env: 'TELLCUT_FFPROBE', vendor: [join('ffmpeg', 'bin', 'ffprobe')], path: 'ffprobe', install: FFMPEG_INSTALL };
+export const UV: ExeSpec = { name: 'uv', env: 'TELLCUT_UV', vendor: [join('uv', 'uv')], path: 'uv', install: '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/uv）' };
+const MAC_CHROME = join('Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome');
 export const chromeSpec = (l: LookupEnv = live()): ExeSpec => ({
   name: 'Google Chrome', env: 'TELLCUT_CHROME', path: undefined,
-  known: programFiles(l).map((d) => join(d, 'Google', 'Chrome', 'Application', 'chrome.exe')),
+  known: l.platform === 'darwin' ? ['/Applications', ...(l.env.HOME ? [join(l.env.HOME, 'Applications')] : [])].map((d) => join(d, MAC_CHROME))
+    : programFiles(l).map((d) => join(d, 'Google', 'Chrome', 'Application', 'chrome.exe')),
   install: '安裝 Google Chrome（https://www.google.com/chrome/）。匯出與檢查要用正式版 Chrome：Playwright 下載的 Chromium 不能播 H.264',
 });
 export const CLAUDE: ExeSpec = { name: 'Claude Code（claude）', env: 'TELLCUT_CLAUDE', path: 'claude', install: '安裝 Claude Code 並登入（https://claude.com/claude-code），頁面聊天要用' };

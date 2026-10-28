@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { TELLCUT_ROOT } from './paths.ts';
 import { pythonEnv, uvPath } from './deps.ts';
+import { killTree } from './proc.ts';
 
 export const PY_DIR = join(TELLCUT_ROOT, 'tools', 'py');
 /** the uv project the Python tools run in: tellcut/pyproject.toml */
@@ -18,7 +19,7 @@ export function runUv(args: string[], o: { input?: string; signal?: AbortSignal 
     const stop = () => {
       aborted = true;
       if (p.exitCode !== null || p.signalCode !== null) return;   // gone: its pid may be another process's by now
-      if (process.platform === 'win32' && p.pid) spawn('taskkill', ['/pid', String(p.pid), '/T', '/F'], { windowsHide: true }).on('error', () => p.kill());
+      if (p.pid) killTree(p.pid);
       else p.kill('SIGKILL');
     };
     o.signal?.addEventListener('abort', stop, { once: true });

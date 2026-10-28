@@ -3,6 +3,8 @@ import { chromeSpec, claudeEnv, DepError, FFMPEG, locate, need, onPathDirs, pyth
 
 const fake = (files: string[], env: NodeJS.ProcessEnv = {}): LookupEnv =>
   ({ env: { PATHEXT: '.EXE;.CMD', ...env }, exists: (p) => files.includes(p), vendorDir: 'V:\\tellcut\\vendor', platform: 'win32' });
+const mac = (files: string[], env: NodeJS.ProcessEnv = {}): LookupEnv =>
+  ({ env: { HOME: '/Users/u', ...env }, exists: (p) => files.includes(p), vendorDir: '/t/tellcut/vendor', platform: 'darwin' });
 
 test('the environment variable wins, then tellcut/vendor, then PATH', () => {
   const vendored = join('V:\\tellcut\\vendor', 'ffmpeg', 'bin', 'ffmpeg.exe'), onPath = join('C:\\tools', 'ffmpeg.exe');
@@ -23,6 +25,20 @@ test('Chrome is found in Program Files, Program Files (x86) or the user\'s own i
   const l = fake([user, join('C:\\bin', 'chrome.exe')], env);
   expect(locate(chromeSpec(l), l)).toEqual({ path: user, from: 'known' });
   const none = fake([join('C:\\bin', 'chrome.exe')], env);
+  expect(locate(chromeSpec(none), none)).toBeNull();
+});
+
+test('on macOS the vendored programs have no .exe and PATH is split on colons', () => {
+  const vendored = join('/t/tellcut/vendor', 'uv', 'uv'), brew = join('/opt/homebrew/bin', 'ffmpeg');
+  expect(locate(UV, mac([vendored]))).toEqual({ path: vendored, from: 'vendor' });
+  expect(locate(FFMPEG, mac([brew], { PATH: '/usr/bin:/opt/homebrew/bin' }))).toEqual({ path: brew, from: 'path' });
+  expect(onPathDirs('claude', mac([join('/Users/u/.local/bin', 'claude.cmd')], { PATH: '/Users/u/.local/bin' }))).toBeNull();
+});
+
+test('on macOS Chrome is found in /Applications or ~/Applications, never from PATH', () => {
+  const sys = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', own = '/Users/u/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  for (const p of [sys, own]) { const l = mac([p]); expect(locate(chromeSpec(l), l)).toEqual({ path: p, from: 'known' }); }
+  const none = mac(['/usr/local/bin/chrome'], { PATH: '/usr/local/bin' });
   expect(locate(chromeSpec(none), none)).toBeNull();
 });
 

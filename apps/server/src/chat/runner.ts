@@ -8,7 +8,7 @@ import { chatFile, closeDangling, freshThread, isHome, readThread, writeThread, 
 import { NOT_FOUND, StreamParser, type ChatEvent, type ChatTool, type Usage } from './stream.ts';
 import { withRecovered } from './recover.ts';
 import { BASH_DEFAULT_TIMEOUT_MS, BASH_MAX_TIMEOUT_MS } from './timeouts.ts';
-import { claudeEnv, lockHolder, renameRetry, tryLock, writeProjectFile } from '@tellcut/media-node';
+import { claudeEnv, killTree as killProcessTree, lockHolder, renameRetry, tryLock, writeProjectFile } from '@tellcut/media-node';
 import type { ChatMessage, Lang, PresetChoice } from '@tellcut/protocol';
 
 /**
@@ -320,7 +320,6 @@ export class ChatRunner {
  *  end that one's whole tree (it took vitest workers with it). */
 export function killTree(child: ChildProcess, run: typeof spawn = spawn) {
   if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
-  // the shell's child (claude) must go too: on Windows only taskkill /T reaches it
-  if (process.platform === 'win32') run('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true }).on('error', () => {});
-  else child.kill('SIGINT');
+  // the shell's child (claude) must go too: a signal to the shell alone leaves claude running (taskkill /T on Windows)
+  killProcessTree(child.pid, 'SIGINT', run);
 }
