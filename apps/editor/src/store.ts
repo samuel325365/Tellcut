@@ -1,6 +1,6 @@
 // Tiny observable store for the editor's UI state (the project itself is immutable, from immer).
 import { useEffect, useReducer, useRef } from 'preact/hooks';
-import type { Project, SummaryLine } from '@tellcut/engine';
+import type { Clip, Project, SummaryLine } from '@tellcut/engine';
 import type { ExportEntry, JobView } from './api.ts';
 import type { Material } from './audition.ts';
 import { DEFAULT_LAYOUT, type Layout } from './layout.ts';
@@ -66,12 +66,14 @@ export interface EditorState {
   diskChanged: boolean;
   /** the "Ask Agent…" dialog (spec 2026-10-16-right-click-claude §2): what it was opened on and how far it got */
   ask: { selection: string[]; playhead: number; state: 'edit' | 'sending' | 'copied' | 'manual'; message?: string; error?: string } | null;
+  /** Ctrl+C's copy (engine copyItems), in memory only: it pastes into the project it came from */
+  clipboard: Clip | null;
 }
 
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
-  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null,
+  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null,
 });
 
 export interface Store<S> { get(): S; set(patch: Partial<S> | ((s: S) => Partial<S>)): void; subscribe(fn: () => void): () => void }

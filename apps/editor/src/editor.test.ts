@@ -1,4 +1,5 @@
-import { corePlugin, createRegistry, deleteItems, moveEnvelopePoint, moveItems } from '@tellcut/engine';
+import { corePlugin, createRegistry, deleteItems, findItem, moveEnvelopePoint, moveItems } from '@tellcut/engine';
+import { t } from './i18n/index.ts';
 import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
 import { ApiError } from './api.ts';
 import { Editor } from './editor.ts';
@@ -1511,4 +1512,83 @@ test('cycleLayout steps Auto → Stacked → Side → Auto for the project orien
   const seen = [1, 2, 3].map(() => { ed.run('layout'); return ed.store.get().layout.arrange.landscape; });
   expect(seen).toEqual(['stacked', 'side', 'auto']);
   expect(ed.store.get().layout.arrange.portrait).toBe('auto');
+});
+
+const magneticFixture = () => { const p: any = fixture(); p.tracks.find((t: any) => t.id === 'v').magnetic = true; return p; };
+
+test('deleteSide("left") on a magnetic clip: one undo step, the gap closes, the playhead lands on the new start', async () => {
+  const { api, bridge } = fakes({ project: async () => magneticFixture() });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.seek(5);                                                   // inside c2 (4–8)
+  expect(ed.deleteSide('left')).toBe(true);
+  const c2 = () => ed.store.get().project!.tracks.find((t) => t.id === 'v')!.items.find((i: any) => i.id === 'c2') as any;
+  expect([c2().start, c2().end]).toEqual([4, 7]);               // its head is gone, the clip slid back to close the gap
+  expect(ed.store.get().playhead).toBe(4);                      // the frame that was showing
+  ed.undo();
+  expect([c2().start, c2().end]).toEqual([4, 8]);
+  ed.seek(5);
+  expect(ed.deleteSide('right')).toBe(true);
+  expect([c2().start, c2().end]).toEqual([4, 5]);
+});
+
+test('deleteSide with nothing to cut sets the "select a clip" notice and changes nothing', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  const before = ed.store.get().project;
+  ed.seek(15);
+  expect(ed.deleteSide('left')).toBe(false);
+  expect(ed.store.get().notice).toBe(t('ed.selectClip'));
+  expect(ed.store.get().project).toBe(before);
+});
+
+test('copy / paste / duplicate: paste selects the new items; a clip from another project is refused with a notice', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  expect(ed.copy()).toBe(false);                                // nothing selected
+  expect(ed.store.get().notice).toBe(t('ed.nothingToCopy'));
+  ed.select(['blk']);
+  expect(ed.copy()).toBe(true);
+  ed.seek(10);
+  expect(ed.paste()).toBe(true);
+  expect(ed.store.get().selection).toEqual(['blk-2']);
+  expect((findItem(ed.store.get().project!, 'blk-2').item as any).start).toBe(10);
+  ed.select(['blk']);
+  expect(ed.duplicate()).toBe(true);
+  expect((findItem(ed.store.get().project!, ed.store.get().selection[0]).item as any).start).toBe(6);   // right after blk (2–6)
+  const other = new Editor('other', { api, bridge });
+  await other.open();
+  other.store.set({ clipboard: ed.store.get().clipboard });
+  expect(other.paste()).toBe(false);
+  expect(other.store.get().notice).toBe(t('ed.pasteOtherProject'));
+});
+
+test('toggleItemMute: music, a video clip (its own sound) and a sound effect', async () => {
+  const { api, bridge } = fakes({ project: async () => { const p: any = fixture(); p.tracks.find((x: any) => x.id === 'au').items.push({ id: 'o1', source: 's', in: 1, rate: 1, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c1' }); return p; } });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  const muted = (id: string) => !!(findItem(ed.store.get().project!, id).item as any).muted;
+  ed.select(['m1']); ed.toggleItemMute();
+  expect(muted('m1')).toBe(true);
+  ed.toggleItemMute();
+  expect(muted('m1')).toBe(false);
+  ed.select(['c1']); ed.toggleItemMute();
+  expect(muted('o1')).toBe(true);
+  ed.select(['tap']); ed.toggleItemMute();
+  expect(muted('tap')).toBe(true);
+});
+
+test('jumpCut and stepFrames move the playhead by cuts and by frames', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.seek(4);
+  ed.jumpCut(1);
+  expect(ed.store.get().playhead).toBe(5);
+  ed.jumpCut(-1);
+  expect(ed.store.get().playhead).toBe(4);
+  ed.stepFrames(10);
+  expect(ed.store.get().playhead).toBeCloseTo(4.4);             // 25 fps
 });

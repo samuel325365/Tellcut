@@ -1,5 +1,7 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
-import { runOps, summarize, type Op, magneticGaps, setMagnetic, detach as detachCmd, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform } from '@tellcut/engine';
+import { runOps, summarize, type Op, magneticGaps, setMagnetic, detach as detachCmd, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform, copyItems, pasteItems, trimStart, trimEnd, magneticTrack, ownSounds } from '@tellcut/engine';
+import { cutPoints, edgeTargets, nextCut } from './editor/cutting.ts';
+import { zoomAround } from './timeline/geometry.ts';
 import { keyAction, type Action } from './keys.ts';
 import { ChatSession } from './chat.ts';
 import type { FsApi } from './ImportDialog.tsx';
@@ -249,6 +251,84 @@ export class Editor {
   toggleTrack(id: string, key: 'muted' | 'solo') {
     const t: any = this.history?.project.tracks.find((x) => x.id === id);
     return t ? this.setTrack(id, { [key]: !t[key] }) : false;
+  }
+
+  /** Tracks the cutting keys pass over (A3 fills it with the locked ones). */
+  protected skipTracks(): ReadonlySet<string> { return new Set(); }
+
+  /** Q / W (spec 2026-10-28-timeline-refresh A2): cut the clips at the playhead from their start (left) or to their end
+   *  (right), one undo step. On the magnetic track the gap closes and, after Q, the playhead stays on the frame it showed. */
+  deleteSide(side: 'left' | 'right'): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    const t = this.s.playhead, times = resolveTimes(p), ids = edgeTargets(p, times, t, this.s.selection, this.skipTracks());
+    if (!ids) { this.set({ notice: say('ed.selectClip') }); return false; }
+    const ok = this.apply((d) => { for (const id of ids) { const tm = times.get(id)!; if (side === 'left') trimStart(d, { id, dt: t - tm.start }); else trimEnd(d, { id, dt: t - tm.end }); } });
+    const mag = ok && side === 'left' ? magneticTrack(this.s.project!) : undefined;
+    const back = mag && ids.find((id) => (mag.items as any[]).some((c) => c.id === id));
+    if (back) this.seek(resolveTimes(this.s.project!).get(back)!.start);
+    return ok;
+  }
+
+  /** ↑ / ↓: the previous / next clip edge on any track. */
+  jumpCut(dir: -1 | 1) {
+    const p = this.s.project;
+    if (p) this.seek(nextCut(cutPoints(p, resolveTimes(p)), this.s.playhead, dir, p.meta.fps));
+  }
+  stepFrames(n: number) { this.step(n); }
+
+  /** Ctrl+C: the selection, its children and own sounds, kept in memory for this project. */
+  copy(): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    if (!this.s.selection.length) { this.set({ notice: say('ed.nothingToCopy') }); return false; }
+    try { this.set({ clipboard: copyItems(p, this.s.selection, this.id), notice: '' }); return true; }
+    catch (e) { if (e instanceof CommandError) { this.set({ notice: errText(e) }); return false; } throw e; }
+  }
+  /** Ctrl+V: at the playhead; the new items are selected. */
+  paste(): boolean { return this.pasteAt(this.s.playhead); }
+  private pasteAt(t: number): boolean {
+    const clip = this.s.clipboard;
+    if (!clip || !this.s.project) return false;
+    if (clip.project !== this.id) { this.set({ notice: say('ed.pasteOtherProject') }); return false; }
+    let made: string[] = [];
+    const ok = this.apply((d) => { made = pasteItems(d, { clip, t }); });
+    if (ok) this.select(made);
+    return ok;
+  }
+  /** Ctrl+D: a copy right after the selection (on the magnetic track: right after its clip). */
+  duplicate(): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    if (!this.copy()) return false;
+    const times = resolveTimes(p), end = Math.max(...this.s.selection.map((id) => times.get(id)?.end ?? 0));
+    const mag = magneticTrack(p), onMag = !!mag && this.s.clipboard!.entries.some((e) => e.track === mag.id && e.item.parent === undefined);
+    // pasteItems puts magnetic clips after the clip under t: half a frame before the end is still the selected clip
+    return this.pasteAt(onMag ? end - 0.5 / p.meta.fps : end);
+  }
+  /** Ctrl+A: every item on the tracks the cutting keys may touch. */
+  selectAll() {
+    const p = this.s.project, skip = this.skipTracks();
+    if (p) this.select(p.tracks.filter((tr) => !skip.has(tr.id)).flatMap((tr) => (tr.items as any[]).map((i) => i.id)));
+  }
+  /** M: mutes or unmutes the selected sounds; a video clip's own sound stands for the clip. All take the first one's new state. */
+  toggleItemMute(): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    const targets = this.s.selection.flatMap((id) => {
+      const f = allItems(p).find((x) => x.item.id === id);
+      if (!f) return [];
+      if (f.track.kind === 'video') return ownSounds(p, id).map((c) => c.id);
+      return f.track.kind === 'music' || f.track.kind === 'audio' || f.track.kind === 'sfx' ? [id] : [];
+    });
+    if (!targets.length) return false;
+    const on = !(findItem(p, targets[0]).item as any).muted;
+    return this.apply((d) => { for (const id of targets) { const it: any = findItem(d, id).item; if (on) it.muted = true; else delete it.muted; } });
+  }
+  /** Ctrl+= / Ctrl+-: zoom the timeline around the playhead when it is in view, else around the middle (like the slider). */
+  zoomBy(factor: number) {
+    const v = { pps: this.s.pps, scroll: this.s.scroll }, ph = (this.s.playhead - v.scroll) * v.pps, w = this.laneW > 0 ? this.laneW : 1000;
+    this.setView(zoomAround(v, factor, ph >= 0 && ph <= w ? ph : w / 2));
   }
 
   /** Crop mode (spec §4.3) on the one selected video clip. */
