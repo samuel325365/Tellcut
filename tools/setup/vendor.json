@@ -1,17 +1,37 @@
 {
   "uv": {
     "version": "0.11.14",
-    "url": "https://github.com/astral-sh/uv/releases/download/0.11.14/uv-x86_64-pc-windows-msvc.zip",
-    "sha256": "52ba5d19409aaa688a8a1a6ec8dfb6a4817230d20186e75f4006105c3e39a846",
     "dest": "uv",
-    "check": "uv.exe"
+    "builds": {
+      "win32": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.11.14/uv-x86_64-pc-windows-msvc.zip",
+        "sha256": "52ba5d19409aaa688a8a1a6ec8dfb6a4817230d20186e75f4006105c3e39a846",
+        "check": "uv.exe"
+      },
+      "darwin-arm64": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.11.14/uv-aarch64-apple-darwin.tar.gz",
+        "sha256": "4333af5c0730d94323a7819bbdf87ce92dd07fc857d67fff0059e0fca31b5c02",
+        "strip": "uv-aarch64-apple-darwin",
+        "check": "uv"
+      },
+      "darwin-x64": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.11.14/uv-x86_64-apple-darwin.tar.gz",
+        "sha256": "9836c1440b0bd6aa5f81793648a339bd01d593b7b8f575de3b855dae4ab64654",
+        "strip": "uv-x86_64-apple-darwin",
+        "check": "uv"
+      }
+    }
   },
   "ffmpeg": {
     "version": "8.0.1",
-    "url": "https://github.com/GyanD/codexffmpeg/releases/download/8.0.1/ffmpeg-8.0.1-essentials_build.zip",
-    "sha256": "e2aaeaa0fdbc397d4794828086424d4aaa2102cef1fb6874f6ffd29c0b88b673",
-    "strip": "ffmpeg-8.0.1-essentials_build",
     "dest": "ffmpeg",
-    "check": "bin/ffmpeg.exe"
+    "builds": {
+      "win32": {
+        "url": "https://github.com/GyanD/codexffmpeg/releases/download/8.0.1/ffmpeg-8.0.1-essentials_build.zip",
+        "sha256": "e2aaeaa0fdbc397d4794828086424d4aaa2102cef1fb6874f6ffd29c0b88b673",
+        "strip": "ffmpeg-8.0.1-essentials_build",
+        "check": "bin/ffmpeg.exe"
+      }
+    }
   }
 }

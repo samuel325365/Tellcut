@@ -69,7 +69,7 @@ async function main() {
   const login = !process.argv.includes('--no-login');
   const config = loadProvidersConfig(), model = whisperModelName(String(config.transcribe.options['faster-whisper']?.model ?? 'large-v3-turbo'));
 
-  step('下載 uv 與 ffmpeg 到 tellcut/vendor');
+  step(`下載 ${Object.keys(readVendorList()).join(' 與 ')} 到 tellcut/vendor`);
   await vendorItems();
 
   step('Python 環境（Python 3.12 與套件都裝在 tellcut 裡）');

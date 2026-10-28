@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ensureModelFile, ensureVendor, installedVersion, systemTar, VendorInUse, type VendorItem } from './vendor.ts';
+import { ensureModelFile, ensureVendor, installedVersion, readVendorList, systemTar, VendorInUse, type VendorItem } from './vendor.ts';
 
 /** a zip holding tool-1.0/bin/tool.exe, made with the same Windows tar setup uses */
 function makeZip() {
@@ -76,4 +76,28 @@ test('a model file whose SHA-256 models.json writes in capitals is kept when it 
   expect(await ensureModelFile('m', { url: 'https://example.invalid/m.bin', sha256, dest: 'm.bin' }, dir, { fetch })).toBe('installed');
   expect(await ensureModelFile('m', { url: 'https://example.invalid/m.bin', sha256, dest: 'm.bin' }, dir, { fetch })).toBe('kept');
   expect(asked).toBe(1);
+});
+
+test('each system gets its own build of a program, and a program with no build for it is left out', () => {
+  const win = readVendorList(undefined, 'win32', 'x64'), arm = readVendorList(undefined, 'win32', 'arm64');
+  expect(Object.keys(win)).toEqual(['uv', 'ffmpeg']);
+  expect(arm).toEqual(win);   // the x64 builds run on Windows on Arm too
+  expect(win.uv).toMatchObject({ version: '0.11.14', dest: 'uv', check: 'uv.exe' });
+  const mac = readVendorList(undefined, 'darwin', 'arm64');
+  expect(Object.keys(mac)).toEqual(['uv']);   // ffmpeg with vid.stab comes from Homebrew
+  expect(mac.uv).toMatchObject({ version: '0.11.14', check: 'uv', strip: 'uv-aarch64-apple-darwin' });
+  expect(mac.uv.url).toMatch(/aarch64-apple-darwin\.tar\.gz$/);
+  expect(readVendorList(undefined, 'darwin', 'x64').uv.url).toMatch(/x86_64-apple-darwin\.tar\.gz$/);
+  for (const list of [win, mac]) for (const item of Object.values(list)) expect(item.sha256).toMatch(/^[0-9a-f]{64}$/);
+});
+
+test('a tarball is unpacked as well as a zip (the macOS builds)', async () => {
+  const d = mkdtempSync(join(tmpdir(), 'vt-'));
+  mkdirSync(join(d, 'tool-1.0'), { recursive: true });
+  writeFileSync(join(d, 'tool-1.0', 'tool'), 'not really a program');
+  execFileSync(systemTar(), ['-czf', join(d, 'tool.tar.gz'), '-C', d, 'tool-1.0']);
+  const tgz = readFileSync(join(d, 'tool.tar.gz')), vendor = mkdtempSync(join(tmpdir(), 'vendor-'));
+  const item: VendorItem = { version: '1.0', url: 'https://x/tool.tar.gz', sha256: createHash('sha256').update(tgz).digest('hex'), dest: 'tool', check: 'tool', strip: 'tool-1.0' };
+  expect(await ensureVendor('tool', item, vendor, { fetch: (async () => new Response(tgz)) as unknown as typeof fetch })).toBe('installed');
+  expect(readFileSync(join(vendor, 'tool', 'tool'), 'utf8')).toBe('not really a program');
 });
