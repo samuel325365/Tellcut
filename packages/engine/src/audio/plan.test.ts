@@ -67,3 +67,9 @@ test('a sound file on a sound-effect track (core.file) plays as a segment on tha
   expect(api.buffers['file:media/sfx/ding.wav']).toBe('/api/projects/k/files/media/sfx/ding.wav');
   expect(soundFiles(q)).toEqual(['media/sfx/ding.wav']);
 });
+
+test('a muted sound effect is not played', () => {
+  const q = p();
+  q.tracks[2].items[0].muted = true;
+  expect(planAudio(q, resolveTimes(q), resolver, 'http://h/p.json').sfx).toEqual([]);
+});

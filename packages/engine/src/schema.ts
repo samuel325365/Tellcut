@@ -45,7 +45,7 @@ const audioCommon = { ...base, gain: db, envelope: z.array(GainPointZ).optional(
 /** toEnd: on a project with a magnetic track the clip ends with the film (spec 2026-10-15-proposals-magnetic §4.2) */
 export const MusicItemZ = z.object({ ...audioCommon, media: z.string(), in: nonneg, toEnd: z.boolean().optional() });
 export const AudioItemZ = z.object({ ...audioCommon, source: z.string(), in: nonneg, rate: z.number().positive().max(4) });
-export const SfxItemZ = z.object({ ...base, type: z.string().min(1), params: Params, gain: db });
+export const SfxItemZ = z.object({ ...base, type: z.string().min(1), params: Params, gain: db, muted: z.boolean().optional() });
 
 const trackBase = { id: z.string().min(1), name: z.string().optional(), muted: z.boolean().optional() };
 const mixBase = { gain: db.default(0), solo: z.boolean().optional(), envelope: z.array(GainPointZ).optional() };

@@ -8,3 +8,4 @@ export * from './audio.ts';
 export * from './overlap.ts';
 export * from './layer.ts';
 export * from './magnetic.ts';
+export * from './clipboard.ts';

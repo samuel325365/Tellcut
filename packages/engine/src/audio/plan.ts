@@ -36,6 +36,7 @@ export function planAudio(p: Project, times: Times, resolver: Pick<MediaResolver
       const tm = times.get(raw.id)!;
       if (tr.kind === 'sfx') {
         const it = raw as SfxItem, path = soundFilePath(it);
+        if (it.muted) continue;
         if (path) {
           // a file plays as a segment on the sound-effect bus, from its start; a tiny fade-out in case the item cuts it short
           const buffer = `file:${path}`;
