@@ -272,7 +272,7 @@ export class Stage {
   }
 
   /** Every plugin item's own assets loaded. A failure fails an export (strict) and is reported in a preview.
-   *  Once per layer: a preview edit keeps the unchanged layers, and their ready (a three.js scene for wall/globe/logo) must not
+   *  Once per layer: a preview edit keeps the unchanged layers, and their ready (a three.js block building its scene) must not
    *  run again over the old state. A failed load is forgotten, so the next edit tries it again. */
   async ready(): Promise<void> {
     await Promise.all(this.layers.map(async (L) => {

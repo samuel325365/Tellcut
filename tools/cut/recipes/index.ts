@@ -1,18 +1,16 @@
 // The recipes (toolkit phase 4): `c.recipe('<id>', content)` in a cut.ts; `npm run tellcut -- recipe <id>` shows the content to fill in.
 import type { z } from 'zod';
 import { handleOf, idOfHandle } from '@tellcut/protocol';
-import { brand } from './brand.ts';
 import { hook } from './hook.ts';
 import { montage } from './montage.ts';
 import { travel } from './travel.ts';
 import type { Recipe } from './types.ts';
 
-export const RECIPES: Record<string, Recipe<z.ZodTypeAny>> = { travel, hook, montage, brand } as Record<string, Recipe<z.ZodTypeAny>>;
+export const RECIPES: Record<string, Recipe<z.ZodTypeAny>> = { travel, hook, montage } as Record<string, Recipe<z.ZodTypeAny>>;
 export type { Recipe } from './types.ts';
 export type { TravelContent } from './travel.ts';
 export type { HookContent } from './hook.ts';
 export type { MontageContent } from './montage.ts';
-export type { BrandContent } from './brand.ts';
 
 /** The content checked against the recipe; a sentence per wrong field. */
 export function parseContent(id: string, content: unknown): unknown {

@@ -168,7 +168,7 @@ test('a first cut has a magnetic main track and music that ends with the film', 
 });
 
 test('a cut that leaves gaps on the main track saves it as not magnetic, so the first edit in the editor moves nothing', async () => {
-  // the brand recipe's way: 3D overlays sit over a gap in the main track, the logo after the last clip
+  // a brand film's way: 3D overlays sit over a gap in the main track, the logo after the last clip
   const c = fresh();
   c.clip('v', { from: 0, len: 2 });
   c.at(5);
@@ -768,89 +768,6 @@ test('speechCaptions chunk by the transcript’s language: a preset gives Chines
   const c3 = new Cut(base(), i, dir), id3 = c3.clip('v', { from: 0, len: 6 });
   expect(texts(c3, c3.speechCaptions(id3, { type: 'common.caption', chunk: { zh: 4 } }))).toEqual(['we took a train to rome']);   // neither: whole sentences
 });
-
-// c.dolly (spec 2026-10-25-brand-preset §6.2-2): a seamless 3D push-in before or pull-out after a clip
-test("c.dolly in sits just before the clip and starts the source len seconds earlier with the clip's first crop and grade", () => {
-  const c = fresh();
-  c.at(2);
-  const v = c.clip('v', { from: 4, len: 3, crop: { from: { x: 0.4, y: 0.5, zoom: 1.2 }, to: { x: 0.6, y: 0.5, zoom: 1 } } });
-  (items(c, 'v1').find((i) => i.id === v) as any).grade = 'warm';
-  const id = c.dolly(v, { dir: 'in', len: 1.2 });
-  const it = c.p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id);
-  expect([it.type, it.start, it.end]).toEqual(['common.dolly', 0.8, 2]);
-  expect(it.params).toEqual({ source: 'v', from: 2.8, dir: 'in', x: 0.4, y: 0.5, zoom: 1.2, grade: 'warm' });
-});
-
-test('c.dolly out sits just after the clip and carries on the source from where the clip stops, with its last crop', () => {
-  const c = fresh();
-  const v = c.clip('v', { from: 1, len: 3, crop: { from: { x: 0.4, y: 0.5, zoom: 1.2 }, to: { x: 0.6, y: 0.45, zoom: 1.05 } } });
-  const id = c.dolly(v, { dir: 'out', len: 2, tilt: 24 });
-  const it = c.p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id);
-  expect([it.start, it.end]).toEqual([3, 5]);
-  expect(it.params).toEqual({ source: 'v', from: 4, dir: 'out', x: 0.6, y: 0.45, zoom: 1.05, grade: '', tilt: 24 });
-});
-
-test('c.dolly refuses what cannot hand over seamlessly', () => {
-  const c = fresh();
-  c.at(3);
-  const fast = c.clip('v', { from: 1, len: 2, speed: 2 });
-  expect(() => c.dolly(fast, { dir: 'in', len: 1 })).toThrow('c.dolly 只接速度 1 的片段');
-  const boxed = c.clip('v', { from: 4, len: 2, frame: [0.1, 0.1, 0.8, 0.8] as any });
-  expect(() => c.dolly(boxed, { dir: 'out', len: 1 })).toThrow(/滿版/);
-  const early = c.clip('v', { from: 0.5, len: 2 });
-  expect(() => c.dolly(early, { dir: 'in', len: 1 })).toThrow(/少了 0\.5 秒/);
-  const late = c.clip('v', { from: 8, len: 1.5 });
-  expect(() => c.dolly(late, { dir: 'out', len: 1 })).toThrow(/少了 0\.5 秒/);
-  const pic = c.photo('ph', { len: 2 });
-  const id = c.dolly(pic, { dir: 'out', len: 1 });
-  expect(c.p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id).params).toMatchObject({ source: 'ph', from: 0 });
-  expect(() => c.dolly('nope', { dir: 'in', len: 1 })).toThrow(/nope/);
-});
-
-test('c.dolly refuses a clip whose picture is not the plain source at the handoff', () => {
-  const c = fresh();
-  c.at(3);
-  const set = (id: string, k: string, v: unknown) => { (items(c, 'v1').find((i) => i.id === id) as any)[k] = v; };
-  const cases: Array<[string, unknown, RegExp]> = [['opacity', 0.8, /opacity/], ['freezeAt', 0.5, /freezeAt/], ['defocus', { from: 0, to: 0.5, px: 6 }, /defocus/],
-    ['shake', [{ at: 0.2, dur: 0.3, px: 8, hz: 18 }], /shake/]];
-  for (const [k, v, re] of cases) {
-    const id = c.clip('v', { from: 4, len: 1 });
-    set(id, k, v);
-    expect(() => c.dolly(id, { dir: 'in', len: 1 })).toThrow(re);
-    expect(() => c.dolly(id, { dir: 'out', len: 1 })).toThrow(/接不乾淨/);
-  }
-  // a dissolve or slide into the clip shows the clip before at the push-in's end; at its end (out) it is long over
-  const dissolve = c.clip('v', { from: 4, len: 2 });
-  set(dissolve, 'transitionIn', { type: 'dissolve', dur: 0.5 });
-  expect(() => c.dolly(dissolve, { dir: 'in', len: 1 })).toThrow(/轉場（dissolve）/);
-  expect(() => c.dolly(dissolve, { dir: 'out', len: 1 })).not.toThrow();
-  const cut = c.clip('v', { from: 4, len: 1 });
-  set(cut, 'transitionIn', { type: 'cut', dur: 0 });
-  expect(() => c.dolly(cut, { dir: 'in', len: 1 })).not.toThrow();
-});
-
-test('c.dolly in too near the start of the film says the clip needs len seconds before it', () => {
-  const c = fresh();
-  c.at(0.5);
-  const v = c.clip('v', { from: 4, len: 2 });
-  expect(() => c.dolly(v, { dir: 'in', len: 1.2 })).toThrow(/前面不夠 1\.2 秒.*最多 0\.5/);
-  expect(c.p.tracks.find((t) => t.id === 'dolly')).toBeUndefined();
-  expect(c.p.tracks.flatMap((t) => t.items as any[]).find((i) => i.type === 'common.dolly')).toBeUndefined();
-  expect(() => c.dolly(v, { dir: 'in', len: 0.5 })).not.toThrow();
-});
-
-test('c.dolly goes on its own track above the main video and below the text, so earlier titles stay on top', () => {
-  const c = fresh();
-  c.at(2);
-  const v = c.clip('v', { from: 4, len: 3 });
-  const title = c.title('We are Tellcut', { at: 1, len: 2 });
-  const d = c.dolly(v, { dir: 'in', len: 1 });
-  const ids = c.p.tracks.map((t) => t.id), on = (id: string) => c.p.tracks.find((t) => (t.items as any[]).some((i) => i.id === id))!.id;
-  expect(on(d)).toBe('dolly');
-  expect(ids.indexOf('dolly')).toBeGreaterThan(ids.indexOf('v1'));
-  expect(ids.indexOf('dolly')).toBeLessThan(ids.indexOf(on(title)));
-});
-
 
 // c.level (brand plan 5): the music's level over the whole film, with dips and ducking still lower where they say
 test('c.level shapes the music over the film; dips still go lower where they say', async () => {

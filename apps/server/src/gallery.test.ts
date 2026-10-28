@@ -16,7 +16,7 @@ test('the gallery lists every block (core and common first), the sounds, the mus
     expect([media('common.backdrop'), media('core.title')]).toEqual([false, false]);
     expect(g.sfx.map((s: any) => s.type)).toEqual(expect.arrayContaining(['common.beep', 'common.whoosh']));
     expect(g.styles.filter((s: any) => s.origin === 'built-in').map((s: any) => s.id)).toEqual(['pluck', 'lofi', 'cinematic', 'tech', 'playful']);
-    expect(g.recipes.map((r: any) => r.id)).toEqual(['travel', 'hook', 'montage', 'brand']);
+    expect(g.recipes.map((r: any) => r.id)).toEqual(['travel', 'hook', 'montage']);
     expect(g.recipes[0].example.scenes.length).toBeGreaterThan(0);
   } finally { await app.close(); }
 });

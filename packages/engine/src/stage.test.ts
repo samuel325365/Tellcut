@@ -369,7 +369,7 @@ test('in strict (export) mode a plugin item whose assets fail to load fails stag
 });
 
 test('an item kept through an edit is not made ready again; a rebuilt one is, and a failed load is tried again', async () => {
-  // preview patches call ready() on every edit: wall/globe/logo built their three.js scene again each time and leaked the old one
+  // preview patches call ready() on every edit: the three.js blocks built their scene again each time and leaked the old one
   const calls: string[] = [];
   let fail = true;
   const reg = createRegistry([corePlugin, { id: 'r', items: [

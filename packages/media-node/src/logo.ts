@@ -1,11 +1,10 @@
 // The brand film's logo (spec 2026-10-25-brand-preset §8.1): `tellcut logo <project> <file>` copies the user's logo into the
 // project and says what it is: an SVG three can extrude, or a picture that becomes a cut-out plate; whether it has a see-through
-// background; its own colours (for the theme). common.logo reads it from media/brand/logo.<ext>.
+// background; its own colours (for the theme). A project fx builds it in 3D from media/brand/logo.<ext> with ThreeKit's
+// loadMark (plugin-common/src/three/marks.ts), which makes the same extrude-or-plate choice.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
-import { paramDefault, parseProject, resolveTheme, type Project, type Registry } from '@tellcut/engine';
 import { ffmpeg, probeSize } from './ffmpeg.ts';
-import { renderStills } from './stills.ts';
 
 export interface LogoInfo {
   kind: 'svg' | 'png' | 'jpg' | 'webp';
@@ -154,13 +153,6 @@ export async function importLogo(projectDir: string, file: string): Promise<{ pa
   return { path, info };
 }
 
-/** When common.logo (default hit 0.75, a logo and a name) has every letter of the name standing: letter k (spaces are not
- *  letters) rises from hit + 1.0 + k × 0.055 for 0.8 s. Never before hit + 2.2, where a short name has long settled. */
-export function logoPreviewTime(name = ''): number {
-  const n = [...name].filter((c) => c !== ' ').length;
-  return 0.75 + Math.max(2.2, 1.0 + Math.max(0, n - 1) * 0.055 + 0.8 + 0.1);
-}
-
 const luminance = (hex: string) => {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -171,29 +163,13 @@ export function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/** A warning when the logo's main colour hardly shows on the background common.logo draws it on (a black logo on the default
- *  dark ground); null when it shows. An SVG that names no colour is black, the SVG default. */
+/** A warning when the logo's main colour hardly shows on the background `bg` (the project theme's ink, the usual ground of an end
+ *  card: a black logo on a dark one); null when it shows. An SVG that names no colour is black, the SVG default. */
 export function logoContrastWarning(info: LogoInfo, bg: string): string | null {
   const main = info.colors[0] ?? (info.kind === 'svg' ? '#000000' : undefined), ground = colourOf(bg);
   if (!main || !ground) return null;
   const r = contrastRatio(main, ground);
   if (r >= 2) return null;
   const dark = luminance(ground) < 0.18;
-  return `提醒：商標主色 ${main} 和背景 ${ground} 對比只有 ${r.toFixed(1)}:1，放上去幾乎看不見。可以給 common.logo ${dark ? "淺色背景（bg: '#f4f1ea'）" : "深色背景（bg: '#0d0f14'）"}，或改用${dark ? '反白' : '深色'}版的商標。`;
-}
-
-/** The logo as common.logo draws it a moment after it lands, in 3D (mode auto) and as a flat plate (mode plate), from a
- *  project that holds only that item at the project's size; both in output/logo/, long side 960. `bg` is the background
- *  they are drawn on (the block's default from the project's theme). */
-export async function logoPreviews(o: { projectDir: string; logoPath: string; name?: string; registry: Registry }): Promise<{ mark: string; flat: string; bg: string }> {
-  const base = parseProject(JSON.parse(readFileSync(join(o.projectDir, 'project.json'), 'utf8')));
-  // after the whole name has risen
-  const at = logoPreviewTime(o.name), dur = Math.max(4, Math.ceil(at + 0.5)), outDir = join(o.projectDir, 'output', 'logo');
-  const one = (mode: 'auto' | 'plate'): Project => ({ ...base, meta: { ...base.meta, duration: dur },
-    tracks: [{ id: 'logo', kind: 'overlay', items: [{ id: 'mark', type: 'common.logo', start: 0, end: dur, params: { logo: o.logoPath, name: o.name ?? '', mode } }] }] } as Project);
-  const [mark] = await renderStills({ dir: o.projectDir, project: one('auto'), times: [at], registry: o.registry, outDir, tag: 'logo-3d', maxSide: 960 });
-  const [flat] = await renderStills({ dir: o.projectDir, project: one('plate'), times: [at], registry: o.registry, outDir, tag: 'logo-flat', maxSide: 960 });
-  const def = o.registry.item('common.logo')?.params.find((p) => p.key === 'bg');
-  const bg = def ? String(paramDefault(def, resolveTheme(base.meta.theme, base.meta))) : '#0d0f14';
-  return { mark, flat, bg };
+  return `提醒：商標主色 ${main} 和背景 ${ground} 對比只有 ${r.toFixed(1)}:1，放上去幾乎看不見。片尾可以改用${dark ? '淺色背景（例如 #f4f1ea）' : '深色背景（例如 #0d0f14）'}，或改用${dark ? '反白' : '深色'}版的商標。`;
 }

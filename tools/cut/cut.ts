@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, deleteItems, magneticGaps, parseProject, r6, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
-import { dollyMisfit, loadAllStyles, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
+import { loadAllStyles, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
@@ -370,40 +370,6 @@ export class Cut {
     const t = r6(clip.in + ((at as number) - times.get(clip.id)!.start) * clip.speed);
     const id = this.attach(this.effect('common.polaroid', { at: at as number, len: len as number, ...params, source: clip.source, t }), clip.id);
     if (sound) this.attach(this.sfx('common.shutter', { at: at as number, len: 0.2, gain: -6 }), clip.id);
-    return id;
-  }
-  /**
-   * A seamless 3D push-in before a clip or pull-out after it (common.dolly, spec 2026-10-25-brand-preset §6.2-2): `dir: 'in'`
-   * takes the `len` seconds before the clip, the camera pushing into a frame that shows the same source until it is the screen
-   * and the clip carries on; `dir: 'out'` takes the `len` seconds after it, from full frame back into space. The block gets the
-   * clip's source, the source time that lines up, the crop of the frame it hands over at and the grade. Only a full-frame clip at
-   * speed 1 hands over seamlessly, and only a plain one: no dissolve or slide into it (in), no opacity, freezeAt, defocus or shake.
-   * `dir: 'in'` needs `len` seconds of film before the clip. Other keys are the block's params (tilt, depth, bg).
-   */
-  dolly(clipId: string, o: { dir: 'in' | 'out'; len: number; tilt?: number; depth?: number; bg?: string }): string {
-    const { dir, len, ...rest } = o;
-    const clip = (this.p.tracks.find((t) => t.id === 'v1')?.items as VideoItem[] | undefined)?.find((c) => c.id === clipId);
-    const at = resolveTimes(this.p).get(clipId);
-    if (!clip || !at) throw new Error(`c.dolly：主軌上沒有「${clipId}」這個片段`);
-    if (clip.speed !== 1) throw new Error('c.dolly 只接速度 1 的片段（快慢動作的畫面接不上）');
-    const f = clip.frame;
-    if (f && (f[0] !== 0 || f[1] !== 0 || f[2] !== 1 || f[3] !== 1)) throw new Error('c.dolly 只接滿版的片段（畫框推到滿版才接得上）');
-    const misfit = dollyMisfit(clip, dir);
-    if (misfit) throw new Error(`c.dolly：「${clipId}」${misfit}，跟 3D 畫框接不乾淨；拿掉它，或把 dolly 接在別的片段`);
-    if (dir === 'in' && at.start - len < -1e-6) throw new Error(`c.dolly：推入放在片段前面 ${len} 秒，但「${clipId}」在 ${r6(at.start)} 秒就開始了，前面不夠 ${len} 秒；縮短 len（最多 ${r6(at.start)}）或把片段往後放`);
-    const s = this.src(clip.source), photo = s.kind === 'image';
-    let from = 0;
-    if (!photo) {
-      from = r6(dir === 'in' ? clip.in - len : clip.in + (at.end - at.start));
-      const short = dir === 'in' ? -from : from + len - s.duration;
-      if (short > 1e-6) throw new Error(`c.dolly：素材「${clip.source}」${dir === 'in' ? '在片段前面' : '在片段後面'}少了 ${r6(short)} 秒，縮短 len 或換一段`);
-    }
-    const crop = dir === 'in' ? clip.crop.from : clip.crop.to, start = dir === 'in' ? r6(at.start - len) : at.end;
-    // its own track right above the main video: the opaque 3D frame must not hide titles and captions written before it
-    this.track('dolly', 'overlay', '3D frame', this.p.tracks.findIndex((t) => t.id === 'v1') + 1);
-    const id = addItem(this.p, { track: 'dolly', item: { type: 'common.dolly', start, end: r6(start + len),
-      params: { source: clip.source, from, dir, x: crop.x, y: crop.y, zoom: crop.zoom, grade: clip.grade ?? '', ...rest } } });
-    this.bump(start + len);
     return id;
   }
   private setTransform(id: string, transform: { x: number; y: number; scale: number }) {

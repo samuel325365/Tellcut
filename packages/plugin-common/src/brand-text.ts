@@ -1,6 +1,6 @@
 // A line of text that resolves from a soft blur, rising slightly, then softens and fades out (the brand film's text, spec
-// 2026-10-25-brand-preset §6.2-5; the spike's line() in 3-tellcut-film/scene.js). Drawn on a 2D canvas: common.logo's tagline and
-// url, common.headline's look brand.
+// 2026-10-25-brand-preset §6.2-5; the spike's line() in 3-tellcut-film/scene.js). Drawn on a 2D canvas: common.headline's looks brand
+// and proof.
 import { clamp, eIn3, eOut5 } from '@tellcut/engine';
 import type { GhostLine } from './text.ts';
 

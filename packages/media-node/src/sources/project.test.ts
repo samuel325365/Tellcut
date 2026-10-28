@@ -185,12 +185,12 @@ describe('getAsset', () => {
     expect(block()).toBe('- SFX: fake 0702 "t-0702"\n\n下載了但片裡沒用到（不必署名）：\n- SFX: fake 0701 "t-0701"\n');
   });
 
-  test('photos a block names in a comma list (common.wall tiles, with @seconds) are used, not listed as unused', () => {
+  test('photos a block names in a comma list (the tiles of an fx, with @seconds) are used, not listed as unused', () => {
     mkdirSync(join(dir, 'media'), { recursive: true });
     const rec = (n: string) => ({ source: 'pix', ref: `pix:${n}`, sourceId: `pix-${n}`, kind: 'image', path: `media/pix/${n}.jpg`, title: `t-${n}`, author: 'a', page: `https://x/${n}`, license: 'L' });
     writeFileSync(join(dir, 'media', 'assets.json'), JSON.stringify({ version: 1, items: [rec('1'), rec('2'), rec('3')] }));
     const p = readProject();
-    p.tracks.push({ id: 'o', kind: 'overlay', items: [{ id: 'w', type: 'common.wall', start: 0, end: 4, params: { tiles: 'pix-1@2.5, pix-2' } }] });
+    p.tracks.push({ id: 'o', kind: 'overlay', items: [{ id: 'w', type: 'fx.tiles', start: 0, end: 4, params: { tiles: 'pix-1@2.5, pix-2' } }] });
     writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
     refreshCredits(dir, { adapters: {} });
     const block = readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8').split('<!-- tellcut assets: begin -->\n')[1].split('<!--')[0];

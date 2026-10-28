@@ -195,7 +195,7 @@ export function formatCredits(records: AssetRecord[], adapters: Record<string, S
 }
 
 /** every string on the project's tracks: an item's source or media id, a sound file's path, an fx parameter naming a picture; a
- *  comma list (common.wall's tiles "id@2.5, id") also adds each of its ids */
+ *  comma list (an fx parameter of pictures "id@2.5, id") also adds each of its ids */
 function trackStrings(dir: string, project?: { tracks?: unknown }): Set<string> {
   const out = new Set<string>();
   const walk = (v: unknown): void => {

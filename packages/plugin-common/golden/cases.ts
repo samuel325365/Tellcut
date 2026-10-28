@@ -34,8 +34,6 @@ const CHAT = '0.2|user|小美||到了嗎？|light|who=#d6336c\n0.8|user|阿凱||
 
 /** common.album's photos: the made-up map as a picture (twice, two focus points) among painted stand-ins */
 const PIC = { pic: { file: 'fixtures/fake-map.png', width: 360, height: 640 } };
-/** common.globe's coffee origins: two origins, a home, two arcs (the Colombian one waits for the turn), turning to Taipei */
-const GLOBE = { places: '哥倫比亞|-74.3|4.6\n衣索比亞|38.7|9.1\n台北|121.5|25.03', home: '台北', arcs: '0.3-1.6|衣索比亞>台北\n1.0-2.6|哥倫比亞>台北', turn: '0|20,15\n2.6|121.5,25.03' };
 /** common.chat's messages: every kind on one chat, and a group with names */
 const CHAT_MEDIA = `-1|sys|以下為情境重現
 0|ch|🛵 出發
@@ -442,31 +440,6 @@ export const cases: Case[] = [
     cams: '0|walk, 1.0|stop, 2.2|near', icons: 'bowl|bun|box|jar|tofu|cup', loop: '2.0-2.8' }, at: [0.5, 1.4, 2.6], bg: '#fbf8f0', theme: NOTE },
   { name: 'wide-route-page', type: 'common.route', params: { look: 'page', stops: 5, start: '車站', names: '湯圓|菜包|酥糖|肉鬆|冰店', legs: '10 分鐘|3 分鐘|3 分鐘|走兩步|30 秒', from: 0.4, to: 2.4, cams: '0|walk' },
     at: [2.9], wide: true, bg: '#fbf8f0', theme: NOTE },
-  // the 3D frame push / pull (WebGL: another machine may need npm run golden -- --update dolly): far and tilted, then nearly full frame
-  { name: 'dolly-in', type: 'common.dolly', sources: PIC, params: { source: 'pic', dir: 'in' }, len: 1, at: [0.2, 0.9] },
-  { name: 'dolly-out', type: 'common.dolly', params: { dir: 'out' }, len: 1, at: [0.1, 0.8], wide: true },
-  // the 3D logo ending (WebGL): an extruded SVG with the name rising, a cut-out PNG with a mixed name, the name alone
-  { name: 'logo-svg', type: 'common.logo', sources: { logo: { file: 'fixtures/tellcut.svg', width: 32, height: 32 } }, len: 4,
-    params: { logo: 'media/golden-logo.svg', name: 'Tellcut', split: 4, tagline: 'Tell it. It cuts.', url: 'tellcut.app' }, at: [0.4, 0.9, 3.6] },
-  { name: 'logo-png', type: 'common.logo', sources: { logo: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, len: 4,
-    params: { logo: 'media/golden-logo.png', name: '麥田烘焙 Bakery', color: '#c8752a', tagline: '每天清晨四點揉麵' }, at: [3.6], wide: true },
-  { name: 'logo-name', type: 'common.logo', params: { name: 'ACME' }, len: 3, at: [2.0] },
-  // entrance gather: the mark's dots spiral in and settle into it at hit (an SVG in its fills; a picture in its own colours, with the
-  // brand recipe's early hit 0.75 right after a dolly out)
-  { name: 'logo-gather-svg', type: 'common.logo', sources: { logo: { file: 'fixtures/tellcut.svg', width: 32, height: 32 } }, len: 4,
-    params: { logo: 'media/golden-logo.svg', entrance: 'gather', name: 'Tellcut', split: 4, hit: 1.6 }, at: [0.4, 1.1, 1.6, 2.4], wide: true },
-  { name: 'logo-gather-png', type: 'common.logo', sources: { logo: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, len: 3,
-    params: { logo: 'media/golden-logo.png', entrance: 'gather', name: 'Bakery', color: '#c8752a' }, at: [0.3, 0.6] },
-  // the pictures as a 3D wall (glide, then the push into the focus tile) and as a turning ball; a tall and a square picture
-  { name: 'wall-wall', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { cols: 9, rows: 5, push: 0.4, count: 696, countLabel: 'clips.' }, len: 6, at: [0.3, 2.5, 5.9], wide: true },
-  // the wall in 9:16: covering the frame top to bottom while gliding, the pushed-in tile across the width at the end
-  { name: 'wall-tall', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { cols: 9, rows: 5, push: 0.4 }, len: 6, at: [1.0, 5.9] },
-  { name: 'wall-sphere-right', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { look: 'sphere', x: 0.68 }, len: 3, at: [1.5], wide: true },
-  { name: 'wall-sphere', type: 'common.wall', sources: { ...PIC, sq: { file: 'fixtures/bakery.png', width: 256, height: 256 } }, params: { look: 'sphere' }, len: 3, at: [1.5] },
-  // the dotted globe: two origins, a home, two arcs (the Colombian one waits for the turn), the globe turning to Taipei
-  { name: 'globe-coffee', type: 'common.globe', len: 3, wide: true, at: [0.5, 2.8], params: GLOBE },
-  // the same in 9:16 (every 3D block has a tall and a wide case)
-  { name: 'globe-tall', type: 'common.globe', len: 3, at: [0.5, 2.8], params: GLOBE },
   // the brand film's looks: lines from a blur bottom-left, frosted tags, a 2.39 letterbox
   { name: 'headline-brand', type: 'common.headline', params: { look: 'brand', text: 'We film everything.\nEvery trip.', sub: 'WHAT WE DO' }, len: 3, at: [0.3, 1.4], wide: true },
   { name: 'tag-glass-check', type: 'common.tag', params: { look: 'glass', tags: 'No black frames, Captions match the speech, No clipped audio', x: 0.6, y: 0.3, size: 3.6, step: 0.5, check: 0.4, stack: true }, len: 3, at: [0.7, 2], wide: true },

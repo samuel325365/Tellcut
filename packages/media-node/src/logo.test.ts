@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run } from './ffmpeg.ts';
-import { contrastRatio, importLogo, inspectLogo, logoContrastWarning, logoPreviewTime } from './logo.ts';
+import { contrastRatio, importLogo, inspectLogo, logoContrastWarning } from './logo.ts';
 
 const fixture = (f: string) => fileURLToPath(new URL(`../../../tools/fixtures/brand/${f}`, import.meta.url));
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -120,19 +120,10 @@ test('importLogo into a folder that is not a project creates nothing', async () 
   expect(existsSync(typo)).toBe(false);
 });
 
-test('the preview waits until the whole name stands, longer for a longer name', () => {
-  expect(logoPreviewTime()).toBeCloseTo(0.75 + 2.2);
-  expect(logoPreviewTime('Acme')).toBeCloseTo(0.75 + 2.2);
-  // 20 letters: the last rises from hit + 1.0 + 19 × 0.055 and stands 0.8 s later
-  const long = logoPreviewTime('Northwind Coffee Roasters');
-  expect(long).toBeGreaterThan(0.75 + 1.0 + 20 * 0.055 + 0.8);
-  expect(logoPreviewTime('A B')).toBe(logoPreviewTime('AB'));
-});
-
 test('a logo that hardly shows on the background is warned about', () => {
   expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21);
   const black = { kind: 'png' as const, width: 10, height: 10, colors: ['#050505'] };
-  expect(logoContrastWarning(black, '#1a1a1a')).toMatch(/對比.*bg: '#f4f1ea'/);
+  expect(logoContrastWarning(black, '#1a1a1a')).toMatch(/對比.*淺色背景（例如 #f4f1ea）/);
   expect(logoContrastWarning({ ...black, colors: ['#2f8cff'] }, '#1a1a1a')).toBeNull();
   expect(logoContrastWarning({ ...black, colors: ['#f6f7f9'] }, '#ffffff')).toMatch(/深色/);
   // an SVG that names no colour is drawn black

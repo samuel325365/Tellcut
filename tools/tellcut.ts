@@ -2,8 +2,7 @@
 //   npm run tellcut -- show|selection|status|accept|reject <id>
 //   npm run tellcut -- propose <id> <file.json | ->      (file: { "label": "…", "ops": [ … ] }; the page chat writes projects/<id>/proposal.json)
 //   npm run tellcut -- frames <id> [--proposal] [--full] --at 1.5,3   (stills 960 on the long side unless --full)
-//   npm run tellcut -- logo <id> <file> [--name <name>]   (the brand logo into media/brand/: extrudable or not, its colours, how to use it)
-//   npm run tellcut -- seams <id>   (every common.dolly's handoff to its clip: average colour within 1 and PSNR at least 30 dB pass)
+//   npm run tellcut -- logo <id> <file>   (the brand logo into media/brand/: extrudable or not, its colours, how to use it)
 //   npm run tellcut -- request <id> [--id <request id>] [--frames [--full]]   (the editor's "Ask Agent…")
 //   npm run tellcut -- catalog [type | handle | --find <words>]   (every block that can go in a project; one type's params; a search)
 //   npm run tellcut -- recipe [name] / cut-api            (a recipe's content format / the Cut API at a glance)
@@ -13,8 +12,8 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { applyOps, magneticWarnings, OpError, parseProject, resolveTimes, type FxResult, type Op, type Project } from '@tellcut/engine';
-import { analysisFiles, closeProposal, extrasFiles, latestRequest, loadProjectFx, makeProposal, projectHash, projectRegistry, readProposal, readRequest, readTranscript, TELLCUT_ROOT, renderStills, dollySeams, seamLine, importLogo, logoContrastWarning, logoPreviews, saveProjectFile, saveProposal, tellcutUrl, type AskRequest, type Proposal } from '@tellcut/media-node';
+import { applyOps, magneticWarnings, OpError, parseProject, resolveTheme, resolveTimes, type FxResult, type Op, type Project } from '@tellcut/engine';
+import { analysisFiles, closeProposal, extrasFiles, latestRequest, loadProjectFx, makeProposal, projectHash, projectRegistry, readProposal, readRequest, readTranscript, TELLCUT_ROOT, renderStills, importLogo, logoContrastWarning, saveProjectFile, saveProposal, tellcutUrl, type AskRequest, type Proposal } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { formatCatalog, formatFind, formatLookup } from './catalog.ts';
 import { handleOf } from '@tellcut/protocol';
@@ -152,7 +151,8 @@ function reportFx(fx: FxResult) {
 async function registryFor(dir: string, project: Project) { const r = await projectRegistry(dir, plugins, project); reportFx(r.fx); return r.registry; }
 
 /** `logo <專案> …`'s words after the project: the file is the one word that is neither a flag nor --name's value, so
- *  `--name Acme logo.svg` and `logo.svg --name Acme` read the same */
+ *  `--name Acme logo.svg` and `logo.svg --name Acme` read the same (--name named the old previews' wordmark; still read so an
+ *  older command line works, and ignored) */
 export function logoArgs(rest: string[]): { file?: string; name?: string } {
   const ni = rest.indexOf('--name');
   return { file: rest.find((a, i) => !a.startsWith('--') && (ni < 0 || i !== ni + 1)), name: ni >= 0 ? rest[ni + 1] : undefined };
@@ -178,7 +178,7 @@ async function main(argv: string[]) {
   }
   if (cmd === 'recipe') { console.log(describeRecipe(id)); return; }
   if (cmd === 'cut-api') { console.log(formatCutApi()); return; }
-  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|seams|logo|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api');
+  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api');
   const dir = join(TELLCUT_ROOT, 'projects', id);
   const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };
   switch (cmd) {
@@ -242,33 +242,21 @@ async function main(argv: string[]) {
       return;
     }
     case 'logo': {
-      const { file, name } = logoArgs(rest);
-      if (!file) throw new Usage('用法：npm run tellcut -- logo <專案> <商標檔（SVG、PNG、JPG、WebP）> [--name 名稱]');
+      const { file } = logoArgs(rest);
+      if (!file) throw new Usage('用法：npm run tellcut -- logo <專案> <商標檔（SVG、PNG、JPG、WebP）>');
       // a mistyped project id must not leave an empty projects/<typo>/media/brand/ behind (importLogo checks too)
       if (!existsSync(join(dir, 'project.json'))) throw new Error(`找不到專案 ${id}（projects/${id}/project.json 不存在）`);
       const { path, info } = await importLogo(dir, resolve(file));
       console.log(`已存到 ${path}（${info.kind.toUpperCase()}，${info.width}×${info.height}${info.transparent ? '，透明背景' : info.kind === 'svg' ? '' : '，不透明'}）`);
-      if (info.kind === 'svg') console.log(info.extrudable ? '可以直接擠出成立體。' : `不能擠出（${info.why}），common.logo 會改做成立體板。`);
-      else console.log('common.logo 會做成立體板（照商標外形切）。');
+      if (info.kind === 'svg') console.log(info.extrudable ? '可以直接擠出成立體。' : `不能擠出（${info.why}），3D 裡會做成立體板。`);
+      else console.log(info.transparent ? '3D 裡會做成照商標外形切的立體板。' : '3D 裡會做成圓角立體板，圖貼在正面。');
       console.log(`主色：${info.colors.join('、') || '（看不出來）'}`);
       if (info.colors[0]) console.log(`c.theme({ palette: { accent: '${info.colors[0]}' } })`);
-      console.log(`c.effect('common.logo', { len: 5, logo: '${path}', name: '…', tagline: '…', url: '…' })`);
-      // what common.logo makes of it, to look at: in 3D, and as a flat plate (the logo's own shape and colours)
-      const project = readProject(dir);
-      const pre = await logoPreviews({ projectDir: dir, logoPath: path, name, registry: await registryFor(dir, project) });
-      console.log(`預覽（立體）：${pre.mark}`);
-      console.log(`預覽（平面）：${pre.flat}`);
-      const warn = logoContrastWarning(info, pre.bg);
+      // no 3D preview: the agent opens the file itself, and sees the logo in 3D in the frames of its own fx
+      console.log(`看商標：${join(dir, path)}`);
+      console.log(`做成 3D（專案 fx，three: true）：build() 記下 ctx.three 和 ctx.media.fileUrl('${path}')，ready() 裡 const mark = await kit.loadMark(網址)，把 mark.group 加進場景；名稱用 kit.word3d`);
+      const warn = logoContrastWarning(info, resolveTheme(readProject(dir).meta.theme).palette.ink);
       if (warn) console.log(warn);
-      return;
-    }
-    case 'seams': {
-      // every common.dolly's handoff to its clip, drawn alone on each side and compared by average colour and PSNR
-      const project = readProject(dir);
-      const r = await dollySeams({ projectDir: dir, project, registry: await registryFor(dir, project) });
-      if (!r.length) { console.log('這個專案沒有 common.dolly'); return; }
-      for (const s of r) console.log(seamLine(s));
-      if (r.some((s) => !s.ok)) process.exitCode = 1;
       return;
     }
     case 'request': {

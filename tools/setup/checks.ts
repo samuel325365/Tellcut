@@ -103,7 +103,7 @@ export function checkWhisperModel(model: string): Check {
 }
 
 /** fonts.css with its faces: one with none (an offline download used to write that, review R4-T2) leaves every font to the system.
- *  `named`: font files kept under their own name in files/ with no @font-face (the TTF common.logo extrudes its letters from).
+ *  `named`: font files kept under their own name in files/ with no @font-face (INTER_3D, the TTF ThreeKit's loadFont and word3d extrude 3D letters from).
  *  An install from before they were added has a full fonts.css but not them, and the 3D letters quietly become cut-outs. */
 export function checkFonts(dir = join(TELLCUT_ROOT, 'apps', 'player', 'public', 'fonts'), named: string[] = []): Check {
   let css: string;

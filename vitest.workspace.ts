@@ -13,8 +13,6 @@ export const BROWSER_TESTS = [
   'packages/plugin-common/golden/golden.test.ts',
   'tools/check/page.test.ts',
   'tools/render.test.ts',
-  'tools/dolly-seam.test.ts',
-  'tools/logo-preview.test.ts',
 ];
 
 // spread, not `extends`: extending concatenates include lists, and the browser group would include everything

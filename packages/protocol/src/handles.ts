@@ -71,7 +71,6 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'TRV-07': 'common.postmark',
   'TRV-08': 'common.mapcam',
   'TRV-09': 'common.worldmap',
-  'TRV-10': 'common.globe',
   'FRM-01': 'common.panel',
   'FRM-02': 'common.polaroid',
   'FRM-03': 'common.snap',
@@ -81,8 +80,6 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'FRM-07': 'common.camcorder',
   'FRM-08': 'common.casefile',
   'FRM-09': 'common.magazine',
-  'FRM-10': 'common.dolly',
-  'FRM-11': 'common.wall',
   'PHN-01': 'common.notify',
   'PHN-02': 'common.lockscreen',
   'PHN-03': 'common.reels',
@@ -112,7 +109,6 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'MOM-04': 'common.wipe',
   'MOM-05': 'core.flash',
   'MOM-06': 'core.endCard',
-  'MOM-07': 'common.logo',
   'SFX-ALR-01': 'common.beep',
   'SFX-ALR-02': 'common.tick',
   'SFX-ALR-03': 'common.error',
@@ -190,13 +186,19 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'RCP-01': 'recipe:travel',
   'RCP-02': 'recipe:hook',
   'RCP-03': 'recipe:montage',
-  'RCP-04': 'recipe:brand',
   'CLP-01': 'clip.shake',
   'CLP-02': 'clip.follow',
   'CLP-03': 'clip.avoidBurned',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
-export const RETIRED: Readonly<Record<string, string>> = {};
+export const RETIRED: Readonly<Record<string, string>> = {
+  // 2026-10-28: the brand preset's template blocks and recipe; brand films build their own 3D with ThreeKit
+  'TRV-10': 'common.globe',
+  'FRM-10': 'common.dolly',
+  'FRM-11': 'common.wall',
+  'MOM-07': 'common.logo',
+  'RCP-04': 'recipe:brand',
+};
 /** ids that changed category after getting their handle: they keep it, so its prefix no longer matches */
 export const MOVED: readonly string[] = [];
 
