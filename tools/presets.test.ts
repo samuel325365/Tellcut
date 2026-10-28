@@ -108,9 +108,10 @@ test('every preset starts its form with Making › Effects: Auto (the library wh
   expect(none).toMatch(/style .*rebuild that look/);                            // a ticked style built on shared blocks is rebuilt
 });
 
-test('brand: the five v1 styles, 45–90 s at 16:9, Pixabay and Freesound, and the rules that make it work without footage', () => {
+test('brand: seven whole-film styles, 45–90 s at 16:9, Pixabay and Freesound, and the rules that make it work without footage', () => {
   const b = presets().find((p) => p.id === 'brand')!;
-  expect(b.styles.map((s) => s.id)).toEqual(['real-3d', 'cinemascope', 'voiceover', 'globe', 'social-cut']);
+  // 2026-10-28: every style is a way the whole film looks (voice-over is a form field, places a line in the body, no social cut)
+  expect(b.styles.map((s) => s.id)).toEqual(['people', 'texture', 'minimal', 'manifesto', 'shapes', 'cinemascope', 'product-3d']);
   expect([b.length, b.ratios, b.sources]).toEqual([[45, 90], ['16:9'], ['pixabay', 'freesound']]);
   // the body names the tools the film is made with
   for (const s of ['tellcut -- logo', 'ThreeKit', 'three: true', 'assets search', 'tellcut -- frames']) expect(b.prompt, s).toContain(s);
@@ -118,7 +119,7 @@ test('brand: the five v1 styles, 45–90 s at 16:9, Pixabay and Freesound, and t
   expect(b.prompt).toMatch(/only numbers .* in the user's (own )?(text|words)/i);
   expect(b.prompt).toMatch(/search .* before .* (script|copy)/i);
   expect(b.prompt).toMatch(/endors/i);
-  expect(b.styles.find((s) => s.id === 'globe')!.prompt).toMatch(/no places?.*(skip|leave out|do not)/i);
+  expect(b.prompt).toMatch(/places[^.]*user's text[^.]*map or globe/i);
   expect(b.styles.find((s) => s.id === 'cinemascope')!.prompt).toMatch(/between the bars/i);
 });
 
@@ -142,7 +143,10 @@ test('brand films are written for their company, with footage minimums, one look
 
 test('brand films start from the brand: the brand card, the site, the form, no default look (2026-10-28 rethink)', () => {
   const b = presets().find((p) => p.id === 'brand')!;
-  expect(b.fields.map((f) => f.id)).toEqual(['library', 'tone', 'type']);
+  expect(b.fields.map((f) => f.id)).toEqual(['library', 'tone', 'type', 'voice']);
+  expect(b.fields[3].options.map((o) => o.id)).toEqual(['original', 'tts', 'none']);
+  // short names, so the dialog shows every field as buttons (a name over 8 characters turns it into a menu)
+  for (const f of b.fields) for (const o of f.options) for (const l of LANGS) expect([...(o.name[l] ?? '')].length, `${f.id}.${o.id}.${l}`).toBeLessThanOrEqual(8);
   expect(b.fields[1].options.map((o) => o.id)).toEqual(['tech', 'warm', 'premium', 'playful']);
   expect(b.fields[2].options.map((o) => o.id)).toEqual(['sans', 'serif', 'round']);
   for (const s of ['brand.md', 'tellcut -- site', 'tellcut -- font3d', 'storyboard.md', '--kind image']) expect(b.prompt, s).toContain(s);
