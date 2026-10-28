@@ -64,7 +64,7 @@ const MAC = process.platform === 'darwin';
 // on macOS setup downloads uv only: no ffmpeg build for macOS both has vid.stab (stabilised cuts) and stays at a pinned version,
 // so ffmpeg comes from Homebrew's ffmpeg tap, built with it
 const FFMPEG_INSTALL = MAC
-  ? '用 Homebrew 安裝含防手震（vid.stab）的版本：brew uninstall --ignore-dependencies ffmpeg; brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-libvidstab'
+  ? '用 Homebrew 的 ffmpeg tap 安裝含防手震（vid.stab）的版本（見 INSTALL.md 的 On a Mac）：brew tap homebrew-ffmpeg/ffmpeg; brew trust --formula homebrew-ffmpeg/ffmpeg/ffmpeg; brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-libvidstab'
   : '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/ffmpeg）';
 
 export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: [join('ffmpeg', 'bin', 'ffmpeg')], path: 'ffmpeg', install: FFMPEG_INSTALL };
