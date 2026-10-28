@@ -109,8 +109,9 @@ export function composePrompt(parts: string[], dir: string): string {
   return file;
 }
 
-/** Arguments are fixed strings or paths; the user's words only ever go through stdin. */
-const quote = (a: string) => `"${a.replace(/"/g, '\\"')}"`;
+/** Arguments are fixed strings or paths; the user's words only ever go through stdin. sh expands $ and ` inside double
+ *  quotes and nothing inside single ones, so there a path under a folder named with either stays as it is. */
+const quote = process.platform === 'win32' ? (a: string) => `"${a.replace(/"/g, '\\"')}"` : (a: string) => `'${a.replace(/'/g, `'\\''`)}'`;
 
 interface Turn { child: ChildProcess; parser: StreamParser; tools: ChatTool[]; listeners: Set<(e: ChatEvent) => void>; stopped: boolean; release: () => void }
 
