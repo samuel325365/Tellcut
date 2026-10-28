@@ -59,7 +59,9 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
   const port = await server.listen(0);
   const launching = chromium.launch({ executablePath: chromePath(), headless: true,
     // --disable-lcd-text: video frames must use grayscale text AA (subpixel fringes become colour noise when encoded)
-    args: ['--autoplay-policy=no-user-gesture-required', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb', '--disable-background-timer-throttling', '--disable-lcd-text'] });
+    // macOS: headless Chrome has no WebGL unless told to use the GPU through Metal (shader and 3D blocks would fall back)
+    args: ['--autoplay-policy=no-user-gesture-required', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb', '--disable-background-timer-throttling', '--disable-lcd-text',
+      ...(process.platform === 'darwin' ? ['--use-angle=metal'] : [])] });
   let browser: Awaited<typeof launching>;
   // starting Chrome is cancellable too (under load it takes seconds); one that comes up after the cancel is closed
   try { browser = await guard(launching, { signal: o.signal, ms: 120000, what: 'Starting Chrome' }); }
