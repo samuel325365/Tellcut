@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { corePlugin, createRegistry } from '@tellcut/engine';
 import { TELLCUT_ROOT } from './paths.ts';
-import { diffShare, goldenFile, goldenProject, runGolden, type GoldenCase } from './golden.ts';
+import { diffShare, goldenFile, goldenPlatformDir, goldenProject, runGolden, type GoldenCase } from './golden.ts';
 
 const registry = createRegistry([corePlugin]);
 const work = join(TELLCUT_ROOT, 'projects/_golden-test');
@@ -41,4 +41,31 @@ test('a missing golden is new, update writes it, the same picture is ok, a diffe
   expect(changed[0].file).toBe(goldenFile(flash('#f00'), 0.1));
   expect((await runGolden([flash('#f00')], { ...o, update: true })).map((r) => r.status)).toEqual(['updated']);
   expect((await runGolden([flash('#f00')], o)).map((r) => r.status)).toEqual(['ok']);
+}, 180000);
+
+test('a system with pictures of its own (macOS) keeps them beside the shared ones and never writes those', async () => {
+  expect(goldenPlatformDir('/g', 'darwin')).toBe(join('/g', 'darwin'));
+  expect(goldenPlatformDir('/g', 'win32')).toBeUndefined();
+  const flash = (color: string): GoldenCase => ({ name: 'flash', type: 'core.flash', params: { color, peak: 1 }, len: 1, at: [0.1] });
+  const own = join(dir, 'darwin'), file = goldenFile(flash('#fff'), 0.1), mac = { registry, goldenDir: dir, platformDir: own, work }, win = { registry, goldenDir: dir, work };
+  const statuses = async (color: string, o: object) => (await runGolden([flash(color)], o as typeof mac)).map((r) => r.status);
+  // a new case drawn on a Mac: its own picture only; the shared one comes from an update on Windows
+  expect(await statuses('#fff', mac)).toEqual(['new']);
+  expect(await statuses('#fff', { ...mac, update: true })).toEqual(['updated']);
+  expect([existsSync(join(dir, file)), existsSync(join(own, file))]).toEqual([false, true]);
+  expect(await statuses('#fff', mac)).toEqual(['ok']);
+  expect(await statuses('#fff', { ...win, update: true })).toEqual(['updated']);
+  const sharedBytes = readFileSync(join(dir, file));
+  // drawn like the shared one: an update drops the Mac's own copy, and a second one has nothing to do
+  expect(await statuses('#fff', { ...mac, update: true })).toEqual(['updated']);
+  expect(existsSync(join(own, file))).toBe(false);
+  expect(await statuses('#fff', { ...mac, update: true })).toEqual(['ok']);
+  // drawn differently: changed, then the Mac's own picture; the shared one is untouched
+  expect(await statuses('#f00', mac)).toEqual(['changed']);
+  expect(await statuses('#f00', { ...mac, update: true })).toEqual(['updated']);
+  expect(await statuses('#f00', { ...mac, update: true })).toEqual(['ok']);
+  expect(readFileSync(join(dir, file))).toEqual(sharedBytes);
+  expect(await statuses('#f00', mac)).toEqual(['ok']);
+  // Windows moved the shared picture on and the Mac now draws like it: ok, though its own copy is the old look
+  expect(await statuses('#fff', mac)).toEqual(['ok']);
 }, 180000);
