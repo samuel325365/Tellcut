@@ -19,7 +19,7 @@ export function startItemDrag(e: MouseEvent, g: GestureCtx): boolean {
     if (!started) { started = true; g.editor.beginDrag({ grip, id, mods: mods(e), selection: sel }); }
     const row = rowAt(g.rows(), y(m.clientY));
     // changing track only for a single item (moveItems refuses more)
-    g.editor.dragTo(m.clientX - e.clientX, mods(m), row && row.track.id !== el.dataset.track && sel.length <= 1 ? row.track.id : undefined);
+    g.editor.dragTo(m.clientX - e.clientX, mods(m), row && row.track.id !== el.dataset.track && !g.locked.has(row.track.id) && sel.length <= 1 ? row.track.id : undefined);
   };
   follow(move, () => { if (started) g.editor.endDrag(); });
   return true;

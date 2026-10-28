@@ -498,9 +498,9 @@ test('the layout is remembered per browser; F toggles the large preview; selecti
   const storage = { getItem: (k: string) => mem[k] ?? null, setItem: (k: string, v: string) => { mem[k] = v; } };
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge, storage });
-  expect(ed.store.get().layout).toMatchObject({ split: { landscape: 0.7, portrait: 0.7 }, trackSize: 'standard', maxPreview: false, sideTab: 'library', sideW: 380 });   // not the transient bits; the panel width is kept
+  expect(ed.store.get().layout).toMatchObject({ split: { landscape: 0.7, portrait: null }, trackSize: 'standard', maxPreview: false, sideTab: 'library', sideW: 380 });   // not the transient bits; the panel width is kept
   ed.setLayout({ libClosed: true });
-  expect(JSON.parse(mem['tellcut.layout'])).toEqual({ split: { landscape: 0.7, portrait: 0.7 }, previewW: { landscape: null, portrait: null }, libClosed: true, propsClosed: false, trackSize: 'standard', snap: true, sideW: 380, arrange: { landscape: 'auto', portrait: 'auto' } });
+  expect(JSON.parse(mem['tellcut.layout'])).toEqual({ split: { landscape: 0.7, portrait: null }, previewW: { landscape: null, portrait: null }, libClosed: true, propsClosed: false, trackSize: 'standard', snap: true, sideW: 380, arrange: { landscape: 'auto', portrait: 'auto' } });
   ed.run('maxPreview');
   expect(ed.store.get().layout.maxPreview).toBe(true);
   await ed.open();
@@ -1657,4 +1657,25 @@ test('locks are remembered per project and dropped when the track is deleted', a
   again.removeTrack('v2');
   expect(again.store.get().locked).toEqual([]);
   expect(JSON.parse(mem['tellcut.locked.demo'])).toEqual([]);
+});
+
+test('a library add passes over locked tracks (onto another of the kind, else a new one)', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.toggleLock('v');
+  ed.seek(10);
+  expect(ed.addClip('s', 0, 2)).toBe(true);
+  expect(ids(ed, 'v')).toEqual(['c1', 'c2']);
+  expect(ids(ed, 'v2').length).toBe(1);
+  expect(ed.store.get().selection).toEqual(ids(ed, 'v2'));            // and the new clip is selected
+});
+
+test('M with nothing that can be muted says so', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.select(['blk']);
+  expect(ed.toggleItemMute()).toBe(false);
+  expect(ed.store.get().notice).toBe(t('ed.nothingToMute'));
 });

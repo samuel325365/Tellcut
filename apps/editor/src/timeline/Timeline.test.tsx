@@ -506,3 +506,54 @@ test('a clip on a locked track neither drags nor selects; its volume line takes 
   expect([log, calls.filter((c) => c[0] === 'select')]).toEqual([[], []]);
   expect(root.querySelector('[data-item-id="m1"] [data-env-line]')).toBeNull();
 });
+
+test('a press on the timeline clears a text selection left elsewhere on the page (so Ctrl+C copies clips, not that text)', async () => {
+  const { root, editor } = mount();
+  await act(() => render(<Timeline editor={editor} />, root));
+  const p = document.createElement('p'); p.textContent = 'some chat text'; document.body.appendChild(p);
+  const r = document.createRange(); r.selectNodeContents(p); getSelection()!.removeAllRanges(); getSelection()!.addRange(r);
+  expect(getSelection()!.isCollapsed).toBe(false);
+  root.querySelector<HTMLElement>('[data-item-id="c1"]')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 20, clientY: 60 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 20, clientY: 60 }));
+  expect(getSelection()!.isCollapsed).toBe(true);
+  getSelection()!.addRange(r);
+  root.querySelector<HTMLElement>('[data-tool="split"]')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+  expect(getSelection()!.isCollapsed).toBe(true);
+});
+
+test('locked: a transition takes no drag or click, a drag cannot land on a locked track, Detach is not offered', async () => {
+  const { root, editor, calls } = mount({ locked: ['v'] });
+  editor.previewTransitionDur = () => calls.push(['trDur']);
+  editor.overlapClick = () => calls.push(['overlap']);
+  editor.detach = (id: string) => calls.push(['detach', id]);
+  await act(() => render(<Timeline editor={editor} />, root));
+  const block = root.querySelector<HTMLElement>('[data-transition="c2"]')!;
+  block.querySelector('[data-transition-edge]')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 25 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 40 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 40 }));
+  block.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+  expect(calls.filter((c) => c[0] === 'trDur' || c[0] === 'select')).toEqual([]);
+  // v2 (above v, 0..56) locked, c1 on v dragged up onto it: no change of track
+  const two = mount({ locked: ['v2'] }), drags: any[] = [];
+  two.editor.dragTo = (_dx: number, _m: any, toTrack?: string) => drags.push(toTrack);
+  await act(() => render(<Timeline editor={two.editor} />, two.root));
+  two.root.querySelector<HTMLElement>('[data-item-id="c1"]')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 20, clientY: 60 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 40, clientY: 20 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 40, clientY: 20 }));
+  expect(drags.length).toBeGreaterThan(0);
+  expect(drags.every((x) => x === undefined)).toBe(true);
+  const fx = mount({ locked: ['fx'] });
+  await act(() => render(<Timeline editor={fx.editor} />, fx.root));
+  await act(() => { fx.root.querySelector<HTMLElement>('[data-item-id="tap"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 })); });
+  expect([...fx.root.querySelectorAll('.ctx button')].map((b) => b.textContent)).not.toContain('Detach');
+});
+
+test('a muted clip is drawn as muted', async () => {
+  const p: any = fixture(); p.tracks.find((t: any) => t.id === 'mu').items[0].muted = true;
+  const { root, editor } = mount({ project: p });
+  await act(() => render(<Timeline editor={editor} />, root));
+  const m1 = root.querySelector<HTMLElement>('[data-item-id="m1"]')!;
+  expect(m1.classList.contains('muted')).toBe(true);
+  expect(m1.querySelector('[data-muted-mark]')).not.toBeNull();
+  expect(root.querySelector('[data-item-id="a1"]')!.classList.contains('muted')).toBe(false);
+});

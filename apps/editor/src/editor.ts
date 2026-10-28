@@ -345,7 +345,7 @@ export class Editor {
       if (f.track.kind === 'video') return ownSounds(p, id).map((c) => c.id);
       return f.track.kind === 'music' || f.track.kind === 'audio' || f.track.kind === 'sfx' ? [id] : [];
     });
-    if (!targets.length) return false;
+    if (!targets.length) { this.set({ notice: say('ed.nothingToMute') }); return false; }
     const on = !(findItem(p, targets[0]).item as any).muted;
     return this.apply((d) => { for (const id of targets) { const it: any = findItem(d, id).item; if (on) it.muted = true; else delete it.muted; } });
   }
@@ -807,15 +807,16 @@ export class Editor {
   private addTo(kind: 'video' | 'sfx' | 'overlay' | 'music', item: Record<string, unknown>, also?: (d: Project, id: string) => void) {
     // nothing may start at or run past the project end — except on the magnetic track, which makes the film longer
     const p = this.s.project!, sel0 = this.s.selection[0];
-    const target: any = (sel0 && p.tracks.find((t) => t.kind === kind && (t.items as any[]).some((i) => i.id === sel0))) ?? p.tracks.find((t) => t.kind === kind);
+    const open = (t: { id: string; kind: string }) => t.kind === kind && !this.s.locked.includes(t.id);   // locked tracks are passed over
+    const target: any = (sel0 && p.tracks.find((t) => open(t) && (t.items as any[]).some((i) => i.id === sel0))) ?? p.tracks.find(open);
     const end = target?.magnetic ? (item.end as number) : Math.min(item.end as number, p.meta.duration);
     if (end - (item.start as number) < 1 / p.meta.fps - 1e-9) { this.set({ notice: say('ed.atEnd') }); return false; }
     item = { ...item, end };
     let id = '';
     const sel = this.s.selection[0];
     const ok = this.apply((d) => {
-      const selected = sel ? d.tracks.find((t) => t.kind === kind && (t.items as any[]).some((i) => i.id === sel)) : undefined;
-      const track = selected?.id ?? d.tracks.find((t) => t.kind === kind)?.id ?? addTrack(d, { kind });
+      const selected = sel ? d.tracks.find((t) => open(t) && (t.items as any[]).some((i) => i.id === sel)) : undefined;
+      const track = selected?.id ?? d.tracks.find(open)?.id ?? addTrack(d, { kind });
       id = addItem(d, { track, item });
       also?.(d, id);
     });

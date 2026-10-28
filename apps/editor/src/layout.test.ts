@@ -14,10 +14,10 @@ test('landscape: library | preview | properties on top, a splitter, then the tim
   expect(g.rows).toBe('40px minmax(160px, 0.62fr) 6px minmax(80px, 0.38fr)');
 });
 
-test('landscape: closed side panels shrink to a narrow strip; the maximised preview leaves only the ruler', () => {
+test('landscape: closed side panels shrink to a narrow strip; the maximised preview leaves only the tray and the ruler', () => {
   const g = gridFor({ ...DEFAULT_LAYOUT, libClosed: true, propsClosed: true, maxPreview: true }, wedding, view);
   expect(g.columns).toBe('24px minmax(0, 1fr) 24px');
-  expect(g.rows).toBe('40px minmax(0, 1fr) 6px 32px');
+  expect(g.rows).toBe('40px minmax(0, 1fr) 6px 56px');   // tray 30 + ruler 24 + borders
 });
 
 test('portrait: side tabs | timeline | splitter | a full-height preview as wide as the video needs', () => {
@@ -43,7 +43,7 @@ test('dragging the splitters maps the pointer to a clamped size', () => {
 test('a saved layout is checked field by field; anything odd falls back to the default', () => {
   expect(sanitizeLayout({ split: 5, previewW: 'x', trackSize: 'huge', libClosed: 'yes', sideTab: 'props', maxPreview: true })).toEqual(DEFAULT_LAYOUT);
   expect(sanitizeLayout({ split: 0.7, previewW: 520, libClosed: true, propsClosed: false, trackSize: 'standard' }))
-    .toEqual({ ...DEFAULT_LAYOUT, split: { landscape: 0.7, portrait: 0.7 }, previewW: { landscape: 520, portrait: 520 }, libClosed: true, trackSize: 'standard' });
+    .toEqual({ ...DEFAULT_LAYOUT, split: { landscape: 0.7, portrait: null }, previewW: { landscape: null, portrait: 520 }, libClosed: true, trackSize: 'standard' });
   expect(sanitizeLayout(null)).toEqual(DEFAULT_LAYOUT);
 });
 test('the snap switch is kept; anything but false means on', () => {
@@ -88,10 +88,12 @@ test('sizes are remembered per orientation; sizePatch touches only the current o
   expect(sizePatch(l, kyoto, { split: 0.5 })).toEqual({ split: { landscape: null, portrait: 0.5 } });
 });
 
-test('an old saved layout (single split / previewW numbers) still loads, as the start value for both orientations', () => {
+test('an old saved layout (single split / previewW numbers) still loads, each where it was used: the split for landscape, the column for portrait', () => {
   const l = sanitizeLayout({ split: 0.5, previewW: 420, trackSize: 'standard' });
-  expect(l.split).toEqual({ landscape: 0.5, portrait: 0.5 });
-  expect(l.previewW).toEqual({ landscape: 420, portrait: 420 });
+  expect(l.split).toEqual({ landscape: 0.5, portrait: null });
+  expect(l.previewW).toEqual({ landscape: null, portrait: 420 });
+  // a portrait F press saved the widest column: it must not squeeze a landscape side layout to the minimum timeline
+  expect(sanitizeLayout({ previewW: 10000 }).previewW).toEqual({ landscape: null, portrait: 10000 });
   expect(l.arrange).toEqual({ landscape: 'auto', portrait: 'auto' });
   expect(sanitizeLayout({ arrange: { landscape: 'weird', portrait: 'side' } }).arrange).toEqual({ landscape: 'auto', portrait: 'side' });
   expect(sanitizeLayout({ split: { landscape: 0.6, portrait: 9 } }).split).toEqual({ landscape: 0.6, portrait: null });

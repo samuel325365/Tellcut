@@ -104,7 +104,8 @@ export function Timeline({ editor }: { editor: Editor }) {
     const el = (e.target as HTMLElement).closest?.('[data-item-id]') as HTMLElement | null, id = el?.dataset.itemId;
     const it = id ? allItems(p).find((x) => x.item.id === id)?.item : undefined;
     e.preventDefault();
-    const hung = it?.parent !== undefined;   // anything hanging on a clip, magnetic or not, can be unhooked
+    const tr = id ? p.tracks.find((x) => (x.items as AnyItem[]).some((i) => i.id === id)) : undefined;
+    const hung = it?.parent !== undefined && !(tr && s.locked.includes(tr.id));   // anything hanging on a clip can be unhooked, unless locked
     setCtx({ x: e.clientX, y: e.clientY, id: it?.id ?? null, hung });
   };
 
@@ -189,7 +190,7 @@ export function Timeline({ editor }: { editor: Editor }) {
   </>;
 
   return (
-    <section class="timeline" ref={box} onWheel={onWheel as any}>
+    <section class="timeline" ref={box} onWheel={onWheel as any} onMouseDownCapture={dropTextSelection as any}>
       <TrayBox editor={editor} addTrack={addTrackMenu} zoom={zoomControls} />
       <div class="ruler" data-ruler style={{ height: `${RULER_H}px` }} onMouseDown={scrubFrom as any}>
         {rulerTicks(view, width).map((k) => (
@@ -276,6 +277,10 @@ export function Timeline({ editor }: { editor: Editor }) {
     </section>
   );
 }
+
+/** A press on the timeline lets go of text selected elsewhere (chat, help…): the clips hold mousedown's default back, so the
+ *  selection would stay and Ctrl+C would copy that text instead of the clips (keys.ts clipboardFree). */
+function dropTextSelection() { const sel = getSelection(); if (sel && !sel.isCollapsed) sel.removeAllRanges(); }
 
 /** The tray subscribes on its own: it needs the playhead (what is under it), but while playing it keeps the last stopped
  *  one, so playback does not redraw it every frame. */

@@ -1,7 +1,7 @@
 import type { AnyItem, Track } from '@tellcut/engine';
 import { handleOf } from '@tellcut/protocol';
 import { t } from '../i18n/index.ts';
-import { GlyphIcon } from '../icons.tsx';
+import { GlyphIcon, IconSpeakerOff } from '../icons.tsx';
 import type { Glyph, Tone } from './names.ts';
 
 export interface ItemBlockProps { item: AnyItem; track: Track; left: number; top?: number; width: number; height: number; selected: boolean; offline: boolean; children?: any;
@@ -22,7 +22,7 @@ export function ItemBlock({ item, track, left, top, width, height, selected, off
   const grip = `${Math.max(2, Math.min(6, Math.round(width / 3)))}px`;
   const title = titleOf(item, name);
   return (
-    <div class={`item k-${track.kind}${strip ? ' striped' : ''}${look.tone ? ` tone-${look.tone}` : ''}${selected ? ' sel' : ''}${offline ? ' offline' : ''}${marks ? ` ${marks}` : ''}`} data-item-id={item.id} data-track={track.id}
+    <div class={`item k-${track.kind}${strip ? ' striped' : ''}${look.tone ? ` tone-${look.tone}` : ''}${(item as any).muted ? ' muted' : ''}${selected ? ' sel' : ''}${offline ? ' offline' : ''}${marks ? ` ${marks}` : ''}`} data-item-id={item.id} data-track={track.id}
       style={{ left: `${left}px`, top: `${top ?? 0}px`, width: `${Math.max(4, width)}px`, height: `${height}px` }} data-tip={title} aria-label={title}>
       {strip ? <span class="body">{media}</span> : media}
       {children}
@@ -30,6 +30,7 @@ export function ItemBlock({ item, track, left, top, width, height, selected, off
         const label = width >= NAME_MIN_W && <span class="label">{offline ? t('ed.offline') : ''}<GlyphIcon glyph={look.glyph} />{name}</span>;
         return strip ? <span class="strip">{label}</span> : label;
       })()}
+      {(item as any).muted && <span class="muted-mark" data-muted-mark><IconSpeakerOff size={12} /></span>}
       {track.kind !== 'sfx' && <><i data-edge="start" style={{ width: grip }} /><i data-edge="end" style={{ width: grip }} /></>}
     </div>
   );

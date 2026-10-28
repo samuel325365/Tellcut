@@ -232,6 +232,7 @@ export const en: Record<Key, string> = {
   'ed.lockTip': 'Lock the track against your own mouse and keys (no select, drag, cut or paste); the Agent\'s proposals can still change it',
   'ed.hideTip': 'Hide / show this track (left out of the preview and the export)',
   'ed.lockedNotice': 'This clip is on a locked track: unlock it in the track header first',
+  'ed.nothingToMute': 'Nothing in the selection has a sound to mute',
   'ed.enlargeTip': 'Enlarge the preview (F)',
   'ed.qualityTip': 'Preview quality (affects the preview only, not the export)',
   'ed.ov.videoEdit': 'Overlap (▲ this clip is on top) · click to edit the transition',

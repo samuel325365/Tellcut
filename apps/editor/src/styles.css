@@ -162,6 +162,19 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .tl-tray .tool[aria-disabled="true"] { opacity: .35; cursor: default; }
 .tl-tray select { width: auto; font-size: 12px; }
 .tl-tray input[type=range] { width: 120px; accent-color: var(--accent); }
+.tl-tray [data-snap], .tl-tray [data-track-size] { display: inline-flex; align-items: center; gap: 4px; }
+/* a narrow timeline (side layouts, small windows): Snap and Tracks keep only their marks, the slider goes (− ⇔ + still zoom) */
+.timeline { container-type: inline-size; }
+@container (max-width: 760px) {
+  .tl-tray { gap: 2px; padding: 0 4px; }
+  .tl-tray .lbl, .tl-tray input[type=range] { display: none; }
+  .tl-tray .tool { width: 24px; }
+  .tl-tray .sep { margin: 0 2px; }
+  .tl-tray select { width: 64px; }
+  .tl-tray [data-snap], .tl-tray [data-track-size] { padding: 0 5px; height: 24px; }
+}
+.item.muted { opacity: .5; }
+.item .muted-mark { position: absolute; right: 3px; top: 1px; z-index: 3; color: #fff; pointer-events: none; filter: drop-shadow(0 1px 1px #000); }
 .timeline > .hbar { flex: none; display: flex; height: 18px; background: var(--panel); border-top: 1px solid var(--line); position: relative; z-index: 6; }
 .hbar .zoom { flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 4px; padding: 0 6px; color: var(--dim); font-size: 11px; border-right: 1px solid var(--line); }
 .hbar .zoom input { flex: 1; min-width: 0; height: 12px; margin: 0; accent-color: var(--accent); }

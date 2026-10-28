@@ -231,6 +231,7 @@ export const zh = {
   'ed.lockTip': '鎖定軌道：擋住自己的滑鼠和鍵盤（不能選、拖、切、貼上），Agent 的提議照常可以改',
   'ed.hideTip': '隱藏／顯示這條軌（預覽和輸出都不畫）',
   'ed.lockedNotice': '這個片段在鎖定的軌道上：先在軌道標頭解鎖',
+  'ed.nothingToMute': '選取的片段裡沒有可以靜音的聲音',
   'ed.enlargeTip': '放大預覽 (F)',
   'ed.qualityTip': '預覽畫質（只影響預覽，不影響輸出）',
   'ed.ov.videoEdit': '重疊（▲ 這段在上層）· 點一下編輯轉場',

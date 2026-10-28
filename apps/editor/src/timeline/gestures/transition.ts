@@ -8,6 +8,7 @@ export function startTransitionDrag(e: MouseEvent, g: GestureCtx): boolean {
   const target = e.target as HTMLElement, el = target.closest<HTMLElement>('[data-item-id]'), trEl = target.closest<HTMLElement>('[data-transition]');
   if (!trEl || !el) return false;
   e.preventDefault(); e.stopPropagation();
+  if (g.locked.has(el.dataset.track!)) return true;      // locked: no select, no length change
   const id = trEl.dataset.transition!;
   if (!target.hasAttribute('data-transition-edge')) { g.editor.select([id]); return true; }
   // relative to where the drag began: a short transition's block is drawn wider than it is
@@ -18,8 +19,8 @@ export function startTransitionDrag(e: MouseEvent, g: GestureCtx): boolean {
 
 /** a press on an overlap: watched for a click; it does not stop the clip drag that may follow */
 export function watchOverlapClick(e: MouseEvent, g: GestureCtx) {
-  const ovEl = (e.target as HTMLElement).closest<HTMLElement>('[data-overlap]');
-  if (ovEl) follow(null, (m) => {
+  const ovEl = (e.target as HTMLElement).closest<HTMLElement>('[data-overlap]'), el = ovEl?.closest<HTMLElement>('[data-item-id]');
+  if (ovEl && !(el && g.locked.has(el.dataset.track!))) follow(null, (m) => {
     if (m && Math.abs(m.clientX - e.clientX) < 3 && Math.abs(m.clientY - e.clientY) < 3) g.editor.overlapClick(ovEl.dataset.overlap!);
   });
 }

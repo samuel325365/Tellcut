@@ -3,7 +3,7 @@
 import type { Editor } from '../editor.ts';
 import type { Action } from '../keys.ts';
 import { t, type Key } from '../i18n/index.ts';
-import { IconCopy, IconCutLeft, IconCutRight, IconMinus, IconPlus, IconRipple, IconScissors, IconTrash } from '../icons.tsx';
+import { IconCopy, IconCutLeft, IconCutRight, IconMagnet, IconMinus, IconPlus, IconRipple, IconRows, IconScissors, IconTrash } from '../icons.tsx';
 import { trayState, type ToolId } from './tray.ts';
 import type { EditorState } from '../store.ts';
 
@@ -33,8 +33,8 @@ export function ToolTray({ editor, s, skip, addTrack, zoom }: { editor: Editor; 
       })}
       <span class="sep" />
       <button data-snap class={s.layout.snap ? 'on' : ''} {...tip(t('ed.snapTip'))}
-        onClick={() => editor.setLayout({ snap: !s.layout.snap })}>Snap: {s.layout.snap ? 'On' : 'Off'}</button>
-      <button data-track-size {...tip(t('ed.trackSizeTip'))} onClick={() => editor.setLayout({ trackSize: s.layout.trackSize === 'compact' ? 'standard' : 'compact' })}>Tracks: {s.layout.trackSize === 'compact' ? 'Compact' : 'Standard'}</button>
+        onClick={() => editor.setLayout({ snap: !s.layout.snap })}><IconMagnet size={14} /><span class="lbl">Snap: {s.layout.snap ? 'On' : 'Off'}</span></button>
+      <button data-track-size {...tip(t('ed.trackSizeTip'))} onClick={() => editor.setLayout({ trackSize: s.layout.trackSize === 'compact' ? 'standard' : 'compact' })}><IconRows size={14} /><span class="lbl">Tracks: {s.layout.trackSize === 'compact' ? 'Compact' : 'Standard'}</span></button>
       <span class="grow" />
       <button class="tool" data-zoom-out {...tip(t('ed.tool.zoomOut'))} onClick={() => editor.run('zoomOut')}><IconMinus size={15} /></button>
       {zoom}

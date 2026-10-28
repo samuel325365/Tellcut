@@ -65,3 +65,4 @@ export const IconSpeakerOff = I(['M4 9h4l5-4v14l-5-4H4z', 'M17 9l5 6', 'M22 9l-5
 export const IconMagnet = I(['M6 3v8a6 6 0 0 0 12 0V3', 'M6 7h4', 'M14 7h4']);
 export const IconLock = I(['M6 11h12v9H6z', 'M8 11V8a4 4 0 0 1 8 0v3']);
 export const IconUnlock = I(['M6 11h12v9H6z', 'M8 11V8a4 4 0 0 1 7.5-2']);
+export const IconRows = I(['M4 6h16', 'M4 12h16', 'M4 18h16']);

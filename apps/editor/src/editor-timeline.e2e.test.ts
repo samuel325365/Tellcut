@@ -119,3 +119,21 @@ test('the razor on the playhead splits; it is not drawn when the playhead is scr
   await page.locator('[data-hscroll]').click({ position: { x: 600, y: 5 } });               // …is paged out of view
   await poll(() => page.locator('[data-razor]').count()).toBe(0);
 }, 60000);
+
+test('the tray fits a narrow timeline: every control can be reached (landscape side by side at 1000 px, portrait at 1280 px)', async () => {
+  for (const [id, w, arrange] of [['dense', 1000, 'side'], ['tall', 1280, 'auto']] as const) {
+    await page.setViewportSize({ width: w, height: 760 });
+    await page.goto(`${base}/editor/`);
+    await page.evaluate((a) => localStorage.setItem('tellcut.layout', JSON.stringify({ arrange: { landscape: a, portrait: 'auto' } })), arrange);
+    await open(id);
+    const tray = (await page.locator('[data-tray]').boundingBox())!;
+    for (const sel of ['[data-add-track]', '[data-tool="duplicate"]', '[data-snap]', '[data-track-size]', '[data-zoom-out]', '[data-zoom-fit]', '[data-zoom-in]']) {
+      const b = (await page.locator(sel).boundingBox())!;
+      expect([sel, b.x + b.width <= tray.x + tray.width + 0.5, b.width > 4]).toEqual([sel, true, true]);
+    }
+    const slider = await page.locator('[data-zoom]').boundingBox();      // hidden on a narrow tray, else whole
+    expect(slider === null || slider.x + slider.width <= tray.x + tray.width + 0.5).toBe(true);
+  }
+  await page.evaluate(() => localStorage.removeItem('tellcut.layout'));
+  await page.setViewportSize({ width: 1536, height: 864 });
+}, 90000);

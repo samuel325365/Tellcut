@@ -29,6 +29,8 @@ export const DEFAULT_SPLIT = 0.62;
 export const WIDEST_PREVIEW = 10000;
 const NONE = { landscape: null, portrait: null };
 export const DEFAULT_LAYOUT: Layout = { split: NONE, previewW: NONE, arrange: { landscape: 'auto', portrait: 'auto' }, libClosed: false, propsClosed: false, sideTab: 'library', trackSize: 'compact', maxPreview: false, snap: true, sideW: null };
+/** F leaves the timeline's tool tray and its ruler (with borders) */
+const TRAY_H = 30, RULER_ROW = 26;
 const TOOLBAR_H = 40, TRANSPORT_H = 36, SPLITTER = 6, CLOSED = 24, SIDE_W = 260, LIB_W = 220, MIN_TIMELINE = 360;
 /** the left panel can be dragged between these (and to at most half the window) */
 export const SIDE_MIN = 200, SIDE_MAX = 720;
@@ -75,7 +77,7 @@ export function gridFor(l: Layout, meta: { width: number; height: number }, view
   return {
     areas: '"tb tb tb" "lib pv pr" "sp sp sp" "tl tl tl"',
     columns: `${l.libClosed ? CLOSED : l.sideW ?? LIB_W}px minmax(0, 1fr) ${l.propsClosed ? CLOSED : 300}px`,
-    rows: l.maxPreview ? `${TOOLBAR_H}px minmax(0, 1fr) ${SPLITTER}px 32px` : `${TOOLBAR_H}px minmax(160px, ${r2(split)}fr) ${SPLITTER}px minmax(80px, ${r2(1 - split)}fr)`,
+    rows: l.maxPreview ? `${TOOLBAR_H}px minmax(0, 1fr) ${SPLITTER}px ${TRAY_H + RULER_ROW}px` : `${TOOLBAR_H}px minmax(160px, ${r2(split)}fr) ${SPLITTER}px minmax(80px, ${r2(1 - split)}fr)`,
   };
 }
 
@@ -91,14 +93,14 @@ export function sanitizeLayout(raw: unknown): Layout {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi ? v : null);
   const bool = (v: unknown) => v === true;
-  // per orientation; an older single number is the start value for both
-  const per = (v: unknown, lo: number, hi: number): PerOrientation<number | null> => {
+  // per orientation; an older single number goes where it was used: the split by landscape projects, the preview column by
+  // portrait ones (a portrait F saved the widest column, which must not squeeze a landscape project's side layout)
+  const per = (v: unknown, lo: number, hi: number, was: Orientation): PerOrientation<number | null> => {
     if (v && typeof v === 'object') { const o = v as Record<string, unknown>; return { landscape: num(o.landscape, lo, hi), portrait: num(o.portrait, lo, hi) }; }
-    const one = num(v, lo, hi);
-    return { landscape: one, portrait: one };
+    return { landscape: null, portrait: null, [was]: num(v, lo, hi) };
   };
   const arr = (v: unknown): Arrange => (v === 'stacked' || v === 'side' ? v : 'auto');
   const a = (r.arrange && typeof r.arrange === 'object' ? r.arrange : {}) as Record<string, unknown>;
-  return { ...DEFAULT_LAYOUT, split: per(r.split, 0.3, 0.85), previewW: per(r.previewW, 200, WIDEST_PREVIEW), arrange: { landscape: arr(a.landscape), portrait: arr(a.portrait) }, libClosed: bool(r.libClosed), propsClosed: bool(r.propsClosed),
+  return { ...DEFAULT_LAYOUT, split: per(r.split, 0.3, 0.85, 'landscape'), previewW: per(r.previewW, 200, WIDEST_PREVIEW, 'portrait'), arrange: { landscape: arr(a.landscape), portrait: arr(a.portrait) }, libClosed: bool(r.libClosed), propsClosed: bool(r.propsClosed),
     trackSize: r.trackSize === 'standard' ? 'standard' : 'compact', snap: r.snap !== false, sideW: num(r.sideW, SIDE_MIN, SIDE_MAX) };
 }
