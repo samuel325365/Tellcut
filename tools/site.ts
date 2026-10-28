@@ -95,29 +95,36 @@ export function mainColours(weights: Array<[string, number]>, n = 6): string[] {
 export async function readSite(url: string, projectDir: string, o: { timeoutMs?: number } = {}): Promise<SiteInfo> {
   const ms = o.timeoutMs ?? 30000, dir = join(projectDir, 'media', 'brand'), shot = 'media/brand/site.png';
   const tmp = join(dir, '.site-new.png');
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
-  try {
-    browser = await chromium.launch({ executablePath: chromePath(), headless: true, timeout: ms });
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined, timer: ReturnType<typeof setTimeout> | undefined;
+  // one deadline for the whole read (a web font or a script that never answers held fonts.ready and the screenshot for minutes):
+  // when it passes, the browser is closed, which ends whatever step was waiting
+  const end = Date.now() + ms, left = () => Math.max(1000, end - Date.now());
+  const read = async (): Promise<SiteInfo> => {
+    browser = await chromium.launch({ executablePath: chromePath(), headless: true, timeout: left() });
     // the headless browser's own name (HeadlessChrome) is turned away by some sites
     const ctx = await browser.newContext({ viewport: { width: W, height: H }, userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36` });
-    const page = await ctx.newPage(), t0 = Date.now();
-    const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ms });
+    const page = await ctx.newPage();
+    const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: left() });
     if (res && res.status() >= 400) throw new Error(`HTTP ${res.status()}`);
     // the rest of the page (pictures, fonts) within what is left of the time; a site whose trackers never finish is read as it is
-    await page.waitForLoadState('load', { timeout: Math.max(1000, ms - (Date.now() - t0)) }).catch(() => {});
-    await page.evaluate('document.fonts.ready.then(() => new Promise((r) => setTimeout(r, 800)))');
+    await page.waitForLoadState('load', { timeout: left() }).catch(() => {});
+    await page.evaluate(`Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, ${Math.min(5000, left())}))]).then(() => new Promise((r) => setTimeout(r, 800)))`);
     const m = await page.evaluate(MEASURE) as { weights: Array<[string, number]>; fonts: SiteInfo['fonts']; title: string; description: string; image: string | null };
     mkdirSync(dir, { recursive: true });
-    await page.screenshot({ path: tmp, timeout: ms });
+    await page.screenshot({ path: tmp, timeout: left() });
     const info: SiteInfo = { url: page.url(), title: m.title, description: m.description, colors: mainColours(m.weights), fonts: m.fonts, screenshot: shot, image: m.image };
     renameSync(tmp, join(projectDir, shot));
     writeFileSync(join(dir, 'site.json'), JSON.stringify(info, null, 2));
     return info;
+  };
+  try {
+    return await Promise.race([read(), new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error(`超過 ${Math.round(ms / 1000)} 秒`)), ms); })]);
   } catch (e) {
     rmSync(tmp, { force: true });
     const why = ((e as Error).message ?? String(e)).split('\n')[0].replace(/^page\.goto:\s*/, '');
     throw new Error(`讀不到官網 ${url}（${why}）：照常用商標和公司介紹`);
   } finally {
+    clearTimeout(timer);
     await browser?.close().catch(() => {});
   }
 }
