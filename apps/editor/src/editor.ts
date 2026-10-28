@@ -745,6 +745,19 @@ export class Editor {
         return this.setLayout({ maxPreview: !s.layout.maxPreview });
       case 'zoomFit': return this.zoomToFit();
       case 'layout': return this.cycleLayout();
+      case 'deleteLeft': return void this.deleteSide('left');
+      case 'deleteRight': return void this.deleteSide('right');
+      case 'prevCut': return this.jumpCut(-1);
+      case 'nextCut': return this.jumpCut(1);
+      case 'back10': return this.stepFrames(-10);
+      case 'forward10': return this.stepFrames(10);
+      case 'copy': return void this.copy();
+      case 'paste': return void this.paste();
+      case 'duplicate': return void this.duplicate();
+      case 'selectAll': return this.selectAll();
+      case 'muteItem': return void this.toggleItemMute();
+      case 'zoomIn': return this.zoomBy(1.25);
+      case 'zoomOut': return this.zoomBy(0.8);
       case 'help': return this.toggleHelp();
       case 'raise': case 'lower':
         if (s.selection.length === 1) this.restack(s.selection[0], a === 'raise' ? 'up' : 'down');

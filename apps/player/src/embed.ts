@@ -11,6 +11,11 @@ export interface SessionApi { load(p: unknown): Promise<number>; patch(p: unknow
 /** Keys typed into the preview's text box stay there (Space must not start playback). */
 export const shouldForwardKey = (e: Pick<KeyboardEvent, 'target'>) => !(e.target as HTMLElement | null)?.closest?.('input, textarea');
 
+/** keys whose browser action must not happen while the preview has focus: Space and the arrows (scrolling), and the
+ *  timeline's Ctrl+D (bookmark) and Ctrl+= / + / - (page zoom); the editor still gets them */
+export const blocksDefault = (e: Pick<KeyboardEvent, 'key' | 'code' | 'ctrlKey' | 'metaKey'>) =>
+  e.code === 'Space' || e.key.startsWith('Arrow') || ((e.ctrlKey || e.metaKey) && ['d', 'D', '=', '+', '-'].includes(e.key));
+
 export const keyMessage = (e: KeyboardEvent): PlayerMsg =>
   ({ type: 'key', key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey, altKey: e.altKey });
 
@@ -73,7 +78,7 @@ export function startEmbed(win: Window, stageEl: HTMLElement, viewport: HTMLElem
   // once the preview has focus, shortcuts must still reach the editor
   win.addEventListener('keydown', (e) => {
     if (!shouldForwardKey(e)) return;
-    if (e.code === 'Space' || e.key.startsWith('Arrow')) e.preventDefault();
+    if (blocksDefault(e)) e.preventDefault();
     post(keyMessage(e));
   });
   post({ type: 'boot' });

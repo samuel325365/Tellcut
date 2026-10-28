@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createDispatcher, keyMessage, shouldForwardKey, type SessionApi } from './embed.ts';
+import { blocksDefault, createDispatcher, keyMessage, shouldForwardKey, type SessionApi } from './embed.ts';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -90,4 +90,10 @@ test('typing in the preview text box is not forwarded as shortcuts', () => {
   const input = document.createElement('input');
   expect(shouldForwardKey({ target: input } as any)).toBe(false);
   expect(shouldForwardKey({ target: document.createElement('div') } as any)).toBe(true);
+});
+
+test('in the preview, the browser does not act on Space, the arrows or the timeline\'s Ctrl keys (bookmark, page zoom)', () => {
+  const e = (key: string, o: Record<string, unknown> = {}) => ({ key, code: key === ' ' ? 'Space' : '', ctrlKey: false, metaKey: false, ...o }) as any;
+  expect([e(' '), e('ArrowUp'), e('d', { ctrlKey: true }), e('=', { ctrlKey: true }), e('+', { ctrlKey: true }), e('-', { metaKey: true })].map(blocksDefault)).toEqual([true, true, true, true, true, true]);
+  expect([e('d'), e('c', { ctrlKey: true }), e('q')].map(blocksDefault)).toEqual([false, false, false]);   // Ctrl+C still copies in the page
 });

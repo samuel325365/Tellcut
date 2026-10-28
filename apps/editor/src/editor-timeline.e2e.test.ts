@@ -63,3 +63,28 @@ test('dragging the playhead head scrubs', async () => {
   await page.mouse.up();
   await poll(clock).not.toBe(before);
 }, 60000);
+
+const itemCount = () => page.locator('.timeline [data-item-id]').count();
+
+test('with the preview focused, Ctrl+D duplicates and Ctrl+= zooms the timeline', async () => {
+  await open('dense');
+  await page.locator('[data-item-id="h1"]').click();
+  const n0 = await itemCount(), z0 = Number(await page.locator('[data-zoom]').inputValue());
+  await page.locator('iframe').focus();
+  await page.keyboard.press('Control+d');
+  await poll(itemCount).toBe(n0 + 1);
+  await page.keyboard.press('Control+Equal');
+  await poll(async () => Number(await page.locator('[data-zoom]').inputValue())).toBeGreaterThan(z0);
+}, 60000);
+
+test('with text selected on the page, Ctrl+C copies the text, not the clips', async () => {
+  await open('dense');
+  await page.locator('[data-item-id="h2"]').click();
+  const n0 = await itemCount();
+  await page.evaluate(() => { const r = document.createRange(); r.selectNodeContents(document.querySelector('.toolbar .name')!); getSelection()!.removeAllRanges(); getSelection()!.addRange(r); });
+  await page.keyboard.press('Control+c');
+  await page.evaluate(() => getSelection()!.removeAllRanges());
+  await page.keyboard.press('Control+v');
+  await page.waitForTimeout(300);
+  expect(await itemCount()).toBe(n0);                                   // nothing was copied, so nothing pasted
+}, 60000);
