@@ -337,6 +337,8 @@ export const ja: Record<Key, string> = {
   'ed.importFailed': '追加できませんでした：{why}',
   'ed.photoTip': '写真（ダブルクリックで試し見）',
   'ed.segTip': '{a}–{b} 秒（ダブルクリックで試し見）',
+  'ed.mediaSortTip': '素材の並び順：タイムラインで最初に使われる順（未使用は最後）、追加した順、または名前順',
+  'ed.onTimeline': '（タイムラインで使用中）',
   'ed.dblListen': 'ダブルクリックで試聴',
   'ed.dblWatch': 'ダブルクリックで試し見',
   'ed.addPickedTip': '選んだ素材を再生ヘッドの位置に追加します',

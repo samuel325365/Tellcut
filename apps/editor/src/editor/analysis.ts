@@ -11,6 +11,7 @@ export async function analyzeProject(c: { id: string; api: Api; store: Store<Edi
   let res: { jobs: Array<{ id: string; label: string }>; missing: string[]; extras?: Array<{ id: string; kind: string; label: string }> };
   try { res = await c.api.analyze(c.id); } catch { return; }
   const mine = (x: string) => !only || only.includes(x);
+  c.api.mediaTitles?.(c.id).then((titles) => c.store.set({ titles }), () => {});
   c.store.set((s) => (only ? { offline: [...new Set([...s.offline, ...res.missing])], analyzing: s.analyzing + res.jobs.filter((j) => mine(j.label)).length }
     : { offline: res.missing, analyzing: res.jobs.length }));
   const jobFor = new Map(res.jobs.filter((j) => mine(j.label)).map((j) => [j.label, j.id]));

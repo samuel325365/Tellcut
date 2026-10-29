@@ -130,3 +130,15 @@ test('a segment used in the last minute is not pruned (it may be on its way to a
   pruneAudioCache(d, join(d, 'c.wav'), 500);
   expect(readdirSync(d).sort()).toEqual(['a.wav', 'b.wav', 'c.wav']);
 });
+
+test('titles of downloaded media, by source or music id (none when nothing was downloaded)', async () => {
+  expect(await (await fetch(url('titles'))).json()).toEqual({});
+  mkdirSync(join(root, 'demo', 'media'), { recursive: true });
+  const rec = { author: 'a', page: 'p', license: 'l', quality: 'original', downloaded: '' };
+  writeFileSync(join(root, 'demo', 'media', 'assets.json'), JSON.stringify({ version: 1, items: [
+    { ...rec, source: 'pixabay', id: 'video-1', title: 'rice field', path: 'media/pixabay/v1.mp4', sourceId: 'pixabay-video-1' },
+    { ...rec, source: 'tunes', id: 'm', title: 'calm piano', path: 'media/tunes/m.mp3', mediaId: 'tunes-m' },
+    { ...rec, source: 'x', id: 'y', title: '', path: 'media/x/y.mp4', sourceId: 'x-y' },
+  ] }));
+  expect(await (await fetch(url('titles'))).json()).toEqual({ 'pixabay-video-1': 'rice field', 'tunes-m': 'calm piano' });
+});

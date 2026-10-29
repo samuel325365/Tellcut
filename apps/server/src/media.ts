@@ -188,6 +188,12 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     if (!existsSync(f.sheet(Number(n)))) throw new HttpError(404, `No sheet ${n} for "${sid}"`);
     sendFile(req, res, f.sheet(Number(n)));
   });
+  // the titles outside sources gave what was downloaded (media/assets.json), by source or music id: the Media panel shows them
+  r.get('/api/projects/:id/media/titles', (_req, res, { id }) => {
+    const out: Record<string, string> = {};
+    for (const a of readAssetRecords(store.dir(id))) { const key = a.sourceId ?? a.mediaId; if (key && a.title) out[key] = a.title; }
+    sendJson(res, 200, out);
+  });
   r.get('/api/projects/:id/media/beats/:media', (req, res, { id, media: mid }) => {
     const dir = store.dir(id), m = store.read(id).media[mid];
     if (!m) throw new HttpError(404, `No media "${mid}" in project "${id}"`);

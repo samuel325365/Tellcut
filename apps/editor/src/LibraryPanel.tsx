@@ -2,7 +2,9 @@
 // double-click auditions it in the preview (audition.ts); the buttons at the bottom add the pick at the playhead, or put a
 // picked block or sound in place of the one selected on the timeline. Blocks and sounds are every one the project can use
 // (its own fx, the built-in ones, the shared library by category), with a search over names, handles and descriptions.
-import { useState } from 'preact/hooks';
+// Media follows the film by default (media-order.ts): sources in the order the timeline first uses them, the unused ones apart, the
+// stretches on the timeline marked, the selected clip's source lit; a downloaded one goes by its title. Narration is apart from music.
+import { useEffect, useState } from 'preact/hooks';
 import type { EditorState } from './store.ts';
 import type { Material } from './audition.ts';
 import { formatTime } from './timeline/geometry.ts';
@@ -15,6 +17,9 @@ import { blockText } from './i18n/blocks.ts';
 import { tip } from './tip.ts';
 import { ImportDialog } from './ImportDialog.tsx';
 import { IconPlus } from './icons.tsx';
+import { isVoice, mediaUse, orderMedia, segmentUsed, type MediaSort } from './media-order.ts';
+
+const SORT_NAMES: Record<MediaSort, string> = { timeline: 'Timeline order', added: 'Order added', name: 'Name' };
 
 /** a block of My blocks not in this project yet: adding it copies the entry in first (spec 2026-10-29-my-library §3.3) */
 type LibPick = { slug: string; type: string; kind: 'scene' | 'overlay' };
@@ -63,6 +68,14 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
       onClick={() => editor.openSaveBlock(type)}>{savedHere.has(type) ? '★' : '☆'}</button>
   );
   const [browsing, setBrowsing] = useState(false);
+  const use = mediaUse(p), sort = s.layout.mediaSort, label = (id: string) => s.titles[id] ?? id;
+  const order = orderMedia(Object.keys(p.sources), sort, use.first, label);
+  // the sources and music of what is selected on the timeline: lit here, and scrolled to
+  const lit = new Set(p.tracks.flatMap((tr) => tr.items as any[]).filter((it) => s.selection.includes(it.id)).map((it) => it.source ?? it.media).filter(Boolean));
+  const litKey = [...lit].join('|');
+  useEffect(() => { if (lit.size) document.querySelector('.library .src.lit, .library .lib-item.lit')?.scrollIntoView?.({ block: 'nearest' }); }, [litKey]);
+  const voice = Object.keys(p.media).filter((m) => isVoice(p.media[m])), music = Object.keys(p.media).filter((m) => !isVoice(p.media[m]));
+  const inOrder = (ids: string[]) => { const o = orderMedia(ids, sort, use.first, label); return [...o.used, ...o.unused]; };
   /** the click/double-click handlers and the highlight of one library entry */
   const shown = new Set<string>();
   const pickLib = (b: LibPick) => { const key = `mine:${b.type}`; shown.add(key); return {
@@ -75,46 +88,57 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
     onClick: () => setPicked({ key, m }),
     onDblClick: () => { setPicked({ key, m }); editor.audition(m); },
   });
+  const source = (id: string) => { const src = p.sources[id], title = s.titles[id]; return (
+    <div class={`src${lit.has(id) ? ' lit' : ''}`} data-src={id} key={id}>
+      <div class="src-name" {...(title ? { 'data-tip': id } : {})}>{title ?? id} <small>{src.kind === 'image' ? 'Photo' : formatTime(src.duration)}{s.offline.includes(id) ? ` · ${t('ed.libOffline')}` : ''}</small></div>
+      <div class="segs">{src.kind === 'image' ? (() => {
+        // a photo: one entry (spec 2026-10-14 §5)
+        const info = s.thumbs[id], tile = info && thumbAt(info, 0, 18);
+        return (
+          <button data-add-source={id} data-range="0-3" {...tip(t('ed.photoTip') + (use.first.has(id) ? t('ed.onTimeline') : ''))} {...pick(`photo:${id}`, { kind: 'clip', source: id, from: 0, len: 3 }, `seg${use.first.has(id) ? ' used' : ''}`)}>
+            {tile && <span class="seg-thumb" style={{ width: `${tile.w}px`, backgroundImage: `url(${info.url})`, backgroundPosition: tile.bg, backgroundSize: tile.size }} />}
+            <span class="seg-t">Photo</span>
+          </button>
+        );
+      })() : segmentsOf(src.duration, s.cuts[id]).map(([a, b]) => {
+        const info = s.thumbs[id], tile = info && thumbAt(info, a + Math.min(1, (b - a) / 2), 18);
+        return (
+          <button data-add-source={id} data-range={`${a}-${b}`} {...tip(t('ed.segTip', { a: a.toFixed(1), b: b.toFixed(1) }) + (segmentUsed(use.ranges.get(id), a, b) ? t('ed.onTimeline') : ''))}
+            {...pick(`clip:${id}:${a}`, { kind: 'clip', source: id, from: a, len: b - a }, `seg${segmentUsed(use.ranges.get(id), a, b) ? ' used' : ''}`)}>
+            {tile && <span class="seg-thumb" style={{ width: `${tile.w}px`, backgroundImage: `url(${info.url})`, backgroundPosition: tile.bg, backgroundSize: tile.size }} />}
+            <span class="seg-t">{formatTime(a)}</span><small>{(b - a).toFixed(1)}s</small>
+          </button>
+        );
+      })}</div>
+    </div>
+  ); };
+  const audio = (m: string) => { const len = musicLength(s.peaks[`media:${m}`]), on = use.first.has(m), b = pick(`music:${m}`, { kind: 'music', media: m }); return (
+    <button data-add-music={m} {...tip(t('ed.dblListen') + (on ? t('ed.onTimeline') : ''))} {...b} class={`${b.class}${on ? ' used' : ''}${lit.has(m) ? ' lit' : ''}`}>{label(m)}{len ? ` · ${formatTime(len)}` : ''}{s.beats[m] ? ` · ${Math.round(s.beats[m].bpm)} BPM` : ''}</button>
+  ); };
   return (
     <aside class="library">
       {/* Import (spec 2026-10-29-media-import): files from this PC straight into the project, without the Agent */}
-      <div class="lib-head"><h4>Media</h4>{editor.fs && (
+      <div class="lib-head"><h4>Media</h4>
+        <select class="media-sort" data-media-sort value={sort} {...tip(t('ed.mediaSortTip'))} onChange={(e) => editor.setLayout({ mediaSort: (e.target as HTMLSelectElement).value as MediaSort })}>
+          {(Object.keys(SORT_NAMES) as MediaSort[]).map((k) => <option value={k}>{SORT_NAMES[k]}</option>)}
+        </select>
+        {editor.fs && (
         <button data-import-media disabled={!!s.importing} {...tip(t('ed.importTip'))} onClick={() => setBrowsing(true)}><IconPlus size={12} /> Import</button>
       )}</div>
       {(s.importing || s.importNote) && <p class="lib-note" data-import-note>{s.importing ? t('ed.importing', s.importing) : s.importNote}</p>}
       {browsing && editor.fs && <ImportDialog api={editor.fs} surface="editor" onAdd={(a) => void editor.importMedia(a.map((x) => x.path))} onClose={() => setBrowsing(false)} />}
-      {Object.entries(p.sources).map(([id, src]) => (
-        <div class="src">
-          <div class="src-name">{id} <small>{src.kind === 'image' ? 'Photo' : formatTime(src.duration)}{s.offline.includes(id) ? ` · ${t('ed.libOffline')}` : ''}</small></div>
-          <div class="segs">{src.kind === 'image' ? (() => {
-            // a photo: one entry (spec 2026-10-14 §5)
-            const info = s.thumbs[id], tile = info && thumbAt(info, 0, 18);
-            return (
-              <button data-add-source={id} data-range="0-3" {...tip(t('ed.photoTip'))} {...pick(`photo:${id}`, { kind: 'clip', source: id, from: 0, len: 3 }, 'seg')}>
-                {tile && <span class="seg-thumb" style={{ width: `${tile.w}px`, backgroundImage: `url(${info.url})`, backgroundPosition: tile.bg, backgroundSize: tile.size }} />}
-                <span class="seg-t">Photo</span>
-              </button>
-            );
-          })() : segmentsOf(src.duration, s.cuts[id]).map(([a, b]) => {
-            const info = s.thumbs[id], tile = info && thumbAt(info, a + Math.min(1, (b - a) / 2), 18);
-            return (
-              <button data-add-source={id} data-range={`${a}-${b}`} {...tip(t('ed.segTip', { a: a.toFixed(1), b: b.toFixed(1) }))} {...pick(`clip:${id}:${a}`, { kind: 'clip', source: id, from: a, len: b - a }, 'seg')}>
-                {tile && <span class="seg-thumb" style={{ width: `${tile.w}px`, backgroundImage: `url(${info.url})`, backgroundPosition: tile.bg, backgroundSize: tile.size }} />}
-                <span class="seg-t">{formatTime(a)}</span><small>{(b - a).toFixed(1)}s</small>
-              </button>
-            );
-          })}</div>
-        </div>
-      ))}
+      {order.used.map(source)}
+      {order.unused.length > 0 && (order.used.length
+        ? <details class="lib-group media-unused" data-media-unused open><summary>Not used<small>{order.unused.length}</small></summary>{order.unused.map(source)}</details>
+        : order.unused.map(source))}
       <h4>Music</h4>
       {!!lib.project?.styles.length && <div class="lib-styles" data-project-styles {...tip(t('lib.projectStylesTip'))}><small>This project's music styles</small>
         {lib.project.styles.map((x) => { const on = lib.project!.savedStyles.includes(x.id); return (
           <div class="lib-row"><span class="lib-item lib-text">{x.label}</span>
             <button class={`lib-star${on ? ' on' : ''}`} data-save-style={x.id} {...tip(t(on ? 'lib.savedTip' : 'lib.styleSaveTip'))} onClick={() => editor.openSaveStyle(x.id, x.label)}>{on ? '★' : '☆'}</button></div>
         ); })}</div>}
-      {Object.keys(p.media).map((m) => { const len = musicLength(s.peaks[`media:${m}`]); return (
-        <button data-add-music={m} {...tip(t('ed.dblListen'))} {...pick(`music:${m}`, { kind: 'music', media: m })}>{m}{len ? ` · ${formatTime(len)}` : ''}{s.beats[m] ? ` · ${Math.round(s.beats[m].bpm)} BPM` : ''}</button>
-      ); })}
+      {inOrder(music).map(audio)}
+      {voice.length > 0 && <><h4 data-voice-head>Voice-over</h4>{inOrder(voice).map(audio)}</>}
       <input class="lib-search" type="search" data-lib-search placeholder="Search effects and sounds" value={q} {...tip(t('ed.libSearchTip'))}
         onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
       <h4>Effects</h4>

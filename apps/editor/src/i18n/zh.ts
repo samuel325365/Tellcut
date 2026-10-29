@@ -336,6 +336,8 @@ export const zh = {
   'ed.importFailed': '加入失敗：{why}',
   'ed.photoTip': '照片（點兩下試看）',
   'ed.segTip': '{a}–{b} s（點兩下試看）',
+  'ed.mediaSortTip': '素材的排列：照時間軸上第一次出現的順序（沒用到的放最後）、加進專案的順序，或名稱',
+  'ed.onTimeline': '（已在時間軸上）',
   'ed.dblListen': '點兩下試聽',
   'ed.dblWatch': '點兩下試看',
   'ed.addPickedTip': '把選取的素材加入到播放頭的位置',

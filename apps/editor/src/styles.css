@@ -184,6 +184,14 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .hbar .hscroll { flex: 1; position: relative; cursor: pointer; }
 .hbar .hthumb { position: absolute; top: 3px; bottom: 3px; border-radius: 6px; background: #4a4e57; cursor: grab; }
 .hbar .hthumb:hover { background: #6a6f7a; }
+/* Media: what the timeline uses has a bar under it; the selected clip's source is lit */
+.library .segs button.used, .library .lib-item.used { box-shadow: inset 0 -2px 0 var(--accent); }
+.library .src.lit { margin: 0 -4px 8px; padding: 4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.library .lib-item.lit { outline: 1px solid var(--accent); }
+/* the order: its own row under Media and Import, so a narrow panel never cuts Import off */
+.library .lib-head:has(.media-sort) { flex-wrap: wrap; }
+.library .media-sort { order: 3; flex: 1 0 100%; margin-bottom: 4px; padding: 1px 4px; font-size: 11px; }
+.library .media-unused > summary { margin: 6px 0; }
 .library .segs button.picked, .library .lib-item.picked { background: var(--accent); border-color: var(--accent); color: #fff; }
 .library .lib-add { position: sticky; bottom: -8px; margin: 10px -10px -8px; padding: 8px 10px; background: var(--panel); border-top: 1px solid var(--line); }
 .library .lib-add button { width: 100%; } .library .lib-add button + button { margin-top: 6px; }
@@ -809,7 +817,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .save-preset-fields { display: flex; flex-direction: column; gap: 10px; }
 .save-preset-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--s-dim); }
 .save-preset input:not([type=checkbox]):not([type=file]):not([type=color]) { font: inherit; font-size: 14px; color: var(--s-text); background: var(--s-raise); border: 1px solid var(--s-line); border-radius: 8px; padding: 7px 9px; }
-.save-preset-only { margin: 0 0 8px; font-size: 12px; line-height: 1.5; }
+.save-preset-only { margin: 0 0 8px; font-size: 12px; line-height: 1.5; color: var(--s-dim); }
 .save-preset-points ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .save-preset-points li { display: flex; align-items: center; gap: 6px; }
 .save-preset-points li .dot { color: var(--s-accent); }

@@ -140,3 +140,40 @@ test('the Import button shows only when this PC can be browsed; it opens the fil
   await act(() => { root.querySelector<HTMLButtonElement>('[data-import-media]')!.click(); });
   expect(root.querySelector('[data-import]')).not.toBeNull();
 });
+
+test('Media follows the timeline: used sources in the order the film first shows them, the rest under Not used; titles, used marks, the selection lit', async () => {
+  const p: any = fixture();
+  p.sources = { late: { path: 'a.mp4', duration: 10 }, idle: { path: 'b.mp4', duration: 10 }, early: { path: 'c.mp4', duration: 10 } };
+  p.media = { score: { path: 'media/score-x.wav' }, 'voice-s01': { path: 'media/voice/s01.wav' } };
+  p.tracks = [
+    { id: 'v', kind: 'video', items: [{ id: 'c1', source: 'late', start: 5, end: 7, in: 0, speed: 1 }, { id: 'c2', source: 'early', start: 0, end: 2, in: 6, speed: 1 }] },
+    { id: 'n', kind: 'music', items: [{ id: 'n1', media: 'voice-s01', start: 0, end: 2, in: 0 }] },
+  ];
+  const store = createStore({ ...initialState('t'), project: p, cuts: { early: [5] }, titles: { early: 'rice field, thailand' }, selection: ['c1'] });
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, audition() {}, addMaterial() {}, setLayout: (x: any) => calls.push(x) };
+  const root = document.createElement('div');
+  const show = () => act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  await show();
+  const order = () => [...root.querySelectorAll<HTMLElement>('[data-src]')].map((e) => e.dataset.src);
+  expect(order()).toEqual(['early', 'late', 'idle']);
+  expect(root.querySelector('[data-media-unused] [data-src="idle"]')).not.toBeNull();
+  expect(root.querySelector('[data-src="early"] .src-name')!.textContent).toContain('rice field, thailand');
+  // only the segment the clip plays is marked
+  expect([...root.querySelectorAll<HTMLElement>('[data-add-source="early"]')].map((e) => e.className.includes('used'))).toEqual([false, true]);
+  expect(root.querySelector('[data-src="late"]')!.className).toContain('lit');
+  // narration apart from music
+  expect(root.querySelector('[data-voice-head]')).not.toBeNull();
+  expect(root.querySelector('[data-add-music="voice-s01"]')!.className).toContain('used');
+  // the other orders: as added, by name; the choice goes to the layout
+  store.set((s) => ({ layout: { ...s.layout, mediaSort: 'added' } }));
+  await show();
+  expect(order()).toEqual(['late', 'idle', 'early']);
+  expect(root.querySelector('[data-media-unused]')).toBeNull();
+  store.set((s) => ({ layout: { ...s.layout, mediaSort: 'name' } }));
+  await show();
+  expect(order()).toEqual(['idle', 'late', 'early']);
+  const sel = root.querySelector<HTMLSelectElement>('[data-media-sort]')!;
+  await act(() => { sel.value = 'timeline'; sel.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(calls).toEqual([{ mediaSort: 'timeline' }]);
+});

@@ -70,6 +70,7 @@ export const api = {
   analyze: (id: string) => req<{ jobs: Array<{ id: string; label: string }>; missing: string[]; extras?: Array<{ id: string; kind: string; label: string }> }>(`/api/projects/${enc(id)}/analyze`, { method: 'POST' }),
   thumbs: (id: string, source: string) => req<ThumbInfo>(`/api/projects/${enc(id)}/media/thumbs/${enc(source)}`),
   peaks: (id: string, source: string) => req<PeakInfo>(`/api/projects/${enc(id)}/media/peaks/${enc(source)}`),
+  mediaTitles: (id: string) => req<Record<string, string>>(`/api/projects/${enc(id)}/media/titles`),
   cuts: (id: string, source: string) => req<number[]>(`/api/projects/${enc(id)}/media/cuts/${enc(source)}`),
   musicPeaks: (id: string, media: string) => req<PeakInfo>(`/api/projects/${enc(id)}/media/music-peaks/${enc(media)}`),
   transcript: (id: string, source: string) => req<Transcript>(`/api/projects/${enc(id)}/media/transcript/${enc(source)}`),

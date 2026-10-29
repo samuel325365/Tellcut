@@ -44,6 +44,8 @@ export interface EditorState {
   crop: { itemId: string; which: 'from' | 'to' | number; t?: number } | null;
   /** scene-change times per source (from analysis), for the library's segments */
   cuts: Record<string, number[]>;
+  /** titles of downloaded sources and music (media/assets.json), by id */
+  titles: Record<string, string>;
   /** master output peak in dBFS (-120 = silence) */
   level: number;
   /** the export being followed (spec §7, M8) */
@@ -93,7 +95,7 @@ export interface LibraryState { index: LibraryIndex | null; project: ProjectLibr
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
-  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', importing: null, importNote: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
+  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', importing: null, importNote: '', crop: null, cuts: {}, titles: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
   library: { index: null, project: null, saving: null, toast: null },
   presetSave: { drafting: false, draft: null, poster: null, toast: null },
 });

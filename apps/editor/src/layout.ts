@@ -1,6 +1,8 @@
 // Editor layout: stacked puts the preview over the timeline; side puts a full-height preview beside it (a 9:16 video is
 // height-bound: above the timeline it would be tiny however wide the window). Auto picks stacked for landscape projects and
 // side for portrait ones; the choice and the sizes are kept per project orientation (spec 2026-10-28-timeline-refresh A0).
+import { MEDIA_SORTS, type MediaSort } from './media-order.ts';
+
 export type Orientation = 'landscape' | 'portrait';
 export type Arrange = 'auto' | 'stacked' | 'side';
 export type Arrangement = 'stacked' | 'side';
@@ -23,12 +25,14 @@ export interface Layout {
   snap: boolean;
   /** the left panel's width in px (素材／屬性／對話), dragged by its edge; null = the default for the orientation */
   sideW: number | null;
+  /** the Media panel's order */
+  mediaSort: MediaSort;
 }
 export const DEFAULT_SPLIT = 0.62;
 /** previewW meaning "as wide as the timeline allows" (gridFor clamps it) */
 export const WIDEST_PREVIEW = 10000;
 const NONE = { landscape: null, portrait: null };
-export const DEFAULT_LAYOUT: Layout = { split: NONE, previewW: NONE, arrange: { landscape: 'auto', portrait: 'auto' }, libClosed: false, propsClosed: false, sideTab: 'library', trackSize: 'compact', maxPreview: false, snap: true, sideW: null };
+export const DEFAULT_LAYOUT: Layout = { split: NONE, previewW: NONE, arrange: { landscape: 'auto', portrait: 'auto' }, libClosed: false, propsClosed: false, sideTab: 'library', trackSize: 'compact', maxPreview: false, snap: true, sideW: null, mediaSort: 'timeline' };
 /** F leaves the timeline's tool tray and its ruler (with borders) */
 const TRAY_H = 30, RULER_ROW = 26;
 const TOOLBAR_H = 40, TRANSPORT_H = 36, SPLITTER = 6, CLOSED = 24, SIDE_W = 260, LIB_W = 220, MIN_TIMELINE = 360;
@@ -102,5 +106,6 @@ export function sanitizeLayout(raw: unknown): Layout {
   const arr = (v: unknown): Arrange => (v === 'stacked' || v === 'side' ? v : 'auto');
   const a = (r.arrange && typeof r.arrange === 'object' ? r.arrange : {}) as Record<string, unknown>;
   return { ...DEFAULT_LAYOUT, split: per(r.split, 0.3, 0.85, 'landscape'), previewW: per(r.previewW, 200, WIDEST_PREVIEW, 'portrait'), arrange: { landscape: arr(a.landscape), portrait: arr(a.portrait) }, libClosed: bool(r.libClosed), propsClosed: bool(r.propsClosed),
-    trackSize: r.trackSize === 'standard' ? 'standard' : 'compact', snap: r.snap !== false, sideW: num(r.sideW, SIDE_MIN, SIDE_MAX) };
+    trackSize: r.trackSize === 'standard' ? 'standard' : 'compact', snap: r.snap !== false, sideW: num(r.sideW, SIDE_MIN, SIDE_MAX),
+    mediaSort: MEDIA_SORTS.includes(r.mediaSort as MediaSort) ? r.mediaSort as MediaSort : 'timeline' };
 }
