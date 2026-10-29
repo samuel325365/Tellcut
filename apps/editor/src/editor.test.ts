@@ -331,6 +331,18 @@ test('items added from the library stop at the project end; at the very end noth
   expect(ed.store.get().notice).toBe('播放頭在專案結尾，無法加入');
 });
 
+test('a block of My blocks at the very end is refused before anything is copied into the project', async () => {
+  const used: unknown[] = [];
+  const { api, bridge } = fakes({ useLibrary: async (_: string, b: unknown) => { used.push(b); return { file: 'fx/lib/box/_entry.js' }; },
+    projectLibrary: async () => ({ links: [], savedFiles: [], savedStyles: [], styles: [] }) });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.seek(20);
+  expect(await ed.useLibraryBlock('box', 'fx.box')).toBe(false);
+  expect(used).toEqual([]);
+  expect(ed.store.get().notice).toBe('播放頭在專案結尾，無法加入');
+});
+
 test('the refusal notice clears when the selection changes or the field gets back a valid value', async () => {
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge });

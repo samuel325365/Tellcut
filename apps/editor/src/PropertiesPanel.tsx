@@ -2,6 +2,7 @@
 import { allItems, resolveTimes, restackTarget, soundFilePath, type AnyItem, type Track } from '@tellcut/engine';
 import { handleOf } from '@tellcut/protocol';
 import type { EditorState } from './store.ts';
+import { liveLinks } from './editor/library.ts';
 import { t } from './i18n/index.ts';
 import { tip } from './tip.ts';
 import { CheckField, NumberField, ParamField, SelectField, TextField } from './fields.tsx';
@@ -20,7 +21,7 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
   const cropOn = (w: unknown) => (s.crop?.itemId === id && s.crop?.which === w ? 'on' : '');
   const common = <>
     <h3>{it.label ?? id} <small>{track.kind}</small>{handle && <small class="handle" data-handle={handle} {...tip(t('ed.handleTip', { type: it.type }))}>{handle}</small>}
-      {typeof it.type === 'string' && it.type.startsWith('fx.') && editor.registry?.item(it.type) && !s.library.project?.links.some((l) => l.types.includes(it.type)) && <button class="lib-star" data-props-save-block {...tip(t('lib.saveTip'))} onClick={() => editor.openSaveBlock(it.type)}>☆</button>}</h3>
+      {typeof it.type === 'string' && it.type.startsWith('fx.') && editor.registry?.item(it.type) && !liveLinks(s).some((l) => l.types.includes(it.type)) && <button class="lib-star" data-props-save-block {...tip(t('lib.saveTip'))} onClick={() => editor.openSaveBlock(it.type)}>☆</button>}</h3>
     <TextField label="Label" name="label" value={it.label} onCommit={(v) => editor.update(id, { label: v || undefined })} />
     <NumberField label="Start (s)" name="start" value={it.start} onCommit={up('start')} />
     <NumberField label="End (s)" name="end" value={it.end} onCommit={up('end')} />

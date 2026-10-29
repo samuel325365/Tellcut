@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'preact/hooks';
 import { allItems, beatTimes, overlapPairs, removeEnvelopePoint, resolveTimes, type AnyItem, type Track, magneticTrack, overruns } from '@tellcut/engine';
 import type { Editor } from '../editor.ts';
 import { useStoreSelector } from '../store.ts';
+import { liveLinks } from '../editor/library.ts';
 import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, fitHeights, RULER_H, formatTime, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 import { ItemBlock } from './ItemBlock.tsx';
 import { Playhead } from './Playhead.tsx';
@@ -269,7 +270,7 @@ export function Timeline({ editor }: { editor: Editor }) {
         {(() => {
           // one of this project's own blocks: save it to My blocks (spec 2026-10-29-my-library §3.2)
           const it = ctx.id ? allItems(s.project!).find((x) => x.item.id === ctx.id)?.item as { type?: string } | undefined : undefined;
-          const copy = editor.store.get().library.project?.links.some((l) => l.types.includes(it?.type ?? ''));
+          const copy = liveLinks(editor.store.get()).some((l) => l.types.includes(it?.type ?? ''));
           return it?.type?.startsWith('fx.') && editor.registry?.item(it.type) && !copy ? <button data-ctx-save-block onClick={() => { editor.openSaveBlock(it.type!); setCtx(null); }}>Save to My blocks</button> : null;
         })()}
         {ctx.hung && <button onClick={() => { editor.detach(ctx.id!); setCtx(null); }}>Detach</button>}

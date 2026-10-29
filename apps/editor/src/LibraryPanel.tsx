@@ -18,6 +18,7 @@ import { matches } from './gallery.ts';
 import { blockText } from './i18n/blocks.ts';
 import { tip } from './tip.ts';
 import { ImportDialog } from './ImportDialog.tsx';
+import { liveLinks } from './editor/library.ts';
 import { IconPlus } from './icons.tsx';
 import { isVoice, mediaUse, orderMedia, segmentUsed, type MediaSort, type MediaTab } from './media-order.ts';
 
@@ -63,7 +64,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hitIn(qa)), Object.keys(SFX_CATEGORY), 'sfx');
   const [picked, setPicked] = useState<{ key: string; m?: Material; lib?: LibPick } | null>(null);
   // My blocks (spec 2026-10-29-my-library §3.2, §3.3): the ones saved from this project (★), this project's copies, the rest to add
-  const lib = s.library, links = lib.project?.links ?? [];
+  const lib = s.library, links = liveLinks(s);
   const savedHere = new Set((lib.index?.blocks ?? []).filter((b) => b.from.project === s.id).map((b) => b.type));
   const linkOf = (type: string) => links.find((l) => l.types.includes(type));
   const mine = (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).filter((b) => matches(q, undefined, b.type, b.name, b.desc));

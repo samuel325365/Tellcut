@@ -13,6 +13,12 @@ export interface LibraryDeps { id: string; api: LibraryApi; store: Store<EditorS
 
 const TOAST_MS = 6000;
 
+/** this project's copies of My blocks that it really loads (meta.fx names them): a copy left behind by an undone add is not one */
+export function liveLinks(s: Pick<EditorState, 'project' | 'library'>) {
+  const fx = new Set(s.project?.meta.fx ?? []);
+  return (s.library.project?.links ?? []).filter((l) => fx.has(l.file));
+}
+
 export class LibraryFlow {
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
   constructor(private c: LibraryDeps) {}

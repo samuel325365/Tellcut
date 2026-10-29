@@ -1,7 +1,7 @@
 // The editor's side of My blocks (spec 2026-10-29-my-library §3.2, §3.3): the save dialog's states and copying an entry in.
 import { ApiError } from '../api.ts';
 import { createStore, initialState } from '../store.ts';
-import { LibraryFlow } from './library.ts';
+import { LibraryFlow, liveLinks } from './library.ts';
 
 const PREVIEW = { dry: true as const, files: ['fx/chalk.js', 'media/fonts/Chalk.ttf'], skipped: [], group: ['fx.chalk-line'], conflict: null };
 
@@ -69,4 +69,11 @@ test('use copies the entry in and reloads what the project has from the library'
   const { f, calls } = flow();
   expect(await f.use('chalk-title')).toMatchObject({ file: 'fx/lib/chalk-title/chalk.js' });
   expect(calls.slice(-2)).toEqual([['use', { slug: 'chalk-title' }], ['project']]);
+});
+
+test('a copy counts as linked only while meta.fx loads it (an undone or failed add leaves the copy, not the link)', () => {
+  const link = (slug: string) => ({ slug, file: `fx/lib/${slug}/_entry.js`, types: [`fx.${slug}`], outdated: false, gone: false });
+  const s: any = { project: { meta: { fx: ['fx/own.js', 'fx/lib/box/_entry.js'] } }, library: { project: { links: [link('box'), link('chalk')] } } };
+  expect(liveLinks(s).map((l) => l.slug)).toEqual(['box']);
+  expect(liveLinks({ project: null, library: { project: null } } as any)).toEqual([]);
 });

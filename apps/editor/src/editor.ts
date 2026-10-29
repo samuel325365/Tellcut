@@ -578,16 +578,16 @@ export class Editor {
   }
   openSaveStyle(id: string, label: string) { this.library.openStyle(id, label); }
   /** A block of My blocks at the playhead: the entry is copied into the project (fx/lib/<slug>/), its module joins meta.fx in the
-   *  same edit as the item (one undo step), and the preview loads it. */
+   *  same edit as the item (one undo step), and the preview loads it. Nothing is copied when the item would not fit (playhead at
+   *  the end); a copy whose add is undone stays on disk but is no link while meta.fx does not name it (liveLinks). */
   async useLibraryBlock(slug: string, type: string): Promise<boolean> {
-    const p = this.s.project;
-    if (!p || this.blocked()) return false;
+    const p = this.s.project, t = this.s.playhead;
+    if (!p || this.blocked() || this.fitEnd('overlay', t, t + 2) === null) return false;
     let file: string;
     try { file = (await this.library.use(slug)).file; }
     catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return false; }
     const now = this.s.project!, fx = [...new Set([...(now.meta.fx ?? []), file])];
     if (this.deps.registryFor) this.reg = await this.deps.registryFor({ ...now, meta: { ...now.meta, fx } });
-    const t = this.s.playhead;
     const ok = this.addTo('overlay', { type, start: t, end: t + 2, params: {} }, (d) => { d.meta.fx = [...new Set([...(d.meta.fx ?? []), file])]; });
     if (ok) this.deps.bridge.load(this.s.project!);   // a module the preview has not loaded yet
     return ok;
@@ -884,13 +884,10 @@ export class Editor {
 
   /** Library: adds an item at the playhead to the selected track of that kind, else the first one (created if none). */
   private addTo(kind: 'video' | 'sfx' | 'overlay' | 'music', item: Record<string, unknown>, also?: (d: Project, id: string) => void) {
-    // nothing may start at or run past the project end — except on the magnetic track, which makes the film longer
-    const p = this.s.project!, sel0 = this.s.selection[0];
-    const open = (t: { id: string; kind: string }) => t.kind === kind && !this.s.locked.includes(t.id);   // locked tracks are passed over
-    const target: any = (sel0 && p.tracks.find((t) => open(t) && (t.items as any[]).some((i) => i.id === sel0))) ?? p.tracks.find(open);
-    const end = target?.magnetic ? (item.end as number) : Math.min(item.end as number, p.meta.duration);
-    if (end - (item.start as number) < 1 / p.meta.fps - 1e-9) { this.set({ notice: say('ed.atEnd') }); return false; }
+    const end = this.fitEnd(kind, item.start as number, item.end as number);
+    if (end === null) return false;
     item = { ...item, end };
+    const open = (t: { id: string; kind: string }) => t.kind === kind && !this.s.locked.includes(t.id);   // locked tracks are passed over
     let id = '';
     const sel = this.s.selection[0];
     const ok = this.apply((d) => {
@@ -901,6 +898,17 @@ export class Editor {
     });
     if (ok) this.select([id], { reveal: false });   // keep the library in front while adding several
     return ok;
+  }
+
+  /** where an item added to a track of `kind` ends: nothing may start at or run past the project end — except on the magnetic
+   *  track, which makes the film longer; null (and the reason shown) when nothing is left of it */
+  private fitEnd(kind: 'video' | 'sfx' | 'overlay' | 'music', start: number, end: number): number | null {
+    const p = this.s.project!, sel0 = this.s.selection[0];
+    const open = (t: { id: string; kind: string }) => t.kind === kind && !this.s.locked.includes(t.id);
+    const target: any = (sel0 && p.tracks.find((t) => open(t) && (t.items as any[]).some((i) => i.id === sel0))) ?? p.tracks.find(open);
+    const e = target?.magnetic ? end : Math.min(end, p.meta.duration);
+    if (e - start < 1 / p.meta.fps - 1e-9) { this.set({ notice: say('ed.atEnd') }); return null; }
+    return e;
   }
 
   addClip(source: string, from: number, len: number) {
