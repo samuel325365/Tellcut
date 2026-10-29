@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { dachshund, dogPose, frameTimes } from './dachshund-block.ts';
+import { bobOf, dachshund, dogPose, frameTimes } from './dachshund-block.ts';
 
 test('the dachshund is a moment block the agent uses only on request', () => {
   expect(dachshund).toMatchObject({ type: 'common.dachshund', category: 'moment', kind: 'overlay', onRequest: true });
@@ -27,4 +27,23 @@ test('walking swings the legs in opposite phase; sitting lowers the rear; a cut 
   expect(dogPose('cut', 1.15, { steps: 2.2, cutAt: 1 }).split).toBeGreaterThan(3);
   expect(dogPose('cut', 2, { steps: 2.2, cutAt: 1 }).split).toBe(0);
   expect(dogPose('idle', 1, { steps: 2.2, cutAt: 1 })).toMatchObject({ frontLeg: 0, backLeg: 0, split: 0, body: 0, fold: 1 });
+});
+
+test('frame times never run past the end of a short source: they wrap round inside it', () => {
+  const ts = frameTimes('', 4);
+  expect(ts).toHaveLength(5);
+  expect(ts.every((t) => t >= 0 && t < 4)).toBe(true);
+  expect(frameTimes('10', 4).every((t) => t < 4)).toBe(true);
+  // media() asks for the same moments draw() loads: inside the source's length
+  const project = { sources: { clip: { duration: 4 } } } as any;
+  const stills = dachshund.media!({ params: { source: 'clip', times: '' } } as any, project).stills;
+  expect(stills.map((r) => r.t)).toEqual(ts);
+});
+
+test('the walk bobs the body but not the legs: both feet stay on the ground', () => {
+  const pose = dogPose('walk', 0.115, { steps: 2.2, cutAt: 1 });
+  expect(pose.bob).toBeGreaterThan(1);
+  expect(bobOf('backLeg', pose)).toBe(0);
+  expect(bobOf('frontLeg', pose)).toBe(0);
+  expect(bobOf('body', pose)).toBe(pose.bob);
 });

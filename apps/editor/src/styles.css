@@ -51,13 +51,13 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .side-edge { position: absolute; top: 0; right: -3px; bottom: 0; width: 6px; cursor: col-resize; z-index: 4; }
 .side-edge:hover, body.resizing .side-edge { background: var(--accent); opacity: .6; }
 .side > .tabs { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-.side > .tabs button { padding: 2px 10px; } .side > .tabs button.on { background: var(--accent); border-color: var(--accent); }
+.side > .tabs button { padding: 2px 10px; } .side > .tabs button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .side > .tabs .collapse { margin-left: auto; }
 .side > .tab-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; } .side > .tab-pane[hidden] { display: none; }
 .side > .tab-pane > aside { flex: 1; min-height: 0; border: 0; }
 .toolbar-notice { color: var(--off); max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .editor.layout-side > .timeline { border-top: 0; }
-.toolbar button.on { background: var(--accent); border-color: var(--accent); }
+.toolbar button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .library, .props { overflow: auto; background: var(--panel); padding: 8px 10px; }
 .library { border-right: 1px solid var(--line); } .props { border-left: 1px solid var(--line); }
 .props h3 { margin: 4px 0 10px; font-size: 14px; } .props h3 small { color: var(--dim); font-weight: normal; }
@@ -70,7 +70,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .notice { color: var(--off); background: rgba(255,69,58,.1); padding: 6px 8px; border-radius: 4px; }
 .hint { color: var(--dim); }
 .crop-buttons { display: flex; gap: 6px; align-items: center; margin-top: 8px; color: var(--dim); }
-.crop-buttons span { flex: 1; } .crop-buttons button.on { background: var(--accent); }
+.crop-buttons span { flex: 1; } .crop-buttons button.on { background: var(--accent); color: var(--on-accent); }
 .toolbar { display: flex; gap: 10px; align-items: center; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .toolbar .save { margin-left: 10px; color: var(--dim); }
 .meter { width: 120px; height: 8px; background: #111; border: 1px solid #333; border-radius: 4px; overflow: hidden; margin-left: auto; }
@@ -111,9 +111,9 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .label { position: absolute; left: 6px; right: 4px; top: 0; bottom: 0; display: flex; align-items: center; font-size: 11px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000; pointer-events: none; }
 .item [data-edge] { position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 4; }   /* above the overlap and the transition block: trimming into a dissolve works */
 .item [data-edge="start"] { left: 0; } .item [data-edge="end"] { right: 0; }
-.playhead { position: absolute; top: 30px; bottom: 0; width: 1px; background: var(--playhead); pointer-events: none; z-index: 5; }
+.playhead { position: absolute; top: 30px; bottom: 0; width: 1px; background: var(--playhead); box-shadow: 0 0 0 1px rgba(0,0,0,.55); pointer-events: none; z-index: 5; }
 .playhead-head { position: absolute; top: 0; left: -6px; width: 0; height: 0; border-left: 6.5px solid transparent; border-right: 6.5px solid transparent; border-top: 10px solid var(--playhead); pointer-events: auto; cursor: ew-resize; }
-.playhead-razor { position: absolute; top: 26px; left: -9px; width: 19px; height: 17px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid #ff375f; background: var(--panel); color: #ff6b88; pointer-events: auto; cursor: pointer; }
+.playhead-razor { position: absolute; top: 26px; left: -9px; width: 19px; height: 17px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid var(--playhead); background: var(--panel); color: var(--playhead); pointer-events: auto; cursor: pointer; }
 .playhead-razor:hover { background: var(--playhead); color: var(--on-accent); }
 .playhead-head::before { content: ''; position: absolute; left: -8px; top: -12px; width: 16px; height: 16px; }   /* a bigger target than the triangle */
 .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--sel); pointer-events: none; z-index: 4; }
@@ -140,7 +140,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .row .head .bus button { padding: 0 4px; font-size: 10px; line-height: 16px; }
 .row .head .bus button.on { background: var(--sel); color: #000; }
 .row .head .bus input { width: 30px; font-size: 10px; padding: 0 3px; color: var(--text); background: #15161a; border: 1px solid #3a3d44; border-radius: 3px; }
-.toolbar button.primary { background: var(--accent); border-color: var(--accent); }
+.toolbar button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .export-panel { position: fixed; top: 44px; right: 12px; width: 380px; max-height: 70vh; overflow: auto; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
 .export-panel header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .export-panel .bar { height: 8px; background: #111; border-radius: 4px; overflow: hidden; } .export-panel .bar i { display: block; height: 100%; background: var(--accent); }
@@ -192,7 +192,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .library .lib-pages button { position: relative; flex: 1 1 0; min-width: 0; padding: 3px 4px; border: 0; border-radius: 6px; background: none; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .library .lib-pages button small { margin-left: 3px; color: var(--dim); font-size: 10px; }
 .library .lib-pages button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
-.library .lib-pages button[aria-selected="true"] small { color: rgba(255,255,255,.75); }
+.library .lib-pages button[aria-selected="true"] small { color: var(--on-accent); opacity: .7; }
 .library .lib-pages button.has-lit::after { content: ''; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 .library .lib-tools { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; }
 .library .lib-tools .lib-search { flex: 1 1 auto; min-width: 0; margin: 0; }
@@ -207,9 +207,9 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .library .lib-group > summary small { margin-left: 6px; opacity: .7; font-variant-numeric: tabular-nums; }
 .library .lib-group[open] { margin-bottom: 4px; }
 .library .lib-add button:disabled { opacity: .5; cursor: default; }
-.library .lib-add button.primary { background: var(--accent); border-color: var(--accent); }
-.audition-banner { box-sizing: border-box; background: rgba(10,132,255,.92); color: #fff; padding: 4px 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; }
-.audition-banner button { padding: 2px 10px; } .audition-banner button.primary { background: #fff; color: #000; border-color: #fff; }
+.library .lib-add button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.audition-banner { box-sizing: border-box; background: rgba(216,184,138,.95); color: var(--on-accent); padding: 4px 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; }
+.audition-banner button { padding: 2px 10px; } .audition-banner button.primary { background: #161412; color: #f4ebdd; border-color: #161412; }
 .item .overlap .top-mark { position: absolute; top: 0; right: 1px; font-size: 8px; line-height: 9px; color: #fff; pointer-events: none; }
 .item .overlap.xfade { background: linear-gradient(to top right, transparent calc(50% - 1px), rgba(255,255,255,.85) 50%, transparent calc(50% + 1px)), linear-gradient(to bottom right, transparent calc(50% - 1px), rgba(255,255,255,.85) 50%, transparent calc(50% + 1px)), rgba(255,255,255,.12); background-size: var(--w, 100%) 100%; background-repeat: no-repeat; }
 /* the volume line and fade handles stay on top of an overlap; the rest of the svg lets clicks through to it */
@@ -217,7 +217,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .env .env-hit { pointer-events: stroke; }
 .item .env circle, .item .env .fade-handle { pointer-events: all; }
 /* the transition block takes the upper part, above the trim grip; the grip stays reachable below it */
-.item .trans { position: absolute; left: 0; top: 0; height: 45%; z-index: 5; box-sizing: border-box; background: linear-gradient(90deg, rgba(10,132,255,.6), rgba(10,132,255,.15)); border-right: 1px solid rgba(10,132,255,.95); font-size: 9px; line-height: 1; color: #fff; cursor: pointer; }
+.item .trans { position: absolute; left: 0; top: 0; height: 45%; z-index: 5; box-sizing: border-box; background: linear-gradient(90deg, rgba(216,184,138,.65), rgba(216,184,138,.15)); border-right: 1px solid rgba(216,184,138,.95); font-size: 9px; line-height: 1; color: #161412; cursor: pointer; }
 .item .trans [data-transition-edge] { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
 .row .head .grip { cursor: grab; color: var(--dim); font-size: 10px; letter-spacing: -2px; padding-right: 2px; user-select: none; }
 /* the delete button keeps its own place at the end of the header (absolutely placed it covered M / the gain field) */
@@ -231,12 +231,12 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .row.collapsed .head { padding-top: 0; padding-bottom: 0; font-size: 9px; }
 .row.collapsed .head .grip, .row.collapsed .head .bus, .row.collapsed .head .tdel { display: none; }
 .row.collapsed .item > :not([data-edge]) { display: none; }
-.transport button { padding: 2px 8px; } .transport button.on { background: var(--accent); border-color: var(--accent); }
+.transport button { padding: 2px 8px; } .transport button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .hbar .zoom button { flex: none; padding: 0 4px; font-size: 11px; line-height: 14px; }
 .library .segs { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 4px; }
 .library .segs button.seg { display: flex; align-items: center; gap: 4px; padding: 2px 4px; text-align: left; }
 .library .seg-thumb { flex: none; height: 18px; border-radius: 2px; background-repeat: no-repeat; }
-.library .seg small { color: var(--dim); margin-left: auto; } .library .seg.picked small { color: #fff; }
+.library .seg small { color: var(--dim); margin-left: auto; } .library .seg.picked small { color: var(--on-accent); opacity: .7; }
 .toolbar .help-btn { background: #3b342d; border-color: #5e5246; }
 .help-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
 .help { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }

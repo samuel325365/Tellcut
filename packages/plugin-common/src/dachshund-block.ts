@@ -21,12 +21,14 @@ const HIP = DOG_PIVOTS.frontLeg;
 /** the cut's slanted line: x at the top of the box and at the bottom */
 const CUT_TOP = 72, CUT_BOTTOM = 66;
 
-/** the source's moments for the band: the given seconds first (at most five), then on from the last every 1.5 s */
-export function frameTimes(times: string): number[] {
+/** the source's moments for the band: the given seconds first (at most five), then on from the last every 1.5 s; with the
+ *  source's length, each wraps round inside it (a still past the end makes the export fail) */
+export function frameTimes(times: string, duration?: number): number[] {
   const given = String(times ?? '').split(/[,，\s]+/).map(Number).filter((x) => Number.isFinite(x) && x >= 0).slice(0, FRAMES);
   const out = [...given];
   while (out.length < FRAMES) out.push(out.length ? out[out.length - 1] + STEP_T : 0);
-  return out;
+  const room = (duration ?? 0) - 1 / 30;
+  return duration && Number.isFinite(duration) ? out.map((t) => (room > 0 ? +(t % room).toFixed(3) : 0)) : out;
 }
 
 /** the pose at `local` seconds into the item */
@@ -49,12 +51,15 @@ export function dogPose(action: Action, local: number, o: { steps: number; cutAt
 const PATHS = new Map<string, Path2D>();
 const path2d = (d: string) => { let p = PATHS.get(d); if (!p) { p = new Path2D(d); PATHS.set(d, p); } return p; };
 const HOLES = DOG_SHAPES.filter((s) => s.role === 'hole').map((s) => s.d).join(' ');
+/** how far a part rises with the walk's bob: everything but the legs, so both feet stay on the ground */
+export const bobOf = (part: DogPart, pose: DogPose) => (part === 'frontLeg' || part === 'backLeg' ? 0 : pose.bob);
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const turn = (g: CanvasRenderingContext2D, [x, y]: readonly [number, number], deg: number) => { if (!deg) return; g.translate(x, y); g.rotate(rad(deg)); g.translate(-x, -y); };
 
 /** how each part is placed: the rear (all but the front leg) turns with the body, then the part about its own pivot */
 function place(g: CanvasRenderingContext2D, part: DogPart, pose: DogPose) {
-  if (part !== 'frontLeg') { turn(g, HIP, pose.body); g.translate(0, -pose.bob); }
+  if (part !== 'frontLeg') turn(g, HIP, pose.body);
+  g.translate(0, -bobOf(part, pose));
   if (part === 'tail') turn(g, DOG_PIVOTS.tail, pose.tail);
   else if (part === 'backLeg') { turn(g, DOG_PIVOTS.backLeg, pose.backLeg); if (pose.fold !== 1) { const [x, y] = DOG_PIVOTS.backLeg; g.translate(x, y); g.scale(1, pose.fold); g.translate(-x, -y); } }
   else if (part === 'frontLeg') turn(g, DOG_PIVOTS.frontLeg, pose.frontLeg);
@@ -110,11 +115,11 @@ function drawCut(g: CanvasRenderingContext2D, look: DogLook, pose: DogPose, imgs
 }
 
 /** load the band's stills when the source or the times change */
-function loadStills(ctx: { params: P; media: { stillUrl(r: { source: string; t: number; w: number }): string } }, s: S) {
-  const p = ctx.params, key = p.source ? `${p.source}|${p.times}` : '';
+function loadStills(ctx: { params: P; project: { sources: Record<string, { duration: number }> }; media: { stillUrl(r: { source: string; t: number; w: number }): string } }, s: S) {
+  const p = ctx.params, duration = ctx.project.sources[p.source]?.duration, key = p.source ? `${p.source}|${p.times}|${duration}` : '';
   if (key === s.key) return;
   s.key = key;
-  s.imgs = p.source ? frameTimes(p.times).map((t) => { const img = new Image(); img.src = ctx.media.stillUrl(stillRef({ source: p.source, t }, STILL_W)); return img; }) : [];
+  s.imgs = p.source ? frameTimes(p.times, duration).map((t) => { const img = new Image(); img.src = ctx.media.stillUrl(stillRef({ source: p.source, t }, STILL_W)); return img; }) : [];
 }
 
 export const dachshund: ItemType<P, S> = {
@@ -134,9 +139,9 @@ export const dachshund: ItemType<P, S> = {
     { key: 'scroll', label: '格子每秒捲動幾格', type: 'number', min: 0, max: 3, step: 0.1, default: 1 },
     { key: 'cutAt', label: '剪開的時間（秒，相對項目開始；cut）', type: 'number', min: 0, max: 600, step: 0.05, default: 1 },
   ],
-  media(item) {
+  media(item, project) {
     const p = item.params as Partial<P>;
-    return { videos: [], stills: p.source ? frameTimes(p.times ?? '').map((t) => stillRef({ source: p.source!, t }, STILL_W)) : [] };
+    return { videos: [], stills: p.source ? frameTimes(p.times ?? '', project?.sources?.[p.source]?.duration).map((t) => stillRef({ source: p.source!, t }, STILL_W)) : [] };
   },
   build(ctx) {
     const cv = document.createElement('canvas');
