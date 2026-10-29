@@ -30,7 +30,7 @@ Music: Tellcut's own score ("cinematic", 80 BPM). Sound effects are synthesised.
 
 ## The editor screenshots
 
-`editor.jpg` is the Tellcut editor with a brand film made in Tellcut open. Its footage is from Pixabay (Pixabay Content License); the frame in the preview is "video production, camera, macbook" by ninosouza — https://pixabay.com/videos/id-26533/. `home.jpg` is the home page; its preset cards are the sample previews below.
+`editor.jpg` is the Tellcut editor with the travel preset's sample short open (the Rome Trip project). Its footage is **"3 DAYS IN ROME ⛲️ 🍝 🇮🇹 Vatican City, Trevi Fountain, Colosseum & More | Italy Travel Vlog 2024"** by **Jackie Vlogs** — https://www.youtube.com/watch?v=qQGjPdTekyA, used under the Creative Commons Attribution 3.0 licence (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/); the media panel, the preview and the timeline show frames of it. One timeline thumbnail is the short's map: map data © OpenStreetMap contributors, tiles © CARTO. `home.jpg` is the home page; its preset cards are the sample previews below.
 
 ## The sample previews
 
