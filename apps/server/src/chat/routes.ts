@@ -5,6 +5,7 @@ import type { ProjectStore } from '../projects.ts';
 import { chatFile, closeDangling, freshThread, isHome, readThread, writeThread } from './store.ts';
 import { withRecovered } from './recover.ts';
 import type { ChatRunner } from './runner.ts';
+import { taskBlock } from './tasks.ts';
 import type { JobInfo, JobQueue } from '../jobs.ts';
 import { analysisState, analysisStatus, type AnalysisState } from '@tellcut/protocol';
 import type { ChatEvent } from './stream.ts';
@@ -76,11 +77,13 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
     const fields = found ? cleanFields(found, b?.fields) : {}, anyField = Object.keys(fields).length > 0;
     const preset: PresetChoice | undefined = found ? { id: found.id, styles: styles.filter((x: string) => found.styles.some((s) => s.id === x)), ...(anyField ? { fields } : {}) } : undefined;
     const block = asked ? (found ? presetBlock(found, styles, fields) : missingPresetBlock(asked)) : null;
+    // a button's task (save to My blocks, save as my preset…): words for the agent, not kept in the thread
+    const task = taskBlock(b?.task, isHome(thread) ? null : thread);
     // the sources ticked in the API menu come with each message (the page keeps no ticks): this turn and the automatic one after
     // its analysis use them; ids Tellcut has no adapter for are dropped. A client that sends none (a script) keeps the last ones.
     const sources = Array.isArray(b?.sources) ? [...new Set<string>(b.sources.filter((x: unknown): x is string => typeof x === 'string' && Object.hasOwn(ADAPTERS, x)))] : undefined;
     const send = ndjson(res);
-    if (!runner.send(thread, text, [langLine(b?.lang), context, block].filter(Boolean).join('\n\n') || null, send, { preset, lang: isLang(b?.lang) ? b.lang : undefined, sources })) { send({ type: 'done', status: 'error', text: '', error: '還在回覆中', code: 'chat.busy' }); return; }
+    if (!runner.send(thread, text, [langLine(b?.lang), context, block, task].filter(Boolean).join('\n\n') || null, send, { preset, lang: isLang(b?.lang) ? b.lang : undefined, sources })) { send({ type: 'done', status: 'error', text: '', error: '還在回覆中', code: 'chat.busy' }); return; }
     // the page may leave: the turn goes on and is saved; it can attach again
     res.on('close', () => {});
   });

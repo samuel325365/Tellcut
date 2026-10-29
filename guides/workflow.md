@@ -50,11 +50,17 @@ The custom preset's form shows up as "Options the user set" in the preset block 
    - A main track with gaps left on purpose (3D over nothing, a title on black after `c.at()`) is saved as an ordinary track, not magnetic: cut prints a note, and editing in the editor then never closes the gaps.
 5. `npm run cut -- <id>`, then `npm run check -- <id>`: on errors, change cut.ts and rerun (`cut --force`) until there are none; handle warnings as fits and say why. `--force` rebuilds the whole timeline from cut.ts: use it only while making the first cut, never after the user has edited in the editor.
 6. Finally `npm run check -- <id> --sheet`, and look at the sheet and fix as in `guides/quality.md`'s "Before delivering, look with a critical eye".
-7. **List promotion candidates**: which of this film's new fx and music styles, made generic with parameters, other films could use too (for example a "depth gauge" could become a generic "value meter"). One line each: the file, what it does, and which hard-wired things would become parameters. Promotion is done by whoever maintains Tellcut, in Claude Code (`npm run promote` / `promote-style`); if nothing is worth promoting, say so.
+7. **What is worth keeping**: which of this film's new fx and music styles, made generic with parameters, other films could use too (for example a "depth gauge" could become a generic "value meter").
+   - **In the page chat**: tell the user in a sentence or two which effects or music are worth saving to My blocks and what they could use them for later, and that the ☆ next to the effect in the Media panel saves it (they may tick "make it generic" there). Never mention promotion, files or code to them. If nothing is worth keeping, say nothing about it.
+   - **In developer mode** (Claude Code, batches): list promotion candidates, one line each: the file, what it does, and which hard-wired things would become parameters. Promotion into the shared blocks is done by whoever maintains Tellcut (`npm run promote` / `promote-style`); if nothing is worth promoting, say so.
+
+## The user's own blocks (My blocks)
+
+Blocks and music styles the user saved from earlier films are in their library, `projects/_library/` (never edit it, except for a task that says so). Look there before anything else: `npm run tellcut -- library list`; `catalog --find` lists them first, marked 我的. One that fits is copied into the project before use: `npm run tellcut -- library use <id> <slug>` prints the `c.fx(…)` line for cut.ts, then `c.effect(…)` as for any fx; a music style: `library use <id> --style <slug>`, then `c.score('<id>')`. Prefer them to the shared blocks when both fit: the user made them for films like theirs.
 
 ## The project's own effects (fx)
 
-What the library and tuned blocks cannot do, or not well enough, is written new. First make sure with `catalog --find` that nothing can really do it well.
+What My blocks, the library and tuned blocks cannot do, or not well enough, is written new. First make sure with `library list` and `catalog --find` that nothing can really do it well.
 
 - File: `projects/<id>/fx/<name>.js`, an ES module whose `export default` is an array of ItemTypes. Register it in cut.ts with `c.fx('fx/<name>.js')`, then put it on the timeline with `c.effect('fx.<type>', { at, len, ...params })` (then `npm run cut -- <id> --force`). See `tools/fx-example/ring.js` for an example.
 - The fx module can hold its own sound effects too: add `export const sfx = [{ type: 'fx.<name>', label, doc, params, duration: (p) => seconds, synth(ctx, bus, at, p) { … } }]` (`synth` fills samples with `ctx.createBuffer`, connects to `bus.out` and starts at `at`; the samples depend only on the parameters, and randomness again uses a seeded LCG), then place them like shared sounds with `c.sfx('fx.<name>', { at, len, gain })`. A module with only sounds may leave out `export default`.

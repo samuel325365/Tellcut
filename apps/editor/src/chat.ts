@@ -1,5 +1,5 @@
 // One chat thread in the browser (spec 2026-10-16-in-editor-chat §2.3): its messages, the reply streaming in, stop/clear.
-import type { AnalysisState, ChatEvent, ChatMessage, ChatTool, Lang, PresetChoice, SourceInfo, Usage } from '@tellcut/protocol';
+import type { AnalysisState, ChatEvent, ChatMessage, ChatTask, ChatTool, Lang, PresetChoice, SourceInfo, Usage } from '@tellcut/protocol';
 import { getLang } from './i18n/lang.ts';
 import { errText, t } from './i18n/index.ts';
 import { chatErrorText } from './i18n/format.ts';
@@ -9,7 +9,7 @@ export type { ChatEvent, ChatMessage, ChatTool, Usage };
 export interface ChatApi {
   chat(thread: string): Promise<{ thread: { messages: ChatMessage[] }; running: { text: string; tools: ChatTool[] } | null; analyzing?: string | boolean | null; analysis?: AnalysisState | null }>;
   /** sources: the APIs ticked on this page, sent with the message (left out: the server keeps the thread's last ones) */
-  chatSend(thread: string, text: string, on: (e: ChatEvent) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[]): Promise<void>;
+  chatSend(thread: string, text: string, on: (e: ChatEvent) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[], task?: ChatTask): Promise<void>;
   chatAttach(thread: string, on: (e: ChatEvent) => void, signal?: AbortSignal): Promise<void>;
   chatStop(thread: string): Promise<unknown>;
   chatClear(thread: string): Promise<unknown>;
@@ -56,14 +56,14 @@ export class ChatSession {
     } catch (e) { if (!this.closed) this.set({ error: errText(e), running: false, partial: null }); }   // let go: its stream was aborted
   }
 
-  /** preset: the one picked on the home page (a message may be the preset alone) */
-  async send(text: string, preset?: PresetChoice) {
+  /** preset: the one picked on the home page (a message may be the preset alone); task: what a button asks of the agent (its words stay off the thread) */
+  async send(text: string, preset?: PresetChoice, task?: ChatTask) {
     const t = text.trim();
     if ((!t && !preset) || this.state.running) return;
     this.set({ messages: [...this.state.messages, { role: 'user', text: t, time: new Date().toISOString(), ...(preset ? { preset } : {}) }], running: true, partial: { text: '', tools: [] }, error: '' });
     this.following = true;
     let failed: Error | null = null;
-    try { await this.api.chatSend(this.thread, t, (e) => this.on(e), this.from, preset, getLang(), this.picksSources ? this.state.sources ?? [] : undefined); }
+    try { await this.api.chatSend(this.thread, t, (e) => this.on(e), this.from, preset, getLang(), this.picksSources ? this.state.sources ?? [] : undefined, task); }
     catch (e) { failed = e as Error; }
     finally { this.following = false; }
     await this.afterMove();

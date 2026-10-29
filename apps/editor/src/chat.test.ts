@@ -211,3 +211,13 @@ test('a failed turn keeps its code and cause on the message and words the error 
     expect(s.state.error).not.toMatch(/找不到/);
   } finally { setLang('zh'); }
 });
+
+test("a button's task goes with the message, and the message shown is only the words", async () => {
+  const sent: any[] = [];
+  const api: any = { ...fakeApi(), chatSend: async (...a: any[]) => { sent.push(a[7]); a[2]({ type: 'done', status: 'done', text: '好' }); } };
+  const s = new ChatSession('demo', api);
+  await s.send('存成我的片型', undefined, { kind: 'preset-draft' });
+  expect(sent).toEqual([{ kind: 'preset-draft' }]);
+  expect(s.state.messages[0]).toMatchObject({ role: 'user', text: '存成我的片型' });
+  expect(s.state.messages[0]).not.toHaveProperty('task');
+});

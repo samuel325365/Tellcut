@@ -608,3 +608,22 @@ test('a thread another server (same projects/) is replying in is busy here too: 
     expect(JSON.parse(readFileSync(file, 'utf8')).messages).toHaveLength(1);
   } finally { other.kill(); await app.close(); delete process.env.CLAUDE_CONFIG_DIR; }
 });
+
+test("a button's task goes to Claude after the project line; the thread keeps only the user's words", async () => {
+  const root = makeProjects(), log = join(root, 'fake.log');
+  process.env.FAKE_CLAUDE_LOG = log;
+  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  try {
+    await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '存成我的片型', from: 'editor', task: { kind: 'preset-draft' } })));
+    const stdin = JSON.parse(readFileSync(log, 'utf8').trim()).stdin;
+    expect(stdin).toMatch(/^\(Current project: Demo \(demo\)\. The editor is open\.\)\n\n<task kind="preset-draft">[\s\S]*<\/task>\n\n存成我的片型$/);
+    const t = (await (await fetch(`${base}/api/chat/demo`)).json()).thread;
+    expect(t.messages[0].text).toBe('存成我的片型');
+    expect(JSON.stringify(t)).not.toContain('<task');
+  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+});
+
+test('the chat may write a preset draft and edit the entries of the user’s library', () => {
+  expect(claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' })).toEqual(expect.arrayContaining(['Write(projects/*/preset-draft.json)', 'Edit(projects/*/preset-draft.json)',
+    'Write(projects/_library/blocks/*/fx/*.js)', 'Edit(projects/_library/blocks/*/fx/*.js)']));
+});

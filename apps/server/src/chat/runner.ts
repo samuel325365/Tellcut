@@ -43,6 +43,8 @@ export function claudeArgs(o: { session: string; resume: boolean; promptFile: st
     'Write(projects/*/narration.json)', 'Edit(projects/*/narration.json)', 'Write(projects/*/storyboard.md)', 'Edit(projects/*/storyboard.md)', 'Write(projects/*/brand.md)', 'Edit(projects/*/brand.md)', 'Write(projects/*/score/*.js)', 'Edit(projects/*/score/*.js)',
     // a proposal's ops are written to a file first: pipes (echo … | propose -) are refused like every compound command
     'Write(projects/*/proposal.json)', 'Edit(projects/*/proposal.json)',
+    // the draft of a preset of the user's own, and an entry of their library changed from the gallery (spec 2026-10-29-my-library §4.3, §4.5)
+    'Write(projects/*/preset-draft.json)', 'Edit(projects/*/preset-draft.json)', 'Write(projects/_library/blocks/*/fx/*.js)', 'Edit(projects/_library/blocks/*/fx/*.js)',
     // guardrails, not a sandbox (spec §1.2): secrets and npm's shell override stay out of reach
     '--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Read(~/.aws/**)', 'Read(~/.config/**)', 'Read(~/AppData/**)', 'Bash(*--script-shell*)',
     'Read(~/.npmrc)', 'Read(~/.git-credentials)', 'Read(~/.netrc)', 'Read(~/.docker/**)', 'Read(~/.kube/**)', 'Read(~/.azure/**)', 'Read(~/.gnupg/**)',

@@ -1,6 +1,6 @@
 // Tellcut server API (apps/server). Every failure becomes an ApiError with the server's message and issues.
 import type { Transcript } from '@tellcut/engine';
-import type { GalleryIndex, JobInfo, Lang, PresetChoice, PresetInfo, SourceInfo } from '@tellcut/protocol';
+import type { ChatTask, GalleryIndex, JobInfo, Lang, PresetChoice, PresetInfo, SourceInfo } from '@tellcut/protocol';
 import type { PeakInfo, ThumbInfo } from './store.ts';
 
 export class ApiError extends Error {
@@ -105,8 +105,8 @@ export const api = {
   chat: (thread: string) => req<{ thread: { messages: any[]; sessionId: string; started: boolean }; running: { text: string; tools: any[] } | null }>(`/api/chat/${enc(thread)}`),
   /** from: 'editor' in the project's editor, 'home' when its chat is used from the home page (its editor is not open);
    *  sources: the APIs ticked in the menu, which go with the message (the page keeps none) */
-  chatSend: (thread: string, text: string, on: (e: any) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[]) =>
-    ndjson(`/api/chat/${enc(thread)}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, from, preset: preset?.id, styles: preset?.styles, fields: preset?.fields, lang, sources }) }, on),
+  chatSend: (thread: string, text: string, on: (e: any) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[], task?: ChatTask) =>
+    ndjson(`/api/chat/${enc(thread)}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, from, preset: preset?.id, styles: preset?.styles, fields: preset?.fields, lang, sources, task }) }, on),
   /** the home page's presets (spec 2026-10-23-presets-and-languages §3.3) */
   presets: () => req<{ presets: PresetInfo[] }>('/api/presets'),
   chatAttach: (thread: string, on: (e: any) => void, signal?: AbortSignal) => ndjson(`/api/chat/${enc(thread)}/stream`, signal ? { signal } : undefined, on),

@@ -172,6 +172,11 @@ export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; style
 export interface LibraryBlockInfo { slug: string; type: string; name: string; desc: string; category?: string; kind: 'scene' | 'overlay'; params: ParamDef[];
   main: string; thumb: string | null; from: { project: string; file: string }; savedAt: string; version: string; group: string[]; theme?: unknown }
 export interface LibraryStyleInfo { slug: string; id: string; name: string; desc: string; defaults: { bpm: number; key: string }; from: { project: string; file: string }; savedAt: string }
+/** what a button asks of the agent along with the message (spec 2026-10-29-my-library): the server words it for the agent */
+export type ChatTask =
+  | { kind: 'library-save'; type: string; name: string; desc: string; category?: string }
+  | { kind: 'preset-draft' }
+  | { kind: 'library-edit'; slug: string; type: string; request: string };
 export interface LibraryIndex { blocks: LibraryBlockInfo[]; styles: LibraryStyleInfo[] }
 /** a project and the library: its copies of entries (`outdated`: the library has a newer one; `gone`: deleted there), the
  *  files and style ids already saved from it (★), and its own music styles (to save with ☆) */
