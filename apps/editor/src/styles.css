@@ -32,7 +32,8 @@ html[data-theme] body { background: var(--s-bg); }
 :root { color-scheme: dark; --bg: #141312; --panel: #1e1c1a; --line: #2e2b27; --text: #ece4d6; --dim: #9a9083; --accent: #d8b88a; --on-accent: #161412; --playhead: #d8b88a; --sel: #ffd60a; --off: #ff453a;
   --btn: #342f2a; --btn-line: #4a433b; --field: #191612; }   /* buttons and fields: warm greys of the panels' brown */
 * { box-sizing: border-box; }
-html, body, #app { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px "Segoe UI", var(--cjk), sans-serif; }
+/* a Mac has no Segoe UI: without "Helvetica Neue" its Latin letters and symbols fell to the CJK web font (a full-width ×) */
+html, body, #app { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px "Segoe UI", "Helvetica Neue", var(--cjk), sans-serif; }
 button { font: inherit; color: var(--text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
 button:disabled { opacity: .4; cursor: default; }
 /* the grid template comes from layout.ts (inline style): landscape "tb / lib pv pr / sp / tl", portrait "tb / sd tl sp pv" */
