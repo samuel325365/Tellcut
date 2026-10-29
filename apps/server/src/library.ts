@@ -49,10 +49,14 @@ export async function libraryIndex(root: string): Promise<LibraryIndex> {
   return { blocks, styles };
 }
 
-/** the projects with a copy of block `slug` (each keeps its copy), and the user's presets naming the entry */
+/** the projects using a copy of block `slug` (each keeps its copy), and the user's presets naming the entry. A copy counts only while
+ *  meta.fx names it: an add undone in the editor leaves the copy and its link behind, unused (as the editor's liveLinks reads it) */
 export function libraryUsage(projectsDir: string, slug: string, kind: 'block' | 'style'): LibraryUsage {
   const projects = kind === 'block' ? folders(projectsDir).filter((n) => PROJECT_ID.test(n)).filter((n) => {
-    try { return Object.hasOwn(JSON.parse(readFileSync(join(projectsDir, n, 'fx', 'lib', 'links.json'), 'utf8')), slug); } catch { return false; }
+    try {
+      const link = JSON.parse(readFileSync(join(projectsDir, n, 'fx', 'lib', 'links.json'), 'utf8'))[slug], fx = projectJson(join(projectsDir, n)).meta?.fx;
+      return typeof link?.file === 'string' && Array.isArray(fx) && fx.includes(link.file);
+    } catch { return false; }
   }).length : 0;
   const pdir = join(projectsDir, '_presets'), presets: string[] = [];
   for (const n of folders(pdir).filter((x) => x.startsWith('my-'))) {

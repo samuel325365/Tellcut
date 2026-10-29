@@ -1,5 +1,5 @@
 // The library's routes (spec 2026-10-29-my-library §4.2–4.4): save, list, serve, rename, delete, use in a project.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fxModule, makeProject, tempProjects } from '../../../packages/media-node/src/library/fixture.ts';
 import { startApp } from './test-utils.ts';
@@ -77,6 +77,10 @@ test('rename, usage and delete', async () => {
   writeFileSync(join(projects, '_presets', 'my-food', 'preset.md'), `---\n${JSON.stringify({ name: { zh: '我的美食' }, summary: { zh: 's' }, blocks: ['chalk-title'] })}\n---\nx\n`);
   const put = await fetch(`${base}/api/library/blocks/chalk-title/types/fx.chalk-title`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: '粉筆標題卡' }) });
   expect((await put.json()).types[0].name).toBe('粉筆標題卡');
+  // copied, but meta.fx does not name it (an add undone in the editor): not a use
+  expect(await (await fetch(`${base}/api/library/blocks/chalk-title/usage`)).json()).toEqual({ projects: 0, presets: ['我的美食'] });
+  const pj = join(projects, 'p2', 'project.json'), p2 = JSON.parse(readFileSync(pj, 'utf8'));
+  writeFileSync(pj, JSON.stringify({ ...p2, meta: { ...p2.meta, fx: [...p2.meta.fx, 'fx/lib/chalk-title/_entry.js'] } }));
   expect(await (await fetch(`${base}/api/library/blocks/chalk-title/usage`)).json()).toEqual({ projects: 1, presets: ['我的美食'] });
   expect((await fetch(`${base}/api/library/blocks/chalk-title`, { method: 'DELETE' })).status).toBe(200);
   expect(existsSync(join(projects, '_library', 'blocks', 'chalk-title'))).toBe(false);
