@@ -37,6 +37,10 @@ process.stdin.on('end', async () => {
     writeFileSync(join(process.env.FAKE_CLAUDE_PROJECTS, taken[1], '.history', 'chat', 'chat.json'), JSON.stringify({ sessionId: '22222222-2222-4222-8222-222222222222', started: true, messages: [{ role: 'user', text: '別人的', time: 't' }] }));
     out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `toolu_try_${taken[1]}`, name: 'Bash', input: { command: `npm run new -- ${taken[1]} D:/footage` } }] }, session_id: session });
   }
+  // a "Save as my preset" task: writes the draft the task asks for in $FAKE_CLAUDE_PROJECTS/<id>/preset-draft.json
+  const draft = stdin.includes('<task kind="preset-draft">') && /projects\/([\w-]+)\/preset-draft\.json/.exec(stdin);
+  if (draft && process.env.FAKE_CLAUDE_PROJECTS) writeFileSync(join(process.env.FAKE_CLAUDE_PROJECTS, draft[1], 'preset-draft.json'), JSON.stringify({ name: '我的短片', summary: '快節奏直式',
+    points: [{ text: '前 2 秒放最好看的畫面', prompt: 'Open on the best shot within 2 s.' }, { text: '字幕放中間', prompt: 'Captions in the middle.' }], ratio: '9:16', length: [25, 35] }));
   if (made && process.env.FAKE_CLAUDE_PROJECTS) for (const id of made[1].trim().split(/\s+/)) {
     make(id);
     out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `toolu_new_${id}`, name: 'Bash', input: { command: `npm run new -- ${id} D:/footage` } }] }, session_id: session });

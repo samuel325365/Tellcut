@@ -121,6 +121,11 @@ export const api = {
   deleteLibrary: (kind: 'blocks' | 'styles', slug: string) => req<{ ok: true }>(`/api/library/${kind}/${enc(slug)}`, { method: 'DELETE' }),
   /** the agent's draft of a preset of the user's own (404 until it is written) */
   presetDraft: (id: string) => req<unknown>(`/api/projects/${enc(id)}/preset-draft`),
+  /** presets of the user's own (spec 2026-10-29-my-library §3.5–3.7): saved from a film or the custom form, edited, given a poster, deleted */
+  savePreset: (b: Record<string, unknown>) => req<PresetInfo>('/api/presets', jsonPost(b)),
+  updatePreset: (id: string, b: Record<string, unknown>) => req<PresetInfo>(`/api/presets/${enc(id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
+  deletePreset: (id: string) => req<{ ok: true }>(`/api/presets/${enc(id)}`, { method: 'DELETE' }),
+  presetPoster: (id: string, file: Blob) => req<PresetInfo>(`/api/presets/${enc(id)}/poster`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file }),
   /** the home page's presets (spec 2026-10-23-presets-and-languages §3.3) */
   presets: () => req<{ presets: PresetInfo[] }>('/api/presets'),
   chatAttach: (thread: string, on: (e: any) => void, signal?: AbortSignal) => ndjson(`/api/chat/${enc(thread)}/stream`, signal ? { signal } : undefined, on),

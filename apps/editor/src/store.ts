@@ -5,6 +5,7 @@ import type { ExportEntry, JobView } from './api.ts';
 import type { Material } from './audition.ts';
 import { DEFAULT_LAYOUT, type Layout } from './layout.ts';
 import type { LibraryIndex, LibrarySavePreview, ProjectLibraryInfo } from '@tellcut/protocol';
+import type { PresetDraftView } from './editor/preset-save.ts';
 
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
 export interface ThumbInfo { interval: number; width: number; height: number; cols: number; count: number; url: string }
@@ -78,6 +79,9 @@ export interface EditorState {
   locked: string[];
   /** My blocks (spec 2026-10-29-my-library): the library, what this project has from it, the save dialog, the toast after a save */
   library: LibraryState;
+  /** "Save as my preset" (spec 2026-10-29-my-library §3.5): waiting for the agent's draft, the draft the dialog is open on, the project's
+   *  poster frame, the toast after */
+  presetSave: { drafting: boolean; draft: PresetDraftView | null; poster: string | null; toast: string | null };
 }
 
 /** the save dialog of "Save to My blocks": a block (target: its type) or a music style (target: its id); preview: what would be saved
@@ -91,6 +95,7 @@ export const initialState = (id: string): EditorState => ({
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
   thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', importing: null, importNote: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
   library: { index: null, project: null, saving: null, toast: null },
+  presetSave: { drafting: false, draft: null, poster: null, toast: null },
 });
 
 export interface Store<S> { get(): S; set(patch: Partial<S> | ((s: S) => Partial<S>)): void; subscribe(fn: () => void): () => void }

@@ -22,6 +22,7 @@ export function ExportPanel({ editor, s }: { editor: any; s: EditorState }) {
         <div class="msg">{j.status === 'queued' ? t('ed.exQueued') : exportProgress(j.message) || t('export.prepare')} <button data-export-cancel onClick={() => editor.cancelExport()}>Cancel</button></div>
       </div>}
       {j?.status === 'done' && j.result && <p class="done">Done: <a data-export-result href={fileUrl(id, j.result.file)} target="_blank" rel="noopener">{base(j.result.file)}</a>{t('ed.exTook', { n: j.result.seconds })}</p>}
+      {j?.status === 'done' && j.result && <button class="link" data-save-preset-after-export onClick={() => void editor.presetSave.start()}>{t('preset.saveAfterExport')}</button>}
       {j && (j.status === 'failed' || j.status === 'cancelled') && <div class="failed">
         <p class="notice" data-export-error>{j.status === 'cancelled' ? t('ed.exCancelled') : t('ed.exFailed', { err: j.error ?? '' })}</p>
         {j.log.length > 0 && <pre data-export-log>{j.log.slice(-20).join('\n')}</pre>}

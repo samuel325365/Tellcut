@@ -20,6 +20,7 @@ import { analyzeProject } from './editor/analysis.ts';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
+import { PresetSaveFlow } from './editor/preset-save.ts';
 import { errText, t as say } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 import { paramText } from './i18n/params.ts';
@@ -592,6 +593,12 @@ export class Editor {
   async updateLibraryBlock(slug: string) {
     try { await this.library.use(slug); } catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return; }
     await this.reloadFx();
+  }
+
+  // ---------------------------------------------------------------- Save as my preset (spec 2026-10-29-my-library §3.5; editor/preset-save.ts)
+  private presetFlow: PresetSaveFlow | undefined;
+  get presetSave() {
+    return (this.presetFlow ??= new PresetSaveFlow({ id: this.id, api: this.deps.api, store: this.store, chat: this.chat, setLayout: (patch) => this.setLayout(patch), playhead: () => this.s.playhead }));
   }
 
   // ---------------------------------------------------------------- Ask Agent… (spec 2026-10-16-right-click-claude §2; editor/ask-flow.ts)

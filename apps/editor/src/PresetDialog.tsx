@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { pickText, type Lang, type PresetFieldInfo, type PresetInfo } from '@tellcut/protocol';
 import { PresetPoster } from './PresetStrip.tsx';
+import { MinePresetActions, MinePresetBody, SaveFormPreset, type PresetApi } from './presets/MinePreset.tsx';
 import { t } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
 
@@ -17,9 +18,11 @@ const MAX_BUTTONS = 5, MAX_BUTTON_CHARS = 8;
 const asButtons = (f: PresetFieldInfo, lang: Lang) => !f.seconds && f.options.length + 1 <= MAX_BUTTONS
   && f.options.every((o) => [...(pickText(o.name, lang) ?? o.id)].length <= MAX_BUTTON_CHARS);
 
-export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose }: {
+export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose, api, onChanged, onGone }: {
   preset: PresetInfo; styles: string[]; fields?: Record<string, string>;
   onConfirm: (styles: string[], fields: Record<string, string>, examples: string[]) => void; onClose: () => void;
+  /** presets of the user's own (spec 2026-10-29-my-library §3.6, §3.7): changing them; absent, the dialog only picks */
+  api?: PresetApi; onChanged?: () => void; onGone?: () => void;
 }) {
   const lang = useLang(), [ticked, setTicked] = useState<string[]>(styles);
   const form = preset.fields ?? [], examples = preset.examples ?? [];
@@ -35,16 +38,18 @@ export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose }
   useEffect(() => { box.current?.focus(); }, []);
   const toggle = (id: string) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
   const set = (id: string, v: string) => setVals((x) => ({ ...x, [id]: v }));
-  const confirm = () => {
+  /** the form as set (auto left out; an own length only when it is one) */
+  const formOut = () => {
     const out: Record<string, string> = {};
     for (const f of form) {
       const v = vals[f.id];
       if (v === OWN) { if (okSeconds(secs[f.id] ?? '')) out[f.id] = String(+secs[f.id]); }
       else if (v !== AUTO) out[f.id] = v;
     }
-    onConfirm(preset.styles.filter((s) => ticked.includes(s.id)).map((s) => s.id), out,
-      examples.flatMap((e, i) => (picked.includes(i) ? [pickText(e, lang) ?? ''] : [])).filter(Boolean));
+    return out;
   };
+  const examplesOut = () => examples.flatMap((e, i) => (picked.includes(i) ? [pickText(e, lang) ?? ''] : [])).filter(Boolean);
+  const confirm = () => onConfirm(preset.styles.filter((s) => ticked.includes(s.id)).map((s) => s.id), formOut(), examplesOut());
   const fit = pickText(preset.fit, lang) ?? [], facts = pickText(preset.facts, lang) ?? [];
   const field = (f: PresetFieldInfo) => {
     const v = vals[f.id], name = (o: { id: string; name: PresetInfo['name'] }) => pickText(o.name, lang) ?? o.id;
@@ -82,6 +87,7 @@ export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose }
           <p class="preset-summary">{pickText(preset.summary, lang)}</p>
           {facts.length > 0 && <div class="preset-facts">{facts.map((f) => <span>{f}</span>)}</div>}
           {fit.length > 0 && <><h5>{t('preset.fitHead')}</h5><ul class="preset-fit">{fit.map((f) => <li>{f}</li>)}</ul></>}
+          {preset.mine && <MinePresetBody preset={preset} />}
           {form.length > 0 && <div class="preset-form">{form.map((f, i) => {
             // fields next to each other under the same heading share it
             const g = f.group ? pickText(f.group, lang) : undefined, prev = i > 0 && form[i - 1].group ? pickText(form[i - 1].group, lang) : undefined;
@@ -104,6 +110,9 @@ export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose }
             ))}</div>
           </>}
           <footer>
+            {api && preset.mine && <MinePresetActions preset={preset} api={api} onChanged={() => onChanged?.()} onGone={() => { onGone?.(); onClose(); }} />}
+            {api && preset.id === 'custom' && <SaveFormPreset api={api} fields={formOut} examples={examplesOut} onSaved={() => onChanged?.()} />}
+            <span class="grow" />
             <button data-cancel onClick={onClose}>{t('preset.cancel')}</button>
             <button class="primary" data-confirm onClick={confirm}>{t('preset.confirm')}</button>
           </footer>

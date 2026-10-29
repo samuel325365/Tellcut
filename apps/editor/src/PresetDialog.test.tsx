@@ -159,3 +159,80 @@ test('Enter in a select or the seconds box does not confirm', async () => {
   await act(() => { d.dispatchEvent(enter()); });
   expect(used.length).toBe(1);
 });
+
+// ---------------------------------------------------------------- presets of the user's own (spec 2026-10-29-my-library §3.6, §3.7)
+const MINE: any = { ...TRAVEL, id: 'my-food', mine: true, styles: [], name: { zh: '我的美食' }, summary: { zh: '小吃店探訪' }, fit: {}, facts: { zh: ['9:16'] },
+  points: ['前 2 秒放最好看的一口', '字幕放中間'],
+  uses: { fonts: ['Noto Serif TC'], colors: ['#e8590c'], score: { slug: 'jazz', name: '街頭爵士', gone: false }, blocks: [{ slug: 'chalk', name: '粉筆標題卡', thumb: null, gone: false }, { slug: 'stamp', name: '印章', thumb: null, gone: true }] } };
+function presetApi() {
+  const calls: any[] = [];
+  return { calls, api: {
+    savePreset: async (b: any) => { calls.push(['save', b]); return { ...MINE, id: 'my-x' }; },
+    updatePreset: async (id: string, b: any) => { calls.push(['update', id, b]); return MINE; },
+    deletePreset: async (id: string) => { calls.push(['delete', id]); return { ok: true }; },
+    presetPoster: async (id: string) => { calls.push(['poster', id]); return MINE; },
+  } };
+}
+const type = (el: Element | null, v: string) => act(() => { const e = el as HTMLInputElement; e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); });
+const clickOn = (root: Element, sel: string) => act(async () => { root.querySelector<HTMLElement>(sel)!.click(); await new Promise((r) => setTimeout(r, 0)); });
+
+test('a preset of the user’s own shows its points and what it uses, a deleted block marked', async () => {
+  const root = document.createElement('div'), { api } = presetApi();
+  await act(() => render(<PresetDialog preset={MINE} styles={[]} onConfirm={() => {}} onClose={() => {}} api={api} />, root));
+  expect([...root.querySelectorAll('[data-preset-points-view] li')].map((x) => x.textContent)).toEqual(['前 2 秒放最好看的一口', '字幕放中間']);
+  const uses = root.querySelector('[data-preset-uses]')!.textContent!;
+  for (const x of ['Noto Serif TC', '街頭爵士', '粉筆標題卡', '印章', DICTS.zh['preset.gone']]) expect(uses).toContain(x);
+  expect(root.querySelector('[data-use-block="stamp"]')!.className).toContain('gone');
+  expect(root.querySelector('[data-preset-edit]')).not.toBeNull();
+  // a repo preset has none of this
+  const other = document.createElement('div');
+  await act(() => render(<PresetDialog preset={TRAVEL} styles={[]} onConfirm={() => {}} onClose={() => {}} api={api} />, other));
+  expect(other.querySelector('[data-preset-edit], [data-preset-points-view], [data-preset-save-form]')).toBeNull();
+});
+
+test('rename and delete change only that preset; deleting closes the dialog', async () => {
+  const root = document.createElement('div'), { api, calls } = presetApi();
+  let changed = 0, gone = 0, closed = 0;
+  await act(() => render(<PresetDialog preset={MINE} styles={[]} onConfirm={() => {}} onClose={() => closed++} api={api} onChanged={() => changed++} onGone={() => gone++} />, root));
+  await clickOn(root, '[data-preset-rename]');
+  await type(root.querySelector('[data-preset-rename-input]'), '夜市');
+  await clickOn(root, '[data-preset-rename-save]');
+  expect(calls[0]).toEqual(['update', 'my-food', { name: '夜市', lang: 'zh' }]);
+  expect(changed).toBe(1);
+  await clickOn(root, '[data-preset-delete]');
+  expect(root.querySelector('[data-preset-delete-confirm-box]')!.textContent).toContain('我的美食');
+  await clickOn(root, '[data-preset-delete-confirm]');
+  expect(calls[1]).toEqual(['delete', 'my-food']);
+  expect([gone, closed]).toEqual([1, 1]);
+});
+
+test('edit: a point left alone is named by what it was, a changed one goes in the user’s words, a removed one is gone', async () => {
+  const root = document.createElement('div'), { api, calls } = presetApi();
+  await act(() => render(<PresetDialog preset={MINE} styles={[]} onConfirm={() => {}} onClose={() => {}} api={api} onChanged={() => {}} />, root));
+  await clickOn(root, '[data-preset-edit]');
+  const dlg = root.querySelector('[data-save-preset-dialog="edit"]')!;
+  await type(dlg.querySelector('[data-preset-point="1"]'), '字幕放下面');
+  await clickOn(dlg, '[data-preset-point-add]');
+  await type(dlg.querySelector('[data-preset-point="2"]'), '不放價格');
+  await clickOn(dlg, '[data-preset-point-remove="0"]');
+  await act(() => { (dlg.querySelector('[data-bring="blocks"] input') as HTMLInputElement).click(); });
+  await clickOn(dlg, '[data-preset-save]');
+  expect(calls[0]).toEqual(['update', 'my-food', { name: '我的美食', summary: '小吃店探訪', lang: 'zh',
+    points: [{ text: '字幕放下面', prompt: '字幕放下面' }, { text: '不放價格', prompt: '不放價格' }], include: { theme: true, score: true, blocks: false } }]);
+  expect(root.querySelector('[data-save-preset-dialog]')).toBeNull();
+});
+
+test('the custom form saves the options chosen as a preset of the user’s own', async () => {
+  const CUSTOM: any = { ...TRAVEL, id: 'custom', styles: [], examples: [{ zh: '復古底片感' }],
+    fields: [{ id: 'ratio', name: { zh: '比例' }, options: [{ id: '9:16', name: { zh: '9:16 直式' } }, { id: '16:9', name: { zh: '16:9 橫式' } }] }] };
+  const root = document.createElement('div'), { api, calls } = presetApi();
+  let changed = 0;
+  await act(() => render(<PresetDialog preset={CUSTOM} styles={[]} onConfirm={() => {}} onClose={() => {}} api={api} onChanged={() => changed++} />, root));
+  await clickOn(root, '[data-option="9:16"]');
+  await clickOn(root, '[data-example]');
+  await clickOn(root, '[data-preset-save-form]');
+  await type(root.querySelector('[data-preset-form-name]'), '我的直式');
+  await clickOn(root, '[data-preset-form-save]');
+  expect(calls[0]).toEqual(['save', { from: 'form', name: '我的直式', color: '#4263eb', fields: { ratio: '9:16' }, examples: ['復古底片感'], lang: 'zh' }]);
+  expect(changed).toBe(1);
+});

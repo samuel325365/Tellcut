@@ -138,11 +138,17 @@ export function libraryRoutes(r: Router, o: LibraryOptions) {
   });
 
   // the agent's draft of a preset, read into the save dialog
-  r.get('/api/projects/:id/preset-draft', (_req, res, { id }) => {
+  r.get('/api/projects/:id/preset-draft', async (_req, res, { id }) => {
     const f = join(project(id).dir, 'preset-draft.json');
     if (!existsSync(f)) throw new HttpError(404, 'No preset draft');
-    let draft: unknown;
+    let draft: any;
     try { draft = JSON.parse(readFileSync(f, 'utf8')); } catch { throw new HttpError(422, 'The preset draft is not JSON', { code: 'preset.badDraft' }); }
-    sendJson(res, 200, draft);
+    // the names of the blocks each module the film used holds, for the dialog's "bring along" line (one that does not load is left out)
+    const dir = project(id).dir, blocks: Array<{ file: string; names: string[] }> = [];
+    for (const fx of Array.isArray(draft?.fx) ? draft.fx.filter((x: unknown): x is string => typeof x === 'string') : []) {
+      const r = await loadProjectFx(dir, [fx]).catch(() => null), items = r?.plugin.items ?? [];
+      if (items.length) blocks.push({ file: fx, names: items.map((t) => t.label) });
+    }
+    sendJson(res, 200, { ...draft, blocks });
   });
 }

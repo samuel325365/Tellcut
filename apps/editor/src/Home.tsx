@@ -11,6 +11,7 @@ import { IconFilm, IconPlus, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { PresetStrip } from './PresetStrip.tsx';
 import { PresetDialog } from './PresetDialog.tsx';
+import type { PresetApi } from './presets/MinePreset.tsx';
 import { pickText, type ChatTask, type Lang, type PresetInfo } from '@tellcut/protocol';
 import { t } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
@@ -59,7 +60,7 @@ function sendPending(session: ChatSession) {
   if (x && typeof x.text === 'string' && x.task && typeof x.task === 'object') void session.send(x.text, undefined, x.task as ChatTask);
 }
 
-export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects(): Promise<ProjectRow[]>; presets?(): Promise<{ presets: PresetInfo[] }> } }) {
+export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects(): Promise<ProjectRow[]>; presets?(): Promise<{ presets: PresetInfo[] }> } & Partial<PresetApi> }) {
   const lang: Lang = useLang();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
@@ -70,7 +71,8 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   const [picked, setPicked] = useState<{ id: string; styles: string[]; fields: Record<string, string> } | null>(null), [info, setInfo] = useState<string | null>(null);
   // a preset's style examples picked in its dialog go into the chat box once (they are only words there, not part of the preset)
   const [append, setAppend] = useState<{ text: string; n: number }>({ text: '', n: 0 });
-  useEffect(() => { api.presets?.().then((r) => setPresets(r.presets), () => {}); }, [api]);
+  const loadPresets = () => api.presets?.().then((r) => setPresets(r.presets), () => {});
+  useEffect(() => { void loadPresets(); }, [api]);
   const pickedInfo = picked ? presets.find((p) => p.id === picked.id) : undefined, infoOf = info ? presets.find((p) => p.id === info) : undefined;
   const presetNames = useMemo(() => Object.fromEntries(presets.map((p) => [p.id, pickText(p.name, lang) ?? p.id])), [presets, lang]);
   const [thread, setThread] = useState(savedThread), [draft, setDraft] = useState(savedDraft);
@@ -133,6 +135,8 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
           attachments={atts} onAttach={() => setImporting(true)} onDetach={(i) => setAtts(atts.filter((_, k) => k !== i))} onSent={() => { setAtts([]); setPicked(null); session.keepPresetSources(); }} />
       </main>
       {infoOf && <PresetDialog preset={infoOf} styles={picked?.id === infoOf.id ? picked.styles : []} fields={picked?.id === infoOf.id ? picked.fields : {}} onClose={() => setInfo(null)}
+        api={typeof api.savePreset === 'function' ? api as PresetApi : undefined} onChanged={() => void loadPresets()}
+        onGone={() => { if (picked?.id === infoOf.id) setPicked(null); void loadPresets(); }}
         onConfirm={(styles, fields, examples) => {
           setPicked({ id: infoOf.id, styles, fields }); setInfo(null); void session.presetSources(infoOf.sources ?? []);
           if (examples.length) setAppend((a) => ({ text: examples.join('\n'), n: a.n + 1 }));

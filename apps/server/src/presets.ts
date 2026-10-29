@@ -42,9 +42,15 @@ export function projectPoster(plugins: Plugin[]): PresetPoster {
 
 const langOf = (x: unknown): Lang => (typeof x === 'string' && LANGS.has(x) ? x as Lang : 'zh');
 const str = (x: unknown) => (typeof x === 'string' ? x : '');
-function pointsOf(x: unknown): PresetPoint[] {
+/** the dialog's points: each with its prompt, or (a point of a saved preset left as it was: its prompt stays here) named by what it
+ *  was, `orig`, which finds its prompt among `had`; else the user's own words are the prompt */
+function pointsOf(x: unknown, had: PresetPoint[] = []): PresetPoint[] {
   if (!Array.isArray(x)) return [];
-  return x.flatMap((p) => (p && typeof p.text === 'string' && p.text.trim() ? [{ text: p.text.trim(), prompt: (typeof p.prompt === 'string' && p.prompt.trim() ? p.prompt : p.text).trim() }] : []));
+  return x.flatMap((p) => {
+    if (!p || typeof p.text !== 'string' || !p.text.trim()) return [];
+    const text = p.text.trim(), old = typeof p.orig === 'string' && p.orig.trim() === text ? had.find((h) => h.text === text) : undefined;
+    return [{ text, prompt: (typeof p.prompt === 'string' && p.prompt.trim() ? p.prompt : old?.prompt ?? text).trim() }];
+  });
 }
 
 export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions) {
@@ -114,7 +120,7 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     const p = mine(id), b: any = await readJson(req), lang = langOf(b?.lang), inc = b?.include;
     const keep = (k: 'theme' | 'score' | 'blocks') => (inc && inc[k] === false ? undefined : p[k]);
     answer(res, writeUserPreset(dirs, { name: str(b?.name) || (p.name[lang] ?? Object.values(p.name)[0] ?? id), summary: typeof b?.summary === 'string' ? b.summary : p.summary[lang] ?? Object.values(p.summary)[0] ?? '',
-      points: Array.isArray(b?.points) ? pointsOf(b.points) : p.points, lang, color: p.color, ratios: p.ratios, length: p.length, genres: p.genres,
+      points: Array.isArray(b?.points) ? pointsOf(b.points, p.points) : p.points, lang, color: p.color, ratios: p.ratios, length: p.length, genres: p.genres,
       theme: keep('theme'), score: keep('score') as string | undefined, blocks: keep('blocks') as string[] | undefined }, id));
   });
 

@@ -102,5 +102,11 @@ test('preset-draft is 404 until the file exists', async () => {
   const { projects, base } = await app();
   expect((await fetch(`${base}/api/projects/p1/preset-draft`)).status).toBe(404);
   writeFileSync(join(projects, 'p1', 'preset-draft.json'), JSON.stringify({ name: 'x' }));
-  expect(await (await fetch(`${base}/api/projects/p1/preset-draft`)).json()).toEqual({ name: 'x' });
+  expect(await (await fetch(`${base}/api/projects/p1/preset-draft`)).json()).toEqual({ name: 'x', blocks: [] });
+});
+
+test('the preset draft comes with the names of the blocks its modules hold', async () => {
+  const { projects, base } = await app();
+  writeFileSync(join(projects, 'p1', 'preset-draft.json'), JSON.stringify({ name: 'x', summary: '', points: [], fx: ['fx/chalk.js', 'fx/gone.js'] }));
+  expect((await (await fetch(`${base}/api/projects/p1/preset-draft`)).json()).blocks).toEqual([{ file: 'fx/chalk.js', names: ['chalk-title', 'chalk-line'] }]);
 });

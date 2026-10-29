@@ -778,3 +778,53 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .g-mine-form button.primary { background: var(--s-accent); border-color: transparent; color: #fff; }
 .g-mine-confirm .g-bar button.danger { background: var(--s-danger); border-color: transparent; color: #fff; }
 .g-mine-h { margin: 4px 0 8px; font-size: 13px; color: var(--s-dim); font-weight: 500; }
+/* presets of the user's own (spec 2026-10-29-my-library §3.5–3.7): the save / edit dialog, the points and uses in a preset's dialog, its actions */
+.save-preset { width: min(620px, calc(100vw - 32px)); max-height: 92vh; overflow-y: auto; padding: 20px 22px 18px; border-radius: 18px; background: var(--s-bg); color: var(--s-text);
+  border: 1px solid var(--s-line); box-shadow: var(--s-shadow); font-family: var(--cjk), "Microsoft JhengHei", system-ui, sans-serif; font-size: 14px; }
+.save-preset h3 { margin: 0 0 14px; font-size: 17px; font-weight: 700; }
+.save-preset h5 { display: flex; align-items: baseline; gap: 8px; margin: 16px 0 6px; font-size: 13px; font-weight: 600; color: var(--s-dim); }
+.save-preset h5 small { font-weight: 400; color: var(--s-faint); }
+.save-preset-top { display: grid; grid-template-columns: 110px 1fr; gap: 16px; }
+.save-preset-poster { display: flex; flex-direction: column; gap: 6px; }
+.save-preset-poster .poster-box { position: relative; aspect-ratio: 9 / 16; border-radius: 10px; overflow: hidden; background: var(--s-raise-2); display: grid; place-items: center; text-align: center; font-size: 11px; padding: 0; }
+.save-preset-poster .poster-box img { width: 100%; height: 100%; object-fit: cover; }
+.save-preset-poster .poster-frame { position: absolute; inset: auto 0 0; padding: 4px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 11px; }
+.save-preset-poster .poster-opt { display: flex; gap: 4px; align-items: flex-start; font-size: 11.5px; color: var(--s-dim); cursor: pointer; line-height: 1.4; }
+.save-preset-poster .poster-upload { position: relative; justify-content: center; padding: 4px 6px; border: 1px dashed var(--s-line-strong); border-radius: 8px; }
+.save-preset-poster .poster-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.save-preset-fields { display: flex; flex-direction: column; gap: 10px; }
+.save-preset-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--s-dim); }
+.save-preset input:not([type=checkbox]):not([type=file]) { font: inherit; font-size: 14px; color: var(--s-text); background: var(--s-raise); border: 1px solid var(--s-line); border-radius: 8px; padding: 7px 9px; }
+.save-preset-points ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.save-preset-points li { display: flex; align-items: center; gap: 6px; }
+.save-preset-points li .dot { color: var(--s-accent); }
+.save-preset-points li input { flex: 1; min-width: 0; padding: 5px 8px !important; border-color: transparent !important; background: transparent !important; }
+.save-preset-points li:hover input, .save-preset-points li input:focus { border-color: var(--s-line) !important; background: var(--s-raise) !important; }
+.save-preset-points li .x { opacity: 0; padding: 0 6px; background: transparent; border: 0; color: var(--s-faint); font-size: 16px; cursor: pointer; }
+.save-preset-points li:hover .x, .save-preset-points li .x:focus-visible { opacity: 1; }
+.save-preset-points .add { margin-top: 4px; padding: 4px 10px; border-radius: 8px; border: 1px dashed var(--s-line-strong); background: transparent; color: var(--s-dim); cursor: pointer; font: inherit; font-size: 13px; }
+.save-preset-bring label { display: grid; grid-template-columns: auto 120px 1fr; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; cursor: pointer; }
+.save-preset-bring .look { color: var(--s-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.save-preset-bring p { margin: 2px 0 0 26px; font-size: 12px; }
+.swatch { display: inline-block; width: 12px; height: 12px; margin-left: 4px; border-radius: 3px; vertical-align: -1px; border: 1px solid rgba(127, 127, 127, .4); }
+.save-preset-error { color: var(--s-danger); font-size: 13px; }
+.save-preset footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.save-preset footer button { padding: 8px 16px; border-radius: 10px; border: 1px solid var(--s-line); background: var(--s-raise); color: var(--s-text); font: inherit; font-size: 14px; cursor: pointer; }
+.save-preset footer button.primary { background: var(--s-accent); border-color: transparent; color: #fff; font-weight: 500; }
+.save-preset footer button:disabled { opacity: .45; cursor: default; }
+.preset-points { margin: 0; padding-left: 18px; line-height: 1.7; }
+.preset-uses { display: flex; flex-wrap: wrap; gap: 6px; }
+.preset-uses .use { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 8px; background: var(--s-raise-2); font-size: 12.5px; }
+.preset-uses .use img { width: 18px; height: 32px; object-fit: cover; border-radius: 3px; }
+.preset-uses .use.gone { opacity: .55; text-decoration: line-through; } .preset-uses .use small { margin-left: 4px; text-decoration: none; color: var(--s-faint); }
+.preset-body footer .grow { flex: 1; }
+.preset-body footer .mine-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.preset-body footer .danger { color: var(--s-danger); }
+.preset-body footer .mine-inline { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; }
+.preset-body footer .mine-inline input:not([type=color]) { width: 150px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--s-line); background: var(--s-raise); color: var(--s-text); font: inherit; }
+.preset-body footer .mine-inline input[type=color] { width: 32px; height: 30px; padding: 0; border: 1px solid var(--s-line); border-radius: 6px; background: none; }
+.preset-body footer .mine-inline button.danger { background: var(--s-danger); color: #fff; border-color: transparent; }
+.preset-body footer .err { color: var(--s-danger); font-size: 12px; }
+.export .link, button.link { padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: 12px; }
+.preset-body footer { flex-wrap: wrap; }
+.chat-tab .chat-head { gap: 6px; } .chat-tab .chat-head > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .chat-tab .chat-head > button { flex: none; white-space: nowrap; padding: 2px 8px; font-size: 12px; }

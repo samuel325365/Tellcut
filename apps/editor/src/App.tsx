@@ -10,6 +10,8 @@ import { ExportPanel } from './ExportPanel.tsx';
 import { ProposalBar } from './ProposalBar.tsx';
 import { AskAgent } from './AskAgent.tsx';
 import { SaveBlockDialog } from './library/SaveBlockDialog.tsx';
+import { SavePresetDialog } from './presets/SavePresetDialog.tsx';
+import { formatTime } from './timeline/geometry.ts';
 import { ChatPanel } from './ChatPanel.tsx';
 import { ImportDialog } from './ImportDialog.tsx';
 import type { Attachment } from './attachments.ts';
@@ -116,6 +118,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   );
   const library = <LibraryPanel editor={editor} s={s} />, props = <PropertiesPanel editor={editor} s={s} />;
   const chat = editor.chat && <div class="chat-tab"><div class="chat-head"><span>Project chat</span>
+    <button data-save-preset disabled={s.presetSave.drafting} {...{ 'data-tip': t(s.presetSave.drafting ? 'preset.drafting' : 'preset.saveTip'), 'aria-label': t('preset.saveTip') }} onClick={() => void editor.presetSave.start()}>{s.presetSave.drafting ? 'Drafting…' : 'Save as preset'}</button>
     <button {...{ 'data-tip': t('ed.chatClearTip'), 'aria-label': t('ed.chatClearTip') }} onClick={() => { if (confirm(t('ed.chatClearConfirm'))) void editor.chat.clear(); }}>Clear</button></div>
     <EditorChat editor={editor} /></div>;
   return (
@@ -165,6 +168,15 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
       {s.ask && <AskAgent editor={editor} s={s} />}
       {s.library.saving && <SaveBlockDialog d={s.library.saving} project={s.project} projectId={s.id} kind={editor.registry?.item(s.library.saving.target)?.kind}
         onPatch={(p) => editor.library.patch(p)} onSave={(c) => void editor.library.save(c)} onClose={() => editor.library.close()} />}
+      {s.presetSave.draft && (() => {
+        // the draft the agent wrote, and what the film would bring along (its theme, music style and own effects)
+        const d = s.presetSave.draft, th = (d.theme ?? s.project.meta.theme ?? {}) as { fonts?: Record<string, unknown>; palette?: Record<string, unknown> };
+        const strs = (o?: Record<string, unknown>) => [...new Set(Object.values(o ?? {}).filter((x): x is string => typeof x === 'string'))];
+        return <SavePresetDialog mode="save" surface="editor" initial={{ name: d.name, summary: d.summary, rows: d.points.map((p) => ({ text: p.text, orig: p.text, prompt: p.prompt })) }}
+          bring={{ fonts: strs(th.fonts), colors: strs(th.palette), score: d.score ? s.library.project?.styles.find((x) => x.id === d.score)?.label ?? d.score : undefined, blocks: d.blocks.flatMap((b) => b.names) }}
+          poster={{ src: s.presetSave.poster, frameAt: formatTime(s.playhead) }} onSave={(v) => editor.presetSave.save(v)} onClose={() => editor.presetSave.close()} />;
+      })()}
+      {s.presetSave.toast && <div class="lib-toast" role="status" data-preset-toast>{s.presetSave.toast}<button aria-label={t('lib.close')} onClick={() => editor.presetSave.dismiss()}>×</button></div>}
       {s.library.toast && <div class="lib-toast" role="status" data-lib-toast>{t('lib.saved', { name: s.library.toast.name })}
         <a href="./?gallery" target="_blank" rel="noopener">{t('lib.seeIt')}</a><button aria-label={t('lib.close')} onClick={() => editor.library.dismissToast()}>×</button></div>}
       {s.helpOpen && <HelpPanel onClose={() => editor.toggleHelp(false)} />}

@@ -251,3 +251,14 @@ test('a preset of the user’s own is edited, renamed, given a poster and delete
     expect(findPreset(d, info.id)).toBeNull();
   } finally { await app.close(); }
 });
+
+test('editing keeps the agent’s line of a point the user left alone, named by what it was', async () => {
+  const { d, projects, app, send } = await mine();
+  try {
+    const info = await (await send('POST', '/api/presets', { from: 'project', project: 'trip', name: 'A', summary: '', include: {}, lang: 'zh',
+      points: [{ text: '前 2 秒放最好看的一口', prompt: 'Open on the best bite.' }, { text: '字幕放中間', prompt: 'Captions in the middle.' }] })).json();
+    await send('PUT', `/api/presets/${info.id}`, { points: [{ text: '前 2 秒放最好看的一口', orig: '前 2 秒放最好看的一口' }, { text: '字幕放下面', prompt: '字幕放下面' }, { text: '騙', orig: '不存在的' }], lang: 'zh' });
+    expect(findPreset(d, info.id)!.points).toEqual([{ text: '前 2 秒放最好看的一口', prompt: 'Open on the best bite.' }, { text: '字幕放下面', prompt: '字幕放下面' }, { text: '騙', prompt: '騙' }]);
+    void projects;
+  } finally { await app.close(); }
+});

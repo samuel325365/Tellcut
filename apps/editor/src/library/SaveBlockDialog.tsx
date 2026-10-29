@@ -44,7 +44,7 @@ export function SaveBlockDialog({ d, project, projectId, kind, onPatch, onSave, 
           </div>
         </div>
         {block && <label class="save-block-generalize">
-          <input type="checkbox" data-save-generalize checked={d.generalize} onChange={(e) => onPatch({ generalize: (e.target as HTMLInputElement).checked })} />
+          <input type="checkbox" data-save-generalize checked={d.generalize} onClick={(e) => onPatch({ generalize: (e.target as HTMLInputElement).checked })} />
           <span><strong>{t('lib.generalize')}</strong><small>{t('lib.generalizeHint')}</small></span>
         </label>}
         {block && <div class="save-block-notes" data-save-notes>
