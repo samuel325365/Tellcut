@@ -24,6 +24,9 @@
   "include": [
     "packages/*/src",
     "apps/*/src",
-    "tools"
+    "tools",
+    "packages/*/golden",
+    "apps/*/vite.config.ts",
+    "vitest.config.ts"
   ]
 }
