@@ -100,6 +100,17 @@ export class ProjectStore {
     return structuredClone(p);
   }
 
+  /** project.json read once, checked, and the hash of that same text (its ETag): read three times, a save landing between the
+   *  reads paired the new body with the old tag, and the editor's next save got a 409 for nothing */
+  snapshot(id: string): { raw: unknown; version: string } {
+    const text = readFileSync(join(this.dir(id), 'project.json'), 'utf8');
+    let raw: unknown;
+    try { raw = JSON.parse(text); } catch (e) { throw new HttpError(422, 'project.json is not valid JSON', { issues: [(e as Error).message] }); }
+    try { parseProject(raw); }
+    catch (e) { if (e instanceof ProjectError) throw new HttpError(422, 'Invalid project.json', { issues: e.issues }); throw e; }
+    return { raw, version: projectHash(text) };
+  }
+
   /** the version of project.json on disk: the hash of its text (an ETag) */
   version(id: string): string { return projectHash(readFileSync(join(this.dir(id), 'project.json'), 'utf8')); }
 
@@ -139,7 +150,7 @@ export function projectRoutes(r: Router, store: ProjectStore) {
   r.get('/api/projects', (_req, res) => sendJson(res, 200, store.list()));
   // ETag / If-Match: a save made from an older version than the one on disk is refused (two tabs must not undo each other)
   const tag = (v: string) => `"${v}"`;
-  r.get('/api/projects/:id', (_req, res, { id }) => { store.read(id); const v = store.version(id); sendJson(res, 200, store.raw(id), { ETag: tag(v) }); });
+  r.get('/api/projects/:id', (_req, res, { id }) => { const s = store.snapshot(id); sendJson(res, 200, s.raw, { ETag: tag(s.version) }); });
   r.put('/api/projects/:id', async (req, res, { id }) => {
     const m = req.headers['if-match'], base = typeof m === 'string' ? m.replace(/^W\//, '').replace(/"/g, '') : undefined;
     store.write(id, await readJson(req), base);

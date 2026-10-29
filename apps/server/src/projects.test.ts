@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { request } from 'node:http';
 import { demoProject, makeProjects, startApp } from './test-utils.ts';
 
-let root: string, base: string, close: () => Promise<void>;
+let root: string, base: string, close: () => Promise<void>, store: Awaited<ReturnType<typeof startApp>>['app']['store'];
 beforeEach(async () => {
   root = makeProjects();
   mkdirSync(join(root, '_hidden'), { recursive: true });
@@ -13,7 +13,7 @@ beforeEach(async () => {
   mkdirSync(join(root, 'empty'), { recursive: true });
   writeFileSync(join(root, 'secret.txt'), 'top secret');
   const s = await startApp({ projectsDir: root });
-  base = s.base; close = () => s.app.close();
+  base = s.base; close = () => s.app.close(); store = s.app.store;
 });
 afterEach(() => close());
 
@@ -162,4 +162,13 @@ test('an id whose case is not the folder\'s is no project (NTFS finds demo for D
   expect(put.status).toBe(404);
   expect((await fetch(`${base}/api/chat/Demo`)).status).toBe(404);
   expect((await fetch(`${base}/api/projects/Demo`, { method: 'DELETE' })).status).toBe(404);
+});
+
+test('GET sends the version its ETag names: a save landing while it reads cannot pair the new body with the old tag (a false 409 next)', async () => {
+  const { projectHash } = await import('@tellcut/media-node');
+  const file = join(root, 'demo', 'project.json'), old = readFileSync(file, 'utf8'), was = store.version.bind(store);
+  // another writer (Claude's CLI, a second server) saves right after the version is read
+  store.version = (id: string) => { const v = was(id); writeFileSync(file, JSON.stringify(demoProject({ meta: { ...demoProject().meta, name: 'Meanwhile' } }))); return v; };
+  const r = await fetch(`${base}/api/projects/demo`), body = await r.json(), tag = r.headers.get('etag')!.replace(/"/g, '');
+  expect(tag).toBe(projectHash(body.meta.name === 'Meanwhile' ? readFileSync(file, 'utf8') : old));
 });
