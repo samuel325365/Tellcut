@@ -49,18 +49,22 @@ export function ratePercent(rate: number | string | undefined): number {
 }
 
 const SPLIT = /[，。！？、；：,.!?;:]|——|…+/;
-const PUNCT = new Set([...'，。！？、；：,.!?;:—…']);
+// quotes and brackets too: an engine's word text normally leaves them out
+const PUNCT = new Set([...'，。！？、；：,.!?;:—…「」『』“”‘’"\'《》〈〉（）()【】']);
 const compact = (s: string) => s.replace(/\s+/g, '');
+/** The characters of a text a spoken word can hold (no spaces, no punctuation). */
+const voiced = (s: string) => [...compact(s)].filter((c) => !PUNCT.has(c));
 
 /** Caption phrases: the text cut at punctuation, each timed by the spoken words that make up its characters. */
 export function phrasesOf(text: string, words: Array<{ text: string; t: number; d: number }>): Phrase[] {
   const parts = text.split(SPLIT).filter((p) => p.trim()), out: Phrase[] = [];
   let wi = 0;
   for (const part of parts) {
-    const need = compact(part).length;
+    // counted the way the words are: a single — or a quote left in would wait for a character no word brings
+    const need = voiced(part).length;
     let got = 0, t0: number | null = null, t1 = 0;
     while (wi < words.length && got < need) {
-      const w = words[wi++], piece = [...compact(w.text)].filter((c) => !PUNCT.has(c));
+      const w = words[wi++], piece = voiced(w.text);
       if (!piece.length) continue;
       got += piece.length;
       t0 ??= w.t;
@@ -76,10 +80,10 @@ export function phrasesOf(text: string, words: Array<{ text: string; t: number; 
  * written text is laid on that timeline by position (the two rarely agree character for character, so it is proportional).
  */
 export function wordsFromTranscript(text: string, heard: Array<{ start: number; end: number; word: string }>): Array<{ text: string; t: number; d: number }> {
-  const chars = [...compact(text)].filter((c) => !PUNCT.has(c));
+  const chars = voiced(text);
   const line: Array<{ t: number; d: number }> = [];
   for (const w of heard) {
-    const n = Math.max(1, [...compact(w.word)].filter((c) => !PUNCT.has(c)).length), d = (w.end - w.start) / n;
+    const n = Math.max(1, voiced(w.word).length), d = (w.end - w.start) / n;
     for (let i = 0; i < n; i++) line.push({ t: w.start + i * d, d });
   }
   if (!line.length || !chars.length) return [];

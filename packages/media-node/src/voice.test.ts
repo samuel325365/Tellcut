@@ -40,6 +40,17 @@ test('phrases are cut at punctuation and timed by the words (the numbers of an e
   expect(phrasesOf('一二——三四。', [{ text: '一二', t: 0, d: 1 }, { text: '三四', t: 1.5, d: 1 }]).map((p) => p.text)).toEqual(['一二', '三四']);
 });
 
+test('a phrase counts only the characters the spoken words can hold: a single dash and quotes take no word', () => {
+  expect(phrasesOf('我—你好，再見', [{ text: '我', t: 0, d: 1 }, { text: '你好', t: 1, d: 2 }, { text: '再見', t: 3, d: 1 }])).toEqual([
+    { text: '我—你好', t0: 0, t1: 3 }, { text: '再見', t0: 3, t1: 4 },
+  ]);
+  expect(phrasesOf('他說「好」，走吧', [{ text: '他說', t: 0, d: 1 }, { text: '好', t: 1, d: 0.5 }, { text: '走吧', t: 2, d: 1 }])).toEqual([
+    { text: '他說「好」', t0: 0, t1: 1.5 }, { text: '走吧', t0: 2, t1: 3 },
+  ]);
+  expect(phrasesOf('He said "go", then left.', [{ text: 'He', t: 0, d: 0.2 }, { text: 'said', t: 0.2, d: 0.3 }, { text: 'go', t: 0.5, d: 0.2 }, { text: 'then', t: 1, d: 0.2 }, { text: 'left', t: 1.2, d: 0.3 }]))
+    .toEqual([{ text: 'He said "go"', t0: 0, t1: 0.7 }, { text: 'then left', t0: 1, t1: 1.5 }]);
+});
+
 test('word times from a transcript: the written characters are laid over the heard words by position', () => {
   const w = wordsFromTranscript('你好世界', [{ start: 0, end: 1, word: '你好' }, { start: 1, end: 3, word: '世界' }]);
   expect(w.map((x) => x.text)).toEqual(['你', '好', '世', '界']);
