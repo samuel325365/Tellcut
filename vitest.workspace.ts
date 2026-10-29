@@ -10,6 +10,7 @@ export const BROWSER_TESTS = [
   'apps/editor/src/*.e2e.test.ts',
   'apps/server/src/export.test.ts',
   'packages/media-node/src/golden.test.ts',
+  'packages/media-node/src/library/*.e2e.test.ts',
   'packages/plugin-common/golden/golden.test.ts',
   'tools/check/page.test.ts',
   'tools/render.test.ts',
