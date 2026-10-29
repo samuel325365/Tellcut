@@ -9,15 +9,9 @@ __pycache__/
 # personal source switches, keys and contact
 /sources.local.json
 
-# builds and generated files
+# builds and generated files (a project's cache/, exports/, .history/ are inside projects/, below)
 **/dist/
-**/assets/
-**/output/
-**/cache/
-**/exports/
-**/.history/
-**/parity/
-backups/
+/backups/
 
 # project material and work folders
 # every project is the user's own (tests read tools/fixtures/)
