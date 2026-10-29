@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ensureVendor, installedVersion, systemTar, type VendorItem } from './vendor.ts';
+import { ensureModelFile, ensureVendor, installedVersion, systemTar, type VendorItem } from './vendor.ts';
 
 /** a zip holding tool-1.0/bin/tool.exe, made with the same Windows tar setup uses */
 function makeZip() {
@@ -35,4 +35,14 @@ test('a download with the wrong hash, or a failed one, never reaches vendor/', a
   await expect(ensureVendor('tool', item, vendor, { fetch: (async () => new Response('gone', { status: 404 })) as unknown as typeof fetch })).rejects.toThrow(/HTTP 404/);
   expect(existsSync(join(vendor, 'tool'))).toBe(false);
   expect(existsSync(join(vendor, '.download-tool'))).toBe(false);
+});
+
+test('a model file whose SHA-256 models.json writes in capitals is kept when it is there, and installed when the download matches', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'models-')), bytes = Buffer.from('model weights');
+  const sha256 = createHash('sha256').update(bytes).digest('hex').toUpperCase();
+  let asked = 0;
+  const fetch = (async () => { asked++; return new Response(bytes); }) as unknown as typeof globalThis.fetch;
+  expect(await ensureModelFile('m', { url: 'https://example.invalid/m.bin', sha256, dest: 'm.bin' }, dir, { fetch })).toBe('installed');
+  expect(await ensureModelFile('m', { url: 'https://example.invalid/m.bin', sha256, dest: 'm.bin' }, dir, { fetch })).toBe('kept');
+  expect(asked).toBe(1);
 });

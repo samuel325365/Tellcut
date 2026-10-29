@@ -70,12 +70,13 @@ export const readModelList = (file = join(import.meta.dirname, 'models.json')) =
 
 export async function ensureModelFile(name: string, item: ModelFile, modelsDir: string, o: { fetch?: typeof fetch } = {}): Promise<'kept' | 'installed'> {
   const dest = join(modelsDir, item.dest);
-  if (existsSync(dest) && createHash('sha256').update(readFileSync(dest)).digest('hex') === item.sha256) return 'kept';
+  const want = item.sha256.toLowerCase();   // digest('hex') is lower case; a hash written in capitals is the same one
+  if (existsSync(dest) && createHash('sha256').update(readFileSync(dest)).digest('hex') === want) return 'kept';
   const r = await (o.fetch ?? fetch)(item.url);
   if (!r.ok) throw new Error(`下載 ${name} 失敗：HTTP ${r.status}（${item.url}）`);
   const bytes = Buffer.from(await r.arrayBuffer());
   const sum = createHash('sha256').update(bytes).digest('hex');
-  if (sum !== item.sha256) throw new Error(`${name} 的檔案和 models.json 記的不一樣（SHA-256 ${sum}），不使用它`);
+  if (sum !== want) throw new Error(`${name} 的檔案和 models.json 記的不一樣（SHA-256 ${sum}），不使用它`);
   mkdirSync(join(dest, '..'), { recursive: true });
   writeFileSync(`${dest}.partial`, bytes);
   rmSync(dest, { force: true });
