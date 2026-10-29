@@ -1,10 +1,10 @@
 // A saved block's thumbnail, really drawn by the player in Chrome (spec 2026-10-29-my-library §4.2).
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { plugins } from '@tellcut/plugins';
 import { TELLCUT_ROOT } from '../paths.ts';
 import { saveBlock } from './save.ts';
-import { blockDir, libraryRoot } from './store.ts';
+import { blockDir, blocksDir, libraryRoot } from './store.ts';
 import { makeThumb, THUMB_FILE } from './thumb.ts';
 
 // the player serves only files under tellcut/: the projects folder of this test lives in .cache
@@ -21,4 +21,7 @@ test('makeThumb draws the block into thumb.png', async () => {
   if (!('entry' in r)) throw new Error('conflict');
   expect(await makeThumb(root, r.entry.slug, plugins)).toBe(join(blockDir(root, r.entry.slug), THUMB_FILE));
   expect(existsSync(join(blockDir(root, r.entry.slug), THUMB_FILE))).toBe(true);
+  // drawn in a folder of its own, removed after: nothing of the job left in the entry or beside it
+  expect(existsSync(join(blockDir(root, r.entry.slug), 'cache'))).toBe(false);
+  expect(readdirSync(blocksDir(root)).filter((n) => n.startsWith('.'))).toEqual([]);
 }, 120_000);

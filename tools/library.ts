@@ -5,9 +5,9 @@
 //   npm run tellcut -- library use <專案> <slug…> | --style <slug>
 //   npm run tellcut -- library refresh <slug>
 //   npm run tellcut -- library remove <slug> [--style]
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { blockDir, libraryRoot, listLibrary, loadProjectFx, loadStyles, makeThumb, refreshBlock, removeBlock, removeStyle, saveBlock, saveStyle, TELLCUT_ROOT, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
+import { blockDir, libraryRoot, listLibrary, loadProjectFx, loadStyles, makeThumb, PROJECT_ID, refreshBlock, removeBlock, removeStyle, saveBlock, saveStyle, TELLCUT_ROOT, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { fxChecks } from './check/rules.ts';
 import { Usage } from './usage.ts';
@@ -26,7 +26,13 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
   }
   const thumb = o.thumb !== false && !flags.has('no-thumb');
   const [cmd, ...rest] = pos;
-  const projectDir = (id: string | undefined) => { if (!id) throw new Usage(USAGE); return join(projects, id); };
+  // a project id as everywhere else (no ../, no _library or other _ folder): the copy and its links are written under it
+  const projectDir = (id: string | undefined) => {
+    if (!id) throw new Usage(USAGE);
+    if (!PROJECT_ID.test(id)) throw new Error(`「${id}」不是專案名稱（英文字母、數字、_ 和 -，不能用 _ 或 - 開頭）`);
+    if (!existsSync(join(projects, id, 'project.json'))) throw new Error(`沒有專案「${id}」`);
+    return join(projects, id);
+  };
   switch (cmd) {
     case 'list': {
       const lib = listLibrary(root), blocks = lib.blocks.flatMap((e) => e.types.map((t) => ({ e, t })));
@@ -79,10 +85,12 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
     case 'refresh': {
       const [slug] = rest;
       if (!slug) throw new Usage(USAGE);
-      const before = listLibrary(root).blocks.find((e) => e.slug === slug)?.version;
-      const e = await refreshBlock(root, slug);
-      const dir = blockDir(root, slug), bad = fxChecks(Object.fromEntries(e.files.filter((f) => f.startsWith('fx/')).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))).filter((f) => f.level === 'error');
-      if (bad.length) throw new Error(`${slug} 有問題：\n${bad.map((f) => `  ${f.msg}`).join('\n')}`);
+      const before = listLibrary(root).blocks.find((e) => e.slug === slug)?.version, dir = blockDir(root, slug);
+      // checked before the new version is written: one that fails is never offered to projects as an Update
+      const e = await refreshBlock(root, slug, (files) => {
+        const bad = fxChecks(Object.fromEntries(files.filter((f) => f.startsWith('fx/')).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))).filter((f) => f.level === 'error');
+        if (bad.length) throw new Error(`${slug} 有問題：\n${bad.map((f) => `  ${f.msg}`).join('\n')}`);
+      });
       if (thumb) await makeThumb(root, slug, plugins);
       return e.version === before ? `${slug}：內容沒變` : `${slug}：新版本 ${e.version}（用過它的專案會看到「Update」）`;
     }

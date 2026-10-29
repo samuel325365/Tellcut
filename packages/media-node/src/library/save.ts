@@ -6,7 +6,7 @@ import { dirname, join, posix, relative, resolve, sep } from 'node:path';
 import { loadProjectFx } from '../fx.ts';
 import { loadStyles, SCORE_LIBRARY } from '../score/local.ts';
 import { STYLES } from '../score/styles.ts';
-import { blockDir, blocksDir, LibraryError, listLibrary, readBlock, slugFor, stylesDir, swapDir, versionOf, writeBlockEntry, writeJsonFile, writeStyleEntry,
+import { blockDir, blocksDir, dropBlockDir, LibraryError, listLibrary, lockedError, readBlock, removeStyleFiles, slugFor, stylesDir, swapDir, versionOf, writeBlockEntry, writeJsonFile, writeStyleEntry,
   type BlockEntry, type LibraryFrom, type LibraryType, type StyleEntry } from './store.ts';
 
 export type OnConflict = 'replace' | 'keep-both';
@@ -18,6 +18,16 @@ const IMPORT = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)['"](\.{1,2}\/[^'"\n]+
 const MEDIA = /['"](media\/[^'"\n]+)['"]/g;
 const COMPUTED = /`[^`]*media\/[^`]*\$\{[^`]*`/g;
 const toPosix = (p: string) => p.split(sep).join('/');
+/** a relative import's file: a copy's version stamp (?lib=…) or any other query left out */
+const fileOf = (spec: string) => spec.replace(/[?#].*$/, '');
+const STAMP = /\?lib=[0-9a-f]*$/, JS = /\.m?js$/;
+/** every relative import of a copy's modules carries the entry's version (`./util.js?lib=<version>`): the loaders stamp only the file
+ *  meta.fx names, so without it an updated copy's own module and its helpers kept coming out of the browser's and Node's module
+ *  cache (the URL they had before the update) until a page reload; with it, each version is a module graph of its own. Not `?v=`:
+ *  vitest's module ids drop that query, so the tests could not tell the versions apart */
+export const stampImports = (src: string, version: string) => src.replace(IMPORT, (m, spec: string) => m.replace(spec, () => `${spec.replace(STAMP, '')}?lib=${version}`));
+/** the stamps taken off again: a copy saved back into My blocks */
+export const unstampImports = (src: string) => src.replace(IMPORT, (m, spec: string) => m.replace(spec, () => spec.replace(STAMP, '')));
 
 /** the project files `file` needs (paths relative to the project): its relative imports, followed, and the media/… files it
  *  names in a plain string. A path built at run time cannot be followed: it is listed in `skipped`. An import that leaves
@@ -32,7 +42,7 @@ export function collectFiles(projectDir: string, file: string): { files: string[
     if (!existsSync(abs)) { skipped.push(rel); continue; }
     files.add(rel);
     const src = readFileSync(abs, 'utf8');
-    for (const m of src.matchAll(IMPORT)) todo.push(resolve(dirname(abs), m[1]));
+    for (const m of src.matchAll(IMPORT)) todo.push(resolve(dirname(abs), fileOf(m[1])));
     for (const m of src.matchAll(MEDIA)) {
       const p = resolve(root, m[1]);
       if (p.startsWith(join(root, 'media') + sep) && existsSync(p)) files.add(toPosix(relative(root, p)));
@@ -63,11 +73,15 @@ export async function findFxFile(projectDir: string, fx: string[] | undefined, t
  *  the same file whatever the entry's module is called after an update (final review C1) */
 export const COPY_ENTRY = '_entry.js';
 const COPY_DIR = /^fx\/lib\/[a-z0-9][a-z0-9-]*\//;
-export const copyEntryModule = (main: string) => `export { default } from './${main}';\nexport * from './${main}';\n`;
+/** `version`: the entry's, stamped on the re-export as on every import of the copy (stampImports) */
+export const copyEntryModule = (main: string, version = '') => {
+  const at = `./${main}${version ? `?lib=${version}` : ''}`;
+  return `export { default } from '${at}';\nexport * from '${at}';\n`;
+};
 /** the module a file really is: a copy's _entry.js is followed to the module it re-exports */
 function realModule(projectDir: string, file: string): string {
   if (!COPY_DIR.test(file) || !file.endsWith(`/${COPY_ENTRY}`)) return file;
-  const m = /from\s*'\.\/([^']+)'/.exec(readFileSync(join(projectDir, file), 'utf8'));
+  const m = /from\s*'\.\/([^'?]+)/.exec(readFileSync(join(projectDir, file), 'utf8'));
   return m ? posix.join(posix.dirname(file), m[1]) : file;
 }
 /** where a project file goes in an entry: a copy's own files (fx/lib/<slug>/…) back at fx/…, so an entry never nests */
@@ -83,7 +97,7 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
   if (loaded.errors.length) throw new LibraryError('library.loadFailed', `${i.file} 載入失敗：${loaded.errors[0].message}`, { file: i.file });
   const items = loaded.plugin.items ?? [];
   if (!items.length) throw new LibraryError('library.noBlocks', `${i.file} 裡沒有積木`, { file: i.file });
-  const main = realModule(i.projectDir, i.file), { files: found, skipped } = collectFiles(i.projectDir, main), at = entryPathOf(main);
+  const main = realModule(i.projectDir, i.file), { files: found, skipped } = collectFiles(i.projectDir, main), at = entryPathOf(main), copy = COPY_DIR.exec(main)?.[0];
   const files = found.map(at);
   const from: LibraryFrom = { project: i.projectId, file: i.file };
   const lib = listLibrary(i.root), ids = items.map((t) => t.type);
@@ -111,7 +125,11 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
   // copied into a folder of its own first, then put in place: a failure leaves the library as it was
   const stage = join(blocksDir(i.root), `.${slug}.tmp-${process.pid}-${Date.now()}`);
   try {
-    for (const f of found) { mkdirSync(dirname(join(stage, at(f))), { recursive: true }); copyFileSync(join(i.projectDir, f), join(stage, at(f))); }
+    for (const f of found) {
+      mkdirSync(dirname(join(stage, at(f))), { recursive: true });
+      if (copy && f.startsWith(copy) && JS.test(f)) writeFileSync(join(stage, at(f)), unstampImports(readFileSync(join(i.projectDir, f), 'utf8')));
+      else copyFileSync(join(i.projectDir, f), join(stage, at(f)));
+    }
     for (const [x, to] of renames) {
       const fx = files.filter((f) => f.startsWith('fx/')), texts = fx.map((f) => readFileSync(join(stage, f), 'utf8'));
       const at = texts.map((s) => renameId(s, x, to)), one = at.filter((s) => s !== null).length === 1 && texts.filter((s) => s.includes(x)).length === 1;
@@ -125,7 +143,7 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
     const { slug: _s, ...rest } = entry;
     writeJsonFile(join(stage, 'entry.json'), rest);
     swapDir(stage, blockDir(i.root, slug));
-    for (const e of drop) if (e.slug !== slug) rmSync(blockDir(i.root, e.slug), { recursive: true, force: true });
+    for (const e of drop) if (e.slug !== slug) dropBlockDir(i.root, e.slug);
     return { entry: readBlock(i.root, slug)!, skipped };
   } finally { rmSync(stage, { recursive: true, force: true }); }
 }
@@ -155,18 +173,21 @@ export async function saveStyle(i: { root: string; projectDir: string; projectId
   }
   slug ??= slugFor(id, id, new Set(lib.styles.map((e) => e.slug)));
   mkdirSync(stylesDir(i.root), { recursive: true });
-  if (drop && drop.slug !== slug) for (const ext of ['.js', '.json']) rmSync(join(stylesDir(i.root), `${drop.slug}${ext}`), { force: true });
-  writeFileSync(join(stylesDir(i.root), `${slug}.js.tmp`), text);
-  renameSync(join(stylesDir(i.root), `${slug}.js.tmp`), join(stylesDir(i.root), `${slug}.js`));
+  // the new one complete before the one it replaces goes: a failure (a file another program holds) leaves the library as it was
+  const tmp = join(stylesDir(i.root), `${slug}.js.tmp`);
+  try { writeFileSync(tmp, text); renameSync(tmp, join(stylesDir(i.root), `${slug}.js`)); }
+  catch (e) { rmSync(tmp, { force: true }); throw lockedError(e, slug); }
   const entry: StyleEntry = { slug, id, name: i.name?.trim() || s.label, desc: (i.desc ?? s.doc ?? '').trim(), from, savedAt: new Date().toISOString(),
     version: versionOf(stylesDir(i.root), [`${slug}.js`]) };
   writeStyleEntry(i.root, entry);
+  if (drop && drop.slug !== slug) removeStyleFiles(i.root, drop.slug);
   return { entry };
 }
 
 /** an entry edited in place (the agent's "change it" from the gallery): its module loaded again, its cards matched to the
- *  blocks it defines now (a new one named by its label, a gone one dropped), its files gathered again and a new version */
-export async function refreshBlock(root: string, slug: string): Promise<BlockEntry> {
+ *  blocks it defines now (a new one named by its label, a gone one dropped), its files gathered again and a new version. `check`
+ *  (the files, relative to the entry) runs before anything is written: what it throws leaves the entry at its old version */
+export async function refreshBlock(root: string, slug: string, check?: (files: string[]) => void | Promise<void>): Promise<BlockEntry> {
   const e = readBlock(root, slug), dir = blockDir(root, slug);
   if (!e) throw new LibraryError('library.noEntry', `我的積木裡沒有 ${slug}`, { slug });
   const loaded = await loadProjectFx(dir, [e.main]);
@@ -175,6 +196,7 @@ export async function refreshBlock(root: string, slug: string): Promise<BlockEnt
   if (!items.length) throw new LibraryError('library.noBlocks', `${e.main} 裡沒有積木`, { file: e.main });
   const types = items.map((t): LibraryType => e.types.find((x) => x.type === t.type) ?? { type: t.type, name: t.label, desc: t.doc ?? '', ...(t.category ? { category: t.category } : {}) });
   const { files } = collectFiles(dir, e.main);
+  await check?.(files);
   const next: BlockEntry = { ...e, types, files, version: versionOf(dir, files) };
   writeBlockEntry(root, next);
   return next;

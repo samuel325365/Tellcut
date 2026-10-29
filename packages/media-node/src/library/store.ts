@@ -58,14 +58,32 @@ export function listLibrary(root: string): { blocks: BlockEntry[]; styles: Style
   return { blocks, styles };
 }
 
+const LOCKED = new Set(['EPERM', 'EBUSY', 'EACCES']);
+/** a file another program holds (Windows) as a refusal the page words; any other failure as it was */
+export function lockedError(e: unknown, slug: string): unknown {
+  return LOCKED.has((e as NodeJS.ErrnoException)?.code ?? '') ? new LibraryError('library.locked', `有檔案正被別的程式使用（${slug}），關掉後再試`, { slug }) : e;
+}
+
+/** an entry's folder gone for good: renamed aside first (as removeProject does), so a file in use fails the rename and leaves the
+ *  entry whole, instead of a delete that stops halfway; the aside folder (a dot name, skipped by listLibrary) is then removed, and
+ *  one a file still holds is left to the server's next start (cleanup.ts) */
+export function dropBlockDir(root: string, slug: string) {
+  const away = join(blocksDir(root), `.${slug}.deleting-${process.pid}-${Date.now()}`);
+  try { renameSync(blockDir(root, slug), away); } catch (e) { throw lockedError(e, slug); }
+  try { rmSync(away, { recursive: true, force: true }); } catch { /* cleanup.ts */ }
+}
+
 export function removeBlock(root: string, slug: string) {
-  const dir = blockDir(root, slug);
-  if (!existsSync(dir)) throw new LibraryError('library.noEntry', `我的積木裡沒有 ${slug}`, { slug });
-  rmSync(dir, { recursive: true, force: true });
+  if (!existsSync(blockDir(root, slug))) throw new LibraryError('library.noEntry', `我的積木裡沒有 ${slug}`, { slug });
+  dropBlockDir(root, slug);
+}
+/** the entry file first: without it the style is no longer listed, whatever happens to its module */
+export function removeStyleFiles(root: string, slug: string) {
+  try { for (const ext of ['.json', '.js']) rmSync(join(stylesDir(root), `${slug}${ext}`), { force: true }); } catch (e) { throw lockedError(e, slug); }
 }
 export function removeStyle(root: string, slug: string) {
   if (!readStyle(root, slug)) throw new LibraryError('library.noEntry', `我的積木裡沒有 ${slug}`, { slug });
-  for (const ext of ['.js', '.json']) rmSync(join(stylesDir(root), `${slug}${ext}`), { force: true });
+  removeStyleFiles(root, slug);
 }
 
 /** a card's name, description or category changed; the others stay */
@@ -94,7 +112,7 @@ export function swapDir(stage: string, target: string) {
   renameSync(target, old);
   try { renameSync(stage, target); }
   catch (e) { renameSync(old, target); throw e; }
-  try { rmSync(old, { recursive: true, force: true }); } catch { /* a leftover .old folder is skipped by listLibrary */ }
+  try { rmSync(old, { recursive: true, force: true }); } catch { /* a leftover .old folder is skipped by listLibrary, removed at the server's next start */ }
 }
 
 /** the files' contents in path order, hashed: a new version whenever any of them changes */

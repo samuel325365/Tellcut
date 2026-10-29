@@ -1,5 +1,5 @@
 // live.test.ts
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { demoProject, events, makeProjects, startApp } from './test-utils.ts';
 
@@ -103,6 +103,22 @@ test('an edited project fx module is announced, other files in the project are n
     await expect(ev.next(400)).rejects.toThrow('no event');
     mkdirSync(join(root, 'demo', 'fx'), { recursive: true });
     writeFileSync(join(root, 'demo', 'fx', 'card.js'), 'export default [];');
+    expect(await ev.next()).toEqual({ type: 'fx-changed' });
+    ev.close();
+  } finally { await app.close(); }
+});
+
+test('a copy of My blocks put in place or updated is announced; its temporary folder is not', async () => {
+  const { app, root, url } = await setup();
+  try {
+    const ev = events(`${url}/events`); await ev.next();
+    mkdirSync(join(root, 'demo', 'fx', 'lib', '.box.tmp-1-2'), { recursive: true });
+    writeFileSync(join(root, 'demo', 'fx', 'lib', '.box.tmp-1-2', 'box.js'), 'export default [];');
+    await expect(ev.next(400)).rejects.toThrow('no event');
+    renameSync(join(root, 'demo', 'fx', 'lib', '.box.tmp-1-2'), join(root, 'demo', 'fx', 'lib', 'box'));
+    expect(await ev.next()).toEqual({ type: 'fx-changed' });
+    await expect(ev.next(400)).rejects.toThrow('no event');   // debounced: one for the whole copy
+    writeFileSync(join(root, 'demo', 'fx', 'lib', 'links.json'), '{}');
     expect(await ev.next()).toEqual({ type: 'fx-changed' });
     ev.close();
   } finally { await app.close(); }

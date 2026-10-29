@@ -12,6 +12,7 @@ const PID_CACHE = /^index-\w+-(\d+)\.json$/;
 // and an interrupted export's intermediates (render.ts .video.mp4 / .mix.wav, hidden from the export list)
 const PARTIAL = /\.tmp\.\w+$/, INTERMEDIATE = /\.(video\.mp4|mix\.wav)$/;
 const CACHE_DIRS = ['media', 'analysis', 'cuts', 'stills', 'audio'];
+const LIBRARY_ASIDE = /^\.[a-z0-9][a-z0-9-]*\.(?:deleting|old|tmp|thumb)-(\d+)-\d+$/;
 
 function walk(dir: string, out: string[] = []): string[] {
   if (!existsSync(dir)) return out;
@@ -48,6 +49,14 @@ export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number)
   for (const d of existsSync(projectsDir) ? readdirSync(projectsDir, { withFileTypes: true }) : []) {
     if (!d.isDirectory() || !d.name.startsWith('.deleting-')) continue;
     try { rmSync(join(projectsDir, d.name), { recursive: true, force: true }); removed.push(d.name); } catch { /* still in use */ }
+  }
+  // My blocks' folders set aside by a process that is gone (media-node library/: a delete or a replaced entry that could not be
+  // removed then, a save's or a thumbnail's own folder)
+  const blocks = join(projectsDir, '_library', 'blocks');
+  for (const name of existsSync(blocks) ? readdirSync(blocks) : []) {
+    const f = join(blocks, name);
+    if (!leftover(f, name, [LIBRARY_ASIDE])) continue;
+    try { rmSync(f, { recursive: true, force: true }); removed.push(relative(projectsDir, f)); } catch { /* still in use */ }
   }
   // home drafts (and the old single home thread) without a word from the user, a day old: the browser has a new one by now
   const home = join(projectsDir, '_home');

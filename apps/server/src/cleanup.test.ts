@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { cleanupLeftovers } from './cleanup.ts';
@@ -65,4 +65,12 @@ test('a .deleting- folder left by a delete that could not finish (a locked file)
   writeFileSync(join(left, 'exports', 'a.mp4'), 'x');
   expect(cleanupLeftovers(root)).toContain('.deleting-demo-123-456');
   expect(existsSync(left)).toBe(false);
+});
+
+test('My blocks’ folders set aside by a dead process are removed at start; a live one’s and the entries stay', () => {
+  const root = mkdtempSync(join(tmpdir(), 'clean-')), blocks = join(root, '_library', 'blocks');
+  for (const n of ['.box.deleting-111-1', '.box.thumb-111-2', '.box.tmp-222-3', 'box']) mkdirSync(join(blocks, n, 'fx'), { recursive: true });
+  const removed = cleanupLeftovers(root, { alive: (pid) => pid === 222 });
+  expect(removed.sort()).toEqual([join('_library', 'blocks', '.box.deleting-111-1'), join('_library', 'blocks', '.box.thumb-111-2')]);
+  expect(readdirSync(blocks).sort()).toEqual(['.box.tmp-222-3', 'box']);
 });

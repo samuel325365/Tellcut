@@ -3,7 +3,7 @@ import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'nod
 import { loadProjectFx } from '../fx.ts';
 import { join } from 'node:path';
 import { fxModule, makeProject, tempProjects } from './fixture.ts';
-import { saveBlock, saveStyle } from './save.ts';
+import { saveBlock, saveStyle, stampImports, unstampImports } from './save.ts';
 import { libraryRoot, removeBlock } from './store.ts';
 import { projectLinks, useBlock, useStyle } from './use.ts';
 
@@ -104,6 +104,29 @@ test('saving a copy from My blocks does not nest, and using it again keeps meta.
   expect(again.file).toBe(copy.file);
   expect((await loadProjectFx(p2, [copy.file])).errors).toEqual([]);
   expect(existsSync(join(p2, 'fx/lib/chalk-title/lib'))).toBe(false);
+  expect(readFileSync(join(root, 'blocks', slug, 'fx/chalk.js'), 'utf8')).toContain("from './util.js';");   // the copy's stamps stay out of the library
+});
+
+test('an Update loads afresh in the same process, its helper modules too (no stale module cache)', async () => {
+  const projects = tempProjects(), root = libraryRoot(projects), p1 = makeProject(projects, 'p1'), p2 = makeProject(projects, 'p2', { fx: fxModule(['fx.other']) });
+  writeFileSync(join(p1, 'fx/chalk.js'), "import { label } from './util.js';\nexport default [{ type: 'fx.chalk-title', label, kind: 'overlay', params: [], build: () => ({}), draw: () => {} }];\n");
+  writeFileSync(join(p1, 'fx/util.js'), "export const label = 'one';\n");
+  const a = await saveBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/chalk.js' });
+  if (!('entry' in a)) throw new Error('conflict');
+  const copy = await useBlock({ root, projectDir: p2, projectId: 'p2', slug: a.entry.slug, fx: [] });
+  expect((await loadProjectFx(p2, [copy.file])).plugin.items?.[0].label).toBe('one');
+  expect(readFileSync(join(p2, `fx/lib/${a.entry.slug}/chalk.js`), 'utf8')).toContain(`from './util.js?lib=${a.entry.version}'`);
+  writeFileSync(join(p1, 'fx/util.js'), "export const label = 'two';\n");   // only the helper changes
+  await saveBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/chalk.js' });
+  await useBlock({ root, projectDir: p2, projectId: 'p2', slug: a.entry.slug, fx: [copy.file] });
+  expect((await loadProjectFx(p2, [copy.file])).plugin.items?.[0].label).toBe('two');
+});
+
+test('stampImports puts the version on relative imports only, once; unstampImports takes it off', () => {
+  const src = "import a from './a.js?lib=0ff1ce';\nimport { b } from '../b.js';\nconst c = import('./c.js');\nimport x from 'pkg';\nexport * from './d.js';\n";
+  const s = stampImports(src, 'abc123');
+  expect(s).toBe("import a from './a.js?lib=abc123';\nimport { b } from '../b.js?lib=abc123';\nconst c = import('./c.js?lib=abc123');\nimport x from 'pkg';\nexport * from './d.js?lib=abc123';\n");
+  expect(unstampImports(s)).toBe(src.replace('?lib=0ff1ce', ''));
 });
 
 test('a failed update leaves the project\u2019s copy as it was (I3)', async () => {

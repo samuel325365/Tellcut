@@ -48,6 +48,22 @@ test('refresh takes a new version after the entry was edited; remove deletes it'
   expect(await run(projects, 'list')).not.toContain('fx.chalk-title');
 });
 
+test('refresh checks before it writes: a module that fails the checks is no new version for projects', async () => {
+  const projects = setup();
+  await run(projects, 'save', 'p1', 'fx/chalk.js');
+  const entry = join(libraryRoot(projects), 'blocks', 'chalk-title', 'entry.json'), before = readFileSync(entry, 'utf8');
+  writeFileSync(join(libraryRoot(projects), 'blocks', 'chalk-title', 'fx', 'chalk.js'), fxModule(['fx.chalk-title', 'fx.chalk-line'], 'export const r = () => Math.random();'));
+  await expect(run(projects, 'refresh', 'chalk-title', '--no-thumb')).rejects.toThrow(/chalk-title 有問題/);
+  expect(readFileSync(entry, 'utf8')).toBe(before);
+});
+
+test('a project id that is not one is refused before anything is written', async () => {
+  const projects = setup();
+  await run(projects, 'save', 'p1', 'fx/chalk.js');
+  for (const id of ['../..', '_library', 'nope']) await expect(run(projects, 'use', id, 'chalk-title')).rejects.toThrow(/不是專案名稱|沒有專案/);
+  await expect(run(projects, 'save', '..', 'fx/chalk.js')).rejects.toThrow(/不是專案名稱/);
+});
+
 test('the catalog lists the user’s own blocks first, marked 我的', async () => {
   const projects = setup();
   await run(projects, 'save', 'p1', 'fx/chalk.js');

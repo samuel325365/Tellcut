@@ -37,11 +37,13 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
       const now = JSON.stringify(readProposal(dir));
       if (now !== last) { last = now; push(id, { type: 'proposal', proposal: JSON.parse(now) }); }
     })));
-    // the project's own fx modules too: an fx edited without touching project.json left the open preview drawing the old one
+    // the project's own fx modules too: an fx edited without touching project.json left the open preview drawing the old one; also
+    // a copy of My blocks (fx/lib/<slug>/…, put in place by renaming its folder: the event names the folder) and links.json, written
+    // after every copy or Update, so the other tabs load it too (a copy's temporary .<slug>.tmp-… folder is left out)
     x.watchers.push(watch(dir, { recursive: true }, (_e, f) => {
       const name = String(f ?? '').replace(/\\/g, '/');
       if (name === 'project.json') onProject();
-      else if (/^fx\/[^/]+\.m?js$/.test(name)) onFx();
+      else if (/^fx\/[^/]+\.m?js$/.test(name) || /^fx\/lib\/(?:links\.json|[a-z0-9][a-z0-9-]*(?:\/.*)?)$/.test(name)) onFx();
     }));
     const onFx = debounce(() => push(id, { type: 'fx-changed' }));
     const onProject = debounce(() => {
