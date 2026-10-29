@@ -4,9 +4,16 @@ import { taskBlock } from './tasks.ts';
 test('library-save: make the fx generic in the project, then save it with the names the user gave', () => {
   const b = taskBlock({ kind: 'library-save', type: 'fx.a', name: '粉筆 "A"', desc: 'd', category: 'text' }, 'p1')!;
   expect(b).toMatch(/^<task kind="library-save">/);
-  expect(b).toContain('npm run tellcut -- library save p1 <file> --type fx.a --name "粉筆 \\"A\\"" --desc "d" --category text --replace');
+  expect(b).toContain(`npm run tellcut -- library save p1 <file> --type fx.a --name '粉筆 "A"' --desc 'd' --category text --replace`);
   expect(b).toContain('npm run check -- p1');
   expect(b).toMatch(/<\/task>$/);
+});
+
+test('library-save: values single-quoted for bash ($, backticks and quotes stay as typed); a category that is not one is dropped', () => {
+  const b = taskBlock({ kind: 'library-save', type: 'fx.a', name: "省錢$100 `x` it's", desc: '$(rm -rf ~)', category: 'text; rm -rf ~' }, 'p1')!;
+  expect(b).toContain(`--name '省錢$100 \`x\` it'\\''s' --desc '$(rm -rf ~)' --replace`);
+  expect(b).not.toContain('--category');
+  expect(taskBlock({ kind: 'library-save', type: 'fx.a', name: 'A', desc: '', category: 'toString' }, 'p1')).not.toContain('--category');
 });
 
 test('preset-draft: only the draft file, in the format the dialog reads', () => {

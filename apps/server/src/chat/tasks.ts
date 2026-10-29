@@ -4,10 +4,11 @@
 //   preset-draft   "Save as my preset": the film's way of doing things written into preset-draft.json, for the save dialog
 //   library-edit   "Change with the Agent" in the gallery: an entry of My blocks edited where it is
 import { SLUG } from '@tellcut/media-node';
-import type { ChatTask } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, type ChatTask } from '@tellcut/protocol';
 
 const str = (x: unknown): x is string => typeof x === 'string' && x.trim() !== '';
-const q = (s: string) => JSON.stringify(s);   // a quoted shell argument (double quotes inside escaped)
+// a bash argument the agent pastes as it is: single quotes keep $, backticks and \ literal; a ' inside becomes '\''
+const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 
 export const DRAFT_FORMAT = `{
   "name": "a short name for the preset, in the UI language",
@@ -25,7 +26,7 @@ export function taskBlock(task: unknown, project: string | null): string | null 
   const t = task as Partial<ChatTask> & Record<string, unknown> | undefined;
   const wrap = (kind: string, lines: string[]) => [`<task kind="${kind}">`, ...lines, '</task>'].join('\n');
   if (t?.kind === 'library-save' && project && str(t.type) && /^fx\.[\w.-]+$/.test(t.type) && str(t.name)) {
-    const cat = str(t.category) ? ` --category ${t.category}` : '';
+    const cat = str(t.category) && Object.hasOwn(BLOCK_CATEGORY, t.category) ? ` --category ${t.category}` : '';   // anything else is dropped
     return wrap('library-save', [
       `The user pressed "Save to My blocks" on ${t.type} and asked for it to be made generic first. In project ${project}:`,
       `1. Find the fx module that defines ${t.type} (Glob projects/${project}/fx/*). Make what is hard-wired for this one film into params: its text, colours, timings and sizes, each with a label and a Chinese hint, the film's current values as the defaults (so the film looks the same). Give every block a doc line.`,
@@ -47,7 +48,7 @@ export function taskBlock(task: unknown, project: string | null): string | null 
   }
   if (t?.kind === 'library-edit' && str(t.slug) && SLUG.test(t.slug) && str(t.type) && str(t.request)) {
     return wrap('library-edit', [
-      `The user wants to change ${t.type} of My blocks (entry ${t.slug}) from the gallery. Their words: ${q(t.request)}`,
+      `The user wants to change ${t.type} of My blocks (entry ${t.slug}) from the gallery. Their words: ${JSON.stringify(t.request)}`,
       `Edit the module in projects/_library/blocks/${t.slug}/fx/ (Glob it first), keeping its type ids. Then run npm run tellcut -- library refresh ${t.slug} and fix what it reports until it passes.`,
       'Tell the user in one or two sentences what changed, in the UI language. Projects that already use it keep their copy until they press Update.',
     ]);
