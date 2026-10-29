@@ -8,7 +8,7 @@ import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
 import { describeRecipe } from './cut/recipes/index.ts';
 
-type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[] };
+type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[]; onRequest?: boolean };
 /** the user's own blocks (the plugin `mine`, spec 2026-10-29-my-library §4.3): no handle, marked 我的 in its place */
 let MINE = new Set<string>();
 const mineOf = (plugins: Plugin[]) => { MINE = new Set(plugins.filter((p) => p.id === 'mine').flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])].map((t) => t.type))); };
@@ -17,12 +17,14 @@ const handleCol = (id: string) => (MINE.has(id) ? '我的' : handleOf(id) ?? '')
 const lineOf = (w: number) => (t: Entry) => `  ${handleCol(t.type)}  ${t.type.padEnd(w)}  ${t.label}${t.doc ? ` — ${t.doc}` : ''}`;
 const numberOf = (h: string) => /\d+$/.exec(h)![0];
 
-/** items (or sounds) in catalog order: by category (the order of `names`, BLOCK_CATEGORY by default) when they have one, else as registered */
-function grouped(items: Entry[], names: Record<string, string> = BLOCK_CATEGORY): Array<[string | null, Entry[]]> {
-  if (!items.some((t) => t.category)) return [[null, items]];
+/** items (or sounds) in catalog order: by category (the order of `names`, BLOCK_CATEGORY by default) when they have one, else as
+ *  registered; the ones the agent uses only when asked for (onRequest) last, in a group of their own */
+function grouped(all: Entry[], names: Record<string, string> = BLOCK_CATEGORY): Array<[string | null, Entry[]]> {
+  const items = all.filter((t) => !t.onRequest), asked = all.filter((t) => t.onRequest);
   const cats = Object.keys(names);
-  const out: Array<[string | null, Entry[]]> = cats.map((c) => [names[c], items.filter((t) => t.category === c)]);
-  out.push(['其他', items.filter((t) => !t.category || !cats.includes(t.category))]);
+  const out: Array<[string | null, Entry[]]> = !items.some((t) => t.category) ? [[null, items]]
+    : [...cats.map((c): [string, Entry[]] => [names[c], items.filter((t) => t.category === c)]), ['其他', items.filter((t) => !t.category || !cats.includes(t.category))]];
+  out.push(['只在使用者指名時用（使用者沒指名就不要用）', asked]);
   return out.filter(([, xs]) => xs.length);
 }
 
@@ -86,7 +88,8 @@ function indexLine(xs: Entry[], prefix: string): string {
  *  the blocks as number and short name */
 export function formatIndex(plugins: Plugin[]): string {
   const common = plugins.find((p) => p.id === 'common');
-  const items: Entry[] = common?.items ?? [], sfx: Entry[] = common?.sfx ?? [];
+  // a block used only when asked for (onRequest) is not offered here: the agent picks from this index
+  const items: Entry[] = (common?.items ?? []).filter((t) => !t.onRequest), sfx: Entry[] = common?.sfx ?? [];
   const lines = Object.entries(BLOCK_CATEGORY_EN).map(([k, cat]) => ({ cat, p: BLOCK_PREFIX[k as keyof typeof BLOCK_PREFIX], xs: items.filter((t) => t.category === k) }))
     .filter((c) => c.xs.length).map((c) => `- ${c.cat} (${c.p}): ${indexLine(c.xs, c.p)}`);
   if (sfx.length) lines.push(`- Sound effects (\`c.sfx\`; a sound file the project made itself goes in with \`c.sfxFile\`):`, ...Object.entries(SFX_CATEGORY_EN)

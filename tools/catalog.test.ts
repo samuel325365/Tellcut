@@ -91,3 +91,15 @@ test('handles: every catalog line of a shared block starts with its handle, and 
   await expect(formatLookup(plugins, 'ZZZ-01')).rejects.toThrow(/沒有 ZZZ-01 這個代號/);
   expect(findBlocks(plugins, 'Mrk-03').map((t) => t.type)).toEqual(['common.stamp']);
 });
+
+test('a block marked onRequest is listed apart in the catalog and left out of the chat index', () => {
+  const dog = { type: 'common.fakeDog', label: '假狗', kind: 'overlay', category: 'moment', onRequest: true, params: [], build: () => null, draw: () => {} };
+  const badge = { type: 'common.fakeBadge', label: '假徽章', kind: 'overlay', category: 'moment', params: [], build: () => null, draw: () => {} };
+  const ps = [{ id: 'common', items: [dog, badge] }] as unknown as Plugin[];
+  const text = formatCatalog(ps);
+  expect(text).toMatch(/只在使用者指名時用[\s\S]*common\.fakeDog/);
+  expect(text.indexOf('common.fakeDog')).toBeGreaterThan(text.indexOf('common.fakeBadge'));
+  expect(formatIndex(ps)).toContain('`fakeBadge`');
+  expect(formatIndex(ps)).not.toContain('fakeDog');
+  expect(findBlocks(ps, '假狗').map((t) => t.type)).toEqual(['common.fakeDog']);
+});
