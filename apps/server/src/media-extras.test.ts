@@ -23,7 +23,7 @@ afterAll(() => app.close());
 test('analyze also queues sheets + transcript per video and beats per music; their endpoints answer when done', async () => {
   const r = await (await fetch(api('x/analyze'), { method: 'POST' })).json();
   expect(r.extras.map((j: any) => [j.kind, j.label]).sort()).toEqual([['beats', 'beat'], ['extras', 'talk']]);
-  for (const j of r.extras) expect((await app.queue.wait(j.id)).status).toBe('done');
+  for (const j of r.extras) { const w = await app.queue.wait(j.id); expect(w.status, `${j.kind} ${j.label}: ${w.error ?? ''}`).toBe('done'); }
   expect((await (await fetch(api('x/media/transcript/talk'))).json()).segments.map((s: any) => s.text).join(' ').toLowerCase()).toContain('cake');
   expect((await fetch(api('x/media/sheet/talk/1'))).headers.get('content-type')).toBe('image/jpeg');
   expect((await fetch(api('x/media/sheet/talk/9'))).status).toBe(404);
