@@ -541,6 +541,12 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .g-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 12px; }
 .g-grid > li { display: flex; flex-direction: column; min-width: 0; border-radius: 12px; overflow: hidden; cursor: pointer; background: var(--s-raise); border: 1px solid var(--s-line); transition: border-color .12s, box-shadow .12s; }
 .g-grid > li:hover { border-color: var(--s-line-strong); }
+/* Mine's cards: a trash button at the top-right corner on hover or focus (it picks the card and opens the delete confirmation in the detail) */
+.g-grid > li:has(.g-card-del) { position: relative; }
+.g-card-del { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 8px; opacity: 0; color: #fff; background: rgba(0,0,0,.55); transition: opacity .12s; }
+.g-grid > li:hover .g-card-del, .g-grid > li:focus-within .g-card-del { opacity: 1; }
+.g-card-del:hover { color: #fff; background: var(--s-danger); }
+.g-card-del:focus-visible { opacity: 1; outline: 2px solid var(--s-ring); }
 .g-grid > li.on { border-color: var(--s-accent); box-shadow: 0 0 0 1px var(--s-accent), 0 8px 24px rgba(168,85,247,.28); }
 .g-thumb { display: grid; place-items: center; aspect-ratio: 9 / 16; overflow: hidden; background: #3a4256; color: rgba(255,255,255,.55); }
 .g-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }

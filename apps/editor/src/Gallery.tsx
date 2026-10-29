@@ -2,12 +2,12 @@
 // categories, a grid of cards that show what each block looks like, and a detail panel that is never empty — the first card is picked
 // on arrival, and again whenever a tab, category or search leaves the pick out. Cards show the name Claude uses and the handle
 // people point with (MRK-03, spec 2026-10-22-block-handles); the search finds either.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
 import { blockCategory, blockProject, byHandle, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type Tab } from './gallery.ts';
-import { IconMusic, IconPlay, IconSpark } from './icons.tsx';
+import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
 import { tip } from './tip.ts';
@@ -150,9 +150,10 @@ const fromLine = (x: { from: { project: string }; savedAt: string }) => t('lib.f
 const PENDING = 'tellcut.pendingTask';
 
 /** Rename, change with the Agent (blocks), delete: each opens its own small form under the buttons. `group`: the names of the
- *  entry's other blocks, deleted with it. */
-function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navigate }: { kind: 'blocks' | 'styles'; slug: string; type: string; name: string; desc: string;
-  group: string[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void }) {
+ *  entry's other blocks, deleted with it. `ask`: a count the card's trash button (or its Delete key) raises, which opens the delete
+ *  confirmation. */
+function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navigate, ask = 0 }: { kind: 'blocks' | 'styles'; slug: string; type: string; name: string; desc: string;
+  group: string[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask?: number }) {
   const [mode, setMode] = useState<null | 'rename' | 'agent' | 'delete'>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [nm, setNm] = useState(name), [ds, setDs] = useState(desc), [request, setRequest] = useState(''), [usage, setUsage] = useState<LibraryUsage | null>(null);
   const run = async (f: () => Promise<unknown>) => { setBusy(true); setError(''); try { await f(); setMode(null); onChanged(); } catch (e) { setError(errText(e)); } finally { setBusy(false); } };
@@ -160,6 +161,9 @@ function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navi
     setError(''); setNm(name); setDs(desc); setMode(m);
     if (m === 'delete') { setUsage(null); try { setUsage(await lib.usage(kind, slug)); } catch (e) { setError(errText(e)); } }
   };
+  const confirmBox = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (ask) void open('delete'); }, [ask]);
+  useEffect(() => { if (mode === 'delete') confirmBox.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [mode]);
   const handOff = () => {
     const r = request.trim();
     if (!r) return;
@@ -186,7 +190,7 @@ function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navi
         <div class="g-bar"><button onClick={() => setMode(null)}>{t('lib.cancel')}</button>
           <button class="primary" data-mine-agent-send disabled={!request.trim()} onClick={handOff}>{t('lib.handOff')}</button></div>
       </div>}
-      {mode === 'delete' && <div class="g-mine-form g-mine-confirm" data-mine-confirm role="alertdialog">
+      {mode === 'delete' && <div ref={confirmBox} class="g-mine-form g-mine-confirm" data-mine-confirm role="alertdialog">
         <strong>{t('lib.deleteTitle', { name })}</strong>
         {usage ? <>
           <p>{usage.projects ? t('lib.deleteProjects', { n: usage.projects }) : t('lib.deleteNoProjects')}</p>
@@ -201,7 +205,7 @@ function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navi
   );
 }
 
-function MineDetail({ b, all, lib, onChanged, navigate }: { b: LibraryBlockInfo; all: LibraryBlockInfo[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void }) {
+function MineDetail({ b, all, lib, onChanged, navigate, ask }: { b: LibraryBlockInfo; all: LibraryBlockInfo[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number }) {
   const id = `mine:${b.type}`, [params, setParams] = useParams(id), [theme, setTheme] = useState('none'), [n, setN] = useState(0);
   return (
     <section class="g-detail" data-detail={id}>
@@ -213,7 +217,7 @@ function MineDetail({ b, all, lib, onChanged, navigate }: { b: LibraryBlockInfo;
         <button onClick={() => setParams({})}>{t('gallery.resetParams')}</button>
       </div>
       <p class="g-doc">{b.desc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
-      <MineActions key={id} kind="blocks" slug={b.slug} type={b.type} name={b.name} desc={b.desc} lib={lib} onChanged={onChanged} navigate={navigate}
+      <MineActions key={id} kind="blocks" slug={b.slug} type={b.type} name={b.name} desc={b.desc} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask}
         group={b.group.map((x) => all.find((y) => y.type === x)?.name ?? x)} />
       <h3>{t('gallery.params')}</h3>
       <Params type={b.type} defs={b.params} values={params} theme={theme} onChange={(k, v) => setParams({ ...params, [k]: v })} />
@@ -221,7 +225,7 @@ function MineDetail({ b, all, lib, onChanged, navigate }: { b: LibraryBlockInfo;
   );
 }
 
-function MineStyleDetail({ s, lib, onChanged, navigate }: { s: LibraryStyleInfo; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void }) {
+function MineStyleDetail({ s, lib, onChanged, navigate, ask }: { s: LibraryStyleInfo; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number }) {
   const [seed, setSeed] = useState(1), id = `mine-style:${s.id}`;
   return (
     <section class="g-detail" data-detail={id}>
@@ -231,7 +235,7 @@ function MineStyleDetail({ s, lib, onChanged, navigate }: { s: LibraryStyleInfo;
       <div class="g-bar"><label>seed <input type="number" value={seed} min={1} onChange={(e) => setSeed(Number((e.target as HTMLInputElement).value) || 1)} /></label></div>
       <audio controls preload="none" src={scoreUrl(s.id, { seed })} />
       <p class="dim">{t('lib.styleUse')}</p>
-      <MineActions key={id} kind="styles" slug={s.slug} type={s.id} name={s.name} desc={s.desc} group={[]} lib={lib} onChanged={onChanged} navigate={navigate} />
+      <MineActions key={id} kind="styles" slug={s.slug} type={s.id} name={s.name} desc={s.desc} group={[]} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask} />
     </section>
   );
 }
@@ -247,6 +251,8 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
   const [g, setG] = useState<GalleryIndex | null>(null), [err, setErr] = useState('');
   const [tab, setTab] = useState<Tab>('blocks'), [q, setQ] = useState(''), [cat, setCat] = useState(ALL);
   const [picked, setPicked] = useState<string | null>(null), [plays, setPlays] = useState(0);
+  // a card of Mine asked to be deleted: which, and a count so asking again on the same card opens the confirmation again
+  const [del, setDel] = useState<{ name: string; n: number }>({ name: '', n: 0 });
   useEffect(() => { load().then(setG, (e: Error) => setErr(e.message)); }, []);
   // My blocks: loaded alongside, again after a rename or delete; a failure leaves Mine empty (with its note) rather than the page broken
   const [lib, setLib] = useState<LibraryIndex | null>(null), [libErr, setLibErr] = useState('');
@@ -269,9 +275,17 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
     : tab === 'sfx' ? sfxSections(list as GallerySfx[]).flatMap((x) => x.sfx.map((s) => s.type)) : tab === 'styles' ? [...mineStyles.map((x) => `mine-style:${x.id}`), ...(list as GalleryStyle[]).map((s) => s.id)] : (list as GalleryRecipe[]).map((r) => r.id);
   const on = picked && names.includes(picked) ? picked : names[0] ?? null;
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
-  const card = (name: string, title: string, body: preact.ComponentChildren, extra = '') => (
+  // only Mine's cards can be deleted: a trash button at the corner on hover and the Delete key both pick the card and open its confirmation
+  const askDelete = (name: string) => { setPicked(name); setDel({ name, n: del.n + 1 }); };
+  const card = (name: string, title: string, body: preact.ComponentChildren, extra = '', deletable = false) => (
     <li class={`${on === name ? 'on' : ''} ${extra}`} data-card={name} {...tip(title)} role="button" aria-pressed={on === name} tabIndex={0} onClick={() => pick(name)}
-      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(name); } }}>{body}</li>
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(name); }
+        else if (deletable && e.key === 'Delete') { e.preventDefault(); askDelete(name); }
+      }}>{body}
+      {deletable && <button class="icon-btn g-card-del" data-card-delete={name} {...tip(t('lib.deleteTip'))}
+        onClick={(e) => { e.stopPropagation(); askDelete(name); }}><IconTrash size={14} /></button>}</li>
   );
   const blockCard = (b: GalleryBlock) => card(b.type, shown(b.type, b).doc, <>
     <Thumb src={b.thumb} />
@@ -280,7 +294,7 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
   const mineCard = (b: LibraryBlockInfo) => card(`mine:${b.type}`, b.desc, <>
     <Thumb src={b.thumb ?? undefined} />
     <span class="g-card-body card-lines"><strong data-card-name {...tip(b.name)}>{b.name}</strong><span class="g-sub">{fromLine(b)}</span></span>
-  </>);
+  </>, '', true);
   const clipCard = (f: ClipFx) => card(f.key, shown(f.key, f).doc, <>
     <span class="g-thumb g-thumb-icon"><IconSpark size={22} /></span>
     <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(f.key, f).label)}>{shown(f.key, f).label}</strong><Handle id={f.key} /><span class="g-sub">{t('gallery.clipSub')}</span></span>
@@ -288,8 +302,8 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
 
   const detail = () => {
     if (!on) return <p class="dim g-hint">{t('gallery.emptyHint')}</p>;
-    if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} />; }
-    if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} />; }
+    if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} />; }
+    if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} />; }
     if (tab === 'blocks') {
       const b = g.blocks.find((x) => x.type === on), f = CLIP_FX.find((x) => x.key === on);
       return b ? <BlockDetail b={b} /> : f ? <ClipDetail f={f} /> : null;
@@ -336,7 +350,7 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
           <>{tab === 'styles' && mineStyles.length > 0 && <><h4 class="g-mine-h">{t('lib.mineStyles')}</h4><ul class="g-grid g-grid-wide" data-mine-styles>{mineStyles.map((x) => card(`mine-style:${x.id}`, x.desc, <>
               <span class="g-thumb g-thumb-icon g-sound"><IconMusic size={20} /></span>
               <span class="g-card-body card-lines"><strong data-card-name {...tip(x.name)}>{x.name}</strong><span class="g-sub">{fromLine(x)}　{x.defaults.bpm} BPM · {x.defaults.key}</span></span>
-            </>, 'g-row'))}</ul></>}
+            </>, 'g-row', true))}</ul></>}
           <ul class="g-grid g-grid-wide">{tab === 'styles' ? (list as GalleryStyle[]).map((s) => card(s.id, shown(`style:${s.id}`, s).doc, <>
               <span class="g-thumb g-thumb-icon g-sound"><IconMusic size={20} /></span>
               <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(`style:${s.id}`, s).label)}>{shown(`style:${s.id}`, s).label}</strong><Handle id={`style:${s.id}`} /><span class="g-sub">{t(s.origin === 'library' ? 'gallery.originLibrary' : 'gallery.originBuiltin')}　{s.defaults.bpm} BPM · {s.defaults.key}</span></span>

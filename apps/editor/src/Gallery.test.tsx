@@ -325,6 +325,22 @@ test('deleting says what keeps working and what loses it, and takes the whole en
   expect(root.querySelector('[data-mine-empty]')).not.toBeNull();
 });
 
+test('a Mine card’s trash button (or Delete on it) picks that card and opens its confirmation; shared blocks have none', async () => {
+  const { root } = await minePage();
+  await click(root, '[data-cat="mine"]');
+  expect(root.querySelector('[data-detail="mine:fx.chalk"]')).not.toBeNull();
+  await click(root, '[data-card-delete="mine:fx.chalk-line"]');
+  await settle();
+  expect(root.querySelector('[data-card="mine:fx.chalk-line"]')?.getAttribute('aria-pressed')).toBe('true');
+  expect(root.querySelector('[data-detail="mine:fx.chalk-line"] [data-mine-confirm]')).not.toBeNull();
+  await click(root, '[data-card="mine:fx.chalk"]');
+  await act(() => { root.querySelector('[data-card="mine:fx.chalk"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true })); });
+  await settle();
+  expect(root.querySelector('[data-detail="mine:fx.chalk"] [data-mine-confirm]')).not.toBeNull();
+  await click(root, '[data-cat="all"]');
+  expect(root.querySelectorAll('[data-card-delete]').length).toBe(2);
+});
+
 test('"change with the Agent" hands the request to the home chat', async () => {
   const { root, went } = await minePage();
   await click(root, '[data-cat="mine"]');

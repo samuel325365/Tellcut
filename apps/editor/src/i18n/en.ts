@@ -603,6 +603,7 @@ export const en: Record<Key, string> = {
   'lib.agentEditNote': 'It runs in the home page chat; when it is done, projects that use it will see "Update".',
   'lib.editMsg': 'Change "{name}" in My blocks: {request}',
   'lib.delete': 'Delete',
+  'lib.deleteTip': 'Delete from My blocks (or pick the card and press Delete)',
   'lib.deleteTitle': 'Delete "{name}" from My blocks?',
   'lib.deleteProjects': 'The {n} projects that use it are not affected (each has its own copy).',
   'lib.deletePresets': 'The presets {names} will no longer have it.',

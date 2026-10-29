@@ -603,6 +603,7 @@ export const ja: Record<Key, string> = {
   'lib.agentEditNote': 'ホームのチャットで行います。完了後、使っているプロジェクトに「Update」が表示されます。',
   'lib.editMsg': 'マイブロックの「{name}」を変更：{request}',
   'lib.delete': '削除',
+  'lib.deleteTip': 'マイブロックから削除（カードを選んで Delete キーでも）',
   'lib.deleteTitle': 'マイブロックから「{name}」を削除しますか？',
   'lib.deleteProjects': '使っている {n} 個のプロジェクトには影響しません（それぞれにコピーがあります）。',
   'lib.deletePresets': 'プリセット{names}では使えなくなります。',

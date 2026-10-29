@@ -602,6 +602,7 @@ export const zh = {
   'lib.agentEditNote': '會在首頁的聊天裡進行；改好之後，用過它的專案會看到「Update」。',
   'lib.editMsg': '修改我的積木「{name}」：{request}',
   'lib.delete': '刪除',
+  'lib.deleteTip': '從我的積木刪除（也可以選中卡片後按 Delete）',
   'lib.deleteTitle': '從我的積木刪除「{name}」？',
   'lib.deleteProjects': '已經用了它的 {n} 個專案不受影響（它們各有一份）。',
   'lib.deletePresets': '片型{names}之後會用不到它。',
