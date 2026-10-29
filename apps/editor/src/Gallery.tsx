@@ -151,9 +151,9 @@ const PENDING = 'tellcut.pendingTask';
 
 /** Rename, change with the Agent (blocks), delete: each opens its own small form under the buttons. `group`: the names of the
  *  entry's other blocks, deleted with it. `ask`: a count the card's trash button (or its Delete key) raises, which opens the delete
- *  confirmation. */
-function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navigate, ask = 0 }: { kind: 'blocks' | 'styles'; slug: string; type: string; name: string; desc: string;
-  group: string[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask?: number }) {
+ *  confirmation; `onAsked` takes the request back once it has, so the card picked again later does not open it by itself. */
+function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navigate, ask = 0, onAsked }: { kind: 'blocks' | 'styles'; slug: string; type: string; name: string; desc: string;
+  group: string[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask?: number; onAsked?: () => void }) {
   const [mode, setMode] = useState<null | 'rename' | 'agent' | 'delete'>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [nm, setNm] = useState(name), [ds, setDs] = useState(desc), [request, setRequest] = useState(''), [usage, setUsage] = useState<LibraryUsage | null>(null);
   const run = async (f: () => Promise<unknown>) => { setBusy(true); setError(''); try { await f(); setMode(null); onChanged(); } catch (e) { setError(errText(e)); } finally { setBusy(false); } };
@@ -162,7 +162,7 @@ function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navi
     if (m === 'delete') { setUsage(null); try { setUsage(await lib.usage(kind, slug)); } catch (e) { setError(errText(e)); } }
   };
   const confirmBox = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (ask) void open('delete'); }, [ask]);
+  useEffect(() => { if (ask) { void open('delete'); onAsked?.(); } }, [ask]);
   useEffect(() => { if (mode === 'delete') confirmBox.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [mode]);
   const handOff = () => {
     const r = request.trim();
@@ -205,7 +205,7 @@ function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navi
   );
 }
 
-function MineDetail({ b, all, lib, onChanged, navigate, ask }: { b: LibraryBlockInfo; all: LibraryBlockInfo[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number }) {
+function MineDetail({ b, all, lib, onChanged, navigate, ask, onAsked }: { b: LibraryBlockInfo; all: LibraryBlockInfo[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number; onAsked: () => void }) {
   const id = `mine:${b.type}`, [params, setParams] = useParams(id), [theme, setTheme] = useState('none'), [n, setN] = useState(0);
   return (
     <section class="g-detail" data-detail={id}>
@@ -217,7 +217,7 @@ function MineDetail({ b, all, lib, onChanged, navigate, ask }: { b: LibraryBlock
         <button onClick={() => setParams({})}>{t('gallery.resetParams')}</button>
       </div>
       <p class="g-doc">{b.desc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
-      <MineActions key={id} kind="blocks" slug={b.slug} type={b.type} name={b.name} desc={b.desc} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask}
+      <MineActions key={id} kind="blocks" slug={b.slug} type={b.type} name={b.name} desc={b.desc} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask} onAsked={onAsked}
         group={b.group.map((x) => all.find((y) => y.type === x)?.name ?? x)} />
       <h3>{t('gallery.params')}</h3>
       <Params type={b.type} defs={b.params} values={params} theme={theme} onChange={(k, v) => setParams({ ...params, [k]: v })} />
@@ -225,7 +225,7 @@ function MineDetail({ b, all, lib, onChanged, navigate, ask }: { b: LibraryBlock
   );
 }
 
-function MineStyleDetail({ s, lib, onChanged, navigate, ask }: { s: LibraryStyleInfo; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number }) {
+function MineStyleDetail({ s, lib, onChanged, navigate, ask, onAsked }: { s: LibraryStyleInfo; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number; onAsked: () => void }) {
   const [seed, setSeed] = useState(1), id = `mine-style:${s.id}`;
   return (
     <section class="g-detail" data-detail={id}>
@@ -235,7 +235,7 @@ function MineStyleDetail({ s, lib, onChanged, navigate, ask }: { s: LibraryStyle
       <div class="g-bar"><label>seed <input type="number" value={seed} min={1} onChange={(e) => setSeed(Number((e.target as HTMLInputElement).value) || 1)} /></label></div>
       <audio controls preload="none" src={scoreUrl(s.id, { seed })} />
       <p class="dim">{t('lib.styleUse')}</p>
-      <MineActions key={id} kind="styles" slug={s.slug} type={s.id} name={s.name} desc={s.desc} group={[]} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask} />
+      <MineActions key={id} kind="styles" slug={s.slug} type={s.id} name={s.name} desc={s.desc} group={[]} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask} onAsked={onAsked} />
     </section>
   );
 }
@@ -251,8 +251,10 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
   const [g, setG] = useState<GalleryIndex | null>(null), [err, setErr] = useState('');
   const [tab, setTab] = useState<Tab>('blocks'), [q, setQ] = useState(''), [cat, setCat] = useState(ALL);
   const [picked, setPicked] = useState<string | null>(null), [plays, setPlays] = useState(0);
-  // a card of Mine asked to be deleted: which, and a count so asking again on the same card opens the confirmation again
+  // a card of Mine asked to be deleted: which, and a count so asking again on the same card opens the confirmation again;
+  // the name is cleared once the confirmation opened (one-shot: a detail mounted again later must not reopen it)
   const [del, setDel] = useState<{ name: string; n: number }>({ name: '', n: 0 });
+  const asked = () => setDel((d) => ({ name: '', n: d.n }));
   useEffect(() => { load().then(setG, (e: Error) => setErr(e.message)); }, []);
   // My blocks: loaded alongside, again after a rename or delete; a failure leaves Mine empty (with its note) rather than the page broken
   const [lib, setLib] = useState<LibraryIndex | null>(null), [libErr, setLibErr] = useState('');
@@ -276,7 +278,7 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
   const on = picked && names.includes(picked) ? picked : names[0] ?? null;
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
   // only Mine's cards can be deleted: a trash button at the corner on hover and the Delete key both pick the card and open its confirmation
-  const askDelete = (name: string) => { setPicked(name); setDel({ name, n: del.n + 1 }); };
+  const askDelete = (name: string) => { setPicked(name); setDel((d) => ({ name, n: d.n + 1 })); };
   const card = (name: string, title: string, body: preact.ComponentChildren, extra = '', deletable = false) => (
     <li class={`${on === name ? 'on' : ''} ${extra}`} data-card={name} {...tip(title)} role="button" aria-pressed={on === name} tabIndex={0} onClick={() => pick(name)}
       onKeyDown={(e) => {
@@ -302,8 +304,8 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
 
   const detail = () => {
     if (!on) return <p class="dim g-hint">{t('gallery.emptyHint')}</p>;
-    if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} />; }
-    if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} />; }
+    if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} />; }
+    if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} />; }
     if (tab === 'blocks') {
       const b = g.blocks.find((x) => x.type === on), f = CLIP_FX.find((x) => x.key === on);
       return b ? <BlockDetail b={b} /> : f ? <ClipDetail f={f} /> : null;

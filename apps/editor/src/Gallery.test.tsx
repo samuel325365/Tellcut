@@ -341,6 +341,25 @@ test('a Mine card’s trash button (or Delete on it) picks that card and opens i
   expect(root.querySelectorAll('[data-card-delete]').length).toBe(2);
 });
 
+test('the trash button asks once: cancelled, then another card and back, the confirmation stays shut until asked again', async () => {
+  const { root } = await minePage();
+  await click(root, '[data-cat="mine"]');
+  await click(root, '[data-card-delete="mine:fx.chalk-line"]');
+  await settle();
+  const confirm = () => root.querySelector('[data-detail="mine:fx.chalk-line"] [data-mine-confirm]');
+  expect(confirm()).not.toBeNull();
+  await click(root, '[data-mine-confirm] button:not(.danger)');
+  expect(confirm()).toBeNull();
+  await click(root, '[data-card="mine:fx.chalk"]');
+  await click(root, '[data-card="mine:fx.chalk-line"]');
+  await settle();
+  expect(root.querySelector('[data-detail="mine:fx.chalk-line"]')).not.toBeNull();
+  expect(confirm()).toBeNull();
+  await click(root, '[data-card-delete="mine:fx.chalk-line"]');
+  await settle();
+  expect(confirm()).not.toBeNull();
+});
+
 test('"change with the Agent" hands the request to the home chat', async () => {
   const { root, went } = await minePage();
   await click(root, '[data-cat="mine"]');
