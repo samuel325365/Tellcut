@@ -19,7 +19,7 @@ import { ChatRunner } from './chat/runner.ts';
 import { chatRoutes } from './chat/routes.ts';
 import { fsRoutes } from './fs.ts';
 import { importRoutes } from './import.ts';
-import { presetRoutes } from './presets.ts';
+import { presetRoutes, type PresetPoster } from './presets.ts';
 import type { PresetDirs } from '@tellcut/media-node';
 import { sourceRoutes } from './sources.ts';
 import { TELLCUT_ROOT, claudeCmd, type Sources } from '@tellcut/media-node';
@@ -35,7 +35,9 @@ export interface AppOptions { projectsDir: string; playerDist?: string; editorDi
   /** the outside sources the API menu lists (tests pass their own); default tellcut/sources.json and sources.local.json */
   sources?: () => Sources;
   /** draws a saved library entry's thumbnail (tests pass a stand-in: no Chrome); default the player in headless Chrome */
-  libraryThumb?: (root: string, slug: string) => Promise<unknown> }
+  libraryThumb?: (root: string, slug: string) => Promise<unknown>;
+  /** draws a saved preset's poster from its project (tests pass a stand-in); default the timeline frame or the project's home-page frame */
+  presetPoster?: PresetPoster }
 
 // a page may change things only from this server's own address: the editor's Vite dev server proxies /api here keeping its
 // Host (127.0.0.1:5173), so its pages still match; a page on any other local port (another dev server, a notebook) does not
@@ -57,10 +59,11 @@ export function createApp(o: AppOptions) {
   const live = liveRoutes(r, store, { timeout: o.liveTimeout });
   requestRoutes(r, store);
   galleryRoutes(r, { plugins, projectsDir: o.projectsDir });
-  libraryRoutes(r, { projectsDir: o.projectsDir, store, thumb: o.libraryThumb ?? ((root, slug) => makeThumb(root, slug, plugins)) });
   const tellcutDir = TELLCUT_ROOT;
   const presetDirs = o.presetDirs ?? { repo: join(tellcutDir, 'guides', 'presets'), user: join(o.projectsDir, '_presets') };
-  presetRoutes(r, presetDirs);
+  const libraryThumb = o.libraryThumb ?? ((root: string, slug: string) => makeThumb(root, slug, plugins));
+  presetRoutes(r, presetDirs, { projectsDir: o.projectsDir, store, plugins, poster: o.presetPoster, thumb: libraryThumb });
+  libraryRoutes(r, { projectsDir: o.projectsDir, store, thumb: libraryThumb });
   sourceRoutes(r, o.sources);
   const chat = new ChatRunner({ cmd: o.claude ?? claudeCmd(), cwd: tellcutDir, promptFiles: ['apps/server/chat-prompt.md', 'guides/quality.md', 'guides/workflow.md'].map((f) => join(tellcutDir, f)),
     settingsFile: join(tellcutDir, 'apps/server/chat-settings.json'), projectsDir: o.projectsDir });

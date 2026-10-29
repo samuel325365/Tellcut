@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pickText } from '@tellcut/protocol';
-import { cleanFields, fieldsNote, loadPresets, missingPresetBlock, parsePreset, presetBlock } from '@tellcut/media-node';
-import { makeProjects, startApp } from './test-utils.ts';
+import { cleanFields, fieldsNote, findPreset, loadPresets, missingPresetBlock, parsePreset, presetBlock, run } from '@tellcut/media-node';
+import { demoProject, makeProjects, startApp } from './test-utils.ts';
 
 const FRONT = { order: 1, name: { zh: '旅行精華', en: 'Travel Highlights' }, summary: { zh: 's' },
   styles: [{ id: 'map', name: { zh: '地圖' }, desc: { zh: 'd' }, prompt: 'Map.' }] };
@@ -172,4 +172,82 @@ test('fieldsNote: the options in one line for a project chat', () => {
   expect(fieldsNote(p, { length: '30', gone: 'x' })).toBe('Options the user set in the form (what the user says in the message still comes first): Length: 30 秒.');
   // what project.json kept is checked again: an option the preset no longer has, or a hand edit, is dropped
   expect(fieldsNote(p, { ratio: '1:1', length: '4' })).toBe('');
+});
+
+// ---------------------------------------------------------------- presets of the user's own (spec 2026-10-29-my-library §3.5–3.7, §4.5)
+import { existsSync, readFileSync } from 'node:fs';
+import { makeProject } from '../../../packages/media-node/src/library/fixture.ts';
+
+const CUSTOM = { order: 0, name: { zh: '自定義', en: 'Custom' }, summary: { zh: 's' }, fields: [RATIO, LENGTH] };
+async function mine() {
+  const d = dirs(), projects = mkdtempSync(join(tmpdir(), 'mine-'));
+  d.user = join(projects, '_presets');
+  put(d.repo, 'custom', doc(CUSTOM, 'Custom.\n'));
+  makeProject(projects, 'trip');
+  writeFileSync(join(projects, 'trip', 'project.json'), JSON.stringify({ ...demoProject(), meta: { ...demoProject().meta, width: 1080, height: 1920, fx: ['fx/chalk.js'], theme: { palette: { accent: '#e8590c' } } } }));
+  writeFileSync(join(projects, 'trip', 'preset-draft.json'), JSON.stringify({ name: '我的美食', summary: '小吃店', points: [{ text: '前 2 秒放最好看的一口', prompt: 'Open on the best bite.' }],
+    ratio: '9:16', length: [25, 35], theme: { palette: { accent: '#e8590c' } }, score: 'street-jazz', fx: ['fx/chalk.js'] }));
+  const posters: any[] = [];
+  const { app, base } = await startApp({ projectsDir: projects, presetDirs: d, libraryThumb: async () => {}, presetPoster: async (o, out) => { posters.push(o.at ?? null); writeFileSync(out, 'JPG'); } });
+  const send = (method: string, url: string, body?: unknown) => fetch(base + url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  return { d, projects, app, base, send, posters };
+}
+
+test('saving from a film: the draft’s blocks and music go into My blocks, the points the user kept are the preset, the draft is gone', async () => {
+  const { d, projects, app, base, send, posters } = await mine();
+  try {
+    const points = [{ text: '前 2 秒放最好看的一口', prompt: 'Open on the best bite.' }, { text: '字幕放中間', prompt: '字幕放中間' }];
+    const r = await send('POST', '/api/presets', { from: 'project', project: 'trip', name: '我的美食', summary: '小吃店', points, include: { theme: true, score: true, blocks: true }, posterAt: 2.5, lang: 'zh' });
+    expect(r.status).toBe(200);
+    const info = await r.json();
+    expect(info).toMatchObject({ mine: true, points: ['前 2 秒放最好看的一口', '字幕放中間'], poster: expect.stringContaining('poster.jpg'),
+      uses: { colors: ['#e8590c'], score: { slug: 'street-jazz', gone: false }, blocks: [{ slug: 'chalk-title', gone: false }] } });
+    expect(posters).toEqual([2.5]);
+    expect(existsSync(join(projects, 'trip', 'preset-draft.json'))).toBe(false);
+    expect(existsSync(join(projects, '_library', 'blocks', 'chalk-title'))).toBe(true);
+    const p = findPreset(d, info.id)!;
+    expect(p).toMatchObject({ genres: false, ratios: ['9:16'], length: [25, 35], blocks: ['chalk-title'], score: 'street-jazz' });
+    expect(p.prompt).toContain('- 字幕放中間');
+    const list = (await (await fetch(`${base}/api/presets`)).json()).presets;
+    expect(list.find((x: any) => x.id === info.id).uses.blocks[0].name).toBe('chalk-title');
+  } finally { await app.close(); }
+});
+
+test('without its draft a film cannot be saved as a preset', async () => {
+  const { projects, app, send } = await mine();
+  try {
+    rmSync(join(projects, 'trip', 'preset-draft.json'));
+    const r = await send('POST', '/api/presets', { from: 'project', project: 'trip', name: 'x', summary: '', points: [], include: {}, lang: 'zh' });
+    expect(r.status).toBe(404);
+    expect((await r.json()).code).toBe('preset.noDraft');
+  } finally { await app.close(); }
+});
+
+test('saving from the custom form: each option set is a point in the user’s words, and the agent still picks a genre', async () => {
+  const { d, app, send } = await mine();
+  try {
+    const info = await (await send('POST', '/api/presets', { from: 'form', name: '我的直式', color: '#12b886', fields: { ratio: '9:16', length: '45', bogus: 'x' }, examples: ['復古底片感'], lang: 'zh' })).json();
+    expect(info.points).toEqual(['9:16 直式', '約 45 秒', '復古底片感']);
+    expect(findPreset(d, info.id)).toMatchObject({ genres: true, color: '#12b886', ratios: ['9:16'], length: [41, 50] });
+    expect(findPreset(d, info.id)!.prompt).toContain('- Make it 9:16.');
+  } finally { await app.close(); }
+});
+
+test('a preset of the user’s own is edited, renamed, given a poster and deleted; a repo one is not', async () => {
+  const { d, app, base, send } = await mine();
+  try {
+    const info = await (await send('POST', '/api/presets', { from: 'form', name: 'A', fields: { ratio: '9:16' }, examples: [], lang: 'zh' })).json();
+    const edited = await (await send('PUT', `/api/presets/${info.id}`, { name: 'B', points: [{ text: '慢一點', prompt: '慢一點' }], lang: 'zh' })).json();
+    expect(edited).toMatchObject({ id: info.id, name: { zh: 'B' }, points: ['慢一點'] });
+    const img = join(tmpdir(), `poster-${process.pid}.png`);
+    await run(['-y', '-f', 'lavfi', '-i', 'color=blue:s=640x360:d=1', '-frames:v', '1', img]);
+    const up = await fetch(`${base}/api/presets/${info.id}/poster`, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: readFileSync(img) });
+    expect(up.status).toBe(200);
+    expect((await up.json()).poster).toContain('poster.jpg');
+    expect(existsSync(join(d.user, info.id, 'poster.jpg'))).toBe(true);
+    expect((await send('DELETE', '/api/presets/custom')).status).toBe(400);
+    expect((await send('PUT', '/api/presets/custom', { name: 'x', lang: 'zh' })).status).toBe(400);
+    expect((await send('DELETE', `/api/presets/${info.id}`)).status).toBe(200);
+    expect(findPreset(d, info.id)).toBeNull();
+  } finally { await app.close(); }
 });

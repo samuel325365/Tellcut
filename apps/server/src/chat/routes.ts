@@ -9,7 +9,7 @@ import { taskBlock } from './tasks.ts';
 import type { JobInfo, JobQueue } from '../jobs.ts';
 import { analysisState, analysisStatus, type AnalysisState } from '@tellcut/protocol';
 import type { ChatEvent } from './stream.ts';
-import { cleanFields, fieldsNote, findPreset, missingPresetBlock, presetBlock, type PresetDirs } from '@tellcut/media-node';
+import { cleanFields, fieldsNote, findPreset, libraryRoot, listLibrary, missingPresetBlock, presetBlock, type PresetDirs } from '@tellcut/media-node';
 import type { Lang, PresetChoice } from '@tellcut/protocol';
 import { ADAPTERS } from '@tellcut/media-node';
 
@@ -76,7 +76,7 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
     const styles = Array.isArray(b?.styles) ? b.styles.filter((x: unknown): x is string => typeof x === 'string') : [];
     const fields = found ? cleanFields(found, b?.fields) : {}, anyField = Object.keys(fields).length > 0;
     const preset: PresetChoice | undefined = found ? { id: found.id, styles: styles.filter((x: string) => found.styles.some((s) => s.id === x)), ...(anyField ? { fields } : {}) } : undefined;
-    const block = asked ? (found ? presetBlock(found, styles, fields) : missingPresetBlock(asked)) : null;
+    const block = asked ? (found ? presetBlock(found, styles, fields, listLibrary(libraryRoot(store.root))) : missingPresetBlock(asked)) : null;
     // a button's task (save to My blocks, save as my preset…): words for the agent, not kept in the thread
     const task = taskBlock(b?.task, isHome(thread) ? null : thread);
     // the sources ticked in the API menu come with each message (the page keeps no ticks): this turn and the automatic one after

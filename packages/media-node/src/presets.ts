@@ -5,12 +5,17 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { z } from 'zod';
-import type { PresetFieldInfo, PresetInfo, PresetStyleInfo } from '@tellcut/protocol';
+import type { PresetFieldInfo, PresetInfo, PresetStyleInfo, PresetUses } from '@tellcut/protocol';
+import type { BlockEntry, StyleEntry } from './library/store.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 
 export interface PresetDirs { repo: string; user: string }
 export type PresetField = Omit<PresetFieldInfo, 'options'> & { options: Array<PresetFieldInfo['options'][number] & { prompt: string }> };
-export interface Preset extends Omit<PresetInfo, 'styles' | 'fields'> { prompt: string; file: string; genres: boolean; styles: Array<PresetStyleInfo & { prompt: string }>; fields: PresetField[] }
+export interface PresetPoint { text: string; prompt: string }
+export interface Preset extends Omit<PresetInfo, 'styles' | 'fields' | 'points' | 'uses'> { prompt: string; file: string; genres: boolean; styles: Array<PresetStyleInfo & { prompt: string }>; fields: PresetField[];
+  points: PresetPoint[]; theme?: unknown; score?: string; blocks: string[] }
+/** the user's library as a preset needs it (listLibrary's); `thumb`: a block's picture url, when the page shows one */
+export interface PresetLibrary { blocks: BlockEntry[]; styles: StyleEntry[]; thumb?: (slug: string) => string | null }
 
 const ID = /^[a-z0-9][a-z0-9-]{0,40}$/;
 const text = z.object({ zh: z.string(), en: z.string(), ja: z.string() }).partial().refine((x) => Object.keys(x).length > 0, 'needs a language');
@@ -35,6 +40,10 @@ const Front = z.object({
   ratios: z.array(z.string().regex(/^[1-9]\d*:[1-9]\d*$/, 'like 9:16')).min(1).optional(),
   // false: the preset holds the film's whole direction, so Claude skips the genre cards (workflow.md step 3)
   genres: z.boolean().default(true),
+  // a preset of the user's own (spec 2026-10-29-my-library §4.6): the points shown (text) and given to the agent (prompt), the theme,
+  // music style (a slug of My blocks) and blocks of My blocks it brings
+  points: z.array(z.object({ text: z.string(), prompt: z.string() })).default([]),
+  theme: z.unknown().optional(), score: z.string().optional(), blocks: z.array(z.string()).default([]),
 });
 
 /** `file`: where the preset.md is, relative to tellcut/ when inside it (Claude reads it from there) */
@@ -91,9 +100,23 @@ export function findPreset(dirs: PresetDirs, id: string): Preset | null {
   return loadPresets(dirs).find((p) => p.id === id) ?? null;
 }
 
-/** what the page gets: the prompts left out */
-export const presetInfo = ({ prompt: _p, file: _f, genres: _g, styles, fields, ...p }: Preset): PresetInfo => ({ ...p, styles: styles.map(({ prompt: _s, ...s }) => s),
-  fields: fields.map(({ options, ...f }) => ({ ...f, options: options.map(({ prompt: _o, ...o }) => o) })) });
+/** what the page gets: the prompts left out; a preset of the user's own with its points (their text) and what it brings */
+export function presetInfo({ prompt: _p, file: _f, genres: _g, styles, fields, points, theme, score, blocks, ...p }: Preset, library?: PresetLibrary): PresetInfo {
+  const info: PresetInfo = { ...p, styles: styles.map(({ prompt: _s, ...s }) => s),
+    fields: fields.map(({ options, ...f }) => ({ ...f, options: options.map(({ prompt: _o, ...o }) => o) })) };
+  if (points.length) info.points = points.map((x) => x.text);
+  if (theme || score || blocks.length) info.uses = usesOf(theme, score, blocks, library);
+  return info;
+}
+
+function usesOf(theme: unknown, score: string | undefined, blocks: string[], lib?: PresetLibrary): PresetUses {
+  const th = (theme ?? {}) as { fonts?: Record<string, unknown>; palette?: Record<string, unknown> };
+  const strings = (o: Record<string, unknown> | undefined) => [...new Set(Object.values(o ?? {}).filter((x): x is string => typeof x === 'string'))];
+  const style = score ? lib?.styles.find((s) => s.slug === score) : undefined;
+  return { fonts: strings(th.fonts), colors: strings(th.palette),
+    ...(score ? { score: { slug: score, name: style?.name ?? score, gone: !style } } : {}),
+    blocks: blocks.map((slug) => { const e = lib?.blocks.find((b) => b.slug === slug); return { slug, name: e?.types[0]?.name ?? slug, thumb: e ? lib?.thumb?.(slug) ?? null : null, gone: !e }; }) };
+}
 
 // the form's options are the user's, but what they say in the message still wins (spec 2026-10-24-custom-preset §2)
 const OPTIONS_HEAD = 'Options the user set in the form (what the user says in the message still comes first)';
@@ -126,11 +149,24 @@ function setFields(p: Preset, raw?: Record<string, string>) {
 
 const NO_GENRES = 'This preset is the whole direction of the film: skip choosing a genre and do not read guides/genres/.';
 
-/** What Claude gets ahead of the user's words: the preset's prompt, the prompts of the styles ticked in its dialog and the options set in its form. */
-export function presetBlock(p: Preset, styles: string[], fields?: Record<string, string>): string {
+/** what a preset of the user's own brings, as the agent is to take it (spec 2026-10-29-my-library §4.6): the theme in cut.ts, its blocks and
+ *  music style copied in from My blocks (one deleted from there since is left out) */
+function bringsLines(p: Preset, lib?: PresetLibrary): string[] {
+  const out: string[] = [];
+  if (p.theme) out.push(`Apply this theme in cut.ts with c.theme(${JSON.stringify(p.theme)}).`);
+  const blocks = p.blocks.flatMap((slug) => { const e = lib?.blocks.find((b) => b.slug === slug); return e ? [{ slug, name: e.types.map((t) => t.name).join(' / ') }] : []; });
+  if (blocks.length) out.push(`Right after npm run new, copy the user's own blocks into the project with npm run tellcut -- library use <the project id> ${blocks.map((b) => b.slug).join(' ')}, then use them (c.fx and c.effect): ${blocks.map((b) => `${b.slug}: ${b.name}`).join('; ')}.`);
+  const style = p.score ? lib?.styles.find((s) => s.slug === p.score) : undefined;
+  if (style) out.push(`Copy the user's own music style with npm run tellcut -- library use <the project id> --style ${style.slug} and use it with c.score('${style.id}').`);
+  return out;
+}
+
+/** What Claude gets ahead of the user's words: the preset's prompt, the prompts of the styles ticked in its dialog and the options set in its form;
+ *  for a preset of the user's own, what it brings from My blocks (`library`: the user's library). */
+export function presetBlock(p: Preset, styles: string[], fields?: Record<string, string>, library?: PresetLibrary): string {
   const picked = p.styles.filter((s) => styles.includes(s.id)), set = setFields(p, fields);
   const name = p.name.en ?? p.name.zh ?? p.id;
-  return [`<preset id="${p.id}" name="${name}">`, p.prompt, ...(p.genres ? [] : [NO_GENRES]),
+  return [`<preset id="${p.id}" name="${name}">`, p.prompt, ...(p.genres ? [] : [NO_GENRES]), ...bringsLines(p, library),
     ...(picked.length ? ['', 'Styles the user picked:', ...picked.map((s) => `- ${s.name.en ?? s.name.zh ?? s.id}: ${s.prompt}`)] : []),
     ...(set.length ? ['', `${OPTIONS_HEAD}:`, ...set.map((x) => `- ${x.name}: ${x.prompt}`)] : []), '</preset>'].join('\n');
 }

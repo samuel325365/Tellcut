@@ -52,7 +52,12 @@ export interface PresetInfo {
   styles: PresetStyleInfo[]; sources: string[]; poster: string | null; preview: string | null; length?: [number, number]; ratios?: string[];
   /** the dialog's form, and style lines the user may put into the chat box */
   fields: PresetFieldInfo[]; examples: L10n[];
+  /** a preset of the user's own (spec 2026-10-29-my-library §3.6): what it does, point by point (the agent's English stays on
+   *  the server), and what it brings along */
+  points?: string[]; uses?: PresetUses;
 }
+/** what a preset of the user's own brings: the theme's fonts and colours, a music style and blocks of My blocks (`gone`: deleted there since) */
+export interface PresetUses { fonts: string[]; colors: string[]; score?: { slug: string; name: string; gone: boolean }; blocks: Array<{ slug: string; name: string; thumb: string | null; gone: boolean }> }
 /** the preset a message was sent with, the styles ticked in its dialog and the options set in its form (none set: no `fields`) */
 export interface PresetChoice { id: string; styles: string[]; fields?: Record<string, string> }
 
