@@ -19,6 +19,7 @@ import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
+import { LibraryFlow } from './editor/library.ts';
 import { errText, t as say } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 import { paramText } from './i18n/params.ts';
@@ -160,6 +161,7 @@ export class Editor {
       if (typeof (this.deps.api as any).chat === 'function') void this.chat.load();   // test fakes without chat
       void this.loadExports();
       void this.resumeExport();
+      if (typeof (this.deps.api as any).library === 'function') void this.library.load();   // test fakes without the library
     } catch (e) {
       const err = e instanceof ApiError ? { message: e.message, issues: e.issues } : { message: String((e as Error)?.message ?? e), issues: (e as any)?.issues ?? [] };
       this.set({ error: err, history: await this.deps.api.history(this.id).catch(() => []) });
@@ -471,6 +473,7 @@ export class Editor {
     if (!p) return;
     if (this.deps.registryFor) this.reg = await this.deps.registryFor(p);
     this.deps.bridge.load(p);
+    if (typeof (this.deps.api as any).projectLibrary === 'function') void this.library.loadProject();   // a module saved or edited: its star may change
   }
   /** project.json changed outside: hold saves until the user reloads or chooses to keep this version (忽略). */
   private outside() {
@@ -558,6 +561,39 @@ export class Editor {
     this.changed(this.history.project, false);
     await this.report(p.id, 'rejected');
   }
+  // ---------------------------------------------------------------- My blocks (spec 2026-10-29-my-library §3.2, §3.3; editor/library.ts)
+  private libraryFlow: LibraryFlow | undefined;
+  get library() {
+    return (this.libraryFlow ??= new LibraryFlow({ id: this.id, api: this.deps.api, store: this.store, chat: this.chat, setLayout: (patch) => this.setLayout(patch) }));
+  }
+  /** ☆ on one of this project's blocks: the dialog starts from its name, description and category */
+  openSaveBlock(type: string) {
+    const def = this.registry?.item(type);
+    if (!def) return;
+    void this.library.openBlock(type, { name: def.label, desc: def.doc ?? '', category: def.category });
+  }
+  openSaveStyle(id: string, label: string) { this.library.openStyle(id, label); }
+  /** A block of My blocks at the playhead: the entry is copied into the project (fx/lib/<slug>/), its module joins meta.fx in the
+   *  same edit as the item (one undo step), and the preview loads it. */
+  async useLibraryBlock(slug: string, type: string): Promise<boolean> {
+    const p = this.s.project;
+    if (!p || this.blocked()) return false;
+    let file: string;
+    try { file = (await this.library.use(slug)).file; }
+    catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return false; }
+    const now = this.s.project!, fx = [...new Set([...(now.meta.fx ?? []), file])];
+    if (this.deps.registryFor) this.reg = await this.deps.registryFor({ ...now, meta: { ...now.meta, fx } });
+    const t = this.s.playhead;
+    const ok = this.addTo('overlay', { type, start: t, end: t + 2, params: {} }, (d) => { d.meta.fx = [...new Set([...(d.meta.fx ?? []), file])]; });
+    if (ok) this.deps.bridge.load(this.s.project!);   // a module the preview has not loaded yet
+    return ok;
+  }
+  /** "Update": the newer version of an entry over this project's copy; the timeline stays as it is */
+  async updateLibraryBlock(slug: string) {
+    try { await this.library.use(slug); } catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return; }
+    await this.reloadFx();
+  }
+
   // ---------------------------------------------------------------- Ask Agent… (spec 2026-10-16-right-click-claude §2; editor/ask-flow.ts)
   private askFlow: AskFlow | undefined;
   private get ask() {

@@ -1,6 +1,6 @@
 // Tellcut server API (apps/server). Every failure becomes an ApiError with the server's message and issues.
 import type { Transcript } from '@tellcut/engine';
-import type { ChatTask, GalleryIndex, JobInfo, Lang, PresetChoice, PresetInfo, SourceInfo } from '@tellcut/protocol';
+import type { ChatTask, GalleryIndex, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, PresetChoice, ProjectLibraryInfo, PresetInfo, SourceInfo } from '@tellcut/protocol';
 import type { PeakInfo, ThumbInfo } from './store.ts';
 
 export class ApiError extends Error {
@@ -17,6 +17,7 @@ export interface ImportResult { sources: Record<string, any>; media: Record<stri
 export const fileUrl = (id: string, rel: string) => `/api/projects/${encodeURIComponent(id)}/files/${rel.split('/').map(encodeURIComponent).join('/')}`;
 
 const enc = encodeURIComponent;
+const jsonPost = (b: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
 
 /** this page's id: its saves name it (X-Tellcut-Client) and so does its live stream, so the server tells every other tab
  *  on the project of a save (changed-on-disk) and not this one */
@@ -107,6 +108,19 @@ export const api = {
    *  sources: the APIs ticked in the menu, which go with the message (the page keeps none) */
   chatSend: (thread: string, text: string, on: (e: any) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[], task?: ChatTask) =>
     ndjson(`/api/chat/${enc(thread)}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, from, preset: preset?.id, styles: preset?.styles, fields: preset?.fields, lang, sources, task }) }, on),
+  /** My blocks (spec 2026-10-29-my-library §4.2–4.4): the library, a project's copies from it, saving into it, copying an entry in */
+  library: () => req<LibraryIndex>('/api/library'),
+  projectLibrary: (id: string) => req<ProjectLibraryInfo>(`/api/projects/${enc(id)}/library`),
+  saveBlockPreview: (b: { project: string; type: string }) => req<LibrarySavePreview>('/api/library/blocks?dry=1', jsonPost(b)),
+  saveBlock: (b: { project: string; type: string; name?: string; desc?: string; category?: string; onConflict?: 'replace' | 'keep-both' }) => req<{ entry: { slug: string }; skipped: string[] }>('/api/library/blocks', jsonPost(b)),
+  saveStyle: (b: { project: string; id: string; name?: string; desc?: string; onConflict?: 'replace' | 'keep-both' }) => req<{ entry: { slug: string } }>('/api/library/styles', jsonPost(b)),
+  useLibrary: (id: string, b: { slug: string } | { style: string }) => req<{ file: string; types?: string[]; id?: string; copied?: string[] }>(`/api/projects/${enc(id)}/library/use`, jsonPost(b)),
+  renameLibraryBlock: (slug: string, type: string, b: { name?: string; desc?: string; category?: string }) => req<unknown>(`/api/library/blocks/${enc(slug)}/types/${enc(type)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
+  renameLibraryStyle: (slug: string, b: { name?: string; desc?: string }) => req<unknown>(`/api/library/styles/${enc(slug)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
+  libraryUsage: (kind: 'blocks' | 'styles', slug: string) => req<LibraryUsage>(`/api/library/${kind}/${enc(slug)}/usage`),
+  deleteLibrary: (kind: 'blocks' | 'styles', slug: string) => req<{ ok: true }>(`/api/library/${kind}/${enc(slug)}`, { method: 'DELETE' }),
+  /** the agent's draft of a preset of the user's own (404 until it is written) */
+  presetDraft: (id: string) => req<unknown>(`/api/projects/${enc(id)}/preset-draft`),
   /** the home page's presets (spec 2026-10-23-presets-and-languages §3.3) */
   presets: () => req<{ presets: PresetInfo[] }>('/api/presets'),
   chatAttach: (thread: string, on: (e: any) => void, signal?: AbortSignal) => ndjson(`/api/chat/${enc(thread)}/stream`, signal ? { signal } : undefined, on),

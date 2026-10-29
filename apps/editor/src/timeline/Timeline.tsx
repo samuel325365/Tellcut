@@ -266,6 +266,11 @@ export function Timeline({ editor }: { editor: Editor }) {
       </div>
       {ctx && <div class="ctx" style={{ left: `${ctx.x}px`, top: `${ctx.y}px` }}>
         <button onClick={() => { editor.openAsk(ctx.id ?? undefined); setCtx(null); }}>Ask Agent…</button>
+        {(() => {
+          // one of this project's own blocks: save it to My blocks (spec 2026-10-29-my-library §3.2)
+          const it = ctx.id ? allItems(s.project!).find((x) => x.item.id === ctx.id)?.item as { type?: string } | undefined : undefined;
+          return it?.type?.startsWith('fx.') && editor.registry?.item(it.type) ? <button data-ctx-save-block onClick={() => { editor.openSaveBlock(it.type!); setCtx(null); }}>Save to My blocks</button> : null;
+        })()}
         {ctx.hung && <button onClick={() => { editor.detach(ctx.id!); setCtx(null); }}>Detach</button>}
       </div>}
       <div class="hbar" data-hbar>

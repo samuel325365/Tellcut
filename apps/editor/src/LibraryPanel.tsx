@@ -16,6 +16,9 @@ import { tip } from './tip.ts';
 import { ImportDialog } from './ImportDialog.tsx';
 import { IconPlus } from './icons.tsx';
 
+/** a block of My blocks not in this project yet: adding it copies the entry in first (spec 2026-10-29-my-library §3.3) */
+type LibPick = { slug: string; type: string; kind: 'scene' | 'overlay' };
+
 /** a button's hover text with the gallery handle of a shared block or sound in front (MRK-03 · double-click to audition) */
 /** a block's name in the library: an English editor label (project blocks, fx.*, keep their own) */
 const blockName = (d: any): string => blockText(d.type, { label: d.label, doc: '' }, 'en').label;
@@ -49,10 +52,24 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const hit = (d: any) => matches(q, handleOf(d.type), d.type, d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc);
   const blocks = groupsOf((reg?.itemTypes() ?? []).filter(hit), Object.keys(BLOCK_CATEGORY), 'block');
   const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hit), Object.keys(SFX_CATEGORY), 'sfx');
-  const [picked, setPicked] = useState<{ key: string; m: Material } | null>(null);
+  const [picked, setPicked] = useState<{ key: string; m?: Material; lib?: LibPick } | null>(null);
+  // My blocks (spec 2026-10-29-my-library §3.2, §3.3): the ones saved from this project (★), this project's copies, the rest to add
+  const lib = s.library, links = lib.project?.links ?? [];
+  const savedHere = new Set((lib.index?.blocks ?? []).filter((b) => b.from.project === s.id).map((b) => b.type));
+  const linkOf = (type: string) => links.find((l) => l.types.includes(type));
+  const mine = (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).filter((b) => matches(q, undefined, b.type, b.name, b.desc));
+  const star = (type: string) => (
+    <button class={`lib-star${savedHere.has(type) ? ' on' : ''}`} data-save-block={type} {...tip(t(savedHere.has(type) ? 'lib.savedTip' : 'lib.saveTip'))}
+      onClick={() => editor.openSaveBlock(type)}>{savedHere.has(type) ? '★' : '☆'}</button>
+  );
   const [browsing, setBrowsing] = useState(false);
   /** the click/double-click handlers and the highlight of one library entry */
   const shown = new Set<string>();
+  const pickLib = (b: LibPick) => { const key = `mine:${b.type}`; shown.add(key); return {
+    class: `lib-item${picked?.key === key ? ' picked' : ''}`,
+    onClick: () => setPicked({ key, lib: b }),
+    onDblClick: () => { setPicked({ key, lib: b }); editor.store.set({ notice: t('lib.mineAudition') }); },
+  }; };
   const pick = (key: string, m: Material, base = 'lib-item') => (shown.add(key), {
     class: `${base}${picked?.key === key ? ' picked' : ''}`,
     onClick: () => setPicked({ key, m }),
@@ -90,6 +107,11 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
         </div>
       ))}
       <h4>Music</h4>
+      {!!lib.project?.styles.length && <div class="lib-styles" data-project-styles {...tip(t('lib.projectStylesTip'))}><small>This project's music styles</small>
+        {lib.project.styles.map((x) => { const on = lib.project!.savedStyles.includes(x.id); return (
+          <div class="lib-row"><span class="lib-item lib-text">{x.label}</span>
+            <button class={`lib-star${on ? ' on' : ''}`} data-save-style={x.id} {...tip(t(on ? 'lib.savedTip' : 'lib.styleSaveTip'))} onClick={() => editor.openSaveStyle(x.id, x.label)}>{on ? '★' : '☆'}</button></div>
+        ); })}</div>}
       {Object.keys(p.media).map((m) => { const len = musicLength(s.peaks[`media:${m}`]); return (
         <button data-add-music={m} {...tip(t('ed.dblListen'))} {...pick(`music:${m}`, { kind: 'music', media: m })}>{m}{len ? ` · ${formatTime(len)}` : ''}{s.beats[m] ? ` · ${Math.round(s.beats[m].bpm)} BPM` : ''}</button>
       ); })}
@@ -97,11 +119,21 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
         onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
       <h4>Effects</h4>
       {/* a group opens by itself while searching; this project's own fx and the few built-in ones are open from the start */}
-      {blocks.map((g) => <details class="lib-group" data-lib-group={`block:${g.key}`} open={!!q.trim() || g.key === 'fx' || g.key === 'core'}>
-        <summary>{g.label}<small>{g.list.length}</small></summary>
-        {g.list.map((d: any) => { const why = uniqueBlock(reg, p, d.type); return (
+      {[...blocks.filter((g) => g.key === 'fx'), ...(mine.length ? [{ key: 'mine', label: t('group.mine', {}, 'en'), list: [] as any[] }] : []), ...blocks.filter((g) => g.key !== 'fx')].map((g) => <details class="lib-group" data-lib-group={`block:${g.key}`} open={!!q.trim() || g.key === 'fx' || g.key === 'mine' || g.key === 'core'}>
+        <summary>{g.label}<small>{g.key === 'mine' ? mine.length : g.list.length}</small></summary>
+        {g.key === 'mine' ? mine.map((b) => (
+          <button data-add-mine={b.type} {...tip(t('lib.mineTip'))} {...pickLib({ slug: b.slug, type: b.type, kind: b.kind })}>{b.name}</button>
+        )) : g.list.map((d: any) => { const why = uniqueBlock(reg, p, d.type), button = (
           <button data-add-overlay={d.type} disabled={!!why} {...tip(why || withHandle(d.type, d.kind === 'scene' ? t('ed.sceneTip') : t('ed.dblWatch')))} {...pick(`overlay:${d.type}`, { kind: 'overlay', type: d.type })}>{blockName(d)}</button>
-        ); })}
+        );
+          if (g.key !== 'fx') return button;
+          // this project's own: ☆ saves it to My blocks; a copy from My blocks says so, and offers a newer version
+          const link = linkOf(d.type);
+          return <div class="lib-row">{button}
+            {link && <span class="lib-tag" data-from-mine={link.slug} {...tip(t(link.gone ? 'lib.goneTip' : 'lib.fromMineTip'))}>from My blocks</span>}
+            {link?.outdated && <button class="lib-update" data-update-block={link.slug} {...tip(t('lib.updateTip'))} onClick={() => void editor.updateLibraryBlock(link.slug)}>Update</button>}
+            {!link && star(d.type)}</div>;
+        })}
       </details>)}
       <h4>Sound effects</h4>
       {sfx.map((g) => <details class="lib-group" data-lib-group={`sfx:${g.key}`} open={!!q.trim() || g.key === 'fx' || g.key === 'core'}>
@@ -112,14 +144,14 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
         // the pick must still be in the library: analysis can re-cut a source's segments
         const live = picked && shown.has(picked.key) ? picked : null;
         // a background or frame goes under the video: it can only take the place of one already there
-        const scene = live?.m.kind === 'overlay' && reg?.item(live.m.type)?.kind === 'scene';
+        const scene = live?.lib ? live.lib.kind === 'scene' : live?.m?.kind === 'overlay' && reg?.item(live.m.type)?.kind === 'scene';
         const sel = s.selection.length === 1 ? s.selection[0] : undefined;
-        const swap = live && (live.m.kind === 'overlay' || live.m.kind === 'sfx') ? live.m.type : undefined;
+        const swap = live?.m && (live.m.kind === 'overlay' || live.m.kind === 'sfx') ? live.m.type : undefined;
         const why = swap ? replaceProblem(reg, p, sel, swap) : t('ed.replacePickFirst');
         return (
           <div class="lib-add">
             <button class="primary" data-add-picked disabled={!live || scene} {...tip(!live ? t('ed.addPickedFirst') : scene ? t('ed.sceneAdd') : t('ed.addPickedTip'))}
-              onClick={() => live && editor.addMaterial(live.m)}>+ Add at playhead</button>
+              onClick={() => { if (live?.lib) void editor.useLibraryBlock(live.lib.slug, live.lib.type); else if (live?.m) editor.addMaterial(live.m); }}>+ Add at playhead</button>
             <button data-replace-picked disabled={!!why} {...tip(why || t('ed.replaceTip'))}
               onClick={() => sel && swap && editor.replaceBlock(sel, swap)}>⇄ Replace selected</button>
           </div>

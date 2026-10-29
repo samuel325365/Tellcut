@@ -4,6 +4,7 @@ import type { Clip, Project, SummaryLine } from '@tellcut/engine';
 import type { ExportEntry, JobView } from './api.ts';
 import type { Material } from './audition.ts';
 import { DEFAULT_LAYOUT, type Layout } from './layout.ts';
+import type { LibraryIndex, LibrarySavePreview, ProjectLibraryInfo } from '@tellcut/protocol';
 
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
 export interface ThumbInfo { interval: number; width: number; height: number; cols: number; count: number; url: string }
@@ -75,12 +76,21 @@ export interface EditorState {
   /** track ids locked against the user's own mouse and keys (per project, remembered in the browser; the Agent's proposals
    *  are not held back) */
   locked: string[];
+  /** My blocks (spec 2026-10-29-my-library): the library, what this project has from it, the save dialog, the toast after a save */
+  library: LibraryState;
 }
+
+/** the save dialog of "Save to My blocks": a block (target: its type) or a music style (target: its id); preview: what would be saved
+ *  with it (blocks only); conflict: the name of the entry it runs into, until the user picks replace or keep both */
+export interface SaveDialog { kind: 'block' | 'style'; target: string; name: string; desc: string; category: string; generalize: boolean;
+  preview: LibrarySavePreview | null; conflict: string | null; busy: boolean; error: string }
+export interface LibraryState { index: LibraryIndex | null; project: ProjectLibraryInfo | null; saving: SaveDialog | null; toast: { name: string } | null }
 
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
   thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', importing: null, importNote: '', crop: null, cuts: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
+  library: { index: null, project: null, saving: null, toast: null },
 });
 
 export interface Store<S> { get(): S; set(patch: Partial<S> | ((s: S) => Partial<S>)): void; subscribe(fn: () => void): () => void }

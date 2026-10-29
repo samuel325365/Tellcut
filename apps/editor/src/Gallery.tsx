@@ -2,9 +2,9 @@
 // categories, a grid of cards that show what each block looks like, and a detail panel that is never empty — the first card is picked
 // on arrival, and again whenever a tab, category or search leaves the pick out. Cards show the name Claude uses and the handle
 // people point with (MRK-03, spec 2026-10-22-block-handles); the search finds either.
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import type { Project } from '@tellcut/engine';
-import { PlayerBridge } from './bridge.ts';
+import { PlayerPreview } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
 import { blockCategory, blockProject, byHandle, CLIP_CATEGORY, filterGallery, matches, galleryCategories, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type Tab } from './gallery.ts';
 import { IconMusic, IconPlay, IconSpark } from './icons.tsx';
@@ -41,48 +41,6 @@ function Handle({ id }: { id: string }) {
   const [done, copy] = useCopy(), h = handleOf(id);
   if (!h) return null;
   return <button class="handle" data-card-handle data-handle={h} {...tip(t('gallery.copyHandle', { handle: h }))} onClick={(e) => copy(e, h)}>{h}{done ? ' ✓' : ''}</button>;
-}
-
-/** The player in embed mode, playing `project` in a loop; a new project is patched in without reloading. Without autoplay it plays
- *  only when playKey changes (a sound: the panel always shows one, and opening the tab or searching must not make a noise). */
-function PlayerPreview({ project, loop = true, playKey, autoplay = true }: { project: unknown; loop?: boolean; playKey?: number; autoplay?: boolean }) {
-  const frame = useRef<HTMLIFrameElement>(null), bridge = useMemo(() => new PlayerBridge(location.origin), []);
-  const [error, setError] = useState('');
-  const loaded = useRef(false), lastKey = useRef(playKey), wanted = useRef(false);
-  useEffect(() => {
-    const win = frame.current?.contentWindow;
-    if (!win) return;
-    bridge.attach(win);
-    const on = (e: MessageEvent) => { if (e.origin === location.origin && e.source === win) bridge.handle(e.data); };
-    addEventListener('message', on);
-    bridge.onError = (m) => setError(m);
-    return () => removeEventListener('message', on);
-  }, []);
-  // loop by starting over just before the end: at the end the player shows the last frame without the block (an item ends there),
-  // and a restart takes a moment, which would flash the bare ground
-  useEffect(() => {
-    let dur = 0, restarted = false;
-    bridge.onReady = (d) => { dur = d; restarted = false; if (autoplay || wanted.current) bridge.play(0); wanted.current = false; };
-    bridge.onTime = (t) => {
-      if (t < 1) restarted = false;
-      else if (loop && dur && !restarted && t >= dur - 0.12) { restarted = true; bridge.play(0); }
-    };
-    bridge.onEnded = () => { if (loop) bridge.play(0); };
-  }, [loop]);
-  useEffect(() => {
-    setError('');
-    const asked = playKey !== lastKey.current;
-    lastKey.current = playKey;
-    if (!loaded.current) { bridge.load(project); loaded.current = true; }
-    else { bridge.patch(project); if (autoplay) bridge.play(0); }
-    if (!autoplay && asked) { wanted.current = true; bridge.play(0); }   // not ready yet: played once it is
-  }, [JSON.stringify(project), playKey]);
-  return (
-    <div class="g-player">
-      <iframe ref={frame} title={t('gallery.previewTitle')} src="/player/index.html?embed=1&media=api&id=_gallery" />
-      {error && <p class="err">{t('gallery.previewError', { err: error })}</p>}
-    </div>
-  );
 }
 
 function Params({ type, defs, values, onChange, theme }: { type: string; defs: GalleryBlock['params']; values: Record<string, unknown>; onChange: (k: string, v: unknown) => void; theme?: string }) {

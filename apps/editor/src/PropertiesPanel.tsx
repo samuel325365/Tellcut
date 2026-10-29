@@ -19,7 +19,8 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
   const up = (k: string) => (v: unknown) => editor.update(id, { [k]: v });
   const cropOn = (w: unknown) => (s.crop?.itemId === id && s.crop?.which === w ? 'on' : '');
   const common = <>
-    <h3>{it.label ?? id} <small>{track.kind}</small>{handle && <small class="handle" data-handle={handle} {...tip(t('ed.handleTip', { type: it.type }))}>{handle}</small>}</h3>
+    <h3>{it.label ?? id} <small>{track.kind}</small>{handle && <small class="handle" data-handle={handle} {...tip(t('ed.handleTip', { type: it.type }))}>{handle}</small>}
+      {typeof it.type === 'string' && it.type.startsWith('fx.') && editor.registry?.item(it.type) && <button class="lib-star" data-props-save-block {...tip(t('lib.saveTip'))} onClick={() => editor.openSaveBlock(it.type)}>☆</button>}</h3>
     <TextField label="Label" name="label" value={it.label} onCommit={(v) => editor.update(id, { label: v || undefined })} />
     <NumberField label="Start (s)" name="start" value={it.start} onCommit={up('start')} />
     <NumberField label="End (s)" name="end" value={it.end} onCommit={up('end')} />

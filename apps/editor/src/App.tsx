@@ -9,6 +9,7 @@ import { LibraryPanel } from './LibraryPanel.tsx';
 import { ExportPanel } from './ExportPanel.tsx';
 import { ProposalBar } from './ProposalBar.tsx';
 import { AskAgent } from './AskAgent.tsx';
+import { SaveBlockDialog } from './library/SaveBlockDialog.tsx';
 import { ChatPanel } from './ChatPanel.tsx';
 import { ImportDialog } from './ImportDialog.tsx';
 import type { Attachment } from './attachments.ts';
@@ -162,6 +163,10 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
       <ExportPanel editor={editor} s={s} />
       <ProposalBar editor={editor} s={s} />
       {s.ask && <AskAgent editor={editor} s={s} />}
+      {s.library.saving && <SaveBlockDialog d={s.library.saving} project={s.project} projectId={s.id} kind={editor.registry?.item(s.library.saving.target)?.kind}
+        onPatch={(p) => editor.library.patch(p)} onSave={(c) => void editor.library.save(c)} onClose={() => editor.library.close()} />}
+      {s.library.toast && <div class="lib-toast" role="status" data-lib-toast>{t('lib.saved', { name: s.library.toast.name })}
+        <a href="./?gallery" target="_blank" rel="noopener">{t('lib.seeIt')}</a><button aria-label={t('lib.close')} onClick={() => editor.library.dismissToast()}>×</button></div>}
       {s.helpOpen && <HelpPanel onClose={() => editor.toggleHelp(false)} />}
     </div>
   );
