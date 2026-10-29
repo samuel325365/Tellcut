@@ -1,5 +1,6 @@
 // The home page's presets (spec 2026-10-23-presets-and-languages §5.1, §5.4): a row of 9:16 thumbnails under the chat box. A click
-// opens the preset's dialog (Confirm there tags the composer). The preview only plays while the pointer is on a thumbnail.
+// opens the preset's dialog (Confirm there tags the composer). The preview only plays while the pointer is on a thumbnail. The last
+// card, "New preset", writes a preset of the user's own from nothing (spec 2026-10-29-my-library).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { pickText, type PresetInfo } from '@tellcut/protocol';
 import { t } from './i18n/index.ts';
@@ -17,7 +18,7 @@ export function PresetPoster({ preset, play }: { preset: PresetInfo; play?: bool
   return <span class="poster-fallback" data-poster-fallback style={`background: linear-gradient(160deg, ${preset.color}, ${preset.color}66 70%, #0b0a12)`}>{name}</span>;
 }
 
-export function PresetStrip({ presets, picked, onOpen }: { presets: PresetInfo[]; picked: string | null; onOpen: (id: string) => void }) {
+export function PresetStrip({ presets, picked, onOpen, onNew }: { presets: PresetInfo[]; picked: string | null; onOpen: (id: string) => void; onNew?: () => void }) {
   const lang = useLang(), [hover, setHover] = useState<string | null>(null);
   const strip = useRef<HTMLDivElement>(null), [edge, setEdge] = useState({ prev: false, next: false });
   // which arrows to show: only in a direction that can still scroll
@@ -59,6 +60,7 @@ export function PresetStrip({ presets, picked, onOpen }: { presets: PresetInfo[]
             {p.mine && <span class="preset-mine" data-mine>{t('preset.mine')}</span>}
           </div>
         ))}
+        {onNew && <button class="preset preset-new" data-preset-new data-tip={t('preset.newTip')} onClick={onNew}><span class="plus">＋</span><span>{t('preset.new')}</span></button>}
       </div>
       {edge.prev && <button class="strip-arrow prev" data-strip-prev data-tip={prevTip} aria-label={prevTip} onClick={() => page(-1)}>‹</button>}
       {edge.next && <button class="strip-arrow next" data-strip-next data-tip={nextTip} aria-label={nextTip} onClick={() => page(1)}>›</button>}

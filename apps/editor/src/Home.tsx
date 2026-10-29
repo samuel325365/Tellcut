@@ -11,7 +11,7 @@ import { IconFilm, IconPlus, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { PresetStrip } from './PresetStrip.tsx';
 import { PresetDialog } from './PresetDialog.tsx';
-import type { PresetApi } from './presets/MinePreset.tsx';
+import { NewPresetDialog, type PresetApi } from './presets/MinePreset.tsx';
 import { pickText, type ChatTask, type Lang, type PresetInfo } from '@tellcut/protocol';
 import { t } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
@@ -68,7 +68,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   const lang: Lang = useLang();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState(false), [creating, setCreating] = useState(false);
   const [atts, setAtts] = useState<Attachment[]>([]);
   // the presets under the chat box (spec 2026-10-23-presets-and-languages §5): the one picked tags the next message
   const [presets, setPresets] = useState<PresetInfo[]>([]);
@@ -135,7 +135,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
         </header>
         <ChatPanel key={thread} session={session}
           hint={thread === 'home' ? t('home.hint') : t('home.chatOf', { name: title })}
-          welcome={thread === 'home' ? { title: t('home.welcome'), below: <PresetStrip presets={presets} picked={picked?.id ?? null} onOpen={setInfo} /> } : undefined}
+          welcome={thread === 'home' ? { title: t('home.welcome'), below: <PresetStrip presets={presets} picked={picked?.id ?? null} onOpen={setInfo} onNew={typeof api.savePreset === 'function' ? () => setCreating(true) : undefined} /> } : undefined}
           preset={thread === 'home' && pickedInfo ? { info: pickedInfo, styles: picked!.styles, fields: picked!.fields } : null} onClearPreset={() => { setPicked(null); void session.presetSources([]); }} presetNames={presetNames} append={append}
           attachments={atts} onAttach={() => setImporting(true)} onDetach={(i) => setAtts(atts.filter((_, k) => k !== i))} onSent={() => { setAtts([]); setPicked(null); session.keepPresetSources(); }} />
       </main>
@@ -146,6 +146,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
           setPicked({ id: infoOf.id, styles, fields }); setInfo(null); void session.presetSources(infoOf.sources ?? []);
           if (examples.length) setAppend((a) => ({ text: examples.join('\n'), n: a.n + 1 }));
         }} />}
+      {creating && <NewPresetDialog api={api as PresetApi} onSaved={() => void loadPresets()} onClose={() => setCreating(false)} />}
       {importing && <ImportDialog api={api} onAdd={add} onClose={() => setImporting(false)} />}
       {deleting && <DeleteDialog project={{ id: deleting.id, name: deleting.name, thumb: thumbOf(deleting) }} api={api} onClose={() => setDeleting(null)}
         onDeleted={() => { setDeleting(null); void loadProjects(); }} />}

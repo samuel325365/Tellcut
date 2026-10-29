@@ -134,7 +134,7 @@ Most editors forget everything the moment you close the project. Tellcut keeps w
 
 - **What you see is everything the agent gets.** A preset's points are its whole instruction: delete a point and that instruction is gone.
 - **Old films never change behind your back.** A block is copied into each project that uses it. Improve it later and the other projects show **Update**; they switch only when you press it.
-- **No film needed.** Choose options in the **Custom** form and press **Save as my preset**.
+- **No film needed.** Choose options in the **Custom** form and press **Save as my preset**, or press **New preset** at the end of the home page's presets and write the points yourself.
 - Browse, rename or try them in the block gallery's **Mine** category, or ask the agent to change one for you.
 
 ---

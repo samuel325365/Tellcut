@@ -126,6 +126,7 @@ export const api = {
   savePreset: (b: Record<string, unknown>) => req<PresetInfo>('/api/presets', jsonPost(b)),
   updatePreset: (id: string, b: Record<string, unknown>) => req<PresetInfo>(`/api/presets/${enc(id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
   deletePreset: (id: string) => req<{ ok: true }>(`/api/presets/${enc(id)}`, { method: 'DELETE' }),
+  formPoints: (b: Record<string, unknown>) => req<{ points: Array<{ text: string; prompt: string }> }>('/api/presets/form-points', jsonPost(b)),
   presetPoster: (id: string, file: Blob) => req<PresetInfo>(`/api/presets/${enc(id)}/poster`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file }),
   /** the home page's presets (spec 2026-10-23-presets-and-languages §3.3) */
   presets: () => req<{ presets: PresetInfo[] }>('/api/presets'),

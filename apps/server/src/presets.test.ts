@@ -233,6 +233,26 @@ test('saving from the custom form: each option set is a point in the user’s wo
   } finally { await app.close(); }
 });
 
+test('the form’s points come first for the dialog; what it sends is saved, the user’s own words as their own prompt; none is refused', async () => {
+  const { d, app, send } = await mine();
+  try {
+    const { points } = await (await send('POST', '/api/presets/form-points', { fields: { ratio: '9:16' }, examples: ['復古底片感'], lang: 'zh' })).json();
+    expect(points).toEqual([{ text: '9:16 直式', prompt: 'Make it 9:16.' }, { text: '復古底片感', prompt: '復古底片感' }]);
+    const info = await (await send('POST', '/api/presets', { from: 'form', name: '我的', fields: { ratio: '9:16' }, points: [points[0], { text: '每段不超過 3 秒', prompt: '每段不超過 3 秒' }], lang: 'zh' })).json();
+    expect(info.points).toEqual(['9:16 直式', '每段不超過 3 秒']);
+    expect(findPreset(d, info.id)).toMatchObject({ ratios: ['9:16'], genres: true });
+    expect(findPreset(d, info.id)!.prompt).toContain('- 每段不超過 3 秒');
+    // a new preset from nothing: no form, only the user's points
+    const blank = await (await send('POST', '/api/presets', { from: 'form', name: '空白', fields: {}, points: [{ text: '慢一點', prompt: '慢一點' }], lang: 'zh' })).json();
+    expect(blank.points).toEqual(['慢一點']);
+    const none = await send('POST', '/api/presets', { from: 'form', name: 'x', fields: {}, points: [{ text: ' ', prompt: '' }], lang: 'zh' });
+    expect(none.status).toBe(400);
+    expect((await none.json()).code).toBe('preset.noPoints');
+    expect((await send('POST', '/api/presets', { from: 'form', name: 'x', fields: {}, examples: [], lang: 'zh' })).status).toBe(400);
+    expect((await send('PUT', `/api/presets/${info.id}`, { points: [], lang: 'zh' })).status).toBe(400);
+  } finally { await app.close(); }
+});
+
 test('a preset of the user’s own is edited, renamed, given a poster and deleted; a repo one is not', async () => {
   const { d, app, base, send } = await mine();
   try {

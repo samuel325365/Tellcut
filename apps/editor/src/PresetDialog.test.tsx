@@ -2,6 +2,7 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { PresetDialog } from './PresetDialog.tsx';
+import { NewPresetDialog } from './presets/MinePreset.tsx';
 import { setLang } from './i18n/lang.ts';
 import { DICTS } from './i18n/index.ts';
 
@@ -171,9 +172,11 @@ function presetApi() {
     updatePreset: async (id: string, b: any) => { calls.push(['update', id, b]); return MINE; },
     deletePreset: async (id: string) => { calls.push(['delete', id]); return { ok: true }; },
     presetPoster: async (id: string) => { calls.push(['poster', id]); return MINE; },
+    formPoints: async (b: any) => { calls.push(['points', b]); return { points: [{ text: '9:16 直式', prompt: 'Make it 9:16.' }, { text: '復古底片感', prompt: '復古底片感' }] }; },
   } };
 }
 const type = (el: Element | null, v: string) => act(() => { const e = el as HTMLInputElement; e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); });
+const tick = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 const clickOn = (root: Element, sel: string) => act(async () => { root.querySelector<HTMLElement>(sel)!.click(); await new Promise((r) => setTimeout(r, 0)); });
 
 test('a preset of the user’s own shows its points and what it uses, a deleted block marked', async () => {
@@ -222,7 +225,7 @@ test('edit: a point left alone is named by what it was, a changed one goes in th
   expect(root.querySelector('[data-save-preset-dialog]')).toBeNull();
 });
 
-test('the custom form saves the options chosen as a preset of the user’s own', async () => {
+test('the custom form opens the save dialog on its options as points; the user adds their own, and none at all cannot be saved', async () => {
   const CUSTOM: any = { ...TRAVEL, id: 'custom', styles: [], examples: [{ zh: '復古底片感' }],
     fields: [{ id: 'ratio', name: { zh: '比例' }, options: [{ id: '9:16', name: { zh: '9:16 直式' } }, { id: '16:9', name: { zh: '16:9 橫式' } }] }] };
   const root = document.createElement('div'), { api, calls } = presetApi();
@@ -231,8 +234,40 @@ test('the custom form saves the options chosen as a preset of the user’s own',
   await clickOn(root, '[data-option="9:16"]');
   await clickOn(root, '[data-example]');
   await clickOn(root, '[data-preset-save-form]');
-  await type(root.querySelector('[data-preset-form-name]'), '我的直式');
-  await clickOn(root, '[data-preset-form-save]');
-  expect(calls[0]).toEqual(['save', { from: 'form', name: '我的直式', color: '#4263eb', fields: { ratio: '9:16' }, examples: ['復古底片感'], lang: 'zh' }]);
+  await tick();
+  expect(calls[0]).toEqual(['points', { fields: { ratio: '9:16' }, examples: ['復古底片感'], lang: 'zh' }]);
+  const dlg = root.querySelector('[data-save-preset-dialog="save"]')!;
+  expect([...dlg.querySelectorAll<HTMLInputElement>('[data-preset-points] input')].map((x) => x.value)).toEqual(['9:16 直式', '復古底片感']);
+  expect(dlg.querySelector('[data-preset-only]')!.textContent).toBe(DICTS.zh['preset.pointsOnly']);
+  await type(dlg.querySelector('[data-preset-name]'), '我的直式');
+  await clickOn(dlg, '[data-preset-point-remove="1"]');
+  await clickOn(dlg, '[data-preset-point-add]');
+  await type(dlg.querySelector('[data-preset-point="1"]'), '每段不超過 3 秒');
+  await clickOn(dlg, '[data-preset-save]');
+  expect(calls[1]).toEqual(['save', { from: 'form', name: '我的直式', summary: '', color: '#4263eb', fields: { ratio: '9:16' }, lang: 'zh',
+    points: [{ text: '9:16 直式', prompt: 'Make it 9:16.' }, { text: '每段不超過 3 秒', prompt: '每段不超過 3 秒' }] }]);
   expect(changed).toBe(1);
+  expect(root.querySelector('[data-save-preset-dialog]')).toBeNull();
+  // every point removed: nothing to save
+  await clickOn(root, '[data-preset-save-form]');
+  await tick();
+  const again = root.querySelector('[data-save-preset-dialog="save"]')!;
+  await type(again.querySelector('[data-preset-name]'), 'x');
+  await clickOn(again, '[data-preset-point-remove="0"]');
+  await clickOn(again, '[data-preset-point-remove="0"]');
+  expect(again.querySelector<HTMLButtonElement>('[data-preset-save]')!.disabled).toBe(true);
+});
+
+test('a new preset from nothing starts on one empty point and saves only the user’s words', async () => {
+  const root = document.createElement('div'), { api, calls } = presetApi();
+  let saved = 0, closed = 0;
+  await act(() => render(<NewPresetDialog api={api} onSaved={() => saved++} onClose={() => closed++} />, root));
+  const dlg = root.querySelector('[data-save-preset-dialog="save"]')!;
+  expect(dlg.querySelectorAll('[data-preset-points] li').length).toBe(1);
+  await type(dlg.querySelector('[data-preset-name]'), '我的節奏');
+  expect(dlg.querySelector<HTMLButtonElement>('[data-preset-save]')!.disabled).toBe(true);
+  await type(dlg.querySelector('[data-preset-point="0"]'), '每段不超過 3 秒');
+  await clickOn(dlg, '[data-preset-save]');
+  expect(calls).toEqual([['save', { from: 'form', name: '我的節奏', summary: '', color: '#4263eb', fields: {}, lang: 'zh', points: [{ text: '每段不超過 3 秒', prompt: '每段不超過 3 秒' }] }]]);
+  expect([saved, closed]).toEqual([1, 1]);
 });

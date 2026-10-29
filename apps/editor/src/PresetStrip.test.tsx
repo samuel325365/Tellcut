@@ -101,3 +101,15 @@ test('a thumbnail announces that it opens a dialog', async () => {
     expect([...root.querySelectorAll('[data-preset]')].every((e) => e.getAttribute('aria-haspopup') === 'dialog')).toBe(true);
   } finally { restore(); }
 });
+
+test('"New preset" is the last card, only when it can be saved', async () => {
+  const root = document.createElement('div');
+  let n = 0;
+  await act(() => render(<PresetStrip presets={PRESETS} picked={null} onOpen={() => {}} onNew={() => n++} />, root));
+  const cards = [...root.querySelectorAll('[data-preset-strip] > *')];
+  expect(cards.at(-1)!.hasAttribute('data-preset-new')).toBe(true);
+  await act(() => { (cards.at(-1) as HTMLElement).click(); });
+  expect(n).toBe(1);
+  await act(() => render(<PresetStrip presets={PRESETS} picked={null} onOpen={() => {}} />, root));
+  expect(root.querySelector('[data-preset-new]')).toBeNull();
+});

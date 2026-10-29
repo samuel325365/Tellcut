@@ -1,7 +1,8 @@
 // The presets' routes (spec 2026-10-23-presets-and-languages §3): the list for the home page and each preset's poster and preview.
 // Presets of the user's own (spec 2026-10-29-my-library §3.5–3.7, §4.5): saved from a film (the agent's draft as the user edited it,
 // its blocks and music style saved into My blocks along the way) or from the custom form, then edited, renamed, given a poster or
-// deleted; only my-* ones. Reading and parsing them is media-node's (presets.ts, preset-write.ts), shared with `check`.
+// deleted; only my-* ones. One from the form (or from nothing: the home page's "New preset") is saved through the same dialog, its
+// points first filled from the options chosen. Reading and parsing them is media-node's (presets.ts, preset-write.ts), shared with `check`.
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -76,9 +77,18 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
   if (!o) return;
   const root = libraryRoot(o.projectsDir), poster = o.poster ?? projectPoster(o.plugins);
 
+  // the custom form as the points "Save as my preset" opens on (each option's name and its line for the agent), before anything is saved
+  r.post('/api/presets/form-points', async (req, res) => { const b: any = await readJson(req); sendJson(res, 200, { points: fromForm(dirs, b, langOf(b?.lang)).points }); });
+
   r.post('/api/presets', async (req, res) => {
     const b: any = await readJson(req), lang = langOf(b?.lang);
-    if (b?.from === 'form') { answer(res, writeUserPreset(dirs, { ...fromForm(dirs, b, lang), name: str(b.name), summary: str(b.summary), lang, ...(typeof b.color === 'string' && /^#[0-9a-f]{6}$/i.test(b.color) ? { color: b.color } : {}), genres: true })); return; }
+    if (b?.from === 'form') {
+      // the dialog sends the points as the user left them; without them, the form's own (an older page)
+      const form = fromForm(dirs, b, lang), points = Array.isArray(b.points) ? pointsOf(b.points, form.points) : form.points;
+      if (!points.length) throw new HttpError(400, 'A preset needs at least one point', { code: 'preset.noPoints' });
+      answer(res, writeUserPreset(dirs, { ...form, points, name: str(b.name), summary: str(b.summary), lang, ...(typeof b.color === 'string' && /^#[0-9a-f]{6}$/i.test(b.color) ? { color: b.color } : {}), genres: true }));
+      return;
+    }
     if (b?.from !== 'project' || typeof b.project !== 'string') throw new HttpError(400, 'from must be project or form');
     const dir = o.store.dir(b.project), file = join(dir, 'preset-draft.json');
     if (!existsSync(file)) throw new HttpError(404, 'No preset draft', { code: 'preset.noDraft' });
@@ -122,6 +132,7 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
   r.put('/api/presets/:id', async (req, res, { id }) => {
     const p = mine(id), b: any = await readJson(req), lang = langOf(b?.lang), inc = b?.include;
     const keep = (k: 'theme' | 'score' | 'blocks') => (inc && inc[k] === false ? undefined : p[k]);
+    if (Array.isArray(b?.points) && !pointsOf(b.points, p.points).length) throw new HttpError(400, 'A preset needs at least one point', { code: 'preset.noPoints' });
     answer(res, writeUserPreset(dirs, { name: str(b?.name) || (p.name[lang] ?? Object.values(p.name)[0] ?? id), summary: typeof b?.summary === 'string' ? b.summary : p.summary[lang] ?? Object.values(p.summary)[0] ?? '',
       points: Array.isArray(b?.points) ? pointsOf(b.points, p.points) : p.points, lang, color: p.color, ratios: p.ratios, length: p.length, genres: p.genres,
       theme: keep('theme'), score: keep('score') as string | undefined, blocks: keep('blocks') as string[] | undefined }, id));
