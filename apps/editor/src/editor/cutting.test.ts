@@ -34,6 +34,12 @@ test('edgeTargets: a clip and its own sound selected together count once (trimmi
   expect(edgeTargets(p, resolveTimes(p), 2, ['c1', 'o1'], new Set())).toEqual(['c1']);
 });
 
+test('edgeTargets: another sound hung on a selected clip is cut too when it is selected (only the own sound goes with the clip)', () => {
+  const p = fixture();
+  (p.tracks.find((t) => t.id === 'au')!.items as any[]).push({ id: 'n1', source: 'a', in: 0, rate: 1, start: 0.5, end: 3, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c1' });
+  expect(edgeTargets(p, resolveTimes(p), 2, ['c1', 'n1'], new Set())).toEqual(['c1', 'n1']);
+});
+
 test('edgeTargets: nothing under the playhead, or an empty project → null', () => {
   const p = fixture();
   expect(edgeTargets(p, resolveTimes(p), 15, [], new Set())).toBeNull();

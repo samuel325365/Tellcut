@@ -1,6 +1,6 @@
 // Where the timeline's cutting keys act (spec 2026-10-28-timeline-refresh A2): the cut points ↑ / ↓ jump between, and the
 // clips Q / W cut at the playhead.
-import { magneticTrack, type AnyItem, type Project, type Times } from '@tellcut/engine';
+import { magneticTrack, ownSounds, type AnyItem, type Project, type Times } from '@tellcut/engine';
 
 const MEDIA = new Set(['video', 'audio', 'music']);
 const EPS = 1e-6;
@@ -32,8 +32,9 @@ export function edgeTargets(p: Project, times: Times, t: number, selection: stri
   const tracks = p.tracks.filter((tr) => !skip.has(tr.id));
   if (selection.length) {
     const picked = tracks.filter((tr) => MEDIA.has(tr.kind)).flatMap((tr) => (tr.items as AnyItem[]).filter((it) => selection.includes(it.id) && under(times.get(it.id), t)));
-    const ids = new Set(picked.map((it) => it.id));
-    const out = picked.filter((it) => it.parent === undefined || !ids.has(it.parent)).map((it) => it.id);
+    // trimming a clip trims only its own sound; another sound hung on it, selected too, is cut by itself
+    const own = new Set(picked.flatMap((it) => ownSounds(p, it.id)).map((c) => c.id));
+    const out = picked.filter((it) => !own.has(it.id)).map((it) => it.id);
     return out.length ? out : null;
   }
   const mag = magneticTrack(p);
