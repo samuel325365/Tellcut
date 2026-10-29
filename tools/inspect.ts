@@ -1,4 +1,4 @@
-// What a project's material is, with every analysis done (spec 2026-10-14 §8).
+// What a project's material is, with every analysis done (spec 2026-10-14 §8); when the timeline has clips, which source each one plays.
 //   npm run inspect -- <id> [--json] [--no-transcribe]
 //   npm run inspect -- <id> --source <素材>                    one source in detail: scenes, sentences with times, big sheets
 //   npm run inspect -- <id> --source <素材> --range 5:00-6:30   one stretch: a frame every few seconds with its time, its scenes and sentences
@@ -6,6 +6,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { TELLCUT_ROOT, tellcutUrl } from '@tellcut/media-node';
+import { formatClips, timelineClips } from './inspect-clips.ts';
 import { busyFromJobs, formatInventory, formatSource, formatSourceRange, inventory, parseRange, type ServerBusy } from './cut/inventory.ts';
 
 /** what the Tellcut server (if it runs) is analysing for this project: inspect neither waits for it nor does it again */
@@ -27,6 +28,9 @@ try {
   else if (range) throw new Error('--range 要配合 --source <素材>');
   else if (process.argv.includes('--json')) {
     const { project: _p, ...rest } = inv;
-    console.log(JSON.stringify(rest, null, 2));
-  } else console.log(formatInventory(inv));
+    console.log(JSON.stringify({ ...rest, clips: timelineClips(inv.project) }, null, 2));
+  } else {
+    const clips = formatClips(inv.project);
+    console.log(formatInventory(inv) + (clips.length ? `\n\n${clips.join('\n')}` : ''));
+  }
 } catch (e) { console.error((e as Error).message); process.exit(1); }
