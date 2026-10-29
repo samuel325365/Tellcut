@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import type { ItemType, ParamDef, Plugin } from '@tellcut/engine';
-import { loadStyles, SCORE_LIBRARY, sendFile, TELLCUT_ROOT, STYLES } from '@tellcut/media-node';
+import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_ROOT, STYLES } from '@tellcut/media-node';
 // the recipes are tools code (they drive Cut); the gallery only reads their names, notes and examples. Moving them into a package of
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
@@ -67,13 +67,15 @@ export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: st
   // a 12-second preview of a music style; the same request comes from the cache
   r.get('/api/gallery/score/:style', async (req, res, { style }, url) => {
     const id = style.replace(/\.wav$/, ''), seed = num(url.searchParams.get('seed')) ?? 1, bpm = num(url.searchParams.get('bpm')), key = url.searchParams.get('key') || undefined;
-    const lib = await loadStyles([o.library ?? SCORE_LIBRARY]);
-    if (!STYLES[id] && !lib.styles[id]) throw new HttpError(404, `No music style "${id}"`);
-    const dir = join(o.projectsDir, '_gallery'), file = join(dir, `score-${id}-${seed}-${bpm ?? 'd'}-${(key ?? 'd').replace(/[^\w#]/g, '')}.wav`);
+    // a shared style, or one of the user's own (spec 2026-10-29-my-library §3.4): composed from the folder it is in
+    const shared = o.library ?? SCORE_LIBRARY, mine = stylesDir(libraryRoot(o.projectsDir));
+    const library = STYLES[id] || (await loadStyles([shared])).styles[id] ? shared : (await loadStyles([mine])).styles[id] ? mine : null;
+    if (!library) throw new HttpError(404, `No music style "${id}"`);
+    const dir = join(o.projectsDir, '_gallery'), file = join(dir, `score-${library === mine ? 'mine-' : ''}${id}-${seed}-${bpm ?? 'd'}-${(key ?? 'd').replace(/[^\w#]/g, '')}.wav`);
     // the same preview asked twice at once (a double click) is composed once
     if (!existsSync(file)) {
       let job = composing.get(file);
-      if (!job) { job = compose({ style: id, library: o.library ?? SCORE_LIBRARY, seed, bpm, key, file }).finally(() => composing.delete(file)); composing.set(file, job); }
+      if (!job) { job = compose({ style: id, library, seed, bpm, key, file }).finally(() => composing.delete(file)); composing.set(file, job); }
       await job;
     }
     sendFile(req, res, file);

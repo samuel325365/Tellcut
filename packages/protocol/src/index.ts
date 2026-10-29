@@ -165,3 +165,19 @@ export interface GallerySfx { plugin: string; type: string; label: string; doc: 
 export interface GalleryStyle { id: string; label: string; doc: string; defaults: { bpm: number; key: string }; origin: 'built-in' | 'library' }
 export interface GalleryRecipe { id: string; label: string; doc: string; notes: string[]; example: unknown }
 export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[] }
+
+// ---------------------------------------------------------------- the user's own library (spec 2026-10-29-my-library)
+/** one card of My blocks: a block of a saved entry; `main`: the entry's module (its preview loads it); `group`: the entry's
+ *  other blocks (saved, renamed apart, deleted together); `thumb`: its picture, null until drawn */
+export interface LibraryBlockInfo { slug: string; type: string; name: string; desc: string; category?: string; kind: 'scene' | 'overlay'; params: ParamDef[];
+  main: string; thumb: string | null; from: { project: string; file: string }; savedAt: string; version: string; group: string[]; theme?: unknown }
+export interface LibraryStyleInfo { slug: string; id: string; name: string; desc: string; defaults: { bpm: number; key: string }; from: { project: string; file: string }; savedAt: string }
+export interface LibraryIndex { blocks: LibraryBlockInfo[]; styles: LibraryStyleInfo[] }
+/** a project and the library: its copies of entries (`outdated`: the library has a newer one; `gone`: deleted there), the
+ *  files and style ids already saved from it (★), and its own music styles (to save with ☆) */
+export interface ProjectLibraryInfo { links: Array<{ slug: string; file: string; types: string[]; outdated: boolean; gone: boolean }>; savedFiles: string[]; savedStyles: string[];
+  styles: Array<{ id: string; label: string; file: string }> }
+/** what deleting an entry touches: the projects with a copy (they keep it) and the presets of the user's naming it */
+export interface LibraryUsage { projects: number; presets: string[] }
+/** the save dialog's look before saving (POST …?dry=1) */
+export interface LibrarySavePreview { dry: true; files: string[]; skipped: string[]; group: string[]; conflict: { slug: string; name: string; types: string[] } | null }

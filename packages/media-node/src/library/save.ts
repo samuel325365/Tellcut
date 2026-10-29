@@ -163,3 +163,15 @@ export async function refreshBlock(root: string, slug: string): Promise<BlockEnt
   writeBlockEntry(root, next);
   return next;
 }
+
+/** what saveBlock would do, written nowhere (the save dialog's "saved along with it" lines): the files, what cannot be
+ *  followed, the module's other blocks (`type` aside) and the entry it would run into */
+export async function previewBlock(i: SaveBlockInput & { type?: string }): Promise<{ files: string[]; skipped: string[]; group: string[]; conflict: { slug: string; name: string; types: string[] } | null }> {
+  const loaded = await loadProjectFx(i.projectDir, [i.file]);
+  if (loaded.errors.length) throw new LibraryError('library.loadFailed', `${i.file} 載入失敗：${loaded.errors[0].message}`, { file: i.file });
+  const ids = (loaded.plugin.items ?? []).map((t) => t.type), { files, skipped } = collectFiles(i.projectDir, i.file);
+  const from: LibraryFrom = { project: i.projectId, file: i.file };
+  const hit = listLibrary(i.root).blocks.find((e) => !sameFrom(e.from, from) && e.types.some((t) => ids.includes(t.type)));
+  return { files, skipped, group: ids.filter((x) => x !== i.type),
+    conflict: hit ? { slug: hit.slug, name: hit.types[0]?.name ?? hit.slug, types: ids.filter((x) => hit.types.some((t) => t.type === x)) } : null };
+}

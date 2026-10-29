@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve, sep } from 'node:path';
 import { createRegistry, type Registry } from '@tellcut/engine';
-import { LOOPBACK_HOST, projectRegistry, sendFile } from '@tellcut/media-node';
+import { LOOPBACK_HOST, makeThumb, projectRegistry, sendFile } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { HttpError, router, sendJson } from './http.ts';
 import { ProjectStore, projectRoutes } from './projects.ts';
@@ -11,6 +11,7 @@ import { JobQueue, jobRoutes, type JobInfo } from './jobs.ts';
 import { mediaRoutes } from './media.ts';
 import { exportRoutes } from './export.ts';
 import { galleryRoutes } from './gallery.ts';
+import { libraryRoutes } from './library.ts';
 import { liveRoutes } from './live.ts';
 import { deleteRoutes } from './delete.ts';
 import { requestRoutes } from './requests.ts';
@@ -32,7 +33,9 @@ export interface AppOptions { projectsDir: string; playerDist?: string; editorDi
   /** where the presets are read from (tests point them at a temporary folder); default guides/presets and <projectsDir>/_presets */
   presetDirs?: PresetDirs;
   /** the outside sources the API menu lists (tests pass their own); default tellcut/sources.json and sources.local.json */
-  sources?: () => Sources }
+  sources?: () => Sources;
+  /** draws a saved library entry's thumbnail (tests pass a stand-in: no Chrome); default the player in headless Chrome */
+  libraryThumb?: (root: string, slug: string) => Promise<unknown> }
 
 // a page may change things only from this server's own address: the editor's Vite dev server proxies /api here keeping its
 // Host (127.0.0.1:5173), so its pages still match; a page on any other local port (another dev server, a notebook) does not
@@ -54,6 +57,7 @@ export function createApp(o: AppOptions) {
   const live = liveRoutes(r, store, { timeout: o.liveTimeout });
   requestRoutes(r, store);
   galleryRoutes(r, { plugins, projectsDir: o.projectsDir });
+  libraryRoutes(r, { projectsDir: o.projectsDir, store, thumb: o.libraryThumb ?? ((root, slug) => makeThumb(root, slug, plugins)) });
   const tellcutDir = TELLCUT_ROOT;
   const presetDirs = o.presetDirs ?? { repo: join(tellcutDir, 'guides', 'presets'), user: join(o.projectsDir, '_presets') };
   presetRoutes(r, presetDirs);
