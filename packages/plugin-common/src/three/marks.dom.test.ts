@@ -4,6 +4,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import { makeKit } from './kit.ts';
 import { edgeColour } from './marks.ts';
+import { dogSvg } from '../dachshund.ts';
 
 const kit = () => makeKit(THREE, { RoundedBoxGeometry, SVGLoader } as any, { makeRenderer: () => null });
 const TELLCUT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#2f8cff"/><path d="M12 9 L24 16 L12 23 Z" fill="#f6f7f9"/></svg>';
@@ -149,4 +150,11 @@ test('mixed Latin and CJK share one baseline, left to right', () => {
   const xs = w.letters.map((l) => l.x);
   expect([...xs].sort((a, b) => a - b)).toEqual(xs);
   for (const l of w.letters) expect(l.g.position.y).toBe(0);
+});
+
+test('svgMark: the Tellcut dachshund extrudes with its ten sprocket holes as holes in the body', () => {
+  const ms = meshes(kit().svgMark(dogSvg({ look: 'light', holes: 'cut' }))!.group);
+  const holes = ms.flatMap((x) => ((x.geometry as THREE.ExtrudeGeometry).parameters.shapes as THREE.Shape[] | THREE.Shape))
+    .flatMap((s) => (Array.isArray(s) ? s : [s])).map((s) => s.holes.length);
+  expect(Math.max(...holes)).toBe(10);
 });

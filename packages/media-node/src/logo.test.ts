@@ -13,10 +13,10 @@ let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'logo-')); writeFileSync(join(dir, 'project.json'), '{}'); });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-test('the Tellcut SVG is extrudable and its colours are the blue and the white', async () => {
+test('the Tellcut dachshund is extrudable and its colours are the black and the cream', async () => {
   const i = await inspectLogo(fixture('tellcut.svg'));
-  expect(i).toMatchObject({ kind: 'svg', width: 32, height: 32, extrudable: true });
-  expect(i.colors.slice(0, 2)).toEqual(['#2f8cff', '#f6f7f9']);
+  expect(i).toMatchObject({ kind: 'svg', width: 160, height: 80, extrudable: true });
+  expect(i.colors.slice(0, 2)).toEqual(['#161412', '#d8b88a']);
 });
 
 test('inspectLogo tells why an SVG cannot be extruded', async () => {

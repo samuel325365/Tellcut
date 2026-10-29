@@ -22,9 +22,9 @@ const HOLE_X = [38, 52, 66, 80, 94], HOLE_Y = [28, 47];
 export const DOG_SHAPES: readonly DogShape[] = [
   // the tail: the draft's 7-wide stroke along M30 34 Q22 27 17 15, as a filled taper with a round tip
   { d: 'M32.3 31.37 Q24.2 25.3 19.03 14.15 A2.2 2.2 0 0 0 14.97 15.85 Q19.8 28.7 27.7 36.63 Z', role: 'body', part: 'tail' },
-  { d: rect(40, 48, 9, 18, 4.5), role: 'body', part: 'backLeg' },
+  { d: rect(40, 53, 9, 13, 4.5), role: 'body', part: 'backLeg' },
   { d: rect(40, 59, 9, 7, 3.5), role: 'mark', part: 'backLeg', detail: true },
-  { d: rect(102, 48, 9, 18, 4.5), role: 'body', part: 'frontLeg' },
+  { d: rect(102, 53, 9, 13, 4.5), role: 'body', part: 'frontLeg' },
   { d: rect(102, 59, 9, 7, 3.5), role: 'mark', part: 'frontLeg', detail: true },
   { d: rect(26, 24, 102, 32, 9), role: 'body', part: 'body' },
   ...HOLE_Y.flatMap((y) => HOLE_X.map((x): DogShape => ({ d: rect(x, y, 7, 5, 1.5), role: 'hole', part: 'body', detail: true }))),
@@ -39,7 +39,7 @@ export const DOG_SHAPES: readonly DogShape[] = [
 ];
 
 /** where each moving part turns: the tail's root, the hips, the neck */
-export const DOG_PIVOTS = { tail: [30, 34], backLeg: [44.5, 50], frontLeg: [106.5, 50], head: [118, 32] } as const;
+export const DOG_PIVOTS = { tail: [30, 34], backLeg: [44.5, 55], frontLeg: [106.5, 55], head: [118, 32] } as const;
 
 /** the band between the two rows of holes where frames of footage go */
 export const DOG_BAND = { x: 34, y: 34, w: 70, h: 12, count: 5, gap: 2 };
@@ -64,7 +64,7 @@ export function dogSvg(o: { look: DogLook; icon?: boolean; holes: 'paint' | 'cut
   }).join('');
   if (o.icon) {
     const tile = o.tile ?? (o.look === 'light' ? '#f4ebdd' : '#161412'), size = o.size ? ` width="${o.size}" height="${o.size}"` : '';
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"${size}><rect width="64" height="64" rx="14" fill="${tile}"/><g transform="translate(2.25 18.5) scale(0.35)">${paths}</g></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"${size}><rect width="64" height="64" rx="14" fill="${tile}"/><g transform="translate(-2 16.6) scale(0.4)">${paths}</g></svg>`;
   }
   const size = o.size ? ` width="${o.size}" height="${n(o.size / 2)}"` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"${size}>${paths}</svg>`;
