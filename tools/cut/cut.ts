@@ -76,6 +76,9 @@ export function editedSinceCut(dir: string): boolean {
   try { was = JSON.parse(readFileSync(stateFile(dir), 'utf8'))?.hash; } catch { return false; }
   return was !== hash(readFileSync(f, 'utf8'));
 }
+const fileHash = (dir: string) => { const f = join(dir, 'project.json'); return existsSync(f) ? hash(readFileSync(f, 'utf8')) : null; };
+/** project.json changed while the cut ran (save() refuses to write over it): tools/cut.ts prints the message */
+export class EditedDuringCut extends Error {}
 
 export class Cut {
   private cursor = 0;
@@ -115,9 +118,14 @@ export class Cut {
     const used = new Set(this.p.tracks.flatMap((t) => (t.items as Array<{ media?: string }>).map((i) => i.media).filter(Boolean)));
     for (const [k, m] of Object.entries(this.p.media)) if (/^media\/(voice\/|score-)/.test(m.path) && !used.has(k)) delete this.p.media[k];
   }
-  static async open(dir: string, o: { transcribe?: boolean; log?: (s: string) => void } = {}) {
+  /** project.json as open() read it, and whether save() may write over a change since (--force) */
+  private opened?: { hash: string | null; force: boolean };
+  static async open(dir: string, o: { transcribe?: boolean; log?: (s: string) => void; force?: boolean } = {}) {
+    // read in the same tick as inventory()'s own read of project.json, before any analysis awaits
+    const opened = { hash: fileHash(dir), force: !!o.force };
     const inv = await inventory(dir, o);
     const c = new Cut(structuredClone(inv.project), inv, dir);
+    c.opened = opened;
     // the score-library's and the project's own music styles: beatLen needs their bpm before the music is composed
     try { for (const s of Object.values((await loadAllStyles(dir)).styles)) c.styleBpm[s.id] = s.defaults.bpm; } catch { /* a broken style is score()'s to report */ }
     return c;
@@ -716,6 +724,9 @@ export class Cut {
       if (g.count) { delete (mag as any).magnetic; this.notes.push(`主軌有 ${g.count} 個空檔（共 ${g.shift} 秒）：存成一般軌（不磁吸），編輯器裡的修改不會把空檔合起來`); }
     }
     const p = parseProject(this.p);
+    // a cut runs for minutes (transcribing, faces, score): an edit the editor saved meanwhile is not the script's to overwrite
+    if (this.opened && !this.opened.force && fileHash(this.dir) !== this.opened.hash)
+      throw new EditedDuringCut('初剪執行期間這個專案被編輯過（編輯器存檔或其他工具），沒有寫入，那些修改都還在。確定要覆蓋請加上 --force 重跑');
     writeProjectFile(this.dir, p, 'cut');
     mkdirSync(join(this.dir, 'cache'), { recursive: true });
     writeFileSync(stateFile(this.dir), JSON.stringify({ hash: hash(readFileSync(join(this.dir, 'project.json'), 'utf8')) }));

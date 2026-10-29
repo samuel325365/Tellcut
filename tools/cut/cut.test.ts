@@ -155,6 +155,23 @@ test('save: the length follows the edit, music fades at the end, a beat grid, a 
   expect(existsSync(join(c.dir, 'cache', 'cut-state.json'))).toBe(true);
 });
 
+test('save: an edit saved while the cut ran (transcribing, scoring) is not written over; --force writes anyway', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cut-'));
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(base()));
+  const c = await Cut.open(dir);
+  const edited = JSON.stringify({ ...base(), meta: { ...base().meta, name: 'edited in the editor' } });
+  writeFileSync(join(dir, 'project.json'), edited);
+  await expect(c.save()).rejects.toThrow(/--force/);
+  expect(readFileSync(join(dir, 'project.json'), 'utf8')).toBe(edited);
+  expect(existsSync(join(dir, 'cache', 'cut-state.json'))).toBe(false);
+  const forced = await Cut.open(dir, { force: true });
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(base()));
+  await forced.save();
+  expect(editedSinceCut(dir)).toBe(false);
+  const again = await Cut.open(dir);   // unchanged since open: no complaint
+  await again.save();
+});
+
 test('a first cut has a magnetic main track and music that ends with the film', async () => {
   const c = fresh();
   c.music('song');
