@@ -6,18 +6,20 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadAllStyles, SCORE_LIBRARY, TELLCUT_ROOT, STYLES, writeScore, type LoadedStyles } from '@tellcut/media-node';
+import { libraryRoot, listLibrary, loadAllStyles, SCORE_LIBRARY, TELLCUT_ROOT, STYLES, writeScore, type LoadedStyles, type StyleEntry } from '@tellcut/media-node';
 import { handleOf } from '@tellcut/protocol';
 import { fxChecks } from './check/rules.ts';
 
 const projectDir = (id: string) => join(TELLCUT_ROOT, 'projects', id);
 
-export function listStyles(loaded: LoadedStyles = { styles: {}, errors: [], warnings: [] }): string {
+/** mine: the user's own styles (spec 2026-10-29-my-library §3.3), copied into the project before use */
+export function listStyles(loaded: LoadedStyles = { styles: {}, errors: [], warnings: [] }, mine: StyleEntry[] = []): string {
   const line = (s: { id: string; label: string; doc: string; defaults: { bpm: number; key: string } }, where: string) => `  ${(handleOf(`style:${s.id}`) ?? '').padEnd(6)}  ${s.id.padEnd(14)} ${s.label}（${where}，預設 ${s.defaults.bpm} BPM、${s.defaults.key}）— ${s.doc}`;
   const own = Object.values(loaded.styles);
   return [
     ...Object.values(STYLES).map((s) => line(s, '內建')),
     ...own.map((s) => line(s, resolve(s.file).startsWith(resolve(SCORE_LIBRARY)) ? '風格庫' : '本專案')),
+    ...mine.filter((m) => !own.some((s) => s.id === m.id)).map((m) => `  ${''.padEnd(6)}  ${m.id.padEnd(14)} ${m.name}（我的：先 library use <專案> --style ${m.slug}）${m.desc ? `— ${m.desc}` : ''}`),
     ...loaded.errors.map((e) => `  ✗ ${e.file}：${e.message}`),
     ...loaded.warnings.map((w) => `  ⚠ ${w.file}：${w.message}`),
   ].join('\n');
@@ -28,7 +30,7 @@ export async function main(argv: string[]): Promise<string> {
   for (let i = 0; i < argv.length; i++) { if (argv[i] === '--styles') flags.set('styles', ''); else if (argv[i].startsWith('--')) flags.set(argv[i].slice(2), argv[++i] ?? ''); else pos.push(argv[i]); }
   const [id] = pos;
   const loaded = await loadAllStyles(id ? projectDir(id) : undefined);
-  if (flags.has('styles')) return `配樂風格：\n${listStyles(loaded)}`;
+  if (flags.has('styles')) return `配樂風格：\n${listStyles(loaded, listLibrary(libraryRoot(join(TELLCUT_ROOT, 'projects'))).styles)}`;
   const style = flags.get('style');
   if (!id || !style) throw new Error(`用法：npm run score -- <專案> --style <風格> [--length 秒] [--bpm N] [--key Am] [--seed N] [--name 名稱]\n\n配樂風格：\n${listStyles(loaded)}`);
   const broken = loaded.errors.find((e) => e.file.endsWith(`${style}.js`));

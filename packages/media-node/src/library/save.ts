@@ -147,3 +147,19 @@ export async function saveStyle(i: { root: string; projectDir: string; projectId
   writeStyleEntry(i.root, entry);
   return { entry };
 }
+
+/** an entry edited in place (the agent's "change it" from the gallery): its module loaded again, its cards matched to the
+ *  blocks it defines now (a new one named by its label, a gone one dropped), its files gathered again and a new version */
+export async function refreshBlock(root: string, slug: string): Promise<BlockEntry> {
+  const e = readBlock(root, slug), dir = blockDir(root, slug);
+  if (!e) throw new LibraryError('library.noEntry', `我的積木裡沒有 ${slug}`, { slug });
+  const loaded = await loadProjectFx(dir, [e.main]);
+  if (loaded.errors.length) throw new LibraryError('library.loadFailed', `${e.main} 載入失敗：${loaded.errors[0].message}`, { file: e.main });
+  const items = loaded.plugin.items ?? [];
+  if (!items.length) throw new LibraryError('library.noBlocks', `${e.main} 裡沒有積木`, { file: e.main });
+  const types = items.map((t): LibraryType => e.types.find((x) => x.type === t.type) ?? { type: t.type, name: t.label, desc: t.doc ?? '', ...(t.category ? { category: t.category } : {}) });
+  const { files } = collectFiles(dir, e.main);
+  const next: BlockEntry = { ...e, types, files, version: versionOf(dir, files) };
+  writeBlockEntry(root, next);
+  return next;
+}

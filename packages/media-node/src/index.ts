@@ -38,3 +38,4 @@ export * from './library/store.ts';
 export * from './library/save.ts';
 export * from './library/use.ts';
 export * from './library/thumb.ts';
+export * from './library/plugin.ts';

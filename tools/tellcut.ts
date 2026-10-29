@@ -15,13 +15,14 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { applyOps, magneticWarnings, OpError, parseProject, resolveTheme, resolveTimes, type FxResult, type Op, type Project } from '@tellcut/engine';
-import { analysisFiles, closeProposal, extrasFiles, latestRequest, loadProjectFx, makeProposal, projectHash, projectRegistry, readProposal, readRequest, readTranscript, TELLCUT_ROOT, renderStills, importLogo, logoContrastWarning, saveProjectFile, saveProposal, tellcutUrl, type AskRequest, type Proposal } from '@tellcut/media-node';
+import { analysisFiles, closeProposal, extrasFiles, latestRequest, libraryPlugin, libraryRoot, loadProjectFx, makeProposal, projectHash, projectRegistry, readProposal, readRequest, readTranscript, TELLCUT_ROOT, renderStills, importLogo, logoContrastWarning, saveProjectFile, saveProposal, tellcutUrl, type AskRequest, type Proposal } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { formatCatalog, formatFind, formatLookup } from './catalog.ts';
 import { handleOf } from '@tellcut/protocol';
 import { describeRecipe } from './cut/recipes/index.ts';
 import { formatCutApi } from './cut/api-doc.ts';
 import { assetsCommand } from './assets.ts';
+import { libraryCommand } from './library.ts';
 import { ensureFont3d, type Feel } from './font3d.ts';
 import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
@@ -165,17 +166,21 @@ export function logoArgs(rest: string[]): { file?: string; name?: string } {
 async function main(argv: string[]) {
   const [cmd, id, ...rest] = argv;
   if (cmd === 'assets') { console.log(await assetsCommand(argv.slice(1))); return; }
+  if (cmd === 'library') { console.log(await libraryCommand(argv.slice(1))); return; }
   if (cmd === 'catalog') {
     // catalog [類型 | --find <關鍵字>…] [--project <專案>]: with a project, its own fx join the list
     const rest2 = [id, ...rest].filter((x): x is string => !!x), pi = rest2.indexOf('--project');
     const pid = pi >= 0 ? rest2[pi + 1] : undefined, words = rest2.filter((x, i) => x !== '--project' && (pi < 0 || i !== pi + 1));
     const find = words[0] === '--find', type = find ? undefined : words[0];
     if (find && words.length < 2) throw new Usage('用法：npm run tellcut -- catalog --find <關鍵字>（幾個字用空白分開，都要符合）');
-    let all = plugins;
+    // the user's own blocks (spec 2026-10-29-my-library §4.3) are always listed, first
+    const mine = await libraryPlugin(libraryRoot(join(TELLCUT_ROOT, 'projects')));
+    for (const e of mine.errors) console.error(`我的積木載入失敗 ${e.path}：${e.message}`);
+    let all = mine.plugin.items?.length ? [...plugins, mine.plugin] : plugins;
     if (pid) {
       const dir = join(TELLCUT_ROOT, 'projects', pid), fx = await loadProjectFx(dir, readProject(dir).meta.fx);
       reportFx(fx);
-      all = [...plugins, { ...fx.plugin, id: 'fx' }];
+      all = [...all, { ...fx.plugin, id: 'fx' }];
     }
     console.log(find ? formatFind(all, words.slice(1).join(' ')) : type ? await formatLookup(all, type) : `${formatCatalog(all)}\n\n${describeRecipe()}`);
     return;
@@ -190,7 +195,7 @@ async function main(argv: string[]) {
     console.log(`中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { glyphs: await kit.loadFont('Inter-700.ttf'), cjk })`);
     return;
   }
-  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>');
+  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>、library …');
   const dir = join(TELLCUT_ROOT, 'projects', id);
   const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };
   switch (cmd) {

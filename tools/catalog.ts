@@ -9,8 +9,11 @@ import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HAN
 import { describeRecipe } from './cut/recipes/index.ts';
 
 type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[] };
-/** the handle column: as wide as the longest handle (SFX-HIT-02); blank for a project's own fx */
-const handleCol = (id: string) => (handleOf(id) ?? '').padEnd(10);
+/** the user's own blocks (the plugin `mine`, spec 2026-10-29-my-library §4.3): no handle, marked 我的 in its place */
+let MINE = new Set<string>();
+const mineOf = (plugins: Plugin[]) => { MINE = new Set(plugins.filter((p) => p.id === 'mine').flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])].map((t) => t.type))); };
+/** the handle column: as wide as the longest handle (SFX-HIT-02); blank for a project's own fx, 我的 for the user's own */
+const handleCol = (id: string) => (MINE.has(id) ? '我的' : handleOf(id) ?? '').padEnd(10);
 const lineOf = (w: number) => (t: Entry) => `  ${handleCol(t.type)}  ${t.type.padEnd(w)}  ${t.label}${t.doc ? ` — ${t.doc}` : ''}`;
 const numberOf = (h: string) => /\d+$/.exec(h)![0];
 
@@ -24,7 +27,10 @@ function grouped(items: Entry[], names: Record<string, string> = BLOCK_CATEGORY)
 }
 
 export function formatCatalog(plugins: Plugin[]): string {
-  const ordered = [...plugins].sort((a, b) => Number(b.id === 'core') - Number(a.id === 'core'));
+  mineOf(plugins);
+  // the user's own first (the agent tries them before anything else), then core
+  const rank = (p: Plugin) => (p.id === 'mine' ? 0 : p.id === 'core' ? 1 : 2);
+  const ordered = [...plugins].sort((a, b) => rank(a) - rank(b));
   const items = ordered.flatMap((p) => p.items ?? []), sfx = ordered.flatMap((p) => p.sfx ?? []);
   const w = Math.max(0, ...[...items, ...sfx].map((t) => t.type.length));
   const line = lineOf(w);
@@ -59,7 +65,9 @@ export function findBlocks(plugins: Plugin[], query: string): Entry[] {
 }
 
 export function formatFind(plugins: Plugin[], query: string): string {
-  const hits = findBlocks(plugins, query);
+  mineOf(plugins);
+  const mineFirst = [...plugins].sort((a, b) => Number(b.id === 'mine') - Number(a.id === 'mine'));
+  const hits = findBlocks(mineFirst, query);
   if (!hits.length) return `找不到符合「${query}」的積木；換個說法（例如「收據」「路線」「手寫」「計分」），或看整份：npm run tellcut -- catalog`;
   return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
 }

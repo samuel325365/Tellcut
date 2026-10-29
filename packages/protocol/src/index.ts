@@ -81,7 +81,7 @@ export const isTerminal = (s: JobStatus) => s === 'done' || s === 'failed' || s 
 
 /** the catalog's and the gallery's group name for each plugin (and for a project's own fx) */
 export const PLUGIN_GROUP: Record<string, string> = {
-  core: '內建', common: '共用積木（吃專案 theme）', fx: '本專案自己的 fx',
+  core: '內建', common: '共用積木（吃專案 theme）', fx: '本專案自己的 fx', mine: '我的積木（先 library use 複製進專案）',
 };
 
 /** the groups of the shared blocks (ItemType.category), in catalog order */
