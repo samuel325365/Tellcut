@@ -269,7 +269,8 @@ export function Timeline({ editor }: { editor: Editor }) {
         {(() => {
           // one of this project's own blocks: save it to My blocks (spec 2026-10-29-my-library §3.2)
           const it = ctx.id ? allItems(s.project!).find((x) => x.item.id === ctx.id)?.item as { type?: string } | undefined : undefined;
-          return it?.type?.startsWith('fx.') && editor.registry?.item(it.type) ? <button data-ctx-save-block onClick={() => { editor.openSaveBlock(it.type!); setCtx(null); }}>Save to My blocks</button> : null;
+          const copy = editor.store.get().library.project?.links.some((l) => l.types.includes(it?.type ?? ''));
+          return it?.type?.startsWith('fx.') && editor.registry?.item(it.type) && !copy ? <button data-ctx-save-block onClick={() => { editor.openSaveBlock(it.type!); setCtx(null); }}>Save to My blocks</button> : null;
         })()}
         {ctx.hung && <button onClick={() => { editor.detach(ctx.id!); setCtx(null); }}>Detach</button>}
       </div>}

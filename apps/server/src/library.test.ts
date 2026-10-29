@@ -51,9 +51,9 @@ test('use copies into the project and the project library shows the link', async
   const { base, post } = await app();
   await post('/api/library/blocks', { project: 'p1', type: 'fx.chalk-title' });
   const u = await (await post('/api/projects/p2/library/use', { slug: 'chalk-title' })).json();
-  expect(u).toMatchObject({ file: 'fx/lib/chalk-title/chalk.js', types: ['fx.chalk-title', 'fx.chalk-line'] });
+  expect(u).toMatchObject({ file: 'fx/lib/chalk-title/_entry.js', types: ['fx.chalk-title', 'fx.chalk-line'] });
   const info = await (await fetch(`${base}/api/projects/p2/library`)).json();
-  expect(info.links).toEqual([{ slug: 'chalk-title', file: 'fx/lib/chalk-title/chalk.js', types: ['fx.chalk-title', 'fx.chalk-line'], outdated: false, gone: false }]);
+  expect(info.links).toEqual([{ slug: 'chalk-title', file: 'fx/lib/chalk-title/_entry.js', types: ['fx.chalk-title', 'fx.chalk-line'], outdated: false, gone: false }]);
   const p1 = await (await fetch(`${base}/api/projects/p1/library`)).json();
   expect(p1).toMatchObject({ savedFiles: ['fx/chalk.js'], savedStyles: [], styles: [{ id: 'street-jazz', label: 'street-jazz 風格', file: 'score/street-jazz.js' }] });
 });

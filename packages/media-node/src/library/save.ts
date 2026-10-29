@@ -6,7 +6,7 @@ import { dirname, join, posix, relative, resolve, sep } from 'node:path';
 import { loadProjectFx } from '../fx.ts';
 import { loadStyles, SCORE_LIBRARY } from '../score/local.ts';
 import { STYLES } from '../score/styles.ts';
-import { blockDir, blocksDir, LibraryError, listLibrary, readBlock, slugFor, stylesDir, versionOf, writeBlockEntry, writeStyleEntry,
+import { blockDir, blocksDir, LibraryError, listLibrary, readBlock, slugFor, stylesDir, swapDir, versionOf, writeBlockEntry, writeJsonFile, writeStyleEntry,
   type BlockEntry, type LibraryFrom, type LibraryType, type StyleEntry } from './store.ts';
 
 export type OnConflict = 'replace' | 'keep-both';
@@ -59,6 +59,20 @@ export async function findFxFile(projectDir: string, fx: string[] | undefined, t
   return null;
 }
 
+/** the file a project's copy of an entry loads (useBlock writes it): it only re-exports the entry's own module, so meta.fx keeps naming
+ *  the same file whatever the entry's module is called after an update (final review C1) */
+export const COPY_ENTRY = '_entry.js';
+const COPY_DIR = /^fx\/lib\/[a-z0-9][a-z0-9-]*\//;
+export const copyEntryModule = (main: string) => `export { default } from './${main}';\nexport * from './${main}';\n`;
+/** the module a file really is: a copy's _entry.js is followed to the module it re-exports */
+function realModule(projectDir: string, file: string): string {
+  if (!COPY_DIR.test(file) || !file.endsWith(`/${COPY_ENTRY}`)) return file;
+  const m = /from\s*'\.\/([^']+)'/.exec(readFileSync(join(projectDir, file), 'utf8'));
+  return m ? posix.join(posix.dirname(file), m[1]) : file;
+}
+/** where a project file goes in an entry: a copy's own files (fx/lib/<slug>/…) back at fx/…, so an entry never nests */
+const entryPathOf = (main: string) => { const pre = COPY_DIR.exec(main)?.[0]; return (f: string) => (pre && f.startsWith(pre) ? `fx/${f.slice(pre.length)}` : f); };
+
 const sameFrom = (a: LibraryFrom, b: LibraryFrom) => a.project === b.project && a.file === b.file;
 const projectMeta = (dir: string): { theme?: unknown } => { try { return JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).meta ?? {}; } catch { return {}; } };
 /** an id not in `taken`: x-2, x-3… */
@@ -69,7 +83,8 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
   if (loaded.errors.length) throw new LibraryError('library.loadFailed', `${i.file} 載入失敗：${loaded.errors[0].message}`, { file: i.file });
   const items = loaded.plugin.items ?? [];
   if (!items.length) throw new LibraryError('library.noBlocks', `${i.file} 裡沒有積木`, { file: i.file });
-  const { files, skipped } = collectFiles(i.projectDir, i.file);
+  const main = realModule(i.projectDir, i.file), { files: found, skipped } = collectFiles(i.projectDir, main), at = entryPathOf(main);
+  const files = found.map(at);
   const from: LibraryFrom = { project: i.projectId, file: i.file };
   const lib = listLibrary(i.root), ids = items.map((t) => t.type);
   const hit = lib.blocks.filter((e) => e.types.some((t) => ids.includes(t.type)));
@@ -96,7 +111,7 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
   // copied into a folder of its own first, then put in place: a failure leaves the library as it was
   const stage = join(blocksDir(i.root), `.${slug}.tmp-${process.pid}-${Date.now()}`);
   try {
-    for (const f of files) { mkdirSync(dirname(join(stage, f)), { recursive: true }); copyFileSync(join(i.projectDir, f), join(stage, f)); }
+    for (const f of found) { mkdirSync(dirname(join(stage, at(f))), { recursive: true }); copyFileSync(join(i.projectDir, f), join(stage, at(f))); }
     for (const [x, to] of renames) {
       const fx = files.filter((f) => f.startsWith('fx/')), texts = fx.map((f) => readFileSync(join(stage, f), 'utf8'));
       const at = texts.map((s) => renameId(s, x, to)), one = at.filter((s) => s !== null).length === 1 && texts.filter((s) => s.includes(x)).length === 1;
@@ -104,12 +119,13 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
       if (!one || k < 0) throw new LibraryError('library.renameFailed', `${x} 在程式裡出現不只一次，沒辦法自動改名`, { type: x });
       writeFileSync(join(stage, fx[k]), at[k]!);
     }
-    const entry: BlockEntry = { slug, types, main: i.file, files, from, savedAt: new Date().toISOString(), version: versionOf(stage, files),
+    const entry: BlockEntry = { slug, types, main: at(main), files, from, savedAt: new Date().toISOString(), version: versionOf(stage, files),
       ...(projectMeta(i.projectDir).theme ? { theme: projectMeta(i.projectDir).theme } : {}) };
-    for (const e of drop) rmSync(blockDir(i.root, e.slug), { recursive: true, force: true });
-    rmSync(blockDir(i.root, slug), { recursive: true, force: true });
-    renameSync(stage, blockDir(i.root, slug));
-    writeBlockEntry(i.root, entry);
+    // the entry is complete in its folder before it goes in place; the one it replaces is removed only after (final review I3)
+    const { slug: _s, ...rest } = entry;
+    writeJsonFile(join(stage, 'entry.json'), rest);
+    swapDir(stage, blockDir(i.root, slug));
+    for (const e of drop) if (e.slug !== slug) rmSync(blockDir(i.root, e.slug), { recursive: true, force: true });
     return { entry: readBlock(i.root, slug)!, skipped };
   } finally { rmSync(stage, { recursive: true, force: true }); }
 }

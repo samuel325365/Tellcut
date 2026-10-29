@@ -176,7 +176,7 @@ test('fieldsNote: the options in one line for a project chat', () => {
 
 // ---------------------------------------------------------------- presets of the user's own (spec 2026-10-29-my-library §3.5–3.7, §4.5)
 import { existsSync, readFileSync } from 'node:fs';
-import { makeProject } from '../../../packages/media-node/src/library/fixture.ts';
+import { fxModule, makeProject } from '../../../packages/media-node/src/library/fixture.ts';
 
 const CUSTOM = { order: 0, name: { zh: '自定義', en: 'Custom' }, summary: { zh: 's' }, fields: [RATIO, LENGTH] };
 async function mine() {
@@ -260,5 +260,20 @@ test('editing keeps the agent’s line of a point the user left alone, named by 
     await send('PUT', `/api/presets/${info.id}`, { points: [{ text: '前 2 秒放最好看的一口', orig: '前 2 秒放最好看的一口' }, { text: '字幕放下面', prompt: '字幕放下面' }, { text: '騙', orig: '不存在的' }], lang: 'zh' });
     expect(findPreset(d, info.id)!.points).toEqual([{ text: '前 2 秒放最好看的一口', prompt: 'Open on the best bite.' }, { text: '字幕放下面', prompt: '字幕放下面' }, { text: '騙', prompt: '騙' }]);
     void projects;
+  } finally { await app.close(); }
+});
+
+test('a film that used My blocks saves its preset with those entries, not copies of them (I1)', async () => {
+  const { projects, app, send } = await mine();
+  try {
+    const first = await (await send('POST', '/api/library/blocks', { project: 'trip', type: 'fx.chalk-title' })).json();
+    makeProject(projects, 'night', { fx: fxModule(['fx.other']) });
+    writeFileSync(join(projects, 'night', 'project.json'), JSON.stringify({ ...demoProject(), meta: { ...demoProject().meta, fx: [] } }));
+    const u = await (await send('POST', '/api/projects/night/library/use', { slug: first.entry.slug })).json();
+    writeFileSync(join(projects, 'night', 'preset-draft.json'), JSON.stringify({ name: 'n', summary: '', points: [{ text: 'a', prompt: 'A' }], fx: [u.file] }));
+    const info = await (await send('POST', '/api/presets', { from: 'project', project: 'night', name: 'n', summary: '', include: { blocks: true }, lang: 'zh', points: [{ text: 'a', prompt: 'A' }] })).json();
+    expect(info.uses.blocks.map((b: any) => b.slug)).toEqual([first.entry.slug]);
+    const lib = await (await send('GET', '/api/library')).json();
+    expect([...new Set(lib.blocks.map((b: any) => b.slug))]).toEqual([first.entry.slug]);
   } finally { await app.close(); }
 });

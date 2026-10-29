@@ -24,13 +24,13 @@ export const DRAFT_FORMAT = `{
 export function taskBlock(task: unknown, project: string | null): string | null {
   const t = task as Partial<ChatTask> & Record<string, unknown> | undefined;
   const wrap = (kind: string, lines: string[]) => [`<task kind="${kind}">`, ...lines, '</task>'].join('\n');
-  if (t?.kind === 'library-save' && project && str(t.type) && str(t.name)) {
+  if (t?.kind === 'library-save' && project && str(t.type) && /^fx\.[\w.-]+$/.test(t.type) && str(t.name)) {
     const cat = str(t.category) ? ` --category ${t.category}` : '';
     return wrap('library-save', [
       `The user pressed "Save to My blocks" on ${t.type} and asked for it to be made generic first. In project ${project}:`,
       `1. Find the fx module that defines ${t.type} (Glob projects/${project}/fx/*). Make what is hard-wired for this one film into params: its text, colours, timings and sizes, each with a label and a Chinese hint, the film's current values as the defaults (so the film looks the same). Give every block a doc line.`,
       `2. Run npm run check -- ${project} until it shows no error caused by the module.`,
-      `3. Save it: npm run tellcut -- library save ${project} <file> --name ${q(t.name)} --desc ${q(String(t.desc ?? ''))}${cat} --replace`,
+      `3. Save it: npm run tellcut -- library save ${project} <file> --type ${t.type} --name ${q(t.name)} --desc ${q(String(t.desc ?? ''))}${cat} --replace`,
       '4. Tell the user in one or two sentences which settings they can now change (in the Properties panel), in the UI language. Do not mention files, commands or code.',
     ]);
   }

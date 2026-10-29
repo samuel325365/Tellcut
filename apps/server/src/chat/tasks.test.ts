@@ -4,7 +4,7 @@ import { taskBlock } from './tasks.ts';
 test('library-save: make the fx generic in the project, then save it with the names the user gave', () => {
   const b = taskBlock({ kind: 'library-save', type: 'fx.a', name: '粉筆 "A"', desc: 'd', category: 'text' }, 'p1')!;
   expect(b).toMatch(/^<task kind="library-save">/);
-  expect(b).toContain('npm run tellcut -- library save p1 <file> --name "粉筆 \\"A\\"" --desc "d" --category text --replace');
+  expect(b).toContain('npm run tellcut -- library save p1 <file> --type fx.a --name "粉筆 \\"A\\"" --desc "d" --category text --replace');
   expect(b).toContain('npm run check -- p1');
   expect(b).toMatch(/<\/task>$/);
 });
@@ -29,4 +29,8 @@ test('a task that is not one is null', () => {
   expect(taskBlock({ kind: 'library-edit', slug: '../x', type: 'fx.a', request: 'x' }, null)).toBeNull();
   expect(taskBlock({ kind: 'library-save', type: 'fx.a', name: 'A', desc: '' }, null)).toBeNull();   // needs a project
   expect(taskBlock(undefined, 'p1')).toBeNull();
+});
+
+test('library-save names the block the user starred (I2)', () => {
+  expect(taskBlock({ kind: 'library-save', type: 'fx.b', name: 'B', desc: '' }, 'p1')).toContain('--type fx.b');
 });

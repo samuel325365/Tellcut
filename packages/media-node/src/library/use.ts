@@ -7,7 +7,8 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { loadProjectFx } from '../fx.ts';
-import { blockDir, LibraryError, readBlock, readStyle, SLUG, stylesDir, writeJsonFile } from './store.ts';
+import { blockDir, LibraryError, readBlock, readStyle, SLUG, stylesDir, swapDir, writeJsonFile } from './store.ts';
+import { COPY_ENTRY, copyEntryModule } from './save.ts';
 
 export interface UseResult { file: string; types: string[]; copied: string[] }
 export interface ProjectLink { slug: string; file: string; types: string[]; version: string; latest: string | null }
@@ -44,16 +45,21 @@ export async function useBlock(o: { root: string; projectDir: string; projectId:
     copyFileSync(join(src, f), join(o.projectDir, to));
     copied.push(to);
   }
-  rmSync(join(o.projectDir, lib), { recursive: true, force: true });
-  for (const f of e.files.filter((x) => x.startsWith('fx/'))) {
-    const to = `${lib}/${f.slice(3)}`;
-    let text = readFileSync(join(src, f), 'utf8');
-    for (const [a, b] of moved) text = text.split(`'${a}'`).join(`'${b}'`).split(`"${a}"`).join(`"${b}"`);
-    mkdirSync(dirname(join(o.projectDir, to)), { recursive: true });
-    writeFileSync(join(o.projectDir, to), text);
-    copied.push(to);
-  }
-  const file = `${lib}/${e.main.slice(3)}`;
+  // the copy is made in a folder of its own and then put in place, so a failure leaves the project's copy as it was (final review I3);
+  // its _entry.js re-exports the entry's module: meta.fx names that file, whatever the module is called (final review C1)
+  const stage = join(o.projectDir, 'fx', 'lib', `.${o.slug}.tmp-${process.pid}-${Date.now()}`);
+  try {
+    for (const f of e.files.filter((x) => x.startsWith('fx/'))) {
+      let text = readFileSync(join(src, f), 'utf8');
+      for (const [a, b] of moved) text = text.split(`'${a}'`).join(`'${b}'`).split(`"${a}"`).join(`"${b}"`);
+      mkdirSync(dirname(join(stage, f.slice(3))), { recursive: true });
+      writeFileSync(join(stage, f.slice(3)), text);
+      copied.push(`${lib}/${f.slice(3)}`);
+    }
+    writeFileSync(join(stage, COPY_ENTRY), copyEntryModule(e.main.slice(3)));
+    swapDir(stage, join(o.projectDir, lib));
+  } finally { rmSync(stage, { recursive: true, force: true }); }
+  const file = `${lib}/${COPY_ENTRY}`;
   writeJsonFile(linksFile(o.projectDir), { ...links, [o.slug]: { file, version: e.version, types: ids } });
   return { file, types: ids, copied };
 }

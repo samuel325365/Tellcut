@@ -118,3 +118,4 @@ test('a style id already in the library from elsewhere is a conflict; keep-both 
   expect(r).toMatchObject({ entry: { id: 'street-jazz-2', slug: 'street-jazz-2' } });
   expect(readFileSync(join(root, 'score', 'street-jazz-2.js'), 'utf8')).toContain("'street-jazz-2'");
 });
+

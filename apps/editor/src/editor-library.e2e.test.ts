@@ -52,10 +52,14 @@ test('☆ saves a project block to My blocks; another project adds it from the M
   await page.click('[data-add-mine="fx.box"]');
   await page.click('[data-add-picked]');
   const saved = () => { try { return JSON.parse(readFileSync(join(root, 'two', 'project.json'), 'utf8')); } catch { return null; } };
-  await poll(() => saved()?.meta.fx).toEqual(['fx/lib/box/box.js']);
+  await poll(() => saved()?.meta.fx).toEqual(['fx/lib/box/_entry.js']);
   expect(saved().tracks.flatMap((t: any) => t.items).some((i: any) => i.type === 'fx.box')).toBe(true);
   expect(existsSync(join(root, 'two', 'fx', 'lib', 'box', 'box.js'))).toBe(true);
   // the copy now shows as this project's, tagged; nothing is left to add from My blocks
   await page.waitForSelector('[data-lib-group="block:fx"] [data-from-mine="box"]');
   expect(await page.locator('[data-lib-group="block:mine"]').count()).toBe(0);
+  // the copy, selected after adding, offers no ☆: saving it would only take the entry's place (final review C1)
+  if (await page.locator('[data-tab="props"]').count()) await page.click('[data-tab="props"]');   // the side layout only; the stacked one always shows it
+  await page.waitForSelector('[data-props]');
+  expect(await page.locator('[data-props-save-block]').count()).toBe(0);
 }, 120000);

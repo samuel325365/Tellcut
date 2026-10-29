@@ -4,7 +4,7 @@
 //   score/<slug>.js, <slug>.json  a music style and its entry (StyleEntry without its slug)
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 export const libraryRoot = (projectsDir: string) => join(projectsDir, '_library');
 
@@ -84,6 +84,17 @@ export function renameStyle(root: string, slug: string, patch: { name?: string; 
   if (typeof patch.desc === 'string') e.desc = patch.desc.trim();
   writeStyleEntry(root, e);
   return e;
+}
+
+/** puts a finished folder in place of `target`: the old one is moved aside first and put back when the move fails (an open file on
+ *  Windows), so a failure never leaves neither (final review I3); the old one is removed only once the new one is in place */
+export function swapDir(stage: string, target: string) {
+  if (!existsSync(target)) { renameSync(stage, target); return; }
+  const old = join(dirname(target), `.${basename(target)}.old-${process.pid}-${Date.now()}`);
+  renameSync(target, old);
+  try { renameSync(stage, target); }
+  catch (e) { renameSync(old, target); throw e; }
+  try { rmSync(old, { recursive: true, force: true }); } catch { /* a leftover .old folder is skipped by listLibrary */ }
 }
 
 /** the files' contents in path order, hashed: a new version whenever any of them changes */

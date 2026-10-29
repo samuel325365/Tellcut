@@ -1,7 +1,7 @@
 // The user's own library from the command line (spec 2026-10-29-my-library §4.3): what the agent uses to look in it, save
 // into it, copy an entry into a project and check an entry it edited. The page's buttons call the same media-node code.
 //   npm run tellcut -- library list
-//   npm run tellcut -- library save <專案> <fx/x.js | score/x.js> [--name …] [--desc …] [--category …] [--replace | --keep-both]
+//   npm run tellcut -- library save <專案> <fx/x.js | score/x.js> [--type <fx.…>] [--name …] [--desc …] [--category …] [--replace | --keep-both]
 //   npm run tellcut -- library use <專案> <slug…> | --style <slug>
 //   npm run tellcut -- library refresh <slug>
 //   npm run tellcut -- library remove <slug> [--style]
@@ -12,7 +12,7 @@ import { plugins } from '@tellcut/plugins';
 import { fxChecks } from './check/rules.ts';
 import { Usage } from './usage.ts';
 
-const USAGE = '用法：npm run tellcut -- library list | save <專案> <fx/x.js|score/x.js> [--name …] [--desc …] [--category …] [--replace|--keep-both] | use <專案> <slug…> | use <專案> --style <slug> | refresh <slug> | remove <slug> [--style]';
+const USAGE = '用法：npm run tellcut -- library list | save <專案> <fx/x.js|score/x.js> [--type <fx.…>] [--name …] [--desc …] [--category …] [--replace|--keep-both] | use <專案> <slug…> | use <專案> --style <slug> | refresh <slug> | remove <slug> [--style]';
 
 /** projects: the projects folder (tests point it elsewhere); thumb: false skips drawing thumbnails (no Chrome) */
 export async function libraryCommand(args: string[], o: { projects?: string; thumb?: boolean } = {}): Promise<string> {
@@ -48,7 +48,10 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
       }
       const fx = file.replace(/\\/g, '/');
       const types = (await loadProjectFx(dir, [fx])).plugin.items?.map((t) => t.type) ?? [];
-      const r = await saveBlock({ root, projectDir: dir, projectId: id, file: fx, names: types[0] && Object.keys(said).length ? { [types[0]]: said } : undefined, onConflict });
+      // --type: the block the names are for (a module may hold several); else its first
+      const named = flags.get('type') || types[0];
+      if (flags.get('type') && !types.includes(named)) throw new Error(`${fx} 裡沒有 ${named}（有：${types.join('、')}）`);
+      const r = await saveBlock({ root, projectDir: dir, projectId: id, file: fx, names: named && Object.keys(said).length ? { [named]: said } : undefined, onConflict });
       if ('conflict' in r) throw new Error(`我的積木裡已經有「${r.conflict.name}」（${r.conflict.types.join('、')}）：加 --replace 取代它，或 --keep-both 兩個都留（新的改 id）`);
       if (thumb) await makeThumb(root, r.entry.slug, plugins);
       return [`已存進我的積木：${r.entry.slug}（${r.entry.types.map((t) => t.type).join('、')}）`,

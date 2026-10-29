@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import type { Plugin, Project } from '@tellcut/engine';
 import { parseProject } from '@tellcut/engine';
 import { blockDir, cleanFields, ffmpeg, findPreset, libraryRoot, listLibrary, loadPresets, loadStyles, posterFromImage, PresetDraftZ, presetInfo, projectRegistry, renderStills,
-  saveBlock, saveStyle, sendFile, THUMB_FILE, writeUserPreset, deleteUserPreset, type Preset, type PresetDirs, type PresetLibrary, type PresetPoint } from '@tellcut/media-node';
+  projectLinks, saveBlock, saveStyle, sendFile, THUMB_FILE, writeUserPreset, deleteUserPreset, type Preset, type PresetDirs, type PresetLibrary, type PresetPoint } from '@tellcut/media-node';
 import type { Lang } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { posterOf, type ProjectStore } from './projects.ts';
@@ -88,10 +88,13 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     if (!draft.success) throw new HttpError(422, `The preset draft is not one: ${draft.error.issues[0]?.message}`, { code: 'preset.badDraft' });
     const d = draft.data, inc = b.include ?? {}, lib = listLibrary(root);
     // the film's own blocks and music style go into My blocks too (as they are; a clash is kept apart), so the preset can bring them
-    const blocks: string[] = [];
+    const blocks: string[] = [], links = projectLinks(root, dir);
     if (inc.blocks) for (const fx of d.fx ?? []) {
+      // a copy of an entry of My blocks (fx/lib/<slug>/…) is that entry (final review I1); one deleted there since is left out
+      const copy = links.find((l) => fx === l.file || fx.startsWith(`fx/lib/${l.slug}/`));
+      if (copy) { if (copy.latest !== null && !blocks.includes(copy.slug)) blocks.push(copy.slug); continue; }
       const had = lib.blocks.find((e) => e.from.project === b.project && e.from.file === fx);
-      if (had) { blocks.push(had.slug); continue; }
+      if (had) { if (!blocks.includes(had.slug)) blocks.push(had.slug); continue; }
       try {
         const s = await saveBlock({ root, projectDir: dir, projectId: b.project, file: fx, onConflict: 'keep-both' });
         if ('entry' in s) { blocks.push(s.entry.slug); void o.thumb(root, s.entry.slug).catch(() => {}); }

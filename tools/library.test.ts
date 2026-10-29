@@ -31,7 +31,7 @@ test('use prints the c.fx line; --style copies a music style', async () => {
   const projects = setup();
   await run(projects, 'save', 'p1', 'fx/chalk.js');
   await run(projects, 'save', 'p1', 'score/street-jazz.js');
-  expect(await run(projects, 'use', 'p2', 'chalk-title')).toContain("c.fx('fx/lib/chalk-title/chalk.js')");
+  expect(await run(projects, 'use', 'p2', 'chalk-title')).toContain("c.fx('fx/lib/chalk-title/_entry.js')");
   expect(await run(projects, 'use', 'p2', '--style', 'street-jazz')).toContain("c.score('street-jazz')");
   expect(readFileSync(join(projects, 'p2', 'score', 'street-jazz.js'), 'utf8')).toContain('street-jazz');
 });
@@ -63,4 +63,12 @@ test('the music styles list has the user’s own, with how to use them', async (
   const { listStyles } = await import('./score.ts');
   const s = listStyles(undefined, [{ slug: 'street-jazz', id: 'street-jazz', name: '街頭爵士', desc: '輕快', from: { project: 'p1', file: 'score/street-jazz.js' }, savedAt: '', version: '' }]);
   expect(s).toMatch(/street-jazz +街頭爵士（我的：先 library use <專案> --style street-jazz）— 輕快/);
+});
+
+test('save --type names that block of a module with several (I2)', async () => {
+  const projects = setup();
+  await run(projects, 'save', 'p1', 'fx/chalk.js', '--type', 'fx.chalk-line', '--name', '粉筆底線', '--desc', '底線');
+  const s = await run(projects, 'list');
+  expect(s).toMatch(/fx\.chalk-line +粉筆底線 — 底線/);
+  expect(s).toMatch(/fx\.chalk-title +chalk-title/);
 });
