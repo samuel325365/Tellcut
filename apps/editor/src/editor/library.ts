@@ -20,12 +20,17 @@ export class LibraryFlow {
   private set(patch: Partial<LibraryState>) { this.c.store.set((s) => ({ library: { ...s.library, ...patch } })); }
   private dialog(patch: Partial<SaveDialog>) { const d = this.lib.saving; if (d) this.set({ saving: { ...d, ...patch } }); }
 
-  /** the library and this project's copies; a failure leaves the panel without My blocks rather than in the way */
+  /** the library and this project's copies; a failure leaves the panel without My blocks rather than in the way. The store changes
+   *  only when an answer differs: every change re-renders the panels, and a re-render resets a number being typed */
   async load() {
     const [index, project] = await Promise.all([this.c.api.library().catch(() => null), this.c.api.projectLibrary(this.c.id).catch(() => null)]);
-    this.set({ index, project });
+    this.setChanged({ index, project });
   }
-  async loadProject() { this.set({ project: await this.c.api.projectLibrary(this.c.id).catch(() => this.lib.project) }); }
+  async loadProject() { this.setChanged({ project: await this.c.api.projectLibrary(this.c.id).catch(() => this.lib.project) }); }
+  private setChanged(patch: Partial<Pick<LibraryState, 'index' | 'project'>>) {
+    const now = this.lib, changed = (Object.keys(patch) as Array<keyof typeof patch>).filter((k) => JSON.stringify(patch[k]) !== JSON.stringify(now[k]));
+    if (changed.length) this.set(Object.fromEntries(changed.map((k) => [k, patch[k]])));
+  }
 
   async openBlock(type: string, d: { name: string; desc: string; category?: string }) {
     this.set({ saving: { kind: 'block', target: type, name: d.name, desc: d.desc, category: d.category ?? '', generalize: false, preview: null, conflict: null, busy: false, error: '' } });

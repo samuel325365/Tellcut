@@ -63,3 +63,20 @@ test('☆ saves a project block to My blocks; another project adds it from the M
   await page.waitForSelector('[data-props]');
   expect(await page.locator('[data-props-save-block]').count()).toBe(0);
 }, 120000);
+
+test('a slow answer about My blocks does not reset a field being typed in', async () => {
+  const p = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  try {
+    await p.route('**/api/projects/two/library', async (r) => { await new Promise((ok) => setTimeout(ok, 3000)); await r.continue(); });
+    await p.goto(`${base}/editor/?id=two`);
+    await p.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+    await p.click('[data-item-id="c"]');
+    const speed = p.locator('[data-field="speed"] input');
+    await speed.fill('0.5');
+    await p.waitForTimeout(3500);   // the slow answer would land here
+    expect(await speed.inputValue()).toBe('0.5');
+    await speed.press('Enter');
+    const disk = () => JSON.parse(readFileSync(join(root, 'two', 'project.json'), 'utf8'));
+    await poll(() => disk().tracks.find((t: any) => t.kind === 'video').items.find((i: any) => i.id === 'c').speed).toBe(0.5);
+  } finally { await p.close(); }
+}, 120000);

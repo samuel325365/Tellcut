@@ -134,6 +134,9 @@ export class Editor {
 
   async open() {
     try {
+      // My blocks are fetched with the project and in the store before it shows: an answer landing later re-rendered the panels
+      // and reset a number the user was typing (Preact writes a controlled input's value on every render)
+      const lib = typeof (this.deps.api as any).library === 'function' ? this.library.load() : Promise.resolve();   // test fakes without the library
       const p = parseProject(await this.deps.api.project(this.id));
       if (this.deps.registryFor) this.reg = await this.deps.registryFor(p);
       this.fitted = false;
@@ -143,6 +146,7 @@ export class Editor {
       // a 409: another tab or Claude wrote a newer version first; this one's edits wait like after any outside change
       this.autosave = new Autosave({ save: async (x) => { try { await this.deps.api.save(this.id, x); } catch (e) { if (e instanceof ApiError && e.status === 409) this.outside(); throw e; } }, onStatus: (save, err) => { this.set({ save, saveError: err ?? '' }); if (save === 'saved') this.analyzeWaiting(); } });
       this.waitingAnalysis = [];   // a reload analyses everything
+      await lib;
       this.set({ project: p, error: null, pps: Math.max(5, Math.min(400, (innerWidthSafe() - 160) / p.meta.duration)), scroll: 0 });
       try {
         const saved = JSON.parse(this.storage?.getItem(this.collapseKey) ?? '[]');
@@ -162,7 +166,6 @@ export class Editor {
       if (typeof (this.deps.api as any).chat === 'function') void this.chat.load();   // test fakes without chat
       void this.loadExports();
       void this.resumeExport();
-      if (typeof (this.deps.api as any).library === 'function') void this.library.load();   // test fakes without the library
     } catch (e) {
       const err = e instanceof ApiError ? { message: e.message, issues: e.issues } : { message: String((e as Error)?.message ?? e), issues: (e as any)?.issues ?? [] };
       this.set({ error: err, history: await this.deps.api.history(this.id).catch(() => []) });
