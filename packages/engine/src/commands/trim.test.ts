@@ -1,3 +1,4 @@
+import { ProjectZ } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
 import { addItem, updateItem } from './edit.ts';
 import { rateStretch, roll, slip, trimEnd, trimStart } from './trim.ts';
@@ -88,6 +89,15 @@ test("a speed change stretches the clip's own sound with it", () => {
   const p = run(withChildren(), rateStretch, { id: 'c1', edge: 'end', dt: 4 });
   expect(item(p, 'snd')).toMatchObject({ start: 0, end: 8, rate: 0.5 });
   expect(item(p, 'hit').start).toBe(4);
+});
+
+test("a speed stretch stops where the clip's own sound reaches its 4× limit (the project stays valid)", () => {
+  const p = run(withChildren(), rateStretch, { id: 'c1', edge: 'end', dt: -3.9 });
+  expect(item(p, 'c1')).toMatchObject({ speed: 4, end: 1 });
+  expect(item(p, 'snd')).toMatchObject({ start: 0, end: 1, rate: 4 });
+  expect(ProjectZ.safeParse(p).success).toBe(true);
+  // without an own sound the clip still goes to 16×
+  expect(item(run(fixture(), rateStretch, { id: 'c1', edge: 'end', dt: -3.9 }), 'c1').speed).toBe(16);
 });
 
 test("slipping a clip slips its own sound with it (the same stop at the source's ends)", () => {

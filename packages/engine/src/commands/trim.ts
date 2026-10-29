@@ -73,7 +73,9 @@ export function rateStretch(p: Project, a: { id: string; edge: 'start' | 'end'; 
   if (!key) throw new CommandError('Only video and audio clips can change speed');
   // the clip's own sound plays at the clip's new speed (found before the length changes)
   const own = ownSounds(p, it.id);
-  const maxRate = key === 'speed' ? 16 : 4, oldLen = it.end - it.start, old = it[key];
+  const oldLen = it.end - it.start, old = it[key];
+  // an own sound speeds up with the clip and a sound plays at most 4×: the stretch stops when the fastest one gets there
+  const maxRate = Math.min(key === 'speed' ? 16 : 4, ...own.map((c) => (old * 4) / c.rate));
   let newLen = Math.max(minLen(p), a.edge === 'end' ? oldLen + a.dt : oldLen - a.dt);
   // the start edge cannot pass time 0
   if (a.edge === 'start') newLen = Math.min(newLen, oldLen + resolveTimes(p).get(it.id)!.start);
