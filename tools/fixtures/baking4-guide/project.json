@@ -1,7 +1,7 @@
 {
   "version": 1,
   "meta": {
-    "name": "烘焙圖文教學",
+    "name": "圖文教學示範",
     "width": 1920,
     "height": 1080,
     "fps": 30,
@@ -52,13 +52,11 @@
   },
   "sources": {
     "baking": {
-      "path": "../../../sources/input_baking4/baking.mp4",
+      "path": "media/baking.mp4",
       "duration": 426.411,
       "width": 1280,
       "height": 720,
       "kind": "video",
-      "taken": "2026-10-18T22:40:16",
-      "takenGuess": true,
       "audio": true
     }
   },
@@ -863,7 +861,7 @@
           "parent": "clip-2",
           "type": "common.caption",
           "params": {
-            "text": "天氣變暖了，來做點下午茶點心吧",
+            "text": "第 1 句字幕示範文字示範文字",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -884,7 +882,7 @@
           "parent": "clip-3",
           "type": "common.caption",
           "params": {
-            "text": "這次的主角是巧克力豆司康，開始囉！",
+            "text": "第 2 句字幕示範文字示範文字示範",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -915,8 +913,8 @@
             },
             "tip": "",
             "no": "",
-            "title": "巧克力豆司康",
-            "detail": "8 塊・烤 18 分鐘・新手也能做",
+            "title": "步驟 1",
+            "detail": "說明 1・示範文字示範文字示範文字",
             "enter": "deal"
           }
         },
@@ -927,7 +925,7 @@
           "parent": "clip-4",
           "type": "common.caption",
           "params": {
-            "text": "先量好一杯半的麵粉",
+            "text": "第 3 句字幕示範",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -956,10 +954,10 @@
             "artParams": {
               "scene": "flour"
             },
-            "tip": "先倒進大碗裡",
-            "no": "1",
-            "title": "準備麵粉",
-            "detail": "中筋麵粉 1½ 杯"
+            "tip": "提示 1示範",
+            "no": "示範",
+            "title": "步驟 2",
+            "detail": "說明 2・示範文字"
           }
         },
         {
@@ -969,7 +967,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 0,
             "align": "right",
             "size": 3,
@@ -983,7 +981,7 @@
           "parent": "clip-5",
           "type": "common.caption",
           "params": {
-            "text": "加入一小匙半的泡打粉",
+            "text": "第 4 句字幕示範文",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1004,7 +1002,7 @@
           "parent": "clip-6",
           "type": "common.caption",
           "params": {
-            "text": "再加一點點鹽",
+            "text": "第 5 句字幕",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1025,7 +1023,7 @@
           "parent": "clip-7",
           "type": "common.caption",
           "params": {
-            "text": "用打蛋器拌勻",
+            "text": "第 6 句字幕",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1054,10 +1052,10 @@
             "artParams": {
               "scene": "sugar"
             },
-            "tip": "加完用打蛋器拌勻，不要結塊",
-            "no": "2",
-            "title": "加泡打粉和鹽",
-            "detail": "泡打粉 1½ 小匙・鹽 ½ 小匙"
+            "tip": "提示 2示範文字示範文字示",
+            "no": "示範",
+            "title": "步驟 3",
+            "detail": "說明 3・示範文字示範文字示範文"
           }
         },
         {
@@ -1067,7 +1065,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 0,
             "align": "right",
             "size": 3,
@@ -1081,7 +1079,7 @@
           "parent": "clip-8",
           "type": "common.caption",
           "params": {
-            "text": "奶油要用冰的，兩大匙",
+            "text": "第 7 句字幕示範文",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1102,7 +1100,7 @@
           "parent": "clip-9",
           "type": "common.caption",
           "params": {
-            "text": "用指尖把奶油搓進粉裡",
+            "text": "第 8 句字幕示範文",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1123,7 +1121,7 @@
           "parent": "clip-10",
           "type": "common.caption",
           "params": {
-            "text": "搓到像粗粗的沙子就可以",
+            "text": "第 9 句字幕示範文字",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1152,10 +1150,10 @@
             "artParams": {
               "scene": "butter"
             },
-            "tip": "搓到像粗砂的樣子",
-            "no": "3",
-            "title": "搓入冷奶油",
-            "detail": "冷奶油 2 大匙"
+            "tip": "提示 3示範文字",
+            "no": "示範",
+            "title": "步驟 4",
+            "detail": "說明 4・示範文"
           }
         },
         {
@@ -1165,7 +1163,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 0,
             "align": "right",
             "size": 3,
@@ -1179,7 +1177,7 @@
           "parent": "clip-11",
           "type": "common.caption",
           "params": {
-            "text": "倒入半杯無糖優格",
+            "text": "第 10 句字幕",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1209,10 +1207,10 @@
               "scene": "cream",
               "tint": "#fbf8f2"
             },
-            "tip": "選無糖原味的",
-            "no": "4",
-            "title": "拌入優格",
-            "detail": "無糖優格 ½ 杯"
+            "tip": "提示 4示範",
+            "no": "示範",
+            "title": "步驟 5",
+            "detail": "說明 5・示範文"
           }
         },
         {
@@ -1222,7 +1220,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 1,
             "align": "right",
             "size": 3,
@@ -1236,7 +1234,7 @@
           "parent": "clip-12",
           "type": "common.caption",
           "params": {
-            "text": "甜味交給三大匙蜂蜜",
+            "text": "第 11 句字幕示",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1266,10 +1264,10 @@
               "scene": "cream",
               "tint": "#c98a3e"
             },
-            "tip": "想甜一點可以多加一匙",
-            "no": "5",
-            "title": "加蜂蜜",
-            "detail": "蜂蜜 3 大匙"
+            "tip": "提示 5示範文字示範",
+            "no": "示範",
+            "title": "步驟 6",
+            "detail": "說明 6・示範"
           }
         },
         {
@@ -1279,7 +1277,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 1,
             "align": "right",
             "size": 3,
@@ -1293,7 +1291,7 @@
           "parent": "clip-13",
           "type": "common.caption",
           "params": {
-            "text": "牛奶也是三大匙",
+            "text": "第 12 句字幕",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1314,7 +1312,7 @@
           "parent": "clip-14",
           "type": "common.caption",
           "params": {
-            "text": "最後滴一小匙香草精",
+            "text": "第 13 句字幕示",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1344,10 +1342,10 @@
               "scene": "cream",
               "tint": "#ffffff"
             },
-            "tip": "香草精一點點就很香",
-            "no": "6",
-            "title": "加牛奶和香草",
-            "detail": "牛奶 3 大匙・香草精 1 小匙"
+            "tip": "提示 6示範文字示",
+            "no": "示範",
+            "title": "步驟 7",
+            "detail": "說明 7・示範文字示範文字示範文"
           }
         },
         {
@@ -1357,7 +1355,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 1,
             "align": "right",
             "size": 3,
@@ -1371,7 +1369,7 @@
           "parent": "clip-15",
           "type": "common.caption",
           "params": {
-            "text": "拌到看不見乾粉就停手",
+            "text": "第 14 句字幕示範",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1400,10 +1398,10 @@
             "artParams": {
               "scene": "stir"
             },
-            "tip": "拌太久口感會變硬",
-            "no": "7",
-            "title": "拌成麵團",
-            "detail": "看不見乾粉就停"
+            "tip": "提示 7示範文字",
+            "no": "示範",
+            "title": "步驟 8",
+            "detail": "說明 8・示範"
           }
         },
         {
@@ -1413,7 +1411,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 2,
             "align": "right",
             "size": 3,
@@ -1427,7 +1425,7 @@
           "parent": "clip-16",
           "type": "common.caption",
           "params": {
-            "text": "倒進四分之一杯巧克力豆",
+            "text": "第 15 句字幕示範文",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1456,10 +1454,10 @@
             "artParams": {
               "scene": "chips"
             },
-            "tip": "加完再拌一下",
-            "no": "8",
-            "title": "加巧克力豆",
-            "detail": "巧克力豆 ¼ 杯"
+            "tip": "提示 8示範",
+            "no": "示範",
+            "title": "步驟 9",
+            "detail": "說明 9・示範文"
           }
         },
         {
@@ -1469,7 +1467,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 2,
             "align": "right",
             "size": 3,
@@ -1483,7 +1481,7 @@
           "parent": "clip-17",
           "type": "common.caption",
           "params": {
-            "text": "烤箱先預熱到 200 度",
+            "text": "第 16 句字幕示範文字",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1504,7 +1502,7 @@
           "parent": "clip-18",
           "type": "common.caption",
           "params": {
-            "text": "烤盤鋪上一張烘焙紙",
+            "text": "第 17 句字幕示",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1533,10 +1531,10 @@
             "artParams": {
               "scene": "bake"
             },
-            "tip": "烤盤鋪烘焙紙或矽膠墊",
-            "no": "9",
-            "title": "預熱、鋪烤盤",
-            "detail": "烤箱預熱 200°C"
+            "tip": "提示 9示範文字示範",
+            "no": "示範",
+            "title": "步驟 10",
+            "detail": "說明 10・示範文字"
           }
         },
         {
@@ -1546,7 +1544,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 2,
             "align": "right",
             "size": 3,
@@ -1560,7 +1558,7 @@
           "parent": "clip-19",
           "type": "common.caption",
           "params": {
-            "text": "把麵團拍成厚厚的圓餅",
+            "text": "第 18 句字幕示範",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1581,7 +1579,7 @@
           "parent": "clip-20",
           "type": "common.caption",
           "params": {
-            "text": "手上沾點麵粉比較不黏",
+            "text": "第 19 句字幕示範",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1602,7 +1600,7 @@
           "parent": "clip-20",
           "type": "common.caption",
           "params": {
-            "text": "形狀不用太完美",
+            "text": "第 20 句字幕",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1631,10 +1629,10 @@
             "artParams": {
               "scene": "shape"
             },
-            "tip": "手沾點麵粉就不黏",
-            "no": "10",
-            "title": "整成圓餅",
-            "detail": "厚約 2 公分的圓餅"
+            "tip": "提示 10示範文",
+            "no": "示範",
+            "title": "步驟 11",
+            "detail": "說明 11・示範文字"
           }
         },
         {
@@ -1644,7 +1642,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 2,
             "align": "right",
             "size": 3,
@@ -1658,7 +1656,7 @@
           "parent": "clip-21",
           "type": "common.caption",
           "params": {
-            "text": "用刀切成八等份",
+            "text": "第 21 句字幕",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1687,10 +1685,10 @@
             "artParams": {
               "scene": "cut"
             },
-            "tip": "先切開，烤好才分得開",
-            "no": "11",
-            "title": "切成 8 塊",
-            "detail": "像切披薩一樣切 8 等份"
+            "tip": "提示 11示範文字示",
+            "no": "示範",
+            "title": "步驟 12",
+            "detail": "說明 12・示範文字示範"
           }
         },
         {
@@ -1700,7 +1698,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 2,
             "align": "right",
             "size": 3,
@@ -1714,7 +1712,7 @@
           "parent": "clip-22",
           "type": "common.caption",
           "params": {
-            "text": "表面刷一層薄薄的牛奶",
+            "text": "第 22 句字幕示範",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1743,10 +1741,10 @@
             "artParams": {
               "scene": "brush"
             },
-            "tip": "每個地方都刷到",
-            "no": "12",
-            "title": "刷上牛奶",
-            "detail": "表面刷一層牛奶"
+            "tip": "提示 12示範",
+            "no": "示範",
+            "title": "步驟 13",
+            "detail": "說明 13・示"
           }
         },
         {
@@ -1756,7 +1754,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 3,
             "align": "right",
             "size": 3,
@@ -1770,7 +1768,7 @@
           "parent": "clip-23",
           "type": "common.caption",
           "params": {
-            "text": "烤十八分鐘，表面金黃就好",
+            "text": "第 23 句字幕示範文字",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1799,10 +1797,10 @@
             "artParams": {
               "scene": "bake"
             },
-            "tip": "拿烤盤記得戴隔熱手套",
-            "no": "13",
-            "title": "進烤箱",
-            "detail": "200°C 烤 18 分鐘"
+            "tip": "提示 13示範文字示",
+            "no": "示範",
+            "title": "步驟 14",
+            "detail": "說明 14・示範文字示範文"
           }
         },
         {
@@ -1812,7 +1810,7 @@
           "type": "common.progress",
           "params": {
             "mode": "tabs",
-            "labels": "乾料,濕料,塑形,烘烤",
+            "labels": "第一段,第二段,第三段,第四段",
             "step": 3,
             "align": "right",
             "size": 3,
@@ -1826,7 +1824,7 @@
           "parent": "clip-26",
           "type": "common.caption",
           "params": {
-            "text": "外酥內軟，配杯茶剛剛好！",
+            "text": "第 24 句字幕示範文字",
             "style": "plain",
             "size": 4.6,
             "color": "#4a3426",
@@ -1857,8 +1855,8 @@
             },
             "tip": "",
             "no": "",
-            "title": "開動！",
-            "detail": "外酥內軟、配茶剛好"
+            "title": "步驟 15",
+            "detail": "說明 15・示範文"
           }
         },
         {
@@ -1867,8 +1865,8 @@
           "end": 127.1,
           "type": "common.header",
           "params": {
-            "no": "食譜",
-            "text": "小麥老師的巧克力豆司康",
+            "no": "示範",
+            "text": "第 25 句字幕示範文",
             "size": 3.4,
             "ink": "#4a3426",
             "outline": "#fffaf1",
