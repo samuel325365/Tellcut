@@ -9,10 +9,10 @@ import { join, resolve } from 'node:path';
 import type { Plugin, Project } from '@tellcut/engine';
 import { parseProject } from '@tellcut/engine';
 import { blockDir, cleanFields, ffmpeg, findPreset, libraryRoot, listLibrary, loadPresets, loadStyles, posterFromImage, PresetDraftZ, presetInfo, projectRegistry, renderStills,
-  projectLinks, saveBlock, saveStyle, sendFile, THUMB_FILE, writeUserPreset, deleteUserPreset, type Preset, type PresetDirs, type PresetLibrary, type PresetPoint } from '@tellcut/media-node';
+  projectLinks, saveBlock, saveStyle, THUMB_FILE, writeUserPreset, deleteUserPreset, type Preset, type PresetDirs, type PresetLibrary, type PresetPoint } from '@tellcut/media-node';
 import type { Lang } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
-import { posterOf, type ProjectStore } from './projects.ts';
+import { posterOf, sendProjectFile, type ProjectStore } from './projects.ts';
 
 const FILES = new Set(['poster.jpg', 'preview.webm']);
 const LANGS = new Set(['zh', 'en', 'ja']);
@@ -72,7 +72,7 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     const p = FILES.has(file) ? findPreset(dirs, id) : null;
     const dir = p && join(p.mine ? dirs.user : dirs.repo, id);
     if (!dir || !existsSync(join(dir, file))) throw new HttpError(404, 'Not found');
-    sendFile(req, res, join(dir, file));
+    sendProjectFile(req, res, join(dir, file));
   });
   if (!o) return;
   const root = libraryRoot(o.projectsDir), poster = o.poster ?? projectPoster(o.plugins);
@@ -96,7 +96,9 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch { throw new HttpError(422, 'The preset draft is not JSON', { code: 'preset.badDraft' }); }
     const draft = PresetDraftZ.safeParse(raw);
     if (!draft.success) throw new HttpError(422, `The preset draft is not one: ${draft.error.issues[0]?.message}`, { code: 'preset.badDraft' });
-    const d = draft.data, inc = b.include ?? {}, lib = listLibrary(root);
+    const d = draft.data, inc = b.include ?? {}, lib = listLibrary(root), points = pointsOf(b.points ?? d.points);
+    // refused as the form's are, before any block or music style goes into My blocks
+    if (!points.length) throw new HttpError(400, 'A preset needs at least one point', { code: 'preset.noPoints' });
     // the film's own blocks and music style go into My blocks too (as they are; a clash is kept apart), so the preset can bring them
     const blocks: string[] = [], links = projectLinks(root, dir);
     if (inc.blocks) for (const fx of d.fx ?? []) {
@@ -121,7 +123,7 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     let project: Project | null = null;
     try { project = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'))); } catch { /* a broken project still saves its preset, without a poster */ }
     const theme = inc.theme ? d.theme ?? project?.meta.theme : undefined;
-    const p = writeUserPreset(dirs, { name: str(b.name) || d.name, summary: str(b.summary) || d.summary, points: pointsOf(b.points ?? d.points), lang,
+    const p = writeUserPreset(dirs, { name: str(b.name) || d.name, summary: str(b.summary) || d.summary, points, lang,
       ...(d.ratio ? { ratios: [d.ratio] } : project ? { ratios: [ratioOf(project)] } : {}), ...(d.length ? { length: d.length } : {}),
       ...(theme ? { theme } : {}), ...(score ? { score } : {}), ...(blocks.length ? { blocks } : {}) });
     if (project) await poster({ dir, project, ...(typeof b.posterAt === 'number' ? { at: b.posterAt } : {}) }, join(dirs.user, p.id, 'poster.jpg')).catch((e) => console.warn(`preset poster ${p.id}: ${(e as Error).message}`));

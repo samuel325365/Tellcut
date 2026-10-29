@@ -223,6 +223,17 @@ test('without its draft a film cannot be saved as a preset', async () => {
   } finally { await app.close(); }
 });
 
+test('a film saved as a preset with no point left is refused, as the form is, and nothing goes into My blocks', async () => {
+  const { projects, app, send } = await mine();
+  try {
+    const r = await send('POST', '/api/presets', { from: 'project', project: 'trip', name: 'x', summary: '', points: [{ text: ' ', prompt: '' }], include: { blocks: true, score: true }, lang: 'zh' });
+    expect(r.status).toBe(400);
+    expect((await r.json()).code).toBe('preset.noPoints');
+    expect(existsSync(join(projects, '_library'))).toBe(false);
+    expect(existsSync(join(projects, 'trip', 'preset-draft.json'))).toBe(true);
+  } finally { await app.close(); }
+});
+
 test('saving from the custom form: each option set is a point in the user’s words, and the agent still picks a genre', async () => {
   const { d, app, send } = await mine();
   try {

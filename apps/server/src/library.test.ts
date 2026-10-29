@@ -26,6 +26,9 @@ test('saves, lists and serves a block', async () => {
   expect(lib.blocks[0].params[0].key).toBe('text');
   const js = await fetch(`${base}/api/library/blocks/chalk-title/fx/chalk.js`);
   expect(js.headers.get('content-type')).toContain('javascript');
+  // the same protection as a project's files: never sniffed, and opened as a page it runs nothing
+  expect(js.headers.get('x-content-type-options')).toBe('nosniff');
+  expect(js.headers.get('content-security-policy')).toContain('sandbox');
 });
 
 test('a dry run says what would be saved and writes nothing', async () => {

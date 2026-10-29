@@ -4,17 +4,17 @@
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
 import { blockDir, findFxFile, libraryRoot, LibraryError, listLibrary, loadProjectFx, loadStyles, PROJECT_ID, previewBlock, projectLinks, readBlock, readStyle, removeBlock, removeStyle, renameStyle,
-  renameType, saveBlock, saveStyle, sendFile, stylesDir, THUMB_FILE, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
+  renameType, saveBlock, saveStyle, stylesDir, THUMB_FILE, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
 import type { LibraryBlockInfo, LibraryIndex, LibraryStyleInfo, LibraryUsage, ProjectLibraryInfo } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
-import type { ProjectStore } from './projects.ts';
+import { sendProjectFile, type ProjectStore } from './projects.ts';
 
-/** a refusal of media-node's as the page reads it: 409 when the user has a choice to make, 404 for a missing entry, else 400 */
+/** a refusal of media-node's as the page reads it: 409 when the user has a choice to make or a file is in use, 404 for a missing entry, else 400 */
 async function guard<T>(f: () => Promise<T> | T): Promise<T> {
   try { return await f(); }
   catch (e) {
     if (!(e instanceof LibraryError)) throw e;
-    const status = e.code === 'library.idTaken' ? 409 : e.code === 'library.noEntry' ? 404 : 400;
+    const status = e.code === 'library.idTaken' || e.code === 'library.locked' ? 409 : e.code === 'library.noEntry' ? 404 : 400;
     throw new HttpError(status, e.message, { code: e.code, params: e.params });
   }
 }
@@ -78,7 +78,7 @@ export function libraryRoutes(r: Router, o: LibraryOptions) {
   r.get('/api/library/blocks/:slug/*', (req, res, { slug, rest }) => guard(() => {
     const e = readBlock(root, slug), path = posix.normalize(rest);
     if (!e || !(e.files.includes(path) || path === THUMB_FILE)) throw new HttpError(404, 'Not found');
-    sendFile(req, res, join(blockDir(root, slug), ...path.split('/')));
+    sendProjectFile(req, res, join(blockDir(root, slug), ...path.split('/')));   // nosniff, and as a document a sandbox (projects.ts)
   }));
 
   r.post('/api/library/blocks', async (req, res, _p, url) => {
