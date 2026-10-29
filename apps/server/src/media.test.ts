@@ -142,3 +142,11 @@ test('titles of downloaded media, by source or music id (none when nothing was d
   ] }));
   expect(await (await fetch(url('titles'))).json()).toEqual({ 'pixabay-video-1': 'rice field', 'tunes-m': 'calm piano' });
 });
+
+test('a source or music id that is an Object property name (constructor, toString) is no such id: 404, not a 500', async () => {
+  for (const p of ['proxy/constructor', 'thumbs/toString', 'transcript/hasOwnProperty', 'image/constructor', 'audio?source=constructor&in=0&out=1', 'still?source=valueOf&t=0',
+    'music/constructor', 'music-peaks/toString', 'beats/constructor']) {
+    const r = await fetch(url(p));
+    expect([p, r.status]).toEqual([p, 404]);
+  }
+});

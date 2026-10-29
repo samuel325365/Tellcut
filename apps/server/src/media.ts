@@ -74,7 +74,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     try { return await work(); } catch (e) { if (!signal.aborted) failed.set(`${kind}|${path}`, stamp); throw e; }
   };
   const source = (id: string, sid: string) => {
-    const dir = store.dir(id), s = store.read(id).sources[sid];
+    const dir = store.dir(id), all = store.read(id).sources, s = Object.hasOwn(all, sid) ? all[sid] : undefined;   // "constructor" is no source
     if (!s) throw new HttpError(404, `No source "${sid}" in project "${id}"`);
     const path = resolve(dir, s.path);
     if (!existsSync(path)) throw new HttpError(404, `Source file is offline: ${s.path}`, { offline: true });
@@ -157,7 +157,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
 
   // music by media id: its path may leave the project folder (like sources); /files/ only serves inside it
   r.get('/api/projects/:id/media/music/:media', (req, res, { id, media: mid }) => {
-    const dir = store.dir(id), m = store.read(id).media[mid];
+    const dir = store.dir(id), all = store.read(id).media, m = Object.hasOwn(all, mid) ? all[mid] : undefined;
     if (!m) throw new HttpError(404, `No media "${mid}" in project "${id}"`);
     const path = resolve(dir, m.path);
     if (!existsSync(path)) throw new HttpError(404, `Media file is offline: ${m.path}`, { offline: true });
@@ -165,7 +165,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
   });
 
   r.get('/api/projects/:id/media/music-peaks/:media', async (req, res, { id, media: mid }) => {
-    const dir = store.dir(id), m = store.read(id).media[mid];
+    const dir = store.dir(id), all = store.read(id).media, m = Object.hasOwn(all, mid) ? all[mid] : undefined;
     if (!m) throw new HttpError(404, `No media "${mid}" in project "${id}"`);
     const path = resolve(dir, m.path);
     if (!existsSync(path)) throw new HttpError(404, `Media file is offline: ${m.path}`, { offline: true });
@@ -195,7 +195,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     sendJson(res, 200, out);
   });
   r.get('/api/projects/:id/media/beats/:media', (req, res, { id, media: mid }) => {
-    const dir = store.dir(id), m = store.read(id).media[mid];
+    const dir = store.dir(id), all = store.read(id).media, m = Object.hasOwn(all, mid) ? all[mid] : undefined;
     if (!m) throw new HttpError(404, `No media "${mid}" in project "${id}"`);
     const f = musicFiles(dir, resolve(dir, m.path)).beats;
     if (!existsSync(f)) throw new HttpError(409, `No beats for "${mid}" yet`);
