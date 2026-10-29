@@ -120,8 +120,6 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .wave { position: absolute; left: 0; top: 0; pointer-events: none; }
 .marquee { position: absolute; border: 1px dashed var(--sel); background: rgba(255,214,10,.08); pointer-events: none; z-index: 6; }
 .library h4 { margin: 10px 0 6px; color: var(--dim); font-size: 12px; }
-.library .lib-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.library .lib-head button { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; font-size: 11px; }
 .library .lib-note { margin: 0 0 8px; color: var(--dim); font-size: 11px; line-height: 1.4; }
 .library .src { margin-bottom: 8px; } .library .src-name { margin-bottom: 4px; } .library .src-name small { color: var(--dim); }
 .library .segs { display: flex; flex-wrap: wrap; gap: 4px; } .library .segs button, .library .lib-item { padding: 2px 6px; font-size: 11px; }
@@ -188,9 +186,17 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .library .segs button.used, .library .lib-item.used { box-shadow: inset 0 -2px 0 var(--accent); }
 .library .src.lit { margin: 0 -4px 8px; padding: 4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .library .lib-item.lit { outline: 1px solid var(--accent); }
-/* the order: its own row under Media and Import, so a narrow panel never cuts Import off */
-.library .lib-head:has(.media-sort) { flex-wrap: wrap; }
-.library .media-sort { order: 3; flex: 1 0 100%; margin-bottom: 4px; padding: 1px 4px; font-size: 11px; }
+/* the pages: a small segmented control (the side column's own tabs are above it); a dot on a page that holds the selection */
+.library .lib-pages { display: flex; gap: 2px; padding: 2px; margin: 2px 0 6px; border-radius: 8px; background: var(--line); }
+.library .lib-pages button { position: relative; flex: 1 1 0; min-width: 0; padding: 3px 4px; border: 0; border-radius: 6px; background: none; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.library .lib-pages button small { margin-left: 3px; color: var(--dim); font-size: 10px; }
+.library .lib-pages button[aria-selected="true"] { background: var(--accent); color: #fff; }
+.library .lib-pages button[aria-selected="true"] small { color: rgba(255,255,255,.75); }
+.library .lib-pages button.has-lit::after { content: ''; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.library .lib-tools { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; }
+.library .lib-tools .lib-search { flex: 1 1 auto; min-width: 0; margin: 0; }
+.library .lib-tools button { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; font-size: 11px; }
+.library .media-sort { width: 100%; margin-bottom: 6px; padding: 1px 4px; font-size: 11px; }
 .library .media-unused > summary { margin: 6px 0; }
 .library .segs button.picked, .library .lib-item.picked { background: var(--accent); border-color: var(--accent); color: #fff; }
 .library .lib-add { position: sticky; bottom: -8px; margin: 10px -10px -8px; padding: 8px 10px; background: var(--panel); border-top: 1px solid var(--line); }

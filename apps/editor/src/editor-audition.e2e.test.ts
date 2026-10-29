@@ -96,6 +96,7 @@ test('double-clicking a library segment auditions it alone; it ends by itself an
 }, 60000);
 
 test('Esc ends an audition; "add" in its banner keeps the material', async () => {
+  await page.click('[data-lib-tab="effects"]');
   await page.locator('[data-add-overlay="core.flash"]').dblclick();
   await page.waitForSelector('[data-audition]');
   await page.keyboard.press('Escape');

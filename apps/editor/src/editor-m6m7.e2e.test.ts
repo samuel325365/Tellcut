@@ -62,6 +62,7 @@ test('properties panel, crop mode, library, envelope and bus edits reach project
   await page.waitForSelector('[data-crop-banner]', { state: 'detached' });
 
   // library: click picks an overlay, the button adds it at the playhead
+  await page.click('[data-lib-tab="effects"]');
   await page.click('[data-add-overlay="core.flash"]');
   await page.click('[data-add-picked]');
   await poll(() => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => i.type === 'core.flash').length).toBe(2);

@@ -49,6 +49,7 @@ test('clicking an empty spot on the timeline jumps there, and play starts within
 }, 60000);
 
 test('library music, preview quality', async () => {
+  await page.click('[data-lib-tab="audio"]');
   await page.click('[data-add-music="tone"]');
   await page.click('[data-add-picked]');
   await poll(() => disk().tracks.find((t: any) => t.id === 'mu').items.length).toBe(2);

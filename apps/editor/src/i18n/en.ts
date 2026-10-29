@@ -338,6 +338,7 @@ export const en: Record<Key, string> = {
   'ed.photoTip': 'Photo (double-click to audition)',
   'ed.segTip': '{a}–{b} s (double-click to audition)',
   'ed.mediaSortTip': 'How Media is ordered: as the timeline first uses each (the unused ones last), as they were added, or by name',
+  'ed.libTabLit': 'What you selected on the timeline is on this page',
   'ed.onTimeline': ' (on the timeline)',
   'ed.dblListen': 'Double-click to listen',
   'ed.dblWatch': 'Double-click to audition',

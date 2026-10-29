@@ -76,7 +76,7 @@ test('a photo is one Photo entry; music shows its tempo', async () => {
 });
 
 test('blocks come in groups (this project, built-in, the shared categories); the search narrows them and opens the groups', async () => {
-  const store = createStore({ ...initialState('t'), project: fixture() });
+  const base = initialState('t'), store = createStore({ ...base, project: fixture(), layout: { ...base.layout, mediaTab: 'effects' as const } });
   const types = [{ type: 'common.slam', label: '大字', kind: 'overlay', category: 'text', doc: '一個字砸進畫面' }, { type: 'core.flash', label: '閃白', kind: 'overlay' },
     { type: 'fx.mine', label: '我的特效', kind: 'overlay' }, { type: 'common.paper', label: '紙', kind: 'scene', category: 'look' }];
   const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [] } };
@@ -176,4 +176,38 @@ test('Media follows the timeline: used sources in the order the film first shows
   const sel = root.querySelector<HTMLSelectElement>('[data-media-sort]')!;
   await act(() => { sel.value = 'timeline'; sel.dispatchEvent(new Event('change', { bubbles: true })); });
   expect(calls).toEqual([{ mediaSort: 'timeline' }]);
+});
+
+test('three pages: Video, Audio (music, narration, sound effects), Effects; each searches itself, a pick on one is added from another', async () => {
+  const p: any = fixture();
+  p.sources = { a: { path: 'a.mp4', duration: 10 }, b: { path: 'b.mp4', duration: 10 } };
+  p.media = { score: { path: 'media/score-x.wav' } };
+  p.tracks = [{ id: 'm', kind: 'music', items: [{ id: 'm1', media: 'score', start: 0, end: 2, in: 0 }] }];
+  const types = [{ type: 'core.flash', label: '閃白', kind: 'overlay' }];
+  const base = initialState('t'), store = createStore({ ...base, project: p, titles: { b: 'beach at dawn' }, selection: ['m1'] });
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [{ type: 'x.tap', label: '點' }] },
+    audition() {}, addMaterial: (m: any) => calls.push(['add', m]), setLayout: (x: any) => { calls.push(['layout', x]); store.set((s) => ({ layout: { ...s.layout, ...x } })); } };
+  const root = document.createElement('div');
+  const show = () => act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  await show();
+  const page = (k: string) => root.querySelector<HTMLElement>(`[data-lib-page="${k}"]`)!;
+  expect([...root.querySelectorAll<HTMLElement>('[data-lib-tab]')].map((e) => [e.dataset.libTab, e.textContent])).toEqual([['video', 'Video2'], ['audio', 'Audio2'], ['effects', 'Effects1']]);
+  expect([page('video').hidden, page('audio').hidden, page('effects').hidden]).toEqual([false, true, true]);
+  // sound effects and narration live on Audio; the selected music shows a dot on its page
+  expect(page('audio').querySelector('[data-add-sfx="x.tap"]')).not.toBeNull();
+  expect(root.querySelector('[data-lib-tab="audio"]')!.className).toContain('has-lit');
+  // Video's search finds a source by its title, and leaves the other pages alone
+  const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  await act(() => { search.value = 'beach'; search.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect([...page('video').querySelectorAll<HTMLElement>('[data-src]')].map((e) => e.dataset.src)).toEqual(['b']);
+  // pick a segment, go to Effects (its search starts empty), and the pick can still be added
+  await act(() => { page('video').querySelector<HTMLElement>('[data-add-source="b"]')!.click(); });
+  await act(() => { root.querySelector<HTMLElement>('[data-lib-tab="effects"]')!.click(); });
+  await show();
+  expect(calls).toContainEqual(['layout', { mediaTab: 'effects' }]);
+  expect(root.querySelector<HTMLInputElement>('[data-lib-search]')!.value).toBe('');
+  expect(page('effects').hidden).toBe(false);
+  await act(() => { root.querySelector<HTMLElement>('[data-add-picked]')!.click(); });
+  expect(calls.at(-1)).toEqual(['add', { kind: 'clip', source: 'b', from: 0, len: 5 }]);
 });

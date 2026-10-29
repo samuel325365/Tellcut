@@ -3,6 +3,9 @@
 import type { Project } from '@tellcut/engine';
 
 export type MediaSort = 'timeline' | 'added' | 'name';
+/** the Media panel's pages */
+export type MediaTab = 'video' | 'audio' | 'effects';
+export const MEDIA_TABS: MediaTab[] = ['video', 'audio', 'effects'];
 export const MEDIA_SORTS: MediaSort[] = ['timeline', 'added', 'name'];
 
 /** a stretch of a source shorter than this on both sides of a segment's edge does not count as using that segment */

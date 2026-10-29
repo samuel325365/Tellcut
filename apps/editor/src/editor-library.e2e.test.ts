@@ -35,6 +35,7 @@ afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, 
 test('☆ saves a project block to My blocks; another project adds it from the My blocks group', async () => {
   await page.goto(`${base}/editor/?id=one`);
   await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  await page.click('[data-lib-tab="effects"]');
   await page.hover('[data-add-overlay="fx.box"]');
   await page.click('[data-save-block="fx.box"]');
   await page.waitForSelector('[data-save-dialog="block"]');
@@ -47,6 +48,7 @@ test('☆ saves a project block to My blocks; another project adds it from the M
 
   await page.goto(`${base}/editor/?id=two`);
   await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  await page.click('[data-lib-tab="effects"]');
   await page.waitForSelector('[data-lib-group="block:mine"] [data-add-mine="fx.box"]');
   expect(await page.locator('[data-add-mine="fx.box"]').textContent()).toBe('紅盒子');
   await page.click('[data-add-mine="fx.box"]');

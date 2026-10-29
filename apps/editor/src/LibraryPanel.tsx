@@ -4,6 +4,8 @@
 // (its own fx, the built-in ones, the shared library by category), with a search over names, handles and descriptions.
 // Media follows the film by default (media-order.ts): sources in the order the timeline first uses them, the unused ones apart, the
 // stretches on the timeline marked, the selected clip's source lit; a downloaded one goes by its title. Narration is apart from music.
+// Three pages (Video, Audio: music, narration and sound effects, Effects), each with its own search; all three stay rendered, the
+// others hidden, so a pick made on one page can still be added from another.
 import { useEffect, useState } from 'preact/hooks';
 import type { EditorState } from './store.ts';
 import type { Material } from './audition.ts';
@@ -17,9 +19,11 @@ import { blockText } from './i18n/blocks.ts';
 import { tip } from './tip.ts';
 import { ImportDialog } from './ImportDialog.tsx';
 import { IconPlus } from './icons.tsx';
-import { isVoice, mediaUse, orderMedia, segmentUsed, type MediaSort } from './media-order.ts';
+import { isVoice, mediaUse, orderMedia, segmentUsed, type MediaSort, type MediaTab } from './media-order.ts';
 
 const SORT_NAMES: Record<MediaSort, string> = { timeline: 'Timeline order', added: 'Order added', name: 'Name' };
+const PAGES: Array<{ key: MediaTab; label: string }> = [{ key: 'video', label: 'Video' }, { key: 'audio', label: 'Audio' }, { key: 'effects', label: 'Effects' }];
+const SEARCH_PH: Record<MediaTab, string> = { video: 'Search footage', audio: 'Search music and sounds', effects: 'Search effects' };
 
 /** a block of My blocks not in this project yet: adding it copies the entry in first (spec 2026-10-29-my-library §3.3) */
 type LibPick = { slug: string; type: string; kind: 'scene' | 'overlay' };
@@ -53,10 +57,10 @@ const segmentsOf = (duration: number, cuts: number[] | undefined): Array<[number
 
 export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const p = s.project!, reg = editor.registry;
-  const [q, setQ] = useState('');
-  const hit = (d: any) => matches(q, handleOf(d.type), d.type, d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc);
-  const blocks = groupsOf((reg?.itemTypes() ?? []).filter(hit), Object.keys(BLOCK_CATEGORY), 'block');
-  const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hit), Object.keys(SFX_CATEGORY), 'sfx');
+  const tab = s.layout.mediaTab, [qs, setQs] = useState<Record<MediaTab, string>>({ video: '', audio: '', effects: '' }), q = qs.effects, qa = qs.audio;
+  const hitIn = (query: string) => (d: any) => matches(query, handleOf(d.type), d.type, d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc);
+  const blocks = groupsOf((reg?.itemTypes() ?? []).filter(hitIn(q)), Object.keys(BLOCK_CATEGORY), 'block');
+  const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hitIn(qa)), Object.keys(SFX_CATEGORY), 'sfx');
   const [picked, setPicked] = useState<{ key: string; m?: Material; lib?: LibPick } | null>(null);
   // My blocks (spec 2026-10-29-my-library §3.2, §3.3): the ones saved from this project (★), this project's copies, the rest to add
   const lib = s.library, links = lib.project?.links ?? [];
@@ -69,12 +73,20 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   );
   const [browsing, setBrowsing] = useState(false);
   const use = mediaUse(p), sort = s.layout.mediaSort, label = (id: string) => s.titles[id] ?? id;
-  const order = orderMedia(Object.keys(p.sources), sort, use.first, label);
+  const order = orderMedia(Object.keys(p.sources).filter((id) => matches(qs.video, undefined, id, s.titles[id] ?? '')), sort, use.first, label);
   // the sources and music of what is selected on the timeline: lit here, and scrolled to
   const lit = new Set(p.tracks.flatMap((tr) => tr.items as any[]).filter((it) => s.selection.includes(it.id)).map((it) => it.source ?? it.media).filter(Boolean));
   const litKey = [...lit].join('|');
-  useEffect(() => { if (lit.size) document.querySelector('.library .src.lit, .library .lib-item.lit')?.scrollIntoView?.({ block: 'nearest' }); }, [litKey]);
-  const voice = Object.keys(p.media).filter((m) => isVoice(p.media[m])), music = Object.keys(p.media).filter((m) => !isVoice(p.media[m]));
+  // on the page shown (switching to it scrolls too); a page that holds the selection but is not shown has a dot instead
+  useEffect(() => { if (lit.size) document.querySelector('.library .lib-page:not([hidden]) :is(.src.lit, .lib-item.lit)')?.scrollIntoView?.({ block: 'nearest' }); }, [litKey, tab]);
+  const litPages = new Set<MediaTab>([...lit].map((id) => (id in p.sources ? 'video' : 'audio')));
+  const media = Object.keys(p.media).filter((m) => matches(qa, undefined, m, s.titles[m] ?? ''));
+  const voice = media.filter((m) => isVoice(p.media[m])), music = media.filter((m) => !isVoice(p.media[m]));
+  const counts: Record<MediaTab, number> = { video: Object.keys(p.sources).length, audio: Object.keys(p.media).length + (reg?.sfxTypes().length ?? 0),
+    effects: (reg?.itemTypes().length ?? 0) + (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).length };
+  const setTab = (mediaTab: MediaTab) => editor.setLayout({ mediaTab });
+  // an import shows the page its files went to: Audio when they are all sound, else Video
+  const importFiles = (a: Array<{ path: string; kind: string }>) => { setTab(a.length && a.every((x) => x.kind === 'audio') ? 'audio' : 'video'); void editor.importMedia(a.map((x) => x.path)); };
   const inOrder = (ids: string[]) => { const o = orderMedia(ids, sort, use.first, label); return [...o.used, ...o.unused]; };
   /** the click/double-click handlers and the highlight of one library entry */
   const shown = new Set<string>();
@@ -112,25 +124,34 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
       })}</div>
     </div>
   ); };
+  // narration shows no tempo: the beats found in speech mean nothing
   const audio = (m: string) => { const len = musicLength(s.peaks[`media:${m}`]), on = use.first.has(m), b = pick(`music:${m}`, { kind: 'music', media: m }); return (
-    <button data-add-music={m} {...tip(t('ed.dblListen') + (on ? t('ed.onTimeline') : ''))} {...b} class={`${b.class}${on ? ' used' : ''}${lit.has(m) ? ' lit' : ''}`}>{label(m)}{len ? ` · ${formatTime(len)}` : ''}{s.beats[m] ? ` · ${Math.round(s.beats[m].bpm)} BPM` : ''}</button>
+    <button data-add-music={m} {...tip(t('ed.dblListen') + (on ? t('ed.onTimeline') : ''))} {...b} class={`${b.class}${on ? ' used' : ''}${lit.has(m) ? ' lit' : ''}`}>{label(m)}{len ? ` · ${formatTime(len)}` : ''}{s.beats[m] && !isVoice(p.media[m]) ? ` · ${Math.round(s.beats[m].bpm)} BPM` : ''}</button>
   ); };
   return (
     <aside class="library">
-      {/* Import (spec 2026-10-29-media-import): files from this PC straight into the project, without the Agent */}
-      <div class="lib-head"><h4>Media</h4>
-        <select class="media-sort" data-media-sort value={sort} {...tip(t('ed.mediaSortTip'))} onChange={(e) => editor.setLayout({ mediaSort: (e.target as HTMLSelectElement).value as MediaSort })}>
-          {(Object.keys(SORT_NAMES) as MediaSort[]).map((k) => <option value={k}>{SORT_NAMES[k]}</option>)}
-        </select>
-        {editor.fs && (
-        <button data-import-media disabled={!!s.importing} {...tip(t('ed.importTip'))} onClick={() => setBrowsing(true)}><IconPlus size={12} /> Import</button>
-      )}</div>
+      <div class="lib-pages" role="tablist">{PAGES.map((x) => (
+        <button role="tab" data-lib-tab={x.key} aria-selected={tab === x.key} class={litPages.has(x.key) && tab !== x.key ? 'has-lit' : undefined}
+          {...(litPages.has(x.key) && tab !== x.key ? tip(t('ed.libTabLit')) : {})} onClick={() => setTab(x.key)}>{x.label}<small>{counts[x.key]}</small></button>
+      ))}</div>
+      <div class="lib-tools">
+        <input class="lib-search" type="search" data-lib-search placeholder={SEARCH_PH[tab]} value={qs[tab]} {...tip(t('ed.libSearchTip'))}
+          onInput={(e) => { const v = (e.target as HTMLInputElement).value; setQs((x) => ({ ...x, [tab]: v })); }} />
+        {/* Import (spec 2026-10-29-media-import): files from this PC straight into the project, without the Agent */}
+        {editor.fs && <button data-import-media disabled={!!s.importing} {...tip(t('ed.importTip'))} onClick={() => setBrowsing(true)}><IconPlus size={12} /> Import</button>}
+      </div>
       {(s.importing || s.importNote) && <p class="lib-note" data-import-note>{s.importing ? t('ed.importing', s.importing) : s.importNote}</p>}
-      {browsing && editor.fs && <ImportDialog api={editor.fs} surface="editor" onAdd={(a) => void editor.importMedia(a.map((x) => x.path))} onClose={() => setBrowsing(false)} />}
+      {browsing && editor.fs && <ImportDialog api={editor.fs} surface="editor" onAdd={importFiles} onClose={() => setBrowsing(false)} />}
+      <div class="lib-page" data-lib-page="video" hidden={tab !== 'video'}>
+      <select class="media-sort" data-media-sort value={sort} {...tip(t('ed.mediaSortTip'))} onChange={(e) => editor.setLayout({ mediaSort: (e.target as HTMLSelectElement).value as MediaSort })}>
+        {(Object.keys(SORT_NAMES) as MediaSort[]).map((k) => <option value={k}>{SORT_NAMES[k]}</option>)}
+      </select>
       {order.used.map(source)}
       {order.unused.length > 0 && (order.used.length
         ? <details class="lib-group media-unused" data-media-unused open><summary>Not used<small>{order.unused.length}</small></summary>{order.unused.map(source)}</details>
         : order.unused.map(source))}
+      </div>
+      <div class="lib-page" data-lib-page="audio" hidden={tab !== 'audio'}>
       <h4>Music</h4>
       {!!lib.project?.styles.length && <div class="lib-styles" data-project-styles {...tip(t('lib.projectStylesTip'))}><small>This project's music styles</small>
         {lib.project.styles.map((x) => { const on = lib.project!.savedStyles.includes(x.id); return (
@@ -139,9 +160,13 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
         ); })}</div>}
       {inOrder(music).map(audio)}
       {voice.length > 0 && <><h4 data-voice-head>Voice-over</h4>{inOrder(voice).map(audio)}</>}
-      <input class="lib-search" type="search" data-lib-search placeholder="Search effects and sounds" value={q} {...tip(t('ed.libSearchTip'))}
-        onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
-      <h4>Effects</h4>
+      <h4>Sound effects</h4>
+      {sfx.map((g) => <details class="lib-group" data-lib-group={`sfx:${g.key}`} open={!!qa.trim() || g.key === 'fx' || g.key === 'core'}>
+        <summary>{g.label}<small>{g.list.length}</small></summary>
+        {g.list.map((d: any) => <button data-add-sfx={d.type} {...tip(withHandle(d.type, t('ed.dblListen')))} {...pick(`sfx:${d.type}`, { kind: 'sfx', type: d.type })}>{blockName(d)}</button>)}
+      </details>)}
+      </div>
+      <div class="lib-page" data-lib-page="effects" hidden={tab !== 'effects'}>
       {/* a group opens by itself while searching; this project's own fx and the few built-in ones are open from the start */}
       {[...blocks.filter((g) => g.key === 'fx'), ...(mine.length ? [{ key: 'mine', label: t('group.mine', {}, 'en'), list: [] as any[] }] : []), ...blocks.filter((g) => g.key !== 'fx')].map((g) => <details class="lib-group" data-lib-group={`block:${g.key}`} open={!!q.trim() || g.key === 'fx' || g.key === 'mine' || g.key === 'core'}>
         <summary>{g.label}<small>{g.key === 'mine' ? mine.length : g.list.length}</small></summary>
@@ -159,11 +184,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
             {!link && star(d.type)}</div>;
         })}
       </details>)}
-      <h4>Sound effects</h4>
-      {sfx.map((g) => <details class="lib-group" data-lib-group={`sfx:${g.key}`} open={!!q.trim() || g.key === 'fx' || g.key === 'core'}>
-        <summary>{g.label}<small>{g.list.length}</small></summary>
-        {g.list.map((d: any) => <button data-add-sfx={d.type} {...tip(withHandle(d.type, t('ed.dblListen')))} {...pick(`sfx:${d.type}`, { kind: 'sfx', type: d.type })}>{blockName(d)}</button>)}
-      </details>)}
+      </div>
       {(() => {
         // the pick must still be in the library: analysis can re-cut a source's segments
         const live = picked && shown.has(picked.key) ? picked : null;
