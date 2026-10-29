@@ -217,6 +217,20 @@ test('sfx makes the sound track when needed; an effect with layer top goes on it
   expect(parseProject(c.p).tracks.length).toBe(c.p.tracks.length);
 });
 
+test('block params named like an option of c.effect / c.sfx (at, who, len) go in params: {…}, which wins over the loose keys', () => {
+  const c = fresh();
+  const pencil = c.effect('common.progress', { at: 1, len: 4, mode: 'pencil', dots: 3, params: { at: '0.5,1.5,2.5,3.5' } });
+  const quote = c.effect('common.quote', { at: 2, len: 2, text: 'hi', params: { who: 'a coach', text: 'hello' } });
+  const shing = c.sfx('common.shing', { at: 3, len: 2, params: { len: 1.5 } });
+  const byId = (id: string) => c.p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id);
+  expect([byId(pencil).start, byId(pencil).end, byId(pencil).params]).toEqual([1, 5, { mode: 'pencil', dots: 3, at: '0.5,1.5,2.5,3.5' }]);
+  expect(byId(quote).params).toEqual({ text: 'hello', who: 'a coach' });
+  expect([byId(shing).start, byId(shing).end, byId(shing).params]).toEqual([3, 5, { len: 1.5 }]);
+  expect(() => c.effect('common.progress', { len: 1, params: 'at=1' as any })).toThrow(/params 要是物件/);
+  // a script without params: {…} works as before
+  expect(byId(c.effect('common.slam', { at: 0, len: 1, text: 'x' })).params).toEqual({ text: 'x' });
+});
+
 test('a gallery handle where a type id belongs is refused with the id it stands for', () => {
   const c = fresh();
   expect(() => c.effect('MRK-03', { at: 0, len: 1 })).toThrow(/MRK-03 是圖鑑代號.*c\.effect\('common\.stamp'/);

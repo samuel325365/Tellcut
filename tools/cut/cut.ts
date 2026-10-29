@@ -61,6 +61,12 @@ function notAHandle(type: string, call: string) {
   throw new Error(`${call}('${type}')：${type} 是圖鑑代號，cut.ts 要寫類型 id${id ? `：${call}('${id}', …)` : '（也沒有這個代號；查 npm run tellcut -- catalog --find <關鍵字>）'}`);
 }
 const stateFile = (dir: string) => join(dir, 'cache', 'cut-state.json');
+/** c.effect / c.sfx `params: { … }`: the block's params whose names the call's own options take (at, len, who…) */
+function ownParams(v: unknown, call: string): Record<string, unknown> {
+  if (v === undefined) return {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(`${call} 的 params 要是物件（積木參數，例如 { at: '0.5,1.2' }），現在是 ${JSON.stringify(v)}`);
+  return v as Record<string, unknown>;
+}
 
 /** project.json changed since the last cut wrote it (edited in the editor). A torn cut-state.json is no record, like none. */
 export function editedSinceCut(dir: string): boolean {
@@ -311,10 +317,12 @@ export class Cut {
    * moves with them — `who` picks the person when there are several (largest, left, right, center). Worked out at save().
    * `layer: 'under'` puts it under the video like the shared backgrounds (a project's own paper or stage fx: its kind does not
    * decide, since a project 'scene' can as well be a full-screen picture meant on top).
+   * Other keys are the block's params; `params: { … }` holds params whose names the options above take (common.progress's `at`,
+   * common.quote's `who`): they win over the loose keys.
    */
-  effect(type: string, o: { at?: number; len: number; layer?: 'top' | 'under'; transform?: { x: number; y: number; scale: number }; follow?: 'mouth' | 'face'; who?: Who; clip?: string; [k: string]: unknown }) {
+  effect(type: string, o: { at?: number; len: number; layer?: 'top' | 'under'; transform?: { x: number; y: number; scale: number }; follow?: 'mouth' | 'face'; who?: Who; clip?: string; params?: Record<string, unknown>; [k: string]: unknown }) {
     notAHandle(type, 'c.effect');
-    const { at = this.cursor, len, layer, transform, follow, who, clip, ...params } = o;
+    const { at = this.cursor, len, layer, transform, follow, who, clip, params: own, ...rest } = o, params = { ...rest, ...ownParams(own, `c.effect('${type}')`) };
     let id: string;
     if (layer !== undefined && layer !== 'top' && layer !== 'under') throw new Error(`c.effect('${type}')：layer 只能是 'top' 或 'under'`);
     if (SCENE_TYPES.has(type) || layer === 'under') {
@@ -376,10 +384,11 @@ export class Cut {
     const it = this.p.tracks.flatMap((t) => t.items as Array<{ id: string; transform?: unknown }>).find((i) => i.id === id);
     if (it) it.transform = { ox: 0.5, oy: 0.5, ...transform };
   }
-  /** A sound effect (an sfx type such as common.beep) `len` seconds from `at` (default: the cursor); `gain` in dB, other keys are its params. */
-  sfx(type: string, o: { at?: number; len?: number; gain?: number; [k: string]: unknown }) {
+  /** A sound effect (an sfx type such as common.beep) `len` seconds from `at` (default: the cursor); `gain` in dB, other keys are its
+   *  params — `params: { … }` for one named like an option (common.shing's `len`). */
+  sfx(type: string, o: { at?: number; len?: number; gain?: number; params?: Record<string, unknown>; [k: string]: unknown }) {
     notAHandle(type, 'c.sfx');
-    const { at = this.cursor, len = 1, gain = -8, ...params } = o;
+    const { at = this.cursor, len = 1, gain = -8, params: own, ...rest } = o, params = { ...rest, ...ownParams(own, `c.sfx('${type}')`) };
     this.track('sfx', 'sfx', 'SFX', this.p.tracks.length);
     return addItem(this.p, { track: 'sfx', item: { type, start: r6(at as number), end: r6((at as number) + len), params, gain } });
   }
