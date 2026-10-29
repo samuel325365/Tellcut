@@ -34,3 +34,5 @@ export * from './staleness.ts';
 export * from './sources/index.ts';
 export * from './presets.ts';
 export { lockHolder, tryLock } from './locks.ts';
+export * from './library/store.ts';
+export * from './library/save.ts';
