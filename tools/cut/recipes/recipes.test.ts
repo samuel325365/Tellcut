@@ -119,9 +119,11 @@ test('montage: every cut on the beat, a flash each fourth shot, a title, a card,
   const p = await c.save(), beat = 60 / 112;
   for (const t of r.cuts as number[]) expect(Math.abs(t / beat - Math.round(t / beat))).toBeLessThan(1e-3);
   expect((r.cuts as number[])[1]).toBeCloseTo(4 * beat, 3);
-  const top = track(p, 'top');
-  expect(top.filter((i) => i.type === 'core.flash').map((i) => +i.start.toFixed(3))).toEqual([+(16 * beat).toFixed(3)]);
-  expect(top.find((i) => i.type === 'common.film')!.start).toBe(0);
+  const top = track(p, 'top'), at = resolveTimes(p), shots = track(p, 'v1');
+  // the flash and the card lie within their shot and ride on it (save hangs them); the grain spans every shot and stays put
+  expect(top.filter((i) => i.type === 'core.flash').map((i) => [+at.get(i.id)!.start.toFixed(3), i.parent])).toEqual([[+(16 * beat).toFixed(3), shots[4].id]]);
+  expect([top.find((i) => i.type === 'common.film')!.start, top.find((i) => i.type === 'common.film')!.parent]).toEqual([0, undefined]);
+  expect(track(p, 'text').find((i) => i.params.text === '最好的一天')!.parent).toBe(shots[2].id);
   const text = track(p, 'text');
   expect(text.filter((i) => i.type === 'common.slam').map((i) => i.params.text)).toEqual(['夏天', '最好的一天']);
   expect(track(p, 'orig')).toEqual([]);                                                // the footage is silent under the music

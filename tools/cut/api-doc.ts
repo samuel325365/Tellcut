@@ -20,7 +20,7 @@ export const CUT_API: Array<[name: string, signature: string, what: string]> = [
   ['panel', "c.panel({ frame?: [x,y,w,h], radius?, backdrop?: {...} | false | 'blur', border? })", "面板版面：影片縮進框裡、底下圖樣、外框；在第一段 clip 之前呼叫；frame 不給時依片子比例自動選；backdrop: 'blur' 用每段自己的畫面放大模糊鋪底（橫式素材放直式片）"],
   ['fx', "c.fx('fx/名稱.js')", '登記專案自己的特效模組（型別 fx.*）'],
   ['effect', "c.effect(type, { at?, len, layer?: 'top'|'under', transform?: {x,y,scale}, follow?: 'mouth'|'face', who?, clip?, params?: {...}, ...params }) → id", "放任何畫面積木（積木清單：npm run tellcut -- catalog）；其他鍵都是積木參數，跟選項同名的參數（common.progress 的 at、common.quote 的 who）寫在 params: { at: '0.5,1.2' } 裡；follow 讓貼圖貼在片段裡那個人的嘴或臉上並跟著動，who 選人（largest／left／right／center）；layer: 'top' 蓋在字幕之上，'under' 放在影片下面當底（專案自己的紙底、舞台底這類 fx；共用的背景積木本來就在下面）"],
-  ['attach', 'c.attach(id, clipId) → id', '把項目掛在一段 clip 上，之後跟著它移動'],
+  ['attach', 'c.attach(id, clipId) → id', '把項目掛在一段 clip 上，之後跟著它移動；存檔時，整個落在主軌某一段 clip 裡的卡片、背景、音效會自動掛上那段（編輯器裡修剪、漣漪刪除時跟著走），跨過剪接點的（片名、底片質感、轉場咻聲）留在原地'],
   ['shake', 'c.shake(at, { dur?=0.4, px?=24, hz?=18 })', '鏡頭晃動：那個時間正在播的片段畫面抖一下再慢慢停（爆字、撞擊、笑點）'],
   ['sfx', 'c.sfx(type, { at?, len?=1, gain?=-8, params?: {...}, ...params }) → id', '音效（common.beep／whoosh／impact…；清單：catalog 的「音效」）；跟選項同名的參數（common.shing 的 len）寫在 params: {…} 裡；專案 fx 模組 export const sfx 的 fx.* 音效也用它放'],
   ['sfxFile', "c.sfxFile('media/sfx/ding.wav', { at?, gain?=-8, len? }) → id", '放專案自己的音檔（路徑相對於專案資料夾，例如 sfx/make.mjs 合成的 WAV）：跟 c.sfx 同一條音效軌、不會被 duck 壓低、check 不當它是配樂；len 預設＝檔案長度；檔案不存在會直接報錯。assets get 下載的音效在 media/sfx/，路徑照它印的'],

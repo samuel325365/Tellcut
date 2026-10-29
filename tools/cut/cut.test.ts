@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseProject, resolveTimes, settle } from '@tellcut/engine';
+import { parseProject, resolveTimes, runOps, settle } from '@tellcut/engine';
 import { checkFrame, Cut, editedSinceCut } from './cut.ts';
 import type { Inventory } from './inventory.ts';
 import { secs } from './speech.ts';
@@ -184,6 +184,32 @@ test('a cut that leaves gaps on the main track saves it as not magnetic, so the 
   settle(p, after);
   const at = (q: typeof p) => q.tracks.flatMap((t) => (t.items as any[]).map((i) => [i.id, i.start, i.end]));
   expect(at(after)).toEqual(at(p));
+});
+
+test('save hangs what lies within one clip on that clip, so a trim or ripple delete in the editor carries it; what spans a cut stays put', async () => {
+  const c = fresh();
+  c.music('song');
+  c.panel();
+  const [a, b, d] = [0, 3, 6].map((from) => c.clip('v', { from, len: 2 }));             // 0–2, 2–4, 4–6
+  const card = c.effect('common.slam', { at: 2.5, len: 1, text: 'on b' });
+  const ding = c.sfx('common.pop', { at: 2.6, len: 0.3 });
+  const flash = c.effect('core.flash', { at: 4, len: 0.3, layer: 'top' });
+  const bg = c.effect('common.ambient', { at: 4, len: 2 });
+  const across = c.effect('common.slam', { at: 1, len: 2, text: 'over the cut' });
+  const grain = c.effect('common.film', { at: 0, len: 6, layer: 'top' });
+  const whoosh = c.sfx('common.whoosh', { at: 1.8, len: 0.5 });
+  c.update(card, { end: 3.6 });                                                           // the script works in film seconds
+  const p = await c.save(), byId = (q: typeof p, id: string) => q.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id);
+  expect([card, ding, flash, bg].map((id) => byId(p, id).parent)).toEqual([b, b, d, d]);
+  expect([byId(p, card).start, byId(p, card).end, byId(p, ding).start]).toEqual([0.5, 1.6, 0.6]);
+  expect([across, grain, whoosh].map((id) => byId(p, id).parent)).toEqual([undefined, undefined, undefined]);
+  expect(p.tracks.filter((t) => t.id === 'bg' || t.id === 'panel').flatMap((t) => t.items as any[]).every((i) => i.parent === undefined)).toBe(true);
+  // the editor: ripple-delete the first clip, trim the head of the second; its card and sound stay on its picture
+  const after = structuredClone(p);
+  runOps(after, [{ op: 'rippleDelete', ids: [a] }, { op: 'trimStart', id: b, dt: 0.2 }]);
+  const at = resolveTimes(after);
+  expect([card, ding, flash].map((id) => +at.get(id)!.start.toFixed(3))).toEqual([0.3, 0.4, 1.8]);
+  expect(at.get(across)!.start).toBe(1);                                                  // across the cut: where it was
 });
 
 test('fx registers a project-local module once; effect puts any item type on the text track', () => {

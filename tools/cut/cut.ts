@@ -451,6 +451,28 @@ export class Cut {
       addItem(this.p, { track: 'panel', item: { type: 'common.panel', start: 0, end: duration, params: { x, y, w, h, radius: l.radius, ...l.border } } });
     }
   }
+  /**
+   * At save(): what lies within one clip of the main track — a card or a background over that shot, a flash at its start, a sound
+   * on its moment, a band of c.bands — rides on that clip, so trimming, moving or ripple-deleting the clip in the editor carries it
+   * along (or takes it away) instead of leaving it over another shot. What runs across a cut keeps its place in the film: a title
+   * over two shots, film grain over all of them, a whoosh on the cut, music and narration belong to no one clip, and hanging
+   * them on the first would make a trim of that clip drag them off the others. The script itself works in film seconds
+   * throughout (c.update's start / end are relative to a clip only for what it attached itself). The panel layout's own
+   * backdrop and frame span the film and stay; sound on the source and narration tracks is placed by film time on purpose.
+   */
+  private attachToShots() {
+    const times = resolveTimes(this.p), eps = 1e-6;
+    const shots = (this.p.tracks.find((t) => t.id === 'v1')!.items as VideoItem[]).map((c) => ({ id: c.id, ...times.get(c.id)! })).sort((a, b) => a.start - b.start);
+    for (const t of this.p.tracks) {
+      if (t.id === 'v1' || t.id === 'bg' || t.id === 'panel' || !['overlay', 'scene', 'sfx', 'video'].includes(t.kind)) continue;
+      for (const it of t.items as Array<{ id: string; start: number; end: number; parent?: string }>) {
+        if (it.parent !== undefined) continue;
+        // within a dissolve's overlap: the later clip, like the editor's own hanging (the clip under its start)
+        const home = shots.filter((c) => it.start >= c.start - eps && it.end <= c.end + eps).pop();
+        if (home) { it.start = r6(it.start - home.start); it.end = r6(it.end - home.start); it.parent = home.id; }
+      }
+    }
+  }
   /** make the track when the cut does not have it yet */
   private track(id: string, kind: string, name: string, index: number) {
     if (!this.p.tracks.some((t) => t.id === id)) this.p.tracks.splice(index, 0, (kind === 'sfx' || kind === 'music' ? { id, kind, name, gain: 0, items: [] } : { id, kind, name, items: [] }) as Project['tracks'][number]);
@@ -685,6 +707,7 @@ export class Cut {
     });
     addDucking(this.p, { duckDb: this.duckDb, speech, dips: this.dips, curve: this.curve });
     this.pruneGenerated();
+    this.attachToShots();
     // a magnetic track is packed from 0 by the editor's first command: a main track with gaps left on purpose (3D over nothing,
     // c.at) would close up under the items placed over the gaps, so it is saved as an ordinary track
     const mag = this.p.tracks.find((t: any) => t.magnetic);
