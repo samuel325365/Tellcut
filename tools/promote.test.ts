@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseProject } from '@tellcut/engine';
-import { applyPromotion, describePromotion, planPromotion } from './promote.ts';
+import { applyPromotion, describePromotion, planPromotion, rewriteCutScript } from './promote.ts';
+import { editedSinceCut } from './cut/cut.ts';
 import { nextHandle, similarNames, withHandle } from './handle-registry.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } };
@@ -97,4 +99,50 @@ test('an fx that already says its category keeps it and needs no --category', as
   expect([pl.category, pl.handle]).toEqual(['travel', 'TRV-01']);
   await applyPromotion({ dir, commonDir: common, plan: pl, handlesFile });
   expect(readFileSync(join(common, 'src', 'ring.ts'), 'utf8').match(/category/g)).toHaveLength(1);
+});
+
+test("the project's cut.ts is rewritten so the next cut does not bring the fx back; params naming it follow; a clean cut stays clean", async () => {
+  // a project made by a cut script: cut-state.json holds project.json's hash as the cut wrote it
+  const raw = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
+  raw.tracks[0].items.push({ id: 'c1', type: 'common.card', start: 3, end: 4, params: { title: 't', art: 'fx.ring', artParams: { x: 1 } } });
+  const text = JSON.stringify(raw, null, 2);
+  writeFileSync(join(dir, 'project.json'), text);
+  mkdirSync(join(dir, 'cache'));
+  writeFileSync(join(dir, 'cache', 'cut-state.json'), JSON.stringify({ hash: createHash('sha1').update(text).digest('hex') }));
+  writeFileSync(join(dir, 'cut.ts'), "export default async function (c) {\n  c.fx('fx/ring.js');\n  c.fx('fx/pair.js');\n  c.effect('fx.ring', { at: 0, len: 1 });\n  c.effect('common.card', { art: \"fx.ring\" });\n}\n");
+  expect(editedSinceCut(dir)).toBe(false);
+  const pl = await plan({ type: 'fx.ring' });
+  expect([pl.items, pl.refs, pl.cutScript]).toEqual([['r1', 'r2'], ['c1'], true]);
+  expect(describePromotion(pl)).toContain("cut.ts 裡的 'fx.ring' 改成 'common.ring'");
+  expect(await applyPromotion({ dir, commonDir: common, plan: pl, handlesFile })).toEqual({ cutLeft: false });
+  expect(readFileSync(join(dir, 'cut.ts'), 'utf8')).toBe("export default async function (c) {\n  c.fx('fx/pair.js');\n  c.effect('common.ring', { at: 0, len: 1 });\n  c.effect('common.card', { art: \"common.ring\" });\n}\n");
+  const p = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')));
+  expect(p.tracks[0].items.find((i) => i.id === 'c1')).toMatchObject({ params: { art: 'common.ring', artParams: { x: 1 } } });
+  expect(editedSinceCut(dir)).toBe(false);   // npm run cut needs no --force for the promotion
+});
+
+test('a project edited since its cut stays edited; no cut.ts, nothing to rewrite', async () => {
+  mkdirSync(join(dir, 'cache'));
+  writeFileSync(join(dir, 'cache', 'cut-state.json'), JSON.stringify({ hash: 'old' }));
+  const pl = await plan({ type: 'fx.ring' });
+  expect(pl.cutScript).toBe(false);
+  expect(await applyPromotion({ dir, commonDir: common, plan: pl, handlesFile })).toEqual({ cutLeft: false });
+  expect(editedSinceCut(dir)).toBe(true);
+});
+
+test("cut.ts's c.fx call goes wherever it is written; one it cannot find is reported", () => {
+  const o = { from: 'fx.ring', to: 'common.ring', fxFile: 'fx/ring.js' };
+  const rw = (s: string) => rewriteCutScript(s, o);
+  expect(rw("  c.fx('fx/a.js'); c.fx(\"./fx/ring.js\"); c.fx('fx/b.js');\n")).toEqual({ src: "  c.fx('fx/a.js'); c.fx('fx/b.js');\n", left: false });
+  expect(rw("  c.fx('fx/ring.js'); c.fx('fx/b.js');\n").src).toBe("  c.fx('fx/b.js');\n");
+  expect(rw("c.fx('fx/ring.js').fx('fx/b.js');\n").src).toBe("c.fx('fx/b.js');\n");
+  expect(rw("c.fx('fx/a.js').fx( 'fx/ring.js' ).fx('fx/b.js');\n").src).toBe("c.fx('fx/a.js').fx('fx/b.js');\n");
+  expect(rw("a();\r\n  cut.fx(`fx/ring.js`);\r\nb();\r\n").src).toBe('a();\r\nb();\r\n');
+  expect(rw("c.effect('fx.rings', {}); c.effect(`fx.ring`, {});").src).toBe("c.effect('fx.rings', {}); c.effect(`common.ring`, {});");
+  expect(rw("const f = 'fx/ring.js';\nc.fx(f);\n")).toEqual({ src: "const f = 'fx/ring.js';\nc.fx(f);\n", left: true });
+});
+
+test('another fx file of the project that names the type is warned about', async () => {
+  writeFileSync(join(dir, 'fx', 'pair.js'), fxSrc('fx.a', 'fx.b').replace("doc: 'd'", "doc: 'd', art: 'fx.ring'"));
+  expect((await plan({ type: 'fx.ring' })).warnings.join('\n')).toContain('fx/pair.js 裡也寫了 fx.ring');
 });
