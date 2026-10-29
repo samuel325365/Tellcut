@@ -13,7 +13,7 @@ import { exportRoutes } from './export.ts';
 import { galleryRoutes } from './gallery.ts';
 import { libraryRoutes } from './library.ts';
 import { liveRoutes } from './live.ts';
-import { deleteRoutes } from './delete.ts';
+import { deleteRoutes, ProjectHolds } from './delete.ts';
 import { requestRoutes } from './requests.ts';
 import { ChatRunner } from './chat/runner.ts';
 import { chatRoutes } from './chat/routes.ts';
@@ -50,6 +50,8 @@ export function createApp(o: AppOptions) {
   const registry = o.registry ?? createRegistry(plugins);
   const r = router();
   const queue = new JobQueue(2);
+  // work outside the queue that a delete must wait for (imports, a preset's poster)
+  const holds = new ProjectHolds();
   projectRoutes(r, store);
   jobRoutes(r, queue);
   // a project's analysis finished: its chat may be waiting for it (set once the chat routes exist)
@@ -62,15 +64,15 @@ export function createApp(o: AppOptions) {
   const tellcutDir = TELLCUT_ROOT;
   const presetDirs = o.presetDirs ?? { repo: join(tellcutDir, 'guides', 'presets'), user: join(o.projectsDir, '_presets') };
   const libraryThumb = o.libraryThumb ?? ((root: string, slug: string) => makeThumb(root, slug, plugins));
-  presetRoutes(r, presetDirs, { projectsDir: o.projectsDir, store, plugins, poster: o.presetPoster, thumb: libraryThumb });
+  presetRoutes(r, presetDirs, { projectsDir: o.projectsDir, store, plugins, poster: o.presetPoster, thumb: libraryThumb, holds });
   libraryRoutes(r, { projectsDir: o.projectsDir, store, thumb: libraryThumb });
   sourceRoutes(r, o.sources);
   const chat = new ChatRunner({ cmd: o.claude ?? claudeCmd(), cwd: tellcutDir, promptFiles: ['apps/server/chat-prompt.md', 'guides/quality.md', 'guides/workflow.md'].map((f) => join(tellcutDir, f)),
     settingsFile: join(tellcutDir, 'apps/server/chat-settings.json'), projectsDir: o.projectsDir });
   analyzed = chatRoutes(r, store, chat, queue, presetDirs).afterAnalysis;
-  deleteRoutes(r, store, { queue, chat, live });
+  deleteRoutes(r, store, { queue, chat, holds, live });
   fsRoutes(r);
-  importRoutes(r, store);
+  importRoutes(r, store, holds);
   const all: Array<[string, string | undefined]> = [['/player/', o.playerDist], ['/editor/', o.editorDist]];
   const mounts = all.filter((m): m is [string, string] => !!m[1]).map(([prefix, dir]) => [prefix, resolve(dir)] as const);
   const server: Server = createServer(async (req, res) => {
@@ -103,7 +105,7 @@ export function createApp(o: AppOptions) {
     }
   });
   return {
-    store, registry, queue,
+    store, registry, queue, holds,
     listen: (port = 0) => new Promise<number>((ok) => server.listen(port, '127.0.0.1', () => { const p = (server.address() as AddressInfo).port; chat.serverUrl = `http://127.0.0.1:${p}`; ok(p); })),
     close: () => new Promise<void>((ok) => { chat.stopAll(); queue.cancelAll(); server.closeAllConnections(); server.close(() => ok()); }),
   };

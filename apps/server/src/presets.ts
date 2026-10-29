@@ -13,6 +13,7 @@ import { blockDir, cleanFields, ffmpeg, findPreset, libraryRoot, listLibrary, lo
 import type { Lang } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { posterOf, sendProjectFile, type ProjectStore } from './projects.ts';
+import type { ProjectHolds } from './delete.ts';
 
 const FILES = new Set(['poster.jpg', 'preview.webm']);
 const LANGS = new Set(['zh', 'en', 'ja']);
@@ -20,7 +21,7 @@ const POSTER_MAX = 10 * 1024 * 1024;
 
 /** draws a preset's poster from a project: the timeline at `at` seconds, else the frame the home page shows for it */
 export type PresetPoster = (o: { dir: string; project: Project; at?: number }, out: string) => Promise<void>;
-export interface PresetRouteOptions { projectsDir: string; store: ProjectStore; plugins: Plugin[]; poster?: PresetPoster; thumb: (root: string, slug: string) => Promise<unknown> }
+export interface PresetRouteOptions { projectsDir: string; store: ProjectStore; plugins: Plugin[]; poster?: PresetPoster; thumb: (root: string, slug: string) => Promise<unknown>; holds?: ProjectHolds }
 
 export function projectPoster(plugins: Plugin[]): PresetPoster {
   return async ({ dir, project, at }, out) => {
@@ -91,44 +92,48 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     }
     if (b?.from !== 'project' || typeof b.project !== 'string') throw new HttpError(400, 'from must be project or form');
     const dir = o.store.dir(b.project), file = join(dir, 'preset-draft.json');
-    if (!existsSync(file)) throw new HttpError(404, 'No preset draft', { code: 'preset.noDraft' });
-    let raw: unknown;
-    try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch { throw new HttpError(422, 'The preset draft is not JSON', { code: 'preset.badDraft' }); }
-    const draft = PresetDraftZ.safeParse(raw);
-    if (!draft.success) throw new HttpError(422, `The preset draft is not one: ${draft.error.issues[0]?.message}`, { code: 'preset.badDraft' });
-    const d = draft.data, inc = b.include ?? {}, lib = listLibrary(root), points = pointsOf(b.points ?? d.points);
-    // refused as the form's are, before any block or music style goes into My blocks
-    if (!points.length) throw new HttpError(400, 'A preset needs at least one point', { code: 'preset.noPoints' });
-    // the film's own blocks and music style go into My blocks too (as they are; a clash is kept apart), so the preset can bring them
-    const blocks: string[] = [], links = projectLinks(root, dir);
-    if (inc.blocks) for (const fx of d.fx ?? []) {
-      // a copy of an entry of My blocks (fx/lib/<slug>/…) is that entry (final review I1); one deleted there since is left out
-      const copy = links.find((l) => fx === l.file || fx.startsWith(`fx/lib/${l.slug}/`));
-      if (copy) { if (copy.latest !== null && !blocks.includes(copy.slug)) blocks.push(copy.slug); continue; }
-      const had = lib.blocks.find((e) => e.from.project === b.project && e.from.file === fx);
-      if (had) { if (!blocks.includes(had.slug)) blocks.push(had.slug); continue; }
-      try {
-        const s = await saveBlock({ root, projectDir: dir, projectId: b.project, file: fx, onConflict: 'keep-both' });
-        if ('entry' in s) { blocks.push(s.entry.slug); void o.thumb(root, s.entry.slug).catch(() => {}); }
-      } catch (e) { console.warn(`preset ${b.project}: ${fx} not saved to My blocks: ${(e as Error).message}`); }
-    }
-    let score: string | undefined;
-    if (inc.score && d.score) {
-      score = lib.styles.find((s) => s.id === d.score)?.slug;
-      if (!score && (await loadStyles([join(dir, 'score')])).styles[d.score]) {
-        const s = await saveStyle({ root, projectDir: dir, projectId: b.project, id: d.score, onConflict: 'keep-both' }).catch(() => null);
-        if (s && 'entry' in s) score = s.entry.slug;
+    // its blocks are read and its poster drawn from the folder for a while: a delete waits (delete.ts)
+    const release = o.holds?.hold(b.project, 'preset-draft.json');
+    try {
+      if (!existsSync(file)) throw new HttpError(404, 'No preset draft', { code: 'preset.noDraft' });
+      let raw: unknown;
+      try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch { throw new HttpError(422, 'The preset draft is not JSON', { code: 'preset.badDraft' }); }
+      const draft = PresetDraftZ.safeParse(raw);
+      if (!draft.success) throw new HttpError(422, `The preset draft is not one: ${draft.error.issues[0]?.message}`, { code: 'preset.badDraft' });
+      const d = draft.data, inc = b.include ?? {}, lib = listLibrary(root), points = pointsOf(b.points ?? d.points);
+      // refused as the form's are, before any block or music style goes into My blocks
+      if (!points.length) throw new HttpError(400, 'A preset needs at least one point', { code: 'preset.noPoints' });
+      // the film's own blocks and music style go into My blocks too (as they are; a clash is kept apart), so the preset can bring them
+      const blocks: string[] = [], links = projectLinks(root, dir);
+      if (inc.blocks) for (const fx of d.fx ?? []) {
+        // a copy of an entry of My blocks (fx/lib/<slug>/…) is that entry (final review I1); one deleted there since is left out
+        const copy = links.find((l) => fx === l.file || fx.startsWith(`fx/lib/${l.slug}/`));
+        if (copy) { if (copy.latest !== null && !blocks.includes(copy.slug)) blocks.push(copy.slug); continue; }
+        const had = lib.blocks.find((e) => e.from.project === b.project && e.from.file === fx);
+        if (had) { if (!blocks.includes(had.slug)) blocks.push(had.slug); continue; }
+        try {
+          const s = await saveBlock({ root, projectDir: dir, projectId: b.project, file: fx, onConflict: 'keep-both' });
+          if ('entry' in s) { blocks.push(s.entry.slug); void o.thumb(root, s.entry.slug).catch(() => {}); }
+        } catch (e) { console.warn(`preset ${b.project}: ${fx} not saved to My blocks: ${(e as Error).message}`); }
       }
-    }
-    let project: Project | null = null;
-    try { project = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'))); } catch { /* a broken project still saves its preset, without a poster */ }
-    const theme = inc.theme ? d.theme ?? project?.meta.theme : undefined;
-    const p = writeUserPreset(dirs, { name: str(b.name) || d.name, summary: str(b.summary) || d.summary, points, lang,
-      ...(d.ratio ? { ratios: [d.ratio] } : project ? { ratios: [ratioOf(project)] } : {}), ...(d.length ? { length: d.length } : {}),
-      ...(theme ? { theme } : {}), ...(score ? { score } : {}), ...(blocks.length ? { blocks } : {}) });
-    if (project) await poster({ dir, project, ...(typeof b.posterAt === 'number' ? { at: b.posterAt } : {}) }, join(dirs.user, p.id, 'poster.jpg')).catch((e) => console.warn(`preset poster ${p.id}: ${(e as Error).message}`));
-    rmSync(file, { force: true });
-    answer(res, p);
+      let score: string | undefined;
+      if (inc.score && d.score) {
+        score = lib.styles.find((s) => s.id === d.score)?.slug;
+        if (!score && (await loadStyles([join(dir, 'score')])).styles[d.score]) {
+          const s = await saveStyle({ root, projectDir: dir, projectId: b.project, id: d.score, onConflict: 'keep-both' }).catch(() => null);
+          if (s && 'entry' in s) score = s.entry.slug;
+        }
+      }
+      let project: Project | null = null;
+      try { project = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'))); } catch { /* a broken project still saves its preset, without a poster */ }
+      const theme = inc.theme ? d.theme ?? project?.meta.theme : undefined;
+      const p = writeUserPreset(dirs, { name: str(b.name) || d.name, summary: str(b.summary) || d.summary, points, lang,
+        ...(d.ratio ? { ratios: [d.ratio] } : project ? { ratios: [ratioOf(project)] } : {}), ...(d.length ? { length: d.length } : {}),
+        ...(theme ? { theme } : {}), ...(score ? { score } : {}), ...(blocks.length ? { blocks } : {}) });
+      if (project) await poster({ dir, project, ...(typeof b.posterAt === 'number' ? { at: b.posterAt } : {}) }, join(dirs.user, p.id, 'poster.jpg')).catch((e) => console.warn(`preset poster ${p.id}: ${(e as Error).message}`));
+      rmSync(file, { force: true });
+      answer(res, p);
+    } finally { release?.(); }
   });
 
   r.put('/api/presets/:id', async (req, res, { id }) => {

@@ -102,3 +102,12 @@ test('an open editor tab saving after the delete gets 404 and nothing is recreat
   expect(r.status).toBe(404);
   expect(existsSync(join(root, 'demo'))).toBe(false);
 });
+
+test('refuses while an import or a preset saved from the project holds it (no job of the queue): a HEIC conversion would recreate media/', async () => {
+  const release = app.holds.hold('demo', 'IMG_0001.HEIC');
+  const r = await del('demo');
+  expect(r.status).toBe(409);
+  expect(await r.json()).toEqual({ error: '這個專案還有工作在進行（IMG_0001.HEIC），等它結束或取消後再刪', code: 'delete.busyJob', params: { label: 'IMG_0001.HEIC' } });
+  release(); release();   // twice: still one release
+  expect((await del('demo')).status).toBe(200);
+});

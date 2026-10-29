@@ -21,12 +21,34 @@ export const countVideos = (dir: string) => ['exports', 'output'].flatMap((d) =>
 
 export const countFx = (dir: string) => existsSync(join(dir, 'fx')) ? readdirSync(join(dir, 'fx')).filter((f) => /\.m?js$/.test(f)).length : 0;
 
+/** Work on a project the job queue does not list (an import converting HEICs into media/, a preset saved from it drawing its
+ *  poster): a delete under it would leave the folder to be recreated, half, by the work's next write. */
+export class ProjectHolds {
+  private held = new Map<string, string[]>();
+  /** returns the release (calling it again does nothing) */
+  hold(id: string, label: string): () => void {
+    const k = id.toLowerCase(), list = this.held.get(k) ?? [];   // NTFS: Demo and demo are one folder
+    list.push(label); this.held.set(k, list);
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      const l = this.held.get(k) ?? [], i = l.indexOf(label);
+      if (i >= 0) l.splice(i, 1);
+      if (!l.length) this.held.delete(k);
+    };
+  }
+  /** what holds it, or null */
+  label(id: string): string | null { return this.held.get(id.toLowerCase())?.[0] ?? null; }
+}
+
 export interface Busy { text: string; code: string; params?: Record<string, string> }
 /** why the project cannot go now, in words (and as a code the page words in its language); null when nothing is working on it */
-export function projectBusy(id: string, dir: string, o: { queue: JobQueue; chat: ChatRunner }): Busy | null {
+export function projectBusy(id: string, dir: string, o: { queue: JobQueue; chat: ChatRunner; holds?: ProjectHolds }): Busy | null {
   if (o.chat.busyWith(id)) return { text: 'Agent 正在處理這個專案（對話還在回覆中），等它回完再刪', code: 'delete.busyChat' };
-  const job = o.queue.list().find((j) => j.project === id && !isTerminal(j.status));
-  if (job) return { text: `這個專案還有工作在進行（${job.label}），等它結束或取消後再刪`, code: 'delete.busyJob', params: { label: job.label } };
+  const job = o.queue.list().find((j) => j.project.toLowerCase() === id.toLowerCase() && !isTerminal(j.status));
+  const label = job?.label ?? o.holds?.label(id);
+  if (label) return { text: `這個專案還有工作在進行（${label}），等它結束或取消後再刪`, code: 'delete.busyJob', params: { label } };
   // an analysis the command line runs (npm run tellcut -- inspect) holds a lock the server's queue does not know of
   if (files(join(dir, 'cache')).some((f) => f.endsWith('.lock') && lockHolder(f))) return { text: '這個專案正在分析素材，等分析完再刪', code: 'delete.busyAnalysis' };
   return null;
@@ -41,7 +63,7 @@ export function removeProject(root: string, id: string, ops: { renameSync: typeo
   try { ops.rmSync(away, { recursive: true, force: true }); } catch { /* gone from the list already; cleanup finishes it */ }
 }
 
-export function deleteRoutes(r: Router, store: ProjectStore, o: { queue: JobQueue; chat: ChatRunner; live: { forget(id: string): void } }) {
+export function deleteRoutes(r: Router, store: ProjectStore, o: { queue: JobQueue; chat: ChatRunner; holds?: ProjectHolds; live: { forget(id: string): void } }) {
   const guard = (id: string) => { if (id.startsWith('_') || !PROJECT_ID.test(id)) throw new HttpError(400, '這個資料夾不能刪', { code: 'delete.forbidden' }); return store.dir(id); };
   r.get('/api/projects/:id/delete-preview', (_req, res, { id }) => {
     const dir = guard(id);

@@ -1,10 +1,12 @@
 // The media panel's Import (spec 2026-10-29-media-import): files and folders on this PC looked at and named the way `npm run new`
 // names them, handed back to the editor, which adds them as one undoable edit and saves them itself. project.json is never written
 // here: a write from the server would collide with the editor's unsaved edits.
-import { isAbsolute, resolve } from 'node:path';
+import type { ServerResponse } from 'node:http';
+import { basename, isAbsolute, resolve } from 'node:path';
 import { expandInputs, ingestFiles, kindOf, samePath, type Skipped } from '@tellcut/media-node';
 import { HttpError, readJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
+import type { ProjectHolds } from './delete.ts';
 
 /** at most this many media files in one import (a whole drive picked by mistake is refused before anything is read) */
 export const IMPORT_MAX = 200;
@@ -22,11 +24,16 @@ function body(raw: unknown): Body {
   return { paths: b.paths, taken: b.taken ?? [], have };
 }
 
-export function importRoutes(r: Router, store: ProjectStore) {
+export function importRoutes(r: Router, store: ProjectStore, holds?: ProjectHolds) {
   // one import per project at a time: two converting the same HEIC would pick the same free name in media/
   const chains = new Map<string, Promise<unknown>>();
   r.post('/api/projects/:id/import', async (req, res, { id }) => {
     const dir = store.dir(id), b = body(await readJson(req));
+    // a delete meanwhile would leave the next HEIC conversion to recreate media/ in a folder that is gone (delete.ts waits)
+    const release = holds?.hold(id, b.paths.length ? basename(b.paths[0]) + (b.paths.length > 1 ? ` +${b.paths.length - 1}` : '') : 'import');
+    try { await importFiles(id, dir, b, res); } finally { release?.(); }
+  });
+  async function importFiles(id: string, dir: string, b: Body, res: ServerResponse) {
     const urls = b.paths.filter((p) => /^https?:\/\//i.test(p)), local = b.paths.filter((p) => !urls.includes(p));
     const rel = local.find((p) => !isAbsolute(p));
     if (rel !== undefined) throw new HttpError(400, `請給完整路徑：${rel}`, { code: 'fs.notAbsolute' });
@@ -56,6 +63,6 @@ export function importRoutes(r: Router, store: ProjectStore) {
       if (chains.get(id) === run) chains.delete(id);
       res.end();
     }
-  });
+  }
 }
 
