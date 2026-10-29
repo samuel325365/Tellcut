@@ -109,6 +109,8 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'MOM-04': 'common.wipe',
   'MOM-05': 'core.flash',
   'MOM-06': 'core.endCard',
+  // 2026-10-30: Tellcut's own dachshund (MOM-07 was common.logo, retired)
+  'MOM-08': 'common.dachshund',
   'SFX-ALR-01': 'common.beep',
   'SFX-ALR-02': 'common.tick',
   'SFX-ALR-03': 'common.error',

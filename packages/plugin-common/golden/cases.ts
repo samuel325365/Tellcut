@@ -479,4 +479,10 @@ export const cases: Case[] = [
   { name: 'wide-tag-ember', type: 'common.tag', params: { look: 'ember', tags: 'PORK NECK', size: 4.5, x: 0.08, y: 0.12 }, at: [1.5], wide: true, theme: EMBER, bg: '#5a4636' },
   { name: 'stamp-ember', type: 'common.stamp', params: { shape: 'ember', text: 'GREAT', size: 6, angle: -4, x: 0.4, y: 0.6 }, at: [0.1, 1.5], theme: EMBER, bg: '#5a4636' },
   { name: 'wide-stamp-ember', type: 'common.stamp', params: { shape: 'ember', head: 'VERDICT', text: 'Worth the queue', size: 9, angle: -4 }, at: [1.5], wide: true, theme: EMBER, bg: '#5a4636' },
+  // the Tellcut dachshund (2026-10-30): walking, the cream dog facing left on black, footage in its frames, a cut, sitting in 16:9
+  { name: 'dachshund-walk', type: 'common.dachshund', at: [0.5, 1.5] },
+  { name: 'dachshund-dark-left', type: 'common.dachshund', params: { look: 'dark', facing: 'left', action: 'wag' }, bg: '#161412', at: [1] },
+  { name: 'dachshund-frames', type: 'common.dachshund', sources: PIC, params: { source: 'pic', action: 'idle' }, at: [1] },
+  { name: 'dachshund-cut', type: 'common.dachshund', params: { action: 'cut', cutAt: 1 }, at: [1.2] },
+  { name: 'wide-dachshund', type: 'common.dachshund', params: { action: 'sit' }, at: [1.5], wide: true },
 ];

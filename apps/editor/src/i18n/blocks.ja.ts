@@ -184,4 +184,5 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'clip.shake': { label: 'カメラの揺れ', doc: 'そのとき再生中のクリップの画面が一度揺れてからゆっくり止まる：どーん文字、衝撃、笑いどころに。hook レシピの冒頭を揺らしたいなら、hook に shake: true を足す。' },
   'clip.follow': { label: 'ステッカーが口（や顔）を追う', doc: 'どんなステッカーもクリップの中の人の口や顔に貼って一緒に動かせる。何人かいるときは who: left／right／largest／center を足す。伏せ字：censorSpeech(…, { follow: true })。' },
   'clip.avoidBurned': { label: '元映像の焼き込み字幕を避ける', doc: '元映像に焼き込まれた字幕（分析時に検出）がこの区間にあるとき、自動で拡大クロップして字幕を画面の外へ押し出す。2.2倍に拡大しても避けられなければそのままにして警告する。' },
+  'common.dachshund': { label: 'ダックスフント', doc: 'Tellcut のダックスフント。黒とクリーム色で、胴体がフィルムになっている。歩く、しっぽを振る、首をかしげる、座る、クリップのように体を二つに切る。フィルムのコマに映像を入れられる。ユーザーが Tellcut のダックスフントを求めたときだけ使う。' },
 };

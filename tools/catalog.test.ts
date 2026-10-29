@@ -72,7 +72,11 @@ test("the block index: one line per category with the short names, then the soun
   expect(idx).toContain(`${handleOf('common.stamp')!.slice(4)} \`stamp\``);
   for (const s of plugins.find((p) => p.id === 'common')!.sfx!) expect(idx).toContain('`' + s.type.slice(7) + '`');
   expect(idx).not.toContain('common.');
-  for (const it of plugins.find((p) => p.id === 'common')!.items!) expect(idx).toContain('`' + it.type.slice(7) + '`');
+  // every block but the ones used only when asked for (onRequest: the dachshund), which the agent is not offered here
+  for (const it of plugins.find((p) => p.id === 'common')!.items!) {
+    if (it.onRequest) expect(idx).not.toContain('`' + it.type.slice(7) + '`');
+    else expect(idx).toContain('`' + it.type.slice(7) + '`');
+  }
   const prompt = readFileSync(GUIDE_FILE, 'utf8');
   expect(withIndex(prompt), 'guides/workflow.md 的積木索引過期了：npm run blocks:index').toBe(prompt);
   expect(() => withIndex('no marks')).toThrow(/標記/);

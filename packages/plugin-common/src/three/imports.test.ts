@@ -37,6 +37,8 @@ test('no file statically imports three (or opentype.js, clipper-lib), and only t
 test('nothing else in the repo imports them either, so Node loads them only when loadThreeKit is called', () => {
   const root = fileURLToPath(new URL('../../../..', import.meta.url));
   const dirs = ['packages/engine/src', 'packages/plugins/src', 'packages/media-node/src', 'packages/protocol/src', 'apps/player/src', 'apps/server/src', 'tools'];
-  const bad = dirs.flatMap((d) => files(join(root, d))).filter((f) => { const t = readFileSync(f, 'utf8'); return STATIC.test(t) || DYNAMIC.test(t); }).map((f) => relative(root, f));
+  // tools/brand-assets.ts is a script of its own (npm run brand-assets) that nothing imports: it turns the wordmark into paths with opentype
+  const own = new Set([join('tools', 'brand-assets.ts')]);
+  const bad = dirs.flatMap((d) => files(join(root, d))).filter((f) => { const t = readFileSync(f, 'utf8'); return STATIC.test(t) || DYNAMIC.test(t); }).map((f) => relative(root, f)).filter((f) => !own.has(f));
   expect(bad).toEqual([]);
 });
