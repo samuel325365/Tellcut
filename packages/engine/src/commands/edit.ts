@@ -45,14 +45,17 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
   const fitsFades = !('fadeIn' in a.patch || 'fadeOut' in a.patch);
   if (fitsFades) fitFades(f.track, next);
   checkItem(p, f.track.kind, next);
-  const oldLen = it.end - it.start, oldIn = it.in;
-  // a media clip at its old speed: its own sound follows a new in-point and length, the other children stay on the same picture
-  const media = mediaRate(f.track, f.item) !== null && !('speed' in a.patch) && !('rate' in a.patch);
-  const own = media ? ownSounds(p, it.id) : [];
-  for (const [k, v] of Object.entries(a.patch)) { if (v === undefined) delete it[k]; else it[k] = plain(v); }
+  const oldLen = it.end - it.start, oldIn = it.in, rate = mediaRate(f.track, f.item);
+  // a media clip's own sound follows a new in-point and length, and plays at a new speed too (like a rate stretch)
+  const own = rate !== null ? ownSounds(p, it.id) : [];
+  const k = rate !== null ? mediaRate(f.track, next as AnyItem)! / rate : 1;
+  // a sound plays at most 4×: refused before anything changes, like checkItem
+  for (const c of own) if (r6(c.rate * k) > 4) throw new CommandError(`${f.track.kind === 'video' ? 'speed' : 'rate'}: the clip's own sound cannot play faster than 4× (it would need ${r6(c.rate * k)}×)`);
+  for (const [key, v] of Object.entries(a.patch)) { if (v === undefined) delete it[key]; else it[key] = plain(v); }
   if (fitsFades) fitFades(f.track, it);
-  if (!media) { scaleChildren(p, it.id, oldLen, it.end - it.start); return; }
-  for (const c of own) c.in = r6(c.in + it.in - oldIn);
+  for (const c of own) { c.in = r6(c.in + it.in - oldIn); c.rate = r6(c.rate * k); }
+  // a block or a clip at a new speed: the children keep their proportional place; at its old speed the others stay on the same picture
+  if (rate === null || k !== 1) { scaleChildren(p, it.id, oldLen, it.end - it.start); return; }
   followTrim(p, it.id, oldLen, it.end - it.start, 0);
 }
 

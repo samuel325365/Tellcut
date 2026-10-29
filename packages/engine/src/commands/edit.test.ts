@@ -126,3 +126,20 @@ test('crop keyframes: add at a time, edit, remove', () => {
   removeCropKey(p, { id: 'c1', index: 0 }); removeCropKey(p, { id: 'c1', index: 0 }); removeCropKey(p, { id: 'c1', index: 0 });
   expect(c1.crop.keys).toBeUndefined();
 });
+
+test("a new speed from the properties panel plays the clip's own sound at it; past 4× for the sound it is refused", () => {
+  // c1 (in 1, 0–4 s) with its own sound and a tap 2 s into it
+  const withOwn = () => {
+    const p = fixture();
+    addItem(p, { track: 'au', item: { id: 'snd', source: 's', in: 1, rate: 1, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c1' } });
+    addItem(p, { track: 'fx', item: { id: 'hit', type: 'x.tap', start: 2, end: 2.1, params: {}, gain: 0, parent: 'c1' } });
+    return p;
+  };
+  const p = run(withOwn(), updateItem, { id: 'c1', patch: { speed: 2 } });
+  expect(item(p, 'snd')).toMatchObject({ start: 0, end: 4, in: 1, rate: 2 });
+  expect(item(p, 'hit').start).toBe(2);
+  // a new speed, in-point and length together: the sound starts at the picture's new source moment and spans the clip
+  expect(item(run(withOwn(), updateItem, { id: 'c1', patch: { speed: 0.5, in: 3, end: 8 } }), 'snd')).toMatchObject({ start: 0, end: 8, in: 3, rate: 0.5 });
+  expect(() => run(withOwn(), updateItem, { id: 'c1', patch: { speed: 5 } })).toThrow(CommandError);
+  expect(() => run(withOwn(), updateItem, { id: 'c1', patch: { speed: 5 } })).toThrow(/own sound/);
+});
