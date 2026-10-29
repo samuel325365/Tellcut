@@ -10,13 +10,17 @@ import { CLIENT_ID, type ProjectStore } from './projects.ts';
 
 /** clients: each editor's stream, with the page's id when it sent one (?client=) */
 interface Room { clients: Set<ServerResponse>; ids: Map<ServerResponse, string>; watchers: FSWatcher[]; state: { selection: string[]; playhead: number; at: number | null };
-  waiters: Map<string, (r: { outcome: string; reason?: string }) => void> }
+  waiters: Map<string, (r: { outcome: string; reason?: string }) => void>; /** watching failed this many times in a row; the restart waiting */ fails: number; retry?: NodeJS.Timeout }
+
+/** the first wait before watching again after a watcher failed, doubled each time it fails again (at most RETRY_MAX) */
+const RETRY_MS = 1000;
+const RETRY_MAX = 30000;
 
 export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number } = {}) {
   const rooms = new Map<string, Room>();
   const room = (id: string) => {
     let x = rooms.get(id);
-    if (!x) rooms.set(id, (x = { clients: new Set(), ids: new Map(), watchers: [], state: { selection: [], playhead: 0, at: null }, waiters: new Map() }));
+    if (!x) rooms.set(id, (x = { clients: new Set(), ids: new Map(), watchers: [], state: { selection: [], playhead: 0, at: null }, waiters: new Map(), fails: 0 }));
     return x;
   };
   const push = (id: string, m: unknown) => { for (const c of room(id).clients) c.write(`data: ${JSON.stringify(m)}\n\n`); };
@@ -29,9 +33,11 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
   });
   const debounce = (f: () => void) => { let t: NodeJS.Timeout | undefined; return () => { clearTimeout(t); t = setTimeout(f, 100); }; };
 
+  function stopWatch(x: Room) { clearTimeout(x.retry); x.retry = undefined; for (const w of x.watchers) w.close(); x.watchers = []; }
   function startWatch(id: string) {
     const dir = store.dir(id), pdir = proposalsDir(dir), x = room(id);
     mkdirSync(pdir, { recursive: true });
+    stopWatch(x);
     let last = JSON.stringify(readProposal(dir));
     x.watchers.push(watch(pdir, debounce(() => {
       const now = JSON.stringify(readProposal(dir));
@@ -53,16 +59,27 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
       try { h = projectHash(readFileSync(join(dir, 'project.json'), 'utf8')); } catch { return; }
       if (h !== store.lastHash.get(id)) { store.lastHash.set(id, h); push(id, { type: 'changed-on-disk' }); }
     });
-    // a watcher that fails (its folder gone from under it) would throw an 'error' nobody listens to, and that ends the server:
-    // this project's watching stops instead (not seen on Windows 11 with rd or rmSync, which end it quietly)
-    for (const w of x.watchers) w.on('error', () => { for (const v of x.watchers) v.close(); x.watchers = []; });
+    // a watcher that fails (its folder gone from under it, a network drive dropping) would throw an 'error' nobody listens to, and
+    // that ends the server: this project's watching stops instead, and starts again after a wait while an editor is still open
+    // (it never did: only a first client started it). Not seen on Windows 11 with rd or rmSync, which end it quietly
+    const mine = x.watchers;
+    for (const w of mine) w.on('error', () => {
+      if (x.watchers !== mine) return;   // one restart for all of this start's watchers
+      stopWatch(x);
+      const wait = Math.min(RETRY_MAX, RETRY_MS * 2 ** x.fails++);
+      x.retry = setTimeout(() => {
+        x.retry = undefined;
+        if (rooms.get(id) !== x || !x.clients.size) return;
+        try { startWatch(id); } catch { /* the project is gone: nothing to watch; its editors are told on their next request */ }
+      }, wait);
+    });
   }
 
   r.get('/api/projects/:id/events', (req, res, { id }) => {
     const dir = store.dir(id), x = room(id);
     if (!store.lastHash.has(id)) store.lastHash.set(id, projectHash(readFileSync(join(dir, 'project.json'), 'utf8')));
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
-    if (!x.clients.size) startWatch(id);
+    if (!x.clients.size) { x.fails = 0; startWatch(id); }
     x.clients.add(res);
     const client = new URL(req.url ?? '', 'http://x').searchParams.get('client');
     if (client && CLIENT_ID.test(client)) x.ids.set(res, client);
@@ -70,7 +87,7 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
     const bye = () => {
       if (!x.clients.delete(res)) return;
       x.ids.delete(res);
-      if (!x.clients.size) { for (const w of x.watchers) w.close(); x.watchers = []; }
+      if (!x.clients.size) stopWatch(x);
     };
     req.on('close', bye); res.on('close', bye);
   });
@@ -134,7 +151,7 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
     forget(id: string) {
       const x = rooms.get(id);
       if (!x) return;
-      for (const w of x.watchers) w.close();
+      stopWatch(x);
       for (const c of x.clients) c.end();
       rooms.delete(id);
     },
