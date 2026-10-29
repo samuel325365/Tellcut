@@ -85,6 +85,7 @@ export { albumTile } from './album.ts';
 export { chatWindow, chatPoint } from './chat.ts';
 export { searchWindow, searchPoint } from './search.ts';
 export { casefileWindow } from './casefile.ts';
+export { DOG_BAND, DOG_COLORS, DOG_PIVOTS, DOG_SHAPES, DOG_VIEWBOX, dogSvg, type DogLook, type DogPart, type DogRole, type DogShape } from './dachshund.ts';
 export { magazineWindow } from './magazine.ts';
 export { outroWindow } from './outro.ts';
 export { loadThreeKit } from './three/load.ts';
