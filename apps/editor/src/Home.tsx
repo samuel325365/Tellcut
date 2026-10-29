@@ -11,7 +11,7 @@ import { IconFilm, IconPlus, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { PresetStrip } from './PresetStrip.tsx';
 import { PresetDialog } from './PresetDialog.tsx';
-import { pickText, type Lang, type PresetInfo } from '@tellcut/protocol';
+import { pickText, type ChatTask, type Lang, type PresetInfo } from '@tellcut/protocol';
 import { t } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
 import { LangSwitch } from './LangSwitch.tsx';
@@ -49,6 +49,14 @@ function Card({ p, onDelete }: { p: ProjectRow; onDelete: () => void }) {
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); }}><IconTrash size={15} /></button>
     </li>
   );
+}
+
+/** a request the gallery handed over ("change with the Agent" on a block of My blocks, spec 2026-10-29-my-library §3.4): sent once
+ *  in the home chat, its task with it */
+function sendPending(session: ChatSession) {
+  let x: { text?: unknown; task?: unknown } | null = null;
+  try { x = JSON.parse(sessionStorage.getItem('tellcut.pendingTask') ?? 'null'); sessionStorage.removeItem('tellcut.pendingTask'); } catch { return; }
+  if (x && typeof x.text === 'string' && x.task && typeof x.task === 'object') void session.send(x.text, undefined, x.task as ChatTask);
 }
 
 export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects(): Promise<ProjectRow[]>; presets?(): Promise<{ presets: PresetInfo[] }> } }) {
@@ -89,7 +97,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
     // a preset still tagged on 主頁 (back from another conversation, or a new draft): its ticks come with it on this session too
     if (thread === 'home' && pickedInfo) void session.presetSources(pickedInfo.sources ?? []);
     // 主頁's draft loads at once; a project's conversation once the list says the project is still there
-    if (thread === 'home') { void loadProjects(); void session.load(); }
+    if (thread === 'home') { void loadProjects(); void session.load().then(() => sendPending(session)); }
     else void loadProjects().then((there) => { if (there) void session.load(); });
     return () => session.close();
   }, [session]);

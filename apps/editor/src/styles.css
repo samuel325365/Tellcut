@@ -767,3 +767,14 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .lib-toast { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 12px;
   background: var(--panel); color: var(--text); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); font-size: 13px; }
 .lib-toast a { color: var(--accent); } .lib-toast button { padding: 0 6px; background: transparent; border-color: transparent; color: var(--dim); }
+/* the gallery's Mine (spec 2026-10-29-my-library §3.4): rename / change with the Agent / delete, each a small form under its button */
+.g-mine-actions { margin-top: 10px; }
+.g-mine-actions .danger { color: var(--s-danger); }
+.g-mine-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--s-raise); font-size: 13px; }
+.g-mine-form label { display: flex; flex-direction: column; gap: 4px; color: var(--s-dim); font-size: 12px; }
+.g-mine-form input, .g-mine-form textarea { font: inherit; font-size: 13px; color: var(--s-text); background: var(--s-input); border: 1px solid var(--s-line); border-radius: 8px; padding: 6px 8px; resize: vertical; }
+.g-mine-form p { margin: 0; line-height: 1.5; } .g-mine-form .warn { color: var(--s-warn); }
+.g-mine-form .g-bar { justify-content: flex-end; margin-top: 2px; }
+.g-mine-form button.primary { background: var(--s-accent); border-color: transparent; color: #fff; }
+.g-mine-confirm .g-bar button.danger { background: var(--s-danger); border-color: transparent; color: #fff; }
+.g-mine-h { margin: 4px 0 8px; font-size: 13px; color: var(--s-dim); font-weight: 500; }

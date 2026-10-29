@@ -256,3 +256,95 @@ test('the truncated type id and handle carry their full text in the tooltip', as
   expect(lines.querySelector('[data-card-type]')!.getAttribute('data-tip')).toContain('common.slam');
   expect(lines.querySelector('[data-card-handle]')!.getAttribute('data-tip')).toContain(handleOf('common.slam')!);
 });
+
+// ---------------------------------------------------------------- Mine: the user's own blocks and styles (spec 2026-10-29-my-library §3.4)
+import { mineProject } from './gallery.ts';
+import type { LibraryIndex } from '@tellcut/protocol';
+
+const LIB: LibraryIndex = {
+  blocks: [{ slug: 'chalk', type: 'fx.chalk', name: '粉筆標題卡', desc: '黑板上的標題', category: 'text', kind: 'overlay', params: [{ key: 'text', label: '文字', type: 'string', default: 'hi' }],
+    main: 'fx/chalk.js', thumb: '/api/library/blocks/chalk/thumb.png?v=1', from: { project: 'trip', file: 'fx/chalk.js' }, savedAt: '2026-10-29T03:00:00.000Z', version: '1', group: ['fx.chalk-line'] },
+  { slug: 'chalk', type: 'fx.chalk-line', name: '粉筆底線', desc: '', kind: 'overlay', params: [],
+    main: 'fx/chalk.js', thumb: null, from: { project: 'trip', file: 'fx/chalk.js' }, savedAt: '2026-10-29T03:00:00.000Z', version: '1', group: ['fx.chalk'] }],
+  styles: [{ slug: 'jazz', id: 'jazz', name: '街頭爵士', desc: '輕快', defaults: { bpm: 96, key: 'C' }, from: { project: 'trip', file: 'score/jazz.js' }, savedAt: '2026-10-29T03:00:00.000Z' }],
+};
+function libApi(lib: LibraryIndex = LIB) {
+  const calls: any[] = [];
+  let cur = structuredClone(lib);
+  return { calls, api: {
+    load: async () => structuredClone(cur),
+    renameBlock: async (slug: string, type: string, b: any) => { calls.push(['rename', slug, type, b]); cur.blocks = cur.blocks.map((x) => (x.type === type ? { ...x, ...b } : x)); },
+    renameStyle: async (slug: string, b: any) => { calls.push(['renameStyle', slug, b]); },
+    usage: async (kind: string, slug: string) => { calls.push(['usage', kind, slug]); return { projects: 2, presets: ['我的美食'] }; },
+    remove: async (kind: string, slug: string) => { calls.push(['remove', kind, slug]); cur = { ...cur, blocks: cur.blocks.filter((x) => x.slug !== slug) }; },
+  } };
+}
+async function minePage(lib?: LibraryIndex) {
+  const root = document.createElement('div'), x = libApi(lib), went: string[] = [];
+  await act(async () => { render(<Gallery load={async () => G} library={x.api} navigate={(u) => went.push(u)} />, root); });
+  await settle();
+  return { root, ...x, went };
+}
+const input = (root: Element, sel: string, v: string) => act(() => { const e = root.querySelector(sel) as HTMLInputElement; e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); });
+
+test('Mine comes first among the categories, even when empty; a preview loads the entry module', () => {
+  expect(galleryCategories(G.blocks, 2, 0)[0]).toEqual({ key: 'mine', label: expect.any(String), count: 0 });
+  expect(galleryCategories(G.blocks, 2).some((c) => c.key === 'mine')).toBe(false);
+  expect(mineProject(LIB.blocks[0], { text: 'x' }).meta).toMatchObject({ fx: ['fx/chalk.js'], width: 1080, height: 1920 });
+  expect(mineProject(LIB.blocks[0], {}).tracks[0].items[0]).toMatchObject({ type: 'fx.chalk', start: 0 });
+});
+
+test('the Mine category lists the user’s blocks with where they came from, and renames one', async () => {
+  const { root, calls } = await minePage();
+  expect(root.querySelector('[data-cat="mine"] small')?.textContent).toBe('2');
+  await click(root, '[data-cat="mine"]');
+  expect(cards(root)).toEqual(['mine:fx.chalk', 'mine:fx.chalk-line']);
+  expect(root.querySelector('[data-card="mine:fx.chalk"]')?.textContent).toContain('trip');
+  expect(root.querySelector('[data-detail="mine:fx.chalk"] h2')?.textContent).toBe('粉筆標題卡');
+  await click(root, '[data-mine-rename]');
+  await input(root, '[data-mine-name]', '黑板標題');
+  await click(root, '[data-mine-rename-save]');
+  await settle();
+  expect(calls).toContainEqual(['rename', 'chalk', 'fx.chalk', { name: '黑板標題', desc: '黑板上的標題' }]);
+  expect(root.querySelector('[data-card="mine:fx.chalk"]')?.textContent).toContain('黑板標題');
+});
+
+test('deleting says what keeps working and what loses it, and takes the whole entry', async () => {
+  const { root, calls } = await minePage();
+  await click(root, '[data-cat="mine"]');
+  await click(root, '[data-mine-delete]');
+  await settle();
+  const text = root.querySelector('[data-mine-confirm]')?.textContent ?? '';
+  expect(text).toContain('2');
+  expect(text).toContain('我的美食');
+  expect(text).toContain('粉筆底線');
+  await click(root, '[data-mine-delete-confirm]');
+  await settle();
+  expect(calls).toContainEqual(['remove', 'blocks', 'chalk']);
+  expect(cards(root)).toEqual([]);
+  expect(root.querySelector('[data-mine-empty]')).not.toBeNull();
+});
+
+test('"change with the Agent" hands the request to the home chat', async () => {
+  const { root, went } = await minePage();
+  await click(root, '[data-cat="mine"]');
+  await click(root, '[data-mine-agent]');
+  await act(() => { const e = root.querySelector('[data-mine-request]') as HTMLTextAreaElement; e.value = '字大一點'; e.dispatchEvent(new Event('input', { bubbles: true })); });
+  await click(root, '[data-mine-agent-send]');
+  expect(JSON.parse(sessionStorage.getItem('tellcut.pendingTask')!)).toMatchObject({ task: { kind: 'library-edit', slug: 'chalk', type: 'fx.chalk', request: '字大一點' } });
+  expect(went).toEqual(['./']);
+});
+
+test('the styles tab starts with the user’s own music styles', async () => {
+  const { root } = await minePage();
+  await click(root, '[data-tab="styles"]');
+  expect(cards(root)[0]).toBe('mine-style:jazz');
+  await click(root, '[data-card="mine-style:jazz"]');
+  expect(root.querySelector('[data-detail="mine-style:jazz"] audio')?.getAttribute('src')).toContain('/api/gallery/score/jazz.wav');
+});
+
+test('an empty library still shows Mine, with how to fill it', async () => {
+  const { root } = await minePage({ blocks: [], styles: [] });
+  await click(root, '[data-cat="mine"]');
+  expect(root.querySelector('[data-mine-empty]')).not.toBeNull();
+});

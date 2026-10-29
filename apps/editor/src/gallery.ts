@@ -1,5 +1,5 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
-import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
@@ -24,6 +24,18 @@ export function blockProject(b: GalleryBlock, params: Record<string, unknown>, t
   return {
     version: 1,
     meta: { name: b.type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: [b.plugin], background: '#3a4256', mix: MIX, ...(theme ? { theme } : {}) },
+    sources: {}, media: {}, grids: [],
+    tracks: [{ id: 'g', kind: b.kind, items: [{ id: 'block', type: b.type, start: 0, end: PREVIEW_LEN, params }] }],
+  };
+}
+
+/** One of My blocks as blockProject shows a shared one: its module comes from the entry's folder (the player's project url, libraryPlayer);
+ *  the look picked, else the theme of the project it was saved from (spec 2026-10-29-my-library §3.4). */
+export function mineProject(b: LibraryBlockInfo, params: Record<string, unknown>, themeId = 'none') {
+  const theme = THEMES[themeId]?.theme ?? b.theme;
+  return {
+    version: 1,
+    meta: { name: b.type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: ['fx'], background: '#3a4256', mix: MIX, fx: [b.main], ...(theme ? { theme } : {}) },
     sources: {}, media: {}, grids: [],
     tracks: [{ id: 'g', kind: b.kind, items: [{ id: 'block', type: b.type, start: 0, end: PREVIEW_LEN, params }] }],
   };
@@ -73,8 +85,12 @@ export const byHandle = (a: string, b: string) => { const n = (id: string) => { 
 /** the last category: what a clip itself does (not blocks, listed with them) */
 export const CLIP_CATEGORY = 'clip';
 
-/** The gallery's categories with their counts: the catalog's order (BLOCK_CATEGORY), then plugin groups as they come, then clip effects. */
-export function galleryCategories(blocks: GalleryBlock[], clipCount: number): Array<{ key: string; label: string; count: number }> {
+/** the first category, the user's own blocks (shown even when empty: it says how to fill it) */
+export const MINE_CATEGORY = 'mine';
+
+/** The gallery's categories with their counts: My blocks (when the page has the library: `mineCount`), the catalog's order
+ *  (BLOCK_CATEGORY), then plugin groups as they come, then clip effects. */
+export function galleryCategories(blocks: GalleryBlock[], clipCount: number, mineCount?: number): Array<{ key: string; label: string; count: number }> {
   const count = new Map<string, number>(), plugins: Array<{ key: string; label: string }> = [];
   for (const b of blocks) {
     const k = blockCategory(b);
@@ -82,6 +98,7 @@ export function galleryCategories(blocks: GalleryBlock[], clipCount: number): Ar
     count.set(k, (count.get(k) ?? 0) + 1);
   }
   return [
+    ...(mineCount === undefined ? [] : [{ key: MINE_CATEGORY, label: t('cat.mine'), count: mineCount }]),
     ...Object.keys(BLOCK_CATEGORY).filter((k) => count.has(k)).map((key) => ({ key, label: t(`cat.block.${key}` as Key), count: count.get(key)! })),
     ...plugins.map((p) => ({ ...p, count: count.get(p.key)! })),
     ...(clipCount ? [{ key: CLIP_CATEGORY, label: t('cat.clip'), count: clipCount }] : []),

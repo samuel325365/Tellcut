@@ -21,7 +21,7 @@ document.body.appendChild(tipRoot);
 render(<TooltipLayer />, tipRoot);
 if (q.has('gallery')) {
   // the block gallery (spec 2026-10-17-block-gallery)
-  render(<Gallery load={api.gallery} />, root);
+  render(<Gallery load={api.gallery} library={{ load: api.library, renameBlock: api.renameLibraryBlock, renameStyle: api.renameLibraryStyle, usage: api.libraryUsage, remove: api.deleteLibrary }} />, root);
 } else if (!id) {
   // no project chosen: the home page — projects and the home chat (spec 2026-10-16-in-editor-chat §2.1)
   render(<Home api={api as any} />, root);
