@@ -48,3 +48,18 @@ test('places carry a code (and the drive letter) so the page can word them in it
     }
   } finally { await app.close(); }
 });
+
+test('listFolder does not block: a big folder comes back as a promise, every entry in order with its size; a file is not a folder', async () => {
+  const { listFolder } = await import('./fs.ts');
+  const d = mkdtempSync(join(tmpdir(), 'fs-'));
+  for (let i = 0; i < 120; i++) writeFileSync(join(d, `clip${i}.mp4`), 'x'.repeat(i));
+  mkdirSync(join(d, 'sub'));
+  const pending = listFolder(d);
+  expect(pending).toBeInstanceOf(Promise);
+  const r = await pending;
+  expect(r.entries.length).toBe(121);
+  expect(r.entries[0]).toEqual({ name: 'sub', kind: 'dir' });
+  expect(r.entries[1]).toEqual({ name: 'clip0.mp4', kind: 'video', size: 0 });
+  expect(r.entries.at(-1)).toEqual({ name: 'clip119.mp4', kind: 'video', size: 119 });
+  await expect(listFolder(join(d, 'clip3.mp4'))).rejects.toMatchObject({ status: 400, body: { code: 'fs.notDir' } });
+});
