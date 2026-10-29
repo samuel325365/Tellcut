@@ -12,5 +12,8 @@
     "@tellcut/engine": "*",
     "@tellcut/plugins": "*",
     "@tellcut/protocol": "*"
+  },
+  "devDependencies": {
+    "vite": "5.4.11"
   }
 }

@@ -12,5 +12,10 @@
     "@tellcut/protocol": "*",
     "playwright-core": "1.49.1",
     "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@tellcut/plugins": "*",
+    "@types/pngjs": "6.0.5",
+    "pngjs": "7.0.0"
   }
 }

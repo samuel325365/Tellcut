@@ -11,5 +11,8 @@
     "motion-dom": "12.43.0",
     "motion-utils": "12.39.0",
     "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "vitest": "2.1.8"
   }
 }
