@@ -1,6 +1,6 @@
 // project.json storage (spec §6.1, §8): list, read, validated atomic writes with a 20-version history.
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve, sep } from 'node:path';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { basename, join, resolve, sep } from 'node:path';
 import type { ServerResponse } from 'node:http';
 import { parseProject, ProjectError, type Project } from '@tellcut/engine';
 import { contentType, PROJECT_HISTORY_KEEP, PROJECT_ID, projectHash, sendFile, writeProjectFile } from '@tellcut/media-node';
@@ -47,6 +47,12 @@ export class ProjectStore {
     if (!ID.test(id)) throw new HttpError(400, `Invalid project id "${id}"`);
     const d = join(this.root, id);
     if (!existsSync(join(d, 'project.json'))) throw new HttpError(404, `No project "${id}"`);
+    // NTFS finds the folder demo for Demo: one project under two ids had two chat turns at once (the turn lock is this process's,
+    // so free to it), and a delete that missed the other id's turn and jobs. Every route comes through here, so only the
+    // folder's own spelling is a project (a junction named otherwise, its target's name unlike the id, is left alone)
+    let real = id;
+    try { real = basename(realpathSync.native(d)); } catch { /* unreadable: as it was */ }
+    if (real !== id && real.toLowerCase() === id.toLowerCase()) throw new HttpError(404, `No project "${id}" (it is "${real}")`);
     return d;
   }
 

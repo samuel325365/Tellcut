@@ -154,3 +154,12 @@ test('project files, history versions and music are sandboxed and never sniffed:
   const m = await fetch(`${base}/api/projects/demo/media/music/m1`);
   expect([m.status, m.headers.get('content-security-policy'), m.headers.get('x-content-type-options')]).toEqual([200, null, 'nosniff']);
 });
+
+test('an id whose case is not the folder\'s is no project (NTFS finds demo for DEMO: two ids, two chats and locks for one folder)', async () => {
+  expect((await fetch(`${base}/api/projects/demo`)).status).toBe(200);
+  expect((await fetch(`${base}/api/projects/Demo`)).status).toBe(404);
+  const put = await fetch(`${base}/api/projects/DEMO`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(demoProject()) });
+  expect(put.status).toBe(404);
+  expect((await fetch(`${base}/api/chat/Demo`)).status).toBe(404);
+  expect((await fetch(`${base}/api/projects/Demo`, { method: 'DELETE' })).status).toBe(404);
+});

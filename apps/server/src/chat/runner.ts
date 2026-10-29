@@ -183,7 +183,9 @@ export class ChatRunner {
 
   /** the thread of a running turn working on `project`: its own conversation, or one whose tools named it (a home draft making it) */
   busyWith(project: string): string | null {
-    for (const [thread, t] of this.turns) if (thread === project || touchedProjects(t.tools).has(project)) return thread;
+    // the agent's commands may spell the folder another way (NTFS: the same folder); a thread id is the folder's own (ProjectStore.dir)
+    const same = (x: string) => x.toLowerCase() === project.toLowerCase();
+    for (const [thread, t] of this.turns) if (same(thread) || [...touchedProjects(t.tools)].some(same)) return thread;
     return this.elsewhere(project) ? project : null;
   }
 
