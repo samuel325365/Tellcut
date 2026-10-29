@@ -91,6 +91,8 @@ export const cases: Case[] = [
   { name: 'speedlines', type: 'common.speedlines', at: [1.5], bg: '#ffd9a0' },
   { name: 'progress-icons', type: 'common.progress', params: { mode: 'dots', icons: '🍗,🥟,🍬,🍜', dots: 4, position: 'bottom', thickness: 30 }, at: [1.5] },
   { name: 'progress-step', type: 'common.progress', params: { mode: 'dots', icons: '🍗,🥟,🍬', dots: 3, step: 0, iconSize: 1.4, position: 'bottom', thickness: 30 }, at: [2.5] },
+  // the hook recipe's chapter row under its panel (9:16): five icons at its size, the last one current, inside the side safe margins
+  { name: 'progress-hook', type: 'common.progress', params: { mode: 'dots', icons: '🍗,🥟,🍬,🍜,🍰', dots: 5, step: 4, iconSize: 2.2, position: 'bottom', y: 0.6617 }, at: [1.5] },
   { name: 'slam', type: 'common.slam', params: { text: '你絕對想不到\n【這個】價格' }, at: [0.1, 1.5] },
   { name: 'censor', type: 'common.censor', at: [0.1, 1.5] },
   { name: 'stamp', type: 'common.stamp', params: { text: '已驗證' }, at: [0.05, 1.5] },

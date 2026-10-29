@@ -26,6 +26,8 @@ const Segment = z.object({
 });
 /** the badge's size (% of the short side) */
 const BADGE = 12;
+/** the chapter icons' size (common.progress iconSize): 1.4 read as specks in a thumbnail; the current one is 1.35 times this */
+const ICONS = 2.2;
 const Content = z.object({
   hook: z.object({ text: z.string(), kind: z.enum(['burst', 'slam']).default('burst'), len: z.number().positive().default(1.8), shake: z.boolean().default(false) }),
   segments: z.array(Segment).min(1),
@@ -70,7 +72,9 @@ export const hook: Recipe<typeof Content> = {
     const auto: [number, number, number, number] = height / width >= 1.5 ? [0.04, panelY, 0.92, Math.round((0.62 - panelY) * 1e4) / 1e4] : panelFrame(width, height);
     const frame = x.panel === false ? null : (x.panel === true ? undefined : x.panel.frame) ?? auto;
     if (frame) c.panel({ frame, radius: x.panel !== true && x.panel !== false ? x.panel.radius : undefined });
-    const dotsY = frame ? Math.min(0.9, frame[1] + frame[3] + 0.035) : -1;
+    // the dots just under the panel: icons are bigger, so their row's centre sits lower, the current one clear of the panel's edge
+    const iconHalf = x.icons ? (12 * (Math.min(width, height) / 1080) * 3.2 * ICONS * 1.35) / 2 / height : 0;
+    const dotsY = frame ? Math.min(0.9, Math.round((frame[1] + frame[3] + Math.max(0.035, 0.012 + iconHalf)) * 1e4) / 1e4) : -1;
     const n = x.segments.length;
     c.at(0);
     const clips: string[] = [], made: Array<Record<string, string | string[] | undefined>> = [];
@@ -96,7 +100,7 @@ export const hook: Recipe<typeof Content> = {
         ids.captions = keep ? caps.filter((cid) => { const text = String(c.update(cid, {}).params?.text ?? '').replace(/[【】{}]/g, ''); if (keep.some((k) => text.includes(k))) return true; c.remove(cid); return false; }) : caps;
       }
       for (const w of s.censor) c.censorSpeech(pieces, w);
-      ids.progress = c.attach(c.effect('common.progress', { at: start, len, mode: 'dots', position: 'bottom', y: dotsY, dots: n, step: i, ...(x.icons ? { icons: x.icons, iconSize: 1.4 } : {}) }), id);
+      ids.progress = c.attach(c.effect('common.progress', { at: start, len, mode: 'dots', position: 'bottom', y: dotsY, dots: n, step: i, ...(x.icons ? { icons: x.icons, iconSize: ICONS } : {}) }), id);
     }
     // the hook lands on the first segment: a jagged card or a slam, speed lines, an impact
     // the opening lasts no longer than the first segment really is (the source may have been shorter than asked, its pauses cut)

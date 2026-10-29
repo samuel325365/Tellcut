@@ -166,6 +166,12 @@ test('fixes from the first run: hook stacks badge, panel, dots and captions with
   const hp = await h.save(), ht = track(hp, 'text');
   expect(ht.find((i) => i.type === 'common.caption').params.text).toBe('咱們出發');
   expect(ht.find((i) => i.type === 'common.progress').params.y).toBeCloseTo(0.635, 3);   // just under the panel's bottom edge (0.2 + 0.4)
+  // chapter icons are big enough to read in a thumbnail, and their row moves down so the current one (114 px here) clears the panel
+  const hi = fresh();
+  hi.recipe('hook', { hook: { text: '開場' }, segments: [{ src: 'v', from: 5, len: 4 }], panel: { frame: [0.05, 0.2, 0.9, 0.4] }, icons: '🍗' });
+  const dots = track(await hi.save(), 'text').find((i) => i.type === 'common.progress');
+  expect(dots.params.iconSize).toBe(2.2);
+  expect(dots.params.y - 0.6 - (12 * 3.2 * 2.2 * 1.35) / 2 / 1920).toBeCloseTo(0.012, 3);
   expect(track(hp, 'music')[0]).toMatchObject({ media: 'score-tech', gain: -9 });
   // the source has one scene 0–30 in this fixture: give it two scenes to see a shot pulled back inside its own
   const t = fresh();

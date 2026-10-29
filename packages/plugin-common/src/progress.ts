@@ -129,15 +129,24 @@ export const progress: ItemType<P, S> = {
       return;
     }
     cssCamel(s.track, { display: 'none' });
-    const n = s.dots.length, active = ctx.params.step >= 0 ? Math.min(n - 1, Math.floor(ctx.params.step)) : Math.min(n - 1, Math.floor(p * n)), gap = n > 1 ? (w - th * 2.7) / (n - 1) : 0;
+    const n = s.dots.length, active = ctx.params.step >= 0 ? Math.min(n - 1, Math.floor(ctx.params.step)) : Math.min(n - 1, Math.floor(p * n));
     const icons = ctx.params.icons.split(/[,，]/).map((x: string) => x.trim()).filter(Boolean);
+    const { base, inset, gap } = dotRow(n, w, th, (icons.length ? 3.2 : 1.8) * ctx.params.iconSize);
     s.dots.forEach((d, i) => {
-      const base = th * (icons.length ? 3.2 : 1.8) * ctx.params.iconSize, size = i === active ? base * 1.35 : base;
+      const size = i === active ? base * 1.35 : base;
       d.textContent = icons.length ? icons[i % icons.length] : '';
-      cssCamel(d, { left: `${x + th * 1.35 + i * gap - size / 2}px`, top: `${y + th / 2 - size / 2}px`, width: `${size}px`, height: `${size}px`, fontSize: `${size * 0.62}px`, background: i <= active ? color : ctx.params.track, opacity: icons.length && i > active ? '0.55' : '1' });
+      cssCamel(d, { left: `${x + inset + i * gap - size / 2}px`, top: `${y + th / 2 - size / 2}px`, width: `${size}px`, height: `${size}px`, fontSize: `${size * 0.72}px`, background: i <= active ? color : ctx.params.track, opacity: icons.length && i > active ? '0.55' : '1' });
     });
   },
 };
+
+/** dots mode: a dot's size (`k` × the thickness; the current one is 1.35 times that), the first and last centres' inset and the
+ *  step between centres across `w` px. The current dot stays inside the side safe margins even at either end (the right one is
+ *  the platform's buttons on a 9:16 film), and big icons shrink until neighbours keep a little air between them. */
+export function dotRow(n: number, w: number, th: number, k: number): { base: number; inset: number; gap: number } {
+  const base = n > 1 ? Math.min(th * k, w / (1.35 + 1.25 * (n - 1))) : th * k, inset = Math.max(th * 1.35, (base * 1.35) / 2);
+  return { base, inset, gap: n > 1 ? (w - 2 * inset) / (n - 1) : 0 };
+}
 
 /** The tabs row: rebuilt only when the names change; each tab says ✓ once its chapter is done. */
 function drawTabs(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w: number) {

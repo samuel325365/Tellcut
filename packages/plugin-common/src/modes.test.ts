@@ -5,7 +5,7 @@ import { pinCheckPts } from './geo.ts';
 import { emoji, floaters, tapPose } from './emoji.ts';
 import { formatValue, meter, niceStep, parsePins, pinAt } from './meter.ts';
 import { levelAt, levelFrac, parseLevels } from './levels.ts';
-import { progress, timelineState } from './progress.ts';
+import { dotRow, progress, timelineState } from './progress.ts';
 import { parsePts, pen, resample, tracePose } from './pen.ts';
 import { handPose, wipe } from './wipe.ts';
 
@@ -123,4 +123,18 @@ test('wipe hand: comes in from the lower right, covers the frame at the middle o
   expect(a.x).toBeGreaterThan(1); expect(a.y).toBeGreaterThan(1); expect(a.cover).toBe(0);
   expect(m.cover).toBeCloseTo(1); expect(handPose(0.42, 0.8).cover).toBe(1);
   expect(z.x).toBeLessThan(0); expect(z.cover).toBe(0);
+});
+
+test('progress dots: the current dot stays inside the side safe margins at either end; big icons shrink to keep air between them', () => {
+  // the hook recipe's row on a 9:16 film: 1080 wide, side safe 0.12, thickness 12, emoji ×2.2
+  const w = 1080 * 0.76, th = 12, fits = (n: number, k: number) => {
+    const { base, inset, gap } = dotRow(n, w, th, k), big = base * 1.35;
+    expect(inset).toBeGreaterThanOrEqual(big / 2 - 1e-9);                     // the last centre + half the current dot ≤ the safe edge
+    if (n > 1) expect(gap - big / 2 - base / 2).toBeGreaterThan(0);           // the current dot never touches a neighbour
+    return base;
+  };
+  expect(fits(5, 3.2 * 2.2)).toBeCloseTo(12 * 3.2 * 2.2, 6);                 // five fit at full size
+  expect(fits(12, 3.2 * 2.2)).toBeLessThan(12 * 3.2 * 2.2);                  // twelve shrink
+  const plain = dotRow(5, w, th, 1.8);                                         // plain dots: as they were
+  expect([plain.base, plain.inset, plain.gap].map((v) => +v.toFixed(6))).toEqual([21.6, 16.2, +((w - 32.4) / 4).toFixed(6)]);
 });
