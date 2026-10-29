@@ -1,4 +1,5 @@
 // Small line icons (24×24, currentColor) for the home page and the chat.
+import { dogSvg } from '@tellcut/plugins';
 const I = (d: string | string[], extra: Record<string, unknown> = {}) => (props: { size?: number }) => (
   <svg width={props.size ?? 18} height={props.size ?? 18} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" {...extra}>
@@ -66,3 +67,11 @@ export const IconMagnet = I(['M6 3v8a6 6 0 0 0 12 0V3', 'M6 7h4', 'M14 7h4']);
 export const IconLock = I(['M6 11h12v9H6z', 'M8 11V8a4 4 0 0 1 8 0v3']);
 export const IconUnlock = I(['M6 11h12v9H6z', 'M8 11V8a4 4 0 0 1 7.5-2']);
 export const IconRows = I(['M4 6h16', 'M4 12h16', 'M4 18h16']);
+
+/** Tellcut's dachshund on its tile (docs/brand): the cream tile on a dark page, the black one on a light page (styles.css) */
+export const IconDachshund = (p: { size?: number }) => (
+  <>
+    <span class="dog-icon dog-on-dark" dangerouslySetInnerHTML={{ __html: dogSvg({ look: 'light', icon: true, holes: 'paint', size: p.size ?? 32 }) }} />
+    <span class="dog-icon dog-on-light" dangerouslySetInnerHTML={{ __html: dogSvg({ look: 'dark', icon: true, holes: 'paint', size: p.size ?? 32 }) }} />
+  </>
+);

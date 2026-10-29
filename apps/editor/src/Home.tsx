@@ -7,7 +7,7 @@ import { ChatPanel } from './ChatPanel.tsx';
 import { ImportDialog, type FsApi } from './ImportDialog.tsx';
 import type { Attachment } from './attachments.ts';
 import { DeleteDialog, type DeleteApi } from './DeleteDialog.tsx';
-import { IconFilm, IconPlus, IconSpark, IconTrash } from './icons.tsx';
+import { IconDachshund, IconFilm, IconPlus, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { PresetStrip } from './PresetStrip.tsx';
 import { PresetDialog } from './PresetDialog.tsx';
@@ -113,7 +113,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   return (
     <div class="home">
       <aside class="home-side" data-home-projects>
-        <div class="brand"><span class="logo"><IconFilm size={18} /></span>Tellcut<span class="grow" /><LangSwitch /><ThemeToggle /></div>
+        <div class="brand"><span class="logo"><IconDachshund size={32} /></span>Tellcut<span class="grow" /><LangSwitch /><ThemeToggle /></div>
         <nav class="home-nav">
           <a class="gallery-link" href="?gallery" data-gallery-link><IconSpark size={17} /><span>{t('home.gallery')}<small>{t('home.galleryDesc')}</small></span></a>
         </nav>

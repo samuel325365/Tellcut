@@ -4,5 +4,7 @@ import { corePlugin, type Plugin } from '@tellcut/engine';
 import { commonPlugin } from '@tellcut/plugin-common';
 /** three.js for the projects that use it (usesThree): the player loads it before building the stage */
 export { loadThreeKit, type ThreeKit } from '@tellcut/plugin-common';
+/** Tellcut's own dachshund (docs/brand): the editor draws its tab and home-page icon from it */
+export { dogSvg } from '@tellcut/plugin-common';
 
 export const plugins: Plugin[] = [corePlugin, commonPlugin];
