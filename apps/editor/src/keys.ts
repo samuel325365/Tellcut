@@ -17,6 +17,9 @@ export function keyAction(e: KeyLike): Action | null {
   const mod = e.ctrlKey || e.metaKey, key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (mod) {
     if (key === 'z') return e.shiftKey ? 'redo' : 'undo';
+    if (key === '+') return 'zoomIn';   // Shift+= on most layouts
+    // Ctrl+Shift+… is the browser's (Ctrl+Shift+A searches tabs, Ctrl+Shift+D bookmarks them all): none of them is ours
+    if (e.shiftKey) return null;
     if (key === 'y') return 'redo';
     if (key === ']') return 'raise';
     if (key === '[') return 'lower';
@@ -25,7 +28,7 @@ export function keyAction(e: KeyLike): Action | null {
     if (key === 'v') return 'paste';
     if (key === 'd') return 'duplicate';
     if (key === 'a') return 'selectAll';
-    if (key === '=' || key === '+') return 'zoomIn';
+    if (key === '=') return 'zoomIn';
     if (key === '-') return 'zoomOut';
     return null;
   }
@@ -53,6 +56,12 @@ export function keyAction(e: KeyLike): Action | null {
     case '\\': return 'zoomFit';
     default: return null;
   }
+}
+
+/** Whether the editor acts on (and keeps the browser from acting on) a key: while the help covers it, only ? / F1 and Esc are
+ *  its (they close the help); the arrows, Page Up / Down and the rest must still scroll the help. */
+export function editorTakes(a: Action, helpOpen: boolean): boolean {
+  return !helpOpen || a === 'help' || a === 'exitCrop';
 }
 
 /** Ctrl+C / V / A that the page itself should have: they act on the timeline only while no text is selected on the page and

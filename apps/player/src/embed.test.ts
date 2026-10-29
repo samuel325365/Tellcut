@@ -95,5 +95,5 @@ test('typing in the preview text box is not forwarded as shortcuts', () => {
 test('in the preview, the browser does not act on Space, the arrows or the timeline\'s Ctrl keys (bookmark, page zoom)', () => {
   const e = (key: string, o: Record<string, unknown> = {}) => ({ key, code: key === ' ' ? 'Space' : '', ctrlKey: false, metaKey: false, ...o }) as any;
   expect([e(' '), e('ArrowUp'), e('d', { ctrlKey: true }), e('=', { ctrlKey: true }), e('+', { ctrlKey: true }), e('-', { metaKey: true })].map(blocksDefault)).toEqual([true, true, true, true, true, true]);
-  expect([e('d'), e('c', { ctrlKey: true }), e('q')].map(blocksDefault)).toEqual([false, false, false]);   // Ctrl+C still copies in the page
+  expect([e('d'), e('c', { ctrlKey: true }), e('q'), e('D', { ctrlKey: true, shiftKey: true })].map(blocksDefault)).toEqual([false, false, false, false]);   // Ctrl+C still copies in the page
 });

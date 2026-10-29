@@ -1759,3 +1759,68 @@ describe('the media panel Import', () => {
     expect(ed.store.get().importNote).toBe(note);   // what was left out stays
   });
 });
+
+describe('timeline refresh minors (2026-10-29)', () => {
+  const withCaption = async () => { const p: any = fixture(); p.tracks.push({ id: 'ov', kind: 'overlay', items: [{ id: 'cap', type: 'x.cap', start: 1, end: 2, params: {}, parent: 'c1' }] }); return p; };
+
+  test('Ctrl+D leaves what Ctrl+C copied on the clipboard', async () => {
+    const { api, bridge } = fakes();
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    ed.select(['blk']); ed.copy();
+    const clip = ed.store.get().clipboard;
+    ed.select(['c1']);
+    expect(ed.duplicate()).toBe(true);
+    expect(ed.store.get().clipboard).toBe(clip);
+  });
+
+  test('a paste that leaves part out past the end says how many; one that leaves out everything says why in the page language', async () => {
+    const { api, bridge } = fakes();
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    ed.select(['c1', 'blk']); ed.copy();                          // c1 0–4, blk 2–6
+    ed.seek(19);
+    expect(ed.paste()).toBe(true);
+    expect(ed.store.get().notice).toBe(t('ed.pastePartly', { n: 1 }));
+    ed.seek(20);
+    expect(ed.paste()).toBe(false);
+    expect(ed.store.get().notice).toBe(t('err.cmd.pastePastEnd'));
+  });
+
+  test('without a magnetic track, Ctrl+D on a caption hung on a clip hangs the copy on the same clip', async () => {
+    const { api, bridge } = fakes({ project: withCaption });
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    ed.select(['cap']);
+    expect(ed.duplicate()).toBe(true);
+    const copy: any = findItem(ed.store.get().project!, ed.store.get().selection[0]).item;
+    expect([copy.parent, resolveTimes(ed.store.get().project!).get(copy.id)]).toEqual(['c1', { start: 2, end: 3 }]);
+  });
+
+  test('paste and Ctrl+D leave out a one-per-film block that is already there, and say so', async () => {
+    const registry = createRegistry([corePlugin, { id: 'x', items: [{ type: 'x.end', label: '片尾', kind: 'overlay', unique: true, params: [], build: () => null, draw: () => {} }] } as any]);
+    const { api, bridge } = fakes();
+    const ed = new Editor('demo', { api, bridge, registry });
+    await ed.open();
+    ed.seek(1);
+    ed.addOverlay('x.end');
+    const end = ed.store.get().selection[0];
+    expect(ed.duplicate()).toBe(false);
+    expect(ed.store.get().notice).toBe('「片尾」在專案裡只能有一個');
+    ed.select([end, 'blk']); ed.copy();
+    ed.seek(8);
+    expect(ed.paste()).toBe(true);
+    expect(ed.store.get().selection).toEqual(['blk-2']);
+    expect(ed.store.get().project!.tracks.flatMap((x) => x.items as any[]).filter((i) => i.type === 'x.end')).toHaveLength(1);
+    expect(ed.store.get().notice).toBe('「片尾」在專案裡只能有一個');
+  });
+
+  test('Q / W with only blocks selected say the selection has no clip to cut, not that the playhead has none', async () => {
+    const { api, bridge } = fakes();
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    ed.select(['blk']); ed.seek(3);
+    expect(ed.deleteSide('left')).toBe(false);
+    expect(ed.store.get().notice).toBe(t('ed.why.selectionNoClip'));
+  });
+});

@@ -557,3 +557,11 @@ test('a muted clip is drawn as muted', async () => {
   expect(m1.querySelector('[data-muted-mark]')).not.toBeNull();
   expect(root.querySelector('[data-item-id="a1"]')!.classList.contains('muted')).toBe(false);
 });
+
+test('a playhead scrolled out of view is not drawn at all (its head would sit on the track headers)', async () => {
+  const { root, editor, store } = mount({ playhead: 2, scroll: 500 });
+  await act(() => render(<Timeline editor={editor} />, root));
+  expect([root.querySelector('[data-playhead]'), root.querySelector('[data-playhead-head]')]).toEqual([null, null]);
+  await act(() => store.set({ scroll: 0 }));
+  expect(root.querySelector('[data-playhead-head]')).not.toBeNull();
+});

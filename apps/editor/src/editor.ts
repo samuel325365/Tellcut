@@ -1,6 +1,6 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
-import { runOps, summarize, type Op, magneticGaps, setMagnetic, detach as detachCmd, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform, copyItems, pasteItems, trimStart, trimEnd, magneticTrack, ownSounds } from '@tellcut/engine';
-import { cutPoints, edgeTargets, nextCut } from './editor/cutting.ts';
+import { runOps, summarize, type Op, magneticGaps, setMagnetic, detach as detachCmd, attach as attachCmd, type Clip, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform, copyItems, pasteItems, trimStart, trimEnd, magneticTrack, ownSounds } from '@tellcut/engine';
+import { cutPoints, edgeTargets, nextCut, selectionHasNoClip } from './editor/cutting.ts';
 import { zoomAround } from './timeline/geometry.ts';
 import { keyAction, type Action } from './keys.ts';
 import { ChatSession } from './chat.ts';
@@ -294,7 +294,7 @@ export class Editor {
     const p = this.s.project;
     if (!p) return false;
     const t = this.s.playhead, times = resolveTimes(p), ids = edgeTargets(p, times, t, this.s.selection, this.skipTracks());
-    if (!ids) { this.set({ notice: say('ed.selectClip') }); return false; }
+    if (!ids) { this.set({ notice: say(selectionHasNoClip(p, this.s.selection, this.skipTracks()) ? 'ed.why.selectionNoClip' : 'ed.selectClip') }); return false; }
     const ok = this.apply((d) => { for (const id of ids) { const tm = times.get(id)!; if (side === 'left') trimStart(d, { id, dt: t - tm.start }); else trimEnd(d, { id, dt: t - tm.end }); } });
     const mag = ok && side === 'left' ? magneticTrack(this.s.project!) : undefined;
     const back = mag && ids.find((id) => (mag.items as any[]).some((c) => c.id === id));
@@ -318,25 +318,50 @@ export class Editor {
     catch (e) { if (e instanceof CommandError) { this.set({ notice: errText(e) }); return false; } throw e; }
   }
   /** Ctrl+V: at the playhead; the new items are selected. */
-  paste(): boolean { return this.pasteAt(this.s.playhead); }
-  private pasteAt(t: number): boolean {
-    const clip = this.s.clipboard;
-    if (!clip || !this.s.project) return false;
+  paste(): boolean { return this.pasteAt(this.s.clipboard, this.s.playhead); }
+  /** also: more of the same edit once pasted (Ctrl+D hangs the copies), with each copied id → its copy's */
+  private pasteAt(clip: Clip | null, t: number, also?: (d: Project, renamed: Map<string, string>) => void): boolean {
+    const p = this.s.project;
+    if (!clip || !p) return false;
     if (clip.project !== this.id) { this.set({ notice: say('ed.pasteOtherProject') }); return false; }
+    // a one-per-film block the project already has is left out (with what hangs on it), and the notice says so
+    const why = new Set<string>();
+    const entries = clip.entries.filter((e) => {
+      const type = (e.item as any).type, w = typeof type === 'string' ? uniqueBlock(this.reg, p, type) : '';
+      if (w) why.add(w);
+      return !w;
+    });
+    if (!entries.length) { this.set({ notice: [...why].join(' ') }); return false; }
     let made: string[] = [];
-    const ok = this.apply((d) => { made = pasteItems(d, { clip, t, skip: this.skipTracks() }); });
-    if (ok) this.select(made);
-    return ok;
+    const dropped: string[] = [], renamed = new Map<string, string>();
+    const ok = this.apply((d) => { made = pasteItems(d, { clip: { ...clip, entries }, t, skip: this.skipTracks(), dropped, renamed }); also?.(d, renamed); });
+    if (!ok) return false;
+    this.select(made);
+    const notice = [...why, dropped.length ? say('ed.pastePartly', { n: dropped.length }) : ''].filter(Boolean).join(' ');
+    if (notice) this.set({ notice });
+    return true;
   }
-  /** Ctrl+D: a copy right after the selection (on the magnetic track: right after its clip). */
+  /** Ctrl+D: a copy right after the selection (on the magnetic track: right after its clip). What Ctrl+C copied stays on the
+   *  clipboard. A copy of a caption hung on a clip hangs on that clip too, when it starts inside it. */
   duplicate(): boolean {
     const p = this.s.project;
     if (!p) return false;
-    if (!this.copy()) return false;
+    if (!this.s.selection.length) { this.set({ notice: say('ed.nothingToCopy') }); return false; }
+    let clip: Clip;
+    try { clip = copyItems(p, this.s.selection, this.id); }
+    catch (e) { if (e instanceof CommandError) { this.set({ notice: errText(e) }); return false; } throw e; }
     const times = resolveTimes(p), end = Math.max(...this.s.selection.map((id) => times.get(id)?.end ?? 0));
-    const mag = magneticTrack(p), onMag = !!mag && this.s.clipboard!.entries.some((e) => e.track === mag.id && e.item.parent === undefined);
+    const mag = magneticTrack(p), onMag = !!mag && clip.entries.some((e) => e.track === mag.id && e.item.parent === undefined);
+    const hang = (d: Project, renamed: Map<string, string>) => {
+      const now = resolveTimes(d);
+      for (const [old, copy] of renamed) {
+        const par = findItem(p, old).item.parent, at = now.get(copy), span = par === undefined ? undefined : now.get(par);
+        if (par === undefined || renamed.has(par) || !at || !span || at.start < span.start - 1e-6 || at.start >= span.end - 1e-6) continue;
+        attachCmd(d, { id: copy, to: par });
+      }
+    };
     // pasteItems puts magnetic clips after the clip under t: half a frame before the end is still the selected clip
-    return this.pasteAt(onMag ? end - 0.5 / p.meta.fps : end);
+    return this.pasteAt(clip, onMag ? end - 0.5 / p.meta.fps : end, hang);
   }
   /** Ctrl+A: every item on the tracks the cutting keys may touch. */
   selectAll() {

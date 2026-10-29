@@ -13,8 +13,8 @@ export const shouldForwardKey = (e: Pick<KeyboardEvent, 'target'>) => !(e.target
 
 /** keys whose browser action must not happen while the preview has focus: Space and the arrows (scrolling), and the
  *  timeline's Ctrl+D (bookmark) and Ctrl+= / + / - (page zoom); the editor still gets them */
-export const blocksDefault = (e: Pick<KeyboardEvent, 'key' | 'code' | 'ctrlKey' | 'metaKey'>) =>
-  e.code === 'Space' || e.key.startsWith('Arrow') || ((e.ctrlKey || e.metaKey) && ['d', 'D', '=', '+', '-'].includes(e.key));
+export const blocksDefault = (e: Pick<KeyboardEvent, 'key' | 'code' | 'ctrlKey' | 'metaKey'> & { shiftKey?: boolean }) =>
+  e.code === 'Space' || e.key.startsWith('Arrow') || ((e.ctrlKey || e.metaKey) && (e.key === '+' || (!e.shiftKey && ['d', 'D', '=', '-'].includes(e.key))));
 
 export const keyMessage = (e: KeyboardEvent): PlayerMsg =>
   ({ type: 'key', key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey, altKey: e.altKey });

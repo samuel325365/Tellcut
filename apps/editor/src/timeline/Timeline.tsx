@@ -20,6 +20,7 @@ import { startMarquee, type Marquee } from './gestures/marquee.ts';
 import { startTrackDrag } from './gestures/track.ts';
 import { startScrollbarDrag } from './gestures/scrollbar.ts';
 import { ToolTray } from './ToolTray.tsx';
+import { trayProbe } from './tray.ts';
 import { IconEye, IconEyeOff, IconLock, IconMagnet, IconSpeaker, IconSpeakerOff, IconUnlock } from '../icons.tsx';
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
@@ -282,12 +283,10 @@ export function Timeline({ editor }: { editor: Editor }) {
  *  selection would stay and Ctrl+C would copy that text instead of the clips (keys.ts clipboardFree). */
 function dropTextSelection() { const sel = getSelection(); if (sel && !sel.isCollapsed) sel.removeAllRanges(); }
 
-/** The tray subscribes on its own: it needs the playhead (what is under it), but while playing it keeps the last stopped
- *  one, so playback does not redraw it every frame. */
+/** The tray subscribes on its own: it needs the playhead (what is under it); while playing it redraws only when the
+ *  playhead crosses a cut point (trayProbe), not every frame. */
 function TrayBox({ editor, addTrack, zoom }: { editor: Editor; addTrack: any; zoom: any }) {
-  const s = useStoreSelector(editor.store, (x) => ({ project: x.project, selection: x.selection, layout: x.layout, locked: x.locked, playhead: x.playing ? null : x.playhead }));
-  const last = useRef(0);
-  if (s.playhead !== null) last.current = s.playhead;
+  const s = useStoreSelector(editor.store, (x) => ({ project: x.project, selection: x.selection, layout: x.layout, locked: x.locked, playhead: x.playing && x.project ? trayProbe(x.project, x.playhead) : x.playhead }));
   const skip = useMemo(() => new Set(s.locked), [s.locked]);
-  return <ToolTray editor={editor} s={{ ...s, playhead: last.current }} skip={skip} addTrack={addTrack} zoom={zoom} />;
+  return <ToolTray editor={editor} s={s} skip={skip} addTrack={addTrack} zoom={zoom} />;
 }

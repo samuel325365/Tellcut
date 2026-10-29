@@ -137,3 +137,40 @@ test('the tray fits a narrow timeline: every control can be reached (landscape s
   await page.evaluate(() => localStorage.removeItem('tellcut.layout'));
   await page.setViewportSize({ width: 1536, height: 864 });
 }, 90000);
+
+const disk = async (id: string) => (await (await fetch(`${base}/api/projects/${id}`)).json()).tracks;
+
+test('copy, paste, then one undo: the project is exactly as before', async () => {
+  await open('dense');
+  const before = await disk('dense'), n0 = await itemCount();
+  await page.locator('[data-item-id="h1"]').click();
+  await page.keyboard.press('Control+c');
+  await page.locator('[data-ruler]').click({ position: { x: 176 + 300, y: 5 } });
+  await page.keyboard.press('Control+v');
+  await poll(itemCount).toBeGreaterThan(n0);
+  await page.keyboard.press('Control+z');
+  await poll(itemCount).toBe(n0);
+  await poll(() => disk('dense')).toEqual(before);
+}, 60000);
+
+test('a locked track is still locked after a reload', async () => {
+  await open('dense');
+  const row = page.locator('[data-row]').first(), id = (await row.getAttribute('data-row'))!;
+  await row.locator('[data-lock]').click();
+  await poll(() => page.locator(`[data-row="${id}"]`).getAttribute('class')).toContain('locked');
+  await open('dense');
+  expect(await page.locator(`[data-row="${id}"]`).getAttribute('class')).toContain('locked');
+  await page.locator(`[data-row="${id}"] [data-lock]`).click();                              // unlocked for the tests after this one
+  await poll(() => page.locator(`[data-row="${id}"]`).getAttribute('class')).not.toContain('locked');
+}, 60000);
+
+test('in the focused preview, the timeline keys hold back the browser (Space, arrows, Ctrl+D) and the rest do not (Ctrl+C, Ctrl+Shift+D)', async () => {
+  await open('dense');
+  const frame = page.frames().find((f) => f !== page.mainFrame())!;
+  // a listener added after the preview's own one sees what it did to the event
+  await frame.evaluate(() => { (window as any).__prevented = []; addEventListener('keydown', (e) => (window as any).__prevented.push([e.key, e.ctrlKey, e.shiftKey, e.defaultPrevented])); });
+  await page.locator('iframe').focus();
+  for (const k of ['ArrowRight', 'Control+d', 'Control+c', 'Control+Shift+D']) await page.keyboard.press(k);
+  const seen: Array<[string, boolean, boolean, boolean]> = await frame.evaluate(() => (window as any).__prevented);
+  expect(seen.filter(([key]) => !['Control', 'Shift'].includes(key)).map(([key, , , p]) => [key, p])).toEqual([['ArrowRight', true], ['d', true], ['c', false], ['D', false]]);
+}, 60000);

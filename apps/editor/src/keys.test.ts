@@ -1,4 +1,4 @@
-import { clipboardFree, keyAction } from './keys.ts';
+import { clipboardFree, editorTakes, keyAction } from './keys.ts';
 
 const k = (key: string, o: Partial<{ code: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean; target: any }> = {}) =>
   keyAction({ key, code: o.code ?? '', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...o });
@@ -54,4 +54,15 @@ test('clipboardFree: a text selection or focus in chat / export log / help hands
   expect(clipboardFree(doc(false), el(null))).toBe(false);                 // text is selected somewhere on the page
   for (const inside of ['[data-chat]', '[data-export-panel]', '[data-help-panel]', '[data-ask]']) expect(clipboardFree(doc(true), el(inside))).toBe(false);
   expect(clipboardFree(doc(true), null)).toBe(true);
+});
+
+test('Ctrl+Shift+C / V / D / A / - belong to the browser (tab search, bookmark all tabs…), not the timeline; Ctrl+Shift+Z still redoes', () => {
+  const cs = (key: string) => k(key, { ctrlKey: true, shiftKey: true });
+  expect([cs('C'), cs('V'), cs('D'), cs('A'), cs('_'), cs('Z')]).toEqual([null, null, null, null, null, 'redo']);
+  expect(cs('+')).toBe('zoomIn');   // + needs Shift on most layouts
+});
+
+test('while the help is open only ? / F1 and Esc go to the editor; the rest (arrows to scroll it) keep their browser action', () => {
+  expect([editorTakes('help', true), editorTakes('exitCrop', true), editorTakes('nextCut', true), editorTakes('playPause', true)]).toEqual([true, true, false, false]);
+  expect(editorTakes('nextCut', false)).toBe(true);
 });

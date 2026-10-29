@@ -33,10 +33,12 @@ export function copyItems(p: Project, ids: string[], projectId: string): Clip {
 
 /** Pastes at t: each item on its own track (else the first track of its kind, else a new one), new ids, children on the new
  *  ids. Clips from the magnetic track go after the magnetic clip under t (or at the end) and the rest keep their timing to
- *  them (the editor's settle packs the track and pushes the later clips). Without a magnetic track the film's length is
- *  fixed: what runs past the end is cut there, what would start at or after it is left out. skip: tracks not pasted onto
- *  (the editor's locked ones). Returns the new top-level ids. */
-export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: ReadonlySet<string> }): string[] {
+ *  them (the editor's settle packs the track and pushes the later clips). Everything else ends with the film: what runs past
+ *  the end is cut there, what would start at or after it is left out (with a magnetic track the film grows only by the clips
+ *  pasted on it, and an end card is placed by moving it, not by pasting past the end). skip: tracks not pasted onto (the
+ *  editor's locked ones). dropped: filled with the top-level ids left out; renamed: each pasted id → its copy's. Returns the new
+ *  top-level ids. */
+export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: ReadonlySet<string>; dropped?: string[]; renamed?: Map<string, string> }): string[] {
   const { entries } = a.clip, mag = magneticTrack(p), copied = new Set(entries.map((e) => e.item.id));
   const isTop = (e: ClipEntry) => e.item.parent === undefined || !copied.has(e.item.parent);
   const magTops = mag ? entries.filter((e) => isTop(e) && e.track === mag.id && e.kind === 'video') : [];
@@ -46,7 +48,7 @@ export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: Readon
     const under = clips.find((c) => c.start <= a.t + TIME_EPS && a.t < c.end - TIME_EPS);
     shift = (under ? under.end : Math.max(0, ...clips.map((c) => c.end))) - Math.min(...magTops.map((e) => e.item.start));
   }
-  const end = mag ? Infinity : p.meta.duration;
+  const end = p.meta.duration + magTops.reduce((n, e) => n + (e.item.end - e.item.start), 0);
   const newId = new Map<string, string>(), absStart = new Map<string, number>(), made: Array<{ id: string; mag: boolean }> = [];
   for (const e of entries) {
     const top = isTop(e), it: any = plainCopy(e.item);
@@ -58,17 +60,18 @@ export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: Readon
       base = absStart.get(par)!;
       it.parent = par;
     }
-    if (base + it.start >= end - TIME_EPS) continue;
-    if (base + it.end > end) it.end = r6(end - base);
+    const limit = magTops.includes(e) ? Infinity : end;
+    if (base + it.start >= limit - TIME_EPS) { if (top) a.dropped?.push(e.item.id); continue; }
+    if (base + it.end > limit) it.end = r6(limit - base);
     const open = p.tracks.filter((t) => !a.skip?.has(t.id));
     let track = open.find((t) => t.id === e.track && t.kind === e.kind) ?? open.find((t) => t.kind === e.kind);
     if (!track) { const id = addTrack(p, { kind: e.kind }); track = p.tracks.find((t) => t.id === id)!; }
     it.id = uniqueId(p, e.item.id);
     fitFades(track, it);
     items(track).push(it);
-    newId.set(e.item.id, it.id); absStart.set(it.id, base + it.start);
+    newId.set(e.item.id, it.id); absStart.set(it.id, base + it.start); a.renamed?.set(e.item.id, it.id);
     if (top) made.push({ id: it.id, mag: magTops.includes(e) });
   }
-  if (!made.length) throw new CommandError('Nothing to paste before the end of the video');
+  if (!made.length) throw new CommandError('Nothing to paste before the end of the video', 'cmd.pastePastEnd');
   return [...made.filter((m) => m.mag), ...made.filter((m) => !m.mag)].map((m) => m.id);
 }

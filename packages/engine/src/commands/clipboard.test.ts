@@ -84,6 +84,31 @@ test('magnetic: pasted after the clip under the playhead, later clips pushed rig
   expect(p.meta.duration).toBe(16);                                                  // the film got longer
 });
 
+test('what a paste leaves out past the end is listed; nothing left is refused with a code the editor words', () => {
+  const p = fixture(), clip = copyItems(p, ['c1', 'blk'], 'demo');                  // c1 0–4, blk 2–6: anchor 0
+  const dropped: string[] = [];
+  expect(pasteItems(p, { clip, t: 19, dropped })).toEqual(['c1-2']);                 // blk would start at 21
+  expect(dropped).toEqual(['blk']);
+  let err: any;
+  try { pasteItems(p, { clip, t: 20 }); } catch (e) { err = e; }
+  expect([err instanceof CommandError, err?.code]).toEqual([true, 'cmd.pastePastEnd']);
+});
+
+test('magnetic: blocks pasted past the end of the film are cut there; the film only grows by the clips pasted on the magnetic track', () => {
+  const clip = (id: string, s: number, e: number) => ({ id, source: 's', in: 0, speed: 1, start: s, end: e, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } });
+  const p = fixture();
+  p.tracks = [
+    { id: 'v', kind: 'video', magnetic: true, items: [clip('c1', 0, 4), clip('c2', 4, 8), clip('c3', 8, 12)] } as any,
+    { id: 'o', kind: 'overlay', items: [{ id: 'cap', type: 'x.cap', start: 1, end: 2, params: {} }] } as any,
+  ];
+  p.meta.duration = 12;
+  const cap = copyItems(p, ['cap'], 'demo'), before = structuredClone(p);
+  pasteItems(p, { clip: cap, t: 11.5 });
+  settle(before, p);
+  expect([resolveTimes(p).get('cap-2'), p.meta.duration]).toEqual([{ start: 11.5, end: 12 }, 12]);
+  expect(() => pasteItems(p, { clip: cap, t: 12 })).toThrow(CommandError);
+});
+
 test('skip: a paste passes over the listed (locked) tracks, onto another of the kind or a new one', () => {
   const p = fixture(), clip = copyItems(p, ['c1'], 'demo');
   pasteItems(p, { clip, t: 10, skip: new Set(['v']) });

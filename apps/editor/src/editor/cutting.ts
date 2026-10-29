@@ -19,6 +19,11 @@ export function nextCut(points: number[], t: number, dir: -1 | 1, fps: number): 
   return [...points].reverse().find((x) => x < t - half) ?? 0;
 }
 
+/** A selection with no video, audio or music clip on an unlocked track: Q / W and split say so, not that the playhead has none. */
+export function selectionHasNoClip(p: Project, selection: string[], skip: ReadonlySet<string>): boolean {
+  return selection.length > 0 && !p.tracks.some((tr) => MEDIA.has(tr.kind) && !skip.has(tr.id) && (tr.items as AnyItem[]).some((it) => selection.includes(it.id)));
+}
+
 /** What Q / W cut. With a selection: its video, audio and music clips the playhead is inside (a clip's own sound goes with
  *  the clip, so it is not listed again). With none: the magnetic clip under the playhead, else the clip of the topmost video
  *  track under it — music and blocks never count, they sit under most of an agent-made film. Null: nothing to cut.
