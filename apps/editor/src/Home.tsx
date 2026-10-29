@@ -54,9 +54,13 @@ function Card({ p, onDelete }: { p: ProjectRow; onDelete: () => void }) {
 
 /** a request the gallery handed over ("change with the Agent" on a block of My blocks, spec 2026-10-29-my-library §3.4): sent once
  *  in the home chat, its task with it */
+const PENDING = 'tellcut.pendingTask';
+const hasPending = () => { try { return !!sessionStorage.getItem(PENDING); } catch { return false; } };
+/** sends it when the home chat is free; while a reply runs it stays and goes when that turn ends (Home calls this again) */
 function sendPending(session: ChatSession) {
+  if (session.state.running) return;
   let x: { text?: unknown; task?: unknown } | null = null;
-  try { x = JSON.parse(sessionStorage.getItem('tellcut.pendingTask') ?? 'null'); sessionStorage.removeItem('tellcut.pendingTask'); } catch { return; }
+  try { x = JSON.parse(sessionStorage.getItem(PENDING) ?? 'null'); sessionStorage.removeItem(PENDING); } catch { return; }
   if (x && typeof x.text === 'string' && x.task && typeof x.task === 'object') void session.send(x.text, undefined, x.task as ChatTask);
 }
 
@@ -75,7 +79,8 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   useEffect(() => { void loadPresets(); }, [api]);
   const pickedInfo = picked ? presets.find((p) => p.id === picked.id) : undefined, infoOf = info ? presets.find((p) => p.id === info) : undefined;
   const presetNames = useMemo(() => Object.fromEntries(presets.map((p) => [p.id, pickText(p.name, lang) ?? p.id])), [presets, lang]);
-  const [thread, setThread] = useState(savedThread), [draft, setDraft] = useState(savedDraft);
+  // a request handed over from the gallery goes to the home chat, whichever conversation was open last
+  const [thread, setThread] = useState(() => (hasPending() ? 'home' : savedThread())), [draft, setDraft] = useState(savedDraft);
   const pick = (id: string) => { setThread(id); saveThread(id); };
   /** the ticks of a conversation that just moved to the project it made: the same conversation goes on there with them */
   const carried = useRef<{ thread: string; sources: string[] } | null>(null);
@@ -93,7 +98,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
     return true;
   }).catch(() => true);
   useEffect(() => {
-    session.onTurnEnd = () => void loadProjects();   // a project the chat created shows up
+    session.onTurnEnd = () => { void loadProjects(); if (thread === 'home') sendPending(session); };   // a project the chat created shows up; a handed-over request waiting for the reply goes
     // the chat box follows the conversation there, its ticks with it (else the next message would send none); 主頁 starts afresh
     session.onMoved = (id) => { carried.current = { thread: id, sources: session.state.sources ?? [] }; void loadProjects(); setDraft(newDraft()); pick(id); };
     // a preset still tagged on 主頁 (back from another conversation, or a new draft): its ticks come with it on this session too

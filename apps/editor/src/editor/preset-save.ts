@@ -12,7 +12,7 @@ import { getLang } from '../i18n/lang.ts';
 export interface PresetDraftView { name: string; summary: string; points: Array<{ text: string; prompt: string }>; ratio?: string; length?: [number, number];
   theme?: { fonts?: Record<string, string>; palette?: Record<string, string> }; score?: string; fx?: string[]; blocks: Array<{ file: string; names: string[] }> }
 
-export interface PresetSaveDeps { id: string; api: Pick<Api, 'presetDraft' | 'savePreset' | 'presetPoster' | 'projects'>; store: Store<EditorState>; chat: Pick<ChatSession, 'send' | 'state'>;
+export interface PresetSaveDeps { id: string; api: Pick<Api, 'presetDraft' | 'deletePresetDraft' | 'savePreset' | 'presetPoster' | 'projects'>; store: Store<EditorState>; chat: Pick<ChatSession, 'send' | 'state'>;
   setLayout: (patch: Partial<Layout>) => void; playhead: () => number }
 
 const TOAST_MS = 8000;
@@ -31,6 +31,8 @@ export class PresetSaveFlow {
   async start() {
     if (this.c.chat.state.running) { this.toast(say('ed.askBusy')); return; }
     this.set({ drafting: true, draft: null });
+    // a draft left from an earlier time must not open as this one when the agent writes none
+    await this.c.api.deletePresetDraft(this.c.id).catch(() => {});
     this.c.setLayout({ sideTab: 'chat', libClosed: false });
     try { await this.c.chat.send(say('preset.draftMsg'), undefined, { kind: 'preset-draft' }); } catch { /* the chat shows its own error */ }
     let draft: PresetDraftView | null = null;
@@ -39,7 +41,8 @@ export class PresetSaveFlow {
     this.set({ drafting: false, draft, poster: poster ? `/api/projects/${encodeURIComponent(this.c.id)}/media/still?source=${encodeURIComponent(poster.source)}&t=${poster.t}&w=270` : null });
     if (!draft) this.toast(say('preset.noDraft'));
   }
-  close() { this.set({ draft: null }); }
+  /** Cancel: the dialog closes and its draft goes (saving removes it on the server) */
+  async close() { this.set({ draft: null }); await this.c.api.deletePresetDraft(this.c.id).catch(() => {}); }
   dismiss() { clearTimeout(this.timer); this.set({ toast: null }); }
 
   /** throws (worded) when the server refuses: the dialog stays open with the message */

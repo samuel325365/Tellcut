@@ -72,9 +72,11 @@ test('useStyle copies the style into score/', async () => {
   const projects = tempProjects(), root = libraryRoot(projects), p1 = makeProject(projects, 'p1'), p2 = makeProject(projects, 'p2');
   const r = await saveStyle({ root, projectDir: p1, projectId: 'p1', id: 'street-jazz' });
   if (!('entry' in r)) throw new Error('conflict');
-  writeFileSync(join(p2, 'score/street-jazz.js'), 'old');
+  rmSync(join(p2, 'score/street-jazz.js'));
   expect(useStyle({ root, projectDir: p2, slug: r.entry.slug })).toEqual({ file: 'score/street-jazz.js', id: 'street-jazz' });
   expect(readFileSync(join(p2, 'score/street-jazz.js'), 'utf8')).toContain("id: 'street-jazz'");
+  // the same file again: nothing to do
+  expect(useStyle({ root, projectDir: p2, slug: r.entry.slug })).toEqual({ file: 'score/street-jazz.js', id: 'street-jazz' });
 });
 
 // ---------------------------------------------------------------- final review C1, I3
@@ -112,4 +114,13 @@ test('a failed update leaves the project\u2019s copy as it was (I3)', async () =
   await expect(useBlock({ root, projectDir: p2, projectId: 'p2', slug, fx: [first.file] })).rejects.toThrow();
   expect(readFileSync(join(p2, 'fx/lib/chalk-title/chalk.js'), 'utf8')).toBe(before);
   expect(existsSync(join(p2, 'fx/lib/chalk-title/util.js'))).toBe(true);
+});
+
+test('useStyle leaves a project\u2019s own different file of that name alone', async () => {
+  const projects = tempProjects(), root = libraryRoot(projects), p1 = makeProject(projects, 'p1');
+  const r = await saveStyle({ root, projectDir: p1, projectId: 'p1', id: 'street-jazz' });
+  if (!('entry' in r)) throw new Error('conflict');
+  writeFileSync(join(p1, 'score/street-jazz.js'), "export default { id: 'street-jazz', label: 'edited since' };\n");   // edited after saving
+  expect(() => useStyle({ root, projectDir: p1, slug: r.entry.slug })).toThrow(expect.objectContaining({ code: 'library.idTaken', params: { type: 'street-jazz' } }));
+  expect(readFileSync(join(p1, 'score/street-jazz.js'), 'utf8')).toContain('edited since');
 });

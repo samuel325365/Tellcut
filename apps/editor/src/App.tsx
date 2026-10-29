@@ -174,7 +174,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
         const strs = (o?: Record<string, unknown>) => [...new Set(Object.values(o ?? {}).filter((x): x is string => typeof x === 'string'))];
         return <SavePresetDialog mode="save" surface="editor" initial={{ name: d.name, summary: d.summary, rows: d.points.map((p) => ({ text: p.text, orig: p.text, prompt: p.prompt })) }}
           bring={{ fonts: strs(th.fonts), colors: strs(th.palette), score: d.score ? s.library.project?.styles.find((x) => x.id === d.score)?.label ?? d.score : undefined, blocks: d.blocks.flatMap((b) => b.names) }}
-          poster={{ src: s.presetSave.poster, frameAt: formatTime(s.playhead) }} onSave={(v) => editor.presetSave.save(v)} onClose={() => editor.presetSave.close()} />;
+          poster={{ src: s.presetSave.poster, frameAt: formatTime(s.playhead) }} onSave={(v) => editor.presetSave.save(v)} onClose={() => void editor.presetSave.close()} />;
       })()}
       {s.presetSave.toast && <div class="lib-toast" role="status" data-preset-toast>{s.presetSave.toast}<button aria-label={t('lib.close')} onClick={() => editor.presetSave.dismiss()}>×</button></div>}
       {s.library.toast && <div class="lib-toast" role="status" data-lib-toast>{t('lib.saved', { name: s.library.toast.name })}

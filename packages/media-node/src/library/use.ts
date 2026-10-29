@@ -70,12 +70,17 @@ export function projectLinks(root: string, projectDir: string): ProjectLink[] {
     .map(([slug, l]) => ({ slug, file: l.file, types: l.types ?? [], version: l.version, latest: readBlock(root, slug)?.version ?? null }));
 }
 
-/** a library music style into the project's score/ (under its id: c.score('<id>') finds it there) */
+/** a library music style into the project's score/ (under its id: c.score('<id>') finds it there); a different file already there
+ *  (the project's own, perhaps edited since it was saved) is never written over */
 export function useStyle(o: { root: string; projectDir: string; slug: string }): { file: string; id: string } {
   const e = readStyle(o.root, o.slug);
   if (!e) throw new LibraryError('library.noEntry', `我的積木裡沒有 ${o.slug}`, { slug: o.slug });
-  const file = `score/${e.id}.js`;
+  const file = `score/${e.id}.js`, src = join(stylesDir(o.root), `${o.slug}.js`), to = join(o.projectDir, file);
+  if (existsSync(to)) {
+    if (same(src, to)) return { file, id: e.id };
+    throw new LibraryError('library.idTaken', `專案裡已經有自己的 ${file}（內容不同），沒有蓋掉它`, { type: e.id });
+  }
   mkdirSync(join(o.projectDir, 'score'), { recursive: true });
-  copyFileSync(join(stylesDir(o.root), `${o.slug}.js`), join(o.projectDir, file));
+  copyFileSync(src, to);
   return { file, id: e.id };
 }

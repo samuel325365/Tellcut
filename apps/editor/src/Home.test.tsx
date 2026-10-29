@@ -510,3 +510,30 @@ test('switching language keeps the conversation and the draft', async () => {
   expect(root.textContent).toContain('hello');
   expect(root.querySelector<HTMLTextAreaElement>('[data-chat-input]')!.value).toBe('abc');
 });
+
+test('a request handed over from the gallery is sent in the home chat, even when a project\u2019s conversation was open', async () => {
+  localStorage.setItem('tellcut.homeThread', 'seattle');
+  sessionStorage.setItem('tellcut.pendingTask', JSON.stringify({ text: '修改我的積木「粉筆」：字大一點', task: { kind: 'library-edit', slug: 'chalk', type: 'fx.chalk', request: '字大一點' } }));
+  const a = api(), root = document.createElement('div');
+  await act(async () => { render(<Home api={a} />, root); });
+  await settle(); await settle();
+  expect(a.sent.map((x: any) => x[1])).toEqual(['修改我的積木「粉筆」：字大一點']);
+  expect(a.sent[0][0]).toMatch(/^home-/);
+  expect(sessionStorage.getItem('tellcut.pendingTask')).toBeNull();
+});
+
+test('a handed-over request waits while the home chat is still replying, then goes', async () => {
+  sessionStorage.setItem('tellcut.pendingTask', JSON.stringify({ text: '改一下', task: { kind: 'library-edit', slug: 'chalk', type: 'fx.chalk', request: '改一下' } }));
+  const a = api();
+  let finish = () => {};
+  a.chat = async () => ({ thread: { messages: [], sessionId: 's', started: false }, running: { text: '', tools: [] } });
+  a.chatAttach = (_t: string, on: (e: any) => void) => new Promise<void>((done) => { finish = () => { on({ type: 'done', status: 'done', text: '好' }); done(); }; });
+  const root = document.createElement('div');
+  await act(async () => { render(<Home api={a} />, root); });
+  await settle();
+  expect(a.sent).toEqual([]);
+  expect(sessionStorage.getItem('tellcut.pendingTask')).not.toBeNull();
+  await act(async () => { finish(); });
+  await settle(); await settle();
+  expect(a.sent.map((x: any) => x[1])).toEqual(['改一下']);
+});

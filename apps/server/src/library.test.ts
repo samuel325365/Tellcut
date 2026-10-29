@@ -110,3 +110,11 @@ test('the preset draft comes with the names of the blocks its modules hold', asy
   writeFileSync(join(projects, 'p1', 'preset-draft.json'), JSON.stringify({ name: 'x', summary: '', points: [], fx: ['fx/chalk.js', 'fx/gone.js'] }));
   expect((await (await fetch(`${base}/api/projects/p1/preset-draft`)).json()).blocks).toEqual([{ file: 'fx/chalk.js', names: ['chalk-title', 'chalk-line'] }]);
 });
+
+test('the preset draft can be removed (a new Save as preset, or Cancel)', async () => {
+  const { projects, base } = await app();
+  writeFileSync(join(projects, 'p1', 'preset-draft.json'), JSON.stringify({ name: 'x' }));
+  expect((await fetch(`${base}/api/projects/p1/preset-draft`, { method: 'DELETE' })).status).toBe(200);
+  expect(existsSync(join(projects, 'p1', 'preset-draft.json'))).toBe(false);
+  expect((await fetch(`${base}/api/projects/p1/preset-draft`, { method: 'DELETE' })).status).toBe(200);   // none: fine
+});

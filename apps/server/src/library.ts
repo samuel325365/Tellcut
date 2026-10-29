@@ -1,7 +1,7 @@
 // The user's own library (spec 2026-10-29-my-library §4.2–4.4): saving a project's fx or music style into it, its cards for
 // the editor and the gallery, an entry's files (the gallery's preview loads its module from here), renaming, deleting, and
 // copying an entry into a project. Reading and writing is media-node's (library/), shared with `npm run tellcut -- library`.
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
 import { blockDir, findFxFile, libraryRoot, LibraryError, listLibrary, loadProjectFx, loadStyles, PROJECT_ID, previewBlock, projectLinks, readBlock, readStyle, removeBlock, removeStyle, renameStyle,
   renameType, saveBlock, saveStyle, sendFile, stylesDir, THUMB_FILE, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
@@ -136,6 +136,9 @@ export function libraryRoutes(r: Router, o: LibraryOptions) {
     const fx = projectJson(p.dir).meta?.fx;
     sendJson(res, 200, await guard(() => useBlock({ root, projectDir: p.dir, projectId: p.id, slug: b.slug, fx: Array.isArray(fx) ? fx : [] })));
   });
+
+  // the draft is removed when a new one is asked for and when its dialog closes: an old one never opens again
+  r.del('/api/projects/:id/preset-draft', (_req, res, { id }) => { rmSync(join(project(id).dir, 'preset-draft.json'), { force: true }); sendJson(res, 200, { ok: true }); });
 
   // the agent's draft of a preset, read into the save dialog
   r.get('/api/projects/:id/preset-draft', async (_req, res, { id }) => {
