@@ -4,7 +4,7 @@
 
 <p align="center"><strong>Video editing, by talking.</strong></p>
 
-<p align="center">Drop in your footage and say what you want. An agent watches every clip,<br>writes the storyboard and cuts a first draft, all on your own computer.</p>
+<p align="center">Drop in your footage and say what you want. An agent watches every clip,<br>writes the storyboard and cuts a first draft, all on your own computer.<br>Keep the effects and the style you like: your next film starts from there.</p>
 
 <p align="center">
   <strong>English</strong> &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
@@ -14,6 +14,7 @@
   <a href="#watch">Watch</a> &nbsp;·&nbsp;
   <a href="#three-ways-to-edit">Three ways to edit</a> &nbsp;·&nbsp;
   <a href="#what-the-agent-does">What the agent does</a> &nbsp;·&nbsp;
+  <a href="#every-film-makes-the-next-one-easier">Keep what works</a> &nbsp;·&nbsp;
   <a href="#made-with-tellcut">Made with Tellcut</a> &nbsp;·&nbsp;
   <a href="#presets">Presets</a> &nbsp;·&nbsp;
   <a href="#get-started">Get started</a> &nbsp;·&nbsp;
@@ -89,7 +90,7 @@ You can switch between these at any time. Nothing the agent does overwrites what
     <td width="50%" valign="top">
       <img src="docs/readme/beat.jpg" alt="Captions and music, on the beat."><br>
       <strong>Captions and music, on the beat.</strong><br>
-      It has more than 130 ready-made effects and sounds, and composes a score to fit the length. It can also add voice-over in the film's language, with the captions aligned to it. When nothing in the library fits, it writes a new effect for that film.
+      It has more than 130 ready-made effects and sounds, and composes a score to fit the length. It can also add voice-over in the film's language, with the captions aligned to it. When nothing in the library fits, it writes a new effect for that film, and you can <a href="#every-film-makes-the-next-one-easier">keep it</a> for the next one.
     </td>
   </tr>
   <tr>
@@ -107,6 +108,34 @@ You can switch between these at any time. Nothing the agent does overwrites what
 </table>
 
 It first works out what kind of film this is (food, travel, a lesson, an interview…) and writes the storyboard that kind of film needs before it cuts anything.
+
+## Every film makes the next one easier
+
+<p align="center"><strong>Keep what worked. Start the next film from there.</strong></p>
+
+Most editors forget everything the moment you close the project. Tellcut keeps what you liked.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>★ Keep an effect</h3>
+      The agent wrote a chalkboard title for your café video, a receipt that prints the menu, a map that draws your route. Press <strong>☆</strong> next to it and it goes into <strong>My blocks</strong>.
+      <br><br>
+      From then on it's in every project's media panel, and the agent reaches for it before writing anything new. Want it to work with any text or colour? Tick <strong>Have the Agent make it generic</strong>, and whatever was written into it becomes a setting you can change.
+    </td>
+    <td width="50%" valign="top">
+      <h3>⟳ Keep your style</h3>
+      Found a rhythm you like? Press <strong>Save as preset</strong>. The agent writes down how this film was made, point by point, in plain words: "open on the best shot within 2 seconds", "captions just below the middle", "no price cards". Cross out what you don't want, add your own, and it becomes a card on your home page, with its fonts, colours, music and effects.
+      <br><br>
+      Next trip: one click, and the first cut already looks like yours.
+    </td>
+  </tr>
+</table>
+
+- **What you see is everything the agent gets.** A preset's points are its whole instruction: delete a point and that instruction is gone.
+- **Old films never change behind your back.** A block is copied into each project that uses it. Improve it later and the other projects show **Update**; they switch only when you press it.
+- **No film needed.** Choose options in the **Custom** form and press **Save as my preset**.
+- Browse, rename or try them in the block gallery's **Mine** category, or ask the agent to change one for you.
 
 ---
 
@@ -161,7 +190,7 @@ A preset is a starting direction for one kind of film. Click its card under the 
 
 | Preset | Best for |
 |---|---|
-| **Custom** | You set the ratio, length, framing and so on; the agent decides the rest |
+| **Custom** | You set the ratio, length, framing and so on; the agent decides the rest. Save your choices as a preset of your own |
 | **Travel Highlights** | Scattered clips from a trip, cut into a vertical short for IG or Shorts |
 | **Clips from Long Videos** | The best moment of a finished long video, with a hook if it should send people to the full video |
 | **Podcast Highlights** | The best exchange from a podcast or interview, with who's speaking clearly marked and word-by-word captions |
@@ -170,6 +199,8 @@ A preset is a starting direction for one kind of film. Click its card under the 
 | **Celebration Film** | Wedding, birthday, graduation or farewell photos and clips, cut into a film to play on the day |
 | **Brand Film** | A brand film with 3D and real footage from just a logo and a paragraph about the company |
 | **Animated Explainer** | One idea explained with diagrams and text, with or without footage of your own |
+
+**Your own presets** come after these, marked **Mine**: save one from a film you liked (**Save as preset** in the editor's chat) or from the **Custom** form. See [Every film makes the next one easier](#every-film-makes-the-next-one-easier).
 
 ---
 
