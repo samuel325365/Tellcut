@@ -1,5 +1,5 @@
 // common.tone — a colour grade laid over the whole picture in soft-light: a tinted glow in the middle and a dark rim. Its own block
-// (not a common.film param) because the blend mode belongs to the item layer. Promoted from the zhongli-food short's fx.tone.
+// (not a common.film param) because the blend mode belongs to the item layer. Promoted from a food-review hook short's fx.tone.
 import { clamp, cssCamel, h, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
 

@@ -1,6 +1,6 @@
 // common.mystery — a cliffhanger cover: the picture darkens toward the edges, a big red seal with a question mark spins in,
 // a line above it (第 5 家是…), an optional hint below, and two tapes stuck across on the slant with words scrolling along.
-// Promoted from the zhongli-food short's fx.mystery; for teasers that hold something back (下一家、結果、答案 → 原片揭曉).
+// Promoted from a food-review hook short's fx.mystery; for teasers that hold something back (下一家、結果、答案 → 原片揭曉).
 import { abs, clamp, cssCamel, eBack, eOut3 as eOut, type ItemType, prog } from '@tellcut/engine';
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';

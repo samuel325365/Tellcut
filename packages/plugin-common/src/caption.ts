@@ -1,6 +1,6 @@
 // common.caption — a caption in the project's look: outlined, plain or on a box; 【word】 highlighted, {word} bleeped. With `words` the
 // word being said lights up (karaoke); `speaker` colours it by who speaks, `name` puts their name above it, `tag` a chip in the accent
-// colour (a dish, a place). animIn 'pop' pops the characters in one by one (from the zhongli-food short's quote captions).
+// colour (a dish, a place). animIn 'pop' pops the characters in one by one (from a food-review hook short's quote captions).
 // `quote` puts the line in curly quotes and italics and `gloss` adds a smaller translation under it (the baking-sin short's kept English line).
 // style 'ticket' prints the line on a strip of receipt paper with torn edges that pops up from below (the food-receipt short's
 // fx.ticketCap); `y` pins the caption's lower edge anywhere (the bottom of a video window); `tint: false` keeps the words in their

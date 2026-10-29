@@ -1,6 +1,6 @@
 // common.route — a hand-drawn route map on a paper card: a row of big promises on top (1 條商圈／10 分鐘／6 家), streets in
 // pencil, and a dashed red route from the start (a clock tower, or an emoji) that lights the stops one by one; the last
-// stops can stay a question mark. Promoted from the zhongli-food short's fx.route; also day trips, walking tours, a series.
+// stops can stay a question mark. Promoted from a food-review hook short's fx.route; also day trips, walking tours, a series.
 // look 'page' (fd-map's fx.nbPage, routepage.ts): the whole page is a notebook route map — places as doodles with red ticks, a dashed
 // ballpoint line leg by leg with the walking time beside each, the camera moving between full / walk / stop / end / near.
 import { abs, clamp, cssCamel, eBack, eOut3 as eOut, h, type ItemType, prog, type Theme } from '@tellcut/engine';

@@ -98,7 +98,7 @@ test('receipt: the paper feeds one line per item, and only `room` lines stay in 
   expect(f.fed).toBe(3); expect(f.visible).toBe(2); expect(f.scroll).toBe(1);
 });
 
-// promoted from the zhongli-food short (2026-10-19): route, outro, mystery, caption pop
+// promoted from a food-review hook short (2026-10-19): route, outro, mystery, caption pop
 import { reachAt, routeBox } from './route.ts';
 import { parsePairs, snake } from './inkline.ts';
 import { outroLayout, outroLines } from './outro.ts';

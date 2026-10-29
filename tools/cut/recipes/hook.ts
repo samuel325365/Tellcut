@@ -1,4 +1,4 @@
-// Recipe `hook`: a hook short cut from talk footage (zhongli food, podcast). Panel layout, an opening that lands hard, then segment by
+// Recipe `hook`: a hook short cut from talk footage (food reviews, podcasts). Panel layout, an opening that lands hard, then segment by
 // segment a numbered badge and tags over the clip, speech captions with highlighted and bleeped words, chapter dots, a call to action
 // at the end, music under it all.
 //

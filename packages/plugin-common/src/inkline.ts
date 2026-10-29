@@ -1,4 +1,4 @@
-// Hand-drawn lines on a canvas (from the zhongli-food short): a felt-pen stroke drawn twice with a fixed-seed wobble, and a
+// Hand-drawn lines on a canvas (from a food-review hook short): a felt-pen stroke drawn twice with a fixed-seed wobble, and a
 // Catmull-Rom curve through points. Pure functions of their inputs, so a frame draws the same however it is reached.
 // `boil` (off unless given) redraws a line with a new wobble that many times a second, as hand-drawn animation does; the
 // other pens (crayon, pencil, marker) and the shapes they draw are in sketch.ts.

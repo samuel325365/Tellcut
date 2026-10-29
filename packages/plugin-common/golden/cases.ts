@@ -139,7 +139,7 @@ export const cases: Case[] = [
   { name: 'wide-tag', type: 'common.tag', params: { tags: '500碗認證,傳奇小吃' }, at: [1.5], wide: true },
   { name: 'wide-header', type: 'common.header', params: { no: '02', text: '醬香雞腿' }, at: [1.5], wide: true },
   { name: 'wide-progress', type: 'common.progress', params: { mode: 'dots' }, at: [1.5], wide: true },
-  // promoted from the zhongli-food short (2026-10-19): route map, cliffhanger seal, end card, colour grade, quote captions
+  // promoted from a food-review hook short (2026-10-19): route map, cliffhanger seal, end card, colour grade, quote captions
   { name: 'route', type: 'common.route', at: [0.5, 2.6], bg: '#6b5444' },
   { name: 'route-names', type: 'common.route', params: { heads: '', stops: 4, hidden: 1, names: '豆花|蔥油餅|米干', start: '車站', startIcon: '🚉' }, at: [2.6], bg: '#6b5444' },
   { name: 'wide-route', type: 'common.route', at: [2.6], wide: true, bg: '#6b5444' },

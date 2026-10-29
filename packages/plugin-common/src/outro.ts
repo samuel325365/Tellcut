@@ -1,6 +1,6 @@
 // common.outro — an end card that sends viewers on: a paper page, a few big lines stamped down one per beat (【word】 on an
 // accent chip), a row of numbered dots (the last ones still ?), and a hand-drawn arrow drawn to the link that bounces on
-// the beat. Promoted from the zhongli-food short's fx.outro; for any short that points to the full video, a profile or a link.
+// the beat. Promoted from a food-review hook short's fx.outro; for any short that points to the full video, a profile or a link.
 // look 'credits' (the katie-sweet16 short's fx.keepsake): a celebration's closing credits — the lines fade up one a beat over a soft dark
 // veil, plain lines bold, *lines in stars* italic in the highlight colour, _lines in underscores_ small and letter-spaced.
 // look 'episode' (the amber-podcast short's fx.endCard): a show's end card — the show's name in big serif lines over an accent rule,
