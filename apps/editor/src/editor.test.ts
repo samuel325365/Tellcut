@@ -1770,6 +1770,16 @@ describe('the media panel Import', () => {
     await vi.advanceTimersByTimeAsync(9000);
     expect(ed.store.get().importNote).toBe(note);   // what was left out stays
   });
+
+  test('the other files of a folder are one line with their count; an unreadable folder is named', async () => {
+    const { api, bridge } = fakes({
+      importMedia: async () => answer({ sources: {}, media: {}, skipped: [{ path: 'D:\\System', code: 'import.unreadable', message: 'x' }], same: [], others: 37 }),
+    });
+    const ed = new Editor('demo', { api, bridge });
+    await ed.open();
+    await ed.importMedia(['D:\\']);
+    expect(ed.store.get().importNote).toBe(`${t('ed.importSkipped', { list: `System (${t('err.import.unreadable')})` })} ${t('ed.importOthers', { n: 37 })}`);
+  });
 });
 
 describe('timeline refresh minors (2026-10-29)', () => {

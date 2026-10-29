@@ -8,6 +8,8 @@ import type { ProjectStore } from './projects.ts';
 
 /** at most this many media files in one import (a whole drive picked by mistake is refused before anything is read) */
 export const IMPORT_MAX = 200;
+/** and the folder walk gives up after looking at this many names (a drive of mostly other files) */
+export const IMPORT_SCAN_MAX = 10000;
 
 type Body = { paths: string[]; taken: string[]; have: Array<{ id: string; path: string }> };
 const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string');
@@ -28,8 +30,12 @@ export function importRoutes(r: Router, store: ProjectStore) {
     const urls = b.paths.filter((p) => /^https?:\/\//i.test(p)), local = b.paths.filter((p) => !urls.includes(p));
     const rel = local.find((p) => !isAbsolute(p));
     if (rel !== undefined) throw new HttpError(400, `請給完整路徑：${rel}`, { code: 'fs.notAbsolute' });
-    const x = expandInputs(local), media = x.files.filter((f) => kindOf(f));
-    if (media.length > IMPORT_MAX) throw new HttpError(400, `一次最多加 ${IMPORT_MAX} 個檔案（這次有 ${media.length} 個）`, { code: 'import.tooMany', params: { n: media.length, max: IMPORT_MAX } });
+    const x = await expandInputs(local, { maxMedia: IMPORT_MAX, maxEntries: IMPORT_SCAN_MAX }), media = x.files.filter((f) => kindOf(f));
+    if (x.cut || media.length > IMPORT_MAX) {
+      // a walk that stopped early knows only that there are more than the limit it passed
+      const n = !x.cut ? media.length : media.length > IMPORT_MAX ? `${IMPORT_MAX}+` : `${IMPORT_SCAN_MAX}+`;
+      throw new HttpError(400, `一次最多加 ${IMPORT_MAX} 個檔案（這次有 ${n} 個）`, { code: 'import.tooMany', params: { n, max: IMPORT_MAX } });
+    }
     // already in the project: by the paths the editor holds now (the disk may lag behind it)
     const owned = new Map(b.have.map((h) => [samePath(resolve(dir, h.path)), h.id]));
     const same = x.files.filter((f) => owned.has(samePath(f))).map((f) => ({ path: f, id: owned.get(samePath(f))! }));
@@ -43,7 +49,7 @@ export function importRoutes(r: Router, store: ProjectStore) {
     chains.set(id, run);
     try {
       const got = await run;
-      send({ done: true, sources: got.sources, media: got.music, skipped: [...skipped, ...got.skipped], same });
+      send({ done: true, sources: got.sources, media: got.music, skipped: [...skipped, ...got.skipped], same, others: x.others });
     } catch (e) {
       send({ error: (e as Error).message, code: 'import.failed', params: { why: (e as Error).message } });
     } finally {

@@ -3,10 +3,9 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { kindOf, TELLCUT_ROOT } from '@tellcut/media-node';
+import { kindOf, skipName, TELLCUT_ROOT } from '@tellcut/media-node';
 import { HttpError, sendJson, type Router } from './http.ts';
 
-const SKIP = new Set(['$RECYCLE.BIN', 'System Volume Information', 'node_modules']);
 const collator = new Intl.Collator('zh-Hant', { sensitivity: 'base', numeric: true });
 
 // `key` (and `drive`, the letter) lets the page word a place in its own language; `label` stays for older pages
@@ -37,7 +36,7 @@ export function listFolder(path: string) {
   if (!st.isDirectory()) throw new HttpError(400, `${dir} 不是資料夾`, { code: 'fs.notDir', params: { dir } });
   let names;
   try { names = readdirSync(dir, { withFileTypes: true }); } catch { throw new HttpError(403, `讀不到 ${dir}`, { code: 'fs.unreadable', params: { dir } }); }
-  const entries = names.filter((e) => !e.name.startsWith('.') && !SKIP.has(e.name)).map((e) => {
+  const entries = names.filter((e) => !skipName(e.name)).map((e) => {   // hidden and system names: what an import's folder walk passes over too
     if (e.isDirectory()) return { name: e.name, kind: 'dir' as const };
     let size = 0;
     try { size = statSync(join(dir, e.name)).size; } catch { /* unreadable: size unknown */ }

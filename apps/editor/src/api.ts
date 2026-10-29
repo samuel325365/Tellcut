@@ -13,7 +13,9 @@ export type JobView = Pick<JobInfo, 'id' | 'label' | 'status' | 'progress' | 'me
 export interface ExportEntry { file: string; url: string; size: number; mtime: number; log: string | null }
 /** A file inside the project folder, e.g. exports/<name>.mp4 (each path segment encoded). */
 /** one import's answer: entries for project.json, the files left out (code + params for errText) and those already in the project */
-export interface ImportResult { sources: Record<string, any>; media: Record<string, { path: string }>; skipped: Array<{ path: string; code: string; params?: Record<string, string>; message: string }>; same: Array<{ path: string; id: string }> }
+export interface ImportResult { sources: Record<string, any>; media: Record<string, { path: string }>; skipped: Array<{ path: string; code: string; params?: Record<string, string>; message: string }>; same: Array<{ path: string; id: string }>;
+  /** files in the folders that are no video, photo or sound (counted, not listed) */
+  others?: number }
 export const fileUrl = (id: string, rel: string) => `/api/projects/${encodeURIComponent(id)}/files/${rel.split('/').map(encodeURIComponent).join('/')}`;
 
 const enc = encodeURIComponent;

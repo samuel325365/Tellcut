@@ -39,6 +39,7 @@ export async function importMedia(h: ImportHost, paths: string[]): Promise<void>
     added.length ? tn('ed.imported', added.length) : '',
     r.same.length ? t('ed.importSame', { list: r.same.map((x) => fileName(x.path)).join(', ') }) : '',
     r.skipped.length ? t('ed.importSkipped', { list: r.skipped.map((x) => `${fileName(x.path)} (${errText(x)})`).join(', ') }) : '',
+    r.others ? tn('ed.importOthers', r.others) : '',
   ].filter(Boolean).join(' ');
   const shown = note || t('ed.importNothing');
   h.store.set({ importing: null, importNote: shown });

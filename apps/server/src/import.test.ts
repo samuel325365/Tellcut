@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { makeClicks, makePhoto } from '@tellcut/media-node';
@@ -25,7 +25,7 @@ async function post(body: unknown): Promise<{ status: number; lines: any[]; json
 }
 const projectFile = () => readFileSync(join(projects, 'demo', 'project.json'), 'utf8');
 
-test('imports photos and sound without touching project.json; progress comes first, what was left out comes with the result', async () => {
+test('imports photos and sound without touching project.json; progress comes first, the other files are counted with the result', async () => {
   const before = projectFile();
   const { status, lines } = await post({ paths: [src], taken: ['src'], have: [] });
   expect(status).toBe(200);
@@ -34,7 +34,7 @@ test('imports photos and sound without touching project.json; progress comes fir
   expect(last.done).toBe(true);
   expect(last.sources.pic).toMatchObject({ kind: 'image', width: 640, height: 480, path: relative(join(projects, 'demo'), join(src, 'pic.jpg')).split('\\').join('/') });
   expect(Object.keys(last.media)).toEqual(['song']);
-  expect(last.skipped.map((s: any) => s.code)).toEqual(['import.notMedia']);
+  expect([last.skipped, last.others]).toEqual([[], 1]);   // notes.txt
   expect(projectFile()).toBe(before);
 }, 60000);
 
@@ -48,7 +48,7 @@ test('a file the project has (in any case on Windows) is reported as already the
   expect(Object.keys(last.media)).toEqual(['song-2']);
 }, 60000);
 
-test('relative paths and too many files are refused before anything is read; a URL is left out', async () => {
+test('relative paths and too many files are refused before anything is read (the walk stops at the first one past the limit); a URL is left out', async () => {
   const rel = await post({ paths: ['rel/x.mp4'], taken: [], have: [] });
   expect([rel.status, rel.json.code]).toEqual([400, 'fs.notAbsolute']);
   const many = mkdtempSync(join(tmpdir(), 'imp-many-'));
@@ -56,9 +56,21 @@ test('relative paths and too many files are refused before anything is read; a U
   for (let i = 0; i < 201; i++) writeFileSync(join(many, `p${i}.jpg`), 'x');
   for (let i = 0; i < 50; i++) writeFileSync(join(many, 'side', `p${i}.xmp`), 'x');   // sidecar files do not count
   const tooMany = await post({ paths: [many], taken: [], have: [] });
-  expect([tooMany.status, tooMany.json.code, tooMany.json.params]).toEqual([400, 'import.tooMany', { n: 201, max: 200 }]);
+  expect([tooMany.status, tooMany.json.code, tooMany.json.params]).toEqual([400, 'import.tooMany', { n: '200+', max: 200 }]);
   const url = await post({ paths: ['https://example.com/v.mp4'], taken: [], have: [] });
   expect(url.lines.at(-1)).toMatchObject({ done: true, sources: {}, media: {}, skipped: [{ code: 'import.url' }] });
   const bad = await post({ paths: 'x' });
   expect(bad.status).toBe(400);
+}, 60000);
+
+test('a drive root: its system and hidden folders are passed over, so what they hold neither counts nor is listed', async () => {
+  const drive = mkdtempSync(join(tmpdir(), 'imp-drive-'));
+  for (const sub of ['$RECYCLE.BIN', 'System Volume Information', '.trash']) {
+    mkdirSync(join(drive, sub));
+    for (let i = 0; i < 201; i++) writeFileSync(join(drive, sub, `p${i}.jpg`), 'x');
+  }
+  copyFileSync(join(src, 'pic.jpg'), join(drive, 'pic.jpg'));
+  const { lines } = await post({ paths: [drive], taken: [], have: [] });
+  expect(lines.at(-1)).toMatchObject({ done: true, skipped: [], others: 0 });
+  expect(Object.keys(lines.at(-1).sources)).toEqual(['pic']);
 }, 60000);

@@ -4,6 +4,15 @@ import { join } from 'node:path';
 import { createProject, expandInputs, ingestFiles, sourceId } from './ingest.ts';
 import { makeClicks, makeHeic, makePhoneVideo, makePhoto } from './test-media.ts';
 
+// a folder named "locked" cannot be read (as EPERM on a system folder of a drive)
+vi.mock('node:fs/promises', async (orig) => {
+  const m = await orig<typeof import('node:fs/promises')>();
+  return { ...m, readdir: (async (p: string, o?: unknown) => {
+    if (/[\\/]locked$/.test(String(p))) throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
+    return (m.readdir as any)(p, o);
+  }) as typeof m.readdir };
+});
+
 const root = mkdtempSync(join(tmpdir(), 'ingest-')), src = join(root, 'trip'), projects = join(root, 'projects');
 
 beforeAll(async () => {
@@ -33,13 +42,13 @@ test('a folder and a URL become a project: photos (HEIC converted), videos, musi
   expect(Object.keys(p.media).sort()).toEqual(['downloaded', 'song']);
   expect([p.meta.width, p.meta.height, p.meta.fps]).toEqual([1080, 1920, 30]);
   expect(p.tracks.map((t) => [t.id, t.kind])).toEqual([['v1', 'video'], ['text', 'overlay'], ['music', 'music'], ['orig', 'audio']]);
-  expect(r.skipped.some((s) => s.includes('notes.txt'))).toBe(true);
+  expect(r.skipped).toContain(`${src}: 1 other file in it, not video, photo or audio`);
   expect(existsSync(join(projects, 'trip', 'media', 'IMG_0001.jpg'))).toBe(true);
 }, 180000);
 
 test('ingestFiles registers the same entries as a new project, with ids clear of the taken ones', async () => {
   const used = new Set(['clip']);
-  const r = await ingestFiles(join(projects, 'x'), expandInputs([src]).files, used);
+  const r = await ingestFiles(join(projects, 'x'), [...(await expandInputs([src])).files, join(src, 'notes.txt')], used);
   expect(Object.keys(r.sources).sort()).toEqual(['clip-2', 'img_0001', 'src', 'src-2']);
   expect(r.music.song).toEqual({ path: '../../trip/song.wav' });
   expect(r.sources['clip-2']).toMatchObject({ kind: 'video', width: 360, height: 640, audio: true, path: '../../trip/clip.mp4' });
@@ -49,12 +58,30 @@ test('ingestFiles registers the same entries as a new project, with ids clear of
   expect(used.has('clip-2')).toBe(true);
 }, 180000);
 
-test('expandInputs walks folders once, drops repeats and reports missing paths', () => {
+test('expandInputs walks folders once, drops repeats and reports missing paths; other files in folders are counted, a named one kept', async () => {
   const clip = join(src, 'clip.mp4');
-  const r = expandInputs([src, process.platform === 'win32' ? clip.toUpperCase() : clip, join(src, 'nope.mp4')]);
+  const r = await expandInputs([src, process.platform === 'win32' ? clip.toUpperCase() : clip, join(src, 'nope.mp4')]);
   expect(r.files.filter((f) => f.toLowerCase() === clip.toLowerCase())).toHaveLength(1);
   expect(r.files.some((f) => f.endsWith('IMG_0001.HEIC'))).toBe(true);
+  expect(r.files.some((f) => f.endsWith('notes.txt'))).toBe(false);
+  expect([r.others, r.cut]).toEqual([1, false]);
   expect(r.skipped.map((s) => s.code)).toEqual(['import.notFound']);
+  expect((await expandInputs([join(src, 'notes.txt')])).files).toEqual([join(src, 'notes.txt')]);
+});
+
+test('a walk passes over hidden and system folders, skips one it cannot read, and stops past a limit (a drive picked by mistake)', async () => {
+  const d = join(root, 'drive');
+  for (const sub of ['$RECYCLE.BIN', 'System Volume Information', '.git', 'node_modules', 'locked', 'b']) mkdirSync(join(d, sub), { recursive: true });
+  for (const sub of ['$RECYCLE.BIN', 'System Volume Information', '.git', 'node_modules', 'locked']) writeFileSync(join(d, sub, 'x.jpg'), 'x');
+  for (const n of ['a.jpg', '._a.jpg', 'c.jpg', 'b/b1.jpg', 'b/b2.jpg', 'b/note.xmp']) writeFileSync(join(d, n), 'x');
+  const r = await expandInputs([d]);
+  expect(r.files.map((f) => f.slice(d.length + 1).split('\\').join('/'))).toEqual(['a.jpg', 'b/b1.jpg', 'b/b2.jpg', 'c.jpg']);   // code-point order
+  expect(r.skipped).toMatchObject([{ path: join(d, 'locked'), code: 'import.unreadable' }]);
+  expect([r.others, r.cut]).toEqual([1, false]);
+  const few = await expandInputs([d], { maxMedia: 2 });
+  expect([few.files.length, few.cut]).toEqual([3, true]);   // stops at the first file past the limit
+  expect((await expandInputs([d], { maxEntries: 2 })).cut).toBe(true);
+  expect((await expandInputs([d], { maxMedia: 4, maxEntries: 100 })).cut).toBe(false);
 });
 
 test('an existing project is kept unless --force; then the old one goes to .history', async () => {
