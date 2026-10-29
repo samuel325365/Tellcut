@@ -56,6 +56,37 @@ test('a path typed before the list of places has come stays: the first place is 
   expect(root.querySelectorAll('[data-place]').length).toBe(1);   // the places are still listed
 });
 
+test('what the user is typing is never replaced by the first place arriving before they press Enter', async () => {
+  const api: any = {
+    places: async () => ({ places: [{ label: '桌面', path: 'C:\\Users\\u\\Desktop', kind: 'home' }] }),
+    fsList: (p: string) => new Promise((res) => setTimeout(() => res({ path: p, parent: null, entries: [] }), p.endsWith('Desktop') ? 40 : 5)),
+  };
+  const added: any[] = [], root = document.createElement('div');
+  await act(() => render(<ImportDialog api={api} onAdd={(a) => added.push(...a)} onClose={() => {}} />, root));
+  await tick();
+  const box = root.querySelector<HTMLInputElement>('[data-path]')!;
+  await act(() => { box.value = 'D:\\mine'; box.dispatchEvent(new Event('input', { bubbles: true })); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 80)); });   // the desktop arrives while the path sits in the box
+  expect(box.value).toBe('D:\\mine');
+  await act(() => { box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+  await act(() => { (root.querySelector('[data-pick-folder]') as HTMLElement).click(); });
+  expect(added.map((a) => a.path)).toEqual(['D:\\mine']);
+});
+
+test('a path being typed when the places arrive is not replaced by the first place', async () => {
+  const api: any = {
+    places: () => new Promise((res) => setTimeout(() => res({ places: [{ label: '桌面', path: 'C:\\Users\\u\\Desktop', kind: 'home' }] }), 20)),
+    fsList: (p: string) => new Promise((res) => setTimeout(() => res({ path: p, parent: null, entries: [] }), 5)),
+  };
+  const root = document.createElement('div');
+  await act(() => render(<ImportDialog api={api} onAdd={() => {}} onClose={() => {}} />, root));
+  const box = root.querySelector<HTMLInputElement>('[data-path]')!;
+  await act(() => { box.value = 'D:\\mine'; box.dispatchEvent(new Event('input', { bubbles: true })); });   // typed, Enter not yet pressed
+  await act(async () => { await new Promise((r) => setTimeout(r, 80)); });
+  expect(box.value).toBe('D:\\mine');
+});
+
 test('the import browser: places, folders, picking files, jumping to a pasted path; the whole folder is added in one click', async () => {
   const api = fakeFs(), added: any[] = [];
   let closed = false;
