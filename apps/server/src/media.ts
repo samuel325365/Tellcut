@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { AUDIO_PAD, stillKey, type StillRef } from '@tellcut/engine';
-import { PEAK_RATE, analysisDone, analysisFiles, analyzeSource, cutAudio, extrasDone, extrasFiles, ffmpeg, fileHash, fitImage, correctBeats, musicBeats, musicFiles, readAssetRecords, type Beats, sourceExtras, grabStill, isAnalyzed, peaksOf, readTranscript, sendFile, renameRetry, shareAnalysis } from '@tellcut/media-node';
+import { PEAK_RATE, analysisDone, analysisFiles, analyzeSource, cutAudio, extrasDone, extrasFiles, ffmpeg, fitImage, correctBeats, musicBeats, musicFiles, readAssetRecords, type Beats, sourceExtras, grabStill, isAnalyzed, peaksOf, readTranscript, sendFile, renameRetry, shareAnalysis, sourceHash } from '@tellcut/media-node';
 import { HttpError, sendJson, type Router } from './http.ts';
 import type { JobInfo, JobQueue } from './jobs.ts';
 import { sendProjectFile, type ProjectStore } from './projects.ts';
@@ -20,10 +20,11 @@ const intIn = (url: URL, k: string, lo: number, hi: number) => {
   return n;
 };
 
-/** One cache file per (key, source size/mtime); concurrent requests for the same file share one ffmpeg run. */
+/** One cache file per (key, source size/mtime and its path in the project: two files of one size and time are not one file);
+ *  concurrent requests for the same file share one ffmpeg run. Cheap to make again, so no older name is looked for. */
 const inflight = new Map<string, Promise<string>>();
 function cached(dir: string, srcPath: string, key: string, ext: string, make: (tmp: string) => Promise<void>): Promise<string> {
-  const file = join(dir, 'cache', 'media', `${fileHash(key, srcPath)}.${ext}`);
+  const file = join(dir, 'cache', 'media', `${sourceHash(key, dir, srcPath)}.${ext}`);
   if (existsSync(file)) return Promise.resolve(file);
   let p = inflight.get(file);
   if (!p) {

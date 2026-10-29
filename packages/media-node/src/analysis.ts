@@ -4,7 +4,7 @@ import { heavy } from './limit.ts';
 import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ffmpeg, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
-import { fileHash } from './hash.ts';
+import { analysisName } from './hash.ts';
 import { fitImage } from './photo.ts';
 import { isImagePath } from './probe.ts';
 import { waitForLock, withLock } from './locks.ts';
@@ -19,9 +19,10 @@ export interface ThumbIndex { interval: number; width: number; height: number; c
 export interface Peaks { rate: number; peaks: number[] }
 export interface AnalysisFiles { dir: string; proxy: string; thumbs: string; thumbIndex: string; cuts: string; peaks: string }
 
-/** Where a source's analysis lives; the directory changes whenever the file (size/mtime) or the analysis version does. */
+/** Where a source's analysis lives; the directory changes whenever the file (size/mtime, its path in the project) or the analysis
+ *  version does (a folder from before the path was in the name is still used: analysisName). */
 export function analysisFiles(projectDir: string, srcPath: string): AnalysisFiles {
-  const dir = join(projectDir, 'cache', 'analysis', fileHash(`analysis|${ANALYSIS_VERSION}`, srcPath));
+  const dir = join(projectDir, 'cache', 'analysis', analysisName(projectDir, `analysis|${ANALYSIS_VERSION}`, srcPath));
   return { dir, proxy: join(dir, isImagePath(srcPath) ? 'proxy.jpg' : 'proxy.mp4'), thumbs: join(dir, 'thumbs.jpg'), thumbIndex: join(dir, 'thumbs.json'), cuts: join(dir, 'cuts.json'), peaks: join(dir, 'peaks.json') };
 }
 export const isAnalyzed = (f: AnalysisFiles) => [f.proxy, f.thumbs, f.thumbIndex, f.cuts, f.peaks].every((p) => existsSync(p));

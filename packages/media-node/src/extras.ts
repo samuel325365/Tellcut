@@ -8,7 +8,7 @@ import { splitAtPauses, type Transcript } from '@tellcut/engine';
 import { analysisFiles, analyzeSource, atomic } from './analysis.ts';
 import { detectBurned, type Burned } from './burned.ts';
 import { ffmpeg, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
-import { fileHash } from './hash.ts';
+import { analysisName } from './hash.ts';
 import { background } from './limit.ts';
 import { isImagePath } from './probe.ts';
 import { runPy } from './py.ts';
@@ -48,7 +48,7 @@ export function readBurned(projectDir: string, srcPath: string): Burned | null {
   } catch { return null; }
 }
 export function musicFiles(projectDir: string, path: string) {
-  const dir = join(projectDir, 'cache', 'analysis', fileHash(`music|${EXTRAS_VERSION}`, path));
+  const dir = join(projectDir, 'cache', 'analysis', analysisName(projectDir, `music|${EXTRAS_VERSION}`, path));
   return { dir, beats: join(dir, 'beats.json') };
 }
 

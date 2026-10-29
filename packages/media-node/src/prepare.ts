@@ -9,7 +9,7 @@ import {
 } from '@tellcut/engine';
 import { abortError, cutAudio, cutVideo, grabStill, probeDuration, probeSize } from './ffmpeg.ts';
 import { fitImage } from './photo.ts';
-import { fileHash } from './hash.ts';
+import { fileHash, sourceHash } from './hash.ts';
 
 /** The cut file name's salt: encoding settings, plus a version for stabilised cuts (vs2 = vidstab on copied frames,
  *  so cuts made before that fix — broken into blocks on VP9 sources — are not reused). */
@@ -102,7 +102,7 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
   // photos: upright, at most twice the output size (Ken Burns zooms in)
   const L = 2 * Math.max(p.meta.width, p.meta.height);
   for (const sid of images) {
-    const rel = `cache/images/${fileHash(`image|${L}`, srcPath(sid))}.jpg`;
+    const rel = `cache/images/${sourceHash(`image|${L}`, projectDir, srcPath(sid))}.jpg`;   // the path too: two photos of one size and time
     index.images![sid] = rel;
     if (!opts.force && existsSync(join(projectDir, rel))) continue;
     jobs.push(async () => {

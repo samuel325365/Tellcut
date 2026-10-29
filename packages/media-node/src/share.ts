@@ -7,6 +7,7 @@ import { copyFileSync, existsSync, linkSync, mkdirSync, readdirSync, readFileSyn
 import { basename, join, resolve } from 'node:path';
 import { analysisFiles } from './analysis.ts';
 import { EXTRAS_VERSION, musicFiles } from './extras.ts';
+import { legacyNameOf } from './hash.ts';
 
 /** work in progress (locks, half-written temps) is never taken */
 const PRIVATE = /\.lock$|\.tmp(\.|$)|^mono(\.\d+)?\.f32$/;
@@ -15,12 +16,14 @@ const PRIVATE = /\.lock$|\.tmp(\.|$)|^mono(\.\d+)?\.f32$/;
 const VERSIONED = /^(extras\.version|sheets\.json|sheet-\d+\.jpg|burned(-v2)?\.json)$/;
 const current = (from: string) => { try { return readFileSync(join(from, 'extras.version'), 'utf8') === EXTRAS_VERSION; } catch { return false; } };
 
-/** the folders of the same name in the sibling projects that have one (the same footage analysed there) */
+/** the folders of the same name in the sibling projects that have one (the same footage analysed there); also of the name it
+ *  had before names carried the file's path (hash.ts), so footage an older project analysed is still shared */
 export function siblingFolders(dir: string): string[] {
-  const projects = resolve(dir, '..', '..', '..', '..'), self = basename(resolve(dir, '..', '..', '..')), hash = basename(dir);
+  const projects = resolve(dir, '..', '..', '..', '..'), self = basename(resolve(dir, '..', '..', '..')), old = legacyNameOf(dir);
+  const names = [basename(dir), ...(old && old !== basename(dir) ? [old] : [])];
   try {
     return readdirSync(projects, { withFileTypes: true }).filter((d) => d.isDirectory() && d.name !== self)
-      .map((d) => join(projects, d.name, 'cache', 'analysis', hash)).filter((f) => existsSync(f));
+      .flatMap((d) => names.map((n) => join(projects, d.name, 'cache', 'analysis', n))).filter((f) => existsSync(f));
   } catch { return []; }
 }
 
