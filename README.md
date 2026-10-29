@@ -135,7 +135,7 @@ Most editors forget everything the moment you close the project. Tellcut keeps w
 - **What you see is everything the agent gets.** A preset's points are its whole instruction: delete a point and that instruction is gone.
 - **Old films never change behind your back.** A block is copied into each project that uses it. Improve it later and the other projects show **Update**; they switch only when you press it.
 - **No film needed.** Choose options in the **Custom** form and press **Save as my preset**, or press **New preset** at the end of the home page's presets and write the points yourself.
-- Browse, rename or try them in the block gallery's **Mine** category, or ask the agent to change one for you.
+- Browse, rename or try them in the block gallery's **My blocks** category, or ask the agent to change one for you.
 
 ---
 
@@ -197,7 +197,7 @@ A preset is a starting direction for one kind of film. Click its card under the 
 | **Food Spot** | A restaurant or a food trip, cut into a short that makes people hungry |
 | **Daily Vlog** | A day or a stretch of daily life, with rhythm and a beginning, middle and end |
 | **Celebration Film** | Wedding, birthday, graduation or farewell photos and clips, cut into a film to play on the day |
-| **Brand Film** | A brand film with 3D and real footage from just a logo and a paragraph about the company |
+| **Brand Film** | A brand film that looks like the company at a glance, made from its logo, a paragraph about it and its website; even better with your own footage or photos |
 | **Animated Explainer** | One idea explained with diagrams and text, with or without footage of your own |
 
 **Your own presets** come after these, marked **Mine**: save one from a film you liked (**Save as preset** in the editor's chat) or from the **Custom** form. See [Every film makes the next one easier](#every-film-makes-the-next-one-easier).

@@ -1,4 +1,4 @@
-# Tellcut on its own (spec 2026-10-17-studio-handover): what npm run setup downloads or makes, never in git
+# Tellcut on its own: what npm run setup downloads or makes, never in git
 node_modules/
 .venv/
 .cache/
@@ -6,7 +6,7 @@ vendor/
 models/
 /sources/
 __pycache__/
-# personal source switches, keys and contact (spec 2026-10-22-external-sources §3)
+# personal source switches, keys and contact
 /sources.local.json
 
 # builds and generated files

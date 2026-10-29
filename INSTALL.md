@@ -48,7 +48,7 @@ Then open <http://127.0.0.1:5174/editor/> in your browser.
   - In the chat on the right, **＋** picks footage from your computer (videos, photos, music, from any folder). Then tell the agent what you'd like to make.
   - The menu above the chat switches between **Home** and a project's conversation (the same thread as in that project's editor), so you can carry on from the home page.
   - **Block gallery** lets you see, hear and try every effect, sound and music style.
-- **Chat**: the agent analyses your footage, writes a storyboard and goes straight on to a first cut (change direction whenever you like). When it's done, click the project on the left to open it in the editor, adjust it and export. The first analysis of a long video (making the transcript) can take from a few minutes to a quarter of an hour; the agent carries on by itself when it's ready, so you don't need to watch. Under every reply you'll see how many tokens it used and the equivalent API price.
+- **Chat**: the agent analyses your footage, writes a storyboard and goes straight on to a first cut (change direction whenever you like). When it's done, click the project on the left to open it in the editor, adjust it and export. The first analysis of a long video (making the transcript) can take from a few minutes to a quarter of an hour; the agent carries on by itself when it's ready, so you don't need to watch. Under every reply you'll see how many tokens it used; the conversation total also shows roughly what that would cost at Claude API prices.
 - The server only accepts connections from this computer. To stop it, press Ctrl+C in the terminal.
 - To use another port: `npm run server -- --port 5200`.
 

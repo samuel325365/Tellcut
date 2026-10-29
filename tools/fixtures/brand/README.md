@@ -1,6 +1,6 @@
 # Test logos for brand films
 
-For the tests of `tellcut logo`, and the input of brand-film acceptance films 1 and 2 (spec `2026-10-25-brand-preset-design.md` §10, maintainer docs in `dev/docs/superpowers/specs/`). All drawn by hand, so there is no licence question.
+For the tests of `tellcut logo`, and the input of the brand preset's acceptance films 1 and 2. All drawn by hand, so there is no licence question.
 
 - `tellcut.svg`: the Tellcut icon. A blue rounded square with a white triangle, the shape drawn in the trial films' code. Can be extruded.
 - `bakery.png`: the logo of a made-up bakery. 256×256, transparent background, a `#c8752a` circle with a small `#5a3418` square in the middle. Made with:
