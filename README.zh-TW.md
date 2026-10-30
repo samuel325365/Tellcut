@@ -44,7 +44,7 @@
 
 ## 手機裡的影片，大多沒有人剪
 
-<p align="center"><img src="docs/readme/wall.jpg" alt="1,284 clips. Still waiting to be edited." width="100%"></p>
+<p align="center"><img src="docs/readme/wall.jpg" alt="2148 videos. 0 edited." width="100%"></p>
 
 出去玩、慶生、上個月錄的 Podcast，素材都拍好了，卡住的是剪：一段一段看、挑鏡頭、剪接、上字幕、找配樂。
 
@@ -224,6 +224,29 @@ npm run server    # 再用瀏覽器打開 http://127.0.0.1:5174/editor/
 介面有中文、English、日本語三種，首頁右上角的「中 / EN / 日」可以切換；編輯器裡的按鈕字固定是英文，說明跟著語言走。
 
 > 素材和成品都留在你的電腦裡；跟 Agent 對話時，你的訊息和它需要看的畫面會送到 Anthropic。
+
+---
+
+## 範例專案
+
+六支用 Tellcut 做的片附上整個專案，可以打開來播、來改：素材、和 Agent 的對話、版本紀錄，還有成品。
+
+```powershell
+npm run examples                     # 列出來
+npm run examples -- marrakesh        # 下載一個，加進你的專案
+npm run examples -- --all            # 六個全部（約 2 GB）
+```
+
+| 專案 | 內容 |
+|---|---|
+| `marrakesh` | 19 分鐘的馬拉喀什 vlog 剪成 39 秒的直式短片，Agent 為這支片寫了一個顏色特效 |
+| `rome-colour-trail` | 羅馬之旅：選馬拉喀什那支存下的片型，只說一句「Same as last time」就剪好 |
+| `lila-podcast` | 44 秒的 Podcast 精華，逐字字幕依說話的人換顏色 |
+| `katie-sweet16` | 40 秒的橫式生日回顧 |
+| `film-motion` | 40 秒的動畫解說，完全沒有素材 |
+| `meet-tellcut` | Tellcut 自己的形象片（16:9），用品牌片片型做的 |
+
+每個專案的 `CREDITS.md` 寫了素材出處，全部是創用 CC（CC BY 3.0）。
 
 ---
 

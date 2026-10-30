@@ -11,25 +11,9 @@ Screen recordings of Tellcut making, checking and editing videos from one senten
 
 Music: Tellcut's own score ("market-groove"). Voice-over: synthesised (Microsoft edge-tts). The explainer in the video uses no footage. The logo is Tellcut's (`docs/brand/`). Type: Inter (SIL Open Font License).
 
-## The brand film and its stills
+## The stills under "Your phone is full of clips" and "What the agent does"
 
-`wall.jpg`, `watch.jpg`, `beat.jpg`, `ratio.jpg` and `check.jpg` come from Tellcut's brand film.
-
-Footage: [Pixabay](https://pixabay.com/) (Pixabay Content License). The wall, timeline and sphere tiles use Pixabay search thumbnails.
-
-- 8255 by Coverr-Free-Footage — https://pixabay.com/videos/id-8255/
-- 168353 by Eaktas06 — https://pixabay.com/videos/id-168353/
-- 116248 by ImagesInMotion — https://pixabay.com/videos/id-116248/
-- 152798 by ghasoub — https://pixabay.com/videos/id-152798/
-- 51237 by photojone — https://pixabay.com/videos/id-51237/
-- 258958 by Obsidian_Ardor — https://pixabay.com/videos/id-258958/
-- 205184 by Stek59 — https://pixabay.com/videos/id-205184/
-- 202134 by Samidurrakzai — https://pixabay.com/videos/id-202134/
-- 139365 by Matthias_Groeneveld — https://pixabay.com/videos/id-139365/
-- 360626 by ZAIDoopro — https://pixabay.com/videos/id-360626/
-- 183448 by Amorn_mimi — https://pixabay.com/videos/id-183448/
-
-Music: Tellcut's own score ("cinematic", 80 BPM). Sound effects are synthesised. Type: Inter (SIL Open Font License).
+`wall.jpg`, `watch.jpg`, `check.jpg` and `ratio.jpg` are frames of the full-length version of the demo video ("Tellcut in 3 Minutes"); its footage is credited above (the phone in `wall.jpg` shows frames of the Marrakesh and Rome vlogs, `ratio.jpg` the birthday video). In `watch.jpg` and `check.jpg` a line with a folder path is blurred. `beat.jpg` is a frame of the podcast example made from the Lila Rose podcast (credited under the editor screenshots below), on a blurred copy of itself.
 
 ## The banner
 

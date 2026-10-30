@@ -44,7 +44,7 @@
 
 ## Your phone is full of clips nobody edits
 
-<p align="center"><img src="docs/readme/wall.jpg" alt="1,284 clips. Still waiting to be edited." width="100%"></p>
+<p align="center"><img src="docs/readme/wall.jpg" alt="2148 videos. 0 edited." width="100%"></p>
 
 The trip, the birthday, the podcast you recorded last month: the footage is fine. What stops it from becoming a video is the editing: scrubbing through hours of clips, choosing shots, cutting, captioning, finding music.
 
@@ -224,6 +224,29 @@ Import footage in the chat on the right of the home page and tell the agent what
 The interface comes in English, 中文 and 日本語; switch with **中 / EN / 日** at the top right of the home page. Button labels in the editor are always English; tooltips and help follow your language.
 
 > Your footage and your films stay on your computer. When you chat with the agent, your messages and the frames it needs to look at are sent to Anthropic.
+
+---
+
+## Example projects
+
+Six films made with Tellcut come as projects you can open, play and change: the footage, the agent's chat and version history, and the finished film.
+
+```powershell
+npm run examples                     # list them
+npm run examples -- marrakesh        # download one and add it to your projects
+npm run examples -- --all            # all six (about 2 GB)
+```
+
+| Project | What it is |
+|---|---|
+| `marrakesh` | 19 minutes of a Marrakesh vlog cut into a 39-second vertical reel, with a colour effect the agent wrote for this film |
+| `rome-colour-trail` | A Rome trip, cut from one short sentence ("Same as last time") with the preset saved from the Marrakesh reel |
+| `lila-podcast` | A 44-second podcast highlight with word-by-word captions in each speaker's colour |
+| `katie-sweet16` | A 40-second landscape birthday recap |
+| `film-motion` | A 40-second animated explainer with no footage at all |
+| `meet-tellcut` | Tellcut's own brand film (16:9), made with the Brand Film preset |
+
+Each project's `CREDITS.md` names its footage; it is all Creative Commons (CC BY 3.0).
 
 ---
 
