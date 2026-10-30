@@ -227,26 +227,15 @@ The interface comes in English, 中文 and 日本語; switch with **中 / EN / �
 
 ---
 
-## Example projects
+## Example project
 
-Six films made with Tellcut come as projects you can open, play and change: the footage, the agent's chat and version history, and the finished film.
+Tellcut's own brand film comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset.
 
 ```powershell
-npm run examples                     # list them
-npm run examples -- marrakesh        # download one and add it to your projects
-npm run examples -- --all            # all six (about 2 GB)
+npm run examples -- meet-tellcut     # download it and add it to your projects (about 900 MB)
 ```
 
-| Project | What it is |
-|---|---|
-| `marrakesh` | 19 minutes of a Marrakesh vlog cut into a 39-second vertical reel, with a colour effect the agent wrote for this film |
-| `rome-colour-trail` | A Rome trip, cut from one short sentence ("Same as last time") with the preset saved from the Marrakesh reel |
-| `lila-podcast` | A 44-second podcast highlight with word-by-word captions in each speaker's colour |
-| `katie-sweet16` | A 40-second landscape birthday recap |
-| `film-motion` | A 40-second animated explainer with no footage at all |
-| `meet-tellcut` | Tellcut's own brand film (16:9), made with the Brand Film preset |
-
-Each project's `CREDITS.md` names its footage; it is all Creative Commons (CC BY 3.0).
+Its `CREDITS.md` names the footage; it is all Creative Commons (CC BY 3.0).
 
 ---
 
