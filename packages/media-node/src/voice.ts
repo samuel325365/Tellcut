@@ -55,8 +55,9 @@ export function ratePercent(rate: number | string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Chinese punctuation always cuts; an English one only before a space or the end, so github.com, 3.5 and Node.js stay whole
-const SPLIT = /[，。！？、；：]|——|…+|\.{2,}|[,.!?;:](?=\s|$)/;
+// Chinese punctuation always cuts; an English one only before a space or the end, or next to a Chinese character (a script typed
+// with half-width marks), so github.com, 3.5 and Node.js stay whole
+const SPLIT = /[，。！？、；：]|——|…+|\.{2,}|[,.!?;:](?=\s|$|[　-鿿＀-￯])|(?<=[　-鿿＀-￯])[,.!?;:]/;
 // quotes and brackets too: an engine's word text normally leaves them out
 const PUNCT = new Set([...'，。！？、；：,.!?;:—…「」『』“”‘’"\'《》〈〉（）()【】']);
 const compact = (s: string) => s.replace(/\s+/g, '');

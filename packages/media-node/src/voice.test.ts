@@ -132,3 +132,9 @@ test('a scene’s gloss has one translation per caption phrase; a count that dif
   expect(() => parseNarration({ scenes: [{ ...scene, gloss: ['匯入資料夾，選個片型'] }] }))
     .toThrow(/2 句.*1 行[\s\S]*1\. Import the folder[\s\S]*2\. pick a preset/);
 });
+
+test('Chinese written with half-width punctuation and no spaces still splits (a pasted script); English inside words still does not', () => {
+  expect(phraseParts('今天很好吃,我們再來!好嗎?')).toEqual(['今天很好吃', '我們再來', '好嗎']);
+  expect(phraseParts('版本 3.5,很快')).toEqual(['版本 3.5', '很快']);
+  expect(phraseParts('github.com 上有')).toEqual(['github.com 上有']);
+});

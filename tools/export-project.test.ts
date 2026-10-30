@@ -67,11 +67,15 @@ test('a project not edited since its last cut is still unedited after export and
 });
 
 // showcase films (spec 2026-10-30 part 2): an example project on GitHub carries no path of this computer
-test('scrubText swaps this computer\u2019s tellcut folder and home for <tellcut> and ~, written with \\, / or as JSON writes \\', () => {
-  const o = { root: 'C:\\Users\\amy\\Desktop\\work\\tellcut', home: 'C:\\Users\\amy' };
+test('scrubText writes this computer\u2019s tellcut folder as <tellcut> (with \\, / or as JSON writes \\); a folder beside it or the home stays, for leftoverPaths to refuse', () => {
+  const o = { root: 'C:\\Users\\amy\\Desktop\\work\\tellcut' };
   expect(scrubText('at C:\\Users\\amy\\Desktop\\work\\tellcut\\projects\\x\\cut.ts and c:/users/amy/Desktop/work/tellcut/a', o))
     .toBe('at <tellcut>\\projects\\x\\cut.ts and <tellcut>/a');
-  expect(scrubText(JSON.stringify({ p: 'C:\\Users\\amy\\Videos\\a.mp4' }), o)).toBe('{"p":"~\\\\Videos\\\\a.mp4"}');
+  expect(scrubText(JSON.stringify({ p: 'C:\\Users\\amy\\Desktop\\work\\tellcut\\x.mp4' }), o)).toBe('{"p":"<tellcut>\\\\x.mp4"}');
+  for (const other of ['C:\\Users\\amy\\Desktop\\work\\tellcut-old\\x', 'C:\\Users\\amy\\Videos\\a.mp4']) {
+    expect(scrubText(other, o)).toBe(other);
+    expect(leftoverPaths(scrubText(other, o))).toEqual([other]);
+  }
   expect(scrubText('nothing here', o)).toBe('nothing here');
 });
 
@@ -87,7 +91,7 @@ test('--public: the zip\u2019s history and project carry no path of this compute
   writeFileSync(join(dir, '.history/chat/chat.json'), chat);
   const { sha1Of } = await import('./export-project.ts');
   writeFileSync(join(dir, 'cache/cut-state.json'), JSON.stringify({ hash: sha1Of(readFileSync(join(dir, 'project.json'), 'utf8')) }));
-  const zip = exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut, home: join(root, 'nobody') } });
+  const zip = exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } });
   const back = importProject(zip, join(root, 'in'));
   const said = readFileSync(join(back, '.history/chat/chat.json'), 'utf8');
   expect(said).toContain('<tellcut>');
@@ -100,7 +104,15 @@ test('--public: the zip\u2019s history and project carry no path of this compute
 test('--public refuses a project that still names a path elsewhere on this computer, and says where', () => {
   const { root, dir } = world();
   writeFileSync(join(dir, 'storyboard.md'), 'shot list: D:\\Trips\\rome.mp4');
-  expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: join(root, 'tellcut'), home: join(root, 'nobody') } }))
+  expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: join(root, 'tellcut') } }))
     .toThrow(/storyboard\.md.*D:\\Trips\\rome\.mp4/);
+  expect(existsSync(join(root, 'pub.zip'))).toBe(false);
+});
+
+test('--public refuses footage that would stay outside the zip: from another folder without --media, or offline', () => {
+  const { root, tellcut, dir } = world();
+  expect(() => exportProject(dir, { media: false, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/a.*--media/s);
+  rmSync(join(root, 'footage', 'a.mp4'));
+  expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/a/);
   expect(existsSync(join(root, 'pub.zip'))).toBe(false);
 });

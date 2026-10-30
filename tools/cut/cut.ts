@@ -644,8 +644,12 @@ export class Cut {
   private glossOf(scene: string, v: VoiceInfo): string[] | null {
     const file = join(this.dir, 'narration.json');
     if (!existsSync(file)) return null;
-    const s = parseNarration(JSON.parse(readFileSync(file, 'utf8'))).scenes.find((x) => x.id === scene);
-    if (!s?.gloss) return null;
+    // only this scene's gloss is checked: a mistake in another (or a hand-made narration.json) does not stop this one
+    const raw = JSON.parse(readFileSync(file, 'utf8')) as { scenes?: Array<{ id?: string; gloss?: unknown }> };
+    const mine = raw.scenes?.find((x) => x?.id === scene);
+    if (!mine?.gloss) return null;
+    const s = parseNarration({ ...raw, scenes: [mine] }).scenes[0];
+    if (!s.gloss) return null;
     const parts = phraseParts(s.text), out: string[] = [];
     let k = 0;
     for (const ph of v.phrases) {

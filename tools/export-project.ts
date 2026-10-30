@@ -5,11 +5,11 @@
 // score/ and .history/ (versions, proposals, the chat). --media adds media/ and the footage that lives outside the project (D:\Trips…, tellcut/sources/…), copied
 // into media/linked/ with project.json pointing there, so the zip stands on its own. cache/ is made again; exports/ are the films
 // themselves (copy them as they are). --public (an example project for GitHub, spec 2026-10-30-showcase-films part 2) writes this
-// computer's tellcut folder as <tellcut> and its home as ~ in every text file of the zip, and refuses when another absolute path is left.
+// computer's tellcut folder as <tellcut> in every text file of the zip, and refuses footage left outside the zip or another absolute
+// path of this computer (its home included) left in them.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
@@ -31,12 +31,11 @@ export const sha1Of = (s: string) => createHash('sha1').update(s).digest('hex');
 const sha1 = sha1Of;
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-/** `text` with `root` (the tellcut folder) as <tellcut> and `home` as ~, however a path is written: with \, with / or as JSON writes \ */
-export function scrubText(text: string, o: { root: string; home: string }): string {
-  for (const [path, token] of [[o.root, '<tellcut>'], [o.home, '~']] as const) {
-    const back = path.replace(/\//g, '\\');
-    for (const form of [back.replace(/\\/g, '\\\\'), back, back.replace(/\\/g, '/')]) text = text.replace(new RegExp(escape(form), 'gi'), token);
-  }
+/** `text` with `root` (the tellcut folder) as <tellcut>, however a path is written: with \, with / or as JSON writes \. Only the folder
+ *  itself (tellcut-old beside it stays); the home and other folders are left for leftoverPaths to refuse, never hidden behind ~ */
+export function scrubText(text: string, o: { root: string }): string {
+  const back = o.root.replace(/[\\/]+$/, '').replace(/\//g, '\\');
+  for (const form of [back.replace(/\\/g, '\\\\'), back, back.replace(/\\/g, '/')]) text = text.replace(new RegExp(`${escape(form)}(?=[\\\\/"'\\s]|$)`, 'gim'), '<tellcut>');
   return text;
 }
 /** the absolute paths in a text (a drive letter, /Users/…, /home/…), in order */
@@ -78,12 +77,14 @@ function tar(args: string[]) {
 const stamp = (d = new Date()) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
 
 /** writes the zip; returns its path */
-export function exportProject(dir: string, o: { media: boolean; out?: string; /** clean this computer's paths out (default: the real tellcut folder and home) */ public?: boolean | { root: string; home: string } }): string {
+export function exportProject(dir: string, o: { media: boolean; out?: string; /** clean this computer's paths out (default: the real tellcut folder) */ public?: boolean | { root: string } }): string {
   const id = basename(dir), out = resolve(o.out ?? join(TELLCUT_ROOT, 'backups', `${id}-${stamp()}.zip`));
   const before = readFileSync(join(dir, 'project.json'), 'utf8');
   const plan = exportPlan(dir, JSON.parse(before), o);
   // as writeProjectFile writes it; the paths --media rewrote make it a different text from the one the last cut hashed
-  const scrub = o.public === true ? { root: TELLCUT_ROOT, home: homedir() } : o.public || null;
+  const scrub = o.public === true ? { root: TELLCUT_ROOT } : o.public || null;
+  // a shared project carries its footage: one left outside the zip (another folder without --media, or offline) is a dead link there
+  if (scrub && plan.outside.length) throw new Error(`素材不在打包裡（--public 不能留）：${plan.outside.join('、')}。在專案外面的加 --media；找不到的先接回來。`);
   const text = ((t: string) => (scrub ? scrubText(t, scrub) : t))(JSON.stringify(plan.project, null, 2) + '\n');
   mkdirSync(dirname(out), { recursive: true });
   // a folder laid out as the zip, next to it (the same drive: files are hard-linked where they can be, not copied)

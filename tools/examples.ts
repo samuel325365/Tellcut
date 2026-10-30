@@ -61,7 +61,7 @@ export async function installExample(ex: Example, o: { fetch?: Fetch; projectsDi
   o.log(`${ex.id}:`);
   // a zip downloaded whole before is used again
   if (!existsSync(zip) || statSync(zip).size !== ex.zip.size) await download(f, ex.zip, zip, o.log);
-  importProject(zip, o.projectsDir);
+  importProject(zip, o.projectsDir, ex.id);   // under the example's name, whatever the folder inside the zip is called
   if (ex.film) {
     mkdirSync(join(dir, 'exports'), { recursive: true });
     try { await download(f, ex.film, join(dir, 'exports', ex.film.name), o.log); }

@@ -445,6 +445,14 @@ describe('narration and generated music', () => {
     expect(items(c, 'text').find((i) => i.id === plain)!.params).not.toHaveProperty('gloss');
   });
 
+  test('a scene is placed even when another scene’s gloss is wrong; the wrong one says what is wrong', async () => {
+    const c = fresh(), scenes = [{ id: 's1', text: 'Hello.' }, { id: 's2', text: 'One, two.' }];
+    await withVoice(c, scenes);
+    writeFileSync(join(c.dir, 'narration.json'), JSON.stringify({ scenes: [scenes[0], { ...scenes[1], gloss: ['一二'] }] }));
+    expect(c.voice('s1').phrases.map((p) => p.text)).toEqual(['Hello']);
+    expect(() => c.voice('s2')).toThrow(/gloss 有 1 行/);
+  });
+
   test('a gloss over a voice made before its phrases were cut this way asks for the voice again', async () => {
     const c = fresh(), scenes = [{ id: 's1', text: 'Go to github.com now.', gloss: ['到 github.com'] }];
     await withVoice(c, scenes);

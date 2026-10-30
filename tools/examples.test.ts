@@ -48,6 +48,16 @@ test('installing one imports the project and puts its film in exports/; one with
   expect(existsSync(join(projectsDir, 'learn-02-bring-in-footage', 'exports'))).toBe(false);
 });
 
+test('the project takes the example’s name even when the zip’s folder inside has another (export-project’s dated name)', async () => {
+  const { root, projectsDir, cacheDir } = places();
+  const gh = github({ 'meet-tellcut.zip': zipOf(root, 'meet-tellcut-draft'), 'meet-tellcut.mp4': Buffer.from('film') });
+  const [meet] = await listExamples({ fetch: gh.fetch });
+  expect(await installExample(meet, { fetch: gh.fetch, projectsDir, cacheDir, log: () => {} })).toEqual({ dir: join(projectsDir, 'meet-tellcut'), installed: true });
+  expect(readdirSync(projectsDir)).toEqual(['meet-tellcut']);
+  expect(existsSync(join(projectsDir, 'meet-tellcut', 'project.json'))).toBe(true);
+  expect(readFileSync(join(projectsDir, 'meet-tellcut', 'exports', 'meet-tellcut.mp4'), 'utf8')).toBe('film');
+});
+
 test('a project that is already there is left alone and nothing is downloaded', async () => {
   const { root, projectsDir, cacheDir } = places();
   const gh = github({ 'meet-tellcut.zip': zipOf(root, 'meet-tellcut') });
