@@ -38,6 +38,7 @@ export function taskBlock(task: unknown, project: string | null): string | null 
   if (t?.kind === 'preset-draft' && project) {
     return wrap('preset-draft', [
       `The user pressed "Save as my preset" in project ${project}: they want to start later films the way this one was made. Write projects/${project}/preset-draft.json and nothing else (no other file changes, no commands needed beyond reading).`,
+      'Any earlier draft has been removed when the button was pressed: write it again now, even if you wrote one earlier in this conversation.',
       'Read the conversation so far, the project (npm run tellcut -- show), its cut.ts and storyboard.md, and the preset it was made with if the project line names one.',
       '- The preset stands on its own: the rules of the original preset and form options that this film really followed go into the points too.',
       '- Write habits and requirements, not this film\'s content: no place names, people\'s names, dates or lines that belong only to this film.',

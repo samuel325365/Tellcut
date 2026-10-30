@@ -41,3 +41,9 @@ test('a task that is not one is null', () => {
 test('library-save names the block the user starred (I2)', () => {
   expect(taskBlock({ kind: 'library-save', type: 'fx.b', name: 'B', desc: '' }, 'p1')).toContain('--type fx.b');
 });
+
+// the showcase recording: a second "Save as preset" in the same chat was answered "already written, left unchanged" while the
+// editor had removed the old draft, so no dialog opened
+test('preset-draft: the agent writes the file again every time, even after writing one earlier in the chat', () => {
+  expect(taskBlock({ kind: 'preset-draft' }, 'p1')).toMatch(/removed.*write it again/i);
+});
