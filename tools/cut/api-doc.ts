@@ -38,7 +38,7 @@ export const CUT_API: Array<[name: string, signature: string, what: string]> = [
   ['dip', 'c.dip(at, { len?=1.5, db?=-18 })', '配樂在這段時間降下來再回來（情緒高點留白）'],
   ['level', 'c.level([[秒, 倍數], …])', '配樂整支片的音量起伏（倍數 0–1.5，點與點之間平滑過渡；dip 和壓低旁白照樣在上面再降）'],
   ['voice', 'c.voice(scene, { at?, gain? }) → { id, start, end, phrases }', '放一段旁白（先寫 narration.json、跑 npm run voice）；游標不動'],
-  ['voiceCaptions', 'c.voiceCaptions(v, { type?, ...params }) → ids', '旁白的字幕（逐句）'],
+  ['voiceCaptions', 'c.voiceCaptions(v, { type?, ...params }) → ids', '旁白的字幕（逐句）；場景有 gloss 時每句下面加翻譯（雙語字幕）'],
   ['beats', 'c.beats(n) → 秒', 'n 拍是幾秒（配樂的速度；先 score() 或有拍點的 music()）：長度用拍數算，c.clip(src, { len: c.beats(3) })'],
   ['beatLen', 'c.beatLen(every?=4) → 秒', '從游標到第 every 個拍點的長度（剪在拍點上）'],
   ['bpmOf', 'c.bpmOf(風格) → bpm', '配樂風格自己的速度（內建、風格庫、本專案的）；沒有這個風格是 undefined'],

@@ -173,6 +173,8 @@ export const cases: Case[] = [
   { name: 'slam-stagger', type: 'common.slam', params: { text: '這一塊\n【有多罪惡？】', stagger: 0.42, hlScale: 1.25, size: 6.5 }, at: [0.2, 1.5] },
   { name: 'slam-verdict', type: 'common.slam', params: { text: '值得。', kicker: '結論：', after: '（明天再減肥）', enter: 'press', font: 'Noto Serif TC', size: 13, shadow: '#e63a2e', tilt: 0, shake: 0 }, at: [2.0] },
   { name: 'caption-gloss', type: 'common.caption', params: { text: 'Oh boy.', quote: true, gloss: '（天啊。）', font: 'Noto Serif TC' }, at: [1.5] },
+  // the showcase films' bilingual subtitles: English narration, its Chinese under it (c.voiceCaptions with a gloss)
+  { name: 'caption-bilingual', type: 'common.caption', wide: true, params: { text: 'Import the folder, pick a preset', gloss: '匯入資料夾，選一個片型', glossSize: 0.75, glossColor: '#ffffff', font: 'Inter' }, at: [1.5] },
   { name: 'backdrop-glow', type: 'common.backdrop', params: { pattern: 'stripes', color: '#1d110d', color2: '#f6ead8', tint: 0.05, scale: 100, glow: '0:0, 1:0.7', glowPulse: 0.3 }, at: [2.0] },
   // promoted from the uk-beat and uk-postcard shorts (2026-10-19): the rail-ticket beat edit kit and the postcard kit
   { name: 'routeboard', type: 'common.routeboard', at: [0.15, 2.8], bg: '#3d4a57' },

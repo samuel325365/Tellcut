@@ -1,5 +1,5 @@
 import { DEFAULT_THEME } from '@tellcut/engine';
-import { caption, karaokeRange, speakerColor, styleFontOf, stylePop } from './caption.ts';
+import { caption, glossLift, karaokeRange, speakerColor, styleFontOf, stylePop } from './caption.ts';
 import { layoutMarkup } from './markup.ts';
 
 test('karaoke: the word being said is the range between the last step reached and the one before it', () => {
@@ -43,4 +43,18 @@ test('big writes by hand and qa in a serif unless styleFont says otherwise; othe
   expect(styleFontOf('qa', '')).toBe('Noto Serif TC');
   expect(styleFontOf('qa', 'Cormorant Garamond')).toBe('Cormorant Garamond');
   expect(styleFontOf('box', '')).toBe('');
+});
+
+// showcase films (spec 2026-10-30 part 2): bilingual captions
+test('a gloss lifts the caption by its own height: the old 0.75 caption heights at 0.52, more for a bigger or two-line one, none without', () => {
+  expect(glossLift(100, 0.52, '中')).toBeCloseTo(75, 5);
+  expect(glossLift(100, 0.75, '中')).toBeCloseTo(103.75, 5);
+  expect(glossLift(100, 0.75, '一\n二')).toBeCloseTo(103.75 + 93.75, 5);
+  expect(glossLift(100, 0.75, '')).toBe(0);
+});
+
+test('the gloss can be set bigger and in its own colour; by default it stays small and in the highlight colour', () => {
+  const p = Object.fromEntries(caption.params.map((d) => [d.key, d]));
+  expect(p.glossSize).toMatchObject({ type: 'number', default: 0.52, min: 0.3, max: 1 });
+  expect(p.glossColor).toMatchObject({ type: 'color', default: '' });
 });

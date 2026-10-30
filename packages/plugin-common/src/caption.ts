@@ -1,7 +1,8 @@
 // common.caption — a caption in the project's look: outlined, plain or on a box; 【word】 highlighted, {word} bleeped. With `words` the
 // word being said lights up (karaoke); `speaker` colours it by who speaks, `name` puts their name above it, `tag` a chip in the accent
 // colour (a dish, a place). animIn 'pop' pops the characters in one by one (from a food-review hook short's quote captions).
-// `quote` puts the line in curly quotes and italics and `gloss` adds a smaller translation under it (the baking-sin short's kept English line).
+// `quote` puts the line in curly quotes and italics and `gloss` adds a smaller translation under it (the baking-sin short's kept English line);
+// `glossSize` and `glossColor` make that a bilingual subtitle (the showcase films' English narration over Chinese).
 // style 'ticket' prints the line on a strip of receipt paper with torn edges that pops up from below (the food-receipt short's
 // fx.ticketCap); `y` pins the caption's lower edge anywhere (the bottom of a video window); `tint: false` keeps the words in their
 // own colour and lets only the name chip show who speaks (the food-deep short's fx.say).
@@ -25,7 +26,7 @@ import { grainBegin, grainEnd, scribbleFill, type GrainLayer, type Pt } from './
 interface P {
   text: string; style: 'outline' | 'plain' | 'box' | 'bubble' | 'ticket' | 'crayon' | 'bar' | 'qa' | 'auto' | 'big' | 'strip'; styleFont: string; y: number; tint: boolean; size: number; font: string; color: string; hl: string; outline: string; boxBg: string; bubbleBg: string;
   position: 'bottom' | 'center' | 'top'; animIn: string; animOut: string; animDur: number; words: Array<[number, number]>; speaker: number; name: string;
-  hlScale: number; tag: string; gloss: string; quote: boolean; fill: boolean; role: string; align: 'center' | 'left'; point: 'none' | 'up' | 'down' | 'left' | 'right';
+  hlScale: number; tag: string; gloss: string; glossSize: number; glossColor: string; quote: boolean; fill: boolean; role: string; align: 'center' | 'left'; point: 'none' | 'up' | 'down' | 'left' | 'right';
 }
 interface S { box: HTMLElement; text: RunBox; name: HTMLElement; tag: HTMLElement; gloss: HTMLElement; nameText: HTMLElement; role: HTMLElement; chip: HTMLElement; arrow: HTMLElement; chipName: HTMLElement; band: HTMLCanvasElement; layer: GrainLayer; wash: HTMLElement }
 
@@ -47,6 +48,9 @@ export function saidLevel(words: Array<[number, number]>, i: number, local: numb
   const step = words.find((w) => w[1] > i);
   return step ? prog(local, step[0] - 0.04, step[0] + 0.1) : 0;
 }
+
+/** how far a gloss lifts a caption at the bottom: its lines (1.25 em each at `size` of the caption's `px`) and a 0.1 px gap; 0 without one */
+export const glossLift = (px: number, size: number, gloss: string) => (gloss ? px * (0.1 + 1.25 * size * gloss.split('\n').length) : 0);
 
 /** the text colour of speaker 0–3: 0 the caption's own, then the theme's accent2, hl and accent */
 export const speakerColor = (speaker: number, color: string, theme: Theme) => [color, theme.palette.accent2, theme.palette.hl, theme.palette.accent][Math.max(0, Math.min(3, Math.round(speaker)))];
@@ -82,6 +86,8 @@ export const caption: ItemType<P, S> = {
     { key: 'hlScale', label: '高亮字放大（倍）', type: 'number', min: 1, max: 1.6, step: 0.02, default: 1 },
     { key: 'tag', label: '上方主色小牌（菜名、地點；空＝不顯示）', type: 'string', default: '' },
     { key: 'gloss', label: '下方小一號的翻譯（原音外文字幕的中文；空＝不顯示）', type: 'string', default: '' },
+    { key: 'glossSize', label: '翻譯的字級（字幕字級的倍數；雙語字幕用 0.75 左右）', type: 'number', min: 0.3, max: 1, step: 0.01, default: 0.52 },
+    { key: 'glossColor', label: '翻譯的顏色（空＝高亮顏色）', type: 'color', default: '' },
     { key: 'quote', label: '加引號、斜體（引用原音）', type: 'bool', default: false },
     { key: 'y', label: '下緣位置（畫面高比例；-1＝照 position）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'tint', label: '字跟著說話者換色（關掉＝只有名字小牌換色）', type: 'bool', default: true },
@@ -156,8 +162,8 @@ export const caption: ItemType<P, S> = {
       left: left ? '0' : '50%', background: theme.palette.accent, color: '#ffffff', letterSpacing: '0.06em', transform: `translate(${left ? '0' : '-50%'}, -0.35em) scale(${(0.6 + 0.4 * eBack(tq, 1.9)).toFixed(4)}) rotate(-2deg)` });
     // the gloss: a smaller line in the highlight colour under the caption; the caption is lifted so the gloss stays above the safe line
     s.gloss.textContent = p.gloss ?? '';
-    cssCamel(s.gloss, { display: p.gloss ? 'block' : 'none', left: left ? '0' : '50%', transform: left ? 'none' : 'translateX(-50%)', fontSize: '0.52em', color: p.hl, fontFamily: `'${theme.fonts.display}', 'Noto Sans TC', sans-serif` });
-    const place = (p.y ?? -1) >= 0 ? { bottom: `${(1 - p.y) * H}px`, top: '', yAnchor: '0px' } : p.position === 'bottom' ? { bottom: `${theme.safe.bottom * H + (p.gloss ? px * 0.75 : 0)}px`, top: '', yAnchor: '0px' } : p.position === 'top' ? { top: `${theme.safe.top * H}px`, bottom: '', yAnchor: '0px' } : { top: '50%', bottom: '', yAnchor: '-50%' };
+    cssCamel(s.gloss, { display: p.gloss ? 'block' : 'none', left: left ? '0' : '50%', transform: left ? 'none' : 'translateX(-50%)', fontSize: `${p.glossSize ?? 0.52}em`, color: p.glossColor || p.hl, fontFamily: `'${theme.fonts.display}', 'Noto Sans TC', sans-serif` });
+    const place = (p.y ?? -1) >= 0 ? { bottom: `${(1 - p.y) * H}px`, top: '', yAnchor: '0px' } : p.position === 'bottom' ? { bottom: `${theme.safe.bottom * H + glossLift(px, p.glossSize ?? 0.52, p.gloss ?? '')}px`, top: '', yAnchor: '0px' } : p.position === 'top' ? { top: `${theme.safe.top * H}px`, bottom: '', yAnchor: '0px' } : { top: '50%', bottom: '', yAnchor: '-50%' };
     const stroke = p.style === 'outline' ? theme.stroke * k : big ? 0.14 * px : 0;
     // the ticket: torn top and bottom edges (30 teeth), a slight tilt of its own, popped up from its lower edge
     let teeth = 'none', pin = '';

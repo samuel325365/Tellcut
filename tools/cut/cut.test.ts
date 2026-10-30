@@ -429,6 +429,31 @@ describe('narration and generated music', () => {
     expect(() => c.voice('nope')).toThrow('npm run voice');
   });
 
+  // showcase films (spec 2026-10-30 part 2): bilingual captions from the narration's gloss
+  test('a scene with a gloss: each phrase carries its translation and voiceCaptions puts it under the line', async () => {
+    const c = fresh(), scenes = [{ id: 's1', text: 'Import the folder, pick a preset.', gloss: ['匯入資料夾', '選個片型'] }, { id: 's2', text: 'Done.' }];
+    await withVoice(c, scenes);
+    writeFileSync(join(c.dir, 'narration.json'), JSON.stringify({ scenes }));
+    const v = c.voice('s1');
+    expect(v.phrases.map((p) => p.gloss)).toEqual(['匯入資料夾', '選個片型']);
+    const caps = c.voiceCaptions(v, { color: '#ffe0a0' }), got = items(c, 'text').filter((i) => caps.includes(i.id)).map((i) => i.params);
+    expect(got.map((p) => [p.text, p.gloss, p.glossSize, p.glossColor])).toEqual([['Import the folder', '匯入資料夾', 0.75, '#ffe0a0'], ['pick a preset', '選個片型', 0.75, '#ffe0a0']]);
+    const [small] = c.voiceCaptions(v, { glossSize: 0.6 });
+    expect(items(c, 'text').find((i) => i.id === small)!.params).toMatchObject({ glossSize: 0.6, glossColor: '#ffffff' });
+    // a scene without one: no gloss at all
+    const [plain] = c.voiceCaptions(c.voice('s2', { at: 5 }));
+    expect(items(c, 'text').find((i) => i.id === plain)!.params).not.toHaveProperty('gloss');
+  });
+
+  test('a gloss over a voice made before its phrases were cut this way asks for the voice again', async () => {
+    const c = fresh(), scenes = [{ id: 's1', text: 'Go to github.com now.', gloss: ['到 github.com'] }];
+    await withVoice(c, scenes);
+    writeFileSync(join(c.dir, 'narration.json'), JSON.stringify({ scenes }));
+    const f = join(c.dir, 'media', 'voice', 's1.json'), info = JSON.parse(readFileSync(f, 'utf8'));
+    writeFileSync(f, JSON.stringify({ ...info, phrases: [{ text: 'Go to github', t0: 0, t1: 0.5 }, { text: 'com now', t0: 0.5, t1: 1 }] }));
+    expect(() => c.voice('s1')).toThrow(/npm run voice -- \S+ s1 --force/);
+  });
+
   test('score composes music to the film at save: it reaches the end, its first beat is the grid, and it dips under the narration', async () => {
     const c = fresh();
     await withVoice(c, [{ id: 'a', text: '一二三四五六' }, { id: 'b', text: '七八' }]);

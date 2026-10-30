@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, deleteItems, magneticGaps, parseProject, r6, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
-import { loadAllStyles, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
+import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
@@ -50,7 +50,7 @@ const TRACKS = () => [
   { id: 'music', kind: 'music', name: 'Music', gain: 0, items: [] }, { id: 'orig', kind: 'audio', name: 'Source', gain: 0, items: [] },
 ];
 /** a narration scene on the timeline (Cut.voice) */
-export interface VoicePlaced { id: string; start: number; end: number; phrases: Array<{ text: string; t0: number; t1: number }> }
+export interface VoicePlaced { id: string; start: number; end: number; phrases: Array<{ text: string; t0: number; t1: number; gloss?: string }> }
 const hash = (s: string) => createHash('sha1').update(s).digest('hex');
 /** the shared backgrounds (common.*, kind 'scene'): c.effect puts them under the video. Legacy full-screen scenes (kyoto.*) are not backgrounds */
 const SCENE_TYPES = new Set(plugins.flatMap((p) => p.items ?? []).filter((t) => t?.kind === 'scene' && t.type.startsWith('common.')).map((t) => t!.type));
@@ -636,15 +636,34 @@ export class Cut {
     const start = r6(o.at ?? this.cursor), end = r6(start + v.dur);
     const id = addItem(this.p, { track: 'voice', item: { media, in: 0, start, end, gain: o.gain ?? 0, fadeIn: 0, fadeOut: 0.03 } });
     this.bump(end);
-    return { id, start, end, phrases: v.phrases.map((ph) => ({ text: ph.text, t0: r6(start + ph.t0), t1: r6(start + ph.t1) })) };
+    const gloss = this.glossOf(scene, v);
+    return { id, start, end, phrases: v.phrases.map((ph, i) => ({ text: ph.text, t0: r6(start + ph.t0), t1: r6(start + ph.t1), ...(gloss ? { gloss: gloss[i] } : {}) })) };
   }
-  /** Captions from a narration scene's phrases (common.caption by default; other keys are its params). Each stays up until the next begins. */
+  /** The narration's translation of each of a scene's phrases (bilingual captions), or null. Phrases are matched by their text, in order:
+   *  a voice made before the phrases were cut the way they are now cannot be matched and has to be made again. */
+  private glossOf(scene: string, v: VoiceInfo): string[] | null {
+    const file = join(this.dir, 'narration.json');
+    if (!existsSync(file)) return null;
+    const s = parseNarration(JSON.parse(readFileSync(file, 'utf8'))).scenes.find((x) => x.id === scene);
+    if (!s?.gloss) return null;
+    const parts = phraseParts(s.text), out: string[] = [];
+    let k = 0;
+    for (const ph of v.phrases) {
+      while (k < parts.length && parts[k] !== ph.text) k++;
+      if (k === parts.length) throw new Error(`旁白「${scene}」的字幕句子和 narration.json 對不上（旁白是舊的切句方式做的）：npm run voice -- ${basename(this.dir)} ${scene} --force`);
+      out.push(s.gloss[k++]);
+    }
+    return out;
+  }
+  /** Captions from a narration scene's phrases (common.caption by default; other keys are its params). Each stays up until the next begins.
+   *  A phrase with a translation (the scene's gloss) gets it under the line, at 0.75 of its size in the caption's own colour unless the params say otherwise. */
   voiceCaptions(v: VoicePlaced, o: { type?: string; [k: string]: unknown } = {}): string[] {
     const { type = 'common.caption', ...params } = o;
     return v.phrases.map((ph, i) => {
       const next = v.phrases[i + 1], end = next ? Math.max(ph.t1, Math.min(next.t0, ph.t1 + 0.5)) : ph.t1 + 0.3;
+      const gloss = ph.gloss !== undefined ? { glossSize: 0.75, glossColor: (params.color as string | undefined) ?? '#ffffff', ...params, gloss: ph.gloss } : params;
       // at least 0.6 s, but a short phrase never stays up over the next one
-      return this.text(type, ph.t0, r6(Math.min(Math.max(0.6, end - ph.t0), next ? next.t0 - ph.t0 : Infinity)), { ...params, text: ph.text });
+      return this.text(type, ph.t0, r6(Math.min(Math.max(0.6, end - ph.t0), next ? next.t0 - ph.t0 : Infinity)), { ...gloss, text: ph.text });
     });
   }
 
