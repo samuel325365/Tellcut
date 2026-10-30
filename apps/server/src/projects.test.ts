@@ -155,6 +155,18 @@ test('project files, history versions and music are sandboxed and never sniffed:
   expect([m.status, m.headers.get('content-security-policy'), m.headers.get('x-content-type-options')]).toEqual([200, null, 'nosniff']);
 });
 
+test('a module asked for with a version comes with it on each relative import, so a page loading fx again gets edited helpers too', async () => {
+  mkdirSync(join(root, 'demo', 'fx', 'lib', 'chalk'), { recursive: true });
+  const src = "import { a } from './util.js';\nexport { b } from \"../b.js\";\nimport './side.js';\nimport { c } from './lib/chalk/c.js?lib=abc';\nconst d = () => import('./d.js');\nimport x from 'https://x.example/y.js';\nexport default [];\n";
+  writeFileSync(join(root, 'demo', 'fx', 'a.js'), src);
+  const get = async (q: string) => { const r = await fetch(`${base}/api/projects/demo/files/fx/a.js${q}`); return [r.status, r.headers.get('content-type'), r.headers.get('x-content-type-options'), await r.text()]; };
+  expect(await get('?v=1730000000000')).toEqual([200, 'text/javascript', 'nosniff',
+    "import { a } from './util.js?v=1730000000000';\nexport { b } from \"../b.js?v=1730000000000\";\nimport './side.js?v=1730000000000';\nimport { c } from './lib/chalk/c.js?lib=abc&v=1730000000000';\nconst d = () => import('./d.js?v=1730000000000');\nimport x from 'https://x.example/y.js';\nexport default [];\n"]);
+  // no version (a fresh page: the player in an export), or one that is not a plain stamp: the file as it is
+  for (const q of ['', '?v=', '?v=%27%3B%20alert(1)']) expect((await get(q))[3]).toBe(src);
+  expect((await fetch(`${base}/api/projects/demo/files/fx/none.js?v=1`)).status).toBe(404);
+});
+
 test('an id whose case is not the folder\'s is no project (NTFS finds demo for DEMO: two ids, two chats and locks for one folder)', async () => {
   expect((await fetch(`${base}/api/projects/demo`)).status).toBe(200);
   expect((await fetch(`${base}/api/projects/Demo`)).status).toBe(404);

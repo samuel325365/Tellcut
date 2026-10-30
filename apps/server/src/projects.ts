@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'n
 import { basename, join, resolve, sep } from 'node:path';
 import type { ServerResponse } from 'node:http';
 import { parseProject, ProjectError, type Project } from '@tellcut/engine';
-import { contentType, PROJECT_HISTORY_KEEP, PROJECT_ID, projectHash, sendFile, writeProjectFile } from '@tellcut/media-node';
+import { contentType, PROJECT_HISTORY_KEEP, PROJECT_ID, projectHash, sendFile, withImportQuery, writeProjectFile } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 
 export const HISTORY_KEEP = PROJECT_HISTORY_KEEP;
@@ -33,8 +33,25 @@ export function fileHeaders(res: ServerResponse, path: string): void {
   const type = contentType(path);
   if (!type.startsWith('video/') && !type.startsWith('audio/')) res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
 }
-/** sendFile with fileHeaders */
-export function sendProjectFile(req: Parameters<typeof sendFile>[0], res: ServerResponse, path: string) { fileHeaders(res, path); return sendFile(req, res, path); }
+const MODULE = /\.m?js$/i, VERSION = /^[\w.-]{1,64}$/;
+/** sendFile with fileHeaders. A module asked for with a version (`?v=…`: browser-fx's importFx, the editor reloading fx) comes with
+ *  that version on each of its relative imports: the browser keeps a module by its URL for the page's life, so with the version on
+ *  the file meta.fx names alone, an edited helper (./util.js) kept coming out of that cache (Node's side: media-node fx.ts) */
+export function sendProjectFile(req: Parameters<typeof sendFile>[0], res: ServerResponse, path: string) {
+  fileHeaders(res, path);
+  const v = MODULE.test(path) && !req.headers.range ? new URL(req.url ?? '/', 'http://x').searchParams.get('v') : null;
+  if (v && VERSION.test(v)) {
+    let src: string | null = null;
+    try { if (statSync(path).isFile()) src = readFileSync(path, 'utf8'); } catch { /* missing: sendFile answers */ }
+    if (src !== null) {
+      const body = withImportQuery(src, `v=${v}`);
+      res.writeHead(200, { 'Content-Type': contentType(path), 'Content-Length': Buffer.byteLength(body) });
+      res.end(body);
+      return;
+    }
+  }
+  return sendFile(req, res, path);
+}
 
 export class ProjectStore {
   /** hash of the project.json each project was last saved with by this server (outside writes differ: live.ts) */

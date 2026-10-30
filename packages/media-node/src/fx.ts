@@ -19,6 +19,13 @@ registerHooks({
   },
 });
 
+/** a module's relative imports and re-exports (`from './x.js'`, `import('./x.js')`, `import './x.js'`): group 1 is the specifier */
+export const RELATIVE_IMPORT = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)['"](\.{1,2}\/[^'"\n]+)['"]/g;
+/** `query` (`key=value`) added to each relative import of a module's source: what the server does for the browser, which has no
+ *  resolve hook, so a page that imports a project's fx again with a new `?v=` gets its helpers afresh too (projects.ts) */
+export const withImportQuery = (src: string, query: string) =>
+  src.replace(RELATIVE_IMPORT, (m, spec: string) => m.replace(spec, () => `${spec}${spec.includes('?') ? '&' : '?'}${query}`));
+
 /** what the project's fx/ files are now (path, size, time): any edit there gives the whole module graph a new URL */
 function fxState(root: string): string {
   const h = createHash('sha1');

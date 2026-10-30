@@ -3,7 +3,7 @@
 // media.fileUrl('media/…') finds the same file in a preview of the entry and in any project it is copied into.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, relative, resolve, sep } from 'node:path';
-import { loadProjectFx } from '../fx.ts';
+import { loadProjectFx, RELATIVE_IMPORT as IMPORT } from '../fx.ts';
 import { loadStyles, SCORE_LIBRARY } from '../score/local.ts';
 import { STYLES } from '../score/styles.ts';
 import { blockDir, blocksDir, dropBlockDir, LibraryError, listLibrary, lockedError, readBlock, removeStyleFiles, slugFor, stylesDir, swapDir, versionOf, writeBlockEntry, writeJsonFile, writeStyleEntry,
@@ -14,7 +14,6 @@ export interface SaveBlockInput { root: string; projectDir: string; projectId: s
   names?: Record<string, Partial<Omit<LibraryType, 'type'>>>; onConflict?: OnConflict }
 export type SaveResult = { entry: BlockEntry; skipped: string[] } | { conflict: { slug: string; name: string; types: string[] } };
 
-const IMPORT = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)['"](\.{1,2}\/[^'"\n]+)['"]/g;
 const MEDIA = /['"](media\/[^'"\n]+)['"]/g;
 const COMPUTED = /`[^`]*media\/[^`]*\$\{[^`]*`/g;
 const toPosix = (p: string) => p.split(sep).join('/');
