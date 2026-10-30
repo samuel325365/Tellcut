@@ -59,10 +59,12 @@ const num = (v: string | null) => (v !== null && v !== '' && Number.isFinite(Num
 export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: string; library?: string }) {
   const composing = new Map<string, Promise<void>>();
   r.get('/api/gallery', async (_req, res) => sendJson(res, 200, await galleryIndex(o.plugins, o.library)));
-  r.get('/api/gallery/thumb/:file', (req, res, { file }) => {
+  r.get('/api/gallery/thumb/:file', (req, res, { file }, url) => {
     const f = join(GOLDEN_DIR, file);
     if (!GOLDEN_FILE.test(file) || !existsSync(f)) throw new HttpError(404, 'Not found');
-    sendFile(req, res, f);
+    // the English or Japanese UI: the picture with its words in that language (npm run thumbs), when the golden one shows Chinese
+    const lang = url.searchParams.get('lang'), local = lang === 'en' || lang === 'ja' ? join(GOLDEN_DIR, 'thumbs', lang, file) : '';
+    sendFile(req, res, local && existsSync(local) ? local : f);
   });
   // a 12-second preview of a music style; the same request comes from the cache
   r.get('/api/gallery/score/:style', async (req, res, { style }, url) => {

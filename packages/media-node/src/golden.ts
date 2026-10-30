@@ -63,13 +63,14 @@ export const goldenFile = (c: GoldenCase, t: number) => `${c.name}-t${t.toFixed(
  * Draw every case and compare it with `goldenDir`. A missing golden is reported as `new` (written with `update`);
  * a picture that differs is `changed` (rewritten with `update`). `work` is a folder under the repo (the player is served from it).
  */
-export async function runGolden(cases: GoldenCase[], o: { registry: Registry; goldenDir: string; work: string; update?: boolean; log?: (s: string) => void }): Promise<GoldenResult[]> {
+export async function runGolden(cases: GoldenCase[], o: { registry: Registry; goldenDir: string; work: string; update?: boolean; log?: (s: string) => void;
+  /** where the cases' pictures are (default goldenDir; the gallery's translated thumbnails are kept apart from them) */ sourceDir?: string }): Promise<GoldenResult[]> {
   mkdirSync(o.work, { recursive: true });
   mkdirSync(o.goldenDir, { recursive: true });
   const tmp = mkdtempSync(join(tmpdir(), 'golden-')), out: GoldenResult[] = [];
   try {
     for (const c of cases) {
-      for (const [id, s] of Object.entries(c.sources ?? {})) { mkdirSync(join(o.work, 'media'), { recursive: true }); copyFileSync(join(o.goldenDir, s.file), join(o.work, sourcePath(id, s.file))); }
+      for (const [id, s] of Object.entries(c.sources ?? {})) { mkdirSync(join(o.work, 'media'), { recursive: true }); copyFileSync(join(o.sourceDir ?? o.goldenDir, s.file), join(o.work, sourcePath(id, s.file))); }
       await withProjectPage({ dir: o.work, project: goldenProject(c), registry: o.registry, log: o.log }, async (s) => {
         for (const t of c.at) {
           await s.frame(Math.round(t * s.fps));

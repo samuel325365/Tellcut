@@ -1,0 +1,41 @@
+// The gallery's English and Japanese thumbnails (spec 2026-10-30-showcase-films part 2): a block's thumbnail is its first golden case
+// (cases.ts); where that case's own params are Chinese, these are its params in the other language (whole, in place of the case's).
+// The words a block starts with come from apps/editor/src/i18n/values.*.ts. `npm run thumbs` draws them into thumbs/<lang>/.
+export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unknown>>> = {
+  en: {
+    'core-title': { text: 'Three Days in Kyoto', sub: 'Our first trip of the autumn' },
+    'core-caption': { text: 'This shop has been open forty years' },
+    'core-lower-third': { text: 'Fushimi Inari Taisha', sub: 'Fushimi · Kyoto' },
+    'core-end-card': { text: 'Thanks for watching\nEdited with Tellcut\nAutumn 2026' },
+    'caption-outline': { text: 'This place is 【so good】 — the owner\'s {secret} recipe' },
+    meter: { stops: '0:0, 1:332, 2:10928:s', prefix: '−', suffix: ' m', max: 11034, scale: 'log', stages: '0:Sunlight zone,200:Twilight zone,1000:Midnight zone,3000:Abyss,6000:Hadal zone', stagePrefix: 'Depth · ' },
+    'badge-star': { label: 'No.1', plate: 'A-Tao\'s Place' },
+    tag: { tags: '500 bowls served,Street-food legend,3 min walk' },
+    burst: { text: 'Let\'s go!' },
+    slam: { text: 'You won\'t believe\n【this】 price' },
+    stamp: { text: 'Verified' },
+    header: { no: '02', text: 'Soy-glazed drumstick' },
+    scoreboard: { title: '🧾 Today\'s catch', sub: 'Goal: sea bass', icons: '🎯|🐡|🐟|🎣', names: 'Sea bass|Pufferfish|Tiddlers|Rod', values: '0|3|12|Snapped', tones: 'n|n|good|bad', pop: 3, note: 'the second one' },
+    countdown: { label: 'Countdown' },
+    mystery: { hint: 'Only open until 2 pm' },
+    magazine: { cells: 'pic|0|0.5,0.3,1.5\n-\npic|0|0.3,0.7,2', tags: '0.8-1.5|0|HIDDEN GEM|A real find', quote: 'Not much money,\nbut very happy.', quoteAt: 1.6, quoteBy: '— Interviewee' },
+  },
+  ja: {
+    'core-title': { text: '京都三日間', sub: '秋の最初の旅' },
+    'core-caption': { text: 'この店は創業四十年' },
+    'core-lower-third': { text: '伏見稲荷大社', sub: '京都・伏見区' },
+    'core-end-card': { text: 'ご視聴ありがとうございました\n編集　Tellcut\n2026 秋' },
+    'caption-outline': { text: 'この店は【めちゃうま】、店主の{秘密}のレシピ' },
+    meter: { stops: '0:0, 1:332, 2:10928:s', prefix: '−', suffix: ' m', max: 11034, scale: 'log', stages: '0:有光層,200:薄明層,1000:漸深層,3000:深海層,6000:超深海層', stagePrefix: '水深・' },
+    'badge-star': { label: 'No.1', plate: 'アタオの店' },
+    tag: { tags: '500杯認定,伝説の屋台,徒歩3分' },
+    burst: { text: '出発！' },
+    slam: { text: 'まさかの\n【この】値段' },
+    stamp: { text: '検証済み' },
+    header: { no: '02', text: '醤油ダレの鶏もも' },
+    scoreboard: { title: '🧾 今日の釣果', sub: '目標：スズキ', icons: '🎯|🐡|🐟|🎣', names: 'スズキ|フグ|小魚|竿', values: '0|3|12|折れた', tones: 'n|n|good|bad', pop: 3, note: '2本目' },
+    countdown: { label: 'カウントダウン' },
+    mystery: { hint: '店は午後2時まで' },
+    magazine: { cells: 'pic|0|0.5,0.3,1.5\n-\npic|0|0.3,0.7,2', tags: '0.8-1.5|0|HIDDEN GEM|隠れた名所', quote: 'お金は少ないけど、\nとても幸せ。', quoteAt: 1.6, quoteBy: '— インタビュー相手' },
+  },
+};

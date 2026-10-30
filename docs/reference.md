@@ -128,6 +128,7 @@ The Python environment is defined by `pyproject.toml` and `uv.lock` and installe
 | Build | `npm run build:player`, `npm run build:editor` |
 | Editor development mode | `npm run server` plus `npm run dev:editor`, then open `http://localhost:5173/editor/?id=<project>` |
 | Golden images of the shared blocks | `npm run golden -- [--update] [<name prefix>]` (images in `packages/plugin-common/golden/`) |
+| The gallery's English and Japanese thumbnails | `npm run thumbs` (a block's thumbnail with its Chinese words translated, in `packages/plugin-common/golden/thumbs/`) |
 | Download fonts | `npm run fonts` (setup runs it; needed by preview and export) |
 | Tokens used by a chat | `npm run tokens -- <id \| home>`, `npm run tokens -- --session <file.jsonl>` (1-hour and 5-minute cache separately, number of full rewrites, estimate at list prices), `--subagents <file.jsonl>` (including every subagent it sent) |
 | Render queue, spot check | `npm run batch:render -- <id> [--slots 2]` (at most two exports at once), `npm run batch:qc -- <id>` (spot-check images of a finished export) |

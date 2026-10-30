@@ -1,5 +1,6 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { TELLCUT_ROOT } from '@tellcut/media-node';
 import { makeProjects, startApp } from './test-utils.ts';
 
 test('the gallery lists every block (core and common first), the sounds, the music styles and the recipes', async () => {
@@ -67,5 +68,22 @@ test('blocks carry their category (core ones mapped) and a golden thumbnail; the
     expect(r.headers.get('content-type')).toMatch(/png/);
     expect((await fetch(`${base}/api/gallery/thumb/..%2F..%2Fcases.ts`)).status).toBe(404);
     expect((await fetch(`${base}/api/gallery/thumb/nope-t1.00.png`)).status).toBe(404);
+  } finally { await app.close(); }
+});
+
+// showcase films (spec 2026-10-30 part 2): the English and Japanese UI see thumbnails without Chinese
+test('a thumbnail asked for in English or Japanese is the translated picture when there is one, else the golden one', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  const bytes = async (url: string) => Buffer.from(await (await fetch(url)).arrayBuffer());
+  const file = (lang: string, f: string) => readFileSync(join(TELLCUT_ROOT, 'packages/plugin-common/golden', lang, f));
+  try {
+    const title = `${base}/api/gallery/thumb/core-title-t1.50.png`;
+    expect((await bytes(`${title}?lang=en`)).equals(file('thumbs/en', 'core-title-t1.50.png'))).toBe(true);
+    expect((await bytes(`${title}?lang=ja`)).equals(file('thumbs/ja', 'core-title-t1.50.png'))).toBe(true);
+    expect((await bytes(title)).equals(file('', 'core-title-t1.50.png'))).toBe(true);
+    expect((await bytes(`${title}?lang=xx`)).equals(file('', 'core-title-t1.50.png'))).toBe(true);
+    // a block whose picture has no words: the golden one in every language
+    const flash = `${base}/api/gallery/thumb/backdrop-gingham-t0.50.png`;
+    expect((await bytes(`${flash}?lang=en`)).equals(file('', 'backdrop-gingham-t0.50.png'))).toBe(true);
   } finally { await app.close(); }
 });

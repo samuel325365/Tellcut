@@ -36,6 +36,7 @@
     "tokens": "tsx tools/tokens.ts",
     "check": "tsx tools/check.ts",
     "golden": "tsx tools/golden.ts",
+    "thumbs": "tsx tools/thumbs.ts",
     "promote": "tsx tools/promote.ts",
     "providers": "tsx tools/providers.ts",
     "sources": "tsx tools/sources.ts",

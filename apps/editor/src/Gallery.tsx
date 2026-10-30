@@ -244,6 +244,9 @@ function MineStyleDetail({ s, lib, onChanged, navigate, ask, onAsked }: { s: Lib
   );
 }
 
+/** a shared block's thumbnail in the UI language: the server gives the translated picture where the golden one shows Chinese */
+export const thumbIn = (src: string | undefined, lang: string) => (src && lang !== 'zh' ? `${src}?lang=${lang}` : src);
+
 /** a block's golden picture; the category's mark when it has none (or it fails to load) */
 function Thumb({ src }: { src?: string }) {
   const [broken, setBroken] = useState(false);
@@ -294,7 +297,7 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
         onClick={(e) => { e.stopPropagation(); askDelete(name); }}><IconTrash size={14} /></button>}</li>
   );
   const blockCard = (b: GalleryBlock) => card(b.type, shown(b.type, b).doc, <>
-    <Thumb src={b.thumb} />
+    <Thumb src={thumbIn(b.thumb, getLang())} />
     <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong><Handle id={b.type} /><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
   </>);
   const mineCard = (b: LibraryBlockInfo) => card(`mine:${b.type}`, b.desc, <>

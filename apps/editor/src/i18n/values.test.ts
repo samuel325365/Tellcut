@@ -39,3 +39,11 @@ test('localValues gives a block’s Chinese-default parameters in the UI languag
   // a project's own effect has no table
   expect(localValues('fx.mine', [{ key: 'text', label: '文字', type: 'string', default: '你好' }], 'en')).toEqual({});
 });
+
+test('a choice of language that defaults to Chinese (the reels counts, 1.2萬) follows the UI language when it offers it', () => {
+  const reels = plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.reels')!;
+  expect(localValues('common.reels', reels.params, 'en').counts).toBe('en');
+  expect(localValues('common.reels', reels.params, 'ja').counts).toBe('ja');
+  expect(localValues('common.reels', reels.params, 'zh')).toEqual({});
+  expect(localValues('x.y', [{ key: 'style', label: '寫法', type: 'enum', options: ['zh', 'plain'], default: 'zh' }], 'en')).toEqual({});
+});

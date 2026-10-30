@@ -387,3 +387,22 @@ test('an empty library still shows Mine, with how to fill it', async () => {
   await click(root, '[data-cat="mine"]');
   expect(root.querySelector('[data-mine-empty]')).not.toBeNull();
 });
+
+// showcase films (spec 2026-10-30 part 2): thumbnails without Chinese in the English or Japanese UI
+test('a block card asks for its thumbnail in the UI language; a Chinese page asks for the golden one', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const withThumbs: GalleryIndex = { ...G, blocks: G.blocks.map((b) => ({ ...b, thumb: `/api/gallery/thumb/${b.type.replace('.', '-')}-t1.50.png` })) };
+  const img = async () => {
+    const root = document.createElement('div');
+    await act(async () => { render(<Gallery load={async () => withThumbs} />, root); });
+    await settle();
+    return root.querySelector('[data-card="core.title"] img')!.getAttribute('src');
+  };
+  try {
+    expect(await img()).toBe('/api/gallery/thumb/core-title-t1.50.png');
+    setLang('en');
+    expect(await img()).toBe('/api/gallery/thumb/core-title-t1.50.png?lang=en');
+    setLang('ja');
+    expect(await img()).toBe('/api/gallery/thumb/core-title-t1.50.png?lang=ja');
+  } finally { setLang('zh'); localStorage.clear(); }
+});

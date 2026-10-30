@@ -142,7 +142,7 @@ async function main() {
     if (!argv.includes('--yes')) { console.log('\n（只是預覽；確定要做就加 --yes）'); return; }
     const { cutLeft } = await applyPromotion({ dir, commonDir, plan });
     if (cutLeft) console.log(`\n⚠ cut.ts 裡還有 ${plan.fxFile}：照原本的寫法沒能自動拿掉，請手動刪掉那個 c.fx(…)（檔案已刪，重跑 npm run cut 會找不到它）`);
-    console.log(`\n完成。下一步：npm run build:player；npm run golden -- --update ${plan.name}，看過圖片對不對；在 apps/editor/src/i18n/ 的 blocks.en.ts、blocks.ja.ts 加 ${plan.to} 的名稱和說明，params.en.ts、params.ja.ts 加每個參數，預設值是中文的字在 values.en.ts、values.ja.ts 加英日版；npm run blocks:index；再跑 npm test。`);
+    console.log(`\n完成。下一步：npm run build:player；npm run golden -- --update ${plan.name}，看過圖片對不對；在 apps/editor/src/i18n/ 的 blocks.en.ts、blocks.ja.ts 加 ${plan.to} 的名稱和說明，params.en.ts、params.ja.ts 加每個參數，預設值是中文的字在 values.en.ts、values.ja.ts 加英日版；npm run thumbs；npm run blocks:index；再跑 npm test。`);
   } catch (e) { console.error(`無法升格：${(e as Error).message}`); process.exit(1); }
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();
