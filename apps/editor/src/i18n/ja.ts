@@ -522,6 +522,7 @@ export const ja: Record<Key, string> = {
   'err.cmd.attachMagnetic': 'マグネットトラックのクリップは他の項目に付けられません',
   'err.cmd.crossfadeAudioOnly': 'クロスフェードできるのは音楽とオーディオのクリップだけです',
   'err.cmd.noOverlapPrev': '「{id}」は前のクリップと重なっていません',
+  'err.cmd.ownSoundTooFast': 'クリップ自身の音は 4 倍速までです（この速度では {need} 倍が必要）',
   'err.chat.busy': 'この会話はまだ返信中です。終わるのを待つか、止めてください',
   'err.chat.notFound': 'claude コマンドが見つかりません：先に Claude Code をインストールしてください（npm install -g @anthropic-ai/claude-code）',
   'err.chat.notLoggedIn': 'Claude Code にログインしていません：ターミナルで claude を実行してログインしてください',

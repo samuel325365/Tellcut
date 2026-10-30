@@ -50,7 +50,7 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
   const own = rate !== null ? ownSounds(p, it.id) : [];
   const k = rate !== null ? mediaRate(f.track, next as AnyItem)! / rate : 1;
   // a sound plays at most 4×: refused before anything changes, like checkItem
-  for (const c of own) if (r6(c.rate * k) > 4) throw new CommandError(`${f.track.kind === 'video' ? 'speed' : 'rate'}: the clip's own sound cannot play faster than 4× (it would need ${r6(c.rate * k)}×)`);
+  for (const c of own) if (r6(c.rate * k) > 4) throw new CommandError(`${f.track.kind === 'video' ? 'speed' : 'rate'}: the clip's own sound cannot play faster than 4× (it would need ${r6(c.rate * k)}×)`, 'cmd.ownSoundTooFast', { need: r6(c.rate * k) });
   for (const [key, v] of Object.entries(a.patch)) { if (v === undefined) delete it[key]; else it[key] = plain(v); }
   if (fitsFades) fitFades(f.track, it);
   for (const c of own) { c.in = r6(c.in + it.in - oldIn); c.rate = r6(c.rate * k); }

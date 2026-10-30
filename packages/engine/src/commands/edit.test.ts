@@ -142,4 +142,6 @@ test("a new speed from the properties panel plays the clip's own sound at it; pa
   expect(item(run(withOwn(), updateItem, { id: 'c1', patch: { speed: 0.5, in: 3, end: 8 } }), 'snd')).toMatchObject({ start: 0, end: 8, in: 3, rate: 0.5 });
   expect(() => run(withOwn(), updateItem, { id: 'c1', patch: { speed: 5 } })).toThrow(CommandError);
   expect(() => run(withOwn(), updateItem, { id: 'c1', patch: { speed: 5 } })).toThrow(/own sound/);
+  // with a code for the page to word it in its language
+  try { run(withOwn(), updateItem, { id: 'c1', patch: { speed: 5 } }); } catch (e) { expect(e).toMatchObject({ code: 'cmd.ownSoundTooFast', params: { need: 5 } }); }
 });
