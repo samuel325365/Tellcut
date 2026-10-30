@@ -48,6 +48,15 @@ test('editor and its chat: text reads on the panels and on the accent', () => {
   expect(contrast(CHAT['--h-on-accent'], CHAT['--h-accent'])).toBeGreaterThanOrEqual(4.5);
   expect(contrast(ED['--playhead'], ED['--bg'])).toBeGreaterThanOrEqual(3);
 });
+test("the editor's buttons and fields are warm greys, not the old blue-grey; their text reads", () => {
+  const warm = (hex: string) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)); return r >= g && g >= b && r - b >= 6; };
+  for (const k of ['--btn', '--btn-line', '--field']) expect([k, warm(ED[k])]).toEqual([k, true]);
+  expect(contrast(ED['--text'], ED['--btn'])).toBeGreaterThanOrEqual(7);
+  expect(contrast(ED['--text'], ED['--field'])).toBeGreaterThanOrEqual(7);
+  expect(contrast(ED['--btn-line'], ED['--panel'])).toBeGreaterThanOrEqual(1.6);   // the edge still shows on the panel
+  expect(css).toMatch(/^button \{[^}]*background: var\(--btn\); border: 1px solid var\(--btn-line\)/m);
+  expect(css).not.toMatch(/#2c2f35|#3a3d44|#15161a|#23252b|#4a4e57|#3a4256/i);
+});
 test('no rule puts white text on the accent or the gradient', () => {
   const rules = css.split('}').filter((r) => /background:\s*var\(--(s-accent|s-grad|accent|h-accent)\b/.test(r));
   expect(rules.length).toBeGreaterThan(5);
