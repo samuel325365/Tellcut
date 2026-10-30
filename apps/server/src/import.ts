@@ -30,7 +30,8 @@ export function importRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
   r.post('/api/projects/:id/import', async (req, res, { id }) => {
     const dir = store.dir(id), b = body(await readJson(req));
     // a delete meanwhile would leave the next HEIC conversion to recreate media/ in a folder that is gone (delete.ts waits)
-    const release = holds?.hold(id, b.paths.length ? basename(b.paths[0]) + (b.paths.length > 1 ? ` +${b.paths.length - 1}` : '') : 'import');
+    const file = basename(b.paths[0] ?? '') + (b.paths.length > 1 ? ` +${b.paths.length - 1}` : '');
+    const release = !b.paths.length ? undefined : holds?.hold(id, { text: `這個專案正在匯入檔案（${file}），等匯入完再刪`, code: 'delete.busyImport', params: { file } });
     try { await importFiles(id, dir, b, res); } finally { release?.(); }
   });
   async function importFiles(id: string, dir: string, b: Body, res: ServerResponse) {

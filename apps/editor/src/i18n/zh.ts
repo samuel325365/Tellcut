@@ -546,6 +546,8 @@ export const zh = {
   'err.delete.forbidden': '這個資料夾不能刪',
   'err.delete.busyChat': 'Agent 正在處理這個專案（對話還在回覆中），等它回完再刪',
   'err.delete.busyJob': '這個專案還有工作在進行（{label}），等它結束或取消後再刪',
+  'err.delete.busyImport': '這個專案正在匯入檔案（{file}），等匯入完再刪',
+  'err.delete.busyPreset': '正在把這個專案存成片型，存好後再刪',
   'err.delete.busyAnalysis': '這個專案正在分析素材，等分析完再刪',
   'chat.analyzingFallback': '素材分析中',
   'chat.recovered': '（這段回覆是在 Tellcut 伺服器重新啟動時完成的，從 Agent 的紀錄補回。）',

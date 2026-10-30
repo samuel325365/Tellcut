@@ -547,6 +547,8 @@ export const ja: Record<Key, string> = {
   'err.delete.forbidden': 'このフォルダは削除できません',
   'err.delete.busyChat': 'Agent がこのプロジェクトを処理中です（返信中）。返信が終わってから削除してください',
   'err.delete.busyJob': 'このプロジェクトでまだ処理が進んでいます（{label}）。終わるか取り消してから削除してください',
+  'err.delete.busyImport': 'このプロジェクトにファイルを読み込み中です（{file}）。読み込みが終わってから削除してください',
+  'err.delete.busyPreset': 'このプロジェクトをプリセットとして保存中です。保存が終わってから削除してください',
   'err.delete.busyAnalysis': 'このプロジェクトの素材を解析中です。終わってから削除してください',
   'chat.analyzingFallback': '素材を解析中',
   'chat.recovered': '（この返信は Tellcut サーバーの再起動中に完了したもので、Agent の記録から復元しました。）',

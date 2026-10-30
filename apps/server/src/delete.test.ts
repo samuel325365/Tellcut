@@ -104,10 +104,24 @@ test('an open editor tab saving after the delete gets 404 and nothing is recreat
 });
 
 test('refuses while an import or a preset saved from the project holds it (no job of the queue): a HEIC conversion would recreate media/', async () => {
-  const release = app.holds.hold('demo', 'IMG_0001.HEIC');
+  const release = app.holds.hold('demo', { text: '這個專案正在匯入檔案（IMG_0001.HEIC），等匯入完再刪', code: 'delete.busyImport', params: { file: 'IMG_0001.HEIC' } });
   const r = await del('demo');
   expect(r.status).toBe(409);
-  expect(await r.json()).toEqual({ error: '這個專案還有工作在進行（IMG_0001.HEIC），等它結束或取消後再刪', code: 'delete.busyJob', params: { label: 'IMG_0001.HEIC' } });
+  expect(await r.json()).toEqual({ error: '這個專案正在匯入檔案（IMG_0001.HEIC），等匯入完再刪', code: 'delete.busyImport', params: { file: 'IMG_0001.HEIC' } });
   release(); release();   // twice: still one release
   expect((await del('demo')).status).toBe(200);
+});
+
+test('a running import says so in the preview, with its first file and how many more', async () => {
+  // the import's hold is kept past its end here, so the preview cannot miss it
+  const orig = app.holds.hold.bind(app.holds), releases: Array<() => void> = [];
+  app.holds.hold = (id, why) => { releases.push(orig(id, why)); return () => {}; };
+  put('in/a.mp4'); put('in/b.mp4');
+  const paths = [join(root, 'in', 'a.mp4'), join(root, 'in', 'b.mp4')];
+  await (await fetch(`${base}/api/projects/demo/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths }) })).text();
+  const pre = await (await fetch(`${base}/api/projects/demo/delete-preview`)).json();
+  expect(pre.busyCode).toEqual({ code: 'delete.busyImport', params: { file: 'a.mp4 +1' } });
+  expect(pre.busy).toBe('這個專案正在匯入檔案（a.mp4 +1），等匯入完再刪');
+  for (const r of releases) r();
+  expect((await (await fetch(`${base}/api/projects/demo/delete-preview`)).json()).busy).toBeNull();
 });
