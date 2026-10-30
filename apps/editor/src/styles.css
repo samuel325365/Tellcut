@@ -9,11 +9,13 @@
   --s-user: rgba(216,184,138,.14); --s-strong: #ffffff; --s-danger: #ff6b81; --s-warn: #f5b85c; --s-input: rgba(255,244,228,.04);
   --s-disabled-bg: rgba(255,244,228,.08); --s-disabled: #6f665b; --s-shadow: 0 12px 32px rgba(0,0,0,.45); --s-scrim: rgba(8,7,6,.6);
 }
+/* light: the accent is the text's black, so --s-accent-text (handles, counts, picked icons) is a bronze of its own, apart from
+   --s-text and --s-dim and 4.5:1 on every light background it sits on */
 :root[data-theme="light"] {
   color-scheme: light;
   --s-bg: #f7f1e6; --s-glow: rgba(216,184,138,.35); --s-side: rgba(255,252,246,.72); --s-raise: #fffaf2; --s-raise-2: #f1e7d6;
   --s-line: #e6dccb; --s-line-strong: #d4c6ae; --s-text: #161412; --s-dim: #554b40; --s-faint: #6e6356;
-  --s-accent: #161412; --s-accent-text: #161412; --s-on-accent: #f4ebdd; --s-grad: linear-gradient(135deg, #2a2521 0%, #161412 100%);
+  --s-accent: #161412; --s-accent-text: #73562f; --s-on-accent: #f4ebdd; --s-grad: linear-gradient(135deg, #2a2521 0%, #161412 100%);
   --s-title-grad: linear-gradient(90deg, #161412 0%, #5e5246 100%);
   --s-sel: rgba(22,20,18,.07); --s-ring: rgba(22,20,18,.16);
   --s-code-bg: #f1e8d9; --s-code-inline: #efe5d4; --s-chip: #efe5d4; --s-hover: rgba(22,20,18,.05);

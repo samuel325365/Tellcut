@@ -31,6 +31,17 @@ test.each([['dark', DARK], ['light', LIGHT]])('home %s: text reads on the page a
   expect(contrast(t['--s-dim'], t['--s-bg'])).toBeGreaterThanOrEqual(4.5);
   expect(contrast(t['--s-on-accent'], t['--s-accent'])).toBeGreaterThanOrEqual(4.5);
 });
+test('home light: the accent hints (handles, counts) stand apart from the text and read on every light background', () => {
+  const hint = LIGHT['--s-accent-text'];
+  expect(hint).not.toBe(LIGHT['--s-text']);
+  expect(contrast(hint, LIGHT['--s-text'])).toBeGreaterThanOrEqual(2);
+  expect(contrast(hint, LIGHT['--s-dim'])).toBeGreaterThanOrEqual(1.1);
+  // --s-sel (rgba(22,20,18,.07)) over the page is about #e7e1d7
+  for (const bg of [LIGHT['--s-bg'], LIGHT['--s-raise'], LIGHT['--s-raise-2'], LIGHT['--s-chip'], LIGHT['--s-code-inline'], LIGHT['--s-user'], '#e7e1d7'])
+    expect([bg, contrast(hint, bg) >= 4.5]).toEqual([bg, true]);
+  // the chat's send button turns to it on hover, under the cream text
+  expect(contrast(LIGHT['--s-on-accent'], hint)).toBeGreaterThanOrEqual(4.5);
+});
 test('editor and its chat: text reads on the panels and on the accent', () => {
   expect(contrast(ED['--text'], ED['--panel'])).toBeGreaterThanOrEqual(4.5);
   expect(contrast(ED['--on-accent'], ED['--accent'])).toBeGreaterThanOrEqual(4.5);
