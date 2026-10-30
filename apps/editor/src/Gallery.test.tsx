@@ -267,7 +267,7 @@ import type { LibraryIndex } from '@tellcut/protocol';
 
 const LIB: LibraryIndex = {
   blocks: [{ slug: 'chalk', type: 'fx.chalk', name: '粉筆標題卡', desc: '黑板上的標題', category: 'text', kind: 'overlay', params: [{ key: 'text', label: '文字', type: 'string', default: 'hi' }],
-    main: 'fx/chalk.js', thumb: '/api/library/blocks/chalk/thumb.png?v=1', from: { project: 'trip', file: 'fx/chalk.js' }, savedAt: '2026-10-29T03:00:00.000Z', version: '1', group: ['fx.chalk-line'] },
+    main: 'fx/chalk.js', thumb: '/api/library/blocks/chalk/thumb.png?v=1', from: { project: 'trip', file: 'fx/chalk.js', name: '三天的旅行' }, savedAt: '2026-10-29T03:00:00.000Z', version: '1', group: ['fx.chalk-line'] },
   { slug: 'chalk', type: 'fx.chalk-line', name: '粉筆底線', desc: '', kind: 'overlay', params: [],
     main: 'fx/chalk.js', thumb: null, from: { project: 'trip', file: 'fx/chalk.js' }, savedAt: '2026-10-29T03:00:00.000Z', version: '1', group: ['fx.chalk'] }],
   styles: [{ slug: 'jazz', id: 'jazz', name: '街頭爵士', desc: '輕快', defaults: { bpm: 96, key: 'C' }, from: { project: 'trip', file: 'score/jazz.js' }, savedAt: '2026-10-29T03:00:00.000Z' }],
@@ -303,7 +303,11 @@ test('the Mine category lists the user’s blocks with where they came from, and
   expect(root.querySelector('[data-cat="mine"] small')?.textContent).toBe('2');
   await click(root, '[data-cat="mine"]');
   expect(cards(root)).toEqual(['mine:fx.chalk', 'mine:fx.chalk-line']);
-  expect(root.querySelector('[data-card="mine:fx.chalk"]')?.textContent).toContain('trip');
+  // where it came from, by the project's name; by its id when the project has none (gone, or never named)
+  expect(root.querySelector('[data-card="mine:fx.chalk"]')?.textContent).toContain('三天的旅行');
+  expect(root.querySelector('[data-card="mine:fx.chalk"]')?.textContent).not.toContain('trip');
+  expect(root.querySelector('[data-card="mine:fx.chalk-line"]')?.textContent).toContain('trip');
+  expect(root.querySelector('[data-detail="mine:fx.chalk"] .g-sub')?.textContent).toContain('三天的旅行');
   expect(root.querySelector('[data-detail="mine:fx.chalk"] h2')?.textContent).toBe('粉筆標題卡');
   await click(root, '[data-mine-rename]');
   await input(root, '[data-mine-name]', '黑板標題');

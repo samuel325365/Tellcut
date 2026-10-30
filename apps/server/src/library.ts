@@ -32,8 +32,15 @@ export interface LibraryOptions { projectsDir: string; store: ProjectStore;
   /** draws a saved entry's thumbnail (in the background); tests pass a stand-in so no Chrome starts */
   thumb: (root: string, slug: string) => Promise<unknown> }
 
-export async function libraryIndex(root: string): Promise<LibraryIndex> {
-  const lib = listLibrary(root), blocks: LibraryBlockInfo[] = [];
+/** the library's cards. `nameOf`: a project's name by its id (the cards say where an entry came from by name; a project since
+ *  deleted has none, and the page shows the id) */
+export async function libraryIndex(root: string, nameOf: (id: string) => string | undefined = () => undefined): Promise<LibraryIndex> {
+  const lib = listLibrary(root), blocks: LibraryBlockInfo[] = [], names = new Map<string, string | undefined>();
+  const from = (f: { project: string; file: string }) => {
+    if (!names.has(f.project)) names.set(f.project, nameOf(f.project));
+    const name = names.get(f.project);
+    return name ? { ...f, name } : f;
+  };
   for (const e of lib.blocks) {
     const items = (await loadProjectFx(blockDir(root, e.slug), [e.main])).plugin.items ?? [];
     const thumb = existsSync(join(blockDir(root, e.slug), THUMB_FILE)) ? `/api/library/blocks/${e.slug}/${THUMB_FILE}?v=${e.version}` : null;
@@ -41,11 +48,11 @@ export async function libraryIndex(root: string): Promise<LibraryIndex> {
       const it = items.find((x) => x.type === t.type);
       if (!it) continue;   // a broken module: its cards are left out until it loads again
       blocks.push({ slug: e.slug, type: t.type, name: t.name, desc: t.desc, ...(t.category ? { category: t.category } : {}), kind: it.kind, params: it.params, main: e.main, thumb,
-        from: e.from, savedAt: e.savedAt, version: e.version, group: e.types.map((x) => x.type).filter((x) => x !== t.type), ...(e.theme ? { theme: e.theme } : {}) });
+        from: from(e.from), savedAt: e.savedAt, version: e.version, group: e.types.map((x) => x.type).filter((x) => x !== t.type), ...(e.theme ? { theme: e.theme } : {}) });
     }
   }
   const loaded = lib.styles.length ? await loadStyles([stylesDir(root)]) : { styles: {} as Record<string, { defaults: { bpm: number; key: string } }> };
-  const styles: LibraryStyleInfo[] = lib.styles.map((s) => ({ slug: s.slug, id: s.id, name: s.name, desc: s.desc, defaults: loaded.styles[s.id]?.defaults ?? { bpm: 100, key: 'C' }, from: s.from, savedAt: s.savedAt }));
+  const styles: LibraryStyleInfo[] = lib.styles.map((s) => ({ slug: s.slug, id: s.id, name: s.name, desc: s.desc, defaults: loaded.styles[s.id]?.defaults ?? { bpm: 100, key: 'C' }, from: from(s.from), savedAt: s.savedAt }));
   return { blocks, styles };
 }
 
@@ -71,7 +78,13 @@ export function libraryRoutes(r: Router, o: LibraryOptions) {
   const project = (id: unknown) => { if (typeof id !== 'string') throw new HttpError(400, 'project is missing'); return { id, dir: o.store.dir(id) }; };
   const conflict = (c: { name: string }) => new HttpError(409, `"${c.name}" is already in My blocks`, { code: 'library.conflict', params: { name: c.name }, conflict: c });
 
-  r.get('/api/library', async (_req, res) => sendJson(res, 200, await libraryIndex(root)));
+  // a project's name from its project.json (an id that is not a project, or one without a name, has none)
+  const nameOf = (id: string) => {
+    if (!PROJECT_ID.test(id)) return undefined;
+    const name = projectJson(join(o.projectsDir, id)).meta?.name;
+    return typeof name === 'string' && name.trim() ? name : undefined;
+  };
+  r.get('/api/library', async (_req, res) => sendJson(res, 200, await libraryIndex(root, nameOf)));
 
   // before the files route, which would take "usage" for a file
   r.get('/api/library/blocks/:slug/usage', (_req, res, { slug }) => guard(() => {

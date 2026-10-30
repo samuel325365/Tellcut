@@ -172,11 +172,13 @@ export interface GalleryRecipe { id: string; label: string; doc: string; notes: 
 export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[] }
 
 // ---------------------------------------------------------------- the user's own library (spec 2026-10-29-my-library)
+/** where an entry was saved from: the project's id and file, and the project's name now (absent when the project is gone) */
+export interface LibraryFrom { project: string; file: string; name?: string }
 /** one card of My blocks: a block of a saved entry; `main`: the entry's module (its preview loads it); `group`: the entry's
  *  other blocks (saved, renamed apart, deleted together); `thumb`: its picture, null until drawn */
 export interface LibraryBlockInfo { slug: string; type: string; name: string; desc: string; category?: string; kind: 'scene' | 'overlay'; params: ParamDef[];
-  main: string; thumb: string | null; from: { project: string; file: string }; savedAt: string; version: string; group: string[]; theme?: unknown }
-export interface LibraryStyleInfo { slug: string; id: string; name: string; desc: string; defaults: { bpm: number; key: string }; from: { project: string; file: string }; savedAt: string }
+  main: string; thumb: string | null; from: LibraryFrom; savedAt: string; version: string; group: string[]; theme?: unknown }
+export interface LibraryStyleInfo { slug: string; id: string; name: string; desc: string; defaults: { bpm: number; key: string }; from: LibraryFrom; savedAt: string }
 /** what a button asks of the agent along with the message (spec 2026-10-29-my-library): the server words it for the agent */
 export type ChatTask =
   | { kind: 'library-save'; type: string; name: string; desc: string; category?: string }

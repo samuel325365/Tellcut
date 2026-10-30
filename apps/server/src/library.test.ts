@@ -1,5 +1,5 @@
 // The library's routes (spec 2026-10-29-my-library §4.2–4.4): save, list, serve, rename, delete, use in a project.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fxModule, makeProject, tempProjects } from '../../../packages/media-node/src/library/fixture.ts';
 import { startApp } from './test-utils.ts';
@@ -22,13 +22,25 @@ test('saves, lists and serves a block', async () => {
   expect(thumbs).toEqual(['chalk-title']);
   const lib = await (await fetch(`${base}/api/library`)).json();
   expect(lib.blocks.map((b: any) => [b.type, b.name])).toEqual([['fx.chalk-title', 'chalk-title'], ['fx.chalk-line', '粉筆底線']]);
-  expect(lib.blocks[0]).toMatchObject({ slug: 'chalk-title', kind: 'overlay', main: 'fx/chalk.js', group: ['fx.chalk-line'], thumb: null, from: { project: 'p1', file: 'fx/chalk.js' } });
+  expect(lib.blocks[0]).toMatchObject({ slug: 'chalk-title', kind: 'overlay', main: 'fx/chalk.js', group: ['fx.chalk-line'], thumb: null, from: { project: 'p1', file: 'fx/chalk.js', name: 'P1' } });
   expect(lib.blocks[0].params[0].key).toBe('text');
   const js = await fetch(`${base}/api/library/blocks/chalk-title/fx/chalk.js`);
   expect(js.headers.get('content-type')).toContain('javascript');
   // the same protection as a project's files: never sniffed, and opened as a page it runs nothing
   expect(js.headers.get('x-content-type-options')).toBe('nosniff');
   expect(js.headers.get('content-security-policy')).toContain('sandbox');
+});
+
+test('the cards name the project an entry came from; a project since deleted leaves only its id', async () => {
+  const { base, post, projects } = await app();
+  await post('/api/library/blocks', { project: 'p1', type: 'fx.chalk-title' });
+  await post('/api/library/styles', { project: 'p2', id: 'street-jazz' });
+  let lib = await (await fetch(`${base}/api/library`)).json();
+  expect(lib.blocks[0].from).toEqual({ project: 'p1', file: 'fx/chalk.js', name: 'P1' });
+  expect(lib.styles[0].from).toMatchObject({ project: 'p2', name: 'P2' });
+  rmSync(join(projects, 'p1'), { recursive: true, force: true });
+  lib = await (await fetch(`${base}/api/library`)).json();
+  expect(lib.blocks[0].from).toEqual({ project: 'p1', file: 'fx/chalk.js' });
 });
 
 test('a dry run says what would be saved and writes nothing', async () => {

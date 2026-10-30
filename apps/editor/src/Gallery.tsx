@@ -150,7 +150,8 @@ export interface GalleryLibrary {
   usage: (kind: 'blocks' | 'styles', slug: string) => Promise<LibraryUsage>;
   remove: (kind: 'blocks' | 'styles', slug: string) => Promise<unknown>;
 }
-const fromLine = (x: { from: { project: string }; savedAt: string }) => t('lib.fromProject', { project: x.from.project, date: new Date(x.savedAt).toLocaleDateString(getLang()) });
+// the project by its name (its id when it has none, or is gone)
+const fromLine = (x: { from: { project: string; name?: string }; savedAt: string }) => t('lib.fromProject', { project: x.from.name || x.from.project, date: new Date(x.savedAt).toLocaleDateString(getLang()) });
 const PENDING = 'tellcut.pendingTask';
 
 /** Rename, change with the Agent (blocks), delete: each opens its own small form under the buttons. `group`: the names of the
