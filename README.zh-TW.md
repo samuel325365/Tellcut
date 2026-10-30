@@ -35,10 +35,10 @@
 ## 看片
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/a82121b7-2dc8-4330-a473-0e79a1230809" width="100%" controls></video>
+  <video src="https://github.com/user-attachments/assets/44866a15-c389-4220-bc70-4d72278bbb78" width="100%" controls></video>
 </div>
 
-> **「Rome, by talking.」** 一支 16 分鐘的 vlog，變成 60 秒的雜誌風 IG 短片。匯入素材、選「旅行精華」片型、用一句話說你要什麼；Agent 看完全部素材，一次回覆就剪出初版。之後在時間軸上自己改，或選一頁直接請 Agent 改。全程在 Tellcut 裡錄製，Agent 工作的部分有加速。（[出處](docs/readme/CREDITS.md)）
+> **「Tellcut in 80 Seconds」** 十九分鐘的馬拉喀什素材加一句話，變成一支短片：Agent 先看完每段素材、寫好分鏡才開剪。之後在時間軸上自己改，或選一段請 Agent 改，套用前先看預覽。它為這支片寫的特效可以留下，這支片的做法可以存成你自己的片型，下一趟旅行就從那裡開始。全程在 Tellcut 裡錄製，Agent 工作的部分有加速。（[出處](docs/readme/CREDITS.md)）
 
 ---
 

@@ -1,12 +1,15 @@
 # Credits: the pictures and the video in the README
 
-## The demo video ("Rome, by talking")
+## The demo video ("Tellcut in 80 Seconds")
 
-A screen recording of Tellcut making and editing one reel, with the reel itself shown alongside.
+Screen recordings of Tellcut making, checking and editing videos from one sentence each, with the finished videos shown in a phone and side by side. The footage below appears in those recordings and videos, in short excerpts, re-framed, sped up and with our own captions, titles and effects on top; each is used under the Creative Commons Attribution 3.0 licence (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/).
 
-- Source footage: **"3 DAYS IN ROME ⛲️ 🍝 🇮🇹 Vatican City, Trevi Fountain, Colosseum & More | Italy Travel Vlog 2024"** by **Jackie Vlogs** — https://www.youtube.com/watch?v=qQGjPdTekyA, used under the Creative Commons Attribution 3.0 licence (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/). Changes: short excerpts shown in a player, and a 60-second 9:16 reel cut from it in Tellcut (our own magazine pages, captions, titles, music and sound effects).
-- Music: Tellcut's own scores ("walking-pizz" in the reel, "pluck" under the demo). Voice-over: synthesised (Microsoft edge-tts). Type: Inter (SIL Open Font License).
-- The opening and closing logo come from the brand film below.
+- **"What happened in Marrakesh, Morocco - BEST riad, food, souks (vlog)"** by **Helen** — https://www.youtube.com/watch?v=LJoXI39UiMw (the Marrakesh reel, made and edited in the recordings)
+- **"3 DAYS IN ROME ⛲️ 🍝 🇮🇹 Vatican City, Trevi Fountain, Colosseum & More | Italy Travel Vlog 2024"** by **Jackie Vlogs** — https://www.youtube.com/watch?v=qQGjPdTekyA (the Rome reel saved as a preset in the recordings)
+- **"Getting Real About Gen-Z Struggles w/@ThatAmberRose | The Lila Rose Podcast E178"** by **Lila Rose** — https://www.youtube.com/watch?v=zQjzr-Q3E_o (the podcast short)
+- **"KATIE'S SURPRISE SWEET SIXTEEN BIRTHDAY PARTY \*it was almost ruined!\*"** by **It's The Donnellys** — https://www.youtube.com/watch?v=YGjW-F2279Y (the birthday video)
+
+Music: Tellcut's own score ("market-groove"). Voice-over: synthesised (Microsoft edge-tts). The explainer in the video uses no footage. The logo is Tellcut's (`docs/brand/`). Type: Inter (SIL Open Font License).
 
 ## The brand film and its stills
 
