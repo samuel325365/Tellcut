@@ -15,9 +15,10 @@ import { CORE_CATEGORY, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryIn
 import { HttpError, sendJson, type Router } from './http.ts';
 
 /** A block that reads a project's photos, clips or files draws little or nothing here. The sample films pass those as json params
- *  with a null default, so the params alone don't tell: a media() hook or code that asks ctx.media for a picture does. */
-const needsMedia = (t: ItemType) => t.params.some((d) => d.type === 'source-ref' || d.type === 'media-ref') || typeof t.media === 'function'
-  || /media\.(stillUrl|video|fileUrl)\(/.test(`${t.build}${t.draw}${t.ready ?? ''}`);
+ *  with a null default, so the params alone don't tell: a media() hook or code that asks ctx.media for a picture does, unless the
+ *  block says its footage is optional. */
+const needsMedia = (t: ItemType) => t.footage !== 'optional' && (t.params.some((d) => d.type === 'source-ref' || d.type === 'media-ref') || typeof t.media === 'function'
+  || /media\.(stillUrl|video|fileUrl)\(/.test(`${t.build}${t.draw}${t.ready ?? ''}`));
 
 const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
 const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;

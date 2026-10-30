@@ -15,6 +15,8 @@ test('the gallery lists every block (core and common first), the sounds, the mus
     expect([...new Set(g.blocks.map((b: any) => b.plugin))]).toEqual(['core', 'common']);   // the sample films' plugins are gone
     const media = (type: string) => g.blocks.find((b: any) => b.type === type).needsMedia;
     expect([media('common.backdrop'), media('core.title')]).toEqual([false, false]);
+    // a media() hook marks a block, unless it says its footage is optional (the dachshund's film frames are empty without any)
+    expect([media('common.dachshund'), media('common.card')]).toEqual([false, true]);
     expect(g.sfx.map((s: any) => s.type)).toEqual(expect.arrayContaining(['common.beep', 'common.whoosh']));
     expect(g.styles.filter((s: any) => s.origin === 'built-in').map((s: any) => s.id)).toEqual(['pluck', 'lofi', 'cinematic', 'tech', 'playful']);
     expect(g.recipes.map((r: any) => r.id)).toEqual(['travel', 'hook', 'montage']);

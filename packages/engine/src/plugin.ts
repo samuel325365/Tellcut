@@ -60,6 +60,9 @@ export interface ItemType<P = Record<string, any>, S = any> {
   /** the agent never picks it on its own (Tellcut's dachshund): the catalog lists it apart, under 只在使用者指名時用, and the chat's
    *  block index leaves it out; search, the gallery and `catalog <type>` find it as usual */
   onRequest?: boolean;
+  /** can take footage but works without it (common.dachshund draws empty film frames): the gallery does not mark it as needing
+   *  footage, though it has a media() hook */
+  footage?: 'optional';
   params: ParamDef[];
   /** CSS mix-blend-mode for the whole item layer against the items below it (layers are otherwise isolated). */
   blend?: string;

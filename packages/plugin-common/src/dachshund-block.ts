@@ -128,7 +128,7 @@ function loadStills(ctx: { params: P; project: { sources: Record<string, { durat
 }
 
 export const dachshund: ItemType<P, S> = {
-  type: 'common.dachshund', label: '臘腸狗', category: 'moment', kind: 'overlay', onRequest: true,
+  type: 'common.dachshund', label: '臘腸狗', category: 'moment', kind: 'overlay', onRequest: true, footage: 'optional',
   doc: 'Tellcut 的臘腸狗：黑配奶油色、身體是一條底片，會走路、搖尾巴、歪頭、坐下、用身體把片段剪開；底片格子裡可以放影片畫面。只有使用者要 Tellcut 臘腸狗時才用',
   params: [
     { key: 'action', label: '動作（walk 走路、wag 搖尾巴、tilt 歪頭、sit 坐下、cut 剪開、idle 站著）', type: 'enum', options: ['walk', 'wag', 'tilt', 'sit', 'cut', 'idle'], default: 'walk' },
