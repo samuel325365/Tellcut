@@ -18,13 +18,28 @@ const Row = ({ label, name, hint, children }: { label: string; name?: string; hi
   );
 };
 
-export const NumberField = ({ label, name, hint, value, step = 0.01, min, max, onCommit }: { label: string; name?: string; hint?: string; value: number | undefined; step?: number; min?: number; max?: number; onCommit: Commit<number | undefined> }) =>
-  <Row label={label} name={name} hint={hint}><input type="number" step={step} min={min} max={max} value={value ?? ''}
-    onChange={(e) => { const v = (e.target as HTMLInputElement).value; onCommit(v === '' ? undefined : Number(v)); }} /></Row>;
-export const TextField = ({ label, name, hint, value, onCommit }: { label: string; name?: string; hint?: string; value: string | undefined; onCommit: Commit<string> }) =>
-  <Row label={label} name={name} hint={hint}><input type="text" value={value ?? ''} onChange={(e) => onCommit((e.target as HTMLInputElement).value)} /></Row>;
-export const TextArea = ({ label, name, hint, value, onCommit }: { label: string; name?: string; hint?: string; value: string; onCommit: Commit<string> }) =>
-  <Row label={label} name={name} hint={hint}><textarea rows={3} value={value} onChange={(e) => onCommit((e.target as HTMLTextAreaElement).value)} /></Row>;
+/** A typed box's text until it is committed (change: blur / Enter) or left: the box is controlled, so any re-render meanwhile
+ *  (the playhead moving the panel, a save coming back) would otherwise put the old value back under the cursor. Without a
+ *  draft the box shows `value`, so changes from outside (undo, the timeline) still show while it is not being typed in. */
+function useDraft(value: string, commit: (text: string) => void) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const text = (e: Event) => (e.currentTarget as HTMLInputElement | HTMLTextAreaElement).value;
+  return { value: draft ?? value, onInput: (e: Event) => setDraft(text(e)), onBlur: () => setDraft(null),
+    onChange: (e: Event) => { setDraft(null); commit(text(e)); } };
+}
+
+export function NumberField({ label, name, hint, value, step = 0.01, min, max, onCommit }: { label: string; name?: string; hint?: string; value: number | undefined; step?: number; min?: number; max?: number; onCommit: Commit<number | undefined> }) {
+  const box = useDraft(value === undefined ? '' : String(value), (v) => onCommit(v === '' ? undefined : Number(v)));
+  return <Row label={label} name={name} hint={hint}><input type="number" step={step} min={min} max={max} {...box} /></Row>;
+}
+export function TextField({ label, name, hint, value, onCommit }: { label: string; name?: string; hint?: string; value: string | undefined; onCommit: Commit<string> }) {
+  const box = useDraft(value ?? '', onCommit);
+  return <Row label={label} name={name} hint={hint}><input type="text" {...box} /></Row>;
+}
+export function TextArea({ label, name, hint, value, onCommit }: { label: string; name?: string; hint?: string; value: string; onCommit: Commit<string> }) {
+  const box = useDraft(value ?? '', onCommit);
+  return <Row label={label} name={name} hint={hint}><textarea rows={3} {...box} /></Row>;
+}
 /** The picker only takes #rrggbb: #rgb is widened; anything else (rgba(), names) stays a text field so it is not lost. */
 export function ColorField({ label, name, hint, value, onCommit }: { label: string; name?: string; hint?: string; value: string; onCommit: Commit<string> }) {
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(value ?? '');
