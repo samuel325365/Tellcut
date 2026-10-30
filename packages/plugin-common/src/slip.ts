@@ -7,6 +7,7 @@ import { abs, clamp, cssCamel, eIO3, eOut3 as eOut, h, type ItemType, prog } fro
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 import { slotRects } from './progress.ts';
+import { WORDS, wordsLang } from './words.ts';
 
 interface P { slot: number; slots: number; slotY: number; mode: 'stub' | 'board'; no: string; noLabel: string; title: string; sub: string; items: string; y: number; dim: number; font: string; paper: string; stub: string; ink: string; muted: string }
 interface Row { row: HTMLElement; chip: HTMLElement; text: HTMLElement }
@@ -30,7 +31,7 @@ export const slip: ItemType<P, S> = {
   params: [
     { key: 'mode', label: '樣式（stub 號碼聯、board 片尾回顧）', type: 'enum', options: ['stub', 'board'], default: 'stub' },
     { key: 'no', label: '號碼（stub；空＝顯示 !）', type: 'string', default: '01' },
-    { key: 'noLabel', label: '號碼上的小字（stub；號碼空時顯示「重點」）', type: 'string', default: '理由' },
+    { key: 'noLabel', label: '號碼上的小字（stub；號碼空時顯示「重點」，標題是英文就是 POINT、日文是ポイント）', type: 'string', default: '理由' },
     { key: 'title', label: '標題（board 的大字）', type: 'string', default: '沒有蒜蓉醬' },
     { key: 'sub', label: '小字（board 最下面一行）', type: 'string', default: '老闆自己用味噌炒醬' },
     { key: 'items', label: '回顧（board；一行一個或用 | 分開）', type: 'text', default: '沒有蒜蓉，自己炒味噌醬\n方的嫩　三角的脆\n不接電話訂，只賣現炸' },
@@ -83,7 +84,7 @@ export const slip: ItemType<P, S> = {
         boxShadow: `0 ${8 * k}px ${22 * k}px rgba(0,0,0,.45)`, clipPath: `inset(0 ${((1 - a) * 100).toFixed(2)}% 0 0)`,
         transform, opacity: String(alpha) });
       cssCamel(s.stubEl, { display: 'block', left: '0', top: '0', width: `${sw}px`, height: '100%', background: p.stub });
-      s.noLab.textContent = p.no ? p.noLabel : '重點'; s.noEl.textContent = p.no || '!';
+      s.noLab.textContent = p.no ? p.noLabel : WORDS.slipPoint[wordsLang([p.title, p.sub], ctx)]; s.noEl.textContent = p.no || '!';
       cssCamel(s.noLab, { left: '0', width: '100%', textAlign: 'center', top: `${18 * k}px`, fontSize: `${20 * k}px`, fontWeight: '700', letterSpacing: `${4 * k}px`, color: withAlpha('#ffffff', 0.85) });
       cssCamel(s.noEl, { left: '0', width: '100%', textAlign: 'center', top: `${42 * k}px`, fontSize: `${fitPx(p.no || '!', 66 * k, sw - 20 * k)}px`, fontWeight: '900', color: '#ffffff', lineHeight: '1' });
       cssCamel(s.perf, { display: 'block', left: `${sw}px`, top: `${8 * k}px`, height: `${hh - 16 * k}px`, width: '0', borderLeft: `${3 * k}px dashed ${withAlpha(p.ink, 0.35)}` });

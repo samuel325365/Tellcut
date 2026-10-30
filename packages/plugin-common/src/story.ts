@@ -9,14 +9,15 @@ import { clamp, cssCamel, eBack, eIO3, eOut3 as eOut, fitLines, h, type ItemType
 import { DEVICES, glyphSvg, ICON_KINDS, phoneEls, phoneView, placePhone, type Device, type PhoneEls } from './phone.ts';
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
+import { WORDS, wordsLang, type WordsLang } from './words.ts';
 
 export const STORY_KINDS = ['poll', 'slider', 'timer'] as const;
 type Kind = typeof STORY_KINDS[number];
 
-/** the answers "a|b|c" (two to four; two neutral ones when fewer are given) and their result shares, scaled to 100 % */
-export function pollOf(options: string, votes: string): { opts: string[]; shares: number[] } {
+/** the answers "a|b|c" (two to four; yes and no in `lang` when fewer are given) and their result shares, scaled to 100 % */
+export function pollOf(options: string, votes: string, lang: WordsLang = 'zh'): { opts: string[]; shares: number[] } {
   let opts = String(options ?? '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 4);
-  if (opts.length < 2) opts = [...opts, '是', '否'].slice(0, 2);
+  if (opts.length < 2) opts = [...opts, ...WORDS.yesNo[lang]].slice(0, 2);
   const v = String(votes ?? '').split(/[,，\s]+/).map(Number).map((x) => (Number.isFinite(x) && x > 0 ? x : 0));
   const raw = opts.map((_, i) => v[i] ?? 0), sum = raw.reduce((a, b) => a + b, 0);
   return { opts, shares: sum > 0 ? raw.map((x) => x / sum) : opts.map(() => 1 / opts.length) };
@@ -45,7 +46,7 @@ export const story: ItemType<P, S> = {
   params: [
     { key: 'kind', label: '種類（poll 投票、slider 表情滑桿、timer 計時）', type: 'enum', options: [...STORY_KINDS], default: 'poll' },
     { key: 'text', label: '問題（poll、slider；timer：時間上面的小字）', type: 'string', default: '要不要再去一次？' },
-    { key: 'options', label: '選項（poll：兩到四個，用 | 分開）', type: 'string', default: '當然要 😍|下次再說' },
+    { key: 'options', label: '選項（poll：兩到四個，用 | 分開；不到兩個就補「是」「否」，問題是英文、日文就補英文、日文）', type: 'string', default: '當然要 😍|下次再說' },
     { key: 'votes', label: '結果（poll：每個選項的票數或百分比，逗號分隔）', type: 'string', default: '72,28' },
     { key: 'pick', label: '打勾的選項（poll：從 0 數，-1＝不打勾）', type: 'number', min: -1, max: 3, step: 1, default: 0 },
     { key: 'emoji', label: '滑桿上的表情（slider）', type: 'string', default: '🤩' },
@@ -93,7 +94,7 @@ export const story: ItemType<P, S> = {
     s.q.textContent = qLines.lines.join('\n');
     cssCamel(s.q, { display: !timer && p.text ? 'block' : 'none', textAlign: 'center', fontFamily: round, fontWeight: '700', fontSize: X(52 * qLines.scale), lineHeight: '1.25', marginBottom: X(poll ? 14 : 34) });
     // poll: the answers; their bars fill to the result after the vote
-    const pl = pollOf(p.options, p.votes), key = `${p.kind}|${pl.opts.join('|')}`;
+    const pl = pollOf(p.options, p.votes, wordsLang([p.text, p.options], ctx)), key = `${p.kind}|${pl.opts.join('|')}`;
     if (s.key !== key) {
       s.key = key;
       for (const o of s.opts) o.row.remove();

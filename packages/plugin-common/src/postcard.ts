@@ -10,6 +10,7 @@ import { parseSentences } from './handwrite.ts';
 import { drawMark, drawStamp, hash, markEl, SERIF, stampEl, type Mark, type MarkEl, type StampEl, type StampSpec } from './postmark.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, windowEl, type Still, type Win } from './window.ts';
 import { freeCanvas } from './inkline.ts';
+import { WORDS, wordsLang, type WordsLang } from './words.ts';
 
 type Orient = 'portrait' | 'landscape';
 type Rect = [number, number, number, number];
@@ -99,6 +100,9 @@ export function cardFromParams(p: Partial<P>): Card {
   };
 }
 
+/** the handwriting on the cards (front and back lines, the signature, the address): the language the back's own line follows */
+export const postcardTexts = (cards: Card[]) => cards.flatMap((c) => [...(c.front?.lines ?? []), ...(c.back?.lines ?? []), ...(c.back?.address ?? []), ...(c.back?.sig ? [c.back.sig] : [])].map((l) => l.text));
+
 /** every still the item shows (the export prepares them) */
 export function postcardStills(p: Partial<P>): Still[] {
   const out: Still[] = [], add = (s?: Still) => { if (s?.source && !s.file && !out.some((x) => x.source === s.source && x.t === s.t)) out.push(s); };
@@ -156,7 +160,7 @@ function cardEl(parent: HTMLElement): CardEl {
 
 /** one face of a card: paper, window (still or hole), stamp, postmark, the hand-written lines; `dpr`: device pixels per card px (the
  *  card space's scale, never under 1), so the paper, stamp and postmark are drawn at the frame's size, not stretched on a 4K frame */
-function drawFace(media: MediaApi, F: Face, card: Card, which: 'front' | 'back', local: number, o: { hole: boolean; stillAlpha: number; useExit: boolean; complete: boolean }, p: P, dpr: number) {
+function drawFace(media: MediaApi, F: Face, card: Card, which: 'front' | 'back', local: number, o: { hole: boolean; stillAlpha: number; useExit: boolean; complete: boolean }, p: P, dpr: number, lang: WordsLang) {
   const L = POSTCARD_LAYOUT[card.orient], key = JSON.stringify([card.orient, card.index, which, p.paper, dpr]), hand = handFamily(p.font);
   if (F.key !== key) { F.key = key; paperCanvas(F.paper, card, which, p.paper, dpr); }
   const line = (ln: Line, x: number, y: number, px: number, align: Txt['align'] = 'left'): Txt => {
@@ -177,7 +181,7 @@ function drawFace(media: MediaApi, F: Face, card: Card, which: 'front' | 'back',
     drawStamp(media, F.stamp, bk.stamp ?? { label: 'POSTE', year: '2022' }, null, B.stamp[0], B.stamp[1], -1.6, 1, dpr);
     drawMark(F.mark, bk.mark, B.mark[2], B.mark[0], B.mark[1], local, o.complete, p.markInk, true, 0.82, dpr);
     T.push({ text: bk.header ?? 'Carte Postale', x: B.header[0], y: B.header[1], px: 80, color: 'rgba(70,52,30,0.85)', family: LATIN, italic: true, weight: 300 });
-    T.push({ text: spaced(bk.sub ?? '寄給自己的明信片'), x: B.header[0] + 6, y: B.header[1] + 46, px: 22, color: 'rgba(70,52,30,0.55)', family: SERIF, weight: 500 });
+    T.push({ text: spaced(bk.sub ?? WORDS.postcardSub[lang]), x: B.header[0] + 6, y: B.header[1] + 46, px: 22, color: 'rgba(70,52,30,0.55)', family: SERIF, weight: 500 });
     (bk.lines ?? []).forEach((ln, i) => { if (B.lines.base[i] !== undefined) T.push(line(ln, B.lines.x, B.lines.base[i], B.lines.size)); });
     if (bk.sig) T.push(line(bk.sig, B.sig[0], B.sig[1], 46, 'right'));
     (bk.address ?? []).forEach((ln, i) => { if (B.address.base[i] !== undefined) T.push(line(ln, B.address.x0 + 8, B.address.base[i], B.address.size)); });
@@ -186,7 +190,7 @@ function drawFace(media: MediaApi, F: Face, card: Card, which: 'front' | 'back',
 }
 
 /** a whole card at a pose (card space px), showing one face */
-function drawCard(media: MediaApi, C: CardEl, card: Card, pose: Pose, face: 'front' | 'back', local: number, o: { hole: boolean; stillAlpha: number; useExit: boolean; complete: boolean }, p: P, dpr: number) {
+function drawCard(media: MediaApi, C: CardEl, card: Card, pose: Pose, face: 'front' | 'back', local: number, o: { hole: boolean; stillAlpha: number; useExit: boolean; complete: boolean }, p: P, dpr: number, lang: WordsLang) {
   const L = POSTCARD_LAYOUT[card.orient], lift = pose.lift ?? 0;
   cssCamel(C.el, { left: `${pose.cx - L.w / 2}px`, top: `${pose.cy - L.h / 2}px`, width: `${L.w}px`, height: `${L.h}px`,
     transform: `rotate(${pose.rot.toFixed(3)}deg) scale(${(pose.scale * (pose.sx ?? 1)).toFixed(4)}, ${pose.scale.toFixed(4)})`,
@@ -194,8 +198,8 @@ function drawCard(media: MediaApi, C: CardEl, card: Card, pose: Pose, face: 'fro
   cssCamel(C.front.el, { display: face === 'front' ? 'block' : 'none' });
   cssCamel(C.back.el, { display: face === 'back' ? 'block' : 'none' });
   // both faces are kept drawn, so the stills of the face to come are loaded before it turns
-  drawFace(media, C.front, card, 'front', local, face === 'front' ? o : { hole: false, stillAlpha: 1, useExit: false, complete: o.complete }, p, dpr);
-  if (card.back || face === 'back') drawFace(media, C.back, card, 'back', local, o, p, dpr);
+  drawFace(media, C.front, card, 'front', local, face === 'front' ? o : { hole: false, stillAlpha: 1, useExit: false, complete: o.complete }, p, dpr, lang);
+  if (card.back || face === 'back') drawFace(media, C.back, card, 'back', local, o, p, dpr, lang);
   cssCamel(C.shade, { opacity: String(pose.shade ?? 0), display: pose.shade ? 'block' : 'none' });
 }
 
@@ -264,7 +268,7 @@ export const postcard: ItemType<P, S> = {
   hide(s) { freeCanvas(s.desk); s.deskKey = ''; for (const c of [s.active, ...s.piles]) for (const F of c ? [c.front, c.back] : []) { freeCanvas(F.paper); F.key = ''; } },
   draw(ctx, s) {
     const p = ctx.params, { W, H, local } = ctx, { k, ox, oy } = cardSpace(W, H), dpr = Math.max(1, k);
-    const card = p.card ?? cardFromParams(p), pile = Array.isArray(p.pile) ? p.pile : [], spread = p.spread ?? null;
+    const card = p.card ?? cardFromParams(p), pile = Array.isArray(p.pile) ? p.pile : [], spread = p.spread ?? null, lang = wordsLang(postcardTexts([card, ...pile]), ctx);
     if (p.desk === 'wood') { const key = `${W}x${H}`; if (s.deskKey !== key) { s.deskKey = key; paintDesk(s.desk, W, H); } }
     cssCamel(s.desk, { display: p.desk === 'wood' ? 'block' : 'none' });
     for (const st of [s.pileStage, s.stage]) cssCamel(st, { transform: `translate(${ox}px, ${oy}px) scale(${k})` });
@@ -284,9 +288,9 @@ export const postcard: ItemType<P, S> = {
         const slot = spread.slots[i] ?? [540, 960, 0, 0.3], q = eIO3(clamp((local - spread.at - i * 0.07) / spread.dur));
         pose = mix(pose, { cx: slot[0], cy: slot[1], rot: slot[2], scale: slot[3] }, q);
       }
-      drawCard(ctx.media, s.piles[i], pc, pose, finalFace(pc), local, { hole: false, stillAlpha: 1, useExit: true, complete: true }, p, dpr);
+      drawCard(ctx.media, s.piles[i], pc, pose, finalFace(pc), local, { hole: false, stillAlpha: 1, useExit: true, complete: true }, p, dpr, lang);
     });
-    drawCard(ctx.media, s.active!, card, st.pose, st.face, local, { hole: st.hole, stillAlpha: st.stillAlpha, useExit: st.useExit, complete: st.face === 'front' && st.useExit }, p, dpr);
+    drawCard(ctx.media, s.active!, card, st.pose, st.face, local, { hole: st.hole, stillAlpha: st.stillAlpha, useExit: st.useExit, complete: st.face === 'front' && st.useExit }, p, dpr, lang);
     // the hole goes through the desk and the pile too: the clip below shows only there
     punch(s.under, st.hole ? windowRect(card.orient, W, H) : null);
   },

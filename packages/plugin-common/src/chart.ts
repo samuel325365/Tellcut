@@ -19,6 +19,7 @@ import {
 } from './sketch.ts';
 import { emParts, nl } from './text.ts';
 import { luma, withAlpha } from './color.ts';
+import { textLang, WORDS, wordsLang, type WordsLang } from './words.ts';
 
 export const CHART_KINDS = ['bars', 'pie', 'people', 'rank', 'balance', 'table', 'line'] as const;
 export type ChartKind = (typeof CHART_KINDS)[number];
@@ -138,7 +139,8 @@ export function chartFrame(p: Pick<ChartP, 'x' | 'y' | 'w' | 'h' | 'card' | 'tit
 }
 
 type F = ReturnType<typeof chartFrame>;
-interface Env { p: ChartP; F: F; C: Colors; local: number; W: number; H: number; texts: Txt[]; marks: Mk[] }
+/** lang: the language of the words the chart writes by itself (people's line, the gap, the rank tag) */
+interface Env { p: ChartP; F: F; C: Colors; local: number; W: number; H: number; texts: Txt[]; marks: Mk[]; lang: WordsLang }
 const T = (e: Env, t: Txt) => { e.texts.push(t); };
 const M = (e: Env, m: Mk) => { e.marks.push(m); };
 const pop = (local: number, t0: number, d = 0.35) => (local < t0 ? 0 : eBack(clamp((local - t0) / d), 1.7));
@@ -146,11 +148,15 @@ const pop = (local: number, t0: number, d = 0.35) => (local < t0 ? 0 : eBack(cla
 const onColor = (bg: string, C: Colors) => { const [dark, light] = luminance(C.ink) < luminance(C.paper) ? [C.ink, C.paper] : [C.paper, C.ink]; return luminance(bg) > 0.55 ? dark : light; };
 const luminance = (c: string) => luma(c) ?? 0.5;
 
-/** The whole picture at `local`: the card, the shapes, the words. Pure: the same params, frame and time give the same plan. */
-export function chartPlan(p: ChartP, W: number, H: number, theme: Theme, local: number): Plan {
+/** the words the chart draws besides what it writes by itself: the language of those is read from these (people draws no data) */
+export const chartTexts = (p: ChartP) => [p.title, p.source, p.stat, ...(p.kind === 'people' ? [] : [p.data, p.unit, p.base, p.axis])];
+
+/** The whole picture at `local`: the card, the shapes, the words. Pure: the same params, frame and time give the same plan.
+ *  `lang`: the language of the words it writes by itself (draw passes the film's, see words.ts; else its own text's, else Chinese). */
+export function chartPlan(p: ChartP, W: number, H: number, theme: Theme, local: number, lang: WordsLang = textLang(...chartTexts(p)) ?? 'zh'): Plan {
   const C: Colors = { ink: p.ink, paper: p.paper, color: p.color, accent: p.accent, tag: p.tag, dim: withAlpha(p.ink, 0.62), mute: withAlpha(p.ink, 0.22) };
-  const F0 = chartFrame(p, W, H, theme.safe), F = chartFrame(p, W, H, theme.safe, naturalBody({ p, F: F0, C, local, W, H, texts: [], marks: [] })), u = F.u;
-  const e: Env = { p, F, C, local, W, H, texts: [], marks: [] };
+  const F0 = chartFrame(p, W, H, theme.safe), F = chartFrame(p, W, H, theme.safe, naturalBody({ p, F: F0, C, local, W, H, texts: [], marks: [], lang })), u = F.u;
+  const e: Env = { p, F, C, local, W, H, texts: [], marks: [], lang };
   if (p.title) T(e, { id: 'title', text: p.title, x: F.inner.x + F.inner.w / 2, y: F.inner.y + Math.max(F.ts, 40 * u) * 0.62, size: F.ts, align: 'c', color: p.ink, weight: 900, a: clamp((local - 0.05) / 0.3) });
   ({ bars: planBars, pie: planPie, people: planPeople, rank: planRank, balance: planBalance, table: planTable, line: planLine } as Record<ChartKind, (e: Env) => void>)[CHART_KINDS.includes(p.kind) ? p.kind : 'bars'](e);
   if (p.source) T(e, { id: 'source', text: p.source, x: F.inner.x + F.inner.w, y: F.inner.y + F.inner.h - Math.max(F.ss, 22 * u) * 0.55, size: F.ss, align: 'r', color: C.dim, weight: 500, a: clamp((local - p.at - 0.2) / 0.4) });
@@ -165,7 +171,7 @@ export function naturalBody(e: Env): number {
     case 'bars': return p.dir === 'v' ? Math.max(b.w * 0.8, 420 * u + statH) : statH + valued(rows).length * (220 * u + circlePad(p, rows, u)) + 40 * u + (baseOf(p.base)?.label ? 50 * u : 0);
     case 'pie': return Math.min(b.w, 760 * u) * 1.02 + (p.note ? 120 * u : 0);
     case 'people': {
-      const n = clamp(Math.round(p.n), 1, 200), stat = p.stat || `${n} 人中有 【${n}】 人`, room = fitSize(stat, 84 * u, b.w, 1.5) * 1.5 * 1.45;
+      const n = clamp(Math.round(p.n), 1, 200), stat = p.stat || WORDS.people[e.lang](n, n), room = fitSize(stat, 84 * u, b.w, 1.5) * 1.5 * 1.45;
       const G = peopleGrid(n, b.w, b.w * 2);
       return G.rows * Math.min(G.cell, 200 * u) * 1.15 + room;
     }
@@ -208,7 +214,7 @@ function planBars(e: Env) {
   // which two bars a ratio or a gap compares: the lit one (else the biggest) and the first other one
   const ia = ih >= 0 ? ih : hlIndex('max', vals), ib = n > 1 ? (ia === 0 ? 1 : 0) : -1;
   const cmp = p.compare !== 'none' && ib >= 0 ? p.compare : 'none';
-  const noteText = cmp === 'ratio' ? p.note || ratioText(vals[ia], vals[ib]) : cmp === 'gap' ? p.note || `差 ${fmtNum(Math.abs(vals[ia] - vals[ib]), dec, group)}${p.unit}` : p.note;
+  const noteText = cmp === 'ratio' ? p.note || ratioText(vals[ia], vals[ib]) : cmp === 'gap' ? p.note || WORDS.gap[e.lang](`${fmtNum(Math.abs(vals[ia] - vals[ib]), dec, group)}${p.unit}`) : p.note;
   const colorOf = (i: number) => (i === ih ? C.accent : C.color);
   if (p.dir === 'v') {
     const noteW = noteText ? b.w * 0.28 : base?.label ? Math.min(b.w * 0.26, textW(base.label, 40 * u) + 24 * u) : 0, plotX = b.x, plotW = b.w - noteW, colW = plotW / n, bw = Math.min(colW * 0.56, 180 * u);
@@ -364,7 +370,7 @@ export function peopleGrid(n: number, w: number, hh: number): { cols: number; ro
 
 function planPeople(e: Env) {
   const { p, F, C, local } = e, u = F.u, b = F.body, n = clamp(Math.round(p.n), 1, 200), k = clamp(Math.round(p.k), 0, n);
-  const stat = p.stat || `${n} 人中有 【${k}】 人`, statSize = fitSize(stat, 84 * u, b.w, 1.5), statRoom = statSize * 1.5 * 1.45;
+  const stat = p.stat || WORDS.people[e.lang](n, k), statSize = fitSize(stat, 84 * u, b.w, 1.5), statRoom = statSize * 1.5 * 1.45;
   const G = peopleGrid(n, b.w, b.h - statRoom), gw = G.cols * G.cell, gh = G.rows * G.cell * 1.15, gx = b.x + (b.w - gw) / 2, gy = b.y + (b.h - statRoom - gh) / 2;
   const fs = Math.min(0.2, 1.3 / n), tEnd = p.at + (n - 1) * fs + 0.3;
   const at = (i: number) => [gx + G.cell * ((i % G.cols) + 0.5), gy + G.cell * 1.15 * (Math.floor(i / G.cols) + 0.5)] as const;
@@ -439,7 +445,7 @@ function planRank(e: Env) {
     T(e, { id: `v${i}`, text: valStr(i, f), x: barX + len * f + 12 * u + dx, y: cy, size: ls * 0.9, align: 'l', color: lit ? C.accent : C.dim, weight: 900, a: clamp(f * 5) });
   });
   if (hlRow >= 0 && !rows[hlRow].gap) {
-    const note = p.note || `第 ${rk[hlRow]} 名`, cy = y0 + rowH * (hlRow + 0.5), size = fitSize(note, Math.min(54 * u, rowH * 0.62), b.w * 0.42);
+    const note = p.note || WORDS.rank[e.lang](rk[hlRow]), cy = y0 + rowH * (hlRow + 0.5), size = fitSize(note, Math.min(54 * u, rowH * 0.62), b.w * 0.42);
     const tw = textW(note, size) + size * 0.9, endX = Number.isFinite(vals[hlRow]) ? barX + ((vals[hlRow] - lo) / (hi - lo || 1)) * barW + valW + 24 * u : labelX + textW(rows[hlRow].label, ls) + 30 * u;
     T(e, { id: 'note', text: note, x: Math.min(endX + tw / 2, b.x + b.w - tieW - tw / 2), y: cy, size, align: 'c', color: onColor(C.tag, C), weight: 900, bg: C.tag, a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd), rot: -3 });
     if (p.mark === 'circle') M(e, { t: 'loop', cx: labelX + labelW / 2 - 10 * u, cy, rx: labelW / 2 + br + 30 * u, ry: rowH * 0.62, line: C.accent, lw: 5 * u, prog: eOut3(prog(local, tEnd + 0.1, tEnd + 0.5)), seed: 35 });
@@ -800,9 +806,9 @@ export const chart: ItemType<ChartP, S> = {
     { key: 'hl', label: '亮哪一筆（max 最大、min 最小、第幾筆從 1 數；table「列,欄」；空＝不亮）', type: 'string', default: 'max' },
     { key: 'mark', label: '把亮的那筆圈起來', type: 'enum', options: ['none', 'circle'], default: 'none' },
     { key: 'compare', label: '比較（bars；ratio 倍數、gap 差距括號，比亮的那根和另一根）', type: 'enum', options: ['none', 'ratio', 'gap'], default: 'ratio' },
-    { key: 'note', label: '註解（bars 比較的字、pie 下面的標籤、rank 亮的那列的標籤、balance 上方的字、line 線尾的字；空＝自動）', type: 'string', default: '' },
+    { key: 'note', label: '註解（bars 比較的字、pie 下面的標籤、rank 亮的那列的標籤、balance 上方的字、line 線尾的字；空＝自動，跟標題同一種語言）', type: 'string', default: '' },
     { key: 'base', label: '基準線「數值|標籤」（bars、line；空＝沒有）', type: 'string', default: '' },
-    { key: 'stat', label: '大數字一行（bars、people；【數字】或第一個數字會往上跳；people 空＝「N 人中有 K 人」）', type: 'string', default: '' },
+    { key: 'stat', label: '大數字一行（bars、people；【數字】或第一個數字會往上跳；people 空＝「N 人中有 K 人」，標題是英文、日文就寫英文、日文）', type: 'string', default: '' },
     { key: 'source', label: '資料來源（右下小字；空＝沒有）', type: 'string', default: 'FAO 2017' },
     { key: 'n', label: '總人數（people）', type: 'number', min: 1, max: 200, step: 1, default: 10 },
     { key: 'k', label: '上色的人數（people）', type: 'number', min: 0, max: 200, step: 1, default: 4 },
@@ -834,7 +840,7 @@ export const chart: ItemType<ChartP, S> = {
   },
   hide(s) { freeCanvas(s.cv); s.layer.cv = undefined; },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local, dur } = ctx, plan = chartPlan(p, W, H, theme, local), u = plan.u;
+    const p = ctx.params, { W, H, theme, local, dur } = ctx, plan = chartPlan(p, W, H, theme, local, wordsLang(chartTexts(p), ctx)), u = plan.u;
     const alpha = clamp(local / 0.2) * (1 - prog(local, dur - 0.3, dur)), dy = (1 - eOut3(clamp(local / 0.35))) * 40 * u;
     const look: Look = p.look === 'hand' || p.look === 'woodcut' ? p.look : 'clean';
     const r: R = { look, pen: (['marker', 'crayon', 'pencil', 'ballpoint'].includes(p.pen) ? p.pen : 'crayon') as PenStyle, u, boil: look === 'hand' ? p.boil : 0, t: local, ink: p.ink };
