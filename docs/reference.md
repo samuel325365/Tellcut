@@ -58,7 +58,7 @@ Steps: **new → inspect → cut → check → export**.
 
 ## The project folder `projects/<id>/`
 
-Your work itself (the whole of `projects/` is outside Tellcut's git). To back it up or hand it to someone: `npm run export-project -- <id> [--media] [--out <file.zip>]` packs it into `backups/<id>-<date>-<time>.zip` (`--media` also packs `media/` and footage kept outside the project, and points the project at the packed copy); `npm run import-project -- <file.zip> [--as <new name>]` restores it, never overwriting an existing project.
+Your work itself (the whole of `projects/` is outside Tellcut's git). To back it up or hand it to someone: `npm run export-project -- <id> [--media] [--public] [--out <file.zip>]` packs it into `backups/<id>-<date>-<time>.zip` (`--media` also packs `media/` and footage kept outside the project, and points the project at the packed copy; `--public`, for a project you share, writes your Tellcut folder as `<tellcut>` and your home folder as `~` in the zip's text files, its chat history included, and refuses when another path of your computer is left in them); `npm run import-project -- <file.zip> [--as <new name>]` restores it, never overwriting an existing project.
 
 - `project.json`: the project's single source of truth.
 - `cut.ts`: the first-cut script; `narration.json`: the voice-over script; `storyboard.md`: the storyboard (the topic, and what picture and text each part needs; written before cut.ts, and later changes are checked against it); `brand.md`: a brand film's brand card (palette, type, tone, what to film; written before the storyboard).

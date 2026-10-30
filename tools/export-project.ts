@@ -1,13 +1,15 @@
 // A project as one zip, and back (review3 R3-H1: projects/ is not in git, and there was no way to hand a film over or back it up).
-//   npm run export-project -- <id> [--media] [--out <file.zip>]     → tellcut/backups/<id>-<date>-<time>.zip
+//   npm run export-project -- <id> [--media] [--public] [--out <file.zip>]     → tellcut/backups/<id>-<date>-<time>.zip
 //   npm run import-project -- <file.zip> [--as <new id>]            → projects/<id>/
 // The zip holds one folder, <id>/: project.json, cut.ts, narration.json, storyboard.md, brand.md (a brand film's brand card), fx/,
 // score/ and .history/ (versions, proposals, the chat). --media adds media/ and the footage that lives outside the project (D:\Trips…, tellcut/sources/…), copied
 // into media/linked/ with project.json pointing there, so the zip stands on its own. cache/ is made again; exports/ are the films
-// themselves (copy them as they are).
+// themselves (copy them as they are). --public (an example project for GitHub, spec 2026-10-30-showcase-films part 2) writes this
+// computer's tellcut folder as <tellcut> and its home as ~ in every text file of the zip, and refuses when another absolute path is left.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
@@ -25,7 +27,21 @@ const walk = (dir: string, sub: string): string[] => {
   return readdirSync(at, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(dir, `${sub}/${e.name}`) : e.isFile() ? [`${sub}/${e.name}`] : []);
 };
 /** the hash cut-state.json keeps (tools/cut/cut.ts) */
-const sha1 = (s: string) => createHash('sha1').update(s).digest('hex');
+export const sha1Of = (s: string) => createHash('sha1').update(s).digest('hex');
+const sha1 = sha1Of;
+
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** `text` with `root` (the tellcut folder) as <tellcut> and `home` as ~, however a path is written: with \, with / or as JSON writes \ */
+export function scrubText(text: string, o: { root: string; home: string }): string {
+  for (const [path, token] of [[o.root, '<tellcut>'], [o.home, '~']] as const) {
+    const back = path.replace(/\//g, '\\');
+    for (const form of [back.replace(/\\/g, '\\\\'), back, back.replace(/\\/g, '/')]) text = text.replace(new RegExp(escape(form), 'gi'), token);
+  }
+  return text;
+}
+/** the absolute paths in a text (a drive letter, /Users/…, /home/…), in order */
+export const leftoverPaths = (text: string) => [...text.matchAll(/\b[A-Za-z]:[\\/][^\s"'<>|,;]*|\/(?:Users|home)\/[^\s"'<>|,;]*/g)].map((m) => m[0]);
+const TEXT = /\.(json|jsonl|md|ts|js|txt|srt|vtt|csv)$/i;
 const insideOf = (dir: string, f: string) => { const r = relative(dir, resolve(dir, f)); return !!r && !r.startsWith('..') && !isAbsolute(r); };
 
 /** what goes into the zip (relative to its <id>/ folder) and the project.json it gets */
@@ -62,12 +78,13 @@ function tar(args: string[]) {
 const stamp = (d = new Date()) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
 
 /** writes the zip; returns its path */
-export function exportProject(dir: string, o: { media: boolean; out?: string }): string {
+export function exportProject(dir: string, o: { media: boolean; out?: string; /** clean this computer's paths out (default: the real tellcut folder and home) */ public?: boolean | { root: string; home: string } }): string {
   const id = basename(dir), out = resolve(o.out ?? join(TELLCUT_ROOT, 'backups', `${id}-${stamp()}.zip`));
   const before = readFileSync(join(dir, 'project.json'), 'utf8');
   const plan = exportPlan(dir, JSON.parse(before), o);
   // as writeProjectFile writes it; the paths --media rewrote make it a different text from the one the last cut hashed
-  const text = JSON.stringify(plan.project, null, 2) + '\n';
+  const scrub = o.public === true ? { root: TELLCUT_ROOT, home: homedir() } : o.public || null;
+  const text = ((t: string) => (scrub ? scrubText(t, scrub) : t))(JSON.stringify(plan.project, null, 2) + '\n');
   mkdirSync(dirname(out), { recursive: true });
   // a folder laid out as the zip, next to it (the same drive: files are hard-linked where they can be, not copied)
   const stage = mkdtempSync(join(dirname(out), '.stage-')), top = join(stage, id);
@@ -79,6 +96,15 @@ export function exportProject(dir: string, o: { media: boolean; out?: string }):
     }
     mkdirSync(top, { recursive: true });
     writeFileSync(join(top, 'project.json'), text);
+    if (scrub) {
+      const left = leftoverPaths(text).map((p) => `project.json：${p}`);
+      for (const f of plan.files.filter((x) => TEXT.test(x.to))) {
+        const at = join(top, f.to), was = readFileSync(at, 'utf8'), now = scrubText(was, scrub);
+        if (now !== was) { rmSync(at); writeFileSync(at, now); }   // a hard link to the project's own file: written anew, not through it
+        left.push(...leftoverPaths(now).map((p) => `${f.to}：${p}`));
+      }
+      if (left.length) throw new Error(`還有這台電腦上的路徑，沒有打包（--public 不能留）：\n${left.slice(0, 20).join('\n')}${left.length > 20 ? `\n…共 ${left.length} 個` : ''}\n素材在專案外面就加 --media；聊天紀錄或文字檔裡的，改掉再匯出。`);
+    }
     // unedited since the last cut: the zip's cut-state names the text in the zip, or the import's next cut refused for nothing.
     // Edited: the old hash stays, and still differs
     const state = join(top, 'cache', 'cut-state.json');
@@ -121,9 +147,9 @@ function main(argv: string[]) {
     return;
   }
   const id = pos[0], dir = id ? join(TELLCUT_ROOT, 'projects', id) : '';
-  if (!id || !existsSync(join(dir, 'project.json'))) { console.error('用法：npm run export-project -- <專案> [--media] [--out <檔案.zip>]'); process.exit(2); }
+  if (!id || !existsSync(join(dir, 'project.json'))) { console.error('用法：npm run export-project -- <專案> [--media] [--public] [--out <檔案.zip>]'); process.exit(2); }
   const media = argv.includes('--media'), out = flag('--out');
-  const zip = exportProject(dir, { media, out: out && resolve(process.env.INIT_CWD ?? process.cwd(), out) });
+  const zip = exportProject(dir, { media, public: argv.includes('--public'), out: out && resolve(process.env.INIT_CWD ?? process.cwd(), out) });
   const plan = exportPlan(dir, JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')), { media });
   console.log(`打包好了：${zip}（${(statSync(zip).size / 1e6).toFixed(1)} MB）`);
   if (!media && plan.outside.length) console.log(`沒有包進素材：${plan.outside.length} 個檔案在專案外面（${plan.outside.slice(0, 6).join('、')}）。要整包帶走就加 --media。`);

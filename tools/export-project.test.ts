@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { exportPlan, exportProject, importProject } from './export-project.ts';
+import { exportPlan, exportProject, importProject, leftoverPaths, scrubText } from './export-project.ts';
 
 /** a tellcut/ with one project whose footage is partly inside it and partly on another folder */
 function world() {
@@ -64,4 +64,43 @@ test('a project not edited since its last cut is still unedited after export and
   expect(editedSinceCut(dir)).toBe(true);
   const back = importProject(exportProject(dir, { media: true, out: join(root, 'edited.zip') }), join(root, 'edited'));
   expect(editedSinceCut(back)).toBe(true);
+});
+
+// showcase films (spec 2026-10-30 part 2): an example project on GitHub carries no path of this computer
+test('scrubText swaps this computer\u2019s tellcut folder and home for <tellcut> and ~, written with \\, / or as JSON writes \\', () => {
+  const o = { root: 'C:\\Users\\amy\\Desktop\\work\\tellcut', home: 'C:\\Users\\amy' };
+  expect(scrubText('at C:\\Users\\amy\\Desktop\\work\\tellcut\\projects\\x\\cut.ts and c:/users/amy/Desktop/work/tellcut/a', o))
+    .toBe('at <tellcut>\\projects\\x\\cut.ts and <tellcut>/a');
+  expect(scrubText(JSON.stringify({ p: 'C:\\Users\\amy\\Videos\\a.mp4' }), o)).toBe('{"p":"~\\\\Videos\\\\a.mp4"}');
+  expect(scrubText('nothing here', o)).toBe('nothing here');
+});
+
+test('leftoverPaths finds the absolute paths still in a text', () => {
+  expect(leftoverPaths('see D:\\Trips\\rome.mp4, /Users/amy/x and /home/amy/y; but not <tellcut>\\a or ~/b or 3:45')).toEqual(['D:\\Trips\\rome.mp4', '/Users/amy/x', '/home/amy/y']);
+  expect(leftoverPaths('{"p":"E:\\\\clips\\\\a.mp4"}')).toEqual(['E:\\\\clips\\\\a.mp4']);
+});
+
+test('--public: the zip\u2019s history and project carry no path of this computer, the project itself is untouched, and its cut state still matches', async () => {
+  const { root, tellcut, dir } = world();
+  const chat = JSON.stringify({ said: `read ${join(tellcut, 'projects', 'trip', 'media', 'b.mp4')}` });
+  rmSync(join(dir, '.history/chat/chat.json'));
+  writeFileSync(join(dir, '.history/chat/chat.json'), chat);
+  const { sha1Of } = await import('./export-project.ts');
+  writeFileSync(join(dir, 'cache/cut-state.json'), JSON.stringify({ hash: sha1Of(readFileSync(join(dir, 'project.json'), 'utf8')) }));
+  const zip = exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut, home: join(root, 'nobody') } });
+  const back = importProject(zip, join(root, 'in'));
+  const said = readFileSync(join(back, '.history/chat/chat.json'), 'utf8');
+  expect(said).toContain('<tellcut>');
+  expect(leftoverPaths(said)).toEqual([]);
+  expect(readFileSync(join(dir, '.history/chat/chat.json'), 'utf8')).toBe(chat);   // a hard link in the stage: written anew, not through it
+  const state = JSON.parse(readFileSync(join(back, 'cache/cut-state.json'), 'utf8')).hash;
+  expect(state).toBe(sha1Of(readFileSync(join(back, 'project.json'), 'utf8')));
+});
+
+test('--public refuses a project that still names a path elsewhere on this computer, and says where', () => {
+  const { root, dir } = world();
+  writeFileSync(join(dir, 'storyboard.md'), 'shot list: D:\\Trips\\rome.mp4');
+  expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: join(root, 'tellcut'), home: join(root, 'nobody') } }))
+    .toThrow(/storyboard\.md.*D:\\Trips\\rome\.mp4/);
+  expect(existsSync(join(root, 'pub.zip'))).toBe(false);
 });
