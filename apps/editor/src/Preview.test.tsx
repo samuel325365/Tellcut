@@ -34,3 +34,16 @@ test('the transport has start, frame steps, play, end and loop', async () => {
   (root.querySelector('[data-loop]') as HTMLElement).click();
   expect(runs).toEqual(['home', 'prevFrame', 'toggle', 'nextFrame', 'end', 'loop']);
 });
+test('the loop switch is a line icon in the text colour (not the blue 🔁 emoji) and says whether it is on', async () => {
+  const store = createStore({ ...initialState('t'), project: fixture() });
+  const editor: any = { store, run() {}, togglePlay() {}, toggleLoop() {}, exitCrop() {} };
+  const bridge: any = { attach() {}, handle() {} };
+  const root = document.createElement('div');
+  await act(() => render(<Preview editor={editor} bridge={bridge} s={{ ...store.get(), loop: false }} />, root));
+  const btn = () => root.querySelector('[data-loop]') as HTMLElement;
+  expect(btn().textContent).toBe('');
+  expect(btn().querySelector('svg')!.getAttribute('stroke')).toBe('currentColor');
+  expect([btn().className, btn().getAttribute('aria-pressed')]).toEqual(['', 'false']);
+  await act(() => render(<Preview editor={editor} bridge={bridge} s={{ ...store.get(), loop: true }} />, root));
+  expect([btn().className, btn().getAttribute('aria-pressed')]).toEqual(['on', 'true']);
+});

@@ -67,6 +67,8 @@ export const IconMagnet = I(['M6 3v8a6 6 0 0 0 12 0V3', 'M6 7h4', 'M14 7h4']);
 export const IconLock = I(['M6 11h12v9H6z', 'M8 11V8a4 4 0 0 1 8 0v3']);
 export const IconUnlock = I(['M6 11h12v9H6z', 'M8 11V8a4 4 0 0 1 7.5-2']);
 export const IconRows = I(['M4 6h16', 'M4 12h16', 'M4 18h16']);
+// the preview's loop switch: two arrows chasing round (the 🔁 emoji stayed blue whatever the theme)
+export const IconLoop = I(['M17 3l3 3-3 3', 'M4 12v-2a4 4 0 0 1 4-4h12', 'M7 21l-3-3 3-3', 'M20 12v2a4 4 0 0 1-4 4H4']);
 
 /** Tellcut's dachshund on its tile (docs/brand): the cream tile on a dark page, the black one on a light page (styles.css) */
 export const IconDachshund = (p: { size?: number }) => (

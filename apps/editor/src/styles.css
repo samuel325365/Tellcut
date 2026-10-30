@@ -234,7 +234,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .row.collapsed .head { padding-top: 0; padding-bottom: 0; font-size: 9px; }
 .row.collapsed .head .grip, .row.collapsed .head .bus, .row.collapsed .head .tdel { display: none; }
 .row.collapsed .item > :not([data-edge]) { display: none; }
-.transport button { padding: 2px 8px; } .transport button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.transport button { padding: 2px 8px; } .transport button svg { vertical-align: -3px; } .transport button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .hbar .zoom button { flex: none; padding: 0 4px; font-size: 11px; line-height: 14px; }
 .library .segs { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 4px; }
 .library .segs button.seg { display: flex; align-items: center; gap: 4px; padding: 2px 4px; text-align: left; }

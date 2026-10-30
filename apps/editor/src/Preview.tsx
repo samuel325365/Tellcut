@@ -4,6 +4,7 @@ import type { PlayerBridge } from './bridge.ts';
 import { useStoreSelector, type EditorState } from './store.ts';
 import { formatTime } from './timeline/geometry.ts';
 import { t } from './i18n/index.ts';
+import { IconLoop } from './icons.tsx';
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
 const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
@@ -41,7 +42,7 @@ export function Preview({ editor, bridge, s }: { editor: Editor; bridge: PlayerB
         <button data-transport="play" onClick={() => editor.togglePlay()} {...tip(t('ed.tPlay'))}>{s.playing ? '❚❚' : '▶'}</button>
         <button data-transport="next" {...tip(t('ed.tNext'))} onClick={() => editor.run('nextFrame')}>|▶︎</button>
         <button data-transport="end" {...tip(t('ed.tEnd'))} onClick={() => editor.run('end')}>⏭</button>
-        <button data-loop class={s.loop ? 'on' : ''} {...tip(t('ed.tLoop'))} onClick={() => editor.toggleLoop()}>🔁</button>
+        <button data-loop class={s.loop ? 'on' : ''} aria-pressed={s.loop} {...tip(t('ed.tLoop'))} onClick={() => editor.toggleLoop()}><IconLoop size={15} /></button>
         <Clock editor={editor} duration={s.project!.meta.duration} />
       </div>
     </section>
