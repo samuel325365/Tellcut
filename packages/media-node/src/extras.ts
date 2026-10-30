@@ -52,9 +52,14 @@ export function musicFiles(projectDir: string, path: string) {
   return { dir, beats: join(dir, 'beats.json') };
 }
 
+/** The scene cuts that start a scene with a frame in its middle: a cut in the last END s (a rendered film's last frame, say) is
+ *  none, as the middle of that sliver lies past the last frame and ffmpeg grabs nothing there */
+const END = 0.25;
+const sceneCuts = (cuts: number[], duration: number) => cuts.filter((c) => c > 0 && c < duration - END);
+
 /** Frame times for a contact sheet: the middle of each short scene, every 3 s in scenes longer than 6 s; at most `max`, spread evenly. */
 export function sheetTimes(cuts: number[], duration: number, max = 48): number[] {
-  const pts = [0, ...cuts.filter((c) => c > 0 && c < duration), duration], out: number[] = [];
+  const pts = [0, ...sceneCuts(cuts, duration), duration], out: number[] = [];
   for (let i = 0; i + 1 < pts.length; i++) {
     const [a, b] = [pts[i], pts[i + 1]];
     if (b - a > 6) for (let t = a + 1.5; t < b - 0.5; t += 3) out.push(Math.round(t * 100) / 100);
@@ -73,12 +78,13 @@ export const photoSheet = (out: string, cells: Array<{ img: string | null; label
 
 const PER_PAGE = 24;
 async function makeSheets(srcPath: string, label: string, cuts: number[], duration: number, page: (n: number) => string, signal?: AbortSignal): Promise<number> {
-  const tmp = mkdtempSync(join(tmpdir(), 'sheet-')), cells: Array<{ img: string; label: string }> = [];
+  const tmp = mkdtempSync(join(tmpdir(), 'sheet-')), cells: Array<{ img: string | null; label: string }> = [];
   try {
     for (const [i, t] of sheetTimes(cuts, duration).entries()) {
       const img = join(tmp, `${i}.jpg`);
       await ffmpeg(['-ss', String(t), '-i', srcPath, '-frames:v', '1', '-vf', 'scale=480:-2', '-q:v', '4', img], { signal });
-      cells.push({ img, label: `${label} ${timecode(t)}` });
+      // ffmpeg ends without a frame past the last one (a video stream shorter than the file, say): a blank cell
+      cells.push({ img: existsSync(img) ? img : null, label: `${label} ${timecode(t)}` });
     }
     const pages = Math.max(1, Math.ceil(cells.length / PER_PAGE));
     for (let n = 1; n <= pages; n++) await atomic(page(n), (out) => photoSheet(out, cells.slice((n - 1) * PER_PAGE, n * PER_PAGE), signal));
@@ -190,7 +196,7 @@ export async function musicBeats(projectDir: string, path: string, o: { signal?:
 /** Overview frame times (toolkit phase 1): the middle of each scene; with fewer scenes than `n` the longest scene is split
  *  until there are `n`, with more they are picked evenly. */
 export function overviewTimes(cuts: number[], duration: number, n = 6): number[] {
-  const pts = [0, ...cuts.filter((c) => c > 0 && c < duration), duration];
+  const pts = [0, ...sceneCuts(cuts, duration), duration];
   let spans = pts.slice(0, -1).map((a, i) => [a, pts[i + 1]] as [number, number]);
   while (spans.length < n) {
     const k = spans.reduce((best, s, i) => (s[1] - s[0] > spans[best][1] - spans[best][0] ? i : best), 0), [a, b] = spans[k];
@@ -229,7 +235,7 @@ export async function overviewSheets(projectDir: string, videos: Array<{ id: str
         for (const [k, t] of overviewTimes(cuts[i], v.duration, OV_FRAMES).entries()) {
           const img = join(tmp, `${i}-${k}.jpg`);
           await ffmpeg(['-ss', String(t), '-i', proxies[i], '-frames:v', '1', '-vf', `scale=${OV_CELL}:${OV_CELL}:force_original_aspect_ratio=decrease`, '-q:v', '5', img], { signal: o.signal });
-          cells.push({ img, label: timecode1(t) });
+          cells.push({ img: existsSync(img) ? img : null, label: timecode1(t) });   // none grabbed: blank, as in makeSheets
         }
         while (cells.length < OV_FRAMES) cells.push({ img: null, label: '' });
         rows.push({ label: `${v.id}\n${timecode(v.duration)}`, cells });

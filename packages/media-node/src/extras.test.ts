@@ -12,6 +12,8 @@ const dir = mkdtempSync(join(tmpdir(), 'extras-'));
 test('sheet frames: one per short scene, every 3 s in long ones, at most `max`', () => {
   expect(sheetTimes([2, 10], 12)).toEqual([1, 3.5, 6.5, 11]);
   expect(sheetTimes([], 400, 4)).toHaveLength(4);
+  // a cut one frame before the end (a rendered film's last frame) is no scene: its middle has no frame to grab
+  expect(sheetTimes([3, 39.333], 39.367)).toEqual([1.5, 4.5, 7.5, 10.5, 13.5, 16.5, 19.5, 22.5, 25.5, 28.5, 31.5, 34.5, 37.5]);
   expect([timecode(5), timecode(65.4)]).toEqual(['0:05', '1:05']);
   expect([timecode1(1.25), timecode1(65.04), timecode1(59.96)]).toEqual(['0:01.3', '1:05.0', '1:00.0']);
 });
@@ -63,6 +65,7 @@ test('overview frames: scene middles; few scenes split the longest one, many are
   const many = overviewTimes(Array.from({ length: 19 }, (_, i) => i + 1), 20);
   expect(many).toHaveLength(6);
   expect([many[0], many.at(-1)]).toEqual([0.5, 19.5]);
+  expect(Math.max(...overviewTimes([20, 30, 39.333], 39.367))).toBeLessThan(39.2);
 });
 
 test('a contact sheet with fixed cells and row labels: its size follows the grid, blank cells allowed', async () => {
