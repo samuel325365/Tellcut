@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseProject } from '@tellcut/engine';
 import { applyPromotion, describePromotion, planPromotion, rewriteCutScript } from './promote.ts';
+import { splitFx, unknownNames } from './fx-split.ts';
 import { editedSinceCut } from './cut/cut.ts';
 import { nextHandle, similarNames, withHandle } from './handle-registry.ts';
 
@@ -41,10 +42,18 @@ test('the plan names the file, the new id, the items that change, the category a
   expect((await plan({ type: 'fx.ring', name: 'halo', category: 'look' })).handle).toBe('LOK-02');
 });
 
-test('it refuses what it should: not an fx, unknown, a file with other blocks, a bad, numbered or taken name, no category', async () => {
+test('it refuses what it should: not an fx, unknown, a file it cannot split, a bad, numbered or taken name, no category', async () => {
   await expect(plan({ type: 'core.flash' })).rejects.toThrow('fx.');
   await expect(plan({ type: 'fx.nope' })).rejects.toThrow('找不到');
-  await expect(plan({ type: 'fx.a' })).rejects.toThrow('拆成自己的檔案');
+  // a file of several is split only when its export is written out plainly
+  writeFileSync(join(dir, 'fx', 'pair.js'), `const list = ${fxSrc('fx.a', 'fx.b').replace('export default ', '')}export default list;\n`);
+  await expect(plan({ type: 'fx.a' })).rejects.toThrow(/沒辦法自動拆開（export default 不是直接寫出來的陣列/);
+  writeFileSync(join(dir, 'fx', 'pair.js'), `const more = ${fxSrc('fx.b').replace('export default ', '')}${fxSrc('fx.a').replace('];', ', ...more];')}`);
+  await expect(plan({ type: 'fx.a' })).rejects.toThrow('第 2 項不是');
+  // the type written is not the type it loads as
+  writeFileSync(join(dir, 'fx', 'pair.js'), `const base = { type: 'fx.c' };\n${fxSrc('fx.a', 'fx.b').replace("{ type: 'fx.b',", "{ type: 'fx.b', ...base,")}`);
+  await expect(plan({ type: 'fx.a' })).rejects.toThrow('跟 export default 寫的 fx.a、fx.b 不一樣');
+  expect(readFileSync(join(dir, 'fx', 'pair.js'), 'utf8')).toContain('...base');   // a refusal writes nothing
   await expect(plan({ type: 'fx.ring', name: 'Bad Name' })).rejects.toThrow('不合法');
   await expect(plan({ type: 'fx.ring', name: 'film2' })).rejects.toThrow('數字結尾');
   await expect(plan({ type: 'fx.ring', name: 'film' })).rejects.toThrow('已經存在');
@@ -145,4 +154,130 @@ test("cut.ts's c.fx call goes wherever it is written; one it cannot find is repo
 test('another fx file of the project that names the type is warned about', async () => {
   writeFileSync(join(dir, 'fx', 'pair.js'), fxSrc('fx.a', 'fx.b').replace("doc: 'd'", "doc: 'd', art: 'fx.ring'"));
   expect((await plan({ type: 'fx.ring' })).warnings.join('\n')).toContain('fx/pair.js 裡也寫了 fx.ring');
+});
+
+// a file of several blocks: helpers each uses, one both use, a header and a comment on each entry
+const SEVERAL = `// the project's own effects
+import { ease } from './lib/ease.js';
+
+const GOLD = '#e9a73b', INK = '#1b1614';
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+/** a ring around the centre */
+function ring(g, r) { g.strokeStyle = GOLD; g.arc(0, 0, clamp(r), 0, 7); }
+const started = Date.now();
+
+function bar(g, w) { g.fillStyle = INK; g.fillRect(0, 0, clamp(w), 4); }
+
+export default [
+  // the bar
+  {
+    type: 'fx.bar', label: 'bar', kind: 'overlay', doc: 'd', params: [],
+    build() { return 0; }, draw({ g }) { bar(g, ease(1)); },
+  },
+  // the ring
+  {
+    type: 'fx.ring', label: 'ring', kind: 'overlay', doc: 'd', params: [],
+    build() { return 0; }, draw({ g }) { ring(g, 1); },
+  },
+  {
+    type: 'fx.dot', label: 'dot', kind: 'overlay', doc: 'd', params: [],
+    build() { return 0; }, draw() {},
+  },
+];
+`;
+
+test('from a file of several, only the named block moves: the shared file keeps the helpers it names, the project keeps the rest', async () => {
+  mkdirSync(join(dir, 'fx', 'lib'));
+  writeFileSync(join(dir, 'fx', 'lib', 'ease.js'), 'export const ease = (x) => x;\n');
+  writeFileSync(join(dir, 'fx', 'pair.js'), SEVERAL);
+  const raw = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
+  raw.meta.fx = ['fx/pair.js'];   // its own fx.ring only
+  rmSync(join(dir, 'fx', 'ring.js'));
+  raw.tracks[0].items = [{ id: 'g1', type: 'fx.ring', start: 0, end: 1, params: {} }, { id: 'b1', type: 'fx.bar', start: 1, end: 2, params: {} }];
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(raw));
+  writeFileSync(join(dir, 'cut.ts'), "export default async function (c) {\n  c.fx('fx/pair.js');\n  c.effect('fx.ring', { at: 0, len: 1 });\n}\n");
+  const pl = await plan({ type: 'fx.ring', name: 'halo' });
+  expect([pl.fxFile, pl.keepsFxEntry, pl.split?.keeps, pl.items]).toEqual(['fx/pair.js', true, ['fx.bar', 'fx.dot'], ['g1']]);
+  expect(describePromotion(pl)).toContain('fx/pair.js 留著其餘 2 個積木（fx.bar、fx.dot）');
+  expect(describePromotion(pl)).toContain("c.fx('fx/pair.js') 留著");
+  expect(pl.warnings).toEqual([]);   // the import is used only by fx.bar, which stays: the moved copy drops it
+
+  await applyPromotion({ dir, commonDir: common, plan: pl, handlesFile });
+  const moved = readFileSync(join(common, 'src', 'halo.ts'), 'utf8');
+  expect(moved).toBe(`// @ts-nocheck — promoted from a project's own effect (fx.ring); add types when you next touch it.
+// the project's own effects
+
+const GOLD = '#e9a73b';
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+/** a ring around the centre */
+function ring(g, r) { g.strokeStyle = GOLD; g.arc(0, 0, clamp(r), 0, 7); }
+const started = Date.now();
+
+export default [
+  // the ring
+  {
+    type: 'common.halo', category: 'mark', label: 'ring', kind: 'overlay', doc: 'd', params: [],
+    build() { return 0; }, draw({ g }) { ring(g, 1); },
+  },
+];
+`);
+  // the project's file: only the entry and its comment are gone; its helpers stay as they were
+  expect(readFileSync(join(dir, 'fx', 'pair.js'), 'utf8')).toBe(SEVERAL.replace(`  // the ring
+  {
+    type: 'fx.ring', label: 'ring', kind: 'overlay', doc: 'd', params: [],
+    build() { return 0; }, draw({ g }) { ring(g, 1); },
+  },
+`, ''));
+  const p = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')));
+  expect(p.meta.fx).toEqual(['fx/pair.js']);
+  expect(p.tracks[0].items.map((i: any) => i.type)).toEqual(['common.halo', 'fx.bar']);
+  expect(readFileSync(join(dir, 'cut.ts'), 'utf8')).toBe("export default async function (c) {\n  c.fx('fx/pair.js');\n  c.effect('common.halo', { at: 0, len: 1 });\n}\n");
+  expect(readdirSync(join(dir, '.history', 'promote')).map((f) => f.replace(/^[^_]+_/, ''))).toEqual(['pair.js']);
+  expect(readFileSync(join(dir, '.history', 'promote', readdirSync(join(dir, '.history', 'promote'))[0]), 'utf8')).toBe(SEVERAL);
+  // the rest still loads as the other two
+  const { loadProjectFx } = await import('@tellcut/media-node');
+  const r = await loadProjectFx(dir, ['fx/pair.js']);
+  expect([r.errors, r.plugin.items!.map((i) => i.type)]).toEqual([[], ['fx.bar', 'fx.dot']]);
+});
+
+test('splitting: the first or the last entry, a one-line list; an import the moved block needs is warned about', () => {
+  const one = `export default [{ type: 'fx.a', n: 1 }, { type: 'fx.b', n: 2 }];\n`;
+  expect(splitFx(one, 'x.js', 'fx.a', ['fx.a', 'fx.b'])).toMatchObject({ rest: `export default [ { type: 'fx.b', n: 2 }];\n`, shared: `export default [{ type: 'fx.a', n: 1 }];\n` });
+  expect(splitFx(one, 'x.js', 'fx.b', ['fx.a', 'fx.b'])).toMatchObject({ rest: `export default [{ type: 'fx.a', n: 1 }];\n`, shared: `export default [ { type: 'fx.b', n: 2 }];\n` });
+  const s = splitFx(SEVERAL, 'x.js', 'fx.bar', ['fx.bar', 'fx.ring', 'fx.dot']);
+  expect(s.shared).toContain("import { ease } from './lib/ease.js';");
+  expect(s.shared).toContain('function bar(');
+  expect(s.shared).not.toMatch(/function ring|GOLD/);
+  expect(s.shared).toContain("const INK = '#1b1614';");
+  expect(s.rest).not.toContain("type: 'fx.bar'");
+  // a value made by running something stays even when nothing names it
+  expect(s.shared).toContain('const started = Date.now();');
+  expect(() => splitFx(SEVERAL.replace("type: 'fx.dot'", "type: 'fx.ring'"), 'x.js', 'fx.ring', ['fx.bar', 'fx.ring', 'fx.ring'])).toThrow('不是剛好寫了一次');
+  expect(() => splitFx('export default [{ type: "fx.a" },, { type: "fx.b" }];', 'x.js', 'fx.a', ['fx.a', 'fx.b'])).toThrow('第 2 項不是');
+  expect(() => splitFx('export default [{ type: "fx.a" }, { type: "fx.b" }', 'x.js', 'fx.a', ['fx.a', 'fx.b'])).toThrow('讀不懂它的語法');
+});
+
+test('a moved block that imports a project file is warned about', async () => {
+  mkdirSync(join(dir, 'fx', 'lib'));
+  writeFileSync(join(dir, 'fx', 'lib', 'ease.js'), 'export const ease = (x) => x;\n');
+  writeFileSync(join(dir, 'fx', 'pair.js'), SEVERAL);
+  expect((await plan({ type: 'fx.bar' })).warnings.join('\n')).toContain('從專案裡的檔案 import 東西');
+});
+
+test('the split is checked for names it would lose: what a module uses but does not declare, the browser aside', () => {
+  expect(unknownNames("import { e } from './e.js';\nconst a = 1;\nb(a, e); document.body.append(new Path2D()); Math.max(1);\n", 'x.js')).toEqual(['b']);
+  expect(unknownNames(SEVERAL, 'x.js')).toEqual([]);
+});
+
+test('a file of several edited between the preview and --yes is not touched: nothing at all is written', async () => {
+  mkdirSync(join(dir, 'fx', 'lib'));
+  writeFileSync(join(dir, 'fx', 'lib', 'ease.js'), 'export const ease = (x) => x;\n');
+  writeFileSync(join(dir, 'fx', 'pair.js'), SEVERAL);
+  const raw = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
+  raw.meta.fx = ['fx/pair.js'];
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(raw));
+  const pl = await plan({ type: 'fx.dot', name: 'dot' });
+  writeFileSync(join(dir, 'fx', 'pair.js'), SEVERAL.replace("label: 'dot'", "label: 'spot'"));
+  await expect(applyPromotion({ dir, commonDir: common, plan: pl, handlesFile })).rejects.toThrow('在預覽之後改過了');
+  expect([readFileSync(handlesFile, 'utf8'), existsSync(join(common, 'src', 'dot.ts')), existsSync(join(dir, '.history'))]).toEqual([HANDLES, false, false]);
 });
