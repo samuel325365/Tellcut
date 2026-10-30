@@ -10,7 +10,7 @@ function world() {
   mkdirSync(join(root, 'footage'), { recursive: true });
   const project = { version: 1, meta: { name: '旅行' }, sources: { a: { path: '../../../footage/a.mp4' }, b: { path: 'media/b.mp4' } }, media: { v: { path: 'media/voice/1.wav' } }, tracks: [] };
   const put = (f: string, s = f) => writeFileSync(join(dir, f), s);
-  put('project.json', JSON.stringify(project)); put('cut.ts'); put('narration.json'); put('storyboard.md'); put('brand.md'); put('fx/ring.js'); put('score/waltz.js');
+  put('project.json', JSON.stringify(project)); put('cut.ts'); put('narration.json'); put('storyboard.md'); put('brand.md'); put('CREDITS.md'); put('fx/ring.js'); put('score/waltz.js');
   put('media/b.mp4'); put('media/voice/1.wav'); put('.history/chat/chat.json'); put('.history/chat/chat.json.lock'); put('.history/chat/chat.json.123.tmp'); put('cache/proxy.mp4'); put('cache/cut-state.json'); put('exports/film.mp4');   // the lock and .tmp: a chat turn running as it was zipped
   writeFileSync(join(root, 'footage', 'a.mp4'), 'footage a');
   return { root, tellcut, dir };
@@ -20,7 +20,7 @@ test('what an export holds: the project\'s own files and history; --media adds m
   const { dir } = world(), project = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
   const own = exportPlan(dir, project, { media: false });
   // cut-state.json goes too: without it the imported project's next cut wrote over the editor's edits without asking
-  expect(own.files.map((f) => f.to).sort()).toEqual(['.history/chat/chat.json', 'brand.md', 'cache/cut-state.json', 'cut.ts', 'fx/ring.js', 'narration.json', 'score/waltz.js', 'storyboard.md']);
+  expect(own.files.map((f) => f.to).sort()).toEqual(['.history/chat/chat.json', 'CREDITS.md', 'brand.md', 'cache/cut-state.json', 'cut.ts', 'fx/ring.js', 'narration.json', 'score/waltz.js', 'storyboard.md']);
   expect(own.project).toEqual(project);                                       // paths untouched: the footage is not in the zip
   expect(own.outside).toEqual(['a']);
   const all = exportPlan(dir, project, { media: true });
@@ -72,6 +72,8 @@ test('scrubText writes this computer\u2019s tellcut folder as <tellcut> (with \\
   expect(scrubText('at C:\\Users\\amy\\Desktop\\work\\tellcut\\projects\\x\\cut.ts and c:/users/amy/Desktop/work/tellcut/a', o))
     .toBe('at <tellcut>\\projects\\x\\cut.ts and <tellcut>/a');
   expect(scrubText(JSON.stringify({ p: 'C:\\Users\\amy\\Desktop\\work\\tellcut\\x.mp4' }), o)).toBe('{"p":"<tellcut>\\\\x.mp4"}');
+  // as Git Bash writes it, in the commands the agent runs
+  expect(scrubText('cd /c/Users/amy/Desktop/work/tellcut/projects/x && mkdir -p /C/Users/amy/Desktop/work/tellcut', o)).toBe('cd <tellcut>/projects/x && mkdir -p <tellcut>');
   for (const other of ['C:\\Users\\amy\\Desktop\\work\\tellcut-old\\x', 'C:\\Users\\amy\\Videos\\a.mp4']) {
     expect(scrubText(other, o)).toBe(other);
     expect(leftoverPaths(scrubText(other, o))).toEqual([other]);
