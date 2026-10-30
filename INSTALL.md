@@ -54,6 +54,18 @@ Then open <http://127.0.0.1:5174/editor/> in your browser.
 
 Footage can live in any folder. If you'd like to keep it in one place, create a `sources` folder inside `tellcut`: git ignores it, and the import window lists it directly.
 
+## 4. Example projects (optional)
+
+Finished films made in Tellcut, as projects you can open, play and take apart:
+
+```
+npm run examples                 # list them
+npm run examples -- <name>       # download one into your projects
+npm run examples -- --all        # download them all
+```
+
+Each comes with its footage and its finished film (in the project's `exports/`). Open it from the home page like any project of yours; the first time, Tellcut analyses its footage again. A project with the same name already in `projects/` is never overwritten.
+
 ## If something goes wrong
 
 Run this first:

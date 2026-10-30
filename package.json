@@ -25,6 +25,7 @@
     "new": "tsx tools/new.ts",
     "inspect": "tsx tools/inspect.ts",
     "brand-assets": "tsx tools/brand-assets.ts",
+    "examples": "tsx tools/examples.ts",
     "export-project": "tsx tools/export-project.ts",
     "import-project": "tsx tools/export-project.ts",
     "cut": "tsx tools/cut.ts",
