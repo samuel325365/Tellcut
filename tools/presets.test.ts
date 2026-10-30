@@ -65,8 +65,34 @@ test("every preset but custom has the length and ratios check compares with, and
   expect([custom.length, custom.ratios]).toEqual([undefined, undefined]);
 });
 
-test('travel holds its whole direction and skips the genre cards (2026-10-28); the others still use them until reviewed', () => {
-  expect(presets().filter((p) => !p.genres).map((p) => p.id)).toEqual(['travel']);
+test('the reviewed presets hold their whole direction and skip the genre cards (travel 2026-10-28, five more 2026-10-31); brand and explainer still use them', () => {
+  expect(presets().filter((p) => !p.genres).map((p) => p.id)).toEqual(['travel', 'clips', 'podcast', 'food', 'vlog', 'celebration']);
+});
+
+// 2026-10-31: the same review as travel's for five more. Each style's prompt starts with its kind (Form, Captions, Cut, Accent, Look),
+// at most one form and one look, and the forms name the blocks they are built on
+test('clips, podcast, food, vlog and celebration: forms first, then the rest, each naming its blocks', () => {
+  const ids = (p: string) => presets().find((x) => x.id === p)!.styles.map((s) => s.id);
+  const style = (p: string, s: string) => presets().find((x) => x.id === p)!.styles.find((x) => x.id === s)!.prompt;
+  expect(ids('clips')).toEqual(['quote-card', 'search', 'live-replay', 'title-bar', 'big-captions', 'telop', 'punch-in', 'tease', 'progress']);
+  expect(ids('podcast')).toEqual(['stacked', 'solo', 'versus', 'group-chat', 'quote-card', 'waveform', 'big-captions', 'qa-captions', 'telop', 'list-slots']);
+  expect(ids('food')).toEqual(['receipt', 'street-route', 'shutter', 'judge', 'search', 'chat', 'rating', 'verdict-stamp', 'polaroid', 'ember-tag', 'price-chart', 'sound-closeups', 'warm']);
+  expect(ids('vlog')).toEqual(['planner', 'notifications', 'chat', 'album', 'silent', 'photo-dump', 'transitions', 'jump-cuts', 'day-clock', 'handwritten-notes', 'polaroid', 'cinematic', 'retro']);
+  expect(ids('celebration')).toEqual(['frame', 'postcard', 'timeline', 'memories', 'group-chat', 'magazine', 'slow-title', 'dissolves', 'photo-dump', 'polaroid', 'cinematic', 'retro', 'film']);
+  for (const p of ['clips', 'podcast', 'food', 'vlog', 'celebration']) {
+    const pre = presets().find((x) => x.id === p)!;
+    expect(pre.prompt, p).toMatch(/at most one form/i);
+    for (const s of pre.styles) expect(s.prompt, `${p}.${s.id}`).toMatch(/^(Form|Captions|Cut|Accent|Look):/);
+    // only the audiogram has no shared block yet (TODO 2026-10-31)
+    for (const s of pre.styles) expect(!!s.custom, `${p}.${s.id}`).toBe(p === 'podcast' && s.id === 'waveform');
+  }
+  for (const [p, s, b] of [['clips', 'quote-card', 'common.quote'], ['clips', 'live-replay', 'common.comments'], ['podcast', 'versus', 'common.versus'],
+    ['podcast', 'group-chat', 'chatWindow'], ['food', 'receipt', 'common.printer'], ['food', 'street-route', 'common.route'], ['food', 'shutter', 'common.rolldoor'],
+    ['food', 'judge', 'common.gauge'], ['food', 'ember-tag', "look: 'ember'"], ['vlog', 'planner', 'common.paper'], ['vlog', 'silent', "style: 'strip'"],
+    ['celebration', 'frame', 'frameWindow'], ['celebration', 'timeline', "common.meter look: 'band'"], ['celebration', 'memories', 'mode foryou']] as const)
+    expect(style(p, s), `${p}.${s}`).toContain(b);
+  expect(presets().find((x) => x.id === 'food')!.prompt).toMatch(/info cards .* welcome/i);
+  for (const p of ['clips', 'podcast', 'vlog', 'celebration']) expect(presets().find((x) => x.id === p)!.prompt, p).toMatch(/no info cards/i);
 });
 
 // 2026-10-31: the films need not be full-frame footage any more. Nine forms that each carry the whole film (at most one), two ways
