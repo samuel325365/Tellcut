@@ -10,7 +10,7 @@ A screen recording of Tellcut making and editing one reel, with the reel itself 
 
 ## The brand film and its stills
 
-`banner.jpg`, `wall.jpg`, `watch.jpg`, `beat.jpg`, `ratio.jpg` and `check.jpg` come from Tellcut's brand film.
+`wall.jpg`, `watch.jpg`, `beat.jpg`, `ratio.jpg` and `check.jpg` come from Tellcut's brand film.
 
 Footage: [Pixabay](https://pixabay.com/) (Pixabay Content License). The wall, timeline and sphere tiles use Pixabay search thumbnails.
 
@@ -28,9 +28,13 @@ Footage: [Pixabay](https://pixabay.com/) (Pixabay Content License). The wall, ti
 
 Music: Tellcut's own score ("cinematic", 80 BPM). Sound effects are synthesised. Type: Inter (SIL Open Font License).
 
+## The banner
+
+`banner.jpg` is the Tellcut logo (`docs/brand/tellcut-lockup-dark.svg`) on the brand's black. Type: Inter (SIL Open Font License).
+
 ## The editor screenshots
 
-`editor.jpg` is the Tellcut editor with the travel preset's sample short open (the Rome Trip project). Its footage is **"3 DAYS IN ROME ⛲️ 🍝 🇮🇹 Vatican City, Trevi Fountain, Colosseum & More | Italy Travel Vlog 2024"** by **Jackie Vlogs** — https://www.youtube.com/watch?v=qQGjPdTekyA, used under the Creative Commons Attribution 3.0 licence (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/); the media panel, the preview and the timeline show frames of it. One timeline thumbnail is the short's map: map data © OpenStreetMap contributors, tiles © CARTO. `home.jpg` is the home page; its preset cards are the sample previews below.
+`editor.jpg` is the Tellcut editor with a podcast short open, made with the Podcast Highlights preset. Its footage is **"Getting Real About Gen-Z Struggles w/@ThatAmberRose | The Lila Rose Podcast E178"** by **Lila Rose** — https://www.youtube.com/watch?v=zQjzr-Q3E_o (minutes 41–44), used under the Creative Commons Attribution 3.0 licence (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/); the media panel, the preview and the timeline show frames and the sound of it. `home.jpg` is the home page; its preset cards are the sample previews below.
 
 ## The sample previews
 

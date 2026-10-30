@@ -23,11 +23,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Windows-only-0a84ff?style=for-the-badge&logo=windows&logoColor=white" alt="Windows only">
+  <img src="https://img.shields.io/badge/Windows-only-161412?style=for-the-badge&logo=windows&logoColor=white" alt="Windows only">
   <img src="https://img.shields.io/badge/Node.js-24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 24">
   <img src="https://img.shields.io/badge/Agent-Claude%20Code-d97757?style=for-the-badge&logo=claude&logoColor=white" alt="Claude Code">
-  <img src="https://img.shields.io/badge/UI-EN%20%C2%B7%20%E4%B8%AD%E6%96%87%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-7048e8?style=for-the-badge" alt="English · 中文 · 日本語">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT licence"></a>
+  <img src="https://img.shields.io/badge/UI-EN%20%C2%B7%20%E4%B8%AD%E6%96%87%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-d8b88a?style=for-the-badge" alt="English · 中文 · 日本語">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-161412?style=for-the-badge" alt="MIT licence"></a>
 </p>
 
 ---
