@@ -49,8 +49,15 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
   // a media clip's own sound follows a new in-point and length, and plays at a new speed too (like a rate stretch)
   const own = rate !== null ? ownSounds(p, it.id) : [];
   const k = rate !== null ? mediaRate(f.track, next as AnyItem)! / rate : 1;
-  // a sound plays at most 4×: refused before anything changes, like checkItem
-  for (const c of own) if (r6(c.rate * k) > 4) throw new CommandError(`${f.track.kind === 'video' ? 'speed' : 'rate'}: the clip's own sound cannot play faster than 4× (it would need ${r6(c.rate * k)}×)`, 'cmd.ownSoundTooFast', { need: r6(c.rate * k) });
+  // a sound plays at most 4× and within its source: refused before anything changes, like checkItem
+  const field = f.track.kind === 'video' ? 'speed' : 'rate', len = next.end - next.start, n3 = (v: number) => Math.round(v * 1000) / 1000;
+  for (const c of own) {
+    if (r6(c.rate * k) > 4) throw new CommandError(`${field}: the clip's own sound cannot play faster than 4× (it would need ${r6(c.rate * k)}×)`, 'cmd.ownSoundTooFast', { need: r6(c.rate * k) });
+    // a frozen clip plays less of its source than its sound, which goes on past freezeAt: checkItem passed the picture, so
+    // the sound's new range is checked the same way (a clip without freezeAt that ran out was refused there already)
+    const has = p.sources[c.source]?.duration ?? Infinity, need = r6(c.in + next.in - oldIn) + len * r6(c.rate * k);
+    if (need > has + 1e-6 * (1 + len)) throw new CommandError(`${field}: the clip's own sound runs past the end of source "${c.source}" (needs ${n3(need)} s, has ${n3(has)} s)`, 'cmd.ownSoundPastEnd', { source: c.source, need: n3(need), have: n3(has) });
+  }
   for (const [key, v] of Object.entries(a.patch)) { if (v === undefined) delete it[key]; else it[key] = plain(v); }
   if (fitsFades) fitFades(f.track, it);
   for (const c of own) { c.in = r6(c.in + it.in - oldIn); c.rate = r6(c.rate * k); }

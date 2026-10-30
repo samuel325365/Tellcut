@@ -1,6 +1,7 @@
-import { ProjectZ } from '../schema.ts';
+import { ProjectZ, type Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
 import { addItem, updateItem } from './edit.ts';
+import { CommandError } from './core.ts';
 import { rateStretch, roll, slip, trimEnd, trimStart } from './trim.ts';
 import { fixture, item, run } from './test-fixture.ts';
 
@@ -98,6 +99,26 @@ test("a speed stretch stops where the clip's own sound reaches its 4× limit (th
   expect(ProjectZ.safeParse(p).success).toBe(true);
   // without an own sound the clip still goes to 16×
   expect(item(run(fixture(), rateStretch, { id: 'c1', edge: 'end', dt: -3.9 }), 'c1').speed).toBe(16);
+});
+
+test("a frozen clip sped up: its own sound, which plays on past the freeze, stays inside the source", () => {
+  // c2 from 20 s of the 30 s source, frozen 1 s in (the picture needs 2 s); its own sound needs 4 × 2 = 8 s, to 28 s
+  const frozen = () => {
+    const p = fixture();
+    updateItem(p, { id: 'c2', patch: { in: 20, freezeAt: 1 } });
+    addItem(p, { track: 'au', item: { id: 'snd2', source: 's', in: 20, rate: 2, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c2' } });
+    return p;
+  };
+  const end = (p: Project) => { const s = item(p, 'snd2'); return s.in + (s.end - s.start) * s.rate; };
+  // 3× from the panel: the picture needs only 3 s, the sound 12 s (to 32 s): refused, as a clip without freezeAt is
+  expect(() => run(frozen(), updateItem, { id: 'c2', patch: { speed: 3 } })).toThrow(CommandError);
+  try { run(frozen(), updateItem, { id: 'c2', patch: { speed: 3 } }); } catch (e) { expect(e).toMatchObject({ code: 'cmd.ownSoundPastEnd', params: { source: 's', need: 32, have: 30 } }); }
+  expect(item(run(frozen(), updateItem, { id: 'c2', patch: { speed: 2.5 } }), 'snd2')).toMatchObject({ rate: 2.5, end: 4 });
+  // a speed stretch keeps the sound's source range as it keeps the picture's: it never runs out
+  for (const dt of [-3, -1, 2, 6]) {
+    const p = run(frozen(), rateStretch, { id: 'c2', edge: 'end', dt });
+    expect(end(p)).toBeCloseTo(28, 5);
+  }
 });
 
 test("slipping a clip slips its own sound with it (the same stop at the source's ends)", () => {

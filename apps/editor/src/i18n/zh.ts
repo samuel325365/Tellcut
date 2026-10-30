@@ -522,6 +522,7 @@ export const zh = {
   'err.cmd.crossfadeAudioOnly': '只有音樂與音訊片段可以交叉淡化',
   'err.cmd.noOverlapPrev': '「{id}」沒有和前一段重疊',
   'err.cmd.ownSoundTooFast': '片段自己的聲音最快只能 4 倍速（這個速度要 {need} 倍）',
+  'err.cmd.ownSoundPastEnd': '片段自己的聲音會超過素材「{source}」的結尾（要用到 {need} 秒，素材只有 {have} 秒）',
   'err.chat.busy': '還在回覆中',
   'err.chat.notFound': '找不到 claude 指令：請先安裝 Claude Code（npm install -g @anthropic-ai/claude-code）',
   'err.chat.notLoggedIn': 'Claude Code 還沒登入：請在終端機執行 claude 並登入',

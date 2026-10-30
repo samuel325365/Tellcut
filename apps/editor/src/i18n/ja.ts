@@ -523,6 +523,7 @@ export const ja: Record<Key, string> = {
   'err.cmd.crossfadeAudioOnly': 'クロスフェードできるのは音楽とオーディオのクリップだけです',
   'err.cmd.noOverlapPrev': '「{id}」は前のクリップと重なっていません',
   'err.cmd.ownSoundTooFast': 'クリップ自身の音は 4 倍速までです（この速度では {need} 倍が必要）',
+  'err.cmd.ownSoundPastEnd': 'クリップ自身の音が素材「{source}」の終わりを超えます（{need} 秒まで必要、素材は {have} 秒）',
   'err.chat.busy': 'この会話はまだ返信中です。終わるのを待つか、止めてください',
   'err.chat.notFound': 'claude コマンドが見つかりません：先に Claude Code をインストールしてください（npm install -g @anthropic-ai/claude-code）',
   'err.chat.notLoggedIn': 'Claude Code にログインしていません：ターミナルで claude を実行してログインしてください',

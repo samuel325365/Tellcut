@@ -523,6 +523,7 @@ export const en: Record<Key, string> = {
   'err.cmd.crossfadeAudioOnly': 'Only music and audio clips can crossfade',
   'err.cmd.noOverlapPrev': '"{id}" does not overlap the clip before it',
   'err.cmd.ownSoundTooFast': "The clip's own sound cannot play faster than 4× (this speed needs {need}×)",
+  'err.cmd.ownSoundPastEnd': 'The clip\'s own sound would run past the end of "{source}" (it needs {need} s, the source has {have} s)',
   'err.chat.busy': 'A reply is still running in this conversation; wait for it or stop it',
   'err.chat.notFound': 'The claude command was not found: install Claude Code first (npm install -g @anthropic-ai/claude-code)',
   'err.chat.notLoggedIn': 'Claude Code is not logged in: run claude in a terminal and log in',
