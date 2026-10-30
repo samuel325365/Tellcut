@@ -14,6 +14,7 @@ import { tip } from './tip.ts';
 import { errText, t, type Key } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
 import { blockText } from './i18n/blocks.ts';
+import { localValues } from './i18n/values.ts';
 import { CLIP_FX, handleOf, type ClipFx, type LibraryBlockInfo, type LibraryIndex, type LibraryStyleInfo, type LibraryUsage } from '@tellcut/protocol';
 import { getLang } from './i18n/lang.ts';
 
@@ -46,7 +47,8 @@ function Handle({ id }: { id: string }) {
 
 function Params({ type, defs, values, onChange, theme }: { type: string; defs: GalleryBlock['params']; values: Record<string, unknown>; onChange: (k: string, v: unknown) => void; theme?: string }) {
   if (!defs.length) return <p class="dim" data-params>{t('gallery.noParams')}</p>;
-  // data-params: the parameter NAMES follow the language (params.en/ja.ts); their values (default text, options) never do
+  // data-params: the parameter NAMES follow the language (params.en/ja.ts), and so do the words a block starts with (values.en/ja.ts,
+  // passed in as values); options and what the user types never do
   return <div class="g-params" data-params>{defs.map((d) => <ParamField def={d} type={type} surface="gallery" value={values[d.key]} project={fieldProject(theme)} onCommit={(v) => onChange(d.key, v)} />)}</div>;
 }
 
@@ -60,7 +62,9 @@ function useParams(name: string): [Record<string, unknown>, (p: Record<string, u
 }
 
 function BlockDetail({ b }: { b: GalleryBlock }) {
-  const [params, setParams] = useParams(b.type), [theme, setTheme] = useState('none'), [n, setN] = useState(0), x = shown(b.type, b);
+  const [set, setParams] = useParams(b.type), [theme, setTheme] = useState('none'), [n, setN] = useState(0), x = shown(b.type, b);
+  // the block as it would be added in this UI language: its Chinese words in that language, under what the user changed
+  const params = { ...localValues(b.type, b.params), ...set };
   return (
     <section class="g-detail" data-detail={b.type}>
       <Head label={x.label} name={b.type} />
@@ -73,7 +77,7 @@ function BlockDetail({ b }: { b: GalleryBlock }) {
       <p class="g-doc">{x.doc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       {b.needsMedia && <p class="g-warn" data-needs-media>{t('gallery.needsMediaWarn')}</p>}
       <h3>{t('gallery.params')}</h3>
-      <Params type={b.type} defs={b.params} values={params} theme={theme} onChange={(k, v) => setParams({ ...params, [k]: v })} />
+      <Params type={b.type} defs={b.params} values={params} theme={theme} onChange={(k, v) => setParams({ ...set, [k]: v })} />
     </section>
   );
 }

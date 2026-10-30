@@ -398,6 +398,29 @@ test('replaceBlock swaps the type in place, keeps the shared parameters and refu
   expect(ed.store.get().notice).toBe('只能換成同一類：畫面上的特效換特效、背景或框換背景或框、音效換音效');
 });
 
+// showcase films (spec 2026-10-30 part 2): no Chinese words in a block added from the English or Japanese UI
+test('a block added or swapped in the English UI starts with its words in English; in Chinese it keeps its own defaults', async () => {
+  const block = (type: string, keys: string[]) => ({ type, label: type, kind: 'overlay', params: keys.map((key) => ({ key, label: key, type: 'string', default: '' })), build: () => null, draw: () => {} });
+  const registry = createRegistry([corePlugin, { id: 'x', items: [block('x.a', ['color'])] } as any]);
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge, registry });
+  await ed.open();
+  const added = () => ed.store.get().project!.tracks.flatMap((t) => t.items as any[]).find((x: any) => x.id === ed.store.get().selection[0]);
+  try {
+    setLang('en');
+    ed.seek(1); ed.addOverlay('core.title');
+    expect(added().params).toEqual({ text: 'Title' });
+    ed.seek(4); ed.addOverlay('x.a');
+    const id = ed.store.get().selection[0];
+    ed.updateParam(id, 'color', '#f00');
+    ed.replaceBlock(id, 'core.lowerThird');
+    expect(added().params).toEqual({ text: 'Place', color: '#f00' });   // the colour both have stays
+    setLang('zh');
+    ed.seek(7); ed.addOverlay('core.title');
+    expect(added().params).toEqual({});
+  } finally { setLang('zh'); }
+});
+
 test('pressing export twice while it is starting starts one export and shows no error', async () => {
   let starts = 0;
   const { api, bridge } = fakes({

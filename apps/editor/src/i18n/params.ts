@@ -1,6 +1,7 @@
 // Parameter names in three languages. The Chinese comes from ParamDef.label itself ("name（hint）"); English and Japanese are kept in
-// params.en.ts / params.ja.ts, keyed `<type id>.<param key>`. Only the NAME and its hint are translated, never a parameter's value
-// (default text, dropdown options, what the user types). Missing: requested language, then English, then the Chinese label split.
+// params.en.ts / params.ja.ts, keyed `<type id>.<param key>`. Only the NAME and its hint are translated here; the words a block starts
+// with are values.ts's, and dropdown options and what the user types never are. Missing: requested language, then English, then the
+// Chinese label split.
 import type { Lang } from '@tellcut/protocol';
 import { getLang } from './lang.ts';
 import { PARAMS_EN } from './params.en.ts';

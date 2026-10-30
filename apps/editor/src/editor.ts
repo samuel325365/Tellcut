@@ -24,6 +24,7 @@ import { PresetSaveFlow } from './editor/preset-save.ts';
 import { errText, t as say } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 import { paramText } from './i18n/params.ts';
+import { localValues } from './i18n/values.ts';
 
 type Recipe = (d: Project) => void;
 /** A proposal as the server sends it (media-node's Proposal, without the node imports). */
@@ -956,8 +957,9 @@ export class Editor {
     const why = replaceProblem(this.registry, this.s.project, id, type);
     if (why) { this.set({ notice: why }); return false; }
     const f = allItems(this.s.project!).find((x) => x.item.id === id)!, it = f.item as any, sfx = f.track.kind === 'sfx';
-    const keys = new Set((sfx ? this.registry?.sfx(type) : this.registry?.item(type))!.params.map((d) => d.key));
-    const params = Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => keys.has(k)));
+    const defs = (sfx ? this.registry?.sfx(type) : this.registry?.item(type))!.params, keys = new Set(defs.map((d) => d.key));
+    // the words the new type starts with in the UI language, under the parameters both types have
+    const params = { ...localValues(type, defs), ...Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => keys.has(k))) };
     return this.update(id, { type, params });
   }
 
@@ -965,7 +967,8 @@ export class Editor {
     const why = uniqueBlock(this.registry, this.s.project!, type);
     if (why) { this.set({ notice: why }); return false; }
     const t = this.s.playhead;
-    return this.addTo('overlay', { type, start: t, end: t + 2, params: {} });
+    // in the English or Japanese UI a block's Chinese words start in that language (written in, so the panel shows what is drawn)
+    return this.addTo('overlay', { type, start: t, end: t + 2, params: localValues(type, this.registry?.item(type)?.params ?? []) });
   }
 
   select(ids: string[], o: { reveal?: boolean } = {}) {

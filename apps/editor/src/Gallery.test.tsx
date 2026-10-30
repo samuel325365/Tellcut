@@ -221,7 +221,8 @@ test('the gallery speaks the chosen language', async () => {
   } finally { setLang('zh'); localStorage.clear(); }
 });
 
-test('parameter names follow the language, their values do not', async () => {
+// the words a block starts with follow the language too (spec 2026-10-30-showcase-films part 2: no Chinese in the English UI)
+test('parameter names and the words a block starts with follow the language', async () => {
   const { setLang } = await import('./i18n/lang.ts');
   const { PARAMS_EN, PARAMS_JA } = await import('./i18n/params.ts');
   try {
@@ -231,11 +232,14 @@ test('parameter names follow the language, their values do not', async () => {
     await click(root, '[data-card="core.title"]');
     expect(title(root).querySelector('[data-param="text"] span')!.textContent).toBe(PARAMS_EN['core.title.text'].name);
     expect(title(root).textContent).not.toContain('文字');
-    expect(title(root).querySelector<HTMLTextAreaElement>('[data-param="text"] textarea')!.value).toBe('片名');   // the default text stays
+    const text = (r: Element) => title(r).querySelector<HTMLTextAreaElement>('[data-param="text"] textarea')!.value;
+    expect(text(root)).toBe('Title');
     await click(root, '[data-lang="ja"]');
     expect(title(root).querySelector('[data-param="text"] span')!.textContent).toBe(PARAMS_JA['core.title.text'].name);
+    expect(text(root)).toBe('タイトル');
     await click(root, '[data-lang="zh"]');
     expect(title(root).querySelector('[data-param="text"] span')!.textContent).toBe('文字');
+    expect(text(root)).toBe('片名');
   } finally { setLang('zh'); localStorage.clear(); }
 });
 
