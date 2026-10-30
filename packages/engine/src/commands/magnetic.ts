@@ -29,6 +29,10 @@ function touchedIds(before: Project, after: Project, mag: Track): Set<string> {
     // only a change of place in time counts: attach/detach keep the place, so a hand-made (un)hanging stays
     const a = ta.get(it.id)!, b = tb.get(it.id)!;
     if (Math.abs(a.start - b.start) <= EPS && Math.abs(a.end - b.end) <= EPS) continue;
+    // off the magnetic track a trim or a stretch (a new length) is not a move: the item stays on its clip, or on none. A grade
+    // over the whole film trimmed to a shorter film was hung on the first clip, so a later trim of that clip would have dragged
+    // it off the others. (A clip of the magnetic track itself still counts: pack places it by its start.)
+    if (t !== mag && Math.abs((a.end - a.start) - (b.end - b.start)) > EPS) continue;
     if (it.parent === undefined) { out.add(it.id); continue; }
     const par = old.get(it.parent)?.i, now = items(mag).find((c) => c.id === it.parent);
     // a child moved by its own drag (its parent unchanged), not by the parent's trim

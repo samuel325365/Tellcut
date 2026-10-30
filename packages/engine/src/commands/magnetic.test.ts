@@ -77,6 +77,23 @@ test('an item placed or moved over a clip hangs on it; moved off every clip it h
   expect([item(p, 'free').parent, at(p, 'free').start]).toEqual([undefined, 25.5]);
 });
 
+test('a grade over the whole film, trimmed with a shorter film, stays on no clip (the proposal does not list a new parent)', async () => {
+  const { applyOps } = await import('../ops.ts');
+  const base = mag((q) => { q.tracks[1].items.push({ id: 'grade', type: 'x.tone', start: 0, end: 12, params: {} }); });
+  // what a "make this part tighter" proposal sent: the clips shortened, the grade trimmed to the new end
+  const r = applyOps(base, [{ op: 'trimEnd', id: 'c2', dt: -1 }, { op: 'trimEnd', id: 'c3', dt: -1 }, { op: 'trimEnd', id: 'grade', dt: -2 }]);
+  expect([item(r.project, 'grade').parent, at(r.project, 'grade').start, at(r.project, 'grade').end]).toEqual([undefined, 0, 10]);
+  expect(r.summary).not.toContain('grade 修改 parent');
+  expect(r.summary).toContain('grade end 12.00→10.00');
+  // its head trimmed onto the second clip: still on none; a caption trimmed keeps its clip
+  expect(item(go(base, trimStart, { id: 'grade', dt: 5 }), 'grade').parent).toBeUndefined();
+  expect(item(go(mag(), trimStart, { id: 'cap', dt: -3 }), 'cap').parent).toBe('c2');
+  // moved, it is placed again: it hangs on the clip under its start
+  expect(item(go(base, moveItems, { ids: ['grade'], dt: 5 }), 'grade').parent).toBe('c2');
+  // a clip of the magnetic track stretched past its neighbour's middle is still placed by its start
+  expect(go(mag(), rateStretch, { id: 'c1', edge: 'end', dt: 10 }).tracks[0].items.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
+});
+
 test('music that ends with the film stops where its file ends, and says so', () => {
   const p = go(mag(), rateStretch, { id: 'c3', edge: 'end', dt: 20 });
   expect([p.meta.duration, item(p, 'm').end]).toEqual([32, 20]);
