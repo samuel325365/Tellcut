@@ -58,6 +58,9 @@ export interface PresetInfo {
 }
 /** what a preset of the user's own brings: the theme's fonts and colours, a music style and blocks of My blocks (`gone`: deleted there since) */
 export interface PresetUses { fonts: string[]; colors: string[]; score?: { slug: string; name: string; gone: boolean }; blocks: Array<{ slug: string; name: string; thumb: string | null; gone: boolean }> }
+/** a folder of projects/_presets/my-* that does not read as a preset (a hand-edited preset.md, a save cut short): GET /api/presets
+ *  lists it apart, with why, so the home page can still delete it */
+export interface BrokenPresetInfo { id: string; error: string }
 /** the preset a message was sent with, the styles ticked in its dialog and the options set in its form (none set: no `fields`) */
 export interface PresetChoice { id: string; styles: string[]; fields?: Record<string, string> }
 

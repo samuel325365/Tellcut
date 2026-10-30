@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { Plugin, Project } from '@tellcut/engine';
 import { parseProject } from '@tellcut/engine';
-import { blockDir, cleanFields, ffmpeg, findPreset, libraryRoot, listLibrary, loadPresets, loadStyles, posterFromImage, PresetDraftZ, presetInfo, projectRegistry, renderStills,
+import { blockDir, brokenUserPresets, cleanFields, ffmpeg, findPreset, libraryRoot, listLibrary, loadPresets, loadStyles, posterFromImage, PresetDraftZ, presetInfo, projectRegistry, renderStills,
   projectLinks, saveBlock, saveStyle, THUMB_FILE, writeUserPreset, deleteUserPreset, type Preset, type PresetDirs, type PresetLibrary, type PresetPoint } from '@tellcut/media-node';
 import type { Lang } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
@@ -68,7 +68,8 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
   };
   const answer = (res: Parameters<typeof sendJson>[0], p: Preset) => sendJson(res, 200, presetInfo(findPreset(dirs, p.id) ?? p, library()));
 
-  r.get('/api/presets', (_req, res) => { const lib = library(); sendJson(res, 200, { presets: loadPresets(dirs).map((p) => presetInfo(p, lib)) }); });
+  // `broken`: the user's preset folders that do not read, which the list leaves out; the home page offers to delete them
+  r.get('/api/presets', (_req, res) => { const lib = library(); sendJson(res, 200, { presets: loadPresets(dirs).map((p) => presetInfo(p, lib)), broken: brokenUserPresets(dirs) }); });
   r.get('/api/presets/:id/:file', (req, res, { id, file }) => {
     const p = FILES.has(file) ? findPreset(dirs, id) : null;
     const dir = p && join(p.mine ? dirs.user : dirs.repo, id);
@@ -145,7 +146,12 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
       theme: keep('theme'), score: keep('score') as string | undefined, blocks: keep('blocks') as string[] | undefined }, id));
   });
 
-  r.del('/api/presets/:id', (_req, res, { id }) => { mine(id); deleteUserPreset(dirs, id); sendJson(res, 200, { ok: true }); });
+  r.del('/api/presets/:id', (_req, res, { id }) => {
+    // one whose preset.md no longer reads is not found by mine(), but is deleted all the same: else nothing could remove it
+    if (!brokenUserPresets(dirs).some((b) => b.id === id)) mine(id);
+    deleteUserPreset(dirs, id);
+    sendJson(res, 200, { ok: true });
+  });
 
   r.post('/api/presets/:id/poster', async (req, res, { id }) => {
     const p = mine(id), chunks: Buffer[] = [];

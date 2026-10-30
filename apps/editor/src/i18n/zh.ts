@@ -655,6 +655,7 @@ export const zh = {
   'preset.rename': '改名',
   'preset.delete': '刪除',
   'preset.deleteConfirm': '刪除「{name}」？已經用它做好的專案不受影響。',
+  'preset.broken': '片型 {id} 讀不出來（{error}），首頁不會列出它。',
   'preset.renameSave': '儲存',
   'preset.saveForm': '存成我的片型',
   'preset.saveFormTip': '把表單選好的這些存起來，下次直接點它',

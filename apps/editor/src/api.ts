@@ -1,6 +1,6 @@
 // Tellcut server API (apps/server). Every failure becomes an ApiError with the server's message and issues.
 import type { Transcript } from '@tellcut/engine';
-import type { ChatTask, GalleryIndex, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, PresetChoice, ProjectLibraryInfo, PresetInfo, SourceInfo } from '@tellcut/protocol';
+import type { BrokenPresetInfo, ChatTask, GalleryIndex, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, PresetChoice, ProjectLibraryInfo, PresetInfo, SourceInfo } from '@tellcut/protocol';
 import type { PeakInfo, ThumbInfo } from './store.ts';
 
 export class ApiError extends Error {
@@ -132,7 +132,7 @@ export const api = {
   formPoints: (b: Record<string, unknown>) => req<{ points: Array<{ text: string; prompt: string }> }>('/api/presets/form-points', jsonPost(b)),
   presetPoster: (id: string, file: Blob) => req<PresetInfo>(`/api/presets/${enc(id)}/poster`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file }),
   /** the home page's presets (spec 2026-10-23-presets-and-languages §3.3) */
-  presets: () => req<{ presets: PresetInfo[] }>('/api/presets'),
+  presets: () => req<{ presets: PresetInfo[]; broken?: BrokenPresetInfo[] }>('/api/presets'),
   chatAttach: (thread: string, on: (e: any) => void, signal?: AbortSignal) => ndjson(`/api/chat/${enc(thread)}/stream`, signal ? { signal } : undefined, on),
   chatStop: (thread: string) => req<{ stopped: boolean }>(`/api/chat/${enc(thread)}/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
   chatClear: (thread: string) => req<{ ok: true }>(`/api/chat/${enc(thread)}`, { method: 'DELETE' }),

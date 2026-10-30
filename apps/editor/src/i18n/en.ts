@@ -656,6 +656,7 @@ export const en: Record<Key, string> = {
   'preset.rename': 'Rename',
   'preset.delete': 'Delete',
   'preset.deleteConfirm': 'Delete "{name}"? Projects already made with it are not affected.',
+  'preset.broken': 'The preset {id} cannot be read ({error}), so it is not listed.',
   'preset.renameSave': 'Save',
   'preset.saveForm': 'Save as my preset',
   'preset.saveFormTip': 'Keep these choices to start from next time',

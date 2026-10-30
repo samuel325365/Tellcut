@@ -1,9 +1,10 @@
 // A preset of the user's own in its dialog on the home page (spec 2026-10-29-my-library §3.6): what it will do point by point and what
 // it uses (fonts and colours, a music style, blocks of My blocks — one deleted since says so), with Edit, Rename and Delete; and the
 // custom form's "Save as my preset" (§3.7), which keeps the options chosen without making a film first, and the home page's "New
-// preset", which starts from nothing: both open the dialog a film's preset is saved in.
+// preset", which starts from nothing: both open the dialog a film's preset is saved in. A folder of one that no longer reads gets a
+// line of its own under the strip, so it can still be deleted.
 import { useEffect, useState } from 'preact/hooks';
-import { pickText, type PresetInfo } from '@tellcut/protocol';
+import { pickText, type BrokenPresetInfo, type PresetInfo } from '@tellcut/protocol';
 import { errText, t } from '../i18n/index.ts';
 import { getLang } from '../i18n/lang.ts';
 import { SavePresetDialog } from './SavePresetDialog.tsx';
@@ -61,6 +62,24 @@ export function MinePresetActions({ preset, api, onChanged, onGone }: { preset: 
         }} />}
     </div>
   );
+}
+
+/** the user's preset folders that do not read (GET /api/presets `broken`): not in the strip, so a line each, with why and Delete */
+export function BrokenPresets({ broken, api, onGone }: { broken: BrokenPresetInfo[]; api: Pick<PresetApi, 'deletePreset'>; onGone: () => void }) {
+  const [asking, setAsking] = useState<string | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  if (!broken.length) return null;
+  const remove = async (id: string) => {
+    setBusy(true); setError('');
+    try { await api.deletePreset(id); setAsking(null); onGone(); } catch (e) { setError(errText(e)); } finally { setBusy(false); }
+  };
+  return <div data-preset-broken-list>
+    {broken.map((b) => <p class="note err" data-preset-broken={b.id}>{t('preset.broken', { id: b.id, error: b.error })}{' '}
+      {asking === b.id
+        ? <>{t('preset.deleteConfirm', { name: b.id })} <button class="danger" data-preset-broken-confirm disabled={busy} onClick={() => void remove(b.id)}>{t('preset.delete')}</button></>
+        : <button data-preset-broken-delete onClick={() => setAsking(b.id)}>{t('preset.delete')}</button>}
+    </p>)}
+    {error && <p class="note err" role="alert">{error}</p>}
+  </div>;
 }
 
 const COLOR = '#4263eb';

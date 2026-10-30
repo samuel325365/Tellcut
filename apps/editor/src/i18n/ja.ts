@@ -656,6 +656,7 @@ export const ja: Record<Key, string> = {
   'preset.rename': '名前を変更',
   'preset.delete': '削除',
   'preset.deleteConfirm': '「{name}」を削除しますか？これで作ったプロジェクトには影響しません。',
+  'preset.broken': 'プリセット {id} を読み込めないため、一覧に出ません（{error}）。',
   'preset.renameSave': '保存',
   'preset.saveForm': 'マイプリセットとして保存',
   'preset.saveFormTip': '選んだ内容を保存して次回すぐ使えます',

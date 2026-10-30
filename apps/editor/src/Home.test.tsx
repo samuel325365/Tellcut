@@ -537,3 +537,22 @@ test('a handed-over request waits while the home chat is still replying, then go
   await settle(); await settle();
   expect(a.sent.map((x: any) => x[1])).toEqual(['改一下']);
 });
+
+test('a preset of the user’s own that no longer reads gets a line under the strip, and its Delete asks first', async () => {
+  const a = api(), deleted: string[] = [];
+  let broken = [{ id: 'my-old', error: 'frontmatter is not JSON' }];
+  a.presets = async () => ({ presets: [PRESET('travel', '旅行精華')], broken });
+  a.deletePreset = async (id: string) => { deleted.push(id); broken = []; return { ok: true }; };
+  const root = document.createElement('div');
+  await act(async () => { render(<Home api={a} />, root); });
+  await settle();
+  const line = root.querySelector('[data-preset-broken="my-old"]')!;
+  expect(line.textContent).toContain('frontmatter is not JSON');
+  expect(root.querySelector('[data-preset="my-old"]')).toBeNull();
+  await act(() => { line.querySelector<HTMLElement>('[data-preset-broken-delete]')!.click(); });
+  expect(deleted).toEqual([]);
+  await act(async () => { root.querySelector<HTMLElement>('[data-preset-broken-confirm]')!.click(); });
+  await settle();
+  expect(deleted).toEqual(['my-old']);
+  expect(root.querySelector('[data-preset-broken]')).toBeNull();
+});

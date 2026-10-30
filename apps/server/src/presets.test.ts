@@ -283,6 +283,24 @@ test('a preset of the user’s own is edited, renamed, given a poster and delete
   } finally { await app.close(); }
 });
 
+test('a preset of the user’s own that no longer reads is listed apart and can still be deleted', async () => {
+  const { d, app, base, send } = await mine();
+  try {
+    const info = await (await send('POST', '/api/presets', { from: 'form', name: 'A', fields: {}, points: [{ text: '慢一點', prompt: '慢一點' }], lang: 'zh' })).json();
+    writeFileSync(join(d.user, info.id, 'preset.md'), '---\n{ "name": \n---\nbody\n');   // hand-edited into bad JSON
+    mkdirSync(join(d.user, 'my-empty'), { recursive: true });                           // a save cut short: no preset.md
+    const list = await (await fetch(`${base}/api/presets`)).json();
+    expect(list.presets.some((p: any) => p.id === info.id)).toBe(false);
+    expect(list.broken.map((b: any) => b.id)).toEqual([info.id, 'my-empty']);
+    expect(list.broken[0].error).toMatch(/not JSON/);
+    expect((await send('DELETE', `/api/presets/${info.id}`)).status).toBe(200);
+    expect((await send('DELETE', '/api/presets/my-empty')).status).toBe(200);
+    expect([existsSync(join(d.user, info.id)), existsSync(join(d.user, 'my-empty'))]).toEqual([false, false]);
+    expect((await send('DELETE', '/api/presets/my-gone')).status).toBe(404);
+    expect((await (await fetch(`${base}/api/presets`)).json()).broken).toEqual([]);
+  } finally { await app.close(); }
+});
+
 test('editing keeps the agent’s line of a point the user left alone, named by what it was', async () => {
   const { d, projects, app, send } = await mine();
   try {

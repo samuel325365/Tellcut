@@ -5,7 +5,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { z } from 'zod';
-import type { PresetFieldInfo, PresetInfo, PresetStyleInfo, PresetUses } from '@tellcut/protocol';
+import type { BrokenPresetInfo, PresetFieldInfo, PresetInfo, PresetStyleInfo, PresetUses } from '@tellcut/protocol';
 import type { BlockEntry, StyleEntry } from './library/store.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 
@@ -63,18 +63,26 @@ export function parsePreset(src: string, id: string, mine: boolean, dir?: string
     poster: has('poster.jpg') ? `/api/presets/${id}/poster.jpg` : null, preview: has('preview.webm') ? `/api/presets/${id}/preview.webm` : null };
 }
 
-function readDir(root: string, mine: boolean): Preset[] {
+/** `broken` collects the folders that hold no preset that reads (none in the list, so the page can only delete them by these) */
+function readDir(root: string, mine: boolean, broken?: BrokenPresetInfo[]): Preset[] {
   let names: string[];
   try { names = readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name); } catch { return []; }
   const out: Preset[] = [];
   for (const id of names.sort()) {
-    if (!ID.test(id) || (mine && !id.startsWith('my-'))) { if (mine) console.warn(`preset ${join(root, id)}: a preset of your own needs an id like my-name; skipped`); continue; }
+    if (!ID.test(id) || (mine && !id.startsWith('my-'))) { if (mine && !broken) console.warn(`preset ${join(root, id)}: a preset of your own needs an id like my-name; skipped`); continue; }
     const file = join(root, id, 'preset.md');
-    if (!existsSync(file)) continue;
+    if (!existsSync(file)) { broken?.push({ id, error: 'no preset.md' }); continue; }
     try { out.push(parsePreset(readFileSync(file, 'utf8'), id, mine, join(root, id))); }
-    catch (e) { console.warn(`preset ${file}: ${(e as Error).message}; skipped`); }
+    catch (e) { if (broken) broken.push({ id, error: (e as Error).message }); else console.warn(`preset ${file}: ${(e as Error).message}; skipped`); }
   }
   return out;
+}
+
+/** the user's preset folders that loadPresets leaves out, with why: listed apart so the page can still delete them */
+export function brokenUserPresets(dirs: PresetDirs): BrokenPresetInfo[] {
+  const broken: BrokenPresetInfo[] = [];
+  readDir(dirs.user, true, broken);
+  return broken;
 }
 
 /** guides/presets/shared.json: the fields every preset's form starts with (Making › Effects), so they are written once */
