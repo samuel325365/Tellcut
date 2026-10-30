@@ -16,6 +16,12 @@ export function t(key: Key, params?: Record<string, string | number>, lang: Lang
   return text.replace(/\{([A-Za-z_]\w*)\}/g, (m, w: string) => (Object.hasOwn(params, w) ? String(params[w]) : m));
 }
 
+/** a list as the language writes it: "a, b" in English, "a、b" in Chinese and Japanese */
+export const listJoin = (items: string[], lang: Lang = getLang()) => items.join(lang === 'en' ? ', ' : '、');
+/** names in a sentence, quoted and listed as the language writes them: “a”, “b” in English, 「a」、「b」 in Chinese and Japanese */
+export const nameList = (names: string[], lang: Lang = getLang()) =>
+  listJoin(names.map((x) => (lang === 'en' ? `“${x}”` : `「${x}」`)), lang);
+
 /** an error in the page's language: a server error's code worded by the dictionaries (err.<code>), else its own words */
 export function errText(e: unknown, lang: Lang = getLang()): string {
   const x = e as { message?: unknown; code?: unknown; params?: Record<string, string | number> } | null;

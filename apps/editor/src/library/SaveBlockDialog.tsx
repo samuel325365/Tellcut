@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { BLOCK_CATEGORY } from '@tellcut/protocol';
 import type { BlockCategory, Project } from '@tellcut/engine';
 import { PlayerPreview, projectPlayer } from '../PlayerPreview.tsx';
-import { t, type Key } from '../i18n/index.ts';
+import { nameList, t, type Key } from '../i18n/index.ts';
 import type { SaveDialog } from '../store.ts';
 
 const LEN = 3;
@@ -50,7 +50,7 @@ export function SaveBlockDialog({ d, project, projectId, kind, onPatch, onSave, 
         {block && <div class="save-block-notes" data-save-notes>
           {!d.preview && !d.error && <p class="dim">{t('lib.checking')}</p>}
           {files.length > 0 && <p>{t('lib.withFiles', { files: files.map((f) => f.split('/').pop()).join('、') })}</p>}
-          {group.length > 0 && <p>{t('lib.withGroup', { names: group.map((x) => `「${x.replace(/^fx\./, '')}」`).join('、') })}</p>}
+          {group.length > 0 && <p>{t('lib.withGroup', { names: nameList(group.map((x) => x.replace(/^fx\./, ''))) })}</p>}
           {!!d.preview?.skipped.length && <p class="warn">{t('lib.skipped', { n: d.preview.skipped.length })}</p>}
         </div>}
         {conflict && <p class="save-block-conflict" data-save-conflict>{t('lib.conflict', { name: d.conflict! })}</p>}

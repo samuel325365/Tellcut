@@ -11,7 +11,7 @@ import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
 import { tip } from './tip.ts';
-import { errText, t, type Key } from './i18n/index.ts';
+import { errText, nameList, t, type Key } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
 import { blockText } from './i18n/blocks.ts';
 import { localValues } from './i18n/values.ts';
@@ -198,8 +198,8 @@ function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navi
         <strong>{t('lib.deleteTitle', { name })}</strong>
         {usage ? <>
           <p>{usage.projects ? t('lib.deleteProjects', { n: usage.projects }) : t('lib.deleteNoProjects')}</p>
-          {usage.presets.length > 0 && <p class="warn">{t('lib.deletePresets', { names: usage.presets.map((x) => `「${x}」`).join('、') })}</p>}
-          {group.length > 0 && <p class="warn">{t('lib.deleteGroup', { names: group.map((x) => `「${x}」`).join('、') })}</p>}
+          {usage.presets.length > 0 && <p class="warn">{t('lib.deletePresets', { names: nameList(usage.presets) })}</p>}
+          {group.length > 0 && <p class="warn">{t('lib.deleteGroup', { names: nameList(group) })}</p>}
         </> : !error && <p class="dim">…</p>}
         <div class="g-bar"><button onClick={() => setMode(null)} disabled={busy}>{t('lib.cancel')}</button>
           <button class="danger" data-mine-delete-confirm disabled={busy || !usage} onClick={() => void run(() => lib.remove(kind, slug))}>{t('lib.delete')}</button></div>

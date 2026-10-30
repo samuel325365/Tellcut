@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { DICTS, t, tn } from './index.ts';
+import { DICTS, listJoin, nameList, t, tn } from './index.ts';
 import { LANG_KEY, defaultLang, getLang, onLang, setLang } from './lang.ts';
 import { LangSwitch } from '../LangSwitch.tsx';
 
@@ -91,5 +91,21 @@ describe('i18n robustness', () => {
     expect(tn('chat.steps', 3, {}, 'en')).toBe('Ran 3 steps');
     expect(tn('chat.styleCount', 1, {}, 'en')).toBe('1 style');
     expect(tn('chat.noPrice', 1, {}, 'en')).toContain('1 earlier reply has');
+  });
+});
+
+// showcase films (spec 2026-10-30 part 2): the English UI shows no Chinese brackets around names
+describe('nameList', () => {
+  it('quotes names the way each language does', () => {
+    expect(nameList(['softtitle', 'palette'], 'en')).toBe('“softtitle”, “palette”');
+    expect(nameList(['softtitle', 'palette'], 'zh')).toBe('「softtitle」、「palette」');
+    expect(nameList(['softtitle', 'palette'], 'ja')).toBe('「softtitle」、「palette」');
+  });
+});
+
+describe('listJoin', () => {
+  it('lists with a comma in English and 、 in Chinese and Japanese', () => {
+    expect(listJoin(['Pixabay', 'Freesound'], 'en')).toBe('Pixabay, Freesound');
+    expect(listJoin(['Pixabay', 'Freesound'], 'zh')).toBe('Pixabay、Freesound');
   });
 });

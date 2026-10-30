@@ -7,7 +7,7 @@ import { pickText, type Lang, type PresetInfo } from '@tellcut/protocol';
 import type { ChatMessage, ChatSession, ChatTool, Usage } from './chat.ts';
 import { renderMarkdown } from './markdown.tsx';
 import { withAttachments, type Attachment } from './attachments.ts';
-import { t, tn, uiLabel } from './i18n/index.ts';
+import { listJoin, t, tn, uiLabel } from './i18n/index.ts';
 import { getLang, useLang } from './i18n/lang.ts';
 import { analysisText, chatErrorText, noticeText, toolText } from './i18n/format.ts';
 import { IconArrowUp, IconPlug, IconPlus, IconSpark, IconStop, IconX, kindIcon } from './icons.tsx';
@@ -154,7 +154,7 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
       <div class="composer-bar">
         {onAttach && <button class="icon-btn" data-attach data-tip={t(attachKey)} aria-label={t(attachKey)} onClick={onAttach}><IconPlus /></button>}
         {/* the count on the button and the names in its tip: no tag above the words (a new row made the home page's centred welcome jump) */}
-        {session.picksSources && <button class="api-btn" data-api aria-expanded={picking} data-tip={picked.length ? `${t('api.tagTip')}\n${pickedNames.join('、')}` : t('api.buttonTip')}
+        {session.picksSources && <button class="api-btn" data-api aria-expanded={picking} data-tip={picked.length ? `${t('api.tagTip')}\n${listJoin(pickedNames)}` : t('api.buttonTip')}
           aria-label={t('api.buttonTip')} onClick={() => setPicking(!picking)}>
           <IconPlug size={16} />{uiLabel('api.button', surface)}{picked.length > 0 && <span class="n">{picked.length}</span>}</button>}
         <span class="grow" />
