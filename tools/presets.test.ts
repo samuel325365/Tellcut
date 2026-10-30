@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ADAPTERS, TELLCUT_ROOT } from '@tellcut/media-node';
 import { loadPresets } from '@tellcut/media-node';
+import { commonPlugin } from '@tellcut/plugin-common';
 
 const RULE = "These are defaults. If the user's message conflicts with any of them, follow the user and say in one sentence what you changed.";
 const presets = () => loadPresets({ repo: join(TELLCUT_ROOT, 'guides', 'presets'), user: mkdtempSync(join(tmpdir(), 'nopresets-')) });
@@ -68,11 +69,30 @@ test('travel holds its whole direction and skips the genre cards (2026-10-28); t
   expect(presets().filter((p) => !p.genres).map((p) => p.id)).toEqual(['travel']);
 });
 
-test("travel's styles that still need new effects say so (notifications: common.notify + common.lockscreen, social: common.reels + common.comments + common.story since 2026-10-23, phone-album: common.album since 2026-10-24, magazine: common.magazine + common.wipe curl since 2026-10-24, chat: common.chat since 2026-10-24, search: common.search since 2026-10-24; none is custom any more)", () => {
-  const travel = presets().find((p) => p.id === 'travel')!, ids = travel.styles.map((s) => s.id);
-  expect(ids).toEqual(expect.arrayContaining(['phone-album', 'chat', 'search', 'map-route', 'notifications', 'social', 'photo-dump', 'transitions', 'magazine']));
-  const custom: string[] = [];
-  for (const s of travel.styles) expect(!!s.custom, s.id).toBe(custom.includes(s.id));
+// 2026-10-31: the films need not be full-frame footage any more. Nine forms that each carry the whole film (at most one), two ways
+// of cutting and two looks (at most one) that go with any of them; every style is built on shared blocks, none is custom
+test('travel: nine whole-film forms, two cuts, two looks, and the rules that keep them apart', () => {
+  const travel = presets().find((p) => p.id === 'travel')!, style = (id: string) => travel.styles.find((s) => s.id === id)!.prompt;
+  expect(travel.styles.map((s) => s.id)).toEqual(['phone-album', 'chat', 'search', 'notifications', 'magazine', 'social', 'postcard', 'map-route', 'rail-trip',
+    'photo-dump', 'transitions', 'cinematic', 'retro']);
+  for (const s of travel.styles) expect(!!s.custom, s.id).toBe(false);
+  expect(travel.prompt).toMatch(/at most one form/i);
+  expect(travel.prompt).toMatch(/at most one look/i);
+  expect(travel.prompt).toMatch(/no info cards/i);
+  expect(travel.prompt).toMatch(/never invent/i);
+  expect(travel.prompt).not.toMatch(/fill the frame/i);
+  for (const b of ['common.ticket', 'common.routeboard', 'common.stations']) expect(style('rail-trip'), b).toContain(b);
+  expect(style('postcard')).toContain('postcardWindow');
+  expect(style('retro')).toMatch(/look vhs/);
+  expect(style('cinematic')).toContain('common.tone');
+  expect(style('photo-dump')).toContain('common.snap');
+  expect(style('chat')).not.toMatch(/exception/i);
+});
+
+test('every common.* a preset names is a block or a sound there is', () => {
+  const known = new Set([...commonPlugin.items.map((i) => i.type), ...(commonPlugin.sfx ?? []).map((s) => s.type)]);
+  for (const p of presets()) for (const text of [p.prompt, ...p.styles.map((s) => s.prompt), ...p.fields.flatMap((f) => f.options.map((o) => o.prompt))])
+    for (const m of text.matchAll(/common\.[a-z][a-z0-9-]*/g)) expect(known.has(m[0]), `${p.id}: ${m[0]}`).toBe(true);
 });
 
 test('custom: the form the spec lists (spec 2026-10-24-custom-preset §4)', () => {
