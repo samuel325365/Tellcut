@@ -634,8 +634,8 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 }
 
 /* the preset tag in the composer and on past messages (spec 2026-10-23-presets-and-languages §5.2) */
-.chat .chip.preset-tag { background: color-mix(in srgb, var(--preset, #d8b88a) 18%, var(--h-chip)); }
-.chat .chip.preset-tag .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--preset, #d8b88a); flex: none; }
+.chat .chip.preset-tag { background: color-mix(in srgb, var(--h-accent) 18%, var(--h-chip)); }
+.chat .chip.preset-tag .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--h-accent); flex: none; }
 .chat .msg.user .msg-preset { display: block; width: fit-content; margin: 0 0 4px auto; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--h-chip); color: var(--h-dim); }
 
 /* the home page's presets (spec 2026-10-23-presets-and-languages §5) */

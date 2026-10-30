@@ -140,7 +140,7 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
   const empty = !s.messages.length && !s.partial, attachKey = surface === 'editor' ? 'chat.attachEditor' : 'chat.attach';
   const composer = (
     <div class={`composer${empty && welcome ? ' big' : ''}`}>
-      {(attachments.length > 0 || preset) && <div class="chips">{preset && <span class="chip preset-tag" data-preset-tag style={{ '--preset': preset.info.color }}>
+      {(attachments.length > 0 || preset) && <div class="chips">{preset && <span class="chip preset-tag" data-preset-tag>
         <i class="dot" />{pickText(preset.info.name, lang)}{preset.styles.length > 0 && <small>{tn('chat.styleCount', preset.styles.length, {}, surface === 'editor' ? 'en' : undefined)}</small>}
         {fieldCount > 0 && <small>{tn('chat.fieldCount', fieldCount, {}, surface === 'editor' ? 'en' : undefined)}</small>}
         {onClearPreset && <button class="chip-x" data-tip={t('chat.removePreset')} aria-label={t('chat.removePreset')} onClick={onClearPreset}><IconX size={12} /></button>}</span>}{attachments.map((a, i) => {

@@ -28,7 +28,7 @@ const field = z.object({
 });
 const list = z.object({ zh: z.array(z.string()), en: z.array(z.string()), ja: z.array(z.string()) }).partial();
 const Front = z.object({
-  order: z.number().default(0), color: z.string().default('#7c4dff'), name: text, summary: text, fit: list.default({}), facts: list.default({}),
+  order: z.number().default(0), color: z.string().default('#d8b88a'), name: text, summary: text, fit: list.default({}), facts: list.default({}),
   styles: z.array(z.object({ id: z.string().regex(ID), name: text, desc: text.default({ zh: '' }), prompt: z.string(), custom: z.boolean().optional() })).default([]),
   // the API menu's ids ticked when the preset is picked (a source not installed here is skipped by the page)
   sources: z.array(z.string()).default([]),

@@ -59,3 +59,8 @@ test('the playhead has a dark edge, so it reads on brown clips and bright thumbn
 test('no blue is left (the audition banner, transitions)', () => {
   expect(css).not.toMatch(/rgba\(10,\s*132,\s*255/);
 });
+test('the preset chip in the chat is drawn in the theme accent, not in each preset’s own colour (blue, purple)', () => {
+  const rules = css.split('}').filter((r) => /\.chip\.preset-tag/.test(r));
+  expect(rules.length).toBeGreaterThan(1);
+  expect(rules.filter((r) => /var\(--preset/.test(r)).map((r) => r.trim().slice(0, 80))).toEqual([]);
+});

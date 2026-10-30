@@ -38,7 +38,7 @@ export function writeUserPreset(dirs: PresetDirs, i: SavePresetInput, id?: strin
   const pid = id ? mineId(id) : `my-${slugFor(i.name, 'preset', new Set([...taken].filter((x) => x.startsWith('my-')).map((x) => x.slice(3))))}`;
   const facts = [...(i.ratios ?? []), ...(i.length ? [SECONDS[i.lang](Math.round(i.length[0]), Math.round(i.length[1]))] : [])];
   const front = {
-    color: i.color ?? '#7c4dff', name: { [i.lang]: i.name.trim() || pid }, summary: { [i.lang]: i.summary.trim() },
+    color: i.color ?? '#d8b88a', name: { [i.lang]: i.name.trim() || pid }, summary: { [i.lang]: i.summary.trim() },
     ...(facts.length ? { facts: { [i.lang]: facts } } : {}),
     ...(i.ratios?.length ? { ratios: i.ratios } : {}), ...(i.length ? { length: i.length.map(Math.round) } : {}),
     genres: i.genres ?? false, points: i.points,
