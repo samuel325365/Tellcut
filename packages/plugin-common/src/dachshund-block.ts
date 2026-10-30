@@ -31,6 +31,11 @@ export function frameTimes(times: string, duration?: number): number[] {
   return duration && Number.isFinite(duration) ? out.map((t) => (room > 0 ? +(t % room).toFixed(3) : 0)) : out;
 }
 
+/** which way the dog looks: a walking dog always faces the way it goes (`facing: 'left'` with x0 < x1 walked backwards); standing,
+ *  or walking on the spot, it looks where `facing` says */
+export const facingOf = (p: Pick<P, 'action' | 'x0' | 'x1' | 'facing'>): 'right' | 'left' =>
+  p.action === 'walk' && p.x1 !== p.x0 ? (p.x1 < p.x0 ? 'left' : 'right') : p.facing === 'left' ? 'left' : 'right';
+
 /** the pose at `local` seconds into the item */
 export function dogPose(action: Action, local: number, o: { steps: number; cutAt: number }): DogPose {
   const pose: DogPose = { frontLeg: 0, backLeg: 0, tail: 0, head: 0, body: 0, bob: 0, split: 0, fold: 1 }, TAU = Math.PI * 2;
@@ -128,10 +133,10 @@ export const dachshund: ItemType<P, S> = {
   params: [
     { key: 'action', label: '動作（walk 走路、wag 搖尾巴、tilt 歪頭、sit 坐下、cut 剪開、idle 站著）', type: 'enum', options: ['walk', 'wag', 'tilt', 'sit', 'cut', 'idle'], default: 'walk' },
     { key: 'x0', label: '起點 x（身體中心，畫面寬比例；不走路時就站在這裡）', type: 'number', min: -0.5, max: 1.5, step: 0.01, default: 0.2 },
-    { key: 'x1', label: '終點 x（走路時，畫面寬比例）', type: 'number', min: -0.5, max: 1.5, step: 0.01, default: 0.8 },
+    { key: 'x1', label: '終點 x（走路時，畫面寬比例；比起點小就往左走、面向左）', type: 'number', min: -0.5, max: 1.5, step: 0.01, default: 0.8 },
     { key: 'y', label: '腳底的位置（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.78 },
-    { key: 'size', label: '大小（狗的全長，畫面寬 %）', type: 'number', min: 5, max: 100, step: 0.5, default: 36 },
-    { key: 'facing', label: '朝向', type: 'enum', options: ['right', 'left'], default: 'right' },
+    { key: 'size', label: '大小（狗所在方框的寬，畫面寬 %；狗從尾巴到鼻尖約佔方框的 88%）', type: 'number', min: 5, max: 100, step: 0.5, default: 36 },
+    { key: 'facing', label: '朝向（不走路時；走路時一律面向前進的方向）', type: 'enum', options: ['right', 'left'], default: 'right' },
     { key: 'look', label: '樣子（light 黑狗、dark 奶油色的狗，給深色底）', type: 'enum', options: ['light', 'dark'], default: 'light' },
     { key: 'steps', label: '每秒走幾步', type: 'number', min: 0.5, max: 6, step: 0.1, default: 2.2 },
     { key: 'source', label: '底片格子裡放哪個素材（空＝沒有畫面）', type: 'string', default: '' },
@@ -162,7 +167,7 @@ export const dachshund: ItemType<P, S> = {
     const g = canvasAt(s.cv, cw, ch);
     g.save();
     g.translate(cw / 2, ch * 0.9);
-    if (p.facing === 'left') g.scale(-1, 1);
+    if (facingOf(p) === 'left') g.scale(-1, 1);
     g.scale(k, k);
     g.translate(-85, -66);   // the dog's middle, and the soles of its feet
     drawCut(g, p.look === 'dark' ? 'dark' : 'light', dogPose(p.action, local, { steps: p.steps, cutAt: p.cutAt }), s.imgs, local, p.scroll);

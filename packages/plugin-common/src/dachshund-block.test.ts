@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { bobOf, dachshund, dogPose, frameTimes } from './dachshund-block.ts';
+import { bobOf, dachshund, dogPose, facingOf, frameTimes } from './dachshund-block.ts';
 
 test('the dachshund is a moment block the agent uses only on request', () => {
   expect(dachshund).toMatchObject({ type: 'common.dachshund', category: 'moment', kind: 'overlay', onRequest: true });
@@ -46,4 +46,12 @@ test('the walk bobs the body but not the legs: both feet stay on the ground', ()
   expect(bobOf('backLeg', pose)).toBe(0);
   expect(bobOf('frontLeg', pose)).toBe(0);
   expect(bobOf('body', pose)).toBe(pose.bob);
+});
+
+test('a walking dog faces the way it goes, whatever facing says; standing, or walking on the spot, it faces as told', () => {
+  expect(facingOf({ action: 'walk', x0: 0.2, x1: 0.8, facing: 'left' })).toBe('right');    // walked backwards before
+  expect(facingOf({ action: 'walk', x0: 0.8, x1: 0.2, facing: 'right' })).toBe('left');
+  expect(facingOf({ action: 'walk', x0: 0.5, x1: 0.5, facing: 'left' })).toBe('left');
+  expect(facingOf({ action: 'sit', x0: 0.8, x1: 0.2, facing: 'right' })).toBe('right');
+  expect(facingOf({ action: 'wag', x0: 0.2, x1: 0.8, facing: 'left' })).toBe('left');
 });
