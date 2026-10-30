@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fakeTts, type TranscribeProvider } from './providers/index.ts';
-import { parseNarration, phrasesOf, ratePercent, renderVoice, voiceFiles, voiceFor, wordsFromTranscript } from './voice.ts';
+import { parseNarration, phraseParts, phrasesOf, ratePercent, renderVoice, voiceFiles, voiceFor, wordsFromTranscript } from './voice.ts';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'voice-')); });
@@ -114,4 +114,21 @@ test('word times from a transcript: its temp file is removed, and a segment with
   const out = await renderVoice({ dir, narration: parseNarration({ scenes: [{ id: 'a', text: '你好，世界。' }] }), tts: fakeTts({ words: false }), transcribe: heard });
   expect(out.a.phrases).toEqual([{ text: '你好', t0: 0, t1: 1 }, { text: '世界', t0: 1, t1: 2 }]);
   expect(existsSync(`${voiceFiles(dir, 'a').info}.heard.json`)).toBe(false);
+});
+
+// showcase films (spec 2026-10-30 part 2): English narration and bilingual captions
+test('an English point, comma or colon splits a phrase only before a space or the end: a web address and a number stay whole', () => {
+  expect(phraseParts('Go to github.com/samuel325365/Tellcut. It is free, 3.5 MB.')).toEqual(['Go to github.com/samuel325365/Tellcut', 'It is free', '3.5 MB']);
+  expect(phraseParts('Wait... what? Node.js:  yes')).toEqual(['Wait', 'what', 'Node.js', 'yes']);
+  expect(phraseParts('你好，世界。好')).toEqual(['你好', '世界', '好']);
+  expect(phraseParts('一二——三四')).toEqual(['一二', '三四']);
+  expect(phraseParts('A—B')).toEqual(['A—B']);
+});
+
+test('a scene’s gloss has one translation per caption phrase; a count that differs lists the phrases', () => {
+  const scene = { id: 's01', text: 'Import the folder, pick a preset.' };
+  expect(parseNarration({ scenes: [{ ...scene, gloss: ['匯入資料夾', '選個片型'] }] }).scenes[0].gloss).toEqual(['匯入資料夾', '選個片型']);
+  expect(parseNarration({ scenes: [scene] }).scenes[0].gloss).toBeUndefined();
+  expect(() => parseNarration({ scenes: [{ ...scene, gloss: ['匯入資料夾，選個片型'] }] }))
+    .toThrow(/2 句.*1 行[\s\S]*1\. Import the folder[\s\S]*2\. pick a preset/);
 });

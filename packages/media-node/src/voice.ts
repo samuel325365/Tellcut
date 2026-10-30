@@ -20,10 +20,17 @@ export const NarrationZ = z.object({
   pitch: z.string().optional(),
   /** same-length homophone swaps for the speech engine only (一行 → 一航); captions keep the written text */
   pron: z.record(z.string()).default({}),
-  scenes: z.array(z.object({ id: z.string().regex(/^[\w-]+$/, '場景 id 只能用字母、數字、底線、連字號'), text: z.string().min(1), rate: RateZ, voice: z.string().optional() })).min(1),
+  scenes: z.array(z.object({ id: z.string().regex(/^[\w-]+$/, '場景 id 只能用字母、數字、底線、連字號'), text: z.string().min(1), rate: RateZ, voice: z.string().optional(),
+    /** bilingual captions: one translation per caption phrase (phraseParts), shown under it */
+    gloss: z.array(z.string()).optional() })).min(1),
 }).superRefine((n, ctx) => {
   const seen = new Set<string>();
   n.scenes.forEach((s, i) => { if (seen.has(s.id)) ctx.addIssue({ code: 'custom', path: ['scenes', i, 'id'], message: `場景 id ${s.id} 重複` }); seen.add(s.id); });
+  n.scenes.forEach((s, i) => {
+    const parts = phraseParts(s.text);
+    if (s.gloss && s.gloss.length !== parts.length) ctx.addIssue({ code: 'custom', path: ['scenes', i, 'gloss'],
+      message: `${s.id} 的字幕切成 ${parts.length} 句，gloss 有 ${s.gloss.length} 行（一句一行翻譯）：\n${parts.map((p, k) => `${k + 1}. ${p}`).join('\n')}` });
+  });
 });
 export type Narration = z.infer<typeof NarrationZ>;
 
@@ -48,16 +55,20 @@ export function ratePercent(rate: number | string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-const SPLIT = /[，。！？、；：,.!?;:]|——|…+/;
+// Chinese punctuation always cuts; an English one only before a space or the end, so github.com, 3.5 and Node.js stay whole
+const SPLIT = /[，。！？、；：]|——|…+|\.{2,}|[,.!?;:](?=\s|$)/;
 // quotes and brackets too: an engine's word text normally leaves them out
 const PUNCT = new Set([...'，。！？、；：,.!?;:—…「」『』“”‘’"\'《》〈〉（）()【】']);
 const compact = (s: string) => s.replace(/\s+/g, '');
 /** The characters of a text a spoken word can hold (no spaces, no punctuation). */
 const voiced = (s: string) => [...compact(s)].filter((c) => !PUNCT.has(c));
 
+/** The caption phrases of a text, untimed: cut at punctuation, trimmed, the empty ones left out. */
+export const phraseParts = (text: string) => text.split(SPLIT).map((p) => p.trim()).filter(Boolean);
+
 /** Caption phrases: the text cut at punctuation, each timed by the spoken words that make up its characters. */
 export function phrasesOf(text: string, words: Array<{ text: string; t: number; d: number }>): Phrase[] {
-  const parts = text.split(SPLIT).filter((p) => p.trim()), out: Phrase[] = [];
+  const parts = phraseParts(text), out: Phrase[] = [];
   let wi = 0;
   for (const part of parts) {
     // counted the way the words are: a single — or a quote left in would wait for a character no word brings
