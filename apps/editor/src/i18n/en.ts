@@ -16,7 +16,7 @@ export const en: Record<Key, string> = {
   'home.shape.landscape': 'Horizontal',
   'home.shape.square': 'Square',
   'home.missing': 'Missing footage ({n})',
-  'home.missingTip': "This project's original videos are not on this computer (for example sample footage that did not come along in a handover)",
+  'home.missingTip': "This project's original videos are not on this computer (for example a project moved from another computer without its footage)",
   'home.deleteTip': 'Delete project',
   'home.deleteOf': 'Delete "{name}"',
   'home.threadTip': "Conversation: the home page's, or a project's (the same thread as in that project's editor)",

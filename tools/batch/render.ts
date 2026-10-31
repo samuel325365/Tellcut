@@ -1,4 +1,4 @@
-// Batch render (developer mode; maintainer docs: dev/docs/batch/README.md, private): waits for one of the shared render slots, then runs the same
+// Render through a queue (several renders started at once, e.g. by agents making films side by side): waits for one of the shared render slots, then runs the same
 // prepare:project + render as by hand, and frees the slot.
 //   npm run batch:render -- <id> [--slots 2] [any render option, e.g. --stills 1.5,3]
 import { spawn } from 'node:child_process';

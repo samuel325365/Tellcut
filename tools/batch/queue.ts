@@ -1,4 +1,4 @@
-// Render slots for batch work (developer mode; maintainer docs: dev/docs/batch/README.md, private): several Claude Code subagents finish their videos at
+// Render slots for npm run batch:render: several agents making films side by side (e.g. Claude Code subagents) finish their videos at
 // different times, and eight headless Chromes rendering at once on an 8-core machine make every render (and every check)
 // several times slower. A slot is a folder made with mkdir (atomic); its owner file ("<pid> <label>", written to a temp
 // file and renamed in, so it is never half-written) names the process holding it, so a slot left behind by a killed

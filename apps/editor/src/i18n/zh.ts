@@ -15,7 +15,7 @@ export const zh = {
   'home.shape.landscape': '橫式',
   'home.shape.square': '方形',
   'home.missing': '缺素材（{n} 支）',
-  'home.missingTip': '這個專案的原始影片不在這台電腦上（例如交接時沒有一起帶來的範例素材）',
+  'home.missingTip': '這個專案的原始影片不在這台電腦上（例如從別台電腦搬來、沒帶上原始影片的專案）',
   'home.deleteTip': '刪除專案',
   'home.deleteOf': '刪除「{name}」',
   'home.threadTip': '對話：首頁的，或某個專案的（和那個專案的編輯器裡是同一串）',

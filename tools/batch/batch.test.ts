@@ -1,11 +1,10 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OWNER_TTL_MS, holders, isAlive, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { parseLoudness } from '@tellcut/media-node';
-import { commonRefs, cutPoints, parseArgs as qcArgs } from './qc.ts';
 import { npmCommand, parseArgs as renderArgs } from './render.ts';
 
 const past = (f: string, ms: number) => { const t = new Date(Date.now() - ms); utimesSync(f, t, t); };
@@ -92,43 +91,9 @@ test('batch:render args: id and --slots in any order, the rest goes to render, v
     expect(() => npmCommand(['render', '--', '--project', bad]), JSON.stringify(bad)).toThrow('不能有');
 });
 
-test('batch:qc args: --file needs a value and is relative to where the command was typed', () => {
-  const cwd = resolve('/somewhere');
-  expect(qcArgs(['food'], cwd)).toEqual({ id: 'food' });
-  expect(qcArgs(['--file', 'out/a.mp4', 'food'], cwd)).toEqual({ id: 'food', file: join(cwd, 'out', 'a.mp4') });
-  expect(qcArgs(['food', '--file'], cwd)).toBeNull();
-  expect(qcArgs(['food', '--file', '--x'], cwd)).toBeNull();
-  expect(qcArgs(['--file', 'a.mp4'], cwd)).toBeNull();
-});
-
-test('cut points: both edges of every video clip inside the film, close edges merged, overlays ignored', () => {
-  const p = { tracks: [
-    { kind: 'video', items: [{ id: 'a', start: 0, end: 2, source: 'a' }, { id: 'b', start: 2, end: 4.2, source: 'b' }, { id: 'c', start: 4.4, end: 10, source: 'c' }] },
-    { kind: 'video', items: [{ id: 'd', start: 3, end: 5, source: 'd' }] },
-    { kind: 'overlay', items: [{ id: 'o', start: 1, end: 6 }] },
-  ] };
-  expect(cutPoints(p, 10)).toEqual([2, 3, 4.2, 5]);
-});
-
-test('cut points: a chain of close edges is merged against the last kept one; parent times are resolved', () => {
-  const chain = { tracks: [{ kind: 'video', items: [1, 1.3, 1.6, 1.9].map((t, i) => ({ id: `v${i}`, start: t, end: 10, source: 's' })) }] };
-  expect(cutPoints(chain, 10)).toEqual([1, 1.6]);
-  const nested = { tracks: [
-    { kind: 'overlay', items: [{ id: 'g', start: 3, end: 8 }] },
-    { kind: 'video', items: [{ id: 'v', parent: 'g', start: 1, end: 2, source: 's' }] },
-  ] };
-  expect(cutPoints(nested, 10)).toEqual([4, 5]);
-});
-
 test('loudness comes from the Summary block, not the running value on the first lines', () => {
   const log = '[Parsed_ebur128_0] t: 0.1 M: -120.7 S: -120.7 I: -70.0 LUFS LRA: 0.0 LU\n'
     + '[Parsed_ebur128_0] Summary:\n\n  Integrated loudness:\n    I:         -14.1 LUFS\n    Threshold: -24.4 LUFS\n\n  True peak:\n    Peak:       -1.5 dBFS\n';
   expect(parseLoudness(log)).toEqual({ lufs: -14.1, peak: -1.5 });
   expect(parseLoudness('no summary')).toBeNull();
-});
-
-test('common blocks: items whose type is common.* are counted, mentions in params are not', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'batch-')), f = join(dir, 'p.json');
-  writeFileSync(f, JSON.stringify({ tracks: [{ items: [{ type: 'common.caption' }, { type: 'common.caption' }, { type: 'fx.receipt' }, { type: 'core.clip', params: { note: 'common.x' } }] }] }));
-  expect(commonRefs(readFileSync(f, 'utf8'))).toBe(2);
 });

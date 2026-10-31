@@ -7,7 +7,6 @@ Beside it is an agent (currently Claude Code): with a "generation toolkit" (firs
 The whole program lives in this `tellcut/` folder and can be taken away on its own.
 
 To install, see [INSTALL.md](../INSTALL.md): install Node 24, Chrome and Claude Code first, then run `npm run setup`. When something goes wrong, run `npm run doctor` first.
-To hand it to someone else, `npm run handover -- <folder>` exports a clean copy of the last commit.
 
 ## Use
 
@@ -68,7 +67,7 @@ Your work itself (the whole of `projects/` is outside Tellcut's git). To back it
 Generated:
 
 - `media/`: imported or generated footage (downloaded videos, voice-over, score; `media/brand/` holds the logo and website screenshot from `logo` / `site`). Voice-over and score can be remade (voice-over needs the internet); URL downloads need the internet to fetch again; imported music is gone if deleted.
-- `cache/` (can be deleted and remade): footage analysis (proxies, thumbnails, transcripts, burned-in text detection), the pieces trimmed before export, check's contact sheets (`cache/check/`), batch:qc's spot-check images (`cache/qc/`).
+- `cache/` (can be deleted and remade): footage analysis (proxies, thumbnails, transcripts, burned-in text detection), the pieces trimmed before export, check's contact sheets (`cache/check/`).
 - `exports/`: exported videos and their logs (from the editor and the command line); `output/`: `frames` (`output/frames/`) and the single frames of `--stills` (`output/stills/`).
 - `.history/`: old versions, proposals, "Ask Agent…" requests, chat logs.
 
@@ -123,7 +122,7 @@ The Python environment is defined by `pyproject.toml` and `uv.lock` and installe
 
 | Purpose | Command |
 |---|---|
-| Install / check the environment / hand-over copy | `npm run setup`, `npm run doctor`, `npm run handover -- <folder>` |
+| Install / check the environment | `npm run setup`, `npm run doctor` |
 | Tests / type check | `npm test` (everything), `npm run test:fast` (the group that needs no Chrome), `npm run test:browser` (export, check, golden, editor e2e), `npm run typecheck` |
 | Build | `npm run build:player`, `npm run build:editor` |
 | Editor development mode | `npm run server` plus `npm run dev:editor`, then open `http://localhost:5173/editor/?id=<project>` |
@@ -131,7 +130,7 @@ The Python environment is defined by `pyproject.toml` and `uv.lock` and installe
 | The gallery's English and Japanese thumbnails | `npm run thumbs` (a block's thumbnail with its Chinese words translated, in `packages/plugin-common/golden/thumbs/`) |
 | Download fonts | `npm run fonts` (setup runs it; needed by preview and export) |
 | Tokens used by a chat | `npm run tokens -- <id \| home>`, `npm run tokens -- --session <file.jsonl>` (1-hour and 5-minute cache separately, number of full rewrites, estimate at list prices), `--subagents <file.jsonl>` (including every subagent it sent) |
-| Render queue, spot check | `npm run batch:render -- <id> [--slots 2]` (at most two exports at once), `npm run batch:qc -- <id>` (spot-check images of a finished export) |
+| Render queue | `npm run batch:render -- <id> [--slots 2]` (at most two exports at once) |
 | Outside tools (speech, transcription, text recognition, faces) and their status | `npm run providers [-- --all]`; which one is used is set in `providers.json` |
 | Outside media (sound effects, music, pictures, maps…): search, download, data lookups | `npm run tellcut -- assets sources｜source <id>｜search <keyword>｜get <project> <ref> [<ref>…] [--from seconds --len seconds]｜credits <project>｜data <source> <query>｜map <project> --at <place> (or --from … --to …)`; switches in `sources.json` (defaults) and `sources.local.json` (personal, not in git; keys and `contact` too, see "API keys" in the [README](../README.md#api-keys-optional)). BBC Sound Effects (`bbc-sfx`) is off by default: under the RemArc licence its sounds are for personal, educational and research use only and may not be redistributed |
 | Switches and status of outside media sources | `npm run sources [-- --live]` (goes online to check; `doctor` lists it too); a source found broken is hidden from the agents and comes back when a later check passes |

@@ -16,7 +16,7 @@ export const ja: Record<Key, string> = {
   'home.shape.landscape': '横',
   'home.shape.square': '正方形',
   'home.missing': '素材なし（{n}本）',
-  'home.missingTip': 'このプロジェクトの元の動画がこのパソコンにありません（例：引き継ぎ時に持ってこなかったサンプル素材）',
+  'home.missingTip': 'このプロジェクトの元の動画がこのパソコンにありません（例：元の動画を持たずに別のパソコンから移したプロジェクト）',
   'home.deleteTip': 'プロジェクトを削除',
   'home.deleteOf': '「{name}」を削除',
   'home.threadTip': '会話：ホームのもの、またはプロジェクトのもの（そのプロジェクトのエディタ内と同じ流れ）',
