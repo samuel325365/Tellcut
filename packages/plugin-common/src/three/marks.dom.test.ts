@@ -152,6 +152,20 @@ test('mixed Latin and CJK share one baseline, left to right', () => {
   for (const l of w.letters) expect(l.g.position.y).toBe(0);
 });
 
+test('mixed text: each character is drawn from the font meant for it (Latin font, CJK font or a slab)', () => {
+  // fonts that note what they were asked to draw, and say by their advance which one a letter came from
+  const asked = { latin: [] as string[], cjk: [] as string[] };
+  const latin = { ...FONT, shapes: (c: string, em: number) => { asked.latin.push(c); return FONT.shapes(c, em); } };
+  const cjk = { ...CJK, shapes: (c: string, em: number) => { asked.cjk.push(c); return CJK.shapes(c, em); } };
+  const w = kit().word3d('Go 剪輯 é!あ', { glyphs: latin, cjk, em: 1 });
+  expect(asked).toEqual({ latin: ['G', 'o'], cjk: ['剪', '輯'] });
+  // é and ! are Latin the Latin font lacks, あ a character neither has: slabs (0.77 em)
+  const from = w.letters.map((l) => (meshes(l.g).length === 6 ? 'slab' : l.w === 1 ? 'cjk' : l.w === 0.55 ? 'latin' : '?'));
+  expect(w.letters.map((l) => l.ch)).toEqual(['G', 'o', '剪', '輯', 'é', '!', 'あ']);
+  expect(from).toEqual(['latin', 'latin', 'cjk', 'cjk', 'slab', 'slab', 'slab']);
+  expect(w.letters.filter((l, i) => from[i] === 'slab').every((l) => l.w === 0.77)).toBe(true);
+});
+
 test('svgMark: the Tellcut dachshund extrudes with its ten sprocket holes as holes in the body', () => {
   const ms = meshes(kit().svgMark(dogSvg({ look: 'light', holes: 'cut' }))!.group);
   const holes = ms.flatMap((x) => ((x.geometry as THREE.ExtrudeGeometry).parameters.shapes as THREE.Shape[] | THREE.Shape))

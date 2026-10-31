@@ -2,8 +2,8 @@
 // logo with these now): an SVG of filled shapes extruded in its own colours, any other picture as a plate (12 cut-out layers when
 // it has a see-through background, a rounded slab with the picture on its face when not), and a word whose Latin letters are
 // extruded from a TTF (kit.loadFont), whose Chinese is extruded from a Chinese TTF (tellcut font3d) and whose other characters
-// (Japanese) are thick cut slabs. Each is built once in
-// ready(), posed in draw(), freed with its own dispose(). Like parts.ts, only types come from three here: the module is passed in.
+// (Japanese) are thick cut slabs. Each is built once in ready(), posed in draw(), freed with its own dispose(). Like parts.ts,
+// only types come from three here: the module is passed in.
 import type * as T from 'three';
 import type { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import type { Glyphs } from './glyphs.ts';
