@@ -663,6 +663,11 @@ export class Cut {
    *  A phrase with a translation (the scene's gloss) gets it under the line, at 0.75 of its size in the caption's own colour unless the params say otherwise. */
   voiceCaptions(v: VoicePlaced, o: { type?: string; [k: string]: unknown } = {}): string[] {
     const { type = 'common.caption', ...params } = o;
+    // a shared block without a gloss parameter would never draw the translation: say so rather than lose it (a project's own fx
+    // may read any param, so it is taken at its word)
+    const def = plugins.flatMap((p) => p.items ?? []).find((t) => t?.type === type);
+    if (def && v.phrases.some((ph) => ph.gloss !== undefined) && !def.params?.some((d) => d.key === 'gloss'))
+      throw new Error(`c.voiceCaptions：${type} 沒有 gloss 參數，這個場景的翻譯（narration.json 的 gloss）不會顯示；雙語字幕用 common.caption（style 選它的樣式），或拿掉 gloss`);
     return v.phrases.map((ph, i) => {
       const next = v.phrases[i + 1], end = next ? Math.max(ph.t1, Math.min(next.t0, ph.t1 + 0.5)) : ph.t1 + 0.3;
       const gloss = ph.gloss !== undefined ? { glossSize: 0.75, glossColor: (params.color as string | undefined) ?? '#ffffff', ...params, gloss: ph.gloss } : params;

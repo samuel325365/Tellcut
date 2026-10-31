@@ -445,6 +445,18 @@ describe('narration and generated music', () => {
     expect(items(c, 'text').find((i) => i.id === plain)!.params).not.toHaveProperty('gloss');
   });
 
+  test('voiceCaptions with a block that has no gloss parameter refuses a scene with a translation instead of dropping it', async () => {
+    const c = fresh(), scenes = [{ id: 's1', text: 'Import the folder.', gloss: ['匯入資料夾'] }, { id: 's2', text: 'Done.' }];
+    await withVoice(c, scenes);
+    writeFileSync(join(c.dir, 'narration.json'), JSON.stringify({ scenes }));
+    const v = c.voice('s1');
+    expect(() => c.voiceCaptions(v, { type: 'core.caption' })).toThrow(/core\.caption.*gloss.*common\.caption/);
+    expect(items(c, 'text')).toHaveLength(0);
+    // a scene with no translation: any caption block will do; a project's own fx is not second-guessed
+    expect(c.voiceCaptions(c.voice('s2', { at: 5 }), { type: 'core.caption' })).toHaveLength(1);
+    expect(c.voiceCaptions(v, { type: 'fx.mycap' })).toHaveLength(1);
+  });
+
   test('a scene is placed even when another scene’s gloss is wrong; the wrong one says what is wrong', async () => {
     const c = fresh(), scenes = [{ id: 's1', text: 'Hello.' }, { id: 's2', text: 'One, two.' }];
     await withVoice(c, scenes);
