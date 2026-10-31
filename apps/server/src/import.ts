@@ -13,6 +13,17 @@ export const IMPORT_MAX = 200;
 /** and the folder walk gives up after looking at this many names (a drive of mostly other files) */
 export const IMPORT_SCAN_MAX = 10000;
 
+/** why an import is refused before anything is read, or null. `cut`: the folder walk stopped early, so it knows only that there are
+ *  more than a limit: more than IMPORT_MAX media files, or (fewer media found by then) more than IMPORT_SCAN_MAX names of any kind,
+ *  which says nothing about how many of them are media, so that one is worded as folders too big, not as a media count */
+export function importRefusal(cut: boolean, media: number): HttpError | null {
+  if (!cut && media <= IMPORT_MAX) return null;
+  if (cut && media <= IMPORT_MAX)
+    return new HttpError(400, `選的資料夾裡超過 ${IMPORT_SCAN_MAX} 個檔案，請選小一點的資料夾`, { code: 'import.tooBig', params: { scan: IMPORT_SCAN_MAX } });
+  const n = cut ? `${IMPORT_MAX}+` : media;
+  return new HttpError(400, `一次最多加 ${IMPORT_MAX} 個檔案（這次有 ${n} 個）`, { code: 'import.tooMany', params: { n, max: IMPORT_MAX } });
+}
+
 type Body = { paths: string[]; taken: string[]; have: Array<{ id: string; path: string }> };
 const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string');
 
@@ -42,11 +53,8 @@ export function importRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
     const rel = local.find((p) => !isAbsolute(p));
     if (rel !== undefined) throw new HttpError(400, `請給完整路徑：${rel}`, { code: 'fs.notAbsolute' });
     const x = await expandInputs(local, { maxMedia: IMPORT_MAX, maxEntries: IMPORT_SCAN_MAX }), media = x.files.filter((f) => kindOf(f));
-    if (x.cut || media.length > IMPORT_MAX) {
-      // a walk that stopped early knows only that there are more than the limit it passed
-      const n = !x.cut ? media.length : media.length > IMPORT_MAX ? `${IMPORT_MAX}+` : `${IMPORT_SCAN_MAX}+`;
-      throw new HttpError(400, `一次最多加 ${IMPORT_MAX} 個檔案（這次有 ${n} 個）`, { code: 'import.tooMany', params: { n, max: IMPORT_MAX } });
-    }
+    const refused = importRefusal(x.cut, media.length);
+    if (refused) throw refused;
     // already in the project: by the paths the editor holds now (the disk may lag behind it)
     const owned = new Map(b.have.map((h) => [samePath(resolve(dir, h.path)), h.id]));
     const same = x.files.filter((f) => owned.has(samePath(f))).map((f) => ({ path: f, id: owned.get(samePath(f))! }));

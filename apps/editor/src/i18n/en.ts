@@ -574,6 +574,7 @@ export const en: Record<Key, string> = {
   'err.import.url': 'a web address (ask the Agent to download it)',
   'err.import.unreadable': 'this folder could not be read',
   'err.import.tooMany': 'At most {max} files at a time (this has {n}); add them in parts',
+  'err.import.tooBig': 'The folders picked hold more than {scan} files; pick a smaller folder',
   'err.fs.notFound': '{dir} was not found',
   'err.fs.unreadable': '{dir} cannot be read',
   'err.fs.notDir': '{dir} is not a folder',

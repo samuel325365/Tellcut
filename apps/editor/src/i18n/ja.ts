@@ -574,6 +574,7 @@ export const ja: Record<Key, string> = {
   'err.import.url': 'URL です（Agent にダウンロードを頼んでください）',
   'err.import.unreadable': 'このフォルダーを読めません',
   'err.import.tooMany': '一度に追加できるのは {max} 件までです（今回は {n} 件）。分けて追加してください',
+  'err.import.tooBig': '選んだフォルダーには {scan} 個を超えるファイルがあります。もっと小さいフォルダーを選んでください',
   'err.fs.notFound': '{dir} が見つかりません',
   'err.fs.unreadable': '{dir} を読み込めません',
   'err.fs.notDir': '{dir} はフォルダではありません',

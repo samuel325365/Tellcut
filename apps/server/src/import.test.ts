@@ -97,3 +97,13 @@ test('a project deleted while its import request is still arriving is not writte
     expect(existsSync(join(root, 'demo'))).toBe(false);
   } finally { await a.close(); }
 }, 30000);
+
+test('a walk cut short by the number of names it looked at says the folders are too big; only a media count says how many media', async () => {
+  const { importRefusal, IMPORT_MAX, IMPORT_SCAN_MAX } = await import('./import.ts');
+  expect(importRefusal(false, IMPORT_MAX)).toBeNull();
+  const of = (e: any) => [e.body.code, e.body.params];
+  expect(of(importRefusal(false, IMPORT_MAX + 5))).toEqual(['import.tooMany', { n: IMPORT_MAX + 5, max: IMPORT_MAX }]);
+  expect(of(importRefusal(true, IMPORT_MAX + 1))).toEqual(['import.tooMany', { n: `${IMPORT_MAX}+`, max: IMPORT_MAX }]);
+  // a drive of mostly other files: 37 media seen when the walk gave up is no count of anything
+  expect(of(importRefusal(true, 37))).toEqual(['import.tooBig', { scan: IMPORT_SCAN_MAX }]);
+});

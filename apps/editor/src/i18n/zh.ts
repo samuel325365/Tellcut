@@ -574,6 +574,7 @@ export const zh = {
   'err.import.url': '是網址（請 Agent 下載）',
   'err.import.unreadable': '讀不到這個資料夾',
   'err.import.tooMany': '一次最多加 {max} 個檔案（這次有 {n} 個），請分批加',
+  'err.import.tooBig': '選的資料夾裡超過 {scan} 個檔案，請選小一點的資料夾',
   'err.fs.notFound': '找不到 {dir}',
   'err.fs.unreadable': '讀不到 {dir}',
   'err.fs.notDir': '{dir} 不是資料夾',
