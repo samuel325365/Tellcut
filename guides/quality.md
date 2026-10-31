@@ -1,6 +1,6 @@
 # What makes a good film
 
-Every film is judged by this, wherever it is made (the page chat, a developer's batch subagent). How to make it is in `guides/workflow.md`.
+Every film is judged by this, wherever it is made (the page chat, or Claude Code on the command line). How to make it is in `guides/workflow.md`.
 
 Most of this holds for a film of any length. The lines marked **Short-form** are for vertical feed videos up to about 3 minutes (Reels, Shorts, TikTok), which is most of what Tellcut makes. A longer film loosens them in proportion (the hook may take longer to land, lines on screen may be longer); the preset and what the user says come first either way.
 

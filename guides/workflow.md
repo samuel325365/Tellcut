@@ -54,7 +54,7 @@ When a preset still reads a genre card (custom, or a preset of the user's own ma
 6. Finally `npm run check -- <id> --sheet`, and look at the sheet and fix as in `guides/quality.md`'s "Before delivering, look with a critical eye".
 7. **What is worth keeping**: which of this film's new fx and music styles, made generic with parameters, other films could use too (for example a "depth gauge" could become a generic "value meter").
    - **In the page chat**: tell the user in a sentence or two which effects or music are worth saving to My blocks and what they could use them for later, and that the ☆ next to the effect in the Media panel saves it (they may tick "make it generic" there). Never mention promotion, files or code to them. If nothing is worth keeping, say nothing about it.
-   - **In developer mode** (Claude Code, batches): list promotion candidates, one line each: the file, what it does, and which hard-wired things would become parameters. Promotion into the shared blocks is done by whoever maintains Tellcut (`npm run promote` / `promote-style`); if nothing is worth promoting, say so.
+   - **In developer mode** (Claude Code): list promotion candidates, one line each: the file, what it does, and which hard-wired things would become parameters. Promotion into the shared blocks is done by whoever maintains Tellcut (`npm run promote` / `promote-style`); if nothing is worth promoting, say so.
 
 ## The user's own blocks (My blocks)
 

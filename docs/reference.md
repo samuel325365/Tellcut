@@ -24,7 +24,7 @@ npm run server:restart # restart: first makes sure no chat or analysis is runnin
 
 ## Making a film with the agent (or the command line)
 
-The agent in the page chat runs exactly the commands below; you can also use them directly in Claude Code. Which commands the page chat may use, and how, is set by its system prompt: [`apps/server/chat-prompt.md`](../apps/server/chat-prompt.md) (the page chat's own rules), [`guides/quality.md`](../guides/quality.md), [`guides/workflow.md`](../guides/workflow.md).
+The agent in the page chat uses these commands, except the ones marked "Claude Code only" (the page chat runs only `tellcut`, `new`, `inspect`, `cut`, `check`, `voice`, `score` and `tokens`); you can use them all directly in Claude Code. Which commands the page chat may use, and how, is set by its system prompt: [`apps/server/chat-prompt.md`](../apps/server/chat-prompt.md) (the page chat's own rules), [`guides/quality.md`](../guides/quality.md), [`guides/workflow.md`](../guides/workflow.md).
 
 Steps: **new → inspect → cut → check → export**.
 
@@ -44,7 +44,7 @@ Steps: **new → inspect → cut → check → export**.
 | Recipes (travel / hook / montage) | `npm run tellcut -- recipe <name>`: the content format and a filled-in example; in cut.ts `c.recipe('<name>', { … })` |
 | Block catalogue | `npm run tellcut -- catalog [type or handle]`, `catalog --find <keyword>` (add `--project <id>` if needed) (shared blocks by category, each line starting with its gallery handle; `catalog MRK-03` also finds score styles `MUS-`, recipes `RCP-` and clip effects `CLP-`; the handle rules are in `packages/protocol/src/handles.ts`; after changing a block's category or promoting one, run `npm run blocks:index`) |
 | Check the result | `npm run check -- <id> [--quick] [--sheet]` (a text report; `--sheet` adds a contact sheet of the whole film) |
-| Export | the editor toolbar's **Export** → `projects/<id>/exports/`; from the command line: `npm run batch:render -- <id> [--stills 3,10.5]` (runs `prepare:project` + `render` for you, at most two exports at once) → likewise `exports/<name>-<time>.mp4` (plus a `.log`); with `--stills 3,10.5` it outputs only PNGs of those seconds into `output/stills/`, no video |
+| Export | the editor toolbar's **Export** → `projects/<id>/exports/`; from the command line: `npm run batch:render -- <id> [--stills 3,10.5]` (runs `prepare:project` + `render` for you, at most two exports at once) → likewise `exports/<name>-<time>.mp4` (plus a `.log`); with `--stills 3,10.5` it outputs only PNGs of those seconds into `output/stills/`, no video (Claude Code only) |
 | Voice-over | write `narration.json`, `npm run voice -- <id>` (edge-tts, needs the internet); in cut.ts `c.voice`, `c.voiceCaptions` |
 | Score | `npm run score -- --styles <id>` lists the styles; in cut.ts `c.score('<style>', …)`; your own styles go in `projects/<id>/score/<style>.js` |
 | A project's own effects | `projects/<id>/fx/<name>.js` (example `tools/fx-example/ring.js`); in cut.ts register with `c.fx()`, place with `c.effect()` |
@@ -108,7 +108,7 @@ The user's own promotion, without the developer's: an effect or music style a fi
 
 ```
 packages/   engine (project format, edit commands, stage, audio), media-node (ffmpeg, analysis, export, outside programs),
-            plugin-common (common.* shared blocks and golden images), plugins (the plugin list: core + common)
+            protocol (what the server and the pages share: chat, library, presets, gallery handles), plugin-common (common.* shared blocks and golden images), plugins (the plugin list: core + common)
 apps/       player (the browser player, shared by preview and export), editor (the Preact editor and home page), server (local server and page chat)
 tools/      command-line tools (new, inspect, cut, check, tellcut, voice, score, setup…), cut/ (Cut API and recipes), py/, ps/ (Python / PowerShell scripts)
 guides/     what agents read to make films (workflow, quality), video genres (genres/) and presets (presets/<id>/)

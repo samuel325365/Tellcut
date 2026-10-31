@@ -1,4 +1,4 @@
-// The block index of guides/workflow.md (what the page chat and the batch subagents read): the shared blocks by category
+// The block index of guides/workflow.md (what the page chat and Claude Code read): the shared blocks by category
 // (names only, from ItemType.category) between the block-index marks; details are looked up with `catalog --find` /
 // `catalog <type>`. Run this after adding or promoting a block; a test fails while the index is stale.   npm run blocks:index [-- --check]
 import { readFileSync, writeFileSync } from 'node:fs';

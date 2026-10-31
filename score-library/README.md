@@ -3,7 +3,7 @@
 Besides the five built-in styles (pluck, lofi, cinematic, tech, playful), `npm run score` loads every `.js` style in this folder.
 
 - A new style is written in its project first: `projects/<project>/score/<style id>.js`.
-- When it works well, `npm run promote-style -- <project> <style id> --yes` moves it here, and every project can use it (`c.score('<style id>', { bpm })` in cut.ts, or `npm run score -- <project> --style <style id>`). It also gives the style the next gallery handle in `packages/protocol/src/handles.ts` (`MUS-22`…); a style moved here by hand needs that line added by hand, or the tests fail.
+- When it works well, `npm run promote-style -- <project> <style id> --yes` moves it here, and every project can use it (`c.score('<style id>', { bpm })` in cut.ts, or `npm run score -- <project> --style <style id>`). It also gives the style the next gallery handle in `packages/protocol/src/handles.ts` (`MUS-24`, `MUS-25`…); a style moved here by hand needs that line added by hand, or the tests fail.
 - `npm test` runs the same checks on every style here (notes in key, the same seed gives the same result, a clean ending).
 
 ## What a style file looks like

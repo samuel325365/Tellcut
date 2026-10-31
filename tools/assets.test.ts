@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createProject, ffmpeg, makePhoto, maps, openSources, SourceError, TELLCUT_ROOT, type AssetMeta, type SourceAdapter, type SourcesConfig } from '@tellcut/media-node';
@@ -175,10 +175,7 @@ test('--help prints the usage of the subcommand it follows instead of reading it
   expect(await assetsCommand(['--help'], o({}, []))).toMatch(/^用法：npm run tellcut -- assets sources \| source/);
 });
 
-// dev/ is the maintainers' private repo (the batch skill and subagent): a public clone has none, and its guides are skipped
-const HAS_DEV = existsSync(join(TELLCUT_ROOT, 'dev', 'claude'));
-const DEV_GUIDES = HAS_DEV ? ['dev/claude/agents/video-maker.md', 'dev/claude/skills/batch-videos/SKILL.md'] : [];
-const GUIDES = ['guides/workflow.md', 'apps/server/chat-prompt.md', ...DEV_GUIDES];
+const GUIDES = ['guides/workflow.md', 'apps/server/chat-prompt.md'];
 const readGuide = (f: string) => readFileSync(join(TELLCUT_ROOT, f), 'utf8');
 
 /** the code spans an agent copies: every span of workflow.md's Outside assets section, and every span naming assets elsewhere */
@@ -202,13 +199,11 @@ test('the guides name every assets subcommand and nothing that is not there', ()
           for (const v of m[1].split('|').map((x) => x.replace(/（.*）/u, ''))) expect(ok, `${f}: ${flag} ${v}`).toContain(v);
     }
   }
-  expect(readGuide('apps/server/chat-prompt.md')).toContain('assets data wikimedia');
-  if (HAS_DEV) expect(readGuide('dev/claude/agents/video-maker.md')).toMatch(/assets[\s\S]*Do not fetch files yourself with WebFetch/);
-});
+  expect(readGuide('apps/server/chat-prompt.md')).toContain('assets data wikimedia');});
 
 test('the guides say what an agent must tell the user and must not assume', () => {
   // personal-use licences (BBC, the Incompetech mirror) are stricter than NC and say "personal use", not "NC"
-  for (const f of ['guides/workflow.md', ...(HAS_DEV ? ['dev/claude/skills/batch-videos/SKILL.md'] : [])]) expect(readGuide(f), f).toContain('personal use only');
+  expect(readGuide('guides/workflow.md')).toContain('personal use only');
   // the editor's bar (its words in English and Chinese) with Reload / Ignore; Ignore would save the old project over the new assets
   const chat = readGuide('apps/server/chat-prompt.md');
   for (const s of [DICTS.en['ed.diskChanged'], DICTS.zh['ed.diskChanged'], 'Reload', 'never Ignore']) expect(chat).toContain(s);

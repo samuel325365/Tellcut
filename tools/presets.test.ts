@@ -138,7 +138,7 @@ test('travel: nine whole-film forms, two cuts, two looks, and the rules that kee
 });
 
 test('every common.* a preset names is a block or a sound there is', () => {
-  const known = new Set([...commonPlugin.items.map((i) => i.type), ...(commonPlugin.sfx ?? []).map((s) => s.type)]);
+  const known = new Set([...(commonPlugin.items ?? []).map((i) => i.type), ...(commonPlugin.sfx ?? []).map((s) => s.type)]);
   for (const p of presets()) for (const text of [p.prompt, ...p.styles.map((s) => s.prompt), ...p.fields.flatMap((f) => f.options.map((o) => o.prompt))])
     for (const m of text.matchAll(/common\.[a-z][a-z0-9-]*/g)) expect(known.has(m[0]), `${p.id}: ${m[0]}`).toBe(true);
 });
