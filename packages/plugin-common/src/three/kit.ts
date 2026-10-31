@@ -35,6 +35,13 @@ export const INTER_3D = 'Inter-700.ttf';
  *  by `npm run tellcut -- font3d <feel>` (5-10 MB each, so not in npm run fonts): kit.loadFont(CJK_3D.sans) */
 export const CJK_3D = { sans: 'NotoSansTC-900.ttf', serif: 'NotoSerifTC-900.ttf', round: 'Huninn-400.ttf' } as const;
 
+/** what fetches a 3D font this PC lacks (a new machine, or a project made on another one): said with loadFont's 404 */
+function missingFontHint(file: string): string {
+  const feel = Object.entries(CJK_3D).find(([, f]) => f === file)?.[0];
+  if (feel) return `: not on this PC yet, run \`npm run tellcut -- font3d ${feel}\` in tellcut/`;
+  return file === INTER_3D ? ': not on this PC yet, run `npm run fonts` in tellcut/' : '';
+}
+
 export interface ThreeKit {
   THREE: Three;
   /** addons the blocks and fx use */
@@ -190,7 +197,7 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
       let p = fonts.get(file);
       if (!p) {
         p = fetch(new URL(`fonts/files/${file}`, document.baseURI).href)
-          .then((r) => { if (!r.ok) throw new Error(`${r.status} fonts/files/${file}`); return r.arrayBuffer(); })
+          .then((r) => { if (!r.ok) throw new Error(`${r.status} fonts/files/${file}${r.status === 404 ? missingFontHint(file) : ''}`); return r.arrayBuffer(); })
           .then((buf) => glyphsFrom(addons.opentype.parse(buf), THREE, addons.clipper));
         p.catch(() => fonts.delete(file));
         fonts.set(file, p);
