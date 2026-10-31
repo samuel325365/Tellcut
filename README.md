@@ -15,10 +15,9 @@
   <a href="#three-ways-to-edit">Three ways to edit</a> &nbsp;·&nbsp;
   <a href="#what-the-agent-does">What the agent does</a> &nbsp;·&nbsp;
   <a href="#every-film-makes-the-next-one-easier">Keep what works</a> &nbsp;·&nbsp;
-  <a href="#made-with-tellcut">Made with Tellcut</a> &nbsp;·&nbsp;
-  <a href="#presets">Presets</a> &nbsp;·&nbsp;
+  <a href="#presets">Presets and sample films</a> &nbsp;·&nbsp;
   <a href="#get-started">Get started</a> &nbsp;·&nbsp;
-  <a href="#api-keys-optional">API keys</a> &nbsp;·&nbsp;
+  <a href="#outside-media-sources">Outside media</a> &nbsp;·&nbsp;
   <a href="INSTALL.md">Install guide</a>
 </p>
 
@@ -139,66 +138,73 @@ Most editors forget everything the moment you close the project. Tellcut keeps w
 
 ---
 
-## Made with Tellcut
-
-Each of these is a vertical short that Tellcut cut from a CC BY video on YouTube. Click one to see the original, its creator and what was changed.
-
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <a href="guides/presets/travel/CREDITS.md"><img src="docs/readme/sample-travel.webp" width="220" alt="Travel Highlights"></a><br>
-      <strong>Travel Highlights</strong><br>
-      <sub>55 s · three days in Rome · footage by Jackie Vlogs</sub>
-    </td>
-    <td align="center" width="33%">
-      <a href="guides/presets/clips/CREDITS.md"><img src="docs/readme/sample-clips.webp" width="220" alt="Clips from Long Videos"></a><br>
-      <strong>Clips from Long Videos</strong><br>
-      <sub>37 s · one moment of a Marrakesh vlog · footage by Helen</sub>
-    </td>
-    <td align="center" width="33%">
-      <a href="guides/presets/podcast/CREDITS.md"><img src="docs/readme/sample-podcast.webp" width="220" alt="Podcast Highlights"></a><br>
-      <strong>Podcast Highlights</strong><br>
-      <sub>58 s · two speakers · footage by Lila Rose</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="guides/presets/food/CREDITS.md"><img src="docs/readme/sample-food.webp" width="220" alt="Food Spot"></a><br>
-      <strong>Food Spot</strong><br>
-      <sub>58 s · Seoul BBQ and a bakery · footage by 千千進食中</sub>
-    </td>
-    <td align="center">
-      <a href="guides/presets/vlog/CREDITS.md"><img src="docs/readme/sample-vlog.webp" width="220" alt="Daily Vlog"></a><br>
-      <strong>Daily Vlog</strong><br>
-      <sub>66 s · three days, one to-do list · footage by Michaela Bento</sub>
-    </td>
-    <td align="center">
-      <a href="guides/presets/celebration/CREDITS.md"><img src="docs/readme/sample-celebration.webp" width="220" alt="Celebration Film"></a><br>
-      <strong>Celebration Film</strong><br>
-      <sub>88 s · a surprise sweet sixteen · footage by It's The Donnellys</sub>
-    </td>
-  </tr>
-</table>
-
-> The source videos are published under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The captions, titles, cards and music are Tellcut's own.
-
----
-
 ## Presets
 
 A preset is a starting direction for one kind of film. Click its card under the prompt box to read what it does, then press **Confirm**. You can also skip presets and just describe what you want.
 
-| Preset | Best for |
-|---|---|
-| **Custom** | You set the ratio, length, framing and so on; the agent decides the rest. Save your choices as a preset of your own |
-| **Travel Highlights** | Scattered clips from a trip, cut into a vertical short for IG or Shorts |
-| **Clips from Long Videos** | The best moment of a finished long video, with a hook if it should send people to the full video |
-| **Podcast Highlights** | The best exchange from a podcast or interview, with who's speaking clearly marked and word-by-word captions |
-| **Food Spot** | A restaurant or a food trip, cut into a short that makes people hungry |
-| **Daily Vlog** | A day or a stretch of daily life, with rhythm and a beginning, middle and end |
-| **Celebration Film** | Wedding, birthday, graduation or farewell photos and clips, cut into a film to play on the day |
-| **Brand Film** | A brand film that looks like the company at a glance, made from its logo, a paragraph about it and its website; even better with your own footage or photos |
-| **Animated Explainer** | One idea explained with diagrams, charts, a quiz or a myth to bust, with or without footage of your own |
+Each animation below is a sample film made with that preset; click one to see where it came from and what was changed. The live-action samples are adapted from videos published on YouTube under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), with captions, titles, cards and music added by Tellcut. The Brand Film and Animated Explainer samples use no footage at all: the agent drew everything on screen.
+
+<table>
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <img src="guides/presets/custom/poster.jpg" width="200" alt="Custom"><br>
+      <strong>Custom</strong><br>
+      You set the ratio, length, framing and so on; the agent decides the rest. Save your choices as a preset of your own
+    </td>
+    <td align="center" valign="top" width="33%">
+      <a href="guides/presets/travel/CREDITS.md"><img src="docs/readme/sample-travel.webp" width="200" alt="Travel Highlights"></a><br>
+      <strong>Travel Highlights</strong><br>
+      Scattered clips from a trip, cut into a vertical short for IG or Shorts<br>
+      <sub>Sample: 55 s · three days in Rome · footage by Jackie Vlogs</sub>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <a href="guides/presets/clips/CREDITS.md"><img src="docs/readme/sample-clips.webp" width="200" alt="Clips from Long Videos"></a><br>
+      <strong>Clips from Long Videos</strong><br>
+      The best moment of a finished long video, with a hook if it should send people to the full video<br>
+      <sub>Sample: 37 s · one moment of a Marrakesh vlog · footage by Helen</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="guides/presets/podcast/CREDITS.md"><img src="docs/readme/sample-podcast.webp" width="200" alt="Podcast Highlights"></a><br>
+      <strong>Podcast Highlights</strong><br>
+      The best exchange from a podcast or interview, with who's speaking clearly marked and word-by-word captions<br>
+      <sub>Sample: 58 s · two speakers · footage by Lila Rose</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/food/CREDITS.md"><img src="docs/readme/sample-food.webp" width="200" alt="Food Spot"></a><br>
+      <strong>Food Spot</strong><br>
+      A restaurant or a food trip, cut into a short that makes people hungry<br>
+      <sub>Sample: 58 s · Seoul BBQ and a bakery · footage by 千千進食中</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/vlog/CREDITS.md"><img src="docs/readme/sample-vlog.webp" width="200" alt="Daily Vlog"></a><br>
+      <strong>Daily Vlog</strong><br>
+      A day or a stretch of daily life, with rhythm and a beginning, middle and end<br>
+      <sub>Sample: 66 s · three days, one to-do list · footage by Michaela Bento</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="guides/presets/celebration/CREDITS.md"><img src="docs/readme/sample-celebration.webp" width="200" alt="Celebration Film"></a><br>
+      <strong>Celebration Film</strong><br>
+      Wedding, birthday, graduation or farewell photos and clips, cut into a film to play on the day<br>
+      <sub>Sample: 88 s · a surprise sweet sixteen · footage by It's The Donnellys</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/brand/CREDITS.md"><img src="docs/readme/sample-brand.webp" width="200" alt="Brand Film"></a><br>
+      <strong>Brand Film</strong><br>
+      A brand film that looks like the company at a glance, made from its logo, a paragraph about it and its website; even better with your own footage or photos<br>
+      <sub>Sample: 57 s, landscape · Tellcut's own brand film · drawn from the logo alone</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/explainer/CREDITS.md"><img src="docs/readme/sample-explainer.webp" width="200" alt="Animated Explainer"></a><br>
+      <strong>Animated Explainer</strong><br>
+      One idea explained with diagrams, charts, a quiz or a myth to bust, with or without footage of your own<br>
+      <sub>Sample: 2 min 9 s, landscape · What is an AI agent? · no footage</sub>
+    </td>
+  </tr>
+</table>
 
 **Your own presets** come after these, marked **Mine**: save one from a film you liked (**Save as preset** in the editor's chat) or from the **Custom** form. See [Every film makes the next one easier](#every-film-makes-the-next-one-easier).
 
@@ -208,18 +214,69 @@ A preset is a starting direction for one kind of film. Click its card under the 
 
 **You need**
 
-- A **Windows** PC (only Windows is supported for now)
-- **Node.js 24** and **Google Chrome**
-- **Claude Code**, signed in. The editing agent is Claude Code, running on your own Claude account
+- **Windows 10 or 11** (64-bit; only Windows is supported for now)
+- **A Claude account**: a Pro, Max, Team or Enterprise plan, or a Claude API account. The editing agent is Claude Code, running on your own account (see [Usage and cost](#usage-and-cost))
+- About **4 GB** of disk space and an internet connection (the first install downloads about 2 GB)
 
-**Then**
+Node.js, Google Chrome, Python, ffmpeg and the rest are taken care of by either way of installing below.
 
-```powershell
-npm run setup     # downloads the tools and models Tellcut needs (10–20 minutes)
-npm run server    # then open http://127.0.0.1:5174/editor/ in your browser
-```
+### Option 1: let Claude Code install it (recommended)
 
-Import footage in the chat on the right of the home page and tell the agent what you'd like to make. The full walkthrough, with troubleshooting, is in **[INSTALL.md](INSTALL.md)**. If something isn't working, `npm run doctor` lists what's missing and how to fix it.
+Claude Code is Claude in your terminal: it can download, install and run commands on your computer, and fixes errors as it goes. Claude on the web (claude.ai) can't reach your computer, so it can only tell you the steps, not do them.
+
+1. **Open PowerShell**: press the Start key, type `PowerShell` and press Enter. You don't need to run it as administrator.
+2. **Install Claude Code**: paste this line and press Enter:
+
+   ```powershell
+   irm https://claude.ai/install.ps1 | iex
+   ```
+
+   Then type `claude --version`: a version number means it's installed. If `claude` isn't found, close PowerShell and open a new one. You can also use `winget install Anthropic.ClaudeCode` ([official setup guide](https://code.claude.com/docs/en/setup)).
+3. **Sign in**: type `claude`, press Enter and sign in to your Claude account in the browser window it opens.
+4. **Pick Opus 5.5**: in Claude Code, type `/model opus` and press Enter. We recommend Opus 5.5: Tellcut's install and its editing are tested with it. Opus 5.5 needs Claude Code 2.1.280 or later; if yours is older, run `claude update` in PowerShell first.
+5. **Paste this to it**:
+
+   ```text
+   Please install Tellcut for me: https://github.com/samuel325365/Tellcut
+   Follow INSTALL.md in the repo. If Node.js 24 or later or Google Chrome is missing, install it with winget first.
+   Download the repo into a Tellcut folder in my user folder, run npm run setup, then npm run doctor to confirm every item is ticked.
+   If anything fails, fix it and carry on. When everything is ready, tell me how to open Tellcut from now on.
+   ```
+
+   Claude Code asks before each thing it does: have a look, then allow it. The whole install takes about 15–30 minutes, mostly downloading.
+6. **Open Tellcut**: from then on, whenever you want to use it, run this in PowerShell:
+
+   ```powershell
+   cd ~\Tellcut
+   npm run server
+   ```
+
+   Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the PowerShell window open while you work; closing it stops Tellcut.
+
+**Codex or another AI coding assistant can install it too**: give it the text from step 5. The agent inside Tellcut is always Claude Code, though, so you still need steps 2–3.
+
+### Option 2: install it yourself
+
+1. Install [Node.js](https://nodejs.org/) 24 or later (the LTS), [Google Chrome](https://www.google.com/chrome/) and [Claude Code](https://code.claude.com/docs/en/setup), and run `claude` once in a terminal to sign in.
+2. Get Tellcut: with [Git](https://git-scm.com/downloads/win), run `git clone https://github.com/samuel325365/Tellcut.git`; without it, click the green **Code** button on GitHub → **Download ZIP** and unzip it. With git, updating later is easier.
+3. Right-click an empty spot in the Tellcut folder → **Open in Terminal**, then run:
+
+   ```powershell
+   npm run setup     # downloads the tools and models Tellcut needs (10–20 minutes)
+   npm run server    # then open http://127.0.0.1:5174/editor/ in your browser
+   ```
+
+The full walkthrough, with troubleshooting, is in **[INSTALL.md](INSTALL.md)**. If something isn't working, `npm run doctor` lists what's missing and how to fix it; or just tell Claude Code "Tellcut won't open, can you take a look?".
+
+**Updating**: if you used git, run `git pull` in the Tellcut folder, then `npm run setup` again.
+
+### Which model
+
+Tellcut's agent uses Claude Code's **default model**. For Pro, Max, Team, Enterprise and Claude API accounts that is currently **Opus 5.5**, the model we recommend, so there's nothing to set. The chat in the page doesn't read your personal Claude Code settings, so switching models with `/model` in the terminal doesn't change what Tellcut uses.
+
+### Your first film
+
+In the chat on the right of the home page, click **＋** to import footage and tell the agent what you'd like to make. Not sure what to say? See [Try saying](#try-saying), or pick a [preset](#presets).
 
 The interface comes in English, 中文 and 日本語; switch with **中 / EN / 日** at the top right of the home page. Button labels in the editor are always English; tooltips and help follow your language.
 
@@ -239,15 +296,46 @@ Its `CREDITS.md` names the footage; it is all Creative Commons (CC BY 3.0).
 
 ---
 
-## API keys (optional)
+## Outside media sources
 
-Everything works without any keys. A few of the outside sources the agent can draw on need a free key of your own; without it, that source just isn't available and everything else works as before.
+Besides your own footage, the agent can find pictures, video, sound effects, music and maps in online libraries and databases. Most work with nothing to sign up for; a few need a free key of your own, and without it that source just isn't available while everything else works as before.
 
-| Source | What it gives | Where to get a free key |
+> These keys have nothing to do with Claude. The agent runs on the account you signed in to Claude Code with; you don't need a separate Claude API key. Voice-over (Microsoft Edge's online voices), speech-to-text (Whisper, running on your computer) and music (composed to the film's length) are built in and need no key either.
+
+Tellcut records where every downloaded file came from and its licence in the project; `npm run tellcut -- assets credits <project>` collects them into a `CREDITS.md` in the project folder. **Check the licence column before you publish or use a film commercially**: pictures of Pokémon, anime, games and Harry Potter belong to the companies that own them.
+
+**Ready to use, nothing to sign up for**
+
+| Source | What it gives | Licence |
 |---|---|---|
-| **Pixabay** | Stock video and photos | Sign up at Pixabay; your key is then shown on <https://pixabay.com/api/docs/> |
-| **Freesound** | Sound effects | Sign in to Freesound and apply at <https://freesound.org/apiv2/apply>; use the "Client secret/Api key" it gives you |
-| **CARTO** | Street-map basemaps for map scenes | Request one with your email at <https://carto.com/basemaps> (no account needed; non-commercial use only) |
+| **Wikimedia Commons** | Photos, illustrations, historical pictures | Varies by file, mostly CC BY, CC BY-SA or public domain |
+| **NASA Image and Video Library** | Photos and video of space and the Earth | Generally not copyrighted; must not suggest NASA endorses you |
+| **Maps** | Taiwan's national e-map and orthophotos, EOX satellite imagery, for route animations and map scenes | Taiwan's maps: Open Government Data License (commercial use allowed, with credit); EOX satellite: CC BY-NC-SA 4.0 (non-commercial) |
+| **Countries** | Flags, and facts such as capital, population, languages and currency | Flags are public domain |
+| **TheMealDB**, **TheCocktailDB** | Photos and recipes of dishes and cocktails | Uses the public test key: personal and development use only |
+| **PokeAPI** | Pokémon pictures and Pokédex data | © Nintendo / Creatures / GAME FREAK |
+| **AniList** | Anime and manga character pictures and covers | © each work's rights holders |
+| **AmiiboAPI** | Pictures of amiibo figures | © Nintendo |
+| **Game wikis** | Game pictures from the Super Mario and Zelda wikis | © the game companies (hosted by the wikis as fair use) |
+| **HP-API + PotterDB** | Harry Potter characters, spells and pictures | © Warner Bros. |
+
+**Needs a free key**
+
+| Source | What it gives | Licence | Where to get the key |
+|---|---|---|---|
+| **Pixabay** | Stock video and photos | Pixabay Content License (commercial use allowed, no credit needed) | Sign up at Pixabay; your key is then shown on <https://pixabay.com/api/docs/> |
+| **Freesound** | Sound effects | Varies by sound: CC0, CC BY, CC BY-NC… | Sign in to Freesound and apply at <https://freesound.org/apiv2/apply>; use the "Client secret/Api key" it gives you |
+| **CARTO** | Street-map basemaps for map scenes | Non-commercial use only | Request one with your email at <https://carto.com/basemaps> (no account needed) |
+
+**Off by default, switch on yourself** (unofficial, or personal use only)
+
+| Source | What it gives | Licence |
+|---|---|---|
+| **BBC Sound Effects** | About 33,000 professional BBC sound effects | RemArc: personal, educational and research use only, no redistribution |
+| **Incompetech** | Kevin MacLeod's music (downloaded from a copy on archive.org) | CC BY 4.0 (commercial use allowed, with credit) |
+| **Steam** | Games' store covers, screenshots and trailers (unofficial API) | © the game developers / publishers |
+
+### Adding keys and switching sources
 
 Put the keys in a file called `sources.local.json` in the `tellcut` folder. Git ignores it, so it's never committed:
 

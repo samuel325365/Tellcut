@@ -15,10 +15,9 @@
   <a href="#三種剪法">三種剪法</a> &nbsp;·&nbsp;
   <a href="#agent-會做什麼">Agent 會做什麼</a> &nbsp;·&nbsp;
   <a href="#每剪一支下一支更快">留下好用的</a> &nbsp;·&nbsp;
-  <a href="#用-tellcut-剪的片">範例</a> &nbsp;·&nbsp;
-  <a href="#片型">片型</a> &nbsp;·&nbsp;
+  <a href="#片型">片型和範例片</a> &nbsp;·&nbsp;
   <a href="#開始用">開始用</a> &nbsp;·&nbsp;
-  <a href="#api-key選用">API key</a> &nbsp;·&nbsp;
+  <a href="#外部素材來源">外部素材來源</a> &nbsp;·&nbsp;
   <a href="INSTALL.md">安裝說明（英文）</a>
 </p>
 
@@ -139,66 +138,73 @@ Tellcut 把這些工作交給 Agent，決定權留在你手上。你說想要什
 
 ---
 
-## 用 Tellcut 剪的片
-
-下面每一支都是 Tellcut 從 YouTube 上的 CC BY 影片剪出來的直式短片，點圖看原片、作者和改了什麼。
-
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <a href="guides/presets/travel/CREDITS.md"><img src="docs/readme/sample-travel.webp" width="220" alt="旅行精華"></a><br>
-      <strong>旅行精華</strong><br>
-      <sub>55 秒・羅馬三日・素材 Jackie Vlogs</sub>
-    </td>
-    <td align="center" width="33%">
-      <a href="guides/presets/clips/CREDITS.md"><img src="docs/readme/sample-clips.webp" width="220" alt="精華切片"></a><br>
-      <strong>精華切片</strong><br>
-      <sub>37 秒・馬拉喀什 vlog 的一段・素材 Helen</sub>
-    </td>
-    <td align="center" width="33%">
-      <a href="guides/presets/podcast/CREDITS.md"><img src="docs/readme/sample-podcast.webp" width="220" alt="Podcast 精華"></a><br>
-      <strong>Podcast 精華</strong><br>
-      <sub>58 秒・兩人對談・素材 Lila Rose</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="guides/presets/food/CREDITS.md"><img src="docs/readme/sample-food.webp" width="220" alt="美食探店"></a><br>
-      <strong>美食探店</strong><br>
-      <sub>58 秒・首爾炭烤＋麵包店・素材 千千進食中</sub>
-    </td>
-    <td align="center">
-      <a href="guides/presets/vlog/CREDITS.md"><img src="docs/readme/sample-vlog.webp" width="220" alt="生活 Vlog"></a><br>
-      <strong>生活 Vlog</strong><br>
-      <sub>66 秒・三天的待辦清單・素材 Michaela Bento</sub>
-    </td>
-    <td align="center">
-      <a href="guides/presets/celebration/CREDITS.md"><img src="docs/readme/sample-celebration.webp" width="220" alt="紀念影片"></a><br>
-      <strong>紀念影片</strong><br>
-      <sub>88 秒・十六歲生日驚喜・素材 It's The Donnellys</sub>
-    </td>
-  </tr>
-</table>
-
-> 原片都以 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) 釋出。字幕、標題、卡片、配樂都是 Tellcut 自己加的。
-
----
-
 ## 片型
 
 片型是某一類片的起手方向。點對話框下面的縮圖會看到說明，按「**確認**」就帶進來。不選也可以，直接用說的。
 
-| 片型 | 適合 |
-|---|---|
-| **自定義** | 自己決定比例、長度、構圖這些，其他交給 Agent；選好的還能存成自己的片型 |
-| **旅行精華** | 旅途中拍的零散片段，剪成適合放 IG、Shorts 的直式短片 |
-| **精華切片** | 從一支完成的長片挑出最精彩的一段；要導流回原片就加開頭鉤子 |
-| **Podcast 精華** | Podcast 或訪談裡最好聽的一段，清楚標出誰在說話，配逐字字幕 |
-| **美食探店** | 一家店或一趟吃喝，剪成讓人看了就餓的短片 |
-| **生活 Vlog** | 一天或一段日常的零碎片段，剪成有節奏、有起承轉合的 vlog |
-| **紀念影片** | 婚禮、生日、畢業或送別的照片和影片，剪成能在現場播的紀念影片 |
-| **品牌形象片** | 從商標、一段公司介紹和官網，做出一看就是這家公司的品牌形象片；有自己的影片或照片更好 |
-| **圖解故事** | 用圖解、圖表、測驗或迷思破解把一件事講清楚，可以完全不用素材 |
+下面的動圖是用各個片型做的範例片，點圖看出處和改了什麼。實拍的範例改編自 YouTube 上以 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) 釋出的影片，字幕、標題、卡片、配樂都是 Tellcut 自己加的；品牌形象片和圖解故事的範例沒有用任何素材，畫面全是 Agent 畫的。
+
+<table>
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <img src="guides/presets/custom/poster.jpg" width="200" alt="自定義"><br>
+      <strong>自定義</strong><br>
+      自己決定比例、長度、構圖這些，其他交給 Agent；選好的還能存成自己的片型
+    </td>
+    <td align="center" valign="top" width="33%">
+      <a href="guides/presets/travel/CREDITS.md"><img src="docs/readme/sample-travel.webp" width="200" alt="旅行精華"></a><br>
+      <strong>旅行精華</strong><br>
+      旅途中拍的零散片段，剪成適合放 IG、Shorts 的直式短片<br>
+      <sub>範例：55 秒・羅馬三日・素材 Jackie Vlogs</sub>
+    </td>
+    <td align="center" valign="top" width="33%">
+      <a href="guides/presets/clips/CREDITS.md"><img src="docs/readme/sample-clips.webp" width="200" alt="精華切片"></a><br>
+      <strong>精華切片</strong><br>
+      從一支完成的長片挑出最精彩的一段；要導流回原片就加開頭鉤子<br>
+      <sub>範例：37 秒・馬拉喀什 vlog 的一段・素材 Helen</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="guides/presets/podcast/CREDITS.md"><img src="docs/readme/sample-podcast.webp" width="200" alt="Podcast 精華"></a><br>
+      <strong>Podcast 精華</strong><br>
+      Podcast 或訪談裡最好聽的一段，清楚標出誰在說話，配逐字字幕<br>
+      <sub>範例：58 秒・兩人對談・素材 Lila Rose</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/food/CREDITS.md"><img src="docs/readme/sample-food.webp" width="200" alt="美食探店"></a><br>
+      <strong>美食探店</strong><br>
+      一家店或一趟吃喝，剪成讓人看了就餓的短片<br>
+      <sub>範例：58 秒・首爾炭烤＋麵包店・素材 千千進食中</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/vlog/CREDITS.md"><img src="docs/readme/sample-vlog.webp" width="200" alt="生活 Vlog"></a><br>
+      <strong>生活 Vlog</strong><br>
+      一天或一段日常的零碎片段，剪成有節奏、有起承轉合的 vlog<br>
+      <sub>範例：66 秒・三天的待辦清單・素材 Michaela Bento</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <a href="guides/presets/celebration/CREDITS.md"><img src="docs/readme/sample-celebration.webp" width="200" alt="紀念影片"></a><br>
+      <strong>紀念影片</strong><br>
+      婚禮、生日、畢業或送別的照片和影片，剪成能在現場播的紀念影片<br>
+      <sub>範例：88 秒・十六歲生日驚喜・素材 It's The Donnellys</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/brand/CREDITS.md"><img src="docs/readme/sample-brand.webp" width="200" alt="品牌形象片"></a><br>
+      <strong>品牌形象片</strong><br>
+      從商標、一段公司介紹和官網，做出一看就是這家公司的品牌形象片；有自己的影片或照片更好<br>
+      <sub>範例：57 秒橫式・Tellcut 自己的品牌片・全從 logo 畫出來</sub>
+    </td>
+    <td align="center" valign="top">
+      <a href="guides/presets/explainer/CREDITS.md"><img src="docs/readme/sample-explainer.webp" width="200" alt="圖解故事"></a><br>
+      <strong>圖解故事</strong><br>
+      用圖解、圖表、測驗或迷思破解把一件事講清楚，可以完全不用素材<br>
+      <sub>範例：2 分 9 秒橫式・什麼是 AI Agent？・沒有素材</sub>
+    </td>
+  </tr>
+</table>
 
 **你自己的片型**排在這些後面，標著「**我的**」：從一支喜歡的片存（編輯器聊天分頁的「**Save as preset**」），或從「**自定義**」表單存。見[每剪一支，下一支更快](#每剪一支下一支更快)。
 
@@ -208,18 +214,69 @@ Tellcut 把這些工作交給 Agent，決定權留在你手上。你說想要什
 
 **需要**
 
-- **Windows 電腦**（目前只支援 Windows）
-- **Node.js 24**、**Google Chrome**
-- **Claude Code**，而且已經登入。剪片的 Agent 就是 Claude Code，用的是你自己的 Claude 帳號
+- **Windows 10 或 11**（64 位元，目前只支援 Windows）
+- **Claude 帳號**：Pro、Max、Team、Enterprise 方案或 Claude API 帳號都可以。剪片的 Agent 是 Claude Code，用的是你自己的帳號（見[用量與費用](#用量與費用)）
+- 約 **4 GB** 硬碟空間和網路（第一次安裝要下載約 2 GB）
 
-**然後**
+Node.js、Google Chrome、Python、ffmpeg 這些，下面兩種裝法都會幫你處理。
 
-```powershell
-npm run setup     # 自動下載需要的工具和模型（約 10～20 分鐘）
-npm run server    # 再用瀏覽器打開 http://127.0.0.1:5174/editor/
-```
+### 方法一：請 Claude Code 幫你裝（推薦）
 
-在首頁右邊的對話框匯入素材，跟 Agent 說你想做什麼樣的片。完整步驟和疑難排解在 **[INSTALL.md](INSTALL.md)**（英文）；出問題時先跑 `npm run doctor`，它會列出哪裡沒裝好、怎麼修。
+Claude Code 是在終端機裡用的 Claude，能直接在你的電腦上下載、安裝、跑指令，遇到錯誤也會自己修。網頁版的 claude.ai 碰不到你的電腦，只能教你步驟，沒辦法代裝。
+
+1. **打開 PowerShell**：按開始鍵，輸入 `PowerShell`，按 Enter。不用以系統管理員身分執行。
+2. **安裝 Claude Code**：貼上這一行，按 Enter：
+
+   ```powershell
+   irm https://claude.ai/install.ps1 | iex
+   ```
+
+   裝完輸入 `claude --version`，出現版本號就是裝好了；說找不到 `claude` 的話，關掉 PowerShell 再開一個。也可以改用 `winget install Anthropic.ClaudeCode`（[官方安裝說明](https://code.claude.com/docs/en/setup)）。
+3. **登入**：輸入 `claude`，按 Enter，照畫面在瀏覽器登入你的 Claude 帳號。
+4. **選 Opus 5.5**：在 Claude Code 裡輸入 `/model opus`，按 Enter。我們建議用 Opus 5.5，Tellcut 的安裝和剪片都是用它測的。Opus 5.5 要 Claude Code 2.1.280 以上，版本太舊就先在 PowerShell 跑 `claude update`。
+5. **把這段話貼給它**：
+
+   ```text
+   請幫我安裝 Tellcut：https://github.com/samuel325365/Tellcut
+   照 repo 裡的 INSTALL.md 做。如果缺 Node.js 24 以上或 Google Chrome，先用 winget 幫我裝好。
+   把 repo 下載到我的使用者資料夾裡的 Tellcut，跑 npm run setup，最後用 npm run doctor 確認每一項都打勾。
+   遇到錯誤就修好再繼續。全部好了之後，告訴我以後要怎麼打開 Tellcut。
+   ```
+
+   Claude Code 每做一件事會先問你可不可以，看過再按允許。全部大約 15～30 分鐘，大多花在下載。
+6. **打開 Tellcut**：之後每次要用，在 PowerShell 裡跑：
+
+   ```powershell
+   cd ~\Tellcut
+   npm run server
+   ```
+
+   再用瀏覽器打開 <http://127.0.0.1:5174/editor/>。用的時候 PowerShell 視窗要開著，關掉 Tellcut 就停了。
+
+**用 Codex 或其他 AI 程式助手也能裝**：把第 5 步那段話貼給它就行。不過 Tellcut 裡剪片的 Agent 一定是 Claude Code，第 2～3 步還是要做。
+
+### 方法二：自己裝
+
+1. 裝好 [Node.js](https://nodejs.org/) 24 以上（選 LTS）、[Google Chrome](https://www.google.com/chrome/) 和 [Claude Code](https://code.claude.com/docs/en/setup)，在終端機跑一次 `claude` 登入。
+2. 下載 Tellcut：有裝 [Git](https://git-scm.com/downloads/win) 就跑 `git clone https://github.com/samuel325365/Tellcut.git`；沒有的話，在 GitHub 頁面按綠色的「**Code**」→「**Download ZIP**」，解壓縮。用 git 下載，之後更新比較方便。
+3. 在 Tellcut 資料夾的空白處按右鍵 →「**在終端機中開啟**」，然後跑：
+
+   ```powershell
+   npm run setup     # 自動下載需要的工具和模型（約 10～20 分鐘）
+   npm run server    # 再用瀏覽器打開 http://127.0.0.1:5174/editor/
+   ```
+
+完整步驟和疑難排解在 **[INSTALL.md](INSTALL.md)**（英文）。出問題時先跑 `npm run doctor`，它會列出哪裡沒裝好、怎麼修；也可以直接在 Claude Code 裡說「Tellcut 打不開，幫我看看」。
+
+**更新**：用 git 下載的，在 Tellcut 資料夾跑 `git pull`，再跑一次 `npm run setup`。
+
+### 用哪個模型
+
+Tellcut 的 Agent 用 Claude Code 的**預設模型**。Pro、Max、Team、Enterprise 和 Claude API 帳號現在的預設都是 **Opus 5.5**，也就是我們建議的模型，不用另外設定。頁面裡的對話不會讀你 Claude Code 的個人設定，所以在終端機用 `/model` 換成別的模型，不會影響 Tellcut。
+
+### 剪第一支片
+
+在首頁右邊的對話框按 **＋** 匯入素材，跟 Agent 說你想做什麼樣的片；不知道怎麼說，可以參考[試試這樣說](#試試這樣說)，或選一個[片型](#片型)。
 
 介面有中文、English、日本語三種，首頁右上角的「中 / EN / 日」可以切換；編輯器裡的按鈕字固定是英文，說明跟著語言走。
 
@@ -239,15 +296,46 @@ npm run examples -- meet-tellcut     # 下載並加進你的專案（約 900 MB�
 
 ---
 
-## API key（選用）
+## 外部素材來源
 
-不填任何 key 也全部能用。Agent 能用的外部素材來源裡，有幾個要你自己申請一把免費的 key；沒有 key，就只是那個來源不能用，其他照常。
+除了你自己的素材，Agent 還能從網路上的素材庫和資料庫找圖、影片、音效、配樂和地圖。大部分不用申請就能用；少數要你自己申請一把免費的 key，沒填的話只是那個來源不能用，其他照常。
 
-| 來源 | 提供什麼 | 去哪裡申請免費的 key |
+> 這裡說的 key 跟 Claude 無關。Agent 用的是你在 Claude Code 登入的帳號，不需要另外的 Claude API key。旁白（Microsoft Edge 的線上語音）、語音轉文字（在你電腦上跑的 Whisper）和配樂（依片長自動作曲）也都內建，不用任何 key。
+
+Agent 下載的每個檔案，出處和授權都會記在專案裡，`npm run tellcut -- assets credits <專案>` 會把它們整理成專案資料夾裡的 `CREDITS.md`。**要公開發表或商用之前，請看一下授權欄**：寶可夢、動漫、遊戲、哈利波特這類的圖，版權屬於原公司。
+
+**不用申請，裝好就能用**
+
+| 來源 | 提供什麼 | 授權 |
 |---|---|---|
-| **Pixabay** | 實拍影片和照片素材 | 註冊 Pixabay 帳號後，key 就顯示在 <https://pixabay.com/api/docs/> |
-| **Freesound** | 音效 | 登入 Freesound，到 <https://freesound.org/apiv2/apply> 申請；用它給的「Client secret/Api key」 |
-| **CARTO** | 地圖場景用的街道底圖 | 到 <https://carto.com/basemaps> 用 email 申請（不用帳號；限非商業用途） |
+| **Wikimedia Commons** | 照片、插圖、歷史圖片 | 每個檔案不同，多半是 CC BY、CC BY-SA 或公有領域 |
+| **NASA Image and Video Library** | 太空、地球的照片和影片 | 一般沒有著作權；不能暗示 NASA 背書 |
+| **地圖** | 臺灣通用電子地圖、國土測繪中心正射影像、EOX 衛星圖，做路線動畫和地圖場景 | 臺灣圖資用政府資料開放授權（可商用，要標出處）；EOX 衛星圖是 CC BY-NC-SA 4.0（不可商用） |
+| **Countries** | 國旗，以及首都、人口、語言、貨幣這些國家資料 | 國旗是公有領域 |
+| **TheMealDB**、**TheCocktailDB** | 料理和調酒的照片、食譜 | 用公開的測試 key，只限個人和開發用途 |
+| **PokeAPI** | 寶可夢的圖和圖鑑資料 | © Nintendo／Creatures／GAME FREAK |
+| **AniList** | 動畫、漫畫的角色圖和作品封面 | © 各作品權利人 |
+| **AmiiboAPI** | amiibo 公仔的圖 | © Nintendo |
+| **Game wikis** | 瑪利歐、薩爾達維基上的遊戲圖 | © 遊戲公司（維基以合理使用收錄） |
+| **HP-API + PotterDB** | 哈利波特的角色、咒語資料和圖 | © Warner Bros. |
+
+**要申請免費的 key**
+
+| 來源 | 提供什麼 | 授權 | 去哪裡申請 |
+|---|---|---|---|
+| **Pixabay** | 實拍影片和照片 | Pixabay Content License（可商用，不用標出處） | 註冊 Pixabay 帳號後，key 就顯示在 <https://pixabay.com/api/docs/> |
+| **Freesound** | 音效 | 每個音效不同：CC0、CC BY、CC BY-NC… | 登入 Freesound，到 <https://freesound.org/apiv2/apply> 申請；用它給的「Client secret/Api key」 |
+| **CARTO** | 地圖場景用的街道底圖 | 限非商業用途 | 到 <https://carto.com/basemaps> 用 email 申請（不用帳號） |
+
+**預設關閉，要自己打開**（非官方，或只限個人使用）
+
+| 來源 | 提供什麼 | 授權 |
+|---|---|---|
+| **BBC Sound Effects** | 約 3 萬 3 千個 BBC 的專業音效 | RemArc：只限個人、教育、研究用途，不能再散布 |
+| **Incompetech** | Kevin MacLeod 的配樂（從 archive.org 上的備份下載） | CC BY 4.0（可商用，要標作者） |
+| **Steam** | 遊戲的商店封面、截圖和預告片（非官方 API） | © 遊戲開發商／發行商 |
+
+### 填 key、開關來源
 
 把 key 寫進 `tellcut` 資料夾裡的 `sources.local.json`。git 會忽略這個檔，不會被 commit：
 

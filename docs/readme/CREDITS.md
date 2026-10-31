@@ -25,4 +25,4 @@ Music: Tellcut's own score ("market-groove"). Voice-over: synthesised (Microsoft
 
 ## The sample previews
 
-`sample-*.webp` are the `preview.webm` files of the presets, converted. Each one is credited in `guides/presets/<preset>/CREDITS.md`: the source videos are CC BY 3.0 videos on YouTube.
+`sample-*.webp` are the `preview.webm` files of the presets, converted. Each one is credited in `guides/presets/<preset>/CREDITS.md`: the source videos are CC BY 3.0 videos on YouTube, except `sample-brand.webp` and `sample-explainer.webp`, whose films use no footage or outside media at all.

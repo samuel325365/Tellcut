@@ -1,6 +1,8 @@
 # Installing Tellcut
 
-Tellcut is a video editor you use in your browser, with an agent beside it that can do the editing for you. Everything lives in this `tellcut` folder. Do the steps below once and it's ready.
+Tellcut is a video editor you use in your browser, with an agent beside it that can do the editing for you. Everything lives in one `tellcut` folder. Do the steps below once and it's ready.
+
+> **The easy way**: let Claude Code do these steps for you. Install it, sign in, and paste it the request in [README › Option 1](README.md#option-1-let-claude-code-install-it-recommended). The rest of this page is for doing it yourself, and for when something goes wrong.
 
 ## 1. Install these first
 
@@ -9,14 +11,21 @@ Tellcut is a video editor you use in your browser, with an agent beside it that 
 | Windows 10 or 11 (64-bit) | Only Windows is supported for now |
 | [Node.js](https://nodejs.org/) 24 or later | The LTS version is fine. Check it with `node -v` in a terminal |
 | [Google Chrome](https://www.google.com/chrome/) | Exporting video needs the regular Chrome (Chromium won't do) |
-| [Claude Code](https://claude.com/claude-code) 2.1.242 or later, **signed in** | The chat in the editor runs on it. After installing, run `claude` in a terminal once and sign in |
+| [Claude Code](https://code.claude.com/docs/en/setup) 2.1.242 or later, **signed in** | The chat in the editor runs on it. Install it in PowerShell with `irm https://claude.ai/install.ps1 \| iex` (or `winget install Anthropic.ClaudeCode`), then run `claude` once and sign in. Opus 5.5, the model we recommend and Claude Code's default, needs 2.1.280 or later: `claude update` gets you there |
 | About 4 GB of disk space and an internet connection | The first install downloads about 2 GB |
 
-You don't need to install Python, ffmpeg or uv yourself: the next step downloads them into the `tellcut` folder.
+You don't need to install Python, ffmpeg or uv yourself: step 3 downloads them into the `tellcut` folder.
 
-## 2. Install
+## 2. Get Tellcut
 
-Open a terminal (PowerShell or Windows Terminal) in the `tellcut` folder and run:
+- **With [Git](https://git-scm.com/downloads/win)** (easier to update later): in a terminal, go to where you'd like the folder and run `git clone https://github.com/samuel325365/Tellcut.git`.
+- **Without Git**: on <https://github.com/samuel325365/Tellcut>, click the green **Code** button → **Download ZIP**, and unzip it wherever you like.
+
+Either way you get a folder holding `package.json`, `README.md` and this file; that's the `tellcut` folder the rest of this page means.
+
+## 3. Install
+
+Open a terminal (PowerShell or Windows Terminal) in the `tellcut` folder (right-click an empty spot in the folder → **Open in Terminal**) and run:
 
 ```
 npm run setup
@@ -35,7 +44,7 @@ It takes about 10–20 minutes, mostly downloading. If it gets interrupted, just
 
 The last step sends Claude one tiny request to confirm you're signed in (it costs a handful of tokens). To skip it, run `npm run setup -- --no-login` instead.
 
-## 3. Start
+## 4. Start
 
 ```
 npm run server
@@ -54,7 +63,7 @@ Then open <http://127.0.0.1:5174/editor/> in your browser.
 
 Footage can live in any folder. If you'd like to keep it in one place, create a `sources` folder inside `tellcut`: git ignores it, and the import window lists it directly.
 
-## 4. Example projects (optional)
+## 5. Example projects (optional)
 
 Finished films made in Tellcut, as projects you can open, play and take apart:
 
@@ -96,7 +105,7 @@ Environment variables you can set:
 | `TELLCUT_WHISPER_MODEL` | Use another speech recognition model, such as `small`. It's downloaded into `models/whisper/` the first time it's used |
 | `TELLCUT_MODELS_DIR` | Where the models live (default `tellcut/models`); setup, doctor, speech recognition and face detection all look here |
 | `TELLCUT_CONTACT` | The contact (an email or a URL) that outside sources such as Wikimedia receive in the identifying header of each download. Without it, `contact` in `sources.local.json` is used |
-| `PIXABAY_API_KEY`, `FREESOUND_API_KEY`, `CARTO_API_KEY` | Keys for outside sources (the `keyEnv` in `sources.json`). Without them, `keys` in `sources.local.json` is used; a source with no key can't be used. Where to get each key: [README › API keys](README.md#api-keys-optional) |
+| `PIXABAY_API_KEY`, `FREESOUND_API_KEY`, `CARTO_API_KEY` | Keys for outside sources (the `keyEnv` in `sources.json`). Without them, `keys` in `sources.local.json` is used; a source with no key can't be used. Where to get each key: [README › Outside media sources](README.md#outside-media-sources) |
 | `TELLCUT_URL` | The Tellcut server the command-line tools (`npm run tellcut`, `new`, `inspect`) talk to. Without it they find the server running on this computer (`.cache/server.json`), and fall back to `http://127.0.0.1:5174`; the page chat sets it to the current server. You normally don't need it |
 
 ## What setup creates
@@ -110,4 +119,4 @@ Your work is in `projects/<project>/`:
 
 ## Updating
 
-When you get a new version of `tellcut`, run `npm run setup` again. It adds new packages and versions and keeps what you already have.
+Get the new version of `tellcut` (`git pull` in the folder if you cloned it, or download the ZIP again), then run `npm run setup` again. It adds new packages and versions and keeps what you already have.
