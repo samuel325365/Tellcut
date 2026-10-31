@@ -74,3 +74,12 @@ test('My blocks’ folders set aside by a dead process are removed at start; a l
   expect(removed.sort()).toEqual([join('_library', 'blocks', '.box.deleting-111-1'), join('_library', 'blocks', '.box.thumb-111-2')]);
   expect(readdirSync(blocks).sort()).toEqual(['.box.tmp-222-3', 'box']);
 });
+
+test('a gallery music preview a killed composer left half written is removed; one still being written and the finished ones stay', () => {
+  const root = mkdtempSync(join(tmpdir(), 'clean-')), g = join(root, '_gallery');
+  mkdirSync(g, { recursive: true });
+  const put = (name: string) => { writeFileSync(join(g, name), 'x'); return join(g, name); };
+  const dead = put('score-lofi-3-d-d.wav.111.tmp'), live = put('score-lofi-4-d-d.wav.222.tmp'), done = put('score-lofi-3-d-d.wav');
+  cleanupLeftovers(root, { alive: (pid) => pid === 222 });
+  expect([existsSync(dead), existsSync(live), existsSync(done)]).toEqual([false, true, true]);
+});

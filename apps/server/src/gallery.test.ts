@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TELLCUT_ROOT } from '@tellcut/media-node';
 import { makeProjects, startApp } from './test-utils.ts';
@@ -89,3 +89,20 @@ test('a thumbnail asked for in English or Japanese is the translated picture whe
     expect((await bytes(`${flash}?lang=en`)).equals(file('', 'backdrop-gingham-t0.50.png'))).toBe(true);
   } finally { await app.close(); }
 });
+
+test('a music style of My blocks replaced under the same id is composed afresh, not served from the old cache', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  try {
+    const dir = join(projectsDir, '_library', 'score'), mod = (midi: number) => `export default { id: 'my-hum', label: 'hum', doc: 'a style', defaults: { bpm: 96, key: 'C' }, build: (c) => [{ t: 0, inst: 'pad', vel: 0.1, pan: 0, midi: ${midi}, dur: c.bar }] };\n`;
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'my-hum.js'), mod(48));
+    writeFileSync(join(dir, 'my-hum.json'), JSON.stringify({ id: 'my-hum', name: 'hum', desc: '', from: { project: 'demo', file: 'score/my-hum.js' }, savedAt: '', version: '1' }));
+    const first = Buffer.from(await (await fetch(`${base}/api/gallery/score/my-hum.wav?seed=1`)).arrayBuffer());
+    writeFileSync(join(dir, 'my-hum.js'), mod(72));
+    const second = Buffer.from(await (await fetch(`${base}/api/gallery/score/my-hum.wav?seed=1`)).arrayBuffer());
+    expect(second.subarray(0, 4).toString()).toBe('RIFF');
+    expect(second.equals(first)).toBe(false);
+    // composed beside the cache and renamed in: no half-written file is left in it
+    expect(readdirSync(join(projectsDir, '_gallery')).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+  } finally { await app.close(); }
+}, 30000);

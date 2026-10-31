@@ -5,8 +5,9 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs
 import { join, relative } from 'node:path';
 
 const isAlive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
-// temp names that carry the writing process id (projects.ts write, export.ts snapshot and index)
-const PID_FILES = [/^project\.json\.(\d+)\.tmp$/, /^\.export-\w+-(\d+)\.json$/];
+// temp names that carry the writing process id (projects.ts write, export.ts snapshot and index, a gallery music preview being
+// composed in _gallery/: score-child.ts)
+const PID_FILES = [/^project\.json\.(\d+)\.tmp$/, /^\.export-\w+-(\d+)\.json$/, /^score-[^/\\]+\.wav\.(\d+)\.tmp$/];
 const PID_CACHE = /^index-\w+-(\d+)\.json$/;
 // half-written files with no pid, so only stale ones go: cache temps (media.ts cached, analysis.ts atomic, prepare.ts cuts)
 // and an interrupted export's intermediates (render.ts .video.mp4 / .mix.wav, hidden from the export list)

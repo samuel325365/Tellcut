@@ -1,9 +1,10 @@
 // The block gallery's data (spec 2026-10-17-block-gallery): every block, sound effect, music style and recipe, read from the same
 // places `npm run tellcut -- catalog` reads, so the gallery never needs updating by hand. Score previews are generated on request and cached.
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import type { ItemType, ParamDef, Plugin } from '@tellcut/engine';
 import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_ROOT, STYLES } from '@tellcut/media-node';
 // the recipes are tools code (they drive Cut); the gallery only reads their names, notes and examples. Moving them into a package of
@@ -72,9 +73,12 @@ export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: st
     const id = style.replace(/\.wav$/, ''), seed = num(url.searchParams.get('seed')) ?? 1, bpm = num(url.searchParams.get('bpm')), key = url.searchParams.get('key') || undefined;
     // a shared style, or one of the user's own (spec 2026-10-29-my-library §3.4): composed from the folder it is in
     const shared = o.library ?? SCORE_LIBRARY, mine = stylesDir(libraryRoot(o.projectsDir));
-    const library = STYLES[id] || (await loadStyles([shared])).styles[id] ? shared : (await loadStyles([mine])).styles[id] ? mine : null;
-    if (!library) throw new HttpError(404, `No music style "${id}"`);
-    const dir = join(o.projectsDir, '_gallery'), file = join(dir, `score-${library === mine ? 'mine-' : ''}${id}-${seed}-${bpm ?? 'd'}-${(key ?? 'd').replace(/[^\w#]/g, '')}.wav`);
+    const own = STYLES[id] ? undefined : (await loadStyles([shared])).styles[id] ?? (await loadStyles([mine])).styles[id];
+    if (!STYLES[id] && !own) throw new HttpError(404, `No music style "${id}"`);
+    const library = own && resolve(own.file).startsWith(resolve(mine) + sep) ? mine : shared;
+    // a style from a file is named by its content too: one replaced in My blocks (or edited) under the same id is composed afresh
+    const version = own ? `-${createHash('sha1').update(readFileSync(own.file)).digest('hex').slice(0, 8)}` : '';
+    const dir = join(o.projectsDir, '_gallery'), file = join(dir, `score-${library === mine ? 'mine-' : ''}${id}${version}-${seed}-${bpm ?? 'd'}-${(key ?? 'd').replace(/[^\w#]/g, '')}.wav`);
     // the same preview asked twice at once (a double click) is composed once
     if (!existsSync(file)) {
       let job = composing.get(file);
