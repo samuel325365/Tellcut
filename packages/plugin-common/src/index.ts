@@ -29,7 +29,7 @@ import { progress } from './progress.ts';
 import { rating } from './rating.ts';
 import { receipt } from './receipt.ts';
 import { route } from './route.ts';
-import { commonSfx } from './sfx.ts';
+import { commonSfx } from './sfx/index.ts';
 import { slam } from './slam.ts';
 import { scoreboard } from './scoreboard.ts';
 import { sparkle } from './sparkle.ts';

@@ -1,7 +1,7 @@
 import { withDefaults } from '@tellcut/engine';
 import { SFX_CATEGORY } from '@tellcut/protocol';
-import { renderAir, renderShing } from './sfx.ts';
-import { renderBuzz, renderCamBeep, renderHush, renderRecv, renderRewind, renderSend, commonSfx, renderBoing, renderChime, renderClink, renderCoin, renderCry, renderDrip, renderThunder, renderFanfare, renderFlap, renderFootstep, renderKnock, renderPour, renderScribble, renderSizzle, renderTape, scaleStep, renderRingBell, renderFlip, renderSlide, renderAlarm, renderBeep, renderPrint, renderClunk, renderTear, renderRattle, renderDingDong, renderCash, renderDeflate, renderExplode, renderFastForward, renderPage, renderPowerUp, renderScratch, renderXylo, renderDing, renderError, renderImpact, renderPop, renderRiser, renderShutter, renderThud, renderTick, renderTyping, renderWhoosh } from './sfx.ts';
+import { renderAir, renderShing } from './sfx/index.ts';
+import { renderBuzz, renderCamBeep, renderHush, renderRecv, renderRewind, renderSend, commonSfx, renderBoing, renderChime, renderClink, renderCoin, renderCry, renderDrip, renderThunder, renderFanfare, renderFlap, renderFootstep, renderKnock, renderPour, renderScribble, renderSizzle, renderTape, scaleStep, renderRingBell, renderFlip, renderSlide, renderAlarm, renderBeep, renderPrint, renderClunk, renderTear, renderRattle, renderDingDong, renderCash, renderDeflate, renderExplode, renderFastForward, renderPage, renderPowerUp, renderScratch, renderXylo, renderDing, renderError, renderImpact, renderPop, renderRiser, renderShutter, renderThud, renderTick, renderTyping, renderWhoosh } from './sfx/index.ts';
 
 const SR = 48000;
 const peak = (x: Float32Array) => x.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
