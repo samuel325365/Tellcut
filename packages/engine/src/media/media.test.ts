@@ -219,6 +219,45 @@ test('preview preload never reloads an element that is only seeking (a reload re
   expect(Date.now() - t1).toBeLessThan(300);
 });
 
+test('preview preload on every drag frame: one wait per video, its listeners gone once it loads; a failed proxy is not fetched again each frame', async () => {
+  const resolver: any = { video: () => ({ url: 'http://h/a.mp4', time: 1 }), rate: () => 1 };
+  const pool = new MediaPool(resolver, { render: false, fps: 30, preloadTimeout: 2000 });
+  const ref = { source: 's', in: 0, out: 5, speed: 1, interp: 'none' as const };
+  const v = pool.video(ref, document.createElement('div'), 1);
+  let ready = 1, err: unknown = null;
+  Object.defineProperty(v, 'readyState', { get: () => ready });
+  Object.defineProperty(v, 'networkState', { get: () => (err ? 3 : 2) });
+  Object.defineProperty(v, 'error', { get: () => err });
+  const load = vi.spyOn(v, 'load').mockImplementation(() => {});
+  const live = new Map<string, Set<unknown>>();
+  const add = v.addEventListener.bind(v), remove = v.removeEventListener.bind(v);
+  v.addEventListener = ((type: string, f: any, o?: any) => { (live.get(type) ?? live.set(type, new Set()).get(type)!).add(f); add(type, f, o); }) as any;
+  v.removeEventListener = ((type: string, f: any, o?: any) => { live.get(type)?.delete(f); remove(type, f, o); }) as any;
+  const sizes = () => ['loadeddata', 'seeked', 'error'].map((e) => live.get(e)?.size ?? 0);
+  // still seeking: five frames of a drag share one wait
+  const waits = Array.from({ length: 5 }, () => pool.preload([ref]));
+  expect(sizes()).toEqual([1, 1, 1]);
+  ready = 4; v.dispatchEvent(new Event('seeked'));
+  await Promise.all(waits);
+  expect(sizes()).toEqual([0, 0, 0]);
+  // the proxy is missing: it is fetched once, and not again on the next frames
+  ready = 0; err = { code: 4 };
+  const first = pool.preload([ref]);
+  v.dispatchEvent(new Event('error'));
+  await first;
+  for (let i = 0; i < 5; i++) await pool.preload([ref]);
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(sizes()).toEqual([0, 0, 0]);
+  // a while later it is tried again (the proxy may have been made since)
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 60_000);
+  const again = pool.preload([ref]);
+  expect(load).toHaveBeenCalledTimes(2);
+  v.dispatchEvent(new Event('error'));
+  await again;
+  clock.mockRestore();
+});
+
 test('preview: in a dissolve between two clips of the same file, the incoming clip keeps its element when the outgoing one ends', async () => {
   const resolver: any = { video: (ref: any, local: number) => ({ url: 'http://h/proxy/s', time: ref.in + local }), rate: () => 1 };
   const pool = new MediaPool(resolver, { render: false, fps: 30 });

@@ -20,11 +20,19 @@ export function renderSeekTime(mt: number, fps: number): number {
 
 interface Use { v: HTMLVideoElement; mt: number; rate: number; url: string; held: boolean }
 
+/** how long a media URL that failed to load is left alone before a preload tries it again (a proxy may be made meanwhile) */
+const RETRY_MS = 5000;
+
 export class MediaPool implements MediaApi {
   playing = false;
   /** elements per clip key; a use within one frame takes one no other use has taken (see video()) */
   private videos = new Map<string, HTMLVideoElement[]>();
   private used = new Map<HTMLVideoElement, Use>();
+  /** per element, the one wait for its picture that every preload shares: the editor preloads on each drag frame, and each
+   *  call used to add its own listeners, of which only the one that fired went away */
+  private waits = new Map<HTMLVideoElement, Promise<boolean>>();
+  /** URLs that failed to load, and when: a missing proxy was fetched again (one 404) on every drag frame */
+  private failed = new Map<string, number>();
   constructor(private resolver: MediaResolver, private opts: { render: boolean; fps: number; seekTimeout?: number; preloadTimeout?: number }) {}
 
   /** Render: one element per clip (frame-exact seeks). Preview: one per media URL, so a trim or slip of a clip
@@ -52,19 +60,38 @@ export class MediaPool implements MediaApi {
       const url = this.resolver.video(ref, 0).url;
       const v = this.el(ref, url, (l) => l[0]);
       if (v.readyState >= 2) return res();
+      const failedAt = this.failed.get(url);
+      if (v.error && failedAt !== undefined && Date.now() - failedAt < RETRY_MS) return this.opts.render ? rej(new Error(`Failed to load ${url}`)) : res();
       // the browser may never fire either event (e.g. media deferred in a hidden window): never wait forever.
       // Preview carries on (sync() seeks later anyway); an export fails instead of capturing black frames.
       const timer = setTimeout(() => {
         if (this.opts.render) rej(new Error(`Timed out loading ${url}`));
         else { console.warn(`Video not ready after ${limit} ms, continuing: ${url}`); res(); }
       }, limit);
-      // a seek to an unbuffered point drops a loaded element back to HAVE_METADATA: it ends with seeked, not loadeddata
-      for (const e of ['loadeddata', 'seeked']) v.addEventListener(e, () => { clearTimeout(timer); res(); }, { once: true });
       // a missing clip must fail an export instead of rendering black frames
-      v.addEventListener('error', () => { clearTimeout(timer); if (this.opts.render) rej(new Error(`Failed to load ${url}`)); else res(); }, { once: true });
+      void this.picture(v, url).then((ok) => { clearTimeout(timer); if (ok || !this.opts.render) res(); else rej(new Error(`Failed to load ${url}`)); });
       // only a failed or never-started element is (re)loaded: load() resets one that is loading or seeking to 0 s and fetches it again
       if (v.error || v.networkState === v.NETWORK_EMPTY) v.load();
     })));
+  }
+
+  /** true once the element has a picture, false if it fails; one set of listeners per element, all taken off by either */
+  private picture(v: HTMLVideoElement, url: string): Promise<boolean> {
+    let w = this.waits.get(v);
+    if (w) return w;
+    w = new Promise<boolean>((res) => {
+      const end = (ok: boolean) => {
+        for (const [e, f] of on) v.removeEventListener(e, f);
+        this.waits.delete(v);
+        if (ok) this.failed.delete(url); else this.failed.set(url, Date.now());
+        res(ok);
+      };
+      // a seek to an unbuffered point drops a loaded element back to HAVE_METADATA: it ends with seeked, not loadeddata
+      const on: Array<[string, () => void]> = [['loadeddata', () => end(true)], ['seeked', () => end(true)], ['error', () => end(false)]];
+      for (const [e, f] of on) v.addEventListener(e, f);
+    });
+    this.waits.set(v, w);
+    return w;
   }
 
   begin() { this.used.clear(); }
@@ -99,7 +126,7 @@ export class MediaPool implements MediaApi {
   /** Lets every video element go (another project is loaded): paused, its source dropped, reset so the browser frees it. */
   dispose() {
     for (const list of this.videos.values()) for (const v of list) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }
-    this.videos.clear(); this.used.clear();
+    this.videos.clear(); this.used.clear(); this.waits.clear(); this.failed.clear();
   }
 
   stillUrl(ref: StillRef): string { return this.resolver.still(ref); }
