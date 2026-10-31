@@ -105,10 +105,10 @@ test('clips, podcast, food, vlog and celebration: forms first, then the rest, ea
     const pre = presets().find((x) => x.id === p)!;
     expect(pre.prompt, p).toMatch(/at most one form/i);
     for (const s of pre.styles) expect(s.prompt, `${p}.${s.id}`).toMatch(/^(Form|Captions|Cut|Accent|Look):/);
-    // only the audiogram has no shared block yet (TODO 2026-10-31)
-    for (const s of pre.styles) expect(!!s.custom, `${p}.${s.id}`).toBe(p === 'podcast' && s.id === 'waveform');
+    // every style is built on shared blocks (the podcast audiogram was the last one without, until common.audiogram)
+    for (const s of pre.styles) expect(!!s.custom, `${p}.${s.id}`).toBe(false);
   }
-  for (const [p, s, b] of [['clips', 'quote-card', 'common.quote'], ['clips', 'live-replay', 'common.comments'], ['podcast', 'versus', 'common.versus'],
+  for (const [p, s, b] of [['clips', 'quote-card', 'common.quote'], ['clips', 'live-replay', 'common.comments'], ['podcast', 'versus', 'common.versus'], ['podcast', 'waveform', 'common.audiogram'],
     ['podcast', 'group-chat', 'chatWindow'], ['food', 'receipt', 'common.printer'], ['food', 'street-route', 'common.route'], ['food', 'shutter', 'common.rolldoor'],
     ['food', 'judge', 'common.gauge'], ['food', 'ember-tag', "look: 'ember'"], ['vlog', 'planner', 'common.paper'], ['vlog', 'silent', "style: 'strip'"],
     ['celebration', 'frame', 'frameWindow'], ['celebration', 'timeline', "common.meter look: 'band'"], ['celebration', 'memories', 'mode foryou']] as const)
