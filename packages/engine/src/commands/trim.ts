@@ -1,7 +1,7 @@
 // Trimming, slipping, rolling and speed changes.
 import type { Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
-import { CommandError, findItem, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
+import { CommandError, findItem, fitOwn, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
 
 const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('Sound effects have a fixed length'); };
 
@@ -42,8 +42,9 @@ export function slip(p: Project, a: { id: string; dt: number }) {
   const own = ownSounds(p, it.id);
   const was = it.in;
   it.in = r6(Math.min(max, Math.max(0, it.in + a.dt)));
-  // its own sound plays the same source moment as the picture
+  // its own sound plays the same source moment as the picture, as far as the source goes
   for (const c of own) c.in = r6(c.in + it.in - was);
+  fitOwn(p, own, it.end - it.start);
 }
 
 /** Moves the cut between two touching items on the same track. */
@@ -87,4 +88,5 @@ export function rateStretch(p: Project, a: { id: string; edge: 'start' | 'end'; 
   fitFades(f.track, it);
   scaleChildren(p, it.id, oldLen, newLen);
   for (const c of own) c.rate = r6(c.rate * oldLen / newLen);
+  fitOwn(p, own, newLen);
 }

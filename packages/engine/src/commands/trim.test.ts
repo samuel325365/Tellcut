@@ -1,7 +1,8 @@
 import { ProjectZ, type Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
-import { addItem, updateItem } from './edit.ts';
-import { CommandError } from './core.ts';
+import { addItem, swapSource, updateItem } from './edit.ts';
+import { CommandError, ownSounds } from './core.ts';
+import { split } from './split.ts';
 import { rateStretch, roll, slip, trimEnd, trimStart } from './trim.ts';
 import { fixture, item, run } from './test-fixture.ts';
 
@@ -101,15 +102,18 @@ test("a speed stretch stops where the clip's own sound reaches its 4× limit (th
   expect(item(run(fixture(), rateStretch, { id: 'c1', edge: 'end', dt: -3.9 }), 'c1').speed).toBe(16);
 });
 
+/** c2 from 20 s of the 30 s source, frozen 1 s in (the picture needs 2 s); its own sound needs 4 × 2 = 8 s, to 28 s */
+const frozen = () => {
+  const p = fixture();
+  updateItem(p, { id: 'c2', patch: { in: 20, freezeAt: 1 } });
+  addItem(p, { track: 'au', item: { id: 'snd2', source: 's', in: 20, rate: 2, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c2' } });
+  return p;
+};
+const end = (p: Project) => { const s = item(p, 'snd2'); return s.in + (s.end - s.start) * s.rate; };
+/** The panel still takes edits of the clip and of its sound (none is refused for a sound past its source). */
+const editable = (p: Project) => { run(p, updateItem, { id: 'c2', patch: { opacity: 0.5 } }); run(p, updateItem, { id: 'snd2', patch: { gain: -3 } }); return true; };
+
 test("a frozen clip sped up: its own sound, which plays on past the freeze, stays inside the source", () => {
-  // c2 from 20 s of the 30 s source, frozen 1 s in (the picture needs 2 s); its own sound needs 4 × 2 = 8 s, to 28 s
-  const frozen = () => {
-    const p = fixture();
-    updateItem(p, { id: 'c2', patch: { in: 20, freezeAt: 1 } });
-    addItem(p, { track: 'au', item: { id: 'snd2', source: 's', in: 20, rate: 2, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c2' } });
-    return p;
-  };
-  const end = (p: Project) => { const s = item(p, 'snd2'); return s.in + (s.end - s.start) * s.rate; };
   // 3× from the panel: the picture needs only 3 s, the sound 12 s (to 32 s): refused, as a clip without freezeAt is
   expect(() => run(frozen(), updateItem, { id: 'c2', patch: { speed: 3 } })).toThrow(CommandError);
   try { run(frozen(), updateItem, { id: 'c2', patch: { speed: 3 } }); } catch (e) { expect(e).toMatchObject({ code: 'cmd.ownSoundPastEnd', params: { source: 's', need: 32, have: 30 } }); }
@@ -119,6 +123,52 @@ test("a frozen clip sped up: its own sound, which plays on past the freeze, stay
     const p = run(frozen(), rateStretch, { id: 'c2', edge: 'end', dt });
     expect(end(p)).toBeCloseTo(28, 5);
   }
+});
+
+test("a frozen clip run on past its source: its own sound stops where the source does, and grows back when there is room", () => {
+  // trimEnd: 10 s of clip, the sound plays the 10 s left from 20 s at 2× (5 s) and the picture holds its frame on
+  const p = run(frozen(), trimEnd, { id: 'c2', dt: 6 });
+  expect([item(p, 'c2').end, item(p, 'snd2').end, item(p, 'snd2').in, end(p)]).toEqual([14, 5, 20, 30]);
+  expect(editable(p)).toBe(true);
+  expect(item(run(p, trimEnd, { id: 'c2', dt: -2 }), 'snd2').end).toBe(5);
+  expect(item(run(p, trimEnd, { id: 'c2', dt: -7 }), 'snd2').end).toBe(3);
+  // the panel's end acts the same, and so does a head trim (the sound keeps playing the picture's moments)
+  expect(item(run(frozen(), updateItem, { id: 'c2', patch: { end: 14 } }), 'snd2')).toMatchObject({ end: 5, in: 20 });
+  expect(item(run(p, trimStart, { id: 'c2', dt: 2 }), 'snd2')).toMatchObject({ end: 3, in: 24 });
+  // trimmed past where it stops, nothing of it is left
+  expect(run(p, trimStart, { id: 'c2', dt: 6 }).tracks[4].items.map((x) => x.id)).toEqual(['a1']);
+  // slip: the picture moves to 28 s, the sound plays the 2 s left; slipped back it spans the clip again
+  const s = run(frozen(), slip, { id: 'c2', dt: 100 });
+  expect([item(s, 'c2').in, item(s, 'snd2').in, item(s, 'snd2').end]).toEqual([28, 28, 1]);
+  expect(editable(s)).toBe(true);
+  expect(item(run(s, slip, { id: 'c2', dt: -8 }), 'snd2')).toMatchObject({ in: 20, end: 4 });
+  expect(item(run(frozen(), updateItem, { id: 'c2', patch: { in: 27 } }), 'snd2')).toMatchObject({ in: 27, end: 1.5 });
+  // another shot from 27 s: the same
+  const w = run(frozen(), swapSource, { id: 'c2', source: 's', in: 27 });
+  expect([item(w, 'snd2').in, item(w, 'snd2').end, end(w)]).toEqual([27, 1.5, 30]);
+  expect(editable(w)).toBe(true);
+  // roll with a clip after it
+  const q = frozen();
+  addItem(q, { track: 'v', item: { id: 'c3', source: 's', in: 0, speed: 1, start: 8, end: 12, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } } });
+  const r = run(q, roll, { left: 'c2', right: 'c3', dt: 3 });
+  expect([item(r, 'c2').end, item(r, 'snd2').end, end(r)]).toEqual([11, 5, 30]);
+  expect(editable(r)).toBe(true);
+  // still the clip's own sound: a split takes it along (cut, or left whole on the first half when it stops before the cut)
+  const own = (q: Project, id: string) => ownSounds(q, id).map((c) => c.id);
+  const sp = structuredClone(p); split(sp, { t: 6, ids: ['c2'] });
+  expect([own(sp, 'c2'), own(sp, 'c2-2'), item(sp, 'snd2-2').end]).toEqual([['snd2'], ['snd2-2'], 3]);
+  const sq = structuredClone(p); split(sq, { t: 11, ids: ['c2'] });
+  expect([own(sq, 'c2'), own(sq, 'c2-2')]).toEqual([['snd2'], []]);
+  // a speed stretch keeps the sound where it stops
+  expect(end(run(p, rateStretch, { id: 'c2', edge: 'end', dt: 4 }))).toBeCloseTo(30, 5);
+});
+
+test("a frozen clip whose own sound already runs past its source (an older project): editing the clip puts the sound back inside", () => {
+  const p = frozen();
+  item(p, 'snd2').end = 10;   // needs 40 s of the 30 s source
+  (p.tracks[1].items[1] as any).end = 14;
+  const q = run(p, updateItem, { id: 'c2', patch: { opacity: 0.5 } });
+  expect([item(q, 'c2').opacity, item(q, 'snd2').end]).toEqual([0.5, 5]);
 });
 
 test("slipping a clip slips its own sound with it (the same stop at the source's ends)", () => {

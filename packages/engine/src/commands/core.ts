@@ -108,13 +108,27 @@ export function sourceNeed(kind: Track['kind'], it: any): number {
 
 const LINK_EPS = 1e-3;
 /** A clip's own sounds (the first cut's 原音): its audio children of the same source spanning the whole clip, `len` seconds long
- *  (default: the clip's length now). An unknown id has none. */
+ *  (default: the clip's length now), or as much of it as their source has (see fitOwn). An unknown id has none. */
 export function ownSounds(p: Project, id: string, len?: number): AudioItem[] {
   const par = p.tracks.flatMap(items).find((x) => x.id === id) as any;
   if (!par) return [];
   const L = len ?? par.end - par.start;
+  const runsOut = (c: AudioItem) => c.end < L && Math.abs(c.in + c.end * c.rate - (p.sources[c.source]?.duration ?? Infinity)) <= LINK_EPS;
   return p.tracks.flatMap((t) => (t.kind !== 'audio' ? [] : (items(t) as AudioItem[]).filter((c) =>
-    c.parent === id && c.source === par.source && Math.abs(c.start) <= LINK_EPS && Math.abs(c.end - L) <= LINK_EPS)));
+    c.parent === id && c.source === par.source && Math.abs(c.start) <= LINK_EPS && (Math.abs(c.end - L) <= LINK_EPS || runsOut(c)))));
+}
+
+/** Own sounds span their clip (`len` seconds) as far as their source goes: a frozen clip can run on past the source's end
+ *  holding its frame, its sound stops there. One with nothing left (the clip's head trimmed past where it stopped) is dropped. */
+export function fitOwn(p: Project, sounds: Iterable<AnyItem>, len: number) {
+  for (const c of sounds as Iterable<any>) {
+    const t = p.tracks.find((x) => items(x).includes(c));
+    if (!t) continue;
+    const has = sourceLength(p, t, c);
+    // the clip length when the source has it (to checkItem's rounding allowance), else down to where the source ends
+    const end = c.in + len * c.rate <= has + 1e-6 * (1 + len) ? r6(len) : Math.floor(((has - c.in) / c.rate) * 1e6) / 1e6;
+    if (end > 0) { c.end = end; fitFades(t, c); } else t.items.splice(items(t).indexOf(c), 1);
+  }
 }
 
 /** After a media clip was trimmed (spec 2026-10-15-proposals-magnetic §4.3): its own sound is trimmed the same way, the other
@@ -123,9 +137,10 @@ export function followTrim(p: Project, id: string, oldLen: number, newLen: numbe
   const own = new Set<AnyItem>(ownSounds(p, id, oldLen));
   for (const t of p.tracks) for (const c of items(t) as any[]) {
     if (c.parent !== id) continue;
-    if (own.has(c)) { c.end = r6(newLen); c.in = r6(c.in + head * c.rate); fitFades(t, c); continue; }
+    if (own.has(c)) { c.in = r6(c.in + head * c.rate); continue; }
     if (head) { c.start = r6(c.start - head); c.end = r6(c.end - head); }
   }
+  fitOwn(p, own, newLen);
 }
 
 /** When an item's length changes, its children keep their proportional place (spec §3.1), and what moves inside a child (its
