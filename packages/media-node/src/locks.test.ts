@@ -117,6 +117,23 @@ test('a waiter that judged the lock stale too late leaves the fresh one in place
   } finally { child.kill(); }
 });
 
+test('a takeover guard whose live holder was paused past a few seconds stays its own; only a long-left one goes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lock-')), file = join(dir, 'x.lock'), guard = `${file}.takeover`;
+  const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)']);
+  try {
+    writeFileSync(file, JSON.stringify({ pid: 999999, started: 1 }));
+    writeFileSync(guard, String(child.pid));
+    const paused = new Date(Date.now() - 10_000);
+    utimesSync(guard, paused, paused);                          // a busy machine held the waiter back
+    expect(takeOver(file, (f) => !lockHolder(f))).toBe(false);
+    expect(readFileSync(guard, 'utf8')).toBe(String(child.pid));
+    const left = new Date(Date.now() - 2 * 60_000);
+    utimesSync(guard, left, left);                              // long past any pause: its pid may be someone else's by now
+    expect(takeOver(file, (f) => !lockHolder(f))).toBe(false);
+    expect(takeOver(file, (f) => !lockHolder(f))).toBe(true);
+  } finally { child.kill(); }
+});
+
 test('processes racing for a stale lock: exactly one of them gets it', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'lock-')), file = join(dir, 'x.lock');
   writeFileSync(file, JSON.stringify({ pid: 999999, started: 1 }));

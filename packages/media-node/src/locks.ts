@@ -10,6 +10,8 @@ import { closeSync, linkSync, openSync, readFileSync, renameSync, rmSync, statSy
 
 /** a holder touches its file this often (ms); one untouched for STALE is gone; an unreadable one younger than YOUNG is being made */
 const EVERY = 30_000, STALE = 3 * 60_000, YOUNG = 5_000;
+/** a takeover guard is held for a moment; one this old is gone even if its pid now names a live process (Windows reuses them) */
+const GUARD_STALE = 60_000;
 /** on Windows a lock another process just removed is still "delete pending", and an indexer or antivirus may have it open */
 const BUSY = new Set(['EPERM', 'EBUSY', 'EACCES']);
 const code = (e: unknown) => (e as NodeJS.ErrnoException)?.code ?? '';
@@ -51,8 +53,14 @@ export function takeOver(file: string, free: (path: string) => boolean): boolean
   const guard = `${file}.takeover`;
   const r = createLock(guard, String(process.pid));
   if (r !== 'taken') {
-    // another waiter is taking it over now; a guard older than YOUNG was left by a crash
-    if (r === 'held') moveAside(guard, (p) => { try { return Date.now() - statSync(p).mtimeMs > YOUNG; } catch { return true; } });
+    // another waiter is taking it over now; a guard was left by a crash when its process is gone. Age alone is not enough: on a
+    // busy machine a live holder can be paused past YOUNG, and two waiters inside the guard let one remove the other's fresh lock.
+    if (r === 'held') moveAside(guard, (p) => {
+      try {
+        const age = Date.now() - statSync(p).mtimeMs, pid = Number(readFileSync(p, 'utf8'));
+        return age > GUARD_STALE || (age > YOUNG && !(pid > 0 && isAlive(pid)));
+      } catch { return true; }
+    });
     return false;
   }
   try {
