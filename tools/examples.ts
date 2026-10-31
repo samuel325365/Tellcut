@@ -3,19 +3,21 @@
 // packs it, <name>.mp4 the finished film. Without names it lists them; with names (or --all) it downloads each zip to
 // .cache/examples/, imports it into projects/ (never over a project already there) and puts the film in the project's exports/.
 // It prints in English: the people who run it have just cloned Tellcut from GitHub (a ruling of the plan; the other tools print Chinese).
-import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
-import { importProject } from './export-project.ts';
+import { ImportError, importProject } from './export-project.ts';
 
 export const REPO = 'samuel325365/Tellcut', TAG = 'examples';
 export const RELEASE_API = `https://api.github.com/repos/${REPO}/releases/tags/${TAG}`;
 export const RELEASE_PAGE = `https://github.com/${REPO}/releases/tag/${TAG}`;
 
-export interface Asset { name: string; size: number; url: string }
+/** a release file: its size and, when GitHub gives one, its digest ("sha256:<hex>") */
+export interface Asset { name: string; size: number; url: string; digest?: string }
 export interface Example { id: string; zip: Asset; film?: Asset }
 type Fetch = typeof fetch;
 const HEADERS = { accept: 'application/vnd.github+json', 'user-agent': 'tellcut-examples' };
@@ -30,14 +32,16 @@ export async function listExamples(o: { fetch?: Fetch } = {}): Promise<Example[]
   const r = await get(o.fetch ?? fetch, RELEASE_API, 'the list of examples');
   if (r.status === 404) throw new Error(`There are no example projects yet (${RELEASE_PAGE}).`);
   if (!r.ok) throw new Error(`GitHub answered ${r.status} for the list of examples; try again later.`);
-  const assets = ((await r.json()) as { assets?: Array<{ name: string; size: number; browser_download_url: string }> }).assets ?? [];
-  const by = new Map(assets.map((a) => [a.name, { name: a.name, size: a.size, url: a.browser_download_url }]));
+  const assets = ((await r.json()) as { assets?: Array<{ name: string; size: number; browser_download_url: string; digest?: string | null }> }).assets ?? [];
+  const by = new Map(assets.map((a) => [a.name, { name: a.name, size: a.size, url: a.browser_download_url, ...(a.digest ? { digest: a.digest } : {}) }]));
   return [...by.values()].filter((a) => a.name.endsWith('.zip') && PROJECT_ID.test(a.name.slice(0, -4)))
     .map((zip) => { const id = zip.name.slice(0, -4), film = by.get(`${id}.mp4`); return { id, zip, ...(film ? { film } : {}) }; })
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** `asset` into `file`, through file.part: a download that breaks leaves nothing behind */
+const sha256 = async (file: string) => { const h = createHash('sha256'); await pipeline(createReadStream(file), h); return h.digest('hex'); };
+
+/** `asset` into `file`, through file.part: a download that breaks, or ends short, or is not the release's file, leaves nothing behind */
 async function download(f: Fetch, asset: Asset, file: string, log: (s: string) => void) {
   const part = `${file}.part`;
   log(`  downloading ${asset.name} (${(asset.size / 1e6).toFixed(1)} MB)…`);
@@ -45,6 +49,11 @@ async function download(f: Fetch, asset: Asset, file: string, log: (s: string) =
     const r = await get(f, asset.url, asset.name);
     if (!r.ok || !r.body) throw new Error(`GitHub answered ${r.status}`);
     await pipeline(Readable.fromWeb(r.body as any), createWriteStream(part));
+    // a connection closed early can end the stream without an error: the size the release gives (else the response's) must be there
+    const want = asset.size || Number(r.headers.get('content-length')) || 0, got = statSync(part).size;
+    if (want && got !== want) throw new Error(`it ended after ${got} of ${want} bytes; try again`);
+    const [algo, hex] = (asset.digest ?? '').split(':');
+    if (algo === 'sha256' && hex && (await sha256(part)) !== hex.toLowerCase()) throw new Error('what arrived is not the file on the release (its sha256 differs); try again');
     renameSync(part, file);
   } catch (e) {
     rmSync(part, { force: true });
@@ -61,7 +70,15 @@ export async function installExample(ex: Example, o: { fetch?: Fetch; projectsDi
   o.log(`${ex.id}:`);
   // a zip downloaded whole before is used again
   if (!existsSync(zip) || statSync(zip).size !== ex.zip.size) await download(f, ex.zip, zip, o.log);
-  importProject(zip, o.projectsDir, ex.id);   // under the example's name, whatever the folder inside the zip is called
+  try { importProject(zip, o.projectsDir, ex.id); }   // under the example's name, whatever the folder inside the zip is called
+  catch (e) {
+    if (!(e instanceof ImportError)) throw e;
+    if (e.code === 'exists') throw new Error(`${ex.id} appeared in projects/ while downloading; it was left as it is`);
+    if (e.code === 'badName') throw new Error(`"${e.subject}" cannot be a project name`);
+    // a zip that does not unpack into a project is no use again: the next run downloads it anew
+    rmSync(zip, { force: true });
+    throw new Error(`${ex.zip.name} is not a project Tellcut can import (${e.code === 'unpack' ? 'it does not unpack' : 'no folder with a project.json inside'}); it was deleted, run this again to download it anew`);
+  }
   if (ex.film) {
     mkdirSync(join(dir, 'exports'), { recursive: true });
     try { await download(f, ex.film, join(dir, 'exports', ex.film.name), o.log); }

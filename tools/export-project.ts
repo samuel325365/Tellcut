@@ -122,19 +122,25 @@ export function exportProject(dir: string, o: { media: boolean; out?: string; /*
   return out;
 }
 
+/** Why a zip could not be imported: `code` says what (`npm run examples`, which prints English, words it from that), the message is
+ *  import-project's own Chinese. */
+export class ImportError extends Error {
+  constructor(message: string, readonly code: 'badName' | 'unpack' | 'notExport' | 'exists', /** the zip or the project name it is about */ readonly subject: string) { super(message); }
+}
+
 /** unpacks a zip from exportProject into projectsDir/<its id or `as`>; never over an existing project. Returns the folder. */
 export function importProject(zip: string, projectsDir: string, as?: string): string {
-  if (as !== undefined && !PROJECT_ID.test(as)) throw new Error(`「${as}」不能當專案名稱：英文字母、數字、_ 和 -，不能用 _ 或 - 開頭`);
+  if (as !== undefined && !PROJECT_ID.test(as)) throw new ImportError(`「${as}」不能當專案名稱：英文字母、數字、_ 和 -，不能用 _ 或 - 開頭`, 'badName', as);
   mkdirSync(projectsDir, { recursive: true });
   const tmp = mkdtempSync(join(projectsDir, '.import-'));
   try {
-    tar(['-x', '-f', resolve(zip), '-C', tmp]);
+    try { tar(['-x', '-f', resolve(zip), '-C', tmp]); } catch (e) { throw new ImportError((e as Error).message, 'unpack', basename(zip)); }
     const tops = readdirSync(tmp).filter((n) => existsSync(join(tmp, n, 'project.json')) && statSync(join(tmp, n)).isDirectory());
-    if (tops.length !== 1) throw new Error(`${basename(zip)} 不是 export-project 做的檔案（裡面要有一個資料夾，放著 project.json）`);
+    if (tops.length !== 1) throw new ImportError(`${basename(zip)} 不是 export-project 做的檔案（裡面要有一個資料夾，放著 project.json）`, 'notExport', basename(zip));
     const id = as ?? tops[0];
-    if (!PROJECT_ID.test(id)) throw new Error(`「${id}」不能當專案名稱：用 --as 另取一個`);
+    if (!PROJECT_ID.test(id)) throw new ImportError(`「${id}」不能當專案名稱：用 --as 另取一個`, 'badName', id);
     const target = join(projectsDir, id);
-    if (existsSync(target)) throw new Error(`專案「${id}」已經有了，沒有覆蓋：用 --as <新名稱> 匯入成另一個專案`);
+    if (existsSync(target)) throw new ImportError(`專案「${id}」已經有了，沒有覆蓋：用 --as <新名稱> 匯入成另一個專案`, 'exists', id);
     renameSync(join(tmp, tops[0]), target);
     return target;
   } finally { rmSync(tmp, { recursive: true, force: true }); }

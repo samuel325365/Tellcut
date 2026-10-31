@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,17 +14,20 @@ function zipOf(root: string, id: string): Buffer {
   return readFileSync(exportProject(dir, { media: true, out: join(root, `${id}.zip`) }));
 }
 
-/** a GitHub that has an `examples` release with these files (name → bytes, or a body that breaks half way) */
-function github(files: Record<string, Buffer | 'broken'>) {
+/** a release file whose listing says another size or digest than what is sent */
+type Odd = { body: Buffer; size?: number; digest?: string };
+/** a GitHub that has an `examples` release with these files (name → bytes, a body that breaks half way, or one listed otherwise) */
+function github(files: Record<string, Buffer | 'broken' | Odd>) {
   const calls: string[] = [];
   const fetch = async (url: string | URL) => {
     const u = String(url);
     calls.push(u);
-    if (u === RELEASE_API) return Response.json({ assets: Object.entries(files).map(([name, b]) => ({ name, size: b === 'broken' ? 1000 : b.length, browser_download_url: `https://dl.test/${name}` })) });
+    const listed = (b: Buffer | 'broken' | Odd) => (b === 'broken' ? { size: 1000 } : Buffer.isBuffer(b) ? { size: b.length } : { size: b.size ?? b.body.length, digest: b.digest });
+    if (u === RELEASE_API) return Response.json({ assets: Object.entries(files).map(([name, b]) => ({ name, ...listed(b), browser_download_url: `https://dl.test/${name}` })) });
     const name = u.replace('https://dl.test/', ''), b = files[name];
     if (!b) return new Response('no', { status: 404 });
     if (b === 'broken') return new Response(new ReadableStream({ start(c) { c.enqueue(new Uint8Array(10)); c.error(new Error('connection reset')); } }));
-    return new Response(b);
+    return new Response(Buffer.isBuffer(b) ? b : b.body);
   };
   return { fetch: fetch as typeof globalThis.fetch, calls };
 }
@@ -84,4 +88,27 @@ test('no release yet, or no network: a sentence that says so', async () => {
   await expect(listExamples({ fetch: none })).rejects.toThrow(/no example projects yet/);
   const offline = (async () => { throw new TypeError('fetch failed'); }) as unknown as typeof fetch;
   await expect(listExamples({ fetch: offline })).rejects.toThrow(/could not reach GitHub/i);
+});
+
+test('a download that ends short of the release’s size, or whose sha256 is not the release’s, is refused and leaves nothing', async () => {
+  const { root, projectsDir, cacheDir } = places(), zip = zipOf(root, 'meet-tellcut');
+  for (const odd of [{ body: zip.subarray(0, 100), size: zip.length }, { body: zip, digest: `sha256:${'0'.repeat(64)}` }]) {
+    const gh = github({ 'meet-tellcut.zip': odd }), [meet] = await listExamples({ fetch: gh.fetch });
+    await expect(installExample(meet, { fetch: gh.fetch, projectsDir, cacheDir, log: () => {} })).rejects.toThrow(/meet-tellcut\.zip.*(100 of|sha256)/);
+    expect(existsSync(join(projectsDir, 'meet-tellcut'))).toBe(false);
+    expect(existsSync(cacheDir) ? readdirSync(cacheDir) : []).toEqual([]);
+  }
+  // the right digest: in it goes
+  const sha = createHash('sha256').update(zip).digest('hex'), gh = github({ 'meet-tellcut.zip': { body: zip, digest: `sha256:${sha}` } });
+  const [meet] = await listExamples({ fetch: gh.fetch });
+  expect((await installExample(meet, { fetch: gh.fetch, projectsDir, cacheDir, log: () => {} })).installed).toBe(true);
+});
+
+test('a zip that is no project says so in English and is deleted, so the next run downloads it again', async () => {
+  const { projectsDir, cacheDir } = places();
+  const gh = github({ 'meet-tellcut.zip': Buffer.from('this is not a zip at all') }), [meet] = await listExamples({ fetch: gh.fetch });
+  await expect(installExample(meet, { fetch: gh.fetch, projectsDir, cacheDir, log: () => {} }))
+    .rejects.toThrow(/^meet-tellcut\.zip is not a project Tellcut can import \(it does not unpack\); it was deleted/);
+  expect(readdirSync(cacheDir)).toEqual([]);
+  expect(existsSync(join(projectsDir, 'meet-tellcut'))).toBe(false);
 });
