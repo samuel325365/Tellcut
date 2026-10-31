@@ -2,8 +2,9 @@
 // A block's thumbnail is its first golden case at its last moment; when that shows Chinese words (the case's own, or ones the block
 // starts with), it is drawn again here with them in the other language: the case's params from golden/thumbs.ts, the block's words from
 // apps/editor/src/i18n/values.*.ts. The pictures go to packages/plugin-common/golden/thumbs/<lang>/, with a manifest of what each was
-// drawn from (thumbs.test.ts fails when a table changed and they were not drawn again). Run npm run build:player first.
-import { readdirSync, rmSync, writeFileSync } from 'node:fs';
+// drawn from (thumbs.test.ts fails when a table or the block's own golden picture changed and they were not drawn again). Run
+// npm run build:player first.
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -31,8 +32,13 @@ export function thumbCases(lang: ThumbLang): GoldenCase[] {
   });
 }
 
+/** the Chinese golden picture of the same case and moment: a change in how the block draws is a new golden (npm run golden --
+ *  --update), which this follows; the words alone cannot tell */
+const goldenBytes = (c: GoldenCase) => { const f = join(GOLDEN_DIR, goldenFile(c, c.at[0])); return existsSync(f) ? readFileSync(f) : Buffer.alloc(0); };
+
 /** what a thumbnail is drawn from, short: a change in it means the picture is out of date */
-export const thumbKey = (c: GoldenCase) => createHash('sha1').update(JSON.stringify([c.type, c.params, c.theme ?? null, c.bg ?? null, !!c.wide, c.len ?? 3, c.at, c.sources ?? null])).digest('hex').slice(0, 12);
+export const thumbKey = (c: GoldenCase) => createHash('sha1').update(JSON.stringify([c.type, c.params, c.theme ?? null, c.bg ?? null, !!c.wide, c.len ?? 3, c.at, c.sources ?? null]))
+  .update(goldenBytes(c)).digest('hex').slice(0, 12);
 
 async function main() {
   const registry = createRegistry(plugins), manifest: Record<string, Record<string, string>> = {};

@@ -23,11 +23,17 @@ test('the English thumbnails show no Chinese, and every thumbnail whose case is 
   expect(title.at).toEqual([cases.find((c) => c.name === title.name)!.at.at(-1)]);
 });
 
-test('every English and Japanese thumbnail is drawn from what the tables say now (npm run thumbs after a change)', () => {
+test('every English and Japanese thumbnail is drawn from what the tables and the Chinese golden pictures say now (npm run thumbs after a change)', () => {
   const manifest = JSON.parse(readFileSync(join(THUMBS_DIR, 'manifest.json'), 'utf8')) as Record<string, Record<string, string>>;
   for (const lang of ['en', 'ja'] as const) {
     const want = Object.fromEntries(thumbCases(lang).map((c) => [goldenFile(c, c.at[0]), thumbKey(c)]));
     expect(manifest[lang], `npm run thumbs (${lang})`).toEqual(want);
     expect(Object.keys(want).filter((f) => !existsSync(join(THUMBS_DIR, lang, f)))).toEqual([]);
   }
+});
+
+test('a thumbnail is out of date when its block draws differently: the key follows the block’s own golden picture', () => {
+  const [a, b] = thumbCases('en');
+  // the same words and moment over another case's golden picture: only the picture differs
+  expect(thumbKey({ ...a, name: b.name, at: b.at })).not.toBe(thumbKey({ ...a, at: b.at }));
 });
