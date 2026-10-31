@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { makeClicks, makePhoto } from '@tellcut/media-node';
@@ -74,3 +74,26 @@ test('a drive root: its system and hidden folders are passed over, so what they 
   expect(lines.at(-1)).toMatchObject({ done: true, skipped: [], others: 0 });
   expect(Object.keys(lines.at(-1).sources)).toEqual(['pic']);
 }, 60000);
+
+test('a project deleted while its import request is still arriving is not written to: the import answers 404', async () => {
+  const root = makeProjects(), { app: a, base: b } = await startApp({ projectsDir: root });
+  try {
+    const body = JSON.stringify({ paths: [join(src, 'pic.jpg')], taken: [], have: [] });
+    const { request } = await import('node:http');
+    const answer = new Promise<number>((done, fail) => {
+      const u = new URL(`${b}/api/projects/demo/import`);
+      const req = request({ host: u.hostname, port: u.port, path: u.pathname, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } },
+        (res) => { res.resume(); res.on('end', () => done(res.statusCode ?? 0)); });
+      req.on('error', fail);
+      req.write(body.slice(0, 10));
+      // the delete lands between the request's headers and the rest of its body
+      setTimeout(async () => {
+        const del = await fetch(`${b}/api/projects/demo`, { method: 'DELETE' });
+        expect(del.status).toBe(200);
+        req.end(body.slice(10));
+      }, 200);
+    });
+    expect(await answer).toBe(404);
+    expect(existsSync(join(root, 'demo'))).toBe(false);
+  } finally { await a.close(); }
+}, 30000);

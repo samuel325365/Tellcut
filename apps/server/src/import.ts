@@ -28,8 +28,11 @@ export function importRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
   // one import per project at a time: two converting the same HEIC would pick the same free name in media/
   const chains = new Map<string, Promise<unknown>>();
   r.post('/api/projects/:id/import', async (req, res, { id }) => {
-    const dir = store.dir(id), b = body(await readJson(req));
-    // a delete meanwhile would leave the next HEIC conversion to recreate media/ in a folder that is gone (delete.ts waits)
+    const b = body(await readJson(req));
+    // a delete meanwhile would leave the next HEIC conversion to recreate media/ in a folder that is gone (delete.ts waits). The
+    // project is looked up after the body has arrived and right before the hold, with no wait between: one deleted while the
+    // request was still coming in is a 404, not a media/ written into a folder that has no project.json any more
+    const dir = store.dir(id);
     const file = basename(b.paths[0] ?? '') + (b.paths.length > 1 ? ` +${b.paths.length - 1}` : '');
     const release = !b.paths.length ? undefined : holds?.hold(id, { text: `這個專案正在匯入檔案（${file}），等匯入完再刪`, code: 'delete.busyImport', params: { file } });
     try { await importFiles(id, dir, b, res); } finally { release?.(); }

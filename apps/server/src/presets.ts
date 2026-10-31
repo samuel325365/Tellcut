@@ -93,7 +93,8 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     }
     if (b?.from !== 'project' || typeof b.project !== 'string') throw new HttpError(400, 'from must be project or form');
     const dir = o.store.dir(b.project), file = join(dir, 'preset-draft.json');
-    // its blocks are read and its poster drawn from the folder for a while: a delete waits (delete.ts)
+    // its blocks are read and its poster drawn from the folder for a while: a delete waits (delete.ts). The project is looked up
+    // (store.dir: a 404 once it is gone) after the body has arrived and right before the hold, with no wait between them
     const release = o.holds?.hold(b.project, { text: '正在把這個專案存成片型，存好後再刪', code: 'delete.busyPreset' });
     try {
       if (!existsSync(file)) throw new HttpError(404, 'No preset draft', { code: 'preset.noDraft' });
