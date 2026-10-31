@@ -94,6 +94,21 @@ test('a grade over the whole film, trimmed with a shorter film, stays on no clip
   expect(go(mag(), rateStretch, { id: 'c1', edge: 'end', dt: 10 }).tracks[0].items.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
 });
 
+test('an item moved onto another clip with a new length hangs on that clip; one edge left in place is a trim and keeps its clip', async () => {
+  const { overruns } = await import('./magnetic.ts');
+  // the caption 1–2 s into c2 (5–6 s) set to 9–11.5 s: over c3, 1 s into it
+  const p = go(mag(), updateItem, { id: 'cap', patch: { start: 5, end: 7.5 } });
+  expect([item(p, 'cap').parent, item(p, 'cap').start, at(p, 'cap').start, at(p, 'cap').end]).toEqual(['c3', 1, 9, 11.5]);
+  expect(overruns(p)).toEqual([]);
+  expect(item(go(mag(), updateItem, { id: 'cap', patch: { start: 5, end: 6 } }), 'cap')).toMatchObject({ parent: 'c3', start: 1 });
+  // only its start or only its end set: a trim, whichever clip the edge lands over
+  expect(item(go(mag(), updateItem, { id: 'cap', patch: { start: -2 } }), 'cap')).toMatchObject({ parent: 'c2', start: -2 });
+  expect(item(go(mag(), updateItem, { id: 'cap', patch: { end: 6 } }), 'cap')).toMatchObject({ parent: 'c2', end: 6 });
+  const base = mag((q) => { q.tracks[1].items.push({ id: 'grade', type: 'x.tone', start: 0, end: 12, params: {} }); });
+  expect(item(go(base, updateItem, { id: 'grade', patch: { start: 5 } }), 'grade').parent).toBeUndefined();
+  expect(item(go(base, updateItem, { id: 'grade', patch: { start: 5, end: 11 } }), 'grade').parent).toBe('c2');
+});
+
 test('music that ends with the film stops where its file ends, and says so', () => {
   const p = go(mag(), rateStretch, { id: 'c3', edge: 'end', dt: 20 });
   expect([p.meta.duration, item(p, 'm').end]).toEqual([32, 20]);
