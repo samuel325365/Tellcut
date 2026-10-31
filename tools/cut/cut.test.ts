@@ -440,6 +440,10 @@ describe('narration and generated music', () => {
     expect(got.map((p) => [p.text, p.gloss, p.glossSize, p.glossColor])).toEqual([['Import the folder', '匯入資料夾', 0.75, '#ffe0a0'], ['pick a preset', '選個片型', 0.75, '#ffe0a0']]);
     const [small] = c.voiceCaptions(v, { glossSize: 0.6 });
     expect(items(c, 'text').find((i) => i.id === small)!.params).toMatchObject({ glossSize: 0.6, glossColor: '#ffffff' });
+    // on a paper style the line is ink: the gloss is left to the caption, which prints it in the line's ink (or in the outline given)
+    const [bubble, inked] = [c.voiceCaptions(v, { style: 'bubble' })[0], c.voiceCaptions(v, { style: 'ticket', outline: '#302010' })[0]];
+    expect(items(c, 'text').find((i) => i.id === bubble)!.params).not.toHaveProperty('glossColor');
+    expect(items(c, 'text').find((i) => i.id === inked)!.params).toMatchObject({ glossColor: '#302010' });
     // a scene without one: no gloss at all
     const [plain] = c.voiceCaptions(c.voice('s2', { at: 5 }));
     expect(items(c, 'text').find((i) => i.id === plain)!.params).not.toHaveProperty('gloss');

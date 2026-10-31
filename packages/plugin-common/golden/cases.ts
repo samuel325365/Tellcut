@@ -175,6 +175,10 @@ export const cases: Case[] = [
   { name: 'caption-gloss', type: 'common.caption', params: { text: 'Oh boy.', quote: true, gloss: '（天啊。）', font: 'Noto Serif TC' }, at: [1.5] },
   // the showcase films' bilingual subtitles: English narration, its Chinese under it (c.voiceCaptions with a gloss)
   { name: 'caption-bilingual', type: 'common.caption', wide: true, params: { text: 'Import the folder, pick a preset', gloss: '匯入資料夾，選一個片型', glossSize: 0.75, glossColor: '#ffffff', font: 'Inter' }, at: [1.5] },
+  // a gloss is inside the caption's box on every style: on the paper in ink, a long one wrapped; inside a ticket's torn edges; on its own strip
+  { name: 'caption-gloss-bubble', type: 'common.caption', params: { text: 'Import the folder, pick a preset', style: 'bubble', gloss: '匯入資料夾，選一個片型，再按一下輸出就好了', glossSize: 0.75, animIn: 'none' }, at: [1.5] },
+  { name: 'caption-gloss-ticket', type: 'common.caption', params: { text: 'The dumplings are huge', style: 'ticket', y: 0.37, size: 2.4, gloss: '湯圓很大顆耶' }, at: [1.5], bg: '#123033' },
+  { name: 'caption-gloss-strip', type: 'common.caption', params: { text: 'Today I finally cleaned the kitchen', style: 'strip', size: 3.2, gloss: '今天終於把廚房整理好了', glossSize: 0.75 }, at: [1.5], bg: '#7a6650' },
   { name: 'backdrop-glow', type: 'common.backdrop', params: { pattern: 'stripes', color: '#1d110d', color2: '#f6ead8', tint: 0.05, scale: 100, glow: '0:0, 1:0.7', glowPulse: 0.3 }, at: [2.0] },
   // promoted from the uk-beat and uk-postcard shorts (2026-10-19): the rail-ticket beat edit kit and the postcard kit
   { name: 'routeboard', type: 'common.routeboard', at: [0.15, 2.8], bg: '#3d4a57' },

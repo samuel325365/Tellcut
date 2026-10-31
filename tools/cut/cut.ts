@@ -6,7 +6,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, deleteItems, magneticGaps, parseProject, r6, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
+import { lineColorKey, PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidCaptionCrop, BURNED_PAD, captionClear } from './avoid.ts';
 import { viewCrop, viewRect, viewHits, type Rect } from './view.ts';
@@ -668,9 +668,13 @@ export class Cut {
     const def = plugins.flatMap((p) => p.items ?? []).find((t) => t?.type === type);
     if (def && v.phrases.some((ph) => ph.gloss !== undefined) && !def.params?.some((d) => d.key === 'gloss'))
       throw new Error(`c.voiceCaptions：${type} 沒有 gloss 參數，這個場景的翻譯（narration.json 的 gloss）不會顯示；雙語字幕用 common.caption（style 選它的樣式），或拿掉 gloss`);
+    // the line's own colour: common.caption prints it in its ink on paper styles and in hl for big; left to the caption (its
+    // default) when the params do not set that colour, except plain white, the colour of `color`
+    const key = type === 'common.caption' ? lineColorKey(String(params.style ?? 'outline')) : 'color';
+    const own = (params[key] as string | undefined) ?? (key === 'color' ? '#ffffff' : undefined);
     return v.phrases.map((ph, i) => {
       const next = v.phrases[i + 1], end = next ? Math.max(ph.t1, Math.min(next.t0, ph.t1 + 0.5)) : ph.t1 + 0.3;
-      const gloss = ph.gloss !== undefined ? { glossSize: 0.75, glossColor: (params.color as string | undefined) ?? '#ffffff', ...params, gloss: ph.gloss } : params;
+      const gloss = ph.gloss !== undefined ? { glossSize: 0.75, ...(own ? { glossColor: own } : {}), ...params, gloss: ph.gloss } : params;
       // at least 0.6 s, but a short phrase never stays up over the next one
       return this.text(type, ph.t0, r6(Math.min(Math.max(0.6, end - ph.t0), next ? next.t0 - ph.t0 : Infinity)), { ...gloss, text: ph.text });
     });

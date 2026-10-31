@@ -164,7 +164,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.caption.tag": {"name":"上部のアクセントタグ","hint":"料理名、場所。空欄＝表示しない"},
   "common.caption.gloss": {"name":"下に小さく入れる翻訳","hint":"原音の外国語字幕の中国語訳。空欄＝表示しない"},
   "common.caption.glossSize": {"name":"翻訳の文字サイズ","hint":"字幕の文字サイズに対する倍率。二か国語字幕なら 0.75 前後"},
-  "common.caption.glossColor": {"name":"翻訳の色","hint":"空欄＝ハイライトの色"},
+  "common.caption.glossColor": {"name":"翻訳の色","hint":"空欄＝ハイライトの色（bubble・ticket・crayon・strip は文字の墨色）"},
   "common.caption.quote": {"name":"引用符と斜体","hint":"原音の引用"},
   "common.caption.y": {"name":"下端の位置","hint":"画面の高さに対する比率。-1＝position に従う"},
   "common.caption.tint": {"name":"文字を話者の色にする","hint":"オフ＝名前タグだけ色が変わる"},

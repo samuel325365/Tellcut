@@ -164,7 +164,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.caption.tag": {"name":"Top accent tag","hint":"Dish name, place; blank = not shown"},
   "common.caption.gloss": {"name":"Small translation below","hint":"Chinese for the foreign-language caption of the original audio; blank = not shown"},
   "common.caption.glossSize": {"name":"Translation size","hint":"times the caption's size; about 0.75 for bilingual subtitles"},
-  "common.caption.glossColor": {"name":"Translation colour","hint":"blank = the highlight colour"},
+  "common.caption.glossColor": {"name":"Translation colour","hint":"blank = the highlight colour; the ink on bubble, ticket, crayon and strip"},
   "common.caption.quote": {"name":"Quotes and italics","hint":"Quotes the original audio"},
   "common.caption.y": {"name":"Bottom position","hint":"Fraction of frame height; -1 = follow position"},
   "common.caption.tint": {"name":"Text follows speaker color","hint":"Off = only the name tag changes color"},

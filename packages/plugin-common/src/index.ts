@@ -22,6 +22,7 @@ import { outro } from './outro.ts';
 import { panel } from './panel.ts';
 export { PANEL_FRAME, PANEL_RADIUS, panelFrame } from './panel.ts';
 export { charKinds } from './markup.ts';
+export { lineColorKey } from './caption.ts';
 import { pen } from './pen.ts';
 import { polaroid } from './polaroid.ts';
 import { progress } from './progress.ts';

@@ -1,5 +1,5 @@
 import { DEFAULT_THEME } from '@tellcut/engine';
-import { caption, glossLift, karaokeRange, speakerColor, styleFontOf, stylePop } from './caption.ts';
+import { caption, glossColorOf, karaokeRange, lineColorKey, speakerColor, styleFontOf, stylePop } from './caption.ts';
 import { layoutMarkup } from './markup.ts';
 
 test('karaoke: the word being said is the range between the last step reached and the one before it', () => {
@@ -46,11 +46,13 @@ test('big writes by hand and qa in a serif unless styleFont says otherwise; othe
 });
 
 // showcase films (spec 2026-10-30 part 2): bilingual captions
-test('a gloss lifts the caption by its own height: the old 0.75 caption heights at 0.52, more for a bigger or two-line one, none without', () => {
-  expect(glossLift(100, 0.52, '中')).toBeCloseTo(75, 5);
-  expect(glossLift(100, 0.75, '中')).toBeCloseTo(103.75, 5);
-  expect(glossLift(100, 0.75, '一\n二')).toBeCloseTo(103.75 + 93.75, 5);
-  expect(glossLift(100, 0.75, '')).toBe(0);
+test('a gloss is the highlight colour unless set, and the ink on the paper styles, where the highlight colour does not read', () => {
+  const p = { glossColor: '', hl: '#ffe14d', outline: '#1a1a1a' };
+  expect(['outline', 'plain', 'box', 'bar', 'qa', 'auto', 'big'].map((style) => glossColorOf({ ...p, style }))).toEqual(Array(7).fill('#ffe14d'));
+  expect(['bubble', 'ticket', 'crayon', 'strip'].map((style) => glossColorOf({ ...p, style }))).toEqual(Array(4).fill('#1a1a1a'));
+  expect(glossColorOf({ ...p, style: 'bubble', glossColor: '#c0392b' })).toBe('#c0392b');
+  // the parameter each style draws its line in (voiceCaptions gives the gloss the line's colour)
+  expect(['outline', 'bubble', 'strip', 'big'].map(lineColorKey)).toEqual(['color', 'outline', 'outline', 'hl']);
 });
 
 test('the gloss can be set bigger and in its own colour; by default it stays small and in the highlight colour', () => {

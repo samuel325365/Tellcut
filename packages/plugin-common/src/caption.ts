@@ -49,8 +49,12 @@ export function saidLevel(words: Array<[number, number]>, i: number, local: numb
   return step ? prog(local, step[0] - 0.04, step[0] + 0.1) : 0;
 }
 
-/** how far a gloss lifts a caption at the bottom: its lines (1.25 em each at `size` of the caption's `px`) and a 0.1 px gap; 0 without one */
-export const glossLift = (px: number, size: number, gloss: string) => (gloss ? px * (0.1 + 1.25 * size * gloss.split('\n').length) : 0);
+/** the styles that print the line in ink on paper (a bubble, a ticket, the crayon band, strips): a gloss there is ink too */
+const PAPER = new Set(['bubble', 'ticket', 'crayon', 'strip']);
+/** which colour parameter a style draws the line in: the ink (`outline`) on paper, `hl` for big, else `color` */
+export const lineColorKey = (style: string): 'outline' | 'hl' | 'color' => (PAPER.has(style) ? 'outline' : style === 'big' ? 'hl' : 'color');
+/** the gloss's colour: its own, else the highlight colour, or the ink on paper (the highlight colour does not read on it) */
+export const glossColorOf = (p: { style: string; glossColor: string; hl: string; outline: string }) => p.glossColor || (PAPER.has(p.style) ? p.outline : p.hl);
 
 /** the text colour of speaker 0–3: 0 the caption's own, then the theme's accent2, hl and accent */
 export const speakerColor = (speaker: number, color: string, theme: Theme) => [color, theme.palette.accent2, theme.palette.hl, theme.palette.accent][Math.max(0, Math.min(3, Math.round(speaker)))];
@@ -87,7 +91,7 @@ export const caption: ItemType<P, S> = {
     { key: 'tag', label: '上方主色小牌（菜名、地點；空＝不顯示）', type: 'string', default: '' },
     { key: 'gloss', label: '下方小一號的翻譯（原音外文字幕的中文；空＝不顯示）', type: 'string', default: '' },
     { key: 'glossSize', label: '翻譯的字級（字幕字級的倍數；雙語字幕用 0.75 左右）', type: 'number', min: 0.3, max: 1, step: 0.01, default: 0.52 },
-    { key: 'glossColor', label: '翻譯的顏色（空＝高亮顏色）', type: 'color', default: '' },
+    { key: 'glossColor', label: '翻譯的顏色（空＝高亮顏色；bubble、ticket、crayon、strip 是字的墨色）', type: 'color', default: '' },
     { key: 'quote', label: '加引號、斜體（引用原音）', type: 'bool', default: false },
     { key: 'y', label: '下緣位置（畫面高比例；-1＝照 position）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'tint', label: '字跟著說話者換色（關掉＝只有名字小牌換色）', type: 'bool', default: true },
@@ -115,9 +119,11 @@ export const caption: ItemType<P, S> = {
     cssCamel(chipName, { fontWeight: '900', lineHeight: '1', whiteSpace: 'pre' });
     const tag = h('div', null, null, box);
     cssCamel(tag, { position: 'absolute', left: '50%', fontWeight: '900', whiteSpace: 'pre', webkitTextStroke: '0', lineHeight: '1.25', transformOrigin: '50% 100%' });
-    const gloss = h('div', null, null, box);
-    cssCamel(gloss, { position: 'absolute', left: '50%', top: '100%', fontWeight: '700', whiteSpace: 'pre', fontStyle: 'normal', transform: 'translateX(-50%)' });
-    return { box, text: runBox(box), name, tag, gloss, nameText, role, chip, arrow, chipName, band, layer: {}, wash };
+    // the gloss: in the box's flow under the line, so it is on the box's paper or bar, inside the ticket's torn edges, under the
+    // outline's stroke, and wraps at the box's width
+    const text = runBox(box), gloss = h('div', null, null, box);
+    cssCamel(gloss, { fontWeight: '700', whiteSpace: 'pre-wrap', fontStyle: 'normal' });
+    return { box, text, name, tag, gloss, nameText, role, chip, arrow, chipName, band, layer: {}, wash };
   },
   hide(s) { freeCanvas(s.band); s.layer.cv = undefined; },
   draw(ctx, s) {
@@ -160,11 +166,16 @@ export const caption: ItemType<P, S> = {
     s.tag.textContent = p.tag ?? '';
     cssCamel(s.tag, { display: p.tag ? 'block' : 'none', bottom: p.name ? 'calc(100% + 1.6em)' : '100%', fontSize: '0.55em', padding: '0.1em 0.55em', borderRadius: `${theme.radius * 0.4 * k}px`,
       left: left ? '0' : '50%', background: theme.palette.accent, color: '#ffffff', letterSpacing: '0.06em', transform: `translate(${left ? '0' : '-50%'}, -0.35em) scale(${(0.6 + 0.4 * eBack(tq, 1.9)).toFixed(4)}) rotate(-2deg)` });
-    // the gloss: a smaller line in the highlight colour under the caption; the caption is lifted so the gloss stays above the safe line
-    s.gloss.textContent = p.gloss ?? '';
-    cssCamel(s.gloss, { display: p.gloss ? 'block' : 'none', left: left ? '0' : '50%', transform: left ? 'none' : 'translateX(-50%)', fontSize: `${p.glossSize ?? 0.52}em`, color: p.glossColor || p.hl, fontFamily: `'${theme.fonts.display}', 'Noto Sans TC', sans-serif` });
-    const place = (p.y ?? -1) >= 0 ? { bottom: `${(1 - p.y) * H}px`, top: '', yAnchor: '0px' } : p.position === 'bottom' ? { bottom: `${theme.safe.bottom * H + glossLift(px, p.glossSize ?? 0.52, p.gloss ?? '')}px`, top: '', yAnchor: '0px' } : p.position === 'top' ? { top: `${theme.safe.top * H}px`, bottom: '', yAnchor: '0px' } : { top: '50%', bottom: '', yAnchor: '-50%' };
+    const place = (p.y ?? -1) >= 0 ? { bottom: `${(1 - p.y) * H}px`, top: '', yAnchor: '0px' } : p.position === 'bottom' ? { bottom: `${theme.safe.bottom * H}px`, top: '', yAnchor: '0px' } : p.position === 'top' ? { top: `${theme.safe.top * H}px`, bottom: '', yAnchor: '0px' } : { top: '50%', bottom: '', yAnchor: '-50%' };
     const stroke = p.style === 'outline' ? theme.stroke * k : big ? 0.14 * px : 0;
+    // the gloss: a smaller line under the caption, inside its box (see build), 0.1 em of the caption below it; on strips a strip of
+    // its own; big's thick outline thinned with its size
+    const gs = p.glossSize ?? 0.52;
+    s.gloss.textContent = p.gloss ?? '';
+    cssCamel(s.gloss, { display: p.gloss ? (strip ? 'table' : 'block') : 'none', fontSize: `${gs}em`, color: glossColorOf(p), fontFamily: `'${theme.fonts.display}', 'Noto Sans TC', sans-serif`,
+      margin: strip ? `0.3em ${left ? '0' : 'auto'} 0` : `${(0.1 / gs).toFixed(4)}em 0 0`, webkitTextStroke: big ? `${(stroke * gs).toFixed(2)}px ${p.outline}` : '',
+      ...(strip ? { padding: '0.06em 0.42em 0.1em', background: p.bubbleBg, borderRadius: `${8 * k}px`, boxShadow: `0 ${5 * k}px ${16 * k}px rgba(20,12,6,0.3)`, transform: `rotate(${stripTilt(s.text.el.children.length)}deg)` }
+        : { padding: '', background: '', borderRadius: '', boxShadow: '', transform: '' }) });
     // the ticket: torn top and bottom edges (30 teeth), a slight tilt of its own, popped up from its lower edge
     let teeth = 'none', pin = '';
     if (ticket) {
@@ -202,7 +213,7 @@ export const caption: ItemType<P, S> = {
         : bar ? '0.28em 0.7em 0.3em 0.95em' : auto ? '0.17em 0.48em 0.21em' : qa ? '0 0 0 1.45em' : '0',
       borderRadius: ticket ? '0' : p.style === 'box' || p.style === 'bubble' ? `${theme.radius * k}px` : bar ? `${24 * k}px` : auto ? `${20 * k}px` : '0',
       border: p.style === 'bubble' ? `${theme.stroke * k}px solid ${p.outline}` : '0 solid transparent', boxSizing: 'border-box',
-      ...(point ? { paddingLeft: '2.05em', minHeight: '2.05em', display: 'flex', alignItems: 'center' } : {}),
+      ...(point ? { paddingLeft: '2.05em', minHeight: '2.05em', display: 'flex', flexDirection: 'column', justifyContent: 'center' } : { display: '', flexDirection: '', justifyContent: '' }),
     });
     cssCamel(s.band, { display: crayon ? 'block' : 'none' });
     if (crayon) drawBand(s, p, ctx.local, k);
