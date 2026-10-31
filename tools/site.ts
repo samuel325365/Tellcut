@@ -70,13 +70,16 @@ const MEASURE = `(() => {
     return f || null;
   };
   const meta = (sel) => { const m = document.querySelector(sel); return m ? m.getAttribute('content') || '' : ''; };
+  // an og:image that is not an address (or not a web one) is left out; the rest of the page is still worth reading
   const og = meta('meta[property="og:image"]');
+  let image = null;
+  try { const u = new URL(og, location.href); if (og && /^https?:$/.test(u.protocol)) image = u.href; } catch {}
   return {
     weights: [...weights.entries()],
     fonts: { heading: first(document.querySelector('h1') || document.querySelector('h2')), body: first(document.body) },
     title: document.title || '',
     description: meta('meta[name="description"]') || meta('meta[property="og:description"]'),
-    image: og ? new URL(og, location.href).href : null,
+    image,
   };
 })()`;
 
@@ -91,16 +94,23 @@ export function mainColours(weights: Array<[string, number]>, n = 6): string[] {
   return kept.sort((a, b) => b.w - a.w).slice(0, n).map((k) => k.hex);
 }
 
-/** Opens `url` in Chrome and writes media/brand/site.png (the first screen) and site.json into `projectDir`. */
-export async function readSite(url: string, projectDir: string, o: { timeoutMs?: number } = {}): Promise<SiteInfo> {
+/** Opens `url` in Chrome and writes media/brand/site.png (the first screen) and site.json into `projectDir`. `chrome`: the
+ *  program to start instead of the one npm run doctor finds (tests). */
+export async function readSite(url: string, projectDir: string, o: { timeoutMs?: number; chrome?: string } = {}): Promise<SiteInfo> {
   const ms = o.timeoutMs ?? 30000, dir = join(projectDir, 'media', 'brand'), shot = 'media/brand/site.png';
   const tmp = join(dir, '.site-new.png');
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined, timer: ReturnType<typeof setTimeout> | undefined;
   // one deadline for the whole read (a web font or a script that never answers held fonts.ready and the screenshot for minutes):
   // when it passes, the browser is closed, which ends whatever step was waiting
   const end = Date.now() + ms, left = () => Math.max(1000, end - Date.now());
+  // Chrome that never started is this PC's problem, not the site's: said apart, with where to look
+  let launched = false, over = false;
   const read = async (): Promise<SiteInfo> => {
-    browser = await chromium.launch({ executablePath: chromePath(), headless: true, timeout: left() });
+    const b = await chromium.launch({ executablePath: o.chrome ?? chromePath(), headless: true, timeout: left() });
+    launched = true;
+    // one that came up after the deadline is closed here: the finally below has run already
+    if (over) { await b.close().catch(() => {}); throw new Error('timed out'); }
+    browser = b;
     // the headless browser's own name (HeadlessChrome) is turned away by some sites
     const ctx = await browser.newContext({ viewport: { width: W, height: H }, userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36` });
     const page = await ctx.newPage();
@@ -121,9 +131,11 @@ export async function readSite(url: string, projectDir: string, o: { timeoutMs?:
     return await Promise.race([read(), new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error(`超過 ${Math.round(ms / 1000)} 秒`)), ms); })]);
   } catch (e) {
     rmSync(tmp, { force: true });
-    const why = ((e as Error).message ?? String(e)).split('\n')[0].replace(/^page\.goto:\s*/, '');
+    const why = ((e as Error).message ?? String(e)).split('\n')[0].replace(/^(page\.goto|browserType\.launch):\s*/, '');
+    if (!launched) throw new Error(`Chrome 開不起來（${why}）：跑 npm run doctor 看哪裡要修；官網這次讀不了，照常用商標和公司介紹`);
     throw new Error(`讀不到官網 ${url}（${why}）：照常用商標和公司介紹`);
   } finally {
+    over = true;
     clearTimeout(timer);
     await browser?.close().catch(() => {});
   }

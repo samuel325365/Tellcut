@@ -8,9 +8,11 @@ const FIXTURE = readFileSync(join(__dirname, 'fixtures/site/index.html'), 'utf8'
 const PLAIN = '<!doctype html><html><body style="margin:0;background:#fafafa;font-family:-apple-system, BlinkMacSystemFont"><p>No heading here.</p></body></html>';
 // a web font that never answers: the page's fonts are never ready (a font CDN that stalls)
 const STALL = '<!doctype html><html><head><style>@font-face { font-family: Slow; src: url(/never.woff2); } body { font-family: Slow, sans-serif; background: #223344; }</style></head><body><h1>Waiting for a font</h1></body></html>';
+// an og:image that is no address at all: the page is still read, without its image
+const BADOG = '<!doctype html><html><head><meta property="og:image" content="http://[broken"></head><body style="background:#123456"><h1>Bad picture tag</h1></body></html>';
 const srv = createServer((req, res) => {
   if (req.url === '/never.woff2') return;   // never answered
-  res.setHeader('content-type', 'text/html'); res.end(req.url === '/plain' ? PLAIN : req.url === '/stall' ? STALL : FIXTURE);
+  res.setHeader('content-type', 'text/html'); res.end(req.url === '/plain' ? PLAIN : req.url === '/stall' ? STALL : req.url === '/badog' ? BADOG : FIXTURE);
 });
 let base = '', tmpProject = '';
 beforeAll(async () => { base = `http://127.0.0.1:${await new Promise<number>((r) => srv.listen(0, '127.0.0.1', () => r((srv.address() as any).port)))}`; });
@@ -50,3 +52,17 @@ test('a site whose web font never arrives still ends within its time', async () 
   expect(Date.now() - t0).toBeLessThan(12000);
   if (out !== 'read') { expect(out).toMatch(/讀不到官網/); expect(existsSync(join(tmpProject, 'media/brand/site.png'))).toBe(false); }
 }, 40000);
+
+test('a broken og:image is left out and the rest of the page is read', async () => {
+  const s = await readSite(`${base}/badog`, tmpProject);
+  expect(s.image).toBeNull();
+  expect(s.colors[0]).toBe('#123456');
+  expect(existsSync(join(tmpProject, 'media/brand/site.png'))).toBe(true);
+});
+
+test('Chrome that does not start is reported as Chrome, with the doctor hint, not as the site', async () => {
+  const out = await readSite(`${base}/`, tmpProject, { chrome: join(tmpProject, 'no-chrome.exe'), timeoutMs: 10000 }).then(() => 'read', (e: Error) => e.message);
+  expect(out).toMatch(/Chrome/);
+  expect(out).toMatch(/npm run doctor/);
+  expect(out).not.toMatch(/讀不到官網/);
+});
