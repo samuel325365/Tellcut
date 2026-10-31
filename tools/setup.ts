@@ -8,7 +8,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { FFMPEG, FFPROBE, loadProvidersConfig, locate, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec } from '@tellcut/media-node';
 import { allChecks, checkClaudeLogin, hfCachedWhisper, MODEL_COMPLETE, modelsDir, table, whisperModelDir, whisperModelName } from './setup/checks.ts';
-import { ensureModelFile, ensureVendor, readModelList, readVendorList } from './setup/vendor.ts';
+import { ensureModelFile, ensureVendor, readModelList, readVendorList, VendorInUse } from './setup/vendor.ts';
 
 const step = (s: string) => console.log(`\n▶ ${s}`);
 
@@ -55,6 +55,8 @@ async function vendorItems() {
       const r = await ensureVendor(name, item, VENDOR_DIR, { log: (s) => console.log(`  ${s}`) });
       console.log(`  ${name} ${item.version}：${r === 'kept' ? '已經有了' : '裝好了'}`);
     } catch (e) {
+      // the old version in use: it is kept whole and still works (the checks judge its version); not a network problem
+      if (e instanceof VendorInUse) { console.warn(`  ! ${e.message}`); continue; }
       // a blocked download is fine when the program is on this PC already (PATH or an install folder); the checks judge its version
       const elsewhere = specs.length ? specs.map((s) => locate(s)) : [];
       if (elsewhere.length && elsewhere.every(Boolean)) { console.warn(`  ! ${name} 下載失敗（${(e as Error).message}），改用這台電腦上的 ${elsewhere.map((f) => f!.path).join('、')}`); continue; }

@@ -1,7 +1,7 @@
 // The programs npm run setup puts in tellcut/vendor (spec 2026-10-17-studio-handover §7): a pinned zip, checked against its
 // SHA-256, unpacked with Windows' own tar (bsdtar reads zip). A file whose hash is wrong never reaches vendor/.
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 
@@ -30,13 +30,45 @@ function untar(zip: string, into: string): Promise<void> {
   });
 }
 
+/** the old version could not be moved aside, so the new one was not put in; the old one is whole and still works */
+export class VendorInUse extends Error {}
+
+/** a folder from an earlier swap whose removal failed (a file in it was still open then) */
+const OLD = (dest: string) => `.old-${dest.replace(/[\\/]/g, '-')}-`;
+
 /**
- * Puts `item` in vendorDir/item.dest unless that version is there already. `fetch` is swappable for tests.
+ * Moves the unpacked `from` (in vendorDir, so on the same drive) to `dest` by renaming: the old version is renamed aside first,
+ * then removed if it can be. Deleting the old one in place could stop halfway: Windows will not delete an exe that is running
+ * (ffmpeg while an export runs), which left vendor half-deleted. Its folder can still be renamed, so the running program keeps
+ * its files and the folder is removed by a later setup; where the rename is refused too, it fails whole and the old version
+ * is kept as it was.
+ */
+function swapIn(name: string, from: string, dest: string, vendorDir: string, destName: string, rename: (from: string, to: string) => void) {
+  let old: string | null = null;
+  if (existsSync(dest)) {
+    for (let n = 1; !old || existsSync(old); n++) old = join(vendorDir, `${OLD(destName)}${n}`);
+    try { rename(dest, old); } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code ?? '';
+      const why = /^(EPERM|EBUSY|EACCES)$/.test(code) ? `舊的 vendor/${destName} 正在使用中（${code}），大概有程式正在跑它（Tellcut 的伺服器、匯出或轉錄）` : `舊的 vendor/${destName} 搬不開（${(e as Error).message}）`;
+      throw new VendorInUse(`${name} 沒有更新：${why}。舊版本原封不動，照常能用；關掉用到它的程式後再跑一次 npm run setup`);
+    }
+  }
+  try { rename(from, dest); } catch (e) {
+    if (old) try { rename(old, dest); } catch { /* the old one stays under its .old name; doctor reports the missing program */ }
+    throw e;
+  }
+  if (old) try { rmSync(old, { recursive: true, force: true, maxRetries: 2 }); } catch { /* removed on the next setup */ }
+}
+
+/**
+ * Puts `item` in vendorDir/item.dest unless that version is there already. `fetch` (and `rename`) are swappable for tests.
  * Returns what happened, for the setup table.
  */
-export async function ensureVendor(name: string, item: VendorItem, vendorDir: string, o: { fetch?: typeof fetch; log?: (s: string) => void } = {}): Promise<'kept' | 'installed'> {
+export async function ensureVendor(name: string, item: VendorItem, vendorDir: string, o: { fetch?: typeof fetch; log?: (s: string) => void; rename?: (from: string, to: string) => void } = {}): Promise<'kept' | 'installed'> {
   if (installedVersion(vendorDir, item) === item.version) return 'kept';
   const log = o.log ?? (() => {}), get = o.fetch ?? fetch;
+  // old versions an earlier swap could not remove yet (their files were open then)
+  if (existsSync(vendorDir)) for (const f of readdirSync(vendorDir)) if (f.startsWith(OLD(item.dest)) && /^\d+$/.test(f.slice(OLD(item.dest).length))) try { rmSync(join(vendorDir, f), { recursive: true, force: true }); } catch { /* still open */ }
   const work = join(vendorDir, `.download-${name}`);
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
@@ -54,10 +86,8 @@ export async function ensureVendor(name: string, item: VendorItem, vendorDir: st
     await untar(zip, out);
     const from = item.strip ? join(out, item.strip) : out;
     if (!existsSync(join(from, item.check))) throw new Error(`${name} 解開後找不到 ${item.check}`);
-    const dest = join(vendorDir, item.dest);
-    rmSync(dest, { recursive: true, force: true });
-    cpSync(from, dest, { recursive: true });
-    writeFileSync(join(dest, STAMP), item.version);
+    writeFileSync(join(from, STAMP), item.version);
+    swapIn(name, from, join(vendorDir, item.dest), vendorDir, item.dest, o.rename ?? renameSync);
     return 'installed';
   } finally {
     rmSync(work, { recursive: true, force: true });
