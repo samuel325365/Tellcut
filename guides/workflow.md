@@ -37,6 +37,8 @@ The preset the user picked on the home page (`guides/presets/<id>/preset.md`; th
 
 The custom preset's form shows up as "Options the user set" in the preset block (and in the project line later); they are more specific than a preset's defaults, but what the user says in the message still comes first.
 
+When a preset still reads a genre card (custom, or a preset of the user's own made from the form or from scratch), the preset wins over the card: its options or points decide the ratio, length, framing and styles, and the card only adds what this kind of film must have and the pitfalls to avoid.
+
 ## Steps for a new film
 
 1. `npm run new -- <id> <footage path>...` (vertical short-form: add `--size 1080x1920`).
