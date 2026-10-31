@@ -85,6 +85,20 @@ test('a scene that did not change is not spoken again; a change in text, voice, 
   expect(await run(narr({ rate: 12, voices: { fake: 'v2' } }), { only: ['s2'], force: true })).toHaveLength(1);
 });
 
+test('a scene whose audio is still good gets its phrases cut again when the splitting rules changed, without speaking it again', async () => {
+  await renderVoice({ dir, narration: narr(), tts: fakeTts() });
+  const f = voiceFiles(dir, 's1'), info = JSON.parse(readFileSync(f.info, 'utf8')), now = info.phrases;
+  // as an earlier version of the rules would have cut it
+  writeFileSync(f.info, JSON.stringify({ ...info, phrases: [{ text: '一行一行寫，好嗎', t0: 0, t1: now[1].t1 }] }));
+  const tts = fakeTts(), logs: string[] = [];
+  const out = await renderVoice({ dir, narration: narr(), tts, log: (s) => logs.push(s) });
+  expect(tts.calls).toEqual([]);
+  expect(out.s1.phrases).toEqual(now);
+  expect(JSON.parse(readFileSync(f.info, 'utf8')).phrases).toEqual(now);
+  expect(logs[0]).toMatch(/^s1 .*一行一行寫 \| 好嗎/);
+  expect(logs[1]).toBe('s2 沒變，略過');
+});
+
 test('an engine without word times is timed from a transcript; with nothing to transcribe with it says so', async () => {
   const heard: TranscribeProvider = {
     id: 'heard', label: 'h', online: false, async check() { return { ok: true, detail: '' }; },

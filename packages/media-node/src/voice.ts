@@ -117,6 +117,13 @@ export interface RenderVoiceOptions {
   only?: string[]; force?: boolean; log?: (s: string) => void; signal?: AbortSignal;
 }
 
+// written under a temp name and renamed over the old one (analysis.ts atomic() would leave an old file alone)
+function writeInfo(file: string, info: VoiceInfo): VoiceInfo {
+  writeFileSync(`${file}.tmp`, JSON.stringify(info, null, 1));
+  renameRetry(`${file}.tmp`, file);
+  return info;
+}
+
 /** Speak every scene (or `only`) whose audio is missing or out of date; returns the info of all scenes asked for. */
 export async function renderVoice(o: RenderVoiceOptions): Promise<Record<string, VoiceInfo>> {
   const log = o.log ?? (() => {}), out: Record<string, VoiceInfo> = {};
@@ -128,7 +135,15 @@ export async function renderVoice(o: RenderVoiceOptions): Promise<Record<string,
     const pitch = o.narration.pitch || undefined, key = sceneKey(spoken, voice, rate, o.tts.id, pitch);
     if (!o.force && existsSync(f.wav) && existsSync(f.info)) {
       const old = JSON.parse(readFileSync(f.info, 'utf8')) as VoiceInfo;
-      if (old.key === key && old.text === scene.text) { out[scene.id] = old; log(`${scene.id} 沒變，略過`); continue; }
+      if (old.key === key && old.text === scene.text) {
+        // the audio is still good, but the phrases are cut by this version's rules: a voice made before a change of the rules is
+        // cut again from its own word times (nothing is spoken again)
+        const phrases = old.words?.length ? phrasesOf(scene.text, old.words) : old.phrases;
+        if (JSON.stringify(phrases) === JSON.stringify(old.phrases)) { out[scene.id] = old; log(`${scene.id} 沒變，略過`); continue; }
+        out[scene.id] = writeInfo(f.info, { ...old, phrases });
+        log(`${scene.id} 聲音沒變，字幕句子照現在的規則重切：${phrases.map((p) => p.text).join(' | ')}`);
+        continue;
+      }
     }
     const r = await o.tts.synth({ text: spoken, voice, rate, pitch, out: f.wav, signal: o.signal });
     let words: TtsWord[] | null = r.words;
@@ -144,10 +159,7 @@ export async function renderVoice(o: RenderVoiceOptions): Promise<Record<string,
       timed = wordsFromTranscript(scene.text, heard);
       words = null;
     }
-    const info: VoiceInfo = { text: scene.text, dur: r.dur, phrases: phrasesOf(scene.text, timed), words: timed, engine: o.tts.id, key };
-    // written under a temp name and renamed over the old one (analysis.ts atomic() would leave an old file alone)
-    writeFileSync(`${f.info}.tmp`, JSON.stringify(info, null, 1));
-    renameRetry(`${f.info}.tmp`, f.info);
+    const info = writeInfo(f.info, { text: scene.text, dur: r.dur, phrases: phrasesOf(scene.text, timed), words: timed, engine: o.tts.id, key });
     out[scene.id] = info;
     log(`${scene.id} ${r.dur.toFixed(2)}s ${info.phrases.map((p) => p.text).join(' | ')}`);
   }

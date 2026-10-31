@@ -465,13 +465,16 @@ describe('narration and generated music', () => {
     expect(() => c.voice('s2')).toThrow(/gloss 有 1 行/);
   });
 
-  test('a gloss over a voice made before its phrases were cut this way asks for the voice again', async () => {
+  test('a gloss over a voice made before its phrases were cut this way asks for npm run voice, which cuts them anew', async () => {
     const c = fresh(), scenes = [{ id: 's1', text: 'Go to github.com now.', gloss: ['到 github.com'] }];
     await withVoice(c, scenes);
     writeFileSync(join(c.dir, 'narration.json'), JSON.stringify({ scenes }));
     const f = join(c.dir, 'media', 'voice', 's1.json'), info = JSON.parse(readFileSync(f, 'utf8'));
     writeFileSync(f, JSON.stringify({ ...info, phrases: [{ text: 'Go to github', t0: 0, t1: 0.5 }, { text: 'com now', t0: 0.5, t1: 1 }] }));
-    expect(() => c.voice('s1')).toThrow(/npm run voice -- \S+ s1 --force/);
+    expect(() => c.voice('s1')).toThrow(/npm run voice -- \S+ s1 /);
+    // running it again (no --force) cuts the phrases the way they are cut now, from the same audio
+    await withVoice(c, scenes);
+    expect(c.voice('s1').phrases.map((p) => [p.text, p.gloss])).toEqual([['Go to github.com now', '到 github.com']]);
   });
 
   test('score composes music to the film at save: it reaches the end, its first beat is the grid, and it dips under the narration', async () => {

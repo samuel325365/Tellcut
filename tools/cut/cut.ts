@@ -654,7 +654,7 @@ export class Cut {
     let k = 0;
     for (const ph of v.phrases) {
       while (k < parts.length && parts[k] !== ph.text) k++;
-      if (k === parts.length) throw new Error(`旁白「${scene}」的字幕句子和 narration.json 對不上（旁白是舊的切句方式做的）：npm run voice -- ${basename(this.dir)} ${scene} --force`);
+      if (k === parts.length) throw new Error(`旁白「${scene}」的字幕句子和 narration.json 對不上（旁白是舊的切句方式做的）：npm run voice -- ${basename(this.dir)} ${scene} 會照現在的規則重切（聲音不用重做）`);
       out.push(s.gloss[k++]);
     }
     return out;
