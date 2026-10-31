@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, watch, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 import type { ServerResponse } from 'node:http';
 import { OpError } from '@tellcut/engine';
-import { closeProposal, makeProposal, projectHash, proposalsDir, readProposal, saveProposal } from '@tellcut/media-node';
+import { closeProposal, fxState, makeProposal, projectHash, proposalsDir, readProposal, saveProposal } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { CLIENT_ID, type ProjectStore } from './projects.ts';
 
@@ -51,7 +51,8 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
       if (name === 'project.json') onProject();
       else if (/^fx\/[^/]+\.m?js$/.test(name) || /^fx\/lib\/(?:links\.json|[a-z0-9][a-z0-9-]*(?:\/.*)?)$/.test(name)) onFx();
     }));
-    const onFx = debounce(() => push(id, { type: 'fx-changed' }));
+    // `fx`: what the fx folder is now (fxState); a tab that already loaded that state (its own Update: library.ts) skips the reload
+    const onFx = debounce(() => push(id, { type: 'fx-changed', fx: fxState(dir) }));
     const onProject = debounce(() => {
       // deleted, moved or held by an antivirus between the event and the read: this tick is skipped (thrown in a timer, it
       // ended the server)

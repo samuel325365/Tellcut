@@ -1183,6 +1183,31 @@ test('an edited fx module loads the preview again with a new registry; nothing i
   expect(ed.store.get().diskChanged).toBe(false);
 });
 
+test('Update loads the new copy once: the fx-changed it sets off, with the same stamp, is skipped, whichever comes first', async () => {
+  const L = live(), lib = { links: [], savedFiles: [], savedStyles: [], styles: [] };
+  let stamp = 'aaa';
+  const { api, bridge } = fakes({ ...L.over, useLibrary: async () => ({ file: 'fx/lib/box/_entry.js', fx: stamp }), projectLibrary: async () => lib });
+  let registries = 0;
+  const ed = new Editor('demo', { api, bridge, registryFor: async () => { registries++; return createRegistry([corePlugin]); } });
+  await ed.open();
+  const start = registries;
+  await ed.updateLibraryBlock('box');
+  L.send({ type: 'fx-changed', fx: 'aaa' });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(registries - start).toBe(1);
+  // the event first this time, then the answer
+  stamp = 'bbb';
+  L.send({ type: 'fx-changed', fx: 'bbb' });
+  await vi.advanceTimersByTimeAsync(0);
+  await ed.updateLibraryBlock('box');
+  expect(registries - start).toBe(2);
+  // another edit (a new stamp) and an event from a server without stamps still load
+  L.send({ type: 'fx-changed', fx: 'ccc' });
+  L.send({ type: 'fx-changed' });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(registries - start).toBe(4);
+});
+
 test('turning magnetic on asks before closing gaps; cancelling leaves the track alone', async () => {
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge });

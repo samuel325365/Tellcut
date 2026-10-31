@@ -117,7 +117,8 @@ export const api = {
   saveBlockPreview: (b: { project: string; type: string }) => req<LibrarySavePreview>('/api/library/blocks?dry=1', jsonPost(b)),
   saveBlock: (b: { project: string; type: string; name?: string; desc?: string; category?: string; onConflict?: 'replace' | 'keep-both' }) => req<{ entry: { slug: string }; skipped: string[] }>('/api/library/blocks', jsonPost(b)),
   saveStyle: (b: { project: string; id: string; name?: string; desc?: string; onConflict?: 'replace' | 'keep-both' }) => req<{ entry: { slug: string } }>('/api/library/styles', jsonPost(b)),
-  useLibrary: (id: string, b: { slug: string } | { style: string }) => req<{ file: string; types?: string[]; id?: string; copied?: string[] }>(`/api/projects/${enc(id)}/library/use`, jsonPost(b)),
+  /** `fx`: the project fx folder's stamp after the copy (the one its fx-changed event carries) */
+  useLibrary: (id: string, b: { slug: string } | { style: string }) => req<{ file: string; types?: string[]; id?: string; copied?: string[]; fx?: string }>(`/api/projects/${enc(id)}/library/use`, jsonPost(b)),
   renameLibraryBlock: (slug: string, type: string, b: { name?: string; desc?: string; category?: string }) => req<unknown>(`/api/library/blocks/${enc(slug)}/types/${enc(type)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
   renameLibraryStyle: (slug: string, b: { name?: string; desc?: string }) => req<unknown>(`/api/library/styles/${enc(slug)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
   libraryUsage: (kind: 'blocks' | 'styles', slug: string) => req<LibraryUsage>(`/api/library/${kind}/${enc(slug)}/usage`),

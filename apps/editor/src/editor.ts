@@ -470,12 +470,17 @@ export class Editor {
     else if (m?.type === 'reject-request') { if (m.id === this.prop?.id) void this.rejectProposal(); }
     // a save of this page's own (the server leaves it out; a stream opened again by a reload could still hear it)
     else if (m?.type === 'changed-on-disk') { if (!m.by || m.by !== this.deps.api.clientId) this.outside(); }
-    else if (m?.type === 'fx-changed') void this.reloadFx();
+    // `fx` (the server's stamp of the fx folder): one this tab has already loaded (its own Update) is not loaded twice
+    else if (m?.type === 'fx-changed') { if (!m.fx || m.fx !== this.fxLoaded) void this.reloadFx(m.fx); }
   }
-  /** A project fx module was edited (project.json the same): the preview loads it again and stays where it was. */
-  private async reloadFx() {
+  /** the fx folder's stamp this tab last loaded, when the server gave one */
+  private fxLoaded: string | undefined;
+  /** A project fx module was edited (project.json the same): the preview loads it again and stays where it was. `fx`: the folder's
+   *  stamp it is loading */
+  private async reloadFx(fx?: string) {
     const p = this.s.project;
     if (!p) return;
+    this.fxLoaded = fx;
     if (this.deps.registryFor) this.reg = await this.deps.registryFor(p);
     this.deps.bridge.load(p);
     if (typeof (this.deps.api as any).projectLibrary === 'function') void this.library.loadProject();   // a module saved or edited: its star may change
@@ -584,19 +589,22 @@ export class Editor {
   async useLibraryBlock(slug: string, type: string): Promise<boolean> {
     const p = this.s.project, t = this.s.playhead;
     if (!p || this.blocked() || this.fitEnd('overlay', t, t + 2) === null) return false;
-    let file: string;
-    try { file = (await this.library.use(slug)).file; }
+    let file: string, stamp: string | undefined;
+    try { ({ file, fx: stamp } = await this.library.use(slug)); }
     catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return false; }
     const now = this.s.project!, fx = [...new Set([...(now.meta.fx ?? []), file])];
     if (this.deps.registryFor) this.reg = await this.deps.registryFor({ ...now, meta: { ...now.meta, fx } });
     const ok = this.addTo('overlay', { type, start: t, end: t + 2, params: {} }, (d) => { d.meta.fx = [...new Set([...(d.meta.fx ?? []), file])]; });
-    if (ok) this.deps.bridge.load(this.s.project!);   // a module the preview has not loaded yet
+    if (ok) { this.deps.bridge.load(this.s.project!); this.fxLoaded = stamp; }   // a module the preview has not loaded yet; the copy's fx-changed is then skipped
     return ok;
   }
   /** "Update": the newer version of an entry over this project's copy; the timeline stays as it is */
   async updateLibraryBlock(slug: string) {
-    try { await this.library.use(slug); } catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return; }
-    await this.reloadFx();
+    let fx: string | undefined;
+    try { fx = (await this.library.use(slug)).fx; } catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return; }
+    // loaded here whatever the folder watcher does (it may be down); its fx-changed for the same stamp is then skipped, and when that
+    // event came first, this one is
+    if (!fx || fx !== this.fxLoaded) await this.reloadFx(fx);
   }
 
   // ---------------------------------------------------------------- Save as my preset (spec 2026-10-29-my-library §3.5; editor/preset-save.ts)

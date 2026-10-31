@@ -27,7 +27,7 @@ export const withImportQuery = (src: string, query: string) =>
   src.replace(RELATIVE_IMPORT, (m, spec: string) => m.replace(spec, () => `${spec}${spec.includes('?') ? '&' : '?'}${query}`));
 
 /** what the project's fx/ files are now (path, size, time): any edit there gives the whole module graph a new URL */
-function fxState(root: string): string {
+export function fxState(root: string): string {
   const h = createHash('sha1');
   const walk = (d: string) => {
     let es;

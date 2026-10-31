@@ -3,7 +3,7 @@
 // copying an entry into a project. Reading and writing is media-node's (library/), shared with `npm run tellcut -- library`.
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
-import { blockDir, findFxFile, libraryRoot, LibraryError, listLibrary, loadEntry, loadProjectFx, loadStyles, PROJECT_ID, previewBlock, projectLinks, readBlock, readStyle, removeBlock, removeStyle, renameStyle,
+import { blockDir, findFxFile, fxState, libraryRoot, LibraryError, listLibrary, loadEntry, loadProjectFx, loadStyles, PROJECT_ID, previewBlock, projectLinks, readBlock, readStyle, removeBlock, removeStyle, renameStyle,
   renameType, saveBlock, saveStyle, stylesDir, THUMB_FILE, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
 import type { LibraryBlockInfo, LibraryIndex, LibraryStyleInfo, LibraryUsage, ProjectLibraryInfo } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
@@ -151,7 +151,10 @@ export function libraryRoutes(r: Router, o: LibraryOptions) {
     if (str(b?.style)) { sendJson(res, 200, await guard(() => useStyle({ root, projectDir: p.dir, slug: b.style }))); return; }
     if (!str(b?.slug)) throw new HttpError(400, 'slug is missing');
     const fx = projectJson(p.dir).meta?.fx;
-    sendJson(res, 200, await guard(() => useBlock({ root, projectDir: p.dir, projectId: p.id, slug: b.slug, fx: Array.isArray(fx) ? fx : [] })));
+    const used = await guard(() => useBlock({ root, projectDir: p.dir, projectId: p.id, slug: b.slug, fx: Array.isArray(fx) ? fx : [] }));
+    // `fx`: the project's fx folder as it is now, the same stamp live.ts sends with the fx-changed this copy sets off: the tab that
+    // asked loads the copy itself and skips that event, other tabs load it on the event
+    sendJson(res, 200, { ...used, fx: fxState(p.dir) });
   });
 
   // the draft is removed when a new one is asked for and when its dialog closes: an old one never opens again

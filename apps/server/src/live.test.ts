@@ -103,7 +103,7 @@ test('an edited project fx module is announced, other files in the project are n
     await expect(ev.next(400)).rejects.toThrow('no event');
     mkdirSync(join(root, 'demo', 'fx'), { recursive: true });
     writeFileSync(join(root, 'demo', 'fx', 'card.js'), 'export default [];');
-    expect(await ev.next()).toEqual({ type: 'fx-changed' });
+    expect(await ev.next()).toEqual({ type: 'fx-changed', fx: expect.any(String) });
     ev.close();
   } finally { await app.close(); }
 });
@@ -116,10 +116,10 @@ test('a copy of My blocks put in place or updated is announced; its temporary fo
     writeFileSync(join(root, 'demo', 'fx', 'lib', '.box.tmp-1-2', 'box.js'), 'export default [];');
     await expect(ev.next(400)).rejects.toThrow('no event');
     renameSync(join(root, 'demo', 'fx', 'lib', '.box.tmp-1-2'), join(root, 'demo', 'fx', 'lib', 'box'));
-    expect(await ev.next()).toEqual({ type: 'fx-changed' });
+    expect(await ev.next()).toEqual({ type: 'fx-changed', fx: expect.any(String) });
     await expect(ev.next(400)).rejects.toThrow('no event');   // debounced: one for the whole copy
     writeFileSync(join(root, 'demo', 'fx', 'lib', 'links.json'), '{}');
-    expect(await ev.next()).toEqual({ type: 'fx-changed' });
+    expect(await ev.next()).toEqual({ type: 'fx-changed', fx: expect.any(String) });
     ev.close();
   } finally { await app.close(); }
 });
@@ -175,6 +175,20 @@ test('a project folder deleted outside the app while the editor has it open does
     rmSync(join(root, 'demo'), { recursive: true, force: true });
     await new Promise((r) => setTimeout(r, 400));
     expect((await fetch(`${base}/api/projects`)).status).toBe(200);
+    ev.close();
+  } finally { await app.close(); }
+});
+
+test('copying a block of My blocks answers with the same fx stamp the fx-changed it sets off carries', async () => {
+  const { app, root, url, base } = await setup();
+  try {
+    const { makeProject } = await import('../../../packages/media-node/src/library/fixture.ts');
+    makeProject(root, 'src');
+    const saved = await (await fetch(`${base}/api/library/blocks`, post({ project: 'src', type: 'fx.chalk-title' }))).json();
+    const ev = events(`${url}/events`); await ev.next();
+    const used = await (await fetch(`${url}/library/use`, post({ slug: saved.entry.slug }))).json();
+    expect(used.fx).toMatch(/^[0-9a-f]{12}$/);
+    expect(await ev.next()).toEqual({ type: 'fx-changed', fx: used.fx });
     ev.close();
   } finally { await app.close(); }
 });
