@@ -257,6 +257,22 @@ test('splitting: the first or the last entry, a one-line list; an import the mov
   expect(() => splitFx('export default [{ type: "fx.a" }, { type: "fx.b" }', 'x.js', 'fx.a', ['fx.a', 'fx.b'])).toThrow('讀不懂它的語法');
 });
 
+test('splitting leaves what a literal says as it was written, blank lines and all', () => {
+  const src = 'const css = `a\n\n\n\nb`;\nconst k = 1;\n\n\n\nconst t = `x\n\n\n\ny`;\nexport default [\n  { type: \'fx.a\', s: css + t },\n  { type: \'fx.b\', n: k },\n];\n';
+  expect(splitFx(src, 'x.js', 'fx.a', ['fx.a', 'fx.b']).shared).toBe('const css = `a\n\n\n\nb`;\n\nconst t = `x\n\n\n\ny`;\nexport default [\n  { type: \'fx.a\', s: css + t },\n];\n');
+});
+
+test('an entry takes the comment on its own line with it, not the one after the entry before', () => {
+  const src = "export default [\n  { type: 'fx.a', n: 1 }, // a\n  { type: 'fx.b', n: 2 }, // b\n  { type: 'fx.c', n: 3 }, // c\n];\n";
+  const t = ['fx.a', 'fx.b', 'fx.c'];
+  expect(splitFx(src, 'x.js', 'fx.b', t)).toMatchObject({ rest: "export default [\n  { type: 'fx.a', n: 1 }, // a\n  { type: 'fx.c', n: 3 }, // c\n];\n", shared: "export default [\n  { type: 'fx.b', n: 2 }, // b\n];\n" });
+  expect(splitFx(src, 'x.js', 'fx.a', t)).toMatchObject({ rest: "export default [\n  { type: 'fx.b', n: 2 }, // b\n  { type: 'fx.c', n: 3 }, // c\n];\n", shared: "export default [\n  { type: 'fx.a', n: 1 }, // a\n];\n" });
+  expect(splitFx(src, 'x.js', 'fx.c', t)).toMatchObject({ rest: "export default [\n  { type: 'fx.a', n: 1 }, // a\n  { type: 'fx.b', n: 2 }, // b\n];\n", shared: "export default [\n  { type: 'fx.c', n: 3 }, // c\n];\n" });
+  const bare = "export default [\n  { type: 'fx.a', n: 1 }, /* a */\n  { type: 'fx.b', n: 2 } // b\n];\n";
+  expect(splitFx(bare, 'x.js', 'fx.b', ['fx.a', 'fx.b'])).toMatchObject({ rest: "export default [\n  { type: 'fx.a', n: 1 }, /* a */\n];\n", shared: "export default [\n  { type: 'fx.b', n: 2 } // b\n];\n" });
+  expect(splitFx(bare, 'x.js', 'fx.a', ['fx.a', 'fx.b'])).toMatchObject({ rest: "export default [\n  { type: 'fx.b', n: 2 } // b\n];\n", shared: "export default [\n  { type: 'fx.a', n: 1 } /* a */\n];\n" });
+});
+
 test('a moved block that imports a project file is warned about', async () => {
   mkdirSync(join(dir, 'fx', 'lib'));
   writeFileSync(join(dir, 'fx', 'lib', 'ease.js'), 'export const ease = (x) => x;\n');

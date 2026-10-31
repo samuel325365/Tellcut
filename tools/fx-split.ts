@@ -101,8 +101,22 @@ function span(src: string, s: ts.Statement): [number, number] {
   return [from, s.end + after.length];
 }
 
+/** The blank lines around each of `at` (where text was taken out) made one; only there, so a literal's own lines are never touched. */
+function tidy(src: string, at: number[]): string {
+  const runs = new Map<number, number>();
+  for (const p of at) {
+    let a = p, b = p;
+    while (a > 0 && /\s/.test(src[a - 1])) a--;
+    while (b < src.length && /\s/.test(src[b])) b++;
+    runs.set(a, b);
+  }
+  for (const [a, b] of [...runs].sort((x, y) => y[0] - x[0])) src = src.slice(0, a) + src.slice(a, b).replace(/(\r?\n)(?:[ \t]*\r?\n){2,}/g, '$1$1') + src.slice(b);
+  return src;
+}
+
 /** Take out the top-level helpers nothing else in the module names any more, until none is left to take. */
 export function pruneHelpers(src: string, file: string): string {
+  let at: number[] = [];
   for (;;) {
     const us = units(parse(src, file)), used = us.map((u) => idents(u.node));
     const gone = us.filter((u, i) => u.names && !u.names.some((n) => used.some((x, j) => j !== i && x.has(n))));
@@ -114,8 +128,11 @@ export function pruneHelpers(src: string, file: string): string {
       const d = s.declarationList.declarations, k = mine[0].decl!;
       cuts.push(k < d.length - 1 ? [d[k].pos, d[k + 1].pos] : [d[k - 1].end, d[k].end]);
     }
-    if (!cuts.length) return src.replace(/(\r?\n)(?:[ \t]*\r?\n){2,}/g, '$1$1');
-    for (const [a, b] of cuts.sort((x, y) => y[0] - x[0])) src = src.slice(0, a) + src.slice(b);
+    if (!cuts.length) return tidy(src, at);
+    for (const [a, b] of cuts.sort((x, y) => y[0] - x[0])) {
+      src = src.slice(0, a) + src.slice(b);
+      at = [...at.map((p) => (p >= b ? p - (b - a) : Math.min(p, a))), a];
+    }
   }
 }
 
@@ -132,12 +149,19 @@ export function splitFx(src: string, file: string, type: string, loaded: string[
   if (JSON.stringify(types) !== JSON.stringify(loaded)) refuse(`載入後的積木是 ${loaded.join('、')}，跟 export default 寫的 ${types.join('、')} 不一樣`);
   const i = types.indexOf(type), els = arr.elements;
   if (i < 0 || types.lastIndexOf(type) !== i) refuse(`${type} 不是剛好寫了一次`);
-  // rest: the entry with its comments and its comma; the last one takes the comma before it
-  const [a, b] = i < els.length - 1 ? [els[i].pos, els[i + 1].pos] : [els[i - 1].end, els[i].end];
+  // an entry owns the comment after it on its line (`{ … }, // a`): where it ends past that comma and comment, and the comment
+  const tail = (k: number) => {
+    const m = /^(?:[ \t]*,)?([ \t]*(?:\/\/[^\r\n]*|\/\*(?:(?!\*\/)[^\r\n])*\*\/(?=[ \t]*(?:\r?\n|$))))/.exec(src.slice(els[k].end));
+    return m ? { end: els[k].end + m[0].length, note: m[1] } : undefined;
+  };
+  const from = (k: number) => (k > 0 && tail(k - 1)?.end) || els[k].pos, last = els.length - 1;
+  // rest: the entry with its comments and its comma; the last one takes the comma before it (after a comment, its own)
+  const [a, b] = i < last ? [from(i), tail(i)?.end ?? els[i + 1].pos]
+    : tail(i - 1) || tail(i) ? [from(i), tail(i)?.end ?? els[i].end + (/^\s*,/.exec(src.slice(els[i].end))?.[0].length ?? 0)] : [els[i - 1].end, els[i].end];
   const rest = src.slice(0, a) + src.slice(b);
   // shared: only that entry between the brackets, the list's trailing comma kept as it was written
-  const last = els[els.length - 1];
-  const shared = pruneHelpers(src.slice(0, els[0].pos) + src.slice(els[i].pos, els[i].end) + (els.hasTrailingComma ? ',' : '') + src.slice(last.end).replace(/^\s*,/, (m) => m.slice(0, -1)), file);
+  const shared = pruneHelpers(src.slice(0, els[0].pos) + src.slice(from(i), els[i].end) + (els.hasTrailingComma ? ',' : '') + (tail(i)?.note ?? '')
+    + src.slice(tail(last)?.end ?? els[last].end).replace(/^\s*,/, (m) => m.slice(0, -1)), file);
   // both come out as modules that parse and export what they should, or nothing is written
   const keeps = types.filter((t) => t !== type) as string[];
   for (const [what, text, want] of [['剩下的檔案', rest, keeps], ['抽出來的積木', shared, [type]]] as const) {
