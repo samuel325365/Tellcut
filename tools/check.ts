@@ -2,11 +2,10 @@
 //   npm run check -- <id> [--quick] [--sheet]
 // The model layer reads only project.json and the cached analysis (--quick stops there); the page layer opens the player to
 // measure where text lands and to render the mix; --sheet adds one contact sheet of the film. Exit code 1 on an error.
-import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseProject, resolveTimes, type Transcript } from '@tellcut/engine';
-import { analysisFiles, extrasFiles, findPreset, playerBuildStale, projectRegistry, readBurned, readTranscript, TELLCUT_ROOT, type Burned } from '@tellcut/media-node';
+import { analysisFiles, extrasFiles, findPreset, playerBuildStale, projectRegistry, readBurned, rebuildPlayer, readTranscript, TELLCUT_ROOT, type Burned } from '@tellcut/media-node';
 import { edgeFindings } from './check/edges.ts';
 import { chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, type Finding } from './check/rules.ts';
 import { formatReport, isOffline, pageLayer, pageLayerSkip } from './check/report.ts';
@@ -40,10 +39,10 @@ findings.push(...edgeFindings(p, resolveTimes(p), shots));
 // the pictures below come from the built player: an old build would check code that is not the code anymore
 let stale = process.argv.includes('--quick') ? null : playerBuildStale();   // --quick renders nothing, so an old build does not matter
 if (stale) {
-  // built here (a few seconds): the page chat may not run build:player, and being told to was no use to it
+  // built here (a few seconds): the page chat may not run build:player, and being told to was no use to it; not build:player
+  // itself, which empties dist under an export or another check using it
   console.error('播放器的建置檔是舊的，先重新建置（幾秒鐘）');
-  const b = spawnSync('npm run -s build:player', { cwd: TELLCUT_ROOT, shell: true, encoding: 'utf8', windowsHide: true });
-  stale = b.status === 0 ? playerBuildStale() : `${stale}（自動建置失敗：${(b.stderr || b.stdout || '').trim().split(/\r?\n/).slice(-2).join(' ／ ')}）`;
+  stale = await rebuildPlayer();
 }
 if (stale) findings.unshift({ level: 'error', msg: stale });
 let sheet: string | undefined;
