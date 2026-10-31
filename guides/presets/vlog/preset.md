@@ -70,7 +70,7 @@
     { "id": "cinematic",
       "name": { "zh": "電影感調色", "en": "Cinematic grade", "ja": "シネマティックな色調" },
       "desc": { "zh": "調色｜整支片一種柔和的調色，輕微顆粒和暗角，鏡頭偏慢。", "en": "Look | One soft grade for the whole film, light grain and vignette, slower shots.", "ja": "色調｜全編ひとつのやわらかな色調、軽い粒子と周辺減光、ゆったりしたショット。" },
-      "prompt": "Look: a cinematic grade over the whole film. One common.tone for the whole film (one colour and one edge, soft and warm for daily life) and light grain with common.film (look grain, blend overlay, grain about 0.07); favour slow, steady shots; music plus the room's own sounds. On shaky phone footage keep it light." },
+      "prompt": "Look: a cinematic grade over the whole film. One common.tone for the whole film (one colour and one edge taken from the day's own light: soft and warm on a sunny day, cool and muted on a grey one; never common.tone's default) and light grain with common.film (look grain, blend overlay, grain about 0.07); favour slow, steady shots; music plus the room's own sounds. On shaky phone footage keep it light." },
     { "id": "retro",
       "name": { "zh": "復古 DV", "en": "Retro camcorder", "ja": "レトロなビデオカメラ" },
       "desc": { "zh": "調色｜家用攝影機的樣子：掃描線、偏暖、雜訊帶，觀景窗有 ● REC 和日期；保留現場聲音。", "en": "Look | The home-camcorder look: scanlines, a warm cast, tracking noise, ● REC and the date in the viewfinder; keeps the live sound.", "ja": "色調｜家庭用ビデオカメラ風：走査線、暖かい色かぶり、トラッキングノイズ、ファインダーに ● REC と日付。現場の音を残す。" },
@@ -88,7 +88,7 @@ Goal: a relaxed daily vlog for IG Reels, YouTube Shorts or X, with a clear start
 - Give the day one thread (a small goal, a mood, a question) and at least one highlight moment; a list of events with no point is not a vlog.
 - Hook in the first 2 s: the most charming moment, then rewind to the morning.
 - Order by capture time; skip dull stretches, keep one or two shots per moment.
-- Cut on the beat; light, warm music; keep any natural speech clear and duck the music under it.
+- Cut on the beat; music that suits the day's mood (light by default); keep any natural speech clear and duck the music under it.
 - Text is a time, a place or a few words of mood; no info cards, and never invent people, places or what someone said.
 - If the footage is already a finished vlog with talking to camera, keep one or two of the best spoken lines (captioned) as the voice of the film, and crop out its own burned-in titles.
 - End by closing the loop: night, home, or a callback to the opening moment.

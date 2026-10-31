@@ -25,8 +25,8 @@
   "styles": [
     { "id": "flat", "custom": true,
       "name": { "zh": "扁平動畫", "en": "Flat animation", "ja": "フラットアニメ" },
-      "desc": { "zh": "形式｜向量插畫、圓角造型、鮮豔配色，每個抽象的步驟都用一個比喻畫出來，畫面一直在動。（沒有共用的插畫積木，這支片會自己畫）", "en": "Form | Vector illustrations, rounded shapes, bright colours, a picture metaphor for each abstract step, always moving. (No shared illustration block: the film draws its own.)", "ja": "形式｜ベクターイラスト、丸みのある形、鮮やかな色。抽象的な段階はひとつずつ比喩で描き、常に動く。（共通のイラストブロックはなく、この動画用に描きます）" },
-      "prompt": "Form: a flat animated explainer: vector illustrations drawn as this project's own fx in one style throughout (rounded shapes, a small bright palette from the theme), one visual metaphor for each abstract step (a pipe for a flow, scales for a trade-off, a queue for waiting), something moving every 2–3 s; a recurring character may carry it. There is no shared illustration block: write the scenes as fx." },
+      "desc": { "zh": "形式｜向量插畫，造型和配色依主題挑選，每個抽象的步驟都用一個比喻畫出來，畫面一直在動。（沒有共用的插畫積木，這支片會自己畫）", "en": "Form | Vector illustrations with shapes and colours chosen for the topic, a picture metaphor for each abstract step, always moving. (No shared illustration block: the film draws its own.)", "ja": "形式｜ベクターイラスト。形と色はテーマに合わせて選ぶ。抽象的な段階はひとつずつ比喩で描き、常に動く。（共通のイラストブロックはなく、この動画用に描きます）" },
+      "prompt": "Form: a flat animated explainer: vector illustrations drawn as this project's own fx in one style throughout (a shape language and a small palette chosen for the topic and the audience: rounded and bright for a light topic, plainer and muted for a serious one), one visual metaphor for each abstract step (a pipe for a flow, scales for a trade-off, a queue for waiting), something moving every 2–3 s; a recurring character may carry it. There is no shared illustration block: write the scenes as fx." },
     { "id": "whiteboard",
       "name": { "zh": "手繪白板", "en": "Whiteboard doodles", "ja": "手描きホワイトボード" },
       "desc": { "zh": "形式｜方格紙上，跟著旁白一筆一筆畫出塗鴉、箭頭和手寫字。", "en": "Form | On squared paper, doodles, arrows and handwriting drawn stroke by stroke with the voice-over.", "ja": "形式｜方眼紙の上に、ナレーションに合わせて落書き・矢印・手書き文字を一筆ずつ。" },
