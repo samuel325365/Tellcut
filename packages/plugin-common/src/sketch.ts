@@ -13,7 +13,6 @@ import { handLoopPts, heartPts, wave } from './hand.ts';
 type G = CanvasRenderingContext2D;
 export type Pt = [number, number];
 export type PenStyle = 'smooth' | 'ballpoint' | 'marker' | 'crayon' | 'pencil';
-export const PEN_STYLES: PenStyle[] = ['smooth', 'ballpoint', 'marker', 'crayon', 'pencil'];
 export { boiled, handLoopPts, heartPts };
 
 /** a fixed sequence of numbers in 0–1 from a seed: the engine's LCG, any number taken as a seed (the sketches' pictures depend on this mapping) */

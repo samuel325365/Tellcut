@@ -3,10 +3,9 @@ import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'n
 import { basename, join, resolve, sep } from 'node:path';
 import type { ServerResponse } from 'node:http';
 import { parseProject, ProjectError, type Project } from '@tellcut/engine';
-import { contentType, PROJECT_HISTORY_KEEP, PROJECT_ID, projectHash, sendFile, withImportQuery, writeProjectFile } from '@tellcut/media-node';
+import { contentType, PROJECT_ID, projectHash, sendFile, withImportQuery, writeProjectFile } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 
-export const HISTORY_KEEP = PROJECT_HISTORY_KEEP;
 /** an editor page's id (X-Tellcut-Client on its saves, ?client= on its live stream) */
 export const CLIENT_ID = /^[\w-]{1,64}$/;
 const ID = PROJECT_ID;

@@ -23,7 +23,6 @@ export const PresetDraftZ = z.object({
   theme: z.unknown().optional(), score: z.string().optional(),
   fx: z.array(z.string().regex(/^fx\/(?!.*\.\.)[\w./-]+\.m?js$/)).optional(),
 });
-export type PresetDraft = z.infer<typeof PresetDraftZ>;
 
 export interface SavePresetInput { name: string; summary: string; points: PresetPoint[]; lang: Lang; color?: string; ratios?: string[]; length?: [number, number];
   theme?: unknown; score?: string; blocks?: string[];

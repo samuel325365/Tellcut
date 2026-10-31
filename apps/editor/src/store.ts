@@ -112,12 +112,6 @@ export function createStore<S>(init: S): Store<S> {
   };
 }
 
-export function useStore<S>(store: Store<S>): S {
-  const [, force] = useReducer((x: number) => x + 1, 0);
-  useEffect(() => store.subscribe(force as () => void), [store]);
-  return store.get();
-}
-
 export function shallowEqual(a: any, b: any): boolean {
   if (Object.is(a, b)) return true;
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;

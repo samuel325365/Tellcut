@@ -144,15 +144,12 @@ export type Track = Project['tracks'][number];
 export type TrackKind = Track['kind'];
 export type VideoItem = z.infer<typeof VideoItemZ>;
 export type SceneItem = z.infer<typeof SceneItemZ>;
-export type OverlayItem = SceneItem;
 export type MusicItem = z.infer<typeof MusicItemZ>;
 export type AudioItem = z.infer<typeof AudioItemZ>;
 export type SfxItem = z.infer<typeof SfxItemZ>;
 export type AnyItem = VideoItem | SceneItem | MusicItem | AudioItem | SfxItem;
 export type Crop = z.infer<typeof CropZ>;
 export type Transform = z.infer<typeof TransformZ>;
-export type GainPoint = z.infer<typeof GainPointZ>;
-export type Rect01 = z.infer<typeof Rect01Z>;
 export type Mix = z.infer<typeof MixZ>;
 
 export class ProjectError extends Error {

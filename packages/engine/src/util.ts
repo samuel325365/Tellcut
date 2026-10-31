@@ -3,9 +3,7 @@ export const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
 /** 0 → 1 as t goes a → b (clamped); over an empty span (b ≤ a) a step at b. */
 export const prog = (t: number, a: number, b: number) => (b <= a ? (t >= b ? 1 : 0) : clamp((t - a) / (b - a)));
 export const eOut3 = (p: number) => 1 - Math.pow(1 - p, 3);
-export const eOut4 = (p: number) => 1 - Math.pow(1 - p, 4);
 export const eOut5 = (p: number) => 1 - Math.pow(1 - p, 5);
-export const eIn2 = (p: number) => p * p;
 export const eIn3 = (p: number) => p * p * p;
 export const eIO3 = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 export const eBack = (p: number, c = 1.5) => 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2);
@@ -58,7 +56,6 @@ export function attr(el: Element, props: Record<string, string | number>) {
   for (const k in props) { const v = String(props[k]); if (c[k] !== v) { c[k] = v; el.setAttribute(k, v); } }
 }
 export const showCamel = (el: Element, on: boolean) => cssCamel(el, { display: on ? '' : 'none' });
-export const showKebab = (el: Element, on: boolean) => cssKebab(el, { display: on ? '' : 'none' });
 /** Escapes text for interpolation into HTML/SVG markup. */
 export const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 /** Prefixes every id defined in `svg` (and each url(#…) / href="#…" that points at one) with `${uid}-`,
