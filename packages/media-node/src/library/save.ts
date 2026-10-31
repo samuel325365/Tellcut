@@ -100,9 +100,10 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
   const files = found.map(at);
   const from: LibraryFrom = { project: i.projectId, file: i.file };
   const lib = listLibrary(i.root), ids = items.map((t) => t.type);
-  const hit = lib.blocks.filter((e) => e.types.some((t) => ids.includes(t.type)));
-  // the same file saved again (edited since) is an update; anything else the user decides
-  const mine = hit.find((e) => sameFrom(e.from, from)), others = hit.filter((e) => e !== mine);
+  // the same file saved again (edited since, even with its type ids renamed: matched by where it came from, not by its ids) is an
+  // update; anything else the user decides
+  const mine = lib.blocks.find((e) => sameFrom(e.from, from));
+  const others = lib.blocks.filter((e) => e !== mine && e.types.some((t) => ids.includes(t.type))), hit = mine ? [mine, ...others] : others;
   const renames = new Map<string, string>();
   let slug = mine?.slug, drop = mine ? [mine] : [];
   if (others.length) {

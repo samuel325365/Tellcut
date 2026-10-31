@@ -119,3 +119,14 @@ test('a style id already in the library from elsewhere is a conflict; keep-both 
   expect(readFileSync(join(root, 'score', 'street-jazz-2.js'), 'utf8')).toContain("'street-jazz-2'");
 });
 
+
+test('the same file saved again after its type id was renamed replaces its entry instead of adding a second one', async () => {
+  const { root, p1 } = setup();
+  const first = entryOf(await saveBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/chalk.js' })).entry;
+  writeFileSync(join(p1, 'fx', 'chalk.js'), fxModule(['fx.board-title', 'fx.board-line']));
+  const again = entryOf(await saveBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/chalk.js' })).entry;
+  expect(again.slug).toBe(first.slug);
+  expect(again.types.map((t) => t.type)).toEqual(['fx.board-title', 'fx.board-line']);
+  const { listLibrary } = await import('./store.ts');
+  expect(listLibrary(root).blocks.map((e) => e.slug)).toEqual([first.slug]);
+});
