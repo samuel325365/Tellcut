@@ -74,3 +74,28 @@ test('the summary also comes as lines with codes, for the page to word in its la
   ]));
   expect(r.lines!.length).toBe(r.summary.length);   // one line for each line of the Chinese summary
 });
+
+test('the summary goes by where items are in the film: children a head trim or a split keeps on the same moments are not listed', () => {
+  // blk is not media: its children keep their proportional place, so they do move; c1's stay on the same picture
+  const withHangers = () => applyOps(fixture(), [
+    { op: 'addItem', track: 'fx', item: { id: 'hit', type: 'x.tap', start: 2.5, end: 2.6, params: {}, gain: 0, parent: 'c1' } },
+    { op: 'addItem', track: 'sc', item: { id: 'cap', type: 'x.block', start: 1, end: 3, params: {}, parent: 'c1' } },
+  ]).project;
+  const t = applyOps(withHangers(), [{ op: 'trimStart', id: 'c1', dt: 0.5 }]);
+  expect(t.summary).toEqual(['c1 start 0.00→0.50', 'c1 in 1.00→1.50']);
+  expect(t.changed).toEqual(['c1']);
+  // split: hit moves onto the second half at the same moment (parent, start and end rewritten): nothing shows
+  const s = applyOps(withHangers(), [{ op: 'split', t: 2, ids: ['c1'] }]);
+  expect(s.summary).toEqual(['c1 end 4.00→2.00', 'c1 修改 crop', '新增 c1-2（v）']);
+  expect(s.changed).not.toContain('hit');
+  // a hand-made attach to another clip at the same moment is still listed
+  expect(applyOps(withHangers(), [{ op: 'attach', id: 'hit', to: 'c2' }]).summary).toContain('hit 修改 parent');
+});
+
+test('split then rippleDelete of the second half: an item crossing the cut is cut there, and the summary says so', () => {
+  const p = applyOps(fixture(), [{ op: 'addItem', track: 'sc', item: { id: 'cap', type: 'x.block', start: 1, end: 3, params: {}, parent: 'c1' } }]).project;
+  const r = applyOps(p, [{ op: 'split', t: 2, ids: ['c1'] }, { op: 'rippleDelete', ids: ['c1-2'] }]);
+  expect(item(r.project, 'cap')).toMatchObject({ parent: 'c1', start: 1, end: 2 });
+  expect(r.summary).toContain('cap end 3.00→2.00');
+  expect(r.changed).toContain('cap');
+});

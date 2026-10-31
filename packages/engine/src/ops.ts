@@ -66,6 +66,11 @@ export function summarize(before: Project, after: Project): { changed: string[];
   const A = flat(before), B = flat(after), tb = resolveTimes(before), ta = resolveTimes(after);
   const changed: string[] = [], lines: string[] = [], coded: SummaryLine[] = [], shifts = new Map<string, number>();
   const say = (text: string, line: SummaryLine) => { lines.push(text); coded.push(line); };
+  // q is a clip this proposal added right after p on p's track, ending where p ended: p's second half after a split
+  const secondHalf = (p?: string, q?: string) => {
+    if (p === undefined || q === undefined || A.has(q) || !A.has(p) || !B.has(p) || !B.has(q) || B.get(p)!.t !== B.get(q)!.t) return false;
+    return Math.abs(ta.get(q)!.start - ta.get(p)!.end) <= 1e-6 && Math.abs(ta.get(q)!.end - tb.get(p)!.end) <= 1e-6;
+  };
   for (const [id, b] of B) {
     const a = A.get(id);
     if (!a) { changed.push(id); say(`新增 ${id}（${b.t}）`, { k: 'add', id, track: b.t, ...(typeof b.i.type === 'string' ? { type: b.i.type } : {}) }); continue; }
@@ -74,13 +79,19 @@ export function summarize(before: Project, after: Project): { changed: string[];
       if (Math.abs(d) > 1e-6) { const k = (d > 0 ? '+' : '') + f2(d); shifts.set(k, (shifts.get(k) ?? 0) + 1); }
       continue;
     }
-    changed.push(id);
-    const sameLen = Math.abs((a.i.end - a.i.start) - (b.i.end - b.i.start)) < 1e-6;
-    const keys = [...new Set([...Object.keys(a.i), ...Object.keys(b.i)])].filter((k) => JSON.stringify(a.i[k]) !== JSON.stringify(b.i[k]));
+    const ra = tb.get(id)!, rb = ta.get(id)!, d = rb.start - ra.start;
+    const sameLen = Math.abs((ra.end - ra.start) - (rb.end - rb.start)) < 1e-6;
+    // start and end are relative to the parent: what counts is where the item is in the film. A child kept on the same moments
+    // by its parent's head trim, or moved by a split onto the clip's second half, has not changed on screen
+    const keys = [...new Set([...Object.keys(a.i), ...Object.keys(b.i)])].filter((k) => JSON.stringify(a.i[k]) !== JSON.stringify(b.i[k]))
+      .filter((k) => k !== 'parent' || !secondHalf(a.i.parent, b.i.parent));
     if (sameLen && keys.every((k) => k === 'start' || k === 'end') && a.t === b.t) {
-      const d = ta.get(id)!.start - tb.get(id)!.start, k = (d > 0 ? '+' : '') + f2(d);
+      if (Math.abs(d) <= 1e-6) continue;
+      changed.push(id);
+      const k = (d > 0 ? '+' : '') + f2(d);
       shifts.set(k, (shifts.get(k) ?? 0) + 1); continue;
     }
+    changed.push(id);
     for (const k of keys) {
       if (['start', 'end', 'in', 'speed', 'rate'].includes(k) && typeof a.i[k] === 'number' && typeof b.i[k] === 'number') say(`${id} ${k} ${f2(a.i[k])}→${f2(b.i[k])}`, { k: 'num', id, key: k, from: f2(a.i[k]), to: f2(b.i[k]) });
       else say(`${id} 修改 ${k}`, { k: 'edit', id, key: k, ...(k === 'type' && typeof a.i.type === 'string' && typeof b.i.type === 'string' ? { from: a.i.type, to: b.i.type } : {}) });
