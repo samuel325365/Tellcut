@@ -174,6 +174,22 @@ test("a head extended earlier never takes the own sound's in below 0, even when 
   expect(ProjectZ.safeParse(q).success).toBe(true);
 });
 
+test("slip and a new in-point from the panel never take the own sound's in below 0 (its in-point was earlier than the clip's)", () => {
+  // c2 from 10 s; its own sound from 4 s: moving the picture 8 s earlier would want the sound from -4 s
+  const own = () => {
+    const p = fixture();
+    addItem(p, { track: 'au', item: { id: 'snd2', source: 's', in: 4, rate: 2, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c2' } });
+    return p;
+  };
+  const s = run(own(), slip, { id: 'c2', dt: -8 });
+  expect([item(s, 'c2').in, item(s, 'snd2').in]).toEqual([2, 0]);
+  expect(ProjectZ.safeParse(s).success).toBe(true);
+  const u = run(own(), updateItem, { id: 'c2', patch: { in: 2 } });
+  expect([item(u, 'c2').in, item(u, 'snd2').in]).toEqual([2, 0]);
+  expect(ownSounds(u, 'c2').map((c) => c.id)).toEqual(['snd2']);
+  expect(ProjectZ.safeParse(u).success).toBe(true);
+});
+
 test("a frozen clip whose own sound already runs past its source (an older project): editing the clip puts the sound back inside", () => {
   const p = frozen();
   item(p, 'snd2').end = 10;   // needs 40 s of the 30 s source

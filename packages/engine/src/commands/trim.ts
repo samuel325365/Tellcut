@@ -42,8 +42,8 @@ export function slip(p: Project, a: { id: string; dt: number }) {
   const own = ownSounds(p, it.id);
   const was = it.in;
   it.in = r6(Math.min(max, Math.max(0, it.in + a.dt)));
-  // its own sound plays the same source moment as the picture, as far as the source goes
-  for (const c of own) c.in = r6(c.in + it.in - was);
+  // its own sound plays the same source moment as the picture, as far as the source goes (at its start too, as followTrim)
+  for (const c of own) c.in = Math.max(0, r6(c.in + it.in - was));
   fitOwn(p, own, it.end - it.start);
 }
 

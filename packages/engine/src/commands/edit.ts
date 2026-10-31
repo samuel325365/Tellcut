@@ -68,12 +68,13 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
     // in-point or end only moves where the sound stops (fitOwn below, like slip and trimEnd); other fields never touch it.
     if (k === 1) continue;
     const slen = (c.end - c.start) * (oldLen > 0 ? len / oldLen : 1);
-    const has = p.sources[c.source]?.duration ?? Infinity, need = r6(c.in + next.in - oldIn) + slen * r6(c.rate * k);
+    const has = p.sources[c.source]?.duration ?? Infinity, need = Math.max(0, r6(c.in + next.in - oldIn)) + slen * r6(c.rate * k);
     if (need > has + 1e-6 * (1 + slen)) throw new CommandError(`${field}: the clip's own sound runs past the end of source "${c.source}" (needs ${n3(need)} s, has ${n3(has)} s)`, 'cmd.ownSoundPastEnd', { source: c.source, need: n3(need), have: n3(has) });
   }
   for (const [key, v] of Object.entries(a.patch)) { if (v === undefined) delete it[key]; else it[key] = plain(v); }
   if (fitsFades) fitFades(f.track, it);
-  for (const c of own) { c.in = r6(c.in + it.in - oldIn); c.rate = r6(c.rate * k); }
+  // the sound's in stops at its source's start, as followTrim and slip stop it
+  for (const c of own) { c.in = Math.max(0, r6(c.in + it.in - oldIn)); c.rate = r6(c.rate * k); }
   // a block or a clip at a new speed: the children keep their proportional place; at its old speed the others stay on the same picture
   if (rate === null || k !== 1) scaleChildren(p, it.id, oldLen, it.end - it.start);
   else followTrim(p, it.id, oldLen, it.end - it.start, 0);
