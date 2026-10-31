@@ -9,7 +9,6 @@ const chinese = () => {
     if (hasCjk(d.default)) out[`${t.type}.${d.key}`] = d.default as string;
   return out;
 };
-const count = (s: string, part: string) => s.split(part).length - 1;
 
 test('every shared block parameter whose default is Chinese starts in English and Japanese too; no translation is left over', () => {
   const zh = chinese();
@@ -21,14 +20,37 @@ test('every shared block parameter whose default is Chinese starts in English an
   expect(Object.entries(VALUES_EN).filter(([, v]) => IDEOGRAPH.test(v)).map(([k]) => k)).toEqual([]);
 });
 
-test('a translation keeps the default’s layout: its lines, its | fields, the \\n inside a field and the commas of a comma list', () => {
+/** What the shared blocks' parsers split a text parameter on (grep plugin-common for `.split(`): lines and | fields everywhere, a
+ *  written \n inside a field, and per block a comma list (both widths: /[,，]/), 、, ; or ；, : or ： (time:value pairs), > or ＞
+ *  (geo routes), / (notify bodies, magazine and quote lines) and @ (a source and its time). A translation that adds or drops one
+ *  of them changes how many parts the block draws. */
+const SEPARATORS: Array<[string, RegExp]> = [
+  ['line', /\n/g], ['field', /\|/g], ['written \\n', /\\n/g], ['comma', /[,，]/g], ['、', /、/g], ['semicolon', /[;；]/g],
+  ['colon', /[:：]/g], ['arrow', /[>＞]/g], ['slash', /\//g], ['at', /@/g],
+];
+/** what a parameter's own parser does not split on, so a translation may write it as its language does: sentence punctuation in
+ *  text split only on lines and | (quote: on spaces and /), and the / of progress' "step {n}/{N}" (split on | only) */
+const PUNCTUATION = ['comma', '、', 'colon'];
+const FREE: Record<string, string[]> = {
+  'common.notecard.text': PUNCTUATION, 'common.postcard.lines': PUNCTUATION, 'common.slip.items': PUNCTUATION,
+  'common.quote.text': PUNCTUATION, 'common.duo.topic': PUNCTUATION, 'common.versus.rows': PUNCTUATION,
+  'common.reels.caption': PUNCTUATION, 'common.comments.items': PUNCTUATION, 'common.search.snip': PUNCTUATION,
+  'common.magazine.headline': PUNCTUATION, 'common.progress.counter': ['slash'],
+};
+const parts = (s: string, re: RegExp) => (s.match(re) ?? []).length;
+
+test('a translation keeps the default’s layout: as many of each separator the block parsers split on', () => {
   const zh = chinese(), bad: string[] = [];
   for (const [lang, table] of [['en', VALUES_EN], ['ja', VALUES_JA]] as const) for (const [k, z] of Object.entries(zh)) {
     const v = table[k];
-    for (const part of ['\n', '|', '\\n']) if (count(v, part) !== count(z, part)) bad.push(`${lang} ${k}: ${JSON.stringify(part)}`);
-    if (z.includes(',') && count(v, ',') !== count(z, ',')) bad.push(`${lang} ${k}: ","`);
+    for (const [name, re] of SEPARATORS) {
+      if (FREE[k]?.includes(name)) continue;
+      if (parts(v, re) !== parts(z, re)) bad.push(`${lang} ${k}: ${name} ${parts(z, re)} → ${parts(v, re)}`);
+    }
   }
   expect(bad).toEqual([]);
+  // the exemptions are real parameters with Chinese defaults
+  expect(Object.keys(FREE).filter((k) => !(k in zh))).toEqual([]);
 });
 
 test('localValues gives a block’s Chinese-default parameters in the UI language, and nothing in Chinese', () => {
