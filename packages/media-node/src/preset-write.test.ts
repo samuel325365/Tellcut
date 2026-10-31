@@ -1,5 +1,5 @@
 // Presets of the user's own (spec 2026-10-29-my-library §3.5–3.7, §4.5, §4.6): written from the save dialog, read back like any preset.
-import { existsSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { findPreset, presetBlock, presetInfo } from './presets.ts';
@@ -20,7 +20,7 @@ test('the body is the opening line and one line per point', () => {
   expect(presetBody(POINTS)).toBe(`This is the user's own preset, saved from a film they liked. Follow every point; what the user says in the message still comes first.\n- Make it 9:16, about 30 s.\n- Open on the best bite within 2 s.`);
 });
 
-test('a written preset reads back: my- id, its own direction, points, facts in the language it was saved in', () => {
+test('a written preset reads back: my- id, its own direction, points, facts in each language', () => {
   const d = dirs();
   const p = writeUserPreset(d, { name: '我的美食短片', summary: '小吃店探訪', points: POINTS, ratios: ['9:16'], length: [25, 35], theme: { palette: { accent: '#e8590c' } }, score: 'jazz', blocks: ['chalk'], lang: 'zh' });
   expect(p.id).toMatch(/^my-/);
@@ -30,7 +30,7 @@ test('a written preset reads back: my- id, its own direction, points, facts in t
   // saved again under its id: changed in place, not a second preset
   writeUserPreset(d, { name: '我的美食短片', summary: '改過', points: POINTS.slice(0, 1), lang: 'zh' }, p.id);
   expect(findPreset(d, p.id)!.points).toHaveLength(1);
-  expect(renameUserPreset(d, p.id, '夜市').name).toEqual({ zh: '夜市' });
+  expect(renameUserPreset(d, p.id, '夜市').name).toEqual({ zh: '夜市', en: '夜市', ja: '夜市' });
 });
 
 test('a preset from the form keeps choosing a genre; only my- presets can be changed', () => {
@@ -73,4 +73,28 @@ test('a poster is cut to 9:16 from any picture', async () => {
   expect(existsSync(out)).toBe(true);
   const j = JSON.parse(await ffprobe(['-show_streams', '-of', 'json', out]));
   expect([j.streams[0].width, j.streams[0].height]).toEqual([540, 960]);
+});
+
+test('a preset’s name and summary are the user’s own words in every language; a rename in one keeps a translation made by hand in another', () => {
+  const d = dirs();
+  const p = writeUserPreset(d, { name: '夜の屋台', summary: '屋台めぐり', points: POINTS, ratios: ['9:16'], length: [25, 35], lang: 'ja' });
+  // saved in the Japanese UI, the Chinese and English ones still show a name
+  expect(findPreset(d, p.id)).toMatchObject({ name: { zh: '夜の屋台', en: '夜の屋台', ja: '夜の屋台' }, summary: { zh: '屋台めぐり', en: '屋台めぐり', ja: '屋台めぐり' },
+    facts: { zh: ['9:16', '25–35 秒'], en: ['9:16', '25–35 s'], ja: ['9:16', '25〜35 秒'] } });
+  // an English name added by hand in preset.md
+  const file = join(d.user, p.id, 'preset.md'), text = readFileSync(file, 'utf8');
+  writeFileSync(file, text.replace('"en": "夜の屋台"', '"en": "Night stalls"'));
+  expect(renameUserPreset(d, p.id, '夜市', 'zh').name).toEqual({ zh: '夜市', en: 'Night stalls', ja: '夜市' });
+  writeUserPreset(d, { name: 'Night market', summary: '屋台めぐり', points: POINTS, lang: 'en' }, p.id);
+  expect(findPreset(d, p.id)!.name).toEqual({ zh: '夜市', en: 'Night market', ja: '夜市' });
+});
+
+test('a preset keeps only the theme its dialog shows: the colours and fonts that are valid, nothing else', () => {
+  const d = dirs();
+  const p = writeUserPreset(d, { name: 'a', summary: '', points: POINTS, lang: 'zh',
+    theme: { palette: { accent: '#e8590c', ink: 3 }, fonts: { display: 'Noto Serif TC' }, safe: { top: 0.2 }, radius: 4, junk: { x: 1 } } });
+  expect(findPreset(d, p.id)!.theme).toEqual({ palette: { accent: '#e8590c' }, fonts: { display: 'Noto Serif TC' } });
+  const none = writeUserPreset(d, { name: 'b', summary: '', points: POINTS, lang: 'zh', theme: { safe: { top: 0.1 }, junk: 1 } });
+  expect(findPreset(d, none.id)!.theme).toBeUndefined();
+  expect(writeUserPreset(d, { name: 'c', summary: '', points: POINTS, lang: 'zh', theme: 'nonsense' }).theme).toBeUndefined();
 });

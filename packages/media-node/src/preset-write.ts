@@ -4,7 +4,8 @@
 import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { Lang } from '@tellcut/protocol';
+import { DEFAULT_THEME } from '@tellcut/engine';
+import type { L10n, Lang } from '@tellcut/protocol';
 import { ffmpeg } from './ffmpeg.ts';
 import { findPreset, type Preset, type PresetDirs, type PresetPoint } from './presets.ts';
 import { slugFor } from './library/store.ts';
@@ -30,19 +31,43 @@ export interface SavePresetInput { name: string; summary: string; points: Preset
   genres?: boolean }
 
 const SECONDS: Record<Lang, (a: number, b: number) => string> = { zh: (a, b) => `${a}–${b} 秒`, en: (a, b) => `${a}–${b} s`, ja: (a, b) => `${a}〜${b} 秒` };
+const LANGS: Lang[] = ['zh', 'en', 'ja'];
 const mineId = (id: string) => { if (!/^my-[a-z0-9][a-z0-9-]{0,37}$/.test(id)) throw new Error(`不是自己的片型：${id}`); return id; };
+
+/** the user's own words (a name, a summary) in every language: they are not translated, so the other UIs show them as typed, not
+ *  nothing (pickText falls back to en and zh only). A language whose text was not the same as the one edited (a translation made by
+ *  hand in preset.md) keeps its own */
+function ownWords(text: string, lang: Lang, had: L10n | undefined): L10n {
+  const was = had?.[lang];
+  return Object.fromEntries(LANGS.map((l) => [l, l !== lang && had?.[l] !== undefined && had[l] !== was ? had[l]! : text]));
+}
+
+/** the part of a theme a preset keeps: the colours and fonts its dialog shows, each a non-empty string under a name the theme knows.
+ *  The rest is left out: the page would save what it never showed, and the safe area is the source film's shape, wrong for a film of
+ *  another ratio made from the preset. Undefined when nothing is left */
+export function presetTheme(theme: unknown): { palette?: Record<string, string>; fonts?: Record<string, string> } | undefined {
+  const t = (theme && typeof theme === 'object' ? theme : {}) as Record<string, unknown>;
+  const pick = (x: unknown, keys: string[]) => {
+    const o = x && typeof x === 'object' ? x as Record<string, unknown> : {};
+    const kept = Object.fromEntries(keys.flatMap((k) => (typeof o[k] === 'string' && o[k].trim() ? [[k, o[k].trim()]] : [])));
+    return Object.keys(kept).length ? kept : undefined;
+  };
+  const palette = pick(t.palette, Object.keys(DEFAULT_THEME.palette)), fonts = pick(t.fonts, Object.keys(DEFAULT_THEME.fonts));
+  return palette || fonts ? { ...(palette ? { palette } : {}), ...(fonts ? { fonts } : {}) } : undefined;
+}
 
 /** writes (with `id`: rewrites) a preset of the user's own; the poster, when there is one, stays */
 export function writeUserPreset(dirs: PresetDirs, i: SavePresetInput, id?: string): Preset {
   const taken = new Set((() => { try { return readdirSync(dirs.user); } catch { return []; } })());
   const pid = id ? mineId(id) : `my-${slugFor(i.name, 'preset', new Set([...taken].filter((x) => x.startsWith('my-')).map((x) => x.slice(3))))}`;
-  const facts = [...(i.ratios ?? []), ...(i.length ? [SECONDS[i.lang](Math.round(i.length[0]), Math.round(i.length[1]))] : [])];
+  const had = id ? findPreset(dirs, pid) : null, theme = presetTheme(i.theme);
+  const facts = (l: Lang) => [...(i.ratios ?? []), ...(i.length ? [SECONDS[l](Math.round(i.length[0]), Math.round(i.length[1]))] : [])];
   const front = {
-    color: i.color ?? '#d8b88a', name: { [i.lang]: i.name.trim() || pid }, summary: { [i.lang]: i.summary.trim() },
-    ...(facts.length ? { facts: { [i.lang]: facts } } : {}),
+    color: i.color ?? '#d8b88a', name: ownWords(i.name.trim() || pid, i.lang, had?.name), summary: ownWords(i.summary.trim(), i.lang, had?.summary),
+    ...(facts(i.lang).length ? { facts: Object.fromEntries(LANGS.map((l) => [l, facts(l)])) } : {}),
     ...(i.ratios?.length ? { ratios: i.ratios } : {}), ...(i.length ? { length: i.length.map(Math.round) } : {}),
     genres: i.genres ?? false, points: i.points,
-    ...(i.theme ? { theme: i.theme } : {}), ...(i.score ? { score: i.score } : {}), ...(i.blocks?.length ? { blocks: i.blocks } : {}),
+    ...(theme ? { theme } : {}), ...(i.score ? { score: i.score } : {}), ...(i.blocks?.length ? { blocks: i.blocks } : {}),
   };
   const dir = join(dirs.user, pid);
   mkdirSync(dir, { recursive: true });
