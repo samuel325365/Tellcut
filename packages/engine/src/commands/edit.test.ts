@@ -15,6 +15,19 @@ test('updateItem applies valid fields and refuses invalid ones with the reason',
   expect(item(run(fixture(), updateItem, { id: 'c2', patch: { transitionIn: undefined } }), 'c2').transitionIn).toBeUndefined();
 });
 
+test('a refused field has a code and the values for the editor to word it in its language (err.<code>)', () => {
+  const why = (f: () => unknown) => { try { f(); } catch (e) { return [(e as CommandError).code, (e as CommandError).params]; } return null; };
+  expect(why(() => run(fixture(), updateItem, { id: 'c2', patch: { speed: 0 } }))).toEqual(['cmd.fieldAbove', { field: 'speed', min: 0 }]);
+  expect(why(() => run(fixture(), updateItem, { id: 'c2', patch: { speed: 20 } }))).toEqual(['cmd.fieldMax', { field: 'speed', max: 16 }]);
+  expect(why(() => run(fixture(), updateItem, { id: 'c2', patch: { opacity: -1 } }))).toEqual(['cmd.fieldMin', { field: 'opacity', min: 0 }]);
+  expect(why(() => run(fixture(), updateItem, { id: 'c2', patch: { interp: 'x' } }))).toEqual(['cmd.fieldInvalid', { field: 'interp' }]);
+  expect(why(() => run(fixture(), updateItem, { id: 'c2', patch: { end: 3 } }))).toEqual(['cmd.endBeforeStart', undefined]);
+  expect(why(() => run(fixture(), updateItem, { id: 'c2', patch: { in: 30 } }))).toEqual(['cmd.inPastEnd', { in: 30, source: 's', have: 30 }]);
+  expect(why(() => run(fixture(), updateItem, { id: 'c1', patch: { end: 40 } }))).toEqual(['cmd.clipPastEnd', { source: 's', need: 41, have: 30 }]);
+  expect(why(() => run(fixture(), updateItem, { id: 'a1', patch: { fadeIn: 2, fadeOut: 1 } }))).toEqual(['cmd.fadesTooLong', { fades: 3, len: 2 }]);
+  expect(why(() => run(fixture(), addCropKey, { id: 'c1', t: 4 }))).toEqual(['cmd.cropKeyInside', undefined]);
+});
+
 test('addSources adds footage and music, skips paths already there, refuses a taken id', () => {
   const clip = { path: 'n.mp4', duration: 5, width: 1920, height: 1080, kind: 'video' as const, audio: true };
   const d = structuredClone(fixture());

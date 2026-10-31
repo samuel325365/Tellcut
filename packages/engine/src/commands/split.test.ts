@@ -35,6 +35,7 @@ test('split refuses to cut inside a defocus ramp', () => {
   const p = structuredClone(fixture());
   (p.tracks[1].items[0] as any).defocus = { from: 1, to: 3, px: 8 };
   expect(() => split(p, { t: 2, ids: ['c1'] })).toThrow(CommandError);
+  expect(() => split(p, { t: 2, ids: ['c1'] })).toThrow(expect.objectContaining({ code: 'cmd.splitInDefocus' }));
 });
 
 test("splitting a clip moves what hangs after the cut onto the second half and cuts the clip's own sound with it", async () => {

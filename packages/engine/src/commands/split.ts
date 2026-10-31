@@ -36,7 +36,7 @@ export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
       if (ids && !ids.includes(it.id)) continue;
       const rel = a.t - tm.start, len = tm.end - tm.start;
       if (rel < m - 1e-9 || len - rel < m - 1e-9) continue;
-      if (it.defocus && it.defocus.from < rel && rel < it.defocus.to) throw new CommandError('Cannot split inside a defocus ramp');
+      if (it.defocus && it.defocus.from < rel && rel < it.defocus.to) throw new CommandError('Cannot split inside a defocus ramp', 'cmd.splitInDefocus');
       const b = plainCopy(it);
       const rate = mediaRate(track, it)!;
       b.id = uniqueId(p, it.id);

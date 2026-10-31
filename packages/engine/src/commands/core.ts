@@ -18,7 +18,7 @@ export function findItem(p: Project, id: string): Found {
     const ii = items(p.tracks[ti]).findIndex((x) => x.id === id);
     if (ii >= 0) return { track: p.tracks[ti], ti, item: items(p.tracks[ti])[ii], ii };
   }
-  throw new CommandError(`No item "${id}"`);
+  throw new CommandError(`No item "${id}"`, 'cmd.noItem', { id });
 }
 
 /** base if no item or track uses it, otherwise base-2, base-3, … */

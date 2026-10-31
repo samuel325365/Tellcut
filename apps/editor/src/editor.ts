@@ -503,7 +503,7 @@ export class Editor {
     try { preview = this.history.preview((d) => runOps(d, p.ops)); }
     catch (e) {
       const why = (e as Error).message;
-      this.set({ notice: say('ed.staleProposal', { why }) });
+      this.set({ notice: say('ed.staleProposal', { why: errText(e) }) });
       void this.report(p.id, 'stale', why);
       return;
     }
@@ -539,7 +539,7 @@ export class Editor {
     catch (e) {
       const why = (e as Error).message;
       this.prop = null; this.propView = null;
-      this.set({ proposal: null, notice: say('ed.staleProposal', { why }) });
+      this.set({ proposal: null, notice: say('ed.staleProposal', { why: errText(e) }) });
       this.changed(this.history.project, false);
       await this.report(p.id, 'stale', why);
       return false;

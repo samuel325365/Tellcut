@@ -1,4 +1,5 @@
 // Field edits from the properties panel, the library and crop mode. Every result must still validate.
+import type { ZodIssue } from 'zod';
 import { plainCopy as plain } from '../util.ts';
 import { AudioItemZ, MusicItemZ, OverlayItemZ, SceneItemZ, SfxItemZ, VideoItemZ, type AnyItem, type Crop, type Project, type TrackKind, type Transform } from '../schema.ts';
 import { CommandError, findItem, fitFades, fitOwn, followTrim, mediaRate, ownSounds, r6, scaleChildren, sourceNeed, uniqueId } from './core.ts';
@@ -9,28 +10,37 @@ const BASE: Record<TrackKind, string> = { video: 'clip', music: 'music', audio: 
 const AUDIO_KINDS = new Set<TrackKind>(['music', 'audio', 'sfx']);
 const VISUAL_KINDS = new Set<TrackKind>(['scene', 'video', 'overlay']);
 
+/** A field the schema refuses: the message lists every problem, the code words the first one for the panel. */
+function fieldError(issues: ZodIssue[]): CommandError {
+  const i = issues[0], field = i.path.join('.') || 'item', msg = issues.map((x) => `${x.path.join('.') || 'item'}: ${x.message}`).join('; ');
+  if (i.code === 'too_small' && i.type === 'number') return new CommandError(msg, i.inclusive ? 'cmd.fieldMin' : 'cmd.fieldAbove', { field, min: Number(i.minimum) });
+  if (i.code === 'too_big' && i.type === 'number') return new CommandError(msg, i.inclusive ? 'cmd.fieldMax' : 'cmd.fieldBelow', { field, max: Number(i.maximum) });
+  return new CommandError(msg, 'cmd.fieldInvalid', { field });
+}
+
 /** Validates one item of a track kind against the schema and the project (sources, media, in-point). */
 export function checkItem(p: Project, kind: TrackKind, raw: Record<string, unknown>): AnyItem {
   const r = ITEM_Z[kind].safeParse(raw);
-  if (!r.success) throw new CommandError(r.error.issues.map((i) => `${i.path.join('.') || 'item'}: ${i.message}`).join('; '));
+  if (!r.success) throw fieldError(r.error.issues);
   const it = r.data as any;
-  if (!(it.end > it.start)) throw new CommandError('end: end must be greater than start');
+  if (!(it.end > it.start)) throw new CommandError('end: end must be greater than start', 'cmd.endBeforeStart');
   if ('source' in it) {
     const s = p.sources[it.source];
-    if (!s) throw new CommandError(`source: unknown source "${it.source}"`);
-    if (it.in >= s.duration) throw new CommandError(`in: ${it.in} s is past the end of source "${it.source}" (${s.duration} s)`);
+    if (!s) throw new CommandError(`source: unknown source "${it.source}"`, 'cmd.noSource', { source: it.source });
+    if (it.in >= s.duration) throw new CommandError(`in: ${it.in} s is past the end of source "${it.source}" (${s.duration} s)`, 'cmd.inPastEnd', { in: it.in, source: it.source, have: s.duration });
   }
   const len = it.end - it.start, n3 = (v: number) => Math.round(v * 1000) / 1000;
   if ((kind === 'music' || kind === 'audio') && it.fadeIn + it.fadeOut > len + 1e-6)
-    throw new CommandError(`fadeIn: fade-in plus fade-out (${n3(it.fadeIn + it.fadeOut)} s) is longer than the clip (${n3(len)} s)`);
+    throw new CommandError(`fadeIn: fade-in plus fade-out (${n3(it.fadeIn + it.fadeOut)} s) is longer than the clip (${n3(len)} s)`, 'cmd.fadesTooLong', { fades: n3(it.fadeIn + it.fadeOut), len: n3(len) });
   if ((kind === 'video' || kind === 'audio') && p.sources[it.source]) {
     // the source time the clip plays: after freezeAt a video holds one frame
     const used = sourceNeed(kind, it);
     const has = p.sources[it.source].duration;
     // speed/rate are rounded to 1e-6 (r6): allow that rounding over the clip length
-    if (it.in + used > has + 1e-6 * (1 + len)) throw new CommandError(`end: the clip runs past the end of source "${it.source}" (needs ${n3(it.in + used)} s, has ${n3(has)} s)`);
+    if (it.in + used > has + 1e-6 * (1 + len))
+      throw new CommandError(`end: the clip runs past the end of source "${it.source}" (needs ${n3(it.in + used)} s, has ${n3(has)} s)`, 'cmd.clipPastEnd', { source: it.source, need: n3(it.in + used), have: n3(has) });
   }
-  if ('media' in it && !(it.media in p.media)) throw new CommandError(`media: unknown media "${it.media}"`);
+  if ('media' in it && !(it.media in p.media)) throw new CommandError(`media: unknown media "${it.media}"`, 'cmd.noMedia', { media: it.media });
   return it;
 }
 
@@ -38,7 +48,7 @@ export function checkItem(p: Project, kind: TrackKind, raw: Record<string, unkno
 /** Sets fields of one item (undefined removes a field); id cannot change; children follow a length change the way a trim moves them. */
 export function updateItem(p: Project, a: { id: string; patch: Record<string, unknown> }) {
   const f = findItem(p, a.id), it = f.item as any;
-  if ('id' in a.patch && a.patch.id !== a.id) throw new CommandError('id: an item id cannot be changed');
+  if ('id' in a.patch && a.patch.id !== a.id) throw new CommandError('id: an item id cannot be changed', 'cmd.idFixed');
   const next = { ...plain(it), ...a.patch };
   for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
   // a new length from the panel keeps the fades inside the clip unless the fades themselves are being set
@@ -74,7 +84,7 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
 export function addItem(p: Project, a: { track: string; item: Record<string, unknown> }): string {
   const t = p.tracks.find((x) => x.id === a.track);
   // the page chat once guessed a "v2" and did not know a track can be added in the same proposal
-  if (!t) throw new CommandError(`No track "${a.track}" (tracks: ${p.tracks.map((x) => x.id).join(', ')}; a new one: addTrack {kind, name?, as} first, then use its "$name")`);
+  if (!t) throw new CommandError(`No track "${a.track}" (tracks: ${p.tracks.map((x) => x.id).join(', ')}; a new one: addTrack {kind, name?, as} first, then use its "$name")`, 'cmd.noTrack', { id: a.track });
   const id = uniqueId(p, typeof a.item.id === 'string' ? a.item.id : BASE[t.kind]);
   (t.items as AnyItem[]).push(plain(checkItem(p, t.kind, { ...a.item, id })));
   return id;
@@ -112,9 +122,9 @@ export function addSources(p: Project, a: { sources?: Project['sources']; media?
 /** Track bus: mute on any track (visual = hidden), gain (-60..+12 dB) and solo on audio tracks. */
 export function setTrack(p: Project, a: { id: string; patch: { gain?: number; muted?: boolean; solo?: boolean; name?: string } }) {
   const t = p.tracks.find((x) => x.id === a.id) as any;
-  if (!t) throw new CommandError(`No track "${a.id}"`);
+  if (!t) throw new CommandError(`No track "${a.id}"`, 'cmd.noTrack', { id: a.id });
   const audio = AUDIO_KINDS.has(t.kind);
-  if (!audio && (a.patch.gain !== undefined || a.patch.solo !== undefined)) throw new CommandError(`Track "${a.id}" (${t.kind}) has no bus gain or solo`);
+  if (!audio && (a.patch.gain !== undefined || a.patch.solo !== undefined)) throw new CommandError(`Track "${a.id}" (${t.kind}) has no bus gain or solo`, 'cmd.noBus', { id: a.id, kind: t.kind });
   if (a.patch.gain !== undefined) t.gain = Math.round(Math.min(12, Math.max(-60, a.patch.gain)) * 10) / 10;
   if (a.patch.muted !== undefined) t.muted = a.patch.muted;
   if (a.patch.solo !== undefined) t.solo = a.patch.solo;
@@ -127,7 +137,7 @@ export type CropWhich = 'from' | 'to' | number;
 const clampCrop = (c: Crop) => { const k = (v: number, lo: number, hi: number) => r6(Math.min(hi, Math.max(lo, v))); return { x: k(c.x, 0, 1), y: k(c.y, 0, 1), zoom: k(c.zoom, 1, 8) }; };
 const videoOf = (p: Project, id: string) => {
   const f = findItem(p, id);
-  if (f.track.kind !== 'video') throw new CommandError('Only video clips have a crop');
+  if (f.track.kind !== 'video') throw new CommandError('Only video clips have a crop', 'cmd.cropVideoOnly');
   return f.item as any;
 };
 
@@ -135,7 +145,7 @@ export function setCrop(p: Project, a: { id: string; which: CropWhich; crop: Cro
   const it = videoOf(p, a.id), c = clampCrop(a.crop);
   if (typeof a.which === 'number') {
     const k = it.crop.keys?.[a.which];
-    if (!k) throw new CommandError(`No crop keyframe ${a.which}`);
+    if (!k) throw new CommandError(`No crop keyframe ${a.which}`, 'cmd.noCropKey', { index: a.which });
     Object.assign(k, c);
   } else it.crop[a.which] = c;
 }
@@ -143,9 +153,9 @@ export function setCrop(p: Project, a: { id: string; which: CropWhich; crop: Cro
 /** Inserts a crop keyframe at clip-local `t` holding the crop shown there now; returns its index. */
 export function addCropKey(p: Project, a: { id: string; t: number }): number {
   const it = videoOf(p, a.id), len = it.end - it.start, t = r6(a.t);
-  if (!(t > 0 && t < len)) throw new CommandError('A crop keyframe must be inside the clip (not at its start or end)');
+  if (!(t > 0 && t < len)) throw new CommandError('A crop keyframe must be inside the clip (not at its start or end)', 'cmd.cropKeyInside');
   const keys: Array<{ t: number }> = (it.crop.keys ??= []);
-  if (keys.some((k) => Math.abs(k.t - t) < 1e-3)) throw new CommandError('There is already a crop keyframe at this time');
+  if (keys.some((k) => Math.abs(k.t - t) < 1e-3)) throw new CommandError('There is already a crop keyframe at this time', 'cmd.cropKeyTaken');
   keys.push({ t, ...clampCrop(cropAt(it.crop, t, len)) });
   keys.sort((x, y) => x.t - y.t);
   return keys.findIndex((k) => k.t === t);
@@ -153,7 +163,7 @@ export function addCropKey(p: Project, a: { id: string; t: number }): number {
 
 export function removeCropKey(p: Project, a: { id: string; index: number }) {
   const it = videoOf(p, a.id);
-  if (!it.crop.keys?.[a.index]) throw new CommandError(`No crop keyframe ${a.index}`);
+  if (!it.crop.keys?.[a.index]) throw new CommandError(`No crop keyframe ${a.index}`, 'cmd.noCropKey', { index: a.index });
   it.crop.keys.splice(a.index, 1);
   if (!it.crop.keys.length) delete it.crop.keys;
 }
@@ -161,7 +171,7 @@ export function removeCropKey(p: Project, a: { id: string; index: number }) {
 /** Moves / scales a scene or overlay item (preview handles, properties panel); null puts it back. */
 export function setTransform(p: Project, a: { id: string; transform: Transform | null }) {
   const f = findItem(p, a.id);
-  if (f.track.kind !== 'scene' && f.track.kind !== 'overlay') throw new CommandError('Only scene and overlay items can be moved or scaled');
+  if (f.track.kind !== 'scene' && f.track.kind !== 'overlay') throw new CommandError('Only scene and overlay items can be moved or scaled', 'cmd.transformSceneOnly');
   const it = f.item as any;
   if (!a.transform) { delete it.transform; return; }
   const c = (v: number, lo: number, hi: number) => Math.round(Math.min(hi, Math.max(lo, v)) * 1e4) / 1e4;

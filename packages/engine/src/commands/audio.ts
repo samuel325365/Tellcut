@@ -6,16 +6,16 @@ export const ENV_DB_MIN = -60, ENV_DB_MAX = 12;
 const clampDb = (db: number) => Math.round(Math.min(ENV_DB_MAX, Math.max(ENV_DB_MIN, db)) * 10) / 10;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-function clip(p: Project, id: string, what: string) {
+function clip(p: Project, id: string, what: 'envelope' | 'fades') {
   const f = findItem(p, id);
-  if (f.track.kind !== 'music' && f.track.kind !== 'audio') throw new CommandError(`Only music and audio clips have ${what}`);
+  if (f.track.kind !== 'music' && f.track.kind !== 'audio') throw new CommandError(`Only music and audio clips have ${what === 'fades' ? 'fades' : 'a volume envelope'}`, what === 'fades' ? 'cmd.fadesAudioOnly' : 'cmd.envelopeAudioOnly');
   const it = f.item as any;
   return { it, len: it.end - it.start };
 }
 
 /** Inserts a point in time order; returns its index. */
 export function addEnvelopePoint(p: Project, a: { id: string; t: number; db: number }): number {
-  const { it, len } = clip(p, a.id, 'a volume envelope');
+  const { it, len } = clip(p, a.id, 'envelope');
   const pt: [number, number] = [r6(clamp(a.t, 0, len)), clampDb(a.db)];
   const env: Array<[number, number]> = it.envelope ? [...it.envelope] : [];
   let i = env.findIndex(([t]) => t > pt[0]);
@@ -27,9 +27,9 @@ export function addEnvelopePoint(p: Project, a: { id: string; t: number; db: num
 
 /** Moves a point, never past its neighbours (the order stays valid). */
 export function moveEnvelopePoint(p: Project, a: { id: string; index: number; t: number; db: number }) {
-  const { it, len } = clip(p, a.id, 'a volume envelope');
+  const { it, len } = clip(p, a.id, 'envelope');
   const env: Array<[number, number]> = it.envelope ?? [];
-  if (!env[a.index]) throw new CommandError(`No envelope point ${a.index} on "${a.id}"`);
+  if (!env[a.index]) throw new CommandError(`No envelope point ${a.index} on "${a.id}"`, 'cmd.noEnvelopePoint', { index: a.index, id: a.id });
   // never past a neighbour (order stays valid); inside the clip unless a neighbour already lies past its end (after a trim)
   const lo = a.index > 0 ? env[a.index - 1][0] : 0;
   const hi = Math.max(lo, Math.min(len, a.index < env.length - 1 ? env[a.index + 1][0] : len));
@@ -37,9 +37,9 @@ export function moveEnvelopePoint(p: Project, a: { id: string; index: number; t:
 }
 
 export function removeEnvelopePoint(p: Project, a: { id: string; index: number }) {
-  const { it } = clip(p, a.id, 'a volume envelope');
+  const { it } = clip(p, a.id, 'envelope');
   const env: Array<[number, number]> = it.envelope ?? [];
-  if (!env[a.index]) throw new CommandError(`No envelope point ${a.index} on "${a.id}"`);
+  if (!env[a.index]) throw new CommandError(`No envelope point ${a.index} on "${a.id}"`, 'cmd.noEnvelopePoint', { index: a.index, id: a.id });
   const next = env.filter((_, i) => i !== a.index);
   if (next.length) it.envelope = next; else delete it.envelope;
 }

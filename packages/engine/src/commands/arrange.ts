@@ -12,10 +12,10 @@ export function moveItems(p: Project, a: { ids: string[]; dt: number; toTrack?: 
   const dt = Math.max(a.dt, -Math.min(...ids.map((id) => times.get(id)!.start)));
   for (const f of found) { f.item.start = r6(f.item.start + dt); f.item.end = r6(f.item.end + dt); }
   if (a.toTrack === undefined) return;
-  if (found.length !== 1) throw new CommandError('Only one item can change track at a time');
+  if (found.length !== 1) throw new CommandError('Only one item can change track at a time', 'cmd.oneTrackMove');
   const f = found[0], to = p.tracks.find((t) => t.id === a.toTrack);
-  if (!to) throw new CommandError(`No track "${a.toTrack}"`);
-  if (to.kind !== f.track.kind) throw new CommandError(`Cannot move a ${f.track.kind} item onto track "${to.id}" (${to.kind})`);
+  if (!to) throw new CommandError(`No track "${a.toTrack}"`, 'cmd.noTrack', { id: a.toTrack });
+  if (to.kind !== f.track.kind) throw new CommandError(`Cannot move a ${f.track.kind} item onto track "${to.id}" (${to.kind})`, 'cmd.wrongTrackKind', { kind: f.track.kind, track: to.id, trackKind: to.kind });
   if (to === f.track) return;
   const [moved] = (f.track.items as AnyItem[]).splice(f.ii, 1);
   (to.items as AnyItem[]).push(plainCopy(moved));

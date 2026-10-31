@@ -18,7 +18,7 @@ const where = (p: Project, id: string) => { for (const t of p.tracks) { const it
 
 export function copyItems(p: Project, ids: string[], projectId: string): Clip {
   const known = ids.filter((id) => where(p, id));
-  if (!known.length) throw new CommandError('Nothing to copy');
+  if (!known.length) throw new CommandError('Nothing to copy', 'cmd.nothingToCopy');
   const times = resolveTimes(p), tops = topLevel(p, known), entries: ClipEntry[] = [];
   for (const id of tops) {
     const w = where(p, id)!, it = plainCopy(w.it), tm = times.get(id)!;

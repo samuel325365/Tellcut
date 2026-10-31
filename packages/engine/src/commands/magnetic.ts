@@ -104,7 +104,7 @@ export function settleMagnetic(before: Project, after: Project) {
 
 export function magneticGaps(p: Project, id: string): { count: number; shift: number } {
   const t = p.tracks.find((x) => x.id === id);
-  if (!t) throw new CommandError(`No track "${id}"`);
+  if (!t) throw new CommandError(`No track "${id}"`, 'cmd.noTrack', { id });
   const times = resolveTimes(p), spans = items(t).map((c) => times.get(c.id)!).sort((a, b) => a.start - b.start);
   let end = 0, count = 0, shift = 0;
   for (const s of spans) { if (s.start > end + EPS) { count++; shift += s.start - end; } end = Math.max(end, s.end); }

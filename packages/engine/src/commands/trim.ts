@@ -3,7 +3,7 @@ import type { Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
 import { CommandError, findItem, fitOwn, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
 
-const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('Sound effects have a fixed length'); };
+const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('Sound effects have a fixed length', 'cmd.sfxFixedLength'); };
 
 /** Moves the item's start by dt; media items keep showing the same content at the same moments. */
 export function trimStart(p: Project, a: { id: string; dt: number }) {
@@ -37,7 +37,7 @@ export function trimEnd(p: Project, a: { id: string; dt: number }) {
 /** Changes which part of the source is shown without moving the item (dt in source seconds). */
 export function slip(p: Project, a: { id: string; dt: number }) {
   const f = findItem(p, a.id), it = f.item as any, rate = mediaRate(f.track, f.item);
-  if (rate === null) throw new CommandError('Only media items can be slipped');
+  if (rate === null) throw new CommandError('Only media items can be slipped', 'cmd.slipMediaOnly');
   const max = Math.max(0, sourceLength(p, f.track, f.item) - sourceNeed(f.track.kind, it));
   const own = ownSounds(p, it.id);
   const was = it.in;
@@ -50,7 +50,7 @@ export function slip(p: Project, a: { id: string; dt: number }) {
 /** Moves the cut between two touching items on the same track. */
 export function roll(p: Project, a: { left: string; right: string; dt: number }) {
   const L = findItem(p, a.left), R = findItem(p, a.right), times = resolveTimes(p);
-  if (L.track !== R.track || Math.abs(times.get(a.left)!.end - times.get(a.right)!.start) > 1e-6) throw new CommandError('Items are not adjacent');
+  if (L.track !== R.track || Math.abs(times.get(a.left)!.end - times.get(a.right)!.start) > 1e-6) throw new CommandError('Items are not adjacent', 'cmd.notAdjacent');
   const l = L.item as any, r = R.item as any, m = minLen(p);
   const rl = mediaRate(L.track, L.item), rr = mediaRate(R.track, R.item);
   const lenL = l.end - l.start, lenR = r.end - r.start;
@@ -71,7 +71,7 @@ export function roll(p: Project, a: { left: string; right: string; dt: number })
 export function rateStretch(p: Project, a: { id: string; edge: 'start' | 'end'; dt: number }) {
   const f = findItem(p, a.id), it = f.item as any;
   const key = f.track.kind === 'video' ? 'speed' : f.track.kind === 'audio' ? 'rate' : null;
-  if (!key) throw new CommandError('Only video and audio clips can change speed');
+  if (!key) throw new CommandError('Only video and audio clips can change speed', 'cmd.speedMediaOnly');
   // the clip's own sound plays at the clip's new speed (found before the length changes)
   const own = ownSounds(p, it.id);
   const oldLen = it.end - it.start, old = it[key];
