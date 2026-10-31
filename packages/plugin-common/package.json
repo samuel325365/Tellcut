@@ -5,7 +5,8 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./golden/cases": "./golden/cases.ts"
   },
   "dependencies": {
     "@paper-design/shaders": "0.0.81",

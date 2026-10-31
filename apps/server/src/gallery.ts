@@ -10,8 +10,9 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 // the recipes are tools code (they drive Cut); the gallery only reads their names, notes and examples. Moving them into a package of
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
-// the golden cases are the blocks' pictures already kept (and checked) in git: the gallery's cards show them
-import { cases } from '../../../packages/plugin-common/golden/cases.ts';
+// the golden cases are the blocks' pictures already kept (and checked) in git: the gallery's cards show them (the golden folder is
+// served at run time as the gallery's pictures, so its index is a declared export of plugin-common, not a path into its tests)
+import { cases } from '@tellcut/plugin-common/golden/cases';
 import { CORE_CATEGORY, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { HttpError, sendJson, type Router } from './http.ts';
 
