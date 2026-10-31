@@ -11,7 +11,7 @@ import { nextHandle, similarNames, withHandle } from './handle-registry.ts';
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } };
 const fxSrc = (...types: string[]) => `export default [${types.map((t) => `{ type: '${t}', label: '${t}', kind: 'overlay', doc: 'd', params: [], build() { return 0; }, draw() {} }`).join(', ')}];\n`;
 const INDEX = `import type { ItemType, Plugin } from '@tellcut/engine';\nimport { film } from './film.ts';\nimport { progress } from './progress.ts';\n\nexport const commonItems: ItemType[] = [progress, film] as ItemType[];\nexport const commonPlugin: Plugin = { id: 'common', items: commonItems };\n`;
-const CASES = `export const cases = [\n  { name: 'film', type: 'common.film', at: [1] },\n];\n`;
+const SAMPLES = `export const samples = [\n  { name: 'film', type: 'common.film', at: [1] },\n];\n`;
 const HANDLES = `export const HANDLES: Readonly<Record<string, string>> = {\n  'MRK-01': 'common.stamp',\n  'LOK-01': 'common.film',\n};\nexport const RETIRED: Readonly<Record<string, string>> = {\n  'MRK-02': 'common.gone',\n};\n`;
 /** the shared names a new one is compared with */
 const NAMES = ['film', 'progress', 'ding', 'rings', 'ringbell'];
@@ -23,7 +23,7 @@ beforeEach(() => {
   dir = join(root, 'proj'); common = join(root, 'common'); handlesFile = join(root, 'handles.ts');
   for (const d of [join(dir, 'fx'), join(common, 'src'), join(common, 'golden')]) mkdirSync(d, { recursive: true });
   writeFileSync(join(common, 'src', 'index.ts'), INDEX);
-  writeFileSync(join(common, 'golden', 'cases.ts'), CASES);
+  writeFileSync(join(common, 'src', 'samples.ts'), SAMPLES);
   writeFileSync(handlesFile, HANDLES);
   writeFileSync(join(dir, 'fx', 'ring.js'), fxSrc('fx.ring'));
   writeFileSync(join(dir, 'fx', 'pair.js'), fxSrc('fx.a', 'fx.b'));
@@ -94,7 +94,7 @@ test('applying moves the file, registers it with its category and handle, rewrit
   const index = readFileSync(join(common, 'src', 'index.ts'), 'utf8');
   expect(index).toContain("import ringItems from './ring.ts';");
   expect(index).toContain('[progress, film, ...ringItems] as ItemType[]');
-  expect(readFileSync(join(common, 'golden', 'cases.ts'), 'utf8')).toContain("{ name: 'ring', type: 'common.ring', at: [1] },");
+  expect(readFileSync(join(common, 'src', 'samples.ts'), 'utf8')).toContain("{ name: 'ring', type: 'common.ring', at: [1] },");
   const p = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')));
   expect(p.meta.fx).toEqual(['fx/pair.js']);
   expect(p.tracks[0].items.map((i: any) => i.type)).toEqual(['common.ring', 'common.ring', 'fx.a']);

@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cases } from '../packages/plugin-common/golden/cases.ts';
+import { samples } from '@tellcut/plugin-common/samples';
 import { THUMB_PARAMS } from '../packages/plugin-common/golden/thumbs.ts';
 import { goldenFile } from '@tellcut/media-node';
 import { THUMBS_DIR, thumbCases, thumbKey } from './thumbs.ts';
 
 const IDEOGRAPH = /[぀-ヿ一-鿿]/;
 const CJK = /[　-鿿＀-￯]/;
-const firsts = () => { const m = new Map<string, (typeof cases)[number]>(); for (const c of cases) if (!m.has(c.type)) m.set(c.type, c); return [...m.values()]; };
+const firsts = () => { const m = new Map<string, (typeof samples)[number]>(); for (const c of samples) if (!m.has(c.type)) m.set(c.type, c); return [...m.values()]; };
 
 test('the English thumbnails show no Chinese, and every thumbnail whose case is Chinese has its words in both languages', () => {
   const en = thumbCases('en');
@@ -20,7 +20,7 @@ test('the English thumbnails show no Chinese, and every thumbnail whose case is 
   }
   // one moment each, the one the gallery shows (the case's last)
   const title = en.find((c) => c.type === 'core.title')!;
-  expect(title.at).toEqual([cases.find((c) => c.name === title.name)!.at.at(-1)]);
+  expect(title.at).toEqual([samples.find((c) => c.name === title.name)!.at.at(-1)]);
 });
 
 test('every English and Japanese thumbnail is drawn from what the tables and the Chinese golden pictures say now (npm run thumbs after a change)', () => {

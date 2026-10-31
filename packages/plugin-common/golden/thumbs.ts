@@ -1,5 +1,5 @@
-// The gallery's English and Japanese thumbnails (spec 2026-10-30-showcase-films part 2): a block's thumbnail is its first golden case
-// (cases.ts); where that case's own params are Chinese, these are its params in the other language (whole, in place of the case's).
+// The gallery's English and Japanese thumbnails (spec 2026-10-30-showcase-films part 2): a block's thumbnail is its first sample
+// (src/samples.ts); where that sample's own params are Chinese, these are its params in the other language (whole, in place of the sample's).
 // The words a block starts with come from apps/editor/src/i18n/values.*.ts. `npm run thumbs` draws them into thumbs/<lang>/.
 export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unknown>>> = {
   en: {

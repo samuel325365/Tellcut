@@ -6,7 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./golden/cases": "./golden/cases.ts"
+    "./samples": "./src/samples.ts"
   },
   "dependencies": {
     "@paper-design/shaders": "0.0.81",

@@ -10,9 +10,8 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 // the recipes are tools code (they drive Cut); the gallery only reads their names, notes and examples. Moving them into a package of
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
-// the golden cases are the blocks' pictures already kept (and checked) in git: the gallery's cards show them (the golden folder is
-// served at run time as the gallery's pictures, so its index is a declared export of plugin-common, not a path into its tests)
-import { cases } from '@tellcut/plugin-common/golden/cases';
+// each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
+import { samples } from '@tellcut/plugin-common/samples';
 import { CORE_CATEGORY, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { HttpError, sendJson, type Router } from './http.ts';
 
@@ -24,9 +23,9 @@ const needsMedia = (t: ItemType) => t.footage !== 'optional' && (t.params.some((
 
 const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
 const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
-/** each block's thumbnail: its first case at its last moment (the animation settled) */
+/** each block's thumbnail: its first sample at its last moment (the animation settled) */
 const THUMBS = new Map<string, string>();
-for (const c of cases) if (!THUMBS.has(c.type)) THUMBS.set(c.type, `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`);
+for (const c of samples) if (!THUMBS.has(c.type)) THUMBS.set(c.type, `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`);
 
 export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): Promise<GalleryIndex> {
   const order = (p: Plugin) => (p.id === 'core' ? 0 : p.id === 'common' ? 1 : 2);

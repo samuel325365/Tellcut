@@ -1,6 +1,8 @@
-// The moments of every common block that are kept as golden pictures (toolkit phase 2b). A new block adds its cases here:
-// the test refuses a block without one. Regenerate with `npm run golden -- --update <name>` after a change you meant.
-export interface Case { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean;
+// Each common block's sample moments: what `npm run golden` draws and compares with its saved picture (packages/plugin-common/golden/),
+// and, the first of a block's samples at its last moment, the gallery's thumbnail of it (the server's gallery, `npm run thumbs`). A new
+// block adds its samples here (golden.test.ts refuses a block without one; `npm run promote` appends one). Regenerate its picture with
+// `npm run golden -- --update <name>` after a change you meant.
+export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean;
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }> }
 
 /** the palettes of the two podcast shorts */
@@ -57,7 +59,7 @@ const CHAT_GROUP = `-1|sys|10月24日
 2.6|阿哲|OK 👍`;
 const ALBUM = '# 港邊|7月12日|第 1 天\npic|0||0.5,0.4\n-\n-||0:12\n# 老街|7月13日|第 2 天\n-\npic|0|0:08|0.3,0.6\n-\n# |7月15日|第 4 天\n-\n-\n-\n-';
 
-export const cases: Case[] = [
+export const samples: Sample[] = [
   // the five core blocks: the block gallery's thumbnails come from these pictures (and they keep the core look from drifting)
   { name: 'core-flash', type: 'core.flash', at: [0.05] },
   { name: 'core-title', type: 'core.title', params: { text: '京都三日', sub: '秋天的第一場旅行' }, at: [1.5] },

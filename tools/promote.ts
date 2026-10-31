@@ -3,7 +3,7 @@
 // Claude Code only (the page chat has no permission to run it). Without --yes it only prints what it would do.
 // The fx file moves into packages/plugin-common/src/<name>.ts as common.<name>, the project's items (and params naming it, like
 // a card's `art`) are rewritten to the new id (the old project.json stays in .history/), so is its cut.ts (else the next
-// `npm run cut` brings the deleted fx back), and a golden case is added — its picture is made with `npm run golden -- --update <name>`.
+// `npm run cut` brings the deleted fx back), and a sample is added to plugin-common/src/samples.ts — its golden picture is made with `npm run golden -- --update <name>`.
 // From a file of several blocks only that one moves (fx-split.ts): the shared file gets it and the helpers it still names, the
 // project's file keeps the others and stays in meta.fx. Either way the project's file as it was is kept in .history/promote/.
 // The block gets its category (--category, unless the fx has one) and that category's next handle (spec 2026-10-22-block-handles);
@@ -138,8 +138,8 @@ export async function applyPromotion(o: { dir: string; commonDir: string; plan: 
   index = index.replace(/(\nimport [^\n]*\n)(?!import)/, `$1import ${v} from './${pl.name}.ts';\n`);
   index = index.replace('] as ItemType[];', `, ...${v}] as ItemType[];`);
   writeFileSync(indexFile, index);
-  const casesFile = join(o.commonDir, 'golden', 'cases.ts'), cases = readFileSync(casesFile, 'utf8');
-  writeFileSync(casesFile, cases.replace(/\n\];\s*$/, `\n  { name: '${pl.name}', type: '${pl.to}', at: [1] },\n];\n`));
+  const samplesFile = join(o.commonDir, 'src', 'samples.ts'), samples = readFileSync(samplesFile, 'utf8');
+  writeFileSync(samplesFile, samples.replace(/\n\];\s*$/, `\n  { name: '${pl.name}', type: '${pl.to}', at: [1] },\n];\n`));
   const raw = JSON.parse(readFileSync(join(o.dir, 'project.json'), 'utf8')) as Project;
   for (const t of raw.tracks) for (const it of t.items as Array<{ type?: string; params?: unknown }>) {
     if (it.type === pl.from) it.type = pl.to;
