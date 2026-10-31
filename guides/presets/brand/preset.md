@@ -20,6 +20,7 @@
   },
   "length": [45, 90],
   "ratios": ["16:9"],
+  "genres": false,
   "sources": ["pixabay", "freesound"],
   "fields": [
     { "id": "tone", "group": { "zh": "品牌", "en": "Brand", "ja": "ブランド" },
@@ -53,32 +54,32 @@
   "styles": [
     { "id": "people",
       "name": { "zh": "人與工作", "en": "People at work", "ja": "人と仕事" },
-      "desc": { "zh": "紀實感：手、背影、工作現場，自然光，鏡頭跟著人走。", "en": "A documentary feel: hands, backs and the work itself in natural light, the camera following the people.", "ja": "ドキュメンタリー風：手元や後ろ姿、仕事の現場を自然光で。カメラは人を追う。" },
-      "prompt": "People at work: a documentary feel. The company's people and customers at their work carry the film: hands, backs, distance, natural light, the camera following the action, real moments rather than poses. Designed elements stay quiet (small tags, a line) so the people are what the viewer remembers." },
+      "desc": { "zh": "形式｜紀實感：手、背影、工作現場，自然光，鏡頭跟著人走。", "en": "Form | A documentary feel: hands, backs and the work itself in natural light, the camera following the people.", "ja": "形式｜ドキュメンタリー風：手元や後ろ姿、仕事の現場を自然光で。カメラは人を追う。" },
+      "prompt": "Form: people at work: a documentary feel. The company's people and customers at their work carry the film: hands, backs, distance, natural light, the camera following the action, real moments rather than poses. Designed elements stay quiet (small tags, a line) so the people are what the viewer remembers." },
     { "id": "texture",
       "name": { "zh": "質感特寫", "en": "Close-up textures", "ja": "質感のクローズアップ" },
-      "desc": { "zh": "微距拍材料、食材、紋理和手工細節，淺景深，慢慢推、慢慢剪。", "en": "Macro shots of materials, ingredients, surfaces and handwork, shallow focus, slow moves and slow cuts.", "ja": "素材、食材、質感、手仕事をマクロで。浅い被写界深度、ゆっくり寄ってゆっくり切る。" },
-      "prompt": "Close-up textures: macro shots of this company's materials, ingredients, surfaces and handwork carry the film; shallow focus, slow push-ins and slow cuts, light raking across the surface. Type small and quiet at the edges of the frame; the brand colour as a detail, not a wash." },
-    { "id": "minimal",
-      "name": { "zh": "簡約留白", "en": "Minimal", "ja": "ミニマル" },
-      "desc": { "zh": "大量留白，一個畫面只放一個東西或一句話，小字、慢，品牌色只點一下。", "en": "Plenty of empty space, one thing or one line at a time, small type, slow, the brand colour as a single point.", "ja": "たっぷりの余白、1 画面に 1 つだけ。小さな文字でゆっくり、ブランドカラーは一点だけ。" },
-      "prompt": "Minimal: plenty of empty space; one thing on screen at a time (a single object, a single line); slow, precise motion and long holds; small type set with care; the brand card's neutrals for the ground and the brand colour used once or twice as a point. Footage, when used, is framed small or with lots of room around it; never a busy frame." },
+      "desc": { "zh": "形式｜微距拍材料、食材、紋理和手工細節，淺景深，慢慢推、慢慢剪。", "en": "Form | Macro shots of materials, ingredients, surfaces and handwork, shallow focus, slow moves and slow cuts.", "ja": "形式｜素材、食材、質感、手仕事をマクロで。浅い被写界深度、ゆっくり寄ってゆっくり切る。" },
+      "prompt": "Form: close-up textures: macro shots of this company's materials, ingredients, surfaces and handwork carry the film; shallow focus, slow push-ins and slow cuts, light raking across the surface. Type small and quiet at the edges of the frame; the brand colour as a detail, not a wash." },
     { "id": "manifesto",
       "name": { "zh": "字的宣言", "en": "Type manifesto", "ja": "言葉の宣言" },
-      "desc": { "zh": "大字動態排版，承諾一句一句、一個字一個字打出來，字就是畫面。", "en": "Big kinetic type: the promise set word by word on the music; the words are the picture.", "ja": "大きなモーションタイポ。約束をひと言ずつ音楽に合わせて。文字そのものが画面。" },
-      "prompt": "Type manifesto: the promise and the beats set as large kinetic type in the brand card's title face, word by word or phrase by phrase on the music; the words are the picture (scale, weight, colour and position change with what they say). Footage only as brief glimpses behind or between the lines." },
+      "desc": { "zh": "形式｜大字動態排版，承諾一句一句、一個字一個字打出來，字就是畫面。", "en": "Form | Big kinetic type: the promise set word by word on the music; the words are the picture.", "ja": "形式｜大きなモーションタイポ。約束をひと言ずつ音楽に合わせて。文字そのものが画面。" },
+      "prompt": "Form: type manifesto: the promise and the beats set as large kinetic type in the brand card's title face, word by word or phrase by phrase on the music; the words are the picture (scale, weight, colour and position change with what they say). Footage only as brief glimpses behind or between the lines." },
     { "id": "shapes",
       "name": { "zh": "品牌幾何", "en": "Brand shapes", "ja": "ブランドの形" },
-      "desc": { "zh": "從商標的形狀和品牌色長出幾何圖形的動態設計，幾乎不用素材。", "en": "Motion design grown from the logo's shapes and the brand colours, with little or no footage.", "ja": "ロゴの形とブランドカラーから生まれる幾何学モーションデザイン。素材はほとんど使わない。" },
-      "prompt": "Brand shapes: motion design grown from the logo's own shapes and the brand palette (its lines, curves, circles or angles, repeated, scaled and set moving), with little or no footage; every beat is a shape doing that line's work, and at the end the shapes resolve into the logo." },
-    { "id": "cinemascope",
-      "name": { "zh": "電影感", "en": "Cinematic", "ja": "シネマティック" },
-      "desc": { "zh": "2.39 寬銀幕、慢節奏、照品牌配色調色，左下角加寬字距的小標，像電影預告。", "en": "2.39 bars, a slow pace, a grade in the brand's colours and a small spaced-out label bottom-left, like a film trailer.", "ja": "2.39 の黒帯、ゆったりした間、ブランドカラーに寄せた色調、左下の字間を広げた小見出し。映画の予告編のように。" },
-      "prompt": "Cinematic: 2.39 bars for the whole film (common.film with letterbox: 2.39, or your own), a slow pace with long shots, a grade towards the brand card's palette (common.tone given both its color and its edge from the card, or the clips' own colour), display type from the brand card, the sub line as a spaced-out kicker. Keep every word and tag in the picture between the bars." },
+      "desc": { "zh": "形式｜從商標的形狀和品牌色長出幾何圖形的動態設計，幾乎不用素材。", "en": "Form | Motion design grown from the logo's shapes and the brand colours, with little or no footage.", "ja": "形式｜ロゴの形とブランドカラーから生まれる幾何学モーションデザイン。素材はほとんど使わない。" },
+      "prompt": "Form: brand shapes: motion design grown from the logo's own shapes and the brand palette (its lines, curves, circles or angles, repeated, scaled and set moving), with little or no footage; every beat is a shape doing that line's work, and at the end the shapes resolve into the logo." },
     { "id": "product-3d",
       "name": { "zh": "產品 3D", "en": "Product in 3D", "ja": "プロダクト 3D" },
-      "desc": { "zh": "產品、服務或商標在 3D 裡當主角：打光、旋轉、組裝，用推進畫框接實拍，最後是立體商標。", "en": "The product, service or logo as the hero in 3D: lit, turning, assembling, pushes through a frame into footage, a 3D logo to end.", "ja": "製品やサービス、ロゴが 3D の主役に。ライティング、回転、組み立て。フレームへの寄りで実写へつなぎ、最後は立体ロゴ。" },
-      "prompt": "Product in 3D: the company's product, service or logo is the hero in 3D designed for it (written as this film's own fx with three: true and ThreeKit): lit, turning, assembling, with real finish in the brand card's colours. Footage between the 3D beats may meet them through a push (the camera moves into a frame in the 3D until it fills the picture and the next shot takes over; the handoff frame and the one after look the same). The film ends on a 3D logo; a Chinese company name in 3D is extruded from the type feel's font (npm run tellcut -- font3d, then kit.word3d with cjk)." }
+      "desc": { "zh": "形式｜產品、服務或商標在 3D 裡當主角：打光、旋轉、組裝，用推進畫框接實拍，最後是立體商標。", "en": "Form | The product, service or logo as the hero in 3D: lit, turning, assembling, pushes through a frame into footage, a 3D logo to end.", "ja": "形式｜製品やサービス、ロゴが 3D の主役に。ライティング、回転、組み立て。フレームへの寄りで実写へつなぎ、最後は立体ロゴ。" },
+      "prompt": "Form: product in 3D: the company's product, service or logo is the hero in 3D designed for it (written as this film's own fx with three: true and ThreeKit): lit, turning, assembling, with real finish in the brand card's colours. Footage between the 3D beats may meet them through a push (the camera moves into a frame in the 3D until it fills the picture and the next shot takes over; the handoff frame and the one after look the same). The film ends on a 3D logo; a Chinese company name in 3D is extruded from the type feel's font (npm run tellcut -- font3d, then kit.word3d with cjk)." },
+    { "id": "minimal",
+      "name": { "zh": "簡約留白", "en": "Minimal", "ja": "ミニマル" },
+      "desc": { "zh": "外觀｜大量留白，一個畫面只放一個東西或一句話，小字、慢，品牌色只點一下。", "en": "Look | Plenty of empty space, one thing or one line at a time, small type, slow, the brand colour as a single point.", "ja": "外観｜たっぷりの余白、1 画面に 1 つだけ。小さな文字でゆっくり、ブランドカラーは一点だけ。" },
+      "prompt": "Look: minimal: plenty of empty space; one thing on screen at a time (a single object, a single line); slow, precise motion and long holds; small type set with care; the brand card's neutrals for the ground and the brand colour used once or twice as a point. Footage, when used, is framed small or with lots of room around it; never a busy frame." },
+    { "id": "cinemascope",
+      "name": { "zh": "電影感", "en": "Cinematic", "ja": "シネマティック" },
+      "desc": { "zh": "外觀｜2.39 寬銀幕、慢節奏、照品牌配色調色，左下角加寬字距的小標，像電影預告。", "en": "Look | 2.39 bars, a slow pace, a grade in the brand's colours and a small spaced-out label bottom-left, like a film trailer.", "ja": "外観｜2.39 の黒帯、ゆったりした間、ブランドカラーに寄せた色調、左下の字間を広げた小見出し。映画の予告編のように。" },
+      "prompt": "Look: cinematic: 2.39 bars for the whole film (common.film with letterbox: 2.39, or your own), a slow pace with long shots, a grade towards the brand card's palette (common.tone given both its color and its edge from the card, or the clips' own colour), display type from the brand card, the sub line as a spaced-out kicker. Keep every word and tag in the picture between the bars." }
   ]
 }
 ---
@@ -86,6 +87,7 @@ These are defaults. If the user's message conflicts with any of them, follow the
 
 Goal: a brand film makes people remember who this company is and why to trust or like it; it opens a website, a launch or a pitch, it does not explain how a product works. Afterwards the viewer knows the company's name (in the film's language) and its logo, its colours, type and manner look like this company's own, one idea or promise stays with them, and the company would put the film on its home page. It fails, however well made, if swapping the logo would make it any other company's film, if its colours and type have nothing to do with the brand, if it invents a number or a fact, or if it turns into a feature list. 16:9, 45–90 s. Quality comes before speed.
 
+- **The styles** are of two kinds, and their prompts begin with the kind. Form (people, texture, manifesto, shapes, product-3d) carries the whole film: at most one form; if the user picks two, the first is the form and the second only lends its opener or ending; say so in one sentence. Look (minimal, cinemascope) goes with any form: at most one. With no form picked, the material decides the middle, as below.
 - **The brand card first** (brand.md in the project folder, before the storyboard; every later choice must agree with it):
   - **Palette**: 3–5 colours, each with its job (ground, main, accent, text), as hex.
   - **Type**: a title face and a text face, one Latin and one Chinese when the film has Chinese, picked from the workflow guide's Fonts list for this company's character; and the sizes: at 16:9 no label or product name under 3.5% of the frame height, numbers as a large figure with a small label under it, titles clearly above both.
@@ -103,6 +105,8 @@ Goal: a brand film makes people remember who this company is and why to trust or
 - **3D only where it serves the idea.** Unless the user picked Product in 3D, use 3D only where it carries the storyboard's idea and can be made with real finish (material, light, the brand's colours); flat motion design is as good a way to land the logo as a 3D one. A Chinese company name in 3D: `npm run tellcut -- font3d <sans|serif|round>` for the type feel, then `kit.word3d(name, { glyphs: await kit.loadFont('Inter-700.ttf'), cjk: await kit.loadFont(<the file it names>) })` in ready().
 - **The logo**: npm run tellcut -- logo <id> <file> copies it into media/brand/ and says what it is and its colours; open the file to see it, and let its colours into the brand card (c.theme palette from the card). In 3D, build it in an fx from that file (kit.loadMark: an SVG extruded, a picture as a cut-out plate). No logo file: design a simple mark from what the company does, in the brand card's colours and type.
 - **The end**: the logo, the tagline, the website address, and the company name in the film's language next to the logo when the logo does not carry it (a Latin logo in a Chinese film gets the Chinese name, and the other way round).
+- **Branding holds back**: the logo lands at the end; before that a small mark at most, never the logo on screen from start to finish.
+- **Not only empty scenery**: people, hands or the work itself are somewhere in the film (Type manifesto and Brand shapes may do without footage).
 - **Handoffs between footage and designed shots**: look at the handoff frame and the one after with npm run tellcut -- frames; they must look the same (same crop, same colour), no jump.
 - **People**: no shot that makes a recognisable person look like they endorse the brand (the Pixabay licence forbids it); prefer hands, backs, distance, soft focus.
 - **Check Pixabay clips frame by frame**: soft focus, exposure jumps, a sudden dark end; pick in-points by brightness. A clip with black bars of its own shows them in a 16:9 film: `check` warns about the source's own black bars; move the in-point, zoom it (crop) or take another clip. Avoid clips the search marks as AI-generated (in the detail line) for close-ups.

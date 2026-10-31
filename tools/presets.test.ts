@@ -48,7 +48,7 @@ test("a preset's default APIs are sources there are (the API menu ticks them whe
   expect(presets().find((p) => p.id === 'travel')!.sources).toEqual(['maps', 'carto', 'wikimedia', 'countries', 'freesound', 'incompetech']);
   // stock footage and photos where there is often no footage of one's own (2026-10-25); never for the films of one's own trip, meal or day
   expect(presets().find((p) => p.id === 'brand')!.sources).toEqual(['pixabay', 'freesound']);
-  expect(presets().find((p) => p.id === 'explainer')!.sources).toEqual(['pixabay']);
+  expect(presets().find((p) => p.id === 'explainer')!.sources).toEqual(['pixabay', 'wikimedia']);
   for (const id of ['travel', 'food', 'vlog', 'celebration', 'podcast', 'clips']) expect(presets().find((p) => p.id === id)!.sources, id).not.toContain('pixabay');
 });
 
@@ -65,8 +65,30 @@ test("every preset but custom has the length and ratios check compares with, and
   expect([custom.length, custom.ratios]).toEqual([undefined, undefined]);
 });
 
-test('the reviewed presets hold their whole direction and skip the genre cards (travel 2026-10-28, five more 2026-10-31); brand and explainer still use them', () => {
-  expect(presets().filter((p) => !p.genres).map((p) => p.id)).toEqual(['travel', 'clips', 'podcast', 'food', 'vlog', 'celebration']);
+test('every preset but custom holds its whole direction and skips the genre cards (travel 2026-10-28, the rest 2026-10-31)', () => {
+  expect(presets().filter((p) => p.genres).map((p) => p.id)).toEqual(['custom']);
+});
+
+// 2026-10-31: brand's styles are five forms and two looks; explainer takes in the education genres (myth, listicle, dataviz, quiz,
+// tutorial) as forms of its own, at 9:16 or 16:9
+test('brand and explainer: forms first, each prompt starting with its kind', () => {
+  const p = (id: string) => presets().find((x) => x.id === id)!;
+  const style = (id: string, s: string) => p(id).styles.find((x) => x.id === s)!.prompt;
+  expect(p('brand').styles.map((s) => s.prompt.split(':')[0])).toEqual(['Form', 'Form', 'Form', 'Form', 'Form', 'Look', 'Look']);
+  expect(p('brand').prompt).toMatch(/at most one form/i);
+  expect(p('brand').prompt).toMatch(/logo on screen from start to finish/i);
+  expect(p('brand').prompt).toMatch(/not only empty scenery/i);
+  const e = p('explainer');
+  expect(e.styles.map((s) => s.id)).toEqual(['flat', 'whiteboard', 'essay', 'kinetic', 'side-by-side', 'myth', 'listicle', 'data', 'quiz', 'chat', 'chapters', 'callouts']);
+  for (const s of e.styles) expect(s.prompt, s.id).toMatch(/^(Form|Accent):/);
+  for (const s of e.styles) expect(!!s.custom, s.id).toBe(s.id === 'flat');
+  expect([e.length, e.ratios]).toEqual([[45, 180], ['9:16', '16:9']]);
+  expect(e.prompt).toMatch(/at most one form/i);
+  expect(e.prompt).toMatch(/never invent a number/i);
+  expect(e.prompt).toMatch(/at 16:9 the diagram on the left/i);
+  for (const [s, b] of [['whiteboard', "common.paper look: 'grid'"], ['essay', 'common.worldmap'], ['myth', 'common.strike'], ['myth', 'common.casefile'],
+    ['listicle', "common.progress mode: 'slots'"], ['data', 'common.chart'], ['quiz', 'common.countdown'], ['chat', 'common.chat'], ['side-by-side', 'common.callout']] as const)
+    expect(style('explainer', s), s).toContain(b);
 });
 
 // 2026-10-31: the same review as travel's for five more. Each style's prompt starts with its kind (Form, Captions, Cut, Accent, Look),
@@ -156,7 +178,7 @@ test('every preset starts its form with Making › Effects: Auto (the library wh
 test('brand: seven whole-film styles, 45–90 s at 16:9, Pixabay and Freesound, and the rules that make it work without footage', () => {
   const b = presets().find((p) => p.id === 'brand')!;
   // 2026-10-28: every style is a way the whole film looks (voice-over is a form field, places a line in the body, no social cut)
-  expect(b.styles.map((s) => s.id)).toEqual(['people', 'texture', 'minimal', 'manifesto', 'shapes', 'cinemascope', 'product-3d']);
+  expect(b.styles.map((s) => s.id)).toEqual(['people', 'texture', 'manifesto', 'shapes', 'product-3d', 'minimal', 'cinemascope']);
   expect([b.length, b.ratios, b.sources]).toEqual([[45, 90], ['16:9'], ['pixabay', 'freesound']]);
   // the body names the tools the film is made with
   for (const s of ['tellcut -- logo', 'ThreeKit', 'three: true', 'assets search', 'tellcut -- frames']) expect(b.prompt, s).toContain(s);

@@ -198,7 +198,7 @@ A preset is a starting direction for one kind of film. Click its card under the 
 | **Daily Vlog** | A day or a stretch of daily life, with rhythm and a beginning, middle and end |
 | **Celebration Film** | Wedding, birthday, graduation or farewell photos and clips, cut into a film to play on the day |
 | **Brand Film** | A brand film that looks like the company at a glance, made from its logo, a paragraph about it and its website; even better with your own footage or photos |
-| **Animated Explainer** | One idea explained with diagrams and text, with or without footage of your own |
+| **Animated Explainer** | One idea explained with diagrams, charts, a quiz or a myth to bust, with or without footage of your own |
 
 **Your own presets** come after these, marked **Mine**: save one from a film you liked (**Save as preset** in the editor's chat) or from the **Custom** form. See [Every film makes the next one easier](#every-film-makes-the-next-one-easier).
 
