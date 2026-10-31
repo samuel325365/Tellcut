@@ -36,8 +36,10 @@ export function lockHolder(file: string): { pid: number; started: number } | nul
 }
 
 /** `file` moved aside (a rename, which only one of several callers wins) and removed when `gone(path)` still says so of it; one
- *  that is not is linked back (link fails if the name has been taken meanwhile, never overwrites) */
+ *  that is not is linked back (link fails if the name has been taken meanwhile, never overwrites). Judged before the move too: while
+ *  a live one is aside, a third process can make the name its own, and the holder and that process would both think they have it. */
 function moveAside(file: string, gone: (path: string) => boolean) {
+  if (!gone(file)) return;
   const aside = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.stale`;
   try { renameSync(file, aside); } catch { return; }
   try { if (!gone(aside)) linkSync(aside, file); } catch { /* the name is someone's again */ }
@@ -64,6 +66,9 @@ export function takeOver(file: string, free: (path: string) => boolean): boolean
     return false;
   }
   try {
+    // no lock at all: free, and nothing to remove, as a creator may make one any moment (removing "it" then deleted a fresh lock);
+    // one there stays until this guard's holder removes it. Unseeable (Windows: delete pending) is judged on the next try.
+    try { statSync(file); } catch (e) { return code(e) === 'ENOENT'; }
     if (!free(file)) return false;   // someone's (again)
     rmSync(file, { force: true });
     return true;

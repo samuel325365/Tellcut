@@ -134,19 +134,36 @@ test('a takeover guard whose live holder was paused past a few seconds stays its
   } finally { child.kill(); }
 });
 
+test('a lock that is not there is free without being judged or removed: a creator may make one at any moment', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lock-')), file = join(dir, 'x.lock');
+  const fresh = JSON.stringify({ pid: process.pid, started: Date.now() });
+  // what the old order let happen: judged free while missing, then another waiter's fresh lock landed before the remove
+  const judge = vi.fn((f: string) => { const missing = !existsSync(f); writeFileSync(f, fresh); return missing; });
+  expect(takeOver(file, judge)).toBe(true);
+  expect(judge).not.toHaveBeenCalled();
+  writeFileSync(file, fresh);
+  expect(takeOver(file, () => false)).toBe(false);
+  expect(readFileSync(file, 'utf8')).toBe(fresh);
+});
+
 test('processes racing for a stale lock: exactly one of them gets it', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'lock-')), file = join(dir, 'x.lock');
   writeFileSync(file, JSON.stringify({ pid: 999999, started: 1 }));
   const at = Date.now() + 2500, mod = pathToFileURL(join(import.meta.dirname, 'locks.ts')).href;
+  // the winner stays alive until all have answered: one that had exited would leave a stale lock a late racer rightly takes over
   const code = `const { tryLock } = await import(process.argv[1]); while (Date.now() < Number(process.argv[2])); ` +
-    `process.stdout.write(tryLock(process.argv[3]) ? 'won' : 'lost'); setTimeout(() => {}, 1500);`;
-  const runs = Array.from({ length: 6 }, () => new Promise<string>((res, rej) => {
+    `process.stdout.write(tryLock(process.argv[3]) ? 'won' : 'lost'); process.stdin.on('end', () => process.exit(0)).resume();`;
+  const kids = Array.from({ length: 6 }, () => {
     const c = spawn(process.execPath, ['--input-type=module', '-e', code, mod, String(at), file]);
     let out = '', err = '';
-    c.stdout.on('data', (d) => { out += d; }); c.stderr.on('data', (d) => { err += d; });
-    c.on('close', (n) => (n === 0 ? res(out) : rej(new Error(err))));
-  }));
-  const got = await Promise.all(runs);
+    const answered = new Promise<void>((res) => c.stdout.on('data', (d) => { out += d; res(); }));
+    c.stderr.on('data', (d) => { err += d; });
+    const closed = new Promise<string>((res, rej) => c.on('close', (n) => (n === 0 ? res(out) : rej(new Error(err)))));
+    return { c, answered: Promise.race([answered, closed.then(() => {})]), closed };
+  });
+  await Promise.all(kids.map((k) => k.answered));
+  kids.forEach((k) => k.c.stdin.end());
+  const got = await Promise.all(kids.map((k) => k.closed));
   expect(got.filter((x) => x === 'won')).toHaveLength(1);
   expect(got.filter((x) => x === 'lost')).toHaveLength(5);
 }, 30000);
