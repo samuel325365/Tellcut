@@ -1,7 +1,7 @@
 // Track order (spec 2026-10-14 §5.3): the grip drags a track onto another of its group (pictures / sound).
 import type { Track } from '@tellcut/engine';
 import { rowAt } from '../geometry.ts';
-import type { GestureCtx } from './follow.ts';
+import { follow, type GestureCtx } from './follow.ts';
 
 export const groupOf = (k: string) => (k === 'scene' || k === 'video' || k === 'overlay' ? 'picture' : 'sound');
 
@@ -15,11 +15,11 @@ export function startTrackDrag(e: MouseEvent, g: GestureCtx, track: Track, showD
     const r = target(m), src = g.rows().find((x) => x.track.id === track.id)!;
     showDrop(r ? (r.y > src.y ? r.y + r.h : r.y) : null);
   };
-  const up = (m: MouseEvent) => {
-    removeEventListener('mousemove', move); removeEventListener('mouseup', up); showDrop(null);
-    const r = target(m);
+  // released outside the window (no mouseup seen): the drag ends with no drop
+  follow(move, (m) => {
+    showDrop(null);
+    const r = m && target(m);
     if (!r || r.track.id === track.id) return;
     g.editor.moveTrack(track.id, g.p.tracks.filter((t) => groupOf(t.kind) === groupOf(track.kind)).findIndex((t) => t.id === r.track.id));
-  };
-  addEventListener('mousemove', move); addEventListener('mouseup', up);
+  });
 }

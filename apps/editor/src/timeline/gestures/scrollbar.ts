@@ -1,5 +1,6 @@
 // The bar under the tracks: a scrollbar over the whole project — drag the thumb, or click beside it for a page.
 import type { Editor } from '../../editor.ts';
+import { follow } from './follow.ts';
 
 export function startScrollbarDrag(e: MouseEvent, editor: Editor, o: { thumb: { left: number; width: number }; width: number; span: number; scroll: number; pps: number }) {
   if (e.button !== 0) return;
@@ -11,6 +12,5 @@ export function startScrollbarDrag(e: MouseEvent, editor: Editor, o: { thumb: { 
     return;
   }
   const move = (m: MouseEvent) => editor.setView({ scroll: o.scroll + ((m.clientX - e.clientX) * o.span) / o.width });
-  const up = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', up); };
-  addEventListener('mousemove', move); addEventListener('mouseup', up);
+  follow(move, () => {});
 }
