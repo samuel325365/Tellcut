@@ -5,8 +5,7 @@
 // the other.
 import { copyFileSync, existsSync, linkSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import { analysisFiles } from './analysis.ts';
-import { EXTRAS_VERSION } from './extras.ts';
+import { EXTRAS_VERSION } from './extras-version.ts';
 import { legacyNameOf } from './hash.ts';
 
 /** work in progress (locks, half-written temps) is never taken */
@@ -47,6 +46,3 @@ export function shareFolder(dir: string): number {
   }
   return taken;
 }
-
-/** A source's analysis from a sibling project with the same footage; returns how many files were taken. */
-export const shareAnalysis = (projectDir: string, srcPath: string) => existsSync(srcPath) ? shareFolder(analysisFiles(projectDir, srcPath).dir) : 0;

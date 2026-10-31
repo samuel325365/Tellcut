@@ -17,10 +17,9 @@ import type { TranscribeProvider } from './providers/types.ts';
 import { lockHolder, withLock } from './locks.ts';
 import { shareFolder, siblingFolders } from './share.ts';
 import { replaceFile } from './fsutil.ts';
+import { EXTRAS_VERSION } from './extras-version.ts';
 
-/** a new value makes every source's sheets and burned-caption check again (extras.version in its analysis folder); the transcript
- *  is made again when its maker changes instead (transcript.by), it is the slow one */
-export const EXTRAS_VERSION = 'x1';
+export { EXTRAS_VERSION };
 export interface Beats { bpm: number; offset: number; beats: number[] }
 
 export function extrasFiles(projectDir: string, srcPath: string) {

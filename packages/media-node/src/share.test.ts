@@ -2,10 +2,9 @@
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { analysisDone, analysisFiles, analyzeSource } from './analysis.ts';
+import { analysisDone, analysisFiles, analyzeSource, shareAnalysis } from './analysis.ts';
 import { EXTRAS_VERSION, extrasFiles, sourceExtras } from './extras.ts';
 import { fakeTranscribe } from './providers/fake.ts';
-import { shareAnalysis } from './share.ts';
 import { makePhoneVideo } from './test-media.ts';
 
 test('a second project with the same footage takes the first one\u2019s analysis and transcript instead of making them again', async () => {

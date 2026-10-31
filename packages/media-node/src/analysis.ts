@@ -25,6 +25,8 @@ export function analysisFiles(projectDir: string, srcPath: string): AnalysisFile
   const dir = join(projectDir, 'cache', 'analysis', analysisName(projectDir, `analysis|${ANALYSIS_VERSION}`, srcPath));
   return { dir, proxy: join(dir, isImagePath(srcPath) ? 'proxy.jpg' : 'proxy.mp4'), thumbs: join(dir, 'thumbs.jpg'), thumbIndex: join(dir, 'thumbs.json'), cuts: join(dir, 'cuts.json'), peaks: join(dir, 'peaks.json') };
 }
+/** A source's analysis from a sibling project with the same footage; returns how many files were taken. */
+export const shareAnalysis = (projectDir: string, srcPath: string) => existsSync(srcPath) ? shareFolder(analysisFiles(projectDir, srcPath).dir) : 0;
 export const isAnalyzed = (f: AnalysisFiles) => [f.proxy, f.thumbs, f.thumbIndex, f.cuts, f.peaks].every((p) => existsSync(p));
 /** analysed, and (for a video) its proxy checked for the short side of 540: nothing left for analyzeSource to do */
 export const analysisDone = (f: AnalysisFiles, srcPath: string) => isAnalyzed(f) && (isImagePath(srcPath) || existsSync(join(f.dir, PROXY_STAMP)));
