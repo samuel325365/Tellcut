@@ -4,7 +4,7 @@ import { loadThreeKit, plugins } from '@tellcut/plugins';
 import { importFx, registryWith } from '@tellcut/plugins/browser-fx';
 import { whenReady } from './ready.ts';
 import { loadFonts } from './fonts.ts';
-import { drawFrame, settle } from './frame.ts';
+import { drawFrame, settle, settledFrame } from './frame.ts';
 import { mountControls } from './controls.ts';
 import { startEmbed } from './embed.ts';
 import { textBoxes, type Rect } from './layout.ts';
@@ -63,7 +63,7 @@ if (EMBED) {
   window.__tellcut = {
     fps: 30, duration: 0, loudness: -14,
     ready: boot.then(({ project }) => { window.__tellcut.fps = project.meta.fps; window.__tellcut.duration = project.meta.duration; window.__tellcut.loudness = project.meta.loudness ?? -14; }),
-    async frame(n) { const { project, frame } = await boot; await frame(n / project.meta.fps); await settle(document, raf); },
+    async frame(n) { const { project, frame } = await boot; await settledFrame(() => frame(n / project.meta.fps), () => settle(document, raf), document.fonts); },
     async wav() { return (await boot).audio.renderWav(); },
     // the words on screen after the last frame(), for npm run check
     async layout() { const { project } = await boot; return textBoxes(document.getElementById('stage')!, project.meta.width); },

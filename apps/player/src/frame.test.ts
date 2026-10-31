@@ -30,3 +30,22 @@ test('drawFrame draws, waits for the media, then runs the late pass', async () =
   await done;
   expect(order).toEqual(['draw:1.5', 'sync:start', 'sync:end', 'late:1.5']);
 });
+
+import { settledFrame } from './frame.ts';
+
+test('a frame during which a font arrived is drawn again: what a block measured with the fallback font is measured with the real one', async () => {
+  // a face (a unicode-range slice) that the first draw's layout asks for and that has loaded once the frame has settled
+  const faces = [{ status: 'loaded' }, { status: 'unloaded' }] as Array<{ status: string }>;
+  const fonts = { forEach: (f: (x: { status: string }) => void) => faces.forEach(f) };
+  const order: string[] = [];
+  await settledFrame(async () => { order.push('draw'); }, async () => { order.push('settle'); faces[1].status = 'loaded'; }, fonts);
+  expect(order).toEqual(['draw', 'settle', 'draw', 'settle']);
+  // nothing new arrives: one draw
+  order.length = 0;
+  await settledFrame(async () => { order.push('draw'); }, async () => { order.push('settle'); }, fonts);
+  expect(order).toEqual(['draw', 'settle']);
+  // a font that keeps arriving cannot hold the frame forever
+  order.length = 0;
+  await settledFrame(async () => { order.push('draw'); }, async () => { faces.push({ status: 'loaded' }); }, fonts);
+  expect(order).toEqual(['draw', 'draw', 'draw']);
+});
