@@ -585,7 +585,8 @@ export class Editor {
   openSaveStyle(id: string, label: string) { this.library.openStyle(id, label); }
   /** A block of My blocks at the playhead: the entry is copied into the project (fx/lib/<slug>/), its module joins meta.fx in the
    *  same edit as the item (one undo step), and the preview loads it. Nothing is copied when the item would not fit (playhead at
-   *  the end); a copy whose add is undone stays on disk but is no link while meta.fx does not name it (liveLinks). */
+   *  the end); a copy whose add is undone stays on disk (a redo may want it again) but is no link while meta.fx does not name it
+   *  (liveLinks); the server's start removes it once nothing in the project names it (media-node pruneCopies). */
   async useLibraryBlock(slug: string, type: string): Promise<boolean> {
     const p = this.s.project, t = this.s.playhead;
     if (!p || this.blocked() || this.fitEnd('overlay', t, t + 2) === null) return false;

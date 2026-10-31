@@ -83,3 +83,15 @@ test('a gallery music preview a killed composer left half written is removed; on
   cleanupLeftovers(root, { alive: (pid) => pid === 222 });
   expect([existsSync(dead), existsSync(live), existsSync(done)]).toEqual([false, true, true]);
 });
+
+test('a copy of My blocks that nothing in its project names any more is removed at the start once a day old', () => {
+  const root = mkdtempSync(join(tmpdir(), 'clean-')), p = join(root, 'demo');
+  mkdirSync(join(p, 'fx', 'lib', 'box'), { recursive: true });
+  mkdirSync(join(p, 'fx', 'lib', 'used'), { recursive: true });
+  writeFileSync(join(p, 'project.json'), JSON.stringify({ meta: { fx: ['fx/lib/used/_entry.js'] } }));
+  for (const s of ['box', 'used']) writeFileSync(join(p, 'fx', 'lib', s, '_entry.js'), "export { default } from './box.js';\n");
+  writeFileSync(join(p, 'fx', 'lib', 'links.json'), JSON.stringify({ box: { file: 'fx/lib/box/_entry.js', version: '1', types: [] }, used: { file: 'fx/lib/used/_entry.js', version: '1', types: [] } }));
+  expect(cleanupLeftovers(root, { alive: () => true })).toEqual([]);
+  expect(cleanupLeftovers(root, { alive: () => true, now: Date.now() + 2 * 24 * 3600_000 })).toEqual([join('demo', 'fx', 'lib', 'box')]);
+  expect([existsSync(join(p, 'fx', 'lib', 'box')), existsSync(join(p, 'fx', 'lib', 'used'))]).toEqual([false, true]);
+});

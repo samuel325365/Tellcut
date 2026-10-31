@@ -147,3 +147,26 @@ test('useStyle leaves a project\u2019s own different file of that name alone', a
   expect(() => useStyle({ root, projectDir: p1, slug: r.entry.slug })).toThrow(expect.objectContaining({ code: 'library.idTaken', params: { type: 'street-jazz' } }));
   expect(readFileSync(join(p1, 'score/street-jazz.js'), 'utf8')).toContain('edited since');
 });
+
+test('a copy nothing in the project names any more (an undone add) is removed once it is a day old; one still named is kept', async () => {
+  const { root, p2, slug } = await saved({ otherFont: true });   // its font goes under media/lib/<slug>/: the copy names itself
+  const { pruneCopies } = await import('./use.ts');
+  const { mkdirSync } = await import('node:fs');
+  const r = await useBlock({ root, projectDir: p2, projectId: 'p2', slug, fx: ['fx/chalk.js'] });
+  const later = { now: Date.now() + 2 * 24 * 3600_000 };
+  // named by project.json, cut.ts, an older version in .history, a proposal, another fx module: kept
+  const project = readFileSync(join(p2, 'project.json'), 'utf8'), named = JSON.stringify({ version: 1, meta: { fx: ['fx/chalk.js', r.file] } });
+  for (const [file, text] of [['project.json', named], ['cut.ts', `c.fx('${r.file}');`], ['.history/project-01.json', named],
+    ['.history/proposals/current.json', named], ['fx/more.js', `import x from './lib/${slug}/chalk.js';`]] as const) {
+    mkdirSync(join(p2, file, '..'), { recursive: true });
+    writeFileSync(join(p2, file), text);
+    expect(pruneCopies(p2, later), file).toEqual([]);
+    if (file === 'project.json') writeFileSync(join(p2, file), project); else rmSync(join(p2, file));
+  }
+  // too new: the agent may have copied it and not written cut.ts yet
+  expect(pruneCopies(p2)).toEqual([]);
+  expect(pruneCopies(p2, later)).toEqual([slug]);
+  expect(existsSync(join(p2, 'fx', 'lib', slug))).toBe(false);
+  expect(JSON.parse(readFileSync(join(p2, 'fx/lib/links.json'), 'utf8'))[slug]).toBeUndefined();
+  expect(existsSync(join(p2, 'fx', 'chalk.js'))).toBe(true);
+});

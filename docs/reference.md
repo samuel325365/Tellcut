@@ -71,7 +71,7 @@ Generated:
 - `exports/`: exported videos and their logs (from the editor and the command line); `output/`: `frames` (`output/frames/`) and the single frames of `--stills` (`output/stills/`).
 - `.history/`: old versions, proposals, "Ask Agent…" requests, chat logs.
 
-`projects/_home/` (the home chat), `_gallery/` and `_golden/` are not video projects; `projects/_presets/` holds the user's own presets (see the next section) and `projects/_library/` the user's own blocks (see "My blocks and my presets"). A project's copies of My blocks are in `fx/lib/<slug>/` (`meta.fx` names its `_entry.js`, which re-exports the entry's module, so an update never moves it), recorded in `fx/lib/links.json`.
+`projects/_home/` (the home chat), `_gallery/` and `_golden/` are not video projects; `projects/_presets/` holds the user's own presets (see the next section) and `projects/_library/` the user's own blocks (see "My blocks and my presets"). A project's copies of My blocks are in `fx/lib/<slug>/` (`meta.fx` names its `_entry.js`, which re-exports the entry's module, so an update never moves it), recorded in `fx/lib/links.json`. A copy nothing in the project names any more (not project.json, `cut.ts`, a version or proposal in `.history/`, nor another fx module: an add undone in the editor) is removed when the server starts, once it is a day old.
 
 ## Presets `guides/presets/<id>/`
 

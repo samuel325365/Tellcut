@@ -1,8 +1,10 @@
 // spec §8: a server that crashed mid-save or mid-export leaves temp files behind; clear them at the next start. Also a deleted
 // project's folder a locked file kept (delete.ts). Also the home page's
-// conversations nobody wrote in (one moved to its project keeps only a note; the browser started a new one).
+// conversations nobody wrote in (one moved to its project keeps only a note; the browser started a new one). Also copies of My blocks
+// nothing in their project names any more.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pruneCopies } from '@tellcut/media-node';
 
 const isAlive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
 // temp names that carry the writing process id (projects.ts write, export.ts snapshot and index, a gallery music preview being
@@ -45,6 +47,10 @@ export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number)
     for (const name of existsSync(cache) ? readdirSync(cache) : []) if (leftover(join(cache, name), name, [PID_CACHE])) drop(join(cache, name));
     for (const f of CACHE_DIRS.flatMap((dir) => walk(join(cache, dir)))) if (PARTIAL.test(f) && stale(f)) drop(f);
     for (const f of walk(join(p, 'exports'))) if (INTERMEDIATE.test(f) && stale(f)) drop(f);
+    // copies of My blocks nothing in the project names any more (an add undone in the editor), a day old (media-node pruneCopies)
+    if (existsSync(join(p, 'fx', 'lib', 'links.json'))) {
+      try { for (const slug of pruneCopies(p, { now })) removed.push(join(d.name, 'fx', 'lib', slug)); } catch { /* left for next time */ }
+    }
   }
   // a delete whose folder could not be removed at once (a file in use then: delete.ts)
   for (const d of existsSync(projectsDir) ? readdirSync(projectsDir, { withFileTypes: true }) : []) {

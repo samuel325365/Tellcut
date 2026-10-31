@@ -4,7 +4,7 @@
 // project, or under media/lib/<slug>/ when the project already has a different file there. fx/lib/links.json records which
 // entry and version each copy is, for "from My blocks" and "Update" in the editor. project.json is the caller's to change:
 // the editor adds the file to meta.fx with an edit of its own, the agent writes c.fx(file) in cut.ts.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { loadProjectFx } from '../fx.ts';
 import { blockDir, LibraryError, readBlock, readStyle, SLUG, stylesDir, swapDir, writeJsonFile } from './store.ts';
@@ -65,6 +65,49 @@ export async function useBlock(o: { root: string; projectDir: string; projectId:
   const file = `${lib}/${COPY_ENTRY}`;
   writeJsonFile(linksFile(o.projectDir), { ...links, [o.slug]: { file, version: e.version, types: ids } });
   return { file, types: ids, copied };
+}
+
+/** the project's texts that can name a copy of My blocks (by `fx/lib/<slug>/…`), each with its path relative to the project:
+ *  project.json, cut.ts and the other files at the top (an export's snapshot, the preset draft), every older version and proposal in
+ *  .history/, and the fx modules (one may import from a copy) */
+function namingTexts(projectDir: string): Array<{ path: string; text: string }> {
+  const out: Array<{ path: string; text: string }> = [];
+  const read = (rel: string) => { try { out.push({ path: rel, text: readFileSync(join(projectDir, rel), 'utf8') }); } catch { /* gone or unreadable */ } };
+  const walk = (rel: string, keep: (name: string) => boolean) => {
+    let list;
+    try { list = readdirSync(join(projectDir, rel), { withFileTypes: true }); } catch { return; }
+    for (const e of list) { const r = `${rel}/${e.name}`; if (e.isDirectory()) walk(r, keep); else if (keep(e.name)) read(r); }
+  };
+  for (const e of (() => { try { return readdirSync(projectDir, { withFileTypes: true }); } catch { return []; } })())
+    if (e.isFile() && /\.(json|m?[jt]s)$/.test(e.name)) read(e.name);
+  walk('.history', () => true);
+  walk('fx', (n) => /\.m?js$/.test(n));
+  return out;
+}
+
+const DAY = 24 * 3600_000;
+/** Removes the copies of My blocks (fx/lib/<slug>/, with their link) that nothing in the project names any more: an add undone in the
+ *  editor leaves its copy behind on purpose, as a redo or an older version in .history/ still points at it. A copy goes only when
+ *  neither project.json, cut.ts, any version or proposal kept in .history/, nor another fx module names it, and it was made more than
+ *  `minAge` ago (a day: the agent copies an entry before writing the cut.ts that uses it). Files it put under media/ are left: another
+ *  part of the project may use them. The server runs this at its start, when no editor is changing the project. Returns the slugs. */
+export function pruneCopies(projectDir: string, o: { now?: number; minAge?: number } = {}): string[] {
+  const links = readLinks(projectDir), slugs = Object.keys(links).filter((s) => SLUG.test(s));
+  if (!slugs.length) return [];
+  const now = o.now ?? Date.now(), minAge = o.minAge ?? DAY, texts = namingTexts(projectDir), removed: string[] = [];
+  for (const slug of slugs) {
+    const own = `fx/lib/${slug}/`;
+    if (texts.some((t) => !t.path.startsWith(own) && t.text.includes(`lib/${slug}/`))) continue;
+    const dir = join(projectDir, 'fx', 'lib', slug);
+    let made = 0;
+    try { made = statSync(join(dir, COPY_ENTRY)).mtimeMs; } catch { try { made = statSync(dir).mtimeMs; } catch { /* already gone: only its link is left */ } }
+    if (now - made <= minAge) continue;
+    try { rmSync(dir, { recursive: true, force: true }); } catch { continue; }   // a file in use: tried again at the next start
+    delete links[slug];
+    removed.push(slug);
+  }
+  if (removed.length) writeJsonFile(linksFile(projectDir), links);
+  return removed;
 }
 
 /** the copies in a project, each with the library's version now (null: the entry was deleted) */
