@@ -1,12 +1,22 @@
 import { PlayerBridge } from './bridge.ts';
+import { setLang } from './i18n/lang.ts';
 
 function setup() {
-  const sent: any[] = [];
+  // the words sent at boot are kept apart: the tests below follow the project and transport messages
+  const sent: any[] = [], texts: any[] = [];
   let frame: (() => void) | null = null;
   const b = new PlayerBridge('http://h', (f) => { frame = f; });
-  b.attach({ postMessage: (m: any) => sent.push(m) } as any);
-  return { b, sent, tick: () => { const f = frame; frame = null; f?.(); } };
+  b.attach({ postMessage: (m: any) => (m.type === 'texts' ? texts : sent).push(m) } as any);
+  return { b, sent, texts, tick: () => { const f = frame; frame = null; f?.(); } };
 }
+
+test("a starting player gets the words its hints show, in the page's language", () => {
+  setLang('ja');
+  const { b, texts } = setup();
+  b.handle({ type: 'boot' });
+  expect(texts).toEqual([{ type: 'texts', texts: { textInPanel: 'このテキストは Properties で編集してください' } }]);
+  setLang('zh');
+});
 
 test('load waits for boot; patches before ready are held and only the newest is sent once', () => {
   const { b, sent, tick } = setup();

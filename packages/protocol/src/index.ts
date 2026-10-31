@@ -142,7 +142,10 @@ export interface Proposal { id: string; label: string; created: string; base: st
 // ---------------------------------------------------------------- the embedded player (spec §2.3, plus 'boot')
 /** crop mode: which clip, and which crop — its first frame, its last, or a keyframe by index */
 export type CropSel = { itemId: string; which: 'from' | 'to' | number };
+/** words the preview shows by itself, in the editor's UI language (the player has no dictionaries) */
+export interface PlayerTexts { textInPanel: string }
 export type EditorMsg =
+  | { type: 'texts'; texts: PlayerTexts }
   | { type: 'load'; project: unknown } | { type: 'patch'; project: unknown }
   | { type: 'seek'; t: number } | { type: 'play'; from: number } | { type: 'pause' }
   | { type: 'cropMode'; sel: CropSel | null }

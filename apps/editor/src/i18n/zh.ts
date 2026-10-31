@@ -205,6 +205,7 @@ export const zh = {
   'ed.save.error': '儲存失敗，重試中',
   'ed.analyzing': '分析素材中（{n}）',
   'ed.previewError': '預覽錯誤',
+  'ed.textInPanel': '這段文字請在 Properties 修改',
   'ed.snapTip': '拖曳時吸附到節拍、片段邊緣、播放頭與標記（按住 Ctrl 暫時不吸附）',
   'ed.trackSizeTip': '時間軸軌道高度',
   'ed.widenTip': '加寬預覽 (F)',

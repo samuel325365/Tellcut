@@ -206,6 +206,7 @@ export const ja: Record<Key, string> = {
   'ed.save.error': '保存に失敗、再試行中',
   'ed.analyzing': '素材を解析中（{n}）',
   'ed.previewError': 'プレビューエラー',
+  'ed.textInPanel': 'このテキストは Properties で編集してください',
   'ed.snapTip': 'ドラッグ中にビート、クリップの端、再生ヘッド、マーカーに吸着（Ctrl を押している間は吸着しない）',
   'ed.trackSizeTip': 'タイムラインのトラックの高さ',
   'ed.widenTip': 'プレビューを広げる (F)',

@@ -206,6 +206,7 @@ export const en: Record<Key, string> = {
   'ed.save.error': 'Save failed, retrying',
   'ed.analyzing': 'Analysing media ({n})',
   'ed.previewError': 'Preview error',
+  'ed.textInPanel': 'Edit this text in Properties',
   'ed.snapTip': 'While dragging, snap to beats, clip edges, the playhead and markers (hold Ctrl to skip snapping)',
   'ed.trackSizeTip': 'Height of the timeline tracks',
   'ed.widenTip': 'Widen the preview (F)',

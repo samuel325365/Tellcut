@@ -73,7 +73,11 @@ export function startEmbed(win: Window, stageEl: HTMLElement, viewport: HTMLElem
     select: (id) => tools!.select(id),
   };
   const send = createDispatcher(api, post);
-  win.addEventListener('message', (e) => { if (e.origin === win.location.origin && e.source === win.parent) send(e.data as EditorMsg); });
+  win.addEventListener('message', (e) => {
+    if (e.origin !== win.location.origin || e.source !== win.parent) return;
+    const m = e.data as EditorMsg;
+    if (m.type === 'texts') tools!.texts = m.texts; else send(m);
+  });
   win.addEventListener('resize', () => { fit(); tools?.refresh(); });
   // once the preview has focus, shortcuts must still reach the editor
   win.addEventListener('keydown', (e) => {

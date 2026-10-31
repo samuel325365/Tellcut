@@ -1,7 +1,7 @@
 // Preview tools in the editor (embed mode): click to select, drag the box to move, drag a corner or wheel to scale.
 import { resolveTheme, withDefaults, type Project, type Registry, type SceneItem, type Transform } from '@tellcut/engine';
 import { inside, isFullFrame, movedTransform, pickAt, rankHits, scaledTransform, textParamFor, union, type Rect } from './tools-geom.ts';
-import type { ToolMsg } from '@tellcut/protocol';
+import type { PlayerTexts, ToolMsg } from '@tellcut/protocol';
 
 export type { ToolMsg };
 type Deps = { project: () => Project | null; registry: Registry; busy: () => boolean };
@@ -15,6 +15,8 @@ export class StageTools {
   private box: HTMLElement;
   private dragged = false;
   private wheelTimer: ReturnType<typeof setTimeout> | undefined;
+  /** the hints' words, from the editor in its UI language; none yet: no hint */
+  texts: PlayerTexts | null = null;
 
   constructor(private stageEl: HTMLElement, private viewport: HTMLElement, private post: (m: ToolMsg) => void, private d: Deps) {
     this.box = document.createElement('div');
@@ -147,7 +149,7 @@ export class StageTools {
     for (let el: Element | null = hit.el; el && !(el as HTMLElement).dataset?.id; el = el.parentElement) chain.push(el);
     const found = textParamFor(chain.map((el) => el.textContent ?? ''), defs.map((p) => ({ key: p.key, value: String(values[p.key] ?? '') })));
     this.post({ type: 'pick', itemId: it.id });
-    if (!found) { this.hint('這段文字請在右側屬性面板修改'); return; }
+    if (!found) { if (this.texts) this.hint(this.texts.textInPanel); return; }
     const def = defs.find((p) => p.key === found.key)!, target = chain[found.index].getBoundingClientRect(), v = this.viewport.getBoundingClientRect();
     const box = document.createElement(def.type === 'text' ? 'textarea' : 'input') as HTMLInputElement | HTMLTextAreaElement;
     box.className = 'text-edit';
