@@ -270,3 +270,43 @@ test('the video bitrate is capped by its pixels and, above 30 fps, its frame rat
   expect(maxRateKbps(3840, 2160, 60)).toBe(192000);
   expect(maxRateKbps(640, 360, 24)).toBe(4000);   // never below 4 Mbit/s
 });
+
+test('an audiogram hung on a clip shows that clip\'s sound from the first frame of an export (peaks prepared into the cache)', async () => {
+  const d = join(TELLCUT_ROOT, 'projects/_test-audiogram');
+  mkdirSync(d, { recursive: true });
+  try {
+    // a tone loud for the first second of the source and silent after; the clip starts at 0.5 s, so the film is loud until 0.5 s
+    await run(['-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=30:duration=3', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3',
+      '-af', "volume='if(lt(t,1),0.8,0)':eval=frame", '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', join(d, 'src.mp4')]);
+    const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+    writeFileSync(join(d, 'project.json'), JSON.stringify({
+      version: 1,
+      meta: { name: 'a', width: 360, height: 640, fps: 30, duration: 1, plugins: ['common'], background: '#000000', cut: { crf: 23, preset: 'ultrafast' },
+        mix: { master: 0.9, compressor: { threshold: -12, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 0.5, send: 0 } } },
+      sources: { s1: { path: 'src.mp4', duration: await probeDuration(join(d, 'src.mp4')), width: 320, height: 180 } }, media: {}, grids: [],
+      tracks: [
+        // the picture small in a corner, so the bars sit on the plain background
+        { id: 'v', kind: 'video', items: [{ id: 'c', source: 's1', in: 0.5, speed: 1, start: 0, end: 1, frame: [0, 0, 0.3, 0.1], crop }] },
+        { id: 'a', kind: 'audio', items: [{ id: 'l', source: 's1', in: 0.5, rate: 1, start: 0, end: 1, gain: 0, fadeIn: 0, fadeOut: 0 }] },
+        { id: 'o', kind: 'overlay', items: [{ id: 'g', type: 'common.audiogram', parent: 'c', start: 0, end: 1, params: { colors: ['#ff00ff', '#ff00ff'], count: 21 } }] },
+      ],
+    }));
+    const index = await prepareProject(d, createRegistry(plugins));
+    expect(Object.keys(index.peaks!)).toEqual(['s1']);
+    const out = join(d, 'output/a.mp4');
+    await renderVideo({ target: projectTarget('_test-audiogram', 'cache'), out, log: () => {} });
+    // how many pixels of the middle bar (x 180: now) are magenta, down the waveform's box (y 0.54–0.66 of the frame)
+    const bar = async (t: number) => {
+      const { stdout } = await ffmpeg(['-ss', String(t), '-i', out, '-frames:v', '1', '-vf', 'crop=1:120:180:324,format=rgb24', '-f', 'rawvideo', '-'], { stdout: true });
+      let n = 0;
+      for (let i = 0; i + 2 < stdout.length; i += 3) if (stdout[i] > 160 && stdout[i + 1] < 100 && stdout[i + 2] > 160) n++;
+      return n;
+    };
+    if (process.env.AUDIOGRAM_FRAME) await ffmpeg(['-y', '-i', out, '-frames:v', '1', process.env.AUDIOGRAM_FRAME]);
+    const [first, quiet] = [await bar(0), await bar(0.9)];
+    expect(first).toBeGreaterThan(50);   // the box is 77 px tall: the tone fills most of it on the very first frame
+    expect(quiet).toBeLessThan(15);      // the silence after: the bar is down to its floor
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
+}, 180000);

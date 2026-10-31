@@ -85,7 +85,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
 - Captions and big text (TXT): 01 `burst`, 02 `caption`, 03 `slam`, 04 `handwrite`, 05 `strike`, 06 `dotmatrix`, 07 `quote`, 10 `headline`
 - Chapters, numbers and tags (CHP): 01 `badge`, 02 `tag`, 03 `header`, 04 `progress`, 05 `slip`
 - Info cards, lists and receipts (CRD): 01 `receipt`, 02 `card`, 03 `list`, 04 `rating`, 05 `info`, 06 `notecard`, 07 `printer`, 08 `versus`
-- Numbers and meters (NUM): 01 `meter`, 02 `scoreboard`, 03 `countdown`, 04 `gauge`, 05 `hangtag`, 06 `timelapse`, 07 `digits`, 08 `chart`
+- Numbers and meters (NUM): 01 `meter`, 02 `scoreboard`, 03 `countdown`, 04 `gauge`, 05 `hangtag`, 06 `timelapse`, 07 `digits`, 08 `chart`, 09 `audiogram`
 - Maps, routes and journeys (TRV): 01 `tripclock`, 02 `route`, 03 `routeboard`, 04 `mapjump`, 05 `ticket`, 06 `stations`, 07 `postmark`, 08 `mapcam`, 09 `worldmap`
 - Layouts and frames (the video plays inside) (FRM): 01 `panel`, 02 `polaroid`, 03 `snap`, 04 `postcard`, 05 `frame`, 06 `duo`, 07 `camcorder`, 08 `casefile`, 09 `magazine`
 - Phone and app screens (PHN): 01 `notify`, 02 `lockscreen`, 03 `reels`, 04 `comments`, 05 `story`, 06 `album`, 07 `chat`, 08 `search`

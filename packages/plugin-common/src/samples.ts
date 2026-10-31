@@ -493,4 +493,10 @@ export const samples: Sample[] = [
   { name: 'dachshund-frames', type: 'common.dachshund', sources: PIC, params: { source: 'pic', action: 'idle' }, at: [1] },
   { name: 'dachshund-cut', type: 'common.dachshund', params: { action: 'cut', cutAt: 1 }, at: [1.2] },
   { name: 'wide-dachshund', type: 'common.dachshund', params: { action: 'sit' }, at: [1.5], wide: true },
+  // common.audiogram (2026-10-31): no sound clip in a golden project, so it draws its made-up speech levels (a fixed synthetic peaks
+  // array); the second speaker takes over at 1.5 s
+  { name: 'audiogram-bars', type: 'common.audiogram', params: { speakers: [[0, 1.5, 1], [1.5, 60, 2]], names: ['', 'Mia', 'Leo'] }, at: [1.0, 2.5], theme: QUOTE, bg: '#15171f' },
+  { name: 'audiogram-wave', type: 'common.audiogram', sources: PIC, params: { look: 'wave', artSource: 'pic', speakers: [[0, 1.5, 1], [1.5, 60, 2]], names: ['', 'Mia', 'Leo'] }, at: [1.0, 2.5], theme: QUOTE, bg: '#15171f' },
+  { name: 'audiogram-ring', type: 'common.audiogram', sources: PIC, params: { look: 'ring', artSource: 'pic', speakers: [[0, 1.5, 1], [1.5, 60, 2]], names: ['', 'Mia', 'Leo'] }, at: [1.0, 2.5], theme: QUOTE, bg: '#15171f' },
+  { name: 'wide-audiogram-ring', type: 'common.audiogram', params: { look: 'ring', speakers: [[0, 1.5, 1], [1.5, 60, 2]], names: ['', 'Mia', 'Leo'] }, at: [2.5], wide: true, theme: QUOTE, bg: '#15171f' },
 ];

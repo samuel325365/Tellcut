@@ -62,6 +62,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'NUM-06': 'common.timelapse',
   'NUM-07': 'common.digits',
   'NUM-08': 'common.chart',
+  'NUM-09': 'common.audiogram',
   'TRV-01': 'common.tripclock',
   'TRV-02': 'common.route',
   'TRV-03': 'common.routeboard',
