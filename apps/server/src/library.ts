@@ -3,7 +3,7 @@
 // copying an entry into a project. Reading and writing is media-node's (library/), shared with `npm run tellcut -- library`.
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
-import { blockDir, findFxFile, libraryRoot, LibraryError, listLibrary, loadProjectFx, loadStyles, PROJECT_ID, previewBlock, projectLinks, readBlock, readStyle, removeBlock, removeStyle, renameStyle,
+import { blockDir, findFxFile, libraryRoot, LibraryError, listLibrary, loadEntry, loadProjectFx, loadStyles, PROJECT_ID, previewBlock, projectLinks, readBlock, readStyle, removeBlock, removeStyle, renameStyle,
   renameType, saveBlock, saveStyle, stylesDir, THUMB_FILE, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
 import type { LibraryBlockInfo, LibraryIndex, LibraryStyleInfo, LibraryUsage, ProjectLibraryInfo } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
@@ -42,7 +42,7 @@ export async function libraryIndex(root: string, nameOf: (id: string) => string 
     return name ? { ...f, name } : f;
   };
   for (const e of lib.blocks) {
-    const items = (await loadProjectFx(blockDir(root, e.slug), [e.main])).plugin.items ?? [];
+    const items = (await loadEntry(root, e)).plugin.items ?? [];   // kept until its files change (loadEntry)
     const thumb = existsSync(join(blockDir(root, e.slug), THUMB_FILE)) ? `/api/library/blocks/${e.slug}/${THUMB_FILE}?v=${e.version}` : null;
     for (const t of e.types) {
       const it = items.find((x) => x.type === t.type);
