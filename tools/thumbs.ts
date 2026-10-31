@@ -13,7 +13,7 @@ import { goldenFile, runGolden, TELLCUT_ROOT, type GoldenCase } from '@tellcut/m
 import { plugins } from '@tellcut/plugins';
 import { cases } from '../packages/plugin-common/golden/cases.ts';
 import { THUMB_PARAMS } from '../packages/plugin-common/golden/thumbs.ts';
-import { hasCjk, localValues } from '../apps/editor/src/i18n/values.ts';
+import { hasCjk, localValues } from '@tellcut/editor/i18n/values';
 
 const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
 export const THUMBS_DIR = join(GOLDEN_DIR, 'thumbs');

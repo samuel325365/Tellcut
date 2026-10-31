@@ -4,6 +4,10 @@
   "private": true,
   "license": "MIT",
   "type": "module",
+  "exports": {
+    "./i18n": "./src/i18n/index.ts",
+    "./i18n/values": "./src/i18n/values.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build"

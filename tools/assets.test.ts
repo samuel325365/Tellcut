@@ -5,7 +5,7 @@ import { createProject, ffmpeg, makePhoto, maps, openSources, SourceError, TELLC
 import { PNG } from 'pngjs';
 import { ASSET_FLAGS, ASSET_KINDS, ASSET_SUBCOMMANDS, assetsCommand, MAP_MODES, MAP_STYLES } from './assets.ts';
 import { formatCutApi } from './cut/api-doc.ts';
-import { DICTS } from '../apps/editor/src/i18n/index.ts';
+import { DICTS } from '@tellcut/editor/i18n';
 
 let root: string, projectsDir: string, clip: string, quietClip: string;
 const meta = (id: string): AssetMeta => ({ source: 'fake', id, title: `Rain ${id}`, author: 'A', page: 'https://example.org', license: 'L', quality: 'preview' });
