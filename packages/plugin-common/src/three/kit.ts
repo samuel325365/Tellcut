@@ -82,8 +82,8 @@ export interface ThreeKit {
   /** a loaded picture as a plate: 12 cut-out layers when it has a see-through background, else a rounded slab with the picture on
    *  its face and sides in its edge colour */
   pictureMark(img: HTMLImageElement | HTMLCanvasElement, o?: PictureMarkOptions): Mark;
-  /** a word in 3D: Latin letters from o.glyphs (await loadFont(INTER_3D)), Chinese from o.cjk (loadFont of a font3d file, CJK_3D),
-   *  other characters (Japanese) as thick cut slabs; each letter posed and faded on its own (letters[k].g, setOpacity) */
+  /** a word in 3D: Latin letters from o.glyphs (await loadFont(INTER_3D); left out, from o.cjk's own), Chinese from o.cjk (loadFont of
+   *  a font3d file, CJK_3D), other characters (Japanese) as thick cut slabs; each letter posed and faded on its own (letters[k].g, setOpacity) */
   word3d(text: string, o?: WordOptions): Word;
 }
 

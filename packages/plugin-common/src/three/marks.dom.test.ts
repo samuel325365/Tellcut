@@ -166,6 +166,20 @@ test('mixed text: each character is drawn from the font meant for it (Latin font
   expect(w.letters.filter((l, i) => from[i] === 'slab').every((l) => l.w === 0.77)).toBe(true);
 });
 
+test('serif or round type: with no Latin font, the Latin letters come from the Chinese TTF’s own, so the word is one face', () => {
+  // a Chinese TTF that, like Noto Serif TC and Huninn, has Latin letters too; it says by their advance (1 em) that they are its own
+  const asked: string[] = [];
+  const full = { ...CJK, has: (c: string) => /\p{Script=Han}|[A-Za-z]|é/u.test(c), shapes: (c: string, em: number) => { asked.push(c); return CJK.shapes(c, em); } };
+  const w = kit().word3d('Go 剪輯', { cjk: full, em: 1 });
+  expect(asked).toEqual(['G', 'o', '剪', '輯']);
+  expect(w.letters.map((l) => [meshes(l.g).length, l.w])).toEqual([[1, 1], [1, 1], [1, 1], [1, 1]]);
+  // sans keeps its Latin font (Inter): Latin from it, and only a letter it lacks (é) from the Chinese TTF before a slab
+  asked.length = 0;
+  const v = kit().word3d('Gé', { glyphs: FONT, cjk: full, em: 1 });
+  expect(asked).toEqual(['é']);
+  expect(v.letters.map((l) => l.w)).toEqual([0.55, 1]);
+});
+
 test('svgMark: the Tellcut dachshund extrudes with its ten sprocket holes as holes in the body', () => {
   const ms = meshes(kit().svgMark(dogSvg({ look: 'light', holes: 'cut' }))!.group);
   const holes = ms.flatMap((x) => ((x.geometry as THREE.ExtrudeGeometry).parameters.shapes as THREE.Shape[] | THREE.Shape))

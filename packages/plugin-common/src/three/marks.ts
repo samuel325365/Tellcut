@@ -1,8 +1,8 @@
 // ThreeKit's parts for a brand's own mark and name in 3D (from the common.logo block, retired 2026-10-28; a project fx builds its
 // logo with these now): an SVG of filled shapes extruded in its own colours, any other picture as a plate (12 cut-out layers when
 // it has a see-through background, a rounded slab with the picture on its face when not), and a word whose Latin letters are
-// extruded from a TTF (kit.loadFont), whose Chinese is extruded from a Chinese TTF (tellcut font3d) and whose other characters
-// (Japanese) are thick cut slabs. Each is built once in ready(), posed in draw(), freed with its own dispose(). Like parts.ts,
+// extruded from a TTF (kit.loadFont; or from the Chinese TTF's own, for serif and round type), whose Chinese is extruded from a
+// Chinese TTF (tellcut font3d) and whose other characters (Japanese) are thick cut slabs. Each is built once in ready(), posed in draw(), freed with its own dispose(). Like parts.ts,
 // only types come from three here: the module is passed in.
 import type * as T from 'three';
 import type { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
@@ -154,10 +154,11 @@ export async function loadMark(THREE: Three, Loader: typeof SVGLoader, RoundedBo
 }
 
 export interface WordOptions {
-  /** the TTF's letters (await kit.loadFont(INTER_3D) in ready()); without it every character is a cut slab */
+  /** the Latin letters' TTF (await kit.loadFont(INTER_3D) in ready(): sans type); left out, the Latin letters come from `cjk` */
   glyphs?: Glyphs | null;
-  /** a Chinese TTF's characters (await kit.loadFont of a `tellcut font3d` file, CJK_3D): Chinese extruded like Latin letters;
-   *  without it, or for a character it lacks, a cut slab */
+  /** a Chinese TTF's characters (await kit.loadFont of a `tellcut font3d` file, CJK_3D): Chinese extruded like Latin letters, and
+   *  Latin ones `glyphs` does not give (all of them without it: serif and round type keep their own Latin letters, so the word is
+   *  one face); a character neither has is a cut slab */
   cjk?: Glyphs | null;
   /** the em in scene units (1.2: Inter's capitals stand about 0.86), the letters' depth (0.14) */
   em?: number; depth?: number;
@@ -189,8 +190,8 @@ export interface Word {
 /** a Latin character a TTF can draw (Latin-1 and Latin Extended) */
 const LATIN = /^[!-ɏ]$/;
 
-/** A word in 3D: Latin letters extruded from `glyphs`, Chinese from `cjk`, every other character (Japanese, a letter the fonts lack)
- *  a thick cut slab: 6 layers of a canvas drawing, about a capital's size. */
+/** A word in 3D: Latin letters extruded from `glyphs` (else from `cjk`'s own Latin letters), Chinese from `cjk`, every other
+ *  character (Japanese, a letter the fonts lack) a thick cut slab: 6 layers of a canvas drawing, about a capital's size. */
 export function word3d(THREE: Three, text: string, o: WordOptions = {}): Word {
   const em = o.em ?? 1.2, depth = o.depth ?? 0.14, track = o.track ?? -0.012, space = o.space ?? 0.3, glyphs = o.glyphs ?? null, cjk = o.cjk ?? null;
   const cut = em * 0.77, parts: Array<{ dispose(): void }> = [], group = new THREE.Group(), letters: Letter[] = [];
@@ -198,7 +199,7 @@ export function word3d(THREE: Three, text: string, o: WordOptions = {}): Word {
   for (const [k, ch] of [...text].entries()) {
     if (ch === ' ') { x += space; continue; }
     const colour = o.colorAt?.(k) ?? o.color ?? 0xe9ecf1, g = new THREE.Group();
-    const from = LATIN.test(ch) ? (glyphs?.has(ch) ? glyphs : null) : cjk?.has(ch) ? cjk : null;
+    const from = LATIN.test(ch) && glyphs?.has(ch) ? glyphs : cjk?.has(ch) ? cjk : null;
     const shapes = from ? from.shapes(ch, em) : [];
     let w: number;
     if (shapes.length && from) {

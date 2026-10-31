@@ -192,7 +192,10 @@ async function main(argv: string[]) {
     const pub = join(TELLCUT_ROOT, 'apps/player/public/fonts/files'), dist = join(TELLCUT_ROOT, 'apps/player/dist');
     const { file, downloaded } = await ensureFont3d(id as Feel, { dirs: existsSync(dist) ? [pub, join(dist, 'fonts/files')] : [pub], log: console.log });
     console.log(`${file}${downloaded ? '' : '（已經有了）'}`);
-    console.log(`中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { glyphs: await kit.loadFont('Inter-700.ttf'), cjk })`);
+    // sans pairs with Inter's Latin letters; serif and round keep their own TTF's, so a name mixing scripts stays one face
+    console.log(id === 'sans'
+      ? `中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { glyphs: await kit.loadFont('Inter-700.ttf'), cjk })`
+      : `中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { cjk })（不給 glyphs：拉丁字也用這個字型自己的，和中文同一種字感）`);
     return;
   }
   if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>、library …');
