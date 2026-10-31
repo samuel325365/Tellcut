@@ -21,3 +21,16 @@ test('the code and its params come back on the ApiError a request throws', async
   const e = await api.save('demo', {} as any).catch((x) => x);
   expect([e instanceof ApiError, e.status, e.code]).toEqual([true, 409, 'project.conflict']);
 });
+
+test('a track kind in a refused edit is worded in the page language too', () => {
+  const wrong = { message: 'Cannot move a video item onto track "au" (audio)', code: 'cmd.wrongTrackKind', params: { kind: 'video', track: 'au', trackKind: 'audio' } };
+  const bus = { message: 'Track "v" (video) has no bus gain or solo', code: 'cmd.noBus', params: { id: 'v', kind: 'video' } };
+  setLang('zh');
+  expect(errText(wrong)).toBe('影片項目不能放到軌道「au」（聲音）');
+  expect(errText(bus)).toBe('軌道「v」（影片）沒有軌道音量和獨奏');
+  setLang('ja');
+  expect(errText(wrong)).not.toMatch(/video|audio/);
+  expect(errText(bus)).not.toMatch(/video/);
+  setLang('en');
+  expect(errText(wrong)).toBe('A video item cannot go onto track "au" (audio)');
+});

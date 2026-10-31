@@ -26,7 +26,12 @@ export const nameList = (names: string[], lang: Lang = getLang()) =>
 export function errText(e: unknown, lang: Lang = getLang()): string {
   const x = e as { message?: unknown; code?: unknown; params?: Record<string, string | number> } | null;
   const key = typeof x?.code === 'string' ? `err.${x.code}` : '';
-  if (key && Object.hasOwn(DICTS.zh, key)) return t(key as Key, x?.params, lang);
+  if (key && Object.hasOwn(DICTS.zh, key)) {
+    // a track's kind comes as its schema word (video, audio): worded like the rest
+    const kind = (v: string | number) => (typeof v === 'string' && Object.hasOwn(DICTS.zh, `trackKind.${v}`) ? t(`trackKind.${v}` as Key, undefined, lang) : v);
+    const p = x?.params && Object.fromEntries(Object.entries(x.params).map(([k, v]) => [k, k === 'kind' || k === 'trackKind' ? kind(v) : v]));
+    return t(key as Key, p, lang);
+  }
   return String(x?.message ?? e);
 }
 
