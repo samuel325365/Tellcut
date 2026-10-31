@@ -5,7 +5,7 @@ import { resolveTheme } from '@tellcut/engine';
 import {
   blockCounts, boxAround, boxLoopPts, chart, chartFrame, chartPlan, chartRows, chartSeries, countText, CHART_KINDS, cutAtX, dashes, drawMark, fmtNum, hlIndex, parseNum, peopleGrid,
   ranks, ratioText, tableHl, textW, tipAngle, type ChartKind, type ChartP, type Plan,
-} from './chart.ts';
+} from './chart/index.ts';
 
 const defaults = Object.fromEntries(chart.params.map((d) => [d.key, d.default])) as unknown as ChartP;
 const PORTRAIT = { W: 1080, H: 1920 }, WIDE = { W: 1920, H: 1080 };

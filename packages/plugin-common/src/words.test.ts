@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { chart, chartPlan, type ChartP } from './chart.ts';
+import { chart, chartPlan, type ChartP } from './chart/index.ts';
 import { resolveTheme } from '@tellcut/engine';
 import { pollOf } from './story.ts';
 import { ordinal, projectLang, textLang, wordsLang } from './words.ts';

@@ -1,7 +1,7 @@
 // The modes and looks promoted from the seoul-bbq short (2026-10-28, group D): common.chart's ranking revealed from the last place up
 // with tie brackets, and the ember (charcoal-fire) look of common.tag and common.stamp. Their defaults leave the blocks as they were.
 import { resolveTheme } from '@tellcut/engine';
-import { chart, chartPlan, chartRows, ranks, rankStarts, textW, tieRuns, type ChartP } from './chart.ts';
+import { chart, chartPlan, chartRows, ranks, rankStarts, textW, tieRuns, type ChartP } from './chart/index.ts';
 import { emberLetter, emberTimes, tag } from './tag.ts';
 import { emberLand, stamp } from './stamp.ts';
 

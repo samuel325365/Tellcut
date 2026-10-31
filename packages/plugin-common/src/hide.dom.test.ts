@@ -5,7 +5,7 @@
 import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
 import { ambient } from './ambient.ts';
 import { caption } from './caption.ts';
-import { chart } from './chart.ts';
+import { chart } from './chart/index.ts';
 import { emoji } from './emoji.ts';
 import { frame } from './frame.ts';
 import { gauge } from './gauge.ts';

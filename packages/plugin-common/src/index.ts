@@ -63,7 +63,7 @@ import { quote } from './quote.ts';
 import { wipe } from './wipe.ts';
 import { duo } from './duo.ts';
 import { versus } from './versus.ts';
-import { chart } from './chart.ts';
+import { chart } from './chart/index.ts';
 import { touch } from './touch.ts';
 import { headline } from './headline.ts';
 import { mapcam } from './mapcam.ts';
