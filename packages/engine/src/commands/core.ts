@@ -137,7 +137,9 @@ export function followTrim(p: Project, id: string, oldLen: number, newLen: numbe
   const own = new Set<AnyItem>(ownSounds(p, id, oldLen));
   for (const t of p.tracks) for (const c of items(t) as any[]) {
     if (c.parent !== id) continue;
-    if (own.has(c)) { c.in = r6(c.in + head * c.rate); continue; }
+    // the clip's own head stops at its source's start; a sound faster than the clip would reach its start sooner: it stops
+    // there too (as fitOwn stops it at the source's end)
+    if (own.has(c)) { c.in = Math.max(0, r6(c.in + head * c.rate)); continue; }
     if (head) { c.start = r6(c.start - head); c.end = r6(c.end - head); }
   }
   fitOwn(p, own, newLen);

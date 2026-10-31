@@ -163,6 +163,17 @@ test("a frozen clip run on past its source: its own sound stops where the source
   expect(end(run(p, rateStretch, { id: 'c2', edge: 'end', dt: 4 }))).toBeCloseTo(30, 5);
 });
 
+test("a head extended earlier never takes the own sound's in below 0, even when the sound plays faster than the clip", () => {
+  // c2 from 10 s at 2×; its own sound from 4 s at 4×: two seconds more head want the sound 8 s earlier, from -4 s
+  const p = fixture();
+  addItem(p, { track: 'au', item: { id: 'snd2', source: 's', in: 4, rate: 4, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c2' } });
+  const q = run(p, trimStart, { id: 'c2', dt: -2 });
+  expect(item(q, 'c2')).toMatchObject({ start: 2, in: 6 });
+  expect(item(q, 'snd2')).toMatchObject({ in: 0, start: 0, end: 6 });
+  expect(ownSounds(q, 'c2').map((c) => c.id)).toEqual(['snd2']);
+  expect(ProjectZ.safeParse(q).success).toBe(true);
+});
+
 test("a frozen clip whose own sound already runs past its source (an older project): editing the clip puts the sound back inside", () => {
   const p = frozen();
   item(p, 'snd2').end = 10;   // needs 40 s of the 30 s source
