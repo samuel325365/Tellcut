@@ -280,3 +280,54 @@ test('dispose lets every video element go: paused, its source dropped and reset,
   expect([pause.mock.calls.length, v.hasAttribute('src'), load.mock.calls.length, v.parentNode]).toEqual([1, false, 1, null]);
   pool.begin(); expect(pool.video(ref0, parent, 0)).not.toBe(v);
 });
+
+test('peaks (a source sound level, common.audiogram): the server analysis in the editor, the prepared copy in an export, the cache from the source files', () => {
+  expect(apiResolver('my proj', 'http://h').peaks!('s 1')).toBe('http://h/api/projects/my%20proj/media/peaks/s%201');
+  const cache = cacheResolver({ videos: {}, stills: {}, audio: {}, peaks: { s1: 'cache/peaks/a.json' } }, 'http://h/p/x/project.json');
+  expect(cache.peaks!('s1')).toBe('http://h/p/x/cache/peaks/a.json');
+  expect(() => cache.peaks!('s2')).toThrow('No media for peaks s2');
+  // an index written before peaks existed still loads; only asking it for peaks fails
+  expect(() => cacheResolver({ videos: {}, stills: {}, audio: {} }, 'http://h/p/x/project.json').peaks!('s1')).toThrow(/peaks s1/);
+  expect(sourceResolver({ sources: {} } as any, 'http://h/p/x/project.json', cache).peaks!('s1')).toBe('http://h/p/x/cache/peaks/a.json');
+  expect(() => sourceResolver({ sources: {} } as any, 'http://h/p/x/project.json').peaks!('s1')).toThrow(/prepare/);
+});
+
+describe('MediaPool.peaks', () => {
+  const resolver = (url?: string): any => ({ video: () => ({ url: '', time: 0 }), rate: () => 1, still: () => '', audio: () => ({ url: '', offset: 0 }),
+    ...(url ? { peaks: (s: string) => `${url}/${s}` } : {}) });
+  const reply = (body: unknown, ok = true) => vi.fn(async () => ({ ok, status: ok ? 200 : 404, json: async () => body }) as any);
+  afterEach(() => vi.unstubAllGlobals());
+
+  test('fetched once per source and shared', async () => {
+    const f = reply({ rate: 100, peaks: [0.1, 0.5] });
+    vi.stubGlobal('fetch', f);
+    const pool = new MediaPool(resolver('http://h/pk'), { render: false, fps: 30 });
+    const [a, b] = await Promise.all([pool.peaks('s1'), pool.peaks('s1')]);
+    expect(a).toEqual({ rate: 100, peaks: [0.1, 0.5] });
+    expect(b).toBe(a);
+    expect(await pool.peaks('s1')).toBe(a);
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(f.mock.calls[0]).toEqual(['http://h/pk/s1']);
+  });
+
+  test('preview: a source not analysed yet gives null, and is asked again only after a while; render fails naming it', async () => {
+    const f = reply({}, false);
+    vi.stubGlobal('fetch', f);
+    const preview = new MediaPool(resolver('http://h/pk'), { render: false, fps: 30 });
+    expect(await preview.peaks('s1')).toBeNull();
+    expect(await preview.peaks('s1')).toBeNull();
+    expect(f).toHaveBeenCalledTimes(1);
+    (preview as any).peakFailed.set('s1', Date.now() - 60_000);   // long ago: tried again
+    expect(await preview.peaks('s1')).toBeNull();
+    expect(f).toHaveBeenCalledTimes(2);
+    await expect(new MediaPool(resolver('http://h/pk'), { render: true, fps: 30 }).peaks('s1')).rejects.toThrow('404 http://h/pk/s1');
+    // malformed data is no data
+    vi.stubGlobal('fetch', reply({ rate: 0, peaks: 'x' }));
+    expect(await new MediaPool(resolver('http://h/pk'), { render: false, fps: 30 }).peaks('s2')).toBeNull();
+  });
+
+  test('a resolver that knows no peaks: null in a preview, an error in an export', async () => {
+    expect(await new MediaPool(resolver(), { render: false, fps: 30 }).peaks('s1')).toBeNull();
+    await expect(new MediaPool(resolver(), { render: true, fps: 30 }).peaks('s1')).rejects.toThrow(/s1/);
+  });
+});

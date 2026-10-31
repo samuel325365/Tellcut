@@ -1,13 +1,15 @@
-// Cuts every clip / still / audio segment a project references into <project>/cache and writes cache/index.json.
+// Cuts every clip / still / audio segment a project references into <project>/cache and writes cache/index.json; also the sound
+// levels (peaks) blocks read (common.audiogram).
 import { heavy } from './limit.ts';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { renameRetry } from './fsutil.ts';
 import { dirname, join, resolve } from 'node:path';
 import {
   allItems, audioKey, mediaIssues, withDefaults, audioRefOf, parseProject, resolveTimes, soundFiles, stillKey, videoKey, videoRefOf,
   type AudioItem, type AudioRef, type CacheIndex, type MediaRef, type Project, type Registry, type SceneItem, type StillRef, type VideoItem,
 } from '@tellcut/engine';
-import { abortError, cutAudio, cutVideo, grabStill, probeDuration, probeSize } from './ffmpeg.ts';
+import { abortError, cutAudio, cutVideo, ffmpeg, grabStill, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
+import { PEAK_RATE, analysisFiles, peaksOf } from './analysis.ts';
 import { fitImage } from './photo.ts';
 import { fileHash, sourceHash } from './hash.ts';
 
@@ -36,7 +38,7 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
   if (issues.length) throw new Error(`Invalid media references:\n${issues.map((s) => `  ${s}`).join('\n')}`);
   const times = resolveTimes(p);
   const videos = new Map<string, MediaRef>(), stills = new Map<string, StillRef>(), audio = new Map<string, AudioRef>();
-  const images = new Set<string>();
+  const images = new Set<string>(), peaks = new Set<string>();
   for (const { track, item } of allItems(p)) {
     const tm = times.get(item.id)!;
     if (track.kind === 'video') {
@@ -50,10 +52,11 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
       const m = type?.media?.({ ...(item as SceneItem), params: withDefaults(type.params, (item as SceneItem).params) }, p, (t) => registry.item(t));
       m?.videos.forEach((r) => videos.set(videoKey(r), r));
       m?.stills.forEach((r) => stills.set(stillKey(r), r));
+      m?.peaks?.forEach((s) => { if (p.sources[s]?.kind !== 'image') peaks.add(s); });   // a photo has no sound
     }
   }
   const srcPath = (id: string) => resolve(projectDir, p.sources[id].path);
-  const used = new Set([...[...videos.values(), ...stills.values(), ...audio.values()].map((r) => r.source), ...images]);
+  const used = new Set([...[...videos.values(), ...stills.values(), ...audio.values()].map((r) => r.source), ...images, ...peaks]);
   const missing = [...used].filter((id) => !existsSync(srcPath(id))).map((id) => `  ${id}: ${p.sources[id].path}`);
   const usedMedia = new Set(p.tracks.flatMap((t) => (t.kind === 'music' ? t.items.map((i) => i.media) : [])));
   for (const id of usedMedia) if (!existsSync(resolve(projectDir, p.media[id].path))) missing.push(`  ${id}: ${p.media[id].path}`);
@@ -69,8 +72,8 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
   }
   if (wrong.length) throw new Error(`Sources do not match project.json:\n${wrong.join('\n')}`);
 
-  for (const d of ['cuts', 'stills', 'audio', 'images']) mkdirSync(join(projectDir, 'cache', d), { recursive: true });
-  const index: CacheIndex = { videos: {}, stills: {}, audio: {}, images: {} };
+  for (const d of ['cuts', 'stills', 'audio', 'images', 'peaks']) mkdirSync(join(projectDir, 'cache', d), { recursive: true });
+  const index: CacheIndex = { videos: {}, stills: {}, audio: {}, images: {}, peaks: {} };
   const jobs: Array<() => Promise<void>> = [];
   // one controller for this run: aborted by the caller (opts.signal) or by the first failed cut
   const ac = new AbortController();
@@ -109,6 +112,25 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
       const final = join(projectDir, rel), tmp = final.replace(/\.jpg$/, `.${process.pid}.tmp.jpg`);
       try { await fitImage(srcPath(sid), tmp, L, L, ac.signal); renameRetry(tmp, final); } catch (e) { rmSync(tmp, { force: true }); throw e; }
       log(`image ${sid}`);
+      opts.onProgress?.(++done, jobs.length);
+    });
+  }
+  // sound levels: the analysis' peaks.json when the editor made one (the waveform the timeline shows), else read from the source
+  for (const sid of peaks) {
+    const rel = `cache/peaks/${sourceHash(`peaks|${PEAK_RATE}`, projectDir, srcPath(sid))}.json`;
+    index.peaks![sid] = rel;
+    if (!opts.force && existsSync(join(projectDir, rel))) continue;
+    jobs.push(async () => {
+      const final = join(projectDir, rel), tmp = final.replace(/.json$/, `.${process.pid}.tmp.json`), src = srcPath(sid), made = analysisFiles(projectDir, src).peaks;
+      try {
+        if (existsSync(made)) copyFileSync(made, tmp);
+        else {
+          const data = (await probeHasAudio(src)) ? peaksOf((await ffmpeg(['-i', src, '-vn', '-ac', '1', '-ar', '8000', '-f', 's16le', '-'], { stdout: true, signal: ac.signal })).stdout, 8000) : [];
+          writeFileSync(tmp, JSON.stringify({ rate: PEAK_RATE, peaks: data }));
+        }
+        renameRetry(tmp, final);
+      } catch (e) { rmSync(tmp, { force: true }); throw e; }
+      log(`peaks ${sid}`);
       opts.onProgress?.(++done, jobs.length);
     });
   }

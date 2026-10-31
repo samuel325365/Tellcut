@@ -14,7 +14,7 @@ const PID_CACHE = /^index-\w+-(\d+)\.json$/;
 // half-written files with no pid, so only stale ones go: cache temps (media.ts cached, analysis.ts atomic, prepare.ts cuts)
 // and an interrupted export's intermediates (render.ts .video.mp4 / .mix.wav, hidden from the export list)
 const PARTIAL = /\.tmp\.\w+$/, INTERMEDIATE = /\.(video\.mp4|mix\.wav)$/;
-const CACHE_DIRS = ['media', 'analysis', 'cuts', 'stills', 'audio'];
+const CACHE_DIRS = ['media', 'analysis', 'cuts', 'stills', 'audio', 'images', 'peaks'];
 const LIBRARY_ASIDE = /^\.[a-z0-9][a-z0-9-]*\.(?:deleting|old|tmp|thumb)-(\d+)-\d+$/;
 
 function walk(dir: string, out: string[] = []): string[] {

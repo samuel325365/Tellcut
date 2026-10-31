@@ -12,4 +12,4 @@ const t0 = Date.now();
 const { registry, fx } = await projectRegistry(dir, plugins, parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'))));
 for (const e of fx.errors) console.error(`fx 載入失敗 ${e.path}：${e.message}`);
 const index = await prepareProject(dir, registry, { force: process.argv.includes('--force'), log: console.log });
-console.log(`done: ${Object.keys(index.videos).length} clips, ${Object.keys(index.stills).length} stills, ${Object.keys(index.audio).length} audio (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+console.log(`done: ${Object.keys(index.videos).length} clips, ${Object.keys(index.stills).length} stills, ${Object.keys(index.audio).length} audio, ${Object.keys(index.peaks ?? {}).length} sound levels (${((Date.now() - t0) / 1000).toFixed(0)}s)`);

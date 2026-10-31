@@ -1,7 +1,7 @@
 // Video pool (port of the media.js of the hand-made films Tellcut grew out of). Scenes call video(ref, parent, local)
 // each frame; sync() then either seeks exactly (render mode) or lets the element play and corrects drift.
 import type { Crop } from '../schema.ts';
-import type { MediaApi, MediaRef, StillRef } from '../plugin.ts';
+import type { MediaApi, MediaRef, SourcePeaks, StillRef } from '../plugin.ts';
 import { coverPlacement } from '../geometry.ts';
 import type { MediaResolver } from './resolvers.ts';
 import { videoKey } from './refs.ts';
@@ -33,6 +33,9 @@ export class MediaPool implements MediaApi {
   private waits = new Map<HTMLVideoElement, Promise<boolean>>();
   /** URLs that failed to load, and when: a missing proxy was fetched again (one 404) on every drag frame */
   private failed = new Map<string, number>();
+  /** sound levels by source (common.audiogram): one fetch each, kept; a source that had none is asked again after RETRY_MS */
+  private peakData = new Map<string, Promise<SourcePeaks | null>>();
+  private peakFailed = new Map<string, number>();
   constructor(private resolver: MediaResolver, private opts: { render: boolean; fps: number; seekTimeout?: number; preloadTimeout?: number }) {}
 
   /** Render: one element per clip (frame-exact seeks). Preview: one per media URL, so a trim or slip of a clip
@@ -126,10 +129,34 @@ export class MediaPool implements MediaApi {
   /** Lets every video element go (another project is loaded): paused, its source dropped, reset so the browser frees it. */
   dispose() {
     for (const list of this.videos.values()) for (const v of list) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }
-    this.videos.clear(); this.used.clear(); this.waits.clear(); this.failed.clear();
+    this.videos.clear(); this.used.clear(); this.waits.clear(); this.failed.clear(); this.peakData.clear(); this.peakFailed.clear();
   }
 
   stillUrl(ref: StillRef): string { return this.resolver.still(ref); }
+
+  /** A source's sound level. Preview: null while there is none (not analysed yet; asked again after RETRY_MS, so an analysis that
+   *  finishes later shows up). Render: prepare made every one an item asks for, so a missing one fails the export. */
+  peaks(source: string): Promise<SourcePeaks | null> {
+    const had = this.peakData.get(source);
+    if (had) return had;
+    const failedAt = this.peakFailed.get(source);
+    if (!this.opts.render && failedAt !== undefined && Date.now() - failedAt < RETRY_MS) return Promise.resolve(null);
+    const p = (async () => {
+      const url = this.resolver.peaks?.(source);
+      if (!url) throw new Error(`No sound level for source "${source}" in this media mode`);
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`${r.status} ${url}`);
+      const j = await r.json() as SourcePeaks;
+      if (!(j && j.rate > 0 && Array.isArray(j.peaks))) throw new Error(`Not a sound level: ${url}`);
+      return { rate: j.rate, peaks: j.peaks };
+    })().catch((e: unknown) => {
+      this.peakData.delete(source); this.peakFailed.set(source, Date.now());
+      if (this.opts.render) throw e;
+      return null;
+    });
+    this.peakData.set(source, p);
+    return p;
+  }
 
   fileUrl(path: string): string {
     if (!this.resolver.file) throw new Error(`Project files are not reachable in this media mode (${path})`);

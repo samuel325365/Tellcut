@@ -13,8 +13,11 @@ export interface MediaResolver {
   image?(source: string): string;
   /** a file inside the project folder (plugin assets such as sprite sheets), by its path relative to project.json */
   file?(path: string): string;
+  /** a source's sound level as JSON ({ rate, peaks }: common.audiogram) */
+  peaks?(source: string): string;
 }
-export type CacheIndex = { videos: Record<string, string>; stills: Record<string, string>; audio: Record<string, string>; images?: Record<string, string> };
+/** `peaks`: source id → its sound level (cache/peaks); an index written before it existed has none */
+export type CacheIndex = { videos: Record<string, string>; stills: Record<string, string>; audio: Record<string, string>; images?: Record<string, string>; peaks?: Record<string, string> };
 
 const need = <T>(v: T | undefined, key: string): T => { if (v === undefined) throw new Error(`No media for ${key}`); return v; };
 const abs = (rel: string, base: string) => new URL(rel, base).href;
@@ -28,6 +31,7 @@ export function cacheResolver(index: CacheIndex, projectUrl: string): MediaResol
     audio: (ref) => ({ url: abs(need(index.audio[audioKey(ref)], audioKey(ref)), projectUrl), offset: 0 }),
     image: (s) => abs(need(index.images?.[s], `image ${s}`), projectUrl),
     file: (path) => abs(path, projectUrl),
+    peaks: (s) => abs(need(index.peaks?.[s], `peaks ${s}`), projectUrl),
   };
 }
 
@@ -41,6 +45,7 @@ export function sourceResolver(project: Pick<Project, 'sources'>, projectUrl: st
     audio: (ref) => need(cache, 'audio (run tools/prepare.ts)').audio(ref),
     image: (s) => abs(project.sources[s].path, projectUrl),
     file: (path) => abs(path, projectUrl),
+    peaks: (s) => need(cache, 'peaks (run tools/prepare.ts)').peaks!(s),
   };
 }
 
@@ -68,5 +73,6 @@ export function apiResolver(projectId: string, origin: string): MediaResolver {
     music: (id) => `${base}/music/${encodeURIComponent(id)}`,
     image: (s) => `${base}/image/${encodeURIComponent(s)}`,
     file: (path) => `${origin}/api/projects/${encodeURIComponent(projectId)}/files/${path.split('/').map(encodeURIComponent).join('/')}`,
+    peaks: (s) => `${base}/peaks/${encodeURIComponent(s)}`,
   };
 }

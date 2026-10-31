@@ -1,9 +1,10 @@
-import { mkdtempSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createRegistry, corePlugin, parseProject, type Plugin } from '@tellcut/engine';
 import { cutSalt, prepareProject, runPool } from './prepare.ts';
 import { run, probeSize } from './ffmpeg.ts';
+import { analysisFiles } from './analysis.ts';
 
 const stillPlugin: Plugin = { id: 't', items: [{ type: 't.still', label: 's', kind: 'overlay', params: [], build: () => null, draw: () => {},
   media: () => ({ videos: [], stills: [{ source: 's1', t: 1, w: 160 }] }) }] };
@@ -159,4 +160,43 @@ test('stabilised cuts carry a salt of their own, so cuts made before the vidstab
   const ref = { source: 's', in: 0, out: 1, speed: 1, interp: 'none' as const };
   expect(cutSalt(ref, '|18|medium|30')).toBe('|18|medium|30');
   expect(cutSalt({ ...ref, stab: { smoothing: 20, zoom: 3 } }, '|18|medium|30')).toBe('|18|medium|30|vs2');
+});
+
+test('peaks (common.audiogram): the analysis copy when there is one, computed with ffmpeg when not; listed in the index', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'prep-'));
+  // 2 s of a tone that is loud for the first second and silent for the second
+  await run(['-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=30:duration=4', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4',
+    '-af', "volume='if(lt(t,1),0.8,0)':eval=frame", '-c:v', 'libx264', '-c:a', 'aac', '-shortest', join(dir, 'a.mp4')]);
+  copyFileSync(join(dir, 'a.mp4'), join(dir, 'b.mp4'));
+  // b has an analysis already: its peaks.json is copied as it is (made up here, so the copy can be told from a computed one)
+  const made = { rate: 100, peaks: [0.25, 0.5, 0.75] };
+  mkdirSync(dirname(analysisFiles(dir, join(dir, 'b.mp4')).peaks), { recursive: true });
+  writeFileSync(analysisFiles(dir, join(dir, 'b.mp4')).peaks, JSON.stringify(made));
+  const level: Plugin = { id: 'l', items: [{ type: 'l.level', label: 'l', kind: 'overlay', params: [], build: () => null, draw: () => {},
+    media: () => ({ videos: [], stills: [], peaks: ['s1', 's2', 's1'] }) }] };
+  const p = project({ s1: 'a.mp4', s2: 'b.mp4' });
+  p.tracks = [{ id: 'o', kind: 'overlay', items: [{ id: 'lv', type: 'l.level', start: 0, end: 1, params: {} }] }] as any;
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
+  const index = await prepareProject(dir, createRegistry([corePlugin, level]));
+  expect(Object.keys(index.peaks!).sort()).toEqual(['s1', 's2']);
+  expect(index.peaks!.s1).toMatch(/^cache\/peaks\/\w+\.json$/);
+  const a = JSON.parse(readFileSync(join(dir, index.peaks!.s1), 'utf8'));
+  expect(a.rate).toBe(100);
+  expect(a.peaks.length).toBeGreaterThan(390);
+  expect(Math.max(...a.peaks.slice(10, 90))).toBeGreaterThan(0.05);   // lavfi's sine is at 1/8 of full scale
+  expect(Math.max(...a.peaks.slice(120, 390))).toBeLessThan(0.01);
+  expect(JSON.parse(readFileSync(join(dir, index.peaks!.s2), 'utf8'))).toEqual(made);
+  expect(readdirSync(join(dir, 'cache/peaks')).filter((f) => f.includes('.tmp.'))).toEqual([]);
+  // a second run finds them made
+  expect((await prepareProject(dir, createRegistry([corePlugin, level]))).peaks).toEqual(index.peaks);
+}, 120000);
+
+test('peaks of an unknown source are refused like any other media reference', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'prep-'));
+  const bad: Plugin = { id: 'l', items: [{ type: 'l.level', label: 'l', kind: 'overlay', params: [], build: () => null, draw: () => {},
+    media: () => ({ videos: [], stills: [], peaks: ['nope'] }) }] };
+  const p = project({ s1: 'src.mp4' });
+  p.tracks = [{ id: 'o', kind: 'overlay', items: [{ id: 'lv', type: 'l.level', start: 0, end: 1, params: {} }] }] as any;
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
+  await expect(prepareProject(dir, createRegistry([corePlugin, bad]))).rejects.toThrow('Item "lv" (l.level): unknown source "nope"');
 });

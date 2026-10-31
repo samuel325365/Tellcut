@@ -18,6 +18,8 @@ type ParamDefBase =
 export interface MediaRef { source: string; in: number; out: number; speed: number; interp: 'none' | 'blend' | 'mci'; stab?: { smoothing: number; zoom: number } }
 export interface StillRef { source: string; t: number; w?: number; square?: number; strip?: { n: number; dur: number } }
 export interface AudioRef { source: string; in: number; out: number }
+/** a source's sound level: `rate` values a second, each the loudest |sample| of its window, 0..1 (the analysis' peaks.json) */
+export interface SourcePeaks { rate: number; peaks: number[] }
 
 export interface MediaApi {
   /** Attach the clip for `ref` inside `parent`, showing `local` timeline-seconds after the ref's start.
@@ -28,6 +30,9 @@ export interface MediaApi {
   stillUrl(ref: StillRef): string;
   /** URL of a file inside the project folder, by its path relative to project.json (e.g. 'media/fonts/x.ttf'). */
   fileUrl(path: string): string;
+  /** A source's sound level (common.audiogram), fetched once and shared. A preview gets null while the source is not analysed;
+   *  an export rejects (prepare made it, see media().peaks). Optional: a test's stand-in may leave it out. */
+  peaks?(source: string): Promise<SourcePeaks | null>;
 }
 
 export interface ItemCtx<P = Record<string, any>> {
@@ -82,9 +87,10 @@ export interface ItemType<P = Record<string, any>, S = any> {
   dispose?(state: S): void;
   /** Resolves once the item's own assets (images, fonts) are loaded: preview and export draw nothing before. */
   ready?(state: S): Promise<void>;
-  /** Media this item needs at export time (cut by tools/prepare.ts). Must not touch the DOM.
+  /** Media this item needs at export time (cut by tools/prepare.ts). Must not touch the DOM. `peaks`: sources whose sound level it
+   *  reads (MediaApi.peaks); prepare copies or computes them into cache/peaks.
    *  `types` (the registry, as ctx.types): a block that hosts another (common.card's picture window) adds the hosted block's media. */
-  media?(item: SceneItem, project: Project, types?: (type: string) => ItemType | undefined): { videos: MediaRef[]; stills: StillRef[] };
+  media?(item: SceneItem, project: Project, types?: (type: string) => ItemType | undefined): { videos: MediaRef[]; stills: StillRef[]; peaks?: string[] };
 }
 
 export interface SfxBus { out: AudioNode; verb: AudioNode; noise: AudioBuffer }
