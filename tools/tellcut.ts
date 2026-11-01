@@ -3,6 +3,7 @@
 //   npm run tellcut -- propose <id> <file.json | ->      (file: { "label": "…", "ops": [ … ] }; the page chat writes projects/<id>/proposal.json)
 //   npm run tellcut -- frames <id> [--proposal] [--full] --at 1.5,3   (stills 960 on the long side unless --full)
 //   npm run tellcut -- logo <id> <file>   (the brand logo into media/brand/: extrudable or not, its colours, how to use it)
+//   npm run tellcut -- image <id> <file> [--id <name>]   (a picture the project made, or any picture, registered as a photo source for c.photo)
 //   npm run tellcut -- font3d <sans|serif|round>   (the Chinese TTF for 3D type, downloaded when first needed: word3d's cjk)
 //   npm run tellcut -- site <id> <url>   (a company's website into media/brand/: its first screen, colours and fonts)
 //   npm run tellcut -- request <id> [--id <request id>] [--frames [--full]]   (the editor's "Ask Agent…")
@@ -27,6 +28,7 @@ import { ensureFont3d, type Feel } from './font3d.ts';
 import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
 import { projectArg } from './project-arg.ts';
+import { imageArgs, registerImage } from './image-source.ts';
 
 const f2 = (v: number) => v.toFixed(2);
 /** frames' long side for Claude (540×960 portrait, 960×540 landscape); --full keeps the film's own size */
@@ -199,7 +201,7 @@ async function main(argv: string[]) {
       : `中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { cjk })（不給 glyphs：拉丁字也用這個字型自己的，和中文同一種字感）`);
     return;
   }
-  const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>、library …';
+  const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|image|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>、library …';
   if (!cmd) throw new Usage(usage);
   const dir = projectArg(id, usage);
   const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };
@@ -279,6 +281,15 @@ async function main(argv: string[]) {
       console.log(`做成 3D（專案 fx，three: true）：build() 記下 ctx.three 和 ctx.media.fileUrl('${path}')，ready() 裡 const mark = await kit.loadMark(網址)，把 mark.group 加進場景；名稱用 kit.word3d`);
       const warn = logoContrastWarning(info, resolveTheme(readProject(dir).meta.theme).palette.ink);
       if (warn) console.log(warn);
+      return;
+    }
+    case 'image': {
+      const a = imageArgs(rest);
+      if (!a.file) throw new Usage('用法：npm run tellcut -- image <專案> <圖檔（JPG、PNG、WebP、HEIC）> [--id <素材 id>]');
+      const r = await registerImage(dir, a.file, { id: a.id });
+      console.log(`${r.again ? '已更新' : '已登記'}圖片素材 ${r.id}：${r.path}（${r.width}×${r.height}${r.copied ? '，從專案外複製進來' : ''}）`);
+      console.log(`c.photo('${r.id}', { len: 3 })`);
+      console.log('圖重新產生後再跑一次：同一個檔案保留同一個 id、更新尺寸。');
       return;
     }
     case 'site': {

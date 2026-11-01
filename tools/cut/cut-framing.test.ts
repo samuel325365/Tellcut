@@ -197,6 +197,49 @@ test('view: one camera cut into virtual ones — the crop centred where asked, r
   expect(() => c.view('v', { at: [0.5, 0.4], zoom: 1.6, frame })).not.toThrow();
 });
 
+test('beside: a second picture of the same moment in its own window on v2, as long as each clip, silent, riding on its clip at save', async () => {
+  const c = fresh();
+  c.p.meta.width = 1080; c.p.meta.height = 1920;
+  const A: [number, number, number, number] = [0, 0.16, 1, 0.368], B: [number, number, number, number] = [0, 0.606, 1, 0.368];
+  c.clip('v', { from: 0, len: 0.5 });
+  const a = c.clip('v', { from: 3, len: 2, speed: 1.5, frame: A });
+  const crop = { from: { x: 0.8, y: 0.4, zoom: 2 }, to: { x: 0.8, y: 0.4, zoom: 2.2 } };
+  const [b] = c.beside(a, { frame: B, crop });
+  const v2 = items(c, 'v2');
+  expect(v2).toHaveLength(1);
+  expect(v2[0]).toMatchObject({ id: b, source: 'v', in: 3, speed: 1.5, start: 0.5, end: 2.5, frame: B, crop });
+  expect(c.time).toBe(2.5);   // the cursor stays where the main clip left it
+  expect(items(c, 'orig').some((i) => i.parent === b)).toBe(false);   // no second copy of the sound
+  expect(c.p.tracks.map((t) => t.id).slice(0, 2)).toEqual(['v1', 'v2']);
+  // another camera's file that started 1.5 s later: offset; past its end it says so
+  const [late] = c.beside(a, { frame: B, offset: 1.5, track: 'v3' });
+  expect(items(c, 'v3')[0]).toMatchObject({ id: late, in: 4.5, crop: { from: { x: 0.5, y: 0.5, zoom: 1 } } });
+  expect(() => c.beside(a, { frame: B, offset: 6 })).toThrow(/沒有 9\.00–12\.00 秒/);
+  expect(() => c.beside('nope', { frame: B })).toThrow(/主軌上沒有「nope」/);
+  expect(() => c.beside(a, { frame: B, track: 'v1' })).toThrow(/不能是主軌/);
+  expect(() => c.beside(a, { frame: B, track: 'text' })).toThrow(/不是影片軌/);
+  expect(() => (c as any).beside(a, {})).toThrow(/要給 frame/);
+  const p = await c.save();
+  expect((p.tracks.find((t) => t.id === 'v2')!.items[0] as any)).toMatchObject({ parent: a, start: 0, end: 2 });
+  expect(parseProject(p)).toBeTruthy();
+});
+
+test('beside on the pieces of a tighten: one each, in step through every cut, the move spread over them without a jump', () => {
+  const c = fresh();
+  const pieces = c.tighten(c.clip('v', { from: 0, len: 9, frame: [0, 0, 1, 0.5] }));
+  expect(pieces.length).toBeGreaterThan(1);
+  const ids = c.beside(pieces, { frame: [0, 0.5, 1, 0.5], crop: { x: 0.3, zoom: 1, to: { zoom: 2 } } });
+  const T = resolveTimes(c.p), v1 = items(c, 'v1'), v2 = items(c, 'v2');
+  expect(ids).toHaveLength(pieces.length);
+  pieces.forEach((id, i) => {
+    const m = v1.find((x) => x.id === id), s = v2.find((x) => x.id === ids[i]);
+    expect([s.in, s.speed, T.get(s.id)!.start, T.get(s.id)!.end]).toEqual([m.in, m.speed, T.get(id)!.start, T.get(id)!.end]);
+  });
+  expect(v2[0].crop.from.zoom).toBe(1);
+  expect(v2[v2.length - 1].crop.to.zoom).toBe(2);
+  for (let i = 1; i < v2.length; i++) expect(v2[i].crop.from.zoom).toBeCloseTo(v2[i - 1].crop.to.zoom, 9);
+});
+
 test('a frame is fractions of the screen: pixels, an empty or an off-screen frame throw; some bleed is fine', () => {
   expect(() => checkFrame([80, 300, 920, 1100], 'c.panel')).toThrow(/c\.panel 的 frame \[80, 300, 920, 1100\] 看起來是像素/);
   expect(() => checkFrame([0.1, 0.1, 0, 0.5], 'c.clip')).toThrow(/寬、高要大於 0/);

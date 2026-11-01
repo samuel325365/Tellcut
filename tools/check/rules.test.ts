@@ -1,5 +1,5 @@
 import { parseProject, type Transcript } from '@tellcut/engine';
-import { chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks } from './rules.ts';
+import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -258,6 +258,48 @@ describe('pacing rules (2026-10-18)', () => {
       { id: 'chat', start: 7, end: 8.2, type: 'common.chat', params: { items: '0|me|你好/明天見|when=21:04\n0.5|them||typing\n1|them|好啊|unread' } },
     ] }]);
     expect(msgs(modelChecks(p, ok)).filter((m) => m.startsWith('warn'))).toEqual([expect.stringMatching(/^warn 1-2 字卡「借來的釣竿 要價 6萬5 日幣」只出現 1.0 秒，讀完約要 1.6 秒（slam）/)]);
+  });
+
+  // acc-b3-outdoor (2026-11-01): fx.words' items line was counted whole, its times, sizes, colours and modes as letters
+  const str = (key: string, def: string) => ({ key, label: key, type: 'string' as const, default: def });
+  const FX: Record<string, any[]> = {
+    'fx.words': [{ key: 't0', label: 't0', type: 'number', default: 0 }, str('stops', '0:0.09'), str('items', '0.1|釣魚，|260|navy|960|360|drop'), str('font', 'Noto Sans TC')],
+    'fx.rod': [str('t1', '一支竿折起來就走'), str('mode', 'drop')],
+    'fx.paint': [{ key: 'color', label: 'c', type: 'color', default: '#fff' }],
+  };
+  const declared = { ...ok, params: (t: string) => FX[t], knownFonts: ['Noto Sans TC'] };
+
+  test("an fx's card counts only the words its declared params show: not a line's times, sizes, colours, modes, nor its timing params", () => {
+    const p = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [
+      { id: 'w', start: 0, end: 2.2222, type: 'fx.words', params: { t0: 6.67, stops: '0:0.09,8.8889:0.14,16.6667:0.2', items: '0.02|出門，|580|navy|960|490|knock|stagger=0.08' } },
+      { id: 'rod', start: 3, end: 3.8, type: 'fx.rod', params: {} },                               // its default words are drawn: 8 characters ≈ 1.3 s
+      { id: 'bill', start: 5, end: 7.2, type: 'common.receipt', params: { items: '0.2|🚄|來回車票|NT$1,480|n\n0.55|🏨|民宿一晚|NT$2,200|n' } },
+    ] }]);
+    expect(msgs(modelChecks(p, declared)).filter((m) => m.startsWith('warn'))).toEqual([expect.stringMatching(/^warn 3-3.8 字卡「一支竿折起來就走」只出現 0.8 秒，讀完約要 1.3 秒（rod）/)]);
+  });
+
+  test("a short's first second: an fx's declared words count as text; one that draws letters on a canvas is a note, not a warning", () => {
+    const tall1 = (fx: any) => tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [fx] }]);
+    expect(modelChecks(tall1({ id: 'rod', start: 0, end: 3, type: 'fx.rod', params: { t1: '出門了' } }), declared)).toEqual([]);
+    const painted = tall1({ id: 'p', start: 0, end: 3, type: 'fx.paint', params: {} });
+    expect(msgs(modelChecks(painted, { ...declared, canvasText: (t: string) => t === 'fx.paint' }))).toEqual([expect.stringMatching(/^note 0-1 開頭第一秒沒有人說話，也看不到字幕或字卡；p 在 canvas 上畫字，check 看不到/)]);
+    expect(msgs(modelChecks(painted, declared))).toEqual([expect.stringMatching(/^warn 0-1 開頭第一秒沒有字也沒有人說話/)]);   // no canvas letters: still a warning
+  });
+
+  test('visibleWords keeps the words of a value: lines and |-fields, not numbers, colours, files, key=value or (in a line) lowercase tokens', () => {
+    expect(visibleWords('借來的釣竿\n要價【6萬5】日幣')).toBe('借來的釣竿 要價【6萬5】日幣');
+    expect(visibleWords('hello')).toBe('hello');                                     // a plain value's lowercase word is a word
+    expect(visibleWords('drop', true)).toBe('');                                     // an fx's lone lowercase token is an option
+    expect(visibleWords('0.05|Got a bite,|280|#10204A|960|300|drop|jump=0.8\\n1|media/x.png|好')).toBe('Got a bite, 好');
+  });
+
+  test('canvasFxFiles: the fx modules that draw letters on a canvas, in their own code or a helper they import', () => {
+    const files: Record<string, string> = {
+      'fx/a.js': "import { word } from './lib/text.js';\nexport default [];", 'fx/lib/text.js': 'export const word = (g) => g.fillText("x", 0, 0);',
+      'fx/b.js': '// g.fillText(no)\nexport default [];', 'fx/c.js': "export * from './b.js';\nconst s = 'g.fillText(';",
+      'fx/lib/x/_entry.js': "export { default } from '../../a.js';",
+    };
+    expect(canvasFxFiles(['fx/a.js', 'fx/b.js', 'fx/c.js', 'fx/lib/x/_entry.js', 'fx/gone.js'], (f) => files[f] ?? null)).toEqual(['fx/a.js', 'fx/lib/x/_entry.js']);
   });
 
   test('a photo that holds over 4 s without moving is warned', () => {

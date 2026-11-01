@@ -1,16 +1,34 @@
 // The model layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 4): what the project file alone
 // tells (parseProject already refuses items that end before they start) — offline material, black frames, items past the end, empty text, music stopping early, captions vs speech.
-import { isAbsolute, relative, resolve } from 'node:path';
-import { allItems, envelopeAt, resolveTimes, soundFiles, type Project, type Transcript } from '@tellcut/engine';
-import { timecode1 } from '@tellcut/media-node';
+import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
+import { allItems, envelopeAt, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
+import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { PANEL_FRAME } from '@tellcut/plugin-common';
 import { heardSpeech } from '../cut/mix.ts';
 
 export type Level = 'error' | 'warn' | 'note';
 export interface Finding { level: Level; t?: [number, number]; ids?: string[]; msg: string; /** 'offline': material the page layer needs is missing (report.ts isOffline) */ code?: 'offline' }
-export interface ModelInput { exists(path: string): boolean; transcripts: Record<string, Transcript | null>; /** font families the registered plugins bring along (toolkit phase 2b: theme fonts outside them are not downloaded) */ knownFonts?: string[] }
+export interface ModelInput {
+  exists(path: string): boolean; transcripts: Record<string, Transcript | null>;
+  /** font families the registered plugins bring along (toolkit phase 2b: theme fonts outside them are not downloaded) */ knownFonts?: string[];
+  /** a block's declared params (the registry, with the project's fx): which of an fx's params are words */ params?: (type: string) => ParamDef[] | undefined;
+  /** the block may draw letters on a canvas (a project fx whose code calls fillText): check cannot see them */ canvasText?: (type: string) => boolean;
+}
 
 const r3 = (t: number) => Math.round(t * 1000) / 1000;
+/** the params whose words a shared block shows, for the pacing rules (a project fx's are read from its declaration instead) */
+const MAIN_KEYS = ['text', 'label', 'plate', 'tags', 'title', 'items'];
+/** A field that is not words, in a param that holds them: no letter at all (a time, a size, a position), a colour, a file, a
+ *  key=value option; with `strict` (a line-structured value "秒|字|大小|顏色|x|y|模式", or an fx param that may be an option) also
+ *  one lowercase Latin token (navy, drop, me): fx.words' whole "0.02|出門，|580|navy|960|490|knock|stagger=0.08" used to be read as
+ *  thirty letters of a card that says 出門， (acc-b3-outdoor, 2026-11-01). */
+const notWords = (f: string, strict: boolean) => !/\p{L}/u.test(f) || /^#[0-9a-f]{3,8}$/i.test(f) || /^[\w-]+=/.test(f)
+  || /^(https?:|data:)|\.(png|jpe?g|webp|svg|gif|mp4|webm|mov|wav|mp3|js)$/i.test(f) || (strict && /^[a-z][a-z0-9_.-]*$/.test(f));
+/** the words of one param value: its lines and |-fields that are words */
+export function visibleWords(v: string, strict = false): string {
+  const fields = v.replace(/\\n/g, '\n').split(/\n|\|/).map((x) => x.trim()).filter(Boolean), lined = v.includes('|');
+  return fields.filter((x) => !notWords(x, strict || lined)).join(' ');
+}
 /** overlay blocks that are a deliberate picture of their own (words on the background) */
 const CARDS = new Set(['core.title', 'core.endCard']);
 const overlap = (a: [number, number], b: [number, number]) => Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0]));
@@ -146,12 +164,25 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   // pacing (2026-10-18, rules after OpenMontage's short-form craft): what makes a short feel slow or slideshow-like, from the file alone
   // common.chat's items are lines "seconds|who|words|kind|key=value": only the words (and a link card's sub=) are read
   const chatWords = (s: string) => String(s).replace(/\\n/g, '\n').split('\n').map((l) => { const f = l.split('|'); return [f[2] ?? '', ...f.slice(3).filter((x) => /^\s*sub=/.test(x)).map((x) => x.replace(/^\s*sub=/, ''))].join(' '); }).join(' ');
-  const textOf = (it: any) => it.type === 'common.chat' ? chatWords(it.params?.items ?? '').replace(/\//g, ' ').trim() : ['text', 'label', 'plate', 'tags', 'title', 'items'].map((k) => it.params?.[k]).filter((v) => typeof v === 'string').join(' ').replace(/[【】{}\n]/g, ' ').trim();
+  // a project fx's words are in any string or text param it declares (t1, items…; the default when not set: the fx draws it), a
+  // shared block's in its main params; either way only the fields that are words (not the times, sizes, colours of a line)
+  const fontParam = (d: ParamDef) => /font/i.test(d.key) || (typeof d.default === 'string' && !!o.knownFonts?.includes(d.default));
+  const wordParams = (it: any): Array<[unknown, boolean]> => {
+    const defs = o.params?.(it.type), kind = (k: string) => defs?.find((d) => d.key === k)?.type;
+    if (it.type?.startsWith('fx.') && defs) return defs.filter((d) => (d.type === 'string' || d.type === 'text') && !fontParam(d)).map((d) => [it.params?.[d.key] ?? d.default, true]);
+    return MAIN_KEYS.filter((k) => !defs || kind(k) === undefined || kind(k) === 'string' || kind(k) === 'text').map((k) => [it.params?.[k], false]);
+  };
+  const textOf = (it: any) => it.type === 'common.chat' ? chatWords(it.params?.items ?? '').replace(/\//g, ' ').trim()
+    : wordParams(it).filter(([v]) => typeof v === 'string').map(([v, strict]) => visibleWords(v as string, strict)).join(' ').replace(/[【】{}\n]/g, ' ').trim();
   const shown = p.tracks.filter((t) => (t.kind === 'overlay' || t.kind === 'scene') && !t.muted).flatMap((t) => (t.items as any[]).map((it) => ({ it, s: span(it.id) })));
   // a short (portrait, up to 3 minutes) that says nothing in its first second: the viewer has already swiped
   if (p.meta.height > p.meta.width && D <= 180) {
     const said = heard.some((h) => h.t[0] < 1) || narration.some((t) => (t.items as any[]).some((v) => span(v.id)[0] < 1));
-    if (!said && !shown.some(({ it, s }) => s[0] < 1 && textOf(it))) out.push({ level: 'warn', t: [0, 1], msg: '開頭第一秒沒有字也沒有人說話：短影音的觀眾在第一秒決定要不要滑走；第一秒就放一句字卡／爆字，或從講話的地方開始' });
+    // letters an fx draws on a canvas are pixels to check: with one of those up in the first second it cannot tell, and says so
+    const blind = shown.filter(({ it, s }) => s[0] < 1 && o.canvasText?.(it.type)).map(({ it }) => it.id);
+    if (!said && !shown.some(({ it, s }) => s[0] < 1 && textOf(it))) out.push(blind.length
+      ? { level: 'note', t: [0, 1], ids: blind, msg: `開頭第一秒沒有人說話，也看不到字幕或字卡；${blind.join('、')} 在 canvas 上畫字，check 看不到 canvas 上的字：它第一秒就有字就沒問題，沒有的話第一秒放一句字卡／爆字，或從講話的地方開始` }
+      : { level: 'warn', t: [0, 1], msg: '開頭第一秒沒有字也沒有人說話：短影音的觀眾在第一秒決定要不要滑走；第一秒就放一句字卡／爆字，或從講話的地方開始' });
   }
   // a word card (not a caption: those follow the speech) shorter than it takes to read: Chinese ≈ 9 characters a second, Latin ≈ 17
   for (const { it, s } of shown) {
@@ -244,6 +275,27 @@ function blank(src: string, strings: boolean): string {
 /** `import 'x'`, `import('x'`, `import a, { b,⏎ c } from 'x'`, `export * from 'x'`, `export { a } from 'x'` at the start of a line */
 const IMPORT = /^[ \t]*(?:import\s*(?:\(\s*|[\w$\s{},*]*?\bfrom\s*)?|export\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[\w$\s,]*\})\s*from\s*)['"]([^'"]+)['"]/gm;
 
+/** a call that draws letters on a canvas (read with comments and strings blanked) */
+const CANVAS_TEXT = /\.(fillText|strokeText)\s*\(/;
+/** an fx source draws letters on a canvas (comments and strings do not count) */
+export const drawsCanvasText = (src: string) => CANVAS_TEXT.test(blank(src, true));
+/** The fx modules (meta.fx paths) that draw letters on a canvas, in their own code or in a helper they import (a library copy's
+ *  _entry.js only re-exports): their blocks are the ones check cannot read the words of. `read`: a project file's text, or null. */
+export function canvasFxFiles(paths: string[], read: (path: string) => string | null): string[] {
+  const memo = new Map<string, boolean>();
+  const draws = (path: string): boolean => {
+    if (memo.has(path)) return memo.get(path)!;
+    memo.set(path, false);                                                    // an import cycle reads as not drawing
+    const src = read(path);
+    if (src === null) return false;
+    const hit = drawsCanvasText(src) || [...blank(src, false).matchAll(RELATIVE_IMPORT)]
+      .some((m) => draws(normalize(join(dirname(path), m[1].split('?')[0])).split('\\').join('/')));
+    memo.set(path, hit);
+    return hit;
+  };
+  return paths.filter(draws);
+}
+
 /** fx sources (path → text) against the determinism rules. */
 export function fxChecks(sources: Record<string, string>): Finding[] {
   const out: Finding[] = [];
@@ -258,7 +310,7 @@ export function fxChecks(sources: Record<string, string>): Finding[] {
       for (const [re, name] of BANNED) if (re.test(line)) out.push({ level: 'error', msg: `${path}:${i + 1} 不可用 ${name}（畫面必須只由時間決定；要隨機請用自帶的種子 LCG）` });
     });
     // the layout check measures DOM text boxes: letters drawn on a canvas are pixels to it, and it used to say nothing about them
-    const canvasText = noStrings.findIndex((l) => /\.(fillText|strokeText)\s*\(/.test(l));
+    const canvasText = noStrings.findIndex((l) => CANVAS_TEXT.test(l));
     if (canvasText >= 0) out.push({ level: 'note', msg: `${path}:${canvasText + 1} 在 canvas 上畫字：check 量不到這些字（超出安全區、蓋到字幕、字太小都不會報），請用 frames 自己看` });
   }
   return out;

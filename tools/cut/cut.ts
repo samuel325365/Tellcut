@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, deleteItems, magneticGaps, parseProject, r6, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { addItem, createRegistry, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
@@ -271,13 +271,60 @@ export class Cut {
     return ids;
   }
 
+  /**
+   * A second picture beside clips already on the main track: for each clip (the pieces of a tighten too) the same stretch of `source`
+   * (default the clip's own; `offset` seconds later in it — a second camera's file that started that much later) on a video track of
+   * its own (`track`, default v2, made right above the main track), in `frame`, from the clip's start to its end at its speed, with
+   * no sound (the main clip carries it): the other person of a split screen cut from the same wide shot (common.duo's
+   * duoWindow('b', …)), a listener's face in a picture-in-picture. `crop` is one move spread over the pieces, as tighten spreads a
+   * clip's. At save() each rides on its clip, so trimming or ripple-deleting the clip in the editor carries it along. Returns the ids.
+   */
+  beside(clipIds: string | string[], o: { frame: Frame; crop?: CropIn; source?: string; offset?: number; track?: string }): string[] {
+    const ids = Array.isArray(clipIds) ? clipIds : [clipIds], what = `c.beside(${JSON.stringify(clipIds)})`;
+    if (!o?.frame) throw new Error(`${what}：要給 frame（這段第二個畫面放的框，例如 duoWindow('b', 參數)）`);
+    checkFrame(o.frame, what);
+    const track = o.track ?? 'v2', offset = o.offset ?? 0;
+    if (track === 'v1') throw new Error(`${what}：track 不能是主軌 v1（第二個畫面在自己的影片軌上，預設 v2）`);
+    const have = this.p.tracks.find((t) => t.id === track);
+    if (have && have.kind !== 'video') throw new Error(`${what}：${track} 是 ${have.kind} 軌，不是影片軌`);
+    if (o.source !== undefined) this.src(o.source);
+    const v1 = this.p.tracks.find((t) => t.id === 'v1')!.items as VideoItem[], times = resolveTimes(this.p);
+    const clips = ids.map((id) => { const c = v1.find((i) => i.id === id); if (!c) throw new Error(`${what}：主軌上沒有「${id}」`); return c; })
+      .sort((a, b) => times.get(a.id)!.start - times.get(b.id)!.start);
+    const move = cropOf(o.crop, what) ?? { from: STILL, to: STILL };
+    const total = clips.reduce((n, c) => n + (c.end - c.start), 0);
+    this.track(track, 'video', 'Beside', this.p.tracks.findIndex((t) => t.id === 'v1') + 1);
+    let acc = 0;
+    return clips.map((c) => {
+      const source = o.source ?? c.source, s = this.src(source), { start, end } = times.get(c.id)!, len = end - start;
+      const from = s.kind === 'image' ? 0 : r6(c.in + offset);
+      if (s.kind !== 'image' && (from < 0 || from + len * c.speed > s.duration + 1e-6))
+        throw new Error(`${what}：${source} 沒有 ${from.toFixed(2)}–${(from + len * c.speed).toFixed(2)} 秒（素材長 ${s.duration} 秒）；改 offset`);
+      const crop = clips.length > 1 && total > 0 && !(move as { keys?: unknown[] }).keys?.length ? { from: cropAt(move, acc / total, 1), to: cropAt(move, (acc + len) / total, 1) } : move;
+      acc += len;
+      return addItem(this.p, { track, item: { source, in: from, speed: c.speed, start: r6(start), end: r6(end), crop, frame: o.frame, ...(c.transitionIn ? { transitionIn: c.transitionIn } : {}) } });
+    });
+  }
+
   private text(type: string, at: number, len: number, params: Record<string, unknown>, parent?: string): string {
     const id = addItem(this.p, { track: 'text', item: { type, start: r6(at), end: r6(at + len), params, ...(parent ? { parent } : {}) } });
     if (!parent) this.bump(at + len);
     return id;
   }
   title(text: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) { const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.title', at as number, len as number, { text, ...rest }); }
-  caption(text: string, o: { at: number; len: number; [k: string]: unknown }) { const { at, len, ...rest } = o; return this.text('core.caption', at, len, { text, ...rest }); }
+  caption(text: string, o: { at: number; len: number; [k: string]: unknown }) {
+    const { at, len, ...rest } = o;
+    // c.caption makes a core.caption, which draws only its own params: a common.caption one (style: 'strip', name, gloss…) was dropped
+    // without a word and the film came out with the plain caption (2026-11-01). Say so; c.effect('common.caption', …) is the way.
+    const reg = createRegistry(plugins), keys = (type: string) => new Set(reg.item(type)?.params.map((p) => p.key) ?? []), own = keys('core.caption');
+    const odd = Object.keys(rest).filter((k) => !own.has(k));
+    if (odd.length) {
+      const common = keys('common.caption');
+      const theirs = odd.filter((k) => common.has(k));
+      this.notes.push(`c.caption('${text.slice(0, 20)}')：c.caption 放的是 core.caption，它沒有 ${odd.join('、')} 參數，畫面上不會有效果${theirs.length ? `；${theirs.join('、')} 是 common.caption 的參數，要用 c.effect('common.caption', { at, len, text, ${theirs.map((k) => `${k}: …`).join(', ')} })` : ''}`);
+    }
+    return this.text('core.caption', at, len, { text, ...rest });
+  }
   lowerThird(main: string, sub: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) {
     const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.lowerThird', at as number, len as number, { text: main, sub, ...rest });
   }

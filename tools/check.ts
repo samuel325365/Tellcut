@@ -5,9 +5,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseProject, resolveTimes, type Transcript } from '@tellcut/engine';
-import { analysisFiles, extrasFiles, findPreset, playerBuildStale, projectRegistry, readBurned, rebuildPlayer, readTranscript, TELLCUT_ROOT, type Burned } from '@tellcut/media-node';
+import { analysisFiles, extrasFiles, findPreset, loadProjectFx, playerBuildStale, projectRegistry, readBurned, rebuildPlayer, readTranscript, TELLCUT_ROOT, type Burned } from '@tellcut/media-node';
 import { edgeFindings } from './check/edges.ts';
-import { chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, type Finding } from './check/rules.ts';
+import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, type Finding } from './check/rules.ts';
 import { formatReport, isOffline, pageLayer, pageLayerSkip } from './check/report.ts';
 import { renderedChecks } from './check/page.ts';
 import { clipBars, letterboxFindings } from './check/letterbox.ts';
@@ -30,7 +30,11 @@ for (const [sid, s] of Object.entries(p.sources)) {
 const { registry, fx } = await projectRegistry(dir, plugins, p);
 // families the plugins bring along (npm run fonts downloads them) plus the one default that is a system font
 const knownFonts = [...new Set([...plugins.flatMap((pl) => pl.fonts ?? []).map((f) => (typeof f === 'string' ? f.split(':')[0] : f.family)), 'Consolas'])];
-const findings: Finding[] = [...fx.errors.map((e): Finding => ({ level: 'error', msg: `fx 載入失敗 ${e.path}：${e.message}` })), ...fx.warnings.map((w): Finding => ({ level: 'warn', msg: `fx ${w.path}：${w.message}` })), ...fxChecks(Object.fromEntries([...(p.meta.fx ?? []), ...projectStyleFiles(dir)].filter((f) => existsSync(join(dir, f))).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))), ...modelChecks(p, { exists: (path) => existsSync(resolve(dir, path)), transcripts, knownFonts }), ...outsideFiles(p, dir, TELLCUT_ROOT)];
+// the blocks of the fx modules that draw letters on a canvas: check cannot read those words, and says so instead of "no text"
+const readFx = (f: string) => { const path = resolve(dir, f); return existsSync(path) ? readFileSync(path, 'utf8') : null; };
+const canvasFx = canvasFxFiles(p.meta.fx ?? [], readFx);
+const canvasTypes = new Set(canvasFx.length ? ((await loadProjectFx(dir, canvasFx)).plugin.items ?? []).map((t) => t.type) : []);
+const findings: Finding[] = [...fx.errors.map((e): Finding => ({ level: 'error', msg: `fx 載入失敗 ${e.path}：${e.message}` })), ...fx.warnings.map((w): Finding => ({ level: 'warn', msg: `fx ${w.path}：${w.message}` })), ...fxChecks(Object.fromEntries([...(p.meta.fx ?? []), ...projectStyleFiles(dir)].filter((f) => existsSync(join(dir, f))).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))), ...modelChecks(p, { exists: (path) => existsSync(resolve(dir, path)), transcripts, knownFonts, params: (t) => registry.item(t)?.params, canvasText: (t) => canvasTypes.has(t) }), ...outsideFiles(p, dir, TELLCUT_ROOT)];
 // the length and ratio of the preset the project was made from (where the server reads presets from)
 const made = p.meta.preset && findPreset({ repo: join(TELLCUT_ROOT, 'guides', 'presets'), user: join(TELLCUT_ROOT, 'projects', '_presets') }, p.meta.preset.id);
 findings.push(...presetChecks(p, made ? chosenSpec({ id: made.id, name: made.name.zh ?? made.name.en ?? made.id, length: made.length, ratios: made.ratios }, p.meta.preset?.fields) : null));

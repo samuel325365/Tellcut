@@ -57,6 +57,28 @@ describe('Cut API from the sample films', () => {
     expect(() => c.lines(id, [['1:7x', 3, 'x']])).toThrow(/看不懂/);
   });
 
+  test('c.lines over a c.audio item (a J-cut voice): timed in the source, hung on the audio item, and the save keeps them', async () => {
+    const c = fresh();
+    c.clip('v', { from: 0, len: 4, sound: false });
+    const a = c.audio('v', { from: 5, len: 2, at: 1 });                          // source 5–7 at film 1–3
+    const [id] = c.lines(a, [[5.5, 6.5, '出發！']]);
+    const it = items(c, 'text').find((i) => i.id === id);
+    expect([it.parent, it.params.text, it.start, it.end]).toEqual([a, '出發！', 0.5, 1.5]);   // relative to the audio item
+    const saved = (await c.save()).tracks.find((t) => t.id === 'text')!.items as any[];
+    expect(saved.find((i) => i.id === id)?.parent).toBe(a);
+  });
+
+  test("c.caption makes a core.caption: a common.caption-only param (style: 'strip') is not dropped silently, the note names c.effect", () => {
+    const c = fresh();
+    c.caption('Hello', { at: 0, len: 1, size: 5, color: '#ff0' });                // core.caption's own params: no note
+    expect(c.notes).toEqual([]);
+    c.caption('Paper strip', { at: 1, len: 1, style: 'strip', wobble: 2 });
+    expect(c.notes).toHaveLength(1);
+    expect(c.notes[0]).toMatch(/core\.caption.*style、wobble/);
+    expect(c.notes[0]).toMatch(/style 是 common\.caption 的參數.*c\.effect\('common\.caption'/);
+    expect(c.notes[0]).not.toMatch(/wobble 是/);
+  });
+
   test('c.filmTime: where a source moment plays, over one clip or the pieces of one; outside them is an error', () => {
     const c = fresh(), a = c.clip('v', { from: 0, len: 2 }), b = c.clip('v', { from: 5, len: 2 });
     expect([c.filmTime([a, b], 5.5), c.filmTime([a, b], '0:01'), c.filmTime([a, b], 3)]).toEqual([2.5, 1, 2]);   // 3 s was left out: the next piece's start
