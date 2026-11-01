@@ -2,6 +2,10 @@
 // or slides in, can turn over to a hand-written back and can leave again; while it moves its window shows a still of the footage, and
 // once it has settled the window is a hole (window.ts) — the clip on the main track, whose `frame` is frameWindow(params), plays
 // through it. The postcard's mechanism (uk-postcard) made general.
+// The block is a scene, under the video, so that clip lies above it: while the frame is not settled (coming in, turning over or
+// showing its back, leaving) the object and the desk inside the window are lifted into the top container, above the clip, which
+// would otherwise play on in the window over the moving frame and over its back. (For those moments the object is above the text
+// items too: the top container is above every item.)
 import { abs, clamp, type Crop, cssCamel, eBack, eIO3, eOut3, type ItemType, prog, withDefaults } from '@tellcut/engine';
 import { drawTexts, handFamily, textLayer, type TextLayer } from './hand.ts';
 import { paintDesk } from './postcard.ts';
@@ -16,7 +20,11 @@ interface P {
   enter: Move; enterDur: number; exit: Move; exitDur: number; flipAt: number; flipDur: number; live: boolean;
   backdrop: 'none' | 'desk' | 'color'; bg: string; body: string; ink: string; font: string;
 }
-interface S { under: HTMLElement; bgCanvas: HTMLCanvasElement; bgKey: string; obj: HTMLElement; front: HTMLElement; body: HTMLCanvasElement; bodyKey: string; win: Win; cap: TextLayer; back: HTMLElement; backTxt: TextLayer; shade: HTMLElement }
+interface S {
+  under: HTMLElement; bgCanvas: HTMLCanvasElement; bgKey: string; obj: HTMLElement; front: HTMLElement; body: HTMLCanvasElement; bodyKey: string; win: Win; cap: TextLayer; back: HTMLElement; backTxt: TextLayer; shade: HTMLElement;
+  /** in ctx.top: the object while it is not settled, over `patch`, the desk inside the window */
+  lift: HTMLElement; patch: HTMLCanvasElement; patchKey: string;
+}
 
 /** the frame around the window, in window widths: left, top, right, bottom */
 export const FRAME_PADS: Record<Look, [number, number, number, number]> = {
@@ -125,12 +133,13 @@ export const frame: ItemType<P, S> = {
     for (const e of [front, back, shade]) cssCamel(e, { left: '0', top: '0', width: '100%', height: '100%' });
     cssCamel(body, { left: '0', top: '0', width: '100%', height: '100%' });
     cssCamel(shade, { background: 'rgb(30,18,8)', pointerEvents: 'none' });
-    const s: S = { under, bgCanvas, bgKey: '', obj, front, body, bodyKey: '', win, cap, back, backTxt, shade };
+    const lift = abs(ctx.top, { inset: '0', display: 'none' }), patch = abs(lift, {}, 'canvas') as HTMLCanvasElement;
+    const s: S = { under, bgCanvas, bgKey: '', obj, front, body, bodyKey: '', win, cap, back, backTxt, shade, lift, patch, patchKey: '' };
     frame.draw(ctx, s);   // starts loading the still now, so ready() can wait for it
     return s;
   },
   ready: (s) => imagesReady([s.win.img]),
-  hide(s) { freeCanvas(s.bgCanvas, s.body); s.bgKey = ''; s.bodyKey = ''; },
+  hide(s) { freeCanvas(s.bgCanvas, s.body, s.patch); s.bgKey = ''; s.bodyKey = ''; s.patchKey = ''; },
   draw(ctx, s) {
     const p = ctx.params, { W, H, local, dur } = ctx, b = frameBox(p, W, H), look = FRAME_PADS[p.look] ? p.look : 'polaroid', color = isClear(p.body) ? BODY[look] : p.body;
     const bgKey = `${p.backdrop}|${W}x${H}|${p.bg}`;
@@ -160,5 +169,19 @@ export const frame: ItemType<P, S> = {
       t0: p.flipAt + p.flipDur * 0.6 + i * 0.5, cps: 10 })), local, 1);
     cssCamel(s.shade, { opacity: String(0.22 * ps.lift), display: ps.lift > 0 ? 'block' : 'none' });
     punch(s.under, hole ? b.win : null);
+    // not settled with a clip in the window: the object above the clip, on the desk cut to the window (an edge-on or sliding
+    // frame leaves part of the window bare). Settled, it goes back under the video and the clip plays through the hole.
+    const cover = live && !ps.settled, host = cover ? s.lift : ctx.root, desk = cover && p.backdrop !== 'none';
+    if (s.obj.parentElement !== host) host.appendChild(s.obj);
+    cssCamel(s.lift, { display: cover ? 'block' : 'none' });
+    const patchKey = desk ? `${bgKey}|${b.win.map((v) => v.toFixed(2)).join(',')}` : '';
+    if (desk && s.patchKey !== patchKey) {
+      s.patchKey = patchKey;
+      s.patch.width = Math.max(1, Math.round(ww)); s.patch.height = Math.max(1, Math.round(wh));
+      const g = s.patch.getContext('2d')!;
+      if (p.backdrop === 'desk') { const k = s.bgCanvas.width / W; g.drawImage(s.bgCanvas, wx * k, wy * k, ww * k, wh * k, 0, 0, s.patch.width, s.patch.height); }
+      else { g.fillStyle = p.bg; g.fillRect(0, 0, s.patch.width, s.patch.height); }
+    }
+    cssCamel(s.patch, { display: desk ? 'block' : 'none', left: `${wx}px`, top: `${wy}px`, width: `${ww}px`, height: `${wh}px` });
   },
 };
