@@ -116,6 +116,21 @@ describe('narration and generated music', () => {
     expect(c.voiceCaptions(v, { type: 'fx.mycap' })).toHaveLength(1);
   });
 
+  test('voiceCaptions refuses a translation for a project fx whose file never mentions gloss; one that reads it, or imports, is trusted', async () => {
+    const c = fresh(), scenes = [{ id: 's1', text: 'Import the folder.', gloss: ['匯入資料夾'] }];
+    await withVoice(c, scenes);
+    writeFileSync(join(c.dir, 'narration.json'), JSON.stringify({ scenes }));
+    mkdirSync(join(c.dir, 'fx'), { recursive: true });
+    const fx = (name: string, body: string) => { writeFileSync(join(c.dir, 'fx', `${name}.js`), body); c.fx(`fx/${name}.js`); };
+    fx('plain', "export default [{ type: 'fx.plain', label: 'p', kind: 'overlay', params: [], build() {}, draw({ params }) { return params.text; } }];\n");
+    fx('bilingual', "export default [{ type: 'fx.bilingual', label: 'b', kind: 'overlay', params: [], build() {}, draw({ params }) { return params.text + params.gloss; } }];\n");
+    fx('shared', "import { line } from './lib/line.js';\nexport default [{ type: 'fx.shared', label: 's', kind: 'overlay', params: [], build() {}, draw: line }];\n");
+    const v = c.voice('s1');
+    expect(() => c.voiceCaptions(v, { type: 'fx.plain' })).toThrow(/fx\.plain 沒有 gloss 參數/);
+    expect(c.voiceCaptions(v, { type: 'fx.bilingual' })).toHaveLength(1);
+    expect(c.voiceCaptions(v, { type: 'fx.shared' })).toHaveLength(1);
+  });
+
   test('a scene is placed even when another scene’s gloss is wrong; the wrong one says what is wrong', async () => {
     const c = fresh(), scenes = [{ id: 's1', text: 'Hello.' }, { id: 's2', text: 'One, two.' }];
     await withVoice(c, scenes);

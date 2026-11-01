@@ -669,15 +669,23 @@ export class Cut {
     }
     return out;
   }
+  /** whether the project's own fx `type` certainly never reads `word`: the one c.fx() file that names the type, importing nothing,
+   *  does not have the word anywhere (false when that cannot be told) */
+  private fxNeverSays(type: string, word: string): boolean {
+    const files = (this.p.meta.fx ?? []).map((f) => join(this.dir, f)).filter((f) => existsSync(f)).map((f) => readFileSync(f, 'utf8'))
+      .filter((s) => [`'${type}'`, `"${type}"`, `\`${type}\``].some((q) => s.includes(q)));
+    return files.length === 1 && !/\bimport\b|\bexport\s*(?:\*|\{[^}]*\}\s*from)/.test(files[0]) && !files[0].includes(word);
+  }
   /** Captions from a narration scene's phrases (common.caption by default; other keys are its params). Each stays up until the next begins.
    *  A phrase with a translation (the scene's gloss) gets it under the line, at 0.75 of its size in the caption's own colour unless the params say otherwise. */
   voiceCaptions(v: VoicePlaced, o: { type?: string; [k: string]: unknown } = {}): string[] {
     const { type = 'common.caption', ...params } = o;
-    // a shared block without a gloss parameter would never draw the translation: say so rather than lose it (a project's own fx
-    // may read any param, so it is taken at its word)
+    // a block without a gloss parameter would never draw the translation: say so rather than lose it. A project's own fx may read
+    // a param it does not list, so it is only refused when its file (one c.fx() named, importing nothing) never says "gloss"
     const def = plugins.flatMap((p) => p.items ?? []).find((t) => t?.type === type);
-    if (def && v.phrases.some((ph) => ph.gloss !== undefined) && !def.params?.some((d) => d.key === 'gloss'))
-      throw new Error(`c.voiceCaptions：${type} 沒有 gloss 參數，這個場景的翻譯（narration.json 的 gloss）不會顯示；雙語字幕用 common.caption（style 選它的樣式），或拿掉 gloss`);
+    const deaf = def ? !def.params?.some((d) => d.key === 'gloss') : type.startsWith('fx.') && this.fxNeverSays(type, 'gloss');
+    if (deaf && v.phrases.some((ph) => ph.gloss !== undefined))
+      throw new Error(`c.voiceCaptions：${type} 沒有 gloss 參數，這個場景的翻譯（narration.json 的 gloss）不會顯示；雙語字幕用 common.caption（style 選它的樣式）${def ? '' : `、在 ${type} 裡畫出 params.gloss`}，或拿掉 gloss`);
     // the line's own colour: common.caption prints it in its ink on paper styles and in hl for big; left to the caption (its
     // default) when the params do not set that colour, except plain white, the colour of `color`
     const key = type === 'common.caption' ? lineColorKey(String(params.style ?? 'outline')) : 'color';
