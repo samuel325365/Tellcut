@@ -1,10 +1,11 @@
-// One export of a project at a time across servers on the same projects/ (export.ts exportLock). No Chrome: every export here
+// One export of a project at a time across servers on the same projects/ (media-node exports.ts exportLock). No Chrome: every export here
 // stops before rendering (a lock held elsewhere, or an offline source failing the prepare step).
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseProject } from '@tellcut/engine';
-import { EXPORT_ELSEWHERE, exportLock, runExport } from './export.ts';
+import { exportLock } from '@tellcut/media-node';
+import { EXPORT_ELSEWHERE, runExport } from './export.ts';
 import { demoProject, makeProjects, startApp } from './test-utils.ts';
 
 let root: string, demo: string, app: Awaited<ReturnType<typeof startApp>>['app'], base: string, other: ChildProcess;

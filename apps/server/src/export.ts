@@ -3,24 +3,21 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { Project, Registry } from '@tellcut/engine';
-import { listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, tryLock } from '@tellcut/media-node';
+import { exportLock, listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, tryExportLock } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import type { JobCtx, JobQueue } from './jobs.ts';
 import type { ProjectStore } from './projects.ts';
 
-/** The project's export lock: the job queue keeps one export at a time in this server only, and two servers on the same projects/
- *  rendered one project at once (twice the Chrome and ffmpeg, each cutting the same clips into cache/). Held for the whole job,
- *  across processes (media-node locks.ts, the same as a chat turn's): a second server says it is busy instead of waiting. */
-export const exportLock = (dir: string) => join(dir, 'cache', 'export.lock');
-export const EXPORT_ELSEWHERE = 'Another Tellcut server is exporting this project';
+/** cache/export.lock (media-node exports.ts), held for the whole job: another server or a command-line render exporting the
+ *  project makes this one say it is busy instead of waiting */
+export const EXPORT_ELSEWHERE = 'This project is being exported elsewhere (another Tellcut server, or npm run render)';
 
 const BodyZ = z.object({ from: z.number().min(0).optional(), to: z.number().positive().optional() }).strict();
 
 export async function runExport(o: { dir: string; id: string; project: Project; from?: number; to?: number; registry: Registry; ctx: JobCtx }) {
   const { dir, project, ctx } = o;
-  mkdirSync(join(dir, 'cache'), { recursive: true });
   // taken before anything is written (the export's .log name included): the POST's check can lose a race with the other server
-  const release = tryLock(exportLock(dir));
+  const release = tryExportLock(dir);
   if (!release) throw new Error(EXPORT_ELSEWHERE);
   try { return await exportLocked(o); } finally { release(); }
 }

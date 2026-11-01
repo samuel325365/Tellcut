@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { TELLCUT_ROOT } from '@tellcut/media-node';
+import { exportBusy, TELLCUT_ROOT } from '@tellcut/media-node';
 import { holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { projectArgOrExit } from '../project-arg.ts';
 
@@ -36,7 +36,11 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args) { console.error(USAGE); process.exit(2); }
   const { id, slots, extra } = args;
-  projectArgOrExit(id, USAGE);   // the server's spelling of it, before waiting for a slot (render.ts would refuse another)
+  const pdir = projectArgOrExit(id, USAGE);   // the server's spelling of it, before waiting for a slot (render.ts would refuse another)
+  // a project being exported elsewhere (a server, another render) is refused now, not after waiting for a slot (render.ts takes
+  // the lock itself and would refuse it then; prepare:project would have run beside that export meanwhile)
+  const busy = exportBusy(pdir);
+  if (busy) { console.error(busy); process.exit(2); }
   try { npmCommand([id, ...extra]); } catch (e) { console.error((e as Error).message); process.exit(2); }   // before taking a slot
   let slot: string | null = null, waited = 0;
   while (!(slot = takeSlot(LOCK_DIR, slots, id))) {

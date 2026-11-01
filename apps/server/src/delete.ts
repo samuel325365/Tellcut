@@ -4,12 +4,11 @@
 import { existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { isTerminal } from '@tellcut/protocol';
-import { lockHolder, PROJECT_ID } from '@tellcut/media-node';
+import { exportLock, lockHolder, PROJECT_ID } from '@tellcut/media-node';
 import { HttpError, sendJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
 import type { JobQueue } from './jobs.ts';
 import type { ChatRunner } from './chat/runner.ts';
-import { exportLock } from './export.ts';
 
 function files(dir: string, out: string[] = []): string[] {
   if (!existsSync(dir)) return out;

@@ -4,14 +4,23 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseProject } from '@tellcut/engine';
-import { nextExportBase, openPage, playerPath, prepareProject, projectRegistry, projectTarget, refreshCredits, renderVideo } from '@tellcut/media-node';
+import { exportBusy, nextExportBase, openPage, playerPath, prepareProject, projectRegistry, projectTarget, refreshCredits, renderVideo, tryExportLock } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { projectArgOrExit } from './project-arg.ts';
 export { TELLCUT_ROOT, openPage, playerPath, playerUrl, projectTarget, renderVideo, type PageSession } from '@tellcut/media-node';
 
+const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
+
 async function main() {
-  const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
   const projectId = arg('--project')!, pdir = projectArgOrExit(projectId, '用法：npx tsx tools/render.ts --project <專案> [--stills 1.5,3] [--from 秒 --to 秒]');
+  // the project's export lock, as the server's export takes it (it cuts the same clips into cache/): a server exporting this
+  // project, or another render of it, makes this one stop at once (stills too: their prepare step writes the same cache/)
+  const release = tryExportLock(pdir);
+  if (!release) { console.error(exportBusy(pdir) ?? '這個專案正在別處輸出：等它結束再輸出'); process.exit(2); }
+  try { await renderLocked(projectId, pdir); } finally { release(); }
+}
+
+async function renderLocked(projectId: string, pdir: string) {
   const outDir = join(pdir, 'output');
   const stills = arg('--stills');
   // the clips the film uses are cut into cache/ first (incremental: only what changed): render alone used to play missing clips black

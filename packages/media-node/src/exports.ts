@@ -2,6 +2,7 @@
 // command line alike, so the page lists them all; output/ keeps frames and stills only.
 import { closeSync, existsSync, mkdirSync, openSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { lockHolder, tryLock } from './locks.ts';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 export const exportStamp = (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
@@ -28,4 +29,24 @@ export function listExports(dir: string): Array<{ name: string; path: string; si
   return readdirSync(d).filter((f) => f.endsWith('.mp4') && !f.endsWith('.video.mp4'))
     .map((name) => { const st = statSync(join(d, name)); return { name, path: join(d, name), size: st.size, mtime: st.mtimeMs }; })
     .sort((a, b) => b.mtime - a.mtime);
+}
+
+/** projects/<id>/cache/export.lock: held for a whole export (prepare, frames, mix) by whatever exports the project, the server's
+ *  export job and `npm run render` / `batch:render` alike. A server's job queue keeps one export at a time in that process only:
+ *  two servers on the same projects/, or a server and the command line, rendered one project at once (twice the Chrome and
+ *  ffmpeg, each cutting the same clips into cache/). Across processes (locks.ts, the same as a chat turn's); the second one is
+ *  refused, it does not wait. */
+export const exportLock = (dir: string) => join(dir, 'cache', 'export.lock');
+
+/** the project's export lock, taken now and kept fresh until the returned release is called; null when another live process is
+ *  exporting the project */
+export function tryExportLock(dir: string): (() => void) | null {
+  mkdirSync(join(dir, 'cache'), { recursive: true });
+  return tryLock(exportLock(dir));
+}
+
+/** what a command line says when another process is exporting the project; null when none is */
+export function exportBusy(dir: string): string | null {
+  const h = lockHolder(exportLock(dir));
+  return h ? `這個專案正在別處輸出（Tellcut 伺服器或另一個 render${h.pid ? `，程序 ${h.pid}` : ''}）：等它結束再輸出` : null;
 }
