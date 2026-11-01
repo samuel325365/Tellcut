@@ -49,6 +49,13 @@ export function readStyle(root: string, slug: string): StyleEntry | null {
 export function writeBlockEntry(root: string, e: BlockEntry) { const { slug, ...rest } = e; writeJsonFile(join(blockDir(root, slug), 'entry.json'), rest); }
 export function writeStyleEntry(root: string, e: StyleEntry) { const { slug, ...rest } = e; checkSlug(slug); writeJsonFile(join(stylesDir(root), `${slug}.json`), rest); }
 
+/** fx/lib/links.json in a project: which entry (by slug) and version each copy of My blocks is (use.ts writes it) */
+export type CopyLinks = Record<string, { file: string; version: string; types: string[] }>;
+export const linksFile = (projectDir: string) => join(projectDir, 'fx', 'lib', 'links.json');
+export function readLinks(projectDir: string): CopyLinks {
+  try { const x = JSON.parse(readFileSync(linksFile(projectDir), 'utf8')); return x && typeof x === 'object' ? x : {}; } catch { return {}; }
+}
+
 const names = (dir: string, f: (n: string) => boolean) => { try { return readdirSync(dir).filter(f).sort(); } catch { return []; } };
 
 /** every entry, by slug; a folder that is not an entry (half written, edited by hand) is left out */

@@ -6,7 +6,7 @@ import { dirname, join, posix, relative, resolve, sep } from 'node:path';
 import { loadProjectFx, RELATIVE_IMPORT as IMPORT } from '../fx.ts';
 import { loadStyles, SCORE_LIBRARY } from '../score/local.ts';
 import { STYLES } from '../score/styles.ts';
-import { blockDir, blocksDir, dropBlockDir, LibraryError, listLibrary, lockedError, readBlock, removeStyleFiles, slugFor, stylesDir, swapDir, versionOf, writeBlockEntry, writeJsonFile, writeStyleEntry,
+import { blockDir, blocksDir, dropBlockDir, LibraryError, linksFile, listLibrary, lockedError, readBlock, readLinks, removeStyleFiles, slugFor, stylesDir, swapDir, versionOf, writeBlockEntry, writeJsonFile, writeStyleEntry,
   type BlockEntry, type LibraryFrom, type LibraryType, type StyleEntry } from './store.ts';
 
 export type OnConflict = 'replace' | 'keep-both';
@@ -87,6 +87,23 @@ function realModule(projectDir: string, file: string): string {
 const entryPathOf = (main: string) => { const pre = COPY_DIR.exec(main)?.[0]; return (f: string) => (pre && f.startsWith(pre) ? `fx/${f.slice(pre.length)}` : f); };
 
 const sameFrom = (a: LibraryFrom, b: LibraryFrom) => a.project === b.project && a.file === b.file;
+/** the entry `main` (a project file) is a copy of: one in fx/lib/<slug>/ that the project's links.json records, of an entry still in
+ *  the library that has a block of that copy (`ids`, or the ones recorded when it was copied); null for anything else */
+function copiedEntry(lib: BlockEntry[], projectDir: string, main: string, ids: string[]): BlockEntry | null {
+  const slug = COPY_DIR.exec(main)?.[0].slice('fx/lib/'.length, -1), link = slug ? readLinks(projectDir)[slug] : undefined;
+  const e = link && lib.find((x) => x.slug === slug);
+  return e && e.types.some((t) => ids.includes(t.type) || (link.types ?? []).includes(t.type)) ? e : null;
+}
+/** a project's copy of entry `slug` made current after it was saved over that entry: the stamps on its saved modules (and on its
+ *  _entry.js re-export) moved to the new version and its link too, as a fresh copy of that version would have them, so the project
+ *  that saved it does not see its own copy as one to update; the files are already the entry's */
+function restampCopy(projectDir: string, slug: string, saved: string[], main: string, version: string, types: string[]) {
+  const pre = `fx/lib/${slug}/`;
+  for (const f of saved) if (f.startsWith(pre) && JS.test(f)) writeFileSync(join(projectDir, f), stampImports(readFileSync(join(projectDir, f), 'utf8'), version));
+  writeFileSync(join(projectDir, pre, COPY_ENTRY), copyEntryModule(main.slice(pre.length), version));
+  const links = readLinks(projectDir);
+  writeJsonFile(linksFile(projectDir), { ...links, [slug]: { ...links[slug], file: `${pre}${COPY_ENTRY}`, version, types } });
+}
 const projectMeta = (dir: string): { theme?: unknown } => { try { return JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).meta ?? {}; } catch { return {}; } };
 /** an id not in `taken`: x-2, x-3… */
 const freeId = (id: string, taken: Set<string>) => { for (let i = 2; ; i++) if (!taken.has(`${id}-${i}`)) return `${id}-${i}`; };
@@ -98,11 +115,14 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
   if (!items.length) throw new LibraryError('library.noBlocks', `${i.file} 裡沒有積木`, { file: i.file });
   const main = realModule(i.projectDir, i.file), { files: found, skipped } = collectFiles(i.projectDir, main), at = entryPathOf(main), copy = COPY_DIR.exec(main)?.[0];
   const files = found.map(at);
-  const from: LibraryFrom = { project: i.projectId, file: i.file };
   const lib = listLibrary(i.root), ids = items.map((t) => t.type);
   // the same file saved again (edited since, even with its type ids renamed: matched by where it came from, not by its ids) is an
-  // update; anything else the user decides
-  const mine = lib.blocks.find((e) => sameFrom(e.from, from));
+  // update, and so is a project's copy of an entry saved back (the entry it is a copy of, whichever project the entry came from);
+  // anything else the user decides. An update keeps the entry's `from`: where it was first saved, which is how a later save from that
+  // project is still known as its update (a copy's save once took it over, and the source project's next save was a conflict)
+  const base = copiedEntry(lib.blocks, i.projectDir, main, ids);
+  const mine = base ?? lib.blocks.find((e) => sameFrom(e.from, { project: i.projectId, file: i.file }));
+  const from: LibraryFrom = mine?.from ?? { project: i.projectId, file: i.file };
   const others = lib.blocks.filter((e) => e !== mine && e.types.some((t) => ids.includes(t.type))), hit = mine ? [mine, ...others] : others;
   const renames = new Map<string, string>();
   let slug = mine?.slug, drop = mine ? [mine] : [];
@@ -114,10 +134,11 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
       for (const x of ids) if (others.some((e) => e.types.some((t) => t.type === x))) { const to = freeId(x, taken); taken.add(to); renames.set(x, to); }
     }
   }
+  // a card the entry it updates already has keeps the name, description and category the user gave it, unless new ones are given
   const types: LibraryType[] = items.map((t) => {
-    const n = i.names?.[t.type] ?? {}, type = renames.get(t.type) ?? t.type;
-    const category = n.category ?? t.category;
-    return { type, name: n.name?.trim() || t.label, desc: (n.desc ?? t.doc ?? '').trim(), ...(category ? { category } : {}) };
+    const n = i.names?.[t.type] ?? {}, type = renames.get(t.type) ?? t.type, had = mine?.types.find((x) => x.type === type);
+    const category = n.category ?? had?.category ?? t.category;
+    return { type, name: n.name?.trim() || had?.name || t.label, desc: (n.desc ?? had?.desc ?? t.doc ?? '').trim(), ...(category ? { category } : {}) };
   });
   const taken = new Set(lib.blocks.filter((e) => !drop.includes(e)).map((e) => e.slug));
   slug ??= slugFor(types[0].name, types[0].type.replace(/^fx\./, ''), taken);
@@ -137,13 +158,16 @@ export async function saveBlock(i: SaveBlockInput): Promise<SaveResult> {
       if (!one || k < 0) throw new LibraryError('library.renameFailed', `${x} 在程式裡出現不只一次，沒辦法自動改名`, { type: x });
       writeFileSync(join(stage, fx[k]), at[k]!);
     }
+    // a copy's save keeps the theme its entry has (that of the project in `from`), as it keeps `from`
+    const theme = base ? base.theme : projectMeta(i.projectDir).theme;
     const entry: BlockEntry = { slug, types, main: at(main), files, from, savedAt: new Date().toISOString(), version: versionOf(stage, files),
-      ...(projectMeta(i.projectDir).theme ? { theme: projectMeta(i.projectDir).theme } : {}) };
+      ...(theme ? { theme } : {}) };
     // the entry is complete in its folder before it goes in place; the one it replaces is removed only after (final review I3)
     const { slug: _s, ...rest } = entry;
     writeJsonFile(join(stage, 'entry.json'), rest);
     swapDir(stage, blockDir(i.root, slug));
     for (const e of drop) if (e.slug !== slug) dropBlockDir(i.root, e.slug);
+    if (base && copy) restampCopy(i.projectDir, slug, found, main, entry.version, types.map((t) => t.type));
     return { entry: readBlock(i.root, slug)!, skipped };
   } finally { rmSync(stage, { recursive: true, force: true }); }
 }
@@ -208,8 +232,9 @@ export async function previewBlock(i: SaveBlockInput & { type?: string }): Promi
   const loaded = await loadProjectFx(i.projectDir, [i.file]);
   if (loaded.errors.length) throw new LibraryError('library.loadFailed', `${i.file} 載入失敗：${loaded.errors[0].message}`, { file: i.file });
   const ids = (loaded.plugin.items ?? []).map((t) => t.type), { files, skipped } = collectFiles(i.projectDir, i.file);
-  const from: LibraryFrom = { project: i.projectId, file: i.file };
-  const hit = listLibrary(i.root).blocks.find((e) => !sameFrom(e.from, from) && e.types.some((t) => ids.includes(t.type)));
+  const from: LibraryFrom = { project: i.projectId, file: i.file }, lib = listLibrary(i.root).blocks;
+  const base = copiedEntry(lib, i.projectDir, realModule(i.projectDir, i.file), ids);   // saveBlock's update of the entry it is a copy of
+  const hit = lib.find((e) => e !== base && !sameFrom(e.from, from) && e.types.some((t) => ids.includes(t.type)));
   return { files, skipped, group: ids.filter((x) => x !== i.type),
     conflict: hit ? { slug: hit.slug, name: hit.types[0]?.name ?? hit.slug, types: ids.filter((x) => hit.types.some((t) => t.type === x)) } : null };
 }

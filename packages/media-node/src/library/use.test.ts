@@ -3,8 +3,8 @@ import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'nod
 import { loadProjectFx } from '../fx.ts';
 import { join } from 'node:path';
 import { fxModule, makeProject, tempProjects } from './fixture.ts';
-import { saveBlock, saveStyle, stampImports, unstampImports } from './save.ts';
-import { libraryRoot, removeBlock } from './store.ts';
+import { previewBlock, saveBlock, saveStyle, stampImports, unstampImports } from './save.ts';
+import { libraryRoot, listLibrary, removeBlock } from './store.ts';
 import { projectLinks, useBlock, useStyle } from './use.ts';
 
 async function saved(o: { otherFont?: boolean } = {}) {
@@ -105,6 +105,38 @@ test('saving a copy from My blocks does not nest, and using it again keeps meta.
   expect((await loadProjectFx(p2, [copy.file])).errors).toEqual([]);
   expect(existsSync(join(p2, 'fx/lib/chalk-title/lib'))).toBe(false);
   expect(readFileSync(join(root, 'blocks', slug, 'fx/chalk.js'), 'utf8')).toContain("from './util.js';");   // the copy's stamps stay out of the library
+});
+
+test('a project’s copy saved again updates its entry: same entry and origin, that copy current, other copies may update, no conflicts', async () => {
+  const { projects, root, p1, p2, slug } = await saved();
+  await saveBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/chalk.js', names: { 'fx.chalk-title': { name: '粉筆標題卡' } } });
+  const v1 = listLibrary(root).blocks[0].version;
+  const p3 = makeProject(projects, 'p3', { fx: fxModule(['fx.p3']) });
+  const copy = await useBlock({ root, projectDir: p2, projectId: 'p2', slug, fx: [] });
+  await useBlock({ root, projectDir: p3, projectId: 'p3', slug, fx: [] });
+  const mod = join(p2, `fx/lib/${slug}/chalk.js`);
+  writeFileSync(mod, readFileSync(mod, 'utf8') + '// edited in p2\n');
+  expect((await previewBlock({ root, projectDir: p2, projectId: 'p2', file: copy.file })).conflict).toBeNull();
+  const r = await saveBlock({ root, projectDir: p2, projectId: 'p2', file: copy.file });   // no --replace: nothing to ask
+  if (!('entry' in r)) throw new Error(`conflict ${JSON.stringify(r)}`);
+  expect(listLibrary(root).blocks.map((e) => e.slug)).toEqual([slug]);
+  expect(r.entry.slug).toBe(slug);
+  expect(r.entry.from).toEqual({ project: 'p1', file: 'fx/chalk.js' });   // where it was first saved
+  expect(r.entry.types[0].name).toBe('粉筆標題卡');                         // the name the user gave it
+  expect(r.entry.version).not.toBe(v1);
+  expect(readFileSync(join(root, 'blocks', slug, 'fx/chalk.js'), 'utf8')).toContain('// edited in p2');
+  // the copy that was saved is the entry's version now (stamps included), the other one sees an ordinary update
+  expect(projectLinks(root, p2)).toEqual([expect.objectContaining({ slug, version: r.entry.version, latest: r.entry.version })]);
+  expect(readFileSync(mod, 'utf8')).toContain(`?lib=${r.entry.version}'`);
+  expect(readFileSync(join(p2, copy.file), 'utf8')).toContain(`?lib=${r.entry.version}'`);
+  expect((await loadProjectFx(p2, [copy.file])).errors).toEqual([]);
+  expect(projectLinks(root, p3)).toEqual([expect.objectContaining({ slug, version: v1, latest: r.entry.version })]);
+  // the project it came from saves its own file again: an update of the same entry, not a conflict
+  expect((await previewBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/chalk.js' })).conflict).toBeNull();
+  const back = await saveBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/chalk.js' });
+  if (!('entry' in back)) throw new Error(`conflict ${JSON.stringify(back)}`);
+  expect(back.entry.slug).toBe(slug);
+  expect(listLibrary(root).blocks).toHaveLength(1);
 });
 
 test('an Update loads afresh in the same process, its helper modules too (no stale module cache)', async () => {

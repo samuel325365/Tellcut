@@ -7,17 +7,11 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { loadProjectFx } from '../fx.ts';
-import { blockDir, LibraryError, readBlock, readStyle, SLUG, stylesDir, swapDir, writeJsonFile } from './store.ts';
+import { blockDir, LibraryError, linksFile, readBlock, readLinks, readStyle, SLUG, stylesDir, swapDir, writeJsonFile } from './store.ts';
 import { COPY_ENTRY, copyEntryModule, stampImports } from './save.ts';
 
 export interface UseResult { file: string; types: string[]; copied: string[] }
 export interface ProjectLink { slug: string; file: string; types: string[]; version: string; latest: string | null }
-type Links = Record<string, { file: string; version: string; types: string[] }>;
-
-const linksFile = (projectDir: string) => join(projectDir, 'fx', 'lib', 'links.json');
-function readLinks(projectDir: string): Links {
-  try { const x = JSON.parse(readFileSync(linksFile(projectDir), 'utf8')); return x && typeof x === 'object' ? x : {}; } catch { return {}; }
-}
 const same = (a: string, b: string) => readFileSync(a).equals(readFileSync(b));
 
 export async function useBlock(o: { root: string; projectDir: string; projectId: string; slug: string; fx?: string[] }): Promise<UseResult> {
