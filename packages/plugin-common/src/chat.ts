@@ -8,11 +8,16 @@
 //   message on the same side or the second time), photo, video, album, link, voice, sticker (the content big, no bubble).
 //   extras: src=素材 t=秒 t2=秒 (the poster after play) crop=x,y,zoom ratio=4:5 w=0.66 (of the screen width) dur=0:12 mute tag=字
 //   play=秒-秒 (a video: the main-track clip plays through a hole in the bubble — frame: chatWindow(…); a voice: its wave fills)
+//   open=秒-秒 (a video or photo bubble grows to the whole frame and back: the block draws the main-track clip under it in the growing
+//   window, so the clip keeps its frame: chatWindow(…); open=秒 stays open to the item's end)
 //   pics=src@t,src@t,- labels=a,b (album) sub= button= badge= press=秒 (link) read=秒 / unread (me) when=time name= avatar= color= icon=
+// `since` continues a conversation in a second item: the same items, on their own clock from that second, what came before already
+// there (no pop-in, scrolled), a played video showing its t2= poster.
 // New messages pop in at the bottom and push the conversation up; the input bar types and deletes (`inputs`); the wallpaper changes
 // colour with `wall`. Only time and the parameters decide what shows: bubble heights come from the lines the block wraps itself.
 // On 9:16 the screen is the frame; on a wide or square frame it is a phone in the middle (phone.ts), the clip then takes chatWindow.
-import { clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, esc, fitLines, h, rng, textEm, withDefaults, type Crop, type ItemType, type MediaApi, type Theme } from '@tellcut/engine';
+import { activeAt, clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, esc, fitLines, h, resolveTimes, rng, textEm, videoRefOf, videoState, withDefaults,
+  type Crop, type ItemCtx, type ItemType, type MediaApi, type Project, type Theme, type Times, type VideoItem } from '@tellcut/engine';
 import { standIn } from './album.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
 import { avatarEl, caretOn, DEVICES, drawAvatar, drawStatusBar, drawType, glyphSvg, parseSteps, phoneEls, phoneView, placePhone, statusBarEl, timeSpan, typedSpan, typeEl,
@@ -28,6 +33,8 @@ export interface Pic { src: string; t: number }
 export interface ChatMsg {
   i: number; at: number; end: number; who: Who; kind: MsgKind; text: string; name: string; avatar: string; color: string; head: boolean;
   src: string; t: number; t2: number; crop: Crop; aspect: number; w: number; dur: string; mute: boolean; tag: string; play: [number, number] | null;
+  /** open=: [from, to] on the items' clock, to = Infinity for open=秒 */
+  open: [number, number] | null;
   pics: Pic[]; labels: string[]; sub: string; button: string; badge: string; press: number; read: number; when: string; icon: string;
 }
 const WHO: Record<string, Who> = { me: 'me', 我: 'me', self: 'me', them: 'them', other: 'them', 對方: 'them', sys: 'sys', system: 'sys', 系統: 'sys', ch: 'ch', chapter: 'ch', 章節: 'ch' };
@@ -51,7 +58,7 @@ export function parseChat(text: string): ChatMsg[] {
     if (!span) continue;
     const known = WHO[who0.toLowerCase()];
     const m: ChatMsg = { i: out.length, at: span[0], end: span[1] ?? Infinity, who: known ?? 'them', kind: 'text', text: body, name: known ? '' : who0, avatar: '', color: '', head: false,
-      src: '', t: 0, t2: NaN, crop: { x: 0.5, y: 0.5, zoom: 1 }, aspect: NaN, w: 0, dur: '', mute: false, tag: '', play: null,
+      src: '', t: 0, t2: NaN, crop: { x: 0.5, y: 0.5, zoom: 1 }, aspect: NaN, w: 0, dur: '', mute: false, tag: '', play: null, open: null,
       pics: [], labels: [], sub: '', button: '', badge: '', press: -1, read: NaN, when: '', icon: '' };
     for (const e of extra) {
       const i = e.indexOf('='), key = (i < 0 ? e : e.slice(0, i)).trim(), v = i < 0 ? '' : e.slice(i + 1).trim();
@@ -71,6 +78,7 @@ export function parseChat(text: string): ChatMsg[] {
         case 'mute': m.mute = i < 0 || !/^(0|false|no)$/i.test(v); break;
         case 'tag': m.tag = v; break;
         case 'play': { const s = timeSpan(v); m.play = s && s[1] !== undefined && s[1] > s[0] ? [s[0], s[1]] : null; break; }
+        case 'open': { const s = timeSpan(v); m.open = s && (s[1] === undefined || s[1] > s[0]) ? [s[0], s[1] ?? Infinity] : null; break; }
         case 'pics': m.pics = list(v).filter(Boolean).map(picOf); break;
         case 'labels': m.labels = list(v); break;
         case 'sub': m.sub = v; break;
@@ -145,8 +153,10 @@ export interface Place { i: number; y: number; enter: number }
 /** The conversation at t: every message on screen with its slot's top (design px from the top of the message area) and how far it has
  *  popped in (0→1 over 0.28 s; one at a negative time is there from the start). Messages are stacked from the top in the order they
  *  arrive; once they pass the bottom the whole conversation scrolls up so the newest one sits on the bottom edge. Each change (a
- *  message in, the dots gone) moves things to their new place over `move` s. */
-export function chatPlace(msgs: ChatMsg[], slots: number[], t: number, areaH: number, move = 0.32): { pos: Place[]; scroll: number } {
+ *  message in, the dots gone) moves things to their new place over `move` s. `since` > 0 (a continued conversation): what changed
+ *  before it is already in place and what arrived before it has popped in. */
+export function chatPlace(msgs: ChatMsg[], slots: number[], t: number, areaH: number, move = 0.32, since = 0): { pos: Place[]; scroll: number } {
+  const done = (tk: number) => since > 0 && tk < since;
   const on = (m: ChatMsg, tk: number) => m.at <= tk && !(m.end <= tk);
   const times = [...new Set(msgs.flatMap((m) => [m.at, m.end]).filter((v) => Number.isFinite(v)))].sort((a, b) => a - b).filter((tk) => tk <= t);
   let scroll = 0, prevS: number | null = null;
@@ -156,12 +166,12 @@ export function chatPlace(msgs: ChatMsg[], slots: number[], t: number, areaH: nu
     let y = PAD_TOP;
     const pos = new Map<number, number>();
     for (const m of vis) { pos.set(m.i, y); y += slots[m.i] + GAP; }
-    const S = Math.max(0, (vis.length ? y - GAP + PAD_BOT : 0) - areaH), e = eOut3(clamp((t - tk) / move));
+    const S = Math.max(0, (vis.length ? y - GAP + PAD_BOT : 0) - areaH), e = done(tk) ? 1 : eOut3(clamp((t - tk) / move));
     scroll = prevS == null ? S : scroll + (S - prevS) * e;
     prevS = S;
     for (const [i, yy] of pos) { const l = last.get(i); ys.set(i, l == null ? yy : ys.get(i)! + (yy - l) * e); last.set(i, yy); }
   }
-  const pos = msgs.filter((m) => on(m, t)).map((m) => ({ i: m.i, y: (ys.get(m.i) ?? PAD_TOP) - scroll, enter: m.at < 0 ? 1 : (t - m.at) / 0.28 }));
+  const pos = msgs.filter((m) => on(m, t)).map((m) => ({ i: m.i, y: (ys.get(m.i) ?? PAD_TOP) - scroll, enter: m.at < 0 || done(m.at) ? 1 : (t - m.at) / 0.28 }));
   return { pos, scroll };
 }
 
@@ -172,40 +182,79 @@ export const emojiList = (s: string) => String(s ?? '').split(/[\s,，]+/).filte
 const leadEmoji = (s: string) => String(s ?? '').match(/^\s*(\p{Extended_Pictographic}️?)/u)?.[1] ?? '';
 
 /** The screen and the bands on it, in design px: the message area between the header (or the pinned bar) and the input bar. */
-export function chatGeometry(p: Pick<P, 'items' | 'pin' | 'panel' | 'device' | 'px'>, W: number, H: number, safe: Theme['safe']) {
+export function chatGeometry(p: Pick<P, 'items' | 'pin' | 'panel' | 'device' | 'px'> & Partial<Pick<P, 'since' | 'openTime'>>, W: number, H: number, safe: Theme['safe']) {
   const { sc, k, Hd } = phoneView(W, H, safe, p);
   const msgs = parseChat(p.items), boxes = msgs.map(msgBox), chapters = msgs.filter((m) => m.who === 'ch');
   const pinH = p.pin ? (chapters.length ? 156 : 96) : 0, panel = emojiList(p.panel).length > 0;
   const areaTop = pinH ? PIN_Y + pinH + 14 : HEAD + 6;
   const inputTop = sc.full ? Math.min(Hd - INPUT_H - 36, (1 - safe.bottom) * Hd) : panel ? 0.8 * Hd : Hd - INPUT_H - 36;
-  return { sc, k, Hd, msgs, boxes, chapters, pinH, panel, areaTop, areaBot: inputTop - 10, inputTop };
+  return { sc, k, Hd, msgs, boxes, chapters, pinH, panel, areaTop, areaBot: inputTop - 10, inputTop, W, H, since: Math.max(0, Number(p.since) || 0), openTime: Number(p.openTime) || 0.45 };
 }
 type Geo = ReturnType<typeof chatGeometry>;
 /** message i's bubble at t in design px of the screen ([x, y, w, h]), null when it is not on screen */
 export function bubbleAt(G: Geo, i: number, t: number): [number, number, number, number] | null {
-  const q = chatPlace(G.msgs, G.boxes.map((b) => b.slot), t, G.areaBot - G.areaTop).pos.find((x) => x.i === i), b = G.boxes[i];
+  const q = chatPlace(G.msgs, G.boxes.map((b) => b.slot), t, G.areaBot - G.areaTop, 0.32, G.since).pos.find((x) => x.i === i), b = G.boxes[i];
   return q && b ? [b.x, G.areaTop + q.y + b.off, b.w, b.h] : null;
+}
+/** how far message m is opened to the whole frame at t (0 in its bubble … 1 full): open=a-b grows over the first `dur` s from a and
+ *  shrinks back over the last `dur` s before b (a short span: half each way), eased in and out; open=a stays open */
+export function openAt(m: ChatMsg | undefined, t: number, dur = 0.45): number {
+  if (!m?.open || (m.kind !== 'video' && m.kind !== 'photo')) return 0;
+  const [a, b] = m.open, d = Math.max(1e-3, Math.min(dur, (b - a) / 2));
+  return t < a || t >= b ? 0 : eIO3(clamp(Math.min((t - a) / d, (b - t) / d)));
+}
+/** message i's window at t in px of the frame ([x, y, w, h]) and how open it is: the bubble's rect, eased towards the whole frame
+ *  while open= runs; null when it is not on screen */
+export function openRect(G: Geo, i: number, t: number): { rect: [number, number, number, number]; open: number } | null {
+  const r = bubbleAt(G, i, t);
+  if (!r) return null;
+  const { sc, k, W, H } = G, e = openAt(G.msgs[i], t, G.openTime), b = [sc.x + r[0] * k, sc.y + r[1] * k, r[2] * k, r[3] * k];
+  const to = [0, 0, W, H];
+  return { rect: b.map((v, j) => v + (to[j] - v) * e) as [number, number, number, number], open: e };
 }
 const geoOf = (params: Record<string, unknown>, W: number, H: number, safe?: Partial<Theme['safe']>) =>
   chatGeometry(withDefaults(chat.params, params) as P, W, H, { ...defaultSafe(W, H), ...safe });
 
 /** Where message i's bubble is on a W×H frame (fractions, a clip's `frame`): a video message's window for the main-track clip that plays in
  *  it — at the start of its play= span unless `t` is given (keep new messages from arriving while it plays, or the bubble moves off the
- *  clip). i counts every line of items from 0. null when that message is not on screen then. */
+ *  clip). While its open= runs, the growing window at t (the block draws the clip there itself; the clip keeps the bubble's frame).
+ *  t is on the items' clock (with since, the item's own time + since). i counts every line of items from 0. null when that message is
+ *  not on screen then. */
 export function chatWindow(params: Record<string, unknown>, i: number, W = 1080, H = 1920, o: { t?: number; safe?: Partial<Theme['safe']> } = {}) {
   const G = geoOf(params, W, H, o.safe), m = G.msgs[i];
   if (!m) return null;
-  const r = bubbleAt(G, i, o.t ?? (m.play ? m.play[0] : m.at + 1));
-  if (!r) return null;
-  const { sc, k } = G;
-  return asFrame([sc.x + r[0] * k, sc.y + r[1] * k, r[2] * k, r[3] * k], W, H);
+  const r = openRect(G, i, o.t ?? (m.play ? m.play[0] : m.at + 1));
+  return r ? asFrame(r.rect, W, H) : null;
 }
-/** the middle of message i's bubble at t as fractions of the frame (common.touch's tap), null when it is not on screen */
+/** the middle of message i's bubble (or its opened window) at t (the items' clock) as fractions of the frame (common.touch's tap),
+ *  null when it is not on screen */
 export function chatPoint(params: Record<string, unknown>, i: number, t: number, W = 1080, H = 1920, safe?: Partial<Theme['safe']>) {
-  const G = geoOf(params, W, H, safe), r = bubbleAt(G, i, t);
+  const r = openRect(geoOf(params, W, H, safe), i, t);
   if (!r) return null;
-  const f = (v: number) => Math.round(v * 1e4) / 1e4, { sc, k } = G;
-  return { x: f((sc.x + (r[0] + r[2] / 2) * k) / W), y: f((sc.y + (r[1] + r[3] / 2) * k) / H) };
+  const f = (v: number) => Math.round(v * 1e4) / 1e4, [x, y, w, hh] = r.rect;
+  return { x: f((x + w / 2) / W), y: f((y + hh / 2) / H) };
+}
+
+// ---------------------------------------------------------------- the clip a bubble opens
+const timesOf = new WeakMap<Project, Times>();
+/** The main-track clip showing in a bubble at film time t: an active clip on a video track whose frame is the bubble's window `win`
+ *  (fractions, as chatWindow gave it), else one about that size whose middle is inside it. The last track's wins, as on the stage. */
+export function clipIn(project: Project, t: number, win: number[]): { item: VideoItem; start: number; end: number } | null {
+  let times = timesOf.get(project);
+  if (!times) { times = resolveTimes(project); timesOf.set(project, times); }
+  type Hit = { item: VideoItem; start: number; end: number };
+  let same: Hit | null = null, near: Hit | null = null;
+  for (const tr of project.tracks) {
+    if (tr.kind !== 'video' || tr.muted) continue;
+    for (const it of tr.items) {
+      const tm = times.get(it.id);
+      if (!tm || !activeAt(tm, t)) continue;
+      const f = it.frame, cx = f[0] + f[2] / 2, cy = f[1] + f[3] / 2;
+      if (f.every((v, j) => Math.abs(v - win[j]) < 0.004)) same = { item: it, ...tm };
+      else if (cx >= win[0] && cx <= win[0] + win[2] && cy >= win[1] && cy <= win[1] + win[3] && f[2] < win[2] * 1.3 && f[3] < win[3] * 1.3) near = { item: it, ...tm };
+    }
+  }
+  return same ?? near;
 }
 
 /** the wallpaper's two colours at t from "秒|#上|#下" keys, eased from one key to the next */
@@ -253,13 +302,17 @@ const svgIn = (el: HTMLElement, svg: string) => { if (el.dataset.k !== svg) { el
 interface P {
   items: string; name: string; status: string; avatar: string; avatarColor: string; time: string; battery: number;
   pin: string; pinIcon: string; read: string; readAfter: number; hint: string; inputs: string; panel: string; wall: string; pattern: boolean;
+  since: number; openTime: number; openDim: number;
   device: Device; px: number; font: string; round: string; me: string; meInk: string; them: string; themInk: string; accent: string; bar: string; ink: string;
 }
 interface MsgEl {
   box: HTMLElement; av: HTMLElement | null; bub: HTMLElement; read: HTMLElement | null; dots: HTMLElement[]; wins: Win[]; play: HTMLElement | null;
   bars: HTMLElement[]; knob: HTMLElement | null; sticker: HTMLElement | null; sizes: Array<[number, number]>;
 }
+/** the window a bubble opens into: the dimmed chat behind, the growing rounded box with the clip (or the bubble's still) */
+interface OpenEls { root: HTMLElement; dim: HTMLElement; box: HTMLElement; vid: HTMLElement; win: Win }
 interface S {
+  open: OpenEls;
   ph: PhoneEls; ui: HTMLElement; wall: HTMLElement; area: HTMLElement; msgEls: MsgEl[]; key: string; G: Geo | null;
   head: HTMLElement; back: HTMLElement; hAv: HTMLElement; hName: HTMLElement; hStatus: HTMLElement; hIcons: HTMLElement[]; sb: StatusBar;
   pin: HTMLElement; pinIcon: HTMLElement; pinTitle: HTMLElement; pinTrack: HTMLElement; pinFill: HTMLElement; pinDots: HTMLElement[];
@@ -399,11 +452,45 @@ function buildMsg(parent: HTMLElement, m: ChatMsg, b: MsgBox, p: P, k: number, m
   return el;
 }
 
+interface Opening { m: ChatMsg; e: number; bub: [number, number, number, number]; after: boolean }
+/** A bubble opened `e` of the way to the whole frame: the chat behind dims, a rounded box grows from the bubble's rect (its corners
+ *  squaring as it lands) and shows the main-track clip that plays in that bubble (the clip itself stays in the bubble's frame, under
+ *  the box), with the clip's own crop, grade and time; without one (a photo, no footage), the bubble's still. */
+function drawOpen(ctx: ItemCtx<P>, o: OpenEls, G: Geo, op: Opening | null) {
+  if (!op) { cssCamel(o.root, { display: 'none' }); return; }
+  const { W, H, media, project } = ctx, { m, e, bub, after } = op, k = G.k;
+  const [x, y, w, hh] = bub.map((v, j) => v + ([0, 0, W, H][j] - v) * e);
+  cssCamel(o.root, { display: 'block' });
+  cssCamel(o.dim, { opacity: (ctx.params.openDim * Math.min(1, e * 1.6)).toFixed(3) });
+  cssCamel(o.box, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${hh}px`, borderRadius: `${(MEDIA_R * k * (1 - e)).toFixed(2)}px`,
+    boxShadow: e < 1 ? `0 0 ${(40 * k * (1 - e)).toFixed(1)}px rgba(0,0,0,0.45)` : 'none' });
+  const frac = (r: number[]) => [r[0] / W, r[1] / H, r[2] / W, r[3] / H];
+  let clip = m.kind === 'video' && project ? clipIn(project, ctx.t, frac(bub)) : null;
+  if (!clip && m.kind === 'video' && project && m.play) {
+    const r0 = bubbleAt(G, m.i, m.play[0]), { sc } = G;
+    if (r0) clip = clipIn(project, ctx.t, frac([sc.x + r0[0] * k, sc.y + r0[1] * k, r0[2] * k, r0[3] * k]));
+  }
+  const src = clip ? project.sources[clip.item.source] : undefined;
+  if (clip && src && src.kind !== 'image') {
+    const vs = videoState(clip.item, clip.start, clip.end, ctx.t, W, H, ctx.grades ?? {});
+    const v = media.video(videoRefOf(clip.item, clip.start, clip.end), o.vid, vs.mediaLocal, vs.held);
+    media.place(v, w, hh, vs.crop, src.width, src.height);
+    cssCamel(o.vid, { display: 'block', filter: vs.filter, opacity: vs.opacity.toFixed(3) });
+    cssCamel(o.win.box, { display: 'none' });
+    return;
+  }
+  cssCamel(o.vid, { display: 'none' });
+  cssCamel(o.win.ph, { background: standIn(m.i) });
+  const still: Still | null = clip ? { source: clip.item.source, t: 0, crop: videoState(clip.item, clip.start, clip.end, ctx.t, W, H, {}).crop }
+    : m.src ? { source: m.src, t: after ? m.t2 : m.t, crop: m.crop } : null;
+  showStill(media, o.win, still, w, hh);
+}
+
 export const chat: ItemType<P, S> = {
   type: 'common.chat', label: '聊天對話框', category: 'phone', kind: 'overlay',
-  doc: '通訊軟體的聊天畫面（通用介面，不是哪一家 App；每個字都是參數、配色是自己的），整支片一個項目：items 一行一則「秒[-秒]|誰|內容|key=值…」，誰＝me（右邊）／them（左邊有頭像；寫別的字＝群組裡那個人的名字）／sys（中間灰色系統訊息）／ch（章節膠囊）；訊息到時間彈出、新的推到最下面、整串往上捲；種類寫在後面：預設文字（/ 換行、太長自動換行，泡泡高度照行數算）、typing 對方輸入中三個點（到同一邊下一則訊息為止，或寫「秒-秒」）、photo 照片、video 影片（play=秒-秒 播放時泡泡挖圓角洞，主軌片段用 frame: chatWindow(參數, 第幾則, 寬, 高) 放進去；mute 靜音圖示、dur= 片長）、album 相簿（pics=素材@秒,素材@秒,- 多張、labels= 每張的名字）、link 連結卡（內容是標題、sub=、button=、badge= 片長、press= 按下）、voice 語音訊息（dur=、play=秒-秒 波形跟著跑，內容是轉文字）、sticker 大貼圖（內容放 emoji，沒有泡泡）；src=素材 id、t=取第幾秒（沒有素材畫示意色塊）、t2= 播完後的畫面、crop=x,y,zoom、ratio=4:5、w= 寬（螢幕寬比例）、tag= 照片上的小標；me 的訊息 readAfter 秒後出現「已讀」（read 參數換字；read=秒 自己指定、unread 不顯示），when= 時間小字；name= avatar= color= 群組成員；頂部 pin 置頂公告（pin 標題，有 ch 訊息時下面一排章節點跟著亮，icon= 章節點的圖示，預設章節字開頭的 emoji）；header 對方名字 name、status 小字、頭像 avatar；底部輸入框 inputs「秒-秒|文字|type/delete」打字刪字，沒有字時寫 hint；panel 輸入框下的貼圖面板（emoji 空白分隔，空＝沒有）；wall「秒|#上|#下」桌布顏色（關鍵影格之間緩動，例如白天到傍晚）；9:16 鋪滿畫面，16:9／1:1 是畫面中間一支手機（device）；手指用 common.touch（位置用 chatPoint(參數, 第幾則, 秒, 寬, 高)），大爆炸貼紙用 common.burst，飄 emoji 用 common.emoji，字幕用 common.caption；音效配 common.send（送出）、common.recv（收到）、common.typing（打字）、common.buzz（震動、已讀不回）、common.pop（貼圖）',
+  doc: '通訊軟體的聊天畫面（通用介面，不是哪一家 App；每個字都是參數、配色是自己的），整支片一個項目：items 一行一則「秒[-秒]|誰|內容|key=值…」，誰＝me（右邊）／them（左邊有頭像；寫別的字＝群組裡那個人的名字）／sys（中間灰色系統訊息）／ch（章節膠囊）；訊息到時間彈出、新的推到最下面、整串往上捲；種類寫在後面：預設文字（/ 換行、太長自動換行，泡泡高度照行數算）、typing 對方輸入中三個點（到同一邊下一則訊息為止，或寫「秒-秒」）、photo 照片、video 影片（play=秒-秒 播放時泡泡挖圓角洞，主軌片段用 frame: chatWindow(參數, 第幾則, 寬, 高) 放進去；open=秒-秒 泡泡從原位緩緩長成滿版、到時間再縮回泡泡（openTime 秒；open=秒 開到項目結束），這段時間積木自己把那個主軌片段畫在長大的框裡，片段的 frame 不用改，後面聊天變暗 openDim；mute 靜音圖示、dur= 片長）、album 相簿（pics=素材@秒,素材@秒,- 多張、labels= 每張的名字）、link 連結卡（內容是標題、sub=、button=、badge= 片長、press= 按下）、voice 語音訊息（dur=、play=秒-秒 波形跟著跑，內容是轉文字）、sticker 大貼圖（內容放 emoji，沒有泡泡）；src=素材 id、t=取第幾秒（沒有素材畫示意色塊）、t2= 播完後的畫面、crop=x,y,zoom、ratio=4:5、w= 寬（螢幕寬比例）、tag= 照片上的小標；me 的訊息 readAfter 秒後出現「已讀」（read 參數換字；read=秒 自己指定、unread 不顯示），when= 時間小字；name= avatar= color= 群組成員；頂部 pin 置頂公告（pin 標題，有 ch 訊息時下面一排章節點跟著亮，icon= 章節點的圖示，預設章節字開頭的 emoji）；header 對方名字 name、status 小字、頭像 avatar；接續成第二個項目：同一份參數加 since=秒（items 的時間），這個項目就從對話的那一秒演起，之前的訊息已經在、不再彈出、已捲好，播過的影片停在 t2= 的畫面（chatWindow／chatPoint 的秒都是 items 的時間）；底部輸入框 inputs「秒-秒|文字|type/delete」打字刪字，沒有字時寫 hint；panel 輸入框下的貼圖面板（emoji 空白分隔，空＝沒有）；wall「秒|#上|#下」桌布顏色（關鍵影格之間緩動，例如白天到傍晚）；9:16 鋪滿畫面，16:9／1:1 是畫面中間一支手機（device）；手指用 common.touch（位置用 chatPoint(參數, 第幾則, 秒, 寬, 高)），大爆炸貼紙用 common.burst，飄 emoji 用 common.emoji，字幕用 common.caption；音效配 common.send（送出）、common.recv（收到）、common.typing（打字）、common.buzz（震動、已讀不回）、common.pop（貼圖）',
   params: [
-    { key: 'items', label: '訊息（一行一則：秒[-秒]|誰 me/them/sys/ch 或名字|內容（/ 換行）|種類 typing/photo/video/album/link/voice/sticker|key=值：src= t= t2= crop=x,y,zoom ratio= w= dur= mute tag= play=秒-秒 pics= labels= sub= button= badge= press= read= unread when= name= avatar= color= icon=）', type: 'text',
+    { key: 'items', label: '訊息（一行一則：秒[-秒]|誰 me/them/sys/ch 或名字|內容（/ 換行）|種類 typing/photo/video/album/link/voice/sticker|key=值：src= t= t2= crop=x,y,zoom ratio= w= dur= mute tag= play=秒-秒 open=秒-秒 pics= labels= sub= button= badge= press= read= unread when= name= avatar= color= icon=）', type: 'text',
       default: '-1|sys|今天\n0.1|them|週末要去哪裡？\n0.6|me|海邊！/已經到了\n1.0|me||photo|ratio=4:3|tag=☀️ 32°C\n1.5|them||typing\n2.1|them|也太好了吧 😆\n2.5|me|下次一起來' },
     { key: 'name', label: '對方的名字（上方標題）', type: 'string', default: '小美' },
     { key: 'status', label: '名字下的小字（空＝沒有）', type: 'string', default: '' },
@@ -420,6 +507,9 @@ export const chat: ItemType<P, S> = {
     { key: 'panel', label: '輸入框下的貼圖面板（emoji 空白分隔；空＝沒有，輸入框貼底）', type: 'string', default: '😀 😂 🥹 😍 👍 🙏 🎉 ❤️' },
     { key: 'wall', label: '桌布（一行一個 秒|#上|#下，之間緩動）', type: 'text', default: '0|#e6ebf1|#d2dbe6' },
     { key: 'pattern', label: '桌布上的淡淡圓點', type: 'bool', default: true },
+    { key: 'since', label: '接續（秒，items 的時間；0＝從頭；這個項目從對話的這一秒演起：之前的訊息已經在、不彈出、已捲好，播過的影片停在 t2= 的畫面）', type: 'number', min: 0, max: 3600, step: 0.05, default: 0 },
+    { key: 'openTime', label: '影片泡泡打開／縮回的時間（秒；訊息寫 open=秒-秒）', type: 'number', min: 0.05, max: 3, step: 0.05, default: 0.45 },
+    { key: 'openDim', label: '打開時後面聊天變暗（0–1）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.6 },
     { key: 'device', label: '手機（auto：9:16 鋪滿畫面、其他比例畫一支手機；phone 一律畫手機；bare 只要 9:16 的畫面不畫機身）', type: 'enum', options: DEVICES, default: 'auto' },
     { key: 'px', label: '手機中心 x（畫面寬比例；有手機時）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.5 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.body' },
@@ -452,14 +542,20 @@ export const chat: ItemType<P, S> = {
     const inIcons = [lineAbs(input), lineAbs(input), lineAbs(input), lineAbs(input), lineAbs(input)];
     const pinIcon = lineAbs(pin), pinTitle = lineAbs(pin), pinTrack = lineAbs(pin), pinFill = lineAbs(pin);
     const back = lineAbs(head), hAv = avatarEl(head), hName = lineAbs(head), hStatus = lineAbs(head), hIcons = [lineAbs(head), lineAbs(head), lineAbs(head)], sb = statusBarEl(head);
-    const s: S = { ph, ui, wall, area, msgEls: [], key: '', G: null, head, back, hAv, hName, hStatus, hIcons, sb, pin, pinIcon, pinTitle, pinTrack, pinFill, pinDots: [],
+    const oRoot = lineAbs(ctx.root), dim = lineAbs(oRoot), box = lineAbs(oRoot), vid = lineAbs(box), oWin = windowEl(box);
+    cssCamel(oRoot, { inset: '0', display: 'none' });
+    cssCamel(dim, { inset: '0', background: '#0d0e10' });
+    cssCamel(box, { overflow: 'hidden', background: '#000' });
+    cssCamel(vid, { inset: '0', overflow: 'hidden' });
+    cssCamel(oWin.box, { left: '0', top: '0' });
+    const s: S = { open: { root: oRoot, dim, box, vid, win: oWin }, ph, ui, wall, area, msgEls: [], key: '', G: null, head, back, hAv, hName, hStatus, hIcons, sb, pin, pinIcon, pinTitle, pinTrack, pinFill, pinDots: [],
       input, inIcons, field, type, hint, panel, home };
     chat.draw(ctx, s);
     return s;
   },
   ready: (s) => imagesReady(s.msgEls.flatMap((m) => m.wins.map((w) => w.img))),
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local: t, media } = ctx;
+    const p = ctx.params, { W, H, theme, media } = ctx, t = ctx.local + Math.max(0, Number(p.since) || 0);
     const G = chatGeometry(p, W, H, theme.safe), { sc, k, Hd } = G, X = (v: number) => `${v * k}px`;
     placePhone(s.ph, sc);
     const font = `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`;
@@ -480,9 +576,9 @@ export const chat: ItemType<P, S> = {
     // the conversation
     const areaH = G.areaBot - G.areaTop;
     cssCamel(s.area, { top: X(G.areaTop), height: X(areaH) });
-    const { pos } = chatPlace(G.msgs, G.boxes.map((b) => b.slot), t, areaH), shown = new Set(pos.map((q) => q.i));
+    const { pos } = chatPlace(G.msgs, G.boxes.map((b) => b.slot), t, areaH, 0.32, G.since), shown = new Set(pos.map((q) => q.i));
     s.msgEls.forEach((e, i) => { if (!shown.has(i)) cssCamel(e.box, { display: 'none' }); });
-    let hole: [number, number, number, number] | null = null;
+    let hole: [number, number, number, number] | null = null, opening: Opening | null = null;
     for (const q of pos) {
       const m = G.msgs[q.i], b = G.boxes[q.i], e = s.msgEls[q.i];
       if (!e) continue;
@@ -501,6 +597,8 @@ export const chat: ItemType<P, S> = {
         showStill(media, cur, m.src ? { source: m.src, t: after ? m.t2 : m.t, crop: m.crop } : null, b.w * k, b.h * k);
         if (e.play) cssCamel(e.play, { display: playing ? 'none' : 'block' });
         if (playing && u >= 1) hole = [b.x * k, (G.areaTop + q.y + b.off) * k, b.w * k, b.h * k];
+        const oe = openAt(m, t, G.openTime);
+        if (oe > 0) opening = { m, e: oe, bub: [sc.x + b.x * k, sc.y + (G.areaTop + q.y + b.off) * k, b.w * k, b.h * k], after };
       }
       if (m.kind === 'album') e.wins.forEach((w, j) => { const pq = m.pics[j]; if (pq?.src) showStill(media, w, { source: pq.src, t: pq.t, crop: m.crop }, ...e.sizes[j]); });
       if (m.kind === 'link') {
@@ -518,6 +616,7 @@ export const chat: ItemType<P, S> = {
     }
     // the main-track clip plays through a rounded hole in the bubble
     punch(s.ui, hole, MEDIA_R * k);
+    drawOpen(ctx, s.open, G, opening);
     // the header: back, avatar, the name (and a line under it), search / call / menu, the status bar above
     cssCamel(s.head, { left: '0', top: '0', width: '100%', height: X(HEAD), background: withAlpha(p.bar, 0.97), boxShadow: `0 ${2 * k}px 0 rgba(0,0,0,0.06)` });
     drawStatusBar(s.sb, { time: p.time, carrier: '', signal: 4, wifi: true, battery: p.battery, color: p.ink, font: p.font }, k, (sc.body ? 44 : 34) * k, sc.w, false);

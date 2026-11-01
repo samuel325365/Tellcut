@@ -1,5 +1,5 @@
 // common.chat (group C1): the message lines, the bubble sizes, the conversation's place at t, the video window and the tap point.
-import { chat, chatPlace, chatPoint, chatWindow, aspectOf, inputAt, msgBox, parseChat, wallAt, wrapText, FS, GAP, LH, PADV, LEFT, RIGHT } from './chat.ts';
+import { chat, chatPlace, chatPoint, chatWindow, openAt, aspectOf, inputAt, msgBox, parseChat, wallAt, wrapText, FS, GAP, LH, PADV, LEFT, RIGHT } from './chat.ts';
 
 const ITEMS = '-1|sys|今天\n0.2|them|晚安\n0.5|me|好/明天見\n1|them||typing\n1.6|them|等等\n2|阿哲|我也要|avatar=🌸\n2.2|me||video|src=a|t=3|t2=9|play=2.6-3.4|ratio=4:5|w=0.5|mute|dur=0:08';
 
@@ -88,4 +88,47 @@ test('media: the stills of every photo, video (and its after-play poster), album
   const item = { params: { items: ITEMS + '\n3|me||album|pics=b@1,-,b@2\n4|me|看|link|src=c|t=5' } } as never;
   const st = chat.media!(item, {} as never).stills.map((s) => `${s.source}@${s.t}`);
   expect(st).toEqual(['a@3', 'a@9', 'b@1', 'b@2', 'c@5']);
+});
+
+test('open=: a video bubble grows from its rect to the whole frame and back, eased; chatWindow and chatPoint follow it', () => {
+  const items = '0|me|hi\n0.5|me||video|src=a|t=3|t2=9|play=1-5|open=2-4|ratio=4:5|w=0.5';
+  const M = parseChat(items + '\n6|me||video|open=7|src=a\n7|me|x|open=1-2');
+  expect([M[1].open, M[2].open]).toEqual([[2, 4], [7, Infinity]]);
+  expect([openAt(M[1], 1.9), openAt(M[1], 2), openAt(M[1], 2.45), openAt(M[1], 3), openAt(M[1], 3.55), openAt(M[1], 4)]).toEqual([0, 0, 1, 1, 1, 0]);
+  expect(openAt(M[1], 2.225)).toBeCloseTo(0.5, 5);                          // half-way through the 0.45 s grow
+  expect(openAt(M[1], 2.1)).toBeLessThan(2.1 - 2);                            // eased in: slower than linear at first
+  expect(openAt(M[3], 1.5)).toBe(0);                                          // only a video or photo opens
+  expect(openAt(M[1], 2.225, 1)).toBeLessThan(0.5);                           // openTime
+  expect(openAt(parseChat('0|me||video|open=1-1.2')[0], 1.1)).toBeCloseTo(1, 5); // a short span: half grow, half shrink
+  const p = { items }, bub = chatWindow(p, 1, 1080, 1920, { t: 1.5 })!;
+  expect(chatWindow(p, 1)).toEqual(bub);                                       // the clip's frame: the bubble, at play start
+  expect(chatWindow(p, 1, 1080, 1920, { t: 3 })).toEqual([0, 0, 1, 1]);        // fully open
+  const mid = chatWindow(p, 1, 1080, 1920, { t: 2.225 })!;
+  mid.forEach((v, j) => expect(v).toBeCloseTo(bub[j] + ([0, 0, 1, 1][j] - bub[j]) * 0.5, 4));
+  const back = chatWindow(p, 1, 1080, 1920, { t: 3.775 })!;
+  back.forEach((v, j) => expect(v).toBeCloseTo(mid[j], 4));                    // closing retraces the opening
+  expect(chatWindow(p, 1, 1080, 1920, { t: 4.5 })).toEqual(bub);
+  expect(chatPoint(p, 1, 3)).toEqual({ x: 0.5, y: 0.5 });
+  const pm = chatPoint(p, 1, 2.225)!;
+  expect(pm.x).toBeCloseTo(mid[0] + mid[2] / 2, 3);
+  expect(pm.y).toBeCloseTo(mid[1] + mid[3] / 2, 3);
+  // on a wide frame it opens from the phone to the whole frame
+  expect(chatWindow(p, 1, 1920, 1080, { t: 3 })).toEqual([0, 0, 1, 1]);
+});
+
+test('since: the conversation on its own clock from that second, what came before already in place and popped in', () => {
+  const M = parseChat(ITEMS), slots = M.map((m) => msgBox(m).slot);
+  // without since, a message 0.1 s old is still popping in and the layout still moving
+  expect(chatPlace(M, slots, 2.3, 600).pos.find((q) => q.i === 6)!.enter).toBeLessThan(1);
+  const cont = chatPlace(M, slots, 2.3, 600, 0.32, 2.3), settled = chatPlace(M, slots, 9, 600);
+  expect(cont.pos.find((q) => q.i === 6)!.enter).toBe(1);
+  expect(cont.scroll).toBeCloseTo(settled.scroll);
+  expect(cont.pos.map((q) => q.y)).toEqual(settled.pos.map((q) => q.y));
+  // what arrives after since comes in as usual
+  const late = chatPlace(M, slots, 2.25, 600, 0.32, 2.1);
+  expect(late.pos.find((q) => q.i === 6)!.enter).toBeCloseTo(0.05 / 0.28);
+  // chatWindow and chatPoint take the items' clock: the same answer with since as for the settled conversation
+  const p = { items: ITEMS };
+  expect(chatWindow({ ...p, since: 2.3 }, 6, 1080, 1920, { t: 2.3 })).toEqual(chatWindow(p, 6, 1080, 1920, { t: 9 }));
+  expect(chatPoint({ ...p, since: 2.3 }, 6, 2.3)).toEqual(chatPoint(p, 6, 9));
 });
