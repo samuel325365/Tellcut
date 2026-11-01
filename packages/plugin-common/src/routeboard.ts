@@ -1,9 +1,9 @@
 // common.routeboard — a dark route board that hangs over a travel edit: a mini map of the trip's real cities (longitude and latitude),
 // the legs dashed until travelled and then lit, the current city pulsing, a split-flap station counter (01/03) and the date.
 // The stops say which city is lit from which second. Promoted from the uk-beat short's fx.hud.
-import { abs, cssCamel, eOut3 as eOut, h, type ItemType, prog } from '@tellcut/engine';
+import { abs, clamp, cssCamel, eOut3 as eOut, h, type ItemType, prog, textEm } from '@tellcut/engine';
 import { canvasAt } from './inkline.ts';
-import { boundsOf, dot, EUROPE_TRIP, graticule, labelSide, pad2, parseCities, projector, ring, strokeArc, type Pt } from './geo.ts';
+import { boundsOf, type Bounds, type City, dot, EUROPE_TRIP, graticule, labelSide, pad2, parseCities, projector, ring, strokeArc, type Pt } from './geo.ts';
 import { withAlpha } from './color.ts';
 
 interface P { cities: string; stops: unknown; legs: unknown; counter: string; y: number; w: number; font: string; mono: string; panel: string; text: string; accent: string; hl: string }
@@ -36,9 +36,33 @@ export function boardAt(stops: Stop[], cities: number, local: number, legs: numb
   return { cur, since: local - cur.t, visited, done: legAt.map((t) => local >= t - 1e-6) };
 }
 
+/** the map's bounds: boundsOf's (padded by at least a degree), or, when the stops all lie within half a degree (the sights of one
+ *  city), their own extent padded by 15 %, so they spread over the map instead of meeting in its middle (acceptance film T1 had to
+ *  scale Rome's coordinates up by hand); an axis is given at least a quarter of the other's extent, so a row of stops stays a row */
+export function boardBounds(cities: City[]): Bounds {
+  const b = boundsOf(cities);
+  if (cities.length < 2) return b;
+  const lons = cities.map((c) => c.lon), lats = cities.map((c) => c.lat);
+  const a = Math.min(...lons), bb = Math.max(...lons), c = Math.min(...lats), d = Math.max(...lats), span = Math.max(bb - a, d - c);
+  if (span >= 0.5 || span <= 1e-9) return b;
+  const rx = Math.max(bb - a, span * 0.25) * 1.3 / 2, ry = Math.max(d - c, span * 0.25) * 1.3 / 2, mx = (a + bb) / 2, my = (c + d) / 2;
+  return { lon0: mx - rx, lon1: mx + rx, lat0: my - ry, lat1: my + ry };
+}
+
+/** where a city's name goes (left/top in panel px and the CSS translate), kept inside the map part of the panel: to the left of a dot
+ *  high up, unless that runs past the panel's left edge (then to its right), else centred under it, moved in from either edge */
+export function boardLabel(x: number, y: number, text: string, k: number, box: [number, number, number, number]) {
+  const w = textEm(text) * 26 * k, x0 = 18 * k, x1 = 552 * k;
+  if (labelSide(y, box) === 'left') {
+    if (x - 22 * k - w >= x0) return { left: x - 22 * k, top: y, transform: 'translate(-100%, -50%)' };
+    return { left: x + 22 * k, top: y, transform: 'translate(0, -50%)' };
+  }
+  return { left: clamp(x, x0 + w / 2, Math.max(x0 + w / 2, x1 - w / 2)), top: y + 20 * k, transform: 'translate(-50%, 0)' };
+}
+
 export const routeboard: ItemType<P, S> = {
   type: 'common.routeboard', label: '路線看板', category: 'travel', kind: 'overlay',
-  doc: '上方一塊深色路線看板：真實經緯度的迷你地圖（城市點、走過的線變亮）、目前那站閃一下、站數 01/03 翻牌、日期；stops「秒|城市|日期」決定每一刻亮哪一站（- 途中、all 全部）；多城市旅行快剪整片掛著',
+  doc: '上方一塊深色路線看板：真實經緯度的迷你地圖（城市點、走過的線變亮）、目前那站閃一下、站數 01/03 翻牌、日期；stops「秒|城市|日期」決定每一刻亮哪一站（- 途中、all 全部）；多城市旅行快剪整片掛著；同一座城的幾個景點（都在半度內）會自動放大鋪滿地圖',
   params: [
     { key: 'cities', label: '城市（中文|英文|經度|緯度，逗號分隔）', type: 'text', default: EUROPE_TRIP },
     { key: 'stops', label: '站點（秒|城市編號|日期，逗號分隔；城市 0 起，- 途中，all 全部）', type: 'text', default: '0|0|05.26, 1|1|06.06, 2|2|08.21, 2.6|all|05.26–08.21' },
@@ -77,7 +101,7 @@ export const routeboard: ItemType<P, S> = {
       borderRadius: `${18 * k}px`, boxShadow: `0 ${6 * k}px ${24 * k}px rgba(0,0,0,.35)`, opacity: String(out), fontFamily: font, color: p.text });
     cssCamel(s.bar, { left: '0', top: '0', width: `${10 * k}px`, height: '100%', background: p.accent });
     // the map
-    const box: [number, number, number, number] = [34 * k, 22 * k, 500 * k, 150 * k], b = boundsOf(cities), P = projector(box, b);
+    const box: [number, number, number, number] = [34 * k, 22 * k, 500 * k, 150 * k], b = boardBounds(cities), P = projector(box, b);
     const pos: Pt[] = cities.map((c) => P(c.lon, c.lat));
     const g = canvasAt(s.cv, pw, ph);
     cssCamel(s.cv, { width: `${pw}px`, height: `${ph}px` });
@@ -97,8 +121,8 @@ export const routeboard: ItemType<P, S> = {
         if (q < 1) ring(g, x, y, (13 + 34 * eOut(q)) * k, p.accent, 4 * k, 1 - q);
       } else if (seen) dot(g, x, y, 8 * k, p.text);
       else ring(g, x, y, 8 * k, withAlpha(p.text, 0.55), 3 * k);
-      const lab = s.labs[i], left = labelSide(y, box) === 'left';
-      cssCamel(lab, { left: `${left ? x - 22 * k : x}px`, top: `${left ? y : y + 20 * k}px`, transform: left ? 'translate(-100%, -50%)' : 'translate(-50%, 0)', fontSize: `${26 * k}px`,
+      const lab = s.labs[i], at = boardLabel(x, y, cities[i].zh, k, box);
+      cssCamel(lab, { left: `${at.left}px`, top: `${at.top}px`, transform: at.transform, fontSize: `${26 * k}px`,
         color: on ? p.hl : seen ? p.text : withAlpha(p.text, 0.55) });
     });
     // the counter: the digits flip in over 0.1 s at every change

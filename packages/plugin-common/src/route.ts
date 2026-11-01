@@ -3,14 +3,14 @@
 // stops can stay a question mark. Promoted from a food-review hook short's fx.route; also day trips, walking tours, a series.
 // look 'page' (fd-map's fx.nbPage, routepage.ts): the whole page is a notebook route map — places as doodles with red ticks, a dashed
 // ballpoint line leg by leg with the walking time beside each, the camera moving between full / walk / stop / end / near.
-import { abs, clamp, cssCamel, eBack, eOut3 as eOut, h, type ItemType, prog, type Theme } from '@tellcut/engine';
+import { abs, clamp, cssCamel, eBack, eOut3 as eOut, h, type ItemType, prog, textEm, type Theme } from '@tellcut/engine';
 import { drawRoutePage, pageState, type PageP, type PageS } from './routepage.ts';
 import { canvasAt, parsePairs, penPath, snake, spline, freeCanvas } from './inkline.ts';
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P extends PageP {
-  look: 'card' | 'page'; heads: string; stops: number; hidden: number; names: string; start: string; startIcon: string; from: number; to: number; beat: number;
+  look: 'card' | 'page'; heads: string; stops: number; hidden: number; names: string; start: string; startIcon: string; from: number; to: number; beat: number; upto: number; already: number; nameSize: number;
   x: number; y: number; w: number; h: number; tilt: number; dim: number; font: string; numFont: string; paper: string; ink: string; accent: string; hl: string;
 }
 interface Stop { num: HTMLElement; name: HTMLElement }
@@ -28,9 +28,36 @@ export function routeBox(p: Pick<P, 'x' | 'y' | 'w' | 'h'>, W: number, H: number
 /** when the route reaches stop n (1-based) of `count`, drawing from t0 to t1 */
 export const reachAt = (n: number, count: number, t0: number, t1: number) => t0 + (n / Math.max(1, count)) * (t1 - t0) - 0.05;
 
+/** the part of the route a card draws: lit from the start up to stop `a`, drawn from a to stop `e` between from and to (upto 0: the
+ *  last stop; already 0: from the start), and when stop n is reached (−∞ already lit, ∞ never) */
+export function routeSpan(count: number, upto: number, already: number) {
+  const e = upto > 0 ? Math.min(count, Math.round(upto)) : count, a = clamp(Math.round(already) || 0, 0, e);
+  return { a, e, reach: (n: number, t0: number, t1: number) => (n <= a ? -Infinity : n > e ? Infinity : reachAt(n - a, e - a, t0, t1)) };
+}
+
+/** a stop's name at `size` px within `room` px: one line, or two (a name of 4 or more characters split in half) when one line would
+ *  have to shrink, then shrunk to fit */
+export function stopName(name: string, size: number, room: number) {
+  const chars = [...name];
+  if (textEm(name) * size <= room || chars.length < 4) return { text: name, lines: 1, px: fitPx(name, size, room) };
+  const sp = name.lastIndexOf(' ', Math.ceil(name.length / 2) + 2), cut = sp > 0 ? sp : Math.ceil(chars.length / 2);
+  const parts = sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [chars.slice(0, cut).join(''), chars.slice(cut).join('')];
+  const longer = textEm(parts[0]) >= textEm(parts[1]) ? parts[0] : parts[1];
+  return { text: parts.join('\n'), lines: 2, px: fitPx(longer, size, room) };
+}
+
+/** how wide stop n's name may be: 0.9 of the way to the nearest point in its row (start included), at most 0.4 of the card, and no
+ *  wider than keeps it on the card */
+export function nameRoom(P: Array<[number, number]>, n: number, cw: number, rr: number) {
+  const [x, y] = P[n];
+  let room = Math.min(0.4 * cw, 2 * Math.min(x, cw - x) - rr * 0.3);
+  P.forEach(([mx, my], m) => { if (m !== n && Math.abs(my - y) < 2 * rr) room = Math.min(room, Math.abs(mx - x) * 0.9); });
+  return Math.max(0.2 * cw, room);
+}
+
 export const route: ItemType<P, S> = {
   type: 'common.route', label: '手繪路線圖', category: 'travel', kind: 'overlay',
-  doc: '米色紙卡上的手繪路線圖：上方一排大數字承諾（數字|說明），下面鉛筆街道，從起點（大時鐘或 emoji）畫出紅色虛線一站一站點亮，最後幾站可以打問號；探店、一日遊、走讀路線、系列預告；look page 是整頁筆記本路線圖（fd-map）：各站排成一圈（或 pts 指定位置），鉛筆先淡淡描出整條路，藍色原子筆虛線一段一段畫過去（筆尖跟著走），每段旁邊紅筆寫步行時間（legs）加波浪底線，到站時變成塗鴉（icons：bowl／bun／box／jar／tofu／cup／station／train／house／star 或 emoji）＋紅勾、站名用手寫字寫出來加螢光筆；鏡頭依 cams「秒|模式」在 full 整張、walk 地圖在上（留下面給影片）、stop 縮成角落小紙片（現在這站閃）、end、near 拉近跟著現在這站之間移動；loop 畫回起點、flash 讓所有勾依序跳一下；放在 common.paper look grid 上面',
+  doc: '米色紙卡上的手繪路線圖：上方一排大數字承諾（數字|說明），下面鉛筆街道，從起點（大時鐘或 emoji）畫出紅色虛線一站一站點亮，最後幾站可以打問號；upto 只畫到第 k 站、already 開頭已亮到第幾站（already k−1＋upto k＝回來一拍點亮下一站），nameSize 站名字級；探店、一日遊、走讀路線、系列預告；look page 是整頁筆記本路線圖（fd-map）：各站排成一圈（或 pts 指定位置），鉛筆先淡淡描出整條路，藍色原子筆虛線一段一段畫過去（筆尖跟著走），每段旁邊紅筆寫步行時間（legs）加波浪底線，到站時變成塗鴉（icons：bowl／bun／box／jar／tofu／cup／station／train／house／star 或 emoji）＋紅勾、站名用手寫字寫出來加螢光筆；鏡頭依 cams「秒|模式」在 full 整張、walk 地圖在上（留下面給影片）、stop 縮成角落小紙片（現在這站閃）、end、near 拉近跟著現在這站之間移動；loop 畫回起點、flash 讓所有勾依序跳一下；放在 common.paper look grid 上面',
   params: [
     { key: 'look', label: '樣子（card 紙卡路線圖、page 整頁筆記本路線圖）', type: 'enum', options: ['card', 'page'], default: 'card' },
     { key: 'heads', label: '上方大數字（數字|說明，逗號分隔；空＝不顯示）', type: 'string', default: '1|條商圈, 10|分鐘走完, 6|家吃好吃滿' },
@@ -42,6 +69,9 @@ export const route: ItemType<P, S> = {
     { key: 'from', label: '路線開始畫的時間（秒）', type: 'number', min: 0, max: 600, step: 0.05, default: 1.35 },
     { key: 'to', label: '畫到最後一站的時間（秒；-1＝結束前 0.7 秒）', type: 'number', min: -1, max: 600, step: 0.05, default: -1 },
     { key: 'beat', label: '大數字一個一個出現的間隔（秒；配樂一拍）', type: 'number', min: 0.1, max: 2, step: 0.01, default: 0.56 },
+    { key: 'upto', label: '路線只畫到第幾站（0＝最後一站；後面的站不亮）', type: 'number', min: 0, max: 9, step: 1, default: 0 },
+    { key: 'already', label: '一開始就已經畫好、點亮到第幾站（0＝從起點畫；配 upto 一拍點亮下一站）', type: 'number', min: 0, max: 9, step: 1, default: 0 },
+    { key: 'nameSize', label: '站名字級（卡片寬 864 時的 px；放不下時長的站名分兩行）', type: 'number', min: 16, max: 90, step: 1, default: 30 },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.5 },
     { key: 'y', label: '上緣（畫面高比例；-1＝安全區裡偏上）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'w', label: '寬（畫面短邊的比例）', type: 'number', min: 0.3, max: 1.6, step: 0.01, default: 0.8 },
@@ -135,13 +165,14 @@ export const route: ItemType<P, S> = {
     // the route: dashed, drawn as it goes, a walker dot at its head
     const P = snake(count + 1, names.some(Boolean)).map(at), path = spline(P, 18);
     const t0 = p.from, t1 = Math.max(t0 + 0.1, p.to >= 0 ? p.to : dur - 0.7), pr = prog(local, t0, t1);
-    if (pr > 0) {
-      const upto = pr * (path.length - 1), i = Math.min(path.length - 1, Math.floor(upto)), f = upto - i;
+    const span = routeSpan(count, Number(p.upto) || 0, Number(p.already) || 0), iA = span.a * 18, iE = span.e * 18;   // spline: 18 points a leg
+    if (pr > 0 || iA > 0) {
+      const upto = iA + pr * (iE - iA), i = Math.min(path.length - 1, Math.floor(upto)), f = upto - i;
       g.setLineDash([16 * u, 14 * u]); g.lineDashOffset = -local * 60 * u;
-      penPath(g, path.slice(0, i + 2), 9 * u, p.accent, 40, 1);
+      penPath(g, path.slice(0, Math.min(i + 2, iE + 1)), 9 * u, p.accent, 40, 1);
       g.setLineDash([]);
       const a = path[i], c = path[Math.min(path.length - 1, i + 1)];
-      if (pr < 1) { g.fillStyle = p.ink; g.beginPath(); g.arc(a[0] + (c[0] - a[0]) * f, a[1] + (c[1] - a[1]) * f, 11 * u, 0, Math.PI * 2); g.fill(); }
+      if (pr > 0 && pr < 1) { g.fillStyle = p.ink; g.beginPath(); g.arc(a[0] + (c[0] - a[0]) * f, a[1] + (c[1] - a[1]) * f, 11 * u, 0, Math.PI * 2); g.fill(); }
     }
     // the start: a clock tower whose hands turn, or the emoji on a gold disc
     const pk = eBack(prog(local, 0.9, 1.3), 1.9), [sx, sy] = P[0], r = 50 * u * Math.max(0, pk);
@@ -162,7 +193,7 @@ export const route: ItemType<P, S> = {
     cssCamel(s.start, { display: p.start && pk > 0 ? 'block' : 'none', left: `${sx + 5 * u}px`, top: `${sy + 5 * u + 50 * u * (p.startIcon ? 1.25 : 2.05)}px`, fontWeight: '900', fontSize: `${38 * u}px` });
     // the stops: a hollow pencil circle that fills red (or ink with a gold ? when hidden) as the route reaches it
     for (let n = 1; n < P.length; n++) {
-      const reach = reachAt(n, P.length - 1, t0, t1), q = prog(local, reach, reach + 0.28), [x, y] = P[n], hid = n > count - p.hidden, rr = 40 * u;
+      const reach = span.reach(n, t0, t1), q = reach === -Infinity ? 1 : reach === Infinity ? 0 : prog(local, reach, reach + 0.28), [x, y] = P[n], hid = n > count - p.hidden, rr = 40 * u;
       g.lineWidth = 5 * u; g.strokeStyle = withAlpha(p.ink, 0.55); g.fillStyle = p.paper;
       g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill(); g.stroke();
       if (q > 0) {
@@ -170,9 +201,13 @@ export const route: ItemType<P, S> = {
         g.fillStyle = hid ? p.ink : p.accent; g.beginPath(); g.arc(x, y, rr * eBack(q, 1.9), 0, Math.PI * 2); g.fill();
       }
       const st = s.stops[n - 1], label = hid ? '?' : String(n), nm = hid ? '' : names[n - 1] ?? '';
-      st.num.textContent = label; st.name.textContent = nm;
+      st.num.textContent = label;
       cssCamel(st.num, { left: `${x + 5 * u}px`, top: `${y + 7 * u}px`, fontSize: `${44 * u}px`, color: q > 0.4 ? (hid ? p.hl : '#ffffff') : withAlpha(p.ink, 0.6) });
-      cssCamel(st.name, { display: nm ? 'block' : 'none', left: `${x + 5 * u}px`, top: `${y + 5 * u + rr + 26 * u}px`, fontSize: `${fitPx(nm, 30 * u, 0.2 * cw)}px`, opacity: String(0.55 + 0.45 * clamp(q * 2)) });
+      // the name: at the default size as it always was; bigger, as wide as the room to the next stop in its row allows, in two lines
+      // when a long one would have to shrink
+      const ns = Number(p.nameSize) || 30, lab = ns === 30 ? { text: nm, lines: 1, px: fitPx(nm, 30 * u, 0.2 * cw) } : stopName(nm, ns * u, nameRoom(P, n, cw, rr));
+      st.name.textContent = lab.text;
+      cssCamel(st.name, { display: nm ? 'block' : 'none', left: `${x + 5 * u}px`, top: `${y + 5 * u + rr + (ns === 30 ? 26 * u : 6 * u + (lab.lines * lab.px) / 2)}px`, fontSize: `${lab.px}px`, textAlign: 'center', opacity: String(0.55 + 0.45 * clamp(q * 2)) });
     }
   },
 };

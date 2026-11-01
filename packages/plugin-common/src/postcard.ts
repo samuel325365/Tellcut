@@ -3,8 +3,16 @@
 // that stop, a postmark (place + date) thumps down, and the narration is written on it by hand, character by character, in time with
 // the voice. While the card is settled its picture window is a hole (window.ts): the clip on the main track, whose `frame` is
 // postcardWindow(), plays through it; while the card moves the window shows a still of that clip. The last item can turn its card over
-// and spread every card out on the desk. Everything is DOM text, a pure function of the item's local time.
-import { abs, clamp, cssCamel, eIO3, eOut3, h, type ItemType, type MediaApi } from '@tellcut/engine';
+// and spread every card out on the desk, and more cards (`drop`) can land on the spread. Everything is DOM text, a pure function of
+// the item's local time.
+// The block is a scene, under the video, so the clip in the window lies above it: while the card on top is not a hole (coming in,
+// turning over, showing its back, spreading out) and a clip is in its window, that card is lifted into the top container, above the
+// clip, over a copy of the desk and of the cards under it cut to the window; otherwise the clip would play on in the window over the
+// moving card and over the cards under it (acceptance film T2: the next stop's clip showed in the old card's window while the new
+// card was still sliding in). (For those moments the card is above the text items too: the top container is above every item.)
+// pushAt / pushBack grow the window to the whole frame and back: the block draws the window's clip itself in the top container, in
+// the growing rectangle, from the clip's own frame to the full screen.
+import { abs, activeAt, clamp, cssCamel, eIO3, eOut3, h, type ItemType, type MediaApi, type Project, resolveTimes, type Times, type VideoItem, videoRefOf, videoState } from '@tellcut/engine';
 import { drawTexts, handFamily, LATIN, textLayer, writeTime, type TextLayer, type Txt } from './hand.ts';
 import { parseSentences } from './handwrite.ts';
 import { drawMark, drawStamp, hash, markEl, SERIF, stampEl, type Mark, type MarkEl, type StampEl, type StampSpec } from './postmark.ts';
@@ -40,6 +48,8 @@ export interface Card {
   flip?: { at: number; dur: number }; enter?: { from: [number, number, number]; dur: number };
 }
 export interface Spread { at: number; dur: number; center?: [number, number, number?, number?]; slots: Array<[number, number, number, number]> }
+/** a card that lands after the spread: `at` seconds into the item it starts coming in; its own times count from there */
+export type Drop = Card & { at: number };
 
 /** the card frame inside a W×H frame: the 1080 × 1920 card space scaled to fit (k) and centred (ox, oy) */
 export const cardSpace = (W: number, H: number) => { const k = Math.min(W / 1080, H / 1920); return { k, ox: (W - 1080 * k) / 2, oy: (H - 1920 * k) / 2 }; };
@@ -79,13 +89,18 @@ export function cardState(card: Card, local: number, spread?: Spread | null) {
 }
 
 interface P {
-  card: Card | null; pile: Card[]; spread: Spread | null;
+  card: Card | null; pile: Card[]; spread: Spread | null; drop: Drop[]; pushAt: number; pushDur: number; pushBack: number;
   lines: string; place: string; placeZh: string; date: string; markAt: number; stampLabel: string; year: string; orient: Orient; enter: 'right' | 'left' | 'bottom' | 'none'; enterDur: number;
   source: string; t: number; live: boolean; desk: 'wood' | 'none'; font: string; ink: string; markInk: string; paper: string;
 }
 interface Face { el: HTMLElement; paper: HTMLCanvasElement; win: Win | null; stamp: StampEl; mark: MarkEl; txt: TextLayer; key: string }
 interface CardEl { el: HTMLElement; front: Face; back: Face; shade: HTMLElement; orient: string }
-interface S { under: HTMLElement; desk: HTMLCanvasElement; deskKey: string; pileStage: HTMLElement; stage: HTMLElement; piles: CardEl[]; active: CardEl | null; imgs: HTMLImageElement[] }
+interface S {
+  under: HTMLElement; desk: HTMLCanvasElement; deskKey: string; pileStage: HTMLElement; stage: HTMLElement; piles: CardEl[]; active: CardEl | null; drops: CardEl[]; imgs: HTMLImageElement[];
+  /** in ctx.top: `clip` (the window: the desk cut to it, `patch`, and copies of the cards under the top one), the lifted top card,
+   *  `push` (the clip growing to the whole frame) */
+  lift: HTMLElement; clip: HTMLElement; patch: HTMLCanvasElement; patchKey: string; copyStage: HTMLElement; copies: CardEl[]; liftStage: HTMLElement; push: HTMLElement;
+}
 
 const FROM: Record<string, [number, number, number]> = { right: [1250, 160, 9], left: [-1250, 120, -8], bottom: [80, 1900, 5] };
 
@@ -100,6 +115,36 @@ export function cardFromParams(p: Partial<P>): Card {
   };
 }
 
+/** the cards of `drop` (anything without a number `at` left out) */
+export const dropsOf = (v: unknown): Drop[] => (Array.isArray(v) ? v.filter((d) => d && typeof d === 'object' && Number.isFinite(Number(d.at))).map((d) => ({ ...d, at: Number(d.at) })) : []);
+
+/** how far the window has grown towards the whole frame at `local`: 0 the card's window, 1 full screen (pushAt −1: never) */
+export function pushAmount(p: Pick<P, 'pushAt' | 'pushDur' | 'pushBack'>, local: number) {
+  const at = Number(p.pushAt), back = Number(p.pushBack), d = Math.max(0.05, Number(p.pushDur) || 0.6);
+  if (!(at >= 0) || local < at) return 0;
+  if (back >= at && local >= back) return 1 - eIO3(clamp((local - back) / d));
+  return eIO3(clamp((local - at) / d));
+}
+/** the rectangle between `from` (px) and the whole W×H frame, `q` of the way */
+export const pushRect = (from: Rect, W: number, H: number, q: number): Rect => [from[0] * (1 - q), from[1] * (1 - q), from[2] + (W - from[2]) * q, from[3] + (H - from[3]) * q];
+
+const timesCache = new WeakMap<object, Times>();
+const timesOf = (p: Project) => { let t = timesCache.get(p); if (!t) { t = resolveTimes(p); timesCache.set(p, t); } return t; };
+/** the clips showing at film time `t` (the visible video tracks), the topmost last */
+export function clipsAt(project: Project | undefined, t: number): Array<{ item: VideoItem; start: number; end: number }> {
+  if (!project?.tracks) return [];
+  const times = timesOf(project), out: Array<{ item: VideoItem; start: number; end: number }> = [];
+  for (const tr of project.tracks) {
+    if (tr.kind !== 'video' || tr.muted) continue;
+    for (const it of tr.items) { const tm = times.get(it.id); if (tm && activeAt(tm, t)) out.push({ item: it as VideoItem, start: tm.start, end: tm.end }); }
+  }
+  return out;
+}
+const clipFrame = (c: { item: VideoItem }) => c.item.frame ?? [0, 0, 1, 1];
+const isFull = (f: number[]) => f[0] <= 0.005 && f[1] <= 0.005 && f[0] + f[2] >= 0.995 && f[1] + f[3] >= 0.995;
+/** whether a clip's frame (fractions) overlaps the rectangle `r` (px of a W×H frame) */
+const overlaps = (f: number[], r: Rect, W: number, H: number) => Math.min(f[0] * W + f[2] * W, r[0] + r[2]) - Math.max(f[0] * W, r[0]) > 1 && Math.min(f[1] * H + f[3] * H, r[1] + r[3]) - Math.max(f[1] * H, r[1]) > 1;
+
 /** the handwriting on the cards (front and back lines, the signature, the address): the language the back's own line follows */
 export const postcardTexts = (cards: Card[]) => cards.flatMap((c) => [...(c.front?.lines ?? []), ...(c.back?.lines ?? []), ...(c.back?.address ?? []), ...(c.back?.sig ? [c.back.sig] : [])].map((l) => l.text));
 
@@ -109,6 +154,7 @@ export function postcardStills(p: Partial<P>): Still[] {
   const card = p.card ?? cardFromParams(p);
   add(card.front?.enter); add(card.front?.exit);
   for (const c of p.pile ?? []) add(c.front?.exit);
+  for (const c of dropsOf(p.drop)) { add(c.front?.enter); add(c.front?.exit); }
   return out;
 }
 
@@ -228,9 +274,12 @@ export function paintDesk(c: HTMLCanvasElement, W: number, H: number) {
   g.fillStyle = vig; g.fillRect(0, 0, W, H);
 }
 
+type Opts = { hole: boolean; stillAlpha: number; useExit: boolean; complete: boolean };
+interface Shown { el: CardEl; card: Card; pose: Pose; face: 'front' | 'back'; o: Opts; local: number }
+
 export const postcard: ItemType<P, S> = {
   type: 'common.postcard', label: '明信片', category: 'frame', kind: 'scene',
-  doc: '明信片旅記的一站：木桌上一疊明信片，新的一張滑入（或翻面）壓上去，角落郵票（該站的畫面）、郵戳（地名＋日期）蓋下，旁白一字一字手寫在卡上；卡片停好時照片窗是透明的洞，主軌片段（frame＝postcardWindow）從裡面播出來，卡片移動時窗裡是靜態圖；最後一張可翻到背面寫字、全部攤開；簡單參數一張卡，card／pile／spread 給整套',
+  doc: '明信片旅記的一站：木桌上一疊明信片，新的一張滑入（或翻面）壓上去，角落郵票（該站的畫面）、郵戳（地名＋日期）蓋下，旁白一字一字手寫在卡上；卡片停好時照片窗是透明的洞，主軌片段（frame＝postcardWindow）從裡面播出來，卡片移動時窗裡是靜態圖（卡片蓋在片段上面）；最後一張可翻到背面寫字、全部攤開，drop 讓攤開後再落下最後幾張；pushAt 起照片窗連同片段放大成全螢幕、pushBack 起縮回卡上（放大、縮回時主軌放 frame＝postcardWindow 的片段，滿版那段放全畫面片段，字幕才在上面）；簡單參數一張卡，card／pile／spread 給整套',
   params: [
     { key: 'lines', label: '手寫字（每行「開始秒-結束秒|句子」，最多 3 行）', type: 'text', default: '0.8-1.8|到了巴黎\n1.9-2.8|先好好吃一頓' },
     { key: 'place', label: '郵戳上弧（地名）', type: 'string', default: 'PARIS' },
@@ -248,6 +297,10 @@ export const postcard: ItemType<P, S> = {
     { key: 'card', label: '整張卡（JSON，給了就不用上面的簡單參數）', type: 'json', default: null },
     { key: 'pile', label: '底下那疊（之前的卡，JSON）', type: 'json', default: [] },
     { key: 'spread', label: '收尾攤開 { at, dur, center, slots }', type: 'json', default: null },
+    { key: 'drop', label: '攤開後再落下的卡（JSON：[{ at, …整張卡 }]，at＝這個項目第幾秒開始進場，卡裡的時間從 at 算）', type: 'json', default: [] },
+    { key: 'pushAt', label: '照片窗放大成全螢幕的時間（秒；-1＝不放大）', type: 'number', min: -1, max: 600, step: 0.05, default: -1 },
+    { key: 'pushDur', label: '放大／縮回的長度（秒）', type: 'number', min: 0.1, max: 5, step: 0.05, default: 0.6 },
+    { key: 'pushBack', label: '從全螢幕縮回卡上的時間（秒；-1＝不縮回）', type: 'number', min: -1, max: 600, step: 0.05, default: -1 },
     { key: 'desk', label: '桌面（wood 木桌、none 透明）', type: 'enum', options: ['wood', 'none'], default: 'wood' },
     { key: 'font', label: '手寫字型', type: 'string', default: 'LXGW WenKai TC' },
     { key: 'ink', label: '手寫墨色', type: 'color', default: '#1d2b57' },
@@ -257,29 +310,44 @@ export const postcard: ItemType<P, S> = {
   media(item) { return { videos: [], stills: postcardStills(item.params as Partial<P>).map((s) => stillRef(s)) }; },
   build(ctx) {
     const under = abs(ctx.root), desk = abs(under, {}, 'canvas') as HTMLCanvasElement, pileStage = abs(under), stage = abs(ctx.root);
+    const lift = abs(ctx.top, { inset: '0', display: 'none' }), clip = abs(lift, { overflow: 'hidden', display: 'none' }), patch = abs(clip, {}, 'canvas') as HTMLCanvasElement;
+    const copyStage = abs(clip), liftStage = abs(lift), push = abs(lift, { overflow: 'hidden', display: 'none' });
     cssCamel(under, { inset: '0' });
     cssCamel(desk, { left: '0', top: '0', width: '100%', height: '100%' });
-    for (const st of [pileStage, stage]) cssCamel(st, { left: '0', top: '0', width: '1080px', height: '1920px', transformOrigin: '0 0' });
-    const s: S = { under, desk, deskKey: '', pileStage, stage, piles: [], active: null, imgs: [] };
+    cssCamel(patch, { left: '0', top: '0', width: '100%', height: '100%' });
+    for (const st of [pileStage, stage, copyStage, liftStage]) cssCamel(st, { left: '0', top: '0', width: '1080px', height: '1920px', transformOrigin: '0 0' });
+    const s: S = { under, desk, deskKey: '', pileStage, stage, piles: [], active: null, drops: [], imgs: [], lift, clip, patch, patchKey: '', copyStage, copies: [], liftStage, push };
     postcard.draw(ctx, s);   // builds the cards and starts loading every still now, so ready() can wait for them
     return s;
   },
   ready: (s) => imagesReady(s.imgs),
-  hide(s) { freeCanvas(s.desk); s.deskKey = ''; for (const c of [s.active, ...s.piles]) for (const F of c ? [c.front, c.back] : []) { freeCanvas(F.paper); F.key = ''; } },
+  hide(s) {
+    freeCanvas(s.desk, s.patch); s.deskKey = ''; s.patchKey = '';
+    for (const c of [s.active, ...s.piles, ...s.drops, ...s.copies]) for (const F of c ? [c.front, c.back] : []) { freeCanvas(F.paper); F.key = ''; }
+  },
   draw(ctx, s) {
     const p = ctx.params, { W, H, local } = ctx, { k, ox, oy } = cardSpace(W, H), dpr = Math.max(1, k);
-    const card = p.card ?? cardFromParams(p), pile = Array.isArray(p.pile) ? p.pile : [], spread = p.spread ?? null, lang = wordsLang(postcardTexts([card, ...pile]), ctx);
+    const card = p.card ?? cardFromParams(p), pile = Array.isArray(p.pile) ? p.pile : [], spread = p.spread ?? null, drops = dropsOf(p.drop);
+    const lang = wordsLang(postcardTexts([card, ...pile, ...drops]), ctx);
     if (p.desk === 'wood') { const key = `${W}x${H}`; if (s.deskKey !== key) { s.deskKey = key; paintDesk(s.desk, W, H); } }
     cssCamel(s.desk, { display: p.desk === 'wood' ? 'block' : 'none' });
-    for (const st of [s.pileStage, s.stage]) cssCamel(st, { transform: `translate(${ox}px, ${oy}px) scale(${k})` });
-    // the card elements: one per pile card and one for this card (rebuilt when the number changes)
-    if (s.piles.length !== pile.length || !s.active) {
-      for (const c of s.piles) c.el.remove();
+    for (const st of [s.pileStage, s.stage, s.liftStage]) cssCamel(st, { transform: `translate(${ox}px, ${oy}px) scale(${k})` });
+    // the card elements: one per pile card, one for this card, one per dropped card (rebuilt when the numbers change)
+    const fresh = s.piles.length !== pile.length || s.drops.length !== drops.length || !s.active;
+    if (fresh) {
+      for (const c of [...s.piles, ...s.drops]) c.el.remove();
       s.piles = pile.map(() => cardEl(s.pileStage));
       s.active ??= cardEl(s.stage);
-      s.imgs = [s.active, ...s.piles].flatMap((c) => [c.front.win!.img, c.front.stamp.win.img]);
+      s.drops = drops.map(() => cardEl(s.stage));
+      s.imgs = [s.active, ...s.piles, ...s.drops].flatMap((c) => [c.front.win!.img, c.front.stamp.win.img]);
     }
-    const st = cardState(card, local, spread), ep = card.enter ? eOut3(clamp(local / card.enter.dur)) : 1;
+    const ep = card.enter ? eOut3(clamp(local / card.enter.dur)) : 1;
+    const stateOf = (c: Card, l: number, sp: Spread | null) => {
+      const x = cardState(c, l, sp);
+      return { x, o: { hole: x.hole, stillAlpha: x.stillAlpha, useExit: x.useExit, complete: x.face === 'front' && x.useExit } };
+    };
+    // what shows, bottom to top: the pile, this card, the dropped cards that have started to come in
+    const shown: Shown[] = [];
     // the pile: the newest card under this one moves from where it lay (settled) into the pile while this one comes in
     pile.forEach((pc, i) => {
       let pose = pilePose(pc);
@@ -288,10 +356,59 @@ export const postcard: ItemType<P, S> = {
         const slot = spread.slots[i] ?? [540, 960, 0, 0.3], q = eIO3(clamp((local - spread.at - i * 0.07) / spread.dur));
         pose = mix(pose, { cx: slot[0], cy: slot[1], rot: slot[2], scale: slot[3] }, q);
       }
-      drawCard(ctx.media, s.piles[i], pc, pose, finalFace(pc), local, { hole: false, stillAlpha: 1, useExit: true, complete: true }, p, dpr, lang);
+      shown.push({ el: s.piles[i], card: pc, pose, face: finalFace(pc), local, o: { hole: false, stillAlpha: 1, useExit: true, complete: true } });
     });
-    drawCard(ctx.media, s.active!, card, st.pose, st.face, local, { hole: st.hole, stillAlpha: st.stillAlpha, useExit: st.useExit, complete: st.face === 'front' && st.useExit }, p, dpr, lang);
+    const st = stateOf(card, local, spread);
+    let top = st.x;
+    shown.push({ el: s.active!, card, pose: st.x.pose, face: st.x.face, local, o: st.o });
+    drops.forEach((d, i) => {
+      const dl = local - d.at, on = dl >= 0;
+      cssCamel(s.drops[i].el, { display: on ? 'block' : 'none' });
+      const ds = stateOf(d, Math.max(0, dl), null);
+      // not here yet: drawn hidden once when built, so its stills start loading now and ready() waits for them
+      if (!on && fresh) drawCard(ctx.media, s.drops[i], d, ds.x.pose, ds.x.face, 0, ds.o, p, dpr, lang);
+      if (!on) return;
+      top = ds.x;
+      shown.push({ el: s.drops[i], card: d, pose: ds.x.pose, face: ds.x.face, local: dl, o: ds.o });
+    });
+    for (const x of shown) drawCard(ctx.media, x.el, x.card, x.pose, x.face, x.local, x.o, p, dpr, lang);
+    const head = shown[shown.length - 1], win = windowRect(head.card.orient, W, H);
     // the hole goes through the desk and the pile too: the clip below shows only there
-    punch(s.under, st.hole ? windowRect(card.orient, W, H) : null);
+    punch(s.under, top.hole ? win : null);
+    // a clip in the window while the card on top is not a hole: that card above the clip, over the desk and the cards under it
+    // copied into the window (a sliding or turning card leaves part of the window bare)
+    const clips = clipsAt(ctx.project, ctx.t), cover = !top.hole && clips.some((c) => !isFull(clipFrame(c)) && overlaps(clipFrame(c), win, W, H));
+    const order = [s.active!, ...s.drops], lifted = cover ? head.el : null;
+    if (order.some((c) => c.el.parentElement !== (c === lifted ? s.liftStage : s.stage))) for (const c of order) (c === lifted ? s.liftStage : s.stage).appendChild(c.el);
+    cssCamel(s.clip, { display: cover ? 'block' : 'none', left: `${win[0]}px`, top: `${win[1]}px`, width: `${win[2]}px`, height: `${win[3]}px` });
+    if (cover) {
+      const patchKey = p.desk === 'wood' ? `${s.deskKey}|${win.map((v) => v.toFixed(2)).join(',')}` : '';
+      if (patchKey && s.patchKey !== patchKey) {
+        s.patchKey = patchKey;
+        s.patch.width = Math.max(1, Math.round(win[2])); s.patch.height = Math.max(1, Math.round(win[3]));
+        const kk = s.desk.width / W;
+        s.patch.getContext('2d')!.drawImage(s.desk, win[0] * kk, win[1] * kk, win[2] * kk, win[3] * kk, 0, 0, s.patch.width, s.patch.height);
+      }
+      cssCamel(s.patch, { display: patchKey ? 'block' : 'none' });
+      cssCamel(s.copyStage, { transform: `translate(${ox - win[0]}px, ${oy - win[1]}px) scale(${k})` });
+      const below = shown.slice(0, -1);
+      while (s.copies.length < below.length) s.copies.push(cardEl(s.copyStage));
+      s.copies.forEach((c, i) => {
+        cssCamel(c.el, { display: i < below.length ? 'block' : 'none' });
+        if (i < below.length) { const x = below[i]; drawCard(ctx.media, c, x.card, x.pose, x.face, x.local, x.o, p, dpr, lang); }
+      });
+    }
+    // pushed to the whole frame: the clip on top, drawn here in the rectangle growing from its own frame to the full screen (a
+    // full-screen clip covers the frame by itself; a photo is left as it is)
+    const q = pushAmount(p, local), c = clips[clips.length - 1], f = c ? clipFrame(c) : null;
+    const pushing = q > 0 && !!c && !!f && !isFull(f) && ctx.project.sources[c.item.source]?.kind !== 'image';
+    if (pushing) {
+      const r = pushRect([f[0] * W, f[1] * H, f[2] * W, f[3] * H], W, H, q), vs = videoState(c.item, c.start, c.end, ctx.t, W, H, ctx.grades);
+      const src = ctx.project.sources[c.item.source], v = ctx.media.video(videoRefOf(c.item, c.start, c.end), s.push, vs.mediaLocal, vs.held);
+      ctx.media.place(v, r[2], r[3], vs.crop, src?.width, src?.height);
+      cssCamel(s.push, { left: `${r[0]}px`, top: `${r[1]}px`, width: `${r[2]}px`, height: `${r[3]}px`, opacity: vs.opacity.toFixed(3), filter: vs.filter });
+    }
+    cssCamel(s.push, { display: pushing ? 'block' : 'none' });
+    cssCamel(s.lift, { display: cover || pushing ? 'block' : 'none' });
   },
 };

@@ -1,7 +1,7 @@
 // common.ticket — a cream rail ticket that slams in at the bottom of the frame: a red header band (title and No.01/03), the city
 // big, a spaced Latin line, a perforated stub with the dates, notches cut at the tear line — and on the next beat a red double-ringed
 // "arrived" stamp lands on it. Promoted from the uk-beat short's fx.ticket; any trip edit's arrival at a stop.
-import { abs, clamp, cssCamel, eBack, eIO3 as eInOut, eOut3 as eOut, type ItemType, prog } from '@tellcut/engine';
+import { abs, clamp, cssCamel, eBack, eIO3 as eInOut, eOut3 as eOut, type ItemType, prog, textEm } from '@tellcut/engine';
 import { fitPx } from './text.ts';
 
 interface P {
@@ -14,6 +14,19 @@ interface S { wrap: HTMLElement; card: HTMLElement; band: HTMLElement; head: HTM
 export function ticketBox(p: Pick<P, 'y' | 'w'>, W: number, H: number, safe: { bottom: number; side: number }) {
   const w = Math.min(p.w * Math.min(W, H), W * (1 - 2 * safe.side)), k = w / 800, hh = 330 * k;
   return { k, w, h: hh, x: (W - w) / 2, y: p.y >= 0 ? p.y * H : (1 - safe.bottom) * H - hh - 40 * k };
+}
+
+/** the city's size and the stamp's left edge, in px of the 800-wide original (k = 1): the city shrinks to stay left of the stamp
+ *  (it used to run under it: a long station name was covered); below 60 % of its size it stops shrinking and the stamp moves right
+ *  instead, onto the stub. A name reaching at most 4 px into the stamp's box (a four-character one at 92 px ends at 402) keeps the
+ *  size it always had; one that shrinks ends 10 px short of the stamp */
+export function ticketTitle(title: string, stamp: boolean, k = 1) {
+  const long = [...title].length > 2, em = Math.max(0.5, textEm(title)), x0 = 34 * k, st = 400 * k, gap = 10 * k;
+  let px = fitPx(title, (long ? 92 : 136) * k, 500 * k);
+  if (!stamp || x0 + em * px <= st + 4 * k) return { px, long, stampX: st };
+  px = Math.min(px, Math.max((st - gap - x0) / em, (long ? 0.6 * 92 : 0.6 * 136) * k));
+  const end = x0 + em * px;
+  return { px, long, stampX: end > st - gap + 0.5 * k ? Math.min(608 * k, end + gap) : st };
 }
 
 export const ticket: ItemType<P, S> = {
@@ -66,7 +79,7 @@ export const ticket: ItemType<P, S> = {
     s.head.textContent = p.header; s.no.textContent = p.total ? `No.${p.no}/${p.total}` : `No.${p.no}`;
     cssCamel(s.head, { left: `${30 * k}px`, top: `${16 * k}px`, fontSize: `${fitPx(p.header, 30 * k, 480 * k)}px`, color: p.paper, letterSpacing: `${5 * k}px` });
     cssCamel(s.no, { right: `${30 * k}px`, top: `${17 * k}px`, fontSize: `${30 * k}px`, fontFamily: mono, color: p.paper });
-    const long = [...p.title].length > 2, big = fitPx(p.title, (long ? 92 : 136) * k, cut - 60 * k);
+    const { px: big, long, stampX } = ticketTitle(p.title, !!p.stamp, k);
     s.title.textContent = p.title; s.latin.textContent = p.latin;
     cssCamel(s.title, { left: `${34 * k}px`, top: `${(long ? 118 : 94) * k}px`, fontSize: `${big}px`, fontWeight: '900', color: p.ink });
     cssCamel(s.latin, { left: `${38 * k}px`, top: `${250 * k}px`, fontSize: `${fitPx(p.latin, 30 * k, cut - 70 * k)}px`, fontFamily: mono, color: p.muted, letterSpacing: `${6 * k}px` });
@@ -78,7 +91,7 @@ export const ticket: ItemType<P, S> = {
     cssCamel(s.year, { left: `${590 * k}px`, top: `${262 * k}px`, fontSize: `${24 * k}px`, fontFamily: mono, color: p.muted });
     // the stamp: a double red ring with the word in it, landing big and settling, tilted
     s.stText.textContent = p.stamp;
-    cssCamel(s.st, { display: p.stamp ? 'flex' : 'none', left: `${400 * k}px`, top: `${92 * k}px`, width: `${172 * k}px`, height: `${172 * k}px`,
+    cssCamel(s.st, { display: p.stamp ? 'flex' : 'none', left: `${stampX}px`, top: `${92 * k}px`, width: `${172 * k}px`, height: `${172 * k}px`,
       border: `${7 * k}px solid ${p.accent}`, boxShadow: `inset 0 0 0 ${6 * k}px ${p.paper}, inset 0 0 0 ${10 * k}px ${p.accent}`,
       opacity: local < sa ? '0' : String(0.92 * clamp(sq * 1.5)), transform: `scale(${(2.1 - 1.1 * eOut(sq)).toFixed(4)}) rotate(-14deg)` });
     cssCamel(s.stText, { fontSize: `${fitPx(p.stamp, 44 * k, 140 * k)}px`, color: p.accent, letterSpacing: `${2 * k}px` });

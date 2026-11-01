@@ -1,11 +1,12 @@
 // The blocks promoted from the uk-beat and uk-postcard shorts (2026-10-19): the rail-ticket beat edit kit and the postcard kit.
 import { DEFAULT_THEME, defaultSafe, withDefaults } from '@tellcut/engine';
 import { arcPt, boundsOf, EUROPE_TRIP, labelSide, parseCities, projector } from './geo.ts';
-import { boardAt, parseStops, routeboard } from './routeboard.ts';
+import { boardAt, boardBounds, boardLabel, parseStops, routeboard } from './routeboard.ts';
 import { legAt, mapLayout } from './mapjump.ts';
-import { ticketBox } from './ticket.ts';
+import { ticketBox, ticketTitle } from './ticket.ts';
+import { nameRoom, reachAt, route, routeSpan, stopName } from './route.ts';
 import { stationsLayout } from './stations.ts';
-import { cardFromParams, cardState, finalFace, postcard, postcardStills, postcardWindow, type Card } from './postcard.ts';
+import { cardFromParams, cardState, dropsOf, finalFace, postcard, postcardStills, postcardWindow, pushAmount, pushRect, type Card } from './postcard.ts';
 import { frame, frameBox, framePose, frameWindow } from './frame.ts';
 import { markSize, stampTint } from './postmark.ts';
 import { asFrame } from './window.ts';
@@ -139,4 +140,68 @@ test('the new looks are opt-in: tag, slam and list keep their old defaults', () 
   expect(def(list, 'look')).toBe('card');
   expect(def(slam, 'bar')).toBe('#00000000');
   expect(def(slam, 'drift')).toBe(0);
+});
+
+// ── 2026-11-01: what the acceptance films T1 (Rome), T2 (Morocco) and F2 (food route) ran into ──────────────────────────────────
+
+test('routeboard: the sights of one city spread over the map (they met in one point); many cities keep the padded bounds', () => {
+  const rome = parseCities('梵蒂岡|VATICANO|12.4534|41.9029, 特雷維|TREVI|12.4833|41.9009, 競技場|COLOSSEO|12.4922|41.8902, 特米尼|TERMINI|12.5014|41.9010');
+  const box: [number, number, number, number] = [34, 22, 500, 150], P = projector(box, boardBounds(rome)), xs = rome.map((c) => P(c.lon, c.lat)[0]);
+  expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(0.6 * 500);   // was about 6 px with boundsOf's degree of padding
+  const ys = rome.map((c) => P(c.lon, c.lat)[1]);
+  for (const y of ys) { expect(y).toBeGreaterThan(22); expect(y).toBeLessThan(172); }
+  const trip = parseCities(EUROPE_TRIP);
+  expect(boardBounds(trip)).toEqual(boundsOf(trip));
+  expect(boardBounds(trip.slice(0, 1))).toEqual(boundsOf(trip.slice(0, 1)));
+});
+
+test('routeboard: a name never runs off the panel: the westernmost high dot puts it on its right, a low one is moved in', () => {
+  const box: [number, number, number, number] = [34, 22, 500, 150];
+  const west = boardLabel(53, 30, '梵蒂岡', 1, box);   // high in the box, near the left edge
+  expect(west.transform).toBe('translate(0, -50%)');
+  expect(west.left).toBeGreaterThan(53);
+  expect(boardLabel(400, 30, '塔林', 1, box)).toEqual({ left: 378, top: 30, transform: 'translate(-100%, -50%)' });   // as before
+  const low = boardLabel(40, 150, '聖彼得堡', 1, box);
+  expect(low.left - (4 * 26) / 2).toBeGreaterThanOrEqual(18);
+  expect(boardLabel(200, 150, '巴黎', 1, box).left).toBe(200);   // as before
+});
+
+test('ticket: a long city name stays left of the stamp, the stamp moves onto the stub only when the name would get too small', () => {
+  expect(ticketTitle('巴黎', true)).toEqual({ px: 136, long: false, stampX: 400 });
+  expect(ticketTitle('梵蒂岡', true)).toEqual({ px: 92, long: true, stampX: 400 });
+  const six = ticketTitle('聖彼得大教堂', true);   // 6 × 92 = 552 px ran under the stamp at 400
+  expect(34 + 6 * six.px).toBeLessThanOrEqual(390.001); expect(six.stampX).toBe(400);
+  expect(ticketTitle('克拉科夫', true).px).toBe(92);   // four characters end 2 px into the stamp's box: kept as they were
+  const long = ticketTitle('聖母大殿聖母大殿館', true);
+  expect(long.px).toBeCloseTo(0.6 * 92, 5);
+  expect(long.stampX).toBeGreaterThanOrEqual(34 + 9 * long.px + 10);
+  expect(ticketTitle('聖彼得大教堂', false).px).toBeCloseTo(500 / 6, 5);   // no stamp: as before
+});
+
+test('route card: upto stops the line at stop k, already starts it lit up to there; names can be bigger, long ones in two lines', () => {
+  const all = routeSpan(6, 0, 0);
+  expect([1, 3, 6].map((n) => all.reach(n, 1, 3))).toEqual([1, 3, 6].map((n) => reachAt(n, 6, 1, 3)));
+  const next = routeSpan(6, 3, 2);   // the card comes back to light stop 3
+  expect(next.reach(1, 0.1, 0.9)).toBe(-Infinity); expect(next.reach(2, 0.1, 0.9)).toBe(-Infinity);
+  expect(next.reach(3, 0.1, 0.9)).toBeCloseTo(0.85, 5);
+  expect(next.reach(4, 0.1, 0.9)).toBe(Infinity);
+  expect(routeSpan(4, 9, 7)).toMatchObject({ a: 4, e: 4 });
+  expect(def(route, 'upto')).toBe(0); expect(def(route, 'already')).toBe(0); expect(def(route, 'nameSize')).toBe(30);
+  expect(stopName('新珍香', 44, 200)).toEqual({ text: '新珍香', lines: 1, px: 44 });
+  expect(stopName('驚嘆號臭豆腐', 44, 200)).toEqual({ text: '驚嘆號\n臭豆腐', lines: 2, px: 44 });
+  const P: Array<[number, number]> = [[100, 300], [400, 310], [700, 300], [600, 700]];
+  expect(nameRoom(P, 1, 1000, 40)).toBeCloseTo(270, 5);   // 0.9 of the way to the nearest stop in its row
+  expect(nameRoom(P, 3, 1000, 40)).toBe(400);              // alone in its row: 0.4 of the card
+});
+
+test('postcard: the push grows from the window to the whole frame and back; drop cards need a number at', () => {
+  const p = { pushAt: 1, pushDur: 0.5, pushBack: 3 };
+  expect([0.5, 1, 1.5, 2, 3, 3.5].map((t) => pushAmount(p, t))).toEqual([0, 0, 1, 1, 1, 0]);
+  expect(pushAmount(p, 1.25)).toBeCloseTo(0.5, 5);
+  expect(pushAmount({ ...p, pushBack: -1 }, 9)).toBe(1);
+  expect(pushAmount({ ...p, pushAt: -1 }, 2)).toBe(0);
+  expect(pushRect([100, 200, 800, 1000], 1080, 1920, 0)).toEqual([100, 200, 800, 1000]);
+  expect(pushRect([100, 200, 800, 1000], 1080, 1920, 1)).toEqual([0, 0, 1080, 1920]);
+  expect(dropsOf([{ index: 4, orient: 'portrait', at: '6.9' }, { index: 5, orient: 'portrait' }, null])).toEqual([{ index: 4, orient: 'portrait', at: 6.9 }]);
+  expect(def(postcard, 'pushAt')).toBe(-1); expect(def(postcard, 'drop')).toEqual([]);
 });
