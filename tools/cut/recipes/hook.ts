@@ -3,8 +3,8 @@
 // at the end, music under it all.
 //
 // The layout stacks top to bottom without overlaps: the badge with its top on the top safe margin (the app's account name covers the
-// top 11.5 % of a 9:16 film), the tags under it, the panel under them down to 0.62, the chapter dots just under it, the captions above
-// the short-video interface at the bottom.
+// top 11.5 % of a 9:16 film), the tags under it, the panel under them down to 0.62, the chapter dots just under it, the captions under
+// them as the Cut API places captions in a panel layout (right below, or on the bottom safe margin above the short-video interface).
 import { z } from 'zod';
 import { resolveTheme } from '@tellcut/engine';
 import { panelFrame } from '@tellcut/plugin-common';
@@ -72,9 +72,10 @@ export const hook: Recipe<typeof Content> = {
     const auto: [number, number, number, number] = height / width >= 1.5 ? [0.04, panelY, 0.92, Math.round((0.62 - panelY) * 1e4) / 1e4] : panelFrame(width, height);
     const frame = x.panel === false ? null : (x.panel === true ? undefined : x.panel.frame) ?? auto;
     if (frame) c.panel({ frame, radius: x.panel !== true && x.panel !== false ? x.panel.radius : undefined });
-    // the dots just under the panel: icons are bigger, so their row's centre sits lower, the current one clear of the panel's edge
-    const iconHalf = x.icons ? (12 * (Math.min(width, height) / 1080) * 3.2 * ICONS * 1.35) / 2 / height : 0;
-    const dotsY = frame ? Math.min(0.9, Math.round((frame[1] + frame[3] + Math.max(0.035, 0.012 + iconHalf)) * 1e4) / 1e4) : -1;
+    // the dots in a row reserved just under the panel (the captions go below it, see c.underPanel): icons are bigger, so their row is
+    // taller and its centre lower, the current one clear of the panel's edge
+    const iconHalf = x.icons ? (12 * (Math.min(width, height) / 1080) * 3.2 * ICONS * 1.35) / 2 / height : 0, half = Math.max(0.035, 0.012 + iconHalf);
+    const dotsY = frame ? Math.min(0.9, Math.round((c.underPanel(2 * half) + half) * 1e4) / 1e4) : -1;
     const n = x.segments.length;
     c.at(0);
     const clips: string[] = [], made: Array<Record<string, string | string[] | undefined>> = [];

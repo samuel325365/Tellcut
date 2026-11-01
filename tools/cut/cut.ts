@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, createRegistry, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { addItem, createRegistry, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
@@ -15,6 +15,7 @@ import { parseContent, RECIPES } from './recipes/index.ts';
 import { inventory, type Inventory } from './inventory.ts';
 import { captionPlan, filmOf, linePlan, secs, wordSpans, type CaptionOptions, type Line, type SpeechPiece, type SrcTime } from './speech.ts';
 import { tightenClip } from './tighten.ts';
+import { captionHeight, isCaption, placeCaptions, UNDER_GAP, type CaptionItem } from './under-panel.ts';
 import { addDucking, addScore, clipSpeech, QUIET_DB, type ScoreRequest } from './mix.ts';
 import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, type FollowReq } from './focus.ts';
 
@@ -85,6 +86,8 @@ export class Cut {
   private end = 0;
   /** set by panel(): the rectangle the picture lives in, so clips come with it and save() adds the backdrop and the frame */
   private layout: { frame: [number, number, number, number]; radius: number; backdrop: Record<string, unknown> | false | 'blur'; border: Record<string, unknown> | false } | null = null;
+  /** the rows reserved under the panel (underPanel), as a share of the frame height: the captions go below them */
+  private reserved = 0;
   /** set by score(): generated at save() to the film's length */
   private scoreReq: ScoreRequest | null = null;
   private duckDb: number | false = -10;
@@ -367,12 +370,24 @@ export class Cut {
    * The panel layout: the picture shrinks into `frame` (x, y, w, h as fractions of the screen; default: one that fits the film's shape) with rounded corners, a patterned backdrop
    * goes under it and a border over it. Declare it before the first clip. `backdrop` / `border` are params for common.backdrop / common.panel, or false to leave one out.
    * `backdrop: 'blur'`: under each clip its own picture fills the screen, blurred and dimmed — landscape footage in a portrait film
-   * leaves no empty band then.
+   * leaves no empty band then. Captions that are not given a place of their own (no `y` or `position`, no transform) go right under
+   * the panel at save(), while that keeps them above the bottom safe margin; else they stay on the margin (with a note when they cover the panel).
    */
   panel(o: { frame?: [number, number, number, number]; radius?: number; backdrop?: Record<string, unknown> | false | 'blur'; border?: Record<string, unknown> | false } = {}) {
     checkFrame(o.frame, 'c.panel');
     this.layout = { frame: o.frame ?? panelFrame(this.p.meta.width, this.p.meta.height), radius: o.radius ?? PANEL_RADIUS, backdrop: o.backdrop ?? {}, border: o.border ?? {} };
     return this;
+  }
+  /**
+   * Reserve a row `h` high (a share of the frame height) under the panel, below the rows reserved before; returns its top. The
+   * captions save() places under the panel go below it (the hook recipe's chapter dots).
+   */
+  underPanel(h: number): number {
+    if (!this.layout) throw new Error('c.underPanel：沒有面板版面，先呼叫 c.panel()');
+    if (!(h >= 0)) throw new Error(`c.underPanel 的高度要是 0 以上的數字（畫面高的比例），現在是 ${h}`);
+    const top = this.layout.frame[1] + this.layout.frame[3] + this.reserved;
+    this.reserved += h;
+    return top;
   }
   /** Register a project-local effect module (projects/<id>/fx/<name>.js, toolkit phase 2a); its types start with fx. */
   fx(path: string) { const l = (this.p.meta.fx ??= []); if (!l.includes(path)) l.push(path); return this; }
@@ -515,6 +530,27 @@ export class Cut {
       this.track('panel', 'overlay', 'Panel frame', this.p.tracks.findIndex((t) => t.id === 'v1') + 1);
       addItem(this.p, { track: 'panel', item: { type: 'common.panel', start: 0, end: duration, params: { x, y, w, h, radius: l.radius, ...l.border } } });
     }
+  }
+  /** At save(), in a panel layout: the captions nobody placed hang right under the panel (see under-panel.ts). */
+  private captionsUnderPanel() {
+    const l = this.layout;
+    if (!l) return;
+    const { width: W, height: H } = this.p.meta, theme = resolveTheme(this.p.meta.theme, this.p.meta), reg = createRegistry(plugins);
+    const withDefaults = (it: CaptionItem) => ({ ...Object.fromEntries((reg.item(it.type)?.params ?? []).map((d) => [d.key, d.default])), ...it.params });
+    const all = this.p.tracks.filter((t) => t.kind === 'overlay').flatMap((t) => t.items as unknown as CaptionItem[]).filter((it) => isCaption(it.type));
+    const panelBottom = l.frame[1] + l.frame[3];
+    const { moves, covering } = placeCaptions(all.map((it) => ({ ...it, params: it.params ?? {} })), {
+      top: panelBottom + this.reserved, bottom: 1 - theme.safe.bottom, panelBottom, gap: (UNDER_GAP * Math.min(W, H)) / 1080 / H,
+      heightOf: (it) => captionHeight(it.type, withDefaults(it), W, H, theme.stroke),
+    });
+    for (const m of moves) {
+      const it = all.find((x) => x.id === m.id)!;
+      if ('y' in m) it.params = { ...(it.params ?? {}), y: m.y }; else it.transform = { ox: 0.5, oy: 0.5, ...m.transform };
+    }
+    // a wide film's own default panel is meant to have its captions over the picture's lower edge (panelFrame): no note for that
+    const designed = W > H && l.frame.every((v, i) => v === panelFrame(W, H)[i]);
+    if (covering.length && !designed)
+      this.notes.push(`c.panel：面板下緣 ${panelBottom.toFixed(3)} 到畫面安全區下緣 ${(1 - theme.safe.bottom).toFixed(3)} 之間放不下兩行字幕，${covering.length} 張字幕留在安全區下緣、蓋到面板下緣；要字幕排在面板正下方，給 c.panel 一個底邊高一點的 frame（hook 配方的直式面板底邊在 0.62），或給字幕自己的 y`);
   }
   /**
    * At save(): what lies within one clip of the main track — a card or a background over that shot, a flash at its start, a sound
@@ -791,6 +827,7 @@ export class Cut {
     await resolveBurnedFaces(this.faceCtx(), this.burnedAsks, this.autoFocus);   // before the focus: it may take a clip's focus over
     await resolveAutoFocus(this.faceCtx(), this.autoFocus);   // the crops first: a sticker follows a face through the final crop, a blur backdrop copies it
     this.addLayout(duration);
+    this.captionsUnderPanel();
     await resolveFollows(this.faceCtx(), this.follows);
     const m = this.song;
     if (m) {
