@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // The brand film's text and texture looks (spec 2026-10-25-brand-preset §6.2-5): headline look brand, tag look glass, film letterbox.
 import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
-import { film, tile } from './film.ts';
+import { film } from './film.ts';
 import { headline } from './headline.ts';
 import { tag } from './tag.ts';
 
@@ -9,7 +9,7 @@ let texts: Array<{ s: string; x: number; y: number; filter: string; alpha: numbe
 beforeEach(() => {
   texts = [];
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
-    const g: any = { canvas: this, filter: 'none', globalAlpha: 1, clearRect() {}, fillRect() {}, save() {}, restore() {}, putImageData() {}, drawImage() {},
+    const g: any = { canvas: this, filter: 'none', globalAlpha: 1, clearRect() {}, fillRect() {}, save() {}, restore() {}, putImageData() {}, drawImage() {}, setTransform() {}, createPattern: () => ({}),
       createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }), measureText: (s: string) => ({ width: s.length * 20 }),
       fillText(s: string, x: number, y: number) { texts.push({ s, x, y, filter: g.filter, alpha: g.globalAlpha, font: g.font }); } };
     return g;
@@ -149,7 +149,7 @@ test('headline look brand: a line too wide for the safe area shrinks to fit it, 
   expect(px(texts.find((t) => t.s === 'Every trip.')!.font)).toBeCloseTo(wanted, 5);
 });
 
-// review of brand plan 3: the spike's grain — grey noise blended by overlay — as an option; the default stays the old grain
+// review of brand plan 3: the spike's grain — grey noise blended by overlay — as an option (since 2026-11-01 normal blends too, by soft-light)
 test('film blend overlay: the layer blends by overlay and holds only the grain; the vignette and bars stay normal above it', async () => {
   const { root, st } = await stage(film as ItemType, { blend: 'overlay', grain: 0.07, letterbox: 2.39 });
   st.draw(1);
@@ -158,22 +158,13 @@ test('film blend overlay: the layer blends by overlay and holds only the grain; 
   expect(layer.querySelectorAll('[data-bar]').length).toBe(0);
   expect([...top.querySelectorAll<HTMLElement>('[data-bar]')].filter((b) => b.style.display !== 'none').length).toBe(2);
   expect(layer.querySelectorAll('canvas').length).toBe(1);
-  expect(layer.querySelector('canvas')!.style.opacity).toBe('0.07');
+  expect(Number(layer.querySelector('canvas')!.style.opacity)).toBeGreaterThan(0);
   const plain = await stage(film as ItemType, { letterbox: 2.39 });
   plain.st.draw(1);
   const pl = plain.root.querySelector<HTMLElement>('.st-item')!;
-  expect(pl.style.mixBlendMode).toBe('');
-  expect(pl.querySelectorAll('[data-bar]').length).toBe(2);
+  expect(pl.style.mixBlendMode).toBe('soft-light');
+  expect(pl.querySelectorAll('[data-bar]').length).toBe(0);
+  expect([...plain.root.querySelector<HTMLElement>('.st-top')!.querySelectorAll<HTMLElement>('[data-bar]')].filter((b) => b.style.display !== 'none').length).toBe(2);
 });
 
-test('film grain tiles: grey (opaque, 128 ± 60) for overlay, black and white specks for normal, the same for the same tile', () => {
-  const g: any = { createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }) };
-  const grey = tile(g, 1, true).data, mono = tile(g, 1).data;
-  let lo = 255, hi = 0, sum = 0, odd = 0;
-  for (let i = 0; i < grey.length; i += 4) { if (grey[i + 3] !== 255 || grey[i] !== grey[i + 1]) odd++; lo = Math.min(lo, grey[i]); hi = Math.max(hi, grey[i]); sum += grey[i]; }
-  for (let i = 0; i < mono.length; i += 4) if ((mono[i] !== 0 && mono[i] !== 255) || mono[i + 3] >= 56) odd++;
-  expect(odd).toBe(0);
-  expect(lo).toBeGreaterThanOrEqual(68); expect(hi).toBeLessThanOrEqual(188);
-  expect(Math.abs(sum / (grey.length / 4) - 128)).toBeLessThan(1);
-  expect(tile(g, 1, true).data).toEqual(grey);
-});
+// the grain tiles, their opacity and the frame pick: film.test.ts (the grain redone 2026-11-01)
