@@ -5,7 +5,7 @@
 // mode table: the closing comparison — "a vs b", the two names over two columns, one row a question (what a said | what b said),
 // sliding in one by one, then a last line that asks the viewer.
 import { clamp, cssCamel, eBack, eIn3, eOut3, h, type ItemType } from '@tellcut/engine';
-import { duoLayout } from './duo.ts';
+import { DUO_TOP, duoLayout } from './duo.ts';
 import { emParts, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
@@ -46,7 +46,7 @@ export const versus: ItemType<P, S> = {
     { key: 'rows', label: '對照表（table；一行一列「題目|a 說的|b 說的|a 小標|b 小標」）', type: 'text', default: '早起真的比較有效率？|鬧鐘一響，\\n整個上午都在發呆|你只是沒睡飽，\\n要先早點上床\n週末補眠，到底算不算數？|平日欠的覺，\\n週末一次睡回來|補眠補不回來，\\n作息才是重點\n討厭早起，還要硬撐嗎？|天生的夜貓子\\n要怎麼辦？|有理由就早起；\\n沒理由就別逼|他問|她答' },
     { key: 'ask', label: '最後一句（table）', type: 'string', default: '你站哪一邊？' },
     { key: 'dir', label: '分割方向（title；同 common.duo）', type: 'enum', options: ['v', 'h'], default: 'v' },
-    { key: 'top', label: '頁首高度（title；同 common.duo）', type: 'number', min: 0, max: 0.4, step: 0.002, default: 0.104 },
+    { key: 'top', label: '頁首高度（title；同 common.duo）', type: 'number', min: 0, max: 0.4, step: 0.002, default: DUO_TOP },
     { key: 'band', label: '字幕帶高度（title；同 common.duo）', type: 'number', min: 0, max: 0.4, step: 0.002, default: 0.078 },
     { key: 'foot', label: '頁尾高度（title；同 common.duo）', type: 'number', min: 0, max: 0.4, step: 0.002, default: 0.026 },
     { key: 'colorA', label: 'a 的顏色', type: 'color', default: '#3d7bff', theme: 'palette.accent2' },

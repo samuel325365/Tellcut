@@ -12,8 +12,10 @@ type Look = 'bars' | 'wave' | 'ring';
 interface P {
   look: Look; source: string; at: number; speakers: unknown; names: unknown; colors: unknown;
   art: string; artSource: string; artT: number; x: number; y: number; w: number; h: number; gain: number; smooth: number; count: number; font: string;
+  hold: number; arts: unknown; nameX: number; nameY: number; only: number; fadeIn: number; fadeOut: number;
 }
-interface S { cv: HTMLCanvasElement; art: Win; pill: HTMLElement; data: Map<string, SourcePeaks>; waits: Map<string, Promise<void>> }
+/** `arts`: one window per cover file of the list, all loaded at build so a change of cover never shows a frame without it */
+interface S { cv: HTMLCanvasElement; art: Win; arts: Map<string, Win>; pill: HTMLElement; data: Map<string, SourcePeaks>; waits: Map<string, Promise<void>> }
 
 /** a stretch of film time that plays a source's sound: film second t is source second in + (t - start) × rate */
 export interface Span { source: string; start: number; end: number; in: number; rate: number }
@@ -95,6 +97,46 @@ export function speakerAt(speakers: unknown, s: number): number {
   return who;
 }
 
+/** Who speaks at film time `t` (`whoAt` gives it at any film time), holding the last speaker through a gap shorter than `hold`
+ *  seconds — no sound between two c.audio pieces, or nobody listed between two turns — so the colour does not flash back to the
+ *  idle one and the name tag stays; 0 = no holding. A gap at the end (nobody after it) is not held. Looked for in 1/50 s steps. */
+export function heldSpeaker(whoAt: (u: number) => number, t: number, hold: number): number {
+  const now = whoAt(t);
+  if (now || !(hold > 0)) return now;
+  const step = 0.02;
+  let back = -1, last = 0;
+  for (let d = step; d < hold; d += step) { const w = whoAt(t - d); if (w) { back = d; last = w; break; } }
+  if (back < 0) return 0;
+  for (let d = step; back + d < hold; d += step) if (whoAt(t + d)) return last;
+  return 0;
+}
+
+/** the cover file for source second `s` in `[[from, to, file], …]` (the arts param, source seconds like speakers): the latest entry
+ *  begun and not ended; '' = none */
+export function artAt(arts: unknown, s: number): string {
+  if (!Array.isArray(arts)) return '';
+  let file = '', from = -Infinity;
+  for (const x of arts) {
+    if (!Array.isArray(x) || x.length < 3) continue;
+    const a = Number(x[0]), b = Number(x[1]), f = typeof x[2] === 'string' ? x[2].trim() : '';
+    if (f && Number.isFinite(a) && Number.isFinite(b) && s >= a && s < b && a >= from) { file = f; from = a; }
+  }
+  return file;
+}
+/** every cover file the arts list names, once */
+const artFiles = (arts: unknown): string[] =>
+  Array.isArray(arts) ? [...new Set(arts.filter((x) => Array.isArray(x) && typeof x[2] === 'string' && x[2].trim()).map((x) => (x[2] as string).trim()))] : [];
+
+/** the source second heard at film time `t`, else the last one heard before it (the end of the latest span that has ended): a gap
+ *  keeps the cover it had */
+export function heardAt(spans: Span[], t: number): { source: string; s: number } | null {
+  const now = sourceAt(spans, t);
+  if (now) return now;
+  let best: Span | null = null;
+  for (const sp of spans) if (sp.end <= t + TIME_EPS && Number.isFinite(sp.end) && (!best || sp.end > best.end)) best = sp;
+  return best ? { source: best.source, s: best.in + (best.end - best.start) * best.rate } : null;
+}
+
 /** speaker `who`'s colour: colors[who] when given, else the theme's accent (nobody and the first), accent2, hl, then round again */
 export function speakerColor(who: number, colors: unknown, theme: Pick<Theme, 'palette'>): string {
   const own = Array.isArray(colors) ? colors[who] : undefined;
@@ -151,7 +193,7 @@ const artOf = (p: P): Still | null => (p.art ? { source: '', t: 0, file: p.art }
 
 export const audiogram: ItemType<P, S> = {
   type: 'common.audiogram', label: '音波動畫', category: 'number', kind: 'overlay',
-  doc: '跟著講話聲音跳動的音波，Podcast／訪談只有聲音時撐住畫面：look bars 一排上下對稱的長條（中間是現在，往兩側是剛剛）、wave 最近 1.5 秒的音量從右往左流過的平滑曲線、ring 圓形封面四周一圈放射長條（封面跟著音量微微放大）；聲音從素材的分析讀：整段放一個項目，跟著時間軸上音軌正在播的講話（tighten 剪過也對得上；有別的音軌片段時 source 指定素材），只屬於一段片段時掛在那段上：c.attach(c.effect(\'common.audiogram\', { at, len, look }), clipId)，修剪、移動都對得上；at 固定對上 source 的第幾秒；speakers [[從, 到, 第幾位]]（素材秒數，跟 c.speechCaptions 同一種寫法）＋names [\'\', \'A\', \'B\']，換人那一刻音波顏色和名牌一起換（預設主題 accent、accent2，colors 蓋過）；封面 art（專案裡的檔案）或 artSource＋artT（素材的一格），ring 放在圓心，bars／wave 放在音波上方的圓角方塊；x y w h 位置大小；gain 放大、smooth 平滑秒數；沒有任何音軌時畫示意的音量；背景、節目標題、字幕交給 common.backdrop、common.header、common.caption',
+  doc: '跟著講話聲音跳動的音波，Podcast／訪談只有聲音時撐住畫面：look bars 一排上下對稱的長條（中間是現在，往兩側是剛剛）、wave 最近 1.5 秒的音量從右往左流過的平滑曲線、ring 圓形封面四周一圈放射長條（封面跟著音量微微放大）；聲音從素材的分析讀：整段放一個項目，跟著時間軸上音軌正在播的講話（tighten 剪過也對得上；有別的音軌片段時 source 指定素材），只屬於一段片段時掛在那段上：c.attach(c.effect(\'common.audiogram\', { at, len, look }), clipId)，修剪、移動都對得上；at 固定對上 source 的第幾秒；speakers [[從, 到, 第幾位]]（素材秒數，跟 c.speechCaptions 同一種寫法）＋names [\'\', \'A\', \'B\']，換人那一刻音波顏色和名牌一起換（預設主題 accent、accent2，colors 蓋過）；hold 秒數：兩段聲音（或兩位講者）之間短於這麼久的空檔，顏色和名牌留在前一位，不閃回沒人時的顏色；only 第幾位：只在那位講者說話時跳，顏色和名牌固定是他的（兩個人各放一個音波時用）；封面 art（專案裡的檔案）或 artSource＋artT（素材的一格），ring 放在圓心，bars／wave 放在音波上方的圓角方塊；封面不是正方形時等比放大到蓋滿再從正中裁掉多的（ring 裁成圓、bars／wave 裁成正方形），重點要在圖的中間；arts [[從, 到, 檔案], …]（素材秒數，跟 speakers 同一種寫法）依時間換封面，沒對到的時間用 art；x y w h 位置大小；nameX nameY 名牌中心的位置；fadeIn fadeOut 淡入淡出秒數；gain 放大、smooth 平滑秒數；沒有任何音軌時畫示意的音量；背景、節目標題、字幕交給 common.backdrop、common.header、common.caption',
   params: [
     { key: 'look', label: '外觀（bars 一排長條，中間是現在；wave 最近 1.5 秒從右往左流過；ring 圓形封面四周一圈長條）', type: 'enum', options: ['bars', 'wave', 'ring'], default: 'bars' },
     { key: 'source', label: '聽哪個素材（空＝音軌上正在播的；掛在片段上時用那段片段）', type: 'source-ref', default: '' },
@@ -170,6 +212,13 @@ export const audiogram: ItemType<P, S> = {
     { key: 'smooth', label: '平滑（秒，音量取前後這麼久的均方根）', type: 'number', min: 0.01, max: 0.5, step: 0.01, default: 0.06 },
     { key: 'count', label: '長條數（0＝自動：bars 41、ring 72）', type: 'number', min: 0, max: 200, step: 1, default: 0 },
     { key: 'font', label: '名牌字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
+    { key: 'hold', label: '空檔延用前一位（秒；兩段聲音或兩位講者之間短於這麼久的空檔，顏色和名牌留在前一位；0＝不延用）', type: 'number', min: 0, max: 5, step: 0.05, default: 0 },
+    { key: 'only', label: '只跟一位講者（speakers 的第幾位：只在他說話時跳，顏色和名牌固定是他的；0＝跟所有人的聲音）', type: 'number', min: 0, max: 9, step: 1, default: 0 },
+    { key: 'arts', label: '依時間換封面（[[從, 到, 檔案], …]，素材秒數；沒對到的時間用 art）', type: 'json', default: [] },
+    { key: 'nameX', label: '名牌中心 x（畫面寬比例；-1＝自動：音波的中心）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
+    { key: 'nameY', label: '名牌中心 y（畫面高比例；-1＝自動：bars／wave 在音波上方，ring 在圓的下方）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
+    { key: 'fadeIn', label: '淡入（秒）', type: 'number', min: 0, max: 5, step: 0.05, default: 0 },
+    { key: 'fadeOut', label: '淡出（秒）', type: 'number', min: 0, max: 5, step: 0.05, default: 0 },
   ],
   media(item, project) {
     const p = item.params as Partial<P>, spans = soundSpans(item, { source: p.source ?? '', at: Number(p.at ?? -1) }, project) ?? [];
@@ -177,14 +226,17 @@ export const audiogram: ItemType<P, S> = {
     return { videos: [], stills: art, peaks: [...new Set(spans.map((s) => s.source))] };
   },
   build(ctx) {
-    const cv = h('canvas', null, null, ctx.root), art = windowEl(ctx.root), pill = h('div', null, null, ctx.root);
+    const cv = h('canvas', null, null, ctx.root), art = windowEl(ctx.root);
+    // the covers by time, each in a window of its own and loading from the start (hidden until its time)
+    const arts = new Map(artFiles(ctx.params.arts).map((f) => { const w = windowEl(ctx.root); showStill(ctx.media, w, { source: '', t: 0, file: f }, 1, 1, 0); return [f, w] as const; }));
+    const pill = h('div', null, null, ctx.root);
     cssCamel(cv, { position: 'absolute', pointerEvents: 'none' });
     cssCamel(pill, { position: 'absolute', whiteSpace: 'pre', fontWeight: '700', lineHeight: '1.2', borderRadius: '999px', transform: 'translate(-50%, 0)' });
-    const s: S = { cv, art, pill, data: new Map(), waits: new Map() };
+    const s: S = { cv, art, arts, pill, data: new Map(), waits: new Map() };
     audiogram.draw(ctx, s);   // asks for the peaks and starts loading the cover, so ready() can wait for both
     return s;
   },
-  ready: async (s) => { await Promise.all([...s.waits.values()]); await imagesReady([s.art.img]); },
+  ready: async (s) => { await Promise.all([...s.waits.values()]); await imagesReady([s.art.img, ...[...s.arts.values()].map((w) => w.img)]); },
   hide(s) { s.cv.width = 0; s.cv.height = 0; },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, smooth = Math.max(0.005, Number(p.smooth) || 0.06), gain = Number(p.gain) || 1;
@@ -193,11 +245,28 @@ export const audiogram: ItemType<P, S> = {
     const t0 = ctx.t - ctx.local;
     // the source second film time u plays, and its level: from the made-up levels when there is nothing to listen to
     const at = (u: number): { source: string; s: number } | null => (spans ? sourceAt(spans, u) : { source: '', s: ((((u - t0) % DEMO_LEN) + DEMO_LEN) % DEMO_LEN) });
-    const level = (u: number) => { const x = at(u); return x ? levelAt(spans ? s.data.get(x.source) : DEMO, x.s, smooth, gain) : 0; };
+    // only: the level of that one speaker's turns, nothing while anyone else talks
+    const only = Math.max(0, Math.round(Number(p.only) || 0));
+    const level = (u: number) => {
+      const x = at(u);
+      if (!x || (only && speakerAt(p.speakers, x.s) !== only)) return 0;
+      return levelAt(spans ? s.data.get(x.source) : DEMO, x.s, smooth, gain);
+    };
     const amp = (u: number) => FLOOR + (1 - FLOOR) * level(u);
-    const now = at(ctx.t), who = now ? speakerAt(p.speakers, now.s) : 0, color = speakerColor(who, p.colors, theme);
+    const whoAt = (u: number) => { const x = at(u); return x ? speakerAt(p.speakers, x.s) : 0; };
+    const who = only || heldSpeaker(whoAt, ctx.t, Number(p.hold) || 0), color = speakerColor(who, p.colors, theme);
     const { cx, cy, bw, bh } = layout(p, W, H);
-    const art = artOf(p);
+    const fadeIn = Number(p.fadeIn) || 0, fadeOut = Number(p.fadeOut) || 0;
+    const alpha = Math.min(fadeIn > 0 ? clamp(ctx.local / fadeIn) : 1, fadeOut > 0 ? clamp((ctx.dur - ctx.local) / fadeOut) : 1);
+    // the cover: the arts entry for the source second heard (in a gap, the last one heard), else art / artSource
+    const heard = spans ? heardAt(spans, ctx.t) : at(ctx.t), file = heard ? artAt(p.arts, heard.s) : '';
+    const art: Still | null = file ? { source: '', t: 0, file } : artOf(p);
+    let win = s.art;
+    if (file) {
+      win = s.arts.get(file) ?? (() => { const w = windowEl(ctx.root); ctx.root.insertBefore(w.box, s.pill); s.arts.set(file, w); return w; })();
+    }
+    for (const w of [s.art, ...s.arts.values()]) if (w !== win) cssCamel(w.box, { display: 'none' });
+    cssCamel(s.cv, { opacity: alpha.toFixed(3) });
     let pillY: number, pillTop: boolean;
     if (p.look === 'ring') {
       const D = Math.min(bw, bh), R0 = D * 0.31, rIn = R0 + D * 0.04, n = Math.max(8, Math.round(p.count) || 72), lw = ((2 * Math.PI * rIn) / n) * 0.5;
@@ -217,10 +286,10 @@ export const audiogram: ItemType<P, S> = {
       }
       // the cover breathes with the voice (at most 6 % larger), ringed in the speaker's colour
       const grow = 1 + 0.06 * level(ctx.t);
-      showStill(ctx.media, s.art, art, 2 * R0, 2 * R0);
-      cssCamel(s.art.box, { left: `${cx - R0}px`, top: `${cy - R0}px`, borderRadius: '50%', display: 'block', transform: `scale(${grow.toFixed(4)})`,
+      showStill(ctx.media, win, art, 2 * R0, 2 * R0, alpha);
+      cssCamel(win.box, { left: `${cx - R0}px`, top: `${cy - R0}px`, borderRadius: '50%', display: alpha > 0 ? 'block' : 'none', transform: `scale(${grow.toFixed(4)})`,
         boxShadow: `0 0 0 ${(6 * k).toFixed(2)}px ${color}, 0 ${(14 * k).toFixed(2)}px ${(40 * k).toFixed(2)}px rgba(0,0,0,0.35)` });
-      cssCamel(s.art.ph, { background: `radial-gradient(circle at 50% 38%, ${mixHex(color, '#ffffff', 0.25)} 0%, ${color} 45%, ${mixHex(color, '#000000', 0.55)} 100%)` });
+      cssCamel(win.ph, { background: `radial-gradient(circle at 50% 38%, ${mixHex(color, '#ffffff', 0.25)} 0%, ${color} 45%, ${mixHex(color, '#000000', 0.55)} 100%)` });
       pillY = cy + D / 2 + 26 * k; pillTop = true;
     } else {
       const g = canvasBox(s.cv, cx - bw / 2, cy - bh / 2, bw, bh);
@@ -240,16 +309,19 @@ export const audiogram: ItemType<P, S> = {
       // the cover in a rounded square above the waveform and the name
       const A = Math.min(bw * 0.55, H * 0.24), bottom = cy - bh / 2 - 96 * k;
       if (art) {
-        showStill(ctx.media, s.art, art, A, A);
-        cssCamel(s.art.box, { left: `${cx - A / 2}px`, top: `${bottom - A}px`, borderRadius: `${(theme.radius * k).toFixed(2)}px`, transform: 'none',
+        showStill(ctx.media, win, art, A, A, alpha);
+        cssCamel(win.box, { left: `${cx - A / 2}px`, top: `${bottom - A}px`, borderRadius: `${(theme.radius * k).toFixed(2)}px`, transform: 'none',
           boxShadow: `0 ${(14 * k).toFixed(2)}px ${(40 * k).toFixed(2)}px rgba(0,0,0,0.35)` });
-      } else cssCamel(s.art.box, { display: 'none' });
+      } else cssCamel(win.box, { display: 'none' });
       pillY = cy - bh / 2 - 22 * k; pillTop = false;
     }
     const name = Array.isArray(p.names) && typeof p.names[who] === 'string' ? p.names[who].trim() : '';
     s.pill.textContent = name;
     const light = (luma(color) ?? 0) > 0.6;
-    cssCamel(s.pill, { display: name ? 'block' : 'none', left: `${cx}px`, top: `${pillY}px`, transform: pillTop ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+    // nameX / nameY: the tag's centre where asked (each on its own), else today's place
+    const nx = Number(p.nameX), ny = Number(p.nameY), placed = ny >= 0;
+    cssCamel(s.pill, { display: name && alpha > 0 ? 'block' : 'none', opacity: alpha.toFixed(3), left: `${nx >= 0 ? nx * W : cx}px`, top: `${placed ? ny * H : pillY}px`,
+      transform: placed ? 'translate(-50%, -50%)' : pillTop ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
       background: color, color: light ? '#141414' : '#ffffff', fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${(40 * k).toFixed(2)}px`,
       padding: `${(8 * k).toFixed(2)}px ${(28 * k).toFixed(2)}px`, letterSpacing: `${(1 * k).toFixed(2)}px`, boxShadow: `0 ${(6 * k).toFixed(2)}px ${(18 * k).toFixed(2)}px ${withAlpha('#000000', 0.25)}` });
   },

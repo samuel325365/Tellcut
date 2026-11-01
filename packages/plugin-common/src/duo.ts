@@ -6,14 +6,14 @@
 // mode solo (the amber-podcast short's fx.speakerFrame): one tall rounded window, one person in it at a time — its ring glows in the
 // colour of whoever speaks (changing with the turns), the frame round it dark with a haze of both colours, a shade at the window's
 // foot for captions, and each person's name chip in the window's top-left corner on their first turn.
-import { abs, clamp, cssCamel, eOut3, h, type ItemType } from '@tellcut/engine';
+import { abs, clamp, cssCamel, eOut3, fitLines, h, textEm, type ItemType } from '@tellcut/engine';
 import { lift, withAlpha } from './color.ts';
 import { punch } from './window.ts';
 
 type Rect = [number, number, number, number];
 interface P {
   mode: 'split' | 'solo'; dir: 'v' | 'h'; segs: string; label: string; topic: string; nameA: string; roleA: string; nameB: string; roleB: string; top: number; band: number; foot: number;
-  colorA: string; colorB: string; hl: string; ink: string; paper: string; dim: number; desat: number; font: string;
+  colorA: string; colorB: string; hl: string; ink: string; paper: string; dim: number; desat: number; font: string; size: number;
 }
 interface Tag { box: HTMLElement; fill: HTMLElement; bars: HTMLElement[]; name: HTMLElement; role: HTMLElement }
 interface S { out: HTMLElement; bars: HTMLElement[]; edgeA: HTMLElement; edgeB: HTMLElement; head: HTMLElement; pill: HTMLElement; topic: HTMLElement; shade: HTMLElement[]; ring: HTMLElement[]; tags: Tag[] }
@@ -21,11 +21,14 @@ interface S { out: HTMLElement; bars: HTMLElement[]; edgeA: HTMLElement; edgeB: 
 type LayoutOpts = { mode?: string; dir?: string; top?: number; band?: number; foot?: number };
 /** solo: the window's side margin (a share of the frame width) */
 export const SOLO_SIDE = 0.028;
+/** the header strip's default height: its text sits 18–82 px above the strip's foot, so at 0.16 of a 9:16 frame (307 px) it starts
+ *  at 225 px, below the platform's 11.5 % on top (0.104 put it at 118 px, under the account name) */
+export const DUO_TOP = 0.16;
 
 /** the parts of the layout as screen fractions [x, y, w, h]: the two panels, the caption band and the header strip
  *  (solo: a and b are the same window, inset SOLO_SIDE from the sides, between the header and the band) */
 export function duoLayout(o: LayoutOpts = {}): { a: Rect; b: Rect; band: Rect; head: Rect } {
-  const top = o.top ?? 0.104, band = o.band ?? 0.078, foot = o.foot ?? 0.026, r = (x: number) => Math.round(x * 1e6) / 1e6;
+  const top = o.top ?? DUO_TOP, band = o.band ?? 0.078, foot = o.foot ?? 0.026, r = (x: number) => Math.round(x * 1e6) / 1e6;
   if (o.mode === 'solo') {
     const ph = r(1 - top - band - foot), win: Rect = [SOLO_SIDE, top, r(1 - 2 * SOLO_SIDE), ph];
     return { a: win, b: [...win], band: [0, r(top + ph), 1, band], head: [0, 0, 1, top] };
@@ -71,9 +74,33 @@ export function soloChip(segs: Array<[number, number, string]>, who: 'a' | 'b', 
   return eOut3(clamp(u / 0.3)) * clamp((d - u) / 0.3);
 }
 
+let measurer: CanvasRenderingContext2D | null | undefined;
+/** the drawn width of a line in `font` (a CSS font without the size) at `px`; the estimate (CJK 1 em, others 0.55) where there is no
+ *  2D context */
+const lineWidth = (text: string, px: number, font: string) => {
+  if (measurer === undefined) { try { measurer = document.createElement('canvas').getContext('2d'); } catch { measurer = null; } }
+  if (!measurer) return textEm(text) * px;
+  measurer.font = `${font.replace('{px}', `${px}px`)}`;
+  return measurer.measureText(text).width || textEm(text) * px;
+};
+
+/** The header topic in `room` px: one line at `px` when it fits, else shrunk down to 3/4 of it, else two lines at 3/4 (smaller when
+ *  even they are too wide) — never cut off (a long question lost its last character, the "？", to the strip's edge).
+ *  `width(line, px)` measures a line. */
+export function topicFit(text: string, px: number, room: number, width: (s: string, px: number) => number): { lines: string[]; px: number } {
+  const w = width(text, px);
+  if (!text || w <= room) return { lines: [text], px };
+  if (w * 0.75 <= room) return { lines: [text], px: (px * room) / w };
+  const px2 = px * 0.75, stretch = w / (px * Math.max(0.5, textEm(text)));   // the font's own width against the estimate fitLines wraps by
+  const got = fitLines(text, room / (px2 * stretch), 2, 0.4).lines;
+  const lines = got.length <= 2 ? got : [got[0], got.slice(1).join(/\s/.test(text) ? ' ' : '')];
+  const widest = Math.max(...lines.map((l) => width(l, px2)));
+  return { lines, px: px2 * Math.min(1, room / widest) };
+}
+
 export const duo: ItemType<P, S> = {
   type: 'common.duo', label: '雙人分割對談', category: 'frame', kind: 'overlay',
-  doc: '兩個人的分割畫面框（上下 dir v，或左右 h）：頁首一個色塊小牌＋題目、兩格之間（左右時在下方）一條字幕帶、每格角落一個名牌；segs「起-迄|a／b／ab」說誰在說話：說話的那格亮起來（說話人顏色的外框＋內光、名牌填色、音量條在跳），另一格變灰變暗；兩人的片段 frame 用 duoWindow(\'a\'|\'b\', 同一組參數) 放進兩格；雙人訪談、Podcast、辯論、他說她說；配 common.versus、caption 的 point；mode solo 是單人鏡頭的 Podcast 切片：一個高高的圓角視窗一次一個人，外框光暈跟著說話的人換顏色（segs 決定），窗外深色底帶兩人顏色的霧，窗下緣一層給字幕的暗影（dim），每個人第一次說話時視窗左上角出名牌（最多 2.6 秒，那段說完前消失）；片段 frame 用 duoWindow(\'a\', 同一組參數)，字幕放窗下緣',
+  doc: '兩個人的分割畫面框（上下 dir v，或左右 h）：頁首一個色塊小牌＋題目、兩格之間（左右時在下方）一條字幕帶、每格角落一個名牌；segs「起-迄|a／b／ab」說誰在說話：說話的那格亮起來（說話人顏色的外框＋內光、名牌填色、音量條在跳），另一格變灰變暗；兩人的片段 frame 用 duoWindow(\'a\'|\'b\', 同一組參數) 放進兩格（a 用 c.clip，同一刻的 b 用 c.beside(a 的 id, { frame: duoWindow(\'b\', 同一組參數), crop })：同一個雙人鏡頭裁成兩個人，或另一台機器）；題目太長時先縮小、再折成兩行，不會被切掉；size 一起放大縮小頁首和名牌的字；雙人訪談、Podcast、辯論、他說她說；配 common.versus、caption 的 point；mode solo 是單人鏡頭的 Podcast 切片：一個高高的圓角視窗一次一個人，外框光暈跟著說話的人換顏色（segs 決定），窗外深色底帶兩人顏色的霧，窗下緣一層給字幕的暗影（dim），每個人第一次說話時視窗左上角出名牌（最多 2.6 秒，那段說完前消失）；片段 frame 用 duoWindow(\'a\', 同一組參數)，字幕放窗下緣',
   params: [
     { key: 'mode', label: '樣式（split 兩格分割；solo 一格，一次一個人，外框跟著說話的人換顏色）', type: 'enum', options: ['split', 'solo'], default: 'split' },
     { key: 'segs', label: '誰在說（「起-迄|a／b／ab」，秒，相對開始；一行一段）', type: 'text', default: '0-1.3|a\n1.5-2.8|b' },
@@ -84,7 +111,7 @@ export const duo: ItemType<P, S> = {
     { key: 'roleA', label: 'a 的身分', type: 'string', default: '主持人' },
     { key: 'nameB', label: 'b（下／右）的名字', type: 'string', default: 'Mia' },
     { key: 'roleB', label: 'b 的身分', type: 'string', default: '睡眠教練' },
-    { key: 'top', label: '頁首高度（畫面高比例）', type: 'number', min: 0, max: 0.4, step: 0.002, default: 0.104 },
+    { key: 'top', label: '頁首高度（畫面高比例；頁首的字在這條的下緣，9:16 至少 0.16 才在上方安全區內）', type: 'number', min: 0, max: 0.4, step: 0.002, default: DUO_TOP },
     { key: 'band', label: '字幕帶高度（畫面高比例）', type: 'number', min: 0, max: 0.4, step: 0.002, default: 0.078 },
     { key: 'foot', label: '頁尾高度（畫面高比例）', type: 'number', min: 0, max: 0.4, step: 0.002, default: 0.026 },
     { key: 'colorA', label: 'a 的顏色', type: 'color', default: '#3d7bff', theme: 'palette.accent2' },
@@ -95,6 +122,7 @@ export const duo: ItemType<P, S> = {
     { key: 'dim', label: '不說話的一格壓暗（0–1；solo：視窗下緣給字幕的暗影濃度）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.56 },
     { key: 'desat', label: '不說話的一格褪色（0–1）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.85 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
+    { key: 'size', label: '字的大小（倍；頁首小牌和題目、名牌一起放大縮小，1＝題目 40 px、名字 36 px；放大時 top 也要加高）', type: 'number', min: 0.6, max: 2, step: 0.05, default: 1 },
   ],
   build(ctx) {
     const root = ctx.root, out = abs(root);
@@ -105,7 +133,7 @@ export const duo: ItemType<P, S> = {
     const head = abs(root), pill = h('div', null, null, head), topic = h('div', null, null, head);
     cssCamel(head, { display: 'flex', alignItems: 'center' });
     cssCamel(pill, { flex: 'none', fontWeight: '900', lineHeight: '1.2', whiteSpace: 'pre' });
-    cssCamel(topic, { fontWeight: '700', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden' });
+    cssCamel(topic, { fontWeight: '700', lineHeight: '1.2', whiteSpace: 'pre' });
     const tags = [0, 1].map(() => {
       const box = abs(root), fill = abs(box), lv = h('div', null, null, box), name = h('div', null, null, box), role = h('div', null, null, box);
       cssCamel(box, { display: 'flex', alignItems: 'center' });
@@ -119,7 +147,7 @@ export const duo: ItemType<P, S> = {
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local } = ctx, k = Math.min(W, H) / 1080, L = duoLayout(p), segs = parseSegs(p.segs);
     const px = (r: Rect) => ({ left: `${r[0] * W}px`, top: `${r[1] * H}px`, width: `${r[2] * W}px`, height: `${r[3] * H}px` });
-    const side = 54 * k, font = `'${p.font}', 'Noto Sans TC', sans-serif`;
+    const side = 54 * k, font = `'${p.font}', 'Noto Sans TC', sans-serif`, z = textScale(p);
     cssCamel(s.out, { display: 'none' });
     for (const e of [...s.bars, s.edgeA, s.edgeB, ...s.shade, ...s.ring]) cssCamel(e, { display: 'block', borderRadius: '0' });
     for (const t of s.tags) cssCamel(t.box, { opacity: '1', transform: 'none' });
@@ -132,37 +160,44 @@ export const duo: ItemType<P, S> = {
     const lvA = duoLevel(segs, 'a', local), lvB = duoLevel(segs, 'b', local);
     cssCamel(s.edgeA, { left: `${bx * W}px`, top: `${by * H}px`, width: `${(p.dir === 'h' ? bw / 2 : bw) * W}px`, height: `${e}px`, background: p.colorA, opacity: (0.35 + 0.65 * lvA).toFixed(3) });
     cssCamel(s.edgeB, { left: `${(p.dir === 'h' ? bx + bw / 2 : bx) * W}px`, top: `${p.dir === 'h' ? by * H : (by + bh) * H - e}px`, width: `${(p.dir === 'h' ? bw / 2 : bw) * W}px`, height: `${e}px`, background: p.colorB, opacity: (0.35 + 0.65 * lvB).toFixed(3) });
-    // the header: chip and topic, sitting at the strip's foot
-    s.pill.textContent = p.label; s.topic.textContent = p.topic;
-    cssCamel(s.head, { left: `${side}px`, right: `${130 * k}px`, top: `${Math.max(0, L.head[3] * H - 82 * k)}px`, height: `${64 * k}px`, gap: `${18 * k}px`, fontFamily: font, display: L.head[3] > 0 ? 'flex' : 'none' });
-    cssCamel(s.pill, { display: p.label ? 'block' : 'none', padding: `${6 * k}px ${18 * k}px`, borderRadius: `${10 * k}px`, background: p.hl, color: p.ink, fontSize: `${34 * k}px`, letterSpacing: `${2 * k}px` });
-    cssCamel(s.topic, { color: p.paper, fontSize: `${40 * k}px` });
+    // the header: chip and topic, sitting at the strip's foot; the topic shrinks or takes two lines rather than run past the strip
+    const kz = k * z, hh = 64 * kz, pillPx = 34 * kz;
+    s.pill.textContent = p.label;
+    cssCamel(s.head, { left: `${side}px`, right: `${130 * k}px`, top: `${Math.max(0, L.head[3] * H - 18 * k - hh)}px`, height: `${hh}px`, gap: `${18 * kz}px`, fontFamily: font, display: L.head[3] > 0 ? 'flex' : 'none' });
+    cssCamel(s.pill, { display: p.label ? 'block' : 'none', padding: `${6 * kz}px ${18 * kz}px`, borderRadius: `${10 * kz}px`, background: p.hl, color: p.ink, fontSize: `${pillPx}px`, letterSpacing: `${2 * kz}px` });
+    const pillW = p.label ? lineWidth(p.label, pillPx, `900 {px} ${font}`) + [...p.label].length * 2 * kz + 36 * kz + 18 * kz : 0;
+    const fit = topicFit(p.topic, 40 * kz, W - side - 130 * k - pillW, (l, px) => lineWidth(l, px, `700 {px} ${font}`));
+    s.topic.textContent = fit.lines.join('\n');
+    cssCamel(s.topic, { color: p.paper, fontSize: `${+fit.px.toFixed(2)}px`, lineHeight: fit.lines.length > 1 ? '1.05' : '1.2' });
     if (p.mode === 'solo') { drawSolo(ctx, s, L, segs); return; }
     // each panel: the quiet one grey and dark, the speaking one rung in its colour; the name chips
     ([[L.a, lvA, p.colorA, p.nameA, p.roleA], [L.b, lvB, p.colorB, p.nameB, p.roleB]] as const).forEach(([r, lv, color, name, role], i) => {
       const off = 1 - lv;
       cssCamel(s.shade[i], { ...px(r), border: '0', background: `rgba(6,8,16,${(off * p.dim).toFixed(3)})`, backdropFilter: off * p.desat > 0.001 ? `grayscale(${(off * p.desat).toFixed(3)})` : 'none' });
       cssCamel(s.ring[i], { ...px(r), border: `${8 * k}px solid ${color}`, boxShadow: `inset 0 0 ${60 * k}px ${withAlpha(color, 0.53)}`, opacity: lv.toFixed(3) });
-      const t = s.tags[i], th = 62 * k;
+      const t = s.tags[i], th = 62 * k * z;
       // a's chip at the top of its panel, b's at the bottom of its panel (v) — both kept inside the safe area; side by side both on top
       const topY = Math.max(r[1] * H, theme.safe.top * H * (r[1] > 0 ? 0 : 1)) + 22 * k;
       const botY = Math.min((r[1] + r[3]) * H, (1 - theme.safe.bottom) * H + 38 * k) - 22 * k - th;
       t.name.textContent = name; t.role.textContent = role;
-      cssCamel(t.box, { left: `${r[0] * W + side}px`, top: `${(i === 1 && p.dir !== 'h' ? botY : topY).toFixed(1)}px`, height: `${th}px`, gap: `${12 * k}px`, padding: `0 ${20 * k}px 0 ${18 * k}px`,
-        borderRadius: `${31 * k}px`, background: withAlpha(p.ink, 0.72), fontFamily: font, display: name ? 'flex' : 'none' });
-      cssCamel(t.fill, { borderRadius: `${31 * k}px`, background: color, opacity: lv.toFixed(3) });
-      cssCamel(t.bars[0].parentElement!, { gap: `${5 * k}px`, height: `${30 * k}px`, width: `${31 * k}px` });
-      t.bars.forEach((b, j) => cssCamel(b, { width: `${7 * k}px`, borderRadius: `${3 * k}px`, background: p.paper,
-        height: `${((8 + lv * 22 * Math.abs(Math.sin(local * (7.3 + j * 2.1) + j * 1.7 + i))) * k).toFixed(1)}px` }));
-      cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k}px` });
-      cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k}px`, display: role ? 'block' : 'none' });
+      cssCamel(t.box, { left: `${r[0] * W + side}px`, top: `${(i === 1 && p.dir !== 'h' ? botY : topY).toFixed(1)}px`, height: `${th}px`, gap: `${12 * k * z}px`, padding: `0 ${20 * k * z}px 0 ${18 * k * z}px`,
+        borderRadius: `${31 * k * z}px`, background: withAlpha(p.ink, 0.72), fontFamily: font, display: name ? 'flex' : 'none' });
+      cssCamel(t.fill, { borderRadius: `${31 * k * z}px`, background: color, opacity: lv.toFixed(3) });
+      cssCamel(t.bars[0].parentElement!, { gap: `${5 * k * z}px`, height: `${30 * k * z}px`, width: `${31 * k * z}px` });
+      t.bars.forEach((b, j) => cssCamel(b, { width: `${7 * k * z}px`, borderRadius: `${3 * k * z}px`, background: p.paper,
+        height: `${((8 + lv * 22 * Math.abs(Math.sin(local * (7.3 + j * 2.1) + j * 1.7 + i))) * k * z).toFixed(1)}px` }));
+      cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k * z}px` });
+      cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k * z}px`, display: role ? 'block' : 'none' });
     });
   },
 };
 
+/** the size param as a factor (old projects have none: 1) */
+const textScale = (p: { size?: unknown }) => clamp(Number(p.size) || 1, 0.3, 3);
+
 /** solo: the dark frame with a rounded hole, the window's shades and faint edge, the ring of whoever speaks, the name chips */
 function drawSolo(ctx: Parameters<typeof duo.draw>[0], s: S, L: ReturnType<typeof duoLayout>, segs: Array<[number, number, string]>) {
-  const p = ctx.params, { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, font = `'${p.font}', 'Noto Sans TC', sans-serif`;
+  const p = ctx.params, { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, font = `'${p.font}', 'Noto Sans TC', sans-serif`, z = textScale(p);
   const [wx, wy, ww, wh] = [L.a[0] * W, L.a[1] * H, L.a[2] * W, L.a[3] * H], r = 40 * k, box = { left: `${wx}px`, top: `${wy}px`, width: `${ww}px`, height: `${wh}px` };
   for (const e of [...s.bars, s.edgeA, s.edgeB, s.shade[1]]) cssCamel(e, { display: 'none' });
   // the frame round the window: ink, a haze of a's colour top left and b's bottom right
@@ -180,15 +215,15 @@ function drawSolo(ctx: Parameters<typeof duo.draw>[0], s: S, L: ReturnType<typeo
   });
   // each person's name chip, top left in the window, on their first turn
   ([[p.colorA, p.nameA, p.roleA, 'a'], [p.colorB, p.nameB, p.roleB, 'b']] as const).forEach(([color, name, role, who], i) => {
-    const t = s.tags[i], th = 62 * k, a = soloChip(segs, who, local), lv = duoLevel(segs, who, local);
+    const t = s.tags[i], th = 62 * k * z, a = soloChip(segs, who, local), lv = duoLevel(segs, who, local);
     t.name.textContent = name; t.role.textContent = role;
-    cssCamel(t.box, { left: `${wx + 34 * k}px`, top: `${wy + 34 * k}px`, height: `${th}px`, gap: `${12 * k}px`, padding: `0 ${20 * k}px 0 ${18 * k}px`, borderRadius: `${31 * k}px`,
+    cssCamel(t.box, { left: `${wx + 34 * k}px`, top: `${wy + 34 * k}px`, height: `${th}px`, gap: `${12 * k * z}px`, padding: `0 ${20 * k * z}px 0 ${18 * k * z}px`, borderRadius: `${31 * k * z}px`,
       background: withAlpha(p.ink, 0.72), fontFamily: font, display: name && a > 0 ? 'flex' : 'none', opacity: a.toFixed(3), transform: `translateX(${((1 - a) * -30 * k).toFixed(1)}px)` });
-    cssCamel(t.fill, { borderRadius: `${31 * k}px`, background: color, opacity: '1' });
-    cssCamel(t.bars[0].parentElement!, { gap: `${5 * k}px`, height: `${30 * k}px`, width: `${31 * k}px` });
-    t.bars.forEach((b, j) => cssCamel(b, { width: `${7 * k}px`, borderRadius: `${3 * k}px`, background: p.paper,
-      height: `${((8 + lv * 22 * Math.abs(Math.sin(local * (7.3 + j * 2.1) + j * 1.7 + i))) * k).toFixed(1)}px` }));
-    cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k}px` });
-    cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k}px`, display: role ? 'block' : 'none' });
+    cssCamel(t.fill, { borderRadius: `${31 * k * z}px`, background: color, opacity: '1' });
+    cssCamel(t.bars[0].parentElement!, { gap: `${5 * k * z}px`, height: `${30 * k * z}px`, width: `${31 * k * z}px` });
+    t.bars.forEach((b, j) => cssCamel(b, { width: `${7 * k * z}px`, borderRadius: `${3 * k * z}px`, background: p.paper,
+      height: `${((8 + lv * 22 * Math.abs(Math.sin(local * (7.3 + j * 2.1) + j * 1.7 + i))) * k * z).toFixed(1)}px` }));
+    cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k * z}px` });
+    cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k * z}px`, display: role ? 'block' : 'none' });
   });
 }

@@ -46,9 +46,9 @@ test('wipe: the band grows from the left, covers everything at the middle, then 
 
 test('duo: the layout of the two panels and the band, who speaks when, the speaker lit with short ramps', () => {
   const L = duoLayout();
-  expect(L.a.map((x) => Math.round(x * 1920))).toEqual([0, 200, 1920, 760]);
-  expect(L.band[1] * 1920).toBeCloseTo(960, 0);
-  expect(L.b[1] * 1920).toBeCloseTo(1110, 0);
+  expect(L.a.map((x) => Math.round(x * 1920))).toEqual([0, 307, 1920, 707]);
+  expect(L.band[1] * 1920).toBeCloseTo(1014, 0);
+  expect(L.b[1] * 1920).toBeCloseTo(1164, 0);
   expect((L.b[1] + L.b[3]) * 1920).toBeCloseTo(1870, 0);
   expect(duoWindow('b')).toEqual(L.b);
   const H = duoLayout({ dir: 'h', top: 0.1, band: 0.2, foot: 0 });

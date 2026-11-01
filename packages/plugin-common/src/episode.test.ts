@@ -15,8 +15,8 @@ test('duo solo: one window between the header and the band, the same for a and b
   expect(L.b).toEqual(L.a);
   expect(L.band).toEqual([0, 0.833, 1, 0]);
   expect(duoWindow('a', { mode: 'solo', top: 0.177, band: 0, foot: 0.167 })).toEqual(L.a);
-  // the two-panel layout did not move
-  expect(duoLayout().a.map((x) => Math.round(x * 1920))).toEqual([0, 200, 1920, 760]);
+  // the two-panel layout (its header 0.16 since 2026-11-01, so the header text is inside the safe area)
+  expect(duoLayout().a.map((x) => Math.round(x * 1920))).toEqual([0, 307, 1920, 707]);
 });
 
 test('duo solo: each name chip shows on that person\'s first turn only, at most 2.6 s, gone before the turn ends', () => {
