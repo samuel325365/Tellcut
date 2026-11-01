@@ -3,14 +3,29 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { Project, Registry } from '@tellcut/engine';
-import { listExports, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath } from '@tellcut/media-node';
+import { listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, tryLock } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import type { JobCtx, JobQueue } from './jobs.ts';
 import type { ProjectStore } from './projects.ts';
 
+/** The project's export lock: the job queue keeps one export at a time in this server only, and two servers on the same projects/
+ *  rendered one project at once (twice the Chrome and ffmpeg, each cutting the same clips into cache/). Held for the whole job,
+ *  across processes (media-node locks.ts, the same as a chat turn's): a second server says it is busy instead of waiting. */
+export const exportLock = (dir: string) => join(dir, 'cache', 'export.lock');
+export const EXPORT_ELSEWHERE = 'Another Tellcut server is exporting this project';
+
 const BodyZ = z.object({ from: z.number().min(0).optional(), to: z.number().positive().optional() }).strict();
 
 export async function runExport(o: { dir: string; id: string; project: Project; from?: number; to?: number; registry: Registry; ctx: JobCtx }) {
+  const { dir, project, ctx } = o;
+  mkdirSync(join(dir, 'cache'), { recursive: true });
+  // taken before anything is written (the export's .log name included): the POST's check can lose a race with the other server
+  const release = tryLock(exportLock(dir));
+  if (!release) throw new Error(EXPORT_ELSEWHERE);
+  try { return await exportLocked(o); } finally { release(); }
+}
+
+async function exportLocked(o: { dir: string; id: string; project: Project; from?: number; to?: number; registry: Registry; ctx: JobCtx }) {
   const { dir, project, ctx } = o;
   const exportsDir = join(dir, 'exports');
   mkdirSync(exportsDir, { recursive: true });
@@ -56,6 +71,7 @@ export function exportRoutes(r: Router, store: ProjectStore, queue: JobQueue, re
     const { from, to } = parsed.data, d = project.meta.duration;
     if ((to ?? d) > d + 1e-6 || (from ?? 0) >= (to ?? d)) throw new HttpError(400, `Invalid export range ${from ?? 0}–${to ?? d} s (project is ${d} s)`);
     if (queue.active('export').length) throw new HttpError(409, 'An export is already queued or running');
+    if (lockHolder(exportLock(dir))) throw new HttpError(409, EXPORT_ELSEWHERE);
     const range = from !== undefined || to !== undefined ? ` ${from ?? 0}–${to ?? d} s` : '';
     sendJson(res, 202, queue.add('export', id, `${project.meta.name}${range}`, async (ctx) => {
       // an effect that does not load would be left out of the film (or fail deep in the player): say which, before rendering

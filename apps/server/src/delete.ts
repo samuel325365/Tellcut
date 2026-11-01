@@ -9,6 +9,7 @@ import { HttpError, sendJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
 import type { JobQueue } from './jobs.ts';
 import type { ChatRunner } from './chat/runner.ts';
+import { exportLock } from './export.ts';
 
 function files(dir: string, out: string[] = []): string[] {
   if (!existsSync(dir)) return out;
@@ -52,6 +53,8 @@ export function projectBusy(id: string, dir: string, o: { queue: JobQueue; chat:
   if (job) return { text: `這個專案還有工作在進行（${job.label}），等它結束或取消後再刪`, code: 'delete.busyJob', params: { label: job.label } };
   const held = o.holds?.busy(id);
   if (held) return held;
+  // another server on the same projects/ exporting it (export.ts): its job is in that server's queue, not this one's
+  if (lockHolder(exportLock(dir))) return { text: '這個專案還有工作在進行（export），等它結束或取消後再刪', code: 'delete.busyJob', params: { label: 'export' } };
   // an analysis the command line runs (npm run tellcut -- inspect) holds a lock the server's queue does not know of
   if (files(join(dir, 'cache')).some((f) => f.endsWith('.lock') && lockHolder(f))) return { text: '這個專案正在分析素材，等分析完再刪', code: 'delete.busyAnalysis' };
   return null;
