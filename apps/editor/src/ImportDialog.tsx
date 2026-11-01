@@ -38,7 +38,9 @@ export function ImportDialog({ api, onAdd, onClose, surface = 'home' }: { api: F
     catch (e) { if (n === latest.current) setError(errText(e)); }
   };
   useEffect(() => {
-    void api.places().then((r) => { setPlaces(r.places); if (r.places[0]) void open(r.places[0].path); }).catch((e) => setError(errText(e)));
+    // the first place only when nothing was opened meanwhile: a places list slower than a typed path and Enter used to send the
+    // user back to the first place (the editor's Import e2e, on a loaded machine)
+    void api.places().then((r) => { setPlaces(r.places); if (r.places[0] && !latest.current) void open(r.places[0].path); }).catch((e) => setError(errText(e)));
   }, []);
   const has = (p: string) => picked.some((x) => x.path === p);
   const toggle = (a: Attachment) => setPicked(has(a.path) ? picked.filter((x) => x.path !== a.path) : [...picked, a]);

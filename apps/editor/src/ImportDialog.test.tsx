@@ -39,6 +39,23 @@ test('a path typed while the first place is still loading wins (a late answer ne
   expect(added.map((a) => a.path)).toEqual(['D:\\mine']);
 });
 
+test('a path typed before the list of places has come stays: the first place is not opened over it', async () => {
+  let placesCame = (_: unknown) => {};
+  const api: any = {
+    places: () => new Promise((res) => { placesCame = res; }),
+    fsList: async (p: string) => ({ path: p, parent: null, entries: [{ name: 'beat.wav', kind: 'audio', size: 1000 }] }),
+  };
+  const root = document.createElement('div');
+  await act(() => render(<ImportDialog api={api} onAdd={() => {}} onClose={() => {}} />, root));
+  const box = root.querySelector<HTMLInputElement>('[data-path]')!;
+  await act(() => { box.value = 'D:\\more'; box.dispatchEvent(new Event('input', { bubbles: true })); });
+  await act(() => { box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); }); await tick();
+  await act(async () => { placesCame({ places: [{ label: '桌面', path: 'C:\\Users\\u\\Desktop', kind: 'home' }] }); }); await tick();
+  expect(box.value).toBe('D:\\more');
+  expect([...root.querySelectorAll<HTMLElement>('[data-entry]')].map((r) => r.dataset.entry)).toEqual(['beat.wav']);
+  expect(root.querySelectorAll('[data-place]').length).toBe(1);   // the places are still listed
+});
+
 test('the import browser: places, folders, picking files, jumping to a pasted path; the whole folder is added in one click', async () => {
   const api = fakeFs(), added: any[] = [];
   let closed = false;
