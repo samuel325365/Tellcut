@@ -189,4 +189,11 @@ export const VALUES_JA: Record<string, string> = {
   "common.magazine.banner": "今号の特集",
   "common.magazine.lines": "世界一/ゆっくりな街\n地元の人に/インタビュー",
   "common.magazine.cta": "続きは本編で",
+  "common.quiz.no": "第1問",
+  "common.quiz.question": "虹は何色？",
+  "common.quiz.options": "5色|7色|9色",
+  "common.healthbar.title": "チャレンジ：1時間スマホを見ない",
+  "common.healthbar.replay": "アーカイブ",
+  "common.healthbar.label": "体力",
+  "common.healthbar.states": "余裕,ぐらぐら,危険,崩壊",
 };

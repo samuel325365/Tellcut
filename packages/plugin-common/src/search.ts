@@ -1,6 +1,6 @@
 // common.search — a search engine's pages as a screen recording, from t2-search's fx.sHome / sPage / sFull / sAsk / sEnd. A generic
 // dark search page, not any real engine: no logo, no coloured letters, every word on it (the tabs, 相關搜尋, 搜尋中…, the "did you
-// mean" lead, the snippet's words, the badge) is a parameter, the colours are the block's own. One block, four modes:
+// mean" lead, the snippet's words, the badge) is a parameter, the colours are the block's own. One block, five modes:
 //   home     the start page over the main-track clip (blurred and darkened): a headline, the query typed into the box, the
 //            autocomplete list dropping down, a row picked (the box then holds it) and the page sliding away (`out`)
 //   results  the results page: the box (typing, deleting the old query first), the tabs with the sliding underline, a title and a
@@ -12,6 +12,8 @@
 //            hint pill or a redacted answer ("答案：▇▇ 完整版揭曉") at the window's foot
 //   end      the box typed again with suggestions, a row picked, then a featured snippet whose answer is redacted and a result card
 //            whose thumbnail is the video window, with a badge, a title, a play button pressed at `press` and the length
+//   bar      (the interview acceptance film's fx.querybar) no page: a small search pill pinned near the top of the frame over the
+//            footage, the question (query) in it while the speaker answers, a check popping on at its right end at `press`
 // On 9:16 the screen is the frame; on a wide or square frame it is a phone in the middle (phone.ts), the clip then takes searchWindow.
 // Fingers are common.touch (searchPoint gives where the picked row, the box and the play button are); white flashes core.flash.
 import { clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, textEm, withDefaults, type ItemType, type Theme } from '@tellcut/engine';
@@ -21,7 +23,7 @@ import { caretOn, DEVICES, drawStatusBar, drawType, glyphSvg, parseSteps, phoneE
 import { fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
-export const SEARCH_MODES = ['home', 'results', 'ask', 'end'] as const;
+export const SEARCH_MODES = ['home', 'results', 'ask', 'end', 'bar'] as const;
 type Mode = (typeof SEARCH_MODES)[number];
 export const SEARCH_VIEWS = ['window', 'full'] as const;
 type View = (typeof SEARCH_VIEWS)[number];
@@ -126,11 +128,14 @@ interface P {
   load: number; loadText: string; facts: string; dym: string; dymAt: number; dymHi: number; dymLead: string; big: string; bigAt: number;
   chips: string; related: string; relatedLabel: string; qs: string; answer: string; reveal: string;
   snipAt: number; snipTitle: string; snipLead: string; snipNote: string; cardAt: number; badge: string; dur: string;
-  time: string; battery: number; address: string; device: Device; px: number; font: string;
+  time: string; battery: number; address: string; device: Device; px: number; font: string; barY: number;
   bg: string; panel: string; line: string; ink: string; sub: string; accent: string; hl: string;
 }
 interface Bar { box: HTMLElement; mag: HTMLElement; type: TypeEl; mic: HTMLElement }
+/** mode bar's pill: the magnifier, the typed question, the check (a ring until `press`, then a filled circle and a tick) */
+interface Pill { el: HTMLElement; mag: HTMLElement; type: TypeEl; chk: HTMLElement; ring: SVGCircleElement; dot: SVGCircleElement; tick: SVGPathElement }
 interface S {
+  pill?: Pill;
   ph: PhoneEls; veil: HTMLElement; pane: HTMLElement; base: HTMLElement; ui: HTMLElement; key: string;
   sb: StatusBar; R: Record<string, HTMLElement>; L: Record<string, HTMLElement[]>; bar: Bar | null;
 }
@@ -144,9 +149,9 @@ const shimmer = (t: number, a: string, b: string, speed = 0.85) => { const s = (
 
 export const search: ItemType<P, S> = {
   type: 'common.search', label: '搜尋頁', category: 'phone', kind: 'overlay',
-  doc: '搜尋引擎的畫面（通用深色介面，不是哪一家：沒有 logo、沒有彩色字母，分頁、相關搜尋、搜尋中…、你是不是要找、精選摘要、完整版等字全是參數），用 mode 分：home 首頁疊在模糊壓暗的主軌片段上（headline hint、搜尋框逐字打字 query、自動完成清單 sugg 一行一個（「前綴|補完」或整行，跟 query 一樣的部分淡、其餘粗）、pick 第幾列 pickAt 秒點下去後框裡換成那一列、out 秒滑走）；results 結果頁（搜尋框打字，erase 先刪舊字；tabs 分頁「全部, 新聞…」底線從 tabFrom 滑到 tab；title 標題、titleSub 旁邊小字、snip 摘要；影片窗是圓角洞，主軌片段給 frame: searchWindow(參數, 寬, 高)；load 秒前蓋著「搜尋中…」載入卡；facts 一行一張「秒|小標|大字|單位」事實卡從影片窗左下彈出；dym 你是不是要找（dymAt 出現、dymHi 第幾個字標橘、dymLead 前面的字）；big 影片窗上的大字；related 相關搜尋「a, b; c」；press 秒按下搜尋框發亮；view full＝影片滿版，上方浮著搜尋框、分頁和 chips 一行一個「秒|字」篩選膠囊依序點亮）；ask 問答展開（qs 一行一題「秒-秒|問題|提示」，提示寫 redact＝答案打碼＋reveal「完整版揭曉」；一題展開成影片窗、收合時清單往上捲一列）；end 結尾（重打 query、自動完成點選，snipAt 精選摘要卡答案打碼（snipTitle、snipLead、snipNote），cardAt 結果卡：縮圖是影片窗、badge 標籤、title 標題、dur 片長、press 秒按下播放鈕）；時間都從項目開始算；enter 秒從下往上推入；9:16 鋪滿畫面，16:9／1:1 是畫面中間一支手機（device）；手指用 common.touch（位置用 searchPoint(參數, pick/bar/play, 寬, 高)），閃白用 core.flash，字幕用 common.caption，片尾用 common.outro；音效配 common.typing（打字）、common.tick（點）、common.pop（事實卡）',
+  doc: '搜尋引擎的畫面（通用深色介面，不是哪一家：沒有 logo、沒有彩色字母，分頁、相關搜尋、搜尋中…、你是不是要找、精選摘要、完整版等字全是參數），用 mode 分：home 首頁疊在模糊壓暗的主軌片段上（headline hint、搜尋框逐字打字 query、自動完成清單 sugg 一行一個（「前綴|補完」或整行，跟 query 一樣的部分淡、其餘粗）、pick 第幾列 pickAt 秒點下去後框裡換成那一列、out 秒滑走）；results 結果頁（搜尋框打字，erase 先刪舊字；tabs 分頁「全部, 新聞…」底線從 tabFrom 滑到 tab；title 標題、titleSub 旁邊小字、snip 摘要；影片窗是圓角洞，主軌片段給 frame: searchWindow(參數, 寬, 高)；load 秒前蓋著「搜尋中…」載入卡；facts 一行一張「秒|小標|大字|單位」事實卡從影片窗左下彈出；dym 你是不是要找（dymAt 出現、dymHi 第幾個字標橘、dymLead 前面的字）；big 影片窗上的大字；related 相關搜尋「a, b; c」；press 秒按下搜尋框發亮；view full＝影片滿版，上方浮著搜尋框、分頁和 chips 一行一個「秒|字」篩選膠囊依序點亮）；ask 問答展開（qs 一行一題「秒-秒|問題|提示」，提示寫 redact＝答案打碼＋reveal「完整版揭曉」；一題展開成影片窗、收合時清單往上捲一列）；end 結尾（重打 query、自動完成點選，snipAt 精選摘要卡答案打碼（snipTitle、snipLead、snipNote），cardAt 結果卡：縮圖是影片窗、badge 標籤、title 標題、dur 片長、press 秒按下播放鈕）；bar 沒有頁面：畫面上方一條小搜尋列釘在片子上（放大鏡＋query 的問題，typeAt -1＝字已經在框裡），講者回答時一直留著，press 秒右端彈出打勾（barY 中心高度，-1＝貼著上方安全區；最後 out 秒淡出，沒給就 0.3 秒）；時間都從項目開始算；enter 秒從下往上推入；9:16 鋪滿畫面，16:9／1:1 是畫面中間一支手機（device）；手指用 common.touch（位置用 searchPoint(參數, pick/bar/play, 寬, 高)），閃白用 core.flash，字幕用 common.caption，片尾用 common.outro；音效配 common.typing（打字）、common.tick（點）、common.pop（事實卡）',
   params: [
-    { key: 'mode', label: '畫面（home 首頁、results 結果頁、ask 問答展開、end 結尾的精選摘要和結果卡）', type: 'enum', options: [...SEARCH_MODES], default: 'home' },
+    { key: 'mode', label: '畫面（home 首頁、results 結果頁、ask 問答展開、end 結尾的精選摘要和結果卡、bar 畫面上方釘著的一條小搜尋列）', type: 'enum', options: [...SEARCH_MODES], default: 'home' },
     { key: 'view', label: '結果頁的影片（window 影片窗、full 滿版加篩選膠囊）', type: 'enum', options: [...SEARCH_VIEWS], default: 'window' },
     { key: 'query', label: '搜尋框的字', type: 'string', default: '週末去哪玩' },
     { key: 'erase', label: '先刪掉的舊字（空＝沒有）', type: 'string', default: '' },
@@ -157,7 +162,7 @@ export const search: ItemType<P, S> = {
     { key: 'suggAt', label: '自動完成出現（秒；-1＝沒有）', type: 'number', min: -1, max: 60, step: 0.05, default: 1.0 },
     { key: 'pick', label: '點第幾列（從 0 算；-1＝不點）', type: 'number', min: -1, max: 9, step: 1, default: 1 },
     { key: 'pickAt', label: '點下去（秒）', type: 'number', min: 0, max: 60, step: 0.05, default: 2.2 },
-    { key: 'press', label: '按下（秒；results 搜尋框發亮、end 播放鈕按下；-1＝沒有）', type: 'number', min: -1, max: 60, step: 0.05, default: -1 },
+    { key: 'press', label: '按下（秒；results 搜尋框發亮、end 播放鈕按下、bar 右端打勾；-1＝沒有）', type: 'number', min: -1, max: 60, step: 0.05, default: -1 },
     { key: 'out', label: '最後幾秒滑走淡出（秒；0＝不走）', type: 'number', min: 0, max: 3, step: 0.05, default: 0 },
     { key: 'enter', label: '從下往上推入（秒；0＝不推）', type: 'number', min: 0, max: 3, step: 0.05, default: 0 },
     { key: 'tabs', label: '分頁（逗號分隔；空＝沒有分頁列）', type: 'string', default: '全部, 新聞, 圖片, 影片, 問答' },
@@ -195,6 +200,7 @@ export const search: ItemType<P, S> = {
     { key: 'device', label: '手機（auto：9:16 鋪滿畫面、其他比例畫一支手機；phone 一律畫手機；bare 只要 9:16 的畫面不畫機身）', type: 'enum', options: DEVICES, default: 'auto' },
     { key: 'px', label: '手機中心 x（畫面寬比例；有手機時）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.5 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.body' },
+    { key: 'barY', label: 'bar 的中心高度（畫面高比例；-1＝貼著上方安全區）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'bg', label: '頁面底色', type: 'color', default: '#0e1620' },
     { key: 'panel', label: '搜尋框、卡片底色', type: 'color', default: '#1b2733' },
     { key: 'line', label: '分隔線', type: 'color', default: '#2a3a49' },
@@ -213,6 +219,10 @@ export const search: ItemType<P, S> = {
   },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local: t, dur } = ctx;
+    const bar = p.mode === 'bar';
+    for (const e of [s.ph.body, s.ph.screen, s.ph.island]) cssCamel(e, { display: bar ? 'none' : 'block' });
+    if (s.pill) cssCamel(s.pill.el, { display: bar ? 'flex' : 'none' });
+    if (bar) { drawPill(ctx, s); return; }
     const { sc, k, Hd, X } = phoneView(W, H, theme.safe, p);
     placePhone(s.ph, sc);
     const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`;
@@ -350,6 +360,35 @@ export const search: ItemType<P, S> = {
     }
   },
 };
+
+/** mode bar: the pill, centred, under the top safe line (or at barY); in over 0.35 s, out over the last `out` s (0.3 s unless set) */
+function drawPill(ctx: Parameters<typeof search.draw>[0], s: S) {
+  const p = ctx.params, { W, H, theme, local: t, dur, motion } = ctx, k = Math.min(W, H) / 1080;
+  if (!s.pill) {
+    const el = h('div', null, null, ctx.root), mag = h('div', null, null, el), type = typeEl(el), chk = h('div', null, null, el);
+    cssCamel(el, { position: 'absolute', left: '50%', display: 'flex', alignItems: 'center', boxSizing: 'border-box', whiteSpace: 'pre' });
+    cssCamel(type.el, { position: 'relative', flex: '0 1 auto' });
+    cssCamel(mag, { flex: 'none' }); cssCamel(chk, { flex: 'none' });
+    chk.innerHTML = SVG('<circle class="r" cx="50" cy="50" r="40" fill="none" stroke-width="7"/><circle class="d" cx="50" cy="50" r="50"/><path d="M30 51l14 14 27-29" fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1 1"/>');
+    s.pill = { el, mag, type, chk, ring: chk.querySelector('circle.r')!, dot: chk.querySelector('circle.d')!, tick: chk.querySelector('path')! };
+  }
+  const P = s.pill, fs = fitPx(p.query, 50 * k, W * (1 - 2 * theme.safe.side) - 160 * k), hh = fs * 1.9, pad = fs * 0.75, icon = fs * 1.1, ck = fs * 1.15;
+  const inP = motion.ease.out(clamp(t / 0.35)), out = p.out > 0 ? p.out : 0.3, outP = motion.ease.inOut(clamp((t - (dur - out)) / out));
+  const cy = p.barY >= 0 ? p.barY * H : theme.safe.top * H + hh / 2 + 12 * k;
+  cssCamel(P.el, { top: `${cy - hh / 2 - (1 - inP) * 30 * k}px`, height: `${hh}px`, padding: `0 ${pad * 0.6}px 0 ${pad}px`, gap: `${fs * 0.4}px`, borderRadius: `${hh / 2}px`,
+    background: p.panel, border: `${3 * k}px solid ${withAlpha(p.accent, 0.85)}`, boxShadow: `0 ${6 * k}px ${24 * k}px rgba(0,0,0,0.45)`, transform: 'translateX(-50%)',
+    opacity: String(inP * (1 - outP)), fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, maxWidth: `${W * (1 - 2 * theme.safe.side)}px` });
+  cssCamel(P.mag, { width: `${icon}px`, height: `${icon}px`, marginLeft: `${-icon * 0.1}px` }); svgIn(P.mag, glyphSvg('search', p.sub));
+  const typed1 = p.typeAt >= 0 ? typed(p.query, t, { at: p.typeAt, cps: p.cps, erase: p.erase }) : { s: p.query, typing: false };
+  cssCamel(P.type.el, { fontSize: `${fs}px`, fontWeight: '700', color: p.ink, marginRight: `${fs * 0.1}px` });
+  drawType(P.type, typed1.s, p.typeAt >= 0 && t >= p.typeAt && (typed1.typing || (p.press < 0 || t < p.press) && caretOn(t, 2.2)), p.accent);
+  // the check: a faint ring until press, then a filled circle springing up and a tick drawn in it
+  const on = p.press >= 0 && t >= p.press, pop = on ? Math.max(0, motion.spring({ duration: 0.45, bounce: 0.45 })(t - p.press)) : 0, d = on ? clamp((t - p.press - 0.1) / 0.25) : 0;
+  cssCamel(P.chk, { width: `${ck}px`, height: `${ck}px` });
+  P.ring.setAttribute('stroke', withAlpha(p.sub, 0.5)); P.ring.setAttribute('opacity', on ? '0' : '1');
+  P.dot.setAttribute('fill', p.accent); P.dot.setAttribute('r', String(50 * pop));
+  P.tick.setAttribute('stroke', p.panel); P.tick.setAttribute('stroke-dashoffset', String(1 - d)); P.tick.setAttribute('opacity', d > 0 ? '1' : '0');
+}
 
 /** every element of the page for these parameters, styled once in px at k; draw() animates them */
 function buildUI(s: S, p: P, k: number, Hd: number, o: { win: Rect; sugg: Sugg[]; tabs: string[]; xs: Array<[number, number]>; y0: number; full: boolean }) {

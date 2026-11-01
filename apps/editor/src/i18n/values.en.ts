@@ -190,4 +190,11 @@ export const VALUES_EN: Record<string, string> = {
   "common.magazine.banner": "Special feature",
   "common.magazine.lines": "Called the world's/slowest city\nThe locals/in their words",
   "common.magazine.cta": "Full story in the long video",
+  "common.quiz.no": "Question 1",
+  "common.quiz.question": "How many colours are in a rainbow?",
+  "common.quiz.options": "Five|Seven|Nine",
+  "common.healthbar.title": "Challenge: one hour without my phone",
+  "common.healthbar.replay": "REPLAY",
+  "common.healthbar.label": "HP",
+  "common.healthbar.states": "Steady,Shaky,Danger,Broken",
 };

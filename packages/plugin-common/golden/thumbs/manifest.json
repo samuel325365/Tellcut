@@ -61,7 +61,9 @@
   "search-t2.85.png": "dfb9ec22c6e9",
   "casefile-t2.80.png": "3a938bb3ed4c",
   "worldmap-t2.60.png": "4241ad8d3041",
-  "magazine-t2.90.png": "9ae4be86bd71"
+  "magazine-t2.90.png": "9ae4be86bd71",
+  "quiz-t4.20.png": "6a427a3476e9",
+  "healthbar-t3.60.png": "af16e99f48a5"
  },
  "ja": {
   "core-title-t1.50.png": "cf9552d1c469",
@@ -125,6 +127,8 @@
   "search-t2.85.png": "386ab379f92a",
   "casefile-t2.80.png": "9c1714c5d1dc",
   "worldmap-t2.60.png": "4973f79945e2",
-  "magazine-t2.90.png": "cf2479a94ced"
+  "magazine-t2.90.png": "cf2479a94ced",
+  "quiz-t4.20.png": "002e999b3edb",
+  "healthbar-t3.60.png": "41bf2864e04c"
  }
 }

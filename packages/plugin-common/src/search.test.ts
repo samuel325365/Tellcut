@@ -58,6 +58,6 @@ test('the window and the tap points: 9:16 the page itself, 16:9 inside the phone
 
 test('every parameter has a default and the modes are an enum', () => {
   const mode = search.params.find((p) => p.key === 'mode') as { options?: string[] };
-  expect(mode.options).toEqual(['home', 'results', 'ask', 'end']);
+  expect(mode.options).toEqual(['home', 'results', 'ask', 'end', 'bar']);
   for (const p of search.params) expect(p.default, p.key).not.toBeUndefined();
 });

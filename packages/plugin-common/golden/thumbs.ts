@@ -19,6 +19,7 @@ export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unk
     countdown: { label: 'Countdown' },
     mystery: { hint: 'Only open until 2 pm' },
     magazine: { cells: 'pic|0|0.5,0.3,1.5\n-\npic|0|0.3,0.7,2', tags: '0.8-1.5|0|HIDDEN GEM|A real find', quote: 'Little money,\nlots of joy.', quoteAt: 1.6, quoteBy: '— Interviewee' },
+    quiz: { stars: 2, reveal: 2.4, badge: '🌈', fact: '7 colours', factSub: 'red, orange, yellow, green, blue, indigo, violet' },
   },
   ja: {
     'core-title': { text: '京都三日間', sub: '秋の最初の旅' },
@@ -37,5 +38,6 @@ export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unk
     countdown: { label: 'カウントダウン' },
     mystery: { hint: '店は午後2時まで' },
     magazine: { cells: 'pic|0|0.5,0.3,1.5\n-\npic|0|0.3,0.7,2', tags: '0.8-1.5|0|HIDDEN GEM|隠れた名所', quote: 'お金は少ないけど、\nとても幸せ。', quoteAt: 1.6, quoteBy: '— インタビュー相手' },
+    quiz: { stars: 2, reveal: 2.4, badge: '🌈', fact: '7色', factSub: '赤・橙・黄・緑・青・藍・紫' },
   },
 };

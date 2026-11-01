@@ -419,6 +419,9 @@ export const samples: Sample[] = [
   { name: 'search-ask', type: 'common.search', params: { mode: 'ask', query: '海邊小鎮 值得去嗎？', typeAt: -1, tab: 4, tabFrom: 0 }, at: [0.2, 1.3, 2.2, 2.9], bg: '#3d6e80' },
   { name: 'search-end', type: 'common.search', params: { mode: 'end', query: '海邊小鎮', erase: '海邊小鎮 值得去嗎？', typeAt: 0.1, sugg: '海邊小鎮| 在哪\n海邊小鎮| 美食\n海邊小鎮| 值得去嗎', suggAt: 0.8, pick: 2, pickAt: 1.6,
     tab: 0, tabFrom: 4, tabAt: 1.6, snipAt: 1.65, cardAt: 1.8, press: 3.3, title: '海邊小鎮完整走一圈' }, len: 4, at: [1.2, 1.9, 3.4], bg: '#3d6e80' },
+  // search bar (2026-11-02, the interview acceptance film's fx.querybar): the question pinned at the top over the footage, the check at press
+  { name: 'search-bar', type: 'common.search', params: { mode: 'bar', query: '為什麼天空是藍色的？', typeAt: -1, press: 1.4 }, at: [0.8, 2.2], bg: '#5c7a8c' },
+  { name: 'wide-search-bar', type: 'common.search', params: { mode: 'bar', query: '為什麼天空是藍色的？', typeAt: -1, press: 1.4 }, at: [2.2], wide: true, bg: '#5c7a8c' },
   { name: 'wide-search-results', type: 'common.search', params: { mode: 'results', title: '海邊小鎮', facts: '0.5|人口|3.2|萬人' }, at: [2.6], wide: true, bg: '#3d6e80' },
   { name: 'wide-search-end', type: 'common.search', params: { mode: 'end', pickAt: 1.6, snipAt: 1.65, cardAt: 1.8 }, len: 3, at: [2.8], wide: true, bg: '#3d6e80' },
   // group E: the camcorder viewfinder (wedding-short's finder: a square box, the counter at the top, a tape change; uk-dv's OSD: the
@@ -486,6 +489,7 @@ export const samples: Sample[] = [
   { name: 'outro-credits', type: 'common.outro', params: { look: 'credits', lines: '*With love to everyone who came*\nMom & Dad\nGrandma & Grandpa\n*and all the friends*\n_Music: original score_', beat: 0.4 }, len: 4, at: [0.6, 3.0], bg: '#6b5a48' },
   { name: 'slam-gold', type: 'common.slam', params: { look: 'gold', text: 'Surprise!', tilt: 0, size: 8 }, at: [0.15, 1.5], bg: '#3a2f45' },
   { name: 'notecard-tick', type: 'common.notecard', params: { mode: 'list', title: 'to-do list', items: 'unpack|clean the house|edit videos|workout|returns|grocery shop', tick: 3, count: '', note: '' }, at: [0.2, 0.62, 1.4], bg: '#e7d8bd' },
+  { name: 'notecard-strike', type: 'common.notecard', params: { mode: 'list', title: '待辦清單', items: '回信|繳帳單|買菜|運動|整理書桌|洗衣服', tick: 6, strike: true, stamp: '清空！', count: '', note: '' }, at: [1.15, 2.0], bg: '#e7d8bd' },
   { name: 'caption-strip', type: 'common.caption', params: { text: 'Today I finally cleaned the whole kitchen', style: 'strip', size: 3.2, words: [[0, 5], [0.3, 7], [0.5, 15], [0.9, 23], [1.2, 27], [1.4, 33], [1.7, 41]] }, at: [1.0, 2.5], bg: '#7a6650' },
   { name: 'tag-day', type: 'common.tag', params: { look: 'day', tags: 'Day 2,15° · rain', x: 0.08, y: 0.12 }, at: [0.1, 1.5], bg: '#6d7f92' },
   { name: 'wide-tag-day', type: 'common.tag', params: { look: 'day', tags: 'Day 2,15° · rain', x: 0.06, y: 0.1, size: 3 }, at: [1.5], wide: true, bg: '#6d7f92' },
@@ -516,4 +520,15 @@ export const samples: Sample[] = [
   { name: 'audiogram-wave', type: 'common.audiogram', sources: PIC, params: { look: 'wave', artSource: 'pic', speakers: [[0, 1.5, 1], [1.5, 60, 2]], names: ['', 'Mia', 'Leo'] }, at: [1.0, 2.5], theme: QUOTE, bg: '#15171f' },
   { name: 'audiogram-ring', type: 'common.audiogram', sources: PIC, params: { look: 'ring', artSource: 'pic', speakers: [[0, 1.5, 1], [1.5, 60, 2]], names: ['', 'Mia', 'Leo'] }, at: [1.0, 2.5], theme: QUOTE, bg: '#15171f' },
   { name: 'wide-audiogram-ring', type: 'common.audiogram', params: { look: 'ring', speakers: [[0, 1.5, 1], [1.5, 60, 2]], names: ['', 'Mia', 'Leo'] }, at: [2.5], wide: true, theme: QUOTE, bg: '#15171f' },
+  // common.quiz (2026-11-02, the quiz acceptance film): the options popping in, the reveal, the wrong rows folded away with the badge and the fact chip
+  { name: 'quiz', type: 'common.quiz', params: { stars: 2, reveal: 2.4, badge: '🌈', fact: '7 種', factSub: '紅、橙、黃、綠、藍、靛、紫' }, len: 4.5, at: [1.6, 2.7, 4.2], bg: '#4f7f8f' },
+  { name: 'wide-quiz', type: 'common.quiz', params: { stars: 2, reveal: 2.4, badge: '🌈', fact: '7 種', factSub: '紅、橙、黃、綠、藍、靛、紫' }, len: 4.5, at: [4.2], wide: true, bg: '#4f7f8f' },
+  // common.doodle (2026-11-02, the whiteboard acceptance film): the default strokes being drawn and done; the board eraser mid-sweep
+  { name: 'doodle', type: 'common.doodle', at: [0.8, 2.6], bg: '#f4f2ec' },
+  { name: 'doodle-erase', type: 'common.doodle', params: { erase: 2.45, eraseDur: 0.5, ey0: 0.22, ey1: 0.66 }, at: [2.7], bg: '#f4f2ec' },
+  { name: 'wide-doodle', type: 'common.doodle', at: [2.6], wide: true, bg: '#f4f2ec' },
+  // common.healthbar (2026-11-02, the reaction-clip acceptance film's fx.livebar): a hit, a heal, the low state, the bar shattered; no header row
+  { name: 'healthbar', type: 'common.healthbar', len: 4.2, at: [1.15, 2.0, 2.9, 3.6], bg: '#3a4656' },
+  { name: 'healthbar-bare', type: 'common.healthbar', params: { title: '', live: '', replay: '', label: 'HP', stops: '0:100, 0.6:40' }, at: [1.2], bg: '#3a4656' },
+  { name: 'wide-healthbar', type: 'common.healthbar', len: 4.2, at: [3.6], wide: true, bg: '#3a4656' },
 ];
