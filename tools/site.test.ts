@@ -47,11 +47,18 @@ test('an unreachable site fails in one line', async () => {
 });
 
 test('a site whose web font never arrives still ends within its time', async () => {
+  // What ends the wait is the read's own deadline (its message names it), not the font: without the deadline this read never
+  // ends (Playwright's screenshot waits for document.fonts.ready too). The wall clock is only a loose bound: closing Chrome after
+  // the deadline took up to 12 s more in a full npm test, against under 1 s alone, and a launch slower than a short deadline
+  // reads as "Chrome does not start", hence 10 s.
   const t0 = Date.now();
-  const out = await readSite(`${base}/stall`, tmpProject, { timeoutMs: 5000 }).then(() => 'read', (e: Error) => e.message);
-  expect(Date.now() - t0).toBeLessThan(12000);
-  if (out !== 'read') { expect(out).toMatch(/讀不到官網/); expect(existsSync(join(tmpProject, 'media/brand/site.png'))).toBe(false); }
-}, 40000);
+  const out = await readSite(`${base}/stall`, tmpProject, { timeoutMs: 10000 }).then(() => 'read', (e: Error) => e.message);
+  expect(Date.now() - t0).toBeLessThan(10000 + 30000);
+  if (out !== 'read') {
+    expect(out).toMatch(/讀不到官網.*（(超過 10 秒|page\.\w+: Timeout \d+ms exceeded)/);
+    expect(existsSync(join(tmpProject, 'media/brand/site.png'))).toBe(false);
+  }
+}, 60000);
 
 test('a broken og:image is left out and the rest of the page is read', async () => {
   const s = await readSite(`${base}/badog`, tmpProject);
