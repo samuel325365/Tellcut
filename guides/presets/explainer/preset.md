@@ -30,7 +30,7 @@
     { "id": "whiteboard",
       "name": { "zh": "手繪白板", "en": "Whiteboard doodles", "ja": "手描きホワイトボード" },
       "desc": { "zh": "形式｜方格紙上，跟著旁白一筆一筆畫出塗鴉、箭頭和手寫字。", "en": "Form | On squared paper, doodles, arrows and handwriting drawn stroke by stroke with the voice-over.", "ja": "形式｜方眼紙の上に、ナレーションに合わせて落書き・矢印・手書き文字を一筆ずつ。" },
-      "prompt": "Form: a whiteboard explainer on paper: common.paper look: 'grid' (or the desk) under everything; doodles drawn stroke by stroke with common.pen on the narration's words (circle, arrow, underline, check, cross… or kind trace for a drawing of your own), key words written with common.handwrite, steps on common.notecard; nothing appears that is not being drawn or written. Sound common.scribble under the drawing." },
+      "prompt": "Form: a whiteboard explainer on paper: common.paper look: 'grid' (or the desk) under everything; doodles drawn stroke by stroke with common.pen on the narration's words (circle, arrow, underline, check, cross… or kind trace for a drawing of your own; trace draws one line per item: a drawing that needs filling or erasing is this film's own fx), key words written with common.handwrite, steps on common.notecard; nothing appears that is not being drawn or written. Sound common.scribble under the drawing. The ground is grid paper, not a board; a new page is wiped in with an eraser; the captions are handwritten too." },
     { "id": "essay",
       "name": { "zh": "影像論文", "en": "Video essay", "ja": "映像エッセイ" },
       "desc": { "zh": "形式｜地圖飛進去、圖表、老照片和文件，紙張和底片質感，旁白帶著走，節奏慢、比較有份量。適合歷史和社會題材。", "en": "Form | Maps flying in, charts, archive photos and documents, paper and film texture, led by the voice; slower and weightier, for history and society.", "ja": "形式｜地図へ飛び込み、グラフ、古い写真や資料、紙とフィルムの質感、ナレーションが導く。ゆっくり重みのある語りで、歴史や社会のテーマに。" },
@@ -42,11 +42,11 @@
     { "id": "side-by-side",
       "name": { "zh": "影片＋旁邊圖解", "en": "Your video with diagrams beside it", "ja": "動画の横に図解" },
       "desc": { "zh": "形式｜你的影片放一格，另一格跟著內容出現步驟、圖片和重點；教學先給結果，步驟編號，點的地方會圈起來。", "en": "Form | Your video in one panel; steps, pictures and key points appear in the other as you speak. A lesson shows the result first, numbers its steps and rings what is clicked.", "ja": "形式｜自分の動画を一枠に、もう一枠に手順・画像・要点が話に合わせて出る。レッスンは結果から見せ、手順に番号、クリックする所を丸で囲む。" },
-      "prompt": "Form: the user's own video (a lesson, a demo) stays the main picture in one panel (common.panel around the clip's frame); the rest of the frame shows the steps, pictures and key points in time with what is said (common.list style number for numbered steps, common.card for a step with its picture, common.callout ringing the place on screen being clicked or touched). A lesson shows the result first, then the steps, numbered; screen text enlarged until it reads on a phone. At 9:16 the video above and the notes under it; at 16:9 side by side." },
+      "prompt": "Form: the user's own video (a lesson, a demo) stays the main picture in one panel (common.panel around the clip's frame); the rest of the frame shows the steps, pictures and key points in time with what is said (common.list for a check of what you need (materials, tools), style number for small steps, common.card for a step with an action and its picture, common.callout ringing the place on screen being clicked or touched). A lesson shows the result first, then the steps, numbered; in a screen recording, screen text enlarged until it reads on a phone. At 9:16 the video above and the notes under it; at 16:9 side by side." },
     { "id": "myth",
       "name": { "zh": "迷思破解", "en": "Myth busting", "ja": "誤解を検証" },
       "desc": { "zh": "形式｜開頭「你以為 A」被紅筆劃掉、蓋上「其實是 B」，接著一件件攤開證據，最後附上來源。", "en": "Form | \"You think A\" struck out in red and stamped \"actually B\", then the evidence one piece at a time, and the sources to close.", "ja": "形式｜冒頭の「A だと思ってない？」に赤線が引かれ「実は B」のスタンプ。続いて証拠をひとつずつ示し、最後に出典。" },
-      "prompt": "Form: myth busting: open on the belief (\"you think A…\"), struck out at the flip and stamped with what is true (common.strike: the before line and the after stamp, with common.buzz); then the evidence one piece at a time, in common.casefile (the claim typed in, evidence boxes stamped, the claim struck and rejected) or as drawn cards; end on a source card naming where the facts come from. Only a belief the evidence really flips; the sources are real and named." },
+      "prompt": "Form: myth busting: open on the belief (\"you think A…\"), struck out at the flip and stamped with what is true (common.strike: the before line and the after stamp, with common.error); then the evidence one piece at a time, in common.casefile (the claim typed in, evidence boxes stamped, the claim struck and rejected) or as drawn cards; end on a source card naming where the facts come from. Only a belief the evidence really flips; the sources are real and named." },
     { "id": "listicle",
       "name": { "zh": "排行榜", "en": "Top-N list", "ja": "ランキング" },
       "desc": { "zh": "形式｜「5 個…」倒數到第一名，每一項一樣長、開頭一個大數字，上面顯示 3/5；第一名最強或有反轉。", "en": "Form | \"5 things…\" counting down to number one, each item the same length and opened by a big number, 3/5 along the top; number one the strongest or a twist.", "ja": "形式｜「〇〇 5 選」を 1 位までカウントダウン。各項目は同じ長さで大きな数字から始まり、上に 3/5。1 位は最強か、どんでん返し。" },
@@ -58,7 +58,7 @@
     { "id": "quiz",
       "name": { "zh": "隨堂測驗", "en": "Quiz", "ja": "クイズ" },
       "desc": { "zh": "形式｜出題、倒數滴答、揭曉配音效，一題比一題難，最後問「你答對幾題？」。", "en": "Form | A question, a ticking countdown, the reveal with a sound, each question harder, and \"how many did you get?\" to end.", "ja": "形式｜出題、カチカチのカウントダウン、効果音つきの答え合わせ。だんだん難しくなり、最後は「何問正解した？」。" },
-      "prompt": "Form: a quiz: each question on screen and read aloud, a common.countdown (from 5, common.tick each second: long enough to think, short enough not to drag), the reveal with a sound (common.ding right, common.buzz wrong), a common.scoreboard keeping count; the questions get harder; end with \"how many did you get? tell me in the comments\". Every answer checked." },
+      "prompt": "Form: a quiz: each question on screen and read aloud (the question card typing in is its caption), a common.countdown (from 5, end: '' so it ends on the number, not GO!, common.tick each second: long enough to think, short enough not to drag), the reveal with a sound (common.ding right, common.error wrong), a question counter (3/5) rather than a score, since the film cannot know the viewer's; the questions get harder; end with \"how many did you get? tell me in the comments\". Every answer checked." },
     { "id": "chat",
       "name": { "zh": "朋友來問", "en": "A friend asks", "ja": "友だちの質問" },
       "desc": { "zh": "形式｜朋友在聊天室問「為什麼…？」，你用短訊息、照片和語音一步步回答，需要圖解時畫面切出去再回來。", "en": "Form | A friend asks \"why…?\" in a chat and you answer step by step in short messages, photos and voice notes, cutting out to a diagram when one is needed.", "ja": "形式｜友だちがチャットで「なんで…？」と質問、短いメッセージ・写真・ボイスで一歩ずつ答え、図解が要るときは画面を切り替えて戻る。" },
@@ -66,23 +66,23 @@
     { "id": "chapters",
       "name": { "zh": "章節進度", "en": "Chapter progress", "ja": "チャプター" },
       "desc": { "zh": "點綴｜上方一排章節點或分頁，觀眾知道講到哪、還剩多少。", "en": "Accent | A row of chapter dots or tabs along the top, so viewers see where they are and what is left.", "ja": "アクセント｜上にチャプターの点やタブが並び、今どこで、あとどれくらいかがわかる。" },
-      "prompt": "Accent: chapter progress along the top safe edge: common.progress mode: 'dots' for a few parts, mode: 'tabs' with a short name for each chapter; it changes exactly when the narration moves to the next part." },
+      "prompt": "Accent: chapter progress along the top safe edge: common.progress mode: 'dots' for up to 4 parts, mode: 'tabs' with a short name for each chapter for 5 or more; when a counter or scoreboard also wants the top edge, chapters keep it and the other moves down; it changes exactly when the narration moves to the next part." },
     { "id": "callouts",
       "name": { "zh": "圈重點", "en": "Callouts", "ja": "ここに注目" },
       "desc": { "zh": "點綴｜講到哪就用手繪圈、箭頭指出畫面上的那個東西，旁邊一個小標。", "en": "Accent | A hand-drawn ring or arrow points at the thing being talked about, with a small label.", "ja": "アクセント｜話している所を手描きの丸や矢印で指し、小さなラベルを添える。" },
-      "prompt": "Accent: callouts on the thing being talked about: common.callout (a ring, a cross or a ban sign with a leader to a short label) or common.pen arrows and circles, drawn on the word that names it; one at a time, gone before the next." }
+      "prompt": "Accent: callouts on the thing being talked about: common.callout (a ring, a cross or a ban sign with a leader to a short label) or common.pen arrows and circles, drawn on the word that names it (with two cameras cut together, on the shot where the thing is seen); one at a time, gone before the next." }
   ]
 }
 ---
 These are defaults. If the user's message conflicts with any of them, follow the user and say in one sentence what you changed.
 
 Goal: one idea made clear, worth saving and sharing.
-- 9:16 or 16:9, 45 s–3 min. One idea per video; trying to explain three things in one video is the commonest failure. Open with a question (or the belief to flip, the number, the first item) in the first seconds; end with a one-line summary.
+- 9:16 or 16:9, 45 s–3 min. One idea per video (a quiz's questions or a list's items are one idea when they build one thing, such as getting harder); trying to explain three things in one video is the commonest failure. Open with a question (or the belief to flip, the number, the first item) in the first seconds; end with a one-line summary.
 - The styles are of two kinds, and their prompts begin with the kind. Form (flat, whiteboard, essay, kinetic, side-by-side, myth, listicle, data, quiz, chat) carries the whole film: at most one form; if the user picks two, the first is the form and the second only lends its opener or ending; say so in one sentence. Accent goes with any form.
 - No form picked: with the user's own video, side-by-side; with none, the form the topic asks for (a belief to flip: myth; numbers: data; a ranking: listicle), else flat animation.
 - No footage: draw every scene, write a narration script (npm run voice), time cues to its words, and keep the music low under the voice.
 - With the user's own video (e.g. a lesson): it stays the main picture; diagrams, pictures and notes appear beside it in time with what is said.
 - Something on screen changes every 2–3 s; a visual metaphor for anything abstract; one new element at a time.
 - Captions in sync with the voice; little other text on screen (a key word, a number), never a paragraph.
-- Layout: at 9:16 the diagram in the upper half and the captions lower middle; at 16:9 the diagram on the left and the key words on the right, or the animation full-frame with captions below.
+- Layout: at 9:16 the diagram in the upper half and the captions lower middle; at 16:9 the diagram on the left and the key words on the right (side-by-side at 16:9: the user's video on the left, the notes on the right), or the animation full-frame with captions below.
 - Facts and numbers are checked and real (assets data, wikimedia, or the user's own text), with the source named where a number is shown; never invent a number, a quote or a study.
