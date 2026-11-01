@@ -118,9 +118,17 @@ export function captionPlan(tr: Transcript, pieces: SpeechPiece[], o: CaptionOpt
       groups.push({ ws: ws.slice(k, e), soft });
       k = e;
     }
-    // a lone last word joins the one before (not across a pause or a sentence's end, nor past maxChars)
+    // a lone last word joins the one before (not across a pause or a sentence's end, nor past maxChars); past maxChars the one
+    // before's last word moves over to it instead (unless that cuts a marked word in two): alone, a short one (Chinese has a
+    // character a word: 透 | 過) went under the 0.3 s a caption needs and was lost
     const [before, lone] = groups.slice(-2);
-    if (lone && lone.ws.length === 1 && !before.soft && !(maxChars >= 1 && joinWords([...before.ws, ...lone.ws]).length > maxChars)) before.ws.push(...groups.pop()!.ws);
+    if (lone && lone.ws.length === 1 && !before.soft) {
+      if (!(maxChars >= 1 && joinWords([...before.ws, ...lone.ws]).length > maxChars)) before.ws.push(...groups.pop()!.ws);
+      else if (before.ws.length >= 2) {
+        const cut = ends[ws.indexOf(lone.ws[0]) - 2];
+        if (!spans.some(([a, b]) => a < cut && cut < b)) lone.ws.unshift(before.ws.pop()!);
+      }
+    }
     if (groups.length === 1 && ws.length === all.length) return [seg];
     return groups.map((g, k) => {
       const a = g.ws[0], z = g.ws[g.ws.length - 1], next = groups[k + 1];

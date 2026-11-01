@@ -163,6 +163,17 @@ test('speechCaptions chunk keeps Chinese unspaced next to an English word in the
   expect(c.speechCaptions(id, { type: 'common.caption', chunk: 3 }).map((cid) => items(c, 'text').find((x) => x.id === cid).params.text)).toEqual(['我們要去', 'Tokyo玩三天']);
 });
 
+test('speechCaptions maxChars never loses a short lone last character: the one before it moves over to keep it company', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cut-')), i = inv(dir);
+  // seen 2026-11-01 (acceptance film): maxChars cut 透過 into 透 | 過, and 過 alone (0.24 s) was too short to become a caption
+  const said: Array<[string, number, number]> = [['如果你', 0, 0.38], ['沒有', 0.38, 0.76], ['特', 0.76, 1.22], ['別', 1.22, 1.44], ['想', 1.44, 1.86], ['要', 1.86, 1.98], ['透', 1.98, 2.1], ['過', 2.1, 2.34]];
+  i.sources[0].transcript = { language: 'zh', segments: [{ start: 0, end: 2.34, text: said.map((w) => w[0]).join(''), words: said.map(([word, start, end]) => ({ start, end, word })) }] };
+  const c = new Cut(base(), i, dir), id = c.clip('v', { from: 0, len: 4 });
+  const caps = c.speechCaptions(id, { type: 'common.caption', maxChars: 10 }).map((cid) => items(c, 'text').find((x) => x.id === cid));
+  expect(caps.map((x) => x.params.text)).toEqual(['如果你沒有特別想要', '透過']);
+  expect(caps.map((x) => [x.start, Math.round((x.end - x.start) * 1e6) / 1e6])).toEqual([[0, 1.98], [1.98, 0.36]]);
+});
+
 test('speechCaptions fix / censor / highlight on English words: whole words only, any case; an empty fix drops the word', () => {
   const dir = mkdtempSync(join(tmpdir(), 'cut-')), i = inv(dir);
   i.sources[0].transcript = { language: 'en', segments: [{ start: 0, end: 3, text: "i think it is in venice did i say yes did", words: [] }] };
