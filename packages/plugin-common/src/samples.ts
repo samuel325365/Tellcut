@@ -57,6 +57,10 @@ const CHAT_GROUP = `-1|sys|10月24日
 1.9|me|記得帶泳衣|unread
 2.2|阿哲||typing
 2.6|阿哲|OK 👍`;
+/** common.chat's open=: a video bubble growing to the whole frame (the block alone: its still in the growing window) */
+const CHAT_OPEN = `0|me|你看這個 👇
+0.1|me||video|src=pic|t=0|dur=0:08|play=0.2-3|open=0.4-2.6|crop=0.5,0.4,1
+2.8|them|哇`;
 const ALBUM = '# 港邊|7月12日|第 1 天\npic|0||0.5,0.4\n-\n-||0:12\n# 老街|7月13日|第 2 天\n-\npic|0|0:08|0.3,0.6\n-\n# |7月15日|第 4 天\n-\n-\n-\n-';
 
 export const samples: Sample[] = [
@@ -70,7 +74,7 @@ export const samples: Sample[] = [
   { name: 'progress-dots', type: 'common.progress', params: { mode: 'dots', position: 'bottom', thickness: 36 }, theme: { palette: { accent: '#2ec4b6' } }, at: [0.5, 2.5] },
   // chapter tabs: the second chapter lit (popping at 0.1 s, settled at 1.5 s), the first one ticked
   { name: 'progress-tabs', type: 'common.progress', params: { mode: 'tabs', labels: '乾料,濕料,麵糊,下鍋,開動', icons: '🧂,🥛,🥣,🍳,🥞', step: 1 }, at: [0.1, 1.5] },
-  { name: 'film', type: 'common.film', params: { grain: 0.7, vignette: 0.6 }, at: [0.5] },
+  { name: 'film', type: 'common.film', params: { grain: 0.3, vignette: 0.5 }, at: [0.5] },
   { name: 'caption-outline', type: 'common.caption', params: { text: '這家店【超好吃】，老闆說的{秘密}配方' }, at: [1.5] },
   { name: 'caption-box-center', type: 'common.caption', params: { text: '重點在這裡', style: 'box', position: 'center' }, at: [1.5] },
   { name: 'caption-bubble', type: 'common.caption', params: { text: '哇！它裡面就是【滿滿】的肉餡', style: 'bubble' }, at: [1.5] },
@@ -134,6 +138,7 @@ export const samples: Sample[] = [
   { name: 'rating-bar', type: 'common.rating', params: { style: 'bar', max: 10, rows: '口味:9, 環境:7.5', total: '8.3/10' }, at: [2.5] },
   { name: 'info', type: 'common.info', at: [2.0] },
   { name: 'polaroid', type: 'common.polaroid', at: [0.1, 2.0] },
+  { name: 'polaroid-crop', type: 'common.polaroid', sources: PIC, params: { source: 'pic', t: 0, crop: { x: 0.5, y: 0.25, zoom: 1.8 }, font: 'LXGW WenKai TC', caption: '最棒的一刻', flash: false }, at: [2.0] },
   { name: 'wide-info', type: 'common.info', at: [2.0], wide: true },
   // 16:9 (review 2, C4–C6): outlines, corners and sizes go by the short side, margins by the wide frame's safe area
   { name: 'wide-caption', type: 'common.caption', params: { text: '這家店【超好吃】，老闆說的{秘密}配方' }, at: [1.5], wide: true },
@@ -145,6 +150,7 @@ export const samples: Sample[] = [
   { name: 'route', type: 'common.route', at: [0.5, 2.6], bg: '#6b5444' },
   { name: 'route-names', type: 'common.route', params: { heads: '', stops: 4, hidden: 1, names: '豆花|蔥油餅|米干', start: '車站', startIcon: '🚉' }, at: [2.6], bg: '#6b5444' },
   { name: 'wide-route', type: 'common.route', at: [2.6], wide: true, bg: '#6b5444' },
+  { name: 'route-next', type: 'common.route', params: { h: 0.85, stops: 6, hidden: 0, names: '阿桃|仁利|新珍香|湯記|驚嘆號臭豆腐|天下奇冰', upto: 3, already: 2, nameSize: 40, from: 0.1, to: 0.9, beat: 0.01, dim: 0.5 }, at: [0.5, 1.5], bg: '#6b5444' },
   { name: 'mystery', type: 'common.mystery', params: { hint: '老闆只開到下午兩點' }, at: [0.2, 1.5], bg: '#8a6a4a' },
   { name: 'wide-mystery', type: 'common.mystery', at: [1.5], wide: true, bg: '#8a6a4a' },
   { name: 'outro', type: 'common.outro', at: [0.8, 2.95] },
@@ -165,6 +171,7 @@ export const samples: Sample[] = [
   { name: 'gauge', type: 'common.gauge', at: [0.2, 1.6, 2.6], bg: '#170d0a' },
   { name: 'gauge-boot', type: 'common.gauge', params: { scramble: 0.8, boot: 1.2, danger: -1, boom: -1, hits: '2.1:12', countLabel: '罪狀 #{n}' }, at: [0.4, 1.6, 2.8], bg: '#170d0a' },
   { name: 'wide-gauge', type: 'common.gauge', at: [1.6], wide: true, bg: '#170d0a' },
+  { name: 'gauge-rank', type: 'common.gauge', params: { look: 'neutral', max: 30, hits: '0.3:8, 0.9:9, 1.5:10', readout: '第3, 第2, No.1' }, at: [1.2, 2.4], bg: '#170d0a' },
   { name: 'hangtag', type: 'common.hangtag', at: [0.3, 1.5], bg: '#6b4a3a' },
   { name: 'strike', type: 'common.strike', at: [0.5, 2.0], bg: '#4a5a3a' },
   { name: 'timelapse', type: 'common.timelapse', at: [1.5], bg: '#5a6a5a' },
@@ -185,12 +192,15 @@ export const samples: Sample[] = [
   // promoted from the uk-beat and uk-postcard shorts (2026-10-19): the rail-ticket beat edit kit and the postcard kit
   { name: 'routeboard', type: 'common.routeboard', at: [0.15, 2.8], bg: '#3d4a57' },
   { name: 'wide-routeboard', type: 'common.routeboard', at: [1.2], wide: true, bg: '#3d4a57' },
+  { name: 'routeboard-city', type: 'common.routeboard', params: { cities: '梵蒂岡|VATICANO|12.4534|41.9029, 特雷維|TREVI|12.4833|41.9009, 競技場|COLOSSEO|12.4922|41.8902, 特米尼|TERMINI|12.5014|41.9010', stops: '0|0|第1天, 0.8|1|第2天, 1.6|3|第3天' }, at: [0.1, 2.0], bg: '#3d4a57' },
   { name: 'mapjump', type: 'common.mapjump', at: [0.25, 1.0] },
   { name: 'mapjump-all', type: 'common.mapjump', params: { mode: 'all', kicker: '全程', title: '三站到齊', latin: 'PARIS · KRAKÓW · TALLINN', dates: '2022.05.26 → 08.21' }, at: [0.6] },
   { name: 'wide-mapjump', type: 'common.mapjump', at: [1.0], wide: true },
   { name: 'ticket', type: 'common.ticket', at: [0.08, 1.5], bg: '#5a6b78' },
   { name: 'wide-ticket', type: 'common.ticket', params: { title: '克拉科夫', latin: 'KRAKÓW · POLSKA', no: '02', date: '06.06', date2: '2022' }, at: [1.5], wide: true, bg: '#5a6b78' },
+  { name: 'ticket-long', type: 'common.ticket', params: { title: '聖彼得大教堂', latin: 'SAN PIETRO · ROMA', header: '羅馬・三日車票', no: '01', total: '04' }, at: [1.5], bg: '#5a6b78' },
   { name: 'snap', type: 'common.snap', at: [0.04, 1.0], bg: '#7b8f6a' },
+  { name: 'snap-window', type: 'common.snap', params: { window: [0.1, 0.21875, 0.8, 0.5625], date: '6 25' }, at: [1.0], bg: '#7b8f6a' },
   { name: 'stations', type: 'common.stations', at: [0.05, 1.5], bg: '#6d7f92' },
   { name: 'tag-label', type: 'common.tag', params: { look: 'label', tags: '羅浮宮,05.28', size: 2.7, x: 0.12, y: 0.24 }, at: [0.05, 1.5], bg: '#6d7f92' },
   { name: 'slam-bar', type: 'common.slam', params: { text: '三座城', enter: 'press', popDur: 0.1, shake: 0, tilt: 0, bar: '#ff3b1f', drift: 0.05, size: 8.75, y: 0.55 }, at: [0.1, 1.5], bg: '#6d7f92' },
@@ -199,6 +209,7 @@ export const samples: Sample[] = [
   { name: 'postcard-flip', type: 'common.postcard', params: { card: {"index":3,"orient":"portrait","show":"front","flip":{"at":0,"dur":0.9},"front":{"stamp":{"label":"EESTI","year":"2022"},"mark":{"top":"ESTONIA","bottom":"愛沙尼亞","date":"2022.08.21"},"lines":[{"text":"夏天快結束時"},{"text":"走進一條綠色的長廊"}]},"back":{"lines":[{"text":"謝謝你","t0":1,"t1":1.6},{"text":"那時候願意出發","t0":1.7,"t1":2.6}],"sig":{"text":"—— 2022 · 夏末"},"address":[{"text":"寄給：自己"},{"text":"一路上的每一天"}],"mark":{"top":"SUMMER","bottom":"那年夏天","date":"2022","at":1.2}}}, pile: [{"index":0,"orient":"portrait","show":"front","front":{"open":1000000000,"stamp":{"label":"MORNING","year":"2022"},"mark":{"top":"BEFORE","bottom":"出發以前","date":"2021.06.04"},"lines":[{"text":"出發以前"},{"text":"是一盤一盤安靜的早餐"}]}},{"index":1,"orient":"portrait","show":"front","front":{"open":1000000000,"stamp":{"label":"FRANCE","year":"2022"},"mark":{"top":"PARIS","bottom":"巴黎","date":"2022.05.26"},"lines":[{"text":"到了巴黎"},{"text":"先好好吃一頓"}]}},{"index":2,"orient":"landscape","show":"front","front":{"open":1000000000,"stamp":{"label":"FRANCE","year":"2022"},"mark":{"top":"PARIS","bottom":"巴黎","date":"2022.05.27"},"lines":[{"text":"抬起頭"},{"text":"風把旗子吹得好慢"}]}}] }, at: [0.45, 2.8] },
   { name: 'postcard-spread', type: 'common.postcard', params: { card: {"index":3,"orient":"portrait","show":"back","front":{"stamp":{"label":"EESTI","year":"2022"},"mark":{"top":"ESTONIA","bottom":"愛沙尼亞","date":"2022.08.21"},"lines":[{"text":"夏天快結束時"},{"text":"走進一條綠色的長廊"}]},"back":{"lines":[{"text":"謝謝你","t0":1,"t1":1.6},{"text":"那時候願意出發","t0":1.7,"t1":2.6}],"sig":{"text":"—— 2022 · 夏末"},"address":[{"text":"寄給：自己"},{"text":"一路上的每一天"}],"mark":{"top":"SUMMER","bottom":"那年夏天","date":"2022","at":1.2}}}, pile: [{"index":0,"orient":"portrait","show":"front","front":{"open":1000000000,"stamp":{"label":"MORNING","year":"2022"},"mark":{"top":"BEFORE","bottom":"出發以前","date":"2021.06.04"},"lines":[{"text":"出發以前"},{"text":"是一盤一盤安靜的早餐"}]}},{"index":1,"orient":"portrait","show":"front","front":{"open":1000000000,"stamp":{"label":"FRANCE","year":"2022"},"mark":{"top":"PARIS","bottom":"巴黎","date":"2022.05.26"},"lines":[{"text":"到了巴黎"},{"text":"先好好吃一頓"}]}},{"index":2,"orient":"landscape","show":"front","front":{"open":1000000000,"stamp":{"label":"FRANCE","year":"2022"},"mark":{"top":"PARIS","bottom":"巴黎","date":"2022.05.27"},"lines":[{"text":"抬起頭"},{"text":"風把旗子吹得好慢"}]}}], spread: { at: 0.3, dur: 1.2, center: [540, 900, 0, 0.5], slots: [[200, 330, -6, 0.3], [880, 340, 7, 0.3], [880, 1450, -7, 0.3]] } }, at: [2.0] },
   { name: 'wide-postcard', type: 'common.postcard', params: { orient: 'landscape', lines: '0.2-1.0|抬起頭\n1.1-2.0|風把旗子吹得好慢' }, at: [2.6], wide: true },
+  { name: 'postcard-drop', type: 'common.postcard', params: { card: {"index":1,"orient":"portrait","show":"front","front":{"open":1000000000,"stamp":{"label":"FRANCE","year":"2022"},"mark":{"top":"PARIS","bottom":"巴黎","date":"2022.05.26"},"lines":[{"text":"到了巴黎"},{"text":"先好好吃一頓"}]}}, pile: [{"index":0,"orient":"portrait","show":"front","front":{"open":1000000000,"stamp":{"label":"MORNING","year":"2022"},"mark":{"top":"BEFORE","bottom":"出發以前","date":"2021.06.04"},"lines":[{"text":"出發以前"}]}}], spread: { at: 0.1, dur: 0.8, center: [790, 1350, -3, 0.4], slots: [[300, 560, -6, 0.4]] }, drop: [{"at":1.2,"index":2,"orient":"portrait","show":"back","enter":{"from":[-40,-1900,-6],"dur":0.9},"back":{"header":"明信片","lines":[{"text":"旅程結束","t0":1,"t1":1.6}],"mark":{"top":"SUMMER","bottom":"那年夏天","date":"2022","at":1.2}}}] }, at: [1.6, 2.8] },
   { name: 'postmark', type: 'common.postmark', at: [0.45, 1.5], bg: '#c9b48f' },
   { name: 'frame', type: 'common.frame', at: [0.2, 2.0] },
   { name: 'frame-tv', type: 'common.frame', params: { look: 'tv', aspect: 1.33, caption: 'STUDIO 1983', backdrop: 'color' }, at: [2.0] },
@@ -209,8 +220,8 @@ export const samples: Sample[] = [
   { name: 'dotmatrix-print', type: 'common.dotmatrix', params: { mode: 'type', look: 'print', text: '謝謝光臨・中壢人萬歲', color: '#262422', pitch: 3.2 }, at: [0.6, 2.0], bg: '#f5f2ea' },
   { name: 'digits', type: 'common.digits', at: [0.5, 2.0, 2.7], bg: '#123033' },
   { name: 'digits-led', type: 'common.digits', params: { style: 'led', steps: '0|--|叫號, 0.6|01, 1.4|02, 2.2|04|下一位', label: '叫號', totalAt: -1, title: '驚嘆號臭豆腐', sub: '中壢・街邊排隊名店', w: 0.944 }, at: [0.65, 2.5], bg: '#17110d' },
-  { name: 'printer', type: 'common.printer', params: { clip: 0.37 }, at: [0.7, 2.8], bg: '#123033' },
-  { name: 'printer-tear', type: 'common.printer', params: { lines: '0|title|這一圈花多少？\n0.1|small|顧客：路過的吃貨\n0.2|shop|01 阿桃的店\n0.3|item|招牌大湯圓|95\n0.4|item|鮮切土雞|秤重計價\n0.5|dbl\n0.6|total|合計|NT$355起\n0.7|note|＊價格取自片中店家價目表\n0.75|sign|顧客簽章：\n0.8|thanks|謝謝光臨', tearAt: 0.9, strikeLine: 1, strikeAt: 1.6, stampAt: 0.85, stamp: '大胃王認證' }, at: [1.1, 2.7], bg: '#123033' },
+  { name: 'printer', type: 'common.printer', params: { clip: 0.37 }, at: [0.7, 2.8], bg: '#2b2d31' },
+  { name: 'printer-tear', type: 'common.printer', params: { lines: '0|title|這一圈花多少？\n0.1|small|顧客：路過的吃貨\n0.2|shop|01 阿桃的店\n0.3|item|招牌大湯圓|95\n0.4|item|鮮切土雞|秤重計價\n0.5|dbl\n0.6|total|合計|NT$355起\n0.7|note|＊價格取自片中店家價目表\n0.75|sign|顧客簽章：\n0.8|thanks|謝謝光臨', tearAt: 0.9, strikeLine: 1, strikeAt: 1.6, stampAt: 0.85, stamp: '大胃王認證', clip: 0.37 }, at: [1.1, 2.7], bg: '#2b2d31' },
   { name: 'rolldoor', type: 'common.rolldoor', at: [0.6, 1.5], bg: '#3d4a57' },
   { name: 'callout', type: 'common.callout', at: [0.3, 1.5], bg: '#5a4a3a' },
   { name: 'callout-ban', type: 'common.callout', params: { kind: 'ban', x: 0.8, y: 0.3, text: '電話訂餐 ✕', tone: 'accent' }, at: [1.5], bg: '#5a4a3a' },
@@ -225,7 +236,7 @@ export const samples: Sample[] = [
   { name: 'slam-chars', type: 'common.slam', params: { text: '一家值得排隊', enter: 'chars', kicker: '今天只講一家', kickerBg: '#d8352a', shade: 0.6, shadow: '#d8352a', color: '#f3e6c8', tilt: 0, shake: 0, size: 6.9, y: 0.52 }, at: [0.3, 1.5], bg: '#7a6a5a' },
   { name: 'burst-rays', type: 'common.burst', params: { mode: 'rays', text: '咔滋！', x: 0.37, y: 0.31, fill: '#f0b23e', tilt: -8 }, at: [0.1, 1.0], bg: '#5a4a3a' },
   { name: 'receipt-bar', type: 'common.receipt', params: { title: '中壢吃一圈', items: '0.2||01 阿桃的店||bar\n0.55|🍡|招牌大湯圓|95|n\n0.9|🍜|湯粄條|60|n', totalAt: 1.4, total: 'NT$155' }, at: [2.0] },
-  { name: 'wide-printer', type: 'common.printer', at: [2.8], wide: true, bg: '#123033' },
+  { name: 'wide-printer', type: 'common.printer', at: [2.8], wide: true, bg: '#2b2d31' },
   { name: 'wide-digits-led', type: 'common.digits', params: { style: 'led', steps: '0|--|叫號, 0.6|01', label: '叫號', totalAt: -1, title: '驚嘆號臭豆腐', sub: '中壢・街邊排隊名店', w: 0.944 }, at: [2.5], wide: true, bg: '#17110d' },
   // promoted from the podcast shorts (2026-10-19): the pull-quote kit (podcast-quote) and the he-says / she-says kit (podcast-versus)
   { name: 'quote', type: 'common.quote', at: [1.0, 2.1, 2.8], theme: QUOTE, bg: '#121015' },
@@ -315,6 +326,9 @@ export const samples: Sample[] = [
   { name: 'caption-qa-a', type: 'common.caption', params: { text: '因為這裡的海\n每天都不一樣', style: 'qa', name: 'A', size: 3.2, y: 0.62 }, at: [1.5], bg: '#6d8a7a' },
   { name: 'caption-auto', type: 'common.caption', params: { text: '這家真的【超好吃】', style: 'auto', size: 3.1, animIn: 'none' }, at: [0.07, 1.5], bg: '#7a6650' },
   { name: 'caption-big', type: 'common.caption', params: { text: '也太扯了吧', style: 'big', position: 'center', animIn: 'none' }, at: [0.07, 1.5], bg: '#7a6650' },
+  // acceptance films 2026-11-01: big in its own colour and the item's font, qa with a short name in the speaker's colour
+  { name: 'caption-bigcolor', type: 'common.caption', params: { text: '也太扯了吧', style: 'big', position: 'center', animIn: 'none', bigColor: '#ff7a59', font: 'Noto Sans TC' }, at: [1.5], bg: '#7a6650' },
+  { name: 'caption-qaname', type: 'common.caption', params: { text: '你為什麼會留在這個小鎮？', style: 'qa', name: 'Amber', speaker: 1, badgeTint: true, size: 3.2 }, at: [1.5], theme: QUOTE, bg: '#6d8a7a' },
   { name: 'wide-caption-qa', type: 'common.caption', params: { text: '你為什麼會留在這個小鎮？', style: 'qa', name: 'Q', speaker: 1, size: 4 }, at: [1.5], wide: true, bg: '#6d8a7a' },
   { name: 'stamp-double', type: 'common.stamp', params: { shape: 'double', head: '判決', text: '一點都不猶豫', angle: -8, size: 5.2, font: 'Noto Serif TC' }, at: [0.05, 1.5], bg: '#6b5a48' },
   { name: 'stamp-veto', type: 'common.stamp', params: { shape: 'double', text: '駁回', size: 3, x: 0.72, y: 0.2, angle: -9 }, at: [1.5], bg: '#efe3cc' },
@@ -393,6 +407,7 @@ export const samples: Sample[] = [
   { name: 'chat-group', type: 'common.chat', params: { items: CHAT_GROUP, name: '週末小隊', status: '3 位成員', wall: '0|#e6ebf1|#d2dbe6\n1|#f6ead2|#ecd3b0\n2.5|#f3cdb6|#c9b3d4', me: '#2f9e8f', accent: '#2f9e8f', read: 'Read 2' }, at: [1.2, 2.9] },
   { name: 'wide-chat', type: 'common.chat', at: [2.9], wide: true },
   { name: 'wide-chat-media', type: 'common.chat', sources: PIC, params: { items: CHAT_MEDIA, pin: '情境重現｜海邊的一天', panel: '' }, at: [0.5, 2.95], wide: true, bg: '#2b4a5c' },
+  { name: 'chat-open', type: 'common.chat', sources: PIC, params: { items: CHAT_OPEN, panel: '' }, at: [0.62, 1.2], bg: '#2b4a5c' },
   // group C2: the search pages (home: typing, the list, a row picked, the page leaving; results: deleting and typing, the tab sliding,
   // the loading card, fact cards, then a "did you mean" with a marked letter and a big word; the full view's chips; the questions opening
   // and closing round the window with a redacted answer; the end's featured snippet and result card)
@@ -437,6 +452,8 @@ export const samples: Sample[] = [
   { name: 'magazine-list', type: 'common.magazine', params: { layout: 'list', kicker: 'GUIDE', headline: '三個地方，\n一天走完', deck: '從市場到老城' }, at: [1.2, 2.5] },
   { name: 'magazine-back', type: 'common.magazine', params: { layout: 'back', headline: '本期未完', deck: '完整專訪' }, at: [2.5] },
   { name: 'paper-print', type: 'common.paper', params: { look: 'print' }, at: [0.5] },
+  { name: 'paper-journal', type: 'common.paper', params: { doodleSet: 'journal', sign: 'Day 3' }, at: [0.5] },
+  { name: 'paper-travel', type: 'common.paper', params: { doodleSet: 'travel', sign: '' }, at: [0.5] },
   { name: 'wide-magazine', type: 'common.magazine', params: { quote: '慢一點，\n也很好。', quoteAt: 1.6, quoteBy: '— 受訪者' }, at: [2.5], wide: true },
   { name: 'wide-magazine-cover', type: 'common.magazine', params: { layout: 'cover', cells: '-\n-' }, at: [2.5], wide: true },
   { name: 'wide-magazine-list', type: 'common.magazine', params: { layout: 'list' }, at: [2.5], wide: true },
