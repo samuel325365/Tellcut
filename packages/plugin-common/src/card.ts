@@ -7,7 +7,7 @@ import { withAlpha } from './color.ts';
 
 interface P {
   no: string; title: string; detail: string; tip: string; art: string; artParams: Record<string, unknown>; emoji: string;
-  x: number; y: number; w: number; h: number; tilt: number; enter: 'flip' | 'deal' | 'none'; exit: boolean; lines: boolean;
+  detailSize: number; tipSize: number; x: number; y: number; w: number; h: number; tilt: number; enter: 'flip' | 'deal' | 'none'; exit: boolean; lines: boolean;
   accent: string; hl: string; ink: string; paper: string; tape: string; font: string;
 }
 interface Art { key: string; type?: ItemType; state?: unknown; params?: Record<string, any>; root?: HTMLElement; w?: number; h?: number }
@@ -20,24 +20,37 @@ const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-s
 
 /** the card's inner layout in px for a card `cw` wide and `ch` tall. k: the size it was drawn at (768 wide), shrunk on a short,
  *  wide card (16:9) so the text rows (348 px at k = 1) take at most 60 % of its height and stay inside it */
-export function cardLayout(cw: number, ch: number) {
-  const k = Math.min(cw / 768, (ch * 0.6) / 348), artH = ch - 348 * k, win = { x: 26 * k, y: 34 * k, w: cw - 52 * k, h: artH };
-  return { k, win, lineTop: win.y + artH + 14 * k, nr: 46 * k };
+export function cardLayout(cw: number, ch: number, grow: (k: number) => number = () => 0) {
+  const k0 = Math.min(cw / 768, (ch * 0.6) / 348), extra = Math.min(grow(k0), (ch - 348 * k0) * 0.75), k = k0, artH = ch - 348 * k - extra;
+  const win = { x: 26 * k, y: 34 * k, w: cw - 52 * k, h: artH };
+  return { k, win, lineTop: win.y + artH + 14 * k, nr: 46 * k, extra };
 }
 
+/** the detail and tip font sizes in px: `detailSize` / `tipSize` (% of the frame's short side), 0 = as the card has them (50 and 38,
+ *  or the cover's subtitle 38, at the card's own scale k); `dGrow` / `tGrow` how much taller than that they are */
+export function cardText(p: Pick<P, 'no' | 'detail' | 'tip' | 'detailSize' | 'tipSize'>, k: number, S: number) {
+  const cover = !p.no, d0 = (cover ? 38 : 50) * k, t0 = 38 * k;
+  const d = p.detailSize > 0 ? (p.detailSize / 100) * S : d0, t = p.tipSize > 0 ? (p.tipSize / 100) * S : t0;
+  return { d, t, dGrow: p.detail ? Math.max(0, d - d0) : 0, tGrow: !cover && p.tip ? Math.max(0, t - t0) : 0 };
+}
+/** the card's layout with the picture window giving up the room a bigger detail or tip needs */
+const layoutFor = (p: P, W: number, H: number) => cardLayout(p.w * W, p.h * H, (k) => { const c = cardText(p, k, Math.min(W, H)); return c.dGrow + c.tGrow; });
+
 /** the picture window's size in whole px on a W×H frame (what the hosted block is built and drawn at) */
-const windowSize = (p: Pick<P, 'w' | 'h'>, W: number, H: number) => { const { win } = cardLayout(p.w * W, p.h * H); return { w: Math.round(win.w), h: Math.round(win.h) }; };
+const windowSize = (p: P, W: number, H: number) => { const { win } = layoutFor(p, W, H); return { w: Math.round(win.w), h: Math.round(win.h) }; };
 /** the hosted block's type: any registered block but another card */
 const artType = (p: { art?: string }, types?: (type: string) => ItemType | undefined) => (p.art && p.art !== card.type ? types?.(p.art) : undefined);
 
 export const card: ItemType<P, S> = {
   type: 'common.card', label: '索引卡', category: 'card', kind: 'overlay',
-  doc: '一疊索引卡最上面那張：上半是圖窗（放任何積木，例如專案自己的插畫 fx，或一個大 emoji），下半橫線上是步驟編號、標題、份量（螢光筆）和小提示；換步驟翻頁，可發牌進場、最後滑出；食譜、教學步驟、清單',
+  doc: '一疊索引卡最上面那張：上半是圖窗（放任何積木，例如專案自己的插畫 fx，或一個大 emoji），下半橫線上是步驟編號、標題、份量（螢光筆）和小提示（detailSize、tipSize 自訂字級，圖窗讓出空間）；換步驟翻頁，可發牌進場、最後滑出；食譜、教學步驟、清單',
   params: [
     { key: 'no', label: '步驟編號（空＝封面卡：標題置中）', type: 'string', default: '1' },
     { key: 'title', label: '標題', type: 'string', default: '加入麵粉' },
     { key: 'detail', label: '份量／重點（螢光筆；封面卡是副標）', type: 'string', default: '1 杯' },
     { key: 'tip', label: '小提示', type: 'string', default: '先過篩比較不會結塊' },
+    { key: 'detailSize', label: '份量／副標字級（畫面短邊 %；0＝跟著卡片寬；變大時圖窗讓出空間）', type: 'number', min: 0, max: 12, step: 0.1, default: 0 },
+    { key: 'tipSize', label: '小提示字級（畫面短邊 %；0＝跟著卡片寬；變大時圖窗讓出空間）', type: 'number', min: 0, max: 12, step: 0.1, default: 0 },
     { key: 'art', label: '圖窗裡畫的積木（類型 id，例 fx.recipeart；空＝畫 emoji）', type: 'string', default: '' },
     { key: 'artParams', label: '圖窗積木的參數', type: 'json', default: {} },
     { key: 'emoji', label: '圖窗的 emoji（沒有 art 時）', type: 'string', default: '🥞' },
@@ -82,7 +95,7 @@ export const card: ItemType<P, S> = {
     if (a.type?.ready && a.state !== undefined) await a.type.ready(a.state);
   },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, local, dur } = ctx, cw = p.w * W, ch = p.h * H, { k, win, lineTop, nr } = cardLayout(cw, ch);
+    const p = ctx.params, { W, H, local, dur } = ctx, cw = p.w * W, ch = p.h * H, { k, win, lineTop, nr } = layoutFor(p, W, H), tx = cardText(p, k, Math.min(W, H));
     const font = `'${p.font}', 'Noto Sans TC', sans-serif`, drawDur = Math.min(1.5, dur * 0.45), boil = Math.floor(local * 6);
     // coming and going: the whole stack moves together
     let dy = 0, rot = p.tilt, alpha = 1;
@@ -116,17 +129,17 @@ export const card: ItemType<P, S> = {
     if (cover) {
       cssCamel(s.title, { left: `${cw / 2}px`, top: `${lineTop + 86 * k}px`, transform: `translate(-50%, ${-50 + (1 - bIn) * 40}%)`, fontSize: `${fitPx(p.title, 84 * k, cw - 60 * k)}px`,
         fontWeight: '900', letterSpacing: `${4 * k}px`, opacity: String(bIn) });
-      cssCamel(s.detail, { display: p.detail ? 'block' : 'none', left: `${cw / 2}px`, top: `${lineTop + 178 * k}px`, transform: 'translate(-50%, -50%)', fontSize: `${38 * k}px`,
+      cssCamel(s.detail, { display: p.detail ? 'block' : 'none', left: `${cw / 2}px`, top: `${lineTop + 178 * k + tx.dGrow / 2}px`, transform: 'translate(-50%, -50%)', fontSize: `${p.detailSize > 0 ? fitPx(p.detail, tx.d, cw - 60 * k) : tx.d}px`,
         fontWeight: '700', letterSpacing: `${4 * k}px`, color: p.accent, background: 'none', opacity: String(clamp((local - 0.9) / 0.4)) });
       cssCamel(s.tip, { display: 'none' });
     } else {
-      const tx = 40 * k + 2 * nr + 26 * k, hlP = clamp((local - drawDur * 0.6) / 0.5);
-      cssCamel(s.title, { left: `${tx - (1 - eOut3(txtIn)) * 20 * k}px`, top: `${lineTop + 62 * k}px`, transform: 'translateY(-50%)', fontSize: `${fitPx(p.title, 72 * k, cw - tx - 24 * k)}px`,
+      const tl = 40 * k + 2 * nr + 26 * k, hlP = clamp((local - drawDur * 0.6) / 0.5);
+      cssCamel(s.title, { left: `${tl - (1 - eOut3(txtIn)) * 20 * k}px`, top: `${lineTop + 62 * k}px`, transform: 'translateY(-50%)', fontSize: `${fitPx(p.title, 72 * k, cw - tl - 24 * k)}px`,
         fontWeight: '900', letterSpacing: '0', opacity: String(txtIn) });
-      cssCamel(s.detail, { display: p.detail ? 'block' : 'none', left: `${34 * k}px`, top: `${lineTop + 151 * k}px`, transform: 'translateY(-50%)', fontSize: `${fitPx(p.detail, 50 * k, cw - 68 * k)}px`,
+      cssCamel(s.detail, { display: p.detail ? 'block' : 'none', left: `${34 * k}px`, top: `${lineTop + 151 * k + tx.dGrow / 2}px`, transform: 'translateY(-50%)', fontSize: `${fitPx(p.detail, tx.d, cw - 68 * k)}px`,
         fontWeight: '700', letterSpacing: '0', color: p.ink, padding: `0 ${10 * k}px`, opacity: String(clamp(txtIn * 1.5 - 0.3)),
         background: `linear-gradient(transparent 52%, ${withAlpha(p.hl, 0.82)} 52% 96%, transparent 96%) no-repeat 0 0 / ${hlP * 100}% 100%` });
-      cssCamel(s.tip, { display: p.tip ? 'block' : 'none', left: `${50 * k}px`, top: `${lineTop + 224 * k}px`, transform: 'translateY(-50%)', fontSize: `${fitPx(p.tip, 38 * k, cw - 80 * k)}px`,
+      cssCamel(s.tip, { display: p.tip ? 'block' : 'none', left: `${50 * k}px`, top: `${lineTop + 224 * k + tx.dGrow + tx.tGrow / 2}px`, transform: 'translateY(-50%)', fontSize: `${fitPx(p.tip, tx.t, cw - 80 * k)}px`,
         fontWeight: '500', color: withAlpha(p.ink, 0.75), opacity: String(clamp((local - drawDur * 0.8) / 0.4)) });
     }
     // a new page: the old one peels away to the left and shows this one underneath

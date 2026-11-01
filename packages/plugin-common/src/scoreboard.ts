@@ -6,7 +6,7 @@ import { withAlpha } from './color.ts';
 
 interface P {
   title: string; sub: string; icons: string; names: string; values: string; tones: string; pop: number; note: string; enter: boolean;
-  texture: 'receipt' | 'plain'; y: number; h: number; font: string; paper: string; ink: string; bad: string; good: string; hl: string;
+  texture: 'receipt' | 'plain'; y: number; h: number; valueSize: number; font: string; paper: string; ink: string; bad: string; good: string; hl: string;
 }
 interface Cell { box: HTMLElement; icon: HTMLElement; name: HTMLElement; value: HTMLElement }
 interface S { card: HTMLElement; head: HTMLElement; title: HTMLElement; sub: HTMLElement; body: HTMLElement; grid: HTMLElement; holes: HTMLElement[]; cells: Cell[]; seps: HTMLElement[]; ring: HTMLElement; flash: HTMLElement; note: HTMLElement; key: string }
@@ -14,9 +14,18 @@ interface S { card: HTMLElement; head: HTMLElement; title: HTMLElement; sub: HTM
 const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 const split = (s: string) => String(s).split('|').map((x) => x.trim());
 
+/** the cells' value size in px for a body `bh` tall: today's (60 at 1080, at most 27 % of the body) times `valueSize`, each value then
+ *  shrunk to its cell's width; `grow`: how much taller the body gets so the biggest value has room under the name */
+export function scoreValues(values: string[], valueSize: number, bh: number, k: number, cw: number): { px: number[]; grow: number } {
+  const base = Math.min(60 * k, bh * 0.27), z = valueSize > 1 ? valueSize : 1;
+  const room = cw - 20 * k, px = values.map((v) => Math.max(fitPx(v ?? '', base, room), Math.min(base * z, room / Math.max(0.5, textEm(v ?? '')))));
+  const grow = z > 1 ? Math.max(0, ...px.map((x) => x - base)) : 0;
+  return { px, grow };
+}
+
 export const scoreboard: ItemType<P, S> = {
   type: 'common.scoreboard', label: '計分票', category: 'number', kind: 'overlay',
-  doc: '上方一張票卡：標題列加幾格（圖示、名稱、數值），每段放一個狀態，改變的那格彈一下、可掛小註；戰績、釣果、收集進度、評分卡（味道 ★★★★）',
+  doc: '上方一張票卡：標題列加幾格（圖示、名稱、數值），每段放一個狀態，改變的那格彈一下、可掛小註；valueSize 只放大數字（卡片往下長高，圖示和名稱不變）；戰績、釣果、收集進度、評分卡（味道 ★★★★）',
   params: [
     { key: 'title', label: '標題（可含 emoji）', type: 'string', default: '🧾 今日戰績' },
     { key: 'sub', label: '右上小字（空＝不顯示）', type: 'string', default: '目標：3 勝' },
@@ -30,6 +39,7 @@ export const scoreboard: ItemType<P, S> = {
     { key: 'texture', label: '質感', type: 'enum', options: ['receipt', 'plain'], default: 'receipt' },
     { key: 'y', label: '上緣（畫面高比例；-1＝安全區上緣）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'h', label: '高（畫面高比例）', type: 'number', min: 0.08, max: 0.5, step: 0.005, default: 0.17 },
+    { key: 'valueSize', label: '數值放大倍數（只放大數字，圖示和名稱不變，卡片往下長高；1＝原本；太寬會縮到放得進格子）', type: 'number', min: 1, max: 4, step: 0.05, default: 1 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'paper', label: '紙色', type: 'color', default: '#f6efe2', theme: 'palette.paper' },
     { key: 'ink', label: '標題列與字色', type: 'color', default: '#0e2a47', theme: 'palette.ink' },
@@ -60,9 +70,10 @@ export const scoreboard: ItemType<P, S> = {
       });
       s.seps = names.slice(1).map(() => { const d = h('div', null, null, s.grid); cssCamel(d, { position: 'absolute' }); return d; });
     }
-    const x0 = theme.safe.side * W, w = W - 2 * x0, ch0 = p.h * H, top0 = p.y >= 0 ? p.y * H : theme.safe.top * H;
+    const x0 = theme.safe.side * W, w = W - 2 * x0, top0 = p.y >= 0 ? p.y * H : theme.safe.top * H, hh0 = Math.min(76 * k, p.h * H * 0.3), pad = 46 * k, cw = (w - pad * 2) / Math.max(1, n);
+    const sv = scoreValues(names.map((_, i) => values[i] ?? ''), p.valueSize ?? 1, p.h * H - hh0, k, cw), ch0 = p.h * H + sv.grow;
     const y0 = top0 + (p.enter ? (1 - eBack(clamp(ctx.local / 0.6), 2.2)) * -(ch0 + top0 + 40 * k) : 0);
-    const out = 1 - clamp((ctx.local - ctx.dur + 0.2) / 0.2), hh = Math.min(76 * k, ch0 * 0.3), bh = ch0 - hh;
+    const out = 1 - clamp((ctx.local - ctx.dur + 0.2) / 0.2), hh = hh0, bh = ch0 - hh, bh0 = bh - sv.grow;
     cssCamel(s.card, { left: `${x0}px`, top: `${y0}px`, width: `${w}px`, height: `${ch0}px`, background: p.paper, border: `${5 * k}px solid ${p.ink}`,
       borderRadius: `${26 * k}px`, boxShadow: `${8 * k}px ${10 * k}px 0 rgba(0,0,0,0.35)`, fontFamily: font, opacity: String(out) });
     cssCamel(s.head, { left: '0', top: '0', width: '100%', height: `${hh}px`, background: p.ink });
@@ -77,14 +88,14 @@ export const scoreboard: ItemType<P, S> = {
     s.holes.forEach((d, i) => cssCamel(d, { display: p.texture === 'receipt' ? 'block' : 'none', left: `${x0 + (i ? w - 22 * k : 22 * k) - 9 * k}px`, top: `${y0 + hh + bh / 2 - 9 * k}px`,
       width: `${18 * k}px`, height: `${18 * k}px`, borderRadius: '50%', background: withAlpha(p.ink, 0.85), opacity: String(out) }));
     // the cells
-    const pad = 46 * k, cw = (w - pad * 2) / Math.max(1, n), on = p.pop >= 0 && p.pop < n ? Math.floor(p.pop) : -1;
+    const on = p.pop >= 0 && p.pop < n ? Math.floor(p.pop) : -1;
     s.cells.forEach((c, i) => {
       const kk = i === on ? Math.max(0.01, eBack(clamp((ctx.local - 0.15) / 0.45), 2.2)) : 1, tone = tones[i] ?? 'n';
       cssCamel(c.box, { left: `${pad + cw * i}px`, width: `${cw}px`, transform: `scale(${kk})` });
       c.icon.textContent = icons[i] ?? ''; c.name.textContent = names[i]; c.value.textContent = values[i] ?? '';
-      cssCamel(c.icon, { top: `${bh * 0.22}px`, fontSize: `${Math.min(62 * k, bh * 0.3)}px` });
-      cssCamel(c.name, { top: `${bh * 0.54}px`, fontSize: `${fitPx(names[i], Math.min(34 * k, bh * 0.16), cw - 16 * k)}px`, fontWeight: '700', color: withAlpha(p.ink, 0.75) });
-      cssCamel(c.value, { top: `${bh * 0.81}px`, fontSize: `${fitPx(values[i] ?? '', Math.min(60 * k, bh * 0.27), cw - 20 * k)}px`, fontWeight: '900',
+      cssCamel(c.icon, { top: `${bh0 * 0.22}px`, fontSize: `${Math.min(62 * k, bh0 * 0.3)}px` });
+      cssCamel(c.name, { top: `${bh0 * 0.54}px`, fontSize: `${fitPx(names[i], Math.min(34 * k, bh0 * 0.16), cw - 16 * k)}px`, fontWeight: '700', color: withAlpha(p.ink, 0.75) });
+      cssCamel(c.value, { top: `${bh0 * 0.81 + sv.grow / 2}px`, fontSize: `${sv.px[i]}px`, fontWeight: '900',
         color: tone === 'bad' ? p.bad : tone === 'good' ? p.good : p.ink });
     });
     s.seps.forEach((d, i) => cssCamel(d, { left: `${pad + cw * (i + 1)}px`, top: `${18 * k}px`, height: `${bh - 36 * k}px`, borderLeft: `${3 * k}px dashed ${withAlpha(p.ink, 0.35)}` }));

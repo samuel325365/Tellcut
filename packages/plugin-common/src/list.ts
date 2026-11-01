@@ -7,7 +7,7 @@ import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
 type Style = 'check' | 'pros' | 'number';
-interface P { title: string; items: string; style: Style; y: number; size: number; stagger: number; paper: string; ink: string; accent: string; good: string; font: string; look: 'card' | 'stack'; hl: string; mono: string }
+interface P { title: string; items: string; style: Style; x: number; y: number; w: number; size: number; stagger: number; at: string; paper: string; ink: string; accent: string; good: string; font: string; look: 'card' | 'stack'; hl: string; mono: string }
 interface S { card: HTMLElement; title: HTMLElement; rows: Array<{ row: HTMLElement; mark: HTMLElement; text: HTMLElement }>; key: string }
 export interface ListItem { mark: string; text: string; good: boolean }
 
@@ -23,16 +23,35 @@ export function listItems(text: string, style: Style): ListItem[] {
 /** how many of `n` items are in at `local`: the first after `lead`, then one every `stagger` seconds */
 export const shownItems = (n: number, local: number, lead: number, stagger: number) => Math.max(0, Math.min(n, Math.floor((local - lead) / stagger) + 1));
 
+/** when each of `n` lines comes in (item seconds): `at` "秒,秒,…" gives a line its own time; a line it leaves out (or blank) comes
+ *  `stagger` after the one before; with no `at` at all, the first at `lead` and then one every `stagger` */
+export function itemTimes(n: number, at: string, lead: number, stagger: number): number[] {
+  const given = String(at ?? '').split(/[,，]/).map((x) => (x.trim() ? Number(x) : NaN));
+  let last = -1, base = lead;
+  return Array.from({ length: n }, (_, i) => {
+    if (Number.isFinite(given[i])) { last = i; base = given[i]; return base; }
+    return last < 0 ? lead + i * stagger : base + (i - last) * stagger;
+  });
+}
+/** the line's left edge and width in px: `x` / `w` (shares of the frame width), else the side safe margins */
+export function listBox(x: number, w: number, W: number, side: number): { left: number; width: number } {
+  const left = x >= 0 ? x * W : side * W, width = w > 0 ? w * W : Math.max(1, W - side * W - left);
+  return { left, width };
+}
+
 export const list: ItemType<P, S> = {
   type: 'common.list', label: '清單卡', category: 'card', kind: 'overlay',
-  doc: '一張卡片：標題加幾行項目，一行一行出現；check（✓ 打勾）、pros（+ 優點／− 缺點，項目前加 - 算缺點）、number（1. 2. 3.）；評測、教學、三個重點、迷思破解；look: stack 沒有卡片，大字一拍一行砸進來、編號色塊、最新一行螢光色（照片連發時留下每張的名字）',
+  doc: '一張卡片：標題加幾行項目，一行一行出現（stagger 固定間隔，或 at 給每一行自己的秒數，對著旁白講到的那一刻）；x、w 放在畫面任何一欄（9:16 也能放大）；check（✓ 打勾）、pros（+ 優點／− 缺點，項目前加 - 算缺點）、number（1. 2. 3.）；評測、教學、三個重點、迷思破解；look: stack 沒有卡片，大字一拍一行砸進來、編號色塊、最新一行螢光色（照片連發時留下每張的名字）',
   params: [
     { key: 'title', label: '標題（空＝沒有）', type: 'string', default: '三個重點' },
     { key: 'items', label: '項目（一行一個，或用 | 分開）', type: 'text', default: '先過篩\n小火慢煎\n翻一次就好' },
     { key: 'style', label: '樣式', type: 'enum', options: ['check', 'pros', 'number'], default: 'check' },
+    { key: 'x', label: '左緣（畫面寬比例；-1＝安全區左緣）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'y', label: '卡片上緣（畫面高比例；-1＝安全區上緣）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
+    { key: 'w', label: '寬（畫面寬比例；-1＝到右邊安全區）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'size', label: '項目字級（畫面短邊 %）', type: 'number', min: 2, max: 12, step: 0.1, default: 5.2 },
     { key: 'stagger', label: '每一行間隔 (s)', type: 'number', min: 0, max: 3, step: 0.05, default: 0.45 },
+    { key: 'at', label: '每一行出現的秒數（逗號分隔，相對開始；沒給的那行接在前一行 stagger 秒後；空＝照 stagger）', type: 'string', default: '' },
     { key: 'paper', label: '卡片底色', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
     { key: 'ink', label: '字色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'accent', label: '標題列與缺點的顏色', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
@@ -49,7 +68,7 @@ export const list: ItemType<P, S> = {
     return { card, title, rows: [], key: '' };
   },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, side = theme.safe.side * W, w = W - 2 * side;
+    const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, { left: side, width: w } = listBox(p.x ?? -1, p.w ?? -1, W, theme.safe.side);
     const items = listItems(p.items, p.style), px = (p.size / 100) * Math.min(W, H), font = `'${p.font}', 'Noto Sans TC', sans-serif`;
     const key = JSON.stringify([p.items, p.style]);
     if (s.key !== key) {   // rows rebuilt only when the list changes
@@ -71,9 +90,10 @@ export const list: ItemType<P, S> = {
     s.title.textContent = p.title;
     cssCamel(s.title, { display: p.title ? 'block' : 'none', fontSize: `${fitPx(p.title, px * 1.15, w - 70 * k)}px`, color: p.accent, paddingBottom: `${px * 0.15}px`,
       borderBottom: `${4 * k}px solid ${withAlpha(p.accent, 0.35)}` });
-    const shown = shownItems(items.length, local, 0.35, p.stagger);
+    const timed = !!String(p.at ?? '').trim(), times = itemTimes(items.length, p.at, 0.35, p.stagger);
+    const shown = timed ? times.filter((t) => local >= t).length : shownItems(items.length, local, 0.35, p.stagger);
     s.rows.forEach((r, i) => {
-      const it = items[i], at = 0.35 + i * p.stagger, e = eOut3(clamp((local - at) / 0.3)), on = i < shown;
+      const it = items[i], at = times[i], e = eOut3(clamp((local - at) / 0.3)), on = timed ? local >= at : i < shown;
       r.mark.textContent = it.mark; r.text.textContent = it.text;
       const tint = it.good ? p.good : p.accent;
       cssCamel(r.row, { fontSize: `${fitPx(it.text, px, w - 70 * k - px * 1.8)}px`, opacity: on ? String(e) : '0', transform: `translateX(${(1 - e) * -30 * k}px)`, transformOrigin: '', gap: '0.45em' });
@@ -85,15 +105,17 @@ export const list: ItemType<P, S> = {
 
 /** look "stack": the card turned invisible, its rows slammed in one every `stagger` seconds from the item start, big and outlined */
 function drawStack(ctx: Parameters<typeof list.draw>[0], s: S, items: ListItem[]) {
-  const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, px = (p.size / 100) * Math.min(W, H) * 1.8, left = theme.safe.side * W + 20 * k;
+  const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, px = (p.size / 100) * Math.min(W, H) * 1.8;
+  const box = listBox(p.x ?? -1, p.w ?? -1, W, theme.safe.side), left = (p.x ?? -1) >= 0 ? box.left : box.left + 20 * k, width = (p.x ?? -1) >= 0 || (p.w ?? -1) > 0 ? box.left + box.width - left : W - 2 * left;
+  const times = itemTimes(items.length, p.at, 0, p.stagger);
   const o = 4 * k, outline = [[o, 0], [-o, 0], [0, o], [0, -o], [o, o], [-o, o], [o, -o], [-o, -o]].map(([x, y]) => `${x}px ${y}px 0 ${p.ink}`).join(',');
-  cssCamel(s.card, { left: `${left}px`, top: `${p.y >= 0 ? p.y * H : 0.43 * H}px`, width: `${W - 2 * left}px`, padding: '0', background: 'none', border: 'none', boxShadow: 'none', borderRadius: '0',
+  cssCamel(s.card, { left: `${left}px`, top: `${p.y >= 0 ? p.y * H : 0.43 * H}px`, width: `${width}px`, padding: '0', background: 'none', border: 'none', boxShadow: 'none', borderRadius: '0',
     overflow: 'visible', transform: 'none', opacity: String(1 - prog(local, dur - 0.15, dur)), display: 'flex', flexDirection: 'column', gap: `${px * 0.18}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif` });
   cssCamel(s.title, { display: 'none' });
   s.rows.forEach((r, i) => {
-    const t0 = i * p.stagger, q = eOut3(prog(local, t0, t0 + 0.1)), on = local >= t0 - 1e-6, latest = on && (i === s.rows.length - 1 || local < (i + 1) * p.stagger);
+    const t0 = times[i], q = eOut3(prog(local, t0, t0 + 0.1)), on = local >= t0 - 1e-6, latest = on && (i === s.rows.length - 1 || local < times[i + 1]);
     r.mark.textContent = String(i + 1).padStart(2, '0'); r.text.textContent = items[i].text;
-    cssCamel(r.row, { fontSize: `${fitPx(items[i].text, px, W - 2 * left - px * 1.2)}px`, opacity: on ? String(clamp((local - t0) / 0.04)) : '0', transform: `scale(${(1.5 - 0.5 * q).toFixed(4)})`, transformOrigin: '0 50%', gap: `${18 * k}px` });
+    cssCamel(r.row, { fontSize: `${fitPx(items[i].text, px, width - px * 1.2)}px`, opacity: on ? String(clamp((local - t0) / 0.04)) : '0', transform: `scale(${(1.5 - 0.5 * q).toFixed(4)})`, transformOrigin: '0 50%', gap: `${18 * k}px` });
     cssCamel(r.mark, { width: 'auto', height: 'auto', borderRadius: '0', padding: `${4 * k}px ${10 * k}px`, background: p.accent, color: p.hl, fontSize: '0.42em', fontFamily: `'${p.mono}', 'JetBrains Mono', monospace`, fontWeight: '700' });
     cssCamel(r.text, { color: latest ? p.hl : p.paper, textShadow: `${outline}, 0 ${8 * k}px ${22 * k}px rgba(0,0,0,.45)`, fontWeight: '900', letterSpacing: `${3 * k}px` });
   });

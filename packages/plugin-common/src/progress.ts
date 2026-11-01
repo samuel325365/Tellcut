@@ -14,7 +14,7 @@ import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
-  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots'; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
+  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots'; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; counterSize: number; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
   labels: string; size: number; align: 'left' | 'center' | 'right'; done: string; ink: string; paper: string; font: string;
 }
 interface S { track: HTMLElement; fill: HTMLElement; dots: HTMLElement[]; row: HTMLElement; tabs: HTMLElement[]; seps: HTMLElement[]; key: string; cv: HTMLCanvasElement; title: HTMLElement; count: HTMLElement; slots: HTMLElement; skey: string; cards: Slot[] }
@@ -70,7 +70,7 @@ export const parsePulses = (text: string): Array<[number, number]> => String(tex
 
 export const progress: ItemType<P, S> = {
   type: 'common.progress', label: '進度條', category: 'chapter', kind: 'overlay',
-  doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用',
+  doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用',
   params: [
     { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots'], default: 'bar' },
     { key: 'position', label: '位置', type: 'enum', options: ['top', 'bottom'], default: 'top' },
@@ -92,6 +92,7 @@ export const progress: ItemType<P, S> = {
     { key: 'at', label: '每步開始的秒數（pencil；逗號分隔，多給一個＝全部完成的時間；空＝平均分配）', type: 'string', default: '' },
     { key: 'title', label: '左邊的手寫標題（pencil；空＝不顯示）', type: 'string', default: '一分鐘食譜' },
     { key: 'counter', label: '計數字（pencil；開始前|進行中|全部完成，{n}/{N}）', type: 'string', default: '準備中|步驟 {n}／{N}|全部完成' },
+    { key: 'counterSize', label: '計數字字級（pencil，畫面高 %；0＝跟著 size，約它的 0.74 倍）', type: 'number', min: 0, max: 8, step: 0.1, default: 0 },
     { key: 'handFont', label: '手寫字型（pencil）', type: 'string', default: 'LXGW WenKai TC' },
     { key: 'from', label: '從第幾站滑過來（timeline，0 起算；-1＝線先畫出來）', type: 'number', min: -1, max: 30, step: 1, default: -1 },
     { key: 'place', label: '日期旁的地點（timeline；空＝不顯示）', type: 'string', default: '' },
@@ -181,6 +182,12 @@ function drawTabs(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w: 
   s.seps.forEach((d) => cssCamel(d, { width: '0.7em', height: '0', borderTop: `${bw}px dotted ${withAlpha(p.ink, 0.55)}` }));
 }
 
+/** pencil mode: the counter's font size in px and its top, so its bottom stays where the 34-unit counter's was (just above the circles) */
+export function pencilCounter(counterSize: number, u: number, H: number, cy: number): { px: number; top: number } {
+  const px = counterSize > 0 ? (counterSize / 100) * H : 34 * u;
+  return { px, top: cy - 78 * u - (px - 34 * u) * 1.3 };
+}
+
 /** pencil mode: the title on the left (shrunk to leave room), the counter above a row of hand-drawn circles on the right */
 function drawPencil(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w: number) {
   const p = ctx.params, { W, H, theme, local, dur } = ctx, n = Math.max(1, Math.min(12, Math.round(p.dots))), u = ((p.size / 100) * H) / 46;
@@ -192,7 +199,8 @@ function drawPencil(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w
   const tpx = fitPx(p.title, 50 * u, room), tw = textEm(p.title) * tpx;
   cssCamel(s.title, { display: p.title ? 'block' : 'none', left: `${x}px`, top: `${cy - tpx * 0.72}px`, fontSize: `${tpx}px`, fontWeight: '700', fontFamily: fam, color: p.ink });
   s.count.textContent = counterText(p.counter, st.cur, n, st.done);
-  cssCamel(s.count, { left: `${right}px`, top: `${cy - 78 * u}px`, transform: 'translateX(-100%)', fontSize: `${34 * u}px`, fontFamily: fam, color: withAlpha(p.ink, 0.62) });
+  const cnt = pencilCounter(p.counterSize ?? 0, u, H, cy);
+  cssCamel(s.count, { left: `${right}px`, top: `${cnt.top}px`, transform: 'translateX(-100%)', fontSize: `${cnt.px}px`, fontFamily: fam, color: withAlpha(p.ink, 0.62) });
   const g = canvasAt(s.cv, W, H);
   g.lineCap = 'round'; g.lineJoin = 'round';
   if (p.title) { g.strokeStyle = p.color; g.lineWidth = 3 * u; handPath(g, [[x - 2 * u, cy + 22 * u], [x + tw, cy + 24 * u]], false, 2 * u, 4); g.stroke(); }

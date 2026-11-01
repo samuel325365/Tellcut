@@ -1,19 +1,27 @@
 // common.header — a section label at the top: a number chip and a title ("01  開場"); slides in, holds, slides out.
 // look 'kicker' is the podcast-quote short's fx.header: what the film asks, as a headline — a small grey line with an accent dot (the
 // show's name) and a big title under it, wiped open from the left, 【word】 in the accent colour; it stays for as long as the item.
-import { cssCamel, eOut3, h, prog, type ItemType } from '@tellcut/engine';
+import { cssCamel, eOut3, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { TOP_LANE } from './progress.ts';
 import { emParts } from './text.ts';
 
-interface P { look: 'chip' | 'kicker'; no: string; text: string; kicker: string; y: number; size: number; color: string; textColor: string; ink: string; outline: string; muted: string; font: string }
+interface P { look: 'chip' | 'kicker'; no: string; text: string; kicker: string; y: number; size: number; kickerSize: number; color: string; textColor: string; ink: string; outline: string; muted: string; font: string }
 interface S { box: HTMLElement; chip: HTMLElement; label: HTMLElement; kick: HTMLElement; dot: HTMLElement; kickText: HTMLElement; key: string }
 
 /** the label's top (a share of the frame height): `y`, or below 0 under the lane a top progress bar or dots take */
 export const headerTop = (y: number, safeTop: number) => (y >= 0 ? y : safeTop + TOP_LANE);
 
+/** look 'kicker': the small line's font size in px — `kickerSize` (% of the frame height) or 0.44 × the title's — shrunk (to half at
+ *  most) so the line with its dot fits in `room` px; past that the line wraps */
+export function kickerPx(text: string, kickerSize: number, titlePx: number, H: number, k: number, room: number): number {
+  const want = kickerSize > 0 ? (kickerSize / 100) * H : 0.44 * titlePx, n = [...String(text ?? '')].length;
+  const fit = (room - 26 * k - n * 3 * k) / Math.max(0.5, textEm(String(text ?? '')) * 1.1);   // dot 14 + gap 12; 3 px letter spacing; Latin capitals run wide
+  return Math.max(want * 0.5, Math.min(want, fit));
+}
+
 export const header: ItemType<P, S> = {
   type: 'common.header', label: '章節標籤', category: 'chapter', kind: 'overlay',
-  doc: '畫面上緣的章節標籤：色塊編號加標題（01 開場、Step 2…）；教學、清單、分段介紹時標示現在講到哪；look kicker 是一整段都掛著的題目抬頭：上面一行主色圓點加灰色小字（節目名），下面一行粗體題目從左刷開，【詞】變主色（這支片在問什麼：訪談、Podcast、評論）',
+  doc: '畫面上緣的章節標籤：色塊編號加標題（01 開場、Step 2…）；教學、清單、分段介紹時標示現在講到哪；look kicker 是一整段都掛著的題目抬頭：上面一行主色圓點加灰色小字（節目名，kickerSize 自訂字級），下面一行粗體題目從左刷開，【詞】變主色（這支片在問什麼：訪談、Podcast、評論）；放不下時小字縮小、題目換行，都留在左右安全區內',
   params: [
     { key: 'look', label: '樣子（chip 編號色塊、kicker 小字＋大題目）', type: 'enum', options: ['chip', 'kicker'], default: 'chip' },
     { key: 'no', label: '編號（chip）', type: 'string', default: '01' },
@@ -21,6 +29,7 @@ export const header: ItemType<P, S> = {
     { key: 'kicker', label: '題目上面的小字（kicker）', type: 'string', default: 'PODCAST｜午後聊聊' },
     { key: 'y', label: '上緣高度（畫面高比例；-1＝安全區上緣再往下讓出進度條的位置）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'size', label: '字級（畫面高 %）', type: 'number', min: 1, max: 12, step: 0.1, default: 3 },
+    { key: 'kickerSize', label: '小字字級（kicker，畫面高 %；0＝題目的 0.44 倍；太長會縮小、再換行）', type: 'number', min: 0, max: 8, step: 0.1, default: 0 },
     { key: 'color', label: '編號色塊顏色（kicker：圓點和【詞】）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'textColor', label: '編號字色', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
     { key: 'ink', label: '標題顏色', type: 'color', default: '#ffffff' },
@@ -44,7 +53,7 @@ export const header: ItemType<P, S> = {
     cssCamel(s.kick, { display: 'none' }); cssCamel(s.chip, { display: '' });
     cssCamel(s.label, { clipPath: 'none' });
     cssCamel(s.box, {
-      flexDirection: 'row', alignItems: 'center', gap: '0.5em',
+      flexDirection: 'row', alignItems: 'center', gap: '0.5em', whiteSpace: 'pre', maxWidth: 'none',
       left: `${theme.safe.side * W}px`, top: `${headerTop(p.y, theme.safe.top) * H}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`,
       color: p.ink, webkitTextStroke: `${theme.stroke * 0.75 * k}px ${p.outline}`, paintOrder: 'stroke fill', opacity: String(inn * (1 - out)), textShadow: `0 ${2 * k}px ${10 * k}px rgba(0,0,0,.6)`,
       transform: `translateX(${-(1 - inn) * W * 0.12 - out * W * 0.12}px)`,
@@ -62,12 +71,13 @@ function drawKicker(ctx: Parameters<typeof header.draw>[0], s: S, k: number, px:
     for (const [piece, em] of emParts(p.text)) { const sp = h('span', null, null, s.label); sp.textContent = piece; if (em) cssCamel(sp, { color: p.color }); }
   }
   s.kickText.textContent = p.kicker;
-  const a = eOut3(prog(local, 0, 0.4));
+  const a = eOut3(prog(local, 0, 0.4)), left = theme.safe.side * W, room = W - 2 * left, kpx = kickerPx(p.kicker, p.kickerSize ?? 0, px, H, k, room);
   cssCamel(s.chip, { display: 'none' });
-  cssCamel(s.box, { left: `${theme.safe.side * W}px`, top: `${headerTop(p.y, theme.safe.top) * H}px`, flexDirection: 'column', alignItems: 'flex-start', gap: `${6 * k}px`,
+  // kept between the side safe margins: a title too long for one line wraps (it used to run off the right edge)
+  cssCamel(s.box, { left: `${left}px`, top: `${headerTop(p.y, theme.safe.top) * H}px`, flexDirection: 'column', alignItems: 'flex-start', gap: `${6 * k}px`, whiteSpace: 'pre-wrap', maxWidth: `${room}px`,
     fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`, color: p.ink, webkitTextStroke: '0', textShadow: 'none', transform: 'none',
     opacity: String(Math.min(prog(local, 0, 0.01), prog(dur - local, 0, 0.12))) });
-  cssCamel(s.kick, { display: p.kicker ? 'flex' : 'none', gap: `${12 * k}px`, fontSize: `${0.44 * px}px`, fontWeight: '700', letterSpacing: `${3 * k}px`, lineHeight: '1.3', color: p.muted,
+  cssCamel(s.kick, { display: p.kicker ? 'flex' : 'none', whiteSpace: 'pre-wrap', gap: `${12 * k}px`, fontSize: `${kpx}px`, fontWeight: '700', letterSpacing: `${3 * k}px`, lineHeight: '1.3', color: p.muted,
     transform: `translateX(${((1 - a) * -24 * k).toFixed(2)}px)` });
   cssCamel(s.dot, { width: `${14 * k}px`, height: `${14 * k}px`, background: p.color });
   cssCamel(s.label, { lineHeight: '1.15', letterSpacing: `${k}px`, clipPath: `inset(0 ${((1 - eOut3(prog(local, 0.05, 0.45))) * 100).toFixed(2)}% 0 0)` });

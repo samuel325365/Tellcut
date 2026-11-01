@@ -2,7 +2,7 @@
 // the place along the top arc and its local name along the bottom, the date across, five wavy cancel lines, unevenly inked (specks
 // that did not print) and thumped down with a multiply blend; the stamp is perforated paper with a picture (a still of the footage, or
 // a painted sun over the sea), a country band and the year. common.postmark puts them on any picture; common.postcard on its cards.
-import { clamp, cssCamel, eOut3 as eOut, h, hash01, type ItemType, type MediaApi, prog } from '@tellcut/engine';
+import { clamp, cssCamel, eOut3 as eOut, h, hash01, type ItemType, type MediaApi, prog, textEm } from '@tellcut/engine';
 import { showStill, stillRef, windowEl, imagesReady, type Still, type Win } from './window.ts';
 
 export const SERIF = "'Noto Serif TC', serif";
@@ -23,8 +23,8 @@ export function markEl(parent: HTMLElement): MarkEl {
 
 /** the uneven ink: a white sheet with specks punched out, as a mask image (one per size), `dpr` device pixels per px */
 const specks = new Map<string, string>();
-function speckMask(w: number, hh: number, r: number, dpr = 1) {
-  const key = `${w}x${hh}@${r}x${dpr}`;
+function speckMask(w: number, hh: number, r: number, dpr = 1, ink = 1) {
+  const key = `${w}x${hh}@${r}x${dpr}${ink > 1 ? `~${ink}` : ''}`;
   if (!specks.has(key)) {
     const c = document.createElement('canvas'); c.width = Math.ceil(w * dpr); c.height = Math.ceil(hh * dpr);
     const g = c.getContext('2d')!;
@@ -33,7 +33,7 @@ function speckMask(w: number, hh: number, r: number, dpr = 1) {
     const n = Math.round(380 * (w * hh) / 40000);
     for (let i = 0; i < n; i++) {
       const x = hash(i * 1.37 + r) * w, y = hash(i * 2.71 + r) * hh, s = (0.6 + hash(i * 5.3) * 2.2) * (r / 74);
-      g.globalAlpha = 0.35 + hash(i * 3.9) * 0.6; g.beginPath(); g.arc(x, y, s, 0, 7); g.fill();
+      g.globalAlpha = (0.35 + hash(i * 3.9) * 0.6) / Math.max(1, ink); g.beginPath(); g.arc(x, y, s, 0, 7); g.fill();
     }
     specks.set(key, c.toDataURL());
   }
@@ -43,16 +43,28 @@ function speckMask(w: number, hh: number, r: number, dpr = 1) {
 /** the mark's size for radius r: the ring and, to its right, the wavy lines */
 export const markSize = (r: number) => ({ w: Math.ceil(r * 2 + r * 1.5 + 20), h: Math.ceil(r * 2 + 20), cx: r + 10, cy: r + 10 });
 
+/** how strongly a mark is inked: `ink` 1 is as before; below, fainter; above, the mark gets opaque (from 1.22), its lines heavier
+ *  (× √ink) and fewer specks fail to print (their strength ÷ ink) */
+export const markInk = (ink: number, alpha: number) => { const z = ink > 0 ? ink : 1; return { alpha: Math.min(1, alpha * z), line: z > 1 ? Math.sqrt(z) : 1, specks: z }; };
+/** the date's font size for ring radius r: 0.3 r (0.19 r past six characters) times `scale`; a bigger one is kept inside the inner ring */
+export function markDatePx(date: string, r: number, scale = 1): number {
+  const base = r * (String(date ?? '').length > 6 ? 0.19 : 0.3);
+  if (scale <= 1) return Math.round(base * scale);
+  return Math.round(Math.max(base, Math.min(base * scale, (r * 1.2) / Math.max(0.5, textEm(String(date ?? ''))), r * 0.62)));
+}
+export interface MarkOpts { /** the date's size, × the usual */ date?: number; /** ink strength, 1 = as before */ ink?: number }
+
 /**
  * Draw postmark `mk` with ring radius r (px) centred at (x, y), tilted −13°: it thumps down at `mk.at` (bigger, then settling);
  * `complete` shows it as landed whatever the time. `waves`: the cancel lines. `dpr`: device pixels per px of the layer the mark sits
- * in (a layer scaled up for a 4K frame: the rings and the uneven ink are drawn at that size, not stretched).
+ * in (a layer scaled up for a 4K frame: the rings and the uneven ink are drawn at that size, not stretched). `opts`: the date's size and
+ * the ink's strength (see markInk).
  */
-export function drawMark(m: MarkEl, mk: Mark | null | undefined, r: number, x: number, y: number, local: number, complete: boolean, color: string, waves = true, alpha = 0.82, dpr = 1) {
+export function drawMark(m: MarkEl, mk: Mark | null | undefined, r: number, x: number, y: number, local: number, complete: boolean, color: string, waves = true, alpha = 0.82, dpr = 1, opts: MarkOpts = {}) {
   const p = !mk ? 0 : complete || mk.at === undefined ? 1 : clamp((local - mk.at) / 0.16);
   cssCamel(m.el, { display: p > 0 ? 'block' : 'none' });
   if (!mk || p <= 0) return;
-  const S = markSize(r), key = JSON.stringify([mk.top, mk.bottom, mk.date, r, color, waves, dpr]);
+  const S = markSize(r), ink = markInk(opts.ink ?? 1, alpha), dpx = markDatePx(mk.date, r, opts.date ?? 1), key = JSON.stringify([mk.top, mk.bottom, mk.date, r, color, waves, dpr, ink.line, ink.specks, dpx]);
   if (m.key !== key) {
     m.key = key;
     const g = m.cv.getContext('2d')!;
@@ -60,11 +72,12 @@ export function drawMark(m: MarkEl, mk: Mark | null | undefined, r: number, x: n
     cssCamel(m.cv, { width: `${S.w}px`, height: `${S.h}px` });
     g.scale(m.cv.width / S.w, m.cv.height / S.h);
     g.strokeStyle = color;
-    g.lineWidth = r * 0.043; g.beginPath(); g.arc(S.cx, S.cy, r - 2, 0, 7); g.stroke();
-    g.lineWidth = r * 0.022; g.beginPath(); g.arc(S.cx, S.cy, r * 0.66, 0, 7); g.stroke();
-    g.lineWidth = r * 0.019; g.beginPath(); g.moveTo(S.cx - r * 0.42, S.cy - r * 0.24); g.lineTo(S.cx + r * 0.42, S.cy - r * 0.24); g.moveTo(S.cx - r * 0.42, S.cy + r * 0.24); g.lineTo(S.cx + r * 0.42, S.cy + r * 0.24); g.stroke();
+    const lw = ink.line, bar = Math.min(r * 0.5, Math.max(r * 0.24, dpx * 0.62));   // the bars move apart for a big date
+    g.lineWidth = r * 0.043 * lw; g.beginPath(); g.arc(S.cx, S.cy, r - 2, 0, 7); g.stroke();
+    g.lineWidth = r * 0.022 * lw; g.beginPath(); g.arc(S.cx, S.cy, r * 0.66, 0, 7); g.stroke();
+    g.lineWidth = r * 0.019 * lw; g.beginPath(); g.moveTo(S.cx - r * 0.42, S.cy - bar); g.lineTo(S.cx + r * 0.42, S.cy - bar); g.moveTo(S.cx - r * 0.42, S.cy + bar); g.lineTo(S.cx + r * 0.42, S.cy + bar); g.stroke();
     if (waves) {
-      g.lineWidth = r * 0.04;
+      g.lineWidth = r * 0.04 * lw;
       for (let k = 0; k < 5; k++) {
         const yy = S.cy - r * 0.56 + k * r * 0.28;
         g.beginPath();
@@ -87,12 +100,12 @@ export function drawMark(m: MarkEl, mk: Mark | null | undefined, r: number, x: n
     m.top = arc(mk.top, true); m.bottom = arc(mk.bottom, false);
     m.date.textContent = mk.date ?? '';
     m.el.appendChild(m.date);
-    const mask = `url(${speckMask(S.w, S.h, r, dpr)})`;
+    const mask = `url(${speckMask(S.w, S.h, r, dpr, ink.specks)})`;
     cssCamel(m.el, { width: `${S.w}px`, height: `${S.h}px`, color, fontFamily: SERIF, maskImage: mask, webkitMaskImage: mask, maskSize: '100% 100%', webkitMaskSize: '100% 100%' });
-    cssCamel(m.date, { left: `${S.cx}px`, top: `${S.cy}px`, fontSize: `${Math.round(r * (String(mk.date ?? '').length > 6 ? 0.19 : 0.3))}px` });
+    cssCamel(m.date, { left: `${S.cx}px`, top: `${S.cy}px`, fontSize: `${dpx}px` });
   }
   const s = 1 + (1 - eOut(p)) * 0.22;
-  cssCamel(m.el, { left: `${x - S.cx}px`, top: `${y - S.cy}px`, transformOrigin: `${S.cx}px ${S.cy}px`, transform: `rotate(-13deg) scale(${s.toFixed(4)})`, opacity: String(alpha * clamp(p * 1.4)) });
+  cssCamel(m.el, { left: `${x - S.cx}px`, top: `${y - S.cy}px`, transformOrigin: `${S.cx}px ${S.cy}px`, transform: `rotate(-13deg) scale(${s.toFixed(4)})`, opacity: String(ink.alpha * clamp(p * 1.4)) });
 }
 
 // ---------- the stamp ----------
@@ -137,12 +150,12 @@ export function drawStamp(media: MediaApi, st: StampEl, spec: StampSpec, still: 
   cssCamel(st.el, { left: `${x}px`, top: `${y}px`, transformOrigin: '50% 50%', transform: `rotate(${rot}deg) scale(${scale})` });
 }
 
-interface P { top: string; bottom: string; date: string; at: number; x: number; y: number; size: number; waves: boolean; color: string; stamp: boolean; label: string; year: string; source: string; t: number }
+interface P { top: string; bottom: string; date: string; at: number; x: number; y: number; size: number; dateSize: number; ink: number; waves: boolean; color: string; stamp: boolean; label: string; year: string; source: string; t: number }
 interface S { mark: MarkEl; stamp: StampEl; layer: HTMLElement }
 
 export const postmark: ItemType<P, S> = {
   type: 'common.postmark', label: '郵戳', category: 'travel', kind: 'overlay',
-  doc: '一個郵戳「蓋」上畫面：雙圈、上弧地名、下弧中文地名、中間日期、右邊五條波浪線、墨色不均，可附一張打孔郵票（圖是素材某一刻的畫面，沒給就是畫的夕陽海）；旅行、寄信、到此一遊、日期戳',
+  doc: '一個郵戳「蓋」上畫面：雙圈、上弧地名、下弧中文地名、中間日期（dateSize 放大）、右邊五條波浪線、墨色不均（ink 調濃淡），可附一張打孔郵票（圖是素材某一刻的畫面，沒給就是畫的夕陽海）；旅行、寄信、到此一遊、日期戳',
   params: [
     { key: 'top', label: '上弧文字', type: 'string', default: 'PARIS' },
     { key: 'bottom', label: '下弧文字', type: 'string', default: '巴黎' },
@@ -151,8 +164,10 @@ export const postmark: ItemType<P, S> = {
     { key: 'x', label: '圓心 x（畫面寬比例；郵票在它右上方）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.42 },
     { key: 'y', label: '圓心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.62 },
     { key: 'size', label: '半徑（畫面短邊 %）', type: 'number', min: 3, max: 40, step: 0.5, default: 13 },
+    { key: 'dateSize', label: '日期字級（倍數，1＝原本；變大時中間兩條線往外讓，最大到內圈放得下）', type: 'number', min: 0.5, max: 3, step: 0.05, default: 1 },
     { key: 'waves', label: '波浪線', type: 'bool', default: true },
     { key: 'color', label: '墨色', type: 'color', default: '#2a3550' },
+    { key: 'ink', label: '墨的濃度（1＝原本；調高：不透明、線變粗、少掉漏墨的斑點）', type: 'number', min: 0.3, max: 3, step: 0.05, default: 1 },
     { key: 'stamp', label: '附郵票', type: 'bool', default: true },
     { key: 'label', label: '郵票國名', type: 'string', default: 'FRANCE' },
     { key: 'year', label: '郵票年份', type: 'string', default: '2022' },
@@ -182,6 +197,6 @@ export const postmark: ItemType<P, S> = {
       drawStamp(ctx.media, s.stamp, { label: p.label, year: p.year }, p.source ? { source: p.source, t: p.t } : null, cx + r * 1.63 - STAMP_W / 2, cy - r * 0.8 - STAMP_H / 2 + (1 - q) * 30, 2.2, sc, sc * k);
       cssCamel(s.stamp.el, { opacity: String(q) });
     }
-    drawMark(s.mark, { top: p.top, bottom: p.bottom, date: p.date, at: p.at }, r, cx, cy, local, false, p.color, p.waves, 0.82, Math.max(1, k));
+    drawMark(s.mark, { top: p.top, bottom: p.bottom, date: p.date, at: p.at }, r, cx, cy, local, false, p.color, p.waves, 0.82, Math.max(1, k), { date: p.dateSize ?? 1, ink: p.ink ?? 1 });
   },
 };
