@@ -3,8 +3,9 @@
 import { defaultSafe, type Project, type Times } from '@tellcut/engine';
 import { byTime, type Finding } from './rules.ts';
 
-export interface Rect { x: number; y: number; w: number; h: number }
-export interface TextBox { id: string; rects: Rect[] }
+export interface Rect { x: number; y: number; w: number; h: number; /** a reported box: its type size (px) */ size?: number; /** a reported box: its words */ text?: string }
+/** `canvas`: words the item reported drawing on a canvas (ctx.reportText), not DOM text; judged by the same rules */
+export interface TextBox { id: string; rects: Rect[]; canvas?: true }
 
 const r3 = (t: number) => Math.round(t * 1000) / 1000;
 const uniq = (ts: number[]) => [...new Set(ts.map(r3))].sort((a, b) => a - b);
@@ -14,15 +15,27 @@ function textItems(p: Project, times: Times) {
     .filter((it) => typeof it.params?.text === 'string' && it.params.text.trim()).map((it) => ({ it, s: times.get(it.id)!.start, e: times.get(it.id)!.end }));
 }
 
+/** the items whose words are measured: the text items, and project fx (their words are in params of their own, or drawn and
+ *  reported with ctx.reportText) */
+function measuredItems(p: Project, times: Times) {
+  const text = textItems(p, times), seen = new Set(text.map((x) => x.it.id));
+  const fx = p.tracks.filter((t) => (t.kind === 'overlay' || t.kind === 'scene') && !t.muted).flatMap((t) => t.items as any[])
+    .filter((it) => !seen.has(it.id) && typeof it.type === 'string' && it.type.startsWith('fx.')).map((it) => ({ it, s: times.get(it.id)!.start, e: times.get(it.id)!.end }));
+  return [...text, ...fx];
+}
+
 /** a text block's entrance when it does not say how long (common.header slides in over 0.35 s) and its exit */
 const ENTER = 0.45, EXIT = 0.3;
 
-/** When to measure text: once each item's entrance animation is over, and in its middle. */
+/** When to measure text: once each item's entrance animation is over, and in its middle. A portrait short with an fx starting
+ *  in its first second is also measured at 0.9 s: whether it shows words then (the first-second rule) is read off the frame. */
 export function sampleTimes(p: Project, times: Times): number[] {
-  return uniq(textItems(p, times).flatMap(({ it, s, e }) => {
-    const own = [it.params.animDur, it.params.popDur].find((x) => typeof x === 'number') as number | undefined;
+  const items = measuredItems(p, times), short = p.meta.height > p.meta.width && p.meta.duration <= 180;
+  const early = short && items.some(({ it, s }) => it.type?.startsWith('fx.') && s < 0.9) ? [0.9] : [];
+  return uniq([...early, ...items.flatMap(({ it, s, e }) => {
+    const own = [it.params?.animDur, it.params?.popDur].find((x) => typeof x === 'number') as number | undefined;
     return [s + Math.min((own ?? ENTER) + 0.1, (e - s) / 2), (s + e) / 2];
-  }));
+  })]);
 }
 
 /**
@@ -32,8 +45,8 @@ export function sampleTimes(p: Project, times: Times): number[] {
  */
 export function settledWindows(p: Project, times: Times): Map<string, [number, number]> {
   const out = new Map<string, [number, number]>();
-  for (const { it, s, e } of textItems(p, times)) {
-    const own = [it.params.animDur, it.params.popDur].find((x) => typeof x === 'number') as number | undefined, len = e - s;
+  for (const { it, s, e } of measuredItems(p, times)) {
+    const own = [it.params?.animDur, it.params?.popDur].find((x) => typeof x === 'number') as number | undefined, len = e - s;
     out.set(it.id, [s + Math.min(own ?? ENTER, len / 2), e - Math.min(EXIT, len / 2)]);
   }
   return out;
@@ -148,4 +161,32 @@ export function captionSizeChecks(samples: Array<{ t: number; boxes: TextBox[] }
   if (!small.length) return [];
   const px = Math.round(Math.min(...small.map(([, h]) => h)) / LINE_BOX / k), need = Math.ceil(((48 * k) / o.H) * 1000) / 10;
   return [{ level: 'warn', ids: small.map(([id]) => id), msg: `字幕的字太小：字高約 ${px} px（以 1080 計），至少要 48 px（${small.slice(0, 4).map(([id]) => id).join('、')}${small.length > 4 ? ` 等 ${small.length} 個` : ''}）。把字調大（size 至少 ${need.toFixed(1)}）` }];
+}
+
+/**
+ * The same 48 px floor for words an item reports drawing on a canvas (ctx.reportText gives their real type size): judged by the
+ * largest it drew, as a caption is, so a small label beside big words is fine; an item whose words are all small is not.
+ */
+export function canvasSizeChecks(samples: Array<{ t: number; boxes: TextBox[] }>, o: { W: number; H: number }): Finding[] {
+  const k = Math.min(o.W, o.H) / 1080, big = new Map<string, number>();
+  for (const s of samples) for (const b of s.boxes) if (b.canvas) for (const r of b.rects) if (r.size) big.set(b.id, Math.max(big.get(b.id) ?? 0, r.size));
+  const small = [...big].filter(([, px]) => px < 48 * k - 0.5);
+  if (!small.length) return [];
+  const px = Math.round(Math.min(...small.map(([, x]) => x)) / k), names = small.slice(0, 4).map(([id]) => id).join('、');
+  return [{ level: 'warn', ids: small.map(([id]) => id), msg: `canvas 上畫的字太小：最大的字約 ${px} px（以 1080 計），至少要 48 px（${names}${small.length > 4 ? ` 等 ${small.length} 個` : ''}）` }];
+}
+
+/**
+ * What the measured frames say about the words items show, for the model layer's pacing rules (rules.ts ModelInput.drawn):
+ * per item that reported canvas words, the most it showed at one time; the items with any words on screen before 1 s.
+ */
+export function drawnText(samples: Array<{ t: number; boxes: TextBox[] }>): { words: Map<string, string>; early: Set<string> } {
+  const words = new Map<string, string>(), early = new Set<string>();
+  for (const s of samples) for (const b of s.boxes) {
+    if (s.t < 1 && b.rects.length) early.add(b.id);
+    if (!b.canvas) continue;
+    const w = b.rects.map((r) => r.text ?? '').join(' ').trim();
+    if (w.length > (words.get(b.id) ?? '').length) words.set(b.id, w);
+  }
+  return { words, early };
 }

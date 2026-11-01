@@ -1,6 +1,10 @@
 // Where the words on screen are (toolkit phase 1, `npm run check`): every visible text run inside an item layer
-// ([data-id]), as boxes in project pixels. Hidden text (display none, visibility hidden, fully transparent) is left out.
-export interface Rect { x: number; y: number; w: number; h: number }
+// ([data-id]), as boxes in project pixels. Hidden text (display none, visibility hidden, fully transparent) is left out. Words
+// drawn on a canvas come from the items' own reports (ctx.reportText, engine report.ts), marked `canvas`, with their words and type size.
+import { reportedBoxes, type ReportedText } from '@tellcut/engine';
+
+export interface Rect { x: number; y: number; w: number; h: number; /** reported: the type size in px */ size?: number; /** reported: the words */ text?: string }
+export interface TextBox { id: string; rects: Rect[]; /** reported by the item (ctx.reportText), not DOM text */ canvas?: true }
 
 function shown(el: Element, stop: Element): boolean {
   let alpha = 1;
@@ -12,7 +16,7 @@ function shown(el: Element, stop: Element): boolean {
   return alpha > 0.05;
 }
 
-export function textBoxes(stage: HTMLElement, W: number): Array<{ id: string; rects: Rect[] }> {
+export function textBoxes(stage: HTMLElement, W: number): TextBox[] {
   const box = stage.getBoundingClientRect(), k = box.width / W || 1, by = new Map<string, Rect[]>();
   const walk = document.createTreeWalker(stage, NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
@@ -29,4 +33,9 @@ export function textBoxes(stage: HTMLElement, W: number): Array<{ id: string; re
     }
   }
   return [...by].map(([id, rects]) => ({ id, rects }));
+}
+
+/** textBoxes plus what the items reported drawing on a canvas this frame (Stage.textReports()), shown by the same rule */
+export function layoutBoxes(stage: HTMLElement, W: number, reports: ReportedText[]): TextBox[] {
+  return [...textBoxes(stage, W), ...reportedBoxes(stage, W, reports, (el) => shown(el, stage)).map((b) => ({ ...b, canvas: true as const }))];
 }

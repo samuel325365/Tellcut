@@ -12,6 +12,7 @@ import { videoRefOf } from './media/refs.ts';
 import { cssCamel, h, showCamel } from './util.ts';
 import { motion } from './motion.ts';
 import { itemMediaIssues } from './validate.ts';
+import { NO_REPORT, textReporter, type ReportedText } from './report.ts';
 
 /** sig = the item's JSON: update() compares content, since projects posted into the preview iframe are copies. */
 type Common = { id: string; el: HTMLElement; sig: string; muted: boolean };
@@ -53,10 +54,13 @@ export class Stage {
   /** another registered item type, by id (ctx.types and media()'s third argument) */
   private types = (type: string) => this.registry.item(type);
   private top!: HTMLElement;
+  /** this frame's ctx.reportText boxes (opts.measure), emptied at every draw() */
+  private reports: ReportedText[] = [];
   /** strict (render mode): a failing item aborts with its id instead of becoming a placeholder */
   constructor(private root: HTMLElement, private registry: Registry, private media: MediaPool,
     private opts: { strict?: boolean; onError?: (itemId: string, message: string) => void; /** previews: see draw() */ subpixelZoom?: boolean;
-      /** the ThreeKit handed to every item as ctx.three (the player loads it when usesThree) */ three?: unknown } = {}) {}
+      /** the ThreeKit handed to every item as ctx.three (the player loads it when usesThree) */ three?: unknown;
+      /** keep what items report with ctx.reportText (the player's render mode, which check measures); otherwise it is a no-op */ measure?: boolean } = {}) {}
 
   private fail(L: Common, item: SceneItem, e: unknown): Layer {
     const msg = `Item "${item.id}" (${item.type}): ${(e as Error)?.message ?? e}`;
@@ -207,11 +211,12 @@ export class Stage {
     const tm = this.times.get(item.id)!;
     const { width: W, height: H, fps } = this.project.meta;
     return { t, local: t - tm.start, dur: tm.end - tm.start, item, params, root, top, project: this.project, media: this.media, W, H, fps, theme: resolveTheme(this.project.meta.theme, this.project.meta), types: this.types,
-      grades: this.registry.grades ?? {}, motion, ...(this.opts.three !== undefined ? { three: this.opts.three } : {}) };
+      grades: this.registry.grades ?? {}, motion, reportText: this.opts.measure ? textReporter(item.id, this.reports, root, W, H) : NO_REPORT, ...(this.opts.three !== undefined ? { three: this.opts.three } : {}) };
   }
 
   draw(t: number) {
     this.media.begin();
+    this.reports = [];
     const { width: W, height: H } = this.project.meta;
     this.layers.forEach((L, i) => {
       const tm = this.times.get(L.id)!;
@@ -285,6 +290,10 @@ export class Stage {
       }
     }));
   }
+
+  /** the words items reported drawing in the last draw() and late() (ctx.reportText; empty unless opts.measure), in each element's
+   *  own pixels: reportedBoxes() places them on the stage */
+  textReports(): ReportedText[] { return this.reports; }
 
   mediaRefs(): MediaRef[] {
     return this.layers.flatMap((L) => (L.kind === 'video' ? (L.img ? [] : [L.ref]) : L.kind === 'plugin' && L.type.media ? L.type.media({ ...L.item, params: L.params }, this.project, this.types).videos : []));

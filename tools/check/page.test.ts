@@ -53,6 +53,29 @@ test('an fx that draws something different at the same time is reported; a stead
   expect(msgs.find((m) => m.startsWith('fx 不是決定性的'))).toContain('（bad）');
 }, 300000);
 
+test('words an fx draws on a canvas and reports (ctx.reportText) are measured: outside the safe area, too small, what it said', async () => {
+  mkdirSync(join(dir, 'fx'), { recursive: true });
+  // the canvas is twice the frame and shown at its size (a 2x canvas): the reports come back in frame pixels
+  writeFileSync(join(dir, 'fx', 'words.js'), `export default [{ type: 'fx.words', label: 'w', kind: 'overlay', doc: 'd', params: [{ key: 'px', label: 'px', type: 'number', default: 40 }, { key: 'x', label: 'x', type: 'number', default: 180 }],
+    build({ root, W, H }) { const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2; c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%'; root.appendChild(c); return { c }; },
+    draw(ctx, { c }) { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.save(); g.scale(2, 2);
+      g.font = '700 ' + ctx.params.px + 'px sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'left'; g.fillText('Hello', ctx.params.x, 300); ctx.reportText(g, 'Hello', ctx.params.x, 300); g.restore(); } }];\n`);
+  const p = parseProject({ version: 1,
+    meta: { name: 'w', width: 360, height: 640, fps: 30, duration: 2, plugins: [], fx: ['fx/words.js'], mix: MIX }, sources: {}, media: {}, grids: [],
+    tracks: [{ id: 'o', kind: 'overlay', items: [
+      { id: 'edge', type: 'fx.words', start: 0, end: 1, params: { x: 2 } },              // 40 px on a 360 px wide frame: 120 at 1080
+      { id: 'tiny', type: 'fx.words', start: 1, end: 2, params: { px: 10, x: 150 } },    // 10 px: 30 at 1080
+    ] }] });
+  const { registry } = await projectRegistry(dir, plugins, p);
+  const r = await renderedChecks({ dir, project: p, registry });
+  const msgs = r.findings.map((f) => f.msg);
+  expect(msgs).toContain('文字超出安全區（左邊）（edge）');
+  expect(msgs.find((m) => m.startsWith('canvas 上畫的字太小'))).toMatch(/約 30 px.*（tiny）/);
+  expect(msgs.some((m) => m.includes('（tiny）') && m.includes('安全區'))).toBe(false);
+  expect(r.drawn.words.get('edge')).toBe('Hello');
+  expect(r.drawn.early.has('edge')).toBe(true);
+}, 300000);
+
 test('a 3D fx drawn with ctx.three (the example) draws the same picture at the same time', async () => {
   mkdirSync(join(dir, 'fx'), { recursive: true });
   writeFileSync(join(dir, 'fx', 'spin3d.js'), readFileSync(join(TELLCUT_ROOT, 'tools/fx-example/spin3d.js'), 'utf8'));

@@ -13,6 +13,10 @@ export interface ModelInput {
   /** font families the registered plugins bring along (toolkit phase 2b: theme fonts outside them are not downloaded) */ knownFonts?: string[];
   /** a block's declared params (the registry, with the project's fx): which of an fx's params are words */ params?: (type: string) => ParamDef[] | undefined;
   /** the block may draw letters on a canvas (a project fx whose code calls fillText): check cannot see them */ canvasText?: (type: string) => boolean;
+  /** the block reports the letters it draws on a canvas (its code calls ctx.reportText): the page layer measures them */ reportsText?: (type: string) => boolean;
+  /** what the page layer measured (check without --quick; page.ts Drawn): per item that reported canvas words, the most it showed
+   *  at once, and the items with words on screen before 1 s. Those stand for the words of an item that reports. */
+  drawn?: { words: Map<string, string>; early: Set<string> };
 }
 
 const r3 = (t: number) => Math.round(t * 1000) / 1000;
@@ -175,22 +179,30 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   const textOf = (it: any) => it.type === 'common.chat' ? chatWords(it.params?.items ?? '').replace(/\//g, ' ').trim()
     : wordParams(it).filter(([v]) => typeof v === 'string').map(([v, strict]) => visibleWords(v as string, strict)).join(' ').replace(/[【】{}\n]/g, ' ').trim();
   const shown = p.tracks.filter((t) => (t.kind === 'overlay' || t.kind === 'scene') && !t.muted).flatMap((t) => (t.items as any[]).map((it) => ({ it, s: span(it.id) })));
+  // an item that reports its canvas words, measured by the page layer: what it drew stands for its words, not its params
+  const measured = (it: any) => !!o.drawn && !!o.reportsText?.(it.type);
+  const wordsOf = (it: any) => (measured(it) ? o.drawn!.words.get(it.id) ?? '' : textOf(it));
   // a short (portrait, up to 3 minutes) that says nothing in its first second: the viewer has already swiped
   if (p.meta.height > p.meta.width && D <= 180) {
     const said = heard.some((h) => h.t[0] < 1) || narration.some((t) => (t.items as any[]).some((v) => span(v.id)[0] < 1));
-    // letters an fx draws on a canvas are pixels to check: with one of those up in the first second it cannot tell, and says so
-    const blind = shown.filter(({ it, s }) => s[0] < 1 && o.canvasText?.(it.type)).map(({ it }) => it.id);
-    if (!said && !shown.some(({ it, s }) => s[0] < 1 && textOf(it))) out.push(blind.length
-      ? { level: 'note', t: [0, 1], ids: blind, msg: `開頭第一秒沒有人說話，也看不到字幕或字卡；${blind.join('、')} 在 canvas 上畫字，check 看不到 canvas 上的字：它第一秒就有字就沒問題，沒有的話第一秒放一句字卡／爆字，或從講話的地方開始` }
+    // letters an fx draws on a canvas are pixels to check unless it reports them (ctx.reportText) and the page layer measured the
+    // frame: with an unmeasured one up in the first second it cannot tell, and says so
+    const early = (it: any) => !!o.drawn?.early.has(it.id);
+    const blind = shown.filter(({ it, s }) => s[0] < 1 && o.canvasText?.(it.type) && !measured(it)).map(({ it }) => it);
+    const quick = !o.drawn && blind.length > 0 && blind.every((it) => o.reportsText?.(it.type)), ids = blind.map((it) => it.id);
+    if (!said && !shown.some(({ it, s }) => s[0] < 1 && (measured(it) ? early(it) : textOf(it) || early(it)))) out.push(blind.length
+      ? { level: 'note', t: [0, 1], ids, msg: quick
+        ? `開頭第一秒沒有人說話，也看不到字幕或字卡；${ids.join('、')} 在 canvas 上畫字，--quick 不量畫面：不加 --quick 再跑一次 check 才知道第一秒有沒有字`
+        : `開頭第一秒沒有人說話，也看不到字幕或字卡；${ids.join('、')} 在 canvas 上畫字，check 看不到 canvas 上的字：它第一秒就有字就沒問題，沒有的話第一秒放一句字卡／爆字，或從講話的地方開始` }
       : { level: 'warn', t: [0, 1], msg: '開頭第一秒沒有字也沒有人說話：短影音的觀眾在第一秒決定要不要滑走；第一秒就放一句字卡／爆字，或從講話的地方開始' });
   }
   // a word card (not a caption: those follow the speech) shorter than it takes to read: Chinese ≈ 9 characters a second, Latin ≈ 17
   for (const { it, s } of shown) {
     if (/^(core|common)\.caption$/.test(it.type)) continue;
-    const words = textOf(it).replace(/[\s\p{P}\p{S}]/gu, ''), cjk = [...words].filter((ch) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(ch)).length;
+    const words = wordsOf(it).replace(/[\s\p{P}\p{S}]/gu, ''), cjk = [...words].filter((ch) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(ch)).length;
     if (!words) continue;
     const need = 0.4 + cjk / 9 + ([...words].length - cjk) / 17, dur = s[1] - s[0];
-    if (dur < need - 0.05) out.push({ level: 'warn', t: s, ids: [it.id], msg: `字卡「${textOf(it).replace(/\s+/g, ' ').slice(0, 24)}」只出現 ${dur.toFixed(1)} 秒，讀完約要 ${need.toFixed(1)} 秒（${it.id}）：拉長、或減少字數` });
+    if (dur < need - 0.05) out.push({ level: 'warn', t: s, ids: [it.id], msg: `字卡「${wordsOf(it).replace(/\s+/g, ' ').slice(0, 24)}」只出現 ${dur.toFixed(1)} 秒，讀完約要 ${need.toFixed(1)} 秒（${it.id}）：拉長、或減少字數` });
   }
   const main = (p.tracks.find((t) => t.kind === 'video' && (t as any).magnetic) ?? p.tracks.find((t) => t.kind === 'video' && !t.muted));
   const shots = ((main?.items ?? []) as any[]).filter((c) => c.parent === undefined).map((c) => ({ c, s: span(c.id) })).sort((a, b) => a.s[0] - b.s[0]);
@@ -277,18 +289,23 @@ const IMPORT = /^[ \t]*(?:import\s*(?:\(\s*|[\w$\s{},*]*?\bfrom\s*)?|export\s*(?
 
 /** a call that draws letters on a canvas (read with comments and strings blanked) */
 const CANVAS_TEXT = /\.(fillText|strokeText)\s*\(/;
+/** a call that reports those letters to check (ItemCtx.reportText) */
+const REPORT_TEXT = /\.reportText\s*\(/;
 /** an fx source draws letters on a canvas (comments and strings do not count) */
 export const drawsCanvasText = (src: string) => CANVAS_TEXT.test(blank(src, true));
+/** an fx source reports the letters it draws (ctx.reportText) */
+export const reportsCanvasText = (src: string) => REPORT_TEXT.test(blank(src, true));
 /** The fx modules (meta.fx paths) that draw letters on a canvas, in their own code or in a helper they import (a library copy's
- *  _entry.js only re-exports): their blocks are the ones check cannot read the words of. `read`: a project file's text, or null. */
-export function canvasFxFiles(paths: string[], read: (path: string) => string | null): string[] {
+ *  _entry.js only re-exports): their blocks are the ones check cannot read the words of unless they report them. `read`: a project
+ *  file's text, or null. `test`: what to look for instead (reportsCanvasText: the modules that report). */
+export function canvasFxFiles(paths: string[], read: (path: string) => string | null, test: (src: string) => boolean = drawsCanvasText): string[] {
   const memo = new Map<string, boolean>();
   const draws = (path: string): boolean => {
     if (memo.has(path)) return memo.get(path)!;
     memo.set(path, false);                                                    // an import cycle reads as not drawing
     const src = read(path);
     if (src === null) return false;
-    const hit = drawsCanvasText(src) || [...blank(src, false).matchAll(RELATIVE_IMPORT)]
+    const hit = test(src) || [...blank(src, false).matchAll(RELATIVE_IMPORT)]
       .some((m) => draws(normalize(join(dirname(path), m[1].split('?')[0])).split('\\').join('/')));
     memo.set(path, hit);
     return hit;
@@ -309,9 +326,10 @@ export function fxChecks(sources: Record<string, string>): Finding[] {
     noStrings.forEach((line, i) => {
       for (const [re, name] of BANNED) if (re.test(line)) out.push({ level: 'error', msg: `${path}:${i + 1} 不可用 ${name}（畫面必須只由時間決定；要隨機請用自帶的種子 LCG）` });
     });
-    // the layout check measures DOM text boxes: letters drawn on a canvas are pixels to it, and it used to say nothing about them
+    // the layout check measures DOM text boxes and what an fx reports with ctx.reportText: letters drawn on a canvas and not
+    // reported are pixels to it, and it used to say nothing about them
     const canvasText = noStrings.findIndex((l) => CANVAS_TEXT.test(l));
-    if (canvasText >= 0) out.push({ level: 'note', msg: `${path}:${canvasText + 1} 在 canvas 上畫字：check 量不到這些字（超出安全區、蓋到字幕、字太小都不會報），請用 frames 自己看` });
+    if (canvasText >= 0 && !noStrings.some((l) => REPORT_TEXT.test(l))) out.push({ level: 'note', msg: `${path}:${canvasText + 1} 在 canvas 上畫字，沒有用 ctx.reportText 回報：check 量不到這些字（超出安全區、蓋到字幕、字太小都不會報）；每個 fillText 後面加 ctx.reportText(g, 字, x, y)，或用 frames 自己看` });
   }
   return out;
 }

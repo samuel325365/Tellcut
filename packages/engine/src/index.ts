@@ -5,6 +5,7 @@ export * from './util.ts';
 export { motion, type MotionKit, type Spring, type SpringOpts, type EaseFn } from './motion.ts';
 export * from './geometry.ts';
 export * from './plugin.ts';
+export * from './report.ts';
 export * from './registry.ts';
 export * from './fx.ts';
 export * from './theme.ts';

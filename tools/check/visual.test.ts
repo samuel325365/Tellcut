@@ -1,5 +1,5 @@
 import { parseProject, resolveTimes } from '@tellcut/engine';
-import { audioChecks, captionSizeChecks, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes } from './visual.ts';
+import { audioChecks, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes } from './visual.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
 const proj = (items: any[], w = 1080, h = 1920) => parseProject({ version: 1, meta: { name: 't', width: w, height: h, fps: 30, duration: 20, plugins: [], mix: MIX },
@@ -102,4 +102,32 @@ test('caption text under 48 px (on a 1080 short side) is a warning with the size
   expect(f[0].msg).toContain('size 至少 4.5');
   // a portrait film: the short side is its width; a 4.2 % caption there (117 px box) is fine
   expect(captionSizeChecks([{ t: 1, boxes: [box('p', 117)] }], { W: 1080, H: 1920, captions: new Set(['p']) })).toEqual([]);
+});
+
+test('words an fx reports drawing on a canvas: measured like DOM text (fx items sampled, safe area, overlap), too small, and what they say', () => {
+  const p = proj([
+    { id: 'cap', start: 0, end: 4, type: 'core.caption', params: { text: '字幕' } },
+    { id: 'paint', start: 0.5, end: 4, type: 'fx.paint', params: {} },
+    { id: 'tiny', start: 5, end: 7, type: 'fx.tiny', params: {} },
+  ]);
+  const spans = resolveTimes(p);
+  // fx items are measured too; an fx up in a short's first second also at 0.9 s
+  expect(sampleTimes(p, spans)).toEqual([0.55, 0.9, 1.05, 2, 2.25, 5.55, 6]);
+  const canvas = (id: string, x: number, y: number, size: number, text: string) => ({ id, canvas: true as const, rects: [{ x, y, w: 600, h: size * 1.45, size, text }] });
+  const samples = [
+    { t: 0.9, boxes: [{ id: 'cap', rects: [{ x: 200, y: 1000, w: 400, h: 100 }] }, canvas('paint', 300, 1010, 80, '出門了')] },
+    { t: 2.25, boxes: [canvas('paint', 20, 300, 80, '出門了 這次去海邊')] },
+    { t: 6, boxes: [{ ...canvas('tiny', 200, 700, 30, '小字'), rects: [...canvas('tiny', 200, 700, 30, '小字').rects, ...canvas('tiny', 200, 800, 20, '更小').rects] }] },
+  ];
+  const f = layoutChecks(samples, { W: 1080, H: 1920, spans, settled: settledWindows(p, spans) }).map((x) => `${x.level} ${x.msg}`);
+  // still coming in at 0.9 s, so it is not on top of the caption yet; standing at 2.25 s past the left margin
+  expect(f).toEqual(['error 文字超出安全區（左邊）（paint）']);
+  // judged by its largest words: 80 px is fine, 30 px is not
+  const small = canvasSizeChecks(samples, { W: 1080, H: 1920 });
+  expect(small).toHaveLength(1);
+  expect(small[0]).toMatchObject({ level: 'warn', ids: ['tiny'] });
+  expect(small[0].msg).toContain('約 30 px');
+  const d = drawnText(samples);
+  expect(d.words).toEqual(new Map([['paint', '出門了 這次去海邊'], ['tiny', '小字 更小']]));
+  expect([...d.early]).toEqual(['cap', 'paint']);
 });

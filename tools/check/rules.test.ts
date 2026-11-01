@@ -1,5 +1,5 @@
 import { parseProject, type Transcript } from '@tellcut/engine';
-import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, visibleWords } from './rules.ts';
+import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -164,9 +164,11 @@ describe('fx determinism scan', () => {
     expect(found('const half = w / 2, q = h / 3; // Math.random\nconst k = (a) / b;')).toEqual([]);   // division stays division
     expect(found('const re = /Date.now()/;')).toEqual([]);                                             // banned words in a regex are text
   });
-  test('letters drawn on a canvas are noted once: the layout check cannot see them', () => {
-    expect(scan("g.font = '700 60px x';\ng.fillText(t, 0, 0);\ng.strokeText(t, 0, 0);")).toEqual(['note fx/a.js:2 在 canvas 上畫字：check 量不到這些字（超出安全區、蓋到字幕、字太小都不會報），請用 frames 自己看']);
+  test('letters drawn on a canvas are noted once: the layout check cannot see them unless the fx reports them', () => {
+    expect(scan("g.font = '700 60px x';\ng.fillText(t, 0, 0);\ng.strokeText(t, 0, 0);")).toEqual(['note fx/a.js:2 在 canvas 上畫字，沒有用 ctx.reportText 回報：check 量不到這些字（超出安全區、蓋到字幕、字太小都不會報）；每個 fillText 後面加 ctx.reportText(g, 字, x, y)，或用 frames 自己看']);
     expect(scan('// g.fillText(t)\nconst s = "fillText(";')).toEqual([]);
+    expect(scan('g.fillText(t, 0, 0); ctx.reportText(g, t, 0, 0);')).toEqual([]);
+    expect(scan('g.fillText(t, 0, 0); // ctx.reportText(g, t, 0, 0)')).toHaveLength(1);   // a comment reports nothing
   });
 });
 
@@ -286,6 +288,23 @@ describe('pacing rules (2026-10-18)', () => {
     expect(msgs(modelChecks(painted, declared))).toEqual([expect.stringMatching(/^warn 0-1 開頭第一秒沒有字也沒有人說話/)]);   // no canvas letters: still a warning
   });
 
+  test('an fx that reports its canvas letters (ctx.reportText): the measured frames decide the first second and the reading time', () => {
+    const tall1 = (...fx: any[]) => tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: fx }]);
+    const reporting = { ...declared, canvasText: (t: string) => t === 'fx.paint', reportsText: (t: string) => t === 'fx.paint' };
+    const painted = tall1({ id: 'p', start: 0, end: 3, type: 'fx.paint', params: {} });
+    const drawn = (words: Record<string, string>, early: string[]) => ({ words: new Map(Object.entries(words)), early: new Set(early) });
+    // --quick measured nothing: run it without
+    expect(msgs(modelChecks(painted, reporting))).toEqual([expect.stringMatching(/^note 0-1 .*p 在 canvas 上畫字，--quick 不量畫面/)]);
+    // measured: words up before 1 s are text; none is the plain warning, as for any film
+    expect(modelChecks(painted, { ...reporting, drawn: drawn({ p: '出門了' }, ['p']) })).toEqual([]);
+    expect(msgs(modelChecks(painted, { ...reporting, drawn: drawn({ p: '出門了' }, []) }))).toEqual([expect.stringMatching(/^warn 0-1 開頭第一秒沒有字也沒有人說話/)]);
+    // its reading time is the words it drew, not its params (fx.rod's default words would need 1.3 s)
+    const rod = tall1({ id: 'say', start: 0, end: 0.8, type: 'fx.paint', params: {} }, { id: 'r', start: 0, end: 0.8, type: 'fx.rod', params: {} });
+    const read = (words: string) => msgs(modelChecks(rod, { ...reporting, drawn: drawn({ say: words }, ['say']) })).filter((m) => m.includes('（say）'));
+    expect(read('好')).toEqual([]);
+    expect(read('這一句畫在畫布上的字很長')).toEqual([expect.stringMatching(/^warn 0-0.8 字卡「這一句畫在畫布上的字很長」只出現 0.8 秒/)]);
+  });
+
   test('visibleWords keeps the words of a value: lines and |-fields, not numbers, colours, files, key=value or (in a line) lowercase tokens', () => {
     expect(visibleWords('借來的釣竿\n要價【6萬5】日幣')).toBe('借來的釣竿 要價【6萬5】日幣');
     expect(visibleWords('hello')).toBe('hello');                                     // a plain value's lowercase word is a word
@@ -300,6 +319,9 @@ describe('pacing rules (2026-10-18)', () => {
       'fx/lib/x/_entry.js': "export { default } from '../../a.js';",
     };
     expect(canvasFxFiles(['fx/a.js', 'fx/b.js', 'fx/c.js', 'fx/lib/x/_entry.js', 'fx/gone.js'], (f) => files[f] ?? null)).toEqual(['fx/a.js', 'fx/lib/x/_entry.js']);
+    // the ones that report those letters (ctx.reportText), the same way
+    files['fx/lib/text.js'] += '\nexport const tell = (ctx, g) => ctx.reportText(g, "x", 0, 0);';
+    expect(canvasFxFiles(['fx/a.js', 'fx/b.js', 'fx/lib/x/_entry.js'], (f) => files[f] ?? null, reportsCanvasText)).toEqual(['fx/a.js', 'fx/lib/x/_entry.js']);
   });
 
   test('a photo that holds over 4 s without moving is warned', () => {

@@ -7,9 +7,9 @@ import { join, resolve } from 'node:path';
 import { parseProject, resolveTimes, type Transcript } from '@tellcut/engine';
 import { analysisFiles, extrasFiles, findPreset, loadProjectFx, playerBuildStale, projectRegistry, readBurned, rebuildPlayer, readTranscript, TELLCUT_ROOT, type Burned } from '@tellcut/media-node';
 import { edgeFindings } from './check/edges.ts';
-import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, type Finding } from './check/rules.ts';
+import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, reportsCanvasText, type Finding } from './check/rules.ts';
 import { formatReport, isOffline, pageLayer, pageLayerSkip } from './check/report.ts';
-import { renderedChecks } from './check/page.ts';
+import { renderedChecks, type Drawn } from './check/page.ts';
 import { clipBars, letterboxFindings } from './check/letterbox.ts';
 import { plugins } from '@tellcut/plugins';
 import { projectArgOrExit } from './project-arg.ts';
@@ -30,11 +30,15 @@ for (const [sid, s] of Object.entries(p.sources)) {
 const { registry, fx } = await projectRegistry(dir, plugins, p);
 // families the plugins bring along (npm run fonts downloads them) plus the one default that is a system font
 const knownFonts = [...new Set([...plugins.flatMap((pl) => pl.fonts ?? []).map((f) => (typeof f === 'string' ? f.split(':')[0] : f.family)), 'Consolas'])];
-// the blocks of the fx modules that draw letters on a canvas: check cannot read those words, and says so instead of "no text"
+// the blocks of the fx modules that draw letters on a canvas: check cannot read those words unless the fx reports them
+// (ctx.reportText, measured by the page layer), and says so instead of "no text"
 const readFx = (f: string) => { const path = resolve(dir, f); return existsSync(path) ? readFileSync(path, 'utf8') : null; };
-const canvasFx = canvasFxFiles(p.meta.fx ?? [], readFx);
-const canvasTypes = new Set(canvasFx.length ? ((await loadProjectFx(dir, canvasFx)).plugin.items ?? []).map((t) => t.type) : []);
-const findings: Finding[] = [...fx.errors.map((e): Finding => ({ level: 'error', msg: `fx 載入失敗 ${e.path}：${e.message}` })), ...fx.warnings.map((w): Finding => ({ level: 'warn', msg: `fx ${w.path}：${w.message}` })), ...fxChecks(Object.fromEntries([...(p.meta.fx ?? []), ...projectStyleFiles(dir)].filter((f) => existsSync(join(dir, f))).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))), ...modelChecks(p, { exists: (path) => existsSync(resolve(dir, path)), transcripts, knownFonts, params: (t) => registry.item(t)?.params, canvasText: (t) => canvasTypes.has(t) }), ...outsideFiles(p, dir, TELLCUT_ROOT)];
+const typesOf = async (files: string[]) => new Set(files.length ? ((await loadProjectFx(dir, files)).plugin.items ?? []).map((t) => t.type) : []);
+const canvasTypes = await typesOf(canvasFxFiles(p.meta.fx ?? [], readFx)), reportTypes = await typesOf(canvasFxFiles(p.meta.fx ?? [], readFx, reportsCanvasText));
+// the model layer again once the page layer has measured what the fx drew (its first-second and reading-time rules use it)
+const model = (drawn?: Drawn) => modelChecks(p, { exists: (path) => existsSync(resolve(dir, path)), transcripts, knownFonts, params: (t) => registry.item(t)?.params, canvasText: (t) => canvasTypes.has(t), reportsText: (t) => reportTypes.has(t), drawn });
+const modelFindings = model();
+let findings: Finding[] = [...fx.errors.map((e): Finding => ({ level: 'error', msg: `fx 載入失敗 ${e.path}：${e.message}` })), ...fx.warnings.map((w): Finding => ({ level: 'warn', msg: `fx ${w.path}：${w.message}` })), ...fxChecks(Object.fromEntries([...(p.meta.fx ?? []), ...projectStyleFiles(dir)].filter((f) => existsSync(join(dir, f))).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))), ...modelFindings, ...outsideFiles(p, dir, TELLCUT_ROOT)];
 // the length and ratio of the preset the project was made from (where the server reads presets from)
 const made = p.meta.preset && findPreset({ repo: join(TELLCUT_ROOT, 'guides', 'presets'), user: join(TELLCUT_ROOT, 'projects', '_presets') }, p.meta.preset.id);
 findings.push(...presetChecks(p, made ? chosenSpec({ id: made.id, name: made.name.zh ?? made.name.en ?? made.id, length: made.length, ratios: made.ratios }, p.meta.preset?.fields) : null));
@@ -55,9 +59,11 @@ if (skip) console.error(skip);
 if (skip === null) {
   // the footage's own black bars on screen (read off the analysis proxies)
   findings.push(...letterboxFindings(p, resolveTimes(p), await clipBars(dir, p)));
-  const r = await pageLayer(() => renderedChecks({ dir, project: p, registry, burned, transcripts, sheet: process.argv.includes('--sheet'), log: (l) => { if (!/^(cuts|stills|audio|images) /.test(l)) console.error(l); } }));   // the cache's own lines (one per clip cut) are not part of the report
+  let drawn: Drawn | undefined;
+  const r = await pageLayer(async () => { const x = await renderedChecks({ dir, project: p, registry, burned, transcripts, sheet: process.argv.includes('--sheet'), log: (l) => { if (!/^(cuts|stills|audio|images) /.test(l)) console.error(l); } }); drawn = x.drawn; return x; });   // the cache's own lines (one per clip cut) are not part of the report
   findings.push(...r.findings);
   sheet = r.sheet;
+  if (drawn) { const old = new Set(modelFindings); findings = [...findings.filter((f) => !old.has(f)), ...model(drawn)]; }
 }
 console.log(formatReport(findings));
 if (sheet) console.log(`\n成品縮圖：${sheet}`);

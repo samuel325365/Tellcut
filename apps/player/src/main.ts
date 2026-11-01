@@ -7,9 +7,9 @@ import { loadFonts } from './fonts.ts';
 import { drawFrame, settle, settledFrame } from './frame.ts';
 import { mountControls } from './controls.ts';
 import { startEmbed } from './embed.ts';
-import { textBoxes, type Rect } from './layout.ts';
+import { layoutBoxes, type TextBox } from './layout.ts';
 
-declare global { interface Window { __tellcut: { ready: Promise<void>; fps: number; duration: number; loudness: number; frame(n: number): Promise<void>; wav(): Promise<string>; layout(): Promise<Array<{ id: string; rects: Rect[] }>> } } }
+declare global { interface Window { __tellcut: { ready: Promise<void>; fps: number; duration: number; loudness: number; frame(n: number): Promise<void>; wav(): Promise<string>; layout(): Promise<TextBox[]> } } }
 
 const q = new URLSearchParams(location.search);
 const RENDER = q.get('mode') === 'render';
@@ -34,7 +34,8 @@ async function init() {
   const stageEl = document.getElementById('stage')!;
   // three.js only for a project that uses it: the chunk is not downloaded otherwise
   const three = usesThree(project, registry) ? await loadThreeKit() : undefined;
-  const stage = new Stage(stageEl, registry, pool, { strict: RENDER, subpixelZoom: !RENDER, three });
+  // measure: items' ctx.reportText boxes are kept in render mode, where check reads them through layout()
+  const stage = new Stage(stageEl, registry, pool, { strict: RENDER, subpixelZoom: !RENDER, three, measure: RENDER });
   stage.load(project);
   const audio = new AudioEngine(planAudio(project, stage.times, resolver, projectUrl), registry.sfx, project.meta.mix, project.meta.duration);
   await loadFonts(document, location.href);
@@ -49,7 +50,7 @@ async function init() {
   const frame = (t: number) => drawFrame(stage, pool, at(t));
   await frame(0);
   if (!RENDER) mountControls({ stage: stageEl, draw, late, pool, audio, duration: project.meta.duration });
-  return { project, pool, audio, frame };
+  return { project, pool, audio, frame, stage };
 }
 
 if (EMBED) {
@@ -66,7 +67,7 @@ if (EMBED) {
     async frame(n) { const { project, frame } = await boot; await settledFrame(() => frame(n / project.meta.fps), () => settle(document, raf), document.fonts); },
     async wav() { return (await boot).audio.renderWav(); },
     // the words on screen after the last frame(), for npm run check
-    async layout() { const { project } = await boot; return textBoxes(document.getElementById('stage')!, project.meta.width); },
+    async layout() { const { project, stage } = await boot; return layoutBoxes(document.getElementById('stage')!, project.meta.width, stage.textReports()); },
   };
   // the message can quote project.json strings: text, never markup
   boot.catch((e) => {

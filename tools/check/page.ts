@@ -11,17 +11,21 @@ import { burnedChecks } from './burned.ts';
 import { leakFindings, leakProbes, leakUnchecked, type LeakProbe } from './leak.ts';
 import { strayFindings, strayTimes, videoOnly } from './stray.ts';
 import type { Burned } from '@tellcut/media-node';
-import { audioChecks, captionSizeChecks, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes, type TextBox } from './visual.ts';
+import { audioChecks, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes, type TextBox } from './visual.ts';
 
-export async function renderedChecks(o: { dir: string; project: Project; registry: Registry; /** footage captions per source (toolkit phase 2d) */ burned?: Record<string, Burned | null>; /** per source, for the bleep-leak check (phase 5) */ transcripts?: Record<string, Transcript | null>; /** the OCR to read frames with (a test gives a stand-in) */ ocr?: OcrProvider; /** Simplified → Traditional for what OCR read (a test gives a stand-in) */ traditional?: (texts: string[]) => Promise<string[]>; sheet?: boolean; log?: (s: string) => void }): Promise<{ findings: Finding[]; sheet?: string }> {
+/** what the measured frames showed of the items' words (visual.ts drawnText), for the model layer's pacing rules */
+export type Drawn = ReturnType<typeof drawnText>;
+
+export async function renderedChecks(o: { dir: string; project: Project; registry: Registry; /** footage captions per source (toolkit phase 2d) */ burned?: Record<string, Burned | null>; /** per source, for the bleep-leak check (phase 5) */ transcripts?: Record<string, Transcript | null>; /** the OCR to read frames with (a test gives a stand-in) */ ocr?: OcrProvider; /** Simplified → Traditional for what OCR read (a test gives a stand-in) */ traditional?: (texts: string[]) => Promise<string[]>; sheet?: boolean; log?: (s: string) => void }): Promise<{ findings: Finding[]; sheet?: string; drawn: Drawn }> {
   const p = o.project, times = resolveTimes(p), log = o.log ?? (() => {});
-  const result = await withProjectPage(o, async (s): Promise<{ findings: Finding[]; sheet?: string }> => {
+  const result = await withProjectPage(o, async (s): Promise<{ findings: Finding[]; sheet?: string; drawn: Drawn }> => {
     const samples: Array<{ t: number; boxes: TextBox[] }> = [], findings0: Finding[] = [];
     const at = sampleTimes(p, times), falling = fallingIds(p);
     log(`量文字位置：${at.length} 個時間點`);
     for (const t of at) {
       await s.frame(Math.round(t * s.fps));
-      samples.push({ t, boxes: (await s.layout()).filter((b) => !falling.has(b.id)) });
+      // DOM text, and the words items reported drawing on a canvas (ctx.reportText), marked canvas
+      samples.push({ t, boxes: ((await s.layout()) as TextBox[]).filter((b) => !falling.has(b.id)) });
     }
     // toolkit phase 2a: a project-local effect must draw the same picture every time it is drawn at the same time
     // Drawn once at a and b first (a photo or font still loading), then a, b, a, compared as pictures, not bytes: Chrome scales a big
@@ -46,9 +50,10 @@ export async function renderedChecks(o: { dir: string; project: Project; registr
     log('混音');
     const wav = readWav(await s.wav());
     const captions = new Set(p.tracks.flatMap((t) => (t.items as Array<{ id: string; type?: string }>).filter((i) => /^(core|common)\.caption$/.test(i.type ?? '')).map((i) => i.id)));
-    const findings = [...findings0, ...layoutChecks(samples, { W: p.meta.width, H: p.meta.height, spans: times, settled: settledWindows(p, times) }), ...captionSizeChecks(samples, { W: p.meta.width, H: p.meta.height, captions }), ...burnedChecks(p, o.burned ?? {}, samples), ...audioChecks(wav.data, wav.sampleRate)];
+    const findings = [...findings0, ...layoutChecks(samples, { W: p.meta.width, H: p.meta.height, spans: times, settled: settledWindows(p, times) }), ...captionSizeChecks(samples, { W: p.meta.width, H: p.meta.height, captions }), ...canvasSizeChecks(samples, { W: p.meta.width, H: p.meta.height }), ...burnedChecks(p, o.burned ?? {}, samples), ...audioChecks(wav.data, wav.sampleRate)];
     // an old sheet left from an earlier --sheet run reads as this film (a review mistook one for the current cut): gone
-    if (!o.sheet) { rmSync(join(o.dir, 'cache', 'check', 'sheet.jpg'), { force: true }); return { findings }; }
+    const drawn = drawnText(samples);
+    if (!o.sheet) { rmSync(join(o.dir, 'cache', 'check', 'sheet.jpg'), { force: true }); return { findings, drawn }; }
     const tmp = mkdtempSync(join(tmpdir(), 'check-sheet-')), cells: Array<{ img: string; label: string }> = [];
     try {
       for (const [i, t] of sheetTimes(p, times).entries()) {
@@ -61,7 +66,7 @@ export async function renderedChecks(o: { dir: string; project: Project; registr
       mkdirSync(join(o.dir, 'cache', 'check'), { recursive: true });
       rmSync(out, { force: true });
       await photoSheet(out, cells, undefined, { cols: 4, cellW: 320 });
-      return { findings, sheet: out };
+      return { findings, sheet: out, drawn };
     } finally { rmSync(tmp, { recursive: true, force: true }); }
   });
   // the footage's own text in the picture, read with the video tracks alone (stray.ts): a second page, after the first
