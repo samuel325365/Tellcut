@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeProjects, startApp } from '../test-utils.ts';
 import { ChatRunner, chatEnv, claudeArgs, composePrompt, touchedProjects, turnCost } from './runner.ts';
@@ -17,6 +17,23 @@ import { ProjectStore } from '../projects.ts';
 const FAKE = `node "${fileURLToPath(new URL('./fake-claude.mjs', import.meta.url))}"`;
 async function lines(res: Response): Promise<any[]> { return (await res.text()).trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); }
 const post = (b: unknown) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+
+// One server for the file, with the fake claude and a presets folder of its own (opening and closing thousands of servers sets off
+// Node 24's native fail-fast on Windows now and then, CLAUDE.md "Test temp folders"). The chat keeps its threads in the projects
+// folder, so before each test that folder starts over with only demo, and the presets with only "a"; the fake claude reads
+// FAKE_CLAUDE_* at each turn, so a test sets them as before. Every test lets its turns end.
+let ROOT = '', BASE = '', APP: Awaited<ReturnType<typeof startApp>>['app'];
+const PRESETS = presetDirs();
+beforeAll(async () => {
+  ROOT = mkdtempSync(join(tmpdir(), 'srv-'));
+  ({ app: APP, base: BASE } = await startApp({ projectsDir: ROOT, claude: FAKE, presetDirs: PRESETS }));
+});
+afterAll(() => APP.close());
+beforeEach(() => {
+  for (const x of readdirSync(ROOT)) { APP.store.forget(x); rmSync(join(ROOT, x), { recursive: true, force: true, maxRetries: 5 }); }
+  makeProjects(ROOT);
+  presetDirs(dirname(PRESETS.repo));
+});
 
 test('every project file the chat may write is one its system prompt names (else the chat believes it is refused)', () => {
   const prompt = readFileSync(join(TELLCUT_ROOT, 'apps/server/chat-prompt.md'), 'utf8');
@@ -64,9 +81,9 @@ test("the chat inherits no Claude Code session: its CLAUDE* variables are droppe
 });
 
 test('a message streams back as chat events, is kept in the thread, and the next one resumes the same conversation', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log');
+  const root = ROOT, log = join(root, 'fake.log');
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     const ev = await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '第一句 "引號" & 100%\n第二行', from: 'editor' })));
     expect(ev.map((e) => e.type)).toEqual(['text', 'text', 'tool', 'done']);
@@ -86,13 +103,13 @@ test('a message streams back as chat events, is kept in the thread, and the next
     // a client that does not say where it is (a script): nothing about the editor (R3-H10)
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '腳本' })));
     expect(JSON.parse(readFileSync(log, 'utf8').trim().split('\n')[2]).stdin).toBe('(Current project: Demo (demo).)\n\n腳本');
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test("the page's language goes to Claude with every message", async () => {
-  const root = makeProjects(), log = join(root, 'fake.log');
+  const root = ROOT, log = join(root, 'fake.log');
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: 'x', from: 'editor', lang: 'en' })));
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: 'y', from: 'editor', lang: 'ja' })));
@@ -104,43 +121,38 @@ test("the page's language goes to Claude with every message", async () => {
     expect(runs[2].stdin).not.toContain('UI language');
     // the thread keeps the last language a message came with (an unknown one changes nothing), for the server's own messages
     expect((await (await fetch(`${base}/api/chat/demo`)).json()).thread.lang).toBe('ja');
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test('one reply at a time; a page that comes back attaches; stop keeps what was said and the next message resumes', async () => {
-  const root = makeProjects();
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
-  try {
-    const first = fetch(`${base}/api/chat/home/messages`, post({ text: '慢慢說' }));
-    await new Promise((r) => setTimeout(r, 400));
-    const busy = await fetch(`${base}/api/chat/home/messages`, post({ text: 'x' }));
-    // the page words it in its own language from the code (the Chinese stays for the command line)
-    expect([busy.status, await busy.json()]).toEqual([409, { error: '還在回覆中', code: 'chat.busy' }]);
-    const att = fetch(`${base}/api/chat/home/stream`);
-    expect((await fetch(`${base}/api/chat/home/stop`, post({}))).status).toBe(200);
-    const a = await lines(await first), b = await lines(await att);
-    expect(a.at(-1)).toMatchObject({ type: 'done', status: 'stopped' });
-    expect(b.at(-1)).toMatchObject({ type: 'done', status: 'stopped' });
-    const t = await (await fetch(`${base}/api/chat/home`)).json();
-    expect(t.thread.messages[1]).toMatchObject({ role: 'assistant', status: 'stopped', text: expect.stringMatching(/^.+$/) });
-    expect(t.thread.messages[1]).not.toHaveProperty('usage');
-    expect((await fetch(`${base}/api/chat/home/messages`, post({ text: '繼續' }))).status).toBe(200);
-  } finally { await app.close(); }
+  const base = BASE;
+  const first = fetch(`${base}/api/chat/home/messages`, post({ text: '慢慢說' }));
+  await new Promise((r) => setTimeout(r, 400));
+  const busy = await fetch(`${base}/api/chat/home/messages`, post({ text: 'x' }));
+  // the page words it in its own language from the code (the Chinese stays for the command line)
+  expect([busy.status, await busy.json()]).toEqual([409, { error: '還在回覆中', code: 'chat.busy' }]);
+  const att = fetch(`${base}/api/chat/home/stream`);
+  expect((await fetch(`${base}/api/chat/home/stop`, post({}))).status).toBe(200);
+  const a = await lines(await first), b = await lines(await att);
+  expect(a.at(-1)).toMatchObject({ type: 'done', status: 'stopped' });
+  expect(b.at(-1)).toMatchObject({ type: 'done', status: 'stopped' });
+  const t = await (await fetch(`${base}/api/chat/home`)).json();
+  expect(t.thread.messages[1]).toMatchObject({ role: 'assistant', status: 'stopped', text: expect.stringMatching(/^.+$/) });
+  expect(t.thread.messages[1]).not.toHaveProperty('usage');
+  const next = await fetch(`${base}/api/chat/home/messages`, post({ text: '繼續' }));
+  expect(next.status).toBe(200); await lines(next);
 });
 
 test('a failing claude ends the turn with its reason; clearing starts a new conversation; unknown projects are refused', async () => {
-  const root = makeProjects();
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
-  try {
-    const ev = await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '壞掉' })));
-    expect(ev.at(-1)).toMatchObject({ type: 'done', status: 'error', error: expect.stringContaining('boom') });
-    const before = (await (await fetch(`${base}/api/chat/demo`)).json()).thread.sessionId;
-    expect((await fetch(`${base}/api/chat/demo`, { method: 'DELETE' })).status).toBe(200);
-    const after = (await (await fetch(`${base}/api/chat/demo`)).json()).thread;
-    expect([after.messages, after.sessionId === before]).toEqual([[], false]);
-    expect((await fetch(`${base}/api/chat/nope/messages`, post({ text: 'x' }))).status).toBe(404);
-    expect((await fetch(`${base}/api/chat/demo/messages`, post({ text: '  ' }))).status).toBe(400);
-  } finally { await app.close(); }
+  const base = BASE;
+  const ev = await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '壞掉' })));
+  expect(ev.at(-1)).toMatchObject({ type: 'done', status: 'error', error: expect.stringContaining('boom') });
+  const before = (await (await fetch(`${base}/api/chat/demo`)).json()).thread.sessionId;
+  expect((await fetch(`${base}/api/chat/demo`, { method: 'DELETE' })).status).toBe(200);
+  const after = (await (await fetch(`${base}/api/chat/demo`)).json()).thread;
+  expect([after.messages, after.sessionId === before]).toEqual([[], false]);
+  expect((await fetch(`${base}/api/chat/nope/messages`, post({ text: 'x' }))).status).toBe(404);
+  expect((await fetch(`${base}/api/chat/demo/messages`, post({ text: '  ' }))).status).toBe(400);
 });
 
 test('a claude that cannot be found tells how to install it', async () => {
@@ -153,10 +165,10 @@ test('a claude that cannot be found tells how to install it', async () => {
 });
 
 test('a first message that failed before claude started leaves the next one starting fresh; a forgotten conversation restarts on its own', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log');
+  const root = ROOT, log = join(root, 'fake.log');
   process.env.FAKE_CLAUDE_LOG = log;
   process.env.CLAUDECODE = '1';
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     const bad = await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '開不了' })));
     expect(bad.at(-1)).toMatchObject({ status: 'error', error: expect.stringContaining('還沒登入') });
@@ -170,31 +182,27 @@ test('a first message that failed before claude started leaves the next one star
     expect(ok.at(-1)).toMatchObject({ status: 'done', text: '收到：第三句' });
     runs = readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     expect([runs[2].argv.includes('--resume'), runs[3].argv.includes('--session-id')]).toEqual([true, true]);
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; delete process.env.CLAUDECODE; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; delete process.env.CLAUDECODE; }
 });
 
 test('a user message left without a reply (the server restarted) reads as interrupted', async () => {
-  const root = makeProjects();
+  const root = ROOT;
   mkdirSync(join(root, 'demo/.history/chat'), { recursive: true });
   writeFileSync(join(root, 'demo/.history/chat/chat.json'), JSON.stringify({ sessionId: '11111111-1111-1111-1111-111111111111', started: true,
     messages: [{ role: 'user', text: '半路', time: 't' }] }));
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
-  try {
-    const t = (await (await fetch(`${base}/api/chat/demo`)).json()).thread;
-    expect(t.messages.map((m: any) => [m.role, m.status ?? null])).toEqual([['user', null], ['assistant', 'interrupted']]);
-  } finally { await app.close(); }
+  const base = BASE;
+  const t = (await (await fetch(`${base}/api/chat/demo`)).json()).thread;
+  expect(t.messages.map((m: any) => [m.role, m.status ?? null])).toEqual([['user', null], ['assistant', 'interrupted']]);
 });
 
 test('the chat keeps its transcript out of the project versions, and a planted session id never reaches the command line', async () => {
-  const root = makeProjects();
+  const root = ROOT;
   mkdirSync(join(root, 'demo/.history/chat'), { recursive: true });
   writeFileSync(join(root, 'demo/.history/chat/chat.json'), JSON.stringify({ sessionId: 'x" & calc & "', started: true, messages: [] }));
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
-  try {
-    expect((await (await fetch(`${base}/api/chat/demo`)).json()).thread.sessionId).toMatch(/^[0-9a-f-]{36}$/);
-    await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: 'x' })));
-    expect(await (await fetch(`${base}/api/projects/demo/history`)).json()).toEqual([]);
-  } finally { await app.close(); }
+  const base = BASE;
+  expect((await (await fetch(`${base}/api/chat/demo`)).json()).thread.sessionId).toMatch(/^[0-9a-f-]{36}$/);
+  await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: 'x' })));
+  expect(await (await fetch(`${base}/api/projects/demo/history`)).json()).toEqual([]);
 });
 
 test('a turn that cannot start (a prompt file gone) ends with the reason; the thread is not left running for good', () => {
@@ -209,24 +217,24 @@ test('a turn that cannot start (a prompt file gone) ends with the reason; the th
 });
 
 test('a transcript that cannot be written ends the turn with the reason instead of wedging the thread', async () => {
-  const root = makeProjects();
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
-  try {
-    const first = fetch(`${base}/api/chat/demo/messages`, post({ text: '慢慢說' }));
-    await new Promise((r) => setTimeout(r, 400));
-    rmSync(join(root, 'demo/.history/chat'), { recursive: true, force: true });
-    writeFileSync(join(root, 'demo/.history/chat'), 'a file where the folder was');
-    const ev = await lines(await first);
-    expect(ev.at(-1)).toMatchObject({ type: 'done', status: 'error', code: 'chat.saveFailed', detail: expect.any(String) });
-    rmSync(join(root, 'demo/.history/chat'), { force: true });
-    expect((await fetch(`${base}/api/chat/demo/messages`, post({ text: '再來' }))).status).toBe(200);
-  } finally { await app.close(); }
+  const root = ROOT;
+  const base = BASE;
+  const first = fetch(`${base}/api/chat/demo/messages`, post({ text: '慢慢說' }));
+  await new Promise((r) => setTimeout(r, 400));
+  rmSync(join(root, 'demo/.history/chat'), { recursive: true, force: true });
+  writeFileSync(join(root, 'demo/.history/chat'), 'a file where the folder was');
+  const ev = await lines(await first);
+  expect(ev.at(-1)).toMatchObject({ type: 'done', status: 'error', code: 'chat.saveFailed', detail: expect.any(String) });
+  rmSync(join(root, 'demo/.history/chat'), { force: true });
+  const again = await fetch(`${base}/api/chat/demo/messages`, post({ text: '再來' }));
+  expect(again.status).toBe(200); await lines(again);
+
 }, 20000);
 
 test('a home reply that made one new project moves the conversation there; the home chat starts over with a note', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log');
+  const root = ROOT, log = join(root, 'fake.log');
   process.env.FAKE_CLAUDE_LOG = log; process.env.FAKE_CLAUDE_PROJECTS = root;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: '想剪一支片' })));
     const ev = await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: '好，建專案 trip' })));
@@ -246,13 +254,13 @@ test('a home reply that made one new project moves the conversation there; the h
     const sid = runs[0].argv[runs[0].argv.indexOf('--session-id') + 1];
     expect(runs[2].argv).toEqual(expect.arrayContaining(['--resume', sid]));
     expect(runs[3].argv).toEqual(expect.arrayContaining(['--session-id', home.sessionId]));
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; delete process.env.FAKE_CLAUDE_PROJECTS; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
 test('a home draft that made two projects moves to the one that was built and names the other; nothing moves onto an existing conversation', async () => {
-  const root = makeProjects();
+  const root = ROOT;
   process.env.FAKE_CLAUDE_PROJECTS = root;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     // a draft of this browser's own (two people starting at once each have one)
     const draft = 'home-abc123xyz';
@@ -269,33 +277,33 @@ test('a home draft that made two projects moves to the one that was built and na
     const had = await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: '建專案 b1' })));
     expect(had.at(-1)).not.toHaveProperty('moved');
     expect((await (await fetch(`${base}/api/chat/home`)).json()).thread.messages).toHaveLength(2);
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_PROJECTS; }
+  } finally { delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
 test("a project another tab's home chat made meanwhile is not taken: only the ones this reply made move it", async () => {
-  const root = makeProjects();
+  const root = ROOT;
   process.env.FAKE_CLAUDE_PROJECTS = root;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     const only = await lines(await fetch(`${base}/api/chat/home-tab1aaaa/messages`, post({ text: '別處建 theirs' })));
     expect(only.at(-1)).not.toHaveProperty('moved');
     const both = await lines(await fetch(`${base}/api/chat/home-tab2bbbb/messages`, post({ text: '別處建 theirs2 建專案 mine' })));
     expect(both.at(-1)).toMatchObject({ moved: 'mine' });
     expect((await (await fetch(`${base}/api/chat/home-tab2bbbb`)).json()).thread.messages[0].text).not.toContain('theirs2');
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_PROJECTS; }
+  } finally { delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
 test('two tabs racing for one id: the reply that lost moves to the project it did make, not the one the other already moved into', async () => {
   // (the brand acceptance films 2 and 3: both tried maitian-bakery, one made maitian-bakery-2, and its conversation stayed on the home page)
-  const root = makeProjects();
+  const root = ROOT;
   process.env.FAKE_CLAUDE_PROJECTS = root;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     const ev = await lines(await fetch(`${base}/api/chat/home-tab3cccc/messages`, post({ text: '搶先 bakery 建專案 bakery-2' })));
     expect(ev.at(-1)).toMatchObject({ moved: 'bakery-2' });
     expect((await (await fetch(`${base}/api/chat/bakery`)).json()).thread.messages[0].text).toBe('別人的');   // the other tab's, untouched
     expect((await (await fetch(`${base}/api/chat/bakery-2`)).json()).thread.messages.length).toBeGreaterThan(1);
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_PROJECTS; }
+  } finally { delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
 test('the projects a turn touched: npm run new, and paths under projects/', () => {
@@ -418,9 +426,9 @@ test('the system prompt is the chat rules and the shared guides in one file name
 });
 
 test('a project a running home turn is making cannot be deleted; another project can', async () => {
-  const root = makeProjects();
+  const root = ROOT;
   process.env.FAKE_CLAUDE_PROJECTS = root;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     const turn = fetch(`${base}/api/chat/home/messages`, post({ text: '建專案 kyoto 慢' })).then(lines).catch(() => []);
     // until the turn has run `npm run new -- kyoto` (its tool shows in the running turn)
@@ -435,12 +443,13 @@ test('a project a running home turn is making cannot be deleted; another project
     expect((await fetch(`${base}/api/projects/demo`, { method: 'DELETE' })).status).toBe(200);
     await fetch(`${base}/api/chat/home/stop`, { method: 'POST' });
     await turn;
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_PROJECTS; }
+  } finally { delete process.env.FAKE_CLAUDE_PROJECTS; }
 }, 20000);
 
-/** a preset folder with one preset, "a" (Travel Highlights, one style "map") */
-function presetDirs() {
-  const root = mkdtempSync(join(tmpdir(), 'presets-')), repo = join(root, 'repo');
+/** a preset folder with one preset, "a" (Travel Highlights, one style "map"): a new one, or `root` laid out again */
+function presetDirs(root = mkdtempSync(join(tmpdir(), 'presets-'))) {
+  const repo = join(root, 'repo');
+  rmSync(repo, { recursive: true, force: true }); rmSync(join(root, 'user'), { recursive: true, force: true });
   mkdirSync(join(repo, 'a'), { recursive: true });
   writeFileSync(join(repo, 'a', 'preset.md'), `---\n${JSON.stringify({ name: { zh: '旅行精華', en: 'Travel Highlights' }, summary: { zh: 's' },
     styles: [{ id: 'map', name: { en: 'Map' }, prompt: 'Map.' }],
@@ -449,9 +458,9 @@ function presetDirs() {
 }
 
 test("a message with a preset sends its block after the project line, and keeps only the user's words", async () => {
-  const root = makeProjects(), log = join(root, 'fake.log'), dirs = presetDirs();
+  const root = ROOT, log = join(root, 'fake.log'), dirs = PRESETS;
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE, presetDirs: dirs });
+  const base = BASE;
   try {
     const block = presetBlock(findPreset(dirs, 'a')!, ['map']);
     await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: '京都', preset: 'a', styles: ['map', 3] })));
@@ -461,13 +470,13 @@ test("a message with a preset sends its block after the project line, and keeps 
     expect(runs[1].stdin).toBe(`(Current project: Demo (demo). The editor is open.)\n\n${presetBlock(findPreset(dirs, 'a')!, [])}\n\n再一支`);
     const home = (await (await fetch(`${base}/api/chat/home`)).json()).thread;
     expect(home.messages[0]).toMatchObject({ role: 'user', text: '京都', preset: { id: 'a', styles: ['map'] } });
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test("a preset's fields go to Claude and stay on the message, filtered", async () => {
-  const root = makeProjects(), log = join(root, 'fake.log'), dirs = presetDirs();
+  const root = ROOT, log = join(root, 'fake.log'), dirs = PRESETS;
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE, presetDirs: dirs });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: 'hi', preset: 'a', fields: { ratio: '9:16', bogus: 'x' } })));
     expect(JSON.parse(readFileSync(log, 'utf8').trim()).stdin).toBe(`${presetBlock(findPreset(dirs, 'a')!, [], { ratio: '9:16' })}\n\nhi`);
@@ -475,50 +484,50 @@ test("a preset's fields go to Claude and stay on the message, filtered", async (
     const home = (await (await fetch(`${base}/api/chat/home`)).json()).thread;
     expect(home.messages[0].preset).toEqual({ id: 'a', styles: [], fields: { ratio: '9:16' } });
     expect(home.messages.filter((m: any) => m.role === 'user')[1].preset).toEqual({ id: 'a', styles: [] });   // nothing set: no fields key
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test("a project made with a preset's form: its chat line carries the options", async () => {
-  const root = makeProjects(), log = join(root, 'fake.log'), dirs = presetDirs();
+  const root = ROOT, log = join(root, 'fake.log'), dirs = PRESETS;
   const pf = join(root, 'demo', 'project.json'), p = JSON.parse(readFileSync(pf, 'utf8'));
   p.meta.preset = { id: 'a', styles: [], fields: { ratio: '9:16' } };
   writeFileSync(pf, JSON.stringify(p));
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE, presetDirs: dirs });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: 'x', from: 'editor' })));
     expect(JSON.parse(readFileSync(log, 'utf8').trim()).stdin).toContain('read it again when needed). Options the user set in the form (what the user says in the message still comes first): Ratio: 9:16 vertical.)');
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test('a preset alone is a message', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log'), dirs = presetDirs();
+  const root = ROOT, log = join(root, 'fake.log'), dirs = PRESETS;
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE, presetDirs: dirs });
+  const base = BASE;
   try {
     const ok = await fetch(`${base}/api/chat/home/messages`, post({ text: '  ', preset: 'a' }));
     expect(ok.status).toBe(200); await lines(ok);
     expect(JSON.parse(readFileSync(log, 'utf8').trim()).stdin).toBe(presetBlock(findPreset(dirs, 'a')!, []));
     expect((await fetch(`${base}/api/chat/home/messages`, post({ text: '' }))).status).toBe(400);
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test('an unknown preset still sends the message and tells Claude it is gone', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log');
+  const root = ROOT, log = join(root, 'fake.log');
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE, presetDirs: presetDirs() });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: 'x', preset: 'nope' })));
     expect(JSON.parse(readFileSync(log, 'utf8').trim()).stdin).toBe(`${missingPresetBlock('nope')}\n\nx`);
     const home = (await (await fetch(`${base}/api/chat/home`)).json()).thread;
     expect(home.messages[0].preset).toBeUndefined();
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test('a home chat that used a preset hands it to the project it makes', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log'), dirs = presetDirs();
+  const root = ROOT, log = join(root, 'fake.log'), dirs = PRESETS;
   process.env.FAKE_CLAUDE_LOG = log; process.env.FAKE_CLAUDE_PROJECTS = root;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE, presetDirs: dirs });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: '想剪', preset: 'a' })));
     await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: '換一個', preset: 'a', styles: ['map'], fields: { ratio: '9:16' } })));
@@ -529,30 +538,30 @@ test('a home chat that used a preset hands it to the project it makes', async ()
     // without a preset: nothing written
     await lines(await fetch(`${base}/api/chat/home/messages`, post({ text: '好，建專案 plain' })));
     expect(JSON.parse(readFileSync(join(root, 'plain', 'project.json'), 'utf8')).meta.preset).toBeUndefined();
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; delete process.env.FAKE_CLAUDE_PROJECTS; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
 test('a project made from a preset says so with every message', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log'), dirs = presetDirs();
+  const root = ROOT, log = join(root, 'fake.log'), dirs = PRESETS;
   process.env.FAKE_CLAUDE_LOG = log;
   const p = JSON.parse(readFileSync(join(root, 'demo', 'project.json'), 'utf8'));
   p.meta.preset = { id: 'a', styles: [] };
   writeFileSync(join(root, 'demo', 'project.json'), JSON.stringify(p));
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE, presetDirs: dirs });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '短一點', from: 'home' })));
     expect(JSON.parse(readFileSync(log, 'utf8').trim()).stdin.split('\n\n')[0]).toContain(` Preset: Travel Highlights (${findPreset(dirs, 'a')!.file}; read it again when needed).)`);
     rmSync(join(dirs.repo, 'a'), { recursive: true });
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '再短', from: 'editor' })));
     expect(JSON.parse(readFileSync(log, 'utf8').trim().split('\n')[1]).stdin).toMatch(/^\(Current project: Demo \(demo\)\. The editor is open\. Preset: a\.\)/);
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test('the sources ticked in the API menu come with each message and are handed to the agent; none ticked is an empty list', async () => {
-  const root = makeProjects(), log = join(root, 'fake.log');
+  const root = ROOT, log = join(root, 'fake.log');
   process.env.FAKE_CLAUDE_LOG = log;
   process.env.FAKE_CLAUDE_PROJECTS = root;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   const runs = () => readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   try {
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '一', from: 'editor' })));
@@ -573,7 +582,7 @@ test('the sources ticked in the API menu come with each message and are handed t
     expect(runs().at(-1).sources).toBe('maps');
     expect(made.at(-1)).toMatchObject({ moved: 't1' });
     expect((await (await fetch(`${base}/api/chat/t1`)).json()).thread.sources).toEqual(['maps']);
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; delete process.env.FAKE_CLAUDE_PROJECTS; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
 test('chatEnv hands the ticked sources over as TELLCUT_SOURCES; without a list it sets none', () => {
@@ -584,9 +593,9 @@ test('chatEnv hands the ticked sources over as TELLCUT_SOURCES; without a list i
 });
 
 test('a thread another server (same projects/) is replying in is busy here too: not resumed a second time, not marked interrupted', async () => {
-  const root = makeProjects();
+  const root = ROOT;
   const other = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)']);
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     // the other server took the thread and saved the user's message; its reply is still running
     const file = join(root, 'demo', '.history', 'chat', 'chat.json');
@@ -606,13 +615,13 @@ test('a thread another server (same projects/) is replying in is busy here too: 
     const del = await fetch(`${base}/api/chat/demo`, { method: 'DELETE' });
     expect([del.status, (await del.json()).code]).toEqual([409, 'chat.busy']);
     expect(JSON.parse(readFileSync(file, 'utf8')).messages).toHaveLength(1);
-  } finally { other.kill(); await app.close(); delete process.env.CLAUDE_CONFIG_DIR; }
+  } finally { other.kill(); delete process.env.CLAUDE_CONFIG_DIR; }
 });
 
 test("a button's task goes to Claude after the project line; the thread keeps only the user's words", async () => {
-  const root = makeProjects(), log = join(root, 'fake.log');
+  const root = ROOT, log = join(root, 'fake.log');
   process.env.FAKE_CLAUDE_LOG = log;
-  const { app, base } = await startApp({ projectsDir: root, claude: FAKE });
+  const base = BASE;
   try {
     await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '存成我的片型', from: 'editor', task: { kind: 'preset-draft' } })));
     const stdin = JSON.parse(readFileSync(log, 'utf8').trim()).stdin;
@@ -620,7 +629,7 @@ test("a button's task goes to Claude after the project line; the thread keeps on
     const t = (await (await fetch(`${base}/api/chat/demo`)).json()).thread;
     expect(t.messages[0].text).toBe('存成我的片型');
     expect(JSON.stringify(t)).not.toContain('<task');
-  } finally { await app.close(); delete process.env.FAKE_CLAUDE_LOG; }
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test('the chat may write a preset draft and edit the entries of the user’s library', () => {

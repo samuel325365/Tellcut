@@ -20,10 +20,11 @@ export function demoProject(over: Record<string, unknown> = {}): any {
   };
 }
 
-/** A projects dir holding a valid `demo` project (fresh temp dir unless `root` is given). */
-export function makeProjects(root = mkdtempSync(join(tmpdir(), 'srv-'))): string {
-  mkdirSync(join(root, 'demo'), { recursive: true });
-  writeFileSync(join(root, 'demo', 'project.json'), JSON.stringify(demoProject(), null, 2));
+/** A projects dir holding a valid `demo` project (fresh temp dir unless `root` is given; `id` names the project instead: a test
+ *  file that shares one server gives each test a project of its own). */
+export function makeProjects(root = mkdtempSync(join(tmpdir(), 'srv-')), id = 'demo'): string {
+  mkdirSync(join(root, id), { recursive: true });
+  writeFileSync(join(root, id, 'project.json'), JSON.stringify(demoProject(), null, 2));
   return root;
 }
 

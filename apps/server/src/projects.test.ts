@@ -1,21 +1,33 @@
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { request } from 'node:http';
 import { demoProject, makeProjects, startApp } from './test-utils.ts';
 
-let root: string, base: string, close: () => Promise<void>, store: Awaited<ReturnType<typeof startApp>>['app']['store'];
-beforeEach(async () => {
-  root = makeProjects();
+// One server for the file (opening and closing thousands of servers sets off Node 24's native fail-fast on Windows now and then,
+// CLAUDE.md "Test temp folders"). The tests read the whole projects folder (the list), so it is laid out afresh before each one:
+// the jobs a test started are finished first, and the store forgets what it read.
+let root: string, base: string, dist: string, app: Awaited<ReturnType<typeof startApp>>['app'], store: typeof app.store;
+beforeAll(async () => {
+  root = mkdtempSync(join(tmpdir(), 'srv-'));
+  // the editor and player pages, outside the projects folder
+  dist = mkdtempSync(join(tmpdir(), 'dist-'));
+  writeFileSync(join(dist, 'index.html'), '<!doctype html>');
+  const s = await startApp({ projectsDir: root, editorDist: dist, playerDist: dist });
+  base = s.base; app = s.app; store = s.app.store;
+});
+afterAll(async () => { await app.close(); rmSync(dist, { recursive: true, force: true }); });
+beforeEach(() => {
+  for (const x of readdirSync(root)) { store.forget(x); rmSync(join(root, x), { recursive: true, force: true }); }
+  makeProjects(root);
   mkdirSync(join(root, '_hidden'), { recursive: true });
   writeFileSync(join(root, '_hidden', 'project.json'), JSON.stringify(demoProject()));
   mkdirSync(join(root, 'broken'), { recursive: true });
   writeFileSync(join(root, 'broken', 'project.json'), JSON.stringify({ version: 1 }));
   mkdirSync(join(root, 'empty'), { recursive: true });
   writeFileSync(join(root, 'secret.txt'), 'top secret');
-  const s = await startApp({ projectsDir: root });
-  base = s.base; close = () => s.app.close(); store = s.app.store;
 });
-afterEach(() => close());
+afterEach(async () => { app.queue.cancelAll(); await Promise.all(app.queue.list().map((j) => app.queue.wait(j.id))); });
 
 const put = (id: string, body: unknown) => fetch(`${base}/api/projects/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -99,18 +111,12 @@ test('requests for other host names or from other sites are refused (DNS rebindi
 });
 
 test('the editor and the player pages run scripts only from this server and cannot be framed by another site', async () => {
-  const dist = join(root, '_dist');
-  mkdirSync(dist, { recursive: true });
-  writeFileSync(join(dist, 'index.html'), '<!doctype html>');
-  const s = await startApp({ projectsDir: root, editorDist: dist, playerDist: dist });
-  try {
-    for (const page of ['/editor/', '/player/']) {
-      const r = await fetch(`${s.base}${page}`);
-      expect(r.status).toBe(200);
-      expect(r.headers.get('content-security-policy')).toMatch(/script-src 'self'.*frame-ancestors 'self'/);
-      expect(r.headers.get('content-security-policy')).not.toContain('unsafe-inline');   // no inline script runs, even one slipped in
-    }
-  } finally { await s.app.close(); }
+  for (const page of ['/editor/', '/player/']) {
+    const r = await fetch(`${base}${page}`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-security-policy')).toMatch(/script-src 'self'.*frame-ancestors 'self'/);
+    expect(r.headers.get('content-security-policy')).not.toContain('unsafe-inline');   // no inline script runs, even one slipped in
+  }
 });
 
 test('a PUT made from an older version (If-Match) answers 409 and changes nothing; a PUT without one still writes', async () => {
@@ -181,6 +187,7 @@ test('GET sends the version its ETag names: a save landing while it reads cannot
   const file = join(root, 'demo', 'project.json'), old = readFileSync(file, 'utf8'), was = store.version.bind(store);
   // another writer (Claude's CLI, a second server) saves right after the version is read
   store.version = (id: string) => { const v = was(id); writeFileSync(file, JSON.stringify(demoProject({ meta: { ...demoProject().meta, name: 'Meanwhile' } }))); return v; };
+  onTestFinished(() => { delete (store as { version?: unknown }).version; });   // the class's own again
   const r = await fetch(`${base}/api/projects/demo`), body = await r.json(), tag = r.headers.get('etag')!.replace(/"/g, '');
   expect(tag).toBe(projectHash(body.meta.name === 'Meanwhile' ? readFileSync(file, 'utf8') : old));
 });
