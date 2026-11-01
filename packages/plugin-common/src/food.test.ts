@@ -1,7 +1,7 @@
 // The blocks promoted from the food-receipt and food-deep shorts (2026-10-19): the receipt printer kit and the queue-number board kit.
 import { defaultSafe } from '@tellcut/engine';
 import { marqueeX, typedChars, dotmatrix } from './dotmatrix.ts';
-import { digits, digitsAt, parseSteps } from './digits.ts';
+import { digits, digitsAt, hasCjk, parseSteps, vfdMatrix } from './digits.ts';
 import { fedAt, printer, printerAdds, printerLines, stair, stampSpot, totalNumber, userLine } from './printer.ts';
 import { doorAt, rolldoor } from './rolldoor.ts';
 import { callout, calloutLabel } from './callout.ts';
@@ -46,6 +46,16 @@ test('digits: steps add up (+n), show text as is (02, --), count up over 0.55 s,
   const d = parseSteps(def(digits, 'steps'));
   expect(digitsAt(d, 2.9, 5, ' ').text).toBe('  195');
   expect(def(digits, 'totalAt')).toBeLessThan(3);
+});
+
+test('vfd small words: CJK gets a finer matrix of the same size (數 is mush at 13 dots), Latin keeps its grid exactly', () => {
+  expect(['道數', '+0 試吃', 'たべた', '합계', '（', 'ＮＴ'].every(hasCjk)).toBe(true);
+  expect(['TOTAL', '+40', 'NT$ 1,200', 'é'].some(hasCjk)).toBe(false);
+  expect(vfdMatrix('+40', 12, 3.2, 2.6)).toEqual({ px: 12, pitch: 3.2, dot: 2.6 });
+  const m = vfdMatrix('道數', 13, 3.1, 2.5);
+  expect(m.px).toBe(20);
+  expect(m.px * m.pitch).toBeCloseTo(13 * 3.1);   // the same height on the glass
+  expect(m.dot / m.pitch).toBeCloseTo(2.5 / 3.1);
 });
 
 test('printer: lines laid out down the paper, the motor feeds in steps, amounts become subtotal steps', () => {

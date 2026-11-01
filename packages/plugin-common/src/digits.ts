@@ -46,6 +46,24 @@ export function digitsAt(steps: Step[], local: number, digits: number, pad: stri
   return { text, last, since: last ? local - last.t : 0 };
 }
 
+/** Chinese, Japanese or Korean (and their full-width punctuation) in a VFD's small words */
+export const hasCjk = (text: string) => /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/.test(text);
+
+/** The matrix of a VFD's small words: `px` font pixels (one per dot), `pitch` px a dot, dots `dot` px. A many-stroke character
+ *  (數, 餐) is mush at 13 dots, so words with CJK in them get a finer matrix, as a graphic VFD module has: about 1.5 times the
+ *  dots at 0.65 times the pitch, the same size as before (a board has no room for wider words). Latin keeps the grid it always had. */
+export function vfdMatrix(text: string, px: number, pitch: number, dot: number): { px: number; pitch: number; dot: number } {
+  if (!hasCjk(text)) return { px, pitch, dot };
+  const fine = Math.round(px * 20 / 13), p = pitch * px / fine;
+  return { px: fine, pitch: p, dot: dot * p / pitch };
+}
+
+/** small words drawn as dots at (x, middle of the glass − its own half height + `dy`), the matrix chosen by vfdMatrix */
+function vfdWords(v: CanvasRenderingContext2D, text: string, x: number, dh: number, dy: number, k: number, px: number, pitch: number, dot: number, color: string) {
+  const m = vfdMatrix(text, px, pitch * k, dot * k), D = dots(text, m.px);
+  drawDots(v, D, x, (dh - D.h * m.pitch) / 2 + dy, m.pitch, m.dot, color);
+}
+
 export interface VfdOpts { steps: Step[]; local: number; n: number; text: string | null; prefix: string; label: string; totalLabel: string; totalAt: number; on: string; flash: string }
 
 /** a VFD till display with its bezel at (x, y), dw × dh px (78 units tall), `off` a scratch canvas for the glow; the words it shows */
@@ -58,7 +76,7 @@ export function paintVfd(g: CanvasRenderingContext2D, off: HTMLCanvasElement, x:
   if (off.width !== Math.ceil(dw) || off.height !== Math.ceil(dh)) { off.width = Math.ceil(dw); off.height = Math.ceil(dh); }
   v.clearRect(0, 0, off.width, off.height);
   const lab = total ? o.totalLabel : o.label;
-  if (lab) { const L = dots(lab, 13); drawDots(v, L, 22 * k, (dh - L.h * 3.1 * k) / 2 + 2 * k, 3.1 * k, 2.5 * k, o.on); }
+  if (lab) vfdWords(v, lab, 22 * k, dh, 2 * k, k, 13, 3.1, 2.5, o.on);
   const pre = o.prefix, body = o.text === null ? (Math.floor(local / 0.4) % 2 ? '-'.repeat(Math.min(4, n)).padStart(n, ' ') : ' '.repeat(n)) : o.text.slice(-n).padStart(n, ' ');
   const blinkOff = total && local - o.totalAt < 1.2 && Math.floor((local - o.totalAt) / 0.2) % 2 === 1;
   vfdText(v, pre + body, dw - 22 * k, (dh - 49 * k) / 2, 7 * k, 5.2 * k, blinkOff ? withAlpha(o.on, 0.25) : o.on, 'rgba(40,130,105,0.13)');
@@ -67,9 +85,9 @@ export function paintVfd(g: CanvasRenderingContext2D, off: HTMLCanvasElement, x:
   let flash = '';
   if (last) {
     flash = last.label || last.v;
-    const D = dots(flash, 12), q = (local - last.t) / 1.1, a = q < 0.15 ? q / 0.15 : q > 0.75 ? (1 - q) / 0.25 : 1, r = clamp(q * 3);
+    const q = (local - last.t) / 1.1, a = q < 0.15 ? q / 0.15 : q > 0.75 ? (1 - q) / 0.25 : 1, r = clamp(q * 3);
     v.globalAlpha = clamp(a);
-    drawDots(v, D, 168 * k * (dw / dh / (720 / 78)), (dh - D.h * 3.2 * k) / 2 + 2 * k - 6 * k * r * (2 - r), 3.2 * k, 2.6 * k, o.flash);
+    vfdWords(v, flash, 168 * k * (dw / dh / (720 / 78)), dh, 2 * k - 6 * k * r * (2 - r), k, 12, 3.2, 2.6, o.flash);
     v.globalAlpha = 1;
   }
   g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.7; g.filter = `blur(${6 * k}px)`; g.drawImage(off, x, y); g.restore();
