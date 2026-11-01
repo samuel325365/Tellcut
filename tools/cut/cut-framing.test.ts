@@ -54,6 +54,20 @@ test('avoidBurned crops a clip so the footage\'s own caption stays out of the fr
   expect(crop(d).from.zoom).toBe(1);
 });
 
+test('avoidBurned zooms no further than the footage\'s resolution allows: past that the crop stays and a note says why', () => {
+  const caption = { version: 1 as const, step: 1, frames: 10, caption: { share: 0.5, rect: [0.08, 0.75, 0.84, 0.2] as [number, number, number, number], spans: [[0, 10]] as Array<[number, number]> } };
+  const hd = fresh();
+  hd.inv.sources[0].burned = caption;
+  const a = hd.clip('v', { from: 1, len: 1, avoidBurned: true });
+  expect(items(hd, 'v1').find((i) => i.id === a).crop.from.zoom).toBeCloseTo(1.36, 2);         // 1080p in a 1080p film: up to 1.6×
+  const sd = fresh();
+  sd.inv.sources[0].burned = caption;
+  sd.p.sources.v.width = 1280; sd.p.sources.v.height = 720;
+  const b = sd.clip('v', { from: 1, len: 1, avoidBurned: true });
+  expect(items(sd, 'v1').find((i) => i.id === b).crop).toEqual({ from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } });
+  expect(sd.notes.join('\n')).toMatch(/要放大超過 1\.25 倍.*1280×720/);
+});
+
 test('a background block given to c.effect goes under the video, not on the text track', () => {
   const c = fresh();
   c.clip('v', { from: 0, len: 4 });

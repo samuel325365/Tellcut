@@ -155,7 +155,7 @@ export function burnedDetail(c: BurnedCaption): string[] {
   const shown = c.spans.slice(0, MAX_SPANS).map(([a, b]) => `${timecode1(a)}–${timecode1(b)}`).join('、');
   return [
     `燒進畫面的字幕：畫面下方 ${pct(c.rect[1])}–${pct(c.rect[1] + c.rect[3])}% 高度，約 ${pct(c.share)}% 的時間有（${c.spans.length} 段）：`, `  ${shown}${c.spans.length > MAX_SPANS ? `（還有 ${c.spans.length - MAX_SPANS} 段）` : ''}`,
-    '  我們自己的字幕會疊在它上面；要消音的字它也寫出來了。避開：放大裁掉下緣（c.clip 加 avoidBurned: true）、字幕改放畫面上方、或換沒有字的鏡頭。',
+    '  我們自己的字幕會疊在它上面；要消音的字它也寫出來了。避開：放大裁掉下緣（c.clip 加 avoidBurned: true；放大有上限，看素材解析度，也不會裁掉人臉，做不到時照原樣並提醒）、字幕改放畫面上方、或換沒有字的鏡頭。',
   ];
 }
 

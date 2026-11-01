@@ -1,16 +1,21 @@
-// The face side of Cut.save() (toolkit phase 5): clips without a crop of their own focus on the faces in them, and stickers
-// asked to follow a mouth or a face get their transform keys.
+// The face side of Cut.save() (toolkit phase 5): clips without a crop of their own focus on the faces in them, clips avoidBurned
+// cropped keep the faces in them in frame, and stickers asked to follow a mouth or a face get their transform keys.
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createRegistry, r6, resolveTimes, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
+import { createRegistry, r6, resolveTimes, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
 import { FACE_STEP, faceKey, facesAt, type FacesProvider } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { onFilm, pickFace, smooth, stickerKeys, trackFace, type Who } from './follow.ts';
+import { avoidBurnedMove, spreadMove } from './avoid.ts';
+import type { Rect } from './view.ts';
 
 /** what the face passes work on: the project, its folder, the detector (undefined: tellcut/providers.json's) and Cut's notes */
 export interface FaceCtx { p: Project; dir: string; provider?: FacesProvider; notes: string[] }
 /** a sticker asked to follow a mouth or a face (Cut.effect({ follow })) */
 export interface FollowReq { id: string; follow: 'mouth' | 'face'; who: Who; clip?: string }
+
+/** a clip avoidBurned cropped (Cut.clip): its pieces (tighten's), the stretch of the source, the crop asked for, the geometry */
+export interface BurnedAsk { ids: string[]; source: string; from: number; to: number; want: { from: Crop; to: Crop }; geo: Parameters<typeof avoidBurnedMove>[0] }
 
 /** Faces at source times; a detector that fails is a note, not a failed cut. */
 async function faces(x: FaceCtx, path: string, times: number[], what: string) {
@@ -48,6 +53,41 @@ export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
     const v = Math.round(vs[Math.floor(vs.length / 2)] * 1000) / 1000;
     for (const c of all) c.crop = { ...c.crop, from: { ...c.crop.from, [axis]: v }, to: { ...c.crop.to, [axis]: v } };
     x.notes.push(`${it.source}（${id}）自動對焦到人臉（${axis}=${v}）`);
+  }
+}
+
+/**
+ * Clips avoidBurned cropped, worked out again around the faces in them (the largest at a quarter, half and three quarters of the
+ * stretch): the crop that clears the caption must go on showing whatever of them the asked-for crop showed, the focus moving
+ * sideways onto them if need be. A clip waiting for the face focus (no crop of its own, another shape than its frame) is looked at
+ * where the faces are first, as that focus would, and leaves the focus pass. When the caption cannot be cleared without cutting
+ * a face, the clip keeps the crop asked for and a note says so (check then reports the caption). No faces: the crop stays.
+ */
+export async function resolveBurnedFaces(x: FaceCtx, asks: BurnedAsk[], autoFocus: string[][]) {
+  const v1 = (x.p.tracks.find((t) => t.id === 'v1')?.items ?? []) as VideoItem[];
+  for (const a of asks) {
+    const all = a.ids.map((id) => v1.find((i) => i.id === id)).filter((c): c is VideoItem => !!c);
+    if (!all.length) continue;   // removed again
+    const src = sourceOf(x, a.source), id = a.ids.join('、');
+    if (!existsSync(src.path)) continue;   // footage not on this PC
+    const found = await faces(x, src.path, [0.25, 0.5, 0.75].map((f) => a.from + f * (a.to - a.from)), id);
+    const boxes = [...(found?.values() ?? [])].filter((fs) => fs.length).map((fs) => pickFace(fs, 'largest').box);
+    if (!boxes.length) continue;
+    const subject: Rect = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[0] + b[2])), Math.max(...boxes.map((b) => b[1] + b[3]))];
+    let want = a.want;
+    const g = a.geo, frameAr = g.frameW / g.frameH, fi = autoFocus.findIndex((ids) => ids.includes(a.ids[0]));
+    if (fi >= 0 && Math.abs(g.srcW / g.srcH - frameAr) / frameAr >= 0.1) {
+      const axis = g.srcW / g.srcH > frameAr ? 'x' : 'y', k = axis === 'x' ? 0 : 1, v = Math.round(((subject[k] + subject[k + 2]) / 2) * 1000) / 1000;
+      if (want.from[axis] === 0.5 && want.to[axis] === 0.5) want = { from: { ...want.from, [axis]: v }, to: { ...want.to, [axis]: v } };
+      autoFocus.splice(fi, 1);
+    }
+    const r = avoidBurnedMove(g, want, subject), move = r.why ? want : { from: r.from, to: r.to };
+    const crops = all.length > 1 ? spreadMove(move, all.map((c) => c.end - c.start)) : [move];
+    const before = JSON.stringify(all.map((c) => [c.crop.from, c.crop.to]));
+    all.forEach((c, i) => { c.crop = { ...c.crop, ...crops[i] }; });
+    if (r.why) x.notes.push(`avoidBurned：${a.source}（${id}）裁掉燒進去的字幕會切到畫面裡的人臉，照原本的裁切；字幕改放畫面上方或換鏡頭`);
+    else if (JSON.stringify(all.map((c) => [c.crop.from, c.crop.to])) !== before)
+      x.notes.push(`avoidBurned：${a.source}（${id}）裁掉燒進去的字幕時保住人臉（x=${r6(move.from.x)}、y=${r6(move.from.y)}、放大 ${r6(move.from.zoom)} 倍）`);
   }
 }
 

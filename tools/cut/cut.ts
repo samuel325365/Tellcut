@@ -8,7 +8,7 @@ import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, 
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
-import { avoidCaptionCrop, BURNED_PAD, captionClear } from './avoid.ts';
+import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
 import { viewCrop, viewRect, viewHits, type Rect } from './view.ts';
 import type { Who } from './follow.ts';
 import { parseContent, RECIPES } from './recipes/index.ts';
@@ -16,7 +16,7 @@ import { inventory, type Inventory } from './inventory.ts';
 import { captionPlan, filmOf, linePlan, secs, wordSpans, type CaptionOptions, type Line, type SpeechPiece, type SrcTime } from './speech.ts';
 import { tightenClip } from './tighten.ts';
 import { addDucking, addScore, clipSpeech, QUIET_DB, type ScoreRequest } from './mix.ts';
-import { resolveAutoFocus, resolveFollows, type FollowReq } from './focus.ts';
+import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, type FollowReq } from './focus.ts';
 
 type Transition = { type: 'dissolve' | 'slide'; dur: number; dir?: 'l' | 'r' | 'u' | 'd' };
 type Frame = [number, number, number, number];
@@ -99,6 +99,8 @@ export class Cut {
   private follows: FollowReq[] = [];
   /** clips without a crop of their own: their focus goes to the faces in them at save() */
   private autoFocus: string[][] = [];
+  /** clips avoidBurned cropped: at save() the crop is worked out again so the faces in them stay in frame */
+  private burnedAsks: BurnedAsk[] = [];
   /** clip(…, { duck }) by clip id (the pieces tighten() makes of one get its value): true, false or the dB its speech ducks to */
   private duckOf = new Map<string, boolean | number>();
   /** what save() did on its own (auto-focus, stickers following faces): tools/cut.ts prints it */
@@ -139,18 +141,23 @@ export class Cut {
   at(t: number) { this.cursor = r6(Math.max(0, t)); return this; }
   private bump(t: number) { this.end = Math.max(this.end, r6(t)); }
   private src(id: string) { const s = this.p.sources[id]; if (!s) throw new Error(`No source "${id}"`); return s; }
-  /** The crop that keeps the footage's own burned-in caption out of the frame, when this stretch of the source has one in view (toolkit phase 2d). */
-  private avoidBurned(source: string, from: number, to: number, crop: { from: Crop; to: Crop }): { from: Crop; to: Crop } {
+  /**
+   * The crop that keeps the footage's own burned-in caption out of the frame, when this stretch of the source has one in view (toolkit
+   * phase 2d): zoomed no further than the footage's resolution allows (burnedZoomCap), else the crop stays as asked and a note says
+   * so (check reports the caption then). `ask`: what save() needs to work it out again around the faces in the clip.
+   */
+  private avoidBurned(source: string, from: number, to: number, crop: { from: Crop; to: Crop }, frame?: Frame): { crop: { from: Crop; to: Crop }; ask?: Omit<BurnedAsk, 'ids'> } {
     const cap = this.inv.sources.find((x) => x.id === source)?.burned?.caption, src = this.p.sources[source];
-    if (!cap || !src || !cap.spans.some(([a, b]) => a - BURNED_PAD < to && b + BURNED_PAD > from)) return crop;
-    const [, , fw, fh] = this.layout?.frame ?? [0, 0, 1, 1], o = { srcW: src.width, srcH: src.height, frameW: fw * this.p.meta.width, frameH: fh * this.p.meta.height, captionTop: cap.rect[1] };
-    const fix = (c: Crop): Crop => {
-      if (captionClear(o, c)) return c;
-      const r = avoidCaptionCrop({ ...o, want: c });
-      if (!r) console.error(`avoidBurned: ${source} ${from.toFixed(1)}–${to.toFixed(1)} s：放大到 2.2 倍也避不開燒進去的字幕，沒有改裁切`);
-      return r ?? c;
-    };
-    return { ...crop, from: fix(crop.from), to: fix(crop.to) };
+    if (!cap || !src || !cap.spans.some(([a, b]) => a - BURNED_PAD < to && b + BURNED_PAD > from)) return { crop };
+    const [, , fw, fh] = frame ?? this.layout?.frame ?? [0, 0, 1, 1], frameW = fw * this.p.meta.width, frameH = fh * this.p.meta.height;
+    const geo = { srcW: src.width, srcH: src.height, frameW, frameH, captionTop: cap.rect[1], maxZoom: burnedZoomCap(src.width, src.height, frameW, frameH) };
+    const r = avoidBurnedMove(geo, crop);
+    if (r.why) {
+      this.notes.push(`avoidBurned：${source} ${from.toFixed(1)}–${to.toFixed(1)} 秒要放大超過 ${geo.maxZoom} 倍才避得開燒進去的字幕（素材 ${src.width}×${src.height}，再放大會糊），沒有改裁切；字幕改放畫面上方或換鏡頭`);
+      return { crop };
+    }
+    const { why: _, ...move } = r;
+    return { crop: move, ...(JSON.stringify(move) !== JSON.stringify(crop) ? { ask: { source, from, to, want: crop, geo } } : {}) };
   }
   private frameFields(frame?: Frame) { return frame ? { frame } : this.layout ? { frame: this.layout.frame, radius: this.layout.radius } : {}; }
   /** a transition overlaps the previous clip by its own length: it stays linked to the overlap */
@@ -173,10 +180,12 @@ export class Cut {
     const speed = o.speed ?? 1, from = secs(o.from ?? 0, `c.clip('${source}') 的 from`), len = r6(Math.min(o.len, (s.duration - from) / speed));
     if (!(len > 0)) throw new Error(`A clip of "${source}" from ${from} s has no length`);
     const start = this.startFor(o.transition);
-    const crop = o.avoidBurned ? this.avoidBurned(source, from, from + len * speed, crop0 ?? { from: STILL, to: STILL }) : (crop0 ?? { from: STILL, to: STILL });
+    const avoided = o.avoidBurned ? this.avoidBurned(source, from, from + len * speed, crop0 ?? { from: STILL, to: STILL }, o.frame) : undefined;
+    const crop = avoided?.crop ?? crop0 ?? { from: STILL, to: STILL };
     const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame), ...(o.transition ? { transitionIn: o.transition } : {}) } });
     // no crop asked for and the picture does not fit the frame's shape: at save() its focus goes to the faces in it (phase 5)
     if (!crop0) this.autoFocus.push([id]);
+    if (avoided?.ask) this.burnedAsks.push({ ids: [id], ...avoided.ask });
     if (o.duck !== undefined) this.duckOf.set(id, o.duck);
     if ((o.sound ?? true) && s.audio !== false) {
       const edge = r6(Math.min(0.1, len / 4));
@@ -197,6 +206,7 @@ export class Cut {
   tighten(clipId: string, o: { maxGap?: number; keep?: number } = {}): string[] {
     const r = tightenClip(this.p, clipId, (s) => this.transcriptOf(s), o, this.autoFocus);
     if (r.note) this.notes.push(r.note);
+    for (const a of this.burnedAsks) if (a.ids.includes(clipId)) a.ids = r.ids;
     const duck = this.duckOf.get(clipId);
     if (duck !== undefined) for (const id of r.ids) this.duckOf.set(id, duck);
     if (!r.cut) return r.ids;
@@ -723,6 +733,7 @@ export class Cut {
   async save(): Promise<Project> {
     const duration = r6(Math.max(this.end, 0.5));
     this.p.meta.duration = duration;
+    await resolveBurnedFaces(this.faceCtx(), this.burnedAsks, this.autoFocus);   // before the focus: it may take a clip's focus over
     await resolveAutoFocus(this.faceCtx(), this.autoFocus);   // the crops first: a sticker follows a face through the final crop, a blur backdrop copies it
     this.addLayout(duration);
     await resolveFollows(this.faceCtx(), this.follows);

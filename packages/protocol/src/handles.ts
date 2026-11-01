@@ -23,7 +23,7 @@ export const CORE_CATEGORY: Record<string, BlockCategory> = { 'core.title': 'tex
 export const CLIP_FX = [
   { key: 'clip.shake', label: '鏡頭晃動', code: 'c.shake(1.2, { dur: 0.4, px: 24 })', doc: '那個時間正在播的片段畫面抖一下再慢慢停：爆字、撞擊、笑點。hook 配方的開場要晃，就在 hook 加 shake: true。' },
   { key: 'clip.follow', label: '貼圖跟著嘴（或臉）', code: "c.effect('common.emoji', { at, len, char: '🤐', follow: 'mouth' })", doc: '任何貼圖都能貼在片段裡那個人的嘴或臉上並跟著動；好幾個人時加 who: left／right／largest／center。消音：censorSpeech(…, { follow: true })。' },
-  { key: 'clip.avoidBurned', label: '避開原片字幕', code: "c.clip(src, { from, len, avoidBurned: true })", doc: '原片燒進去的字幕（分析時偵測到的）落在這段時，自動放大裁切把字幕推出畫面；放大到 2.2 倍也避不開就照原樣並提醒。' },
+  { key: 'clip.avoidBurned', label: '避開原片字幕', code: "c.clip(src, { from, len, avoidBurned: true })", doc: '原片燒進去的字幕（分析時偵測到的）落在這段時，自動放大裁切把字幕推出畫面，畫面裡的人臉留在畫面內；放大的上限看素材解析度（再放大會糊），避不開或會裁到人臉就照原樣並提醒。' },
 ] as const;
 export type ClipFx = typeof CLIP_FX[number];
 

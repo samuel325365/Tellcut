@@ -106,6 +106,50 @@ test('a portrait clip in a landscape film is focused up or down onto the face, n
   expect(c.notes.some((n) => n.includes('自動對焦到人臉（y='))).toBe(true);
 }, 60000);
 
+/** a 16:9 film of a 16:9 source with a burned caption row from 0.86 down */
+async function burnedCut(faces: (img: string) => FaceInfo[]) {
+  const dir = mkdtempSync(join(tmpdir(), 'follow-'));
+  await run(['-f', 'lavfi', '-i', 'color=gray:s=320x180:d=6:r=10', join(dir, 'v.mp4')]);
+  const p = parseProject({ version: 1, meta: { name: 't', width: 1920, height: 1080, fps: 30, duration: 10, plugins: [], mix: MIX },
+    sources: { v: { path: 'v.mp4', duration: 6, width: 1920, height: 1080, kind: 'video', audio: false } }, media: {}, grids: [], tracks: [] });
+  const inv: Inventory = { id: 't', dir, project: p, chapters: [], photoSheets: [], overview: [], music: [],
+    sources: [{ id: 'v', kind: 'video', duration: 6, width: 1920, height: 1080, orientation: 'landscape', audio: false, speech: '', sheets: [], segments: [[0, 6]], transcript: null,
+      burned: { version: 1, step: 1, frames: 6, caption: { share: 1, rect: [0.08, 0.86, 0.84, 0.1], spans: [[0, 6]] } } }] };
+  const c = new Cut(structuredClone(p), inv, dir);
+  c.facesProvider = fakeFaces(faces);
+  return c;
+}
+
+test('avoidBurned keeps the face in frame: the crop that clears the caption looks at it instead of the middle', async () => {
+  const c = await burnedCut(() => [{ box: [0.03, 0.55, 0.1, 0.2], mouth: [0.08, 0.7], mouthW: 0.03 }]);   // low on the left
+  const id = c.clip('v', { from: 1, len: 4, avoidBurned: true });
+  const early = (c.p.tracks.find((t) => t.id === 'v1')!.items[0] as any).crop.from;
+  expect([early.x, early.zoom > 1]).toEqual([0.5, true]);                                       // clip() alone zooms about the middle
+  const v = (await c.save()).tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as any;
+  expect(v.crop.from.zoom).toBe(early.zoom);
+  expect(v.crop.from.x).toBeLessThan(0.2);
+  expect(c.notes.some((n) => n.includes('裁掉燒進去的字幕時保住人臉'))).toBe(true);
+}, 60000);
+
+test('avoidBurned gives up on a clip whose face runs into the rows it would crop, and says so', async () => {
+  const c = await burnedCut(() => [{ box: [0.4, 0.6, 0.15, 0.255], mouth: [0.47, 0.8], mouthW: 0.04 }]);
+  const id = c.clip('v', { from: 1, len: 4, avoidBurned: true });
+  const v = (await c.save()).tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as any;
+  expect(v.crop).toMatchObject({ from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } });
+  expect(c.notes.some((n) => n.includes('會切到畫面裡的人臉，照原本的裁切'))).toBe(true);
+}, 60000);
+
+test('a landscape clip in a portrait film that avoidBurned zooms is looked at where the face is, once', async () => {
+  const c = await portraitCut();
+  c.facesProvider = fakeFaces(() => [face(0.3)]);
+  c.inv.sources[0].burned = { version: 1, step: 1, frames: 6, caption: { share: 1, rect: [0.08, 0.86, 0.84, 0.1], spans: [[0, 6]] } };
+  const id = c.clip('v', { from: 1, len: 4, avoidBurned: true });
+  const v = (await c.save()).tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as any;
+  expect([v.crop.from.x, v.crop.from.zoom > 1, v.crop.from.y < 0.5]).toEqual([0.3, true, true]);
+  expect(c.notes.some((n) => n.includes('自動對焦到人臉'))).toBe(false);                   // taken over, not done twice
+  expect(c.notes.some((n) => n.includes('裁掉燒進去的字幕時保住人臉（x=0.3'))).toBe(true);
+}, 60000);
+
 test('on a 16:9 film a sticker that follows the mouth is scaled from its size on the short side', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'follow-'));
   await run(['-f', 'lavfi', '-i', 'color=gray:s=320x180:d=6:r=10', join(dir, 'v.mp4')]);
