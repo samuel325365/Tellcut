@@ -34,6 +34,12 @@ test('font3d downloads the TTF the css2 API names, once, into every folder', asy
   expect(calls).toHaveLength(n);
 });
 
+test('font3d ja downloads Noto Sans JP 900, the Japanese TTF', async () => {
+  const { fetch, calls } = fakeFetch({ status: 200, body: TTF(6) });
+  expect(await ensureFont3d('ja', { dirs: [d1], fetch })).toEqual({ file: 'NotoSansJP-900.ttf', downloaded: true });
+  expect(calls.find((c) => c.url.includes('/css2'))!.url).toContain('family=Noto+Sans+JP:wght@900');
+});
+
 test('a folder that lacks the file gets a copy without another download', async () => {
   const { fetch, calls } = fakeFetch({ status: 200, body: TTF(4, 5) });
   await ensureFont3d('round', { dirs: [d1], fetch });

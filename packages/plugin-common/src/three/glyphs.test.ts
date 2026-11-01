@@ -127,3 +127,16 @@ test.skipIf(!existsSync(TTF))("M's contour crosses itself under the notch: what 
   expect(filled / real).toBeCloseTo(1, 2);
   expect(tris.some((t) => inTri(t, mx, mb.max.y * 0.92))).toBe(false);
 });
+
+// the Japanese TTF (font3d ja): only where it has been downloaded
+const JA = join(process.cwd(), 'apps/player/public/fonts/files/NotoSansJP-900.ttf');
+test.skipIf(!existsSync(JA))('Noto Sans JP 900: kana, kanji and full-width marks come out as letters three fills exactly', () => {
+  const b = readFileSync(JA), g = glyphsFrom(opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)), THREE, ClipperLib);
+  for (const ch of ['あ', 'ア', '写', '真', '「', '。']) {
+    expect(g.has(ch), ch).toBe(true);
+    const s = g.shapes(ch, 1.2), filled = triangles(s).reduce((a, t) => a + triArea(t), 0);
+    const real = s.reduce((a, x) => a + Math.abs(THREE.ShapeUtils.area(x.getPoints())) - x.holes.reduce((c, h) => c + Math.abs(THREE.ShapeUtils.area(h.getPoints())), 0), 0);
+    expect(real, ch).toBeGreaterThan(0);
+    expect(filled / real, ch).toBeCloseTo(1, 2);
+  }
+});

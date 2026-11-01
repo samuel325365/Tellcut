@@ -4,7 +4,7 @@
 //   npm run tellcut -- frames <id> [--proposal] [--full] --at 1.5,3   (stills 960 on the long side unless --full)
 //   npm run tellcut -- logo <id> <file>   (the brand logo into media/brand/: extrudable or not, its colours, how to use it)
 //   npm run tellcut -- image <id> <file> [--id <name>]   (a picture the project made, or any picture, registered as a photo source for c.photo)
-//   npm run tellcut -- font3d <sans|serif|round>   (the Chinese TTF for 3D type, downloaded when first needed: word3d's cjk)
+//   npm run tellcut -- font3d <sans|serif|round|ja>   (the Chinese TTF for 3D type, or ja the Japanese one, downloaded when first needed: word3d's cjk / ja)
 //   npm run tellcut -- site <id> <url>   (a company's website into media/brand/: its first screen, colours and fonts)
 //   npm run tellcut -- request <id> [--id <request id>] [--frames [--full]]   (the editor's "Ask Agent…")
 //   npm run tellcut -- catalog [type | handle | --find <words>]   (every block that can go in a project; one type's params; a search)
@@ -191,17 +191,19 @@ async function main(argv: string[]) {
   if (cmd === 'recipe') { console.log(describeRecipe(id)); return; }
   if (cmd === 'cut-api') { console.log(formatCutApi()); return; }
   if (cmd === 'font3d') {
-    if (!id) throw new Usage('用法：npm run tellcut -- font3d <sans|serif|round>（黑體、明體、圓體，跟著品牌的字感）');
+    if (!id) throw new Usage('用法：npm run tellcut -- font3d <sans|serif|round|ja>（黑體、明體、圓體，跟著品牌的字感；ja 是日文的黑體）');
     const pub = join(TELLCUT_ROOT, 'apps/player/public/fonts/files'), dist = join(TELLCUT_ROOT, 'apps/player/dist');
     const { file, downloaded } = await ensureFont3d(id as Feel, { dirs: existsSync(dist) ? [pub, join(dist, 'fonts/files')] : [pub], log: console.log });
     console.log(`${file}${downloaded ? '' : '（已經有了）'}`);
     // sans pairs with Inter's Latin letters; serif and round keep their own TTF's, so a name mixing scripts stays one face
-    console.log(id === 'sans'
+    console.log(id === 'ja'
+      ? `日文立體字：build() 裡 s.ja = ctx.three.japanese(名稱, ctx)（有假名，或專案的字是日文）；ready() 裡 kit.word3d(名稱, { glyphs, cjk, ja: s.ja ? await kit.japaneseGlyphs() : null })：假名、漢字、全形標點用日文字形`
+      : id === 'sans'
       ? `中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { glyphs: await kit.loadFont('Inter-700.ttf'), cjk })`
       : `中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { cjk })（不給 glyphs：拉丁字也用這個字型自己的，和中文同一種字感）`);
     return;
   }
-  const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|image|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>、library …';
+  const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|image|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round|ja>、library …';
   if (!cmd) throw new Usage(usage);
   const dir = projectArg(id, usage);
   const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };

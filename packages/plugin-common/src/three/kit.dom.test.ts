@@ -10,6 +10,17 @@ test('a missing 3D font says which command fetches it (a new machine, an importe
   await expect(k.loadFont('NotoSerifTC-900.ttf')).rejects.toThrow(/fonts\/files\/NotoSerifTC-900\.ttf.*npm run tellcut -- font3d serif/);
   await expect(k.loadFont('Huninn-400.ttf')).rejects.toThrow(/npm run tellcut -- font3d round/);
   await expect(k.loadFont('Inter-700.ttf')).rejects.toThrow(/npm run fonts/);
+  await expect(k.loadFont('NotoSansJP-900.ttf')).rejects.toThrow(/npm run tellcut -- font3d ja/);
+});
+
+test('japaneseGlyphs: the Japanese TTF, or null with the font3d hint when it is not on this PC (the word falls back)', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+  const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const k = makeKit(THREE, {} as any, { makeRenderer: () => null });
+  await expect(k.japaneseGlyphs()).resolves.toBeNull();
+  expect(String(err.mock.calls[0]?.[0])).toMatch(/NotoSansJP-900\.ttf.*font3d ja/);
+  expect(k.japanese('ありがとう')).toBe(true);
+  expect(k.japanese('剪輯')).toBe(false);
 });
 
 test('a video texture goes through a 2D canvas: update() copies the current picture, then uploads it', () => {

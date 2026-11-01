@@ -1,16 +1,19 @@
-// The Chinese TTF 3D type is extruded from (word3d's cjk), downloaded the first time a project needs it:
-//   npm run tellcut -- font3d <sans|serif|round>
-// A Chinese font is 5-10 MB, so it is not among npm run fonts. Google's css2 API names a whole .ttf to a client that is not a
+// The Chinese TTF 3D type is extruded from (word3d's cjk), or the Japanese one (word3d's ja), downloaded the first time a project
+// needs it:
+//   npm run tellcut -- font3d <sans|serif|round|ja>
+// A CJK font is 5-10 MB, so it is not among npm run fonts. Google's css2 API names a whole .ttf to a client that is not a
 // browser (a browser gets woff2 in unicode-range slices), so the request carries no browser User-Agent.
 import { randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CJK_3D } from '@tellcut/plugin-common';
+import { CJK_3D, JA_3D } from '@tellcut/plugin-common';
 import { Usage } from './usage.ts';
 
-export type Feel = keyof typeof CJK_3D;
-/** each feel's Google family and weight */
-const FAMILY: Record<Feel, [string, number]> = { sans: ['Noto Sans TC', 900], serif: ['Noto Serif TC', 900], round: ['Huninn', 400] };
+/** a type feel's Chinese TTF, or ja: the Japanese one (a sans, for every feel) */
+export type Feel = keyof typeof CJK_3D | 'ja';
+const FILE: Record<Feel, string> = { ...CJK_3D, ja: JA_3D };
+/** each one's Google family and weight */
+const FAMILY: Record<Feel, [string, number]> = { sans: ['Noto Sans TC', 900], serif: ['Noto Serif TC', 900], round: ['Huninn', 400], ja: ['Noto Sans JP', 900] };
 
 /** A TrueType font starts with sfnt version 1.0 or 'true'. Anything else is refused: a CFF font ('OTTO') has cubic outlines
  *  word3d does not take, and a woff or an error page the CDN answered with is no font at all. */
@@ -24,12 +27,12 @@ function atomically(path: string, write: (tmp: string) => void) {
   try { write(tmp); renameSync(tmp, path); } catch (e) { rmSync(tmp, { force: true }); throw e; }
 }
 
-/** The feel's TTF in every folder of `dirs` (the player's fonts/files, and dist's when built); a folder that already has it is
+/** The feel's (or ja's) TTF in every folder of `dirs` (the player's fonts/files, and dist's when built); a folder that already has it is
  *  left alone, and a copy is made from one that does rather than downloading again. A failed download leaves no file behind;
  *  `timeoutMs` (3 minutes) bounds the whole download, so a stalled connection fails instead of hanging the agent's command. */
 export async function ensureFont3d(feel: Feel, o: { dirs: string[]; fetch?: typeof fetch; log?: (s: string) => void; timeoutMs?: number }): Promise<{ file: string; downloaded: boolean }> {
-  if (!Object.hasOwn(FAMILY, feel)) throw new Usage(`沒有「${feel}」這種字感：sans（黑體）、serif（明體）、round（圓體）`);
-  const file = CJK_3D[feel], [family, weight] = FAMILY[feel], get = o.fetch ?? fetch;
+  if (!Object.hasOwn(FAMILY, feel)) throw new Usage(`沒有「${feel}」這種字感：sans（黑體）、serif（明體）、round（圓體），或 ja（日文）`);
+  const file = FILE[feel], [family, weight] = FAMILY[feel], get = o.fetch ?? fetch;
   const have = o.dirs.find((d) => existsSync(join(d, file)));
   let downloaded = false;
   if (!have) {

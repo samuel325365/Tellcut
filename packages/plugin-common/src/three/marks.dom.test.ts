@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import { makeKit } from './kit.ts';
-import { edgeColour } from './marks.ts';
+import { edgeColour, letterFont } from './marks.ts';
 import { dogSvg } from '../dachshund.ts';
 
 const kit = () => makeKit(THREE, { RoundedBoxGeometry, SVGLoader } as any, { makeRenderer: () => null });
@@ -178,6 +178,25 @@ test('serif or round type: with no Latin font, the Latin letters come from the C
   const v = kit().word3d('Gé', { glyphs: FONT, cjk: full, em: 1 });
   expect(asked).toEqual(['é']);
   expect(v.letters.map((l) => l.w)).toEqual([0.55, 1]);
+});
+
+test('letterFont: Latin from the Latin font, then the Chinese, then the Japanese one; the rest from the Japanese, then the Chinese', () => {
+  const font = (name: string, re: RegExp) => ({ name, has: (c: string) => re.test(c) });
+  const glyphs = font('inter', /^[A-Za-z]$/), cjk = font('tc', /[\p{Script=Han}A-Za-zé\u3040-\u30ff]/u), ja = font('jp', /[\p{Script=Han}\u3040-\u30ff、。「」A-Za-zé]/u);
+  const at = (ch: string, f: { glyphs?: typeof glyphs; cjk?: typeof cjk; ja?: typeof ja }) => letterFont(ch, f)?.name ?? 'slab';
+  expect(['G', 'é', '写', 'あ', '「', '★'].map((c) => at(c, { glyphs, cjk, ja }))).toEqual(['inter', 'tc', 'jp', 'jp', 'jp', 'slab']);
+  expect(['G', '写', 'あ', '「'].map((c) => at(c, { glyphs, cjk }))).toEqual(['inter', 'tc', 'tc', 'slab']);   // no Japanese font: the Chinese one's forms
+  expect(['G', '写'].map((c) => at(c, { ja }))).toEqual(['jp', 'jp']);                                    // the Japanese TTF alone: one face
+  expect(at('写', {})).toBe('slab');
+});
+
+test('word3d: a Japanese word takes its kana, kanji and full-width marks from ja, its Latin letters from glyphs', () => {
+  const asked = { latin: [] as string[], cjk: [] as string[], ja: [] as string[] };
+  const spy = (into: string[], f: typeof CJK) => ({ ...f, shapes: (c: string, em: number) => { into.push(c); return f.shapes(c, em); } });
+  const jaFont = { ...CJK, has: (c: string) => /[\p{Script=Han}\u3040-\u30ff「」]/u.test(c) };
+  const w = kit().word3d('Go「写真」です', { glyphs: spy(asked.latin, FONT as any), cjk: spy(asked.cjk, CJK), ja: spy(asked.ja, jaFont), em: 1 });
+  expect(asked).toEqual({ latin: ['G', 'o'], cjk: [], ja: ['「', '写', '真', '」', 'で', 'す'] });
+  expect(w.letters.every((l) => meshes(l.g).length === 1)).toBe(true);
 });
 
 test('svgMark: the Tellcut dachshund extrudes with its ten sprocket holes as holes in the body', () => {

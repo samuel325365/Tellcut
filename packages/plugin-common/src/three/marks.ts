@@ -2,8 +2,9 @@
 // logo with these now): an SVG of filled shapes extruded in its own colours, any other picture as a plate (12 cut-out layers when
 // it has a see-through background, a rounded slab with the picture on its face when not), and a word whose Latin letters are
 // extruded from a TTF (kit.loadFont; or from the Chinese TTF's own, for serif and round type), whose Chinese is extruded from a
-// Chinese TTF (tellcut font3d) and whose other characters (Japanese) are thick cut slabs. Each is built once in ready(), posed in draw(), freed with its own dispose(). Like parts.ts,
-// only types come from three here: the module is passed in.
+// Chinese TTF and a Japanese word's kana and kanji from a Japanese one (both fetched by tellcut font3d), and whose other characters
+// are thick cut slabs. Each is built once in ready(), posed in draw(), freed with its own dispose(). Like parts.ts, only types come
+// from three here: the module is passed in.
 import type * as T from 'three';
 import type { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import type { Glyphs } from './glyphs.ts';
@@ -160,13 +161,19 @@ export interface WordOptions {
    *  Latin ones `glyphs` does not give (all of them without it: serif and round type keep their own Latin letters, so the word is
    *  one face); a character neither has is a cut slab */
   cjk?: Glyphs | null;
+  /** the Japanese TTF's characters (await kit.japaneseGlyphs(), the `tellcut font3d ja` file JA_3D), for a Japanese word only
+   *  (kit.japanese(text, ctx)): every character that is not Latin (kana, kanji, full-width marks) is extruded from it, so kanji
+   *  take their Japanese forms (a Chinese font draws 直, 写, 骨 its own way); `cjk` then gives only what it lacks, and Latin letters
+   *  still come from `glyphs` or `cjk` first */
+  ja?: Glyphs | null;
   /** the em in scene units (1.2: Inter's capitals stand about 0.86), the letters' depth (0.14) */
   em?: number; depth?: number;
   /** each letter's colour (#e9ecf1); `colorAt(k)` per character index (k counts spaces too) wins over it */
   color?: T.ColorRepresentation; colorAt?: (k: number) => T.ColorRepresentation;
   /** the gap added between letters, in scene units (-0.012); a space's width (0.3) */
   track?: number; space?: number;
-  /** the canvas font of the cut slabs (900 "Noto Sans TC": load it in ready() with document.fonts.load first) */
+  /** the canvas font of the cut slabs (900 "Noto Sans TC", "Noto Sans JP" first with `ja`: load it in ready() with
+   *  document.fonts.load first) */
   font?: string;
 }
 export interface Letter {
@@ -190,23 +197,33 @@ export interface Word {
 /** a Latin character a TTF can draw (Latin-1 and Latin Extended) */
 const LATIN = /^[!-ɏ]$/;
 
-/** A word in 3D: Latin letters extruded from `glyphs` (else from `cjk`'s own Latin letters), Chinese from `cjk`, every other
- *  character (Japanese, a letter the fonts lack) a thick cut slab: 6 layers of a canvas drawing, about a capital's size. */
+/** The font a character of a word is extruded from: a Latin one from `glyphs`, else `cjk`, else `ja`; any other from `ja` (a
+ *  Japanese word's), else `cjk`; null when none has it (a cut slab). */
+export function letterFont<G extends Pick<Glyphs, 'has'>>(ch: string, f: { glyphs?: G | null; cjk?: G | null; ja?: G | null }): G | null {
+  const order = LATIN.test(ch) ? [f.glyphs, f.cjk, f.ja] : [f.ja, f.cjk];
+  return order.find((g) => g?.has(ch)) ?? null;
+}
+
+/** A word in 3D: Latin letters extruded from `glyphs` (else from `cjk`'s own Latin letters), Chinese from `cjk`, a Japanese word's
+ *  kana and kanji from `ja`, every other character (a letter the fonts lack) a thick cut slab: 6 layers of a canvas drawing, about
+ *  a capital's size. */
 export function word3d(THREE: Three, text: string, o: WordOptions = {}): Word {
-  const em = o.em ?? 1.2, depth = o.depth ?? 0.14, track = o.track ?? -0.012, space = o.space ?? 0.3, glyphs = o.glyphs ?? null, cjk = o.cjk ?? null;
+  const em = o.em ?? 1.2, depth = o.depth ?? 0.14, track = o.track ?? -0.012, space = o.space ?? 0.3;
+  const fonts = { glyphs: o.glyphs ?? null, cjk: o.cjk ?? null, ja: o.ja ?? null };
+  const slabFont = o.font ?? `900 220px ${o.ja ? '"Noto Sans JP", ' : ''}"Noto Sans TC", sans-serif`;
   const cut = em * 0.77, parts: Array<{ dispose(): void }> = [], group = new THREE.Group(), letters: Letter[] = [];
   let x = 0;
   for (const [k, ch] of [...text].entries()) {
     if (ch === ' ') { x += space; continue; }
     const colour = o.colorAt?.(k) ?? o.color ?? 0xe9ecf1, g = new THREE.Group();
-    const from = LATIN.test(ch) && glyphs?.has(ch) ? glyphs : cjk?.has(ch) ? cjk : null;
+    const from = letterFont(ch, fonts);
     const shapes = from ? from.shapes(ch, em) : [];
     let w: number;
     if (shapes.length && from) {
       extrude(THREE, shapes, colour, depth, g, parts);
       w = from.advance(ch, em);
     } else {
-      cutSlab(THREE, ch, colour, cut, depth, o.font ?? '900 220px "Noto Sans TC", sans-serif', g, parts);
+      cutSlab(THREE, ch, colour, cut, depth, slabFont, g, parts);
       // the slab sits where a capital would: from a little under the baseline to about cap height
       for (const m of g.children) m.position.set(cut / 2, em * 0.258, m.position.z);
       w = cut;

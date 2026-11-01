@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { chart, chartPlan, type ChartP } from './chart/index.ts';
 import { resolveTheme } from '@tellcut/engine';
 import { pollOf } from './story.ts';
-import { ordinal, projectLang, textLang, wordsLang } from './words.ts';
+import { isJapanese, ordinal, projectLang, textLang, wordsLang } from './words.ts';
 
 test('the language of a text: kana make it Japanese, CJK characters Chinese, Latin letters English; no letters, none', () => {
   expect(textLang('一天裡的心情排行', 'Kahneman 等，2004')).toBe('zh');
@@ -24,6 +24,19 @@ test('the project\'s language: the words its items were given, not ids, fonts or
   expect(wordsLang(['', '2024'], { project: project({ text: 'Two days in Rome' }), types })).toBe('en');
   expect(wordsLang(['羅馬'], { project: project({ text: 'Two days in Rome' }), types })).toBe('zh');   // the block's own words first
   expect(wordsLang([])).toBe('zh');
+});
+
+test('a word for Japanese 3D type: its own kana, or kanji in a project whose words are Japanese', () => {
+  const types = (t: string): any => (t === 'common.caption' ? { params: [{ key: 'text', type: 'string', default: '字幕' }] } : undefined);
+  const project = (text: string): any => ({ tracks: [{ items: [{ type: 'common.caption', params: { text } }] }] });
+  expect(isJapanese('ありがとう')).toBe(true);
+  expect(isJapanese('写真のまち')).toBe(true);
+  expect(isJapanese('東京')).toBe(false);                                            // kanji alone: Chinese unless the film is Japanese
+  expect(isJapanese('東京', { project: project('もう一度行きたい'), types })).toBe(true);
+  expect(isJapanese('東京', { project: project('再去一次'), types })).toBe(false);
+  expect(isJapanese('台北の夜市', { project: project('夜市好好吃'), types })).toBe(false);   // a lone の in a Chinese film
+  expect(isJapanese('台北の夜市', { project: project('もう一度行きたい'), types })).toBe(true);
+  expect(isJapanese('Tellcut', { project: project('もう一度行きたい'), types })).toBe(false);  // no CJK: no Japanese font needed
 });
 
 test('ordinals', () => {

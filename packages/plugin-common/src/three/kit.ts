@@ -17,6 +17,7 @@ import { glyphsFrom, type Glyphs } from './glyphs.ts';
 import { dust, floor, glassBar, videoSlab, type Dust, type DustOptions, type Floor, type FloorOptions, type GlassBar, type GlassBarOptions, type Slab, type SlabOptions } from './parts.ts';
 import { loadMark, pictureMark, svgMark, word3d, type LoadMarkOptions, type Mark, type MarkOptions, type PictureMarkOptions, type Word, type WordOptions } from './marks.ts';
 import { coverUv } from './uv.ts';
+import { isJapanese } from '../words.ts';
 
 type Three = typeof import('three');
 export interface ThreeAddons {
@@ -34,10 +35,13 @@ export const INTER_3D = 'Inter-700.ttf';
 /** the Chinese TTFs 3D type is extruded from, one per type feel (word3d's cjk): fonts/files/, downloaded when a project needs one
  *  by `npm run tellcut -- font3d <feel>` (5-10 MB each, so not in npm run fonts): kit.loadFont(CJK_3D.sans) */
 export const CJK_3D = { sans: 'NotoSansTC-900.ttf', serif: 'NotoSerifTC-900.ttf', round: 'Huninn-400.ttf' } as const;
+/** the Japanese TTF (word3d's ja; Noto Sans JP 900, the weight of CJK_3D.sans): a Japanese word's kana and kanji in Japanese glyph
+ *  forms. Downloaded like CJK_3D, by `npm run tellcut -- font3d ja`; there is one, a sans, for every type feel */
+export const JA_3D = 'NotoSansJP-900.ttf';
 
 /** what fetches a 3D font this PC lacks (a new machine, or a project made on another one): said with loadFont's 404 */
 function missingFontHint(file: string): string {
-  const feel = Object.entries(CJK_3D).find(([, f]) => f === file)?.[0];
+  const feel = file === JA_3D ? 'ja' : Object.entries(CJK_3D).find(([, f]) => f === file)?.[0];
   if (feel) return `: not on this PC yet, run \`npm run tellcut -- font3d ${feel}\` in tellcut/`;
   return file === INTER_3D ? ': not on this PC yet, run `npm run fonts` in tellcut/' : '';
 }
@@ -86,8 +90,15 @@ export interface ThreeKit {
    *  its face and sides in its edge colour */
   pictureMark(img: HTMLImageElement | HTMLCanvasElement, o?: PictureMarkOptions): Mark;
   /** a word in 3D: Latin letters from o.glyphs (await loadFont(INTER_3D); left out, from o.cjk's own), Chinese from o.cjk (loadFont of
-   *  a font3d file, CJK_3D), other characters (Japanese) as thick cut slabs; each letter posed and faded on its own (letters[k].g, setOpacity) */
+   *  a font3d file, CJK_3D), a Japanese word's kana, kanji and full-width marks from o.ja (japaneseGlyphs()), a character no font
+   *  has as a thick cut slab; each letter posed and faded on its own (letters[k].g, setOpacity) */
   word3d(text: string, o?: WordOptions): Word;
+  /** whether `text` is Japanese, so its 3D letters need o.ja: kana in it, or kanji in a project whose words are Japanese (pass the
+   *  item's ctx, in build()) */
+  japanese(text: string, ctx?: { project?: unknown; types?: unknown }): boolean;
+  /** the Japanese TTF (JA_3D) as letter shapes for word3d's ja (call it in ready()); null when it is not on this PC yet, with the
+   *  `font3d ja` hint on the console: the word then falls back to o.cjk's forms (Chinese ones), and cut slabs without it */
+  japaneseGlyphs(): Promise<Glyphs | null>;
 }
 
 /** a glow pass chain for one size: strength set before each render */
@@ -133,7 +144,7 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
     } else if (lost) { retryAt = now() + RETRY_MS; return null; }
     return (shared = r);
   };
-  return {
+  const kit: ThreeKit = {
     THREE, addons, coverUv,
     videoSlab: (so) => videoSlab(THREE, addons.RoundedBoxGeometry, coverUv, so),
     glassBar: (go) => glassBar(THREE, go),
@@ -143,6 +154,10 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
     svgMark: (svg, mo) => svgMark(THREE, addons.SVGLoader, svg, mo),
     pictureMark: (img, mo) => pictureMark(THREE, addons.RoundedBoxGeometry, img, mo),
     word3d: (text, wo) => word3d(THREE, text, wo),
+    japanese: (text, ctx) => isJapanese(text, ctx as Parameters<typeof isJapanese>[1]),
+    japaneseGlyphs() {
+      return kit.loadFont(JA_3D).catch((e: Error) => { console.error(`3D Japanese letters take the Chinese font's forms (or are cut slabs): ${e.message}`); return null; });
+    },
     render(scene, camera, w, h, ro = {}) {
       const r = renderer();
       if (!r) return null;
@@ -231,4 +246,5 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
       return env;
     },
   };
+  return kit;
 }

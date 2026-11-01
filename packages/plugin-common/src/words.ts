@@ -53,6 +53,14 @@ export function projectLang(project: Pick<Project, 'tracks'> | undefined, types?
 export const wordsLang = (texts: unknown[], ctx?: { project?: Pick<Project, 'tracks'>; types?: (type: string) => ItemType | undefined }): WordsLang =>
   textLang(...texts) ?? projectLang(ctx?.project, ctx?.types) ?? 'zh';
 
+/** A word to set in Japanese glyph forms (3D type, word3d's ja): its own kana say so (as textLang counts them); a word of kanji
+ *  alone (東京, 写真) or a lone の in a Chinese name is Japanese only when the project's words are. */
+export function isJapanese(text: string, ctx?: { project?: Pick<Project, 'tracks'>; types?: (type: string) => ItemType | undefined }): boolean {
+  const own = textLang(text);
+  if (own === 'ja') return true;
+  return count(text, HAN) + count(text, KANA) > 0 && projectLang(ctx?.project, ctx?.types) === 'ja';
+}
+
 /** "12th", "21st", "113th" */
 export const ordinal = (n: number) => {
   const a = Math.abs(n) % 100, b = Math.abs(n) % 10;
