@@ -104,6 +104,33 @@ test('the sounds from the baking shorts: in range, the same every time, and shap
   expect(crossings(renderXylo(SR, 880).slice(0, SR * 0.05 | 0)) / 2 / 0.05).toBeGreaterThan(700);
 });
 
+test('the page turn is soft: its body sits in the low mids with little above 4 kHz, a soft attack, the swish loudest and a light pat as it lands', () => {
+  const x = renderPage(SR), by = (n: string) => commonSfx.find((s) => s.type === `common.${n}`)!;
+  expect(x.length).toBe(Math.ceil(0.42 * SR));
+  expect(by('page').duration({})).toBe(0.42);
+  // above 4 kHz: what is left after two Butterworth high-passes there (the old hiss kept ≈60 % of its energy)
+  const hp = (v: Float32Array) => {   // RBJ 2nd-order high-pass at 4 kHz, Q 0.707
+    const w = (2 * Math.PI * 4000) / SR, al = Math.sin(w) / (2 * Math.SQRT1_2), cw = Math.cos(w), a0 = 1 + al, o = new Float32Array(v.length);
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let i = 0; i < v.length; i++) { const y = (((1 + cw) / 2) * (v[i] - 2 * x1 + x2) + 2 * cw * y1 - (1 - al) * y2) / a0; x2 = x1; x1 = v[i]; y2 = y1; y1 = y; o[i] = y; }
+    return o;
+  };
+  const energy = (v: Float32Array) => v.reduce((s, w) => s + w * w, 0);
+  expect(energy(hp(hp(x))) / energy(x)).toBeLessThan(0.05);
+  // a low pitch on average: zero crossings say ≈1.5 kHz at most (the old hiss crossed at ≈8 kHz)
+  expect(crossings(x) / 2 / 0.42).toBeLessThan(2000);
+  // a soft attack, the swish over at ≈0.19 s the loudest part, and the landing pat louder than the gap just before it
+  const at = (s: number) => Math.round(s * SR);
+  expect(rms(x, 0, at(0.01))).toBeLessThan(rms(x, at(0.15), at(0.23)) / 10);
+  expect(rms(x, at(0.15), at(0.23))).toBeGreaterThan(rms(x, at(0.04), at(0.1)) * 2);
+  expect(rms(x, at(0.33), at(0.36))).toBeGreaterThan(rms(x, at(0.295), at(0.315)) * 2);
+  expect(rms(x, at(0.4))).toBeLessThan(rms(x, at(0.33), at(0.36)) / 5);
+  // not harsh, and the same sound at another rate
+  const r44 = renderPage(44100);
+  expect(r44.length).toBe(Math.ceil(0.42 * 44100));
+  expect(crossings(r44) / 2 / 0.42).toBeLessThan(2000);
+});
+
 test('the paper sounds from the uk-postcard short: slide, flip and the stamp on a card (thud paper), each in range and the same every time', () => {
   const all: Array<[string, () => Float32Array]> = [['slide', () => renderSlide(SR)], ['flip', () => renderFlip(SR)], ['thud paper', () => renderThud(SR, true)]];
   for (const [name, f] of all) {

@@ -27,16 +27,37 @@ export function renderTyping(sr: number, dur: number, seed = 5): Float32Array {
   return fade(x, sr, 1);
 }
 
-/** a page turning: band-limited noise in two soft swells */
+/** a smooth rise from `a` to a peak at `m` and fall to nothing at `b` (raised-cosine halves) */
+const swell = (t: number, a: number, m: number, b: number) => (t <= a || t >= b ? 0 : t < m ? 0.5 - 0.5 * Math.cos((Math.PI * (t - a)) / (m - a)) : 0.5 + 0.5 * Math.cos((Math.PI * (t - m)) / (b - m)));
+
+/** a page turning (0.42 s): the sheet lifts with a soft rustle, swishes over with its flutter and lands with a light, low pat.
+ *  Noise through a band-pass whose centre follows the sheet (≈420 Hz → 1 kHz → back), rolled off gently above ≈2.6 kHz and below ≈220 Hz;
+ *  the flutter is a wavering level, not brightness, so there is no sizzle (the one before 2026-11-01 was bright hiss, centroid ≈7.8 kHz). */
 export function renderPage(sr: number, seed = 3): Float32Array {
-  const x = zeros(sr, 0.42), r = rng(seed);
-  let a = 0, c = 0;
+  const x = zeros(sr, 0.42), r = rng(seed), q = 0.8, land = 0.33;
+  let low = 0, band = 0, g = 0, l1 = 0, l2 = 0, h = 0, s1 = 0, s2 = 0, ph = 0;
+  const k = (fc: number) => 1 - Math.exp((-TAU * fc) / sr);
   for (let i = 0; i < x.length; i++) {
-    const t = i / sr, env = Math.exp(-Math.pow((t - 0.09) / 0.05, 2)) * 0.8 + Math.exp(-Math.pow((t - 0.24) / 0.09, 2));
-    const w = r() * 2 - 1; a += (w - a) * 0.35; c += (a - c) * 0.5;
-    x[i] = (a - c * 0.6) * env;
+    const t = i / sr;
+    // the sheet's motion: a small lift, then the swish over that peaks at 0.19 s
+    const lift = swell(t, 0, 0.06, 0.14) * 0.4, over = swell(t, 0.08, 0.19, land + 0.02), env = lift + over;
+    const fc = 420 * Math.pow(2.2, swell(t, 0, 0.19, 0.38)) + 120 * over, c = 2 * Math.sin((Math.PI * Math.min(fc, sr / 6)) / sr);
+    low += c * band; band += c * ((r() * 2 - 1) - low - band / q);
+    // flutter: the paper's edge wavering at 14 → 30 Hz, roughened by a slow random grain
+    ph += (TAU * (14 + 16 * swell(t, 0.05, 0.22, 0.4))) / sr; g += k(70) * ((r() * 2 - 1) - g);
+    const flutter = 0.62 + 0.28 * Math.sin(ph) + 0.5 * g;
+    l1 += k(2600) * (band * env * flutter - l1); l2 += k(3600) * (l1 - l2); h += k(220) * (l2 - h);
+    let v = l2 - h;
+    // the landing: a soft low pat, a little filtered noise and a 130 Hz knock that die in ≈60 ms
+    const tt = t - land;
+    if (tt > 0) {
+      const e = Math.min(1, tt / 0.004) * Math.exp(-tt * 55);
+      s1 += k(600) * ((r() * 2 - 1) - s1); s2 += k(600) * (s1 - s2);
+      v += e * (0.6 * s2 + 0.04 * Math.sin(TAU * 130 * tt));
+    }
+    x[i] = v;
   }
-  return fade(normalize(x, 0.6), sr, 2);
+  return fade(normalize(x, 0.89), sr, 2);
 }
 
 /** a card sliding over a pile of cards: soft band-limited friction that swells and fades, then a light tap as it lands (1.1 s) */
@@ -125,7 +146,7 @@ export const shutterSfx: SfxType = { type: 'common.shutter', label: '快門', ca
 export const typingSfx: SfxType = { type: 'common.typing', label: '打字', category: 'paper', doc: '一段鍵盤打字聲，長度可調；文字一個字一個字出現、搜尋、留言',
   params: [num('dur', '長度 (s)', 1.5, 0.2, 10)],
   duration: (p) => p.dur, lookback: LONG, synth: (c, b, at, p) => play(c, b, at, renderTyping(c.sampleRate, p.dur)) };
-export const pageSfx: SfxType = { type: 'common.page', label: '翻頁', category: 'paper', doc: '紙張翻頁的沙沙聲；換步驟、換卡片、翻開下一頁；配 common.notecard',
+export const pageSfx: SfxType = { type: 'common.page', label: '翻頁', category: 'paper', doc: '紙張翻頁：一張紙掀起、翻過去、輕輕落下的柔和沙沙聲（偏中低頻，不刺耳）；換步驟、換卡片、翻開下一頁；配 common.notecard',
   params: [], duration: () => 0.42, lookback: SHORT, synth: (c, b, at) => play(c, b, at, renderPage(c.sampleRate), 0.1) };
 export const slideSfx: SfxType = { type: 'common.slide', label: '紙卡滑入', category: 'paper', doc: '一張卡片在一疊紙上滑過去、最後輕輕落定；明信片、卡片、照片滑進畫面；配 common.postcard／common.frame',
   params: [], duration: () => 1.1, lookback: LONG, synth: (c, b, at) => play(c, b, at, renderSlide(c.sampleRate), 0.1) };
