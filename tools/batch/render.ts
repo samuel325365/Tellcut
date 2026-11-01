@@ -1,5 +1,5 @@
 // Render through a queue (several renders started at once, e.g. by agents making films side by side): waits for one of the shared render slots, then runs the same
-// prepare:project + render as by hand, and frees the slot.
+// render as by hand (which cuts the clips into cache/ itself, under the project's export lock), and frees the slot.
 //   npm run batch:render -- <id> [--slots 2] [any render option, e.g. --stills 1.5,3]
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
@@ -32,6 +32,11 @@ const UNSAFE = /["%^&|<>\r\n]/;
 const quote = (a: string) => { if (UNSAFE.test(a)) throw new Error(`參數不能有 " % ^ & | < > 或換行：${JSON.stringify(a)}`); return `"${a}"`; };
 export const npmCommand = (args: string[]) => `npm run -s ${args.map(quote).join(' ')}`;
 
+/** the npm scripts a queued render runs, in order. Only render: it takes the project's export lock and then prepares the clips
+ *  itself. A prepare:project run first, as a step of its own, cut into cache/ outside the lock, while a server or another render
+ *  could be exporting the project (and its own lock would leave a gap before render's). */
+export const renderSteps = (id: string, extra: string[]): string[][] => [['render', '--', '--project', id, ...extra]];
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args) { console.error(USAGE); process.exit(2); }
@@ -41,7 +46,7 @@ async function main() {
   // the lock itself and would refuse it then; prepare:project would have run beside that export meanwhile)
   const busy = exportBusy(pdir);
   if (busy) { console.error(busy); process.exit(2); }
-  try { npmCommand([id, ...extra]); } catch (e) { console.error((e as Error).message); process.exit(2); }   // before taking a slot
+  try { renderSteps(id, extra).forEach(npmCommand); } catch (e) { console.error((e as Error).message); process.exit(2); }   // before taking a slot
   let slot: string | null = null, waited = 0;
   while (!(slot = takeSlot(LOCK_DIR, slots, id))) {
     if (waited % 60 === 0) console.log(`[排隊] ${id}：等待輸出位置（${waited} 秒；使用中：${holders(LOCK_DIR, slots).join('、')}）`);
@@ -57,10 +62,9 @@ async function main() {
     const c = spawn(npmCommand(a), { cwd: TELLCUT_ROOT, stdio: 'inherit', shell: true });
     c.on('error', () => res(1)); c.on('close', (code) => res(code ?? 1));
   });
-  let code = 1;
+  let code = 0;
   try {
-    code = await npm(['prepare:project', '--', '--project', `projects/${id}`]);
-    if (code === 0) code = await npm(['render', '--', '--project', id, ...extra]);
+    for (const step of renderSteps(id, extra)) if ((code = await npm(step)) !== 0) break;
   } finally { free(); }
   process.exit(code);
 }

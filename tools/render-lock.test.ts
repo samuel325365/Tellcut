@@ -5,6 +5,7 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { exportLock, TELLCUT_ROOT } from '@tellcut/media-node';
+import { renderSteps } from './batch/render.ts';
 
 const id = `_render-lock-${process.pid}`, dir = join(TELLCUT_ROOT, 'projects', id);
 const tsx = (...args: string[]) => spawnSync(process.execPath, [join(TELLCUT_ROOT, 'node_modules/tsx/dist/cli.mjs'), ...args], { cwd: TELLCUT_ROOT, encoding: 'utf8' });
@@ -37,6 +38,21 @@ test('render and batch:render refuse a project another process is exporting, bef
   expect(existsSync(join(dir, 'exports'))).toBe(false);
   expect(JSON.parse(readFileSync(exportLock(dir), 'utf8')).pid).toBe(other.pid);   // the other one's lock stays
 }, 60000);
+
+test('prepare:project refuses a project another process is exporting, and cuts nothing', () => {
+  held();
+  const r = tsx('tools/prepare.ts', '--project', dir);
+  expect(r.status).toBe(2);
+  expect(r.stderr).toContain('正在別處輸出');
+  expect(existsSync(join(dir, 'cache', 'cuts'))).toBe(false);
+  expect(JSON.parse(readFileSync(exportLock(dir), 'utf8')).pid).toBe(other.pid);
+}, 60000);
+
+test('batch:render prepares only inside render, under its export lock (no prepare:project step before it)', () => {
+  const steps = renderSteps('p', ['--stills', '3']);
+  expect(steps).toEqual([['render', '--', '--project', 'p', '--stills', '3']]);
+  expect(steps.flat()).not.toContain('prepare:project');
+});
 
 test('a render takes over a stale lock (its process is gone) and lets it go when it ends', () => {
   writeFileSync(exportLock(dir), JSON.stringify({ pid: 999999, started: 1 }));   // its process is gone
