@@ -30,7 +30,7 @@
     { "id": "notifications",
       "name": { "zh": "通知串成一天", "en": "A day of notifications", "ja": "通知でつづる一日" },
       "desc": { "zh": "形式｜手機通知串起一天：鬧鐘、通勤提醒、朋友訊息、晚上「今天走了 8,000 步」；每跳一則，桌布就換成那個時間拍的畫面。", "en": "Form | Phone notifications carry the day: the alarm, a commute reminder, a friend's message, \"8,000 steps today\" at night; with each one the wallpaper becomes the footage of that hour.", "ja": "形式｜スマホの通知が一日をつなぐ：アラーム、通勤の通知、友だちのメッセージ、夜の「今日は 8,000 歩」。通知のたびに壁紙がその時間の映像に。" },
-      "prompt": "Form: the whole film runs on the day's phone notifications. common.lockscreen with the clip as its wallpaper and its clock following the capture times, common.notify on top (y 0.43) pushing one notification at each turn of the day: the alarm, a reminder on the way, a friend's message, a step count or a photo count at night. With each new one the wallpaper cuts to the footage of that hour, full-frame under one or two cards at most. Written from the footage's real times and what happens; never invent people or places. Sounds common.buzz / common.recv. Generic UI, no real brand marks." },
+      "prompt": "Form: the whole film runs on the day's phone notifications. common.lockscreen with the clip as its wallpaper and its clock following the capture times (a finished vlog without them: hide the clock and let the day carry it), common.notify on top (y 0.43) pushing one notification at each turn of the day: the alarm, a reminder on the way, a friend's message, the album at night (no count the footage does not show). With each new one the wallpaper cuts to the footage of that hour, full-frame under one or two cards at most. Written from the footage's real times and what happens; never invent people or places. Sounds common.buzz / common.recv. Generic UI, no real brand marks." },
     { "id": "chat",
       "name": { "zh": "跟朋友報告今天", "en": "Telling a friend", "ja": "友だちに今日を報告" },
       "desc": { "zh": "形式｜一整天傳訊息跟朋友報告：影片、照片、語音一則則傳出去，朋友的回覆負責笑點，最精彩的一刻從泡泡放大成全螢幕。", "en": "Form | Messaging a friend through the day: clips, photos and voice notes go out one by one, the friend's replies bring the jokes, the best moment opens from its bubble to full screen.", "ja": "形式｜一日じゅう友だちにメッセージで報告：動画・写真・ボイスメッセージを次々送り、友だちの返信が笑いどころ。いちばんの瞬間は吹き出しから全画面に。" },
@@ -50,7 +50,7 @@
     { "id": "transitions",
       "name": { "zh": "轉場串連", "en": "Transitions that move", "ja": "動きでつなぐトランジション" },
       "desc": { "zh": "剪法｜手遮鏡頭、甩鏡頭、形狀相似的畫面互接（match cut），重拍前加速、落拍放慢。", "en": "Cut | Hand over the lens, whip pans, match cuts between similar shapes, speeding up into the downbeat and slowing on it.", "ja": "編集｜手でレンズを隠す、カメラを振る、形の似た画面でつなぐマッチカット、強拍の前で加速して強拍で減速。" },
-      "prompt": "Cut: every cut moves. Hand-over-lens, whip pans, match cuts on similar shapes or motion; speed ramps (faster into the downbeat, slow on it), an occasional white flash; never hold slow motion long. Find the cuttable moves in the footage first; where none fit, use a plain cut on the beat rather than forcing one." },
+      "prompt": "Cut: cuts move where the footage allows. Hand-over-lens, whip pans, match cuts on similar shapes or motion; speed ramps (faster into the downbeat, slow on it), an occasional white flash; never hold slow motion long. Find the cuttable moves in the footage first; where none fit, use a plain cut on the beat rather than forcing one." },
     { "id": "jump-cuts",
       "name": { "zh": "跳剪", "en": "Jump cuts", "ja": "ジャンプカット" },
       "desc": { "zh": "剪法｜把講話和動作之間的空檔剪掉，節奏更俐落。", "en": "Cut | The dead time between words and actions cut out, for a brisker pace.", "ja": "編集｜話や動作のあいだの間を切って、テンポよく。" },
@@ -74,7 +74,7 @@
     { "id": "retro",
       "name": { "zh": "復古 DV", "en": "Retro camcorder", "ja": "レトロなビデオカメラ" },
       "desc": { "zh": "調色｜家用攝影機的樣子：掃描線、偏暖、雜訊帶，觀景窗有 ● REC 和日期；保留現場聲音。", "en": "Look | The home-camcorder look: scanlines, a warm cast, tracking noise, ● REC and the date in the viewfinder; keeps the live sound.", "ja": "色調｜家庭用ビデオカメラ風：走査線、暖かい色かぶり、トラッキングノイズ、ファインダーに ● REC と日付。現場の音を残す。" },
-      "prompt": "Look: a home-camcorder look over the whole film. common.film look vhs (scanlines, a warm cast, lifted blacks, tracking noise bands at the cuts between parts of the day) with common.camcorder mode osd (REC, the tape counter, the date stamp from the capture dates); end on STOP. With an interface form (planner, notifications, chat, album) only the common.film part applies: no viewfinder over an interface. Keep the live sound under the music." }
+      "prompt": "Look: a home-camcorder look over the whole film. common.film look vhs (scanlines, a warm cast, lifted blacks, tracking noise bands at the cuts between parts of the day) with common.camcorder mode osd (REC, the tape counter, the date stamp from the capture dates); end on STOP. With an interface form (planner, notifications, chat, album) only the common.film part applies (its tracking bands stay): no viewfinder, tape change or STOP over an interface. The live sound stays as ambience under the music and comes up for the moments that matter." }
   ]
 }
 ---

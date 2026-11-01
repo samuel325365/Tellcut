@@ -70,7 +70,7 @@
     { "id": "retro",
       "name": { "zh": "復古家庭錄影", "en": "Home video", "ja": "昔のホームビデオ" },
       "desc": { "zh": "調色｜像爸媽那台攝影機拍的：掃描線、偏暖、日期印記。小時候的家庭錄影帶最適合。", "en": "Look | Like the family camcorder: scanlines, a warm cast, a date stamp. Perfect for childhood home videos.", "ja": "色調｜家族のビデオカメラのように：走査線、暖かい色かぶり、日付。子どもの頃のホームビデオにぴったり。" },
-      "prompt": "Look: a home-video look. common.film look vhs (scanlines, a warm cast, lifted blacks, tracking noise at the cuts between years) with common.camcorder mode osd (the date stamp from the capture dates); best on the childhood part, and the present day may return to a clean picture. With an interface form only the common.film part applies: no viewfinder over an interface. Keep the live sound." },
+      "prompt": "Look: a home-video look. common.film look vhs (scanlines, a warm cast, lifted blacks, tracking noise at the cuts between years) with common.camcorder mode osd (the date stamp from the capture dates); best on the childhood part, and the present day may return to a clean picture. With an interface form only the common.film part applies (its tracking bands stay): no viewfinder over an interface. Keep the live sound." },
     { "id": "film",
       "name": { "zh": "底片", "en": "Film stock", "ja": "フィルム" },
       "desc": { "zh": "調色｜像沖洗出來的照片：暖色、底片顆粒、柔和的暗角。", "en": "Look | Like printed photos: warm, with film grain and a soft vignette.", "ja": "色調｜プリントした写真のように：暖かく、フィルムの粒子とやわらかな周辺減光。" },
