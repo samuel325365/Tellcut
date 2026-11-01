@@ -33,6 +33,15 @@ test('a written preset reads back: my- id, its own direction, points, facts in e
   expect(renameUserPreset(d, p.id, '夜市').name).toEqual({ zh: '夜市', en: '夜市', ja: '夜市' });
 });
 
+test('the preset block tells the agent the ratio and length a preset of the user\'s own was saved with', () => {
+  const d = dirs();
+  const p = writeUserPreset(d, { name: '美食', summary: '', points: POINTS, ratios: ['9:16'], length: [25, 35], lang: 'zh' });
+  expect(presetBlock(findPreset(d, p.id)!, [])).toContain('Make the film 9:16, 25–35 s long.');
+  const bare = writeUserPreset(d, { name: '沒比例', summary: '', points: POINTS, lang: 'zh' });
+  expect(presetBlock(findPreset(d, bare.id)!, [])).not.toContain('Make the film');
+  expect(presetBlock(findPreset(d, writeUserPreset(d, { name: '只長度', summary: '', points: POINTS, length: [50, 70], lang: 'zh' }).id)!, [])).toContain('Make the film 50–70 s long.');
+});
+
 test('a preset from the form keeps choosing a genre; only my- presets can be changed', () => {
   const d = dirs();
   const p = writeUserPreset(d, { name: 'Vertical', summary: '', points: POINTS, genres: true, color: '#12b886', lang: 'en' });

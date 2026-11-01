@@ -161,6 +161,9 @@ const NO_GENRES = 'This preset is the whole direction of the film: skip choosing
  *  music style copied in from My blocks (one deleted from there since is left out) */
 function bringsLines(p: Preset, lib?: PresetLibrary): string[] {
   const out: string[] = [];
+  // a repo preset says its ratio and length in its body; one of the user's own has them only in the frontmatter, which check reads
+  const shape = [p.ratios?.join(' or '), p.length && `${p.length[0]}–${p.length[1]} s`].filter(Boolean);
+  if (p.mine && shape.length) out.push(`Make the film ${shape.join(', ')} long.`);
   if (p.theme) out.push(`Apply this theme in cut.ts with c.theme(${JSON.stringify(p.theme)}).`);
   const blocks = p.blocks.flatMap((slug) => { const e = lib?.blocks.find((b) => b.slug === slug); return e ? [{ slug, name: e.types.map((t) => t.name).join(' / ') }] : []; });
   if (blocks.length) out.push(`Right after npm run new, copy the user's own blocks into the project with npm run tellcut -- library use <the project id> ${blocks.map((b) => b.slug).join(' ')}, then use them (c.fx and c.effect): ${blocks.map((b) => `${b.slug}: ${b.name}`).join('; ')}.`);
