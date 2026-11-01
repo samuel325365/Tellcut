@@ -26,11 +26,11 @@
     { "id": "receipt",
       "name": { "zh": "收據記帳", "en": "Receipt", "ja": "レシート" },
       "desc": { "zh": "形式｜整支片下方一台收據機：每上一道菜就印一行菜名和價格，紙越長越高，最後印出合計。", "en": "Form | A receipt printer at the bottom for the whole film: one line per dish with its price as it arrives, the paper growing taller, the total printed at the end.", "ja": "形式｜全編を通して下にレシートプリンター：料理が出るたびに品名と値段が一行ずつ印字され、紙が伸びていき、最後に合計。" },
-      "prompt": "Form: a thermal receipt printer at the bottom carries the whole film (common.printer): a title line first, then one line per dish with its price as the dish appears (lines: seconds|item|name|price), the paper growing up behind the clip window, the total and a thanks line at the end. Real prices only, from the menu, the footage or the user; without prices print the dishes alone." },
+      "prompt": "Form: a thermal receipt printer at the bottom carries the whole film (common.printer): a title line first, then one line per dish with its price as the dish appears (lines: seconds|item|name|price), the paper growing up behind the clip window, the total and a thanks line at the end. Real prices only, from the menu, the footage or the user; without prices print the dishes alone and the total as the number of dishes. The clip window is about square at full width, the printer below it." },
     { "id": "street-route",
       "name": { "zh": "吃一條街", "en": "Eat down the street", "ja": "一本の通りを食べ歩き" },
       "desc": { "zh": "形式｜開頭一張手繪路線卡：「1 條商圈、10 分鐘、6 家」，最後兩家打問號；每吃完一家，路線就點亮一站。適合一次吃好幾家。", "en": "Form | A hand-drawn route card to open (\"1 street, 10 minutes, 6 places\", the last two hidden), then each place in turn, the route lighting the next stop. For a visit of several shops.", "ja": "形式｜最初に手描きのルートカード（「1 本の通り・10 分・6 軒」、最後の 2 軒は？）。1 軒食べるごとにルートが次の店へ。何軒も回るとき向き。" },
-      "prompt": "Form: eating down one street. Open on common.route look card (heads with this walk's real numbers, such as 1|street, 10|minutes on foot, 6|places to eat; the last stops hidden as question marks), then each place in turn with its dishes at full screen, the route card coming back for a beat to light the next stop; close on the whole route lit. For a visit of several shops; with one shop, say in one sentence that it does not suit and leave it out." },
+      "prompt": "Form: eating down one street. Open on a dish hook, then common.route look card (heads with this walk's real numbers, such as 1|street, 10|minutes on foot, 6|places to eat; the last stops hidden as question marks), then each place in turn with its dishes at full screen, a short route card for each stop plus a common.tag with the stop's name and minutes on foot; close on the whole route lit. For a visit of several shops; with one shop, say in one sentence that it does not suit and leave it out." },
     { "id": "shutter",
       "name": { "zh": "開店到打烊", "en": "Open to close", "ja": "開店から閉店まで" },
       "desc": { "zh": "形式｜開頭鐵捲門往上拉開、露出店面，中間是這一餐，結尾鐵捲門拉下、貼上「今日打烊」。", "en": "Form | The shutter rolls up on the shop front to open, the meal in between, and rolls down with a \"closed for today\" sign at the end.", "ja": "形式｜シャッターが上がって店先が現れ、食事のあと、最後はシャッターが下りて「本日閉店」の札。" },
@@ -38,7 +38,7 @@
     { "id": "judge",
       "name": { "zh": "美食評審", "en": "Food judge", "ja": "グルメ審査" },
       "desc": { "zh": "形式｜像評審節目：每道菜蓋上一張加分吊牌（「＋8 酥脆」），分數飛進儀表板，指針一路往上爬，結尾是總分評分卡。", "en": "Form | Like a judging show: each dish gets a score tag (\"+8 crispy\"), the score flies into a gauge that climbs through the film, ending on a rating card with the total.", "ja": "形式｜審査番組のように：料理ごとに加点タグ（「＋8 サクサク」）、点数がメーターへ飛んで針が上がっていき、最後に総合評価カード。" },
-      "prompt": "Form: a judging show. Each dish gets a common.hangtag (a big plus score, the dish's name, one quip) whose score flies into a common.gauge that climbs through the film, ending on a common.rating card with the total. Scores are the user's, or an honest verdict given as an opinion." },
+      "prompt": "Form: a judging show. Each dish gets a common.hangtag (a big plus score, the dish's name, one quip) whose score flies into a common.gauge that climbs through the film, ending on a common.rating card with the total. Scores are the user's, or an honest verdict given as an opinion. When the speaker ranks rather than scores, the tag's big figure is the rank, common.progress mode tabs follows the ranks instead of the gauge, and common.chart kind rank replaces the rating card; never turn a rank into a score. A gauge gets this film's own zones with halo off and no danger or boom unless they mean something (its defaults are a guilt meter)." },
     { "id": "search",
       "name": { "zh": "搜尋推薦", "en": "Search for it", "ja": "検索でおすすめ" },
       "desc": { "zh": "形式｜打出「附近 拉麵 推薦」，點進第一筆結果就是這家店；結尾是地址或「看完整版」。", "en": "Form | Type \"ramen near me\", tap the first result and it is this place; end on the address or a full-video result.", "ja": "形式｜「近く ラーメン おすすめ」と入力し、最初の結果をタップするとこの店へ。最後は住所か「フル版を見る」。" },
@@ -62,19 +62,19 @@
     { "id": "ember-tag",
       "name": { "zh": "炭火菜名牌", "en": "Branded name board", "ja": "焼き印の品書き" },
       "desc": { "zh": "點綴｜每道菜上桌時，菜名像烙印一樣燙在一塊小木牌上。", "en": "Accent | As each dish arrives, its name is branded onto a small wooden board.", "ja": "アクセント｜料理が出るたび、品名が小さな木札に焼き印のように押される。" },
-      "prompt": "Accent: dish names branded on a small wooden board (common.tag look: 'ember'), one per dish as it appears, the dish's real name." },
+      "prompt": "Accent: dish names branded on a small charred board (common.tag look: 'ember'; it suits grilled food), one per dish as it appears, the dish's real name; with judge, the dish's name goes on this tag and the quip on the hang tag." },
     { "id": "price-chart",
       "name": { "zh": "價格比較", "en": "Price comparison", "ja": "値段くらべ" },
       "desc": { "zh": "點綴｜用長條比較幾道菜的價格或份量。", "en": "Accent | Bars compare the price or portion of a few dishes.", "ja": "アクセント｜何品かの値段や量を棒グラフで比べる。" },
-      "prompt": "Accent: bars compare the price or portion of three or four dishes (common.chart, kind bars); mark the best value. Real prices only." },
+      "prompt": "Accent: bars compare the price or portion of three or four dishes (common.chart, kind bars); mark the best value only between dishes that compare (the same kind of dish, or one shop); across shops or kinds mark the cheapest or nothing, and name where the prices come from under the chart. Real prices only." },
     { "id": "sound-closeups",
       "name": { "zh": "聲音特寫", "en": "Sound close-ups", "ja": "音のアップ" },
       "desc": { "zh": "剪法｜只有手和食物的特寫：煎、炸、咬下去的聲音放大，配樂停一拍。", "en": "Cut | Hands and food only: the sizzle, the crunch, the first bite turned up, the music dropping out for a beat.", "ja": "編集｜手と料理だけのアップ：焼く・揚げる・かじる音を大きく、音楽は一拍止める。" },
-      "prompt": "Cut: sound close-ups: hands and food only, top-down or close, the sizzle, the crunch, the pour at full volume with the music dropped for a beat; a few moments, not the whole film." },
+      "prompt": "Cut: sound close-ups: hands and food only, top-down or close, the sizzle, the crunch, the pour at full volume with the music dropped for a beat; a few moments, not the whole film. The footage's own sound stays under it; a sizzle from assets may add to it but never cover a voice; the music steps aside for the whole close-up stretch." },
     { "id": "warm",
       "name": { "zh": "暖色調", "en": "Warm grade", "ja": "暖かい色調" },
       "desc": { "zh": "調色｜整支片偏暖、帶一點顆粒，讓食物看起來更好吃。", "en": "Look | A warm grade with a little grain over the whole film, so the food looks its best.", "ja": "色調｜全編を暖かい色調と少しの粒子で、料理をおいしそうに。" },
-      "prompt": "Look: one warm grade over the whole film (common.tone with its warm default, amount about 0.4) and light grain (common.film look grain, blend overlay, grain about 0.07), so the food looks warm and appetising; on dark footage keep it light." }
+      "prompt": "Look: one warm grade over the whole film, cards included (common.tone with its warm default, amount about 0.4) and light grain (common.film look grain, blend overlay, grain about 0.07, vignette about 0.25), so the food looks warm and appetising; on dark footage keep it light." }
   ]
 }
 ---
@@ -85,7 +85,7 @@ Goal: a short that makes people want to eat there, for IG Reels, YouTube Shorts 
 - The styles are of four kinds, and their prompts begin with the kind. Form (receipt, street-route, shutter, judge, search, chat) carries the whole film: at most one form; if the user picks two, the first is the form and the second only lends its opener or ending; say so in one sentence. Accent and Cut go with any form. Look: at most one.
 - No form picked: the footage full-frame, cut on the beat, with one or two accents that suit the material.
 - Hook in the first 2 s: a close-up of the finished dish (steam, a cheese pull, the pour, the first bite).
-- Order: the sign or entrance, the dishes, reactions, the verdict.
+- Order: the hook first; then for each shop its sign, its dishes, the reactions; the verdict only at the end. Dish names as the speaker says them, the menu's name small beside it.
 - Cut on the beat; keep mouth-full reactions short.
 - Info cards are welcome here: prices, ratings, the address. Real numbers only, from the menu, the footage or the user; never invent a price or a shop's name. Other text is a dish name or one word of verdict, never paragraphs.
 - Keep the sounds of eating and cooking and a few short natural-sound moments (the sizzle, the first reaction); when the speech is not in the film's language, caption it in the film's language.
