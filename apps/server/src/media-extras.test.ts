@@ -36,6 +36,7 @@ test('analyze also queues sheets + transcript per video and beats per music; the
 }, 600000);
 
 test('when the transcript fails, the basic analysis and the sheets still work; the transcript stays unavailable', async () => {
+  const model = process.env.TELLCUT_WHISPER_MODEL;   // the run's small one (tools/test-env.ts), put back after
   process.env.TELLCUT_WHISPER_MODEL = 'no-such-model-for-tellcut-tests';
   try {
     const r = await (await fetch(api('broken/analyze'), { method: 'POST' })).json();
@@ -44,7 +45,7 @@ test('when the transcript fails, the basic analysis and the sheets still work; t
     expect((await fetch(api('broken/media/thumbs/talk'))).status).toBe(200);
     expect((await fetch(api('broken/media/sheet/talk/1'))).status).toBe(200);
     expect((await fetch(api('broken/media/transcript/talk'))).status).toBe(409);
-  } finally { delete process.env.TELLCUT_WHISPER_MODEL; }
+  } finally { if (model === undefined) delete process.env.TELLCUT_WHISPER_MODEL; else process.env.TELLCUT_WHISPER_MODEL = model; }
 }, 600000);
 
 test("cancelling a source's analysis cancels its sheets and transcript too, instead of them analysing it all again", async () => {

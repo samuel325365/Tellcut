@@ -7,7 +7,7 @@ import { cpSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { FFMPEG, FFPROBE, loadProvidersConfig, locate, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec } from '@tellcut/media-node';
-import { allChecks, checkClaudeLogin, hfCachedWhisper, MODEL_COMPLETE, modelsDir, table, whisperModelDir, whisperModelName } from './setup/checks.ts';
+import { allChecks, checkClaudeLogin, hfCachedWhisper, MODEL_COMPLETE, modelsDir, table, TEST_WHISPER_MODEL, whisperModelDir, whisperModelName } from './setup/checks.ts';
 import { ensureModelFile, ensureVendor, readModelList, readVendorList, VendorInUse } from './setup/vendor.ts';
 
 const step = (s: string) => console.log(`\n▶ ${s}`);
@@ -34,7 +34,7 @@ async function whisperModel(model: string) {
     console.log(`  ${model}：從這台電腦的快取複製（${found}）`);
     cpSync(found, part, { recursive: true, dereference: true });   // the snapshot's files (links into blobs on some PCs)
   } else {
-    console.log(`  ${model}：下載（約 1.6 GB，第一次要一陣子）`);
+    console.log(`  ${model}：下載${model === TEST_WHISPER_MODEL ? '（約 75 MB）' : '（約 1.6 GB，第一次要一陣子）'}`);
     await runUv(['run', '--project', PY_PROJECT, '--quiet', 'python', '-c', `from faster_whisper import download_model; download_model(${JSON.stringify(model)}, output_dir=${JSON.stringify(part)})`]);
   }
   if (!existsSync(join(part, 'model.bin'))) throw new Error(`${model} 的模型不完整（沒有 model.bin）：再跑一次 npm run setup`);
@@ -77,6 +77,8 @@ async function main() {
 
   step('語音辨識模型');
   await whisperModel(model);
+  // the tests' small one: only npm test uses it, so a download that fails is no reason to stop (the tests fetch it on first use)
+  if (model !== TEST_WHISPER_MODEL) await whisperModel(TEST_WHISPER_MODEL).catch((e: Error) => console.warn(`  ! 測試用的 ${TEST_WHISPER_MODEL} 沒有下載（${e.message}）：跑 npm test 時會再試`));
 
   step('其他模型（人臉偵測）');
   for (const [name, item] of Object.entries(readModelList())) {

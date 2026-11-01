@@ -76,6 +76,10 @@ export const MODEL_COMPLETE = '.tellcut-complete';
 export { modelsDir } from '@tellcut/media-node';
 /** the speech model transcription will use: TELLCUT_WHISPER_MODEL first, as transcribe.py does */
 export const whisperModelName = (configured: string) => process.env.TELLCUT_WHISPER_MODEL ?? configured;
+/** the small model the tests transcribe with (about 75 MB; tools/test-env.ts): each of them loading large-v3-turbo ran a machine
+ *  short of memory in a full npm test (faster-whisper's mkl_malloc failed and the job with it). npm run setup puts it next to the
+ *  user's model; a test run without it downloads it on first use (transcribe.py). */
+export const TEST_WHISPER_MODEL = 'tiny';
 
 /** tellcut's own copy of the faster-whisper model `model` (plain files, see tools/py/transcribe.py), if it is complete */
 export function whisperModelDir(model: string, dir = modelsDir()): string | null {
