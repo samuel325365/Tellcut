@@ -221,12 +221,14 @@ export default [
   },
 ];
 `);
-  // the project's file: only the entry and its comment are gone; its helpers stay as they were
+  // the project's file: the entry and its comment are gone, and so are the helpers only it used (ring, and GOLD through ring)
   expect(readFileSync(join(dir, 'fx', 'pair.js'), 'utf8')).toBe(SEVERAL.replace(`  // the ring
   {
     type: 'fx.ring', label: 'ring', kind: 'overlay', doc: 'd', params: [],
     build() { return 0; }, draw({ g }) { ring(g, 1); },
   },
+`, '').replace("const GOLD = '#e9a73b', INK = '#1b1614';", "const INK = '#1b1614';").replace(`/** a ring around the centre */
+function ring(g, r) { g.strokeStyle = GOLD; g.arc(0, 0, clamp(r), 0, 7); }
 `, ''));
   const p = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')));
   expect(p.meta.fx).toEqual(['fx/pair.js']);
@@ -255,6 +257,51 @@ test('splitting: the first or the last entry, a one-line list; an import the mov
   expect(() => splitFx(SEVERAL.replace("type: 'fx.dot'", "type: 'fx.ring'"), 'x.js', 'fx.ring', ['fx.bar', 'fx.ring', 'fx.ring'])).toThrow('不是剛好寫了一次');
   expect(() => splitFx('export default [{ type: "fx.a" },, { type: "fx.b" }];', 'x.js', 'fx.a', ['fx.a', 'fx.b'])).toThrow('第 2 項不是');
   expect(() => splitFx('export default [{ type: "fx.a" }, { type: "fx.b" }', 'x.js', 'fx.a', ['fx.a', 'fx.b'])).toThrow('讀不懂它的語法');
+});
+
+test("the project's file loses the helpers only the moved block used, and nothing else", () => {
+  const src = `import { ease } from './lib/ease.js';
+import './lib/setup.js';
+
+const A = 1, B = 2;
+// only the moved block's
+function inner(x) { return x * A; }
+function outer(x) { return inner(x) + 1; }
+const shared = (x) => x + B;
+function unused() { return 0; }
+const stamp = Date.now();
+globalThis.tick = 0;
+export const API = 3;
+
+export default [
+  { type: 'fx.a', draw() { outer(shared(1)); } },
+  { type: 'fx.b', draw() { shared(2); } },
+];
+`;
+  const { rest } = splitFx(src, 'x.js', 'fx.a', ['fx.a', 'fx.b']);
+  // outer goes, inner (used only by outer) and A (only by inner) with it; the comment over them too
+  expect(rest).not.toMatch(/inner|outer|\bA\b|only the moved/);
+  expect(rest).toContain('const B = 2;');
+  expect(rest).toContain('const shared = (x) => x + B;');
+  // imports (even one nothing names), exports, statements that run something and a helper already unused before stay
+  for (const kept of ["import { ease } from './lib/ease.js';", "import './lib/setup.js';", 'function unused()', 'const stamp = Date.now();', 'globalThis.tick = 0;', 'export const API = 3;'])
+    expect(rest).toContain(kept);
+  expect(rest).toBe(`import { ease } from './lib/ease.js';
+import './lib/setup.js';
+
+const B = 2;
+const shared = (x) => x + B;
+function unused() { return 0; }
+const stamp = Date.now();
+globalThis.tick = 0;
+export const API = 3;
+
+export default [
+  { type: 'fx.b', draw() { shared(2); } },
+];
+`);
+  // the moved block's file is untouched by this: it keeps what it names
+  expect(splitFx(src, 'x.js', 'fx.a', ['fx.a', 'fx.b']).shared).toMatch(/function inner[\s\S]*function outer[\s\S]*const shared/);
 });
 
 test('splitting leaves what a literal says as it was written, blank lines and all', () => {

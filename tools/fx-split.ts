@@ -8,7 +8,8 @@ export interface FxSplit {
   source: string;
   /** the module with only that block in its export; the top-level helpers nothing uses any more are taken out */
   shared: string;
-  /** the module without that block, everything else as it was */
+  /** the module without that block; the top-level helpers only it used (directly or through another such helper) are taken
+   *  out, imports, exports, statements that run something and helpers nothing used before the split stay as they were */
   rest: string;
   /** the types left in `rest`, in order */
   keeps: string[];
@@ -114,12 +115,17 @@ function tidy(src: string, at: number[]): string {
   return src;
 }
 
-/** Take out the top-level helpers nothing else in the module names any more, until none is left to take. */
-export function pruneHelpers(src: string, file: string): string {
+/** the names of the module's top-level pieces that could be taken out (see Unit) */
+const removable = (src: string, file: string) => new Set(units(parse(src, file)).flatMap((u) => u.names ?? []));
+
+/** Take out the top-level helpers nothing else in the module names any more, until none is left to take. `imports`: false keeps
+ *  every import (they load another file, which may do something); `keep`: names never taken out. */
+export function pruneHelpers(src: string, file: string, o: { imports?: boolean; keep?: ReadonlySet<string> } = {}): string {
   let at: number[] = [];
   for (;;) {
     const us = units(parse(src, file)), used = us.map((u) => idents(u.node));
-    const gone = us.filter((u, i) => u.names && !u.names.some((n) => used.some((x, j) => j !== i && x.has(n))));
+    const gone = us.filter((u, i) => u.names && (o.imports !== false || !ts.isImportDeclaration(u.stmt)) && !u.names.some((n) => o.keep?.has(n))
+      && !u.names.some((n) => used.some((x, j) => j !== i && x.has(n))));
     const cuts: [number, number][] = [];
     for (const s of new Set(gone.map((u) => u.stmt))) {
       const mine = gone.filter((u) => u.stmt === s);
@@ -158,7 +164,10 @@ export function splitFx(src: string, file: string, type: string, loaded: string[
   // rest: the entry with its comments and its comma; the last one takes the comma before it (after a comment, its own)
   const [a, b] = i < last ? [from(i), tail(i)?.end ?? els[i + 1].pos]
     : tail(i - 1) || tail(i) ? [from(i), tail(i)?.end ?? els[i].end + (/^\s*,/.exec(src.slice(els[i].end))?.[0].length ?? 0)] : [els[i - 1].end, els[i].end];
-  const rest = src.slice(0, a) + src.slice(b);
+  // rest: the helpers only that entry used go too; one nothing used before the split is the author's business and stays
+  const mine = { imports: false } as const, idle = removable(src, file);
+  for (const n of removable(pruneHelpers(src, file, mine), file)) idle.delete(n);
+  const rest = pruneHelpers(src.slice(0, a) + src.slice(b), file, { ...mine, keep: idle });
   // shared: only that entry between the brackets, the list's trailing comma kept as it was written
   const shared = pruneHelpers(src.slice(0, els[0].pos) + src.slice(from(i), els[i].end) + (els.hasTrailingComma ? ',' : '') + (tail(i)?.note ?? '')
     + src.slice(tail(last)?.end ?? els[last].end).replace(/^\s*,/, (m) => m.slice(0, -1)), file);

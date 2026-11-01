@@ -5,7 +5,8 @@
 // a card's `art`) are rewritten to the new id (the old project.json stays in .history/), so is its cut.ts (else the next
 // `npm run cut` brings the deleted fx back), and a sample is added to plugin-common/src/samples.ts — its golden picture is made with `npm run golden -- --update <name>`.
 // From a file of several blocks only that one moves (fx-split.ts): the shared file gets it and the helpers it still names, the
-// project's file keeps the others and stays in meta.fx. Either way the project's file as it was is kept in .history/promote/.
+// project's file keeps the others, minus the helpers only the moved one used, and stays in meta.fx. Either way the project's
+// file as it was is kept in .history/promote/.
 // The block gets its category (--category, unless the fx has one) and that category's next handle (spec 2026-10-22-block-handles);
 // a name easy to mistake for an existing block's is warned about.
 import { createHash } from 'node:crypto';
@@ -104,7 +105,7 @@ export const describePromotion = (pl: Promotion) => [
   `把 ${pl.from}（${pl.fxFile}）升格為 ${pl.to}：`,
   ...(pl.split ? [
     `  · 從 ${pl.fxFile} 抽出 ${pl.from} 搬到 ${pl.target}（只留它還用到的上層 helper、加 @ts-nocheck，之後有空再補型別）並註冊進 plugin-common/src/index.ts`,
-    `  · ${pl.fxFile} 留著其餘 ${pl.split.keeps.length} 個積木（${pl.split.keeps.join('、')}），只從 export default 拿掉 ${pl.from}，其他不動；原檔備份在 .history/promote/`,
+    `  · ${pl.fxFile} 留著其餘 ${pl.split.keeps.length} 個積木（${pl.split.keeps.join('、')}），從 export default 拿掉 ${pl.from}，也拿掉只有它用到的上層 helper（import、export 和會執行東西的敘述不動）；原檔備份在 .history/promote/`,
     `  · 專案裡 ${pl.items.length} 個項目（${pl.items.join('、') || '沒有'}）改用 ${pl.to}（舊 project.json 留在 .history/）`,
   ] : [
     `  · 搬到 ${pl.target}（保留原碼、加 @ts-nocheck，之後有空再補型別）並註冊進 plugin-common/src/index.ts`,
