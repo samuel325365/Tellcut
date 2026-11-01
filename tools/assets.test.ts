@@ -114,7 +114,7 @@ test('flags are read the same wherever they stand; bad ones are a usage error', 
   await expect(assetsCommand(['search', 'rain', '--min-sec', 'x'], o({ fake }))).rejects.toThrow('--min-sec 要是數字');
   await expect(assetsCommand(['search', 'rain', '--opt', 'feel'], o({ fake }))).rejects.toThrow('--opt 要寫成 k=v');
   await expect(assetsCommand(['get', 'p1'], o({ fake }))).rejects.toThrow('用法：npm run tellcut -- assets get <專案> <編號>');
-  await expect(assetsCommand(['get', 'nope', 'fake:1'], o({ fake }))).rejects.toThrow('沒有專案 nope');
+  await expect(assetsCommand(['get', 'nope', 'fake:1'], o({ fake }))).rejects.toThrow('沒有專案「nope」');
   await expect(assetsCommand(['dance'], o({ fake }))).rejects.toThrow('用法：npm run tellcut -- assets sources');
 });
 

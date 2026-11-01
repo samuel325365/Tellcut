@@ -6,10 +6,11 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadStyles, projectStyleDir, TELLCUT_ROOT, SCORE_LIBRARY } from '@tellcut/media-node';
+import { loadStyles, projectStyleDir, SCORE_LIBRARY } from '@tellcut/media-node';
 import { STYLE_PREFIX } from '@tellcut/protocol';
 import { fxChecks } from './check/rules.ts';
 import { HANDLES_FILE, nextHandle, readHandles, withHandle } from './handle-registry.ts';
+import { projectArgOrExit } from './project-arg.ts';
 
 /** `handle`: the next MUS handle, given to it in the registry (spec 2026-10-22-block-handles) */
 export interface StylePromotion { from: string; to: string; id: string; handle: string; handlesFile: string }
@@ -45,7 +46,7 @@ async function main() {
   const [id, style] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
   if (!id || !style) { console.error('用法：npm run promote-style -- <專案> <風格 id> [--yes]'); process.exit(2); }
   try {
-    const p = await planStylePromotion({ dir: join(TELLCUT_ROOT, 'projects', id), id: style });
+    const p = await planStylePromotion({ dir: projectArgOrExit(id, '用法：npm run promote-style -- <專案> <風格 id> [--yes]'), id: style });
     console.log(`把風格「${p.id}」升格進風格庫（圖鑑代號 ${p.handle}）：\n  ${p.from}\n  → ${p.to}\n  （已經用它產生的配樂不受影響；之後每個專案都能用 --style ${p.id}）`);
     if (!process.argv.includes('--yes')) { console.log('\n（只是預覽；確定要做就加 --yes）'); return; }
     applyStylePromotion(p);

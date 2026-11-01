@@ -5,12 +5,13 @@
 //   npm run tellcut -- library use <專案> <slug…> | --style <slug>
 //   npm run tellcut -- library refresh <slug>
 //   npm run tellcut -- library remove <slug> [--style]
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { blockDir, libraryRoot, listLibrary, loadProjectFx, loadStyles, makeThumb, PROJECT_ID, refreshBlock, removeBlock, removeStyle, saveBlock, saveStyle, TELLCUT_ROOT, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
+import { blockDir, libraryRoot, listLibrary, loadProjectFx, loadStyles, makeThumb, refreshBlock, removeBlock, removeStyle, saveBlock, saveStyle, TELLCUT_ROOT, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { fxChecks } from './check/rules.ts';
 import { Usage } from './usage.ts';
+import { projectArg } from './project-arg.ts';
 
 const USAGE = '用法：npm run tellcut -- library list | save <專案> <fx/x.js|score/x.js> [--type <fx.…>] [--name …] [--desc …] [--category …] [--replace|--keep-both] | use <專案> <slug…> | use <專案> --style <slug> | refresh <slug> | remove <slug> [--style]';
 
@@ -26,13 +27,9 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
   }
   const thumb = o.thumb !== false && !flags.has('no-thumb');
   const [cmd, ...rest] = pos;
-  // a project id as everywhere else (no ../, no _library or other _ folder): the copy and its links are written under it
-  const projectDir = (id: string | undefined) => {
-    if (!id) throw new Usage(USAGE);
-    if (!PROJECT_ID.test(id)) throw new Error(`「${id}」不是專案名稱（英文字母、數字、_ 和 -，不能用 _ 或 - 開頭）`);
-    if (!existsSync(join(projects, id, 'project.json'))) throw new Error(`沒有專案「${id}」`);
-    return join(projects, id);
-  };
+  // a project id as everywhere else (no ../, no _library or other _ folder, the folder's own spelling): the copy and its links
+  // are written under it
+  const projectDir = (id: string | undefined) => projectArg(id, USAGE, { projectsDir: projects, internal: false });
   switch (cmd) {
     case 'list': {
       const lib = listLibrary(root), blocks = lib.blocks.flatMap((e) => e.types.map((t) => ({ e, t })));

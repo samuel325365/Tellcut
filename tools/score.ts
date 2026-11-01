@@ -6,11 +6,12 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { libraryRoot, listLibrary, loadAllStyles, SCORE_LIBRARY, TELLCUT_ROOT, STYLES, writeScore, type LoadedStyles, type StyleEntry } from '@tellcut/media-node';
+import { libraryRoot, listLibrary, loadAllStyles, projectDirOf, SCORE_LIBRARY, TELLCUT_ROOT, STYLES, writeScore, type LoadedStyles, type StyleEntry } from '@tellcut/media-node';
 import { handleOf } from '@tellcut/protocol';
 import { fxChecks } from './check/rules.ts';
+import { PROJECTS_DIR } from './project-arg.ts';
 
-const projectDir = (id: string) => join(TELLCUT_ROOT, 'projects', id);
+const projectDir = (id: string) => projectDirOf(PROJECTS_DIR, id, { internal: true });
 
 /** mine: the user's own styles (spec 2026-10-29-my-library §3.3), copied into the project before use */
 export function listStyles(loaded: LoadedStyles = { styles: {}, errors: [], warnings: [] }, mine: StyleEntry[] = []): string {

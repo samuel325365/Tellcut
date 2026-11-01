@@ -26,6 +26,7 @@ import { libraryCommand } from './library.ts';
 import { ensureFont3d, type Feel } from './font3d.ts';
 import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
+import { projectArg } from './project-arg.ts';
 
 const f2 = (v: number) => v.toFixed(2);
 /** frames' long side for Claude (540×960 portrait, 960×540 landscape); --full keeps the film's own size */
@@ -178,7 +179,7 @@ async function main(argv: string[]) {
     for (const e of mine.errors) console.error(`我的積木載入失敗 ${e.path}：${e.message}`);
     let all = mine.plugin.items?.length ? [...plugins, mine.plugin] : plugins;
     if (pid) {
-      const dir = join(TELLCUT_ROOT, 'projects', pid), fx = await loadProjectFx(dir, readProject(dir).meta.fx);
+      const dir = projectArg(pid, '用法：npm run tellcut -- catalog [類型 | --find <關鍵字>] --project <專案>'), fx = await loadProjectFx(dir, readProject(dir).meta.fx);
       reportFx(fx);
       all = [...all, { ...fx.plugin, id: 'fx' }];
     }
@@ -198,8 +199,9 @@ async function main(argv: string[]) {
       : `中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { cjk })（不給 glyphs：拉丁字也用這個字型自己的，和中文同一種字感）`);
     return;
   }
-  if (!cmd || !id) throw new Usage('用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>、library …');
-  const dir = join(TELLCUT_ROOT, 'projects', id);
+  const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round>、library …';
+  if (!cmd) throw new Usage(usage);
+  const dir = projectArg(id, usage);
   const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };
   switch (cmd) {
     case 'show': console.log(showProject(readProject(dir))); return;

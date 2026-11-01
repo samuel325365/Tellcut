@@ -4,17 +4,17 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseProject } from '@tellcut/engine';
-import { TELLCUT_ROOT, nextExportBase, openPage, playerPath, prepareProject, projectRegistry, projectTarget, refreshCredits, renderVideo } from '@tellcut/media-node';
+import { nextExportBase, openPage, playerPath, prepareProject, projectRegistry, projectTarget, refreshCredits, renderVideo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
+import { projectArgOrExit } from './project-arg.ts';
 export { TELLCUT_ROOT, openPage, playerPath, playerUrl, projectTarget, renderVideo, type PageSession } from '@tellcut/media-node';
 
 async function main() {
   const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
-  const projectId = arg('--project')!;
-  const outDir = join(TELLCUT_ROOT, 'projects', projectId, 'output');
+  const projectId = arg('--project')!, pdir = projectArgOrExit(projectId, '用法：npx tsx tools/render.ts --project <專案> [--stills 1.5,3] [--from 秒 --to 秒]');
+  const outDir = join(pdir, 'output');
   const stills = arg('--stills');
   // the clips the film uses are cut into cache/ first (incremental: only what changed): render alone used to play missing clips black
-  const pdir = join(TELLCUT_ROOT, 'projects', projectId);
   const { registry } = await projectRegistry(pdir, plugins, parseProject(JSON.parse(readFileSync(join(pdir, 'project.json'), 'utf8'))));
   await prepareProject(pdir, registry, { log: (l) => console.log(l) });
   if (stills) {
@@ -31,7 +31,7 @@ async function main() {
   }
   const from = arg('--from'), to = arg('--to');
   // the film goes where the editor's go (review3 R3-H2): exports/<name>-<time>.mp4 and its .log, listed on the page
-  const dir = join(TELLCUT_ROOT, 'projects', projectId), name = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).meta?.name ?? projectId;
+  const dir = pdir, name = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).meta?.name ?? projectId;
   const base = nextExportBase(dir, name, projectId), lines: string[] = [];
   mkdirSync(dirname(base), { recursive: true });
   const t0 = Date.now();

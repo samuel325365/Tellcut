@@ -1,9 +1,9 @@
 // project.json storage (spec §6.1, §8): list, read, validated atomic writes with a 20-version history.
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { basename, join, resolve, sep } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve, sep } from 'node:path';
 import type { ServerResponse } from 'node:http';
 import { parseProject, ProjectError, type Project } from '@tellcut/engine';
-import { contentType, PROJECT_ID, projectHash, sendFile, withImportQuery, writeProjectFile } from '@tellcut/media-node';
+import { contentType, lookupProject, PROJECT_ID, projectHash, sendFile, withImportQuery, writeProjectFile } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 
 /** an editor page's id (X-Tellcut-Client on its saves, ?client= on its live stream) */
@@ -59,17 +59,13 @@ export class ProjectStore {
   readonly saved = new Set<(id: string, writer: string | undefined) => void>();
   constructor(readonly root: string) {}
 
+  /** every route comes through here: only the folder's own spelling is a project (media-node project-dir.ts, which the command
+   *  lines share) */
   dir(id: string): string {
-    if (!ID.test(id)) throw new HttpError(400, `Invalid project id "${id}"`);
-    const d = join(this.root, id);
-    if (!existsSync(join(d, 'project.json'))) throw new HttpError(404, `No project "${id}"`);
-    // NTFS finds the folder demo for Demo: one project under two ids had two chat turns at once (the turn lock is this process's,
-    // so free to it), and a delete that missed the other id's turn and jobs. Every route comes through here, so only the
-    // folder's own spelling is a project (a junction named otherwise, its target's name unlike the id, is left alone)
-    let real = id;
-    try { real = basename(realpathSync.native(d)); } catch { /* unreadable: as it was */ }
-    if (real !== id && real.toLowerCase() === id.toLowerCase()) throw new HttpError(404, `No project "${id}" (it is "${real}")`);
-    return d;
+    const r = lookupProject(this.root, id);
+    if ('dir' in r) return r.dir;
+    if (r.error === 'invalid') throw new HttpError(400, `Invalid project id "${id}"`);
+    throw new HttpError(404, r.error === 'case' ? `No project "${id}" (it is "${r.real}")` : `No project "${id}"`);
   }
 
   list() {

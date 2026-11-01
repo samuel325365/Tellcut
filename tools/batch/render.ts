@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TELLCUT_ROOT } from '@tellcut/media-node';
 import { holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
+import { projectArgOrExit } from '../project-arg.ts';
 
 export const LOCK_DIR = join(TELLCUT_ROOT, '.cache', 'batch-render-slots');
 const USAGE = '用法：npm run batch:render -- <專案> [--slots 2] [render 的選項]';
@@ -35,6 +36,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args) { console.error(USAGE); process.exit(2); }
   const { id, slots, extra } = args;
+  projectArgOrExit(id, USAGE);   // the server's spelling of it, before waiting for a slot (render.ts would refuse another)
   try { npmCommand([id, ...extra]); } catch (e) { console.error((e as Error).message); process.exit(2); }   // before taking a slot
   let slot: string | null = null, waited = 0;
   while (!(slot = takeSlot(LOCK_DIR, slots, id))) {

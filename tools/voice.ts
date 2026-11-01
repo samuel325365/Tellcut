@@ -4,7 +4,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadProvidersConfig, parseNarration, TELLCUT_ROOT, renderVoice, transcribeProvider, ttsProvider, type VoiceInfo } from '@tellcut/media-node';
+import { projectArg } from './project-arg.ts';
+import { loadProvidersConfig, parseNarration, renderVoice, transcribeProvider, ttsProvider, type VoiceInfo } from '@tellcut/media-node';
 
 export async function main(argv: string[], log: (s: string) => void = console.log): Promise<Record<string, VoiceInfo>> {
   const flags = new Map<string, string | true>(), pos: string[] = [];
@@ -14,8 +15,8 @@ export async function main(argv: string[], log: (s: string) => void = console.lo
     flags.set(a.slice(2), a === '--force' ? true : argv[++i]);
   }
   const [id, ...only] = pos;
-  const dir = join(TELLCUT_ROOT, 'projects', id ?? '');
-  if (!id || !existsSync(join(dir, 'narration.json'))) throw new Error(id ? `projects/${id}/narration.json 不存在` : '用法：npm run voice -- <專案> [場景 id ...] [--engine edge] [--force]');
+  const dir = projectArg(id, '用法：npm run voice -- <專案> [場景 id ...] [--engine edge] [--force]');
+  if (!existsSync(join(dir, 'narration.json'))) throw new Error(`projects/${id}/narration.json 不存在`);
   const narration = parseNarration(JSON.parse(readFileSync(join(dir, 'narration.json'), 'utf8')));
   const config = loadProvidersConfig(), engine = typeof flags.get('engine') === 'string' ? (flags.get('engine') as string) : config.tts.use;
   const tts = ttsProvider({ ...config, tts: { ...config.tts, use: engine } });

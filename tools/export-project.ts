@@ -13,6 +13,7 @@ import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
+import { projectArgOrExit } from './project-arg.ts';
 
 type Raw = { sources?: Record<string, { path: string }>; media?: Record<string, { path: string }>; [k: string]: unknown };
 export interface ExportPlan { files: Array<{ from: string; to: string }>; project: Raw; outside: string[] }
@@ -155,8 +156,7 @@ function main(argv: string[]) {
     console.log(`匯入了：${at}\n素材分析會在打開專案或跑 npm run inspect 時重做。`);
     return;
   }
-  const id = pos[0], dir = id ? join(TELLCUT_ROOT, 'projects', id) : '';
-  if (!id || !existsSync(join(dir, 'project.json'))) { console.error('用法：npm run export-project -- <專案> [--media] [--public] [--out <檔案.zip>]'); process.exit(2); }
+  const dir = projectArgOrExit(pos[0], '用法：npm run export-project -- <專案> [--media] [--public] [--out <檔案.zip>]');
   const media = argv.includes('--media'), out = flag('--out');
   const zip = exportProject(dir, { media, public: argv.includes('--public'), out: out && resolve(process.env.INIT_CWD ?? process.cwd(), out) });
   const plan = exportPlan(dir, JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')), { media });

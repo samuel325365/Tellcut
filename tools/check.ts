@@ -12,11 +12,11 @@ import { formatReport, isOffline, pageLayer, pageLayerSkip } from './check/repor
 import { renderedChecks } from './check/page.ts';
 import { clipBars, letterboxFindings } from './check/letterbox.ts';
 import { plugins } from '@tellcut/plugins';
+import { projectArgOrExit } from './project-arg.ts';
 
 /** the project's own music styles (projects/<id>/score/*.js) follow the same rules as its effects */
 const projectStyleFiles = (d: string) => (existsSync(join(d, 'score')) ? readdirSync(join(d, 'score')).filter((f) => f.endsWith('.js')).map((f) => `score/${f}`) : []);
-const id = process.argv[2], dir = join(TELLCUT_ROOT, 'projects', id ?? '');
-if (!id || id.startsWith('-') || !existsSync(join(dir, 'project.json'))) { console.error('用法：npm run check -- <專案名> [--quick] [--sheet]'); process.exit(2); }
+const id = process.argv[2], dir = projectArgOrExit(id, '用法：npm run check -- <專案名> [--quick] [--sheet]');
 const p = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')));
 const transcripts: Record<string, Transcript | null> = {}, burned: Record<string, Burned | null> = {}, shots: Record<string, number[] | null> = {};
 for (const [sid, s] of Object.entries(p.sources)) {

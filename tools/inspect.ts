@@ -3,10 +3,9 @@
 //   npm run inspect -- <id> --source <素材>                    one source in detail: scenes, sentences with times, big sheets
 //   npm run inspect -- <id> --source <素材> --range 5:00-6:30   one stretch: a frame every few seconds with its time, its scenes and sentences
 // Everything is cached: running it again is quick.
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { TELLCUT_ROOT, tellcutUrl } from '@tellcut/media-node';
+import { tellcutUrl } from '@tellcut/media-node';
 import { formatClips, timelineClips } from './inspect-clips.ts';
+import { projectArgOrExit } from './project-arg.ts';
 import { busyFromJobs, formatInventory, formatSource, formatSourceRange, inventory, parseRange, type ServerBusy } from './cut/inventory.ts';
 
 /** what the Tellcut server (if it runs) is analysing for this project: inspect neither waits for it nor does it again */
@@ -17,8 +16,7 @@ async function serverBusy(project: string): Promise<ServerBusy> {
   } catch { return {}; }
 }
 
-const id = process.argv[2], dir = join(TELLCUT_ROOT, 'projects', id ?? '');
-if (!id || !existsSync(join(dir, 'project.json'))) { console.error('用法：npm run inspect -- <專案名> [--source <素材> [--range 開始-結束]] [--json] [--no-transcribe]'); process.exit(2); }
+const id = process.argv[2], dir = projectArgOrExit(id, '用法：npm run inspect -- <專案名> [--source <素材> [--range 開始-結束]] [--json] [--no-transcribe]');
 const arg = (k: string) => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] ?? '' : undefined; };
 try {
   const range = arg('--range') !== undefined ? parseRange(arg('--range')!) : undefined;

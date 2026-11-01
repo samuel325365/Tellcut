@@ -8,10 +8,11 @@
 //   assets map <專案> --at <地名> | --from <地名> --to <地名> [--style street|satellite|light|dark] [--no-pin] …   a stitched map as a photo source
 // Any of them with --help (or -h) prints its usage.
 // Which sources exist is tellcut/sources.json + sources.local.json; `npm run sources` tells why one is missing.
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { contextFor, getAsset, makeMap, openSources, probeDuration, searchAll, searchSheet, sourceStatuses, TELLCUT_ROOT, TILE_BUDGET, usableSource, writeCredits, type AssetKind, type MapStyle, type SearchQuery, type Sources } from '@tellcut/media-node';
 import { Usage } from './usage.ts';
+import { projectArg } from './project-arg.ts';
 
 /** what the CLI takes — exported so the guides' test checks the guides against the command itself */
 export const ASSET_SUBCOMMANDS = ['sources', 'source', 'search', 'get', 'map', 'data', 'credits'];
@@ -95,12 +96,7 @@ export async function assetsCommand(argv: string[], o: { sources?: Sources; proj
   // asking is not a mistake: the usage on stdout, exit 0 (the map's once read --help as a project)
   if (argv.some((a) => a === '--help' || a === '-h')) return USAGES[sub] ?? USAGE;
   const s = o.sources ?? openSources(), projectsDir = o.projectsDir ?? join(TELLCUT_ROOT, 'projects');
-  const projectDir = (id: string | undefined, usage: string) => {
-    if (!id) throw new Usage(usage);
-    const dir = join(projectsDir, id);
-    if (!existsSync(join(dir, 'project.json'))) throw new Error(`沒有專案 ${id}`);
-    return dir;
-  };
+  const projectDir = (id: string | undefined, usage: string) => projectArg(id, usage, { projectsDir });
   switch (sub) {
     case 'sources': {
       const all = sourceStatuses(s), ok = all.filter((x) => x.available);

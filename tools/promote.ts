@@ -19,6 +19,7 @@ import { plugins } from '@tellcut/plugins';
 import { BLOCK_CATEGORY, BLOCK_PREFIX } from '@tellcut/protocol';
 import { HANDLES_FILE, nextHandle, readHandles, similarNames, withHandle } from './handle-registry.ts';
 import { editedSinceCut } from './cut/cut.ts';
+import { projectArgOrExit } from './project-arg.ts';
 import { splitFx, type FxSplit } from './fx-split.ts';
 
 export interface Promotion { project: string; fxFile: string; from: string; to: string; name: string; target: string; items: string[];
@@ -168,7 +169,7 @@ async function main() {
   const flag = (k: string) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : undefined);
   const [id, type] = pos, name = flag('--as'), category = flag('--category');
   if (!id || !type) { console.error('用法：npm run promote -- <專案> <fx.類型> [--as 名稱] [--category 分類] [--yes]'); process.exit(2); }
-  const dir = join(TELLCUT_ROOT, 'projects', id), commonDir = resolve(TELLCUT_ROOT, 'packages', 'plugin-common');
+  const dir = projectArgOrExit(id, '用法：npm run promote -- <專案> <fx.類型> [--as 名稱] [--category 分類] [--yes]'), commonDir = resolve(TELLCUT_ROOT, 'packages', 'plugin-common');
   try {
     const plan = await planPromotion({ dir, type, name, category, commonDir });
     console.log(describePromotion(plan));

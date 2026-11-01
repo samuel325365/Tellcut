@@ -3,11 +3,13 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { refreshCredits, TELLCUT_ROOT } from '@tellcut/media-node';
+import { refreshCredits } from '@tellcut/media-node';
 import { Cut, EditedDuringCut, editedSinceCut } from './cut/cut.ts';
+import { projectArgOrExit } from './project-arg.ts';
 
-const id = process.argv[2], dir = join(TELLCUT_ROOT, 'projects', id ?? ''), script = join(dir, 'cut.ts');
-if (!id || !existsSync(script)) { console.error('用法：npm run cut -- <專案名> [--force] [--no-transcribe]   （需要 tellcut/projects/<專案名>/cut.ts）'); process.exit(2); }
+const USAGE = '用法：npm run cut -- <專案名> [--force] [--no-transcribe]   （需要 tellcut/projects/<專案名>/cut.ts）';
+const id = process.argv[2], dir = projectArgOrExit(id, USAGE), script = join(dir, 'cut.ts');
+if (!existsSync(script)) { console.error(USAGE); process.exit(2); }
 const force = process.argv.includes('--force');
 if (!force && editedSinceCut(dir)) {
   console.error('這個專案在上次初剪後被編輯過，重跑會覆蓋那些修改（舊版會留在 .history/）。確定要重跑請加上 --force');
