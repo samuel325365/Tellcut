@@ -27,6 +27,7 @@
     "tools",
     "packages/*/golden",
     "apps/*/vite.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.workspace.ts"
   ]
 }
