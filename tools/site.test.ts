@@ -46,18 +46,15 @@ test('an unreachable site fails in one line', async () => {
   expect(existsSync(join(tmpProject, 'media/brand/site.png'))).toBe(false);
 });
 
-test('a site whose web font never arrives still ends within its time', async () => {
-  // What ends the wait is the read's own deadline (its message names it), not the font: without the deadline this read never
-  // ends (Playwright's screenshot waits for document.fonts.ready too). The wall clock is only a loose bound: closing Chrome after
-  // the deadline took up to 12 s more in a full npm test, against under 1 s alone, and a launch slower than a short deadline
-  // reads as "Chrome does not start", hence 10 s.
-  const t0 = Date.now();
-  const out = await readSite(`${base}/stall`, tmpProject, { timeoutMs: 10000 }).then(() => 'read', (e: Error) => e.message);
-  expect(Date.now() - t0).toBeLessThan(10000 + 30000);
-  if (out !== 'read') {
-    expect(out).toMatch(/讀不到官網.*（(超過 10 秒|page\.\w+: Timeout \d+ms exceeded)/);
-    expect(existsSync(join(tmpProject, 'media/brand/site.png'))).toBe(false);
-  }
+test('a site whose web font never arrives is still read, within its time', async () => {
+  // The font holds the load event and document.fonts.ready for good: the load wait stops short of the deadline and the picture
+  // is taken without waiting for the fonts (Playwright's page.screenshot waits for them), so the read gets the page, the stalled
+  // family named as it is. It used to end only by the deadline, with nothing read. The default 30 s: the load wait alone takes 10.
+  const s = await readSite(`${base}/stall`, tmpProject);
+  expect(s.colors[0]).toBe('#223344');
+  expect(s.fonts.heading).toBe('Slow');
+  expect(s.title).toBe('');
+  expect(existsSync(join(tmpProject, 'media/brand/site.png'))).toBe(true);
 }, 60000);
 
 test('a broken og:image is left out and the rest of the page is read', async () => {

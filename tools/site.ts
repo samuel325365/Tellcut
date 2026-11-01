@@ -23,6 +23,11 @@ export interface SiteInfo {
 const W = 1440, H = 900;
 /** colours closer than this (RGB distance) are one colour */
 const NEAR = 24;
+/** ms: the longest the read waits for the page's load event, and for its fonts after it */
+const LOAD_CAP = 10000, FONTS_CAP = 3000;
+/** ms of the deadline kept back from those waits: after the load wait the fonts, the settling, the measuring and the picture
+ *  (AFTER_LOAD); after the fonts wait the rest (AFTER_FONTS) */
+const AFTER_LOAD = 5000, AFTER_FONTS = 2500;
 
 // Runs in the page, as a string (a function would be serialised with the bundler's helpers). Backgrounds: a grid of points, each
 // taking the first opaque background under it (a picture or a gradient there: the point is skipped, the screenshot shows it). Text:
@@ -116,12 +121,19 @@ export async function readSite(url: string, projectDir: string, o: { timeoutMs?:
     const page = await ctx.newPage();
     const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: left() });
     if (res && res.status() >= 400) throw new Error(`HTTP ${res.status()}`);
-    // the rest of the page (pictures, fonts) within what is left of the time; a site whose trackers never finish is read as it is
-    await page.waitForLoadState('load', { timeout: left() }).catch(() => {});
-    await page.evaluate(`Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, ${Math.min(5000, left())}))]).then(() => new Promise((r) => setTimeout(r, 800)))`);
+    // the rest of the page (pictures, fonts), but never into the time the measuring and the picture need: a web font that never
+    // arrives holds the load event, and a site whose trackers never finish is read as it is (a timeout of 0 would mean no limit)
+    const loadMs = Math.min(LOAD_CAP, end - Date.now() - AFTER_LOAD);
+    if (loadMs > 0) await page.waitForLoadState('load', { timeout: loadMs }).catch(() => {});
+    const fontsMs = Math.max(0, Math.min(FONTS_CAP, end - Date.now() - AFTER_FONTS));
+    await page.evaluate(`Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, ${fontsMs}))]).then(() => new Promise((r) => setTimeout(r, 800)))`);
     const m = await page.evaluate(MEASURE) as { weights: Array<[string, number]>; fonts: SiteInfo['fonts']; title: string; description: string; image: string | null };
     mkdirSync(dir, { recursive: true });
-    await page.screenshot({ path: tmp, timeout: left() });
+    // the picture through the DevTools protocol: Playwright's page.screenshot waits for document.fonts.ready itself, which a
+    // stalled web font never settles; this takes the screen as it is (the text then in the fallback font)
+    const cdp = await ctx.newCDPSession(page);
+    const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: W, height: H, scale: 1 } });
+    writeFileSync(tmp, Buffer.from(data, 'base64'));
     const info: SiteInfo = { url: page.url(), title: m.title, description: m.description, colors: mainColours(m.weights), fonts: m.fonts, screenshot: shot, image: m.image };
     renameSync(tmp, join(projectDir, shot));
     writeFileSync(join(dir, 'site.json'), JSON.stringify(info, null, 2));
