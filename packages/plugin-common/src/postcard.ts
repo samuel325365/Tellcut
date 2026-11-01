@@ -18,6 +18,7 @@ import { parseSentences } from './handwrite.ts';
 import { drawMark, drawStamp, hash, markEl, SERIF, stampEl, type Mark, type MarkEl, type StampEl, type StampSpec } from './postmark.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, windowEl, type Still, type Win } from './window.ts';
 import { freeCanvas } from './inkline.ts';
+import { withAlpha } from './color.ts';
 import { WORDS, wordsLang, type WordsLang } from './words.ts';
 
 type Orient = 'portrait' | 'landscape';
@@ -249,12 +250,14 @@ function drawCard(media: MediaApi, C: CardEl, card: Card, pose: Pose, face: 'fro
   cssCamel(C.shade, { opacity: String(pose.shade ?? 0), display: pose.shade ? 'block' : 'none' });
 }
 
-/** a wooden desk: planks, grain, warm light from the upper left, darker corners (painted once per size) */
-export function paintDesk(c: HTMLCanvasElement, W: number, H: number) {
+/** a wooden desk: planks, grain, warm light from the upper left, darker corners (painted once per size); `wood` the light, middle
+ *  and dark of the boards `lamp` the light's colour and `vignette` how dark the corners get (common.tabletop's look wood changes them; the postcard's desk keeps
+ *  these) */
+export function paintDesk(c: HTMLCanvasElement, W: number, H: number, o: { wood?: [string, string, string]; lamp?: string; vignette?: number } = {}) {
   c.width = Math.round(W); c.height = Math.round(H);
-  const g = c.getContext('2d')!, u = Math.min(W, H) / 1080;
+  const g = c.getContext('2d')!, u = Math.min(W, H) / 1080, wood = o.wood ?? ['#9a7150', '#86603f', '#6d4b31'];
   const grd = g.createLinearGradient(0, 0, W * 0.3, H);
-  grd.addColorStop(0, '#9a7150'); grd.addColorStop(0.5, '#86603f'); grd.addColorStop(1, '#6d4b31');
+  grd.addColorStop(0, wood[0]); grd.addColorStop(0.5, wood[1]); grd.addColorStop(1, wood[2]);
   g.fillStyle = grd; g.fillRect(0, 0, W, H);
   // planks and grain: long gently waving lines, all from the hash
   for (let i = 0; i < 260; i++) {
@@ -267,10 +270,10 @@ export function paintDesk(c: HTMLCanvasElement, W: number, H: number) {
   }
   for (const y of [H * 0.27, H * 0.61, H * 0.93]) { g.fillStyle = 'rgba(40,24,12,0.22)'; g.fillRect(0, y, W, 3 * u); g.fillStyle = 'rgba(230,190,140,0.10)'; g.fillRect(0, y + 3 * u, W, 2 * u); }
   const lamp = g.createRadialGradient(W * 0.25, H * 0.18, 0, W * 0.25, H * 0.18, Math.max(W, H) * 0.9);
-  lamp.addColorStop(0, 'rgba(255,214,160,0.28)'); lamp.addColorStop(1, 'rgba(255,214,160,0)');
+  lamp.addColorStop(0, o.lamp ? withAlpha(o.lamp, 0.28) : 'rgba(255,214,160,0.28)'); lamp.addColorStop(1, o.lamp ? withAlpha(o.lamp, 0) : 'rgba(255,214,160,0)');
   g.fillStyle = lamp; g.fillRect(0, 0, W, H);
   const vig = g.createRadialGradient(W / 2, H / 2, Math.max(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
-  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(20,10,4,0.45)');
+  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, `rgba(20,10,4,${o.vignette ?? 0.45})`);
   g.fillStyle = vig; g.fillRect(0, 0, W, H);
 }
 

@@ -531,4 +531,18 @@ export const samples: Sample[] = [
   { name: 'healthbar', type: 'common.healthbar', len: 4.2, at: [1.15, 2.0, 2.9, 3.6], bg: '#3a4656' },
   { name: 'healthbar-bare', type: 'common.healthbar', params: { title: '', live: '', replay: '', label: 'HP', stops: '0:100, 0.6:40' }, at: [1.2], bg: '#3a4656' },
   { name: 'wide-healthbar', type: 'common.healthbar', len: 4.2, at: [3.6], wide: true, bg: '#3a4656' },
+  // common.tabletop (2026-11-02, the grill-restaurant acceptance film's fx.steeltable): brushed steel, with the corner grill, wood
+  { name: 'tabletop', type: 'common.tabletop', at: [0.5] },
+  { name: 'tabletop-grill', type: 'common.tabletop', params: { grill: true }, at: [0.5] },
+  { name: 'tabletop-wood', type: 'common.tabletop', params: { look: 'wood', grill: true, grillX: -0.02, grillY: 0.1, grillR: 0.24 }, at: [0.5] },
+  { name: 'wide-tabletop', type: 'common.tabletop', params: { grill: true }, at: [0.5], wide: true },
+  // common.bounce (2026-11-02, the outdoor-brand acceptance film's fx.words): drop and pop with a hop; every mode at once; knock's holes
+  { name: 'bounce', type: 'common.bounce', len: 3, at: [0.35, 1.2, 2.25], bg: '#4a6b7c' },
+  { name: 'bounce-modes', type: 'common.bounce', params: { items: '0|砸下來|220||0.5|0.24|slam\n0.3|慢慢浮上來|140||0.5|0.42|float|shadow=1;scrim=1\n0.5|搖一搖|170|hl|0.5|0.6|sway|wob=1\n0.2|掉【下去】|170||0.5|0.8|pop|sink=1.4' }, len: 3, at: [0.9, 1.9], bg: '#55606e' },
+  { name: 'bounce-knock', type: 'common.bounce', params: { items: '0.05|就現在|420||0.5|0.45|knock|stagger=0.08;out=1.6' }, at: [0.2, 1.0, 1.7], bg: '#3b7fbf' },
+  { name: 'wide-bounce', type: 'common.bounce', len: 3, at: [1.2], wide: true, bg: '#4a6b7c' },
+  // common.header shade (2026-11-02, the true-crime acceptance film's fx.topshade) over a bright frame; common.headline enter roll and the strike
+  { name: 'header-shade', type: 'common.header', params: { look: 'kicker', text: '這件事【到底】怎麼了？', kicker: '節目名｜第 3 集', shade: 0.82 }, at: [1.5], bg: '#e9e4da' },
+  { name: 'headline-roll', type: 'common.headline', params: { text: '一層一層擀開', sub: '', bg: 'none', rules: false, enter: 'roll' }, at: [0.7, 2.2], bg: '#6b5a48' },
+  { name: 'headline-strike', type: 'common.headline', params: { text: '不加人工色素', sub: '第三件事', strikeFrom: 2, strikeAt: 0.6 }, at: [1.1, 2.4], bg: '#6b5a48' },
 ];

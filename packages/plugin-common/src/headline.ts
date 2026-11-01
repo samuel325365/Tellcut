@@ -4,7 +4,10 @@
 // look 'name' (the katie-sweet16 short's fx.title): a celebration's name title — a big italic serif name (CJK characters upright: their
 // faces have no italic) whose letters rise in one after another, one shimmer of light across it, a gold rule drawing out from a dot
 // under it, and a letter-spaced line below.
-import { abs, clamp, cssCamel, eOut3, h, type ItemType, prog, textEm } from '@tellcut/engine';
+// From the bakery acceptance film's fx.rollLine / fx.strikeLine (look doc): `enter: roll` unrolls each character from narrow to its full
+// width like dough under a rolling pin; `strikeFrom` / `strikeAt` draw a thin line in the `line` colour through the words from that
+// character on, which then fade back.
+import { abs, clamp, cssCamel, eIO3, eOut3, h, type ItemType, prog, textEm } from '@tellcut/engine';
 import { countUp, drawBlurLine, loadLineFaces } from './brand-text.ts';
 import { ghostLayer, ghostLines, nl, type GhostLine } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
@@ -12,7 +15,7 @@ import { isCjk } from './words.ts';
 
 interface P {
   text: string; sub: string; y: number; size: number; spacing: number; bg: 'none' | 'band' | 'black'; rules: boolean; type: number;
-  font: string; color: string; line: string; ground: string; look: 'doc' | 'brand' | 'proof' | 'name';
+  font: string; color: string; line: string; ground: string; look: 'doc' | 'brand' | 'proof' | 'name'; enter: 'rise' | 'roll'; strikeFrom: number; strikeAt: number;
 }
 interface S { ground: HTMLElement; box: HTMLElement; r1: HTMLElement; r2: HTMLElement; main: HTMLElement; sub: HTMLElement; cv: HTMLCanvasElement; ghost: HTMLElement; p: P; nm: NameEls }
 /** look name's parts: the group (name, rule with its dot, the line under it), centred on y */
@@ -27,6 +30,20 @@ export function typedSplit(lines: string[], n: number): Array<[string, string]> 
   return lines.map((l) => { const c = [...l], k = Math.min(left, c.length); left -= k; return [c.slice(0, k).join(''), c.slice(k).join('')]; });
 }
 
+/** enter roll: character i (counted over all lines) unrolling at `local` — from 0.25 s, one every 0.13 s, each over 0.6 s: its width and
+ *  height scale and its opacity */
+export function rollChar(i: number, local: number) {
+  const e = eOut3(prog(local, 0.25 + i * 0.13, 0.85 + i * 0.13));
+  return { sx: 0.4 + 0.6 * e, sy: 1.15 - 0.15 * e, a: e * e };
+}
+/** the strike from character `from` at `at`: how far through each struck character the line has run (0–1, over 1 s for the whole
+ *  struck part) and how far they have faded (1 → 0.28 from 0.6 s after `at`, over 0.9 s); characters before `from` are untouched */
+export function strikeChar(i: number, from: number, n: number, at: number, local: number) {
+  if (from < 0 || i < from) return { line: 0, fade: 1 };
+  const run = eIO3(prog(local, at, at + 1)) * Math.max(1, n - from);
+  return { line: clamp(run - (i - from)), fade: 1 - 0.72 * prog(local, at + 0.6, at + 1.5) };
+}
+
 /** the lines in el, the untyped rest of each kept in place but hidden, so the typed letters do not slide while the line fills */
 function setTyped(el: HTMLElement, lines: string[], n: number) {
   el.replaceChildren();
@@ -39,7 +56,7 @@ function setTyped(el: HTMLElement, lines: string[], n: number) {
 
 export const headline: ItemType<P, S> = {
   type: 'common.headline', label: '明體標題卡', category: 'text', kind: 'overlay',
-  doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來；歷史、紀錄片、散文、旅行的章節開場；look name 是慶生、婚禮、畢業的名字片頭：斜體襯線的大名字（text；中日韓文字沒有斜體，保持直立）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；片尾的感謝名單用 common.outro 的 look credits',
+  doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來、enter roll 每個字像被擀開一樣從扁窄展開；strikeFrom＋strikeAt 到時間用一條細線劃掉第幾個字以後的字、那幾個字淡下去（「不加○○」「原本以為…」）；歷史、紀錄片、散文、旅行、品牌片的章節開場；look name 是慶生、婚禮、畢業的名字片頭：斜體襯線的大名字（text；中日韓文字沒有斜體，保持直立）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；片尾的感謝名單用 common.outro 的 look credits',
   params: [
     { key: 'text', label: '大字（可換行）', type: 'text', default: '一座廣場的七百年' },
     { key: 'sub', label: '小字（空＝不顯示）', type: 'text', default: '第一章　規劃' },
@@ -53,6 +70,9 @@ export const headline: ItemType<P, S> = {
     { key: 'color', label: '大字顏色', type: 'color', default: '#f3e9d2', theme: 'palette.paper' },
     { key: 'line', label: '小字與細線的顏色', type: 'color', default: '#d9b13b' },
     { key: 'ground', label: '橫帶／黑底的顏色', type: 'color', default: '#0f0b08' },
+    { key: 'enter', label: '大字怎麼進來（doc；rise 整張卡浮上來、roll 每個字從扁窄擀開到正常寬度）', type: 'enum', options: ['rise', 'roll'], default: 'rise' },
+    { key: 'strikeFrom', label: '從第幾個字起劃掉（doc；從 0 數、換行接著數；-1＝不劃）', type: 'number', min: -1, max: 200, step: 1, default: -1 },
+    { key: 'strikeAt', label: '幾秒劃掉（strikeFrom；細線用小字的顏色，劃掉的字淡下去）', type: 'number', min: 0, max: 600, step: 0.05, default: 1.4 },
     { key: 'look', label: '樣子（doc 紀錄片標題卡；brand 品牌片：左下角一行一行從模糊變清楚，小字變成上方的小標；proof 品牌片的證明：左邊一個往上數的大數字，小字是下方加寬字距的標籤；name 慶生、婚禮的名字片頭：斜體襯線大名字一個字母一個字母浮上來、一道光掃過，下面一條細線從中間的小圓點長出來，再一行加寬字距的小字）', type: 'enum', options: ['doc', 'brand', 'proof', 'name'], default: 'doc' },
   ],
   build(ctx) {
@@ -96,9 +116,19 @@ export const headline: ItemType<P, S> = {
     // in: rise 0.45 s; out: the last 0.3 s
     const a = eOut3(prog(local, 0, 0.45)) * (1 - prog(local, dur - 0.3, dur));
     const typing = p.type > 0, n = typing ? local * p.type : Infinity, total = lines.reduce((x, l) => x + [...l].length, 0);
-    if (typing) { setTyped(s.main, lines, n); setTyped(s.sub, subLines, n - total); }
-    else { s.main.textContent = lines.join('\n'); s.sub.textContent = subLines.join('\n'); }
     const shadow = p.bg === 'black' ? 'none' : `0 ${3 * k}px ${14 * k}px rgba(0,0,0,.75), 0 0 ${2 * k}px rgba(0,0,0,.9)`;
+    // a faded character's shadow fades with it
+    const shadowA = (o: number) => (p.bg === 'black' ? 'none' : `0 ${3 * k}px ${14 * k}px rgba(0,0,0,${(0.75 * o).toFixed(3)}), 0 0 ${2 * k}px rgba(0,0,0,${(0.9 * o).toFixed(3)})`);
+    const roll = !typing && p.enter === 'roll', strike = !typing && (p.strikeFrom ?? -1) >= 0, thick = Math.max(1, fs * 0.055);
+    if (typing) { setTyped(s.main, lines, n); setTyped(s.sub, subLines, n - total); }
+    else if (roll || strike) {
+      charSpans(s.main, lines, thick, p.line, (i, sp) => {
+        const r = roll ? rollChar(i, local) : { sx: 1, sy: 1, a: 1 }, st = strikeChar(i, strike ? Math.round(p.strikeFrom) : -1, total, p.strikeAt ?? 0, local), o = r.a * st.fade;
+        cssCamel(sp, { display: roll ? 'inline-block' : 'inline', transform: roll ? `scale(${r.sx.toFixed(4)}, ${r.sy.toFixed(4)})` : 'none', transformOrigin: 'left bottom',
+          color: withAlpha(p.color, o), textShadow: shadowA(o), backgroundSize: `${(st.line * 100).toFixed(2)}% ${thick.toFixed(2)}px` });
+      });
+      s.sub.textContent = subLines.join('\n');
+    } else { s.main.textContent = lines.join('\n'); s.sub.textContent = subLines.join('\n'); }
     cssCamel(s.main, { fontFamily: face, fontSize: `${fs.toFixed(2)}px`, color: p.color, letterSpacing: `${p.spacing}em`, textIndent: `${p.spacing}em`, textShadow: shadow });
     cssCamel(s.sub, { display: subLines.length ? 'block' : 'none', fontFamily: face, fontSize: `${sfs.toFixed(2)}px`, color: p.line, letterSpacing: '0.12em', textIndent: '0.12em',
       marginTop: `${fs * 0.18}px`, textShadow: shadow, opacity: typing ? '1' : String(eOut3(prog(local, 0.15, 0.6))) });
@@ -109,7 +139,7 @@ export const headline: ItemType<P, S> = {
     cssCamel(s.r2, { marginTop: `${fs * 0.3}px` });
     // the box: centred on y (or the middle of the safe area), its padding the band's height
     const cy = p.y >= 0 ? p.y * H : ((theme.safe.top + 1 - theme.safe.bottom) / 2) * H, pad = fs * 0.9;
-    cssCamel(s.box, { top: `${cy}px`, padding: `${pad}px 0`, opacity: String(a), transform: `translateY(calc(-50% + ${((1 - a) * 24 * k).toFixed(2)}px))` });
+    cssCamel(s.box, { top: `${cy}px`, padding: `${pad}px 0`, opacity: String(a), transform: `translateY(calc(-50% + ${(roll ? 0 : (1 - a) * 24 * k).toFixed(2)}px))` });
     if (p.bg === 'black') {
       const ba = eOut3(prog(local, 0, 0.2)) * (1 - prog(local, dur - 0.25, dur));
       cssCamel(s.ground, { display: 'block', top: '0', bottom: '0', height: 'auto', transform: 'none', background: p.ground, opacity: String(clamp(ba)) });
@@ -121,6 +151,22 @@ export const headline: ItemType<P, S> = {
   },
   hide(s) { s.cv.width = 0; s.cv.height = 0; },
 };
+
+/** the lines in el as one span a character (`each(i, span)` styles character i, counted over all lines), each carrying a strike line
+ *  `thick` px in `color` as its background (sized by `each`; a background, so the line runs on through the letter spacing) */
+function charSpans(el: HTMLElement, lines: string[], thick: number, color: string, each: (i: number, sp: HTMLElement) => void) {
+  el.replaceChildren();
+  let i = 0;
+  lines.forEach((l, j) => {
+    if (j) el.append('\n');
+    for (const c of l) {
+      const sp = h('span', null, null, el);
+      sp.textContent = c;
+      cssCamel(sp, { whiteSpace: 'pre', backgroundImage: `linear-gradient(${color}, ${color})`, backgroundRepeat: 'no-repeat', backgroundPosition: '0 55%', backgroundSize: `0% ${thick.toFixed(2)}px` });
+      each(i++, sp);
+    }
+  });
+}
 
 /** look proof (the spike's facts): on the left, a big number counting up to its value with what follows it ('+', ' clips.'), the sub
  *  line under it as a small spaced-out label; a text that is not a number shows as lines at the brand size, from a blur */

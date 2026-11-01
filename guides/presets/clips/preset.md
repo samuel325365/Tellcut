@@ -38,7 +38,7 @@
     { "id": "title-bar",
       "name": { "zh": "標題條", "en": "Title bar", "ja": "タイトルバー" },
       "desc": { "zh": "形式｜整支片上方一直掛著一條大標題，下面是講者和字幕，像熱門切片的包裝。", "en": "Form | A headline bar stays at the top for the whole clip, the speaker and captions below, like the usual packaging of popular clips.", "ja": "形式｜全編を通して上に大きなタイトルバー、その下に話し手と字幕。人気の切り抜きでよく見る包み方。" },
-      "prompt": "Form: a headline bar at the top for the whole clip (common.header look kicker: a small kicker over a big title), the footage full-frame under it with captions. The headline says what the clip delivers and never more than it delivers." },
+      "prompt": "Form: a headline bar at the top for the whole clip (common.header look kicker: a small kicker over a big title; shade 0.8 when the footage under it is bright), the footage full-frame under it with captions. The headline says what the clip delivers and never more than it delivers." },
     { "id": "big-captions",
       "name": { "zh": "逐字大字幕", "en": "Word-by-word captions", "ja": "一語ずつの大きな字幕" },
       "desc": { "zh": "字幕｜一次 2–4 個字的粗體大字幕，正在講的字變色。", "en": "Captions | Bold captions, 2–4 words at a time, the word being said lit.", "ja": "字幕｜一度に 2〜4 語の太い大きな字幕、話している語の色が変わる。" },

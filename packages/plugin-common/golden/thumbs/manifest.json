@@ -63,7 +63,8 @@
   "worldmap-t2.60.png": "4241ad8d3041",
   "magazine-t2.90.png": "9ae4be86bd71",
   "quiz-t4.20.png": "6a427a3476e9",
-  "healthbar-t3.60.png": "af16e99f48a5"
+  "healthbar-t3.60.png": "af16e99f48a5",
+  "bounce-t2.25.png": "9c586e591027"
  },
  "ja": {
   "core-title-t1.50.png": "cf9552d1c469",
@@ -129,6 +130,7 @@
   "worldmap-t2.60.png": "4973f79945e2",
   "magazine-t2.90.png": "cf2479a94ced",
   "quiz-t4.20.png": "002e999b3edb",
-  "healthbar-t3.60.png": "41bf2864e04c"
+  "healthbar-t3.60.png": "41bf2864e04c",
+  "bounce-t2.25.png": "129ca31b0e9a"
  }
 }

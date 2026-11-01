@@ -275,3 +275,37 @@ test('library: night-studio (amber-podcast) is a quiet talk bed — soft chords 
     expect(both.styles['night-studio']).toBeDefined();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('library: cold-case, handmade, sunny-hop and circuit-pulse (the 2026-11-02 acceptance films) render clean at any length and keep their cues', async () => {
+  const { composeEvents } = await import('./styles.ts');
+  const { rng } = await import('./synth.ts');
+  const l = await loadAllStyles();
+  for (const id of ['cold-case', 'handmade', 'sunny-hop', 'circuit-pulse']) {
+    const s = l.styles[id];
+    expect(s, id).toBeDefined();
+    for (const length of [8, 40]) {
+      const sc = generateScore({ style: id, styles: l.styles, length, seed: 3 }), bar = 240 / sc.info.bpm;
+      // whole bars plus the ring-out; no clipping; loud enough to hear, nowhere near full scale
+      expect(sc.info.duration, `${id} ${length}`).toBeCloseTo(sc.info.bars * bar + 1.6, 2);
+      let peak = 0, sum = 0;
+      for (let i = 0; i < sc.L.length; i++) { peak = Math.max(peak, Math.abs(sc.L[i]), Math.abs(sc.R[i])); sum += sc.L[i] ** 2 + sc.R[i] ** 2; }
+      const rmsDb = 20 * Math.log10(Math.sqrt(sum / (2 * sc.L.length)));
+      expect(peak, `${id} ${length}`).toBeLessThan(0.95);
+      expect(rmsDb, `${id} ${length}`).toBeGreaterThan(-24);
+      expect(rmsDb, `${id} ${length}`).toBeLessThan(-15);
+    }
+  }
+  // cold-case: nothing for 2 s at reveal, nothing after cliff but the end card's low note
+  const cc = l.styles['cold-case'], ev = composeEvents(cc, { bpm: 60, key: 'Dm', bars: 16, rng: rng(1), cues: { reveal: 12, cliff: 40 } });
+  expect(ev.filter((e) => e.t >= 12 && e.t < 14)).toEqual([]);
+  expect(new Set(ev.filter((e) => e.t >= 40).map((e) => e.inst))).toEqual(new Set(['sub', 'pad']));
+  // handmade and circuit-pulse without cues: their sections at shares of the length (the logo / hit lands before the last bar)
+  const hm = composeEvents(l.styles['handmade'], { bpm: 72, key: 'D', bars: 18, rng: rng(1) }), bar72 = 240 / 72;
+  expect(hm.some((e) => e.inst === 'shaker')).toBe(true);
+  expect(hm.filter((e) => e.inst === 'felt' && e.vel >= 0.55).map((e) => e.t / bar72)).toEqual([16.5]);
+  const cp = composeEvents(l.styles['circuit-pulse'], { bpm: 100, key: 'A', bars: 24, rng: rng(1) }), bar100 = 2.4;
+  expect(cp.filter((e) => e.inst === 'kick' && e.vel === 1).map((e) => e.t / bar100)).toEqual([22]);
+  // sunny-hop with a hit cue: one big chord there
+  const sh = composeEvents(l.styles['sunny-hop'], { bpm: 108, key: 'D', bars: 25, rng: rng(1), cues: { groove: 8, hit: 47.7 } });
+  expect(sh.filter((e) => Math.abs(e.t - 47.7) < 1e-6 && e.inst === 'kick')).toHaveLength(1);
+});
