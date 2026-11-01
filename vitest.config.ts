@@ -10,9 +10,10 @@ export default defineConfig({
     testTimeout: 60000,
     // e2e setup hooks build sources, analyse them and start Chrome; under a full parallel run that can pass 60 s
     hookTimeout: 120000,
-    setupFiles: ['apps/editor/src/test-setup.ts'],
+    // tools/test-workers.ts: a log of which file each worker ran and how it ended (a worker that dies mid-run)
+    setupFiles: ['apps/editor/src/test-setup.ts', 'tools/test-workers.ts'],
     // the tests' scratch folders in the system temp folder are removed after the run (tools/test-cleanup.ts); the tests
     // transcribe with a small speech model (tools/test-env.ts)
-    globalSetup: ['tools/test-cleanup.ts', 'tools/test-env.ts'],
+    globalSetup: ['tools/test-cleanup.ts', 'tools/test-env.ts', 'tools/test-workers.ts'],
   },
 });
