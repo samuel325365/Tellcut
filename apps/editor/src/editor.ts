@@ -1,5 +1,5 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
-import { runOps, summarize, type Op, magneticGaps, setMagnetic, detach as detachCmd, attach as attachCmd, type Clip, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform, copyItems, pasteItems, trimStart, trimEnd, magneticTrack, ownSounds } from '@tellcut/engine';
+import { magneticGaps, setMagnetic, detach as detachCmd, attach as attachCmd, type Clip, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform, copyItems, pasteItems, trimStart, trimEnd, magneticTrack, ownSounds } from '@tellcut/engine';
 import { cutPoints, edgeTargets, nextCut, selectionHasNoClip } from './editor/cutting.ts';
 import { zoomAround } from './timeline/geometry.ts';
 import { keyAction, type Action } from './keys.ts';
@@ -14,22 +14,20 @@ import { History } from './history.ts';
 import { arrangementOf, nextArrange, orientationOf, previewWOf, sanitizeLayout, sizePatch, WIDEST_PREVIEW, type Layout } from './layout.ts';
 import { createStore, initialState, type EditorState, type PeakInfo, type Store } from './store.ts';
 import type { PlayerBridge } from './bridge.ts';
-import type { Proposal } from '@tellcut/protocol';
 import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
 import { PresetSaveFlow } from './editor/preset-save.ts';
+import { ProposalFlow, type ProposalView } from './editor/proposals.ts';
 import { errText, t as say } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 import { paramText } from './i18n/params.ts';
 import { localValues } from './i18n/values.ts';
 
 type Recipe = (d: Project) => void;
-/** A proposal as the server sends it (media-node's Proposal, without the node imports). */
-/** what the editor needs of a proposal (the server sends the whole Proposal) */
-export type ProposalView = Pick<Proposal, 'id' | 'label' | 'ops' | 'summary' | 'warnings'> & { status?: string };
+export type { ProposalView } from './editor/proposals.ts';
 /** Actions that only change the view: an audition goes on through them. */
 const AUDITION_PASS = new Set<Action>(['maxPreview', 'zoomFit', 'help']);
 type BridgeLike = Pick<PlayerBridge, 'load' | 'patch' | 'seek' | 'play' | 'pause' | 'cropMode' | 'quality' | 'select'> & Partial<Pick<PlayerBridge, 'onBoot' | 'onReady' | 'onTime' | 'onEnded' | 'onError' | 'onKey' | 'onCropChange' | 'onLevel' | 'onPick' | 'onTransformChange' | 'onParamEdit'>>;
@@ -158,8 +156,8 @@ export class Editor {
         this.set({ locked: Array.isArray(locked) ? locked.filter((x) => p.tracks.some((t) => t.id === x)) : [] });
       } catch { this.set({ locked: [] }); }
       this.deps.bridge.load(p);
-      this.prop = null;
-      this.set({ proposal: null, diskChanged: false });
+      this.proposals.reset();
+      this.set({ diskChanged: false });
       this.offLive?.();
       this.offLive = this.deps.api.events?.(this.id, (m) => this.onLive(m)) ?? null;
       void this.analyze();
@@ -444,32 +442,23 @@ export class Editor {
   undo() { this.endAudition(); if (this.blocked()) return; const p = this.history?.undo(); if (p) this.changed(p, true); }
   redo() { this.endAudition(); if (this.blocked()) return; const p = this.history?.redo(); if (p) this.changed(p, true); }
 
-  // ---------------------------------------------------------------- Claude's proposals (spec 2026-10-15-proposals-magnetic §3, §5)
-  private prop: ProposalView | null = null;
+  // ---------------------------------------------------------------- the live stream and the Agent's proposals (spec 2026-10-15-proposals-magnetic §3, §5; editor/proposals.ts)
   private offLive: (() => void) | null = null;
   private stateTimer: ReturnType<typeof setTimeout> | undefined;
   private sentState = '';
 
-  /** While a proposal waits, edits are refused (the preview shows the proposal, not the project). */
-  private propView: Project | null = null;
-  private accepting = false;
-  private blocked(): boolean {
-    if (!this.prop) return false;
-    this.set({ notice: say('ed.pending') });
-    // whatever was being dragged goes back to the proposal's preview
-    if (this.propView && this.s.project !== this.propView) { this.changed(this.propView, false); this.set({ canUndo: false, canRedo: false }); }
-    return true;
+  private propFlow: ProposalFlow | undefined;
+  private get proposals() {
+    return (this.propFlow ??= new ProposalFlow({ id: this.id, api: this.deps.api, store: this.store, history: () => this.history,
+      show: (p, commit) => this.changed(p, commit), stopPreviews: () => { this.endAudition(); this.live = null; },
+      settle: async () => !this.autosave || await this.autosave.settle(), outside: () => this.outside() }));
   }
+  /** While a proposal waits, edits are refused (the preview shows the proposal, not the project). */
+  private blocked(): boolean { return this.proposals.blocked(); }
   private onLive(m: any) {
-    if (m?.type === 'hello' || m?.type === 'proposal') {
-      // accepted somewhere else (another tab, the chat): this tab's project is no longer what is on disk
-      if (!m.proposal && m.outcome === 'accepted' && this.prop && !this.accepting) this.outside();
-      this.showProposal(m.proposal ?? null);
-    }
-    else if (m?.type === 'accept-request') { if (m.id === this.prop?.id) void this.acceptProposal(); }
-    else if (m?.type === 'reject-request') { if (m.id === this.prop?.id) void this.rejectProposal(); }
+    if (this.proposals.onLive(m)) return;
     // a save of this page's own (the server leaves it out; a stream opened again by a reload could still hear it)
-    else if (m?.type === 'changed-on-disk') { if (!m.by || m.by !== this.deps.api.clientId) this.outside(); }
+    if (m?.type === 'changed-on-disk') { if (!m.by || m.by !== this.deps.api.clientId) this.outside(); }
     // `fx` (the server's stamp of the fx folder): one this tab has already loaded (its own Update) is not loaded twice
     else if (m?.type === 'fx-changed') { if (!m.fx || m.fx !== this.fxLoaded) void this.reloadFx(m.fx); }
   }
@@ -490,87 +479,11 @@ export class Editor {
     this.set({ diskChanged: true });
     this.autosave?.hold(true);
   }
-  private async report(id: string, outcome: 'accepted' | 'rejected' | 'stale', reason?: string) {
-    try { await this.deps.api.proposalResult?.(this.id, { id, outcome, ...(reason ? { reason } : {}) }); }
-    catch { /* the server is gone: the chat side reports its own timeout */ }
-  }
   /** Shows a proposal as a preview: not saved, not in the history. One that no longer applies is reported stale. */
-  showProposal(p: ProposalView | null) {
-    if (!this.history) return;
-    if (!p) {
-      if (this.prop && !this.accepting) { this.prop = null; this.propView = null; this.set({ proposal: null }); this.changed(this.history.project, false); }
-      return;
-    }
-    if (this.prop?.id === p.id) return;
-    this.endAudition();
-    this.live = null;
-    let preview: Project;
-    try { preview = this.history.preview((d) => runOps(d, p.ops)); }
-    catch (e) {
-      const why = (e as Error).message;
-      this.set({ notice: say('ed.staleProposal', { why: errText(e) }) });
-      void this.report(p.id, 'stale', why);
-      return;
-    }
-    const sum = summarize(this.history.project, preview);
-    this.prop = p;
-    this.propView = preview;
-    this.set({ proposal: { id: p.id, label: p.label, summary: p.summary ?? sum.summary, lines: sum.lines, warnings: p.warnings ?? [], changed: sum.changed } });
-    this.changed(preview, false);
-    this.set({ canUndo: false, canRedo: false });
-  }
+  showProposal(p: ProposalView | null) { this.proposals.show(p); }
   /** One undo step, saved, then reported. Edits still waiting to be saved are saved first, so nothing is lost. */
-  async acceptProposal(): Promise<boolean> {
-    const p = this.prop;
-    if (!p || !this.history || this.accepting) return false;   // a second accept (click + chat) must not apply it twice
-    this.accepting = true;
-    try { return await this.acceptNow(p); } finally { this.accepting = false; }
-  }
-  private async acceptNow(p: ProposalView): Promise<boolean> {
-    if (!this.history) return false;
-    if (this.s.diskChanged) {
-      // the proposal was made from what is on disk, this editor shows another version: applying it here would be lost or wrong
-      const why = say('ed.diskWhy');
-      this.prop = null; this.propView = null;
-      this.set({ proposal: null, notice: say('ed.notAccepted', { why }) });
-      this.changed(this.history.project, false);
-      await this.report(p.id, 'stale', why);
-      return false;
-    }
-    await this.autosave?.settle();
-    if (this.prop?.id !== p.id) return false;
-    let next: Project;
-    try { next = this.history.apply((d) => runOps(d, p.ops)); }
-    catch (e) {
-      const why = (e as Error).message;
-      this.prop = null; this.propView = null;
-      this.set({ proposal: null, notice: say('ed.staleProposal', { why: errText(e) }) });
-      this.changed(this.history.project, false);
-      await this.report(p.id, 'stale', why);
-      return false;
-    }
-    this.prop = null; this.propView = null;
-    this.set({ proposal: null });
-    this.changed(next, true);
-    this.set({ notice: say('ed.accepted', { label: p.label }) });
-    if (this.autosave && !(await this.autosave.settle())) {
-      // applied here but not on disk (a 409, the file locked, the server gone): the agent must not hear "accepted"
-      const why = this.s.diskChanged ? say('ed.diskShort') : this.s.saveError;
-      this.set({ notice: say('ed.acceptedUnsaved', { label: p.label, why }) });
-      await this.report(p.id, 'stale', say('ed.unsavedWhy', { why }));
-      return true;
-    }
-    await this.report(p.id, 'accepted');
-    return true;
-  }
-  async rejectProposal() {
-    const p = this.prop;
-    if (!p || !this.history || this.accepting) return;
-    this.prop = null; this.propView = null;
-    this.set({ proposal: null });
-    this.changed(this.history.project, false);
-    await this.report(p.id, 'rejected');
-  }
+  acceptProposal(): Promise<boolean> { return this.proposals.accept(); }
+  rejectProposal(): Promise<void> { return this.proposals.reject(); }
   // ---------------------------------------------------------------- My blocks (spec 2026-10-29-my-library §3.2, §3.3; editor/library.ts)
   private libraryFlow: LibraryFlow | undefined;
   get library() {
@@ -812,7 +725,7 @@ export class Editor {
 
   /** dx in pixels from the drag start; previews live, never recorded until endDrag. */
   dragTo(dx: number, mods: Mods, toTrack?: string) {
-    if (!this.drag || !this.history || this.prop) return;
+    if (!this.drag || !this.history || this.proposals.pending) return;
     const base = this.history.project;
     const { recipe, guide } = dragRecipe(base, resolveTimes(base), this.drag.plan, dx / this.s.pps,
       // Ctrl on an edge means stretch (spec §4.2), so a stretch keeps snapping
