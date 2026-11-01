@@ -59,6 +59,9 @@ export interface ThreeKit {
   mediaTexture(el: HTMLVideoElement | HTMLImageElement): { texture: T.Texture; update(): void; dispose(): void };
   /** camera distance at which a face `faceH` tall fills a camera of vertical field `fovDeg` exactly: (faceH/2)/tan(fov/2) */
   fillDistance(faceH: number, fovDeg: number): number;
+  /** where `obj` (a word3d's group) lands in a w×h render with this camera, in pixels, its height as `size`; null when it is behind
+   *  the camera. For check: ctx.reportText({ text, ...screenBox(word.group, camera, W, H) }) after posing (ItemCtx.reportText). */
+  screenBox(obj: T.Object3D, camera: T.Camera, w: number, h: number): { x: number; y: number; w: number; h: number; size: number } | null;
   /** UV repeat and offset that show the part of a srcW×srcH picture a w×h box shows with this crop (as coverPlacement) */
   coverUv: typeof coverUv;
   // ready-made parts (three/parts.ts): build them once in build()/ready(), add `.group` / `.points` to the scene, free with dispose()
@@ -193,6 +196,20 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
       return { texture, update, dispose: () => { texture.dispose(); if (copy) { copy.width = 0; copy.height = 0; } } };
     },
     fillDistance: (faceH, fovDeg) => (faceH / 2) / Math.tan((fovDeg * Math.PI) / 360),
+    screenBox(obj, camera, w, h) {
+      obj.updateMatrixWorld(true); camera.updateMatrixWorld();
+      const b = new THREE.Box3().setFromObject(obj);
+      if (b.isEmpty()) return null;
+      const xs: number[] = [], ys: number[] = [], v = new THREE.Vector3();
+      for (let i = 0; i < 8; i++) {
+        v.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).project(camera);
+        if (v.z < -1 || v.z > 1) continue;   // a corner behind the camera (or past its far plane)
+        xs.push((v.x + 1) / 2 * w); ys.push((1 - v.y) / 2 * h);
+      }
+      if (!xs.length) return null;
+      const x = Math.min(...xs), y = Math.min(...ys), bh = Math.max(...ys) - y;
+      return { x, y, w: Math.max(...xs) - x, h: bh, size: bh };
+    },
     loadFont(file) {
       let p = fonts.get(file);
       if (!p) {
