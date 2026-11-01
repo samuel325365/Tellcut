@@ -1,12 +1,14 @@
 // common.headline — the documentary title card, from krakow-square's fx.headline (a serif headline and a line under it between two
 // thin rules, over a dark band or a black frame), with uk-parallax's serifcap (letter-spaced serif, a soft shadow, rising in) and
 // uk-dv's dvTitle (the letters coming in one by one: `type`). The rules grow out from the middle while the card rises in.
-// look 'name' (the katie-sweet16 short's fx.title): a celebration's name title — a big italic serif name whose letters rise in one
-// after another, one shimmer of light across it, a gold rule drawing out from a dot under it, and a letter-spaced line below.
+// look 'name' (the katie-sweet16 short's fx.title): a celebration's name title — a big italic serif name (CJK characters upright: their
+// faces have no italic) whose letters rise in one after another, one shimmer of light across it, a gold rule drawing out from a dot
+// under it, and a letter-spaced line below.
 import { abs, clamp, cssCamel, eOut3, h, type ItemType, prog, textEm } from '@tellcut/engine';
 import { countUp, drawBlurLine, loadLineFaces } from './brand-text.ts';
 import { ghostLayer, ghostLines, nl, type GhostLine } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
+import { isCjk } from './words.ts';
 
 interface P {
   text: string; sub: string; y: number; size: number; spacing: number; bg: 'none' | 'band' | 'black'; rules: boolean; type: number;
@@ -37,7 +39,7 @@ function setTyped(el: HTMLElement, lines: string[], n: number) {
 
 export const headline: ItemType<P, S> = {
   type: 'common.headline', label: '明體標題卡', category: 'text', kind: 'overlay',
-  doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來；歷史、紀錄片、散文、旅行的章節開場；look name 是慶生、婚禮、畢業的名字片頭：斜體襯線的大名字（text）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；片尾的感謝名單用 common.outro 的 look credits',
+  doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來；歷史、紀錄片、散文、旅行的章節開場；look name 是慶生、婚禮、畢業的名字片頭：斜體襯線的大名字（text；中日韓文字沒有斜體，保持直立）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；片尾的感謝名單用 common.outro 的 look credits',
   params: [
     { key: 'text', label: '大字（可換行）', type: 'text', default: '一座廣場的七百年' },
     { key: 'sub', label: '小字（空＝不顯示）', type: 'text', default: '第一章　規劃' },
@@ -173,7 +175,7 @@ function drawBrand(ctx: Parameters<typeof headline.draw>[0], s: S): GhostLine[] 
 function nameEls(root: HTMLElement): NameEls {
   const box = abs(root, { left: '0', right: '0', display: 'none', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' });
   const name = h('div', null, null, box), rule = h('div', null, null, box), dot = h('div', null, null, rule), sub = h('div', null, null, box);
-  cssCamel(name, { whiteSpace: 'pre', lineHeight: '1.2', fontStyle: 'italic', fontWeight: '700' });
+  cssCamel(name, { whiteSpace: 'pre', lineHeight: '1.2', fontWeight: '700' });
   cssCamel(rule, { position: 'relative' });
   cssCamel(dot, { position: 'absolute', left: '50%', top: '50%', borderRadius: '50%' });
   cssCamel(sub, { whiteSpace: 'pre', lineHeight: '1.2', fontWeight: '500' });
@@ -195,9 +197,9 @@ function drawName(ctx: Parameters<typeof headline.draw>[0], s: S) {
   // the name's size: 1.9× the size param (in px at a 1080 short side), shrunk to fit across the safe area
   const fs = Math.min((p.size / 100) * 190 * k, room / Math.max(0.5, textEm(text) * 1.02)), sfs = Math.max(fs * 0.29, 26 * k);
   const out = clamp((dur - local) / 0.7);
-  if (n.key !== text) {   // one span a letter, rebuilt only when the name changes
+  if (n.key !== text) {   // one span a letter, rebuilt only when the name changes; CJK faces have no italic, so their characters stand upright
     n.key = text;
-    n.name.replaceChildren(...[...text].map((c) => { const sp = h('span'); sp.textContent = c; cssCamel(sp, { display: 'inline-block', whiteSpace: 'pre' }); return sp; }));
+    n.name.replaceChildren(...[...text].map((c) => { const sp = h('span'); sp.textContent = c; cssCamel(sp, { display: 'inline-block', whiteSpace: 'pre', fontStyle: isCjk(c) ? 'normal' : 'italic' }); return sp; }));
   }
   const spans = [...n.name.children] as HTMLElement[], sh = nameShimmer(local), total = n.name.offsetWidth || fs * textEm(text);
   spans.forEach((sp, i) => {

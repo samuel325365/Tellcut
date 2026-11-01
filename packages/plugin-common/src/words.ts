@@ -19,6 +19,20 @@ export function textLang(...texts: unknown[]): WordsLang | null {
   return kana * 3 >= cjk ? 'ja' : 'zh';
 }
 
+// Han (with radicals, strokes, enclosed and compatibility forms), kana, Hangul, bopomofo, CJK punctuation and full-width forms
+const CJK = /[ᄀ-ᇿ⺀-⿟　-鿿ꥠ-꥿가-퟿豈-﫿︰-﹏＀-￯\u{20000}-\u{3ffff}]/u;
+/** a CJK character: these faces have no italic, so a slanted one is the browser's machine slant (italic text keeps them upright) */
+export const isCjk = (c: string) => CJK.test(c);
+/** text split into runs of CJK and other characters (spaces join the run before them), for italic only where a face has one */
+export function cjkRuns(text: string): Array<{ text: string; cjk: boolean }> {
+  const out: Array<{ text: string; cjk: boolean }> = [];
+  for (const c of text) {
+    const last = out[out.length - 1], cjk = /\s/.test(c) && last ? last.cjk : isCjk(c);
+    if (last && last.cjk === cjk) last.text += c; else out.push({ text: c, cjk });
+  }
+  return out;
+}
+
 /** the language of the words the project's items were given: the string parameters set on an item whose default is Chinese
  *  (titles, captions, lines; not ids, fonts or colours) */
 export function projectLang(project: Pick<Project, 'tracks'> | undefined, types?: (type: string) => ItemType | undefined): WordsLang | null {

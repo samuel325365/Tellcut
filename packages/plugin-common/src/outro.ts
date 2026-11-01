@@ -2,7 +2,8 @@
 // accent chip), a row of numbered dots (the last ones still ?), and a hand-drawn arrow drawn to the link that bounces on
 // the beat. Promoted from a food-review hook short's fx.outro; for any short that points to the full video, a profile or a link.
 // look 'credits' (the katie-sweet16 short's fx.keepsake): a celebration's closing credits — the lines fade up one a beat over a soft dark
-// veil, plain lines bold, *lines in stars* italic in the highlight colour, _lines in underscores_ small and letter-spaced.
+// veil, plain lines bold, *lines in stars* italic in the highlight colour (CJK characters upright), _lines in underscores_ small and
+// letter-spaced.
 // look 'episode' (the amber-podcast short's fx.endCard): a show's end card — the show's name in big serif lines over an accent rule,
 // a rounded 16:9 window with a play button (the clip on the track below plays through it: frame = outroWindow(params, W, H)), the
 // episode line, a button and a small credit line, all on the ink colour.
@@ -10,6 +11,7 @@ import { clamp, cssCamel, defaultSafe, eBack, eOut3 as eOut, h, prog, withDefaul
 import { canvasAt, penPath, freeCanvas } from './inkline.ts';
 import { emParts, fitPx, nl } from './text.ts';
 import { withAlpha } from './color.ts';
+import { cjkRuns } from './words.ts';
 import { asFrame, punch } from './window.ts';
 
 interface P {
@@ -35,7 +37,7 @@ export function outroLayout(lines: number, W: number, H: number, safe: { top: nu
 
 export const outro: ItemType<P, S> = {
   type: 'common.outro', label: '片尾導流', category: 'moment', kind: 'overlay',
-  doc: '片尾導流卡：紙色底，幾行大字跟著拍子一行一行蓋下來（【詞】放進主色小牌），下面一排編號圓點（最後幾個打問號），手繪箭頭畫向連結並隨拍點彈跳；導去原片、主頁、留言、下一集；look credits 是慶生、婚禮、畢業的片尾感謝名單：lines 每行一拍淡入（*星號包住* 的行是高亮色斜體、_底線包住_ 的行是加寬字距的小字，其他是粗體名字），字後面一層暗色薄紗（cover 調濃淡），y 是名單中心的高度；片頭的名字用 common.headline 的 look name；look episode 是節目（Podcast、訪談、系列）的片尾卡：深色底（ink，cover 調濃淡）上 lines 是襯線大字節目名、主色短線，中間一個圓角 16:9 影片窗加播放鍵（洞，主軌片段 frame＝outroWindow(參數, W, H)），下面 ep 集數、cta 主色按鈕、credit 授權小字，一層一層浮上來；y 是整組的中心',
+  doc: '片尾導流卡：紙色底，幾行大字跟著拍子一行一行蓋下來（【詞】放進主色小牌），下面一排編號圓點（最後幾個打問號），手繪箭頭畫向連結並隨拍點彈跳；導去原片、主頁、留言、下一集；look credits 是慶生、婚禮、畢業的片尾感謝名單：lines 每行一拍淡入（*星號包住* 的行是高亮色斜體（中日韓文字保持直立）、_底線包住_ 的行是加寬字距的小字，其他是粗體名字），字後面一層暗色薄紗（cover 調濃淡），y 是名單中心的高度；片頭的名字用 common.headline 的 look name；look episode 是節目（Podcast、訪談、系列）的片尾卡：深色底（ink，cover 調濃淡）上 lines 是襯線大字節目名、主色短線，中間一個圓角 16:9 影片窗加播放鍵（洞，主軌片段 frame＝outroWindow(參數, W, H)），下面 ep 集數、cta 主色按鈕、credit 授權小字，一層一層浮上來；y 是整組的中心',
   params: [
     { key: 'lines', label: '大字（每行一句，【詞】強調）', type: 'text', default: '完整路線\n和【6 家店名】\n都在原片' },
     { key: 'cta', label: '箭頭旁小字', type: 'string', default: '點這裡看完整版' },
@@ -174,13 +176,20 @@ function drawCredits(ctx: Parameters<typeof outro.draw>[0], s: S) {
   const key = JSON.stringify(lines);
   if (s.ckey !== key) {   // one div a line, rebuilt only when the lines change
     s.ckey = key;
-    s.cred.replaceChildren(...lines.map((l) => { const d = h('div'); d.textContent = l.text; cssCamel(d, { whiteSpace: 'pre', lineHeight: '1.2' }); return d; }));
+    s.cred.replaceChildren(...lines.map((l) => {
+      const d = h('div');
+      cssCamel(d, { whiteSpace: 'pre', lineHeight: '1.2' });
+      // an italic line in runs: CJK faces have no italic (the browser would slant them by machine), so CJK runs stand upright
+      if (l.kind !== 'italic') d.textContent = l.text;
+      else d.replaceChildren(...cjkRuns(l.text).map((r) => { const sp = h('span'); sp.textContent = r.text; cssCamel(sp, { fontStyle: r.cjk ? 'normal' : 'italic' }); return sp; }));
+      return d;
+    }));
   }
   const serif = `'${creditFace(p.lineFont)}', 'Noto Serif TC', serif`;
   ([...s.cred.children] as HTMLElement[]).forEach((d, i) => {
     const l = lines[i], q = creditIn(i, local, p.beat), base = l.kind === 'name' ? 54 : l.kind === 'italic' ? 50 : 46;
     cssCamel(d, { fontFamily: l.kind === 'small' ? `'Cormorant Garamond', ${serif}` : serif, fontWeight: l.kind === 'name' ? '700' : '500',
-      fontStyle: l.kind === 'italic' ? 'italic' : 'normal', fontSize: `${fitPx(l.text, base * u, room).toFixed(2)}px`, color: l.kind === 'italic' ? p.hl : p.paper,
+      fontSize: `${fitPx(l.text, base * u, room).toFixed(2)}px`, color: l.kind === 'italic' ? p.hl : p.paper,
       letterSpacing: l.kind === 'small' ? `${(3 * u).toFixed(2)}px` : 'normal', marginTop: i ? `${((l.kind === 'small' ? 10 : 16) * u).toFixed(1)}px` : '0',
       textShadow: `0 0 ${(18 * u).toFixed(1)}px rgba(6,4,14,0.95), 0 ${(2 * u).toFixed(1)}px ${(6 * u).toFixed(1)}px rgba(6,4,14,0.8)`,
       opacity: String(q * (l.kind === 'small' ? 0.88 : 1)), transform: `translateY(${((1 - q) * 12 * u).toFixed(2)}px)` });
