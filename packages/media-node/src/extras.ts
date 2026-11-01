@@ -15,7 +15,7 @@ import { runPy } from './py.ts';
 import { transcribeProvider } from './providers/index.ts';
 import type { TranscribeProvider } from './providers/types.ts';
 import { lockHolder, withLock } from './locks.ts';
-import { shareFolder, siblingFolders } from './share.ts';
+import { labelFolder, shareFolder, siblingFolders } from './share.ts';
 import { replaceFile } from './fsutil.ts';
 import { EXTRAS_VERSION } from './extras-version.ts';
 
@@ -187,6 +187,7 @@ export async function musicBeats(projectDir: string, path: string, o: { signal?:
         await atomic(f.beats, async (tmp) => writeFileSync(tmp, await runPy('beats.py', [raw], { signal: o.signal })));
       });
     } finally { rmSync(raw, { force: true }); }
+    labelFolder(f.dir, path);   // which song it is: its beats are found again after the file is renamed or moved (share.ts)
   }
   const b = JSON.parse(readFileSync(f.beats, 'utf8')) as Beats;
   return o.bpm ? correctBeats(b, o.bpm) : b;

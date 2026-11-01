@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { analysisFiles } from './analysis.ts';
 import { musicFiles } from './extras.ts';
-import { fileHash, sourceHash } from './hash.ts';
+import { contentPrint, fileHash, sourceHash } from './hash.ts';
 import { siblingFolders } from './share.ts';
 
 const T = new Date('2026-05-01T10:00:00Z');
@@ -56,4 +56,19 @@ test('a sibling project’s folder is found under either name: the same footage 
   const mine = analysisFiles(p.dir, p.file('clip.mp4')).dir;
   expect(basename(mine)).not.toBe(basename(theirs));
   expect(siblingFolders(mine)).toEqual([theirs]);
+});
+
+test('an old folder without a note is kept by files of one size and time when they all hold the same (a file imported twice)', () => {
+  const p = project(['clip.mp4', 'clip-copy.mp4']);
+  for (const n of ['clip.mp4', 'clip-copy.mp4']) { writeFileSync(p.file(n), 'the same bytes'); utimesSync(p.file(n), T, T); }
+  const old = legacy(p.dir, p.file('clip.mp4'));
+  expect([analysisFiles(p.dir, p.file('clip.mp4')).dir, analysisFiles(p.dir, p.file('clip-copy.mp4')).dir]).toEqual([old, old]);
+});
+
+test('contentPrint tells files of one size apart by slices spread over them, and is the same for the same bytes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'hash-')), f = (n: string, b: Buffer) => { writeFileSync(join(dir, n), b); return join(dir, n); };
+  const big = Buffer.alloc(5_000_000, 7), late = Buffer.from(big); late[late.length - 1] = 8;   // differs in its last byte only
+  expect(contentPrint(f('a', big))).toBe(contentPrint(f('b', Buffer.from(big))));
+  expect(contentPrint(f('c', late))).not.toBe(contentPrint(join(dir, 'a')));
+  expect(contentPrint(f('d', Buffer.from('track 0')))).not.toBe(contentPrint(f('e', Buffer.from('track 1'))));
 });

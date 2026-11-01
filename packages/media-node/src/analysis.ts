@@ -8,7 +8,7 @@ import { analysisName } from './hash.ts';
 import { fitImage } from './photo.ts';
 import { isImagePath } from './probe.ts';
 import { waitForLock, withLock } from './locks.ts';
-import { shareFolder, siblingFolders } from './share.ts';
+import { labelFolder, shareFolder, siblingFolders } from './share.ts';
 
 export const ANALYSIS_VERSION = 'a1';
 /** the proxy: short side 540 (a portrait source was 304×540 before, too soft for a portrait film's preview) */
@@ -65,8 +65,9 @@ async function atomicResult<T>(final: string, make: (tmp: string) => Promise<T>)
 
 async function analyzeSourceNow(projectDir: string, srcPath: string, o: { signal?: AbortSignal; onStep?: (step: string, i: number, n: number) => void } = {}): Promise<AnalysisFiles> {
   const f = analysisFiles(projectDir, srcPath);
-  // the folder names are hashes: a small note says which file a folder belongs to (toolkit phase 4)
-  const note = join(f.dir, 'source.json'), label = () => { if (!existsSync(note)) writeFileSync(note, JSON.stringify({ path: srcPath })); };
+  // the folder names are hashes: a small note says which file a folder belongs to (toolkit phase 4), and what it holds (share.ts
+  // finds the folder by it after the file is renamed or moved)
+  const label = () => labelFolder(f.dir, srcPath);
   // a proxy made before the short side was 540 (portrait: 304 px wide), or with the old heavier settings (over 4 Mbps), is made
   // again — only the proxy: the folder also holds the transcript and the other analysis, which a new ANALYSIS_VERSION would throw
   // away. The stamp says it was looked at.
