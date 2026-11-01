@@ -199,6 +199,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .library .lib-pages button.has-lit::after { content: ''; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 .library .lib-tools { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; }
 .library .lib-tools .lib-search { flex: 1 1 auto; min-width: 0; margin: 0; }
+.library .lib-tools .lib-gallery { flex: none; padding: 2px 6px; font-size: 11px; color: inherit; border: 1px solid var(--line, currentColor); border-radius: 4px; text-decoration: none; }
 .library .lib-tools button { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; font-size: 11px; }
 .library .media-sort { width: 100%; margin-bottom: 6px; padding: 1px 4px; font-size: 11px; }
 .library .media-unused > summary { margin: 6px 0; }
@@ -605,6 +606,11 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .g-bar input { width: 72px; padding: 4px 6px; background: var(--s-input); color: var(--s-text); border: 1px solid var(--s-line); border-radius: 8px; font: inherit; }
 .g-bar select { padding: 4px 6px; background: var(--s-input); color: var(--s-text); border: 1px solid var(--s-line); border-radius: 8px; font: inherit; }
 .g-bar select option { background: var(--s-bg); color: var(--s-text); }
+/* opened from a project: "Add to project" and how it went; the project's own cards are tagged in the accent */
+.g-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; font-size: 13px; line-height: 1.5; }
+.g-add button.primary { background: var(--s-accent); border-color: transparent; color: var(--s-on-accent); font-weight: 500; }
+.g-add button:disabled { opacity: .5; cursor: not-allowed; }
+.g-card-body .tag[data-own-tag] { color: var(--s-accent-text); }
 .gallery .g-play { display: inline-flex; align-items: center; gap: 6px; background: var(--s-grad); border-color: transparent; color: var(--s-on-accent); }
 .g-player { width: 100%; max-width: 300px; margin: 0 auto; aspect-ratio: 9 / 16; border-radius: 14px; overflow: hidden; background: #000; box-shadow: var(--s-shadow); border: 1px solid var(--s-line); }
 .g-player iframe { width: 100%; height: 100%; border: 0; display: block; }

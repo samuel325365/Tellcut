@@ -194,6 +194,7 @@ test('three pages: Video, Audio (music, narration, sound effects), Effects; each
   const page = (k: string) => root.querySelector<HTMLElement>(`[data-lib-page="${k}"]`)!;
   expect([...root.querySelectorAll<HTMLElement>('[data-lib-tab]')].map((e) => [e.dataset.libTab, e.textContent])).toEqual([['video', 'Video2'], ['audio', 'Audio2'], ['effects', 'Effects1']]);
   expect([page('video').hidden, page('audio').hidden, page('effects').hidden]).toEqual([false, true, true]);
+  expect(root.querySelector('[data-gallery-link]')).toBeNull();   // footage is not in the gallery
   // sound effects and narration live on Audio; the selected music shows a dot on its page
   expect(page('audio').querySelector('[data-add-sfx="x.tap"]')).not.toBeNull();
   expect(root.querySelector('[data-lib-tab="audio"]')!.className).toContain('has-lit');
@@ -208,6 +209,9 @@ test('three pages: Video, Audio (music, narration, sound effects), Effects; each
   expect(calls).toContainEqual(['layout', { mediaTab: 'effects' }]);
   expect(root.querySelector<HTMLInputElement>('[data-lib-search]')!.value).toBe('');
   expect(page('effects').hidden).toBe(false);
+  // Effects (and Audio) link to the gallery for this project, keeping this tab as its opener so the gallery can add here
+  const g = root.querySelector<HTMLAnchorElement>('[data-gallery-link]')!;
+  expect([g.getAttribute('href'), g.target, g.rel]).toEqual(['./?gallery&project=t', '_blank', 'opener']);
   await act(() => { root.querySelector<HTMLElement>('[data-add-picked]')!.click(); });
   expect(calls.at(-1)).toEqual(['add', { kind: 'clip', source: 'b', from: 0, len: 5 }]);
 });

@@ -41,6 +41,35 @@ export function mineProject(b: LibraryBlockInfo, params: Record<string, unknown>
   };
 }
 
+/** what the gallery needs of the project it was opened from (gallery-link.ts) */
+export interface OwnProject {
+  name: string;
+  /** its own blocks (fx.*, from the modules meta.fx names), as gallery cards */
+  blocks: GalleryBlock[];
+  meta: { plugins: string[]; fx?: string[]; theme?: Record<string, unknown> };
+}
+
+/** The project's own blocks as cards. Whether one needs footage is told as the server tells it for the shared ones, from its
+ *  parameters and media() hook (the server also reads its code, which the page does not). */
+export function ownBlocks(items: Array<{ type: string; label: string; doc?: string; kind: string; params: GalleryBlock['params']; footage?: string; media?: unknown }>): GalleryBlock[] {
+  return items.filter((x) => x.kind === 'scene' || x.kind === 'overlay').map((x) => ({
+    plugin: 'fx', group: t('group.fx'), type: x.type, label: x.label, doc: x.doc ?? '', kind: x.kind as GalleryBlock['kind'], params: x.params,
+    needsMedia: x.footage !== 'optional' && (x.params.some((d) => d.type === 'source-ref' || d.type === 'media-ref') || typeof x.media === 'function'),
+  }));
+}
+
+/** One of the project's own blocks as blockProject shows a shared one: its modules load from the project folder (the player's
+ *  projectPlayer url); the look picked, else the project's own theme. */
+export function ownProject(o: OwnProject, b: GalleryBlock, params: Record<string, unknown>, themeId = 'none') {
+  const theme = THEMES[themeId]?.theme ?? o.meta.theme;
+  return {
+    version: 1,
+    meta: { name: b.type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: o.meta.plugins, background: '#3a4256', mix: MIX, fx: o.meta.fx ?? [], ...(theme ? { theme } : {}) },
+    sources: {}, media: {}, grids: [],
+    tracks: [{ id: 'g', kind: b.kind, items: [{ id: 'block', type: b.type, start: 0, end: PREVIEW_LEN, params }] }],
+  };
+}
+
 /** A silent film with one sound effect a moment in, so the player plays it through the same synthesis the films use. */
 export function sfxProject(s: GallerySfx, params: Record<string, unknown>) {
   return {
@@ -87,10 +116,13 @@ export const CLIP_CATEGORY = 'clip';
 
 /** the first category, the user's own blocks (shown even when empty: it says how to fill it) */
 export const MINE_CATEGORY = 'mine';
+/** before it, the blocks of the project the gallery was opened from (only when it has some) */
+export const PROJECT_CATEGORY = 'project';
 
-/** The gallery's categories with their counts: My blocks (when the page has the library: `mineCount`), the catalog's order
- *  (BLOCK_CATEGORY), then plugin groups as they come, then clip effects. */
-export function galleryCategories(blocks: GalleryBlock[], clipCount: number, mineCount?: number): Array<{ key: string; label: string; count: number }> {
+/** The gallery's categories with their counts: the project's own blocks (opened from a project that has some: `ownCount`), My
+ *  blocks (when the page has the library: `mineCount`), the catalog's order (BLOCK_CATEGORY), then plugin groups as they come, then
+ *  clip effects. */
+export function galleryCategories(blocks: GalleryBlock[], clipCount: number, mineCount?: number, ownCount = 0): Array<{ key: string; label: string; count: number }> {
   const count = new Map<string, number>(), plugins: Array<{ key: string; label: string }> = [];
   for (const b of blocks) {
     const k = blockCategory(b);
@@ -98,6 +130,7 @@ export function galleryCategories(blocks: GalleryBlock[], clipCount: number, min
     count.set(k, (count.get(k) ?? 0) + 1);
   }
   return [
+    ...(ownCount ? [{ key: PROJECT_CATEGORY, label: t('group.fx'), count: ownCount }] : []),
     ...(mineCount === undefined ? [] : [{ key: MINE_CATEGORY, label: t('cat.mine'), count: mineCount }]),
     ...Object.keys(BLOCK_CATEGORY).filter((k) => count.has(k)).map((key) => ({ key, label: t(`cat.block.${key}` as Key), count: count.get(key)! })),
     ...plugins.map((p) => ({ ...p, count: count.get(p.key)! })),

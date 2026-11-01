@@ -1,12 +1,14 @@
 // The block gallery page (`/editor/?gallery`, spec 2026-10-17-block-gallery; three columns since 2026-10-20-home-gallery-refresh §6):
 // categories, a grid of cards that show what each block looks like, and a detail panel that is never empty — the first card is picked
 // on arrival, and again whenever a tab, category or search leaves the pick out. Cards show the name Claude uses and the handle
-// people point with (MRK-03, spec 2026-10-22-block-handles); the search finds either.
+// people point with (MRK-03, spec 2026-10-22-block-handles); the search finds either. Opened from a project's editor (gallery-link.ts) it lists
+// that project's own blocks first and each detail offers "Add to project", which adds at the playhead of the tab that opened it.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Project } from '@tellcut/engine';
-import { libraryPlayer, PlayerPreview } from './PlayerPreview.tsx';
+import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
@@ -55,25 +57,58 @@ function Params({ type, defs, values, onChange, theme }: { type: string; defs: G
 /** `id`: what the handle is registered under, when it is not the name (style:<id>, recipe:<id>) */
 const Head = ({ label, name, id = name }: { label: string; name: string; id?: string }) => <header class="g-head"><h2>{label}</h2><Handle id={id} /><CopyName name={name} /></header>;
 
+// ---------------------------------------------------------------- opened from a project (gallery-link.ts)
+/** the project the gallery was opened from: its own blocks, and adding to it through the editor tab that opened the gallery */
+export interface GalleryProject {
+  id: string;
+  load: () => Promise<OwnProject>;
+  add: (a: GalleryAdd) => Promise<AddAnswer>;
+}
+type ToProject = { project: GalleryProject; name: string };
+
+/** "Add to project": what the detail shows, at the playhead of the project's editor tab. `scene`: a background or frame, which the
+ *  editor only takes in place of one already there (the library's Add refuses it too). */
+function AddBar({ to, add, scene = false }: { to?: ToProject; add: GalleryAdd; scene?: boolean }) {
+  const [state, setState] = useState<{ busy: boolean; key: string; answer?: AddAnswer }>({ busy: false, key: '' });
+  if (!to) return null;
+  const key = `${add.kind}:${add.type}`, answer = state.key === key ? state.answer : undefined;   // a card picked since: its own status
+  const go = async () => {
+    setState({ busy: true, key });
+    const a = await to.project.add(add).catch((e: Error): AddAnswer => ({ ok: false, notice: errText(e) }));
+    setState({ busy: false, key, answer: a });
+  };
+  return (
+    <div class="g-add" data-gallery-add-bar>
+      <button class="primary" data-gallery-add disabled={scene || state.busy} {...tip(scene ? t('ed.sceneAdd') : t('gallery.addTip', { name: to.name }))} onClick={() => void go()}>
+        {state.busy && state.key === key ? t('gallery.adding') : t('gallery.add')}</button>
+      {answer && <span class={answer.ok ? 'dim' : 'err'} role="status" data-add-status>{answer.ok ? t('gallery.added', { name: to.name }) : answer.notice ?? ''}</span>}
+    </div>
+  );
+}
+
 /** values someone set on `name`; another name starts from its defaults (in the same render: no frame of the old values) */
 function useParams(name: string): [Record<string, unknown>, (p: Record<string, unknown>) => void] {
   const [set, setSet] = useState<{ name: string; params: Record<string, unknown> }>({ name, params: {} });
   return [set.name === name ? set.params : {}, (params) => setSet({ name, params })];
 }
 
-function BlockDetail({ b }: { b: GalleryBlock }) {
-  const [set, setParams] = useParams(b.type), [theme, setTheme] = useState('none'), [n, setN] = useState(0), x = shown(b.type, b);
+/** a shared block, or (`own`) one of the project's own, whose modules the preview loads from the project folder */
+function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: OwnProject }) {
+  const id = own ? `own:${b.type}` : b.type;
+  const [set, setParams] = useParams(id), [theme, setTheme] = useState('none'), [n, setN] = useState(0), x = shown(b.type, b);
   // the block as it would be added in this UI language: its Chinese words in that language, under what the user changed
   const params = { ...localValues(b.type, b.params), ...set };
   return (
-    <section class="g-detail" data-detail={b.type}>
+    <section class="g-detail" data-detail={id}>
       <Head label={x.label} name={b.type} />
-      <PlayerPreview project={blockProject(b, params, theme)} playKey={n} />
+      {own && to ? <PlayerPreview project={ownProject(own, b, params, theme)} playKey={n} src={projectPlayer(to.project.id)} /> : <PlayerPreview project={blockProject(b, params, theme)} playKey={n} />}
       <div class="g-bar">
         <label>{t('gallery.theme')} <select value={theme} onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}>{Object.keys(THEMES).map((k) => <option value={k}>{t(`gallery.theme.${k}` as Key)}</option>)}</select></label>
         <button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button>
         <button onClick={() => setParams({})}>{t('gallery.resetParams')}</button>
       </div>
+      {/* only what the user changed goes along: the editor starts the rest from the defaults in its own language */}
+      <AddBar to={to} add={{ kind: 'block', type: b.type, ...(Object.keys(set).length ? { params: set } : {}) }} scene={b.kind === 'scene'} />
       <p class="g-doc">{x.doc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       {b.needsMedia && <p class="g-warn" data-needs-media>{t('gallery.needsMediaWarn')}</p>}
       <h3>{t('gallery.params')}</h3>
@@ -95,13 +130,14 @@ function ClipDetail({ f }: { f: ClipFx }) {
   );
 }
 
-function SfxDetail({ s, plays }: { s: GallerySfx; plays: number }) {
+function SfxDetail({ s, plays, to }: { s: GallerySfx; plays: number; to?: ToProject }) {
   const [params, setParams] = useParams(s.type), [n, setN] = useState(0), x = shown(s.type, s);
   return (
     <section class="g-detail" data-detail={s.type}>
       <Head label={x.label} name={s.type} />
       <p class="g-doc">{x.doc || <span class="dim">{t('gallery.noDocShort')}</span>}</p>
       <div class="g-bar"><button class="g-play" onClick={() => setN(n + 1)}><IconPlay size={12} /> {t('gallery.listenAgain')}</button></div>
+      <AddBar to={to} add={{ kind: 'sfx', type: s.type, ...(Object.keys(params).length ? { params } : {}) }} />
       <div class="g-hidden-player"><PlayerPreview project={sfxProject(s, params)} loop={false} autoplay={false} playKey={n + plays} /></div>
       <h3>{t('gallery.params')}</h3>
       <Params type={s.type} defs={s.params} values={params} onChange={(k, v) => setParams({ ...params, [k]: v })} />
@@ -210,7 +246,7 @@ function MineActions({ kind, slug, type, name, desc, group, lib, onChanged, navi
   );
 }
 
-function MineDetail({ b, all, lib, onChanged, navigate, ask, onAsked }: { b: LibraryBlockInfo; all: LibraryBlockInfo[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number; onAsked: () => void }) {
+function MineDetail({ b, all, lib, onChanged, navigate, ask, onAsked, to }: { b: LibraryBlockInfo; all: LibraryBlockInfo[]; lib: GalleryLibrary; onChanged: () => void; navigate: (url: string) => void; ask: number; onAsked: () => void; to?: ToProject }) {
   const id = `mine:${b.type}`, [params, setParams] = useParams(id), [theme, setTheme] = useState('none'), [n, setN] = useState(0);
   return (
     <section class="g-detail" data-detail={id}>
@@ -221,6 +257,8 @@ function MineDetail({ b, all, lib, onChanged, navigate, ask, onAsked }: { b: Lib
         <button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button>
         <button onClick={() => setParams({})}>{t('gallery.resetParams')}</button>
       </div>
+      {/* the entry is copied into the project first, as the library's Add does; it starts from its own defaults */}
+      <AddBar to={to} add={{ kind: 'mine', type: b.type, slug: b.slug }} scene={b.kind === 'scene'} />
       <p class="g-doc">{b.desc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       <MineActions key={id} kind="blocks" slug={b.slug} type={b.type} name={b.name} desc={b.desc} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask} onAsked={onAsked}
         group={b.group.map((x) => all.find((y) => y.type === x)?.name ?? x)} />
@@ -254,7 +292,7 @@ function Thumb({ src }: { src?: string }) {
   return <span class="g-thumb">{src && !broken ? <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} /> : <IconSpark size={22} />}</span>;
 }
 
-export function Gallery({ load, library, navigate = (u) => location.assign(u) }: { load: () => Promise<GalleryIndex>; library?: GalleryLibrary; navigate?: (url: string) => void }) {
+export function Gallery({ load, library, project, navigate = (u) => location.assign(u) }: { load: () => Promise<GalleryIndex>; library?: GalleryLibrary; project?: GalleryProject; navigate?: (url: string) => void }) {
   useLang();   // the language switch re-renders the whole page
   const [g, setG] = useState<GalleryIndex | null>(null), [err, setErr] = useState('');
   const [tab, setTab] = useState<Tab>('blocks'), [q, setQ] = useState(''), [cat, setCat] = useState(ALL);
@@ -268,20 +306,26 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
   const [lib, setLib] = useState<LibraryIndex | null>(null), [libErr, setLibErr] = useState('');
   const reloadLib = () => library?.load().then((x) => { setLib(x); setLibErr(''); }, (e: Error) => { setLib({ blocks: [], styles: [] }); setLibErr(e.message); });
   useEffect(() => { void reloadLib(); }, []);
+  // the project it was opened from: its own blocks; a failure says so above them and leaves the rest of the page as it is
+  const [own, setOwn] = useState<OwnProject | null>(null), [ownErr, setOwnErr] = useState('');
+  useEffect(() => { project?.load().then(setOwn, (e: Error) => setOwnErr(errText(e))); }, []);
   if (err) return <div class="gallery g-message"><p class="err">{t('gallery.loadFail', { err })}</p></div>;
   if (!g) return <div class="gallery g-message"><p class="dim">{t('gallery.loading')}</p></div>;
 
   const needle = q.trim().toLowerCase();
   const clips = CLIP_FX.filter((f) => matches(q, handleOf(f.key), f.label, f.doc, f.code, shown(f.key, f).label, shown(f.key, f).doc));
   const mineBlocks = (lib?.blocks ?? []).filter((b) => matches(q, undefined, b.type, b.name, b.desc)), mineStyles = (lib?.styles ?? []).filter((x) => matches(q, undefined, x.id, x.name, x.desc));
-  const cats = galleryCategories(g.blocks, CLIP_FX.length, library ? (lib?.blocks.length ?? 0) : undefined);
+  const ownList = (own?.blocks ?? []).filter((b) => matches(q, undefined, b.type, b.label, b.doc, shown(b.type, b).label));
+  const to: ToProject | undefined = project && { project, name: own?.name || project.id };
+  const cats = galleryCategories(g.blocks, CLIP_FX.length, library ? (lib?.blocks.length ?? 0) : undefined, own?.blocks.length ?? 0);
+  const showOwn = tab === 'blocks' && (cat === ALL || cat === PROJECT_CATEGORY) && (ownList.length > 0 || !!ownErr);
   const showMine = !!library && tab === 'blocks' && (cat === ALL || cat === MINE_CATEGORY);
   const list = filterGallery(g, tab, q);
   // what the grid shows, in order: blocks (by category, or one category) then clip effects; or the tab's list
   const sections = tab !== 'blocks' ? [] : cats.filter((c) => cat === ALL || c.key === cat).map((c) => ({ ...c,
     blocks: c.key === CLIP_CATEGORY ? [] : (list as GalleryBlock[]).filter((b) => blockCategory(b) === c.key).sort((a, b) => byHandle(a.type, b.type)),
     clips: c.key === CLIP_CATEGORY ? clips : [] })).filter((x) => x.blocks.length || x.clips.length);
-  const names = tab === 'blocks' ? [...(showMine ? mineBlocks.map((b) => `mine:${b.type}`) : []), ...sections.flatMap((x) => [...x.blocks.map((b) => b.type), ...x.clips.map((f) => f.key)])]
+  const names = tab === 'blocks' ? [...(showOwn ? ownList.map((b) => `own:${b.type}`) : []), ...(showMine ? mineBlocks.map((b) => `mine:${b.type}`) : []), ...sections.flatMap((x) => [...x.blocks.map((b) => b.type), ...x.clips.map((f) => f.key)])]
     : tab === 'sfx' ? sfxSections(list as GallerySfx[]).flatMap((x) => x.sfx.map((s) => s.type)) : tab === 'styles' ? [...mineStyles.map((x) => `mine-style:${x.id}`), ...(list as GalleryStyle[]).map((s) => s.id)] : (list as GalleryRecipe[]).map((r) => r.id);
   const on = picked && names.includes(picked) ? picked : names[0] ?? null;
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
@@ -301,6 +345,11 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
     <Thumb src={thumbIn(b.thumb, getLang())} />
     <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong><Handle id={b.type} /><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
   </>);
+  // the project's own: no golden picture; the tag says whose it is wherever the card shows
+  const ownCard = (b: GalleryBlock) => card(`own:${b.type}`, shown(b.type, b).doc, <>
+    <Thumb />
+    <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong><span class="tag" data-own-tag>{t('gallery.ownTag')}</span><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
+  </>, 'g-own');
   const mineCard = (b: LibraryBlockInfo) => card(`mine:${b.type}`, b.desc, <>
     <Thumb src={b.thumb ?? undefined} />
     <span class="g-card-body card-lines"><strong data-card-name {...tip(b.name)}>{b.name}</strong><span class="g-sub">{fromLine(b)}</span></span>
@@ -312,13 +361,14 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
 
   const detail = () => {
     if (!on) return <p class="dim g-hint">{t('gallery.emptyHint')}</p>;
-    if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} />; }
+    if (on.startsWith('own:') && own) { const b = own.blocks.find((x) => `own:${x.type}` === on); return b && <BlockDetail b={b} own={own} to={to} />; }
+    if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} to={to} />; }
     if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} />; }
     if (tab === 'blocks') {
       const b = g.blocks.find((x) => x.type === on), f = CLIP_FX.find((x) => x.key === on);
-      return b ? <BlockDetail b={b} /> : f ? <ClipDetail f={f} /> : null;
+      return b ? <BlockDetail b={b} to={to} /> : f ? <ClipDetail f={f} /> : null;
     }
-    if (tab === 'sfx') { const s = g.sfx.find((x) => x.type === on); return s && <SfxDetail s={s} plays={plays} />; }
+    if (tab === 'sfx') { const s = g.sfx.find((x) => x.type === on); return s && <SfxDetail s={s} plays={plays} to={to} />; }
     if (tab === 'styles') { const s = g.styles.find((x) => x.id === on); return s && <StyleDetail s={s} />; }
     const r = g.recipes.find((x) => x.id === on); return r && <RecipeDetail r={r} />;
   };
@@ -330,7 +380,7 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
         <h1>{t('gallery.title')}</h1>
         <p class="g-lede">{t('gallery.lede')}</p>
         {tab === 'blocks' && <nav class="g-cats" aria-label={t('gallery.cats')}>
-          <button class={cat === ALL ? 'on' : ''} data-cat={ALL} onClick={() => setCat(ALL)}>{t('gallery.all')}<small>{g.blocks.length + CLIP_FX.length + (lib?.blocks.length ?? 0)}</small></button>
+          <button class={cat === ALL ? 'on' : ''} data-cat={ALL} onClick={() => setCat(ALL)}>{t('gallery.all')}<small>{g.blocks.length + CLIP_FX.length + (lib?.blocks.length ?? 0) + (own?.blocks.length ?? 0)}</small></button>
           {cats.map((c) => <button class={cat === c.key ? 'on' : ''} data-cat={c.key} onClick={() => setCat(c.key)}>{c.label}<small>{c.count}</small></button>)}
         </nav>}
       </aside>
@@ -339,6 +389,10 @@ export function Gallery({ load, library, navigate = (u) => location.assign(u) }:
           <div class="g-tabs" role="tablist">{TABS.map((k) => <button role="tab" aria-selected={tab === k} class={tab === k ? 'on' : ''} data-tab={k} onClick={() => setTab(k)}>{t(`gallery.tab.${k}` as Key)}</button>)}</div>
           <input class="g-search" type="search" placeholder={t('gallery.search')} value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
         </div>
+        {showOwn && <section class="g-section" data-own-section>
+          {cat === ALL && <h4>{t('gallery.ownHead', { name: to?.name ?? '' })}</h4>}
+          {ownErr ? <p class="err g-empty">{t('gallery.ownFail', { err: ownErr })}</p> : <ul class="g-grid">{ownList.map(ownCard)}</ul>}
+        </section>}
         {showMine && (mineBlocks.length > 0 || cat === MINE_CATEGORY) && <section class="g-section" data-mine-section>
           {cat === ALL && <h4>{t('cat.mine')}</h4>}
           {mineBlocks.length ? <ul class="g-grid">{mineBlocks.map(mineCard)}</ul> : <p class="dim g-empty" data-mine-empty>{libErr ? t('lib.loadFail', { err: libErr }) : t('lib.mineEmpty')}</p>}

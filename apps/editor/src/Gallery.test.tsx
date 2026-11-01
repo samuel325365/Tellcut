@@ -410,3 +410,80 @@ test('a block card asks for its thumbnail in the UI language; a Chinese page ask
     expect(await img()).toBe('/api/gallery/thumb/core-title-t1.50.png?lang=ja');
   } finally { setLang('zh'); localStorage.clear(); }
 });
+
+// ---------------------------------------------------------------- opened from a project: its own blocks, and "Add to project" (gallery-link.ts)
+import { ownBlocks, ownProject, type OwnProject } from './gallery.ts';
+import type { GalleryAdd } from './gallery-link.ts';
+
+const OWN: OwnProject = {
+  name: '三天的旅行', meta: { plugins: ['core', 'common', 'fx'], fx: ['fx/ticket.js'], theme: { radius: 9 } },
+  blocks: ownBlocks([
+    { type: 'fx.ticket', label: '車票', doc: '一張車票滑進來', kind: 'overlay', params: [{ key: 'to', label: '到站', type: 'string', default: '京都' }] },
+    { type: 'fx.map', label: '地圖底', doc: '', kind: 'scene', params: [], media: () => [] },
+  ]),
+};
+async function projectPage(answer: (a: GalleryAdd) => Promise<{ ok: boolean; notice?: string }> = async () => ({ ok: true }), load = async () => OWN) {
+  const root = document.createElement('div'), asked: GalleryAdd[] = [];
+  const project = { id: 'trip', load, add: (a: GalleryAdd) => { asked.push(a); return answer(a); } };
+  await act(async () => { render(<Gallery load={async () => G} project={project} />, root); });
+  await settle();
+  return { root, asked };
+}
+
+test('the project’s own blocks become cards of their own (fx, footage told as for the shared ones) and preview with its modules', () => {
+  expect(OWN.blocks.map((b) => [b.type, b.plugin, b.needsMedia])).toEqual([['fx.ticket', 'fx', false], ['fx.map', 'fx', true]]);
+  const p = ownProject(OWN, OWN.blocks[0], { to: '大阪' });
+  expect(p.meta).toMatchObject({ plugins: ['core', 'common', 'fx'], fx: ['fx/ticket.js'], theme: { radius: 9 } });
+  expect(p.tracks[0].items[0]).toMatchObject({ type: 'fx.ticket', params: { to: '大阪' } });
+  expect(ownProject(OWN, OWN.blocks[0], {}, 'warm').meta.theme).toEqual(THEMES.warm.theme);
+  expect(galleryCategories(G.blocks, 2, 0, 2).slice(0, 2).map((c) => [c.key, c.count])).toEqual([['project', 2], ['mine', 0]]);
+});
+
+test('opened from a project, its own blocks come first, tagged as the project’s; their preview loads from the project folder', async () => {
+  const { root } = await projectPage();
+  expect(root.querySelector('[data-cat="project"] small')?.textContent).toBe('2');
+  expect(cards(root).slice(0, 2)).toEqual(['own:fx.ticket', 'own:fx.map']);
+  expect(root.querySelector('[data-own-section] h4')?.textContent).toContain('三天的旅行');
+  expect(root.querySelector('[data-card="own:fx.ticket"] [data-own-tag]')).not.toBeNull();
+  expect(root.querySelector('[data-detail="own:fx.ticket"] iframe')!.getAttribute('src')).toContain('id=trip');
+  await click(root, '[data-cat="project"]');
+  expect(cards(root)).toEqual(['own:fx.ticket', 'own:fx.map']);
+  await click(root, '[data-cat="text"]');
+  expect(cards(root).some((c) => c!.startsWith('own:'))).toBe(false);
+});
+
+test('"Add to project" asks the editor with the values changed here and says how it went; a background cannot be added', async () => {
+  let reply = { ok: true } as { ok: boolean; notice?: string };
+  const { root, asked } = await projectPage(async () => reply);
+  await act(() => {
+    const e = root.querySelector('[data-detail="own:fx.ticket"] [data-param="to"] input') as HTMLInputElement;
+    e.value = '奈良'; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await click(root, '[data-detail="own:fx.ticket"] [data-gallery-add]');
+  await settle();
+  expect(asked.at(-1)).toEqual({ kind: 'block', type: 'fx.ticket', params: { to: '奈良' } });
+  expect(root.querySelector('[data-add-status]')?.textContent).toContain('三天的旅行');
+  reply = { ok: false, notice: '播放頭在最後' };
+  await click(root, '[data-card="common.slam"]');
+  expect(root.querySelector('[data-add-status]')).toBeNull();   // another card: its own status
+  await click(root, '[data-detail="common.slam"] [data-gallery-add]');
+  await settle();
+  expect(asked.at(-1)).toEqual({ kind: 'block', type: 'common.slam' });
+  expect(root.querySelector('[data-add-status]')?.textContent).toBe('播放頭在最後');
+  await click(root, '[data-card="own:fx.map"]');
+  expect((root.querySelector('[data-detail="own:fx.map"] [data-gallery-add]') as HTMLButtonElement).disabled).toBe(true);
+  await click(root, '[data-tab="sfx"]');
+  await click(root, '[data-detail="common.beep"] [data-gallery-add]');
+  await settle();
+  expect(asked.at(-1)).toEqual({ kind: 'sfx', type: 'common.beep' });
+});
+
+test('without a project there is no Add; a project whose blocks fail to load says so and the rest still shows', async () => {
+  const root = await page();
+  expect(root.querySelector('[data-gallery-add]')).toBeNull();
+  expect(root.querySelector('[data-own-section]')).toBeNull();
+  const { root: r2 } = await projectPage(undefined, async () => { throw new Error('boom'); });
+  expect(r2.querySelector('[data-own-section] .err')?.textContent).toContain('boom');
+  expect(r2.querySelector('[data-gallery-add]')).not.toBeNull();   // shared blocks can still be added
+  expect(cards(r2)).toContain('core.title');
+});

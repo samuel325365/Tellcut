@@ -21,6 +21,7 @@ import { arrangementOf, gridFor, previewWFromX, sideWFromX, sideWidth, sizePatch
 import type { Editor } from './editor.ts';
 import type { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
+import { galleryUrl } from './gallery-link.ts';
 
 /** the project chat, with ＋ to attach photos or footage from this PC (as paths, like the home page) */
 function EditorChat({ editor }: { editor: Editor }) {
@@ -178,7 +179,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
       })()}
       {s.presetSave.toast && <div class="lib-toast" role="status" data-preset-toast>{s.presetSave.toast}<button aria-label={t('lib.close')} onClick={() => editor.presetSave.dismiss()}>×</button></div>}
       {s.library.toast && <div class="lib-toast" role="status" data-lib-toast>{t('lib.saved', { name: s.library.toast.name })}
-        <a href="./?gallery" target="_blank" rel="noopener">{t('lib.seeIt')}</a><button aria-label={t('lib.close')} onClick={() => editor.library.dismissToast()}>×</button></div>}
+        <a href={galleryUrl(editor.id)} target="_blank" rel="opener">{t('lib.seeIt')}</a><button aria-label={t('lib.close')} onClick={() => editor.library.dismissToast()}>×</button></div>}
       {s.helpOpen && <HelpPanel onClose={() => editor.toggleHelp(false)} />}
     </div>
   );

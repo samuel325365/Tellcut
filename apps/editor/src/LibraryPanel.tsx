@@ -15,6 +15,7 @@ import { musicLength, replaceProblem, uniqueBlock } from './editor.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { t, type Key } from './i18n/index.ts';
 import { matches } from './gallery.ts';
+import { galleryUrl } from './gallery-link.ts';
 import { blockText } from './i18n/blocks.ts';
 import { tip } from './tip.ts';
 import { ImportDialog } from './ImportDialog.tsx';
@@ -139,6 +140,8 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
         <input class="lib-search" type="search" data-lib-search placeholder={SEARCH_PH[tab]} value={qs[tab]} {...tip(t('ed.libSearchTip'))}
           onInput={(e) => { const v = (e.target as HTMLInputElement).value; setQs((x) => ({ ...x, [tab]: v })); }} />
         {/* Import (spec 2026-10-29-media-import): files from this PC straight into the project, without the Agent */}
+        {/* the gallery for this project: its own blocks too, and "Add to project" back into this tab (rel=opener: gallery-link.ts) */}
+        {tab !== 'video' && <a class="lib-gallery" data-gallery-link href={galleryUrl(s.id)} target="_blank" rel="opener" {...tip(t('ed.galleryTip'))}>Gallery ↗</a>}
         {editor.fs && <button data-import-media disabled={!!s.importing} {...tip(t('ed.importTip'))} onClick={() => setBrowsing(true)}><IconPlus size={12} /> Import</button>}
       </div>
       {(s.importing || s.importNote) && <p class="lib-note" data-import-note>{s.importing ? t('ed.importing', s.importing) : s.importNote}</p>}

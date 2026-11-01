@@ -867,10 +867,11 @@ export class Editor {
   }
 
 
-  addSfx(type: string) {
-    const def = this.registry?.sfx(type);
-    const t = this.s.playhead, dur = def ? def.duration(withDefaults(def.params, {})) : 0.5;
-    return this.addTo('sfx', { type, start: t, end: t + Math.max(dur, 1 / (this.s.project?.meta.fps ?? 30)), params: {}, gain: 0 });
+  /** `params`: values set in the gallery (only the sound's own keys are kept) */
+  addSfx(type: string, params?: Record<string, unknown>) {
+    const def = this.registry?.sfx(type), own = ownParams(def?.params, params);
+    const t = this.s.playhead, dur = def ? def.duration(withDefaults(def.params, own)) : 0.5;
+    return this.addTo('sfx', { type, start: t, end: t + Math.max(dur, 1 / (this.s.project?.meta.fps ?? 30)), params: own, gain: 0 });
   }
 
   /** The library's "replace": the block becomes another of the same kind (a picture block for one that sits the same way
@@ -885,12 +886,13 @@ export class Editor {
     return this.update(id, { type, params });
   }
 
-  addOverlay(type: string) {
+  /** `params`: values set in the gallery, over the defaults (only the block's own keys are kept) */
+  addOverlay(type: string, params?: Record<string, unknown>) {
     const why = uniqueBlock(this.registry, this.s.project!, type);
     if (why) { this.set({ notice: why }); return false; }
-    const t = this.s.playhead;
+    const t = this.s.playhead, defs = this.registry?.item(type)?.params ?? [];
     // in the English or Japanese UI a block's Chinese words start in that language (written in, so the panel shows what is drawn)
-    return this.addTo('overlay', { type, start: t, end: t + 2, params: localValues(type, this.registry?.item(type)?.params ?? []) });
+    return this.addTo('overlay', { type, start: t, end: t + 2, params: { ...localValues(type, defs), ...ownParams(defs, params) } });
   }
 
   select(ids: string[], o: { reveal?: boolean } = {}) {
@@ -974,6 +976,10 @@ export function replaceProblem(registry: Pick<Registry, 'item' | 'sfx'> | undefi
   if (!to || (from && from.kind !== to.kind)) return say('ed.replaceKind');
   return registry ? uniqueBlock(registry, p!, type) : '';
 }
+
+/** the values of `params` whose keys the block or sound has */
+const ownParams = (defs: Array<{ key: string }> | undefined, params: Record<string, unknown> | undefined): Record<string, unknown> =>
+  (params && defs ? Object.fromEntries(Object.entries(params).filter(([k]) => defs.some((d) => d.key === k))) : {});
 
 /** Length of a music file from its waveform (peaks per second), if known. */
 export const musicLength = (pk?: PeakInfo) => (pk && pk.rate > 0 && pk.peaks.length ? pk.peaks.length / pk.rate : undefined);

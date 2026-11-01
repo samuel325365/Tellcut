@@ -82,3 +82,29 @@ test('a slow answer about My blocks does not reset a field being typed in', asyn
     await poll(() => disk().tracks.find((t: any) => t.kind === 'video').items.find((i: any) => i.id === 'c').speed).toBe(0.5);
   } finally { await p.close(); }
 }, 120000);
+
+// the block gallery opened from the editor: the project's own blocks are listed, and "Add to project" lands in this tab's timeline
+test('the gallery opened from a project lists its own blocks and adds one at the playhead of the tab that opened it', async () => {
+  const p = await browser.newPage({ viewport: { width: 1400, height: 820 }, locale: 'en-US' });
+  try {
+    await p.goto(`${base}/editor/?id=one`);
+    await p.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+    await p.click('[data-lib-tab="effects"]');
+    const [g] = await Promise.all([p.context().waitForEvent('page'), p.click('[data-gallery-link]')]);
+    await g.waitForSelector('[data-own-section] [data-card="own:fx.box"]', { timeout: 30000 });
+    expect(await g.locator('[data-card="own:fx.box"] [data-own-tag]').count()).toBe(1);
+    await g.click('[data-card="own:fx.box"]');
+    expect(await g.locator('[data-detail="own:fx.box"] iframe').getAttribute('src')).toContain('id=one');
+    const disk = () => JSON.parse(readFileSync(join(root, 'one', 'project.json'), 'utf8'));
+    const boxes = () => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => i.type === 'fx.box').length;
+    const before = boxes();
+    await g.click('[data-detail="own:fx.box"] [data-gallery-add]');
+    await poll(() => g.locator('[data-add-status]').textContent()).toContain('one');
+    await poll(boxes).toBe(before + 1);
+    // a shared block too, from its own card
+    await g.click('[data-card="core.flash"]');
+    await g.click('[data-detail="core.flash"] [data-gallery-add]');
+    await poll(() => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => i.type === 'core.flash').length).toBe(2);
+    await g.close();
+  } finally { await p.close(); }
+}, 120000);
