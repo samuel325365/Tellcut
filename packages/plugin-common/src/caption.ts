@@ -12,12 +12,15 @@
 // style 'crayon' (fd-tangyuan's fx.tyCap) sets the words in ink on a band of the highlight colour scribbled in crayon behind them.
 // style 'bar' (t2-search's fx.sCap): white words on a dark rounded bar with a thin accent2 strip down its left side (a search snippet).
 // style 'qa' (t2-magazine's fx.magSubs): an interview subtitle set flush left in a serif over a dark wash rising from below the
-// lines, with `name` (Q, A) in a square badge at the left of the first line; a speaker above 0 fills the badge in the accent colour.
+// lines, with `name` (Q, A, or a short name: the badge widens) in a badge at the left of the first line; a speaker above 0 fills the
+// badge in the accent colour, or with `badgeTint` in the speaker's own colour.
 // styles 'auto' and 'big' (t2-reels's fx.reelsCap): a social app's automatic caption (white on a dark rounded box, popping in
-// from 0.88×) and its big sticker words (handwriting in the highlight colour with a thick ink outline, popping in from 0.6×).
+// from 0.88×) and its big sticker words (handwriting in the highlight colour, or `bigColor`, with a thick ink outline, popping in from
+// 0.6×). A style's own font (big's handwriting, qa's serif) gives way to `styleFont`, then to a `font` the item sets itself.
 // style 'strip' (the todo-vlog short's fx.saycap): ink words printed on strips of paper, one strip a line, each tilted a little the
 // other way; with `words` the word being said gets a highlighter stroke behind it instead of changing colour.
-import { animState, clamp, cssCamel, eBack, eOut3, h, lerp, prog, type ItemType, type Theme } from '@tellcut/engine';
+import { animState, clamp, cssCamel, eBack, eOut3, h, lerp, prog, textEm, type ItemType, type Theme } from '@tellcut/engine';
+import { luma } from './color.ts';
 import { layoutMarkup } from './markup.ts';
 import { runBox, setRuns, type RunBox } from './runs.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
@@ -26,7 +29,7 @@ import { grainBegin, grainEnd, scribbleFill, type GrainLayer, type Pt } from './
 interface P {
   text: string; style: 'outline' | 'plain' | 'box' | 'bubble' | 'ticket' | 'crayon' | 'bar' | 'qa' | 'auto' | 'big' | 'strip'; styleFont: string; y: number; tint: boolean; size: number; font: string; color: string; hl: string; outline: string; boxBg: string; bubbleBg: string;
   position: 'bottom' | 'center' | 'top'; animIn: string; animOut: string; animDur: number; words: Array<[number, number]>; speaker: number; name: string;
-  hlScale: number; tag: string; gloss: string; glossSize: number; glossColor: string; quote: boolean; fill: boolean; role: string; align: 'center' | 'left'; point: 'none' | 'up' | 'down' | 'left' | 'right';
+  hlScale: number; bigColor: string; badgeTint: boolean; tag: string; gloss: string; glossSize: number; glossColor: string; quote: boolean; fill: boolean; role: string; align: 'center' | 'left'; point: 'none' | 'up' | 'down' | 'left' | 'right';
 }
 interface S { box: HTMLElement; text: RunBox; name: HTMLElement; tag: HTMLElement; gloss: HTMLElement; nameText: HTMLElement; role: HTMLElement; chip: HTMLElement; arrow: HTMLElement; chipName: HTMLElement; band: HTMLCanvasElement; layer: GrainLayer; wash: HTMLElement }
 
@@ -51,12 +54,15 @@ export function saidLevel(words: Array<[number, number]>, i: number, local: numb
 
 /** the styles that print the line in ink on paper (a bubble, a ticket, the crayon band, strips): a gloss there is ink too */
 const PAPER = new Set(['bubble', 'ticket', 'crayon', 'strip']);
-/** which colour parameter a style draws the line in: the ink (`outline`) on paper, `hl` for big, else `color` */
+/** which colour parameter a style draws the line in: the ink (`outline`) on paper, `hl` for big (unless `bigColor` is set), else `color` */
 export const lineColorKey = (style: string): 'outline' | 'hl' | 'color' => (PAPER.has(style) ? 'outline' : style === 'big' ? 'hl' : 'color');
-/** the gloss's colour: its own, else the highlight colour, or the ink on paper (the highlight colour does not read on it) */
-export const glossColorOf = (p: { style: string; glossColor: string; hl: string; outline: string }) => p.glossColor || (PAPER.has(p.style) ? p.outline : p.hl);
+/** the gloss's colour: its own, else the highlight colour (big: its line colour), or the ink on paper (the highlight colour does not read on it) */
+export const glossColorOf = (p: { style: string; glossColor: string; hl: string; outline: string; bigColor?: string }) =>
+  p.glossColor || (PAPER.has(p.style) ? p.outline : (p.style === 'big' && p.bigColor) || p.hl);
+/** style big's words: `bigColor`, else the speaker's colour when one is set (speaker > 0, tint on), else the highlight colour */
+export const bigColorOf = (p: { bigColor?: string; hl: string }, speakerInk?: string) => p.bigColor || speakerInk || p.hl;
 
-/** the text colour of speaker 0–3: 0 the caption's own, then the theme's accent2, hl and accent */
+/** the text colour of speaker 0–3: 0 the caption's own, 1 the theme's accent2, 2 its hl (highlight), 3 its accent */
 export const speakerColor = (speaker: number, color: string, theme: Theme) => [color, theme.palette.accent2, theme.palette.hl, theme.palette.accent][Math.max(0, Math.min(3, Math.round(speaker)))];
 
 /** styles auto and big: their scale at `local` as they pop in over 0.14 s (auto from 0.88×, big from 0.6× with an overshoot); null for the others */
@@ -64,12 +70,30 @@ export function stylePop(style: string, local: number): number | null {
   const q = prog(local, 0, 0.14);
   return style === 'auto' ? lerp(0.88, 1, eOut3(q)) : style === 'big' ? lerp(0.6, 1, eBack(q, 1.7)) : null;
 }
-/** the font a style brings: `styleFont`, else handwriting for big and a serif for qa, else '' (the caption's own font) */
-export const styleFontOf = (style: string, styleFont: string) => styleFont || (style === 'big' ? 'LXGW WenKai TC' : style === 'qa' ? 'Noto Serif TC' : '');
+/** the font a style brings: `styleFont`, else (unless the item sets its own `font`: `fontSet`) handwriting for big and a serif for
+ *  qa, else '' (the caption's own font) */
+export const styleFontOf = (style: string, styleFont: string, fontSet = false) =>
+  styleFont || (fontSet ? '' : style === 'big' ? 'LXGW WenKai TC' : style === 'qa' ? 'Noto Serif TC' : '');
+
+/** style qa's badge: one character (or none) in the 1.03 em square it always had, a line indented 1.45 em; a short name in a badge
+ *  that grows round it (its estimated width in em of the caption: the serif italic letters at 0.83 em run a little wider than
+ *  textEm, plus 0.22 em each side; draw measures the real one) and the indent 0.42 em past it */
+export function qaBadge(name: string) {
+  if ([...name].length <= 1) return { square: true, w: 1.03, indent: 1.45 };
+  const w = Math.max(1.03, textEm(name) * 0.95 + 0.44);
+  return { square: false, w, indent: w + 0.42 };
+}
+/** the qa badge's fill and letters: the caption colour (speaker 0), the accent colour, or with `tint` the speaker's own colour; ink
+ *  letters on a light fill, white on a dark one */
+export function qaBadgeColors(speaker: number, color: string, theme: Theme, tint: boolean) {
+  if (!speaker) return { bg: color, fg: theme.palette.ink };
+  const bg = tint ? speakerColor(speaker, color, theme) : theme.palette.accent;
+  return { bg, fg: tint && (luma(bg) ?? 0) > 0.6 ? theme.palette.ink : '#ffffff' };
+}
 
 export const caption: ItemType<P, S> = {
   type: 'common.caption', label: '字幕（共用）', category: 'text', kind: 'overlay',
-  doc: '一句字幕：描邊／純字／底框／氣泡（米白底粗黑框、強調字用主色）／ticket（印在一小條鋸齒撕邊的收據紙上、從下面彈出來）、crayon（墨色字壓在一條用蠟筆塗出來的高亮色底帶上，繪本、手作風）、bar（深色圓角橫條、左側一條 accent2 色條，像搜尋摘要）、qa（雜誌訪談字幕：靠左的襯線字壓在從下往上的深色漸層上，name 放進第一行左邊的方形徽章，例如 Q、A；speaker 大於 0 時徽章是主色）、auto（社群平台的自動字幕：深色圓角底白字，從 0.88 倍彈出）、big（社群平台的大字貼圖：手寫字、高亮色、粗黑描邊，放大 1.25 倍，從 0.6 倍彈出）、strip（手帳風：一行一條微歪的米色紙條、墨色字，配 words 時講到的詞後面刷一道高亮色螢光筆）十一種樣式；y 可以把字幕下緣釘在任何高度（例如影片窗下緣）；name＋speaker 標出誰在說（tint 關掉時字不變色、只有名字小牌換色；role 在名字旁加小字身分）；fill 配 words 是整句先淡淡出現、講到的字一個個亮起來不再暗回去；align left 靠左對齊；point 把名字放進字幕左邊一塊說話人顏色的小牌，箭頭指向說話的人（上下分割的對談）；【詞】會變高亮色、{詞} 會被打碼成符號；避開短影音的下緣與側邊安全區',
+  doc: '一句字幕：描邊／純字／底框／氣泡（米白底粗黑框、強調字用主色）／ticket（印在一小條鋸齒撕邊的收據紙上、從下面彈出來）、crayon（墨色字壓在一條用蠟筆塗出來的高亮色底帶上，繪本、手作風）、bar（深色圓角橫條、左側一條 accent2 色條，像搜尋摘要）、qa（雜誌訪談字幕：靠左的襯線字壓在從下往上的深色漸層上，name 放進第一行左邊的徽章，例如 Q、A，或短名字、縮寫（徽章跟著變寬）；speaker 大於 0 時徽章是主色，badgeTint 打開改用說話者的顏色）、auto（社群平台的自動字幕：深色圓角底白字，從 0.88 倍彈出）、big（社群平台的大字貼圖：手寫字、高亮色 hl（speaker 大於 0 時用說話者的顏色，bigColor 另給字色、兩者都蓋過）、粗黑描邊，放大 1.25 倍，從 0.6 倍彈出）、strip（手帳風：一行一條微歪的米色紙條、墨色字，配 words 時講到的詞後面刷一道高亮色螢光筆）十一種樣式；big 預設手寫、qa 預設襯線字，styleFont 或項目自己給的 font 都會換掉它（主題的字型不會）；y 可以把字幕下緣釘在任何高度（例如影片窗下緣）；name＋speaker 標出誰在說（speaker 1＝主題 accent2、2＝高亮色 hl、3＝主色 accent；tint 關掉時字不變色、只有名字小牌換色；role 在名字旁加小字身分）；fill 配 words 是整句先淡淡出現、講到的字一個個亮起來不再暗回去；align left 靠左對齊；point 把名字放進字幕左邊一塊說話人顏色的小牌，箭頭指向說話的人（上下分割的對談）；【詞】會變高亮色、{詞} 會被打碼成符號；避開短影音的下緣與側邊安全區',
   params: [
     { key: 'text', label: '文字（【高亮】、{打碼}）', type: 'text', default: '字幕' },
     { key: 'style', label: '樣式（crayon：蠟筆塗的高亮色底帶；bar 搜尋摘要條、qa 訪談字幕、auto 自動字幕、big 大字貼圖、strip 一行一條微歪的紙條、講到的詞後面刷螢光筆）', type: 'enum', options: ['outline', 'plain', 'box', 'bubble', 'ticket', 'crayon', 'bar', 'qa', 'auto', 'big', 'strip'], default: 'outline' },
@@ -85,7 +109,7 @@ export const caption: ItemType<P, S> = {
     { key: 'animOut', label: '出場', type: 'enum', options: ['none', 'fade', 'rise', 'slide'], default: 'fade' },
     { key: 'animDur', label: '動畫長度 (s)', type: 'number', min: 0, max: 3, step: 0.05, default: 0.3 },
     { key: 'words', label: '逐字跳亮（[[秒, 已說出的字數], …]；空＝整句一起）', type: 'json', default: [] },
-    { key: 'speaker', label: '說話者（0＝一般字色，1–3＝不同顏色）', type: 'number', min: 0, max: 3, step: 1, default: 0 },
+    { key: 'speaker', label: '說話者（0＝一般字色，1＝主題 accent2、2＝高亮色 hl、3＝主色 accent）', type: 'number', min: 0, max: 3, step: 1, default: 0 },
     { key: 'name', label: '說話者名字（顯示在字幕上方；空＝不顯示）', type: 'string', default: '' },
     { key: 'hlScale', label: '高亮字放大（倍）', type: 'number', min: 1, max: 1.6, step: 0.02, default: 1 },
     { key: 'tag', label: '上方主色小牌（菜名、地點；空＝不顯示）', type: 'string', default: '' },
@@ -99,7 +123,9 @@ export const caption: ItemType<P, S> = {
     { key: 'role', label: '名字旁的小字身分（主持人、老師；空＝不顯示）', type: 'string', default: '' },
     { key: 'align', label: '對齊（center 置中、left 靠左）', type: 'enum', options: ['center', 'left'], default: 'center' },
     { key: 'point', label: '左邊的說話人小牌與箭頭方向（none 不要；名字放進小牌）', type: 'enum', options: ['none', 'up', 'down', 'left', 'right'], default: 'none' },
-    { key: 'styleFont', label: '樣式字型（big、qa；空＝big 用 LXGW WenKai TC 手寫、qa 用 Noto Serif TC）', type: 'string', default: '' },
+    { key: 'styleFont', label: '樣式字型（big、qa；空＝項目有自己給 font 就用它，否則 big 用 LXGW WenKai TC 手寫、qa 用 Noto Serif TC）', type: 'string', default: '' },
+    { key: 'bigColor', label: 'big 的字色（空＝說話者的顏色，沒有 speaker 時是高亮顏色 hl）', type: 'color', default: '' },
+    { key: 'badgeTint', label: 'qa 的名字徽章用說話者的顏色（關掉＝speaker 大於 0 一律主色）', type: 'bool', default: false },
   ],
   build(ctx) {
     // style qa's wash: under the box, across the whole frame
@@ -135,7 +161,7 @@ export const caption: ItemType<P, S> = {
     const hasWords = Array.isArray(p.words) && p.words.length > 0, fill = !!p.fill && hasWords, point = p.point && p.point !== 'none', left = p.align === 'left' || qa;
     const lit = hasWords && !fill ? karaokeRange(p.words, ctx.local) : null;
     // the speaker chip of `point` takes 2.05 em at the left
-    const extra = bar ? 1.65 : auto ? 0.96 : qa ? 1.45 : 0;
+    const badge = qaBadge(qa ? String(p.name ?? '') : ''), extra = bar ? 1.65 : auto ? 0.96 : qa ? badge.indent : 0;
     const room = (extra ? width - extra * px : framed ? width - 1.2 * px - (p.style === 'bubble' ? 2 * theme.stroke * k : 0) : width) - (point ? 2.05 * px : 0), fit = layoutMarkup(p.quote ? `“${p.text}”` : p.text, room / px / hs, 2, st.typed, lit);
     setRuns(s.text, fit.lines, p.style === 'bubble' || crayon ? theme.palette.accent : big ? p.color : strip ? p.outline : p.hl, { perChar: pop || fill, hlScale: hs });
     if (strip) paperStrips(s.text.el, p, left, k);
@@ -152,12 +178,13 @@ export const caption: ItemType<P, S> = {
     // the speaker's name: a small chip in their colour above the caption
     s.nameText.textContent = p.name ?? ''; s.role.textContent = p.role ?? '';
     cssCamel(s.role, { display: p.role ? 'inline' : 'none' });
-    if (qa) {   // a square badge at the left of the first line: the accent colour for a speaker above 0, else the caption colour
-      cssCamel(s.name, { display: p.name ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', left: '0', top: '0.11em', bottom: '', width: '1.03em', height: '1.03em', transform: 'none', fontSize: '1em', padding: '0', borderRadius: '0',
-        background: p.speaker ? theme.palette.accent : p.color, color: p.speaker ? '#ffffff' : theme.palette.ink, fontStyle: 'italic', lineHeight: '1', textShadow: 'none' });
+    if (qa) {   // a badge at the left of the first line (square for one letter, wider for a name): see qaBadgeColors
+      const bc = qaBadgeColors(p.speaker ?? 0, p.color, theme, !!p.badgeTint);
+      cssCamel(s.name, { display: p.name ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', left: '0', top: '0.11em', bottom: '', width: badge.square ? '1.03em' : '', minWidth: badge.square ? '' : '1.03em', height: '1.03em', transform: 'none', fontSize: '1em', padding: badge.square ? '0' : '0 0.22em', boxSizing: 'border-box', borderRadius: '0',
+        background: bc.bg, color: bc.fg, fontStyle: 'italic', lineHeight: '1', textShadow: 'none' });
       cssCamel(s.nameText, { fontSize: '0.83em' });
     } else {
-      cssCamel(s.name, { display: p.name && !point ? 'block' : 'none', alignItems: '', justifyContent: '', top: '', bottom: '100%', width: '', height: '', fontStyle: '', lineHeight: '', textShadow: '', left: left ? '0' : '50%', transform: left ? 'translate(0, -0.25em)' : 'translate(-50%, -0.25em)', fontSize: '0.55em', padding: '0.1em 0.55em', borderRadius: `${theme.radius * 0.5 * k}px`,
+      cssCamel(s.name, { display: p.name && !point ? 'block' : 'none', alignItems: '', justifyContent: '', top: '', bottom: '100%', width: '', minWidth: '', boxSizing: '', height: '', fontStyle: '', lineHeight: '', textShadow: '', left: left ? '0' : '50%', transform: left ? 'translate(0, -0.25em)' : 'translate(-50%, -0.25em)', fontSize: '0.55em', padding: '0.1em 0.55em', borderRadius: `${theme.radius * 0.5 * k}px`,
         background: p.speaker ? who : theme.palette.ink, color: p.speaker ? theme.palette.ink : '#ffffff' });
       cssCamel(s.nameText, { fontSize: '' });
     }
@@ -189,7 +216,7 @@ export const caption: ItemType<P, S> = {
     // auto and big pop in over 0.14 s from their middle
     const pq = prog(ctx.local, 0, 0.14), sc = stylePop(p.style, ctx.local);
     if (sc !== null) pin = ` scale(${sc.toFixed(4)})`;
-    const sfont = styleFontOf(p.style, p.styleFont);
+    const sfont = styleFontOf(p.style, p.styleFont, !!ctx.item?.params?.font);
     // point: a chip in the speaker's colour at the left, an arrow toward them over their name
     cssCamel(s.chip, { display: point ? 'flex' : 'none', width: '1.5em', height: '2.05em', gap: '0.13em', borderRadius: '0.3em', background: p.speaker ? who : theme.palette.accent, transform: 'translateY(-50%)' });
     if (point) {
@@ -204,17 +231,19 @@ export const caption: ItemType<P, S> = {
       top: place.top, bottom: place.bottom, maxWidth: `${width}px`, opacity: String(st.opacity * (auto || big ? pq : 1)), left: left ? `${theme.safe.side * W}px` : '50%', textAlign: left ? 'left' : 'center',
       transform: `translate(${left ? `${st.x}px` : `calc(-50% + ${st.x}px)`}, calc(${place.yAnchor} + ${st.y}px))${pin}`, transformOrigin: auto || big ? '50% 50%' : left ? '0 100%' : '50% 100%', clipPath: teeth,
       fontFamily: `'${sfont || p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${(px * fit.scale).toFixed(2)}px`, fontWeight: bar || auto || qa || big || strip ? '700' : '900', fontStyle: p.quote ? 'italic' : 'normal',
-      color: p.style === 'bubble' || ticket || crayon || strip ? p.outline : big ? p.hl : ink,
+      color: p.style === 'bubble' || ticket || crayon || strip ? p.outline : big ? bigColorOf(p, (p.speaker ?? 0) > 0 && p.tint !== false ? who : undefined) : ink,
       textShadow: big ? `0 ${6 * k}px ${18 * k}px rgba(0,0,0,0.45)` : qa ? `0 ${4 * k}px ${12 * k}px rgba(0,0,0,0.8)` : '',
       webkitTextStroke: stroke ? `${stroke}px ${p.outline}` : '0', paintOrder: 'stroke fill',
       background: p.style === 'box' || auto ? p.boxBg : p.style === 'bubble' || ticket ? p.bubbleBg
         : bar ? `linear-gradient(${theme.palette.accent2}, ${theme.palette.accent2}) 0.3em 0.28em / 0.14em calc(100% - 0.56em) no-repeat, ${p.boxBg}` : 'transparent',
       padding: ticket ? '0.35em 0.65em 0.3em' : crayon ? '0.22em 0.7em' : p.style === 'box' || p.style === 'bubble' ? '0.18em 0.6em'
-        : bar ? '0.28em 0.7em 0.3em 0.95em' : auto ? '0.17em 0.48em 0.21em' : qa ? '0 0 0 1.45em' : '0',
+        : bar ? '0.28em 0.7em 0.3em 0.95em' : auto ? '0.17em 0.48em 0.21em' : qa ? `0 0 0 ${badge.square ? '1.45' : badge.indent.toFixed(3)}em` : '0',
       borderRadius: ticket ? '0' : p.style === 'box' || p.style === 'bubble' ? `${theme.radius * k}px` : bar ? `${24 * k}px` : auto ? `${20 * k}px` : '0',
       border: p.style === 'bubble' ? `${theme.stroke * k}px solid ${p.outline}` : '0 solid transparent', boxSizing: 'border-box',
       ...(point ? { paddingLeft: '2.05em', minHeight: '2.05em', display: 'flex', flexDirection: 'column', justifyContent: 'center' } : { display: '', flexDirection: '', justifyContent: '' }),
     });
+    // qa with a name longer than a character: indent the line 0.42 em past the badge as it was really laid out (the estimate when it was not; the whole padding, as the call above set it)
+    if (qa && !badge.square && p.name) { const fs = px * fit.scale, bw = s.name.offsetWidth; if (bw > 0) cssCamel(s.box, { padding: `0 0 0 ${(bw / fs + 0.42).toFixed(3)}em` }); }
     cssCamel(s.band, { display: crayon ? 'block' : 'none' });
     if (crayon) drawBand(s, p, ctx.local, k);
     // qa: a dark wash across the frame from 1.6 em above the box (clear), darkest 0.4 em below it, clear again 2.6 em further down

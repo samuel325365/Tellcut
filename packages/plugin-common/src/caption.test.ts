@@ -1,5 +1,5 @@
 import { DEFAULT_THEME } from '@tellcut/engine';
-import { caption, glossColorOf, karaokeRange, lineColorKey, speakerColor, styleFontOf, stylePop } from './caption.ts';
+import { bigColorOf, caption, glossColorOf, karaokeRange, lineColorKey, qaBadge, qaBadgeColors, speakerColor, styleFontOf, stylePop } from './caption.ts';
 import { layoutMarkup } from './markup.ts';
 
 test('karaoke: the word being said is the range between the last step reached and the one before it', () => {
@@ -59,4 +59,47 @@ test('the gloss can be set bigger and in its own colour; by default it stays sma
   const p = Object.fromEntries(caption.params.map((d) => [d.key, d]));
   expect(p.glossSize).toMatchObject({ type: 'number', default: 0.52, min: 0.3, max: 1 });
   expect(p.glossColor).toMatchObject({ type: 'color', default: '' });
+});
+
+// acceptance films 2026-11-01 (P3, X3): the speakers' colours said, qa's badge, big's colour and font
+test('the speaker parameter says which colour each speaker takes', () => {
+  const d = caption.params.find((p) => p.key === 'speaker')!;
+  expect(d.label).toMatch(/1＝主題 accent2、2＝高亮色 hl、3＝主色 accent/);
+  expect(caption.doc).toMatch(/speaker 1＝主題 accent2、2＝高亮色 hl、3＝主色 accent/);
+});
+
+test('qa: one letter keeps the square badge and indent; a short name widens both', () => {
+  expect(qaBadge('Q')).toEqual({ square: true, w: 1.03, indent: 1.45 });
+  expect(qaBadge('我')).toEqual({ square: true, w: 1.03, indent: 1.45 });
+  expect(qaBadge('')).toEqual({ square: true, w: 1.03, indent: 1.45 });
+  const amber = qaBadge('Amber');
+  expect(amber.w).toBeGreaterThan(2.2);
+  expect(amber.indent).toBeCloseTo(amber.w + 0.42);
+});
+
+test('qa: the badge is the accent colour for every speaker unless badgeTint, which takes the speaker colour with readable letters', () => {
+  const t = { ...DEFAULT_THEME, palette: { ...DEFAULT_THEME.palette, accent: '#e63a2e', accent2: '#3d7bff', hl: '#ffe14d', ink: '#111111' } };
+  expect(qaBadgeColors(0, '#ffffff', t, true)).toEqual({ bg: '#ffffff', fg: '#111111' });
+  expect([1, 2].map((s) => qaBadgeColors(s, '#ffffff', t, false))).toEqual([{ bg: '#e63a2e', fg: '#ffffff' }, { bg: '#e63a2e', fg: '#ffffff' }]);
+  expect(qaBadgeColors(1, '#ffffff', t, true)).toEqual({ bg: '#3d7bff', fg: '#ffffff' });
+  expect(qaBadgeColors(2, '#ffffff', t, true)).toEqual({ bg: '#ffe14d', fg: '#111111' });
+  expect(caption.params.find((p) => p.key === 'badgeTint')).toMatchObject({ type: 'bool', default: false });
+});
+
+test('big: its words are bigColor when set, else the highlight colour; its gloss follows the line', () => {
+  expect(bigColorOf({ bigColor: '', hl: '#ffe14d' })).toBe('#ffe14d');
+  expect(bigColorOf({ bigColor: '#ff7a59', hl: '#ffe14d' })).toBe('#ff7a59');
+  // a speaker's own colour (c.speechCaptions with speakers) wins over hl, bigColor over both
+  expect(bigColorOf({ bigColor: '', hl: '#ffe14d' }, '#4dabf7')).toBe('#4dabf7');
+  expect(bigColorOf({ bigColor: '#ff7a59', hl: '#ffe14d' }, '#4dabf7')).toBe('#ff7a59');
+  expect(glossColorOf({ style: 'big', glossColor: '', hl: '#ffe14d', outline: '#000', bigColor: '#ff7a59' })).toBe('#ff7a59');
+  expect(glossColorOf({ style: 'outline', glossColor: '', hl: '#ffe14d', outline: '#000', bigColor: '#ff7a59' })).toBe('#ffe14d');
+  expect(caption.params.find((p) => p.key === 'bigColor')).toMatchObject({ type: 'color', default: '' });
+});
+
+test('a font the item sets itself replaces big’s handwriting and qa’s serif; styleFont still wins', () => {
+  expect(styleFontOf('big', '', true)).toBe('');
+  expect(styleFontOf('qa', '', true)).toBe('');
+  expect(styleFontOf('big', 'Bungee', true)).toBe('Bungee');
+  expect(styleFontOf('big', '', false)).toBe('LXGW WenKai TC');
 });

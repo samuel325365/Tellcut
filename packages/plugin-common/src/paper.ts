@@ -1,6 +1,7 @@
 // common.paper — a desk of paper under the video: kraft (or any colour) paper with fibres, specks and a soft vignette, a slightly
 // tilted ruled index card held by a strip of tape (where common.notecard writes with `card: false`), pencil doodles and an italic
-// signature. Static: painted once per size. Promoted from the baking-steps short's fx.paper.
+// signature. Static: painted once per size. Promoted from the baking-steps short's fx.paper. The doodles are a recipe's (coffee beans,
+// a whisk) and the signature reads "Recipe" by default: `doodleSet` picks other doodles, `doodles: false` and `sign: ''` leave them out.
 // look 'book' is a picture-book page (fd-tangyuan's fx.tyPaper): soft blotches, fibres and specks, the spine's shadow and stitching
 // on the left, the page stack on the right, a vignette and a crayon meadow along the foot. look 'grid' is a squared notebook page
 // (fd-map's fx.nbPage): fibres, a 5 mm grid, a red margin line, a spiral binding along the top and a vignette. look 'print' is
@@ -13,7 +14,7 @@ import { crayonStroke, ellipsePts, flatFill, grainBegin, grainEnd, rng, scribble
 import { shade, withAlpha } from './color.ts';
 
 interface P {
-  look: 'desk' | 'book' | 'grid' | 'print'; color: string; card: boolean; x: number; y: number; w: number; h: number; tilt: number; doodles: boolean; sign: string; paper: string; ink: string; accent: string; rule: string; tapeColor: string;
+  look: 'desk' | 'book' | 'grid' | 'print'; color: string; card: boolean; x: number; y: number; w: number; h: number; tilt: number; doodles: boolean; doodleSet: 'kitchen' | 'journal' | 'travel'; sign: string; paper: string; ink: string; accent: string; rule: string; tapeColor: string;
   meadow: boolean; grass: string; cell: number; binding: boolean;
 }
 interface S { cv: HTMLCanvasElement; sign: HTMLElement; key: string; layer: GrainLayer }
@@ -21,14 +22,15 @@ interface S { cv: HTMLCanvasElement; sign: HTMLElement; key: string; layer: Grai
 
 export const paper: ItemType<P, S> = {
   type: 'common.paper', label: '紙張桌面', category: 'look', kind: 'scene',
-  doc: '整片紙張底（預設牛皮紙：纖維紋、斑點、暗角），可加一張微斜的橫線索引卡（紅頂線藍橫線、紙膠帶）、鉛筆小塗鴉和一行斜體簽名；look: book 是繪本內頁（紙色 paper、斑駁紙紋、左邊書脊陰影和縫線、右邊書頁厚度、暗角、底部一條蠟筆草地 meadow）；grid 是方格筆記本（方格 cell、紅色邊線、上緣線圈 binding、暗角）；print 是雜誌紙（平滑米白紙、細斑點、淡纖維、暖色暗角，common.magazine 的紙）；靜態，放在影片之下；手帳、食譜、手寫教學、繪本、筆記本，配 common.notecard（card: false 就寫在這張卡上）',
+  doc: '整片紙張底（預設牛皮紙：纖維紋、斑點、暗角），可加一張微斜的橫線索引卡（紅頂線藍橫線、紙膠帶）、鉛筆小塗鴉和一行斜體簽名（預設是食譜的：咖啡豆、打蛋器和「Recipe」；doodleSet 換塗鴉：journal 星星、愛心、漩渦，travel 紙飛機、虛線航跡、小太陽；doodles: false 不要塗鴉，sign 換簽名的字、空＝不要）；look: book 是繪本內頁（紙色 paper、斑駁紙紋、左邊書脊陰影和縫線、右邊書頁厚度、暗角、底部一條蠟筆草地 meadow）；grid 是方格筆記本（方格 cell、紅色邊線、上緣線圈 binding、暗角）；print 是雜誌紙（平滑米白紙、細斑點、淡纖維、暖色暗角，common.magazine 的紙）；靜態，放在影片之下；手帳、食譜、手寫教學、繪本、筆記本，配 common.notecard（card: false 就寫在這張卡上）',
   params: [
     { key: 'look', label: '紙（desk 牛皮紙桌面＋索引卡、book 繪本內頁、grid 方格筆記本、print 雜誌紙）', type: 'enum', options: ['desk', 'book', 'grid', 'print'], default: 'desk' },
     { key: 'color', label: '紙色（desk）', type: 'color', default: '#e7d8bd' },
     { key: 'card', label: '索引卡（desk）', type: 'bool', default: true },
     ...cardParams,
-    { key: 'doodles', label: '鉛筆塗鴉（desk：咖啡豆、打蛋器）', type: 'bool', default: true },
-    { key: 'sign', label: '底部斜體簽名（desk；空＝不顯示）', type: 'string', default: 'Recipe' },
+    { key: 'doodles', label: '鉛筆塗鴉（desk；圖案看 doodleSet）', type: 'bool', default: true },
+    { key: 'doodleSet', label: '塗鴉的圖案（desk；kitchen 咖啡豆、打蛋器（食譜），journal 星星、愛心、漩渦（手帳、日記），travel 紙飛機、虛線航跡、小太陽（旅行））', type: 'enum', options: ['kitchen', 'journal', 'travel'], default: 'kitchen' },
+    { key: 'sign', label: '底部斜體簽名（desk；預設 Recipe 是食譜用的，換成自己的字；空＝不顯示）', type: 'string', default: 'Recipe' },
     { key: 'paper', label: '索引卡紙色（desk）／整頁的紙色（book、grid、print）', type: 'color', default: '#fbf7ee', theme: 'palette.paper' },
     { key: 'ink', label: '鉛筆色', type: 'color', default: '#4a3a2e', theme: 'palette.ink' },
     { key: 'accent', label: '卡片頂線（desk）／紅色邊線（grid）的顏色', type: 'color', default: '#c2533b', theme: 'palette.accent' },
@@ -84,9 +86,10 @@ export const paper: ItemType<P, S> = {
       g.restore();
     }
     if (p.doodles) {
-      // coffee beans bottom left, a whisk bottom right, in the margins under the card
+      // in the margins under the card: coffee beans bottom left, a whisk bottom right (or doodleSet's)
       const y0 = Math.min(H - 110 * k, p.card ? b.y0 + b.h + 60 * k : H * 0.86);
       g.save(); g.strokeStyle = withAlpha(p.ink, 0.45); g.lineWidth = 2.4 * k; g.lineCap = 'round';
+      if (p.doodleSet === 'journal' || p.doodleSet === 'travel') { (p.doodleSet === 'journal' ? journalDoodles : travelDoodles)(g, W / 2 - 420 * k, W / 2 + 390 * k, y0, k); g.restore(); return; }
       const bean = (x: number, y: number, rot: number) => {
         g.save(); g.translate(x, y); g.rotate(rot); g.scale(k, k);
         g.beginPath(); g.ellipse(0, 0, 18, 12, 0, 0, Math.PI * 2); g.stroke();
@@ -102,6 +105,35 @@ export const paper: ItemType<P, S> = {
     }
   },
 };
+
+/** a pencil star with five points at (x, y), r across, turned `rot` */
+function star(g: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number) {
+  g.beginPath();
+  for (let i = 0; i <= 10; i++) { const a = rot - Math.PI / 2 + (i * Math.PI) / 5, q = i % 2 ? r * 0.45 : r; g[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * q, y + Math.sin(a) * q); }
+  g.stroke();
+}
+/** doodleSet 'journal': two stars bottom left, a heart and a little spiral bottom right */
+function journalDoodles(g: CanvasRenderingContext2D, lx: number, rx: number, y0: number, k: number) {
+  star(g, lx, y0 + 50 * k, 30 * k, 0.15); star(g, lx + 52 * k, y0 + 92 * k, 15 * k, -0.3);
+  g.save(); g.translate(rx - 10 * k, y0 + 52 * k); g.rotate(0.18); g.scale(k, k);
+  g.beginPath(); g.moveTo(0, 30); g.bezierCurveTo(-46, 0, -30, -36, 0, -14); g.bezierCurveTo(30, -36, 46, 0, 0, 30); g.stroke();
+  g.restore();
+  g.beginPath();
+  for (let i = 0; i <= 60; i++) { const a = (i / 60) * Math.PI * 4.2, r = (3 + i * 0.32) * k; g[i ? 'lineTo' : 'moveTo'](rx + 46 * k + Math.cos(a) * r, y0 + 98 * k + Math.sin(a) * r); }
+  g.stroke();
+}
+/** doodleSet 'travel': a paper plane bottom left with its dashed trail looping behind it, a little sun bottom right */
+function travelDoodles(g: CanvasRenderingContext2D, lx: number, rx: number, y0: number, k: number) {
+  g.save(); g.setLineDash([9 * k, 9 * k]);
+  g.beginPath(); g.moveTo(lx - 40 * k, y0 + 100 * k); g.bezierCurveTo(lx - 10 * k, y0 + 20 * k, lx + 40 * k, y0 + 120 * k, lx + 62 * k, y0 + 58 * k); g.stroke();
+  g.restore();
+  g.save(); g.translate(lx + 84 * k, y0 + 44 * k); g.rotate(-0.45); g.scale(k, k);
+  g.beginPath(); g.moveTo(-30, 0); g.lineTo(34, -2); g.lineTo(-20, -22); g.closePath(); g.moveTo(34, -2); g.lineTo(-20, 18); g.lineTo(-8, -1); g.stroke();
+  g.restore();
+  const cx = rx, cy = y0 + 64 * k;
+  g.beginPath(); g.arc(cx, cy, 20 * k, 0, Math.PI * 2); g.stroke();
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + 0.2; g.beginPath(); g.moveTo(cx + Math.cos(a) * 30 * k, cy + Math.sin(a) * 30 * k); g.lineTo(cx + Math.cos(a) * 44 * k, cy + Math.sin(a) * 44 * k); g.stroke(); }
+}
 
 /** look 'book': the picture-book page (fd-tangyuan's tyPaper and its meadow) */
 function paintBook(g: CanvasRenderingContext2D, p: P, W: number, H: number, k: number, layer: GrainLayer) {

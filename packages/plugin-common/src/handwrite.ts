@@ -2,6 +2,7 @@
 // keeps pace with the narration ("start-end|sentence": the pen spreads the sentence over the time it is spoken), a letter that
 // fills up line by line, or a taped paper note on the picture. The write-on of the baking-steps recipe card made general.
 // `red` (fd-map's fx.nbCap) writes the words given in red and underlines them with a red pen as they are written.
+// In replace mode a "start-end" line stays `hold` seconds (1.2) after its end, then fades out over 0.25 s (sooner when the next line starts).
 import { abs, clamp, cssCamel, eOut3 as ease, h, type ItemType, textEm } from '@tellcut/engine';
 import { charAt, drawTexts, handFamily, textLayer, wrapEm, writeTime, type TextLayer, type Txt } from './hand.ts';
 import { canvasAt } from './inkline.ts';
@@ -10,7 +11,7 @@ import { withAlpha } from './color.ts';
 
 interface P {
   lines: string; mode: 'replace' | 'stack'; x: number; y: number; w: number; align: 'left' | 'center'; size: number; cps: number; tilt: number;
-  paper: 'none' | 'note'; small: string; halo: number; font: string; color: string; note: string; tapeColor: string; red: string; redColor: string;
+  paper: 'none' | 'note'; small: string; halo: number; hold: number; font: string; color: string; note: string; tapeColor: string; red: string; redColor: string;
 }
 interface S { group: HTMLElement; note: HTMLElement; small: HTMLElement; tape: HTMLElement; txt: TextLayer; cv: HTMLCanvasElement }
 
@@ -45,21 +46,23 @@ export function parseSentences(s: string, cps = 12): Sentence[] {
 /** a sentence's pen speed: spread over 90 % of its spoken time when that is given, else `cps` */
 export const sentenceCps = (s: Sentence, cps: number) => (s.end !== null ? Math.max(1, [...s.text].length / Math.max(0.3, (s.end - s.start) * 0.9)) : cps);
 
-/** replace mode: the sentence showing at `local` and how visible it is (it fades as the next one starts or after the item) */
-export function currentSentence(list: Sentence[], local: number, dur: number): { i: number; alpha: number } {
+/** replace mode: the sentence showing at `local` and how visible it is: it fades out over 0.25 s before the next one starts, the item
+ *  ends, or (a sentence with an end time) `hold` seconds after its end, but not before it has been written */
+export function currentSentence(list: Sentence[], local: number, dur: number, hold = 1.2): { i: number; alpha: number } {
   let i = -1;
   for (let k = 0; k < list.length; k++) if (list[k].start <= local) i = k;
   if (i < 0) return { i, alpha: 0 };
-  const s = list[i], until = Math.min(i + 1 < list.length ? list[i + 1].start : dur, s.end !== null ? Math.max(s.end + 1.2, s.start + writeTime(s.text, 12)) : Infinity, dur);
+  const s = list[i], until = Math.min(i + 1 < list.length ? list[i + 1].start : dur, s.end !== null ? Math.max(s.end + Math.max(0, hold ?? 1.2), s.start + writeTime(s.text, 12)) : Infinity, dur);
   return { i, alpha: clamp((until - local) / 0.25) };
 }
 
 export const handwrite: ItemType<P, S> = {
   type: 'common.handwrite', label: '手寫字', category: 'text', kind: 'overlay',
-  doc: '手寫字一筆一筆寫出來，每句有自己的時間：「秒-秒|句子」照旁白時間逐字寫出的手寫字幕（replace：一次一句）、像寫信一樣一行一行累積（stack），或貼在照片上的小紙條（paper: note，附一行小字）；red 列出的重點詞改用紅筆寫、寫到時紅筆在下面畫一道底線；明信片、日記、手帳、食譜',
+  doc: '手寫字一筆一筆寫出來，每句有自己的時間：「秒-秒|句子」照旁白時間逐字寫出的手寫字幕（replace：一次一句；寫了結束秒的句子在結束秒後 hold 秒（預設 1.2）開始淡出，下一句先到就先換）、像寫信一樣一行一行累積（stack），或貼在照片上的小紙條（paper: note，附一行小字）；red 列出的重點詞改用紅筆寫、寫到時紅筆在下面畫一道底線；明信片、日記、手帳、食譜',
   params: [
     { key: 'lines', label: '句子（每行「秒|文字」或「開始秒-結束秒|文字」；結束秒＝說完的時間）', type: 'text', default: '0.1-1.3|今天的風很溫柔\n1.5-2.7|我們沿著河邊慢慢走' },
     { key: 'mode', label: '換句方式（replace 一次一句、stack 一行一行累積）', type: 'enum', options: ['replace', 'stack'], default: 'replace' },
+    { key: 'hold', label: '說完後留多久（秒；replace 模式下有結束秒的句子，結束秒後這麼久才淡出）', type: 'number', min: 0, max: 30, step: 0.1, default: 1.2 },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.5 },
     { key: 'y', label: '上緣（畫面高比例；-1＝下緣貼齊下方安全區）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'w', label: '最大寬度（畫面寬比例，超過就換行）', type: 'number', min: 0.1, max: 1, step: 0.01, default: 0.76 },
@@ -96,7 +99,7 @@ export const handwrite: ItemType<P, S> = {
       for (const ln of wrapEm(sn.text, maxEm).slice(0, cap)) { rows.push({ text: ln, t0: sn.start + before / cps, cps, alpha }); before += [...ln].length; }
     };
     if (p.mode === 'stack') for (const sn of list) add(sn, 1, 9);
-    else { const c = currentSentence(list, local, dur); if (c.i >= 0) add(list[c.i], c.alpha, 3); }
+    else { const c = currentSentence(list, local, dur, p.hold); if (c.i >= 0) add(list[c.i], c.alpha, 3); }
     const out = p.mode === 'stack' || note ? clamp((dur - local) / 0.3) : 1;
     const widest = Math.max(1, ...rows.map((r) => textEm(r.text) * px)), blockH = Math.max(1, rows.length) * lh;
     const pad = note ? 28 * k : 0, smallH = note && p.small ? 46 * k : 0;

@@ -51,3 +51,27 @@ test('with the speaker chip (point) the box is a column, so the gloss goes under
   const { box } = drawn({ style: 'plain', point: 'down', name: '她' });
   expect([box.style.display, box.style.flexDirection]).toEqual(['flex', 'column']);
 });
+
+// acceptance films 2026-11-01 (P3, X3)
+test('big: handwriting by default, the item’s own font when it sets one, and bigColor for its words', () => {
+  expect(drawn({ style: 'big' }).box.style.fontFamily).toMatch(/^"?LXGW WenKai TC/);
+  expect(drawn({ style: 'big', font: 'Noto Sans TC' }).box.style.fontFamily).toMatch(/^"?Noto Sans TC/);
+  expect(drawn({ style: 'big', font: 'Noto Sans TC', styleFont: 'Bungee' }).box.style.fontFamily).toMatch(/^"?Bungee/);
+  expect(drawn({ style: 'big', hl: '#ffe14d' }).box.style.color).toBe('rgb(255, 225, 77)');
+  expect(drawn({ style: 'big', hl: '#ffe14d', bigColor: '#ff7a59' }).box.style.color).toBe('rgb(255, 122, 89)');
+});
+
+test('qa: a short name widens the badge and the indent; badgeTint fills it in the speaker’s colour', () => {
+  const badge = (params: Record<string, unknown>) => {
+    const { box } = drawn({ style: 'qa', ...params });
+    return { box, el: [...box.children].find((d) => d.textContent === params.name) as HTMLElement };
+  };
+  const q = badge({ name: 'Q', speaker: 1 });
+  expect([q.el.style.width, q.box.style.paddingLeft]).toEqual(['1.03em', '1.45em']);
+  const amber = badge({ name: 'Amber', speaker: 2, badgeTint: true, hl: '#ffe14d' });
+  // the badge grows round the name (at least the old square); the line is indented past it (jsdom lays nothing out: the estimate)
+  expect([amber.el.style.width, amber.el.style.minWidth, amber.el.style.padding]).toEqual(['', '1.03em', '0px 0.22em']);
+  expect(parseFloat(amber.box.style.paddingLeft)).toBeGreaterThan(3);
+  expect(amber.el.style.background).toBe('rgb(255, 225, 77)');
+  expect(badge({ name: 'Amber', speaker: 2, hl: '#ffe14d' }).el.style.background).not.toBe('rgb(255, 225, 77)');
+});

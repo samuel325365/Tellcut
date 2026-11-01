@@ -1,18 +1,19 @@
 // common.gauge — a half-round dial gauge (a speedometer for anything: sin, spiciness, love, hype): coloured zones with their names
 // along the band, a needle on a spring that jumps at every hit, an LED readout, the zone's name under it, a halo that turns into
 // devil horns, warning lamps, and a "blown" ending (the needle slams past the end, the glass cracks). Promoted from the
-// baking-sin short's fx.sinMeter; the score, the zone names and the hits are all params.
-import { clamp, cssCamel, h, hash01, type ItemType, prog } from '@tellcut/engine';
+// baking-sin short's fx.sinMeter; the score, the zone names and the hits are all params. `readout` puts words (a rank, No.1) in the
+// LED instead of the number; look 'neutral' turns the guilt-meter defaults (sin zones, halo, alarm, blow-up) into a plain gauge.
+import { clamp, cssCamel, h, hash01, type ItemType, prog, textEm } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { luma, mixHex, withAlpha } from './color.ts';
 
 interface P {
   hits: string; zones: string; max: number; unit: string; scramble: number; boot: number; danger: number; boom: number; boomText: string; boomLabel: string;
   scrambleLabel: string; standbyLabel: string; countLabel: string; halo: boolean; x: number; y: number; size: number;
-  font: string; body: string; face: string; accent: string; hl: string; led: string;
+  font: string; body: string; face: string; accent: string; hl: string; led: string; readout: string; look: 'guilt' | 'neutral';
 }
 interface Zone { from: number; to: number; name: string; color: string }
-interface S { cv: HTMLCanvasElement; box: HTMLElement; chars: HTMLElement[]; nums: HTMLElement[]; unit: HTMLElement; boomEl: HTMLElement; label: HTMLElement; tab: HTMLElement; key: string }
+interface S { cv: HTMLCanvasElement; box: HTMLElement; chars: HTMLElement[]; nums: HTMLElement[]; unit: HTMLElement; boomEl: HTMLElement; read: HTMLElement; label: HTMLElement; tab: HTMLElement; key: string }
 
 const BW = 880, BH = 670, CX = 440, CY = 440, R = 392, BAND = 64, M = 60;   // the box in its own units (the original's px)
 
@@ -21,6 +22,24 @@ export const parseHits = (s: string): Array<[number, number]> => String(s ?? '')
   .map((x) => x.split(/[:：]/).map(Number) as [number, number]).filter(([t, d]) => Number.isFinite(t) && Number.isFinite(d)).sort((a, b) => a[0] - b[0]);
 
 const light = (c: string) => (luma(c) ?? 0) > 0.6;
+
+/** look 'neutral': four equal zones of `max` with no names (the colour ramp only), no halo, no alarm, no blow-up */
+export const neutralOf = (max: number) => ({ zones: [0, 0.25, 0.5, 0.75].map((q) => `${+(q * (max || 100)).toFixed(2)}:`).join(', '), halo: false, danger: -1, boom: -1 });
+/** the params the gauge draws with: look 'neutral' swaps the guilt-meter defaults for neutralOf's, except the ones the item sets itself */
+export function gaugeLook<T extends Pick<P, 'look' | 'zones' | 'halo' | 'danger' | 'boom' | 'max'>>(p: T, own: Record<string, unknown> = {}): T {
+  if (p.look !== 'neutral') return p;
+  const out: Record<string, unknown> = { ...p };
+  for (const [k, v] of Object.entries(neutralOf(p.max))) if (own[k] === undefined) out[k] = v;
+  return out as T;
+}
+/** `readout`: the words shown instead of the number, or null for the number. One word stays; several ("第4, 第2, 第1") change at
+ *  each hit, the n-th after the n-th hit (nothing before the first); {v} is the score counted so far */
+export function readoutText(readout: string, count: number, shown: number): string | null {
+  const words = String(readout ?? '').split(/[,，\n]/).map((w) => w.trim());
+  if (!words.some(Boolean)) return null;
+  const w = words.length === 1 ? words[0] : count > 0 ? words[Math.min(count, words.length) - 1] : '';
+  return w.replace(/\{v\}/g, String(shown));
+}
 
 /** "起點:名稱[:顏色]" zones; a zone without a colour takes one from a ramp paper → highlight → accent → dark accent */
 export function parseZones(s: string, max: number, ramp: string[]): Zone[] {
@@ -76,7 +95,7 @@ export function gaugeBox(p: Pick<P, 'x' | 'y' | 'size'>, W: number, H: number, s
 
 export const gauge: ItemType<P, S> = {
   type: 'common.gauge', label: '儀表計量表', category: 'number', kind: 'overlay',
-  doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；罪惡指數、辣度、心動指數、熱度',
+  doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；readout 讓 LED 顯示字而不是數字（名次 No.1、一個詞；逗號分開就每筆加分換下一個，{v}＝目前分數）；預設是「罪惡指數」的樣子（清白…地獄級的色區、光環、警報、爆表），要中性的量表用 look: neutral（色區只留顏色不寫名稱、沒有光環、警報、爆表；自己給的 zones、halo、danger、boom 照樣算），或自己給 zones 並設 halo: false、danger: -1、boom: -1；罪惡指數、辣度、心動指數、熱度、分數、名次',
   params: [
     { key: 'hits', label: '加分（秒:分數，逗號分隔）', type: 'text', default: '0.3:12, 0.7:15, 1.1:20, 1.5:26, 1.9:24' },
     { key: 'zones', label: '色區（起點:名稱[:顏色]，逗號分隔）', type: 'text', default: '0:清白, 20:小確幸, 40:有點罪, 60:罪孽深重, 85:地獄級' },
@@ -101,17 +120,19 @@ export const gauge: ItemType<P, S> = {
     { key: 'accent', label: '警報與高分色', type: 'color', default: '#e63a2e', theme: 'palette.accent' },
     { key: 'hl', label: '光環與低分色', type: 'color', default: '#ffc94a', theme: 'palette.hl' },
     { key: 'led', label: 'LED 顏色', type: 'color', default: '#ffb13b' },
+    { key: 'readout', label: 'LED 顯示的字（空＝數字；一個詞一直顯示，逗號分開就第 n 筆加分後顯示第 n 個；{v}＝目前分數；顯示字時不加單位）', type: 'string', default: '' },
+    { key: 'look', label: '樣子（guilt 罪惡指數：預設色區、光環、警報、爆表；neutral 中性：沒自己設定的 zones、halo、danger、boom 換成只有顏色的色區、不要光環、警報、爆表）', type: 'enum', options: ['guilt', 'neutral'], default: 'guilt' },
   ],
   build(ctx) {
     const box = h('div', null, null, ctx.root), cv = h('canvas', null, null, box);
     cssCamel(box, { position: 'absolute' });
     cssCamel(cv, { position: 'absolute' });
     const mk = (extra: Record<string, string> = {}) => { const d = h('div', null, null, box); cssCamel(d, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1', fontWeight: '900', ...extra }); return d; };
-    return { cv, box, chars: [], nums: [mk(), mk(), mk()], unit: mk(), boomEl: mk({ transform: 'translate(-50%, -50%)' }), label: mk({ transform: 'translateX(-50%)' }), tab: mk(), key: '' };
+    return { cv, box, chars: [], nums: [mk(), mk(), mk()], unit: mk(), boomEl: mk({ transform: 'translate(-50%, -50%)' }), read: mk({ transform: 'translate(-50%, -50%)' }), label: mk({ transform: 'translateX(-50%)' }), tab: mk(), key: '' };
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local: t, dur } = ctx, b = gaugeBox(p, W, H, theme.safe), u = b.u, mx = p.max || 100;
+    const p = gaugeLook(ctx.params, ctx.item?.params), { W, H, theme, local: t, dur } = ctx, b = gaugeBox(p, W, H, theme.safe), u = b.u, mx = p.max || 100;
     const zones = parseZones(p.zones, mx, [p.face, p.hl, p.accent, mixHex(p.accent, '#000000', 0.45)]), hits = parseHits(p.hits);
     const { v, shown, count } = gaugeValue(hits, t), booming = p.boom >= 0 && t >= p.boom, danger = p.danger >= 0 && t >= p.danger && !booming;
     const scrambling = t < p.scramble, standby = !scrambling && p.boot >= 0 && t < p.boot, nv = needleAt(p, v, t);
@@ -162,7 +183,9 @@ export const gauge: ItemType<P, S> = {
     g.beginPath(); g.roundRect(bx, by, bw, bh, 18); g.fillStyle = '#0c0605'; g.fill(); g.strokeStyle = withAlpha(p.face, 0.5); g.lineWidth = 3; g.stroke();
     const ledOn = booming || danger ? (Math.sin(t * 18) > -0.3 ? '#ff3b30' : '#7a1410') : standby ? withAlpha(p.led, 0.15) : p.led, ledOff = withAlpha(p.led, 0.07);
     const word = booming && Math.floor((t - p.boom) * 4) % 2 === 0;
-    if (!word) {
+    // a readout in words (not while it scrambles or blows): letters in the LED colour instead of the seven-segment digits
+    const said = scrambling || booming ? null : readoutText(p.readout, count, clamp(shown, 0, 999));
+    if (!word && said === null) {
       const str = scrambling ? '???' : booming ? '999' : String(clamp(shown, 0, 999)).padStart(3, ' ');
       [...str].forEach((ch, i) => seg7(g, ch, bx + 34 + i * 82, by + 16, 58, 72, ledOn, ledOff));
     }
@@ -210,9 +233,12 @@ export const gauge: ItemType<P, S> = {
         transform: 'translate(-50%, -70%)' });
     });
     s.unit.textContent = p.unit;
-    cssCamel(s.unit, { display: p.unit && !word ? 'block' : 'none', left: `${(bx + 292) * u}px`, top: `${(by + 62) * u}px`, fontSize: `${26 * u}px`, color: ledOn });
+    cssCamel(s.unit, { display: p.unit && !word && said === null ? 'block' : 'none', left: `${(bx + 292) * u}px`, top: `${(by + 62) * u}px`, fontSize: `${26 * u}px`, color: ledOn });
     s.boomEl.textContent = p.boomText;
     cssCamel(s.boomEl, { display: word ? 'block' : 'none', left: `${CX * u}px`, top: `${(by + bh / 2 + 4) * u}px`, fontSize: `${78 * u}px`, color: ledOn });
+    s.read.textContent = said ?? '';
+    cssCamel(s.read, { display: said ? 'block' : 'none', left: `${CX * u}px`, top: `${(by + bh / 2 + 4) * u}px`, fontSize: `${(Math.min(70, 330 / Math.max(1, textEm(said ?? ''))) * u).toFixed(2)}px`,
+      color: ledOn, textShadow: `0 0 ${10 * u}px ${withAlpha(p.led, 0.6)}` });
     const z = zones.find((x) => v < x.to) ?? zones[zones.length - 1];
     const zname = scrambling ? p.scrambleLabel : standby ? p.standbyLabel : booming ? p.boomLabel : z?.name ?? '';
     // the last (darkest) zone's colour is lightened so its name reads on the housing
