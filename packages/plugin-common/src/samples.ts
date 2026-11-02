@@ -219,6 +219,7 @@ export const samples: Sample[] = [
   { name: 'dotmatrix', type: 'common.dotmatrix', at: [0.5, 2.0], bg: '#2a2f36' },
   { name: 'dotmatrix-print', type: 'common.dotmatrix', params: { mode: 'type', look: 'print', text: '謝謝光臨・中壢人萬歲', color: '#262422', pitch: 3.2 }, at: [0.6, 2.0], bg: '#f5f2ea' },
   { name: 'digits', type: 'common.digits', at: [0.5, 2.0, 2.7], bg: '#123033' },
+  { name: 'digits-board', type: 'common.digits', params: { title: '阿嬤的滷肉飯', sub: '中壢・老街口', w: 0.944 }, at: [1.75], bg: '#123033' },
   { name: 'digits-led', type: 'common.digits', params: { style: 'led', steps: '0|--|叫號, 0.6|01, 1.4|02, 2.2|04|下一位', label: '叫號', totalAt: -1, title: '驚嘆號臭豆腐', sub: '中壢・街邊排隊名店', w: 0.944 }, at: [0.65, 2.5], bg: '#17110d' },
   { name: 'printer', type: 'common.printer', params: { clip: 0.37 }, at: [0.7, 2.8], bg: '#2b2d31' },
   { name: 'printer-tear', type: 'common.printer', params: { lines: '0|title|這一圈花多少？\n0.1|small|顧客：路過的吃貨\n0.2|shop|01 阿桃的店\n0.3|item|招牌大湯圓|95\n0.4|item|鮮切土雞|秤重計價\n0.5|dbl\n0.6|total|合計|NT$355起\n0.7|note|＊價格取自片中店家價目表\n0.75|sign|顧客簽章：\n0.8|thanks|謝謝光臨', tearAt: 0.9, strikeLine: 1, strikeAt: 1.6, stampAt: 0.85, stamp: '大胃王認證', clip: 0.37 }, at: [1.1, 2.7], bg: '#2b2d31' },

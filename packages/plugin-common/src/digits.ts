@@ -63,6 +63,20 @@ function vfdWords(v: CanvasRenderingContext2D, text: string, x: number, dh: numb
   const m = vfdMatrix(text, px, pitch * k, dot * k), D = dots(text, m.px);
   drawDots(v, D, x, (dh - D.h * m.pitch) / 2 + dy, m.pitch, m.dot, color);
 }
+/** how wide vfdWords draws `text` */
+const vfdWordsW = (text: string, k: number, px: number, pitch: number, dot: number) => {
+  const m = vfdMatrix(text, px, pitch * k, dot * k);
+  return dots(text, m.px).w * m.pitch;
+};
+
+/** Where the flash goes, between the small label (ending at `lo`) and the digits (from `hi`): at `x0` as it always was when that
+ *  is clear of both, else centred in the gap; a board's narrow glass has no gap, so the flash takes the label's place (`over`),
+ *  shrunk (`sc`) if even that is too narrow. */
+export function flashSpot(x0: number, fw: number, left: number, lo: number, hi: number): { x: number; sc: number; over: boolean } {
+  if (x0 >= lo && x0 + fw <= hi) return { x: x0, sc: 1, over: false };
+  if (hi - lo >= fw) return { x: lo + (hi - lo - fw) / 2, sc: 1, over: false };
+  return { x: left, sc: Math.min(1, Math.max(0, hi - left) / fw), over: true };
+}
 
 export interface VfdOpts { steps: Step[]; local: number; n: number; text: string | null; prefix: string; label: string; totalLabel: string; totalAt: number; on: string; flash: string }
 
@@ -76,18 +90,24 @@ export function paintVfd(g: CanvasRenderingContext2D, off: HTMLCanvasElement, x:
   if (off.width !== Math.ceil(dw) || off.height !== Math.ceil(dh)) { off.width = Math.ceil(dw); off.height = Math.ceil(dh); }
   v.clearRect(0, 0, off.width, off.height);
   const lab = total ? o.totalLabel : o.label;
-  if (lab) vfdWords(v, lab, 22 * k, dh, 2 * k, k, 13, 3.1, 2.5, o.on);
   const pre = o.prefix, body = o.text === null ? (Math.floor(local / 0.4) % 2 ? '-'.repeat(Math.min(4, n)).padStart(n, ' ') : ' '.repeat(n)) : o.text.slice(-n).padStart(n, ' ');
   const blinkOff = total && local - o.totalAt < 1.2 && Math.floor((local - o.totalAt) / 0.2) % 2 === 1;
-  vfdText(v, pre + body, dw - 22 * k, (dh - 49 * k) / 2, 7 * k, 5.2 * k, blinkOff ? withAlpha(o.on, 0.25) : o.on, 'rgba(40,130,105,0.13)');
-  // the latest step's small words, for 1.1 s in the middle of the glass, rising a little
+  // the latest step's small words, for 1.1 s in the gap between the label and the digits, rising a little
   const last = [...steps].reverse().find((x) => local >= x.t && local < x.t + 1.1 && (x.label || x.add));
-  let flash = '';
-  if (last) {
-    flash = last.label || last.v;
-    const q = (local - last.t) / 1.1, a = q < 0.15 ? q / 0.15 : q > 0.75 ? (1 - q) / 0.25 : 1, r = clamp(q * 3);
-    v.globalAlpha = clamp(a);
-    vfdWords(v, flash, 168 * k * (dw / dh / (720 / 78)), dh, 2 * k - 6 * k * r * (2 - r), k, 12, 3.2, 2.6, o.flash);
+  const flash = last ? last.label || last.v : '';
+  const spot = flash ? flashSpot(168 * k * (dw / dh / (720 / 78)), vfdWordsW(flash, k, 12, 3.2, 2.6), 22 * k,
+    22 * k + (lab ? vfdWordsW(lab, k, 13, 3.1, 2.5) + 8 * k : 0), dw - 22 * k - (pre + body).length * 42 * k + 7 * k - 8 * k) : null;
+  const q = last ? (local - last.t) / 1.1 : 0, a = clamp(q < 0.15 ? q / 0.15 : q > 0.75 ? (1 - q) / 0.25 : 1), r = clamp(q * 3);
+  if (lab) {
+    // a flash over the label fades it out and back in
+    v.globalAlpha = spot?.over ? 1 - a : 1;
+    vfdWords(v, lab, 22 * k, dh, 2 * k, k, 13, 3.1, 2.5, o.on);
+    v.globalAlpha = 1;
+  }
+  vfdText(v, pre + body, dw - 22 * k, (dh - 49 * k) / 2, 7 * k, 5.2 * k, blinkOff ? withAlpha(o.on, 0.25) : o.on, 'rgba(40,130,105,0.13)');
+  if (last && spot) {
+    v.globalAlpha = a;
+    vfdWords(v, flash, spot.x, dh, 2 * k - 6 * k * r * (2 - r), k * spot.sc, 12, 3.2, 2.6, o.flash);
     v.globalAlpha = 1;
   }
   g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.7; g.filter = `blur(${6 * k}px)`; g.drawImage(off, x, y); g.restore();
