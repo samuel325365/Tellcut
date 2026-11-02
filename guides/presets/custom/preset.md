@@ -56,7 +56,7 @@
       "options": [
         { "id": "result", "name": { "zh": "先給結果", "en": "Result first", "ja": "結果から" }, "prompt": "Open on the result or the best moment, then go back to how it got there." },
         { "id": "question", "name": { "zh": "問句鉤子", "en": "A question", "ja": "問いかけ" }, "prompt": "Open with a question on screen that the film then answers." },
-        { "id": "title", "name": { "zh": "標題卡", "en": "Title card", "ja": "タイトル" }, "prompt": "Open with a title card naming the film." },
+        { "id": "title", "name": { "zh": "標題卡", "en": "Title card", "ja": "タイトル" }, "prompt": "Open with a title naming the film: on a card of its own, or over the opening shot when the film uses only footage." },
         { "id": "straight", "name": { "zh": "直接開始", "en": "Straight in", "ja": "いきなり本編" }, "prompt": "Start straight into the footage, with no title or hook text." }
       ] },
     { "id": "ending", "group": { "zh": "結構", "en": "Structure", "ja": "構成" },
@@ -72,7 +72,7 @@
       "options": [
         { "id": "original", "name": { "zh": "原音", "en": "Original", "ja": "元の音声" }, "prompt": "Keep the footage's own sound and speech; no voice-over." },
         { "id": "tts", "name": { "zh": "AI 配音", "en": "AI voice", "ja": "AI 音声" }, "prompt": "Write a voice-over and make it with TTS." },
-        { "id": "none", "name": { "zh": "無", "en": "None", "ja": "なし" }, "prompt": "No voice-over and no speech: music and sound effects only." }
+        { "id": "none", "name": { "zh": "無", "en": "None", "ja": "なし" }, "prompt": "No voice-over, and no one's speech heard as words: music and sound effects, plus short non-speech sounds from the footage (a laugh, a cry, a cheer) where they fit." }
       ] },
     { "id": "music", "group": { "zh": "聲音", "en": "Sound", "ja": "音" },
       "name": { "zh": "配樂", "en": "Music", "ja": "音楽" },
@@ -96,7 +96,7 @@
       "options": [
         { "id": "none", "name": { "zh": "無", "en": "None", "ja": "なし" }, "prompt": "No captions for speech." },
         { "id": "full", "name": { "zh": "全字幕", "en": "Full", "ja": "全文" }, "prompt": "Caption all speech, line by line." },
-        { "id": "keywords", "name": { "zh": "關鍵字大字", "en": "Big keywords", "ja": "キーワード" }, "prompt": "Only big captions for the key words of the speech." }
+        { "id": "keywords", "name": { "zh": "關鍵字大字", "en": "Big keywords", "ja": "キーワード" }, "prompt": "Only big captions for the key words of the speech; with no speech, a few short labels naming what is on screen." }
       ] },
     { "id": "caption-lang", "group": { "zh": "文字", "en": "Text", "ja": "文字" },
       "name": { "zh": "字幕語言", "en": "Text language", "ja": "字幕の言語" },
