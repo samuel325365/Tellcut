@@ -32,11 +32,12 @@ export function ImportDialog({ api, onAdd, onClose, surface = 'home' }: { api: F
   const [picked, setPicked] = useState<Attachment[]>([]);
   // only the latest request may show: a slow first place must not replace a folder the user went to meanwhile
   const latest = useRef(0);
-  // and an answer never rewrites the path box once the user has typed in it since the request went out
+  // and an answer that went out before the user typed in the path box is dropped: the box keeps their words and "add this
+  // folder" never adds a folder the box doesn't show
   const edits = useRef(0);
   const open = async (path: string) => {
     const n = ++latest.current, e = edits.current;
-    try { const f = await api.fsList(path); if (n !== latest.current) return; setFolder(f); if (e === edits.current) setTyped(f.path); setError(''); }
+    try { const f = await api.fsList(path); if (n !== latest.current || e !== edits.current) return; setFolder(f); setTyped(f.path); setError(''); }
     catch (e) { if (n === latest.current) setError(errText(e)); }
   };
   useEffect(() => {

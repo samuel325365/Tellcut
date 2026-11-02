@@ -3,7 +3,7 @@
 // starts with), it is drawn again here with them in the other language: the case's params from golden/thumbs.ts, the block's words from
 // apps/editor/src/i18n/values.*.ts. The pictures go to packages/plugin-common/golden/thumbs/<lang>/, with a manifest of what each was
 // drawn from (thumbs.test.ts fails when a table or the block's own golden picture changed and they were not drawn again). Run
-// npm run build:player first.
+// npm run build:player first. Windows only, like the shared golden pictures they are drawn beside.
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
@@ -41,6 +41,8 @@ export const thumbKey = (c: GoldenCase) => createHash('sha1').update(JSON.string
   .update(goldenBytes(c)).digest('hex').slice(0, 12);
 
 async function main() {
+  // the thumbnails are shared, Windows' pictures like the shared golden ones: a Mac's (CoreText, Apple's emoji) would replace them all
+  if (process.platform !== 'win32') throw new Error('npm run thumbs 只在 Windows 上跑：縮圖是共用的 Windows 圖，Mac 畫的字型與 emoji 不同，會把它們全部蓋掉（Mac 自己的圖只在 golden/darwin/）');
   const registry = createRegistry(plugins), manifest: Record<string, Record<string, string>> = {};
   for (const lang of ['en', 'ja'] as const) {
     const list = thumbCases(lang), dir = join(THUMBS_DIR, lang);

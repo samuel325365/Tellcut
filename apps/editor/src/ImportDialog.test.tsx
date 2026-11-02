@@ -74,6 +74,24 @@ test('what the user is typing is never replaced by the first place arriving befo
   expect(added.map((a) => a.path)).toEqual(['D:\\mine']);
 });
 
+test('"add this folder" never adds a folder the box doesn\u2019t show: the first place arriving after the user typed is dropped', async () => {
+  const api: any = {
+    places: async () => ({ places: [{ label: '桌面', path: 'C:\\Users\\u\\Desktop', kind: 'home' }] }),
+    fsList: (p: string) => new Promise((res) => setTimeout(() => res({ path: p, parent: null, entries: [] }), p.endsWith('Desktop') ? 40 : 5)),
+  };
+  const added: any[] = [], root = document.createElement('div');
+  await act(() => render(<ImportDialog api={api} onAdd={(a) => added.push(...a)} onClose={() => {}} />, root));
+  await tick();
+  const box = root.querySelector<HTMLInputElement>('[data-path]')!;
+  await act(() => { box.value = 'D:\\mine'; box.dispatchEvent(new Event('input', { bubbles: true })); });   // typed, Enter not pressed
+  await act(async () => { await new Promise((r) => setTimeout(r, 80)); });   // the desktop's answer comes meanwhile
+  const pick = root.querySelector<HTMLButtonElement>('[data-pick-folder]')!;
+  expect(box.value).toBe('D:\\mine');
+  expect(pick.disabled).toBe(true);   // no folder is open: nothing the box doesn't show can go in
+  await act(() => { pick.click(); });
+  expect(added).toEqual([]);
+});
+
 test('a path being typed when the places arrive is not replaced by the first place', async () => {
   const api: any = {
     places: () => new Promise((res) => setTimeout(() => res({ places: [{ label: '桌面', path: 'C:\\Users\\u\\Desktop', kind: 'home' }] }), 20)),

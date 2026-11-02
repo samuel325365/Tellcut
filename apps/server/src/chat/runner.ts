@@ -46,7 +46,7 @@ export function claudeArgs(o: { session: string; resume: boolean; promptFile: st
     // the draft of a preset of the user's own, and an entry of their library changed from the gallery (spec 2026-10-29-my-library §4.3, §4.5)
     'Write(projects/*/preset-draft.json)', 'Edit(projects/*/preset-draft.json)', 'Write(projects/_library/blocks/*/fx/*.js)', 'Edit(projects/_library/blocks/*/fx/*.js)',
     // guardrails, not a sandbox (spec §1.2): secrets and npm's shell override stay out of reach
-    '--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Read(~/.aws/**)', 'Read(~/.config/**)', 'Read(~/AppData/**)', 'Bash(*--script-shell*)',
+    '--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Read(~/.aws/**)', 'Read(~/.config/**)', 'Read(~/AppData/**)', 'Read(~/Library/**)', 'Bash(*--script-shell*)',
     'Read(~/.npmrc)', 'Read(~/.git-credentials)', 'Read(~/.netrc)', 'Read(~/.docker/**)', 'Read(~/.kube/**)', 'Read(~/.azure/**)', 'Read(~/.gnupg/**)',
     // the Claude account file, the outside sources' API keys (sources.local.json, not in git), a login kept elsewhere
     'Read(~/.claude.json)', 'Read(./sources.local.json)', ...(o.configDir ? [absRule(o.configDir)] : []),
