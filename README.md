@@ -34,7 +34,7 @@
 ## Watch
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/44866a15-c389-4220-bc70-4d72278bbb78" width="100%" controls></video>
+  <video src="https://github.com/user-attachments/assets/0d74927d-927c-434b-b340-e5fbab48c9ae" width="100%" controls></video>
 </div>
 
 > **"Tellcut in 80 Seconds."** Nineteen minutes of Marrakesh footage and one sentence become a reel: the agent watches every clip and writes a storyboard before it cuts. Then fix things by hand, or select a part and ask, and see a preview before anything changes. Keep the effect it wrote, save the way the film was made as your own preset, and the next trip starts from it. Recorded in Tellcut, sped up where the agent works. ([credits](docs/readme/CREDITS.md))
