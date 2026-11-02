@@ -224,82 +224,60 @@ Node.js、Google Chrome、Python、ffmpeg 這些，下面兩種裝法都會幫�
 
 Claude Code 是在終端機裡用的 Claude，能直接在你的電腦上下載、安裝、跑指令，遇到錯誤也會自己修。網頁版的 claude.ai 碰不到你的電腦，只能教你步驟，沒辦法代裝。
 
-1. **打開 PowerShell**：按開始鍵，輸入 `PowerShell`，按 Enter。不用以系統管理員身分執行。
-2. **安裝 Claude Code**：貼上這一行，按 Enter：
+1. **打開終端機**：
+   - **Windows**：打開 PowerShell：按開始鍵，輸入 `PowerShell`，按 Enter。不用以系統管理員身分執行。
+   - **Mac**：打開「終端機」：按 ⌘ 空白鍵，輸入 `終端機`（或 `Terminal`），按 Enter。還沒裝 [Homebrew](https://brew.sh) 的話（輸入 `brew --version` 有出現版本號就是裝過了），現在先裝：到它的網頁複製那一行，貼進終端機按 Enter。它會要你輸入 Mac 的密碼（打字時畫面不會顯示）；裝完後，照它最後「**Next steps**」底下列的指令跑一次，終端機才找得到 `brew`。
+2. **安裝 Claude Code**：貼上這一行，按 Enter。
+
+   Windows：
 
    ```powershell
    irm https://claude.ai/install.ps1 | iex
    ```
 
-   裝完輸入 `claude --version`，出現版本號就是裝好了；說找不到 `claude` 的話，關掉 PowerShell 再開一個。也可以改用 `winget install Anthropic.ClaudeCode`（[官方安裝說明](https://code.claude.com/docs/en/setup)）。
-3. **登入**：輸入 `claude`，按 Enter，照畫面在瀏覽器登入你的 Claude 帳號。
-4. **選 Opus 5.5**：在 Claude Code 裡輸入 `/model opus`，按 Enter。我們建議用 Opus 5.5，Tellcut 的安裝和剪片都是用它測的。Opus 5.5 要 Claude Code 2.1.280 以上，版本太舊就先在 PowerShell 跑 `claude update`。
-5. **把這段話貼給它**：
-
-   ```text
-   請幫我安裝 Tellcut：https://github.com/samuel325365/Tellcut
-   照 repo 裡的 INSTALL.md 做。如果缺 Node.js 24 以上或 Google Chrome，先用 winget 幫我裝好。
-   把 repo 下載到我的使用者資料夾裡的 Tellcut，跑 npm run setup，最後用 npm run doctor 確認每一項都打勾。
-   遇到錯誤就修好再繼續。全部好了之後，告訴我以後要怎麼打開 Tellcut。
-   ```
-
-   Claude Code 每做一件事會先問你可不可以，看過再按允許。全部大約 15～30 分鐘，大多花在下載。
-6. **打開 Tellcut**：之後每次要用，在 PowerShell 裡跑：
-
-   ```powershell
-   cd ~\Tellcut
-   npm run server
-   ```
-
-   再用瀏覽器打開 <http://127.0.0.1:5174/editor/>。用的時候 PowerShell 視窗要開著，關掉 Tellcut 就停了。
-
-#### 用 Mac 的話
-
-一樣的步驟，改在「終端機」裡做：
-
-1. **打開終端機**：按 ⌘ 空白鍵，輸入 `終端機`（或 `Terminal`），按 Enter。
-2. **安裝 Homebrew**（還沒裝的話；輸入 `brew --version` 有出現版本號就是裝過了）：到 <https://brew.sh> 複製那一行，貼進終端機按 Enter。它會要你輸入 Mac 的密碼（打字時畫面不會顯示）。裝完後，照它最後「**Next steps**」底下列的指令跑一次，終端機才找得到 `brew`。
-3. **安裝 Claude Code**：貼上這一行，按 Enter：
+   Mac：
 
    ```bash
    curl -fsSL https://claude.ai/install.sh | bash
    ```
 
-   裝完輸入 `claude --version`，出現版本號就是裝好了；說找不到 `claude` 的話，開一個新的終端機視窗。
-4. **登入、選 Opus 5.5**：跟上面第 3、4 步一樣（`claude update` 也是在終端機跑）。
-5. **把這段話貼給它**：
+   裝完輸入 `claude --version`，出現版本號就是裝好了；說找不到 `claude` 的話，關掉視窗再開一個。Windows 也可以改用 `winget install Anthropic.ClaudeCode`（[官方安裝說明](https://code.claude.com/docs/en/setup)）。
+3. **登入**：輸入 `claude`，按 Enter，照畫面在瀏覽器登入你的 Claude 帳號。
+4. **選 Opus 5.5**：在 Claude Code 裡輸入 `/model opus`，按 Enter。我們建議用 Opus 5.5，Tellcut 的安裝和剪片都是用它測的。Opus 5.5 要 Claude Code 2.1.280 以上，版本太舊就先在終端機跑 `claude update`。
+5. **把這段話貼給它**（Windows 和 Mac 都是同一段）：
 
    ```text
-   請幫我在這台 Mac 上安裝 Tellcut：https://github.com/samuel325365/Tellcut
-   照 repo 裡的 INSTALL.md 做，包括「On a Mac」那一節：用 Homebrew 裝 Node.js 24、Google Chrome 和 ffmpeg-full，並把 node@24 加進 ~/.zshrc 的 PATH。
-   如果缺 Xcode 命令列工具，就跑 xcode-select --install，等我按完它跳出的視窗。
-   把 repo 下載到我的家目錄裡的 Tellcut，跑 npm run setup，最後用 npm run doctor 確認每一項都打勾。
+   請幫我安裝 Tellcut：https://github.com/samuel325365/Tellcut
+   照 repo 裡的 INSTALL.md 做。如果缺 Node.js 24 以上或 Google Chrome，先用 winget 幫我裝好。
+   如果是 Mac，改照它的「On a Mac」那一節：用 Homebrew 裝 node@24（並加進 ~/.zshrc 的 PATH）、Google Chrome 和 ffmpeg-full；缺 Xcode 命令列工具就跑 xcode-select --install，等我按完它跳出的視窗。
+   把 repo 下載到我的使用者資料夾裡的 Tellcut，跑 npm run setup，最後用 npm run doctor 確認每一項都打勾。
    遇到錯誤就修好再繼續。全部好了之後，告訴我以後要怎麼打開 Tellcut。
    ```
 
-6. **打開 Tellcut**：之後每次要用，在終端機跑：
+   Claude Code 每做一件事會先問你可不可以，看過再按允許。全部大約 15～30 分鐘，大多花在下載。
+6. **打開 Tellcut**：之後每次要用，在終端機（PowerShell，Mac 是「終端機」）裡跑：
 
-   ```bash
+   ```
    cd ~/Tellcut
    npm run server
    ```
 
    再用瀏覽器打開 <http://127.0.0.1:5174/editor/>。用的時候終端機視窗要開著，關掉 Tellcut 就停了。
 
-**用 Codex 或其他 AI 程式助手也能裝**：把第 5 步那段話貼給它就行。不過 Tellcut 裡剪片的 Agent 一定是 Claude Code，第 2～3 步（Mac 是第 3～4 步）還是要做。
+**用 Codex 或其他 AI 程式助手也能裝**：把第 5 步那段話貼給它就行。不過 Tellcut 裡剪片的 Agent 一定是 Claude Code，第 2～3 步還是要做。
 
 ### 方法二：自己裝
 
-1. 裝好 [Node.js](https://nodejs.org/) 24 以上（選 LTS）、[Google Chrome](https://www.google.com/chrome/) 和 [Claude Code](https://code.claude.com/docs/en/setup)，在終端機跑一次 `claude` 登入。
-2. 下載 Tellcut：有裝 [Git](https://git-scm.com/downloads/win) 就跑 `git clone https://github.com/samuel325365/Tellcut.git`；沒有的話，在 GitHub 頁面按綠色的「**Code**」→「**Download ZIP**」，解壓縮。用 git 下載，之後更新比較方便。
-3. 在 Tellcut 資料夾的空白處按右鍵 →「**在終端機中開啟**」，然後跑：
+1. 裝好 [Node.js](https://nodejs.org/) 24 以上（選 LTS）、[Google Chrome](https://www.google.com/chrome/) 和 [Claude Code](https://code.claude.com/docs/en/setup)，在終端機跑一次 `claude` 登入。Mac 照 [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) 列的裝：用 Homebrew 裝 `node@24` 和 `ffmpeg-full`，再加上 Xcode 命令列工具。
+2. 下載 Tellcut：有裝 Git（[Windows 版](https://git-scm.com/downloads/win)；Mac 裝好 Xcode 命令列工具就有）就跑 `git clone https://github.com/samuel325365/Tellcut.git`；沒有的話，在 GitHub 頁面按綠色的「**Code**」→「**Download ZIP**」，解壓縮。用 git 下載，之後更新比較方便。
+3. 在 Tellcut 資料夾打開終端機（Windows：在資料夾空白處按右鍵 →「**在終端機中開啟**」；Mac：在「終端機」裡 `cd` 到資料夾），然後跑：
 
-   ```powershell
-   npm run setup     # 自動下載需要的工具和模型（約 10～20 分鐘）
-   npm run server    # 再用瀏覽器打開 http://127.0.0.1:5174/editor/
+   ```
+   npm run setup
+   npm run server
    ```
 
-用 Mac 的話，先裝好 [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) 列的東西（Homebrew 的 `node@24`、Google Chrome、`ffmpeg-full`，以及 Xcode 命令列工具），第 3 步改在終端機裡切到資料夾。
+   `npm run setup` 會自動下載需要的工具和模型（約 10～20 分鐘）；跑了 `npm run server` 之後，用瀏覽器打開 <http://127.0.0.1:5174/editor/>。
 
 完整步驟和疑難排解在 **[INSTALL.md](INSTALL.md)**（英文）。出問題時先跑 `npm run doctor`，它會列出哪裡沒裝好、怎麼修；也可以直接在 Claude Code 裡說「Tellcut 打不開，幫我看看」。
 
@@ -323,9 +301,11 @@ Tellcut 的 Agent 用 Claude Code 的**預設模型**。Pro、Max、Team、Enter
 
 Tellcut 自己的形象片附上整個專案，可以打開來播、來改：素材、和 Agent 的對話、版本紀錄，還有成品。它是用品牌片片型做的。
 
-```powershell
-npm run examples -- meet-tellcut     # 下載並加進你的專案（約 900 MB）
 ```
+npm run examples -- meet-tellcut
+```
+
+這會下載它（約 900 MB）並加進你的專案。
 
 專案的 `CREDITS.md` 寫了素材出處，全部是創用 CC（CC BY 3.0）。
 

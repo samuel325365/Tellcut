@@ -83,11 +83,9 @@ Footage can live in any folder. If you'd like to keep it in one place, create a 
 
 Finished films made in Tellcut, as projects you can open, play and take apart:
 
-```
-npm run examples                 # list them
-npm run examples -- <name>       # download one into your projects
-npm run examples -- --all        # download them all
-```
+- `npm run examples` lists them
+- `npm run examples -- <name>` downloads one into your projects
+- `npm run examples -- --all` downloads them all
 
 Each comes with its footage and its finished film (in the project's `exports/`). Open it from the home page like any project of yours; the first time, Tellcut analyses its footage again. A project with the same name already in `projects/` is never overwritten.
 

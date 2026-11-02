@@ -224,82 +224,60 @@ Node.js, Google Chrome, Python, ffmpeg and the rest are taken care of by either 
 
 Claude Code is Claude in your terminal: it can download, install and run commands on your computer, and fixes errors as it goes. Claude on the web (claude.ai) can't reach your computer, so it can only tell you the steps, not do them.
 
-1. **Open PowerShell**: press the Start key, type `PowerShell` and press Enter. You don't need to run it as administrator.
-2. **Install Claude Code**: paste this line and press Enter:
+1. **Open a terminal**:
+   - **Windows**: open PowerShell: press the Start key, type `PowerShell` and press Enter. You don't need to run it as administrator.
+   - **Mac**: open Terminal: press ⌘ Space, type `Terminal` and press Enter. If you don't have [Homebrew](https://brew.sh) yet (`brew --version` shows a version if you do), install it now: copy the line on its page, paste it into Terminal and press Enter. It asks for your Mac's password (nothing shows as you type it); when it is done, run the lines it shows under **Next steps**, so Terminal finds `brew`.
+2. **Install Claude Code**: paste this line and press Enter.
+
+   On Windows:
 
    ```powershell
    irm https://claude.ai/install.ps1 | iex
    ```
 
-   Then type `claude --version`: a version number means it's installed. If `claude` isn't found, close PowerShell and open a new one. You can also use `winget install Anthropic.ClaudeCode` ([official setup guide](https://code.claude.com/docs/en/setup)).
-3. **Sign in**: type `claude`, press Enter and sign in to your Claude account in the browser window it opens.
-4. **Pick Opus 5.5**: in Claude Code, type `/model opus` and press Enter. We recommend Opus 5.5: Tellcut's install and its editing are tested with it. Opus 5.5 needs Claude Code 2.1.280 or later; if yours is older, run `claude update` in PowerShell first.
-5. **Paste this to it**:
-
-   ```text
-   Please install Tellcut for me: https://github.com/samuel325365/Tellcut
-   Follow INSTALL.md in the repo. If Node.js 24 or later or Google Chrome is missing, install it with winget first.
-   Download the repo into a Tellcut folder in my user folder, run npm run setup, then npm run doctor to confirm every item is ticked.
-   If anything fails, fix it and carry on. When everything is ready, tell me how to open Tellcut from now on.
-   ```
-
-   Claude Code asks before each thing it does: have a look, then allow it. The whole install takes about 15–30 minutes, mostly downloading.
-6. **Open Tellcut**: from then on, whenever you want to use it, run this in PowerShell:
-
-   ```powershell
-   cd ~\Tellcut
-   npm run server
-   ```
-
-   Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the PowerShell window open while you work; closing it stops Tellcut.
-
-#### On a Mac
-
-The same, in Terminal:
-
-1. **Open Terminal**: press ⌘ Space, type `Terminal` and press Enter.
-2. **Install Homebrew** if you don't have it yet (`brew --version` shows a version if you do): copy the line on <https://brew.sh>, paste it into Terminal and press Enter. It asks for your Mac's password (nothing shows as you type it). When it is done, run the lines it shows under **Next steps**: they let Terminal find `brew`.
-3. **Install Claude Code**: paste this line and press Enter:
+   On a Mac:
 
    ```bash
    curl -fsSL https://claude.ai/install.sh | bash
    ```
 
-   Then type `claude --version`: a version number means it's installed. If `claude` isn't found, open a new Terminal window.
-4. **Sign in and pick Opus 5.5**: as in steps 3 and 4 above (`claude update` runs in Terminal too).
-5. **Paste this to it**:
+   Then type `claude --version`: a version number means it's installed. If `claude` isn't found, close the window and open a new one. On Windows you can also use `winget install Anthropic.ClaudeCode` ([official setup guide](https://code.claude.com/docs/en/setup)).
+3. **Sign in**: type `claude`, press Enter and sign in to your Claude account in the browser window it opens.
+4. **Pick Opus 5.5**: in Claude Code, type `/model opus` and press Enter. We recommend Opus 5.5: Tellcut's install and its editing are tested with it. Opus 5.5 needs Claude Code 2.1.280 or later; if yours is older, run `claude update` in the terminal first.
+5. **Paste this to it** (the same text on Windows and on a Mac):
 
    ```text
-   Please install Tellcut on this Mac for me: https://github.com/samuel325365/Tellcut
-   Follow INSTALL.md in the repo, with its "On a Mac" section: install Node.js 24, Google Chrome and ffmpeg-full with Homebrew, and add node@24 to my PATH in ~/.zshrc.
-   If Xcode's command line tools are missing, run xcode-select --install and wait while I finish the window it opens.
-   Download the repo into a Tellcut folder in my home folder, run npm run setup, then npm run doctor to confirm every item is ticked.
+   Please install Tellcut for me: https://github.com/samuel325365/Tellcut
+   Follow INSTALL.md in the repo. If Node.js 24 or later or Google Chrome is missing, install it with winget first.
+   On a Mac, follow its "On a Mac" section instead: Homebrew for node@24 (added to my PATH in ~/.zshrc), Google Chrome and ffmpeg-full, and xcode-select --install if Xcode's command line tools are missing (wait while I finish the window it opens).
+   Download the repo into a Tellcut folder in my user folder, run npm run setup, then npm run doctor to confirm every item is ticked.
    If anything fails, fix it and carry on. When everything is ready, tell me how to open Tellcut from now on.
    ```
 
-6. **Open Tellcut**: from then on, run this in Terminal:
+   Claude Code asks before each thing it does: have a look, then allow it. The whole install takes about 15–30 minutes, mostly downloading.
+6. **Open Tellcut**: from then on, whenever you want to use it, run this in the terminal (PowerShell, or Terminal on a Mac):
 
-   ```bash
+   ```
    cd ~/Tellcut
    npm run server
    ```
 
-   Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the Terminal window open while you work; closing it stops Tellcut.
+   Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the terminal window open while you work; closing it stops Tellcut.
 
-**Codex or another AI coding assistant can install it too**: give it the text from step 5. The agent inside Tellcut is always Claude Code, though, so you still need steps 2–3 (on a Mac, 3–4).
+**Codex or another AI coding assistant can install it too**: give it the text from step 5. The agent inside Tellcut is always Claude Code, though, so you still need steps 2–3.
 
 ### Option 2: install it yourself
 
-1. Install [Node.js](https://nodejs.org/) 24 or later (the LTS), [Google Chrome](https://www.google.com/chrome/) and [Claude Code](https://code.claude.com/docs/en/setup), and run `claude` once in a terminal to sign in.
-2. Get Tellcut: with [Git](https://git-scm.com/downloads/win), run `git clone https://github.com/samuel325365/Tellcut.git`; without it, click the green **Code** button on GitHub → **Download ZIP** and unzip it. With git, updating later is easier.
-3. Right-click an empty spot in the Tellcut folder → **Open in Terminal**, then run:
+1. Install [Node.js](https://nodejs.org/) 24 or later (the LTS), [Google Chrome](https://www.google.com/chrome/) and [Claude Code](https://code.claude.com/docs/en/setup), and run `claude` once in a terminal to sign in. On a Mac, install them as [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) lists, with Homebrew's `node@24` and `ffmpeg-full` and Xcode's command line tools.
+2. Get Tellcut: with Git ([for Windows](https://git-scm.com/downloads/win); a Mac has it with Xcode's command line tools), run `git clone https://github.com/samuel325365/Tellcut.git`; without it, click the green **Code** button on GitHub → **Download ZIP** and unzip it. With git, updating later is easier.
+3. Open a terminal in the Tellcut folder (on Windows, right-click an empty spot in the folder → **Open in Terminal**; on a Mac, `cd` to the folder in Terminal), then run:
 
-   ```powershell
-   npm run setup     # downloads the tools and models Tellcut needs (10–20 minutes)
-   npm run server    # then open http://127.0.0.1:5174/editor/ in your browser
+   ```
+   npm run setup
+   npm run server
    ```
 
-On a Mac, first install what [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) lists (Homebrew's `node@24`, Google Chrome and `ffmpeg-full`, and Xcode's command line tools), and open Terminal in the folder for step 3.
+   `npm run setup` downloads the tools and models Tellcut needs (10–20 minutes); after `npm run server`, open <http://127.0.0.1:5174/editor/> in your browser.
 
 The full walkthrough, with troubleshooting, is in **[INSTALL.md](INSTALL.md)**. If something isn't working, `npm run doctor` lists what's missing and how to fix it; or just tell Claude Code "Tellcut won't open, can you take a look?".
 
@@ -323,9 +301,11 @@ The interface comes in English, 中文 and 日本語; switch with **中 / EN / �
 
 Tellcut's own brand film comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset.
 
-```powershell
-npm run examples -- meet-tellcut     # download it and add it to your projects (about 900 MB)
 ```
+npm run examples -- meet-tellcut
+```
+
+This downloads it (about 900 MB) and adds it to your projects.
 
 Its `CREDITS.md` names the footage; it is all Creative Commons (CC BY 3.0).
 
