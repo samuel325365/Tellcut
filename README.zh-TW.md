@@ -226,7 +226,11 @@ Claude Code 是在終端機裡用的 Claude，能直接在你的電腦上下載�
 
 1. **打開終端機**：
    - **Windows**：打開 PowerShell：按開始鍵，輸入 `PowerShell`，按 Enter。不用以系統管理員身分執行。
-   - **Mac**：打開「終端機」：按 ⌘ 空白鍵，輸入 `終端機`（或 `Terminal`），按 Enter。還沒裝 [Homebrew](https://brew.sh) 的話（輸入 `brew --version` 有出現版本號就是裝過了），現在先裝：到它的網頁複製那一行，貼進終端機按 Enter。它會要你輸入 Mac 的密碼（打字時畫面不會顯示）；裝完後，照它最後「**Next steps**」底下列的指令跑一次，終端機才找得到 `brew`。
+   - **Mac**：按 ⌘ 空白鍵，輸入 `終端機`，按 Enter。還沒有 [Homebrew](https://brew.sh) 的話，貼上這行裝好（會要你輸入 Mac 的密碼，打字時畫面不會顯示）：
+
+     ```bash
+     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+     ```
 2. **安裝 Claude Code**：貼上這一行，按 Enter。
 
    Windows：
@@ -249,7 +253,7 @@ Claude Code 是在終端機裡用的 Claude，能直接在你的電腦上下載�
    ```text
    請幫我安裝 Tellcut：https://github.com/samuel325365/Tellcut
    照 repo 裡的 INSTALL.md 做。如果缺 Node.js 24 以上或 Google Chrome，先用 winget 幫我裝好。
-   如果是 Mac，改照它的「On a Mac」那一節：用 Homebrew 裝 node@24（並加進 ~/.zshrc 的 PATH）、Google Chrome 和 ffmpeg-full；缺 Xcode 命令列工具就跑 xcode-select --install，等我按完它跳出的視窗。
+   如果是 Mac，改照它的「On a Mac」那一節：終端機找不到 brew 就先把 Homebrew 加進 PATH，再用 Homebrew 裝 node@24（並加進 ~/.zshrc 的 PATH）、Google Chrome 和 ffmpeg-full；缺 Xcode 命令列工具就跑 xcode-select --install，等我按完它跳出的視窗。
    把 repo 下載到我的使用者資料夾裡的 Tellcut，跑 npm run setup，最後用 npm run doctor 確認每一項都打勾。
    遇到錯誤就修好再繼續。全部好了之後，告訴我以後要怎麼打開 Tellcut。
    ```
@@ -270,14 +274,17 @@ Claude Code 是在終端機裡用的 Claude，能直接在你的電腦上下載�
 
 1. 裝好 [Node.js](https://nodejs.org/) 24 以上（選 LTS）、[Google Chrome](https://www.google.com/chrome/) 和 [Claude Code](https://code.claude.com/docs/en/setup)，在終端機跑一次 `claude` 登入。Mac 照 [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) 列的裝：用 Homebrew 裝 `node@24` 和 `ffmpeg-full`，再加上 Xcode 命令列工具。
 2. 下載 Tellcut：有裝 Git（[Windows 版](https://git-scm.com/downloads/win)；Mac 裝好 Xcode 命令列工具就有）就跑 `git clone https://github.com/samuel325365/Tellcut.git`；沒有的話，在 GitHub 頁面按綠色的「**Code**」→「**Download ZIP**」，解壓縮。用 git 下載，之後更新比較方便。
-3. 在 Tellcut 資料夾打開終端機（Windows：在資料夾空白處按右鍵 →「**在終端機中開啟**」；Mac：在「終端機」裡 `cd` 到資料夾），然後跑：
+3. 在 Tellcut 資料夾打開終端機（Windows：在資料夾空白處按右鍵 →「**在終端機中開啟**」；Mac：在「終端機」裡 `cd` 到資料夾）。先跑一次這個，它會自動下載需要的工具和模型（約 10～20 分鐘）：
 
    ```
    npm run setup
-   npm run server
    ```
 
-   `npm run setup` 會自動下載需要的工具和模型（約 10～20 分鐘）；跑了 `npm run server` 之後，用瀏覽器打開 <http://127.0.0.1:5174/editor/>。
+   之後每次要用，跑這個，再用瀏覽器打開 <http://127.0.0.1:5174/editor/>：
+
+   ```
+   npm run server
+   ```
 
 完整步驟和疑難排解在 **[INSTALL.md](INSTALL.md)**（英文）。出問題時先跑 `npm run doctor`，它會列出哪裡沒裝好、怎麼修；也可以直接在 Claude Code 裡說「Tellcut 打不開，幫我看看」。
 
@@ -299,13 +306,11 @@ Tellcut 的 Agent 用 Claude Code 的**預設模型**。Pro、Max、Team、Enter
 
 ## 範例專案
 
-Tellcut 自己的形象片附上整個專案，可以打開來播、來改：素材、和 Agent 的對話、版本紀錄，還有成品。它是用品牌片片型做的。
+Tellcut 自己的形象片附上整個專案，可以打開來播、來改：素材、和 Agent 的對話、版本紀錄，還有成品。它是用品牌片片型做的。要下載它（約 900 MB）並加進你的專案，跑：
 
 ```
 npm run examples -- meet-tellcut
 ```
-
-這會下載它（約 900 MB）並加進你的專案。
 
 專案的 `CREDITS.md` 寫了素材出處，全部是創用 CC（CC BY 3.0）。
 

@@ -226,7 +226,11 @@ Claude Code is Claude in your terminal: it can download, install and run command
 
 1. **Open a terminal**:
    - **Windows**: open PowerShell: press the Start key, type `PowerShell` and press Enter. You don't need to run it as administrator.
-   - **Mac**: open Terminal: press ⌘ Space, type `Terminal` and press Enter. If you don't have [Homebrew](https://brew.sh) yet (`brew --version` shows a version if you do), install it now: copy the line on its page, paste it into Terminal and press Enter. It asks for your Mac's password (nothing shows as you type it); when it is done, run the lines it shows under **Next steps**, so Terminal finds `brew`.
+   - **Mac**: press ⌘ Space, type `Terminal` and press Enter. No [Homebrew](https://brew.sh) yet? Install it with this line (it asks for your Mac's password, which doesn't show as you type):
+
+     ```bash
+     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+     ```
 2. **Install Claude Code**: paste this line and press Enter.
 
    On Windows:
@@ -249,7 +253,7 @@ Claude Code is Claude in your terminal: it can download, install and run command
    ```text
    Please install Tellcut for me: https://github.com/samuel325365/Tellcut
    Follow INSTALL.md in the repo. If Node.js 24 or later or Google Chrome is missing, install it with winget first.
-   On a Mac, follow its "On a Mac" section instead: Homebrew for node@24 (added to my PATH in ~/.zshrc), Google Chrome and ffmpeg-full, and xcode-select --install if Xcode's command line tools are missing (wait while I finish the window it opens).
+   On a Mac, follow its "On a Mac" section instead: put Homebrew on my PATH if brew isn't found, then Homebrew for node@24 (added to my PATH in ~/.zshrc), Google Chrome and ffmpeg-full, and xcode-select --install if Xcode's command line tools are missing (wait while I finish the window it opens).
    Download the repo into a Tellcut folder in my user folder, run npm run setup, then npm run doctor to confirm every item is ticked.
    If anything fails, fix it and carry on. When everything is ready, tell me how to open Tellcut from now on.
    ```
@@ -270,14 +274,17 @@ Claude Code is Claude in your terminal: it can download, install and run command
 
 1. Install [Node.js](https://nodejs.org/) 24 or later (the LTS), [Google Chrome](https://www.google.com/chrome/) and [Claude Code](https://code.claude.com/docs/en/setup), and run `claude` once in a terminal to sign in. On a Mac, install them as [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) lists, with Homebrew's `node@24` and `ffmpeg-full` and Xcode's command line tools.
 2. Get Tellcut: with Git ([for Windows](https://git-scm.com/downloads/win); a Mac has it with Xcode's command line tools), run `git clone https://github.com/samuel325365/Tellcut.git`; without it, click the green **Code** button on GitHub → **Download ZIP** and unzip it. With git, updating later is easier.
-3. Open a terminal in the Tellcut folder (on Windows, right-click an empty spot in the folder → **Open in Terminal**; on a Mac, `cd` to the folder in Terminal), then run:
+3. Open a terminal in the Tellcut folder (on Windows, right-click an empty spot in the folder → **Open in Terminal**; on a Mac, `cd` to the folder in Terminal). First run this once; it downloads the tools and models Tellcut needs (10–20 minutes):
 
    ```
    npm run setup
-   npm run server
    ```
 
-   `npm run setup` downloads the tools and models Tellcut needs (10–20 minutes); after `npm run server`, open <http://127.0.0.1:5174/editor/> in your browser.
+   Then, whenever you want to use it, run this and open <http://127.0.0.1:5174/editor/> in your browser:
+
+   ```
+   npm run server
+   ```
 
 The full walkthrough, with troubleshooting, is in **[INSTALL.md](INSTALL.md)**. If something isn't working, `npm run doctor` lists what's missing and how to fix it; or just tell Claude Code "Tellcut won't open, can you take a look?".
 
@@ -299,13 +306,11 @@ The interface comes in English, 中文 and 日本語; switch with **中 / EN / �
 
 ## Example project
 
-Tellcut's own brand film comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset.
+Tellcut's own brand film comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset. To download it (about 900 MB) and add it to your projects, run:
 
 ```
 npm run examples -- meet-tellcut
 ```
-
-This downloads it (about 900 MB) and adds it to your projects.
 
 Its `CREDITS.md` names the footage; it is all Creative Commons (CC BY 3.0).
 

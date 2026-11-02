@@ -27,6 +27,7 @@ brew install ffmpeg-full
 xcode-select --install
 ```
 
+- If `brew` isn't found after installing Homebrew, do what its installer showed under **Next steps**: on Apple silicon, add `eval "$(/opt/homebrew/bin/brew shellenv)"` to `~/.zprofile` (`/usr/local/bin/brew` on Intel) and open a new terminal.
 - `node@24` is keg-only: add `export PATH="$(brew --prefix node@24)/bin:$PATH"` to `~/.zshrc`, open a new terminal and check `node -v`.
 - ffmpeg is Homebrew's `ffmpeg-full`: the plain `ffmpeg` formula has neither vid.stab (the stabilised cuts use it) nor `drawtext`. `ffmpeg-full` is keg-only, so it sits beside a plain `ffmpeg` you may already have without replacing it, and Tellcut finds it in `/opt/homebrew/opt/ffmpeg-full/bin` (or under `HOMEBREW_PREFIX`, or `/usr/local` on Intel) by itself.
 - `xcode-select --install` gives you the Swift compiler: text recognition uses the Mac's built-in Vision through a small program (`tools/mac/ocr.swift`) that Tellcut builds into `.cache/bin/` the first time it is used. Skip it if `xcrun swiftc --version` already works.
