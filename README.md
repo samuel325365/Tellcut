@@ -409,7 +409,7 @@ Under every reply you'll see how many tokens it used; the conversation total als
 
 ## Limitations
 
-- Windows and macOS only (no Linux).
+- Windows and macOS only.
 - The agent can't hear. You have to judge the balance of music and voices, and whether the voice-over sounds natural, by ear.
 - Local only: there's no cloud version, and two people can't edit the same project at once.
 

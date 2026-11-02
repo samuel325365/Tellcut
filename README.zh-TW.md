@@ -409,7 +409,7 @@ Tellcut 本身免費。Agent 用的是你自己的 Claude 登入，用量怎麼�
 
 ## 目前的限制
 
-- 只支援 Windows 與 macOS（沒有 Linux）。
+- 只支援 Windows 與 macOS。
 - Agent 聽不到聲音：配樂和人聲的大小、旁白念得自不自然，要你自己聽。
 - 只在本機用，沒有雲端版，也不能多人同時編輯同一個專案。
 
