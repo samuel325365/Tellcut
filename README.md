@@ -214,7 +214,7 @@ Each animation below is a sample film made with that preset; click one to see wh
 
 **You need**
 
-- **Windows 10 or 11** (64-bit), or a **Mac** (tested on macOS 26 with Apple silicon)
+- **Windows 10 or 11** (64-bit), or **macOS 14 or later** (Apple silicon; tested on macOS 26)
 - **A Claude account**: a Pro, Max, Team or Enterprise plan, or a Claude API account. The editing agent is Claude Code, running on your own account (see [Usage and cost](#usage-and-cost))
 - About **4 GB** of disk space and an internet connection (the first install downloads about 2 GB)
 

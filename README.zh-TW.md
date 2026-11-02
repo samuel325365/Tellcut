@@ -214,7 +214,7 @@ Tellcut 把這些工作交給 Agent，決定權留在你手上。你說想要什
 
 **需要**
 
-- **Windows 10 或 11**（64 位元），或 **Mac**（在 macOS 26、Apple 晶片上測過）
+- **Windows 10 或 11**（64 位元），或 **macOS 14 以上**（Apple 晶片；在 macOS 26 上測過）
 - **Claude 帳號**：Pro、Max、Team、Enterprise 方案或 Claude API 帳號都可以。剪片的 Agent 是 Claude Code，用的是你自己的帳號（見[用量與費用](#用量與費用)）
 - 約 **4 GB** 硬碟空間和網路（第一次安裝要下載約 2 GB）
 

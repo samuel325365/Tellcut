@@ -8,7 +8,7 @@ Tellcut is a video editor you use in your browser, with an agent beside it that 
 
 | You need | Notes |
 |---|---|
-| Windows 10 or 11 (64-bit), or a Mac | Tested on macOS 26 on Apple silicon (Intel Macs should work but are untested). On a Mac, see [On a Mac](#on-a-mac) for the two extra things to install |
+| Windows 10 or 11 (64-bit), or macOS 14 or later (Apple silicon) | Tested on macOS 26. On macOS 14 and 15 Homebrew has no ready-made ffmpeg-full, so it compiles it from source, which takes long; Intel Macs are untested. On a Mac, see [On a Mac](#on-a-mac) for the two extra things to install |
 | [Node.js](https://nodejs.org/) 24 or later | The LTS version is fine. Check it with `node -v` in a terminal |
 | [Google Chrome](https://www.google.com/chrome/) | Exporting video needs the regular Chrome (Chromium won't do) |
 | [Claude Code](https://code.claude.com/docs/en/setup) 2.1.242 or later, **signed in** | The chat in the editor runs on it. Install it in PowerShell with `irm https://claude.ai/install.ps1 \| iex` (or `winget install Anthropic.ClaudeCode`; on a Mac, in Terminal: `curl -fsSL https://claude.ai/install.sh \| bash`), then run `claude` once and sign in. Opus 5.5, the model we recommend and Claude Code's default, needs 2.1.280 or later: `claude update` gets you there |
