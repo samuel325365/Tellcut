@@ -6,6 +6,7 @@ import { motion, resolveTheme, withDefaults, type ItemType } from '@tellcut/engi
 import { tableColor, tabletop } from './tabletop.ts';
 import { bounce, charPose, parseBounce, sinkAt } from './bounce.ts';
 import { header, topShade } from './header.ts';
+import { faceWeight } from './text.ts';
 import { headline, rollChar, strikeChar } from './headline.ts';
 
 const anything: any = new Proxy(function () {}, {
@@ -78,6 +79,15 @@ describe('common.bounce', () => {
     expect(run(bounce, { items: '0|挖空|300||0.5|0.5|knock' }, 1).said).toEqual(['挖空']);
     // sunk characters gone below the frame are not counted
     expect(run(bounce, { items: '0|【掉】|300||0.5|0.5|pop|sink=0.5' }, 3).said).toEqual([]);
+  });
+  test('a family without 900 is drawn at the heaviest weight it has, not the fake bold that rings knock holes', () => {
+    const faces = [{ family: 'Huninn', weight: '400' }, { family: '"Noto Sans TC"', weight: '500' }, { family: 'Noto Sans TC', weight: '900' }, { family: 'Inter', weight: '100 900' }];
+    expect(faceWeight('Huninn', 900, faces)).toBe(400);
+    expect(faceWeight('Noto Sans TC', 900, faces)).toBe(900);
+    expect(faceWeight('Noto Sans TC', 700, faces)).toBe(500);
+    expect(faceWeight('Noto Sans TC', 300, faces)).toBe(500);
+    expect(faceWeight('Inter', 900, faces)).toBe(900);
+    expect(faceWeight('Arial', 900, faces)).toBe(900);
   });
 });
 

@@ -3,7 +3,7 @@
 // common.quiz, common.doodle, common.search's bar mode and common.healthbar. jsdom has no layout and no 2D context: the tests read
 // what cssCamel last wrote (`_c`) and the canvas is a stand-in.
 import { motion, resolveTheme, withDefaults, type ItemType } from '@tellcut/engine';
-import { parseTicked, stampLanding, stampTime, tickSlide, tickState, tickStrike, writeStrike } from './notecard.ts';
+import { addedItem, parseTicked, stampLanding, stampTime, tickSlide, tickState, tickStrike, writeStrike } from './notecard.ts';
 import { quiz, quizHeight, quizOptions, rowState, showTimes, typeSpan } from './quiz.ts';
 import { blinkOn, doodle, eraseAt, parseStrokes, strokeProgress } from './doodle.ts';
 import { breakTime, healthbar, hitAt, hpAt, hpBand, parseHp } from './healthbar.ts';
@@ -58,6 +58,12 @@ describe('common.notecard: ticked rows, strike, stamp, write only, stay', () => 
   test('out off: the ticked card slides in and stays', () => {
     expect(tickSlide(3, 3, 500, false)).toBeCloseTo(0);
     expect(tickSlide(3, 3, 500)).toBeCloseTo(-500);
+  });
+  test('addInk: items starting with + are written "+ item" in that ink; without it as they are', () => {
+    expect(addedItem('+運動', '#2f6f8f')).toEqual({ text: '+ 運動', ink: '#2f6f8f' });
+    expect(addedItem('＋ 買菜', '#2f6f8f')).toEqual({ text: '+ 買菜', ink: '#2f6f8f' });
+    expect(addedItem('剪片', '#2f6f8f')).toEqual({ text: '剪片', ink: '' });
+    expect(addedItem('+運動', '')).toEqual({ text: '+運動', ink: '' });
   });
 });
 

@@ -6,6 +6,7 @@
 // Drawn on a canvas (every word reported with ctx.reportText); draw(t) is a pure function of t. Sized by the short side.
 import { clamp, cssCamel, type ItemType } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
+import { faceWeight } from './text.ts';
 
 interface P { title: string; live: string; replay: string; label: string; states: string; stops: string; cells: number; x: number; y: number; w: number; font: string; accent: string; hl: string }
 interface S { cv: HTMLCanvasElement; words: string }
@@ -162,7 +163,8 @@ export const healthbar: ItemType<P, S> = {
       if (word) {
         const sc = 1.9 - 0.9 * motion.spring({ duration: 0.45, bounce: 0.45 })(dt);
         g.save(); g.translate(wordX, row2 + bh / 2); g.rotate(-0.12); g.scale(sc, sc);
-        g.font = font(900, 60 * k); g.textAlign = 'center';
+        // stroked: a weight the font really has (a fake bold's outline shows rings)
+        g.font = font(faceWeight(p.font, 900), 60 * k); g.textAlign = 'center';
         g.lineWidth = 10 * k; g.strokeStyle = '#ffffff'; g.lineJoin = 'round'; g.strokeText(word, 0, 2 * k);
         g.fillStyle = p.accent; say(word, 0, 2 * k);
         g.restore();

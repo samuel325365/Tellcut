@@ -549,6 +549,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.notecard.stamp": {"name":"スタンプの文字","hint":"list。全部チェックし終わると赤いスタンプが押される。空欄＝押さない"},
   "common.notecard.check": {"name":"書いたらチェック","hint":"tick のない list。オフ＝リストを書くだけ"},
   "common.notecard.out": {"name":"最後に滑って出る","hint":"list の tick。オフ＝カードは画面に残る"},
+  "common.notecard.addInk": {"name":"後から足した項目の色","hint":"list。+ で始まる項目を「+ 項目」としてこの色で書く。空欄＝そのまま書く"},
   "common.handwrite.lines": {"name":"文","hint":"1行ごと「秒|文字」または「開始秒-終了秒|文字」。終了秒＝話し終える時間"},
   "common.handwrite.mode": {"name":"文の切り替え方式","hint":"replace 一度に1文、stack 1行ずつ積み上げる"},
   "common.handwrite.hold": {"name":"話し終えてからの表示","hint":"秒。replace で終了秒のある文は、終了秒からこの時間でフェードアウト"},

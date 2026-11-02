@@ -1,7 +1,7 @@
 // The blocks promoted from the food-receipt and food-deep shorts (2026-10-19): the receipt printer kit and the queue-number board kit.
 import { defaultSafe } from '@tellcut/engine';
 import { marqueeX, typedChars, dotmatrix } from './dotmatrix.ts';
-import { digits, digitsAt, hasCjk, parseSteps, vfdMatrix } from './digits.ts';
+import { digits, digitsAt, flashSpot, hasCjk, parseSteps, vfdMatrix } from './digits.ts';
 import { fedAt, printer, printerAdds, printerLines, stair, stampSpot, totalNumber, userLine } from './printer.ts';
 import { doorAt, rolldoor } from './rolldoor.ts';
 import { callout, calloutLabel } from './callout.ts';
@@ -56,6 +56,13 @@ test('vfd small words: CJK gets a finer matrix of the same size (數 is mush at 
   expect(m.px).toBe(20);
   expect(m.px * m.pitch).toBeCloseTo(13 * 3.1);   // the same height on the glass
   expect(m.dot / m.pitch).toBeCloseTo(2.5 / 3.1);
+});
+
+test('vfd flash: stays where it was when clear, else centred in the gap, else over the label (a board has no gap)', () => {
+  expect(flashSpot(168, 60, 22, 110, 360)).toEqual({ x: 168, sc: 1, over: false });
+  expect(flashSpot(168, 60, 22, 200, 300)).toEqual({ x: 220, sc: 1, over: false });
+  expect(flashSpot(110, 67, 22, 110, 111)).toEqual({ x: 22, sc: 1, over: true });
+  expect(flashSpot(110, 178, 22, 110, 111).sc).toBeCloseTo(89 / 178);
 });
 
 test('printer: lines laid out down the paper, the motor feeds in steps, amounts become subtotal steps', () => {

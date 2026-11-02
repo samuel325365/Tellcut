@@ -549,6 +549,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.notecard.stamp": {"name":"Stamp word","hint":"list; a red rubber stamp lands once every item is ticked; blank = no stamp"},
   "common.notecard.check": {"name":"Tick each item as written","hint":"list without tick; off = only write the list"},
   "common.notecard.out": {"name":"Slide out at the end","hint":"list with tick; off = the card stays on screen"},
+  "common.notecard.addInk": {"name":"Added-item ink","hint":"list; items starting with + are written \"+ item\" in this ink; blank = written as they are"},
   "common.handwrite.lines": {"name":"Sentences","hint":"Per line \"seconds|text\" or \"start-end seconds|text\"; the end seconds = when the speech finishes"},
   "common.handwrite.mode": {"name":"Sentence change mode","hint":"replace (one sentence at a time), stack (accumulates line by line)"},
   "common.handwrite.hold": {"name":"Hold after speech","hint":"Seconds; in replace mode a line with an end time fades out this long after its end"},

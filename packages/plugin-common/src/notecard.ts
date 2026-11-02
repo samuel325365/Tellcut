@@ -5,7 +5,8 @@
 // `tick` (the todo-vlog short's fx.todolist): the list is already written, the card slides in from the left, the items before item
 // `tick` are ticked and highlighted, item `tick` is ticked now with a highlighter stroke after it, and the card slides out again.
 // From the vlog acceptance film's fx.todo: `ticked` names the rows already done, `strike` crosses a ticked item out in red pen, `stamp`
-// lands a red rubber stamp once every item is ticked, `check` off only writes the list, `out` off keeps a ticked card on screen.
+// lands a red rubber stamp once every item is ticked, `check` off only writes the list, `out` off keeps a ticked card on screen,
+// `addInk` writes the items starting with + (added later) in another ink.
 import { clamp, cssCamel, eIn3, eOut3 as ease, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import {
@@ -18,7 +19,7 @@ type Mode = 'step' | 'list' | 'title' | 'done';
 interface P {
   mode: Mode; no: string; title: string; text: string; fields: string; items: string; size: number; every: number; count: string; sub: string; latin: string; note: string;
   card: boolean; x: number; y: number; w: number; h: number; tilt: number; font: string; ink: string; accent: string; paper: string; rule: string;
-  tick: number; marker: string; ticked: string; strike: boolean; stamp: string; check: boolean; out: boolean;
+  tick: number; marker: string; ticked: string; strike: boolean; stamp: string; check: boolean; out: boolean; addInk: string;
 }
 /** `top`: the strike-throughs, over the words; `stamp`: the rubber stamp, over everything */
 interface S { wrap: HTMLElement; cv: HTMLCanvasElement; txt: TextLayer; top: HTMLCanvasElement; stamp: HTMLElement }
@@ -28,6 +29,9 @@ export const parseFields = (s: string, max = 2): Array<[string, string]> => Stri
   .map((l) => { const [a, b] = l.split('|').map((x) => x.trim()); return [a ?? '', b ?? ''] as [string, string]; }).slice(0, max);
 /** one item a line, or split by | */
 export const parseItems = (s: string) => String(s ?? '').split(/\n|\|/).map((x) => x.trim()).filter(Boolean);
+/** with `addInk` set, an item starting with + was added later: written "+ item" in that ink; without it every item is written as it is */
+export const addedItem = (item: string, addInk: string) =>
+  (addInk && /^[+＋]/.test(item) ? { text: `+ ${item.replace(/^[+＋]\s*/, '')}`, ink: addInk } : { text: item, ink: '' });
 
 /** the checklist's place for item i of n: two columns once there are more than four (`cols` 1 keeps one column) */
 export function listSlot(i: number, n: number, cols = n > 4 ? 2 : 1): { col: number; row: number } {
@@ -86,7 +90,7 @@ export function stepTimes(title: string, lines: string[]) {
 
 export const notecard: ItemType<P, S> = {
   type: 'common.notecard', label: '手寫索引卡', category: 'card', kind: 'overlay',
-  doc: '一張橫線索引卡，內容用手寫字一筆一筆寫上去：step（紅筆圈的編號、標題、一兩行說明、「標籤|內容」欄位）、list（核取方塊逐項打勾；size 放大清單字，項目多或字大時排成一欄或兩欄、卡片往上長高；tick 是待辦清單打勾：清單已寫好，卡片從左邊滑進來，前面幾項已打勾、畫了螢光筆，第 tick 項現在打勾、螢光筆劃過，再滑出去；ticked 指定哪幾項已經勾好，strike 打勾後用紅筆劃掉，stamp 全部勾完蓋上紅色印章（清空！），check 關掉只寫上清單不打勾，out 關掉卡片不滑走）、title（大字菜名畫紅線、副標、外文名）、done（「完成！」＋手畫愛心）；食譜、教學、手帳風；card 關掉就寫在 common.paper 畫好的卡上',
+  doc: '一張橫線索引卡，內容用手寫字一筆一筆寫上去：step（紅筆圈的編號、標題、一兩行說明、「標籤|內容」欄位）、list（核取方塊逐項打勾；size 放大清單字，項目多或字大時排成一欄或兩欄、卡片往上長高；tick 是待辦清單打勾：清單已寫好，卡片從左邊滑進來，前面幾項已打勾、畫了螢光筆，第 tick 項現在打勾、螢光筆劃過，再滑出去；ticked 指定哪幾項已經勾好，strike 打勾後用紅筆劃掉，stamp 全部勾完蓋上紅色印章（清空！），check 關掉只寫上清單不打勾，out 關掉卡片不滑走，addInk 讓「+」開頭的後加項目換一個墨色）、title（大字菜名畫紅線、副標、外文名）、done（「完成！」＋手畫愛心）；食譜、教學、手帳風；card 關掉就寫在 common.paper 畫好的卡上',
   params: [
     { key: 'mode', label: '頁面', type: 'enum', options: ['step', 'list', 'title', 'done'], default: 'step' },
     { key: 'no', label: '編號（step）', type: 'string', default: '3' },
@@ -114,6 +118,7 @@ export const notecard: ItemType<P, S> = {
     { key: 'stamp', label: '全部勾完時蓋上的紅色印章字（list；空＝不蓋）', type: 'string', default: '' },
     { key: 'check', label: '每項寫上就打勾（list 沒有 tick 時；關掉＝只把清單寫上去）', type: 'bool', default: true },
     { key: 'out', label: '最後滑出去（list 的 tick；關掉＝停在畫面上）', type: 'bool', default: true },
+    { key: 'addInk', label: '後加項目的墨色（list；「+」開頭的項目寫成「+ 項目」換這個墨色；空＝照原樣寫）', type: 'color', default: '' },
   ],
   build(ctx) {
     const wrap = h('div', null, null, ctx.root), cv = h('canvas', null, null, wrap);
@@ -128,7 +133,8 @@ export const notecard: ItemType<P, S> = {
   hide(s) { freeCanvas(s.top); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, b0 = cardBox(p, W, H, theme.safe), items = parseItems(p.items).slice(0, LIST_MAX);
-    const L = p.mode === 'list' ? listLayout(items, p.size ?? 1, b0.h / b0.u) : null;
+    const shown = items.map((x) => addedItem(x, p.addInk ?? ''));
+    const L = p.mode === 'list' ? listLayout(shown.map((x) => x.text), p.size ?? 1, b0.h / b0.u) : null;
     // a list longer than the card: the card grows upwards (its top moves up when it sits on the bottom safe line)
     const b = L && L.ch > b0.h / b0.u + 0.5 ? cardBox({ ...p, h: (L.ch * p.w) / CARD_W }, W, H, theme.safe) : b0, u = b.u, ch = b.h / u;
     const fam = handFamily(p.font), pencil = withAlpha(p.ink, 0.62), red = p.accent;
@@ -171,7 +177,7 @@ export const notecard: ItemType<P, S> = {
       const w0 = (t0: number, cps: number) => (ticking ? {} : { t0, cps });
       txt({ text: p.title, x: 52, y: 90, px: 60, weight: 700, ...w0(0.05, 10) });
       if (p.count) txt({ text: p.count.replace('{n}', String(items.length)), x: CARD_W - 52, y: 88, px: 36, color: pencil, align: 'right', ...w0(0.3, 10) });
-      items.forEach((name, i) => {
+      shown.forEach(({ text: name, ink }, i) => {
         const { col, row } = listSlot(i, items.length, cols), x = 52 + col * 450, y = RULE0 + pitch * (row + 1) - 14, t0 = 0.45 + i * p.every, e = ticking ? 1 : ease(clamp((local - t0) / 0.25));
         if (e <= 0) return;
         const tk = ticking ? tickState(i, now, local, ticked) : null;
@@ -180,7 +186,7 @@ export const notecard: ItemType<P, S> = {
         g.strokeStyle = red; g.lineWidth = 4.4;
         if (tk) tick(g, x, y - 34 * z, 36 * z, tk.k1, tk.k2);
         else if (check) tick(g, x, y - 34 * z, 36 * z, clamp((local - t0 - 0.12) / 0.14), clamp((local - t0 - 0.26) / 0.18));
-        txt({ text: name, x: x + 54 * z, y, px, ...w0(t0 + 0.05, 26) });
+        txt({ text: name, x: x + 54 * z, y, px, ...(ink ? { color: ink } : {}), ...w0(t0 + 0.05, 26) });
         // the red line through a ticked item, across the middle of its letters, rising a little
         const k = gt ? (ticking ? tickStrike(i, now, local, ticked) : writeStrike(local, t0)) : 0;
         if (gt && k > 0) {
