@@ -8,6 +8,7 @@
 import { clamp, type ItemType, type MotionKit } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { isClear } from './color.ts';
+import { faceWeight } from './text.ts';
 
 export type BounceMode = 'drop' | 'pop' | 'slam' | 'float' | 'sway' | 'knock';
 const MODES: BounceMode[] = ['drop', 'pop', 'slam', 'float', 'sway', 'knock'];
@@ -86,12 +87,12 @@ export const bounce: ItemType<P, S> = {
   },
   ready(s) {
     const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-    return fonts ? Promise.all([s.font, 'Noto Sans TC'].map((f) => fonts.load(`900 120px "${f}"`, s.words || '字'))).then(() => {}) : Promise.resolve();
+    return fonts ? Promise.all([s.font, 'Noto Sans TC'].map((f) => fonts.load(`${faceWeight(f, 900)} 120px "${f}"`, s.words || '字'))).then(() => {}) : Promise.resolve();
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
     const { local: t, params: p, W, H, theme, motion } = ctx, g = canvasAt(s.cv, W, H), k = Math.min(W, H) / 1080;
-    const face = (px: number) => `900 ${px.toFixed(1)}px '${p.font}', 'Noto Sans TC', sans-serif`;
+    const wt = faceWeight(p.font, 900), face = (px: number) => `${wt} ${px.toFixed(1)}px '${p.font}', 'Noto Sans TC', sans-serif`;
     const side = theme.safe.side * W, room = W - 2 * side, stroke = !isClear(p.outline);
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     for (const it of parseBounce(p.items)) {

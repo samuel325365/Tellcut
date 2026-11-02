@@ -11,6 +11,21 @@ export const emParts = (text: string): Array<[string, boolean]> => {
   if (i < text.length) out.push([text.slice(i), false]);
   return out;
 };
+/** The weight to draw `family` at for `want`: the heaviest face it has up to `want` (else its lightest), from the faces the page
+ *  knows (`faces`, document.fonts by default). A canvas asked for a weight the family lacks gets Chrome's fake bold, whose strokeText
+ *  outlines show as rings (Huninn has 400 only). A family with no faces known (a system font) keeps `want`. */
+export function faceWeight(family: string, want: number, faces?: Iterable<{ family: string; weight: string }>): number {
+  const list = faces ?? (typeof document !== 'undefined' && document.fonts ? (document.fonts as unknown as Iterable<FontFace>) : []);
+  const name = family.replace(/^["']|["']$/g, ''), ws: Array<[number, number]> = [];
+  for (const f of list) if (f.family.replace(/^["']|["']$/g, '') === name) {
+    const [a, b = a] = String(f.weight).split(/\s+/).map((x) => (x === 'bold' ? 700 : x === 'normal' ? 400 : Number(x)));
+    if (Number.isFinite(a) && Number.isFinite(b)) ws.push([a, b]);
+  }
+  if (!ws.length) return want;
+  if (ws.some(([a, b]) => a <= want && want <= b)) return want;
+  const below = ws.map(([, b]) => b).filter((b) => b <= want);
+  return below.length ? Math.max(...below) : Math.min(...ws.map(([a]) => a));
+}
 /** a block's text param with a typed "\n" read as a line break */
 export const nl = (s: unknown) => String(s ?? '').replace(/\\n/g, '\n');
 /** an absolutely placed line of text: no wrapping, line height 1 (the phone UIs place every line themselves) */
