@@ -490,6 +490,7 @@ export const samples: Sample[] = [
   { name: 'outro-credits', type: 'common.outro', params: { look: 'credits', lines: '*With love to everyone who came*\nMom & Dad\nGrandma & Grandpa\n*and all the friends*\n_Music: original score_', beat: 0.4 }, len: 4, at: [0.6, 3.0], bg: '#6b5a48' },
   { name: 'slam-gold', type: 'common.slam', params: { look: 'gold', text: 'Surprise!', tilt: 0, size: 8 }, at: [0.15, 1.5], bg: '#3a2f45' },
   { name: 'notecard-tick', type: 'common.notecard', params: { mode: 'list', title: 'to-do list', items: 'unpack|clean the house|edit videos|workout|returns|grocery shop', tick: 3, count: '', note: '' }, at: [0.2, 0.62, 1.4], bg: '#e7d8bd' },
+  { name: 'notecard-added', type: 'common.notecard', params: { mode: 'list', title: '待辦清單', items: '拆行李|打掃家裡|剪片|退貨|+運動|+買菜', tick: 5, ticked: '1,2,3', count: '', addInk: '#2f6f8f' }, at: [1.3], bg: '#e7d8bd' },
   { name: 'notecard-strike', type: 'common.notecard', params: { mode: 'list', title: '待辦清單', items: '回信|繳帳單|買菜|運動|整理書桌|洗衣服', tick: 6, strike: true, stamp: '清空！', count: '', note: '' }, at: [1.15, 2.0], bg: '#e7d8bd' },
   { name: 'caption-strip', type: 'common.caption', params: { text: 'Today I finally cleaned the whole kitchen', style: 'strip', size: 3.2, words: [[0, 5], [0.3, 7], [0.5, 15], [0.9, 23], [1.2, 27], [1.4, 33], [1.7, 41]] }, at: [1.0, 2.5], bg: '#7a6650' },
   { name: 'tag-day', type: 'common.tag', params: { look: 'day', tags: 'Day 2,15° · rain', x: 0.08, y: 0.12 }, at: [0.1, 1.5], bg: '#6d7f92' },
