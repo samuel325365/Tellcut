@@ -106,7 +106,8 @@ test('a waiter that judged the lock stale too late leaves the fresh one in place
     expect(takeOver(file, (f) => !lockHolder(f))).toBe(false);
     expect(readFileSync(file, 'utf8')).toBe(fresh);
     writeFileSync(file, JSON.stringify({ pid: 999999, started: 1 }));
-    writeFileSync(`${file}.takeover`, '1');                     // another waiter is taking it over right now
+    // another waiter is taking it over right now (its pid, gone by the crash below: not 1, which is always alive off Windows)
+    writeFileSync(`${file}.takeover`, '999999');
     expect(takeOver(file, (f) => !lockHolder(f))).toBe(false);
     expect(existsSync(file)).toBe(true);
     const old = new Date(Date.now() - 60_000);
