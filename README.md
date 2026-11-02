@@ -253,9 +253,40 @@ Claude Code is Claude in your terminal: it can download, install and run command
 
    Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the PowerShell window open while you work; closing it stops Tellcut.
 
-**On a Mac**: open **Terminal** instead of PowerShell and install Claude Code with `curl -fsSL https://claude.ai/install.sh | bash`. In the text of step 5, write "install it with Homebrew, following INSTALL.md › On a Mac" instead of "with winget". To open Tellcut later, run `cd ~/Tellcut` and `npm run server` in Terminal.
+#### On a Mac
 
-**Codex or another AI coding assistant can install it too**: give it the text from step 5. The agent inside Tellcut is always Claude Code, though, so you still need steps 2–3.
+The same, in Terminal:
+
+1. **Open Terminal**: press ⌘ Space, type `Terminal` and press Enter.
+2. **Install Homebrew** if you don't have it yet (`brew --version` shows a version if you do): copy the line on <https://brew.sh>, paste it into Terminal and press Enter. It asks for your Mac's password (nothing shows as you type it). When it is done, run the lines it shows under **Next steps**: they let Terminal find `brew`.
+3. **Install Claude Code**: paste this line and press Enter:
+
+   ```bash
+   curl -fsSL https://claude.ai/install.sh | bash
+   ```
+
+   Then type `claude --version`: a version number means it's installed. If `claude` isn't found, open a new Terminal window.
+4. **Sign in and pick Opus 5.5**: as in steps 3 and 4 above (`claude update` runs in Terminal too).
+5. **Paste this to it**:
+
+   ```text
+   Please install Tellcut on this Mac for me: https://github.com/samuel325365/Tellcut
+   Follow INSTALL.md in the repo, with its "On a Mac" section: install Node.js 24, Google Chrome and ffmpeg-full with Homebrew, and add node@24 to my PATH in ~/.zshrc.
+   If Xcode's command line tools are missing, run xcode-select --install and wait while I finish the window it opens.
+   Download the repo into a Tellcut folder in my home folder, run npm run setup, then npm run doctor to confirm every item is ticked.
+   If anything fails, fix it and carry on. When everything is ready, tell me how to open Tellcut from now on.
+   ```
+
+6. **Open Tellcut**: from then on, run this in Terminal:
+
+   ```bash
+   cd ~/Tellcut
+   npm run server
+   ```
+
+   Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the Terminal window open while you work; closing it stops Tellcut.
+
+**Codex or another AI coding assistant can install it too**: give it the text from step 5. The agent inside Tellcut is always Claude Code, though, so you still need steps 2–3 (on a Mac, 3–4).
 
 ### Option 2: install it yourself
 
