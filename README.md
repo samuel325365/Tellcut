@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Windows-only-161412?style=for-the-badge&logo=windows&logoColor=white" alt="Windows only">
+  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS-0a84ff?style=for-the-badge&logo=windows&logoColor=white" alt="Windows · macOS">
   <img src="https://img.shields.io/badge/Node.js-24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 24">
   <img src="https://img.shields.io/badge/Agent-Claude%20Code-d97757?style=for-the-badge&logo=claude&logoColor=white" alt="Claude Code">
   <img src="https://img.shields.io/badge/UI-EN%20%C2%B7%20%E4%B8%AD%E6%96%87%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-d8b88a?style=for-the-badge" alt="English · 中文 · 日本語">
@@ -214,7 +214,7 @@ Each animation below is a sample film made with that preset; click one to see wh
 
 **You need**
 
-- **Windows 10 or 11** (64-bit; only Windows is supported for now)
+- **Windows 10 or 11** (64-bit), or a **Mac** (tested on macOS 26 with Apple silicon)
 - **A Claude account**: a Pro, Max, Team or Enterprise plan, or a Claude API account. The editing agent is Claude Code, running on your own account (see [Usage and cost](#usage-and-cost))
 - About **4 GB** of disk space and an internet connection (the first install downloads about 2 GB)
 
@@ -253,6 +253,8 @@ Claude Code is Claude in your terminal: it can download, install and run command
 
    Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the PowerShell window open while you work; closing it stops Tellcut.
 
+**On a Mac**: open **Terminal** instead of PowerShell and install Claude Code with `curl -fsSL https://claude.ai/install.sh | bash`. In the text of step 5, write "install it with Homebrew, following INSTALL.md › On a Mac" instead of "with winget". To open Tellcut later, run `cd ~/Tellcut` and `npm run server` in Terminal.
+
 **Codex or another AI coding assistant can install it too**: give it the text from step 5. The agent inside Tellcut is always Claude Code, though, so you still need steps 2–3.
 
 ### Option 2: install it yourself
@@ -265,6 +267,8 @@ Claude Code is Claude in your terminal: it can download, install and run command
    npm run setup     # downloads the tools and models Tellcut needs (10–20 minutes)
    npm run server    # then open http://127.0.0.1:5174/editor/ in your browser
    ```
+
+On a Mac, first install what [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) lists (Homebrew's `node@24`, Google Chrome and `ffmpeg-full`, and Xcode's command line tools), and open Terminal in the folder for step 3.
 
 The full walkthrough, with troubleshooting, is in **[INSTALL.md](INSTALL.md)**. If something isn't working, `npm run doctor` lists what's missing and how to fix it; or just tell Claude Code "Tellcut won't open, can you take a look?".
 
@@ -394,7 +398,7 @@ Under every reply you'll see how many tokens it used; the conversation total als
 
 ## Limitations
 
-- Windows only.
+- Windows and macOS only (no Linux).
 - The agent can't hear. You have to judge the balance of music and voices, and whether the voice-over sounds natural, by ear.
 - Local only: there's no cloud version, and two people can't edit the same project at once.
 

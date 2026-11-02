@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Windows-only-161412?style=for-the-badge&logo=windows&logoColor=white" alt="只支援 Windows">
+  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS-0a84ff?style=for-the-badge&logo=windows&logoColor=white" alt="Windows · macOS">
   <img src="https://img.shields.io/badge/Node.js-24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 24">
   <img src="https://img.shields.io/badge/Agent-Claude%20Code-d97757?style=for-the-badge&logo=claude&logoColor=white" alt="Claude Code">
   <img src="https://img.shields.io/badge/UI-EN%20%C2%B7%20%E4%B8%AD%E6%96%87%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-d8b88a?style=for-the-badge" alt="English · 中文 · 日本語">
@@ -214,7 +214,7 @@ Tellcut 把這些工作交給 Agent，決定權留在你手上。你說想要什
 
 **需要**
 
-- **Windows 10 或 11**（64 位元，目前只支援 Windows）
+- **Windows 10 或 11**（64 位元），或 **Mac**（在 macOS 26、Apple 晶片上測過）
 - **Claude 帳號**：Pro、Max、Team、Enterprise 方案或 Claude API 帳號都可以。剪片的 Agent 是 Claude Code，用的是你自己的帳號（見[用量與費用](#用量與費用)）
 - 約 **4 GB** 硬碟空間和網路（第一次安裝要下載約 2 GB）
 
@@ -253,6 +253,8 @@ Claude Code 是在終端機裡用的 Claude，能直接在你的電腦上下載�
 
    再用瀏覽器打開 <http://127.0.0.1:5174/editor/>。用的時候 PowerShell 視窗要開著，關掉 Tellcut 就停了。
 
+**用 Mac 的話**：改開「**終端機**」，不用 PowerShell；Claude Code 用 `curl -fsSL https://claude.ai/install.sh | bash` 安裝。第 5 步那段話裡的「install it with winget」改成「install it with Homebrew, following INSTALL.md › On a Mac」。之後要打開 Tellcut，在終端機跑 `cd ~/Tellcut` 和 `npm run server`。
+
 **用 Codex 或其他 AI 程式助手也能裝**：把第 5 步那段話貼給它就行。不過 Tellcut 裡剪片的 Agent 一定是 Claude Code，第 2～3 步還是要做。
 
 ### 方法二：自己裝
@@ -265,6 +267,8 @@ Claude Code 是在終端機裡用的 Claude，能直接在你的電腦上下載�
    npm run setup     # 自動下載需要的工具和模型（約 10～20 分鐘）
    npm run server    # 再用瀏覽器打開 http://127.0.0.1:5174/editor/
    ```
+
+用 Mac 的話，先裝好 [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) 列的東西（Homebrew 的 `node@24`、Google Chrome、`ffmpeg-full`，以及 Xcode 命令列工具），第 3 步改在終端機裡切到資料夾。
 
 完整步驟和疑難排解在 **[INSTALL.md](INSTALL.md)**（英文）。出問題時先跑 `npm run doctor`，它會列出哪裡沒裝好、怎麼修；也可以直接在 Claude Code 裡說「Tellcut 打不開，幫我看看」。
 
@@ -394,7 +398,7 @@ Tellcut 本身免費。Agent 用的是你自己的 Claude 登入，用量怎麼�
 
 ## 目前的限制
 
-- 只支援 Windows。
+- 只支援 Windows 與 macOS（沒有 Linux）。
 - Agent 聽不到聲音：配樂和人聲的大小、旁白念得自不自然，要你自己聽。
 - 只在本機用，沒有雲端版，也不能多人同時編輯同一個專案。
 
