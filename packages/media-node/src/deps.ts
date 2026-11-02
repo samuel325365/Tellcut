@@ -2,7 +2,7 @@
 // (TELLCUT_FFMPEG…), then tellcut/vendor/ (what `npm run setup` downloads), then the usual install folders, then PATH.
 // A missing program is an error that says how to get it, instead of a bare ENOENT from spawn.
 import { existsSync } from 'node:fs';
-import { delimiter, join } from 'node:path';
+import { join, posix } from 'node:path';
 import { TELLCUT_ROOT } from './paths.ts';
 
 export const VENDOR_DIR = join(TELLCUT_ROOT, 'vendor');
@@ -31,14 +31,16 @@ export class DepError extends Error {
 
 export interface LookupEnv { env: NodeJS.ProcessEnv; exists: (p: string) => boolean; vendorDir: string; platform: NodeJS.Platform }
 const live = (): LookupEnv => ({ env: process.env, exists: existsSync, vendorDir: VENDOR_DIR, platform: process.platform });
+/** paths are joined by the rules of `l.platform`, not of the machine running this (a test of macOS on Windows): Windows' as before */
+const joinFor = (l: LookupEnv) => (l.platform === 'win32' ? join : posix.join);
 
 /** The command on PATH: its full path, or null. */
 export function onPathDirs(cmd: string, l: LookupEnv): string | null {
   const exts = l.platform === 'win32' ? ['', ...(l.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').map((e) => e.toLowerCase())] : [''];
-  const pathVar = l.env.PATH ?? l.env.Path ?? '';
-  for (const d of pathVar.split(l.platform === 'win32' ? ';' : delimiter)) {
+  const pathVar = l.env.PATH ?? l.env.Path ?? '', at = joinFor(l);
+  for (const d of pathVar.split(l.platform === 'win32' ? ';' : ':')) {
     if (!d) continue;
-    for (const e of exts) { const p = join(d, cmd + e); if (l.exists(p)) return p; }
+    for (const e of exts) { const p = at(d, cmd + e); if (l.exists(p)) return p; }
   }
   return null;
 }
@@ -47,7 +49,7 @@ export function onPathDirs(cmd: string, l: LookupEnv): string | null {
 export function locate(spec: ExeSpec, l: LookupEnv = live()): { path: string; from: 'env' | 'vendor' | 'known' | 'path' } | null {
   const own = l.env[spec.env];
   if (own) return { path: own, from: 'env' };   // taken as given; a wrong one fails loudly when it runs
-  for (const v of spec.vendor ?? []) { const p = join(l.vendorDir, l.platform === 'win32' ? `${v}.exe` : v); if (l.exists(p)) return { path: p, from: 'vendor' }; }
+  for (const v of spec.vendor ?? []) { const p = joinFor(l)(l.vendorDir, l.platform === 'win32' ? `${v}.exe` : v); if (l.exists(p)) return { path: p, from: 'vendor' }; }
   for (const p of spec.known ?? []) if (l.exists(p)) return { path: p, from: 'known' };
   if (spec.path) { const p = onPathDirs(spec.path, l); if (p) return { path: p, from: 'path' }; }
   return null;
@@ -67,13 +69,14 @@ const FFMPEG_INSTALL = process.platform === 'darwin' ? '用 Homebrew 安裝含�
 const BREW = [...new Set([process.env.HOMEBREW_PREFIX, '/opt/homebrew', '/usr/local'].filter((d): d is string => !!d))];
 const ffmpegFull = (n: string) => (process.platform === 'darwin' ? BREW.map((d) => join(d, 'opt', 'ffmpeg-full', 'bin', n)) : []);
 
-export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: [join('ffmpeg', 'bin', 'ffmpeg')], known: ffmpegFull('ffmpeg'), path: 'ffmpeg', install: FFMPEG_INSTALL };
-export const FFPROBE: ExeSpec = { name: 'ffprobe', env: 'TELLCUT_FFPROBE', vendor: [join('ffmpeg', 'bin', 'ffprobe')], known: ffmpegFull('ffprobe'), path: 'ffprobe', install: FFMPEG_INSTALL };
-export const UV: ExeSpec = { name: 'uv', env: 'TELLCUT_UV', vendor: [join('uv', 'uv')], path: 'uv', install: '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/uv）' };
-const MAC_CHROME = join('Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome');
+// vendor candidates are written with / : Windows' join turns them into \ there, as it always did
+export const FFMPEG: ExeSpec = { name: 'ffmpeg', env: 'TELLCUT_FFMPEG', vendor: ['ffmpeg/bin/ffmpeg'], known: ffmpegFull('ffmpeg'), path: 'ffmpeg', install: FFMPEG_INSTALL };
+export const FFPROBE: ExeSpec = { name: 'ffprobe', env: 'TELLCUT_FFPROBE', vendor: ['ffmpeg/bin/ffprobe'], known: ffmpegFull('ffprobe'), path: 'ffprobe', install: FFMPEG_INSTALL };
+export const UV: ExeSpec = { name: 'uv', env: 'TELLCUT_UV', vendor: ['uv/uv'], path: 'uv', install: '在 tellcut/ 跑 npm run setup（會下載到 tellcut/vendor/uv）' };
+const MAC_CHROME = posix.join('Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome');
 export const chromeSpec = (l: LookupEnv = live()): ExeSpec => ({
   name: 'Google Chrome', env: 'TELLCUT_CHROME', path: undefined,
-  known: l.platform === 'darwin' ? ['/Applications', ...(l.env.HOME ? [join(l.env.HOME, 'Applications')] : [])].map((d) => join(d, MAC_CHROME))
+  known: l.platform === 'darwin' ? ['/Applications', ...(l.env.HOME ? [posix.join(l.env.HOME, 'Applications')] : [])].map((d) => posix.join(d, MAC_CHROME))
     : programFiles(l).map((d) => join(d, 'Google', 'Chrome', 'Application', 'chrome.exe')),
   install: '安裝 Google Chrome（https://www.google.com/chrome/）。匯出與檢查要用正式版 Chrome：Playwright 下載的 Chromium 不能播 H.264',
 });

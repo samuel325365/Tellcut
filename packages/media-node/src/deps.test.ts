@@ -29,13 +29,15 @@ test('Chrome is found in Program Files, Program Files (x86) or the user\'s own i
 });
 
 test('on macOS the vendored programs have no .exe and PATH is split on colons', () => {
-  const vendored = join('/t/tellcut/vendor', 'uv', 'uv'), brew = join('/opt/homebrew/bin', 'ffmpeg');
+  // macOS paths whatever system runs the test: the lookup joins them by the rules of the platform it is given
+  const vendored = '/t/tellcut/vendor/uv/uv', brew = '/opt/homebrew/bin/ffmpeg';
   expect(locate(UV, mac([vendored]))).toEqual({ path: vendored, from: 'vendor' });
   expect(locate(FFMPEG, mac([brew], { PATH: '/usr/bin:/opt/homebrew/bin' }))).toEqual({ path: brew, from: 'path' });
   // Homebrew's ffmpeg-full (with vid.stab) is keg-only: found in its own folder, ahead of the plain ffmpeg on PATH
-  const full = join('/opt/homebrew/opt/ffmpeg-full/bin', 'ffmpeg');
+  // (its folders are known only on a real Mac)
+  const full = '/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg';
   if (process.platform === 'darwin') expect(locate(FFMPEG, mac([brew, full], { PATH: '/opt/homebrew/bin' }))).toEqual({ path: full, from: 'known' });
-  expect(onPathDirs('claude', mac([join('/Users/u/.local/bin', 'claude.cmd')], { PATH: '/Users/u/.local/bin' }))).toBeNull();
+  expect(onPathDirs('claude', mac(['/Users/u/.local/bin/claude.cmd'], { PATH: '/Users/u/.local/bin' }))).toBeNull();
 });
 
 test('on macOS Chrome is found in /Applications or ~/Applications, never from PATH', () => {
