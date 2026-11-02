@@ -43,7 +43,7 @@
 
 ## Your phone is full of clips nobody edits
 
-<p align="center"><img src="docs/readme/wall.jpg" alt="2148 videos. 0 edited." width="100%"></p>
+<p align="center"><img src="docs/readme/wall.jpg" alt="Your phone is full of clips nobody edits." width="100%"></p>
 
 The trip, the birthday, the podcast you recorded last month: the footage is fine. What stops it from becoming a video is the editing: scrubbing through hours of clips, choosing shots, cutting, captioning, finding music.
 

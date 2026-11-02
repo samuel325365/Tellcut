@@ -13,7 +13,7 @@ Music: Tellcut's own score ("market-groove"). Voice-over: synthesised (Microsoft
 
 ## The stills under "Your phone is full of clips" and "What the agent does"
 
-`wall.jpg`, `watch.jpg`, `check.jpg` and `ratio.jpg` are frames of the full-length version of the demo video ("Tellcut in 3 Minutes"); its footage is credited above (the phone in `wall.jpg` shows frames of the Marrakesh and Rome vlogs, `ratio.jpg` the birthday video). In `watch.jpg` and `check.jpg` a line with a folder path is blurred. `beat.jpg` is a frame of the podcast example made from the Lila Rose podcast (credited under the editor screenshots below), on a blurred copy of itself.
+`wall.jpg`, `watch.jpg`, `check.jpg` and `ratio.jpg` are frames of the full-length version of the demo video ("Tellcut in 3 Minutes"); its footage is credited above (the phone in `wall.jpg` shows frames of the Marrakesh vlog, `ratio.jpg` the birthday video; `check.jpg` is the agent's report at the end of the Marrakesh recording). In `watch.jpg` a line with a folder path is blurred. `beat.jpg` is a frame of the podcast example made from the Lila Rose podcast (credited under the editor screenshots below), on a blurred copy of itself.
 
 ## The banner
 

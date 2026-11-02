@@ -43,7 +43,7 @@
 
 ## 手機裡的影片，大多沒有人剪
 
-<p align="center"><img src="docs/readme/wall.jpg" alt="2148 videos. 0 edited." width="100%"></p>
+<p align="center"><img src="docs/readme/wall.jpg" alt="手機裡塞滿了沒人剪的片段" width="100%"></p>
 
 出去玩、慶生、上個月錄的 Podcast，素材都拍好了，卡住的是剪：一段一段看、挑鏡頭、剪接、上字幕、找配樂。
 
