@@ -60,7 +60,8 @@ test('ingestFiles registers the same entries as a new project, with ids clear of
 
 test('expandInputs walks folders once, drops repeats and reports missing paths; other files in folders are counted, a named one kept', async () => {
   const clip = join(src, 'clip.mp4');
-  const r = await expandInputs([src, process.platform === 'win32' ? clip.toUpperCase() : clip, join(src, 'nope.mp4')]);
+  // the clip again in another case: one file on a case-insensitive disk (Windows, a Mac), missing on a case-sensitive one
+  const r = await expandInputs([src, process.platform === 'linux' ? clip : clip.toUpperCase(), join(src, 'nope.mp4')]);
   expect(r.files.filter((f) => f.toLowerCase() === clip.toLowerCase())).toHaveLength(1);
   expect(r.files.some((f) => f.endsWith('IMG_0001.HEIC'))).toBe(true);
   expect(r.files.some((f) => f.endsWith('notes.txt'))).toBe(false);

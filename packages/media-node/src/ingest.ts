@@ -1,6 +1,6 @@
 // A new project from folders, files and URLs (spec 2026-10-14 §4): every usable video, photo and music file, with what
 // each is (size, length, sound, when and where it was taken); HEIC photos and downloads go to <project>/media/.
-import { existsSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, statSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { basename, extname, join, relative, resolve, sep } from 'node:path';
 import { parseProject, type Project } from '@tellcut/engine';
@@ -55,8 +55,14 @@ export interface Skipped { path: string; code: 'import.notFound' | 'import.notMe
 export type ProjectSource = Project['sources'][string];
 export interface Ingested { sources: Record<string, ProjectSource>; music: Record<string, { path: string }>; skipped: Skipped[] }
 
-/** the same file named twice (a folder and a file in it, or in another case on Windows) counts once */
-export const samePath = (f: string) => (process.platform === 'win32' ? resolve(f).toLowerCase() : resolve(f));
+/** the same file named twice (a folder and a file in it, or in another case on Windows or a Mac) counts once */
+export const samePath = (f: string) => {
+  if (process.platform === 'win32') return resolve(f).toLowerCase();
+  // a Mac's disk ignores case too (APFS as formatted by default), so the key is the file as the disk spells it; lower-casing
+  // would also merge two files on a case-sensitive volume. A path that is not there stays as given.
+  if (process.platform === 'darwin') try { return realpathSync.native(resolve(f)); } catch { /* not there */ }
+  return resolve(f);
+};
 
 export interface Expanded {
   files: string[]; skipped: Skipped[];
