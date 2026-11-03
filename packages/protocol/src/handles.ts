@@ -109,6 +109,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'LOK-06': 'common.tone',
   'LOK-07': 'common.paper',
   'LOK-08': 'common.tabletop',
+  'LOK-09': 'common.leak',
   'MOM-01': 'common.mystery',
   'MOM-02': 'common.outro',
   'MOM-03': 'common.rolldoor',

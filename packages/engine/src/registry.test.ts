@@ -36,6 +36,22 @@ test('core.flash follows rise / hold / fall with a power curve', () => {
   expect((root.lastChild as HTMLElement).style.opacity).toBe('1');
 });
 
+test('core.flash fade: out covers the frame fully by the item end, in clears it, both eased; peak and keys do not count', () => {
+  const flash = createRegistry([corePlugin]).item('core.flash')!, root = document.createElement('div');
+  const ctx = (local: number, params: any): any => ({ t: local, local, dur: 4, item: { id: 'f', start: 0, end: 4, type: 'core.flash', params }, params, root, W: 10, H: 10 });
+  const out = { peak: 0.85, rise: 0, hold: 0, fall: 0.3, power: 1, color: '#000', keys: '0:0.2', fade: 'out' };
+  const st = flash.build(ctx(0, out)), op = () => parseFloat((root.lastChild as HTMLElement).style.opacity);
+  flash.draw(ctx(0, out), st); expect(op()).toBe(0);
+  flash.draw(ctx(1, out), st); expect(op()).toBeCloseTo(0.0625, 4);   // eased: slow at first
+  flash.draw(ctx(2, out), st); expect(op()).toBeCloseTo(0.5, 4);
+  flash.draw(ctx(4, out), st); expect(op()).toBe(1);
+  const fin = { ...out, fade: 'in' }, st2 = flash.build(ctx(0, fin));
+  flash.draw(ctx(0, fin), st2); expect(op()).toBe(1);
+  flash.draw(ctx(4, fin), st2); expect(op()).toBe(0);
+  const none = { ...out, keys: '', fade: 'none' }, st3 = flash.build(ctx(0, none));
+  flash.draw(ctx(0, none), st3); expect(op()).toBeCloseTo(0.85, 4);   // the flash as before
+});
+
 test('core.flash keys: parsed, sorted, junk dropped; blend sets the layer\'s blend mode', async () => {
   const { flashKeys, flashAt } = await import('./core.ts');
   const k = flashKeys('0.3:1, 0:0, x:2, 1');

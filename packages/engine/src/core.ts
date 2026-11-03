@@ -2,7 +2,7 @@ import type { ItemType, Plugin } from './plugin.ts';
 import { clamp, cssCamel, eIO3, h, lerp, prog } from './util.ts';
 import { textTypes } from './text.ts';
 
-interface FlashP { peak: number; rise: number; hold: number; fall: number; power: number; color: string; mode: 'flat' | 'bloom'; x: number; y: number; keys: string; blend: string }
+interface FlashP { peak: number; rise: number; hold: number; fall: number; power: number; color: string; mode: 'flat' | 'bloom'; x: number; y: number; keys: string; blend: string; fade: 'none' | 'in' | 'out' }
 
 /** "秒:不透明度, 秒:不透明度" as sorted [time, value] pairs (the bad ones dropped) */
 export function flashKeys(s: unknown): Array<[number, number]> {
@@ -18,12 +18,14 @@ export function flashAt(keys: Array<[number, number]>, t: number): number {
   return keys[keys.length - 1][1];
 }
 
-/** Full-frame colour flash: ramps up over `rise`, holds, then decays over `fall` (shape^power × peak), or follows `keys`.
+/** Full-frame colour flash: ramps up over `rise`, holds, then decays over `fall` (shape^power × peak), or follows `keys`; `fade` out /
+ *  in eases the colour fully on / off over the item's whole length instead (the films' ending fade to black, 2026-11-03: ten family
+ *  films each wrote the same fx.fade, not seeing a fade in a block named flash).
  *  mode bloom (uk-transit's light at the end of the tunnel): a glow spreading from (x, y) that grows with the same curve and,
  *  past 60 % of it, fills the whole frame. `blend` sets the layer's mix-blend-mode (screen: light, multiply: shade). */
 const flash: ItemType<FlashP, HTMLElement> = {
   type: 'core.flash', label: '閃白', kind: 'overlay',
-  doc: '整個畫面閃一下顏色（預設白）；重拍、轉場、拍照快門；keys「秒:不透明度」照關鍵影格變（淡入黑、淡出白、閃兩下）；mode bloom 是從一點（x, y）擴散的光暈，越來越大最後蓋滿（隧道盡頭的光、回憶、結尾）；blend 換混合方式（screen 只變亮）',
+  doc: '整個畫面閃一下顏色（預設白）；重拍、轉場、拍照快門；fade out 是片尾淡出：整個項目長度慢慢蓋滿顏色（color 給 #000 就是淡出到黑），fade in 是片頭從顏色淡入；keys「秒:不透明度」照關鍵影格變（淡入黑、淡出白、閃兩下）；mode bloom 是從一點（x, y）擴散的光暈，越來越大最後蓋滿（隧道盡頭的光、回憶、結尾）；blend 換混合方式（screen 只變亮）',
   params: [
     { key: 'peak', label: '最大不透明度', type: 'number', min: 0, max: 1, step: 0.05, default: 0.85 },
     { key: 'rise', label: '上升 (s)', type: 'number', min: 0, step: 0.05, default: 0 },
@@ -36,6 +38,7 @@ const flash: ItemType<FlashP, HTMLElement> = {
     { key: 'x', label: '光暈中心 x（畫面寬比例；bloom）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '光暈中心 y（畫面高比例；bloom）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'blend', label: '混合方式（normal 蓋上去、screen 只變亮、multiply 只變暗、overlay 疊加）', type: 'enum', options: ['normal', 'screen', 'multiply', 'overlay', 'soft-light'], default: 'normal' },
+    { key: 'fade', label: '淡入淡出（out 整個項目長度慢慢蓋滿顏色、in 從顏色慢慢淡開；不看最大不透明度、上升、停留、衰減、關鍵影格）', type: 'enum', options: ['none', 'in', 'out'], default: 'none' },
   ],
   build(ctx) {
     const el = h('div', null, null, ctx.root);
@@ -48,7 +51,8 @@ const flash: ItemType<FlashP, HTMLElement> = {
     const l = ctx.local, keys = flashKeys(ctx.params.keys);
     // the curve (0–1) and how strong it gets at its top: the keys' own values, else shape^power × peak
     let s: number, top: number;
-    if (keys.length) { top = clamp(Math.max(...keys.map((k) => k[1]))); s = top > 0 ? clamp(flashAt(keys, l)) / top : 0; }
+    if (ctx.params.fade === 'in' || ctx.params.fade === 'out') { const p = eIO3(prog(l, 0, ctx.dur)); s = ctx.params.fade === 'out' ? p : 1 - p; top = 1; }
+    else if (keys.length) { top =clamp(Math.max(...keys.map((k) => k[1]))); s = top > 0 ? clamp(flashAt(keys, l)) / top : 0; }
     else { const shape = rise > 0 && l < rise ? prog(l, 0, rise) : l < rise + hold ? 1 : 1 - prog(l, rise + hold, rise + hold + fall); s = Math.pow(shape, power); top = peak; }
     if (ctx.params.mode !== 'bloom') { cssCamel(el, { opacity: String(top * s) }); return; }
     // bloom: the glow's middle and its radius grow with the curve; past 60 % a flat layer fills the frame

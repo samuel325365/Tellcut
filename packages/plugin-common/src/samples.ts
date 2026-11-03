@@ -550,4 +550,9 @@ export const samples: Sample[] = [
   { name: 'header-shade', type: 'common.header', params: { look: 'kicker', text: '這件事【到底】怎麼了？', kicker: '節目名｜第 3 集', shade: 0.82 }, at: [1.5], bg: '#e9e4da' },
   { name: 'headline-roll', type: 'common.headline', params: { text: '一層一層擀開', sub: '', bg: 'none', rules: false, enter: 'roll' }, at: [0.7, 2.2], bg: '#6b5a48' },
   { name: 'headline-strike', type: 'common.headline', params: { text: '不加人工色素', sub: '第三件事', strikeFrom: 2, strikeAt: 0.6 }, at: [1.1, 2.4], bg: '#6b5a48' },
+  // common.leak (2026-11-03, the Egypt photo films' fx.leak / fx.lightleak / fx.glow): the sweep from the top right, a still sun; core.flash fade out
+  { name: 'leak', type: 'common.leak', len: 3, at: [0.8, 1.5, 2.2], bg: '#4d5866' },
+  { name: 'leak-still', type: 'common.leak', params: { travel: 0 }, len: 3, at: [1.5], bg: '#4d5866' },
+  { name: 'wide-leak', type: 'common.leak', params: { from: 'l' }, len: 3, at: [1.5], wide: true, bg: '#4d5866' },
+  { name: 'core-flash-fade', type: 'core.flash', params: { fade: 'out', color: '#000' }, len: 3, at: [0.75, 1.5, 2.25], bg: '#c9803c' },
 ];
