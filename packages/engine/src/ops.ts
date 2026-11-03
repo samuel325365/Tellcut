@@ -34,7 +34,8 @@ export function runOps(d: Project, ops: Op[]) {
   };
   ops.forEach((o, i) => {
     const { op, as, ...raw } = o as Op & { as?: string };
-    const fn = OPS[op];
+    // own keys only: constructor, toString or __proto__ are the object's, not commands
+    const fn = Object.hasOwn(OPS, op) ? OPS[op] : undefined;
     if (!fn) throw new OpError(i, op, `沒有這個指令（可用：${Object.keys(OPS).join('、')}）`);
     const a: any = { ...raw };
     for (const k of ID_KEYS) if (k in a) a[k] = name(a[k], i, op);

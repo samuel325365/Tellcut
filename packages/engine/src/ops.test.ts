@@ -33,6 +33,8 @@ test('errors name the op and its place, and leave the project untouched', () => 
   const p = fixture();
   expect(() => applyOps(p, [{ op: 'trimEnd', id: 'c1', dt: -1 }, { op: 'trimEnd', id: 'zz', dt: 1 }])).toThrow('第 2 條（trimEnd）：No item "zz"');
   expect(() => applyOps(p, [{ op: 'explode' }])).toThrow(/第 1 條（explode）：沒有這個指令/);
+  // the object's own names are not commands either
+  for (const op of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) expect(() => applyOps(p, [{ op }])).toThrow(new RegExp(`（${op}）：沒有這個指令`));
   expect(() => applyOps(p, [{ op: 'moveItems', ids: ['$nope'], dt: 1 }])).toThrow(/\$nope/);
   expect(() => applyOps(p, [{ op: 'updateItem', id: 'c1', patch: { speed: -3 } }])).toThrow(OpError);
   expect(item(p, 'c1').end).toBe(4);
