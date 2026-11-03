@@ -67,7 +67,7 @@ Your work itself (the whole of `projects/` is outside Tellcut's git). To back it
 Generated:
 
 - `media/`: imported or generated footage (downloaded videos, voice-over, score; `media/brand/` holds the logo and website screenshot from `logo` / `site`, `media/images/` the pictures `image` copied in from outside the project). Voice-over and score can be remade (voice-over needs the internet); URL downloads need the internet to fetch again; imported music is gone if deleted.
-- `cache/` (can be deleted and remade): footage analysis (proxies, thumbnails, transcripts, burned-in text detection), the pieces trimmed before export (and the sound levels `common.audiogram` reads, `cache/peaks/`), check's contact sheets (`cache/check/`).
+- `cache/` (can be deleted and remade): footage analysis (proxies, thumbnails, transcripts, burned-in text detection), the pieces trimmed before export (and the sound levels `common.audiogram` reads, `cache/peaks/`, and copies of the music, `cache/music/`, so music kept outside the project exports too), check's contact sheets (`cache/check/`).
 - `exports/`: exported videos and their logs (from the editor and the command line); `output/`: `frames` (`output/frames/`) and the single frames of `--stills` (`output/stills/`).
 - `.history/`: old versions, proposals, "Ask Agent…" requests, chat logs.
 

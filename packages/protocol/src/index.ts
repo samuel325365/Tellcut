@@ -84,6 +84,8 @@ export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
 export interface JobInfo {
   id: string; kind: string; project: string; label: string; status: JobStatus; progress: number; message: string; log: string[];
   result?: unknown; error?: string; created: number; started?: number; finished?: number;
+  /** a failure the editor words in its language (err.<code>), and each effect file's own one when the project's effects did not load */
+  code?: string; params?: Record<string, string | number>; issues?: Array<{ path: string; message: string; code?: string; params?: Record<string, string | number> }>;
 }
 export const isTerminal = (s: JobStatus) => s === 'done' || s === 'failed' || s === 'cancelled';
 
