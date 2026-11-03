@@ -54,11 +54,11 @@ export function createHttp(o: HttpOptions): Http {
     const headers = new Headers(init.headers);
     headers.set('User-Agent', userAgent(o.contact));
     try { return await doFetch(url, { ...init, headers, signal: AbortSignal.timeout(timeout) }); }
-    catch (e) {
-      const err = e as Error;
-      throw fail('temporary', err.name === 'TimeoutError' ? `逾時（${Math.round(timeout / 1000)} 秒）` : `連不上（${err.message}）`);
-    }
+    catch (e) { throw cutOff(e as Error, timeout, '連不上'); }
   }
+  /** a fetch, or the reading of its answer, that failed on the way: the time ran out or the connection dropped (try later) */
+  const cutOff = (err: Error, timeout: number, what: string) =>
+    fail('temporary', err?.name === 'TimeoutError' ? `逾時（${Math.round(timeout / 1000)} 秒）` : `${what}（${err?.message ?? err}）`);
   /** A status that is not 2xx, as the error it means (its body is read: a 403 web page is a bot check even when a key was sent).
    *  Other 4xx are about this request (a query the source refuses), never a reason to hide the source (review M-4). */
   async function statusError(r: Response, notFound: SourceError['kind']): Promise<SourceError> {
@@ -80,10 +80,14 @@ export function createHttp(o: HttpOptions): Http {
       if (ttl > 0 && existsSync(cached)) {
         try { const c = JSON.parse(readFileSync(cached, 'utf8')) as { at: number; body: T }; if (now() - c.at < ttl * 1000) return c.body; } catch { /* torn: fetch again */ }
       }
-      const r = await request(url, { method, headers: { Accept: 'application/json', ...(q.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...q.headers }, body: q.body !== undefined ? JSON.stringify(q.body) : undefined }, o.timeoutMs ?? 20_000);
+      const timeout = o.timeoutMs ?? 20_000;
+      const r = await request(url, { method, headers: { Accept: 'application/json', ...(q.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...q.headers }, body: q.body !== undefined ? JSON.stringify(q.body) : undefined }, timeout);
       // acceptStatus: an answer the caller reads itself (OSRM says NoRoute with HTTP 400)
       if (!r.ok && !q.acceptStatus?.includes(r.status)) throw await statusError(r, q.notFound ?? 'broken');
-      const text = await r.text();
+      // the body streams after the headers: a connection dropped or the timeout reached while reading it is as temporary as one
+      // before (it was a bare TypeError, which the health check recorded as a broken source)
+      let text: string;
+      try { text = await r.text(); } catch (e) { throw cutOff(e as Error, timeout, '回應讀到一半中斷'); }
       if (looksHtml(r.headers.get('content-type') ?? '', text)) throw fail('temporary', '被人機驗證擋下或在維護（回的是網頁，不是資料）');
       let body: T;
       try { body = JSON.parse(text); } catch { throw fail('broken', '回應格式看不懂'); }

@@ -53,6 +53,14 @@ test('no connection is temporary', async () => {
   await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'temporary', message: expect.stringContaining('連不上') });
 });
 
+test('a JSON answer cut off while its body is read is temporary, and a timeout then says so', async () => {
+  const cut = (err: Error) => () => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"query":')); c.error(err); } }), { headers: { 'content-type': 'application/json' } });
+  replies.push(cut(new TypeError('terminated')));
+  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ name: 'SourceError', kind: 'temporary', message: expect.stringContaining('terminated') });
+  replies = [cut(new DOMException('The operation timed out.', 'TimeoutError'))];
+  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ name: 'SourceError', kind: 'temporary', message: expect.stringContaining('逾時') });
+});
+
 test('403 without a key is temporary, with a key broken', async () => {
   reply(403, '{}');
   await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'temporary' });
