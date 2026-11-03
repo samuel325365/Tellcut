@@ -1,10 +1,12 @@
 # Generated test photos for Tellcut (never real footage). The stored pixels are left half red, right half blue,
 # so an orientation mistake shows: with Orientation=6 the upright picture is red on top, blue at the bottom.
-#   jpg  <out> <w> <h> <orientation> <taken "YYYY:MM:DD HH:MM:SS" | -> [lat lon] [offset=+08:00]
+#   jpg  <out> <w> <h> <orientation> <taken "YYYY:MM:DD HH:MM:SS" | -> [lat lon | nofix] [offset=+08:00]
+#        (taken is written as given, any text; nofix: GPS of 0/0 rationals, as a camera without a fix writes it)
 #   heic <out> <w> <h> <taken | ->
 import sys
 
 from PIL import Image
+from PIL.TiffImagePlugin import IFDRational
 from pillow_heif import register_heif_opener
 
 register_heif_opener()
@@ -16,7 +18,7 @@ def _img(w, h):
     return im
 
 
-def _exif(im, orientation, taken, lat=None, lon=None, offset=None):
+def _exif(im, orientation, taken, lat=None, lon=None, offset=None, nofix=False):
     exif = im.getexif()
     exif[274] = orientation
     if taken != '-':
@@ -24,6 +26,9 @@ def _exif(im, orientation, taken, lat=None, lon=None, offset=None):
         exif[0x8769] = {36867: taken, **({36881: offset} if offset else {})}
     if lat is not None:
         exif[0x8825] = {1: 'N' if lat >= 0 else 'S', 2: (abs(lat), 0.0, 0.0), 3: 'E' if lon >= 0 else 'W', 4: (abs(lon), 0.0, 0.0)}
+    if nofix:
+        z = IFDRational(0, 0)
+        exif[0x8825] = {1: 'N', 2: (z, z, z), 3: 'E', 4: (z, z, z)}
     return exif
 
 
@@ -33,10 +38,10 @@ if __name__ == '__main__':
         orientation, taken = int(sys.argv[5]), sys.argv[6]
         rest = sys.argv[7:]
         offset = next((a.split('=', 1)[1] for a in rest if a.startswith('offset=')), None)
-        nums = [float(a) for a in rest if not a.startswith('offset=')]
+        nums = [float(a) for a in rest if not a.startswith('offset=') and a != 'nofix']
         gps = (nums[0], nums[1]) if len(nums) == 2 else (None, None)
         im = _img(w, h)
-        im.save(out, 'JPEG', quality=90, exif=_exif(im, orientation, taken, *gps, offset=offset).tobytes())
+        im.save(out, 'JPEG', quality=90, exif=_exif(im, orientation, taken, *gps, offset=offset, nofix='nofix' in rest).tobytes())
     else:
         taken = sys.argv[5]
         im = _img(w, h)
