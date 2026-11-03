@@ -34,19 +34,40 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
   const debounce = (f: () => void) => { let t: NodeJS.Timeout | undefined; return () => { clearTimeout(t); t = setTimeout(f, 100); }; };
 
   function stopWatch(x: Room) { clearTimeout(x.retry); x.retry = undefined; for (const w of x.watchers) w.close(); x.watchers = []; }
+  /** watching again after a wait (doubled each failure in a row) while an editor is still open */
+  function retryLater(id: string, x: Room) {
+    stopWatch(x);
+    const wait = Math.min(RETRY_MAX, RETRY_MS * 2 ** x.fails++);
+    x.retry = setTimeout(() => {
+      x.retry = undefined;
+      if (rooms.get(id) !== x || !x.clients.size) return;
+      try { startWatch(id); } catch { /* the project is gone: nothing to watch; its editors are told on their next request */ }
+    }, wait);
+  }
+  /** throws when a watcher cannot be made: the ones made before it are closed first (left open, nobody stopped them and their
+   *  later 'error' ended the server) */
   function startWatch(id: string) {
     const dir = store.dir(id), pdir = proposalsDir(dir), x = room(id);
     mkdirSync(pdir, { recursive: true });
     stopWatch(x);
+    try { watchAll(id, dir, pdir, x); } catch (e) { stopWatch(x); throw e; }
+  }
+  function watchAll(id: string, dir: string, pdir: string, x: Room) {
+    // a watcher that fails (its folder gone from under it, a network drive dropping) would throw an 'error' nobody listens to, and
+    // that ends the server: this project's watching stops instead, and starts again after a wait while an editor is still open
+    // (it never did: only a first client started it). Not seen on Windows 11 with rd or rmSync, which end it quietly. Each one
+    // listens from the moment it is made; one restart for all of this start's watchers
+    const mine = x.watchers;
+    const add = (w: FSWatcher) => { mine.push(w); w.on('error', () => { if (x.watchers === mine) retryLater(id, x); }); };
     let last = JSON.stringify(readProposal(dir));
-    x.watchers.push(watch(pdir, debounce(() => {
+    add(watch(pdir, debounce(() => {
       const now = JSON.stringify(readProposal(dir));
       if (now !== last) { last = now; push(id, { type: 'proposal', proposal: JSON.parse(now) }); }
     })));
     // the project's own fx modules too: an fx edited without touching project.json left the open preview drawing the old one; also
     // a copy of My blocks (fx/lib/<slug>/…, put in place by renaming its folder: the event names the folder) and links.json, written
     // after every copy or Update, so the other tabs load it too (a copy's temporary .<slug>.tmp-… folder is left out)
-    x.watchers.push(watch(dir, { recursive: true }, (_e, f) => {
+    add(watch(dir, { recursive: true }, (_e, f) => {
       const name = String(f ?? '').replace(/\\/g, '/');
       if (name === 'project.json') onProject();
       else if (/^fx\/[^/]+\.m?js$/.test(name) || /^fx\/lib\/(?:links\.json|[a-z0-9][a-z0-9-]*(?:\/.*)?)$/.test(name)) onFx();
@@ -60,27 +81,14 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
       try { h = projectHash(readFileSync(join(dir, 'project.json'), 'utf8')); } catch { return; }
       if (h !== store.lastHash.get(id)) { store.lastHash.set(id, h); push(id, { type: 'changed-on-disk' }); }
     });
-    // a watcher that fails (its folder gone from under it, a network drive dropping) would throw an 'error' nobody listens to, and
-    // that ends the server: this project's watching stops instead, and starts again after a wait while an editor is still open
-    // (it never did: only a first client started it). Not seen on Windows 11 with rd or rmSync, which end it quietly
-    const mine = x.watchers;
-    for (const w of mine) w.on('error', () => {
-      if (x.watchers !== mine) return;   // one restart for all of this start's watchers
-      stopWatch(x);
-      const wait = Math.min(RETRY_MAX, RETRY_MS * 2 ** x.fails++);
-      x.retry = setTimeout(() => {
-        x.retry = undefined;
-        if (rooms.get(id) !== x || !x.clients.size) return;
-        try { startWatch(id); } catch { /* the project is gone: nothing to watch; its editors are told on their next request */ }
-      }, wait);
-    });
   }
 
   r.get('/api/projects/:id/events', (req, res, { id }) => {
     const dir = store.dir(id), x = room(id);
     if (!store.lastHash.has(id)) store.lastHash.set(id, projectHash(readFileSync(join(dir, 'project.json'), 'utf8')));
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
-    if (!x.clients.size) { x.fails = 0; startWatch(id); }
+    // a watcher that cannot be made now (the stream is already open): the editor is served all the same and watching tries again
+    if (!x.clients.size) { x.fails = 0; try { startWatch(id); } catch { retryLater(id, x); } }
     x.clients.add(res);
     const client = new URL(req.url ?? '', 'http://x').searchParams.get('client');
     if (client && CLIENT_ID.test(client)) x.ids.set(res, client);
