@@ -92,6 +92,27 @@ test('music analysed after the editor opened: its tempo arrives once the beats j
   expect(early).toBe(0);
 });
 
+test('a basic analysis that failed (before, or while the editor waits) is listed and not loaded; Analyse again asks the server to retry it', async () => {
+  const asked: any[] = [], loaded: string[] = [];
+  let round = 0;
+  const { api, bridge } = fakes({
+    // first open: the server remembers a failure; the retry queues it again, and that job fails too; the third time it works
+    analyze: async (_id: string, o?: { retry?: boolean }) => { asked.push(o ?? {}); round++;
+      return round === 1 ? { jobs: [], missing: [], extras: [], failed: ['s'] } : { jobs: [{ id: `j${round}`, label: 's' }], missing: [], extras: [], failed: [] }; },
+    waitJob: async (id: string) => (id === 'j2' ? 'failed' : 'done'),
+    thumbs: async (_: string, src: string) => { if (src === 's') loaded.push(src); return { interval: 1, width: 160, height: 90, cols: 10, count: 30, url: `/t/${src}` }; },
+    peaks: async () => ({ rate: 100, peaks: [0.5] }),
+  });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  await vi.runAllTimersAsync();
+  expect([ed.store.get().analysisFailed, loaded, asked]).toEqual([['s'], [], [{}]]);   // a 409 not asked for
+  await ed.retryAnalysis();
+  expect([ed.store.get().analysisFailed, loaded, ed.store.get().analyzing, asked.at(-1)]).toEqual([['s'], [], 0, { retry: true }]);
+  await ed.retryAnalysis();
+  expect([ed.store.get().analysisFailed, loaded, ed.store.get().thumbs.s?.url]).toEqual([[], ['s'], '/t/s']);
+});
+
 test('adding a crop keyframe at the playhead enters crop mode on it; deleting it leaves crop mode', async () => {
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge });

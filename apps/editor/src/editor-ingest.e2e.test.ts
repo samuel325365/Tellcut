@@ -1,10 +1,11 @@
-// End-to-end: folder → npm run new (createProject) → first cut (Cut) → editor (photo, title, speech captions, beat grid) → export.
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+// End-to-end: folder → npm run new (createProject) → first cut (Cut) → editor (photo, title, speech captions, beat grid) → export;
+// the media panel's Import, and footage whose analysis failed.
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { chromePath, TELLCUT_ROOT, createProject, makeClicks, makePhoneVideo, makePhoto, makeTalkingVideo, probeDuration } from '@tellcut/media-node';
 import { Cut } from '../../../tools/cut/cut.ts';
-import { sse, startApp } from '../../server/src/test-utils.ts';
+import { demoProject, makeSource, sse, startApp } from '../../server/src/test-utils.ts';
 
 const CHROME = chromePath();
 const root = join(TELLCUT_ROOT, 'projects/_e2e10'), src = join(root, '_src');
@@ -77,4 +78,27 @@ test('Import in the media panel adds footage and music that analyse in the backg
   await page.reload();
   await page.waitForSelector('[data-player="ready"]', { timeout: 60000 });
   expect(await page.locator('[data-add-music="beat"]').count()).toBe(1);
+}, 300000);
+
+test('footage whose analysis failed says so in the media panel, is not run again on a reload, and Analyse again tries it once more', async () => {
+  const dir = join(root, 'broken'), file = join(dir, 'src.mp4');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(file, 'not a video');
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(demoProject(), null, 2));
+  const analyses = async () => (await (await fetch(`${base}/api/jobs`)).json()).filter((j: any) => j.kind === 'analyze' && j.project === 'broken');
+  const failed = page.locator('[data-analysis-failed="s1"]');
+  await page.goto(`${base}/editor/?id=broken`);
+  await poll(() => failed.count(), 60000).toBe(1);
+  expect(await failed.textContent()).toContain('這段素材分析失敗了');
+  await page.reload();
+  await poll(() => failed.count(), 30000).toBe(1);
+  expect((await analyses()).length).toBe(1);                 // remembered: the reload did not run it again
+  await failed.locator('[data-retry-analysis]').click();
+  await poll(async () => (await analyses()).filter((j: any) => j.status === 'failed').length, 60000).toBe(2);
+  await poll(() => failed.count(), 30000).toBe(1);           // the same file fails the same way
+  rmSync(file);
+  await makeSource(file);
+  await failed.locator('[data-retry-analysis]').click();
+  await poll(() => page.locator('[data-add-source="s1"] .seg-thumb').count(), 120000).toBeGreaterThan(0);
+  expect(await failed.count()).toBe(0);
 }, 300000);

@@ -230,3 +230,24 @@ test('the search box hint follows the UI language, one per page', async () => {
     expect(root.querySelector<HTMLInputElement>('[data-lib-search]')!.placeholder).toBe('エフェクトを検索');
   } finally { setLang('zh'); }
 });
+
+test('a source whose analysis failed says so in the UI language, with an English Analyse again that asks for it again', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const store = createStore({ ...initialState('t'), project: fixture(), analysisFailed: ['s'] });
+  let retried = 0;
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, retryAnalysis: async () => { retried++; } };
+  const root = document.createElement('div');
+  setLang('ja');
+  try {
+    await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+    const row = root.querySelector<HTMLElement>('[data-analysis-failed="s"]')!;
+    expect(row.textContent).toContain('この素材は解析できませんでした');
+    const again = row.querySelector<HTMLButtonElement>('[data-retry-analysis]')!;
+    expect(again.textContent).toBe('Analyse again');
+    await act(() => { again.click(); });
+    expect(retried).toBe(1);
+    store.set({ analysisFailed: [] });
+    await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+    expect(root.querySelector('[data-analysis-failed]')).toBeNull();
+  } finally { setLang('zh'); }
+});

@@ -34,6 +34,8 @@ export interface EditorState {
   peaks: Record<string, PeakInfo>;
   offline: string[];
   analyzing: number;
+  /** sources whose basic analysis failed (the server does not try one again until its file changes or the user asks) */
+  analysisFailed: string[];
   /** why the last edit was refused (shown in the properties panel) */
   notice: string;
   /** the media panel's Import while it runs: files looked at so far */
@@ -95,7 +97,7 @@ export interface LibraryState { index: LibraryIndex | null; project: ProjectLibr
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
-  thumbs: {}, peaks: {}, offline: [], analyzing: 0, notice: '', importing: null, importNote: '', crop: null, cuts: {}, titles: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
+  thumbs: {}, peaks: {}, offline: [], analyzing: 0, analysisFailed: [], notice: '', importing: null, importNote: '', crop: null, cuts: {}, titles: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
   library: { index: null, project: null, saving: null, toast: null },
   presetSave: { drafting: false, draft: null, poster: null, toast: null },
 });

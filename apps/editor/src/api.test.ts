@@ -33,6 +33,14 @@ test('export calls: start posts an empty range, cancel deletes the job, file lin
   expect(fileUrl('de mo', 'exports/婚禮 1.mp4')).toBe('/api/projects/de%20mo/files/exports/%E5%A9%9A%E7%A6%AE%201.mp4');
 });
 
+test('analyze asks the server to try failed analyses again only when told to (retry=1)', async () => {
+  const calls: Array<[string, string | undefined]> = [];
+  vi.stubGlobal('fetch', async (u: string, init?: RequestInit) => { calls.push([u, init?.method]); return json(202, { jobs: [], missing: [], extras: [], failed: [] }); });
+  await api.analyze('de mo');
+  await api.analyze('de mo', { retry: true });
+  expect(calls).toEqual([['/api/projects/de%20mo/analyze', 'POST'], ['/api/projects/de%20mo/analyze?retry=1', 'POST']]);
+});
+
 test('a save carries the version the project was read at (If-Match) and then the one it wrote; forgetVersion drops it', async () => {
   const sent: Array<string | null> = [];
   let tag = '"v1"';

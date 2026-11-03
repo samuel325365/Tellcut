@@ -127,6 +127,8 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .library h4 { margin: 10px 0 6px; color: var(--dim); font-size: 12px; }
 .library .lib-note { margin: 0 0 8px; color: var(--dim); font-size: 11px; line-height: 1.4; }
 .library .src { margin-bottom: 8px; } .library .src-name { margin-bottom: 4px; } .library .src-name small { color: var(--dim); }
+.library .src-failed { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; color: var(--off); }
+.library .src-failed button { flex: none; padding: 0 6px; font-size: 10px; }
 .library .segs { display: flex; flex-wrap: wrap; gap: 4px; } .library .segs button, .library .lib-item { padding: 2px 6px; font-size: 11px; }
 .library .lib-item { display: block; width: 100%; text-align: left; margin: 2px 0; }
 .preview { position: relative; }

@@ -105,6 +105,9 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const source = (id: string) => { const src = p.sources[id], title = s.titles[id]; return (
     <div class={`src${lit.has(id) ? ' lit' : ''}`} data-src={id} key={id}>
       <div class="src-name" {...(title ? { 'data-tip': id } : {})}>{title ?? id} <small>{src.kind === 'image' ? 'Photo' : formatTime(src.duration)}{s.offline.includes(id) ? ` · ${t('ed.libOffline')}` : ''}</small></div>
+      {/* its basic analysis failed: no thumbnails or scenes, and the server does not try it again until asked (or the file changes) */}
+      {s.analysisFailed.includes(id) && <div class="src-failed" data-analysis-failed={id}><span>{t('ed.libAnalysisFailed')}</span>
+        <button data-retry-analysis={id} {...tip(t('ed.libRetryTip'))} onClick={() => void editor.retryAnalysis()}>{t('ed.libRetryAnalysis', {}, 'en')}</button></div>}
       <div class="segs">{src.kind === 'image' ? (() => {
         // a photo: one entry (spec 2026-10-14 §5)
         const info = s.thumbs[id], tile = info && thumbAt(info, 0, 18);

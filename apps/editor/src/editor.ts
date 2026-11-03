@@ -978,6 +978,8 @@ export class Editor {
   private resumeExport() { return this.exportsCtl.resume(); }
   /** Requests source analysis and loads thumbnails/peaks as they become available. */
   analyze(only?: string[]) { return analyzeProject({ id: this.id, api: this.deps.api, store: this.store }, only); }
+  /** The sources whose analysis failed, analysed again (the server forgets every failure it remembers for this project's files). */
+  retryAnalysis() { const ids = this.s.analysisFailed; return ids.length ? analyzeProject({ id: this.id, api: this.deps.api, store: this.store }, ids, { retry: true }) : Promise.resolve(); }
 
   /** imported sources and music whose save was held (the changed-on-disk bar): analysed once a save goes through */
   private waitingAnalysis: string[] = [];
