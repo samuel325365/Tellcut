@@ -221,3 +221,17 @@ test('F (the large preview) and other view keys do not end an audition; adding a
   await vi.advanceTimersByTimeAsync(2000);
   expect([ed.store.get().project!.meta.duration, (saved.at(-1) as any).meta.duration]).toEqual([20, 20]);
 });
+
+test('a reload during an audition or in crop mode ends them: no banner left that End can no longer clear', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  expect(ed.audition({ kind: 'clip', source: 's', from: 1, len: 2 })).toBe(true);
+  await ed.reload(() => true);
+  expect(ed.store.get().audition).toBe(null);
+  ed.select(['c1']);
+  ed.enterCrop('from');
+  expect(ed.store.get().crop).not.toBe(null);
+  await ed.reload(() => true);
+  expect(ed.store.get().crop).toBe(null);
+});

@@ -157,7 +157,10 @@ export class Editor {
       const p = parseProject(await this.deps.api.project(this.id));
       await this.loadRegistry(p);
       this.fitted = false;
+      // an audition or crop mode of the version before a reload has nothing to end on in the new one: its banner would stay
       this.aud = null;
+      this.set({ audition: null });
+      this.exitCrop();
       this.history = new History(p);
       this.autosave?.dispose();   // a reload: the previous session's unsaved edit must not be written over the reloaded project
       // a 409: another tab or Claude wrote a newer version first; this one's edits wait like after any outside change
