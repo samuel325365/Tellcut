@@ -36,3 +36,13 @@ test('one readable city among typos still draws it', () => {
   frameAt({ cities: '巴黎|PARIS|2.35|48.85, 克拉科夫|KRAKÓW|abc|50.06', from: 0, to: 1 }, 0.6);
   expect(calls).toContain('fill');
 });
+
+test('ready loads the mono face the stop numbers are drawn in (2026-11-03)', async () => {
+  const loads: string[] = [], was = Object.getOwnPropertyDescriptor(document, 'fonts');
+  Object.defineProperty(document, 'fonts', { configurable: true, value: { load: async (f: string) => { loads.push(f); return []; } } });
+  try {
+    const s = mapjump.build({ params: { mono: 'Space Mono' }, root: document.createElement('div') } as any);
+    await mapjump.ready!(s);
+  } finally { was ? Object.defineProperty(document, 'fonts', was) : delete (document as any).fonts; }
+  expect(loads).toEqual(["700 30px 'Space Mono'", "700 30px 'JetBrains Mono'"]);
+});

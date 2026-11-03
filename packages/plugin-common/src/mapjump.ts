@@ -13,7 +13,7 @@ interface P {
   mode: 'leg' | 'all'; cities: string; from: number; to: number; kicker: string; title: string; latin: string; dates: string; arrive: number; step: number;
   font: string; mono: string; paper: string; ink: string; accent: string; muted: string; land: boolean;
 }
-interface S { bg: HTMLElement; cv: HTMLCanvasElement; head: HTMLElement; kick: HTMLElement; title: HTMLElement; latin: HTMLElement; dates: HTMLElement; labs: HTMLElement[]; marks: HTMLElement[]; key: string }
+interface S { bg: HTMLElement; cv: HTMLCanvasElement; head: HTMLElement; kick: HTMLElement; title: HTMLElement; latin: HTMLElement; dates: HTMLElement; labs: HTMLElement[]; marks: HTMLElement[]; key: string; mono: string }
 
 /** where things go: u (1 = a 1080-wide 9:16 frame), the heading's top, the map box (keeps the original 820:690 shape) and the dates' top */
 export function mapLayout(W: number, H: number, safe: { top: number; bottom: number; side: number }) {
@@ -55,7 +55,12 @@ export const mapjump: ItemType<P, S> = {
     cssCamel(cv, { left: '0', top: '0', width: '100%', height: '100%' });
     cssCamel(head, { left: '0', width: '100%', textAlign: 'center', transformOrigin: '50% 50%' });
     cssCamel(dates, { left: '0', width: '100%', textAlign: 'center', whiteSpace: 'pre', lineHeight: '1', fontWeight: '700' });
-    return { bg, cv, head, kick: line(), title: line(), latin: line(), dates, labs: [], marks: [], key: '' };
+    return { bg, cv, head, kick: line(), title: line(), latin: line(), dates, labs: [], marks: [], key: '', mono: ctx.params.mono };
+  },
+  // the stop numbers are drawn on the canvas in the mono face, which nothing in the DOM loads before the first frame
+  async ready(s) {
+    const fonts = typeof document !== 'undefined' ? (document as Document & { fonts?: FontFaceSet }).fonts : undefined;
+    if (fonts) await Promise.all([...new Set([s.mono, 'JetBrains Mono'])].map((f) => fonts.load(`700 30px '${f}'`, '0123456789').catch(() => [])));
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
