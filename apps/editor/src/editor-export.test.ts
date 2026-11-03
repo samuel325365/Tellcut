@@ -43,6 +43,12 @@ test('a refused export (one already running) and a failed save show why, and not
   await ed2.exportVideo();
   expect(started).toEqual([]);
   expect(ed2.store.get().exportError).toMatch(/^存檔失敗，無法輸出/);
+  // a refusal with a code is worded in the page's language
+  const coded = fakes({ exportStart: async () => { throw new ApiError(500, 'raw', [], 'fx.loadFailed', { error: 'boom' }); } });
+  const ed3 = new Editor('demo', { api: coded.api, bridge: coded.bridge });
+  await ed3.open();
+  await ed3.exportVideo();
+  expect(ed3.store.get().exportError).toBe('無法開始輸出：效果模組載入失敗：boom');
 });
 
 test('reopening the editor picks up an export that is still running', async () => {

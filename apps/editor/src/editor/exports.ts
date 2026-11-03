@@ -2,7 +2,7 @@
 // what is in exports/, and pick up an export that was still running when the page was reloaded.
 import { ApiError, isTerminal, type Api } from '../api.ts';
 import type { EditorState, Store } from '../store.ts';
-import { t } from '../i18n/index.ts';
+import { errText, t } from '../i18n/index.ts';
 
 export class ExportTracker {
   private following = '';
@@ -23,7 +23,7 @@ export class ExportTracker {
     try {
       if (!(await this.c.settle())) { this.set({ exportError: this.s.diskChanged ? t('ed.exDisk') : t('ed.exSaveFail', { err: this.s.saveError }) }); return; }
       try { job = await this.c.api.exportStart(this.c.id); }
-      catch (e) { this.set({ exportJob: null, exportError: t('ed.exStartFail', { err: (e as Error)?.message ?? String(e) }) }); return; }
+      catch (e) { this.set({ exportJob: null, exportError: t('ed.exStartFail', { err: errText(e) }) }); return; }
     } finally { this.starting = false; }
     this.set({ exportJob: job });
     await this.follow(job.id);

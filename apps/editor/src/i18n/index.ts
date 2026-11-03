@@ -23,11 +23,17 @@ export const listJoin = (items: string[], lang: Lang = getLang()) => items.join(
 export const nameList = (names: string[], lang: Lang = getLang()) =>
   listJoin(names.map((x) => (lang === 'en' ? `“${x}”` : `「${x}」`)), lang);
 
+/** whether errText words an error from the dictionaries (its code has an err.<code> entry) rather than show its own words */
+export function errCoded(e: unknown): boolean {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && Object.hasOwn(DICTS.zh, `err.${code}`);
+}
+
 /** an error in the page's language: a server error's code worded by the dictionaries (err.<code>), else its own words */
 export function errText(e: unknown, lang: Lang = getLang()): string {
   const x = e as { message?: unknown; code?: unknown; params?: Record<string, string | number> } | null;
   const key = typeof x?.code === 'string' ? `err.${x.code}` : '';
-  if (key && Object.hasOwn(DICTS.zh, key)) {
+  if (key && errCoded(e)) {
     // a track's kind comes as its schema word (video, audio): worded like the rest
     const kind = (v: string | number) => (typeof v === 'string' && Object.hasOwn(DICTS.zh, `trackKind.${v}`) ? t(`trackKind.${v}` as Key, undefined, lang) : v);
     const p = x?.params && Object.fromEntries(Object.entries(x.params).map(([k, v]) => [k, k === 'kind' || k === 'trackKind' ? kind(v) : v]));

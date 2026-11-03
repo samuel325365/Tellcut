@@ -24,6 +24,13 @@ test('a project that fails validation lands in store.error with the history list
   expect(ed.store.get().history).toEqual(['h1.json']);
 });
 
+test('a project that cannot be read at all, with a code (one from a newer Tellcut), is worded in the page\'s language', async () => {
+  const { api, bridge } = fakes({ project: async () => { throw new ApiError(422, 'Invalid project:\n較新的', ['較新的'], 'project.tooNew', { version: 3, max: 1 }); } });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  expect(ed.store.get().error).toEqual({ message: '這個專案是用較新的 Tellcut 存的（版本 3，這個 Tellcut 只認到 1）：請先更新 Tellcut', issues: [] });
+});
+
 test('apply updates the preview, enables undo and autosaves 1 s later; command errors are ignored', async () => {
   const { api, bridge, saved } = fakes();
   const ed = new Editor('demo', { api, bridge });

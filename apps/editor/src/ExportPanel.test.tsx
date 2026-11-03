@@ -32,5 +32,9 @@ test('a finished export links the file; a failed one shows the reason and the lo
   await act(() => render(<ExportPanel editor={failed.editor} s={failed.s} />, failed.root));
   expect(failed.root.querySelector('[data-export-error]')!.textContent).toContain('Missing files');
   expect(failed.root.querySelector('[data-export-log]')!.textContent).toContain('failed: Missing files');
+  // a failure the server gave a code is worded by the dictionaries
+  const coded = mount({ exportJob: { id: 'e3', label: 'x', status: 'failed', progress: 0, message: '', error: 'raw', code: 'fx.loadFailed', params: { error: 'boom' }, log: [] } as any });
+  await act(() => render(<ExportPanel editor={coded.editor} s={coded.s} />, coded.root));
+  expect(coded.root.querySelector('[data-export-error]')!.textContent).toContain('效果模組載入失敗：boom');
   expect(failed.root.textContent).toContain('還沒有輸出過');
 });

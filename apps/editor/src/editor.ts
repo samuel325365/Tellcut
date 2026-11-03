@@ -21,7 +21,7 @@ import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
 import { PresetSaveFlow } from './editor/preset-save.ts';
 import { ProposalFlow, type ProposalView } from './editor/proposals.ts';
-import { errText, t as say } from './i18n/index.ts';
+import { errCoded, errText, t as say } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 import { paramText } from './i18n/params.ts';
 import { localValues } from './i18n/values.ts';
@@ -187,7 +187,9 @@ export class Editor {
       void this.loadExports();
       void this.resumeExport();
     } catch (e) {
-      const err = e instanceof ApiError ? { message: e.message, issues: e.issues } : { message: String((e as Error)?.message ?? e), issues: (e as any)?.issues ?? [] };
+      // one with a code (a project from a newer Tellcut) is worded in the page's language; its issue line says the same in Chinese
+      const issues: string[] = errCoded(e) ? [] : e instanceof ApiError ? e.issues : (e as any)?.issues ?? [];
+      const err = { message: errText(e), issues };
       this.set({ error: err, history: await this.deps.api.history(this.id).catch(() => []) });
     }
   }
