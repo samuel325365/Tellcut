@@ -45,7 +45,8 @@ export function checkItem(p: Project, kind: TrackKind, raw: Record<string, unkno
 }
 
 
-/** Sets fields of one item (undefined removes a field); id cannot change; children follow a length change the way a trim moves them. */
+/** Sets fields of one item (undefined removes a field); id cannot change; children follow a length change the way a trim moves them,
+ *  and a clip's own sound follows a new source. */
 export function updateItem(p: Project, a: { id: string; patch: Record<string, unknown> }) {
   const f = findItem(p, a.id), it = f.item as any;
   if ('id' in a.patch && a.patch.id !== a.id) throw new CommandError('id: an item id cannot be changed', 'cmd.idFixed');
@@ -56,7 +57,8 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
   if (fitsFades) fitFades(f.track, next);
   checkItem(p, f.track.kind, next);
   const oldLen = it.end - it.start, oldIn = it.in, rate = mediaRate(f.track, f.item);
-  // a media clip's own sound follows a new in-point and length, and plays at a new speed too (like a rate stretch)
+  // a media clip's own sound follows a new in-point and length, plays at a new speed too (like a rate stretch), and a new
+  // source (like swapSource)
   const own = rate !== null ? ownSounds(p, it.id) : [];
   const k = rate !== null ? mediaRate(f.track, next as AnyItem)! / rate : 1;
   // a sound plays at most 4× and within its source: refused before anything changes, like checkItem
@@ -68,13 +70,13 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
     // in-point or end only moves where the sound stops (fitOwn below, like slip and trimEnd); other fields never touch it.
     if (k === 1) continue;
     const slen = (c.end - c.start) * (oldLen > 0 ? len / oldLen : 1);
-    const has = p.sources[c.source]?.duration ?? Infinity, need = Math.max(0, r6(c.in + next.in - oldIn)) + slen * r6(c.rate * k);
-    if (need > has + 1e-6 * (1 + slen)) throw new CommandError(`${field}: the clip's own sound runs past the end of source "${c.source}" (needs ${n3(need)} s, has ${n3(has)} s)`, 'cmd.ownSoundPastEnd', { source: c.source, need: n3(need), have: n3(has) });
+    const src = next.source ?? c.source, has = p.sources[src]?.duration ?? Infinity, need = Math.max(0, r6(c.in + next.in - oldIn)) + slen * r6(c.rate * k);
+    if (need > has + 1e-6 * (1 + slen)) throw new CommandError(`${field}: the clip's own sound runs past the end of source "${src}" (needs ${n3(need)} s, has ${n3(has)} s)`, 'cmd.ownSoundPastEnd', { source: src, need: n3(need), have: n3(has) });
   }
   for (const [key, v] of Object.entries(a.patch)) { if (v === undefined) delete it[key]; else it[key] = plain(v); }
   if (fitsFades) fitFades(f.track, it);
   // the sound's in stops at its source's start, as followTrim and slip stop it
-  for (const c of own) { c.in = Math.max(0, r6(c.in + it.in - oldIn)); c.rate = r6(c.rate * k); }
+  for (const c of own) { c.source = it.source; c.in = Math.max(0, r6(c.in + it.in - oldIn)); c.rate = r6(c.rate * k); }
   // a block or a clip at a new speed: the children keep their proportional place; at its old speed the others stay on the same picture
   if (rate === null || k !== 1) scaleChildren(p, it.id, oldLen, it.end - it.start);
   else followTrim(p, it.id, oldLen, it.end - it.start, 0);

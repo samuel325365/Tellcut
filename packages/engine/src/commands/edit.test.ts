@@ -158,3 +158,12 @@ test("a new speed from the properties panel plays the clip's own sound at it; pa
   // with a code for the page to word it in its language
   try { run(withOwn(), updateItem, { id: 'c1', patch: { speed: 5 } }); } catch (e) { expect(e).toMatchObject({ code: 'cmd.ownSoundTooFast', params: { need: 5 } }); }
 });
+
+test("a new source from the properties panel takes the clip's own sound along (like swapSource)", () => {
+  const p = fixture();
+  p.sources.t = { path: 't.mp4', duration: 6, width: 1920, height: 1080 } as any;
+  addItem(p, { track: 'au', item: { id: 'snd', source: 's', in: 1, rate: 1, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c1' } });
+  expect(item(run(p, updateItem, { id: 'c1', patch: { source: 't', in: 0 } }), 'snd')).toMatchObject({ source: 't', in: 0, end: 4 });
+  // the new source's length bounds the sound too: frozen at 1 s the picture needs 2 s of it, the sound at 2× all 4 s, 8 s
+  expect(() => run(p, updateItem, { id: 'c1', patch: { source: 't', in: 2, speed: 2, freezeAt: 1 } })).toThrow(/own sound runs past the end of source "t"/);
+});
