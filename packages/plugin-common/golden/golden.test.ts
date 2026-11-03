@@ -14,5 +14,6 @@ test('every golden picture still matches (npm run golden -- --update after a cha
   const goldenDir = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
   const r = await runGolden(samples as GoldenCase[], { registry: createRegistry(plugins), goldenDir, platformDir: goldenPlatformDir(goldenDir), work: join(TELLCUT_ROOT, 'projects/_golden') });
   expect(goldenSummary(r)).toEqual([]);
-// 432 stills took 9 min 20 s alone on 2026-10-24 (group B2) and over 10 min next to the other browser tests
-}, 1_200_000);
+// 432 stills took 9 min 20 s alone on 2026-10-24 (group B2) and over 10 min next to the other browser tests;
+// 663 took 17 min alone on 2026-11-04 and over 20 next to them
+}, 2_400_000);
