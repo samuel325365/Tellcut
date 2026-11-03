@@ -3,6 +3,7 @@
 // and proof.
 import { clamp, eIn3, eOut5 } from '@tellcut/engine';
 import type { GhostLine } from './text.ts';
+import { fmtNum, parseNum } from './chart/shared.ts';
 
 /** how long a line takes to come in, and to go out at its end */
 export const BLUR_IN = 0.7, BLUR_OUT = 0.4;
@@ -40,13 +41,14 @@ export function drawBlurLine(g: CanvasRenderingContext2D, l: BlurLine, t: number
   return ghost;
 }
 
-/** A text that starts with a number counts up to it from t0 over dur (easing out); what follows the number ('+', ' clips.')
- *  stays as it is. A text that does not start with a number is returned as it is. */
+/** A text that starts with a number counts up to it from t0 over dur (easing out), read and written as chart's numbers are
+ *  (thousands grouped as given: 12,000; its decimals kept: 4.5); what follows the number ('+', 'x', ' clips.') stays as it is.
+ *  A text that does not start with a number is returned as it is. */
 export function countUp(text: string, t: number, t0: number, dur = 0.7): string {
-  const m = /^(\d+)(.*)$/s.exec(text);
+  const m = /^(\d{1,3}(?:,\d{3})+(?!\d)|\d+)(\.\d+)?(.*)$/s.exec(text);
   if (!m) return text;
-  const k = eOut5(clamp((t - t0) / dur));
-  return `${Math.round(Number(m[1]) * k)}${m[2]}`;
+  const n = parseNum(m[1] + (m[2] ?? '')), k = eOut5(clamp((t - t0) / dur));
+  return `${fmtNum(n.v * k, n.dec, n.group)}${m[3]}`;
 }
 
 /** a character the Latin faces (Inter, Playfair…) have no drawing for: Chinese, Japanese, symbols */

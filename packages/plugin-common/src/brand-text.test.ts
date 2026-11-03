@@ -1,6 +1,6 @@
 // The brand film's canvas text: the faces it draws with are loaded before the first frame, Noto Sans TC too when the text has
 // Chinese or Japanese (a canvas draws a face that is not loaded yet in a system font).
-import { CJK_FACE, loadLineFaces } from './brand-text.ts';
+import { CJK_FACE, countUp, loadLineFaces } from './brand-text.ts';
 
 const fakeFonts = () => { const calls: Array<[string, string]> = []; return { calls, set: { load: async (font: string, text: string) => { calls.push([font, text]); return []; } } as unknown as FontFaceSet }; };
 
@@ -26,4 +26,15 @@ test('a face that fails to load does not stop the others', async () => {
   const set = { load: async (font: string) => { calls.push(font); if (font.includes('Inter')) throw new Error('offline'); return []; } } as unknown as FontFaceSet;
   await expect(loadLineFaces(set, [{ weight: 600, family: 'Inter', text: '台北' }])).resolves.toBeUndefined();
   expect(calls).toEqual(['600 40px "Inter"', '600 40px "Noto Sans TC"']);
+});
+
+test('countUp reads a grouped or decimal number whole and counts up in the same form (2026-11-03)', () => {
+  expect(countUp('12,000+ clips', 5, 0)).toBe('12,000+ clips');
+  expect(countUp('4.5x faster', 5, 0)).toBe('4.5x faster');
+  expect(countUp('4.5x', 0, 0)).toBe('0.0x');
+  expect(countUp('12,000+', 0, 0)).toBe('0+');
+  expect(countUp('120 clips.', 5, 0)).toBe('120 clips.');
+  expect(countUp('No number', 0, 0)).toBe('No number');
+  const mid = countUp('12,000+', 0.2, 0);
+  expect(mid).toMatch(/^\d{1,2},\d{3}\+$/);
 });
