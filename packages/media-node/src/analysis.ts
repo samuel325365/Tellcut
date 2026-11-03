@@ -16,6 +16,16 @@ export const PROXY_SCALE = "scale='if(gt(iw,ih),-2,540)':'if(gt(iw,ih),540,-2)'"
 export const THUMB_H = 90, THUMB_COLS = 10, PEAK_RATE = 100, SCENE_THRESHOLD = 0.25;
 
 export interface ThumbIndex { interval: number; width: number; height: number; cols: number; count: number }
+/** the most rows of thumbnails one atlas holds: a JPEG is at most 65,500 px tall (mjpeg refuses a taller one) */
+export const THUMB_MAX_ROWS = Math.floor(65500 / THUMB_H);
+
+/** The atlas's layout for a video this long: a tile a second, or one every few seconds for a source too long for one atlas
+ *  (about two hours) — the readers find a tile by the index's interval. */
+export function thumbGrid(duration: number): { interval: number; count: number; rows: number } {
+  const interval = Math.max(1, Math.ceil(duration / (THUMB_MAX_ROWS * THUMB_COLS)));
+  const count = Math.max(1, Math.round(duration / interval));
+  return { interval, count, rows: Math.ceil(count / THUMB_COLS) };
+}
 export interface Peaks { rate: number; peaks: number[] }
 export interface AnalysisFiles { dir: string; proxy: string; thumbs: string; thumbIndex: string; cuts: string; peaks: string }
 
@@ -115,11 +125,11 @@ async function analyzeLocked(f: AnalysisFiles, srcPath: string, stamp: string, o
   writeFileSync(stamp, '');
 
   o.onStep?.('thumbs', 1, 4);
-  const count = Math.max(1, Math.round(duration)), rows = Math.ceil(count / THUMB_COLS);
+  const { interval, count, rows } = thumbGrid(duration);
   const tw = 2 * Math.round((THUMB_H * width) / height / 2);
   // thumbnails and scene cuts from the proxy just made: the source is decoded once (an AV1 or 4K source decodes slowly)
-  await atomic(f.thumbs, (tmp) => ffmpeg(['-i', f.proxy, '-an', '-vf', `fps=1,scale=${tw}:${THUMB_H},tile=${THUMB_COLS}x${rows}`, '-frames:v', '1', '-q:v', '4', tmp], sig));
-  await atomic(f.thumbIndex, async (tmp) => writeFileSync(tmp, JSON.stringify({ interval: 1, width: tw, height: THUMB_H, cols: THUMB_COLS, count } satisfies ThumbIndex)));
+  await atomic(f.thumbs, (tmp) => ffmpeg(['-i', f.proxy, '-an', '-vf', `fps=1/${interval},scale=${tw}:${THUMB_H},tile=${THUMB_COLS}x${rows}`, '-frames:v', '1', '-q:v', '4', tmp], sig));
+  await atomic(f.thumbIndex, async (tmp) => writeFileSync(tmp, JSON.stringify({ interval, width: tw, height: THUMB_H, cols: THUMB_COLS, count } satisfies ThumbIndex)));
 
   o.onStep?.('cuts', 2, 4);
   await atomic(f.cuts, async (tmp) => {

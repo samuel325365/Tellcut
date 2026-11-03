@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { analysisFiles, analyzeSource, atomic, isAnalyzed, parseShowinfo, peaksOf } from './analysis.ts';
+import { analysisFiles, analyzeSource, atomic, isAnalyzed, parseShowinfo, peaksOf, THUMB_COLS, THUMB_H, thumbGrid } from './analysis.ts';
 import { probeSize, run } from './ffmpeg.ts';
 import { heavy } from './limit.ts';
 
@@ -13,6 +13,20 @@ test('peaksOf keeps the max |sample| of each window', () => {
 
 test('parseShowinfo reads pts_time values', () => {
   expect(parseShowinfo('[Parsed_showinfo_1 @ 0x1] n:   0 pts:  60 pts_time:2.002 duration:1\n[Parsed_showinfo_1 @ 0x1] n: 1 pts: 9 pts_time:5.5 x')).toEqual([2.002, 5.5]);
+});
+
+test('thumbGrid: a tile a second, wider apart for a source too long for one atlas', () => {
+  expect(thumbGrid(4)).toEqual({ interval: 1, count: 4, rows: 1 });
+  expect(thumbGrid(0.2)).toEqual({ interval: 1, count: 1, rows: 1 });
+  expect(thumbGrid(7270)).toEqual({ interval: 1, count: 7270, rows: 727 });
+  // past about two hours an atlas a tile a second would be taller than a JPEG can be (65,500 px)
+  for (const d of [7271, 3 * 3600, 10 * 3600 + 7]) {
+    const g = thumbGrid(d);
+    expect(g.interval).toBeGreaterThan(1);
+    expect(g.rows * THUMB_H).toBeLessThanOrEqual(65500);
+    expect(g.count).toBe(Math.round(d / g.interval));
+    expect(g.rows).toBe(Math.ceil(g.count / THUMB_COLS));
+  }
 });
 
 test('analyzes a source into proxy, thumbnail atlas, scene cuts and peaks', async () => {
