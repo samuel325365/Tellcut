@@ -8,6 +8,7 @@ import opentype from 'opentype.js';
 import { chromium } from 'playwright-core';
 import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
 import { DOG_COLORS, dogSvg, type DogLook } from '@tellcut/plugin-common';
+import { fetchIdle } from './setup/fetch-idle.ts';
 
 const CACHE = join(TELLCUT_ROOT, '.cache', 'brand');
 const PNG_SIZES = [32, 64, 128, 256, 512];
@@ -19,10 +20,11 @@ const WORDS: Record<DogLook, { name: string; tag: string }> = { light: { name: '
 export async function ensureNunito(get: typeof fetch = fetch): Promise<string> {
   const file = join(CACHE, 'Nunito-800.ttf');
   if (existsSync(file)) return file;
-  const css = await (await get('https://fonts.googleapis.com/css2?family=Nunito:wght@800')).text();
+  // a stalled connection gives up (fetchIdle) instead of hanging the build of the brand files
+  const css = await (await fetchIdle(get, 'https://fonts.googleapis.com/css2?family=Nunito:wght@800')).text();
   const url = /url\((https:[^)]+\.ttf)\)/.exec(css)?.[1];
   if (!url) throw new Error('Google Fonts did not name a Nunito TTF');
-  const res = await get(url);
+  const res = await fetchIdle(get, url);
   if (!res.ok) throw new Error(`Nunito download failed: ${res.status}`);
   mkdirSync(CACHE, { recursive: true });
   writeFileSync(`${file}.tmp`, Buffer.from(await res.arrayBuffer()));

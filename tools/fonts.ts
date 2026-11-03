@@ -5,6 +5,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync 
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { FontSpec } from '@tellcut/engine';
+import { fetchIdle } from './setup/fetch-idle.ts';
 
 // Google serves woff2 with unicode-range slices only to a modern browser
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -36,7 +37,7 @@ export async function downloadFonts(specs: FontSpec[], dir: string, o: { fetch?:
   const file = async (url: string, name?: string) => {
     const local = name ?? fileName(url, extOf(url)), path = join(dir, 'files', local);
     if (!existsSync(path)) {
-      const r = await get(url, { headers: { 'User-Agent': UA } });
+      const r = await fetchIdle(get, url, { headers: { 'User-Agent': UA } });
       if (!r.ok) throw new Error(`${r.status} ${url}`);
       writeFileSync(`${path}.tmp`, Buffer.from(await r.arrayBuffer()));
       renameSync(`${path}.tmp`, path);
@@ -49,7 +50,7 @@ export async function downloadFonts(specs: FontSpec[], dir: string, o: { fetch?:
     const family = typeof spec === 'string' ? spec.split(':')[0] : spec.family;
     try {
       if (typeof spec === 'string') {
-        const r = await get(`${o.cssBase ?? 'https://fonts.googleapis.com'}/css2?family=${spec.replace(/ /g, '+')}&display=block`, { headers: { 'User-Agent': UA } });
+        const r = await fetchIdle(get, `${o.cssBase ?? 'https://fonts.googleapis.com'}/css2?family=${spec.replace(/ /g, '+')}&display=block`, { headers: { 'User-Agent': UA } });
         if (!r.ok) throw new Error(`${r.status} css for ${spec}`);
         let css = await r.text();
         for (const [, url] of [...css.matchAll(/url\((https?:[^)]+)\)/g)]) css = css.split(url).join(await file(url));

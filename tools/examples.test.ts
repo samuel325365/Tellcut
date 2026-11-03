@@ -83,6 +83,20 @@ test('a download that breaks half way leaves no project and no half file', async
   expect(existsSync(cacheDir) ? readdirSync(cacheDir) : []).toEqual([]);
 });
 
+test('a download that stops sending gives up after the silence allowed, and leaves no half file', async () => {
+  const { projectsDir, cacheDir } = places();
+  const gh = github({ 'meet-tellcut.zip': Buffer.alloc(1000) });
+  const [meet] = await listExamples({ fetch: gh.fetch });
+  // 10 bytes, then nothing: the connection stays open until the request is aborted
+  const stalls = (async (_url: string, init?: RequestInit) => new Response(new ReadableStream({ start(c) {
+    c.enqueue(new Uint8Array(10));
+    init?.signal?.addEventListener('abort', () => c.error(init.signal!.reason));
+  } }))) as unknown as typeof fetch;
+  await expect(installExample(meet, { fetch: stalls, projectsDir, cacheDir, log: () => {}, idleMs: 200 })).rejects.toThrow(/meet-tellcut\.zip failed: the connection stalled/);
+  expect(existsSync(join(projectsDir, 'meet-tellcut'))).toBe(false);
+  expect(existsSync(cacheDir) ? readdirSync(cacheDir) : []).toEqual([]);
+});
+
 test('no release yet, or no network: a sentence that says so', async () => {
   const none = (async () => new Response('Not Found', { status: 404 })) as unknown as typeof fetch;
   await expect(listExamples({ fetch: none })).rejects.toThrow(/no example projects yet/);

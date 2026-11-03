@@ -6,11 +6,12 @@
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
 import { ImportError, importProject } from './export-project.ts';
+import { fetchIdle, idleTimer, Stalled } from './setup/fetch-idle.ts';
 
 export const REPO = 'samuel325365/Tellcut', TAG = 'examples';
 export const RELEASE_API = `https://api.github.com/repos/${REPO}/releases/tags/${TAG}`;
@@ -22,9 +23,12 @@ export interface Example { id: string; zip: Asset; film?: Asset }
 type Fetch = typeof fetch;
 const HEADERS = { accept: 'application/vnd.github+json', 'user-agent': 'tellcut-examples' };
 
+/** what went wrong with the connection, in English (Stalled says it in Chinese, for setup) */
+const why = (e: unknown) => (e instanceof Stalled ? `the connection stalled: nothing arrived for ${e.seconds} s` : (e as Error).message);
 async function get(f: Fetch, url: string, what: string): Promise<Response> {
-  try { return await f(url, { headers: HEADERS }); }
-  catch (e) { throw new Error(`Could not reach GitHub for ${what} (${(e as Error).message}). Check the internet connection and try again.`); }
+  // the listing, read whole: a stalled connection gives up instead of hanging
+  try { return await fetchIdle(f, url, { headers: HEADERS }); }
+  catch (e) { throw new Error(`Could not reach GitHub for ${what} (${why(e)}). Check the internet connection and try again.`); }
 }
 
 /** the examples on the release, by name; a zip that is not a project name, or a film without a zip, is left out */
@@ -42,13 +46,16 @@ export async function listExamples(o: { fetch?: Fetch } = {}): Promise<Example[]
 const sha256 = async (file: string) => { const h = createHash('sha256'); await pipeline(createReadStream(file), h); return h.digest('hex'); };
 
 /** `asset` into `file`, through file.part: a download that breaks, or ends short, or is not the release's file, leaves nothing behind */
-async function download(f: Fetch, asset: Asset, file: string, log: (s: string) => void) {
+async function download(f: Fetch, asset: Asset, file: string, log: (s: string) => void, idleMs?: number) {
   const part = `${file}.part`;
   log(`  downloading ${asset.name} (${(asset.size / 1e6).toFixed(1)} MB)…`);
+  // streamed to the file (a film is hundreds of MB) and given up after a minute with nothing arriving; a slow download goes on
+  const idle = idleTimer(idleMs);
   try {
-    const r = await get(f, asset.url, asset.name);
+    const r = await Promise.race([f(asset.url, { headers: HEADERS, signal: idle.signal }), idle.fired]);
     if (!r.ok || !r.body) throw new Error(`GitHub answered ${r.status}`);
-    await pipeline(Readable.fromWeb(r.body as any), createWriteStream(part));
+    const alive = new Transform({ transform(chunk, _, done) { idle.touch(); done(null, chunk); } });
+    await pipeline(Readable.fromWeb(r.body as any), alive, createWriteStream(part), { signal: idle.signal });
     // a connection closed early can end the stream without an error: the size the release gives (else the response's) must be there
     const want = asset.size || Number(r.headers.get('content-length')) || 0, got = statSync(part).size;
     if (want && got !== want) throw new Error(`it ended after ${got} of ${want} bytes; try again`);
@@ -56,20 +63,21 @@ async function download(f: Fetch, asset: Asset, file: string, log: (s: string) =
     if (algo === 'sha256' && hex && (await sha256(part)) !== hex.toLowerCase()) throw new Error('what arrived is not the file on the release (its sha256 differs); try again');
     renameSync(part, file);
   } catch (e) {
+    idle.stop();   // a stall after this would only replace the reason
     rmSync(part, { force: true });
-    throw new Error(`Downloading ${asset.name} failed: ${(e as Error).message}`);
-  }
+    throw new Error(`Downloading ${asset.name} failed: ${why(idle.signal.aborted ? idle.signal.reason : e)}`);
+  } finally { idle.stop(); }
 }
 
 /** Downloads and imports one example; a project of that name already there is left alone (installed: false). */
-export async function installExample(ex: Example, o: { fetch?: Fetch; projectsDir: string; cacheDir: string; log: (s: string) => void }): Promise<{ dir: string; installed: boolean }> {
+export async function installExample(ex: Example, o: { fetch?: Fetch; projectsDir: string; cacheDir: string; log: (s: string) => void; /** silence allowed (a test gives a short one) */ idleMs?: number }): Promise<{ dir: string; installed: boolean }> {
   const f = o.fetch ?? fetch, dir = join(o.projectsDir, ex.id);
   if (existsSync(dir)) { o.log(`${ex.id}: already in projects/, left as it is (delete or rename it to get the example again)`); return { dir, installed: false }; }
   mkdirSync(o.cacheDir, { recursive: true });
   const zip = join(o.cacheDir, ex.zip.name);
   o.log(`${ex.id}:`);
   // a zip downloaded whole before is used again
-  if (!existsSync(zip) || statSync(zip).size !== ex.zip.size) await download(f, ex.zip, zip, o.log);
+  if (!existsSync(zip) || statSync(zip).size !== ex.zip.size) await download(f, ex.zip, zip, o.log, o.idleMs);
   try { importProject(zip, o.projectsDir, ex.id); }   // under the example's name, whatever the folder inside the zip is called
   catch (e) {
     if (!(e instanceof ImportError)) throw e;
@@ -81,7 +89,7 @@ export async function installExample(ex: Example, o: { fetch?: Fetch; projectsDi
   }
   if (ex.film) {
     mkdirSync(join(dir, 'exports'), { recursive: true });
-    try { await download(f, ex.film, join(dir, 'exports', ex.film.name), o.log); }
+    try { await download(f, ex.film, join(dir, 'exports', ex.film.name), o.log, o.idleMs); }
     catch (e) { o.log(`  the project is in, but its film is not: ${(e as Error).message}. Export it from the editor, or run this again after deleting the project.`); }
   }
   return { dir, installed: true };

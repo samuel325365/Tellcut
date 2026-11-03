@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import { fetchIdle } from './fetch-idle.ts';
 
 export interface VendorItem { version: string; url: string; sha256: string; dest: string; check: string; strip?: string }
 export type VendorList = Record<string, VendorItem>;
@@ -85,7 +86,7 @@ export async function ensureVendor(name: string, item: VendorItem, vendorDir: st
   mkdirSync(work, { recursive: true });
   try {
     log(`下載 ${name} ${item.version}：${item.url}`);
-    const r = await get(item.url);
+    const r = await fetchIdle(get, item.url).catch((e: Error) => { throw new Error(`下載 ${name} 失敗：${e.message}（${item.url}）`); });
     if (!r.ok) throw new Error(`下載 ${name} 失敗：HTTP ${r.status}（${item.url}）`);
     const bytes = Buffer.from(await r.arrayBuffer());
     const sum = createHash('sha256').update(bytes).digest('hex');
@@ -113,7 +114,7 @@ export async function ensureModelFile(name: string, item: ModelFile, modelsDir: 
   const dest = join(modelsDir, item.dest);
   const want = item.sha256.toLowerCase();   // digest('hex') is lower case; a hash written in capitals is the same one
   if (existsSync(dest) && createHash('sha256').update(readFileSync(dest)).digest('hex') === want) return 'kept';
-  const r = await (o.fetch ?? fetch)(item.url);
+  const r = await fetchIdle(o.fetch ?? fetch, item.url).catch((e: Error) => { throw new Error(`下載 ${name} 失敗：${e.message}（${item.url}）`); });
   if (!r.ok) throw new Error(`下載 ${name} 失敗：HTTP ${r.status}（${item.url}）`);
   const bytes = Buffer.from(await r.arrayBuffer());
   const sum = createHash('sha256').update(bytes).digest('hex');
