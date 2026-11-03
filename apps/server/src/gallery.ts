@@ -2,7 +2,7 @@
 // places `npm run tellcut -- catalog` reads, so the gallery never needs updating by hand. Score previews are generated on request and cached.
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, resolve, sep } from 'node:path';
 import type { ItemType, ParamDef, Plugin } from '@tellcut/engine';
@@ -56,6 +56,16 @@ function compose(a: { style: string; library: string; seed: number; bpm?: number
   });
 }
 
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** the earlier previews of the same request for a style that has changed since (another content hash, or one cached before
+ *  the hash was in the name): nobody asks for them any more, and the cache only grew */
+function dropOlder(dir: string, head: string, tail: string, keep: string) {
+  const old = new RegExp(`^${escape(head)}(?:-[0-9a-f]{8})?${escape(tail)}$`);
+  let names: string[] = [];
+  try { names = readdirSync(dir); } catch { return; }
+  for (const f of names) if (old.test(f) && join(dir, f) !== keep) try { rmSync(join(dir, f), { force: true }); } catch { /* being sent (Windows): next time */ }
+}
+
 const num = (v: string | null) => (v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined);
 
 export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: string; library?: string }) {
@@ -78,11 +88,15 @@ export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: st
     const library = own && resolve(own.file).startsWith(resolve(mine) + sep) ? mine : shared;
     // a style from a file is named by its content too: one replaced in My blocks (or edited) under the same id is composed afresh
     const version = own ? `-${createHash('sha1').update(readFileSync(own.file)).digest('hex').slice(0, 8)}` : '';
-    const dir = join(o.projectsDir, '_gallery'), file = join(dir, `score-${library === mine ? 'mine-' : ''}${id}${version}-${seed}-${bpm ?? 'd'}-${(key ?? 'd').replace(/[^\w#]/g, '')}.wav`);
+    const head = `score-${library === mine ? 'mine-' : ''}${id}`, tail = `-${seed}-${bpm ?? 'd'}-${(key ?? 'd').replace(/[^\w#]/g, '')}.wav`;
+    const dir = join(o.projectsDir, '_gallery'), file = join(dir, `${head}${version}${tail}`);
     // the same preview asked twice at once (a double click) is composed once
     if (!existsSync(file)) {
       let job = composing.get(file);
-      if (!job) { job = compose({ style: id, library, seed, bpm, key, file }).finally(() => composing.delete(file)); composing.set(file, job); }
+      if (!job) {
+        job = compose({ style: id, library, seed, bpm, key, file }).then(() => { if (version) dropOlder(dir, head, tail, file); }).finally(() => composing.delete(file));
+        composing.set(file, job);
+      }
       await job;
     }
     sendFile(req, res, file);

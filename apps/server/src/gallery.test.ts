@@ -104,5 +104,12 @@ test('a music style of My blocks replaced under the same id is composed afresh, 
     expect(second.equals(first)).toBe(false);
     // composed beside the cache and renamed in: no half-written file is left in it
     expect(readdirSync(join(projectsDir, '_gallery')).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+    // the old preview of that request goes (one cached before names carried the hash too); other seeds stay
+    writeFileSync(join(projectsDir, '_gallery', 'score-mine-my-hum-1-d-d.wav'), 'old');
+    writeFileSync(join(projectsDir, '_gallery', 'score-mine-my-hum-2-d-d.wav'), 'other seed');
+    writeFileSync(join(dir, 'my-hum.js'), mod(60));
+    await (await fetch(`${base}/api/gallery/score/my-hum.wav?seed=1`)).arrayBuffer();
+    expect(readdirSync(join(projectsDir, '_gallery')).filter((f) => f.startsWith('score-mine-my-hum')).map((f) => f.replace(/-[0-9a-f]{8}-/, '-<hash>-')).sort())
+      .toEqual(['score-mine-my-hum-2-d-d.wav', 'score-mine-my-hum-<hash>-1-d-d.wav']);
   } finally { await app.close(); }
 }, 30000);
