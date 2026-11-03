@@ -52,6 +52,9 @@ export function sendProjectFile(req: Parameters<typeof sendFile>[0], res: Server
   return sendFile(req, res, path);
 }
 
+/** a ProjectError as an answer's body: its issues, and its code and params when it has them (project.tooNew…) for the page to word */
+const projectIssue = (e: ProjectError) => ({ issues: e.issues, ...(e.code ? { code: e.code, ...(e.params ? { params: e.params } : {}) } : {}) });
+
 export class ProjectStore {
   /** hash of the project.json each project was last saved with by this server (outside writes differ: live.ts) */
   readonly lastHash = new Map<string, string>();
@@ -107,7 +110,7 @@ export class ProjectStore {
     if (hit?.key === key) return structuredClone(hit.p);   // a copy: callers may change what they get
     let p: Project;
     try { p = parseProject(this.raw(id)); }
-    catch (e) { if (e instanceof ProjectError) throw new HttpError(422, 'Invalid project.json', { issues: e.issues }); throw e; }
+    catch (e) { if (e instanceof ProjectError) throw new HttpError(422, 'Invalid project.json', projectIssue(e)); throw e; }
     this.parsed.set(id, { key, p });
     return structuredClone(p);
   }
@@ -119,7 +122,7 @@ export class ProjectStore {
     let raw: unknown;
     try { raw = JSON.parse(text); } catch (e) { throw new HttpError(422, 'project.json is not valid JSON', { issues: [(e as Error).message] }); }
     try { parseProject(raw); }
-    catch (e) { if (e instanceof ProjectError) throw new HttpError(422, 'Invalid project.json', { issues: e.issues }); throw e; }
+    catch (e) { if (e instanceof ProjectError) throw new HttpError(422, 'Invalid project.json', projectIssue(e)); throw e; }
     return { raw, version: projectHash(text) };
   }
 
@@ -131,7 +134,7 @@ export class ProjectStore {
     const d = this.dir(id);
     let p: Project;
     try { p = parseProject(body); }
-    catch (e) { if (e instanceof ProjectError) throw new HttpError(400, 'Invalid project', { issues: e.issues }); throw e; }
+    catch (e) { if (e instanceof ProjectError) throw new HttpError(400, 'Invalid project', projectIssue(e)); throw e; }
     if (base !== undefined && base !== this.version(id)) throw new HttpError(409, '專案在別的地方被改過（另一個分頁或 Agent）', { conflict: true, code: 'project.conflict' });
     // the same writer as npm run cut / new (media-node projectfile.ts): one history, one way of keeping it short
     this.lastHash.set(id, writeProjectFile(d, body, 'editor'));

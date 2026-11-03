@@ -51,6 +51,16 @@ test('reads a project; a broken one answers 422 with its issues; unknown ids 404
   expect((await fetch(`${base}/api/projects/nope`)).status).toBe(404);
 });
 
+test('a project from a newer Tellcut answers with a code the page words itself (reading it, or saving one like it)', async () => {
+  mkdirSync(join(root, 'newer'), { recursive: true });
+  writeFileSync(join(root, 'newer/project.json'), JSON.stringify(demoProject({ version: 99 })));
+  const r = await fetch(`${base}/api/projects/newer`);
+  expect([r.status, await r.json()]).toEqual([422, expect.objectContaining({ code: 'project.tooNew', params: { version: 99, max: 1 }, issues: [expect.any(String)] })]);
+  const w = await put('demo', demoProject({ version: 99 }));
+  expect([w.status, (await w.json()).code]).toEqual([400, 'project.tooNew']);
+  rmSync(join(root, 'newer'), { recursive: true, force: true });
+});
+
 test('a valid PUT replaces project.json and keeps the old version in .history', async () => {
   const before = readFileSync(join(root, 'demo/project.json'), 'utf8');
   const r = await put('demo', demoProject({ meta: { ...demoProject().meta, name: 'Renamed' } }));
