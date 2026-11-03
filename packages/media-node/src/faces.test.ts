@@ -1,7 +1,7 @@
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describeFaces, faceKey, facesAt, faceTimes } from './faces.ts';
+import { describeFaces, faceKey, facesAt, facesFile, faceTimes } from './faces.ts';
 import { ffmpeg, run } from './ffmpeg.ts';
 
 // counts the ffmpeg runs facesAt makes (the real ffmpeg underneath)
@@ -31,9 +31,26 @@ test('a time past the last frame has no face and does not sink the times before 
   const dir = mkdtempSync(join(tmpdir(), 'fc-')), video = join(dir, 'v.mp4');
   await run(['-f', 'lavfi', '-i', 'color=gray:s=160x90:d=3:r=10', video]);
   const det = fakeFaces(() => [face(0.5)]);
-  const a = await facesAt(dir, video, [2.6, 3, 3.2], { provider: det });
+  const a = await facesAt(dir, video, [2.6, 3, 3.2, 5], { provider: det });
   expect(a.get('2.6')).toEqual([face(0.5)]);
   expect(a.get('3.2')).toEqual([]);
+  expect(a.get('5.0')).toEqual([]);                                  // a stretch wholly past the end: ffmpeg writes nothing
+}, 60000);
+
+test('a photo has its one frame at every time (a seek would drop it)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fc-')), photo = join(dir, 'p.jpg');
+  await run(['-f', 'lavfi', '-i', 'color=gray:s=160x90', '-frames:v', '1', '-pix_fmt', 'yuvj420p', photo]);
+  const det = fakeFaces(() => [face(0.3)]);
+  const a = await facesAt(dir, photo, [0, 1, 2.4], { provider: det });
+  expect([...a.values()]).toEqual([[face(0.3)], [face(0.3)], [face(0.3)]]);
+  expect(det.calls.flat().length).toBe(1);
+}, 60000);
+
+test('a frame ffmpeg failed to read is an error, never kept as "no face"', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fc-')), video = join(dir, 'v.mp4');
+  writeFileSync(video, 'not a video');
+  await expect(facesAt(dir, video, [1], { provider: fakeFaces(() => [face(0.5)]) })).rejects.toThrow(/ffmpeg/);
+  expect(existsSync(facesFile(dir, video))).toBe(false);
 }, 60000);
 
 test('a stretch of times is read with one ffmpeg run, each frame landing on its own time', async () => {
