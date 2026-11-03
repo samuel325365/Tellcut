@@ -6,6 +6,7 @@ import {
   blockCounts, boxAround, boxLoopPts, chart, chartFrame, chartPlan, chartRows, chartSeries, countText, CHART_KINDS, cutAtX, dashes, drawMark, fmtNum, hlIndex, parseNum, peopleGrid,
   ranks, ratioText, tableHl, textW, tipAngle, type ChartKind, type ChartP, type Plan,
 } from './chart/index.ts';
+import { colorList } from './chart/shared.ts';
 
 const defaults = Object.fromEntries(chart.params.map((d) => [d.key, d.default])) as unknown as ChartP;
 const PORTRAIT = { W: 1080, H: 1920 }, WIDE = { W: 1920, H: 1080 };
@@ -247,4 +248,10 @@ test('a circled bar: the loop goes round the whole bar and never over a word (h 
   expect(r.rx).toBeGreaterThanOrEqual(414);
   expect(r.ry).toBeGreaterThanOrEqual(64);
   expect((407 / r.rx) ** 8 + (57 / r.ry) ** 8).toBeLessThanOrEqual(1 + 1e-9);
+});
+
+test('pie and line colours: rgb() stays whole, commas or spaces between, anything that is not a colour dropped (2026-11-03)', () => {
+  expect(colorList('#e63a2e, rgb(1, 2, 3)，#fff  rgba(0,0,0,0.5)')).toEqual(['#e63a2e', 'rgb(1, 2, 3)', '#fff', 'rgba(0,0,0,0.5)']);
+  expect(colorList('none, #12, #123456')).toEqual(['#123456']);
+  expect(colorList('')).toEqual([]);
 });

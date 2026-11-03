@@ -4,7 +4,7 @@ import { clamp, eBack, textEm, type Theme } from '@tellcut/engine';
 import { wave } from '../hand.ts';
 import { type Pt } from '../sketch.ts';
 import { emParts, nl } from '../text.ts';
-import { luma, withAlpha } from '../color.ts';
+import { luma, parseColor, withAlpha } from '../color.ts';
 import { type WordsLang } from '../words.ts';
 
 export const CHART_KINDS = ['bars', 'pie', 'people', 'rank', 'balance', 'table', 'line'] as const;
@@ -162,4 +162,16 @@ export function boxAround(a: number, b: number, m: number) {
 export const boxReach = (wob: number, lw: number) => wob * 1.8 + lw / 2;
 
 /** slice colours: the `colors` list, else the theme's accent, the series colour, the tag colour, the ink faded */
-export const sliceColors = (e: Env) => { const own = String(e.p.colors ?? '').split(/[,，\s]+/).filter((c) => /^#[0-9a-f]{3,8}$/i.test(c)); return own.length ? own : [e.C.accent, e.C.color, e.C.tag, withAlpha(e.C.ink, 0.45)]; };
+export const sliceColors = (e: Env) => { const own = colorList(e.p.colors); return own.length ? own : [e.C.accent, e.C.color, e.C.tag, withAlpha(e.C.ink, 0.45)]; };
+/** "#e63a2e, rgb(1, 2, 3) navy" → the colours in it: split at commas and spaces outside brackets, only what reads as a colour kept */
+export function colorList(s: unknown): string[] {
+  const out: string[] = [];
+  let cur = '', depth = 0;
+  for (const ch of String(s ?? '')) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    if (depth === 0 && /[,，\s]/.test(ch)) { out.push(cur); cur = ''; } else cur += ch;
+  }
+  out.push(cur);
+  return out.map((c) => c.trim()).filter((c) => c && parseColor(c));
+}
