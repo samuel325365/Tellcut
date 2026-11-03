@@ -9,6 +9,7 @@ import { chromium } from 'playwright-core';
 import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
 import { DOG_COLORS, dogSvg, type DogLook } from '@tellcut/plugin-common';
 import { fetchIdle } from './setup/fetch-idle.ts';
+import { parseArgsOrExit } from './args.ts';
 
 const CACHE = join(TELLCUT_ROOT, '.cache', 'brand');
 const PNG_SIZES = [32, 64, 128, 256, 512];
@@ -73,6 +74,7 @@ export async function buildBrandAssets(o: { outDir: string; fontFile: string; pn
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  parseArgsOrExit(process.argv.slice(2), {}, '用法：npm run brand-assets');
   const out = join(TELLCUT_ROOT, 'docs', 'brand');
   const files = await buildBrandAssets({ outDir: out, fontFile: await ensureNunito(), png: true });
   copyFileSync(join(out, 'tellcut-logo.svg'), join(TELLCUT_ROOT, 'tools', 'fixtures', 'brand', 'tellcut.svg'));

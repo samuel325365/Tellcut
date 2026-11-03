@@ -4,6 +4,7 @@
 // A tool that is missing is told with the command that installs it; nothing is installed or downloaded by looking.
 import { pathToFileURL } from 'node:url';
 import { FACES_FACTORIES, loadProvidersConfig, OCR_FACTORIES, TRANSCRIBE_FACTORIES, TTS_FACTORIES, type Provider, type ProvidersConfig } from '@tellcut/media-node';
+import { parseArgsOrExit } from './args.ts';
 
 const CAPS = { tts: TTS_FACTORIES, transcribe: TRANSCRIBE_FACTORIES, ocr: OCR_FACTORIES, faces: FACES_FACTORIES } as Record<'tts' | 'transcribe' | 'ocr' | 'faces', Record<string, (o: Record<string, unknown>) => Provider>>;
 
@@ -34,5 +35,5 @@ export async function providerReport(config: ProvidersConfig, all = false): Prom
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  try { console.log(await providerReport(loadProvidersConfig(), process.argv.includes('--all'))); } catch (e) { console.error((e as Error).message); process.exit(1); }
+  try { console.log(await providerReport(loadProvidersConfig(), parseArgsOrExit(process.argv.slice(2), { '--all': 'switch' }, '用法：npm run providers [-- --all]').has('--all'))); } catch (e) { console.error((e as Error).message); process.exit(1); }
 }

@@ -6,35 +6,26 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TELLCUT_ROOT, createProject, tellcutUrl } from '@tellcut/media-node';
 import { Usage } from './usage.ts';
+import { parseArgs, type FlagSpec } from './args.ts';
 
 const USAGE = '用法：npm run new -- <專案名> <資料夾|檔案|網址>... [--size 1920x1080] [--fps 30] [--name 名稱] [--audio] [--force]\n'
   + '      沒有素材的動畫解說片：npm run new -- <專案名> --blank [--size 1080x1920]';
-/** the flags that take no value (apps/server's chat runner reads `npm run new` the same way) */
-const SWITCHES = ['force', 'audio', 'blank'];
+/** --force, --audio and --blank take no value, the others one (apps/server's chat runner reads `npm run new` the same way) */
+const NEW_FLAGS: FlagSpec = { '--size': 'value', '--fps': 'value', '--name': 'value', '--force': 'switch', '--audio': 'switch', '--blank': 'switch' };
 
 export interface NewArgs { id: string; inputs: string[]; size?: [number, number]; fps?: number; name?: string; force: boolean; audio: boolean; blank: boolean }
 
 /** `npm run new`'s words, checked before anything is made: --size 1920x or --fps with no value used to fail only after the
  *  footage was ingested, leaving a projects/<id>/media/ without a project.json. Throws Usage. */
 export function newArgs(argv: string[]): NewArgs {
-  const flags = new Map<string, string | true>(), pos: string[] = [];
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (!a.startsWith('--')) { pos.push(a); continue; }
-    const k = a.slice(2);
-    if (SWITCHES.includes(k)) { flags.set(k, true); continue; }
-    const v = argv[++i];
-    if (v === undefined || v.startsWith('--')) throw new Usage(`--${k} 後面要有值\n${USAGE}`);
-    flags.set(k, v);
-  }
-  const [id, ...inputs] = pos;
-  if (!id || (!inputs.length && !flags.has('blank'))) throw new Usage(USAGE);
-  const size = flags.get('size'), fps = flags.get('fps'), name = flags.get('name');
-  const m = typeof size === 'string' ? /^(\d+)x(\d+)$/i.exec(size.trim()) : null;
+  const flags = parseArgs(argv, NEW_FLAGS, USAGE), [id, ...inputs] = flags.words;
+  if (!id || (!inputs.length && !flags.has('--blank'))) throw new Usage(USAGE);
+  const size = flags.get('--size'), fps = flags.get('--fps'), name = flags.get('--name');
+  const m = size !== undefined ? /^(\d+)x(\d+)$/i.exec(size.trim()) : null;
   if (size !== undefined && (!m || !(+m[1] > 0 && +m[2] > 0))) throw new Usage(`--size「${size}」要寫成 寬x高，例如 1920x1080、1080x1920\n${USAGE}`);
-  if (fps !== undefined && !(typeof fps === 'string' && /^\d+$/.test(fps.trim()) && +fps > 0)) throw new Usage(`--fps「${fps}」要是正整數，例如 30\n${USAGE}`);
-  return { id, inputs, size: m ? [+m[1], +m[2]] : undefined, fps: fps !== undefined ? +fps : undefined, name: typeof name === 'string' ? name : undefined,
-    force: flags.has('force'), audio: flags.has('audio'), blank: flags.has('blank') };
+  if (fps !== undefined && !(/^\d+$/.test(fps.trim()) && +fps > 0)) throw new Usage(`--fps「${fps}」要是正整數，例如 30\n${USAGE}`);
+  return { id, inputs, size: m ? [+m[1], +m[2]] : undefined, fps: fps !== undefined ? +fps : undefined, name,
+    force: flags.has('--force'), audio: flags.has('--audio'), blank: flags.has('--blank') };
 }
 
 async function main(argv: string[]) {

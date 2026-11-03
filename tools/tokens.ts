@@ -5,6 +5,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { parseArgsOrExit } from './args.ts';
 
 /** `cost`/`priced`: the Claude API price Claude Code reported (US$) and how many replies reported one (page chat, since 2026-10-17) */
 /** session files only: `cacheWrite1h` the part of cacheWrite on the 1-hour cache (the rest is 5-minute), `rewrites` replies that wrote
@@ -125,12 +126,15 @@ export function formatSubagents(all: Array<[string, Totals]>): string {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const a = process.argv.slice(2), projects = join(import.meta.dirname, '..', 'projects');
-  if (a[0] === 'home') { console.log(formatTotals(sumChat({ messages: homeThreads(projects).flatMap((t) => t.messages ?? []) }))); process.exit(0); }
-  const file = a[0] === '--session' || a[0] === '--subagents' ? a[1] : a[0] ? join(projects, a[0], '.history', 'chat', 'chat.json') : '';
-  if (!file) { console.error('用法：npm run tokens -- <專案名|home>   或   npm run tokens -- --session|--subagents <對話紀錄.jsonl>'); process.exit(2); }
+  const usage = '用法：npm run tokens -- <專案名|home>   或   npm run tokens -- --session|--subagents <對話紀錄.jsonl>';
+  const a = parseArgsOrExit(process.argv.slice(2), { '--session': 'value', '--subagents': 'value' }, usage), [id] = a.words, projects = join(import.meta.dirname, '..', 'projects');
+  // one thing to count: a project (or home), or one conversation file
+  if ([id !== undefined, a.has('--session'), a.has('--subagents')].filter(Boolean).length > 1) { console.error(usage); process.exit(2); }
+  if (id === 'home') { console.log(formatTotals(sumChat({ messages: homeThreads(projects).flatMap((t) => t.messages ?? []) }))); process.exit(0); }
+  const file = a.get('--session') ?? a.get('--subagents') ?? (id ? join(projects, id, '.history', 'chat', 'chat.json') : '');
+  if (!file) { console.error(usage); process.exit(2); }
   if (!existsSync(file)) { console.error(`找不到 ${file}`); process.exit(1); }
-  if (a[0] === '--subagents') { console.log(formatSubagents(sessionAndSubagents(file))); process.exit(0); }
+  if (a.has('--subagents')) { console.log(formatSubagents(sessionAndSubagents(file))); process.exit(0); }
   const text = readFileSync(file, 'utf8');
-  console.log(formatTotals(a[0] === '--session' ? sumSession(text) : sumChat(JSON.parse(text))));
+  console.log(formatTotals(a.has('--session') ? sumSession(text) : sumChat(JSON.parse(text))));
 }

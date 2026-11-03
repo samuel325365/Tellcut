@@ -4,7 +4,9 @@ import { loadProvidersConfig, openSources } from '@tellcut/media-node';
 import { allChecks, table, whisperModelName } from './setup/checks.ts';
 import { providerReport } from './providers.ts';
 import { sourcesReport } from './sources.ts';
+import { parseArgsOrExit } from './args.ts';
 
+parseArgsOrExit(process.argv.slice(2), {}, '用法：npm run doctor');
 const config = loadProvidersConfig();
 const checks = await allChecks({ whisperModel: whisperModelName(String(config.transcribe.options['faster-whisper']?.model ?? 'large-v3-turbo')) });
 console.log(table(checks));

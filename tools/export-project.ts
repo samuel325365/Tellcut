@@ -14,6 +14,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:pat
 import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
 import { projectArgOrExit } from './project-arg.ts';
+import { parseArgsOrExit } from './args.ts';
 
 type Raw = { sources?: Record<string, { path: string }>; media?: Record<string, { path: string }>; [k: string]: unknown };
 export interface ExportPlan { files: Array<{ from: string; to: string }>; project: Raw; outside: string[] }
@@ -150,17 +151,18 @@ export function importProject(zip: string, projectsDir: string, as?: string): st
 }
 
 function main(argv: string[]) {
-  const flag = (k: string) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : undefined; };
-  const pos = argv.filter((a, i) => !a.startsWith('--') && !['--out', '--as'].includes(argv[i - 1]));
   if (process.env.npm_lifecycle_event === 'import-project') {
-    if (!pos[0]) { console.error('用法：npm run import-project -- <檔案.zip> [--as <新名稱>]'); process.exit(2); }
-    const at = importProject(resolve(process.env.INIT_CWD ?? process.cwd(), pos[0]), join(TELLCUT_ROOT, 'projects'), flag('--as'));
+    const usage = '用法：npm run import-project -- <檔案.zip> [--as <新名稱>]', a = parseArgsOrExit(argv, { '--as': 'value' }, usage), [zip] = a.words;
+    if (!zip) { console.error(usage); process.exit(2); }
+    const at = importProject(resolve(process.env.INIT_CWD ?? process.cwd(), zip), join(TELLCUT_ROOT, 'projects'), a.get('--as'));
     console.log(`匯入了：${at}\n素材分析會在打開專案或跑 npm run inspect 時重做。`);
     return;
   }
-  const dir = projectArgOrExit(pos[0], '用法：npm run export-project -- <專案> [--media] [--public] [--out <檔案.zip>]');
-  const media = argv.includes('--media'), out = flag('--out');
-  const zip = exportProject(dir, { media, public: argv.includes('--public'), out: out && resolve(process.env.INIT_CWD ?? process.cwd(), out) });
+  const usage = '用法：npm run export-project -- <專案> [--media] [--public] [--out <檔案.zip>]';
+  const a = parseArgsOrExit(argv, { '--media': 'switch', '--public': 'switch', '--out': 'value' }, usage);
+  const dir = projectArgOrExit(a.words[0], usage);
+  const media = a.has('--media'), out = a.get('--out');
+  const zip = exportProject(dir, { media, public: a.has('--public'), out: out && resolve(process.env.INIT_CWD ?? process.cwd(), out) });
   const plan = exportPlan(dir, JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')), { media });
   console.log(`打包好了：${zip}（${(statSync(zip).size / 1e6).toFixed(1)} MB）`);
   if (!media && plan.outside.length) console.log(`沒有包進素材：${plan.outside.length} 個檔案在專案外面（${plan.outside.slice(0, 6).join('、')}）。要整包帶走就加 --media。`);

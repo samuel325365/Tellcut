@@ -8,9 +8,12 @@ import { exportBusy, nextExportBase, openPage, playerPath, prepareProject, proje
 import { plugins } from '@tellcut/plugins';
 import { projectArgOrExit } from './project-arg.ts';
 import { secs, secsList } from './cut/speech.ts';
+import { parseArgsOrExit, type FlagSpec } from './args.ts';
 export { TELLCUT_ROOT, openPage, playerPath, playerUrl, projectTarget, renderVideo, type PageSession } from '@tellcut/media-node';
 
-const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
+const USAGE = '用法：npx tsx tools/render.ts --project <專案> [--stills 1.5,3] [--from 秒 --to 秒]';
+/** what render takes (batch/render.ts passes on all but --project) */
+export const RENDER_FLAGS: FlagSpec = { '--project': 'value', '--stills': 'value', '--from': 'value', '--to': 'value' };
 
 export interface RenderArgs { stills?: number[]; from?: number; to?: number }
 /** --stills, --from and --to as times (seconds or m:ss), checked before the lock and the clips: --stills a drew a frame at NaN,
@@ -21,9 +24,10 @@ export function renderArgs(get: (k: string) => string | undefined): RenderArgs {
 }
 
 async function main() {
-  const projectId = arg('--project')!, pdir = projectArgOrExit(projectId, '用法：npx tsx tools/render.ts --project <專案> [--stills 1.5,3] [--from 秒 --to 秒]');
+  const a = parseArgsOrExit(process.argv.slice(2), RENDER_FLAGS, USAGE);
+  const projectId = a.get('--project')!, pdir = projectArgOrExit(projectId, USAGE);
   let times: RenderArgs;
-  try { times = renderArgs(arg); } catch (e) { console.error((e as Error).message); process.exit(2); }
+  try { times = renderArgs(a.get); } catch (e) { console.error((e as Error).message); process.exit(2); }
   // the project's export lock, as the server's export takes it (it cuts the same clips into cache/): a server exporting this
   // project, or another render of it, makes this one stop at once (stills too: their prepare step writes the same cache/)
   const release = tryExportLock(pdir);

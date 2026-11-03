@@ -7,23 +7,22 @@ import { pathToFileURL } from 'node:url';
 import { exportBusy, TELLCUT_ROOT } from '@tellcut/media-node';
 import { holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { projectArgOrExit } from '../project-arg.ts';
-
+import { parseArgs as parseArgs_, type FlagSpec } from '../args.ts';
 export const LOCK_DIR = join(TELLCUT_ROOT, '.cache', 'batch-render-slots');
 const USAGE = '用法：npm run batch:render -- <專案> [--slots 2] [render 的選項]';
 
-/** `<id> [--slots n] [render options]` in any order; a flag takes the next word as its value unless that is a flag too
- *  (render's options all take one). null when there is not exactly one project id. */
+/** render's own options, passed on (tools/render.ts RENDER_FLAGS without --project, whose value is our id; batch.test.ts keeps
+ *  the two in step — written out here so the queue does not load every block's code to read its command line) */
+export const PASSED = ['--stills', '--from', '--to'];
+const SPEC: FlagSpec = { '--slots': 'value', ...Object.fromEntries(PASSED.map((f) => [f, 'value' as const])) };
+
+/** `<id> [--slots n] [render options]` in any order; a flag render does not take is refused here, before waiting for a slot.
+ *  --slots that is no number is the default. null when there is not exactly one project id; Usage for a wrong flag. */
 export function parseArgs(argv: string[]): { id: string; slots: number; extra: string[] } | null {
-  const pos: string[] = [], extra: string[] = [];
-  let slots = 2;
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (!a.startsWith('--')) { pos.push(a); continue; }
-    const v = i + 1 < argv.length && !argv[i + 1].startsWith('--') ? argv[++i] : undefined;
-    if (a === '--slots') slots = Math.max(1, Math.floor(Number(v)) || 2);
-    else extra.push(a, ...(v === undefined ? [] : [v]));
-  }
-  return pos.length === 1 ? { id: pos[0], slots, extra } : null;
+  const a = parseArgs_(argv, SPEC, USAGE);
+  const slots = a.has('--slots') ? Math.max(1, Math.floor(Number(a.get('--slots'))) || 2) : 2;
+  const extra = PASSED.flatMap((f) => (a.has(f) ? [f, a.get(f)!] : []));
+  return a.words.length === 1 ? { id: a.words[0], slots, extra } : null;
 }
 
 // one command string for the shell (an args array with shell: true is DEP0190 on Node 24). cmd.exe takes no \" escape inside
@@ -40,7 +39,8 @@ export const npmCommand = (args: string[]) => `npm run -s ${args.map(quote).join
 export const renderSteps = (id: string, extra: string[]): string[][] => [['render', '--', '--project', id, ...extra]];
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  let args: ReturnType<typeof parseArgs>;
+  try { args = parseArgs(process.argv.slice(2)); } catch (e) { console.error((e as Error).message); process.exit(2); }
   if (!args) { console.error(USAGE); process.exit(2); }
   const { id, slots, extra } = args;
   const pdir = projectArgOrExit(id, USAGE);   // the server's spelling of it, before waiting for a slot (render.ts would refuse another)

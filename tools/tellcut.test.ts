@@ -6,7 +6,8 @@ import { readProposal } from '@tellcut/media-node';
 import { fixture } from '../packages/engine/src/commands/test-fixture.ts';
 import { decideOnDisk, proposeOnDisk, showProject } from './tellcut.ts';
 import { saveRequest, projectHash as hashOf } from '@tellcut/media-node';
-import { describeRequest, logoArgs } from './tellcut.ts';
+import { commandArgs, describeRequest } from './tellcut.ts';
+import { Usage } from './usage.ts';
 
 function proj(p: unknown = fixture()) {
   const d = mkdtempSync(join(tmpdir(), 'cli-'));
@@ -91,9 +92,24 @@ test('request: a frozen clip uses only the source up to its freeze; a photo give
   expect(out).toMatch(/照片檔：.*p\.jpg/);
 });
 
-test('logo takes the file wherever --name is written', () => {
-  expect(logoArgs(['logo.svg', '--name', 'Acme'])).toEqual({ file: 'logo.svg', name: 'Acme' });
-  expect(logoArgs(['--name', 'Acme', 'logo.svg'])).toEqual({ file: 'logo.svg', name: 'Acme' });
-  expect(logoArgs(['--name', 'Acme'])).toEqual({ file: undefined, name: 'Acme' });
-  expect(logoArgs(['logo.png'])).toEqual({ file: 'logo.png', name: undefined });
+test('a command takes its flags wherever they are written: logo the file around --name, image around --id', () => {
+  const args = (cmd: string, argv: string[]) => { const a = commandArgs(cmd, argv, 'U'); return { id: a.id, rest: a.rest, name: cmd === 'logo' ? a.flags.get('--name') : a.flags.get('--id') }; };
+  expect(args('logo', ['p', 'logo.svg', '--name', 'Acme'])).toEqual({ id: 'p', rest: ['logo.svg'], name: 'Acme' });
+  expect(args('logo', ['p', '--name', 'Acme', 'logo.svg'])).toEqual({ id: 'p', rest: ['logo.svg'], name: 'Acme' });
+  expect(args('logo', ['p', '--name', 'Acme'])).toEqual({ id: 'p', rest: [], name: 'Acme' });
+  expect(args('image', ['p', '--id', 'x', 'a.png'])).toEqual({ id: 'p', rest: ['a.png'], name: 'x' });
+  expect(args('image', ['--id', 'x', 'p', 'a.png'])).toEqual({ id: 'p', rest: ['a.png'], name: 'x' });
+  const frames = commandArgs('frames', ['p', '--at', '1.5,3', '--full'], 'U').flags;
+  expect([frames.get('--at'), frames.has('--full'), frames.has('--proposal')]).toEqual(['1.5,3', true, false]);
+});
+
+test('a mistyped flag or command is refused, naming it, before the project is touched', () => {
+  expect(() => commandArgs('frames', ['p', '--at', '1', '--ful'], 'U')).toThrow('沒有 --ful 這個選項（可以用：--at、--proposal、--full）\nU');
+  expect(() => commandArgs('frames', ['p', '--at'], 'U')).toThrow('--at 後面要有值');
+  expect(() => commandArgs('show', ['p', '--json'], 'U')).toThrow('沒有 --json 這個選項（這個指令不接選項）');
+  expect(() => commandArgs('logo', ['p', '--name'], 'U')).toThrow('--name 後面要有值');
+  expect(() => commandArgs('shwo', ['p'], 'U')).toThrow(Usage);
+  expect(() => commandArgs('shwo', ['p'], 'U')).toThrow('沒有「shwo」這個指令');
+  // propose reads stdin from a lone -
+  expect(commandArgs('propose', ['p', '-'], 'U').rest).toEqual(['-']);
 });

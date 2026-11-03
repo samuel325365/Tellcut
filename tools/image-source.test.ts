@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makePhoto } from '@tellcut/media-node';
 import { fixture } from '../packages/engine/src/commands/test-fixture.ts';
-import { imageArgs, registerImage } from './image-source.ts';
+import { registerImage } from './image-source.ts';
 
 function proj() {
   const d = mkdtempSync(join(tmpdir(), 'img-'));
@@ -54,10 +54,4 @@ test('image: two pictures of one name from different folders are two copies and 
   expect(await registerImage(d, join(a, 'photo.png'))).toMatchObject({ id: r1.id, path: 'media/images/photo.png', width: 640, again: true });
   expect(await registerImage(d, join(b, 'photo.png'))).toMatchObject({ id: r2.id, path: 'media/images/photo-2.png', again: true });
   expect(existsSync(join(d, 'media', 'images', 'photo-3.png'))).toBe(false);
-});
-
-test('image takes the file wherever --id is written', () => {
-  expect(imageArgs(['--id', 'p', 'a.png'])).toEqual({ file: 'a.png', id: 'p' });
-  expect(imageArgs(['a.png', '--id', 'p'])).toEqual({ file: 'a.png', id: 'p' });
-  expect(imageArgs(['a.png'])).toEqual({ file: 'a.png', id: undefined });
 });

@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OWNER_TTL_MS, holders, isAlive, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { parseLoudness } from '@tellcut/media-node';
-import { npmCommand, parseArgs as renderArgs } from './render.ts';
+import { npmCommand, parseArgs as renderArgs, PASSED } from './render.ts';
+import { RENDER_FLAGS } from '../render.ts';
 
 const past = (f: string, ms: number) => { const t = new Date(Date.now() - ms); utimesSync(f, t, t); };
 
@@ -83,8 +84,15 @@ test('batch:render args: id and --slots in any order, the rest goes to render, v
   expect(renderArgs(['food', '--stills', '1.5,3', '--slots', '1'])).toEqual({ id: 'food', slots: 1, extra: ['--stills', '1.5,3'] });
   expect(renderArgs(['food', '--slots', 'x'])!.slots).toBe(2);
   expect(renderArgs(['--from', '2', 'food', '--to', '5'])).toEqual({ id: 'food', slots: 2, extra: ['--from', '2', '--to', '5'] });
+  expect(renderArgs(['food', '--from=2'])).toEqual({ id: 'food', slots: 2, extra: ['--from', '2'] });
   expect(renderArgs([])).toBeNull();
   expect(renderArgs(['food', 'extra'])).toBeNull();
+  // a flag render does not take is refused before a slot is waited for, not passed on to fail there (or be read as the id)
+  expect(() => renderArgs(['food', '--stils', '1.5'])).toThrow('沒有 --stils 這個選項');
+  expect(() => renderArgs(['food', '--project', 'other'])).toThrow('沒有 --project 這個選項');
+  expect(() => renderArgs(['food', '--stills'])).toThrow('--stills 後面要有值');
+  // the options passed on are render's own, but --project (ours to give)
+  expect(PASSED).toEqual(Object.keys(RENDER_FLAGS).filter((f) => f !== '--project'));
   expect(npmCommand(['render', '--', '--project', 'my x', '--stills', '1.5,3'])).toBe('npm run -s "render" "--" "--project" "my x" "--stills" "1.5,3"');
   // cmd.exe takes no \" escape and expands %VAR% even inside quotes, sh expands $ and `: such an argument is refused, not passed on half-quoted
   for (const bad of ['my "x"', '%PATH%', 'a&b', 'a|b', 'a<b', 'a>b', 'a^b', 'a\nb', ...(process.platform === 'win32' ? [] : ['$HOME', 'a`id`', 'dir\\'])])

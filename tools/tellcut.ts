@@ -29,7 +29,8 @@ import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
 import { secsList } from './cut/speech.ts';
 import { projectArg } from './project-arg.ts';
-import { imageArgs, registerImage } from './image-source.ts';
+import { parseArgs, type Args, type FlagSpec } from './args.ts';
+import { registerImage } from './image-source.ts';
 
 const f2 = (v: number) => v.toFixed(2);
 /** frames' long side for Claude (540×960 portrait, 960×540 landscape); --full keeps the film's own size */
@@ -159,24 +160,33 @@ function reportFx(fx: FxResult) {
 /** the registry for one project: shared plugins plus its fx (problems are printed, not thrown) */
 async function registryFor(dir: string, project: Project) { const r = await projectRegistry(dir, plugins, project); reportFx(r.fx); return r.registry; }
 
-/** `logo <專案> …`'s words after the project: the file is the one word that is neither a flag nor --name's value, so
- *  `--name Acme logo.svg` and `logo.svg --name Acme` read the same (--name named the old previews' wordmark; still read so an
- *  older command line works, and ignored) */
-export function logoArgs(rest: string[]): { file?: string; name?: string } {
-  const ni = rest.indexOf('--name');
-  return { file: rest.find((a, i) => !a.startsWith('--') && (ni < 0 || i !== ni + 1)), name: ni >= 0 ? rest[ni + 1] : undefined };
+/** the flags each command on a project takes; one not here takes none. logo's --name named the old previews' wordmark: still
+ *  read so an older command line works, and ignored */
+const COMMAND_FLAGS: Record<string, FlagSpec> = {
+  frames: { '--at': 'value', '--proposal': 'switch', '--full': 'switch' },
+  logo: { '--name': 'value' },
+  image: { '--id': 'value' },
+  request: { '--id': 'value', '--frames': 'switch', '--full': 'switch' },
+};
+const COMMANDS = ['show', 'selection', 'propose', 'status', 'accept', 'reject', 'frames', 'logo', 'image', 'site', 'request'];
+
+/** a command on a project, after its name: the flags it takes wherever they stand (`logo --name Acme logo.svg` and `logo.svg
+ *  --name Acme` read the same), the first word the project, the others after it. Usage for an unknown command or flag. */
+export function commandArgs(cmd: string, argv: string[], usage: string): { id?: string; rest: string[]; flags: Args } {
+  if (!COMMANDS.includes(cmd)) throw new Usage(`沒有「${cmd}」這個指令\n${usage}`);
+  const flags = parseArgs(argv, COMMAND_FLAGS[cmd] ?? {}, usage), [id, ...rest] = flags.words;
+  return { id, rest, flags };
 }
 
 async function main(argv: string[]) {
-  const [cmd, id, ...rest] = argv;
+  const [cmd] = argv;
   if (cmd === 'assets') { console.log(await assetsCommand(argv.slice(1))); return; }
   if (cmd === 'library') { console.log(await libraryCommand(argv.slice(1))); return; }
   if (cmd === 'catalog') {
     // catalog [類型 | --find <關鍵字>…] [--project <專案>]: with a project, its own fx join the list
-    const rest2 = [id, ...rest].filter((x): x is string => !!x), pi = rest2.indexOf('--project');
-    const pid = pi >= 0 ? rest2[pi + 1] : undefined, words = rest2.filter((x, i) => x !== '--project' && (pi < 0 || i !== pi + 1));
-    const find = words[0] === '--find', type = find ? undefined : words[0];
-    if (find && words.length < 2) throw new Usage('用法：npm run tellcut -- catalog --find <關鍵字>（幾個字用空白分開，都要符合）');
+    const a = parseArgs(argv.slice(1), { '--find': 'switch', '--project': 'value' }, '用法：npm run tellcut -- catalog [類型 | 代號 | --find <關鍵字>…] [--project <專案>]');
+    const pid = a.get('--project'), words = a.words, find = a.has('--find'), type = find ? undefined : words[0];
+    if (find && !words.length) throw new Usage('用法：npm run tellcut -- catalog --find <關鍵字>（幾個字用空白分開，都要符合）');
     // the user's own blocks (spec 2026-10-29-my-library §4.3) are always listed, first
     const mine = await libraryPlugin(libraryRoot(join(TELLCUT_ROOT, 'projects')));
     for (const e of mine.errors) console.error(`我的積木載入失敗 ${e.path}：${e.message}`);
@@ -186,12 +196,13 @@ async function main(argv: string[]) {
       reportFx(fx);
       all = [...all, { ...fx.plugin, id: 'fx' }];
     }
-    console.log(find ? formatFind(all, words.slice(1).join(' ')) : type ? await formatLookup(all, type) : `${formatCatalog(all)}\n\n${describeRecipe()}`);
+    console.log(find ? formatFind(all, words.join(' ')) : type ? await formatLookup(all, type) : `${formatCatalog(all)}\n\n${describeRecipe()}`);
     return;
   }
-  if (cmd === 'recipe') { console.log(describeRecipe(id)); return; }
-  if (cmd === 'cut-api') { console.log(formatCutApi()); return; }
+  if (cmd === 'recipe') { console.log(describeRecipe(parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- recipe [配方]').words[0])); return; }
+  if (cmd === 'cut-api') { parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- cut-api'); console.log(formatCutApi()); return; }
   if (cmd === 'font3d') {
+    const id = parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- font3d <sans|serif|round|ja>').words[0];
     if (!id) throw new Usage('用法：npm run tellcut -- font3d <sans|serif|round|ja>（黑體、明體、圓體，跟著品牌的字感；ja 是日文的黑體）');
     const pub = join(TELLCUT_ROOT, 'apps/player/public/fonts/files'), dist = join(TELLCUT_ROOT, 'apps/player/dist');
     const { file, downloaded } = await ensureFont3d(id as Feel, { dirs: existsSync(dist) ? [pub, join(dist, 'fonts/files')] : [pub], log: console.log });
@@ -206,8 +217,8 @@ async function main(argv: string[]) {
   }
   const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|image|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round|ja>、library …';
   if (!cmd) throw new Usage(usage);
-  const dir = projectArg(id, usage);
-  const opt = (k: string) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : undefined; };
+  const given = commandArgs(cmd, argv.slice(1), usage), { rest, flags } = given;
+  const dir = projectArg(given.id, usage), id = given.id!;   // projectArg refused a missing one
   switch (cmd) {
     case 'show': console.log(showProject(readProject(dir))); return;
     case 'status': {
@@ -255,22 +266,22 @@ async function main(argv: string[]) {
       return;
     }
     case 'frames': {
-      const at = opt('--at');
+      const at = flags.get('--at');
       if (!at) throw new Usage('用法：npm run tellcut -- frames <專案> [--proposal] [--full] --at 1.5,3');
       const times = secsList(at, '--at');
-      const proposal = rest.includes('--proposal');
+      const proposal = flags.has('--proposal');
       let project = readProject(dir);
       if (proposal) {
         const prop = readProposal(dir);
         if (!prop) throw new Error('沒有待處理的提議');
         project = applyOps(project, prop.ops).project;
       }
-      const files = await renderStills({ dir, project, times, registry: await registryFor(dir, project), outDir: join(dir, 'output', 'frames'), tag: proposal ? 'proposal' : 'current', maxSide: rest.includes('--full') ? undefined : STILL_SIDE });
+      const files = await renderStills({ dir, project, times, registry: await registryFor(dir, project), outDir: join(dir, 'output', 'frames'), tag: proposal ? 'proposal' : 'current', maxSide: flags.has('--full') ? undefined : STILL_SIDE });
       for (const f of files) console.log(f);
       return;
     }
     case 'logo': {
-      const { file } = logoArgs(rest);
+      const [file] = rest;
       if (!file) throw new Usage('用法：npm run tellcut -- logo <專案> <商標檔（SVG、PNG、JPG、WebP）>');
       // a mistyped project id must not leave an empty projects/<typo>/media/brand/ behind (importLogo checks too)
       if (!existsSync(join(dir, 'project.json'))) throw new Error(`找不到專案 ${id}（projects/${id}/project.json 不存在）`);
@@ -288,7 +299,7 @@ async function main(argv: string[]) {
       return;
     }
     case 'image': {
-      const a = imageArgs(rest);
+      const a = { file: rest[0], id: flags.get('--id') };
       if (!a.file) throw new Usage('用法：npm run tellcut -- image <專案> <圖檔（JPG、PNG、WebP、HEIC）> [--id <素材 id>]');
       const r = await registerImage(dir, a.file, { id: a.id });
       console.log(`${r.again ? '已更新' : '已登記'}圖片素材 ${r.id}：${r.path}（${r.width}×${r.height}${r.copied ? '，從專案外複製進來' : ''}）`);
@@ -297,7 +308,7 @@ async function main(argv: string[]) {
       return;
     }
     case 'site': {
-      const url = rest.find((a) => !a.startsWith('--'));
+      const [url] = rest;
       if (!url) throw new Usage('用法：npm run tellcut -- site <專案> <官網網址>');
       if (!existsSync(join(dir, 'project.json'))) throw new Error(`找不到專案 ${id}（projects/${id}/project.json 不存在）`);
       const s = await readSite(/^https?:\/\//i.test(url) ? url : `https://${url}`, dir);
@@ -310,13 +321,13 @@ async function main(argv: string[]) {
       return;
     }
     case 'request': {
-      const rid = opt('--id'), r = rid ? readRequest(dir, rid) : latestRequest(dir);
+      const rid = flags.get('--id'), r = rid ? readRequest(dir, rid) : latestRequest(dir);
       if (!r) throw new Error(rid ? `沒有請求 ${rid}` : '還沒有請求（在編輯器的時間軸上按右鍵 →「Ask Agent…」）');
       const text = readFileSync(join(dir, 'project.json'), 'utf8'), p = parseProject(JSON.parse(text));
       console.log(describeRequest(dir, p, r, text));
-      if (rest.includes('--frames')) {
+      if (flags.has('--frames')) {
         const ts = r.range ? [r.range[0] + 0.05, (r.range[0] + r.range[1]) / 2, r.range[1] - 0.05] : [r.playhead];
-        const files = await renderStills({ dir, project: p, times: ts, registry: await registryFor(dir, p), outDir: join(dir, 'output', 'frames'), tag: 'request', maxSide: rest.includes('--full') ? undefined : STILL_SIDE });
+        const files = await renderStills({ dir, project: p, times: ts, registry: await registryFor(dir, p), outDir: join(dir, 'output', 'frames'), tag: 'request', maxSide: flags.has('--full') ? undefined : STILL_SIDE });
         for (const f of files) console.log(`畫面：${f}`);
       }
       return;

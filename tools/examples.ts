@@ -12,6 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
 import { ImportError, importProject } from './export-project.ts';
 import { fetchIdle, idleTimer, Stalled } from './setup/fetch-idle.ts';
+import { parseArgs } from './args.ts';
 
 export const REPO = 'samuel325365/Tellcut', TAG = 'examples';
 export const RELEASE_API = `https://api.github.com/repos/${REPO}/releases/tags/${TAG}`;
@@ -96,7 +97,7 @@ export async function installExample(ex: Example, o: { fetch?: Fetch; projectsDi
 }
 
 async function main(argv: string[]) {
-  const all = argv.includes('--all'), names = argv.filter((a) => !a.startsWith('--'));
+  const a = parseArgs(argv, { '--all': 'switch' }, 'Usage: npm run examples -- [<name>… | --all]'), all = a.has('--all'), names = a.words;
   const list = await listExamples(), projectsDir = join(TELLCUT_ROOT, 'projects');
   if (!all && !names.length) {
     console.log(`Example projects (${RELEASE_PAGE}):\n`);

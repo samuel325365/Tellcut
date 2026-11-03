@@ -11,12 +11,6 @@ export interface RegisteredImage { id: string; path: string; width: number; heig
 
 const ID = /^[A-Za-z0-9_-]+$/;
 
-/** `image <專案> …`'s words after the project: the file is the one word that is neither a flag nor --id's value */
-export function imageArgs(rest: string[]): { file?: string; id?: string } {
-  const ii = rest.indexOf('--id');
-  return { file: rest.find((a, i) => !a.startsWith('--') && (ii < 0 || i !== ii + 1)), id: ii >= 0 ? rest[ii + 1] : undefined };
-}
-
 /** a free file name in `dir` for `name` (photo.png, photo-2.png, …) */
 function freeIn(dir: string, name: string): string {
   let f = join(dir, name);

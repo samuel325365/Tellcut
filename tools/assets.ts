@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { contextFor, getAsset, makeMap, openSources, probeDuration, searchAll, searchSheet, sourceStatuses, TELLCUT_ROOT, TILE_BUDGET, usableSource, writeCredits, type AssetKind, type MapStyle, type SearchQuery, type Sources } from '@tellcut/media-node';
 import { Usage } from './usage.ts';
+import { parseArgs, type FlagSpec } from './args.ts';
 import { projectArg } from './project-arg.ts';
 
 /** what the CLI takes — exported so the guides' test checks the guides against the command itself */
@@ -23,7 +24,8 @@ export const ASSET_FLAGS = ['--source', '--kind', '--ratio', '--min-sec', '--max
   '--at', '--to', '--via', '--style', '--zoom', '--size', '--mode', '--color', '--name', '--no-pin'];
 /** the flags that take no value */
 const SWITCHES = new Set(['--no-pin']);
-const VALUED = new Set(ASSET_FLAGS.filter((f) => !SWITCHES.has(f)));
+/** the flags that may repeat */
+const LISTS = new Set(['--opt', '--via']);
 export const MAP_STYLES: MapStyle[] = ['street', 'satellite', 'light', 'dark'];
 const STYLES = MAP_STYLES;
 const MAP_USAGE = '用法：npm run tellcut -- assets map <專案> (--at <地名|緯度,經度> | --from <地名> --to <地名> [--via <地名>]…) [--style street|satellite|light|dark] [--zoom z] [--size 1080x1920] [--mode driving|straight] [--color #e5484d] [--name 名稱] [--no-pin]';
@@ -36,37 +38,24 @@ const CREDITS_USAGE = '用法：npm run tellcut -- assets credits <專案>';
 /** what --help prints, per subcommand */
 const USAGES: Record<string, string> = { sources: '用法：npm run tellcut -- assets sources', source: SOURCE_USAGE, search: SEARCH_USAGE, get: GET_USAGE, data: DATA_USAGE, credits: CREDITS_USAGE, map: MAP_USAGE };
 
-/** positional words and flags, wherever the flags stand, as `--k v` or `--k=v`; --opt and --via may repeat. Any other `--…` is a
- *  mistake, never a keyword (`--from=10` once downloaded the whole file). */
+/** how each flag is read (tools/args.ts): --opt and --via may repeat */
+const SPEC: FlagSpec = Object.fromEntries(ASSET_FLAGS.map((f) => [f, SWITCHES.has(f) ? 'switch' : LISTS.has(f) ? 'list' : 'value']));
+
+/** positional words and flags, wherever the flags stand, as `--k v` or `--k=v`. Any other `--…` is a mistake, never a keyword
+ *  (`--from=10` once downloaded the whole file). */
 function parse(argv: string[]) {
-  const words: string[] = [], flags = new Map<string, string>(), opts: Record<string, string> = {}, via: string[] = [];
-  for (let i = 0; i < argv.length; i++) {
-    const eq = argv[i].startsWith('--') ? argv[i].indexOf('=') : -1;
-    const a = eq > 0 ? argv[i].slice(0, eq) : argv[i];
-    if (!a.startsWith('--')) { words.push(a); continue; }
-    if (SWITCHES.has(a)) { if (eq > 0) throw new Usage(`${a} 後面不接值`); flags.set(a, ''); continue; }
-    if (!VALUED.has(a)) throw new Usage(`沒有 ${a} 這個選項\n${USAGE}`);
-    const v = eq > 0 ? argv[i].slice(eq + 1) : argv[++i];
-    if (v === undefined) throw new Usage(`${a} 後面要有值`);
-    if (a === '--opt') {
-      const k = v.indexOf('=');
-      if (k <= 0) throw new Usage('--opt 要寫成 k=v（例如 --opt feel=Calming）');
-      opts[v.slice(0, k)] = v.slice(k + 1);
-    } else if (a === '--via') via.push(v);
-    else flags.set(a, v);
+  const a = parseArgs(argv, SPEC, USAGE), opts: Record<string, string> = {};
+  for (const v of a.all('--opt')) {
+    const k = v.indexOf('=');
+    if (k <= 0) throw new Usage('--opt 要寫成 k=v（例如 --opt feel=Calming）');
+    opts[v.slice(0, k)] = v.slice(k + 1);
   }
-  const num = (k: string) => {
-    if (!flags.has(k)) return undefined;
-    const n = Number(flags.get(k));
-    if (!Number.isFinite(n)) throw new Usage(`${k} 要是數字`);
-    return n;
-  };
-  return { words, flags, opts, via, num };
+  return { words: a.words, flags: a, opts, via: a.all('--via'), num: a.num };
 }
 
 /** `assets map`: the stitched map, and what it took */
-async function mapCommand(s: Sources, dir: string, rest: string[]): Promise<string> {
-  const { flags, via, num } = parse(rest), style = flags.get('--style') as MapStyle | undefined, size = flags.get('--size'), mode = flags.get('--mode');
+async function mapCommand(s: Sources, dir: string, { flags, via, num }: ReturnType<typeof parse>): Promise<string> {
+  const style = flags.get('--style') as MapStyle | undefined, size = flags.get('--size'), mode = flags.get('--mode');
   if (style && !STYLES.includes(style)) throw new Usage(`--style 只能是 ${STYLES.join('、')}`);
   if (size && !/^\d+x\d+$/.test(size)) throw new Usage('--size 要像 1080x1920');
   // what map.py would otherwise answer with a Python traceback
@@ -97,6 +86,8 @@ export async function assetsCommand(argv: string[], o: { sources?: Sources; proj
   if (argv.some((a) => a === '--help' || a === '-h')) return USAGES[sub] ?? USAGE;
   const s = o.sources ?? openSources(), projectsDir = o.projectsDir ?? join(TELLCUT_ROOT, 'projects');
   const projectDir = (id: string | undefined, usage: string) => projectArg(id, usage, { projectsDir });
+  // every subcommand's flags are read (and a mistyped one refused) before it does anything
+  const args = parse(rest);
   switch (sub) {
     case 'sources': {
       const all = sourceStatuses(s), ok = all.filter((x) => x.available);
@@ -106,14 +97,14 @@ export async function assetsCommand(argv: string[], o: { sources?: Sources; proj
       return [...ok.map((x) => `${x.id.padEnd(12)}  ${x.adapter!.summary}${x.adapter!.data ? `（另有資料查詢：assets data ${x.id} …）` : ''}`), ...unpicked, '', '看完整說明：npm run tellcut -- assets source <id>'].join('\n');
     }
     case 'source': {
-      const id = rest[0];
+      const id = args.words[0];
       if (!id) throw new Usage(SOURCE_USAGE);
       const st = sourceStatuses(s).find((x) => x.id === id);
       if (!st?.adapter) throw new Error(`沒有「${id}」這個來源（npm run tellcut -- assets sources 看有哪些）`);
       return st.available ? st.adapter.card() : `⚠ 目前不能用：${st.why}\n\n${st.adapter.card()}`;
     }
     case 'search': {
-      const { words, flags, opts, num } = parse(rest), kind = flags.get('--kind');
+      const { words, flags, opts, num } = args, kind = flags.get('--kind');
       if (kind && !KINDS.includes(kind as AssetKind)) throw new Usage(`--kind 只能是 ${KINDS.join('、')}`);
       const q: SearchQuery & { source?: string } = { text: words.join(' ').trim(), opts, limit: num('--limit') ?? 8,
         ...(flags.has('--source') ? { source: flags.get('--source') } : {}), ...(kind ? { kind: kind as AssetKind } : {}), ...(flags.has('--ratio') ? { ratio: flags.get('--ratio') } : {}),
@@ -136,7 +127,7 @@ export async function assetsCommand(argv: string[], o: { sources?: Sources; proj
       return [...(sheet ? [`縮圖總覽：${sheet}（每格下面是編號；用 Read 看這一張就好）`, ''] : []), ...out, '', '下載：npm run tellcut -- assets get <專案> <編號> [--from 秒 --len 秒]'].join('\n');
     }
     case 'get': {
-      const { words, opts, num } = parse(rest), usage = GET_USAGE;
+      const { words, opts, num } = args, usage = GET_USAGE;
       const [id, ...refs] = words;
       if (!id || !refs.length) throw new Usage(usage);
       const dir = projectDir(id, usage);
@@ -163,7 +154,7 @@ export async function assetsCommand(argv: string[], o: { sources?: Sources; proj
       return text;
     }
     case 'data': {
-      const { words, opts } = parse(rest), [id, ...query] = words, text = query.join(' ').trim();
+      const { words, opts } = args, [id, ...query] = words, text = query.join(' ').trim();
       if (!id || !text) throw new Usage(DATA_USAGE);
       const a = usableSource(s, id);
       if (!a.data) throw new Error(`來源 ${id} 沒有資料查詢`);
@@ -171,9 +162,9 @@ export async function assetsCommand(argv: string[], o: { sources?: Sources; proj
       ctx.options = { ...ctx.options, ...opts };
       return a.data(text, ctx);
     }
-    case 'map': return mapCommand(s, projectDir(rest[0], MAP_USAGE), rest.slice(1));
+    case 'map': return mapCommand(s, projectDir(args.words[0], MAP_USAGE), args);
     case 'credits': {
-      const dir = projectDir(rest[0], CREDITS_USAGE);
+      const dir = projectDir(args.words[0], CREDITS_USAGE);
       return readFileSync(writeCredits(dir, s.adapters), 'utf8').trimEnd();
     }
     default: throw new Usage(USAGE);

@@ -21,6 +21,7 @@ import { HANDLES_FILE, nextHandle, readHandles, similarNames, withHandle } from 
 import { editedSinceCut } from './cut/cut.ts';
 import { projectArgOrExit } from './project-arg.ts';
 import { splitFx, type FxSplit } from './fx-split.ts';
+import { parseArgsOrExit } from './args.ts';
 
 export interface Promotion { project: string; fxFile: string; from: string; to: string; name: string; target: string; items: string[];
   /** the fx file stays in meta.fx (it holds other blocks) */
@@ -165,15 +166,15 @@ export async function applyPromotion(o: { dir: string; commonDir: string; plan: 
 }
 
 async function main() {
-  const argv = process.argv.slice(2), pos = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--as' && argv[i - 1] !== '--category');
-  const flag = (k: string) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : undefined);
-  const [id, type] = pos, name = flag('--as'), category = flag('--category');
-  if (!id || !type) { console.error('用法：npm run promote -- <專案> <fx.類型> [--as 名稱] [--category 分類] [--yes]'); process.exit(2); }
-  const dir = projectArgOrExit(id, '用法：npm run promote -- <專案> <fx.類型> [--as 名稱] [--category 分類] [--yes]'), commonDir = resolve(TELLCUT_ROOT, 'packages', 'plugin-common');
+  const usage = '用法：npm run promote -- <專案> <fx.類型> [--as 名稱] [--category 分類] [--yes]';
+  const a = parseArgsOrExit(process.argv.slice(2), { '--as': 'value', '--category': 'value', '--yes': 'switch' }, usage);
+  const [id, type] = a.words, name = a.get('--as'), category = a.get('--category');
+  if (!id || !type) { console.error(usage); process.exit(2); }
+  const dir = projectArgOrExit(id, usage), commonDir = resolve(TELLCUT_ROOT, 'packages', 'plugin-common');
   try {
     const plan = await planPromotion({ dir, type, name, category, commonDir });
     console.log(describePromotion(plan));
-    if (!argv.includes('--yes')) { console.log('\n（只是預覽；確定要做就加 --yes）'); return; }
+    if (!a.has('--yes')) { console.log('\n（只是預覽；確定要做就加 --yes）'); return; }
     const { cutLeft } = await applyPromotion({ dir, commonDir, plan });
     if (cutLeft) console.log(`\n⚠ cut.ts 裡還有 ${plan.fxFile}：照原本的寫法沒能自動拿掉，請手動刪掉那個 c.fx(…)（檔案已刪，重跑 npm run cut 會找不到它）`);
     console.log(`\n完成。下一步：npm run build:player；npm run golden -- --update ${plan.name}，看過圖片對不對；在 apps/editor/src/i18n/ 的 blocks.en.ts、blocks.ja.ts 加 ${plan.to} 的名稱和說明，params.en.ts、params.ja.ts 加每個參數，預設值是中文的字在 values.en.ts、values.ja.ts 加英日版；npm run thumbs；npm run blocks:index；再跑 npm test。`);

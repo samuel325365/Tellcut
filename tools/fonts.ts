@@ -98,6 +98,8 @@ export function mergeFontSpecs(specs: FontSpec[]): FontSpec[] {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  const { parseArgsOrExit } = await import('./args.ts');
+  parseArgsOrExit(process.argv.slice(2), {}, '用法：npm run fonts');
   const { plugins } = await import('@tellcut/plugins');
   const { TELLCUT_ROOT } = await import('@tellcut/media-node');
   const specs = mergeFontSpecs(plugins.flatMap((p) => p.fonts ?? []));

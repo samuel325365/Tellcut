@@ -11,22 +11,20 @@ import { blockDir, libraryRoot, listLibrary, loadProjectFx, loadStyles, makeThum
 import { plugins } from '@tellcut/plugins';
 import { fxChecks } from './check/rules.ts';
 import { Usage } from './usage.ts';
+import { parseArgs, type FlagSpec } from './args.ts';
 import { projectArg } from './project-arg.ts';
 
 const USAGE = '用法：npm run tellcut -- library list | save <專案> <fx/x.js|score/x.js> [--type <fx.…>] [--name …] [--desc …] [--category …] [--replace|--keep-both] | use <專案> <slug…> | use <專案> --style <slug> | refresh <slug> | remove <slug> [--style]';
+/** --style is a switch: `use <專案> --style <slug>` has the slug as a word */
+const LIBRARY_FLAGS: FlagSpec = { '--replace': 'switch', '--keep-both': 'switch', '--style': 'switch', '--no-thumb': 'switch',
+  '--type': 'value', '--name': 'value', '--desc': 'value', '--category': 'value' };
 
 /** projects: the projects folder (tests point it elsewhere); thumb: false skips drawing thumbnails (no Chrome) */
 export async function libraryCommand(args: string[], o: { projects?: string; thumb?: boolean } = {}): Promise<string> {
   const projects = o.projects ?? join(TELLCUT_ROOT, 'projects'), root = libraryRoot(projects);
-  const flags = new Map<string, string>(), pos: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (['--replace', '--keep-both', '--style', '--no-thumb'].includes(a)) flags.set(a.slice(2), '');
-    else if (a.startsWith('--')) flags.set(a.slice(2), args[++i] ?? '');
-    else pos.push(a);
-  }
-  const thumb = o.thumb !== false && !flags.has('no-thumb');
-  const [cmd, ...rest] = pos;
+  const flags = parseArgs(args, LIBRARY_FLAGS, USAGE);
+  const thumb = o.thumb !== false && !flags.has('--no-thumb');
+  const [cmd, ...rest] = flags.words;
   // a project id as everywhere else (no ../, no _library or other _ folder, the folder's own spelling): the copy and its links
   // are written under it
   const projectDir = (id: string | undefined) => projectArg(id, USAGE, { projectsDir: projects, internal: false });
@@ -40,8 +38,8 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
     case 'save': {
       const [id, file] = rest, dir = projectDir(id);
       if (!file) throw new Usage(USAGE);
-      const onConflict: OnConflict | undefined = flags.has('replace') ? 'replace' : flags.has('keep-both') ? 'keep-both' : undefined;
-      const said = { ...(flags.get('name') ? { name: flags.get('name') } : {}), ...(flags.has('desc') ? { desc: flags.get('desc') } : {}), ...(flags.get('category') ? { category: flags.get('category') } : {}) };
+      const onConflict: OnConflict | undefined = flags.has('--replace') ? 'replace' : flags.has('--keep-both') ? 'keep-both' : undefined;
+      const said = { ...(flags.get('--name') ? { name: flags.get('--name') } : {}), ...(flags.has('--desc') ? { desc: flags.get('--desc') } : {}), ...(flags.get('--category') ? { category: flags.get('--category') } : {}) };
       if (file.replace(/\\/g, '/').startsWith('score/')) {
         const own = await loadStyles([join(dir, 'score')]), s = Object.values(own.styles).find((x) => resolve(x.file) === resolve(dir, file));
         if (!s) throw new Error(`${file} 不是能載入的配樂風格${own.errors[0] ? `：${own.errors[0].message}` : ''}`);
@@ -52,8 +50,8 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
       const fx = file.replace(/\\/g, '/');
       const types = (await loadProjectFx(dir, [fx])).plugin.items?.map((t) => t.type) ?? [];
       // --type: the block the names are for (a module may hold several); else its first
-      const named = flags.get('type') || types[0];
-      if (flags.get('type') && !types.includes(named)) throw new Error(`${fx} 裡沒有 ${named}（有：${types.join('、')}）`);
+      const named = flags.get('--type') || types[0];
+      if (flags.get('--type') && !types.includes(named)) throw new Error(`${fx} 裡沒有 ${named}（有：${types.join('、')}）`);
       const r = await saveBlock({ root, projectDir: dir, projectId: id, file: fx, names: named && Object.keys(said).length ? { [named]: said } : undefined, onConflict });
       if ('conflict' in r) throw new Error(`我的積木裡已經有「${r.conflict.name}」（${r.conflict.types.join('、')}）：加 --replace 取代它，或 --keep-both 兩個都留（新的改 id）`);
       if (thumb) await makeThumb(root, r.entry.slug, plugins);
@@ -62,8 +60,8 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
     }
     case 'use': {
       const [id, ...slugs] = rest, dir = projectDir(id);
-      if (flags.has('style')) {
-        const slug = slugs[0] ?? flags.get('style');
+      if (flags.has('--style')) {
+        const slug = slugs[0];
         if (!slug) throw new Usage(USAGE);
         const r = useStyle({ root, projectDir: dir, slug });
         return `已複製到 ${r.file}：c.score('${r.id}')`;
@@ -94,7 +92,7 @@ export async function libraryCommand(args: string[], o: { projects?: string; thu
     case 'remove': {
       const [slug] = rest;
       if (!slug) throw new Usage(USAGE);
-      if (flags.has('style')) removeStyle(root, slug); else removeBlock(root, slug);
+      if (flags.has('--style')) removeStyle(root, slug); else removeBlock(root, slug);
       return `已刪除 ${slug}（已經用了它的專案各有一份，不受影響）`;
     }
     default: throw new Usage(USAGE);

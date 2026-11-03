@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { TELLCUT_ROOT } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { formatIndex } from './catalog.ts';
+import { parseArgsOrExit } from './args.ts';
 
 export const GUIDE_FILE = join(TELLCUT_ROOT, 'guides/workflow.md');
 const START = '<!-- block-index: npm run blocks:index writes this list -->', END = '<!-- /block-index -->';
@@ -20,7 +21,7 @@ export function withIndex(prompt: string, index = formatIndex(plugins)): string 
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const now = readFileSync(GUIDE_FILE, 'utf8'), next = withIndex(now);
-  if (process.argv.includes('--check')) {
+  if (parseArgsOrExit(process.argv.slice(2), { '--check': 'switch' }, '用法：npm run blocks:index [-- --check]').has('--check')) {
     if (now !== next) { console.error('guides/workflow.md 的積木索引過期了：執行 npm run blocks:index'); process.exit(1); }
     console.log('積木索引是最新的');
   } else if (now === next) console.log('積木索引已經是最新的');

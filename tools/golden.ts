@@ -5,8 +5,10 @@ import { createRegistry } from '@tellcut/engine';
 import { goldenPlatformDir, goldenSummary, TELLCUT_ROOT, runGolden, type GoldenCase } from '@tellcut/media-node';
 import { samples } from '@tellcut/plugin-common/samples';
 import { plugins } from '@tellcut/plugins';
+import { parseArgsOrExit } from './args.ts';
 
-const update = process.argv.includes('--update'), only = process.argv.slice(2).find((a) => !a.startsWith('-'));
+const args = parseArgsOrExit(process.argv.slice(2), { '--update': 'switch' }, '用法：npm run golden -- [--update] [<名稱開頭>]');
+const update = args.has('--update'), only = args.words[0];
 const chosen = (samples as GoldenCase[]).filter((c) => !only || c.name.startsWith(only));
 if (!chosen.length) { console.error(`沒有符合「${only}」的 golden 案例`); process.exit(2); }
 const goldenDir = join(TELLCUT_ROOT, 'packages/plugin-common/golden');

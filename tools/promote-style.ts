@@ -11,6 +11,7 @@ import { STYLE_PREFIX } from '@tellcut/protocol';
 import { fxChecks } from './check/rules.ts';
 import { HANDLES_FILE, nextHandle, readHandles, withHandle } from './handle-registry.ts';
 import { projectArgOrExit } from './project-arg.ts';
+import { parseArgsOrExit } from './args.ts';
 
 /** `handle`: the next MUS handle, given to it in the registry (spec 2026-10-22-block-handles) */
 export interface StylePromotion { from: string; to: string; id: string; handle: string; handlesFile: string }
@@ -43,12 +44,13 @@ export function applyStylePromotion(p: StylePromotion) {
 }
 
 async function main() {
-  const [id, style] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-  if (!id || !style) { console.error('用法：npm run promote-style -- <專案> <風格 id> [--yes]'); process.exit(2); }
+  const usage = '用法：npm run promote-style -- <專案> <風格 id> [--yes]';
+  const a = parseArgsOrExit(process.argv.slice(2), { '--yes': 'switch' }, usage), [id, style] = a.words;
+  if (!id || !style) { console.error(usage); process.exit(2); }
   try {
-    const p = await planStylePromotion({ dir: projectArgOrExit(id, '用法：npm run promote-style -- <專案> <風格 id> [--yes]'), id: style });
+    const p = await planStylePromotion({ dir: projectArgOrExit(id, usage), id: style });
     console.log(`把風格「${p.id}」升格進風格庫（圖鑑代號 ${p.handle}）：\n  ${p.from}\n  → ${p.to}\n  （已經用它產生的配樂不受影響；之後每個專案都能用 --style ${p.id}）`);
-    if (!process.argv.includes('--yes')) { console.log('\n（只是預覽；確定要做就加 --yes）'); return; }
+    if (!a.has('--yes')) { console.log('\n（只是預覽；確定要做就加 --yes）'); return; }
     applyStylePromotion(p);
     console.log('\n完成。跑一次 npm test（風格庫的每個風格都會被檢查）。');
   } catch (e) { console.error(`無法升格：${(e as Error).message}`); process.exit(1); }

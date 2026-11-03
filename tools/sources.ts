@@ -4,6 +4,7 @@
 // The answers go to .cache/sources-health.json: a source found broken is hidden from the agents until a check passes again.
 import { pathToFileURL } from 'node:url';
 import { checkSources, contactOf, openSources, type Sources } from '@tellcut/media-node';
+import { parseArgsOrExit } from './args.ts';
 
 const STATE = { ok: '可用', temporary: '暫時不能用', broken: '壞掉' } as const;
 const width = (s: string) => [...s].reduce((n, c) => n + (c.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
@@ -27,5 +28,5 @@ export async function sourcesReport(s: Sources, o: { live?: boolean } = {}): Pro
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  try { console.log(await sourcesReport(openSources(), { live: process.argv.includes('--live') })); } catch (e) { console.error((e as Error).message); process.exit(1); }
+  try { console.log(await sourcesReport(openSources(), { live: parseArgsOrExit(process.argv.slice(2), { '--live': 'switch' }, '用法：npm run sources [-- --live]').has('--live') })); } catch (e) { console.error((e as Error).message); process.exit(1); }
 }

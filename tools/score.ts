@@ -10,6 +10,8 @@ import { libraryRoot, listLibrary, loadAllStyles, projectDirOf, SCORE_LIBRARY, T
 import { handleOf } from '@tellcut/protocol';
 import { fxChecks } from './check/rules.ts';
 import { PROJECTS_DIR } from './project-arg.ts';
+import { parseArgs, type FlagSpec } from './args.ts';
+import { Usage } from './usage.ts';
 
 const projectDir = (id: string) => projectDirOf(PROJECTS_DIR, id, { internal: true });
 
@@ -26,14 +28,15 @@ export function listStyles(loaded: LoadedStyles = { styles: {}, errors: [], warn
   ].join('\n');
 }
 
+const USAGE = '用法：npm run score -- <專案> --style <風格> [--length 秒] [--bpm N] [--key Am] [--seed N] [--name 名稱]';
+const SCORE_FLAGS: FlagSpec = { '--styles': 'switch', '--style': 'value', '--length': 'value', '--bpm': 'value', '--key': 'value', '--seed': 'value', '--name': 'value' };
+
 export async function main(argv: string[]): Promise<string> {
-  const flags = new Map<string, string>(), pos: string[] = [];
-  for (let i = 0; i < argv.length; i++) { if (argv[i] === '--styles') flags.set('styles', ''); else if (argv[i].startsWith('--')) flags.set(argv[i].slice(2), argv[++i] ?? ''); else pos.push(argv[i]); }
-  const [id] = pos;
+  const flags = parseArgs(argv, SCORE_FLAGS, `${USAGE}\n   或：npm run score -- --styles [<專案>]`), [id] = flags.words;
   const loaded = await loadAllStyles(id ? projectDir(id) : undefined);
-  if (flags.has('styles')) return `配樂風格：\n${listStyles(loaded, listLibrary(libraryRoot(join(TELLCUT_ROOT, 'projects'))).styles)}`;
-  const style = flags.get('style');
-  if (!id || !style) throw new Error(`用法：npm run score -- <專案> --style <風格> [--length 秒] [--bpm N] [--key Am] [--seed N] [--name 名稱]\n\n配樂風格：\n${listStyles(loaded)}`);
+  if (flags.has('--styles')) return `配樂風格：\n${listStyles(loaded, listLibrary(libraryRoot(join(TELLCUT_ROOT, 'projects'))).styles)}`;
+  const style = flags.get('--style');
+  if (!id || !style) throw new Error(`${USAGE}\n\n配樂風格：\n${listStyles(loaded)}`);
   const broken = loaded.errors.find((e) => e.file.endsWith(`${style}.js`));
   if (!STYLES[style] && !loaded.styles[style]) throw new Error(broken ? `風格「${style}」載入失敗：${broken.message}` : `沒有「${style}」這個風格\n\n配樂風格：\n${listStyles(loaded)}`);
   // a style that is not built in is code someone wrote for one project: the same rules as a project's own effects
@@ -46,14 +49,14 @@ export async function main(argv: string[]): Promise<string> {
   const num = (k: string, positive = true) => {
     if (!flags.has(k)) return undefined;
     const v = flags.get(k)!, n = Number(v);
-    if (!v.trim() || !Number.isFinite(n) || (positive && !(n > 0))) throw new Error(`--${k}「${v}」要是${positive ? '大於 0 的' : ''}數字`);
+    if (!v.trim() || !Number.isFinite(n) || (positive && !(n > 0))) throw new Error(`${k}「${v}」要是${positive ? '大於 0 的' : ''}數字`);
     return n;
   };
-  const r = writeScore(projectDir(id), { style, styles: loaded.styles, length: num('length') ?? 30, bpm: num('bpm'), key: flags.get('key'), seed: num('seed', false), name: flags.get('name') });
+  const r = writeScore(projectDir(id), { style, styles: loaded.styles, length: num('--length') ?? 30, bpm: num('--bpm'), key: flags.get('--key'), seed: num('--seed', false), name: flags.get('--name') });
   const i = r.info;
   return `${r.mediaId}：${i.style}，${i.bpm} BPM，${i.key}，${i.bars} 小節，${i.duration.toFixed(1)} 秒 → ${r.wav}\n放進時間軸：c.music('${r.mediaId}')（第一拍在 0 秒，每小節 ${(i.barStarts[1] ?? 0).toFixed(2)} 秒）`;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  main(process.argv.slice(2)).then((s) => console.log(s)).catch((e: Error) => { console.error(e.message); process.exit(1); });
+  main(process.argv.slice(2)).then((s) => console.log(s)).catch((e: Error) => { console.error(e.message); process.exit(e instanceof Usage ? 2 : 1); });
 }

@@ -13,10 +13,13 @@ import { renderedChecks, type Drawn } from './check/page.ts';
 import { clipBars, letterboxFindings } from './check/letterbox.ts';
 import { plugins } from '@tellcut/plugins';
 import { projectArgOrExit } from './project-arg.ts';
+import { parseArgsOrExit } from './args.ts';
 
 /** the project's own music styles (projects/<id>/score/*.js) follow the same rules as its effects */
 const projectStyleFiles = (d: string) => (existsSync(join(d, 'score')) ? readdirSync(join(d, 'score')).filter((f) => f.endsWith('.js')).map((f) => `score/${f}`) : []);
-const id = process.argv[2], dir = projectArgOrExit(id, '用法：npm run check -- <專案名> [--quick] [--sheet]');
+const USAGE = '用法：npm run check -- <專案名> [--quick] [--sheet]';
+const args = parseArgsOrExit(process.argv.slice(2), { '--quick': 'switch', '--sheet': 'switch' }, USAGE);
+const id = args.words[0], dir = projectArgOrExit(id, USAGE);
 const p = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')));
 const transcripts: Record<string, Transcript | null> = {}, burned: Record<string, Burned | null> = {}, shots: Record<string, number[] | null> = {};
 for (const [sid, s] of Object.entries(p.sources)) {
@@ -45,7 +48,7 @@ findings.push(...presetChecks(p, made ? chosenSpec({ id: made.id, name: made.nam
 // clip edges running into the source's neighbouring shot (read off the analysis, so --quick has it too)
 findings.push(...edgeFindings(p, resolveTimes(p), shots));
 // the pictures below come from the built player: an old build would check code that is not the code anymore
-let stale = process.argv.includes('--quick') ? null : playerBuildStale();   // --quick renders nothing, so an old build does not matter
+let stale = args.has('--quick') ? null : playerBuildStale();   // --quick renders nothing, so an old build does not matter
 if (stale) {
   // built here (a few seconds): the page chat may not run build:player, and being told to was no use to it; not build:player
   // itself, which empties dist under an export or another check using it
@@ -54,13 +57,13 @@ if (stale) {
 }
 if (stale) findings.unshift({ level: 'error', msg: stale });
 let sheet: string | undefined;
-const skip = pageLayerSkip({ quick: process.argv.includes('--quick'), offline: findings.some(isOffline), stale });
+const skip = pageLayerSkip({ quick: args.has('--quick'), offline: findings.some(isOffline), stale });
 if (skip) console.error(skip);
 if (skip === null) {
   // the footage's own black bars on screen (read off the analysis proxies)
   findings.push(...letterboxFindings(p, resolveTimes(p), await clipBars(dir, p)));
   let drawn: Drawn | undefined;
-  const r = await pageLayer(async () => { const x = await renderedChecks({ dir, project: p, registry, burned, transcripts, sheet: process.argv.includes('--sheet'), log: (l) => { if (!/^(cuts|stills|audio|images) /.test(l)) console.error(l); } }); drawn = x.drawn; return x; });   // the cache's own lines (one per clip cut) are not part of the report
+  const r = await pageLayer(async () => { const x = await renderedChecks({ dir, project: p, registry, burned, transcripts, sheet: args.has('--sheet'), log: (l) => { if (!/^(cuts|stills|audio|images) /.test(l)) console.error(l); } }); drawn = x.drawn; return x; });   // the cache's own lines (one per clip cut) are not part of the report
   findings.push(...r.findings);
   sheet = r.sheet;
   if (drawn) { const old = new Set(modelFindings); findings = [...findings.filter((f) => !old.has(f)), ...model(drawn)]; }

@@ -10,6 +10,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readdirSync } from 'node:fs
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { claudeEnv, DEFAULT_PORT, killTree, readServerInfo, TELLCUT_ROOT } from '@tellcut/media-node';
+import { parseArgsOrExit } from './args.ts';
 
 const TERMINAL = new Set(['done', 'failed', 'cancelled']);
 
@@ -69,9 +70,10 @@ const onPort = (port: number) => (WIN ? listeners(netstat(), port) : lsofListene
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  const argv = process.argv.slice(2), flag = (k: string) => argv.includes(k);
-  const pi = argv.indexOf('--port'), port = pi >= 0 ? Number(argv[pi + 1]) : readServerInfo()?.port ?? DEFAULT_PORT;
-  if (!Number.isInteger(port) || port <= 0) { console.error('用法：npm run server:restart -- [--port 5174] [--wait] [--force]'); process.exit(2); }
+  const usage = '用法：npm run server:restart -- [--port 5174] [--wait] [--force]';
+  const a = parseArgsOrExit(process.argv.slice(2), { '--port': 'value', '--wait': 'switch', '--force': 'switch' }, usage), flag = (k: string) => a.has(k);
+  const port = a.has('--port') ? Number(a.get('--port')) : readServerInfo()?.port ?? DEFAULT_PORT;
+  if (!Number.isInteger(port) || port <= 0) { console.error(usage); process.exit(2); }
   const base = `http://127.0.0.1:${port}`;
 
   for (let waited = 0; !flag('--force'); waited += 10) {

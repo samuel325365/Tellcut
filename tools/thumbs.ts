@@ -13,6 +13,7 @@ import { goldenFile, runGolden, TELLCUT_ROOT, type GoldenCase } from '@tellcut/m
 import { plugins } from '@tellcut/plugins';
 import { samples } from '@tellcut/plugin-common/samples';
 import { THUMB_PARAMS } from '../packages/plugin-common/golden/thumbs.ts';
+import { parseArgsOrExit } from './args.ts';
 import { hasCjk, localValues } from '@tellcut/editor/i18n/values';
 
 const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
@@ -41,6 +42,7 @@ export const thumbKey = (c: GoldenCase) => createHash('sha1').update(JSON.string
   .update(goldenBytes(c)).digest('hex').slice(0, 12);
 
 async function main() {
+  parseArgsOrExit(process.argv.slice(2), {}, '用法：npm run thumbs');
   // the thumbnails are shared, Windows' pictures like the shared golden ones: a Mac's (CoreText, Apple's emoji) would replace them all
   if (process.platform !== 'win32') throw new Error('npm run thumbs 只在 Windows 上跑：縮圖是共用的 Windows 圖，Mac 畫的字型與 emoji 不同，會把它們全部蓋掉（Mac 自己的圖只在 golden/darwin/）');
   const registry = createRegistry(plugins), manifest: Record<string, Record<string, string>> = {};

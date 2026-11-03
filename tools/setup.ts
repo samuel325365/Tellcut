@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { FFMPEG, FFPROBE, loadProvidersConfig, locate, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec } from '@tellcut/media-node';
 import { allChecks, checkClaudeLogin, hfCachedWhisper, MODEL_COMPLETE, modelsDir, table, TEST_WHISPER_MODEL, whisperModelDir, whisperModelName } from './setup/checks.ts';
 import { ensureModelFile, ensureVendor, readModelList, readVendorList, VendorInUse } from './setup/vendor.ts';
+import { parseArgsOrExit } from './args.ts';
 
 const step = (s: string) => console.log(`\n▶ ${s}`);
 
@@ -66,7 +67,7 @@ async function vendorItems() {
 }
 
 async function main() {
-  const login = !process.argv.includes('--no-login');
+  const login = !parseArgsOrExit(process.argv.slice(2), { '--no-login': 'switch' }, '用法：npm run setup [-- --no-login]').has('--no-login');
   const config = loadProvidersConfig(), model = whisperModelName(String(config.transcribe.options['faster-whisper']?.model ?? 'large-v3-turbo'));
 
   step(`下載 ${Object.keys(readVendorList()).join(' 與 ')} 到 tellcut/vendor`);
