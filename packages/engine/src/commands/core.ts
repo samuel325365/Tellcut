@@ -138,24 +138,26 @@ export function followTrim(p: Project, id: string, oldLen: number, newLen: numbe
   for (const t of p.tracks) for (const c of items(t) as any[]) {
     if (c.parent !== id) continue;
     // the clip's own head stops at its source's start; a sound faster than the clip would reach its start sooner: it stops
-    // there too (as fitOwn stops it at the source's end)
-    if (own.has(c)) { c.in = Math.max(0, r6(c.in + head * c.rate)); continue; }
+    // there too (as fitOwn stops it at the source's end). Its envelope stays on the same sound, as trimming the sound itself keeps it.
+    if (own.has(c)) { c.in = Math.max(0, r6(c.in + head * c.rate)); if (head) shiftRelative(t, c, -head); continue; }
     if (head) { c.start = r6(c.start - head); c.end = r6(c.end - head); }
   }
   fitOwn(p, own, newLen);
 }
 
 /** When an item's length changes, its children keep their proportional place (spec §3.1), and what moves inside a child (its
- *  keys, envelope) stretches with it. Sound effects keep their length. */
+ *  keys, envelope) stretches with it. Sounds keep their length (a voice-over or recording plays at its own speed: stretched, it
+ *  was cut short or ran past its source); only a media clip's own sound, which plays at the clip's new speed, stretches with it. */
 export function scaleChildren(p: Project, id: string, oldLen: number, newLen: number) {
   if (!(oldLen > 0) || oldLen === newLen) return;
-  const k = newLen / oldLen;
+  const k = newLen / oldLen, own = new Set<AnyItem>(ownSounds(p, id, oldLen));
   for (const t of p.tracks) for (const c of items(t)) {
     if (c.parent !== id) continue;
-    const before = c.end - c.start;
+    const before = c.end - c.start, keeps = (t.kind === 'sfx' || t.kind === 'music' || t.kind === 'audio') && !own.has(c);
     c.start = r6(c.start * k);
-    c.end = t.kind === 'sfx' ? r6(c.start + before) : r6(c.end * k);
-    if (t.kind !== 'sfx' && before > 0) scaleRelative(t, c, (c.end - c.start) / before);
+    c.end = keeps ? r6(c.start + before) : r6(c.end * k);
+    if (!keeps && before > 0) scaleRelative(t, c, (c.end - c.start) / before);
+    fitFades(t, c);
     scaleChildren(p, c.id, before, c.end - c.start);
   }
 }

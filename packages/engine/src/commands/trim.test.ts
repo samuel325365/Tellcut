@@ -227,3 +227,33 @@ test('trimming a frozen clip past its freeze keeps the held frame (trimStart and
   const p = run(fixture(), trimStart, { id: 'c2', dt: 3.5 });
   expect(item(run(p, trimStart, { id: 'c2', dt: 0.2 }), 'c2')).toMatchObject({ in: 16, freezeAt: 0 });
 });
+
+test("a speed change or a block's new length moves a voice-over by its place but keeps its length (and its fades inside it)", () => {
+  // c1 (0–4 s) with a 2 s voice-over 2 s in; c1 at 2× is 2 s long
+  const p = withChildren();
+  addItem(p, { track: 'au', item: { id: 'vo', source: 'a', in: 0, rate: 1, start: 2, end: 4, gain: 0, fadeIn: 0.5, fadeOut: 0.5, parent: 'c1' } });
+  const fast = run(p, rateStretch, { id: 'c1', edge: 'end', dt: -2 });
+  expect(item(fast, 'vo')).toMatchObject({ start: 1, end: 3, in: 0, rate: 1, fadeIn: 0.5, fadeOut: 0.5 });
+  expect(item(fast, 'snd')).toMatchObject({ start: 0, end: 2, rate: 2 });   // its own sound still plays at the clip's speed
+  expect(item(run(p, updateItem, { id: 'c1', patch: { speed: 2, end: 2 } }), 'vo')).toMatchObject({ start: 1, end: 3 });
+  // a caption block with its recording (a1's source has 30 s; this one is cut 2.5 s from its end)
+  const q = fixture();
+  addItem(q, { track: 'au', item: { id: 'rec', source: 'a', in: 27.5, rate: 1, start: 0, end: 2.5, gain: 0, fadeIn: 1, fadeOut: 1, envelope: [[1, -6]], parent: 'blk' } });
+  const long = run(q, trimEnd, { id: 'blk', dt: 2 });
+  expect(item(long, 'rec')).toMatchObject({ start: 0, end: 2.5, envelope: [[1, -6]] });
+  expect(ProjectZ.safeParse(long).success).toBe(true);
+  // shorter, a stretched child's fades shrink with it: a music child, which has no source end, keeps its length too
+  addItem(q, { track: 'mu', item: { id: 'bed', media: 'm', in: 0, start: 1, end: 3, gain: 0, fadeIn: 1, fadeOut: 1, parent: 'blk' } });
+  expect(item(run(q, trimStart, { id: 'blk', dt: 2 }), 'bed')).toMatchObject({ start: 0.5, end: 2.5, fadeIn: 1, fadeOut: 1 });
+});
+
+test("trimming a clip's head keeps its own sound's envelope on the same sound", () => {
+  const p = withChildren();
+  item(p, 'snd').envelope = [[0, 0], [2, -12], [3, 0]];
+  expect(item(run(p, trimStart, { id: 'c1', dt: 1 }), 'snd').envelope).toEqual([[1, -12], [2, 0]]);
+  expect(item(run(p, roll, { left: 'c1', right: 'c2', dt: -1 }), 'snd').envelope).toEqual([[0, 0], [2, -12], [3, 0]]);
+  // the right side of a roll: c2's own sound loses its head with it
+  const q = fixture();
+  addItem(q, { track: 'au', item: { id: 's2', source: 's', in: 10, rate: 2, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, envelope: [[2, -6]], parent: 'c2' } });
+  expect(item(run(q, roll, { left: 'c1', right: 'c2', dt: 1 }), 's2')).toMatchObject({ in: 12, end: 3, envelope: [[1, -6]] });
+});
