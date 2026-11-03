@@ -110,10 +110,10 @@ The user's own promotion, without the developer's: an effect or music style a fi
 packages/   engine (project format, edit commands, stage, audio), media-node (ffmpeg, analysis, export, outside programs),
             protocol (what the server and the pages share: chat, library, presets, gallery handles), plugin-common (common.* shared blocks and golden images), plugins (the plugin list: core + common)
 apps/       player (the browser player, shared by preview and export), editor (the Preact editor and home page), server (local server and page chat)
-tools/      command-line tools (new, inspect, cut, check, tellcut, voice, score, setup…), cut/ (Cut API and recipes), py/, ps/ (Python / PowerShell scripts)
+tools/      command-line tools (new, inspect, cut, check, tellcut, voice, score, setup…), cut/ (Cut API and recipes), py/, ps/, mac/ (Python / PowerShell / Swift scripts)
 guides/     what agents read to make films (workflow, quality), video genres (genres/) and presets (presets/<id>/)
 score-library/  promoted score styles    providers.json  which outside tool to use    sources.json  switches for outside media sources
-docs/       this reference and the README pictures (docs/readme/)
+docs/       this reference, the README pictures (docs/readme/), the logo files (docs/brand/) and the GitHub Pages home page (index.html)
 ```
 
 `packages/*` and `apps/*` are npm workspaces; `tools/` holds scripts run directly with tsx.
@@ -126,8 +126,8 @@ The Python environment is defined by `pyproject.toml` and `uv.lock` and installe
 | Tests / type check | `npm test` (everything), `npm run test:fast` (the group that needs no Chrome), `npm run test:browser` (export, check, golden, editor e2e), `npm run typecheck` |
 | Build | `npm run build:player`, `npm run build:editor` |
 | Editor development mode | `npm run server` plus `npm run dev:editor`, then open `http://localhost:5173/editor/?id=<project>` |
-| Golden images of the shared blocks | `npm run golden -- [--update] [<name prefix>]` (images in `packages/plugin-common/golden/`) |
-| The gallery's English and Japanese thumbnails | `npm run thumbs` (a block's thumbnail with its Chinese words translated, in `packages/plugin-common/golden/thumbs/`) |
+| Golden images of the shared blocks | `npm run golden -- [--update] [<name prefix>]` (images in `packages/plugin-common/golden/`; on a Mac it writes only `golden/darwin/`, the shared pictures come from Windows) |
+| The gallery's English and Japanese thumbnails | `npm run thumbs` (a block's thumbnail with its Chinese words translated, in `packages/plugin-common/golden/thumbs/`; Windows only, a Mac refuses) |
 | Download fonts | `npm run fonts` (setup runs it; needed by preview and export) |
 | Tokens used by a chat | `npm run tokens -- <id \| home>`, `npm run tokens -- --session <file.jsonl>` (1-hour and 5-minute cache separately, number of full rewrites, estimate at list prices), `--subagents <file.jsonl>` (including every subagent it sent) |
 | Render queue | `npm run batch:render -- <id> [--slots 2]` (at most two exports at once) |

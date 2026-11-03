@@ -306,7 +306,7 @@ Tellcut 的 Agent 用 Claude Code 的**預設模型**。Pro、Max、Team、Enter
 
 ## 範例專案
 
-Tellcut 自己的形象片附上整個專案，可以打開來播、來改：素材、和 Agent 的對話、版本紀錄，還有成品。它是用品牌片片型做的。要下載它（約 900 MB）並加進你的專案，跑：
+《Meet Tellcut》是一支用 Creative Commons 實拍素材做的 Tellcut 形象片（不是上面那支只用 logo 畫的品牌片範例），附上整個專案，可以打開來播、來改：素材、和 Agent 的對話、版本紀錄，還有成品。它是用品牌片片型做的。要下載它（約 900 MB）並加進你的專案，跑：
 
 ```
 npm run examples -- meet-tellcut
@@ -322,7 +322,7 @@ npm run examples -- meet-tellcut
 
 > 這裡說的 key 跟 Claude 無關。Agent 用的是你在 Claude Code 登入的帳號，不需要另外的 Claude API key。旁白（Microsoft Edge 的線上語音）、語音轉文字（在你電腦上跑的 Whisper）和配樂（依片長自動作曲）也都內建，不用任何 key。
 
-Agent 下載的每個檔案，出處和授權都會記在專案裡，`npm run tellcut -- assets credits <專案>` 會把它們整理成專案資料夾裡的 `CREDITS.md`。**要公開發表或商用之前，請看一下授權欄**：寶可夢、動漫、遊戲、哈利波特這類的圖，版權屬於原公司。
+Agent 下載的每個檔案，出處和授權都會記在專案裡，`npm run tellcut -- assets credits <專案>` 會把它們整理成專案資料夾裡的 `media/CREDITS.md`。**要公開發表或商用之前，請看一下授權欄**：寶可夢、動漫、遊戲、哈利波特這類的圖，版權屬於原公司。
 
 **不用申請，裝好就能用**
 
@@ -455,7 +455,7 @@ tellcut/
 
 程式碼以 [MIT 授權](LICENSE) 釋出。MIT 只涵蓋程式碼：
 
-- `docs/readme/` 裡的圖和影片，以及 `guides/presets/*/` 的片型範例（`poster.jpg`、`preview.webm`），依旁邊 `CREDITS.md` 寫的條件使用：改編自 CC BY 3.0 影片，以及 Pixabay Content License 的素材。這一頁的圖和影片出處見 [docs/readme/CREDITS.md](docs/readme/CREDITS.md)。
+- `docs/readme/` 裡的圖和影片，以及 `guides/presets/*/` 的片型範例（`poster.jpg`、`preview.webm`），依旁邊 `CREDITS.md` 寫的條件使用：改編自 CC BY 3.0 影片，以及替 Tellcut 自己畫的圖。這一頁的圖和影片出處見 [docs/readme/CREDITS.md](docs/readme/CREDITS.md)。
 - 第三方程式碼維持原本的授權：`packages/plugin-common/src/shader-vertex.ts` 的頂點著色器來自 Paper Shaders（Apache-2.0，見 [LICENSE.paper-shaders](packages/plugin-common/LICENSE.paper-shaders) 和 [NOTICE.paper-shaders](packages/plugin-common/NOTICE.paper-shaders)）。
 - 安裝時下載的外部工具和模型（ffmpeg、uv、Python、Whisper 語音辨識模型、MediaPipe 人臉模型、字型）各有自己的授權。
 

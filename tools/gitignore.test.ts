@@ -16,3 +16,8 @@ test('the sources code is in git, the personal switch file and root sources/ are
   expect(ignored('sources.local.json')).toBe(true);
   expect(ignored('sources/input_x/a.mp4')).toBe(true);
 });
+
+test("the system's folder files are not (Windows' Thumbs.db, the Finder's .DS_Store)", () => {
+  expect(ignored('Thumbs.db')).toBe(true);
+  expect(ignored('packages/.DS_Store')).toBe(true);
+});

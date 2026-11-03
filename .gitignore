@@ -21,4 +21,5 @@ projects/
 *.wav
 *.mp3
 Thumbs.db
+.DS_Store
 .superpowers/

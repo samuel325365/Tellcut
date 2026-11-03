@@ -18,4 +18,4 @@ Tellcut runs on your own PC, for you. Knowing where its limits are helps you use
 
 **A project is code.** A project's `cut.ts`, `fx/` effects and music styles are JavaScript that runs with your user's rights when you open, preview or render it. Only import or download projects (`npm run examples`, a shared zip, a folder from someone else) from people you trust, as you would any other program.
 
-**Footage and links.** Tellcut reads media with ffmpeg and downloads links with yt-dlp, so a flaw in either is a flaw in Tellcut too. Each release pins their versions: after updating Tellcut, run `npm run setup` again so your copies (ffmpeg in `vendor/`, yt-dlp in `.venv/`) match.
+**Footage and links.** Tellcut reads media with ffmpeg and downloads links with yt-dlp, so a flaw in either is a flaw in Tellcut too. Each release pins their versions: after updating Tellcut, run `npm run setup` again so your copies (ffmpeg in `vendor/`, yt-dlp in `.venv/`) match. On a Mac ffmpeg is Homebrew's `ffmpeg-full` rather than a pinned copy: keep it updated with `brew upgrade ffmpeg-full`.

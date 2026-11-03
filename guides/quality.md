@@ -36,7 +36,7 @@ Most of this holds for a film of any length. The lines marked **Short-form** are
 - Stamps, counters, cards and labels never sit on a face; a speaker's label never lingers onto the next person's shot.
 - Slow motion no slower than 0.5× (there is no frame interpolation; slower stutters).
 - No noise or grain that changes the whole frame every frame: the output file balloons.
-- Fonts: only the player's built-in ones, or OFL-licensed fonts (subset to the characters used). **Never copy Windows system fonts** (DFKai-SB and the like) into a project: they may not be redistributed. Use a font made for the script: a Chinese font for Chinese, a Latin face for English (the fonts loaded are listed under "Shared blocks and theme" in the workflow).
+- Fonts: only the player's built-in ones, or OFL-licensed fonts (subset to the characters used). **Never copy system fonts** (Windows' DFKai-SB, macOS' PingFang or Hiragino and the like) into a project: they may not be redistributed. Use a font made for the script: a Chinese font for Chinese, a Latin face for English (the fonts loaded are listed under "Shared blocks and theme" in the workflow).
 - Sound: you cannot hear the result. The balance of music and original sound, the sound at cuts, and the TTS's reading of words that can be read more than one way all need a person to listen; never claim the music sounds good or the narration sounds natural.
 
 ## Before delivering, look with a critical eye

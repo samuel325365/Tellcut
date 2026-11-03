@@ -306,7 +306,7 @@ The interface comes in English, 中文 and 日本語; switch with **中 / EN / �
 
 ## Example project
 
-Tellcut's own brand film comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset. To download it (about 900 MB) and add it to your projects, run:
+*Meet Tellcut*, a film about Tellcut made from Creative Commons footage (not the logo-only brand film sample above), comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset. To download it (about 900 MB) and add it to your projects, run:
 
 ```
 npm run examples -- meet-tellcut
@@ -322,7 +322,7 @@ Besides your own footage, the agent can find pictures, video, sound effects, mus
 
 > These keys have nothing to do with Claude. The agent runs on the account you signed in to Claude Code with; you don't need a separate Claude API key. Voice-over (Microsoft Edge's online voices), speech-to-text (Whisper, running on your computer) and music (composed to the film's length) are built in and need no key either.
 
-Tellcut records where every downloaded file came from and its licence in the project; `npm run tellcut -- assets credits <project>` collects them into a `CREDITS.md` in the project folder. **Check the licence column before you publish or use a film commercially**: pictures of Pokémon, anime, games and Harry Potter belong to the companies that own them.
+Tellcut records where every downloaded file came from and its licence in the project; `npm run tellcut -- assets credits <project>` collects them into `media/CREDITS.md` in the project folder. **Check the licence column before you publish or use a film commercially**: pictures of Pokémon, anime, games and Harry Potter belong to the companies that own them.
 
 **Ready to use, nothing to sign up for**
 
@@ -453,7 +453,7 @@ tellcut/
 
 The code is released under the [MIT licence](LICENSE). The MIT licence covers the code only:
 
-- The media in `docs/readme/` and the preset samples in `guides/presets/*/` (`poster.jpg`, `preview.webm`) are under the terms given in the `CREDITS.md` next to them: adaptations of CC BY 3.0 videos, and footage under the Pixabay Content License. Credits for the pictures and the film on this page are in [docs/readme/CREDITS.md](docs/readme/CREDITS.md).
+- The media in `docs/readme/` and the preset samples in `guides/presets/*/` (`poster.jpg`, `preview.webm`) are under the terms given in the `CREDITS.md` next to them: adaptations of CC BY 3.0 videos, and pictures made for Tellcut itself. Credits for the pictures and the film on this page are in [docs/readme/CREDITS.md](docs/readme/CREDITS.md).
 - Third-party code keeps its own licence: the vertex shader in `packages/plugin-common/src/shader-vertex.ts` comes from Paper Shaders (Apache-2.0, see [LICENSE.paper-shaders](packages/plugin-common/LICENSE.paper-shaders) and [NOTICE.paper-shaders](packages/plugin-common/NOTICE.paper-shaders)).
 - The outside tools and models downloaded during setup (ffmpeg, uv, Python, the Whisper speech model, the MediaPipe face model, fonts) each have their own licences.
 
