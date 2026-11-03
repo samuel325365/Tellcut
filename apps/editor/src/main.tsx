@@ -12,7 +12,7 @@ import { Gallery } from './Gallery.tsx';
 import { TooltipLayer } from './Tooltip.tsx';
 import { initDocumentLang } from './i18n/lang.ts';
 import { answerGallery, askEditor } from './gallery-link.ts';
-import { ownBlocks } from './gallery.ts';
+import { ownBlocks, ownModules } from './gallery.ts';
 
 const q = new URLSearchParams(location.search), id = q.get('id');
 const root = document.getElementById('app')!;
@@ -28,7 +28,7 @@ if (q.has('gallery')) {
   // project's own blocks and adds to it through the editor tab that opened it (gallery-link.ts)
   const pid = q.get('project');
   const project = pid ? { id: pid, add: (a: Parameters<typeof askEditor>[2]) => askEditor(window.opener as Window | null, pid, a), load: async () => {
-    const p = parseProject(await api.project(pid)), fx = await projectFx(pid, p.meta.fx);
+    const p = parseProject(await api.project(pid)), fx = await projectFx(pid, ownModules(p.meta.fx));
     return { name: p.meta.name, blocks: ownBlocks(fx.plugin.items ?? []), meta: { plugins: p.meta.plugins, fx: p.meta.fx, theme: p.meta.theme as Record<string, unknown> | undefined } };
   } } : undefined;
   render(<Gallery load={api.gallery} project={project} library={{ load: api.library, renameBlock: api.renameLibraryBlock, renameStyle: api.renameLibraryStyle, usage: api.libraryUsage, remove: api.deleteLibrary }} />, root);

@@ -412,7 +412,7 @@ test('a block card asks for its thumbnail in the UI language; a Chinese page ask
 });
 
 // ---------------------------------------------------------------- opened from a project: its own blocks, and "Add to project" (gallery-link.ts)
-import { ownBlocks, ownProject, type OwnProject } from './gallery.ts';
+import { ownBlocks, ownModules, ownProject, type OwnProject } from './gallery.ts';
 import type { GalleryAdd } from './gallery-link.ts';
 
 const OWN: OwnProject = {
@@ -437,6 +437,11 @@ test('the project’s own blocks become cards of their own (fx, footage told as 
   expect(p.tracks[0].items[0]).toMatchObject({ type: 'fx.ticket', params: { to: '大阪' } });
   expect(ownProject(OWN, OWN.blocks[0], {}, 'warm').meta.theme).toEqual(THEMES.warm.theme);
   expect(galleryCategories(G.blocks, 2, 0, 2).slice(0, 2).map((c) => [c.key, c.count])).toEqual([['project', 2], ['mine', 0]]);
+});
+
+test('a copy of one of My blocks is not listed among the project’s own (Mine lists it)', () => {
+  expect(ownModules(['fx/ticket.js', 'fx/lib/box/_entry.js', './fx/lib/x/_entry.js', 'fx\\lib\\y\\_entry.js', 'fx/library.js'])).toEqual(['fx/ticket.js', 'fx/library.js']);
+  expect(ownModules(undefined)).toEqual([]);
 });
 
 test('opened from a project, its own blocks come first, tagged as the project’s; their preview loads from the project folder', async () => {

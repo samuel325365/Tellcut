@@ -49,6 +49,9 @@ export interface OwnProject {
   meta: { plugins: string[]; fx?: string[]; theme?: Record<string, unknown> };
 }
 
+/** The modules of meta.fx that are the project's own: a copy of one of My blocks (fx/lib/<slug>/) is listed under Mine already. */
+export const ownModules = (fx: string[] | undefined) => (fx ?? []).filter((m) => !/^(\.\/)?fx\/lib\//.test(m.replace(/\\/g, '/')));
+
 /** The project's own blocks as cards. Whether one needs footage is told as the server tells it for the shared ones, from its
  *  parameters and media() hook (the server also reads its code, which the page does not). */
 export function ownBlocks(items: Array<{ type: string; label: string; doc?: string; kind: string; params: GalleryBlock['params']; footage?: string; media?: unknown }>): GalleryBlock[] {
