@@ -40,6 +40,22 @@ test('image: a picture from outside is copied into media/images/; --id names it,
   await expect(registerImage(d, join(out, 'gone.png'))).rejects.toThrow(/找不到圖檔/);
 });
 
+test('image: two pictures of one name from different folders are two copies and two ids; each one again keeps its own', async () => {
+  const d = proj(), a = mkdtempSync(join(tmpdir(), 'img-a-')), b = mkdtempSync(join(tmpdir(), 'img-b-'));
+  await makePhoto(join(a, 'photo.png'), { w: 320, h: 180 });
+  await makePhoto(join(b, 'photo.png'), { w: 200, h: 400 });
+  const r1 = await registerImage(d, join(a, 'photo.png'));
+  const r2 = await registerImage(d, join(b, 'photo.png'));
+  expect(r1).toMatchObject({ path: 'media/images/photo.png', width: 320, height: 180, again: false });
+  expect(r2).toMatchObject({ path: 'media/images/photo-2.png', width: 200, height: 400, again: false });
+  expect(r2.id).not.toBe(r1.id);
+  expect(sources(d)[r1.id]).toMatchObject({ path: 'media/images/photo.png', width: 320, height: 180 });
+  await makePhoto(join(a, 'photo.png'), { w: 640, h: 360 });                      // the first one remade outside
+  expect(await registerImage(d, join(a, 'photo.png'))).toMatchObject({ id: r1.id, path: 'media/images/photo.png', width: 640, again: true });
+  expect(await registerImage(d, join(b, 'photo.png'))).toMatchObject({ id: r2.id, path: 'media/images/photo-2.png', again: true });
+  expect(existsSync(join(d, 'media', 'images', 'photo-3.png'))).toBe(false);
+});
+
 test('image takes the file wherever --id is written', () => {
   expect(imageArgs(['--id', 'p', 'a.png'])).toEqual({ file: 'a.png', id: 'p' });
   expect(imageArgs(['a.png', '--id', 'p'])).toEqual({ file: 'a.png', id: 'p' });

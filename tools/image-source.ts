@@ -2,10 +2,10 @@
 // A picture the project made itself (a poster its own script rendered into the folder, a chart, a frame grabbed by hand) had no way
 // into project.json's `sources` but editing it by hand (2026-11-01). A file inside the project is registered where it is; one from
 // outside is copied into media/images/ first (the project stays whole when moved). Run it again after the picture is remade: the same
-// file keeps its id and gets its new size.
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+// file keeps its id and gets its new size. Another picture of the same name (~/a/photo.png, then ~/b/photo.png) is another copy and id.
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { ingestFiles, kindOf, samePath, sourceId, updateProjectFile } from '@tellcut/media-node';
+import { contentPrint, ingestFiles, kindOf, samePath, sourceId, updateProjectFile } from '@tellcut/media-node';
 
 export interface RegisteredImage { id: string; path: string; width: number; height: number; copied: boolean; again: boolean }
 
@@ -24,6 +24,13 @@ function freeIn(dir: string, name: string): string {
   return f;
 }
 
+/** which file outside the project each copy in media/images/ was made from (by the copy's name). In cache/: a local path, never
+ *  exported (export-project --public refuses one), and a project without it falls back to the copy holding the same bytes. */
+const ORIGINS = ['cache', 'image-origins.json'];
+const readOrigins = (dir: string): Record<string, string> => {
+  try { const o = JSON.parse(readFileSync(join(dir, ...ORIGINS), 'utf8')); return o && typeof o === 'object' ? o : {}; } catch { return {}; }
+};
+
 /** `file` (relative to the working folder, else to the project) registered as an image source of the project in `dir`. */
 export async function registerImage(dir: string, file: string, o: { id?: string } = {}): Promise<RegisteredImage> {
   if (!existsSync(join(dir, 'project.json'))) throw new Error(`找不到專案（${join(dir, 'project.json')} 不存在）`);
@@ -34,13 +41,23 @@ export async function registerImage(dir: string, file: string, o: { id?: string 
   const inside = (f: string) => { const r = relative(dir, f); return !!r && !r.startsWith('..') && !isAbsolute(r); };
   const sources = (JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).sources ?? {}) as Record<string, { path: string }>;
   const registered = (f: string) => Object.entries(sources).find(([, s]) => samePath(resolve(dir, s.path)) === samePath(f))?.[0];
-  // from outside: copied into media/images/, where the copy made last time is the one replaced (a picture remade outside and
-  // registered again keeps its id) and any other file is kept
-  const media = join(dir, 'media', 'images'), last = join(media, basename(abs)), copied = !inside(abs);
-  const target = !copied ? abs : existsSync(last) && registered(last) ? last : freeIn(media, basename(abs));
+  // from outside: copied into media/images/, where the copy made last time from this same file is the one replaced (a picture
+  // remade outside and registered again keeps its id) and any other file is kept, one of the same name from elsewhere included
+  const media = join(dir, 'media', 'images'), last = join(media, basename(abs)), copied = !inside(abs), origins = readOrigins(dir);
+  const ours = (copy: string) => existsSync(copy) && !!registered(copy);
+  const before = !copied ? undefined
+    : Object.entries(origins).map(([name, from]) => samePath(from) === samePath(abs) ? join(media, name) : '').find((c) => c && ours(c))
+      // a copy with no note (made before notes were kept, or cache/ cleared) is this file's when it holds the same bytes
+      ?? (ours(last) && !origins[basename(last)] && contentPrint(last) === contentPrint(abs) ? last : undefined);
+  const target = !copied ? abs : before ?? freeIn(media, basename(abs));
   const same = registered(target);
   if (o.id && sources[o.id] && o.id !== same) throw new Error(`素材 id「${o.id}」已經是 ${sources[o.id].path}；換一個 --id`);
-  if (copied) { mkdirSync(media, { recursive: true }); copyFileSync(abs, target); }
+  if (copied) {
+    mkdirSync(media, { recursive: true });
+    copyFileSync(abs, target);
+    mkdirSync(join(dir, ORIGINS[0]), { recursive: true });
+    writeFileSync(join(dir, ...ORIGINS), JSON.stringify({ ...origins, [basename(target)]: abs }, null, 2) + '\n');
+  }
   const id = o.id ?? same ?? sourceId(target, new Set(Object.keys(sources)));
   // ingestFiles probes it (and turns a HEIC into a JPG in media/) the way `new` and the editor's Import register a photo
   const got = await ingestFiles(dir, [target], new Set());
