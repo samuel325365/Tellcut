@@ -1,7 +1,14 @@
 // Trimming, slipping, rolling and speed changes.
 import type { Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
-import { CommandError, findItem, fitOwn, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
+import { CommandError, type Found, findItem, fitOwn, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
+
+/** The longest a media clip may get by moving its end: as far as its source goes. A frozen clip holds one frame after freezeAt,
+ *  so when freezeAt falls inside the source it may run on for ever; a freezeAt past the source's end does not lift the limit. */
+function longest(p: Project, f: Found, rate: number): number {
+  const it = f.item as any, fits = (sourceLength(p, f.track, f.item) - it.in) / rate;
+  return f.track.kind === 'video' && it.freezeAt != null && it.freezeAt <= fits + 1e-6 ? Infinity : fits;
+}
 
 const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('Sound effects have a fixed length', 'cmd.sfxFixedLength'); };
 
@@ -27,8 +34,7 @@ export function trimEnd(p: Project, a: { id: string; dt: number }) {
   noSfx(f.track.kind);
   const rate = mediaRate(f.track, f.item), len = it.end - it.start;
   let dt = Math.max(a.dt, -(len - minLen(p)));
-  // after freezeAt the clip holds one frame: the source end no longer limits it
-  if (rate !== null && !(f.track.kind === 'video' && it.freezeAt != null)) dt = Math.min(dt, (sourceLength(p, f.track, f.item) - it.in) / rate - len);
+  if (rate !== null) dt = Math.min(dt, longest(p, f, rate) - len);
   it.end = r6(it.end + dt);
   fitFades(f.track, it);
   if (rate !== null) followTrim(p, it.id, len, it.end - it.start, 0); else scaleChildren(p, it.id, len, it.end - it.start);
@@ -55,7 +61,7 @@ export function roll(p: Project, a: { left: string; right: string; dt: number })
   const rl = mediaRate(L.track, L.item), rr = mediaRate(R.track, R.item);
   const lenL = l.end - l.start, lenR = r.end - r.start;
   let dt = Math.min(Math.max(a.dt, -(lenL - m)), lenR - m);
-  if (rl !== null && !(L.track.kind === 'video' && l.freezeAt != null)) dt = Math.min(dt, (sourceLength(p, L.track, L.item) - l.in) / rl - lenL);
+  if (rl !== null) dt = Math.min(dt, longest(p, L, rl) - lenL);
   if (rr !== null) dt = Math.max(dt, -r.in / rr);
   l.end = r6(l.end + dt);
   r.start = r6(r.start + dt);

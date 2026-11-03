@@ -257,3 +257,14 @@ test("trimming a clip's head keeps its own sound's envelope on the same sound", 
   addItem(q, { track: 'au', item: { id: 's2', source: 's', in: 10, rate: 2, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, envelope: [[2, -6]], parent: 'c2' } });
   expect(item(run(q, roll, { left: 'c1', right: 'c2', dt: 1 }), 's2')).toMatchObject({ in: 12, end: 3, envelope: [[1, -6]] });
 });
+
+test('a clip frozen past the end of its source still stops at the source end (trimEnd and the left side of a roll)', () => {
+  const p = fixture();
+  item(p, 'c2').freezeAt = 12;   // in 10 at 2×: the 30 s source runs out 10 s in, before the freeze
+  expect(item(run(p, trimEnd, { id: 'c2', dt: 100 }), 'c2').end).toBe(14);
+  item(p, 'c1').in = 26; item(p, 'c1').freezeAt = 10;   // 0–4 s plays 26–30 s: no room left
+  const q = run(p, roll, { left: 'c1', right: 'c2', dt: 1 });
+  expect([item(q, 'c1').end, item(q, 'c2').start]).toEqual([4, 4]);
+  expect(ProjectZ.safeParse(run(p, trimEnd, { id: 'c1', dt: 1 })).success).toBe(true);
+  expect(item(run(p, trimEnd, { id: 'c1', dt: 1 }), 'c1').end).toBe(4);
+});
