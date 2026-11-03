@@ -45,6 +45,10 @@ export function parseNotes(text: string): Note[] {
   return out;
 }
 
+/** a hidden preview with no body of its own shows `lockText` as its one (dim) line, with the padlock after it */
+export const withLockText = (notes: Note[], lockText: string): Note[] =>
+  notes.map((n) => (n.lock && !n.body.length && String(lockText ?? '').trim() ? { ...n, body: [String(lockText).trim()] } : n));
+
 /** the type of each tone: size and line height of the body, its weight, whether it takes the rounded face */
 export const TONE_TYPE: Record<Tone, { size: number; lh: number; weight: string; round: boolean }> = {
   plain: { size: 50, lh: 64, weight: '500', round: false },
@@ -116,13 +120,13 @@ export const notify: ItemType<P, S> = {
     const p = ctx.params, { W, H, theme, local: t } = ctx;
     const { sc, k, Hd } = phoneView(W, H, theme.safe, p);
     placePhone(s.ph, sc);
-    const notes = parseNotes(p.items), up = p.grow === 'up';
+    const notes = withLockText(parseNotes(p.items), p.lockText), up = p.grow === 'up';
     const cwf = p.w > 0 ? p.w : sc.full ? 0.8 : 0.92, cw = cwf * 1080;
     const topD = (p.y >= 0 ? p.y : sc.full ? theme.safe.top + 0.015 : 0.09) * Hd;
     const botD = (p.bottom >= 0 ? p.bottom : sc.full ? 1 - theme.safe.bottom : 0.97) * Hd;
     const lays = notes.map((n) => noteLayout(n, cw));
     // the cards are rebuilt only when the text changes
-    const key = `${p.items}|${cw}`;
+    const key = `${p.items}|${p.lockText}|${cw}`;
     if (s.key !== key) {
       s.key = key;
       for (const c of s.cards) c.box.remove();

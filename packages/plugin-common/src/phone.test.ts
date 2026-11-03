@@ -2,7 +2,7 @@
 import { defaultSafe, prog, eOut3 } from '@tellcut/engine';
 import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
 import { roundRectUrl } from './window.ts';
-import { noteLayout, notify, parseNotes } from './notify.ts';
+import { noteLayout, notify, parseNotes, withLockText } from './notify.ts';
 import { clockAt, liveAt, liveSpans, lockscreen } from './lockscreen.ts';
 
 test('phone screen: the whole frame on 9:16; a 9:16 phone inside the safe area on wide and square frames; px moves it, never out', () => {
@@ -122,6 +122,15 @@ test('notify lines: time span, icon, app, title, body lines, extras in any order
   expect(parseNotes('1|||||')).toMatchObject([{ icon: 'bell', body: [] }]);
   expect(timeSpan('2-1')).toEqual([2, 2]);
   expect(timeSpan('x')).toBeNull();
+});
+
+test('notify: a hidden preview with no body shows lockText as its line (2026-11-03); one with a body or no lock keeps its own', () => {
+  const [a, b, c] = withLockText(parseNotes('0|lock|銀行|||lock\n1|msg|小美||晚餐？|lock\n2|msg|小美||'), '預覽已隱藏');
+  expect(a.body).toEqual(['預覽已隱藏']);
+  expect(noteLayout(a, 864).rows).toHaveLength(1);
+  expect(b.body).toEqual(['晚餐？']);
+  expect(c.body).toEqual([]);
+  expect(withLockText(parseNotes('0|lock|銀行|||lock'), ' ')[0].body).toEqual([]);
 });
 
 test('notify card: rows stack under the head (title, body lines in the tone size, gloss wrapped); the button adds its own height', () => {
