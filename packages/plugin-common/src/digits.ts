@@ -18,7 +18,7 @@ interface S { box: HTMLElement; cv: HTMLCanvasElement; off: HTMLCanvasElement; t
 export interface Step { t: number; v: string; add: boolean; n: number | null; label: string }
 
 /** "秒|值|小字" steps, comma or newline separated: "0.3|+95" adds 95, "1|02" shows 02, "2|04|下一位" also gives a label */
-export function parseSteps(text: string): Step[] {
+export function parseDigitSteps(text: string): Step[] {
   return String(text ?? '').split(/[,，\n]/).map((x) => x.trim()).filter(Boolean).map((x) => {
     const [t, v = '', label = ''] = x.split('|').map((y) => y.trim());
     const add = /^[+＋−-]/.test(v) && v !== '-' && !/^-+$/.test(v), num = Number(v.replace(/^[+＋]/, '').replace('−', '-').replace(/,/g, ''));
@@ -148,13 +148,13 @@ export const digits: ItemType<P, S> = {
     cssCamel(tag, { display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-rl', fontWeight: '900', lineHeight: '1.05', textAlign: 'center' });
     cssCamel(ghost, { color: 'transparent', whiteSpace: 'pre', lineHeight: '1', overflow: 'hidden' });
     const p = ctx.params;
-    return { box, cv: cv as HTMLCanvasElement, off: softCanvas(4, 4), title, sub, tag, ghost, want: `${p.label}${p.totalLabel}${parseSteps(p.steps).map((s) => s.label).join('')}` };
+    return { box, cv: cv as HTMLCanvasElement, off: softCanvas(4, 4), title, sub, tag, ghost, want: `${p.label}${p.totalLabel}${parseDigitSteps(p.steps).map((s) => s.label).join('')}` };
   },
   ready: (s) => loadDots('Noto Sans TC', s.want),
   hide(s) { freeCanvas(s.cv, s.off); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, S = Math.min(W, H), led = p.style === 'led', boardOn = !!p.title;
-    const n = Math.round(p.digits) || (led ? 2 : 5), steps = parseSteps(p.steps), st = digitsAt(steps, local, n, led ? '0' : ' ');
+    const n = Math.round(p.digits) || (led ? 2 : 5), steps = parseDigitSteps(p.steps), st = digitsAt(steps, local, n, led ? '0' : ' ');
     const total = p.totalAt >= 0 && local >= p.totalAt, out = 1 - prog(local, dur - 0.2, dur);
     // sizes: a board is 1020 × 128 units; a display alone is the whole width (vfd 720 × 78, led 272 × 104)
     const bw = Math.min(p.w * S, W * (1 - 2 * theme.safe.side));

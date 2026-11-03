@@ -18,7 +18,7 @@ import { grainBegin, grainEnd, hash, type GrainLayer, type PenStyle } from '../s
 import { emParts } from '../text.ts';
 import { withAlpha } from '../color.ts';
 import { textLang, WORDS, wordsLang, type WordsLang } from '../words.ts';
-import { CHART_KINDS, type ChartKind, type Look, type ChartP, chartRows, valued, type Txt, type Plan, type Colors, fitSize, chartFrame, type Env, T, circlePad, baseOf } from './shared.ts';
+import { CHART_KINDS, type ChartKind, type Look, type ChartP, chartRows, valued, type Txt, type Plan, type Colors, fitEstimatedSize, chartFrame, type Env, T, circlePad, baseOf } from './shared.ts';
 import { planBars } from './bars.ts';
 import { planPie } from './pie.ts';
 import { peopleGrid, planPeople } from './people.ts';
@@ -28,7 +28,7 @@ import { tableCells, planTable } from './table.ts';
 import { planLine } from './line.ts';
 import { type R, drawMark, drawCard } from './draw.ts';
 
-export { CHART_KINDS, type ChartKind, type ChartP, type Num, parseNum, fmtNum, type Row, chartRows, chartSeries, hlIndex, countText, ratioText, type Box, type Txt, type Plan, textW, fitSize, chartFrame, boxLoopPts, boxAround, boxReach } from './shared.ts';
+export { CHART_KINDS, type ChartKind, type ChartP, type Num, parseNum, fmtNum, type Row, chartRows, chartSeries, hlIndex, countText, ratioText, type Box, type Txt, type Plan, textW, fitEstimatedSize, chartFrame, boxLoopPts, boxAround, boxReach } from './shared.ts';
 export { peopleGrid } from './people.ts';
 export { ranks, tieRuns, rankStarts } from './rank.ts';
 export { blockCounts, tipAngle } from './balance.ts';
@@ -54,12 +54,12 @@ export function chartPlan(p: ChartP, W: number, H: number, theme: Theme, local: 
 /** the body height a kind looks best at for the card's width (the card is cut down to it when the frame has more room) */
 export function naturalBody(e: Env): number {
   const { p, F } = e, u = F.u, b = F.body, kind = CHART_KINDS.includes(p.kind) ? p.kind : 'bars', rows = chartRows(p.data);
-  const statH = p.stat ? fitSize(p.stat, 100 * u, b.w, 1.7) * 1.7 * 1.25 : 0;
+  const statH = p.stat ? fitEstimatedSize(p.stat, 100 * u, b.w, 1.7) * 1.7 * 1.25 : 0;
   switch (kind) {
     case 'bars': return p.dir === 'v' ? Math.max(b.w * 0.8, 420 * u + statH) : statH + valued(rows).length * (220 * u + circlePad(p, rows, u)) + 40 * u + (baseOf(p.base)?.label ? 50 * u : 0);
     case 'pie': return Math.min(b.w, 760 * u) * 1.02 + (p.note ? 120 * u : 0);
     case 'people': {
-      const n = clamp(Math.round(p.n), 1, 200), stat = p.stat || WORDS.people[e.lang](n, n), room = fitSize(stat, 84 * u, b.w, 1.5) * 1.5 * 1.45;
+      const n = clamp(Math.round(p.n), 1, 200), stat = p.stat || WORDS.people[e.lang](n, n), room = fitEstimatedSize(stat, 84 * u, b.w, 1.5) * 1.5 * 1.45;
       const G = peopleGrid(n, b.w, b.w * 2);
       return G.rows * Math.min(G.cell, 200 * u) * 1.15 + room;
     }

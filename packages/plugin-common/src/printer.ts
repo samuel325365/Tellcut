@@ -11,7 +11,7 @@ import { abs, clamp, cssCamel, eBack, eIO3 as eIO, eOut3 as eOut, h, rng, textEm
 import { ghostLine } from './text.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { dots, drawDots, loadDots, softCanvas, type Dots } from './dots.ts';
-import { paintVfd, parseSteps, digitsAt, type Step } from './digits.ts';
+import { paintVfd, parseDigitSteps, digitsAt, type Step } from './digits.ts';
 import { shade } from './color.ts';
 
 interface P {
@@ -100,8 +100,8 @@ export function printerAdds(adds: string, lines: PLine[], totalAt = -1): Step[] 
   return [...addSteps(adds, lines), ...end].sort((a, b) => a.t - b.t);
 }
 function addSteps(adds: string, lines: PLine[]): Step[] {
-  if (String(adds ?? '').trim()) return parseSteps(adds);
-  return parseSteps(lines.filter((l) => l.kind === 'item' && /^\d+(\.\d+)?$/.test(l.amt.replace(/,/g, ''))).map((l) => `${+(l.t + 0.2).toFixed(3)}|+${l.amt.replace(/,/g, '')}`).join(','));
+  if (String(adds ?? '').trim()) return parseDigitSteps(adds);
+  return parseDigitSteps(lines.filter((l) => l.kind === 'item' && /^\d+(\.\d+)?$/.test(l.amt.replace(/,/g, ''))).map((l) => `${+(l.t + 0.2).toFixed(3)}|+${l.amt.replace(/,/g, '')}`).join(','));
 }
 
 /** the whole printed paper as one bitmap, in units (paper colour, fibres, ink with head wear, torn top and bottom) */

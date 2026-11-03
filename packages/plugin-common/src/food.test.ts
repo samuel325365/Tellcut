@@ -1,7 +1,7 @@
 // The blocks promoted from the food-receipt and food-deep shorts (2026-10-19): the receipt printer kit and the queue-number board kit.
 import { defaultSafe } from '@tellcut/engine';
 import { marqueeX, typedChars, dotmatrix } from './dotmatrix.ts';
-import { digits, digitsAt, flashSpot, hasCjk, parseSteps, vfdMatrix } from './digits.ts';
+import { digits, digitsAt, flashSpot, hasCjk, parseDigitSteps, vfdMatrix } from './digits.ts';
 import { fedAt, printer, printerAdds, printerLines, stair, stampSpot, totalNumber, userLine } from './printer.ts';
 import { doorAt, rolldoor } from './rolldoor.ts';
 import { callout, calloutLabel } from './callout.ts';
@@ -32,7 +32,7 @@ test('dotmatrix: typing reaches every character by its time, the marquee enters 
 });
 
 test('digits: steps add up (+n), show text as is (02, --), count up over 0.55 s, and a later set starts again', () => {
-  const st = parseSteps('1|+95, 0|--|叫號, 2|+?, 3|02|下一位, 4|+5');
+  const st = parseDigitSteps('1|+95, 0|--|叫號, 2|+?, 3|02|下一位, 4|+5');
   expect(st.map((s) => [s.t, s.v, s.add, s.n, s.label])).toEqual([[0, '--', false, null, '叫號'], [1, '+95', true, 95, ''], [2, '+?', true, null, ''], [3, '02', false, 2, '下一位'], [4, '+5', true, 5, '']]);
   expect(digitsAt(st, -1, 2, '0').text).toBeNull();
   expect(digitsAt(st, 0.5, 2, '0').text).toBe('--');
@@ -43,7 +43,7 @@ test('digits: steps add up (+n), show text as is (02, --), count up over 0.55 s,
   expect(digitsAt(st, 5, 2, '0').text).toBe('07');
   expect(digitsAt(st, 5, 2, '0').last?.v).toBe('+5');
   // the defaults count to 195 and turn into the total inside the 3 s gallery preview
-  const d = parseSteps(def(digits, 'steps'));
+  const d = parseDigitSteps(def(digits, 'steps'));
   expect(digitsAt(d, 2.9, 5, ' ').text).toBe('  195');
   expect(def(digits, 'totalAt')).toBeLessThan(3);
 });

@@ -1,7 +1,7 @@
 // common.chart's balance: weights drop into the two pans and the beam tips to the heavier side.
 import { clamp, eOut3, prog } from '@tellcut/engine';
 import { quadPts, type Pt } from '../sketch.ts';
-import { chartRows, valued, fitSize, type Env, T, M, pop } from './shared.ts';
+import { chartRows, valued, fitEstimatedSize, type Env, T, M, pop } from './shared.ts';
 
 /** how many blocks each pan gets: the numbers themselves when they are small whole numbers, else up to 5 by share */
 export function blockCounts(a: number, b: number): [number, number] {
@@ -42,9 +42,9 @@ export function planBalance(e: Env) {
     }
     M(e, { t: 'path', pts: quadPts([ex - pw, rim], [ex, rim + sag * 2], [ex + pw, rim]).concat([[ex - pw, rim]]), fill: C.tag, line: C.ink, lw: 5 * u, prog: draw, seed: 111 + j * 5 });
     const la = clamp((local - p.at - 0.1) / 0.3);
-    T(e, { id: `l${j}`, text: row.label, x: ex, y: rim + sag + ls * 0.95, size: fitSize(row.label, ls, pw * 2.2), align: 'c', color: sd > 0 ? C.accent : C.ink, weight: 900, a: la });
-    if (row.show) T(e, { id: `s${j}`, text: row.show, x: ex, y: rim + sag + ls * 2.05, size: fitSize(row.show, ls * 0.72, pw * 2.2), align: 'c', color: C.dim, weight: 700, a: la });
+    T(e, { id: `l${j}`, text: row.label, x: ex, y: rim + sag + ls * 0.95, size: fitEstimatedSize(row.label, ls, pw * 2.2), align: 'c', color: sd > 0 ? C.accent : C.ink, weight: 900, a: la });
+    if (row.show) T(e, { id: `s${j}`, text: row.show, x: ex, y: rim + sag + ls * 2.05, size: fitEstimatedSize(row.show, ls * 0.72, pw * 2.2), align: 'c', color: C.dim, weight: 700, a: la });
   });
   M(e, { t: 'dot', x: cx, y: py, r: 13 * u, fill: C.tag, line: C.ink, seed: 131 });
-  if (p.note) T(e, { id: 'note', text: p.note, x: cx, y: b.y + noteRoom * 0.45, size: fitSize(p.note, 64 * u, b.w), align: 'c', color: C.accent, weight: 900, a: clamp((local - tS - 0.5) / 0.1), sc: pop(local, tS + 0.5) });
+  if (p.note) T(e, { id: 'note', text: p.note, x: cx, y: b.y + noteRoom * 0.45, size: fitEstimatedSize(p.note, 64 * u, b.w), align: 'c', color: C.accent, weight: 900, a: clamp((local - tS - 0.5) / 0.1), sc: pop(local, tS + 0.5) });
 }

@@ -1,6 +1,6 @@
 // common.chart's table: the rules drawn, the cells rising in diagonal order, one cell or row lit.
 import { clamp, eOut3, prog, textEm } from '@tellcut/engine';
-import { chartRows, fitSize, type Env, T, M } from './shared.ts';
+import { chartRows, fitEstimatedSize, type Env, T, M } from './shared.ts';
 
 /** table cells: one row a line, cells split by |; the first row is the header */
 export const tableCells = (text: string) => chartRows(text).map((r) => r.cells);
@@ -31,7 +31,7 @@ export function planTable(e: Env) {
       const x = colX[c] + colW[c] / 2, y = ty + rowH * (r + 0.5) + (1 - eOut3(a)) * 18 * u;
       if (lit) M(e, { t: 'rect', x: colX[c] + 6 * u, y: ty + rowH * r + 6 * u, w: colW[c] - 12 * u, h: rowH - 12 * u, fill: C.tag, soft: true, reveal: eOut3(a), from: 'l', seed: 171 + c });
       if (!text) continue;
-      T(e, { id: `c${r}_${c}`, text, x, y, size: fitSize(text, fs * (r === 0 ? 1.02 : 1), colW[c] * 0.92), align: 'c', color: lit ? C.accent : r === 0 ? C.ink : c === 0 && Cn > 2 ? C.dim : C.ink,
+      T(e, { id: `c${r}_${c}`, text, x, y, size: fitEstimatedSize(text, fs * (r === 0 ? 1.02 : 1), colW[c] * 0.92), align: 'c', color: lit ? C.accent : r === 0 ? C.ink : c === 0 && Cn > 2 ? C.dim : C.ink,
         weight: r === 0 || lit ? 900 : c === 0 && Cn > 2 ? 500 : 700, a: clamp(a * 2), sc: lit ? 1 + 0.12 * Math.sin(Math.PI * prog(local, t0 + 0.2, t0 + 0.5)) : 1 });
     }
   });

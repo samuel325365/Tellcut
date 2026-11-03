@@ -1,11 +1,11 @@
 // common.chart's bars: horizontal or vertical bars growing, their numbers counting up, a ratio or a gap between two, a baseline, a stat line.
 import { clamp, eIO3, eOut3, prog } from '@tellcut/engine';
 import { WORDS } from '../words.ts';
-import { fmtNum, chartRows, valued, hlIndex, countText, ratioText, textW, fitSize, type Env, T, M, pop, circled, circlePad, loopWob, baseOf, boxAround, boxReach } from './shared.ts';
+import { fmtNum, chartRows, valued, hlIndex, countText, ratioText, textW, fitEstimatedSize, type Env, T, M, pop, circled, circlePad, loopWob, baseOf, boxAround, boxReach } from './shared.ts';
 
 /** the stat line (a number counting up, drawn big in the accent colour) at the top of the body; returns its height */
 function statLine(e: Env, text: string, y: number, maxSize: number, t0: number, dur: number): number {
-  const { F, C, local } = e, b = F.body, size = fitSize(text, maxSize, b.w, 1.7), f = eOut3(prog(local, t0, t0 + dur)), land = prog(local, t0 + dur, t0 + dur + 0.25);
+  const { F, C, local } = e, b = F.body, size = fitEstimatedSize(text, maxSize, b.w, 1.7), f = eOut3(prog(local, t0, t0 + dur)), land = prog(local, t0 + dur, t0 + dur + 0.25);
   T(e, { id: 'stat', text: countText(text, f), x: b.x + b.w / 2, y: y + size * 1.7 * 0.5, size, align: 'c', color: C.ink, weight: 900, em: { color: C.accent, scale: 1.7 },
     a: clamp((local - t0) / 0.15), sc: 1 + 0.06 * Math.sin(Math.PI * land) });
   return size * 1.7 * 1.25;
@@ -29,7 +29,7 @@ export function planBars(e: Env) {
   const colorOf = (i: number) => (i === ih ? C.accent : C.color);
   if (p.dir === 'v') {
     const noteW = noteText ? b.w * 0.28 : base?.label ? Math.min(b.w * 0.26, textW(base.label, 40 * u) + 24 * u) : 0, plotX = b.x, plotW = b.w - noteW, colW = plotW / n, bw = Math.min(colW * 0.56, 180 * u);
-    const ls = Math.min(46 * u, ...rows.map((r) => fitSize(r.label, 46 * u, colW * 0.94))), vs = Math.min(46 * u, ...rows.map((_, i) => fitSize(final(i), 46 * u, colW * 0.98)));
+    const ls = Math.min(46 * u, ...rows.map((r) => fitEstimatedSize(r.label, 46 * u, colW * 0.94))), vs = Math.min(46 * u, ...rows.map((_, i) => fitEstimatedSize(final(i), 46 * u, colW * 0.98)));
     const labelH = ls * 1.6, valueH = vs * 1.5, neg = lo < 0;
     const pad = circlePad(p, rows, u), top = b.y + statH + valueH + pad, bot = b.y + b.h - labelH - (neg ? valueH : 0) - pad, Y = (v: number) => bot - ((v - lo) / span) * (bot - top), y0 = Y(0);
     // circled: a box loop round the lit bar alone (clear of the label under it: the room `pad` made), its number moved out past the loop
@@ -39,7 +39,7 @@ export function planBars(e: Env) {
     if (base) {
       const yb = Y(base.v);
       M(e, { t: 'path', pts: [[plotX, yb], [plotX + plotW, yb]], line: C.ink, lw: 3 * u, dash: true, a: 0.8, prog: eOut3(prog(local, p.at - 0.1, p.at + 0.4)), seed: 5 });
-      if (base.label) T(e, { id: 'base', text: base.label, x: plotX + plotW + 12 * u, y: noteText ? yb - ls * 0.75 : yb, size: fitSize(base.label, ls * 0.9, noteText ? plotW * 0.5 : noteW - 14 * u), align: noteText ? 'r' : 'l', color: C.dim, weight: 500, a: clamp((local - p.at - 0.2) / 0.3) });
+      if (base.label) T(e, { id: 'base', text: base.label, x: plotX + plotW + 12 * u, y: noteText ? yb - ls * 0.75 : yb, size: fitEstimatedSize(base.label, ls * 0.9, noteText ? plotW * 0.5 : noteW - 14 * u), align: noteText ? 'r' : 'l', color: C.dim, weight: 500, a: clamp((local - p.at - 0.2) / 0.3) });
     }
     rows.forEach((r, i) => {
       const cx = plotX + colW * (i + 0.5), y1 = Y(vals[i]), f = fOf(i);
@@ -58,10 +58,10 @@ export function planBars(e: Env) {
         M(e, { t: 'path', pts: [[xa + bw / 2 + 6 * u, ya], [bx, ya], [bx, yb], [cut ? xa + tw : xb + bw / 2 + 6 * u, yb]], line: C.accent, lw: 4.5 * u, prog: pg, seed: 21 });
         if (cut && xa - tw > xb + bw / 2 + 6 * u) M(e, { t: 'path', pts: [[xa - tw, yb], [xb + bw / 2 + 6 * u, yb]], line: C.accent, lw: 4.5 * u, prog: pg, seed: 22 });
       }
-      const size = fitSize(noteText, 76 * u, noteW - 32 * u);
+      const size = fitEstimatedSize(noteText, 76 * u, noteW - 32 * u);
       T(e, { id: 'note', text: noteText, x: bx + 18 * u, y: (ya + yb) / 2, size, align: 'l', color: C.accent, weight: 900, a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd) });
     } else if (noteText && ih >= 0) {
-      T(e, { id: 'note', text: noteText, x: plotX + plotW + 18 * u, y: Y(vals[ih]), size: fitSize(noteText, 64 * u, noteW - 24 * u), align: 'l', color: C.accent, weight: 900, a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd) });
+      T(e, { id: 'note', text: noteText, x: plotX + plotW + 18 * u, y: Y(vals[ih]), size: fitEstimatedSize(noteText, 64 * u, noteW - 24 * u), align: 'l', color: C.accent, weight: 900, a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd) });
     }
     if (loop) M(e, { t: 'loop', cx: plotX + colW * (ih + 0.5), cy: (Y(vals[ih]) + y0) / 2, rx: loop.rx, ry: loop.ry, box: loopWob(p, u), line: C.accent, lw: 6 * u, prog: eOut3(prog(local, tEnd + 0.1, tEnd + 0.6)), seed: 31 });
     return;
@@ -82,7 +82,7 @@ export function planBars(e: Env) {
   rows.forEach((r, i) => {
     const x1 = X(vals[i]), f = fOf(i), by = barY(i);
     M(e, { t: 'rect', x: Math.min(x0, x1), y: by, w: Math.abs(x1 - x0), h: bt, fill: colorOf(i), line: C.ink, reveal: f, from: vals[i] >= 0 ? 'l' : 'r', seed: 11 + i * 7 });
-    T(e, { id: `l${i}`, text: r.label, x: b.x, y: y0 + i * rowH + ls * 0.6, size: fitSize(r.label, ls, b.w), align: 'l', color: i === ih ? C.accent : C.ink, weight: i === ih ? 900 : 700, a: clamp((local - p.at + 0.2 - i * step * 0.5) / 0.25) });
+    T(e, { id: `l${i}`, text: r.label, x: b.x, y: y0 + i * rowH + ls * 0.6, size: fitEstimatedSize(r.label, ls, b.w), align: 'l', color: i === ih ? C.accent : C.ink, weight: i === ih ? 900 : 700, a: clamp((local - p.at + 0.2 - i * step * 0.5) / 0.25) });
     const end = x0 + (x1 - x0) * f, pos = vals[i] >= 0;
     T(e, { id: `v${i}`, text: shown(i, f), x: end + (pos ? 1 : -1) * valOff(i), y: by + bt / 2, size: vs, align: pos ? 'l' : 'r', color: i === ih ? C.accent : C.ink, weight: 900, a: clamp(f * 5) });
   });
@@ -90,7 +90,7 @@ export function planBars(e: Env) {
   if (base) {
     const xb = X(base.v), yTop = y0 + ls * 1.1, yBot = y0 + (n - 1) * rowH + ls * 1.35 + bt + 12 * u;
     M(e, { t: 'path', pts: [[xb, yTop], [xb, yBot]], line: C.ink, lw: 3 * u, dash: true, a: 0.8, prog: eOut3(prog(local, p.at - 0.1, p.at + 0.4)), seed: 5 });
-    if (base.label) { const s = fitSize(base.label, 40 * u, b.w * 0.6), w = textW(base.label, s); T(e, { id: 'base', text: base.label, x: clamp(xb, b.x + w / 2, b.x + b.w - w / 2), y: yBot + s * 0.9, size: s, align: 'c', color: C.dim, weight: 500, a: clamp((local - p.at - 0.2) / 0.3) }); }
+    if (base.label) { const s = fitEstimatedSize(base.label, 40 * u, b.w * 0.6), w = textW(base.label, s); T(e, { id: 'base', text: base.label, x: clamp(xb, b.x + w / 2, b.x + b.w - w / 2), y: yBot + s * 0.9, size: s, align: 'c', color: C.dim, weight: 500, a: clamp((local - p.at - 0.2) / 0.3) }); }
   }
   // the note: right of the shorter bar's number if there is room, else over the longer bar at the right
   const anchor = cmp !== 'none' ? (Math.abs(vals[ia]) <= Math.abs(vals[ib]) ? ia : ib) : ih;
@@ -101,8 +101,8 @@ export function planBars(e: Env) {
       M(e, { t: 'path', pts: [[xs, Math.min(ys, yL)], [xs, Math.max(ys + bt, yL + 12 * u + bt)]], line: C.accent, lw: 3 * u, dash: true, prog: pg, seed: 23 });
       M(e, { t: 'path', pts: [[xs, yL + 10 * u], [xs, yL], [xl, yL], [xl, yL + 10 * u]], line: C.accent, lw: 4.5 * u, prog: pg, seed: 21 });
     }
-    const nx = X(vals[anchor]) + valOff(anchor) + textW(final(anchor), vs) + 30 * u, room = b.x + b.w - nx, big = fitSize(noteText, 84 * u, room);
-    const side = big >= 34 * u, size = side ? big : fitSize(noteText, 60 * u, b.w * 0.5);
+    const nx = X(vals[anchor]) + valOff(anchor) + textW(final(anchor), vs) + 30 * u, room = b.x + b.w - nx, big = fitEstimatedSize(noteText, 84 * u, room);
+    const side = big >= 34 * u, size = side ? big : fitEstimatedSize(noteText, 60 * u, b.w * 0.5);
     const other = cmp !== 'none' ? (anchor === ia ? ib : ia) : anchor;
     T(e, { id: 'note', text: noteText, x: side ? nx : b.x + b.w, y: side ? barY(anchor) + bt / 2 : y0 + other * rowH + ls * 0.6, size, align: side ? 'l' : 'r', color: C.accent, weight: 900,
       a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd), rot: side ? -3 : 0 });

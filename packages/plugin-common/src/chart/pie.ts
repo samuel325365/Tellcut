@@ -1,7 +1,7 @@
 // common.chart's pie: slices coloured in one after another, small slices labelled outside, a tag under it.
 import { clamp, eOut3, prog } from '@tellcut/engine';
 import { ellipsePts } from '../sketch.ts';
-import { fmtNum, chartRows, valued, hlIndex, textW, fitSize, type Env, T, M, pop, onColor, sliceColors } from './shared.ts';
+import { fmtNum, chartRows, valued, hlIndex, textW, fitEstimatedSize, type Env, T, M, pop, onColor, sliceColors } from './shared.ts';
 
 export function planPie(e: Env) {
   const { p, F, C, local } = e, u = F.u, b = F.body, rows = valued(chartRows(p.data)), n = rows.length;
@@ -28,17 +28,17 @@ export function planPie(e: Env) {
     if (small[i]) {
       const right = Math.cos(mid) >= 0, rr = r * 1.12, tx = ox + Math.cos(mid) * rr, ty = oy + Math.sin(mid) * rr;
       const text = `${row.label} ${row.show || pct(fr[i])}`, x = tx + (right ? 8 : -8) * u, room = right ? b.x + b.w - x : x - b.x;
-      T(e, { id: `l${i}`, text, x, y: ty, size: fitSize(text, ls * 0.85, room), align: right ? 'l' : 'r', color: lit ? C.accent : C.ink, weight: 700, a: la });
+      T(e, { id: `l${i}`, text, x, y: ty, size: fitEstimatedSize(text, ls * 0.85, room), align: right ? 'l' : 'r', color: lit ? C.accent : C.ink, weight: 700, a: la });
       return;
     }
     const lr = n === 1 ? 0 : r * 0.6, tx = ox + Math.cos(mid) * lr, ty = oy + Math.sin(mid) * lr, chord = n === 1 ? r * 1.6 : Math.min(r * 0.9, 2 * lr * Math.sin(Math.min(Math.PI / 2, (a1 - a0) / 2)) + r * 0.2);
     // on a hatched slice the words get a halo of the paper; on a flat one, whichever of ink and paper reads
     const hand = e.p.look === 'hand', ink = hand ? C.ink : onColor(fill, C), halo = hand ? C.paper : undefined;
-    T(e, { id: `l${i}`, text: row.label, x: tx, y: ty - ls * 0.42, size: fitSize(row.label, ls * (lit ? 1.15 : 1), chord), align: 'c', color: ink, weight: 900, a: la, halo });
-    T(e, { id: `p${i}`, text: row.show || pct(fr[i]), x: tx, y: ty + ls * 0.62, size: fitSize(row.show || pct(fr[i]), ls * 0.82, chord), align: 'c', color: ink, weight: 700, a: la, halo });
+    T(e, { id: `l${i}`, text: row.label, x: tx, y: ty - ls * 0.42, size: fitEstimatedSize(row.label, ls * (lit ? 1.15 : 1), chord), align: 'c', color: ink, weight: 900, a: la, halo });
+    T(e, { id: `p${i}`, text: row.show || pct(fr[i]), x: tx, y: ty + ls * 0.62, size: fitEstimatedSize(row.show || pct(fr[i]), ls * 0.82, chord), align: 'c', color: ink, weight: 700, a: la, halo });
   });
   if (p.note) {
-    const size = fitSize(p.note, 56 * u, b.w - 40 * u);
+    const size = fitEstimatedSize(p.note, 56 * u, b.w - 40 * u);
     T(e, { id: 'note', text: p.note, x: cx, y: b.y + b.h - noteRoom * 0.42, size, align: 'c', color: onColor(C.tag, C), weight: 900, bg: C.tag, a: clamp((local - tEnd) / 0.1), sc: 1.4 - 0.4 * pop(local, tEnd, 0.3), rot: -2 });
   }
 }

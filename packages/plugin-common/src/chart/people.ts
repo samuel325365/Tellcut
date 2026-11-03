@@ -1,7 +1,7 @@
 // common.chart's people: little people flipping over, the first k in colour and circled, a line "10 人中有 4 人" under them.
 import { clamp, eOut3, prog } from '@tellcut/engine';
 import { WORDS } from '../words.ts';
-import { countText, fitSize, type Env, T, M, pop } from './shared.ts';
+import { countText, fitEstimatedSize, type Env, T, M, pop } from './shared.ts';
 
 /** the best grid for n cells in a w × h box (the cell as large as it can be; a cell is 1.15 times as tall as wide) */
 export function peopleGrid(n: number, w: number, hh: number): { cols: number; rows: number; cell: number } {
@@ -13,7 +13,7 @@ export function peopleGrid(n: number, w: number, hh: number): { cols: number; ro
 
 export function planPeople(e: Env) {
   const { p, F, C, local } = e, u = F.u, b = F.body, n = clamp(Math.round(p.n), 1, 200), k = clamp(Math.round(p.k), 0, n);
-  const stat = p.stat || WORDS.people[e.lang](n, k), statSize = fitSize(stat, 84 * u, b.w, 1.5), statRoom = statSize * 1.5 * 1.45;
+  const stat = p.stat || WORDS.people[e.lang](n, k), statSize = fitEstimatedSize(stat, 84 * u, b.w, 1.5), statRoom = statSize * 1.5 * 1.45;
   const G = peopleGrid(n, b.w, b.h - statRoom), gw = G.cols * G.cell, gh = G.rows * G.cell * 1.15, gx = b.x + (b.w - gw) / 2, gy = b.y + (b.h - statRoom - gh) / 2;
   const fs = Math.min(0.2, 1.3 / n), tEnd = p.at + (n - 1) * fs + 0.3;
   const at = (i: number) => [gx + G.cell * ((i % G.cols) + 0.5), gy + G.cell * 1.15 * (Math.floor(i / G.cols) + 0.5)] as const;

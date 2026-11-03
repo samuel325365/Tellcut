@@ -2,7 +2,7 @@
 import { clamp, eOut3, prog } from '@tellcut/engine';
 import { withAlpha } from '../color.ts';
 import { WORDS } from '../words.ts';
-import { parseNum, fmtNum, type Row, chartRows, hlIndex, textW, fitSize, type Env, T, M, pop, onColor } from './shared.ts';
+import { parseNum, fmtNum, type Row, chartRows, hlIndex, textW, fitEstimatedSize, type Env, T, M, pop, onColor } from './shared.ts';
 
 /** each ranking row's rank: counted on from 1, a third field resets the count ("照顧孩子|3.86|12"), a gap row has none */
 export function ranks(rows: Row[]): number[] {
@@ -53,15 +53,15 @@ export function planRank(e: Env) {
     if (r.gap) { T(e, { id: `l${i}`, text: '⋯', x: labelX + labelW / 2 + dx, y: cy, size: ls, align: 'c', color: C.dim, weight: 700, a }); return; }
     // revealed upward, each rank badge pops in as its row arrives
     M(e, { t: 'dot', x: b.x + br + dx, y: cy, r: br * (up ? pop(local, t0, 0.3) : 1), fill: lit ? C.accent : C.color, seed: 81 + i, a });
-    T(e, { id: `n${i}`, text: String(rk[i]), x: b.x + br + dx, y: cy, size: fitSize(String(rk[i]), br * 1.15, br * 1.7), align: 'c', color: onColor(lit ? C.accent : C.color, C), weight: 900, a });
-    T(e, { id: `l${i}`, text: r.label, x: labelX + dx, y: cy, size: fitSize(r.label, ls, labelW), align: 'l', color: lit ? C.accent : C.ink, weight: lit ? 900 : 700, a });
+    T(e, { id: `n${i}`, text: String(rk[i]), x: b.x + br + dx, y: cy, size: fitEstimatedSize(String(rk[i]), br * 1.15, br * 1.7), align: 'c', color: onColor(lit ? C.accent : C.color, C), weight: 900, a });
+    T(e, { id: `l${i}`, text: r.label, x: labelX + dx, y: cy, size: fitEstimatedSize(r.label, ls, labelW), align: 'l', color: lit ? C.accent : C.ink, weight: lit ? 900 : 700, a });
     if (!Number.isFinite(vals[i])) return;
     const f = eOut3(prog(local, t0 + 0.1, t0 + 0.7)), len = Math.max(2 * u, ((vals[i] - lo) / (hi - lo || 1)) * barW);
     M(e, { t: 'rect', x: barX, y: cy - bt / 2, w: len, h: bt, fill: lit ? C.accent : withAlpha(C.color, 0.55), reveal: f * a, from: 'l', seed: 91 + i * 7, dx });
     T(e, { id: `v${i}`, text: valStr(i, f), x: barX + len * f + 12 * u + dx, y: cy, size: ls * 0.9, align: 'l', color: lit ? C.accent : C.dim, weight: 900, a: clamp(f * 5) });
   });
   if (hlRow >= 0 && !rows[hlRow].gap) {
-    const note = p.note || WORDS.rank[e.lang](rk[hlRow]), cy = y0 + rowH * (hlRow + 0.5), size = fitSize(note, Math.min(54 * u, rowH * 0.62), b.w * 0.42);
+    const note = p.note || WORDS.rank[e.lang](rk[hlRow]), cy = y0 + rowH * (hlRow + 0.5), size = fitEstimatedSize(note, Math.min(54 * u, rowH * 0.62), b.w * 0.42);
     const tw = textW(note, size) + size * 0.9, endX = Number.isFinite(vals[hlRow]) ? barX + ((vals[hlRow] - lo) / (hi - lo || 1)) * barW + valW + 24 * u : labelX + textW(rows[hlRow].label, ls) + 30 * u;
     T(e, { id: 'note', text: note, x: Math.min(endX + tw / 2, b.x + b.w - tieW - tw / 2), y: cy, size, align: 'c', color: onColor(C.tag, C), weight: 900, bg: C.tag, a: clamp((local - tEnd) / 0.1), sc: pop(local, tEnd), rot: -3 });
     if (p.mark === 'circle') M(e, { t: 'loop', cx: labelX + labelW / 2 - 10 * u, cy, rx: labelW / 2 + br + 30 * u, ry: rowH * 0.62, line: C.accent, lw: 5 * u, prog: eOut3(prog(local, tEnd + 0.1, tEnd + 0.5)), seed: 35 });
@@ -69,6 +69,6 @@ export function planRank(e: Env) {
   runs.forEach(([i, j], k) => {
     const t0 = starts[i] + 0.2, f = eOut3(prog(local, t0, t0 + 0.35)), y1 = y0 + rowH * (i + 0.18), y2 = y0 + rowH * (j + 0.82), arm = Math.min(22 * u, tieW * 0.25);
     if (f > 0) M(e, { t: 'path', pts: [[tieX - arm, y1], [tieX, y1], [tieX, y2], [tieX - arm, y2]], line: C.color, lw: 5 * u, prog: f, seed: 61 + k });
-    T(e, { id: `tie${k}`, text: p.tie, x: tieX - arm - 10 * u, y: (y1 + y2) / 2, size: fitSize(p.tie, tieS, tieW - arm - 14 * u), align: 'r', color: C.ink, weight: 900, a: f });
+    T(e, { id: `tie${k}`, text: p.tie, x: tieX - arm - 10 * u, y: (y1 + y2) / 2, size: fitEstimatedSize(p.tie, tieS, tieW - arm - 14 * u), align: 'r', color: C.ink, weight: 900, a: f });
   });
 }

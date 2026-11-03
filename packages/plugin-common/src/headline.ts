@@ -179,18 +179,18 @@ function drawProof(ctx: Parameters<typeof headline.draw>[0], s: S): GhostLine[] 
   const family = `'${brandFace(p.font)}', 'Noto Sans TC', sans-serif`, x = theme.safe.side * W, cy = p.y >= 0 ? p.y * H : H * 0.5;
   const lines = linesOf(p.text).filter((l) => l !== ''), numeric = lines.length === 1 && /^\d/.test(lines[0]);
   if (numeric) {
-    const big = fitSize(g, [lines[0]], (p.size / 100) * 200 * k, family, 300, W - 2 * x);
+    const big = fitMeasuredSize(g, [lines[0]], (p.size / 100) * 200 * k, family, 300, W - 2 * x);
     const n = drawBlurLine(g, { text: countUp(lines[0], local, 0.05), x, y: cy + big * 0.35, size: big, family, weight: 300, color: p.color }, local, 0, dur);
     const label = linesOf(p.sub).join(' ').trim();
     return [n, ...(label ? [drawBlurLine(g, { text: label, x: x + big * 0.04, y: cy + big * 0.35 + 46 * k, size: 22 * k, family, weight: 600, color: p.line, spacing: 6 * k, rise: 6 * k }, local, 0.25, dur)] : [])];
   }
-  const size = fitSize(g, lines, (p.size / 100) * 60 * k, family, 300, W - 2 * x), gap = size * 1.25, first = cy - ((lines.length - 1) * gap) / 2;
+  const size = fitMeasuredSize(g, lines, (p.size / 100) * 60 * k, family, 300, W - 2 * x), gap = size * 1.25, first = cy - ((lines.length - 1) * gap) / 2;
   return lines.map((l, i) => drawBlurLine(g, { text: l, x, y: first + i * gap, size, family, weight: 300, color: p.color }, local, i * 0.35, dur));
 }
 
-/** the size at which the widest of the lines fits in `room` px (as look doc shrinks its headline), at most `size`; `spacing` the
+/** the size at which the widest of the lines, measured on `g`, fits in `room` px (as look doc shrinks its headline), at most `size`; `spacing` the
  *  letter spacing in px per character */
-export function fitSize(g: CanvasRenderingContext2D, lines: string[], size: number, family: string, weight: number, room: number, spacing = 0): number {
+export function fitMeasuredSize(g: CanvasRenderingContext2D, lines: string[], size: number, family: string, weight: number, room: number, spacing = 0): number {
   g.font = `${weight} ${size}px ${family}`;
   const widest = Math.max(0, ...lines.map((l) => g.measureText(l).width + [...l].length * spacing));
   return widest > room && room > 0 ? size * (room / widest) : size;
@@ -209,9 +209,9 @@ function drawBrand(ctx: Parameters<typeof headline.draw>[0], s: S): GhostLine[] 
   g.clearRect(0, 0, W, H);
   // the lines (and the kicker) shrink until the widest fits across the safe area, as look doc's headline does
   const family = `'${brandFace(p.font)}', 'Noto Sans TC', sans-serif`, x = theme.safe.side * W, room = W - 2 * x;
-  const lines = linesOf(p.text).filter((l) => l !== ''), size = fitSize(g, lines, (p.size / 100) * 60 * k, family, 300, room), gap = size * 1.25;
+  const lines = linesOf(p.text).filter((l) => l !== ''), size = fitMeasuredSize(g, lines, (p.size / 100) * 60 * k, family, 300, room), gap = size * 1.25;
   const last = p.y >= 0 ? p.y * H : (1 - theme.safe.bottom) * H - size * 0.4, first = last - (lines.length - 1) * gap;
-  const kicker = linesOf(p.sub).join(' ').trim(), ks = kicker ? fitSize(g, [kicker], Math.max(size * 0.3, 17 * k), family, 600, room, 6 * k) : 0;
+  const kicker = linesOf(p.sub).join(' ').trim(), ks = kicker ? fitMeasuredSize(g, [kicker], Math.max(size * 0.3, 17 * k), family, 600, room, 6 * k) : 0;
   const out = kicker ? [drawBlurLine(g, { text: kicker, x, y: first - size * 1.1, size: ks, family, weight: 600, color: p.line, spacing: 6 * k, rise: 6 * k }, local, 0, dur)] : [];
   return [...out, ...lines.map((l, i) => drawBlurLine(g, { text: l, x, y: first + i * gap, size, family, weight: 300, color: p.color }, local, 0.2 + i * 0.35, dur))];
 }

@@ -2,7 +2,7 @@
 import { clamp, eOut3, prog } from '@tellcut/engine';
 import { spline } from '../inkline.ts';
 import { type Pt } from '../sketch.ts';
-import { parseNum, chartRows, chartSeries, hlIndex, textW, fitSize, type Env, T, M, pop, baseOf, sliceColors } from './shared.ts';
+import { parseNum, chartRows, chartSeries, hlIndex, textW, fitEstimatedSize, type Env, T, M, pop, baseOf, sliceColors } from './shared.ts';
 
 /** a line's points cut at x = xh (the playhead) */
 export function cutAtX(pts: Pt[], xh: number): Pt[] {
@@ -31,17 +31,17 @@ export function planLine(e: Env) {
   if (base) {
     const yb = Y(base.v);
     M(e, { t: 'path', pts: [[x0, yb], [x1, yb]], line: C.ink, lw: 3 * u, dash: true, a: 0.75, prog: eOut3(prog(local, p.at - 0.2, p.at + 0.3)), seed: 183 });
-    if (base.label) T(e, { id: 'base', text: base.label, x: x1, y: yb - ls * 0.72, size: fitSize(base.label, ls * 0.9, (x1 - x0) * 0.5), align: 'r', color: C.dim, weight: 500, a: clamp((local - p.at) / 0.3) });
+    if (base.label) T(e, { id: 'base', text: base.label, x: x1, y: yb - ls * 0.72, size: fitEstimatedSize(base.label, ls * 0.9, (x1 - x0) * 0.5), align: 'r', color: C.dim, weight: 500, a: clamp((local - p.at) / 0.3) });
   }
-  if (ax0) T(e, { id: 'ax0', text: ax0, x: x0, y: y1 + axH * 0.55, size: fitSize(ax0, ls * 0.9, (x1 - x0) * 0.45), align: 'l', color: C.dim, weight: 500, a: clamp((local - p.at + 0.2) / 0.3) });
-  if (ax1) T(e, { id: 'ax1', text: ax1, x: x1, y: y1 + axH * 0.55, size: fitSize(ax1, ls * 0.9, (x1 - x0) * 0.45), align: 'r', color: C.dim, weight: 500, a: clamp((local - p.at + 0.2) / 0.3) });
+  if (ax0) T(e, { id: 'ax0', text: ax0, x: x0, y: y1 + axH * 0.55, size: fitEstimatedSize(ax0, ls * 0.9, (x1 - x0) * 0.45), align: 'l', color: C.dim, weight: 500, a: clamp((local - p.at + 0.2) / 0.3) });
+  if (ax1) T(e, { id: 'ax1', text: ax1, x: x1, y: y1 + axH * 0.55, size: fitEstimatedSize(ax1, ls * 0.9, (x1 - x0) * 0.45), align: 'r', color: C.dim, weight: 500, a: clamp((local - p.at + 0.2) / 0.3) });
   const lines = ser.map((s) => (s.values.length === 1 ? [[x0, Y(s.values[0])], [x1, Y(s.values[0])]] as Pt[] : spline(s.values.map((v, i) => [x0 + (i / (s.values.length - 1)) * (x1 - x0), Y(v)] as Pt), 16))
     .map(([x, y]) => [x, clamp(y, y0, y1)] as Pt));
   let lx = b.x;
   ser.forEach((s, i) => {
     const col = cols[i % cols.length], dim = ih >= 0 && ih !== i, cut = cutAtX(lines[i], xh);
     if (cut.length >= 2) M(e, { t: 'path', pts: cut, line: col, lw: (ih === i ? 9 : dim ? 5 : 7) * u, a: dim ? 0.45 : 1, seed: 191 + i * 11 });
-    const la = clamp((local - p.at + 0.3) / 0.3), size = side ? fitSize(s.label, ls, legW - 20 * u) : fitSize(s.label, ls, b.w / ser.length - 50 * u);
+    const la = clamp((local - p.at + 0.3) / 0.3), size = side ? fitEstimatedSize(s.label, ls, legW - 20 * u) : fitEstimatedSize(s.label, ls, b.w / ser.length - 50 * u);
     if (side) T(e, { id: `l${i}`, text: s.label, x: b.x, y: (y0 + y1) / 2 + (i - (ser.length - 1) / 2) * ls * 1.6, size, align: 'l', color: col, weight: 900, a: la });
     else {
       M(e, { t: 'dot', x: lx + 12 * u, y: b.y + legH * 0.45, r: 10 * u, fill: col, seed: 197 + i });
@@ -60,7 +60,7 @@ export function planLine(e: Env) {
     if (r.show) T(e, { id: `m${j}`, text: r.show, x, y, size: 28 * u, align: 'c', color: col, weight: 900, a: q, sc: Math.max(0.01, q) });
   });
   if (p.note) {
-    const si = ih >= 0 ? ih : 0, ey = yAtX(lines[si], x1), size = fitSize(p.note, 50 * u, (x1 - x0) * 0.7), up = ey - size * 1.3 > y0;
+    const si = ih >= 0 ? ih : 0, ey = yAtX(lines[si], x1), size = fitEstimatedSize(p.note, 50 * u, (x1 - x0) * 0.7), up = ey - size * 1.3 > y0;
     T(e, { id: 'note', text: p.note, x: x1, y: up ? ey - size * 1.1 : ey + size * 1.1, size, align: 'r', color: cols[si % cols.length], weight: 900, a: clamp((local - p.at - p.grow) / 0.1), sc: pop(local, p.at + p.grow) });
   }
 }

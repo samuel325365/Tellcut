@@ -103,8 +103,8 @@ export interface Colors { ink: string; paper: string; color: string; accent: str
 export function textW(text: string, size: number, emScale = 1): number {
   return emParts(String(text ?? '')).reduce((w, [t, em]) => w + textEm(t) * (em ? emScale : 1), 0) * size * 1.06;
 }
-/** the size (at most `size`) at which the text is no wider than `maxW` */
-export const fitSize = (text: string, size: number, maxW: number, emScale = 1) => {
+/** the size (at most `size`) at which the text is no wider than `maxW`, by textW's estimate (headline.ts fitMeasuredSize measures on a canvas instead) */
+export const fitEstimatedSize = (text: string, size: number, maxW: number, emScale = 1) => {
   const w = textW(text, size, emScale);
   return w > maxW && w > 0 ? Math.max(1, (size * maxW) / w) : size;
 };
@@ -114,7 +114,7 @@ export function chartFrame(p: Pick<ChartP, 'x' | 'y' | 'w' | 'h' | 'card' | 'tit
   const u = Math.min(W, H) / 1080, side = safe.side * W, top = safe.top * H, bottom = (1 - safe.bottom) * H, aw = W - 2 * side, ah = bottom - top;
   const w = p.w > 0 ? p.w * W : Math.min(aw, 1100 * u), h0 = p.h > 0 ? p.h * H : Math.min(ah, w * (H > W ? 1.15 : 0.74));
   const pad = p.card ? Math.min(44 * u, Math.min(w, h0) * 0.1) : 6 * u, iw = w - 2 * pad;
-  const ts = p.title ? fitSize(p.title, 60 * u, iw) : 0, ss = p.source ? fitSize(p.source, 30 * u, iw) : 0;
+  const ts = p.title ? fitEstimatedSize(p.title, 60 * u, iw) : 0, ss = p.source ? fitEstimatedSize(p.source, 30 * u, iw) : 0;
   const tRoom = ts ? Math.max(ts, 40 * u) * 1.7 : 0, sRoom = ss ? Math.max(ss, 22 * u) * 1.9 : 0;
   // a chart that needs less height than the card offers gets a shorter card (an explicit h stays)
   const hh = p.h > 0 ? h0 : Math.min(h0, bodyH + tRoom + sRoom + 2 * pad);
