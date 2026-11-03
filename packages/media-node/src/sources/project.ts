@@ -2,6 +2,7 @@
 // sound effect in media/sfx/ for c.sfxFile(), music in media/music/ registered in project.json `media` for c.music(), a picture in
 // media/<source>/ registered in `sources` for c.photo(), footage there too for c.clip() (spec 2026-10-24-api-picker §5). Every asset is
 // recorded in media/assets.json (where it came from, by whom, under what licence) and media/CREDITS.md is written from those records.
+import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join } from 'node:path';
 import { ffmpeg, probeDuration } from '../ffmpeg.ts';
@@ -34,9 +35,11 @@ const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 /** the footage formats taken as they are; a segment (--from/--len) is always written as MP4 */
 const VIDEO_EXT = new Set(['.mp4', '.mov', '.m4v', '.webm']);
 
-/** where an asset goes in the project (and its media id, for music; its source id, for a picture); a segment gets its own file */
-export function assetFile(f: { kind: AssetKind; meta: { source: string; id: string }; file?: string }, o: { from?: number; len?: number } = {}): { path: string; mediaId?: string; sourceId?: string } {
-  const name = `${f.meta.source}-${f.meta.id}`.replace(/[^A-Za-z0-9_-]/g, '-') + (o.from !== undefined || o.len !== undefined ? `-${o.from ?? 0}s${o.len !== undefined ? `-${o.len}s` : ''}` : '');
+/** where an asset goes in the project (and its media id, for music; its source id, for a picture); a segment gets its own file, and
+ *  so does a download made with --opt (BBC's format=wav and its mp3, Pixabay's short=720 and its 1080 copy are other files) */
+export function assetFile(f: { kind: AssetKind; meta: { source: string; id: string }; file?: string }, o: { from?: number; len?: number; opts?: Record<string, string> } = {}): { path: string; mediaId?: string; sourceId?: string } {
+  const name = `${f.meta.source}-${f.meta.id}`.replace(/[^A-Za-z0-9_-]/g, '-') + (o.from !== undefined || o.len !== undefined ? `-${o.from ?? 0}s${o.len !== undefined ? `-${o.len}s` : ''}` : '')
+    + (o.opts && Object.keys(o.opts).length ? `-o${createHash('sha1').update(optsKey(o.opts)).digest('hex').slice(0, 6)}` : '');
   if (f.kind === 'audio') return { path: `media/sfx/${name}.wav` };
   if (f.kind === 'music') return { path: `media/music/${name}.wav`, mediaId: name };
   if (f.kind === 'image') {
@@ -57,10 +60,9 @@ const usageOf = (r: AssetRecord) => (r.sourceId && kindOf(r.path) === 'video' ? 
 
 /** the --opt a download was made with, for its record (none: nothing written) */
 const optsField = (opts?: Record<string, string>) => (opts && Object.keys(opts).length ? { opts } : {});
-const sameOpts = (a?: Record<string, string>, b?: Record<string, string>) => {
-  const k = (x?: Record<string, string>) => JSON.stringify(Object.entries(x ?? {}).sort(([p], [q]) => (p < q ? -1 : 1)));
-  return k(a) === k(b);
-};
+/** the same options in any order give the same key */
+const optsKey = (x?: Record<string, string>) => JSON.stringify(Object.entries(x ?? {}).sort(([p], [q]) => (p < q ? -1 : 1)));
+const sameOpts = (a?: Record<string, string>, b?: Record<string, string>) => optsKey(a) === optsKey(b);
 
 type ImportOpts = { from?: number; len?: number; opts?: Record<string, string>; now?: () => Date; adapters?: Record<string, SourceAdapter> };
 
@@ -70,7 +72,7 @@ const sourceMap = (m: MapGeo | undefined, credit: string) => (m ? { map: { cente
 /** A picture copied into its place and registered as a photo source, the way createProject registers one. */
 async function importImage(dir: string, f: Fetched, o: ImportOpts): Promise<{ record: AssetRecord; usage: string }> {
   if (o.from !== undefined || o.len !== undefined) throw new Error('圖片沒有 --from／--len');
-  const { path, sourceId } = assetFile(f), out = join(dir, path);
+  const { path, sourceId } = assetFile(f, { opts: o.opts }), out = join(dir, path);
   mkdirSync(dirname(out), { recursive: true });
   copyFileSync(f.file, out);
   const info = await probeMedia(out);

@@ -145,7 +145,13 @@ describe('getAsset', () => {
     const a = await getAsset(s(), dir, 'fake:0701', { opts: { format: 'wav', q: '1' } });
     expect(a.record.opts).toEqual({ format: 'wav', q: '1' });
     expect((await getAsset(s(), dir, 'fake:0701', { opts: { q: '1', format: 'wav' } })).reused).toBe(true);
-    expect((await getAsset(s(), dir, 'fake:0701')).reused).toBe(false);
+    const b = await getAsset(s(), dir, 'fake:0701');
+    expect(b.reused).toBe(false);
+    expect(gets).toBe(2);
+    // each in its own file: the second did not write over the first, whose record is kept
+    expect(b.record.path).not.toBe(a.record.path);
+    expect(readAssetRecords(dir).map((r) => r.path).sort()).toEqual([a.record.path, b.record.path].sort());
+    expect((await getAsset(s(), dir, 'fake:0701', { opts: { format: 'wav', q: '1' } })).reused).toBe(true);
     expect(gets).toBe(2);
   });
 
