@@ -1,6 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { run } from '../../ffmpeg.ts';
 import { createHttp } from '../http.ts';
 import type { SourceCtx } from '../types.ts';
 import { steam, steamDeps } from './index.ts';
@@ -76,3 +79,23 @@ test('data tells a game in Traditional Chinese, and top is the most-played chart
   expect(top[1]).toMatch(/^1\. Game 730（730）：[\d,]+ 人，上週第 1$/);
   expect(await steam.data!('nothing', ctx())).toContain('Steam 找不到「nothing」');
 });
+
+test('a trailer is copied under another name and renamed when whole; a failed copy leaves nothing', async () => {
+  const hls = mkdtempSync(join(tmpdir(), 'steam-hls-')), out = join(dir, 'trailer.mp4');
+  await run(['-f', 'lavfi', '-i', 'testsrc=s=160x90:d=2:r=10', '-f', 'lavfi', '-i', 'sine=duration=2', '-c:v', 'libx264', '-c:a', 'aac', '-shortest', '-f', 'hls', '-hls_time', '1', join(hls, 'master.m3u8')]);
+  // the copier's options (user agent, stall timeout) are http ones: the playlist is served as the CDN would
+  const server = createServer((req, res) => {
+    const f = join(hls, (req.url ?? '').slice(1));
+    if (!existsSync(f)) { res.writeHead(404).end(); return; }
+    res.writeHead(200).end(readFileSync(f));
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    await realHls(`${base}/master.m3u8`, out);
+    expect(existsSync(out)).toBe(true);
+    expect(readdirSync(dir).filter((f) => f.includes('.part'))).toEqual([]);
+    await expect(realHls(`${base}/missing.m3u8`, join(dir, 'none.mp4'))).rejects.toThrow();
+    expect(readdirSync(dir).filter((f) => f.startsWith('none') || f.includes('.part'))).toEqual([]);
+  } finally { server.close(); rmSync(hls, { recursive: true, force: true }); }
+}, 60000);

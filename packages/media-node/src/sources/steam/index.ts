@@ -3,9 +3,10 @@
 // most-played chart. Unofficial: storesearch and appdetails are the store page's own endpoints, undocumented and without a key, so
 // the public default leaves it off. Trailers are HLS streams only: ffmpeg copies one into an MP4 (after http.ts has taken a slot
 // and checked it answers). The art belongs to the games' publishers: recorded, not a gate.
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ffmpeg } from '../../ffmpeg.ts';
+import { renameRetry } from '../../fsutil.ts';
 import { SourceError, userAgent } from '../http.ts';
 import type { AssetHit, AssetKind, SourceAdapter, SourceCtx } from '../types.ts';
 
@@ -20,6 +21,8 @@ const ARTS: Record<string, { file: string; label: string }> = {
 const GAMES_PER_SEARCH = 3;
 /** a trailer is cut here: the store's run a few minutes at most */
 const TRAILER_MAX_SEC = 600;
+/** a trailer's copy is given up when the CDN sends nothing for this long (ffmpeg's -rw_timeout, microseconds), or after this in all */
+const HLS_STALL_US = 30_000_000, HLS_TOTAL_MS = 600_000;
 
 interface SearchItem { type: string; id: number; name: string; metascore?: string; price?: { final: number; currency: string } }
 interface Movie { id: number; name: string; thumbnail: string; hls_h264?: string }
@@ -32,8 +35,18 @@ interface App {
 /** the trailer copier, swapped out by the tests (no network there) */
 export const steamDeps = {
   async hls(url: string, out: string) {
-    // ffmpeg picks the best video and audio of the master playlist; the segments are copied, not re-encoded
-    await ffmpeg(['-user_agent', userAgent(), '-i', url, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-t', String(TRAILER_MAX_SEC), '-movflags', '+faststart', out]);
+    // ffmpeg picks the best video and audio of the master playlist; the segments are copied, not re-encoded. A CDN that stalls is
+    // given up on (it hung the copy for good), and the copy is written under another name first: a stopped one never looks finished
+    const part = `${out.replace(/\.mp4$/i, '')}.${process.pid}.part.mp4`;
+    try {
+      await ffmpeg(['-rw_timeout', String(HLS_STALL_US), '-user_agent', userAgent(), '-i', url, '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-t', String(TRAILER_MAX_SEC), '-movflags', '+faststart', part],
+        { signal: AbortSignal.timeout(HLS_TOTAL_MS) });
+      renameRetry(part, out);
+    } catch (e) {
+      rmSync(part, { force: true });
+      if ((e as Error)?.name === 'AbortError') throw new SourceError('steam', 'temporary', `預告片下載逾時（${HLS_TOTAL_MS / 60_000} 分鐘）`);
+      throw e;
+    }
   },
 };
 
