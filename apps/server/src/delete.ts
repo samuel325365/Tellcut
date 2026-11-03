@@ -3,7 +3,7 @@
 // fails the rename, which leaves the project whole, instead of a delete that stops halfway.
 import { existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { isTerminal } from '@tellcut/protocol';
+import { isTerminal, type BusyCode, type DeletePreview } from '@tellcut/protocol';
 import { exportLock, lockHolder, PROJECT_ID } from '@tellcut/media-node';
 import { HttpError, sendJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
@@ -21,7 +21,7 @@ export const countVideos = (dir: string) => ['exports', 'output'].flatMap((d) =>
 
 export const countFx = (dir: string) => existsSync(join(dir, 'fx')) ? readdirSync(join(dir, 'fx')).filter((f) => /\.m?js$/.test(f)).length : 0;
 
-export interface Busy { text: string; code: string; params?: Record<string, string> }
+export interface Busy extends BusyCode { text: string }
 
 /** Work on a project the job queue does not list (an import converting HEICs into media/, a preset saved from it drawing its
  *  poster): a delete under it would leave the folder to be recreated, half, by the work's next write. */
@@ -73,7 +73,7 @@ export function deleteRoutes(r: Router, store: ProjectStore, o: { queue: JobQueu
   r.get('/api/projects/:id/delete-preview', (_req, res, { id }) => {
     const dir = guard(id);
     const busy = projectBusy(id, dir, o);
-    sendJson(res, 200, { videos: countVideos(dir), fx: countFx(dir), busy: busy?.text ?? null, ...(busy ? { busyCode: { code: busy.code, ...(busy.params ? { params: busy.params } : {}) } } : {}) });
+    sendJson(res, 200, { videos: countVideos(dir), fx: countFx(dir), busy: busy?.text ?? null, ...(busy ? { busyCode: { code: busy.code, ...(busy.params ? { params: busy.params } : {}) } } : {}) } satisfies DeletePreview);
   });
   r.del('/api/projects/:id', (_req, res, { id }) => {
     const dir = guard(id), busy = projectBusy(id, dir, o);

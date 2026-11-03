@@ -3,7 +3,7 @@
 // saved, or rejected; either way the outcome is reported to the server for the agent. While one waits, the editor's own edits
 // are refused (blocked()).
 import { runOps, summarize, type Project } from '@tellcut/engine';
-import type { Proposal } from '@tellcut/protocol';
+import type { LiveEvent, Proposal } from '@tellcut/protocol';
 import type { Api } from '../api.ts';
 import type { History } from '../history.ts';
 import type { EditorState, Store } from '../store.ts';
@@ -55,10 +55,10 @@ export class ProposalFlow {
   }
 
   /** The proposal messages of the live stream; false for any other message. */
-  onLive(m: any): boolean {
+  onLive(m: LiveEvent): boolean {
     if (m?.type === 'hello' || m?.type === 'proposal') {
       // accepted somewhere else (another tab, the chat): this tab's project is no longer what is on disk
-      if (!m.proposal && m.outcome === 'accepted' && this.prop && !this.accepting) this.c.outside();
+      if (m.type === 'proposal' && !m.proposal && m.outcome === 'accepted' && this.prop && !this.accepting) this.c.outside();
       this.show(m.proposal ?? null);
     }
     else if (m?.type === 'accept-request') { if (m.id === this.prop?.id) void this.accept(); }

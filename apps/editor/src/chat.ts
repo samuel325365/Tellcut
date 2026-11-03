@@ -1,13 +1,13 @@
 // One chat thread in the browser (spec 2026-10-16-in-editor-chat §2.3): its messages, the reply streaming in, stop/clear.
-import type { AnalysisState, ChatEvent, ChatMessage, ChatTask, ChatTool, Lang, PresetChoice, SourceInfo, Usage } from '@tellcut/protocol';
+import type { AnalysisState, ChatEvent, ChatMessage, ChatTask, ChatThreadView, ChatTool, Lang, PresetChoice, SourceInfo, Usage } from '@tellcut/protocol';
 import { getLang } from './i18n/lang.ts';
-import { errText, t } from './i18n/index.ts';
+import { errText } from './i18n/index.ts';
 import { chatErrorText } from './i18n/format.ts';
 
 export type { ChatEvent, ChatMessage, ChatTool, Usage };
 
 export interface ChatApi {
-  chat(thread: string): Promise<{ thread: { messages: ChatMessage[] }; running: { text: string; tools: ChatTool[] } | null; analyzing?: string | boolean | null; analysis?: AnalysisState | null }>;
+  chat(thread: string): Promise<ChatThreadView>;
   /** sources: the APIs ticked on this page, sent with the message (left out: the server keeps the thread's last ones) */
   chatSend(thread: string, text: string, on: (e: ChatEvent) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[], task?: ChatTask): Promise<void>;
   chatAttach(thread: string, on: (e: ChatEvent) => void, signal?: AbortSignal): Promise<void>;
@@ -48,7 +48,7 @@ export class ChatSession {
     try {
       const r = await this.api.chat(this.thread);
       if (this.following) return;
-      this.set({ messages: r.thread.messages, error: '', running: !!r.running, partial: r.running ? { text: r.running.text, tools: [...r.running.tools] } : null, analyzing: typeof r.analyzing === 'string' ? r.analyzing : r.analyzing ? t('chat.analyzingFallback') : null, analysis: r.analysis ?? null });
+      this.set({ messages: r.thread.messages, error: '', running: !!r.running, partial: r.running ? { text: r.running.text, tools: [...r.running.tools] } : null, analyzing: r.analyzing ?? null, analysis: r.analysis ?? null });
       // while the material is analysed and nobody replies, look again now and then: the reply the server starts when it is done shows up
       clearTimeout(this.poll);
       if (r.analyzing && !r.running && !this.closed) this.poll = setTimeout(() => void this.load(), ChatSession.POLL);

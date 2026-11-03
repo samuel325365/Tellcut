@@ -603,7 +603,6 @@ export const en: Record<Key, string> = {
   'err.delete.busyImport': 'Files are being imported into this project ({file}); delete it once the import is done',
   'err.delete.busyPreset': 'This project is being saved as a preset; delete it once that is done',
   'err.delete.busyAnalysis': 'This project\'s footage is being analysed; delete it once that is done',
-  'chat.analyzingFallback': 'Analysing the footage',
   'chat.recovered': '(This reply was finished while the Tellcut server restarted, and was put back from the Agent\'s log.)',
   'prop.add': 'Added {id} ({track})',
   'prop.num': '{id} {key} {from}→{to}',

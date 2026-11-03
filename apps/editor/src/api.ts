@@ -1,6 +1,6 @@
 // Tellcut server API (apps/server). Every failure becomes an ApiError with the server's message and issues.
 import type { Transcript } from '@tellcut/engine';
-import type { BrokenPresetInfo, ChatTask, GalleryIndex, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, PresetChoice, ProjectLibraryInfo, PresetInfo, SourceInfo } from '@tellcut/protocol';
+import type { AnalyzeResult, BrokenPresetInfo, ChatEvent, ChatTask, ChatThreadView, DeletePreview, GalleryIndex, ImportEvent, ImportResult, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, LiveEvent, PresetChoice, ProjectLibraryInfo, PresetInfo, ProposalOutcome, SourceInfo } from '@tellcut/protocol';
 import type { PeakInfo, ThumbInfo } from './store.ts';
 
 export class ApiError extends Error {
@@ -12,10 +12,7 @@ export { isTerminal, type JobStatus } from '@tellcut/protocol';
 export type JobView = Pick<JobInfo, 'id' | 'label' | 'status' | 'progress' | 'message' | 'log' | 'error'> & { result?: { file: string; log: string; seconds: number } };
 export interface ExportEntry { file: string; url: string; size: number; mtime: number; log: string | null }
 /** A file inside the project folder, e.g. exports/<name>.mp4 (each path segment encoded). */
-/** one import's answer: entries for project.json, the files left out (code + params for errText) and those already in the project */
-export interface ImportResult { sources: Record<string, any>; media: Record<string, { path: string }>; skipped: Array<{ path: string; code: string; params?: Record<string, string>; message: string }>; same: Array<{ path: string; id: string }>;
-  /** files in the folders that are no video, photo or sound (counted, not listed) */
-  others?: number }
+export type { ImportResult };
 export const fileUrl = (id: string, rel: string) => `/api/projects/${encodeURIComponent(id)}/files/${rel.split('/').map(encodeURIComponent).join('/')}`;
 
 const enc = encodeURIComponent;
@@ -38,7 +35,7 @@ async function req<T>(url: string, init?: RequestInit, version?: string): Promis
 }
 
 /** Reads a newline-delimited JSON response, one event per line, until it ends. */
-async function ndjson(url: string, init: RequestInit | undefined, on: (e: any) => void): Promise<void> {
+async function ndjson<E>(url: string, init: RequestInit | undefined, on: (e: E) => void): Promise<void> {
   const r = await fetch(url, init);
   if (!r.ok) { const b: any = await r.json().catch(() => ({})); throw new ApiError(r.status, b.error ?? `HTTP ${r.status}`, b.issues ?? [], b.code, b.params); }
   const reader = r.body!.getReader(), dec = new TextDecoder();
@@ -59,7 +56,7 @@ export const api = {
   projects: () => req<Array<{ id: string; name?: string; error?: string }>>('/api/projects'),
   project: (id: string) => req<unknown>(`/api/projects/${enc(id)}`, undefined, id),
   /** what deleting a project takes with it, and why it cannot go now (null when it can) */
-  deletePreview: (id: string) => req<{ videos: number; fx: number; busy: string | null }>(`/api/projects/${enc(id)}/delete-preview`),
+  deletePreview: (id: string) => req<DeletePreview>(`/api/projects/${enc(id)}/delete-preview`),
   deleteProject: (id: string) => req<{ ok: true }>(`/api/projects/${enc(id)}`, { method: 'DELETE' }),
   save: (id: string, p: unknown) => {
     const base = versions.get(id);
@@ -69,7 +66,8 @@ export const api = {
   forgetVersion: (id: string) => { versions.delete(id); },
   history: (id: string) => req<string[]>(`/api/projects/${enc(id)}/history`),
   historyVersion: (id: string, name: string) => req<unknown>(`/api/projects/${enc(id)}/history/${enc(name)}`),
-  analyze: (id: string) => req<{ jobs: Array<{ id: string; label: string }>; missing: string[]; extras?: Array<{ id: string; kind: string; label: string }> }>(`/api/projects/${enc(id)}/analyze`, { method: 'POST' }),
+  /** retry: what failed before on this project's files is tried again (the server otherwise leaves a file alone until it changes) */
+  analyze: (id: string, o: { retry?: boolean } = {}) => req<AnalyzeResult>(`/api/projects/${enc(id)}/analyze${o.retry ? '?retry=1' : ''}`, { method: 'POST' }),
   thumbs: (id: string, source: string) => req<ThumbInfo>(`/api/projects/${enc(id)}/media/thumbs/${enc(source)}`),
   peaks: (id: string, source: string) => req<PeakInfo>(`/api/projects/${enc(id)}/media/peaks/${enc(source)}`),
   mediaTitles: (id: string) => req<Record<string, string>>(`/api/projects/${enc(id)}/media/titles`),
@@ -83,22 +81,23 @@ export const api = {
   jobs: () => req<Array<JobView & { kind: string; project: string }>>('/api/jobs'),
   cancelJob: (jobId: string) => req<{ ok: true }>(`/api/jobs/${enc(jobId)}`, { method: 'DELETE' }),
   /** The live link (spec 2026-10-15-proposals-magnetic §5): one SSE stream per open project; returns the closer. */
-  events: (id: string, on: (m: any) => void) => {
+  events: (id: string, on: (m: LiveEvent) => void) => {
     const es = new EventSource(`/api/projects/${enc(id)}/events?client=${enc(CLIENT)}`);
     es.onmessage = (e) => { try { on(JSON.parse(e.data)); } catch { /* a garbled message is skipped */ } };
     return () => es.close();
   },
   proposal: (id: string) => req<unknown>(`/api/projects/${enc(id)}/proposal`),
-  proposalResult: (id: string, b: { id: string; outcome: 'accepted' | 'rejected' | 'stale'; reason?: string }) =>
+  proposalResult: (id: string, b: { id: string; outcome: ProposalOutcome; reason?: string }) =>
     req<unknown>(`/api/projects/${enc(id)}/proposal/result`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
   /** the media panel's Import (spec 2026-10-29-media-import): files looked at and named by the server, NDJSON progress then the result;
    *  project.json is not written (the editor adds them as an edit) */
   importMedia: async (id: string, b: { paths: string[]; taken: string[]; have: Array<{ id: string; path: string }> }, onProgress?: (done: number, total: number) => void): Promise<ImportResult> => {
-    let out: ImportResult | null = null, err: { error: string; code?: string; params?: Record<string, string> } | null = null;
-    await ndjson(`/api/projects/${enc(id)}/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }, (e) => {
-      if (e.progress !== undefined) onProgress?.(e.progress, e.total); else if (e.done) out = e; else if (e.error) err = e;
+    let out: ImportResult | null = null, err: Extract<ImportEvent, { error: string }> | null = null;
+    await ndjson<ImportEvent>(`/api/projects/${enc(id)}/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }, (e) => {
+      if ('progress' in e) onProgress?.(e.progress, e.total); else if ('done' in e) out = e; else err = e;
     });
-    if (err) { const x = err as { error: string; code?: string; params?: Record<string, string> }; throw new ApiError(500, x.error, [], x.code, x.params); }
+    const failed = err as Extract<ImportEvent, { error: string }> | null;   // set in the callback: narrowed to null otherwise
+    if (failed) throw new ApiError(500, failed.error, [], failed.code, failed.params);
     if (!out) throw new ApiError(500, 'The import ended without a result');
     return out;
   },
@@ -106,10 +105,10 @@ export const api = {
   places: () => req<{ places: import('./ImportDialog.tsx').Place[] }>('/api/fs/places'),
   fsList: (path: string) => req<{ path: string; parent: string | null; entries: any[] }>(`/api/fs/list?path=${enc(path)}`),
   /** Chat (spec 2026-10-16-in-editor-chat §3.3): a thread, and its turns streamed back as NDJSON chat events. */
-  chat: (thread: string) => req<{ thread: { messages: any[]; sessionId: string; started: boolean }; running: { text: string; tools: any[] } | null }>(`/api/chat/${enc(thread)}`),
+  chat: (thread: string) => req<ChatThreadView>(`/api/chat/${enc(thread)}`),
   /** from: 'editor' in the project's editor, 'home' when its chat is used from the home page (its editor is not open);
    *  sources: the APIs ticked in the menu, which go with the message (the page keeps none) */
-  chatSend: (thread: string, text: string, on: (e: any) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[], task?: ChatTask) =>
+  chatSend: (thread: string, text: string, on: (e: ChatEvent) => void, from: 'home' | 'editor', preset?: PresetChoice, lang?: Lang, sources?: string[], task?: ChatTask) =>
     ndjson(`/api/chat/${enc(thread)}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, from, preset: preset?.id, styles: preset?.styles, fields: preset?.fields, lang, sources, task }) }, on),
   /** My blocks (spec 2026-10-29-my-library §4.2–4.4): the library, a project's copies from it, saving into it, copying an entry in */
   library: () => req<LibraryIndex>('/api/library'),
@@ -134,7 +133,7 @@ export const api = {
   presetPoster: (id: string, file: Blob) => req<PresetInfo>(`/api/presets/${enc(id)}/poster`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file }),
   /** the home page's presets (spec 2026-10-23-presets-and-languages §3.3) */
   presets: () => req<{ presets: PresetInfo[]; broken?: BrokenPresetInfo[] }>('/api/presets'),
-  chatAttach: (thread: string, on: (e: any) => void, signal?: AbortSignal) => ndjson(`/api/chat/${enc(thread)}/stream`, signal ? { signal } : undefined, on),
+  chatAttach: (thread: string, on: (e: ChatEvent) => void, signal?: AbortSignal) => ndjson(`/api/chat/${enc(thread)}/stream`, signal ? { signal } : undefined, on),
   chatStop: (thread: string) => req<{ stopped: boolean }>(`/api/chat/${enc(thread)}/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
   chatClear: (thread: string) => req<{ ok: true }>(`/api/chat/${enc(thread)}`, { method: 'DELETE' }),
   /** the API menu (spec 2026-10-24-api-picker §3): every outside source */

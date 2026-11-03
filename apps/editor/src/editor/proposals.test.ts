@@ -5,7 +5,7 @@ import { History } from '../history.ts';
 import { createStore, initialState } from '../store.ts';
 import { ProposalFlow } from './proposals.ts';
 
-const prop = (ops: any[], id = 'p1') => ({ id, label: 'shorter', ops, status: 'pending' });
+const prop = (ops: any[], id = 'p1') => ({ id, label: 'shorter', ops, status: 'pending' as const, created: '', base: '' });
 const endOf = (p: Project, id: string) => (p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id)).end;
 
 function flow(over: { settle?: () => Promise<boolean> } = {}) {

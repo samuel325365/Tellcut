@@ -5,6 +5,7 @@ import { zoomAround } from './timeline/geometry.ts';
 import { keyAction, type Action } from './keys.ts';
 import { ChatSession } from './chat.ts';
 import type { FsApi } from './ImportDialog.tsx';
+import type { LiveEvent } from '@tellcut/protocol';
 import { dragRecipe, planDrag, type DragPlan, type DragStart, type Mods } from './timeline/drag.ts';
 import { materialOf, planAudition, type Material } from './audition.ts';
 import { FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll } from './timeline/geometry.ts';
@@ -478,7 +479,7 @@ export class Editor {
   }
   /** While a proposal waits, edits are refused (the preview shows the proposal, not the project). */
   private blocked(): boolean { return this.proposals.blocked(); }
-  private onLive(m: any) {
+  private onLive(m: LiveEvent) {
     if (this.proposals.onLive(m)) return;
     // a save of this page's own (the server leaves it out; a stream opened again by a reload could still hear it)
     if (m?.type === 'changed-on-disk') { if (!m.by || m.by !== this.deps.api.clientId) this.outside(); }

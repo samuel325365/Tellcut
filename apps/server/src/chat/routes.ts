@@ -9,7 +9,7 @@ import type { JobInfo, JobQueue } from '../jobs.ts';
 import { analysisState, analysisStatus, type AnalysisState } from '@tellcut/protocol';
 import type { ChatEvent } from './stream.ts';
 import { cleanFields, fieldsNote, findPreset, libraryRoot, listLibrary, missingPresetBlock, presetBlock, type PresetDirs } from '@tellcut/media-node';
-import type { Lang, PresetChoice } from '@tellcut/protocol';
+import type { ChatThreadView, Lang, PresetChoice } from '@tellcut/protocol';
 import { ADAPTERS } from '@tellcut/media-node';
 
 function ndjson(res: ServerResponse) {
@@ -72,7 +72,7 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
     const back = running || elsewhere ? null : runner.recover(thread, t);
     if (back) { writeThread(file(thread), back); t = back; }
     // a turn another server runs is not over either: its last message is not "interrupted"
-    sendJson(res, 200, { thread: running || elsewhere ? t : closeDangling(t), running, analyzing: analyzing(thread), analysis: analysis(thread) });
+    sendJson(res, 200, { thread: running || elsewhere ? t : closeDangling(t), running, analyzing: analyzing(thread), analysis: analysis(thread) } satisfies ChatThreadView);
   });
 
   r.post('/api/chat/:thread/messages', async (req, res, { thread }) => {

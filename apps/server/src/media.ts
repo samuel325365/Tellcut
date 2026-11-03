@@ -5,6 +5,7 @@ import { AUDIO_PAD, stillKey, type StillRef } from '@tellcut/engine';
 import { PEAK_RATE, analysisDone, analysisFiles, analyzeSource, cutAudio, extrasDone, extrasFiles, ffmpeg, fitImage, correctBeats, musicBeats, musicFiles, readAssetRecords, type Beats, sourceExtras, grabStill, isAnalyzed, peaksOf, readTranscript, sendFile, renameRetry, shareAnalysis, sourceHash } from '@tellcut/media-node';
 import { HttpError, sendJson, type Router } from './http.ts';
 import type { JobInfo, JobQueue } from './jobs.ts';
+import type { AnalyzeResult } from '@tellcut/protocol';
 import { sendProjectFile, type ProjectStore } from './projects.ts';
 
 const num = (url: URL, k: string) => {
@@ -142,7 +143,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     if (started.length && opts.onAnalyzed) { const since = Date.now(); void Promise.allSettled(started.map((j) => queue.wait(j.id)))
       .then((all) => opts.onAnalyzed!(id, since, all.flatMap((x) => (x.status === 'fulfilled' ? [x.value] : []))))
       .catch((e) => console.warn(`after the analysis of ${id}: ${(e as Error).message}`)); }   // unhandled, it ends the server
-    sendJson(res, 202, { jobs, missing, extras, failed: gaveUp });
+    sendJson(res, 202, { jobs, missing, extras, failed: gaveUp } satisfies AnalyzeResult);
   });
 
   r.get('/api/projects/:id/media/proxy/:source', (req, res, { id, source: sid }) => sendFile(req, res, analysis(id, sid).proxy));

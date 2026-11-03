@@ -72,15 +72,15 @@ test('while the material is analysed and nobody replies, the page looks again; t
     const api: any = {
       ...fakeApi(),
       // analysing twice, then the server's automatic turn is running
-      chat: async () => { n++; return { thread: { messages: [], sessionId: 's', started: true }, running: n >= 3 ? { text: '分析好了，', tools: [] } : null, analyzing: n < 3 }; },
+      chat: async () => { n++; return { thread: { messages: [], sessionId: 's', started: true }, running: n >= 3 ? { text: '分析好了，', tools: [] } : null, analyzing: n < 3 ? '01：逐字稿（已 0 分鐘）' : null, analysis: null }; },
     };
     const s = new ChatSession('demo', api);
     await s.load();
-    expect(s.state.analyzing).toBe('素材分析中');                                       // the server's words, or this when it sends none
+    expect(s.state.analyzing).toBe('01：逐字稿（已 0 分鐘）');                            // the server's words (GET /api/chat sends a line or null)
     await new Promise((r) => setTimeout(r, 120));
     expect(n).toBe(3);
     expect(s.state.messages.at(-1)).toMatchObject({ role: 'assistant', text: '進行中，完成' });   // attached to the automatic turn
-    const quiet: any = { ...fakeApi(), chat: async () => { n++; return { thread: { messages: [] }, running: null, analyzing: true }; } };
+    const quiet: any = { ...fakeApi(), chat: async () => { n++; return { thread: { messages: [] }, running: null, analyzing: '01：代理檔（已 0 分鐘）', analysis: null }; } };
     const q = new ChatSession('demo', quiet);
     await q.load(); q.close();
     const before = n;

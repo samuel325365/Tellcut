@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { IconFilm } from './icons.tsx';
 import { errText, t, uiLabel } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
+import type { DeletePreview } from '@tellcut/protocol';
 
-export type DeletePreview = { videos: number; fx: number; busy: string | null; /** what busy means, for the page's language */ busyCode?: { code: string; params?: Record<string, string> } };
+export type { DeletePreview };
 export interface DeleteApi { deletePreview(id: string): Promise<DeletePreview>; deleteProject(id: string): Promise<unknown> }
 type Row = { id: string; name?: string; thumb?: string | null };
 

@@ -1,6 +1,6 @@
 // What travels between the Tellcut server, the editor and the embedded player (review B3): one definition each, so the two
 // ends cannot drift. Types only, apart from isTerminal.
-import type { BlockCategory, Op, ParamDef, SfxCategory, Transform } from '@tellcut/engine';
+import type { BlockCategory, Op, ParamDef, Project, SfxCategory, Transform } from '@tellcut/engine';
 
 // ---------------------------------------------------------------- chat (spec 2026-10-16-in-editor-chat §3)
 /** what a tool line says, as a code the page words in its language; `label` stays the Chinese text for old pages and old threads */
@@ -33,6 +33,11 @@ export interface ChatMessage { role: 'user' | 'assistant'; text: string; time: s
 /** `sources`: the outside sources the user ticked in the chat's API menu (spec 2026-10-24-api-picker §3); absent: none */
 /** `lang`: the page language of the user's last message, for the messages the server sends by itself */
 export interface ChatThread { sessionId: string; started: boolean; messages: ChatMessage[]; spent?: number; spentIn?: string; sources?: string[]; lang?: Lang }
+/** the words and steps of a reply still running (a leftover claude's are not known: empty) */
+export interface ChatRunning { text: string; tools: ChatTool[] }
+/** GET /api/chat/:thread: the thread as saved, the reply still running, and what of the project's footage is being analysed now,
+ *  in Chinese words (`analyzing`) and as facts the page words itself (`analysis`); both null when nothing is (and on the home chat) */
+export interface ChatThreadView { thread: ChatThread; running: ChatRunning | null; analyzing: string | null; analysis: AnalysisState | null }
 
 // ---------------------------------------------------------------- presets (spec 2026-10-23-presets-and-languages §3)
 export type Lang = 'zh' | 'en' | 'ja';
@@ -89,6 +94,30 @@ export interface JobInfo {
 }
 export const isTerminal = (s: JobStatus) => s === 'done' || s === 'failed' || s === 'cancelled';
 
+// ---------------------------------------------------------------- analysis and import (media.ts, import.ts)
+/** POST /api/projects/:id/analyze (202): the basic analyses the page waits for (`jobs`, labelled by source id) and the
+ *  sheets, transcripts and music beats after them (`extras`), the ones already running included; the sources whose file is
+ *  not there (`missing`); and the sources whose basic analysis failed before on the file as it is now and is not tried again
+ *  (`failed`; ?retry=1 forgets those failures) */
+export interface AnalyzeResult { jobs: JobInfo[]; missing: string[]; extras: JobInfo[]; failed: string[] }
+/** a file an import (or `npm run new`) left out, and why: `code` + `params` for the editor to word it (err.<code>), `message` in
+ *  English for the CLI */
+export interface ImportSkip { path: string; code: 'import.notFound' | 'import.notMedia' | 'import.failed' | 'import.url' | 'import.unreadable'; params?: Record<string, string>; message: string }
+/** one import's answer: entries for project.json (named like `npm run new` names them; the editor adds them), the files left out
+ *  and those already in the project; `others`: files in the folders that are no video, photo or sound (counted, not listed) */
+export interface ImportResult { sources: Record<string, Project['sources'][string]>; media: Record<string, { path: string }>; skipped: ImportSkip[]; same: Array<{ path: string; id: string }>; others?: number }
+/** a line of POST /api/projects/:id/import's NDJSON: progress per file, then the result or why it failed */
+export type ImportEvent =
+  | { progress: number; total: number }
+  | ({ done: true } & ImportResult)
+  | { error: string; code: 'import.failed'; params: { why: string } };
+
+// ---------------------------------------------------------------- deleting a project (delete.ts)
+/** why a project cannot be deleted now: the Chinese words, and the code the page words them from (err.<code>) */
+export interface BusyCode { code: string; params?: Record<string, string> }
+/** GET /api/projects/:id/delete-preview: what deleting it takes with it; `busy`: why it cannot go now, null when it can */
+export interface DeletePreview { videos: number; fx: number; busy: string | null; busyCode?: BusyCode }
+
 /** the catalog's and the gallery's group name for each plugin (and for a project's own fx) */
 export const PLUGIN_GROUP: Record<string, string> = {
   core: '內建', common: '共用積木（吃專案 theme）', fx: '本專案自己的 fx', mine: '我的積木（先 library use 複製進專案）',
@@ -140,6 +169,21 @@ export function analysisStatus(jobs: JobInfo[], now = Date.now()): string | null
 // ---------------------------------------------------------------- proposals (spec 2026-10-15-proposals-magnetic §3)
 export type ProposalStatus = 'pending' | 'accepted' | 'rejected' | 'stale';
 export interface Proposal { id: string; label: string; created: string; base: string; ops: Op[]; status: ProposalStatus; reason?: string; summary?: string[]; warnings?: string[] }
+/** how the editor closed a proposal */
+export type ProposalOutcome = Exclude<ProposalStatus, 'pending'>;
+
+// ---------------------------------------------------------------- the live link (live.ts: SSE per open project)
+export type LiveEvent =
+  /** on connecting: the proposal waiting, if any */
+  | { type: 'hello'; proposal: Proposal | null }
+  /** a new proposal, or none any more (`outcome`: how the editor closed it) */
+  | { type: 'proposal'; proposal: Proposal | null; outcome?: ProposalOutcome }
+  /** project.json changed: written outside the server, or saved by another tab (`by`: that page's id) */
+  | { type: 'changed-on-disk'; by?: string }
+  /** the project's fx folder changed; `fx`: its stamp now (fxState), so the tab that wrote it does not load it twice */
+  | { type: 'fx-changed'; fx: string }
+  /** the command line asks the open editor (the newest tab) to accept or reject the proposal `id` */
+  | { type: 'accept-request' | 'reject-request'; id: string };
 
 // ---------------------------------------------------------------- the embedded player (spec §2.3, plus 'boot')
 /** crop mode: which clip, and which crop — its first frame, its last, or a keyframe by index */

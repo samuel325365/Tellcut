@@ -603,7 +603,6 @@ export const ja: Record<Key, string> = {
   'err.delete.busyImport': 'このプロジェクトにファイルを読み込み中です（{file}）。読み込みが終わってから削除してください',
   'err.delete.busyPreset': 'このプロジェクトをプリセットとして保存中です。保存が終わってから削除してください',
   'err.delete.busyAnalysis': 'このプロジェクトの素材を解析中です。終わってから削除してください',
-  'chat.analyzingFallback': '素材を解析中',
   'chat.recovered': '（この返信は Tellcut サーバーの再起動中に完了したもので、Agent の記録から復元しました。）',
   'prop.add': '{id} を追加（{track}）',
   'prop.num': '{id} {key} {from}→{to}',

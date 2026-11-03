@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { ServerResponse } from 'node:http';
 import { OpError } from '@tellcut/engine';
 import { closeProposal, fxState, makeProposal, projectHash, proposalsDir, readProposal, saveProposal } from '@tellcut/media-node';
+import type { LiveEvent, ProposalOutcome } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { CLIENT_ID, type ProjectStore } from './projects.ts';
 
@@ -16,6 +17,8 @@ interface Room { clients: Set<ServerResponse>; ids: Map<ServerResponse, string>;
 const RETRY_MS = 1000;
 const RETRY_MAX = 30000;
 
+const sse = (c: ServerResponse, m: LiveEvent) => c.write(`data: ${JSON.stringify(m)}\n\n`);
+
 export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number } = {}) {
   const rooms = new Map<string, Room>();
   const room = (id: string) => {
@@ -23,13 +26,13 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
     if (!x) rooms.set(id, (x = { clients: new Set(), ids: new Map(), watchers: [], state: { selection: [], playhead: 0, at: null }, waiters: new Map(), fails: 0 }));
     return x;
   };
-  const push = (id: string, m: unknown) => { for (const c of room(id).clients) c.write(`data: ${JSON.stringify(m)}\n\n`); };
+  const push = (id: string, m: LiveEvent) => { for (const c of room(id).clients) sse(c, m); };
   // a save from one tab: project.json is the one this server wrote (lastHash), so the watcher stays quiet; the other tabs
   // still hold the version before it: untold, their next edit 409s and 忽略 (Ignore) writes over this save
   store.saved.add((id, writer) => {
     const x = rooms.get(id);
     if (!x || !writer) return;   // a save that sent no id (a page from before this) cannot be told apart from the others
-    for (const c of x.clients) if (x.ids.get(c) !== writer) c.write(`data: ${JSON.stringify({ type: 'changed-on-disk', by: writer })}\n\n`);
+    for (const c of x.clients) if (x.ids.get(c) !== writer) sse(c, { type: 'changed-on-disk', by: writer });
   });
   const debounce = (f: () => void) => { let t: NodeJS.Timeout | undefined; return () => { clearTimeout(t); t = setTimeout(f, 100); }; };
 
@@ -92,7 +95,7 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
     x.clients.add(res);
     const client = new URL(req.url ?? '', 'http://x').searchParams.get('client');
     if (client && CLIENT_ID.test(client)) x.ids.set(res, client);
-    res.write(`data: ${JSON.stringify({ type: 'hello', proposal: readProposal(dir) })}\n\n`);
+    sse(res, { type: 'hello', proposal: readProposal(dir) });
     const bye = () => {
       if (!x.clients.delete(res)) return;
       x.ids.delete(res);
@@ -126,7 +129,7 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
       x.waiters.set(p.id, (r) => { clearTimeout(t); resolve(r); });
       // one editor decides (the newest one): two tabs must not both apply it
       const newest = [...x.clients].at(-1)!;
-      newest.write(`data: ${JSON.stringify({ type: `${action}-request`, id: p.id })}\n\n`);
+      sse(newest, { type: `${action}-request`, id: p.id });
     });
     if (!result) throw new HttpError(504, '編輯器沒有回應');
     sendJson(res, 200, result);
@@ -135,12 +138,12 @@ export function liveRoutes(r: Router, store: ProjectStore, o: { timeout?: number
   r.post('/api/projects/:id/proposal/result', async (req, res, { id }) => {
     const b: any = await readJson(req);
     if (!['accepted', 'rejected', 'stale'].includes(b?.outcome)) throw new HttpError(400, 'outcome: accepted | rejected | stale');
-    const closed = closeProposal(store.dir(id), String(b.id), b.outcome, b.reason);
+    const outcome: ProposalOutcome = b.outcome, closed = closeProposal(store.dir(id), String(b.id), outcome, b.reason);
     if (!closed) throw new HttpError(409, '這個提議已經結案');
     const w = room(id).waiters.get(closed.id);
     room(id).waiters.delete(closed.id);
-    w?.({ outcome: b.outcome, ...(b.reason ? { reason: b.reason } : {}) });
-    push(id, { type: 'proposal', proposal: null, outcome: b.outcome });
+    w?.({ outcome, ...(b.reason ? { reason: b.reason } : {}) });
+    push(id, { type: 'proposal', proposal: null, outcome });
     sendJson(res, 200, closed);
   });
 

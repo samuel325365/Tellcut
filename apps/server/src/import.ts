@@ -4,6 +4,7 @@
 import type { ServerResponse } from 'node:http';
 import { basename, isAbsolute, resolve } from 'node:path';
 import { expandInputs, ingestFiles, kindOf, samePath, type Skipped } from '@tellcut/media-node';
+import type { ImportEvent } from '@tellcut/protocol';
 import { HttpError, readJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
 import type { ProjectHolds } from './delete.ts';
@@ -62,7 +63,7 @@ export function importRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
     const skipped: Skipped[] = [...urls.map((u) => ({ path: u, code: 'import.url' as const, params: { path: u }, message: `${u}: a URL (ask the Agent)` })), ...x.skipped];
 
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' });
-    const send = (o: unknown) => { if (!res.writableEnded) res.write(JSON.stringify(o) + '\n'); };
+    const send = (o: ImportEvent) => { if (!res.writableEnded) res.write(JSON.stringify(o) + '\n'); };
     const run = (chains.get(id) ?? Promise.resolve()).catch(() => {}).then(() =>
       ingestFiles(dir, files, new Set(b.taken), { onFile: (done, total) => send({ progress: done, total }) }));
     chains.set(id, run);

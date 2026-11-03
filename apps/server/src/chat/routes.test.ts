@@ -481,6 +481,7 @@ test('GET chat tells the step as a code (analysis) next to the Chinese line (ana
     expect(body.analyzing).toBe('03：逐字稿（已 0 分鐘）');
     const home = await (await fetch(`http://127.0.0.1:${port}/api/chat/home`)).json();
     expect(home.analysis).toBeNull();
+    expect(home.analyzing).toBeNull();
   } finally { srv.close(); }
 });
 
