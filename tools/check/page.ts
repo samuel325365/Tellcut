@@ -73,9 +73,14 @@ export async function renderedChecks(o: { dir: string; project: Project; registr
   if (p.tracks.some((t) => t.kind === 'video' && (t.items as Array<{ source: string }>).some((c) => p.sources[c.source]?.kind !== 'image'))) {
     const at = strayTimes(p, times);
     log(`讀畫面裡原片自己的字：${at.length} 格`);
-    const read = await withProjectPage({ ...o, project: videoOnly(p) }, (s) => ocrLines(s, at, o.dir, o.ocr, log));
-    if (typeof read === 'string') result.findings.push({ level: 'note', msg: `沒辦法讀畫面裡原片自己的字（標題、標註、浮水印）：文字辨識不能用（${read}）` });
-    else result.findings.push(...strayFindings(p, times, read));
+    // a failure here is this page's alone: thrown, it took the first page's findings and words down with it
+    try {
+      const read = await withProjectPage({ ...o, project: videoOnly(p) }, (s) => ocrLines(s, at, o.dir, o.ocr, log));
+      if (typeof read === 'string') result.findings.push({ level: 'note', msg: `沒辦法讀畫面裡原片自己的字（標題、標註、浮水印）：文字辨識不能用（${read}）` });
+      else result.findings.push(...strayFindings(p, times, read));
+    } catch (e) {
+      result.findings.push({ level: 'note', msg: `沒辦法讀畫面裡原片自己的字（標題、標註、浮水印）：這一步出錯了（${(e as Error).message.split('\n')[0].slice(0, 100)}）` });
+    }
   }
   return result;
 }

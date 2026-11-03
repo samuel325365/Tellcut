@@ -121,6 +121,23 @@ test('a bleeped word the finished frame still shows is reported, Simplified or n
   expect(notes.some((m) => m.includes('原片自己的字') && m.includes('文字辨識不能用'))).toBe(true);
 }, 300000);
 
+test('a failure reading the footage’s own text (the second page) is a note: the first page’s findings are still reported', async () => {
+  const p = parseProject({ version: 1,
+    meta: { name: 'f', width: 640, height: 360, fps: 30, duration: 3, plugins: [], cut: { crf: 23, preset: 'ultrafast' }, mix: MIX },
+    sources: { s1: { path: 'src.mp4', duration: 3, width: 640, height: 360 } }, media: {}, grids: [],
+    tracks: [
+      { id: 'v', kind: 'video', items: [{ id: 'c', source: 's1', in: 0, speed: 1, start: 0, end: 3, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } }] },
+      { id: 'o', kind: 'overlay', items: [{ id: 'off', type: 'core.title', start: 0, end: 1.5, params: { text: '這個標題太靠右了' }, transform: { x: 0.6, y: 0, scale: 1 } }] },
+    ] });
+  rmSync(join(dir, 'cache', 'check', 'ocr-lines-v2.json'), { force: true });
+  // a provider that answers with lines without boxes: reading them throws, after the first page is done
+  const odd = { ...fakeOcr(), read: async (imgs: string[]) => imgs.map(() => ({ width: 640, height: 360, lines: [{ text: 'x' }] })) } as any;
+  const r = await renderedChecks({ dir, project: p, registry: createRegistry(plugins), ocr: odd });
+  expect(r.findings.map((f) => f.msg)).toContain('文字超出安全區（右邊）（off）');
+  expect(r.findings.some((f) => f.level === 'note' && f.msg.includes('原片自己的字') && f.msg.includes('出錯'))).toBe(true);
+  expect(r.drawn).toBeDefined();
+}, 300000);
+
 test('two pictures a few pixels apart are the same picture; a moved shape is not', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'same-')), png = async (filter: string, name: string) => {
     const out = join(dir, name);
