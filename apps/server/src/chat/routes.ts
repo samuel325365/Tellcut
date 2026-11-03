@@ -32,10 +32,21 @@ const isLang = (x: unknown): x is Lang => typeof x === 'string' && Object.hasOwn
 const langLine = (x: unknown): string | null => isLang(x) ? `(UI language: ${LANG_NAMES[x]})` : null;
 
 export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, queue?: JobQueue, presetDirs?: PresetDirs) {
+  /** the project's name and preset for the line to Claude. A project.json that does not pass the checks (a hand edit, a newer
+   *  version) still has its chat: read as plain JSON, else the id alone — refused, not even Stop worked. An unknown project is
+   *  still a 404 (store.dir). */
+  const metaOf = (id: string): { name: string; preset?: PresetChoice } => {
+    store.dir(id);
+    try { return store.read(id).meta; } catch { /* below */ }
+    let m: any;
+    try { m = (store.raw(id) as any)?.meta; } catch { /* not JSON either */ }
+    const pre = m?.preset && typeof m.preset.id === 'string' ? { id: m.preset.id, styles: [], ...(m.preset.fields && typeof m.preset.fields === 'object' ? { fields: m.preset.fields } : {}) } : undefined;
+    return { name: typeof m?.name === 'string' && m.name ? m.name : id, ...(pre ? { preset: pre } : {}) };
+  };
   /** home, or an existing project (with the line telling Claude which one it is, and whether its editor is the page talking) */
   const threadOf = (id: string, from?: unknown): { context: string | null } => {
     if (isHome(id)) return { context: null };
-    const p = store.read(id), pre = p.meta.preset, found = pre && presetDirs ? findPreset(presetDirs, pre.id) : null;
+    const p = { meta: metaOf(id) }, pre = p.meta.preset, found = pre && presetDirs ? findPreset(presetDirs, pre.id) : null;
     // a project made from a preset: its name and where Claude can read it again (the full prompt went with the first message)
     const opts = found && pre ? fieldsNote(found, pre.fields) : '';
     const note = !pre ? '' : found ? ` Preset: ${found.name.en ?? found.name.zh ?? found.id} (${found.file}; read it again when needed).${opts ? ` ${opts}` : ''}` : ` Preset: ${pre.id}.`;

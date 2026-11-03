@@ -189,11 +189,15 @@ test('a first message that failed before claude started leaves the next one star
 
 test('a first turn is marked started as soon as claude starts it: a server that dies mid-turn leaves a thread that resumes', async () => {
   const file = join(ROOT, 'demo/.history/chat/chat.json');
-  const first = fetch(`${BASE}/api/chat/demo/messages`, post({ text: '慢慢說' }));
-  await new Promise((r) => setTimeout(r, 400));
-  expect(JSON.parse(readFileSync(file, 'utf8')).started).toBe(true);
-  await fetch(`${BASE}/api/chat/demo/stop`, post({}));
-  await lines(await first);
+  const res = await fetch(`${BASE}/api/chat/demo/messages`, post({ text: '慢慢說' }));
+  const reader = res.body!.getReader();
+  try {
+    await reader.read();   // the first text: claude has started
+    expect(JSON.parse(readFileSync(file, 'utf8')).started).toBe(true);
+  } finally {
+    await fetch(`${BASE}/api/chat/demo/stop`, post({}));
+    while (!(await reader.read()).done) { /* to the end of the turn */ }
+  }
 });
 
 test('a first turn cut off before "started" was saved: the next message resumes its session (and recovers its reply)', async () => {
@@ -228,6 +232,24 @@ test('a session claude says is already in use is resumed instead of failing ever
     expect(runs[1].argv).toEqual(expect.arrayContaining(['--resume', sid]));
     expect((await (await fetch(`${BASE}/api/chat/demo`)).json()).thread).toMatchObject({ sessionId: sid, started: true });
   } finally { delete process.env.FAKE_CLAUDE_LOG; rmSync(log + '.inuse', { force: true }); }
+});
+
+test('a project.json that does not pass the checks still has its chat (read, stop, clear, a message naming it as plain JSON says)', async () => {
+  const root = ROOT, log = join(root, 'fake.log');
+  writeFileSync(join(root, 'demo/project.json'), JSON.stringify({ version: 999, meta: { name: '舊版的片' } }));
+  APP.store.forget('demo');
+  process.env.FAKE_CLAUDE_LOG = log;
+  try {
+    expect((await fetch(`${BASE}/api/chat/demo`)).status).toBe(200);
+    expect((await fetch(`${BASE}/api/chat/demo/stop`, post({}))).status).toBe(200);
+    expect((await fetch(`${BASE}/api/chat/demo`, { method: 'DELETE' })).status).toBe(200);
+    expect((await lines(await fetch(`${BASE}/api/chat/demo/messages`, post({ text: '修好它' })))).at(-1)).toMatchObject({ status: 'done' });
+    writeFileSync(join(root, 'demo/project.json'), '{ cut short');
+    expect((await lines(await fetch(`${BASE}/api/chat/demo/messages`, post({ text: '再試' })))).at(-1)).toMatchObject({ status: 'done' });
+    const runs = readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    expect([runs[0].stdin, runs[1].stdin]).toEqual(['(Current project: 舊版的片 (demo).)\n\n修好它', '(Current project: demo (demo).)\n\n再試']);
+    expect((await fetch(`${BASE}/api/chat/nope`)).status).toBe(404);
+  } finally { delete process.env.FAKE_CLAUDE_LOG; }
 });
 
 test('a user message left without a reply (the server restarted) reads as interrupted', async () => {
