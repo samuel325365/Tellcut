@@ -108,6 +108,11 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
     sendJson(res, 200, { ok: true });
   });
 
+  /** batches of analysis that ended while another batch of the project was still running (an Import added files meanwhile):
+   *  the earliest start and how their jobs ended, judged with the last batch — else the turn waiting for the first batch was
+   *  never told (the first found the project still analysing, the last started after that turn ended) */
+  const deferred = new Map<string, { since: number; jobs: JobInfo[] }>();
+
   return {
     /**
      * A project's analysis started at `since` is done. If its chat ended a turn while it ran (Claude said it would go on once
@@ -115,8 +120,14 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
      * jobs: how each of them ended. Nothing done (all failed or cancelled, a failure run again): no automatic (paid) turn, it has
      * nothing new to go on with; some of it failed: the message says which.
      */
-    afterAnalysis(id: string, since: number, jobs: JobInfo[]) {
-      if (runner.running(id) || analyzing(id)) return;
+    afterAnalysis(id: string, since0: number, jobs0: JobInfo[]) {
+      if (runner.running(id)) { deferred.delete(id); return; }
+      const before = deferred.get(id);
+      const since = Math.min(since0, before?.since ?? Infinity);
+      // a job run again later (the same step of the same file) counts as it ended last
+      const jobs = [...(before?.jobs ?? []).filter((j) => !jobs0.some((x) => x.kind === j.kind && x.label === j.label)), ...jobs0];
+      if (analyzing(id)) { deferred.set(id, { since, jobs }); return; }
+      deferred.delete(id);
       if (!jobs.some((j) => j.status === 'done')) return;
       const missed = jobs.filter((j) => j.status !== 'done');
       let th;

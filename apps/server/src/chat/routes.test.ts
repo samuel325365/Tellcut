@@ -394,6 +394,26 @@ test('when a project analysis is done, a chat that ended its turn waiting for it
   expect(calls[1].context).toMatch(/^\(UI language: Traditional Chinese \(繁體中文\)\)\n\n\(Current project: Demo/);
 });
 
+test('a batch that ends while a later one (an Import) still runs is judged with that one: the waiting chat is told once', async () => {
+  const root = makeProjects(), sent: string[] = [];
+  let active: any[] = [];
+  const queue: any = { active: (kind: string) => active.filter((j) => j.kind === kind) };
+  const runner: any = { running: () => null, send: (_t: string, text: string) => { sent.push(text); return true; } };
+  const { afterAnalysis } = chatRoutes(router(), new ProjectStore(root), runner, queue);
+  const t0 = Date.now() - 60000, t1 = t0 + 10000, t2 = t0 + 20000;
+  mkdirSync(join(root, 'demo', '.history', 'chat'), { recursive: true });
+  // the agent ended its turn at t1 waiting for the first batch (started t0); the user imported more at t2
+  writeFileSync(join(root, 'demo', '.history', 'chat', 'chat.json'), JSON.stringify({ sessionId: 's', started: true, messages: [{ role: 'assistant', text: '分析好了我接著做', time: new Date(t1).toISOString(), status: 'done' }] }));
+  active = [{ ...job('analyze', 's2', 'running'), started: t2 }];
+  afterAnalysis('demo', t0, [job('analyze', 's1', 'done'), job('extras', 's1', 'failed', 'no model')]);   // the first batch: the second still runs
+  expect(sent).toEqual([]);
+  active = [];
+  afterAnalysis('demo', t2, [job('analyze', 's2', 'done'), job('extras', 's1', 'done')]);                     // the last batch, started after t1
+  expect(sent).toEqual([ANALYSIS_DONE]);   // s1's extras ran again and ended done
+  afterAnalysis('demo', t2, [job('analyze', 's2', 'done')]);
+  expect(sent).toHaveLength(1);
+});
+
 test('an analysis that did not finish: nothing done, no automatic turn; part of it failed, the message says which', async () => {
   const root = makeProjects(), sent: Array<{ text: string; o: any }> = [];
   const runner: any = { running: () => null, send: (_t: string, text: string, _c: string, _on: unknown, o: unknown) => { sent.push({ text, o }); return true; } };
