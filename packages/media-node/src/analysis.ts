@@ -36,7 +36,7 @@ export function analysisFiles(projectDir: string, srcPath: string): AnalysisFile
   return { dir, proxy: join(dir, isImagePath(srcPath) ? 'proxy.jpg' : 'proxy.mp4'), thumbs: join(dir, 'thumbs.jpg'), thumbIndex: join(dir, 'thumbs.json'), cuts: join(dir, 'cuts.json'), peaks: join(dir, 'peaks.json') };
 }
 /** A source's analysis from a sibling project with the same footage; returns how many files were taken. */
-export const shareAnalysis = (projectDir: string, srcPath: string) => existsSync(srcPath) ? shareFolder(analysisFiles(projectDir, srcPath).dir) : 0;
+export const shareAnalysis = async (projectDir: string, srcPath: string): Promise<number> => existsSync(srcPath) ? shareFolder(analysisFiles(projectDir, srcPath).dir) : 0;
 export const isAnalyzed = (f: AnalysisFiles) => [f.proxy, f.thumbs, f.thumbIndex, f.cuts, f.peaks].every((p) => existsSync(p));
 /** analysed, and (for a video) its proxy checked for the short side of 540: nothing left for analyzeSource to do */
 export const analysisDone = (f: AnalysisFiles, srcPath: string) => isAnalyzed(f) && (isImagePath(srcPath) || existsSync(join(f.dir, PROXY_STAMP)));
@@ -95,8 +95,8 @@ async function analyzeSourceNow(projectDir: string, srcPath: string, o: { signal
   const lock = join(f.dir, 'analysis.lock');
   await waitForLock(lock, { signal: o.signal });
   // another project with the same footage analysing it now: wait, then take its work over (share.ts)
-  for (const d of siblingFolders(f.dir)) await waitForLock(join(d, 'analysis.lock'), { signal: o.signal });
-  shareFolder(f.dir);
+  for (const d of await siblingFolders(f.dir)) await waitForLock(join(d, 'analysis.lock'), { signal: o.signal });
+  await shareFolder(f.dir);
   if (analysisDone(f, srcPath)) return f;
   return withLock(lock, () => analyzeLocked(f, srcPath, stamp, o));
 }
@@ -148,9 +148,9 @@ async function analyzeLocked(f: AnalysisFiles, srcPath: string, stamp: string, o
 }
 
 /** One source's analysis holds one of the two heavy ffmpeg slots from start to end (spec §6.2). */
-export const analyzeSource = (...a: Parameters<typeof analyzeSourceNow>) => {
+export const analyzeSource = async (...a: Parameters<typeof analyzeSourceNow>): Promise<AnalysisFiles> => {
   const f = analysisFiles(a[0], a[1]);
-  if (analysisDone(f, a[1])) return Promise.resolve(f);
-  shareFolder(f.dir);   // the same footage analysed in another project: taken over, not made again (share.ts)
-  return analysisDone(f, a[1]) ? Promise.resolve(f) : heavy.run(() => analyzeSourceNow(...a));
+  if (analysisDone(f, a[1])) return f;
+  await shareFolder(f.dir);   // the same footage analysed in another project: taken over, not made again (share.ts)
+  return analysisDone(f, a[1]) ? f : heavy.run(() => analyzeSourceNow(...a));
 };

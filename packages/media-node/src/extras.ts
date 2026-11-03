@@ -92,10 +92,10 @@ async function makeSheets(srcPath: string, label: string, cuts: number[], durati
 }
 
 /** someone else transcribing this source now (another live process holds transcript.lock): since when, ms */
-export function transcribing(projectDir: string, srcPath: string): { started: number } | null {
+export async function transcribing(projectDir: string, srcPath: string): Promise<{ started: number } | null> {
   // here, or in another project with the same footage (its transcript is shared once it is done: share.ts)
   const dir = dirname(extrasFiles(projectDir, srcPath).transcript);
-  for (const d of [dir, ...siblingFolders(dir)]) { const l = lockHolder(join(d, 'transcript.lock')); if (l) return { started: l.started }; }
+  for (const d of [dir, ...(await siblingFolders(dir))]) { const l = lockHolder(join(d, 'transcript.lock')); if (l) return { started: l.started }; }
   return null;
 }
 
@@ -113,8 +113,8 @@ export async function sourceExtras(projectDir: string, srcPath: string, o: { lab
   const a = await analyzeSource(projectDir, srcPath, { signal: o.signal });
   const f = extrasFiles(projectDir, srcPath);
   // what another project with the same footage made since this one was analysed (its transcript, say): taken over (share.ts)
-  const take = () => { if (![f.sheets, f.burned, f.transcript].every((x) => existsSync(x))) shareFolder(dirname(f.transcript)); };
-  take();
+  const take = async () => { if (![f.sheets, f.burned, f.transcript].every((x) => existsSync(x))) await shareFolder(dirname(f.transcript)); };
+  await take();
   // made by an older version of this code: the sheets and the burned check again (a folder from before the record counts as current)
   if (existsSync(f.version) && readFileSync(f.version, 'utf8') !== EXTRAS_VERSION) {
     for (const x of [f.sheets, f.burned]) rmSync(x, { force: true });
@@ -123,7 +123,7 @@ export async function sourceExtras(projectDir: string, srcPath: string, o: { lab
   await background.run(async () => {
     // again once this one's turn comes, and before the transcript: projects made at once from the same footage all queue here
     // before any of it exists, and each made it again (a batch of N ran Whisper N times on one file)
-    take();
+    await take();
     if (!existsSync(f.sheets)) {
       o.onStep?.('sheets', 0, 2);
       // frames from the 540 px-high proxy when it is at least as wide as a cell (decoding 4K for a 480 px cell is waste);
@@ -142,10 +142,10 @@ export async function sourceExtras(projectDir: string, srcPath: string, o: { lab
     // which speech-to-text tool answers is tellcut/providers.json's business (toolkit phase 3); a transcript another tool or model
     // made is made again (one from before this was recorded has no maker and is kept)
     const stt = o.stt ?? transcribeProvider(), by = makerOf(stt);
-    take();
+    await take();
     if (o.transcribe !== false && existsSync(f.transcript) && existsSync(f.transcriptBy) && readFileSync(f.transcriptBy, 'utf8') !== by) rmSync(f.transcript, { force: true });
     if (o.transcribe !== false && !existsSync(f.transcript) && (await probeHasAudio(srcPath))) {
-      busy = transcribing(projectDir, srcPath);
+      busy = await transcribing(projectDir, srcPath);
       if (busy) return;
       o.onStep?.('transcript', 1, 2);
       await withLock(join(dirname(f.transcript), 'transcript.lock'), () => atomic(f.transcript, (tmp) => stt.transcribe(srcPath, tmp, { signal: o.signal })));
@@ -177,7 +177,7 @@ export function correctBeats(b: Beats, listed: number): Beats {
 /** A music file's beats (cached as detected); `bpm`: the tempo its source lists, which the beats are checked against on every read. */
 export async function musicBeats(projectDir: string, path: string, o: { signal?: AbortSignal; bpm?: number } = {}): Promise<Beats> {
   const f = musicFiles(projectDir, path);
-  if (!existsSync(f.beats)) shareFolder(f.dir);   // the same music's beats from another project
+  if (!existsSync(f.beats)) await shareFolder(f.dir);   // the same music's beats from another project
   if (!existsSync(f.beats)) {
     mkdirSync(f.dir, { recursive: true });
     const raw = join(f.dir, `mono.${process.pid}.f32`);   // inspect and the server may both start on a new song

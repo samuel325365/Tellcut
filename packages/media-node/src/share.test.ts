@@ -15,7 +15,7 @@ test('a second project with the same footage takes the first one\u2019s analysis
   const sttA = fakeTranscribe('一'), sttB = fakeTranscribe('二');
   await analyzeSource(a, src);
   await sourceExtras(a, src, { label: 'clip', stt: sttA });
-  expect(shareAnalysis(b, src)).toBeGreaterThan(5);                               // files taken over
+  expect(await shareAnalysis(b, src)).toBeGreaterThan(5);                               // files taken over
   const fa = analysisFiles(a, src), fb = analysisFiles(b, src);
   expect(analysisDone(fb, src)).toBe(true);
   expect(statSync(fb.proxy).nlink).toBe(2);                                       // the same file on disk, not a copy
@@ -26,14 +26,14 @@ test('a second project with the same footage takes the first one\u2019s analysis
   const before = readFileSync(fb.cuts, 'utf8');
   writeFileSync(fa.cuts + '.new', '[1, 2]'); renameSync(fa.cuts + '.new', fa.cuts);
   expect(readFileSync(fb.cuts, 'utf8')).toBe(before);
-  expect(shareAnalysis(b, src)).toBe(0);                                          // nothing left to take
+  expect(await shareAnalysis(b, src)).toBe(0);                                          // nothing left to take
 }, 120000);
 
 test('analysis of a project of its own, or of a file no other project has, shares nothing and fails nothing', async () => {
   const projects = mkdtempSync(join(tmpdir(), 'share-')), a = join(projects, 'a'), src = join(projects, 'clip.mp4');
   mkdirSync(a);
   await makePhoneVideo(src);
-  expect(shareAnalysis(a, src)).toBe(0);
+  expect(await shareAnalysis(a, src)).toBe(0);
 });
 
 test('analysing and the extras take a sibling project\u2019s work on their own (the server and inspect need no extra step)', async () => {
@@ -116,7 +116,7 @@ test('a sibling\u2019s sheets and burned check made by an older EXTRAS_VERSION a
   // once a is current again, its sheets are shared as before
   const c = join(projects, 'c'); mkdirSync(c);
   writeFileSync(fa.version, EXTRAS_VERSION);
-  expect(shareAnalysis(c, src)).toBeGreaterThan(5);
+  expect(await shareAnalysis(c, src)).toBeGreaterThan(5);
   expect(JSON.parse(readFileSync(extrasFiles(c, src).sheets, 'utf8')).pages).toBe(99);
 }, 120000);
 
@@ -158,49 +158,61 @@ test('footage renamed or moved in its project keeps its analysis and transcript 
   // and again after a second move
   const again = join(p, 'media', 'opening.mp4');
   renameSync(moved, again); relink(p, 'media/opening.mp4');
-  expect(shareAnalysis(p, again)).toBeGreaterThan(5);
+  expect(await shareAnalysis(p, again)).toBeGreaterThan(5);
 }, 120000);
 
-test('the same footage at another path in another project is shared once its content is known to be the same', () => {
+test('the same footage at another path in another project is shared once its content is known to be the same', async () => {
   const projects = mkdtempSync(join(tmpdir(), 'share-'));
   const a = footage(projects, 'a', { 'media/clip.mp4': bytes(1) }), b = footage(projects, 'b', { 'media/renamed.mp4': bytes(1) });
   const fa = analysed(a, join(a, 'media/clip.mp4')), mine = join(b, 'media/renamed.mp4');
-  expect(shareAnalysis(b, mine)).toBeGreaterThan(5);
+  expect(await shareAnalysis(b, mine)).toBeGreaterThan(5);
   expect(analysisDone(analysisFiles(b, mine), mine)).toBe(true);
   expect(statSync(analysisFiles(b, mine).proxy).nlink).toBe(2);
   expect(readFileSync(extrasFiles(b, mine).transcript, 'utf8')).toBe(`made for ${join(a, 'media/clip.mp4')}`);
   expect(JSON.parse(readFileSync(join(analysisFiles(b, mine).dir, 'source.json'), 'utf8')).path).toBe(mine);   // its own note, not a's
-  expect(siblingFolders(analysisFiles(b, mine).dir)).toContain(fa.dir);   // so a transcript being made in a is waited for, not made twice
+  expect(await siblingFolders(analysisFiles(b, mine).dir)).toContain(fa.dir);   // so a transcript being made in a is waited for, not made twice
 });
 
-test('two different files of one size and time never share, whether the other is still there or was renamed', () => {
+test('two different files of one size and time never share, whether the other is still there or was renamed', async () => {
   const projects = mkdtempSync(join(tmpdir(), 'share-'));
   // the other one still there (a dual-track recorder's two WAVs)
   const p = footage(projects, 'p', { 'media/TR1.WAV': bytes(1), 'media/TR2.WAV': bytes(2) });
   analysed(p, join(p, 'media/TR1.WAV'));
-  expect(shareAnalysis(p, join(p, 'media/TR2.WAV'))).toBe(0);
+  expect(await shareAnalysis(p, join(p, 'media/TR2.WAV'))).toBe(0);
   // the analysed one renamed away, its note's print says what it held
   const q = footage(projects, 'q', { 'media/a.wav': bytes(1) });
   analysed(q, join(q, 'media/a.wav'));
   renameSync(join(q, 'media/a.wav'), join(q, 'media/kept.wav'));
   writeFileSync(join(q, 'media/b.wav'), bytes(2)); utimesSync(join(q, 'media/b.wav'), T, T);
   relink(q, 'media/b.wav');
-  expect(shareAnalysis(q, join(q, 'media/b.wav'))).toBe(0);
+  expect(await shareAnalysis(q, join(q, 'media/b.wav'))).toBe(0);
   relink(q, 'media/kept.wav');
-  expect(shareAnalysis(q, join(q, 'media/kept.wav'))).toBeGreaterThan(5);   // the renamed one itself takes it
+  expect(await shareAnalysis(q, join(q, 'media/kept.wav'))).toBeGreaterThan(5);   // the renamed one itself takes it
 });
 
-test('a folder from before notes held a print: taken after a rename only when nothing else could be its file', () => {
+test('a folder from before notes held a print: taken after a rename only when nothing else could be its file', async () => {
   const projects = mkdtempSync(join(tmpdir(), 'share-'));
   const p = footage(projects, 'p', { 'media/a.mp4': bytes(1) }), f = analysed(p, join(p, 'media/a.mp4'), { note: false });
   writeFileSync(join(f.dir, 'source.json'), JSON.stringify({ path: join(p, 'media/a.mp4') }));   // the old note: the path only
   renameSync(join(p, 'media/a.mp4'), join(p, 'media/b.mp4')); relink(p, 'media/b.mp4');
-  expect(shareAnalysis(p, join(p, 'media/b.mp4'))).toBeGreaterThan(5);
+  expect(await shareAnalysis(p, join(p, 'media/b.mp4'))).toBeGreaterThan(5);
   // two files of the project now have that size and time: the old folder could be either's, so neither takes it
   const q = footage(mkdtempSync(join(tmpdir(), 'share-')), 'q', { 'media/a.wav': bytes(1), 'media/c.wav': bytes(3) }), g = analysed(q, join(q, 'media/a.wav'), { note: false });
   writeFileSync(join(g.dir, 'source.json'), JSON.stringify({ path: join(q, 'media/a.wav') }));
   renameSync(join(q, 'media/a.wav'), join(q, 'media/b.wav'));
   writeFileSync(join(q, 'project.json'), JSON.stringify({ sources: { s0: { path: 'media/b.wav' }, s1: { path: 'media/c.wav' } }, media: {} }));
-  expect(shareAnalysis(q, join(q, 'media/b.wav'))).toBe(0);
-  expect(shareAnalysis(q, join(q, 'media/c.wav'))).toBe(0);
+  expect(await shareAnalysis(q, join(q, 'media/b.wav'))).toBe(0);
+  expect(await shareAnalysis(q, join(q, 'media/c.wav'))).toBe(0);
+});
+
+test('looking through every project for the same footage lets other work run meanwhile (a NAS or a slow drive does not hold the server up)', async () => {
+  const projects = mkdtempSync(join(tmpdir(), 'share-'));
+  for (let i = 0; i < 20; i++) analysed(footage(projects, `p${i}`, { 'media/a.mp4': bytes(i + 1) }), join(projects, `p${i}`, 'media/a.mp4'));
+  const mine = footage(projects, 'mine', { 'media/b.mp4': bytes(1) }), dir = analysisFiles(mine, join(mine, 'media/b.mp4')).dir;
+  let ran = false;
+  setImmediate(() => { ran = true; });
+  const looking = siblingFolders(dir);
+  expect(ran).toBe(false);
+  expect(await looking).toEqual([analysisFiles(join(projects, 'p0'), join(projects, 'p0', 'media/a.mp4')).dir]);
+  expect(ran).toBe(true);
 });

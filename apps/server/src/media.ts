@@ -96,7 +96,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     for (const [sid, s] of Object.entries(p.sources)) {
       const path = resolve(dir, s.path);
       if (!existsSync(path)) { missing.push(sid); continue; }
-      if (!analysisDone(analysisFiles(dir, path), path)) shareAnalysis(dir, path);   // the same footage analysed in another project: nothing to queue
+      if (!analysisDone(analysisFiles(dir, path), path)) await shareAnalysis(dir, path);   // the same footage analysed in another project: nothing to queue
       let basic = running('analyze', sid);
       if (basic) jobs.push(basic);
       else if (!analysisDone(analysisFiles(dir, path), path)) {

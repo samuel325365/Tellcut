@@ -49,13 +49,13 @@ test('an old folder two files of the project could own: the one its note names k
   expect([analysisFiles(q.dir, q.file('TR1.WAV')).dir, analysisFiles(q.dir, q.file('TR2.WAV')).dir]).not.toContain(unknown);
 });
 
-test('a sibling project’s folder is found under either name: the same footage analysed there before is still shared', () => {
+test('a sibling project’s folder is found under either name: the same footage analysed there before is still shared', async () => {
   const p = project(['clip.mp4']), sib = join(p.projects, 'older');
   const theirs = join(sib, 'cache', 'analysis', fileHash('analysis|a1', p.file('clip.mp4')));
   mkdirSync(theirs, { recursive: true });
   const mine = analysisFiles(p.dir, p.file('clip.mp4')).dir;
   expect(basename(mine)).not.toBe(basename(theirs));
-  expect(siblingFolders(mine)).toEqual([theirs]);
+  expect(await siblingFolders(mine)).toEqual([theirs]);
 });
 
 test('an old folder without a note is kept by files of one size and time when they all hold the same (a file imported twice)', () => {

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
+import { open, stat } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 
 /** a file's size and modification time, the key every cache name is made of */
@@ -60,6 +61,25 @@ export function contentPrint(path: string): string {
       }
     } finally { closeSync(fd); }
   }
+  const p = h.digest('hex').slice(0, 16);
+  prints.set(k, p);
+  return p;
+}
+/** contentPrint without holding the thread up (share.ts looks at footage that may be on a slow external drive or a NAS) */
+export async function contentPrintAsync(path: string): Promise<string> {
+  const st = await stat(path), k = `${resolve(path).toLowerCase()}|${st.size}|${st.mtimeMs}`, had = prints.get(k);
+  if (had) return had;
+  const h = createHash('sha1').update(`${st.size}|`), fh = await open(path, 'r');
+  try {
+    if (st.size <= SLICE * SLICES) h.update(await fh.readFile());
+    else {
+      const buf = Buffer.alloc(SLICE);
+      for (let i = 0; i < SLICES; i++) {
+        const { bytesRead } = await fh.read(buf, 0, SLICE, Math.floor(((st.size - SLICE) * i) / (SLICES - 1)));
+        h.update(buf.subarray(0, bytesRead));
+      }
+    }
+  } finally { await fh.close(); }
   const p = h.digest('hex').slice(0, 16);
   prints.set(k, p);
   return p;
