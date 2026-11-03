@@ -1,15 +1,20 @@
-/** 16-bit PCM WAV (interleaved) as base64 — port of wavBase64() from the original projects. */
-export function encodeWavBase64(buf: { numberOfChannels: number; length: number; sampleRate: number; getChannelData(c: number): Float32Array }): string {
-  const ch = buf.numberOfChannels, n = buf.length, bytes = 44 + n * ch * 2;
-  const dv = new DataView(new ArrayBuffer(bytes));
-  const ws = (o: number, s: string) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
-  ws(0, 'RIFF'); dv.setUint32(4, bytes - 8, true); ws(8, 'WAVE'); ws(12, 'fmt ');
-  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true); dv.setUint32(24, buf.sampleRate, true);
-  dv.setUint32(28, buf.sampleRate * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true); ws(36, 'data'); dv.setUint32(40, n * ch * 2, true);
+/** What renderWav() keeps for export: the rendered mix, read out in slices of whole sample frames (a long film's WAV as one
+ *  base64 string passed V8's string limit at about 35 minutes; the header is written by media-node, from these sizes). */
+export interface PcmSource { numberOfChannels: number; length: number; sampleRate: number; getChannelData(c: number): Float32Array }
+
+/** Frames [from, from + frames) of `buf` (clamped to its end) as interleaved 16-bit little-endian PCM —
+ *  the conversion of wavBase64() from the original projects. */
+export function pcm16(buf: PcmSource, from: number, frames: number): Uint8Array {
+  const ch = buf.numberOfChannels, a = Math.max(0, Math.min(buf.length, from)), b = Math.max(a, Math.min(buf.length, from + frames));
+  const dv = new DataView(new ArrayBuffer((b - a) * ch * 2));
   const data = [...Array(ch).keys()].map((c) => buf.getChannelData(c));
-  let o = 44;
-  for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { const s = Math.max(-1, Math.min(1, data[c][i])); dv.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true); o += 2; }
-  const u8 = new Uint8Array(dv.buffer); let bin = '';
+  let o = 0;
+  for (let i = a; i < b; i++) for (let c = 0; c < ch; c++) { const s = Math.max(-1, Math.min(1, data[c][i])); dv.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true); o += 2; }
+  return new Uint8Array(dv.buffer);
+}
+
+export function bytesToBase64(u8: Uint8Array): string {
+  let bin = '';
   for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000) as unknown as number[]);
   return btoa(bin);
 }

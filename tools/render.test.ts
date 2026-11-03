@@ -310,3 +310,57 @@ test('an audiogram hung on a clip shows that clip\'s sound from the first frame 
     rmSync(d, { recursive: true, force: true });
   }
 }, 180000);
+
+test('the mix comes out of the page in slices of whole frames: the same WAV at any slice size, written to a file', async () => {
+  const d = join(TELLCUT_ROOT, 'projects/_test-wavslices');
+  mkdirSync(d, { recursive: true });
+  try {
+    await run(['-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=30:duration=3', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3',
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', join(d, 'src.mp4')]);
+    writeFileSync(join(d, 'project.json'), JSON.stringify({
+      version: 1,
+      // 2.345 s: an odd number of frames (112561), so no slice size below divides it evenly
+      meta: { name: 'w', width: 320, height: 180, fps: 30, duration: 2.345, plugins: [], cut: { crf: 23, preset: 'ultrafast' },
+        mix: { master: 0.9, compressor: { threshold: -12, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 0.5, send: 0.3 } } },
+      sources: { s1: { path: 'src.mp4', duration: await probeDuration(join(d, 'src.mp4')), width: 320, height: 180 } }, media: {}, grids: [],
+      tracks: [{ id: 'a', kind: 'audio', items: [{ id: 'x', source: 's1', in: 0.2, rate: 1, start: 0.1, end: 2.3, gain: 0, fadeIn: 0.3, fadeOut: 0.4 }] }],
+    }));
+    await prepareProject(d, createRegistry(plugins));
+    const s = await openPage(playerPath('_test-wavslices', 'cache'), '__tellcut');
+    try {
+      const whole = await s.wav();
+      expect(whole.length).toBe(44 + 112561 * 4);
+      expect([whole.readUInt32LE(4), whole.readUInt32LE(40)]).toEqual([36 + 112561 * 4, 112561 * 4]);
+      expect((await s.wav({ sliceFrames: 1001 })).equals(whole)).toBe(true);
+      const file = join(d, 'mix.wav');
+      expect(await s.wavFile(file, { sliceFrames: 4097 })).toEqual({ silent: false });
+      expect(readFileSync(file).equals(whole)).toBe(true);
+      // a cancel is answered between slices
+      const ac = new AbortController();
+      ac.abort();
+      await expect(s.wavFile(file, { sliceFrames: 4097, signal: ac.signal })).rejects.toMatchObject({ name: 'AbortError' });
+    } finally { await s.close(); }
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
+}, 180000);
+
+test('a film too long for a WAV mix is refused before its frames, not hours later at the mix', async () => {
+  const d = join(TELLCUT_ROOT, 'projects/_test-wavlong');
+  mkdirSync(join(d, 'cache'), { recursive: true });
+  writeFileSync(join(d, 'cache/index.json'), JSON.stringify({ videos: {}, stills: {}, audio: {} }));
+  writeFileSync(join(d, 'project.json'), JSON.stringify({
+    version: 1,
+    meta: { name: 'long', width: 320, height: 180, fps: 30, duration: 7 * 3600, plugins: [],
+      mix: { master: 0.9, compressor: { threshold: -12, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 0.5, send: 0.3 } } },
+    sources: {}, media: {}, grids: [], tracks: [],
+  }));
+  try {
+    let frames = 0;
+    await expect(renderVideo({ target: projectTarget('_test-wavlong', 'cache'), out: join(d, 'output/long.mp4'), log: () => {}, onProgress: () => frames++ }))
+      .rejects.toThrow(/7\.00 h long: its mix would not fit in a WAV file \(at most 6\.2 h/);
+    expect(frames).toBe(0);
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
+}, 120000);

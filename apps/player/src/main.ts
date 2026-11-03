@@ -9,7 +9,7 @@ import { mountControls } from './controls.ts';
 import { startEmbed } from './embed.ts';
 import { layoutBoxes, type TextBox } from './layout.ts';
 
-declare global { interface Window { __tellcut: { ready: Promise<void>; fps: number; duration: number; loudness: number; frame(n: number): Promise<void>; wav(): Promise<string>; layout(): Promise<TextBox[]> } } }
+declare global { interface Window { __tellcut: { ready: Promise<void>; fps: number; duration: number; loudness: number; frame(n: number): Promise<void>; wav(): Promise<{ channels: number; sampleRate: number; frames: number }>; wavSlice(from: number, frames: number): Promise<string>; layout(): Promise<TextBox[]> } } }
 
 const q = new URLSearchParams(location.search);
 const RENDER = q.get('mode') === 'render';
@@ -66,7 +66,9 @@ if (EMBED) {
     fps: 30, duration: 0, loudness: -14,
     ready: boot.then(({ project }) => { window.__tellcut.fps = project.meta.fps; window.__tellcut.duration = project.meta.duration; window.__tellcut.loudness = project.meta.loudness ?? -14; }),
     async frame(n) { const { project, frame } = await boot; await settledFrame(() => frame(n / project.meta.fps), () => settle(document, raf), document.fonts); },
+    // the mix is rendered once and kept; media-node reads it in slices of whole sample frames and writes the WAV itself
     async wav() { return (await boot).audio.renderWav(); },
+    async wavSlice(from, frames) { return (await boot).audio.wavSlice(from, frames); },
     // the words on screen after the last frame(), for npm run check
     async layout() { const { project, stage } = await boot; return layoutBoxes(document.getElementById('stage')!, project.meta.width, stage.textReports()); },
   };

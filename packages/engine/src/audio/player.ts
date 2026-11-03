@@ -3,7 +3,7 @@ import type { Mix } from '../schema.ts';
 import type { SfxType } from '../plugin.ts';
 import type { AudioPlan } from './plan.ts';
 import { buildMix } from './mix.ts';
-import { encodeWavBase64 } from './wav.ts';
+import { bytesToBase64, pcm16, type PcmSource } from './wav.ts';
 
 const RATE = 48000;
 /** a buffer that failed is fetched again after this long (the file may have been put back); its error is reported once */
@@ -125,9 +125,19 @@ export class AudioEngine {
   dispose() { this.stop(); void this.live?.close(); this.live = null; this.liveBufs.clear(); }
   now() { return this.live ? this.live.currentTime : 0; }
 
-  async renderWav(): Promise<string> {
+  /** the last renderWav()'s mix, read out by wavSlice() */
+  private rendered: PcmSource | null = null;
+  /** Renders the whole mix offline and keeps it; export then reads it in slices (wavSlice), never as one string. */
+  async renderWav(): Promise<{ channels: number; sampleRate: number; frames: number }> {
+    this.rendered = null;
     const ctx = new OfflineAudioContext(2, Math.ceil(this.duration * RATE), RATE);
     buildMix(ctx, this.plan, await this.decode(ctx), this.sfx, this.mix, 0, 0);
-    return encodeWavBase64(await ctx.startRendering());
+    const b = this.rendered = await ctx.startRendering();
+    return { channels: b.numberOfChannels, sampleRate: b.sampleRate, frames: b.length };
+  }
+  /** Frames [from, from + frames) of the rendered mix as base64 16-bit PCM (interleaved); empty past its end. */
+  wavSlice(from: number, frames: number): string {
+    if (!this.rendered) throw new Error('No mix rendered: call renderWav() first');
+    return bytesToBase64(pcm16(this.rendered, from, frames));
   }
 }

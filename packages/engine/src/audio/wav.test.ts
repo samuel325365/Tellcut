@@ -1,12 +1,23 @@
-import { encodeWavBase64 } from './wav.ts';
+import { bytesToBase64, pcm16 } from './wav.ts';
 
-test('encodes interleaved 16-bit PCM with a RIFF header', () => {
-  const ch = [new Float32Array([0, 1, -1]), new Float32Array([0.5, -0.5, 0])];
-  const b = Buffer.from(encodeWavBase64({ numberOfChannels: 2, length: 3, sampleRate: 48000, getChannelData: (c) => ch[c] }), 'base64');
-  expect(b.toString('ascii', 0, 4)).toBe('RIFF');
-  expect(b.readUInt32LE(24)).toBe(48000);
-  expect(b.readUInt16LE(22)).toBe(2);
-  expect([b.readInt16LE(44), b.readInt16LE(46), b.readInt16LE(48), b.readInt16LE(50), b.readInt16LE(52)]).toEqual([0, 16383, 32767, -16384, -32768]);
+const buf = (ch: Float32Array[]) => ({ numberOfChannels: ch.length, length: ch[0].length, sampleRate: 48000, getChannelData: (c: number) => ch[c] });
+
+test('pcm16 interleaves 16-bit little-endian PCM, clipped to ±1', () => {
+  const b = Buffer.from(pcm16(buf([new Float32Array([0, 1, -1, 2]), new Float32Array([0.5, -0.5, 0, -3])]), 0, 4));
+  expect(b.length).toBe(16);
+  expect([...Array(8).keys()].map((i) => b.readInt16LE(i * 2))).toEqual([0, 16383, 32767, -16384, -32768, 0, 32767, -32768]);
+});
+
+test('pcm16 slices whole frames and stops at the end of the buffer', () => {
+  const ch = [new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5]), new Float32Array([-0.1, -0.2, -0.3, -0.4, -0.5])], all = Buffer.from(pcm16(buf(ch), 0, 5));
+  expect(Buffer.from(pcm16(buf(ch), 1, 2))).toEqual(all.subarray(4, 12));
+  expect(Buffer.from(pcm16(buf(ch), 3, 10))).toEqual(all.subarray(12));
+  expect(pcm16(buf(ch), 5, 4).length).toBe(0);
+});
+
+test('bytesToBase64 matches Node over the 32 KB steps it builds the string in', () => {
+  const u8 = new Uint8Array(0x8000 * 2 + 5).map((_, i) => (i * 37) & 255);
+  expect(bytesToBase64(u8)).toBe(Buffer.from(u8).toString('base64'));
 });
 
 import { AudioEngine } from './player.ts';

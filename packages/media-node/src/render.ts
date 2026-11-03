@@ -1,10 +1,10 @@
 // Frame-exact renderer shared by tools/render.ts and the Tellcut server: serves the tellcut folder, drives the player
 // in headless Chrome, pipes every frame into ffmpeg, renders the WebAudio mix offline and muxes the final MP4.
-import { mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeSync, existsSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createStaticServer } from './static-server.ts';
-import { readWav } from './wav.ts';
+import { pullWav, wavTooLong, type PcmFormat } from './wav.ts';
 import { abortError, ffmpegProcess, measureLoudness, run } from './ffmpeg.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 import { chromePath } from './deps.ts';
@@ -14,8 +14,12 @@ import { renameRetry } from './fsutil.ts';
 /** a text item's boxes on screen, in project pixels */
 export interface TextBox { id: string; rects: Array<{ x: number; y: number; w: number; h: number }> }
 /** loudness: the integrated loudness an export of this page is normalised to (LUFS);
+ *  wav(): the whole mix as a WAV in memory; wavFile(): the same written to `path` a slice at a time, for films of any length
+ *  (`sliceFrames`: frames read from the page at once, smaller only in tests; `signal` is checked between slices);
  *  layout(): the words on screen after the last frame() (Tellcut player only), in project pixels */
-export interface PageSession { fps: number; duration: number; loudness: number; version: string; frame(n: number): Promise<void>; png(): Promise<Buffer>; jpeg(): Promise<Buffer>; wav(): Promise<Buffer>; layout(): Promise<TextBox[]>; close(): Promise<void> }
+export interface PageSession { fps: number; duration: number; loudness: number; version: string; frame(n: number): Promise<void>; png(): Promise<Buffer>; jpeg(): Promise<Buffer>;
+  wav(o?: WavPull): Promise<Buffer>; wavFile(path: string, o?: WavPull): Promise<{ silent: boolean }>; layout(): Promise<TextBox[]>; close(): Promise<void> }
+export interface WavPull { sliceFrames?: number; signal?: AbortSignal }
 export interface PlayerTarget { project: string; media: 'cache'; index?: string }
 
 export const playerUrl = (t: PlayerTarget) =>
@@ -115,12 +119,25 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
     const shot = async (format: 'png' | 'jpeg') =>
       Buffer.from((await cdp.send('Page.captureScreenshot', { format, quality: format === 'jpeg' ? 95 : undefined, optimizeForSpeed: true,
         ...(capture.clip ? { clip: capture.clip } : {}) } as any)).data, 'base64');
+    // the page renders the mix once and keeps it; it comes over in slices of whole frames (one base64 string of a long
+    // film's WAV passed V8's string limit at about 35 minutes)
+    const pull = async (write: (b: Buffer) => void, w: WavPull = {}) => {
+      const f: PcmFormat = await page.evaluate((a) => (window as any)[a].wav(), api);
+      return pullWav(f, async (from, n) => {
+        if (w.signal?.aborted) throw abortError();
+        return Buffer.from(await page.evaluate(([a, x, k]) => (window as any)[a].wavSlice(x, k), [api, from, n] as const), 'base64');
+      }, write, w.sliceFrames);
+    };
     return {
       fps, duration, loudness: typeof loudness === 'number' ? loudness : -14, version: browser.version(),
       frame: (n) => page.evaluate(([a, k]) => (window as any)[a].frame(k), [api, n] as const).catch((e: Error) => { throw new Error(`frame ${n}: ${e.message}`); }),
       png: () => shot('png'),
       jpeg: () => shot('jpeg'),
-      wav: async () => Buffer.from(await page.evaluate((a) => (window as any)[a].wav(), api), 'base64'),
+      wav: async (w) => { const parts: Buffer[] = []; await pull((b) => { parts.push(b); }, w); return Buffer.concat(parts); },
+      wavFile: async (path, w) => {
+        const fd = openSync(path, 'w');
+        try { return await pull((b) => { for (let o = 0; o < b.length;) o += writeSync(fd, b, o); }, w); } finally { closeSync(fd); }
+      },
       layout: () => page.evaluate((a) => (window as any)[a].layout(), api),
       close: async () => { await browser.close(); await server.close(); },
     };
@@ -196,6 +213,9 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
     log(`chrome ${s.version}`);
     const f0 = Math.round((o.from ?? 0) * s.fps), f1 = Math.round((o.to ?? s.duration) * s.fps);
     if (!(f1 > f0)) throw new Error(`Empty range: ${o.from ?? 0}–${o.to ?? s.duration} s`);
+    // said before the frames, not hours later at the mix (the whole film's mix is rendered, whatever the range)
+    const long = wavTooLong(s.duration);
+    if (long) throw new Error(long);
     enc = encoder(vOut, s.fps, size, o.signal);
     const t0 = Date.now();
     for (let n = f0; n < f1; n++) {
@@ -206,10 +226,8 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
       if ((n - f0) % 60 === 0) log(`frame ${n}/${f1}  ${((Date.now() - t0) / 1000).toFixed(0)}s`);
     }
     await enc.end();
-    const wavBuf = await s.wav();
-    writeFileSync(wav, wavBuf);
     // digital silence has no loudness to bring to the target (and the AAC encoder rejects what the chain makes of it)
-    const silent = readWav(wavBuf).data.every((ch) => ch.every((v) => v === 0));
+    const { silent } = await s.wavFile(wav, { signal: o.signal });
     const partial = f0 > 0 || f1 < Math.round(s.duration * s.fps);
     const range = partial ? ['-ss', (f0 / s.fps).toFixed(4), '-t', ((f1 - f0) / s.fps).toFixed(4)] : [];
     const mux = (af?: string) => run(['-i', vOut, ...range, '-i', wav, ...(af ? ['-af', af] : []), '-ar', '48000',
