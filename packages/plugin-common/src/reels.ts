@@ -12,6 +12,7 @@ import { liveSpans } from './lockscreen.ts';
 import { avatarEl, DEVICES, drawAvatar, drawRipple, fmtCount, glyphSvg, parseSteps, phoneEls, phoneView, placePhone, rippleAt, timeSpan, type CountStyle, type Device, type PhoneEls } from './phone.ts';
 import { fitPx, lineAbs } from './text.ts';
 import { withAlpha } from './color.ts';
+import { wordsLang } from './words.ts';
 
 export const REELS_MODES = ['feed', 'end'] as const;
 export const COUNT_STYLES: CountStyle[] = ['zh', 'ja', 'en', 'plain'];
@@ -275,8 +276,10 @@ export const reels: ItemType<P, S> = {
       s.follow.textContent = p.follow;
       cssCamel(s.follow, { display: p.follow ? 'flex' : 'none', marginLeft: X(22), height: X(46), padding: `0 ${X(18)}`, alignItems: 'center', boxSizing: 'border-box',
         border: `${3 * k}px solid ${withAlpha(p.color, 0.9)}`, borderRadius: X(12), fontSize: X(26), fontWeight: '700' });
-      s.capText.textContent = p.caption; s.capMore.textContent = p.more ? `　${p.more}` : '';
-      cssCamel(s.cap, { display: p.caption ? 'block' : 'none', left: X(44), top: X(yA + 62), transform: 'translateY(-50%)', fontSize: X(fitPx(`${p.caption}　${p.more}`, 30, 860)), fontWeight: '500', textShadow: shadow(8) });
+      // the gap before "more": a full-width space in Chinese and Japanese, an ordinary one in English
+      const moreGap = wordsLang([p.caption, p.more], ctx) === 'en' ? ' ' : '　';
+      s.capText.textContent = p.caption; s.capMore.textContent = p.more ? `${moreGap}${p.more}` : '';
+      cssCamel(s.cap, { display: p.caption ? 'block' : 'none', left: X(44), top: X(yA + 62), transform: 'translateY(-50%)', fontSize: X(fitPx(`${p.caption}${moreGap}${p.more}`, 30, 860)), fontWeight: '500', textShadow: shadow(8) });
       cssCamel(s.capMore, { opacity: '0.7', fontWeight: '700' });
       const yM = yA + 114, music = !!p.music;
       glyph(s.note, `n${p.color}`, () => G.note(p.color));

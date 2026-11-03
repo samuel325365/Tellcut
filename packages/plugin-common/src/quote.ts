@@ -9,6 +9,7 @@
 import { abs, clamp, cssCamel, eBack, eOut3, h, type ItemType, prog, textEm } from '@tellcut/engine';
 import { nl } from './text.ts';
 import { withAlpha } from './color.ts';
+import { wordsLang } from './words.ts';
 
 interface P {
   mode: 'words' | 'card'; text: string; times: number[]; hit: number; pre: string; ghost: boolean; sizes: string; serif: string; y: number;
@@ -56,6 +57,9 @@ export function quoteSizes(sizes: string, count: number, hit: number, card: bool
   return Array.from({ length: count }, (_, i) => (Number.isFinite(given[i]) && given[i] > 0 ? given[i] : i === hit ? (card ? 92 : 232) : card ? 64 : 118));
 }
 
+/** the big opening mark: an English quote opens with a curly quote, a Chinese or Japanese one with a corner bracket */
+export const quoteMark = (lang: string) => (lang === 'en' ? '“' : '「');
+
 export const quote: ItemType<P, S> = {
   type: 'common.quote', label: '金句字卡', category: 'text', kind: 'overlay',
   doc: '金句字卡：mode words 是動態金句——影片縮成右上小窗（win），左邊大引號＋說話人，下面一行行字照講話時間逐詞跳出（times；不給就平均排開），最狠的那行（hit，預設最後一行）放大砸下、整段震一下、主色光一閃、前面幾行變暗；pre 讓幾行先放暗色預告字、ghost 讓最後一行先淡淡出現（片頭預告）；mode card 是不透明的收尾金句卡：大引號、幾行字一行行浮上來（hit 那行主色、之前的灰）、一條短線加出處、最下面一行小字；Podcast、訪談、演講的金句',
@@ -93,6 +97,7 @@ export const quote: ItemType<P, S> = {
     const lines = quoteLines(p.text), hit = quoteHit(lines, p.hit), times = quoteTimes(lines, p.times, hit, dur), pre = nl(p.pre).split('\n');
     const serif = new Set(String(p.serif ?? '').split(/[,，\s]+/).filter(Boolean).map(Number));
     const sans = `'${p.font}', 'Noto Sans TC', sans-serif`, serifFace = `'${p.serifFont}', 'Noto Serif TC', serif`;
+    s.mark.textContent = quoteMark(wordsLang([p.text, p.pre], ctx));
     const key = JSON.stringify([lines, pre, card]);
     if (s.key !== key) {   // the rows and words are rebuilt only when the text changes
       s.key = key;

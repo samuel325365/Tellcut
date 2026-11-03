@@ -8,6 +8,7 @@ import { clamp, cssCamel, eBack, eIn3, eOut3, h, type ItemType } from '@tellcut/
 import { DUO_TOP, duoLayout } from './duo.ts';
 import { emParts, nl } from './text.ts';
 import { withAlpha } from './color.ts';
+import { wordsLang } from './words.ts';
 
 interface P {
   mode: 'title' | 'round' | 'table'; words: string; names: string; label: string; text: string; rows: string; ask: string;
@@ -137,7 +138,7 @@ export function tableLayout(rows: number, H: number, k: number, safe: { top: num
 
 function buildTable(ctx: Ctx, s: S, k: number) {
   const p = ctx.params, { W, H, theme } = ctx, rows = versusRows(p.rows), T = tableLayout(rows.length, H, k, theme.safe), [wa, wb] = pair(p.words), [na, nb] = pair(p.names);
-  const x0 = 54 * k, w = W - 2 * x0;
+  const x0 = 54 * k, w = W - 2 * x0, bar = wordsLang([p.rows, p.words, p.names], ctx) === 'en' ? ' | ' : '｜';   // R1｜ in Chinese, R1 | in English
   cssCamel(s.box, { background: p.ink });
   div(s.box, { position: 'absolute', left: '0', top: '0', width: '50%', height: '100%', background: `linear-gradient(90deg, ${withAlpha(p.colorA, 0.13)}, rgba(0,0,0,0))` });
   div(s.box, { position: 'absolute', right: '0', top: '0', width: '50%', height: '100%', background: `linear-gradient(270deg, ${withAlpha(p.colorB, 0.13)}, rgba(0,0,0,0))` });
@@ -151,7 +152,7 @@ function buildTable(ctx: Ctx, s: S, k: number) {
   const f = clamp(T.pitch / (230 * k), 0.7, 1), u = k * f;
   s.rows = rows.map((r, i) => {
     const row = div(s.box, { position: 'absolute', left: `${x0}px`, width: `${w}px`, top: `${T.first + i * T.pitch}px` });
-    div(row, { color: p.hl, fontWeight: '900', fontSize: `${34 * u}px`, lineHeight: '1.3', margin: `0 0 ${10 * u}px ${4 * k}px`, whiteSpace: 'pre' }, `R${i + 1}｜${r.q}`);
+    div(row, { color: p.hl, fontWeight: '900', fontSize: `${34 * u}px`, lineHeight: '1.3', margin: `0 0 ${10 * u}px ${4 * k}px`, whiteSpace: 'pre' }, `R${i + 1}${bar}${r.q}`);
     const cells = div(row, { display: 'flex', gap: `${16 * k}px` });
     for (const [text, tag, c] of [[r.a, r.at, p.colorA], [r.b, r.bt, p.colorB]]) {
       const d = div(cells, { flex: '1', boxSizing: 'border-box', minHeight: `${Math.max(0, T.pitch - 124 * k)}px`, padding: `${18 * u}px ${20 * k}px`, borderRadius: `${14 * k}px`, background: withAlpha(c, 0.18),
