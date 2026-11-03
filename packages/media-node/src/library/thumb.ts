@@ -1,8 +1,9 @@
 // A saved block's preview film and thumbnail (spec 2026-10-29-my-library §3.4, §4.2): the block alone over a plain ground,
 // as the gallery shows the shared blocks, its module loaded from the entry's own folder.
-import { copyFileSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Plugin, Project } from '@tellcut/engine';
+import { renameRetry } from '../fsutil.ts';
 import { projectRegistry } from '../fx.ts';
 import { renderStills } from '../stills.ts';
 import { blockDir, blocksDir, readBlock, type BlockEntry } from './store.ts';
@@ -57,7 +58,7 @@ async function drawThumb(root: string, slug: string, plugins: Plugin[]): Promise
     if (!t) throw new Error(first.fx.errors[0]?.message ?? `${e.types[0].type} did not load`);
     const project = previewProject(e, t.type, t.kind);
     const [f] = await renderStills({ dir: job, project, times: [PREVIEW_LEN / 2], registry: first.registry, outDir: join(job, 'out'), tag: 'thumb', maxSide: 640 });
-    renameSync(f, join(dir, THUMB_FILE));
+    renameRetry(f, join(dir, THUMB_FILE));
     return join(dir, THUMB_FILE);
   } catch (err) {
     console.warn(`library thumbnail ${slug}: ${(err as Error).message}`);

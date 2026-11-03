@@ -1,12 +1,13 @@
 // Writing presets of the user's own (spec 2026-10-29-my-library §3.5–3.7, §4.5, §4.6): projects/_presets/my-<slug>/preset.md, from the
 // save dialog (a film's draft the agent wrote, edited by the user) or from the custom form. The points are the whole prompt: one line
 // for the agent per point the user sees, so a point deleted in the dialog is an instruction gone, and none is hidden from them.
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { DEFAULT_THEME } from '@tellcut/engine';
 import type { L10n, Lang } from '@tellcut/protocol';
 import { ffmpeg } from './ffmpeg.ts';
+import { renameRetry, replaceFile } from './fsutil.ts';
 import { findPreset, type Preset, type PresetDirs, type PresetPoint } from './presets.ts';
 import { slugFor } from './library/store.ts';
 
@@ -71,8 +72,7 @@ export function writeUserPreset(dirs: PresetDirs, i: SavePresetInput, id?: strin
   const dir = join(dirs.user, pid);
   mkdirSync(dir, { recursive: true });
   const file = join(dir, 'preset.md');
-  writeFileSync(`${file}.tmp`, `---\n${JSON.stringify(front, null, 2)}\n---\n${presetBody(i.points)}\n`);
-  renameSync(`${file}.tmp`, file);
+  replaceFile(file, `---\n${JSON.stringify(front, null, 2)}\n---\n${presetBody(i.points)}\n`);
   const p = findPreset(dirs, pid);
   if (!p) throw new Error(`寫好的片型讀不回來：${pid}`);
   return p;
@@ -96,5 +96,5 @@ export function deleteUserPreset(dirs: PresetDirs, id: string) {
 export async function posterFromImage(input: string, out: string) {
   const tmp = `${out}.${process.pid}.jpg`;
   await ffmpeg(['-y', '-i', input, '-vf', 'scale=540:960:force_original_aspect_ratio=increase,crop=540:960', '-frames:v', '1', '-q:v', '3', tmp]);
-  renameSync(tmp, out);
+  renameRetry(tmp, out);
 }

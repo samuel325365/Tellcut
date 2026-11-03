@@ -2,9 +2,10 @@
 // projects/_library/ (not in git, like every project). The tools and the server read and write it only through here.
 //   blocks/<slug>/entry.json   the entry (BlockEntry without its slug); fx/…, media/… laid out as in the project; thumb.jpg
 //   score/<slug>.js, <slug>.json  a music style and its entry (StyleEntry without its slug)
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import { renameRetry } from '../fsutil.ts';
 
 export const libraryRoot = (projectsDir: string) => join(projectsDir, '_library');
 
@@ -31,10 +32,11 @@ export const stylesDir = (root: string) => join(root, 'score');
 export function blockDir(root: string, slug: string) { checkSlug(slug); return join(blocksDir(root), slug); }
 
 const readJson = (file: string): any => { try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return null; } };
-/** writes through a temporary file, so a failure never leaves half a file */
+/** writes through a temporary file of this call's own (two processes, or two saves, never share one), so a failure never leaves
+ *  half a file */
 export function writeJsonFile(file: string, value: unknown) {
-  writeFileSync(`${file}.tmp`, `${JSON.stringify(value, null, 2)}\n`);
-  renameSync(`${file}.tmp`, file);
+  const tmp = `${file}.${process.pid}-${randomBytes(4).toString('hex')}.tmp`;
+  try { writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`); renameRetry(tmp, file); } catch (e) { rmSync(tmp, { force: true }); throw e; }
 }
 
 export function readBlock(root: string, slug: string): BlockEntry | null {
@@ -114,11 +116,11 @@ export function renameStyle(root: string, slug: string, patch: { name?: string; 
 /** puts a finished folder in place of `target`: the old one is moved aside first and put back when the move fails (an open file on
  *  Windows), so a failure never leaves neither (final review I3); the old one is removed only once the new one is in place */
 export function swapDir(stage: string, target: string) {
-  if (!existsSync(target)) { renameSync(stage, target); return; }
+  if (!existsSync(target)) { renameRetry(stage, target); return; }
   const old = join(dirname(target), `.${basename(target)}.old-${process.pid}-${Date.now()}`);
-  renameSync(target, old);
-  try { renameSync(stage, target); }
-  catch (e) { renameSync(old, target); throw e; }
+  renameRetry(target, old);
+  try { renameRetry(stage, target); }
+  catch (e) { renameRetry(old, target); throw e; }
   try { rmSync(old, { recursive: true, force: true }); } catch { /* a leftover .old folder is skipped by listLibrary, removed at the server's next start */ }
 }
 

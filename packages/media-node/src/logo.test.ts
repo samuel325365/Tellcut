@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,6 +54,15 @@ test('importLogo copies into media/brand and replaces an older logo of another f
   expect(b.path).toBe('media/brand/logo.png');
   expect(existsSync(join(dir, 'media/brand/logo.svg'))).toBe(false);
   await expect(importLogo(dir, join(dir, 'nope.gif'))).rejects.toThrow(/SVG、PNG、JPG、WebP/);
+});
+
+test('a new logo that cannot be put in place leaves the older one where it was', async () => {
+  await importLogo(dir, fixture('bakery.png'));
+  // something in the way of the new name (a folder here; on Windows, a file another program holds)
+  mkdirSync(join(dir, 'media/brand/logo.svg/x'), { recursive: true });
+  await expect(importLogo(dir, fixture('tellcut.svg'))).rejects.toThrow();
+  expect(existsSync(join(dir, 'media/brand/logo.png'))).toBe(true);
+  expect(readdirSync(join(dir, 'media/brand')).sort()).toEqual(['logo.png', 'logo.svg']);   // no temporary copy left behind
 });
 
 

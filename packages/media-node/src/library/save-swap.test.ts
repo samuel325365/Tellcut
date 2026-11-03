@@ -43,7 +43,7 @@ test('a music style saved again over a file in use is refused as library.locked;
   const a = await saveStyle({ root, projectDir: p1, projectId: 'p1', id: 'street-jazz' });
   if (!('entry' in a)) throw new Error('conflict');
   writeFileSync(join(p1, 'score/street-jazz.js'), readFileSync(join(p1, 'score/street-jazz.js'), 'utf8') + '// v2\n');
-  fail.from = join(stylesDir(root), 'street-jazz.js.tmp');
+  fail.from = join(stylesDir(root), `street-jazz.js.${process.pid}.tmp`);
   await expect(saveStyle({ root, projectDir: p1, projectId: 'p1', id: 'street-jazz' })).rejects.toMatchObject({ code: 'library.locked' });
   fail.from = '';
   expect(readFileSync(join(stylesDir(root), 'street-jazz.js'), 'utf8')).not.toContain('// v2');

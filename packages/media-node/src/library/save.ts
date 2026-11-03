@@ -1,8 +1,9 @@
 // Saving into the user's library (spec 2026-10-29-my-library §4.2): an fx module with the files it imports and the project
 // files it names (fonts, pictures), or a music style. The entry keeps the project's layout (fx/…, media/…), so
 // media.fileUrl('media/…') finds the same file in a preview of the entry and in any project it is copied into.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, relative, resolve, sep } from 'node:path';
+import { renameRetry } from '../fsutil.ts';
 import { loadProjectFx, RELATIVE_IMPORT as IMPORT } from '../fx.ts';
 import { loadStyles, SCORE_LIBRARY } from '../score/local.ts';
 import { STYLES } from '../score/styles.ts';
@@ -198,8 +199,8 @@ export async function saveStyle(i: { root: string; projectDir: string; projectId
   slug ??= slugFor(id, id, new Set(lib.styles.map((e) => e.slug)));
   mkdirSync(stylesDir(i.root), { recursive: true });
   // the new one complete before the one it replaces goes: a failure (a file another program holds) leaves the library as it was
-  const tmp = join(stylesDir(i.root), `${slug}.js.tmp`);
-  try { writeFileSync(tmp, text); renameSync(tmp, join(stylesDir(i.root), `${slug}.js`)); }
+  const tmp = join(stylesDir(i.root), `${slug}.js.${process.pid}.tmp`);
+  try { writeFileSync(tmp, text); renameRetry(tmp, join(stylesDir(i.root), `${slug}.js`)); }
   catch (e) { rmSync(tmp, { force: true }); throw lockedError(e, slug); }
   const entry: StyleEntry = { slug, id, name: i.name?.trim() || s.label, desc: (i.desc ?? s.doc ?? '').trim(), from, savedAt: new Date().toISOString(),
     version: versionOf(stylesDir(i.root), [`${slug}.js`]) };

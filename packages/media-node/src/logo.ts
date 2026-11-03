@@ -2,9 +2,10 @@
 // project and says what it is: an SVG three can extrude, or a picture that becomes a cut-out plate; whether it has a see-through
 // background; its own colours (for the theme). A project fx builds it in 3D from media/brand/logo.<ext> with ThreeKit's
 // loadMark (plugin-common/src/three/marks.ts), which makes the same extrude-or-plate choice.
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { ffmpeg, probeSize } from './ffmpeg.ts';
+import { renameRetry } from './fsutil.ts';
 
 export interface LogoInfo {
   kind: 'svg' | 'png' | 'jpg' | 'webp';
@@ -134,7 +135,7 @@ export async function inspectLogo(file: string): Promise<LogoInfo> {
   return kind === 'svg' ? inspectSvg(readFileSync(file, 'utf8')) : inspectRaster(file, kind);
 }
 
-/** copy into <project>/media/brand/logo.<ext> (an older logo of any format removed first) and inspect it */
+/** copy into <project>/media/brand/logo.<ext> (an older logo of another format removed once it is in place) and inspect it */
 export async function importLogo(projectDir: string, file: string): Promise<{ path: string; info: LogoInfo }> {
   const kind = KINDS[extname(file).toLowerCase()];
   if (!kind) throw new Error(`商標要是 SVG、PNG、JPG、WebP：${file}`);
@@ -145,11 +146,11 @@ export async function importLogo(projectDir: string, file: string): Promise<{ pa
   // the logo already there, asked for again (new previews): kept as it is
   if (resolve(file).toLowerCase() === resolve(target).toLowerCase()) return { path, info };
   mkdirSync(dir, { recursive: true });
-  // copied in first, the older logo removed after: a failed copy never leaves the project without one
-  const tmp = join(dir, `.logo-new.${kind}`);
-  copyFileSync(file, tmp);
-  for (const f of readdirSync(dir)) if (/^logo\./i.test(f)) rmSync(join(dir, f), { force: true });
-  renameSync(tmp, target);
+  // copied in and put in place first, the older logo of another format removed after: a failed copy or rename (a file another
+  // program holds) never leaves the project without one
+  const tmp = join(dir, `.logo-new-${process.pid}.${kind}`);
+  try { copyFileSync(file, tmp); renameRetry(tmp, target); } catch (e) { rmSync(tmp, { force: true }); throw e; }
+  for (const f of readdirSync(dir)) if (/^logo\./i.test(f) && f.toLowerCase() !== `logo.${kind}`) rmSync(join(dir, f), { force: true });
   return { path, info };
 }
 
