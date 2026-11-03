@@ -30,6 +30,23 @@ test('turning magnetic on asks before closing gaps; cancelling leaves the track 
   expect((ed.store.get().project!.tracks[1].items[1] as any).start).toBe(4);
 });
 
+test('a locked track cannot be made magnetic (closing its gaps would move the locked clips), nor stop being so', async () => {
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.apply((d) => moveItems(d, { ids: ['c2'], dt: 1 }));
+  ed.toggleLock('v');
+  const asked: string[] = [];
+  expect(ed.toggleMagnetic('v', (m) => { asked.push(m); return true; })).toBe(false);
+  expect([asked, (ed.store.get().project!.tracks[1] as any).magnetic, (ed.store.get().project!.tracks[1].items[1] as any).start]).toEqual([[], undefined, 5]);
+  expect(ed.store.get().notice).toBe(t('ed.lockedNotice'));
+  ed.toggleLock('v');
+  expect(ed.toggleMagnetic('v', () => true)).toBe(true);
+  ed.toggleLock('v');
+  expect(ed.toggleMagnetic('v')).toBe(false);
+  expect((ed.store.get().project!.tracks[1] as any).magnetic).toBe(true);
+});
+
 test('on a magnetic track a shot can be added at the end of the film', async () => {
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge });

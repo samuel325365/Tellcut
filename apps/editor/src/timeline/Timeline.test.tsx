@@ -476,7 +476,7 @@ test('the playhead head drags the playhead', async () => {
   expect(calls.filter((c) => c[0] === 'seek').at(-1)![1]).toBeCloseTo(3);
 });
 
-test('track headers: eye on picture tracks, speaker on sound tracks, a lock on every track; the delete button is off while locked', async () => {
+test('track headers: eye on picture tracks, speaker on sound tracks, a lock on every track; the delete and magnet buttons are off while locked', async () => {
   const { root, editor } = mount({ locked: ['v'] });
   const calls: any[] = [];
   editor.toggleLock = (id: string) => calls.push(id);
@@ -489,6 +489,7 @@ test('track headers: eye on picture tracks, speaker on sound tracks, a lock on e
   expect(row('v').classList.contains('locked')).toBe(true);
   expect(row('v').querySelector<HTMLButtonElement>('[data-track-delete]')!.disabled).toBe(true);
   expect(row('sc').querySelector<HTMLButtonElement>('[data-track-delete]')!.disabled).toBe(false);
+  expect(row('v').querySelector<HTMLButtonElement>('[data-magnet]')!.disabled).toBe(true);
   row('sc').querySelector<HTMLElement>('[data-lock]')!.click();
   expect(calls).toEqual(['sc']);
 });

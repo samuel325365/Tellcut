@@ -210,7 +210,7 @@ export function Timeline({ editor }: { editor: Editor }) {
               <span class="tname" {...tip(t('ed.tnameTip', { name: trackLabel(r.track.name ?? r.track.id) }))}
                 onMouseDown={(e) => e.stopPropagation()} onClick={(e) => editor.toggleCollapse(r.track.id, e.shiftKey)}>{trackLabel(r.track.name ?? r.track.id)}</span>
               <span class="bus">
-                {r.track.kind === 'video' && <button class={`icon${(r.track as any).magnetic ? ' on' : ''}`} data-magnet {...tip(t('ed.magnetTip'))}
+                {r.track.kind === 'video' && <button class={`icon${(r.track as any).magnetic ? ' on' : ''}`} data-magnet disabled={lockedSet.has(r.track.id)} {...tip(t('ed.magnetTip'))}
                   onMouseDown={(e) => e.stopPropagation()} onClick={() => editor.toggleMagnetic(r.track.id)}><IconMagnet size={13} /></button>}
                 {(() => {
                   // a picture track's mute hides it (eye), a sound track's silences it (speaker)

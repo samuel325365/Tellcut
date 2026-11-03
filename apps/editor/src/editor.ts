@@ -577,6 +577,8 @@ export class Editor {
   toggleMagnetic(id: string, ask: (msg: string) => boolean = (m) => globalThis.confirm(m)): boolean {
     const p = this.history?.project, t: any = p?.tracks.find((x) => x.id === id);
     if (!p || !t) return false;
+    // turning it on closes the gaps, moving the locked clips (its button is off while the track is locked)
+    if (this.s.locked.includes(id)) { this.set({ notice: say('ed.lockedNotice') }); return false; }
     const on = !t.magnetic;
     if (on) {
       const g = magneticGaps(p, id);
