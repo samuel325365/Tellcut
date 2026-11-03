@@ -66,12 +66,58 @@ test('one of My blocks is copied in first; one the project already has is just a
   expect(used).toEqual(['box']);
 });
 
+/** an editor whose registry has fx.box only while meta.fx loads its copy, with the library's link to that copy */
+async function libraryEditor(o: { boxKind?: string; ownBox?: boolean } = {}) {
+  const box = { id: 'fx', items: [block('fx.box', o.boxKind ?? 'overlay')] } as any;
+  const base = createRegistry(o.ownBox ? [corePlugin, box] : [corePlugin]), withBox = createRegistry([corePlugin, box]);
+  const used: string[] = [];
+  const { api, bridge } = fakes({ useLibrary: async (_: string, b: any) => { used.push(b.slug); return { file: 'fx/lib/box/_entry.js', fx: 's1' }; },
+    projectLibrary: async () => ({ links: [{ slug: 'box', file: 'fx/lib/box/_entry.js', types: ['fx.box'] }], savedFiles: [], savedStyles: [], styles: [] }),
+    library: async () => ({ blocks: [], styles: [] }) });
+  const ed = new Editor('demo', { api, bridge, registry: base, registryFor: async (p) => (p.meta.fx ?? []).includes('fx/lib/box/_entry.js') ? withBox : base });
+  await ed.open();
+  ed.seek(2);
+  return { ed, used };
+}
+const boxes = (ed: Editor) => items(ed).filter((x) => x.type === 'fx.box').length;
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+test('one of My blocks added, undone, then added again from the gallery is copied into meta.fx again', async () => {
+  const { ed, used } = await libraryEditor();
+  expect(await ed.useLibraryBlock('box', 'fx.box')).toBe(true);
+  ed.undo();
+  await settle();
+  expect([ed.store.get().project!.meta.fx ?? [], !!ed.registry?.item('fx.box')]).toEqual([[], false]);   // the registry follows the undo
+  expect(await addFromGallery(ed, 'demo', { kind: 'mine', type: 'fx.box', slug: 'box' })).toEqual({ ok: true });
+  expect(ed.store.get().project!.meta.fx).toEqual(['fx/lib/box/_entry.js']);
+  expect([boxes(ed), used]).toEqual([1, ['box', 'box']]);
+  // a redo past an undo brings the module back too
+  ed.undo(); await settle(); ed.redo(); await settle();
+  expect(!!ed.registry?.item('fx.box')).toBe(true);
+});
+
+test('one of My blocks whose type a block of the project\'s own already has is still asked of the library, not added as the own one', async () => {
+  const { ed, used } = await libraryEditor({ ownBox: true });
+  await addFromGallery(ed, 'demo', { kind: 'mine', type: 'fx.box', slug: 'box' });
+  expect(used).toEqual(['box']);
+});
+
+test('a background of My blocks is refused from the gallery, copied or not', async () => {
+  const { ed, used } = await libraryEditor({ boxKind: 'scene' });
+  expect(await addFromGallery(ed, 'demo', { kind: 'mine', type: 'fx.box', slug: 'box', blockKind: 'scene' })).toMatchObject({ ok: false, notice: expect.any(String) });
+  expect(used).toEqual([]);
+  // the gallery did not say (an older page): the copy is loaded, seen to be a background, and nothing is added
+  expect(await addFromGallery(ed, 'demo', { kind: 'mine', type: 'fx.box', slug: 'box' })).toMatchObject({ ok: false });
+  await settle();
+  expect([boxes(ed), ed.store.get().project!.meta.fx ?? [], !!ed.registry?.item('fx.box')]).toEqual([0, [], false]);
+});
+
 test('the round trip: the gallery asks the tab that opened it, which adds and answers; same origin only', async () => {
   const ed = await editor(), g = fakeWin(), e = fakeWin();
   link(g, e);
   const off = answerGallery(ed, e);
   expect(await askEditor(e, 'demo', { kind: 'block', type: 'x.card' }, { self: g })).toEqual({ ok: true });
-  expect([e.sent, g.sent]).toEqual([[ORIGIN], [ORIGIN]]);
+  expect([e.sent, g.sent]).toEqual([[ORIGIN], [ORIGIN, ORIGIN]]);   // the editor says it has the request, then answers
   expect(items(ed).some((x) => x.type === 'x.card')).toBe(true);
   // a page of another origin is not heard
   const n = items(ed).length;
@@ -93,5 +139,22 @@ test('no editor tab to ask (closed, never opened from one, or not answering): th
     const p = askEditor(silent, 'demo', { kind: 'block', type: 'x.card' }, { self: g, timeout: 1000 });
     await vi.advanceTimersByTimeAsync(1000);
     expect(await p).toMatchObject({ ok: false, notice: expect.any(String) });
+  } finally { vi.useRealTimers(); }
+});
+
+test('an editor that has the request is waited for past the first wait (copying one of My blocks in takes a while)', async () => {
+  vi.useFakeTimers();
+  try {
+    const g = fakeWin(), e = fakeWin();
+    link(g, e);
+    let finish!: (ok: boolean) => void;
+    const slow = { id: 'demo', registry: createRegistry([corePlugin]), store: { get: () => ({ notice: '', project: null, library: { project: null } }) } as any,
+      addOverlay: () => false, addSfx: () => false, useLibraryBlock: () => new Promise<boolean>((r) => { finish = r; }) };
+    const off = answerGallery(slow, e);
+    const p = askEditor(e, 'demo', { kind: 'mine', type: 'fx.box', slug: 'box' }, { self: g, timeout: 1000 });
+    await vi.advanceTimersByTimeAsync(5000);
+    finish(true);
+    expect(await p).toEqual({ ok: true });
+    off();
   } finally { vi.useRealTimers(); }
 });

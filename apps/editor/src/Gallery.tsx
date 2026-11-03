@@ -258,7 +258,7 @@ function MineDetail({ b, all, lib, onChanged, navigate, ask, onAsked, to }: { b:
         <button onClick={() => setParams({})}>{t('gallery.resetParams')}</button>
       </div>
       {/* the entry is copied into the project first, as the library's Add does; it starts from its own defaults */}
-      <AddBar to={to} add={{ kind: 'mine', type: b.type, slug: b.slug }} scene={b.kind === 'scene'} />
+      <AddBar to={to} add={{ kind: 'mine', type: b.type, slug: b.slug, blockKind: b.kind }} scene={b.kind === 'scene'} />
       <p class="g-doc">{b.desc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       <MineActions key={id} kind="blocks" slug={b.slug} type={b.type} name={b.name} desc={b.desc} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask} onAsked={onAsked}
         group={b.group.map((x) => all.find((y) => y.type === x)?.name ?? x)} />

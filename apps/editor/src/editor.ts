@@ -99,6 +99,24 @@ export class Editor {
   private get s() { return this.store.get(); }
   private reg: Registry | undefined;
   get registry() { return this.reg; }
+  /** the meta.fx the registry was last built for (registryFor), and a count that lets only the newest build land */
+  private regFx = '';
+  private regTurn = 0;
+  /** The registry for a project with its own fx; false when a newer build was asked for meanwhile (this one is dropped). */
+  private async loadRegistry(p: Project): Promise<boolean> {
+    if (!this.deps.registryFor) return true;
+    const turn = ++this.regTurn, key = fxKey(p);
+    this.regFx = key;
+    const reg = await this.deps.registryFor(p);
+    if (turn !== this.regTurn) return false;
+    this.reg = reg;
+    return true;
+  }
+  /** An undo, redo or proposal that changes meta.fx (an added block of My blocks undone, say) builds the registry again: one that
+   *  kept the module would list the block as the project's own, and a later add would skip copying it into meta.fx. */
+  private async followFx(p: Project) {
+    if (await this.loadRegistry(p)) this.set({});   // the panels read the registry: show them again
+  }
   private get storage() { try { return this.deps.storage ?? globalThis.localStorage; } catch { return undefined; } }
   /** Panel sizes and toggles; the lasting ones are remembered in this browser. */
   setLayout(patch: Partial<Layout>) {
@@ -137,7 +155,7 @@ export class Editor {
       // and reset a number the user was typing (Preact writes a controlled input's value on every render)
       const lib = typeof (this.deps.api as any).library === 'function' ? this.library.load() : Promise.resolve();   // test fakes without the library
       const p = parseProject(await this.deps.api.project(this.id));
-      if (this.deps.registryFor) this.reg = await this.deps.registryFor(p);
+      await this.loadRegistry(p);
       this.fitted = false;
       this.aud = null;
       this.history = new History(p);
@@ -470,7 +488,7 @@ export class Editor {
     const p = this.s.project;
     if (!p) return;
     this.fxLoaded = fx;
-    if (this.deps.registryFor) this.reg = await this.deps.registryFor(p);
+    await this.loadRegistry(p);
     this.deps.bridge.load(p);
     if (typeof (this.deps.api as any).projectLibrary === 'function') void this.library.loadProject();   // a module saved or edited: its star may change
   }
@@ -507,9 +525,12 @@ export class Editor {
     try { ({ file, fx: stamp } = await this.library.use(slug)); }
     catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return false; }
     const now = this.s.project!, fx = [...new Set([...(now.meta.fx ?? []), file])];
-    if (this.deps.registryFor) this.reg = await this.deps.registryFor({ ...now, meta: { ...now.meta, fx } });
+    await this.loadRegistry({ ...now, meta: { ...now.meta, fx } });
+    // a background or frame goes under the video: it only replaces one already there (the library and gallery refuse it first)
+    if (this.reg?.item(type)?.kind === 'scene') { void this.followFx(this.s.project!); this.set({ notice: say('ed.sceneAdd') }); return false; }
     const ok = this.addTo('overlay', { type, start: t, end: t + 2, params: {} }, (d) => { d.meta.fx = [...new Set([...(d.meta.fx ?? []), file])]; });
     if (ok) { this.deps.bridge.load(this.s.project!); this.fxLoaded = stamp; }   // a module the preview has not loaded yet; the copy's fx-changed is then skipped
+    else if (this.s.project) void this.followFx(this.s.project);   // not added: the registry goes back to what meta.fx loads
     return ok;
   }
   /** "Update": the newer version of an entry over this project's copy; the timeline stays as it is */
@@ -587,6 +608,7 @@ export class Editor {
     this.deps.bridge.patch(p);
     if (commit) this.autosave?.schedule(p);
     this.checkCrop();
+    if (this.deps.registryFor && fxKey(p) !== this.regFx) void this.followFx(p);
   }
 
   /** A seek or a play from the UI ends an audition first: they are meant for the real project. */
@@ -985,3 +1007,5 @@ const ownParams = (defs: Array<{ key: string }> | undefined, params: Record<stri
 export const musicLength = (pk?: PeakInfo) => (pk && pk.rate > 0 && pk.peaks.length ? pk.peaks.length / pk.rate : undefined);
 
 const innerWidthSafe = () => (typeof innerWidth === 'number' ? innerWidth : 1280);
+/** what a registry built by registryFor depends on: the project's own modules */
+const fxKey = (p: Project) => JSON.stringify(p.meta.fx ?? []);
