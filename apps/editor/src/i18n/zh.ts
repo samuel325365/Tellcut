@@ -743,4 +743,8 @@ export const zh = {
   'err.fx.sfxNoSynth': '{type} 缺 synth 或 duration',
   'err.fx.sfxNoLabel': '{type} 缺 label／params',
   'err.fx.noDoc': '{type} 沒有 doc（block catalog 會看不到它的說明）',
+  'err.player.audioOffline': '音訊無法使用（{error}）：{url}',
+  'err.player.cropGone': '裁切模式：這個片段已經不在了',
+  'err.player.noThreeD': '3D 無法使用，先以平面預覽（{error}）',
+  'err.player.audioDecode': '音訊無法解碼，播放時略過（{key}）：{error}',
 } as const;

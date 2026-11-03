@@ -59,16 +59,36 @@ test('a pause that arrives while play() is still starting wins', async () => {
 });
 
 test('offline music still lets the preview load; the missing file is reported (spec §8)', async () => {
-  const errors: string[] = [];
+  const errors: string[] = [], codes: unknown[] = [];
   vi.stubGlobal('fetch', async () => ({ ok: false, status: 404 }));
   try {
     const s = new PreviewSession({
       stageEl: document.createElement('div'), resolver: {} as any, projectUrl: 'http://h/p.json',
-      onTime() {}, onEnded() {}, onError: (_id, m) => errors.push(m), raf() {}, makeAudioContext: () => fakeCtx(),
+      onTime() {}, onEnded() {}, onError: (_id, m, c) => { errors.push(m); codes.push(c); }, raf() {}, makeAudioContext: () => fakeCtx(),
     });
     const withMusic = { ...project, media: { m: { path: 'media/x.mp3' } }, tracks: [{ id: 'mu', kind: 'music', items: [{ id: 'm1', media: 'm', in: 0, start: 0, end: 5, gain: 0, fadeIn: 0, fadeOut: 0 }] }] };
     expect(await s.load(withMusic)).toBe(10);
     expect(errors).toEqual(['Audio not available (404 http://h/media/x.mp3): http://h/media/x.mp3']);
+    // the editor words it in its own language from the code
+    expect(codes).toEqual([{ code: 'player.audioOffline', params: { error: '404 http://h/media/x.mp3', url: 'http://h/media/x.mp3' } }]);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+test('music that cannot be decoded is reported once, coded for the editor', async () => {
+  const errors: unknown[][] = [];
+  vi.stubGlobal('fetch', async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) }));
+  try {
+    const ctx = { ...fakeCtx(), decodeAudioData: async () => { throw new Error('bad data'); } };
+    const s = new PreviewSession({
+      stageEl: document.createElement('div'), resolver: {} as any, projectUrl: 'http://h/p.json',
+      onTime() {}, onEnded() {}, onError: (...e) => { errors.push(e); }, raf() {}, makeAudioContext: () => ctx,
+    });
+    const withMusic = { ...project, media: { m: { path: 'media/x.mp3' } }, tracks: [{ id: 'mu', kind: 'music', items: [{ id: 'm1', media: 'm', in: 0, start: 0, end: 5, gain: 0, fadeIn: 0, fadeOut: 0 }] }] };
+    await s.load(withMusic);
+    await vi.waitFor(() => expect(errors).toHaveLength(1));
+    const [id, message, coded] = errors[0] as [unknown, string, any];
+    expect([id, message.startsWith('Audio could not be decoded')]).toEqual([undefined, true]);
+    expect(coded).toEqual({ code: 'player.audioDecode', params: { key: expect.any(String), error: 'bad data' } });
   } finally { vi.unstubAllGlobals(); }
 });
 
@@ -90,6 +110,27 @@ test('leaving crop mode redraws the stage (edits made while cropping were not dr
   s.cropMode(null);
   await new Promise((r) => setTimeout(r, 0));
   expect(times.length).toBe(1);
+});
+
+test('crop mode for a clip that is gone ends crop mode and says so, coded for the editor', async () => {
+  const errors: unknown[][] = [];
+  const s = new PreviewSession({ stageEl: document.createElement('div'), resolver: {} as any, projectUrl: 'http://h/p.json',
+    onTime() {}, onEnded() {}, onError: (...a) => { errors.push(a); }, raf() {}, makeAudioContext: () => fakeCtx() });
+  await s.load(project);
+  s.cropMode({ itemId: 'gone', which: 'from' });
+  expect(errors).toEqual([['gone', 'Crop mode: the clip no longer exists', { code: 'player.cropGone' }]]);
+  expect(s.busy).toBe(false);
+});
+
+test("an fx module that fails to load is reported with the fx issue's own code, params and path", async () => {
+  const errors: unknown[][] = [];
+  const s = new PreviewSession({ stageEl: document.createElement('div'), resolver: {} as any, projectUrl: 'http://h/p.json',
+    onTime() {}, onEnded() {}, onError: (...a) => { errors.push(a); }, raf() {}, makeAudioContext: () => fakeCtx() });
+  await s.load({ ...project, meta: { ...project.meta, fx: ['https://evil.example/x.js'] } });
+  expect(errors).toHaveLength(1);
+  const [id, message, coded] = errors[0] as [unknown, string, any];
+  expect([id, message.startsWith('fx https://evil.example/x.js：')]).toEqual([undefined, true]);
+  expect(coded).toMatchObject({ code: 'fx.loadFailed', path: 'https://evil.example/x.js', params: { error: expect.stringContaining('https://evil.example/x.js') } });
 });
 
 test('loading a project starts decoding its audio, so the first play does not wait for it', async () => {
@@ -278,13 +319,14 @@ test('patch that adds the first 3D item loads three', async () => {
 });
 
 test('three.js that fails to load does not fail the preview: it goes on flat, says so, and tries again on the next load', async () => {
-  const errors: string[] = [];
+  const errors: string[] = [], codes: unknown[] = [];
   const loadThree = vi.fn(async () => { throw new Error('chunk offline'); });
   const s = new PreviewSession({ stageEl: document.createElement('div'), resolver: {} as any, projectUrl: 'http://h/p.json',
-    onTime() {}, onEnded() {}, onError: (_id, m) => { errors.push(m); }, raf: () => {}, makeAudioContext: () => fakeCtx(), loadThree, plugins: extra });
+    onTime() {}, onEnded() {}, onError: (_id, m, c) => { errors.push(m); codes.push(c); }, raf: () => {}, makeAudioContext: () => fakeCtx(), loadThree, plugins: extra });
   await expect(s.load(with3d)).resolves.toBe(10);
   expect(built).toEqual([undefined]);                     // built without ctx.three
   expect(errors.some((m) => m.includes('chunk offline'))).toBe(true);
+  expect(codes).toContainEqual({ code: 'player.noThreeD', params: { error: 'chunk offline' } });
   await s.patch(with3d);                                   // an edit does not reload the whole stage to try again
   expect(loadThree).toHaveBeenCalledTimes(1);
   loadThree.mockResolvedValueOnce(KIT as never);

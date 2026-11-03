@@ -158,9 +158,12 @@ export type ToolMsg =
   | { type: 'pick'; itemId: string | null }
   | { type: 'transformChange'; itemId: string; transform: Transform; final: boolean }
   | { type: 'paramEdit'; itemId: string; key: string; value: string };
+/** message: the player's own words, shown when the editor has no text for the code; code + params: the editor words it in
+ *  its language (err.<code>). path: the fx module an fx error is about. */
+export interface PlayerError { type: 'error'; itemId?: string; message: string; code?: string; params?: Record<string, string | number>; path?: string }
 export type PlayerMsg =
   | { type: 'boot' } | { type: 'ready'; duration: number } | { type: 'time'; t: number }
-  | { type: 'ended' } | { type: 'error'; itemId?: string; message: string }
+  | { type: 'ended' } | PlayerError
   | { type: 'level'; db: number }
   | { type: 'cropChange'; itemId: string; which: 'from' | 'to' | number; crop: { x: number; y: number; zoom: number }; final: boolean }
   | { type: 'key'; key: string; code: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }

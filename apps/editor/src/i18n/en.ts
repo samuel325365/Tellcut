@@ -743,4 +743,8 @@ export const en: Record<Key, string> = {
   'err.fx.sfxNoSynth': '{type} has no synth or duration',
   'err.fx.sfxNoLabel': '{type} is missing label or params',
   'err.fx.noDoc': '{type} has no doc (the block catalog will show no description for it)',
+  'err.player.audioOffline': 'Audio not available ({error}): {url}',
+  'err.player.cropGone': 'Crop mode: the clip no longer exists',
+  'err.player.noThreeD': '3D not available, previewing flat ({error})',
+  'err.player.audioDecode': 'Audio could not be decoded, skipped when playing ({key}): {error}',
 };

@@ -7,11 +7,14 @@ import { SmoothClock } from './clock.ts';
 import { drawFrame } from './frame.ts';
 
 export type { CropSel } from '@tellcut/protocol';
-import type { CropSel } from '@tellcut/protocol';
+import type { CropSel, PlayerError } from '@tellcut/protocol';
+
+/** what the editor words an error by, in its language (err.<code>); the message is the fallback */
+export type ErrorCode = Pick<PlayerError, 'code' | 'params' | 'path'>;
 
 export interface SessionDeps {
   stageEl: HTMLElement; resolver: MediaResolver; projectUrl: string;
-  onTime(t: number): void; onEnded(): void; onError(itemId: string | undefined, message: string): void;
+  onTime(t: number): void; onEnded(): void; onError(itemId: string | undefined, message: string, coded?: ErrorCode): void;
   /** master output peak in dBFS, about 10×/s while playing */
   onLevel?(db: number): void;
   /** after every still frame (seek, edit, pause) and when playback starts: the preview tools redraw */
@@ -54,7 +57,8 @@ export class PreviewSession {
   private loading = false;
   private cropLater = false;
   private raf: (f: () => void) => void;
-  private audioOffline = (url: string, e: Error) => this.d.onError(undefined, `Audio not available (${e.message}): ${url}`);
+  private audioOffline = (url: string, e: Error) =>
+    this.d.onError(undefined, `Audio not available (${e.message}): ${url}`, { code: 'player.audioOffline', params: { error: e.message, url } });
   constructor(private d: SessionDeps) {
     this.clock = new SmoothClock(d.wallClock);
     this.raf = d.raf ?? ((f) => { requestAnimationFrame(() => f()); });
@@ -75,7 +79,7 @@ export class PreviewSession {
     this.pause();
     const p = parseProject(raw);
     const fx = await importFx(this.d.projectUrl, p.meta.fx, Date.now());
-    for (const e of fx.errors) this.d.onError(undefined, `fx ${e.path}：${e.message}`);
+    for (const e of fx.errors) this.d.onError(undefined, `fx ${e.path}：${e.message}`, e.code ? { code: e.code, params: e.params, path: e.path } : undefined);
     this.registry = registryWith(this.plugins, fx);
     this.project = p;
     this.threeFailed = false;
@@ -190,7 +194,7 @@ export class PreviewSession {
     if (this.loading) { this.cropLater = true; return; }
     const sel = this.cropSel!, p = this.project;
     const found = p.tracks.flatMap((t) => (t.kind === 'video' ? (t.items as VideoItem[]) : [])).find((i) => i.id === sel.itemId);
-    if (!found) { this.cropMode(null); this.d.onError(sel.itemId, 'Crop mode: the clip no longer exists'); return; }
+    if (!found) { this.cropMode(null); this.d.onError(sel.itemId, 'Crop mode: the clip no longer exists', { code: 'player.cropGone' }); return; }
     // a keyframe deleted while its crop mode is open ends crop mode
     const key = typeof sel.which === 'number' ? found.crop.keys?.[sel.which] : undefined;
     if (typeof sel.which === 'number' && !key) { this.cropMode(null); return; }
@@ -223,14 +227,16 @@ export class PreviewSession {
     try { return await (this.d.loadThree ?? loadThreeKit)(); }
     catch (e) {
       this.threeFailed = true;
-      this.d.onError(undefined, `3D not available, previewing flat (${(e as Error)?.message ?? e})`);
+      const error = String((e as Error)?.message ?? e);
+      this.d.onError(undefined, `3D not available, previewing flat (${error})`, { code: 'player.noThreeD', params: { error } });
       return undefined;
     }
   }
 
   private makeAudio(p: Project) {
     const a = new AudioEngine(planAudio(p, this.stage.times, this.d.resolver, this.d.projectUrl), this.registry.sfx, p.meta.mix, p.meta.duration, this.d.makeAudioContext);
-    a.onDecodeError = (k, e) => this.d.onError(undefined, `Audio could not be decoded, skipped when playing (${k}): ${e.message}`);
+    a.onDecodeError = (k, e) =>
+      this.d.onError(undefined, `Audio could not be decoded, skipped when playing (${k}): ${e.message}`, { code: 'player.audioDecode', params: { key: k, error: e.message } });
     return a;
   }
 }

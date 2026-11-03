@@ -58,7 +58,7 @@ export function startEmbed(win: Window, stageEl: HTMLElement, viewport: HTMLElem
   const session = new PreviewSession({
     stageEl, ...deps,
     onTime: (t) => post({ type: 'time', t }), onEnded: () => post({ type: 'ended' }),
-    onError: (itemId, message) => post({ type: 'error', itemId, message }),
+    onError: (itemId, message, coded) => post({ type: 'error', itemId, message, ...coded }),
     onLevel: (db) => post({ type: 'level', db }),
     onDrawn: () => tools?.refresh(),
     post, viewport: () => ({ w: viewport.clientWidth, h: viewport.clientHeight }),

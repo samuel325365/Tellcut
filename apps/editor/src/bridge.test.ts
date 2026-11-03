@@ -1,4 +1,4 @@
-import { PlayerBridge } from './bridge.ts';
+import { PlayerBridge, playerErrorText } from './bridge.ts';
 import { setLang } from './i18n/lang.ts';
 
 function setup() {
@@ -136,4 +136,40 @@ test('a boot is reported (the preview restarted: the editor must not take the ol
   b.onBoot = () => { boots++; };
   b.handle({ type: 'boot' }); b.handle({ type: 'ready', duration: 1 }); b.handle({ type: 'boot' });
   expect(boots).toBe(2);
+});
+
+test("a player error's code is worded in the page's language; its own words when the code has no text", () => {
+  const off = { type: 'error', message: 'Audio not available (404): http://h/a.mp3', code: 'player.audioOffline', params: { error: '404', url: 'http://h/a.mp3' } } as const;
+  expect(playerErrorText(off, 'en')).toBe('Audio not available (404): http://h/a.mp3');
+  expect(playerErrorText(off, 'zh')).toBe('音訊無法使用（404）：http://h/a.mp3');
+  expect(playerErrorText(off, 'ja')).toBe('音声を使えません（404）：http://h/a.mp3');
+  const crop = { type: 'error', itemId: 'v1', message: 'Crop mode: the clip no longer exists', code: 'player.cropGone' } as const;
+  expect(['en', 'zh', 'ja'].map((l) => playerErrorText(crop, l as any)))
+    .toEqual(['v1: Crop mode: the clip no longer exists', 'v1: 裁切模式：這個片段已經不在了', 'v1: クロップモード：このクリップはもうありません']);
+  expect(playerErrorText({ type: 'error', message: '3D not available, previewing flat (x)', code: 'player.noThreeD', params: { error: 'x' } }, 'ja'))
+    .toBe('3D を使えないため、平面でプレビューします（x）');
+  expect(playerErrorText({ type: 'error', message: 'm', code: 'player.audioDecode', params: { key: 'k', error: 'bad' } }, 'zh'))
+    .toBe('音訊無法解碼，播放時略過（k）：bad');
+  // an unknown code (a newer player) and no code at all: the player's own words
+  expect(playerErrorText({ type: 'error', message: 'something new', code: 'player.fromTheFuture' }, 'zh')).toBe('something new');
+  expect(playerErrorText({ type: 'error', itemId: 'v9', message: 'Video not available' }, 'ja')).toBe('v9: Video not available');
+});
+
+test("an fx error is worded by the fx issue's own code, after the module's path; uncoded, its message already names it", () => {
+  const fx = { type: 'error', message: 'fx fx/a.js：效果模組載入失敗', code: 'fx.loadFailed', params: { error: 'boom' }, path: 'fx/a.js' } as const;
+  expect(playerErrorText(fx, 'en')).toBe('fx/a.js: The effect module failed to load: boom');
+  expect(playerErrorText(fx, 'zh')).toBe('fx/a.js: 效果模組載入失敗：boom');
+  expect(playerErrorText({ type: 'error', message: 'fx fx/a.js：old words', path: 'fx/a.js' }, 'en')).toBe('fx fx/a.js：old words');
+});
+
+test('coded player errors reach onError worded in the current language', () => {
+  setLang('en');
+  const { b } = setup();
+  const seen: string[] = [];
+  b.onError = (m) => seen.push(m);
+  b.handle({ type: 'error', message: 'Crop mode: the clip no longer exists', code: 'player.cropGone', itemId: 'v1' });
+  setLang('ja');
+  b.handle({ type: 'error', message: '3D not available, previewing flat (x)', code: 'player.noThreeD', params: { error: 'x' } });
+  setLang('zh');
+  expect(seen).toEqual(['v1: Crop mode: the clip no longer exists', '3D を使えないため、平面でプレビューします（x）']);
 });

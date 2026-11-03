@@ -743,4 +743,8 @@ export const ja: Record<Key, string> = {
   'err.fx.sfxNoSynth': '{type} に synth または duration がありません',
   'err.fx.sfxNoLabel': '{type} に label／params がありません',
   'err.fx.noDoc': '{type} に doc がありません（ブロックカタログに説明が出ません）',
+  'err.player.audioOffline': '音声を使えません（{error}）：{url}',
+  'err.player.cropGone': 'クロップモード：このクリップはもうありません',
+  'err.player.noThreeD': '3D を使えないため、平面でプレビューします（{error}）',
+  'err.player.audioDecode': '音声をデコードできないため、再生時はスキップします（{key}）：{error}',
 };

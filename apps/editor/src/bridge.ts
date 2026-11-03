@@ -1,6 +1,6 @@
 // Editor side of the player postMessage protocol (spec §2.3; the player sends 'boot' when it starts listening).
-import type { CropSel, PlayerMsg, PlayerTexts } from '@tellcut/protocol';
-import { t } from './i18n/index.ts';
+import type { CropSel, Lang, PlayerError, PlayerMsg, PlayerTexts } from '@tellcut/protocol';
+import { errCoded, errText, t } from './i18n/index.ts';
 import { onLang } from './i18n/lang.ts';
 
 export type { CropSel };
@@ -11,6 +11,15 @@ export type ParamEditMsg = Omit<Extract<PlayerMsg, { type: 'paramEdit' }>, 'type
 
 /** what the preview words by itself, in the page's language (sent each time the player starts, and again when the language changes) */
 export const playerTexts = (): PlayerTexts => ({ textInPanel: t('ed.textInPanel') });
+
+/** a player error in the page's language (its code worded by err.<code>, else the player's own words), after the item or fx module it is about */
+export function playerErrorText(m: PlayerError, lang?: Lang): string {
+  const coded = errCoded(m);
+  // an uncoded fx error already names its module in its message
+  const at = m.itemId ?? (coded ? m.path : undefined);
+  const text = coded ? errText(m, lang) : m.message;
+  return at ? `${at}: ${text}` : text;
+}
 
 export class PlayerBridge {
   onReady: (duration: number) => void = () => {};
@@ -57,7 +66,7 @@ export class PlayerBridge {
     else if (m.type === 'pick') this.onPick(m.itemId);
     else if (m.type === 'transformChange') this.onTransformChange(m);
     else if (m.type === 'paramEdit') this.onParamEdit(m);
-    else if (m.type === 'error') this.onError(m.itemId ? `${m.itemId}: ${m.message}` : m.message);
+    else if (m.type === 'error') this.onError(playerErrorText(m));
   }
 
   load(p: unknown) {
