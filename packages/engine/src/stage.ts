@@ -58,14 +58,15 @@ export class Stage {
   private reports: ReportedText[] = [];
   /** strict (render mode): a failing item aborts with its id instead of becoming a placeholder */
   constructor(private root: HTMLElement, private registry: Registry, private media: MediaPool,
-    private opts: { strict?: boolean; onError?: (itemId: string, message: string) => void; /** previews: see draw() */ subpixelZoom?: boolean;
+    private opts: { strict?: boolean; /** coded: the code and params the editor words the error by in its language (err.<code>) */
+      onError?: (itemId: string, message: string, coded?: { code: string; params: Record<string, string> }) => void; /** previews: see draw() */ subpixelZoom?: boolean;
       /** the ThreeKit handed to every item as ctx.three (the player loads it when usesThree) */ three?: unknown;
       /** keep what items report with ctx.reportText (the player's render mode, which check measures); otherwise it is a no-op */ measure?: boolean } = {}) {}
 
   private fail(L: Common, item: SceneItem, e: unknown): Layer {
-    const msg = `Item "${item.id}" (${item.type}): ${(e as Error)?.message ?? e}`;
+    const error = String((e as Error)?.message ?? e), msg = `Item "${item.id}" (${item.type}): ${error}`;
     if (this.opts.strict) throw new Error(msg);
-    this.opts.onError?.(item.id, msg);
+    this.opts.onError?.(item.id, msg, { code: 'player.itemFailed', params: { type: item.type, error } });
     console.error(msg);
     L.el.innerHTML = '';
     const m = h('div', 'st-missing', null, L.el);
@@ -286,7 +287,7 @@ export class Stage {
         L.readied = undefined;
         const m = e instanceof Error ? e.message : String(e);
         if (this.opts.strict) throw new Error(`${L.id}: ${m}`);
-        this.opts.onError?.(L.id, m);
+        this.opts.onError?.(L.id, m, { code: 'player.itemNotReady', params: { type: L.item.type, error: m } });
       }
     }));
   }

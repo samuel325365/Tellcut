@@ -749,4 +749,10 @@ export const ja: Record<Key, string> = {
   'err.player.cropGone': 'クロップモード：このクリップはもうありません',
   'err.player.noThreeD': '3D を使えないため、平面でプレビューします（{error}）',
   'err.player.audioDecode': '音声をデコードできないため、再生時はスキップします（{key}）：{error}',
+  'err.player.itemFailed': '{type} を描画できません：{error}',
+  'err.player.itemNotReady': '{type} に必要な素材を読み込めません：{error}',
+  'err.player.loadFailed': 'プレビューでプロジェクトを読み込めません：{error}',
+  'err.player.updateFailed': 'プレビューに編集を反映できません：{error}',
+  'err.player.seekFailed': 'プレビューをその時間に移動できません：{error}',
+  'err.player.playFailed': 'プレビューを再生できません：{error}',
 };

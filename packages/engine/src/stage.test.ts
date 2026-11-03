@@ -252,13 +252,14 @@ test('new export settings or home preset info keep every layer (neither changes 
 });
 
 test('item failures are reported through onError', () => {
-  const errs: Array<[string, string]> = [];
+  const errs: unknown[] = [];
   const p = project();
   p.tracks[1].items = [{ id: 'bad', type: 't.v', start: 0, end: 1, params: { src: 'typo' } }];
   const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-  new Stage(document.createElement('div'), createRegistry([corePlugin, refPlugin]), fakeMedia(), { onError: (id, m) => errs.push([id, m]) }).load(p);
+  new Stage(document.createElement('div'), createRegistry([corePlugin, refPlugin]), fakeMedia(), { onError: (id, m, c) => errs.push([id, m, c]) }).load(p);
   spy.mockRestore();
-  expect(errs).toEqual([['bad', 'Item "bad" (t.v): unknown source "typo"']]);
+  // with a code the editor words in its language (the block's own error stays as it was thrown)
+  expect(errs).toEqual([['bad', 'Item "bad" (t.v): unknown source "typo"', { code: 'player.itemFailed', params: { type: 't.v', error: 'unknown source "typo"' } }]]);
 });
 
 test('an item transform moves and scales its whole layer; changing only the transform keeps the layer', () => {
@@ -345,7 +346,7 @@ test('stage.ready waits for every plugin item to load its assets; a failed load 
   ] } as any]);
   const p = project();
   p.tracks[1].items = [{ id: 's1', type: 'r.slow', start: 0, end: 1, params: {} }, { id: 'b1', type: 'r.bad', start: 0, end: 1, params: {} }];
-  const st = new Stage(document.createElement('div'), reg, fakeMedia(), { onError: (id, m) => errors.push(`${id}: ${m}`) });
+  const st = new Stage(document.createElement('div'), reg, fakeMedia(), { onError: (id, m, c) => errors.push(`${id}: ${m} ${JSON.stringify(c)}`) });
   st.load(p);
   let done = false;
   const r = st.ready().then(() => (done = true));
@@ -354,7 +355,7 @@ test('stage.ready waits for every plugin item to load its assets; a failed load 
   open();
   await r;
   expect(done).toBe(true);
-  expect(errors).toEqual(['b1: no art']);
+  expect(errors).toEqual(['b1: no art {"code":"player.itemNotReady","params":{"type":"r.bad","error":"no art"}}']);
 });
 
 test('in strict (export) mode a plugin item whose assets fail to load fails stage.ready', async () => {

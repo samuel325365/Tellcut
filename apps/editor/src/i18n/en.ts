@@ -749,4 +749,10 @@ export const en: Record<Key, string> = {
   'err.player.cropGone': 'Crop mode: the clip no longer exists',
   'err.player.noThreeD': '3D not available, previewing flat ({error})',
   'err.player.audioDecode': 'Audio could not be decoded, skipped when playing ({key}): {error}',
+  'err.player.itemFailed': '{type} could not be drawn: {error}',
+  'err.player.itemNotReady': '{type} could not load what it needs: {error}',
+  'err.player.loadFailed': 'The preview could not load the project: {error}',
+  'err.player.updateFailed': 'The preview could not take the edit: {error}',
+  'err.player.seekFailed': 'The preview could not go to that time: {error}',
+  'err.player.playFailed': 'The preview could not play: {error}',
 };

@@ -42,7 +42,15 @@ test('pause acts immediately and drops a queued play; failures are posted as err
   expect(calls).toEqual(['load', 'pause']);
   s.patch = async () => { throw new Error('Invalid project:\nmeta: Required'); };
   send({ type: 'patch', project: {} }); await flush();
-  expect(posted.at(-1)).toEqual({ type: 'error', message: 'Invalid project:\nmeta: Required' });
+  // coded by what failed, the error's own words as its param, for the editor to word in its language
+  expect(posted.at(-1)).toEqual({ type: 'error', message: 'Invalid project:\nmeta: Required', code: 'player.updateFailed', params: { error: 'Invalid project:\nmeta: Required' } });
+  s.seek = async () => { throw 'gone'; };
+  send({ type: 'seek', t: 1 }); await flush();
+  expect(posted.at(-1)).toEqual({ type: 'error', message: 'gone', code: 'player.seekFailed', params: { error: 'gone' } });
+  // an error with a code of its own (a project from a newer Tellcut) keeps it
+  s.load = async () => { throw Object.assign(new Error('Invalid project:\nnewer'), { code: 'project.tooNew', params: { version: 9, max: 1 } }); };
+  send({ type: 'load', project: {} }); await flush();
+  expect(posted.at(-1)).toEqual({ type: 'error', message: 'Invalid project:\nnewer', code: 'project.tooNew', params: { version: 9, max: 1 } });
 });
 
 test('queued transport messages collapse to the newest play or seek', async () => {

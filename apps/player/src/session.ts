@@ -89,7 +89,7 @@ export class PreviewSession {
     this.pool = new MediaPool(this.d.resolver, { render: false, fps: p.meta.fps });
     // the old stage's items let go of their GPU things first: nothing else ever disposes them (a new stage starts empty)
     this.stage?.destroy();
-    this.stage = new Stage(this.d.stageEl, this.registry, this.pool, { onError: (id, m) => this.d.onError(id, m), subpixelZoom: true, three: this.three });
+    this.stage = new Stage(this.d.stageEl, this.registry, this.pool, { onError: (id, m, c) => this.d.onError(id, m, c), subpixelZoom: true, three: this.three });
     this.stage.load(p);
     this.audio?.dispose();
     this.audio = this.makeAudio(p);
@@ -112,7 +112,7 @@ export class PreviewSession {
     this.t = clamp(this.t, p.meta.duration);
     if (this.cropSel) { this.showCrop(); return; }
     // spec §5: editing while playing rebuilds the audio 150 ms after the last change
-    if (this.playing) { clearTimeout(this.restart); this.restart = setTimeout(() => { if (this.playing) void this.play(this.t).catch((e) => this.d.onError(undefined, String((e as Error)?.message ?? e))); }, 150); }
+    if (this.playing) { clearTimeout(this.restart); this.restart = setTimeout(() => { if (this.playing) void this.play(this.t).catch((e) => { const error = String((e as Error)?.message ?? e); this.d.onError(undefined, error, { code: 'player.playFailed', params: { error } }); }); }, 150); }
     else await this.show();
   }
 

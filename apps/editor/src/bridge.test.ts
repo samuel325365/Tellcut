@@ -153,6 +153,13 @@ test("a player error's code is worded in the page's language; its own words when
   // an unknown code (a newer player) and no code at all: the player's own words
   expect(playerErrorText({ type: 'error', message: 'something new', code: 'player.fromTheFuture' }, 'zh')).toBe('something new');
   expect(playerErrorText({ type: 'error', itemId: 'v9', message: 'Video not available' }, 'ja')).toBe('v9: Video not available');
+  // the engine stage's own: a block that fails to draw or to load, after its item; the block's error stays as thrown
+  const bad = { type: 'error', itemId: 'b1', message: 'Item "b1" (common.slam): boom', code: 'player.itemFailed', params: { type: 'common.slam', error: 'boom' } } as const;
+  expect(['en', 'zh', 'ja'].map((l) => playerErrorText(bad, l as any))).toEqual(['b1: common.slam could not be drawn: boom', 'b1: common.slam 畫不出來：boom', 'b1: common.slam を描画できません：boom']);
+  expect(playerErrorText({ type: 'error', itemId: 'b1', message: 'no art', code: 'player.itemNotReady', params: { type: 'r.bad', error: 'no art' } }, 'zh')).toBe('b1: r.bad 需要的素材載入失敗：no art');
+  // a load, edit, seek or play that failed; a project from a newer Tellcut keeps its own code
+  expect(playerErrorText({ type: 'error', message: 'x', code: 'player.updateFailed', params: { error: 'x' } }, 'en')).toBe('The preview could not take the edit: x');
+  expect(playerErrorText({ type: 'error', message: 'Invalid project', code: 'project.tooNew', params: { version: 9, max: 1 } }, 'zh')).toMatch(/較新的 Tellcut/);
 });
 
 test("an fx error is worded by the fx issue's own code, after the module's path; uncoded, its message already names it", () => {

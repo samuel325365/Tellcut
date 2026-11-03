@@ -1,11 +1,19 @@
 // postMessage protocol between the editor and the embedded player (spec §2.3, plus 'boot').
 import type { MediaResolver } from '@tellcut/engine';
-import type { CropSel, EditorMsg, PlayerMsg } from '@tellcut/protocol';
+import type { CropSel, EditorMsg, PlayerError, PlayerMsg } from '@tellcut/protocol';
 import { PreviewSession } from './session.ts';
 import { fitStage } from './fit.ts';
 import { StageTools } from './tools.ts';
 
 export type { EditorMsg, PlayerMsg };
+/** what failed in the preview, by the message it was running: the code the editor words it by when the error has none of its own */
+const FAILED = { load: 'player.loadFailed', patch: 'player.updateFailed', seek: 'player.seekFailed', play: 'player.playFailed' } as const;
+/** a failure as the editor gets it: its own code (a ProjectError's project.tooNew) if it has one, else `code` with its words as {error} */
+export function errorMsg(e: unknown, code: string): PlayerError {
+  const message = String((e as Error)?.message ?? e), own = e as { code?: unknown; params?: PlayerError['params'] } | null;
+  return typeof own?.code === 'string' ? { type: 'error', message, code: own.code, ...(own.params ? { params: own.params } : {}) }
+    : { type: 'error', message, code, params: { error: message } };
+}
 export interface SessionApi { load(p: unknown): Promise<number>; patch(p: unknown): Promise<void>; seek(t: number): Promise<void>; play(from: number): Promise<void>; pause(): void; cropMode(sel: CropSel | null): void; quality(v: 'full' | 'draft'): void; select(id: string | null): void }
 
 /** Keys typed into the preview's text box stay there (Space must not start playback). */
@@ -33,7 +41,7 @@ export function createDispatcher(s: SessionApi, post: (m: PlayerMsg) => void) {
         else if (m.type === 'patch') await s.patch(m.project);
         else if (m.type === 'seek') await s.seek(m.t);
         else if (m.type === 'play') await s.play(m.from);
-      } catch (e) { post({ type: 'error', message: String((e as Error)?.message ?? e) }); }
+      } catch (e) { post(errorMsg(e, FAILED[m.type as keyof typeof FAILED])); }
     }
     busy = false;
   }

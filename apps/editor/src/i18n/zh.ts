@@ -749,4 +749,10 @@ export const zh = {
   'err.player.cropGone': '裁切模式：這個片段已經不在了',
   'err.player.noThreeD': '3D 無法使用，先以平面預覽（{error}）',
   'err.player.audioDecode': '音訊無法解碼，播放時略過（{key}）：{error}',
+  'err.player.itemFailed': '{type} 畫不出來：{error}',
+  'err.player.itemNotReady': '{type} 需要的素材載入失敗：{error}',
+  'err.player.loadFailed': '預覽載入專案失敗：{error}',
+  'err.player.updateFailed': '預覽套用修改失敗：{error}',
+  'err.player.seekFailed': '預覽跳到這個時間失敗：{error}',
+  'err.player.playFailed': '預覽無法播放：{error}',
 } as const;
