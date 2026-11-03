@@ -7,6 +7,7 @@
 // old way, or on a file system without links) counts as held while it is young; a stale lock is moved aside before it is removed
 // (takeOver), so a late waiter cannot delete the fresh lock another waiter has just made in its place.
 import { closeSync, linkSync, openSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync, writeSync } from 'node:fs';
+import { isAlive, nap, pause } from './proc.ts';
 
 /** a holder touches its file this often (ms); one untouched for STALE is gone; an unreadable one younger than YOUNG is being made */
 const EVERY = 30_000, STALE = 3 * 60_000, YOUNG = 5_000;
@@ -15,13 +16,6 @@ const GUARD_STALE = 60_000;
 /** on Windows a lock another process just removed is still "delete pending", and an indexer or antivirus may have it open */
 const BUSY = new Set(['EPERM', 'EBUSY', 'EACCES']);
 const code = (e: unknown) => (e as NodeJS.ErrnoException)?.code ?? '';
-const nap = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-
-/** EPERM: the process exists but belongs to someone with more rights (e.g. an elevated shell on Windows) — still alive */
-export const isAlive = (pid: number): boolean => {
-  try { process.kill(pid, 0); return true; } catch (e) { return code(e) === 'EPERM'; }
-};
 
 /** the other live process holding `file`, and since when (ms); null when free, stale or held by this process. A lock that cannot
  *  be read yet (just made, not written) is held by someone unknown (pid 0) while it is young. */

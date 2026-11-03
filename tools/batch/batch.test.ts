@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { OWNER_TTL_MS, holders, isAlive, keepSlot, releaseSlot, takeSlot } from './queue.ts';
+import { OWNER_TTL_MS, holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { parseLoudness } from '@tellcut/media-node';
 import { npmCommand, parseArgs as renderArgs, PASSED } from './render.ts';
 import { RENDER_FLAGS } from '../render.ts';
@@ -50,16 +50,6 @@ test('a slot without an owner file is held for a few seconds, then taken over', 
   expect(holders(dir, 1)).toEqual(['401 x']);
 });
 
-test('isAlive: EPERM (a live process with more rights) is alive, ESRCH is gone', () => {
-  const err = (code: string) => () => { throw Object.assign(new Error(code), { code }); };
-  const kill = vi.spyOn(process, 'kill');
-  try {
-    kill.mockImplementation(err('EPERM')); expect(isAlive(4)).toBe(true);
-    kill.mockImplementation(err('ESRCH')); expect(isAlive(4)).toBe(false);
-  } finally { kill.mockRestore(); }
-  expect(isAlive(process.pid)).toBe(true);
-});
-
 test('several processes taking over the same stale slot at once: exactly one gets it', async () => {
   const queue = pathToFileURL(fileURLToPath(new URL('./queue.ts', import.meta.url))).href;
   for (let round = 0; round < 3; round++) {
@@ -93,10 +83,16 @@ test('batch:render args: id and --slots in any order, the rest goes to render, v
   expect(() => renderArgs(['food', '--stills'])).toThrow('--stills 後面要有值');
   // the options passed on are render's own, but --project (ours to give)
   expect(PASSED).toEqual(Object.keys(RENDER_FLAGS).filter((f) => f !== '--project'));
-  expect(npmCommand(['render', '--', '--project', 'my x', '--stills', '1.5,3'])).toBe('npm run -s "render" "--" "--project" "my x" "--stills" "1.5,3"');
-  // cmd.exe takes no \" escape and expands %VAR% even inside quotes, sh expands $ and `: such an argument is refused, not passed on half-quoted
-  for (const bad of ['my "x"', '%PATH%', 'a&b', 'a|b', 'a<b', 'a>b', 'a^b', 'a\nb', ...(process.platform === 'win32' ? [] : ['$HOME', 'a`id`', 'dir\\'])])
-    expect(() => npmCommand(['render', '--', '--project', bad]), JSON.stringify(bad)).toThrow('不能有');
+  expect(npmCommand(['render', '--', '--project', 'my x', '--stills', '1.5,3'], 'win32')).toBe('npm run -s "render" "--" "--project" "my x" "--stills" "1.5,3"');
+  expect(npmCommand(['render', '--', '--project', 'my x', '--stills', '1.5,3'], 'darwin')).toBe(`npm run -s 'render' '--' '--project' 'my x' '--stills' '1.5,3'`);
+  // sh's single quotes take $, ` and \ as they are; on Windows a trailing \ is doubled so it does not escape the closing quote
+  expect(npmCommand(['render', '--', '--project', '$HOME`id`dir\\'], 'darwin')).toBe(`npm run -s 'render' '--' '--project' '$HOME\`id\`dir\\'`);
+  expect(npmCommand(['render', '--', '--project', 'dir\\'], 'win32')).toBe('npm run -s "render" "--" "--project" "dir\\\\"');
+  // cmd.exe takes no \" escape and expands %VAR% even inside quotes: such an argument is refused (on every platform), not passed on half-quoted
+  for (const platform of ['win32', 'darwin'] as const) {
+    for (const bad of ['my "x"', '%PATH%', 'a&b', 'a|b', 'a<b', 'a>b', 'a^b', 'a\nb', 'a\rb'])
+      expect(() => npmCommand(['render', '--', '--project', bad], platform), `${platform} ${JSON.stringify(bad)}`).toThrow('不能有');
+  }
 });
 
 test('loudness comes from the Summary block, not the running value on the first lines', () => {

@@ -8,18 +8,15 @@
 // counts as gone even if some process has that pid now.
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+// the file, not @tellcut/media-node: the takeover race test runs this module with Node's own type stripping, and the package as
+// a whole has TypeScript it cannot strip (constructor parameter properties)
+import { isAlive, nap } from '../../packages/media-node/src/proc.ts';
 
 /** a holder must call keepSlot more often than this */
 export const OWNER_TTL_MS = 10 * 60_000;
 /** a slot folder with no owner file this long after it was made belongs to a process that died before writing one */
 export const OWNERLESS_MS = 10_000;
 
-/** EPERM: the process exists but belongs to someone with more rights (e.g. an elevated shell on Windows) — still alive */
-export const isAlive = (pid: number): boolean => {
-  try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; }
-};
-
-const nap = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 // best effort: a contender may still have a file in it open (EPERM on Windows); a leftover slotN.stale-* folder is harmless
 const drop = (d: string) => { try { rmSync(d, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 }); } catch { /* left over */ } };
 const age = (f: string) => { try { return Date.now() - statSync(f).mtimeMs; } catch { return -1; } };

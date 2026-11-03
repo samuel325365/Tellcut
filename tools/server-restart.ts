@@ -9,7 +9,7 @@ import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { claudeEnv, DEFAULT_PORT, killTree, readServerInfo, TELLCUT_ROOT } from '@tellcut/media-node';
+import { claudeEnv, DEFAULT_PORT, killTree, pause, readServerInfo, TELLCUT_ROOT } from '@tellcut/media-node';
 import { parseArgsOrExit } from './args.ts';
 
 const TERMINAL = new Set(['done', 'failed', 'cancelled']);
@@ -67,7 +67,6 @@ const lsof = (port: number) => {
   }
 };
 const onPort = (port: number) => (WIN ? listeners(netstat(), port) : lsofListeners(lsof(port)));
-const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   const usage = '用法：npm run server:restart -- [--port 5174] [--wait] [--force]';

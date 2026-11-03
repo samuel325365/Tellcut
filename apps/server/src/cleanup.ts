@@ -4,9 +4,8 @@
 // nothing in their project names any more.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { pruneCopies } from '@tellcut/media-node';
+import { isAlive, pruneCopies } from '@tellcut/media-node';
 
-const isAlive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
 // temp names that carry the writing process id (projects.ts write, export.ts snapshot and index, a gallery music preview being
 // composed in _gallery/: score-child.ts)
 const PID_FILES = [/^project\.json\.(\d+)\.tmp$/, /^\.export-\w+-(\d+)\.json$/, /^score-[^/\\]+\.wav\.(\d+)\.tmp$/];

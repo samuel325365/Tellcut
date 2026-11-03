@@ -4,11 +4,10 @@ import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFi
 import { dirname } from 'node:path';
 import { renameRetry } from '../fsutil.ts';
 import { takeOver as takeOverIf } from '../locks.ts';
+import { pause } from '../proc.ts';
 
 /** at most `n` requests in any `per` seconds */
 export interface RateLimit { n: number; per: number }
-
-const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** A stale lock (older than `staleMs`) out of the way, the way locks.ts takes one over: two waiters that both found it stale
  *  cannot delete the fresh lock the first one then made (review M-7). True when the name is free now. */

@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { exportBusy, TELLCUT_ROOT } from '@tellcut/media-node';
+import { exportBusy, pause, shellQuoter, TELLCUT_ROOT } from '@tellcut/media-node';
 import { holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { projectArgOrExit } from '../project-arg.ts';
 import { parseArgs as parseArgs_, type FlagSpec } from '../args.ts';
@@ -25,13 +25,15 @@ export function parseArgs(argv: string[]): { id: string; slots: number; extra: s
   return a.words.length === 1 ? { id: a.words[0], slots, extra } : null;
 }
 
-// one command string for the shell (an args array with shell: true is DEP0190 on Node 24). cmd.exe takes no \" escape inside
-// quotes and expands %VAR% there; sh (macOS) expands $ and ` there and takes \ as an escape (a trailing one swallows the closing
-// quote), so an argument with a character the shell acts on is refused (project ids and render options never have one)
-const UNSAFE = process.platform === 'win32' ? /["%^&|<>\r\n]/ : /["%^&|<>$`\\\r\n]/;
-const UNSAFE_LIST = process.platform === 'win32' ? '" % ^ & | < >' : '" % ^ & | < > $ ` \\';
-const quote = (a: string) => { if (UNSAFE.test(a)) throw new Error(`參數不能有 ${UNSAFE_LIST} 或換行：${JSON.stringify(a)}`); return `"${a}"`; };
-export const npmCommand = (args: string[]) => `npm run -s ${args.map(quote).join(' ')}`;
+// one command string for the shell (shellQuoter). cmd.exe takes no \" escape inside quotes and expands %VAR% there, and npm runs
+// the script through it once more, so an argument with a character cmd.exe acts on is refused, not passed on half-quoted
+// (project ids and render options never have one); the same ones on every platform, so a batch line works on either. sh's
+// single quotes need no refusal of their own.
+const UNSAFE = /["%^&|<>\r\n]/;
+export const npmCommand = (args: string[], platform: NodeJS.Platform = process.platform) => {
+  const quote = shellQuoter(platform);
+  return `npm run -s ${args.map((a) => { if (UNSAFE.test(a)) throw new Error(`參數不能有 " % ^ & | < > 或換行：${JSON.stringify(a)}`); return quote(a); }).join(' ')}`;
+};
 
 /** the npm scripts a queued render runs, in order. Only render: it takes the project's export lock and then prepares the clips
  *  itself. A prepare:project run first, as a step of its own, cut into cache/ outside the lock, while a server or another render
@@ -48,11 +50,11 @@ async function main() {
   // the lock itself and would refuse it then; prepare:project would have run beside that export meanwhile)
   const busy = exportBusy(pdir);
   if (busy) { console.error(busy); process.exit(2); }
-  try { renderSteps(id, extra).forEach(npmCommand); } catch (e) { console.error((e as Error).message); process.exit(2); }   // before taking a slot
+  try { for (const s of renderSteps(id, extra)) npmCommand(s); } catch (e) { console.error((e as Error).message); process.exit(2); }   // before taking a slot
   let slot: string | null = null, waited = 0;
   while (!(slot = takeSlot(LOCK_DIR, slots, id))) {
     if (waited % 60 === 0) console.log(`[排隊] ${id}：等待輸出位置（${waited} 秒；使用中：${holders(LOCK_DIR, slots).join('、')}）`);
-    await new Promise((r) => setTimeout(r, 5000)); waited += 5;
+    await pause(5000); waited += 5;
   }
   const beat = setInterval(() => { if (slot) keepSlot(slot); }, 60_000);
   const free = () => { clearInterval(beat); if (slot) releaseSlot(slot); slot = null; };

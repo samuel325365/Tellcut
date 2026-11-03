@@ -1,7 +1,31 @@
-// Ending a process together with its children (uv's Python, the chat shell's claude). Windows: taskkill /T. macOS and Linux
-// have no such switch, and a child started in a group of its own (detached) would outlive a Ctrl+C of the server, so the
-// tree is read from `ps` and every process in it is signalled, the children first.
+// Small process helpers shared by the server, the tools and this package: whether a pid lives, waiting, one argument of a
+// command line run through a shell, and ending a process together with its children (uv's Python, the chat shell's claude).
+// Windows: taskkill /T. macOS and Linux have no such switch, and a child started in a group of its own (detached) would outlive
+// a Ctrl+C of the server, so the tree is read from `ps` and every process in it is signalled, the children first.
+// Only node: modules: tools/batch/queue.ts and tools/test-cleanup.ts load this file on its own (a worker run by Node's own type
+// stripping, a vitest global setup), without the rest of the package.
 import { execFileSync, spawn } from 'node:child_process';
+
+/** EPERM: the process exists but belongs to someone with more rights (e.g. an elevated shell on Windows) — still alive */
+export const isAlive = (pid: number): boolean => {
+  try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; }
+};
+
+/** waits `ms` blocking the event loop: for synchronous code that must retry before it returns (a lock, a rename), never a hot path */
+export const nap = (ms: number) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+/** waits `ms` without blocking */
+export const pause = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** One argument of a command line for spawn(…, { shell: true }) (an args array with shell: true is DEP0190 on Node 24), by the
+ *  rules of `platform`'s shell. sh: in single quotes, where nothing is expanded ($, ` and \ stay as they are), a ' as '\''.
+ *  Windows: in double quotes, a " as \" and the backslashes before it or before the closing quote doubled, so the program reads
+ *  the argument back as it was (C runtime rules: "dir\" would end in a quote). cmd.exe still expands %VAR% inside quotes and
+ *  ends its own quoting at a ", so a caller whose arguments may hold those refuses them (tools/batch/render.ts). */
+export const shellQuoter = (platform: NodeJS.Platform = process.platform): ((a: string) => string) =>
+  platform === 'win32' ? (a) => `"${a.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"`
+    : (a) => `'${a.replace(/'/g, `'\\''`)}'`;
+/** shellQuoter for this machine; one argument, so `args.map(shellQuote)` is safe */
+export const shellQuote = shellQuoter();
 
 /** `pid` and everything below it, deepest first, from `ps -A -o pid= -o ppid=` output */
 export function descendants(ps: string, pid: number): number[] {

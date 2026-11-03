@@ -5,11 +5,11 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+// the file alone, not the package: a global setup loads before every run, and the package's index pulls in all of media-node
+import { isAlive } from '../packages/media-node/src/proc.ts';
 
 export const RUN_DIR = /^tellcut-test-[A-Za-z0-9]{6}$/;
 const VARS = ['TEMP', 'TMP', 'TMPDIR'] as const;
-
-const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
 
 /** Removes the run folders in `root` whose run is gone (its `pid` no longer lives; one without a pid after a day); returns how many. */
 export function sweepStale(root = tmpdir()): number {
@@ -20,7 +20,7 @@ export function sweepStale(root = tmpdir()): number {
     try {
       let pid = NaN;
       try { pid = Number(readFileSync(join(d, 'pid'), 'utf8')); } catch { /* none yet */ }
-      if (Number.isInteger(pid) && pid > 0 ? alive(pid) : statSync(d).mtimeMs > Date.now() - 86400_000) continue;
+      if (Number.isInteger(pid) && pid > 0 ? isAlive(pid) : statSync(d).mtimeMs > Date.now() - 86400_000) continue;
       rmSync(d, { recursive: true, force: true }); n++;
     } catch { /* in use or gone: left */ }
   }

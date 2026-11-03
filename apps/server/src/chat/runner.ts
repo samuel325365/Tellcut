@@ -9,7 +9,7 @@ import { NOT_FOUND, StreamParser, type ChatEvent, type ChatTool, type Usage } fr
 import { RECOVERED_NOTE, sessionLog, withRecovered } from './recover.ts';
 import { clearNote, judge, LIVENESS, readNote, recentlyActive, writeNote, type ClaudeNote, type Liveness } from './leftover.ts';
 import { BASH_DEFAULT_TIMEOUT_MS, BASH_MAX_TIMEOUT_MS } from './timeouts.ts';
-import { claudeEnv, killTree as killProcessTree, lockHolder, renameRetry, tryLock, writeProjectFile } from '@tellcut/media-node';
+import { claudeEnv, killTree as killProcessTree, lockHolder, renameRetry, shellQuote as quote, tryLock, writeProjectFile } from '@tellcut/media-node';
 import type { ChatMessage, Lang, PresetChoice } from '@tellcut/protocol';
 
 /**
@@ -110,9 +110,7 @@ export function composePrompt(parts: string[], dir: string): string {
   return file;
 }
 
-/** Arguments are fixed strings or paths; the user's words only ever go through stdin. sh expands $ and ` inside double
- *  quotes and nothing inside single ones, so there a path under a folder named with either stays as it is. */
-const quote = process.platform === 'win32' ? (a: string) => `"${a.replace(/"/g, '\\"')}"` : (a: string) => `'${a.replace(/'/g, `'\\''`)}'`;
+// the claude command line's arguments (quote: shellQuote) are fixed strings or paths; the user's words only ever go through stdin
 
 interface Turn { child: ChildProcess; parser: StreamParser; tools: ChatTool[]; listeners: Set<(e: ChatEvent) => void>; stopped: boolean; release: () => void }
 

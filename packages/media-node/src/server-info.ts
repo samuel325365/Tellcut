@@ -4,12 +4,12 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TELLCUT_ROOT } from './paths.ts';
+import { isAlive } from './proc.ts';
 
 export interface ServerInfo { url: string; port: number; pid: number; started: string }
 export const DEFAULT_PORT = 5174;
 
 const file = (root: string) => join(root, '.cache', 'server.json');
-const isAlive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
 
 export function writeServerInfo(port: number, root = TELLCUT_ROOT, pid = process.pid): ServerInfo {
   const info: ServerInfo = { url: `http://127.0.0.1:${port}`, port, pid, started: new Date().toISOString() };
