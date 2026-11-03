@@ -2,7 +2,10 @@
 // other request waited. Run by gallery.ts as `node --import tsx score-child.ts <json>`; writes the wav, or prints why it could not.
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { encodeWav16, generateScore, loadStyles } from '@tellcut/media-node';
+// only the composer's own modules: the whole package (ffmpeg, the page, the providers) took 1.9 s of the child's 2.3 s, and a
+// gallery test that composes three times ran past its 30 s on a busy machine
+import { loadStyles } from '@tellcut/media-node/score/local';
+import { encodeWav16, generateScore } from '@tellcut/media-node/score/render';
 
 const a = JSON.parse(process.argv[2]) as { style: string; library: string; seed: number; bpm?: number; key?: string; file: string };
 // written beside it and renamed into place: the server serves any file at that name from then on, so one killed halfway (the

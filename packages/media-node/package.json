@@ -5,7 +5,9 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./score/local": "./src/score/local.ts",
+    "./score/render": "./src/score/render.ts"
   },
   "dependencies": {
     "@tellcut/engine": "*",
