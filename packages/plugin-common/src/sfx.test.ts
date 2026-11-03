@@ -1,6 +1,7 @@
 import { withDefaults } from '@tellcut/engine';
 import { SFX_CATEGORY } from '@tellcut/protocol';
 import { renderAir, renderShing } from './sfx/index.ts';
+import { play } from './sfx/synth.ts';
 import { renderBuzz, renderCamBeep, renderHush, renderRecv, renderRewind, renderSend, commonSfx, renderBoing, renderChime, renderClink, renderCoin, renderCry, renderDrip, renderThunder, renderFanfare, renderFlap, renderFootstep, renderKnock, renderPour, renderScribble, renderSizzle, renderTape, scaleStep, renderRingBell, renderFlip, renderSlide, renderAlarm, renderBeep, renderPrint, renderClunk, renderTear, renderRattle, renderDingDong, renderCash, renderDeflate, renderExplode, renderFastForward, renderPage, renderPowerUp, renderScratch, renderXylo, renderDing, renderError, renderImpact, renderPop, renderRiser, renderShutter, renderThud, renderTick, renderTyping, renderWhoosh } from './sfx/index.ts';
 
 const SR = 48000;
@@ -383,4 +384,13 @@ test('thunder (katie-sweet16): a low rumble that rolls away, the same for a seed
   // at another rate it keeps its length and level
   expect(renderThunder(44100).length).toBe(Math.ceil(3.2 * 44100));
   expect(peak(renderThunder(44100))).toBeGreaterThan(0.3);
+});
+
+test('play starts a sound asked for before 0 at once instead of throwing (2026-11-03)', () => {
+  const starts: number[] = [], node = () => ({ connect() {}, gain: { value: 0 } });
+  const ctx: any = { sampleRate: SR, createBuffer: () => ({ getChannelData: () => new Float32Array(4) }), createGain: node,
+    createBufferSource: () => ({ ...node(), start: (at: number) => { if (at < 0) throw new RangeError('negative'); starts.push(at); } }) };
+  play(ctx, { out: {} as any, verb: {} as any, noise: {} as any }, -0.2, new Float32Array(4), 0.3);
+  play(ctx, { out: {} as any, verb: {} as any, noise: {} as any }, 1.5, new Float32Array(4));
+  expect(starts).toEqual([0, 1.5]);
 });

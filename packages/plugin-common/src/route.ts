@@ -1,7 +1,7 @@
 // common.route — a hand-drawn route map on a paper card: a row of big promises on top (1 條商圈／10 分鐘／6 家), streets in
 // pencil, and a dashed red route from the start (a clock tower, or an emoji) that lights the stops one by one; the last
 // stops can stay a question mark. Promoted from a food-review hook short's fx.route; also day trips, walking tours, a series.
-// look 'page' (fd-map's fx.nbPage, routepage.ts): the whole page is a notebook route map — places as doodles with red ticks, a dashed
+// look 'page' (from a food-walk short's notebook page, routepage.ts): the whole page is a notebook route map — places as doodles with red ticks, a dashed
 // ballpoint line leg by leg with the walking time beside each, the camera moving between full / walk / stop / end / near.
 import { abs, clamp, cssCamel, eBack, eOut3 as eOut, h, type ItemType, prog, textEm, type Theme } from '@tellcut/engine';
 import { drawRoutePage, pageState, type PageP, type PageS } from './routepage.ts';
@@ -57,7 +57,7 @@ export function nameRoom(P: Array<[number, number]>, n: number, cw: number, rr: 
 
 export const route: ItemType<P, S> = {
   type: 'common.route', label: '手繪路線圖', category: 'travel', kind: 'overlay',
-  doc: '米色紙卡上的手繪路線圖：上方一排大數字承諾（數字|說明），下面鉛筆街道，從起點（大時鐘或 emoji）畫出紅色虛線一站一站點亮，最後幾站可以打問號；upto 只畫到第 k 站、already 開頭已亮到第幾站（already k−1＋upto k＝回來一拍點亮下一站），nameSize 站名字級；探店、一日遊、走讀路線、系列預告；look page 是整頁筆記本路線圖（fd-map）：各站排成一圈（或 pts 指定位置），鉛筆先淡淡描出整條路，藍色原子筆虛線一段一段畫過去（筆尖跟著走），每段旁邊紅筆寫步行時間（legs）加波浪底線，到站時變成塗鴉（icons：bowl／bun／box／jar／tofu／cup／station／train／house／star 或 emoji）＋紅勾、站名用手寫字寫出來加螢光筆；鏡頭依 cams「秒|模式」在 full 整張、walk 地圖在上（留下面給影片）、stop 縮成角落小紙片（現在這站閃）、end、near 拉近跟著現在這站之間移動；loop 畫回起點、flash 讓所有勾依序跳一下；放在 common.paper look grid 上面',
+  doc: '米色紙卡上的手繪路線圖：上方一排大數字承諾（數字|說明），下面鉛筆街道，從起點（大時鐘或 emoji）畫出紅色虛線一站一站點亮，最後幾站可以打問號；upto 只畫到第 k 站、already 開頭已亮到第幾站（already k−1＋upto k＝回來一拍點亮下一站），nameSize 站名字級；探店、一日遊、走讀路線、系列預告；look page 是整頁筆記本路線圖：各站排成一圈（或 pts 指定位置），鉛筆先淡淡描出整條路，藍色原子筆虛線一段一段畫過去（筆尖跟著走），每段旁邊紅筆寫步行時間（legs）加波浪底線，到站時變成塗鴉（icons：bowl／bun／box／jar／tofu／cup／station／train／house／star 或 emoji）＋紅勾、站名用手寫字寫出來加螢光筆；鏡頭依 cams「秒|模式」在 full 整張、walk 地圖在上（留下面給影片）、stop 縮成角落小紙片（現在這站閃）、end、near 拉近跟著現在這站之間移動；loop 畫回起點、flash 讓所有勾依序跳一下；放在 common.paper look grid 上面',
   params: [
     { key: 'look', label: '樣子（card 紙卡路線圖、page 整頁筆記本路線圖）', type: 'enum', options: ['card', 'page'], default: 'card' },
     { key: 'heads', label: '上方大數字（數字|說明，逗號分隔；空＝不顯示）', type: 'string', default: '1|條商圈, 10|分鐘走完, 6|家吃好吃滿' },

@@ -7,6 +7,10 @@ test('the dachshund is a moment block the agent uses only on request', () => {
   expect(dachshund.doc).toMatch(/只有使用者要 Tellcut 臘腸狗時才用/);
 });
 
+test('its source is a source-ref like every block that takes footage (2026-11-03)', () => {
+  expect(dachshund.params.find((p) => p.key === 'source')!.type).toBe('source-ref');
+});
+
 test('it asks for five stills of its source, and none when there is no source', () => {
   expect(dachshund.media!({ params: { source: 'pic', times: '1,2' } } as any, {} as any).stills).toHaveLength(5);
   expect(dachshund.media!({ params: { source: '' } } as any, {} as any).stills).toEqual([]);

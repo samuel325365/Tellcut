@@ -105,7 +105,7 @@ export function play(ctx: BaseAudioContext, bus: Bus, at: number, x: Float32Arra
   src.buffer = buf;
   src.connect(bus.out);
   if (send > 0) { const g = ctx.createGain(); g.gain.value = send; src.connect(g); g.connect(bus.verb); }
-  src.start(at);
+  src.start(Math.max(0, at));   // a start before 0 throws (RangeError): it plays now
 }
 
 export const num = (key: string, label: string, def: number, min: number, max: number, step = 0.05): ParamDef => ({ key, label, type: 'number', min, max, step, default: def });

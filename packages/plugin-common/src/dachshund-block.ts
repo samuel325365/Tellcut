@@ -139,7 +139,7 @@ export const dachshund: ItemType<P, S> = {
     { key: 'facing', label: '朝向（不走路時；走路時一律面向前進的方向）', type: 'enum', options: ['right', 'left'], default: 'right' },
     { key: 'look', label: '樣子（light 黑狗、dark 奶油色的狗，給深色底）', type: 'enum', options: ['light', 'dark'], default: 'light' },
     { key: 'steps', label: '每秒走幾步', type: 'number', min: 0.5, max: 6, step: 0.1, default: 2.2 },
-    { key: 'source', label: '底片格子裡放哪個素材（空＝沒有畫面）', type: 'string', default: '' },
+    { key: 'source', label: '底片格子裡放哪個素材（空＝沒有畫面）', type: 'source-ref', default: '' },
     { key: 'times', label: '格子放素材的哪幾秒（逗號分開；不足五個就從最後一個每 1.5 秒往後取）', type: 'string', default: '' },
     { key: 'scroll', label: '格子每秒捲動幾格', type: 'number', min: 0, max: 3, step: 0.1, default: 1 },
     { key: 'cutAt', label: '剪開的時間（秒，相對項目開始；cut）', type: 'number', min: 0, max: 600, step: 0.05, default: 1 },
