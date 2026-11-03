@@ -6,7 +6,8 @@ import { delimiter, dirname, join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { chatFile, closeDangling, freshThread, isHome, readThread, writeThread, type ChatThread } from './store.ts';
 import { NOT_FOUND, StreamParser, type ChatEvent, type ChatTool, type Usage } from './stream.ts';
-import { sessionLog, withRecovered } from './recover.ts';
+import { RECOVERED_NOTE, sessionLog, withRecovered } from './recover.ts';
+import { clearNote, judge, LIVENESS, readNote, recentlyActive, writeNote, type ClaudeNote, type Liveness } from './leftover.ts';
 import { BASH_DEFAULT_TIMEOUT_MS, BASH_MAX_TIMEOUT_MS } from './timeouts.ts';
 import { claudeEnv, killTree as killProcessTree, lockHolder, renameRetry, tryLock, writeProjectFile } from '@tellcut/media-node';
 import type { ChatMessage, Lang, PresetChoice } from '@tellcut/protocol';
@@ -144,14 +145,48 @@ export function touchedProjects(tools: ChatTool[]): Set<string> {
   return ids;
 }
 
+/** how often a page following a claude an earlier server left running looks whether it is over (ms) */
+const WATCH_MS = 2000;
+
 export class ChatRunner {
   private turns = new Map<string, Turn>();
+  /** what each leftover claude was found to be (by pid and note time): a live process stays the one it was, a gone one gone */
+  private verdicts = new Map<string, 'same' | 'unknown' | 'gone'>();
+  /** pages following a leftover claude: told when it is over (see attach) */
+  private watchers = new Map<string, { listeners: Set<(e: ChatEvent) => void>; timer: ReturnType<typeof setInterval> }>();
 
   /** this server's address, for the Tellcut commands Claude runs (npm run new tells it to start analysing; tellcut propose…) */
   serverUrl?: string;
   /** promptFiles: the chat's own rules (apps/server/chat-prompt.md), then guides/quality.md and guides/workflow.md: put together
    *  for every turn (composePrompt), so an edit to any of them reaches the next message without a server restart */
-  constructor(private o: { cmd: string; cwd: string; promptFiles: string[]; settingsFile?: string; projectsDir: string }) {}
+  /** liveness, kill, watchMs: a test's stand-ins for how processes are looked at and ended, and how often a leftover one is */
+  constructor(private o: { cmd: string; cwd: string; promptFiles: string[]; settingsFile?: string; projectsDir: string; liveness?: Liveness; kill?: (pid: number) => void; watchMs?: number }) {}
+
+  /**
+   * The claude an earlier server started in this thread and never saw end (leftover.ts): running while that very process lives
+   * (sure), or while one whose start cannot be told could still be at work by the session log; null when there is no note (or a
+   * turn of this server's runs). Over, its session log is final: what it says is recovered at once, without the quiet window.
+   */
+  private leftover(thread: string): { file: string; note: ClaudeNote; running: boolean; sure: boolean } | null {
+    if (this.turns.has(thread)) return null;
+    let file: string;
+    try { file = chatFile(this.o.projectsDir, thread); } catch { return null; }
+    const note = readNote(file);
+    if (!note) return null;
+    const l = this.o.liveness ?? LIVENESS, key = `${note.pid}@${note.at}`;
+    let v = this.verdicts.get(key);
+    // a pid is not reused while its process lives: the start is asked once (PowerShell on Windows), then only whether it lives
+    if (v !== 'gone' && v !== undefined && !l.alive(note.pid)) v = 'gone';
+    else if (v === undefined) v = judge(note, l);
+    this.verdicts.set(key, v);
+    return { file, note, running: v === 'same' || (v === 'unknown' && recentlyActive(note)), sure: v === 'same' };
+  }
+
+  /** the thread with a reply that finished while no server was there put back (recover.ts), or null */
+  recover(thread: string, t: ChatThread): ChatThread | null {
+    const left = this.leftover(thread);
+    return left?.running ? null : withRecovered(t, left ? { quietMs: 0 } : {});
+  }
 
   /**
    * After a home reply that made new projects: the conversation goes on in the project's chat (same claude session) — the one
@@ -190,14 +225,19 @@ export class ChatRunner {
     return this.elsewhere(project) ? project : null;
   }
 
-  /** another server on the same projects/ is replying in this thread (its turn's lock is live) */
+  /** another server on the same projects/ is replying in this thread (its turn's lock is live), or a claude an earlier server
+   *  left running still is */
   elsewhere(thread: string): boolean {
-    try { return !this.turns.has(thread) && !!lockHolder(turnLock(chatFile(this.o.projectsDir, thread))); } catch { return false; }
+    if (this.turns.has(thread)) return false;
+    try { if (lockHolder(turnLock(chatFile(this.o.projectsDir, thread)))) return true; } catch { return false; }
+    return !!this.leftover(thread)?.running;
   }
 
+  /** the running turn's words and steps so far; a leftover claude's are not known here (its reply is recovered when it is over) */
   running(thread: string): { text: string; tools: ChatTool[] } | null {
     const t = this.turns.get(thread);
-    return t ? { text: t.parser.partial, tools: [...t.tools] } : null;
+    if (t) return { text: t.parser.partial, tools: [...t.tools] };
+    return this.leftover(thread)?.running ? { text: '', tools: [] } : null;
   }
 
   /** Starts a turn; false when one is already running in this thread. */
@@ -210,6 +250,11 @@ export class ChatRunner {
     // another server on the same projects/ is replying here: a second --resume of that session would mix the two up
     const release = tryLock(turnLock(file));
     if (!release) return false;
+    // the claude an earlier server started here is still at work: a second one resuming its session would mix the two up, and
+    // stopping it could lose what it is making (a render) — the message is refused (chat.busy) and the page follows that one
+    let left: ReturnType<ChatRunner['leftover']>;
+    try { left = this.leftover(thread); } catch (e) { release(); throw e; }
+    if (left?.running) { release(); return false; }
     // a reply that finished while the server was down goes back in first (the conversation reads in order)
     let th: ChatThread;
     try {
@@ -217,7 +262,9 @@ export class ChatRunner {
       // a first turn the server died in: claude made the session (its log is there) but "started" was never saved. Started again
       // with --session-id it failed ("already in use") on every message after; it is resumed instead, and its reply recovered
       if (!read.started && sessionLog(read.sessionId)) read.started = true;
-      th = closeDangling(withRecovered(read) ?? read);
+      // a leftover claude known to be over wrote its last: no quiet window to wait out
+      th = closeDangling(withRecovered(read, left ? { quietMs: 0 } : {}) ?? read);
+      if (left) clearNote(file, left.note.pid);
     } catch (e) { release(); throw e; }
     const { preset, lang, auto, sources } = o;
     th.messages.push({ role: 'user', text, time: new Date().toISOString(), ...(preset ? { preset } : {}), ...(auto ? { auto } : {}) });
@@ -265,6 +312,7 @@ export class ChatRunner {
       } catch (err) {
         done = { type: 'done', status: 'error', text: done.text, error: `對話紀錄寫不進去：${(err as Error).message}`, code: 'chat.saveFailed', detail: (err as Error).message };
       } finally {
+        if (turn.child?.pid) clearNote(file, turn.child.pid);
         this.turns.delete(thread);   // never left "running"
         turn.release();
       }
@@ -281,6 +329,8 @@ export class ChatRunner {
       const args = claudeArgs({ session, resume, promptFile: composePrompt(this.o.promptFiles, join(this.o.cwd, '.cache')), settingsFile: this.o.settingsFile, configDir: env.CLAUDE_CONFIG_DIR || undefined });
       const child = spawn(`${this.o.cmd} ${args.map(quote).join(' ')}`, { cwd: this.o.cwd, env, shell: true, windowsHide: true });
       turn.child = child;
+      // which process this turn is, for a server started after this one stops mid-turn (leftover.ts)
+      if (child.pid) writeNote(file, { pid: child.pid, at: Date.now(), session });
       let buf = '', stderr = '';
       child.stdout!.setEncoding('utf8');
       child.stdout!.on('data', (d: string) => {
@@ -321,20 +371,65 @@ export class ChatRunner {
   /** Follows the running turn (a page that came back); returns the unsubscribe, or null when nothing runs. */
   attach(thread: string, on: (e: ChatEvent) => void): (() => void) | null {
     const t = this.turns.get(thread);
-    if (!t) return null;
-    t.listeners.add(on);
-    return () => { t.listeners.delete(on); };
+    if (t) { t.listeners.add(on); return () => { t.listeners.delete(on); }; }
+    // a claude an earlier server left running: its words cannot be streamed, but the page is told when it is over, with the
+    // reply recovered from its log
+    if (!this.leftover(thread)?.running) return null;
+    let w = this.watchers.get(thread);
+    if (!w) {
+      w = { listeners: new Set(), timer: setInterval(() => this.settle(thread), this.o.watchMs ?? WATCH_MS) };
+      w.timer.unref?.();
+      this.watchers.set(thread, w);
+    }
+    const mine = w;
+    mine.listeners.add(on);
+    return () => { mine.listeners.delete(on); if (!mine.listeners.size && this.watchers.get(thread) === mine) { clearInterval(mine.timer); this.watchers.delete(thread); } };
+  }
+
+  /** A leftover claude the pages follow is over: its reply goes into the thread (the empty interrupted one when there is none) and
+   *  they are told; a turn started here meanwhile is theirs to follow instead. */
+  private settle(thread: string) {
+    const w = this.watchers.get(thread), left = this.leftover(thread);
+    if (!w || left?.running) return;
+    clearInterval(w.timer);
+    this.watchers.delete(thread);
+    const now = this.turns.get(thread);
+    if (now) { for (const l of w.listeners) now.listeners.add(l); return; }
+    let done: Extract<ChatEvent, { type: 'done' }> = { type: 'done', status: 'done', text: '' };
+    try {
+      const file = chatFile(this.o.projectsDir, thread), release = tryLock(turnLock(file));
+      // another server took the thread meanwhile: its to save (the page reads the thread again)
+      if (release) try {
+        const read = readThread(file), th = closeDangling(withRecovered(read, left ? { quietMs: 0 } : {}) ?? read);
+        writeThread(file, th);
+        if (left) clearNote(file, left.note.pid);
+        const last = th.messages.at(-1);
+        // the page words the recovered note itself once it reads the thread; the event carries no notice
+        if (last?.role === 'assistant') done = { type: 'done', status: last.status ?? 'done', text: last.notice?.kind === 'recovered' ? last.text.replace(`\n\n${RECOVERED_NOTE}`, '') : last.text, ...(last.usage ? { usage: last.usage } : {}) };
+      } finally { release(); }
+    } catch { /* the page reads the thread again */ }
+    for (const l of w.listeners) l(done);
   }
 
   stop(thread: string): boolean {
     const t = this.turns.get(thread);
-    if (!t) return false;
+    if (!t) {
+      // a claude an earlier server left running is ended only when it is surely that process: a pid alone may be another's by now
+      const left = this.leftover(thread);
+      if (!left?.running || !left.sure) return false;
+      (this.o.kill ?? ((pid: number) => killProcessTree(pid, 'SIGINT')))(left.note.pid);
+      return true;
+    }
     t.stopped = true;
     killTree(t.child);
     return true;
   }
 
-  stopAll() { for (const id of [...this.turns.keys()]) this.stop(id); }
+  stopAll() {
+    for (const id of [...this.turns.keys()]) this.stop(id);
+    for (const w of this.watchers.values()) clearInterval(w.timer);
+    this.watchers.clear();
+  }
 }
 
 /** Ends the shell and its claude. Not once it has exited: Windows soon hands its pid to another process, and taskkill /T would

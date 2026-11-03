@@ -3,7 +3,6 @@ import type { ServerResponse } from 'node:http';
 import { HttpError, readJson, sendJson, type Router } from '../http.ts';
 import type { ProjectStore } from '../projects.ts';
 import { chatFile, closeDangling, freshThread, isHome, readThread, writeThread } from './store.ts';
-import { withRecovered } from './recover.ts';
 import type { ChatRunner } from './runner.ts';
 import { taskBlock } from './tasks.ts';
 import type { JobInfo, JobQueue } from '../jobs.ts';
@@ -69,8 +68,8 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
     const running = runner.running(thread), elsewhere = runner.elsewhere(thread);
     let t = readThread(file(thread));
     // a reply that finished while the server was down is put back from Claude's own log (and kept); one another server
-    // runs is that server's to save (put back here too, it appeared twice)
-    const back = running || elsewhere ? null : withRecovered(t);
+    // runs is that server's to save (put back here too, it appeared twice), and one a leftover claude still runs is not over
+    const back = running || elsewhere ? null : runner.recover(thread, t);
     if (back) { writeThread(file(thread), back); t = back; }
     // a turn another server runs is not over either: its last message is not "interrupted"
     sendJson(res, 200, { thread: running || elsewhere ? t : closeDangling(t), running, analyzing: analyzing(thread), analysis: analysis(thread) });

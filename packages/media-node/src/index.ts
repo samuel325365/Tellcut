@@ -34,7 +34,7 @@ export * from './score/index.ts';
 export * from './staleness.ts';
 export * from './sources/index.ts';
 export * from './presets.ts';
-export { lockHolder, tryLock } from './locks.ts';
+export { isAlive, lockHolder, tryLock } from './locks.ts';
 export * from './project-dir.ts';
 export * from './library/store.ts';
 export * from './library/save.ts';

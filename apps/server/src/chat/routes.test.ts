@@ -471,7 +471,7 @@ test('GET chat tells the step as a code (analysis) next to the Chinese line (ana
   const live = { id: 'j', kind: 'extras', project: 'demo', label: '03', status: 'running', progress: 0.5, message: 'transcript', log: [], created: 0, started: now - 5000 };
   const queue: any = { active: (kind: string) => (kind === 'extras' ? [live] : []) };
   const rt = router();
-  chatRoutes(rt, new ProjectStore(root), { running: () => null, elsewhere: () => false } as any, queue);
+  chatRoutes(rt, new ProjectStore(root), { running: () => null, elsewhere: () => false, recover: () => null } as any, queue);
   const srv = createServer((q, s) => { void rt.handle(q, s); });
   await new Promise<void>((ok) => srv.listen(0, '127.0.0.1', ok));
   try {
