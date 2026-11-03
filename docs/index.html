@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tellcut: video editing, by talking (open source, on GitHub)</title>
-<meta name="description" content="Tellcut is a free, open-source video editor for Windows that runs in your browser. Drop in your footage, say what you want, and a Claude Code agent watches every clip, writes the storyboard and cuts a first draft on your own computer.">
+<meta name="description" content="Tellcut is a free, open-source video editor for Windows and macOS that runs in your browser. Drop in your footage, say what you want, and a Claude Code agent watches every clip, writes the storyboard and cuts a first draft on your own computer.">
 <link rel="canonical" href="https://samuel325365.github.io/Tellcut/">
 <link rel="alternate" hreflang="en" href="https://samuel325365.github.io/Tellcut/">
 <link rel="alternate" hreflang="zh-Hant" href="https://samuel325365.github.io/Tellcut/#zh">
@@ -28,7 +28,7 @@
   "alternateName": "Tellcut video editor",
   "description": "A local browser video editor that Claude edits with you. Drop in your footage and say what you want; an agent watches every clip, writes the storyboard and cuts a first draft.",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Windows 10, Windows 11",
+  "operatingSystem": "Windows 10, Windows 11, macOS 14 or later",
   "url": "https://samuel325365.github.io/Tellcut/",
   "downloadUrl": "https://github.com/samuel325365/Tellcut",
   "codeRepository": "https://github.com/samuel325365/Tellcut",
@@ -295,7 +295,7 @@
         <span>Prod. <b>Tellcut</b></span>
         <span>Take <b>v0.1.0</b></span>
         <span>Licence <b>MIT</b></span>
-        <span>Runs on <b>Windows</b></span>
+        <span>Runs on <b>Windows · macOS</b></span>
         <span>Agent <b>Claude Code</b></span>
       </div>
       <h1 class="rise d1">Video editing,<br>by <span class="cut">talking.</span></h1>
@@ -450,7 +450,7 @@
       <div class="start">
         <div>
           <ul>
-            <li><b>Windows 10 or 11</b>, 64-bit</li>
+            <li><b>Windows 10 or 11</b> (64-bit), or <b>macOS 14 or later</b> (Apple silicon)</li>
             <li><b>A Claude account</b>: Pro, Max, Team, Enterprise or the Claude API</li>
             <li>About <b>4 GB</b> of disk space; the first install downloads about 2 GB</li>
           </ul>
@@ -460,6 +460,7 @@
 <pre><span class="c"># paste this to Claude Code</span>
 Please install Tellcut for me: https://github.com/samuel325365/Tellcut
 Follow INSTALL.md in the repo. If Node.js 24 or later or Google Chrome is missing, install it with winget first.
+On a Mac, follow its "On a Mac" section instead: put Homebrew on my PATH if brew isn't found, then Homebrew for node@24 (added to my PATH in ~/.zshrc), Google Chrome and ffmpeg-full, and xcode-select --install if Xcode's command line tools are missing (wait while I finish the window it opens).
 Download the repo into a Tellcut folder in my user folder, run npm run setup, then npm run doctor to confirm every item is ticked.
 If anything fails, fix it and carry on. When everything is ready, tell me how to open Tellcut from now on.</pre>
       </div>
@@ -475,7 +476,7 @@ If anything fails, fix it and carry on. When everything is ready, tell me how to
           <p>把素材丟進來，說一句想要什麼樣的片。Agent 會看完每一段素材、寫好分鏡、剪出初版，全部在你自己的電腦上跑。喜歡的特效和風格可以留下來，下一支從那裡開始。</p>
         </div>
       </div>
-      <p>Tellcut 是免費、開放原始碼（MIT）的影片剪輯器，在瀏覽器裡用，目前只支援 Windows。剪片的 Agent 是 Claude Code，用你自己的 Claude 帳號。介面有英文、中文、日文。</p>
+      <p>Tellcut 是免費、開放原始碼（MIT）的影片剪輯器，在瀏覽器裡用，支援 Windows 與 macOS。剪片的 Agent 是 Claude Code，用你自己的 Claude 帳號。介面有英文、中文、日文。</p>
       <p><a class="btn" href="https://github.com/samuel325365/Tellcut/blob/main/README.zh-TW.md">看中文說明（GitHub）</a></p>
     </div>
   </section>
