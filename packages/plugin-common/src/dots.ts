@@ -105,6 +105,23 @@ const POLY: Record<string, number[]> = {
 /** the segments a character lights ('' for an unknown one; a digit or - otherwise) */
 export const segsOf = (ch: string) => SEG[ch] ?? SEG[ch.toUpperCase()] ?? SEG[ch.toLowerCase()] ?? '';
 
+/** one seven-segment digit as flat bevelled bars in a `w` × `hh` box at (x, y), upright and without a glow (common.gauge's LED); a
+ *  '?' lights a-b-g-e, the gauge's scrambling digit; any other character than a digit, - or a space lights nothing */
+export function drawSegBars(g: CanvasRenderingContext2D, ch: string, x: number, y: number, w: number, hh: number, on: string, off: string) {
+  const t = w * 0.2, segs = ch === '?' ? 'abge' : /^[0-9 -]$/.test(ch) ? SEG[ch] : '', H2 = hh / 2;
+  const bar = (x0: number, y0: number, horiz: boolean, len: number) => {
+    g.beginPath();
+    if (horiz) { g.moveTo(x0, y0); g.lineTo(x0 + t / 2, y0 - t / 2); g.lineTo(x0 + len - t / 2, y0 - t / 2); g.lineTo(x0 + len, y0); g.lineTo(x0 + len - t / 2, y0 + t / 2); g.lineTo(x0 + t / 2, y0 + t / 2); }
+    else { g.moveTo(x0, y0); g.lineTo(x0 + t / 2, y0 + t / 2); g.lineTo(x0 + t / 2, y0 + len - t / 2); g.lineTo(x0, y0 + len); g.lineTo(x0 - t / 2, y0 + len - t / 2); g.lineTo(x0 - t / 2, y0 + t / 2); }
+    g.closePath(); g.fill();
+  };
+  const all: Record<string, [number, number, boolean, number]> = {
+    a: [x + t * 0.6, y, true, w - t * 1.2], g: [x + t * 0.6, y + H2, true, w - t * 1.2], d: [x + t * 0.6, y + hh, true, w - t * 1.2],
+    f: [x + t * 0.5, y + t * 0.6, false, H2 - t * 1.2], b: [x + w - t * 0.5, y + t * 0.6, false, H2 - t * 1.2],
+    e: [x + t * 0.5, y + H2 + t * 0.6, false, H2 - t * 1.2], c: [x + w - t * 0.5, y + H2 + t * 0.6, false, H2 - t * 1.2] };
+  for (const k of 'abcdefg') { g.fillStyle = segs.includes(k) ? on : off; bar(...all[k]); }
+}
+
 /** one seven-segment digit in a box `h` px tall (0.6 h wide) at (x, y), leaning by `skew`; lit segments glow */
 export function drawSeg(g: CanvasRenderingContext2D, ch: string, x: number, y: number, h: number, on: string | null, off: string, skew = -0.1) {
   const lit = on ? segsOf(ch) : '', s = h / 100;

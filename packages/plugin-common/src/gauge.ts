@@ -6,6 +6,7 @@
 import { clamp, cssCamel, h, hash01, type ItemType, prog, textEm } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { luma, mixHex, withAlpha } from './color.ts';
+import { drawSegBars } from './dots.ts';
 
 interface P {
   hits: string; zones: string; max: number; unit: string; scramble: number; boot: number; danger: number; boom: number; boomText: string; boomLabel: string;
@@ -76,23 +77,6 @@ export function needleAt(p: Pick<P, 'scramble' | 'boot' | 'danger' | 'boom' | 'm
   if (p.boom >= 0 && t >= p.boom) { const u = t - p.boom; nv = v + (mx * 1.06 - v) * spring(u * 1.4) + Math.sin(u * 70) * 0.022 * mx * Math.exp(-u * 0.8); }
   else if (p.danger >= 0 && t >= p.danger) nv += Math.sin(t * 60) * 0.006 * mx;
   return clamp(nv, -0.02 * mx, 1.16 * mx);
-}
-
-const SEG: Record<string, string> = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg', '?': 'abge', '-': 'g', ' ': '' };
-/** a seven-segment digit */
-function seg7(g: CanvasRenderingContext2D, ch: string, x: number, y: number, w: number, hh: number, on: string, off: string) {
-  const t = w * 0.2, segs = SEG[ch] ?? '', H2 = hh / 2;
-  const bar = (x0: number, y0: number, horiz: boolean, len: number) => {
-    g.beginPath();
-    if (horiz) { g.moveTo(x0, y0); g.lineTo(x0 + t / 2, y0 - t / 2); g.lineTo(x0 + len - t / 2, y0 - t / 2); g.lineTo(x0 + len, y0); g.lineTo(x0 + len - t / 2, y0 + t / 2); g.lineTo(x0 + t / 2, y0 + t / 2); }
-    else { g.moveTo(x0, y0); g.lineTo(x0 + t / 2, y0 + t / 2); g.lineTo(x0 + t / 2, y0 + len - t / 2); g.lineTo(x0, y0 + len); g.lineTo(x0 - t / 2, y0 + len - t / 2); g.lineTo(x0 - t / 2, y0 + t / 2); }
-    g.closePath(); g.fill();
-  };
-  const all: Record<string, [number, number, boolean, number]> = {
-    a: [x + t * 0.6, y, true, w - t * 1.2], g: [x + t * 0.6, y + H2, true, w - t * 1.2], d: [x + t * 0.6, y + hh, true, w - t * 1.2],
-    f: [x + t * 0.5, y + t * 0.6, false, H2 - t * 1.2], b: [x + w - t * 0.5, y + t * 0.6, false, H2 - t * 1.2],
-    e: [x + t * 0.5, y + H2 + t * 0.6, false, H2 - t * 1.2], c: [x + w - t * 0.5, y + H2 + t * 0.6, false, H2 - t * 1.2] };
-  for (const k of 'abcdefg') { g.fillStyle = segs.includes(k) ? on : off; bar(...all[k]); }
 }
 
 /** the gauge in the frame: `size` of the short side wide, shrunk into the safe area; y −1 puts its foot on the bottom safe line */
@@ -198,7 +182,7 @@ export const gauge: ItemType<P, S> = {
     const said = scrambling || booming ? null : readoutText(p.readout, count, clamp(shown, 0, top));
     if (!word && said === null) {
       const str = scrambling ? '?'.repeat(cells) : booming ? '9'.repeat(cells) : String(clamp(shown, 0, top)).padStart(cells, ' ');
-      [...str].forEach((ch, i) => seg7(g, ch, bx + 34 + i * 82 * f, by + 16, 58 * f, 72, ledOn, ledOff));
+      [...str].forEach((ch, i) => drawSegBars(g, ch, bx + 34 + i * 82 * f, by + 16, 58 * f, 72, ledOn, ledOff));
     }
     // warning lamps
     for (const sx of [-1, 1]) {
