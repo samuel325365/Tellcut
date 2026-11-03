@@ -1,6 +1,6 @@
 // Group B1 (2026-10-23): the shared phone pieces (phone.ts), common.notify and common.lockscreen.
 import { defaultSafe, prog, eOut3 } from '@tellcut/engine';
-import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
+import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, tileText, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
 import { roundRectUrl } from './window.ts';
 import { noteLayout, notify, parseNotes, withLockText } from './notify.ts';
 import { clockAt, liveAt, liveSpans, lockscreen } from './lockscreen.ts';
@@ -171,4 +171,12 @@ test('lockscreen: steps by time, the clock flips the changed characters, live sp
   expect(liveAt(spans, 1.2)).toBeCloseTo(0.5, 9);
   expect(liveAt(spans, 2)).toBe(1);
   expect(liveAt(spans, 2.9)).toBeCloseTo(0.25, 9);
+});
+
+test('an icon tile with no glyph shows its first two characters whole: a family or a flag emoji is one (2026-11-03)', () => {
+  expect(tileText('👨‍👩‍👧')).toBe('👨‍👩‍👧');
+  expect(tileText('🏳️‍🌈')).toBe('🏳️‍🌈');
+  expect(tileText('🍜🍣🍙')).toBe('🍜🍣');
+  expect(tileText('AB C')).toBe('AB');
+  expect(tileText('')).toBe('·');
 });

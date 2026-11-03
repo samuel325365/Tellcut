@@ -210,8 +210,10 @@ export function iconTile(el: HTMLElement, kind: string, size: number) {
   if (el.dataset.k === kind) return;
   el.dataset.k = kind;
   if (g) el.innerHTML = glyphSvg(kind, g.ink ?? '#fff', b);
-  else el.textContent = [...String(kind)].slice(0, 2).join('') || '·';
+  else el.textContent = tileText(kind);
 }
+/** what a tile shows for a kind it has no glyph for: its first two characters as the eye sees them (a family emoji or a flag is one) */
+export const tileText = (kind: string) => [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(String(kind ?? ''))].slice(0, 2).map((x) => x.segment).join('') || '·';
 
 // ---------------------------------------------------------------- avatars and counts
 /** the letter on an avatar: the first Latin letter or CJK character of the name, upper case ('·' when there is none) */
