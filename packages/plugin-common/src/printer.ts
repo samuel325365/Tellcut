@@ -22,6 +22,7 @@ interface P {
 interface Ghost { el: HTMLElement }
 interface S {
   cv: HTMLCanvasElement; off: HTMLCanvasElement; ghosts: HTMLElement; rows: Ghost[]; stampG: HTMLElement; modelG: HTMLElement; key: string; want: string;
+  font: string; stamp: string;
   paperC: HTMLCanvasElement | null; shadowC: HTMLCanvasElement | null; stampC: HTMLCanvasElement | null; stampKey: string;
   bodyC: HTMLCanvasElement | null; barC: HTMLCanvasElement | null; glassC: HTMLCanvasElement | null; bodyKey: string; counterC: HTMLCanvasElement | null; counterKey: string;
 }
@@ -41,6 +42,15 @@ const TOP = 30, PAD = 40;
 const BW = 920, TOPF = 46, BODYH = 640, BPAD = 70, VFD_W = 720, VFD_H = 78, VFD_Y = 44, CTRL_Y = 200, SLOT_UP = 134;
 /** the shadow round the paper bitmap, in units */
 const SP = 48;
+
+/** whether the receipt's font is there for everything drawn in it: each line in its own weight, the model name in 700 */
+export function printerFontOk(lines: PLine[], font: string, model: string, z = 1): boolean {
+  if (typeof document === 'undefined' || !document.fonts) return true;
+  const byWeight = new Map<number, string>();
+  for (const l of lines) { const kd = kindAt(l.kind, z); if (kd.px && l.text) byWeight.set(kd.w ?? 700, (byWeight.get(kd.w ?? 700) ?? '') + l.text + l.amt); }
+  if (model) byWeight.set(700, (byWeight.get(700) ?? '') + model);
+  return [...byWeight].every(([w, text]) => document.fonts.check(`${w} 20px '${font}'`, text));
+}
 
 /** a kind of line with its lettering `z` times as big: the dots (pitch and dot) and the line's height grow, the raster stays */
 export function kindAt(kind: string, z = 1): (typeof KIND)[string] {
@@ -220,9 +230,11 @@ function renderShadow(paper: HTMLCanvasElement): HTMLCanvasElement {
   return c;
 }
 
+const STAMP_FONT = "900 74px 'Noto Serif TC', serif";
+
 /** a rubber stamp with ink gaps */
 function renderStamp(text: string, color: string): HTMLCanvasElement {
-  const px = 74, pad = 26, m = softCanvas(4, 4).getContext('2d')!, font = `900 ${px}px 'Noto Serif TC', serif`;
+  const px = 74, pad = 26, m = softCanvas(4, 4).getContext('2d')!, font = STAMP_FONT;
   m.font = font;
   const w = Math.ceil(m.measureText(text).width) + pad * 2 + 20, hh = px + pad * 2 + 14, c = softCanvas(w, hh), g = c.getContext('2d')!;
   g.strokeStyle = color; g.fillStyle = color;
@@ -439,11 +451,13 @@ export const printer: ItemType<P, S> = {
     cssCamel(cv, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
     cssCamel(ghosts, { position: 'absolute', transformOrigin: '50% 50%', color: 'transparent' });
     return { cv, off: softCanvas(4, 4), ghosts, rows: [], stampG: abs(ghosts), modelG: abs(ctx.root), key: '', paperC: null, shadowC: null, stampC: null, stampKey: '',
-      bodyC: null, barC: null, glassC: null, bodyKey: '', counterC: null, counterKey: '', want: `${p.lines}${p.label}${p.totalLabel}${p.adds}+0123456789${p.model}` };
+      bodyC: null, barC: null, glassC: null, bodyKey: '', counterC: null, counterKey: '', want: `${p.lines}${p.label}${p.totalLabel}${p.adds}+0123456789${p.model}`, font: p.font, stamp: p.stamp };
   },
   async ready(s) {
-    await loadDots('Noto Sans TC', s.want, [500, 700, 900]);
-    if (typeof document !== 'undefined' && document.fonts) await document.fonts.load("900 74px 'Noto Serif TC'", '章').catch(() => []);
+    // the receipt's own font in the weights its lines use (500, 700), Noto Sans TC for the VFD's words and as the fallback, and the
+    // stamp's own characters (its glyphs come in unicode-range slices too)
+    await Promise.all([loadDots('Noto Sans TC', s.want, [500, 700, 900]), s.font && s.font !== 'Noto Sans TC' ? loadDots(s.font, s.want, [500, 700]) : null,
+      s.stamp && typeof document !== 'undefined' && document.fonts ? document.fonts.load(STAMP_FONT, s.stamp).catch(() => []) : null]);
   },
   hide(s) {
     freeCanvas(s.cv);
@@ -452,7 +466,7 @@ export const printer: ItemType<P, S> = {
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local: t } = ctx, k = Math.min(W, H) / 1080, CW = W / k, CH = H / k;
     const PW = Math.round(p.w * 1080), PX = (CW - PW) / 2;
-    const z = p.size ?? 1, L = printerLines(p.lines, !!p.stamp && p.stampLine < 0, z), fontOk = typeof document === 'undefined' || !document.fonts || document.fonts.check(`700 20px '${p.font}'`, L.lines.map((l) => l.text).join('') || 'A');
+    const z = p.size ?? 1, L = printerLines(p.lines, !!p.stamp && p.stampLine < 0, z), fontOk = printerFontOk(L.lines, p.font, p.model, z);
     const key = JSON.stringify([p.lines, !!p.stamp && p.stampLine < 0, PW, z, p.font, p.paper, p.ink, p.wear, fontOk]);
     if (s.key !== key) {
       s.key = key; s.paperC = renderPaper(L, PW, p); s.shadowC = renderShadow(s.paperC);
@@ -470,7 +484,8 @@ export const printer: ItemType<P, S> = {
     const bw = bodyWidth(PW), BX = (CW - bw) / 2, VY = slotY + VFD_Y;
     const bodyKey = JSON.stringify([PW, p.body, p.model, p.font, fontOk]);
     if (s.bodyKey !== bodyKey) { s.bodyKey = bodyKey; s.bodyC = renderBody(PW, p); s.barC = renderBar(PW); s.glassC ??= renderGlass(); }
-    const stampKey = `${p.stamp}|${p.red}`;
+    // a stamp drawn while its font was still loading is drawn again once it is there
+    const stampKey = `${p.stamp}|${p.red}|${typeof document === 'undefined' || !document.fonts || !p.stamp || document.fonts.check(STAMP_FONT, p.stamp)}`;
     if (s.stampKey !== stampKey) { s.stampKey = stampKey; s.stampC = p.stamp ? renderStamp(p.stamp, p.red) : null; }
     const g = canvasAt(s.cv, W, H);
 
@@ -537,6 +552,7 @@ export const printer: ItemType<P, S> = {
     }
     g.restore();
     if (!torn) bar();
+    g.setTransform(1, 0, 0, 1, 0, 0);   // leave the canvas as canvasAt expects it
 
     // the printed lines for check: transparent copies moving with the paper (hidden behind the clip and before they print)
     cssCamel(s.ghosts, { left: `${(cx - PW / 2) * k}px`, top: `${(cy - len / 2) * k}px`, width: `${PW * k}px`, height: `${len * k}px`, transform: `rotate(${rot}rad) scale(${sc})` });

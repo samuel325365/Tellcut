@@ -48,11 +48,12 @@ export function spline(ctrl: Array<[number, number]>, per = 16): Array<[number, 
   return out;
 }
 
-/** the canvas sized to w×h device pixels (cleared either way) and its context */
+/** the canvas sized to w×h device pixels (cleared either way) and its context, its transform back to identity: a resize resets it,
+ *  but a canvas kept at its size still has the last frame's (a scale left over would clear only part of it) */
 export function canvasAt(cv: HTMLCanvasElement, w: number, h: number): CanvasRenderingContext2D {
   const W = Math.max(1, Math.round(w)), H = Math.max(1, Math.round(h));
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-  const g = cv.getContext('2d')!; g.clearRect(0, 0, W, H);
+  const g = cv.getContext('2d')!; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
   return g;
 }
 

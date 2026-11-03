@@ -2,7 +2,7 @@
 // 2026-11-01: common.printer redrawn as a real POS printer on a counter. jsdom has no 2D context: the canvas is a stand-in that
 // answers every call, the tests read the block's state and what cssCamel last wrote (`_c`).
 import { resolveTheme, withDefaults, type ItemType } from '@tellcut/engine';
-import { bodyWidth, printer } from './printer.ts';
+import { bodyWidth, printer, printerFontOk, printerLines } from './printer.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -49,5 +49,57 @@ describe('common.printer: the real-printer look', () => {
     expect(parseFloat(css(s.modelG).left)).toBeCloseTo((1080 - 920) / 2 + 920 - 64);
     // a given slot still puts the slot there
     expect(parseFloat(css(run(printer, { slot: 0.6 }, 1).s.modelG).top)).toBeCloseTo(0.6 * 1920 + 211);
+  });
+});
+
+describe('common.printer on a frame whose short side is under 1080', () => {
+  // a 2D context that keeps its transform (setTransform, scale, save/restore) and notes it at every clearRect
+  function recorder() {
+    let m = [1, 0, 0, 1, 0, 0];
+    const stack: number[][] = [], clears: number[][] = [];
+    const own: Record<string, unknown> = {
+      setTransform: (...a: number[]) => { m = a.slice(0, 6); },
+      scale: (x: number, y: number) => { m = [m[0] * x, m[1] * x, m[2] * y, m[3] * y, m[4], m[5]]; },
+      save: () => { stack.push(m); }, restore: () => { m = stack.pop() ?? m; },
+      clearRect: () => { clears.push(m); },
+    };
+    return { clears, g: new Proxy(anything, { get: (t, k) => (k in own ? own[k as string] : t[k]) }) };
+  }
+
+  test('the second frame is cleared whole: draw leaves no scale behind for canvasAt to clear with', () => {
+    const r = run(printer, {}, 0.5, 720, 1280), rec = recorder();
+    (r.s.cv as any).getContext = () => rec.g;
+    r.draw(1); r.draw(1.5);
+    expect(rec.clears).toEqual([[1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 0]]);
+  });
+});
+
+describe('common.printer: its fonts', () => {
+  const fonts = (doc: any) => { const was = Object.getOwnPropertyDescriptor(document, 'fonts'); Object.defineProperty(document, 'fonts', { value: doc, configurable: true }); return () => (was ? Object.defineProperty(document, 'fonts', was) : delete (document as any).fonts); };
+
+  test('ready loads the receipt font in the weights it uses and the stamp\'s own characters', async () => {
+    const loads: string[][] = [];
+    const undo = fonts({ load: async (f: string, text: string) => { loads.push([f, text]); return []; }, check: () => true });
+    try {
+      const params = withDefaults(printer.params, { font: 'Inter', stamp: '吃飽了' }, resolveTheme(undefined, { width: 1080, height: 1920 }));
+      const s: any = printer.build({ params, root: document.createElement('div') } as any);
+      await printer.ready!(s);
+    } finally { undo(); }
+    expect(loads.some(([f]) => f.startsWith("500 20px 'Inter'"))).toBe(true);
+    expect(loads.some(([f]) => f.startsWith("700 20px 'Inter'"))).toBe(true);
+    expect(loads).toContainEqual(["900 74px 'Noto Serif TC', serif", '吃飽了']);
+  });
+
+  test('the font counts as there only when every weight a line uses is, and the model name\'s 700 too', () => {
+    const L = printerLines('0|title|標題\n0.5|shop|店名', false).lines, have = new Set<string>();
+    const undo = fonts({ check: (f: string) => have.has(f.split(' ')[0]) });
+    try {
+      have.add('700');
+      expect(printerFontOk(L, 'Inter', '')).toBe(false);   // the title is 500
+      have.add('500');
+      expect(printerFontOk(L, 'Inter', 'TP-16')).toBe(true);
+      have.delete('700');
+      expect(printerFontOk(printerLines('0|title|標題', false).lines, 'Inter', 'TP-16')).toBe(false);   // the model is 700
+    } finally { undo(); }
   });
 });
