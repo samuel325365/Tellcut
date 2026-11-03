@@ -64,9 +64,10 @@ const stampOf = (path: string) => { try { const s = statSync(path); return `${s.
 /** opts.onAnalyzed: every job this request started is over (since: when it started; jobs: how each ended, a job no longer in
  *  the queue left out) */
 export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opts: { extras?: boolean; onAnalyzed?: (id: string, since: number, jobs: JobInfo[]) => void } = {}) {
-  // sheets/transcripts and beats that failed in this server run, by kind and file: the editor asks for the analysis on every
-  // open, and the same failure (a missing whisper model, say) would run again each time, minutes of work, and the chat waiting
-  // for it would be told again. The same file is not tried again until it changes or the server restarts.
+  // analyses, sheets/transcripts and beats that failed in this server run, by kind and file: the editor asks for the analysis on
+  // every open, and the same failure (a missing whisper model, a file ffmpeg cannot read) would run again each time, minutes of
+  // work, and the chat waiting for it would be told again. The same file is not tried again until it changes, the user asks
+  // for it again (POST …/analyze?retry=1) or the server restarts.
   const failed = new Map<string, string>();
   const failedBefore = (kind: string, path: string) => { const was = failed.get(`${kind}|${path}`); return was !== undefined && was === stampOf(path); };
   /** runs a job's work; a failure (not a cancel) is remembered for this file as it was */
@@ -87,11 +88,16 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     return f;
   };
 
-  r.post('/api/projects/:id/analyze', async (_req, res, { id }) => {
+  r.post('/api/projects/:id/analyze', async (_req, res, { id }, url) => {
     const dir = store.dir(id), p = store.read(id);
+    // tried again by hand: what failed on this project's files before is forgotten
+    if (url.searchParams.get('retry') === '1') {
+      for (const x of [...Object.values(p.sources), ...Object.values(p.media)]) for (const kind of ['analyze', 'extras', 'beats']) failed.delete(`${kind}|${resolve(dir, x.path)}`);
+    }
     // jobs and extras: what the page waits for, the ones already running or queued included (a page opened while they run got
-    // none and never loaded the thumbnails, waveform and cuts); started: the ones this request queued
-    const jobs: JobInfo[] = [], extras: JobInfo[] = [], missing: string[] = [], started: JobInfo[] = [];
+    // none and never loaded the thumbnails, waveform and cuts); started: the ones this request queued; failed: the sources whose
+    // analysis failed before and is not tried again (retry=1 does)
+    const jobs: JobInfo[] = [], extras: JobInfo[] = [], missing: string[] = [], started: JobInfo[] = [], gaveUp: string[] = [];
     const running = (kind: string, label: string) => queue.active(kind, id).find((j) => j.label === label);
     for (const [sid, s] of Object.entries(p.sources)) {
       const path = resolve(dir, s.path);
@@ -100,8 +106,10 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
       let basic = running('analyze', sid);
       if (basic) jobs.push(basic);
       else if (!analysisDone(analysisFiles(dir, path), path)) {
+        // its sheets and transcript wait too: sourceExtras would run the whole analysis again itself
+        if (failedBefore('analyze', path)) { gaveUp.push(sid); continue; }
         basic = queue.add('analyze', id, sid, async (ctx) => {
-          await analyzeSource(dir, path, { signal: ctx.signal, onStep: (step, i, n) => ctx.progress(i / n, step) });
+          await remembered('analyze', path, ctx.signal, () => analyzeSource(dir, path, { signal: ctx.signal, onStep: (step, i, n) => ctx.progress(i / n, step) }));
           return { source: sid };
         });
         jobs.push(basic); started.push(basic);
@@ -134,7 +142,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     if (started.length && opts.onAnalyzed) { const since = Date.now(); void Promise.allSettled(started.map((j) => queue.wait(j.id)))
       .then((all) => opts.onAnalyzed!(id, since, all.flatMap((x) => (x.status === 'fulfilled' ? [x.value] : []))))
       .catch((e) => console.warn(`after the analysis of ${id}: ${(e as Error).message}`)); }   // unhandled, it ends the server
-    sendJson(res, 202, { jobs, missing, extras });
+    sendJson(res, 202, { jobs, missing, extras, failed: gaveUp });
   });
 
   r.get('/api/projects/:id/media/proxy/:source', (req, res, { id, source: sid }) => sendFile(req, res, analysis(id, sid).proxy));
