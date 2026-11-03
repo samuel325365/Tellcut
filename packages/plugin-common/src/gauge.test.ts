@@ -1,5 +1,6 @@
 // common.gauge: a readout in words and a neutral look (acceptance films 2026-11-01, F1: a ranking, not a score)
-import { gauge, gaugeLook, neutralOf, readoutText } from './gauge.ts';
+import { VALUES_EN, VALUES_JA } from '../../../apps/editor/src/i18n/values.ts';
+import { gauge, gaugeLook, GUILT_ZONES, ledCells, neutralOf, readoutText } from './gauge.ts';
 
 const P = Object.fromEntries(gauge.params.map((d) => [d.key, d.default])) as any;
 
@@ -27,4 +28,17 @@ test('the doc says how to make a neutral gauge and that the readout can be words
   expect(gauge.doc).toMatch(/look: neutral/);
   expect(gauge.doc).toMatch(/halo: false、danger: -1、boom: -1/);
   expect(gauge.doc).toMatch(/readout/);
+});
+
+test('neutral: the guilt zones the English or Japanese UI writes into the item count as not set (2026-11-03)', () => {
+  expect(GUILT_ZONES).toEqual([P.zones, VALUES_EN['common.gauge.zones'], VALUES_JA['common.gauge.zones']]);
+  for (const zones of GUILT_ZONES) expect(gaugeLook({ ...P, zones, look: 'neutral' }, { zones }).zones).toBe(neutralOf(100).zones);
+  expect(gaugeLook({ ...P, zones: '0:Clean,20:Treat,40:Naughty,60:Sinful,85:Hell', look: 'neutral' }, { zones: '0:Clean,20:Treat,40:Naughty,60:Sinful,85:Hell' }).zones).toBe(neutralOf(100).zones);
+  // a guilt look keeps them, and zones of the item's own stay in neutral
+  expect(gaugeLook({ ...P, zones: GUILT_ZONES[1] }, { zones: GUILT_ZONES[1] }).zones).toBe(GUILT_ZONES[1]);
+  expect(gaugeLook({ ...P, zones: '0:Mild, 50:Hot', look: 'neutral' }, { zones: '0:Mild, 50:Hot' }).zones).toBe('0:Mild, 50:Hot');
+});
+
+test('the LED has a cell for every digit of max, at least three', () => {
+  expect([1, 100, 999, 1000, 25000, 100000].map(ledCells)).toEqual([3, 3, 3, 4, 5, 6]);
 });

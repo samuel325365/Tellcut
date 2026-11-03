@@ -25,13 +25,21 @@ const light = (c: string) => (luma(c) ?? 0) > 0.6;
 
 /** look 'neutral': four equal zones of `max` with no names (the colour ramp only), no halo, no alarm, no blow-up */
 export const neutralOf = (max: number) => ({ zones: [0, 0.25, 0.5, 0.75].map((q) => `${+(q * (max || 100)).toFixed(2)}:`).join(', '), halo: false, danger: -1, boom: -1 });
-/** the params the gauge draws with: look 'neutral' swaps the guilt-meter defaults for neutralOf's, except the ones the item sets itself */
+/** the guilt meter's zones in Chinese (the default), English and Japanese: the editor writes the UI language's words into a gauge
+ *  added in the English or Japanese UI (apps/editor/src/i18n/values.*.ts, kept the same by gauge.test.ts), and those are still the
+ *  guilt default, not zones the user chose */
+export const GUILT_ZONES = ['0:清白, 20:小確幸, 40:有點罪, 60:罪孽深重, 85:地獄級', '0:Clean, 20:Treat, 40:Naughty, 60:Sinful, 85:Hell', '0:潔白, 20:小さな幸せ, 40:ちょい罪, 60:罪深い, 85:地獄'];
+const squash = (v: unknown) => String(v ?? '').replace(/\s+/g, '');
+/** the params the gauge draws with: look 'neutral' swaps the guilt-meter defaults for neutralOf's, except the ones the item sets itself
+ *  (the guilt zones in any of the three languages count as not set) */
 export function gaugeLook<T extends Pick<P, 'look' | 'zones' | 'halo' | 'danger' | 'boom' | 'max'>>(p: T, own: Record<string, unknown> = {}): T {
   if (p.look !== 'neutral') return p;
-  const out: Record<string, unknown> = { ...p };
-  for (const [k, v] of Object.entries(neutralOf(p.max))) if (own[k] === undefined) out[k] = v;
+  const out: Record<string, unknown> = { ...p }, set = (k: string) => own[k] !== undefined && !(k === 'zones' && GUILT_ZONES.some((z) => squash(z) === squash(own[k])));
+  for (const [k, v] of Object.entries(neutralOf(p.max))) if (!set(k)) out[k] = v;
   return out as T;
 }
+/** the LED's seven-segment cells: three, more for a max with more digits (each one narrower to fit the same window) */
+export const ledCells = (max: number) => Math.max(3, String(Math.round(Math.abs(max || 100))).length);
 /** `readout`: the words shown instead of the number, or null for the number. One word stays; several ("第4, 第2, 第1") change at
  *  each hit, the n-th after the n-th hit (nothing before the first); {v} is the score counted so far */
 export function readoutText(readout: string, count: number, shown: number): string | null {
@@ -98,7 +106,7 @@ export const gauge: ItemType<P, S> = {
   doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；readout 讓 LED 顯示字而不是數字（名次 No.1、一個詞；逗號分開就每筆加分換下一個，{v}＝目前分數）；預設是「罪惡指數」的樣子（清白…地獄級的色區、光環、警報、爆表），要中性的量表用 look: neutral（色區只留顏色不寫名稱、沒有光環、警報、爆表；自己給的 zones、halo、danger、boom 照樣算），或自己給 zones 並設 halo: false、danger: -1、boom: -1；罪惡指數、辣度、心動指數、熱度、分數、名次',
   params: [
     { key: 'hits', label: '加分（秒:分數，逗號分隔）', type: 'text', default: '0.3:12, 0.7:15, 1.1:20, 1.5:26, 1.9:24' },
-    { key: 'zones', label: '色區（起點:名稱[:顏色]，逗號分隔）', type: 'text', default: '0:清白, 20:小確幸, 40:有點罪, 60:罪孽深重, 85:地獄級' },
+    { key: 'zones', label: '色區（起點:名稱[:顏色]，逗號分隔）', type: 'text', default: GUILT_ZONES[0] },
     { key: 'max', label: '滿分', type: 'number', min: 1, max: 100000, step: 1, default: 100 },
     { key: 'unit', label: '讀數後面的單位', type: 'string', default: '分' },
     { key: 'scramble', label: '開場亂跳到第幾秒（顯示 ???；0＝不亂跳）', type: 'number', min: 0, max: 600, step: 0.05, default: 0 },
@@ -184,10 +192,13 @@ export const gauge: ItemType<P, S> = {
     const ledOn = booming || danger ? (Math.sin(t * 18) > -0.3 ? '#ff3b30' : '#7a1410') : standby ? withAlpha(p.led, 0.15) : p.led, ledOff = withAlpha(p.led, 0.07);
     const word = booming && Math.floor((t - p.boom) * 4) % 2 === 0;
     // a readout in words (not while it scrambles or blows): letters in the LED colour instead of the seven-segment digits
-    const said = scrambling || booming ? null : readoutText(p.readout, count, clamp(shown, 0, 999));
+    // the digits: as many cells as max has digits (at least three) in the same window; a score below zero shows as 0, since
+    // the needle cannot go below the dial either, and one above what the cells hold shows as all nines
+    const cells = ledCells(mx), top = 10 ** cells - 1, f = 222 / ((cells - 1) * 82 + 58);   // three cells: 58 wide, 82 apart
+    const said = scrambling || booming ? null : readoutText(p.readout, count, clamp(shown, 0, top));
     if (!word && said === null) {
-      const str = scrambling ? '???' : booming ? '999' : String(clamp(shown, 0, 999)).padStart(3, ' ');
-      [...str].forEach((ch, i) => seg7(g, ch, bx + 34 + i * 82, by + 16, 58, 72, ledOn, ledOff));
+      const str = scrambling ? '?'.repeat(cells) : booming ? '9'.repeat(cells) : String(clamp(shown, 0, top)).padStart(cells, ' ');
+      [...str].forEach((ch, i) => seg7(g, ch, bx + 34 + i * 82 * f, by + 16, 58 * f, 72, ledOn, ledOff));
     }
     // warning lamps
     for (const sx of [-1, 1]) {
