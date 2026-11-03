@@ -24,7 +24,8 @@ test('exports a snapshot to exports/<name>-<stamp>.mp4 with a log; later edits d
   const r = await post();
   expect(r.status).toBe(202);
   const job = await r.json();
-  expect((await post()).status).toBe(409);   // one export at a time
+  const busy = await post();
+  expect([busy.status, (await busy.json()).code]).toEqual([409, 'export.busy']);   // one export at a time
   await fetch(`${base}/api/projects/demo`, { method: 'PUT', body: JSON.stringify(demoProject({ meta: { ...demoProject().meta, duration: 2 } })) });
   const events = await sse(`${base}/api/jobs/${job.id}/events`);
   const last = events.at(-1);
@@ -110,6 +111,7 @@ test('a project effect that does not load stops the export with the reason (it r
     const job = await (await post()).json();
     const done = await app.queue.wait(job.id);
     expect([done.status, done.error]).toEqual(['failed', expect.stringMatching(/^專案的效果載入失敗：fx\/bad\.js：/)]);
+    expect(done).toMatchObject({ code: 'export.fxFailed', params: { list: expect.stringMatching(/^fx\/bad\.js: /) } });
   } finally {
     await fetch(`${base}/api/projects/demo`, { method: 'PUT', body: JSON.stringify(demoProject()) });
     rmSync(join(demo, 'fx'), { recursive: true, force: true });

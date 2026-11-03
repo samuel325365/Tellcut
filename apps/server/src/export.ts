@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { Project, Registry } from '@tellcut/engine';
 import { exportLock, listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, tryExportLock } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
-import type { JobCtx, JobQueue } from './jobs.ts';
+import { JobError, type JobCtx, type JobQueue } from './jobs.ts';
 import type { ProjectStore } from './projects.ts';
 
 /** cache/export.lock (media-node exports.ts), held for the whole job: another server or a command-line render exporting the
@@ -18,7 +18,7 @@ export async function runExport(o: { dir: string; id: string; project: Project; 
   const { dir, project, ctx } = o;
   // taken before anything is written (the export's .log name included): the POST's check can lose a race with the other server
   const release = tryExportLock(dir);
-  if (!release) throw new Error(EXPORT_ELSEWHERE);
+  if (!release) throw new JobError(EXPORT_ELSEWHERE, 'export.elsewhere');
   try { return await exportLocked(o); } finally { release(); }
 }
 
@@ -67,13 +67,16 @@ export function exportRoutes(r: Router, store: ProjectStore, queue: JobQueue, re
     const dir = store.dir(id), project = store.read(id);   // the snapshot: edits after this point do not affect the export
     const { from, to } = parsed.data, d = project.meta.duration;
     if ((to ?? d) > d + 1e-6 || (from ?? 0) >= (to ?? d)) throw new HttpError(400, `Invalid export range ${from ?? 0}–${to ?? d} s (project is ${d} s)`);
-    if (queue.active('export').length) throw new HttpError(409, 'An export is already queued or running');
-    if (lockHolder(exportLock(dir))) throw new HttpError(409, EXPORT_ELSEWHERE);
+    if (queue.active('export').length) throw new HttpError(409, 'An export is already queued or running', { code: 'export.busy' });
+    if (lockHolder(exportLock(dir))) throw new HttpError(409, EXPORT_ELSEWHERE, { code: 'export.elsewhere' });
     const range = from !== undefined || to !== undefined ? ` ${from ?? 0}–${to ?? d} s` : '';
     sendJson(res, 202, queue.add('export', id, `${project.meta.name}${range}`, async (ctx) => {
       // an effect that does not load would be left out of the film (or fail deep in the player): say which, before rendering
       const { registry, fxErrors } = await registryFor(dir, project);
-      if (fxErrors.length) throw new Error(`專案的效果載入失敗：${fxErrors.map((e) => `${e.path}：${e.message}`).join('；')}`);
+      if (fxErrors.length) {
+        const list = fxErrors.map((e) => `${e.path}: ${e.message}`).join('; ');
+        throw new JobError(`專案的效果載入失敗：${fxErrors.map((e) => `${e.path}：${e.message}`).join('；')}`, 'export.fxFailed', { list });
+      }
       return runExport({ dir, id, project, from, to, registry, ctx });
     }));
   });

@@ -29,7 +29,7 @@ test('a project another server is exporting: the export is refused as busy, and 
   try {
     const r = await fetch(`${base}/api/projects/demo/export`, { method: 'POST' });
     expect(r.status).toBe(409);
-    expect((await r.json()).error).toBe(EXPORT_ELSEWHERE);
+    expect(await r.json()).toMatchObject({ error: EXPORT_ELSEWHERE, code: 'export.elsewhere' });   // the page words it from the code
     expect(app.queue.active('export')).toEqual([]);
     const preview = await (await fetch(`${base}/api/projects/demo/delete-preview`)).json();
     expect(preview.busyCode).toEqual({ code: 'delete.busyJob', params: { label: 'export' } });
@@ -42,7 +42,7 @@ test('the lock taken after the POST\'s check (the other server won the race) fai
   held();
   const before = exportsMade();
   const ctx = { signal: new AbortController().signal, progress: () => {}, log: () => {} };
-  await expect(runExport({ dir: demo, id: 'demo', project: parseProject(demoProject()), registry: app.registry, ctx })).rejects.toThrow(EXPORT_ELSEWHERE);
+  await expect(runExport({ dir: demo, id: 'demo', project: parseProject(demoProject()), registry: app.registry, ctx })).rejects.toMatchObject({ message: EXPORT_ELSEWHERE, code: 'export.elsewhere' });
   expect(exportsMade()).toEqual(before);   // not even the export's .log
   expect(JSON.parse(readFileSync(exportLock(demo), 'utf8')).pid).toBe(other.pid);   // the other server's lock stays
 });

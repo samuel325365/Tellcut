@@ -7,6 +7,18 @@ export { isTerminal, type JobInfo, type JobStatus };
 export interface JobCtx { signal: AbortSignal; progress(p: number, message?: string): void; log(line: string): void }
 export type JobRun = (ctx: JobCtx) => Promise<unknown>;
 
+/** A job failure the page words itself: code (like an HttpError's, e.g. 'export.elsewhere') and params go onto the job's info
+ *  next to the message, as the routes' error answers carry them */
+export class JobError extends Error {
+  constructor(message: string, readonly code: string, readonly params?: Record<string, string | number>) { super(message); }
+}
+/** a failed job's code and params: from a JobError, or any error with a code of that shape (never Node's own ENOENT and the like) */
+const codeOf = (e: unknown): { code?: string; params?: Record<string, string | number> } => {
+  const x = e as { code?: unknown; params?: unknown } | null;
+  if (typeof x?.code !== 'string' || !/^[a-z]+\.[A-Za-z]+$/.test(x.code)) return {};
+  return { code: x.code, ...(x.params && typeof x.params === 'object' ? { params: x.params as Record<string, string | number> } : {}) };
+};
+
 const LOG_KEEP = 200, FINISHED_KEEP = 100;
 /** What clients see: the log trimmed to its last 20 lines. */
 export const publicInfo = (j: JobInfo): JobInfo => ({ ...j, log: j.log.slice(-20) });
@@ -67,11 +79,11 @@ export class JobQueue extends EventEmitter {
     };
     Promise.resolve().then(() => j.run(ctx)).then(
       (result) => { if (j.ac.signal.aborted) this.finish(j.info, 'cancelled'); else { j.info.result = result; j.info.progress = 1; this.finish(j.info, 'done'); } },
-      (e) => (j.ac.signal.aborted ? this.finish(j.info, 'cancelled') : this.finish(j.info, 'failed', String((e as Error)?.message ?? e))),
+      (e) => (j.ac.signal.aborted ? this.finish(j.info, 'cancelled') : this.finish(j.info, 'failed', String((e as Error)?.message ?? e), codeOf(e))),
     ).finally(() => { if (counted) { this.running--; this.pump(); } });
   }
-  private finish(info: JobInfo, status: JobStatus, error?: string) {
-    Object.assign(info, { status, finished: Date.now() }, error ? { error } : {});
+  private finish(info: JobInfo, status: JobStatus, error?: string, coded: ReturnType<typeof codeOf> = {}) {
+    Object.assign(info, { status, finished: Date.now() }, error ? { error, ...coded } : {});
     this.changed(info);
     const done = this.list().filter((x) => isTerminal(x.status));
     for (const old of done.slice(FINISHED_KEEP)) this.jobs.delete(old.id);

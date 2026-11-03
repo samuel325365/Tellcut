@@ -27,6 +27,15 @@ test('records results, failures, progress and a bounded log', async () => {
   expect([b.status, b.error]).toEqual(['failed', 'boom']);
 });
 
+test('a failure with a code (JobError) carries it and its params for the page to word; a system error code (ENOENT) is not one', async () => {
+  const { JobError } = await import('./jobs.ts');
+  const q = new JobQueue(2);
+  const coded = q.add('t', 'p', 'a', async () => { throw new JobError('fx failed', 'export.fxFailed', { list: 'fx/a.js: x' }); });
+  const sys = q.add('t', 'p', 'b', async () => { throw Object.assign(new Error('no file'), { code: 'ENOENT' }); });
+  expect(await q.wait(coded.id)).toMatchObject({ status: 'failed', error: 'fx failed', code: 'export.fxFailed', params: { list: 'fx/a.js: x' } });
+  expect(await q.wait(sys.id)).not.toHaveProperty('code');
+});
+
 test('cancelling a queued job skips it; cancelling a running job aborts its signal', async () => {
   const q = new JobQueue(1);
   let aborted = false;
