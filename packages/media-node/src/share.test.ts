@@ -96,7 +96,8 @@ test('projects made at once from the same footage transcribe it once: the ones q
   // a batch: every project's extras start together, before any transcript exists, then wait for the one background slot
   const stts = dirs.map(() => fakeTranscribe('一'));
   await Promise.all(dirs.map((d, i) => sourceExtras(d, src, { label: 'clip', stt: stts[i] })));
-  expect(stts.map((s) => s.calls.length)).toEqual([1, 0, 0]);
+  // once, by whichever reaches the slot first (each looks for a sibling's analysis first, without blocking: on a busy machine b can win)
+  expect(stts.map((s) => s.calls.length).sort()).toEqual([0, 0, 1]);
 }, 120000);
 
 test('a sibling\u2019s sheets and burned check made by an older EXTRAS_VERSION are not taken (they would be stamped current here)', async () => {
