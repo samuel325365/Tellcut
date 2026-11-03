@@ -2,7 +2,7 @@
 import { stamp } from './stamp.ts';
 import { pinTimes, tag, tapeTimes } from './tag.ts';
 import { pinCheckPts } from './geo.ts';
-import { emoji, floaters, tapPose } from './emoji.ts';
+import { coverAt, coverBox, coverPath, emoji, floaters, tapPose } from './emoji.ts';
 import { formatValue, meter, niceStep, parsePins, pinAt } from './meter.ts';
 import { levelAt, levelFrac, parseLevels } from './levels.ts';
 import { dotRow, progress, timelineState } from './progress.ts';
@@ -50,6 +50,20 @@ test('emoji float: reactions are born rate a second and rise from the start poin
   expect(a.length).toBeGreaterThan(5);
   for (const f of a) expect(f.y).toBeLessThan(1100);
   expect(floaters(0, 3, 7, 11, ['♥'], 0, 0, 100, 1).length).toBeLessThanOrEqual(1);
+});
+
+test('emoji cover: the path is read in time order and followed in straight lines, held at its ends; no path stays at x, y', () => {
+  const p = { x: 0.3, y: 0.4, size: 20, path: '1|0.6|0.5|30\n0|0.2|0.4; 2|0.6|0.9|30\nnot|a|point' };
+  expect(coverPath(p.path, 20)).toEqual([[0, 0.2, 0.4, 20], [1, 0.6, 0.5, 30], [2, 0.6, 0.9, 30]]);
+  expect(coverAt(p, -1)).toEqual({ x: 0.2, y: 0.4, size: 20 });
+  const mid = coverAt(p, 0.5);
+  expect(mid.x).toBeCloseTo(0.4); expect(mid.y).toBeCloseTo(0.45); expect(mid.size).toBeCloseTo(25);
+  expect(coverAt(p, 1.25).y).toBeCloseTo(0.6);
+  expect(coverAt(p, 9)).toEqual({ x: 0.6, y: 0.9, size: 30 });
+  expect(coverAt({ ...p, path: '' }, 1)).toEqual({ x: 0.3, y: 0.4, size: 20 });
+  expect(coverBox('0.1, 0.2,0.5,0.4')).toEqual([0.1, 0.2, 0.5, 0.4]);
+  expect(coverBox('')).toBeNull();
+  expect(coverBox('0.1,0.2,0,0.4')).toBeNull();
 });
 
 test('emoji tap: the heart overshoots to 1.15, settles, rises and is gone after 1.05 s', () => {

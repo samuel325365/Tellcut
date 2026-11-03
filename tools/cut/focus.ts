@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { createRegistry, r6, resolveTimes, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
 import { FACE_STEP, faceKey, facesAt, type FacesProvider } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { onFilm, pickFace, smooth, stickerKeys, trackFace, type Who } from './follow.ts';
+import { COVER_LIFT, FOLLOW_SIZE, onFilm, pickFace, smooth, stickerKeys, trackFace, type Who } from './follow.ts';
 import { avoidBurnedMove, spreadMove } from './avoid.ts';
 import type { Rect } from './view.ts';
 
@@ -91,7 +91,8 @@ export async function resolveBurnedFaces(x: FaceCtx, asks: BurnedAsk[], autoFocu
   }
 }
 
-/** Stickers asked to follow a mouth or a face: their transform keys, from the faces of the clip under them. */
+/** Stickers asked to follow a mouth or a face: their transform keys, from the faces of the clip under them. A face cover
+ *  (common.emoji mode cover) on a face is made big enough to hide it all (FOLLOW_SIZE.cover, COVER_LIFT). */
 export async function resolveFollows(x: FaceCtx, follows: FollowReq[]) {
   if (!follows.length) return;
   const W = x.p.meta.width, H = x.p.meta.height, registry = createRegistry(plugins);
@@ -118,7 +119,8 @@ export async function resolveFollows(x: FaceCtx, follows: FollowReq[]) {
     const defs = registry.item(found.type)?.params ?? [], param = (k: string, d: number) => Number(found.params[k] ?? defs.find((p) => p.key === k)?.default ?? d);
     // a sticker's size is a share of the film's short side; the keys want it as a share of the width
     const anchor = { x: param('x', 0.5), y: param('y', 0.5), width: (param('size', 20) / 100) * (Math.min(W, H) / W) };
-    const keys = stickerKeys(spots, at.start, anchor, req.follow === 'mouth' ? 2.4 : 1.1);
+    const cover = req.follow === 'face' && found.type === 'common.emoji' && (found.params.mode ?? defs.find((p) => p.key === 'mode')?.default) === 'cover';
+    const keys = stickerKeys(spots, at.start, anchor, cover ? FOLLOW_SIZE.cover : FOLLOW_SIZE[req.follow], cover ? COVER_LIFT : 0, W / H);
     found.transform = { x: keys[0].x, y: keys[0].y, scale: keys[0].scale, ox: anchor.x, oy: anchor.y, keys };
     x.notes.push(`${req.id} 跟著 ${clip.source} 的${req.follow === 'mouth' ? '嘴' : '臉'}移動（${keys.length} 個關鍵格）${lost.length ? `；${lost.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)} 秒`).join('、')} 看不到臉，停在最後的位置` : ''}`);
   }

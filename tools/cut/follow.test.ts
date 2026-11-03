@@ -69,6 +69,20 @@ test('a sticker that follows the mouth gets a path; a landscape clip in a portra
   expect(c.notes.some((n) => n.includes('跟著 v 的嘴移動'))).toBe(true);
 }, 60000);
 
+test('a face cover (common.emoji mode cover) following a face is made bigger than a sticker on it, and raised to the hairline', async () => {
+  const c = await portraitCut();
+  const clip = c.clip('v', { from: 1, len: 2, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } });
+  const sticker = c.effect('common.emoji', { at: 0, len: 1, char: '🌸', follow: 'face', clip });
+  const cover = c.effect('common.emoji', { at: 0, len: 1, mode: 'cover', char: '🌸', follow: 'face', clip });
+  const p = await c.save(), keys = (id: string) => (p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id)!.transform.keys as Array<{ x: number; y: number; scale: number }>);
+  const [s, k] = [keys(sticker)[0], keys(cover)[0]];
+  expect(k.scale / s.scale).toBeCloseTo(1.9 / 1.1, 2);
+  expect(k.x).toBe(s.x);
+  // raised by a tenth of its width: 1.9 face widths (0.1 of the source, 3413 px of it on this film) as a share of the film's height
+  expect(s.y - k.y).toBeCloseTo(0.1 * 1.9 * ((0.1 * 3413.33) / 1080) * (1080 / 1920), 3);
+  expect(stickerKeys([{ t: 1, x: 0.5, y: 0.5, w: 0.1 }], 1, { x: 0.5, y: 0.5, width: 0.2 }, 2, 0.1, 0.5)).toEqual([{ t: 0, x: 0, y: -0.01, scale: 1 }]);
+}, 60000);
+
 test("a sticker up to the source's last frame still gets its path; one longer than its clip says where it stops following", async () => {
   const c = await portraitCut();
   const clip = c.clip('v', { from: 4, len: 2, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } });   // source 4–6, its end

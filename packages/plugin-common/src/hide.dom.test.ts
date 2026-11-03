@@ -59,7 +59,7 @@ const areas = (root: HTMLElement) => [...root.querySelectorAll('canvas')].map((c
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 const CASES: Array<[ItemType<any, any>, Record<string, unknown>]> = [
-  [ambient, {}], [caption, { style: 'crayon' }], [chart, {}], [emoji, { mode: 'float' }], [frame, { backdrop: 'desk' }], [gauge, {}], [mapcam, {}], [mapjump, {}],
+  [ambient, {}], [caption, { style: 'crayon' }], [chart, {}], [emoji, { mode: 'float' }], [emoji, { mode: 'cover' }], [frame, { backdrop: 'desk' }], [gauge, {}], [mapcam, {}], [mapjump, {}],
   [meter, { look: 'ruler' }], [outro, {}], [panel, { look: 'hole' }], [paper, {}], [pen, { style: 'crayon' }], [pen, { kind: 'trace' }], [postcard, {}], [printer, {}], [progress, { mode: 'timeline' }], [route, {}],
   [route, { look: 'page' }], [shader, {}], [sparkle, {}], [speedlines, {}], [strike, {}], [tag, { look: 'pin' }], [timelapse, {}], [touch, {}],
   [wipe, { mode: 'hand' }], [worldmap, {}],

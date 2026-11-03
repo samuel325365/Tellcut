@@ -75,10 +75,19 @@ export function smooth(spots: FilmSpot[]): FilmSpot[] {
 }
 
 /**
- * The sticker's transform keys (item-local times) for film spots: its own anchor (where the block draws it, as fractions) is moved
- * onto each spot, and it is scaled so its width is `cover` times the spot's width.
+ * How big a sticker is on what it follows, as times the spot's width: a mouth's sticker 2.4 mouths wide, a face's 1.1 faces. A face
+ * cover (common.emoji mode cover) must hide the whole face, but the detector's box runs from the chin only to the brow: 1.9 faces
+ * wide and raised by a tenth of its own width, it reaches from under the chin to the hairline.
  */
-export function stickerKeys(spots: FilmSpot[], itemStart: number, anchor: { x: number; y: number; width: number }, cover: number) {
+export const FOLLOW_SIZE = { mouth: 2.4, face: 1.1, cover: 1.9 } as const;
+export const COVER_LIFT = 0.1;
+
+/**
+ * The sticker's transform keys (item-local times) for film spots: its own anchor (where the block draws it, as fractions) is moved
+ * onto each spot, and it is scaled so its width is `cover` times the spot's width; `lift` raises it by that share of its width
+ * (`aspect` the film's width over its height, to turn that width into a share of the height).
+ */
+export function stickerKeys(spots: FilmSpot[], itemStart: number, anchor: { x: number; y: number; width: number }, cover: number, lift = 0, aspect = 1) {
   const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
-  return spots.map((p) => ({ t: r4(p.t - itemStart), x: r4(p.x - anchor.x), y: r4(p.y - anchor.y), scale: r4(Math.min(10, Math.max(0.05, (cover * p.w) / anchor.width))) }));
+  return spots.map((p) => ({ t: r4(p.t - itemStart), x: r4(p.x - anchor.x), y: r4(p.y - lift * cover * p.w * aspect - anchor.y), scale: r4(Math.min(10, Math.max(0.05, (cover * p.w) / anchor.width))) }));
 }

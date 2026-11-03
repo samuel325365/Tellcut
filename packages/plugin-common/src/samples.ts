@@ -341,6 +341,9 @@ export const samples: Sample[] = [
   { name: 'wide-tag-pin', type: 'common.tag', params: { look: 'pin', tags: '海邊小島,ISLAND', x: 0.5, y: 0.6, size: 4.5, check: 1 }, at: [1.6], wide: true, bg: '#2b86a3' },
   { name: 'emoji-float', type: 'common.emoji', params: { mode: 'float', char: '♥♥😂', x: 0.86, y: 0.62 }, at: [1.2, 2.5], bg: '#3a3f4a' },
   { name: 'emoji-tap', type: 'common.emoji', params: { mode: 'tap', char: '♥', x: 0.5, y: 0.45 }, at: [0.15, 0.5, 0.85], bg: '#3a3f4a' },
+  // mode cover: whole on the first frame and the last (a disc behind its petals); moving along a path, cut by a box
+  { name: 'emoji-cover', type: 'common.emoji', params: { mode: 'cover', char: '🌸', x: 0.5, y: 0.4, size: 34, backing: '#f59ab0' }, at: [0, 2.96] },
+  { name: 'emoji-cover-path', type: 'common.emoji', params: { mode: 'cover', char: '❤️', size: 22, path: '0|0.2|0.3\n3|0.8|0.7|30', box: '0,0.25,1,0.27' }, at: [1.5] },
   { name: 'wide-emoji-float', type: 'common.emoji', params: { mode: 'float', char: '♥👍', x: 0.9, y: 0.75 }, at: [2], wide: true, bg: '#3a3f4a' },
   { name: 'meter-band', type: 'common.meter', params: { look: 'band', stops: '0:2026, 0.4:1241:1.2, 2.1:1257:0.6', min: 1200, max: 2030, sep: false, suffix: '年', size: 5.2, pins: '1241|accent|城市被燒毀|0.5; 1257|hl|重新規劃|2.1; 1300|dashed|傳說|0' }, at: [0.3, 1.9, 2.9], bg: '#6b5a48' },
   { name: 'meter-ruler', type: 'common.meter', params: { look: 'ruler', stops: '0:175, 1:193, 2:188', min: 170, max: 200, pins: '175|accent|她' }, at: [0.5, 1.5, 2.6], bg: '#3a6a5a' },
