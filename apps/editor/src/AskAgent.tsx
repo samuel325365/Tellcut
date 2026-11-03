@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { askLines } from './ask.ts';
 import type { EditorState } from './store.ts';
 import { t } from './i18n/index.ts';
+import { composing } from './keys.ts';
 
 export function AskAgent({ s, editor }: { s: EditorState; editor: any }) {
   const a = s.ask!, [text, setText] = useState('');
@@ -24,7 +25,7 @@ export function AskAgent({ s, editor }: { s: EditorState; editor: any }) {
       {(a.state === 'edit' || a.state === 'sending') && <>
         <textarea data-ask-text ref={box} rows={3} placeholder={t('ed.askPh')} value={text}
           onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !(e as any).isComposing) { e.preventDefault(); send(); } }} />
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !composing(e)) { e.preventDefault(); send(); } }} />
         {a.error && <p class="notice">{a.error}</p>}
         <div class="ask-buttons">
           <button onClick={() => editor.closeAsk()}>Cancel</button>

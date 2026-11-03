@@ -7,6 +7,7 @@ import { pickText, type Lang, type PresetFieldInfo, type PresetInfo } from '@tel
 import { PresetPoster } from './PresetStrip.tsx';
 import { MinePresetActions, MinePresetBody, SaveFormPreset, type PresetApi } from './presets/MinePreset.tsx';
 import { t } from './i18n/index.ts';
+import { composing } from './keys.ts';
 import { useLang } from './i18n/lang.ts';
 
 const AUTO = 'auto', OWN = 'own';
@@ -79,7 +80,7 @@ export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose, 
         if (e.key === 'Escape') onClose();
         // Enter confirms (a focused button keeps its own Enter; a select or the seconds box takes it as typing); either way it never reaches the chat composer
         // a held-down Enter (the one that opened the dialog from a thumbnail) is swallowed, not acted on
-        else if (e.key === 'Enter' && !(e as any).isComposing) { e.stopPropagation(); if (!(e.target as HTMLElement).closest('button, select, input:not([type=checkbox])')) { e.preventDefault(); if (!e.repeat) confirm(); } }
+        else if (e.key === 'Enter' && !composing(e)) { e.stopPropagation(); if (!(e.target as HTMLElement).closest('button, select, input:not([type=checkbox])')) { e.preventDefault(); if (!e.repeat) confirm(); } }
       }}>
         <div class="preset-preview"><PresetPoster preset={preset} play /></div>
         <div class="preset-body">

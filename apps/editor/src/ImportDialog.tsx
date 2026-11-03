@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Attachment } from './attachments.ts';
 import { IconUp, IconX, kindIcon } from './icons.tsx';
 import { DICTS, errText, t, uiLabel, type Key } from './i18n/index.ts';
+import { composing } from './keys.ts';
 import { useLang } from './i18n/lang.ts';
 
 /** a place from the server: `key` (and `drive`) let the page word it; `label` is the server's Chinese, kept for an older server */
@@ -63,7 +64,7 @@ export function ImportDialog({ api, onAdd, onClose, surface = 'home' }: { api: F
             <div class="pathbar">
               <button class="icon-btn" data-tip={t('import.up')} aria-label={t('import.up')} disabled={!folder?.parent} onClick={() => folder?.parent && void open(folder.parent)}><IconUp size={16} /></button>
               <input data-path value={typed} placeholder={t('import.pathPh')} onInput={(e) => { edits.current++; setTyped((e.target as HTMLInputElement).value); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void open(typed.trim()); } }} />
+                onKeyDown={(e) => { if (e.key === 'Enter' && !composing(e)) { e.preventDefault(); void open(typed.trim()); } }} />
               {/* one click: this folder (with whatever was ticked) goes in; picking it and then pressing 加入 was easy to miss */}
               <button data-pick-folder class="primary" disabled={!folder} onClick={() => {
                 if (!folder) return;

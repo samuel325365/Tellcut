@@ -1,4 +1,4 @@
-import { clipboardFree, dialogFree, editorTakes, keyAction } from './keys.ts';
+import { clipboardFree, composing, dialogFree, editorTakes, keyAction } from './keys.ts';
 
 const k = (key: string, o: Partial<{ code: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean; target: any }> = {}) =>
   keyAction({ key, code: o.code ?? '', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...o });
@@ -74,4 +74,8 @@ test('while a dialog is up only Esc reaches the timeline: a backdrop anywhere, o
   expect(dialogFree('exitCrop', doc(true), el('[data-ask]'))).toBe(true);
   for (const inside of ['[role=dialog]:not(.help)', '[role=alertdialog]', '[data-ask]', '[data-api-picker]']) expect(dialogFree('delete', doc(false), el(inside))).toBe(false);
   expect([dialogFree('delete', doc(false), el(null)), dialogFree('split', doc(false), null)]).toEqual([true, true]);
+});
+
+test('an Enter that picks the input method word is composing, Safari\'s (isComposing already false, keyCode 229) too', () => {
+  expect([composing({ isComposing: true }), composing({ isComposing: false, keyCode: 229 }), composing({ isComposing: false, keyCode: 13 }), composing({})]).toEqual([true, true, false, false]);
 });

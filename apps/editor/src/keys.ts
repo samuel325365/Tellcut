@@ -83,3 +83,7 @@ export function dialogFree(a: Action, doc: Pick<Document, 'querySelector'>, targ
   if (doc.querySelector('.modal-back')) return false;
   return !(target as Element | null)?.closest?.(DIALOGS);
 }
+
+/** An Enter that only picks the input method's word (Chinese, Japanese): not a send. Safari ends the composition before its
+ *  keydown, so isComposing is already false there; the keyCode 229 it still carries says so. */
+export const composing = (e: { isComposing?: boolean; keyCode?: number }) => !!e.isComposing || e.keyCode === 229;

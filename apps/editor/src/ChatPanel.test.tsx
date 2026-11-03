@@ -13,13 +13,14 @@ function session(over: any = {}) {
   return s;
 }
 
-test('Enter sends, Shift+Enter and IME composition do not; the hint shows on an empty chat; running shows stop', async () => {
+test('Enter sends, Shift+Enter and IME composition do not (Safari: the Enter that picks the word comes with keyCode 229); the hint shows on an empty chat; running shows stop', async () => {
   const root = document.createElement('div'), s = session();
   await act(() => render(<ChatPanel session={s} hint="例如：…" />, root));
   expect(root.textContent).toContain('例如：…');
   const ta = root.querySelector<HTMLTextAreaElement>('[data-chat-input]')!;
   await act(() => { ta.value = '剪短'; ta.dispatchEvent(new Event('input', { bubbles: true })); });
   await act(() => { ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true })); });
+  await act(() => { ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true } as any)); });
   await act(() => { ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true })); });
   expect(s.sent).toEqual([]);
   await act(() => { ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });

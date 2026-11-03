@@ -8,6 +8,7 @@ import type { ChatMessage, ChatSession, ChatTool, Usage } from './chat.ts';
 import { renderMarkdown } from './markdown.tsx';
 import { withAttachments, type Attachment } from './attachments.ts';
 import { listJoin, t, tn, uiLabel } from './i18n/index.ts';
+import { composing } from './keys.ts';
 import { getLang, useLang } from './i18n/lang.ts';
 import { analysisText, chatErrorText, noticeText, toolText } from './i18n/format.ts';
 import { IconArrowUp, IconPlug, IconPlus, IconSpark, IconStop, IconX, kindIcon } from './icons.tsx';
@@ -150,7 +151,7 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
       })}</div>}
       <textarea data-chat-input ref={box} rows={1} value={text} placeholder={t(empty && welcome ? 'chat.phWelcome' : 'chat.phReply')} data-tip={t('chat.inputTip')}
         onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !(e as any).isComposing) { e.preventDefault(); send(); } }} />
+        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !composing(e)) { e.preventDefault(); send(); } }} />
       <div class="composer-bar">
         {onAttach && <button class="icon-btn" data-attach data-tip={t(attachKey)} aria-label={t(attachKey)} onClick={onAttach}><IconPlus /></button>}
         {/* the count on the button and the names in its tip: no tag above the words (a new row made the home page's centred welcome jump) */}
