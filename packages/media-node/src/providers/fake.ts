@@ -2,11 +2,11 @@
 import { writeFileSync } from 'node:fs';
 import type { FaceInfo, FacesProvider, OcrProvider, ProviderStatus, TranscribeProvider, TtsProvider, TtsRequest, TtsResult } from './types.ts';
 
-/** A tone per character (0.18 s each) as a 16-bit mono wav, with the word times that implies. */
-export function fakeTts(o: { words?: boolean; ok?: boolean } = {}): TtsProvider & { calls: TtsRequest[] } {
+/** A tone per character (0.18 s each) as a 16-bit mono wav, with the word times that implies; `voice`: its default voice. */
+export function fakeTts(o: { words?: boolean; ok?: boolean; voice?: string } = {}): TtsProvider & { calls: TtsRequest[] } {
   const calls: TtsRequest[] = [];
   return {
-    id: 'fake', label: '假的語音引擎（測試用）', online: false, calls,
+    id: 'fake', label: '假的語音引擎（測試用）', online: false, calls, defaultVoice: o.voice,
     voices: () => ['fake-a', 'fake-b'],
     async check(): Promise<ProviderStatus> { return o.ok === false ? { ok: false, detail: '故意壞掉', install: 'none' } : { ok: true, version: '0', detail: 'fake' }; },
     async synth(req): Promise<TtsResult> {

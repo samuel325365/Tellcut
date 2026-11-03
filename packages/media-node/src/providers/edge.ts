@@ -10,21 +10,21 @@ export const EDGE_VOICES = ['zh-TW-HsiaoChenNeural', 'zh-TW-HsiaoYuNeural', 'zh-
 
 /** `run` is the way to start `uv` (a test swaps it); it resolves stdout. */
 export function edgeTts(options: { version?: string; voice?: string } = {}, run: typeof runUv = runUv): TtsProvider {
-  const pkg = `edge-tts${options.version ? `==${options.version}` : ''}`;
+  const pkg = `edge-tts${options.version ? `==${options.version}` : ''}`, defaultVoice = options.voice ?? EDGE_VOICES[0];
   return {
     id: 'edge', label: 'edge-tts（微軟線上語音）', online: true,
-    voices: () => EDGE_VOICES,
+    voices: () => EDGE_VOICES, defaultVoice,
     async check(): Promise<ProviderStatus> {
       try {
         const v = (await run(['tool', 'run', '--from', pkg, 'python', '-c', 'import importlib.metadata as m; print(m.version("edge-tts"))'])).trim();
-        return { ok: true, version: v, detail: `聲音 ${options.voice ?? EDGE_VOICES[0]}；要連網才能說話` };
+        return { ok: true, version: v, detail: `聲音 ${defaultVoice}；要連網才能說話` };
       } catch (e) { return { ok: false, detail: `跑不起來：${(e as Error).message.slice(0, 120)}`, install: `npm run setup（edge-tts 本身在第一次使用時自動下載）` }; }
     },
     async synth(req) {
       const mp3 = `${req.out}.mp3`;
       try {
         const stdout = await run(['tool', 'run', '--from', pkg, 'python', join(PY_DIR, 'tts_edge.py')], {
-          input: JSON.stringify({ text: req.text, voice: req.voice ?? options.voice ?? EDGE_VOICES[0], rate: req.rate ?? 0, pitch: req.pitch, out: mp3 }), signal: req.signal,
+          input: JSON.stringify({ text: req.text, voice: req.voice ?? defaultVoice, rate: req.rate ?? 0, pitch: req.pitch, out: mp3 }), signal: req.signal,
         });
         const words = (JSON.parse(stdout.trim().split(/\r?\n/).pop() ?? '{}') as { words?: Array<{ text: string; t: number; d: number }> }).words ?? [];
         await ffmpeg(['-i', mp3, '-ac', '1', '-ar', '24000', '-c:a', 'pcm_s16le', req.out], { signal: req.signal });

@@ -36,6 +36,8 @@ export interface TtsWord { text: string; start: number; end: number }
 export interface TtsResult { dur: number; words: TtsWord[] | null }
 export interface TtsProvider extends Provider {
   voices(): string[];
+  /** the voice a request without one is spoken in (providers.json): part of what decides a narration scene is still good */
+  readonly defaultVoice?: string;
   synth(req: TtsRequest): Promise<TtsResult>;
 }
 

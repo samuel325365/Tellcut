@@ -104,8 +104,8 @@ export function wordsFromTranscript(text: string, heard: Array<{ start: number; 
 
 export const voiceFiles = (dir: string, id: string) => ({ wav: join(dir, 'media', 'voice', `${id}.wav`), info: join(dir, 'media', 'voice', `${id}.json`) });
 
-/** What decides whether a scene's audio is still good: the spoken text, the voice, the speed, the engine and the pitch (only when
- *  set, so the audio made before the pitch counted keeps its key). */
+/** What decides whether a scene's audio is still good: the spoken text, the voice (the engine's default when the narration names
+ *  none), the speed, the engine and the pitch (only when set, so the audio made before the pitch counted keeps its key). */
 export function sceneKey(spoken: string, voice: string | undefined, rate: number, engine: string, pitch?: string): string {
   return createHash('sha1').update(JSON.stringify([spoken, voice ?? '', rate, engine, ...(pitch ? [pitch] : [])])).digest('hex').slice(0, 12);
 }
@@ -132,15 +132,19 @@ export async function renderVoice(o: RenderVoiceOptions): Promise<Record<string,
     if (o.only?.length && !o.only.includes(scene.id)) continue;
     const f = voiceFiles(o.dir, scene.id), rate = ratePercent(scene.rate ?? o.narration.rate), voice = voiceFor(o.narration, scene, o.tts.id);
     const spoken = Object.entries(o.narration.pron).reduce((s, [a, b]) => s.split(a).join(b), scene.text);
-    const pitch = o.narration.pitch || undefined, key = sceneKey(spoken, voice, rate, o.tts.id, pitch);
+    // a scene without a voice of its own is spoken in the engine's default: a new default in providers.json speaks it again
+    const pitch = o.narration.pitch || undefined, key = sceneKey(spoken, voice ?? o.tts.defaultVoice, rate, o.tts.id, pitch);
     if (!o.force && existsSync(f.wav) && existsSync(f.info)) {
       const old = JSON.parse(readFileSync(f.info, 'utf8')) as VoiceInfo;
-      if (old.key === key && old.text === scene.text) {
+      // audio made before the key named the default voice (its key has none) is taken as made in today's default: its key is
+      // brought up to date, nothing spoken again
+      const unnamed = !voice && !!o.tts.defaultVoice && old.key === sceneKey(spoken, undefined, rate, o.tts.id, pitch);
+      if ((old.key === key || unnamed) && old.text === scene.text) {
         // the audio is still good, but the phrases are cut by this version's rules: a voice made before a change of the rules is
         // cut again from its own word times (nothing is spoken again)
         const phrases = old.words?.length ? phrasesOf(scene.text, old.words) : old.phrases;
-        if (JSON.stringify(phrases) === JSON.stringify(old.phrases)) { out[scene.id] = old; log(`${scene.id} 沒變，略過`); continue; }
-        out[scene.id] = writeInfo(f.info, { ...old, phrases });
+        if (JSON.stringify(phrases) === JSON.stringify(old.phrases)) { out[scene.id] = unnamed ? writeInfo(f.info, { ...old, key }) : old; log(`${scene.id} 沒變，略過`); continue; }
+        out[scene.id] = writeInfo(f.info, { ...old, phrases, key });
         log(`${scene.id} 聲音沒變，字幕句子照現在的規則重切：${phrases.map((p) => p.text).join(' | ')}`);
         continue;
       }

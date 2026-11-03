@@ -85,6 +85,19 @@ test('a scene that did not change is not spoken again; a change in text, voice, 
   expect(await run(narr({ rate: 12, voices: { fake: 'v2' } }), { only: ['s2'], force: true })).toHaveLength(1);
 });
 
+test('a narration that names no voice is spoken again when the engine’s default voice changes', async () => {
+  const n = parseNarration({ scenes: [{ id: 's1', text: '第一句。' }] });
+  const run = async (tts: ReturnType<typeof fakeTts>) => { await renderVoice({ dir, narration: n, tts }); return tts.calls.map((c) => c.voice); };
+  expect(await run(fakeTts({ voice: 'fake-a' }))).toEqual([undefined]);
+  expect(await run(fakeTts({ voice: 'fake-a' }))).toEqual([]);
+  expect(await run(fakeTts({ voice: 'fake-b' }))).toEqual([undefined]);   // providers.json now names another voice
+  // audio made before the key named the default is taken as made in today's default: its key is updated, nothing spoken again
+  rmSync(voiceFiles(dir, 's1').info);
+  expect(await run(fakeTts())).toEqual([undefined]);
+  expect(await run(fakeTts({ voice: 'fake-b' }))).toEqual([]);
+  expect(await run(fakeTts({ voice: 'fake-a' }))).toEqual([undefined]);
+});
+
 test('a scene whose audio is still good gets its phrases cut again when the splitting rules changed, without speaking it again', async () => {
   await renderVoice({ dir, narration: narr(), tts: fakeTts() });
   const f = voiceFiles(dir, 's1'), info = JSON.parse(readFileSync(f.info, 'utf8')), now = info.phrases;
