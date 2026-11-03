@@ -200,3 +200,18 @@ test('peaks of an unknown source are refused like any other media reference', as
   writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
   await expect(prepareProject(dir, createRegistry([corePlugin, bad]))).rejects.toThrow('Item "lv" (l.level): unknown source "nope"');
 });
+
+test('music outside the project folder (or named with # and %) is copied into the cache for the export to serve', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'prep-')), dir = join(root, 'proj'), music = join(root, 'Music');
+  mkdirSync(dir); mkdirSync(music);
+  await run(['-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=30:duration=4', '-c:v', 'libx264', join(dir, 'src.mp4')]);
+  await run(['-f', 'lavfi', '-i', 'sine=duration=2', join(music, 'song #1 100%.mp3')]);
+  const p: any = project({ s1: 'src.mp4' });
+  p.tracks = [p.tracks[0], { id: 'mus', kind: 'music', items: [{ id: 'm', media: 'bgm', in: 0, start: 0, end: 1, gain: 0, fadeIn: 0, fadeOut: 0 }] }];
+  p.media = { bgm: { path: '../Music/song #1 100%.mp3' } };
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
+  const index = await prepareProject(dir, createRegistry([corePlugin]));
+  expect(index.music!.bgm).toMatch(/^cache\/music\/[0-9a-f]{16}\.mp3$/);
+  expect(readFileSync(join(dir, index.music!.bgm))).toEqual(readFileSync(join(music, 'song #1 100%.mp3')));
+  expect(readdirSync(join(dir, 'cache/music'))).toEqual([index.music!.bgm.slice('cache/music/'.length)]);   // no temp left
+});

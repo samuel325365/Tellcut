@@ -16,8 +16,9 @@ export interface MediaResolver {
   /** a source's sound level as JSON ({ rate, peaks }: common.audiogram) */
   peaks?(source: string): string;
 }
-/** `peaks`: source id → its sound level (cache/peaks); an index written before it existed has none */
-export type CacheIndex = { videos: Record<string, string>; stills: Record<string, string>; audio: Record<string, string>; images?: Record<string, string>; peaks?: Record<string, string> };
+/** `peaks`: source id → its sound level (cache/peaks); `music`: media id → a copy of the music file (cache/music). An index written
+ *  before either existed has none. */
+export type CacheIndex = { videos: Record<string, string>; stills: Record<string, string>; audio: Record<string, string>; images?: Record<string, string>; peaks?: Record<string, string>; music?: Record<string, string> };
 
 const need = <T>(v: T | undefined, key: string): T => { if (v === undefined) throw new Error(`No media for ${key}`); return v; };
 const abs = (rel: string, base: string) => new URL(rel, base).href;
@@ -29,6 +30,9 @@ export function cacheResolver(index: CacheIndex, projectUrl: string): MediaResol
     rate: () => 1,
     still: (ref) => abs(need(index.stills[stillKey(ref)], stillKey(ref)), projectUrl),
     audio: (ref) => ({ url: abs(need(index.audio[audioKey(ref)], audioKey(ref)), projectUrl), offset: 0 }),
+    // the cache's copy: a music file may sit outside the project folder (or have # or % in its name), which the export's static
+    // server cannot serve; an index from before the copies resolves the path against the project as it used to
+    music: (id, path) => abs(index.music ? need(index.music[id], `music ${id}`) : path, projectUrl),
     image: (s) => abs(need(index.images?.[s], `image ${s}`), projectUrl),
     file: (path) => abs(path, projectUrl),
     peaks: (s) => abs(need(index.peaks?.[s], `peaks ${s}`), projectUrl),

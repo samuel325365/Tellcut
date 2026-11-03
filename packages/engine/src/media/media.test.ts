@@ -331,3 +331,13 @@ describe('MediaPool.peaks', () => {
     await expect(new MediaPool(resolver(), { render: true, fps: 30 }).peaks('s1')).rejects.toThrow(/s1/);
   });
 });
+
+test('music in an export: the prepared copy in the cache, whatever the file is called and wherever it sits', () => {
+  // import registers music where it is: outside the project, another drive, a name with # or %
+  const cache = cacheResolver({ videos: {}, stills: {}, audio: {}, music: { a: 'cache/music/1.mp3', b: 'cache/music/2.mp3' } }, 'http://h/tellcut/projects/x/project.json');
+  expect(cache.music!('a', '../../../Music/a #1 100%.mp3')).toBe('http://h/tellcut/projects/x/cache/music/1.mp3');
+  expect(cache.music!('b', 'D:/music/b.mp3')).toBe('http://h/tellcut/projects/x/cache/music/2.mp3');
+  expect(() => cache.music!('c', 'media/c.mp3')).toThrow('No media for music c');
+  // an index from before the copies: the path against the project, as before
+  expect(cacheResolver({ videos: {}, stills: {}, audio: {} }, 'http://h/p/x/project.json').music!('a', 'media/a.mp3')).toBe('http://h/p/x/media/a.mp3');
+});

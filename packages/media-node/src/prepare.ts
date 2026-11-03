@@ -1,9 +1,10 @@
 // Cuts every clip / still / audio segment a project references into <project>/cache and writes cache/index.json; also the sound
-// levels (peaks) blocks read (common.audiogram).
+// levels (peaks) blocks read (common.audiogram), and a copy of every music file the music tracks play.
 import { heavy } from './limit.ts';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFile } from 'node:fs/promises';
 import { renameRetry } from './fsutil.ts';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import {
   allItems, audioKey, mediaIssues, withDefaults, audioRefOf, parseProject, resolveTimes, soundFiles, stillKey, videoKey, videoRefOf,
   type AudioItem, type AudioRef, type CacheIndex, type MediaRef, type Project, type Registry, type SceneItem, type StillRef, type VideoItem,
@@ -72,8 +73,8 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
   }
   if (wrong.length) throw new Error(`Sources do not match project.json:\n${wrong.join('\n')}`);
 
-  for (const d of ['cuts', 'stills', 'audio', 'images', 'peaks']) mkdirSync(join(projectDir, 'cache', d), { recursive: true });
-  const index: CacheIndex = { videos: {}, stills: {}, audio: {}, images: {}, peaks: {} };
+  for (const d of ['cuts', 'stills', 'audio', 'images', 'peaks', 'music']) mkdirSync(join(projectDir, 'cache', d), { recursive: true });
+  const index: CacheIndex = { videos: {}, stills: {}, audio: {}, images: {}, peaks: {}, music: {} };
   const jobs: Array<() => Promise<void>> = [];
   // one controller for this run: aborted by the caller (opts.signal) or by the first failed cut
   const ac = new AbortController();
@@ -131,6 +132,20 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
         renameRetry(tmp, final);
       } catch (e) { rmSync(tmp, { force: true }); throw e; }
       log(`peaks ${sid}`);
+      opts.onProgress?.(++done, jobs.length);
+    });
+  }
+  // music: a copy under a plain name. Import registers a music file where it is (../../Music/a.mp3, another drive), which the
+  // export's static server (the tellcut folder only) cannot serve, and a name with # or % breaks as a URL.
+  for (const id of usedMedia) {
+    const src = resolve(projectDir, p.media[id].path), ext = /^\.[a-z0-9]{1,5}$/.exec(extname(src).toLowerCase())?.[0] ?? '.bin';
+    const rel = `cache/music/${sourceHash('music', projectDir, src)}${ext}`;
+    index.music![id] = rel;
+    if (!opts.force && existsSync(join(projectDir, rel))) continue;
+    jobs.push(async () => {
+      const final = join(projectDir, rel), tmp = final.slice(0, -ext.length) + `.${process.pid}.tmp${ext}`;
+      try { await copyFile(src, tmp); renameRetry(tmp, final); } catch (e) { rmSync(tmp, { force: true }); throw e; }
+      log(`music ${id}`);
       opts.onProgress?.(++done, jobs.length);
     });
   }
