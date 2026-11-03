@@ -47,6 +47,27 @@ test('export then import: the project comes back whole under its id or a new one
   expect(() => importProject(zip, join(tellcut, 'projects'), 'bad id!')).toThrow();
 });
 
+/** each name in a zip's central directory with its UTF-8 flag (general purpose bit 11) */
+function zipNames(zip: string): Array<{ name: string; utf8: boolean }> {
+  const b = readFileSync(zip), out: Array<{ name: string; utf8: boolean }> = [];
+  for (let i = b.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02])); i >= 0; i = b.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]), i + 46)) {
+    const n = b.readUInt16LE(i + 28);
+    out.push({ name: b.subarray(i + 46, i + 46 + n).toString('utf8'), utf8: (b.readUInt16LE(i + 8) & 0x800) !== 0 });
+  }
+  return out;
+}
+
+test('a zip names its files in UTF-8 with the UTF-8 flag (a Mac or another Windows language reads 影片.mp4, not garbage), and comes back whole', () => {
+  const { root, dir } = world();
+  writeFileSync(join(dir, 'media', '影片 ä.mp4'), 'clip');
+  const zip = exportProject(dir, { media: true, out: join(root, 'utf8.zip') });
+  const names = zipNames(zip);
+  expect(names.map((n) => n.name)).toContain('trip/media/影片 ä.mp4');
+  expect(names.find((n) => n.name.endsWith('.mp4') && /[^\x00-\x7f]/.test(n.name))?.utf8).toBe(true);
+  const back = importProject(zip, join(root, 'in'));
+  expect(readFileSync(join(back, 'media', '影片 ä.mp4'), 'utf8')).toBe('clip');
+});
+
 test('a project not edited since its last cut is still unedited after export and import (--media rewrites its paths); an edited one stays edited', async () => {
   const { editedSinceCut } = await import('./cut/cut.ts');
   const { createHash } = await import('node:crypto');

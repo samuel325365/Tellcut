@@ -118,7 +118,9 @@ export function exportProject(dir: string, o: { media: boolean; out?: string; /*
       writeFileSync(state, JSON.stringify({ hash: sha1(text) }));
     }
     rmSync(out, { force: true });
-    tar(['-a', '-c', '-f', out, '-C', stage, id]);
+    // names in UTF-8 with the zip's UTF-8 flag: Windows' bsdtar otherwise writes them in the system code page (CP950 here), and
+    // a Mac, or a Windows in another language, unpacked 影片.mp4 as garbage and the footage went offline. A Mac's bsdtar takes it too.
+    tar(['-a', '-c', ...(/\.zip$/i.test(out) ? ['--options', 'zip:hdrcharset=UTF-8'] : []), '-f', out, '-C', stage, id]);
   } finally { rmSync(stage, { recursive: true, force: true }); }
   return out;
 }
