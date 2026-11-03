@@ -55,4 +55,23 @@ describe('motion curves', () => {
     expect(mix(10, 20, 0.25)).toBe(12.5);
     expect(mix('#000000', '#ffffff', 1)).toBe('rgba(255, 255, 255, 1)');
   });
+
+  it('edge values stay numbers with a finite rest: a 0 duration is already there, 0 stiffness or mass is not NaN, steps(0) is one step', () => {
+    const now = spring({ duration: 0 });
+    expect([now(-1), now(0), now(0.001), now(5), now.settle]).toEqual([0, 0, 1, 1, 0]);
+    expect(spring({ duration: -2 })(0.01)).toBe(1);
+    for (const o of [{ stiffness: 0 }, { mass: 0 }, { damping: 0 }, { stiffness: -5, damping: -1 }, { duration: NaN }, { duration: 17 }, { duration: 30 }]) {
+      const s = spring(o);
+      expect(Number.isFinite(s.settle), JSON.stringify(o)).toBe(true);
+      for (const t of [0.01, 0.5, 3, 30, 100]) expect(Number.isFinite(s(t)), JSON.stringify(o)).toBe(true);
+      expect(s(s.settle)).toBe(1);
+    }
+    // a slow spring rests where it really does, past Motion's 20 s search, near 1
+    const slow = spring({ duration: 17 });
+    expect(slow.settle).toBeGreaterThan(20);
+    expect(Math.abs(slow(slow.settle - 0.05) - 1)).toBeLessThan(0.01);
+    expect([0, 0.5, 1].map(steps(0))).toEqual([0, 1, 1].map(steps(1)));
+    expect(steps(NaN)(0.5)).toBe(steps(1)(0.5));
+    expect(steps(2.4)(0.6)).toBe(0.5);
+  });
 });
