@@ -20,7 +20,8 @@ test('analysis results answer 409 until the analyze job has run, once per source
   expect((await fetch(url('proxy/s1'))).status).toBe(409);
   const first = await (await fetch(`${base}/api/projects/demo/analyze`, { method: 'POST' })).json();
   expect(first.jobs.map((j: any) => j.label)).toEqual(['s1']);
-  expect((await (await fetch(`${base}/api/projects/demo/analyze`, { method: 'POST' })).json()).jobs).toEqual([]);
+  // a page opened while it runs gets the same job, to wait for (else its thumbnails, waveform and cuts never loaded)
+  expect((await (await fetch(`${base}/api/projects/demo/analyze`, { method: 'POST' })).json()).jobs.map((j: any) => j.id)).toEqual([first.jobs[0].id]);
   expect((await app.queue.wait(first.jobs[0].id)).status).toBe('done');
   expect((await (await fetch(`${base}/api/projects/demo/analyze`, { method: 'POST' })).json()).jobs).toEqual([]);
 }, 120000);

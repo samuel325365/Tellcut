@@ -89,21 +89,27 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
 
   r.post('/api/projects/:id/analyze', async (_req, res, { id }) => {
     const dir = store.dir(id), p = store.read(id);
-    const jobs: JobInfo[] = [], extras: JobInfo[] = [], missing: string[] = [];
+    // jobs and extras: what the page waits for, the ones already running or queued included (a page opened while they run got
+    // none and never loaded the thumbnails, waveform and cuts); started: the ones this request queued
+    const jobs: JobInfo[] = [], extras: JobInfo[] = [], missing: string[] = [], started: JobInfo[] = [];
+    const running = (kind: string, label: string) => queue.active(kind, id).find((j) => j.label === label);
     for (const [sid, s] of Object.entries(p.sources)) {
       const path = resolve(dir, s.path);
       if (!existsSync(path)) { missing.push(sid); continue; }
       if (!analysisDone(analysisFiles(dir, path), path)) shareAnalysis(dir, path);   // the same footage analysed in another project: nothing to queue
-      let basic: JobInfo | undefined;
-      if (!analysisDone(analysisFiles(dir, path), path) && !queue.active('analyze', id).some((j) => j.label === sid)) {
+      let basic = running('analyze', sid);
+      if (basic) jobs.push(basic);
+      else if (!analysisDone(analysisFiles(dir, path), path)) {
         basic = queue.add('analyze', id, sid, async (ctx) => {
           await analyzeSource(dir, path, { signal: ctx.signal, onStep: (step, i, n) => ctx.progress(i / n, step) });
           return { source: sid };
         });
-        jobs.push(basic);
+        jobs.push(basic); started.push(basic);
       }
       // sheets and transcript (spec 2026-10-14 §7): after the basic analysis; a failure here leaves the rest usable
-      if (opts.extras !== false && !failedBefore('extras', path) && !(await extrasDone(dir, path)) && !queue.active('extras', id).some((j) => j.label === sid)) {
+      const more = running('extras', sid);
+      if (more) extras.push(more);
+      else if (opts.extras !== false && !failedBefore('extras', path) && !(await extrasDone(dir, path))) {
         const job: JobInfo = queue.add('extras', id, sid, async (ctx) => {
           // a cancelled or failed analysis stops these too: sourceExtras would otherwise run the whole analysis again itself
           const b = basic && (await queue.wait(basic.id));
@@ -112,17 +118,19 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
           await remembered('extras', path, ctx.signal, () => sourceExtras(dir, path, { label: sid, signal: ctx.signal, onStep: (step, i, n) => ctx.progress(i / n, step) }));
           return { source: sid };
         }, { background: true });
-        extras.push(job);
+        extras.push(job); started.push(job);
       }
     }
     for (const [mid, m] of Object.entries(p.media)) {
       const path = resolve(dir, m.path);
-      if (!existsSync(path) || existsSync(musicFiles(dir, path).beats) || failedBefore('beats', path) || queue.active('beats', id).some((j) => j.label === mid)) continue;
-      extras.push(queue.add('beats', id, mid, async (ctx) => { await remembered('beats', path, ctx.signal, () => musicBeats(dir, path, { signal: ctx.signal })); return { media: mid }; }, { background: true }));
+      const beats = running('beats', mid);
+      if (beats) { extras.push(beats); continue; }
+      if (!existsSync(path) || existsSync(musicFiles(dir, path).beats) || failedBefore('beats', path)) continue;
+      const job = queue.add('beats', id, mid, async (ctx) => { await remembered('beats', path, ctx.signal, () => musicBeats(dir, path, { signal: ctx.signal })); return { media: mid }; }, { background: true });
+      extras.push(job); started.push(job);
     }
     // the page chat may have ended its turn waiting for this (a transcript takes minutes): tell it when all of it is over, and
-    // how each job ended (one that failed or was cancelled is not "done")
-    const started = [...jobs, ...extras];
+    // how each job ended (one that failed or was cancelled is not "done"); the request that queued a running job tells about it
     if (started.length && opts.onAnalyzed) { const since = Date.now(); void Promise.allSettled(started.map((j) => queue.wait(j.id)))
       .then((all) => opts.onAnalyzed!(id, since, all.flatMap((x) => (x.status === 'fulfilled' ? [x.value] : []))))
       .catch((e) => console.warn(`after the analysis of ${id}: ${(e as Error).message}`)); }   // unhandled, it ends the server
