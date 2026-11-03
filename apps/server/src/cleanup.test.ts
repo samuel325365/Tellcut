@@ -18,7 +18,7 @@ test('files left by a crashed server are removed; a live server\'s are kept', ()
 
 const project = () => {
   const root = mkdtempSync(join(tmpdir(), 'clean-')), p = join(root, 'demo');
-  for (const d of ['exports', 'cache/cuts', 'cache/stills', 'cache/audio']) mkdirSync(join(p, d), { recursive: true });
+  for (const d of ['exports', 'cache/cuts', 'cache/stills', 'cache/audio', 'cache/music']) mkdirSync(join(p, d), { recursive: true });
   const put = (rel: string, ageMin = 0) => { const f = join(p, rel); writeFileSync(f, 'x'); const t = Date.now() / 1000 - ageMin * 60; utimesSync(f, t, t); return f; };
   return { root, put };
 };
@@ -33,8 +33,10 @@ test('a leftover that cannot be removed (locked) is skipped instead of stopping 
 test('intermediates of an interrupted export and half-cut clips are removed once stale; finished exports stay', () => {
   const { root, put } = project();
   const stale = [put('exports/婚禮-20261013-0110.video.mp4', 120), put('exports/婚禮-20261013-0110.mix.wav', 120),
-    put('cache/cuts/a.tmp.mp4', 120), put('cache/stills/b.tmp.jpg', 120), put('cache/audio/c.tmp.wav', 120)];
-  const kept = [put('exports/x.video.mp4', 5), put('exports/婚禮-20261013-0110.mp4', 120), put('cache/cuts/a.mp4', 120)];
+    put('exports/婚禮-20261013-0111.part.mp4', 120), put('cache/cuts/a.tmp.mp4', 120), put('cache/stills/b.tmp.jpg', 120), put('cache/audio/c.tmp.wav', 120),
+    put('cache/music/0123abcd.4321.tmp.mp3', 120)];
+  const kept = [put('exports/x.video.mp4', 5), put('exports/x.part.mp4', 5), put('exports/婚禮-20261013-0110.mp4', 120), put('cache/cuts/a.mp4', 120),
+    put('cache/music/0123abcd.mp3', 120)];
   cleanupLeftovers(root, { alive: () => true });
   for (const f of stale) expect(existsSync(f)).toBe(false);
   for (const f of kept) expect(existsSync(f)).toBe(true);
