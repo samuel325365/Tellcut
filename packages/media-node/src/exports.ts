@@ -22,11 +22,11 @@ export function nextExportBase(dir: string, name: string, id: string, now = new 
   }
 }
 
-/** the films in exports/, newest first (not the .video.mp4 a render leaves while it works) */
+/** the films in exports/, newest first (not the .video.mp4 or .part.mp4 a render leaves while it works) */
 export function listExports(dir: string): Array<{ name: string; path: string; size: number; mtime: number }> {
   const d = join(dir, 'exports');
   if (!existsSync(d)) return [];
-  return readdirSync(d).filter((f) => f.endsWith('.mp4') && !f.endsWith('.video.mp4'))
+  return readdirSync(d).filter((f) => f.endsWith('.mp4') && !f.endsWith('.video.mp4') && !f.endsWith('.part.mp4'))
     .map((name) => { const st = statSync(join(d, name)); return { name, path: join(d, name), size: st.size, mtime: st.mtimeMs }; })
     .sort((a, b) => b.mtime - a.mtime);
 }

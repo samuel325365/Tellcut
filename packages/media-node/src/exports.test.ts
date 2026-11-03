@@ -11,7 +11,7 @@ test('every film goes to exports/<name>-<time>: a second one in the same minute 
   expect(nextExportBase(dir, '京都:一日', 'kyoto', at)).toBe(`${first}-2`);      // a second render meanwhile (CLI and editor) gets its own
   writeFileSync(`${first}.mp4`, 'a');
   expect(nextExportBase(dir, ' . ', 'kyoto', at)).toBe(join(dir, 'exports', 'kyoto-20261020-2105'));
-  writeFileSync(`${first}-2.mp4`, 'bb'); writeFileSync(`${first}-3.video.mp4`, 'x');
+  writeFileSync(`${first}-2.mp4`, 'bb'); writeFileSync(`${first}-3.video.mp4`, 'x'); writeFileSync(`${first}-3.part.mp4`, 'half');
   writeFileSync(`${first}-4.mp4`, 'old'); utimesSync(`${first}-4.mp4`, new Date(500), new Date(500));   // a film whose log was deleted
   expect(nextExportBase(dir, '京都:一日', 'kyoto', at)).toBe(`${first}-5`);   // -3: an intermediate in the way
   expect(nextExportBase(dir, '京都:一日', 'kyoto', at)).toBe(`${first}-6`);

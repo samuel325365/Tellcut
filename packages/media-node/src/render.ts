@@ -8,6 +8,7 @@ import { readWav } from './wav.ts';
 import { abortError, ffmpegProcess, measureLoudness, run } from './ffmpeg.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 import { chromePath } from './deps.ts';
+import { renameRetry } from './fsutil.ts';
 
 
 /** a text item's boxes on screen, in project pixels */
@@ -181,10 +182,10 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
   const log = o.log ?? console.log;
   mkdirSync(dirname(o.out), { recursive: true });
   // the intermediates sit next to the output whatever it is called (an `out` without .mp4 made the video pass write onto it)
-  const stem = o.out.replace(/\.mp4$/i, ''), vOut = `${stem}.video.mp4`, wav = `${stem}.mix.wav`;
+  // the film is muxed (up to 4 times, mastering) into .part.mp4 and renamed when done: the export list never shows a half-made one
+  const stem = o.out.replace(/\.mp4$/i, ''), vOut = `${stem}.video.mp4`, wav = `${stem}.mix.wav`, part = `${stem}.part.mp4`;
   const size = stageSizeOf(o.target), s = await openPage(playerUrl(o.target), '__tellcut', { signal: o.signal, size });
   let enc: ReturnType<typeof encoder> | undefined;
-  let ok = false;
   try {
     log(`chrome ${s.version}`);
     const f0 = Math.round((o.from ?? 0) * s.fps), f1 = Math.round((o.to ?? s.duration) * s.fps);
@@ -206,19 +207,19 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
     const partial = f0 > 0 || f1 < Math.round(s.duration * s.fps);
     const range = partial ? ['-ss', (f0 / s.fps).toFixed(4), '-t', ((f1 - f0) / s.fps).toFixed(4)] : [];
     const mux = (af?: string) => run(['-i', vOut, ...range, '-i', wav, ...(af ? ['-af', af] : []), '-ar', '48000',
-      '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', o.out], { signal: o.signal });
+      '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', part], { signal: o.signal });
     const input = silent ? null : (await measureLoudness(wav, { signal: o.signal }))?.lufs;
     if (input === null || input === undefined || input < -70) await mux();
     else {
-      const m = await master(s.loudness, input, (gain, ceiling) => mux(masterFilter(gain, ceiling)), () => measureLoudness(o.out, { signal: o.signal }));
+      const m = await master(s.loudness, input, (gain, ceiling) => mux(masterFilter(gain, ceiling)), () => measureLoudness(part, { signal: o.signal }));
       log(`loudness: ${input.toFixed(1)} LUFS mix, gain ${m.gain} dB, ceiling ${m.ceiling} dB, ${m.passes} encode${m.passes > 1 ? 's' : ''}`);
     }
-    ok = true;
+    renameRetry(part, o.out);
     return o.out;
   } finally {
     enc?.kill();
     await s.close();
     // a cleanup failure (e.g. a directory in the way) must not mask the render error
-    for (const f of [vOut, wav, ...(ok ? [] : [o.out])]) try { rmSync(f, { force: true }); } catch { /* not a removable file */ }
+    for (const f of [vOut, wav, part]) try { rmSync(f, { force: true }); } catch { /* not a removable file */ }
   }
 }
