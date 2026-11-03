@@ -72,3 +72,14 @@ export function clipboardFree(doc: Pick<Document, 'getSelection'>, target: Event
   if (doc.getSelection()?.isCollapsed === false) return false;
   return !(target as Element | null)?.closest?.(TEXT_PANELS);
 }
+
+/** Whether a key may reach the timeline while a dialog is up: one with a backdrop (Import, Save to My blocks, presets, delete) covers
+ *  the whole editor, and a focus inside any other (Ask Agent, the API menu) is the dialog's. A focused button in it is not typed
+ *  into, so Backspace would delete the clips selected behind it and Space play them. Only Esc goes on (the dialog closes on it);
+ *  the help is a dialog of its own (editorTakes). */
+const DIALOGS = '[role=dialog]:not(.help), [role=alertdialog], [data-ask], [data-api-picker]';
+export function dialogFree(a: Action, doc: Pick<Document, 'querySelector'>, target: EventTarget | null): boolean {
+  if (a === 'exitCrop') return true;
+  if (doc.querySelector('.modal-back')) return false;
+  return !(target as Element | null)?.closest?.(DIALOGS);
+}

@@ -1,4 +1,4 @@
-import { clipboardFree, editorTakes, keyAction } from './keys.ts';
+import { clipboardFree, dialogFree, editorTakes, keyAction } from './keys.ts';
 
 const k = (key: string, o: Partial<{ code: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean; target: any }> = {}) =>
   keyAction({ key, code: o.code ?? '', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...o });
@@ -65,4 +65,13 @@ test('Ctrl+Shift+C / V / D / A / - belong to the browser (tab search, bookmark a
 test('while the help is open only ? / F1 and Esc go to the editor; the rest (arrows to scroll it) keep their browser action', () => {
   expect([editorTakes('help', true), editorTakes('exitCrop', true), editorTakes('nextCut', true), editorTakes('playPause', true)]).toEqual([true, true, false, false]);
   expect(editorTakes('nextCut', false)).toBe(true);
+});
+
+test('while a dialog is up only Esc reaches the timeline: a backdrop anywhere, or the focus inside a dialog (a button in it too)', () => {
+  const doc = (modal: boolean) => ({ querySelector: (sel: string) => (modal && sel === '.modal-back' ? {} : null) }) as any;
+  const el = (inside: string | null) => ({ closest: (sel: string) => (inside && sel.split(', ').includes(inside) ? {} : null) }) as any;
+  expect([dialogFree('delete', doc(true), el(null)), dialogFree('playPause', doc(true), null), dialogFree('undo', doc(true), null)]).toEqual([false, false, false]);
+  expect(dialogFree('exitCrop', doc(true), el('[data-ask]'))).toBe(true);
+  for (const inside of ['[role=dialog]:not(.help)', '[role=alertdialog]', '[data-ask]', '[data-api-picker]']) expect(dialogFree('delete', doc(false), el(inside))).toBe(false);
+  expect([dialogFree('delete', doc(false), el(null)), dialogFree('split', doc(false), null)]).toEqual([true, true]);
 });

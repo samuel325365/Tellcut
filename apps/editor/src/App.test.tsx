@@ -209,3 +209,19 @@ test("the editor's labels are English in every language; the tooltips follow the
   expect([ja.toolbar, ja.tabs]).toEqual([zh.toolbar, zh.tabs]);
   expect([zh.tip, en.tip, ja.tip]).toEqual(['使用說明與快捷鍵 (? 或 F1)', 'Help and shortcuts (? or F1)', 'ヘルプとショートカット (? または F1)']);
 });
+
+test('a key pressed on a dialog button never reaches the timeline behind it; Esc does, and the keys come back once it is gone', async () => {
+  const root = document.createElement('div');
+  document.body.appendChild(root);
+  const ed = editorWith({ project: projectOf(1920, 1080) });
+  await act(() => render(<App editor={ed} bridge={{ attach() {}, handle() {} } as any} />, root));
+  const back = document.createElement('div'), button = document.createElement('button');
+  back.className = 'modal-back'; back.appendChild(button); document.body.appendChild(back);
+  try {
+    for (const key of ['Backspace', ' ', 's', 'Escape']) button.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+    expect(ed.runs).toEqual(['exitCrop']);
+    back.remove();
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+    expect(ed.runs).toEqual(['exitCrop', 'delete']);
+  } finally { back.remove(); render(null, root); root.remove(); }
+});
