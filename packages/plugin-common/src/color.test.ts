@@ -1,5 +1,5 @@
-import { expect, test } from 'vitest';
-import { isClear, lift, luma, mixHex, parseColor, shade, toRgb, withAlpha } from './color.ts';
+import { expect, test, vi } from 'vitest';
+import { browserColor, isClear, lift, luma, mixHex, parseColor, shade, toRgb, withAlpha } from './color.ts';
 
 test('parseColor reads hex (3, 4, 6, 8 digits), rgb()/rgba() and transparent; null for what it cannot read outside a page', () => {
   expect(parseColor('#fff')).toEqual([255, 255, 255, 1]);
@@ -46,4 +46,21 @@ test('mixHex, shade, lift and toRgb give the same results as the old hex-only co
 test('isClear: empty, transparent and alpha 0 have no colour', () => {
   for (const c of [undefined, '', 'transparent', '#12345600', 'rgba(1, 2, 3, 0)']) expect(isClear(c)).toBe(true);
   for (const c of ['#123456', '#000', 'rgba(1, 2, 3, 0.1)']) expect(isClear(c)).toBe(false);
+});
+
+test('a word the browser reads as no colour (none) is not black: browserColor says so, isClear takes it as no colour (2026-11-03)', () => {
+  const none = () => '', navy = () => '#000080';
+  expect(parseColor('none', none)).toBeNull();
+  expect(luma('xyz')).toBeNull();
+  expect(isClear('none', none)).toBe(true);
+  expect(isClear('navy', navy)).toBe(false);
+  expect(isClear('navy', () => null)).toBe(false);   // outside a page a name can't be told: not clear
+  // a canvas keeps its fillStyle on a colour it can't read: set over two colours, only a real one gives the same both times
+  const fake = () => { let fs = '#000000'; return { get fillStyle() { return fs; }, set fillStyle(v: string) { const m = { '#000': '#000000', '#fff': '#ffffff', red: '#ff0000' }[v]; if (m) fs = m; } }; };
+  vi.stubGlobal('document', { createElement: () => ({ getContext: fake }) });
+  try {
+    expect(browserColor('red')).toBe('#ff0000');
+    expect(browserColor('none')).toBe('');
+    expect(withAlpha('none', 0.5)).toBe('none');
+  } finally { vi.unstubAllGlobals(); }
 });

@@ -4,13 +4,18 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 const known = new Map<string, string | null>();
-/** what the browser makes of a CSS colour; null outside a page or when the browser doesn't know it either */
+/** what the browser makes of a CSS colour; null outside a page (no 2D canvas to ask), '' when the browser says it is no colour
+ *  (a canvas keeps its fillStyle on one it can't read: set over two different colours, a colour it reads gives the same both times) */
 export const browserColor = (c: string): string | null => {
   if (typeof document === 'undefined') return null;
   if (known.has(c)) return known.get(c)!;
   const g = document.createElement('canvas').getContext('2d');
   let out: string | null = null;
-  if (g) { g.fillStyle = '#000'; g.fillStyle = c; out = g.fillStyle as string; }
+  if (g) {
+    g.fillStyle = '#000'; g.fillStyle = c; const a = String(g.fillStyle);
+    g.fillStyle = '#fff'; g.fillStyle = c; const b = String(g.fillStyle);
+    out = a === b ? a : '';
+  }
   if (known.size > 200) known.clear();
   known.set(c, out);
   return out;
@@ -62,5 +67,9 @@ export function lift(color: string, dr: number, dg: number, db: number): string 
 }
 /** perceived brightness 0–1 (0.299 r + 0.587 g + 0.114 b), or null when it can't be read */
 export const luma = (color: string): number | null => { const c = parseColor(color); return c ? (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255 : null; };
-/** no colour at all: empty, `transparent`, or alpha 0 (#rrggbb00, rgba(…, 0)) */
-export const isClear = (color: string | undefined) => { if (!color) return true; const c = parseColor(color); return !!c && c[3] === 0; };
+/** no colour at all: empty, `transparent`, alpha 0 (#rrggbb00, rgba(…, 0)), or words the browser reads as no colour (none) */
+export const isClear = (color: string | undefined, other: (c: string) => string | null = browserColor) => {
+  if (!color || !String(color).trim()) return true;
+  const c = parseColor(color, other);
+  return c ? c[3] === 0 : other(String(color).trim()) === '';
+};
