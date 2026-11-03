@@ -38,10 +38,10 @@ export function niceStep(span: number, n = 8): number {
   return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * e;
 }
 
-/** 11034.4 → "11,034"; decimals kept as asked */
+/** 11034.4 → "11,034"; decimals kept as asked; no sign on a value that rounds to zero (-0.3 → "0") */
 export const formatValue = (v: number, decimals: number, sep = true) => {
-  const [i, f] = Math.abs(v).toFixed(Math.max(0, Math.round(decimals))).split('.');
-  return `${v < 0 ? '-' : ''}${sep ? i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : i}${f ? `.${f}` : ''}`;
+  const s = Math.abs(v).toFixed(Math.max(0, Math.round(decimals))), [i, f] = s.split('.');
+  return `${v < 0 && Number(s) !== 0 ? '-' : ''}${sep ? i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : i}${f ? `.${f}` : ''}`;
 };
 
 /** the number's baseline (a share of the frame height): `y`, or below 0 the number's top on the top safe margin */
@@ -100,13 +100,13 @@ export const meter: ItemType<P, S> = {
     const v = levelAt(levels, ctx.local, p.ease), f = levelFrac(v, levels, p.max, p.scale, p.min ?? 0), y = meterBaseline(p.y, p.size, theme.safe.top);
     const fade = Math.min(prog(ctx.local, 0, 0.25), 1 - prog(ctx.local, ctx.dur - 0.25, ctx.dur)), px = (p.size / 100) * H, glow = p.glow * 26 * k;
     s.num.textContent = `${p.prefix}${formatValue(v, p.decimals, p.sep ?? true)}${p.suffix}`;
-    cssCamel(s.num, { top: `${y * H}px`, transform: 'translate(-50%, -100%)', fontSize: `${px}px`, fontWeight: '900', fontFamily: `'${p.font}', sans-serif`,
+    cssCamel(s.num, { top: `${y * H}px`, transform: 'translate(-50%, -100%)', fontSize: `${px}px`, fontWeight: '900', fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`,
       color: p.color, webkitTextStroke: `${theme.stroke * 0.75 * k}px ${p.outline}`, paintOrder: 'stroke fill',
       textShadow: glow ? `0 0 ${glow}px ${p.accent}` : 'none', opacity: String(fade) });
     const name = stageAt(stages, v);
     s.stage.textContent = name ? `${p.stagePrefix}${name}` : '';
     cssCamel(s.stage, { top: `${y * H + px * 0.18}px`, transform: 'translateX(-50%)', fontSize: `${px * 0.38}px`, fontWeight: '700',
-      fontFamily: `'${p.font}', sans-serif`, color: p.accent, opacity: String(fade), display: name ? 'block' : 'none' });
+      fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, color: p.accent, opacity: String(fade), display: name ? 'block' : 'none' });
     // the ruler: within the side safe margins, under the stage name
     const x = theme.safe.side * W, w = W - 2 * x, ry = y * H + px * (name ? 0.85 : 0.35), th = 5 * k;
     cssCamel(s.track, { display: p.ruler ? 'block' : 'none', left: `${x}px`, top: `${ry - th / 2}px`, width: `${w}px`, height: `${th}px`,

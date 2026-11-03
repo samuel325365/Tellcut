@@ -25,6 +25,8 @@ test('stages, numbers and the colour ramp', () => {
   const st = parseStages('0:透光帶, 200:暮光帶, 1000:半深海帶');
   expect([stageAt(st, 0), stageAt(st, 332), stageAt(st, 5000)]).toEqual(['透光帶', '暮光帶', '半深海帶']);
   expect([formatValue(11034.4, 0), formatValue(-3.14159, 2), formatValue(999, 0)]).toEqual(['11,034', '-3.14', '999']);
+  // a value that rounds to zero has no sign (2026-11-03)
+  expect([formatValue(-0.3, 0), formatValue(-0.04, 1), formatValue(-0.06, 1), formatValue(-0.5, 0)]).toEqual(['0', '0.0', '-0.1', '-1']);
   expect(rampAt([[0, 0, 0], [200, 100, 50]], 0.5)).toEqual([100, 50, 25]);
 });
 
