@@ -1,6 +1,6 @@
 // Every command line takes a project the way the server does (media-node project-dir.ts): the folder's own spelling only.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TELLCUT_ROOT } from '@tellcut/media-node';
@@ -9,7 +9,8 @@ import { libraryCommand } from './library.ts';
 import { projectArg } from './project-arg.ts';
 import { Usage } from './usage.ts';
 
-const win = process.platform === 'win32';
+// the wrong-case checks need a case-insensitive file system: NTFS, or a Mac's APFS as formatted by default (not Linux)
+const caseless = existsSync(join(TELLCUT_ROOT, 'PACKAGE.JSON'));
 
 test('projectArg: no id is the usage; a wrong case names the real folder', () => {
   const root = mkdtempSync(join(tmpdir(), 'projarg-'));
@@ -18,20 +19,20 @@ test('projectArg: no id is the usage; a wrong case names the real folder', () =>
   expect(() => projectArg(undefined, 'usage!', { projectsDir: root })).toThrow(Usage);
   expect(() => projectArg('--force', 'usage!', { projectsDir: root })).toThrow(Usage);
   expect(projectArg('Trip', 'usage!', { projectsDir: root })).toBe(join(root, 'Trip'));
-  if (win) expect(() => projectArg('trip', 'usage!', { projectsDir: root })).toThrow(/資料夾叫「Trip」/);
+  if (caseless) expect(() => projectArg('trip', 'usage!', { projectsDir: root })).toThrow(/資料夾叫「Trip」/);
 });
 
 test('library and assets refuse a project id spelled another way', async () => {
   const projects = mkdtempSync(join(tmpdir(), 'projarg-'));
   mkdirSync(join(projects, 'Trip'));
   writeFileSync(join(projects, 'Trip', 'project.json'), '{}');
-  if (!win) return;
+  if (!caseless) return;
   await expect(libraryCommand(['use', 'trip', 'x'], { projects, thumb: false })).rejects.toThrow(/資料夾叫「Trip」/);
   await expect(assetsCommand(['credits', 'TRIP'], { projectsDir: projects })).rejects.toThrow(/資料夾叫「Trip」/);
 });
 
 // the scripts run at their top level (cut, check, inspect, export-project…) exit 2 with the same words
-test.runIf(win)('npm run cut / tellcut with the wrong case: refused, before anything runs', () => {
+test.runIf(caseless)('npm run cut / tellcut with the wrong case: refused, before anything runs', () => {
   const id = `_CaseTest-${process.pid}`, dir = join(TELLCUT_ROOT, 'projects', id);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'project.json'), '{}');

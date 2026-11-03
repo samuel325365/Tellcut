@@ -42,3 +42,9 @@ def main(src, out, model_name):
 
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else os.environ.get('TELLCUT_WHISPER_MODEL', 'large-v3-turbo'))
+    if os.name == 'posix':
+        # the result is written: leave without running the native libraries' teardown. onnxruntime (faster-whisper's VAD)
+        # can spin forever at exit on macOS, in its PosixEnv's telemetry shutdown, which held a transcription for hours
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(0)

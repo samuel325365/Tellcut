@@ -12,6 +12,7 @@ export * from './render.ts';
 export * from './fsutil.ts';
 export * from './limit.ts';
 export * from './py.ts';
+export * from './proc.ts';
 export * from './photo.ts';
 export * from './test-media.ts';
 export * from './probe.ts';

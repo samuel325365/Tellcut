@@ -1,4 +1,5 @@
 // The speech-to-text provider Tellcut has always used: faster-whisper on the CPU, run in tellcut's own Python environment (tools/py/transcribe.py).
+import { readFileSync, rmSync } from 'node:fs';
 import { PY_PROJECT, runPy, runUv } from '../py.ts';
 import type { ProviderStatus, TranscribeProvider } from './types.ts';
 
@@ -15,7 +16,17 @@ export function fasterWhisper(options: { model?: string } = {}): TranscribeProvi
     },
     async transcribe(src, out, o = {}) {
       const model = process.env.TELLCUT_WHISPER_MODEL ?? o.model ?? options.model;   // the env override stays the strongest (tests use a tiny model)
-      await runPy('transcribe.py', [src, out, ...(model ? [model] : [])], { signal: o.signal });
+      // off Windows, a transcription whose JSON is complete but whose Python never exits (onnxruntime's teardown on macOS,
+      // see transcribe.py) is ended after a grace period instead of holding the lock and the queue behind it for good
+      // (a stale file from an earlier run is removed first, so only this run's own result counts)
+      let done: (() => boolean) | undefined;
+      if (process.platform !== 'win32') { rmSync(out, { force: true }); done = () => transcriptWritten(out); }
+      await runPy('transcribe.py', [src, out, ...(model ? [model] : [])], { signal: o.signal, done });
     },
   };
+}
+
+/** the file transcribe.py writes last is whole: it parses, with its segments */
+export function transcriptWritten(file: string): boolean {
+  try { return Array.isArray(JSON.parse(readFileSync(file, 'utf8')).segments); } catch { return false; }
 }

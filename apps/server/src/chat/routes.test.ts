@@ -51,6 +51,8 @@ test('claude runs locked down: no settings files (only its own --settings), five
   expect(claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' })).toEqual(expect.arrayContaining(['--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Bash(*--script-shell*)', 'Agent', 'Skill']));
   // and the other places a home folder keeps tokens and passwords
   expect(claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' })).toEqual(expect.arrayContaining(['Read(~/.npmrc)', 'Read(~/.git-credentials)', 'Read(~/.netrc)', 'Read(~/.docker/**)', 'Read(~/.kube/**)', 'Read(~/.azure/**)', 'Read(~/.gnupg/**)']));
+  // where Windows and macOS keep the browsers' cookies, the keychains and other apps' tokens
+  expect(claudeArgs({ session: 'u', resume: false, promptFile: 'P.md' })).toEqual(expect.arrayContaining(['Read(~/AppData/**)', 'Read(~/Library/**)']));
 });
 
 test('the account file, the API keys of the outside sources and a relocated Claude config folder are not readable either', () => {

@@ -1,15 +1,19 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { run } from '../ffmpeg.ts';
 import { TELLCUT_ROOT } from '../paths.ts';
+import { ffmpegPath } from '../deps.ts';
 import { faceModel, mediapipeFaces, parseFaceLines } from './faces-mediapipe.ts';
 import { parseOcrLines, windowsOcr } from './ocr-windows.ts';
+import { macosOcr, visionLangs } from './ocr-macos.ts';
+import { ocrProvider } from './index.ts';
 import { DEFAULT_PROVIDERS, ProvidersConfigZ } from './config.ts';
 
 test('a providers.json from before ocr/faces still loads, with their defaults', () => {
   const c = ProvidersConfigZ.parse({ tts: DEFAULT_PROVIDERS.tts, transcribe: DEFAULT_PROVIDERS.transcribe });
-  expect([c.ocr.use, c.faces.use]).toEqual(['windows', 'mediapipe']);
+  expect([c.ocr.use, c.faces.use]).toEqual(['system', 'mediapipe']);
 });
 
 test('OCR output: one line per image, a single line array that ConvertTo-Json flattened is an array again', () => {
@@ -35,7 +39,35 @@ test.skipIf(!win)('Windows OCR reads a caption drawn on a frame (this PC)', asyn
   expect(r.lines[0].box[1]).toBeGreaterThan(550);   // where it was drawn
 }, 60000);
 
-test.skipIf(!win || !existsSync(faceModel()))('MediaPipe runs over a batch (this PC; a blank frame has no face)', async () => {
+test('the system OCR is Windows\' own on Windows and Vision on macOS; Vision names Chinese without its region', () => {
+  expect(ocrProvider({ ...DEFAULT_PROVIDERS }).id).toBe(process.platform === 'darwin' ? 'macos' : 'windows');
+  expect(visionLangs('zh-Hant-TW')).toEqual(['zh-Hant', 'en-US']);
+  expect(visionLangs('zh-hans')).toEqual(['zh-Hans', 'en-US']);
+  expect(visionLangs('en-US')).toEqual(['en-US']);
+});
+
+test('macOS OCR hands Vision the image list and its languages, and reads its lines like Windows\'', async () => {
+  const calls: string[][] = [];
+  const ocr = macosOcr({ lang: 'zh-Hant-TW' }, async (args) => { calls.push(args); return '{"image":"a.png","width":10,"height":5,"lines":[{"text":"你好","box":[1,2,3,4]}]}\n'; });
+  expect(await ocr.read(['a.png'])).toEqual([{ image: 'a.png', width: 10, height: 5, lines: [{ text: '你好', box: [1, 2, 3, 4] }] }]);
+  expect(calls[0][0]).toBe('--list');
+  expect(calls[0].slice(2)).toEqual(['--lang', 'zh-Hant,en-US']);
+  expect(await ocr.read([])).toEqual([]);
+});
+
+const CJK_FONT = ['/System/Library/Fonts/STHeiti Medium.ttc', '/System/Library/Fonts/Hiragino Sans GB.ttc', '/System/Library/Fonts/PingFang.ttc'].find(existsSync);
+// drawing the caption needs an ffmpeg with drawtext (Homebrew's plain ffmpeg has none; ffmpeg-full does)
+const drawtext = () => { try { return /\bdrawtext\b/.test(execFileSync(ffmpegPath(), ['-hide_banner', '-filters'], { encoding: 'utf8' })); } catch { return false; } };
+test.skipIf(process.platform !== 'darwin' || !CJK_FONT || !drawtext())('macOS OCR reads a caption drawn on a frame (this Mac)', async () => {
+  const d = mkdtempSync(join(tmpdir(), 'vocr-')), img = join(d, 'cap.png');
+  await run(['-f', 'lavfi', '-i', 'color=black:s=1280x720:d=1', '-frames:v', '1', '-vf', `drawtext=fontfile='${CJK_FONT}':text='今天去京都':fontsize=72:fontcolor=white:x=(w-tw)/2:y=600`, img]);
+  expect((await macosOcr().check()).ok).toBe(true);
+  const [r] = await macosOcr().read([img]);
+  expect(r.lines.map((l) => l.text.replace(/\s+/g, '')).join('')).toContain('京都');
+  expect(r.lines[0].box[1]).toBeGreaterThan(550);   // where it was drawn: top-left origin, as on Windows
+}, 300000);
+
+test.skipIf(!(win || process.platform === 'darwin') || !existsSync(faceModel()))('MediaPipe runs over a batch (this PC or Mac; a blank frame has no face)', async () => {
   const d = mkdtempSync(join(tmpdir(), 'vfaces-')), img = join(d, 'blank.png');
   await run(['-f', 'lavfi', '-i', 'color=gray:s=640x360:d=1', '-frames:v', '1', img]);
   expect(await mediapipeFaces().detect([img])).toEqual([[]]);

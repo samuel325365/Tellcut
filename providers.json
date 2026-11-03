@@ -17,9 +17,9 @@
     }
   },
   "ocr": {
-    "use": "windows",
+    "use": "system",
     "options": {
-      "windows": {
+      "system": {
         "lang": "zh-Hant-TW"
       }
     }

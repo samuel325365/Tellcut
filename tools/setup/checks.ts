@@ -2,6 +2,7 @@
 // then runs these; npm run doctor only runs these (nothing is installed, no Claude tokens are spent).
 import { exec, execFile } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { chromeSpec, CLAUDE, CLAUDE_MIN_VERSION, claudeEnv, facesProvider, FFMPEG, FFPROBE, loadProvidersConfig, locate, modelsDir, ocrProvider, onPathDirs, playerBuildStale, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec, type Provider } from '@tellcut/media-node';
@@ -27,10 +28,14 @@ export const nodeMajor = (v = process.versions.node) => Number(v.split('.')[0]);
 const where = (spec: ExeSpec) => locate(spec);
 const fromLabel = { env: '環境變數', vendor: 'tellcut/vendor', known: '安裝位置', path: 'PATH' } as const;
 
-export function checkPlatform(): Check {
-  return process.platform === 'win32' ? { name: 'Windows', ok: true, detail: process.platform }
-    : { name: 'Windows', ok: false, detail: `這台是 ${process.platform}`, fix: 'Tellcut 目前只支援 Windows 10／11' };
+export function checkPlatform(platform: NodeJS.Platform = process.platform, release = osRelease()): Check {
+  if (platform === 'win32') return { name: 'Windows', ok: true, detail: platform };
+  if (platform === 'darwin') return { name: 'macOS', ok: true, detail: `Darwin ${release}` };
+  return { name: '作業系統', ok: false, detail: `這台是 ${platform}`, fix: 'Tellcut 支援 Windows 10／11 與 macOS' };
 }
+
+/** `ffmpeg -filters` lists vidstabdetect and vidstabtransform: stabilised cuts need them (Homebrew's plain ffmpeg has neither) */
+export const hasVidstab = (filters: string) => /\bvidstabdetect\b/.test(filters) && /\bvidstabtransform\b/.test(filters);
 
 export function checkNode(): Check {
   const n = nodeMajor();
@@ -55,7 +60,13 @@ export async function checkFfmpeg(): Promise<Check[]> {
   const ff = await exeVersion(FFMPEG, ['-hide_banner', '-version']);
   if (ff.ok) {
     const major = ffmpegMajor(ff.detail);
-    if (major !== null && major < 8) Object.assign(ff, { ok: false, fix: `要 ffmpeg 8 以上（這個是 ${major}）：npm run setup 會下載到 tellcut/vendor` });
+    if (major !== null && major < 8) Object.assign(ff, { ok: false, fix: `要 ffmpeg 8 以上（這個是 ${major}）：${process.platform === 'darwin' ? FFMPEG.install : 'npm run setup 會下載到 tellcut/vendor'}` });
+  }
+  // macOS only: Windows' vendored build has vid.stab, and a Mac's plain Homebrew ffmpeg does not
+  if (ff.ok && process.platform === 'darwin') {
+    const filters = await run(locate(FFMPEG)!.path, ['-hide_banner', '-filters'], { timeout: 60000 }).then((r) => r.stdout, () => null);
+    if (filters === null) ff.detail += '（看不出有沒有防手震 vid.stab：ffmpeg -filters 跑不起來）';
+    else if (!hasVidstab(filters)) Object.assign(ff, { ok: false, detail: `${ff.detail}：沒有防手震（vid.stab）`, fix: FFMPEG.install });
   }
   return [ff, await exeVersion(FFPROBE, ['-hide_banner', '-version'])];
 }

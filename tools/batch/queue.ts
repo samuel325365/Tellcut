@@ -6,7 +6,7 @@
 // A pid can be reused by a new process after the holder died, and Windows offers no cheap way to read another process's
 // start time, so the holder also touches its owner file (keepSlot) as a heartbeat: an owner not touched for OWNER_TTL_MS
 // counts as gone even if some process has that pid now.
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** a holder must call keepSlot more often than this */
@@ -55,6 +55,18 @@ export function takeSlot(dir: string, slots: number, label: string, pid = proces
         continue;   // not put back: try the slot again from the start
       }
       if (!isStale(slot, alive)) break;
+      if (process.platform !== 'win32') {
+        // macOS / Linux: a rename there replaces an empty folder, so moving slots aside (below) can swap a contender's new
+        // slot for the one put back, and both hold it. Instead one process at a time takes over, through a gate folder:
+        // inside it the slot is judged again and removed only when stale, then everyone races for it with mkdir alone.
+        const gate = `${slot}.takeover`;
+        try { mkdirSync(gate); } catch { if (age(gate) > OWNERLESS_MS) drop(gate); nap(5 + Math.random() * 20); continue; }
+        let removed = false;
+        try { if (isStale(slot, alive)) { rmSync(slot, { recursive: true, force: true }); removed = true; } } catch { /* not ours to remove: held */ } finally { drop(gate); }
+        if (!removed && existsSync(slot)) break;   // taken meanwhile, or not removable: held
+        attempt--;   // the takeover itself is no failed try
+        continue;
+      }
       // Take it over: move it aside first. Of several processes doing this at once only one rename succeeds; removing
       // it in place would let a late remover delete the slot the first one just re-made.
       const aside = `${slot}.stale-${pid}`;

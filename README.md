@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Windows-only-161412?style=for-the-badge&logo=windows&logoColor=white" alt="Windows only">
+  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS-0a84ff?style=for-the-badge&logo=windows&logoColor=white" alt="Windows · macOS">
   <img src="https://img.shields.io/badge/Node.js-24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 24">
   <img src="https://img.shields.io/badge/Agent-Claude%20Code-d97757?style=for-the-badge&logo=claude&logoColor=white" alt="Claude Code">
   <img src="https://img.shields.io/badge/UI-EN%20%C2%B7%20%E4%B8%AD%E6%96%87%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-d8b88a?style=for-the-badge" alt="English · 中文 · 日本語">
@@ -214,7 +214,7 @@ Each animation below is a sample film made with that preset; click one to see wh
 
 **You need**
 
-- **Windows 10 or 11** (64-bit; only Windows is supported for now)
+- **Windows 10 or 11** (64-bit), or **macOS 14 or later** (Apple silicon; tested on macOS 26)
 - **A Claude account**: a Pro, Max, Team or Enterprise plan, or a Claude API account. The editing agent is Claude Code, running on your own account (see [Usage and cost](#usage-and-cost))
 - About **4 GB** of disk space and an internet connection (the first install downloads about 2 GB)
 
@@ -224,46 +224,66 @@ Node.js, Google Chrome, Python, ffmpeg and the rest are taken care of by either 
 
 Claude Code is Claude in your terminal: it can download, install and run commands on your computer, and fixes errors as it goes. Claude on the web (claude.ai) can't reach your computer, so it can only tell you the steps, not do them.
 
-1. **Open PowerShell**: press the Start key, type `PowerShell` and press Enter. You don't need to run it as administrator.
-2. **Install Claude Code**: paste this line and press Enter:
+1. **Open a terminal**:
+   - **Windows**: open PowerShell: press the Start key, type `PowerShell` and press Enter. You don't need to run it as administrator.
+   - **Mac**: press ⌘ Space, type `Terminal` and press Enter. No [Homebrew](https://brew.sh) yet? Install it with this line (it asks for your Mac's password, which doesn't show as you type):
+
+     ```bash
+     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+     ```
+2. **Install Claude Code**: paste this line and press Enter.
+
+   On Windows:
 
    ```powershell
    irm https://claude.ai/install.ps1 | iex
    ```
 
-   Then type `claude --version`: a version number means it's installed. If `claude` isn't found, close PowerShell and open a new one. You can also use `winget install Anthropic.ClaudeCode` ([official setup guide](https://code.claude.com/docs/en/setup)).
+   On a Mac:
+
+   ```bash
+   curl -fsSL https://claude.ai/install.sh | bash
+   ```
+
+   Then type `claude --version`: a version number means it's installed. If `claude` isn't found, close the window and open a new one. On Windows you can also use `winget install Anthropic.ClaudeCode` ([official setup guide](https://code.claude.com/docs/en/setup)).
 3. **Sign in**: type `claude`, press Enter and sign in to your Claude account in the browser window it opens.
-4. **Pick Opus 5.5**: in Claude Code, type `/model opus` and press Enter. We recommend Opus 5.5: Tellcut's install and its editing are tested with it. Opus 5.5 needs Claude Code 2.1.280 or later; if yours is older, run `claude update` in PowerShell first.
-5. **Paste this to it**:
+4. **Pick Opus 5.5**: in Claude Code, type `/model opus` and press Enter. We recommend Opus 5.5: Tellcut's install and its editing are tested with it. Opus 5.5 needs Claude Code 2.1.280 or later; if yours is older, run `claude update` in the terminal first.
+5. **Paste this to it** (the same text on Windows and on a Mac):
 
    ```text
    Please install Tellcut for me: https://github.com/samuel325365/Tellcut
    Follow INSTALL.md in the repo. If Node.js 24 or later or Google Chrome is missing, install it with winget first.
+   On a Mac, follow its "On a Mac" section instead: put Homebrew on my PATH if brew isn't found, then Homebrew for node@24 (added to my PATH in ~/.zshrc), Google Chrome and ffmpeg-full, and xcode-select --install if Xcode's command line tools are missing (wait while I finish the window it opens).
    Download the repo into a Tellcut folder in my user folder, run npm run setup, then npm run doctor to confirm every item is ticked.
    If anything fails, fix it and carry on. When everything is ready, tell me how to open Tellcut from now on.
    ```
 
    Claude Code asks before each thing it does: have a look, then allow it. The whole install takes about 15–30 minutes, mostly downloading.
-6. **Open Tellcut**: from then on, whenever you want to use it, run this in PowerShell:
+6. **Open Tellcut**: from then on, whenever you want to use it, run this in the terminal (PowerShell, or Terminal on a Mac):
 
-   ```powershell
-   cd ~\Tellcut
+   ```
+   cd ~/Tellcut
    npm run server
    ```
 
-   Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the PowerShell window open while you work; closing it stops Tellcut.
+   Then open <http://127.0.0.1:5174/editor/> in your browser. Keep the terminal window open while you work; closing it stops Tellcut.
 
 **Codex or another AI coding assistant can install it too**: give it the text from step 5. The agent inside Tellcut is always Claude Code, though, so you still need steps 2–3.
 
 ### Option 2: install it yourself
 
-1. Install [Node.js](https://nodejs.org/) 24 or later (the LTS), [Google Chrome](https://www.google.com/chrome/) and [Claude Code](https://code.claude.com/docs/en/setup), and run `claude` once in a terminal to sign in.
-2. Get Tellcut: with [Git](https://git-scm.com/downloads/win), run `git clone https://github.com/samuel325365/Tellcut.git`; without it, click the green **Code** button on GitHub → **Download ZIP** and unzip it. With git, updating later is easier.
-3. Right-click an empty spot in the Tellcut folder → **Open in Terminal**, then run:
+1. Install [Node.js](https://nodejs.org/) 24 or later (the LTS), [Google Chrome](https://www.google.com/chrome/) and [Claude Code](https://code.claude.com/docs/en/setup), and run `claude` once in a terminal to sign in. On a Mac, install them as [INSTALL.md › On a Mac](INSTALL.md#on-a-mac) lists, with Homebrew's `node@24` and `ffmpeg-full` and Xcode's command line tools.
+2. Get Tellcut: with Git ([for Windows](https://git-scm.com/downloads/win); a Mac has it with Xcode's command line tools), run `git clone https://github.com/samuel325365/Tellcut.git`; without it, click the green **Code** button on GitHub → **Download ZIP** and unzip it. With git, updating later is easier.
+3. Open a terminal in the Tellcut folder (on Windows, right-click an empty spot in the folder → **Open in Terminal**; on a Mac, `cd` to the folder in Terminal). First run this once; it downloads the tools and models Tellcut needs (10–20 minutes):
 
-   ```powershell
-   npm run setup     # downloads the tools and models Tellcut needs (10–20 minutes)
-   npm run server    # then open http://127.0.0.1:5174/editor/ in your browser
+   ```
+   npm run setup
+   ```
+
+   Then, whenever you want to use it, run this and open <http://127.0.0.1:5174/editor/> in your browser:
+
+   ```
+   npm run server
    ```
 
 The full walkthrough, with troubleshooting, is in **[INSTALL.md](INSTALL.md)**. If something isn't working, `npm run doctor` lists what's missing and how to fix it; or just tell Claude Code "Tellcut won't open, can you take a look?".
@@ -286,10 +306,10 @@ The interface comes in English, 中文 and 日本語; switch with **中 / EN / �
 
 ## Example project
 
-Tellcut's own brand film comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset.
+Tellcut's own brand film comes as a project you can open, play and change: the footage, the agent's chat and version history, and the finished film. It was made with the Brand Film preset. To download it (about 900 MB) and add it to your projects, run:
 
-```powershell
-npm run examples -- meet-tellcut     # download it and add it to your projects (about 900 MB)
+```
+npm run examples -- meet-tellcut
 ```
 
 Its `CREDITS.md` names the footage; it is all Creative Commons (CC BY 3.0).
@@ -394,7 +414,7 @@ Under every reply you'll see how many tokens it used; the conversation total als
 
 ## Limitations
 
-- Windows only.
+- Windows and macOS only.
 - The agent can't hear. You have to judge the balance of music and voices, and whether the voice-over sounds natural, by ear.
 - Local only: there's no cloud version, and two people can't edit the same project at once.
 

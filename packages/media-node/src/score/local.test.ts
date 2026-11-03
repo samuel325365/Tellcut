@@ -71,7 +71,7 @@ test('a project style cannot take an id the library already has; the library fol
   expect(Object.keys(l.styles)).toEqual(['shared']);
   expect(l.styles.shared.file.startsWith(lib)).toBe(true);
   expect(l.errors[0].message).toContain('已經有人用了');
-  expect(SCORE_LIBRARY.replace(/\\/g, '/')).toMatch(/tellcut\/score-library$/);
+  expect(SCORE_LIBRARY.replace(/\\/g, '/')).toMatch(/tellcut\/score-library$/i);   // a clone named after the repository: Tellcut/
 });
 
 test('every style in the shared library passes the same checks as the built-in ones', async () => {

@@ -86,8 +86,8 @@ test('batch:render args: id and --slots in any order, the rest goes to render, v
   expect(renderArgs([])).toBeNull();
   expect(renderArgs(['food', 'extra'])).toBeNull();
   expect(npmCommand(['render', '--', '--project', 'my x', '--stills', '1.5,3'])).toBe('npm run -s "render" "--" "--project" "my x" "--stills" "1.5,3"');
-  // cmd.exe takes no \" escape and expands %VAR% even inside quotes: such an argument is refused, not passed on half-quoted
-  for (const bad of ['my "x"', '%PATH%', 'a&b', 'a|b', 'a<b', 'a>b', 'a^b', 'a\nb'])
+  // cmd.exe takes no \" escape and expands %VAR% even inside quotes, sh expands $ and `: such an argument is refused, not passed on half-quoted
+  for (const bad of ['my "x"', '%PATH%', 'a&b', 'a|b', 'a<b', 'a>b', 'a^b', 'a\nb', ...(process.platform === 'win32' ? [] : ['$HOME', 'a`id`', 'dir\\'])])
     expect(() => npmCommand(['render', '--', '--project', bad]), JSON.stringify(bad)).toThrow('不能有');
 });
 

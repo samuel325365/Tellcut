@@ -3,6 +3,7 @@ import { loadProvidersConfig, type ProvidersConfig } from './config.ts';
 import { edgeTts } from './edge.ts';
 import { fakeFaces, fakeOcr, fakeTranscribe, fakeTts } from './fake.ts';
 import { mediapipeFaces } from './faces-mediapipe.ts';
+import { macosOcr } from './ocr-macos.ts';
 import { windowsOcr } from './ocr-windows.ts';
 import type { Capability, FacesProvider, OcrProvider, TranscribeProvider, TtsProvider } from './types.ts';
 import { fasterWhisper } from './whisper.ts';
@@ -13,6 +14,7 @@ export * from './fake.ts';
 export { fasterWhisper } from './whisper.ts';
 export { edgeTts, EDGE_VOICES } from './edge.ts';
 export { windowsOcr, parseOcrLines } from './ocr-windows.ts';
+export { macosOcr, visionLangs } from './ocr-macos.ts';
 export { mediapipeFaces, parseFaceLines, faceModel } from './faces-mediapipe.ts';
 
 type Factory<T> = (options: Record<string, unknown>) => T;
@@ -26,7 +28,10 @@ export const TRANSCRIBE_FACTORIES: Record<string, Factory<TranscribeProvider>> =
   fake: () => fakeTranscribe(),
 };
 export const OCR_FACTORIES: Record<string, Factory<OcrProvider>> = {
+  // the system's own text recognition: Windows.Media.Ocr or Apple's Vision
+  system: (o) => (process.platform === 'darwin' ? macosOcr : windowsOcr)(o as { lang?: string }),
   windows: (o) => windowsOcr(o as { lang?: string }),
+  macos: (o) => macosOcr(o as { lang?: string }),
   fake: () => fakeOcr(),
 };
 export const FACES_FACTORIES: Record<string, Factory<FacesProvider>> = {

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
-import { listeners, threads } from './server-restart.ts';
+import { listeners, lsofListeners, threads } from './server-restart.ts';
 
 test('the processes listening on the port, from netstat', () => {
   const out = [
@@ -15,6 +15,11 @@ test('the processes listening on the port, from netstat', () => {
   ].join('\r\n');
   expect(listeners(out, 5199)).toEqual([4242]);
   expect(listeners(out, 5174)).toEqual([]);
+});
+
+test('the processes listening on the port, from lsof (macOS)', () => {
+  expect(lsofListeners('4242\n4242\n77\n')).toEqual([4242, 77]);
+  expect(lsofListeners('')).toEqual([]);
 });
 
 test('the threads asked about: home, each project, the home drafts', () => {

@@ -39,7 +39,7 @@ export function windowsOcr(options: { lang?: string } = {}, run: typeof powershe
   return {
     id: 'windows', label: 'Windows 內建文字辨識', online: false,
     async check(): Promise<ProviderStatus> {
-      if (process.platform !== 'win32') return { ok: false, detail: '只有 Windows 有', install: '在 Windows 上使用' };
+      if (process.platform !== 'win32') return { ok: false, detail: '只有 Windows 有', install: '把 tellcut/providers.json 裡 ocr 的 "use" 改成 "system"（用這台系統自己的文字辨識）' };
       try {
         const out = await run(['-Command', `[Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime] | Out-Null; [Windows.Globalization.Language, Windows.Globalization, ContentType = WindowsRuntime] | Out-Null; [Windows.Media.Ocr.OcrEngine]::IsLanguageSupported((New-Object Windows.Globalization.Language '${lang}'))`]);
         return out.trim() === 'True' ? { ok: true, detail: `語言 ${lang}` }

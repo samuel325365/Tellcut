@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkFonts, ffmpegMajor, hfCachedWhisper, MODEL_COMPLETE, nodeMajor, table, versionAtLeast, whisperModelDir } from './checks.ts';
+import { checkFonts, checkPlatform, ffmpegMajor, hasVidstab, hfCachedWhisper, MODEL_COMPLETE, nodeMajor, table, versionAtLeast, whisperModelDir } from './checks.ts';
 
 test('versions: Claude Code at least the minimum', () => {
   expect(versionAtLeast('2.1.281 (Claude Code)', '2.1.242')).toBe(true);
@@ -61,4 +61,16 @@ test('fonts: a full fonts.css from an older install, but without the TTF the 3D 
   mkdirSync(join(dir, 'files'));
   writeFileSync(join(dir, 'files', 'Inter-700.ttf'), 'ttf');
   expect(checkFonts(dir, ['Inter-700.ttf']).ok).toBe(true);
+});
+
+test('Windows and macOS are both supported systems; anything else is told so', () => {
+  expect(checkPlatform('win32', '10.0.26100')).toEqual({ name: 'Windows', ok: true, detail: 'win32' });   // as before macOS support
+  expect(checkPlatform('darwin', '25.5.0')).toEqual({ name: 'macOS', ok: true, detail: 'Darwin 25.5.0' });
+  expect(checkPlatform('linux', '6.1')).toMatchObject({ ok: false });
+});
+
+test('ffmpeg needs both vid.stab filters for stabilised cuts', () => {
+  const both = ' ... vidstabdetect      V->V       Extract relative transformations\n ... vidstabtransform   V->V       Transform the frames';
+  expect(hasVidstab(both)).toBe(true);
+  expect(hasVidstab(' ... vflip   V->V  Flip the input video vertically.')).toBe(false);
 });

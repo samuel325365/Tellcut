@@ -8,7 +8,7 @@ import { chatFile, closeDangling, freshThread, isHome, readThread, writeThread, 
 import { NOT_FOUND, StreamParser, type ChatEvent, type ChatTool, type Usage } from './stream.ts';
 import { withRecovered } from './recover.ts';
 import { BASH_DEFAULT_TIMEOUT_MS, BASH_MAX_TIMEOUT_MS } from './timeouts.ts';
-import { claudeEnv, lockHolder, renameRetry, tryLock, writeProjectFile } from '@tellcut/media-node';
+import { claudeEnv, killTree as killProcessTree, lockHolder, renameRetry, tryLock, writeProjectFile } from '@tellcut/media-node';
 import type { ChatMessage, Lang, PresetChoice } from '@tellcut/protocol';
 
 /**
@@ -46,7 +46,7 @@ export function claudeArgs(o: { session: string; resume: boolean; promptFile: st
     // the draft of a preset of the user's own, and an entry of their library changed from the gallery (spec 2026-10-29-my-library §4.3, §4.5)
     'Write(projects/*/preset-draft.json)', 'Edit(projects/*/preset-draft.json)', 'Write(projects/_library/blocks/*/fx/*.js)', 'Edit(projects/_library/blocks/*/fx/*.js)',
     // guardrails, not a sandbox (spec §1.2): secrets and npm's shell override stay out of reach
-    '--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Read(~/.aws/**)', 'Read(~/.config/**)', 'Read(~/AppData/**)', 'Bash(*--script-shell*)',
+    '--disallowedTools', 'Read(~/.ssh/**)', 'Read(~/.claude/**)', 'Read(~/.aws/**)', 'Read(~/.config/**)', 'Read(~/AppData/**)', 'Read(~/Library/**)', 'Bash(*--script-shell*)',
     'Read(~/.npmrc)', 'Read(~/.git-credentials)', 'Read(~/.netrc)', 'Read(~/.docker/**)', 'Read(~/.kube/**)', 'Read(~/.azure/**)', 'Read(~/.gnupg/**)',
     // the Claude account file, the outside sources' API keys (sources.local.json, not in git), a login kept elsewhere
     'Read(~/.claude.json)', 'Read(./sources.local.json)', ...(o.configDir ? [absRule(o.configDir)] : []),
@@ -109,8 +109,9 @@ export function composePrompt(parts: string[], dir: string): string {
   return file;
 }
 
-/** Arguments are fixed strings or paths; the user's words only ever go through stdin. */
-const quote = (a: string) => `"${a.replace(/"/g, '\\"')}"`;
+/** Arguments are fixed strings or paths; the user's words only ever go through stdin. sh expands $ and ` inside double
+ *  quotes and nothing inside single ones, so there a path under a folder named with either stays as it is. */
+const quote = process.platform === 'win32' ? (a: string) => `"${a.replace(/"/g, '\\"')}"` : (a: string) => `'${a.replace(/'/g, `'\\''`)}'`;
 
 interface Turn { child: ChildProcess; parser: StreamParser; tools: ChatTool[]; listeners: Set<(e: ChatEvent) => void>; stopped: boolean; release: () => void }
 
@@ -320,7 +321,6 @@ export class ChatRunner {
  *  end that one's whole tree (it took vitest workers with it). */
 export function killTree(child: ChildProcess, run: typeof spawn = spawn) {
   if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
-  // the shell's child (claude) must go too: on Windows only taskkill /T reaches it
-  if (process.platform === 'win32') run('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true }).on('error', () => {});
-  else child.kill('SIGINT');
+  // the shell's child (claude) must go too: a signal to the shell alone leaves claude running (taskkill /T on Windows)
+  killProcessTree(child.pid, 'SIGINT', run);
 }

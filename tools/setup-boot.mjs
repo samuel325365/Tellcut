@@ -12,7 +12,7 @@ if (major < 24) {
   console.error(`✗ Node.js 要 24 以上（這台是 v${process.versions.node}）：從 https://nodejs.org/ 安裝後再跑一次。`);
   process.exit(1);
 }
-if (process.platform !== 'win32') console.warn(`! Tellcut 目前只支援 Windows（這台是 ${process.platform}），之後的步驟可能會失敗。`);
+if (process.platform !== 'win32' && process.platform !== 'darwin') console.warn(`! Tellcut 支援 Windows 與 macOS（這台是 ${process.platform}），之後的步驟可能會失敗。`);
 
 const run = (cmd, args, hint = '') => {
   // one command line (shell: npm and npx are .cmd files); arguments with spaces are quoted

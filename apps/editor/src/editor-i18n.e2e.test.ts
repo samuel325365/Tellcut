@@ -74,7 +74,8 @@ test('editor labels are English in every language; tooltips follow it', async ()
     const clipped = await page.evaluate(`[...document.querySelectorAll('.tl-tray select, .row .head button')].filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.className + ':' + e.textContent)`);
     expect(clipped).toEqual([]);
     // a <select> never reports its clipped text through scrollWidth: compare the widest option (measured) with the box minus the arrow
-    const short = await page.evaluate(`[...document.querySelectorAll('.tl-tray select')].filter((s) => { const c = document.createElement('canvas').getContext('2d'); c.font = getComputedStyle(s).font; const w = Math.max(...[...s.options].map((o) => c.measureText(o.textContent).width)); return s.clientWidth < w + 20; }).map((s) => s.clientWidth + ':' + [...s.options].map((o) => o.textContent).join('/'))`);
+    // (a Mac's menulist arrow takes about 16 px, Windows' about 20: an auto-width select there is the text plus 16)
+    const short = await page.evaluate(`[...document.querySelectorAll('.tl-tray select')].filter((s) => { const c = document.createElement('canvas').getContext('2d'); c.font = getComputedStyle(s).font; const w = Math.max(...[...s.options].map((o) => c.measureText(o.textContent).width)); return s.clientWidth < w + ${process.platform === 'darwin' ? 14 : 20}; }).map((s) => s.clientWidth + ':' + [...s.options].map((o) => o.textContent).join('/'))`);
     expect(short).toEqual([]);
     await page.hover('[data-snap]');
     await page.waitForSelector('[data-tooltip]');

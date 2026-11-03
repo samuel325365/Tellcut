@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createProviders, DEFAULT_PROVIDERS, fakeTranscribe, fakeTts, loadProvidersConfig, ProvidersConfigZ, PROVIDERS_FILE, TTS_FACTORIES } from './index.ts';
+import { transcriptWritten } from './whisper.ts';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'prov-')); });
@@ -46,4 +47,15 @@ test('the fake tts gives a wav of the right length with word times; without word
   await tr.transcribe('x.mp4', f);
   expect(JSON.parse(readFileSync(f, 'utf8')).segments[0].text).toBe('哈囉');
   expect(tr.calls).toEqual(['x.mp4']);
+});
+
+test('a transcript counts as written only once its JSON is whole, with its segments', () => {
+  const f = join(dir, 't.json');
+  expect(transcriptWritten(f)).toBe(false);
+  writeFileSync(f, '{"language": "zh", "segments": [{"start": 0.0, "end": 1.0, "te');
+  expect(transcriptWritten(f)).toBe(false);
+  writeFileSync(f, JSON.stringify({ language: 'zh' }));
+  expect(transcriptWritten(f)).toBe(false);
+  writeFileSync(f, JSON.stringify({ language: 'zh', segments: [] }));
+  expect(transcriptWritten(f)).toBe(true);
 });
