@@ -8,7 +8,7 @@
 import { clamp, coverPlacement, cssCamel, eIO3, eOut3, h, lerp, rng, type Crop, type ItemType } from '@tellcut/engine';
 import { trackingBand } from './film.ts';
 import { keysAt } from './geo.ts';
-import { canvasAt } from './inkline.ts';
+import { canvasAt, freeCanvas } from './inkline.ts';
 import { parseSteps, stepAt, timeSpan } from './phone.ts';
 import { imagesReady, stillRef, stillUrl, type Still } from './window.ts';
 import { nl } from './text.ts';
@@ -433,5 +433,5 @@ export const camcorder: ItemType<P, S> = {
     osdText(s.endText, 128 * k, p.recColor, k, p.font);
     cssCamel(s.end, { display: showEnd ? 'block' : 'none', padding: `${10 * k}px ${40 * k}px` });
   },
-  hide(s) { s.cv.width = 1; s.cv.height = 1; if (s.tmp) { s.tmp.width = 1; s.tmp.height = 1; } },
+  hide(s) { freeCanvas(s.cv, s.tmp, s.sn); },
 };

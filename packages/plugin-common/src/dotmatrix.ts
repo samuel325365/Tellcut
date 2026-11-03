@@ -2,7 +2,7 @@
 // sign (lit dots glowing over a grid of dark ones) or as printed ink. Still, a scrolling marquee, or typed out one character at a time.
 // From the food-receipt short's thermal-printer lettering. A transparent copy of the text sits over the dots, so check can measure it.
 import { clamp, cssCamel, h, prog, textEm, type ItemType } from '@tellcut/engine';
-import { canvasAt } from './inkline.ts';
+import { canvasAt, freeCanvas } from './inkline.ts';
 import { dotFont, dots, drawDots, drawGrid, loadDots } from './dots.ts';
 import { isClear, withAlpha } from './color.ts';
 
@@ -43,6 +43,7 @@ export const dotmatrix: ItemType<P, S> = {
     return { cv, ghost, want: [ctx.params.font, String(ctx.params.text ?? '')] as [string, string] };
   },
   ready: (s) => loadDots(s.want[0], s.want[1]),
+  hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, pitch = p.pitch * k, led = p.look === 'led';
     const all = String(p.text ?? ''), chars = [...all];

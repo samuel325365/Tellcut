@@ -13,7 +13,7 @@
 // go by min(W, H), text keeps 5 % off the edges, every word is a parameter. Fonts: Playfair Display (Google) and Noto Serif TC.
 import { abs, clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, type ItemType, lerp, prog, rng, textEm, type Theme } from '@tellcut/engine';
 import { parseStills } from './camcorder.ts';
-import { canvasAt } from './inkline.ts';
+import { canvasAt, freeCanvas } from './inkline.ts';
 import { paintPrint } from './paper.ts';
 import { quoteLines } from './quote.ts';
 import { asFrame, imagesReady, showStill, stillRef, windowEl, type Still, type Win } from './window.ts';
@@ -309,7 +309,7 @@ export const magazine: ItemType<P, S> = {
     if (cp > 0 && !s.cta.firstChild) { const tri = abs(s.cta); cssCamel(tri, { background: '#ffffff', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }); }
     if (s.cta.firstChild) cssCamel(s.cta.firstChild as HTMLElement, { left: `${50 * k}px`, top: `${42 * k}px`, width: `${54 * k}px`, height: `${chh - 84 * k}px` });
   },
-  hide(s) { s.bg.width = 1; s.bg.height = 1; s.bgKey = ''; },
+  hide(s) { freeCanvas(s.bg, s.codeCv); s.bgKey = ''; },
 };
 
 /** where the barcode goes: the cover's last cell (or the column) at the lower right, the back cover's right side */

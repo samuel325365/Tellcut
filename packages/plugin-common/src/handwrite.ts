@@ -5,7 +5,7 @@
 // In replace mode a "start-end" line stays `hold` seconds (1.2) after its end, then fades out over 0.25 s (sooner when the next line starts).
 import { abs, clamp, cssCamel, eOut3 as ease, h, type ItemType, textEm } from '@tellcut/engine';
 import { charAt, drawTexts, handFamily, textLayer, wrapEm, writeTime, type TextLayer, type Txt } from './hand.ts';
-import { canvasAt } from './inkline.ts';
+import { canvasAt, freeCanvas } from './inkline.ts';
 import { inkStroke, wavePts } from './sketch.ts';
 import { withAlpha } from './color.ts';
 
@@ -87,6 +87,7 @@ export const handwrite: ItemType<P, S> = {
     cssCamel(cv, { position: 'absolute', display: 'none', pointerEvents: 'none' });
     return { group, note, small, tape, txt, cv };
   },
+  hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, px = (p.size / 100) * Math.min(W, H), lh = px * 1.45;
     const list = parseSentences(p.lines, p.cps), maxEm = (p.w * W) / px, note = p.paper === 'note', fam = handFamily(p.font);

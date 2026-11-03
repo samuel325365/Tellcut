@@ -130,7 +130,7 @@ export const notecard: ItemType<P, S> = {
     freeCanvas(top);
     return { wrap, cv, txt, top, stamp };
   },
-  hide(s) { freeCanvas(s.top); },
+  hide(s) { freeCanvas(s.top, s.cv); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, b0 = cardBox(p, W, H, theme.safe), items = parseItems(p.items).slice(0, LIST_MAX);
     const shown = items.map((x) => addedItem(x, p.addInk ?? ''));

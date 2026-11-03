@@ -3,7 +3,7 @@
 // With a title it becomes a board: a shop name and a small line on the left, the display on the right.
 // From the food-receipt short's VFD subtotal and the food-deep short's queue-number board.
 import { abs, clamp, cssCamel, eSmooth, type ItemType, prog, textEm } from '@tellcut/engine';
-import { canvasAt } from './inkline.ts';
+import { canvasAt, freeCanvas } from './inkline.ts';
 import { dots, drawDots, drawSeg, loadDots, softCanvas, vfdText } from './dots.ts';
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
@@ -151,6 +151,7 @@ export const digits: ItemType<P, S> = {
     return { box, cv: cv as HTMLCanvasElement, off: softCanvas(4, 4), title, sub, tag, ghost, want: `${p.label}${p.totalLabel}${parseSteps(p.steps).map((s) => s.label).join('')}` };
   },
   ready: (s) => loadDots('Noto Sans TC', s.want),
+  hide(s) { freeCanvas(s.cv, s.off); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, S = Math.min(W, H), led = p.style === 'led', boardOn = !!p.title;
     const n = Math.round(p.digits) || (led ? 2 : 5), steps = parseSteps(p.steps), st = digitsAt(steps, local, n, led ? '0' : ' ');

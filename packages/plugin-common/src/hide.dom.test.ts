@@ -29,15 +29,24 @@ import { timelapse } from './timelapse.ts';
 import { touch } from './touch.ts';
 import { wipe } from './wipe.ts';
 import { worldmap } from './worldmap.ts';
+import { camcorder } from './camcorder.ts';
+import { digits } from './digits.ts';
+import { dotmatrix } from './dotmatrix.ts';
+import { handwrite } from './handwrite.ts';
+import { magazine } from './magazine.ts';
+import { notecard } from './notecard.ts';
+import { postmark } from './postmark.ts';
 
 // a 2D context (and whatever it hands back) that accepts anything: a number where one is read, a no-op where one is called
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : anything),
   apply: () => anything, construct: () => anything, set: () => true,
 });
-const realGetContext = HTMLCanvasElement.prototype.getContext;
+const realGetContext = HTMLCanvasElement.prototype.getContext, realToDataURL = HTMLCanvasElement.prototype.toDataURL;
+// postmark makes its uneven ink a data URL, which jsdom does not implement
+beforeAll(() => { HTMLCanvasElement.prototype.toDataURL = () => 'data:,'; });
 beforeAll(() => { (HTMLCanvasElement.prototype as any).getContext = function () { return new Proxy(anything, { get: (t, k) => (k === 'canvas' ? this : k === 'measureText' ? () => ({ width: 10 }) : t[k]) }); }; });
-afterAll(() => { HTMLCanvasElement.prototype.getContext = realGetContext; });
+afterAll(() => { HTMLCanvasElement.prototype.getContext = realGetContext; HTMLCanvasElement.prototype.toDataURL = realToDataURL; });
 
 const media: any = { begin() {}, video() {}, place() {}, stillUrl: () => '', fileUrl: () => '', sync: async () => {}, image() {} };
 const W = 1080, H = 1920;
@@ -54,6 +63,8 @@ const CASES: Array<[ItemType<any, any>, Record<string, unknown>]> = [
   [meter, { look: 'ruler' }], [outro, {}], [panel, { look: 'hole' }], [paper, {}], [pen, { style: 'crayon' }], [pen, { kind: 'trace' }], [postcard, {}], [printer, {}], [progress, { mode: 'timeline' }], [route, {}],
   [route, { look: 'page' }], [shader, {}], [sparkle, {}], [speedlines, {}], [strike, {}], [tag, { look: 'pin' }], [timelapse, {}], [touch, {}],
   [wipe, { mode: 'hand' }], [worldmap, {}],
+  // 2026-11-03: the ones that had no hide, or one that kept a canvas
+  [camcorder, {}], [digits, {}], [digits, { style: 'led' }], [dotmatrix, {}], [handwrite, { red: '河邊' }], [magazine, {}], [notecard, {}], [postmark, {}],
 ];
 
 test.each(CASES.map(([t, p]) => [`${t.type} ${JSON.stringify(p)}`, t, p] as const))('%s: hide() frees its canvases, the next draw makes them again', (_n, t, params) => {

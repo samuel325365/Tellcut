@@ -4,6 +4,7 @@
 // a painted sun over the sea), a country band and the year. common.postmark puts them on any picture; common.postcard on its cards.
 import { clamp, cssCamel, eOut3 as eOut, h, hash01, type ItemType, type MediaApi, prog, textEm } from '@tellcut/engine';
 import { showStill, stillRef, windowEl, imagesReady, type Still, type Win } from './window.ts';
+import { freeCanvas } from './inkline.ts';
 
 export const SERIF = "'Noto Serif TC', serif";
 /** deterministic hash noise in 0..1 */
@@ -21,8 +22,8 @@ export function markEl(parent: HTMLElement): MarkEl {
   return { el, cv, top: [], bottom: [], date, key: '' };
 }
 
-/** the uneven ink: a white sheet with specks punched out, as a mask image (one per size), `dpr` device pixels per px */
-const specks = new Map<string, string>();
+/** the uneven ink: a white sheet with specks punched out, as a mask image (one per size, at most SPECKS kept), `dpr` device pixels per px */
+const specks = new Map<string, string>(), SPECKS = 64;
 function speckMask(w: number, hh: number, r: number, dpr = 1, ink = 1) {
   const key = `${w}x${hh}@${r}x${dpr}${ink > 1 ? `~${ink}` : ''}`;
   if (!specks.has(key)) {
@@ -35,6 +36,7 @@ function speckMask(w: number, hh: number, r: number, dpr = 1, ink = 1) {
       const x = hash(i * 1.37 + r) * w, y = hash(i * 2.71 + r) * hh, s = (0.6 + hash(i * 5.3) * 2.2) * (r / 74);
       g.globalAlpha = (0.35 + hash(i * 3.9) * 0.6) / Math.max(1, ink); g.beginPath(); g.arc(x, y, s, 0, 7); g.fill();
     }
+    if (specks.size >= SPECKS) specks.clear();
     specks.set(key, c.toDataURL());
   }
   return specks.get(key)!;
@@ -186,6 +188,7 @@ export const postmark: ItemType<P, S> = {
     return s;
   },
   ready: (s) => imagesReady([s.stamp.win.img]),
+  hide(s) { freeCanvas(s.mark.cv, s.stamp.cv); s.mark.key = s.stamp.key = ''; },
   draw(ctx, s) {
     const p = ctx.params, { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, r = ((p.size / 100) * Math.min(W, H)) / k, cx = (p.x * W) / k, cy = (p.y * H) / k;
     // drawn in 1080-wide units, scaled as one layer
