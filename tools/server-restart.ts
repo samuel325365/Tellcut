@@ -13,11 +13,12 @@ import { claudeEnv, DEFAULT_PORT, killTree, readServerInfo, TELLCUT_ROOT } from 
 
 const TERMINAL = new Set(['done', 'failed', 'cancelled']);
 
-/** pids listening on the port, from `netstat -ano` */
+/** pids listening on the port, from `netstat -ano`: a listening socket is the one with no foreign address (0.0.0.0:0, [::]:0). The
+ *  state word is not read: Windows in another language translates LISTENING, and the old server was neither found nor stopped. */
 export function listeners(netstat: string, port: number): number[] {
   const pids = new Set<number>();
   for (const line of netstat.split(/\r?\n/)) {
-    const m = /^\s*TCP\s+(\S+):(\d+)\s+\S+\s+LISTENING\s+(\d+)/i.exec(line);
+    const m = /^\s*TCP\s+(\S+):(\d+)\s+(?:0\.0\.0\.0|\[::\]):0\s.*?(\d+)\s*$/i.exec(line);
     if (m && Number(m[2]) === port && Number(m[3]) > 0) pids.add(Number(m[3]));
   }
   return [...pids];
@@ -81,7 +82,10 @@ async function main() {
     await pause(10000);
   }
 
-  const pids = onPort(port);
+  const pids = onPort(port), before = readServerInfo();
+  // the pids of the server being replaced: the ones on the port, and the one its .cache/server.json names (should the port's be
+  // missed, the old server still answering is not taken for the new one)
+  const old = new Set([...pids, ...(before?.port === port ? [before.pid] : [])]);
   for (const pid of pids) {
     if (WIN) {
       try { execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); }
@@ -122,7 +126,7 @@ async function main() {
     await pause(500);
     // the new server, not one that was still answering: it writes its own pid to .cache/server.json when it listens
     const info = readServerInfo();
-    if (info?.port === port && !pids.includes(info.pid) && (await busy(base)) !== null) { console.log(`Tellcut 伺服器已重開：${base}/editor/（紀錄：${log}）`); return; }
+    if (info?.port === port && !old.has(info.pid) && (await busy(base)) !== null) { console.log(`Tellcut 伺服器已重開：${base}/editor/（紀錄：${log}）`); return; }
   }
   console.error(`伺服器 60 秒內沒有回應，看紀錄：${log}`);
   process.exit(1);
