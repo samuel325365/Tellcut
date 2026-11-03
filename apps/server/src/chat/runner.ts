@@ -6,7 +6,7 @@ import { delimiter, dirname, join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { chatFile, closeDangling, freshThread, isHome, readThread, writeThread, type ChatThread } from './store.ts';
 import { NOT_FOUND, StreamParser, type ChatEvent, type ChatTool, type Usage } from './stream.ts';
-import { withRecovered } from './recover.ts';
+import { sessionLog, withRecovered } from './recover.ts';
 import { BASH_DEFAULT_TIMEOUT_MS, BASH_MAX_TIMEOUT_MS } from './timeouts.ts';
 import { claudeEnv, killTree as killProcessTree, lockHolder, renameRetry, tryLock, writeProjectFile } from '@tellcut/media-node';
 import type { ChatMessage, Lang, PresetChoice } from '@tellcut/protocol';
@@ -212,7 +212,13 @@ export class ChatRunner {
     if (!release) return false;
     // a reply that finished while the server was down goes back in first (the conversation reads in order)
     let th: ChatThread;
-    try { const read = readThread(file); th = closeDangling(withRecovered(read) ?? read); } catch (e) { release(); throw e; }
+    try {
+      const read = readThread(file);
+      // a first turn the server died in: claude made the session (its log is there) but "started" was never saved. Started again
+      // with --session-id it failed ("already in use") on every message after; it is resumed instead, and its reply recovered
+      if (!read.started && sessionLog(read.sessionId)) read.started = true;
+      th = closeDangling(withRecovered(read) ?? read);
+    } catch (e) { release(); throw e; }
     const { preset, lang, auto, sources } = o;
     th.messages.push({ role: 'user', text, time: new Date().toISOString(), ...(preset ? { preset } : {}), ...(auto ? { auto } : {}) });
     if (lang) th.lang = lang;
@@ -229,11 +235,17 @@ export class ChatRunner {
     const before = isHome(thread) ? projectIds(this.o.projectsDir) : null;
     const turn: Turn = { child: null as unknown as ChildProcess, parser: new StreamParser(), tools: [], listeners: new Set([on]), stopped: false, release };
     this.turns.set(thread, turn);
-    let closed = false, session = th.sessionId, resumed = false;
+    let closed = false, session = th.sessionId, resumed = false, saved = th.started, retried = false;
     const emit = (e: ChatEvent) => {
       if (e.type === 'tool') turn.tools.push(e.tool);
       if (e.type === 'done') return end(e);
       for (const l of turn.listeners) l(e);
+    };
+    // the session exists once claude has started it: saved at once, so a server that dies mid-turn leaves a thread that resumes it
+    const markStarted = () => {
+      if (saved || !turn.parser.initialized) return;
+      saved = true;
+      try { const t2 = readThread(file); t2.sessionId = session; t2.started = true; writeThread(file, t2); } catch { /* end() writes it */ }
     };
     const end = (e: Extract<ChatEvent, { type: 'done' }>) => {
       if (closed) return;
@@ -275,6 +287,7 @@ export class ChatRunner {
         buf += d;
         let i;
         while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); for (const e of turn.parser.push(line)) emit(e); }
+        markStarted();
       });
       child.stderr!.setEncoding('utf8');
       child.stderr!.on('data', (d: string) => { stderr += d; });
@@ -283,9 +296,16 @@ export class ChatRunner {
         if (buf.trim()) for (const e of turn.parser.push(buf)) emit(e);
         // claude no longer has this conversation (its files were cleaned up): start a new one with the same message
         if (resume && !turn.parser.initialized && !turn.stopped && /no conversation found/i.test(stderr)) {
-          session = randomUUID();
+          session = randomUUID(); saved = false;
           turn.parser = new StreamParser();
           launch(false);
+          return;
+        }
+        // claude already has this session (a first turn cut off before "started" was saved, its log out of sight): resume it, once
+        if (!resume && !retried && !turn.parser.initialized && !turn.stopped && /already in use/i.test(stderr)) {
+          retried = true;
+          turn.parser = new StreamParser();
+          launch(true);
           return;
         }
         for (const e of turn.parser.finish(code, stderr)) emit(e);

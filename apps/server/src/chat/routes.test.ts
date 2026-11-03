@@ -187,6 +187,49 @@ test('a first message that failed before claude started leaves the next one star
   } finally { delete process.env.FAKE_CLAUDE_LOG; delete process.env.CLAUDECODE; }
 });
 
+test('a first turn is marked started as soon as claude starts it: a server that dies mid-turn leaves a thread that resumes', async () => {
+  const file = join(ROOT, 'demo/.history/chat/chat.json');
+  const first = fetch(`${BASE}/api/chat/demo/messages`, post({ text: '慢慢說' }));
+  await new Promise((r) => setTimeout(r, 400));
+  expect(JSON.parse(readFileSync(file, 'utf8')).started).toBe(true);
+  await fetch(`${BASE}/api/chat/demo/stop`, post({}));
+  await lines(await first);
+});
+
+test('a first turn cut off before "started" was saved: the next message resumes its session (and recovers its reply)', async () => {
+  const root = ROOT, log = join(root, 'fake.log'), sid = '33333333-3333-4333-8333-333333333333', at = Date.now() - 120_000;
+  mkdirSync(join(root, 'demo/.history/chat'), { recursive: true });
+  writeFileSync(join(root, 'demo/.history/chat/chat.json'), JSON.stringify({ sessionId: sid, started: false, messages: [{ role: 'user', text: '剪', time: new Date(at).toISOString() }] }));
+  const logs = join(root, '.claude-config', 'projects', 'x');
+  mkdirSync(logs, { recursive: true });
+  writeFileSync(join(logs, `${sid}.jsonl`), JSON.stringify({ type: 'assistant', timestamp: new Date(at + 1000).toISOString(), message: { id: 'm', stop_reason: 'end_turn', content: [{ type: 'text', text: '剪好了' }] } }));
+  process.env.CLAUDE_CONFIG_DIR = join(root, '.claude-config');
+  process.env.FAKE_CLAUDE_LOG = log;
+  try {
+    const ev = await lines(await fetch(`${BASE}/api/chat/demo/messages`, post({ text: '再來' })));
+    expect(ev.at(-1)).toMatchObject({ status: 'done', text: '收到：再來' });
+    const run = JSON.parse(readFileSync(log, 'utf8').trim());
+    expect(run.argv).toEqual(expect.arrayContaining(['--resume', sid]));
+    const t = (await (await fetch(`${BASE}/api/chat/demo`)).json()).thread;
+    expect(t.started).toBe(true);
+    expect(t.messages.map((m: any) => [m.role, m.notice?.kind ?? m.status ?? null])).toEqual([['user', null], ['assistant', 'recovered'], ['user', null], ['assistant', 'done']]);
+  } finally { delete process.env.CLAUDE_CONFIG_DIR; delete process.env.FAKE_CLAUDE_LOG; }
+});
+
+test('a session claude says is already in use is resumed instead of failing every message after', async () => {
+  const root = ROOT, log = join(root, 'fake.log');
+  process.env.FAKE_CLAUDE_LOG = log;
+  writeFileSync(log + '.inuse', '');
+  try {
+    const ev = await lines(await fetch(`${BASE}/api/chat/demo/messages`, post({ text: '第一句' })));
+    expect(ev.at(-1)).toMatchObject({ status: 'done', text: '收到：第一句' });
+    const runs = readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    const sid = runs[0].argv[runs[0].argv.indexOf('--session-id') + 1];
+    expect(runs[1].argv).toEqual(expect.arrayContaining(['--resume', sid]));
+    expect((await (await fetch(`${BASE}/api/chat/demo`)).json()).thread).toMatchObject({ sessionId: sid, started: true });
+  } finally { delete process.env.FAKE_CLAUDE_LOG; rmSync(log + '.inuse', { force: true }); }
+});
+
 test('a user message left without a reply (the server restarted) reads as interrupted', async () => {
   const root = ROOT;
   mkdirSync(join(root, 'demo/.history/chat'), { recursive: true });

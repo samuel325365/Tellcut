@@ -16,6 +16,10 @@ process.stdin.on('end', async () => {
   if (argv.includes('--resume') && process.env.FAKE_CLAUDE_LOG && existsSync(process.env.FAKE_CLAUDE_LOG + '.forget')) {
     process.stderr.write(`No conversation found with session ID: ${argv[argv.indexOf('--resume') + 1]}\n`); process.exit(1);
   }
+  // --session-id of a session claude already has ($FAKE_CLAUDE_LOG.inuse present)
+  if (argv.includes('--session-id') && process.env.FAKE_CLAUDE_LOG && existsSync(process.env.FAKE_CLAUDE_LOG + '.inuse')) {
+    process.stderr.write(`Error: Session ID ${argv[argv.indexOf('--session-id') + 1]} is already in use.\n`); process.exit(1);
+  }
   const out = (o) => process.stdout.write(JSON.stringify(o) + '\n');
   const session = argv[argv.indexOf('--session-id') + 1] ?? argv[argv.indexOf('--resume') + 1];
   const delta = (text) => out({ type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } }, session_id: session });
