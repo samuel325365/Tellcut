@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import opentype from 'opentype.js';
 import { chromium } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
+import { chromePath, stageCapture, TELLCUT_ROOT } from '@tellcut/media-node';
 import { DOG_COLORS, dogSvg, type DogLook } from '@tellcut/plugin-common';
 import { fetchIdle } from './setup/fetch-idle.ts';
 import { parseArgsOrExit } from './args.ts';
@@ -63,10 +63,12 @@ export async function buildBrandAssets(o: { outDir: string; fontFile: string; pn
   try {
     const page = await browser.newPage();
     for (const px of PNG_SIZES) {
-      await page.setViewportSize({ width: px, height: px });
+      // macOS paints a headless window 87 px short (and at least 500 px wide): there the page is taller and the shot clipped to px×px
+      const { viewport, clip } = stageCapture(px, px);
+      await page.setViewportSize(viewport);
       await page.setContent(`<style>html,body{margin:0;background:transparent}</style>${svgs['tellcut-icon.svg'].replace('<svg ', `<svg width="${px}" height="${px}" `)}`);
       const f = join(o.outDir, `tellcut-icon-${px}.png`);
-      await page.screenshot({ path: f, omitBackground: true });
+      await page.screenshot({ path: f, omitBackground: true, ...(clip ? { clip: { x: clip.x, y: clip.y, width: clip.width, height: clip.height } } : {}) });
       files.push(f);
     }
   } finally { await browser.close(); }

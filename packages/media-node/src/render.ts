@@ -49,8 +49,15 @@ export function stageSizeOf(t: PlayerTarget): { w: number; h: number } | undefin
   } catch { return undefined; }
 }
 
-/** the extra viewport height on macOS (see openPage): more than the 87 px its headless window leaves unpainted */
+/** the extra viewport height on macOS (see stageCapture): more than the 87 px its headless window leaves unpainted */
 const MAC_PAD = 200;
+
+/** Where a page that draws a w×h picture at 0,0 opens, and what each capture keeps of it (no clip: the whole viewport). macOS:
+ *  headless Chrome paints its hidden window 87 px short of the viewport (the title bar it does not draw) and at least 500 px wide,
+ *  so there the page opens MAC_PAD taller and each capture is clipped to the picture; elsewhere the viewport is the picture. */
+export function stageCapture(w: number, h: number, platform: NodeJS.Platform = process.platform): { viewport: { width: number; height: number }; clip?: { x: number; y: number; width: number; height: number; scale: number } } {
+  return platform === 'darwin' ? { viewport: { width: w, height: h + MAC_PAD }, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } } : { viewport: { width: w, height: h } };
+}
 
 /** `size`: the stage size when it is known (the project's): the page opens at it directly, without a first page to measure it. */
 export async function openPage(path: string, api: '__tellcut' | '__app', o: { signal?: AbortSignal; readyTimeout?: number; size?: { w: number; h: number } } = {}): Promise<PageSession> {
@@ -88,10 +95,9 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
       return s;
     };
     const size = o.size ?? await measure();
-    // macOS: headless Chrome paints its hidden window 87 px short of the viewport (the title bar it does not draw) and at
-    // least 500 px wide, so the page opens taller and each capture is clipped to the stage, which sits at 0,0 in render mode
-    const MAC = process.platform === 'darwin';
-    const page = await browser.newPage({ viewport: { width: size.w, height: size.h + (MAC ? MAC_PAD : 0) }, deviceScaleFactor: 1 });
+    // macOS: the page opens taller and each capture is clipped to the stage, which sits at 0,0 in render mode (stageCapture)
+    const MAC = process.platform === 'darwin', capture = stageCapture(size.w, size.h);
+    const page = await browser.newPage({ viewport: capture.viewport, deviceScaleFactor: 1 });
     page.on('pageerror', (e) => console.log('[pageerror]', e.message));
     // a missing file is reported with its address (the console's own line does not say which file)
     page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon') && !m.text().startsWith('Failed to load resource')) console.log('[page]', m.text()); });
@@ -108,7 +114,7 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
     }
     const shot = async (format: 'png' | 'jpeg') =>
       Buffer.from((await cdp.send('Page.captureScreenshot', { format, quality: format === 'jpeg' ? 95 : undefined, optimizeForSpeed: true,
-        ...(MAC ? { clip: { x: 0, y: 0, width: size.w, height: size.h, scale: 1 } } : {}) } as any)).data, 'base64');
+        ...(capture.clip ? { clip: capture.clip } : {}) } as any)).data, 'base64');
     return {
       fps, duration, loudness: typeof loudness === 'number' ? loudness : -14, version: browser.version(),
       frame: (n) => page.evaluate(([a, k]) => (window as any)[a].frame(k), [api, n] as const).catch((e: Error) => { throw new Error(`frame ${n}: ${e.message}`); }),

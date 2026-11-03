@@ -6,7 +6,7 @@
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
-import { chromePath } from '@tellcut/media-node';
+import { chromePath, stageCapture } from '@tellcut/media-node';
 
 export interface SiteInfo {
   url: string; title: string; description: string;
@@ -33,7 +33,7 @@ const AFTER_LOAD = 5000, AFTER_FONTS = 2500;
 // taking the first opaque background under it (a picture or a gradient there: the point is skipped, the screenshot shows it). Text:
 // every visible text node, weighted by its letters × font size², about the area its letters cover.
 const MEASURE = `(() => {
-  const W = innerWidth, H = innerHeight, STEP = 16, weights = new Map();
+  const W = Math.min(innerWidth, ${W}), H = Math.min(innerHeight, ${H}), STEP = 16, weights = new Map();
   const c = document.createElement('canvas'); c.width = c.height = 1;
   const g = c.getContext('2d', { willReadFrequently: true }), memo = new Map();
   const rgba = (css) => {
@@ -116,8 +116,9 @@ export async function readSite(url: string, projectDir: string, o: { timeoutMs?:
     // one that came up after the deadline is closed here: the finally below has run already
     if (over) { await b.close().catch(() => {}); throw new Error('timed out'); }
     browser = b;
-    // the headless browser's own name (HeadlessChrome) is turned away by some sites
-    const ctx = await browser.newContext({ viewport: { width: W, height: H }, userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36` });
+    // the headless browser's own name (HeadlessChrome) is turned away by some sites. On macOS the window opens taller than the
+    // first screen (stageCapture: Chrome there paints 87 px short), and the picture and the measuring keep to W×H
+    const ctx = await browser.newContext({ viewport: stageCapture(W, H).viewport, userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36` });
     const page = await ctx.newPage();
     const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: left() });
     if (res && res.status() >= 400) throw new Error(`HTTP ${res.status()}`);
