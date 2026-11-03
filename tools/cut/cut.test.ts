@@ -95,3 +95,21 @@ test('new projects get English track names', () => {
   c.clip('v', { from: 0, len: 2 });
   expect(c.p.tracks.map((t) => [t.id, t.name])).toEqual([['v1', 'Main'], ['text', 'Text'], ['music', 'Music'], ['orig', 'Source']]);
 });
+
+test('a time or a length that is not a number is refused at the call that got it, named; a song started past its end too', async () => {
+  const c: any = fresh();
+  c.clip('v', { len: 3 });
+  expect(() => c.effect('common.caption', { at: 1, text: 'hi' })).toThrow("c.effect('common.caption') 的 len 要是數字，現在是 undefined");
+  expect(() => c.title('hi', { at: 1, len: '2' })).toThrow('c.title 的 len 要是數字，現在是 "2"');
+  expect(() => c.caption('hi', { at: Number('x'), len: 1 })).toThrow('c.caption 的 at 要是數字，現在是 NaN');
+  expect(() => c.sfx('common.beep', { at: -1 })).toThrow("c.sfx('common.beep') 的 at 不能小於 0");
+  expect(() => c.photo('ph', { len: 0 })).toThrow("c.photo('ph') 的 len 要大於 0");
+  expect(() => c.clip('v', {})).toThrow("c.clip('v') 的 len 要是數字");
+  expect(() => c.at(Number('x'))).toThrow('c.at 的時間 要是數字');
+  expect(() => c.music('song', { from: 40 })).toThrow("c.music('song') 的 from 40 秒超過這首歌的長度（30 秒）");
+  expect(() => c.music('song', { fadeIn: -1 })).toThrow('fadeIn 不能小於 0');
+  // nothing refused reached the timeline or the film's length: it still saves, 3 s long
+  expect(items(c, 'text')).toEqual([]);
+  c.facesProvider = { id: 'none', check: async () => ({ ok: true }), detect: async () => [] };
+  expect((await c.save()).meta.duration).toBe(3);
+});

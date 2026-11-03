@@ -31,6 +31,14 @@ export function checkFrame(f: Frame | undefined, what: string): void {
   if (w <= 0 || h <= 0) throw new Error(`${what} 的 frame 寬、高要大於 0`);
   if (x >= 1 || y >= 1 || x + w <= 0 || y + h <= 0) throw new Error(`${what} 的 frame [${f.join(', ')}] 整個在畫面外`);
 }
+/** A time or a length given to a call: a finite number (`min` or more; more than `above`), else an error naming the call. A missing
+ *  len used to surface only at save() as "end: Expected number, received nan", and len: '2' made 1 + '2' = '12', a 12-second film. */
+export function num(v: unknown, what: string, o: { min?: number; above?: number } = {}): number {
+  if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`${what} 要是數字，現在是 ${typeof v === 'number' ? v : JSON.stringify(v) ?? String(v)}`);
+  if (o.above !== undefined && !(v > o.above)) throw new Error(`${what} 要大於 ${o.above}，現在是 ${v}`);
+  if (o.min !== undefined && v < o.min) throw new Error(`${what} 不能小於 ${o.min}，現在是 ${v}`);
+  return v;
+}
 const STILL: Crop = { x: 0.5, y: 0.5, zoom: 1 };
 /** a clip's crop: the full move, or the short form — where it starts (x, y, zoom; default the centre at 1) and what changes by the
  *  end (`to`: any of x, y, zoom; `push`: the zoom times this) — that every cut.ts used to write its own helper for */
@@ -141,8 +149,12 @@ export class Cut {
   bpmOf(style: string): number | undefined { return STYLES[style]?.defaults.bpm ?? this.styleBpm[style]; }
 
   get time() { return this.cursor; }
-  at(t: number) { this.cursor = r6(Math.max(0, t)); return this; }
-  private bump(t: number) { this.end = Math.max(this.end, r6(t)); }
+  at(t: number) { this.cursor = r6(Math.max(0, num(t, 'c.at 的時間'))); return this; }
+  private bump(t: number) {
+    // a NaN here made the film's length NaN, and save() failed far from the call that caused it
+    if (!Number.isFinite(t)) throw new Error(`片長算出來不是數字（${t}）：檢查前一個呼叫的 at、len`);
+    this.end = Math.max(this.end, r6(t));
+  }
   private src(id: string) { const s = this.p.sources[id]; if (!s) throw new Error(`No source "${id}"`); return s; }
   /**
    * The crop that keeps the footage's own burned-in caption out of the frame, when this stretch of the source has one in view (toolkit
@@ -180,7 +192,7 @@ export class Cut {
       if (crop0) (this.p.tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as { crop: unknown }).crop = crop0;
       return id;
     }
-    const speed = o.speed ?? 1, from = secs(o.from ?? 0, `c.clip('${source}') 的 from`), len = r6(Math.min(o.len, (s.duration - from) / speed));
+    const speed = o.speed ?? 1, from = secs(o.from ?? 0, `c.clip('${source}') 的 from`), len = r6(Math.min(num(o.len, `c.clip('${source}') 的 len`, { above: 0 }), (s.duration - from) / speed));
     if (!(len > 0)) throw new Error(`A clip of "${source}" from ${from} s has no length`);
     const start = this.startFor(o.transition);
     const avoided = o.avoidBurned ? this.avoidBurned(source, from, from + len * speed, crop0 ?? { from: STILL, to: STILL }, o.frame) : undefined;
@@ -224,7 +236,7 @@ export class Cut {
   photo(source: string, o: { len?: number; zoom?: [number, number]; focus?: [number, number]; transition?: Transition; frame?: Frame } = {}): string {
     checkFrame(o.frame, `c.photo('${source}')`);
     if (this.src(source).kind !== 'image') throw new Error(`"${source}" is not a photo`);
-    const len = o.len ?? 3, [z0, z1] = o.zoom ?? [1, 1.1], [x, y] = o.focus ?? [0.5, 0.5], start = this.startFor(o.transition);
+    const len = num(o.len ?? 3, `c.photo('${source}') 的 len`, { above: 0 }), [z0, z1] = o.zoom ?? [1, 1.1], [x, y] = o.focus ?? [0.5, 0.5], start = this.startFor(o.transition);
     const id = addItem(this.p, { track: 'v1', item: { source, in: 0, speed: 1, start, end: r6(start + len), crop: { from: { x, y, zoom: z0 }, to: { x, y, zoom: z1 } }, ...this.frameFields(o.frame), ...(o.transition ? { transitionIn: o.transition } : {}) } });
     this.cursor = r6(start + len); this.bump(this.cursor);
     return id;
@@ -309,12 +321,14 @@ export class Cut {
     });
   }
 
-  private text(type: string, at: number, len: number, params: Record<string, unknown>, parent?: string): string {
+  private text(type: string, at: number, len: number, params: Record<string, unknown>, parent?: string, call = `c.effect('${type}')`): string {
+    num(at, `${call} 的 at`, parent ? {} : { min: 0 });
+    num(len, `${call} 的 len`, { above: 0 });
     const id = addItem(this.p, { track: 'text', item: { type, start: r6(at), end: r6(at + len), params, ...(parent ? { parent } : {}) } });
     if (!parent) this.bump(at + len);
     return id;
   }
-  title(text: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) { const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.title', at as number, len as number, { text, ...rest }); }
+  title(text: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) { const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.title', at as number, len as number, { text, ...rest }, undefined, 'c.title'); }
   caption(text: string, o: { at: number; len: number; [k: string]: unknown }) {
     const { at, len, ...rest } = o;
     // c.caption makes a core.caption, which draws only its own params: a common.caption one (style: 'strip', name, gloss…) was dropped
@@ -326,13 +340,13 @@ export class Cut {
       const theirs = odd.filter((k) => common.has(k));
       this.notes.push(`c.caption('${text.slice(0, 20)}')：c.caption 放的是 core.caption，它沒有 ${odd.join('、')} 參數，畫面上不會有效果${theirs.length ? `；${theirs.join('、')} 是 common.caption 的參數，要用 c.effect('common.caption', { at, len, text, ${theirs.map((k) => `${k}: …`).join(', ')} })` : ''}`);
     }
-    return this.text('core.caption', at, len, { text, ...rest });
+    return this.text('core.caption', at, len, { text, ...rest }, undefined, 'c.caption');
   }
   lowerThird(main: string, sub: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) {
-    const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.lowerThird', at as number, len as number, { text: main, sub, ...rest });
+    const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.lowerThird', at as number, len as number, { text: main, sub, ...rest }, undefined, 'c.lowerThird');
   }
   /** after everything else */
-  endCard(lines: string[], o: { len?: number; [k: string]: unknown } = {}) { const { len = 5, ...rest } = o; return this.text('core.endCard', this.end, len as number, { text: lines.join('\n'), ...rest }); }
+  endCard(lines: string[], o: { len?: number; [k: string]: unknown } = {}) { const { len = 5, ...rest } = o; return this.text('core.endCard', this.end, len as number, { text: lines.join('\n'), ...rest }, undefined, 'c.endCard'); }
 
   /**
    * Lay out a whole kind of video from a data object (toolkit phase 4): travel, hook, montage. `npm run tellcut -- recipe <id>` shows the
@@ -403,6 +417,8 @@ export class Cut {
   effect(type: string, o: { at?: number; len: number; layer?: 'top' | 'under'; transform?: { x: number; y: number; scale: number }; follow?: 'mouth' | 'face'; who?: Who; clip?: string; params?: Record<string, unknown>; [k: string]: unknown }) {
     notAHandle(type, 'c.effect');
     const { at = this.cursor, len, layer, transform, follow, who, clip, params: own, ...rest } = o, params = { ...rest, ...ownParams(own, `c.effect('${type}')`) };
+    num(at, `c.effect('${type}') 的 at`, { min: 0 });
+    num(len, `c.effect('${type}') 的 len`, { above: 0 });
     let id: string;
     if (layer !== undefined && layer !== 'top' && layer !== 'under') throw new Error(`c.effect('${type}')：layer 只能是 'top' 或 'under'`);
     if (SCENE_TYPES.has(type) || layer === 'under') {
@@ -469,6 +485,9 @@ export class Cut {
   sfx(type: string, o: { at?: number; len?: number; gain?: number; params?: Record<string, unknown>; [k: string]: unknown }) {
     notAHandle(type, 'c.sfx');
     const { at = this.cursor, len = 1, gain = -8, params: own, ...rest } = o, params = { ...rest, ...ownParams(own, `c.sfx('${type}')`) };
+    num(at, `c.sfx('${type}') 的 at`, { min: 0 });
+    num(len, `c.sfx('${type}') 的 len`, { above: 0 });
+    num(gain, `c.sfx('${type}') 的 gain`);
     this.track('sfx', 'sfx', 'SFX', this.p.tracks.length);
     return addItem(this.p, { track: 'sfx', item: { type, start: r6(at as number), end: r6((at as number) + len), params, gain } });
   }
@@ -685,7 +704,10 @@ export class Cut {
   music(media: string, o: { from?: number; gain?: number; fadeIn?: number; fadeOut?: number } = {}) {
     if (!this.p.media[media]) throw new Error(`No music "${media}"`);
     if (this.scoreReq) throw new Error('已經用 score() 產生配樂：music() 和 score() 選一個');
-    this.song = { media, from: o.from ?? 0, gain: o.gain ?? 0, fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 2 };
+    const call = `c.music('${media}')`, from = num(o.from ?? 0, `${call} 的 from`, { min: 0 }), long = this.inv.music.find((x) => x.id === media)?.duration;
+    // past the song's end the music had no length, and save() failed with "fadeIn ≥ 0"
+    if (long && from >= long) throw new Error(`${call} 的 from ${from} 秒超過這首歌的長度（${long} 秒）`);
+    this.song = { media, from, gain: num(o.gain ?? 0, `${call} 的 gain`), fadeIn: num(o.fadeIn ?? 0, `${call} 的 fadeIn`, { min: 0 }), fadeOut: num(o.fadeOut ?? 2, `${call} 的 fadeOut`, { min: 0 }) };
     return this;
   }
   /**
