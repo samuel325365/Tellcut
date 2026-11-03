@@ -5,6 +5,7 @@ import type { EditorState } from './store.ts';
 import { liveLinks } from './editor/library.ts';
 import { t } from './i18n/index.ts';
 import { tip } from './tip.ts';
+import { keyWords } from './platform.ts';
 import { CheckField, NumberField, ParamField, SelectField, TextField } from './fields.tsx';
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
@@ -30,8 +31,8 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
   const layers = (track.kind === 'video' || track.kind === 'scene' || track.kind === 'overlay') && (
     <div class="layer-buttons" data-field="layer">
       <span>Layer</span>
-      <button data-restack="up" disabled={restackTarget(p, id, 'up') < 0} {...tip('Ctrl+]')} onClick={() => editor.restack(id, 'up')}>Move up</button>
-      <button data-restack="down" disabled={restackTarget(p, id, 'down') < 0} {...tip('Ctrl+[')} onClick={() => editor.restack(id, 'down')}>Move down</button>
+      <button data-restack="up" disabled={restackTarget(p, id, 'up') < 0} {...tip(keyWords('Ctrl+]'))} onClick={() => editor.restack(id, 'up')}>Move up</button>
+      <button data-restack="down" disabled={restackTarget(p, id, 'down') < 0} {...tip(keyWords('Ctrl+['))} onClick={() => editor.restack(id, 'down')}>Move down</button>
     </div>
   );
   let body: any = null;

@@ -40,7 +40,7 @@ export function Toolbar({ s, editor, noticeHere = false }: { s: EditorState; edi
         <option value="full">Preview: Full</option><option value="draft">Preview: Smooth</option>
       </select>
       <button data-exports onClick={() => editor.toggleExports()}>Exports</button>
-      <button class="primary" data-export onClick={() => void editor.exportVideo()}>{running ? `Exporting ${Math.round(j!.progress * 100)}%` : 'Export'}</button>
+      <button class="primary" data-export onClick={() => void editor.exportVideo()}>{running ? t('ed.exporting', { n: Math.round(j!.progress * 100) }) : 'Export'}</button>
     </header>
   );
 }

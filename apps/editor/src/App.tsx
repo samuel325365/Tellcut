@@ -119,7 +119,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   );
   const library = <LibraryPanel editor={editor} s={s} />, props = <PropertiesPanel editor={editor} s={s} />;
   const chat = editor.chat && <div class="chat-tab"><div class="chat-head"><span>Project chat</span>
-    <button data-save-preset disabled={s.presetSave.drafting} {...{ 'data-tip': t(s.presetSave.drafting ? 'preset.drafting' : 'preset.saveTip'), 'aria-label': t('preset.saveTip') }} onClick={() => void editor.presetSave.start()}>{s.presetSave.drafting ? 'Drafting…' : 'Save as preset'}</button>
+    <button data-save-preset disabled={s.presetSave.drafting} {...{ 'data-tip': t(s.presetSave.drafting ? 'preset.drafting' : 'preset.saveTip'), 'aria-label': t('preset.saveTip') }} onClick={() => void editor.presetSave.start()}>{s.presetSave.drafting ? t('preset.draftingShort') : 'Save as preset'}</button>
     <button {...{ 'data-tip': t('ed.chatClearTip'), 'aria-label': t('ed.chatClearTip') }} onClick={() => { if (confirm(t('ed.chatClearConfirm'))) void editor.chat.clear(); }}>Clear</button></div>
     <EditorChat editor={editor} /></div>;
   return (

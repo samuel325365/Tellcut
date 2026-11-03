@@ -215,3 +215,18 @@ test('three pages: Video, Audio (music, narration, sound effects), Effects; each
   await act(() => { root.querySelector<HTMLElement>('[data-add-picked]')!.click(); });
   expect(calls.at(-1)).toEqual(['add', { kind: 'clip', source: 'b', from: 0, len: 5 }]);
 });
+
+test('the search box hint follows the UI language, one per page', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const store = createStore({ ...initialState('t'), project: fixture() });
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, setLayout: (l: any) => store.set({ layout: { ...store.get().layout, ...l } }) };
+  const root = document.createElement('div');
+  setLang('ja');
+  try {
+    await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+    expect(root.querySelector<HTMLInputElement>('[data-lib-search]')!.placeholder).toBe('素材を検索');
+    store.set({ layout: { ...store.get().layout, mediaTab: 'effects' } });
+    await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+    expect(root.querySelector<HTMLInputElement>('[data-lib-search]')!.placeholder).toBe('エフェクトを検索');
+  } finally { setLang('zh'); }
+});

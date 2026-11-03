@@ -1,6 +1,7 @@
 // t(key, params, lang): the text in the UI language, falling back to English, then Chinese (the same order as pickText).
 import type { Lang } from '@tellcut/protocol';
 import { getLang } from './lang.ts';
+import { keyWords } from '../platform.ts';
 import { zh } from './zh.ts';
 import { en } from './en.ts';
 import { ja } from './ja.ts';
@@ -10,8 +11,8 @@ export const DICTS: Record<Lang, Record<Key, string>> = { zh, en, ja };
 
 /** replaces `{word}` placeholders whose word is in params, in one pass: a replacement's own braces are never scanned again */
 export function t(key: Key, params?: Record<string, string | number>, lang: Lang = getLang()): string {
-  // a key no dictionary has (an older page meeting a newer server's text): show the key rather than crash
-  const text = DICTS[lang][key] || DICTS.en[key] || DICTS.zh[key] || key;
+  // a key no dictionary has (an older page meeting a newer server's text): show the key rather than crash; Ctrl is ⌘ on a Mac
+  const text = keyWords(DICTS[lang][key] || DICTS.en[key] || DICTS.zh[key] || key);
   if (!params) return text;
   return text.replace(/\{([A-Za-z_]\w*)\}/g, (m, w: string) => (Object.hasOwn(params, w) ? String(params[w]) : m));
 }

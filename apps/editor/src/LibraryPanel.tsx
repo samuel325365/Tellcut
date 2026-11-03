@@ -25,7 +25,7 @@ import { isVoice, mediaUse, orderMedia, segmentUsed, type MediaSort, type MediaT
 
 const SORT_NAMES: Record<MediaSort, string> = { timeline: 'Timeline order', added: 'Order added', name: 'Name' };
 const PAGES: Array<{ key: MediaTab; label: string }> = [{ key: 'video', label: 'Video' }, { key: 'audio', label: 'Audio' }, { key: 'effects', label: 'Effects' }];
-const SEARCH_PH: Record<MediaTab, string> = { video: 'Search footage', audio: 'Search music and sounds', effects: 'Search effects' };
+const SEARCH_PH: Record<MediaTab, Key> = { video: 'ed.searchVideo', audio: 'ed.searchAudio', effects: 'ed.searchEffects' };
 
 /** a block of My blocks not in this project yet: adding it copies the entry in first (spec 2026-10-29-my-library §3.3) */
 type LibPick = { slug: string; type: string; kind: 'scene' | 'overlay' };
@@ -137,7 +137,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
           {...(litPages.has(x.key) && tab !== x.key ? tip(t('ed.libTabLit')) : {})} onClick={() => setTab(x.key)}>{x.label}<small>{counts[x.key]}</small></button>
       ))}</div>
       <div class="lib-tools">
-        <input class="lib-search" type="search" data-lib-search placeholder={SEARCH_PH[tab]} value={qs[tab]} {...tip(t('ed.libSearchTip'))}
+        <input class="lib-search" type="search" data-lib-search placeholder={t(SEARCH_PH[tab])} value={qs[tab]} {...tip(t('ed.libSearchTip'))}
           onInput={(e) => { const v = (e.target as HTMLInputElement).value; setQs((x) => ({ ...x, [tab]: v })); }} />
         {/* Import (spec 2026-10-29-media-import): files from this PC straight into the project, without the Agent */}
         {/* the gallery for this project: its own blocks too, and "Add to project" back into this tab (rel=opener: gallery-link.ts) */}

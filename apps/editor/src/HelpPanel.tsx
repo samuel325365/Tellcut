@@ -3,6 +3,7 @@
 import { SECTIONS, SHORTCUTS } from './help.ts';
 import { t } from './i18n/index.ts';
 import { tip } from './tip.ts';
+import { keyWords } from './platform.ts';
 
 export function HelpPanel({ onClose }: { onClose: () => void }) {
   return (
@@ -18,7 +19,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
           ))}
           <section>
             <h3>Shortcuts</h3>
-            <table class="keys">{SHORTCUTS.map((k) => <tr data-shortcut><td><kbd>{k.label}</kbd></td><td>{t(k.desc)}</td></tr>)}</table>
+            <table class="keys">{SHORTCUTS.map((k) => <tr data-shortcut><td><kbd>{keyWords(k.label)}</kbd></td><td>{t(k.desc)}</td></tr>)}</table>
           </section>
         </div>
       </div>

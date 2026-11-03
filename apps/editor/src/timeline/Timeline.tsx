@@ -111,9 +111,9 @@ export function Timeline({ editor }: { editor: Editor }) {
     setCtx({ x: e.clientX, y: e.clientY, id: it?.id ?? null, hung });
   };
 
-  // Ctrl+wheel zooms, Shift+wheel (or a sideways swipe) scrolls time; a plain wheel scrolls the tracks up and down
+  // Ctrl+wheel (⌘ on a Mac, where a trackpad pinch comes as Ctrl) zooms, Shift+wheel (or a sideways swipe) scrolls time; a plain wheel scrolls the tracks up and down
   const onWheel = (e: WheelEvent) => {
-    if (e.ctrlKey) { e.preventDefault(); editor.setView(zoomAround(view, e.deltaY < 0 ? 1.25 : 0.8, e.clientX - left())); return; }
+    if (e.ctrlKey || e.metaKey) { e.preventDefault(); editor.setView(zoomAround(view, e.deltaY < 0 ? 1.25 : 0.8, e.clientX - left())); return; }
     const dx = e.shiftKey ? e.deltaX || e.deltaY : e.deltaX;
     if (!dx) return;
     e.preventDefault();
