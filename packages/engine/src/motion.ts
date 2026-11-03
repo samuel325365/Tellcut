@@ -28,7 +28,7 @@ export function spring(o: SpringOpts = {}): Spring {
   const hit = springs.get(key);
   if (hit) return hit;
   let f: Spring;
-  if ('visualDuration' in opts && opts.visualDuration <= 0) f = Object.assign((t: number) => (t <= 0 ? 0 : 1), { settle: 0 });
+  if (!physical && num(o.duration, 0.5) <= 0) f = Object.assign((t: number) => (t <= 0 ? 0 : 1), { settle: 0 });
   else {
     const gen = mSpring({ keyframes: [0, 1], ...opts });
     // Motion gives up at 20 s (Infinity): a slow spring (a duration over ~17 s) is looked for further, the way it looks
