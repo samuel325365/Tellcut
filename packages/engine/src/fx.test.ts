@@ -25,24 +25,27 @@ test('refuses a type without the fx. prefix, a missing build/draw, a non-array d
   expect(r.errors.map((e) => e.path)).toEqual(['fx/p.js', 'fx/q.js', 'fx/r.js', 'fx/t.js']);
   expect(r.errors[0].message).toContain('fx.');
   expect(r.errors[3].message).toContain('fx.s');
+  // each with a code for the editor to word in its language
+  expect(r.errors.map((e) => [e.code, e.params])).toEqual([
+    ['fx.badId', { got: '"core.sneaky"' }], ['fx.noDraw', { type: 'fx.q' }], ['fx.defaultNotList', undefined], ['fx.duplicate', { type: 'fx.s' }]]);
 });
 
 test('a duplicate id inside one module refuses that module (it never reaches the registry)', async () => {
   const r = await loadFx(['fx/u.js', 'fx/v.js'], importer({ 'fx/u.js': { default: [item('fx.u'), item('fx.u')] }, 'fx/v.js': { default: [item('fx.v')] } }));
   expect(r.plugin.items!.map((i) => i.type)).toEqual(['fx.v']);
-  expect(r.errors).toEqual([{ path: 'fx/u.js', message: expect.stringContaining('fx.u 重複') }]);
+  expect(r.errors).toEqual([{ path: 'fx/u.js', message: expect.stringContaining('fx.u 重複'), code: 'fx.duplicate', params: { type: 'fx.u' } }]);
 });
 
 test('a module that fails to load is reported and the others still load', async () => {
   const r = await loadFx(['fx/gone.js', 'fx/a.js'], importer({ 'fx/a.js': { default: [item('fx.a')] } }));
   expect(r.plugin.items!.map((i) => i.type)).toEqual(['fx.a']);
-  expect(r.errors).toEqual([{ path: 'fx/gone.js', message: 'cannot load fx/gone.js' }]);
+  expect(r.errors).toEqual([{ path: 'fx/gone.js', message: 'cannot load fx/gone.js', code: 'fx.loadFailed', params: { error: 'cannot load fx/gone.js' } }]);
 });
 
 test('a missing doc is a warning, not a refusal', async () => {
   const r = await loadFx(['fx/a.js'], importer({ 'fx/a.js': { default: [item('fx.a', { doc: undefined })] } }));
   expect(r.plugin.items).toHaveLength(1);
-  expect(r.warnings).toEqual([{ path: 'fx/a.js', message: 'fx.a 沒有 doc（block catalog 會看不到它的說明）' }]);
+  expect(r.warnings).toEqual([{ path: 'fx/a.js', message: 'fx.a 沒有 doc（block catalog 會看不到它的說明）', code: 'fx.noDoc', params: { type: 'fx.a' } }]);
 });
 
 const sound = (type: string, extra: object = {}) => ({ type, label: type, doc: 'd', params: [], duration: () => 0.2, synth: () => {}, ...extra });

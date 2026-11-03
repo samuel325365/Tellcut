@@ -134,6 +134,10 @@ test('a project from a newer Tellcut says so; an older version goes through the 
   expect(migrateProject(old, steps)).toMatchObject({ version: 1, meta: { name: 'upgraded' } });
   expect(seen).toEqual([0]);
   expect(() => migrateProject({ ...minimalProject(), version: -1 }, steps)).toThrow('版本 -1');
+  // with a code for the editor to word in its language
+  const err = (f: () => unknown) => { try { f(); } catch (e) { return e; } };
+  expect(err(() => parseProject({ ...minimalProject(), version: PROJECT_VERSION + 1 }))).toMatchObject({ code: 'project.tooNew', params: { version: PROJECT_VERSION + 1, max: PROJECT_VERSION } });
+  expect(err(() => migrateProject({ ...minimalProject(), version: -1 }, steps))).toMatchObject({ code: 'project.unknownVersion', params: { version: -1 } });
   expect(migrateProject(minimalProject())).toEqual(minimalProject());
 });
 

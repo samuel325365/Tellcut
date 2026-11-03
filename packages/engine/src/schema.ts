@@ -152,8 +152,10 @@ export type Crop = z.infer<typeof CropZ>;
 export type Transform = z.infer<typeof TransformZ>;
 export type Mix = z.infer<typeof MixZ>;
 
+/** issues: one line each, for the command line and agents; code + params (only a project that cannot be read at all, like one
+ *  from a newer Tellcut): the editor's words for it in its language (err.<code>) */
 export class ProjectError extends Error {
-  constructor(public issues: string[]) { super(`Invalid project:\n${issues.join('\n')}`); }
+  constructor(public issues: string[], readonly code?: string, readonly params?: Record<string, string | number>) { super(`Invalid project:\n${issues.join('\n')}`); }
 }
 
 /** the project.json format this Tellcut writes */
@@ -169,10 +171,10 @@ const MIGRATIONS: Record<number, Migration> = {};
 export function migrateProject(json: unknown, steps: Record<number, Migration> = MIGRATIONS): unknown {
   let p = json as any;
   if (!p || typeof p !== 'object' || typeof p.version !== 'number') return json;
-  if (p.version > PROJECT_VERSION) throw new ProjectError([`這個專案是用較新的 Tellcut 存的（版本 ${p.version}，這個 Tellcut 只認到 ${PROJECT_VERSION}）：請先更新 Tellcut`]);
+  if (p.version > PROJECT_VERSION) throw new ProjectError([`這個專案是用較新的 Tellcut 存的（版本 ${p.version}，這個 Tellcut 只認到 ${PROJECT_VERSION}）：請先更新 Tellcut`], 'project.tooNew', { version: p.version, max: PROJECT_VERSION });
   while (p.version < PROJECT_VERSION) {
     const step = steps[p.version];
-    if (!step) throw new ProjectError([`不認得專案格式版本 ${p.version}（沒有從它升級的方法）`]);
+    if (!step) throw new ProjectError([`不認得專案格式版本 ${p.version}（沒有從它升級的方法）`], 'project.unknownVersion', { version: p.version });
     p = step(p);
   }
   return p;
