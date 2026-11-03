@@ -27,6 +27,20 @@ export const shellQuoter = (platform: NodeJS.Platform = process.platform): ((a: 
 /** shellQuoter for this machine; one argument, so `args.map(shellQuote)` is safe */
 export const shellQuote = shellQuoter();
 
+/** What killTree asks of the machine; a test hands in another platform's (a macOS tree on Windows), as deps.ts' LookupEnv does */
+export interface ProcEnv {
+  platform: NodeJS.Platform;
+  /** process.kill; throws for a process that is gone */
+  kill: (pid: number, signal: NodeJS.Signals) => void;
+  /** `ps -A -o pid= -o ppid=` output; '' when there is no ps (the process is then ended alone) */
+  ps: () => string;
+}
+const liveProc = (): ProcEnv => ({
+  platform: process.platform,
+  kill: (pid, signal) => { process.kill(pid, signal); },
+  ps: () => { try { return execFileSync('ps', ['-A', '-o', 'pid=', '-o', 'ppid='], { encoding: 'utf8' }); } catch { return ''; } },
+});
+
 /** `pid` and everything below it, deepest first, from `ps -A -o pid= -o ppid=` output */
 export function descendants(ps: string, pid: number): number[] {
   const kids = new Map<number, number[]>();
@@ -46,20 +60,18 @@ export function descendants(ps: string, pid: number): number[] {
 
 /** Ends `pid` and its children. The caller makes sure it still runs: an exited pid may be another process's by now.
  *  `fallback`: what to do on Windows when taskkill itself cannot start. */
-export function killTree(pid: number, signal: NodeJS.Signals = 'SIGKILL', run: typeof spawn = spawn, fallback: () => void = () => {}) {
-  if (process.platform === 'win32') { run('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true }).on('error', fallback); return; }
-  let ps = '';
-  try { ps = execFileSync('ps', ['-A', '-o', 'pid=', '-o', 'ppid='], { encoding: 'utf8' }); } catch { /* no ps: the process alone */ }
-  for (const p of descendants(ps, pid)) { try { process.kill(p, signal); } catch { /* gone already */ } }
+export function killTree(pid: number, signal: NodeJS.Signals = 'SIGKILL', run: typeof spawn = spawn, fallback: () => void = () => {}, sys: ProcEnv = liveProc()) {
+  if (sys.platform === 'win32') { run('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true }).on('error', fallback); return; }
+  for (const p of descendants(sys.ps(), pid)) { try { sys.kill(p, signal); } catch { /* gone already */ } }
 }
 
 /** When `pid` started (ms since the epoch), or null when that cannot be told (gone, no PowerShell or ps). With a pid alone a
  *  process cannot be told from one started later under the same pid (Windows soon reuses them). Windows asks PowerShell (≈0.3 s):
  *  callers ask once per process and keep the answer. */
-export function processStarted(pid: number, run: typeof execFileSync = execFileSync): number | null {
+export function processStarted(pid: number, run: typeof execFileSync = execFileSync, platform: NodeJS.Platform = process.platform): number | null {
   if (!Number.isInteger(pid) || pid <= 0) return null;
   try {
-    const out = process.platform === 'win32'
+    const out = platform === 'win32'
       ? run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `([DateTimeOffset](Get-Process -Id ${pid} -ErrorAction Stop).StartTime).ToUnixTimeMilliseconds()`],
         { encoding: 'utf8', windowsHide: true, timeout: 15_000, stdio: ['ignore', 'pipe', 'ignore'] })
       // the local time in English, to the second (LC_ALL: a month name Date.parse reads)

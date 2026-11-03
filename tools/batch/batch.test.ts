@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { OWNER_TTL_MS, holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
+import { OWNER_TTL_MS, OWNERLESS_MS, holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { parseLoudness } from '@tellcut/media-node';
 import { npmCommand, parseArgs as renderArgs, PASSED } from './render.ts';
 import { RENDER_FLAGS } from '../render.ts';
@@ -50,17 +50,47 @@ test('a slot without an owner file is held for a few seconds, then taken over', 
   expect(holders(dir, 1)).toEqual(['401 x']);
 });
 
+// macOS / Linux take a stale slot over through a gate folder (slotN.takeover); driven here on any machine
+test('the macOS takeover: a slot whose holder is gone is taken through the gate, which is gone again afterwards', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'batch-'));
+  const s = takeSlot(dir, 1, 'old', 501, () => true, 'darwin')!;
+  // the holder lives: held, and no gate is made for it
+  expect(takeSlot(dir, 1, 'new', 502, () => true, 'darwin')).toBeNull();
+  expect(existsSync(`${s}.takeover`)).toBe(false);
+  // the holder is gone
+  expect(takeSlot(dir, 1, 'new', 502, (pid) => pid !== 501, 'darwin')).toBe(s);
+  expect(holders(dir, 1)).toEqual(['502 new']);
+  expect(existsSync(`${s}.takeover`)).toBe(false);
+  // a holder whose heartbeat stopped counts as gone too, even with its pid alive (reused)
+  past(join(s, 'owner'), OWNER_TTL_MS + 60_000);
+  expect(takeSlot(dir, 1, 'newer', 503, () => true, 'darwin')).toBe(s);
+  expect(holders(dir, 1)).toEqual(['503 newer']);
+});
+
+test('the macOS takeover waits while another process holds the gate, and clears a gate a crashed process left', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'batch-'));
+  const s = takeSlot(dir, 1, 'old', 601, () => true, 'darwin')!, gate = `${s}.takeover`, dead = (pid: number) => pid !== 601;
+  mkdirSync(gate);   // another process is taking it over right now
+  expect(takeSlot(dir, 1, 'new', 602, dead, 'darwin')).toBeNull();
+  expect(holders(dir, 1)).toEqual(['601 old']);   // judged by the gate's holder, not removed under it
+  past(gate, OWNERLESS_MS + 5_000);   // that process died inside the gate
+  expect(takeSlot(dir, 1, 'new', 602, dead, 'darwin')).toBe(s);
+  expect(holders(dir, 1)).toEqual(['602 new']);
+  expect(existsSync(gate)).toBe(false);
+});
+
 test('several processes taking over the same stale slot at once: exactly one gets it', async () => {
   const queue = pathToFileURL(fileURLToPath(new URL('./queue.ts', import.meta.url))).href;
-  for (let round = 0; round < 3; round++) {
+  // the last rounds race the macOS way (through the gate folder), on any machine
+  for (const platform of [process.platform, process.platform, process.platform, 'darwin', 'darwin']) {
     const dir = mkdtempSync(join(tmpdir(), 'batch-')), worker = join(dir, 'w.mts');
     mkdirSync(join(dir, 'slot0')); writeFileSync(join(dir, 'slot0', 'owner'), '4242 dead');
     // Node 24 strips the types of queue.ts itself; all workers spin until the same moment, then race
     writeFileSync(worker, `import { takeSlot } from ${JSON.stringify(queue)};\nconst go = +process.argv[2]; while (Date.now() < go) {}\n`
-      + `process.stdout.write(takeSlot(${JSON.stringify(dir)}, 1, 'w', process.pid, (p) => p !== 4242) ? 'got' : 'no');\n`);
+      + `process.stdout.write(takeSlot(${JSON.stringify(dir)}, 1, 'w', process.pid, (p) => p !== 4242, process.argv[3]) ? 'got' : 'no');\n`);
     const go = Date.now() + 1500;
     const outs = await Promise.all(Array.from({ length: 8 }, () => new Promise<string>((res) => {
-      const c = spawn(process.execPath, ['--no-warnings', worker, String(go)]); let s = '';
+      const c = spawn(process.execPath, ['--no-warnings', worker, String(go), platform]); let s = '';
       c.stdout.on('data', (d) => (s += d)); c.stderr.on('data', (d) => (s += d)); c.on('close', () => res(s));
     })));
     expect(outs.filter((o) => o !== 'got' && o !== 'no')).toEqual([]);

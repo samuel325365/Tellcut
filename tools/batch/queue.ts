@@ -29,8 +29,9 @@ function isStale(slot: string, alive: (pid: number) => boolean): boolean {
   return !pid || !alive(pid) || age(join(slot, 'owner')) > OWNER_TTL_MS;
 }
 
-/** Takes a free slot (slot0 … slot<n-1> in `dir`) for `label`; null when all are held by live processes. */
-export function takeSlot(dir: string, slots: number, label: string, pid = process.pid, alive = isAlive): string | null {
+/** Takes a free slot (slot0 … slot<n-1> in `dir`) for `label`; null when all are held by live processes. `platform`: whose way a
+ *  stale slot is taken over (a test drives the macOS one on Windows). */
+export function takeSlot(dir: string, slots: number, label: string, pid = process.pid, alive = isAlive, platform: NodeJS.Platform = process.platform): string | null {
   mkdirSync(dir, { recursive: true });
   for (let i = 0; i < slots; i++) {
     const slot = join(dir, `slot${i}`);
@@ -52,7 +53,7 @@ export function takeSlot(dir: string, slots: number, label: string, pid = proces
         continue;   // not put back: try the slot again from the start
       }
       if (!isStale(slot, alive)) break;
-      if (process.platform !== 'win32') {
+      if (platform !== 'win32') {
         // macOS / Linux: a rename there replaces an empty folder, so moving slots aside (below) can swap a contender's new
         // slot for the one put back, and both hold it. Instead one process at a time takes over, through a gate folder:
         // inside it the slot is judged again and removed only when stale, then everyone races for it with mkdir alone.

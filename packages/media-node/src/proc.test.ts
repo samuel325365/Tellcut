@@ -1,5 +1,5 @@
-import { spawn, spawnSync } from 'node:child_process';
-import { descendants, isAlive, killTree, nap, pause, processStarted, shellQuote, shellQuoter } from './proc.ts';
+import { spawn, spawnSync, type execFileSync } from 'node:child_process';
+import { descendants, isAlive, killTree, nap, pause, processStarted, shellQuote, shellQuoter, type ProcEnv } from './proc.ts';
 
 test('the tree below a process is read from ps, the deepest first and the process itself last', () => {
   const ps = ['  1     0', ' 10     1', ' 11    10', ' 12    11', ' 13    10', ' 20     1', 'garbage'].join('\n');
@@ -30,11 +30,62 @@ test('processStarted: when a live process started (to tell it from a later one u
   await new Promise((r) => child.on('exit', r));
   expect(processStarted(child.pid!)).toBeNull();
   expect(processStarted(0)).toBeNull();
-  // what ps says (local time, English month) and what PowerShell says (epoch ms) are both read
-  const ps = ((() => 'Tue Nov  3 10:00:00 2026\n') as unknown) as typeof import('node:child_process').execFileSync;
-  if (process.platform !== 'win32') expect(processStarted(5, ps)).toBe(new Date(2026, 10, 3, 10, 0, 0).getTime());
-  else expect(processStarted(5, ((() => '1793671200000\r\n') as unknown) as typeof import('node:child_process').execFileSync)).toBe(1793671200000);
 }, 30000);
+
+// each platform's branch, on any machine: what the command asked for and how its answer is read
+test('processStarted asks ps on macOS (local time, English month) and PowerShell on Windows (epoch ms)', () => {
+  const calls: Array<{ cmd: string; args: string[]; lc?: string }> = [];
+  const fake = (out: string) => (((cmd: string, args: string[], o: { env?: NodeJS.ProcessEnv }) => { calls.push({ cmd, args, lc: o.env?.LC_ALL }); return out; }) as unknown) as typeof execFileSync;
+  expect(processStarted(5, fake('Tue Nov  3 10:00:00 2026\n'), 'darwin')).toBe(new Date(2026, 10, 3, 10, 0, 0).getTime());
+  expect(calls[0]).toEqual({ cmd: 'ps', args: ['-o', 'lstart=', '-p', '5'], lc: 'C' });
+  expect(processStarted(5, fake('1793671200000\r\n'), 'win32')).toBe(1793671200000);
+  expect(calls[1].cmd).toBe('powershell.exe');
+  expect(calls[1].args.at(-1)).toContain('Get-Process -Id 5 ');
+  // nothing (gone) or something unreadable: not known
+  expect(processStarted(5, fake(''), 'darwin')).toBeNull();
+  expect(processStarted(5, fake('soon'), 'darwin')).toBeNull();
+  expect(processStarted(5, (() => { throw new Error('exit 1'); }) as unknown as typeof execFileSync, 'darwin')).toBeNull();
+});
+
+/** macOS as killTree sees it: a fixed process tree, and the signals sent in order */
+const mac = (ps: string, gone: number[] = []) => {
+  const sent: string[] = [];
+  const sys: ProcEnv = {
+    platform: 'darwin', ps: () => ps,
+    kill: (pid, signal) => { if (gone.includes(pid)) throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' }); sent.push(`${signal} ${pid}`); },
+  };
+  return { sys, sent };
+};
+const noSpawn = (() => { throw new Error('taskkill is Windows only'); }) as unknown as typeof spawn;
+
+test('killTree on macOS: every process in the tree from ps gets the signal, the deepest first and the process itself last', () => {
+  // 100 the shell, 101 claude under it with two children of its own, 200 another program's tree
+  const ps = ['    1     0', '  100     1', '  101   100', '  102   101', '  103   101', '  200     1', '  201   200'].join('\n');
+  const m = mac(ps);
+  killTree(100, 'SIGINT', noSpawn, undefined, m.sys);
+  expect(m.sent).toEqual(['SIGINT 102', 'SIGINT 103', 'SIGINT 101', 'SIGINT 100']);
+  // a child gone meanwhile does not stop the rest
+  const g = mac(ps, [102]);
+  killTree(100, 'SIGKILL', noSpawn, undefined, g.sys);
+  expect(g.sent).toEqual(['SIGKILL 103', 'SIGKILL 101', 'SIGKILL 100']);
+  // no ps (or nothing read): the process alone, with the default signal
+  const n = mac('');
+  killTree(100, undefined, noSpawn, undefined, n.sys);
+  expect(n.sent).toEqual(['SIGKILL 100']);
+});
+
+test('killTree on Windows: taskkill /T /F, no signals; fallback when taskkill cannot start', () => {
+  const calls: string[][] = [];
+  let onError: (() => void) | undefined;
+  const run = ((cmd: string, args: string[]) => { calls.push([cmd, ...args]); return { on: (_: string, f: () => void) => { onError = f; } }; }) as unknown as typeof spawn;
+  const sent: string[] = [];
+  let fellBack = false;
+  killTree(100, 'SIGINT', run, () => { fellBack = true; }, { platform: 'win32', ps: () => { throw new Error('no ps on Windows'); }, kill: (p) => { sent.push(String(p)); } });
+  expect(calls).toEqual([['taskkill', '/pid', '100', '/T', '/F']]);
+  expect(sent).toEqual([]);
+  onError!();
+  expect(fellBack).toBe(true);
+});
 
 test('isAlive: EPERM (a live process with more rights) is alive, ESRCH is gone', () => {
   const err = (code: string) => () => { throw Object.assign(new Error(code), { code }); };

@@ -68,6 +68,42 @@ const lsof = (port: number) => {
 };
 const onPort = (port: number) => (WIN ? listeners(netstat(), port) : lsofListeners(lsof(port)));
 
+/** What stopping the old server asks of the machine; a test hands in another platform's (macOS' signals on Windows) */
+export interface Stopper {
+  platform: NodeJS.Platform;
+  /** the pids listening on the port now */
+  onPort: (port: number) => number[];
+  /** Windows: ends the process and its children; throws when it cannot */
+  taskkill: (pid: number) => void;
+  /** macOS / Linux: signals the process and its children */
+  killTree: (pid: number, signal: NodeJS.Signals) => void;
+  pause: (ms: number) => Promise<unknown>;
+  log: (line: string) => void;
+}
+const STOPPER: Stopper = {
+  platform: process.platform, onPort,
+  taskkill: (pid) => { execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); },
+  killTree: (pid, signal) => killTree(pid, signal), pause, log: (line) => console.log(line),
+};
+
+/** Stops `pids` (the ones on `port`) and waits for the port to be free: Windows' taskkill /F at once; elsewhere SIGTERM, then
+ *  SIGKILL for one still listening 10 seconds later. The message to fail with, or null when the port is free. */
+export async function stopServer(port: number, pids: number[], s: Stopper = STOPPER): Promise<string | null> {
+  const win = s.platform === 'win32';
+  for (const pid of pids) {
+    if (win) { try { s.taskkill(pid); } catch { return `停不掉程序 ${pid}（權限不夠？）`; } }
+    else s.killTree(pid, 'SIGTERM');
+    s.log(`停掉了埠 ${port} 上的程序 ${pid}`);
+  }
+  for (let i = 0; i < 50 && s.onPort(port).length; i++) await s.pause(200);
+  if (!win) {
+    // one that ignored SIGTERM for 10 seconds
+    for (const pid of s.onPort(port)) s.killTree(pid, 'SIGKILL');
+    for (let i = 0; i < 10 && s.onPort(port).length; i++) await s.pause(200);
+  }
+  return s.onPort(port).length ? `埠 ${port} 還被佔著，沒有重開` : null;
+}
+
 async function main() {
   const usage = '用法：npm run server:restart -- [--port 5174] [--wait] [--force]';
   const a = parseArgsOrExit(process.argv.slice(2), { '--port': 'value', '--wait': 'switch', '--force': 'switch' }, usage), flag = (k: string) => a.has(k);
@@ -87,20 +123,8 @@ async function main() {
   // the pids of the server being replaced: the ones on the port, and the one its .cache/server.json names (should the port's be
   // missed, the old server still answering is not taken for the new one)
   const old = new Set([...pids, ...(before?.port === port ? [before.pid] : [])]);
-  for (const pid of pids) {
-    if (WIN) {
-      try { execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); }
-      catch { console.error(`停不掉程序 ${pid}（權限不夠？）`); process.exit(1); }
-    } else killTree(pid, 'SIGTERM');
-    console.log(`停掉了埠 ${port} 上的程序 ${pid}`);
-  }
-  for (let i = 0; i < 50 && onPort(port).length; i++) await pause(200);
-  if (!WIN) {
-    // one that ignored SIGTERM for 10 seconds
-    for (const pid of onPort(port)) killTree(pid, 'SIGKILL');
-    for (let i = 0; i < 10 && onPort(port).length; i++) await pause(200);
-  }
-  if (onPort(port).length) { console.error(`埠 ${port} 還被佔著，沒有重開`); process.exit(1); }
+  const failed = await stopServer(port, pids);
+  if (failed) { console.error(failed); process.exit(1); }
 
   const logDir = join(TELLCUT_ROOT, '.cache'), log = join(logDir, `server-${port}.log`), err = join(logDir, `server-${port}.err.log`);
   mkdirSync(logDir, { recursive: true });
