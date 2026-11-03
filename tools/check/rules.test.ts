@@ -142,8 +142,17 @@ describe('fx determinism scan', () => {
   const scan = (src: string) => fxChecks({ 'fx/a.js': src }).map((f) => `${f.level} ${f.msg}`);
   test('flags each banned call with file and line', () => {
     expect(scan('const a = 1;\nconst r = Math.random();')).toEqual(['error fx/a.js:2 不可用 Math.random（畫面必須只由時間決定；要隨機請用自帶的種子 LCG）']);
-    for (const bad of ['new Date()', 'Date.now()', 'performance.now()', 'setTimeout(f, 1)', 'setInterval(f, 1)', 'requestAnimationFrame(f)', 'fetch(u)', 'new XMLHttpRequest()', 'import("x")', 'eval("1")', 'new Function("1")'])
+    for (const bad of ['new Date()', 'Date.now()', 'performance.now()', 'setTimeout(f, 1)', 'setInterval(f, 1)', 'requestAnimationFrame(f)', 'fetch(u)', 'new XMLHttpRequest()', 'import("x")', 'eval("1")', 'new Function("1")', 'crypto.getRandomValues(a)', 'crypto.randomUUID()', 'self.crypto.randomUUID()'])
       expect(scan(`x = ${bad};`), bad).toHaveLength(1);
+  });
+  test('a template literal’s ${…} is code: a banned call in it is flagged, its text (and a template nested in it) is not', () => {
+    const found = (src: string) => scan(src).map((m) => m.split(' ')[1]);
+    expect(found('ctx.label = `${Math.random()}`;')).toEqual(['fx/a.js:1']);
+    expect(found('const y = `year ${new Date().getFullYear()}`;')).toEqual(['fx/a.js:1']);
+    expect(found('const a = `${x ? `Date.now()` : { b: 1 }.b} and ${`${fetch(u)}`}`;\nconst t = `Math.random ${1}`;')).toEqual(['fx/a.js:1']);
+    expect(found('const a = `${o.map((v) => { return v; })}`; const s = `}`;\nconst r = Math.random();')).toEqual(['fx/a.js:2']);   // braces in ${…} pair up
+    expect(found('const a = `line\n${\n  performance.now()\n}`;')).toEqual(['fx/a.js:3']);   // the line it is on
+    expect(found('g.font = `${ctx.H / 10}px sans`; const q = /`/; const z = Date.now();')).toEqual(['fx/a.js:1']);
   });
   test('ignores banned words inside comments and strings', () => {
     expect(scan('// Math.random is banned\n/* Date.now() */\nconst s = "Math.random()"; const t = `fetch`;')).toEqual([]);

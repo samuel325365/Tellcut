@@ -235,6 +235,7 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
 const BANNED: Array<[RegExp, string]> = [
   [/\bMath\.random\b/, 'Math.random'], [/\bDate\b/, 'Date'], [/\bperformance\b/, 'performance'], [/\bsetTimeout\b/, 'setTimeout'], [/\bsetInterval\b/, 'setInterval'],
   [/\brequestAnimationFrame\b/, 'requestAnimationFrame'], [/\bfetch\b/, 'fetch'], [/\bXMLHttpRequest\b/, 'XMLHttpRequest'], [/\bimport\s*\(/, 'import()'], [/\beval\b/, 'eval'], [/\bFunction\b/, 'Function'],
+  [/\b(?:crypto|getRandomValues|randomUUID)\b/, 'crypto'],
 ];
 
 /** what may come right before a regex literal (anything else before a slash makes it a division) */
@@ -255,7 +256,8 @@ function regexEnd(src: string, i: number): number {
 
 /** `src` with comments (and optionally the inside of strings and regex literals) blanked to spaces, so line numbers stay.
  *  A regex literal is told from a division by what comes before it: a quote or a slash inside one (/'/g) used to open a
- *  "string" or a comment that blanked the rest of the file, and the banned calls after it went unreported. */
+ *  "string" or a comment that blanked the rest of the file, and the banned calls after it went unreported. A template literal's
+ *  ${…} is code, read like the rest (templates nested in it included): `${Math.random()}` used to be blanked with its string. */
 function blank(src: string, strings: boolean): string {
   let out = '', i = 0;
   const keep = (s: string) => s.replace(/[^\n]/g, ' ');
@@ -264,23 +266,43 @@ function blank(src: string, strings: boolean): string {
     while (k >= 0 && /\s/.test(out[k])) k--;
     return k < 0 || BEFORE_REGEX.has(out[k]) || REGEX_AFTER_WORD.test(out.slice(Math.max(0, k - 11), k + 1));
   };
-  while (i < src.length) {
-    const c = src[i], n = src[i + 1];
-    let e = -1;
-    if (c === '/' && n !== '/' && n !== '*' && regexHere() && (e = regexEnd(src, i)) > 0) {
-      const body = src.slice(i, e), close = body.lastIndexOf('/');
-      out += strings ? '/' + keep(body.slice(1, close)) + body.slice(close) : body;
-      i = e;
-    } else if (c === '/' && n === '/') { const e = src.indexOf('\n', i); const j = e < 0 ? src.length : e; out += keep(src.slice(i, j)); i = j; }
-    else if (c === '/' && n === '*') { const e = src.indexOf('*/', i + 2); const j = e < 0 ? src.length : e + 2; out += keep(src.slice(i, j)); i = j; }
-    else if (c === '"' || c === "'" || c === '`') {
-      let j = i + 1;
-      while (j < src.length && src[j] !== c) j += src[j] === '\\' ? 2 : 1;
-      j = Math.min(j + 1, src.length);
-      out += strings ? c + keep(src.slice(i + 1, j - 1)) + c : src.slice(i, j);
-      i = j;
-    } else { out += c; i++; }
-  }
+  /** code up to the end, or (`inner`: a template's ${…}) up to the brace that closes it, left at that brace */
+  const code = (inner: boolean) => {
+    let depth = 0;
+    while (i < src.length) {
+      const c = src[i], n = src[i + 1];
+      let e = -1;
+      if (inner && c === '}' && depth === 0) return;
+      if (c === '/' && n !== '/' && n !== '*' && regexHere() && (e = regexEnd(src, i)) > 0) {
+        const body = src.slice(i, e), close = body.lastIndexOf('/');
+        out += strings ? '/' + keep(body.slice(1, close)) + body.slice(close) : body;
+        i = e;
+      } else if (c === '/' && n === '/') { const e = src.indexOf('\n', i); const j = e < 0 ? src.length : e; out += keep(src.slice(i, j)); i = j; }
+      else if (c === '/' && n === '*') { const e = src.indexOf('*/', i + 2); const j = e < 0 ? src.length : e + 2; out += keep(src.slice(i, j)); i = j; }
+      else if (c === '"' || c === "'") {
+        let j = i + 1;
+        while (j < src.length && src[j] !== c) j += src[j] === '\\' ? 2 : 1;
+        j = Math.min(j + 1, src.length);
+        out += strings ? c + keep(src.slice(i + 1, j - 1)) + c : src.slice(i, j);
+        i = j;
+      } else if (c === '`') template();
+      else { if (c === '{') depth++; else if (c === '}') depth--; out += c; i++; }
+    }
+  };
+  /** a template literal from its opening backquote: the text blanked (when `strings`), each ${…} read as code */
+  const template = () => {
+    out += '`'; i++;
+    while (i < src.length && src[i] !== '`') {
+      if (src[i] === '\\') { const s = src.slice(i, i + 2); out += strings ? keep(s) : s; i += s.length; }
+      else if (src[i] === '$' && src[i + 1] === '{') {
+        out += '${'; i += 2;
+        code(true);
+        if (i < src.length) { out += '}'; i++; }
+      } else { out += strings ? keep(src[i]) : src[i]; i++; }
+    }
+    if (i < src.length) { out += '`'; i++; }
+  };
+  code(false);
   return out;
 }
 
