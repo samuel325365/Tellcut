@@ -112,6 +112,8 @@ test('a project effect that does not load stops the export with the reason (it r
     const done = await app.queue.wait(job.id);
     expect([done.status, done.error]).toEqual(['failed', expect.stringMatching(/^專案的效果載入失敗：fx\/bad\.js：/)]);
     expect(done).toMatchObject({ code: 'export.fxFailed', params: { list: expect.stringMatching(/^fx\/bad\.js: /) } });
+    // each fx with its own code, for the page to word one by one
+    expect((done as any).issues).toEqual([expect.objectContaining({ path: 'fx/bad.js', code: expect.stringMatching(/^fx\./) })]);
   } finally {
     await fetch(`${base}/api/projects/demo`, { method: 'PUT', body: JSON.stringify(demoProject()) });
     rmSync(join(demo, 'fx'), { recursive: true, force: true });

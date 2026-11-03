@@ -8,15 +8,16 @@ export interface JobCtx { signal: AbortSignal; progress(p: number, message?: str
 export type JobRun = (ctx: JobCtx) => Promise<unknown>;
 
 /** A job failure the page words itself: code (like an HttpError's, e.g. 'export.elsewhere') and params go onto the job's info
- *  next to the message, as the routes' error answers carry them */
+ *  next to the message, as the routes' error answers carry them; issues: the separate problems behind it, each with its own code
+ *  when it has one (the fx that did not load) */
 export class JobError extends Error {
-  constructor(message: string, readonly code: string, readonly params?: Record<string, string | number>) { super(message); }
+  constructor(message: string, readonly code: string, readonly params?: Record<string, string | number>, readonly issues?: unknown[]) { super(message); }
 }
 /** a failed job's code and params: from a JobError, or any error with a code of that shape (never Node's own ENOENT and the like) */
-const codeOf = (e: unknown): { code?: string; params?: Record<string, string | number> } => {
-  const x = e as { code?: unknown; params?: unknown } | null;
+const codeOf = (e: unknown): { code?: string; params?: Record<string, string | number>; issues?: unknown[] } => {
+  const x = e as { code?: unknown; params?: unknown; issues?: unknown } | null;
   if (typeof x?.code !== 'string' || !/^[a-z]+\.[A-Za-z]+$/.test(x.code)) return {};
-  return { code: x.code, ...(x.params && typeof x.params === 'object' ? { params: x.params as Record<string, string | number> } : {}) };
+  return { code: x.code, ...(x.params && typeof x.params === 'object' ? { params: x.params as Record<string, string | number> } : {}), ...(Array.isArray(x.issues) ? { issues: x.issues } : {}) };
 };
 
 const LOG_KEEP = 200, FINISHED_KEEP = 100;

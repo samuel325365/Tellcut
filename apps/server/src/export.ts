@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { Project, Registry } from '@tellcut/engine';
+import type { FxIssue, Project, Registry } from '@tellcut/engine';
 import { exportLock, listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, tryExportLock } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { JobError, type JobCtx, type JobQueue } from './jobs.ts';
@@ -60,7 +60,7 @@ async function exportLocked(o: { dir: string; id: string; project: Project; from
 }
 
 /** `registryFor`: the registry of one project (the shared plugins plus its own fx) and the fx that did not load */
-export function exportRoutes(r: Router, store: ProjectStore, queue: JobQueue, registryFor: (dir: string, project: Project) => Promise<{ registry: Registry; fxErrors: Array<{ path: string; message: string }> }>) {
+export function exportRoutes(r: Router, store: ProjectStore, queue: JobQueue, registryFor: (dir: string, project: Project) => Promise<{ registry: Registry; fxErrors: FxIssue[] }>) {
   r.post('/api/projects/:id/export', async (req, res, { id }) => {
     const parsed = BodyZ.safeParse((await readJson(req)) ?? {});
     if (!parsed.success) throw new HttpError(400, 'Invalid export range', { issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`) });
@@ -71,11 +71,12 @@ export function exportRoutes(r: Router, store: ProjectStore, queue: JobQueue, re
     if (lockHolder(exportLock(dir))) throw new HttpError(409, EXPORT_ELSEWHERE, { code: 'export.elsewhere' });
     const range = from !== undefined || to !== undefined ? ` ${from ?? 0}–${to ?? d} s` : '';
     sendJson(res, 202, queue.add('export', id, `${project.meta.name}${range}`, async (ctx) => {
-      // an effect that does not load would be left out of the film (or fail deep in the player): say which, before rendering
+      // an effect that does not load would be left out of the film (or fail deep in the player): say which, before rendering. The
+      // job carries each one too (its path, and the code and params the page words it from: fx.loadFailed…)
       const { registry, fxErrors } = await registryFor(dir, project);
       if (fxErrors.length) {
         const list = fxErrors.map((e) => `${e.path}: ${e.message}`).join('; ');
-        throw new JobError(`專案的效果載入失敗：${fxErrors.map((e) => `${e.path}：${e.message}`).join('；')}`, 'export.fxFailed', { list });
+        throw new JobError(`專案的效果載入失敗：${fxErrors.map((e) => `${e.path}：${e.message}`).join('；')}`, 'export.fxFailed', { list }, fxErrors);
       }
       return runExport({ dir, id, project, from, to, registry, ctx });
     }));
