@@ -14,3 +14,12 @@ test('whenReady waits for fonts and images', async () => {
   await p;
   expect(settled).toBe(true);
 });
+
+test('a picture that cannot be decoded fails a render (strict) but not a preview', async () => {
+  const bad = { decode: () => Promise.reject(new Error('EncodingError')), getAttribute: () => 'media/images/broken.png' } as unknown as HTMLImageElement;
+  const empty = { decode: () => Promise.reject(new Error('EncodingError')), getAttribute: () => null } as unknown as HTMLImageElement;
+  const deps = { preload: async () => {}, audio: async () => {}, fonts: { ready: Promise.resolve() } };
+  await expect(whenReady({ ...deps, images: () => [bad] })).resolves.toBeUndefined();
+  await expect(whenReady({ ...deps, images: () => [bad], strict: true })).rejects.toThrow(/broken\.png/);
+  await expect(whenReady({ ...deps, images: () => [empty], strict: true })).resolves.toBeUndefined();
+});

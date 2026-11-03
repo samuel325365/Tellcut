@@ -44,6 +44,7 @@ async function init() {
     audio: () => audio.load(),
     images: () => [...stageEl.querySelectorAll('img')],
     fonts: document.fonts,
+    strict: RENDER,
   });
   const at = (t: number) => Math.max(0, Math.min(project.meta.duration, t));
   const draw = (t: number) => stage.draw(at(t)), late = (t: number) => stage.late(at(t));
