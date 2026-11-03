@@ -80,12 +80,12 @@ export const doodle: ItemType<P, S> = {
     if (st.key !== p.data) { st.key = p.data; st.strokes = parseStrokes(p.data); }
     const u = Math.min(W, H) / 1080, boil = p.boil || 0, wob = (p.wob || 0) * u, frame = boil > 0 ? Math.floor(local * boil) : 0, jig = (p.jig || 0) * u;
 
-    // the eraser: what it has passed is clipped away
+    // the eraser: what it has passed is clipped away from the strokes begun before it (one drawn after it is on the clean board)
     const eraseP = eraseAt(local, p.erase, p.eraseDur);
     const ex0 = p.ex0 * W, ex1 = p.ex1 * W, ey0 = p.ey0 * H, ey1 = p.ey1 * H, eh = 70 * u;
     const lineY = eraseP < 0 ? -1 : ey0 + (ey1 - ey0 + eh) * eraseP - eh * 0.5;
+    const wiped = () => { g.beginPath(); g.rect(0, 0, W, H); g.rect(ex0, ey0 - 4 * u, ex1 - ex0, Math.max(0, lineY - ey0 + 4 * u)); g.clip('evenodd'); };
     g.save();
-    if (eraseP >= 0) { g.beginPath(); g.rect(0, 0, W, H); g.rect(ex0, ey0 - 4 * u, ex1 - ex0, Math.max(0, lineY - ey0 + 4 * u)); g.clip('evenodd'); }
     g.lineCap = 'round'; g.lineJoin = 'round';
 
     st.strokes.forEach((s, si) => {
@@ -113,6 +113,8 @@ export const doodle: ItemType<P, S> = {
       g.globalAlpha = s.o != null ? Number(s.o) : 0.94;
       g.lineWidth = lw;
       g.setLineDash(s.d ? [lw * 2.2, lw * 1.9] : []);
+      const erased = eraseP >= 0 && a < p.erase;
+      if (erased) { g.save(); wiped(); }
       g.beginPath(); g.moveTo(xs[0], ys[0]);
       for (let i = 1; i < n && left > 0; i++) {
         const l = seg[i - 1];
@@ -120,6 +122,7 @@ export const doodle: ItemType<P, S> = {
         else { const f = left / l; g.lineTo(xs[i - 1] + (xs[i] - xs[i - 1]) * f, ys[i - 1] + (ys[i] - ys[i - 1]) * f); left = 0; }
       }
       g.stroke();
+      if (erased) g.restore();
     });
     g.restore();
 

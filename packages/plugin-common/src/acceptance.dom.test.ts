@@ -109,6 +109,16 @@ describe('common.doodle', () => {
     expect(blinkOn(2.75, 1, [1, 0, 0.5])).toBe(false);
     expect([eraseAt(1, -1, 0.5), eraseAt(0.9, 1, 0.5), eraseAt(1.25, 1, 0.5), eraseAt(3, 1, 0.5)]).toEqual([-1, -1, 0.5, 1]);
   });
+  test('the eraser clips only the strokes begun before it: one drawn after it is whole (2026-11-03)', () => {
+    const data = JSON.stringify([{ a: 0, b: 0.5, p: [0.1, 0.4, 0.9, 0.4] }, { a: 2, b: 2.5, p: [0.1, 0.4, 0.9, 0.4] }]);
+    const { s, ctx } = run(doodle, { data, erase: 1, eraseDur: 0.5 }, 3);
+    // each stroke() noted with whether a clip is in force (clip inside save … restore)
+    const clipped = [false], strokes: boolean[] = [];
+    const own: Record<string, unknown> = { save: () => { clipped.push(clipped.at(-1)!); }, restore: () => { clipped.pop(); }, clip: () => { clipped[clipped.length - 1] = true; }, stroke: () => strokes.push(clipped.at(-1)!) };
+    s.cv.getContext = () => new Proxy(anything, { get: (t, k) => (k in own ? own[k as string] : t[k]) });
+    doodle.draw(ctx, s);
+    expect(strokes).toEqual([true, false]);
+  });
   test('the default draws without errors on 9:16 and 16:9', () => {
     expect(() => run(doodle, {}, 1)).not.toThrow();
     expect(() => run(doodle, { erase: 0.5 }, 0.7, 1920, 1080)).not.toThrow();
