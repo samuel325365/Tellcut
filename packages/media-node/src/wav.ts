@@ -67,6 +67,13 @@ export async function pullWav(f: PcmFormat, slice: (from: number, frames: number
   sliceFrames = WAV_SLICE_FRAMES): Promise<{ silent: boolean }> {
   if (!(sliceFrames >= 1) || !Number.isInteger(sliceFrames)) throw new Error(`Bad WAV slice size: ${sliceFrames}`);
   await write(wavHeader(f));
+  return pullPcm(f, slice, write, sliceFrames);
+}
+
+/** pullWav without the header: only the PCM, a slice of whole frames at a time (check reads the mix this way, never whole). */
+export async function pullPcm(f: PcmFormat, slice: (from: number, frames: number) => Promise<Buffer>, write: (b: Buffer) => void | Promise<void>,
+  sliceFrames = WAV_SLICE_FRAMES): Promise<{ silent: boolean }> {
+  if (!(sliceFrames >= 1) || !Number.isInteger(sliceFrames)) throw new Error(`Bad WAV slice size: ${sliceFrames}`);
   let silent = true;
   for (let from = 0; from < f.frames; from += sliceFrames) {
     const n = Math.min(sliceFrames, f.frames - from), b = await slice(from, n);

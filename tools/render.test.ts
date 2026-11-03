@@ -335,6 +335,11 @@ test('the mix comes out of the page in slices of whole frames: the same WAV at a
       const file = join(d, 'mix.wav');
       expect(await s.wavFile(file, { sliceFrames: 4097 })).toEqual({ silent: false });
       expect(readFileSync(file).equals(whole)).toBe(true);
+      // the PCM alone, a slice at a time (check's way): the WAV without its header
+      const parts: Buffer[] = [];
+      expect(await s.pcm((b) => { parts.push(b); }, { sliceFrames: 4097 })).toEqual({ channels: 2, sampleRate: 48000, frames: 112561 });
+      expect(parts.length).toBe(28);
+      expect(Buffer.concat(parts).equals(whole.subarray(44))).toBe(true);
       // a cancel is answered between slices
       const ac = new AbortController();
       ac.abort();

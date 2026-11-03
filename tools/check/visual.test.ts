@@ -1,5 +1,5 @@
 import { parseProject, resolveTimes } from '@tellcut/engine';
-import { audioChecks, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes } from './visual.ts';
+import { AudioCheck, audioChecks, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes } from './visual.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
 const proj = (items: any[], w = 1080, h = 1920) => parseProject({ version: 1, meta: { name: 't', width: w, height: h, fps: 30, duration: 20, plugins: [], mix: MIX },
@@ -68,6 +68,29 @@ test('sound: samples at full scale are clipping, two seconds and more of near si
   const sparse = new Float32Array(n).fill(0.2);
   sparse[2000] = 1; sparse[2100] = 1;
   expect(audioChecks([sparse], rate).map((x) => `${x.level} ${x.t!.join('-')} ${x.msg}`)).toEqual(['warn 2-2.101 瞬間爆音（音量到頂）']);
+});
+
+test('sound: the mix fed a slice of 16-bit PCM at a time gives what one pass over the whole gives', () => {
+  const rate = 1000, wave = (i: number) => 0.3 * Math.sin(i / 3);
+  // clipping across a slice edge, quiet that ends in a part-window, and a last part-window under and over half a second
+  for (const n of [9400, 9600]) {
+    const L = new Float32Array(n), R = new Float32Array(n);
+    for (let i = 0; i < n; i++) { L[i] = wave(i); R[i] = 0.5 * wave(i + 7); }
+    for (let i = 2995; i < 3105; i++) R[i] = 1;
+    for (let i = 5000; i < 7500; i++) L[i] = R[i] = 0.0001;
+    for (let i = 8000; i < n; i++) L[i] = R[i] = 0;          // quiet for 2 s only when the part-window at 9 s counts
+    // the same samples as the page hands them over: 16-bit, interleaved
+    const pcm = Buffer.alloc(n * 4);
+    for (let i = 0; i < n; i++) { pcm.writeInt16LE(Math.round(L[i] * 32767), i * 4); pcm.writeInt16LE(Math.round(R[i] * 32767), i * 4 + 2); }
+    const asRead = [L, R].map((_, c) => Float32Array.from({ length: n }, (_, i) => pcm.readInt16LE(i * 4 + c * 2) / 32768));
+    const whole = audioChecks(asRead, rate);
+    expect(whole.map((x) => x.msg)).toEqual(['爆音（音量到頂）', '沒有聲音', ...(n === 9600 ? ['沒有聲音'] : [])]);
+    for (const size of [1, 999, 1000, 4097]) {
+      const a = new AudioCheck(2, rate);
+      for (let o = 0; o < n; o += size) a.pcm(pcm.subarray(o * 4, Math.min(n, o + size) * 4));
+      expect(a.done()).toEqual(whole);
+    }
+  }
 });
 
 test('an emoji rain, the reels frame, the album, the chat and the search page are left out of the layout checks, a sticker and the comments are not', () => {

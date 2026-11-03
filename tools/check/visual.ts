@@ -109,35 +109,68 @@ export function layoutChecks(samples: Array<{ t: number; boxes: TextBox[] }>, o:
 
 /** The mix: samples at full scale (clipping), and two seconds or more of near silence (−50 dBFS RMS over 1 s windows). */
 export function audioChecks(channels: Float32Array[], rate: number): Finding[] {
-  const out: Finding[] = [], n = Math.min(...channels.map((c) => c.length));
+  const a = new AudioCheck(channels.length, rate);
+  a.push(Math.min(...channels.map((c) => c.length)), (c, i) => channels[c][i]);
+  return a.done();
+}
+
+const QUIET = 10 ** (-50 / 20);
+/** audioChecks fed a slice of the mix at a time: check never holds the whole of it (a 45-minute film's was 0.5 GB of PCM, then
+ *  1 GB more as floats). The same findings as one pass over the whole. */
+export class AudioCheck {
+  private out: Finding[] = [];
+  private i = 0;
   // clipped samples less than half a second apart make one stretch; its longest unbroken run decides: under 50 ms the
   // spikes are barely heard, longer is distortion
-  let from = -1, to = -1, run = 0, longest = 0;
-  const flush = () => {
-    if (from >= 0) out.push(longest / rate < 0.05 ? { level: 'warn', t: [r3(from / rate), r3((to + 1) / rate)], msg: '瞬間爆音（音量到頂）' }
+  private from = -1; private to = -1; private run = 0; private longest = 0;
+  // the 1 s window being summed (its index, frames in it, each channel's sum of squares), and where the quiet began
+  private w = 0; private inWindow = 0; private sums: number[]; private quietFrom = -1;
+  constructor(private channels: number, private rate: number) { this.sums = new Array(channels).fill(0); }
+
+  /** `frames` more frames, channel c of the i-th of them read by get(c, i) */
+  push(frames: number, get: (c: number, i: number) => number) {
+    const { channels, rate } = this;
+    for (let k = 0; k < frames; k++, this.i++) {
+      let clipped = false;
+      for (let c = 0; c < channels; c++) { const v = get(c, k); this.sums[c] += v * v; if (Math.abs(v) >= 0.999) clipped = true; }
+      if (clipped) {
+        const i = this.i;
+        if (this.from >= 0 && i - this.to > rate / 2) this.flush();
+        this.run = this.from >= 0 && i === this.to + 1 ? this.run + 1 : 1;
+        this.longest = Math.max(this.longest, this.run);
+        if (this.from < 0) this.from = i;
+        this.to = i;
+      }
+      if (++this.inWindow === rate) this.window();
+    }
+  }
+  /** 16-bit PCM, its channels interleaved (as the page hands the mix over) */
+  pcm(b: Buffer) {
+    const ch = this.channels;
+    this.push(b.length / (2 * ch), (c, i) => b.readInt16LE((i * ch + c) * 2) / 32768);
+  }
+  done(): Finding[] {
+    this.flush();
+    if (this.inWindow >= this.rate / 2) this.window();   // a last part-window counts from half a second
+    this.endQuiet(this.w);
+    return byTime(this.out);
+  }
+
+  private flush() {
+    const { from, to, rate } = this;
+    if (from >= 0) this.out.push(this.longest / rate < 0.05 ? { level: 'warn', t: [r3(from / rate), r3((to + 1) / rate)], msg: '瞬間爆音（音量到頂）' }
       : { level: 'error', t: [r3(from / rate), r3((to + 1) / rate)], msg: '爆音（音量到頂）' });
-    from = -1; longest = 0;
-  };
-  for (let i = 0; i < n; i++) {
-    if (!channels.some((c) => Math.abs(c[i]) >= 0.999)) continue;
-    if (from >= 0 && i - to > rate / 2) flush();
-    run = from >= 0 && i === to + 1 ? run + 1 : 1;
-    longest = Math.max(longest, run);
-    if (from < 0) from = i;
-    to = i;
+    this.from = -1; this.longest = 0;
   }
-  flush();
-  const quiet = 10 ** (-50 / 20);
-  let quietFrom = -1;
-  const end = (w: number) => { if (quietFrom >= 0 && w - quietFrom >= 2) out.push({ level: 'warn', t: [quietFrom, w], msg: '沒有聲音' }); quietFrom = -1; };
-  const windows = Math.floor(n / rate + 0.5);
-  for (let w = 0; w < windows; w++) {
-    const a = w * rate, b = Math.min(n, a + rate);
-    const rms = Math.max(...channels.map((c) => { let s = 0; for (let i = a; i < b; i++) s += c[i] * c[i]; return Math.sqrt(s / Math.max(1, b - a)); }));
-    if (rms < quiet) { if (quietFrom < 0) quietFrom = w; } else end(w);
+  private window() {
+    const rms = Math.max(...this.sums.map((s) => Math.sqrt(s / Math.max(1, this.inWindow))));
+    if (rms < QUIET) { if (this.quietFrom < 0) this.quietFrom = this.w; } else this.endQuiet(this.w);
+    this.w++; this.inWindow = 0; this.sums.fill(0);
   }
-  end(windows);
-  return byTime(out);
+  private endQuiet(w: number) {
+    if (this.quietFrom >= 0 && w - this.quietFrom >= 2) this.out.push({ level: 'warn', t: [this.quietFrom, w], msg: '沒有聲音' });
+    this.quietFrom = -1;
+  }
 }
 
 /** Items that move through the whole frame on purpose (an emoji rain) or are the platform's own frame (common.reels: its account,

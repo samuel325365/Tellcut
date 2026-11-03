@@ -5,13 +5,13 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveTimes, type Project, type Registry, type Transcript } from '@tellcut/engine';
-import { ffmpeg, ocrProvider, photoSheet, pyJson, readWav, timecode1, withProjectPage, type OcrLine, type OcrProvider, type PageSession } from '@tellcut/media-node';
+import { ffmpeg, ocrProvider, photoSheet, pyJson, timecode1, withProjectPage, type OcrLine, type OcrProvider, type PageSession } from '@tellcut/media-node';
 import type { Finding } from './rules.ts';
 import { burnedChecks } from './burned.ts';
 import { leakFindings, leakProbes, leakUnchecked, type LeakProbe } from './leak.ts';
 import { strayFindings, strayTimes, videoOnly } from './stray.ts';
 import type { Burned } from '@tellcut/media-node';
-import { audioChecks, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes, type TextBox } from './visual.ts';
+import { AudioCheck, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes, type TextBox } from './visual.ts';
 
 /** what the measured frames showed of the items' words (visual.ts drawnText), for the model layer's pacing rules */
 export type Drawn = ReturnType<typeof drawnText>;
@@ -48,9 +48,11 @@ export async function renderedChecks(o: { dir: string; project: Project; registr
     if (probes.length) findings0.push(...await leakCheck(s, probes, o.dir, o.ocr, o.traditional ?? toTraditional, log));
     findings0.push(...leakUnchecked(p, times, o.transcripts ?? {}));
     log('混音');
-    const wav = readWav(await s.wav());
+    // a slice at a time: a long film's whole mix (and its samples as floats) took gigabytes
+    let audio = undefined as AudioCheck | undefined;
+    await s.pcm((b, f) => (audio ??= new AudioCheck(f.channels, f.sampleRate)).pcm(b));
     const captions = new Set(p.tracks.flatMap((t) => (t.items as Array<{ id: string; type?: string }>).filter((i) => /^(core|common)\.caption$/.test(i.type ?? '')).map((i) => i.id)));
-    const findings = [...findings0, ...layoutChecks(samples, { W: p.meta.width, H: p.meta.height, spans: times, settled: settledWindows(p, times) }), ...captionSizeChecks(samples, { W: p.meta.width, H: p.meta.height, captions }), ...canvasSizeChecks(samples, { W: p.meta.width, H: p.meta.height }), ...burnedChecks(p, o.burned ?? {}, samples), ...audioChecks(wav.data, wav.sampleRate)];
+    const findings = [...findings0, ...layoutChecks(samples, { W: p.meta.width, H: p.meta.height, spans: times, settled: settledWindows(p, times) }), ...captionSizeChecks(samples, { W: p.meta.width, H: p.meta.height, captions }), ...canvasSizeChecks(samples, { W: p.meta.width, H: p.meta.height }), ...burnedChecks(p, o.burned ?? {}, samples), ...(audio?.done() ?? [])];
     // an old sheet left from an earlier --sheet run reads as this film (a review mistook one for the current cut): gone
     const drawn = drawnText(samples);
     if (!o.sheet) { rmSync(join(o.dir, 'cache', 'check', 'sheet.jpg'), { force: true }); return { findings, drawn }; }

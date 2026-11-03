@@ -4,7 +4,7 @@ import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeSync, exists
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createStaticServer } from './static-server.ts';
-import { pullWav, wavTooLong, type PcmFormat } from './wav.ts';
+import { pullPcm, pullWav, wavTooLong, type PcmFormat } from './wav.ts';
 import { abortError, ffmpegProcess, measureLoudness, run } from './ffmpeg.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 import { chromePath } from './deps.ts';
@@ -16,9 +16,11 @@ export interface TextBox { id: string; rects: Array<{ x: number; y: number; w: n
 /** loudness: the integrated loudness an export of this page is normalised to (LUFS);
  *  wav(): the whole mix as a WAV in memory; wavFile(): the same written to `path` a slice at a time, for films of any length
  *  (`sliceFrames`: frames read from the page at once, smaller only in tests; `signal` is checked between slices);
+ *  pcm(): the mix's 16-bit PCM handed to `each` a slice at a time, never held whole; it resolves to the mix's format;
  *  layout(): the words on screen after the last frame() (Tellcut player only), in project pixels */
 export interface PageSession { fps: number; duration: number; loudness: number; version: string; frame(n: number): Promise<void>; png(): Promise<Buffer>; jpeg(): Promise<Buffer>;
-  wav(o?: WavPull): Promise<Buffer>; wavFile(path: string, o?: WavPull): Promise<{ silent: boolean }>; layout(): Promise<TextBox[]>; close(): Promise<void> }
+  wav(o?: WavPull): Promise<Buffer>; wavFile(path: string, o?: WavPull): Promise<{ silent: boolean }>; pcm(each: (b: Buffer, f: PcmFormat) => void, o?: WavPull): Promise<PcmFormat>;
+  layout(): Promise<TextBox[]>; close(): Promise<void> }
 export interface WavPull { sliceFrames?: number; signal?: AbortSignal }
 export interface PlayerTarget { project: string; media: 'cache'; index?: string }
 
@@ -121,19 +123,19 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
         ...(capture.clip ? { clip: capture.clip } : {}) } as any)).data, 'base64');
     // the page renders the mix once and keeps it; it comes over in slices of whole frames (one base64 string of a long
     // film's WAV passed V8's string limit at about 35 minutes)
-    const pull = async (write: (b: Buffer) => void, w: WavPull = {}) => {
-      const f: PcmFormat = await page.evaluate((a) => (window as any)[a].wav(), api);
-      return pullWav(f, async (from, n) => {
-        if (w.signal?.aborted) throw abortError();
-        return Buffer.from(await page.evaluate(([a, x, k]) => (window as any)[a].wavSlice(x, k), [api, from, n] as const), 'base64');
-      }, write, w.sliceFrames);
+    const format = (): Promise<PcmFormat> => page.evaluate((a) => (window as any)[a].wav(), api);
+    const slice = (w: WavPull) => async (from: number, n: number) => {
+      if (w.signal?.aborted) throw abortError();
+      return Buffer.from(await page.evaluate(([a, x, k]) => (window as any)[a].wavSlice(x, k), [api, from, n] as const), 'base64');
     };
+    const pull = async (write: (b: Buffer) => void, w: WavPull = {}) => pullWav(await format(), slice(w), write, w.sliceFrames);
     return {
       fps, duration, loudness: typeof loudness === 'number' ? loudness : -14, version: browser.version(),
       frame: (n) => page.evaluate(([a, k]) => (window as any)[a].frame(k), [api, n] as const).catch((e: Error) => { throw new Error(`frame ${n}: ${e.message}`); }),
       png: () => shot('png'),
       jpeg: () => shot('jpeg'),
       wav: async (w) => { const parts: Buffer[] = []; await pull((b) => { parts.push(b); }, w); return Buffer.concat(parts); },
+      pcm: async (each, w = {}) => { const f = await format(); await pullPcm(f, slice(w), (b) => each(b, f), w.sliceFrames); return f; },
       wavFile: async (path, w) => {
         const fd = openSync(path, 'w');
         try { return await pull((b) => { for (let o = 0; o < b.length;) o += writeSync(fd, b, o); }, w); } finally { closeSync(fd); }
