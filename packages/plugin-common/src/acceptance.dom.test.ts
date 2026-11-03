@@ -135,6 +135,19 @@ describe('common.search bar', () => {
 });
 
 describe('common.healthbar', () => {
+  test('ready loads the block font and the LIVE words too, and does nothing without document.fonts (2026-11-03)', async () => {
+    const was = Object.getOwnPropertyDescriptor(document, 'fonts'), loads: string[][] = [];
+    const s: any = healthbar.build({ params: withDefaults(healthbar.params, { font: 'Inter', live: '直播' }, resolveTheme(undefined, { width: 1080, height: 1920 })), root: document.createElement('div') } as any);
+    try {
+      Object.defineProperty(document, 'fonts', { configurable: true, value: undefined });
+      await healthbar.ready!(s);
+      Object.defineProperty(document, 'fonts', { configurable: true, value: { load: async (f: string, text: string) => { loads.push([f, text]); return []; }, [Symbol.iterator]: function* () {} } });
+      await healthbar.ready!(s);
+    } finally { was ? Object.defineProperty(document, 'fonts', was) : delete (document as any).fonts; }
+    expect(loads.some(([f]) => f === '700 52px "Inter"')).toBe(true);
+    expect(loads.some(([f]) => f === '900 52px "Noto Sans TC"')).toBe(true);
+    expect(loads.every(([, text]) => text.includes('直播'))).toBe(true);
+  });
   test('stops parsed and sorted, the HP easing to each, the break, hits and heals', () => {
     const st = parseHp('2:60, 0:100, x, 4:x, 3:150');
     expect(st).toEqual([{ t: 0, v: 100 }, { t: 2, v: 60 }, { t: 3, v: 100 }, { t: 4, v: 'x' }]);

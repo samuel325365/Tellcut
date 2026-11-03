@@ -87,7 +87,9 @@ export const bounce: ItemType<P, S> = {
   },
   ready(s) {
     const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-    return fonts ? Promise.all([s.font, 'Noto Sans TC'].map((f) => fonts.load(`${faceWeight(f, 900)} 120px "${f}"`, s.words || '字'))).then(() => {}) : Promise.resolve();
+    // draw sets the whole font list (the fallback Noto Sans TC too) in the weight the block's own font has: load that one
+    const wt = faceWeight(s.font, 900);
+    return fonts ? Promise.all([...new Set([s.font, 'Noto Sans TC'])].map((f) => fonts.load(`${wt} 120px "${f}"`, s.words || '字').catch(() => []))).then(() => {}) : Promise.resolve();
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
@@ -95,7 +97,7 @@ export const bounce: ItemType<P, S> = {
     const wt = faceWeight(p.font, 900), face = (px: number) => `${wt} ${px.toFixed(1)}px '${p.font}', 'Noto Sans TC', sans-serif`;
     const side = theme.safe.side * W, room = W - 2 * side, stroke = !isClear(p.outline);
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-    for (const it of parseBounce(p.items)) {
+    const lines = parseBounce(p.items).map((it) => {
       // the characters' sizes and places: stressed ones hlScale bigger, the line shrunk to the safe width and kept inside it
       let sizes = it.chars.map((c) => (c.em ? it.size * p.hlScale : it.size) * k);
       let ws = it.chars.map((c, i) => { g.font = face(sizes[i]); return g.measureText(c.ch).width; });
@@ -104,7 +106,6 @@ export const bounce: ItemType<P, S> = {
       const lineW = total * fit, x0 = clamp(it.x * W - lineW / 2, side, Math.max(side, W - side - lineW)), cy = it.y * H;
       const cx: number[] = [];
       ws.reduce((x, w) => { cx.push(x + w / 2); return x + w; }, x0);
-      const color = it.color === 'hl' ? p.hl : it.color || p.color, emColor = it.kv.emph ? (it.kv.emph === 'hl' ? p.hl : it.kv.emph) : p.hl;
       const poses = it.chars.map((_, i) => charPose(it, i, t, motion));
       let n = 0;
       const sink = it.kv.sink !== undefined ? +it.kv.sink : NaN;
@@ -115,35 +116,47 @@ export const bounce: ItemType<P, S> = {
         if (c.em && Number.isFinite(sink)) { const f = sinkAt(sink, n++, t); dy += Math.min(H * 1.2, f.dy * k); rot += f.rot; }
         return { ...q, x: cx[i] + q.dx * k, y: cy + dy, rot, size: sizes[i], w: ws[i] };
       });
-      if (it.kv.scrim) {
-        const a = clamp((t - it.at) / 0.4), hh = it.size * fit * k * 1.6, grd = g.createLinearGradient(0, cy - hh, 0, cy + hh);
-        grd.addColorStop(0, 'rgba(10,14,28,0)'); grd.addColorStop(0.5, `rgba(10,14,28,${(0.5 * a).toFixed(3)})`); grd.addColorStop(1, 'rgba(10,14,28,0)');
-        g.fillStyle = grd; g.fillRect(0, cy - hh, W, hh * 2);
-      }
-      if (it.mode === 'knock') {
-        // the sheet down to sheetTo; each letter a hole in it, then its outline
-        g.save();
-        g.fillStyle = p.sheet; g.fillRect(0, 0, W, clamp(p.sheetTo, 0.1, 1) * H);
-        g.globalCompositeOperation = 'destination-out';
-        placed.forEach((q, i) => { if (!q || q.sx <= 0.001) return; g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.scale(q.sx, q.sy); g.font = face(q.size); g.fillStyle = '#000'; g.fillText(it.chars[i].ch, 0, 0); g.restore(); });
-        g.globalCompositeOperation = 'source-over';
-        if (stroke) placed.forEach((q, i) => {
-          if (!q || q.sx <= 0.001) return;
-          g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.scale(q.sx, q.sy); g.font = face(q.size);
-          g.lineWidth = (9 * k) / Math.max(0.2, q.sx); g.strokeStyle = p.outline; g.strokeText(it.chars[i].ch, 0, 0); g.restore();
-        });
+      return { it, fit, cy, placed };
+    });
+    type Line = (typeof lines)[number];
+    const scrim = ({ it, fit, cy }: Line) => {
+      if (!it.kv.scrim) return;
+      const a = clamp((t - it.at) / 0.4), hh = it.size * fit * k * 1.6, grd = g.createLinearGradient(0, cy - hh, 0, cy + hh);
+      grd.addColorStop(0, 'rgba(10,14,28,0)'); grd.addColorStop(0.5, `rgba(10,14,28,${(0.5 * a).toFixed(3)})`); grd.addColorStop(1, 'rgba(10,14,28,0)');
+      g.fillStyle = grd; g.fillRect(0, cy - hh, W, hh * 2);
+    };
+    // knock: one sheet down to sheetTo with every knock phrase's letters cut out of it, then their outlines; drawn before the other
+    // phrases, so a second knock phrase does not cover the first one's holes, nor its sheet the phrases above it
+    const knocks = lines.filter((l) => l.it.mode === 'knock');
+    if (knocks.length) {
+      knocks.forEach(scrim);
+      g.save();
+      g.fillStyle = p.sheet; g.fillRect(0, 0, W, clamp(p.sheetTo, 0.1, 1) * H);
+      g.globalCompositeOperation = 'destination-out';
+      for (const { it, placed } of knocks) placed.forEach((q, i) => { if (!q || q.sx <= 0.001) return; g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.scale(q.sx, q.sy); g.font = face(q.size); g.fillStyle = '#000'; g.fillText(it.chars[i].ch, 0, 0); g.restore(); });
+      g.globalCompositeOperation = 'source-over';
+      if (stroke) for (const { it, placed } of knocks) placed.forEach((q, i) => {
+        if (!q || q.sx <= 0.001) return;
+        g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.scale(q.sx, q.sy); g.font = face(q.size);
+        g.lineWidth = (9 * k) / Math.max(0.2, q.sx); g.strokeStyle = p.outline; g.strokeText(it.chars[i].ch, 0, 0); g.restore();
+      });
+      g.restore();
+    }
+    for (const l of lines) {
+      if (l.it.mode === 'knock') continue;
+      const { it, placed } = l, color = it.color === 'hl' ? p.hl : it.color || p.color, emColor = it.kv.emph ? (it.kv.emph === 'hl' ? p.hl : it.kv.emph) : p.hl;
+      scrim(l);
+      placed.forEach((q, i) => {
+        if (!q || q.a <= 0.001 || q.sx <= 0.001) return;
+        g.save(); g.globalAlpha = q.a; g.translate(q.x, q.y); g.rotate(q.rot); g.scale(q.sx, q.sy); g.font = face(q.size);
+        if (it.kv.shadow) { g.shadowColor = 'rgba(10,14,28,0.6)'; g.shadowBlur = 26 * k; g.shadowOffsetY = 6 * k; }
+        if (stroke) { g.lineWidth = Math.max(2, q.size * 0.08); g.strokeStyle = p.outline; g.strokeText(it.chars[i].ch, 0, 0); g.shadowColor = 'transparent'; }
+        g.fillStyle = it.chars[i].em ? emColor : color; g.fillText(it.chars[i].ch, 0, 0);
         g.restore();
-      } else {
-        placed.forEach((q, i) => {
-          if (!q || q.a <= 0.001 || q.sx <= 0.001) return;
-          g.save(); g.globalAlpha = q.a; g.translate(q.x, q.y); g.rotate(q.rot); g.scale(q.sx, q.sy); g.font = face(q.size);
-          if (it.kv.shadow) { g.shadowColor = 'rgba(10,14,28,0.6)'; g.shadowBlur = 26 * k; g.shadowOffsetY = 6 * k; }
-          if (stroke) { g.lineWidth = Math.max(2, q.size * 0.08); g.strokeStyle = p.outline; g.strokeText(it.chars[i].ch, 0, 0); g.shadowColor = 'transparent'; }
-          g.fillStyle = it.chars[i].em ? emColor : color; g.fillText(it.chars[i].ch, 0, 0);
-          g.restore();
-        });
-      }
-      // check measures the phrase: one box round the characters on screen
+      });
+    }
+    // check measures each phrase: one box round its characters on screen
+    for (const { it, fit, placed } of lines) {
       const seen = placed.filter((q): q is NonNullable<typeof q> => !!q && q.sx > 0.001 && q.a > 0.05 && q.y - q.size < H);
       if (seen.length) {
         const xa = Math.min(...seen.map((q) => q.x - (q.w * q.sx) / 2)), xb = Math.max(...seen.map((q) => q.x + (q.w * q.sx) / 2));

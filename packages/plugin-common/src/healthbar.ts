@@ -9,7 +9,7 @@ import { canvasAt, freeCanvas } from './inkline.ts';
 import { faceWeight } from './text.ts';
 
 interface P { title: string; live: string; replay: string; label: string; states: string; stops: string; cells: number; x: number; y: number; w: number; font: string; accent: string; hl: string }
-interface S { cv: HTMLCanvasElement; words: string }
+interface S { cv: HTMLCanvasElement; words: string; live: string; font: string }
 
 export interface HpStop { t: number; v: number | 'x' }
 /** "0:100, 2:60, 4:x" → stops sorted by time; values clamped to 0–100, x = broken */
@@ -72,10 +72,15 @@ export const healthbar: ItemType<P, S> = {
     cssCamel(cv, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
     ctx.root.appendChild(cv);
     const p = ctx.params;
-    return { cv, words: [p.title, p.replay, p.label, p.states].join('') };
+    return { cv, words: [p.title, p.live, p.replay, p.label, p.states].join(''), live: p.live, font: p.font };
   },
   ready(s) {
-    return Promise.all([document.fonts.load('700 52px "Noto Sans TC"', s.words), document.fonts.load('900 64px "Noto Sans TC"', s.words), document.fonts.load('700 48px "Inter"', 'LIVE')]).then(() => {});
+    // the block's font and Noto Sans TC (its fallback) in 700 and the heaviest up to 900, the LIVE pill's Inter
+    const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+    if (!fonts) return Promise.resolve();
+    const loads = [...new Set([s.font, 'Noto Sans TC'])].flatMap((f) => [700, faceWeight(f, 900), 900].map((w) => `${w} 52px "${f}"`));
+    return Promise.all([...new Set(loads)].map((font) => fonts.load(font, s.words || 'A').catch(() => []))
+      .concat(s.live ? [fonts.load('700 48px "Inter"', s.live).catch(() => [])] : [])).then(() => {});
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {

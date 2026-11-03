@@ -80,6 +80,25 @@ describe('common.bounce', () => {
     // sunk characters gone below the frame are not counted
     expect(run(bounce, { items: '0|【掉】|300||0.5|0.5|pop|sink=0.5' }, 3).said).toEqual([]);
   });
+  test('knock phrases share one sheet with all their holes, drawn before the other phrases (2026-11-03)', () => {
+    // the canvas calls in order: the sheet is a fillRect in the sheet colour, a letter a fillText
+    const { s, ctx } = run(bounce, { items: '0|上面|200||0.5|0.25|pop\n0|挖空|300||0.5|0.5|knock\n0|再挖|300||0.5|0.75|knock', sheet: '#123456' }, 2);
+    const log: string[] = [], own: Record<string, unknown> = { fillRect: () => log.push('rect ' + own.fillStyle), fillText: (ch: string) => log.push(ch + ' ' + own.globalCompositeOperation) };
+    own.globalCompositeOperation = 'source-over';
+    const g = new Proxy(anything, { get: (t, k) => (k in own ? own[k as string] : t[k]), set: (_t, k, v) => { own[k as string] = v; return true; } });
+    s.cv.getContext = () => g;
+    bounce.draw(ctx, s);
+    expect(log.filter((x) => x === 'rect #123456')).toHaveLength(1);
+    const sheet = log.indexOf('rect #123456');
+    expect(['挖 destination-out', '空 destination-out', '再 destination-out'].map((x) => log.indexOf(x)).every((i) => i > sheet)).toBe(true);
+    expect(log.indexOf('上 source-over')).toBeGreaterThan(log.indexOf('再 destination-out'));
+  });
+  test('ready loads the weight draw uses for its own font and the Noto Sans TC fallback alike', async () => {
+    const loads: string[] = [], was = Object.getOwnPropertyDescriptor(document, 'fonts');
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { load: async (f: string) => { loads.push(f); return []; }, [Symbol.iterator]: function* () { yield { family: 'Inter', weight: '100 700' }; } } });
+    try { await bounce.ready!({ cv: null as any, words: '字', font: 'Inter' }); } finally { was ? Object.defineProperty(document, 'fonts', was) : delete (document as any).fonts; }
+    expect(loads).toEqual(['700 120px "Inter"', '700 120px "Noto Sans TC"']);
+  });
   test('a family without 900 is drawn at the heaviest weight it has, not the fake bold that rings knock holes', () => {
     const faces = [{ family: 'Huninn', weight: '400' }, { family: '"Noto Sans TC"', weight: '500' }, { family: 'Noto Sans TC', weight: '900' }, { family: 'Inter', weight: '100 900' }];
     expect(faceWeight('Huninn', 900, faces)).toBe(400);
