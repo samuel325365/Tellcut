@@ -18,6 +18,19 @@ test("a starting player gets the words its hints show, in the page's language", 
   setLang('zh');
 });
 
+test('a running player gets the words again when the language changes (only once it has started)', () => {
+  const { b, texts } = setup();
+  setLang('en');
+  expect(texts).toEqual([]);
+  b.handle({ type: 'boot' });
+  setLang('ja');
+  expect(texts.map((m) => m.texts.textInPanel)).toEqual([expect.stringContaining('Properties'), 'このテキストは Properties で編集してください']);
+  expect(texts[0].texts.textInPanel).not.toBe(texts[1].texts.textInPanel);
+  b.dispose();
+  setLang('zh');
+  expect(texts.length).toBe(2);
+});
+
 test('load waits for boot; patches before ready are held and only the newest is sent once', () => {
   const { b, sent, tick } = setup();
   b.load({ v: 0 });

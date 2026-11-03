@@ -1,6 +1,7 @@
 // Editor side of the player postMessage protocol (spec §2.3; the player sends 'boot' when it starts listening).
 import type { CropSel, PlayerMsg, PlayerTexts } from '@tellcut/protocol';
 import { t } from './i18n/index.ts';
+import { onLang } from './i18n/lang.ts';
 
 export type { CropSel };
 export type KeyMsg = Omit<Extract<PlayerMsg, { type: 'key' }>, 'type'>;
@@ -8,7 +9,7 @@ export type CropChangeMsg = Omit<Extract<PlayerMsg, { type: 'cropChange' }>, 'ty
 export type TransformMsg = Omit<Extract<PlayerMsg, { type: 'transformChange' }>, 'type'>;
 export type ParamEditMsg = Omit<Extract<PlayerMsg, { type: 'paramEdit' }>, 'type'>;
 
-/** what the preview words by itself, in the page's language (sent each time the player starts) */
+/** what the preview words by itself, in the page's language (sent each time the player starts, and again when the language changes) */
 export const playerTexts = (): PlayerTexts => ({ textInPanel: t('ed.textInPanel') });
 
 export class PlayerBridge {
@@ -35,7 +36,13 @@ export class PlayerBridge {
   private latest: unknown = null;
   private pending: unknown = null;
   private queued = false;
-  constructor(private origin: string, private schedule: (f: () => void) => void = (f) => { requestAnimationFrame(() => f()); }) {}
+  private offLang: () => void;
+  constructor(private origin: string, private schedule: (f: () => void) => void = (f) => { requestAnimationFrame(() => f()); }) {
+    // a player already running keeps the words it got at boot: a language switch sends them again
+    this.offLang = onLang(() => { if (this.booted) this.post({ type: 'texts', texts: playerTexts() }); });
+  }
+  /** stops following the language (a bridge the page drops) */
+  dispose() { this.offLang(); }
 
   attach(win: { postMessage(m: unknown, origin: string): void }) { this.target = win; }
 
