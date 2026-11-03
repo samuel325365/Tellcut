@@ -34,6 +34,14 @@ test('a project style that breaks the rules is refused before any music is made'
   await expect(main([id, '--style', 'nothing'])).rejects.toThrow('沒有「nothing」這個風格');
 });
 
+test('a length, bpm or seed that is not a number is refused before any music is written', async () => {
+  for (const [k, v] of [['--length', 'abc'], ['--length', '0'], ['--bpm', '-5'], ['--seed', 'abc'], ['--length', '']])
+    await expect(main([id, '--style', 'lofi', k, v]), `${k} ${v}`).rejects.toThrow(`${k}「${v}」要是`);
+  expect(existsSync(join(dir, 'media'))).toBe(false);
+  expect(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).media).toEqual({});
+  await expect(main([id, '--style', 'lofi', '--length', '4', '--seed', '-3'])).resolves.toContain('score-lofi');   // any seed
+});
+
 test('promote-style moves one style file into the library and gives it the next MUS handle; it refuses a shared file, a taken id, a missing style', async () => {
   const lib = mkdtempSync(join(tmpdir(), 'lib-')), handlesFile = join(lib, 'handles.ts');
   writeFileSync(handlesFile, `export const HANDLES = {\n  'MUS-01': 'style:pluck',\n  'RCP-01': 'recipe:travel',\n};\n`);

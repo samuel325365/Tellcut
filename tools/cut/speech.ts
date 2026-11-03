@@ -23,6 +23,10 @@ export function secs(t: SrcTime, what = '時間'): number {
   throw new Error(`${what}「${t}」看不懂：寫秒數（83.5）或 分:秒（'1:23.5'、'1:02:03'）`);
 }
 
+/** A command line's times, comma separated, each as secs() reads it (`--at 1.5,1:23`): `--at 1:23` used to become NaN, and a
+ *  still named tNaN.png. `flag` names them in the error. */
+export const secsList = (v: string, flag: string): number[] => v.split(',').map((t) => secs(t, `${flag} 的時間`));
+
 /** one clip of the speech, in source seconds (in, out) and film seconds (start, end) */
 export interface SpeechPiece { id: string; source: string; in: number; out: number; start: number; end: number; rate: number }
 export interface CaptionOptions {

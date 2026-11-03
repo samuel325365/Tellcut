@@ -42,8 +42,14 @@ export async function main(argv: string[]): Promise<string> {
     const bad = fxChecks({ [own.file]: readFileSync(own.file, 'utf8') }).filter((f) => f.level === 'error');
     if (bad.length) throw new Error(`風格「${style}」不能用：\n${bad.map((f) => `  ${f.msg}`).join('\n')}`);
   }
-  const num = (k: string) => (flags.has(k) ? Number(flags.get(k)) : undefined);
-  const r = writeScore(projectDir(id), { style, styles: loaded.styles, length: num('length') ?? 30, bpm: num('bpm'), key: flags.get('key'), seed: num('seed'), name: flags.get('name') });
+  // checked before anything is written: --length abc wrote a WAV of no samples and registered it, --seed abc a NaN seed
+  const num = (k: string, positive = true) => {
+    if (!flags.has(k)) return undefined;
+    const v = flags.get(k)!, n = Number(v);
+    if (!v.trim() || !Number.isFinite(n) || (positive && !(n > 0))) throw new Error(`--${k}「${v}」要是${positive ? '大於 0 的' : ''}數字`);
+    return n;
+  };
+  const r = writeScore(projectDir(id), { style, styles: loaded.styles, length: num('length') ?? 30, bpm: num('bpm'), key: flags.get('key'), seed: num('seed', false), name: flags.get('name') });
   const i = r.info;
   return `${r.mediaId}：${i.style}，${i.bpm} BPM，${i.key}，${i.bars} 小節，${i.duration.toFixed(1)} 秒 → ${r.wav}\n放進時間軸：c.music('${r.mediaId}')（第一拍在 0 秒，每小節 ${(i.barStarts[1] ?? 0).toFixed(2)} 秒）`;
 }

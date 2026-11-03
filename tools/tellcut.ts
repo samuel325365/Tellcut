@@ -27,6 +27,7 @@ import { libraryCommand } from './library.ts';
 import { ensureFont3d, type Feel } from './font3d.ts';
 import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
+import { secsList } from './cut/speech.ts';
 import { projectArg } from './project-arg.ts';
 import { imageArgs, registerImage } from './image-source.ts';
 
@@ -256,6 +257,7 @@ async function main(argv: string[]) {
     case 'frames': {
       const at = opt('--at');
       if (!at) throw new Usage('用法：npm run tellcut -- frames <專案> [--proposal] [--full] --at 1.5,3');
+      const times = secsList(at, '--at');
       const proposal = rest.includes('--proposal');
       let project = readProject(dir);
       if (proposal) {
@@ -263,7 +265,7 @@ async function main(argv: string[]) {
         if (!prop) throw new Error('沒有待處理的提議');
         project = applyOps(project, prop.ops).project;
       }
-      const files = await renderStills({ dir, project, times: at.split(',').map(Number), registry: await registryFor(dir, project), outDir: join(dir, 'output', 'frames'), tag: proposal ? 'proposal' : 'current', maxSide: rest.includes('--full') ? undefined : STILL_SIDE });
+      const files = await renderStills({ dir, project, times, registry: await registryFor(dir, project), outDir: join(dir, 'output', 'frames'), tag: proposal ? 'proposal' : 'current', maxSide: rest.includes('--full') ? undefined : STILL_SIDE });
       for (const f of files) console.log(f);
       return;
     }
