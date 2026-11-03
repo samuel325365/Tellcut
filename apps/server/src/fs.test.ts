@@ -52,6 +52,28 @@ test('places carry a code (and the drive letter) so the page can word them in it
   } finally { await app.close(); }
 });
 
+test('a place that does not answer (a network drive gone) is left out after a moment and not asked again while stuck', async () => {
+  const { places } = await import('./fs.ts');
+  const asked: string[] = [];
+  const probe = (p: string) => { asked.push(p); return p.endsWith('Desktop') ? new Promise<string>(() => {}) : Promise.resolve(p); };
+  const t0 = Date.now(), first = await places({ probe, ms: 200 });
+  expect(Date.now() - t0).toBeLessThan(2000);
+  expect(first.map((x) => x.key)).not.toContain('desktop');
+  expect(first.map((x) => x.key)).toContain('downloads');
+  await places({ probe, ms: 200 });
+  expect(asked.filter((p) => p.endsWith('Desktop'))).toHaveLength(1);
+});
+
+test('a link to a folder (a junction on Windows) is listed as a folder to open', async () => {
+  const { listFolder } = await import('./fs.ts');
+  const { symlinkSync } = await import('node:fs');
+  const d = mkdtempSync(join(tmpdir(), 'fs-'));
+  mkdirSync(join(d, 'real'));
+  symlinkSync(join(d, 'real'), join(d, 'linked'), 'junction');
+  writeFileSync(join(d, 'clip.mp4'), 'xyz');
+  expect((await listFolder(d)).entries).toEqual([{ name: 'linked', kind: 'dir' }, { name: 'real', kind: 'dir' }, { name: 'clip.mp4', kind: 'video', size: 3 }]);
+});
+
 test('listFolder does not block: a big folder comes back as a promise, every entry in order with its size; a file is not a folder', async () => {
   const { listFolder } = await import('./fs.ts');
   const d = mkdtempSync(join(tmpdir(), 'fs-'));

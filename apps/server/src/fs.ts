@@ -1,7 +1,6 @@
 // The home page's import browser: what is in a folder on this PC (names, kinds, sizes — never file contents). Browsers do
 // not give a page real file paths, so the page browses through these two read-only routes and hands the paths on.
-import { existsSync, readdirSync, realpathSync } from 'node:fs';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { kindOf, skipName, TELLCUT_ROOT } from '@tellcut/media-node';
@@ -14,27 +13,43 @@ const collator = new Intl.Collator('zh-Hant', { sensitivity: 'base', numeric: tr
 export type PlaceKey = 'desktop' | 'downloads' | 'videos' | 'pictures' | 'documents' | 'music' | 'sources' | 'drive' | 'volume' | 'root';
 export type Place = { key: PlaceKey; label: string; path: string; kind: 'home' | 'repo' | 'drive'; drive?: string };
 
-export function places(): Place[] {
-  const home = homedir(), out: Place[] = [];
-  const videos = process.platform === 'darwin' ? 'Movies' : 'Videos';
-  for (const [key, label, name] of [['desktop', '桌面', 'Desktop'], ['downloads', '下載', 'Downloads'], ['videos', '影片', videos], ['pictures', '圖片', 'Pictures'], ['documents', '文件', 'Documents'], ['music', '音樂', 'Music']] as const) {
-    const p = join(home, name);
-    if (existsSync(p)) out.push({ key, label, path: p, kind: 'home' });
+/** a place's real path; throws when it is not there */
+export type Probe = (path: string) => Promise<string>;
+/** how long a place may take to answer before this listing leaves it out */
+const PROBE_MS = 1500;
+/** the looks still waiting for an answer: a network drive that is gone answers only when SMB gives up, a minute or so later.
+ *  The listing does not wait for it (a sync look held up the whole server meanwhile), and asks it again only once that answer
+ *  is in, so stuck looks never pile up in Node's few file-system threads. */
+const probing = new Map<string, Promise<string | null>>();
+function within(path: string, probe: Probe, ms: number): Promise<string | null> {
+  let p = probing.get(path);
+  if (!p) {
+    p = probe(path).catch(() => null).finally(() => probing.delete(path));
+    probing.set(path, p);
   }
+  return Promise.race([p, new Promise<null>((ok) => setTimeout(ok, ms, null).unref())]);
+}
+
+export async function places(o: { probe?: Probe; ms?: number } = {}): Promise<Place[]> {
+  const probe = o.probe ?? ((p: string) => realpath(p)), ms = o.ms ?? PROBE_MS;
+  const home = homedir(), videos = process.platform === 'darwin' ? 'Movies' : 'Videos';
+  const all: Array<{ place: Place; ok?: (real: string) => boolean }> = [];
+  for (const [key, label, name] of [['desktop', '桌面', 'Desktop'], ['downloads', '下載', 'Downloads'], ['videos', '影片', videos], ['pictures', '圖片', 'Pictures'], ['documents', '文件', 'Documents'], ['music', '音樂', 'Music']] as const)
+    all.push({ place: { key, label, path: join(home, name), kind: 'home' } });
   // a sources/ folder inside tellcut (not in git) for footage kept with Tellcut; any other folder works as well
-  const src = join(TELLCUT_ROOT, 'sources');
-  if (existsSync(src)) out.push({ key: 'sources', label: '素材資料夾（sources）', path: src, kind: 'repo' });
+  all.push({ place: { key: 'sources', label: '素材資料夾（sources）', path: join(TELLCUT_ROOT, 'sources'), kind: 'repo' } });
   if (process.platform === 'win32') {
-    for (let c = 67; c <= 90; c++) { const p = `${String.fromCharCode(c)}:\\`; if (existsSync(p)) out.push({ key: 'drive', drive: String.fromCharCode(c), label: `本機磁碟 ${String.fromCharCode(c)}:`, path: p, kind: 'drive' }); }
-  } else {
-    // macOS: the startup disk is / itself; other disks, card readers and phones mount under /Volumes
-    if (process.platform === 'darwin') {
-      let vols: string[] = [];
-      try { vols = readdirSync('/Volumes').filter((v) => !v.startsWith('.')); } catch { /* none */ }
-      for (const v of vols) { const p = join('/Volumes', v); try { if (realpathSync(p) !== '/') out.push({ key: 'volume', label: v, path: p, kind: 'drive' }); } catch { /* gone */ } }
-    }
-    out.push({ key: 'root', label: '根目錄', path: '/', kind: 'drive' });
+    for (let c = 67; c <= 90; c++) { const d = String.fromCharCode(c); all.push({ place: { key: 'drive', drive: d, label: `本機磁碟 ${d}:`, path: `${d}:\\`, kind: 'drive' } }); }
+  } else if (process.platform === 'darwin') {
+    // macOS: the startup disk is / itself; other disks, card readers and phones mount under /Volumes (the startup disk's own
+    // entry there, a link to /, is not listed twice)
+    let vols: string[] = [];
+    try { vols = (await readdir('/Volumes')).filter((v) => !v.startsWith('.')); } catch { /* none */ }
+    for (const v of vols) all.push({ place: { key: 'volume', label: v, path: join('/Volumes', v), kind: 'drive' }, ok: (real) => real !== '/' });
   }
+  const real = await Promise.all(all.map((x) => within(x.place.path, probe, ms)));
+  const out = all.filter((x, i) => real[i] !== null && (!x.ok || x.ok(real[i]!))).map((x) => x.place);
+  if (process.platform !== 'win32') out.push({ key: 'root', label: '根目錄', path: '/', kind: 'drive' });
   return out;
 }
 
@@ -62,7 +77,9 @@ export async function listFolder(path: string) {
       const i = next++, e = shown[i];
       if (e.isDirectory()) { entries[i] = { name: e.name, kind: 'dir' }; continue; }
       let size = 0;
-      try { size = (await stat(join(dir, e.name))).size; } catch { /* unreadable: size unknown */ }
+      // stat follows links: a junction or a symbolic link to a folder is a folder to open (as a link it was "other")
+      try { const st = await stat(join(dir, e.name)); if (e.isSymbolicLink() && st.isDirectory()) { entries[i] = { name: e.name, kind: 'dir' }; continue; } size = st.size; }
+      catch { /* unreadable, or a link to nothing: size unknown */ }
       entries[i] = { name: e.name, kind: kindOf(e.name) ?? 'other', size };
     }
   };
@@ -73,6 +90,6 @@ export async function listFolder(path: string) {
 }
 
 export function fsRoutes(r: Router) {
-  r.get('/api/fs/places', (_req, res) => sendJson(res, 200, { places: places() }));
+  r.get('/api/fs/places', async (_req, res) => sendJson(res, 200, { places: await places() }));
   r.get('/api/fs/list', async (_req, res, _p, url) => sendJson(res, 200, await listFolder(url.searchParams.get('path') ?? '')));
 }
