@@ -26,6 +26,23 @@ describe('Cut API from the sample films', () => {
     expect(caps(d, d.speechCaptions(jd, { drop: ['UM', 'uh'] }))).toEqual([['so we go home', 0.5, 2.4]]);
   });
 
+  test('a film with a caption template captions speech in common.caption lighting up word by word; captionTemplate takes an id or its handle', () => {
+    const c = withSpeech([said(0, 'we take the train')]);
+    expect(() => c.captionTemplate('nope')).toThrow(/catalog CAP/);
+    c.captionTemplate('CAP-02');
+    expect(c.p.meta.captionTemplate).toBe('bare');
+    const first = (o: object = {}) => {
+      const d = withSpeech([said(0, 'we take the train')]);
+      d.captionTemplate('bare');
+      const ids = d.speechCaptions(d.clip('v', { from: 0, len: 3 }), o);
+      return d.p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === ids[0]);
+    };
+    expect([first().type, first().params.words?.length]).toEqual(['common.caption', 4]);
+    // asked for a type, or for no karaoke: as asked
+    expect(first({ type: 'core.caption' }).type).toBe('core.caption');
+    expect(first({ karaoke: false }).params.words).toBeUndefined();
+  });
+
   test('speechCaptions breaks at a pause, at a change of speaker and (chunked) after a sentence; maxChars caps a caption; two are never up at once', () => {
     const c = withSpeech([{ start: 0, end: 4, text: ' we got there and it rained', words: [
       { start: 0, end: 0.4, word: ' we' }, { start: 0.5, end: 0.9, word: ' got' }, { start: 1, end: 1.4, word: ' there' },

@@ -9,6 +9,7 @@ test('the cheat sheet names every public method of Cut, and nothing that is gone
   const own = Object.getOwnPropertyNames(Cut.prototype).filter((k) => k !== 'constructor' && !isPrivate(k));
   const statics = Object.getOwnPropertyNames(Cut).filter((k) => typeof (Cut as any)[k] === 'function');
   expect(new Set(CUT_API.map(([n]) => n))).toEqual(new Set([...own, ...statics]));
-  // two lines a method: raised with each batch of methods (lines, filmTime, audio, beats: 2026-10-26), kept a glance
-  expect(formatCutApi().split('\n').length).toBeLessThan(95);
+  // two lines a method: raised with each batch of methods (lines, filmTime, audio, beats: 2026-10-26; captionTemplate:
+  // 2026-11-05), kept a glance
+  expect(formatCutApi().split('\n').length).toBeLessThan(97);
 });

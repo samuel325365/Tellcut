@@ -13,8 +13,8 @@ export const BLOCK_PREFIX: Record<BlockCategory, string> = {
 export const SFX_PREFIX: Record<SfxCategory, string> = {
   alert: 'SFX-ALR', chime: 'SFX-CHM', hit: 'SFX-HIT', move: 'SFX-MOV', paper: 'SFX-PAP', life: 'SFX-LIF',
 };
-/** music styles (built in and in score-library/), recipes, clip effects */
-export const STYLE_PREFIX = 'MUS', RECIPE_PREFIX = 'RCP', CLIP_PREFIX = 'CLP';
+/** music styles (built in and in score-library/), recipes, clip effects, caption templates (common.caption's, caption:<id>) */
+export const STYLE_PREFIX = 'MUS', RECIPE_PREFIX = 'RCP', CLIP_PREFIX = 'CLP', CAPTION_PREFIX = 'CAP';
 
 /** the core blocks have no category of their own (only common blocks need one for the catalog): where the gallery puts them */
 export const CORE_CATEGORY: Record<string, BlockCategory> = { 'core.title': 'text', 'core.caption': 'text', 'core.lowerThird': 'chapter', 'core.flash': 'moment', 'core.endCard': 'moment' };
@@ -28,7 +28,7 @@ export const CLIP_FX = [
 export type ClipFx = typeof CLIP_FX[number];
 
 // The handles, one per line, each prefix numbered 01, 02, … with no gaps (the retired ones included). Ids: block and sound
-// effect type ids, style:<id>, recipe:<id>, clip.<name>.
+// effect type ids, style:<id>, recipe:<id>, clip.<name>, caption:<template id>.
 export const HANDLES: Readonly<Record<string, string>> = {
   'TXT-01': 'common.burst',
   'TXT-02': 'common.caption',
@@ -202,6 +202,17 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'CLP-01': 'clip.shake',
   'CLP-02': 'clip.follow',
   'CLP-03': 'clip.avoidBurned',
+  'CAP-01': 'caption:clean',
+  'CAP-02': 'caption:bare',
+  'CAP-03': 'caption:darkbox',
+  'CAP-04': 'caption:bubble',
+  'CAP-05': 'caption:receipt',
+  'CAP-06': 'caption:crayon',
+  'CAP-07': 'caption:snippet',
+  'CAP-08': 'caption:interview',
+  'CAP-09': 'caption:autocap',
+  'CAP-10': 'caption:sticker',
+  'CAP-11': 'caption:strips',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
 export const RETIRED: Readonly<Record<string, string>> = {

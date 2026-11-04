@@ -1,6 +1,7 @@
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { BLOCK_PREFIX, CLIP_FX, CLIP_PREFIX, CORE_CATEGORY, HANDLE_FORMAT, HANDLES, handleOf, idOfHandle, MOVED, normalizeHandle, RECIPE_PREFIX, RETIRED, SFX_PREFIX, STYLE_PREFIX } from '@tellcut/protocol';
+import { TEMPLATES } from '@tellcut/plugin-common';
+import { BLOCK_PREFIX, CAPTION_PREFIX, CLIP_FX, CLIP_PREFIX, CORE_CATEGORY, HANDLE_FORMAT, HANDLES, handleOf, idOfHandle, MOVED, normalizeHandle, RECIPE_PREFIX, RETIRED, SFX_PREFIX, STYLE_PREFIX } from '@tellcut/protocol';
 import { RECIPES } from './cut/recipes/index.ts';
 
 const prefixOf = (h: string) => h.replace(/-\d+$/, '');
@@ -17,10 +18,11 @@ async function wanted(): Promise<Map<string, string>> {
   for (const id of [...Object.keys(STYLES), ...Object.keys(lib.styles)]) out.set(`style:${id}`, STYLE_PREFIX);
   for (const id of Object.keys(RECIPES)) out.set(`recipe:${id}`, RECIPE_PREFIX);
   for (const c of CLIP_FX) out.set(c.key, CLIP_PREFIX);
+  for (const t of TEMPLATES) out.set(`caption:${t.id}`, CAPTION_PREFIX);
   return out;
 }
 
-test('every shared block, sound effect, music style, recipe and clip effect has a handle, and no handle points at something gone', async () => {
+test('every shared block, sound effect, music style, recipe, clip effect and caption template has a handle, and no handle points at something gone', async () => {
   const want = await wanted();
   const missing = [...want.keys()].filter((id) => !handleOf(id));
   expect(missing, '沒有代號：在 packages/protocol/src/handles.ts 的 HANDLES 加下一個號碼').toEqual([]);

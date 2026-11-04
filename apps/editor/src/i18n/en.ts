@@ -315,6 +315,7 @@ export const en: Record<Key, string> = {
   'ed.atEnd': 'The playhead is at the end of the project, so nothing can be added',
   'ed.noTranscript': "This footage's speech transcript is not ready yet (still analysing, or the analysis failed)",
   'ed.noSpeech': 'No speech was detected in this clip',
+  'ed.noCaptions': 'No captions on this track to change',
   'ed.unique': '"{label}" can only appear once in a project',
   'ed.helpDialog': 'Help',
   'ed.helpCloseTip': 'Close (Esc)',

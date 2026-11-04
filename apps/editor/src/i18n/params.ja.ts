@@ -145,6 +145,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.speedlines.seed": {"name":"乱数シード"},
   "common.speedlines.flicker": {"name":"わずかな点滅"},
   "common.caption.text": {"name":"テキスト","hint":"【ハイライト】、{伏せ字}"},
+  "common.caption.template": {"name":"字幕テンプレート","hint":"catalog CAP で一覧。空＝プロジェクトの既定テンプレート、なければ下の設定"},
   "common.caption.style": {"name":"スタイル","hint":"crayon：クレヨンで塗ったハイライトの帯。bar 検索抜粋の帯、qa インタビュー字幕、auto 自動字幕、big 大きな文字スタンプ、strip 1 行ずつ少し傾いた紙の帯、話している語の後ろに蛍光ペン"},
   "common.caption.size": {"name":"文字サイズ","hint":"画面の高さの %"},
   "common.caption.font": {"name":"フォント"},

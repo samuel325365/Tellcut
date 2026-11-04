@@ -49,7 +49,7 @@ test('speech becomes captions attached to the clip', async () => {
   const clip = disk().tracks.find((t: any) => t.id === 'v1').items.find((i: any) => i.source === 'talk');
   await page.locator(`[data-item-id="${clip.id}"]`).click();
   await page.click('[data-speech-captions]');
-  await poll(() => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => i.type === 'core.caption' && i.parent === clip.id).length, 60000).toBeGreaterThan(0);
+  await poll(() => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => i.type === 'common.caption' && i.parent === clip.id).length, 60000).toBeGreaterThan(0);
 }, 180000);
 
 test('the whole thing exports', async () => {

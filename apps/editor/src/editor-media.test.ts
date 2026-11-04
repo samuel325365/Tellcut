@@ -68,10 +68,10 @@ test('speech to captions: the clip\'s sentences become captions attached to it, 
   const ed = new Editor('demo', { api, bridge });
   await ed.open();
   expect(await ed.speechCaptions('c1')).toBe(true);                 // c1 shows media 1–5 s at 0–4 s
-  const caps = ed.store.get().project!.tracks.flatMap((t) => t.items as any[]).filter((i: any) => i.type === 'core.caption') as any[];
+  const caps = ed.store.get().project!.tracks.flatMap((t) => t.items as any[]).filter((i: any) => i.type === 'common.caption') as any[];
   expect(caps.map((c) => [c.start, c.end, c.parent, c.params.text])).toEqual([[1, 2, 'c1', '大家好'], [2.5, 3.5, 'c1', '出發']]);
   ed.undo();
-  expect(ed.store.get().project!.tracks.flatMap((t) => t.items as any[]).some((i: any) => i.type === 'core.caption')).toBe(false);
+  expect(ed.store.get().project!.tracks.flatMap((t) => t.items as any[]).some((i: any) => i.type === 'common.caption')).toBe(false);
   const none = new Editor('demo', { api: { ...api, transcript: async () => { throw new ApiError(409, 'x'); } }, bridge });
   await none.open();
   expect(await none.speechCaptions('c1')).toBe(false);

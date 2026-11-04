@@ -18,7 +18,7 @@ import { createStore, initialState, type EditorState, type PeakInfo, type Store 
 import type { PlayerBridge } from './bridge.ts';
 import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
-import { captionLook } from './editor/captions.ts';
+import { applyCaptionTemplate, captionLook, setCaptionTemplate } from './editor/captions.ts';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
@@ -894,8 +894,10 @@ export class Editor {
     try { tr = await this.deps.api.transcript(this.id, it.source); }
     catch { this.set({ notice: say('ed.noTranscript') }); return false; }
     const rate = found.track.kind === 'video' ? it.speed : it.rate, len = it.end - it.start, look = captionLook(p, id);
+    // the first speech captions of a film: pieces of about two lines (Chinese and Japanese have a character a word)
+    const options = look.options.maxChars ? look.options : { ...look.options, maxChars: /^(zh|ja)/.test(tr.language ?? '') ? 16 : 32 };
     // the clip as one piece in its own seconds: the plan's times come out relative to the clip, as an attached item's are
-    const caps = captionPlan(tr, [{ id, source: it.source, in: it.in, out: it.in + len * rate, start: 0, end: len, rate }], look.options);
+    const caps = captionPlan(tr, [{ id, source: it.source, in: it.in, out: it.in + len * rate, start: 0, end: len, rate }], options);
     if (!caps.length) { this.set({ notice: say('ed.noSpeech') }); return false; }
     return this.apply((d) => {
       const track = (look.track && d.tracks.some((t) => t.id === look.track) ? look.track : undefined)
@@ -903,6 +905,18 @@ export class Editor {
       for (const c of caps) addItem(d, { track, item: { type: look.type, start: c.at, end: +(c.at + c.len).toFixed(6), params: { ...look.params, ...c.extra, text: c.text }, parent: id } });
     });
   }
+
+  /** Every caption on `track` drawn with caption template `template` ('' for the project's default): one undo step. */
+  captionTemplateOnTrack(track: string, template: string): boolean {
+    let n = 0;
+    const ok = this.apply((d) => { n = applyCaptionTemplate(d, track, template); });
+    if (ok || n) return ok;
+    this.set({ notice: say('ed.noCaptions') });
+    return false;
+  }
+
+  /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */
+  projectCaptionTemplate(template: string): boolean { return this.apply((d) => setCaptionTemplate(d, template)); }
 
 
   /** `params`: values set in the gallery (only the sound's own keys are kept) */

@@ -315,6 +315,7 @@ export const ja: Record<Key, string> = {
   'ed.atEnd': '再生ヘッドがプロジェクトの末尾にあるため追加できません',
   'ed.noTranscript': 'この素材の音声の文字起こしがまだ準備できていません（解析中、または解析に失敗）',
   'ed.noSpeech': 'このクリップでは音声が検出されませんでした',
+  'ed.noCaptions': 'このトラックには変更できる字幕がありません',
   'ed.unique': '「{label}」はプロジェクトに1つしか置けません',
   'ed.helpDialog': 'ヘルプ',
   'ed.helpCloseTip': '閉じる (Esc)',

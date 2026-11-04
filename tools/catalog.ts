@@ -6,7 +6,25 @@
 import type { ParamDef, Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
+import { TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
 import { describeRecipe } from './cut/recipes/index.ts';
+
+/** a caption template's words for --find: its id, names and what it sets */
+const templateText = (t: CaptionTemplate) => [t.id, t.label, t.doc, ...Object.entries(t.params).map(([k, v]) => `${k} ${String(v)}`)].join(' ').toLowerCase();
+const templateLine = (t: CaptionTemplate) => `  ${(handleOf(`caption:${t.id}`) ?? '').padEnd(10)}  ${t.id.padEnd(12)}  ${t.label} — ${t.doc}`;
+/** the caption templates matching every word of `query` (all of them without one) */
+export function findTemplates(query = ''): CaptionTemplate[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return TEMPLATES.filter((t) => words.every((w) => templateText(t).includes(w)));
+}
+
+/** `catalog CAP [--find <words>]`: the caption templates, one a line (common.caption's template parameter takes the id) */
+export function formatTemplates(query = ''): string {
+  const hits = findTemplates(query);
+  if (!hits.length) return `沒有符合「${query}」的字幕範本；全部：npm run tellcut -- catalog CAP`;
+  return [`字幕範本 ${hits.length} 個${query ? `（符合「${query}」）` : ''}（common.caption 的 template 參數填 id；整支片的預設：project.json 的 meta.captionTemplate）：`, ...hits.map(templateLine), '',
+    "看某個範本設了什麼：npm run tellcut -- catalog CAP-01；講話字幕：c.speechCaptions(clip, { type: 'common.caption', karaoke: true, params: { template: '<id>' } })"].join('\n');
+}
 
 type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[]; onRequest?: boolean };
 /** the user's own blocks (the plugin `mine`, spec 2026-10-29-my-library §4.3): no handle, marked 我的 in its place */
@@ -52,6 +70,7 @@ export function formatCatalog(plugins: Plugin[]): string {
   if (grades.length) out.push('調色（畫面項目的 grade 欄位）：', ...grades, '');
   // not blocks but things a clip itself does (toolkit phase 5): said here so they are found where blocks are looked for
   out.push('片段本身的效果（不是積木，在 cut.ts 裡呼叫）：', ...CLIP_FX.map((c) => `  ${handleCol(c.key)}  ${c.label}：${c.code}`), '');
+  out.push(`字幕範本（${TEMPLATES.length} 個，common.caption 的 template）：npm run tellcut -- catalog CAP`, '');
   out.push('找積木：npm run tellcut -- catalog --find <關鍵字>；看某個積木的參數：npm run tellcut -- catalog <類型或代號>；cut.ts 的方法：npm run tellcut -- cut-api');
   return out.join('\n');
 }
@@ -69,9 +88,12 @@ export function findBlocks(plugins: Plugin[], query: string): Entry[] {
 export function formatFind(plugins: Plugin[], query: string): string {
   mineOf(plugins);
   const mineFirst = [...plugins].sort((a, b) => Number(b.id === 'mine') - Number(a.id === 'mine'));
-  const hits = findBlocks(mineFirst, query);
+  const hits = findBlocks(mineFirst, query), caps = normalizeHandle(query) ? [] : findTemplates(query);
+  // caption templates fold into one line: there are many, and they are all the one block
+  const capLine = caps.length ? [`字幕範本 ${caps.length} 個符合（${caps.slice(0, 3).map((t) => t.id).join('、')}${caps.length > 3 ? '…' : ''}）：npm run tellcut -- catalog CAP --find ${query}`] : [];
+  if (!hits.length && capLine.length) return capLine[0];
   if (!hits.length) return `找不到符合「${query}」的積木；換個說法（例如「收據」「路線」「手寫」「計分」），或看整份：npm run tellcut -- catalog`;
-  return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
+  return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), ...capLine, '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
 }
 
 /** one category of the block index: each block as its handle's number and short name, in handle order; a block that kept the
@@ -152,6 +174,12 @@ export async function formatLookup(plugins: Plugin[], query: string): Promise<st
   const id = HANDLES[h];
   if (!id) throw new Error(`沒有 ${h} 這個代號；找積木：npm run tellcut -- catalog --find <關鍵字>`);
   if (id.startsWith('recipe:')) return `${h} ${describeRecipe(id.slice(7))}`;
+  if (id.startsWith('caption:')) {
+    const t = TEMPLATES.find((x) => x.id === id.slice(8));
+    if (!t) throw new Error(`${h} 是字幕範本 ${id.slice(8)}，但找不到它`);
+    return [`${h} ${t.id} ${t.label}（字幕範本，common.caption）— ${t.doc}`, ...Object.entries(t.params).map(([k, v]) => `  ${k}：${typeof v === 'object' ? JSON.stringify(v) : String(v)}`),
+      `  用法：c.effect('common.caption', { at, len, text, template: '${t.id}' })；整支片：project.json 的 meta.captionTemplate: '${t.id}'；字幕自己給的參數蓋過範本`].join('\n');
+  }
   const clip = CLIP_FX.find((c) => c.key === id);
   if (clip) return `${h} ${clip.label}（片段本身的效果，不是積木）— ${clip.doc}\n  cut.ts：${clip.code}`;
   if (id.startsWith('style:')) {

@@ -314,6 +314,7 @@ export const zh = {
   'ed.atEnd': '播放頭在專案結尾，無法加入',
   'ed.noTranscript': '這段素材的語音逐字稿還沒有準備好（分析中或分析失敗）',
   'ed.noSpeech': '這段沒有偵測到說話',
+  'ed.noCaptions': '這軌沒有可以換的字幕',
   'ed.unique': '「{label}」在專案裡只能有一個',
   'ed.helpDialog': '使用說明',
   'ed.helpCloseTip': '關閉 (Esc)',

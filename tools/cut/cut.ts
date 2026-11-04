@@ -6,7 +6,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, createRegistry, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { lineColorKey, PANEL_RADIUS, panelFrame } from '@tellcut/plugin-common';
+import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
 import { viewCrop, viewRect, viewHits, type Rect } from './view.ts';
@@ -617,7 +617,18 @@ export class Cut {
     if (!pieces.length) return [];
     const tr = this.transcriptOf(pieces[0].source);
     if (!tr) return [];
-    return captionPlan(tr, pieces, o).map((c) => this.text(o.type ?? 'core.caption', c.at, c.len, { ...(o.params ?? {}), ...c.extra, text: c.text }, c.home.id));
+    // a film with a caption template (captionTemplate) captions speech in it, lighting up word by word unless told otherwise
+    const tpl = !o.type && !!this.p.meta.captionTemplate, opts = tpl && o.karaoke === undefined ? { ...o, karaoke: true } : o;
+    return captionPlan(tr, pieces, opts).map((c) => this.text(o.type ?? (tpl ? 'common.caption' : 'core.caption'), c.at, c.len, { ...(o.params ?? {}), ...c.extra, text: c.text }, c.home.id));
+  }
+
+  /** The film's caption template (an id from `catalog CAP`, or its handle CAP-xx): every common.caption that names none of its own
+   *  draws with it, and speechCaptions without a type makes common.caption captions lighting up word by word. */
+  captionTemplate(id: string) {
+    const by = idOfHandle(id), want = by?.startsWith('caption:') ? by.slice(8) : id;
+    if (!templateOf(want)) throw new Error(`沒有「${id}」這個字幕範本：npm run tellcut -- catalog CAP 列出全部`);
+    this.p.meta.captionTemplate = want;
+    return this;
   }
 
   /** the clips (the pieces tighten() made of one: one source, one after another) as source and film spans, in film order */

@@ -18,7 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { applyOps, magneticWarnings, OpError, parseProject, resolveTheme, resolveTimes, type FxResult, type Op, type Project } from '@tellcut/engine';
 import { analysisFiles, closeProposal, extrasFiles, latestRequest, libraryPlugin, libraryRoot, loadProjectFx, makeProposal, projectHash, projectRegistry, readProposal, readRequest, readTranscript, TELLCUT_ROOT, renderStills, importLogo, logoContrastWarning, saveProjectFile, saveProposal, tellcutUrl, type AskRequest, type Proposal } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { formatCatalog, formatFind, formatLookup } from './catalog.ts';
+import { formatCatalog, formatFind, formatLookup, formatTemplates } from './catalog.ts';
 import { handleOf } from '@tellcut/protocol';
 import { describeRecipe } from './cut/recipes/index.ts';
 import { formatCutApi } from './cut/api-doc.ts';
@@ -196,6 +196,8 @@ async function main(argv: string[]) {
       reportFx(fx);
       all = [...all, { ...fx.plugin, id: 'fx' }];
     }
+    // catalog CAP [--find <關鍵字>]: the caption templates
+    if (words[0]?.toUpperCase() === 'CAP') { console.log(formatTemplates(words.slice(1).join(' '))); return; }
     console.log(find ? formatFind(all, words.join(' ')) : type ? await formatLookup(all, type) : `${formatCatalog(all)}\n\n${describeRecipe()}`);
     return;
   }

@@ -22,7 +22,7 @@ import { outro } from './outro.ts';
 import { panel } from './panel.ts';
 export { PANEL_FRAME, PANEL_RADIUS, panelFrame } from './panel.ts';
 export { charKinds } from './markup.ts';
-export { lineColorKey } from './caption.ts';
+export { lineColorKey, TEMPLATES, templateOf, withTemplate, type CaptionTemplate } from './caption.ts';
 import { pen } from './pen.ts';
 import { polaroid } from './polaroid.ts';
 import { progress } from './progress.ts';
@@ -103,6 +103,9 @@ export { CJK_3D, INTER_3D, JA_3D, type ThreeKit } from './three/kit.ts';
 
 export const commonItems: ItemType[] = [backdrop, ambient, shader, panel, badge, tag, burst, speedlines, caption, slam, censor, stamp, pen, sparkle, emoji, header, glitch, progress, meter, scoreboard, receipt, tripclock, route, card, countdown, list, rating, info, polaroid, mystery, outro, film, tone, paper, notecard, handwrite, gauge, hangtag, strike, timelapse, routeboard, mapjump, ticket, snap, stations, postcard, postmark, frame, dotmatrix, digits, printer, rolldoor, callout, slip, quote, wipe, duo, versus, chart, touch, headline, mapcam, worldmap, notify, lockscreen, reels, comments, story, album, chat, search, camcorder, casefile, magazine, dachshund, audiogram, quiz, doodle, healthbar, tabletop, bounce, leak] as ItemType[];
 export const commonPlugin: Plugin = { id: 'common', items: commonItems, sfx: commonSfx, fonts: ['Noto Sans TC:wght@500;700;900', 'Noto Sans JP:wght@400;500;700;900', 'Noto Serif TC:wght@500;700;900', 'LXGW WenKai TC:wght@400;700', 'Cormorant Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500', 'JetBrains Mono:wght@400;700', 'Huninn', 'Inter:wght@300;400;600;700', 'VT323', 'Playfair Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900', 'Space Grotesk:wght@500;700', 'Nunito:wght@600;800',
+  // the caption looks' own (spec 2026-11-04-caption-styles §7): Chinese handwriting, a rounded bold sans and a classical serif with
+  // Traditional Chinese, and Latin display faces (about 10 MB together)
+  'Iansui', 'Chocolate Classical Sans', 'Cactus Classical Serif', 'Bebas Neue', 'Anton', 'Bangers', 'Permanent Marker', 'Pacifico', 'Press Start 2P', 'Righteous', 'Rubik Mono One', 'Caveat:wght@500;700', 'Bungee', 'Monoton',
   // the TTF ThreeKit extrudes 3D letters from (kit.loadFont(INTER_3D), word3d); Google serves .ttf to a client that is not a browser
   { family: 'Inter', url: 'https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf', weight: '700', file: INTER_3D, face: false }] };
 // LXGW WenKai TC: the handwriting of paper / notecard / handwrite / progress pencil / postcard / frame / reels title sticker; Cormorant Garamond: their italic Latin names;

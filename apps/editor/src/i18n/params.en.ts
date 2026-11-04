@@ -145,6 +145,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.speedlines.seed": {"name":"Random seed"},
   "common.speedlines.flicker": {"name":"Slight flicker"},
   "common.caption.text": {"name":"Text","hint":"【highlight】, {bleep}"},
+  "common.caption.template": {"name":"Caption template","hint":"catalog CAP lists them all; empty = the project's default template, or the settings below when it has none"},
   "common.caption.style": {"name":"Style","hint":"crayon: highlight band colored with crayon; bar search snippet bar, qa interview subtitle, auto automatic caption, big big sticker words, strip one slightly tilted paper strip per line with a highlighter behind the word being said"},
   "common.caption.size": {"name":"Font size","hint":"% of frame height"},
   "common.caption.font": {"name":"Font"},
