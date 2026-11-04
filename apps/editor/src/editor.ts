@@ -1,5 +1,6 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
-import { magneticGaps, setMagnetic, detach as detachCmd, attach as attachCmd, type Clip, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, captionsInClip, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform, copyItems, pasteItems, trimStart, trimEnd, magneticTrack, ownSounds } from '@tellcut/engine';
+import { magneticGaps, setMagnetic, detach as detachCmd, attach as attachCmd, type Clip, addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, CommandError, deleteItems, findItem, moveTrack as moveTrackCmd, overlapPairs, removeTrack as removeTrackCmd, restackItem, setCrossfade, type TrackKind, parseProject, resolveTimes, rippleDelete, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, split, updateItem, withDefaults, type Project, type Registry, type Transform, copyItems, pasteItems, trimStart, trimEnd, magneticTrack, ownSounds } from '@tellcut/engine';
+import { captionPlan } from '@tellcut/plugin-common/speech';
 import { cutPoints, edgeTargets, nextCut, selectionHasNoClip } from './editor/cutting.ts';
 import { zoomAround } from './timeline/geometry.ts';
 import { keyAction, type Action } from './keys.ts';
@@ -17,6 +18,7 @@ import { createStore, initialState, type EditorState, type PeakInfo, type Store 
 import type { PlayerBridge } from './bridge.ts';
 import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
+import { captionLook } from './editor/captions.ts';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
@@ -882,7 +884,8 @@ export class Editor {
       b && b.beats.length ? (d, id) => { d.grids.push({ id: `beats-${id}`, at: Math.round((t + b.offset) * 1e6) / 1e6, bpm: b.bpm, until: t + len }); } : undefined);
   }
 
-  /** The clip's speech as captions attached to it (spec 2026-10-14 §10); one undo step. */
+  /** The clip's speech as captions attached to it (spec 2026-10-14 §10), looking like the film's other speech captions
+   *  (captionLook: their block, settings, karaoke and length); one undo step. */
   async speechCaptions(id: string): Promise<boolean> {
     const p = this.history?.project, found = p && allItems(p).find((x) => x.item.id === id);
     const it: any = found?.item;
@@ -890,11 +893,14 @@ export class Editor {
     let tr;
     try { tr = await this.deps.api.transcript(this.id, it.source); }
     catch { this.set({ notice: say('ed.noTranscript') }); return false; }
-    const caps = captionsInClip(tr, { in: it.in, len: it.end - it.start, rate: found.track.kind === 'video' ? it.speed : it.rate });
+    const rate = found.track.kind === 'video' ? it.speed : it.rate, len = it.end - it.start, look = captionLook(p, id);
+    // the clip as one piece in its own seconds: the plan's times come out relative to the clip, as an attached item's are
+    const caps = captionPlan(tr, [{ id, source: it.source, in: it.in, out: it.in + len * rate, start: 0, end: len, rate }], look.options);
     if (!caps.length) { this.set({ notice: say('ed.noSpeech') }); return false; }
     return this.apply((d) => {
-      const track = d.tracks.find((t) => t.kind === 'overlay' && (t.id === 'text' || t.name === 'Captions' || t.name === '字幕'))?.id ?? addTrack(d, { kind: 'overlay', name: 'Captions' });
-      for (const c of caps) addItem(d, { track, item: { type: 'core.caption', start: c.start, end: c.end, params: { text: c.text }, parent: id } });
+      const track = (look.track && d.tracks.some((t) => t.id === look.track) ? look.track : undefined)
+        ?? d.tracks.find((t) => t.kind === 'overlay' && (t.id === 'text' || t.name === 'Captions' || t.name === '字幕'))?.id ?? addTrack(d, { kind: 'overlay', name: 'Captions' });
+      for (const c of caps) addItem(d, { track, item: { type: look.type, start: c.at, end: +(c.at + c.len).toFixed(6), params: { ...look.params, ...c.extra, text: c.text }, parent: id } });
     });
   }
 

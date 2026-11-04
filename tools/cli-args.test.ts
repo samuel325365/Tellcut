@@ -1,5 +1,5 @@
 // What the command lines take is checked before anything is made: their flags (tools/args.ts) and their numbers (npm run new, render, tellcut frames).
-import { secsList } from './cut/speech.ts';
+import { secsList } from '@tellcut/plugin-common/speech';
 import { newArgs } from './new.ts';
 import { renderArgs } from './render.ts';
 

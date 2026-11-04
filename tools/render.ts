@@ -7,7 +7,7 @@ import { parseProject } from '@tellcut/engine';
 import { exportBusy, nextExportBase, openPage, playerPath, prepareProject, projectRegistry, projectTarget, refreshCredits, renderVideo, tryExportLock } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { projectArgOrExit } from './project-arg.ts';
-import { secs, secsList } from './cut/speech.ts';
+import { secs, secsList } from '@tellcut/plugin-common/speech';
 import { parseArgsOrExit, type FlagSpec } from './args.ts';
 export { TELLCUT_ROOT, openPage, playerPath, playerUrl, projectTarget, renderVideo, type PageSession } from '@tellcut/media-node';
 

@@ -1,8 +1,8 @@
-// The transcript side of the Cut API: which captions a clip's speech makes (speechCaptions), hand-written lines timed in source
-// seconds (lines), where a word is said (wordTimes, censorSpeech). Pure: transcript and clip pieces in, film times out; Cut puts
-// the items on the timeline.
+// The transcript side of the Cut API and the editor's "Captions from speech": which captions a clip's speech makes (captionPlan),
+// hand-written lines timed in source seconds (lines), where a word is said (wordTimes, censorSpeech), source times as people
+// write them (secs). Pure: transcript and clip pieces in, film times out; Cut (tools/cut) or the editor puts the items on the timeline.
 import { r6, type Transcript } from '@tellcut/engine';
-import { charKinds } from '@tellcut/plugin-common';
+import { charKinds } from './markup.ts';
 
 /** a word to bleep written in Latin letters (English): matched against whole transcript words */
 export const LATIN_QUERY = /^[A-Za-z0-9'’ -]+$/;

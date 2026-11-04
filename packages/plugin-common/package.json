@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./samples": "./src/samples.ts"
+    "./samples": "./src/samples.ts",
+    "./speech": "./src/speech.ts"
   },
   "dependencies": {
     "@paper-design/shaders": "0.0.81",

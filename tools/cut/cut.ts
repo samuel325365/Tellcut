@@ -13,7 +13,7 @@ import { viewCrop, viewRect, viewHits, type Rect } from './view.ts';
 import type { Who } from './follow.ts';
 import { parseContent, RECIPES } from './recipes/index.ts';
 import { inventory, type Inventory } from './inventory.ts';
-import { captionPlan, filmOf, linePlan, secs, wordSpans, type CaptionOptions, type Line, type SpeechPiece, type SrcTime } from './speech.ts';
+import { captionPlan, filmOf, linePlan, secs, wordSpans, type CaptionOptions, type Line, type SpeechPiece, type SrcTime } from '@tellcut/plugin-common/speech';
 import { tightenClip } from './tighten.ts';
 import { captionHeight, isCaption, placeCaptions, UNDER_GAP, type CaptionItem } from './under-panel.ts';
 import { addDucking, addScore, clipSpeech, QUIET_DB, type ScoreRequest } from './mix.ts';

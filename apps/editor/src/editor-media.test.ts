@@ -179,6 +179,28 @@ test('a crop keyframe on a clip that hangs on another one goes in at the playhea
   expect((ed.store.get().project!.tracks[2].items[0] as any).crop.keys.map((k: any) => k.t)).toEqual([1]);
 });
 
+test('speech captions in a film that has some already look like them: the same block and style, karaoke words, short pieces, same track', async () => {
+  const w = (start: number, end: number, word: string) => ({ start, end, word });
+  // c1 shows media 1–5 s at 0–4 s
+  const transcript = { language: 'en', segments: [{ start: 1.2, end: 4.6, text: 'we took the train all the way to Rome', words: [
+    w(1.2, 1.5, ' we'), w(1.5, 1.8, ' took'), w(1.8, 2, ' the'), w(2, 2.5, ' train'), w(2.6, 2.9, ' all'), w(2.9, 3.1, ' the'), w(3.1, 3.4, ' way'), w(3.4, 3.6, ' to'), w(3.7, 4.6, ' Rome'),
+  ] }] };
+  const said = async () => {
+    const p: any = fixture();
+    p.tracks.push({ id: 'text', kind: 'overlay', items: [{ id: 'say', type: 'common.caption', start: 0, end: 2, parent: 'c2', params: { text: 'see you in Paris', style: 'bubble', words: [[0, 3]] } }] });
+    return p;
+  };
+  const { api, bridge } = fakes({ project: said, transcript: async () => transcript });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  expect(await ed.speechCaptions('c1')).toBe(true);
+  const caps = (ed.store.get().project!.tracks.find((t) => t.id === 'text')!.items as any[]).filter((i) => i.parent === 'c1');
+  expect(caps.map((c) => [c.type, c.params.style, c.params.text])).toEqual([['common.caption', 'bubble', 'we took the'], ['common.caption', 'bubble', 'train all the'], ['common.caption', 'bubble', 'way to Rome']]);
+  // each no longer than "see you in Paris"
+  expect(caps.every((c) => Array.isArray(c.params.words) && c.params.text.length <= 16)).toBe(true);
+  expect(ed.store.get().project!.tracks.filter((t) => t.kind === 'overlay').length).toBe(1);
+});
+
 test('speech captions find an old 字幕 track too, and new ones are named Captions', async () => {
   const transcript = { language: 'zh', segments: [{ start: 2, end: 3, text: '大家好' }] };
   const old = async () => { const p: any = fixture(); p.tracks.push({ id: 'cap', kind: 'overlay', name: '字幕', items: [] }); return p; };

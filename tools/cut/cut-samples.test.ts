@@ -3,7 +3,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Cut } from './cut.ts';
-import { secs } from './speech.ts';
+import { secs } from '@tellcut/plugin-common/speech';
 import { base, inv, fresh, items } from './cut-test-kit.ts';
 
 // review 4, promotion A (2026-10-26): what the four sample films (amber-podcast, seoul-bbq, todo-vlog, katie-sweet16) wrote around the Cut API

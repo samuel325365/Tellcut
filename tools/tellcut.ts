@@ -27,7 +27,7 @@ import { libraryCommand } from './library.ts';
 import { ensureFont3d, type Feel } from './font3d.ts';
 import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
-import { secsList } from './cut/speech.ts';
+import { secsList } from '@tellcut/plugin-common/speech';
 import { projectArg } from './project-arg.ts';
 import { parseArgs, type Args, type FlagSpec } from './args.ts';
 import { registerImage } from './image-source.ts';

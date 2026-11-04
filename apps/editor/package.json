@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@tellcut/engine": "*",
+    "@tellcut/plugin-common": "*",
     "@tellcut/plugins": "*",
     "@tellcut/protocol": "*",
     "immer": "10.2.0",
