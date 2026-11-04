@@ -1,5 +1,5 @@
 import { DEFAULT_THEME } from '@tellcut/engine';
-import { bigColorOf, caption, glossColorOf, karaokeRange, lineColorKey, qaBadge, qaBadgeColors, speakerColor, styleFontOf, stylePop } from './caption.ts';
+import { LOOKS, TEMPLATES, templateOf, withTemplate, bigColorOf, caption, glossColorOf, karaokeRange, lineColorKey, qaBadge, qaBadgeColors, speakerColor, styleFontOf, stylePop } from './caption.ts';
 import { layoutMarkup } from './markup.ts';
 
 test('karaoke: the word being said is the range between the last step reached and the one before it', () => {
@@ -102,4 +102,16 @@ test('a font the item sets itself replaces big’s handwriting and qa’s serif;
   expect(styleFontOf('qa', '', true)).toBe('');
   expect(styleFontOf('big', 'Bungee', true)).toBe('Bungee');
   expect(styleFontOf('big', '', false)).toBe('LXGW WenKai TC');
+});
+
+test('templates: the item’s own parameters win, then its template, then the project’s, then the defaults and theme', () => {
+  const params = { style: 'outline', size: 4.6, font: 'Noto Sans TC', hl: '#ffe14d' };
+  expect(withTemplate(params, {}, undefined)).toBe(params);                                    // none: as they were
+  expect(withTemplate(params, { template: 'sticker' })).toMatchObject({ style: 'big', position: 'center', size: 4.6 });
+  expect(withTemplate({ ...params, style: 'box' }, { template: 'sticker', style: 'box' })).toMatchObject({ style: 'box', position: 'center' });
+  expect(withTemplate(params, {}, 'darkbox')).toMatchObject({ style: 'box' });                // the project's default
+  expect(withTemplate(params, { template: 'bubble' }, 'darkbox')).toMatchObject({ style: 'bubble' });
+  expect(withTemplate(params, { template: 'gone' }, 'darkbox')).toBe(params);                  // an unknown one of its own: not the project's
+  expect(TEMPLATES.map((t) => templateOf(t.id))).toEqual(TEMPLATES);
+  expect(new Set(TEMPLATES.map((t) => t.params.style)).size).toBe(LOOKS.length);               // every look has a template
 });

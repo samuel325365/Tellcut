@@ -85,6 +85,8 @@ const ProjectShape = z.object({
     /** the home-page preset the project was made from (spec 2026-10-23-presets-and-languages §6.3) */
     // fields: the options set in its form (spec 2026-10-24-custom-preset §6)
     preset: z.object({ id: z.string(), styles: z.array(z.string()).default([]), fields: z.record(z.string()).optional() }).optional(),
+    /** the caption template (common.caption's CAP-xx, by id) every caption that names none of its own draws with */
+    captionTemplate: z.string().optional(),
     mix: MixZ,
   }),
   sources: z.record(z.object({ path: z.string(), duration: z.number().positive(), width: z.number().int().positive().default(1920), height: z.number().int().positive().default(1080),
