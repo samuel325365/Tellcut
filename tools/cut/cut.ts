@@ -77,13 +77,17 @@ function ownParams(v: unknown, call: string): Record<string, unknown> {
   return v as Record<string, unknown>;
 }
 
-/** project.json changed since the last cut wrote it (edited in the editor). A torn cut-state.json is no record, like none. */
+/** project.json changed since the last cut wrote it (edited in the editor). With no record of the last cut (none, or a torn
+ *  cut-state.json: a project copied without cache/, the cache cleared) a project that has anything on its tracks counts as edited,
+ *  since nothing says it is not: only a fresh one (npm run new, nothing cut yet) is safe to cut without --force. */
 export function editedSinceCut(dir: string): boolean {
   const f = join(dir, 'project.json');
-  if (!existsSync(stateFile(dir)) || !existsSync(f)) return false;
+  if (!existsSync(f)) return false;
+  const text = readFileSync(f, 'utf8');
   let was: unknown;
-  try { was = JSON.parse(readFileSync(stateFile(dir), 'utf8'))?.hash; } catch { return false; }
-  return was !== hash(readFileSync(f, 'utf8'));
+  try { was = JSON.parse(readFileSync(stateFile(dir), 'utf8'))?.hash; } catch { was = undefined; }
+  if (typeof was === 'string') return was !== hash(text);
+  try { return (JSON.parse(text)?.tracks ?? []).some((t: { items?: unknown[] }) => (t?.items?.length ?? 0) > 0); } catch { return false; }
 }
 const fileHash = (dir: string) => { const f = join(dir, 'project.json'); return existsSync(f) ? hash(readFileSync(f, 'utf8')) : null; };
 /** project.json changed while the cut ran (save() refuses to write over it): tools/cut.ts prints the message */

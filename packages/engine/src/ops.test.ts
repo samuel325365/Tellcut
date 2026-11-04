@@ -101,3 +101,13 @@ test('split then rippleDelete of the second half: an item crossing the cut is cu
   expect(r.summary).toContain('cap end 3.00→2.00');
   expect(r.changed).toContain('cap');
 });
+
+test('addFx: a project effect module joins meta.fx once (an edited project takes a new effect without a re-cut); a path outside fx/ is refused', () => {
+  const r = applyOps(fixture(), [
+    { op: 'addFx', path: 'fx/coin.js' },
+    { op: 'addFx', path: 'fx/coin.js' },
+    { op: 'addItem', track: 'fx', item: { type: 'x.tap', start: 1, end: 1.1, params: {}, gain: 0 } },
+  ]);
+  expect(r.project.meta.fx).toEqual(['fx/coin.js']);
+  for (const path of ['../x.js', 'fx/../../x.js', 'media/x.js', 'fx/x.ts', 3]) expect(() => applyOps(fixture(), [{ op: 'addFx', path }])).toThrow(OpError);
+});

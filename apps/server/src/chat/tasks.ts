@@ -29,7 +29,7 @@ export function taskBlock(task: unknown, project: string | null): string | null 
     const cat = str(t.category) && Object.hasOwn(BLOCK_CATEGORY, t.category) ? ` --category ${t.category}` : '';   // anything else is dropped
     return wrap('library-save', [
       `The user pressed "Save to My blocks" on ${t.type} and asked for it to be made generic first. In project ${project}:`,
-      `1. Find the fx module that defines ${t.type} (Glob projects/${project}/fx/*). Make what is hard-wired for this one film into params: its text, colours, timings and sizes, each with a label and a Chinese hint, the film's current values as the defaults (so the film looks the same). Give every block a doc line.`,
+      `1. Find the fx module that defines ${t.type} (Glob projects/${project}/fx/*). Make what is hard-wired for this one film into params: its text, colours, timings and sizes, each with a label in the UI language (a short hint after a colon where it helps), the film's current values as the defaults (so the film looks the same). Give every block a doc line; its label and doc are in the UI language too (the Media panel, the Properties panel and My blocks show them as they are).`,
       `2. Run npm run check -- ${project} until it shows no error caused by the module.`,
       `3. Save it: npm run tellcut -- library save ${project} <file> --type ${t.type} --name ${q(t.name)} --desc ${q(String(t.desc ?? ''))}${cat} --replace`,
       '4. Tell the user in one or two sentences which settings they can now change (in the Properties panel), in the UI language. Do not mention files, commands or code.',
@@ -43,6 +43,7 @@ export function taskBlock(task: unknown, project: string | null): string | null 
       '- The preset stands on its own: the rules of the original preset and form options that this film really followed go into the points too.',
       '- Write habits and requirements, not this film\'s content: no place names, people\'s names, dates or lines that belong only to this film.',
       '- One sentence per point, 4 to 10 points; what the user asked for in the conversation counts most. "text" is in the UI language, "prompt" says the same in English.',
+      '- Only what the film does now: a change the user asked for and then rejected (or a proposal never accepted) is not a point; check the project, not just the conversation.',
       'The format:', DRAFT_FORMAT,
       'Then tell the user in one sentence that the draft is ready to check; the editor opens it by itself.',
     ]);

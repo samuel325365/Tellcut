@@ -6,6 +6,9 @@ test('library-save: make the fx generic in the project, then save it with the na
   expect(b).toMatch(/^<task kind="library-save">/);
   expect(b).toContain(`npm run tellcut -- library save p1 <file> --type fx.a --name '粉筆 "A"' --desc 'd' --category text --replace`);
   expect(b).toContain('npm run check -- p1');
+  // the labels the user reads in Properties are in their language (an English page got Chinese ones: 幣面文字, 羅馬金幣)
+  expect(b).toMatch(/label in the UI language/);
+  expect(b).not.toMatch(/Chinese/);
   expect(b).toMatch(/<\/task>$/);
 });
 
@@ -46,4 +49,8 @@ test('library-save names the block the user starred (I2)', () => {
 // editor had removed the old draft, so no dialog opened
 test('preset-draft: the agent writes the file again every time, even after writing one earlier in the chat', () => {
   expect(taskBlock({ kind: 'preset-draft' }, 'p1')).toMatch(/removed.*write it again/i);
+});
+
+test('preset-draft: a change the user asked for and then rejected is not a point (seen 2026-11-04: "end on a spoken line")', () => {
+  expect(taskBlock({ kind: 'preset-draft' }, 'p1')).toMatch(/rejected/);
 });

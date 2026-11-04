@@ -11,13 +11,22 @@ export class OpError extends Error {
   }
 }
 
+/** A project's own effect module (fx/….js or .mjs, written by the agent) joins meta.fx, so an edited project can take a new effect
+ *  without a re-cut: only npm run cut registered one before (c.fx), and that would overwrite the user's edits. Once is enough. */
+function addFx(p: Project, a: { path?: unknown }) {
+  const path = a.path;
+  if (typeof path !== 'string' || !/^fx\/(?!.*\.\.)[\w./-]+\.m?js$/.test(path)) throw new Error(`path 要是專案裡的特效檔，例如 "fx/coin.js"（現在是 ${JSON.stringify(path)}）`);
+  const list = (p.meta.fx ??= []);
+  if (!list.includes(path)) list.push(path);
+}
+
 export const OPS: Record<string, (p: Project, a: any) => unknown> = {
   moveItems: C.moveItems, deleteItems: C.deleteItems, rippleDelete: C.rippleDelete, restackItem: C.restackItem,
   moveTrack: C.moveTrack, removeTrack: C.removeTrack, trimStart: C.trimStart, trimEnd: C.trimEnd, slip: C.slip, roll: C.roll,
   rateStretch: C.rateStretch, split: C.split, updateItem: C.updateItem, setTrack: C.setTrack, setCrop: C.setCrop,
   addCropKey: C.addCropKey, removeCropKey: C.removeCropKey, setTransform: C.setTransform, addItem: C.addItem, addTrack: C.addTrack,
   setFade: C.setFade, addEnvelopePoint: C.addEnvelopePoint, moveEnvelopePoint: C.moveEnvelopePoint, removeEnvelopePoint: C.removeEnvelopePoint,
-  setCrossfade: C.setCrossfade, swapSource: C.swapSource, attach: C.attach, detach: C.detach, setMagnetic: C.setMagnetic,
+  setCrossfade: C.setCrossfade, swapSource: C.swapSource, attach: C.attach, detach: C.detach, setMagnetic: C.setMagnetic, addFx,
 };
 const ID_KEYS = ['id', 'left', 'right', 'track', 'toTrack', 'to'];
 

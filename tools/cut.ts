@@ -14,7 +14,7 @@ const id = args.words[0], dir = projectArgOrExit(id, USAGE), script = join(dir, 
 if (!existsSync(script)) { console.error(USAGE); process.exit(2); }
 const force = args.has('--force');
 if (!force && editedSinceCut(dir)) {
-  console.error('這個專案在上次初剪後被編輯過，重跑會覆蓋那些修改（舊版會留在 .history/）。確定要重跑請加上 --force');
+  console.error('這個專案在上次初剪後被編輯過（或找不到上次初剪的紀錄 cache/cut-state.json，時間軸上已經有東西），重跑會覆蓋那些修改（舊版會留在 .history/）。確定要重跑請加上 --force');
   process.exit(1);
 }
 const run = (await import(pathToFileURL(script).href)).default as (c: Cut) => unknown;
