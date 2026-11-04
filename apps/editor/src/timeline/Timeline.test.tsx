@@ -10,7 +10,7 @@ function mount(patch = {}) {
   const store = createStore({ ...initialState('t'), project: fixture(), pps: 50, scroll: 0, layout: { ...initialState('t').layout, trackSize: 'standard' as const }, ...patch });
   const calls: any[] = [];
   const editor: any = { store, seek: (t: number) => calls.push(['seek', t]), select: (ids: string[]) => calls.push(['select', ids]),
-    setView: (v: any) => store.set(v), beginDrag() {}, dragTo() {}, endDrag() {} };
+    setView: (v: any) => store.set(v), beginDrag() {}, dragTo() {}, endDrag() {}, tellLocked() {} };
   const root = document.createElement('div');
   document.body.appendChild(root);
   return { root, editor, calls, store };
@@ -63,6 +63,22 @@ test('double-clicking an envelope point removes it; dragging a fade handle previ
   window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 240, clientY: 170 }));
   window.dispatchEvent(new MouseEvent('mouseup', { clientX: 240, clientY: 170 }));
   expect(live.map((x) => x[0])).toEqual(['apply', 'preview', 'commit']);
+});
+
+test('a click on the volume line adds the point under the mouse even when the page is zoomed (the box drawn twice as big)', async () => {
+  const { root, editor, store } = mount({ selection: ['m1'] });
+  let recipe: any;
+  editor.apply = (r: any) => { recipe = r; return true; };
+  await act(() => render(<Timeline editor={editor} />, root));
+  const svg = root.querySelector<SVGSVGElement>('[data-item-id="m1"] svg.env')!, w = Number(svg.getAttribute('width')), h = Number(svg.getAttribute('height'));
+  svg.getBoundingClientRect = () => ({ left: 300, top: 100, width: w * 2, height: h * 2, right: 300 + w * 2, bottom: 100 + h * 2, x: 300, y: 100, toJSON() {} }) as DOMRect;
+  const line = root.querySelector('[data-item-id="m1"] [data-env-line]')!, x = 300 + 2 * 50 * 1.5;   // 1.5 s in at 50 px/s, drawn ×2
+  line.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: x, clientY: 110 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: 110 }));
+  const d = structuredClone(store.get().project);
+  recipe(d);
+  const m1: any = d.tracks.flatMap((t: any) => t.items).find((i: any) => i.id === 'm1');
+  expect(m1.envelope.some(([t]: [number]) => Math.abs(t - 1.5) < 1e-6)).toBe(true);
 });
 
 test('track headers mute, solo and set bus gain', async () => {
@@ -494,17 +510,18 @@ test('track headers: eye on picture tracks, speaker on sound tracks, a lock on e
   expect(calls).toEqual(['sc']);
 });
 
-test('a clip on a locked track neither drags nor selects; its volume line takes no clicks', async () => {
+test('a clip on a locked track neither drags nor selects, only says why; its volume line takes no clicks', async () => {
   const { root, editor, calls } = mount({ locked: ['v', 'mu'], selection: ['m1'] });
   const log: string[] = [];
   editor.beginDrag = () => log.push('begin');
   editor.apply = () => { log.push('apply'); return true; };
+  editor.tellLocked = () => log.push('told');
   await act(() => render(<Timeline editor={editor} />, root));
   const c1 = root.querySelector<HTMLElement>('[data-item-id="c1"]')!;
   c1.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 20, clientY: 60 }));
   window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 80, clientY: 60 }));
   window.dispatchEvent(new MouseEvent('mouseup', { clientX: 80, clientY: 60 }));
-  expect([log, calls.filter((c) => c[0] === 'select')]).toEqual([[], []]);
+  expect([log, calls.filter((c) => c[0] === 'select')]).toEqual([['told'], []]);
   expect(root.querySelector('[data-item-id="m1"] [data-env-line]')).toBeNull();
 });
 

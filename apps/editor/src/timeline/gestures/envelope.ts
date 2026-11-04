@@ -11,8 +11,10 @@ export function startEnvelopeDrag(e: MouseEvent, g: GestureCtx): boolean {
   if (!envEl || !el || g.locked.has(el.dataset.track!)) return false;
   e.preventDefault(); e.stopPropagation();
   const id = el.dataset.itemId!, it: any = allItems(g.p).find((x) => x.item.id === id)!.item;
-  const box = (el.querySelector('svg.env') ?? el).getBoundingClientRect(), h = box.height || 1;   // the line's own box: the clip border is 1 px
-  const at = (m: MouseEvent) => ({ t: (m.clientX - box.left) / g.view.pps, db: yToDb(m.clientY - box.top, h) });
+  const svg = el.querySelector<SVGSVGElement>('svg.env'), box = (svg ?? el).getBoundingClientRect(), h = box.height || 1;   // the line's own box: the clip border is 1 px
+  // seconds from the drawn width: under a CSS zoom on the page the box (and the mouse) are scaled, view.pps is not
+  const w = Number(svg?.getAttribute('width')), pps = box.width && w ? (g.view.pps * box.width) / w : g.view.pps;
+  const at = (m: MouseEvent) => ({ t: (m.clientX - box.left) / pps, db: yToDb(m.clientY - box.top, h) });
   const index = envEl.getAttribute('data-env-index'), fade = envEl.getAttribute('data-fade') as 'in' | 'out' | null;
   let moved = false;
   const move = (m: MouseEvent) => {

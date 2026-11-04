@@ -267,6 +267,8 @@ export class Editor {
     const tr = p.tracks.find((t) => (t.items as any[]).some((i) => i.id === itemId));
     return !!tr && this.s.locked.includes(tr.id);
   }
+  /** a press on a clip of a locked track: it takes none, so say why (as on the preview) */
+  tellLocked() { this.set({ notice: say('ed.lockedNotice') }); }
   /** A thin row for a track; sameKind (Shift): every track of its kind, opened if any of them is collapsed. Remembered per project. */
   toggleCollapse(id: string, sameKind = false) {
     const p = this.s.project, t = p?.tracks.find((x) => x.id === id);
