@@ -55,7 +55,8 @@ export const sticker: CaptionLook = {
   hl: (e) => e.p.accent || e.theme.palette.accent,
   stroke: (e) => 0.3 * e.fs,
   strokeColor: (e) => e.p.bubbleBg,
-  box: (e) => ({ filter: `drop-shadow(0 ${(0.06 * e.fs).toFixed(1)}px ${(0.07 * e.fs).toFixed(1)}px rgba(0,0,0,0.4))`, letterSpacing: '0.07em' }),
+  // padded below: the tilted line's low end and its thick white edge stay above the safe area's bottom line (acceptance film cap-acc-rome)
+  box: (e) => ({ filter: `drop-shadow(0 ${(0.06 * e.fs).toFixed(1)}px ${(0.07 * e.fs).toFixed(1)}px rgba(0,0,0,0.4))`, letterSpacing: '0.07em', padding: '0 0.2em 0.35em' }),
   pin: () => ' rotate(-2.5deg)',
   word: (e) => ({ box: e.p.hl }),
 };
