@@ -41,7 +41,8 @@ export function CaptionTemplates({ editor, project, item, track, defs }: { edito
         {!q && tile('', film ? `Film's (${name(film)})` : 'None')}
         {mine.filter((m) => matches(q, m.name, m.desc, m.slug)).map((m) => <li class={`cap-tile cap-mine${own === `my-${m.slug}` ? ' on' : ''}`} data-caption-mine={m.slug} role="button" tabIndex={0} {...tip(m.desc || m.name)}
           onMouseEnter={() => setHover(`mine:${m.slug}`)} onMouseLeave={() => setHover(null)} onClick={() => editor.myCaptionTemplateOnItem(item.id, m)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editor.myCaptionTemplateOnItem(item.id, m); } }}><span class="cap-none">★</span><span class="cap-name">{m.name}</span></li>)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editor.myCaptionTemplateOnItem(item.id, m); } }}><span class="cap-none">★</span><span class="cap-name">{m.name}</span>
+          <button class="cap-del" data-caption-mine-delete={m.slug} {...tip(t('ed.capDeleteTip'))} onClick={async (e) => { e.stopPropagation(); if (!confirm(t('ed.capDeleteAsk', { name: m.name }))) return; try { await editor.deps.api.deleteLibrary('captions', m.slug); setN(n + 1); } catch { /* the list reloads */ } }}>✕</button></li>)}
         {list.map((x) => tile(x.id, `${handleOf(`caption:${x.id}`) ?? ''} ${name(x.id)}`.trim(), templateThumb(x.id)))}
       </ul>
       {/* the one pointed at, else the one the caption draws with (its own, else the film's) */}
@@ -51,7 +52,7 @@ export function CaptionTemplates({ editor, project, item, track, defs }: { edito
         <button data-caption-save disabled={!saveName.trim()} {...tip(t('ed.capSaveTip'))} onClick={async () => { if (await editor.saveMyCaptionTemplate(item.id, saveName.trim())) { setSaveName(''); setN(n + 1); } }}>☆ Save as my template</button>
       </div>
       <div class="cap-actions">
-        <button data-caption-track {...tip(t('ed.capTrackTip'))} onClick={() => editor.captionTemplateOnTrack(track, own)}>Use on the whole track</button>
+        <button data-caption-track disabled={!own} {...tip(t('ed.capTrackTip'))} onClick={() => editor.captionTemplateOnTrack(track, own)}>Use on the whole track</button>
         <button data-caption-film disabled={!own || own === film} {...tip(t('ed.capFilmSetTip'))} onClick={() => editor.projectCaptionTemplate(own)}>Make it the film's default</button>
       </div>
     </div>

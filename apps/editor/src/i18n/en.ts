@@ -320,6 +320,8 @@ export const en: Record<Key, string> = {
   'ed.capTrackTip': 'Put this caption’s template on every caption of its track (their words, timing and speakers stay)',
   'ed.capFilmSetTip': 'Make it the film’s default: every caption naming no template of its own draws with it',
   'ed.capSaveTip': 'Save this caption’s look as one of my caption templates (its words, timing and speaker are not saved)',
+  'ed.capDeleteTip': 'Delete from my caption templates (films that use it keep their own copy)',
+  'ed.capDeleteAsk': 'Delete my caption template "{name}"? Films that use it are not affected.',
   'ed.unique': '"{label}" can only appear once in a project',
   'ed.helpDialog': 'Help',
   'ed.helpCloseTip': 'Close (Esc)',

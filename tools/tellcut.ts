@@ -197,7 +197,7 @@ async function main(argv: string[]) {
       all = [...all, { ...fx.plugin, id: 'fx' }];
     }
     // catalog CAP [--find <關鍵字>]: the caption templates
-    if (words[0]?.toUpperCase() === 'CAP') { console.log(formatTemplates(words.slice(1).join(' '))); return; }
+    if (words[0] === 'CAP' || (!find && words[0]?.toUpperCase() === 'CAP')) { console.log(formatTemplates(words.slice(1).join(' '))); return; }
     console.log(find ? formatFind(all, words.join(' ')) : type ? await formatLookup(all, type) : `${formatCatalog(all)}\n\n${describeRecipe()}`);
     return;
   }

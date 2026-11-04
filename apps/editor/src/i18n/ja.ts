@@ -320,6 +320,8 @@ export const ja: Record<Key, string> = {
   'ed.capTrackTip': 'この字幕のテンプレートを同じトラックの全字幕に適用（文字、タイミング、話者はそのまま）',
   'ed.capFilmSetTip': '作品の既定にする：テンプレートを指定していない字幕はこれで描かれる',
   'ed.capSaveTip': 'この字幕の見た目を自分の字幕テンプレートとして保存（文字、タイミング、話者は保存しない）',
+  'ed.capDeleteTip': '自分の字幕テンプレートから削除（使っている作品は自分のコピーを持つ）',
+  'ed.capDeleteAsk': '自分の字幕テンプレート「{name}」を削除しますか？使っている作品には影響しません。',
   'ed.unique': '「{label}」はプロジェクトに1つしか置けません',
   'ed.helpDialog': 'ヘルプ',
   'ed.helpCloseTip': '閉じる (Esc)',

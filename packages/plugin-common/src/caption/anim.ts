@@ -24,8 +24,8 @@ export function lineAnim(animIn: string, animOut: string, local: number, dur: nu
   let opacity = 1, filter = '', clip = '';
   const tf: string[] = [];
   const blurPx = (k: number) => `blur(${(k * 0.3 * fs).toFixed(2)}px)`;
-  // the entrance
-  if (q < 1) {
+  // the entrance (bounce pops over 0.22 s at least, whatever animDur)
+  if (q < 1 || (animIn === 'bounce' && local < 0.22)) {
     switch (animIn) {
       case 'bounce': { const p = prog(local, 0, Math.max(d, 0.22)); opacity = clamp(p * 4); tf.push(`scale(${(0.6 + 0.4 * eBack(p, 1.9)).toFixed(4)})`); break; }
       case 'blur': opacity = eOut3(q); filter = blurPx(1 - eOut3(q)); break;

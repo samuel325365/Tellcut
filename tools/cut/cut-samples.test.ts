@@ -43,6 +43,16 @@ describe('Cut API from the sample films', () => {
     expect(first({ karaoke: false }).params.words).toBeUndefined();
   });
 
+  test('the film template is the script’s to set again on every run, and setting it after speech captions says so', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cut-')), pr = base();
+    (pr.meta as any).captionTemplate = 'clean';
+    expect(new Cut(pr, inv(dir), dir).p.meta.captionTemplate).toBeUndefined();
+    const c = withSpeech([said(0, 'we take the train')]);
+    c.speechCaptions(c.clip('v', { from: 0, len: 3 }));
+    c.captionTemplate('clean');
+    expect(c.notes.join(' ')).toContain("c.captionTemplate('clean')");
+  });
+
   test('speechCaptions breaks at a pause, at a change of speaker and (chunked) after a sentence; maxChars caps a caption; two are never up at once', () => {
     const c = withSpeech([{ start: 0, end: 4, text: ' we got there and it rained', words: [
       { start: 0, end: 0.4, word: ' we' }, { start: 0.5, end: 0.9, word: ' got' }, { start: 1, end: 1.4, word: ' there' },

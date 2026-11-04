@@ -45,6 +45,7 @@ export function applyCaptionTemplate(d: Project, track: string, template: string
       if (it.type !== 'common.caption' || (only && !only.includes(it.id))) continue;
       const params = Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => KEEP.has(k)));
       if (template) params.template = template;
+      if (JSON.stringify(params) === JSON.stringify(it.params ?? {})) continue;
       it.params = params;
       n++;
     }
@@ -69,8 +70,11 @@ export function captionLookParams(p: Project, item: { params?: Record<string, un
 
 /** A template of My caption templates on one caption: copied into the project (meta.captionTemplates, as my-<slug>) and named by
  *  the caption, so the film never reads the library while it plays or exports. */
+/** a short, stable hash of a string (djb2) */
+const hashOf = (s: string) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36).slice(0, 6); };
+
 export function useMyCaptionTemplate(d: Project, track: string, id: string, entry: { slug: string; params: Record<string, unknown> }) {
-  const key = `my-${entry.slug}`, meta = d.meta as any;
+  const key = `my-${entry.slug}-${hashOf(JSON.stringify(entry.params))}`, meta = d.meta as any;
   meta.captionTemplates = { ...(meta.captionTemplates ?? {}), [key]: entry.params };
   applyCaptionTemplate(d, track, key, [id]);
 }

@@ -65,6 +65,11 @@ test('a caption’s look as parameters: its template’s under its own look, wor
   say.params.template = 'neon';
   expect(captionLookParams(p, say, (id) => (id === 'neon' ? { style: 'neon', hl: '#f0f' } : undefined))).toEqual({ style: 'bubble', hl: '#f0f', font: 'Inter' });
   useMyCaptionTemplate(p, 'text', 'say', { slug: 'pink', params: { style: 'neon', hl: '#ff3db8' } });
-  expect(p.meta.captionTemplates).toEqual({ 'my-pink': { style: 'neon', hl: '#ff3db8' } });
-  expect(say.params).toEqual({ text: 'take the train to', words: [[0, 4], [0.5, 9]], template: 'my-pink' });
+  // keyed by its settings too: another template saved later under the same slug never restyles this film's captions
+  const [key] = Object.keys(p.meta.captionTemplates);
+  expect(key).toMatch(/^my-pink-[0-9a-z]+$/);
+  expect(p.meta.captionTemplates[key]).toEqual({ style: 'neon', hl: '#ff3db8' });
+  expect(say.params).toEqual({ text: 'take the train to', words: [[0, 4], [0.5, 9]], template: key });
+  useMyCaptionTemplate(p, 'text', 'say2', { slug: 'pink', params: { style: 'box' } });
+  expect(Object.keys(p.meta.captionTemplates).length).toBe(2);
 });

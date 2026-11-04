@@ -114,6 +114,16 @@ export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: nu
   // what a look or an effect may have set on a word, cleared before this frame's (the underline's bar included)
   const reset = Object.fromEntries([...keysOf(ws), 'backgroundImage', 'backgroundRepeat', 'backgroundPosition', 'backgroundSize'].map((k) => [k, ''])) as Css;
   const typedTo = fx === 'type' ? typedCount(words, local) : Infinity;
+  // characters first (their own looks change the words' widths, which the words below measure): 【marked】 ones hot, typed ones shown, the wave, an entrance that pops them
+  wb.chars.forEach((ch, i) => {
+    const css: Css = { ...(wb.marked[i] ? merge(reset, ws.hot) : {}), ...(ws.char ? ws.char(i, ch.textContent ?? '') : {}) };
+    let op = 1, y = 0, sc = 1;
+    if (fx === 'type') op = i < typedTo ? 1 : 0;
+    if (fx === 'wave') y = Math.sin(2 * Math.PI * (local * 0.9 - i * 0.11)) * 0.07 * o.fs;
+    if (o.animIn === 'pop') { const c = popAt(i, wb.chars.length, local); op *= c.opacity; y += c.rise * 0.32 * o.fs; sc = c.scale; }
+    const moved = y || sc !== 1 ? `translateY(${y.toFixed(2)}px) scale(${sc.toFixed(4)})` : '';
+    cssCamel(ch, { ...css, opacity: op === 1 ? '' : op.toFixed(3), transform: [css.transform, moved].filter(Boolean).join(' ') });
+  });
   words.forEach((w, k) => {
     const said = local >= w.t - 1e-6, isNow = k === now, q = prog(local, w.t, w.t + 0.22);
     let op = 1, y = 0, x = 0, sc = 1, rot = 0, show = true, hot = false, dim = false, onbox = false;
@@ -135,16 +145,6 @@ export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: nu
         transform: x || y || sc !== 1 || rot ? `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${sc.toFixed(4)}) rotate(${rot.toFixed(2)}deg)` : '',
         ...(fx === 'underline' ? underline(w, words[k + 1], local, o.boxColor) : {}) });
     }
-  });
-  // characters: 【marked】 ones hot, typed ones shown, the wave, an entrance that pops them
-  wb.chars.forEach((ch, i) => {
-    const css: Css = { ...(ws.char ? ws.char(i, ch.textContent ?? '') : {}), ...(wb.marked[i] ? merge(reset, ws.hot) : {}) };
-    let op = 1, y = 0, sc = 1;
-    if (fx === 'type') op = i < typedTo ? 1 : 0;
-    if (fx === 'wave') y = Math.sin(2 * Math.PI * (local * 0.9 - i * 0.11)) * 0.07 * o.fs;
-    if (o.animIn === 'pop') { const c = popAt(i, wb.chars.length, local); op *= c.opacity; y += c.rise * 0.32 * o.fs; sc = c.scale; }
-    const moved = y || sc !== 1 ? `translateY(${y.toFixed(2)}px) scale(${sc.toFixed(4)})` : '';
-    cssCamel(ch, { ...css, opacity: op === 1 ? '' : op.toFixed(3), transform: [css.transform, moved].filter(Boolean).join(' ') });
   });
   // lines with nothing shown (one word at a time) take no room
   wb.lines.forEach((line) => { const any = [...line.children].some((c) => c !== wb.box && (c as HTMLElement).style.display !== 'none'); cssCamel(line, { display: any ? '' : 'none' }); });

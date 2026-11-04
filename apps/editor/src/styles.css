@@ -891,3 +891,4 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .cap-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .cap-save { display: flex; gap: 6px; } .cap-save input { flex: 1; min-width: 0; }
 .cap-mine .cap-none { color: var(--accent, #3a86ff); }
+.cap-tile { position: relative; } .cap-del { position: absolute; top: 0; right: 0; padding: 0 4px; font-size: 10px; display: none; } .cap-mine:hover .cap-del { display: block; }

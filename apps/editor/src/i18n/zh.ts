@@ -319,6 +319,8 @@ export const zh = {
   'ed.capTrackTip': '把這個字幕的範本套到同一軌的全部字幕（它們的文字、時間和說話者不變）',
   'ed.capFilmSetTip': '設成整支片的預設：沒指定範本的字幕都照它畫',
   'ed.capSaveTip': '把這個字幕的外觀存成我的字幕範本（文字、時間和說話者不存）',
+  'ed.capDeleteTip': '從我的字幕範本刪掉（已經用了它的影片保留自己的副本）',
+  'ed.capDeleteAsk': '刪掉我的字幕範本「{name}」？用了它的影片不受影響。',
   'ed.unique': '「{label}」在專案裡只能有一個',
   'ed.helpDialog': '使用說明',
   'ed.helpCloseTip': '關閉 (Esc)',

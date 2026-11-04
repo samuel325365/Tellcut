@@ -13,7 +13,7 @@ const fileOf = (root: string, slug: string) => {
   return join(captionsDir(root), `${slug}.json`);
 };
 /** what a caption template may set: its look, never a caption's own words, timing or speaker */
-const OWN = new Set(['text', 'words', 'speaker', 'name', 'role', 'tag', 'gloss', 'template']);
+const OWN = new Set(['text', 'words', 'speaker', 'name', 'role', 'tag', 'gloss', 'quote', 'point', 'y', 'align', 'tint', 'template']);
 
 export function listCaptions(root: string): CaptionEntry[] {
   let names: string[] = [];

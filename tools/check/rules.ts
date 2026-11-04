@@ -3,7 +3,7 @@
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { allItems, envelopeAt, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
-import { PANEL_FRAME } from '@tellcut/plugin-common';
+import { PANEL_FRAME, templateOf } from '@tellcut/plugin-common';
 import { heardSpeech } from '../cut/mix.ts';
 
 export type Level = 'error' | 'warn' | 'note';
@@ -228,6 +228,11 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   if (usesCommon && !p.meta.theme) out.push({ level: 'note', msg: '用了共用積木（common.*）但專案沒設 theme，全部用預設風格；要統一風格請在 cut.ts 用 c.theme({...})' });
   if (o.knownFonts) for (const [slot, f] of Object.entries(p.meta.theme?.fonts ?? {}))
     if (f && !o.knownFonts.includes(f)) out.push({ level: 'warn', msg: `theme 的字型 ${slot}「${f}」不在已下載的字型裡（${o.knownFonts.join('、')}），預覽和匯出可能退回別的字型` });
+  // caption templates (spec 2026-11-04-caption-styles): an id that is neither built in nor the project's own draws the plain look, silently
+  const own = (p.meta as { captionTemplates?: Record<string, unknown> }).captionTemplates ?? {}, known = (id: string) => !!templateOf(id) || id in own;
+  if (p.meta.captionTemplate && !known(p.meta.captionTemplate)) out.push({ level: 'warn', msg: `專案的字幕範本「${p.meta.captionTemplate}」不存在，字幕會用預設外觀：npm run tellcut -- catalog CAP 列出全部（template 填 id，不是 CAP-xx 代號）` });
+  const bad = allItems(p).filter(({ item }) => (item as { type?: string }).type === 'common.caption' && typeof (item as any).params?.template === 'string' && (item as any).params.template && !known((item as any).params.template));
+  if (bad.length) out.push({ level: 'warn', t: span(bad[0].item.id), ids: bad.map((x) => x.item.id), msg: `字幕的範本「${(bad[0].item as any).params.template}」不存在（${bad.length} 個字幕）：npm run tellcut -- catalog CAP 列出全部，template 填 id` });
   return byTime(out);
 }
 

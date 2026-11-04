@@ -47,6 +47,9 @@ const STYLE_IDS = LOOKS.map((l) => l.id);
 /** an element's inline style gone, and cssCamel's memory of it (else it would skip setting the same values again) */
 const clearStyle = (el: HTMLElement) => { el.removeAttribute('style'); delete (el as unknown as { _c?: unknown })._c; };
 /** what a look's box() may set beyond the basics, cleared first: switching looks on a caption leaves nothing of the last one */
+/** what of a look's box() decides the words' size (set before word effects measure them) */
+const FONT_KEYS = new Set(['letterSpacing', 'wordSpacing', 'textTransform', 'lineHeight', 'fontStyle']);
+/** cleared in a call of its own before the box is styled: in one object a reset key would land after the look's background shorthand and wipe it */
 const LOOK_RESET = { boxShadow: '', backdropFilter: '', letterSpacing: '', wordSpacing: '', textTransform: '', minWidth: '', borderLeft: '', backgroundColor: '', backgroundImage: '', backgroundSize: '', lineHeight: '1.25' };
 
 export const caption: ItemType<CaptionP, CaptionS> = {
@@ -136,6 +139,11 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     const fit = layoutMarkup(text, room / px / hs / oneFit, fx === 'one' ? 12 : 2, st.typed, lit);
     if (oneFit < 1) fit.scale *= oneFit;
     const fs = px * fit.scale, la = lineAnim(p.animIn, p.animOut, ctx.local, ctx.dur, p.animDur, fs), e: LookEnv = { ...pre, fs, opacity: st.opacity * la.opacity };
+    // the font first: word effects measure the words (a growing word's room, the sliding box), which must already be in it
+    const sfont = styleFontOf(p.style, p.styleFont, !!ctx.item?.params?.font || p.font !== ctx.params.font), boxCss = look.box?.(e) ?? {};
+    cssCamel(s.box, LOOK_RESET);
+    cssCamel(s.box, { fontFamily: `'${sfont || p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${e.fs.toFixed(2)}px`, fontWeight: look.weight ?? '900', fontStyle: p.quote ? 'italic' : 'normal',
+      ...Object.fromEntries(Object.entries(boxCss).filter(([k]) => FONT_KEYS.has(k))) });
     cssCamel(s.text.el, { display: wordMode ? 'none' : '' });
     cssCamel(s.words.el, { display: wordMode ? '' : 'none' });
     if (wordMode) {
@@ -183,7 +191,6 @@ export const caption: ItemType<CaptionP, CaptionS> = {
       margin: `${(0.1 / gs).toFixed(4)}em 0 0`, webkitTextStroke: '', padding: '', background: '', borderRadius: '', boxShadow: '', transform: '', ...gl, display: p.gloss ? gl.display ?? 'block' : 'none' });
     // a look that pops in by itself (auto, big) fades in with it
     const pq = prog(ctx.local, 0, 0.14), sc = look.popScale?.(ctx.local), pin = sc !== undefined ? ` scale(${sc.toFixed(4)})` : look.pin?.(e) ?? '';
-    const sfont = styleFontOf(p.style, p.styleFont, !!ctx.item?.params?.font || p.font !== ctx.params.font);
     // point: a chip in the speaker's colour at the left, an arrow toward them over their name
     cssCamel(s.chip, { display: point ? 'flex' : 'none', width: '1.5em', height: '2.05em', gap: '0.13em', borderRadius: '0.3em', background: p.speaker ? who : theme.palette.accent, transform: 'translateY(-50%)' });
     if (point) {
@@ -194,10 +201,7 @@ export const caption: ItemType<CaptionP, CaptionS> = {
       s.chipName.textContent = p.name ?? '';
       cssCamel(s.chipName, { display: p.name ? 'block' : 'none', fontSize: `${Math.min(0.47, 1.25 / Math.max(1, [...(p.name ?? '')].length)).toFixed(3)}em`, color: p.bubbleBg });
     }
-    const boxCss = look.box?.(e) ?? {};
     if (la.filter) boxCss.filter = [boxCss.filter, la.filter].filter(Boolean).join(' ');
-    // cleared in a call of its own: in one object a reset key would land after the look's background shorthand and wipe it
-    cssCamel(s.box, LOOK_RESET);
     cssCamel(s.box, {
       top: place.top, bottom: place.bottom, maxWidth: `${width}px`, opacity: String(st.opacity * la.opacity * (look.popScale ? pq : 1)), left: left ? `${theme.safe.side * W}px` : '50%', textAlign: left ? 'left' : 'center',
       transform: `translate(${left ? `${st.x}px` : `calc(-50% + ${st.x}px)`}, calc(${place.yAnchor} + ${st.y}px))${pin}${la.transform}`, transformOrigin: look.origin ?? (left ? '0 100%' : '50% 100%'), clipPath: look.clip?.(e) ?? (la.clip || 'none'),

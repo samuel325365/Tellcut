@@ -93,6 +93,9 @@ const fileHash = (dir: string) => { const f = join(dir, 'project.json'); return 
 /** project.json changed while the cut ran (save() refuses to write over it): tools/cut.ts prints the message */
 export class EditedDuringCut extends Error {}
 
+/** every caption item of the cut, any track */
+const allCaptions = (p: Project) => p.tracks.flatMap((t) => t.items as Array<{ type?: string }>).filter((i) => i.type === 'core.caption' || i.type === 'common.caption');
+
 export class Cut {
   private cursor = 0;
   private end = 0;
@@ -128,6 +131,7 @@ export class Cut {
     // (generated narration/music no item uses any more is dropped at save(), see pruneGenerated)
     delete this.p.meta.theme;
     delete this.p.meta.fx;
+    delete this.p.meta.captionTemplate;   // likewise c.captionTemplate(); the project's own copies (captionTemplates) stay
   }
   /** Generated narration and music (media/voice/…, media/score-…) that no item uses: an earlier run's, dropped. Imported media
    *  stays, and so does a score made by `npm run score` that the script uses through c.music(). */
@@ -628,6 +632,8 @@ export class Cut {
     const by = idOfHandle(id), want = by?.startsWith('caption:') ? by.slice(8) : id;
     if (!templateOf(want) && !(this.p.meta.captionTemplates as Record<string, unknown> | undefined)?.[want]) throw new Error(`沒有「${id}」這個字幕範本：npm run tellcut -- catalog CAP 列出全部`);
     this.p.meta.captionTemplate = want;
+    // speech captions made before this call were made as core.caption: they must come after it
+    if (allCaptions(this.p).some((i) => i.type === 'core.caption')) this.notes.push(`c.captionTemplate('${want}') 在 speechCaptions 之後才呼叫：之前做的講話字幕還是 core.caption，請把它移到 cut.ts 前面`);
     return this;
   }
 
