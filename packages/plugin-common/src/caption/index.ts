@@ -136,8 +136,9 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     // one word at a time: the line is never shrunk to fit whole, only so that its longest word fits on a line of its own
     const plain = charKinds(text).map((c) => c.c).join(''), list = hasWords ? wordsOf(p.words, [...plain].length, plain) : evenWords(plain, ctx.dur);
     const oneFit = fx === 'one' ? Math.min(1, room / px / Math.max(1e-6, ...list.map((w) => textEm([...plain].slice(w.a, w.b).join('').trim()) * 1.08))) : 1;
-    const fit = layoutMarkup(text, room / px / hs / oneFit, fx === 'one' ? 12 : 2, st.typed, lit);
-    if (oneFit < 1) fit.scale *= oneFit;
+    // one word at a time: one line (the words not being said are hidden), never broken inside a word (extrude-one split missed.)
+    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, room / px / hs, 2, st.typed, lit);
+    if (fx === 'one') fit.scale = oneFit;
     const fs = px * fit.scale, la = lineAnim(p.animIn, p.animOut, ctx.local, ctx.dur, p.animDur, fs), e: LookEnv = { ...pre, fs, opacity: st.opacity * la.opacity };
     // the font first: word effects measure the words (a growing word's room, the sliding box), which must already be in it
     const sfont = styleFontOf(p.style, p.styleFont, !!ctx.item?.params?.font || p.font !== ctx.params.font), boxCss = look.box?.(e) ?? {};

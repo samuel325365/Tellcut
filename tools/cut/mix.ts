@@ -42,9 +42,19 @@ export function heardSpeech(p: Project, transcriptOf: (source: string) => Transc
       const tr = transcriptOf(c.source);
       if (!tr || c.muted) continue;
       const [cs, ce] = at(c.id), level = (c.gain ?? 0) + ((t as { gain?: number }).gain ?? 0);
+      const film = (s: number) => cs + (s - c.in) / c.rate, srcEnd = c.in + (ce - cs) * c.rate;
       for (const seg of tr.segments) {
         if (!seg.text.trim()) continue;
-        const a = Math.max(cs, cs + (seg.start - c.in) / c.rate), b = Math.min(ce, cs + (seg.end - c.in) / c.rate);
+        // with word times, only the words the clip plays: a sentence its in or out point cuts is heard as the part inside (its
+        // whole text matched check's caption of that part to another sentence: acceptance films cap-acc-trip, cap-acc-rome)
+        const inside = seg.words?.filter((w) => { const m = (w.start + w.end) / 2; return m >= c.in && m <= srcEnd; });
+        if (seg.words?.length && inside) {
+          if (!inside.length) continue;
+          const a = Math.max(cs, film(inside[0].start)), b = Math.min(ce, film(inside[inside.length - 1].end));
+          if (b - a >= 0.3) out.push({ item: c, level, t: [a, b], text: inside.map((w) => w.word).join('').replace(/\s+/g, ' ').trim() });
+          continue;
+        }
+        const a = Math.max(cs, film(seg.start)), b = Math.min(ce, film(seg.end));
         if (b - a >= 0.3) out.push({ item: c, level, t: [a, b], text: seg.text.trim() });
       }
     }

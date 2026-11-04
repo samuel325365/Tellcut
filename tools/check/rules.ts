@@ -113,7 +113,10 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
     .map((it) => ({ id: it.id, t: span(it.id), text: String(it.params.text).replace(/[【】{}]/g, '') }));
   const matched = new Set<(typeof heard)[number]>();
   for (const c of captions) {
-    const near = heard.filter((h) => h.t[1] > c.t[0] - 10 && h.t[0] < c.t[1] + 10).map((h) => ({ h, sim: similarity(c.text, h.text) }));
+    // a caption showing part of what is heard (speechCaptions cuts a sentence into pieces) is that sentence: Dice over the
+    // whole sentence scored the piece low, and a shorter line nearby won (acceptance film cap-acc-rome)
+    const flat = (x: string) => x.toLowerCase().replace(/[\s\p{P}\p{S}]/gu, ''), mine = flat(c.text);
+    const near = heard.filter((h) => h.t[1] > c.t[0] - 10 && h.t[0] < c.t[1] + 10).map((h) => ({ h, sim: mine.length >= 2 && flat(h.text).includes(mine) ? 1 : similarity(c.text, h.text) }));
     const top = Math.max(0, ...near.map((x) => x.sim));
     if (top < 0.6) continue;
     // a phrase said more than once is the time it is nearest to (a demo's 這個深度 was matched to its first time, 10 s earlier)
