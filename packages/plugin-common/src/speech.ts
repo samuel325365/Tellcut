@@ -133,6 +133,10 @@ export function captionPlan(tr: Transcript, pieces: SpeechPiece[], o: CaptionOpt
         if (!spans.some(([a, b]) => a < cut && cut < b)) lone.ws.unshift(before.ws.pop()!);
       }
     }
+    // a last piece said in under 0.3 s ("I made" at a sentence's end) joins the one before, whatever maxChars: shorter than a
+    // caption may be, it was dropped below, and its words with it (acceptance film cap-acc-trip, 2026-11-05)
+    const tail = groups[groups.length - 1], z0 = tail.ws[tail.ws.length - 1];
+    if (groups.length > 1 && (z0 === all[all.length - 1] ? seg.end : z0.end) - tail.ws[0].start < 0.3) groups[groups.length - 2].ws.push(...groups.pop()!.ws);
     if (groups.length === 1 && ws.length === all.length) return [seg];
     return groups.map((g, k) => {
       const a = g.ws[0], z = g.ws[g.ws.length - 1], next = groups[k + 1];

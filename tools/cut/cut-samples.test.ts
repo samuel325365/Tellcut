@@ -53,6 +53,14 @@ describe('Cut API from the sample films', () => {
     expect(c.notes.join(' ')).toContain("c.captionTemplate('clean')");
   });
 
+  test('a last piece said in under 0.3 s joins the one before instead of being lost (maxChars)', () => {
+    // cap-acc-trip: "… easy on us, so I made" with maxChars 36 lost "I made" (0.26 s)
+    const ws = ' I wanted to make it easy on us so I made'.split(' ').slice(1), at = [0, 0.22, 0.48, 0.6, 0.72, 0.8, 0.98, 1.18, 1.4, 1.86, 1.96, 2.12];
+    const c = withSpeech([{ start: 0, end: 2.12, text: ' ' + ws.join(' '), words: ws.map((w, k) => ({ start: at[k], end: at[k + 1], word: ' ' + w })) }]);
+    const got = caps(c, c.speechCaptions(c.clip('v', { from: 0, len: 3 }), { maxChars: 36 })).map((x) => x[0]).join(' ');
+    expect(got).toBe('I wanted to make it easy on us so I made');
+  });
+
   test('speechCaptions breaks at a pause, at a change of speaker and (chunked) after a sentence; maxChars caps a caption; two are never up at once', () => {
     const c = withSpeech([{ start: 0, end: 4, text: ' we got there and it rained', words: [
       { start: 0, end: 0.4, word: ' we' }, { start: 0.5, end: 0.9, word: ' got' }, { start: 1, end: 1.4, word: ' there' },

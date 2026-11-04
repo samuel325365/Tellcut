@@ -34,8 +34,9 @@ export const frost: CaptionLook = {
     boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14)' }),
 };
 
-/** a film's subtitle: medium weight, slightly spaced, a tight dark shadow, nothing else */
+/** a film's subtitle: medium weight, slightly spaced, a tight dark shadow in a soft dark halo, nothing else */
 export const cinema: CaptionLook = {
   id: 'cinema', weight: '500',
-  box: (e) => ({ textShadow: `0 ${(0.04 * e.fs).toFixed(1)}px ${(0.1 * e.fs).toFixed(1)}px rgba(0,0,0,0.9)`, letterSpacing: '0.04em' }),
+  // a soft dark halo under the tight shadow: white on a bright sky stays readable (acceptance film cap-acc-trip)
+  box: (e) => ({ textShadow: `0 ${(0.04 * e.fs).toFixed(1)}px ${(0.1 * e.fs).toFixed(1)}px rgba(0,0,0,0.9), 0 0 ${(0.3 * e.fs).toFixed(1)}px rgba(0,0,0,0.6), 0 0 ${(0.12 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)`, letterSpacing: '0.04em' }),
 };
