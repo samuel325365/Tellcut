@@ -63,6 +63,15 @@ test('fonts: a full fonts.css from an older install, but without the TTF the 3D 
   expect(checkFonts(dir, ['Inter-700.ttf']).ok).toBe(true);
 });
 
+test('fonts: a family the plugins added after the last download is named, so npm run fonts gets it', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fonts-'));
+  writeFileSync(join(dir, 'fonts.css'), "@font-face {\n  font-family: 'Noto Sans TC';\n  src: url(files/a.woff2);\n}\n@font-face { font-family: Bangers; src: url(files/b.woff2); }");
+  expect(checkFonts(dir, [], ['Noto Sans TC', 'Bangers']).ok).toBe(true);
+  const c = checkFonts(dir, [], ['Noto Sans TC', 'Iansui', 'Press Start 2P']);
+  expect(c).toMatchObject({ ok: false, fix: expect.stringContaining('npm run fonts') });
+  expect(c.detail).toContain('Iansui、Press Start 2P');
+});
+
 test('Windows and macOS are both supported systems; anything else is told so', () => {
   expect(checkPlatform('win32', '10.0.26100')).toEqual({ name: 'Windows', ok: true, detail: 'win32' });   // as before macOS support
   expect(checkPlatform('darwin', '25.5.0')).toEqual({ name: 'macOS', ok: true, detail: 'Darwin 25.5.0' });

@@ -120,14 +120,22 @@ export function checkWhisperModel(model: string): Check {
 /** fonts.css with its faces: one with none (an offline download used to write that, review R4-T2) leaves every font to the system.
  *  `named`: font files kept under their own name in files/ with no @font-face (INTER_3D, the TTF ThreeKit's loadFont and word3d extrude 3D letters from).
  *  An install from before they were added has a full fonts.css but not them, and the 3D letters quietly become cut-outs. */
-export function checkFonts(dir = join(TELLCUT_ROOT, 'apps', 'player', 'public', 'fonts'), named: string[] = []): Check {
+export function checkFonts(dir = join(TELLCUT_ROOT, 'apps', 'player', 'public', 'fonts'), named: string[] = [], families: string[] = []): Check {
   let css: string;
   try { css = readFileSync(join(dir, 'fonts.css'), 'utf8'); } catch { return { name: '字型', ok: false, detail: '還沒下載', fix: 'npm run setup（或 npm run fonts）' }; }
   const faces = css.match(/@font-face/g)?.length ?? 0;
   if (!faces) return { name: '字型', ok: false, detail: 'fonts.css 是空的：預覽和輸出會退回系統字型', fix: '連上網路後跑 npm run fonts' };
   const missing = named.filter((n) => !existsSync(join(dir, 'files', n)));
-  return missing.length ? { name: '字型', ok: false, detail: `少了 ${missing.join('、')}：立體商標的英文字母會變成切字`, fix: '連上網路後跑 npm run fonts' }
+  if (missing.length) return { name: '字型', ok: false, detail: `少了 ${missing.join('、')}：立體商標的英文字母會變成切字`, fix: '連上網路後跑 npm run fonts' };
+  // a family added after the last download (the caption looks' fonts, 2026-11-05): its words fall back to another font
+  const absent = families.filter((f) => !new RegExp(`font-family:\\s*['"]?${f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*;`).test(css));
+  return absent.length ? { name: '字型', ok: false, detail: `少了 ${absent.join('、')}：用到它的字幕和積木會換成別的字型`, fix: '連上網路後跑 npm run fonts' }
     : { name: '字型', ok: true, detail: `apps/player/public/fonts（${faces} 個字面）` };
+}
+/** the font families the plugins load from Google Fonts ('Noto Sans TC:wght@500' → Noto Sans TC) */
+async function googleFamilies(): Promise<string[]> {
+  const { plugins } = await import('@tellcut/plugins');
+  return [...new Set(plugins.flatMap((p) => p.fonts ?? []).flatMap((f) => (typeof f === 'string' ? [f.split(':')[0]] : [])))];
 }
 /** the font files the plugins keep under their own name (FontSpec.file) */
 async function namedFonts(): Promise<string[]> {
@@ -191,6 +199,6 @@ export async function allChecks(o: { whisperModel: string }): Promise<Check[]> {
   const [ffmpeg, uv, claude] = await Promise.all([checkFfmpeg(), checkUv(), checkClaude()]);
   const python = await checkPython();
   const config = loadProvidersConfig();
-  const [faces, ocr, named] = await Promise.all([providerCheck('人臉偵測', facesProvider(config)), providerCheck('文字辨識', ocrProvider(config)), namedFonts().catch(() => [])]);
-  return [checkPlatform(), checkNode(), checkNpm(), uv, ...ffmpeg, python, checkWhisperModel(o.whisperModel), faces, ocr, checkFonts(undefined, named), ...checkBuilds(), checkChrome(), claude];
+  const [faces, ocr, named, families] = await Promise.all([providerCheck('人臉偵測', facesProvider(config)), providerCheck('文字辨識', ocrProvider(config)), namedFonts().catch(() => []), googleFamilies().catch(() => [])]);
+  return [checkPlatform(), checkNode(), checkNpm(), uv, ...ffmpeg, python, checkWhisperModel(o.whisperModel), faces, ocr, checkFonts(undefined, named, families), ...checkBuilds(), checkChrome(), claude];
 }
