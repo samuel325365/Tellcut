@@ -43,6 +43,15 @@ test('a missing golden is new, update writes it, the same picture is ok, a diffe
   expect((await runGolden([flash('#f00')], o)).map((r) => r.status)).toEqual(['ok']);
 }, 180000);
 
+test('cases drawn side by side in one Chrome come back in case order, each with its own picture', async () => {
+  const flash = (name: string, color: string): GoldenCase => ({ name, type: 'core.flash', params: { color, peak: 1 }, len: 1, at: [0.1] });
+  const cases = [flash('a', '#fff'), flash('b', '#f00'), flash('c', '#00f')], o = { registry, goldenDir: dir, work, jobs: 3 };
+  expect((await runGolden(cases, { ...o, update: true })).map((r) => [r.file, r.status])).toEqual(cases.map((c) => [goldenFile(c, 0.1), 'updated']));
+  expect((await runGolden(cases, o)).map((r) => r.status)).toEqual(['ok', 'ok', 'ok']);
+  // each picture is its own case's: b drawn white no longer matches
+  expect((await runGolden([flash('b', '#fff')], o)).map((r) => r.status)).toEqual(['changed']);
+}, 180000);
+
 test('a system with pictures of its own (macOS) keeps them beside the shared ones and never writes those', async () => {
   expect(goldenPlatformDir('/g', 'darwin')).toBe(join('/g', 'darwin'));
   expect(goldenPlatformDir('/g', 'win32')).toBeUndefined();

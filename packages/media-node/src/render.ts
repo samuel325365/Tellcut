@@ -2,7 +2,7 @@
 // in headless Chrome, pipes every frame into ffmpeg, renders the WebAudio mix offline and muxes the final MP4.
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeSync, existsSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
-import { chromium } from 'playwright-core';
+import { chromium, type Browser, type BrowserContext } from 'playwright-core';
 import { createStaticServer } from './static-server.ts';
 import { pullPcm, pullWav, wavTooLong, type PcmFormat } from './wav.ts';
 import { abortError, ffmpegProcess, measureLoudness, run } from './ffmpeg.ts';
@@ -65,9 +65,12 @@ export function stageCapture(w: number, h: number, platform: NodeJS.Platform = p
   return platform === 'darwin' ? { viewport: { width: w, height: h + MAC_PAD }, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } } : { viewport: { width: w, height: h } };
 }
 
-/** `size`: the stage size when it is known (the project's): the page opens at it directly, without a first page to measure it. */
-export async function openPage(path: string, api: '__tellcut' | '__app', o: { signal?: AbortSignal; readyTimeout?: number; size?: { w: number; h: number } } = {}): Promise<PageSession> {
-  if (api === '__tellcut' && !existsSync(join(TELLCUT_ROOT, 'apps/player/dist/index.html'))) throw new Error('Player not built: run `npm run build:player` in tellcut/');
+/** A headless Chrome and the static server of the tellcut folder, which several pages can share: each page then opens in a
+ *  context of its own and closing it leaves both running (golden draws hundreds of short pages; starting Chrome for each one
+ *  was 43% of its time). Whoever opened the host closes it. */
+export interface PageHost { browser: Browser; port: number; close(): Promise<void> }
+
+export async function openHost(o: { signal?: AbortSignal } = {}): Promise<PageHost> {
   if (o.signal?.aborted) throw abortError();
   const server = createStaticServer(TELLCUT_ROOT);
   const port = await server.listen(0);
@@ -76,10 +79,28 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
     // macOS: headless Chrome has no WebGL unless told to use the GPU through Metal (shader and 3D blocks would fall back)
     args: ['--autoplay-policy=no-user-gesture-required', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb', '--disable-background-timer-throttling', '--disable-lcd-text',
       ...(process.platform === 'darwin' ? ['--use-angle=metal'] : [])] });
-  let browser: Awaited<typeof launching>;
+  let browser: Browser;
   // starting Chrome is cancellable too (under load it takes seconds); one that comes up after the cancel is closed
   try { browser = await guard(launching, { signal: o.signal, ms: 120000, what: 'Starting Chrome' }); }
   catch (e) { void launching.then((b) => b.close()).catch(() => {}); await server.close(); throw e; }
+  return { browser, port, close: async () => { await browser.close().catch(() => {}); await server.close(); } };
+}
+
+/** `size`: the stage size when it is known (the project's): the page opens at it directly, without a first page to measure it.
+ *  `host`: open the page in this Chrome (a context of its own, closed with the page) instead of starting one for it. */
+export async function openPage(path: string, api: '__tellcut' | '__app', o: { signal?: AbortSignal; readyTimeout?: number; size?: { w: number; h: number }; host?: PageHost } = {}): Promise<PageSession> {
+  if (api === '__tellcut' && !existsSync(join(TELLCUT_ROOT, 'apps/player/dist/index.html'))) throw new Error('Player not built: run `npm run build:player` in tellcut/');
+  if (o.signal?.aborted) throw abortError();
+  const own = o.host ? undefined : await openHost({ signal: o.signal });
+  const { browser, port } = o.host ?? own!;
+  const contexts: BrowserContext[] = [];
+  /** a page in a context of its own (what browser.newPage does too), so a shared Chrome closes only this page's */
+  const newPage = async (viewport: { width: number; height: number }) => {
+    const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+    contexts.push(ctx);
+    return ctx.newPage();
+  };
+  const release = async () => { if (own) await own.close(); else await Promise.all(contexts.map((c) => c.close().catch(() => {}))); };
   try {
     const url = `http://127.0.0.1:${port}${path}`;
     // navigation too stays cancellable: under load a page load can take long, and the player waits for itself below
@@ -87,7 +108,7 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
     // The page must open AT the stage size: resizing a headless page afterwards lets Chrome on Windows clamp captures
     // to the window size (1920×1080 came out as 1898×982). Unknown size: measure it on a throwaway page first.
     const measure = async () => {
-      const probe = await browser.newPage({ viewport: { width: 1920, height: 1920 }, deviceScaleFactor: 1 });
+      const probe = await newPage({ width: 1920, height: 1920 });
       // until its project loads the stage is an empty block as wide as the window and 0 high: wait for both sides
       await guard(probe.goto(url, { waitUntil: 'domcontentloaded' }), load);
       const sized = probe.waitForFunction(() => { const s = document.getElementById('stage'); return !!s && s.offsetWidth > 0 && s.offsetHeight > 0; }, null, { timeout: 0 });
@@ -97,13 +118,13 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
       sized.catch(() => {}); failed.catch(() => {});
       await guard(Promise.race([sized, failed]), load);
       const s = await probe.evaluate(() => { const el = document.getElementById('stage')!; return { w: el.offsetWidth, h: el.offsetHeight }; });
-      await probe.close();
+      await probe.context().close();
       return s;
     };
     const size = o.size ?? await measure();
     // macOS: the page opens taller and each capture is clipped to the stage, which sits at 0,0 in render mode (stageCapture)
     const MAC = process.platform === 'darwin', capture = stageCapture(size.w, size.h);
-    const page = await browser.newPage({ viewport: capture.viewport, deviceScaleFactor: 1 });
+    const page = await newPage(capture.viewport);
     page.on('pageerror', (e) => console.log('[pageerror]', e.message));
     // a missing file is reported with its address (the console's own line does not say which file)
     page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon') && !m.text().startsWith('Failed to load resource')) console.log('[page]', m.text()); });
@@ -141,12 +162,12 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
         try { return await pull((b) => { for (let o = 0; o < b.length;) o += writeSync(fd, b, o); }, w); } finally { closeSync(fd); }
       },
       layout: () => page.evaluate((a) => (window as any)[a].layout(), api),
-      close: async () => { await browser.close(); await server.close(); },
+      close: release,
     };
   } catch (e) {
     // a cancel is answered at once (closing Chrome under load takes seconds); Chrome and the server still close, behind it
-    if (o.signal?.aborted) { void browser.close().catch(() => {}).then(() => server.close()); throw e; }
-    await browser.close(); await server.close();
+    if (o.signal?.aborted) { void release(); throw e; }
+    await release();
     throw e;
   }
 }

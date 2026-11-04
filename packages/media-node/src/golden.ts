@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { parseProject, type Project, type Registry, type ThemeInput } from '@tellcut/engine';
 import { ffmpeg } from './ffmpeg.ts';
+import { openHost, type PageHost } from './render.ts';
 import { withProjectPage } from './stills.ts';
 
 export const GOLDEN_W = 270, GOLDEN_H = 480;
@@ -76,61 +77,83 @@ type MadeBeside = Record<string, string | null>;
 const besideFile = (platformDir: string) => join(platformDir, 'shared.json');
 const hashOf = (file: string) => (existsSync(file) ? createHash('sha256').update(readFileSync(file)).digest('hex') : null);
 
-export async function runGolden(cases: GoldenCase[], o: { registry: Registry; goldenDir: string; platformDir?: string; work: string; update?: boolean; log?: (s: string) => void;
+/** how many cases are drawn at once (TELLCUT_GOLDEN_JOBS or `jobs` sets another number) */
+export const GOLDEN_JOBS = 4;
+
+export async function runGolden(cases: GoldenCase[], o: { registry: Registry; goldenDir: string; platformDir?: string; work: string; update?: boolean; log?: (s: string) => void; jobs?: number;
   /** where the cases' pictures are (default goldenDir; the gallery's translated thumbnails are kept apart from them) */ sourceDir?: string }): Promise<GoldenResult[]> {
   const beside: MadeBeside = o.platformDir && existsSync(besideFile(o.platformDir)) ? JSON.parse(readFileSync(besideFile(o.platformDir), 'utf8')) : {};
   let besideChanged = false;
   mkdirSync(o.work, { recursive: true });
   mkdirSync(o.goldenDir, { recursive: true });
-  const tmp = mkdtempSync(join(tmpdir(), 'golden-')), out: GoldenResult[] = [];
+  const tmp = mkdtempSync(join(tmpdir(), 'golden-'));
+  // One Chrome for the whole run, and a few cases drawn side by side (each picture is a fixed moment, so the order does not
+  // matter): starting Chrome for every case and drawing one at a time made 663 pictures take 17 minutes. Each worker has a
+  // work folder of its own, as cases copy their pictures in under the same names.
+  const jobs = Math.max(1, Math.min(o.jobs ?? (Number(process.env.TELLCUT_GOLDEN_JOBS) || GOLDEN_JOBS), cases.length));
+  const perCase: GoldenResult[][] = cases.map(() => []);
+  let host: PageHost | undefined;
   try {
-    for (const c of cases) {
-      for (const [id, s] of Object.entries(c.sources ?? {})) { mkdirSync(join(o.work, 'media'), { recursive: true }); copyFileSync(join(o.sourceDir ?? o.goldenDir, s.file), join(o.work, sourcePath(id, s.file))); }
-      await withProjectPage({ dir: o.work, project: goldenProject(c), registry: o.registry, log: o.log }, async (s) => {
-        for (const t of c.at) {
-          await s.frame(Math.round(t * s.fps));
-          const fresh = join(tmp, 'fresh.png');
-          writeFileSync(fresh, await s.png());
-          const name = goldenFile(c, t), shared = join(o.goldenDir, name), own = o.platformDir && join(o.platformDir, name);
-          const save = async (to: string) => { mkdirSync(join(to, '..'), { recursive: true }); await ffmpeg(['-y', '-i', fresh, '-vf', `scale=${sizeOf(c)}:flags=area`, to]); };
-          if (own) {
-            // A system with pictures of its own matches either its own or the shared one (Windows' may have moved on since).
-            // An update writes its own folder only, and only where it differs from the shared picture: the shared pictures
-            // stay Windows', and a new case gets its shared one from an update there.
-            const raw = await rawOf(fresh, sizeOf(c)), sharedHash = hashOf(shared);
-            // an own picture made beside another shared picture than today's is out of date: as if there were none
-            const ownValid = existsSync(own) && name in beside && beside[name] === sharedHash;
-            const vsShared = sharedHash !== null ? diffShare(raw, await rawOf(shared, sizeOf(c))) : null;
-            const vsOwn = ownValid ? diffShare(raw, await rawOf(own, sizeOf(c))) : null;
-            const known = [vsShared, vsOwn].filter((x): x is number => x !== null), best = known.length ? Math.min(...known) : null;
-            if (!o.update) { out.push(best === null ? { file: name, status: 'new', share: 1 } : { file: name, status: best <= GOLDEN_SHARE ? 'ok' : 'changed', share: best }); continue; }
-            if (vsShared !== null && vsShared <= GOLDEN_SHARE) {
-              const had = existsSync(own) || name in beside;
-              if (had) { rmSync(own, { force: true }); delete beside[name]; besideChanged = true; }
-              out.push({ file: name, status: had ? 'updated' : 'ok', share: vsShared });
-            } else if (vsOwn === 0) out.push({ file: name, status: 'ok', share: 0 });
-            else { await save(own); beside[name] = sharedHash; besideChanged = true; out.push({ file: name, status: 'updated', share: vsOwn ?? vsShared ?? 0 }); }
-            continue;
-          }
-          const gold = shared;
-          if (!existsSync(gold)) {
-            if (o.update) { await save(gold); out.push({ file: name, status: 'updated', share: 0 }); } else out.push({ file: name, status: 'new', share: 1 });
-            continue;
-          }
-          const share = diffShare(await rawOf(fresh, sizeOf(c)), await rawOf(gold, sizeOf(c)));
-          if (o.update) { await save(gold); out.push({ file: name, status: share > 0 ? 'updated' : 'ok', share }); }   // an update keeps the newest picture even when it was within the tolerance
-          else out.push({ file: name, status: share <= GOLDEN_SHARE ? 'ok' : 'changed', share });
-        }
-      });
-    }
-    return out;
+    host = await openHost();
+    let next = 0, failed = false, error: unknown;
+    const worker = async (k: number) => {
+      const work = join(o.work, `w${k}`), fresh = join(tmp, `fresh-${k}.png`);
+      mkdirSync(work, { recursive: true });
+      while (!failed && next < cases.length) {
+        const i = next++;
+        try { await drawCase(cases[i], work, fresh, perCase[i]); } catch (e) { if (!failed) { failed = true; error = e; } }
+      }
+    };
+    await Promise.all(Array.from({ length: jobs }, (_, k) => worker(k)));
+    if (failed) throw error;
+    return perCase.flat();
   } finally {
+    await host?.close();
     rmSync(tmp, { recursive: true, force: true });
     // kept even when a later case failed: the pictures written so far are on disk
     if (o.platformDir && besideChanged) {
       mkdirSync(o.platformDir, { recursive: true });
       writeFileSync(besideFile(o.platformDir), `${JSON.stringify(Object.fromEntries(Object.entries(beside).sort(([a], [b]) => a.localeCompare(b))), null, 2)}\n`);
     }
+  }
+
+  async function drawCase(c: GoldenCase, work: string, fresh: string, out: GoldenResult[]) {
+    for (const [id, s] of Object.entries(c.sources ?? {})) { mkdirSync(join(work, 'media'), { recursive: true }); copyFileSync(join(o.sourceDir ?? o.goldenDir, s.file), join(work, sourcePath(id, s.file))); }
+    await withProjectPage({ dir: work, project: goldenProject(c), registry: o.registry, log: o.log, host }, async (s) => {
+      for (const t of c.at) {
+        await s.frame(Math.round(t * s.fps));
+        writeFileSync(fresh, await s.png());
+        const name = goldenFile(c, t), shared = join(o.goldenDir, name), own = o.platformDir && join(o.platformDir, name);
+        const save = async (to: string) => { mkdirSync(join(to, '..'), { recursive: true }); await ffmpeg(['-y', '-i', fresh, '-vf', `scale=${sizeOf(c)}:flags=area`, to]); };
+        if (own) {
+          // A system with pictures of its own matches either its own or the shared one (Windows' may have moved on since).
+          // An update writes its own folder only, and only where it differs from the shared picture: the shared pictures
+          // stay Windows', and a new case gets its shared one from an update there.
+          const raw = await rawOf(fresh, sizeOf(c)), sharedHash = hashOf(shared);
+          // an own picture made beside another shared picture than today's is out of date: as if there were none
+          const ownValid = existsSync(own) && name in beside && beside[name] === sharedHash;
+          const vsShared = sharedHash !== null ? diffShare(raw, await rawOf(shared, sizeOf(c))) : null;
+          const vsOwn = ownValid ? diffShare(raw, await rawOf(own, sizeOf(c))) : null;
+          const known = [vsShared, vsOwn].filter((x): x is number => x !== null), best = known.length ? Math.min(...known) : null;
+          if (!o.update) { out.push(best === null ? { file: name, status: 'new', share: 1 } : { file: name, status: best <= GOLDEN_SHARE ? 'ok' : 'changed', share: best }); continue; }
+          if (vsShared !== null && vsShared <= GOLDEN_SHARE) {
+            const had = existsSync(own) || name in beside;
+            if (had) { rmSync(own, { force: true }); delete beside[name]; besideChanged = true; }
+            out.push({ file: name, status: had ? 'updated' : 'ok', share: vsShared });
+          } else if (vsOwn === 0) out.push({ file: name, status: 'ok', share: 0 });
+          else { await save(own); beside[name] = sharedHash; besideChanged = true; out.push({ file: name, status: 'updated', share: vsOwn ?? vsShared ?? 0 }); }
+          continue;
+        }
+        const gold = shared;
+        if (!existsSync(gold)) {
+          if (o.update) { await save(gold); out.push({ file: name, status: 'updated', share: 0 }); } else out.push({ file: name, status: 'new', share: 1 });
+          continue;
+        }
+        const share = diffShare(await rawOf(fresh, sizeOf(c)), await rawOf(gold, sizeOf(c)));
+        if (o.update) { await save(gold); out.push({ file: name, status: share > 0 ? 'updated' : 'ok', share }); }   // an update keeps the newest picture even when it was within the tolerance
+        else out.push({ file: name, status: share <= GOLDEN_SHARE ? 'ok' : 'changed', share });
+      }
+    });
   }
 }
 
