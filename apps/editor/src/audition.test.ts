@@ -1,5 +1,6 @@
 import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
 import { materialOf, planAudition } from './audition.ts';
+import { setLang } from './i18n/lang.ts';
 
 test('a timeline item gives back its raw material: the source or music it uses, an effect with its own settings', () => {
   const p: any = fixture();
@@ -50,4 +51,20 @@ test('a sound file on the sound-effect track (c.sfxFile) auditions for its own l
   const d = structuredClone(p); plan.recipe(d);
   const it = d.tracks.filter((t: any) => !t.muted).flatMap((t: any) => t.items)[0];
   expect(it).toMatchObject({ type: 'core.file', start: 2, end: 3.25, params: { path: 'media/sfx/ding.wav' } });
+});
+
+test('a library block auditions with the words it would be added with in the UI language, and its English name (not 到站車票 / 巴黎)', () => {
+  const p: any = fixture();
+  const def = { label: '到站車票', params: [{ key: 'title', type: 'text', default: '巴黎' }, { key: 'w', type: 'number', default: 0.74 }] };
+  const registry: any = { item: (t: string) => (t === 'common.ticket' ? def : undefined), sfx: () => undefined };
+  const added = (plan: any) => { const d = structuredClone(p); plan.recipe(d); return d.tracks.flatMap((t: any) => t.items).find((i: any) => i.type === 'common.ticket').params; };
+  setLang('en');
+  try {
+    let plan = planAudition(p, { kind: 'overlay', type: 'common.ticket' }, 1, { registry });
+    expect([plan.label, added(plan)]).toEqual(['Effect Arrival ticket', { title: 'Paris' }]);
+    // a timeline item's own settings stay as they are
+    plan = planAudition(p, { kind: 'overlay', type: 'common.ticket', params: { title: 'Roma' } }, 1, { registry, inPlace: true });
+    expect(added(plan)).toEqual({ title: 'Roma' });
+  } finally { setLang('zh'); }
+  expect(planAudition(p, { kind: 'overlay', type: 'common.ticket' }, 1, { registry }).recipe).toBeTypeOf('function');
 });

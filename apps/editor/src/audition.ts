@@ -4,6 +4,8 @@
 // with every other track hidden and silent; the caller plays [from, until) and then puts the real project back.
 import { addItem, addTrack, allItems, r6, soundFilePath, withDefaults, type Project, type Registry, type Transform } from '@tellcut/engine';
 import { formatTime } from './timeline/geometry.ts';
+import { blockText } from './i18n/blocks.ts';
+import { localValues } from './i18n/values.ts';
 
 type Recipe = (draft: Project) => void;
 
@@ -15,6 +17,8 @@ export type Material =
 
 export interface AuditionPlan { recipe: Recipe; from: number; until: number; label: string }
 
+/** a block's or sound's name as the editor's other labels give it (English, like the library's list) */
+const nameOf = (type: string, label: string | undefined) => blockText(type, { label: label ?? type, doc: '' }, 'en').label;
 const STILL = { x: 0.5, y: 0.5, zoom: 1 };
 const alone = (d: Project) => { for (const t of d.tracks) { t.muted = true; if ('solo' in t) t.solo = false; } };
 /** [start, end) of `len` s from `at`: a timeline item (inPlace) keeps its own start, a library material moves earlier to
@@ -52,18 +56,20 @@ export function planAudition(p: Project, m: Material, at: number, o: { registry?
     case 'sfx': {
       const def = o.registry?.sfx(m.type), params = m.params ?? {};
       const f = fit(at, Math.max(def ? def.duration(withDefaults(def.params, params)) : (m.len ?? 0.5), frame), dur, inPlace), { start, end } = f;
-      const name = def?.label ?? (soundFilePath(m) ?? m.type);
+      const name = def ? nameOf(m.type, def.label) : (soundFilePath(m) ?? m.type);
       return { from: start, until: Math.min(f.dur, end + 0.5), label: `SFX ${name}`, recipe: (d) => {
         grow(d, f.dur); alone(d);
         addItem(d, { track: addTrack(d, { kind: 'sfx' }), item: { type: m.type, start, end, params, gain: 0 } });
       } };
     }
     case 'overlay': {
-      // on an empty (black) frame; a type that may exist only once is fine: the one in the project is hidden meanwhile
-      const f = fit(at, Math.max(m.len ?? 2, frame), dur, inPlace), { start, end } = f;
-      return { from: start, until: end, label: `Effect ${o.registry?.item(m.type)?.label ?? m.type}`, recipe: (d) => {
+      // on an empty (black) frame; a type that may exist only once is fine: the one in the project is hidden meanwhile. A library
+      // block (no params of its own) starts from the words it would be added with in the UI language, as Add does (editor.ts)
+      const f = fit(at, Math.max(m.len ?? 2, frame), dur, inPlace), { start, end } = f, def = o.registry?.item(m.type);
+      const params = m.params ?? (def ? localValues(m.type, def.params ?? []) : {});
+      return { from: start, until: end, label: `Effect ${def ? nameOf(m.type, def.label) : m.type}`, recipe: (d) => {
         grow(d, f.dur); alone(d);
-        addItem(d, { track: addTrack(d, { kind: m.track ?? 'overlay' }), item: { type: m.type, start, end, params: m.params ?? {}, ...(m.transform ? { transform: m.transform } : {}) } });
+        addItem(d, { track: addTrack(d, { kind: m.track ?? 'overlay' }), item: { type: m.type, start, end, params, ...(m.transform ? { transform: m.transform } : {}) } });
       } };
     }
   }
