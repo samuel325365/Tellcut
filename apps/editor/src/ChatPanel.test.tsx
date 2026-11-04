@@ -269,6 +269,26 @@ test('nothing is added above the words when sources are ticked (the welcome woul
   root.remove();
 });
 
+test('the menu asks for the list again each time it opens: a key added meanwhile counts without reloading the page', async () => {
+  const root = document.createElement('div'), s = picking();
+  let calls = 0, rows: any[] = ROWS;
+  s.listSources = async () => { calls++; return { sources: rows }; };
+  document.body.append(root);
+  await act(() => render(<ChatPanel session={s} />, root));
+  await flush();
+  const btn = root.querySelector<HTMLElement>('[data-api]')!;
+  await act(() => { btn.click(); });
+  await flush();
+  expect(root.querySelector('[data-source="pexels"]')!.classList.contains('off')).toBe(true);
+  await act(() => { btn.click(); });
+  rows = ROWS.map((x) => (x.id === 'pexels' ? { ...x, available: true, reason: undefined } : x));
+  await act(() => { btn.click(); });
+  await flush();
+  expect(root.querySelector('[data-source="pexels"]')!.classList.contains('off')).toBe(false);
+  expect(calls).toBe(3);   // the panel showing, then each opening
+  root.remove();
+});
+
 test('a click outside closes the menu; the editor\'s opens upward with English labels; a page without the sources API shows no button', async () => {
   const root = document.createElement('div'), s = picking();
   document.body.append(root);
@@ -305,4 +325,43 @@ test('a failed reply and a recovered one are worded in the page language from th
   expect(err).not.toContain('寫不進去');
   expect(root.textContent).toContain(DICTS.en['chat.recovered']);
   expect(root.textContent).not.toContain('伺服器重新啟動');
+});
+
+test('sending follows the reply again: a list scrolled away from the bottom (or pushed up by a box grown with the words) jumps to the end', async () => {
+  const root = document.createElement('div'), s = session({ messages: [{ role: 'assistant', text: 'a long reply', time: 't', status: 'done' }] });
+  await act(() => render(<ChatPanel session={s} />, root));
+  const list = root.querySelector<HTMLDivElement>('.msgs')!;
+  Object.defineProperty(list, 'scrollHeight', { configurable: true, get: () => 1000 });
+  Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 300 });
+  // the reader scrolls up to 400 px above the bottom
+  await act(() => { list.scrollTop = 700; list.dispatchEvent(new Event('scroll')); });
+  await act(() => { list.scrollTop = 300; list.dispatchEvent(new Event('scroll')); });
+  const ta = root.querySelector<HTMLTextAreaElement>('[data-chat-input]')!;
+  await act(() => { ta.value = 'make the first cut'; ta.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect(list.scrollTop).toBe(300);
+  await act(() => { ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });
+  expect(s.sent).toEqual(['make the first cut']);
+  expect(list.scrollTop).toBe(1000);
+});
+
+test('a list at its bottom keeps following when the reply grows under it: only scrolling up stops it', async () => {
+  const root = document.createElement('div'), s = session({ messages: [{ role: 'assistant', text: 'a reply', time: 't', status: 'done' }] });
+  await act(() => render(<ChatPanel session={s} />, root));
+  const list = root.querySelector<HTMLDivElement>('.msgs')!;
+  let height = 1000;
+  Object.defineProperty(list, 'scrollHeight', { configurable: true, get: () => height });
+  Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 300 });
+  await act(() => { list.scrollTop = 700; list.dispatchEvent(new Event('scroll')); });
+  // the reply grows by 500 px before the scroll event of the last pin arrives: still the reader's bottom, not a scroll up
+  height = 1500;
+  await act(() => { list.dispatchEvent(new Event('scroll')); });
+  s.state = { ...s.state, messages: [...s.state.messages, { role: 'assistant', text: 'more', time: 't', status: 'done' }] };
+  await act(() => render(<ChatPanel session={s} />, root));
+  expect(list.scrollTop).toBe(1500);
+  // a scroll up stops following
+  await act(() => { list.scrollTop = 900; list.dispatchEvent(new Event('scroll')); });
+  height = 1800;
+  s.state = { ...s.state, messages: [...s.state.messages, { role: 'assistant', text: 'again', time: 't', status: 'done' }] };
+  await act(() => render(<ChatPanel session={s} />, root));
+  expect(list.scrollTop).toBe(900);
 });

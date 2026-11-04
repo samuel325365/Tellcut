@@ -104,20 +104,27 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
   const [, redraw] = useReducer((x: number) => x + 1, 0);
   useEffect(() => session.subscribe(redraw as () => void), [session]);
   const s = session.state, [text, setText] = useState('');
-  const list = useRef<HTMLDivElement>(null), box = useRef<HTMLTextAreaElement>(null), atBottom = useRef(true);
+  const list = useRef<HTMLDivElement>(null), box = useRef<HTMLTextAreaElement>(null), atBottom = useRef(true), lastTop = useRef(0);
   // follow new text only while the reader is at the bottom
-  useEffect(() => { const el = list.current; if (el && atBottom.current) el.scrollTop = el.scrollHeight; });
+  useEffect(() => { const el = list.current; if (el && atBottom.current) { el.scrollTop = el.scrollHeight; lastTop.current = el.scrollTop; } });
   // the box grows with what is typed (up to a limit); a box not on screen (the editor's chat tab before it is opened) measures 0:
-  // left to its CSS height then, not pinned at 0
-  useEffect(() => { const el = box.current; if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight ? `${Math.min(240, el.scrollHeight)}px` : ''; } }, [text]);
-  // the API menu: the source list is asked for once, when the panel first shows
+  // left to its CSS height then, not pinned at 0. Growing it makes the list shorter: a list at its bottom stays there (else the
+  // reply to what is being typed was followed no more, seen 2026-11-04)
+  useEffect(() => {
+    const el = box.current, pinned = atBottom.current;
+    if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight ? `${Math.min(240, el.scrollHeight)}px` : ''; }
+    const l = list.current;
+    if (l && pinned) { l.scrollTop = l.scrollHeight; lastTop.current = l.scrollTop; atBottom.current = true; }
+  }, [text]);
+  // the API menu: the source list is asked for when the panel first shows, and again each time the menu opens (a key put in
+  // sources.local.json meanwhile counts without reloading the page); the last list shows while the new one comes
   const [picking, setPicking] = useState(false), [rows, setRows] = useState<SourceInfo[] | null>(null), [rowsError, setRowsError] = useState('');
   useEffect(() => {
-    if (!session.picksSources) return;
+    if (!session.picksSources || (rows && !picking)) return;
     let gone = false;
-    session.listSources().then((r) => { if (!gone) setRows(r.sources); }, (e: Error) => { if (!gone) setRowsError(e.message); });
+    session.listSources().then((r) => { if (!gone) { setRows(r.sources); setRowsError(''); } }, (e: Error) => { if (!gone) setRowsError(e.message); });
     return () => { gone = true; };
-  }, [session]);
+  }, [session, picking]);
   const picked = s.sources ?? [], pickedNames = picked.map((id) => sourceName(id, rows?.find((r) => r.id === id)?.label, surface));
   const closePicker = useCallback(() => setPicking(false), []);
   // a message the server refused comes back into the box (a typed-over box keeps what is in it)
@@ -136,6 +143,8 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
     if (!canSend) return;
     void session.send(withAttachments(text, attachments, surface),preset ? { id: preset.info.id, styles: preset.styles, ...(fieldCount ? { fields: preset.fields } : {}) } : undefined);
     setText('');
+    // whoever sends wants to see the answer: follow it from the bottom
+    atBottom.current = true;
     onSent?.();
   };
   const empty = !s.messages.length && !s.partial, attachKey = surface === 'editor' ? 'chat.attachEditor' : 'chat.attach';
@@ -182,7 +191,14 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
   const last = s.partial?.tools.at(-1);
   return (
     <div class="chat" data-chat>
-      <div class="msgs" ref={list} onScroll={(e) => { const el = e.currentTarget as HTMLDivElement; atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24; }}>
+      <div class="msgs" ref={list} onScroll={(e) => {
+        // only a scroll up lets go of the bottom: a reply that grew before this event arrived (or a box grown with the words) is
+        // not the reader leaving (the list stopped following replies, seen 2026-11-04)
+        const el = e.currentTarget as HTMLDivElement;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 24) atBottom.current = true;
+        else if (el.scrollTop < lastTop.current - 1) atBottom.current = false;
+        lastTop.current = el.scrollTop;
+      }}>
         <div class="column">
           {empty && hint && <p class="hint">{hint}</p>}
           {s.messages.map((m) => <Message m={m} presetNames={presetNames} />)}
