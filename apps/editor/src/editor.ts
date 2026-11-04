@@ -18,7 +18,8 @@ import { createStore, initialState, type EditorState, type PeakInfo, type Store 
 import type { PlayerBridge } from './bridge.ts';
 import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
-import { applyCaptionTemplate, captionLook, setCaptionTemplate } from './editor/captions.ts';
+import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplate, useMyCaptionTemplate } from './editor/captions.ts';
+import { templateOf } from '@tellcut/plugin-common/templates';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
@@ -919,6 +920,20 @@ export class Editor {
   captionTemplateOnItem(id: string, template: string): boolean {
     const found = this.s.project && allItems(this.s.project).find((x) => x.item.id === id);
     return !!found && this.apply((d) => { applyCaptionTemplate(d, found.track.id, template, [id]); });
+  }
+
+  /** A template of My caption templates on one caption (copied into the project): one undo step. */
+  myCaptionTemplateOnItem(id: string, entry: { slug: string; params: Record<string, unknown> }): boolean {
+    const found = this.s.project && allItems(this.s.project).find((x) => x.item.id === id);
+    return !!found && this.apply((d) => useMyCaptionTemplate(d, found.track.id, id, entry));
+  }
+
+  /** Saves caption `id`'s look (its template's under its own look parameters) to My caption templates as `name`. */
+  async saveMyCaptionTemplate(id: string, name: string): Promise<boolean> {
+    const p = this.s.project, it: any = p && allItems(p).find((x) => x.item.id === id)?.item;
+    if (!p || !it) return false;
+    try { await this.deps.api.saveCaption({ name, params: captionLookParams(p, it, (t) => templateOf(t)?.params) }); return true; }
+    catch (e) { this.set({ notice: errText(e) }); return false; }
   }
 
   /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */

@@ -14,9 +14,10 @@ export const CAPTION_LINE: Record<string, { text: string; words: Array<[number, 
   ja: { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] },
 };
 /** a caption template drawn by common.caption (`caption`: the gallery's entry for that block) over a picture, in the UI language */
-export function captionProject(caption: GalleryBlock, template: string, lang: string) {
+export function captionProject(caption: GalleryBlock, template: string, lang: string, params?: Record<string, unknown>) {
   const line = CAPTION_LINE[lang] ?? CAPTION_LINE.zh;
-  const p = blockProject(caption, { ...line, template });
+  // a template of the user's own: its parameters themselves (the preview project has no copy of it)
+  const p = blockProject(caption, params ? { ...line, ...params } : { ...line, template });
   return { ...p, meta: { ...p.meta, background: '#4a5a52' } };
 }
 

@@ -115,3 +115,11 @@ test('templates: the item’s own parameters win, then its template, then the pr
   expect(TEMPLATES.map((t) => templateOf(t.id))).toEqual(TEMPLATES);
   expect(new Set(TEMPLATES.map((t) => t.params.style)).size).toBe(LOOKS.length);               // every look has a template
 });
+
+test('a project’s own templates (copied from My caption templates) are found before the built-in ones', () => {
+  const params = { style: 'outline' };
+  const mine = { 'my-pink': { style: 'neon', hl: '#ff3db8' } };
+  expect(withTemplate(params, { template: 'my-pink' }, undefined, mine)).toMatchObject({ style: 'neon', hl: '#ff3db8' });
+  expect(withTemplate(params, {}, 'my-pink', mine)).toMatchObject({ style: 'neon' });
+  expect(withTemplate(params, { template: 'my-gone' }, undefined, mine)).toBe(params);
+});

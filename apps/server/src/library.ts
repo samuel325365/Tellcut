@@ -4,7 +4,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
 import { blockDir, findFxFile, fxState, libraryRoot, LibraryError, listLibrary, loadEntry, loadProjectFx, loadStyles, PROJECT_ID, previewBlock, projectLinks, readBlock, readStyle, removeBlock, removeStyle, renameStyle,
-  renameType, saveBlock, saveStyle, stylesDir, THUMB_FILE, useBlock, useStyle, type OnConflict } from '@tellcut/media-node';
+  renameType, saveBlock, saveStyle, stylesDir, THUMB_FILE, useBlock, useStyle, type OnConflict, listCaptions, removeCaption, saveCaption } from '@tellcut/media-node';
 import type { LibraryBlockInfo, LibraryIndex, LibraryStyleInfo, LibraryUsage, ProjectLibraryInfo } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { sendProjectFile, type ProjectStore } from './projects.ts';
@@ -53,7 +53,7 @@ export async function libraryIndex(root: string, nameOf: (id: string) => string 
   }
   const loaded = lib.styles.length ? await loadStyles([stylesDir(root)]) : { styles: {} as Record<string, { defaults: { bpm: number; key: string } }> };
   const styles: LibraryStyleInfo[] = lib.styles.map((s) => ({ slug: s.slug, id: s.id, name: s.name, desc: s.desc, defaults: loaded.styles[s.id]?.defaults ?? { bpm: 100, key: 'C' }, from: from(s.from), savedAt: s.savedAt }));
-  return { blocks, styles };
+  return { blocks, styles, captions: listCaptions(root) };
 }
 
 /** the projects using a copy of block `slug` (each keeps its copy), and the user's presets naming the entry. A copy counts only while
@@ -118,6 +118,12 @@ export function libraryRoutes(r: Router, o: LibraryOptions) {
   });
   r.del('/api/library/blocks/:slug', (_req, res, { slug }) => guard(() => { removeBlock(root, slug); sendJson(res, 200, { ok: true }); }));
 
+  // my caption templates: a caption's look saved under a name, and deleted
+  r.post('/api/library/captions', async (req, res) => {
+    const b = (await readJson(req)) as { name?: unknown; desc?: unknown; params?: unknown };
+    sendJson(res, 200, { entry: await guard(() => saveCaption(root, { name: str(b?.name) ?? '', desc: str(b?.desc), params: b?.params && typeof b.params === 'object' ? (b.params as Record<string, unknown>) : {} })) });
+  });
+  r.del('/api/library/captions/:slug', (_req, res, { slug }) => guard(() => { removeCaption(root, slug); sendJson(res, 200, { ok: true }); }));
   r.post('/api/library/styles', async (req, res) => {
     const b: any = await readJson(req), p = project(b?.project), id = str(b?.id);
     if (!id) throw new HttpError(400, 'id is missing');

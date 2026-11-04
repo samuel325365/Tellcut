@@ -889,3 +889,5 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .cap-name { font-size: 10px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cap-hover { justify-self: center; width: 132px; border-radius: 8px; overflow: hidden; pointer-events: none; }
 .cap-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.cap-save { display: flex; gap: 6px; } .cap-save input { flex: 1; min-width: 0; }
+.cap-mine .cap-none { color: var(--accent, #3a86ff); }

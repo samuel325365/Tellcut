@@ -626,7 +626,7 @@ export class Cut {
    *  draws with it, and speechCaptions without a type makes common.caption captions lighting up word by word. */
   captionTemplate(id: string) {
     const by = idOfHandle(id), want = by?.startsWith('caption:') ? by.slice(8) : id;
-    if (!templateOf(want)) throw new Error(`沒有「${id}」這個字幕範本：npm run tellcut -- catalog CAP 列出全部`);
+    if (!templateOf(want) && !(this.p.meta.captionTemplates as Record<string, unknown> | undefined)?.[want]) throw new Error(`沒有「${id}」這個字幕範本：npm run tellcut -- catalog CAP 列出全部`);
     this.p.meta.captionTemplate = want;
     return this;
   }

@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ADAPTERS, TELLCUT_ROOT } from '@tellcut/media-node';
-import { loadPresets } from '@tellcut/media-node';
-import { commonPlugin } from '@tellcut/plugin-common';
+import { loadPresets, presetBlock } from '@tellcut/media-node';
+import { commonPlugin, templateOf } from '@tellcut/plugin-common';
 
 const RULE = "These are defaults. If the user's message conflicts with any of them, follow the user and say in one sentence what you changed.";
 const presets = () => loadPresets({ repo: join(TELLCUT_ROOT, 'guides', 'presets'), user: mkdtempSync(join(tmpdir(), 'nopresets-')) });
@@ -244,4 +244,13 @@ test("podcast's solo framing and end card name their blocks (2026-10-28, group B
   expect(p.styles.find((x) => x.id === 'solo')!.prompt).toContain("common.duo mode: 'solo'");
   const body = readFileSync(join(TELLCUT_ROOT, 'guides', 'presets', 'podcast', 'preset.md'), 'utf8');
   for (const b of ["common.outro look: 'episode'", 'outroWindow', "common.progress mode: 'slots'", 'common.slip']) expect(body).toContain(b);
+});
+
+test('a style that names a caption template names one there is, and its prompt asks for it (spec 2026-11-04-caption-styles §6)', () => {
+  const all = presets(), named = all.flatMap((p) => p.styles.filter((s) => s.caption).map((s) => [p.id, s.id, s.caption!] as const));
+  expect(named.length).toBeGreaterThan(5);
+  for (const [p, s, c] of named) expect(templateOf(c), `${p}/${s}: ${c}`).toBeTruthy();
+  const vlog = all.find((p) => p.id === 'vlog')!;
+  expect(presetBlock(vlog, ['retro'])).toContain("c.captionTemplate('vhs-fade')");
+  expect(presetBlock(vlog, [])).not.toContain('captionTemplate');
 });

@@ -57,3 +57,20 @@ export function setCaptionTemplate(d: Project, template: string) {
   if (template) d.meta.captionTemplate = template;
   else delete d.meta.captionTemplate;
 }
+
+/** What a caption looks like as parameters: its template's (its own, else the film's; the project's own templates included) under
+ *  its own look parameters, its words, timing and speaker left out: what "Save as my template" keeps. */
+export function captionLookParams(p: Project, item: { params?: Record<string, unknown> }, builtIn: (id: string) => Record<string, unknown> | undefined): Record<string, unknown> {
+  const own = item.params ?? {}, mine = (p.meta as any).captionTemplates as Record<string, Record<string, unknown>> | undefined;
+  const id = typeof own.template === 'string' && own.template ? own.template : String(p.meta.captionTemplate ?? '');
+  const base = (id && (mine?.[id] ?? builtIn(id))) || {};
+  return { ...base, ...Object.fromEntries(Object.entries(own).filter(([k]) => !KEEP.has(k) && k !== 'template')) };
+}
+
+/** A template of My caption templates on one caption: copied into the project (meta.captionTemplates, as my-<slug>) and named by
+ *  the caption, so the film never reads the library while it plays or exports. */
+export function useMyCaptionTemplate(d: Project, track: string, id: string, entry: { slug: string; params: Record<string, unknown> }) {
+  const key = `my-${entry.slug}`, meta = d.meta as any;
+  meta.captionTemplates = { ...(meta.captionTemplates ?? {}), [key]: entry.params };
+  applyCaptionTemplate(d, track, key, [id]);
+}

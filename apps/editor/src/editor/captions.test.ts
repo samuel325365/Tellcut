@@ -1,5 +1,5 @@
 import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
-import { applyCaptionTemplate, captionLook, setCaptionTemplate } from './captions.ts';
+import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplate, useMyCaptionTemplate } from './captions.ts';
 
 /** the fixture with a Text track: a bubble caption said in c2, a title on the scene block, an effect */
 function withCaptions() {
@@ -58,4 +58,13 @@ test('a template on one caption leaves the others on its track as they were', ()
   expect(applyCaptionTemplate(p, 'text', 'neon', ['say2'])).toBe(1);
   expect(p.tracks.at(-1).items[0].params.style).toBe('bubble');
   expect(p.tracks.at(-1).items[1].params).toEqual({ text: 'Rome', words: [[0, 4]], template: 'neon' });
+});
+
+test('a caption’s look as parameters: its template’s under its own look, words left out; one of my templates is copied into the project', () => {
+  const p: any = withCaptions(), say = p.tracks.at(-1).items[0];
+  say.params.template = 'neon';
+  expect(captionLookParams(p, say, (id) => (id === 'neon' ? { style: 'neon', hl: '#f0f' } : undefined))).toEqual({ style: 'bubble', hl: '#f0f', font: 'Inter' });
+  useMyCaptionTemplate(p, 'text', 'say', { slug: 'pink', params: { style: 'neon', hl: '#ff3db8' } });
+  expect(p.meta.captionTemplates).toEqual({ 'my-pink': { style: 'neon', hl: '#ff3db8' } });
+  expect(say.params).toEqual({ text: 'take the train to', words: [[0, 4], [0.5, 9]], template: 'my-pink' });
 });
