@@ -18,8 +18,11 @@ export const pixel: CaptionLook = {
 
 /** a camcorder's on-screen text: white monospaced capitals with a slight colour fringe and glow, as on tape */
 export const vhs: CaptionLook = {
-  id: 'vhs', weight: '400', font: 'VT323', sizeScale: 1.2,
-  box: (e) => ({ textShadow: `${(0.03 * e.fs).toFixed(1)}px 0 0 rgba(255,60,60,0.7), ${(-0.03 * e.fs).toFixed(1)}px 0 0 rgba(60,160,255,0.7), 0 0 ${(0.15 * e.fs).toFixed(1)}px rgba(255,255,255,0.5)`, textTransform: 'uppercase', letterSpacing: '0.06em' }),
+  // a thin dark edge and a dark halo under the colour fringe: on a white wall it was unreadable; normal size, as capitals in this
+  // face run wide and a spoken sentence took five lines at 1.2× (acceptance film cap-acc-vlog)
+  id: 'vhs', weight: '400', font: 'VT323',
+  stroke: (e) => 0.05 * e.fs,
+  box: (e) => ({ textShadow: `${(0.03 * e.fs).toFixed(1)}px 0 0 rgba(255,60,60,0.75), ${(-0.03 * e.fs).toFixed(1)}px 0 0 rgba(60,160,255,0.75), 0 0 ${(0.25 * e.fs).toFixed(1)}px rgba(0,0,0,0.7)`, textTransform: 'uppercase', letterSpacing: '0.04em' }),
 };
 
 /** green monospaced text on a dark console box, glowing faintly */
