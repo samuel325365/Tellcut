@@ -181,8 +181,10 @@ function fromForm(dirs: PresetDirs, b: any, lang: Lang): { points: PresetPoint[]
     const v = fields[f.id];
     if (v === undefined) continue;
     const opt = f.options.find((x) => x.id === v);
-    points.push(opt ? { text: opt.name[lang] ?? opt.name.en ?? opt.name.zh ?? v, prompt: opt.prompt }
-      : { text: { zh: `約 ${v} 秒`, en: `About ${v} s`, ja: `約 ${v} 秒` }[lang], prompt: `Make the film about ${v} s long (within 10%).` });
+    // the point names its setting ("Voice: Original"): an option's name alone ("Original", "Fast") does not say what it is
+    const label = (x: string) => `${f.name[lang] ?? f.name.en ?? f.name.zh ?? f.id}${lang === 'en' ? ': ' : '：'}${x}`;
+    points.push(opt ? { text: label(opt.name[lang] ?? opt.name.en ?? opt.name.zh ?? v), prompt: opt.prompt }
+      : { text: label({ zh: `約 ${v} 秒`, en: `about ${v} s`, ja: `約 ${v} 秒` }[lang]), prompt: `Make the film about ${v} s long (within 10%).` });
   }
   for (const e of Array.isArray(b?.examples) ? b.examples : []) if (typeof e === 'string' && e.trim()) points.push({ text: e.trim(), prompt: e.trim() });
   const secs = Number(fields.length);

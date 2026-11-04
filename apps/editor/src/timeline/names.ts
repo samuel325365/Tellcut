@@ -19,7 +19,9 @@ export function itemName(item: AnyItem, kind: TrackKind, reg: Registry | undefin
     if (kind !== 'sfx') {
       const params = def.params ?? [];
       const p = params.find((x) => x.type === 'text') ?? params.find((x) => x.type === 'string' && (TEXT_KEYS as readonly string[]).includes(x.key));
-      const words = p ? oneLine(it.params?.[p.key] ?? p.default) : '';
+      // a JSON param the item sets (a postcard's whole `card`) takes over from the simple ones: their defaults are not what shows
+      const whole = params.some((x) => x.type === 'json' && it.params?.[x.key] != null);
+      const words = p ? oneLine(it.params?.[p.key] ?? (whole ? '' : p.default)) : '';
       if (words) return words;
     }
     return blockText(it.type, { label: def.label, doc: '' }, lang).label;

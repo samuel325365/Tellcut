@@ -238,7 +238,7 @@ test('saving from the custom form: each option set is a point in the user’s wo
   const { d, app, send } = await mine();
   try {
     const info = await (await send('POST', '/api/presets', { from: 'form', name: '我的直式', color: '#12b886', fields: { ratio: '9:16', length: '45', bogus: 'x' }, examples: ['復古底片感'], lang: 'zh' })).json();
-    expect(info.points).toEqual(['9:16 直式', '約 45 秒', '復古底片感']);
+    expect(info.points).toEqual(['比例：9:16 直式', '長度：約 45 秒', '復古底片感']);
     expect(findPreset(d, info.id)).toMatchObject({ genres: true, color: '#12b886', ratios: ['9:16'], length: [41, 50] });
     expect(findPreset(d, info.id)!.prompt).toContain('- Make it 9:16.');
   } finally { await app.close(); }
@@ -248,9 +248,12 @@ test('the form’s points come first for the dialog; what it sends is saved, the
   const { d, app, send } = await mine();
   try {
     const { points } = await (await send('POST', '/api/presets/form-points', { fields: { ratio: '9:16' }, examples: ['復古底片感'], lang: 'zh' })).json();
-    expect(points).toEqual([{ text: '9:16 直式', prompt: 'Make it 9:16.' }, { text: '復古底片感', prompt: '復古底片感' }]);
+    expect(points).toEqual([{ text: '比例：9:16 直式', prompt: 'Make it 9:16.' }, { text: '復古底片感', prompt: '復古底片感' }]);
+    // each point names its setting: "Original" or "Fast" alone does not say what it is
+    const en = await (await send('POST', '/api/presets/form-points', { fields: { ratio: '9:16', length: '45' }, lang: 'en' })).json();
+    expect(en.points.map((p: any) => p.text)).toEqual([expect.stringMatching(/^Ratio: 9:16/), 'Length: about 45 s']);
     const info = await (await send('POST', '/api/presets', { from: 'form', name: '我的', fields: { ratio: '9:16' }, points: [points[0], { text: '每段不超過 3 秒', prompt: '每段不超過 3 秒' }], lang: 'zh' })).json();
-    expect(info.points).toEqual(['9:16 直式', '每段不超過 3 秒']);
+    expect(info.points).toEqual(['比例：9:16 直式', '每段不超過 3 秒']);
     expect(findPreset(d, info.id)).toMatchObject({ ratios: ['9:16'], genres: true });
     expect(findPreset(d, info.id)!.prompt).toContain('- 每段不超過 3 秒');
     // a new preset from nothing: no form, only the user's points

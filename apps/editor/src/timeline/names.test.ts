@@ -4,6 +4,7 @@ import { itemLook, itemName } from './names.ts';
 const reg = createRegistry([corePlugin, { id: 'x', items: [
   { type: 'x.headline', label: '大標', kind: 'overlay', category: 'text', params: [{ key: 'text', label: '字', type: 'text', default: '預設字' }], build: () => null, draw: () => {} },
   { type: 'x.card', label: '卡片', kind: 'overlay', category: 'card', params: [{ key: 'font', label: '字型', type: 'string', default: 'Noto' }, { key: 'title', label: '標題', type: 'string', default: '' }], build: () => null, draw: () => {} },
+  { type: 'x.postcard', label: '明信片', kind: 'scene', category: 'frame', params: [{ key: 'lines', label: '字', type: 'text', default: '到了巴黎' }, { key: 'card', label: '整張卡', type: 'json', default: null }], build: () => null, draw: () => {} },
   { type: 'x.plain', label: '純色', kind: 'scene', category: 'look', params: [], build: () => null, draw: () => {} },
 ], sfx: [{ type: 'x.tap', label: '敲', params: [], duration: () => 0.2, synth() {} }] } as any]);
 
@@ -17,6 +18,9 @@ test('a label wins; then the block text; then its display name; then the source;
   expect(itemName(block('x.card', { title: 'Menu' }), 'overlay', reg, 'en')).toBe('Menu');          // a string param on the name list, not the font
   expect(itemName(block('x.card'), 'overlay', reg, 'zh')).toBe('卡片');                              // an empty title: the block name
   expect(itemName(block('x.plain'), 'scene', reg, 'zh')).toBe('純色');
+  // a whole-card JSON param set: the simple text param's default is not what shows, so not its words but the block name
+  expect(itemName(block('x.postcard', { card: { front: {} } }), 'scene', reg, 'zh')).toBe('明信片');
+  expect(itemName(block('x.postcard'), 'scene', reg, 'zh')).toBe('到了巴黎');
   expect(itemName(clip, 'video', reg, 'en')).toBe('pixabay-1');
   expect(itemName({ id: 'm1', media: 'score', in: 0, start: 0, end: 1 } as any, 'music', reg, 'en')).toBe('score');
   expect(itemName(block('fx.thing'), 'overlay', reg, 'en')).toBe('fx.thing');                       // unregistered: its type id
