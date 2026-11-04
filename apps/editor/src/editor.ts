@@ -915,6 +915,12 @@ export class Editor {
     return false;
   }
 
+  /** One caption drawn with caption template `template` ('' for the project's default), its look parameters dropped: one undo step. */
+  captionTemplateOnItem(id: string, template: string): boolean {
+    const found = this.s.project && allItems(this.s.project).find((x) => x.item.id === id);
+    return !!found && this.apply((d) => { applyCaptionTemplate(d, found.track.id, template, [id]); });
+  }
+
   /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */
   projectCaptionTemplate(template: string): boolean { return this.apply((d) => setCaptionTemplate(d, template)); }
 

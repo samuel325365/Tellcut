@@ -113,3 +113,14 @@ test('a music style of My blocks replaced under the same id is composed afresh, 
       .toEqual(['score-mine-my-hum-2-d-d.wav', 'score-mine-my-hum-<hash>-1-d-d.wav']);
   } finally { await app.close(); }
 }, 30000);
+
+test('caption templates: every one in the index with what it sets and its golden picture, which the thumbnail route serves', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  try {
+    const g = await (await fetch(`${base}/api/gallery`)).json();
+    expect(g.captions.length).toBeGreaterThanOrEqual(31);
+    expect(g.captions.find((c: any) => c.id === 'neon-fill')).toMatchObject({ params: { style: 'neon', wordFx: 'fill' }, thumb: '/api/gallery/thumb/tpl-neon-fill-t1.50.png' });
+    expect(g.captions.every((c: any) => c.thumb)).toBe(true);
+    expect((await fetch(`${base}/api/gallery/thumb/tpl-neon-fill-t1.50.png`)).status).toBe(200);
+  } finally { await app.close(); }
+});

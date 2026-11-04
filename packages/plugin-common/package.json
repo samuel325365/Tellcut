@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./samples": "./src/samples.ts",
-    "./speech": "./src/speech.ts"
+    "./speech": "./src/speech.ts",
+    "./templates": "./src/caption/templates.ts"
   },
   "dependencies": {
     "@paper-design/shaders": "0.0.81",

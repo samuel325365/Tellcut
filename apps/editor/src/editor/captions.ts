@@ -36,13 +36,13 @@ export function captionLook(p: Project, id: string): CaptionLook {
 const KEEP = new Set(['text', 'words', 'speaker', 'name', 'role', 'tag', 'gloss', 'quote', 'point', 'y', 'align', 'tint']);
 
 /** Every common.caption on `track` drawn with `template` (a template id; '' for the project's default): its look parameters are
- *  dropped so the template's show (spec 2026-11-04-caption-styles §4). Returns how many captions changed. */
-export function applyCaptionTemplate(d: Project, track: string, template: string): number {
+ *  dropped so the template's show (spec 2026-11-04-caption-styles §4); `only`: just these items. Returns how many captions changed. */
+export function applyCaptionTemplate(d: Project, track: string, template: string, only?: string[]): number {
   let n = 0;
   for (const t of d.tracks) {
     if (t.id !== track) continue;
     for (const it of t.items as any[]) {
-      if (it.type !== 'common.caption') continue;
+      if (it.type !== 'common.caption' || (only && !only.includes(it.id))) continue;
       const params = Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => KEEP.has(k)));
       if (template) params.template = template;
       it.params = params;

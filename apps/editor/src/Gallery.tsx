@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
@@ -20,7 +21,7 @@ import { localValues } from './i18n/values.ts';
 import { CLIP_FX, handleOf, type ClipFx, type LibraryBlockInfo, type LibraryIndex, type LibraryStyleInfo, type LibraryUsage } from '@tellcut/protocol';
 import { getLang } from './i18n/lang.ts';
 
-const TABS: Tab[] = ['blocks', 'sfx', 'styles', 'recipes'];
+const TABS: Tab[] = ['blocks', 'captions', 'sfx', 'styles', 'recipes'];
 const ALL = 'all';
 /** what ParamField needs of a project: no material, and the theme the preview shows (so themed defaults show as such) */
 const fieldProject = (themeId = 'none') => ({ sources: {}, media: {}, meta: { theme: THEMES[themeId]?.theme } }) as unknown as Project;
@@ -159,6 +160,23 @@ function StyleDetail({ s }: { s: GalleryStyle }) {
       </div>
       <audio controls preload="none" src={scoreUrl(s.id, { seed, bpm: Number(bpm) || undefined, key: key || undefined })} />
       <p class="dim">{t('gallery.scoreNote')}</p>
+    </section>
+  );
+}
+
+/** a caption template: common.caption playing it over a picture, what it sets, and Add to project with it */
+function CaptionDetail({ c, caption, to }: { c: GalleryCaption; caption?: GalleryBlock; to?: ToProject }) {
+  const id = `caption:${c.id}`, x = shown(id, c), [n, setN] = useState(0);
+  return (
+    <section class="g-detail" data-detail={id}>
+      <Head label={x.label} name={c.id} id={id} />
+      {caption && <PlayerPreview project={captionProject(caption, c.id, getLang())} playKey={n} />}
+      <div class="g-bar"><button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button></div>
+      <AddBar to={to} add={{ kind: 'block', type: 'common.caption', params: { template: c.id } }} />
+      <p class="g-doc">{x.doc}</p>
+      <h3>{t('gallery.captionSets')}</h3>
+      <ul class="g-notes" data-caption-params>{Object.entries(c.params).map(([k, v]) => <li><code>{k}</code> {String(v)}</li>)}</ul>
+      <p class="dim">{t('gallery.captionUse', { id: c.id })}</p>
     </section>
   );
 }
@@ -326,6 +344,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
     blocks: c.key === CLIP_CATEGORY ? [] : (list as GalleryBlock[]).filter((b) => blockCategory(b) === c.key).sort((a, b) => byHandle(a.type, b.type)),
     clips: c.key === CLIP_CATEGORY ? clips : [] })).filter((x) => x.blocks.length || x.clips.length);
   const names = tab === 'blocks' ? [...(showOwn ? ownList.map((b) => `own:${b.type}`) : []), ...(showMine ? mineBlocks.map((b) => `mine:${b.type}`) : []), ...sections.flatMap((x) => [...x.blocks.map((b) => b.type), ...x.clips.map((f) => f.key)])]
+    : tab === 'captions' ? (list as GalleryCaption[]).map((c) => `caption:${c.id}`)
     : tab === 'sfx' ? sfxSections(list as GallerySfx[]).flatMap((x) => x.sfx.map((s) => s.type)) : tab === 'styles' ? [...mineStyles.map((x) => `mine-style:${x.id}`), ...(list as GalleryStyle[]).map((s) => s.id)] : (list as GalleryRecipe[]).map((r) => r.id);
   const on = picked && names.includes(picked) ? picked : names[0] ?? null;
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
@@ -368,6 +387,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       const b = g.blocks.find((x) => x.type === on), f = CLIP_FX.find((x) => x.key === on);
       return b ? <BlockDetail b={b} to={to} /> : f ? <ClipDetail f={f} /> : null;
     }
+    if (tab === 'captions') { const c = (g.captions ?? []).find((x) => `caption:${x.id}` === on); return c && <CaptionDetail c={c} caption={g.blocks.find((b) => b.type === 'common.caption')} to={to} />; }
     if (tab === 'sfx') { const s = g.sfx.find((x) => x.type === on); return s && <SfxDetail s={s} plays={plays} to={to} />; }
     if (tab === 'styles') { const s = g.styles.find((x) => x.id === on); return s && <StyleDetail s={s} />; }
     const r = g.recipes.find((x) => x.id === on); return r && <RecipeDetail r={r} />;
@@ -402,7 +422,12 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
             {(cat === ALL || x.key === CLIP_CATEGORY) && <h4>{x.label}{x.key === CLIP_CATEGORY && <small>{t('gallery.clipNoteShort')}</small>}</h4>}
             <ul class="g-grid">{x.blocks.map(blockCard)}{x.clips.map(clipCard)}</ul>
           </section>
-        )) : tab === 'sfx' ? sfxSections(list as GallerySfx[]).map((x) => (
+        )) : tab === 'captions' ? <section class="g-section" data-captions>
+          <ul class="g-grid">{(list as GalleryCaption[]).map((c) => card(`caption:${c.id}`, shown(`caption:${c.id}`, c).doc, <>
+            <Thumb src={c.thumb} />
+            <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(`caption:${c.id}`, c).label)}>{shown(`caption:${c.id}`, c).label}</strong><Handle id={`caption:${c.id}`} /><CopyName name={c.id} /></span>
+          </>))}</ul>
+        </section> : tab === 'sfx' ? sfxSections(list as GallerySfx[]).map((x) => (
           <section class="g-section" data-sfx-cat={x.key}>
             <h4>{x.label}</h4>
             <ul class="g-grid g-grid-wide">{x.sfx.map((s) => card(s.type, shown(s.type, s).doc, <>

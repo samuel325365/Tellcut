@@ -52,3 +52,10 @@ test('the project default template is set and cleared on meta', () => {
   setCaptionTemplate(p, '');
   expect('captionTemplate' in p.meta).toBe(false);
 });
+
+test('a template on one caption leaves the others on its track as they were', () => {
+  const p: any = withCaptions();
+  expect(applyCaptionTemplate(p, 'text', 'neon', ['say2'])).toBe(1);
+  expect(p.tracks.at(-1).items[0].params.style).toBe('bubble');
+  expect(p.tracks.at(-1).items[1].params).toEqual({ text: 'Rome', words: [[0, 4]], template: 'neon' });
+});

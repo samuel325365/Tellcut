@@ -16,6 +16,7 @@ const G: GalleryIndex = {
   sfx: [{ plugin: 'common', type: 'common.beep', label: '消音嗶聲', doc: '1 kHz', params: [] }],
   styles: [{ id: 'lofi', label: 'Lo-fi', doc: '慵懶', defaults: { bpm: 78, key: 'Am' }, origin: 'built-in' }, { id: 'koto', label: '和風', doc: '古箏', defaults: { bpm: 66, key: 'Am' }, origin: 'library' }],
   recipes: [{ id: 'travel', label: '旁白旅行', doc: '旁白配鏡頭', notes: ['每場長度由旁白決定'], example: { scenes: [{ voice: 's01' }] } }],
+  captions: [{ id: 'clean', label: '清晰描邊', doc: '白字黑描邊', params: { style: 'outline' }, thumb: '/api/gallery/thumb/tpl-clean-t1.50.png' }, { id: 'neon-fill', label: '霓虹逐字點亮', doc: '粉紅霓虹', params: { style: 'neon', wordFx: 'fill' } }],
 };
 
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
@@ -491,4 +492,18 @@ test('without a project there is no Add; a project whose blocks fail to load say
   expect(r2.querySelector('[data-own-section] .err')?.textContent).toContain('boom');
   expect(r2.querySelector('[data-gallery-add]')).not.toBeNull();   // shared blocks can still be added
   expect(cards(r2)).toContain('core.title');
+});
+
+test('caption templates: a tab of their pictures; the detail plays common.caption with the template and adds it to a project', async () => {
+  const withCaption = { ...G, blocks: [...G.blocks, { plugin: 'common', group: '共用積木', type: 'common.caption', label: '字幕', doc: '', kind: 'overlay' as const, params: [], needsMedia: false, category: 'text' }] };
+  const root = document.createElement('div');
+  await act(async () => { render(<Gallery load={async () => withCaption} />, root); });
+  await settle();
+  await click(root, '[data-tab="captions"]');
+  expect(cards(root)).toEqual(['caption:clean', 'caption:neon-fill']);
+  expect(root.querySelector('[data-card="caption:clean"] img')?.getAttribute('src')).toBe('/api/gallery/thumb/tpl-clean-t1.50.png');
+  expect(root.querySelector('[data-detail="caption:clean"] iframe')).not.toBeNull();
+  await click(root, '[data-card="caption:neon-fill"]');
+  expect(root.querySelector('[data-caption-params]')?.textContent).toContain('wordFx');
+  expect(filterGallery(withCaption, 'captions', 'neon').map((c: any) => c.id)).toEqual(['neon-fill']);
 });

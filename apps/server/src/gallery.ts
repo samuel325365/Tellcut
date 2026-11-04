@@ -13,6 +13,7 @@ import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 // each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
 import { samples } from '@tellcut/plugin-common/samples';
 import { CORE_CATEGORY, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
+import { TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
 
 /** A block that reads a project's photos, clips or files draws little or nothing here. The sample films pass those as json params
@@ -26,6 +27,8 @@ const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
 /** each block's thumbnail: its first sample at its last moment (the animation settled) */
 const THUMBS = new Map<string, string>();
 for (const c of samples) if (!THUMBS.has(c.type)) THUMBS.set(c.type, `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`);
+/** each caption template's picture: its sample tpl-<id> (samples.ts) */
+const TEMPLATE_THUMB = (id: string) => { const c = samples.find((x) => x.name === `tpl-${id}`); return c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`; };
 
 export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): Promise<GalleryIndex> {
   const order = (p: Plugin) => (p.id === 'core' ? 0 : p.id === 'common' ? 1 : 2);
@@ -41,7 +44,8 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
     ...Object.values(lib.styles).map((s) => ({ id: s.id, label: s.label, doc: s.doc ?? '', defaults: s.defaults, origin: 'library' as const })),
   ];
   const recipes = Object.values(RECIPES).map((r) => ({ id: r.id, label: r.label, doc: r.doc, notes: r.notes ?? [], example: r.example }));
-  return { blocks, sfx, styles, recipes };
+  const captions = TEMPLATES.map((t) => ({ id: t.id, label: t.label, doc: t.doc, params: t.params, ...(TEMPLATE_THUMB(t.id) ? { thumb: TEMPLATE_THUMB(t.id) } : {}) }));
+  return { blocks, sfx, styles, recipes, captions };
 }
 
 /** composes a preview in a child process (score-child.ts), so the server keeps answering meanwhile; a refused one throws its reason */

@@ -7,6 +7,7 @@ import { t } from './i18n/index.ts';
 import { tip } from './tip.ts';
 import { keyWords } from './platform.ts';
 import { CheckField, NumberField, ParamField, SelectField, TextField } from './fields.tsx';
+import { CaptionTemplates } from './CaptionTemplates.tsx';
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
@@ -128,6 +129,7 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
             <button data-transform-keys-clear onClick={() => editor.setTransform(id, { ...tf, keys: [] })}>Stay at the first position</button></p> : null}
         </>;
       })()}
+      {it.type === 'common.caption' && defs && <CaptionTemplates editor={editor} project={p} item={it} track={track.id} defs={defs} />}
       {track.kind === 'sfx' && <NumberField label="Volume (dB)" name="gain" value={it.gain} step={0.5} min={-60} max={12} onCommit={up('gain')} />}
       {/* a moving item (following a face): its path decides where it is; the block's own x/y are the path's anchor, so they are not offered */}
       {defs ? defs.filter((def: any) => !(it.transform?.keys?.length && (def.key === 'x' || def.key === 'y'))).map((def: any) => <ParamField def={def} type={it.type} value={it.params?.[def.key]} project={p} onCommit={(v) => editor.updateParam(id, def.key, v)} />)

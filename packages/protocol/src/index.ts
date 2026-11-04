@@ -224,7 +224,9 @@ export interface GallerySfx { plugin: string; type: string; label: string; doc: 
   category?: string }
 export interface GalleryStyle { id: string; label: string; doc: string; defaults: { bpm: number; key: string }; origin: 'built-in' | 'library' }
 export interface GalleryRecipe { id: string; label: string; doc: string; notes: string[]; example: unknown }
-export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[] }
+/** a caption template (common.caption's CAP-xx): its id, names, the parameters it sets and its golden picture */
+export interface GalleryCaption { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
+export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[] }
 
 // ---------------------------------------------------------------- the user's own library (spec 2026-10-29-my-library)
 /** where an entry was saved from: the project's id and file, and the project's name now (absent when the project is gone) */

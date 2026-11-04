@@ -1,11 +1,24 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
-import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryCaption, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 
 export type { GalleryBlock, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
-export type Tab = 'blocks' | 'sfx' | 'styles' | 'recipes';
+export type Tab = 'blocks' | 'captions' | 'sfx' | 'styles' | 'recipes';
+
+/** the line a caption template is shown with, in the UI language, with its word times (spec 2026-11-04-caption-styles §5) */
+export const CAPTION_LINE: Record<string, { text: string; words: Array<[number, number]> }> = {
+  zh: { text: '今天帶你去吃【台南】最強的牛肉湯', words: [[0.25, 2], [0.55, 4], [0.85, 6], [1.2, 8], [1.6, 11], [2.05, 14]] },
+  en: { text: 'We walked all the way to the 【Colosseum】', words: [[0.25, 2], [0.5, 9], [0.8, 13], [1.0, 17], [1.25, 21], [1.45, 24], [1.7, 28], [2.0, 38]] },
+  ja: { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] },
+};
+/** a caption template drawn by common.caption (`caption`: the gallery's entry for that block) over a picture, in the UI language */
+export function captionProject(caption: GalleryBlock, template: string, lang: string) {
+  const line = CAPTION_LINE[lang] ?? CAPTION_LINE.zh;
+  const p = blockProject(caption, { ...line, template });
+  return { ...p, meta: { ...p.meta, background: '#4a5a52' } };
+}
 
 /** the looks the preview can show a block in (the project theme the common blocks read); their names are the gallery.theme.<id> texts */
 export const THEMES: Record<string, { theme?: Record<string, unknown> }> = {
@@ -100,6 +113,7 @@ export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   if (tab === 'blocks') return g.blocks.filter((b) => matches(query, handleOf(b.type), b.type, ...fields(b.type, b), b.group, groupName(b.plugin, b.group)));
   if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), s.type, ...fields(s.type, s)));
   if (tab === 'styles') return g.styles.filter((s) => matches(query, handleOf(`style:${s.id}`), s.id, ...fields(`style:${s.id}`, s)));
+  if (tab === 'captions') return (g.captions ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`caption:${c.id}`), c.id, ...fields(`caption:${c.id}`, c), ...Object.values(c.params).map(String)));
   return g.recipes.filter((r) => matches(query, handleOf(`recipe:${r.id}`), r.id, ...fields(`recipe:${r.id}`, r)));
 }
 
