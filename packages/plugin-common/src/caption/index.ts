@@ -44,6 +44,10 @@ export const stylePop = (style: string, local: number): number | null => lookOf(
 export const styleFontOf = (style: string, styleFont: string, fontSet = false) => styleFont || (fontSet ? '' : lookOf(style).font ?? '');
 
 const STYLE_IDS = LOOKS.map((l) => l.id);
+/** an element's inline style gone, and cssCamel's memory of it (else it would skip setting the same values again) */
+const clearStyle = (el: HTMLElement) => { el.removeAttribute('style'); delete (el as unknown as { _c?: unknown })._c; };
+/** what a look's box() may set beyond the basics, cleared first: switching looks on a caption leaves nothing of the last one */
+const LOOK_RESET = { boxShadow: '', backdropFilter: '', letterSpacing: '', wordSpacing: '', textTransform: '', minWidth: '', borderLeft: '', backgroundColor: '', backgroundImage: '', backgroundSize: '', lineHeight: '1.25' };
 
 export const caption: ItemType<CaptionP, CaptionS> = {
   type: 'common.caption', label: '字幕（共用）', category: 'text', kind: 'overlay',
@@ -113,7 +117,7 @@ export const caption: ItemType<CaptionP, CaptionS> = {
   hide(s) { freeCanvas(s.band); s.layer.cv = undefined; },
   draw(ctx, s) {
     // its own parameters, then its template's (or the project's default template), then the defaults and the theme
-    const p = withTemplate(ctx.params, ctx.item?.params, ctx.project?.meta?.captionTemplate), { W, H, theme } = ctx, k = Math.min(W, H) / 1080, look = lookOf(p.style);
+    const p = withTemplate(ctx.params, ctx.item?.params, ctx.project?.meta?.captionTemplate, ctx.project?.meta?.captionTemplates as Record<string, Record<string, unknown>> | undefined), { W, H, theme } = ctx, k = Math.min(W, H) / 1080, look = lookOf(p.style);
     // the engine draws the first entrances and exits (animState); the others are lineAnim's and the word effects'
     const pop = p.animIn === 'pop', st = animState({ ...p, animIn: pop || !ENGINE_IN.has(p.animIn) ? 'none' : p.animIn, animOut: ENGINE_OUT.has(p.animOut) ? p.animOut : 'none' }, ctx.local, ctx.dur, W, H), px = (p.size / 100) * H * (look.sizeScale ?? 1), hs = Math.max(1, p.hlScale ?? 1);
     const width = W * (1 - 2 * theme.safe.side);
@@ -138,12 +142,16 @@ export const caption: ItemType<CaptionP, CaptionS> = {
       const ws0 = look.word?.(e) ?? {}, hot = look.hl ? look.hl(pre) : p.hl;
       const ws = { ...ws0, hot: { color: hot, ...ws0.hot }, onbox: { color: theme.palette.ink, webkitTextStroke: '0', textShadow: 'none', filter: 'none', ...ws0.onbox } };
       setWords(s.words, fit.lines, fit.starts, list);
+      for (const l of s.words.lines) { clearStyle(l); cssCamel(l, { position: 'relative' }); }
       look.lines?.(s.words.lines, pre);
       // auto: what words did before there were word effects (lighting up the word being said, or dim until said with fill)
       drawWords(s.words, { fx: fx === 'auto' ? (hasWords ? (fill ? 'fill' : 'color') : 'none') : fx, words: list, local: ctx.local, dur: ctx.dur, fs, ws, animIn: p.animIn, boxColor: ws.box ?? hot });
     } else {
       setRuns(s.text, fit.lines, look.hl ? look.hl(pre) : p.hl, { perChar: pop || fill, hlScale: hs });
-      look.lines?.([...s.text.el.children] as HTMLElement[], pre);
+      // a line keeps no look of the last style (strips, slabs): only what this look sets
+      const lines = [...s.text.el.children] as HTMLElement[];
+      for (const l of lines) clearStyle(l);
+      look.lines?.(lines, pre);
     }
     if (pop && !wordMode) {
       const chars = [...s.text.el.querySelectorAll('span')] as HTMLElement[];
@@ -188,6 +196,8 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     }
     const boxCss = look.box?.(e) ?? {};
     if (la.filter) boxCss.filter = [boxCss.filter, la.filter].filter(Boolean).join(' ');
+    // cleared in a call of its own: in one object a reset key would land after the look's background shorthand and wipe it
+    cssCamel(s.box, LOOK_RESET);
     cssCamel(s.box, {
       top: place.top, bottom: place.bottom, maxWidth: `${width}px`, opacity: String(st.opacity * la.opacity * (look.popScale ? pq : 1)), left: left ? `${theme.safe.side * W}px` : '50%', textAlign: left ? 'left' : 'center',
       transform: `translate(${left ? `${st.x}px` : `calc(-50% + ${st.x}px)`}, calc(${place.yAnchor} + ${st.y}px))${pin}${la.transform}`, transformOrigin: look.origin ?? (left ? '0 100%' : '50% 100%'), clipPath: look.clip?.(e) ?? (la.clip || 'none'),

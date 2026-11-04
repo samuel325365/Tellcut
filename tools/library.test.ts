@@ -69,7 +69,9 @@ test('the catalog lists the user’s own blocks first, marked 我的', async () 
   await run(projects, 'save', 'p1', 'fx/chalk.js');
   const { plugin } = await libraryPlugin(libraryRoot(projects));
   const all = [...plugins, plugin];
-  expect(findBlocks(all, 'chalk').map((t) => t.type)).toEqual(['fx.chalk-title', 'fx.chalk-line']);
+  // (common.caption matches too since 2026-11-05: chalk is one of its looks)
+  expect(findBlocks(all, 'chalk').map((t) => t.type).filter((t) => t.startsWith('fx.'))).toEqual(['fx.chalk-title', 'fx.chalk-line']);
+  expect(formatFind(all, 'chalk').split('\n')[1]).toMatch(/我的 +fx\.chalk-/);
   expect(formatFind(all, 'chalk')).toMatch(/我的 +fx\.chalk-title/);
   const cat = formatCatalog(all);
   expect(cat.indexOf('fx.chalk-title')).toBeLessThan(cat.indexOf('core.'));

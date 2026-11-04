@@ -53,3 +53,68 @@ export const qa: CaptionLook = {
       background: `linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) ${(f * 0.55).toFixed(1)}%, rgba(0,0,0,0.72) ${f.toFixed(1)}%, rgba(0,0,0,0.55) ${(f + (100 - f) * 0.4).toFixed(1)}%, rgba(0,0,0,0) 100%)` });
   },
 };
+
+/** a news bar: ink words on a white bar with a thick block of the accent colour at its left */
+export const news: CaptionLook = {
+  id: 'news', weight: '900', left: true,
+  room: (e, width) => width - 1.4 * e.px,
+  color: (e) => e.theme.palette.ink,
+  hl: (e) => e.p.accent || e.theme.palette.accent,
+  box: (e) => ({ background: '#ffffff', padding: '0.14em 0.6em 0.16em 0.8em', borderLeft: `0.32em solid ${e.p.accent || e.theme.palette.accent}`,
+    boxShadow: `0 ${(0.06 * e.fs).toFixed(1)}px ${(0.18 * e.fs).toFixed(1)}px rgba(0,0,0,0.35)` }),
+};
+
+/** a chat bubble: speaker 2 and 3 on the right in the accent colour, everyone else on the left in grey, a corner pointing at them */
+export const chat: CaptionLook = {
+  id: 'chat', weight: '700', room: (e, width) => width * 0.8 - 1.2 * e.px,
+  color: (e) => ((e.p.speaker ?? 0) >= 2 ? '#ffffff' : e.theme.palette.ink),
+  hl: (e) => ((e.p.speaker ?? 0) >= 2 ? e.p.hl : e.theme.palette.accent),
+  box: (e) => {
+    const right = (e.p.speaker ?? 0) >= 2;
+    return { background: right ? (e.p.accent || e.theme.palette.accent) : '#eef0f3', padding: '0.28em 0.7em', borderRadius: right ? '0.9em 0.9em 0.2em 0.9em' : '0.9em 0.9em 0.9em 0.2em',
+      boxShadow: `0 ${(0.05 * e.fs).toFixed(1)}px ${(0.14 * e.fs).toFixed(1)}px rgba(0,0,0,0.3)` };
+  },
+  pin: (e) => ` translateX(${(e.p.speaker ?? 0) >= 2 ? 9 : -9}%)`,
+};
+
+/** song lyrics: a classical serif in white, softly glowing, with the words not sung yet dim */
+export const lyric: CaptionLook = {
+  id: 'lyric', weight: '400', font: 'Cactus Classical Serif',
+  box: (e) => ({ textShadow: `0 0 ${(0.2 * e.fs).toFixed(1)}px rgba(255,255,255,0.45), 0 ${(0.03 * e.fs).toFixed(1)}px ${(0.08 * e.fs).toFixed(1)}px rgba(0,0,0,0.6)`, letterSpacing: '0.08em' }),
+  word: (e) => ({ hot: { color: e.p.hl, textShadow: `0 0 ${(0.3 * e.fs).toFixed(1)}px ${e.p.hl}` }, dim: { color: 'rgba(255,255,255,0.45)' } }),
+};
+
+/** a game's dialogue box: a dark blue box with a double white frame, white words set flush left */
+export const dialog: CaptionLook = {
+  id: 'dialog', weight: '700', left: true, room: (e, width) => width - 1.6 * e.px,
+  hl: (e) => e.p.hl,
+  box: (e) => ({ background: 'linear-gradient(180deg, #1f2e7a, #101a4d)', padding: '0.4em 0.8em', borderRadius: `${(0.12 * e.fs).toFixed(1)}px`, minWidth: '70%',
+    boxShadow: `inset 0 0 0 ${(0.05 * e.fs).toFixed(1)}px #ffffff, inset 0 0 0 ${(0.1 * e.fs).toFixed(1)}px #101a4d, inset 0 0 0 ${(0.13 * e.fs).toFixed(1)}px #c9d4ff, 0 ${(0.06 * e.fs).toFixed(1)}px ${(0.2 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)` }),
+};
+
+/** a comic panel: ink words on a white box with a heavy ink border over a halftone of the highlight colour, tilted a little */
+export const comic: CaptionLook = {
+  id: 'comic', paper: true, weight: '900', room: (e, width) => width - 1.4 * e.px,
+  color: (e) => e.p.outline,
+  hl: (e) => e.theme.palette.accent,
+  box: (e) => ({ backgroundColor: '#ffffff', backgroundImage: `radial-gradient(circle, color-mix(in srgb, ${e.p.hl} 70%, transparent) 28%, transparent 30%)`, backgroundSize: '0.32em 0.32em',
+    padding: '0.22em 0.7em', border: `${(0.07 * e.fs).toFixed(1)}px solid ${e.p.outline}`, boxShadow: `${(0.1 * e.fs).toFixed(1)}px ${(0.1 * e.fs).toFixed(1)}px 0 ${e.p.outline}` }),
+  pin: () => ' rotate(-1.5deg)',
+};
+
+/** chalk on a blackboard: a dark green board with a wooden edge, the words in white chalk with rough edges */
+export const chalk: CaptionLook = {
+  id: 'chalk', weight: '400', font: 'Iansui', room: (e, width) => width - 1.4 * e.px,
+  color: () => '#f4f4ee',
+  hl: () => '#ffe98a',
+  box: (e) => ({ background: 'radial-gradient(120% 140% at 30% 20%, #2f4a3a, #1b2b22)', padding: '0.3em 0.7em', border: `${(0.12 * e.fs).toFixed(1)}px solid #7a5230`, borderRadius: `${(0.06 * e.fs).toFixed(1)}px`,
+    textShadow: `0 0 ${(0.03 * e.fs).toFixed(1)}px rgba(255,255,255,0.7)`, boxShadow: `0 ${(0.06 * e.fs).toFixed(1)}px ${(0.2 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)`, filter: 'url(#tc-chalk)' }),
+  after: () => {
+    // the chalk's rough edge: a noise filter the box points at, made once a page
+    if (typeof document === 'undefined' || document.getElementById('tc-chalk')) return;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '0'); svg.setAttribute('height', '0'); svg.style.position = 'absolute';
+    svg.innerHTML = '<filter id="tc-chalk"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.2"/></filter>';
+    document.body.appendChild(svg);
+  },
+};

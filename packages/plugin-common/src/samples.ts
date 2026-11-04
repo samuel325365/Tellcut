@@ -70,7 +70,8 @@ const CAP_ZH = { text: '今天帶你去吃【台南】最強的牛肉湯', words
 const CAP_EN = { text: 'We walked all the way to the 【Colosseum】', words: [[0.25, 2], [0.5, 9], [0.8, 13], [1.0, 17], [1.25, 21], [1.45, 24], [1.7, 28], [2.0, 38]] };
 const CAP_JA = { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] };
 const CAP_LOOKS: Array<[string, Record<string, unknown>]> = [['punch', {}], ['double', {}], ['soft', {}], ['frost', { hl: '#9fe3ff' }], ['cinema', { size: 3.6 }], ['slab', {}], ['hollow', {}],
-  ['marker', {}], ['neon', { hl: '#ff3db8', accent: '#29e7ff' }], ['gradient', { hl: '#ffe2a8', accent: '#ff8a4c' }], ['extrude', { hl: '#ffd23f', accent: '#e8742c' }], ['sticker', { accent: '#ff4f6a', bubbleBg: '#ffffff' }]];
+  ['marker', {}], ['neon', { hl: '#ff3db8', accent: '#29e7ff' }], ['gradient', { hl: '#ffe2a8', accent: '#ff8a4c' }], ['extrude', { hl: '#ffd23f', accent: '#e8742c' }], ['sticker', { accent: '#ff4f6a', bubbleBg: '#ffffff' }],
+  ['heavy', {}], ['offset', {}], ['gold', {}], ['chrome', {}], ['flow', { hl: '#7cf8ff', accent: '#ff5fa2' }], ['halo', { hl: '#ffb3e6' }], ['duotone', { hl: '#ffe14d', accent: '#ff5c7a' }], ['longshadow', {}], ['emboss', {}], ['block', {}], ['puffy', { hl: '#ffd1e8', accent: '#ff5fa2' }], ['tape', { hl: '#9fe3c8' }], ['postit', {}], ['label', {}], ['ransom', {}], ['rgb', {}], ['pixel', {}], ['vhs', {}], ['terminal', {}], ['segment', {}], ['scanline', { hl: '#7cf8ff' }], ['news', {}], ['chat', {}], ['lyric', { hl: '#ffd27a' }], ['dialog', {}], ['comic', {}], ['chalk', {}]];
 const CAPTION_SAMPLES: Sample[] = [
   ...CAP_LOOKS.flatMap(([style, own]): Sample[] => [
     { name: `cap-${style}-zh`, type: 'common.caption', params: { ...CAP_ZH, style, ...own }, at: [1.0, 2.4], bg: '#4a5a52' },

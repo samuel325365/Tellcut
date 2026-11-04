@@ -81,3 +81,48 @@ export const strip: CaptionLook = {
   lines: (ls, e) => paperStrips(ls, e.p, e.left, e.k),
   gloss: (s, e) => ({ display: 'table', margin: `0.3em ${e.left ? '0' : 'auto'} 0`, ...stripCss(e.p, e.k), transform: `rotate(${stripTilt(s.text.el.children.length)}deg)` }),
 };
+
+/** a strip of washi tape a line: see-through tape of the highlight colour with fine stripes and torn ends, ink words */
+export const tape: CaptionLook = {
+  id: 'tape', paper: true, weight: '700', room: padded,
+  color: (e) => e.p.outline,
+  hl: (e) => e.theme.palette.accent,
+  lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.18em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.06em 0.55em 0.1em',
+    background: `repeating-linear-gradient(90deg, color-mix(in srgb, ${e.p.hl} 82%, transparent) 0 0.5em, color-mix(in srgb, ${e.p.hl} 68%, transparent) 0.5em 0.6em)`,
+    clipPath: 'polygon(0 6%, 2% 0, 4% 8%, 96% 2%, 98% 10%, 100% 4%, 100% 94%, 98% 100%, 96% 92%, 4% 98%, 2% 90%, 0 96%)', transform: `rotate(${i % 2 ? 1.4 : -1.2}deg)` })),
+};
+
+/** a sticky note: a square-ish yellow note slightly turned, a soft shadow, handwriting in ink */
+export const postit: CaptionLook = {
+  id: 'postit', paper: true, weight: '400', font: 'Iansui', room: (e, width) => width - 1.6 * e.px,
+  color: (e) => e.p.outline,
+  hl: (e) => e.theme.palette.accent,
+  box: (e) => ({ background: `linear-gradient(175deg, ${e.p.accent || '#fff27a'} 0%, color-mix(in srgb, ${e.p.accent || '#fff27a'} 88%, #c9a200) 100%)`, padding: '0.45em 0.8em 0.55em', borderRadius: '0 0 0.15em 0.6em',
+    boxShadow: `0 ${(0.1 * e.fs).toFixed(1)}px ${(0.24 * e.fs).toFixed(1)}px rgba(0,0,0,0.35)` }),
+  pin: () => ' rotate(-2deg)',
+};
+
+/** a label maker's tape a line: a glossy black strip with the words embossed in white capitals, widely spaced */
+export const label: CaptionLook = {
+  id: 'label', weight: '700', font: 'JetBrains Mono', room: padded,
+  color: () => '#f4f4f4',
+  lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.16em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.08em 0.5em 0.1em',
+    background: `linear-gradient(180deg, #2b2b2b, #111 55%, #1c1c1c)`, borderRadius: '0.08em', textTransform: 'uppercase', letterSpacing: '0.14em',
+    textShadow: '0 1px 0 rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.25)', boxShadow: `0 ${(0.05 * e.px).toFixed(1)}px ${(0.12 * e.px).toFixed(1)}px rgba(0,0,0,0.45)` })),
+};
+
+/** cut-out letters: every character on its own scrap of paper, each a different colour, font and tilt, like a ransom note */
+const SCRAPS = [['#fff8ec', '#1a1a1a'], ['#1a1a1a', '#ffffff'], ['#ffe14d', '#1a1a1a'], ['#ff5c7a', '#ffffff'], ['#7fd4c8', '#1a1a1a'], ['#ffffff', '#c62828'], ['#3d7bff', '#ffffff']];
+const SCRAP_FONTS = ["'Noto Serif TC'", "'Noto Sans TC'", "'Huninn'", "'LXGW WenKai TC'", "'Cactus Classical Serif'", "'Bebas Neue', 'Noto Sans TC'", "'Anton', 'Noto Sans TC'"];
+export const ransom: CaptionLook = {
+  id: 'ransom', weight: '700',
+  word: () => ({
+    char: (i: number, c: string): Record<string, string> => {
+      if (!c.trim()) return { background: '', margin: '' };
+      const k = (i * 7 + c.charCodeAt(0)) % SCRAPS.length, [bg, fg] = SCRAPS[k];
+      return { background: bg, color: fg, fontFamily: `${SCRAP_FONTS[(i * 3 + c.charCodeAt(0)) % SCRAP_FONTS.length]}, sans-serif`, padding: '0 0.08em', margin: '0 0.03em',
+        transform: `rotate(${(((i * 37 + c.charCodeAt(0)) % 13) - 6).toFixed(0)}deg)`, boxShadow: '0 0.04em 0.08em rgba(0,0,0,0.4)' };
+    },
+    hot: { outline: '0.08em solid #ffe14d' },
+  }),
+};

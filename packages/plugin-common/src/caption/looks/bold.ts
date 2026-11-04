@@ -45,3 +45,18 @@ export const big: CaptionLook = {
   popScale: (local) => lerp(0.6, 1, eBack(prog(local, 0, 0.14), 1.7)),
   gloss: (_s, e) => ({ webkitTextStroke: `${(0.14 * e.px * (e.p.glossSize ?? 0.52)).toFixed(2)}px ${e.p.outline}` }),
 };
+
+/** heavy black-weight words with a hard dark shadow dropped down and right, like a poster */
+export const heavy: CaptionLook = {
+  id: 'heavy',
+  stroke: (e) => 0.04 * e.fs,
+  box: (e) => ({ textShadow: `${(0.07 * e.fs).toFixed(1)}px ${(0.09 * e.fs).toFixed(1)}px 0 rgba(0,0,0,0.85)`, letterSpacing: '0.02em' }),
+};
+
+/** words in the highlight colour with a copy in the second colour knocked out of register behind them, like a misprint */
+export const offset: CaptionLook = {
+  id: 'offset',
+  color: (e) => e.p.hl,
+  hl: (e) => e.p.color,
+  box: (e) => ({ textShadow: `${(-0.06 * e.fs).toFixed(1)}px ${(0.05 * e.fs).toFixed(1)}px 0 ${e.p.accent || e.theme.palette.accent2}, ${(0.05 * e.fs).toFixed(1)}px ${(0.07 * e.fs).toFixed(1)}px ${(0.12 * e.fs).toFixed(1)}px rgba(0,0,0,0.4)` }),
+};

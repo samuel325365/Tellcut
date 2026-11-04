@@ -34,7 +34,9 @@ export type Css = Record<string, string>;
 
 /** a look's words: every word, the hot ones (【marked】 and the one being said), the dim ones (not said yet), the one on the box;
  *  `box`: the colour of the block that slides behind the word being said */
-export interface WordStyle { base?: Css; hot?: Css; dim?: Css; onbox?: Css; box?: string }
+export interface WordStyle { base?: Css; hot?: Css; dim?: Css; onbox?: Css; box?: string;
+  /** each character its own look (cut-out letters): character i of the line, c */
+  char?: (i: number, c: string) => Css }
 
 export interface CaptionLook {
   id: string;
