@@ -1,6 +1,35 @@
-// Bold looks: big (a social app's big sticker words).
-import { eBack, lerp, prog } from '@tellcut/engine';
+// Bold looks: big (a social app's big sticker words), slab (a slanted block of colour a line), hollow (outlined letters only) and
+// marker (a highlighter stroke a line).
+import { cssCamel, eBack, lerp, prog } from '@tellcut/engine';
 import type { CaptionLook } from '../types.ts';
+import { padded } from './basic.ts';
+
+/** each line on a slanted block of the accent colour (the second colour when set), alternately tilted a little; white words, the
+ *  highlight colour for hot ones */
+export const slab: CaptionLook = {
+  id: 'slab', room: padded,
+  lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.14em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.04em 0.6em 0.08em',
+    background: e.p.accent || e.theme.palette.accent, clipPath: 'polygon(0.35em 0, 100% 0, calc(100% - 0.35em) 100%, 0 100%)', transform: `rotate(${i % 2 ? 1.2 : -1.5}deg)` })),
+};
+
+/** letters drawn as an outline only, the picture showing through them; the hot ones filled in the highlight colour */
+export const hollow: CaptionLook = {
+  id: 'hollow',
+  color: () => 'transparent',
+  stroke: (e) => 0.07 * e.fs,
+  strokeColor: (e) => e.p.color,
+  // a dark halo round the outline keeps it readable over a bright picture
+  box: (e) => ({ filter: `drop-shadow(0 0 ${(0.05 * e.fs).toFixed(1)}px rgba(0,0,0,0.7)) drop-shadow(0 ${(0.04 * e.fs).toFixed(1)}px ${(0.06 * e.fs).toFixed(1)}px rgba(0,0,0,0.5))` }),
+};
+
+/** ink words on a stroke of highlighter a line, slightly tilted, the ends a little uneven */
+export const marker: CaptionLook = {
+  id: 'marker', paper: true, weight: '700', room: padded,
+  color: (e) => e.p.outline,
+  hl: (e) => e.theme.palette.accent,
+  lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.1em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0 0.32em',
+    background: `color-mix(in srgb, ${e.p.hl} 92%, transparent)`, borderRadius: '0.18em 0.6em 0.3em 0.5em', transform: `rotate(${i % 2 ? 0.8 : -1}deg)` })),
+};
 
 /** big's words: `bigColor`, else the speaker's colour when one is set (speaker > 0, tint on), else the highlight colour */
 export const bigColorOf = (p: { bigColor?: string; hl: string }, speakerInk?: string) => p.bigColor || speakerInk || p.hl;

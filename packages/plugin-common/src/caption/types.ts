@@ -3,14 +3,15 @@
 // look and asks the look only what differs, so a look knows nothing of the word effects or the animations around it.
 import type { Theme } from '@tellcut/engine';
 import type { RunBox } from '../runs.ts';
+import type { WordBox } from './wordfx.ts';
 import type { GrainLayer } from '../sketch.ts';
 
 export interface CaptionP {
-  text: string; template: string; style: string; styleFont: string; y: number; tint: boolean; size: number; font: string; color: string; hl: string; outline: string; boxBg: string; bubbleBg: string;
+  text: string; template: string; wordFx: string; accent: string; style: string; styleFont: string; y: number; tint: boolean; size: number; font: string; color: string; hl: string; outline: string; boxBg: string; bubbleBg: string;
   position: 'bottom' | 'center' | 'top'; animIn: string; animOut: string; animDur: number; words: Array<[number, number]>; speaker: number; name: string;
   hlScale: number; bigColor: string; badgeTint: boolean; tag: string; gloss: string; glossSize: number; glossColor: string; quote: boolean; fill: boolean; role: string; align: 'center' | 'left'; point: 'none' | 'up' | 'down' | 'left' | 'right';
 }
-export interface CaptionS { box: HTMLElement; text: RunBox; name: HTMLElement; tag: HTMLElement; gloss: HTMLElement; nameText: HTMLElement; role: HTMLElement; chip: HTMLElement; arrow: HTMLElement; chipName: HTMLElement; band: HTMLCanvasElement; layer: GrainLayer; wash: HTMLElement }
+export interface CaptionS { box: HTMLElement; text: RunBox; words: WordBox; name: HTMLElement; tag: HTMLElement; gloss: HTMLElement; nameText: HTMLElement; role: HTMLElement; chip: HTMLElement; arrow: HTMLElement; chipName: HTMLElement; band: HTMLCanvasElement; layer: GrainLayer; wash: HTMLElement }
 
 /** what a look is told while the caption draws */
 export interface LookEnv {
@@ -30,6 +31,10 @@ export interface LookEnv {
 }
 
 export type Css = Record<string, string>;
+
+/** a look's words: every word, the hot ones (【marked】 and the one being said), the dim ones (not said yet), the one on the box;
+ *  `box`: the colour of the block that slides behind the word being said */
+export interface WordStyle { base?: Css; hot?: Css; dim?: Css; onbox?: Css; box?: string }
 
 export interface CaptionLook {
   id: string;
@@ -60,8 +65,12 @@ export interface CaptionLook {
   /** pops in by itself (auto, big): its scale at `local`, after the caption's own transform; it fades in with it, the opacity
    *  times prog(local, 0, 0.14) */
   popScale?(local: number): number;
-  /** after the line's runs are set (per-line decorations) */
-  runs?(s: CaptionS, e: Omit<LookEnv, 'fs'>): void;
+  /** the outline's colour; default `outline` (the ink) */
+  strokeColor?(e: LookEnv): string;
+  /** after the line's text is set: each line's element (per-line decorations: strips, slabs, marker strokes) */
+  lines?(lines: HTMLElement[], e: Omit<LookEnv, 'fs'>): void;
+  /** how its words look one by one (wordfx.ts): set, the caption always draws a span a word (gradient text needs it) */
+  word?(e: LookEnv): WordStyle;
   /** the gloss's extra CSS (strip: a strip of its own) and its display; the default resets what a look may set */
   gloss?(s: CaptionS, e: LookEnv): Css;
   /** draws the name its own way (qa's badge); return false to leave it to the caption */

@@ -2,6 +2,8 @@
 // and, the first of a block's samples at its last moment, the gallery's thumbnail of it (the server's gallery, `npm run thumbs`). A new
 // block adds its samples here (golden.test.ts refuses a block without one; `npm run promote` appends one). Regenerate its picture with
 // `npm run golden -- --update <name>` after a change you meant.
+import { TEMPLATES } from './caption/templates.ts';
+
 export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean;
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }> }
 
@@ -62,6 +64,29 @@ const CHAT_OPEN = `0|me|你看這個 👇
 0.1|me||video|src=pic|t=0|dur=0:08|play=0.2-3|open=0.4-2.6|crop=0.5,0.4,1
 2.8|them|哇`;
 const ALBUM = '# 港邊|7月12日|第 1 天\npic|0||0.5,0.4\n-\n-||0:12\n# 老街|7月13日|第 2 天\n-\npic|0|0:08|0.3,0.6\n-\n# |7月15日|第 4 天\n-\n-\n-\n-';
+
+/** caption looks, word effects and animations (spec 2026-11-04-caption-styles): a Chinese, an English and a Japanese line with word times */
+const CAP_ZH = { text: '今天帶你去吃【台南】最強的牛肉湯', words: [[0.25, 2], [0.55, 4], [0.85, 6], [1.2, 8], [1.6, 11], [2.05, 14]] };
+const CAP_EN = { text: 'We walked all the way to the 【Colosseum】', words: [[0.25, 2], [0.5, 9], [0.8, 13], [1.0, 17], [1.25, 21], [1.45, 24], [1.7, 28], [2.0, 38]] };
+const CAP_JA = { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] };
+const CAP_LOOKS: Array<[string, Record<string, unknown>]> = [['punch', {}], ['double', {}], ['soft', {}], ['frost', { hl: '#9fe3ff' }], ['cinema', { size: 3.6 }], ['slab', {}], ['hollow', {}],
+  ['marker', {}], ['neon', { hl: '#ff3db8', accent: '#29e7ff' }], ['gradient', { hl: '#ffe2a8', accent: '#ff8a4c' }], ['extrude', { hl: '#ffd23f', accent: '#e8742c' }], ['sticker', { accent: '#ff4f6a', bubbleBg: '#ffffff' }]];
+const CAPTION_SAMPLES: Sample[] = [
+  ...CAP_LOOKS.flatMap(([style, own]): Sample[] => [
+    { name: `cap-${style}-zh`, type: 'common.caption', params: { ...CAP_ZH, style, ...own }, at: [1.0, 2.4], bg: '#4a5a52' },
+    { name: `cap-${style}-en`, type: 'common.caption', params: { ...CAP_EN, style, ...own }, at: [1.5], wide: true, bg: '#4a5a52' },
+    { name: `cap-${style}-ja`, type: 'common.caption', params: { ...CAP_JA, style, ...own }, at: [1.5], bg: '#4a5a52' },
+  ]),
+  ...['color', 'box', 'one', 'pop', 'fill', 'underline', 'type', 'wave', 'none'].flatMap((wordFx): Sample[] => [
+    { name: `cap-fx-${wordFx}-punch`, type: 'common.caption', params: { ...CAP_ZH, style: 'punch', wordFx, size: wordFx === 'one' ? 9 : 4.6 }, at: [0.7, 1.4], bg: '#4a5a52' },
+    { name: `cap-fx-${wordFx}-en`, type: 'common.caption', params: { ...CAP_EN, style: 'outline', wordFx }, at: [1.3], wide: true, bg: '#4a5a52' },
+  ]),
+  { name: 'cap-fx-pop-even', type: 'common.caption', params: { text: '沒有逐字時間的字幕 也照字數分配', style: 'punch', wordFx: 'pop' }, at: [0.9], bg: '#4a5a52' },
+  ...['bounce', 'blur', 'drop', 'zoom', 'wipe', 'scatter', 'flip', 'stretch', 'glitch', 'roll'].map((animIn): Sample => ({ name: `cap-in-${animIn}`, type: 'common.caption', params: { ...CAP_ZH, style: 'punch', animIn }, at: [0.12], bg: '#4a5a52' })),
+  // every template's own picture (the gallery's caption cards), the line half said
+  ...TEMPLATES.map((t): Sample => ({ name: `tpl-${t.id}`, type: 'common.caption', params: { ...CAP_ZH, template: t.id }, at: [1.5], bg: '#4a5a52' })),
+  ...['blur', 'shrink', 'drop', 'wipe'].map((animOut): Sample => ({ name: `cap-out-${animOut}`, type: 'common.caption', params: { ...CAP_ZH, style: 'punch', animOut }, at: [2.88], bg: '#4a5a52' })),
+];
 
 export const samples: Sample[] = [
   // the five core blocks: the block gallery's thumbnails come from these pictures (and they keep the core look from drifting)
@@ -555,4 +580,5 @@ export const samples: Sample[] = [
   { name: 'leak-still', type: 'common.leak', params: { travel: 0 }, len: 3, at: [1.5], bg: '#4d5866' },
   { name: 'wide-leak', type: 'common.leak', params: { from: 'l' }, len: 3, at: [1.5], wide: true, bg: '#4d5866' },
   { name: 'core-flash-fade', type: 'core.flash', params: { fade: 'out', color: '#000' }, len: 3, at: [0.75, 1.5, 2.25], bg: '#c9803c' },
+  ...CAPTION_SAMPLES,
 ];

@@ -47,15 +47,28 @@ export const crayon: CaptionLook = {
   after: (s, e) => { cssCamel(s.band, { display: 'block' }); drawBand(s, e); },
 };
 
+/** handwriting in ink with a thick white sticker edge and a drop shadow, the whole line tilted a little like a stuck-on sticker;
+ *  the hot words in the accent colour */
+export const sticker: CaptionLook = {
+  id: 'sticker', weight: '700', font: 'LXGW WenKai TC', origin: '50% 50%',
+  color: (e) => e.p.outline,
+  hl: (e) => e.p.accent || e.theme.palette.accent,
+  stroke: (e) => 0.3 * e.fs,
+  strokeColor: (e) => e.p.bubbleBg,
+  box: (e) => ({ filter: `drop-shadow(0 ${(0.06 * e.fs).toFixed(1)}px ${(0.07 * e.fs).toFixed(1)}px rgba(0,0,0,0.4))`, letterSpacing: '0.07em' }),
+  pin: () => ' rotate(-2.5deg)',
+  word: (e) => ({ box: e.p.hl }),
+};
+
 export const stripTilt = (line: number) => (line % 2 ? 0.7 : -0.8);
 const stripCss = (p: CaptionP, k: number) => ({ padding: '0.06em 0.42em 0.1em', background: p.bubbleBg, borderRadius: `${8 * k}px`, boxShadow: `0 ${5 * k}px ${16 * k}px rgba(20,12,6,0.3)` });
 
 /** each line its own strip of paper (bubbleBg) with a soft shadow, tilted −0.8° and 0.7° in turn; the highlighted words (【word】
  *  and, with `words`, the one being said) on a highlighter stroke in the highlight colour, in ink like the rest */
-function paperStrips(el: HTMLElement, p: CaptionP, left: boolean, k: number) {
-  ([...el.children] as HTMLElement[]).forEach((line, i) => {
+function paperStrips(lines: HTMLElement[], p: CaptionP, left: boolean, k: number) {
+  lines.forEach((line, i) => {
     cssCamel(line, { display: 'table', margin: `${i ? '0.2em' : '0'} ${left ? '0' : 'auto'} 0`, ...stripCss(p, k), transform: `rotate(${stripTilt(i)}deg)` });
-    for (const sp of line.children as HTMLCollectionOf<HTMLElement>) if (sp.style.color) cssCamel(sp, { background: p.hl, boxShadow: `0 0 0 0.08em ${p.hl}`, borderRadius: '0.12em' });
+    for (const sp of line.querySelectorAll<HTMLElement>('span')) if (sp.style.color) cssCamel(sp, { background: p.hl, boxShadow: `0 0 0 0.08em ${p.hl}`, borderRadius: '0.12em' });
   });
 }
 
@@ -65,6 +78,6 @@ export const strip: CaptionLook = {
   id: 'strip', paper: true, weight: '700', room: padded,
   hl: (e) => e.p.outline,
   color: (e) => e.p.outline,
-  runs: (s, e) => paperStrips(s.text.el, e.p, e.left, e.k),
+  lines: (ls, e) => paperStrips(ls, e.p, e.left, e.k),
   gloss: (s, e) => ({ display: 'table', margin: `0.3em ${e.left ? '0' : 'auto'} 0`, ...stripCss(e.p, e.k), transform: `rotate(${stripTilt(s.text.el.children.length)}deg)` }),
 };
