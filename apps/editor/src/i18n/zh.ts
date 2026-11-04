@@ -397,7 +397,7 @@ export const zh = {
   'help.6.0': '選取一個項目後編輯欄位；數字按 Enter 或離開欄位時套用，不合法的值不會套用，原因顯示在面板頂端。',
   'help.6.1': '點預覽上的文字或圖片就選取那個特效；Alt＋點選往下一層。',
   'help.6.2': '拖曳藍框移動，拖四角或在框上滾輪縮放；Properties 有位置、大小與「Reset position and size」。',
-  'help.6.3': '雙擊預覽上的文字直接修改，Enter 套用、Esc 取消。',
+  'help.6.3': '雙擊預覽上的文字直接修改，Enter 套用（標題這類可以分行的文字，Enter 是換行，Ctrl+Enter 才套用），點別的地方也會套用，Esc 取消。',
   'help.6.4': 'Effects 裡的 Title、Caption、Callout、End card：可改文字、字型、大小、顏色、底色與進出場動畫，在預覽上拖曳移動、雙擊改字。',
   'help.6.5': '選取有聲音的影片或原音片段 → Properties 的「Captions from speech」，把說話內容變成字幕並掛在片段上。',
   'help.6.6': '選取影片片段 → Properties 的「From / To」→ 在預覽上拖曳取景框、滾輪縮放 → Esc 或「Done」。',

@@ -398,7 +398,7 @@ export const en: Record<Key, string> = {
   'help.6.0': 'Select one item, then edit its fields; a number applies on Enter or when you leave the field, an invalid value is not applied and the reason shows at the top of the panel.',
   'help.6.1': 'Click text or a picture on the preview to select that effect; Alt+click selects the one underneath.',
   'help.6.2': 'Drag the blue frame to move it, drag a corner or use the wheel on the frame to scale; Properties has position, size and "Reset position and size".',
-  'help.6.3': 'Double-click text on the preview to edit it in place; Enter applies, Esc cancels.',
+  'help.6.3': 'Double-click text on the preview to edit it in place; Enter applies (in text that can have several lines, such as a title, Enter starts a new line and Ctrl+Enter applies), clicking elsewhere applies too, Esc cancels.',
   'help.6.4': 'The Title, Caption, Callout and End card effects: change the text, font, size, colour, background and in / out animation; drag them on the preview to move, double-click to edit the text.',
   'help.6.5': 'Select a video or original-sound clip that has sound, then press "Captions from speech" in Properties: what is said becomes captions attached to the clip.',
   'help.6.6': 'Select a video clip, press "From / To" in Properties, drag the frame on the preview and use the wheel to zoom, then Esc or "Done".',
