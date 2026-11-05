@@ -91,6 +91,17 @@ export function stripStill(k: number, col: number, scrolled: number, n: number):
   return ((i % n) + n) % n;
 }
 
+/** strip `col`'s frames `run` px scrolled: each frame's top (before the gap), its still and its edge number. The offset and the
+ *  count of whole frames scrolled come from one floor, so they wrap together: the left strip (scrolling up) takes its offset as
+ *  pitch − (run mod pitch), in (0, pitch], which is pitch, not 0, at a whole number of frames (a wrap a frame early there showed every
+ *  frame one still on for that one picture). The edge number moves with the frame the way its still does (k + scrolled on the left,
+ *  k − scrolled on the right), so it stays printed on its frame instead of stepping two a frame. */
+export function stripFrames(run: number, pitch: number, col: number, n: number, H: number): Array<{ k: number; y: number; still: number; no: number }> {
+  const into = ((run % pitch) + pitch) % pitch, off = col ? into : pitch - into, scrolled = Math.floor(run / pitch), out = [];
+  for (let k = -2; k * pitch < H + pitch * 2; k++) out.push({ k, y: k * pitch + off - pitch, still: stripStill(k, col, scrolled, n), no: 21 + ((((k + (col ? -scrolled : scrolled) + col * 7) % 18) + 18) % 18) });
+  return out;
+}
+
 interface SP { source: string; stills: string; label: string; speed: number; bg: string }
 interface SS { c: HTMLCanvasElement; imgs: HTMLImageElement[]; key: string }
 const stillOf = (source: string, t: number) => ({ source, t, w: 640 });
@@ -129,24 +140,24 @@ export const filmstrip: ItemType<SP, SS> = {
     g.fillStyle = p.bg; g.fillRect(0, 0, W, H);
     const sw = W * 0.44, fw = sw * 0.76, fh = fw / 1.5, gap = sw * 0.14, pitch = fh + gap, n = s.imgs.length, run = local * p.speed * H;
     [0.265, 0.735].forEach((cx, col) => {
-      const dir = col ? 1 : -1, x0 = cx * W - sw / 2, off = (((run * dir) % pitch) + pitch) % pitch, scrolled = Math.floor(run / pitch);
+      const x0 = cx * W - sw / 2;
       g.fillStyle = '#1b1b1b'; g.fillRect(x0, 0, sw, H);
-      for (let k = -2; k * pitch < H + pitch * 2; k++) {
-        const y = k * pitch + off - pitch, fx = cx * W - fw / 2, fy = y + gap / 2;
+      for (const { y, still, no } of stripFrames(run, pitch, col, n, H)) {
+        const fx = cx * W - fw / 2, fy = y + gap / 2;
         g.fillStyle = '#e9e6dd';   // sprocket holes down both margins
         for (let hole = 0; hole < 4; hole++) {
           const hy = y + (hole + 0.5) * (pitch / 4) - 7 * u;
           rr(g, x0 + sw * 0.035, hy, sw * 0.06, 14 * u, 3 * u); g.fill(); rr(g, x0 + sw * 0.905, hy, sw * 0.06, 14 * u, 3 * u); g.fill();
         }
         g.fillStyle = '#333'; g.fillRect(fx, fy, fw, fh);
-        const img = n ? s.imgs[stripStill(k, col, scrolled, n)] : null;
+        const img = n ? s.imgs[still] : null;
         if (img && img.complete && img.naturalWidth) {
           const ir = img.naturalWidth / img.naturalHeight, fr = fw / fh;
           let sx = 0, sy = 0, sWd = img.naturalWidth, sHt = img.naturalHeight;
           if (ir > fr) { sWd = sHt * fr; sx = (img.naturalWidth - sWd) / 2; } else { sHt = sWd / fr; sy = (img.naturalHeight - sHt) / 2; }
           g.drawImage(img, sx, sy, sWd, sHt, fx, fy, fw, fh);
         }
-        const no = 21 + ((((k - (col ? -scrolled : scrolled) + col * 7) % 18) + 18) % 18), ly = fy + fh + gap * 0.25;
+        const ly = fy + fh + gap * 0.25;
         g.fillStyle = '#f0c040'; g.font = `500 ${15 * u}px "${LATIN}", sans-serif`; g.textBaseline = 'middle';
         g.textAlign = 'left'; g.fillText(`${no}`, fx, ly); g.textAlign = 'right'; g.fillText(`${p.label} · ${no}A`, fx + fw, ly);
       }

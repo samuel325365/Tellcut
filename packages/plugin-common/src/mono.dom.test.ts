@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // common.monoframe / common.filmstrip and the title look cycle (2026-11-05, the Mono Frame pilot film's fx.monoframe / fx.filmstrip /
 // fx.monotitle). jsdom has no canvas: the window keys, the strips' stills and the look's per-line styles are tested directly.
-import { filmstrip, monoframe, monoWindow, parseStills, stripStill } from './mono.ts';
+import { filmstrip, monoframe, monoWindow, parseStills, stripFrames, stripStill } from './mono.ts';
 import { CYCLE_STEP, cycle } from './caption/looks/title.ts';
 
 describe('common.monoframe', () => {
@@ -35,6 +35,24 @@ describe('common.filmstrip', () => {
     expect(stripStill(2, 1, 0, 8)).toBe(stripStill(3, 1, 1, 8));
     expect(stripStill(0, 1, 0, 8)).toBe(4);
     expect(stripStill(-3, 0, 0, 8)).toBe(5);
+  });
+});
+
+describe('common.filmstrip frames', () => {
+  // a frame on the film keeps its place, still and edge number as the strip scrolls: just before, at and just after a whole
+  // number of frames scrolled (the strip used to jump a frame at exactly k × pitch, and its numbers ran two a frame)
+  test.each([0, 1])('strip %i: nothing jumps at whole frames', (col) => {
+    const pitch = 300, H = 1920, n = 5;
+    for (const m of [0, 1, 2, 7]) {
+      const at = (run: number) => stripFrames(run, pitch, col, n, H);
+      const before = at(m * pitch - 0.01 + (m ? 0 : 0.02)), exact = at(m * pitch), after = at(m * pitch + 0.01);
+      for (const other of [before, after]) for (const f of exact) {
+        if (f.y < 0 || f.y > H) continue;
+        const g = other.find((o) => Math.abs(o.y - f.y) < 0.5);
+        expect(g, `m ${m} y ${f.y}`).toBeDefined();
+        expect([g!.still, g!.no]).toEqual([f.still, f.no]);
+      }
+    }
   });
 });
 
