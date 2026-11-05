@@ -6,7 +6,8 @@
 // date (and `place`) written under the line; `step` −1 draws the whole line out and writes "first — last" (the ending);
 // or slots (the amber-podcast short's fx.ruleRail): a row of numbered cards, empty dashed ones (01 02 03) that turn into filled cards
 // with their keyword as each point is made (`fills`), and can hop with a glow later (`pulses`, a recap); common.slip's `slot` flies a
-// big card into one of them.
+// big card into one of them; or osd (the retro-vlog acceptance film's fx.todo): a camcorder-OSD to-do counter in VT323 with a VHS
+// colour fringe, "TO-DO 3/6" over a row of boxes that tick at `fills`, the item just ticked typed under them for `hold` seconds.
 import { clamp, cssCamel, eIO3, eOut3, h, lerp, prog, textEm, type ItemType } from '@tellcut/engine';
 import { backOut, handCircle, handFamily, handPath, tick } from './hand.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
@@ -14,10 +15,10 @@ import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
-  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots'; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; counterSize: number; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
+  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots' | 'osd'; hold: number; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; counterSize: number; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
   labels: string; size: number; align: 'left' | 'center' | 'right'; done: string; ink: string; paper: string; font: string;
 }
-interface S { track: HTMLElement; fill: HTMLElement; dots: HTMLElement[]; row: HTMLElement; tabs: HTMLElement[]; seps: HTMLElement[]; key: string; cv: HTMLCanvasElement; title: HTMLElement; count: HTMLElement; slots: HTMLElement; skey: string; cards: Slot[] }
+interface S { track: HTMLElement; fill: HTMLElement; dots: HTMLElement[]; row: HTMLElement; tabs: HTMLElement[]; seps: HTMLElement[]; key: string; cv: HTMLCanvasElement; title: HTMLElement; count: HTMLElement; slots: HTMLElement; skey: string; cards: Slot[]; osd: string }
 interface Slot { box: HTMLElement; glow: HTMLElement; empty: HTMLElement; full: HTMLElement; block: HTMLElement; label: HTMLElement }
 
 const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
@@ -70,9 +71,9 @@ export const parsePulses = (text: string): Array<[number, number]> => String(tex
 
 export const progress: ItemType<P, S> = {
   type: 'common.progress', label: '進度條', category: 'chapter', kind: 'overlay',
-  doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用',
+  doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；或 osd 攝影機 OSD 待辦計數：VT323 像素字帶錄影帶紅藍色邊，「TO-DO 3/6」（title 是前面的字）下面一排方格，到 fills 的秒數就勾起來（done 色）、剛勾的那項（labels）在方格下打字出現 hold 秒，全部勾完計數閃幾下；靠安全區右緣（align left 靠左），配 common.camcorder、common.ding；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用',
   params: [
-    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots'], default: 'bar' },
+    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd'], default: 'bar' },
     { key: 'position', label: '位置', type: 'enum', options: ['top', 'bottom'], default: 'top' },
     { key: 'color', label: '顏色（tabs：目前這章；slots：卡左邊的色塊）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'track', label: '底色', type: 'color', default: '#ffffff40' },
@@ -82,21 +83,22 @@ export const progress: ItemType<P, S> = {
     { key: 'iconSize', label: '圖示／點的大小倍數', type: 'number', min: 0.5, max: 3, step: 0.05, default: 1 },
     { key: 'y', label: '高度（畫面高比例；-1＝依「位置」放在安全區上緣或下緣；slots：卡列的中心）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'icons', label: '點上／章名前的圖示（emoji，逗號分隔，空＝一般圓點）', type: 'string', default: '' },
-    { key: 'labels', label: '章名（tabs 樣式，逗號分隔；timeline：刻度上的日期；slots：每張卡的關鍵字，幾個就幾張）', type: 'string', default: '準備,開始,完成' },
-    { key: 'size', label: '章名字級（tabs、slots，畫面高 %；放不下會自動縮小；slots 的卡高跟著它）', type: 'number', min: 1, max: 8, step: 0.1, default: 2.4 },
-    { key: 'align', label: '對齊（tabs）', type: 'enum', options: ['left', 'center', 'right'], default: 'center' },
-    { key: 'done', label: '做過的章的底色（tabs）', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
+    { key: 'labels', label: '章名（tabs 樣式，逗號分隔；timeline：刻度上的日期；slots：每張卡的關鍵字，幾個就幾張；osd：待辦項目，幾個就幾格）', type: 'string', default: '準備,開始,完成' },
+    { key: 'size', label: '章名字級（tabs、slots、osd，畫面高 %；放不下會自動縮小；slots 的卡高跟著它；osd 的計數字約 1.3 倍）', type: 'number', min: 1, max: 8, step: 0.1, default: 2.4 },
+    { key: 'align', label: '對齊（tabs；osd：left 靠左，其他靠右）', type: 'enum', options: ['left', 'center', 'right'], default: 'center' },
+    { key: 'done', label: '做過的章的底色（tabs；osd：勾和全部完成的計數）', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
     { key: 'ink', label: '字與外框（tabs；slots：實卡上的字）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
-    { key: 'paper', label: '還沒到的章的底色（tabs；slots：實卡的紙色，空卡的虛線）', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
+    { key: 'paper', label: '還沒到的章的底色（tabs；slots：實卡的紙色，空卡的虛線；osd：字和方格）', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
     { key: 'font', label: '字型（tabs）', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'at', label: '每步開始的秒數（pencil；逗號分隔，多給一個＝全部完成的時間；空＝平均分配）', type: 'string', default: '' },
-    { key: 'title', label: '左邊的手寫標題（pencil；空＝不顯示）', type: 'string', default: '一分鐘食譜' },
+    { key: 'title', label: '左邊的手寫標題（pencil；空＝不顯示；osd：計數前的字，例如 TO-DO）', type: 'string', default: '一分鐘食譜' },
     { key: 'counter', label: '計數字（pencil；開始前|進行中|全部完成，{n}/{N}）', type: 'string', default: '準備中|步驟 {n}／{N}|全部完成' },
     { key: 'counterSize', label: '計數字字級（pencil，畫面高 %；0＝跟著 size，約它的 0.74 倍）', type: 'number', min: 0, max: 8, step: 0.1, default: 0 },
     { key: 'handFont', label: '手寫字型（pencil）', type: 'string', default: 'LXGW WenKai TC' },
     { key: 'from', label: '從第幾站滑過來（timeline，0 起算；-1＝線先畫出來）', type: 'number', min: -1, max: 30, step: 1, default: -1 },
     { key: 'place', label: '日期旁的地點（timeline；空＝不顯示）', type: 'string', default: '' },
-    { key: 'fills', label: '每張卡翻成實卡的秒數（slots；逗號分隔，相對開始，沒給的那張一直空著；整欄空＝平均分配）', type: 'string', default: '' },
+    { key: 'fills', label: '每張卡翻成實卡的秒數（slots；osd：每格勾起來的秒數；逗號分隔，相對開始，沒給的那張一直空著；整欄空＝平均分配）', type: 'string', default: '' },
+    { key: 'hold', label: '剛勾的項目在方格下停留的秒數（osd；0＝不打出項目名稱）', type: 'number', min: 0, max: 6, step: 0.1, default: 1.8 },
     { key: 'pulses', label: '卡跳一下發光（slots；「秒|第幾張」逗號分隔，0 起算；回顧時用）', type: 'string', default: '' },
   ],
   build(ctx) {
@@ -110,7 +112,13 @@ export const progress: ItemType<P, S> = {
     for (const el of [title, count]) cssCamel(el, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1.3', display: 'none' });
     const slots = h('div', null, null, ctx.root);
     cssCamel(slots, { position: 'absolute', inset: '0', display: 'none' });
-    return { track, fill, dots, row, tabs: [], seps: [], key: '', cv, title, count, slots, skey: '', cards: [] };
+    // osd draws in VT323 on the canvas: ready() loads it (with the words, so a fallback face for other scripts loads too)
+    const osd = ctx.params.mode === 'osd' ? `${ctx.params.title} 0123456789/ ${ctx.params.labels}` : '';
+    return { track, fill, dots, row, tabs: [], seps: [], key: '', cv, title, count, slots, skey: '', cards: [], osd };
+  },
+  ready(s) {
+    const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+    return s.osd && fonts ? Promise.all(['VT323', 'Noto Sans TC'].map((f) => fonts.load(`60px "${f}"`, s.osd).catch(() => []))).then(() => {}) : Promise.resolve();
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
@@ -118,6 +126,7 @@ export const progress: ItemType<P, S> = {
     const p = clamp(ctx.local / ctx.dur), x = theme.safe.side * W, w = W - 2 * x;
     if (mode === 'slots') { for (const el of [s.track, s.row, s.cv, s.title, s.count]) cssCamel(el, { display: 'none' }); drawSlots(ctx, s); return; }
     if (s.slots.style.display !== 'none') cssCamel(s.slots, { display: 'none' });
+    if (mode === 'osd') { for (const el of [s.track, s.row, s.title, s.count]) cssCamel(el, { display: 'none' }); drawOsd(ctx, s, x, w); return; }
     if (mode === 'pencil') { cssCamel(s.track, { display: 'none' }); cssCamel(s.row, { display: 'none' }); drawPencil(ctx, s, x, w); return; }
     if (mode === 'timeline') { cssCamel(s.track, { display: 'none' }); cssCamel(s.row, { display: 'none' }); drawTimeline(ctx, s, x, w); return; }
     if (s.cv.style.display !== 'none') for (const el of [s.cv, s.title, s.count]) cssCamel(el, { display: 'none' });
@@ -299,4 +308,71 @@ function drawSlots(ctx: Parameters<typeof progress.draw>[0], s: S) {
     c.label.textContent = labels[i];
     cssCamel(c.label, { left: `${bw + hh * 0.2}px`, color: p.ink, fontFamily: font, fontSize: `${fitPx(labels[i], fs, room).toFixed(2)}px` });
   });
+}
+
+/** osd mode at `local`: how many boxes are ticked, when the last one was, and whether the count is in its all-done blink */
+export function osdState(fills: Array<number | null>, local: number): { done: number; last: number; blink: boolean } {
+  const times = fills.filter((t): t is number => t != null && local >= t).sort((a, b) => a - b), done = times.length, last = done ? times[done - 1] : -Infinity;
+  const since = local - last;
+  return { done, last, blink: done === fills.length && since < 1.2 && Math.floor(since * 5) % 2 === 1 };
+}
+
+/** osd mode: the item whose name is typed under the boxes at `local` — the one ticked last, for `hold` seconds — or −1 */
+export function osdTyped(fills: Array<number | null>, local: number, hold: number): number {
+  let best = -1;
+  fills.forEach((t, i) => { if (t != null && local >= t && (best < 0 || t >= (fills[best] as number))) best = i; });
+  return best >= 0 && hold > 0 && local - (fills[best] as number) <= hold ? best : -1;
+}
+
+/** osd mode: a camcorder OSD to-do counter on the canvas: "TO-DO n/N", a row of boxes ticking at `fills`, the item just ticked typed under
+ *  them; VT323 with a red/cyan fringe like a VHS picture, flickering up in four steps and fading at the end */
+function drawOsd(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w: number) {
+  const p = ctx.params, { W, H, theme, local, dur, motion } = ctx, k = Math.min(W, H) / 1080, items = list(p.labels).filter(Boolean), n = items.length;
+  cssCamel(s.cv, { display: 'block', opacity: '1' });
+  const g = canvasAt(s.cv, W, H);
+  if (!n) return;
+  const fills = slotFills(p.fills, n, dur), st = osdState(fills, local);
+  const px = (p.size / 100) * H * 1.3, left = p.align === 'left', edge = left ? x : x + w;
+  const top = p.y >= 0 ? p.y * H : p.position === 'top' ? theme.safe.top * H : H * (1 - theme.safe.bottom) - px * 2.6 - (p.hold > 0 ? px : 0);
+  const enter = motion.steps(4)(clamp(local / 0.32)), alpha = enter * clamp((dur - local) / 0.25);
+  if (alpha <= 0) return;
+  const jitter = local < 0.32 ? (Math.floor(local * 30) % 2 ? 6 : -4) * k : 0, X = edge + jitter;
+  const font = (size: number) => `${Math.round(size)}px "VT323", 'Noto Sans TC', monospace`;
+  const fringe = (text: string, tx: number, ty: number, color: string, a: number) => {
+    g.globalAlpha = a * 0.55; g.fillStyle = '#ff3b4f'; g.fillText(text, tx - 2.5 * k, ty);
+    g.fillStyle = '#3be7ff'; g.fillText(text, tx + 2.5 * k, ty);
+    g.globalAlpha = a; g.fillStyle = color; g.fillText(text, tx, ty);
+    ctx.reportText(g, text, tx, ty);
+  };
+  g.textBaseline = 'top'; g.textAlign = left ? 'left' : 'right';
+  g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = 6 * k;
+  // line 1: TO-DO n/N (the count in the tick colour once all are done; the whole line blinks then)
+  g.font = font(px);
+  const count = `${st.done}/${n}`, head = p.title ? `${p.title} ` : '';
+  if (!st.blink) {
+    if (left) { if (head) fringe(head, X, top, p.paper, alpha); fringe(count, X + g.measureText(head).width, top, st.done === n ? p.done : p.paper, alpha); }
+    else { fringe(count, X, top, st.done === n ? p.done : p.paper, alpha); if (head) fringe(head, X - g.measureText(count).width, top, p.paper, alpha); }
+  }
+  // line 2: the boxes, ticking with a springy fill that blinks for a moment
+  const box = px * 0.5, gap = px * 0.2, rowW = n * box + (n - 1) * gap, by = top + px * 1.05, x0 = left ? X : X - rowW;
+  g.lineWidth = Math.max(2, 3 * k);
+  for (let i = 0; i < n; i++) {
+    const bx = x0 + i * (box + gap), t = fills[i];
+    g.globalAlpha = alpha; g.strokeStyle = p.paper; g.strokeRect(bx, by, box, box);
+    if (t == null || local < t) continue;
+    const q = Math.min(1.15, motion.spring({ duration: 0.35, bounce: 0.4 })(local - t)), blink = local - t < 0.6 && Math.floor((local - t) * 10) % 2 === 1 ? 0.35 : 1;
+    g.globalAlpha = alpha * blink; g.fillStyle = p.done;
+    const sq = box * 0.7 * Math.max(0, q); g.fillRect(bx + (box - sq) / 2, by + (box - sq) / 2, sq, sq);
+  }
+  // line 3: the item ticked last (a newer tick replaces it), typed left to right with a drawn check before it, gone after `hold`
+  const fs2 = px * 0.86, ly = by + box + px * 0.35, i = osdTyped(fills, local, p.hold);
+  if (i >= 0) {
+    g.font = font(fs2); g.textAlign = 'left';
+    const a = local - (fills[i] as number), word = items[i], shown = word.slice(0, Math.max(1, Math.ceil(a / 0.045))), out = clamp((p.hold - a) / 0.2);
+    const wx = left ? X + fs2 * 0.85 : X - g.measureText(word).width, cx = wx - fs2 * 0.75, cy = ly + fs2 * 0.18;
+    fringe(shown, wx, ly, p.done, alpha * out);
+    g.globalAlpha = alpha * out; g.strokeStyle = p.done; g.lineWidth = Math.max(3, fs2 * 0.1);
+    g.beginPath(); g.moveTo(cx, cy + fs2 * 0.3); g.lineTo(cx + fs2 * 0.2, cy + fs2 * 0.5); g.lineTo(cx + fs2 * 0.55, cy); g.stroke();
+  }
+  g.globalAlpha = 1; g.shadowBlur = 0;
 }

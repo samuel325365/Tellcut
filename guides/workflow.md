@@ -95,7 +95,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
 - Maps, routes and journeys (TRV): 01 `tripclock`, 02 `route`, 03 `routeboard`, 04 `mapjump`, 05 `ticket`, 06 `stations`, 07 `postmark`, 08 `mapcam`, 09 `worldmap`
 - Layouts and frames (the video plays inside) (FRM): 01 `panel`, 02 `polaroid`, 03 `snap`, 04 `postcard`, 05 `frame`, 06 `duo`, 07 `camcorder`, 08 `casefile`, 09 `magazine`
 - Phone and app screens (PHN): 01 `notify`, 02 `lockscreen`, 03 `reels`, 04 `comments`, 05 `story`, 06 `album`, 07 `chat`, 08 `search`
-- Stickers and marks (MRK): 01 `speedlines`, 02 `censor`, 03 `stamp`, 04 `pen`, 05 `sparkle`, 06 `emoji`, 07 `callout`, 08 `touch`, 09 `doodle`
+- Stickers and marks (MRK): 01 `speedlines`, 02 `censor`, 03 `stamp`, 04 `pen`, 05 `sparkle`, 06 `emoji`, 07 `callout`, 08 `touch`, 09 `doodle`, 10 `token`
 - Backgrounds and textures (LOK): 01 `backdrop`, 02 `ambient`, 03 `shader`, 04 `glitch`, 05 `film`, 06 `tone`, 07 `paper`, 08 `tabletop`, 09 `leak`
 - Transitions, suspense and endings (MOM): 01 `mystery`, 02 `outro`, 03 `rolldoor`, 04 `wipe`
 - Sound effects (`c.sfx`; a sound file the project made itself goes in with `c.sfxFile`):

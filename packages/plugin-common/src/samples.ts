@@ -377,6 +377,7 @@ export const samples: Sample[] = [
   { name: 'wide-meter-ruler', type: 'common.meter', params: { look: 'ruler', stops: '0:175, 1:193, 2:188', min: 170, max: 200, pins: '175|accent|她', size: 9 }, at: [2.6], wide: true, bg: '#3a6a5a' },
   { name: 'progress-timeline', type: 'common.progress', params: { mode: 'timeline', labels: '05.26,05.27,05.28,05.29,06.06,06.10,08.21', step: 0, place: '海邊', size: 4, font: 'Noto Serif TC' }, at: [0.3, 1.5], bg: '#4d6273' },
   { name: 'progress-timeline-slide', type: 'common.progress', params: { mode: 'timeline', labels: '05.26,05.27,05.28,05.29,06.06,06.10,08.21', step: 4, from: 3, place: '山上的小鎮', size: 4, font: 'Noto Serif TC' }, at: [0.4, 1.5], bg: '#4d6273' },
+  { name: 'progress-osd', type: 'common.progress', params: { mode: 'osd', title: 'TO-DO', labels: 'UNPACK,CLEAN THE HOUSE,EDIT VIDEOS,WORKOUT', fills: '0.4,0.9,1.4,1.9', done: '#9dfc9d', paper: '#f4f6f2', size: 4, y: 0.3 }, at: [1.2, 2.4], bg: '#4d6273' },
   { name: 'progress-timeline-full', type: 'common.progress', params: { mode: 'timeline', labels: '05.26,05.27,05.28,05.29,06.06,06.10,08.21', step: -1, size: 4, font: 'Noto Serif TC' }, at: [0.5, 1.5], bg: '#4d6273' },
   { name: 'wide-progress-timeline', type: 'common.progress', params: { mode: 'timeline', labels: '05.26,05.27,05.28,05.29,06.06,06.10,08.21', step: 4, from: 3, place: '山上的小鎮', size: 5, font: 'Noto Serif TC' }, at: [1.5], wide: true, bg: '#4d6273' },
   { name: 'pen-trace', type: 'common.pen', params: { kind: 'trace', color: '#ffd23f', from: '0.22,0.72 0.5,0.3 0.78,0.72 0.22,0.72', to: '0.5,0.32 0.72,0.5 0.5,0.68 0.28,0.5 0.5,0.32', cut: 1.2, drawDur: 0.6, morph: 0.3 }, at: [0.7, 1.0, 1.35, 1.6], bg: '#334455' },
@@ -582,4 +583,5 @@ export const samples: Sample[] = [
   { name: 'wide-leak', type: 'common.leak', params: { from: 'l' }, len: 3, at: [1.5], wide: true, bg: '#4d5866' },
   { name: 'core-flash-fade', type: 'core.flash', params: { fade: 'out', color: '#000' }, len: 3, at: [0.75, 1.5, 2.25], bg: '#c9803c' },
   ...CAPTION_SAMPLES,
+  { name: 'token', type: 'common.token', params: { x: 0.3, y: 0.42, size: 0.3 }, at: [1.2, 1.7, 2.9] },
 ];

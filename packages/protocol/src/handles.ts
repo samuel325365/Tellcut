@@ -101,6 +101,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'MRK-07': 'common.callout',
   'MRK-08': 'common.touch',
   'MRK-09': 'common.doodle',
+  'MRK-10': 'common.token',
   'LOK-01': 'common.backdrop',
   'LOK-02': 'common.ambient',
   'LOK-03': 'common.shader',
