@@ -210,7 +210,7 @@ test('the gallery speaks the chosen language', async () => {
     expect(card.getAttribute('data-tip')).toBe(BLOCKS_EN['common.slam'].doc);
     expect(card.hasAttribute('title')).toBe(false);
     expect(root.querySelector('[data-detail="common.slam"] .g-doc')!.textContent).toBe(BLOCKS_EN['common.slam'].doc);
-    expect([...root.querySelectorAll('[data-cat]')].map((b) => b.getAttribute('data-cat') + ':' + b.firstChild!.textContent)).toContain('text:Captions and big text');
+    expect([...root.querySelectorAll('[data-cat]')].map((b) => b.getAttribute('data-cat') + ':' + b.firstChild!.textContent)).toContain('text:Big text and titles');
     expect(root.querySelector('[data-clip-fx] h4')!.textContent).toContain('What a clip itself does');
     expect(root.querySelector('[data-tab="sfx"]')!.textContent).toBe('Sound effects');
     expect(root.querySelector('[data-lang]')).not.toBeNull();   // the gallery has its own switch
@@ -494,13 +494,18 @@ test('without a project there is no Add; a project whose blocks fail to load say
   expect(cards(r2)).toContain('core.title');
 });
 
-test('caption templates: a tab of their pictures; the detail plays common.caption with the template and adds it to a project', async () => {
-  const withCaption = { ...G, blocks: [...G.blocks, { plugin: 'common', group: '共用積木', type: 'common.caption', label: '字幕', doc: '', kind: 'overlay' as const, params: [], needsMedia: false, category: 'text' }] };
+test("the Captions tab: the caption blocks first, then the templates' pictures; a template's detail plays common.caption with it", async () => {
+  const withCaption = { ...G, blocks: [...G.blocks, { plugin: 'common', group: '共用積木', type: 'common.caption', label: '字幕', doc: '', kind: 'overlay' as const, params: [], needsMedia: false, category: 'caption' }] };
   const root = document.createElement('div');
   await act(async () => { render(<Gallery load={async () => withCaption} />, root); });
   await settle();
+  // the Blocks tab leaves the caption blocks out, with no category of their own there
+  expect(cards(root)).not.toContain('common.caption');
+  expect(root.querySelector('[data-cat="caption"]')).toBeNull();
   await click(root, '[data-tab="captions"]');
-  expect(cards(root)).toEqual(['caption:clean', 'caption:neon-fill']);
+  expect(cards(root)).toEqual(['common.caption', 'caption:clean', 'caption:neon-fill']);
+  expect(root.querySelector('[data-detail="common.caption"]')).not.toBeNull();
+  await click(root, '[data-card="caption:clean"]');
   expect(root.querySelector('[data-card="caption:clean"] img')?.getAttribute('src')).toBe('/api/gallery/thumb/tpl-clean-t1.50.png');
   expect(root.querySelector('[data-detail="caption:clean"] iframe')).not.toBeNull();
   await click(root, '[data-card="caption:neon-fill"]');

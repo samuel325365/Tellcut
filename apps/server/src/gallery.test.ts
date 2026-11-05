@@ -61,7 +61,7 @@ test('blocks carry their category (core ones mapped) and a golden thumbnail; the
     const g = await (await fetch(`${base}/api/gallery`)).json();
     const by = (t: string) => g.blocks.find((b: any) => b.type === t);
     expect(by('core.title')).toMatchObject({ category: 'text', thumb: '/api/gallery/thumb/core-title-t1.50.png' });
-    expect([by('core.caption').category, by('core.lowerThird').category, by('core.flash').category, by('core.endCard').category]).toEqual(['text', 'chapter', 'moment', 'moment']);
+    expect([by('core.caption').category, by('core.lowerThird').category, by('core.flash').category, by('core.endCard').category]).toEqual(['caption', 'chapter', 'moment', 'moment']);
     expect(by('common.backdrop').category).toBe('look');
     expect(by('common.backdrop').thumb).toBe('/api/gallery/thumb/backdrop-gingham-t0.50.png');
     expect(g.blocks.every((b: any) => b.category && b.thumb)).toBe(true);   // every card has a picture

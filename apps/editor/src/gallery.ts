@@ -111,11 +111,18 @@ export const groupName = (plugin: string, group: string) => (`group.${plugin}` i
 /** The cards of a tab whose handle, name, label or doc (in the shown language or the original) matches the query. */
 export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
-  if (tab === 'blocks') return g.blocks.filter((b) => matches(query, handleOf(b.type), b.type, ...fields(b.type, b), b.group, groupName(b.plugin, b.group)));
+  const block = (b: GalleryBlock) => matches(query, handleOf(b.type), b.type, ...fields(b.type, b), b.group, groupName(b.plugin, b.group));
+  if (tab === 'blocks') return g.blocks.filter((b) => !isCaptionBlock(b) && block(b));
   if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), s.type, ...fields(s.type, s)));
   if (tab === 'styles') return g.styles.filter((s) => matches(query, handleOf(`style:${s.id}`), s.id, ...fields(`style:${s.id}`, s)));
   if (tab === 'captions') return (g.captions ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`caption:${c.id}`), c.id, ...fields(`caption:${c.id}`, c), ...Object.values(c.params).map(String)));
   return g.recipes.filter((r) => matches(query, handleOf(`recipe:${r.id}`), r.id, ...fields(`recipe:${r.id}`, r)));
+}
+
+/** The Captions tab's blocks (core.caption, common.caption), above the templates; the Blocks tab leaves them out. */
+export function captionBlocks(g: GalleryIndex, query: string): GalleryBlock[] {
+  const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
+  return g.blocks.filter((b) => isCaptionBlock(b) && matches(query, handleOf(b.type), b.type, ...fields(b.type, b))).sort((a, b) => byHandle(a.type, b.type));
 }
 
 /** The sound effects by category (SFX_CATEGORY's order), then any without one (a sample film's own) under 其他. */
@@ -129,6 +136,9 @@ export function sfxSections(list: GallerySfx[]): Array<{ key: string; label: str
 export const blockCategory = (b: GalleryBlock) => b.category ?? `plugin:${b.plugin}`;
 /** cards of one category in handle order (TXT-01, TXT-02…; core blocks take their place among them), ones without a handle last */
 export const byHandle = (a: string, b: string) => { const n = (id: string) => { const h = handleOf(id); return h ? Number(/\d+$/.exec(h)![0]) : Infinity; }; return n(a) - n(b); };
+/** the caption blocks' category: shown in the Captions tab with the templates, not among the Blocks tab's categories */
+export const CAPTION_CATEGORY = 'caption';
+export const isCaptionBlock = (b: GalleryBlock) => b.category === CAPTION_CATEGORY;
 /** the last category: what a clip itself does (not blocks, listed with them) */
 export const CLIP_CATEGORY = 'clip';
 
@@ -143,6 +153,7 @@ export const PROJECT_CATEGORY = 'project';
 export function galleryCategories(blocks: GalleryBlock[], clipCount: number, mineCount?: number, ownCount = 0): Array<{ key: string; label: string; count: number }> {
   const count = new Map<string, number>(), plugins: Array<{ key: string; label: string }> = [];
   for (const b of blocks) {
+    if (isCaptionBlock(b)) continue;
     const k = blockCategory(b);
     if (!count.has(k) && k.startsWith('plugin:')) plugins.push({ key: k, label: groupName(b.plugin, b.group) });
     count.set(k, (count.get(k) ?? 0) + 1);

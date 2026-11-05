@@ -7,7 +7,7 @@ import type { BlockCategory, SfxCategory } from '@tellcut/engine';
 
 /** a block category's prefix (core blocks take the gallery's category, CORE_CATEGORY) */
 export const BLOCK_PREFIX: Record<BlockCategory, string> = {
-  text: 'TXT', chapter: 'CHP', card: 'CRD', number: 'NUM', travel: 'TRV', frame: 'FRM', phone: 'PHN', mark: 'MRK', look: 'LOK', moment: 'MOM',
+  caption: 'SUB', text: 'TXT', chapter: 'CHP', card: 'CRD', number: 'NUM', travel: 'TRV', frame: 'FRM', phone: 'PHN', mark: 'MRK', look: 'LOK', moment: 'MOM',
 };
 /** a sound effect category's prefix */
 export const SFX_PREFIX: Record<SfxCategory, string> = {
@@ -17,7 +17,7 @@ export const SFX_PREFIX: Record<SfxCategory, string> = {
 export const STYLE_PREFIX = 'MUS', RECIPE_PREFIX = 'RCP', CLIP_PREFIX = 'CLP', CAPTION_PREFIX = 'CAP';
 
 /** the core blocks have no category of their own (only common blocks need one for the catalog): where the gallery puts them */
-export const CORE_CATEGORY: Record<string, BlockCategory> = { 'core.title': 'text', 'core.caption': 'text', 'core.lowerThird': 'chapter', 'core.flash': 'moment', 'core.endCard': 'moment' };
+export const CORE_CATEGORY: Record<string, BlockCategory> = { 'core.title': 'text', 'core.caption': 'caption', 'core.lowerThird': 'chapter', 'core.flash': 'moment', 'core.endCard': 'moment' };
 
 /** things a clip itself does (toolkit phase 5): not blocks, but listed with them where people look for effects, with their cut.ts call */
 export const CLIP_FX = [
@@ -298,7 +298,10 @@ export const RETIRED: Readonly<Record<string, string>> = {
   'RCP-04': 'recipe:brand',
 };
 /** ids that changed category after getting their handle: they keep it, so its prefix no longer matches */
-export const MOVED: readonly string[] = [];
+export const MOVED: readonly string[] = [
+  // 2026-11-05: the two caption blocks left 「字幕與大字」 for their own category, beside the caption templates
+  'common.caption', 'core.caption',
+];
 
 /** a handle as written here: three capitals (two groups for a sound effect), a dash, two digits or more */
 export const HANDLE_FORMAT = /^[A-Z]{3}(-[A-Z]{3})?-\d{2,}$/;

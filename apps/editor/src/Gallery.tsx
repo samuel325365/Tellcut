@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionBlocks, captionProject, isCaptionBlock, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -338,13 +338,13 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   const cats = galleryCategories(g.blocks, CLIP_FX.length, library ? (lib?.blocks.length ?? 0) : undefined, own?.blocks.length ?? 0);
   const showOwn = tab === 'blocks' && (cat === ALL || cat === PROJECT_CATEGORY) && (ownList.length > 0 || !!ownErr);
   const showMine = !!library && tab === 'blocks' && (cat === ALL || cat === MINE_CATEGORY);
-  const list = filterGallery(g, tab, q);
+  const list = filterGallery(g, tab, q), capBlocks = tab === 'captions' ? captionBlocks(g, q) : [];
   // what the grid shows, in order: blocks (by category, or one category) then clip effects; or the tab's list
   const sections = tab !== 'blocks' ? [] : cats.filter((c) => cat === ALL || c.key === cat).map((c) => ({ ...c,
     blocks: c.key === CLIP_CATEGORY ? [] : (list as GalleryBlock[]).filter((b) => blockCategory(b) === c.key).sort((a, b) => byHandle(a.type, b.type)),
     clips: c.key === CLIP_CATEGORY ? clips : [] })).filter((x) => x.blocks.length || x.clips.length);
   const names = tab === 'blocks' ? [...(showOwn ? ownList.map((b) => `own:${b.type}`) : []), ...(showMine ? mineBlocks.map((b) => `mine:${b.type}`) : []), ...sections.flatMap((x) => [...x.blocks.map((b) => b.type), ...x.clips.map((f) => f.key)])]
-    : tab === 'captions' ? (list as GalleryCaption[]).map((c) => `caption:${c.id}`)
+    : tab === 'captions' ? [...capBlocks.map((b) => b.type), ...(list as GalleryCaption[]).map((c) => `caption:${c.id}`)]
     : tab === 'sfx' ? sfxSections(list as GallerySfx[]).flatMap((x) => x.sfx.map((s) => s.type)) : tab === 'styles' ? [...mineStyles.map((x) => `mine-style:${x.id}`), ...(list as GalleryStyle[]).map((s) => s.id)] : (list as GalleryRecipe[]).map((r) => r.id);
   const on = picked && names.includes(picked) ? picked : names[0] ?? null;
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
@@ -387,7 +387,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       const b = g.blocks.find((x) => x.type === on), f = CLIP_FX.find((x) => x.key === on);
       return b ? <BlockDetail b={b} to={to} /> : f ? <ClipDetail f={f} /> : null;
     }
-    if (tab === 'captions') { const c = (g.captions ?? []).find((x) => `caption:${x.id}` === on); return c && <CaptionDetail c={c} caption={g.blocks.find((b) => b.type === 'common.caption')} to={to} />; }
+    if (tab === 'captions') { const b = capBlocks.find((x) => x.type === on); if (b) return <BlockDetail b={b} to={to} />; const c = (g.captions ?? []).find((x) => `caption:${x.id}` === on); return c && <CaptionDetail c={c} caption={g.blocks.find((b) => b.type === 'common.caption')} to={to} />; }
     if (tab === 'sfx') { const s = g.sfx.find((x) => x.type === on); return s && <SfxDetail s={s} plays={plays} to={to} />; }
     if (tab === 'styles') { const s = g.styles.find((x) => x.id === on); return s && <StyleDetail s={s} />; }
     const r = g.recipes.find((x) => x.id === on); return r && <RecipeDetail r={r} />;
@@ -400,7 +400,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
         <h1>{t('gallery.title')}</h1>
         <p class="g-lede">{t('gallery.lede')}</p>
         {tab === 'blocks' && <nav class="g-cats" aria-label={t('gallery.cats')}>
-          <button class={cat === ALL ? 'on' : ''} data-cat={ALL} onClick={() => setCat(ALL)}>{t('gallery.all')}<small>{g.blocks.length + CLIP_FX.length + (lib?.blocks.length ?? 0) + (own?.blocks.length ?? 0)}</small></button>
+          <button class={cat === ALL ? 'on' : ''} data-cat={ALL} onClick={() => setCat(ALL)}>{t('gallery.all')}<small>{g.blocks.filter((b) => !isCaptionBlock(b)).length + CLIP_FX.length + (lib?.blocks.length ?? 0) + (own?.blocks.length ?? 0)}</small></button>
           {cats.map((c) => <button class={cat === c.key ? 'on' : ''} data-cat={c.key} onClick={() => setCat(c.key)}>{c.label}<small>{c.count}</small></button>)}
         </nav>}
       </aside>
@@ -423,6 +423,8 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
             <ul class="g-grid">{x.blocks.map(blockCard)}{x.clips.map(clipCard)}</ul>
           </section>
         )) : tab === 'captions' ? <section class="g-section" data-captions>
+          {capBlocks.length > 0 && <><h4>{t('gallery.capBlocks')}</h4><ul class="g-grid" data-caption-blocks>{capBlocks.map(blockCard)}</ul></>}
+          {list.length > 0 && <h4>{t('gallery.capTemplates')}</h4>}
           <ul class="g-grid">{(list as GalleryCaption[]).map((c) => card(`caption:${c.id}`, shown(`caption:${c.id}`, c).doc, <>
             <Thumb src={c.thumb} />
             <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(`caption:${c.id}`, c).label)}>{shown(`caption:${c.id}`, c).label}</strong><Handle id={`caption:${c.id}`} /><CopyName name={c.id} /></span>

@@ -53,7 +53,7 @@ const FONT_KEYS = new Set(['letterSpacing', 'wordSpacing', 'textTransform', 'lin
 const LOOK_RESET = { boxShadow: '', backdropFilter: '', letterSpacing: '', wordSpacing: '', textTransform: '', minWidth: '', borderLeft: '', backgroundColor: '', backgroundImage: '', backgroundSize: '', lineHeight: '1.25' };
 
 export const caption: ItemType<CaptionP, CaptionS> = {
-  type: 'common.caption', label: '字幕（共用）', category: 'text', kind: 'overlay',
+  type: 'common.caption', label: '字幕（共用）', category: 'caption', kind: 'overlay',
   doc: '一句字幕，外觀（style）、逐字效果（wordFx）、進場、出場、顏色和字型自由搭配；常用的組合是具名的字幕範本（npm run tellcut -- catalog CAP 列出全部，template 填它的 id，整支片用 c.captionTemplate）。words 是講話的逐字時間（speechCaptions 的 karaoke 會給），沒有時逐字效果照字數平均分配；【詞】變高亮色、{詞} 打碼成符號；name＋speaker 標出誰在說（speaker 1＝主題 accent2、2＝高亮色 hl、3＝主色 accent，tint 關掉時只有名字小牌換色，role 是名字旁的小字身分），point 把名字放進左邊的說話人小牌、箭頭指向說話的人；gloss 是下面小一號的翻譯；tag 是上方主色小牌；y 把下緣釘在任何高度；big 預設手寫、qa 預設襯線、neon 預設粉圓，styleFont 或項目自己的 font 會換掉；避開短影音的下緣與側邊安全區',
   params: [
     { key: 'text', label: '文字（【高亮】、{打碼}）', type: 'text', default: '字幕' },
