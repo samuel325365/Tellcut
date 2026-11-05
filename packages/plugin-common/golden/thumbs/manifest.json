@@ -155,6 +155,7 @@
   "tpl-chalk-type-t1.50.png": "0ee772119833",
   "tpl-chalk-fade-t1.50.png": "ad0d6989737c",
   "tpl-desk-type-t1.50.png": "4711b5f9731d",
+  "tpl-scrap-chip-t1.50.png": "4a9e7273e2cf",
   "tpl-comic-narration-t1.50.png": "34d718a40cb5",
   "ttl-plain-center-t1.50.png": "5d4f4b9803e6",
   "ttl-doc-rules-t1.50.png": "0e370dbc3247",
@@ -195,7 +196,8 @@
   "ttl-credit-bottom-t1.50.png": "61c3b2d5d4f7",
   "ttl-serif-card-t1.50.png": "6d8079c55172",
   "ttl-neon-rules-t1.50.png": "b247bdb1a7c0",
-  "ttl-giant-mask-t1.50.png": "a48d9025b94c"
+  "ttl-giant-mask-t1.50.png": "a48d9025b94c",
+  "ttl-scrapbook-card-t1.50.png": "253e8c6c3434"
  },
  "ja": {
   "core-title-t1.50.png": "cf9552d1c469",
@@ -353,6 +355,7 @@
   "tpl-chalk-type-t1.50.png": "2caa463c4e3a",
   "tpl-chalk-fade-t1.50.png": "ffe1299cb0e6",
   "tpl-desk-type-t1.50.png": "5c861f1700d4",
+  "tpl-scrap-chip-t1.50.png": "4d1b672bb18e",
   "tpl-comic-narration-t1.50.png": "7c6b407bed4e",
   "ttl-plain-center-t1.50.png": "514768df5f81",
   "ttl-doc-rules-t1.50.png": "332ff55327f6",
@@ -393,6 +396,7 @@
   "ttl-credit-bottom-t1.50.png": "12699abeb925",
   "ttl-serif-card-t1.50.png": "b67dc92fbe4e",
   "ttl-neon-rules-t1.50.png": "2251e68ed2a0",
-  "ttl-giant-mask-t1.50.png": "f0d75ec2ccce"
+  "ttl-giant-mask-t1.50.png": "f0d75ec2ccce",
+  "ttl-scrapbook-card-t1.50.png": "23b7a493fd43"
  }
 }

@@ -62,10 +62,10 @@ test('a title\'s own looks: offered to titles only, each with a template', async
   const { LOOKS } = await import('../caption.ts');
   const { TITLE_TEMPLATES } = await import('./templates.ts');
   const own = LOOKS.filter((l) => l.only === 'title').map((l) => l.id);
-  expect(own.sort()).toEqual(['giant', 'ribbon', 'script', 'seal', 'serif', 'sign', 'spaced', 'split', 'stack', 'vintage']);
+  expect(own.sort()).toEqual(['giant', 'ribbon', 'scrapbook', 'script', 'seal', 'serif', 'sign', 'spaced', 'split', 'stack', 'vintage']);
   const styles = (caption.params.find((d) => d.key === 'style') as { options: string[] }).options;
   for (const id of own) { expect(HEADING_LOOKS).toContain(id); expect(styles).not.toContain(id); expect(TITLE_TEMPLATES.some((t) => t.params.style === id), id).toBe(true); }
-  expect(TITLE_TEMPLATES.length).toBe(40);
+  expect(TITLE_TEMPLATES.length).toBe(41);
 });
 
 test('a title offers every look but the layouts made for talk; a caption never offers a title\'s own looks', () => {

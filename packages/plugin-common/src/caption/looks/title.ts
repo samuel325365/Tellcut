@@ -94,4 +94,18 @@ export const ribbon: CaptionLook = {
     background: e.p.accent || e.theme.palette.accent, clipPath: 'polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%)' })),
 };
 
-export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon];
+/** a scrapbook's title card (the Collage pilot film's fx.scraplabel, 2026-11-05): heavy Playfair in the accent colour on a cream card
+ *  with double rules above and below, a block of the highlight colour peeking out at its top left like a scrap pasted under it */
+export const scrapbook: CaptionLook = {
+  id: 'scrapbook', only: 'title', weight: '900', font: 'Playfair Display', room: padded,
+  color: (e) => e.p.accent || e.theme.palette.accent,
+  box: (e) => {
+    const f = (k: number) => `${(k * e.fs).toFixed(1)}px`, rule = `${f(0.06)} double #5a4a3a`;
+    return { background: '#f6efe0', padding: '0.12em 0.5em 0.2em', borderTop: rule, borderBottom: rule,
+      boxShadow: `-${f(0.18)} -${f(0.16)} 0 ${e.p.hl}, 0 ${f(0.06)} ${f(0.18)} rgba(40,25,10,0.35)` };
+  },
+  pin: () => ' rotate(-1.5deg)',
+  gloss: () => ({ color: '#4a3c30', letterSpacing: '0.12em' }),
+};
+
+export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook];

@@ -16,7 +16,7 @@ import { imagesReady, showStill, stillRef, windowEl, type Win } from './window.t
 import { toRgb } from './color.ts';
 
 interface P {
-  color: string; edge: string; slant: number; dir: 'right' | 'left'; line: number; mode: 'band' | 'hand' | 'curl'; hand: string;
+  color: string; edge: string; slant: number; dir: 'right' | 'left'; line: number; mode: 'band' | 'hand' | 'curl' | 'tiles'; hand: string; cols: number; rows: number;
   source: string; t: number; crop: Crop; win: string; art: string; artParams: Record<string, unknown>; artAt: number; angle: number; back: string; rev: boolean;
 }
 interface S { wrap: HTMLElement; band: HTMLElement; edge: HTMLElement; cv: HTMLCanvasElement; curl?: CurlS }
@@ -44,15 +44,17 @@ export function handPose(local: number, dur: number): HandPose {
 
 export const wipe: ItemType<P, S> = {
   type: 'common.wipe', label: '斜切色帶轉場', category: 'moment', kind: 'overlay',
-  doc: '轉場：一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；mode hand 是手遮鏡頭：一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開（換場、轉身、不想被拍）；mode curl 是翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；rev 反著播（一頁蓋回來，雜誌闔上）；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh',
+  doc: '轉場：一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；mode hand 是手遮鏡頭：一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開（換場、轉身、不想被拍）；mode curl 是翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；rev 反著播（一頁蓋回來，雜誌闔上）；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh；mode tiles 是格子拼貼：畫面切成 cols × rows 格，紙色（color，兩種深淺）的格子一塊塊蓋上、正中間蓋滿，再一塊塊翻開，格子之間是 edge 色的細縫（剪貼簿、拼貼、相片牆換頁，配 common.slide；換頁後要留著格縫，用 common.scraps 的 grid）',
   params: [
     { key: 'color', label: '色帶顏色', type: 'color', default: '#ff4f2a', theme: 'palette.accent' },
     { key: 'edge', label: '前緣細線顏色', type: 'color', default: '#f4ecdc', theme: 'palette.paper' },
     { key: 'line', label: '細線粗細（以 1080 短邊計的 px，0＝沒有）', type: 'number', min: 0, max: 60, step: 1, default: 10 },
     { key: 'slant', label: '斜度（上下兩端錯開幾個畫面寬）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.35 },
     { key: 'dir', label: '方向（right 從左往右、left 從右往左）', type: 'enum', options: ['right', 'left'], default: 'right' },
-    { key: 'mode', label: '樣式（band 斜切色帶、hand 手遮鏡頭、curl 翻頁）', type: 'enum', options: ['band', 'hand', 'curl'], default: 'band' },
+    { key: 'mode', label: '樣式（band 斜切色帶、hand 手遮鏡頭、curl 翻頁、tiles 格子拼貼）', type: 'enum', options: ['band', 'hand', 'curl', 'tiles'], default: 'band' },
     { key: 'hand', label: '手的顏色（hand）', type: 'color', default: '#24140f' },
+    { key: 'cols', label: '格子欄數（tiles；橫的那一邊）', type: 'number', min: 2, max: 20, step: 1, default: 5 },
+    { key: 'rows', label: '格子列數（tiles）', type: 'number', min: 2, max: 30, step: 1, default: 9 },
     { key: 'source', label: '翻頁：舊的那一頁上的素材（它的靜態圖；空＝一張 color 色的紙）', type: 'source-ref', default: '' },
     { key: 't', label: '翻頁：靜態圖取素材第幾秒（上一個鏡頭的最後一格）', type: 'number', min: 0, max: 36000, step: 0.01, default: 0 },
     { key: 'crop', label: '翻頁：靜態圖的裁切 { x, y, zoom }（配合上一個鏡頭）', type: 'json', default: { x: 0.5, y: 0.5, zoom: 1 } },
@@ -104,10 +106,11 @@ export const wipe: ItemType<P, S> = {
     cssCamel(s.wrap, { display: curl ? 'none' : 'block' });
     if (s.curl) cssCamel(s.curl.box, { display: curl ? 'block' : 'none' });
     if (curl) { drawCurl(ctx, s); return; }
-    const hand = ctx.params.mode === 'hand';
+    const hand = ctx.params.mode === 'hand' || ctx.params.mode === 'tiles';
     for (const e of [s.band, s.edge]) if (hand) cssCamel(e, { display: 'none' }); else if (e === s.band) cssCamel(e, { display: 'block' });
     cssCamel(s.cv, { display: hand ? 'block' : 'none' });
     cssCamel(s.wrap, { transform: ctx.params.dir === 'left' ? 'scaleX(-1)' : 'none' });   // hand: dir left comes in from the lower left
+    if (ctx.params.mode === 'tiles') { drawTiles(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     if (hand) { drawHand(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     const p = ctx.params, { W, H } = ctx, sl = p.slant * W, u = ctx.dur > 0 ? ctx.local / ctx.dur : 1, [L, R] = wipeEdges(u, W, sl);
     const poly = (a: number, b: number) => `polygon(${(a + sl).toFixed(1)}px 0px, ${(b + sl).toFixed(1)}px 0px, ${b.toFixed(1)}px ${H}px, ${a.toFixed(1)}px ${H}px)`;
@@ -116,6 +119,31 @@ export const wipe: ItemType<P, S> = {
     cssCamel(s.edge, { display: e > 0 ? 'block' : 'none', background: p.edge, clipPath: u < 0.5 ? poly(R - e, R) : poly(L - e, L) });
   },
 };
+
+/** mode tiles (the Collage pilot film's fx.mosaic, 2026-11-05): when tile (c, r) of cols × rows closes and opens, as shares of the
+ *  item: each closes at its own moment in the first half and opens at its own in the second, so the frame is all covered at the middle */
+export function tileTimes(c: number, r: number, cols: number, rows: number): [number, number] {
+  const h = (n: number) => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }, i = r * cols + c + 1;
+  return [0.04 + 0.34 * h(i), 0.56 + 0.34 * h(i + 911)];
+}
+
+/** mode tiles: paper tiles in two shades of `color` snapping shut over the picture and flipping open again, thin `edge` seams between */
+function drawTiles(p: P, s: S, W: number, H: number, local: number, dur: number) {
+  const g = canvasAt(s.cv, W, H), u = dur > 0 ? local / dur : 1, cols = Math.max(2, Math.round(p.cols)), rows = Math.max(2, Math.round(p.rows));
+  const cw = W / cols, ch = H / rows, seam = Math.max(1, p.line * 0.4 * (Math.min(W, H) / 1080)), [cr, cg, cb] = toRgb(p.color);
+  g.clearRect(0, 0, W, H);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const [a, b] = tileTimes(c, r, cols, rows), k = Math.min(clamp((u - a) / 0.07), 1 - clamp((u - b) / 0.07));
+    if (k <= 0) continue;
+    const d = (r + c) % 3 === 0 ? 0.92 : 1, w = cw * (0.6 + 0.4 * eOut3(k)), hh = ch * (0.6 + 0.4 * eOut3(k));
+    g.globalAlpha = k; g.fillStyle = `rgb(${Math.round(cr * d)},${Math.round(cg * d)},${Math.round(cb * d)})`;
+    g.fillRect(c * cw + (cw - w) / 2, r * ch + (ch - hh) / 2, w, hh);
+  }
+  g.globalAlpha = Math.min(1, 4 * Math.min(u, 1 - u)); g.fillStyle = p.edge;
+  for (let c = 1; c < cols; c++) g.fillRect(c * cw - seam / 2, 0, seam, H);
+  for (let r = 1; r < rows; r++) g.fillRect(0, r * ch - seam / 2, W, seam);
+  g.globalAlpha = 1;
+}
 
 /** mode hand: the palm, four fingers and a thumb as blurred ellipses (in a 1080 × 1920 frame's px, scaled to the frame), drawn at
  *  five poses 12 ms apart for a motion trail, then the flat cover */

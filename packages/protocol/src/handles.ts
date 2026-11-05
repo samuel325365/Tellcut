@@ -87,6 +87,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'FRM-08': 'common.casefile',
   'FRM-09': 'common.magazine',
   'FRM-12': 'common.comic',
+  'FRM-13': 'common.prints',
   'PHN-01': 'common.notify',
   'PHN-02': 'common.lockscreen',
   'PHN-03': 'common.reels',
@@ -108,6 +109,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'MRK-08': 'common.touch',
   'MRK-09': 'common.doodle',
   'MRK-10': 'common.token',
+  'MRK-11': 'common.scraps',
   'LOK-01': 'common.backdrop',
   'LOK-02': 'common.ambient',
   'LOK-03': 'common.shader',
@@ -296,6 +298,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'CAP-85': 'caption:chalk-fade',
   'CAP-86': 'caption:comic-narration',
   'CAP-87': 'caption:desk-type',
+  'CAP-88': 'caption:scrap-chip',
   'TTL-01': 'title:plain-center',
   'TTL-02': 'title:doc-rules',
   'TTL-03': 'title:lower-bar',
@@ -336,6 +339,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'TTL-38': 'title:serif-card',
   'TTL-39': 'title:neon-rules',
   'TTL-40': 'title:giant-mask',
+  'TTL-41': 'title:scrapbook-card',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
 export const RETIRED: Readonly<Record<string, string>> = {

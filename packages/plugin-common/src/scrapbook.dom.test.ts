@@ -1,0 +1,45 @@
+// @vitest-environment jsdom
+// common.prints / common.scraps and common.wipe's mode tiles (2026-11-05, the Collage pilot film's fx.prints / fx.scraps / fx.mosaic).
+import { rng } from '@tellcut/engine';
+import { deckle, parsePrints, parseScraps, prints, scraps } from './scrapbook.ts';
+import { tileTimes } from './wipe.ts';
+
+describe('common.prints', () => {
+  test('a frame block; a print reads seconds|source seconds|x,y,w|tilt|w:h|options', () => {
+    expect([prints.kind, prints.category, scraps.category]).toEqual(['overlay', 'frame', 'mark']);
+    const [a, b] = parsePrints('0.5|28.5|0.7,0.42,0.5|4|4:3|tape clip focus=0.3,0.6\n1|120|0.3,0.5,0.4|-2|3:4|tape=#c3b1f5');
+    expect(a).toEqual({ at: 0.5, t: 28.5, x: 0.7, y: 0.42, w: 0.5, tilt: 4, ratio: 4 / 3, tape: 'rgba(236,226,190,0.82)', clip: true, fx: 0.3, fy: 0.6 });
+    expect([b.ratio, b.tape, b.clip, b.fx]).toEqual([0.75, '#c3b1f5', false, 0.5]);
+  });
+
+  test('it declares one still a print, at its source second', () => {
+    const item = { id: 'p', type: prints.type, start: 0, end: 3, params: { source: 'v', prints: '0|10|0.5,0.5,0.5\n0.3|12.5|0.5,0.5,0.5' } } as any;
+    expect(prints.media!(item, {} as any)).toEqual({ videos: [], stills: [{ source: 'v', t: 10, w: 720 }, { source: 'v', t: 12.5, w: 720 }] });
+    expect(prints.media!({ ...item, params: { ...item.params, source: '' } }, {} as any).stills).toEqual([]);
+  });
+
+  test('a deckled edge is the same for the same seed and stays inside the box', () => {
+    expect(deckle(rng(4))).toBe(deckle(rng(4)));
+    const nums = [...deckle(rng(9)).matchAll(/([\d.]+)%/g)].map((m) => Number(m[1]));
+    expect(Math.min(...nums)).toBeGreaterThanOrEqual(0); expect(Math.max(...nums)).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('common.scraps', () => {
+  test('kinds read as written, unknown ones are paper; grid keeps its columns and rows in x, y', () => {
+    expect(parseScraps('0|pin|0.3,0.3,0.04|0|#e0552f\n0.5|bogus|0.5,0.5,0.2,0.1\n1|grid|5,9|0|#ffffff')).toEqual([
+      { at: 0, kind: 'pin', x: 0.3, y: 0.3, w: 0.04, h: 0.04, tilt: 0, color: '#e0552f' },
+      { at: 0.5, kind: 'paper', x: 0.5, y: 0.5, w: 0.2, h: 0.1, tilt: 0, color: '#c3b1f5' },
+      { at: 1, kind: 'grid', x: 5, y: 9, w: 0.3, h: 0.3, tilt: 0, color: '#ffffff' }]);
+  });
+});
+
+describe('common.wipe mode tiles', () => {
+  test('every tile closes in the first half and opens in the second, so the frame is covered at the middle', () => {
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 5; c++) {
+      const [a, b] = tileTimes(c, r, 5, 9);
+      expect(a + 0.07).toBeLessThanOrEqual(0.5); expect(b).toBeGreaterThanOrEqual(0.5);
+    }
+    expect(tileTimes(2, 3, 5, 9)).toEqual(tileTimes(2, 3, 5, 9));
+  });
+});

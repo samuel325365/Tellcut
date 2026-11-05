@@ -129,3 +129,14 @@ export const ransom: CaptionLook = {
     hot: { outline: '0.08em solid #ffe14d' },
   }),
 };
+
+/** a small torn chip of coloured paper (the Collage pilot film's caption chips, 2026-11-05): white serif words on the highlight colour,
+ *  its edges deckled, tipped a little */
+const DECKLE = 'polygon(0% 3%, 12% 0%, 26% 2%, 41% 0%, 55% 3%, 70% 0%, 84% 2%, 100% 0%, 99% 30%, 100% 62%, 98% 100%, 83% 97%, 67% 100%, 52% 98%, 37% 100%, 22% 97%, 8% 100%, 0% 98%, 2% 66%, 0% 33%)';
+export const scrap: CaptionLook = {
+  id: 'scrap', weight: '700', font: 'Noto Serif TC', room: (e, width) => width - 1.2 * e.px,
+  color: () => '#ffffff',
+  hl: () => '#fff3c4',
+  box: (e) => ({ background: e.p.hl, padding: '0.22em 0.6em 0.26em', clipPath: DECKLE }),
+  pin: () => ' rotate(-2deg)',
+};
