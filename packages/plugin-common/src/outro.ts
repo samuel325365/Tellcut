@@ -9,7 +9,7 @@
 // episode line, a button and a small credit line, all on the ink colour.
 import { clamp, cssCamel, defaultSafe, eBack, eOut3 as eOut, h, prog, withDefaults, type ItemType, type Theme } from '@tellcut/engine';
 import { canvasAt, penPath, freeCanvas } from './inkline.ts';
-import { emParts, fitPx, nl } from './text.ts';
+import { emParts, fitPx, nl, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 import { cjkRuns } from './words.ts';
 import { asFrame, punch } from './window.ts';
@@ -21,7 +21,6 @@ interface P {
 interface Ep { box: HTMLElement; show: HTMLElement; rule: HTMLElement; win: HTMLElement; play: HTMLElement; tri: HTMLElement; ep: HTMLElement; btn: HTMLElement; credit: HTMLElement }
 interface S { bg: HTMLElement; cv: HTMLCanvasElement; lines: HTMLElement[]; dots: HTMLElement[]; cta: HTMLElement; key: string; cred: HTMLElement; ckey: string; veil: HTMLElement; epi: Ep }
 
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 const LINE = 221;   // one line's height in u (the original's 11.5 % of a 9:16 frame)
 
 /** the lines of the text ("\n" or a typed "\\n" breaks a line), blank ones dropped */
@@ -144,7 +143,7 @@ export const outro: ItemType<P, S> = {
     const pc = prog(local, ta + 0.35, ta + 0.6);
     s.cta.textContent = p.cta;
     cssCamel(s.cta, { display: p.cta ? 'block' : 'none', left: `${Math.max(theme.safe.side * W * 0.5, cx - 0.36 * S)}px`, top: `${ctaY + 20 * u}px`, color: p.accent,
-      fontFamily: `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`, fontSize: `${fitPx(p.cta, 54 * u, 0.6 * S)}px`, opacity: String(pc),
+      fontFamily: `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, fontSize: `${fitPx(p.cta, 54 * u, 0.6 * S)}px`, opacity: String(pc),
       transform: `rotate(-4deg) translateX(${(1 - eOut(pc)) * 40 * u}px)` });
   },
 };

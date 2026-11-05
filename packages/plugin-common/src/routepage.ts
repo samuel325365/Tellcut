@@ -10,10 +10,10 @@ import { handFamily } from './hand.ts';
 import { canvasAt } from './inkline.ts';
 import { parseSteps, timeSpan } from './phone.ts';
 import { ballpointStroke, cutPath, ellipsePts, pathLen, quadPts, wavePts, type Pt } from './sketch.ts';
+import { EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 
 export const MAP_W = 1080, MAP_H = 620;
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 
 // ---------- doodles (a unit box −50…50; fd-map's food doodles under plain names) ----------
 const ell = (cx: number, cy: number, rx: number, ry: number, a0 = 0, a1 = Math.PI * 2, n = 26): Pt[] => Array.from({ length: n + 1 }, (_, i) => { const a = lerp(a0, a1, i / n); return [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]; });
@@ -247,7 +247,7 @@ export function drawRoutePage(ctx: ItemCtx<PageP>, s: PageS) {
     s.key = key;
     for (const l of [...s.names, ...s.legs, ...s.emoji]) l.el.remove();
     const mk = (css: Record<string, string> = {}) => { const e = h('div', null, null, s.box); cssCamel(e, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1', fontWeight: '700', ...css }); return { el: e }; };
-    s.names = P.map(() => mk()); s.legs = Array.from({ length: count }, () => mk()); s.emoji = P.map(() => mk({ fontFamily: EMOJI, fontWeight: '400' }));
+    s.names = P.map(() => mk()); s.legs = Array.from({ length: count }, () => mk()); s.emoji = P.map(() => mk({ fontFamily: EMOJI_STACK, fontWeight: '400' }));
   }
   P.forEach((q, i) => {
     const [x, y] = X(q), ta = arr[i], nm = names[i] ?? '', e = s.names[i].el, f = t >= ta ? write(t, ta + 0.1, [...nm].length) : 0;

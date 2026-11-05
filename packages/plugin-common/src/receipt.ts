@@ -2,7 +2,7 @@
 // and ends with a total. Promoted from the fishing-reel short's "這輩子最貴的魚" bill; also trip costs, shopping, unboxing.
 // Tone bar prints the line in reverse on a black bar (a shop's name, from the food-receipt short; common.printer is its dot-matrix printer).
 import { abs, clamp, cssCamel, eBack, eOut3 as eOut, h, type ItemType, textEm } from '@tellcut/engine';
-import { emParts, fitPx } from './text.ts';
+import { emParts, fitPx, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
@@ -12,7 +12,6 @@ interface P {
 interface Row { box: HTMLElement; flash: HTMLElement; icon: HTMLElement; name: HTMLElement; value: HTMLElement }
 interface S { wrap: HTMLElement; paper: HTMLElement; title: HTMLElement; sub: HTMLElement; rule: HTMLElement; area: HTMLElement; rows: Row[]; tot: HTMLElement; rules: HTMLElement[]; totLabel: HTMLElement; totText: HTMLElement; key: string }
 
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 export interface ReceiptLine { t: number; icon: string; name: string; value: string; tone: string }
 /** "秒|圖示|名稱|金額|色調" per line; blank lines dropped, a missing field is empty and the tone defaults to n */
 export const parseReceipt = (text: string): ReceiptLine[] => String(text).split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
@@ -58,7 +57,7 @@ export const receipt: ItemType<P, S> = {
     return { wrap, paper, title, sub, rule, area, rows: [], tot, rules, totLabel, totText, key: '' };
   },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local } = ctx, k = Math.min(W, H) / 1080, font = `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`;
+    const p = ctx.params, { W, H, theme, local } = ctx, k = Math.min(W, H) / 1080, font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     const lines = parseReceipt(p.items);
     if (s.key !== String(lines.length)) {   // the rows are rebuilt only when their number changes
       s.key = String(lines.length);

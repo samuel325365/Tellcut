@@ -6,7 +6,7 @@
 import { abs, clamp, cssCamel, eBack, eOut3 as eOut, h, type ItemType, prog, textEm, type Theme } from '@tellcut/engine';
 import { drawRoutePage, pageState, type PageP, type PageS } from './routepage.ts';
 import { canvasAt, parsePairs, penPath, snake, spline, freeCanvas } from './inkline.ts';
-import { fitPx } from './text.ts';
+import { fitPx, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P extends PageP {
@@ -15,8 +15,6 @@ interface P extends PageP {
 }
 interface Stop { num: HTMLElement; name: HTMLElement }
 interface S { page?: PageS; dim: HTMLElement; card: HTMLElement; cv: HTMLCanvasElement; rule: HTMLElement; heads: HTMLElement[]; stops: Stop[]; start: HTMLElement; icon: HTMLElement; key: string }
-
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 
 /** the card in the frame: a w×h share of the short side, shrunk to fit the safe area; u is one pixel of the 864-wide original */
 export function routeBox(p: Pick<P, 'x' | 'y' | 'w' | 'h'>, W: number, H: number, safe: Theme['safe']) {
@@ -115,7 +113,7 @@ export const route: ItemType<P, S> = {
     if (s.page) cssCamel(s.page.box, { display: page ? 'block' : 'none' });
     if (page) { drawRoutePage(ctx, s.page!); return; }
     const p = ctx.params, { W, H, theme, local, dur } = ctx, b = routeBox(p, W, H, theme.safe), u = b.u;
-    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`, numFont = `'${p.numFont}', 'Noto Serif TC', serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, numFont = `'${p.numFont}', 'Noto Serif TC', serif`;
     const heads = parsePairs(p.heads), count = Math.max(2, Math.min(9, Math.round(p.stops))), names = String(p.names ?? '').split('|').map((x) => x.trim());
     const key = JSON.stringify([heads, count]);
     if (s.key !== key) {   // the heads and stop labels are rebuilt only when their number or text changes

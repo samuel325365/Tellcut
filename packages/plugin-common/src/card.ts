@@ -2,7 +2,7 @@
 // on ruled lines; it flips to a new page, deals in from below or slides away. Promoted from the pancake-class short's crayon recipe card.
 // The picture window draws any other block (`art`, e.g. a project's own illustration fx) at the window's size, or a big emoji.
 import { abs, clamp, cssCamel, eBack, eOut3, h, type ItemType, resolveTheme, rng, withDefaults } from '@tellcut/engine';
-import { fitPx } from './text.ts';
+import { fitPx, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
@@ -15,8 +15,6 @@ interface S {
   group: HTMLElement; under: HTMLElement[]; card: HTMLElement; rule: HTMLElement; win: HTMLElement; emoji: HTMLElement; flip: HTMLElement; tape: HTMLElement;
   badge: HTMLElement; rings: HTMLElement[]; num: HTMLElement; title: HTMLElement; detail: HTMLElement; tip: HTMLElement; art: Art;
 }
-
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
 
 /** the card's inner layout in px for a card `cw` wide and `ch` tall. k: the size it was drawn at (768 wide), shrunk on a short,
  *  wide card (16:9) so the text rows (348 px at k = 1) take at most 60 % of its height and stay inside it */
@@ -74,7 +72,7 @@ export const card: ItemType<P, S> = {
     const badge = abs(group), rings = [abs(badge), abs(badge)], num = abs(badge), title = abs(group), detail = abs(group), tip = abs(group);
     cssCamel(card, { overflow: 'hidden' });
     cssCamel(win, { overflow: 'hidden' });
-    cssCamel(emoji, { left: '50%', top: '50%', lineHeight: '1', fontFamily: EMOJI, whiteSpace: 'pre' });
+    cssCamel(emoji, { left: '50%', top: '50%', lineHeight: '1', fontFamily: `${EMOJI_STACK}, sans-serif`, whiteSpace: 'pre' });
     for (const el of [num, title, detail, tip]) { cssCamel(el, { whiteSpace: 'pre', lineHeight: '1' }); }
     for (const r of rings) cssCamel(r, { boxSizing: 'border-box', borderRadius: '50%' });
     const s: S = { group, under, card, rule, win, emoji, flip, tape, badge, rings, num, title, detail, tip, art: { key: '' } };

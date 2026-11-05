@@ -22,7 +22,7 @@ import { standIn } from './album.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
 import { avatarEl, caretOn, DEVICES, drawAvatar, drawStatusBar, drawType, glyphSvg, parseSteps, phoneEls, phoneView, placePhone, statusBarEl, timeSpan, typedSpan, typeEl,
   type Device, type PhoneEls, type StatusBar, type TypeEl } from './phone.ts';
-import { fitPx, lineAbs, nl } from './text.ts';
+import { fitPx, lineAbs, nl, EMOJI_STACK } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
 
 // ---------------------------------------------------------------- the messages
@@ -319,7 +319,6 @@ interface S {
   input: HTMLElement; inIcons: HTMLElement[]; field: HTMLElement; type: TypeEl; hint: HTMLElement; panel: HTMLElement; home: HTMLElement;
 }
 const flex = (parent: HTMLElement) => { const e = h('div', null, null, parent); cssCamel(e, { display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1', whiteSpace: 'pre' }); return e; };
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 
 /** one message's elements, styled once (sizes in px at k); draw() moves and animates them */
 function buildMsg(parent: HTMLElement, m: ChatMsg, b: MsgBox, p: P, k: number, media: MediaApi): MsgEl {
@@ -364,7 +363,7 @@ function buildMsg(parent: HTMLElement, m: ChatMsg, b: MsgBox, p: P, k: number, m
     const ch = m.who === 'ch';
     bub.textContent = m.text;
     cssCamel(bub, { height: X(b.h), padding: `0 ${X(ch ? 38 : 30)}`, display: 'flex', alignItems: 'center', borderRadius: X(b.h / 2), whiteSpace: 'pre', lineHeight: '1',
-      background: ch ? 'rgba(255,255,255,0.92)' : 'rgba(30,40,50,0.26)', color: ch ? p.ink : '#ffffff', fontFamily: ch ? `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif` : `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`,
+      background: ch ? 'rgba(255,255,255,0.92)' : 'rgba(30,40,50,0.26)', color: ch ? p.ink : '#ffffff', fontFamily: ch ? `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif` : `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`,
       fontSize: `${fitPx(m.text, (ch ? CH : SYS) * k, (980 - 76) * k)}px`, fontWeight: ch ? '400' : '500', boxShadow: ch ? `0 ${3 * k}px ${10 * k}px rgba(0,0,0,0.08)` : 'none' });
   } else if (m.kind === 'typing') {
     cssCamel(bub, { width: X(b.w), height: X(b.h), borderRadius: X(RAD), background: p.them, boxShadow: shadow, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: X(14) });
@@ -374,7 +373,7 @@ function buildMsg(parent: HTMLElement, m: ChatMsg, b: MsgBox, p: P, k: number, m
     const st = flex(bub);
     st.textContent = m.text || '🙂';
     cssCamel(bub, { width: X(b.w), height: X(b.h) });
-    cssCamel(st, { width: '100%', height: '100%', fontSize: X(fitPx(m.text || '🙂', 200, 260)), fontFamily: `'${p.round}', ${EMOJI}, sans-serif`, color: p.ink, filter: `drop-shadow(0 ${4 * k}px ${8 * k}px rgba(0,0,0,0.18))` });
+    cssCamel(st, { width: '100%', height: '100%', fontSize: X(fitPx(m.text || '🙂', 200, 260)), fontFamily: `'${p.round}', ${EMOJI_STACK}, sans-serif`, color: p.ink, filter: `drop-shadow(0 ${4 * k}px ${8 * k}px rgba(0,0,0,0.18))` });
     el.sticker = st;
   } else if (m.kind === 'photo' || m.kind === 'video') {
     cssCamel(bub, { width: X(b.w), height: X(b.h), borderRadius: X(MEDIA_R), overflow: 'hidden', background: '#000', boxShadow: `0 ${4 * k}px ${14 * k}px rgba(0,0,0,0.18)` });
@@ -391,7 +390,7 @@ function buildMsg(parent: HTMLElement, m: ChatMsg, b: MsgBox, p: P, k: number, m
     if (m.tag) {
       const tg = lineAbs(bub); tg.textContent = m.tag;
       cssCamel(tg, { left: X(34), bottom: X(30), padding: `${X(16)} ${X(28)}`, borderRadius: X(46), background: '#fff', border: `${6 * k}px solid ${p.accent}`, color: p.ink,
-        fontFamily: `'${p.round}', '${p.font}', ${EMOJI}, sans-serif`, fontSize: X(fitPx(m.tag, 52, b.w - 140)), transform: 'rotate(-3deg)', transformOrigin: '0 100%' });
+        fontFamily: `'${p.round}', '${p.font}', ${EMOJI_STACK}, sans-serif`, fontSize: X(fitPx(m.tag, 52, b.w - 140)), transform: 'rotate(-3deg)', transformOrigin: '0 100%' });
     }
   } else if (m.kind === 'album') {
     const n = Math.max(1, m.pics.length || 4), T = (b.w - 8) / 2;
@@ -404,7 +403,7 @@ function buildMsg(parent: HTMLElement, m: ChatMsg, b: MsgBox, p: P, k: number, m
       if (lb) {
         const sh = lineAbs(wn.box); cssCamel(sh, { left: '0', right: '0', bottom: '0', height: X(110), background: 'linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.55))' });
         const tx = lineAbs(wn.box); tx.textContent = lb;
-        cssCamel(tx, { left: X(22), bottom: X(24), color: '#fff', fontFamily: `'${p.round}', '${p.font}', ${EMOJI}, sans-serif`, fontSize: X(fitPx(lb, 48, tw - 44)), textShadow: `0 0 ${6 * k}px rgba(0,0,0,0.6)` });
+        cssCamel(tx, { left: X(22), bottom: X(24), color: '#fff', fontFamily: `'${p.round}', '${p.font}', ${EMOJI_STACK}, sans-serif`, fontSize: X(fitPx(lb, 48, tw - 44)), textShadow: `0 0 ${6 * k}px rgba(0,0,0,0.6)` });
       }
     }
   } else if (m.kind === 'link') {
@@ -558,7 +557,7 @@ export const chat: ItemType<P, S> = {
     const p = ctx.params, { W, H, theme, media } = ctx, t = ctx.local + Math.max(0, Number(p.since) || 0);
     const G = chatGeometry(p, W, H, theme.safe), { sc, k, Hd } = G, X = (v: number) => `${v * k}px`;
     placePhone(s.ph, sc);
-    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     cssCamel(s.ph.screen, { fontFamily: font, color: p.ink });
     // the messages' elements, built again only when something but the time changes
     const key = JSON.stringify(p) + `|${k}`;
@@ -632,7 +631,7 @@ export const chat: ItemType<P, S> = {
     cssCamel(s.pin, { display: p.pin ? 'block' : 'none', left: X(28), top: X(PIN_Y), width: X(1024), height: X(G.pinH), borderRadius: X(28), background: 'rgba(255,255,255,0.96)', boxShadow: `0 ${4 * k}px ${18 * k}px rgba(0,0,0,0.12)` });
     if (p.pin) {
       s.pinIcon.textContent = p.pinIcon; s.pinTitle.textContent = p.pin;
-      cssCamel(s.pinIcon, { left: X(26), top: X(48), transform: 'translateY(-50%)', fontSize: X(40), fontFamily: `${EMOJI}, sans-serif` });
+      cssCamel(s.pinIcon, { left: X(26), top: X(48), transform: 'translateY(-50%)', fontSize: X(40), fontFamily: `${EMOJI_STACK}, sans-serif` });
       cssCamel(s.pinTitle, { left: X(p.pinIcon ? 84 : 30), top: X(50), transform: 'translateY(-50%)', fontSize: `${fitPx(p.pin, 46 * k, (p.pinIcon ? 910 : 960) * k)}px`, fontFamily: round, color: p.ink });
       const n = G.chapters.length, x0 = n > 1 ? 222 : 512, x1 = n > 1 ? 802 : 512, xs = G.chapters.map((_, j) => (n > 1 ? x0 + ((x1 - x0) * j) / (n - 1) : 512)), y = 112;
       let cur = -1, since = 0;
@@ -645,7 +644,7 @@ export const chat: ItemType<P, S> = {
         d.textContent = c.icon || leadEmoji(c.text) || String(j + 1);
         cssCamel(d, { position: 'absolute', left: X(xs[j] - r), top: X(y - r), width: X(2 * r), height: X(2 * r), borderRadius: '50%', boxSizing: 'border-box',
           background: on ? p.accent : done ? withAlpha(p.accent, 0.35) : '#eef1f4', border: on ? `${5 * k}px solid #fff` : 'none', boxShadow: on ? `0 0 0 ${3 * k}px ${withAlpha(p.accent, 0.35)}` : 'none',
-          fontSize: X(on ? 38 : 30), fontFamily: `${EMOJI}, '${p.font}', sans-serif`, fontWeight: '700', color: on ? '#fff' : p.ink, opacity: on || done ? '1' : '0.6' });
+          fontSize: X(on ? 38 : 30), fontFamily: `${EMOJI_STACK}, '${p.font}', sans-serif`, fontWeight: '700', color: on ? '#fff' : p.ink, opacity: on || done ? '1' : '0.6' });
       });
     }
     // the input bar: plus, camera, picture, the field (typed words or the hint, a caret), a face, the mic
@@ -668,7 +667,7 @@ export const chat: ItemType<P, S> = {
     if (s.panel.dataset.k !== pk) {
       s.panel.dataset.k = pk;
       s.panel.textContent = '';
-      em.forEach((ch, j) => { const c = flex(s.panel); c.textContent = ch; cssCamel(c, { position: 'absolute', left: X(30 + (j % 4) * 255), top: X(30 + Math.floor(j / 4) * rowH), width: X(255), height: X(rowH), fontSize: X(Math.min(84, rowH * 0.62)), fontFamily: `${EMOJI}, sans-serif` }); });
+      em.forEach((ch, j) => { const c = flex(s.panel); c.textContent = ch; cssCamel(c, { position: 'absolute', left: X(30 + (j % 4) * 255), top: X(30 + Math.floor(j / 4) * rowH), width: X(255), height: X(rowH), fontSize: X(Math.min(84, rowH * 0.62)), fontFamily: `${EMOJI_STACK}, sans-serif` }); });
     }
     cssCamel(s.home, { display: sc.full || sc.body ? 'block' : 'none', left: X(540 - 140), top: X(Hd - 26), width: X(280), height: X(10), borderRadius: X(5), background: withAlpha(p.ink, 0.75) });
   },

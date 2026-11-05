@@ -1,7 +1,7 @@
 // common.scoreboard — a ticket of cells (icon, name, value) under a title bar; one item per state, the cell that changed pops with a
 // flash ring and can hang a small note. Promoted from the fishing2 short's "今日釣果" catch ticket; also a score card (味道 ★★★★).
 import { abs, clamp, cssCamel, eBack, h, type ItemType, textEm } from '@tellcut/engine';
-import { fitPx } from './text.ts';
+import { fitPx, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
@@ -11,7 +11,6 @@ interface P {
 interface Cell { box: HTMLElement; icon: HTMLElement; name: HTMLElement; value: HTMLElement }
 interface S { card: HTMLElement; head: HTMLElement; title: HTMLElement; sub: HTMLElement; body: HTMLElement; grid: HTMLElement; holes: HTMLElement[]; cells: Cell[]; seps: HTMLElement[]; ring: HTMLElement; flash: HTMLElement; note: HTMLElement; key: string }
 
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 const split = (s: string) => String(s).split('|').map((x) => x.trim());
 
 /** the cells' value size in px for a body `bh` tall: today's (60 at 1080, at most 27 % of the body) times `valueSize`, each value then
@@ -57,7 +56,7 @@ export const scoreboard: ItemType<P, S> = {
     return { card, head, title, sub, body, grid, holes, cells: [], seps: [], ring, flash, note, key: '' };
   },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, font = `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`;
+    const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     const names = split(p.names), icons = split(p.icons), values = split(p.values), tones = split(p.tones), n = names.length;
     if (s.key !== String(n)) {   // the cells are rebuilt only when their number changes
       s.key = String(n);

@@ -1,14 +1,13 @@
 // common.info — an information card in the project's look: a title bar and rows of icon + text (📍 address, 🕐 hours, 💰 price),
 // sliding up from the bottom safe line or down from the top. Travel, food, outfit and shop videos.
 import { clamp, cssCamel, eOut3, h, prog, type ItemType } from '@tellcut/engine';
-import { fitPx } from './text.ts';
+import { fitPx, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P { title: string; rows: string; position: 'bottom' | 'top'; size: number; paper: string; ink: string; accent: string; font: string }
 interface Line { row: HTMLElement; icon: HTMLElement; text: HTMLElement }
 interface S { card: HTMLElement; title: HTMLElement; rows: Line[]; key: string }
 
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 const PIC = /^\p{Extended_Pictographic}/u;
 
 /** "📍 台北市, 🕐 11:00–20:00" → rows; a row that does not start with an emoji gets a dot */
@@ -50,7 +49,7 @@ export const info: ItemType<P, S> = {
       s.rows = rows.map(() => {
         const row = h('div', null, null, s.card), icon = h('div', null, null, row), text = h('div', null, null, row);
         cssCamel(row, { display: 'flex', alignItems: 'center', gap: '0.5em' });
-        cssCamel(icon, { flex: 'none', width: '1.3em', textAlign: 'center', fontFamily: EMOJI, lineHeight: '1' });
+        cssCamel(icon, { flex: 'none', width: '1.3em', textAlign: 'center', fontFamily: EMOJI_STACK, lineHeight: '1' });
         cssCamel(text, { whiteSpace: 'pre', fontWeight: '700', lineHeight: '1.3' });
         return { row, icon, text };
       });

@@ -11,7 +11,7 @@
 import { clamp, cssCamel, eIO3, eOut3, h, lerp, prog, textEm, type ItemType } from '@tellcut/engine';
 import { backOut, handCircle, handFamily, handPath, tick } from './hand.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
-import { fitPx } from './text.ts';
+import { fitPx, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
@@ -21,7 +21,6 @@ interface P {
 interface S { track: HTMLElement; fill: HTMLElement; dots: HTMLElement[]; row: HTMLElement; tabs: HTMLElement[]; seps: HTMLElement[]; key: string; cv: HTMLCanvasElement; title: HTMLElement; count: HTMLElement; slots: HTMLElement; skey: string; cards: Slot[]; osd: string }
 interface Slot { box: HTMLElement; glow: HTMLElement; empty: HTMLElement; full: HTMLElement; block: HTMLElement; label: HTMLElement }
 
-const EMOJI = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 const list = (s: string) => String(s).split(/[,，]/).map((x) => x.trim());
 
 /** the chapter that is lit and when it began (item seconds): a fixed `step`, or the one the time has reached */
@@ -106,7 +105,7 @@ export const progress: ItemType<P, S> = {
     cssCamel(track, { position: 'absolute' });
     cssCamel(fill, { position: 'absolute', left: '0', top: '0', height: '100%' });
     cssCamel(row, { position: 'absolute', display: 'flex', alignItems: 'center', whiteSpace: 'pre', fontWeight: '900', lineHeight: '1' });
-    const dots = Array.from({ length: ctx.params.mode === 'dots' ? ctx.params.dots : 0 }, () => { const d = h('div', null, null, ctx.root); cssCamel(d, { position: 'absolute', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1', fontFamily: `${EMOJI}, sans-serif` }); return d; });
+    const dots = Array.from({ length: ctx.params.mode === 'dots' ? ctx.params.dots : 0 }, () => { const d = h('div', null, null, ctx.root); cssCamel(d, { position: 'absolute', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: '1', fontFamily: `${EMOJI_STACK}, sans-serif` }); return d; });
     const cv = h('canvas', null, null, ctx.root), title = h('div', null, null, ctx.root), count = h('div', null, null, ctx.root);
     cssCamel(cv, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', display: 'none' });
     for (const el of [title, count]) cssCamel(el, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1.3', display: 'none' });
@@ -179,7 +178,7 @@ function drawTabs(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w: 
   const top = p.y >= 0 ? p.y * H - fs : p.position === 'top' ? theme.safe.top * H : H * (1 - theme.safe.bottom) - fs * 2;
   const left = p.align === 'left' ? x : p.align === 'right' ? x + w : x + w / 2, shift = p.align === 'left' ? '0' : p.align === 'right' ? '-100%' : '-50%';
   cssCamel(s.row, { display: 'flex', left: `${left}px`, top: `${top}px`, transform: `translateX(${shift})`, fontSize: `${fs}px`, gap: '0.3em',
-    fontFamily: `'${p.font}', 'Noto Sans TC', ${EMOJI}, sans-serif`, opacity: String(1 - clamp((ctx.local - ctx.dur + 0.2) / 0.2)) });
+    fontFamily: `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, opacity: String(1 - clamp((ctx.local - ctx.dur + 0.2) / 0.2)) });
   s.tabs.forEach((t, i) => {
     const on = i === active, past = i < active;
     t.textContent = texts[i];

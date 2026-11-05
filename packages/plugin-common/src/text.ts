@@ -1,6 +1,9 @@
 // Text helpers the blocks share: fitting a line into its room, 【】 emphasis, typed line breaks, an absolutely placed text line.
 import { abs, cssCamel, textEm } from '@tellcut/engine';
 
+/** The colour emoji faces of Windows, macOS and Linux, in that order, with no generic family at the end: blocks put it after
+ *  their own text font (so letters keep that font and only emoji fall through) and add `sans-serif` themselves. */
+export const EMOJI_STACK = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji'";
 /** The font size that fits `text` into `room` px, from `px` down to 40% of it */
 export const fitPx = (text: string, px: number, room: number) => Math.max(px * 0.4, Math.min(px, room / Math.max(0.5, textEm(text))));
 /** 【word】 pieces of a text: [text, emphasised] */
