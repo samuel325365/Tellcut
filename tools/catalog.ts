@@ -24,7 +24,7 @@ export function findTemplates(query = '', kind: Kind = 'caption'): CaptionTempla
 export function formatTemplates(query = '', kind: Kind = 'caption'): string {
   const hits = findTemplates(query, kind), cap = kind === 'caption';
   if (!hits.length) return `沒有符合「${query}」的${cap ? '字幕' : '標題'}範本；全部：npm run tellcut -- catalog ${cap ? 'CAP' : 'TTL'}`;
-  return [cap ? `字幕範本 ${hits.length} 個${query ? `（符合「${query}」）` : ''}（common.caption 的 template 參數填 id；整支片的預設：project.json 的 meta.captionTemplate）：`
+  return [cap ? `字幕範本 ${hits.length} 個${query ? `（符合「${query}」）` : ''}（common.caption 的 template 參數填 id；整支片的預設：c.captionTemplate('<id>')）：`
     : `標題範本 ${hits.length} 個${query ? `（符合「${query}」）` : ''}（common.heading 的 template 參數填 id；整支片的預設：c.titleTemplate('<id>')）：`, ...hits.map(templateLine(kind)), '',
     cap ? "看某個範本設了什麼：npm run tellcut -- catalog CAP-01；講話字幕：c.speechCaptions(clip, { type: 'common.caption', karaoke: true, params: { template: '<id>' } })"
       : "看某個範本設了什麼：npm run tellcut -- catalog TTL-01；用法：c.effect('common.heading', { at, len, text, kicker, sub, template: '<id>' })"].join('\n');
@@ -75,7 +75,7 @@ export function formatCatalog(plugins: Plugin[]): string {
   if (grades.length) out.push('調色（畫面項目的 grade 欄位）：', ...grades, '');
   // not blocks but things a clip itself does (toolkit phase 5): said here so they are found where blocks are looked for
   out.push('片段本身的效果（不是積木，在 cut.ts 裡呼叫）：', ...CLIP_FX.map((c) => `  ${handleCol(c.key)}  ${c.label}：${c.code}`), '');
-  out.push(`字幕範本（${TEMPLATES.length} 個，common.caption 的 template）：npm run tellcut -- catalog CAP`, '');
+  out.push(`字幕範本（${TEMPLATES.length} 個，common.caption 的 template）：npm run tellcut -- catalog CAP`, `標題範本（${TITLE_TEMPLATES.length} 個，common.heading 的 template）：npm run tellcut -- catalog TTL`, '');
   out.push('找積木：npm run tellcut -- catalog --find <關鍵字>；看某個積木的參數：npm run tellcut -- catalog <類型或代號>；cut.ts 的方法：npm run tellcut -- cut-api');
   return out.join('\n');
 }
@@ -184,7 +184,7 @@ export async function formatLookup(plugins: Plugin[], query: string): Promise<st
     const t = TEMPLATES.find((x) => x.id === id.slice(8));
     if (!t) throw new Error(`${h} 是字幕範本 ${id.slice(8)}，但找不到它`);
     return [`${h} ${t.id} ${t.label}（字幕範本，common.caption）— ${t.doc}`, ...Object.entries(t.params).map(([k, v]) => `  ${k}：${typeof v === 'object' ? JSON.stringify(v) : String(v)}`),
-      `  用法：c.effect('common.caption', { at, len, text, template: '${t.id}' })；整支片：project.json 的 meta.captionTemplate: '${t.id}'；字幕自己給的參數蓋過範本`].join('\n');
+      `  用法：c.effect('common.caption', { at, len, text, template: '${t.id}' })；整支片：c.captionTemplate('${t.id}')；字幕自己給的參數蓋過範本`].join('\n');
   }
   if (id.startsWith('title:')) {
     const t = TITLE_TEMPLATES.find((x) => x.id === id.slice(6));
