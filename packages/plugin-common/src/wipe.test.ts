@@ -25,3 +25,18 @@ test('curl: the blocks hosted on both sheets are disposed when the block is swap
   st.update({ ...project('fx.b'), tracks: [{ id: 'o', kind: 'overlay', items: [] }] });
   expect(log.slice(2)).toEqual(['dispose fx.b', 'dispose fx.b']);
 });
+
+test('dir left mirrors the band and the hand, but never the vortex: its words stay readable and it spins the other way instead', () => {
+  const root = document.createElement('div'), st = new Stage(root, createRegistry([{ id: 'x', items: [wipe] } as any]), media);
+  const at = (mode: string, dir: string) => {
+    st.load({ ...project(''), tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'w', type: 'common.wipe', start: 0, end: 4, params: { mode, dir } }] }] });
+    st.draw(1);
+    const wrap = root.querySelector('canvas')?.parentElement as HTMLElement | undefined;
+    return wrap?.style.transform;
+  };
+  expect(at('band', 'left')).toBe('scaleX(-1)');
+  expect(at('hand', 'left')).toBe('scaleX(-1)');
+  expect(at('vortex', 'left')).toBe('none');
+  expect(at('vortex', 'right')).toBe('none');
+  expect(at('tiles', 'left')).toBe('none');
+});

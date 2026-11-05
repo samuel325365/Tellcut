@@ -110,7 +110,10 @@ export const wipe: ItemType<P, S> = {
     const hand = ctx.params.mode === 'hand' || ctx.params.mode === 'tiles' || ctx.params.mode === 'vortex';
     for (const e of [s.band, s.edge]) if (hand) cssCamel(e, { display: 'none' }); else if (e === s.band) cssCamel(e, { display: 'block' });
     cssCamel(s.cv, { display: hand ? 'block' : 'none' });
-    cssCamel(s.wrap, { transform: ctx.params.dir === 'left' ? 'scaleX(-1)' : 'none' });   // hand: dir left comes in from the lower left
+    // dir left mirrors only the shapes of band and hand (the hand then comes in from the lower left); the vortex draws words, which a
+    // mirror would print backwards, so it spins the other way instead, and the tiles' order has no direction to mirror
+    const mirror = ctx.params.dir === 'left' && (ctx.params.mode === 'band' || ctx.params.mode === 'hand');
+    cssCamel(s.wrap, { transform: mirror ? 'scaleX(-1)' : 'none' });
     if (ctx.params.mode === 'vortex') { drawVortex(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     if (ctx.params.mode === 'tiles') { drawTiles(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     if (hand) { drawHand(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
@@ -157,7 +160,7 @@ function drawVortex(p: P, s: S, W: number, H: number, local: number, dur: number
   g.fillStyle = p.color; g.beginPath(); g.arc(0, 0, R + ring, 0, Math.PI * 2); g.fill();
   g.font = `700 ${px}px 'Space Grotesk', 'Noto Sans TC', sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   for (let i = 0, r = ring * 0.6; r < R + ring; i++, r += ring) {
-    const dark = i % 2 === 1, mid = r + ring / 2, count = Math.max(6, Math.floor((2 * Math.PI * mid) / (px * 0.72))), rot = ((i % 2 ? -1 : 1) * 70 * local * Math.PI) / 180;
+    const dark = i % 2 === 1, mid = r + ring / 2, count = Math.max(6, Math.floor((2 * Math.PI * mid) / (px * 0.72))), rot = ((i % 2 ? -1 : 1) * (p.dir === 'left' ? -1 : 1) * 70 * local * Math.PI) / 180;
     g.fillStyle = dark ? p.color : p.edge; g.beginPath(); g.arc(0, 0, r + ring, 0, Math.PI * 2); g.arc(0, 0, r, 0, Math.PI * 2, true); g.fill();
     g.fillStyle = dark ? p.edge : p.color;
     for (let j = 0; j < count; j++) { g.save(); g.rotate(rot + (j / count) * Math.PI * 2); g.translate(0, -mid); g.fillText(chars[j % chars.length], 0, 0); g.restore(); }
