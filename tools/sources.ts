@@ -5,25 +5,41 @@
 import { pathToFileURL } from 'node:url';
 import { checkSources, contactOf, openSources, type Sources } from '@tellcut/media-node';
 import { parseArgsOrExit } from './args.ts';
+import { hasCjk } from './setup/checks.ts';
 
-const STATE = { ok: '可用', temporary: '暫時不能用', broken: '壞掉' } as const;
+const WORDS = {
+  zh: { state: { ok: '可用', temporary: '暫時不能用', broken: '壞掉' }, unofficial: '（非官方）', notNeeded: '不需要', present: '有', missing: (k: string) => `缺（${k}）`,
+    noAdapter: '還沒有轉接程式', unchecked: '未檢查', last: (at: string, st: string, d: string) => `上次 ${at}：${st}，${d}`, on: '開', off: '關',
+    head: ['來源', '開關', 'key', '狀態'], nameWidth: 22,
+    contact: '⚠ 還沒填聯絡方式：在 tellcut/sources.local.json 寫 "contact": "<email 或網址>"（或設 TELLCUT_CONTACT）。沒填時 Wikimedia 等來源的額度較低。',
+    foot: '開關：tellcut/sources.json 是預設值，個人的開關、key、聯絡方式寫在 sources.local.json（不進 git）。' },
+  en: { state: { ok: 'works', temporary: 'down for now', broken: 'broken' }, unofficial: ' (unofficial)', notNeeded: 'not needed', present: 'yes', missing: (k: string) => `missing (${k})`,
+    noAdapter: 'no adapter yet', unchecked: 'not checked', last: (at: string, st: string, d: string) => `last checked ${at}: ${st}${d ? `, ${d}` : ''}`, on: 'on', off: 'off',
+    head: ['source', 'switch', 'key', 'status'], nameWidth: 26,
+    contact: '⚠ No contact yet: write "contact": "<email or web address>" in tellcut/sources.local.json (or set TELLCUT_CONTACT). Without one, Wikimedia and some other sources allow fewer requests.',
+    foot: 'Switches: tellcut/sources.json holds the defaults; your own switches, keys and contact go in sources.local.json (not in git).' },
+};
 const width = (s: string) => [...s].reduce((n, c) => n + (c.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
 const pad = (s: string, n: number) => s + ' '.repeat(Math.max(1, n - width(s)));
 
-export async function sourcesReport(s: Sources, o: { live?: boolean } = {}): Promise<string> {
-  const rows = await checkSources(s, o);
+/** `lang` 'en' for doctor, which prints English (tools/setup/checks.ts): a source's own words are Chinese, so there only those
+ *  that read in English are kept. */
+export async function sourcesReport(s: Sources, o: { live?: boolean; lang?: 'zh' | 'en' } = {}): Promise<string> {
+  const w = WORDS[o.lang ?? 'zh'], said = (d: string) => (o.lang === 'en' && hasCjk(d) ? '' : d);
+  const rows = await checkSources(s, { live: o.live });
   const lines = rows.map(({ status: st, result }) => {
     const entry = s.config.sources[st.id], h = result ?? st.health;
-    const name = `${st.id}${st.adapter?.unofficial ?? entry?.unofficial ? '（非官方）' : ''}`;
-    const key = !st.adapter ? '—' : st.key === 'not-needed' ? '不需要' : st.key === 'present' ? '有' : `缺（${entry?.keyEnv ?? `keys.${st.id}`}）`;
-    const state = !st.adapter ? '還沒有轉接程式' : result ? STATE[result.status] : '未檢查';
-    const detail = result ? result.detail : h ? `上次 ${h.at.slice(0, 16).replace('T', ' ')}：${STATE[h.status]}，${h.detail}` : '';
-    return `${pad(name, 22)}${pad(st.enabled ? '開' : '關', 6)}${pad(key, 18)}${pad(state, 16)}${detail}`.trimEnd();
+    const name = `${st.id}${st.adapter?.unofficial ?? entry?.unofficial ? w.unofficial : ''}`;
+    const key = !st.adapter ? '—' : st.key === 'not-needed' ? w.notNeeded : st.key === 'present' ? w.present : w.missing(entry?.keyEnv ?? `keys.${st.id}`);
+    const state = !st.adapter ? w.noAdapter : result ? w.state[result.status] : w.unchecked;
+    const detail = result ? said(result.detail) : h ? w.last(h.at.slice(0, 16).replace('T', ' '), w.state[h.status], said(h.detail)) : '';
+    return `${pad(name, w.nameWidth)}${pad(st.enabled ? w.on : w.off, 6)}${pad(key, 18)}${pad(state, 16)}${detail}`.trimEnd();
   });
+  const [a, b, c, d] = w.head;
   return [
-    `${pad('來源', 22)}${pad('開關', 6)}${pad('key', 18)}${pad('狀態', 16)}`.trimEnd(), ...lines, '',
-    ...(contactOf(s.config, s.env) ? [] : ['⚠ 還沒填聯絡方式：在 tellcut/sources.local.json 寫 "contact": "<email 或網址>"（或設 TELLCUT_CONTACT）。沒填時 Wikimedia 等來源的額度較低。']),
-    '開關：tellcut/sources.json 是預設值，個人的開關、key、聯絡方式寫在 sources.local.json（不進 git）。',
+    `${pad(a, w.nameWidth)}${pad(b, 6)}${pad(c, 18)}${pad(d, 16)}`.trimEnd(), ...lines, '',
+    ...(contactOf(s.config, s.env) ? [] : [w.contact]),
+    w.foot,
   ].join('\n');
 }
 

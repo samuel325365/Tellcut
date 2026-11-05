@@ -5,7 +5,8 @@
 /** No byte arrived for `seconds`. */
 export class Stalled extends Error {
   readonly seconds: number;
-  constructor(seconds: number) { super(`連線停住了：${seconds} 秒沒有收到資料`); this.name = 'Stalled'; this.seconds = seconds; }
+  // English: setup and examples print it, and they print English (fonts and brand-assets print English too)
+  constructor(seconds: number) { super(`the connection stalled: nothing arrived for ${seconds} s`); this.name = 'Stalled'; this.seconds = seconds; }
 }
 
 /** how long a download may stay silent */

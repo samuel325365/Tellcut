@@ -19,7 +19,7 @@ test('a download that keeps arriving is never cut short, however long it takes; 
   await expect(fetchIdle(stops, 'https://x/a', {}, 100)).rejects.toBeInstanceOf(Stalled);
   // no answer at all, from a fetch that does not even honour its signal
   const never = (() => new Promise(() => {})) as unknown as typeof fetch;
-  await expect(fetchIdle(never, 'https://x/a', {}, 100)).rejects.toThrow(/連線停住了/);
+  await expect(fetchIdle(never, 'https://x/a', {}, 100)).rejects.toThrow(/the connection stalled: nothing arrived for 0 s/);
 });
 
 test('the answer keeps its status; an error from the fetch itself comes through as it is', async () => {

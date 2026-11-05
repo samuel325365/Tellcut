@@ -2,12 +2,13 @@
 // what is there already is kept. tools/setup-boot.mjs has run npm ci before this (tsx comes with it).
 //   npm run setup                 install, then check everything (one tiny Claude request checks the login)
 //   npm run setup -- --no-login   the same without the Claude request
+// It prints in English, like examples.ts: the people who run it have just cloned Tellcut from GitHub (the other tools print Chinese).
 import { spawn } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { FFMPEG, FFPROBE, loadProvidersConfig, locate, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec } from '@tellcut/media-node';
-import { allChecks, checkClaudeLogin, hfCachedWhisper, MODEL_COMPLETE, modelsDir, table, TEST_WHISPER_MODEL, whisperModelDir, whisperModelName } from './setup/checks.ts';
+import { allChecks, CLAUDE_CHECK, checkClaudeLogin, hfCachedWhisper, MODEL_COMPLETE, modelsDir, table, TEST_WHISPER_MODEL, whisperModelDir, whisperModelName } from './setup/checks.ts';
 import { ensureModelFile, ensureVendor, readModelList, readVendorList, VendorInUse } from './setup/vendor.ts';
 import { parseArgsOrExit } from './args.ts';
 
@@ -17,7 +18,7 @@ function npm(args: string[]): Promise<void> {
   return new Promise((res, rej) => {
     const p = spawn(`npm ${args.join(' ')}`, { cwd: TELLCUT_ROOT, stdio: 'inherit', shell: true });
     p.on('error', rej);
-    p.on('close', (code) => (code ? rej(new Error(`npm ${args.join(' ')} 失敗（${code}）`)) : res()));
+    p.on('close', (code) => (code ? rej(new Error(`npm ${args.join(' ')} failed (${code})`)) : res()));
   });
 }
 
@@ -26,19 +27,19 @@ function npm(args: string[]): Promise<void> {
  * downloaded. Either goes into <model>.partial first and is renamed when whole, so an interrupted run never looks finished.
  */
 async function whisperModel(model: string) {
-  if (whisperModelDir(model)) return console.log(`  ${model}：已經有了`);
+  if (whisperModelDir(model)) return console.log(`  ${model}: already there`);
   const dest = join(modelsDir(), 'whisper', model), part = `${dest}.partial`;
   rmSync(part, { recursive: true, force: true });
   mkdirSync(part, { recursive: true });
   const found = hfCachedWhisper(model, process.env.HF_HOME ?? join(homedir(), '.cache', 'huggingface'));
   if (found) {
-    console.log(`  ${model}：從這台電腦的快取複製（${found}）`);
+    console.log(`  ${model}: copying it from this PC's cache (${found})`);
     cpSync(found, part, { recursive: true, dereference: true });   // the snapshot's files (links into blobs on some PCs)
   } else {
-    console.log(`  ${model}：下載${model === TEST_WHISPER_MODEL ? '（約 75 MB）' : '（約 1.6 GB，第一次要一陣子）'}`);
+    console.log(`  ${model}: downloading${model === TEST_WHISPER_MODEL ? ' (about 75 MB)' : ' (about 1.6 GB, which takes a while the first time)'}`);
     await runUv(['run', '--project', PY_PROJECT, '--quiet', 'python', '-c', `from faster_whisper import download_model; download_model(${JSON.stringify(model)}, output_dir=${JSON.stringify(part)})`]);
   }
-  if (!existsSync(join(part, 'model.bin'))) throw new Error(`${model} 的模型不完整（沒有 model.bin）：再跑一次 npm run setup`);
+  if (!existsSync(join(part, 'model.bin'))) throw new Error(`the ${model} model is incomplete (no model.bin): run npm run setup again`);
   writeFileSync(join(part, MODEL_COMPLETE), new Date().toISOString());
   rmSync(dest, { recursive: true, force: true });   // an older, unfinished copy
   renameSync(part, dest);
@@ -51,53 +52,53 @@ async function vendorItems() {
   mkdirSync(VENDOR_DIR, { recursive: true });
   for (const [name, item] of Object.entries(readVendorList())) {
     const specs = PROVIDES[name] ?? [];
-    if (specs.length && specs.every((s) => process.env[s.env])) { console.log(`  ${name}：用 ${specs.map((s) => `${s.env}=${process.env[s.env]}`).join('、')}`); continue; }
+    if (specs.length && specs.every((s) => process.env[s.env])) { console.log(`  ${name}: using ${specs.map((s) => `${s.env}=${process.env[s.env]}`).join(', ')}`); continue; }
     try {
       const r = await ensureVendor(name, item, VENDOR_DIR, { log: (s) => console.log(`  ${s}`) });
-      console.log(`  ${name} ${item.version}：${r === 'kept' ? '已經有了' : '裝好了'}`);
+      console.log(`  ${name} ${item.version}: ${r === 'kept' ? 'already there' : 'installed'}`);
     } catch (e) {
       // the old version in use: it is kept whole and still works (the checks judge its version); not a network problem
       if (e instanceof VendorInUse) { console.warn(`  ! ${e.message}`); continue; }
       // a blocked download is fine when the program is on this PC already (PATH or an install folder); the checks judge its version
       const elsewhere = specs.length ? specs.map((s) => locate(s)) : [];
-      if (elsewhere.length && elsewhere.every(Boolean)) { console.warn(`  ! ${name} 下載失敗（${(e as Error).message}），改用這台電腦上的 ${elsewhere.map((f) => f!.path).join('、')}`); continue; }
-      throw new Error(`${(e as Error).message}\n  網路要經過 proxy 的話：設定 HTTPS_PROXY 與 NODE_USE_ENV_PROXY=1 再跑一次；或自己裝好 ${name}，用 ${specs.map((s) => s.env).join('、')} 指過去（見 INSTALL.md）`);
+      if (elsewhere.length && elsewhere.every(Boolean)) { console.warn(`  ! ${name} could not be downloaded (${(e as Error).message}); using the one on this PC instead: ${elsewhere.map((f) => f!.path).join(', ')}`); continue; }
+      throw new Error(`${(e as Error).message}\n  If your network goes through a proxy, set HTTPS_PROXY and NODE_USE_ENV_PROXY=1 and run this again; or install ${name} yourself and point ${specs.map((s) => s.env).join(' and ')} at it (see INSTALL.md)`);
     }
   }
 }
 
 async function main() {
-  const login = !parseArgsOrExit(process.argv.slice(2), { '--no-login': 'switch' }, '用法：npm run setup [-- --no-login]').has('--no-login');
+  const login = !parseArgsOrExit(process.argv.slice(2), { '--no-login': 'switch' }, 'Usage: npm run setup [-- --no-login]', { lang: 'en' }).has('--no-login');
   const config = loadProvidersConfig(), model = whisperModelName(String(config.transcribe.options['faster-whisper']?.model ?? 'large-v3-turbo'));
 
-  step(`下載 ${Object.keys(readVendorList()).join(' 與 ')} 到 tellcut/vendor`);
+  step(`Downloading ${Object.keys(readVendorList()).join(' and ')} into tellcut/vendor`);
   await vendorItems();
 
-  step('Python 環境（Python 3.12 與套件都裝在 tellcut 裡）');
-  console.log((await runUv(['sync', '--project', PY_PROJECT])).trim() || '  好了');
+  step('Python environment (Python 3.12 and its packages, all inside tellcut)');
+  console.log((await runUv(['sync', '--project', PY_PROJECT])).trim() || '  done');
 
-  step('語音辨識模型');
+  step('Speech recognition model');
   await whisperModel(model);
   // the tests' small one: only npm test uses it, so a download that fails is no reason to stop (the tests fetch it on first use)
-  if (model !== TEST_WHISPER_MODEL) await whisperModel(TEST_WHISPER_MODEL).catch((e: Error) => console.warn(`  ! 測試用的 ${TEST_WHISPER_MODEL} 沒有下載（${e.message}）：跑 npm test 時會再試`));
+  if (model !== TEST_WHISPER_MODEL) await whisperModel(TEST_WHISPER_MODEL).catch((e: Error) => console.warn(`  ! the tests' ${TEST_WHISPER_MODEL} model was not downloaded (${e.message}): npm test tries again`));
 
-  step('其他模型（人臉偵測）');
+  step('Other models (face detection)');
   for (const [name, item] of Object.entries(readModelList())) {
     const r = await ensureModelFile(name, item, modelsDir());
-    console.log(`  ${name}：${r === 'kept' ? '已經有了' : '裝好了'}`);
+    console.log(`  ${name}: ${r === 'kept' ? 'already there' : 'installed'}`);
   }
 
-  step('字型');
+  step('Fonts');
   // offline or behind a proxy a font may not come: the builds do not need it, and the checks below say so
-  await npm(['run', 'fonts']).catch((e: Error) => console.warn(`  ! 字型沒有全部下載（${e.message}）：先繼續，之後再跑 npm run fonts`));
+  await npm(['run', 'fonts']).catch((e: Error) => console.warn(`  ! not every font was downloaded (${e.message}): carrying on; run npm run fonts later`));
 
-  step('建置播放器與編輯器');
+  step('Building the player and the editor');
   await npm(['run', 'build:player']);
   await npm(['run', 'build:editor']);
 
-  step('檢查');
+  step('Checking');
   const checks = await allChecks({ whisperModel: model });
-  if (login && checks.every((c) => c.name !== 'Claude Code（claude）' || c.ok)) checks.push(await checkClaudeLogin());
+  if (login && checks.every((c) => c.name !== CLAUDE_CHECK || c.ok)) checks.push(await checkClaudeLogin());
   console.log('\n' + table(checks));
   if (checks.some((c) => !c.ok)) process.exit(1);
 }

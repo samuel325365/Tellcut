@@ -53,7 +53,7 @@ test('an old version in use (Windows locks a running exe) is kept whole, and the
     renameSync(a, b);
   };
   await expect(ensureVendor('tool', { ...item, version: '1.1' }, vendor, { fetch, rename: locked })).rejects.toThrow(VendorInUse);
-  await expect(ensureVendor('tool', { ...item, version: '1.1' }, vendor, { fetch, rename: locked })).rejects.toThrow(/正在使用.*npm run setup/s);
+  await expect(ensureVendor('tool', { ...item, version: '1.1' }, vendor, { fetch, rename: locked })).rejects.toThrow(/is in use.*npm run setup/s);
   expect(installedVersion(vendor, item)).toBe('1.0');
   expect(readFileSync(join(vendor, 'tool', 'bin', 'tool.exe'), 'utf8')).toBe('not really a program');
   expect(readdirSync(vendor)).toEqual(['tool']);

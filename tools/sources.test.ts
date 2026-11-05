@@ -77,3 +77,15 @@ test('--live does not search a source that takes no part in searches (maps): its
   expect(searched).toBe(false);
   expect(r.result).toMatchObject({ status: 'ok', detail: '共 3 筆' });
 });
+
+test('in English (doctor) the report keeps the same columns and drops the sources\' Chinese words', async () => {
+  const s = open({ fake: adapter('fake'), off: adapter('off'), keyed: adapter('keyed', { needsKey: true }) });
+  const report = await sourcesReport(s, { lang: 'en' });
+  const line = (id: string) => report.split('\n').find((l) => l.startsWith(id))!;
+  expect(line('fake')).toMatch(/^fake\s+on\s+not needed\s+works$/);
+  expect(line('off (unofficial)')).toMatch(/off\s+not needed\s+not checked/);
+  expect(line('keyed')).toMatch(/on\s+missing \(K_KEY\)\s+not checked/);
+  expect(line('later')).toMatch(/on\s+—\s+no adapter yet/);
+  expect(report).toContain('No contact yet');
+  expect(report).not.toMatch(/[⺀-鿿＀-￯]/);
+});

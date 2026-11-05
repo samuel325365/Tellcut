@@ -11,7 +11,7 @@ import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
 import { ImportError, importProject } from './export-project.ts';
-import { fetchIdle, idleTimer, Stalled } from './setup/fetch-idle.ts';
+import { fetchIdle, idleTimer } from './setup/fetch-idle.ts';
 import { parseArgs, printFailure } from './args.ts';
 import { Usage } from './usage.ts';
 
@@ -25,8 +25,8 @@ export interface Example { id: string; zip: Asset; film?: Asset }
 type Fetch = typeof fetch;
 const HEADERS = { accept: 'application/vnd.github+json', 'user-agent': 'tellcut-examples' };
 
-/** what went wrong with the connection, in English (Stalled says it in Chinese, for setup) */
-const why = (e: unknown) => (e instanceof Stalled ? `the connection stalled: nothing arrived for ${e.seconds} s` : (e as Error).message);
+/** what went wrong with the connection (a Stalled says it in English, like this tool) */
+const why = (e: unknown) => (e as Error).message;
 async function get(f: Fetch, url: string, what: string): Promise<Response> {
   // the listing, read whole: a stalled connection gives up instead of hanging
   try { return await fetchIdle(f, url, { headers: HEADERS }); }

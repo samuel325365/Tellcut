@@ -32,7 +32,7 @@ export class Help extends Usage {}
 export interface ParseOptions {
   /** at most this many positional words: more is refused, naming them (a word too many was dropped without a word) */
   maxWords?: number;
-  /** the language of the problems: Chinese like every tool's output, English for examples.ts (run right after cloning) */
+  /** the language of the problems: Chinese like every tool's output, English for examples, setup and doctor (run right after cloning) */
   lang?: 'zh' | 'en';
 }
 

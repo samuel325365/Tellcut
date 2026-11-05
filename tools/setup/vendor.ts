@@ -38,7 +38,7 @@ function untar(zip: string, into: string): Promise<void> {
     let err = '';
     p.stderr.on('data', (d) => { err += d; });
     p.on('error', rej);
-    p.on('close', (code) => (code ? rej(new Error(`解壓縮失敗（${code}）：${err.trim().slice(-300)}`)) : res()));
+    p.on('close', (code) => (code ? rej(new Error(`unpacking failed (${code}): ${err.trim().slice(-300)}`)) : res()));
   });
 }
 
@@ -61,8 +61,8 @@ function swapIn(name: string, from: string, dest: string, vendorDir: string, des
     for (let n = 1; !old || existsSync(old); n++) old = join(vendorDir, `${OLD(destName)}${n}`);
     try { rename(dest, old); } catch (e) {
       const code = (e as NodeJS.ErrnoException).code ?? '';
-      const why = /^(EPERM|EBUSY|EACCES)$/.test(code) ? `舊的 vendor/${destName} 正在使用中（${code}），大概有程式正在跑它（Tellcut 的伺服器、匯出或轉錄）` : `舊的 vendor/${destName} 搬不開（${(e as Error).message}）`;
-      throw new VendorInUse(`${name} 沒有更新：${why}。舊版本原封不動，照常能用；關掉用到它的程式後再跑一次 npm run setup`);
+      const why = /^(EPERM|EBUSY|EACCES)$/.test(code) ? `the old vendor/${destName} is in use (${code}), probably by a program running it (Tellcut's server, an export or a transcription)` : `the old vendor/${destName} could not be moved aside (${(e as Error).message})`;
+      throw new VendorInUse(`${name} was not updated: ${why}. The old version is untouched and still works; close what uses it and run npm run setup again`);
     }
   }
   try { rename(from, dest); } catch (e) {
@@ -85,19 +85,19 @@ export async function ensureVendor(name: string, item: VendorItem, vendorDir: st
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
   try {
-    log(`下載 ${name} ${item.version}：${item.url}`);
-    const r = await fetchIdle(get, item.url).catch((e: Error) => { throw new Error(`下載 ${name} 失敗：${e.message}（${item.url}）`); });
-    if (!r.ok) throw new Error(`下載 ${name} 失敗：HTTP ${r.status}（${item.url}）`);
+    log(`downloading ${name} ${item.version}: ${item.url}`);
+    const r = await fetchIdle(get, item.url).catch((e: Error) => { throw new Error(`downloading ${name} failed: ${e.message} (${item.url})`); });
+    if (!r.ok) throw new Error(`downloading ${name} failed: HTTP ${r.status} (${item.url})`);
     const bytes = Buffer.from(await r.arrayBuffer());
     const sum = createHash('sha256').update(bytes).digest('hex');
-    if (sum !== item.sha256.toLowerCase()) throw new Error(`${name} 的檔案和 vendor.json 記的不一樣（SHA-256 ${sum}），不使用它`);
+    if (sum !== item.sha256.toLowerCase()) throw new Error(`the ${name} download is not the file vendor.json names (its SHA-256 is ${sum}), so it is not used`);
     const zip = join(work, 'download');   // zip or .tar.gz: bsdtar tells them apart by their content
     writeFileSync(zip, bytes);
     const out = join(work, 'out');
     mkdirSync(out);
     await untar(zip, out);
     const from = item.strip ? join(out, item.strip) : out;
-    if (!existsSync(join(from, item.check))) throw new Error(`${name} 解開後找不到 ${item.check}`);
+    if (!existsSync(join(from, item.check))) throw new Error(`${item.check} is not in the unpacked ${name}`);
     writeFileSync(join(from, STAMP), item.version);
     swapIn(name, from, join(vendorDir, item.dest), vendorDir, item.dest, o.rename ?? renameSync);
     return 'installed';
@@ -114,11 +114,11 @@ export async function ensureModelFile(name: string, item: ModelFile, modelsDir: 
   const dest = join(modelsDir, item.dest);
   const want = item.sha256.toLowerCase();   // digest('hex') is lower case; a hash written in capitals is the same one
   if (existsSync(dest) && createHash('sha256').update(readFileSync(dest)).digest('hex') === want) return 'kept';
-  const r = await fetchIdle(o.fetch ?? fetch, item.url).catch((e: Error) => { throw new Error(`下載 ${name} 失敗：${e.message}（${item.url}）`); });
-  if (!r.ok) throw new Error(`下載 ${name} 失敗：HTTP ${r.status}（${item.url}）`);
+  const r = await fetchIdle(o.fetch ?? fetch, item.url).catch((e: Error) => { throw new Error(`downloading ${name} failed: ${e.message} (${item.url})`); });
+  if (!r.ok) throw new Error(`downloading ${name} failed: HTTP ${r.status} (${item.url})`);
   const bytes = Buffer.from(await r.arrayBuffer());
   const sum = createHash('sha256').update(bytes).digest('hex');
-  if (sum !== want) throw new Error(`${name} 的檔案和 models.json 記的不一樣（SHA-256 ${sum}），不使用它`);
+  if (sum !== want) throw new Error(`the ${name} download is not the file models.json names (its SHA-256 is ${sum}), so it is not used`);
   mkdirSync(join(dest, '..'), { recursive: true });
   writeFileSync(`${dest}.partial`, bytes);
   rmSync(dest, { force: true });
