@@ -199,4 +199,10 @@ export const VALUES_JA: Record<string, string> = {
   "common.bounce.items": "0.1|出発！|260||0.5|0.36|drop\n0.8|【今】しかない|150||0.5|0.6|pop|jump=2",
   "common.heading.text": "ある広場の七百年",
   "common.onomatopoeia.text": "ハハハ！",
+  "common.desktop.chapters": "0|準備|#ffd6b8|#cdb8f5\n1.5|パーティー|#ffc4dc|#d9c2f7",
+  "common.desktop.menu": "ファイル,編集,表示,パーティー",
+  "common.popup.text": "みんなでハッピーバースデーを歌う？",
+  "common.popup.buttons": "いいね！|あとで",
+  "common.popup.done": "保存しました ✓",
+  "common.desktop.start": "スタート",
 };

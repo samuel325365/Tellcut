@@ -76,7 +76,7 @@ export const CAP_EN = { text: 'We walked all the way to the 【Colosseum】', wo
 export const CAP_JA = { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] };
 const CAP_LOOKS: Array<[string, Record<string, unknown>]> = [['punch', {}], ['double', {}], ['soft', {}], ['frost', { hl: '#9fe3ff' }], ['cinema', { size: 3.6 }], ['slab', {}], ['hollow', {}],
   ['marker', {}], ['neon', { hl: '#ff3db8', accent: '#29e7ff' }], ['gradient', { hl: '#ffe2a8', accent: '#ff8a4c' }], ['extrude', { hl: '#ffd23f', accent: '#e8742c' }], ['sticker', { accent: '#ff4f6a', bubbleBg: '#ffffff' }],
-  ['heavy', {}], ['offset', {}], ['gold', {}], ['chrome', {}], ['flow', { hl: '#7cf8ff', accent: '#ff5fa2' }], ['halo', { hl: '#ffb3e6' }], ['duotone', { hl: '#ffe14d', accent: '#ff5c7a' }], ['longshadow', {}], ['emboss', {}], ['block', {}], ['puffy', { hl: '#ffd1e8', accent: '#ff5fa2' }], ['tape', { hl: '#9fe3c8' }], ['postit', {}], ['label', {}], ['ransom', {}], ['rgb', {}], ['pixel', {}], ['vhs', {}], ['terminal', {}], ['segment', {}], ['scanline', { hl: '#7cf8ff' }], ['news', {}], ['chat', {}], ['lyric', { hl: '#ffd27a' }], ['dialog', {}], ['comic', {}], ['chalk', {}], ['narration', {}]];
+  ['heavy', {}], ['offset', {}], ['gold', {}], ['chrome', {}], ['flow', { hl: '#7cf8ff', accent: '#ff5fa2' }], ['halo', { hl: '#ffb3e6' }], ['duotone', { hl: '#ffe14d', accent: '#ff5c7a' }], ['longshadow', {}], ['emboss', {}], ['block', {}], ['puffy', { hl: '#ffd1e8', accent: '#ff5fa2' }], ['tape', { hl: '#9fe3c8' }], ['postit', {}], ['label', {}], ['ransom', {}], ['rgb', {}], ['pixel', {}], ['vhs', {}], ['terminal', {}], ['segment', {}], ['scanline', { hl: '#7cf8ff' }], ['news', {}], ['chat', {}], ['lyric', { hl: '#ffd27a' }], ['dialog', {}], ['comic', {}], ['chalk', {}], ['narration', {}], ['desk', { hl: '#f7b2cf', outline: '#4b3a8c' }]];
 const CAPTION_SAMPLES: Sample[] = [
   ...CAP_LOOKS.flatMap(([style, own]): Sample[] => [
     { name: `cap-${style}-zh`, type: 'common.caption', params: { ...CAP_ZH, style, ...own }, at: [1.0, 2.4], bg: '#4a5a52' },
@@ -596,6 +596,17 @@ export const samples: Sample[] = [
   { name: 'wide-comic', type: 'common.comic', params: { layout: 'side' }, len: 3, at: [2], wide: true, bg: '#4a6b7c' },
   { name: 'onomatopoeia', type: 'common.onomatopoeia', params: { rise: 0.06 }, len: 3, at: [0.12, 1.5], bg: '#4a6b7c' },
   { name: 'onomatopoeia-en', type: 'common.onomatopoeia', params: { text: 'SNIFF', font: 'Bangers', weight: 400, color: '#ffffff', size: 12, stroke: 10, spacing: 1.12, depth: 8, tilt: 6 }, len: 3, at: [1.5], bg: '#4a6b7c' },
+  // common.desktop, common.window, common.popup and touch's look cursor (2026-11-05, the retro desktop pilot film's fx.retro*): the
+  // desktop changing chapter, a photo window popping in and settled, one flying into its taskbar button, the search / profile / progress
+  // windows, a dialog and its press, the closing sheet and its confetti, the cursor gliding and clicking
+  { name: 'desktop', type: 'common.desktop', params: { chapters: '0|準備|#ffd6b8|#cdb8f5\n1.5|派對|#ffc4dc|#d9c2f7\n2.5|生日|#fff0b8|#ffc4dc' }, len: 3, at: [0.5, 1.8] },
+  { name: 'window', type: 'common.window', sources: PIC, params: { source: 'pic', title: 'party_01.jpg', exit: 'none' }, len: 3, at: [0.12, 1.5], bg: '#d9c2f7' },
+  { name: 'window-min', type: 'common.window', params: { content: 'search', text: '今天的壽星', title: 'search', bar: 'mint', h: 0.1, slot: 2, slots: 5 }, len: 3, at: [1.5, 2.8], bg: '#d9c2f7' },
+  { name: 'window-profile', type: 'common.window', params: { content: 'profile', text: '名字|Katie\n年齡|16 歲\n狀態|派對中 ♥', title: 'profile.txt', w: 0.56, h: 0.2, exit: 'none' }, len: 3, at: [1.5], bg: '#d9c2f7' },
+  { name: 'window-progress', type: 'common.window', params: { content: 'progress', text: '佈置中…|佈置完成 ✓', title: 'setup.exe', bar: 'yellow', h: 0.13, progTo: 2, exit: 'none' }, len: 3, at: [1.2, 2.5], bg: '#d9c2f7' },
+  { name: 'popup', type: 'common.popup', params: { press: 1.2 }, len: 3, at: [0.12, 1.25], bg: '#ffc4dc' },
+  { name: 'popup-sheet', type: 'common.popup', params: { mode: 'sheet', text: 'Katie，十六歲生日快樂', buttons: '儲存回憶', y: 0.72, typeAt: 0.3, press: 1.8 }, len: 3, at: [1.5, 2.1], bg: '#ffc4dc' },
+  { name: 'touch-cursor', type: 'common.touch', params: { look: 'cursor', color: '#ffffff', edge: '#4b3a8c', touches: '0.5|tap|0.5,0.38\n1.6-2.2|drag|0.3,0.6>0.7,0.6' }, len: 3, at: [0.55, 1.2, 2.0], bg: '#d9c2f7' },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title

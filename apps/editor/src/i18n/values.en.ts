@@ -200,4 +200,10 @@ export const VALUES_EN: Record<string, string> = {
   "common.bounce.items": "0.1|Let's go!|260||0.5|0.36|drop\n0.8|right 【now】|150||0.5|0.6|pop|jump=2",
   "common.heading.text": "Seven hundred years of a square",
   "common.onomatopoeia.text": "HAHAHA!",
+  "common.desktop.chapters": "0|Prep|#ffd6b8|#cdb8f5\n1.5|Party|#ffc4dc|#d9c2f7",
+  "common.desktop.menu": "File,Edit,View,Party",
+  "common.popup.text": "Sing happy birthday together?",
+  "common.popup.buttons": "Sure!|Wait",
+  "common.popup.done": "Saved ✓",
+  "common.desktop.start": "Start",
 };

@@ -15,7 +15,7 @@ import { canvasAt, freeCanvas } from './inkline.ts';
 
 export type Pt = [number, number];
 export interface Touch { kind: 'tap' | 'drag' | 'pinch' | 'press'; t0: number; t1: number; pts: Pt[]; span: [number, number] }
-interface P { touches: string | string[]; look: 'dot' | 'glow'; size: number; color: string; edge: string; ripple: boolean }
+interface P { touches: string | string[]; look: 'dot' | 'glow' | 'cursor'; size: number; color: string; edge: string; ripple: boolean }
 interface S { cv: HTMLCanvasElement }
 
 const KINDS = ['tap', 'drag', 'pinch', 'press'] as const;
@@ -54,12 +54,39 @@ export function fingersAt(g: Touch, t: number, W: number, H: number): Pt[] {
   return [[cx - ux, cy - uy], [cx + ux, cy + uy]];
 }
 
+/** look cursor (2026-11-05, the retro desktop pilot film's fx.retrocursor): a mouse pointer that never leaves. Where it is at t (frame
+ *  fractions) and whether its button is down: on a gesture's own path while it lasts, still before the first and after the last, and
+ *  gliding from one gesture's end to the next one's start over the 0.7 s (or the whole gap, if shorter) before it */
+export function cursorAt(gs: Touch[], t: number, W: number, H: number): { at: Pt; down: boolean } {
+  if (!gs.length) return { at: [0.5, 0.5], down: false };
+  const sorted = [...gs].sort((a, b) => a.t0 - b.t0), end = (g: Touch) => fingersAt(g, g.t1, W, H)[0], start = (g: Touch) => fingersAt(g, g.t0, W, H)[0];
+  for (let i = 0; i < sorted.length; i++) {
+    const g = sorted[i], next = sorted[i + 1];
+    if (t < g.t0) {
+      if (i === 0) return { at: start(g), down: false };
+      const from = end(sorted[i - 1]), go = Math.max(sorted[i - 1].t1, g.t0 - 0.7), e = eIO3(prog(t, go, g.t0)), to = start(g);
+      return { at: [lerp(from[0], to[0], e), lerp(from[1], to[1], e)], down: false };
+    }
+    if (t <= g.t1 + (g.kind === 'tap' ? 0.15 : 0)) return { at: fingersAt(g, Math.min(t, g.t1), W, H)[0], down: true };
+    if (!next) return { at: end(g), down: false };
+  }
+  return { at: end(sorted[sorted.length - 1]), down: false };
+}
+
+/** the pointer: an arrow with its tip at (x, y), `size` px tall at 1080, filled and outlined */
+function drawCursor(g: CanvasRenderingContext2D, x: number, y: number, z: number, fill: string, edge: string) {
+  g.save(); g.translate(x, y); g.scale(z, z);
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 46); g.lineTo(12, 35); g.lineTo(21, 54); g.lineTo(30, 50); g.lineTo(21, 31); g.lineTo(36, 31); g.closePath();
+  g.fillStyle = fill; g.fill(); g.lineJoin = 'round'; g.lineWidth = 4; g.strokeStyle = edge; g.stroke();
+  g.restore();
+}
+
 export const touch: ItemType<P, S> = {
   type: 'common.touch', label: '觸控點', category: 'mark', kind: 'overlay',
-  doc: '螢幕錄影的「顯示觸控」圓點：touches 一行一個手勢「秒|tap|x,y」點一下、「秒-秒|drag|x,y>x,y」拖曳（可以很多點）、「秒-秒|pinch|x,y|0.4>0.15」兩指捏合（距離以短邊計，變大就是放大）、「秒-秒|press|x,y」長按；位置是畫面比例；手指落下時一圈漣漪（ripple）；look dot 是手機系統的灰色半透明圓點、glow 是白色發亮的指尖；畫在所有項目的最上面；操作手機、App 教學、相簿、聊天、搜尋的螢幕錄影',
+  doc: '螢幕錄影的「顯示觸控」圓點：touches 一行一個手勢「秒|tap|x,y」點一下、「秒-秒|drag|x,y>x,y」拖曳（可以很多點）、「秒-秒|pinch|x,y|0.4>0.15」兩指捏合（距離以短邊計，變大就是放大）、「秒-秒|press|x,y」長按；位置是畫面比例；手指落下時一圈漣漪（ripple）；look dot 是手機系統的灰色半透明圓點、glow 是白色發亮的指尖、cursor 是電腦的箭頭游標（一直在畫面上，手勢之間滑過去，tap 就是點一下：游標一縮、冒一圈；color 是填色、edge 是外框，配 common.desktop 復古桌面）；畫在所有項目的最上面；操作手機、App 教學、相簿、聊天、搜尋的螢幕錄影',
   params: [
     { key: 'touches', label: '手勢（一行一個：秒|tap|x,y、秒-秒|drag|x,y>x,y、秒-秒|pinch|x,y|起距離>終距離、秒-秒|press|x,y）', type: 'text', default: '0.5|tap|0.5,0.38\n1.1-1.9|drag|0.3,0.6>0.7,0.6\n2.2-2.8|pinch|0.5,0.5|0.4>0.15' },
-    { key: 'look', label: '樣子（dot 系統的灰色圓點、glow 白色發亮的指尖）', type: 'enum', options: ['dot', 'glow'], default: 'dot' },
+    { key: 'look', label: '樣子（dot 系統的灰色圓點、glow 白色發亮的指尖、cursor 滑鼠游標）', type: 'enum', options: ['dot', 'glow', 'cursor'], default: 'dot' },
     { key: 'size', label: '圓點半徑（以 1080 短邊計的 px）', type: 'number', min: 10, max: 120, step: 1, default: 46 },
     { key: 'color', label: '圓點顏色', type: 'color', default: '#e4e4ea' },
     { key: 'edge', label: '圓點外框顏色（dot）', type: 'color', default: '#3c3c43' },
@@ -76,6 +103,17 @@ export const touch: ItemType<P, S> = {
     const p = ctx.params, { W, H, local: t } = ctx, k = Math.min(W, H) / 1080, g = canvasAt(s.cv, W, H), glow = p.look === 'glow';
     g.clearRect(0, 0, s.cv.width, s.cv.height);
     const R = p.size * k, out = glow ? 0.3 : 0.18;
+    if (p.look === 'cursor') {
+      const gs = parseTouches(p.touches), c = cursorAt(gs, t, W, H);
+      for (const ges of gs) {   // a click: a ring in the outline colour where the pointer pressed
+        const rp = p.ripple && t >= ges.t0 ? rippleAt(t, ges.t0, R * 0.5, k) : null;
+        if (!rp) continue;
+        const [fx, fy] = fingersAt(ges, ges.t0, W, H)[0];
+        g.strokeStyle = withAlpha(p.edge, rp.a); g.lineWidth = rp.w; g.beginPath(); g.arc(fx * W, fy * H, rp.r, 0, Math.PI * 2); g.stroke();
+      }
+      drawCursor(g, c.at[0] * W, c.at[1] * H, (p.size / 40) * k * (c.down ? 0.86 : 1), p.color, p.edge);
+      return;
+    }
     for (const ges of parseTouches(p.touches)) {
       if (t < ges.t0 - 0.1 || t > Math.max(ges.t1 + out, ges.t0 + 0.5)) continue;
       // the dot: in over 0.1 s (a little bigger while it comes down), out over `out` after the finger lifts

@@ -98,6 +98,7 @@ export const TEMPLATES: CaptionTemplate[] = [
   { id: 'comic-pop', label: '漫畫框彈詞', doc: '藍網點漫畫框，詞一個個彈出', params: { style: 'comic', wordFx: 'pop', animIn: 'bounce', hl: '#7fd4ff' } },
   { id: 'chalk-type', label: '黑板粉筆', doc: '黑板上的粉筆字照講話寫出來', params: { style: 'chalk', wordFx: 'type', animIn: 'none' } },
   { id: 'chalk-fade', label: '黑板淡入', doc: '黑板粉筆字淡入淡出', params: { style: 'chalk', animIn: 'fade', animOut: 'fade' } },
+  { id: 'desk-type', label: '復古桌面訊息框', doc: '粉彩復古視窗樣子的訊息框（粉色標題列、深紫框、硬陰影），字照講話打出來（配 common.desktop 復古桌面）', params: { style: 'desk', wordFx: 'type', animIn: 'rise', size: 3.4, outline: '#4b3a8c', hl: '#f7b2cf' } },
   { id: 'comic-narration', label: '漫畫旁白框', doc: '黃底細黑框的漫畫旁白框，靠左上角擦出（配 common.comic 漫畫頁）', params: { style: 'narration', position: 'top', size: 3, animIn: 'wipe', hl: '#ffe14d' } },
 ];
 

@@ -53,3 +53,13 @@ export const scanline: CaptionLook = {
     return { base: lines(e.p.hl), hot: lines(e.p.accent || '#ffffff') };
   },
 };
+
+/** a pastel desktop's message window (the retro desktop pilot film's fx.retromsg, 2026-11-05): ink words in a rounded face on cream, a
+ *  band of the highlight colour across the top like a title bar, an ink border and a hard shadow; goes with common.desktop */
+export const desk: CaptionLook = {
+  id: 'desk', paper: true, weight: '400', font: 'Huninn', room: (e, width) => width - 1.8 * e.px,
+  color: (e) => e.p.outline,
+  hl: (e) => e.theme.palette.accent,
+  box: (e) => ({ background: `linear-gradient(${e.p.hl} 0 0.42em, ${e.p.outline} 0.42em 0.48em, #fffaf0 0.48em)`, padding: '0.66em 0.8em 0.22em', minWidth: '78%',
+    border: `${(0.06 * e.fs).toFixed(1)}px solid ${e.p.outline}`, boxShadow: `${(0.13 * e.fs).toFixed(1)}px ${(0.13 * e.fs).toFixed(1)}px 0 color-mix(in srgb, ${e.p.outline} 55%, transparent)` }),
+};
