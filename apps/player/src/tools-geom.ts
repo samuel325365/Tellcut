@@ -1,5 +1,5 @@
 // Pure geometry for the preview tools (picking, moving, scaling, mapping on-screen text to a param).
-import type { Transform } from '@tellcut/engine';
+import { clamp, type Transform } from '@tellcut/engine';
 
 export type Rect = { left: number; top: number; right: number; bottom: number };
 
@@ -17,7 +17,6 @@ export function pickAt(ids: string[], current: string | null, cycle: boolean): s
 }
 
 const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const base = (t?: Transform): Transform => t ?? { x: 0, y: 0, scale: 1, ox: 0.5, oy: 0.5 };
 
 export function movedTransform(t: Transform | undefined, dx: number, dy: number): Transform {

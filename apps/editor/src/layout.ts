@@ -1,6 +1,7 @@
 // Editor layout: stacked puts the preview over the timeline; side puts a full-height preview beside it (a 9:16 video is
 // height-bound: above the timeline it would be tiny however wide the window). Auto picks stacked for landscape projects and
 // side for portrait ones; the choice and the sizes are kept per project orientation (spec 2026-10-28-timeline-refresh A0).
+import { clamp } from '@tellcut/engine';
 import { MEDIA_SORTS, MEDIA_TABS, type MediaSort, type MediaTab } from './media-order.ts';
 
 export type Orientation = 'landscape' | 'portrait';
@@ -39,7 +40,6 @@ const TRAY_H = 30, RULER_ROW = 26;
 const TOOLBAR_H = 40, TRANSPORT_H = 36, SPLITTER = 6, CLOSED = 24, SIDE_W = 260, LIB_W = 220, MIN_TIMELINE = 360;
 /** the left panel can be dragged between these (and to at most half the window) */
 export const SIDE_MIN = 200, SIDE_MAX = 720;
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export const orientationOf = (m: { width: number; height: number }): Orientation => (m.height > m.width ? 'portrait' : 'landscape');
 

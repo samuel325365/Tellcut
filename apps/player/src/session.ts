@@ -1,5 +1,5 @@
 // The editor's live preview: one project at a time, updated in place on every edit (spec §2.1–2.3).
-import { AudioEngine, MediaPool, Stage, createRegistry, parseProject, planAudio, usesThree, videoRefOf, type MediaResolver, type Plugin, type Project, type VideoItem } from '@tellcut/engine';
+import { AudioEngine, MediaPool, Stage, clamp, createRegistry, parseProject, planAudio, usesThree, videoRefOf, type MediaResolver, type Plugin, type Project, type VideoItem } from '@tellcut/engine';
 import { loadThreeKit, plugins as sharedPlugins } from '@tellcut/plugins';
 import { importFx, registryWith } from '@tellcut/plugins/browser-fx';
 import { CropView, cropFrameLocal, type CropChange } from './crop.ts';
@@ -28,8 +28,6 @@ export interface SessionDeps {
   /** test seams: how three.js is loaded (default loadThreeKit) and the plugins (default the shared list) */
   loadThree?: () => Promise<unknown>; plugins?: Plugin[];
 }
-
-const clamp = (t: number, d: number) => Math.max(0, Math.min(d, t));
 
 export class PreviewSession {
   /** the shared plugins, then plus the project's own fx once a project is loaded */
@@ -109,14 +107,14 @@ export class PreviewSession {
     this.audio.setPlan(planAudio(p, this.stage.times, this.d.resolver, this.d.projectUrl), p.meta.mix, p.meta.duration);
     await Promise.all([this.pool.preload(this.stage.mediaRefs()), this.stage.ready(), this.audio.load(undefined, this.audioOffline)]);
     void this.audio.prepare().catch(() => {});   // decode now, not on the first play
-    this.t = clamp(this.t, p.meta.duration);
+    this.t = clamp(this.t, 0, p.meta.duration);
     if (this.cropSel) { this.showCrop(); return; }
     // spec §5: editing while playing rebuilds the audio 150 ms after the last change
     if (this.playing) { clearTimeout(this.restart); this.restart = setTimeout(() => { if (this.playing) void this.play(this.t).catch((e) => { const error = String((e as Error)?.message ?? e); this.d.onError(undefined, error, { code: 'player.playFailed', params: { error } }); }); }, 150); }
     else await this.show();
   }
 
-  async seek(t: number) { this.pause(); this.t = clamp(t, this.project.meta.duration); await this.show(); }
+  async seek(t: number) { this.pause(); this.t = clamp(t, 0, this.project.meta.duration); await this.show(); }
 
   /** Every play()/pause() takes a new token; a loop or a starting play() whose token is stale stops. */
   private token = 0;
@@ -126,7 +124,7 @@ export class PreviewSession {
     const my = ++this.token;
     this.halt();
     const dur = this.project.meta.duration;
-    this.t = clamp(from, dur);
+    this.t = clamp(from, 0, dur);
     if (this.t >= dur - 0.05) this.t = 0;
     this.from = this.t;
     this.starting++;
