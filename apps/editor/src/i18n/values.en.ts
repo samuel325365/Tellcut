@@ -198,4 +198,5 @@ export const VALUES_EN: Record<string, string> = {
   "common.healthbar.label": "HP",
   "common.healthbar.states": "Steady,Shaky,Danger,Broken",
   "common.bounce.items": "0.1|Let's go!|260||0.5|0.36|drop\n0.8|right 【now】|150||0.5|0.6|pop|jump=2",
+  "common.heading.text": "Seven hundred years of a square",
 };

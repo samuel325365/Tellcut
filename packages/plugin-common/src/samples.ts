@@ -65,6 +65,8 @@ const CHAT_OPEN = `0|me|你看這個 👇
 2.8|them|哇`;
 const ALBUM = '# 港邊|7月12日|第 1 天\npic|0||0.5,0.4\n-\n-||0:12\n# 老街|7月13日|第 2 天\n-\npic|0|0:08|0.3,0.6\n-\n# |7月15日|第 4 天\n-\n-\n-\n-';
 
+/** common.heading's sample title: a kicker, two lines, a sub */
+const HEAD_ZH = { text: '一座廣場的\n七百年', kicker: '第一章', sub: '義大利・西恩納' };
 /** caption looks, word effects and animations (spec 2026-11-04-caption-styles): a Chinese, an English and a Japanese line with word times */
 const CAP_ZH = { text: '今天帶你去吃【台南】最強的牛肉湯', words: [[0.25, 2], [0.55, 4], [0.85, 6], [1.2, 8], [1.6, 11], [2.05, 14]] };
 export const CAP_EN = { text: 'We walked all the way to the 【Colosseum】', words: [[0.25, 2], [0.5, 9], [0.8, 13], [1.0, 17], [1.25, 21], [1.45, 24], [1.7, 28], [2.0, 38]] };
@@ -583,5 +585,12 @@ export const samples: Sample[] = [
   { name: 'wide-leak', type: 'common.leak', params: { from: 'l' }, len: 3, at: [1.5], wide: true, bg: '#4d5866' },
   { name: 'core-flash-fade', type: 'core.flash', params: { fade: 'out', color: '#000' }, len: 3, at: [0.75, 1.5, 2.25], bg: '#c9803c' },
   ...CAPTION_SAMPLES,
+  // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title
+  ...['center', 'top', 'bottom', 'lower', 'left', 'corner', 'full'].map((layout): Sample => ({ name: `heading-${layout}`, type: 'common.heading', params: { ...HEAD_ZH, layout, ...(layout === 'full' ? { text: '七百年', kicker: '', sub: '' } : {}) }, at: [1.5], bg: '#4a5a52' })),
+  ...['band', 'scrim', 'blur', 'card', 'rules', 'bar', 'black'].map((backing): Sample => ({ name: `heading-back-${backing}`, type: 'common.heading', params: { ...HEAD_ZH, backing, style: backing === 'card' ? 'plain' : 'heavy' }, at: [1.5], bg: '#4a5a52' })),
+  { name: 'heading-en', type: 'common.heading', params: { text: 'Seven Hundred Years\nof a Square', kicker: 'CHAPTER ONE', sub: 'Siena, Italy', backing: 'rules', style: 'soft' }, at: [1.5], wide: true, bg: '#4a5a52' },
+  { name: 'heading-ja', type: 'common.heading', params: { text: '広場の七百年', kicker: '第一章', sub: 'シエナ・イタリア', layout: 'lower', backing: 'bar', font: 'Noto Sans JP' }, at: [1.5], bg: '#4a5a52' },
+  { name: 'heading-in-track', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'track' }, at: [0.2], bg: '#4a5a52' },
+  { name: 'heading-in-rule', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'rule', backing: 'rules' }, at: [0.2, 0.45], bg: '#4a5a52' },
   { name: 'token', type: 'common.token', params: { x: 0.3, y: 0.42, size: 0.3 }, at: [1.2, 1.7, 2.9] },
 ];

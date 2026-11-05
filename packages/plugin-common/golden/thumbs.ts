@@ -4,6 +4,7 @@
 export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unknown>>> = {
   en: {
     'core-title': { text: 'Three Days in Kyoto', sub: 'Our first trip of the autumn' },
+    'heading-center': { text: 'Seven Hundred Years\nof a Square', kicker: 'CHAPTER ONE', sub: 'Siena, Italy' },
     'core-caption': { text: 'This shop has been open forty years' },
     'core-lower-third': { text: 'Fushimi Inari Taisha', sub: 'Fushimi · Kyoto' },
     'core-end-card': { text: 'Thank you\nEdited with Tellcut\nAutumn 2026' },
@@ -23,6 +24,7 @@ export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unk
   },
   ja: {
     'core-title': { text: '京都三日間', sub: '秋の最初の旅' },
+    'heading-center': { text: '広場の\n七百年', kicker: '第一章', sub: 'シエナ・イタリア', font: 'Noto Sans JP' },
     'core-caption': { text: 'この店は創業四十年' },
     'core-lower-third': { text: '伏見稲荷大社', sub: '京都・伏見区' },
     'core-end-card': { text: 'ありがとう\n編集　Tellcut\n2026 秋' },

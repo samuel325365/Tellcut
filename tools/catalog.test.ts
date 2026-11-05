@@ -48,8 +48,8 @@ test('shared blocks are grouped by category in the catalog; every common block h
   const s = formatCatalog(plugins);
   expect(s.indexOf(' 字幕：')).toBeGreaterThan(0);
   expect(s.indexOf(' 字幕：')).toBeLessThan(s.indexOf('common.caption'));
-  expect(s.indexOf(' 大字與標題：')).toBeGreaterThan(s.indexOf('common.caption'));
-  expect(s.indexOf(' 大字與標題：')).toBeLessThan(s.indexOf('common.slam'));
+  expect(s.indexOf(' 大字：')).toBeGreaterThan(s.indexOf('common.caption'));
+  expect(s.indexOf(' 大字：')).toBeLessThan(s.indexOf('common.slam'));
   for (const it of plugins.find((p) => p.id === 'common')!.items!) expect(Object.keys(BLOCK_CATEGORY), it.type).toContain(it.category);
   // a plugin without categories stays one list
   expect(formatCatalog(fake)).not.toContain('其他');
@@ -69,7 +69,8 @@ test("the block index: one line per category with the short names, then the soun
   const idx = formatIndex(plugins);
   // a block that moved category keeps its old handle, written whole; the others by number after the category's prefix
   expect(idx.split('\n')[0]).toBe('- Captions (SUB): TXT-02 `caption`');
-  expect(idx.split('\n')[1]).toMatch(/^- Big text and titles \(TXT\): 01 `burst`, .*\d\d `slam`/);   // the prefix once, then number and name
+  expect(idx.split('\n')[1]).toBe('- Titles (HDG): 01 `heading`');
+  expect(idx.split('\n')[2]).toMatch(/^- Big text \(TXT\): 01 `burst`, .*\d\d `slam`/);   // the prefix once, then number and name
   expect(idx).toMatch(/^- Sound effects \(`c\.sfx`; a sound file the project made itself goes in with `c\.sfxFile`\):$/m);
   expect(idx).toMatch(/^ {2}- Alerts, right and wrong, alarms \(SFX-ALR\): .*`beep`/m);    // the sounds by category, one line each
   expect(idx).toMatch(/^ {2}- Chimes, rewards and melodies \(SFX-CHM\): .*`ding`.*`chime`/m);

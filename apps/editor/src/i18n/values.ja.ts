@@ -197,4 +197,5 @@ export const VALUES_JA: Record<string, string> = {
   "common.healthbar.label": "体力",
   "common.healthbar.states": "余裕,ぐらぐら,危険,崩壊",
   "common.bounce.items": "0.1|出発！|260||0.5|0.36|drop\n0.8|【今】しかない|150||0.5|0.6|pop|jump=2",
+  "common.heading.text": "ある広場の七百年",
 };

@@ -125,7 +125,7 @@ export const PLUGIN_GROUP: Record<string, string> = {
 
 /** the groups of the shared blocks (ItemType.category), in catalog order */
 export const BLOCK_CATEGORY: Record<BlockCategory, string> = {
-  caption: '字幕', text: '大字與標題', chapter: '章節、編號與標籤', card: '資訊卡、清單與收據', number: '數字與計量', travel: '地圖、路線與旅程',
+  caption: '字幕', title: '標題', text: '大字', chapter: '章節、編號與標籤', card: '資訊卡、清單與收據', number: '數字與計量', travel: '地圖、路線與旅程',
   frame: '版面與相框（影片在框裡播）', phone: '手機與 App 畫面', mark: '貼圖與標記', look: '背景與質感', moment: '轉場、懸念與片尾',
 };
 /** the groups of the shared sound effects (SfxType.category), in catalog and gallery order */
@@ -135,7 +135,7 @@ export const SFX_CATEGORY: Record<SfxCategory, string> = {
 
 /** the same groups in English, for the block index of guides/workflow.md (the agents' prompt is English) */
 export const BLOCK_CATEGORY_EN: Record<BlockCategory, string> = {
-  caption: 'Captions', text: 'Big text and titles', chapter: 'Chapters, numbers and tags', card: 'Info cards, lists and receipts', number: 'Numbers and meters',
+  caption: 'Captions', title: 'Titles', text: 'Big text', chapter: 'Chapters, numbers and tags', card: 'Info cards, lists and receipts', number: 'Numbers and meters',
   travel: 'Maps, routes and journeys', frame: 'Layouts and frames (the video plays inside)', phone: 'Phone and app screens', mark: 'Stickers and marks',
   look: 'Backgrounds and textures', moment: 'Transitions, suspense and endings',
 };

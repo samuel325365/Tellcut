@@ -6,7 +6,7 @@ import type { CaptionLook } from '../types.ts';
 
 /** white words on a dark rounded bar with a thin accent2 strip down its left side (a search snippet) */
 export const bar: CaptionLook = {
-  id: 'bar', weight: '700',
+  id: 'bar', title: false, weight: '700',
   room: (e, width) => width - 1.65 * e.px,
   box: (e) => ({ background: `linear-gradient(${e.theme.palette.accent2}, ${e.theme.palette.accent2}) 0.3em 0.28em / 0.14em calc(100% - 0.56em) no-repeat, ${e.p.boxBg}`,
     padding: '0.28em 0.7em 0.3em 0.95em', borderRadius: `${24 * e.k}px` }),
@@ -31,7 +31,7 @@ export function qaBadgeColors(speaker: number, color: string, theme: Theme, tint
 /** an interview subtitle set flush left in a serif over a dark wash rising from below the lines, with `name` (Q, A, or a short
  *  name: the badge widens) in a badge at the left of the first line */
 export const qa: CaptionLook = {
-  id: 'qa', weight: '700', font: 'Noto Serif TC', left: true,
+  id: 'qa', title: false, weight: '700', font: 'Noto Serif TC', left: true,
   room: (e, width) => width - qaBadge(String(e.p.name ?? '')).indent * e.px,
   box: (e) => {
     const b = qaBadge(String(e.p.name ?? ''));
@@ -56,7 +56,7 @@ export const qa: CaptionLook = {
 
 /** a news bar: ink words on a white bar with a thick block of the accent colour at its left */
 export const news: CaptionLook = {
-  id: 'news', weight: '900', left: true,
+  id: 'news', title: false, weight: '900', left: true,
   room: (e, width) => width - 1.4 * e.px,
   color: (e) => e.theme.palette.ink,
   hl: (e) => e.p.accent || e.theme.palette.accent,
@@ -66,7 +66,7 @@ export const news: CaptionLook = {
 
 /** a chat bubble: speaker 2 and 3 on the right in the accent colour, everyone else on the left in grey, a corner pointing at them */
 export const chat: CaptionLook = {
-  id: 'chat', weight: '700', room: (e, width) => width * 0.8 - 1.2 * e.px,
+  id: 'chat', title: false, weight: '700', room: (e, width) => width * 0.8 - 1.2 * e.px,
   color: (e) => ((e.p.speaker ?? 0) >= 2 ? '#ffffff' : e.theme.palette.ink),
   hl: (e) => ((e.p.speaker ?? 0) >= 2 ? e.p.hl : e.theme.palette.accent),
   box: (e) => {
@@ -79,14 +79,14 @@ export const chat: CaptionLook = {
 
 /** song lyrics: a classical serif in white, softly glowing, with the words not sung yet dim */
 export const lyric: CaptionLook = {
-  id: 'lyric', weight: '400', font: 'Cactus Classical Serif',
+  id: 'lyric', title: false, weight: '400', font: 'Cactus Classical Serif',
   box: (e) => ({ textShadow: `0 0 ${(0.2 * e.fs).toFixed(1)}px rgba(255,255,255,0.45), 0 ${(0.03 * e.fs).toFixed(1)}px ${(0.08 * e.fs).toFixed(1)}px rgba(0,0,0,0.6)`, letterSpacing: '0.08em' }),
   word: (e) => ({ hot: { color: e.p.hl, textShadow: `0 0 ${(0.3 * e.fs).toFixed(1)}px ${e.p.hl}` }, dim: { color: 'rgba(255,255,255,0.45)' } }),
 };
 
 /** a game's dialogue box: a dark blue box with a double white frame, white words set flush left */
 export const dialog: CaptionLook = {
-  id: 'dialog', weight: '700', left: true, room: (e, width) => width - 1.6 * e.px,
+  id: 'dialog', title: false, weight: '700', left: true, room: (e, width) => width - 1.6 * e.px,
   hl: (e) => e.p.hl,
   box: (e) => ({ background: 'linear-gradient(180deg, #1f2e7a, #101a4d)', padding: '0.4em 0.8em', borderRadius: `${(0.12 * e.fs).toFixed(1)}px`, minWidth: '70%',
     boxShadow: `inset 0 0 0 ${(0.05 * e.fs).toFixed(1)}px #ffffff, inset 0 0 0 ${(0.1 * e.fs).toFixed(1)}px #101a4d, inset 0 0 0 ${(0.13 * e.fs).toFixed(1)}px #c9d4ff, 0 ${(0.06 * e.fs).toFixed(1)}px ${(0.2 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)` }),

@@ -59,7 +59,7 @@ export interface ItemCtx<P = Record<string, any>> {
 }
 
 /** a shared block's group in the catalog and in the page chat's block index (names: BLOCK_CATEGORY in @tellcut/protocol) */
-export type BlockCategory = 'caption' | 'text' | 'chapter' | 'card' | 'number' | 'travel' | 'frame' | 'phone' | 'mark' | 'look' | 'moment';
+export type BlockCategory = 'caption' | 'title' | 'text' | 'chapter' | 'card' | 'number' | 'travel' | 'frame' | 'phone' | 'mark' | 'look' | 'moment';
 
 export interface ItemType<P = Record<string, any>, S = any> {
   type: string; label: string; kind: 'scene' | 'overlay';

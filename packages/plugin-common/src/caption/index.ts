@@ -43,7 +43,7 @@ export const stylePop = (style: string, local: number): number | null => lookOf(
  *  a serif for qa), else '' (the caption's own font) */
 export const styleFontOf = (style: string, styleFont: string, fontSet = false) => styleFont || (fontSet ? '' : lookOf(style).font ?? '');
 
-const STYLE_IDS = LOOKS.map((l) => l.id);
+const STYLE_IDS = LOOKS.filter((l) => l.only !== 'title').map((l) => l.id);
 /** an element's inline style gone, and cssCamel's memory of it (else it would skip setting the same values again) */
 const clearStyle = (el: HTMLElement) => { el.removeAttribute('style'); delete (el as unknown as { _c?: unknown })._c; };
 /** what a look's box() may set beyond the basics, cleared first: switching looks on a caption leaves nothing of the last one */

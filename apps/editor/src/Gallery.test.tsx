@@ -210,7 +210,7 @@ test('the gallery speaks the chosen language', async () => {
     expect(card.getAttribute('data-tip')).toBe(BLOCKS_EN['common.slam'].doc);
     expect(card.hasAttribute('title')).toBe(false);
     expect(root.querySelector('[data-detail="common.slam"] .g-doc')!.textContent).toBe(BLOCKS_EN['common.slam'].doc);
-    expect([...root.querySelectorAll('[data-cat]')].map((b) => b.getAttribute('data-cat') + ':' + b.firstChild!.textContent)).toContain('text:Big text and titles');
+    expect([...root.querySelectorAll('[data-cat]')].map((b) => b.getAttribute('data-cat') + ':' + b.firstChild!.textContent)).toContain('text:Big text');
     expect(root.querySelector('[data-clip-fx] h4')!.textContent).toContain('What a clip itself does');
     expect(root.querySelector('[data-tab="sfx"]')!.textContent).toBe('Sound effects');
     expect(root.querySelector('[data-lang]')).not.toBeNull();   // the gallery has its own switch

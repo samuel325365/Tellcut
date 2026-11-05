@@ -57,7 +57,7 @@ test('it refuses what it should: not an fx, unknown, a file it cannot split, a b
   await expect(plan({ type: 'fx.ring', name: 'Bad Name' })).rejects.toThrow('不合法');
   await expect(plan({ type: 'fx.ring', name: 'film2' })).rejects.toThrow('數字結尾');
   await expect(plan({ type: 'fx.ring', name: 'film' })).rejects.toThrow('已經存在');
-  await expect(planPromotion({ dir, type: 'fx.ring', commonDir: common, handlesFile, names: NAMES })).rejects.toThrow(/要給分類：加 --category caption\|text\|chapter/);
+  await expect(planPromotion({ dir, type: 'fx.ring', commonDir: common, handlesFile, names: NAMES })).rejects.toThrow(/要給分類：加 --category caption\|title\|text\|chapter/);
   await expect(plan({ type: 'fx.ring', category: 'nope' })).rejects.toThrow('沒有「nope」這個分類');
 });
 

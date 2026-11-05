@@ -40,6 +40,10 @@ export interface WordStyle { base?: Css; hot?: Css; dim?: Css; onbox?: Css; box?
 
 export interface CaptionLook {
   id: string;
+  /** not offered as a title's look (common.heading): the layouts made for talk (qa, news, chat…) */
+  title?: false;
+  /** a title's own look (looks/title.ts): not offered as a caption style */
+  only?: 'title';
   /** prints the line in ink (`outline`) on paper: its gloss is ink too, and the highlight colour stays off the words */
   paper?: boolean;
   /** the font this look brings (styleFont, then a font the item sets itself, replace it) */
