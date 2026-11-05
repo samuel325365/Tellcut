@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, allItems, createRegistry, OLD_TEXT, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
-import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
+import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
@@ -21,6 +21,12 @@ import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, t
 
 type Transition = { type: 'dissolve' | 'slide'; dur: number; dir?: 'l' | 'r' | 'u' | 'd' };
 type Frame = [number, number, number, number];
+/** why avoidBurned left a clip as asked: the zoom it needs is past the cap, the detection has not run, or no caption was detected
+ *  near it (`fix`: the crop that would clear the caption row anyway, `cap` when even that is past the zoom cap) */
+type BurnedSkip = { kind: 'zoom' | 'pending' | 'unseen'; from: number; to: number; cap?: number; rows?: [number, number]; fix?: { from: Crop; to: Crop } };
+/** clips listed in one avoidBurned note at most */
+const MAX_SKIPS = 8;
+const cropText = (c: Crop) => `{ x: ${+c.x.toFixed(3)}, y: ${+c.y.toFixed(3)}, zoom: ${+c.zoom.toFixed(3)} }`;
 /** A frame is fractions of the screen: pixels (a 1080 × 1920 rectangle) pushed the whole picture off screen with no error,
  *  and the r3b-baking chat spent several turns finding it from the contact sheet. Some bleed past the edges is allowed. */
 export function checkFrame(f: Frame | undefined, what: string): void {
@@ -169,18 +175,45 @@ export class Cut {
    * phase 2d): zoomed no further than the footage's resolution allows (burnedZoomCap), else the crop stays as asked and a note says
    * so (check reports the caption then). `ask`: what save() needs to work it out again around the faces in the clip.
    */
-  private avoidBurned(source: string, from: number, to: number, crop: { from: Crop; to: Crop }, frame?: Frame): { crop: { from: Crop; to: Crop }; ask?: Omit<BurnedAsk, 'ids'> } {
-    const cap = this.inv.sources.find((x) => x.id === source)?.burned?.caption, src = this.p.sources[source];
-    if (!cap || !src || !cap.spans.some(([a, b]) => a - BURNED_PAD < to && b + BURNED_PAD > from)) return { crop };
+  private avoidBurned(source: string, from: number, to: number, crop: { from: Crop; to: Crop }, frame?: Frame): { crop: { from: Crop; to: Crop }; ask?: Omit<BurnedAsk, 'ids'>; skip?: BurnedSkip } {
+    const s = this.inv.sources.find((x) => x.id === source), src = this.p.sources[source];
+    if (!s || !src) return { crop };
+    // no detection result (the analysis still on it, or it failed): nothing to go by, which the agent must hear
+    if (s.burned === null) return { crop, skip: { kind: 'pending', from, to } };
+    const cap = s.burned?.caption;
+    if (!cap) return { crop };   // looked at, and the footage has no caption row
     const [, , fw, fh] = frame ?? this.layout?.frame ?? [0, 0, 1, 1], frameW = fw * this.p.meta.width, frameH = fh * this.p.meta.height;
     const geo = { srcW: src.width, srcH: src.height, frameW, frameH, captionTop: cap.rect[1], maxZoom: burnedZoomCap(src.width, src.height, frameW, frameH) };
-    const r = avoidBurnedMove(geo, crop);
-    if (r.why) {
-      this.notes.push(`avoidBurned：${source} ${from.toFixed(1)}–${to.toFixed(1)} 秒要放大超過 ${geo.maxZoom} 倍才避得開燒進去的字幕（素材 ${src.width}×${src.height}，再放大會糊），沒有改裁切；字幕改放畫面上方或換鏡頭`);
-      return { crop };
+    const r = avoidBurnedMove(geo, crop), { why: _, ...move } = r, same = !r.why && JSON.stringify(move) === JSON.stringify(crop);
+    // the detection samples one frame a second and misses short lines (a word or two on screen for 2–3 s: a travel vlog lost most
+    // of its captions to that), so a stretch with no span near it is left alone but said, with the crop that would clear it
+    if (!cap.spans.some(([a, b]) => a - BURNED_PAD < to && b + BURNED_PAD > from))
+      return same ? { crop } : { crop, skip: { kind: 'unseen', from, to, rows: [cap.rect[1], cap.rect[1] + cap.rect[3]], ...(r.why ? { cap: geo.maxZoom } : { fix: move }) } };
+    if (r.why) return { crop, skip: { kind: 'zoom', from, to, cap: geo.maxZoom } };
+    return { crop: move, ...(same ? {} : { ask: { source, from, to, want: crop, geo } }) };
+  }
+  /** clips avoidBurned left as asked, by source: said once per source at save() (a recipe asks it of every clip) */
+  private burnedSkips = new Map<string, Array<BurnedSkip & { ids: string[] }>>();
+  private burnedSkipNotes() {
+    // source times as the script writes them ('9:46.0')
+    const span = (k: { ids: string[]; from: number; to: number }, more = '') => `${k.ids.join('、')}（素材 ${timecode1(k.from)}–${timecode1(k.to)}${more}）`;
+    const list = <T,>(xs: T[], f: (x: T) => string) => xs.slice(0, MAX_SKIPS).map(f).join('、') + (xs.length > MAX_SKIPS ? `…（還有 ${xs.length - MAX_SKIPS} 段）` : '');
+    const live = new Set(allItems(this.p).map((x) => (x.item as { id: string }).id));
+    for (const [source, asked] of this.burnedSkips) {
+      // a clip the script removed again is not news
+      const all = asked.map((k) => ({ ...k, ids: k.ids.filter((id) => live.has(id)) })).filter((k) => k.ids.length);
+      const src = this.p.sources[source], by = (kind: BurnedSkip['kind']) => all.filter((k) => k.kind === kind);
+      const zoom = by('zoom'), pending = by('pending'), unseen = by('unseen');
+      if (zoom.length) this.notes.push(`avoidBurned：${source} 有 ${zoom.length} 段要放大超過 ${zoom[0].cap} 倍才避得開燒進去的字幕（素材 ${src.width}×${src.height}，再放大會糊），沒有改裁切：${list(zoom, (k) => span(k))}；字幕改放畫面上方或換鏡頭`);
+      if (pending.length) this.notes.push(`avoidBurned：${source} 沒有燒字偵測的結果（分析還沒跑完或失敗了），${pending.length} 段沒有裁：${list(pending, (k) => span(k))}；分析完再重跑 cut`);
+      if (unseen.length) {
+        const [top, bottom] = unseen[0].rows!, pct = (x: number) => Math.round(x * 100);
+        // `crop: …` ready to paste into the clip call
+        const how = (k: BurnedSkip) => k.fix ? (JSON.stringify(k.fix.from) === JSON.stringify(k.fix.to) ? `crop: ${cropText(k.fix.from)}` : `crop: { from: ${cropText(k.fix.from)}, to: ${cropText(k.fix.to)} }`) : `要放大超過 ${k.cap} 倍，裁不掉`;
+        this.notes.push(`avoidBurned：${source} 有 ${unseen.length} 段前後 ${BURNED_PAD} 秒內沒偵測到原片字幕，沒有放大：${list(unseen, (k) => span(k, `，${how(k)}`))}；偵測一秒只看一格，一兩個字的短句常漏掉：畫面下方 ${pct(top)}–${pct(bottom)}% 高度看得到字的話，照括號裡的 crop 自己裁`);
+      }
     }
-    const { why: _, ...move } = r;
-    return { crop: move, ...(JSON.stringify(move) !== JSON.stringify(crop) ? { ask: { source, from, to, want: crop, geo } } : {}) };
+    this.burnedSkips.clear();   // said once, even if save() runs again
   }
   private frameFields(frame?: Frame) { return frame ? { frame } : this.layout ? { frame: this.layout.frame, radius: this.layout.radius } : {}; }
   /** a transition overlaps the previous clip by its own length: it stays linked to the overlap */
@@ -209,6 +242,7 @@ export class Cut {
     // no crop asked for and the picture does not fit the frame's shape: at save() its focus goes to the faces in it (phase 5)
     if (!crop0) this.autoFocus.push([id]);
     if (avoided?.ask) this.burnedAsks.push({ ids: [id], ...avoided.ask });
+    if (avoided?.skip) this.burnedSkips.set(source, [...(this.burnedSkips.get(source) ?? []), { ids: [id], ...avoided.skip }]);
     if (o.duck !== undefined) this.duckOf.set(id, o.duck);
     if ((o.sound ?? true) && s.audio !== false) {
       const edge = r6(Math.min(0.1, len / 4));
@@ -230,6 +264,7 @@ export class Cut {
     const r = tightenClip(this.p, clipId, (s) => this.transcriptOf(s), o, this.autoFocus);
     if (r.note) this.notes.push(r.note);
     for (const a of this.burnedAsks) if (a.ids.includes(clipId)) a.ids = r.ids;
+    for (const k of [...this.burnedSkips.values()].flat()) if (k.ids.includes(clipId)) k.ids = r.ids;
     const duck = this.duckOf.get(clipId);
     if (duck !== undefined) for (const id of r.ids) this.duckOf.set(id, duck);
     if (!r.cut) return r.ids;
@@ -881,6 +916,7 @@ export class Cut {
   async save(): Promise<Project> {
     const duration = r6(Math.max(this.end, 0.5));
     this.p.meta.duration = duration;
+    this.burnedSkipNotes();
     await resolveBurnedFaces(this.faceCtx(), this.burnedAsks, this.autoFocus);   // before the focus: it may take a clip's focus over
     await resolveAutoFocus(this.faceCtx(), this.autoFocus);   // the crops first: a sticker follows a face through the final crop, a blur backdrop copies it
     this.addLayout(duration);

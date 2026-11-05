@@ -54,7 +54,61 @@ test('avoidBurned crops a clip so the footage\'s own caption stays out of the fr
   expect(crop(d).from.zoom).toBe(1);
 });
 
-test('avoidBurned zooms no further than the footage\'s resolution allows: past that the crop stays and a note says why', () => {
+test('avoidBurned on a stretch the detection found no caption near leaves the crop, and save() names each such clip with the crop that would clear the row', async () => {
+  // the 1-a-second detection misses short lines: a 720p travel vlog in a portrait film had one-word captions at source times
+  // 4 s and more from every detected span, and cut zoomed none of them without a word
+  const c = fresh();
+  c.p.meta.width = 1080; c.p.meta.height = 1920;
+  c.p.sources.v.width = 1280; c.p.sources.v.height = 720;
+  c.p.sources.v.duration = 60; c.inv.sources[0].duration = 60;
+  c.inv.sources[0].burned = { version: 1, step: 1, frames: 60, caption: { share: 0.1, rect: [0.08, 0.866, 0.84, 0.09], spans: [[1, 2]] } };
+  const found = c.clip('v', { from: 1, len: 1, crop: { x: 0.5 }, avoidBurned: true });
+  const missed = c.clip('v', { from: 20, len: 2, crop: { x: 0.4 }, avoidBurned: true });
+  const cleared = c.clip('v', { from: 30, len: 1, crop: { x: 0.5, y: 0, zoom: 1.2 }, avoidBurned: true });   // already clear: nothing to say
+  const crop = (id: string) => items(c, 'v1').find((i) => i.id === id).crop;
+  expect(crop(found).from).toEqual({ x: 0.5, y: 0, zoom: 1.18 });
+  expect(crop(missed).from).toEqual({ x: 0.4, y: 0.5, zoom: 1 });
+  expect(c.notes).toEqual([]);   // said once at save(), for the whole source
+  await c.save();
+  const note = c.notes.find((n) => n.includes('沒偵測到原片字幕'));
+  expect(note).toContain(`${missed}（素材 0:20.0–0:22.0，crop: { x: 0.4, y: 0, zoom: 1.18 }）`);
+  expect(note).toMatch(/87–96% 高度/);
+  expect(note).not.toContain(`${found}（`);
+  expect(note).not.toContain(`${cleared}（`);
+});
+
+test('avoidBurned says so when the footage has no burned-caption detection to go by yet, and nothing when it was looked at and has none', async () => {
+  const c = fresh();
+  c.inv.sources[0].burned = null;
+  const a = c.clip('v', { from: 1, len: 1, avoidBurned: true });
+  await c.save();
+  expect(c.notes.join('\n')).toMatch(new RegExp(`沒有燒字偵測的結果.*${a}`));
+  const none = fresh();
+  none.inv.sources[0].burned = { version: 1, step: 1, frames: 10, caption: null };
+  none.clip('v', { from: 1, len: 1, avoidBurned: true });
+  await none.save();
+  expect(none.notes.filter((n) => n.includes('avoidBurned'))).toEqual([]);
+});
+
+test('avoidBurned\'s note follows a clip tighten cut into pieces, and leaves out a clip removed again', async () => {
+  const c = fresh();
+  c.inv.sources[0].burned = { version: 1, step: 1, frames: 10, caption: { share: 0.1, rect: [0.08, 0.86, 0.84, 0.12], spans: [[9, 10]] } };
+  c.inv.sources[0].transcript = { language: 'zh', segments: [
+    { start: 0.2, end: 0.8, text: '大家好', words: [{ start: 0.2, end: 0.8, word: '大家好' }] },
+    { start: 2.5, end: 3.2, text: '出發', words: [{ start: 2.5, end: 3.2, word: '出發' }] }] };
+  const id = c.clip('v', { from: 0, len: 4, avoidBurned: true });
+  const pieces = c.tighten(id);
+  expect(pieces.length).toBe(2);
+  const gone = c.clip('v', { from: 5, len: 1, sound: false, avoidBurned: true });
+  const v1 = items(c, 'v1');
+  v1.splice(v1.findIndex((i) => i.id === gone), 1);
+  await c.save();
+  const note = c.notes.find((n) => n.includes('沒偵測到原片字幕'))!;
+  expect(note).toContain(`${pieces.join('、')}（素材 0:00.0–0:04.0，`);
+  expect(note).not.toContain(`${gone}（`);
+});
+
+test('avoidBurned zooms no further than the footage\'s resolution allows: past that the crop stays and a note says why', async () => {
   const caption = { version: 1 as const, step: 1, frames: 10, caption: { share: 0.5, rect: [0.08, 0.75, 0.84, 0.2] as [number, number, number, number], spans: [[0, 10]] as Array<[number, number]> } };
   const hd = fresh();
   hd.inv.sources[0].burned = caption;
@@ -65,7 +119,8 @@ test('avoidBurned zooms no further than the footage\'s resolution allows: past t
   sd.p.sources.v.width = 1280; sd.p.sources.v.height = 720;
   const b = sd.clip('v', { from: 1, len: 1, avoidBurned: true });
   expect(items(sd, 'v1').find((i) => i.id === b).crop).toEqual({ from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } });
-  expect(sd.notes.join('\n')).toMatch(/要放大超過 1\.25 倍.*1280×720/);
+  await sd.save();
+  expect(sd.notes.join('\n')).toMatch(new RegExp(`要放大超過 1\\.25 倍.*1280×720.*${b}（素材 0:01\\.0–0:02\\.0）`));
 });
 
 test('a background block given to c.effect goes under the video, not on the text track', () => {
