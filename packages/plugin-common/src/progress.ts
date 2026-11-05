@@ -316,6 +316,12 @@ export function osdState(fills: Array<number | null>, local: number): { done: nu
   return { done, last, blink: done === fills.length && since < 1.2 && Math.floor(since * 5) % 2 === 1 };
 }
 
+/** osd mode: how much of `word` is typed `a` seconds after its tick, one character every 0.045 s and at least one. Counted in
+ *  code points, not UTF-16 units: a slice of the string would cut an emoji (two units) in half and draw a broken glyph for a frame. */
+export function osdShown(word: string, a: number): string {
+  return [...word].slice(0, Math.max(1, Math.ceil(a / 0.045))).join('');
+}
+
 /** osd mode: the item whose name is typed under the boxes at `local` — the one ticked last, for `hold` seconds — or −1 */
 export function osdTyped(fills: Array<number | null>, local: number, hold: number): number {
   let best = -1;
@@ -367,7 +373,7 @@ function drawOsd(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w: n
   const fs2 = px * 0.86, ly = by + box + px * 0.35, i = osdTyped(fills, local, p.hold);
   if (i >= 0) {
     g.font = font(fs2); g.textAlign = 'left';
-    const a = local - (fills[i] as number), word = items[i], shown = word.slice(0, Math.max(1, Math.ceil(a / 0.045))), out = clamp((p.hold - a) / 0.2);
+    const a = local - (fills[i] as number), word = items[i], shown = osdShown(word, a), out = clamp((p.hold - a) / 0.2);
     const wx = left ? X + fs2 * 0.85 : X - g.measureText(word).width, cx = wx - fs2 * 0.75, cy = ly + fs2 * 0.18;
     fringe(shown, wx, ly, p.done, alpha * out);
     g.globalAlpha = alpha * out; g.strokeStyle = p.done; g.lineWidth = Math.max(3, fs2 * 0.1);

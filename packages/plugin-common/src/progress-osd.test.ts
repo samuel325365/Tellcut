@@ -1,6 +1,6 @@
 // common.progress mode osd (the camcorder to-do counter) and common.token: the pure parts.
 import { expect, test } from 'vitest';
-import { osdState, osdTyped, progress } from './progress.ts';
+import { osdShown, osdState, osdTyped, progress } from './progress.ts';
 import token from './token.ts';
 
 test('osd: the count, the last tick and the all-done blink follow the fill times', () => {
@@ -36,4 +36,11 @@ test('common.token: a mark sticker whose steps default walks a miss into a made'
   expect(t).toMatchObject({ type: 'common.token', category: 'mark', kind: 'overlay' });
   const steps = String((t.params.find((d: { key: string }) => d.key === 'steps') as { default: string }).default).split('\n');
   expect(steps.map((l) => l.split('|')[3])).toEqual(['none', 'miss', 'none', 'made']);
+});
+
+test('osd: the typed item grows a code point at a time, so an emoji never shows half of its surrogate pair', () => {
+  expect(osdShown('🎉ok', 0)).toBe('🎉');
+  expect(osdShown('🎉ok', 0.05)).toBe('🎉o');
+  expect(osdShown('a🍜b', 0.05)).toBe('a🍜');
+  expect(osdShown('a🍜b', 9)).toBe('a🍜b');
 });
