@@ -28,14 +28,18 @@ export function wordsOf(steps: Array<[number, number]>, total: number, plain = '
   return out;
 }
 
+// pinned to the locale the engine's line breaking uses (text.ts): with the default locale the words could come out differently on a
+// machine in another language, and with them the even timing of every caption typed by hand
+const SEGMENTER = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter('zh-Hant', { granularity: 'word' }) : null;
+
 /** words for a caption without word times: the visible text cut into words (Intl.Segmenter: Chinese and Japanese into words too,
  *  punctuation and spaces kept with the word before), said one after another from 0.15 s to 0.5 s before the end, each taking time
  *  by its length */
 export function evenWords(plain: string, dur: number): Word[] {
   const chars = [...plain], pieces: Array<[number, number]> = [];
   let i = 0;
-  const seg = typeof Intl !== 'undefined' && (Intl as any).Segmenter ? new (Intl as any).Segmenter(undefined, { granularity: 'word' }) : null;
-  const parts: Array<{ text: string; word: boolean }> = seg ? [...seg.segment(plain)].map((s: any) => ({ text: s.segment, word: !!s.isWordLike })) : plain.split(/(\s+)/).map((t) => ({ text: t, word: !/^\s*$/.test(t) }));
+  const seg = SEGMENTER;
+  const parts: Array<{ text: string; word: boolean }> = seg ? [...seg.segment(plain)].map((s) => ({ text: s.segment, word: !!s.isWordLike })) : plain.split(/(\s+)/).map((t) => ({ text: t, word: !/^\s*$/.test(t) }));
   for (const p of parts) {
     const n = [...p.text].length;
     if (!n) continue;
