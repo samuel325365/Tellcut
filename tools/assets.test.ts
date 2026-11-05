@@ -233,3 +233,13 @@ test('get takes several refs: each downloaded in turn, the failures listed, an e
 test('--from/--len with several refs is refused (they are per clip)', async () => {
   await expect(assetsCommand(['get', 'p1', 'fake:1', 'fake:2', '--len', '3'], o({ fake }))).rejects.toThrow(/一次一個/);
 });
+
+test('each subcommand takes only its own flags and words: another subcommand\'s flag or a word too many is refused', async () => {
+  await expect(assetsCommand(['search', 'rain', '--at', 'Rome'], o({ fake }))).rejects.toThrow('沒有 --at 這個選項（可以用：--source、--kind、--ratio、--min-sec、--max-sec、--opt、--limit）');
+  await expect(assetsCommand(['get', 'p1', 'fake:1', '--style', 'dark'], o({ fake }))).rejects.toThrow(/沒有 --style 這個選項.*\n用法：npm run tellcut -- assets get/);
+  await expect(assetsCommand(['credits', 'p1', '--opt', 'a=b'], o({ fake }))).rejects.toThrow('沒有 --opt 這個選項（這個指令不接選項）');
+  await expect(assetsCommand(['credits', 'p1', 'p2'], o({ fake }))).rejects.toThrow('多了用不到的字：「p2」');
+  await expect(assetsCommand(['source', 'fake', 'extra'], o({ fake }))).rejects.toThrow('多了用不到的字：「extra」');
+  await expect(assetsCommand(['sources', 'all'], o({ fake }))).rejects.toThrow('這個指令不接其他字');
+  await expect(assetsCommand([], o({ fake }))).rejects.toThrow('用法：npm run tellcut -- assets sources');
+});

@@ -20,12 +20,22 @@ export const ASSET_SUBCOMMANDS = ['sources', 'source', 'search', 'get', 'map', '
 export const ASSET_KINDS: AssetKind[] = ['video', 'image', 'audio', 'music'];
 export const MAP_MODES = ['driving', 'straight'] as const;
 const KINDS = ASSET_KINDS;
-export const ASSET_FLAGS = ['--source', '--kind', '--ratio', '--min-sec', '--max-sec', '--opt', '--limit', '--from', '--len',
-  '--at', '--to', '--via', '--style', '--zoom', '--size', '--mode', '--color', '--name', '--no-pin'];
-/** the flags that take no value */
-const SWITCHES = new Set(['--no-pin']);
-/** the flags that may repeat */
-const LISTS = new Set(['--opt', '--via']);
+/** the flags each subcommand takes, and how each is read (tools/args.ts): --opt and --via may repeat, --no-pin takes no value.
+ *  One spec per subcommand: with one for all of them `search rain --at x` or `get p1 fake:1 --style dark` were taken and ignored. */
+const SUB_FLAGS: Record<string, FlagSpec> = {
+  sources: {},
+  source: {},
+  search: { '--source': 'value', '--kind': 'value', '--ratio': 'value', '--min-sec': 'value', '--max-sec': 'value', '--opt': 'list', '--limit': 'value' },
+  get: { '--from': 'value', '--len': 'value', '--opt': 'list' },
+  credits: {},
+  data: { '--opt': 'list' },
+  map: { '--at': 'value', '--from': 'value', '--to': 'value', '--via': 'list', '--style': 'value', '--zoom': 'value', '--size': 'value', '--mode': 'value',
+    '--color': 'value', '--name': 'value', '--no-pin': 'switch' },
+};
+/** how many words each subcommand takes (search's keywords and data's query are as many as given) */
+const SUB_WORDS: Record<string, number> = { sources: 0, source: 1, credits: 1, map: 1 };
+/** every flag of every subcommand (the guides' test checks the guides against these) */
+export const ASSET_FLAGS = [...new Set(Object.values(SUB_FLAGS).flatMap((s) => Object.keys(s)))];
 export const MAP_STYLES: MapStyle[] = ['street', 'satellite', 'light', 'dark'];
 const STYLES = MAP_STYLES;
 const MAP_USAGE = '用法：npm run tellcut -- assets map <專案> (--at <地名|緯度,經度> | --from <地名> --to <地名> [--via <地名>]…) [--style street|satellite|light|dark] [--zoom z] [--size 1080x1920] [--mode driving|straight] [--color #e5484d] [--name 名稱] [--no-pin]';
@@ -38,19 +48,17 @@ const CREDITS_USAGE = '用法：npm run tellcut -- assets credits <專案>';
 /** what --help prints, per subcommand */
 const USAGES: Record<string, string> = { sources: '用法：npm run tellcut -- assets sources', source: SOURCE_USAGE, search: SEARCH_USAGE, get: GET_USAGE, data: DATA_USAGE, credits: CREDITS_USAGE, map: MAP_USAGE };
 
-/** how each flag is read (tools/args.ts): --opt and --via may repeat */
-const SPEC: FlagSpec = Object.fromEntries(ASSET_FLAGS.map((f) => [f, SWITCHES.has(f) ? 'switch' : LISTS.has(f) ? 'list' : 'value']));
-
-/** positional words and flags, wherever the flags stand, as `--k v` or `--k=v`. Any other `--…` is a mistake, never a keyword
- *  (`--from=10` once downloaded the whole file). */
-function parse(argv: string[]) {
-  const a = parseArgs(argv, SPEC, USAGE), opts: Record<string, string> = {};
-  for (const v of a.all('--opt')) {
+/** a subcommand's positional words and flags, wherever the flags stand, as `--k v` or `--k=v`. A flag that subcommand does not
+ *  take is a mistake, never a keyword (`--from=10` once downloaded the whole file), and so is a word more than it takes. */
+function parse(sub: string, argv: string[]) {
+  const spec = SUB_FLAGS[sub] ?? {}, usage = USAGES[sub] ?? USAGE;
+  const a = parseArgs(argv, spec, usage, { maxWords: SUB_WORDS[sub] }), opts: Record<string, string> = {};
+  for (const v of spec['--opt'] ? a.all('--opt') : []) {
     const k = v.indexOf('=');
     if (k <= 0) throw new Usage('--opt 要寫成 k=v（例如 --opt feel=Calming）');
     opts[v.slice(0, k)] = v.slice(k + 1);
   }
-  return { words: a.words, flags: a, opts, via: a.all('--via'), num: a.num };
+  return { words: a.words, flags: a, opts, via: spec['--via'] ? a.all('--via') : [], num: a.num };
 }
 
 /** `assets map`: the stitched map, and what it took */
@@ -86,8 +94,9 @@ export async function assetsCommand(argv: string[], o: { sources?: Sources; proj
   if (argv.some((a) => a === '--help' || a === '-h')) return USAGES[sub] ?? USAGE;
   const s = o.sources ?? openSources(), projectsDir = o.projectsDir ?? join(TELLCUT_ROOT, 'projects');
   const projectDir = (id: string | undefined, usage: string) => projectArg(id, usage, { projectsDir });
+  if (!sub || !ASSET_SUBCOMMANDS.includes(sub)) throw new Usage(USAGE);
   // every subcommand's flags are read (and a mistyped one refused) before it does anything
-  const args = parse(rest);
+  const args = parse(sub, rest);
   switch (sub) {
     case 'sources': {
       const all = sourceStatuses(s), ok = all.filter((x) => x.available);
