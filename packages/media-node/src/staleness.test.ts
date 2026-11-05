@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -54,6 +54,22 @@ test('a stale player is built beside the one in use and moved in file by file: t
     edit();
     expect(await rebuildPlayer({ root, build: () => 'boom' })).toContain('自動建置失敗：boom');
     expect([readFileSync(join(dist, 'index.html'), 'utf8'), readdirSync(join(dist, 'assets')).sort(), readdirSync(join(root, '.cache'))]).toEqual(['v3 c.js', ['b.js', 'c.js'], []]);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('build:player (force) builds a fresh player too, the same way: the fonts in use are never gone while it builds or moves in', async () => {
+  const root = oldBuild(), dist = join(root, 'apps/player/dist');
+  try {
+    expect(await rebuildPlayer({ root, build: fake('v2 b.js', 'b.js') })).toBeNull();
+    const seen: boolean[] = [];
+    const watch = (html: string, chunk: string) => (out: string) => { seen.push(existsSync(join(dist, 'fonts/f.ttf'))); const r = fake(html, chunk)(out); seen.push(existsSync(join(dist, 'fonts/f.ttf'))); return r; };
+    expect(await rebuildPlayer({ root, build: watch('v3 c.js', 'c.js') })).toBeNull();          // fresh: nothing built
+    expect(seen).toEqual([]);
+    expect(await rebuildPlayer({ root, force: true, build: watch('v3 c.js', 'c.js') })).toBeNull();
+    expect(seen).toEqual([true, true]);
+    expect([readFileSync(join(dist, 'index.html'), 'utf8'), readdirSync(join(dist, 'assets')).sort(), readFileSync(join(dist, 'fonts/f.ttf'), 'utf8')]).toEqual(['v3 c.js', ['b.js', 'c.js'], 'font']);
+    expect(await rebuildPlayer({ root, force: true, build: () => 'boom' })).toBe('播放器建置失敗：boom');
+    expect(readFileSync(join(dist, 'index.html'), 'utf8')).toBe('v3 c.js');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

@@ -51,8 +51,8 @@ findings.push(...oldBlocks(p));
 // the pictures below come from the built player: an old build would check code that is not the code anymore
 let stale = args.has('--quick') ? null : playerBuildStale();   // --quick renders nothing, so an old build does not matter
 if (stale) {
-  // built here (a few seconds): the page chat may not run build:player, and being told to was no use to it; not build:player
-  // itself, which empties dist under an export or another check using it
+  // built here (a few seconds): the page chat may not run build:player, and being told to was no use to it (build:player goes
+  // the same way, beside the build in use and under the same lock)
   console.error('播放器的建置檔是舊的，先重新建置（幾秒鐘）');
   stale = await rebuildPlayer();
 }

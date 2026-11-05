@@ -44,18 +44,20 @@ const viteBuild = (root: string) => (out: string): string | null => {
 /** Builds a stale player again without pulling it from under whoever is using it (an export, batch:render, another check): one
  *  process builds at a time (a lock; the next finds it fresh and does nothing), into a folder of its own, then each file is moved
  *  into apps/player/dist on its own, index.html last, so a page loads either build whole; the chunks the build before named stay
- *  for the pages already open on it, older ones go. null when the build is fresh after, else the sentence why not. */
-export async function rebuildPlayer(o: { root?: string; build?: (out: string) => string | null } = {}): Promise<string | null> {
+ *  for the pages already open on it, older ones go. null when the build is fresh after, else the sentence why not.
+ *  `force`: build even when fresh (npm run build:player, which goes this way too: vite's own build empties dist first, and a
+ *  check or export loading the player meanwhile got 404s for the fonts it had not copied back yet). */
+export async function rebuildPlayer(o: { root?: string; build?: (out: string) => string | null; force?: boolean } = {}): Promise<string | null> {
   const root = o.root ?? TELLCUT_ROOT, cache = join(root, '.cache'), dist = join(root, 'apps', 'player', 'dist'), list = join(dist, '.build.json');
   mkdirSync(cache, { recursive: true });
   return withLock(join(cache, 'player-build.lock'), async () => {
     const stale = playerBuildStale(root);
-    if (!stale) return null;
+    if (!stale && !o.force) return null;
     const out = join(cache, `player-build-${process.pid}`);
     rmSync(out, { recursive: true, force: true });
     try {
       const failed = (o.build ?? viteBuild(root))(out);
-      if (failed !== null) return `${stale}（自動建置失敗：${failed}）`;
+      if (failed !== null) return stale ? `${stale}（自動建置失敗：${failed}）` : `播放器建置失敗：${failed}`;
       let before: string[] | null = null;
       try { before = JSON.parse(readFileSync(list, 'utf8')); } catch { /* built by npm run build:player: nothing is known to be old */ }
       const made = files(out).filter((f) => f !== 'index.html');
