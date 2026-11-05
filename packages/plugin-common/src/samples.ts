@@ -66,8 +66,10 @@ const CHAT_OPEN = `0|me|你看這個 👇
 2.8|them|哇`;
 const ALBUM = '# 港邊|7月12日|第 1 天\npic|0||0.5,0.4\n-\n-||0:12\n# 老街|7月13日|第 2 天\n-\npic|0|0:08|0.3,0.6\n-\n# |7月15日|第 4 天\n-\n-\n-\n-';
 
-/** common.heading's sample title: a kicker, two lines, a sub */
+/** common.heading's sample title: a kicker, two lines, a sub (English and Japanese for the gallery's thumbnails) */
 const HEAD_ZH = { text: '一座廣場的\n七百年', kicker: '第一章', sub: '義大利・西恩納' };
+export const HEAD_EN = { text: 'Seven Hundred Years\nof a Square', kicker: 'CHAPTER ONE', sub: 'Siena, Italy' };
+export const HEAD_JA = { text: '広場の\n七百年', kicker: '第一章', sub: 'シエナ・イタリア' };
 /** caption looks, word effects and animations (spec 2026-11-04-caption-styles): a Chinese, an English and a Japanese line with word times */
 const CAP_ZH = { text: '今天帶你去吃【台南】最強的牛肉湯', words: [[0.25, 2], [0.55, 4], [0.85, 6], [1.2, 8], [1.6, 11], [2.05, 14]] };
 export const CAP_EN = { text: 'We walked all the way to the 【Colosseum】', words: [[0.25, 2], [0.5, 9], [0.8, 13], [1.0, 17], [1.25, 21], [1.45, 24], [1.7, 28], [2.0, 38]] };

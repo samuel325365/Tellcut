@@ -53,7 +53,7 @@ export async function libraryIndex(root: string, nameOf: (id: string) => string 
   }
   const loaded = lib.styles.length ? await loadStyles([stylesDir(root)]) : { styles: {} as Record<string, { defaults: { bpm: number; key: string } }> };
   const styles: LibraryStyleInfo[] = lib.styles.map((s) => ({ slug: s.slug, id: s.id, name: s.name, desc: s.desc, defaults: loaded.styles[s.id]?.defaults ?? { bpm: 100, key: 'C' }, from: from(s.from), savedAt: s.savedAt }));
-  return { blocks, styles, captions: listCaptions(root) };
+  return { blocks, styles, captions: listCaptions(root), titles: listCaptions(root, 'titles') };
 }
 
 /** the projects using a copy of block `slug` (each keeps its copy), and the user's presets naming the entry. A copy counts only while
@@ -124,6 +124,12 @@ export function libraryRoutes(r: Router, o: LibraryOptions) {
     sendJson(res, 200, { entry: await guard(() => saveCaption(root, { name: str(b?.name) ?? '', desc: str(b?.desc), params: b?.params && typeof b.params === 'object' ? (b.params as Record<string, unknown>) : {} })) });
   });
   r.del('/api/library/captions/:slug', (_req, res, { slug }) => guard(() => { removeCaption(root, slug); sendJson(res, 200, { ok: true }); }));
+  // my title templates: the same for a title's look (common.heading)
+  r.post('/api/library/titles', async (req, res) => {
+    const b = (await readJson(req)) as { name?: unknown; desc?: unknown; params?: unknown };
+    sendJson(res, 200, { entry: await guard(() => saveCaption(root, { name: str(b?.name) ?? '', desc: str(b?.desc), params: b?.params && typeof b.params === 'object' ? (b.params as Record<string, unknown>) : {} }, 'titles')) });
+  });
+  r.del('/api/library/titles/:slug', (_req, res, { slug }) => guard(() => { removeCaption(root, slug, 'titles'); sendJson(res, 200, { ok: true }); }));
   r.post('/api/library/styles', async (req, res) => {
     const b: any = await readJson(req), p = project(b?.project), id = str(b?.id);
     if (!id) throw new HttpError(400, 'id is missing');

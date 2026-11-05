@@ -5,7 +5,7 @@ import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 
 export type { GalleryBlock, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
-export type Tab = 'blocks' | 'captions' | 'sfx' | 'styles' | 'recipes';
+export type Tab = 'blocks' | 'captions' | 'titles' | 'sfx' | 'styles' | 'recipes';
 
 /** the line a caption template is shown with, in the UI language, with its word times (spec 2026-11-04-caption-styles §5) */
 export const CAPTION_LINE: Record<string, { text: string; words: Array<[number, number]> }> = {
@@ -13,6 +13,18 @@ export const CAPTION_LINE: Record<string, { text: string; words: Array<[number, 
   en: { text: 'We walked all the way to the 【Colosseum】', words: [[0.25, 2], [0.5, 9], [0.8, 13], [1.0, 17], [1.25, 21], [1.45, 24], [1.7, 28], [2.0, 38]] },
   ja: { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] },
 };
+/** the title a title template is shown with, in the UI language (spec 2026-11-05-title-templates) */
+export const TITLE_LINE: Record<string, { text: string; kicker: string; sub: string }> = {
+  zh: { text: '一座城市的\n三天兩夜', kicker: '第一章', sub: '義大利・羅馬' },
+  en: { text: 'Three Days\nin a City', kicker: 'CHAPTER ONE', sub: 'Rome, Italy' },
+  ja: { text: 'ある街の\n三日間', kicker: '第一章', sub: 'イタリア・ローマ' },
+};
+/** a title template drawn by common.heading (`heading`: the gallery's entry for that block), in the UI language */
+export function titleProject(heading: GalleryBlock, template: string, lang: string, params?: Record<string, unknown>) {
+  const line = TITLE_LINE[lang] ?? TITLE_LINE.zh;
+  const p = blockProject(heading, params ? { ...line, ...params } : { ...line, template });
+  return { ...p, meta: { ...p.meta, background: '#4a5a52' } };
+}
 /** a caption template drawn by common.caption (`caption`: the gallery's entry for that block) over a picture, in the UI language */
 export function captionProject(caption: GalleryBlock, template: string, lang: string, params?: Record<string, unknown>) {
   const line = CAPTION_LINE[lang] ?? CAPTION_LINE.zh;
@@ -112,17 +124,19 @@ export const groupName = (plugin: string, group: string) => (`group.${plugin}` i
 export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
   const block = (b: GalleryBlock) => matches(query, handleOf(b.type), b.type, ...fields(b.type, b), b.group, groupName(b.plugin, b.group));
-  if (tab === 'blocks') return g.blocks.filter((b) => !isCaptionBlock(b) && block(b));
+  if (tab === 'blocks') return g.blocks.filter((b) => !isCaptionBlock(b) && !isTitleBlock(b) && block(b));
+  if (tab === 'titles') return (g.titles ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`title:${c.id}`), c.id, ...fields(`title:${c.id}`, c), ...Object.values(c.params).map(String)));
   if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), s.type, ...fields(s.type, s)));
   if (tab === 'styles') return g.styles.filter((s) => matches(query, handleOf(`style:${s.id}`), s.id, ...fields(`style:${s.id}`, s)));
   if (tab === 'captions') return (g.captions ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`caption:${c.id}`), c.id, ...fields(`caption:${c.id}`, c), ...Object.values(c.params).map(String)));
   return g.recipes.filter((r) => matches(query, handleOf(`recipe:${r.id}`), r.id, ...fields(`recipe:${r.id}`, r)));
 }
 
-/** The Captions tab's blocks (core.caption, common.caption), above the templates; the Blocks tab leaves them out. */
-export function captionBlocks(g: GalleryIndex, query: string): GalleryBlock[] {
+/** The Captions tab's blocks (core.caption, common.caption), or the Titles tab's (common.heading, core.title), above their templates;
+ *  the Blocks tab leaves them out. */
+export function captionBlocks(g: GalleryIndex, query: string, which: (b: GalleryBlock) => boolean = isCaptionBlock): GalleryBlock[] {
   const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
-  return g.blocks.filter((b) => isCaptionBlock(b) && matches(query, handleOf(b.type), b.type, ...fields(b.type, b))).sort((a, b) => byHandle(a.type, b.type));
+  return g.blocks.filter((b) => which(b) && matches(query, handleOf(b.type), b.type, ...fields(b.type, b))).sort((a, b) => byHandle(a.type, b.type));
 }
 
 /** The sound effects by category (SFX_CATEGORY's order), then any without one (a sample film's own) under 其他. */
@@ -139,6 +153,9 @@ export const byHandle = (a: string, b: string) => { const n = (id: string) => { 
 /** the caption blocks' category: shown in the Captions tab with the templates, not among the Blocks tab's categories */
 export const CAPTION_CATEGORY = 'caption';
 export const isCaptionBlock = (b: GalleryBlock) => b.category === CAPTION_CATEGORY;
+/** the title blocks' category: likewise shown in the Titles tab with the title templates */
+export const TITLE_CATEGORY = 'title';
+export const isTitleBlock = (b: GalleryBlock) => b.category === TITLE_CATEGORY;
 /** the last category: what a clip itself does (not blocks, listed with them) */
 export const CLIP_CATEGORY = 'clip';
 
@@ -153,7 +170,7 @@ export const PROJECT_CATEGORY = 'project';
 export function galleryCategories(blocks: GalleryBlock[], clipCount: number, mineCount?: number, ownCount = 0): Array<{ key: string; label: string; count: number }> {
   const count = new Map<string, number>(), plugins: Array<{ key: string; label: string }> = [];
   for (const b of blocks) {
-    if (isCaptionBlock(b)) continue;
+    if (isCaptionBlock(b) || isTitleBlock(b)) continue;
     const k = blockCategory(b);
     if (!count.has(k) && k.startsWith('plugin:')) plugins.push({ key: k, label: groupName(b.plugin, b.group) });
     count.set(k, (count.get(k) ?? 0) + 1);

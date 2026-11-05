@@ -20,6 +20,8 @@ import { ExportTracker } from './editor/exports.ts';
 import { analyzeProject } from './editor/analysis.ts';
 import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplate, useMyCaptionTemplate } from './editor/captions.ts';
 import { templateOf } from '@tellcut/plugin-common/templates';
+import { titleTemplateOf } from '@tellcut/plugin-common/title-templates';
+import { TEMPLATE_KINDS, type TemplateKind } from '@tellcut/protocol';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
@@ -908,36 +910,37 @@ export class Editor {
   }
 
   /** Every caption on `track` drawn with caption template `template` ('' for the project's default): one undo step. */
-  captionTemplateOnTrack(track: string, template: string): boolean {
+  captionTemplateOnTrack(track: string, template: string, kind: TemplateKind = 'caption'): boolean {
     let n = 0;
-    const ok = this.apply((d) => { n = applyCaptionTemplate(d, track, template); });
+    const ok = this.apply((d) => { n = applyCaptionTemplate(d, track, template, undefined, kind); });
     if (ok || n) return ok;
     this.set({ notice: say('ed.noCaptions') });
     return false;
   }
 
   /** One caption drawn with caption template `template` ('' for the project's default), its look parameters dropped: one undo step. */
-  captionTemplateOnItem(id: string, template: string): boolean {
+  captionTemplateOnItem(id: string, template: string, kind: TemplateKind = 'caption'): boolean {
     const found = this.s.project && allItems(this.s.project).find((x) => x.item.id === id);
-    return !!found && this.apply((d) => { applyCaptionTemplate(d, found.track.id, template, [id]); });
+    return !!found && this.apply((d) => { applyCaptionTemplate(d, found.track.id, template, [id], kind); });
   }
 
   /** A template of My caption templates on one caption (copied into the project): one undo step. */
-  myCaptionTemplateOnItem(id: string, entry: { slug: string; params: Record<string, unknown> }): boolean {
+  myCaptionTemplateOnItem(id: string, entry: { slug: string; params: Record<string, unknown> }, kind: TemplateKind = 'caption'): boolean {
     const found = this.s.project && allItems(this.s.project).find((x) => x.item.id === id);
-    return !!found && this.apply((d) => useMyCaptionTemplate(d, found.track.id, id, entry));
+    return !!found && this.apply((d) => useMyCaptionTemplate(d, found.track.id, id, entry, kind));
   }
 
   /** Saves caption `id`'s look (its template's under its own look parameters) to My caption templates as `name`. */
-  async saveMyCaptionTemplate(id: string, name: string): Promise<boolean> {
+  async saveMyCaptionTemplate(id: string, name: string, kind: TemplateKind = 'caption'): Promise<boolean> {
     const p = this.s.project, it: any = p && allItems(p).find((x) => x.item.id === id)?.item;
     if (!p || !it) return false;
-    try { await this.deps.api.saveCaption({ name, params: captionLookParams(p, it, (t) => templateOf(t)?.params) }); return true; }
+    const builtIn = (t: string) => (kind === 'title' ? titleTemplateOf(t) : templateOf(t))?.params;
+    try { await this.deps.api.saveCaption({ name, params: captionLookParams(p, it, builtIn, kind) }, TEMPLATE_KINDS[kind].library); return true; }
     catch (e) { this.set({ notice: errText(e) }); return false; }
   }
 
   /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */
-  projectCaptionTemplate(template: string): boolean { return this.apply((d) => setCaptionTemplate(d, template)); }
+  projectCaptionTemplate(template: string, kind: TemplateKind = 'caption'): boolean { return this.apply((d) => setCaptionTemplate(d, template, kind)); }
 
 
   /** `params`: values set in the gallery (only the sound's own keys are kept) */

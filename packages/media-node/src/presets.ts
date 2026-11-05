@@ -12,7 +12,7 @@ import { TELLCUT_ROOT } from './paths.ts';
 export interface PresetDirs { repo: string; user: string }
 export type PresetField = Omit<PresetFieldInfo, 'options'> & { options: Array<PresetFieldInfo['options'][number] & { prompt: string }> };
 export interface PresetPoint { text: string; prompt: string }
-export interface Preset extends Omit<PresetInfo, 'styles' | 'fields' | 'points' | 'uses'> { prompt: string; file: string; genres: boolean; styles: Array<PresetStyleInfo & { prompt: string; caption?: string }>; fields: PresetField[];
+export interface Preset extends Omit<PresetInfo, 'styles' | 'fields' | 'points' | 'uses'> { prompt: string; file: string; genres: boolean; styles: Array<PresetStyleInfo & { prompt: string; caption?: string; title?: string }>; fields: PresetField[];
   points: PresetPoint[]; theme?: unknown; score?: string; blocks: string[] }
 /** the user's library as a preset needs it (listLibrary's); `thumb`: a block's picture url, when the page shows one */
 export interface PresetLibrary { blocks: BlockEntry[]; styles: StyleEntry[]; thumb?: (slug: string) => string | null }
@@ -29,8 +29,9 @@ const field = z.object({
 const list = z.object({ zh: z.array(z.string()), en: z.array(z.string()), ja: z.array(z.string()) }).partial();
 const Front = z.object({
   order: z.number().default(0), color: z.string().default('#d8b88a'), name: text, summary: text, fit: list.default({}), facts: list.default({}),
-  // caption: a caption template the style puts on the film (common.caption's CAP-xx, by id; tools/presets.test.ts checks it exists)
-  styles: z.array(z.object({ id: z.string().regex(ID), name: text, desc: text.default({ zh: '' }), prompt: z.string(), custom: z.boolean().optional(), caption: z.string().optional() })).default([]),
+  // caption: a caption template the style puts on the film (common.caption's CAP-xx, by id; tools/presets.test.ts checks it exists);
+  // title: likewise a title template (common.heading's TTL-xx, spec 2026-11-05-title-templates)
+  styles: z.array(z.object({ id: z.string().regex(ID), name: text, desc: text.default({ zh: '' }), prompt: z.string(), custom: z.boolean().optional(), caption: z.string().optional(), title: z.string().optional() })).default([]),
   // the API menu's ids ticked when the preset is picked (a source not installed here is skipped by the page)
   sources: z.array(z.string()).default([]),
   // a form in the dialog (spec 2026-10-24-custom-preset §3): each field starts on auto; examples are style lines for the chat box
@@ -111,7 +112,7 @@ export function findPreset(dirs: PresetDirs, id: string): Preset | null {
 
 /** what the page gets: the prompts left out; a preset of the user's own with its points (their text) and what it brings */
 export function presetInfo({ prompt: _p, file: _f, genres: _g, styles, fields, points, theme, score, blocks, ...p }: Preset, library?: PresetLibrary): PresetInfo {
-  const info: PresetInfo = { ...p, styles: styles.map(({ prompt: _s, caption: _c, ...s }) => s),
+  const info: PresetInfo = { ...p, styles: styles.map(({ prompt: _s, caption: _c, title: _t, ...s }) => s),
     fields: fields.map(({ options, ...f }) => ({ ...f, options: options.map(({ prompt: _o, ...o }) => o) })) };
   if (points.length) info.points = points.map((x) => x.text);
   if (theme || score || blocks.length) info.uses = usesOf(theme, score, blocks, library);
@@ -175,6 +176,8 @@ function bringsLines(p: Preset, lib?: PresetLibrary): string[] {
 
 /** a style's caption template, in its prompt: the film's captions drawn with it */
 export const captionLine = (id: string) => `Captions: c.captionTemplate('${id}') near the top of cut.ts (npm run tellcut -- catalog CAP lists the templates; captions you write yourself take it too).`;
+/** a style's title template, in its prompt: the film's titles (common.heading) drawn with it */
+export const titleLine = (id: string) => `Titles: c.titleTemplate('${id}') near the top of cut.ts; the film's name, chapters and places are common.heading (npm run tellcut -- catalog TTL lists the templates).`;
 
 /** What Claude gets ahead of the user's words: the preset's prompt, the prompts of the styles ticked in its dialog and the options set in its form;
  *  for a preset of the user's own, what it brings from My blocks (`library`: the user's library). */
@@ -182,7 +185,7 @@ export function presetBlock(p: Preset, styles: string[], fields?: Record<string,
   const picked = p.styles.filter((s) => styles.includes(s.id)), set = setFields(p, fields);
   const name = p.name.en ?? p.name.zh ?? p.id;
   return [`<preset id="${p.id}" name="${name}">`, p.prompt, ...(p.genres ? [] : [NO_GENRES]), ...bringsLines(p, library),
-    ...(picked.length ? ['', 'Styles the user picked:', ...picked.map((s) => `- ${s.name.en ?? s.name.zh ?? s.id}: ${s.prompt}${s.caption ? ` ${captionLine(s.caption)}` : ''}`)] : []),
+    ...(picked.length ? ['', 'Styles the user picked:', ...picked.map((s) => `- ${s.name.en ?? s.name.zh ?? s.id}: ${s.prompt}${s.caption ? ` ${captionLine(s.caption)}` : ''}${s.title ? ` ${titleLine(s.title)}` : ''}`)] : []),
     ...(set.length ? ['', `${OPTIONS_HEAD}:`, ...set.map((x) => `- ${x.name}: ${x.prompt}`)] : []), '</preset>'].join('\n');
 }
 

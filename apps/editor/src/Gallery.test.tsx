@@ -494,6 +494,22 @@ test('without a project there is no Add; a project whose blocks fail to load say
   expect(cards(r2)).toContain('core.title');
 });
 
+test('the Titles tab: the title blocks first, then the title templates; the Blocks tab leaves the title blocks out', async () => {
+  const block = (type: string) => ({ plugin: 'common', group: '共用積木', type, label: type, doc: '', kind: 'overlay' as const, params: [], needsMedia: false, category: 'title' });
+  const withTitles = { ...G, blocks: [...G.blocks, block('common.heading'), block('core.title')], titles: [{ id: 'doc-rules', label: '紀錄片細線', doc: '明體字', params: { style: 'soft', backing: 'rules' }, thumb: '/api/gallery/thumb/ttl-doc-rules-t1.50.png' }] };
+  const root = document.createElement('div');
+  await act(async () => { render(<Gallery load={async () => withTitles} />, root); });
+  await settle();
+  expect(cards(root)).not.toContain('common.heading');
+  expect(root.querySelector('[data-cat="title"]')).toBeNull();
+  await click(root, '[data-tab="titles"]');
+  expect(cards(root)).toEqual(['common.heading', 'core.title', 'title:doc-rules']);
+  await click(root, '[data-card="title:doc-rules"]');
+  expect(root.querySelector('[data-detail="title:doc-rules"] iframe')).not.toBeNull();
+  expect(root.querySelector('[data-caption-params]')?.textContent).toContain('backing');
+  expect(filterGallery(withTitles, 'titles', 'rules').map((c: any) => c.id)).toEqual(['doc-rules']);
+});
+
 test("the Captions tab: the caption blocks first, then the templates' pictures; a template's detail plays common.caption with it", async () => {
   const withCaption = { ...G, blocks: [...G.blocks, { plugin: 'common', group: '共用積木', type: 'common.caption', label: '字幕', doc: '', kind: 'overlay' as const, params: [], needsMedia: false, category: 'caption' }] };
   const root = document.createElement('div');

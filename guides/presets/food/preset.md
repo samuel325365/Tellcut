@@ -71,7 +71,7 @@
       "name": { "zh": "聲音特寫", "en": "Sound close-ups", "ja": "音のアップ" },
       "desc": { "zh": "剪法｜只有手和食物的特寫：煎、炸、咬下去的聲音放大，配樂停一拍。", "en": "Cut | Hands and food only: the sizzle, the crunch, the first bite turned up, the music dropping out for a beat.", "ja": "編集｜手と料理だけのアップ：焼く・揚げる・かじる音を大きく、音楽は一拍止める。" },
       "prompt": "Cut: sound close-ups: hands and food only, top-down or close, the sizzle, the crunch, the pour at full volume with the music dropped for a beat; a few moments, not the whole film. The footage's own sound stays under it; a sizzle from assets may add to it but never cover a voice; the music steps aside for the whole close-up stretch." },
-    { "id": "warm", "caption": "soft-fade",
+    { "id": "warm", "caption": "soft-fade", "title": "serif-focus",
       "name": { "zh": "暖色調", "en": "Warm grade", "ja": "暖かい色調" },
       "desc": { "zh": "調色｜整支片偏暖、帶一點顆粒，讓食物看起來更好吃。", "en": "Look | A warm grade with a little grain over the whole film, so the food looks its best.", "ja": "色調｜全編を暖かい色調と少しの粒子で、料理をおいしそうに。" },
       "prompt": "Look: one warm grade over the whole film, cards included (common.tone with its warm default, amount about 0.4) and light grain (common.film look grain, blend overlay, grain about 0.07, vignette about 0.25), so the food looks warm and appetising; on dark footage keep it light." }

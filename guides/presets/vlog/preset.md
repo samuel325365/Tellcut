@@ -67,11 +67,11 @@
       "name": { "zh": "定格拍立得", "en": "Polaroid freeze", "ja": "ポラロイドで静止" },
       "desc": { "zh": "點綴｜把一天裡最喜歡的瞬間定格成拍立得。", "en": "Accent | The favourite moment of the day freezes into a polaroid.", "ja": "アクセント｜一日でいちばん好きな瞬間をポラロイドに。" },
       "prompt": "Accent: freeze one favourite moment as a polaroid (common.polaroid, font 'LXGW WenKai TC' for the handwriting, crop to keep burned-in text out) with a short handwritten line." },
-    { "id": "cinematic", "caption": "cinema",
+    { "id": "cinematic", "caption": "cinema", "title": "cinema-band",
       "name": { "zh": "電影感調色", "en": "Cinematic grade", "ja": "シネマティックな色調" },
       "desc": { "zh": "調色｜整支片一種柔和的調色，輕微顆粒和暗角，鏡頭偏慢。", "en": "Look | One soft grade for the whole film, light grain and vignette, slower shots.", "ja": "色調｜全編ひとつのやわらかな色調、軽い粒子と周辺減光、ゆったりしたショット。" },
       "prompt": "Look: a cinematic grade over the whole film. One common.tone for the whole film (one colour and one edge taken from the day's own light: soft and warm on a sunny day, cool and muted on a grey one; never common.tone's default) and light grain with common.film (look grain, blend overlay, grain about 0.07); favour slow, steady shots; music plus the room's own sounds. On shaky phone footage keep it light." },
-    { "id": "retro", "caption": "vhs-fade",
+    { "id": "retro", "caption": "vhs-fade", "title": "vhs-corner",
       "name": { "zh": "復古 DV", "en": "Retro camcorder", "ja": "レトロなビデオカメラ" },
       "desc": { "zh": "調色｜家用攝影機的樣子：掃描線、偏暖、雜訊帶，觀景窗有 ● REC 和日期；保留現場聲音。", "en": "Look | The home-camcorder look: scanlines, a warm cast, tracking noise, ● REC and the date in the viewfinder; keeps the live sound.", "ja": "色調｜家庭用ビデオカメラ風：走査線、暖かい色かぶり、トラッキングノイズ、ファインダーに ● REC と日付。現場の音を残す。" },
       "prompt": "Look: a home-camcorder look over the whole film. common.film look vhs (scanlines, a warm cast, lifted blacks, tracking noise bands at the cuts between parts of the day) with common.camcorder mode osd (REC, the tape counter, the date stamp from the capture dates); end on STOP. Without reliable capture dates leave the date stamp off and type DAY 1, DAY 2… at the start of each day instead; never invent a date. When speech captions run, keep the bottom of the viewfinder clear for them: counterAt top, and no place line while someone talks (a DAY or place line then goes near the top as a common.caption with template vhs-type). With an interface form (planner, notifications, chat, album) only the common.film part applies (its tracking bands stay): no viewfinder, tape change or STOP over an interface. The live sound stays as ambience under the music (over an interface form, the sound of the clips playing in it) and comes up for the moments that matter." }

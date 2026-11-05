@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ADAPTERS, TELLCUT_ROOT } from '@tellcut/media-node';
 import { loadPresets, presetBlock } from '@tellcut/media-node';
-import { commonPlugin, templateOf } from '@tellcut/plugin-common';
+import { commonPlugin, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 
 const RULE = "These are defaults. If the user's message conflicts with any of them, follow the user and say in one sentence what you changed.";
 const presets = () => loadPresets({ repo: join(TELLCUT_ROOT, 'guides', 'presets'), user: mkdtempSync(join(tmpdir(), 'nopresets-')) });
@@ -244,6 +244,15 @@ test("podcast's solo framing and end card name their blocks (2026-10-28, group B
   expect(p.styles.find((x) => x.id === 'solo')!.prompt).toContain("common.duo mode: 'solo'");
   const body = readFileSync(join(TELLCUT_ROOT, 'guides', 'presets', 'podcast', 'preset.md'), 'utf8');
   for (const b of ["common.outro look: 'episode'", 'outroWindow', "common.progress mode: 'slots'", 'common.slip']) expect(body).toContain(b);
+});
+
+test('a style that names a title template names one there is, and its prompt asks for it (spec 2026-11-05-title-templates)', () => {
+  const all = presets(), named = all.flatMap((p) => p.styles.filter((s) => s.title).map((s) => [p.id, s.id, s.title!] as const));
+  expect(named.length).toBeGreaterThan(5);
+  for (const [p, s, t] of named) expect(titleTemplateOf(t), `${p}/${s}: ${t}`).toBeTruthy();
+  const vlog = all.find((p) => p.id === 'vlog')!;
+  expect(presetBlock(vlog, ['retro'])).toContain("c.titleTemplate('vhs-corner')");
+  expect(presetBlock(vlog, [])).not.toContain('titleTemplate');
 });
 
 test('a style that names a caption template names one there is, and its prompt asks for it (spec 2026-11-04-caption-styles §6)', () => {

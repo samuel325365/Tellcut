@@ -227,7 +227,7 @@ export interface GalleryStyle { id: string; label: string; doc: string; defaults
 export interface GalleryRecipe { id: string; label: string; doc: string; notes: string[]; example: unknown }
 /** a caption template (common.caption's CAP-xx): its id, names, the parameters it sets and its golden picture */
 export interface GalleryCaption { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
-export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[] }
+export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[]; titles?: GalleryCaption[] }
 
 // ---------------------------------------------------------------- the user's own library (spec 2026-10-29-my-library)
 /** where an entry was saved from: the project's id and file, and the project's name now (absent when the project is gone) */
@@ -244,7 +244,7 @@ export type ChatTask =
   | { kind: 'library-edit'; slug: string; type: string; request: string };
 /** a caption template of the user's own (spec 2026-11-04-caption-styles §8): a caption's look under a name */
 export interface LibraryCaptionInfo { slug: string; name: string; desc: string; params: Record<string, unknown>; savedAt: string }
-export interface LibraryIndex { blocks: LibraryBlockInfo[]; styles: LibraryStyleInfo[]; captions?: LibraryCaptionInfo[] }
+export interface LibraryIndex { blocks: LibraryBlockInfo[]; styles: LibraryStyleInfo[]; captions?: LibraryCaptionInfo[]; titles?: LibraryCaptionInfo[] }
 /** a project and the library: its copies of entries (`outdated`: the library has a newer one; `gone`: deleted there), the
  *  files and style ids already saved from it (★), and its own music styles (to save with ☆) */
 export interface ProjectLibraryInfo { links: Array<{ slug: string; file: string; types: string[]; outdated: boolean; gone: boolean }>; savedFiles: string[]; savedStyles: string[];

@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
 import { createRegistry } from '@tellcut/engine';
 import { goldenFile, runGolden, TELLCUT_ROOT, type GoldenCase } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { CAP_EN, CAP_JA, samples } from '@tellcut/plugin-common/samples';
+import { CAP_EN, CAP_JA, HEAD_EN, HEAD_JA, samples } from '@tellcut/plugin-common/samples';
 import { THUMB_PARAMS } from '../packages/plugin-common/golden/thumbs.ts';
 import { parseArgsOrExit } from './args.ts';
 import { hasCjk, localValues } from '@tellcut/editor/i18n/values';
@@ -25,9 +25,10 @@ export function thumbCases(lang: ThumbLang): GoldenCase[] {
   const defs = new Map(plugins.flatMap((p) => p.items ?? []).map((t) => [t.type, t.params]));
   const first = new Map<string, GoldenCase>();
   for (const c of samples as GoldenCase[]) if (!first.has(c.type)) first.set(c.type, c);
-  // every caption template's card (tpl-<id>) too: the template's own params with the English or Japanese line in place of the Chinese one
-  const line = lang === 'en' ? CAP_EN : CAP_JA;
-  const templates = (samples as GoldenCase[]).filter((c) => c.name.startsWith('tpl-')).map((c) => ({ ...c, params: { ...c.params, ...line }, at: [c.at[c.at.length - 1]] }));
+  // every caption template's card (tpl-<id>) and title template's (ttl-<id>) too: the template's own params with the English or
+  // Japanese line (or title) in place of the Chinese one
+  const line = (name: string) => (name.startsWith('ttl-') ? (lang === 'en' ? HEAD_EN : HEAD_JA) : lang === 'en' ? CAP_EN : CAP_JA);
+  const templates = (samples as GoldenCase[]).filter((c) => c.name.startsWith('tpl-') || c.name.startsWith('ttl-')).map((c) => ({ ...c, params: { ...c.params, ...line(c.name) }, at: [c.at[c.at.length - 1]] }));
   return [...[...first.values()].flatMap((c) => {
     const params = THUMB_PARAMS[lang][c.name] ?? c.params ?? {};
     const words = Object.fromEntries(Object.entries(localValues(c.type, defs.get(c.type) ?? [], lang)).filter(([k]) => !(k in params)));

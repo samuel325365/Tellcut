@@ -22,3 +22,14 @@ test('a caption saved keeps its look, not its words, timing or speaker; names gi
   writeFileSync(join(captionsDir(root), 'broken.json'), '{');
   expect(listCaptions(root).length).toBe(2);
 });
+
+test('My title templates live on their own shelf: a title keeps its look, never its words, kicker or sub', () => {
+  const root = mkdtempSync(join(tmpdir(), 'lib-'));
+  const a = saveCaption(root, { name: 'Gold doc', params: { style: 'gold', backing: 'rules', text: '七百年', kicker: '第一章', sub: '西恩納', template: 'doc-rules' } }, 'titles');
+  expect(Object.keys(a.params).sort()).toEqual(['backing', 'style']);
+  expect(listCaptions(root, 'titles').map((e) => e.slug)).toEqual(['gold-doc']);
+  expect(listCaptions(root)).toEqual([]);   // not a caption template
+  expect(() => removeCaption(root, 'gold-doc')).toThrow();
+  removeCaption(root, 'gold-doc', 'titles');
+  expect(listCaptions(root, 'titles')).toEqual([]);
+});

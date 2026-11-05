@@ -73,3 +73,22 @@ test('a caption’s look as parameters: its template’s under its own look, wor
   useMyCaptionTemplate(p, 'text', 'say2', { slug: 'pink', params: { style: 'box' } });
   expect(Object.keys(p.meta.captionTemplates).length).toBe(2);
 });
+
+test('title templates: on a track only common.heading changes, keeping its words, kicker and sub; the film default and my templates go to their own meta keys', () => {
+  const p: any = withCaptions();
+  p.tracks.at(-1).items.push({ id: 'h', type: 'common.heading', start: 0, end: 2, params: { text: '七百年', kicker: '第一章', sub: '西恩納', style: 'gold', backing: 'black' } });
+  expect(applyCaptionTemplate(p, 'text', 'doc-rules', undefined, 'title')).toBe(1);
+  const items = p.tracks.at(-1).items;
+  expect(items.at(-1).params).toEqual({ text: '七百年', kicker: '第一章', sub: '西恩納', template: 'doc-rules' });
+  expect(items[0].params.style).toBe('bubble');   // a caption: not a title template's
+  setCaptionTemplate(p, 'cinema-band', 'title');
+  expect([p.meta.titleTemplate, p.meta.captionTemplate]).toEqual(['cinema-band', undefined]);
+  setCaptionTemplate(p, '', 'title');
+  expect(p.meta.titleTemplate).toBeUndefined();
+  useMyCaptionTemplate(p, 'text', 'h', { slug: 'gold', params: { style: 'gold' } }, 'title');
+  const key = Object.keys(p.meta.titleTemplates)[0];
+  expect([key.startsWith('my-gold-'), items.at(-1).params.template, p.meta.captionTemplates]).toEqual([true, key, undefined]);
+  // its look as parameters: the template's under its own, its words left out
+  items.at(-1).params = { text: 'x', kicker: 'k', template: 'doc-rules', size: 6 };
+  expect(captionLookParams(p, items.at(-1), (t) => (t === 'doc-rules' ? { style: 'soft', backing: 'rules' } : undefined), 'title')).toEqual({ style: 'soft', backing: 'rules', size: 6 });
+});

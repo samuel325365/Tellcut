@@ -120,9 +120,9 @@ export const api = {
   useLibrary: (id: string, b: { slug: string } | { style: string }) => req<{ file: string; types?: string[]; id?: string; copied?: string[]; fx?: string }>(`/api/projects/${enc(id)}/library/use`, jsonPost(b)),
   renameLibraryBlock: (slug: string, type: string, b: { name?: string; desc?: string; category?: string }) => req<unknown>(`/api/library/blocks/${enc(slug)}/types/${enc(type)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
   renameLibraryStyle: (slug: string, b: { name?: string; desc?: string }) => req<unknown>(`/api/library/styles/${enc(slug)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),
-  saveCaption: (b: { name: string; desc?: string; params: Record<string, unknown> }) => req<{ entry: { slug: string } }>('/api/library/captions', jsonPost(b)),
+  saveCaption: (b: { name: string; desc?: string; params: Record<string, unknown> }, shelf: 'captions' | 'titles' = 'captions') => req<{ entry: { slug: string } }>(`/api/library/${shelf}`, jsonPost(b)),
   libraryUsage: (kind: 'blocks' | 'styles', slug: string) => req<LibraryUsage>(`/api/library/${kind}/${enc(slug)}/usage`),
-  deleteLibrary: (kind: 'blocks' | 'styles' | 'captions', slug: string) => req<{ ok: true }>(`/api/library/${kind}/${enc(slug)}`, { method: 'DELETE' }),
+  deleteLibrary: (kind: 'blocks' | 'styles' | 'captions' | 'titles', slug: string) => req<{ ok: true }>(`/api/library/${kind}/${enc(slug)}`, { method: 'DELETE' }),
   /** the agent's draft of a preset of the user's own (404 until it is written) */
   presetDraft: (id: string) => req<unknown>(`/api/projects/${enc(id)}/preset-draft`),
   deletePresetDraft: (id: string) => req<{ ok: true }>(`/api/projects/${enc(id)}/preset-draft`, { method: 'DELETE' }),
