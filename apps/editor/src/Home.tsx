@@ -99,6 +99,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   }).catch(() => true);
   useEffect(() => {
     session.onTurnEnd = () => { void loadProjects(); if (thread === 'home') sendPending(session); };   // a project the chat created shows up; a handed-over request waiting for the reply goes
+    session.onProject = () => { void loadProjects(); };   // as soon as `new` made it, while the agent goes on working in it
     // the chat box follows the conversation there, its ticks with it (else the next message would send none); 主頁 starts afresh
     session.onMoved = (id) => { carried.current = { thread: id, sources: session.state.sources ?? [] }; void loadProjects(); setDraft(newDraft()); pick(id); };
     // a preset still tagged on 主頁 (back from another conversation, or a new draft): its ticks come with it on this session too

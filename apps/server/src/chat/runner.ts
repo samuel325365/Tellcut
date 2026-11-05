@@ -145,6 +145,9 @@ export function touchedProjects(tools: ChatTool[]): Set<string> {
 
 /** how often a page following a claude an earlier server left running looks whether it is over (ms) */
 const WATCH_MS = 2000;
+/** how often a running home turn looks for a project its `npm run new` has just made (ms): the page lists it then, not when the
+ *  whole turn ends (that can be many minutes later) */
+const NEW_PROJECT_MS = 1000;
 
 export class ChatRunner {
   private turns = new Map<string, Turn>();
@@ -295,10 +298,25 @@ export class ChatRunner {
     const turn: Turn = { child: null as unknown as ChildProcess, parser: new StreamParser(), tools: [], listeners: new Set([on]), stopped: false, release };
     this.turns.set(thread, turn);
     let closed = false, session = th.sessionId, resumed = false, saved = th.started, retried = false;
+    // a project this home turn made (a folder with a project.json that its tools named, as in handOver) is told to the page at
+    // once, so its list shows it while the agent goes on; looked for on a timer (the tool event comes before its command runs)
+    // and at each tool event (the one after `new` finished)
+    const told = new Set<string>();
+    const lookForNew = () => {
+      if (!before || closed) return;
+      const mine = touchedProjects(turn.tools);
+      for (const id of projectIds(this.o.projectsDir)) if (!before.has(id) && !told.has(id) && mine.has(id)) {
+        told.add(id);
+        for (const l of turn.listeners) l({ type: 'project', id });
+      }
+    };
+    const looking = before ? setInterval(lookForNew, NEW_PROJECT_MS) : undefined;
+    looking?.unref?.();
     const emit = (e: ChatEvent) => {
       if (e.type === 'tool') turn.tools.push(e.tool);
       if (e.type === 'done') return end(e);
       for (const l of turn.listeners) l(e);
+      if (e.type === 'tool') lookForNew();
     };
     // the session exists once claude has started it: saved at once, so a server that dies mid-turn leaves a thread that resumes it
     const markStarted = () => {
@@ -309,6 +327,7 @@ export class ChatRunner {
     const end = (e: Extract<ChatEvent, { type: 'done' }>) => {
       if (closed) return;
       closed = true;
+      clearInterval(looking);
       let done: Extract<ChatEvent, { type: 'done' }> = turn.stopped ? { type: 'done', status: 'stopped', text: turn.parser.partial } : e;
       try {
         const t2 = readThread(file);

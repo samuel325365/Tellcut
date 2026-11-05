@@ -22,6 +22,8 @@ export type ChatStatus = 'done' | 'stopped' | 'interrupted' | 'error';
 export type ChatEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; tool: ChatTool }
+  /** a home turn's `npm run new` has made this project (the turn goes on): the home page lists it now */
+  | { type: 'project'; id: string }
   /** moved: the home conversation went on in this new project's chat */
   | { type: 'done'; status: ChatStatus; text: string; error?: string; code?: ChatErrorCode; detail?: string; usage?: Usage; moved?: string };
 /** preset: on a user message, the preset it was sent with (spec 2026-10-23-presets-and-languages §6.1);

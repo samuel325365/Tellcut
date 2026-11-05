@@ -71,6 +71,28 @@ test('when the home chat makes a project and hands the conversation over, the ch
   expect(a.asked.at(-1)).toBe('seattle');
 });
 
+test('a project the running home turn has just made shows in the list at once, before the turn ends', async () => {
+  const a = api(), root = document.createElement('div');
+  let list = [{ id: 'seattle', name: '西雅圖' }], finish = () => {};
+  a.projects = async () => list;
+  a.chatSend = (t: string, text: string, on: (e: any) => void) => new Promise<void>((ok) => {
+    a.sent.push([t, text, undefined]);
+    list = [...list, { id: 'kyoto', name: '京都' }];
+    on({ type: 'tool', tool: { kind: 'run', label: '', detail: 'npm run new -- kyoto D:/x' } });
+    on({ type: 'project', id: 'kyoto' });
+    finish = () => { on({ type: 'done', status: 'done', text: '好' }); ok(); };
+  });
+  await act(async () => { render(<Home api={a} />, root); });
+  await settle();
+  const box = root.querySelector<HTMLTextAreaElement>('[data-chat-input]')!;
+  await act(() => { box.value = '用素材剪一支'; box.dispatchEvent(new Event('input')); });
+  await act(async () => { (root.querySelector('[data-chat-send]') as HTMLElement).click(); });
+  await settle();
+  expect([...root.querySelectorAll('[data-home-projects] ul a')].map((x) => x.getAttribute('href'))).toEqual(['?id=seattle', '?id=kyoto']);
+  await act(async () => { finish(); });
+  await settle();
+});
+
 test('主頁 is this browser’s own draft conversation; 新對話 starts another; after a hand-over 主頁 starts afresh', async () => {
   const a = api(), root = document.createElement('div');
   await act(async () => { render(<Home api={a} />, root); });

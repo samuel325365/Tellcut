@@ -25,6 +25,8 @@ export class ChatSession {
   state: ChatState = { messages: [], running: false, partial: null, error: '' };
   /** called after every finished turn (the home page re-reads the project list) */
   onTurnEnd?: () => void;
+  /** a project the running home turn has just made (the home page re-reads the project list without waiting for the turn's end) */
+  onProject?: (id: string) => void;
   private subs = new Set<() => void>();
   /** this tab is already streaming the running turn (a second load must not attach to it again) */
   private following = false;
@@ -87,6 +89,7 @@ export class ChatSession {
     const p = this.state.partial ?? { text: '', tools: [] };
     if (e.type === 'text') { this.set({ partial: { ...p, text: p.text + e.delta } }); return; }
     if (e.type === 'tool') { this.set({ partial: { ...p, tools: [...p.tools, e.tool] } }); return; }
+    if (e.type === 'project') { if (!this.closed) this.onProject?.(e.id); return; }
     const msg: ChatMessage = { role: 'assistant', text: e.text || p.text, time: new Date().toISOString(), tools: p.tools, status: e.status, ...(e.error ? { error: e.error } : {}),
       ...(e.code ? { code: e.code } : {}), ...(e.detail !== undefined ? { detail: e.detail } : {}), ...(e.usage ? { usage: e.usage } : {}) };
     this.set({ messages: [...this.state.messages, msg], running: false, partial: null, error: e.status === 'error' ? chatErrorText(e) : '' });

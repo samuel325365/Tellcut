@@ -373,6 +373,35 @@ test('two tabs racing for one id: the reply that lost moves to the project it di
   } finally { delete process.env.FAKE_CLAUDE_PROJECTS; }
 });
 
+test("a home turn tells the page about the project its `new` made while it still runs (the list shows it then, not at the turn's end)", async () => {
+  const root = ROOT;
+  process.env.FAKE_CLAUDE_PROJECTS = root;
+  const base = BASE;
+  try {
+    const res = await fetch(`${base}/api/chat/home-tab4dddd/messages`, post({ text: '別處建 theirs3 建專案 kyoto2 慢' }));
+    const reader = res.body!.getReader(), dec = new TextDecoder(), got: any[] = [];
+    let buf = '', runningWhenTold: unknown = null;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const e = JSON.parse(buf.slice(0, i)); buf = buf.slice(i + 1); got.push(e);
+        if (e.type === 'project' && runningWhenTold === null) runningWhenTold = (await (await fetch(`${base}/api/chat/home-tab4dddd`)).json()).running;
+      }
+    }
+    // told once, before the end, while the reply was still running; another tab's project is not this turn's
+    expect(got.filter((e) => e.type === 'project')).toEqual([{ type: 'project', id: 'kyoto2' }]);
+    expect(got.findIndex((e) => e.type === 'project')).toBeLessThan(got.findIndex((e) => e.type === 'done'));
+    expect(runningWhenTold).not.toBeNull();
+    expect(got.at(-1)).toMatchObject({ type: 'done', moved: 'kyoto2' });
+    // a project's own chat is never told (only a home turn makes projects to list)
+    const own = await lines(await fetch(`${base}/api/chat/demo/messages`, post({ text: '建專案 inside' })));
+    expect(own.some((e) => e.type === 'project')).toBe(false);
+  } finally { delete process.env.FAKE_CLAUDE_PROJECTS; }
+}, 20000);
+
 test('the projects a turn touched: npm run new, and paths under projects/', () => {
   const t = (detail: string) => ({ kind: 'run' as const, label: '', detail });
   expect([...touchedProjects([t('npm run new -- r3-uk "D:\\旅遊" --size 1080x1920'), t('C:\\s\\tellcut\\projects\\r3-uk\\cut.ts'), t('npm run cut -- other'), t('projects/fish/fx/a.js')])].sort()).toEqual(['fish', 'r3-uk']);
