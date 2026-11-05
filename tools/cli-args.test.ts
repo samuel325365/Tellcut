@@ -49,7 +49,8 @@ test('each command line refuses a flag it does not take, naming it, with exit co
   const out: Array<{ code: number | null; err: string }> = [];
   for (let i = 0; i < runs.length; i += 7) out.push(...await Promise.all(runs.slice(i, i + 7).map(run)));
   runs.forEach((r, i) => {
-    expect(out[i].err, r.join(' ')).toContain('沒有 --bogus-flag 這個選項');
+    // doctor prints English, like setup and examples (the install path)
+    expect(out[i].err, r.join(' ')).toContain(r[0] === 'doctor.ts' ? 'There is no option --bogus-flag' : '沒有 --bogus-flag 這個選項');
     expect(out[i].code, r.join(' ')).toBe(2);
   });
 }, 120_000);
