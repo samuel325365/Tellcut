@@ -24,7 +24,7 @@ export interface Beats { bpm: number; offset: number; beats: number[] }
 
 export function extrasFiles(projectDir: string, srcPath: string) {
   const dir = analysisFiles(projectDir, srcPath).dir;
-  return { transcript: join(dir, 'transcript.json'), transcriptBy: join(dir, 'transcript.by'), version: join(dir, 'extras.version'), burned: join(dir, 'burned-v2.json') /* v2: the box re-centred on the text line (phase 5) */, sheets: join(dir, 'sheets.json'), sheet: (n: number) => join(dir, `sheet-${n}.jpg`) };
+  return { transcript: join(dir, 'transcript.json'), transcriptBy: join(dir, 'transcript.by'), version: join(dir, 'extras.version'), burned: join(dir, 'burned-v3.json') /* v2: the box re-centred on the text line (phase 5); v3: short captions, other text (2026-11-06) */, sheets: join(dir, 'sheets.json'), sheet: (n: number) => join(dir, `sheet-${n}.jpg`) };
 }
 /** A source's transcript as everything reads it: a sentence carried across a long pause split at the pause (splitAtPauses). */
 export function readTranscript(projectDir: string, srcPath: string): Transcript | null {
@@ -33,13 +33,15 @@ export function readTranscript(projectDir: string, srcPath: string): Transcript 
 }
 
 /**
- * The burned-caption result of a source: burned-v2.json, or one saved before phase 5 (burned.json, its box at − 0.07 … + 0.05
- * around the text line) moved onto the line the way v2 has it — a project analysed earlier keeps its checks until inspect re-runs.
+ * The burned-caption result of a source: burned-v3.json; else an older one, so a project analysed earlier keeps its checks until
+ * inspect (or the server) makes v3: burned-v2.json (no `text`, its caption row missed one- or two-word captions), or one saved
+ * before phase 5 (burned.json, its box at − 0.07 … + 0.05 around the text line) moved onto the line the way v2 has it.
  */
 export function readBurned(projectDir: string, srcPath: string): Burned | null {
-  const f = extrasFiles(projectDir, srcPath).burned, old = join(dirname(f), 'burned.json');
+  const f = extrasFiles(projectDir, srcPath).burned, v2 = join(dirname(f), 'burned-v2.json'), old = join(dirname(f), 'burned.json');
   try {
     if (existsSync(f)) return JSON.parse(readFileSync(f, 'utf8')) as Burned;
+    if (existsSync(v2)) return JSON.parse(readFileSync(v2, 'utf8')) as Burned;
     if (!existsSync(old)) return null;
     const b = JSON.parse(readFileSync(old, 'utf8')) as Burned;
     if (b.caption) { const [x, y, w] = b.caption.rect, y2 = +(y + 0.025).toFixed(3); b.caption.rect = [x, y2, w, +Math.min(0.09, 1 - y2).toFixed(3)]; }

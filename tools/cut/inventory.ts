@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { parseProject, type Project, type Transcript } from '@tellcut/engine';
-import { analysisDone, analysisFiles, analyzeSource, describeFaces, extrasFiles, faceKey, facesAt, ffmpeg, musicBeats, overviewSheets, readAssetRecords, photoSheet, probeDuration, readBurned, readTranscript, sourceExtras, timecode, timecode1, type Beats, type Burned, type BurnedCaption } from '@tellcut/media-node';
+import { analysisDone, analysisFiles, analyzeSource, describeFaces, extrasFiles, faceKey, facesAt, ffmpeg, musicBeats, overviewSheets, readAssetRecords, photoSheet, probeDuration, readBurned, readTranscript, sourceExtras, timecode, timecode1, type Beats, type Burned, type BurnedCaption, type BurnedText } from '@tellcut/media-node';
 import { chapters, chronological, type Chapter } from './chapters.ts';
 import { ANALYSIS_STEPS } from '@tellcut/protocol';
 
@@ -117,6 +117,7 @@ export function formatInventory(inv: Inventory): string {
     const what = s.kind === 'image' ? '照片' : `影片 ${mmss(s.duration)}，${s.segments.length} 段${s.audio ? '，有聲音' : ''}`;
     L.push(`${s.id}：${what}，${s.width}×${s.height}（${{ portrait: '直式', landscape: '橫式', square: '方形' }[s.orientation]}），${s.taken ? `${s.taken.replace('T', ' ')}${s.takenGuess ? '（推測）' : ''}` : '時間不明'}`);
     if (s.burned?.caption) L.push(burnedLine(s.burned.caption));
+    if (s.burned?.text?.length) L.push(textLine(s.burned.text));
     if (s.speech) L.push(`  說話：${s.speech}${s.speech.length >= 80 ? '…' : ''}`);
     if (s.transcribing) L.push(transcribingLine(s.duration, s.transcribing));
     if (s.pending) L.push(`  伺服器正在分析這段素材（${s.pending}）。不用等，也不要自己再跑：先做不需要它的部分，或結束這一輪，好了會自動送訊息叫你繼續`);
@@ -160,6 +161,25 @@ export function burnedDetail(c: BurnedCaption): string[] {
   ];
 }
 
+const BAND = { top: '上方', middle: '中間', bottom: '下方', full: '大半個畫面' } as const;
+/** one line in the overview: the footage's own text elsewhere in the picture (labels, titles, watermarks) */
+export function textLine(t: BurnedText[]): string {
+  const n = (b: BurnedText['band']) => t.filter((x) => x.band === b).length;
+  const where = (['top', 'middle', 'bottom', 'full'] as const).filter((b) => n(b)).map((b) => `${BAND[b]} ${n(b)}`).join('、');
+  return `  畫面裡其他的字：${t.length} 段（${where}），可能是地名標籤、標題、浮水印；用之前先看 --source`;
+}
+const MAX_TEXT = 60;
+/** `inspect --source`: when and where the footage shows its own text outside the caption row */
+const textRow = (x: BurnedText) => `  ${timecode1(x.span[0])}–${timecode1(x.span[1])} ${BAND[x.band]}（左右 ${pct(x.rect[0])}–${pct(x.rect[0] + x.rect[2])}%、上下 ${pct(x.rect[1])}–${pct(x.rect[1] + x.rect[3])}%）`;
+export function textDetail(t: BurnedText[]): string[] {
+  return [
+    `原片自己的字（字幕列以外，${t.length} 段；只看畫面找的，沒有辨識文字）：`,
+    ...t.slice(0, MAX_TEXT).map(textRow),
+    ...(t.length > MAX_TEXT ? [`  （還有 ${t.length - MAX_TEXT} 段沒列出）`] : []),
+    '  多半是原片疊上去的地名標籤、標題、浮水印、分割畫面；「大半個畫面」也可能是字卡、截圖或固定鏡頭。用到這些時段前先看縮圖（--range），用 crop 把它裁出畫面、把我們的字放到別處，或換鏡頭。',
+  ];
+}
+
 const MAX_SCENES = 60, MAX_SAID = 150;
 /** One source in detail (`npm run inspect -- <id> --source <sid>`): scenes, every sentence with its times, the big sheets. */
 export function formatSource(inv: Inventory, sid: string): string {
@@ -168,10 +188,12 @@ export function formatSource(inv: Inventory, sid: string): string {
   const orient = { portrait: '直式', landscape: '橫式', square: '方形' }[s.orientation];
   if (s.kind === 'image') return `${s.id}：照片，${s.width}×${s.height}（${orient}）${s.taken ? `，${s.taken.replace('T', ' ')}` : ''}`;
   if (s.pending && !s.segments.length) return `${s.id}：影片 ${mmss(s.duration)}，${orient}；伺服器正在分析（${s.pending}），場景和逐字稿還沒有。不用等：結束這一輪，好了會自動送訊息叫你繼續`;
-  const L = [`${s.id}：影片 ${mmss(s.duration)}，${s.segments.length} 段，${orient}，${s.width}×${s.height}${s.audio ? '，有聲音' : ''}`, '', '場景：'];
+  // the project first: a batch runs inspects side by side, and one source's detail read as another project's was reported once
+  const L = [`專案 ${basename(inv.dir)} · ${s.id}：影片 ${mmss(s.duration)}，${s.segments.length} 段，${orient}，${s.width}×${s.height}${s.audio ? '，有聲音' : ''}`, '', '場景：'];
   L.push(...s.segments.slice(0, MAX_SCENES).map(([a, b], i) => `  #${i + 1} ${timecode1(a)}–${timecode1(b)}`));
   if (s.segments.length > MAX_SCENES) L.push(`  （還有 ${s.segments.length - MAX_SCENES} 段沒列出）`);
   if (s.burned?.caption) L.push('', ...burnedDetail(s.burned.caption));
+  if (s.burned?.text?.length) L.push('', ...textDetail(s.burned.text));
   const said = (s.transcript?.segments ?? []).filter((x) => x.text.trim()), shown = said.slice(0, MAX_SAID);
   L.push('', said.length ? '說話：' : '說話：（沒有逐字稿）', ...shown.map((x) => `  ${timecode1(x.start)}–${timecode1(x.end)} ${x.text.trim()}`));
   // a long talk would not fit in one read: the first sentences, and the way to look at any stretch
@@ -228,6 +250,7 @@ export async function formatSourceRange(inv: Inventory, sid: string, range: [num
     }
     await photoSheet(out, cells, undefined, { cols: 6, cellW: 320 });
   } finally { rmSync(tmp, { recursive: true, force: true }); }
+  const own = (s.burned?.text ?? []).filter((x) => x.span[1] > a && x.span[0] < b);   // the footage's own text in this stretch
   const scenes = s.segments.filter(([x, y]) => y > a && x < b), said = (s.transcript?.segments ?? []).filter((x) => x.text.trim() && x.end > a && x.start < b);
   // faces at the same times (toolkit phase 5): who is in the shot and where, for follow / who / a crop's focus
   let faces: string;
@@ -236,7 +259,8 @@ export async function formatSourceRange(inv: Inventory, sid: string, range: [num
     faces = `人臉：${describeFaces(times.map((t) => ({ t, faces: found.get(faceKey(t)) ?? [] })), timecode1)}`;
   } catch (e) { faces = `人臉：（偵測失敗：${(e as Error).message.split('\n')[0].slice(0, 100)}）`; }
   return [
-    `${s.id} ${timecode1(a)}–${timecode1(b)}（每 ${step} 秒一格，共 ${times.length} 格）`, `縮圖：${out}`, faces,
+    `專案 ${basename(inv.dir)} · ${s.id} ${timecode1(a)}–${timecode1(b)}（每 ${step} 秒一格，共 ${times.length} 格）`, `縮圖：${out}`, faces,
+    ...(own.length ? ['', '原片自己的字（字幕列以外）：', ...own.map(textRow)] : []),
     '', '場景：', ...scenes.map(([x, y]) => `  ${timecode1(x)}–${timecode1(y)}`),
     '', said.length ? '說話：' : '說話：（這段沒有）', ...said.map((x) => `  ${timecode1(x.start)}–${timecode1(x.end)} ${x.text.trim()}`),
   ].join('\n');

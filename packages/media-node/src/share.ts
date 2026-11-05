@@ -18,7 +18,7 @@ import { contentPrint, contentPrintAsync, legacyNameOf, originOf, sameStamp, sou
 const PRIVATE = /\.lock$|\.tmp(\.|$)|^mono(\.\d+)?\.f32$|^source\.json$/;
 /** what extras.version stamps (extras.ts): taken only from a folder stamped with this code's version, or an older version's
  *  sheets were linked in right after sourceExtras had removed its own, and stamped current */
-const VERSIONED = /^(extras\.version|sheets\.json|sheet-\d+\.jpg|burned(-v2)?\.json)$/;
+const VERSIONED = /^(extras\.version|sheets\.json|sheet-\d+\.jpg|burned(-v\d+)?\.json)$/;
 const current = async (from: string) => { try { return (await readFile(join(from, 'extras.version'), 'utf8')) === EXTRAS_VERSION; } catch { return false; } };
 
 /** a folder's note: the file it was made for, and that file's content print (contentPrint; notes written before it have none) */

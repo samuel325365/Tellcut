@@ -70,7 +70,7 @@ test('one source in detail: its scenes, every sentence with times, its big sheet
       transcript: { language: 'zh', segments: [{ start: 3.24, end: 5.9, text: ' 大家好 ' }, { start: 61, end: 62.5, text: '出發' }] } }],
   } as Inventory;
   const s = formatSource(inv, 'walk');
-  expect(s).toContain('walk：影片 1:15，71 段，直式');
+  expect(s).toContain('專案 demo · walk：影片 1:15，71 段，直式');   // which project, so two side by side are told apart
   expect(s).toContain('#1 0:00.0–0:01.0');
   expect(s).toContain('#60 0:59.0–1:00.0');
   expect(s).not.toContain('#61 ');
@@ -95,6 +95,16 @@ test('burned-in captions show in the overview as one line and in the detail with
   expect(det).toContain('avoidBurned');
   expect(formatInventory(mk(null))).not.toContain('燒字');
   expect(formatSource(mk({ version: 1, step: 1, frames: 10, caption: null }), 'walk')).not.toContain('燒進畫面');
+  // the footage's own text elsewhere (labels, titles): counted by band in the overview, listed with times and place in the detail
+  const text = { version: 1, step: 0.5, frames: 150, caption: null, text: [
+    { span: [1, 5], rect: [0.4, 0.77, 0.2, 0.12], band: 'bottom' }, { span: [20, 23.5], rect: [0.7, 0.06, 0.27, 0.12], band: 'top' },
+    { span: [40, 52], rect: [0, 0, 1, 1], band: 'full' },
+  ] };
+  expect(formatInventory(mk(text))).toContain('畫面裡其他的字：3 段（上方 1、下方 1、大半個畫面 1）');
+  const td = formatSource(mk(text), 'walk');
+  expect(td).toContain('原片自己的字（字幕列以外，3 段');
+  expect(td).toContain('0:20.0–0:23.5 上方（左右 70–97%、上下 6–18%）');
+  expect(formatSource(mk(burned), 'walk')).not.toContain('字幕列以外');   // an analysis from before has no `text`: nothing said
 });
 
 test('a time range reads as m:ss or seconds; frames come every round step that fits 24', async () => {
