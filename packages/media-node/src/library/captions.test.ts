@@ -14,9 +14,9 @@ test('a caption saved keeps its look, not its words, timing or speaker; names gi
   expect(listCaptions(root).map((e) => e.slug)).toEqual(['caption', 'pink-neon', 'pink-neon-2']);
   removeCaption(root, 'pink-neon-2');
   expect(listCaptions(root).map((e) => e.slug)).toEqual(['caption', 'pink-neon']);
-  expect(() => removeCaption(root, 'pink-neon-2')).toThrow();
-  expect(() => saveCaption(root, { name: ' ', params: { style: 'neon' } })).toThrow();
-  expect(() => saveCaption(root, { name: 'empty', params: { text: 'only words' } })).toThrow();
+  expect(() => removeCaption(root, 'pink-neon-2')).toThrow(expect.objectContaining({ code: 'library.noCaption' }));
+  expect(() => saveCaption(root, { name: ' ', params: { style: 'neon' } })).toThrow(expect.objectContaining({ code: 'library.noName' }));
+  expect(() => saveCaption(root, { name: 'empty', params: { text: 'only words' } })).toThrow(expect.objectContaining({ code: 'library.emptyCaption' }));
   // a file that is not an entry is left out
   mkdirSync(captionsDir(root), { recursive: true });
   writeFileSync(join(captionsDir(root), 'broken.json'), '{');
@@ -29,7 +29,11 @@ test('My title templates live on their own shelf: a title keeps its look, never 
   expect(Object.keys(a.params).sort()).toEqual(['backing', 'style']);
   expect(listCaptions(root, 'titles').map((e) => e.slug)).toEqual(['gold-doc']);
   expect(listCaptions(root)).toEqual([]);   // not a caption template
-  expect(() => removeCaption(root, 'gold-doc')).toThrow();
+  expect(() => removeCaption(root, 'gold-doc')).toThrow(expect.objectContaining({ code: 'library.noCaption' }));
+  // a title's refusals are worded for titles
+  expect(() => saveCaption(root, { name: ' ', params: { style: 'gold' } }, 'titles')).toThrow(expect.objectContaining({ code: 'library.noTitleName' }));
+  expect(() => saveCaption(root, { name: 'words', params: { text: 'only words', kicker: 'k' } }, 'titles')).toThrow(expect.objectContaining({ code: 'library.emptyTitle' }));
   removeCaption(root, 'gold-doc', 'titles');
   expect(listCaptions(root, 'titles')).toEqual([]);
+  expect(() => removeCaption(root, 'gold-doc', 'titles')).toThrow(expect.objectContaining({ code: 'library.noTitle' }));
 });

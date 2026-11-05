@@ -1,6 +1,6 @@
 // My caption templates (spec 2026-11-04-caption-styles §8) and My title templates (spec 2026-11-05-title-templates): a caption's or
 // a title's look saved under a name in the user's library, projects/_library/captions/<slug>.json or titles/<slug>.json. Like My blocks it is used by copying: the editor puts its parameters into the project's
-// meta.captionTemplates (as my-<slug>), so a film never reads the library while it plays or exports.
+// meta.captionTemplates (as my-<slug>-<hash>), so a film never reads the library while it plays or exports.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { LibraryError, SLUG, slugFor, writeJsonFile } from './store.ts';
@@ -19,6 +19,11 @@ const OWN: Record<TemplateShelf, Set<string>> = {
   captions: new Set(['text', 'words', 'speaker', 'name', 'role', 'tag', 'gloss', 'quote', 'point', 'y', 'align', 'tint', 'template']),
   titles: new Set(['text', 'kicker', 'sub', 'template']),
 };
+/** the refusals of each shelf: the page words them by code (err.<code>), so a title's must not say "caption" */
+const CODES: Record<TemplateShelf, { noName: string; empty: string; missing: string }> = {
+  captions: { noName: 'library.noName', empty: 'library.emptyCaption', missing: 'library.noCaption' },
+  titles: { noName: 'library.noTitleName', empty: 'library.emptyTitle', missing: 'library.noTitle' },
+};
 
 export function listCaptions(root: string, kind: TemplateShelf = 'captions'): CaptionEntry[] {
   let names: string[] = [];
@@ -34,9 +39,9 @@ export function listCaptions(root: string, kind: TemplateShelf = 'captions'): Ca
 /** Saves a caption's (or a title's) look as a template of the user's own; its words, timing and speaker are left out. */
 export function saveCaption(root: string, o: { name: string; desc?: string; params: Record<string, unknown> }, kind: TemplateShelf = 'captions'): CaptionEntry {
   const name = o.name.trim(), what = kind === 'titles' ? '標題' : '字幕';
-  if (!name) throw new LibraryError('library.noName', `${what}範本要有名字`);
+  if (!name) throw new LibraryError(CODES[kind].noName, `${what}範本要有名字`);
   const params = Object.fromEntries(Object.entries(o.params ?? {}).filter(([k, v]) => !OWN[kind].has(k) && v !== undefined));
-  if (!Object.keys(params).length) throw new LibraryError('library.emptyCaption', `這個${what}沒有可以存的外觀設定`);
+  if (!Object.keys(params).length) throw new LibraryError(CODES[kind].empty, `這個${what}沒有可以存的外觀設定`);
   mkdirSync(captionsDir(root, kind), { recursive: true });
   const slug = slugFor(name, kind === 'titles' ? 'title' : 'caption', new Set(listCaptions(root, kind).map((e) => e.slug)));
   const entry = { slug, name, desc: (o.desc ?? '').trim(), params, savedAt: new Date().toISOString() };
@@ -47,6 +52,6 @@ export function saveCaption(root: string, o: { name: string; desc?: string; para
 
 export function removeCaption(root: string, slug: string, kind: TemplateShelf = 'captions') {
   const f = fileOf(root, slug, kind);
-  if (!existsSync(f)) throw new LibraryError('library.noEntry', `沒有 ${slug}`, { slug });
+  if (!existsSync(f)) throw new LibraryError(CODES[kind].missing, `我的${kind === 'titles' ? '標題' : '字幕'}範本裡沒有 ${slug}`, { slug });
   rmSync(f, { force: true });
 }
