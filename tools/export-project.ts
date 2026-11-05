@@ -1,5 +1,5 @@
 // A project as one zip, and back (review3 R3-H1: projects/ is not in git, and there was no way to hand a film over or back it up).
-//   npm run export-project -- <id> [--media] [--public] [--out <file.zip>]     → tellcut/backups/<id>-<date>-<time>.zip
+//   npm run export-project -- <id> [--media | --trim] [--public] [--out <file.zip>]     → tellcut/backups/<id>-<date>-<time>.zip
 //   npm run import-project -- <file.zip> [--as <new id>]            → projects/<id>/
 // The zip holds one folder, <id>/: project.json, cut.ts, narration.json, storyboard.md, brand.md (a brand film's brand card), CREDITS.md (the footage's licences), fx/,
 // score/ and .history/ (versions, proposals, the chat). --media adds media/ and the footage that lives outside the project (D:\Trips…, tellcut/sources/…), copied
@@ -7,12 +7,17 @@
 // themselves (copy them as they are). --public (an example project for GitHub, spec 2026-10-30-showcase-films part 2) writes this
 // computer's tellcut folder as <tellcut> in every text file of the zip, and refuses footage left outside the zip or another absolute
 // path of this computer (its home included) left in them.
+// --trim (implies --media; CC source films are hundreds of MB each) packs, instead of each video source as it is, a copy of the same
+// length where everything the project does not use (prepare's clips, stills and sound pieces, plus TRIM_MARGIN on each side) is
+// black and silent. A copy of the same length, not the used pieces alone: every source time (the items' in/out, cut.ts, the
+// history, the storyboard) stays true, and black frames cost almost nothing in H.264. What was blacked out is gone in the import.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
+import type { Project, Registry } from '@tellcut/engine';
+import { ffmpeg, mediaRefs, probeDuration, probeHasAudio, probeSize, PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
 import { projectArgOrExit } from './project-arg.ts';
 import { parseArgsOrExit } from './args.ts';
 
@@ -80,11 +85,104 @@ function tar(args: string[]) {
 }
 const stamp = (d = new Date()) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
 
+/** seconds kept on each side of a used piece: room to slide a cut a little in the imported project */
+export const TRIM_MARGIN = 2;
+/** a source whose used parts, with their margins, cover this much of it is packed whole: blacking out the rest saves little */
+const TRIM_WORTH = 0.8;
+
+/** The parts of each video source the project uses, in source seconds: what prepareProject cuts (mediaRefs), each widened by
+ *  `margin`, merged and kept within the source. A source a block reads the sound levels of is used whole (it may show any of
+ *  them); a source nothing uses gets no part at all. Photos are not listed: they are packed as they are. */
+export function usedRanges(p: Project, registry: Registry, margin = TRIM_MARGIN): Map<string, Array<[number, number]>> {
+  const refs = mediaRefs(p, registry), parts = new Map<string, Array<[number, number]>>();
+  for (const [id, s] of Object.entries(p.sources)) if (s.kind !== 'image') parts.set(id, []);
+  const add = (id: string, a: number, b: number) => parts.get(id)?.push([a, b]);
+  for (const r of refs.videos.values()) add(r.source, r.in, r.out + 0.2);   // the cut reads 0.2 s past out (cutLength)
+  for (const r of refs.audio.values()) add(r.source, r.in, r.out);
+  for (const r of refs.stills.values()) add(r.source, r.t, r.t + (r.strip?.dur ?? 0));
+  for (const id of refs.peaks) add(id, 0, p.sources[id].duration);
+  for (const [id, list] of parts) {
+    const d = p.sources[id].duration, merged: Array<[number, number]> = [];
+    for (const [a, b] of list.map(([a, b]): [number, number] => [Math.max(0, a - margin), Math.min(d, b + margin)]).sort((x, y) => x[0] - y[0])) {
+      const last = merged.at(-1);
+      if (last && a <= last[1]) last[1] = Math.max(last[1], b); else merged.push([a, b]);
+    }
+    parts.set(id, merged);
+  }
+  return parts;
+}
+
+const r3 = (n: number) => n.toFixed(3);
+/** `src` again at `out` (H.264 + AAC in MP4, the same length and size), black and silent outside `keep` */
+export async function blackOutside(src: string, out: string, keep: Array<[number, number]>, o: { signal?: AbortSignal } = {}) {
+  // t from the first frame, as -ss counts an item's in; the expression is quoted in the filter, so its commas stay in it
+  const off = keep.length ? `not(${keep.map(([a, b]) => `between(t,${r3(a)},${r3(b)})`).join('+')})` : '1';
+  const sound = await probeHasAudio(src);
+  await ffmpeg(['-i', src, '-map', '0:v:0', ...(sound ? ['-map', '0:a:0'] : []), '-map_metadata', '-1',
+    '-vf', `setpts=PTS-STARTPTS,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='${off}',format=yuv420p`,
+    ...(sound ? ['-af', `asetpts=PTS-STARTPTS,volume=0:enable='${off}'`, '-c:a', 'aac', '-b:a', '192k'] : []),
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-fps_mode', 'passthrough', '-movflags', '+faststart', out], o);
+}
+
+/** --trim: the plan with each video source that is worth it replaced by its blacked-out copy (made in `work`), pointed at as
+ *  media/linked/<id>-<name>.mp4. A source whose copy fails or comes out another length or size is packed whole, and said so. */
+export async function trimPlan(dir: string, plan: ExportPlan, work: string, o: { log?: (s: string) => void; registry?: Registry } = {}): Promise<ExportPlan> {
+  const log = o.log ?? (() => {});
+  const { parseProject } = await import('@tellcut/engine');
+  const p = parseProject(structuredClone(plan.project));
+  const registry = o.registry ?? (await (async () => {
+    const [{ projectRegistry }, { plugins }] = await Promise.all([import('@tellcut/media-node'), import('@tellcut/plugins')]);
+    return (await projectRegistry(dir, plugins, p)).registry;
+  })());
+  const norm = (path: string) => relative(dir, resolve(dir, path)).split('\\').join('/');
+  const files = [...plan.files], project = structuredClone(plan.project);
+  const gone = new Set<{ from: string; to: string }>();
+  for (const [id, keep] of usedRanges(p, registry)) {
+    const s = p.sources[id], at = norm(s.path), file = files.find((f) => f.to === at);
+    if (!file) continue;   // offline: nothing to pack
+    const kept = keep.reduce((n, [a, b]) => n + b - a, 0);
+    if (kept >= TRIM_WORTH * s.duration) { log(`  ${id}：用到 ${Math.round((100 * kept) / s.duration)}%，整個帶走`); continue; }
+    const stem = basename(file.from, extname(file.from)), out = join(work, `${id}.mp4`);
+    let to = `media/linked/${id}-${stem}.mp4`;
+    // another source (or music) on the same file keeps the whole one under its name
+    const shared = [...Object.entries(p.sources).filter(([k]) => k !== id), ...Object.entries(p.media)].some(([, x]) => norm(x.path) === at);
+    for (let n = 2; files.some((f) => f.to === to && (f !== file || shared)); n++) to = `media/linked/${id}-${stem}-${n}.mp4`;
+    try {
+      await blackOutside(file.from, out, keep);
+      const [size, d] = await Promise.all([probeSize(out), probeDuration(out)]);
+      if (size.width !== s.width || size.height !== s.height || Math.abs(d - s.duration) > 0.1) throw new Error(`裁好的是 ${size.width}×${size.height}、${d.toFixed(2)} 秒，專案記的是 ${s.width}×${s.height}、${s.duration.toFixed(2)} 秒`);
+    } catch (e) { rmSync(out, { force: true }); log(`  ! ${id}：沒辦法只留用到的部分（${(e as Error).message.split('\n')[0]}），整個帶走`); continue; }
+    log(`  ${id}：留下用到的 ${kept.toFixed(1)} 秒（共 ${s.duration.toFixed(1)} 秒），${(statSync(file.from).size / 1e6).toFixed(1)} MB → ${(statSync(out).size / 1e6).toFixed(1)} MB`);
+    project.sources![id].path = to;
+    if (to === file.to) files[files.indexOf(file)] = { from: out, to };   // the name it had already (an .mp4 from outside)
+    else { files.push({ from: out, to }); gone.add(file); }
+  }
+  // the original goes when nothing else in project.json still points at it (another source on the same file, packed whole)
+  const still = new Set([...Object.values(project.sources ?? {}), ...Object.values(project.media ?? {})].map((x) => norm(x.path)));
+  return { ...plan, project, files: files.filter((f) => !gone.has(f) || still.has(f.to)) };
+}
+
 /** writes the zip; returns its path */
 export function exportProject(dir: string, o: { media: boolean; out?: string; /** clean this computer's paths out (default: the real tellcut folder) */ public?: boolean | { root: string } }): string {
-  const id = basename(dir), out = resolve(o.out ?? join(TELLCUT_ROOT, 'backups', `${id}-${stamp()}.zip`));
   const before = readFileSync(join(dir, 'project.json'), 'utf8');
-  const plan = exportPlan(dir, JSON.parse(before), o);
+  return writeZip(dir, before, exportPlan(dir, JSON.parse(before), o), o);
+}
+
+/** exportProject with --trim: --media, and each video source only as far as the project uses it */
+export async function exportProjectTrimmed(dir: string, o: { out?: string; public?: boolean | { root: string }; log?: (s: string) => void; registry?: Registry }): Promise<string> {
+  const before = readFileSync(join(dir, 'project.json'), 'utf8'), out = zipPath(dir, o.out);
+  mkdirSync(dirname(out), { recursive: true });
+  const work = mkdtempSync(join(dirname(out), '.trim-'));   // beside the zip: the copies are hard-linked into the stage
+  try {
+    const plan = await trimPlan(dir, exportPlan(dir, JSON.parse(before), { media: true }), work, o);
+    return writeZip(dir, before, plan, { ...o, out });
+  } finally { rmSync(work, { recursive: true, force: true }); }
+}
+
+const zipPath = (dir: string, out?: string) => resolve(out ?? join(TELLCUT_ROOT, 'backups', `${basename(dir)}-${stamp()}.zip`));
+
+function writeZip(dir: string, before: string, plan: ExportPlan, o: { out?: string; public?: boolean | { root: string } }): string {
+  const id = basename(dir), out = zipPath(dir, o.out);
   // as writeProjectFile writes it; the paths --media rewrote make it a different text from the one the last cut hashed
   const scrub = o.public === true ? { root: TELLCUT_ROOT } : o.public || null;
   // a shared project carries its footage: one left outside the zip (another folder without --media, or offline) is a dead link there
@@ -150,7 +248,7 @@ export function importProject(zip: string, projectsDir: string, as?: string): st
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 
-function main(argv: string[]) {
+async function main(argv: string[]) {
   if (process.env.npm_lifecycle_event === 'import-project') {
     const usage = '用法：npm run import-project -- <檔案.zip> [--as <新名稱>]', a = parseArgsOrExit(argv, { '--as': 'value' }, usage, { maxWords: 1 }), [zip] = a.words;
     if (!zip) { console.error(usage); process.exit(2); }
@@ -158,16 +256,17 @@ function main(argv: string[]) {
     console.log(`匯入了：${at}\n素材分析會在打開專案或跑 npm run inspect 時重做。`);
     return;
   }
-  const usage = '用法：npm run export-project -- <專案> [--media] [--public] [--out <檔案.zip>]';
-  const a = parseArgsOrExit(argv, { '--media': 'switch', '--public': 'switch', '--out': 'value' }, usage, { maxWords: 1 });
+  const usage = '用法：npm run export-project -- <專案> [--media | --trim] [--public] [--out <檔案.zip>]';
+  const a = parseArgsOrExit(argv, { '--media': 'switch', '--trim': 'switch', '--public': 'switch', '--out': 'value' }, usage, { maxWords: 1 });
   const dir = projectArgOrExit(a.words[0], usage);
-  const media = a.has('--media'), out = a.get('--out');
-  const zip = exportProject(dir, { media, public: a.has('--public'), out: out && resolve(process.env.INIT_CWD ?? process.cwd(), out) });
+  const trim = a.has('--trim'), media = trim || a.has('--media'), arg = a.get('--out'), out = arg && resolve(process.env.INIT_CWD ?? process.cwd(), arg);
+  if (trim) console.log('只帶用到的素材：每個影片留下用到的部分（前後多 2 秒），其餘變成黑畫面、沒有聲音');
+  const zip = trim ? await exportProjectTrimmed(dir, { public: a.has('--public'), out, log: console.log }) : exportProject(dir, { media, public: a.has('--public'), out });
   const plan = exportPlan(dir, JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')), { media });
   console.log(`打包好了：${zip}（${(statSync(zip).size / 1e6).toFixed(1)} MB）`);
   if (!media && plan.outside.length) console.log(`沒有包進素材：${plan.outside.length} 個檔案在專案外面（${plan.outside.slice(0, 6).join('、')}）。要整包帶走就加 --media。`);
   else if (!media) console.log('沒有包進 media/（匯入的素材、旁白、配樂）：要整包帶走就加 --media。');
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  try { main(process.argv.slice(2)); } catch (e) { console.error((e as Error).message); process.exitCode = 1; }
+  main(process.argv.slice(2)).catch((e: Error) => { console.error(e.message); process.exitCode = 1; });
 }

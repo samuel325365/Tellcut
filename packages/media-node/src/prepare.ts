@@ -32,11 +32,10 @@ export async function runPool(jobs: Array<() => Promise<void>>, n: number, ac: A
   if (ac.signal.aborted) throw abortError();
 }
 
-export async function prepareProject(projectDir: string, registry: Registry, opts: { force?: boolean; log?: (s: string) => void; concurrency?: number; project?: Project; indexFile?: string; signal?: AbortSignal; onProgress?: (done: number, total: number) => void } = {}): Promise<CacheIndex> {
-  const log = opts.log ?? (() => {});
-  const p = opts.project ?? parseProject(JSON.parse(readFileSync(join(projectDir, 'project.json'), 'utf8')));
-  const issues = mediaIssues(p, registry);
-  if (issues.length) throw new Error(`Invalid media references:\n${issues.map((s) => `  ${s}`).join('\n')}`);
+/** Every piece of footage a project uses, as prepareProject cuts it: the clips, stills and sound pieces (by their cache keys), the
+ *  photos, the sources whose sound levels blocks read, and the music files the music tracks play. export-project --trim keeps
+ *  only these parts of each source, so it asks the same question. */
+export function mediaRefs(p: Project, registry: Registry) {
   const times = resolveTimes(p);
   const videos = new Map<string, MediaRef>(), stills = new Map<string, StillRef>(), audio = new Map<string, AudioRef>();
   const images = new Set<string>(), peaks = new Set<string>();
@@ -56,10 +55,19 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
       m?.peaks?.forEach((s) => { if (p.sources[s]?.kind !== 'image') peaks.add(s); });   // a photo has no sound
     }
   }
+  const usedMedia = new Set(p.tracks.flatMap((t) => (t.kind === 'music' ? t.items.map((i) => i.media) : [])));
+  return { videos, stills, audio, images, peaks, usedMedia };
+}
+
+export async function prepareProject(projectDir: string, registry: Registry, opts: { force?: boolean; log?: (s: string) => void; concurrency?: number; project?: Project; indexFile?: string; signal?: AbortSignal; onProgress?: (done: number, total: number) => void } = {}): Promise<CacheIndex> {
+  const log = opts.log ?? (() => {});
+  const p = opts.project ?? parseProject(JSON.parse(readFileSync(join(projectDir, 'project.json'), 'utf8')));
+  const issues = mediaIssues(p, registry);
+  if (issues.length) throw new Error(`Invalid media references:\n${issues.map((s) => `  ${s}`).join('\n')}`);
+  const { videos, stills, audio, images, peaks, usedMedia } = mediaRefs(p, registry);
   const srcPath = (id: string) => resolve(projectDir, p.sources[id].path);
   const used = new Set([...[...videos.values(), ...stills.values(), ...audio.values()].map((r) => r.source), ...images, ...peaks]);
   const missing = [...used].filter((id) => !existsSync(srcPath(id))).map((id) => `  ${id}: ${p.sources[id].path}`);
-  const usedMedia = new Set(p.tracks.flatMap((t) => (t.kind === 'music' ? t.items.map((i) => i.media) : [])));
   for (const id of usedMedia) if (!existsSync(resolve(projectDir, p.media[id].path))) missing.push(`  ${id}: ${p.media[id].path}`);
   for (const path of soundFiles(p)) if (!existsSync(resolve(projectDir, path))) missing.push(`  sound effect: ${path}`);
   if (missing.length) throw new Error(`Missing files:\n${missing.join('\n')}`);

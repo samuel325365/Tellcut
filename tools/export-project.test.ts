@@ -1,7 +1,9 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { exportPlan, exportProject, importProject, leftoverPaths, scrubText } from './export-project.ts';
+import { corePlugin, createRegistry, parseProject } from '@tellcut/engine';
+import { ffmpeg, prepareProject, probeDuration } from '@tellcut/media-node';
+import { exportPlan, exportProject, exportProjectTrimmed, importProject, leftoverPaths, scrubText, usedRanges } from './export-project.ts';
 
 /** a tellcut/ with one project whose footage is partly inside it and partly on another folder */
 function world() {
@@ -138,4 +140,72 @@ test('--public refuses footage that would stay outside the zip: from another fol
   rmSync(join(root, 'footage', 'a.mp4'));
   expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/a/);
   expect(existsSync(join(root, 'pub.zip'))).toBe(false);
+});
+
+describe('--trim: only the footage the project uses', () => {
+  const box = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+  /** a project with a long source outside it (one clip and one sound piece used), a silent .mov inside media/ (one clip), a source
+   *  nothing uses and a short one used almost whole */
+  async function trimWorld() {
+    const root = mkdtempSync(join(tmpdir(), 'trim-')), dir = join(root, 'tellcut', 'projects', 'trip'), footage = join(root, 'footage');
+    for (const d of [join(dir, 'media'), footage]) mkdirSync(d, { recursive: true });
+    const clip = (out: string, seconds: number, sound = true) => ffmpeg(['-f', 'lavfi', '-i', `testsrc=size=320x180:rate=30:duration=${seconds}`,
+      ...(sound ? ['-f', 'lavfi', '-i', `sine=duration=${seconds}`] : []), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', ...(sound ? ['-c:a', 'aac', '-shortest'] : []), out]);
+    await Promise.all([clip(join(footage, 'long.mp4'), 20), clip(join(dir, 'media', 'in.mov'), 10, false), clip(join(footage, 'unused.mp4'), 6), clip(join(footage, 'most.mp4'), 4)]);
+    const src = (path: string, duration: number) => ({ path, duration, width: 320, height: 180 });
+    const project = {
+      version: 1,
+      meta: { name: 't', width: 320, height: 180, fps: 30, duration: 3, plugins: [], cut: { crf: 23, preset: 'ultrafast' },
+        mix: { master: 0.9, compressor: { threshold: -12, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0.3 } } },
+      sources: { long: src('../../../footage/long.mp4', 20), inside: src('media/in.mov', 10), unused: src('../../../footage/unused.mp4', 6), most: src('../../../footage/most.mp4', 4) },
+      media: {}, grids: [],
+      tracks: [
+        { id: 'v', kind: 'video', items: [
+          { id: 'c1', source: 'long', in: 8, speed: 1, start: 0, end: 1, crop: box },
+          { id: 'c2', source: 'inside', in: 1, speed: 1, start: 1, end: 2, crop: box },
+          { id: 'c3', source: 'most', in: 0.5, speed: 1, start: 2, end: 3, crop: box }] },
+        { id: 'a', kind: 'audio', items: [{ id: 'au', source: 'long', in: 15, start: 0, end: 1, rate: 1, gain: 0, fadeIn: 0, fadeOut: 0 }] },
+      ],
+    };
+    writeFileSync(join(dir, 'project.json'), JSON.stringify(project));
+    return { root, dir, footage, project };
+  }
+  /** the brightness of one frame (0–255), and the loudest sound over a second, in dB */
+  const luma = async (f: string, t: number) => (await ffmpeg(['-ss', String(t), '-i', f, '-frames:v', '1', '-vf', 'scale=1:1,format=gray', '-f', 'rawvideo', '-'], { stdout: true })).stdout[0];
+  const loudest = async (f: string, t: number) => Number(/max_volume: (-?[\d.]+) dB/.exec((await ffmpeg(['-ss', String(t), '-t', '1', '-i', f, '-vn', '-af', 'volumedetect', '-f', 'null', '-'], { level: 'info' })).stderr)?.[1]);
+
+  test('usedRanges: each source\'s used parts with 2 s on each side, merged; a source nothing uses has none', async () => {
+    const { project } = await trimWorld();
+    const r = usedRanges(parseProject(project), createRegistry([corePlugin]));
+    expect(r.get('long')!.map(([a, b]) => [a, +b.toFixed(2)])).toEqual([[6, 11.2], [13, 18]]);   // the clip reads 0.2 s past its out
+    expect(r.get('inside')!.map(([a, b]) => [a, +b.toFixed(2)])).toEqual([[0, 4.2]]);
+    expect(r.get('unused')).toEqual([]);
+    expect(r.get('most')!.map(([a, b]) => [a, +b.toFixed(2)])).toEqual([[0, 3.7]]);
+    expect(usedRanges(parseProject(project), createRegistry([corePlugin]), 5).get('long')).toEqual([[3, 20]]);   // margins that meet merge
+  }, 60000);
+
+  test('the zip carries each source at full length, black and silent where nothing uses it; the import prepares as it is', async () => {
+    const { root, dir, footage } = await trimWorld(), log: string[] = [];
+    const zip = await exportProjectTrimmed(dir, { out: join(root, 'trip.zip'), registry: createRegistry([corePlugin]), log: (s) => log.push(s) });
+    expect(readdirSync(root).filter((f) => f.startsWith('.'))).toEqual([]);   // no stage or work folder left beside the zip
+    const back = importProject(zip, join(root, 'other'));
+    const p = JSON.parse(readFileSync(join(back, 'project.json'), 'utf8'));
+    expect(Object.fromEntries(Object.entries(p.sources as Record<string, { path: string }>).map(([k, s]) => [k, s.path]))).toEqual({
+      long: 'media/linked/long-long.mp4', inside: 'media/linked/inside-in.mp4', unused: 'media/linked/unused-unused.mp4', most: 'media/linked/most-most.mp4' });
+    expect(existsSync(join(back, 'media', 'in.mov'))).toBe(false);                                  // replaced by its trimmed copy
+    expect(readFileSync(join(back, 'media/linked/most-most.mp4')).equals(readFileSync(join(footage, 'most.mp4')))).toBe(true);   // used almost whole: as it was
+    expect(log.join('\n')).toMatch(/most：用到 93%/);
+    const long = join(back, 'media/linked/long-long.mp4');
+    expect(await probeDuration(long)).toBeCloseTo(20, 0);
+    expect(await luma(long, 8.5)).toBeGreaterThan(40);    // the used clip
+    expect(await luma(long, 3)).toBeLessThan(20);         // nothing uses it: black
+    expect(await loudest(long, 15.2)).toBeGreaterThan(-30);
+    expect(await loudest(long, 2)).toBeLessThan(-80);
+    expect(await luma(join(back, 'media/linked/unused-unused.mp4'), 3)).toBeLessThan(20);
+    expect(statSync(join(back, 'media/linked/unused-unused.mp4')).size).toBeLessThan(statSync(join(footage, 'unused.mp4')).size / 4);
+    // the source times still fit: prepare cuts every clip of the imported project (it checks each file's size and length first)
+    const index = await prepareProject(back, createRegistry([corePlugin]));
+    expect(Object.keys(index.videos)).toHaveLength(3);
+    expect(await luma(join(back, Object.values(index.videos)[0]), 0.5)).toBeGreaterThan(40);
+  }, 120000);
 });
