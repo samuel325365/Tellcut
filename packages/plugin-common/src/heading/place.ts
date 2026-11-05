@@ -30,12 +30,13 @@ export function titlePlace(layout: string, safe: { top: number; bottom: number; 
 }
 
 /** the size (% of the frame height) a title is set at: `size`, or with `full` the size at which its longest line (markup taken
- *  out) fills the safe width, at most 30 % — the caption still shrinks a line that does not fit, never grows one. `scale`: the look's
- *  own size scale (giant draws 1.35×), taken out so the line still fits */
+ *  out) fills the safe width — bigger or smaller than `size` (four characters at a fixed size broke in two, acceptance film
+ *  ttl-acc-morocco), at least 4 %, at most 0.4 of the frame's short side (one character at 30 % of a 9:16 frame pushed its kicker and
+ *  sub to the frame's edges). `scale`: the look's own size scale (giant draws 1.35×), taken out so the line still fits */
 export function fitTitleSize(text: string, size: number, W: number, H: number, side: number, full: boolean, scale = 1): number {
   if (!full) return size;
   const lines = String(text ?? '').split('\n').map((l) => charKinds(l).map((c) => c.c).join('').trim()).filter(Boolean);
   const em = Math.max(1, ...lines.map(textEm));
   const px = (W * (1 - 2 * side)) / (em * 1.04 * scale);
-  return Math.min(30, Math.max(size, (px / H) * 100));
+  return Math.min((40 * Math.min(W, H)) / H, Math.max(4, (px / H) * 100));
 }

@@ -46,6 +46,8 @@ export interface CaptionLook {
   only?: 'title';
   /** prints the line in ink (`outline`) on paper: its gloss is ink too, and the highlight colour stays off the words */
   paper?: boolean;
+  /** the paper is under each line only (marker, tape): the gloss is on the picture, in the highlight colour with a dark shadow */
+  bareGloss?: boolean;
   /** the font this look brings (styleFont, then a font the item sets itself, replace it) */
   font?: string;
   /** '900' unless set */

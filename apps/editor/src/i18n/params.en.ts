@@ -1645,7 +1645,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.heading.style": {"name":"Look","hint":"the caption looks plus a title's own"},
   "common.heading.layout": {"name":"Layout","hint":"center, top, bottom, lower (bottom left), left, corner (top right), full (fills the width)"},
   "common.heading.backing": {"name":"Backing","hint":"band, scrim (darkened), blur, card, rules (lines above and below), bar (colour bar at the left), black"},
-  "common.heading.size": {"name":"Font size","hint":"% of frame height; layout full grows it"},
+  "common.heading.size": {"name":"Font size","hint":"% of frame height; layout full sizes the longest line to fill the width instead"},
   "common.heading.font": {"name":"Font"},
   "common.heading.color": {"name":"Text colour"},
   "common.heading.hl": {"name":"Highlight colour"},

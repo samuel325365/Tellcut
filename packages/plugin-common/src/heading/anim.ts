@@ -42,8 +42,8 @@ export function titleAnim(animIn: string, animOut: string, local: number, dur: n
   if (q < 1) {
     switch (animIn) {
       case 'track': opacity = clamp(q * 2.5); break;
-      // the block's top edge comes down to its top as the words rise into it
-      case 'mask': clip = `inset(${px(g.y + (1 - e) * g.h)} ${px(right - pad)} ${px(below - pad)} ${px(g.x - pad)})`; tf.push(`translateY(${px((1 - e) * 0.25 * g.fs)})`); break;
+      // the words rise out of a window whose bottom edge is the block's: a layer's clip moves with it, so it is moved back by as much
+      case 'mask': { const ty = (1 - e) * g.h; clip = `inset(${px(g.y - pad)} ${px(right - pad)} ${px(below + ty)} ${px(g.x - pad)})`; tf.push(`translateY(${px(ty)})`); break; }
       case 'open': clip = `inset(${px(g.y - pad)} ${px(right + ((1 - e) * g.w) / 2)} ${px(below - pad)} ${px(g.x + ((1 - e) * g.w) / 2)})`; break;
       case 'focus': opacity = clamp(q * 2); filter = `blur(${px((1 - e) * 0.2 * g.fs)})`; tf.push(`scale(${lerp(1.18, 1, e).toFixed(4)})`); break;
       case 'rule': ruleP = eOut3(clamp(q / 0.4)); textOpacity = eOut3(clamp((q - 0.4) / 0.6)); break;
@@ -52,7 +52,8 @@ export function titleAnim(animIn: string, animOut: string, local: number, dur: n
   if (b < 1) {
     switch (animOut) {
       case 'spread': opacity *= eb; break;
-      case 'sink': clip = `inset(${px(g.y - pad)} ${px(right - pad)} ${px(below + (1 - eb) * g.h)} ${px(g.x - pad)})`; tf.push(`translateY(${px((1 - eb) * 0.25 * g.fs)})`); break;
+      // the words sink into the same window
+      case 'sink': { const ty = (1 - eb) * g.h; clip = `inset(${px(g.y - pad)} ${px(right - pad)} ${px(below + ty)} ${px(g.x - pad)})`; tf.push(`translateY(${px(ty)})`); break; }
     }
   }
   return { opacity: Math.round(opacity * 1000) / 1000, transform: tf.join(' '), transformOrigin: `${px(g.x + g.w / 2)} ${px(g.y + g.h / 2)}`, clip, filter, ruleP, textOpacity };

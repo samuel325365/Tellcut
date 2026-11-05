@@ -50,6 +50,8 @@ test('a gloss is the highlight colour unless set, and the ink on the paper style
   const p = { glossColor: '', hl: '#ffe14d', outline: '#1a1a1a' };
   expect(['outline', 'plain', 'box', 'bar', 'qa', 'auto', 'big'].map((style) => glossColorOf({ ...p, style }))).toEqual(Array(7).fill('#ffe14d'));
   expect(['bubble', 'ticket', 'crayon', 'strip'].map((style) => glossColorOf({ ...p, style }))).toEqual(Array(4).fill('#1a1a1a'));
+  // marker and tape put their paper under each line only: the gloss is on the picture, in the highlight colour
+  expect(['marker', 'tape'].map((style) => glossColorOf({ ...p, style }))).toEqual(Array(2).fill('#ffe14d'));
   expect(glossColorOf({ ...p, style: 'bubble', glossColor: '#c0392b' })).toBe('#c0392b');
   // the parameter each style draws its line in (voiceCaptions gives the gloss the line's colour)
   expect(['outline', 'bubble', 'strip', 'big'].map(lineColorKey)).toEqual(['color', 'outline', 'outline', 'hl']);

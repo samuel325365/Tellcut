@@ -24,7 +24,9 @@ export const hollow: CaptionLook = {
 
 /** ink words on a stroke of highlighter a line, slightly tilted, the ends a little uneven */
 export const marker: CaptionLook = {
-  id: 'marker', paper: true, weight: '700', room: padded,
+  // the gloss off the highlighter, on the picture (a title's sub in ink vanished on a dark shot, acceptance film ttl-acc-food)
+  id: 'marker', paper: true, bareGloss: true, weight: '700', room: padded,
+  gloss: () => ({ textShadow: '0 0.05em 0.2em rgba(0,0,0,0.8), 0 0 0.08em rgba(0,0,0,0.6)' }),
   color: (e) => e.p.outline,
   hl: (e) => e.theme.palette.accent,
   lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.1em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0 0.32em',

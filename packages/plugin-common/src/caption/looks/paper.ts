@@ -85,7 +85,8 @@ export const strip: CaptionLook = {
 
 /** a strip of washi tape a line: see-through tape of the highlight colour with fine stripes and torn ends, ink words */
 export const tape: CaptionLook = {
-  id: 'tape', paper: true, weight: '700', room: padded,
+  id: 'tape', paper: true, bareGloss: true, weight: '700', room: padded,
+  gloss: () => ({ textShadow: '0 0.05em 0.2em rgba(0,0,0,0.8), 0 0 0.08em rgba(0,0,0,0.6)' }),
   color: (e) => e.p.outline,
   hl: (e) => e.theme.palette.accent,
   lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.18em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.06em 0.55em 0.1em',

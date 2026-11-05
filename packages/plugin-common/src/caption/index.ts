@@ -35,7 +35,7 @@ export type { CaptionLook, CaptionP, LookEnv } from './types.ts';
 export const lineColorKey = (style: string): 'outline' | 'hl' | 'color' => (lookOf(style).paper ? 'outline' : style === 'big' ? 'hl' : 'color');
 /** the gloss's colour: its own, else the highlight colour (big: its line colour), or the ink on paper (the highlight colour does not read on it) */
 export const glossColorOf = (p: { style: string; glossColor: string; hl: string; outline: string; bigColor?: string }) =>
-  p.glossColor || (lookOf(p.style).paper ? p.outline : (p.style === 'big' && p.bigColor) || p.hl);
+  p.glossColor || (lookOf(p.style).paper && !lookOf(p.style).bareGloss ? p.outline : (p.style === 'big' && p.bigColor) || p.hl);
 
 /** styles auto and big: their scale at `local` as they pop in over 0.14 s (auto from 0.88×, big from 0.6× with an overshoot); null for the others */
 export const stylePop = (style: string, local: number): number | null => lookOf(style).popScale?.(local) ?? null;
@@ -189,7 +189,7 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     const gs = p.glossSize ?? 0.52, gl = look.gloss?.(s, e) ?? {};
     s.gloss.textContent = p.gloss ?? '';
     cssCamel(s.gloss, { fontSize: `${gs}em`, color: glossColorOf(p), fontFamily: `'${theme.fonts.display}', 'Noto Sans TC', sans-serif`,
-      margin: `${(0.1 / gs).toFixed(4)}em 0 0`, webkitTextStroke: '', padding: '', background: '', borderRadius: '', boxShadow: '', transform: '', ...gl, display: p.gloss ? gl.display ?? 'block' : 'none' });
+      margin: `${(0.1 / gs).toFixed(4)}em 0 0`, webkitTextStroke: '', textShadow: '', padding: '', background: '', borderRadius: '', boxShadow: '', transform: '', ...gl, display: p.gloss ? gl.display ?? 'block' : 'none' });
     // a look that pops in by itself (auto, big) fades in with it
     const pq = prog(ctx.local, 0, 0.14), sc = look.popScale?.(ctx.local), pin = sc !== undefined ? ` scale(${sc.toFixed(4)})` : look.pin?.(e) ?? '';
     // point: a chip in the speaker's colour at the left, an arrow toward them over their name

@@ -1645,7 +1645,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.heading.style": {"name":"見た目","hint":"字幕の見た目とタイトル専用のもの"},
   "common.heading.layout": {"name":"レイアウト","hint":"center 中央、top 上、bottom 下、lower 左下、left 左寄せ、corner 右上、full 幅いっぱい"},
   "common.heading.backing": {"name":"背景","hint":"band 暗い帯、scrim 暗く、blur ぼかし、card カード、rules 上下の線、bar 左の色帯、black 真っ黒"},
-  "common.heading.size": {"name":"文字サイズ","hint":"画面の高さの %。full では拡大"},
+  "common.heading.size": {"name":"文字サイズ","hint":"画面の高さの %。full では一番長い行が幅いっぱいになる大きさ"},
   "common.heading.font": {"name":"フォント"},
   "common.heading.color": {"name":"文字の色"},
   "common.heading.hl": {"name":"ハイライト色"},

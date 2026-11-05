@@ -40,3 +40,16 @@ test('a project\'s caption template never reaches a title', () => {
   const plain = drawn({ text: '七百年', style: 'heavy' }, 1.5).box, withTpl = drawn({ text: '七百年', style: 'heavy' }, 1.5, { captionTemplate: 'neon-fill' }).box;
   expect(withTpl.style.cssText).toBe(plain.style.cssText);
 });
+
+test('a short title stays on one line, a little smaller; a long one keeps its size; the kicker never drops below the floor', () => {
+  const sizeOf = (params: Record<string, unknown>) => parseFloat(drawn({ size: 9, ...params }, 1).box.style.fontSize);
+  const base = sizeOf({ text: '羅馬' });
+  // five characters at size 9 in 9:16 do not fit the safe width: shrunk to one line
+  expect(sizeOf({ text: '聖彼得廣場' })).toBeLessThan(base);
+  expect(sizeOf({ text: '聖彼得廣場' })).toBeGreaterThan(base * 0.62);
+  // a line break of its own: the size it asked for; too long a line for 62 %: two lines at about its size (the caption balances them)
+  expect(sizeOf({ text: '聖彼得\n廣場' })).toBeCloseTo(base);
+  expect(sizeOf({ text: '一座廣場的七百年' })).toBeGreaterThan(base * 0.9);
+  const kicker = [...drawn({ text: '許願池', kicker: '第二天', size: 5 }, 1).root.querySelectorAll<HTMLElement>('div')].find((d) => d.textContent === '第二天')!;
+  expect(parseFloat(kicker.style.fontSize)).toBeGreaterThanOrEqual(48);
+});

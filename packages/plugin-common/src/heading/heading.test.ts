@@ -17,10 +17,14 @@ test('every layout stays inside the safe area, in 9:16 and 16:9', () => {
   }
 });
 
-test('full grows a title until its longest line fills the safe width (at most 30 %); other layouts keep the size', () => {
+test('full sizes a title so its longest line fills the safe width (at most 0.4 of the short side); other layouts keep the size', () => {
   const zh = fitTitleSize('七百年', 9, 1080, 1920, 0.06, true);
   expect(zh).toBeGreaterThan(9);
-  expect(zh).toBeLessThanOrEqual(30);
+  // one character: capped at 0.4 × 1080 px of a 9:16 frame; four with giant's 1.35×: smaller than the size asked for, on one line
+  expect((fitTitleSize('粉', 9, 1080, 1920, 0.12, true, 1.35) / 100) * 1920).toBeCloseTo(432, 3);
+  const four = fitTitleSize('馬拉喀什', 9, 1080, 1920, 0.12, true, 1.35);
+  expect(four).toBeLessThan(9);
+  expect(4 * 1.04 * 1.35 * (four / 100) * 1920).toBeCloseTo(1080 * 0.76, 3);
   expect(fitTitleSize('一座廣場的七百年', 9, 1080, 1920, 0.06, false)).toBe(9);
   const en = 'We walked all the way to the Colosseum', px = (fitTitleSize(en, 4, 1920, 1080, 0.05, true) / 100) * 1080;
   expect(textEm(en) * px).toBeLessThanOrEqual(1920 * 0.9);
@@ -37,15 +41,16 @@ test('the title\'s own entrances and exits: in the title\'s pixels, clipped to i
   expect(titleSpacing('track', 'none', 0, 3, 0.6)).toBeGreaterThan(titleSpacing('track', 'none', 0.3, 3, 0.6));
   expect(titleSpacing('track', 'none', 0.7, 3, 0.6)).toBe(0);
   expect(titleSpacing('none', 'spread', 2.9, 3, 0.6)).toBeGreaterThan(0);
-  // mask: the top edge starts at the block's bottom and comes up to its top; the words rise a quarter of their size
-  expect(at('mask', 'none', 0).clip).toBe('inset(500.00px 150.00px 1330.00px 150.00px)');
-  expect(at('mask', 'none', 0).transform).toBe('translateY(37.50px)');
+  // mask: the words start a whole block lower, under a window whose bottom edge stays at the block's (moved back by as much)
+  expect(at('mask', 'none', 0).clip).toBe('inset(210.00px 150.00px 1620.00px 150.00px)');
+  expect(at('mask', 'none', 0).transform).toBe('translateY(200.00px)');
   expect(at('mask', 'none', 1).clip).toBe('');
   // open: from the block's middle (540), not the frame's share
   expect(at('open', 'none', 0).clip).toBe('inset(210.00px 540.00px 1330.00px 540.00px)');
   expect(at('focus', 'none', 0).filter).toBe('blur(30.00px)');
   expect(at('focus', 'none', 0).transformOrigin).toBe('540.00px 400.00px');
   expect(at('none', 'sink', 3).clip).toBe('inset(210.00px 150.00px 1620.00px 150.00px)');
+  expect(at('none', 'sink', 3).transform).toBe('translateY(200.00px)');
   expect(at('rule', 'none', 0.12)).toMatchObject({ textOpacity: 0 });
   expect(at('rule', 'none', 0.12).ruleP).toBeGreaterThan(0);
   expect(at('none', 'spread', 3).opacity).toBe(0);
