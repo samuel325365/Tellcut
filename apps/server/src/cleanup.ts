@@ -4,12 +4,12 @@
 // nothing in their project names any more.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { isAlive, pruneCopies } from '@tellcut/media-node';
+import { isAlive, pruneCopies, SNAPSHOT_FILE, SNAPSHOT_INDEX } from '@tellcut/media-node';
 
-// temp names that carry the writing process id (projects.ts write, export.ts snapshot and index, a gallery music preview being
-// composed in _gallery/: score-child.ts)
-const PID_FILES = [/^project\.json\.(\d+)\.tmp$/, /^\.export-\w+-(\d+)\.json$/, /^score-[^/\\]+\.wav\.(\d+)\.tmp$/];
-const PID_CACHE = /^index-\w+-(\d+)\.json$/;
+// temp names that carry the writing process id (projects.ts write; the snapshot and index of an export, or of the stills check,
+// golden and thumbs draw: media-node snapshotStamp; a gallery music preview being composed in _gallery/: score-child.ts)
+const PID_FILES = [/^project\.json\.(\d+)\.tmp$/, SNAPSHOT_FILE, /^score-[^/\\]+\.wav\.(\d+)\.tmp$/];
+const PID_CACHE = SNAPSHOT_INDEX;
 // half-written files with no pid, so only stale ones go: cache temps (media.ts cached, analysis.ts atomic, prepare.ts cuts and
 // music) and an interrupted export's intermediates (render.ts .video.mp4 / .mix.wav and the film being muxed, .part.mp4, all
 // hidden from the export list)

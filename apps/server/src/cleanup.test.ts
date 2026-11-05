@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { snapshotStamp, SNAPSHOT_FILE, SNAPSHOT_INDEX } from '@tellcut/media-node';
 import { cleanupLeftovers } from './cleanup.ts';
 
 test('files left by a crashed server are removed; a live server\'s are kept', () => {
@@ -12,6 +13,21 @@ test('files left by a crashed server are removed; a live server\'s are kept', ()
   const kept = [put('project.json.222.tmp'), put('.export-k2-222.json'), put('cache/media/cd.tmp.jpg', 5), put('project.json')];
   const removed = cleanupLeftovers(root, { alive: (pid) => pid === 222 });
   expect(removed.length).toBe(5);
+  for (const f of dead) expect(existsSync(f)).toBe(false);
+  for (const f of kept) expect(existsSync(f)).toBe(true);
+});
+
+// stills.ts (check, golden, thumbs) once put a counter after the pid, so the cleanup never matched what an interrupted run left
+test('the snapshots stills and exports make (media-node snapshotStamp) are matched by their process id', () => {
+  const root = mkdtempSync(join(tmpdir(), 'clean-')), p = join(root, 'demo');
+  mkdirSync(join(p, 'cache'), { recursive: true });
+  const put = (rel: string) => { const f = join(p, rel); writeFileSync(f, 'x'); return f; };
+  const stills = snapshotStamp(7, 111), exp = snapshotStamp(undefined, 111), live = snapshotStamp(2, 222);
+  expect(SNAPSHOT_FILE.exec(`.export-${stills}.json`)?.[1]).toBe('111');
+  expect(SNAPSHOT_INDEX.exec(`index-${exp}.json`)?.[1]).toBe('111');
+  const dead = [put(`.export-${stills}.json`), put(`cache/index-${stills}.json`), put(`.export-${exp}.json`), put(`cache/index-${exp}.json`)];
+  const kept = [put(`.export-${live}.json`), put(`cache/index-${live}.json`)];
+  cleanupLeftovers(root, { alive: (pid) => pid === 222 });
   for (const f of dead) expect(existsSync(f)).toBe(false);
   for (const f of kept) expect(existsSync(f)).toBe(true);
 });

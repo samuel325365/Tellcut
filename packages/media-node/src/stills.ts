@@ -10,10 +10,20 @@ import { openPage, playerUrl, sitePath, type PageHost, type PageSession } from '
 /** tells apart the snapshots of pages one process opens at once (golden draws several cases side by side) */
 let opened = 0;
 
+/** The name part of a snapshot (`.export-<stamp>.json`, `cache/index-<stamp>.json`): the writing process id comes last, so
+ *  the server's start-up cleanup (apps/server cleanup.ts, SNAPSHOT_FILE / SNAPSHOT_INDEX) can tell a dead process's leftover.
+ *  `n` tells apart snapshots one process has open at once. */
+export function snapshotStamp(n?: number, pid = process.pid, now = Date.now()): string {
+  return `${now.toString(36)}${n === undefined ? '' : `_${n}`}-${pid}`;
+}
+/** a snapshot next to project.json and its index in cache/, made with snapshotStamp; group 1 is the writing process id */
+export const SNAPSHOT_FILE = /^\.export-\w+-(\d+)\.json$/;
+export const SNAPSHOT_INDEX = /^index-\w+-(\d+)\.json$/;
+
 /** The player on a snapshot of `project` (its media cut into the cache first), for `use`; everything is cleaned up after.
  *  `host`: a Chrome to open the page in (openPage's), instead of one started for it. */
 export async function withProjectPage<T>(o: { dir: string; project: Project; registry: Registry; log?: (s: string) => void; host?: PageHost }, use: (s: PageSession) => Promise<T>): Promise<T> {
-  const stamp = `${Date.now().toString(36)}-${process.pid}-${opened++}`;
+  const stamp = snapshotStamp(opened++);
   const snap = join(o.dir, `.export-${stamp}.json`), indexRel = `cache/index-${stamp}.json`;
   writeFileSync(snap, JSON.stringify(o.project));
   try {

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { FxIssue, Project, Registry } from '@tellcut/engine';
-import { exportLock, listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, tryExportLock } from '@tellcut/media-node';
+import { exportLock, listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, snapshotStamp, tryExportLock } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { JobError, type JobCtx, type JobQueue } from './jobs.ts';
 import type { ProjectStore } from './projects.ts';
@@ -27,7 +27,7 @@ async function exportLocked(o: { dir: string; id: string; project: Project; from
   const exportsDir = join(dir, 'exports');
   mkdirSync(exportsDir, { recursive: true });
   const base = nextExportBase(dir, project.meta.name, o.id);
-  const tag = `${Date.now().toString(36)}-${process.pid}`;
+  const tag = snapshotStamp();
   const snap = join(dir, `.export-${tag}.json`), indexRel = `cache/index-${tag}.json`;
   const lines: string[] = [];
   const log = (l: string) => { lines.push(l); ctx.log(l); };
