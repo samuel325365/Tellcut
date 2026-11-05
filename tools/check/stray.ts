@@ -34,7 +34,9 @@ export function strayTimes(p: Project, times: Times, max = 90): Array<{ t: numbe
   return out.length > max ? out.filter((_, i) => i % Math.ceil(out.length / max) === 0) : out;
 }
 
-const CJK = /[㐀-鿿豈-﫿぀-ヿ가-힯]/g;
+// the letters of any CJK script OCR may read in the footage (Han with Extension A and the compatibility ideographs, kana, Hangul),
+// unlike leak.ts's Han only: punctuation and full-width forms are left out, a lone 。 is the speck of texture this counts against
+const CJK = /[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/g;
 /** worth reporting: two CJK characters or three Latin letters (OCR reads a speck of texture as "l" or "。") */
 const readable = (s: string) => (s.match(CJK)?.length ?? 0) >= 2 || (s.match(/[A-Za-z]/g)?.length ?? 0) >= 3;
 const tc = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;

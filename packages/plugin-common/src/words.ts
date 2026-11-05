@@ -6,6 +6,8 @@ import type { ItemType, Project } from '@tellcut/engine';
 
 export type WordsLang = 'zh' | 'en' | 'ja';
 
+// kana and Han apart, for the language guess below (CJK further down is wider and answers another question: which characters
+// have no italic)
 const KANA = /[぀-ヿㇰ-ㇿｦ-ﾟ]/g, HAN = /[㐀-䶿一-鿿豈-﫿]/g, LATIN = /[A-Za-zÀ-ɏ]/g;
 const count = (s: string, re: RegExp) => s.match(re)?.length ?? 0;
 
@@ -19,7 +21,8 @@ export function textLang(...texts: unknown[]): WordsLang | null {
   return kana * 3 >= cjk ? 'ja' : 'zh';
 }
 
-// Han (with radicals, strokes, enclosed and compatibility forms), kana, Hangul, bopomofo, CJK punctuation and full-width forms
+// Han (with radicals, strokes, enclosed and compatibility forms), kana, Hangul, bopomofo, CJK punctuation and full-width forms:
+// every character a CJK face draws with no italic, so wider than the letter ranges above and tools/check's
 const CJK = /[ᄀ-ᇿ⺀-⿟　-鿿ꥠ-꥿가-퟿豈-﫿︰-﹏＀-￯\u{20000}-\u{3ffff}]/u;
 /** a CJK character: these faces have no italic, so a slanted one is the browser's machine slant (italic text keeps them upright) */
 export const isCjk = (c: string) => CJK.test(c);

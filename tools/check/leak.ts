@@ -10,7 +10,9 @@ const clean = (s: string) => s.replace(/[\s{}【】，。！？、,.!?]/g, '').t
 const LATIN = /^[a-z0-9'’ ]+$/i;
 /** a probe's word as kept: English lower case with single spaces between its words, anything else cleaned */
 const probeWord = (s: string) => (LATIN.test(s.trim()) ? s.trim().toLowerCase().replace(/\s+/g, ' ') : clean(s));
-/** CJK has no spaces: a transcript word's time is spread over its characters (as wordTimes does) */
+/** CJK has no spaces: a transcript word's time is spread over its characters (as wordTimes does). Han only (with Extension A and
+ *  the compatibility ideographs), unlike stray.ts's and plugin-common words.ts's: a word with one is a Chinese word, spread over
+ *  all its characters; a kana-only or Latin word is bleeped whole, its own word breaks kept */
 const CJK = /[㐀-鿿豈-﫿]/;
 
 /**

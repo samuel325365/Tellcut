@@ -42,3 +42,12 @@ test('text read in a clip: against the frame edge a warning, whole text one note
   expect(f[1]).toMatchObject({ level: 'note', ids: ['full'], msg: expect.stringContaining('0:03.5「在家做生魚片」') });
   expect(f[1].msg).toContain('0:04.5「外面」');
 });
+
+test('two CJK letters are readable; two private-use or symbol characters OCR made of texture are not', () => {
+  const p = project(), times = resolveTimes(p), box = [0.3, 0.3, 0.2, 0.04] as [number, number, number, number];
+  const at = (text: string) => strayFindings(p, times, new Map([[3.5, [{ text, box }]]]));
+  // the Han range once ran on from U+8C48 to U+FAFF, through the private-use area
+  expect(at('')).toEqual([]);
+  expect(at('。。')).toEqual([]);
+  for (const text of ['外面', 'ひと', '안녕', '豈更']) expect(at(text), text).toHaveLength(1);
+});
