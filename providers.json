@@ -5,6 +5,10 @@
       "edge": {
         "version": "7.3.1",
         "voice": "zh-TW-HsiaoChenNeural"
+      },
+      "elevenlabs": {
+        "voice": "cgSgspJ2msm6clMCkdW9",
+        "model": "eleven_multilingual_v2"
       }
     }
   },

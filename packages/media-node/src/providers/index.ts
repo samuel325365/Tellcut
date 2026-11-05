@@ -1,6 +1,7 @@
 // Provider registry (toolkit phase 3): turns tellcut/providers.json into the provider objects the tools use.
 import { loadProvidersConfig, type ProvidersConfig } from './config.ts';
 import { edgeTts } from './edge.ts';
+import { elevenLabsTts, type ElevenLabsOptions } from './elevenlabs.ts';
 import { fakeFaces, fakeOcr, fakeTranscribe, fakeTts } from './fake.ts';
 import { mediapipeFaces } from './faces-mediapipe.ts';
 import { macosOcr } from './ocr-macos.ts';
@@ -13,6 +14,7 @@ export * from './config.ts';
 export * from './fake.ts';
 export { fasterWhisper } from './whisper.ts';
 export { edgeTts, EDGE_VOICES } from './edge.ts';
+export { elevenLabsTts, elevenLabsKey, ELEVENLABS_KEY_ENV, ELEVENLABS_DEFAULT_VOICE, ELEVENLABS_DEFAULT_MODEL } from './elevenlabs.ts';
 export { windowsOcr, parseOcrLines } from './ocr-windows.ts';
 export { macosOcr, visionLangs } from './ocr-macos.ts';
 export { mediapipeFaces, parseFaceLines, faceModel } from './faces-mediapipe.ts';
@@ -21,6 +23,7 @@ type Factory<T> = (options: Record<string, unknown>) => T;
 /** every provider Tellcut knows by id (a new third-party tool = a new entry here and a class next to the others) */
 export const TTS_FACTORIES: Record<string, Factory<TtsProvider>> = {
   edge: (o) => edgeTts(o as { version?: string; voice?: string }),
+  elevenlabs: (o) => elevenLabsTts(o as ElevenLabsOptions),
   fake: () => fakeTts(),
 };
 export const TRANSCRIBE_FACTORIES: Record<string, Factory<TranscribeProvider>> = {

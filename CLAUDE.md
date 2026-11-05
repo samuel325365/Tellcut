@@ -55,7 +55,7 @@ npm run setup / npm run doctor         # install the outside dependencies into v
 - Outside programs (ffmpeg, ffprobe, uv, Chrome, claude) are always found through `deps.ts` (`TELLCUT_*` environment variables → `vendor/` → install locations → PATH); the root constant is `TELLCUT_ROOT` in `paths.ts`.
 - Analysis results are keyed by the footage's size + modification time; when another project has the same footage they are shared by hard link (`share.ts`), and so are those of footage renamed or moved since (a folder's `source.json` names its file and a print of a few slices of it, compared before sharing: two different files of one size and time never share); `transcript.lock` / `analysis.lock` prevent duplicate work.
 - `project.json` is always written through `writeProjectFile` (old versions kept in `.history/`); the server's PUT uses ETag/If-Match.
-- Which outside tool is used is set in `providers.json` (tts=edge, transcribe=faster-whisper, ocr=system — Windows' own or macOS' Vision, faces=mediapipe), implemented in `media-node/src/providers/`, `tools/py/`, `tools/ps/`, `tools/mac/`.
+- Which outside tool is used is set in `providers.json` (tts=edge, or elevenlabs with a key from `ELEVENLABS_API_KEY` / `keys.elevenlabs` in `sources.local.json`; transcribe=faster-whisper, ocr=system — Windows' own or macOS' Vision, faces=mediapipe), implemented in `media-node/src/providers/`, `tools/py/`, `tools/ps/`, `tools/mac/`.
 - Outside media sources are in `media-node/src/sources/`:
   - One folder per source, holding the adapter and its `card.md` (English, read by agents through `assets source <id>`).
   - Every request online goes through `http.ts` (identifying header, cross-process rate limiting, cache, block detection).

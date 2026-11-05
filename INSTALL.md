@@ -123,6 +123,7 @@ Environment variables you can set:
 | `TELLCUT_MODELS_DIR` | Where the models live (default `tellcut/models`); setup, doctor, speech recognition and face detection all look here |
 | `TELLCUT_CONTACT` | The contact (an email or a URL) that outside sources such as Wikimedia receive in the identifying header of each download. Without it, `contact` in `sources.local.json` is used |
 | `PIXABAY_API_KEY`, `FREESOUND_API_KEY`, `CARTO_API_KEY` | Keys for outside sources (the `keyEnv` in `sources.json`). Without them, `keys` in `sources.local.json` is used; a source with no key can't be used. Where to get each key: [README › Outside media sources](README.md#outside-media-sources) |
+| `ELEVENLABS_API_KEY` | The key for ElevenLabs voice-over (when `providers.json` uses `elevenlabs`). Without it, `keys.elevenlabs` in `sources.local.json` is used. See [README › ElevenLabs voice-over](README.md#elevenlabs-voice-over) |
 | `TELLCUT_URL` | The Tellcut server the command-line tools (`npm run tellcut`, `new`, `inspect`) talk to. Without it they find the server running on this computer (`.cache/server.json`), and fall back to `http://127.0.0.1:5174`; the page chat sets it to the current server. You normally don't need it |
 
 ## What setup creates

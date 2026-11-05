@@ -320,7 +320,7 @@ npm run examples -- meet-tellcut
 
 除了你自己的素材，Agent 還能從網路上的素材庫和資料庫找圖、影片、音效、配樂和地圖。大部分不用申請就能用；少數要你自己申請一把免費的 key，沒填的話只是那個來源不能用，其他照常。
 
-> 這裡說的 key 跟 Claude 無關。Agent 用的是你在 Claude Code 登入的帳號，不需要另外的 Claude API key。旁白（Microsoft Edge 的線上語音）、語音轉文字（在你電腦上跑的 Whisper）和配樂（依片長自動作曲）也都內建，不用任何 key。
+> 這裡說的 key 跟 Claude 無關。Agent 用的是你在 Claude Code 登入的帳號，不需要另外的 Claude API key。旁白（Microsoft Edge 的線上語音）、語音轉文字（在你電腦上跑的 Whisper）和配樂（依片長自動作曲）也都內建，不用任何 key。想改用 ElevenLabs 的聲音配旁白，看下面的 [ElevenLabs 旁白](#elevenlabs-旁白)（這個要另外的 key）。
 
 Agent 下載的每個檔案，出處和授權都會記在專案裡，`npm run tellcut -- assets credits <專案>` 會把它們整理成專案資料夾裡的 `media/CREDITS.md`。**要公開發表或商用之前，請看一下授權欄**：寶可夢、動漫、遊戲、哈利波特這類的圖，版權屬於原公司。
 
@@ -376,6 +376,15 @@ Agent 下載的每個檔案，出處和授權都會記在專案裡，`npm run te
 - **開關來源**：預設值在 `sources.json`。要改哪一個，就把它寫進 `sources.local.json`，例如 `"sources": { "steam": { "enabled": true } }`。BBC Sound Effects、Incompetech、Steam（非官方，或只限個人使用）預設是關的。
 - **檢查設定**用 `npm run sources`：列出每個來源開了沒、有沒有 key、連不連得上。`npm run sources -- --live` 還會從每個來源真的搜尋、下載一次。`npm run doctor` 也會列出同一張表。
 - **在對話框裡**，**＋** 旁邊的 **API** 按鈕會打開來源清單，勾選這串對話裡 Agent 可以用的來源。缺 key 的來源會變灰，並寫出原因。
+
+### ElevenLabs 旁白
+
+旁白預設用 Microsoft Edge 免費的線上語音。要改用 [ElevenLabs](https://elevenlabs.io)：
+
+1. 登入 elevenlabs.io，打開設定裡的 **API Keys**，建立一把 key（只要開 Text to Speech 權限）。免費方案每月額度不多，而且不能商用。
+2. 寫進 `sources.local.json`：`"keys": { "elevenlabs": "你的 ElevenLabs key" }`，或設環境變數 `ELEVENLABS_API_KEY`。
+3. 把 `providers.json` 的 `tts.use` 從 `edge` 改成 `elevenlabs`（或先用 `npm run voice -- <id> --engine elevenlabs` 在一個專案試）。`tts.options.elevenlabs` 是預設的 `voice`（voice ID；免費方案透過 API 只能用 ElevenLabs 自己的預設聲音，Voice Library 裡別人分享的聲音要付費方案）和 `model`（`eleven_multilingual_v2` 會說中文、英文、日文）。
+4. `npm run providers -- --all` 會檢查 key 能不能用。單一專案可以在 `narration.json` 指定聲音：`"voices": { "elevenlabs": "<voice ID>" }`。
 
 ---
 

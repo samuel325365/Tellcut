@@ -320,7 +320,7 @@ Its `CREDITS.md` names the footage; it is all Creative Commons (CC BY 3.0).
 
 Besides your own footage, the agent can find pictures, video, sound effects, music and maps in online libraries and databases. Most work with nothing to sign up for; a few need a free key of your own, and without it that source just isn't available while everything else works as before.
 
-> These keys have nothing to do with Claude. The agent runs on the account you signed in to Claude Code with; you don't need a separate Claude API key. Voice-over (Microsoft Edge's online voices), speech-to-text (Whisper, running on your computer) and music (composed to the film's length) are built in and need no key either.
+> These keys have nothing to do with Claude. The agent runs on the account you signed in to Claude Code with; you don't need a separate Claude API key. Voice-over (Microsoft Edge's online voices), speech-to-text (Whisper, running on your computer) and music (composed to the film's length) are built in and need no key either. If you prefer ElevenLabs voices for the voice-over, see [ElevenLabs voice-over](#elevenlabs-voice-over) below (that one needs its own key).
 
 Tellcut records where every downloaded file came from and its licence in the project; `npm run tellcut -- assets credits <project>` collects them into `media/CREDITS.md` in the project folder. **Check the licence column before you publish or use a film commercially**: pictures of Pokémon, anime, games and Harry Potter belong to the companies that own them.
 
@@ -376,6 +376,15 @@ Or set environment variables instead, which win over the file: `PIXABAY_API_KEY`
 - **Switching sources on or off**: the defaults are in `sources.json`. To change one, add it to `sources.local.json`, for example `"sources": { "steam": { "enabled": true } }`. BBC Sound Effects, Incompetech and Steam (unofficial, or personal use only) start switched off.
 - **Check your setup** with `npm run sources`: it lists each source, whether it's on, whether it has its key and whether it answers. `npm run sources -- --live` also tries a real search and download from each. `npm run doctor` shows the same list.
 - **In the chat**, the **API** button next to **＋** opens the list of sources. Tick the ones the agent may use in that conversation. A source that's missing its key is greyed out, with the reason.
+
+### ElevenLabs voice-over
+
+The voice-over uses Microsoft Edge's free online voices by default. To use [ElevenLabs](https://elevenlabs.io) instead:
+
+1. Sign in at elevenlabs.io, open the settings, then **API Keys**, and create a key (it only needs the Text to Speech permission). The free plan has a small monthly allowance and doesn't allow commercial use.
+2. Add it to `sources.local.json` as `"keys": { "elevenlabs": "your ElevenLabs key" }`, or set the environment variable `ELEVENLABS_API_KEY`.
+3. In `providers.json`, change `tts.use` from `edge` to `elevenlabs` (or try it on one project with `npm run voice -- <id> --engine elevenlabs`). `tts.options.elevenlabs` holds the default `voice` (a voice ID: on the free plan only ElevenLabs' own default voices work through the API; voices other people shared in the Voice Library need a paid plan) and `model` (`eleven_multilingual_v2` speaks Chinese, English and Japanese).
+4. `npm run providers -- --all` checks that the key works. A project can pick its own voice in `narration.json`: `"voices": { "elevenlabs": "<voice ID>" }`.
 
 ---
 

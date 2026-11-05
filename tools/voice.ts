@@ -1,4 +1,4 @@
-// Narration for a project (toolkit phase 3):  npm run voice -- <專案> [場景 id ...] [--engine edge|fake] [--force]
+// Narration for a project (toolkit phase 3):  npm run voice -- <專案> [場景 id ...] [--engine edge|elevenlabs|fake] [--force]
 // Reads projects/<id>/narration.json and writes media/voice/<場景>.wav + .json (duration, caption phrases, word times).
 // Scenes that did not change are left alone. Which speech engine speaks is tellcut/providers.json's `tts.use` unless --engine says otherwise.
 import { existsSync, readFileSync } from 'node:fs';
@@ -9,7 +9,7 @@ import { parseArgs, type FlagSpec } from './args.ts';
 import { Usage } from './usage.ts';
 import { loadProvidersConfig, parseNarration, renderVoice, transcribeProvider, ttsProvider, type VoiceInfo } from '@tellcut/media-node';
 
-const USAGE = '用法：npm run voice -- <專案> [場景 id ...] [--engine edge] [--force]';
+const USAGE = '用法：npm run voice -- <專案> [場景 id ...] [--engine edge|elevenlabs] [--force]';
 export const VOICE_FLAGS: FlagSpec = { '--engine': 'value', '--force': 'switch' };
 
 export async function main(argv: string[], log: (s: string) => void = console.log): Promise<Record<string, VoiceInfo>> {
