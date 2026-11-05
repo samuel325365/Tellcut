@@ -99,14 +99,18 @@ function makePrints(ctx: ItemCtx<PP>, s: PS) {
 
 export interface Scrap { at: number; kind: 'paper' | 'dots' | 'tape' | 'pin' | 'clip' | 'grid'; x: number; y: number; w: number; h: number; tilt: number; color: string }
 const KINDS = ['paper', 'dots', 'tape', 'pin', 'clip', 'grid'];
-/** "seconds|kind|x,y,w,h|tilt|colour" a line (w, h fractions of the frame width; grid: "cols,rows" in place of the box) */
+/** "seconds|kind|x,y,w,h|tilt|colour" a line (w, h fractions of the frame width; grid: "cols,rows" in place of the box); a line
+ *  with no colour keeps it empty, and scrapColor gives that kind's own */
 export function parseScraps(text: unknown): Scrap[] {
   return String(text ?? '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const [at, kind = 'paper', box = '0.5,0.5,0.3,0.1', tilt, color] = l.split('|').map((s) => s.trim());
     const [x = 0.5, y = 0.5, w = 0.3, h] = box.split(',').map(Number);
-    return { at: Number(at) || 0, kind: (KINDS.includes(kind) ? kind : 'paper') as Scrap['kind'], x, y, w, h: h ?? w, tilt: Number(tilt) || 0, color: color || '#c3b1f5' };
+    return { at: Number(at) || 0, kind: (KINDS.includes(kind) ? kind : 'paper') as Scrap['kind'], x, y, w, h: h ?? w, tilt: Number(tilt) || 0, color: color || '' };
   });
 }
+/** the colour a scrap is drawn in: its own, else its kind's (a grey paperclip, white seams, lavender paper). The parser used to fill
+ *  in lavender and the clip turned lavender grey, so a clip asked for in lavender came out grey */
+export const scrapColor = (sc: Pick<Scrap, 'kind' | 'color'>) => sc.color || (sc.kind === 'clip' ? '#9aa3ab' : sc.kind === 'grid' ? '#ffffff' : '#c3b1f5');
 /** a torn-edged rectangle centred on (0, 0): every side broken into short steps nudged in and out by up to `rough` px */
 export function tornRect(g: CanvasRenderingContext2D, w: number, h: number, r: () => number, rough: number) {
   const pts: Array<[number, number]> = [], step = Math.max(6, Math.min(w, h) / 14);
@@ -142,11 +146,11 @@ export const scraps: ItemType<SP, SS> = {
     g.clearRect(0, 0, W, H);
     const out = clamp((dur - local) / 0.25), spring = motion.spring({ duration: 0.35, bounce: 0.4 });
     parseScraps(p.scraps).forEach((sc, i) => {
-      const t = local - sc.at;
+      const t = local - sc.at, color = scrapColor(sc);
       if (t < 0) return;
       if (sc.kind === 'grid') {   // seams over the whole frame: x, y are the columns and rows
         const cols = Math.max(2, Math.round(sc.x)), rows = Math.max(2, Math.round(sc.y)), seam = 4 * u;
-        g.globalAlpha = clamp(t / 0.2) * out; g.fillStyle = sc.color;
+        g.globalAlpha = clamp(t / 0.2) * out; g.fillStyle = color;
         for (let c = 1; c < cols; c++) g.fillRect((c * W) / cols - seam / 2, 0, seam, H);
         for (let r = 1; r < rows; r++) g.fillRect(0, (r * H) / rows - seam / 2, W, seam);
         g.globalAlpha = 1;
@@ -156,16 +160,16 @@ export const scraps: ItemType<SP, SS> = {
       g.save(); g.globalAlpha = clamp(t / 0.1) * out; g.translate(sc.x * W, sc.y * H); g.rotate((sc.tilt * Math.PI) / 180); g.scale(0.85 + 0.15 * k, 0.85 + 0.15 * k);
       if (sc.kind === 'pin') {
         g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.arc(4 * u, 6 * u, w / 2, 0, Math.PI * 2); g.fill();
-        g.fillStyle = sc.color; g.beginPath(); g.arc(0, 0, w / 2, 0, Math.PI * 2); g.fill();
+        g.fillStyle = color; g.beginPath(); g.arc(0, 0, w / 2, 0, Math.PI * 2); g.fill();
         g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.arc(-w * 0.15, -w * 0.15, w * 0.15, 0, Math.PI * 2); g.fill();
       } else if (sc.kind === 'clip') {
         const a = w / 2;
-        g.strokeStyle = sc.color === '#c3b1f5' ? '#9aa3ab' : sc.color; g.lineWidth = 4 * u; g.lineCap = 'round';
+        g.strokeStyle = color; g.lineWidth = 4 * u; g.lineCap = 'round';
         g.beginPath(); g.moveTo(-a * 0.4, h / 2 - a * 0.3); g.lineTo(-a * 0.4, -h / 2 + a * 0.4); g.arc(0, -h / 2 + a * 0.4, a * 0.4, Math.PI, 0); g.lineTo(a * 0.4, h / 2 - a * 0.6); g.arc(0, h / 2 - a * 0.6, a * 0.4, 0, Math.PI); g.stroke();
       } else {
         g.shadowColor = 'rgba(40,25,10,0.28)'; g.shadowBlur = 8 * u; g.shadowOffsetY = 4 * u;
         tornRect(g, w, h, r, (sc.kind === 'tape' ? 2 : 3.5) * u);
-        g.globalAlpha *= sc.kind === 'tape' ? 0.8 : 1; g.fillStyle = sc.color; g.fill(); g.shadowColor = 'transparent';
+        g.globalAlpha *= sc.kind === 'tape' ? 0.8 : 1; g.fillStyle = color; g.fill(); g.shadowColor = 'transparent';
         if (sc.kind === 'dots') {
           g.save(); g.clip(); g.fillStyle = 'rgba(255,255,255,0.35)';
           const st = 14 * u;

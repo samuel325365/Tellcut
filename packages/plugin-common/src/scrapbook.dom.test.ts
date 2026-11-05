@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // common.prints / common.scraps and common.wipe's mode tiles (2026-11-05, the Collage pilot film's fx.prints / fx.scraps / fx.mosaic).
 import { rng } from '@tellcut/engine';
-import { deckle, parsePrints, parseScraps, prints, scraps } from './scrapbook.ts';
+import { deckle, parsePrints, parseScraps, prints, scrapColor, scraps, type Scrap } from './scrapbook.ts';
 import { tileTimes } from './wipe.ts';
 
 describe('common.prints', () => {
@@ -29,8 +29,15 @@ describe('common.scraps', () => {
   test('kinds read as written, unknown ones are paper; grid keeps its columns and rows in x, y', () => {
     expect(parseScraps('0|pin|0.3,0.3,0.04|0|#e0552f\n0.5|bogus|0.5,0.5,0.2,0.1\n1|grid|5,9|0|#ffffff')).toEqual([
       { at: 0, kind: 'pin', x: 0.3, y: 0.3, w: 0.04, h: 0.04, tilt: 0, color: '#e0552f' },
-      { at: 0.5, kind: 'paper', x: 0.5, y: 0.5, w: 0.2, h: 0.1, tilt: 0, color: '#c3b1f5' },
+      { at: 0.5, kind: 'paper', x: 0.5, y: 0.5, w: 0.2, h: 0.1, tilt: 0, color: '' },
       { at: 1, kind: 'grid', x: 5, y: 9, w: 0.3, h: 0.3, tilt: 0, color: '#ffffff' }]);
+  });
+
+  test("a scrap with no colour takes its kind's own; a colour chosen is kept, even the paper default on a paperclip", () => {
+    // the paperclip used to turn any #c3b1f5 grey, because that was also the colour the parser filled in when none was given
+    expect(['paper', 'dots', 'tape', 'pin', 'clip', 'grid'].map((k) => scrapColor({ kind: k as Scrap['kind'], color: '' }))).toEqual(['#c3b1f5', '#c3b1f5', '#c3b1f5', '#c3b1f5', '#9aa3ab', '#ffffff']);
+    expect(scrapColor({ kind: 'clip', color: '#c3b1f5' })).toBe('#c3b1f5');
+    expect(scrapColor(parseScraps('0|clip|0.5,0.5,0.06,0.16')[0])).toBe('#9aa3ab');
   });
 });
 
