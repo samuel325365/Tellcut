@@ -35,6 +35,11 @@ export function visibleWords(v: string, strict = false): string {
 }
 /** overlay blocks that are a deliberate picture of their own (words on the background) */
 const CARDS = new Set(['core.title', 'core.endCard']);
+/** common.heading (what c.title makes since 2026-11-05) is such a card on a backing of its own (black, a solid card), or standing
+ *  alone in the frame like the old core.title (centred, left, full width) on no backing or a line-only one. A band, scrim or blur is
+ *  made to lie over a picture, and a lower / corner / top / bottom title is a strap or a label on one: over black, the picture is
+ *  what is missing. */
+const SOLID_BACKINGS = new Set(['black', 'card']), OVER_PICTURE_BACKINGS = new Set(['band', 'scrim', 'blur']), CARD_LAYOUTS = new Set(['center', 'left', 'full']);
 const overlap = (a: [number, number], b: [number, number]) => Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0]));
 /** How alike two lines read (0–1): shared characters, ignoring spaces, punctuation and case (Dice over character counts). */
 export function similarity(a: string, b: string): number {
@@ -68,13 +73,18 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   // other layers over a gap (grain, a flash, a caption) are not a picture: such a gap is asked about instead of passed.
   const visible = p.tracks.filter((t) => !t.muted);
   const overlays = visible.filter((t) => t.kind === 'overlay').flatMap((t) => t.items as any[]);
-  // a title on a black backing (gold-black, chrome-black) is such a card too
+  // a title (common.heading) can be such a card too (SOLID_BACKINGS…): its own params, else its template's (gold-black), else the
+  // film's default title template's, else the block's defaults (centred, no backing)
   const ownTitles = (p.meta as { titleTemplate?: string; titleTemplates?: Record<string, Record<string, unknown>> }).titleTemplates ?? {};
-  const titleBacking = (it: { params?: Record<string, unknown> }) => {
+  const titleParam = (it: { params?: Record<string, unknown> }, key: string, fallback: string) => {
     const id = String(it.params?.template || (p.meta as { titleTemplate?: string }).titleTemplate || '');
-    return it.params?.backing ?? (id ? (ownTitles[id]?.backing ?? titleTemplateOf(id)?.params.backing) : undefined);
+    return String(it.params?.[key] ?? (id ? (ownTitles[id]?.[key] ?? (titleTemplateOf(id)?.params as Record<string, unknown> | undefined)?.[key]) : undefined) ?? fallback);
   };
-  const isCard = (it: { type: string; params?: Record<string, unknown> }) => CARDS.has(it.type) || (it.type === 'common.heading' && titleBacking(it) === 'black');
+  const titleCard = (it: { params?: Record<string, unknown> }) => {
+    const backing = titleParam(it, 'backing', 'none');
+    return SOLID_BACKINGS.has(backing) || (!OVER_PICTURE_BACKINGS.has(backing) && CARD_LAYOUTS.has(titleParam(it, 'layout', 'center')));
+  };
+  const isCard = (it: { type: string; params?: Record<string, unknown> }) => CARDS.has(it.type) || (it.type === 'common.heading' && titleCard(it));
   const pics = [...visible.filter((t) => t.kind === 'video' || t.kind === 'scene').flatMap((t) => t.items as any[]), ...overlays.filter(isCard)]
     .map((it) => ({ id: it.id, s: span(it.id) })).filter((x) => x.s[1] > x.s[0]).sort((a, b) => a.s[0] - b.s[0]);
   let reach = 0, last: string | null = null;

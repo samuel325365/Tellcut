@@ -46,6 +46,14 @@ test('black frames: stretches no picture covers (dissolve overlaps and scene ite
   expect(heading({ template: 'gold-black' })).toEqual([]);
   expect(heading({}, 'chrome-black')).toEqual([]);
   expect(heading({ backing: 'band' })).toEqual(['warn 0-3 黑底上只有疊加層（h）：確認這段沒有畫面是刻意的']);
+  // c.title's heading alone in the frame is the old core.title's card (it was warned about once c.title made common.heading);
+  // a strap or label over nothing, or a backing made to lie on a picture, is still asked about
+  expect(heading({})).toEqual([]);
+  expect(heading({ layout: 'full' })).toEqual([]);
+  expect(heading({ layout: 'left', backing: 'rules' })).toEqual([]);
+  expect(heading({ layout: 'corner', backing: 'card' })).toEqual([]);
+  for (const params of [{ layout: 'lower' }, { layout: 'corner' }, { backing: 'scrim' }, { layout: 'full', backing: 'blur' }])
+    expect(heading(params), JSON.stringify(params)).toEqual(['warn 0-3 黑底上只有疊加層（h）：確認這段沒有畫面是刻意的']);
   // other layers (grain, a flash, a caption) over a gap do not make it a picture: asked about, not passed
   const grain = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 3), clip('c2', 6, 10)] },
     { id: 'o', kind: 'overlay', items: [{ id: 'fl', start: 0, end: 10, type: 'core.flash', params: {} }, { id: 'cap', start: 2, end: 4, type: 'core.caption', params: { text: 'x' } }] }]);
