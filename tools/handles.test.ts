@@ -1,7 +1,7 @@
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { TEMPLATES } from '@tellcut/plugin-common';
-import { BLOCK_PREFIX, CAPTION_PREFIX, CLIP_FX, CLIP_PREFIX, CORE_CATEGORY, HANDLE_FORMAT, HANDLES, handleOf, idOfHandle, MOVED, normalizeHandle, RECIPE_PREFIX, RETIRED, SFX_PREFIX, STYLE_PREFIX } from '@tellcut/protocol';
+import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
+import { BLOCK_PREFIX, CAPTION_PREFIX, TITLE_PREFIX, CLIP_FX, CLIP_PREFIX, CORE_CATEGORY, HANDLE_FORMAT, HANDLES, handleOf, idOfHandle, MOVED, normalizeHandle, RECIPE_PREFIX, RETIRED, SFX_PREFIX, STYLE_PREFIX } from '@tellcut/protocol';
 import { RECIPES } from './cut/recipes/index.ts';
 
 const prefixOf = (h: string) => h.replace(/-\d+$/, '');
@@ -19,6 +19,7 @@ async function wanted(): Promise<Map<string, string>> {
   for (const id of Object.keys(RECIPES)) out.set(`recipe:${id}`, RECIPE_PREFIX);
   for (const c of CLIP_FX) out.set(c.key, CLIP_PREFIX);
   for (const t of TEMPLATES) out.set(`caption:${t.id}`, CAPTION_PREFIX);
+  for (const t of TITLE_TEMPLATES) out.set(`title:${t.id}`, TITLE_PREFIX);
   return out;
 }
 

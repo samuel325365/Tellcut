@@ -3,7 +3,7 @@
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { allItems, envelopeAt, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
-import { PANEL_FRAME, templateOf } from '@tellcut/plugin-common';
+import { PANEL_FRAME, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { heardSpeech } from '../cut/mix.ts';
 
 export type Level = 'error' | 'warn' | 'note';
@@ -236,6 +236,12 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   if (p.meta.captionTemplate && !known(p.meta.captionTemplate)) out.push({ level: 'warn', msg: `專案的字幕範本「${p.meta.captionTemplate}」不存在，字幕會用預設外觀：npm run tellcut -- catalog CAP 列出全部（template 填 id，不是 CAP-xx 代號）` });
   const bad = allItems(p).filter(({ item }) => (item as { type?: string }).type === 'common.caption' && typeof (item as any).params?.template === 'string' && (item as any).params.template && !known((item as any).params.template));
   if (bad.length) out.push({ level: 'warn', t: span(bad[0].item.id), ids: bad.map((x) => x.item.id), msg: `字幕的範本「${(bad[0].item as any).params.template}」不存在（${bad.length} 個字幕）：npm run tellcut -- catalog CAP 列出全部，template 填 id` });
+  // title templates (spec 2026-11-05-title-templates): the same for common.heading
+  const ownT = (p.meta as { titleTemplates?: Record<string, unknown> }).titleTemplates ?? {}, knownT = (id: string) => !!titleTemplateOf(id) || id in ownT;
+  const tt = (p.meta as { titleTemplate?: string }).titleTemplate;
+  if (tt && !knownT(tt)) out.push({ level: 'warn', msg: `專案的標題範本「${tt}」不存在，標題會用預設外觀：npm run tellcut -- catalog TTL 列出全部（template 填 id，不是 TTL-xx 代號）` });
+  const badT = allItems(p).filter(({ item }) => (item as { type?: string }).type === 'common.heading' && typeof (item as any).params?.template === 'string' && (item as any).params.template && !knownT((item as any).params.template));
+  if (badT.length) out.push({ level: 'warn', t: span(badT[0].item.id), ids: badT.map((x) => x.item.id), msg: `標題的範本「${(badT[0].item as any).params.template}」不存在（${badT.length} 個標題）：npm run tellcut -- catalog TTL 列出全部，template 填 id` });
   return byTime(out);
 }
 

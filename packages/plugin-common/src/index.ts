@@ -22,6 +22,7 @@ import { outro } from './outro.ts';
 import { panel } from './panel.ts';
 import tokenItems from './token.ts';
 import { heading } from './heading/index.ts';
+export { TITLE_TEMPLATES, titleTemplateOf, type TitleTemplate } from './heading/index.ts';
 export { PANEL_FRAME, PANEL_RADIUS, panelFrame } from './panel.ts';
 export { charKinds } from './markup.ts';
 export { lineColorKey, TEMPLATES, templateOf, withTemplate, type CaptionTemplate } from './caption.ts';

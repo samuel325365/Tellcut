@@ -43,6 +43,17 @@ describe('Cut API from the sample films', () => {
     expect(first({ karaoke: false }).params.words).toBeUndefined();
   });
 
+  test('titleTemplate takes an id or its handle, only a title template\'s, and is the script\'s to set again on every run', () => {
+    const c = withSpeech([said(0, 'we take the train')]);
+    expect(() => c.titleTemplate('nope')).toThrow(/catalog TTL/);
+    expect(() => c.titleTemplate('neon-fill')).toThrow(/catalog TTL/);   // a caption template's id
+    c.titleTemplate('TTL-02');
+    expect(c.p.meta.titleTemplate).toBe('doc-rules');
+    const dir = mkdtempSync(join(tmpdir(), 'cut-')), pr = base();
+    (pr.meta as any).titleTemplate = 'doc-rules';
+    expect(new Cut(pr, inv(dir), dir).p.meta.titleTemplate).toBeUndefined();
+  });
+
   test('the film template is the script’s to set again on every run, and setting it after speech captions says so', () => {
     const dir = mkdtempSync(join(tmpdir(), 'cut-')), pr = base();
     (pr.meta as any).captionTemplate = 'clean';

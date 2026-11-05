@@ -3,6 +3,7 @@
 // block adds its samples here (golden.test.ts refuses a block without one; `npm run promote` appends one). Regenerate its picture with
 // `npm run golden -- --update <name>` after a change you meant.
 import { TEMPLATES } from './caption/templates.ts';
+import { TITLE_TEMPLATES } from './heading/templates.ts';
 
 export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean;
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }> }
@@ -592,5 +593,6 @@ export const samples: Sample[] = [
   { name: 'heading-ja', type: 'common.heading', params: { text: '広場の七百年', kicker: '第一章', sub: 'シエナ・イタリア', layout: 'lower', backing: 'bar', font: 'Noto Sans JP' }, at: [1.5], bg: '#4a5a52' },
   { name: 'heading-in-track', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'track' }, at: [0.2], bg: '#4a5a52' },
   { name: 'heading-in-rule', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'rule', backing: 'rules' }, at: [0.2, 0.45], bg: '#4a5a52' },
+  ...TITLE_TEMPLATES.map((t): Sample => ({ name: `ttl-${t.id}`, type: 'common.heading', params: { ...HEAD_ZH, template: t.id }, at: [1.5], bg: '#4a5a52' })),
   { name: 'token', type: 'common.token', params: { x: 0.3, y: 0.42, size: 0.3 }, at: [1.2, 1.7, 2.9] },
 ];

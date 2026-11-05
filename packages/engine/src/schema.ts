@@ -89,6 +89,10 @@ const ProjectShape = z.object({
     captionTemplate: z.string().optional(),
     /** caption templates of the project's own (copied from My caption templates, my-<slug>): id → the parameters it sets */
     captionTemplates: z.record(z.record(z.unknown())).optional(),
+    /** the title template (common.heading's TTL-xx, by id) every title that names none of its own draws with */
+    titleTemplate: z.string().optional(),
+    /** title templates of the project's own (copied from My title templates, my-<slug>): id → the parameters it sets */
+    titleTemplates: z.record(z.record(z.unknown())).optional(),
     mix: MixZ,
   }),
   sources: z.record(z.object({ path: z.string(), duration: z.number().positive(), width: z.number().int().positive().default(1920), height: z.number().int().positive().default(1080),

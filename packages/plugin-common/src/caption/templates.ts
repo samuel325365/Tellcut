@@ -105,10 +105,11 @@ export const templateOf = (id: unknown): CaptionTemplate | undefined => (typeof 
 
 /** The parameters a caption draws with: its own (`own`, as the item sets them), then its template's (or the project's, when it names
  *  none and `projectTemplate` is set) over `params` (its parameters with the defaults and the theme filled in); `projectTemplates`:
- *  the project's own, by id. */
-export function withTemplate<P extends object>(params: P, own: Record<string, unknown> | undefined, projectTemplate?: string, projectTemplates?: Record<string, Record<string, unknown>>): P {
+ *  the project's own, by id; `builtIn`: the built-in list it looks in (title templates for common.heading). */
+export function withTemplate<P extends object>(params: P, own: Record<string, unknown> | undefined, projectTemplate?: string, projectTemplates?: Record<string, Record<string, unknown>>,
+  builtIn: (id: unknown) => { params: Record<string, unknown> } | undefined = templateOf): P {
   // the project's own templates (copied from My caption templates) first, then the built-in ones
-  const find = (id: unknown) => (typeof id === 'string' && id && projectTemplates?.[id] ? { params: projectTemplates[id] } : templateOf(id));
+  const find = (id: unknown) => (typeof id === 'string' && id && projectTemplates?.[id] ? { params: projectTemplates[id] } : builtIn(id));
   const t = find(own?.template) ?? (own?.template ? undefined : find(projectTemplate));
   if (!t) return params;
   const out = { ...params } as Record<string, unknown>;

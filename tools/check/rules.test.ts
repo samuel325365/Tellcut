@@ -409,6 +409,16 @@ test("chosenSpec: the length (±10%) and ratio picked in the preset's form stand
   expect(presetChecks(film, chosenSpec(custom, { length: '60', ratio: '9:16' }))).toEqual([]);
 });
 
+test('a title template that does not exist is named: the film’s and a title’s own; a caption template is not a title template', () => {
+  const ttl = (id: string, template: string) => ({ id, type: 'common.heading', start: 0, end: 2, params: { text: 'hi', template } });
+  const p = project([{ id: 'main', kind: 'video', magnetic: true, items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [ttl('a', 'doc-rules'), ttl('b', 'neon-fill'), ttl('c', 'my-gold')] }]);
+  (p.meta as any).titleTemplate = 'nope';
+  (p.meta as any).titleTemplates = { 'my-gold': { style: 'gold' } };
+  const found = modelChecks(p, ok).filter((f) => f.msg.includes('標題'));
+  expect(found.map((f) => f.ids ?? [])).toEqual([[], ['b']]);
+  expect(found[0].msg).toContain('nope');
+});
+
 test('a caption template that does not exist is named: the film’s and a caption’s own (a CAP-xx handle is not an id)', () => {
   const cap = (id: string, template: string) => ({ id, type: 'common.caption', start: 0, end: 2, params: { text: 'hi', template } });
   const p = project([{ id: 'main', kind: 'video', magnetic: true, items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [cap('a', 'punch-box'), cap('b', 'CAP-12'), cap('c', 'my-pink')] }]);

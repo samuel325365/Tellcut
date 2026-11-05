@@ -6,24 +6,28 @@
 import type { ParamDef, Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
-import { TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
+import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
 import { describeRecipe } from './cut/recipes/index.ts';
 
-/** a caption template's words for --find: its id, names and what it sets */
+type Kind = 'caption' | 'title';
+const LIST: Record<Kind, CaptionTemplate[]> = { caption: TEMPLATES, title: TITLE_TEMPLATES };
+/** a template's words for --find: its id, names and what it sets */
 const templateText = (t: CaptionTemplate) => [t.id, t.label, t.doc, ...Object.entries(t.params).map(([k, v]) => `${k} ${String(v)}`)].join(' ').toLowerCase();
-const templateLine = (t: CaptionTemplate) => `  ${(handleOf(`caption:${t.id}`) ?? '').padEnd(10)}  ${t.id.padEnd(12)}  ${t.label} — ${t.doc}`;
-/** the caption templates matching every word of `query` (all of them without one) */
-export function findTemplates(query = ''): CaptionTemplate[] {
+const templateLine = (kind: Kind) => (t: CaptionTemplate) => `  ${(handleOf(`${kind}:${t.id}`) ?? '').padEnd(10)}  ${t.id.padEnd(12)}  ${t.label} — ${t.doc}`;
+/** the caption (or title) templates matching every word of `query` (all of them without one) */
+export function findTemplates(query = '', kind: Kind = 'caption'): CaptionTemplate[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return TEMPLATES.filter((t) => words.every((w) => templateText(t).includes(w)));
+  return LIST[kind].filter((t) => words.every((w) => templateText(t).includes(w)));
 }
 
-/** `catalog CAP [--find <words>]`: the caption templates, one a line (common.caption's template parameter takes the id) */
-export function formatTemplates(query = ''): string {
-  const hits = findTemplates(query);
-  if (!hits.length) return `沒有符合「${query}」的字幕範本；全部：npm run tellcut -- catalog CAP`;
-  return [`字幕範本 ${hits.length} 個${query ? `（符合「${query}」）` : ''}（common.caption 的 template 參數填 id；整支片的預設：project.json 的 meta.captionTemplate）：`, ...hits.map(templateLine), '',
-    "看某個範本設了什麼：npm run tellcut -- catalog CAP-01；講話字幕：c.speechCaptions(clip, { type: 'common.caption', karaoke: true, params: { template: '<id>' } })"].join('\n');
+/** `catalog CAP [--find <words>]` and `catalog TTL …`: the caption or title templates, one a line (the block's template parameter takes the id) */
+export function formatTemplates(query = '', kind: Kind = 'caption'): string {
+  const hits = findTemplates(query, kind), cap = kind === 'caption';
+  if (!hits.length) return `沒有符合「${query}」的${cap ? '字幕' : '標題'}範本；全部：npm run tellcut -- catalog ${cap ? 'CAP' : 'TTL'}`;
+  return [cap ? `字幕範本 ${hits.length} 個${query ? `（符合「${query}」）` : ''}（common.caption 的 template 參數填 id；整支片的預設：project.json 的 meta.captionTemplate）：`
+    : `標題範本 ${hits.length} 個${query ? `（符合「${query}」）` : ''}（common.heading 的 template 參數填 id；整支片的預設：c.titleTemplate('<id>')）：`, ...hits.map(templateLine(kind)), '',
+    cap ? "看某個範本設了什麼：npm run tellcut -- catalog CAP-01；講話字幕：c.speechCaptions(clip, { type: 'common.caption', karaoke: true, params: { template: '<id>' } })"
+      : "看某個範本設了什麼：npm run tellcut -- catalog TTL-01；用法：c.effect('common.heading', { at, len, text, kicker, sub, template: '<id>' })"].join('\n');
 }
 
 type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[]; onRequest?: boolean };
@@ -88,10 +92,11 @@ export function findBlocks(plugins: Plugin[], query: string): Entry[] {
 export function formatFind(plugins: Plugin[], query: string): string {
   mineOf(plugins);
   const mineFirst = [...plugins].sort((a, b) => Number(b.id === 'mine') - Number(a.id === 'mine'));
-  const hits = findBlocks(mineFirst, query), caps = normalizeHandle(query) ? [] : findTemplates(query);
+  const hits = findBlocks(mineFirst, query), caps = normalizeHandle(query) ? [] : findTemplates(query), ttls = normalizeHandle(query) ? [] : findTemplates(query, 'title');
   // caption templates fold into one line: there are many, and they are all the one block
-  const capLine = caps.length ? [`字幕範本 ${caps.length} 個符合（${caps.slice(0, 3).map((t) => t.id).join('、')}${caps.length > 3 ? '…' : ''}）：npm run tellcut -- catalog CAP --find ${query}`] : [];
-  if (!hits.length && capLine.length) return capLine[0];
+  const capLine = [...(caps.length ? [`字幕範本 ${caps.length} 個符合（${caps.slice(0, 3).map((t) => t.id).join('、')}${caps.length > 3 ? '…' : ''}）：npm run tellcut -- catalog CAP --find ${query}`] : []),
+    ...(ttls.length ? [`標題範本 ${ttls.length} 個符合（${ttls.slice(0, 3).map((t) => t.id).join('、')}${ttls.length > 3 ? '…' : ''}）：npm run tellcut -- catalog TTL --find ${query}`] : [])];
+  if (!hits.length && capLine.length) return capLine.join('\n');
   if (!hits.length) return `找不到符合「${query}」的積木；換個說法（例如「收據」「路線」「手寫」「計分」），或看整份：npm run tellcut -- catalog`;
   return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), ...capLine, '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
 }
@@ -179,6 +184,12 @@ export async function formatLookup(plugins: Plugin[], query: string): Promise<st
     if (!t) throw new Error(`${h} 是字幕範本 ${id.slice(8)}，但找不到它`);
     return [`${h} ${t.id} ${t.label}（字幕範本，common.caption）— ${t.doc}`, ...Object.entries(t.params).map(([k, v]) => `  ${k}：${typeof v === 'object' ? JSON.stringify(v) : String(v)}`),
       `  用法：c.effect('common.caption', { at, len, text, template: '${t.id}' })；整支片：project.json 的 meta.captionTemplate: '${t.id}'；字幕自己給的參數蓋過範本`].join('\n');
+  }
+  if (id.startsWith('title:')) {
+    const t = TITLE_TEMPLATES.find((x) => x.id === id.slice(6));
+    if (!t) throw new Error(`${h} 是標題範本 ${id.slice(6)}，但找不到它`);
+    return [`${h} ${t.id} ${t.label}（標題範本，common.heading）— ${t.doc}`, ...Object.entries(t.params).map(([k, v]) => `  ${k}：${typeof v === 'object' ? JSON.stringify(v) : String(v)}`),
+      `  用法：c.effect('common.heading', { at, len, text, kicker, sub, template: '${t.id}' })；整支片：c.titleTemplate('${t.id}')；標題自己給的參數蓋過範本`].join('\n');
   }
   const clip = CLIP_FX.find((c) => c.key === id);
   if (clip) return `${h} ${clip.label}（片段本身的效果，不是積木）— ${clip.doc}\n  cut.ts：${clip.code}`;

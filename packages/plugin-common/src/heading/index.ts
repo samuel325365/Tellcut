@@ -11,10 +11,13 @@ import type { CaptionP, CaptionS } from '../caption/types.ts';
 import { BACKINGS, buildBacking, drawBacking, type BackingEls } from './backing.ts';
 import { isTitleIn, isTitleOut, TITLE_IN, TITLE_OUT, titleAnim } from './anim.ts';
 import { fitTitleSize, TITLE_LAYOUTS, titlePlace } from './place.ts';
+import { titleTemplateOf } from './templates.ts';
+import { withTemplate } from '../caption/templates.ts';
 
 export { BACKINGS } from './backing.ts';
 export { TITLE_IN, TITLE_OUT, titleAnim } from './anim.ts';
 export { fitTitleSize, TITLE_LAYOUTS, titlePlace } from './place.ts';
+export { TITLE_TEMPLATES, titleTemplateOf, type TitleTemplate } from './templates.ts';
 
 /** the looks a title may take: every caption look but the layouts made for talk */
 export const HEADING_LOOKS = LOOKS.filter((l) => l.title !== false).map((l) => l.id);
@@ -68,7 +71,9 @@ export const heading: ItemType<HeadingP, HeadingS> = {
   },
   hide(s) { caption.hide?.(s.cap); },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080;
+    // its own parameters, then its template's (or the project's default title template), then the defaults and the theme
+    const meta = ctx.project?.meta as { titleTemplate?: string; titleTemplates?: Record<string, Record<string, unknown>> } | undefined;
+    const p = withTemplate(ctx.params, ctx.item?.params, meta?.titleTemplate, meta?.titleTemplates, titleTemplateOf), { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080;
     const text = String(p.text ?? '');
     if (!text.trim()) {   // no title: nothing at all, its kicker, sub and backing included
       for (const e of [s.inner, s.kicker, ...Object.values(s.back)]) cssCamel(e, { display: 'none' });
@@ -81,7 +86,7 @@ export const heading: ItemType<HeadingP, HeadingS> = {
       wordFx: p.wordFx, animIn: own ? 'none' : p.animIn, animOut: ownOut ? 'none' : p.animOut, animDur: p.animDur, gloss: p.sub, glossSize: p.subSize, glossColor: p.subColor,
       position: place.position, align: place.align, y: place.y, words: [] };
     // the caption's own templates never reach a title; a font the item sets itself replaces a look's own, as on a caption
-    const fontSet = !!ctx.item?.params && 'font' in ctx.item.params;
+    const fontSet = (!!ctx.item?.params && 'font' in ctx.item.params) || p.font !== ctx.params.font;
     caption.draw({ ...ctx, params: capParams, item: { ...ctx.item, params: fontSet ? { font: p.font } : {} }, project: { ...ctx.project, meta: { ...ctx.project?.meta, captionTemplate: undefined, captionTemplates: undefined } } } as never, s.cap);
     // the block's box from layout values (a centred box stands on its middle; a centre-placed one is lifted by half its height)
     const box = s.cap.box, fs = parseFloat(box.style.fontSize) || (size / 100) * H, bw = box.offsetWidth, bh = box.offsetHeight;

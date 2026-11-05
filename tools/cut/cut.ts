@@ -6,7 +6,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, createRegistry, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf } from '@tellcut/plugin-common';
+import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
 import { viewCrop, viewRect, viewHits, type Rect } from './view.ts';
@@ -132,6 +132,7 @@ export class Cut {
     delete this.p.meta.theme;
     delete this.p.meta.fx;
     delete this.p.meta.captionTemplate;   // likewise c.captionTemplate(); the project's own copies (captionTemplates) stay
+    delete this.p.meta.titleTemplate;     // and c.titleTemplate()
   }
   /** Generated narration and music (media/voice/…, media/score-…) that no item uses: an earlier run's, dropped. Imported media
    *  stays, and so does a score made by `npm run score` that the script uses through c.music(). */
@@ -634,6 +635,15 @@ export class Cut {
     this.p.meta.captionTemplate = want;
     // speech captions made before this call were made as core.caption: they must come after it
     if (allCaptions(this.p).some((i) => i.type === 'core.caption')) this.notes.push(`c.captionTemplate('${want}') 在 speechCaptions 之後才呼叫：之前做的講話字幕還是 core.caption，請把它移到 cut.ts 前面`);
+    return this;
+  }
+
+  /** The film's title template (an id from `catalog TTL`, or its handle TTL-xx): every common.heading that names none of its own
+   *  draws with it. */
+  titleTemplate(id: string) {
+    const by = idOfHandle(id), want = by?.startsWith('title:') ? by.slice(6) : id;
+    if (!titleTemplateOf(want) && !(this.p.meta.titleTemplates as Record<string, unknown> | undefined)?.[want]) throw new Error(`沒有「${id}」這個標題範本：npm run tellcut -- catalog TTL 列出全部`);
+    this.p.meta.titleTemplate = want;
     return this;
   }
 
