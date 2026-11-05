@@ -32,6 +32,17 @@ test('the snapshots stills and exports make (media-node snapshotStamp) are match
   for (const f of kept) expect(existsSync(f)).toBe(true);
 });
 
+test('a voice-over scene interrupted mid-way: its temp mp3 and wav go, the scene’s wav and a paid ElevenLabs result stay', () => {
+  const root = mkdtempSync(join(tmpdir(), 'clean-')), v = join(root, 'demo', 'media', 'voice');
+  mkdirSync(v, { recursive: true });
+  const put = (name: string) => { const f = join(v, name); writeFileSync(f, 'x'); return f; };
+  const dead = [put('s1.wav.111.tmp.mp3'), put('s1.wav.111.tmp.wav')];
+  const kept = [put('s2.wav.222.tmp.wav'), put('s1.wav'), put('s1.json'), put('s1.wav.elevenlabs.json')];
+  cleanupLeftovers(root, { alive: (pid) => pid === 222 });
+  for (const f of dead) expect(existsSync(f)).toBe(false);
+  for (const f of kept) expect(existsSync(f)).toBe(true);
+});
+
 const project = () => {
   const root = mkdtempSync(join(tmpdir(), 'clean-')), p = join(root, 'demo');
   for (const d of ['exports', 'cache/cuts', 'cache/stills', 'cache/audio', 'cache/music']) mkdirSync(join(p, d), { recursive: true });

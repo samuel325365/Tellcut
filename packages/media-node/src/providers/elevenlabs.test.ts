@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { run as ff } from '../ffmpeg.ts';
-import { ELEVENLABS_DEFAULT_VOICE, elevenLabsKey, elevenLabsTts, elevenSpeed, wordsFromAlignment } from './elevenlabs.ts';
+import { ELEVENLABS_DEFAULT_VOICE, elevenLabsKey, elevenLabsPaidFile, elevenLabsTts, elevenSpeed, wordsFromAlignment } from './elevenlabs.ts';
 import { TTS_FACTORIES } from './index.ts';
 
 let dir: string;
@@ -76,6 +76,46 @@ test('check: no key says where to put one without calling out; a key is tried ag
   const p = elevenLabsTts({ voices: ['a', 'b'] });
   expect([p.defaultVoice, p.voices()]).toEqual([ELEVENLABS_DEFAULT_VOICE, [ELEVENLABS_DEFAULT_VOICE, 'a', 'b']]);
   expect(Object.keys(TTS_FACTORIES)).toContain('elevenlabs');
+});
+
+// a fetch that never answers until its signal gives up, as a stalled connection does
+const stalled = (seen: AbortSignal[] = []) => (async (_url: string, init: RequestInit) => {
+  const signal = init.signal!;
+  seen.push(signal);
+  return new Promise<Response>((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+}) as never;
+
+test('a stalled connection: check and synth give up after their time instead of hanging; the caller’s abort still counts', async () => {
+  const p = elevenLabsTts({}, { fetch: stalled(), key: () => 'k', timeouts: { check: 50, synth: 80 } });
+  const s = await p.check();
+  expect([s.ok, s.detail]).toEqual([false, expect.stringContaining('沒有回應')]);
+  await expect(p.synth({ text: 'x', out: join(dir, 'f.wav') })).rejects.toThrow(/沒有回應.*不會自動重試/);
+  const ac = new AbortController(), seen: AbortSignal[] = [];
+  const q = elevenLabsTts({}, { fetch: stalled(seen), key: () => 'k', timeouts: { synth: 60_000 } }).synth({ text: 'x', out: join(dir, 'g.wav'), signal: ac.signal });
+  ac.abort();
+  await expect(q).rejects.toMatchObject({ name: 'AbortError' });
+  expect(readdirSync(dir)).toEqual([]);
+});
+
+test('a received result whose conversion fails is kept and used by the next run of the same request, not paid for again', async () => {
+  const mp3 = join(dir, 'src.mp3');
+  await ff(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.6', '-c:a', 'libmp3lame', mp3]);
+  let calls = 0;
+  const broken = async () => { calls++; return new Response(JSON.stringify({ audio_base64: Buffer.from('not audio').toString('base64'), alignment: align('hi') }), { status: 200 }); };
+  const p = elevenLabsTts({}, { fetch: broken as never, key: () => 'k' }), out = join(dir, 'h.wav'), paid = elevenLabsPaidFile(out);
+  await expect(p.synth({ text: 'hi', out })).rejects.toThrow(/轉成 wav 失敗.*不再計費/);
+  expect([calls, existsSync(out), readdirSync(dir).sort()]).toEqual([1, false, ['h.wav.elevenlabs.json', 'src.mp3']]);   // no half wav, no temp
+  // the same request again: no new call (whatever ElevenLabs sent is what is converted)
+  await expect(p.synth({ text: 'hi', out })).rejects.toThrow('轉成 wav 失敗');
+  expect(calls).toBe(1);
+  // say the kept audio converts this time: the wav is made from it, still without a call, and the kept file goes
+  const kept = JSON.parse(readFileSync(paid, 'utf8'));
+  writeFileSync(paid, JSON.stringify({ ...kept, audio_base64: readFileSync(mp3).toString('base64') }));
+  const r = await p.synth({ text: 'hi', out });
+  expect([calls, r.words!.map((w) => w.text), existsSync(paid), readFileSync(out).subarray(0, 4).toString()]).toEqual([1, ['hi'], false, 'RIFF']);
+  // another text is another request: it is asked for
+  await expect(p.synth({ text: 'other', out })).rejects.toThrow('轉成 wav 失敗');
+  expect(calls).toBe(2);
 });
 
 test('the key: the environment variable first', () => {

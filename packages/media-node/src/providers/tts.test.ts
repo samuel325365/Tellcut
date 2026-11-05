@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { run as ff } from '../ffmpeg.ts';
@@ -24,6 +24,7 @@ test('edge: runs the pinned package through uv tool run, turns the mp3 into a wa
   expect(r.dur).toBeGreaterThan(1.3);
   expect(r.dur).toBeLessThan(1.8);
   expect(readFileSync(out).subarray(0, 4).toString()).toBe('RIFF');
+  expect(readdirSync(dir)).toEqual(['a.wav']);   // the temp mp3 and wav are gone, the wav renamed into place
   expect(p.online).toBe(true);
   expect(p.voices()).toContain('zh-TW-HsiaoChenNeural');
 });
@@ -32,6 +33,7 @@ test('edge: a failing run is the caller\'s error and leaves no temp mp3 behind; 
   const bad = async () => { throw new Error('no network'); };
   const p = edgeTts({}, bad as never);
   await expect(p.synth({ text: 'x', out: join(dir, 'b.wav') })).rejects.toThrow('no network');
+  expect(readdirSync(dir)).toEqual([]);
   const s = await p.check();
   expect([s.ok, s.detail.includes('no network'), !!s.install]).toEqual([false, true, true]);
 });

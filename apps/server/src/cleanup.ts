@@ -10,6 +10,9 @@ import { isAlive, pruneCopies, SNAPSHOT_FILE, SNAPSHOT_INDEX } from '@tellcut/me
 // golden and thumbs draw: media-node snapshotStamp; a gallery music preview being composed in _gallery/: score-child.ts)
 const PID_FILES = [/^project\.json\.(\d+)\.tmp$/, SNAPSHOT_FILE, /^score-[^/\\]+\.wav\.(\d+)\.tmp$/];
 const PID_CACHE = SNAPSHOT_INDEX;
+// a voice-over scene being spoken (media-node providers edge.ts / elevenlabs.ts: the mp3 and the wav before its rename). A
+// result ElevenLabs sent whose wav was never made (<scene>.wav.elevenlabs.json) is not a temp: it is paid for and reused.
+const PID_VOICE = /^[^/\\]+\.wav\.(\d+)\.tmp\.(?:wav|mp3)$/;
 // half-written files with no pid, so only stale ones go: cache temps (media.ts cached, analysis.ts atomic, prepare.ts cuts and
 // music) and an interrupted export's intermediates (render.ts .video.mp4 / .mix.wav and the film being muxed, .part.mp4, all
 // hidden from the export list)
@@ -45,6 +48,8 @@ export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number)
     for (const name of readdirSync(p)) if (leftover(join(p, name), name, PID_FILES)) drop(join(p, name));
     const cache = join(p, 'cache');
     for (const name of existsSync(cache) ? readdirSync(cache) : []) if (leftover(join(cache, name), name, [PID_CACHE])) drop(join(cache, name));
+    const voice = join(p, 'media', 'voice');
+    for (const name of existsSync(voice) ? readdirSync(voice) : []) if (leftover(join(voice, name), name, [PID_VOICE])) drop(join(voice, name));
     for (const f of CACHE_DIRS.flatMap((dir) => walk(join(cache, dir)))) if (PARTIAL.test(f) && stale(f)) drop(f);
     for (const f of walk(join(p, 'exports'))) if (INTERMEDIATE.test(f) && stale(f)) drop(f);
     // copies of My blocks nothing in the project names any more (an add undone in the editor), a day old (media-node pruneCopies)
