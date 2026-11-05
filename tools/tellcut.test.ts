@@ -6,7 +6,7 @@ import { readProposal } from '@tellcut/media-node';
 import { fixture } from '../packages/engine/src/commands/test-fixture.ts';
 import { decideOnDisk, proposeOnDisk, showProject } from './tellcut.ts';
 import { saveRequest, projectHash as hashOf } from '@tellcut/media-node';
-import { commandArgs, describeRequest } from './tellcut.ts';
+import { call, commandArgs, describeRequest } from './tellcut.ts';
 import { Usage } from './usage.ts';
 
 function proj(p: unknown = fixture()) {
@@ -112,4 +112,21 @@ test('a mistyped flag or command is refused, naming it, before the project is to
   expect(() => commandArgs('shwo', ['p'], 'U')).toThrow('沒有「shwo」這個指令');
   // propose reads stdin from a lone -
   expect(commandArgs('propose', ['p', '-'], 'U').rest).toEqual(['-']);
+});
+
+test('a word more than the command takes is refused, naming it, not dropped', () => {
+  expect(() => commandArgs('show', ['p', 'extra'], 'U')).toThrow('多了用不到的字：「extra」（最多接 1 個）\nU');
+  expect(() => commandArgs('frames', ['p', '--at', '1.5,', '3'], 'U')).toThrow('「3」');
+  expect(() => commandArgs('propose', ['p', 'a.json', 'b.json'], 'U')).toThrow('「b.json」');
+  expect(commandArgs('logo', ['p', 'logo.svg'], 'U').rest).toEqual(['logo.svg']);
+});
+
+test('a proposal call to a server that never answers gives up after its timeout, saying so', async () => {
+  const { createServer } = await import('node:http');
+  const hang = createServer(() => { /* never answers */ });
+  await new Promise<void>((res) => hang.listen(0, '127.0.0.1', () => res()));
+  const port = (hang.address() as { port: number }).port;
+  try {
+    await expect(call(`http://127.0.0.1:${port}/api/projects/p/proposal/accept`, { method: 'POST', body: '{}' }, 300)).rejects.toThrow(/伺服器 0.3 秒沒有回應.*status/);
+  } finally { hang.closeAllConnections(); hang.close(); }
 });

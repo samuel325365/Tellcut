@@ -66,3 +66,67 @@ test('voice, score and library refuse a mistyped flag before reading the project
   // library's --style takes no value: the slug after it is a word
   await expect(libraryCommand(['use', 'nope', '--style', 'x'], { thumb: false })).rejects.toThrow(/nope/);
 });
+
+test('voice refuses an engine it does not have (constructor included) and a scene id narration.json does not have', async () => {
+  const { main: voice } = await import('./voice.ts');
+  const { Usage } = await import('./usage.ts');
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const projectsDir = mkdtempSync(join(tmpdir(), 'voice-'));
+  mkdirSync(join(projectsDir, 'p'));
+  writeFileSync(join(projectsDir, 'p', 'project.json'), '{}');
+  writeFileSync(join(projectsDir, 'p', 'narration.json'), JSON.stringify({ scenes: [{ id: 's01', text: '一' }, { id: 's02', text: '二' }] }));
+  const run = (argv: string[]) => voice(argv, () => {}, { projectsDir });
+  for (const engine of ['constructor', 'edgee', 'toString'])
+    await expect(run(['p', '--engine', engine]), engine).rejects.toThrow(`沒有「${engine}」這個語音引擎；有：edge、elevenlabs、fake`);
+  await expect(run(['p', '--engine', 'constructor'])).rejects.toBeInstanceOf(Usage);
+  await expect(run(['p', 's01', 's3', 'x', '--engine', 'fake'])).rejects.toThrow('narration.json 沒有場景 s3、x；有：s01、s02');
+  await expect(run(['p', 's3', '--engine', 'fake'])).rejects.toBeInstanceOf(Usage);
+});
+
+test('score: no project or no --style is a usage error (exit 2)', async () => {
+  const { main: score } = await import('./score.ts');
+  const { Usage } = await import('./usage.ts');
+  await expect(score([])).rejects.toBeInstanceOf(Usage);
+  await expect(score(['--style', 'lofi'])).rejects.toThrow(/^用法：npm run score/);
+});
+
+test('examples reads its command line in English: an unknown flag, --help, and names with --all', async () => {
+  const { examplesArgs } = await import('./examples.ts');
+  const { Help } = await import('./args.ts');
+  const { Usage } = await import('./usage.ts');
+  expect(examplesArgs(['a', 'b'])).toEqual({ all: false, names: ['a', 'b'] });
+  expect(examplesArgs(['--all'])).toEqual({ all: true, names: [] });
+  expect(() => examplesArgs(['--al'])).toThrow('There is no option --al (the options are: --all)\nUsage: npm run examples');
+  expect(() => examplesArgs(['--al'])).toThrow(Usage);
+  expect(() => examplesArgs(['--help'])).toThrow(Help);
+  expect(() => examplesArgs(['--all', 'a'])).toThrow(/not both/);
+});
+
+// --help is asking, not a mistake: the usage on stdout with exit code 0, from every tool (args.ts Help); a word more than a tool
+// takes is refused with 2 (check and golden dropped it)
+test('--help prints the usage on stdout with 0; a word too many is refused with 2', async () => {
+  const { spawn } = await import('node:child_process');
+  const { join } = await import('node:path');
+  const { TELLCUT_ROOT } = await import('@tellcut/media-node');
+  const cli = join(TELLCUT_ROOT, 'node_modules/tsx/dist/cli.mjs');
+  const run = (args: string[]) => new Promise<{ code: number | null; out: string; err: string }>((res) => {
+    const c = spawn(process.execPath, [cli, join('tools', args[0]), ...args.slice(1)], { cwd: TELLCUT_ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    c.stdout.on('data', (d) => (out += d)); c.stderr.on('data', (d) => (err += d));
+    c.on('close', (code) => res({ code, out, err }));
+  });
+  const [check, tellcut, voice, extraCheck, extraGolden, extraShow] = await Promise.all([
+    run(['check.ts', '--help']), run(['tellcut.ts', 'show', '--help']), run(['voice.ts', '-h']),
+    run(['check.ts', 'some-project', 'extra']), run(['golden.ts', 'heading', 'extra']), run(['tellcut.ts', 'show', 'some-project', 'extra'])]);
+  for (const [r, what] of [[check, 'check'], [tellcut, 'tellcut show'], [voice, 'voice']] as const) {
+    expect(r.code, what).toBe(0);
+    expect(r.out, what).toMatch(/^用法：/);
+    expect(r.err, what).toBe('');
+  }
+  for (const [r, what] of [[extraCheck, 'check'], [extraGolden, 'golden'], [extraShow, 'tellcut show']] as const) {
+    expect(r.code, what).toBe(2);
+    expect(r.err, what).toContain('多了用不到的字：「extra」');
+  }
+}, 120_000);

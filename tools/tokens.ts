@@ -127,7 +127,7 @@ export function formatSubagents(all: Array<[string, Totals]>): string {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const usage = '用法：npm run tokens -- <專案名|home>   或   npm run tokens -- --session|--subagents <對話紀錄.jsonl>';
-  const a = parseArgsOrExit(process.argv.slice(2), { '--session': 'value', '--subagents': 'value' }, usage), [id] = a.words, projects = join(import.meta.dirname, '..', 'projects');
+  const a = parseArgsOrExit(process.argv.slice(2), { '--session': 'value', '--subagents': 'value' }, usage, { maxWords: 1 }), [id] = a.words, projects = join(import.meta.dirname, '..', 'projects');
   // one thing to count: a project (or home), or one conversation file
   if ([id !== undefined, a.has('--session'), a.has('--subagents')].filter(Boolean).length > 1) { console.error(usage); process.exit(2); }
   if (id === 'home') { console.log(formatTotals(sumChat({ messages: homeThreads(projects).flatMap((t) => t.messages ?? []) }))); process.exit(0); }

@@ -5,20 +5,28 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { projectArg } from './project-arg.ts';
-import { parseArgs, type FlagSpec } from './args.ts';
+import { parseArgs, printFailure, type FlagSpec } from './args.ts';
 import { Usage } from './usage.ts';
-import { loadProvidersConfig, parseNarration, renderVoice, transcribeProvider, ttsProvider, type VoiceInfo } from '@tellcut/media-node';
+import { loadProvidersConfig, parseNarration, renderVoice, transcribeProvider, TTS_FACTORIES, ttsProvider, type VoiceInfo } from '@tellcut/media-node';
 
 const USAGE = '用法：npm run voice -- <專案> [場景 id ...] [--engine edge|elevenlabs] [--force]';
 export const VOICE_FLAGS: FlagSpec = { '--engine': 'value', '--force': 'switch' };
 
-export async function main(argv: string[], log: (s: string) => void = console.log): Promise<Record<string, VoiceInfo>> {
+export async function main(argv: string[], log: (s: string) => void = console.log, o: { projectsDir?: string } = {}): Promise<Record<string, VoiceInfo>> {
   // a mistyped flag is refused here: `--forse s01` once read s01 as its value and made every scene again
   const flags = parseArgs(argv, VOICE_FLAGS, USAGE), [id, ...only] = flags.words;
-  const dir = projectArg(id, USAGE);
+  // an engine Tellcut does not have is refused before the project is read; hasOwn, so `constructor` is no engine either (a plain
+  // lookup found Object's own and called it)
+  const engines = Object.keys(TTS_FACTORIES), asked = flags.get('--engine');
+  if (asked !== undefined && !Object.hasOwn(TTS_FACTORIES, asked)) throw new Usage(`沒有「${asked}」這個語音引擎；有：${engines.join('、')}\n${USAGE}`);
+  const dir = projectArg(id, USAGE, o);
   if (!existsSync(join(dir, 'narration.json'))) throw new Error(`projects/${id}/narration.json 不存在`);
   const narration = parseNarration(JSON.parse(readFileSync(join(dir, 'narration.json'), 'utf8')));
-  const config = loadProvidersConfig(), engine = flags.get('--engine') ?? config.tts.use;
+  // a mistyped scene id spoke nothing and said nothing (0 句)
+  const ids = narration.scenes.map((s) => s.id), unknown = only.filter((s) => !ids.includes(s));
+  if (unknown.length) throw new Usage(`narration.json 沒有場景 ${unknown.join('、')}；有：${ids.join('、')}`);
+  const config = loadProvidersConfig(), engine = asked ?? config.tts.use;
+  if (!Object.hasOwn(TTS_FACTORIES, engine)) throw new Error(`providers.json 的 tts 用「${engine}」，但沒有這個語音引擎；有：${engines.join('、')}`);
   const tts = ttsProvider({ ...config, tts: { ...config.tts, use: engine } });
   const status = await tts.check();
   if (!status.ok) throw new Error(`${tts.label} 不能用：${status.detail}${status.install ? `\n→ ${status.install}` : ''}`);
@@ -29,5 +37,5 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   main(process.argv.slice(2)).then((out) => {
     const total = Object.values(out).reduce((s, v) => s + v.dur, 0);
     console.log(`\n共 ${Object.keys(out).length} 句、${total.toFixed(1)} 秒；放進時間軸：c.voice('<場景 id>')`);
-  }).catch((e: Error) => { console.error(e.message); process.exit(e instanceof Usage ? 2 : 1); });
+  }).catch((e: Error) => { process.exit(printFailure(e)); });
 }

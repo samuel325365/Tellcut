@@ -7,7 +7,7 @@ import { samples } from '@tellcut/plugin-common/samples';
 import { plugins } from '@tellcut/plugins';
 import { parseArgsOrExit } from './args.ts';
 
-const args = parseArgsOrExit(process.argv.slice(2), { '--update': 'switch' }, '用法：npm run golden -- [--update] [<名稱開頭>]');
+const args = parseArgsOrExit(process.argv.slice(2), { '--update': 'switch' }, '用法：npm run golden -- [--update] [<名稱開頭>]', { maxWords: 1 });
 const update = args.has('--update'), only = args.words[0];
 const chosen = (samples as GoldenCase[]).filter((c) => !only || c.name.startsWith(only));
 if (!chosen.length) { console.error(`沒有符合「${only}」的 golden 案例`); process.exit(2); }

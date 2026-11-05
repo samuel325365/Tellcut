@@ -102,7 +102,8 @@ test('batch:render args: id and --slots in any order, the rest goes to render, v
   expect(renderArgs(['--slots', '3', 'food'])).toEqual({ id: 'food', slots: 3, extra: [] });
   expect(renderArgs(['food'])).toEqual({ id: 'food', slots: 2, extra: [] });
   expect(renderArgs(['food', '--stills', '1.5,3', '--slots', '1'])).toEqual({ id: 'food', slots: 1, extra: ['--stills', '1.5,3'] });
-  expect(renderArgs(['food', '--slots', 'x'])!.slots).toBe(2);
+  // a --slots that is no whole number from 1 up is refused, not read as 2 (--slots 0 once queued two at a time)
+  for (const bad of ['x', '0', '-1', '1.5', '']) expect(() => renderArgs(['food', '--slots', bad]), bad).toThrow('--slots 要是 1 以上的整數');
   expect(renderArgs(['--from', '2', 'food', '--to', '5'])).toEqual({ id: 'food', slots: 2, extra: ['--from', '2', '--to', '5'] });
   expect(renderArgs(['food', '--from=2'])).toEqual({ id: 'food', slots: 2, extra: ['--from', '2'] });
   expect(renderArgs([])).toBeNull();

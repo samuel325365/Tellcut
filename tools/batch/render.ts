@@ -7,7 +7,8 @@ import { pathToFileURL } from 'node:url';
 import { exportBusy, pause, shellQuoter, TELLCUT_ROOT } from '@tellcut/media-node';
 import { holders, keepSlot, releaseSlot, takeSlot } from './queue.ts';
 import { projectArgOrExit } from '../project-arg.ts';
-import { parseArgs as parseArgs_, type FlagSpec } from '../args.ts';
+import { parseArgs as parseArgs_, printFailure, type FlagSpec } from '../args.ts';
+import { Usage } from '../usage.ts';
 export const LOCK_DIR = join(TELLCUT_ROOT, '.cache', 'batch-render-slots');
 const USAGE = '用法：npm run batch:render -- <專案> [--slots 2] [render 的選項]';
 
@@ -17,10 +18,12 @@ export const PASSED = ['--stills', '--from', '--to'];
 const SPEC: FlagSpec = { '--slots': 'value', ...Object.fromEntries(PASSED.map((f) => [f, 'value' as const])) };
 
 /** `<id> [--slots n] [render options]` in any order; a flag render does not take is refused here, before waiting for a slot.
- *  --slots that is no number is the default. null when there is not exactly one project id; Usage for a wrong flag. */
+ *  null when there is not exactly one project id; Usage for a wrong flag, or --slots that is no whole number from 1 up (0 and
+ *  abc used to be read as the default 2). */
 export function parseArgs(argv: string[]): { id: string; slots: number; extra: string[] } | null {
   const a = parseArgs_(argv, SPEC, USAGE);
-  const slots = a.has('--slots') ? Math.max(1, Math.floor(Number(a.get('--slots'))) || 2) : 2;
+  const given = a.get('--slots'), slots = given === undefined ? 2 : Number(given);
+  if (given !== undefined && (!given.trim() || !Number.isInteger(slots) || slots < 1)) throw new Usage(`--slots 要是 1 以上的整數（給的是「${given}」）\n${USAGE}`);
   const extra = PASSED.flatMap((f) => (a.has(f) ? [f, a.get(f)!] : []));
   return a.words.length === 1 ? { id: a.words[0], slots, extra } : null;
 }
@@ -42,7 +45,7 @@ export const renderSteps = (id: string, extra: string[]): string[][] => [['rende
 
 async function main() {
   let args: ReturnType<typeof parseArgs>;
-  try { args = parseArgs(process.argv.slice(2)); } catch (e) { console.error((e as Error).message); process.exit(2); }
+  try { args = parseArgs(process.argv.slice(2)); } catch (e) { process.exit(printFailure(e)); }
   if (!args) { console.error(USAGE); process.exit(2); }
   const { id, slots, extra } = args;
   const pdir = projectArgOrExit(id, USAGE);   // the server's spelling of it, before waiting for a slot (render.ts would refuse another)

@@ -18,7 +18,7 @@ async function serverBusy(project: string): Promise<ServerBusy> {
 }
 
 const USAGE = '用法：npm run inspect -- <專案名> [--source <素材> [--range 開始-結束]] [--json] [--no-transcribe]';
-const args = parseArgsOrExit(process.argv.slice(2), { '--source': 'value', '--range': 'value', '--json': 'switch', '--no-transcribe': 'switch' }, USAGE);
+const args = parseArgsOrExit(process.argv.slice(2), { '--source': 'value', '--range': 'value', '--json': 'switch', '--no-transcribe': 'switch' }, USAGE, { maxWords: 1 });
 const id = args.words[0], dir = projectArgOrExit(id, USAGE);
 try {
   const r = args.get('--range'), range = r !== undefined ? parseRange(r) : undefined;

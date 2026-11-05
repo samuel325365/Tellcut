@@ -152,14 +152,14 @@ export function importProject(zip: string, projectsDir: string, as?: string): st
 
 function main(argv: string[]) {
   if (process.env.npm_lifecycle_event === 'import-project') {
-    const usage = '用法：npm run import-project -- <檔案.zip> [--as <新名稱>]', a = parseArgsOrExit(argv, { '--as': 'value' }, usage), [zip] = a.words;
+    const usage = '用法：npm run import-project -- <檔案.zip> [--as <新名稱>]', a = parseArgsOrExit(argv, { '--as': 'value' }, usage, { maxWords: 1 }), [zip] = a.words;
     if (!zip) { console.error(usage); process.exit(2); }
     const at = importProject(resolve(process.env.INIT_CWD ?? process.cwd(), zip), join(TELLCUT_ROOT, 'projects'), a.get('--as'));
     console.log(`匯入了：${at}\n素材分析會在打開專案或跑 npm run inspect 時重做。`);
     return;
   }
   const usage = '用法：npm run export-project -- <專案> [--media] [--public] [--out <檔案.zip>]';
-  const a = parseArgsOrExit(argv, { '--media': 'switch', '--public': 'switch', '--out': 'value' }, usage);
+  const a = parseArgsOrExit(argv, { '--media': 'switch', '--public': 'switch', '--out': 'value' }, usage, { maxWords: 1 });
   const dir = projectArgOrExit(a.words[0], usage);
   const media = a.has('--media'), out = a.get('--out');
   const zip = exportProject(dir, { media, public: a.has('--public'), out: out && resolve(process.env.INIT_CWD ?? process.cwd(), out) });

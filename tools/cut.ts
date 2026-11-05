@@ -9,7 +9,7 @@ import { projectArgOrExit } from './project-arg.ts';
 import { parseArgsOrExit } from './args.ts';
 
 const USAGE = '用法：npm run cut -- <專案名> [--force] [--no-transcribe]   （需要 tellcut/projects/<專案名>/cut.ts）';
-const args = parseArgsOrExit(process.argv.slice(2), { '--force': 'switch', '--no-transcribe': 'switch' }, USAGE);
+const args = parseArgsOrExit(process.argv.slice(2), { '--force': 'switch', '--no-transcribe': 'switch' }, USAGE, { maxWords: 1 });
 const id = args.words[0], dir = projectArgOrExit(id, USAGE), script = join(dir, 'cut.ts');
 if (!existsSync(script)) { console.error(USAGE); process.exit(2); }
 const force = args.has('--force');

@@ -29,7 +29,7 @@ import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
 import { secsList } from '@tellcut/plugin-common/speech';
 import { projectArg } from './project-arg.ts';
-import { parseArgs, type Args, type FlagSpec } from './args.ts';
+import { parseArgs, printFailure, type Args, type FlagSpec } from './args.ts';
 import { registerImage } from './image-source.ts';
 
 const f2 = (v: number) => v.toFixed(2);
@@ -140,8 +140,16 @@ async function server(id: string): Promise<{ connected: boolean; selection: stri
   try { const r = await fetch(api(id, '/editor-state'), { signal: AbortSignal.timeout(1000) }); return r.ok ? await r.json() : null; }
   catch { return null; }
 }
-async function call(url: string, init: RequestInit = {}) {
-  const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json' } });
+/** how long a proposal call waits for the server: longer than the server's own wait for the editor (live.ts, 10 s, then a 504),
+ *  so that answer arrives first; a server that hangs is given up on instead of holding the page chat's turn */
+export const CALL_TIMEOUT_MS = 30_000;
+export async function call(url: string, init: RequestInit = {}, timeoutMs = CALL_TIMEOUT_MS) {
+  let r: Response;
+  try { r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(timeoutMs) }); }
+  catch (e) {
+    if ((e as Error).name !== 'TimeoutError') throw e;
+    throw new Error(`伺服器 ${timeoutMs / 1000} 秒沒有回應（${url}）：用 npm run tellcut -- status <專案> 看提議現在的狀態`);
+  }
   const body: any = await r.json().catch(() => ({}));
   return { status: r.status, body };
 }
@@ -169,12 +177,15 @@ const COMMAND_FLAGS: Record<string, FlagSpec> = {
   request: { '--id': 'value', '--frames': 'switch', '--full': 'switch' },
 };
 const COMMANDS = ['show', 'selection', 'propose', 'status', 'accept', 'reject', 'frames', 'logo', 'image', 'site', 'request'];
+/** how many words each command takes, the project included: one more is refused, not dropped (`show demo extra` showed demo) */
+const COMMAND_WORDS: Record<string, number> = { propose: 2, logo: 2, image: 2, site: 2 };
 
 /** a command on a project, after its name: the flags it takes wherever they stand (`logo --name Acme logo.svg` and `logo.svg
- *  --name Acme` read the same), the first word the project, the others after it. Usage for an unknown command or flag. */
+ *  --name Acme` read the same), the first word the project, the others after it. Usage for an unknown command or flag, or a
+ *  word more than the command takes. */
 export function commandArgs(cmd: string, argv: string[], usage: string): { id?: string; rest: string[]; flags: Args } {
   if (!COMMANDS.includes(cmd)) throw new Usage(`沒有「${cmd}」這個指令\n${usage}`);
-  const flags = parseArgs(argv, COMMAND_FLAGS[cmd] ?? {}, usage), [id, ...rest] = flags.words;
+  const flags = parseArgs(argv, COMMAND_FLAGS[cmd] ?? {}, usage, { maxWords: COMMAND_WORDS[cmd] ?? 1 }), [id, ...rest] = flags.words;
   return { id, rest, flags };
 }
 
@@ -202,10 +213,10 @@ async function main(argv: string[]) {
     console.log(find ? formatFind(all, words.join(' ')) : type ? await formatLookup(all, type) : `${formatCatalog(all)}\n\n${describeRecipe()}`);
     return;
   }
-  if (cmd === 'recipe') { console.log(describeRecipe(parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- recipe [配方]').words[0])); return; }
-  if (cmd === 'cut-api') { parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- cut-api'); console.log(formatCutApi()); return; }
+  if (cmd === 'recipe') { console.log(describeRecipe(parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- recipe [配方]', { maxWords: 1 }).words[0])); return; }
+  if (cmd === 'cut-api') { parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- cut-api', { maxWords: 0 }); console.log(formatCutApi()); return; }
   if (cmd === 'font3d') {
-    const id = parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- font3d <sans|serif|round|ja>').words[0];
+    const id = parseArgs(argv.slice(1), {}, '用法：npm run tellcut -- font3d <sans|serif|round|ja>', { maxWords: 1 }).words[0];
     if (!id) throw new Usage('用法：npm run tellcut -- font3d <sans|serif|round|ja>（黑體、明體、圓體，跟著品牌的字感；ja 是日文的黑體）');
     const pub = join(TELLCUT_ROOT, 'apps/player/public/fonts/files'), dist = join(TELLCUT_ROOT, 'apps/player/dist');
     const { file, downloaded } = await ensureFont3d(id as Feel, { dirs: existsSync(dist) ? [pub, join(dist, 'fonts/files')] : [pub], log: console.log });
@@ -342,5 +353,6 @@ async function main(argv: string[]) {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   // exitCode, not exit(): exiting while a handle was still closing crashed Node on Windows (a libuv assertion, exit 127 to the
   // page chat, after the real error had been printed)
-  main(process.argv.slice(2)).catch((e) => { console.error(e instanceof Error ? e.message : e); process.exitCode = e instanceof Usage ? 2 : 1; });
+  // --help prints its usage on stdout with 0, like every tool (printFailure)
+  main(process.argv.slice(2)).catch((e) => { process.exitCode = printFailure(e); });
 }

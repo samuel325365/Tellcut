@@ -18,7 +18,7 @@ import { parseArgsOrExit } from './args.ts';
 /** the project's own music styles (projects/<id>/score/*.js) follow the same rules as its effects */
 const projectStyleFiles = (d: string) => (existsSync(join(d, 'score')) ? readdirSync(join(d, 'score')).filter((f) => f.endsWith('.js')).map((f) => `score/${f}`) : []);
 const USAGE = '用法：npm run check -- <專案名> [--quick] [--sheet]';
-const args = parseArgsOrExit(process.argv.slice(2), { '--quick': 'switch', '--sheet': 'switch' }, USAGE);
+const args = parseArgsOrExit(process.argv.slice(2), { '--quick': 'switch', '--sheet': 'switch' }, USAGE, { maxWords: 1 });
 const id = args.words[0], dir = projectArgOrExit(id, USAGE);
 const p = parseProject(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')));
 const transcripts: Record<string, Transcript | null> = {}, burned: Record<string, Burned | null> = {}, shots: Record<string, number[] | null> = {};

@@ -45,7 +45,7 @@ export function applyStylePromotion(p: StylePromotion) {
 
 async function main() {
   const usage = '用法：npm run promote-style -- <專案> <風格 id> [--yes]';
-  const a = parseArgsOrExit(process.argv.slice(2), { '--yes': 'switch' }, usage), [id, style] = a.words;
+  const a = parseArgsOrExit(process.argv.slice(2), { '--yes': 'switch' }, usage, { maxWords: 2 }), [id, style] = a.words;
   if (!id || !style) { console.error(usage); process.exit(2); }
   try {
     const p = await planStylePromotion({ dir: projectArgOrExit(id, usage), id: style });

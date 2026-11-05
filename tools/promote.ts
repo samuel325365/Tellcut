@@ -167,7 +167,7 @@ export async function applyPromotion(o: { dir: string; commonDir: string; plan: 
 
 async function main() {
   const usage = '用法：npm run promote -- <專案> <fx.類型> [--as 名稱] [--category 分類] [--yes]';
-  const a = parseArgsOrExit(process.argv.slice(2), { '--as': 'value', '--category': 'value', '--yes': 'switch' }, usage);
+  const a = parseArgsOrExit(process.argv.slice(2), { '--as': 'value', '--category': 'value', '--yes': 'switch' }, usage, { maxWords: 2 });
   const [id, type] = a.words, name = a.get('--as'), category = a.get('--category');
   if (!id || !type) { console.error(usage); process.exit(2); }
   const dir = projectArgOrExit(id, usage), commonDir = resolve(TELLCUT_ROOT, 'packages', 'plugin-common');

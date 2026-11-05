@@ -12,7 +12,8 @@ import { pathToFileURL } from 'node:url';
 import { PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
 import { ImportError, importProject } from './export-project.ts';
 import { fetchIdle, idleTimer, Stalled } from './setup/fetch-idle.ts';
-import { parseArgs } from './args.ts';
+import { parseArgs, printFailure } from './args.ts';
+import { Usage } from './usage.ts';
 
 export const REPO = 'samuel325365/Tellcut', TAG = 'examples';
 export const RELEASE_API = `https://api.github.com/repos/${REPO}/releases/tags/${TAG}`;
@@ -96,8 +97,16 @@ export async function installExample(ex: Example, o: { fetch?: Fetch; projectsDi
   return { dir, installed: true };
 }
 
+const USAGE = 'Usage: npm run examples -- [<name>… | --all]';
+/** the command line, its problems said in English (this tool's language): names, or --all; both at once is refused */
+export function examplesArgs(argv: string[]): { all: boolean; names: string[] } {
+  const a = parseArgs(argv, { '--all': 'switch' }, USAGE, { lang: 'en' }), all = a.has('--all'), names = a.words;
+  if (all && names.length) throw new Usage(`--all installs every example: give names or --all, not both\n${USAGE}`);
+  return { all, names };
+}
+
 async function main(argv: string[]) {
-  const a = parseArgs(argv, { '--all': 'switch' }, 'Usage: npm run examples -- [<name>… | --all]'), all = a.has('--all'), names = a.words;
+  const { all, names } = examplesArgs(argv);
   const list = await listExamples(), projectsDir = join(TELLCUT_ROOT, 'projects');
   if (!all && !names.length) {
     console.log(`Example projects (${RELEASE_PAGE}):\n`);
@@ -118,4 +127,4 @@ async function main(argv: string[]) {
 }
 
 // exitCode, not exit(): exiting while fetch's sockets close trips a libuv assertion on Windows
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main(process.argv.slice(2)).catch((e: Error) => { console.error(e.message); process.exitCode = 1; });
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main(process.argv.slice(2)).catch((e: Error) => { process.exitCode = printFailure(e); });

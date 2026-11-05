@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TELLCUT_ROOT, createProject, tellcutUrl } from '@tellcut/media-node';
 import { Usage } from './usage.ts';
-import { parseArgs, type FlagSpec } from './args.ts';
+import { parseArgs, printFailure, type FlagSpec } from './args.ts';
 
 const USAGE = '用法：npm run new -- <專案名> <資料夾|檔案|網址>... [--size 1920x1080] [--fps 30] [--name 名稱] [--audio] [--force]\n'
   + '      沒有素材的動畫解說片：npm run new -- <專案名> --blank [--size 1080x1920]';
@@ -30,7 +30,7 @@ export function newArgs(argv: string[]): NewArgs {
 
 async function main(argv: string[]) {
   let a: NewArgs;
-  try { a = newArgs(argv); } catch (e) { console.error((e as Error).message); process.exit(2); }
+  try { a = newArgs(argv); } catch (e) { process.exit(printFailure(e)); }
   const { id } = a;
   try {
     const r = await createProject({ id, inputs: a.inputs, projectsDir: join(TELLCUT_ROOT, 'projects'), size: a.size, force: a.force, audioUrls: a.audio, blank: a.blank,

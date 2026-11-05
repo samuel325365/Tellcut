@@ -1,5 +1,5 @@
 // The one way every command line reads its flags (tools/args.ts).
-import { parseArgs } from './args.ts';
+import { Help, parseArgs, printFailure } from './args.ts';
 import { Usage } from './usage.ts';
 
 const SPEC = { '--engine': 'value', '--force': 'switch', '--opt': 'list' } as const;
@@ -52,6 +52,7 @@ test('a list flag repeats, in order; -- ends the flags; - and negative numbers a
 
 test('--help / -h answer with the usage alone; num refuses what is not a number', () => {
   expect(err(['--help'], '用法：x').message).toBe('用法：x');
+  expect(err(['--help'], '用法：x')).toBeInstanceOf(Help);
   expect(err(['p', '-h'], '用法：x').message).toBe('用法：x');
   expect(parseArgs(['--engine', '1.5'], SPEC).num('--engine')).toBe(1.5);
   expect(parseArgs([], SPEC).num('--engine')).toBeUndefined();
@@ -59,4 +60,27 @@ test('--help / -h answer with the usage alone; num refuses what is not a number'
   expect(() => parseArgs(['--engine', ' '], SPEC).num('--engine')).toThrow('--engine 要是數字');
   // asking for a flag the spec lacks is the tool's bug, said in English
   expect(() => parseArgs([], SPEC).has('--forse')).toThrow('not in the spec');
+});
+
+test('maxWords refuses the words past it, naming them; fewer are fine', () => {
+  expect(parseArgs(['p'], SPEC, undefined, { maxWords: 1 }).words).toEqual(['p']);
+  expect(() => parseArgs(['p', 'x', 'y'], SPEC, 'U', { maxWords: 1 })).toThrow('多了用不到的字：「x」、「y」（最多接 1 個）\nU');
+  expect(() => parseArgs(['x'], {}, undefined, { maxWords: 0 })).toThrow('這個指令不接其他字');
+  expect(() => parseArgs(['p', 'x'], SPEC, undefined, { maxWords: 1 })).toThrow(Usage);
+});
+
+test('lang en says the problems in English', () => {
+  const en = { lang: 'en' } as const;
+  expect(() => parseArgs(['--x'], { '--all': 'switch' }, 'Usage: y', en)).toThrow('There is no option --x (the options are: --all)\nUsage: y');
+  expect(() => parseArgs(['--all=1'], { '--all': 'switch' }, undefined, en)).toThrow('--all takes no value');
+  expect(() => parseArgs(['a', 'b'], {}, undefined, { ...en, maxWords: 1 })).toThrow('Unexpected "b" (at most 1 word)');
+  expect(() => parseArgs(['--help'], {}, 'Usage: y', en)).toThrow(Help);
+});
+
+test('printFailure: --help on stdout with 0, a Usage on stderr with 2, anything else on stderr with 1', () => {
+  const said: string[] = [], out = { log: (s: string) => said.push(`out ${s}`), error: (s: string) => said.push(`err ${s}`) };
+  expect(printFailure(new Help('用法：x'), out)).toBe(0);
+  expect(printFailure(new Usage('用法：y'), out)).toBe(2);
+  expect(printFailure(new Error('壞了'), out)).toBe(1);
+  expect(said).toEqual(['out 用法：x', 'err 用法：y', 'err 壞了']);
 });

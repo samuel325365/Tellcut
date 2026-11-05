@@ -10,7 +10,7 @@ import { libraryRoot, listLibrary, loadAllStyles, projectDirOf, SCORE_LIBRARY, T
 import { handleOf } from '@tellcut/protocol';
 import { fxChecks } from './check/rules.ts';
 import { PROJECTS_DIR } from './project-arg.ts';
-import { parseArgs, type FlagSpec } from './args.ts';
+import { parseArgs, printFailure, type FlagSpec } from './args.ts';
 import { Usage } from './usage.ts';
 
 const projectDir = (id: string) => projectDirOf(PROJECTS_DIR, id, { internal: true });
@@ -36,7 +36,7 @@ export async function main(argv: string[]): Promise<string> {
   const loaded = await loadAllStyles(id ? projectDir(id) : undefined);
   if (flags.has('--styles')) return `配樂風格：\n${listStyles(loaded, listLibrary(libraryRoot(join(TELLCUT_ROOT, 'projects'))).styles)}`;
   const style = flags.get('--style');
-  if (!id || !style) throw new Error(`${USAGE}\n\n配樂風格：\n${listStyles(loaded)}`);
+  if (!id || !style) throw new Usage(`${USAGE}\n\n配樂風格：\n${listStyles(loaded)}`);
   const broken = loaded.errors.find((e) => e.file.endsWith(`${style}.js`));
   if (!STYLES[style] && !loaded.styles[style]) throw new Error(broken ? `風格「${style}」載入失敗：${broken.message}` : `沒有「${style}」這個風格\n\n配樂風格：\n${listStyles(loaded)}`);
   // a style that is not built in is code someone wrote for one project: the same rules as a project's own effects
@@ -49,7 +49,7 @@ export async function main(argv: string[]): Promise<string> {
   const num = (k: string, positive = true) => {
     if (!flags.has(k)) return undefined;
     const v = flags.get(k)!, n = Number(v);
-    if (!v.trim() || !Number.isFinite(n) || (positive && !(n > 0))) throw new Error(`${k}「${v}」要是${positive ? '大於 0 的' : ''}數字`);
+    if (!v.trim() || !Number.isFinite(n) || (positive && !(n > 0))) throw new Usage(`${k}「${v}」要是${positive ? '大於 0 的' : ''}數字`);
     return n;
   };
   const r = writeScore(projectDir(id), { style, styles: loaded.styles, length: num('--length') ?? 30, bpm: num('--bpm'), key: flags.get('--key'), seed: num('--seed', false), name: flags.get('--name') });
@@ -58,5 +58,5 @@ export async function main(argv: string[]): Promise<string> {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  main(process.argv.slice(2)).then((s) => console.log(s)).catch((e: Error) => { console.error(e.message); process.exit(e instanceof Usage ? 2 : 1); });
+  main(process.argv.slice(2)).then((s) => console.log(s)).catch((e: Error) => { process.exit(printFailure(e)); });
 }
