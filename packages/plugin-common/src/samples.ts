@@ -593,6 +593,7 @@ export const samples: Sample[] = [
   { name: 'heading-ja', type: 'common.heading', params: { text: '広場の七百年', kicker: '第一章', sub: 'シエナ・イタリア', layout: 'lower', backing: 'bar', font: 'Noto Sans JP' }, at: [1.5], bg: '#4a5a52' },
   { name: 'heading-in-track', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'track' }, at: [0.2], bg: '#4a5a52' },
   { name: 'heading-in-rule', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'rule', backing: 'rules' }, at: [0.2, 0.45], bg: '#4a5a52' },
+  ...['serif', 'spaced', 'stack', 'sign', 'vintage', 'seal', 'split', 'giant', 'script', 'ribbon'].map((style): Sample => ({ name: `heading-look-${style}`, type: 'common.heading', params: { ...HEAD_ZH, style }, at: [1.5], bg: '#4a5a52' })),
   ...TITLE_TEMPLATES.map((t): Sample => ({ name: `ttl-${t.id}`, type: 'common.heading', params: { ...HEAD_ZH, template: t.id }, at: [1.5], bg: '#4a5a52' })),
   { name: 'token', type: 'common.token', params: { x: 0.3, y: 0.42, size: 0.3 }, at: [1.2, 1.7, 2.9] },
 ];

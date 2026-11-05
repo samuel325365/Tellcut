@@ -9,11 +9,14 @@ import { chrome, duotone, flow, gold, gradient, halo, neon } from './glow.ts';
 import { bar, chalk, chat, comic, dialog, lyric, news, qa } from './layout.ts';
 import { crayon, label, postit, ransom, sticker, strip, tape, ticket } from './paper.ts';
 import { pixel, rgb, scanline, segment, terminal, vhs } from './retro.ts';
+import { TITLE_LOOKS } from './title.ts';
 
 export const LOOKS: CaptionLook[] = [outline, plain, box, bubble, ticket, crayon, bar, qa, auto, big, strip,
   punch, double, soft, frost, cinema, slab, hollow, marker, neon, gradient, extrude, sticker,
   heavy, offset, gold, chrome, flow, halo, duotone, longshadow, emboss, block, puffy, tape, postit, label, ransom,
-  rgb, pixel, vhs, terminal, segment, scanline, news, chat, lyric, dialog, comic, chalk];
+  rgb, pixel, vhs, terminal, segment, scanline, news, chat, lyric, dialog, comic, chalk,
+  // a title's own (common.heading only)
+  ...TITLE_LOOKS];
 const BY_ID = new Map(LOOKS.map((l) => [l.id, l]));
 /** the look of `style` (an unknown one draws its words alone, as it always did) */
 export const lookOf = (style: string): CaptionLook => BY_ID.get(style) ?? plain;

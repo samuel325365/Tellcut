@@ -26,6 +26,8 @@ test('full grows a title until its longest line fills the safe width (at most 30
   expect(textEm(en) * px).toBeLessThanOrEqual(1920 * 0.9);
   // markup is not counted, and the longest line decides
   expect(fitTitleSize('【短】\n長一點的第二行', 5, 1080, 1920, 0.06, true)).toBeCloseTo(fitTitleSize('長一點的第二行', 5, 1080, 1920, 0.06, true), 6);
+  // a look that draws bigger by itself (giant 1.35×) is fitted smaller, so the line still fits
+  expect(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true, 1.35) * 1.35).toBeCloseTo(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true), 6);
 });
 
 test('the title\'s own entrances and exits', () => {
@@ -41,6 +43,16 @@ test('the title\'s own entrances and exits', () => {
   expect(parseFloat(at('none', 'spread', 2.9).letterSpacing)).toBeGreaterThan(0);
   // anything else is the caption's: neutral here
   expect(at('rise', 'fade', 0.1)).toEqual({ opacity: 1, transform: '', clip: '', filter: '', letterSpacing: '', ruleP: 1, textOpacity: 1 });
+});
+
+test('a title\'s own looks: offered to titles only, each with a template', async () => {
+  const { LOOKS } = await import('../caption.ts');
+  const { TITLE_TEMPLATES } = await import('./templates.ts');
+  const own = LOOKS.filter((l) => l.only === 'title').map((l) => l.id);
+  expect(own.sort()).toEqual(['giant', 'ribbon', 'script', 'seal', 'serif', 'sign', 'spaced', 'split', 'stack', 'vintage']);
+  const styles = (caption.params.find((d) => d.key === 'style') as { options: string[] }).options;
+  for (const id of own) { expect(HEADING_LOOKS).toContain(id); expect(styles).not.toContain(id); expect(TITLE_TEMPLATES.some((t) => t.params.style === id), id).toBe(true); }
+  expect(TITLE_TEMPLATES.length).toBe(20);
 });
 
 test('a title offers every look but the layouts made for talk; a caption never offers a title\'s own looks', () => {

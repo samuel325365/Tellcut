@@ -4,7 +4,7 @@
 // inner layer (the sub is the caption's gloss), and the heading adds the layout, kicker, backing and its own animation around it.
 // Spec 2026-11-05-title-templates.
 import { cssCamel, eOut3, h, prog, type ItemType } from '@tellcut/engine';
-import { caption, LOOKS } from '../caption.ts';
+import { caption, LOOKS, lookOf } from '../caption.ts';
 import { ANIM_IN, ANIM_OUT } from '../caption/anim.ts';
 import { WORD_FX } from '../caption/wordfx.ts';
 import type { CaptionP, CaptionS } from '../caption/types.ts';
@@ -81,9 +81,11 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     }
     cssCamel(s.inner, { display: 'block' });
     const place = titlePlace(p.layout, theme.safe), own = isTitleIn(p.animIn), ownOut = isTitleOut(p.animOut);
-    const size = fitTitleSize(text, p.size * place.scale, W, H, theme.safe.side, p.layout === 'full');
+    const size = fitTitleSize(text, p.size * place.scale, W, H, theme.safe.side, p.layout === 'full', lookOf(p.style).sizeScale ?? 1);
+    // a title grown to fill the width (full) keeps its kicker and sub at the size they had before it grew
+    const small = Math.min(1, (p.size * place.scale) / size);
     const capParams: CaptionP = { ...CAPTION_DEFAULTS, text, style: p.style, size, font: p.font, color: p.color, hl: p.hl, outline: p.outline, accent: p.accent, boxBg: p.boxBg, bubbleBg: p.bubbleBg,
-      wordFx: p.wordFx, animIn: own ? 'none' : p.animIn, animOut: ownOut ? 'none' : p.animOut, animDur: p.animDur, gloss: p.sub, glossSize: p.subSize, glossColor: p.subColor,
+      wordFx: p.wordFx, animIn: own ? 'none' : p.animIn, animOut: ownOut ? 'none' : p.animOut, animDur: p.animDur, gloss: p.sub, glossSize: p.subSize * small, glossColor: p.subColor,
       position: place.position, align: place.align, y: place.y, words: [] };
     // the caption's own templates never reach a title; a font the item sets itself replaces a look's own, as on a caption
     const fontSet = (!!ctx.item?.params && 'font' in ctx.item.params) || p.font !== ctx.params.font;
@@ -99,7 +101,7 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     cssCamel(s.inner, { transform: [dx ? `translateX(${dx.toFixed(2)}px)` : '', a.transform].filter(Boolean).join(' '), clipPath: a.clip || 'none', filter: a.filter || 'none',
       letterSpacing: a.letterSpacing, opacity: String(a.opacity * a.textOpacity) });
     // the kicker: a small spaced line just above the block, aligned with it
-    const kick = String(p.kicker ?? ''), kfs = fs * 0.3;
+    const kick = String(p.kicker ?? ''), kfs = fs * 0.3 * small;
     s.kicker.textContent = kick;
     cssCamel(s.kicker, { display: kick ? 'block' : 'none', fontSize: `${kfs.toFixed(2)}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, color: p.kickerColor || p.hl,
       textShadow: `0 ${(2 * k).toFixed(2)}px ${(6 * k).toFixed(2)}px rgba(0,0,0,0.45)`, bottom: `${(H - y + 0.12 * fs).toFixed(2)}px`, top: '',

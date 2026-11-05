@@ -297,6 +297,18 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'TTL-06': 'title:sticker-bounce',
   'TTL-07': 'title:vhs-corner',
   'TTL-08': 'title:cinema-band',
+  'TTL-09': 'title:serif-focus',
+  'TTL-10': 'title:spaced-track',
+  'TTL-11': 'title:stack-left',
+  'TTL-12': 'title:sign-glitch',
+  'TTL-13': 'title:vintage-card',
+  'TTL-14': 'title:seal-stamp',
+  'TTL-15': 'title:split-open',
+  'TTL-16': 'title:giant-full',
+  'TTL-17': 'title:script-lower',
+  'TTL-18': 'title:ribbon-top',
+  'TTL-19': 'title:chalk-board',
+  'TTL-20': 'title:gradient-full',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
 export const RETIRED: Readonly<Record<string, string>> = {
