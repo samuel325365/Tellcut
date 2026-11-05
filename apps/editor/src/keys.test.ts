@@ -1,4 +1,4 @@
-import { clipboardFree, composing, dialogFree, editorTakes, keyAction } from './keys.ts';
+import { clipboardFree, composing, dialogFree, editorTakes, keyAction, takenByControl } from './keys.ts';
 
 const k = (key: string, o: Partial<{ code: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean; target: any }> = {}) =>
   keyAction({ key, code: o.code ?? '', ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...o });
@@ -78,4 +78,13 @@ test('while a dialog is up only Esc reaches the timeline: a backdrop anywhere, o
 
 test('an Enter that picks the input method word is composing, Safari\'s (isComposing already false, keyCode 229) too', () => {
   expect([composing({ isComposing: true }), composing({ isComposing: false, keyCode: 229 }), composing({ isComposing: false, keyCode: 13 }), composing({})]).toEqual([true, true, false, false]);
+});
+
+test('a key a control took already (a tile pressed with Space), or Space and Enter on a role=button tile, are not the editor’s; a toolbar button keeps Space playing', () => {
+  const el = (tag: string, role?: string): any => ({ tagName: tag, matches: (s: string) => s === '[role=button]' && role === 'button' });
+  expect(takenByControl({ key: ' ', code: 'Space', defaultPrevented: true, target: el('DIV') })).toBe(true);
+  expect(takenByControl({ key: 'Delete', code: 'Delete', defaultPrevented: true, target: el('LI', 'button') })).toBe(true);
+  expect([takenByControl({ key: ' ', code: 'Space', target: el('LI', 'button') }), takenByControl({ key: 'Enter', code: 'Enter', target: el('DIV', 'button') })]).toEqual([true, true]);
+  expect(takenByControl({ key: 's', code: 'KeyS', target: el('LI', 'button') })).toBe(false);
+  expect([takenByControl({ key: ' ', code: 'Space', target: el('BUTTON') }), takenByControl({ key: ' ', code: 'Space', target: null })]).toEqual([false, false]);
 });

@@ -16,7 +16,7 @@ import { ChatPanel } from './ChatPanel.tsx';
 import { ImportDialog } from './ImportDialog.tsx';
 import type { Attachment } from './attachments.ts';
 import { HelpPanel } from './HelpPanel.tsx';
-import { CLIPBOARD_ACTIONS, clipboardFree, dialogFree, keyAction, editorTakes } from './keys.ts';
+import { CLIPBOARD_ACTIONS, clipboardFree, dialogFree, keyAction, editorTakes, takenByControl } from './keys.ts';
 import { arrangementOf, gridFor, previewWFromX, sideWFromX, sideWidth, sizePatch, splitFromY, type Layout } from './layout.ts';
 import type { Editor } from './editor.ts';
 import type { PlayerBridge } from './bridge.ts';
@@ -104,7 +104,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       const a = keyAction(e);
-      if (!a || (CLIPBOARD_ACTIONS.has(a) && !clipboardFree(document, e.target)) || !editorTakes(a, editor.store.get().helpOpen) || !dialogFree(a, document, e.target)) return;
+      if (!a || takenByControl(e) || (CLIPBOARD_ACTIONS.has(a) && !clipboardFree(document, e.target)) || !editorTakes(a, editor.store.get().helpOpen) || !dialogFree(a, document, e.target)) return;
       e.preventDefault(); editor.run(a);
     };
     addEventListener('keydown', on);

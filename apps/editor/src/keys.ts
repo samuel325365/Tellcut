@@ -84,6 +84,15 @@ export function dialogFree(a: Action, doc: Pick<Document, 'querySelector'>, targ
   return !(target as Element | null)?.closest?.(DIALOGS);
 }
 
+/** A key a control of the page has taken already (a tile pressing itself on Enter or Space calls preventDefault: it runs before
+ *  the window's handler), or Space or Enter on a tile or card that is a role=button (it presses that): not the editor's, or Space
+ *  would also play. A native button is not one of them: after a click on a toolbar button the focus stays on it, and Space plays. */
+export function takenByControl(e: { key: string; code?: string; defaultPrevented?: boolean; target?: EventTarget | null }): boolean {
+  if (e.defaultPrevented) return true;
+  const t = e.target as Element | null;
+  return (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') && !!t && t.tagName !== 'BUTTON' && !!t.matches?.('[role=button]');
+}
+
 /** An Enter that only picks the input method's word (Chinese, Japanese): not a send. Safari ends the composition before its
  *  keydown, so isComposing is already false there; the keyCode 229 it still carries says so. */
 export const composing = (e: { isComposing?: boolean; keyCode?: number }) => !!e.isComposing || e.keyCode === 229;
