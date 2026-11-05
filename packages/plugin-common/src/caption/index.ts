@@ -42,6 +42,8 @@ export const stylePop = (style: string, local: number): number | null => lookOf(
 /** the font a style brings: `styleFont`, else (unless the item sets its own `font`: `fontSet`) the look's own (handwriting for big,
  *  a serif for qa), else '' (the caption's own font) */
 export const styleFontOf = (style: string, styleFont: string, fontSet = false) => styleFont || (fontSet ? '' : lookOf(style).font ?? '');
+/** a text shadow with its px lengths times `by` (em lengths already follow the element's own size) */
+export const scaleShadow = (shadow: string, by: number) => shadow.replace(/(-?\d*\.?\d+)px/g, (_m, v: string) => `${(parseFloat(v) * by).toFixed(2)}px`);
 
 const STYLE_IDS = LOOKS.filter((l) => l.only !== 'title').map((l) => l.id);
 /** an element's inline style gone, and cssCamel's memory of it (else it would skip setting the same values again) */
@@ -125,16 +127,19 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     const pop = p.animIn === 'pop', st = animState({ ...p, animIn: pop || !ENGINE_IN.has(p.animIn) ? 'none' : p.animIn, animOut: ENGINE_OUT.has(p.animOut) ? p.animOut : 'none' }, ctx.local, ctx.dur, W, H), px = (p.size / 100) * H * (look.sizeScale ?? 1), hs = Math.max(1, p.hlScale ?? 1);
     const width = W * (1 - 2 * theme.safe.side);
     const hasWords = Array.isArray(p.words) && p.words.length > 0, fill = !!p.fill && hasWords, point = p.point && p.point !== 'none', left = p.align === 'left' || !!look.left;
+    // `words` counts the characters of the text as written; quoted, every count is one on for the opening mark, and a step that has
+    // said the whole line says the closing one too (else karaoke and the word effects ran a character behind the voice)
+    const said = charKinds(String(p.text ?? '')).length, steps: Array<[number, number]> = !hasWords ? [] : p.quote ? p.words.map(([t, n]) => [t, n + 1 + (n >= said ? 1 : 0)]) : p.words;
     // a word effect, a look styling its words one by one, or an entrance moving them draws a span a word; else the runs
     const fx = p.wordFx && p.wordFx !== 'auto' ? p.wordFx : 'auto', wordMode = (fx !== 'auto' && fx !== 'none') || !!look.word || WORD_IN.has(p.animIn);
-    const lit = !wordMode && hasWords && !fill ? karaokeRange(p.words, ctx.local) : null;
+    const lit = !wordMode && hasWords && !fill ? karaokeRange(steps, ctx.local) : null;
     // the speaker's colour; with tint off the words keep their own colour and only the name chip (or the point chip) shows it
     const who = speakerColor(p.speaker ?? 0, p.color, theme), ink = p.tint === false ? p.color : who;
     const pre = { p, theme, W, H, local: ctx.local, k, px, who, ink, left, opacity: st.opacity };
     // the room the words have: the look's box takes its padding out, the speaker chip of `point` 2.05 em at the left
     const room = (look.room ? look.room(pre, width) : width) - (point ? 2.05 * px : 0), text = p.quote ? `“${p.text}”` : p.text;
     // one word at a time: the line is never shrunk to fit whole, only so that its longest word fits on a line of its own
-    const plain = charKinds(text).map((c) => c.c).join(''), list = hasWords ? wordsOf(p.words, [...plain].length, plain) : evenWords(plain, ctx.dur);
+    const plain = charKinds(text).map((c) => c.c).join(''), list = hasWords ? wordsOf(steps, [...plain].length, plain) : evenWords(plain, ctx.dur);
     const oneFit = fx === 'one' ? Math.min(1, room / px / Math.max(1e-6, ...list.map((w) => textEm([...plain].slice(w.a, w.b).join('').trim()) * 1.08))) : 1;
     // one word at a time: one line (the words not being said are hidden), never broken inside a word (extrude-one split missed.)
     const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, room / px / hs, p.maxLines ?? 2, st.typed, lit);
@@ -149,10 +154,10 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     cssCamel(s.words.el, { display: wordMode ? '' : 'none' });
     if (wordMode) {
       const ws0 = look.word?.(e) ?? {}, hot = look.hl ? look.hl(pre) : p.hl;
-      const ws = { ...ws0, hot: { color: hot, ...ws0.hot }, onbox: { color: theme.palette.ink, webkitTextStroke: '0', textShadow: 'none', filter: 'none', ...ws0.onbox } };
+      const ws = { ...ws0, hot: { color: hot, ...look.wordHot?.(e), ...ws0.hot }, onbox: { color: theme.palette.ink, webkitTextStroke: '0', textShadow: 'none', filter: 'none', ...ws0.onbox } };
       setWords(s.words, fit.lines, fit.starts, list);
       for (const l of s.words.lines) { clearStyle(l); cssCamel(l, { position: 'relative' }); }
-      look.lines?.(s.words.lines, pre);
+      look.lines?.(s.words.lines, pre, true);
       // auto: what words did before there were word effects (lighting up the word being said, or dim until said with fill)
       drawWords(s.words, { fx: fx === 'auto' ? (hasWords ? (fill ? 'fill' : 'color') : 'none') : fx, words: list, local: ctx.local, dur: ctx.dur, fs, ws, animIn: p.animIn, boxColor: ws.box ?? hot });
     } else {
@@ -168,7 +173,7 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     }
     if (fill && !wordMode) {   // every character dim until it is said, then lit for good (times on pop's own opacity when both are on)
       const chars = [...s.text.el.querySelectorAll('span')] as HTMLElement[];
-      chars.forEach((el, i) => { const o = 0.32 + 0.68 * saidLevel(p.words, i, ctx.local); cssCamel(el, { opacity: String(pop ? o * popAt(i, chars.length, ctx.local).opacity : o) }); });
+      chars.forEach((el, i) => { const o = 0.32 + 0.68 * saidLevel(steps, i, ctx.local); cssCamel(el, { opacity: String(pop ? o * popAt(i, chars.length, ctx.local).opacity : o) }); });
     }
     // the speaker's name: a small chip in their colour above the caption (unless the look draws it its own way)
     s.nameText.textContent = p.name ?? ''; s.role.textContent = p.role ?? '';
@@ -188,8 +193,10 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     // the gloss: a smaller line under the caption, inside its box (see build), 0.1 em of the caption below it
     const gs = p.glossSize ?? 0.52, gl = look.gloss?.(s, e) ?? {};
     s.gloss.textContent = p.gloss ?? '';
+    // the gloss would inherit the look's text shadow at the line's size (giant's, under a gloss a tenth its size, was a ghost copy of
+    // it): its own copy, scaled to it, unless the look gives the gloss a shadow of its own
     cssCamel(s.gloss, { fontSize: `${gs}em`, color: glossColorOf(p), fontFamily: `'${theme.fonts.display}', 'Noto Sans TC', sans-serif`,
-      margin: `${(0.1 / gs).toFixed(4)}em 0 0`, webkitTextStroke: '', textShadow: '', padding: '', background: '', borderRadius: '', boxShadow: '', transform: '', ...gl, display: p.gloss ? gl.display ?? 'block' : 'none' });
+      margin: `${(0.1 / gs).toFixed(4)}em 0 0`, webkitTextStroke: '', textShadow: boxCss.textShadow ? scaleShadow(boxCss.textShadow, gs) : '', padding: '', background: '', borderRadius: '', boxShadow: '', transform: '', ...gl, display: p.gloss ? gl.display ?? 'block' : 'none' });
     // a look that pops in by itself (auto, big) fades in with it
     const pq = prog(ctx.local, 0, 0.14), sc = look.popScale?.(ctx.local), pin = sc !== undefined ? ` scale(${sc.toFixed(4)})` : look.pin?.(e) ?? '';
     // point: a chip in the speaker's colour at the left, an arrow toward them over their name
@@ -203,13 +210,16 @@ export const caption: ItemType<CaptionP, CaptionS> = {
       cssCamel(s.chipName, { display: p.name ? 'block' : 'none', fontSize: `${Math.min(0.47, 1.25 / Math.max(1, [...(p.name ?? '')].length)).toFixed(3)}em`, color: p.bubbleBg });
     }
     if (la.filter) boxCss.filter = [boxCss.filter, la.filter].filter(Boolean).join(' ');
+    // a look's own clip (ticket's teeth, scrap's deckle, from clip() or its box) keeps the box's clip-path, and a wipe goes to a mask:
+    // one clip-path holds one shape, and the look's replaced the wipe
+    const lookClip = look.clip?.(e) ?? boxCss.clipPath ?? '', clip = lookClip || la.clip || 'none', mask = lookClip && la.clip ? la.mask : '';
     cssCamel(s.box, {
       // max-content: a box set at left 50% would otherwise be given only the right half of the frame, and its gloss broke there
       top: place.top, bottom: place.bottom, width: 'max-content', maxWidth: `${width}px`, opacity: String(st.opacity * la.opacity * (look.popScale ? pq : 1)), left: left ? `${theme.safe.side * W}px` : '50%', textAlign: left ? 'left' : 'center',
-      transform: `translate(${left ? `${st.x}px` : `calc(-50% + ${st.x}px)`}, calc(${place.yAnchor} + ${st.y}px))${pin}${la.transform}`, transformOrigin: look.origin ?? (left ? '0 100%' : '50% 100%'), clipPath: look.clip?.(e) ?? (la.clip || 'none'),
+      transform: `translate(${left ? `${st.x}px` : `calc(-50% + ${st.x}px)`}, calc(${place.yAnchor} + ${st.y}px))${pin}${la.transform}`, transformOrigin: look.origin ?? (left ? '0 100%' : '50% 100%'),
       fontFamily: `'${sfont || p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${e.fs.toFixed(2)}px`, fontWeight: look.weight ?? '900', fontStyle: p.quote ? 'italic' : 'normal',
       color: look.color ? look.color(e) : ink, webkitTextStroke: stroke ? `${stroke}px ${look.strokeColor ? look.strokeColor(e) : p.outline}` : '0', paintOrder: 'stroke fill',
-      textShadow: '', background: 'transparent', padding: '0', borderRadius: '0', border: '0 solid transparent', filter: '', ...boxCss, boxSizing: 'border-box',
+      textShadow: '', background: 'transparent', padding: '0', borderRadius: '0', border: '0 solid transparent', filter: '', ...boxCss, clipPath: clip, maskImage: mask, boxSizing: 'border-box',
       ...(point ? { paddingLeft: '2.05em', minHeight: '2.05em', display: 'flex', flexDirection: 'column', justifyContent: 'center' } : { display: '', flexDirection: '', justifyContent: '' }),
     });
     // decorations that measure the styled box (crayon's band, qa's wash): hidden unless the look draws them

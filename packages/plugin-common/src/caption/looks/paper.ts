@@ -62,14 +62,18 @@ export const sticker: CaptionLook = {
 };
 
 export const stripTilt = (line: number) => (line % 2 ? 0.7 : -0.8);
+/** the highlighter stroke behind a hot word on a strip */
+const marker = (p: CaptionP) => ({ background: p.hl, boxShadow: `0 0 0 0.08em ${p.hl}`, borderRadius: '0.12em' });
 const stripCss = (p: CaptionP, k: number) => ({ padding: '0.06em 0.42em 0.1em', background: p.bubbleBg, borderRadius: `${8 * k}px`, boxShadow: `0 ${5 * k}px ${16 * k}px rgba(20,12,6,0.3)` });
 
 /** each line its own strip of paper (bubbleBg) with a soft shadow, tilted −0.8° and 0.7° in turn; the highlighted words (【word】
  *  and, with `words`, the one being said) on a highlighter stroke in the highlight colour, in ink like the rest */
-function paperStrips(lines: HTMLElement[], p: CaptionP, left: boolean, k: number) {
+function paperStrips(lines: HTMLElement[], p: CaptionP, left: boolean, k: number, words = false) {
   lines.forEach((line, i) => {
     cssCamel(line, { display: 'table', margin: `${i ? '0.2em' : '0'} ${left ? '0' : 'auto'} 0`, ...stripCss(p, k), transform: `rotate(${stripTilt(i)}deg)` });
-    for (const sp of line.querySelectorAll<HTMLElement>('span')) if (sp.style.color) cssCamel(sp, { background: p.hl, boxShadow: `0 0 0 0.08em ${p.hl}`, borderRadius: '0.12em' });
+    // the runs' highlighted spans (coloured by setRuns, rebuilt when they change); a span a word gets it from wordHot instead: here
+    // it would read the colours of the frame before and never be taken off again
+    if (!words) for (const sp of line.querySelectorAll<HTMLElement>('span')) if (sp.style.color) cssCamel(sp, marker(p));
   });
 }
 
@@ -79,7 +83,8 @@ export const strip: CaptionLook = {
   id: 'strip', paper: true, weight: '700', room: padded,
   hl: (e) => e.p.outline,
   color: (e) => e.p.outline,
-  lines: (ls, e) => paperStrips(ls, e.p, e.left, e.k),
+  lines: (ls, e, words) => paperStrips(ls, e.p, e.left, e.k, words),
+  wordHot: (e) => marker(e.p),
   gloss: (s, e) => ({ display: 'table', margin: `0.3em ${e.left ? '0' : 'auto'} 0`, ...stripCss(e.p, e.k), transform: `rotate(${stripTilt(s.text.el.children.length)}deg)` }),
 };
 

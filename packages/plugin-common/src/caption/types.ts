@@ -77,10 +77,14 @@ export interface CaptionLook {
   popScale?(local: number): number;
   /** the outline's colour; default `outline` (the ink) */
   strokeColor?(e: LookEnv): string;
-  /** after the line's text is set: each line's element (per-line decorations: strips, slabs, marker strokes) */
-  lines?(lines: HTMLElement[], e: Omit<LookEnv, 'fs'>): void;
+  /** after the line's text is set: each line's element (per-line decorations: strips, slabs, marker strokes); `words`: the lines
+   *  hold a span a word (wordfx.ts), styled by the word effects after this, so their spans are not the look's to style */
+  lines?(lines: HTMLElement[], e: Omit<LookEnv, 'fs'>, words?: boolean): void;
   /** how its words look one by one (wordfx.ts): set, the caption always draws a span a word (gradient text needs it) */
   word?(e: LookEnv): WordStyle;
+  /** what a hot word adds when the caption draws a span a word anyway (a word effect), without making it always do so: strip's
+   *  highlighter stroke, which its lines() gives the runs. Through the word effects it is set and cleared with the word's own state */
+  wordHot?(e: LookEnv): Css;
   /** the gloss's extra CSS (strip: a strip of its own) and its display; the default resets what a look may set */
   gloss?(s: CaptionS, e: LookEnv): Css;
   /** draws the name its own way (qa's badge); return false to leave it to the caption */

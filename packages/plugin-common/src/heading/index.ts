@@ -112,9 +112,7 @@ export const heading: ItemType<HeadingP, HeadingS> = {
       full = box.offsetWidth;
     }
     draw(capParams);
-    // the sub inherits the look's text shadow in the title's pixels (giant's, under a sub a tenth its size, was a ghost copy of it):
-    // scaled to the sub
-    if (box.style.textShadow) s.cap.gloss.style.textShadow = box.style.textShadow.replace(/(-?\d*\.?\d+)px/g, (_m, v: string) => `${(parseFloat(v) * capParams.glossSize).toFixed(2)}px`);
+    // the sub is the caption's gloss: the caption scales the look's text shadow to it
     // track and spread: on the words, added to the look's own spacing (which would replace one set on a layer above them)
     const spacing = titleSpacing(p.animIn, p.animOut, local, dur, p.animDur);
     // through cssCamel, like the caption's own: its cache then holds what the box really has, so the caption's reset next frame is not

@@ -10,7 +10,9 @@ export const ENGINE_IN = new Set(['none', 'fade', 'rise', 'slide', 'typewriter',
 /** entrances that move the words one by one */
 export const WORD_IN = new Set(['drop', 'scatter']);
 
-export interface LineAnim { opacity: number; transform: string; filter: string; clip: string }
+/** `mask`: the same wipe as `clip`, as a mask image, for a look whose box has a clip-path of its own (ticket's torn edges, scrap's
+ *  deckle): one clip-path cannot hold both shapes, and the look's would otherwise replace the wipe */
+export interface LineAnim { opacity: number; transform: string; filter: string; clip: string; mask: string }
 
 /** a number from 0 to 1 that jumps about with `i` (the same every time: draw(t) is a pure function of t) */
 export const jitter = (i: number) => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -21,7 +23,7 @@ export const jitter = (i: number) => { const x = Math.sin(i * 12.9898 + 78.233) 
  */
 export function lineAnim(animIn: string, animOut: string, local: number, dur: number, animDur: number, fs: number): LineAnim {
   const d = Math.max(0.05, Math.min(animDur, dur / 2)), q = prog(local, 0, d), b = prog(dur - local, 0, d);
-  let opacity = 1, filter = '', clip = '';
+  let opacity = 1, filter = '', clip = '', mask = '';
   const tf: string[] = [];
   const blurPx = (k: number) => `blur(${(k * 0.3 * fs).toFixed(2)}px)`;
   // the entrance (bounce pops over 0.22 s at least, whatever animDur)
@@ -30,7 +32,7 @@ export function lineAnim(animIn: string, animOut: string, local: number, dur: nu
       case 'bounce': { const p = prog(local, 0, Math.max(d, 0.22)); opacity = clamp(p * 4); tf.push(`scale(${(0.6 + 0.4 * eBack(p, 1.9)).toFixed(4)})`); break; }
       case 'blur': opacity = eOut3(q); filter = blurPx(1 - eOut3(q)); break;
       case 'zoom': opacity = clamp(q * 2); tf.push(`scale(${lerp(1.6, 1, eOut3(q)).toFixed(4)})`); break;
-      case 'wipe': clip = `inset(-0.5em ${((1 - eOut3(q)) * 100).toFixed(2)}% -0.5em -0.5em)`; break;
+      case 'wipe': { const v = eOut3(q) * 100; clip = `inset(-0.5em ${((1 - eOut3(q)) * 100).toFixed(2)}% -0.5em -0.5em)`; mask = `linear-gradient(90deg, #000 ${v.toFixed(2)}%, transparent ${v.toFixed(2)}%)`; break; }
       case 'flip': opacity = clamp(q * 3); tf.push(`perspective(${(8 * fs).toFixed(0)}px) rotateX(${(-(1 - eBack(q, 1.4)) * 90).toFixed(2)}deg)`); break;
       case 'stretch': opacity = clamp(q * 3); tf.push(`scale(${lerp(1.5, 1, eBack(q, 2)).toFixed(4)}, ${lerp(0.5, 1, eBack(q, 2)).toFixed(4)})`); break;
       case 'roll': opacity = clamp(q * 2); tf.push(`perspective(${(8 * fs).toFixed(0)}px) translateY(${((1 - eOut3(q)) * 0.9 * fs).toFixed(2)}px) rotateX(${((1 - eOut3(q)) * 70).toFixed(2)}deg)`); break;
@@ -51,10 +53,10 @@ export function lineAnim(animIn: string, animOut: string, local: number, dur: nu
       case 'blur': opacity *= eOut3(b); filter = [filter, blurPx(1 - eOut3(b))].filter(Boolean).join(' '); break;
       case 'shrink': opacity *= b; tf.push(`scale(${lerp(0.6, 1, eOut3(b)).toFixed(4)})`); break;
       case 'drop': opacity *= clamp(b * 1.5); tf.push(`translateY(${((1 - b) ** 2 * 1.2 * fs).toFixed(2)}px) rotate(${((1 - b) * 6).toFixed(2)}deg)`); break;
-      case 'wipe': clip = `inset(-0.5em -0.5em -0.5em ${((1 - eOut3(b)) * 100).toFixed(2)}%)`; break;
+      case 'wipe': { const l = ((1 - eOut3(b)) * 100).toFixed(2); clip = `inset(-0.5em -0.5em -0.5em ${l}%)`; mask = `linear-gradient(90deg, transparent ${l}%, #000 ${l}%)`; break; }
     }
   }
-  return { opacity: Math.round(opacity * 1000) / 1000, transform: tf.length ? ` ${tf.join(' ')}` : '', filter, clip };
+  return { opacity: Math.round(opacity * 1000) / 1000, transform: tf.length ? ` ${tf.join(' ')}` : '', filter, clip, mask };
 }
 
 /** a word's part of drop or scatter: word `i` of `n` at `local`, `fs` the font size in px */

@@ -76,3 +76,12 @@ test('a title of three lines or more keeps its size: the caption\'s two-line lim
   expect(sizeOf('羅馬\n廣場\n夜晚')).toBeCloseTo(sizeOf('羅馬\n廣場'));
   expect(sizeOf('MARRAKECH\nMEDINA\nNIGHTS', 'cycle')).toBeCloseTo(sizeOf('MARRAKECH\nMEDINA', 'cycle'));
 });
+
+test('the sub takes the look\'s text shadow scaled to its size (the caption\'s gloss does it)', () => {
+  const px = (s: string) => (s.match(/-?\d*\.?\d+(?=px)/g) ?? []).map(Number);
+  const d = drawn({ text: '七百年', style: 'giant', sub: '一座廣場', subSize: 0.36 }, 1.5);
+  const sub = [...d.root.querySelectorAll<HTMLElement>('div')].find((e) => e.textContent === '一座廣場')!;
+  expect(d.box.style.textShadow).not.toBe('');
+  const glossSize = parseFloat(sub.style.fontSize);
+  expect(px(sub.style.textShadow)).toEqual(px(d.box.style.textShadow).map((v) => +(v * glossSize).toFixed(2)));
+});

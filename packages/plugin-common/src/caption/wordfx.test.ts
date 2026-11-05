@@ -22,17 +22,17 @@ test('a caption typed by hand: its words spread from 0.15 s to 0.5 s before the 
 });
 
 test('the engine’s own entrances and exits are left to it: lineAnim is neutral for them', () => {
-  for (const a of ENGINE_IN) for (const b of ENGINE_OUT) for (const t of [0, 0.1, 1, 2.9]) expect(lineAnim(a, b, t, 3, 0.3, 80)).toEqual({ opacity: 1, transform: '', filter: '', clip: '' });
+  for (const a of ENGINE_IN) for (const b of ENGINE_OUT) for (const t of [0, 0.1, 1, 2.9]) expect(lineAnim(a, b, t, 3, 0.3, 80)).toEqual({ opacity: 1, transform: '', filter: '', clip: '', mask: '' });
 });
 
 test('every newer entrance moves the line at its start and leaves it still by the end of animDur; every exit at its end', () => {
   for (const a of ANIM_IN.filter((x) => !ENGINE_IN.has(x) && x !== 'drop' && x !== 'scatter')) {
-    expect(lineAnim(a, 'none', 0.05, 3, 0.3, 80), a).not.toEqual({ opacity: 1, transform: '', filter: '', clip: '' });
-    expect(lineAnim(a, 'none', 1.5, 3, 0.3, 80), a).toEqual({ opacity: 1, transform: '', filter: '', clip: '' });
+    expect(lineAnim(a, 'none', 0.05, 3, 0.3, 80), a).not.toEqual({ opacity: 1, transform: '', filter: '', clip: '', mask: '' });
+    expect(lineAnim(a, 'none', 1.5, 3, 0.3, 80), a).toEqual({ opacity: 1, transform: '', filter: '', clip: '', mask: '' });
   }
   for (const b of ANIM_OUT.filter((x) => !ENGINE_OUT.has(x))) {
-    expect(lineAnim('none', b, 2.95, 3, 0.3, 80), b).not.toEqual({ opacity: 1, transform: '', filter: '', clip: '' });
-    expect(lineAnim('none', b, 1.5, 3, 0.3, 80), b).toEqual({ opacity: 1, transform: '', filter: '', clip: '' });
+    expect(lineAnim('none', b, 2.95, 3, 0.3, 80), b).not.toEqual({ opacity: 1, transform: '', filter: '', clip: '', mask: '' });
+    expect(lineAnim('none', b, 1.5, 3, 0.3, 80), b).toEqual({ opacity: 1, transform: '', filter: '', clip: '', mask: '' });
   }
 });
 
