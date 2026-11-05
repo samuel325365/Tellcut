@@ -36,6 +36,16 @@ test('black frames: stretches no picture covers (dissolve overlaps and scene ite
   // an end card drawn over the background is a choice, not a black frame
   const card = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 7)] }, { id: 'o', kind: 'overlay', items: [{ id: 'end', start: 7, end: 10, type: 'core.endCard', params: {} }] }]);
   expect(modelChecks(card, ok)).toEqual([]);
+  // so is a title on a black backing: its own, its template's (gold-black), or the film's default title template's; on a band it is not
+  const heading = (params: Record<string, unknown>, titleTemplate?: string) => {
+    const q = project([{ id: 'main', kind: 'video', items: [clip('c1', 3, 10)] }, { id: 'o', kind: 'overlay', items: [{ id: 'h', start: 0, end: 3, type: 'common.heading', params: { text: '片名', ...params } }] }]);
+    if (titleTemplate) (q.meta as Record<string, unknown>).titleTemplate = titleTemplate;
+    return msgs(modelChecks(q, ok)).filter((m) => !m.includes('theme'));
+  };
+  expect(heading({ backing: 'black' })).toEqual([]);
+  expect(heading({ template: 'gold-black' })).toEqual([]);
+  expect(heading({}, 'chrome-black')).toEqual([]);
+  expect(heading({ backing: 'band' })).toEqual(['warn 0-3 黑底上只有疊加層（h）：確認這段沒有畫面是刻意的']);
   // other layers (grain, a flash, a caption) over a gap do not make it a picture: asked about, not passed
   const grain = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 3), clip('c2', 6, 10)] },
     { id: 'o', kind: 'overlay', items: [{ id: 'fl', start: 0, end: 10, type: 'core.flash', params: {} }, { id: 'cap', start: 2, end: 4, type: 'core.caption', params: { text: 'x' } }] }]);

@@ -594,6 +594,12 @@ export const samples: Sample[] = [
   { name: 'heading-en', type: 'common.heading', params: { text: 'Seven Hundred Years\nof a Square', kicker: 'CHAPTER ONE', sub: 'Siena, Italy', backing: 'rules', style: 'soft' }, at: [1.5], wide: true, bg: '#4a5a52' },
   { name: 'heading-ja', type: 'common.heading', params: { text: '広場の七百年', kicker: '第一章', sub: 'シエナ・イタリア', layout: 'lower', backing: 'bar', font: 'Noto Sans JP' }, at: [1.5], bg: '#4a5a52' },
   { name: 'heading-in-track', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'track' }, at: [0.2], bg: '#4a5a52' },
+  // mid-entrance and mid-exit, away from the frame's middle: the animation is sized by the title and clipped to its block
+  { name: 'heading-in-mask', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'mask', layout: 'top' }, at: [0.15], bg: '#4a5a52' },
+  { name: 'heading-in-open', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'open', layout: 'lower', size: 7 }, at: [0.15], bg: '#4a5a52' },
+  { name: 'heading-in-focus', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'focus' }, at: [0.15], bg: '#4a5a52' },
+  { name: 'heading-out-sink', type: 'common.heading', params: { ...HEAD_ZH, animOut: 'sink', layout: 'bottom' }, at: [2.85], bg: '#4a5a52' },
+  { name: 'heading-corner-type', type: 'common.heading', params: { ...HEAD_ZH, style: 'vhs', layout: 'corner', animIn: 'typewriter', backing: 'band' }, at: [0.3, 1.5], bg: '#4a5a52' },
   { name: 'heading-in-rule', type: 'common.heading', params: { ...HEAD_ZH, animIn: 'rule', backing: 'rules' }, at: [0.2, 0.45], bg: '#4a5a52' },
   ...['serif', 'spaced', 'stack', 'sign', 'vintage', 'seal', 'split', 'giant', 'script', 'ribbon'].map((style): Sample => ({ name: `heading-look-${style}`, type: 'common.heading', params: { ...HEAD_ZH, style }, at: [1.5], bg: '#4a5a52' })),
   ...TITLE_TEMPLATES.map((t): Sample => ({ name: `ttl-${t.id}`, type: 'common.heading', params: { ...HEAD_ZH, template: t.id }, at: [1.5], bg: '#4a5a52' })),

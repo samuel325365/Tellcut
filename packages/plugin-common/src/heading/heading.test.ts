@@ -1,7 +1,7 @@
 // common.heading's pure parts: where each layout puts a title, how full grows it, its own entrances and exits, and which looks it offers.
 import { defaultSafe, textEm } from '@tellcut/engine';
 import { caption } from '../caption.ts';
-import { fitTitleSize, HEADING_LOOKS, TITLE_LAYOUTS, titleAnim, titlePlace } from './index.ts';
+import { fitTitleSize, HEADING_LOOKS, TITLE_LAYOUTS, titleAnim, titlePlace, titleSpacing } from './index.ts';
 
 test('every layout stays inside the safe area, in 9:16 and 16:9', () => {
   for (const safe of [defaultSafe(1080, 1920), defaultSafe(1920, 1080)]) {
@@ -30,19 +30,27 @@ test('full grows a title until its longest line fills the safe width (at most 30
   expect(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true, 1.35) * 1.35).toBeCloseTo(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true), 6);
 });
 
-test('the title\'s own entrances and exits', () => {
-  const at = (a: string, b: string, t: number) => titleAnim(a, b, t, 3, 0.6);
-  expect(parseFloat(at('track', 'none', 0, ).letterSpacing)).toBeGreaterThan(parseFloat(at('track', 'none', 0.3).letterSpacing));
-  expect(at('track', 'none', 0.7).letterSpacing).toBe('');
-  expect(at('mask', 'none', 0).clip).toBe('inset(100.00% -0.5em -0.5em -0.5em)');
+test('the title\'s own entrances and exits: in the title\'s pixels, clipped to its block', () => {
+  // a block 600×200 at (240, 300) in a 1080×1920 frame, words 150 px
+  const g = { x: 240, y: 300, w: 600, h: 200, W: 1080, H: 1920, fs: 150 };
+  const at = (a: string, b: string, t: number) => titleAnim(a, b, t, 3, 0.6, g);
+  expect(titleSpacing('track', 'none', 0, 3, 0.6)).toBeGreaterThan(titleSpacing('track', 'none', 0.3, 3, 0.6));
+  expect(titleSpacing('track', 'none', 0.7, 3, 0.6)).toBe(0);
+  expect(titleSpacing('none', 'spread', 2.9, 3, 0.6)).toBeGreaterThan(0);
+  // mask: the top edge starts at the block's bottom and comes up to its top; the words rise a quarter of their size
+  expect(at('mask', 'none', 0).clip).toBe('inset(500.00px 150.00px 1330.00px 150.00px)');
+  expect(at('mask', 'none', 0).transform).toBe('translateY(37.50px)');
   expect(at('mask', 'none', 1).clip).toBe('');
-  expect(at('open', 'none', 0).clip).toBe('inset(-0.5em 50.00% -0.5em 50.00%)');
+  // open: from the block's middle (540), not the frame's share
+  expect(at('open', 'none', 0).clip).toBe('inset(210.00px 540.00px 1330.00px 540.00px)');
+  expect(at('focus', 'none', 0).filter).toBe('blur(30.00px)');
+  expect(at('focus', 'none', 0).transformOrigin).toBe('540.00px 400.00px');
+  expect(at('none', 'sink', 3).clip).toBe('inset(210.00px 150.00px 1620.00px 150.00px)');
   expect(at('rule', 'none', 0.12)).toMatchObject({ textOpacity: 0 });
   expect(at('rule', 'none', 0.12).ruleP).toBeGreaterThan(0);
   expect(at('none', 'spread', 3).opacity).toBe(0);
-  expect(parseFloat(at('none', 'spread', 2.9).letterSpacing)).toBeGreaterThan(0);
   // anything else is the caption's: neutral here
-  expect(at('rise', 'fade', 0.1)).toEqual({ opacity: 1, transform: '', clip: '', filter: '', letterSpacing: '', ruleP: 1, textOpacity: 1 });
+  expect(at('rise', 'fade', 0.1)).toMatchObject({ opacity: 1, transform: '', clip: '', filter: '', ruleP: 1, textOpacity: 1 });
 });
 
 test('a title\'s own looks: offered to titles only, each with a template', async () => {

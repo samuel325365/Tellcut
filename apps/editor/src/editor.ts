@@ -914,7 +914,7 @@ export class Editor {
     let n = 0;
     const ok = this.apply((d) => { n = applyCaptionTemplate(d, track, template, undefined, kind); });
     if (ok || n) return ok;
-    this.set({ notice: say('ed.noCaptions') });
+    this.set({ notice: say(kind === 'title' ? 'ed.noTitles' : 'ed.noCaptions') });
     return false;
   }
 

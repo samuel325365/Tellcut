@@ -68,13 +68,20 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   // other layers over a gap (grain, a flash, a caption) are not a picture: such a gap is asked about instead of passed.
   const visible = p.tracks.filter((t) => !t.muted);
   const overlays = visible.filter((t) => t.kind === 'overlay').flatMap((t) => t.items as any[]);
-  const pics = [...visible.filter((t) => t.kind === 'video' || t.kind === 'scene').flatMap((t) => t.items as any[]), ...overlays.filter((it) => CARDS.has(it.type))]
+  // a title on a black backing (gold-black, chrome-black) is such a card too
+  const ownTitles = (p.meta as { titleTemplate?: string; titleTemplates?: Record<string, Record<string, unknown>> }).titleTemplates ?? {};
+  const titleBacking = (it: { params?: Record<string, unknown> }) => {
+    const id = String(it.params?.template || (p.meta as { titleTemplate?: string }).titleTemplate || '');
+    return it.params?.backing ?? (id ? (ownTitles[id]?.backing ?? titleTemplateOf(id)?.params.backing) : undefined);
+  };
+  const isCard = (it: { type: string; params?: Record<string, unknown> }) => CARDS.has(it.type) || (it.type === 'common.heading' && titleBacking(it) === 'black');
+  const pics = [...visible.filter((t) => t.kind === 'video' || t.kind === 'scene').flatMap((t) => t.items as any[]), ...overlays.filter(isCard)]
     .map((it) => ({ id: it.id, s: span(it.id) })).filter((x) => x.s[1] > x.s[0]).sort((a, b) => a.s[0] - b.s[0]);
   let reach = 0, last: string | null = null;
   const gap = (a: number, b: number, next: string | null) => {
     if (b - a < frame * 0.999) return;
     const t: [number, number] = [r3(a), r3(b)];
-    const over = overlays.filter((it) => !CARDS.has(it.type) && overlap(span(it.id), t) > 0).sort((x, y) => span(x.id)[0] - span(y.id)[0]).map((it) => it.id);
+    const over = overlays.filter((it) => !isCard(it) && overlap(span(it.id), t) > 0).sort((x, y) => span(x.id)[0] - span(y.id)[0]).map((it) => it.id);
     if (over.length) { out.push({ level: 'warn', t, ids: over, msg: `黑底上只有疊加層（${over.join('、')}）：確認這段沒有畫面是刻意的` }); return; }
     const where = a <= 0 ? '片頭' : !next ? '片尾' : `${last} 與 ${next} 之間`;
     out.push({ level: 'error', t, msg: `黑畫面（${where}）` });

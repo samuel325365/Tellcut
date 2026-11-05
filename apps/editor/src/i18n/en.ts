@@ -316,6 +316,7 @@ export const en: Record<Key, string> = {
   'ed.noTranscript': "This footage's speech transcript is not ready yet (still analysing, or the analysis failed)",
   'ed.noSpeech': 'No speech was detected in this clip',
   'ed.noCaptions': 'No captions on this track to change',
+  'ed.noTitles': 'No titles on this track to change',
   'ed.capFilmTip': 'The film’s default caption template: every caption naming none of its own draws with it',
   'ed.capTrackTip': 'Put this caption’s template on every caption of its track (their words, timing and speakers stay)',
   'ed.capFilmSetTip': 'Make it the film’s default: every caption naming no template of its own draws with it',

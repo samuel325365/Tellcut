@@ -315,6 +315,7 @@ export const zh = {
   'ed.noTranscript': '這段素材的語音逐字稿還沒有準備好（分析中或分析失敗）',
   'ed.noSpeech': '這段沒有偵測到說話',
   'ed.noCaptions': '這軌沒有可以換的字幕',
+  'ed.noTitles': '這軌沒有可以換的標題',
   'ed.capFilmTip': '這支片的預設字幕範本：沒指定範本的字幕都照它畫',
   'ed.capTrackTip': '把這個字幕的範本套到同一軌的全部字幕（它們的文字、時間和說話者不變）',
   'ed.capFilmSetTip': '設成整支片的預設：沒指定範本的字幕都照它畫',

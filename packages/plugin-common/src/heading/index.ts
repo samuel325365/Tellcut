@@ -9,13 +9,13 @@ import { ANIM_IN, ANIM_OUT } from '../caption/anim.ts';
 import { WORD_FX } from '../caption/wordfx.ts';
 import type { CaptionP, CaptionS } from '../caption/types.ts';
 import { BACKINGS, buildBacking, drawBacking, type BackingEls } from './backing.ts';
-import { isTitleIn, isTitleOut, TITLE_IN, TITLE_OUT, titleAnim } from './anim.ts';
+import { isTitleIn, isTitleOut, TITLE_IN, TITLE_OUT, titleAnim, titleSpacing } from './anim.ts';
 import { fitTitleSize, TITLE_LAYOUTS, titlePlace } from './place.ts';
 import { titleTemplateOf } from './templates.ts';
 import { withTemplate } from '../caption/templates.ts';
 
 export { BACKINGS } from './backing.ts';
-export { TITLE_IN, TITLE_OUT, titleAnim } from './anim.ts';
+export { TITLE_IN, TITLE_OUT, titleAnim, titleSpacing } from './anim.ts';
 export { fitTitleSize, TITLE_LAYOUTS, titlePlace } from './place.ts';
 export { TITLE_TEMPLATES, titleTemplateOf, type TitleTemplate } from './templates.ts';
 
@@ -62,10 +62,11 @@ export const heading: ItemType<HeadingP, HeadingS> = {
   ],
   build(ctx) {
     const back = buildBacking(ctx.root);
-    const kicker = h('div', null, null, ctx.root);
-    cssCamel(kicker, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1.2', fontWeight: '700', letterSpacing: '0.2em', display: 'none' });
+    // the kicker is in the inner layer with the words, so the title's own animation moves, clips and blurs them as one
     const inner = h('div', null, null, ctx.root);
     cssCamel(inner, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
+    const kicker = h('div', null, null, inner);
+    cssCamel(kicker, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1.2', fontWeight: '700', letterSpacing: '0.2em', display: 'none' });
     const cap = caption.build({ ...ctx, root: inner, params: { ...CAPTION_DEFAULTS } } as never) as CaptionS;
     return { inner, cap, kicker, back };
   },
@@ -89,28 +90,37 @@ export const heading: ItemType<HeadingP, HeadingS> = {
       position: place.position, align: place.align, y: place.y, words: [] };
     // the caption's own templates never reach a title; a font the item sets itself replaces a look's own, as on a caption
     const fontSet = (!!ctx.item?.params && 'font' in ctx.item.params) || p.font !== ctx.params.font;
-    caption.draw({ ...ctx, params: capParams, item: { ...ctx.item, params: fontSet ? { font: p.font } : {} }, project: { ...ctx.project, meta: { ...ctx.project?.meta, captionTemplate: undefined, captionTemplates: undefined } } } as never, s.cap);
+    const draw = (params: CaptionP) => caption.draw({ ...ctx, params, item: { ...ctx.item, params: fontSet ? { font: p.font } : {} }, project: { ...ctx.project, meta: { ...ctx.project?.meta, captionTemplate: undefined, captionTemplates: undefined } } } as never, s.cap);
+    const box = s.cap.box;
+    // corner: the block is moved to the safe area's right edge by its whole width, measured with every letter typed (while a
+    // typewriter types, the box is only as wide as the letters so far, and the block slid left letter by letter)
+    let full = 0;
+    if (place.right && (capParams.animIn === 'typewriter' || capParams.wordFx === 'type')) {
+      draw({ ...capParams, animIn: 'none', animOut: 'none', wordFx: capParams.wordFx === 'type' ? 'none' : capParams.wordFx });
+      full = box.offsetWidth;
+    }
+    draw(capParams);
+    // track and spread: on the words, added to the look's own spacing (which would replace one set on a layer above them)
+    const spacing = titleSpacing(p.animIn, p.animOut, local, dur, p.animDur);
+    if (spacing) box.style.letterSpacing = `calc(${box.style.letterSpacing || '0px'} + ${spacing}em)`;
     // the block's box from layout values (a centred box stands on its middle; a centre-placed one is lifted by half its height)
-    const box = s.cap.box, fs = parseFloat(box.style.fontSize) || (size / 100) * H, bw = box.offsetWidth, bh = box.offsetHeight;
-    let x = place.align === 'left' ? box.offsetLeft : box.offsetLeft - bw / 2;
+    const fs = parseFloat(box.style.fontSize) || (size / 100) * H, bw = box.offsetWidth, bh = box.offsetHeight;
+    const x0 = place.align === 'left' ? box.offsetLeft : box.offsetLeft - bw / 2;
     const y = place.position === 'center' && place.y < 0 ? box.offsetTop - bh / 2 : box.offsetTop;
-    // corner: the left-set block moved to the safe area's right edge
-    const dx = place.right ? Math.max(0, W * (1 - theme.safe.side) - (x + bw)) : 0;
-    x += dx;
-    const a = titleAnim(p.animIn, p.animOut, local, dur, p.animDur);
-    cssCamel(s.inner, { transform: [dx ? `translateX(${dx.toFixed(2)}px)` : '', a.transform].filter(Boolean).join(' '), clipPath: a.clip || 'none', filter: a.filter || 'none',
-      letterSpacing: a.letterSpacing, opacity: String(a.opacity * a.textOpacity) });
-    // the kicker: a small spaced line just above the block, aligned with it
-    const kick = String(p.kicker ?? ''), kfs = fs * 0.3 * small;
+    const dx = place.right ? Math.max(0, W * (1 - theme.safe.side) - (x0 + Math.max(bw, full))) : 0, x = x0 + dx;
+    // the kicker: a small spaced line just above the block, aligned with it (in the inner layer, which moves it by dx)
+    const kick = String(p.kicker ?? ''), kfs = fs * 0.3 * small, kh = kick ? kfs * 1.2 + 0.12 * fs : 0;
     s.kicker.textContent = kick;
     cssCamel(s.kicker, { display: kick ? 'block' : 'none', fontSize: `${kfs.toFixed(2)}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, color: p.kickerColor || p.hl,
       textShadow: `0 ${(2 * k).toFixed(2)}px ${(6 * k).toFixed(2)}px rgba(0,0,0,0.45)`, bottom: `${(H - y + 0.12 * fs).toFixed(2)}px`, top: '',
-      left: `${(place.align === 'left' ? x : x + bw / 2).toFixed(2)}px`, transform: `${place.align === 'left' ? '' : 'translateX(-50%) '}${a.transform}`.trim() || 'none',
-      clipPath: a.clip || 'none', filter: a.filter || 'none', opacity: String(a.opacity * a.textOpacity) });
+      left: `${(place.align === 'left' ? x0 : x0 + bw / 2).toFixed(2)}px`, transform: place.align === 'left' ? 'none' : 'translateX(-50%)', clipPath: 'none', filter: 'none', opacity: '1' });
+    // the title's own animation on the inner layer, against the block (its kicker included) where it is before the corner's move
+    const a = titleAnim(p.animIn, p.animOut, local, dur, p.animDur, { x: x0, y: y - kh, w: bw, h: bh + kh, W, H, fs });
+    cssCamel(s.inner, { transform: [dx ? `translateX(${dx.toFixed(2)}px)` : '', a.transform].filter(Boolean).join(' '), transformOrigin: a.transformOrigin, clipPath: a.clip || 'none',
+      filter: a.filter || 'none', opacity: String(a.opacity * a.textOpacity) });
     // the backing fades in and out with the title over the same time
     const d = Math.max(0.05, Math.min(p.animDur, dur / 2)), fade = eOut3(Math.min(prog(local, 0, d), prog(dur - local, 0, d)));
     // the kicker is part of the block the backing goes round
-    const kh = kick ? kfs * 1.2 + 0.12 * fs : 0;
     drawBacking(s.back, { backing: p.backing, block: { x, y: y - kh, w: bw, h: bh + kh }, fs, W, H, k, centered: place.align !== 'left', color: p.backColor,
       accent: p.accent || (p.backing === 'rules' ? p.color : theme.palette.accent), radius: theme.radius * k, opacity: p.animIn === 'rule' ? Math.max(fade, a.ruleP) : fade, ruleP: a.ruleP });
   },
