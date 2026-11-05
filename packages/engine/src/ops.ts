@@ -12,10 +12,13 @@ export class OpError extends Error {
 }
 
 /** A project's own effect module (fx/….js or .mjs, written by the agent) joins meta.fx, so an edited project can take a new effect
- *  without a re-cut: only npm run cut registered one before (c.fx), and that would overwrite the user's edits. Once is enough. */
+ *  without a re-cut: only npm run cut registered one before (c.fx), and that would overwrite the user's edits. Once is enough.
+ *  The path is written one way only (no empty, . or .. segment, no backslash): fx//coin.js or fx/./coin.js passed the
+ *  includes() check beside fx/coin.js and loaded the same module twice. */
 function addFx(p: Project, a: { path?: unknown }) {
   const path = a.path;
-  if (typeof path !== 'string' || !/^fx\/(?!.*\.\.)[\w./-]+\.m?js$/.test(path)) throw new Error(`path 要是專案裡的特效檔，例如 "fx/coin.js"（現在是 ${JSON.stringify(path)}）`);
+  if (typeof path !== 'string' || !/^fx\/[\w./-]+\.m?js$/.test(path) || path.split('/').some((s) => s === '' || s === '.' || s === '..'))
+    throw new Error(`path 要是專案裡的特效檔，寫成 "fx/coin.js" 這樣（不能有 //、./、..、反斜線；現在是 ${JSON.stringify(path)}）`);
   const list = (p.meta.fx ??= []);
   if (!list.includes(path)) list.push(path);
 }
@@ -65,7 +68,8 @@ export function runOps(d: Project, ops: Op[]) {
 const f2 = (v: number) => v.toFixed(2);
 /** one line of a proposal's summary as data, for the page to word in its language (summary is the same in Chinese, for the
  *  command line and the agent): an item added (with its block type), a number changed, a field changed (a block type: from
- *  and to), moved to a track, deleted; n items moved by the same seconds */
+ *  and to), moved to a track, deleted; n items moved by the same seconds. An effect module joining or leaving meta.fx (addFx) is
+ *  an add / del whose id is its path and whose track is 'meta.fx' (a proposal of only addFx said nothing: "Changes: 0"). */
 export type SummaryLine =
   | { k: 'add'; id: string; track: string; type?: string } | { k: 'num'; id: string; key: string; from: string; to: string }
   | { k: 'edit'; id: string; key: string; from?: string; to?: string } | { k: 'track'; id: string; track: string }
@@ -110,6 +114,11 @@ export function summarize(before: Project, after: Project): { changed: string[];
   }
   for (const [id] of A) if (!B.has(id)) { changed.push(id); say(`刪除 ${id}`, { k: 'del', id }); }
   for (const [k, n] of shifts) say(`${n} 個項目移動 ${k} 秒`, { k: 'shift', n, by: k });
+  // the project's own effect modules, by path in changed too (it counts the changes; the ids the tools give items have no /, so a
+  // path does not mark an item as changed)
+  const fxA = before.meta.fx ?? [], fxB = after.meta.fx ?? [];
+  for (const path of fxB) if (!fxA.includes(path)) { changed.push(path); say(`新增 ${path}（meta.fx）`, { k: 'add', id: path, track: 'meta.fx' }); }
+  for (const path of fxA) if (!fxB.includes(path)) { changed.push(path); say(`刪除 ${path}（meta.fx）`, { k: 'del', id: path }); }
   return { changed, summary: lines, lines: coded };
 }
 

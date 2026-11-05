@@ -110,4 +110,18 @@ test('addFx: a project effect module joins meta.fx once (an edited project takes
   ]);
   expect(r.project.meta.fx).toEqual(['fx/coin.js']);
   for (const path of ['../x.js', 'fx/../../x.js', 'media/x.js', 'fx/x.ts', 3]) expect(() => applyOps(fixture(), [{ op: 'addFx', path }])).toThrow(OpError);
+  // one spelling per module: these passed beside fx/coin.js and loaded it twice
+  for (const path of ['fx//coin.js', 'fx/./coin.js', 'fx/lib/./a.js', 'fx\\coin.js', 'fx/lib//a.js'])
+    expect(() => applyOps(fixture(), [{ op: 'addFx', path }]), path).toThrow('不能有 //、./、..、反斜線');
+  expect(applyOps(fixture(), [{ op: 'addFx', path: 'fx/lib/my-coin/_entry.js' }]).project.meta.fx).toEqual(['fx/lib/my-coin/_entry.js']);
+});
+
+test('a proposal of only addFx says so: a summary line and a change, not "Changes: 0"', () => {
+  const r = applyOps(fixture(), [{ op: 'addFx', path: 'fx/coin.js' }]);
+  expect(r.summary).toEqual(['新增 fx/coin.js（meta.fx）']);
+  expect(r.lines).toEqual([{ k: 'add', id: 'fx/coin.js', track: 'meta.fx' }]);
+  expect(r.changed).toEqual(['fx/coin.js']);
+  // a module already there is no change
+  const again = applyOps(r.project, [{ op: 'addFx', path: 'fx/coin.js' }]);
+  expect([again.summary, again.changed]).toEqual([[], []]);
 });
