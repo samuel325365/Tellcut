@@ -171,3 +171,10 @@ test('music from a source with a listed bpm gets its beats checked against it', 
   expect(Math.round(inv.music[0].beats!.bpm)).toBe(60);
   expect(inv.music[0].beats!.beats.length).toBeLessThanOrEqual(11);
 });
+
+test('a length just under a minute reads 1:59, not 1:60', () => {
+  const inv = { id: 'Demo', dir: 'C:/p/demo', project: { meta: { width: 1080, height: 1920 } } as any, music: [], chapters: [], photoSheets: [], overview: [],
+    sources: [{ id: 'walk', kind: 'video', duration: 119.6, width: 1920, height: 1080, orientation: 'landscape', audio: true, speech: '', sheets: [], segments: [[0, 119.6]], transcript: null, burned: null }],
+  } as unknown as Inventory;
+  expect(formatInventory(inv)).toContain('walk：影片 1:59，1 段');
+});

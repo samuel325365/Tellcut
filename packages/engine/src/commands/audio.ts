@@ -1,10 +1,10 @@
 // Volume envelope points and fades on music/audio clips (spec §4.4). Point times are relative to the clip start.
 import type { Project } from '../schema.ts';
 import { CommandError, findItem, r6 } from './core.ts';
+import { clamp } from '../util.ts';
 
 export const ENV_DB_MIN = -60, ENV_DB_MAX = 12;
-const clampDb = (db: number) => Math.round(Math.min(ENV_DB_MAX, Math.max(ENV_DB_MIN, db)) * 10) / 10;
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const clampDb = (db: number) => Math.round(clamp(db, ENV_DB_MIN, ENV_DB_MAX) * 10) / 10;
 
 function clip(p: Project, id: string, what: 'envelope' | 'fades') {
   const f = findItem(p, id);

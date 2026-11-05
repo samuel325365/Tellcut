@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { parseProject, type Project, type Transcript } from '@tellcut/engine';
-import { analysisDone, analysisFiles, analyzeSource, describeFaces, extrasFiles, faceKey, facesAt, ffmpeg, musicBeats, overviewSheets, readAssetRecords, photoSheet, probeDuration, readBurned, readTranscript, sourceExtras, timecode1, type Beats, type Burned, type BurnedCaption } from '@tellcut/media-node';
+import { analysisDone, analysisFiles, analyzeSource, describeFaces, extrasFiles, faceKey, facesAt, ffmpeg, musicBeats, overviewSheets, readAssetRecords, photoSheet, probeDuration, readBurned, readTranscript, sourceExtras, timecode, timecode1, type Beats, type Burned, type BurnedCaption } from '@tellcut/media-node';
 import { chapters, chronological, type Chapter } from './chapters.ts';
 import { ANALYSIS_STEPS } from '@tellcut/protocol';
 
@@ -107,7 +107,8 @@ export function imageBudget(inv: Pick<Inventory, 'sources' | 'overview' | 'photo
 const budgetLine = ({ total, sheets, detail }: ReturnType<typeof imageBudget>) =>
   `看圖預算：約 ${total} 張（${[sheets && `總覽 ${sheets}`, detail && `細看素材（--source、--range）至多 ${detail}`].filter(Boolean).map((x) => `${x} ＋ `).join('')}check 拼貼 2 ＋ frames 至多 8）；新寫的 fx 每個再加 2 張；超過要說得出為什麼`;
 
-const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
+// media-node's timecode floors the seconds: rounding them printed 119.6 s as 1:60
+const mmss = timecode;
 export function formatInventory(inv: Inventory): string {
   const L: string[] = [`專案 ${inv.id}（${inv.project.meta.width}×${inv.project.meta.height}）`, budgetLine(imageBudget(inv)), ''];
   for (const f of inv.overview) L.push(`素材總覽：${f}`);
