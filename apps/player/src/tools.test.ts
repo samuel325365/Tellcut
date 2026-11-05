@@ -4,7 +4,7 @@ import { StageTools } from './tools.ts';
 (globalThis as any).CSS ??= { escape: (s: string) => s };
 const rect = (left: number, top: number, w: number, h: number) => (() => ({ left, top, width: w, height: h, right: left + w, bottom: top + h, x: left, y: top })) as any;
 
-function setup(transform?: any) {
+function setup(transform?: any, type = 'string') {
   const viewport = document.createElement('div'), stage = document.createElement('div');
   viewport.appendChild(stage); document.body.appendChild(viewport);
   const layer = document.createElement('div');
@@ -16,7 +16,7 @@ function setup(transform?: any) {
   stage.getBoundingClientRect = rect(0, 0, 320, 180);
   viewport.getBoundingClientRect = rect(0, 0, 320, 180);
   const project: any = { meta: { width: 320, height: 180 }, tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 't', type: 'x.title', start: 0, end: 1, params: { title: 'Hello' }, transform }] }] };
-  const registry: any = { item: () => ({ params: [{ key: 'title', label: '標題', type: 'string', default: '' }] }) };
+  const registry: any = { item: () => ({ params: [{ key: 'title', label: '標題', type, default: '' }] }) };
   const sent: any[] = [];
   const tools = new StageTools(stage, viewport, (m) => sent.push(m), { project: () => project, registry, busy: () => false });
   return { viewport, tools, sent };
@@ -98,6 +98,21 @@ test('Enter while an input method is composing does not commit the text', () => 
   box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
   expect(viewport.querySelector('.text-edit')).toBe(box);
   expect(sent.filter((m) => m.type === 'paramEdit')).toEqual([]);
+});
+
+test('a text of several lines takes Enter as a new line; Ctrl+Enter, or Cmd+Enter on a Mac, puts it in', () => {
+  for (const mod of ['ctrlKey', 'metaKey']) {
+    const { viewport, sent } = setup(undefined, 'text');
+    at('dblclick', viewport);
+    const box = viewport.querySelector<HTMLTextAreaElement>('textarea.text-edit')!;
+    box.value = 'Hello\nworld';
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(viewport.querySelector('.text-edit')).toBe(box);
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', [mod]: true, bubbles: true, cancelable: true }));
+    expect(viewport.querySelector('.text-edit'), mod).toBeNull();
+    expect(sent.filter((m) => m.type === 'paramEdit').map((m) => m.value)).toEqual(['Hello\nworld']);
+    viewport.remove();
+  }
 });
 
 test('invisible elements are not picked', () => {

@@ -169,7 +169,8 @@ export class StageTools {
       k.stopPropagation();
       if (k.isComposing || k.keyCode === 229) return;   // the input method owns Enter while composing
       if (k.key === 'Escape') finish(false);
-      else if (k.key === 'Enter' && (def.type !== 'text' || k.ctrlKey)) { k.preventDefault(); finish(true); }
+      // a text of several lines takes Enter as a new line; Ctrl+Enter (⌘+Enter on a Mac, as the help says) puts it in
+      else if (k.key === 'Enter' && (def.type !== 'text' || k.ctrlKey || k.metaKey)) { k.preventDefault(); finish(true); }
     });
     box.addEventListener('blur', () => finish(true));
   }
