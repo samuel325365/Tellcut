@@ -1,5 +1,5 @@
-import { spawn, spawnSync, type execFileSync } from 'node:child_process';
-import { descendants, isAlive, killTree, nap, pause, processStarted, shellQuote, shellQuoter, type ProcEnv } from './proc.ts';
+import { spawn, spawnSync } from 'node:child_process';
+import { descendants, isAlive, killTree, nap, pause, processStarted, shellQuote, shellQuoter, type ProcEnv, type RunText } from './proc.ts';
 
 test('the tree below a process is read from ps, the deepest first and the process itself last', () => {
   const ps = ['  1     0', ' 10     1', ' 11    10', ' 12    11', ' 13    10', ' 20     1', 'garbage'].join('\n');
@@ -21,30 +21,30 @@ test('processStarted: when a live process started (to tell it from a later one u
   const before = Date.now();
   const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)'], { windowsHide: true });
   try {
-    const t = processStarted(child.pid!);
+    const t = await processStarted(child.pid!);
     expect(t).not.toBeNull();
     // ps tells whole seconds
     expect(t!).toBeGreaterThanOrEqual(before - 1500);
     expect(t!).toBeLessThanOrEqual(Date.now() + 1000);
   } finally { child.kill(); }
   await new Promise((r) => child.on('exit', r));
-  expect(processStarted(child.pid!)).toBeNull();
-  expect(processStarted(0)).toBeNull();
+  expect(await processStarted(child.pid!)).toBeNull();
+  expect(await processStarted(0)).toBeNull();
 }, 30000);
 
 // each platform's branch, on any machine: what the command asked for and how its answer is read
-test('processStarted asks ps on macOS (local time, English month) and PowerShell on Windows (epoch ms)', () => {
+test('processStarted asks ps on macOS (local time, English month) and PowerShell on Windows (epoch ms)', async () => {
   const calls: Array<{ cmd: string; args: string[]; lc?: string }> = [];
-  const fake = (out: string) => (((cmd: string, args: string[], o: { env?: NodeJS.ProcessEnv }) => { calls.push({ cmd, args, lc: o.env?.LC_ALL }); return out; }) as unknown) as typeof execFileSync;
-  expect(processStarted(5, fake('Tue Nov  3 10:00:00 2026\n'), 'darwin')).toBe(new Date(2026, 10, 3, 10, 0, 0).getTime());
+  const fake = (out: string): RunText => async (cmd, args, o) => { calls.push({ cmd, args, lc: o.env?.LC_ALL }); return out; };
+  expect(await processStarted(5, fake('Tue Nov  3 10:00:00 2026\n'), 'darwin')).toBe(new Date(2026, 10, 3, 10, 0, 0).getTime());
   expect(calls[0]).toEqual({ cmd: 'ps', args: ['-o', 'lstart=', '-p', '5'], lc: 'C' });
-  expect(processStarted(5, fake('1793671200000\r\n'), 'win32')).toBe(1793671200000);
+  expect(await processStarted(5, fake('1793671200000\r\n'), 'win32')).toBe(1793671200000);
   expect(calls[1].cmd).toBe('powershell.exe');
   expect(calls[1].args.at(-1)).toContain('Get-Process -Id 5 ');
   // nothing (gone) or something unreadable: not known
-  expect(processStarted(5, fake(''), 'darwin')).toBeNull();
-  expect(processStarted(5, fake('soon'), 'darwin')).toBeNull();
-  expect(processStarted(5, (() => { throw new Error('exit 1'); }) as unknown as typeof execFileSync, 'darwin')).toBeNull();
+  expect(await processStarted(5, fake(''), 'darwin')).toBeNull();
+  expect(await processStarted(5, fake('soon'), 'darwin')).toBeNull();
+  expect(await processStarted(5, async () => { throw new Error('exit 1'); }, 'darwin')).toBeNull();
 });
 
 /** macOS as killTree sees it: a fixed process tree, and the signals sent in order */

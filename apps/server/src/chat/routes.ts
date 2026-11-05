@@ -63,8 +63,9 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
 
   const analysis = (id: string): AnalysisState | null => (isHome(id) || !queue ? null : analysisState([...queue.active('analyze', id), ...queue.active('extras', id)]));
 
-  r.get('/api/chat/:thread', (_req, res, { thread }) => {
+  r.get('/api/chat/:thread', async (_req, res, { thread }) => {
     threadOf(thread);
+    await runner.ready(thread);
     const running = runner.running(thread), elsewhere = runner.elsewhere(thread);
     let t = readThread(file(thread));
     // a reply that finished while the server was down is put back from Claude's own log (and kept); one another server
@@ -81,6 +82,7 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
     // a preset picked on the home page: its prompt goes to Claude with the message; the thread keeps only which one it was
     const asked = typeof b?.preset === 'string' && b.preset ? b.preset : null;
     if (!text && !asked) throw new HttpError(400, '訊息是空的', { code: 'chat.empty' });
+    await runner.ready(thread);
     if (runner.running(thread) || runner.elsewhere(thread)) throw new HttpError(409, '還在回覆中', { code: 'chat.busy' });
     const found = asked && presetDirs ? findPreset(presetDirs, asked) : null;
     const styles = Array.isArray(b?.styles) ? b.styles.filter((x: unknown): x is string => typeof x === 'string') : [];
@@ -98,20 +100,23 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
     res.on('close', () => {});
   });
 
-  r.get('/api/chat/:thread/stream', (_req, res, { thread }) => {
+  r.get('/api/chat/:thread/stream', async (_req, res, { thread }) => {
     threadOf(thread);
+    await runner.ready(thread);
     const send = ndjson(res), off = runner.attach(thread, send);
     if (!off) { send({ type: 'done', status: 'done', text: '' }); return; }
     res.on('close', off);
   });
 
-  r.post('/api/chat/:thread/stop', (_req, res, { thread }) => {
+  r.post('/api/chat/:thread/stop', async (_req, res, { thread }) => {
     threadOf(thread);
+    await runner.ready(thread);
     sendJson(res, 200, { stopped: runner.stop(thread) });
   });
 
-  r.del('/api/chat/:thread', (_req, res, { thread }) => {
+  r.del('/api/chat/:thread', async (_req, res, { thread }) => {
     threadOf(thread);
+    await runner.ready(thread);
     // another server on the same projects/ answering it would append its reply to the emptied conversation
     if (runner.running(thread) || runner.elsewhere(thread)) throw new HttpError(409, '還在回覆中', { code: 'chat.busy' });
     writeThread(file(thread), freshThread());
@@ -123,30 +128,32 @@ export function chatRoutes(r: Router, store: ProjectStore, runner: ChatRunner, q
    *  never told (the first found the project still analysing, the last started after that turn ended) */
   const deferred = new Map<string, { since: number; jobs: JobInfo[] }>();
 
-  return {
-    /**
-     * A project's analysis started at `since` is done. If its chat ended a turn while it ran (Claude said it would go on once
-     * the transcript is there) and nobody has written since, the chat is told to go on — the page that shows it picks it up.
-     * jobs: how each of them ended. Nothing done (all failed or cancelled, a failure run again): no automatic (paid) turn, it has
-     * nothing new to go on with; some of it failed: the message says which.
-     */
-    afterAnalysis(id: string, since0: number, jobs0: JobInfo[]) {
-      if (runner.running(id)) { deferred.delete(id); return; }
-      const before = deferred.get(id);
-      const since = Math.min(since0, before?.since ?? Infinity);
-      // a job run again later (the same step of the same file) counts as it ended last
-      const jobs = [...(before?.jobs ?? []).filter((j) => !jobs0.some((x) => x.kind === j.kind && x.label === j.label)), ...jobs0];
-      if (analyzing(id)) { deferred.set(id, { since, jobs }); return; }
-      deferred.delete(id);
-      if (!jobs.some((j) => j.status === 'done')) return;
-      const missed = jobs.filter((j) => j.status !== 'done');
-      let th;
-      try { th = readThread(file(id)); store.read(id); } catch { return; }   // a project deleted meanwhile
-      const last = th.messages.at(-1);
-      if (!last || last.role !== 'assistant' || last.status !== 'done' || Date.parse(last.time) < since) return;
-      // in the language the user last wrote from: without it the agent would answer in the language of this English line
-      runner.send(id, missed.length ? analysisPartly(missed) : ANALYSIS_DONE, [langLine(th.lang), threadOf(id, 'auto').context].filter(Boolean).join('\n\n'), () => {},
-        { auto: missed.length ? 'analysis-partial' : 'analysis' });
-    },
-  };
+  /**
+   * A project's analysis started at `since` is done. If its chat ended a turn while it ran (Claude said it would go on once
+   * the transcript is there) and nobody has written since, the chat is told to go on — the page that shows it picks it up.
+   * jobs: how each of them ended. Nothing done (all failed or cancelled, a failure run again): no automatic (paid) turn, it has
+   * nothing new to go on with; some of it failed: the message says which.
+   */
+  const afterAnalysis = (id: string, since0: number, jobs0: JobInfo[]): void => {
+    // a claude an earlier server left here is still being judged: looked at again once it is (else it would count as running)
+    if (runner.judging(id)) { void runner.ready(id).then(() => afterAnalysis(id, since0, jobs0)); return; }
+    if (runner.running(id)) { deferred.delete(id); return; }
+    const before = deferred.get(id);
+    const since = Math.min(since0, before?.since ?? Infinity);
+    // a job run again later (the same step of the same file) counts as it ended last
+    const jobs = [...(before?.jobs ?? []).filter((j) => !jobs0.some((x) => x.kind === j.kind && x.label === j.label)), ...jobs0];
+    if (analyzing(id)) { deferred.set(id, { since, jobs }); return; }
+    deferred.delete(id);
+    if (!jobs.some((j) => j.status === 'done')) return;
+    const missed = jobs.filter((j) => j.status !== 'done');
+    let th;
+    try { th = readThread(file(id)); store.read(id); } catch { return; }   // a project deleted meanwhile
+    const last = th.messages.at(-1);
+    if (!last || last.role !== 'assistant' || last.status !== 'done' || Date.parse(last.time) < since) return;
+    // in the language the user last wrote from: without it the agent would answer in the language of this English line
+    runner.send(id, missed.length ? analysisPartly(missed) : ANALYSIS_DONE, [langLine(th.lang), threadOf(id, 'auto').context].filter(Boolean).join('\n\n'), () => {},
+      { auto: missed.length ? 'analysis-partial' : 'analysis' });
+};
+
+  return { afterAnalysis };
 }

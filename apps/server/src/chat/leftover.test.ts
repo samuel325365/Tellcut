@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TELLCUT_ROOT } from '@tellcut/media-node';
 import { makeProjects } from '../test-utils.ts';
-import { judge, readNote, writeNote } from './leftover.ts';
+import { judge, readNote, Verdicts, writeNote } from './leftover.ts';
 import { RECOVERED_NOTE } from './recover.ts';
 import { ChatRunner } from './runner.ts';
 import { chatFile } from './store.ts';
@@ -53,6 +53,48 @@ test('a process is the noted one while it lives and started before the note; a p
   expect(judge(n, { alive: () => true, started: () => 1_060_000 })).toBe('gone');   // the pid handed to another program
   expect(judge(n, { alive: () => false, started: () => 999_000 })).toBe('gone');
   expect(judge(n, { alive: () => true, started: () => null })).toBe('unknown');
+});
+
+// Windows asks PowerShell for a start (a few tenths of a second or more): asked without blocking the server, once per note
+test('a start that answers later: pending counts as running (not sure) until ready, asked once; then the answer holds', async () => {
+  let asked = 0, answer!: (t: number | null) => void;
+  const proc = { alive: true };
+  const v = new Verdicts({ alive: () => proc.alive, started: () => { asked++; return new Promise<number | null>((ok) => { answer = ok; }); } });
+  const n = { pid: PID, at: 1_000_000, session: SID }, later = { ...n, at: 2_000_000 };
+  expect([v.of(n), v.of(n), asked]).toEqual(['pending', 'pending', 1]);
+  const ready = v.ready(n);
+  answer(1_060_000);                                                   // started after the note: another program's pid
+  await ready;
+  expect([v.of(n), asked]).toEqual(['gone', 1]);
+  expect(v.of(later)).toBe('pending');                                 // another note is asked on its own
+  answer(1_500_000);
+  await v.ready(later);
+  expect(v.of(later)).toBe('same');
+  proc.alive = false;
+  expect(v.of(later)).toBe('gone');
+  // gone while still being asked: gone, and the late answer changes nothing
+  proc.alive = true;
+  const third = { ...n, at: 3_000_000 };
+  expect(v.of(third)).toBe('pending');
+  proc.alive = false;
+  expect(v.of(third)).toBe('gone');
+  proc.alive = true;
+  answer(2_500_000);
+  await v.ready(third);
+  expect(v.of(third)).toBe('gone');
+});
+
+test('the runner, while a leftover claude’s start is still asked: busy and not stopped; ready, then judged by the answer', async () => {
+  const s = setup({ alive: true, started: null });
+  let answer!: (t: number | null) => void;
+  const runner = new ChatRunner({ cmd: FAKE, cwd: TELLCUT_ROOT, promptFiles: [join(TELLCUT_ROOT, 'apps/server/chat-prompt.md')], projectsDir: s.root,
+    liveness: { alive: () => true, started: () => new Promise((ok) => { answer = ok; }) }, kill: (pid) => s.kills.push(pid) });
+  process.env.CLAUDE_CONFIG_DIR = s.config;
+  expect([runner.judging('demo'), runner.elsewhere('demo'), runner.stop('demo'), runner.recover('demo', s.thread())]).toEqual([true, true, false, null]);
+  const ready = runner.ready('demo');
+  answer(s.at - 1000);
+  await ready;
+  expect([runner.judging('demo'), runner.elsewhere('demo'), runner.stop('demo'), s.kills]).toEqual([false, true, true, [PID]]);
 });
 
 test('a claude an earlier server left running is still the turn: the next message is refused, the thread left as it is, no second resume', () => {

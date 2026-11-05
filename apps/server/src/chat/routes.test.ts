@@ -396,7 +396,7 @@ const DONE = [job('analyze', 's1', 'done'), job('extras', 's1', 'done')];
 
 test('when a project analysis is done, a chat that ended its turn waiting for it is told to go on — once, and only then', async () => {
   const root = makeProjects(), sent: Array<[string, string]> = [], calls: any[] = [];
-  const runner: any = { running: () => null, send: (t: string, text: string, context: string, _on: unknown, o: unknown) => { sent.push([t, text]); calls.push({ context, o }); return true; } };
+  const runner: any = { running: () => null, judging: () => false, ready: async () => {}, send: (t: string, text: string, context: string, _on: unknown, o: unknown) => { sent.push([t, text]); calls.push({ context, o }); return true; } };
   const { afterAnalysis } = chatRoutes(router(), new ProjectStore(root), runner);
   const say = (messages: any[]) => { mkdirSync(join(root, 'demo', '.history', 'chat'), { recursive: true }); writeFileSync(join(root, 'demo', '.history', 'chat', 'chat.json'), JSON.stringify({ sessionId: 's', started: true, messages })); };
   const since = Date.now() - 60000;
@@ -420,7 +420,7 @@ test('a batch that ends while a later one (an Import) still runs is judged with 
   const root = makeProjects(), sent: string[] = [];
   let active: any[] = [];
   const queue: any = { active: (kind: string) => active.filter((j) => j.kind === kind) };
-  const runner: any = { running: () => null, send: (_t: string, text: string) => { sent.push(text); return true; } };
+  const runner: any = { running: () => null, judging: () => false, ready: async () => {}, send: (_t: string, text: string) => { sent.push(text); return true; } };
   const { afterAnalysis } = chatRoutes(router(), new ProjectStore(root), runner, queue);
   const t0 = Date.now() - 60000, t1 = t0 + 10000, t2 = t0 + 20000;
   mkdirSync(join(root, 'demo', '.history', 'chat'), { recursive: true });
@@ -438,7 +438,7 @@ test('a batch that ends while a later one (an Import) still runs is judged with 
 
 test('an analysis that did not finish: nothing done, no automatic turn; part of it failed, the message says which', async () => {
   const root = makeProjects(), sent: Array<{ text: string; o: any }> = [];
-  const runner: any = { running: () => null, send: (_t: string, text: string, _c: string, _on: unknown, o: unknown) => { sent.push({ text, o }); return true; } };
+  const runner: any = { running: () => null, judging: () => false, ready: async () => {}, send: (_t: string, text: string, _c: string, _on: unknown, o: unknown) => { sent.push({ text, o }); return true; } };
   const { afterAnalysis } = chatRoutes(router(), new ProjectStore(root), runner);
   const since = Date.now() - 60000;
   mkdirSync(join(root, 'demo', '.history', 'chat'), { recursive: true });
@@ -471,7 +471,7 @@ test('GET chat tells the step as a code (analysis) next to the Chinese line (ana
   const live = { id: 'j', kind: 'extras', project: 'demo', label: '03', status: 'running', progress: 0.5, message: 'transcript', log: [], created: 0, started: now - 5000 };
   const queue: any = { active: (kind: string) => (kind === 'extras' ? [live] : []) };
   const rt = router();
-  chatRoutes(rt, new ProjectStore(root), { running: () => null, elsewhere: () => false, recover: () => null } as any, queue);
+  chatRoutes(rt, new ProjectStore(root), { running: () => null, elsewhere: () => false, recover: () => null, ready: async () => {} } as any, queue);
   const srv = createServer((q, s) => { void rt.handle(q, s); });
   await new Promise<void>((ok) => srv.listen(0, '127.0.0.1', ok));
   try {

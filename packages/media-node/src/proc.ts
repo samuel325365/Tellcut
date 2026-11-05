@@ -4,7 +4,7 @@
 // a Ctrl+C of the server, so the tree is read from `ps` and every process in it is signalled, the children first.
 // Only node: modules: tools/batch/queue.ts and tools/test-cleanup.ts load this file on its own (a worker run by Node's own type
 // stripping, a vitest global setup), without the rest of the package.
-import { execFileSync, spawn } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 
 /** EPERM: the process exists but belongs to someone with more rights (e.g. an elevated shell on Windows) — still alive */
 export const isAlive = (pid: number): boolean => {
@@ -65,17 +65,24 @@ export function killTree(pid: number, signal: NodeJS.Signals = 'SIGKILL', run: t
   for (const p of descendants(sys.ps(), pid)) { try { sys.kill(p, signal); } catch { /* gone already */ } }
 }
 
+/** runs a command for its standard output; rejects when it fails or runs past `timeout` ms */
+export type RunText = (cmd: string, args: string[], o: { env?: NodeJS.ProcessEnv; timeout: number }) => Promise<string>;
+const runText: RunText = (cmd, args, o) => new Promise((resolve, reject) => {
+  const child = execFile(cmd, args, { encoding: 'utf8', windowsHide: true, timeout: o.timeout, env: o.env }, (err, stdout) => (err ? reject(err) : resolve(stdout)));
+  child.stdin?.end();   // nothing to read: PowerShell given a pipe it could read may wait for it to close
+});
+
 /** When `pid` started (ms since the epoch), or null when that cannot be told (gone, no PowerShell or ps). With a pid alone a
- *  process cannot be told from one started later under the same pid (Windows soon reuses them). Windows asks PowerShell (≈0.3 s):
- *  callers ask once per process and keep the answer. */
-export function processStarted(pid: number, run: typeof execFileSync = execFileSync, platform: NodeJS.Platform = process.platform): number | null {
+ *  process cannot be told from one started later under the same pid (Windows soon reuses them). Windows asks PowerShell (≈0.3 s,
+ *  longer on a busy machine): asynchronous, so a server asking never stops answering meanwhile; callers ask once per process
+ *  and keep the answer. */
+export async function processStarted(pid: number, run: RunText = runText, platform: NodeJS.Platform = process.platform): Promise<number | null> {
   if (!Number.isInteger(pid) || pid <= 0) return null;
   try {
     const out = platform === 'win32'
-      ? run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `([DateTimeOffset](Get-Process -Id ${pid} -ErrorAction Stop).StartTime).ToUnixTimeMilliseconds()`],
-        { encoding: 'utf8', windowsHide: true, timeout: 15_000, stdio: ['ignore', 'pipe', 'ignore'] })
+      ? await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `([DateTimeOffset](Get-Process -Id ${pid} -ErrorAction Stop).StartTime).ToUnixTimeMilliseconds()`], { timeout: 15_000 })
       // the local time in English, to the second (LC_ALL: a month name Date.parse reads)
-      : run('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' }, timeout: 15_000, stdio: ['ignore', 'pipe', 'ignore'] });
+      : await run('ps', ['-o', 'lstart=', '-p', String(pid)], { env: { ...process.env, LC_ALL: 'C' }, timeout: 15_000 });
     const s = String(out).trim(), t = /^\d+$/.test(s) ? Number(s) : Date.parse(s);
     return Number.isFinite(t) && t > 0 ? t : null;
   } catch { return null; }

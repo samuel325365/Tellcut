@@ -7,7 +7,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { chatFile, closeDangling, freshThread, isHome, readThread, writeThread, type ChatThread } from './store.ts';
 import { NOT_FOUND, StreamParser, type ChatEvent, type ChatTool, type Usage } from './stream.ts';
 import { RECOVERED_NOTE, sessionLog, withRecovered } from './recover.ts';
-import { clearNote, judge, LIVENESS, readNote, recentlyActive, writeNote, type ClaudeNote, type Liveness } from './leftover.ts';
+import { clearNote, LIVENESS, readNote, recentlyActive, Verdicts, writeNote, type ClaudeNote, type Liveness } from './leftover.ts';
 import { BASH_DEFAULT_TIMEOUT_MS, BASH_MAX_TIMEOUT_MS } from './timeouts.ts';
 import { claudeEnv, killTree as killProcessTree, lockHolder, renameRetry, shellQuote as quote, tryLock, writeProjectFile } from '@tellcut/media-node';
 import type { ChatMessage, Lang, PresetChoice } from '@tellcut/protocol';
@@ -148,8 +148,9 @@ const WATCH_MS = 2000;
 
 export class ChatRunner {
   private turns = new Map<string, Turn>();
-  /** what each leftover claude was found to be (by pid and note time): a live process stays the one it was, a gone one gone */
-  private verdicts = new Map<string, 'same' | 'unknown' | 'gone'>();
+  /** what each leftover claude was found to be (leftover.ts Verdicts; made on first use, after the constructor set o) */
+  private verdictsOf?: Verdicts;
+  private get verdicts() { return (this.verdictsOf ??= new Verdicts(this.o.liveness ?? LIVENESS)); }
   /** pages following a leftover claude: told when it is over (see attach) */
   private watchers = new Map<string, { listeners: Set<(e: ChatEvent) => void>; timer: ReturnType<typeof setInterval> }>();
 
@@ -164,6 +165,8 @@ export class ChatRunner {
    * The claude an earlier server started in this thread and never saw end (leftover.ts): running while that very process lives
    * (sure), or while one whose start cannot be told could still be at work by the session log; null when there is no note (or a
    * turn of this server's runs). Over, its session log is final: what it says is recovered at once, without the quiet window.
+   * While its start is still being asked (the first look, see ready) it counts as running, not sure: nothing resumes its session
+   * or puts its reply back meanwhile.
    */
   private leftover(thread: string): { file: string; note: ClaudeNote; running: boolean; sure: boolean } | null {
     if (this.turns.has(thread)) return null;
@@ -171,13 +174,24 @@ export class ChatRunner {
     try { file = chatFile(this.o.projectsDir, thread); } catch { return null; }
     const note = readNote(file);
     if (!note) return null;
-    const l = this.o.liveness ?? LIVENESS, key = `${note.pid}@${note.at}`;
-    let v = this.verdicts.get(key);
-    // a pid is not reused while its process lives: the start is asked once (PowerShell on Windows), then only whether it lives
-    if (v !== 'gone' && v !== undefined && !l.alive(note.pid)) v = 'gone';
-    else if (v === undefined) v = judge(note, l);
-    this.verdicts.set(key, v);
-    return { file, note, running: v === 'same' || (v === 'unknown' && recentlyActive(note)), sure: v === 'same' };
+    const v = this.verdicts.of(note);
+    return { file, note, running: v === 'same' || v === 'pending' || (v === 'unknown' && recentlyActive(note)), sure: v === 'same' };
+  }
+
+  /** Waits until the claude an earlier server left in this thread is judged (its start asked without blocking the server): the
+   *  routes call it first, so what they answer is never the "pending" guess. At once when there is no note. */
+  async ready(thread: string): Promise<void> {
+    if (this.turns.has(thread)) return;
+    let file: string;
+    try { file = chatFile(this.o.projectsDir, thread); } catch { return; }
+    const note = readNote(file);
+    if (note) await this.verdicts.ready(note);
+  }
+
+  /** a leftover claude's start is still being asked (see ready) */
+  judging(thread: string): boolean {
+    if (this.turns.has(thread)) return false;
+    try { const note = readNote(chatFile(this.o.projectsDir, thread)); return !!note && this.verdicts.of(note) === 'pending'; } catch { return false; }
   }
 
   /** the thread with a reply that finished while no server was there put back (recover.ts), or null */

@@ -9,9 +9,10 @@ import { QUIET_MS, sessionLog } from './recover.ts';
 
 /** the process a turn started (the shell, and claude below it), when (ms) and in which session */
 export interface ClaudeNote { pid: number; at: number; session: string }
-/** how a process is looked at (a test's stand-in: fake processes) */
-export interface Liveness { alive(pid: number): boolean; started(pid: number): number | null }
+/** how a process is looked at (a test's stand-in: fake processes); `started` may answer at once or later */
+export interface Liveness { alive(pid: number): boolean; started(pid: number): number | null | Promise<number | null> }
 export const LIVENESS: Liveness = { alive: isAlive, started: (pid) => processStarted(pid) };
+export type Verdict = 'same' | 'unknown' | 'gone';
 
 /** ps tells a start to the second, and the clock may have been set a little meanwhile */
 const SLACK = 2000;
@@ -35,11 +36,42 @@ export function clearNote(chat: string, pid: number) {
 }
 
 /** 'same': alive and started before the note (that very process); 'unknown': alive, its start cannot be told; 'gone' */
-export function judge(n: ClaudeNote, l: Liveness): 'same' | 'unknown' | 'gone' {
+export function judge(n: ClaudeNote, l: { alive(pid: number): boolean; started(pid: number): number | null }): Verdict {
   if (!l.alive(n.pid)) return 'gone';
-  const t = l.started(n.pid);
-  if (t === null) return 'unknown';
-  return t <= n.at + SLACK ? 'same' : 'gone';
+  return byStart(n, l.started(n.pid));
+}
+const byStart = (n: ClaudeNote, t: number | null): Verdict => (t === null ? 'unknown' : t <= n.at + SLACK ? 'same' : 'gone');
+
+/**
+ * What each noted process was found to be, by pid and note time. Its start is asked once (PowerShell on Windows, a few tenths of
+ * a second or more), without blocking the server: 'pending' until the answer is in, which `ready` waits for. Then only whether it
+ * still lives is looked at: a pid is not reused while its process lives, so a live one stays what it was and a gone one gone.
+ */
+export class Verdicts {
+  private known = new Map<string, Verdict>();
+  private asking = new Map<string, Promise<void>>();
+  constructor(private l: Liveness) {}
+
+  of(n: ClaudeNote): Verdict | 'pending' {
+    const key = `${n.pid}@${n.at}`, v = this.known.get(key);
+    if (v === 'gone') return v;
+    if (!this.l.alive(n.pid)) { this.known.set(key, 'gone'); this.asking.delete(key); return 'gone'; }
+    if (v) return v;
+    if (!this.asking.has(key)) {
+      const t = this.l.started(n.pid);
+      if (!(t instanceof Promise)) { this.known.set(key, byStart(n, t)); return this.known.get(key)!; }
+      const done = t.then((x) => byStart(n, x), (): Verdict => 'unknown').then((x) => {
+        if (this.asking.get(key) === done) { this.asking.delete(key); if (!this.known.has(key)) this.known.set(key, x); }
+      });
+      this.asking.set(key, done);
+    }
+    return 'pending';
+  }
+
+  /** waits until `n`'s process is judged (at once when it already is) */
+  async ready(n: ClaudeNote): Promise<void> {
+    if (this.of(n) === 'pending') await this.asking.get(`${n.pid}@${n.at}`);
+  }
 }
 
 /** A live process whose start cannot be told counts as the turn while the turn could still be at work by the old measure: its

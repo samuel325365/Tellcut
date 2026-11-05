@@ -5,6 +5,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { isAlive, pruneCopies, SNAPSHOT_FILE, SNAPSHOT_INDEX } from '@tellcut/media-node';
+import { noteFile as noteOf } from './chat/leftover.ts';
 
 // temp names that carry the writing process id (projects.ts write; the snapshot and index of an export, or of the stills check,
 // golden and thumbs draw: media-node snapshotStamp; a gallery music preview being composed in _gallery/: score-child.ts)
@@ -78,8 +79,17 @@ export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number)
     try {
       if (now - statSync(f).mtimeMs <= DAY) continue;
       const t = JSON.parse(readFileSync(f, 'utf8')) as { messages?: Array<{ role?: string }> };
-      if (!t.messages?.some((m) => m.role === 'user')) drop(f);
+      if (!t.messages?.some((m) => m.role === 'user')) { drop(f); if (existsSync(noteOf(f))) drop(noteOf(f)); }
     } catch { /* unreadable: left alone */ }
+  }
+  // the note of the claude a turn started (chat/leftover.ts: <chat>.claude), kept while a later server may need it to tell that
+  // claude still at work or to put its reply back at once. A day old it names no turn still running (none runs that long, and a
+  // pid alive by then is another program's: the session log alone does the rest); beside no thread it names nothing.
+  const notes = [...(existsSync(home) ? readdirSync(home).filter((n) => n.endsWith('.json.claude')).map((n) => join(home, n)) : []),
+    ...(existsSync(projectsDir) ? readdirSync(projectsDir, { withFileTypes: true }) : []).filter((d) => d.isDirectory())
+      .map((d) => noteOf(join(projectsDir, d.name, '.history', 'chat', 'chat.json'))).filter((f) => existsSync(f))];
+  for (const f of notes) {
+    try { if (!existsSync(f.slice(0, -noteOf('').length)) || now - statSync(f).mtimeMs > DAY) drop(f); } catch { /* gone meanwhile */ }
   }
   return removed;
 }

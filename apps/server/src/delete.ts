@@ -70,13 +70,16 @@ export function removeProject(root: string, id: string, ops: { renameSync: typeo
 
 export function deleteRoutes(r: Router, store: ProjectStore, o: { queue: JobQueue; chat: ChatRunner; holds?: ProjectHolds; live: { forget(id: string): void } }) {
   const guard = (id: string) => { if (id.startsWith('_') || !PROJECT_ID.test(id)) throw new HttpError(400, '這個資料夾不能刪', { code: 'delete.forbidden' }); return store.dir(id); };
-  r.get('/api/projects/:id/delete-preview', (_req, res, { id }) => {
+  r.get('/api/projects/:id/delete-preview', async (_req, res, { id }) => {
     const dir = guard(id);
+    await o.chat.ready(id);   // a claude an earlier server left in its chat, judged first (chat/leftover.ts)
     const busy = projectBusy(id, dir, o);
     sendJson(res, 200, { videos: countVideos(dir), fx: countFx(dir), busy: busy?.text ?? null, ...(busy ? { busyCode: { code: busy.code, ...(busy.params ? { params: busy.params } : {}) } } : {}) } satisfies DeletePreview);
   });
-  r.del('/api/projects/:id', (_req, res, { id }) => {
-    const dir = guard(id), busy = projectBusy(id, dir, o);
+  r.del('/api/projects/:id', async (_req, res, { id }) => {
+    const dir = guard(id);
+    await o.chat.ready(id);
+    const busy = projectBusy(id, dir, o);
     if (busy) throw new HttpError(409, busy.text, { code: busy.code, ...(busy.params ? { params: busy.params } : {}) });
     o.live.forget(id);   // its folder watchers would hold the folder open (the rename fails on Windows)
     removeProject(store.root, id);

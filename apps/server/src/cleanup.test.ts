@@ -43,6 +43,25 @@ test('a voice-over scene interrupted mid-way: its temp mp3 and wav go, the scene
   for (const f of kept) expect(existsSync(f)).toBe(true);
 });
 
+test('a turn’s process note (<chat>.claude) goes with its home draft, a day old, or without its thread; a recent one stays', () => {
+  const root = mkdtempSync(join(tmpdir(), 'clean-')), home = join(root, '_home'), hist = join(root, 'demo', '.history', 'chat'), other = join(root, 'other', '.history', 'chat');
+  for (const d of [home, hist, other]) mkdirSync(d, { recursive: true });
+  const put = (f: string, ageH: number, body = '{}') => { writeFileSync(f, body); const t = Date.now() / 1000 - ageH * 3600; utimesSync(f, t, t); return f; };
+  const empty = JSON.stringify({ sessionId: 's', started: false, messages: [] }), said = JSON.stringify({ sessionId: 's', started: true, messages: [{ role: 'user', text: 'x' }] });
+  put(join(home, 'home-aaaaaaaa.json'), 30, empty);
+  const draftNote = put(join(home, 'home-aaaaaaaa.json.claude'), 2);          // its draft goes: so does it
+  put(join(home, 'home-bbbbbbbb.json'), 30, said);
+  const oldNote = put(join(home, 'home-bbbbbbbb.json.claude'), 30);           // a day old: no turn runs that long
+  const orphan = put(join(home, 'home-cccccccc.json.claude'), 1);             // no thread beside it
+  put(join(hist, 'chat.json'), 1, said);
+  const recent = put(join(hist, 'chat.json.claude'), 1);                      // may still name a claude at work
+  put(join(other, 'chat.json'), 40, said);
+  const projOld = put(join(other, 'chat.json.claude'), 40);
+  cleanupLeftovers(root, { alive: () => false });
+  expect([draftNote, oldNote, orphan, recent, projOld].map(existsSync)).toEqual([false, false, false, true, false]);
+  expect(existsSync(join(home, 'home-bbbbbbbb.json'))).toBe(true);
+});
+
 const project = () => {
   const root = mkdtempSync(join(tmpdir(), 'clean-')), p = join(root, 'demo');
   for (const d of ['exports', 'cache/cuts', 'cache/stills', 'cache/audio', 'cache/music']) mkdirSync(join(p, d), { recursive: true });
