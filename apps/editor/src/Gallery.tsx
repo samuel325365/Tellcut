@@ -68,11 +68,12 @@ export interface GalleryProject {
 type ToProject = { project: GalleryProject; name: string };
 
 /** "Add to project": what the detail shows, at the playhead of the project's editor tab. `scene`: a background or frame, which the
- *  editor only takes in place of one already there (the library's Add refuses it too). */
-function AddBar({ to, add, scene = false }: { to?: ToProject; add: GalleryAdd; scene?: boolean }) {
+ *  editor only takes in place of one already there (the library's Add refuses it too). `id`: the detail's own name (two caption
+ *  templates add the same block, and a status said for one must not show on the other). */
+function AddBar({ id, to, add, scene = false }: { id: string; to?: ToProject; add: GalleryAdd; scene?: boolean }) {
   const [state, setState] = useState<{ busy: boolean; key: string; answer?: AddAnswer }>({ busy: false, key: '' });
   if (!to) return null;
-  const key = `${add.kind}:${add.type}`, answer = state.key === key ? state.answer : undefined;   // a card picked since: its own status
+  const key = id, answer = state.key === key ? state.answer : undefined;   // a card picked since: its own status
   const go = async () => {
     setState({ busy: true, key });
     const a = await to.project.add(add).catch((e: Error): AddAnswer => ({ ok: false, notice: errText(e) }));
@@ -109,7 +110,7 @@ function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: Ow
         <button onClick={() => setParams({})}>{t('gallery.resetParams')}</button>
       </div>
       {/* only what the user changed goes along: the editor starts the rest from the defaults in its own language */}
-      <AddBar to={to} add={{ kind: 'block', type: b.type, ...(Object.keys(set).length ? { params: set } : {}) }} scene={b.kind === 'scene'} />
+      <AddBar id={id} to={to} add={{ kind: 'block', type: b.type, ...(Object.keys(set).length ? { params: set } : {}) }} scene={b.kind === 'scene'} />
       <p class="g-doc">{x.doc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       {b.needsMedia && <p class="g-warn" data-needs-media>{t('gallery.needsMediaWarn')}</p>}
       <h3>{t('gallery.params')}</h3>
@@ -138,7 +139,7 @@ function SfxDetail({ s, plays, to }: { s: GallerySfx; plays: number; to?: ToProj
       <Head label={x.label} name={s.type} />
       <p class="g-doc">{x.doc || <span class="dim">{t('gallery.noDocShort')}</span>}</p>
       <div class="g-bar"><button class="g-play" onClick={() => setN(n + 1)}><IconPlay size={12} /> {t('gallery.listenAgain')}</button></div>
-      <AddBar to={to} add={{ kind: 'sfx', type: s.type, ...(Object.keys(params).length ? { params } : {}) }} />
+      <AddBar id={s.type} to={to} add={{ kind: 'sfx', type: s.type, ...(Object.keys(params).length ? { params } : {}) }} />
       <div class="g-hidden-player"><PlayerPreview project={sfxProject(s, params)} loop={false} autoplay={false} playKey={n + plays} /></div>
       <h3>{t('gallery.params')}</h3>
       <Params type={s.type} defs={s.params} values={params} onChange={(k, v) => setParams({ ...params, [k]: v })} />
@@ -172,7 +173,7 @@ function CaptionDetail({ c, caption, to, kind = 'caption' }: { c: GalleryCaption
       <Head label={x.label} name={c.id} id={id} />
       {caption && <PlayerPreview project={(title ? titleProject : captionProject)(caption, c.id, getLang())} playKey={n} />}
       <div class="g-bar"><button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button></div>
-      <AddBar to={to} add={{ kind: 'block', type: title ? 'common.heading' : 'common.caption', params: { template: c.id } }} />
+      <AddBar id={id} to={to} add={{ kind: 'block', type: title ? 'common.heading' : 'common.caption', params: { template: c.id } }} />
       <p class="g-doc">{x.doc}</p>
       <h3>{t('gallery.captionSets')}</h3>
       <ul class="g-notes" data-caption-params>{Object.entries(c.params).map(([k, v]) => <li><code>{k}</code> {String(v)}</li>)}</ul>
@@ -276,7 +277,7 @@ function MineDetail({ b, all, lib, onChanged, navigate, ask, onAsked, to }: { b:
         <button onClick={() => setParams({})}>{t('gallery.resetParams')}</button>
       </div>
       {/* the entry is copied into the project first, as the library's Add does; it starts from its own defaults */}
-      <AddBar to={to} add={{ kind: 'mine', type: b.type, slug: b.slug, blockKind: b.kind }} scene={b.kind === 'scene'} />
+      <AddBar id={`mine:${b.slug}:${b.type}`} to={to} add={{ kind: 'mine', type: b.type, slug: b.slug, blockKind: b.kind }} scene={b.kind === 'scene'} />
       <p class="g-doc">{b.desc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       <MineActions key={id} kind="blocks" slug={b.slug} type={b.type} name={b.name} desc={b.desc} lib={lib} onChanged={onChanged} navigate={navigate} ask={ask} onAsked={onAsked}
         group={b.group.map((x) => all.find((y) => y.type === x)?.name ?? x)} />

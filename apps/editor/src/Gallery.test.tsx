@@ -482,6 +482,16 @@ test('"Add to project" asks the editor with the values changed here and says how
   await click(root, '[data-detail="common.beep"] [data-gallery-add]');
   await settle();
   expect(asked.at(-1)).toEqual({ kind: 'sfx', type: 'common.beep' });
+  // two templates add the same block: the status is the template's own
+  reply = { ok: true };
+  await click(root, '[data-tab="captions"]');
+  await click(root, '[data-detail="caption:clean"] [data-gallery-add]');
+  await settle();
+  expect(asked.at(-1)).toEqual({ kind: 'block', type: 'common.caption', params: { template: 'clean' } });
+  expect(root.querySelector('[data-add-status]')).not.toBeNull();
+  await click(root, '[data-card="caption:neon-fill"]');
+  expect(root.querySelector('[data-detail="caption:neon-fill"]')).not.toBeNull();
+  expect(root.querySelector('[data-add-status]')).toBeNull();
 });
 
 test('without a project there is no Add; a project whose blocks fail to load says so and the rest still shows', async () => {
