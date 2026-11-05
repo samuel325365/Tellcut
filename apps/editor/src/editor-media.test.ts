@@ -3,7 +3,7 @@ import { t } from './i18n/index.ts';
 import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
 import { ApiError } from './api.ts';
 import { Editor } from './editor.ts';
-import { fakes, withPhoto } from './editor-test-kit.ts';
+import { fakes, live, prop, withPhoto } from './editor-test-kit.ts';
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
@@ -215,6 +215,36 @@ test('speech captions find an old 字幕 track too, and new ones are named Capti
   await fresh.open();
   await fresh.speechCaptions('c1');
   expect(fresh.store.get().project!.tracks.find((t) => t.kind === 'overlay')!.name).toBe('Captions');
+});
+
+test('speech captions pass over a locked caption track, as adding from the library does', async () => {
+  const transcript = { language: 'zh', segments: [{ start: 2, end: 3, text: '大家好' }] };
+  const said = async () => {
+    const p: any = fixture();
+    p.tracks.push({ id: 'text', kind: 'overlay', items: [{ id: 'say', type: 'common.caption', start: 0, end: 2, parent: 'c2', params: { text: '再見', style: 'bubble' } }] });
+    p.tracks.push({ id: 'cap', kind: 'overlay', name: '字幕', items: [] });
+    return p;
+  };
+  const { api, bridge } = fakes({ project: said, transcript: async () => transcript });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.toggleLock('text');
+  ed.toggleLock('cap');
+  expect(await ed.speechCaptions('c1')).toBe(true);
+  const tracks = ed.store.get().project!.tracks;
+  expect(tracks.find((t) => t.id === 'text')!.items.length).toBe(1);
+  expect(tracks.find((t) => t.id === 'cap')!.items.length).toBe(0);
+  const added = tracks.find((t) => t.kind === 'overlay' && t.id !== 'text' && t.id !== 'cap')!;
+  expect([added.name, (added.items as any[]).map((i) => [i.params.text, i.params.style])]).toEqual(['Captions', [['大家好', 'bubble']]]);   // still looking like the film's
+});
+
+test('a template on the whole track while a proposal waits says the proposal waits, not that the track has no captions', async () => {
+  const L = live(), { api, bridge } = fakes({ ...L.over, project: async () => { const p: any = fixture(); p.tracks.push({ id: 'text', kind: 'overlay', items: [{ id: 'k', type: 'common.caption', start: 0, end: 1, params: { text: 'hi' } }] }); return p; } });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  L.send({ type: 'proposal', proposal: prop([{ op: 'trimEnd', id: 'c1', dt: -1 }]) });
+  expect(ed.captionTemplateOnTrack('text', 'clean')).toBe(false);
+  expect(ed.store.get().notice).toBe(t('ed.pending'));
 });
 
 describe('the media panel Import', () => {

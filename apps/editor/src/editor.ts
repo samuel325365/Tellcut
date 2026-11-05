@@ -902,15 +902,19 @@ export class Editor {
     // the clip as one piece in its own seconds: the plan's times come out relative to the clip, as an attached item's are
     const caps = captionPlan(tr, [{ id, source: it.source, in: it.in, out: it.in + len * rate, start: 0, end: len, rate }], options);
     if (!caps.length) { this.set({ notice: say('ed.noSpeech') }); return false; }
+    // a locked track is passed over (as the library's add does): the new captions go on another, made if none is open
+    const open = (t: { id: string }) => !this.s.locked.includes(t.id);
     return this.apply((d) => {
-      const track = (look.track && d.tracks.some((t) => t.id === look.track) ? look.track : undefined)
-        ?? d.tracks.find((t) => t.kind === 'overlay' && (t.id === 'text' || t.name === 'Captions' || t.name === '字幕'))?.id ?? addTrack(d, { kind: 'overlay', name: 'Captions' });
+      const track = (look.track && d.tracks.some((t) => t.id === look.track && open(t)) ? look.track : undefined)
+        ?? d.tracks.find((t) => t.kind === 'overlay' && open(t) && (t.id === 'text' || t.name === 'Captions' || t.name === '字幕'))?.id ?? addTrack(d, { kind: 'overlay', name: 'Captions' });
       for (const c of caps) addItem(d, { track, item: { type: look.type, start: c.at, end: +(c.at + c.len).toFixed(6), params: { ...look.params, ...c.extra, text: c.text }, parent: id } });
     });
   }
 
   /** Every caption on `track` drawn with caption template `template` ('' for the project's default): one undo step. */
   captionTemplateOnTrack(track: string, template: string, kind: TemplateKind = 'caption'): boolean {
+    // while a proposal waits apply() refuses, and the notice is that one's (not "no captions on this track")
+    if (this.blocked()) return false;
     let n = 0;
     const ok = this.apply((d) => { n = applyCaptionTemplate(d, track, template, undefined, kind); });
     if (ok || n) return ok;
