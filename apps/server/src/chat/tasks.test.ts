@@ -12,6 +12,14 @@ test('library-save: make the fx generic in the project, then save it with the na
   expect(b).toMatch(/<\/task>$/);
 });
 
+test('library-save: the generic fx fits any frame shape, looked at in 9:16 and 16:9 (a coin sized by H and placed by W ran off a 9:16 film)', () => {
+  const b = taskBlock({ kind: 'library-save', type: 'fx.a', name: 'A', desc: '' }, 'p1')!;
+  expect(b).toContain('Math.min(ctx.W, ctx.H)');
+  expect(b).toContain('ctx.theme.safe');
+  expect(b).toContain('npm run tellcut -- frames p1 --at <seconds> --size 1080x1920');
+  expect(b).toContain('--size 1920x1080');
+});
+
 test('library-save: values single-quoted for bash ($, backticks and quotes stay as typed); a category that is not one is dropped', () => {
   const b = taskBlock({ kind: 'library-save', type: 'fx.a', name: "省錢$100 `x` it's", desc: '$(rm -rf ~)', category: 'text; rm -rf ~' }, 'p1')!;
   expect(b).toContain(`--name '省錢$100 \`x\` it'\\''s' --desc '$(rm -rf ~)' --replace`);

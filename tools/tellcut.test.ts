@@ -6,7 +6,7 @@ import { readProposal } from '@tellcut/media-node';
 import { fixture } from '../packages/engine/src/commands/test-fixture.ts';
 import { decideOnDisk, proposeOnDisk, showProject } from './tellcut.ts';
 import { saveRequest, projectHash as hashOf } from '@tellcut/media-node';
-import { call, commandArgs, describeRequest } from './tellcut.ts';
+import { call, commandArgs, describeRequest, inSize } from './tellcut.ts';
 import { Usage } from './usage.ts';
 
 function proj(p: unknown = fixture()) {
@@ -104,7 +104,7 @@ test('a command takes its flags wherever they are written: logo the file around 
 });
 
 test('a mistyped flag or command is refused, naming it, before the project is touched', () => {
-  expect(() => commandArgs('frames', ['p', '--at', '1', '--ful'], 'U')).toThrow('沒有 --ful 這個選項（可以用：--at、--proposal、--full）\nU');
+  expect(() => commandArgs('frames', ['p', '--at', '1', '--ful'], 'U')).toThrow('沒有 --ful 這個選項（可以用：--at、--proposal、--full、--size）\nU');
   expect(() => commandArgs('frames', ['p', '--at'], 'U')).toThrow('--at 後面要有值');
   expect(() => commandArgs('show', ['p', '--json'], 'U')).toThrow('沒有 --json 這個選項（這個指令不接選項）');
   expect(() => commandArgs('logo', ['p', '--name'], 'U')).toThrow('--name 後面要有值');
@@ -112,6 +112,15 @@ test('a mistyped flag or command is refused, naming it, before the project is to
   expect(() => commandArgs('shwo', ['p'], 'U')).toThrow('沒有「shwo」這個指令');
   // propose reads stdin from a lone -
   expect(commandArgs('propose', ['p', '-'], 'U').rest).toEqual(['-']);
+});
+
+test('frames --size draws the project in another frame shape (an fx made in 16:9 seen in 9:16); a size that is not WxH is refused', () => {
+  expect(commandArgs('frames', ['p', '--size', '1080x1920', '--at', '1'], 'U').flags.get('--size')).toBe('1080x1920');
+  const p = fixture(), tall = inSize(p, '1080x1920');
+  expect([tall.meta.width, tall.meta.height]).toEqual([1080, 1920]);
+  expect(tall.tracks).toBe(p.tracks);   // only the frame changes
+  expect(inSize(p, ' 1920X1080 ').meta.width).toBe(1920);
+  for (const bad of ['1080', '1080x', '0x1920', '1080x99999', 'tall']) expect(() => inSize(p, bad), bad).toThrow(Usage);
 });
 
 test('a word more than the command takes is refused, naming it, not dropped', () => {

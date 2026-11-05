@@ -171,7 +171,7 @@ async function registryFor(dir: string, project: Project) { const r = await proj
 /** the flags each command on a project takes; one not here takes none. logo's --name named the old previews' wordmark: still
  *  read so an older command line works, and ignored */
 const COMMAND_FLAGS: Record<string, FlagSpec> = {
-  frames: { '--at': 'value', '--proposal': 'switch', '--full': 'switch' },
+  frames: { '--at': 'value', '--proposal': 'switch', '--full': 'switch', '--size': 'value' },
   logo: { '--name': 'value' },
   image: { '--id': 'value' },
   request: { '--id': 'value', '--frames': 'switch', '--full': 'switch' },
@@ -179,6 +179,14 @@ const COMMAND_FLAGS: Record<string, FlagSpec> = {
 const COMMANDS = ['show', 'selection', 'propose', 'status', 'accept', 'reject', 'frames', 'logo', 'image', 'site', 'request'];
 /** how many words each command takes, the project included: one more is refused, not dropped (`show demo extra` showed demo) */
 const COMMAND_WORDS: Record<string, number> = { propose: 2, logo: 2, image: 2, site: 2 };
+
+/** `frames --size 1080x1920`: the project drawn in another frame shape (its safe area follows the shape), so an fx made in a
+ *  16:9 film is seen in 9:16 too before it goes into My blocks. Throws Usage for a size that is not 寬x高. */
+export function inSize(p: Project, size: string): Project {
+  const m = /^(\d+)x(\d+)$/i.exec(size.trim());
+  if (!m || !(+m[1] >= 16 && +m[2] >= 16 && +m[1] <= 4096 && +m[2] <= 4096)) throw new Usage(`--size「${size}」要寫成 寬x高，例如 1080x1920、1920x1080`);
+  return { ...p, meta: { ...p.meta, width: +m[1], height: +m[2] } };
+}
 
 /** a command on a project, after its name: the flags it takes wherever they stand (`logo --name Acme logo.svg` and `logo.svg
  *  --name Acme` read the same), the first word the project, the others after it. Usage for an unknown command or flag, or a
@@ -281,7 +289,7 @@ async function main(argv: string[]) {
     }
     case 'frames': {
       const at = flags.get('--at');
-      if (!at) throw new Usage('用法：npm run tellcut -- frames <專案> [--proposal] [--full] --at 1.5,3');
+      if (!at) throw new Usage('用法：npm run tellcut -- frames <專案> [--proposal] [--full] [--size 1080x1920] --at 1.5,3');
       const times = secsList(at, '--at');
       const proposal = flags.has('--proposal');
       let project = readProject(dir);
@@ -290,7 +298,11 @@ async function main(argv: string[]) {
         if (!prop) throw new Error('沒有待處理的提議');
         project = applyOps(project, prop.ops).project;
       }
-      const files = await renderStills({ dir, project, times, registry: await registryFor(dir, project), outDir: join(dir, 'output', 'frames'), tag: proposal ? 'proposal' : 'current', maxSide: flags.has('--full') ? undefined : STILL_SIDE });
+      // another shape's frames get their own names: the film's own ones are not overwritten
+      const size = flags.get('--size');
+      if (size) project = inSize(project, size);
+      const tag = `${proposal ? 'proposal' : 'current'}${size ? `-${project.meta.width}x${project.meta.height}` : ''}`;
+      const files = await renderStills({ dir, project, times, registry: await registryFor(dir, project), outDir: join(dir, 'output', 'frames'), tag, maxSide: flags.has('--full') ? undefined : STILL_SIDE });
       for (const f of files) console.log(f);
       return;
     }

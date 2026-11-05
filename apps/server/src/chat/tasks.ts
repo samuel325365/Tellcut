@@ -30,9 +30,10 @@ export function taskBlock(task: unknown, project: string | null): string | null 
     return wrap('library-save', [
       `The user pressed "Save to My blocks" on ${t.type} and asked for it to be made generic first. In project ${project}:`,
       `1. Find the fx module that defines ${t.type} (Glob projects/${project}/fx/*). Make what is hard-wired for this one film into params: its text, colours, timings and sizes, each with a label in the UI language (a short hint after a colon where it helps), the film's current values as the defaults (so the film looks the same). Give every block a doc line; its label and doc are in the UI language too (the Media panel, the Properties panel and My blocks show them as they are).`,
-      `2. Run npm run check -- ${project} until it shows no error caused by the module.`,
-      `3. Save it: npm run tellcut -- library save ${project} <file> --type ${t.type} --name ${q(t.name)} --desc ${q(String(t.desc ?? ''))}${cat} --replace`,
-      '4. Tell the user in one or two sentences which settings they can now change (in the Properties panel), in the UI language. Do not mention files, commands or code.',
+      `2. Make it fit any frame shape (a film of another ratio may use it): size things from Math.min(ctx.W, ctx.H), not from the height alone, and keep what it places inside the safe area (ctx.theme.safe: the top, bottom and side margins as fractions of the frame), so nothing sized by the height and placed by the width runs off a 9:16 frame. Look at it in both shapes at a time it shows: npm run tellcut -- frames ${project} --at <seconds> --size 1080x1920, then the same with --size 1920x1080, and fix what runs off the frame or into the margins (in this film's own shape it should look as before).`,
+      `3. Run npm run check -- ${project} until it shows no error caused by the module.`,
+      `4. Save it: npm run tellcut -- library save ${project} <file> --type ${t.type} --name ${q(t.name)} --desc ${q(String(t.desc ?? ''))}${cat} --replace`,
+      '5. Tell the user in one or two sentences which settings they can now change (in the Properties panel), in the UI language. Do not mention files, commands or code.',
     ]);
   }
   if (t?.kind === 'preset-draft' && project) {
