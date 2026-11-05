@@ -723,7 +723,6 @@ export const zh = {
   'preset.bringScore': '配樂風格',
   'preset.bringBlocks': '效果（{n}）',
   'preset.bringBlocksNote': '還不在我的積木裡的，會一起存進去',
-  'preset.posterHead': '海報',
   'preset.posterProject': '用專案的海報畫面',
   'preset.posterFrame': '換成目前畫面（{t}）',
   'preset.posterUpload': '上傳圖片',

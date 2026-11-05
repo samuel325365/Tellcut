@@ -723,7 +723,6 @@ export const ja: Record<Key, string> = {
   'preset.bringScore': '音楽スタイル',
   'preset.bringBlocks': 'エフェクト（{n}）',
   'preset.bringBlocksNote': 'まだマイブロックにないものは一緒に保存されます',
-  'preset.posterHead': 'ポスター',
   'preset.posterProject': 'プロジェクトのポスター画面',
   'preset.posterFrame': '今の画面にする（{t}）',
   'preset.posterUpload': '画像をアップロード',

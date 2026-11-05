@@ -723,7 +723,6 @@ export const en: Record<Key, string> = {
   'preset.bringScore': 'Music style',
   'preset.bringBlocks': 'Effects ({n})',
   'preset.bringBlocksNote': 'Those not in My blocks yet are saved there too',
-  'preset.posterHead': 'Poster',
   'preset.posterProject': 'The project\'s poster frame',
   'preset.posterFrame': 'Use the current frame ({t})',
   'preset.posterUpload': 'Upload a picture',
