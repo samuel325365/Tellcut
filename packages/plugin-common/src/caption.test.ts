@@ -113,7 +113,7 @@ test('templates: the item’s own parameters win, then its template, then the pr
   expect(withTemplate(params, { template: 'bubble' }, 'darkbox')).toMatchObject({ style: 'bubble' });
   expect(withTemplate(params, { template: 'gone' }, 'darkbox')).toBe(params);                  // an unknown one of its own: not the project's
   expect(TEMPLATES.map((t) => templateOf(t.id))).toEqual(TEMPLATES);
-  expect(new Set(TEMPLATES.map((t) => t.params.style)).size).toBe(LOOKS.length);               // every look has a template
+  expect(new Set(TEMPLATES.map((t) => t.params.style)).size).toBe(LOOKS.filter((l) => l.only !== 'title').length);   // every caption look has a template
 });
 
 test('a project’s own templates (copied from My caption templates) are found before the built-in ones', () => {
