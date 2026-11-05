@@ -4,7 +4,7 @@ import type { Clip, Project, SummaryLine } from '@tellcut/engine';
 import type { ExportEntry, JobView } from './api.ts';
 import type { Material } from './audition.ts';
 import { DEFAULT_LAYOUT, type Layout } from './layout.ts';
-import type { LibraryIndex, LibrarySavePreview, ProjectLibraryInfo } from '@tellcut/protocol';
+import type { LibraryIndex, LibrarySavePreview, ProjectLibraryInfo, TemplateKind } from '@tellcut/protocol';
 import type { PresetDraftView } from './editor/preset-save.ts';
 
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
@@ -92,13 +92,14 @@ export interface EditorState {
  *  with it (blocks only); conflict: the name of the entry it runs into, until the user picks replace or keep both */
 export interface SaveDialog { kind: 'block' | 'style'; target: string; name: string; desc: string; category: string; generalize: boolean;
   preview: LibrarySavePreview | null; conflict: string | null; busy: boolean; error: string }
-export interface LibraryState { index: LibraryIndex | null; project: ProjectLibraryInfo | null; saving: SaveDialog | null; toast: { name: string } | null }
+/** templateThumbs: the built-in caption and title templates' pictures (id → the gallery's thumbnail), fetched once the panel shows */
+export interface LibraryState { index: LibraryIndex | null; project: ProjectLibraryInfo | null; saving: SaveDialog | null; toast: { name: string } | null; templateThumbs: Record<TemplateKind, Record<string, string>> | null }
 
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
   thumbs: {}, peaks: {}, offline: [], analyzing: 0, analysisFailed: [], notice: '', importing: null, importNote: '', crop: null, cuts: {}, titles: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
-  library: { index: null, project: null, saving: null, toast: null },
+  library: { index: null, project: null, saving: null, toast: null, templateThumbs: null },
   presetSave: { drafting: false, draft: null, poster: null, toast: null },
 });
 

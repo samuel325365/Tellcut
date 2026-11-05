@@ -72,13 +72,22 @@ export function captionLookParams(p: Project, item: { params?: Record<string, un
   return { ...base, ...Object.fromEntries(Object.entries(own).filter(([key]) => !KEEP_BY[kind].has(key) && key !== 'template')) };
 }
 
-/** A template of My caption templates on one caption: copied into the project (meta.captionTemplates, as my-<slug>) and named by
- *  the caption, so the film never reads the library while it plays or exports. */
 /** a short, stable hash of a string (djb2) */
 const hashOf = (s: string) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36).slice(0, 6); };
 
+/** the id a template of My templates is copied into a project as: keyed by its settings too, so another template saved later
+ *  under the same slug never restyles a film's captions (the panel marks the tile in use by it) */
+export const myTemplateKey = (entry: { slug: string; params: Record<string, unknown> }) => `my-${entry.slug}-${hashOf(JSON.stringify(entry.params))}`;
+const MY_COPY = /^my-[a-z0-9-]+-[0-9a-z]{1,6}$/;
+
+/** A template of My caption templates on one caption: copied into the project (meta.captionTemplates, as my-<slug>-<hash>) and
+ *  named by the caption, so the film never reads the library while it plays or exports. Copies no caption (nor the film's
+ *  default) names any more go in the same edit: every switch between my templates would otherwise leave one behind. */
 export function useMyCaptionTemplate(d: Project, track: string, id: string, entry: { slug: string; params: Record<string, unknown> }, kind: TemplateKind = 'caption') {
-  const key = `my-${entry.slug}-${hashOf(JSON.stringify(entry.params))}`, meta = d.meta as any, own = TEMPLATE_KINDS[kind].own;
-  meta[own] = { ...(meta[own] ?? {}), [key]: entry.params };
+  const k = TEMPLATE_KINDS[kind], key = myTemplateKey(entry), meta = d.meta as any;
+  meta[k.own] = { ...(meta[k.own] ?? {}), [key]: entry.params };
   applyCaptionTemplate(d, track, key, [id], kind);
+  const named = new Set<unknown>([meta[k.meta]]);
+  for (const t of d.tracks) for (const it of t.items as any[]) if (it.type === k.block) named.add(it.params?.template);
+  for (const x of Object.keys(meta[k.own])) if (MY_COPY.test(x) && !named.has(x)) delete meta[k.own][x];
 }

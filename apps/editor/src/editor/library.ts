@@ -1,14 +1,16 @@
 // My blocks in the editor (spec 2026-10-29-my-library §3.2, §3.3), out of editor.ts like the ask flow: the library and what this
 // project has from it, the "Save to My blocks" dialog (save as it is, or hand it to the Agent to make generic), and copying an
-// entry into the project. Adding the copied block to the timeline is the editor's (it owns the registry and the edit).
+// entry into the project. Adding the copied block to the timeline is the editor's (it owns the registry and the edit). My caption and
+// title templates are listed, saved and deleted here too (the properties panel's grid), with the built-in templates' pictures.
 import type { Api } from '../api.ts';
 import { ApiError } from '../api.ts';
 import type { ChatSession } from '../chat.ts';
 import type { Layout } from '../layout.ts';
 import type { EditorState, LibraryState, SaveDialog, Store } from '../store.ts';
 import { errText, t as say } from '../i18n/index.ts';
+import { TEMPLATE_KINDS, type GalleryCaption, type LibraryCaptionInfo, type TemplateKind } from '@tellcut/protocol';
 
-type LibraryApi = Pick<Api, 'library' | 'projectLibrary' | 'saveBlockPreview' | 'saveBlock' | 'saveStyle' | 'useLibrary'>;
+type LibraryApi = Pick<Api, 'library' | 'projectLibrary' | 'saveBlockPreview' | 'saveBlock' | 'saveStyle' | 'useLibrary'> & Partial<Pick<Api, 'saveCaption' | 'deleteLibrary' | 'gallery'>>;
 export interface LibraryDeps { id: string; api: LibraryApi; store: Store<EditorState>; chat: Pick<ChatSession, 'send' | 'state'>; setLayout: (patch: Partial<Layout>) => void }
 
 const TOAST_MS = 6000;
@@ -32,6 +34,8 @@ export class LibraryFlow {
     const [index, project] = await Promise.all([this.c.api.library().catch(() => null), this.c.api.projectLibrary(this.c.id).catch(() => null)]);
     this.setChanged({ index, project });
   }
+  /** the library alone (after a template is saved or deleted: this project's copies are the same) */
+  async loadIndex() { this.setChanged({ index: await this.c.api.library().catch(() => this.lib.index) }); }
   async loadProject() { this.setChanged({ project: await this.c.api.projectLibrary(this.c.id).catch(() => this.lib.project) }); }
   private setChanged(patch: Partial<Pick<LibraryState, 'index' | 'project'>>) {
     const now = this.lib, changed = (Object.keys(patch) as Array<keyof typeof patch>).filter((k) => JSON.stringify(patch[k]) !== JSON.stringify(now[k]));
@@ -81,6 +85,31 @@ export class LibraryFlow {
     return true;
   }
   dismissToast() { clearTimeout(this.toastTimer); this.set({ toast: null }); }
+
+  /** My caption (or title) templates, as the library last listed them */
+  templates(kind: TemplateKind): LibraryCaptionInfo[] { const i = this.lib.index; return (kind === 'title' ? i?.titles : i?.captions) ?? []; }
+  /** saves a look as one of My templates; the list is fetched again. Throws the server's refusal (no name, nothing to save). */
+  async saveTemplate(kind: TemplateKind, entry: { name: string; params: Record<string, unknown> }) {
+    await this.c.api.saveCaption!(entry, TEMPLATE_KINDS[kind].library);
+    await this.loadIndex();
+  }
+  /** deletes one of My templates (films that use it keep their copy); the list is fetched again either way */
+  async deleteTemplate(kind: TemplateKind, slug: string) {
+    try { await this.c.api.deleteLibrary!(TEMPLATE_KINDS[kind].library, slug); }
+    finally { await this.loadIndex(); }
+  }
+  private thumbsAsked = false;
+  /** the built-in templates' pictures: the gallery's, whose server knows which golden picture draws each; asked for once (again
+   *  only after a failure). Until then, or without one, a tile shows its name. */
+  async loadTemplateThumbs() {
+    if (this.lib.templateThumbs || this.thumbsAsked || !this.c.api.gallery) return;
+    this.thumbsAsked = true;
+    try {
+      const g = await this.c.api.gallery();
+      const pick = (l?: GalleryCaption[]) => Object.fromEntries((l ?? []).flatMap((c) => (c.thumb ? [[c.id, c.thumb]] : [])));
+      this.set({ templateThumbs: { caption: pick(g.captions), title: pick(g.titles) } });
+    } catch { this.thumbsAsked = false; }
+  }
 
   /** copies an entry (or, with `style`, a music style) into the project; the editor puts it on the timeline */
   async use(slug: string, o: { style?: boolean } = {}) {

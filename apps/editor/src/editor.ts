@@ -21,7 +21,7 @@ import { analyzeProject } from './editor/analysis.ts';
 import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplate, useMyCaptionTemplate } from './editor/captions.ts';
 import { templateOf } from '@tellcut/plugin-common/templates';
 import { titleTemplateOf } from '@tellcut/plugin-common/title-templates';
-import { TEMPLATE_KINDS, type TemplateKind } from '@tellcut/protocol';
+import type { TemplateKind } from '@tellcut/protocol';
 import { importMedia } from './editor/importing.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
@@ -939,9 +939,19 @@ export class Editor {
     const p = this.s.project, it: any = p && allItems(p).find((x) => x.item.id === id)?.item;
     if (!p || !it) return false;
     const builtIn = (t: string) => (kind === 'title' ? titleTemplateOf(t) : templateOf(t))?.params;
-    try { await this.deps.api.saveCaption({ name, params: captionLookParams(p, it, builtIn, kind) }, TEMPLATE_KINDS[kind].library); return true; }
+    try { await this.library.saveTemplate(kind, { name, params: captionLookParams(p, it, builtIn, kind) }); return true; }
     catch (e) { this.set({ notice: errText(e) }); return false; }
   }
+  /** My caption (or title) templates, as the library last listed them (fetched with the project, again after a save or delete) */
+  myCaptionTemplates(kind: TemplateKind = 'caption') { return this.library.templates(kind); }
+  /** Deletes one of My caption (or title) templates; the films that use it keep their copy. */
+  async deleteMyCaptionTemplate(slug: string, kind: TemplateKind = 'caption'): Promise<boolean> {
+    try { await this.library.deleteTemplate(kind, slug); return true; }
+    catch (e) { this.set({ notice: errText(e) }); return false; }
+  }
+  /** a built-in template's picture (the gallery's thumbnail, in the zh UI's words), once loadTemplateThumbs has them */
+  templateThumb(id: string, kind: TemplateKind = 'caption'): string | undefined { return this.s.library.templateThumbs?.[kind][id]; }
+  loadTemplateThumbs() { return this.library.loadTemplateThumbs(); }
 
   /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */
   projectCaptionTemplate(template: string, kind: TemplateKind = 'caption'): boolean { return this.apply((d) => setCaptionTemplate(d, template, kind)); }

@@ -77,3 +77,33 @@ test('a copy counts as linked only while meta.fx loads it (an undone or failed a
   expect(liveLinks(s).map((l) => l.slug)).toEqual(['box']);
   expect(liveLinks({ project: null, library: { project: null } } as any)).toEqual([]);
 });
+
+test('my caption and title templates: listed from the library, which is fetched again after a save or a delete (a failed one too)', async () => {
+  let index: any = { blocks: [], styles: [], captions: [{ slug: 'pink', name: 'Pink', desc: '', params: { style: 'neon' }, savedAt: '' }], titles: [] };
+  const { f, calls } = flow({
+    library: async () => { calls.push(['library']); return index; },
+    saveCaption: async (b: any, shelf: string) => { calls.push(['saveCaption', b, shelf]); index = { ...index, titles: [{ slug: 'gold', name: 'Gold', desc: '', params: b.params, savedAt: '' }] }; return { entry: { slug: 'gold' } }; },
+    deleteLibrary: async (kind: string, slug: string) => { calls.push(['delete', kind, slug]); throw new ApiError(404, 'x', [], 'library.noTitle'); },
+  });
+  await f.load();
+  expect(f.templates('caption').map((m) => m.slug)).toEqual(['pink']);
+  expect(f.templates('title')).toEqual([]);
+  calls.length = 0;
+  await f.saveTemplate('title', { name: 'Gold', params: { style: 'gold' } });
+  expect(calls).toEqual([['saveCaption', { name: 'Gold', params: { style: 'gold' } }, 'titles'], ['library']]);
+  expect(f.templates('title').map((m) => m.slug)).toEqual(['gold']);
+  calls.length = 0;
+  await expect(f.deleteTemplate('title', 'gold')).rejects.toMatchObject({ code: 'library.noTitle' });
+  expect(calls).toEqual([['delete', 'titles', 'gold'], ['library']]);
+});
+
+test('the built-in templates’ pictures are the gallery’s, asked for once (again after a failure)', async () => {
+  let n = 0;
+  const { f, s } = flow({ gallery: async () => { if (n++ === 0) throw new Error('down'); return { captions: [{ id: 'clean', thumb: '/t/tpl-clean.png' }, { id: 'none' }], titles: [{ id: 'doc', thumb: '/t/ttl-doc.png' }] }; } });
+  await f.loadTemplateThumbs();
+  expect(s().templateThumbs).toBeNull();
+  await f.loadTemplateThumbs();
+  await f.loadTemplateThumbs();
+  expect(n).toBe(2);
+  expect(s().templateThumbs).toEqual({ caption: { clean: '/t/tpl-clean.png' }, title: { doc: '/t/ttl-doc.png' } });
+});

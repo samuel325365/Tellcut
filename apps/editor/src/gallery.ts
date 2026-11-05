@@ -180,3 +180,7 @@ export function galleryCategories(blocks: GalleryBlock[], clipCount: number, min
 
 export const scoreUrl = (id: string, o: { seed: number; bpm?: number; key?: string }) =>
   `/api/gallery/score/${encodeURIComponent(id)}.wav?seed=${o.seed}${o.bpm ? `&bpm=${o.bpm}` : ''}${o.key ? `&key=${encodeURIComponent(o.key)}` : ''}`;
+
+/** a shared block's or template's thumbnail in the UI language: the server gives the translated picture where the golden one shows
+ *  Chinese (the gallery and the properties panel's template grid) */
+export const thumbIn = (src: string | undefined, lang: string) => (src && lang !== 'zh' ? `${src}?lang=${lang}` : src);

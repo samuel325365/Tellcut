@@ -1,5 +1,5 @@
 import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
-import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplate, useMyCaptionTemplate } from './captions.ts';
+import { applyCaptionTemplate, captionLook, captionLookParams, myTemplateKey, setCaptionTemplate, useMyCaptionTemplate } from './captions.ts';
 
 /** the fixture with a Text track: a bubble caption said in c2, a title on the scene block, an effect */
 function withCaptions() {
@@ -72,6 +72,23 @@ test('a caption’s look as parameters: its template’s under its own look, wor
   expect(say.params).toEqual({ text: 'take the train to', words: [[0, 4], [0.5, 9]], template: key });
   useMyCaptionTemplate(p, 'text', 'say2', { slug: 'pink', params: { style: 'box' } });
   expect(Object.keys(p.meta.captionTemplates).length).toBe(2);
+  expect(myTemplateKey({ slug: 'pink', params: { style: 'neon', hl: '#ff3db8' } })).toBe(key);   // what the panel marks the tile by
+});
+
+test('copies of my templates no caption names any more go in the same edit that copies another one; the film default and other kinds stay', () => {
+  const p: any = withCaptions();
+  useMyCaptionTemplate(p, 'text', 'say', { slug: 'a', params: { style: 'neon' } });
+  const a = myTemplateKey({ slug: 'a', params: { style: 'neon' } });
+  p.meta.captionTemplates.mine = { style: 'box' };   // not a copy of my templates (the agent's own): never pruned
+  p.meta.titleTemplates = { 'my-t-1': { style: 'gold' } };
+  useMyCaptionTemplate(p, 'text', 'say', { slug: 'b', params: { style: 'box' } });
+  const b = myTemplateKey({ slug: 'b', params: { style: 'box' } });
+  expect(Object.keys(p.meta.captionTemplates).sort()).toEqual(['mine', b].sort());
+  // one the film's default names stays
+  p.meta.captionTemplate = b;
+  useMyCaptionTemplate(p, 'text', 'say', { slug: 'a', params: { style: 'neon' } });
+  expect(Object.keys(p.meta.captionTemplates).sort()).toEqual(['mine', a, b].sort());
+  expect(p.meta.titleTemplates).toEqual({ 'my-t-1': { style: 'gold' } });
 });
 
 test('title templates: on a track only common.heading changes, keeping its words, kicker and sub; the film default and my templates go to their own meta keys', () => {
