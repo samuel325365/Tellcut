@@ -5,20 +5,13 @@
 //   common.filmstrip  a page of two 35 mm film strips scrolling opposite ways, stills of the footage in their frames, sprocket holes and
 //                     edge numbers
 // The stacked title is the title template mono-cycle, the caption the template mono-box, the vortex common.wipe's mode vortex.
-import { clamp, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, eIO3 as eIO, type ItemType, type SceneItem } from '@tellcut/engine';
+import { canvasIn, rr } from './desktop.ts';
 import { imagesReady } from './window.ts';
 
 const LATIN = 'Space Grotesk', CJK = 'Noto Sans TC';
 const face = (px: number) => `700 ${px}px "${LATIN}", "${CJK}", sans-serif`;
-const eIO = (q: number) => (q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2);
 type Rect = [number, number, number, number];
-function rr(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
-function canvasIn(root: HTMLElement): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
-  root.appendChild(c);
-  return c;
-}
 const fontsReady = (text: string) => Promise.all([document.fonts.load(`700 80px "${LATIN}"`, 'AZaz09·&'), document.fonts.load(`700 80px "${CJK}"`, text || '字')]).then(() => undefined);
 
 /** the window at `local` (frame fractions): "seconds|x,y,w,h" keys eased from one to the next; none = the frame inside the border */

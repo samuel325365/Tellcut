@@ -5,6 +5,7 @@
 //                  a grid of thin seams over the whole frame (after common.wipe's mode tiles)
 // The title card is the title template scrapbook-card, the coloured chips the caption template scrap-chip. Pure functions of time.
 import { clamp, rng, type ItemCtx, type ItemType, type SceneItem } from '@tellcut/engine';
+import { canvasIn } from './desktop.ts';
 import { imagesReady } from './window.ts';
 
 export interface Print { at: number; t: number; x: number; y: number; w: number; tilt: number; ratio: number; tape: string | null; clip: boolean; fx: number; fy: number }
@@ -131,12 +132,7 @@ export const scraps: ItemType<SP, SS> = {
     { key: 'scraps', label: '紙片（一行一個：秒|paper／dots／tape／pin／clip／grid|x,y,寬,高|傾斜|顏色）', type: 'text', default: '0|dots|0.78,0.1,0.34,0.07|-3|#c3b1f5\n0.3|paper|0.25,0.8,0.3,0.1|4|#e8763a\n0.6|pin|0.5,0.45,0.04,0.04|0|#e0552f' },
     { key: 'seed', label: '撕邊亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 7 },
   ],
-  build(ctx) {
-    const c = document.createElement('canvas');
-    c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
-    ctx.root.appendChild(c);
-    return { c };
-  },
+  build(ctx) { return { c: canvasIn(ctx.root) }; },
   hide(s) { s.c.width = 0; s.c.height = 0; },
   draw(ctx, s) {
     const { local, dur, W, H, params: p, motion } = ctx, u = Math.min(W, H) / 1080;
