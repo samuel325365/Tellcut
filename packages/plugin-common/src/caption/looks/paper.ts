@@ -17,7 +17,8 @@ const TEETH = teeth();
 
 /** the line printed on a strip of receipt paper with torn top and bottom edges, popped up from below with a slight tilt of its own */
 export const ticket: CaptionLook = {
-  id: 'ticket', paper: true, room: padded,
+  // 0.65 em of padding a side, more than padded's 0.6
+  id: 'ticket', paper: true, room: (e, width) => width - 1.3 * e.px,
   color: (e) => e.p.outline,
   box: (e) => ({ background: e.p.bubbleBg, padding: '0.35em 0.65em 0.3em', borderRadius: '0' }),
   clip: () => TEETH,
@@ -40,7 +41,8 @@ function drawBand(s: CaptionS, e: LookEnv) {
 
 /** ink words on a band of the highlight colour scribbled in crayon behind them (picture books, handmade) */
 export const crayon: CaptionLook = {
-  id: 'crayon', paper: true, room: padded,
+  // 0.7 em of padding a side, more than padded's 0.6
+  id: 'crayon', paper: true, room: (e, width) => width - 1.4 * e.px,
   hl: (e) => e.theme.palette.accent,
   color: (e) => e.p.outline,
   box: () => ({ padding: '0.22em 0.7em' }),
@@ -50,7 +52,8 @@ export const crayon: CaptionLook = {
 /** handwriting in ink with a thick white sticker edge and a drop shadow, the whole line tilted a little like a stuck-on sticker;
  *  the hot words in the accent colour */
 export const sticker: CaptionLook = {
-  id: 'sticker', weight: '700', font: 'LXGW WenKai TC', origin: '50% 50%',
+  // 0.2 em of padding a side and its letters 0.07 em apart
+  id: 'sticker', weight: '700', font: 'LXGW WenKai TC', origin: '50% 50%', room: faceRoom(0.55, 0.07, (e, width) => width - 0.4 * e.px),
   color: (e) => e.p.outline,
   hl: (e) => e.p.accent || e.theme.palette.accent,
   stroke: (e) => 0.3 * e.fs,
@@ -111,8 +114,9 @@ export const postit: CaptionLook = {
 
 /** a label maker's tape a line: a glossy black strip with the words embossed in white capitals, widely spaced */
 export const label: CaptionLook = {
-  // monospaced capitals 0.14 em apart, counted on the Latin letters only (Chinese lines kept as they were)
-  id: 'label', weight: '700', font: 'JetBrains Mono', room: faceRoom(0.74, 0, padded),
+  // monospaced capitals (0.6 em) 0.14 em apart: the spacing is on every letter, Chinese ones too (a full Chinese line ran its tape
+  // past the safe area)
+  id: 'label', weight: '700', font: 'JetBrains Mono', room: faceRoom(0.6, 0.14, padded),
   color: () => '#f4f4f4',
   lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.16em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.08em 0.5em 0.1em',
     background: `linear-gradient(180deg, #2b2b2b, #111 55%, #1c1c1c)`, borderRadius: '0.08em', textTransform: 'uppercase', letterSpacing: '0.14em',

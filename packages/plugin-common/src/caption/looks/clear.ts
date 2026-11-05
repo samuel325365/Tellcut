@@ -1,7 +1,7 @@
 // Clear looks, more of them: punch (a heavy outline and a shadow, the short-video caption), double (two outlines), soft (a soft
 // shadow only), frost (a frosted-glass box) and cinema (a film subtitle).
 import type { CaptionLook } from '../types.ts';
-import { padded } from './basic.ts';
+import { faceRoom, padded } from './basic.ts';
 
 /** white words, a heavy ink outline and a soft shadow under it: the caption short videos use, best with a word effect */
 export const punch: CaptionLook = {
@@ -36,7 +36,8 @@ export const frost: CaptionLook = {
 
 /** a film's subtitle: medium weight, slightly spaced, a tight dark shadow in a soft dark halo, nothing else */
 export const cinema: CaptionLook = {
-  id: 'cinema', weight: '500',
+  // its letters are 0.04 em apart, which the line breaking does not count
+  id: 'cinema', weight: '500', room: faceRoom(0.55, 0.04),
   // a soft dark halo under the tight shadow: white on a bright sky stays readable (acceptance film cap-acc-trip)
   box: (e) => ({ textShadow: `0 ${(0.04 * e.fs).toFixed(1)}px ${(0.1 * e.fs).toFixed(1)}px rgba(0,0,0,0.9), 0 0 ${(0.3 * e.fs).toFixed(1)}px rgba(0,0,0,0.6), 0 0 ${(0.12 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)`, letterSpacing: '0.04em' }),
 };

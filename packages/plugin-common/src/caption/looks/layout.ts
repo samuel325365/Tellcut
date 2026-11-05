@@ -3,6 +3,7 @@ import { cssCamel, textEm, type Theme } from '@tellcut/engine';
 import { luma } from '../../color.ts';
 import { speakerColor } from '../colors.ts';
 import type { CaptionLook } from '../types.ts';
+import { faceRoom } from './basic.ts';
 
 /** white words on a dark rounded bar with a thin accent2 strip down its left side (a search snippet) */
 export const bar: CaptionLook = {
@@ -57,7 +58,8 @@ export const qa: CaptionLook = {
 /** a news bar: ink words on a white bar with a thick block of the accent colour at its left */
 export const news: CaptionLook = {
   id: 'news', title: false, weight: '900', left: true,
-  room: (e, width) => width - 1.4 * e.px,
+  // 0.8 + 0.6 em of padding and the 0.32 em accent block at the left
+  room: (e, width) => width - 1.72 * e.px,
   color: (e) => e.theme.palette.ink,
   hl: (e) => e.p.accent || e.theme.palette.accent,
   box: (e) => ({ background: '#ffffff', padding: '0.14em 0.6em 0.16em 0.8em', borderLeft: `0.32em solid ${e.p.accent || e.theme.palette.accent}`,
@@ -79,7 +81,8 @@ export const chat: CaptionLook = {
 
 /** song lyrics: a classical serif in white, softly glowing, with the words not sung yet dim */
 export const lyric: CaptionLook = {
-  id: 'lyric', title: false, weight: '400', font: 'Cactus Classical Serif',
+  // its letters are 0.08 em apart, which the line breaking does not count
+  id: 'lyric', title: false, weight: '400', font: 'Cactus Classical Serif', room: faceRoom(0.55, 0.08),
   box: (e) => ({ textShadow: `0 0 ${(0.2 * e.fs).toFixed(1)}px rgba(255,255,255,0.45), 0 ${(0.03 * e.fs).toFixed(1)}px ${(0.08 * e.fs).toFixed(1)}px rgba(0,0,0,0.6)`, letterSpacing: '0.08em' }),
   word: (e) => ({ hot: { color: e.p.hl, textShadow: `0 0 ${(0.3 * e.fs).toFixed(1)}px ${e.p.hl}` }, dim: { color: 'rgba(255,255,255,0.45)' } }),
 };
@@ -94,7 +97,8 @@ export const dialog: CaptionLook = {
 
 /** a comic panel: ink words on a white box with a heavy ink border over a halftone of the highlight colour, tilted a little */
 export const comic: CaptionLook = {
-  id: 'comic', paper: true, weight: '900', room: (e, width) => width - 1.4 * e.px,
+  // 0.7 em of padding and a 0.07 em border a side
+  id: 'comic', paper: true, weight: '900', room: (e, width) => width - 1.54 * e.px,
   color: (e) => e.p.outline,
   hl: (e) => e.theme.palette.accent,
   box: (e) => ({ backgroundColor: '#ffffff', backgroundImage: `radial-gradient(circle, color-mix(in srgb, ${e.p.hl} 70%, transparent) 28%, transparent 30%)`, backgroundSize: '0.32em 0.32em',
@@ -113,7 +117,8 @@ export const narration: CaptionLook = {
 
 /** chalk on a blackboard: a dark green board with a wooden edge, the words in white chalk with rough edges */
 export const chalk: CaptionLook = {
-  id: 'chalk', weight: '400', font: 'Iansui', room: (e, width) => width - 1.4 * e.px,
+  // 0.7 em of padding and the 0.12 em wooden frame a side
+  id: 'chalk', weight: '400', font: 'Iansui', room: (e, width) => width - 1.64 * e.px,
   color: () => '#f4f4ee',
   hl: () => '#ffe98a',
   box: (e) => ({ background: 'radial-gradient(120% 140% at 30% 20%, #2f4a3a, #1b2b22)', padding: '0.3em 0.7em', border: `${(0.12 * e.fs).toFixed(1)}px solid #7a5230`, borderRadius: `${(0.06 * e.fs).toFixed(1)}px`,

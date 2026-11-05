@@ -11,8 +11,8 @@ export const rgb: CaptionLook = {
 
 /** 8-bit game letters: a blocky face, a hard one-step shadow; Chinese keeps a bold sans */
 export const pixel: CaptionLook = {
-  // Press Start 2P: every letter 1 em wide, 0.04 em apart (Chinese, in the fallback face, measured as before)
-  id: 'pixel', weight: '400', font: 'Press Start 2P', room: faceRoom(1.04),
+  // Press Start 2P: every letter 1 em wide, and every letter 0.04 em apart, Chinese ones (in the fallback face) too
+  id: 'pixel', weight: '400', font: 'Press Start 2P', room: faceRoom(1, 0.04),
   sizeScale: 0.9,
   box: (e) => ({ textShadow: `${(0.08 * e.fs).toFixed(1)}px ${(0.08 * e.fs).toFixed(1)}px 0 ${e.p.outline}`, lineHeight: '1.6', letterSpacing: '0.04em' }),
 };
@@ -21,7 +21,7 @@ export const pixel: CaptionLook = {
 export const vhs: CaptionLook = {
   // a thin dark edge and a dark halo under the colour fringe: on a white wall it was unreadable; normal size, as capitals in this
   // face run wide and a spoken sentence took five lines at 1.2× (acceptance film cap-acc-vlog)
-  id: 'vhs', weight: '400', font: 'VT323',
+  id: 'vhs', weight: '400', font: 'VT323', room: faceRoom(0.55, 0.04),
   stroke: (e) => 0.05 * e.fs,
   box: (e) => ({ textShadow: `${(0.03 * e.fs).toFixed(1)}px 0 0 rgba(255,60,60,0.75), ${(-0.03 * e.fs).toFixed(1)}px 0 0 rgba(60,160,255,0.75), 0 0 ${(0.25 * e.fs).toFixed(1)}px rgba(0,0,0,0.7)`, textTransform: 'uppercase', letterSpacing: '0.04em' }),
 };
@@ -37,7 +37,8 @@ export const terminal: CaptionLook = {
 
 /** a liquid-crystal display: dark segments on a grey-green panel, the unlit segments a faint ghost behind them */
 export const segment: CaptionLook = {
-  id: 'segment', weight: '700', font: 'JetBrains Mono', room: faceRoom(0.65, 0, padded),
+  // monospaced letters (0.6 em) 0.05 em apart, Chinese ones too
+  id: 'segment', weight: '700', font: 'JetBrains Mono', room: faceRoom(0.6, 0.05, padded),
   color: () => '#1d2418',
   hl: () => '#000000',
   box: (e) => ({ background: 'linear-gradient(180deg, #a9b59a, #8f9c80)', padding: '0.18em 0.6em', borderRadius: `${(0.1 * e.fs).toFixed(1)}px`, fontStyle: 'italic', letterSpacing: '0.05em',

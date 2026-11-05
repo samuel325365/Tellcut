@@ -34,7 +34,8 @@ export const stack: CaptionLook = {
 
 /** a neon sign: glowing tubes on a dark board with a lit rim */
 export const sign: CaptionLook = {
-  id: 'sign', only: 'title', weight: '400', font: 'Huninn', room: padded,
+  // 0.6 em of padding and a 0.05 em tube a side
+  id: 'sign', only: 'title', weight: '400', font: 'Huninn', room: (e, width) => width - 1.3 * e.px,
   color: () => '#fff6fb',
   box: (e) => {
     const c = e.p.accent || e.p.hl, g = (k: number) => `${(k * e.fs).toFixed(1)}px`;
@@ -46,7 +47,7 @@ export const sign: CaptionLook = {
 
 /** cream letterpress: warm off-white serif type pressed in, a thin dark edge */
 export const vintage: CaptionLook = {
-  id: 'vintage', only: 'title', weight: '700', font: 'Cactus Classical Serif',
+  id: 'vintage', only: 'title', weight: '700', font: 'Cactus Classical Serif', room: spacedRoom(0.04),
   color: () => '#f3e6c8',
   box: (e) => ({ textShadow: `0 ${(0.02 * e.fs).toFixed(1)}px 0 rgba(60,40,20,0.9), 0 ${(0.05 * e.fs).toFixed(1)}px ${(0.12 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)`, letterSpacing: '0.04em' }),
 };
@@ -88,7 +89,8 @@ export const script: CaptionLook = {
 
 /** each line on a ribbon in the accent colour with notched ends */
 export const ribbon: CaptionLook = {
-  id: 'ribbon', only: 'title', weight: '900', room: padded,
+  // each line's ribbon has 0.9 em of padding a side, more than padded's 0.6: a full line ran its ribbon past the safe area
+  id: 'ribbon', only: 'title', weight: '900', room: (e, width) => width - 1.8 * e.px,
   color: () => '#ffffff',
   lines: (lines, e) => lines.forEach((l, i) => cssCamel(l, { display: 'table', margin: `${i ? '0.15em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.08em 0.9em 0.12em',
     background: e.p.accent || e.theme.palette.accent, clipPath: 'polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%)' })),
