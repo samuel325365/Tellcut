@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, renameSync, statSync, utimesSync,
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { analysisDone, analysisFiles, analyzeSource, shareAnalysis } from './analysis.ts';
-import { EXTRAS_VERSION, extrasFiles, sourceExtras } from './extras.ts';
+import { EXTRAS_VERSION, extrasFiles, readBurned, readTranscript, sourceExtras } from './extras.ts';
 import { fakeTranscribe } from './providers/fake.ts';
 import { labelFolder, siblingFolders } from './share.ts';
 import { makePhoneVideo } from './test-media.ts';
@@ -217,3 +217,24 @@ test('looking through every project for the same footage lets other work run mea
   expect(await looking).toEqual([analysisFiles(join(projects, 'p0'), join(projects, 'p0', 'media/a.mp4')).dir]);
   expect(ran).toBe(true);
 });
+
+test('two projects on different footage analysed at once, beside a project holding both, each get only their own transcript and burned check', async () => {
+  // the title-template batch's case: two new projects made from two videos at once, a third project already holding both
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), media = join(projects, 'footage');
+  mkdirSync(media);
+  const x = await makePhoneVideo(join(media, 'x.mp4'), { seconds: 2 }), y = await makePhoneVideo(join(media, 'y.mp4'), { seconds: 3 });
+  const [both, r, o] = ['both', 'r', 'o'].map((id) => { mkdirSync(join(projects, id)); return join(projects, id); });
+  for (const [src, word] of [[x, 'X'], [y, 'Y']]) {
+    await analyzeSource(both, src);
+    await sourceExtras(both, src, { label: word, stt: fakeTranscribe(word) });
+    // the burned checks told apart (renamed into place: never written through a link)
+    const f = extrasFiles(both, src).burned;
+    writeFileSync(`${f}.new`, JSON.stringify({ version: 1, step: 0.5, frames: word === 'X' ? 111 : 222, caption: null, text: [] })); renameSync(`${f}.new`, f);
+  }
+  const stt = fakeTranscribe('wrong');
+  const run = async (dir: string, src: string) => { await analyzeSource(dir, src); await sourceExtras(dir, src, { label: 'v', stt }); };
+  await Promise.all([run(r, x), run(o, y)]);
+  expect(stt.calls).toHaveLength(0);
+  expect([readTranscript(r, x)?.segments[0].text, readTranscript(o, y)?.segments[0].text]).toEqual(['X', 'Y']);
+  expect([readBurned(r, x)?.frames, readBurned(o, y)?.frames]).toEqual([111, 222]);
+}, 120000);
