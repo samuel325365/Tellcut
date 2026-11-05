@@ -426,7 +426,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
           {capBlocks.length > 0 && <><h4>{t('gallery.capBlocks')}</h4><ul class="g-grid" data-caption-blocks>{capBlocks.map(blockCard)}</ul></>}
           {list.length > 0 && <h4>{t('gallery.capTemplates')}</h4>}
           <ul class="g-grid">{(list as GalleryCaption[]).map((c) => card(`caption:${c.id}`, shown(`caption:${c.id}`, c).doc, <>
-            <Thumb src={c.thumb} />
+            <Thumb src={thumbIn(c.thumb, getLang())} />
             <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(`caption:${c.id}`, c).label)}>{shown(`caption:${c.id}`, c).label}</strong><Handle id={`caption:${c.id}`} /><CopyName name={c.id} /></span>
           </>))}</ul>
         </section> : tab === 'sfx' ? sfxSections(list as GallerySfx[]).map((x) => (

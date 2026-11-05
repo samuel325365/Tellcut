@@ -13,8 +13,8 @@ import { getLang } from './i18n/lang.ts';
 import { t } from './i18n/index.ts';
 import { tip } from './tip.ts';
 
-/** a template's golden picture (its sample tpl-<id> in plugin-common's samples) */
-export const templateThumb = (id: string) => `/api/gallery/thumb/tpl-${id}-t1.50.png`;
+/** a template's golden picture (its sample tpl-<id> in plugin-common's samples), with its line in the UI language (npm run thumbs) */
+export const templateThumb = (id: string, lang = getLang()) => `/api/gallery/thumb/tpl-${id}-t1.50.png${lang === 'zh' ? '' : `?lang=${lang}`}`;
 
 export function CaptionTemplates({ editor, project, item, track, defs }: { editor: any; project: Project; item: any; track: string; defs: ParamDef[] }) {
   const [hover, setHover] = useState<string | null>(null), [q, setQ] = useState(''), [mine, setMine] = useState<LibraryCaptionInfo[]>([]), [saveName, setSaveName] = useState(''), [n, setN] = useState(0);
