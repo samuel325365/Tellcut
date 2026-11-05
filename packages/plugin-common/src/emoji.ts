@@ -131,6 +131,9 @@ function drawCover(ctx: Parameters<typeof emoji.draw>[0], cv: HTMLCanvasElement,
   const g = canvasAt(cv, side * res, side * res);
   if (!c || px < 1) return;
   g.setTransform(res, 0, 0, res, 0, 0);
+  // the clip is undone at the end: a canvas kept at its size keeps its clip (canvasAt resets only the transform), and a clip
+  // left over from the frame before would cut this one too
+  g.save();
   const box = coverBox(p.box);
   if (box) {
     // a frame point P shows the layer's point O + (P − O − T) / k (O the transform's origin, T its move)
@@ -146,6 +149,7 @@ function drawCover(ctx: Parameters<typeof emoji.draw>[0], cv: HTMLCanvasElement,
   g.font = `${px}px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#000'; g.globalAlpha = 1;
   const m = g.measureText(c), l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width || px, a = m.actualBoundingBoxAscent || px * 0.8, d = m.actualBoundingBoxDescent || px * 0.1;
   g.fillText(c, cx - (r - l) / 2, cy + (a - d) / 2);
+  g.restore();
 }
 
 /** one reaction: a drawn heart for ♥, else the emoji in the colour font, centred at (x, y), `size` wide */

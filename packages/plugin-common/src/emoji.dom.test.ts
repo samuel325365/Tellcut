@@ -81,3 +81,34 @@ test('cover moves along its path', () => {
   expect(a.font).toContain(`${0.2 * W}px`);
   expect(b.font).toContain(`${0.15 * W}px`);
 });
+
+test('cover with a box: a moving cover is clipped by this frame\'s box only, whatever was drawn before (draw(t) is a pure function of t)', () => {
+  // a real 2D context keeps its clip across frames while the canvas keeps its size, and clips intersect until restored
+  const real = HTMLCanvasElement.prototype.getContext, ctxs = new WeakMap<HTMLCanvasElement, any>();
+  (HTMLCanvasElement.prototype as any).getContext = function (this: HTMLCanvasElement) {
+    const old = ctxs.get(this);
+    if (old && old.w === this.width && old.h === this.height) return old.g;
+    const st = { path: null as number[] | null, clip: null as number[] | null, stack: [] as Array<number[] | null> };
+    const meet = (a: number[] | null, b: number[]) => {
+      if (!a) return b;
+      const l = Math.max(a[0], b[0]), t = Math.max(a[1], b[1]), r = Math.min(a[0] + a[2], b[0] + b[2]), bt = Math.min(a[1] + a[3], b[1] + b[3]);
+      return [l, t, Math.max(0, r - l), Math.max(0, bt - t)];
+    };
+    const g: any = {
+      canvas: this, setTransform() {}, clearRect() {}, beginPath() {}, arc() {}, fill() {},
+      save: () => { st.stack.push(st.clip); }, restore: () => { st.clip = st.stack.pop() ?? null; },
+      rect: (...r: number[]) => { st.path = r; }, clip: () => { st.clip = meet(st.clip, st.path!); },
+      measureText: () => ({ width: 100, actualBoundingBoxLeft: 0, actualBoundingBoxRight: 100, actualBoundingBoxAscent: 90, actualBoundingBoxDescent: 10 }),
+      fillText: (text: string, x: number, y: number) => drawn.push({ text, x, y, alpha: 1, font: '', transform: [], rotated: false, clipped: st.clip }),
+    };
+    ctxs.set(this, { w: this.width, h: this.height, g });
+    return g;
+  };
+  try {
+    const params = { mode: 'cover', char: '🌸', size: 20, box: '0.3,0.3,0.4,0.4', path: '0|0.3|0.5\n2|0.7|0.5' };
+    const at = (st: Stage, t: number) => { drawn = []; st.draw(t); return drawn[0].clipped; };
+    const fresh = stageOf(params).st, walked = stageOf(params).st;
+    for (const t of [1, 1.4, 1.8, 2.2]) at(walked, t);
+    expect(at(walked, 2.6)).toEqual(at(fresh, 2.6));
+  } finally { (HTMLCanvasElement.prototype as any).getContext = real; }
+});
