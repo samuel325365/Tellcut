@@ -9,8 +9,8 @@ import { polygonSvg, setPolygon, spikePoints } from './shapes.ts';
 import { runBox, setRuns, type RunBox } from './runs.ts';
 import { withAlpha } from './color.ts';
 
-interface P { tx: number; ty: number; mode: 'sticker' | 'blast' | 'rays'; text: string; points: number; x: number; y: number; size: number; fill: string; ink: string; textColor: string; hl: string; tilt: number; font: string; seed: number; outDur: number }
-interface S { box: HTMLElement; svg: SVGSVGElement; poly: SVGPolygonElement; text: RunBox; flash: HTMLElement; rays: HTMLElement; vig: HTMLElement; back: RunBox; lines: SVGSVGElement }
+interface P { tx: number; ty: number; mode: 'sticker' | 'blast' | 'rays'; text: string; points: number; x: number; y: number; size: number; fill: string; ink: string; textColor: string; hl: string; tilt: number; font: string; seed: number; outDur: number; shadow: string; dots: string }
+interface S { box: HTMLElement; svg: SVGSVGElement; poly: SVGPolygonElement; under: SVGPolygonElement; halftone: SVGPolygonElement; dot: SVGCircleElement; pattern: SVGPatternElement; text: RunBox; flash: HTMLElement; rays: HTMLElement; vig: HTMLElement; back: RunBox; lines: SVGSVGElement }
 const NS = 'http://www.w3.org/2000/svg';
 
 /** ray i of n (mode rays) at `local`: its angle and inner / outer radius as shares of the burst's radius */
@@ -21,7 +21,7 @@ export function rayAt(i: number, n: number, local: number) {
 
 export const burst: ItemType<P, S> = {
   type: 'common.burst', label: '爆炸字卡', category: 'text', kind: 'overlay',
-  doc: '鋸齒爆炸形裡一個大字（彈入、微傾）；「出發！」「超好吃」這種貼紙感的爆字；【詞】變強調色；背後可加 common.speedlines；mode: blast 是整個畫面爆開：白閃、旋轉的放射光、脈動紅色暗角、雙層描邊的巨大字（爆表、破紀錄、大揭曉）；rays 是咬下去的瞬間：從 (x,y) 射出一圈細放射線、大字（咔滋！）在 (tx,ty) 從大縮回彈出、斜斜的（咬、敲、碎、爆汁）',
+  doc: '鋸齒爆炸形裡一個大字（彈入、微傾）；「出發！」「超好吃」這種貼紙感的爆字；【詞】變強調色；背後可加 common.speedlines；shadow 給一個顏色是往右下錯開的彩色陰影、dots 給一個顏色是填色上的網點（漫畫的爆炸框，配 common.comic）；mode: blast 是整個畫面爆開：白閃、旋轉的放射光、脈動紅色暗角、雙層描邊的巨大字（爆表、破紀錄、大揭曉）；rays 是咬下去的瞬間：從 (x,y) 射出一圈細放射線、大字（咔滋！）在 (tx,ty) 從大縮回彈出、斜斜的（咬、敲、碎、爆汁）',
   params: [
     { key: 'mode', label: '樣式（sticker 鋸齒貼紙、blast 整個畫面爆開、rays 放射線＋爆字）', type: 'enum', options: ['sticker', 'blast', 'rays'], default: 'sticker' },
     { key: 'text', label: '文字（【強調】）', type: 'text', default: '出發！' },
@@ -36,6 +36,8 @@ export const burst: ItemType<P, S> = {
     { key: 'tilt', label: '傾斜（度）', type: 'number', min: -30, max: 30, step: 0.5, default: -6 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'outDur', label: '出場時間 (s)（縮小並淡出）', type: 'number', min: 0, max: 2, step: 0.05, default: 0.2 },
+    { key: 'shadow', label: '錯位陰影顏色（sticker；空＝不要）', type: 'color', default: '' },
+    { key: 'dots', label: '網點顏色（sticker；空＝不要）', type: 'color', default: '' },
     { key: 'seed', label: '鋸齒亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 4 },
     { key: 'tx', label: '字的中心 x（rays；畫面寬比例，-1＝放射中心右上方）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
     { key: 'ty', label: '字的中心 y（rays；畫面高比例，-1＝放射中心上方）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
@@ -43,6 +45,13 @@ export const burst: ItemType<P, S> = {
   build(ctx) {
     const box = h('div', null, null, ctx.root), { svg, poly } = polygonSvg();
     box.appendChild(svg);
+    // the comic look: an offset copy of the shape under it (shadow) and a halftone over its fill (dots), both hidden until set
+    const under = document.createElementNS(NS, 'polygon') as SVGPolygonElement, halftone = document.createElementNS(NS, 'polygon') as SVGPolygonElement;
+    const defs = document.createElementNS(NS, 'defs'), pattern = document.createElementNS(NS, 'pattern') as SVGPatternElement, dot = document.createElementNS(NS, 'circle') as SVGCircleElement;
+    pattern.setAttribute('id', `tc-burst-dots-${++dotsId}`); pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+    pattern.appendChild(dot); defs.appendChild(pattern);
+    under.setAttribute('stroke-linejoin', 'round'); halftone.setAttribute('stroke', 'none');
+    svg.insertBefore(under, poly); svg.insertBefore(defs, under); svg.appendChild(halftone);
     cssCamel(box, { position: 'absolute' });
     const t = h('div', null, null, box);
     cssCamel(t, { position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'pre', lineHeight: '1.1', fontWeight: '900' });
@@ -55,7 +64,7 @@ export const burst: ItemType<P, S> = {
     cssCamel(lines as unknown as HTMLElement, { position: 'absolute', left: '0', top: '0', overflow: 'visible', display: 'none' });
     for (let i = 0; i < 14; i++) { const l = document.createElementNS(NS, 'line'); l.setAttribute('stroke-linecap', 'round'); lines.appendChild(l); }
     ctx.root.appendChild(box);   // the word stays on top of the blast layers
-    return { box, svg, poly, text: runBox(t), flash, rays, vig, back: runBox(bk), lines };
+    return { box, svg, poly, under, halftone, dot, pattern, text: runBox(t), flash, rays, vig, back: runBox(bk), lines };
   },
   draw(ctx, s) {
     cssCamel(s.lines as unknown as HTMLElement, { display: ctx.params.mode === 'rays' ? 'block' : 'none' });
@@ -64,7 +73,9 @@ export const burst: ItemType<P, S> = {
     if (s.flash.style.display !== 'none') { for (const el of [s.flash, s.rays, s.vig, s.back.el.parentElement!]) cssCamel(el, { display: 'none' }); cssCamel(s.svg as unknown as HTMLElement, { display: '' }); cssCamel(s.text.el.parentElement!, { position: 'absolute', inset: '0', webkitTextStroke: '0' }); }
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, size = (p.size / 100) * Math.min(W, H), r = size / 2, stroke = theme.stroke * k;
     cssCamel(s.text.el.parentElement!, { position: 'absolute', inset: '0', textShadow: 'none' });   // back from rays
-    setPolygon(s.svg, s.poly, size, spikePoints(p.points, r - stroke, (r - stroke) * 0.68, 0, 1, p.seed), p.fill, p.ink, stroke);
+    const pts = spikePoints(p.points, r - stroke, (r - stroke) * 0.68, 0, 1, p.seed);
+    setPolygon(s.svg, s.poly, size, pts, p.fill, p.ink, stroke);
+    drawComicLook(s, pts, size, stroke, p);
     const px = size * 0.2, fit = layoutMarkup(p.text, (size * 0.62) / px, 3);
     setRuns(s.text, fit.lines, p.hl);
     const pop = eBack(prog(ctx.local, 0, 0.28), 2.4), out = p.outDur > 0 ? 1 - prog(ctx.local, ctx.dur - p.outDur, ctx.dur) : 1;
@@ -72,6 +83,24 @@ export const burst: ItemType<P, S> = {
     cssCamel(s.box, { left: `${p.x * W - r}px`, top: `${p.y * H - r}px`, width: `${size}px`, height: `${size}px`, opacity: String(Math.min(1, pop * 4) * out), transform: `rotate(${p.tilt}deg) scale(${pop * (0.7 + 0.3 * out)})` });
   },
 };
+
+let dotsId = 0;
+/** the sticker's comic look: the shadow, the same spikes shifted down-right by 7% of the size in its own colour with the same ink
+ *  outline; the dots, a halftone (dots 6% of the size apart) in their colour over the fill, inside the outline */
+export function drawComicLook(s: Pick<S, 'under' | 'halftone' | 'dot' | 'pattern'>, pts: Array<[number, number]>, size: number, stroke: number, p: Pick<P, 'shadow' | 'dots' | 'ink'>) {
+  const pointsAttr = (dx: number) => pts.map(([x, y]) => `${(x + dx).toFixed(2)},${(y + dx).toFixed(2)}`).join(' ');
+  if (p.shadow) {
+    s.under.setAttribute('points', pointsAttr(size * 0.07)); s.under.setAttribute('fill', p.shadow); s.under.setAttribute('stroke', p.ink); s.under.setAttribute('stroke-width', String(stroke));
+    s.under.style.display = '';
+  } else s.under.style.display = 'none';
+  if (p.dots) {
+    const d = size * 0.06;
+    s.pattern.setAttribute('width', d.toFixed(2)); s.pattern.setAttribute('height', d.toFixed(2));
+    s.dot.setAttribute('cx', (d / 2).toFixed(2)); s.dot.setAttribute('cy', (d / 2).toFixed(2)); s.dot.setAttribute('r', (d * 0.26).toFixed(2)); s.dot.setAttribute('fill', p.dots);
+    s.halftone.setAttribute('points', pointsAttr(0)); s.halftone.setAttribute('fill', `url(#${s.pattern.id})`);
+    s.halftone.style.display = '';
+  } else s.halftone.style.display = 'none';
+}
 
 /** blast: the flash, the fan of rays from the centre (18 of them, turning), the pulsing vignette, the word twice (a thick outer outline under it) */
 function drawBlast(ctx: Parameters<typeof burst.draw>[0], s: S) {

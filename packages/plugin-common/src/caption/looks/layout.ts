@@ -102,6 +102,15 @@ export const comic: CaptionLook = {
   pin: () => ' rotate(-1.5deg)',
 };
 
+/** a comic's narration box (the comic pilot film's fx.comicbox, 2026-11-05): ink words on a flat box of the highlight colour with a
+ *  thin ink border, square, set flush left: the yellow box in a panel's corner */
+export const narration: CaptionLook = {
+  id: 'narration', paper: true, weight: '700', left: true, room: (e, width) => width - 1.1 * e.px,
+  color: (e) => e.p.outline,
+  hl: (e) => e.theme.palette.accent,
+  box: (e) => ({ backgroundColor: e.p.hl, padding: '0.2em 0.45em', border: `${(0.08 * e.fs).toFixed(1)}px solid ${e.p.outline}` }),
+};
+
 /** chalk on a blackboard: a dark green board with a wooden edge, the words in white chalk with rough edges */
 export const chalk: CaptionLook = {
   id: 'chalk', weight: '400', font: 'Iansui', room: (e, width) => width - 1.4 * e.px,

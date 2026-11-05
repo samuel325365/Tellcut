@@ -76,7 +76,7 @@ export const CAP_EN = { text: 'We walked all the way to the 【Colosseum】', wo
 export const CAP_JA = { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] };
 const CAP_LOOKS: Array<[string, Record<string, unknown>]> = [['punch', {}], ['double', {}], ['soft', {}], ['frost', { hl: '#9fe3ff' }], ['cinema', { size: 3.6 }], ['slab', {}], ['hollow', {}],
   ['marker', {}], ['neon', { hl: '#ff3db8', accent: '#29e7ff' }], ['gradient', { hl: '#ffe2a8', accent: '#ff8a4c' }], ['extrude', { hl: '#ffd23f', accent: '#e8742c' }], ['sticker', { accent: '#ff4f6a', bubbleBg: '#ffffff' }],
-  ['heavy', {}], ['offset', {}], ['gold', {}], ['chrome', {}], ['flow', { hl: '#7cf8ff', accent: '#ff5fa2' }], ['halo', { hl: '#ffb3e6' }], ['duotone', { hl: '#ffe14d', accent: '#ff5c7a' }], ['longshadow', {}], ['emboss', {}], ['block', {}], ['puffy', { hl: '#ffd1e8', accent: '#ff5fa2' }], ['tape', { hl: '#9fe3c8' }], ['postit', {}], ['label', {}], ['ransom', {}], ['rgb', {}], ['pixel', {}], ['vhs', {}], ['terminal', {}], ['segment', {}], ['scanline', { hl: '#7cf8ff' }], ['news', {}], ['chat', {}], ['lyric', { hl: '#ffd27a' }], ['dialog', {}], ['comic', {}], ['chalk', {}]];
+  ['heavy', {}], ['offset', {}], ['gold', {}], ['chrome', {}], ['flow', { hl: '#7cf8ff', accent: '#ff5fa2' }], ['halo', { hl: '#ffb3e6' }], ['duotone', { hl: '#ffe14d', accent: '#ff5c7a' }], ['longshadow', {}], ['emboss', {}], ['block', {}], ['puffy', { hl: '#ffd1e8', accent: '#ff5fa2' }], ['tape', { hl: '#9fe3c8' }], ['postit', {}], ['label', {}], ['ransom', {}], ['rgb', {}], ['pixel', {}], ['vhs', {}], ['terminal', {}], ['segment', {}], ['scanline', { hl: '#7cf8ff' }], ['news', {}], ['chat', {}], ['lyric', { hl: '#ffd27a' }], ['dialog', {}], ['comic', {}], ['chalk', {}], ['narration', {}]];
 const CAPTION_SAMPLES: Sample[] = [
   ...CAP_LOOKS.flatMap(([style, own]): Sample[] => [
     { name: `cap-${style}-zh`, type: 'common.caption', params: { ...CAP_ZH, style, ...own }, at: [1.0, 2.4], bg: '#4a5a52' },
@@ -587,6 +587,16 @@ export const samples: Sample[] = [
   { name: 'leak-still', type: 'common.leak', params: { travel: 0 }, len: 3, at: [1.5], bg: '#4d5866' },
   { name: 'wide-leak', type: 'common.leak', params: { from: 'l' }, len: 3, at: [1.5], wide: true, bg: '#4d5866' },
   { name: 'core-flash-fade', type: 'core.flash', params: { fade: 'out', color: '#000' }, len: 3, at: [0.75, 1.5, 2.25], bg: '#c9803c' },
+  // common.comic, common.onomatopoeia and burst's comic look (2026-11-05, the comic pilot film's fx.comicpage / fx.comicsfx): the
+  // second panel sliding in and its focus lines, every layout settled, a sound word mid-pop and settled, an English one
+  { name: 'comic', type: 'common.comic', params: { focus: '2|0.5,0.78' }, len: 3, at: [0.75, 1.5], bg: '#4a6b7c' },
+  { name: 'comic-three', type: 'common.comic', params: { layout: 'three' }, len: 3, at: [2], bg: '#4a6b7c' },
+  { name: 'comic-four', type: 'common.comic', params: { layout: 'four', times: '0,0.3,0.6,0.9' }, len: 3, at: [2], bg: '#4a6b7c' },
+  { name: 'comic-one', type: 'common.comic', params: { layout: 'one', focus: '1|0.5,0.45' }, len: 3, at: [1.5], bg: '#4a6b7c' },
+  { name: 'wide-comic', type: 'common.comic', params: { layout: 'side' }, len: 3, at: [2], wide: true, bg: '#4a6b7c' },
+  { name: 'onomatopoeia', type: 'common.onomatopoeia', params: { rise: 0.06 }, len: 3, at: [0.12, 1.5], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-en', type: 'common.onomatopoeia', params: { text: 'SNIFF', font: 'Bangers', weight: 400, color: '#ffffff', size: 12, stroke: 10, spacing: 1.12, depth: 8, tilt: 6 }, len: 3, at: [1.5], bg: '#4a6b7c' },
+  { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title
   ...['center', 'top', 'bottom', 'lower', 'left', 'corner', 'full'].map((layout): Sample => ({ name: `heading-${layout}`, type: 'common.heading', params: { ...HEAD_ZH, layout, ...(layout === 'full' ? { text: '七百年', kicker: '', sub: '' } : {}) }, at: [1.5], bg: '#4a5a52' })),

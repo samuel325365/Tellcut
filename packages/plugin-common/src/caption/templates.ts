@@ -98,6 +98,7 @@ export const TEMPLATES: CaptionTemplate[] = [
   { id: 'comic-pop', label: '漫畫框彈詞', doc: '藍網點漫畫框，詞一個個彈出', params: { style: 'comic', wordFx: 'pop', animIn: 'bounce', hl: '#7fd4ff' } },
   { id: 'chalk-type', label: '黑板粉筆', doc: '黑板上的粉筆字照講話寫出來', params: { style: 'chalk', wordFx: 'type', animIn: 'none' } },
   { id: 'chalk-fade', label: '黑板淡入', doc: '黑板粉筆字淡入淡出', params: { style: 'chalk', animIn: 'fade', animOut: 'fade' } },
+  { id: 'comic-narration', label: '漫畫旁白框', doc: '黃底細黑框的漫畫旁白框，靠左上角擦出（配 common.comic 漫畫頁）', params: { style: 'narration', position: 'top', size: 3, animIn: 'wipe', hl: '#ffe14d' } },
 ];
 
 const BY_ID = new Map(TEMPLATES.map((t) => [t.id, t]));
