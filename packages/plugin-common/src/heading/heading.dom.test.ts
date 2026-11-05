@@ -85,3 +85,12 @@ test('the sub takes the look\'s text shadow scaled to its size (the caption\'s g
   const glossSize = parseFloat(sub.style.fontSize);
   expect(px(sub.style.textShadow)).toEqual(px(d.box.style.textShadow).map((v) => +(v * glossSize).toFixed(2)));
 });
+
+test('full: a look with a box of its own (sign, ribbon, seal) still sets a short title on one line', () => {
+  for (const style of ['sign', 'ribbon', 'seal', 'heavy']) {
+    const d = drawn({ text: '羅馬', layout: 'full', style }, 1.5);
+    // the runs: the caption box's child holding the visible lines (the word spans' twin is hidden)
+    const runs = [...d.box.children].find((c) => c.tagName === 'DIV' && (c as HTMLElement).style.display !== 'none' && c.querySelector('span') && c.textContent?.includes('羅'))!;
+    expect(runs.children.length, style).toBe(1);
+  }
+});

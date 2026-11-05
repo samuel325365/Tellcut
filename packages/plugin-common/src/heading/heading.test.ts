@@ -32,6 +32,10 @@ test('full sizes a title so its longest line fills the safe width (at most 0.4 o
   expect(fitTitleSize('【短】\n長一點的第二行', 5, 1080, 1920, 0.06, true)).toBeCloseTo(fitTitleSize('長一點的第二行', 5, 1080, 1920, 0.06, true), 6);
   // a look that draws bigger by itself (giant 1.35×) is fitted smaller, so the line still fits
   expect(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true, 1.35) * 1.35).toBeCloseTo(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true), 6);
+  // a look's room (a box's padding out, its spacing): the line fills the room the caption will give it, not the whole width
+  const padded = (px: number) => 1080 * 0.76 * 0.9 - 1.3 * px, boxed = fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true, 1, padded), P = (boxed / 100) * 1920;
+  expect(2 * 1.04 * P).toBeCloseTo(padded(P), 6);
+  expect(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true, 1, () => 1080 * 0.76)).toBeCloseTo(fitTitleSize('羅馬', 5, 1080, 1920, 0.12, true), 6);
 });
 
 test('the title\'s own entrances and exits: in the title\'s pixels, clipped to its block', () => {

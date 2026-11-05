@@ -83,14 +83,15 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     }
     cssCamel(s.inner, { display: 'block' });
     const place = titlePlace(p.layout, theme.safe), own = isTitleIn(p.animIn), ownOut = isTitleOut(p.animOut);
-    const look = lookOf(p.style), sc = look.sizeScale ?? 1;
-    let size = fitTitleSize(text, p.size * place.scale, W, H, theme.safe.side, p.layout === 'full', sc);
+    const look = lookOf(p.style), sc = look.sizeScale ?? 1, width = W * (1 - 2 * theme.safe.side);
+    // the room the look leaves words drawn px px in a line of the safe width (as the caption will ask it), or all of it
+    const roomAt = (px: number) => (look.room ? look.room({ p: { ...CAPTION_DEFAULTS, text, style: p.style }, theme, W, H, k, px, local, who: p.color, ink: p.color, left: place.align === 'left', opacity: 1 } as never, width) : width);
+    let size = fitTitleSize(text, p.size * place.scale, W, H, theme.safe.side, p.layout === 'full', sc, look.room ? roomAt : undefined);
     // a short title with no line break of its own stays on one line, shrunk to fit when that keeps at least 62 % of its size (five
     // characters at the default size broke 3 + 2 in 9:16: 「再見，」「羅馬」, ttl-acc-rome; six 4 + 2: 「山清炭火」「花園」, ttl-acc-food)
     if (p.layout !== 'full' && !text.includes('\n')) {
-      const em = textEm(charKinds(text).map((c) => c.c).join('').trim()), px = (size / 100) * H * sc, width = W * (1 - 2 * theme.safe.side);
-      const room = look.room ? look.room({ p: { ...CAPTION_DEFAULTS, text, style: p.style }, theme, W, H, k, px, local, who: p.color, ink: p.color, left: place.align === 'left', opacity: 1 } as never, width) : width;
-      const f = em > 0 ? room / (em * 1.04 * px) : 1;
+      const em = textEm(charKinds(text).map((c) => c.c).join('').trim()), px = (size / 100) * H * sc;
+      const f = em > 0 ? roomAt(px) / (em * 1.04 * px) : 1;
       if (f < 1 && f >= 0.62) size *= f;
     }
     // a title grown to fill the width (full) keeps its kicker and sub at the size they had before it grew
