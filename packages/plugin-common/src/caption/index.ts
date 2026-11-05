@@ -137,12 +137,15 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     const who = speakerColor(p.speaker ?? 0, p.color, theme), ink = p.tint === false ? p.color : who;
     const pre = { p, theme, W, H, local: ctx.local, k, px, who, ink, left, opacity: st.opacity };
     // the room the words have: the look's box takes its padding out, the speaker chip of `point` 2.05 em at the left
-    const room = (look.room ? look.room(pre, width) : width) - (point ? 2.05 * px : 0), text = p.quote ? `“${p.text}”` : p.text;
+    // as a function of the font size: the padding and borders it takes out shrink with the words when they shrink to fit, so the line
+    // breaking gets the room at size 0 (a share of the width) and the rest as em of the drawn font (ribbon's real 1.8 em, taken at
+    // full size, broke a title shrunk to 0.7 into three lines)
+    const roomAt = (x: number) => (look.room ? look.room({ ...pre, px: x }, width) : width) - (point ? 2.05 * x : 0), room = roomAt(px), text = p.quote ? `“${p.text}”` : p.text;
     // one word at a time: the line is never shrunk to fit whole, only so that its longest word fits on a line of its own
     const plain = charKinds(text).map((c) => c.c).join(''), list = hasWords ? wordsOf(steps, [...plain].length, plain) : evenWords(plain, ctx.dur);
     const oneFit = fx === 'one' ? Math.min(1, room / px / Math.max(1e-6, ...list.map((w) => textEm([...plain].slice(w.a, w.b).join('').trim()) * 1.08))) : 1;
     // one word at a time: one line (the words not being said are hidden), never broken inside a word (extrude-one split missed.)
-    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, room / px / hs, p.maxLines ?? 2, st.typed, lit);
+    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, Math.max(0, roomAt(0) - room) / px / hs);
     if (fx === 'one') fit.scale = oneFit;
     const fs = px * fit.scale, la = lineAnim(p.animIn, p.animOut, ctx.local, ctx.dur, p.animDur, fs), e: LookEnv = { ...pre, fs, opacity: st.opacity * la.opacity };
     // the font first: word effects measure the words (a growing word's room, the sliding box), which must already be in it

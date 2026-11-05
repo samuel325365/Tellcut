@@ -89,10 +89,11 @@ export const script: CaptionLook = {
 
 /** each line on a ribbon in the accent colour with notched ends */
 export const ribbon: CaptionLook = {
-  // each line's ribbon has 0.9 em of padding a side, more than padded's 0.6: a full line ran its ribbon past the safe area
-  id: 'ribbon', only: 'title', weight: '900', room: (e, width) => width - 1.8 * e.px,
+  // each line's ribbon has 0.8 em of padding a side (0.9 left five characters of a 9:16 title at the default size a hair over the safe
+  // width even shrunk to 0.7, so the line broke in three); more than padded's 0.6, which ran a full line's ribbon past the safe area
+  id: 'ribbon', only: 'title', weight: '900', room: (e, width) => width - 1.6 * e.px,
   color: () => '#ffffff',
-  lines: (lines, e) => lines.forEach((l, i) => cssCamel(l, { display: 'table', margin: `${i ? '0.15em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.08em 0.9em 0.12em',
+  lines: (lines, e) => lines.forEach((l, i) => cssCamel(l, { display: 'table', margin: `${i ? '0.15em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.08em 0.8em 0.12em',
     background: e.p.accent || e.theme.palette.accent, clipPath: 'polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%)' })),
 };
 

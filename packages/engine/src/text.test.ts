@@ -82,3 +82,10 @@ test('a particle or a measure word never starts a line: 的 了 嗎 側 邊… s
     }
   }
 });
+
+test('fitLines: padding given in the font\'s own em shrinks with the font', () => {
+  // five characters in a box 5.5 em wide less 1.8 em of padding: at 0.85 the words have 5.5 / 0.85 − 1.8 = 4.67 em, at 0.8 5.08 em
+  expect(fitLines('一二三四五', 5.5, 1, 0.7, 1.8)).toEqual({ lines: ['一二三四五'], scale: 0.8 });
+  // the same padding taken out at full size (5.5 − 1.8 = 3.7 em, as before) shrank the words to the floor
+  expect(fitLines('一二三四五', 3.7, 1, 0.7).scale).toBe(0.7);
+});

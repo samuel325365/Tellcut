@@ -25,10 +25,10 @@ export function charKinds(text: string): Array<{ c: string; kind: Kind }> {
 
 /** The text broken into lines of runs; `typed` (0–1) keeps only that share of the visible characters; `lit` [from, to) visible
  *  characters are highlighted too (the word being said: a karaoke caption), a bleep staying a bleep. */
-export function layoutMarkup(text: string, boxEm: number, maxLines: number, typed = 1, lit?: [number, number] | null): { lines: Run[][]; scale: number; plain: string; starts: number[] } {
+export function layoutMarkup(text: string, boxEm: number, maxLines: number, typed = 1, lit?: [number, number] | null, padEm = 0): { lines: Run[][]; scale: number; plain: string; starts: number[] } {
   const chars = charKinds(text), visible = chars.map((x) => x.c).join('');
   if (lit) for (let i = Math.max(0, lit[0]); i < Math.min(chars.length, lit[1]); i++) if (chars[i].kind === 'plain') chars[i] = { ...chars[i], kind: 'hl' };
-  const fit = fitLines(visible, boxEm, maxLines);
+  const fit = fitLines(visible, boxEm, maxLines, 0.7, padEm);
   const keep = Math.ceil(chars.length * typed);
   /** the visible character each line starts at (what `words` steps count): a caption's word effects find their words by it */
   const starts: number[] = [];

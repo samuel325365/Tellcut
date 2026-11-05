@@ -54,11 +54,12 @@ function wrap(text: string, em: number): string[] {
   return out;
 }
 
-/** Lines of `text` in a box `boxEm` wide; above maxLines the font shrinks in 5 % steps down to minScale. */
-export function fitLines(text: string, boxEm: number, maxLines: number, minScale = 0.7): { lines: string[]; scale: number } {
+/** Lines of `text` in a box `boxEm` wide; above maxLines the font shrinks in 5 % steps down to minScale. `padEm`: what the box takes
+ *  out in the font's own em (a look's padding and border), which shrinks with the font, while `boxEm` (in em at scale 1) does not */
+export function fitLines(text: string, boxEm: number, maxLines: number, minScale = 0.7, padEm = 0): { lines: string[]; scale: number } {
   for (let k = 0; ; k++) {
-    const scale = Math.max(minScale, 1 - k * 0.05), lines = wrap(text, boxEm / scale);
-    if (lines.length <= maxLines || scale <= minScale) return { lines: balance(text, lines, boxEm / scale), scale: Math.round(scale * 100) / 100 };
+    const scale = Math.max(minScale, 1 - k * 0.05), em = boxEm / scale - padEm, lines = wrap(text, em);
+    if (lines.length <= maxLines || scale <= minScale) return { lines: balance(text, lines, em), scale: Math.round(scale * 100) / 100 };
   }
 }
 
