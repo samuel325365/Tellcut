@@ -1,0 +1,353 @@
+// The timeline's edit commands and the selection, out of editor.ts like the other flows: the tracks' buttons and order, overlaps
+// and transitions, the cutting keys (Q / W, ↑ / ↓, S, Delete), copy, paste and duplicate, muting, magnetic tracks, dragging on the
+// timeline, adding from the library at the playhead, replacing a block, and what is selected. Every edit is one undo step through
+// the editor's apply(); the editor keeps the project, its history, the preview and crop mode.
+import { addItem, addTrack, allItems, attach as attachCmd, CommandError, copyItems, deleteItems, detach as detachCmd, findItem, magneticGaps, magneticTrack, moveTrack as moveTrackCmd,
+  overlapPairs, ownSounds, pasteItems, removeTrack as removeTrackCmd, resolveTimes, restackItem, rippleDelete, setCrossfade, setMagnetic, setTrack as setTrackCmd, split, trimEnd, trimStart,
+  updateItem, withDefaults, type Clip, type Project, type Registry, type TrackKind } from '@tellcut/engine';
+import type { PlayerBridge } from '../bridge.ts';
+import type { History } from '../history.ts';
+import type { EditorState, PeakInfo, Store } from '../store.ts';
+import { dragRecipe, planDrag, type DragPlan, type DragStart, type Mods } from '../timeline/drag.ts';
+import { cutPoints, edgeTargets, nextCut, selectionHasNoClip } from './cutting.ts';
+import { errText, t as say } from '../i18n/index.ts';
+import { blockText } from '../i18n/blocks.ts';
+import { localValues } from '../i18n/values.ts';
+
+type Recipe = (d: Project) => void;
+/** the track kinds the library adds to */
+type AddKind = 'video' | 'sfx' | 'overlay' | 'music';
+
+export interface EditingDeps {
+  id: string;
+  store: Store<EditorState>;
+  bridge: Pick<PlayerBridge, 'select'>;
+  history: () => History | null;
+  registry: () => Registry | undefined;
+  /** one undoable edit; false when it changed nothing or was refused (the notice says why) */
+  apply: (recipe: Recipe) => boolean;
+  /** a project shown in the store and the preview; commit: a recorded edit to save */
+  changed: (p: Project, commit: boolean) => void;
+  livePreview: (recipe: Recipe) => void;
+  seek: (t: number) => void;
+  endAudition: () => void;
+  /** whether edits are refused (a proposal waits: says so), and whether one waits (silently) */
+  blocked: () => boolean;
+  pending: () => boolean;
+  isLocked: (itemId: string) => boolean;
+  /** crop mode ends when its clip is no longer the only selection */
+  checkCrop: () => void;
+}
+
+export class TimelineEditing {
+  constructor(private c: EditingDeps) {}
+  private get s() { return this.c.store.get(); }
+  private set(patch: Partial<EditorState>) { this.c.store.set(patch); }
+  private get reg() { return this.c.registry(); }
+
+  /** Click on a same-track overlap (spec 2026-10-14 §5.1–5.2); `id` is the later item B. */
+  overlapClick(id: string): boolean {
+    const p = this.c.history()?.project, pair = p && overlapPairs(p).get(id);
+    if (!p || !pair) return false;
+    if (pair.kind === 'video') {
+      const tr = (findItem(p, id).item as any).transitionIn;
+      if (!tr || tr.type === 'cut') return this.c.apply((d) => updateItem(d, { id, patch: { transitionIn: { type: 'dissolve', dur: pair.ov } } }));
+      this.select([id]);   // it has a transition: the properties panel shows it
+      return true;
+    }
+    if (pair.kind === 'music' || pair.kind === 'audio') return this.c.apply((d) => setCrossfade(d, { id, on: !pair.linked }));
+    return false;
+  }
+  /** Dragging a transition block's right edge: a live preview; the drag's release calls commitLive (one undo step). */
+  previewTransitionDur(id: string, dur: number) {
+    const p = this.c.history()?.project, found = p && allItems(p).find((x) => x.item.id === id);
+    const it: any = found?.item;
+    if (!p || !it?.transitionIn) return;
+    const d = Math.round(Math.min(it.end - it.start, Math.max(1 / p.meta.fps, dur)) * 1e6) / 1e6;
+    this.c.livePreview((x) => { updateItem(x, { id, patch: { transitionIn: { ...it.transitionIn, dur: d } } }); });
+  }
+  /** Track order inside its group, deleting a track with its items, a new empty track (all undoable). */
+  moveTrack(id: string, to: number) { return this.c.apply((d) => moveTrackCmd(d, { id, to })); }
+  removeTrack(id: string) { return this.c.apply((d) => removeTrackCmd(d, { id })); }
+  addTrackOf(kind: TrackKind) { return this.c.apply((d) => { addTrack(d, { kind }); }); }
+  /** One layer up or down past the nearest overlapping item of the same track. */
+  restack(id: string, dir: 'up' | 'down') { return this.c.apply((d) => restackItem(d, { id, dir })); }
+  /** M and S buttons: against the real track, whatever the preview plays */
+  toggleTrack(id: string, key: 'muted' | 'solo') {
+    const t: any = this.c.history()?.project.tracks.find((x) => x.id === id);
+    return t ? this.c.apply((d) => setTrackCmd(d, { id, patch: { [key]: !t[key] } })) : false;
+  }
+
+  /** Tracks the cutting keys pass over (A3 fills it with the locked ones). */
+  skipTracks(): ReadonlySet<string> { return new Set(this.s.locked); }
+
+  /** Q / W (spec 2026-10-28-timeline-refresh A2): cut the clips at the playhead from their start (left) or to their end
+   *  (right), one undo step. On the magnetic track the gap closes and, after Q, the playhead stays on the frame it showed. */
+  deleteSide(side: 'left' | 'right'): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    const t = this.s.playhead, times = resolveTimes(p), ids = edgeTargets(p, times, t, this.s.selection, this.skipTracks());
+    if (!ids) { this.set({ notice: say(selectionHasNoClip(p, this.s.selection, this.skipTracks()) ? 'ed.why.selectionNoClip' : 'ed.selectClip') }); return false; }
+    const ok = this.c.apply((d) => { for (const id of ids) { const tm = times.get(id)!; if (side === 'left') trimStart(d, { id, dt: t - tm.start }); else trimEnd(d, { id, dt: t - tm.end }); } });
+    const mag = ok && side === 'left' ? magneticTrack(this.s.project!) : undefined;
+    const back = mag && ids.find((id) => (mag.items as any[]).some((c) => c.id === id));
+    if (back) this.c.seek(resolveTimes(this.s.project!).get(back)!.start);
+    return ok;
+  }
+
+  /** ↑ / ↓: the previous / next clip edge on any track. */
+  jumpCut(dir: -1 | 1) {
+    const p = this.s.project;
+    if (p) this.c.seek(nextCut(cutPoints(p, resolveTimes(p)), this.s.playhead, dir, p.meta.fps));
+  }
+
+  /** S: the selected clips cut at the playhead (with nothing selected every clip under it, except on locked tracks); the
+   *  pieces after the cut are selected. */
+  split() {
+    const s = this.s;
+    let made: string[] = [];
+    const open = s.selection.length ? s.selection : s.locked.length && s.project
+      ? s.project.tracks.filter((tr) => !s.locked.includes(tr.id)).flatMap((tr) => (tr.items as any[]).map((i) => i.id)) : undefined;
+    if (this.c.apply((d) => { made = split(d, { t: s.playhead, ids: open }); }) && made.length) this.select(made);
+  }
+  /** Delete / Shift+Delete: the selection deleted, or deleted with the gap closed (ripple). */
+  deleteSelection(ripple: boolean) {
+    const ids = this.s.selection;
+    if (!ids.length) return;
+    if (this.c.apply((d) => (ripple ? rippleDelete(d, { ids }) : deleteItems(d, { ids })))) this.select([]);
+  }
+
+  /** Ctrl+C: the selection, its children and own sounds, kept in memory for this project. */
+  copy(): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    if (!this.s.selection.length) { this.set({ notice: say('ed.nothingToCopy') }); return false; }
+    try { this.set({ clipboard: copyItems(p, this.s.selection, this.c.id), notice: '' }); return true; }
+    catch (e) { if (e instanceof CommandError) { this.set({ notice: errText(e) }); return false; } throw e; }
+  }
+  /** Ctrl+V: at the playhead; the new items are selected. */
+  paste(): boolean { return this.pasteAt(this.s.clipboard, this.s.playhead); }
+  /** also: more of the same edit once pasted (Ctrl+D hangs the copies), with each copied id → its copy's */
+  private pasteAt(clip: Clip | null, t: number, also?: (d: Project, renamed: Map<string, string>) => void): boolean {
+    const p = this.s.project;
+    if (!clip || !p) return false;
+    if (clip.project !== this.c.id) { this.set({ notice: say('ed.pasteOtherProject') }); return false; }
+    // a one-per-film block the project already has is left out (with what hangs on it), and the notice says so
+    const why = new Set<string>();
+    const entries = clip.entries.filter((e) => {
+      const type = (e.item as any).type, w = typeof type === 'string' ? uniqueBlock(this.reg, p, type) : '';
+      if (w) why.add(w);
+      return !w;
+    });
+    if (!entries.length) { this.set({ notice: [...why].join(' ') }); return false; }
+    let made: string[] = [];
+    const dropped: string[] = [], renamed = new Map<string, string>();
+    const ok = this.c.apply((d) => { made = pasteItems(d, { clip: { ...clip, entries }, t, skip: this.skipTracks(), dropped, renamed }); also?.(d, renamed); });
+    if (!ok) return false;
+    this.select(made);
+    const notice = [...why, dropped.length ? say('ed.pastePartly', { n: dropped.length }) : ''].filter(Boolean).join(' ');
+    if (notice) this.set({ notice });
+    return true;
+  }
+  /** Ctrl+D: a copy right after the selection (on the magnetic track: right after its clip). What Ctrl+C copied stays on the
+   *  clipboard. A copy of a caption hung on a clip hangs on that clip too, when it starts inside it. */
+  duplicate(): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    if (!this.s.selection.length) { this.set({ notice: say('ed.nothingToCopy') }); return false; }
+    let clip: Clip;
+    try { clip = copyItems(p, this.s.selection, this.c.id); }
+    catch (e) { if (e instanceof CommandError) { this.set({ notice: errText(e) }); return false; } throw e; }
+    const times = resolveTimes(p), end = Math.max(...this.s.selection.map((id) => times.get(id)?.end ?? 0));
+    const mag = magneticTrack(p), onMag = !!mag && clip.entries.some((e) => e.track === mag.id && e.item.parent === undefined);
+    const hang = (d: Project, renamed: Map<string, string>) => {
+      const now = resolveTimes(d);
+      for (const [old, copy] of renamed) {
+        const par = findItem(p, old).item.parent, at = now.get(copy), span = par === undefined ? undefined : now.get(par);
+        if (par === undefined || renamed.has(par) || !at || !span || at.start < span.start - 1e-6 || at.start >= span.end - 1e-6) continue;
+        attachCmd(d, { id: copy, to: par });
+      }
+    };
+    // pasteItems puts magnetic clips after the clip under t: half a frame before the end is still the selected clip
+    return this.pasteAt(clip, onMag ? end - 0.5 / p.meta.fps : end, hang);
+  }
+  /** Ctrl+A: every item on the tracks the cutting keys may touch. */
+  selectAll() {
+    const p = this.s.project, skip = this.skipTracks();
+    if (p) this.select(p.tracks.filter((tr) => !skip.has(tr.id)).flatMap((tr) => (tr.items as any[]).map((i) => i.id)));
+  }
+  /** M: mutes or unmutes the selected sounds; a video clip's own sound stands for the clip. All take the first one's new state. */
+  toggleItemMute(): boolean {
+    const p = this.s.project;
+    if (!p) return false;
+    const targets = this.s.selection.flatMap((id) => {
+      const f = allItems(p).find((x) => x.item.id === id);
+      if (!f) return [];
+      if (f.track.kind === 'video') return ownSounds(p, id).map((c) => c.id);
+      return f.track.kind === 'music' || f.track.kind === 'audio' || f.track.kind === 'sfx' ? [id] : [];
+    });
+    if (!targets.length) { this.set({ notice: say('ed.nothingToMute') }); return false; }
+    const on = !(findItem(p, targets[0]).item as any).muted;
+    return this.c.apply((d) => { for (const id of targets) { const it: any = findItem(d, id).item; if (on) it.muted = true; else delete it.muted; } });
+  }
+
+  /** The 磁 button (spec 2026-10-15-proposals-magnetic §4.1): closing gaps asks first; off just clears the flag. */
+  toggleMagnetic(id: string, ask: (msg: string) => boolean): boolean {
+    const p = this.c.history()?.project, t: any = p?.tracks.find((x) => x.id === id);
+    if (!p || !t) return false;
+    // turning it on closes the gaps, moving the locked clips (its button is off while the track is locked)
+    if (this.s.locked.includes(id)) { this.set({ notice: say('ed.lockedNotice') }); return false; }
+    const on = !t.magnetic;
+    if (on) {
+      const g = magneticGaps(p, id);
+      if (g.count && !ask(say('ed.magnetMerge', { n: g.count, s: g.shift.toFixed(2) }))) return false;
+    }
+    return this.c.apply((d) => setMagnetic(d, { id, on }));
+  }
+  /** 解除掛勾: the item stays where it is in time and no longer moves with its clip. */
+  detach(id: string) { return this.c.apply((d) => detachCmd(d, { id })); }
+
+  // ---------------------------------------------------------------- dragging on the timeline
+  private drag: { plan: DragPlan; recipe: Recipe | null } | null = null;
+
+  beginDrag(start: DragStart) {
+    this.c.endAudition();
+    const h = this.c.history();
+    if (!this.s.project || !h || this.c.blocked()) return;
+    this.drag = { plan: planDrag(h.project, resolveTimes(h.project), start), recipe: null };
+  }
+
+  /** dx in pixels from the drag start; previews live, never recorded until endDrag. */
+  dragTo(dx: number, mods: Mods, toTrack?: string) {
+    const h = this.c.history();
+    if (!this.drag || !h || this.c.pending()) return;
+    const base = h.project;
+    const { recipe, guide } = dragRecipe(base, resolveTimes(base), this.drag.plan, dx / this.s.pps,
+      // Ctrl on an edge means stretch (spec §4.2), so a stretch keeps snapping
+      { snap: this.s.layout.snap && (!mods.ctrl || this.drag.plan.kind.startsWith('stretch')), threshold: 8 / this.s.pps, playhead: this.s.playhead, toTrack });
+    try {
+      const view = h.preview(recipe);
+      this.drag.recipe = recipe;
+      this.set({ guide });
+      this.c.changed(view, false);
+    } catch (e) { if (!(e instanceof CommandError)) throw e; }
+  }
+
+  endDrag() {
+    const d = this.drag, h = this.c.history();
+    this.drag = null;
+    this.set({ guide: null });
+    if (!d || !h) return;
+    if (d.recipe) this.c.apply(d.recipe); else this.c.changed(h.project, false);
+  }
+
+  // ---------------------------------------------------------------- adding at the playhead (the library, the gallery)
+  /** Library: adds an item at the playhead to the selected track of that kind, else the first one (created if none). */
+  addTo(kind: AddKind, item: Record<string, unknown>, also?: (d: Project, id: string) => void) {
+    const end = this.fitEnd(kind, item.start as number, item.end as number);
+    if (end === null) return false;
+    item = { ...item, end };
+    const open = (t: { id: string; kind: string }) => t.kind === kind && !this.s.locked.includes(t.id);   // locked tracks are passed over
+    let id = '';
+    const sel = this.s.selection[0];
+    const ok = this.c.apply((d) => {
+      const selected = sel ? d.tracks.find((t) => open(t) && (t.items as any[]).some((i) => i.id === sel)) : undefined;
+      const track = selected?.id ?? d.tracks.find(open)?.id ?? addTrack(d, { kind });
+      id = addItem(d, { track, item });
+      also?.(d, id);
+    });
+    if (ok) this.select([id], { reveal: false });   // keep the library in front while adding several
+    return ok;
+  }
+
+  /** where an item added to a track of `kind` ends: nothing may start at or run past the project end — except on the magnetic
+   *  track, which makes the film longer; null (and the reason shown) when nothing is left of it */
+  fitEnd(kind: AddKind, start: number, end: number): number | null {
+    const p = this.s.project!, sel0 = this.s.selection[0];
+    const open = (t: { id: string; kind: string }) => t.kind === kind && !this.s.locked.includes(t.id);
+    const target: any = (sel0 && p.tracks.find((t) => open(t) && (t.items as any[]).some((i) => i.id === sel0))) ?? p.tracks.find(open);
+    const e = target?.magnetic ? end : Math.min(end, p.meta.duration);
+    if (e - start < 1 / p.meta.fps - 1e-9) { this.set({ notice: say('ed.atEnd') }); return null; }
+    return e;
+  }
+
+  addClip(source: string, from: number, len: number) {
+    const p = this.s.project!, t = this.s.playhead;
+    // a photo: 3 s with a gentle push-in (spec 2026-10-14 §5)
+    if (p.sources[source]?.kind === 'image') return this.addTo('video', { source, in: 0, speed: 1, start: t, end: t + 3, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.1 } } });
+    const dur = Math.min(len, p.sources[source].duration - from), still = { x: 0.5, y: 0.5, zoom: 1 };
+    return this.addTo('video', { source, in: from, speed: 1, start: t, end: t + dur, crop: { from: still, to: still } });
+  }
+
+  addMusic(media: string) {
+    const t = this.s.playhead, len = musicLength(this.s.peaks[`media:${media}`]) ?? 10, b = this.s.beats[media];
+    // with detected beats, a beat grid comes along (snapping finds the beats)
+    return this.addTo('music', { media, in: 0, start: t, end: t + len, gain: 0, fadeIn: 0, fadeOut: 0 },
+      b && b.beats.length ? (d, id) => { d.grids.push({ id: `beats-${id}`, at: Math.round((t + b.offset) * 1e6) / 1e6, bpm: b.bpm, until: t + len }); } : undefined);
+  }
+
+  /** `params`: values set in the gallery (only the sound's own keys are kept) */
+  addSfx(type: string, params?: Record<string, unknown>) {
+    const def = this.reg?.sfx(type), own = ownParams(def?.params, params);
+    const t = this.s.playhead, dur = def ? def.duration(withDefaults(def.params, own)) : 0.5;
+    return this.addTo('sfx', { type, start: t, end: t + Math.max(dur, 1 / (this.s.project?.meta.fps ?? 30)), params: own, gain: 0 });
+  }
+
+  /** The library's "replace": the block becomes another of the same kind (a picture block for one that sits the same way
+   *  over or under the video, a sound for a sound), in the same place and length, keeping the parameters both have. */
+  replaceBlock(id: string, type: string): boolean {
+    const why = replaceProblem(this.reg, this.s.project, id, type);
+    if (why) { this.set({ notice: why }); return false; }
+    const f = allItems(this.s.project!).find((x) => x.item.id === id)!, it = f.item as any, sfx = f.track.kind === 'sfx';
+    const defs = (sfx ? this.reg?.sfx(type) : this.reg?.item(type))!.params, keys = new Set(defs.map((d) => d.key));
+    // the words the new type starts with in the UI language, under the parameters both types have
+    const params = { ...localValues(type, defs), ...Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => keys.has(k))) };
+    return this.c.apply((d) => updateItem(d, { id, patch: { type, params } }));
+  }
+
+  /** `params`: values set in the gallery, over the defaults (only the block's own keys are kept) */
+  addOverlay(type: string, params?: Record<string, unknown>) {
+    const why = uniqueBlock(this.reg, this.s.project!, type);
+    if (why) { this.set({ notice: why }); return false; }
+    const t = this.s.playhead, defs = this.reg?.item(type)?.params ?? [];
+    // in the English or Japanese UI a block's Chinese words start in that language (written in, so the panel shows what is drawn)
+    return this.addTo('overlay', { type, start: t, end: t + 2, params: { ...localValues(type, defs), ...ownParams(defs, params) } });
+  }
+
+  // ---------------------------------------------------------------- the selection
+  select(ids: string[], o: { reveal?: boolean } = {}) {
+    if (this.s.locked.length) ids = ids.filter((id) => !this.c.isLocked(id));   // a locked track's items are not picked by the user
+    const changed = ids.length !== this.s.selection.length || ids.some((id, i) => id !== this.s.selection[i]);
+    this.set(changed ? { selection: ids, notice: '' } : { selection: ids });   // a notice is about the previous selection
+    this.c.bridge.select(ids.length === 1 ? ids[0] : null);
+    // portrait layout: a selection brings the properties tab forward
+    // (not out of the chat: a selection made while talking must not pull the conversation away)
+    if (ids.length && o.reveal !== false && this.s.layout.sideTab === 'library') this.set({ layout: { ...this.s.layout, sideTab: 'props' } });
+    this.c.checkCrop();
+  }
+}
+
+/** Why a unique item type cannot be added again, or '' when it can. */
+export function uniqueBlock(registry: Pick<Registry, 'item'> | undefined, p: Project, type: string): string {
+  const def = registry?.item(type);
+  return def?.unique && allItems(p).some((x) => (x.item as any).type === type) ? say('ed.unique', { label: blockText(type, { label: def.label, doc: '' }, 'en').label }) : '';
+}
+
+/** Why the item cannot become `type` ('' when it can): it must be a block or sound, the new one of the same kind and not a
+ *  one-per-film block already used elsewhere. Also what the library's replace button says. */
+export function replaceProblem(registry: Pick<Registry, 'item' | 'sfx'> | undefined, p: Project | null | undefined, id: string | undefined, type: string): string {
+  const f = p && id ? allItems(p).find((x) => x.item.id === id) : undefined, it = f?.item as any;
+  if (!f || typeof it.type !== 'string') return say('ed.replacePick');
+  if (it.type === type) return say('ed.replaceSame');
+  if (f.track.kind === 'sfx') return registry?.sfx(type) ? '' : say('ed.replaceKind');
+  const from = registry?.item(it.type), to = registry?.item(type);
+  if (!to || (from && from.kind !== to.kind)) return say('ed.replaceKind');
+  return registry ? uniqueBlock(registry, p!, type) : '';
+}
+
+/** the values of `params` whose keys the block or sound has */
+const ownParams = (defs: Array<{ key: string }> | undefined, params: Record<string, unknown> | undefined): Record<string, unknown> =>
+  (params && defs ? Object.fromEntries(Object.entries(params).filter(([k]) => defs.some((d) => d.key === k))) : {});
+
+/** Length of a music file from its waveform (peaks per second), if known. */
+export const musicLength = (pk?: PeakInfo) => (pk && pk.rate > 0 && pk.peaks.length ? pk.peaks.length / pk.rate : undefined);

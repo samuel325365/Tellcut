@@ -11,7 +11,7 @@ import type { EditorState } from './store.ts';
 import type { Material } from './audition.ts';
 import { formatTime } from './timeline/geometry.ts';
 import { thumbAt } from './timeline/thumbs.ts';
-import { musicLength, replaceProblem, uniqueBlock } from './editor.ts';
+import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { t, type Key } from './i18n/index.ts';
 import { matches } from './gallery.ts';
