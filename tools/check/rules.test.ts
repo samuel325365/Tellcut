@@ -457,3 +457,15 @@ test('the old core.title / core.caption are warned about once a type, with what 
     'warn 3-4 core.caption 是舊積木（只為了讓舊專案打得開，2 個）：新片請改用 common.caption，照片子的字幕範本']);
   expect(oldBlocks(project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }]))).toEqual([]);
 });
+
+test("a project fx's param of a type ParamDef does not have is warned about, with the type it meant", async () => {
+  const { fxParamTypeChecks } = await import('./rules.ts');
+  const ok = { type: 'fx.ok', params: [{ key: 'a', label: 'a', type: 'text', default: '' }, { key: 'b', label: 'b', type: 'bool', default: false }] };
+  expect(fxParamTypeChecks([ok])).toEqual([]);
+  const odd = { type: 'fx.token', params: [{ key: 'steps', type: 'textarea' }, { key: 'enter', type: 'boolean' }, { key: 'x', type: 'constructor' }] };
+  const [f, ...more] = fxParamTypeChecks([ok, odd]);
+  expect(more).toEqual([]);
+  expect(f.level).toBe('warn');
+  expect(f.msg).toBe('fx.token 的參數 steps 型別是「textarea」，不是積木參數的型別（應該是 text）；fx.token 的參數 enter 型別是「boolean」，不是積木參數的型別（應該是 bool）；'
+    + 'fx.token 的參數 x 型別是「constructor」，不是積木參數的型別：編輯器會把它畫成 JSON 欄位、catalog 印 undefined（可以用：number、string、text、color、bool、enum、source-ref、media-ref、json）');
+});

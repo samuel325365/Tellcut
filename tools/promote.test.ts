@@ -344,3 +344,14 @@ test('a file of several edited between the preview and --yes is not touched: not
   await expect(applyPromotion({ dir, commonDir: common, plan: pl, handlesFile })).rejects.toThrow('在預覽之後改過了');
   expect([readFileSync(handlesFile, 'utf8'), existsSync(join(common, 'src', 'dot.ts')), existsSync(join(dir, '.history'))]).toEqual([HANDLES, false, false]);
 });
+
+test('a block whose params are not ParamDef types is refused, naming them and what they meant, before anything is written', async () => {
+  writeFileSync(join(dir, 'fx', 'odd.js'), `export default [{ type: 'fx.odd', label: 'odd', kind: 'overlay', doc: 'd', params: [
+    { key: 'steps', label: 's', type: 'textarea', default: '' }, { key: 'enter', label: 'e', type: 'boolean', default: true },
+    { key: 'mode', label: 'm', type: 'weird', default: 'a' }, { key: 'n', label: 'n', type: 'number', default: 1 }], build() { return 0; }, draw() {} }];\n`);
+  const pj = join(dir, 'project.json'), raw = JSON.parse(readFileSync(pj, 'utf8'));
+  raw.meta.fx.push('fx/odd.js');
+  writeFileSync(pj, JSON.stringify(raw));
+  await expect(plan({ type: 'fx.odd' })).rejects.toThrow('fx.odd 的參數 steps 型別是「textarea」，不是積木參數的型別（應該是 text）；fx.odd 的參數 enter 型別是「boolean」，不是積木參數的型別（應該是 bool）；fx.odd 的參數 mode 型別是「weird」，不是積木參數的型別：先在 fx/odd.js 改好');
+  expect(existsSync(join(common, 'src', 'odd.ts'))).toBe(false);
+});

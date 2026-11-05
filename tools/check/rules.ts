@@ -1,7 +1,7 @@
 // The model layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 4): what the project file alone
 // tells (parseProject already refuses items that end before they start) — offline material, black frames, items past the end, empty text, music stopping early, captions vs speech.
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
-import { allItems, envelopeAt, OLD_TEXT, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
+import { allItems, badParamTypes, envelopeAt, OLD_TEXT, PARAM_TYPES, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { PANEL_FRAME, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { heardSpeech } from '../cut/mix.ts';
@@ -376,6 +376,17 @@ export function canvasFxFiles(paths: string[], read: (path: string) => string | 
     return hit;
   };
   return paths.filter(draws);
+}
+
+/** One parameter type, as check and promote say it: the param, the type it has, the one it most likely meant. */
+export const paramTypeLine = (type: string, b: ReturnType<typeof badParamTypes>[number]) =>
+  `${type} 的參數 ${b.key} 型別是「${b.type}」，不是積木參數的型別${b.meant ? `（應該是 ${b.meant}）` : ''}`;
+/** The blocks and sounds of the project's own fx (the loaded registry's fx plugin) against ParamDef's types: one outside them is
+ *  drawn as a JSON field in the editor and printed as undefined by the catalog (common.token was promoted with textarea and
+ *  boolean, and nothing said so). */
+export function fxParamTypeChecks(types: ReadonlyArray<{ type: string; params?: readonly unknown[] }>): Finding[] {
+  const bad = types.flatMap((t) => badParamTypes(t).map((b) => paramTypeLine(t.type, b)));
+  return bad.length ? [{ level: 'warn', msg: `${bad.join('；')}：編輯器會把它畫成 JSON 欄位、catalog 印 undefined（可以用：${PARAM_TYPES.join('、')}）` }] : [];
 }
 
 /** fx sources (path → text) against the determinism rules. */

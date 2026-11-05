@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { allItems, parseProject, type Project } from '@tellcut/engine';
+import { allItems, badParamTypes, PARAM_TYPES, parseProject, type Project } from '@tellcut/engine';
 import { loadProjectFx, TELLCUT_ROOT, saveProjectFile } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { BLOCK_CATEGORY, BLOCK_PREFIX } from '@tellcut/protocol';
@@ -22,6 +22,7 @@ import { editedSinceCut } from './cut/cut.ts';
 import { projectArgOrExit } from './project-arg.ts';
 import { splitFx, type FxSplit } from './fx-split.ts';
 import { parseArgsOrExit } from './args.ts';
+import { paramTypeLine } from './check/rules.ts';
 
 export interface Promotion { project: string; fxFile: string; from: string; to: string; name: string; target: string; items: string[];
   /** the fx file stays in meta.fx (it holds other blocks) */
@@ -71,13 +72,17 @@ export function rewriteCutScript(src: string, o: { from: string; to: string; fxF
 export async function planPromotion(o: { dir: string; type: string; name?: string; category?: string; commonDir: string; handlesFile?: string; names?: string[] }): Promise<Promotion> {
   const p = parseProject(JSON.parse(readFileSync(join(o.dir, 'project.json'), 'utf8')));
   if (!o.type.startsWith('fx.')) throw new Error(`只能升格專案自己的 fx（類型以 fx. 開頭），收到 ${o.type}`);
-  let fxFile: string | undefined, loaded: string[] = [], own: string | undefined;
+  let fxFile: string | undefined, loaded: string[] = [], own: string | undefined, params: readonly unknown[] = [];
   for (const f of p.meta.fx ?? []) {
     const r = await loadProjectFx(o.dir, [f]);
     const types = (r.plugin.items ?? []).map((i) => i.type);
-    if (types.includes(o.type)) { fxFile = f; loaded = types; own = r.plugin.items!.find((i) => i.type === o.type)!.category; }
+    if (types.includes(o.type)) { const it = r.plugin.items!.find((i) => i.type === o.type)!; fxFile = f; loaded = types; own = it.category; params = it.params; }
   }
   if (!fxFile) throw new Error(`專案 ${p.meta.name} 的 fx 裡找不到 ${o.type}`);
+  // a shared block's params must be ParamDef's (the shared file gets @ts-nocheck, so nothing else would say so): the fx is
+  // fixed in the project first, where check shows the same line
+  const badTypes = badParamTypes({ params });
+  if (badTypes.length) throw new Error(`${badTypes.map((b) => paramTypeLine(o.type, b)).join('；')}：先在 ${fxFile} 改好（可以用：${PARAM_TYPES.join('、')}）`);
   // other blocks in the file: split it now, so a file that cannot be split is refused before anything is written
   const source = readFileSync(join(o.dir, fxFile), 'utf8');
   const split = loaded.length > 1 ? splitFx(source, fxFile, o.type, loaded) : undefined;

@@ -15,6 +15,28 @@ type ParamDefBase =
   | { key: string; label: string; type: 'source-ref' | 'media-ref'; default: string }
   | { key: string; label: string; type: 'json'; default: unknown };
 
+/** every ParamDef type: the editor draws a field by it and the catalog describes it by it. A project's own fx is plain JS, so
+ *  nothing stops it from writing another (common.token came from one with `textarea` and `boolean`: JSON fields in the editor,
+ *  "undefined" in the catalog). */
+export const PARAM_TYPES = ['number', 'string', 'text', 'color', 'bool', 'enum', 'source-ref', 'media-ref', 'json'] as const satisfies readonly ParamDef['type'][];
+// every type of the union is in the list (a new one added to ParamDef must be added here too)
+const _allParamTypes: Exclude<ParamDef['type'], (typeof PARAM_TYPES)[number]> extends never ? true : never = true;
+void _allParamTypes;
+/** the ParamDef type a mistaken one most likely meant (textarea → text, boolean → bool), when there is one */
+const MEANT: Record<string, ParamDef['type']> = {
+  textarea: 'text', multiline: 'text', boolean: 'bool', checkbox: 'bool', toggle: 'bool', switch: 'bool', select: 'enum', choice: 'enum',
+  int: 'number', integer: 'number', float: 'number', range: 'number', slider: 'number', colour: 'color', str: 'string', object: 'json', array: 'json',
+};
+/** the params of a block (or sound) whose type is not a ParamDef type, with the one it most likely meant */
+export function badParamTypes(t: { params?: readonly unknown[] }): Array<{ key: string; type: string; meant?: ParamDef['type'] }> {
+  return (t.params ?? []).flatMap((d) => {
+    const def = d as { key?: unknown; type?: unknown }, type = String(def.type);
+    if ((PARAM_TYPES as readonly string[]).includes(type)) return [];
+    const meant = Object.hasOwn(MEANT, type.toLowerCase()) ? MEANT[type.toLowerCase()] : undefined;
+    return [{ key: String(def.key), type, ...(meant ? { meant } : {}) }];
+  });
+}
+
 /** stab: export-time stabilisation of the cut (vidstab), when the clip asks for it */
 export interface MediaRef { source: string; in: number; out: number; speed: number; interp: 'none' | 'blend' | 'mci'; stab?: { smoothing: number; zoom: number } }
 export interface StillRef { source: string; t: number; w?: number; square?: number; strip?: { n: number; dur: number } }
