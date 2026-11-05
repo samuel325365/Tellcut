@@ -45,7 +45,7 @@ export const FACES_FACTORIES: Record<string, Factory<FacesProvider>> = {
 export interface Providers { readonly tts: TtsProvider; readonly transcribe: TranscribeProvider; config: ProvidersConfig }
 
 function pick<T>(cap: Capability, factories: Record<string, Factory<T>>, config: ProvidersConfig): T {
-  const id = config[cap].use, make = factories[id];
+  const id = config[cap].use, make = Object.hasOwn(factories, id) ? factories[id] : undefined;   // not an inherited key: "constructor" found Object
   if (!make) throw new Error(`providers.json 的 ${cap} 用「${id}」，但沒有這個提供者；有：${Object.keys(factories).join('、')}`);
   return make(config[cap].options[id] ?? {});
 }

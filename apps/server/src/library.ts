@@ -14,7 +14,7 @@ async function guard<T>(f: () => Promise<T> | T): Promise<T> {
   try { return await f(); }
   catch (e) {
     if (!(e instanceof LibraryError)) throw e;
-    const status = e.code === 'library.idTaken' || e.code === 'library.locked' ? 409 : e.code === 'library.noEntry' ? 404 : 400;
+    const status = e.code === 'library.idTaken' || e.code === 'library.locked' ? 409 : ['library.noEntry', 'library.noCaption', 'library.noTitle'].includes(e.code) ? 404 : 400;
     throw new HttpError(status, e.message, { code: e.code, params: e.params });
   }
 }

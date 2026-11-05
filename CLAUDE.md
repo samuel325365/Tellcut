@@ -86,4 +86,4 @@ npm run setup / npm run doctor         # install the outside dependencies into v
 
 - Never kill processes by image name (`taskkill /IM python.exe`, `node.exe`, `chrome.exe`): that also kills the user's server, transcriptions and other sessions. Stop only the PIDs you started.
 - Restart the server with `npm run server:restart` (see "Environment and caveats" above), not with `Start-Process` or `npm run server` directly from Claude Code.
-- A new command-line tool reads its flags with `tools/args.ts` (`parseArgs` / `parseArgsOrExit`, each flag declared as a switch, a value or a list), so a mistyped flag is refused instead of eating the next word.
+- A new command-line tool reads its flags with `tools/args.ts` (`parseArgs` / `parseArgsOrExit`, each flag declared as a switch, a value or a list; `maxWords` refuses words too many), so a mistyped flag is refused instead of eating the next word; its top-level catch goes through `printFailure` (`--help` on stdout with exit 0, a usage error on stderr with 2, anything else 1).

@@ -27,7 +27,7 @@ const light = (c: string) => (luma(c) ?? 0) > 0.6;
 /** look 'neutral': four equal zones of `max` with no names (the colour ramp only), no halo, no alarm, no blow-up */
 export const neutralOf = (max: number) => ({ zones: [0, 0.25, 0.5, 0.75].map((q) => `${+(q * (max || 100)).toFixed(2)}:`).join(', '), halo: false, danger: -1, boom: -1 });
 /** the guilt meter's zones in Chinese (the default), English and Japanese: the editor writes the UI language's words into a gauge
- *  added in the English or Japanese UI (apps/editor/src/i18n/values.*.ts, kept the same by gauge.test.ts), and those are still the
+ *  added in the English or Japanese UI (apps/editor/src/i18n/values.*.ts, kept the same by apps/editor/src/i18n/gauge-values.test.ts), and those are still the
  *  guilt default, not zones the user chose */
 export const GUILT_ZONES = ['0:清白, 20:小確幸, 40:有點罪, 60:罪孽深重, 85:地獄級', '0:Clean, 20:Treat, 40:Naughty, 60:Sinful, 85:Hell', '0:潔白, 20:小さな幸せ, 40:ちょい罪, 60:罪深い, 85:地獄'];
 const squash = (v: unknown) => String(v ?? '').replace(/\s+/g, '');
