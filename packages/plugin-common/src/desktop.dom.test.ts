@@ -79,3 +79,70 @@ describe('common.touch look cursor', () => {
     expect((touch.params.find((q) => q.key === 'look') as any).options).toContain('cursor');
   });
 });
+
+describe('the desktop kit on a canvas', () => {
+  // jsdom has no 2D context: a stand-in that keeps every fillText with the font it was drawn in, and measures a line as one em a character
+  type Drawn = { text: string; px: number; x: number; y: number };
+  let drawn: Drawn[] = [];
+  const px = (font: string) => Number(/(\d*\.?\d+)px/.exec(font)?.[1] ?? 10);
+  const fake = () => {
+    const g: any = { font: '10px sans-serif', globalAlpha: 1,
+      measureText: (t: string) => ({ width: [...t].length * px(g.font) }),
+      fillText: (text: string, x: number, y: number) => drawn.push({ text, px: px(g.font), x, y }),
+      createLinearGradient: () => ({ addColorStop() {} }), getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) };
+    return new Proxy(g, { get: (t, k) => (k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
+  };
+  const real = HTMLCanvasElement.prototype.getContext;
+  beforeAll(() => { (HTMLCanvasElement.prototype as any).getContext = fake; });
+  afterAll(() => { HTMLCanvasElement.prototype.getContext = real; });
+  const run = (type: any, params: Record<string, unknown>, local: number, W = 1080, H = 1920) => {
+    drawn = [];
+    const said: string[] = [], ctx: any = { t: local, local, dur: 4, W, H, params: withDefaults(type.params, params, theme), root: document.createElement('div'),
+      motion: { spring: () => () => 1 }, media: {}, project: { sources: {} }, reportText: (_g: unknown, text: string) => said.push(text) };
+    type.draw(ctx, type.build(ctx));
+    return said;
+  };
+
+  test('a long question and long button labels shrink to fit the dialog and their buttons', () => {
+    const text = '派對要不要改到下個星期六的晚上再一起舉行呢？', labels = '好啊我們就這麼決定吧|再讓我想一想好了';
+    run(popup, { text, buttons: labels, w: 0.84 }, 2);
+    const w = 0.84 * 1080, q = drawn.find((d) => d.text === text)!;
+    expect([...text].length * q.px).toBeLessThanOrEqual(w - 80 + 1e-6);
+    const bwid = Math.min(300, (w - 120) / 2);
+    for (const l of labels.split('|')) { const d = drawn.find((x) => x.text === l)!; expect([...l].length * d.px).toBeLessThanOrEqual(bwid - 28 + 1e-6); }
+    // a short one keeps its size
+    run(popup, { text: '好嗎？', buttons: '好|不' }, 2);
+    expect(drawn.find((d) => d.text === '好嗎？')!.px).toBe(54);
+  });
+
+  test('the sheet line keeps one size, fitted to the whole line, while it is typed', () => {
+    const text = '謝謝大家今天一起來參加我十六歲的生日派對，下次再見';
+    run(popup, { mode: 'sheet', text, typeAt: 0, press: -1, y: 0.7 }, 0.5);
+    const part = drawn.find((d) => text.startsWith(d.text) && d.text.length < text.length)!;
+    run(popup, { mode: 'sheet', text, typeAt: 0, press: -1, y: 0.7 }, 3.9);
+    const whole = drawn.find((d) => d.text === text)!;
+    expect(part.px).toBe(whole.px);
+    expect([...text].length * whole.px).toBeLessThanOrEqual(1080 - 120 + 1e-6);
+  });
+
+  test('the words drawn on the canvas are reported: the window title, the menu, the app name, start and the chapter buttons', () => {
+    expect(run(deskWindow, { content: 'search', text: '', title: 'party_01.jpg' }, 1.5)).toContain('party_01.jpg');
+    expect(run(popup, { title: 'notice' }, 2)).toContain('notice');
+    const said = run(desktop, { chapters: '0|準備\n1|派對', menu: '檔案,編輯', start: '開始', app: 'PARTY.EXE' }, 0.5);
+    expect(said).toEqual(expect.arrayContaining(['★  檔案   編輯', '♥ PARTY.EXE', '★ 開始', '準備.exe', '派對.exe']));
+  });
+
+  test('a long window title shrinks to stay clear of the three buttons', () => {
+    const title = 'a_very_long_file_name_from_the_party.jpg';
+    run(deskWindow, { content: 'search', text: '', title, w: 0.5, exit: 'none' }, 1.5);
+    const d = drawn.find((x) => x.text === title)!;
+    expect(d.x + [...title].length * d.px).toBeLessThanOrEqual(0.5 * 1080 - 114 - 12 + 1e-6);
+  });
+
+  test('chapter colours mix as CSS colours: #fff is white, not blue', () => {
+    const stops: string[] = [];
+    (HTMLCanvasElement.prototype as any).getContext = function () { const g = fake(); g.createLinearGradient = () => ({ addColorStop: (_: number, c: string) => stops.push(c) }); return g; };
+    try { run(desktop, { chapters: '0|a|#fff|#000' }, 0.5); } finally { (HTMLCanvasElement.prototype as any).getContext = fake; }
+    expect(stops).toEqual(['#ffffff', '#000000']);
+  });
+});

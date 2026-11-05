@@ -8,23 +8,27 @@
 //   common.popup    a notice dialog with a question and two buttons, one pressed at `press`; mode sheet is the closing panel: a cream
 //                   sheet with a typed line and a button that is pressed, turns into its done label and throws pixel confetti
 // The pointer is common.touch's look cursor; the message box is the caption template desk-type. All pure functions of time.
-import { clamp, lerp, rng, type ItemType, type MediaRef, type Project, type SceneItem } from '@tellcut/engine';
+import { clamp, eIO3 as eIO, lerp, rng, type ItemType, type MediaRef, type Project, type SceneItem } from '@tellcut/engine';
+import { mixHex } from './color.ts';
+import { fitMeasuredSize } from './headline.ts';
 
 const CJK = 'Huninn', PIX = 'VT323';
 export const DESK_BARS: Record<string, string> = { lav: '#c3b1f5', pink: '#f7b2cf', mint: '#97e0c6', yellow: '#ffd879' };
 const bar = (c: string) => DESK_BARS[c] ?? c;
-const eIO = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
-const hex = (c: string) => { const n = parseInt(c.replace('#', '').slice(0, 6), 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-const mixHex = (a: string, b: string, p: number) => { const x = hex(a), y = hex(b); return `rgb(${x.map((v, i) => Math.round(lerp(v, y[i], p))).join(',')})`; };
 type G = CanvasRenderingContext2D;
+/** the size (at most `px`) at which `text` in `family` fits in `room` px on `g`: a long question or label shrinks instead of
+ *  running out of its dialog or button */
+const fit = (g: G, text: string, px: number, family: string, room: number) => fitMeasuredSize(g, [text], px, family, 400, room);
 
-function canvasIn(parent: HTMLElement): HTMLCanvasElement {
+/** a canvas over the whole of `parent` (the desktop kit's and mono.ts's blocks draw on one each) */
+export function canvasIn(parent: HTMLElement): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
   parent.appendChild(c);
   return c;
 }
-function rr(g: G, x: number, y: number, w: number, h: number, r: number) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+/** a rounded rectangle's path on `g` (arcTo, so a radius bigger than the box still closes) */
+export function rr(g: G, x: number, y: number, w: number, h: number, r: number) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 const fonts = (text: string) => Promise.all([document.fonts.load(`40px "${PIX}"`, 'Aa.exe0123456789%_'), document.fonts.load(`56px "${CJK}"`, text || '桌面')]).then(() => undefined);
 
 export interface DeskChapter { t: number; name: string; top: string; bottom: string }
@@ -41,16 +45,19 @@ export function deskSlot(n: number, count: number, W: number, H: number): { x: n
   return { x: x0 + (clamp(n, 1, c) - 1) * (bw + gap) + bw / 2, y: H - 40 * k, w: bw, h: 50 * k };
 }
 
-/** a window's chrome: hard shadow, cream body, title bar with its name and three buttons, ink border; k = px per 1080 */
-function chrome(g: G, w: number, h: number, k: number, colour: string, title: string, ink: string, paper: string) {
+type Report = (g: G, text: string, x: number, y: number) => void;
+/** a window's chrome: hard shadow, cream body, title bar with its name (fitted to the room left of the buttons) and three buttons, ink
+ *  border; k = px per 1080 */
+function chrome(g: G, w: number, h: number, k: number, colour: string, title: string, ink: string, paper: string, report: Report) {
   const sh = 12 * k, bw = 4 * k, tb = 50 * k;
   g.fillStyle = 'rgba(75,58,140,0.55)'; g.fillRect(sh, sh, w, h);
   g.fillStyle = paper; g.fillRect(0, 0, w, h);
   g.fillStyle = bar(colour); g.fillRect(0, 0, w, tb);
   g.strokeStyle = ink; g.lineWidth = bw; g.strokeRect(bw / 2, bw / 2, w - bw, h - bw);
   g.beginPath(); g.moveTo(0, tb); g.lineTo(w, tb); g.stroke();
-  g.fillStyle = ink; g.font = `${32 * k}px "${PIX}", "${CJK}"`; g.textBaseline = 'middle'; g.textAlign = 'left';
-  g.fillText(title, 16 * k, tb / 2 + 2 * k);
+  const face = `"${PIX}", "${CJK}"`, ts = fit(g, title, 32 * k, face, w - 142 * k);   // the first button starts 114 px from the right
+  g.fillStyle = ink; g.font = `${ts}px ${face}`; g.textBaseline = 'middle'; g.textAlign = 'left';
+  g.fillText(title, 16 * k, tb / 2 + 2 * k); report(g, title, 16 * k, tb / 2 + 2 * k);
   const s = 28 * k, y = (tb - s) / 2; g.lineWidth = 3 * k;
   ['min', 'max', 'x'].forEach((kind, i) => {
     const x = w - 14 * k - (3 - i) * (s + 8 * k) + 8 * k;
@@ -63,14 +70,13 @@ function chrome(g: G, w: number, h: number, k: number, colour: string, title: st
   });
   return { tb, bw };
 }
-type Report = (g: G, text: string, x: number, y: number) => void;
-/** a button with a hard shadow; pressed, it sits down into the shadow */
+/** a button with a hard shadow, its label fitted inside; pressed, it sits down into the shadow */
 function button(g: G, x: number, y: number, w: number, h: number, k: number, fill: string, label: string, pressed: boolean, ink: string, report: Report) {
   const d = 6 * k, o = pressed ? d : 0;
   g.fillStyle = ink; rr(g, x + d, y + d, w, h, 8 * k); g.fill();
   g.fillStyle = fill; rr(g, x + o, y + o, w, h, 8 * k); g.fill();
   g.strokeStyle = ink; g.lineWidth = 4 * k; g.stroke();
-  g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${48 * k}px "${CJK}"`;
+  g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `${fit(g, label, 48 * k, `"${CJK}"`, w - 28 * k)}px "${CJK}"`;
   g.fillText(label, x + o + w / 2, y + o + h / 2 + 2 * k); report(g, label, x + o + w / 2, y + o + h / 2 + 2 * k);
 }
 
@@ -121,9 +127,10 @@ export const desktop: ItemType<DP, DS> = {
     }
     const mb = 56 * k;   // the menu bar
     g.fillStyle = p.paper; g.fillRect(0, 0, W, mb); g.fillStyle = p.ink; g.fillRect(0, mb - 3 * k, W, 3 * k);
+    const say = (text: string, x: number, y: number) => { g.fillText(text, x, y); ctx.reportText(g, text, x, y); };
     g.font = `${32 * k}px "${CJK}"`; g.textBaseline = 'middle'; g.textAlign = 'left';
-    g.fillText('★  ' + String(p.menu).split(/[,，]/).join('   '), 22 * k, mb / 2);
-    g.textAlign = 'right'; g.font = `${32 * k}px "${PIX}", "${CJK}"`; g.fillText('♥ ' + p.app, W - 22 * k, mb / 2);
+    say('★  ' + String(p.menu).split(/[,，]/).join('   '), 22 * k, mb / 2);
+    g.textAlign = 'right'; g.font = `${32 * k}px "${PIX}", "${CJK}"`; say('♥ ' + p.app, W - 22 * k, mb / 2);
     g.strokeStyle = p.ink; g.lineWidth = 3 * k;   // the globe
     const gx = 52 * k, gy = 118 * k, gr = 26 * k;
     g.beginPath(); g.arc(gx, gy, gr, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.ellipse(gx, gy, gr * 0.45, gr, 0, 0, Math.PI * 2); g.stroke();
@@ -137,13 +144,13 @@ export const desktop: ItemType<DP, DS> = {
     g.fillStyle = p.paper; g.fillRect(0, tbY, W, H - tbY); g.fillStyle = p.ink; g.fillRect(0, tbY, W, 3 * k);
     g.fillStyle = p.ink; rr(g, 22 * k, tbY + 19 * k, 150 * k, 50 * k, 8 * k); g.fill();
     g.fillStyle = '#ffd46b'; rr(g, 16 * k, tbY + 13 * k, 150 * k, 50 * k, 8 * k); g.fill(); g.strokeStyle = p.ink; g.lineWidth = 3 * k; g.stroke();
-    g.fillStyle = p.ink; g.textAlign = 'center'; g.font = `${32 * k}px "${CJK}"`; g.fillText(`★ ${p.start}`, 91 * k, tbY + 40 * k);
+    g.fillStyle = p.ink; g.textAlign = 'center'; g.font = `${32 * k}px "${CJK}"`; say(`★ ${p.start}`, 91 * k, tbY + 40 * k);
     ch.forEach((c, i) => {
       if (!c.name) return;
       const sl = deskSlot(i + 1, ch.length, W, H), on = i === n;
       g.fillStyle = on ? '#ffffff' : i < n ? '#efe6ff' : '#f6f0e4'; g.fillRect(sl.x - sl.w / 2, sl.y - sl.h / 2, sl.w, sl.h);
       g.strokeStyle = p.ink; g.lineWidth = (on ? 4 : 2) * k; g.strokeRect(sl.x - sl.w / 2, sl.y - sl.h / 2, sl.w, sl.h);
-      g.fillStyle = p.ink; g.font = `${28 * k}px "${CJK}"`; g.globalAlpha = on ? 1 : 0.7; g.fillText(`${c.name}.exe`, sl.x, sl.y + 2 * k); g.globalAlpha = 1;
+      g.fillStyle = p.ink; g.font = `${28 * k}px "${CJK}"`; g.globalAlpha = on ? 1 : 0.7; say(`${c.name}.exe`, sl.x, sl.y + 2 * k); g.globalAlpha = 1;
     });
   },
 };
@@ -231,10 +238,10 @@ export const deskWindow: ItemType<WP, WS> = {
     const g = s.c.getContext('2d');
     if (!g) return;
     g.clearRect(0, 0, cw, chh);
-    g.save(); g.globalAlpha = R.chromeA; const { tb, bw } = chrome(g, R.w, R.h, k, p.bar, p.title, p.ink, p.paper); g.restore();
+    const report: Report = (gg, text, x, y) => ctx.reportText(gg, text, x, y);
+    g.save(); g.globalAlpha = R.chromeA; const { tb, bw } = chrome(g, R.w, R.h, k, p.bar, p.title, p.ink, p.paper, report); g.restore();
     const foot = p.progTo > 0 && p.content === 'media' ? 120 * k : 0, pad = 8 * k * R.chromeA;
     const bx = bw * R.chromeA + pad, by = tb * R.chromeA + pad, bwid = R.w - 2 * bx, bh = R.h - by - pad - foot;
-    const report: Report = (gg, text, x, y) => ctx.reportText(gg, text, x, y);
     if (p.content === 'media' && p.source) {
       Object.assign(s.box.style, { display: 'block', left: `${(bx / (R.w + sh)) * 100}%`, top: `${(by / (R.h + sh)) * 100}%`, width: `${(bwid / (R.w + sh)) * 100}%`, height: `${(bh / (R.h + sh)) * 100}%`,
         outline: R.chromeA > 0.5 ? `${(3 * k).toFixed(1)}px solid ${p.ink}` : 'none' });
@@ -320,8 +327,8 @@ export const popup: ItemType<PP, PS> = {
     const w = p.w * W, h = 300 * k;
     g.save(); g.globalAlpha = clamp(local / 0.06) * (1 - close);
     g.translate(p.x * W, p.y * H); g.scale(sc, sc); g.translate(-w / 2, -h / 2);
-    const { tb } = chrome(g, w, h, k, p.bar, p.title, p.ink, p.paper);
-    g.fillStyle = p.ink; g.font = `${54 * k}px "${CJK}"`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const { tb } = chrome(g, w, h, k, p.bar, p.title, p.ink, p.paper, report);
+    g.fillStyle = p.ink; g.font = `${fit(g, String(p.text), 54 * k, `"${CJK}"`, w - 80 * k)}px "${CJK}"`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(p.text, w / 2, tb + 70 * k); report(g, p.text, w / 2, tb + 70 * k);
     const bwid = Math.min(300 * k, (w - 120 * k) / Math.max(1, bs.length)), gap = (w - bs.length * bwid) / (bs.length + 1);
     bs.forEach((label, i) => button(g, gap + i * (bwid + gap), tb + 140 * k, bwid, 86 * k, k, i === 0 ? '#ffd46b' : p.paper, label, p.press >= 0 && i + 1 === p.pick && local >= p.press && local < p.press + 0.2, p.ink, report));
@@ -342,7 +349,7 @@ function drawSheet(g: G, p: PP, local: number, W: number, H: number, k: number, 
   const top = p.y * H, y0 = top + (1 - eIO(clamp(local / 0.45))) * (H - top);
   g.fillStyle = p.paper; g.fillRect(0, y0, W, H - y0); g.fillStyle = p.ink; g.fillRect(0, y0, W, 4 * k);
   const chars = [...String(p.text)], typedAt = p.typeAt + chars.length * 0.08, n = Math.floor(clamp((local - p.typeAt) / Math.max(0.01, chars.length * 0.08)) * chars.length), typed = chars.slice(0, n).join('');
-  g.fillStyle = p.ink; g.font = `${64 * k}px "${CJK}"`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = p.ink; g.font = `${fit(g, String(p.text), 64 * k, `"${CJK}"`, W - 120 * k)}px "${CJK}"`; g.textAlign = 'center'; g.textBaseline = 'middle';
   if (typed) { g.fillText(typed, W / 2, y0 + 120 * k); report(g, typed, W / 2, y0 + 120 * k); }
   const pressed = p.press >= 0 && local >= p.press, after = pressed && local >= p.press + 0.2, bw = 380 * k, bh = 96 * k;
   if (local > typedAt && label) button(g, W / 2 - bw / 2, y0 + 210 * k, bw, bh, k, after ? '#97e0c6' : '#ffd46b', after ? p.done : label, pressed && !after, p.ink, report);
