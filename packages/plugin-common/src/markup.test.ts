@@ -30,3 +30,10 @@ test('typed keeps only that share of the visible characters', () => {
   expect(r.lines.flat().map((x) => x.t).join('')).toBe('一二三四');
   expect(layoutMarkup('一二三四', 20, 2, 0).lines.flat()).toEqual([]);
 });
+
+test('a line cut short by typing still leaves the next line starting at its own first character', () => {
+  // 乙 is both in the rest of the first line and the second line's first character: the walk stopped mid-line found it too early
+  const text = '甲乙丙乙\n乙丁', full = layoutMarkup(text, 20, 3).starts;
+  expect(full).toEqual([0, 5]);
+  expect(layoutMarkup(text, 20, 3, 2 / 7).starts).toEqual(full);
+});

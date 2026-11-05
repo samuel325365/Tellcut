@@ -39,7 +39,9 @@ export function layoutMarkup(text: string, boxEm: number, maxLines: number, type
     starts.push(pos);
     for (const c of cs) {
       const k = chars[pos++] ?? { c, kind: 'plain' as Kind };
-      if (shown++ >= keep) break;
+      // past what is typed: keep walking the line (not break), so the next line's start is found from its own first character
+      // and not from a matching one left over in this line
+      if (shown++ >= keep) continue;
       const last = runs[runs.length - 1], t = c;
       if (last && last.kind === k.kind) last.t += t; else runs.push({ t, kind: k.kind });
     }
