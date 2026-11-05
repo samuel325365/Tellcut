@@ -1,7 +1,7 @@
 // Digital and retro looks: rgb (a red and a cyan copy pulled apart), pixel (8-bit letters), vhs (a camcorder's on-screen text),
 // terminal (green text on a console), segment (a liquid-crystal display) and scanline (letters striped by scan lines).
 import type { CaptionLook } from '../types.ts';
-import { padded } from './basic.ts';
+import { faceRoom, padded } from './basic.ts';
 
 /** white words with a red copy pulled left and a cyan copy pulled right, as if the colours slipped */
 export const rgb: CaptionLook = {
@@ -11,7 +11,8 @@ export const rgb: CaptionLook = {
 
 /** 8-bit game letters: a blocky face, a hard one-step shadow; Chinese keeps a bold sans */
 export const pixel: CaptionLook = {
-  id: 'pixel', weight: '400', font: 'Press Start 2P',
+  // Press Start 2P: every letter 1 em wide, 0.04 em apart (Chinese, in the fallback face, measured as before)
+  id: 'pixel', weight: '400', font: 'Press Start 2P', room: faceRoom(1.04),
   sizeScale: 0.9,
   box: (e) => ({ textShadow: `${(0.08 * e.fs).toFixed(1)}px ${(0.08 * e.fs).toFixed(1)}px 0 ${e.p.outline}`, lineHeight: '1.6', letterSpacing: '0.04em' }),
 };
@@ -27,7 +28,7 @@ export const vhs: CaptionLook = {
 
 /** green monospaced text on a dark console box, glowing faintly */
 export const terminal: CaptionLook = {
-  id: 'terminal', weight: '400', font: 'JetBrains Mono', room: padded, left: true,
+  id: 'terminal', weight: '400', font: 'JetBrains Mono', room: faceRoom(0.6, 0, padded), left: true,
   color: () => '#4dff88',
   hl: () => '#e8fff0',
   box: (e) => ({ background: 'rgba(4,14,8,0.82)', padding: '0.25em 0.6em', borderRadius: `${(0.08 * e.fs).toFixed(1)}px`, textShadow: `0 0 ${(0.12 * e.fs).toFixed(1)}px rgba(77,255,136,0.6)`,
@@ -36,7 +37,7 @@ export const terminal: CaptionLook = {
 
 /** a liquid-crystal display: dark segments on a grey-green panel, the unlit segments a faint ghost behind them */
 export const segment: CaptionLook = {
-  id: 'segment', weight: '700', font: 'JetBrains Mono', room: padded,
+  id: 'segment', weight: '700', font: 'JetBrains Mono', room: faceRoom(0.65, 0, padded),
   color: () => '#1d2418',
   hl: () => '#000000',
   box: (e) => ({ background: 'linear-gradient(180deg, #a9b59a, #8f9c80)', padding: '0.18em 0.6em', borderRadius: `${(0.1 * e.fs).toFixed(1)}px`, fontStyle: 'italic', letterSpacing: '0.05em',

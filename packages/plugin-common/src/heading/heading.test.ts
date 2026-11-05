@@ -52,7 +52,7 @@ test('a title\'s own looks: offered to titles only, each with a template', async
   expect(own.sort()).toEqual(['giant', 'ribbon', 'script', 'seal', 'serif', 'sign', 'spaced', 'split', 'stack', 'vintage']);
   const styles = (caption.params.find((d) => d.key === 'style') as { options: string[] }).options;
   for (const id of own) { expect(HEADING_LOOKS).toContain(id); expect(styles).not.toContain(id); expect(TITLE_TEMPLATES.some((t) => t.params.style === id), id).toBe(true); }
-  expect(TITLE_TEMPLATES.length).toBe(20);
+  expect(TITLE_TEMPLATES.length).toBe(40);
 });
 
 test('a title offers every look but the layouts made for talk; a caption never offers a title\'s own looks', () => {

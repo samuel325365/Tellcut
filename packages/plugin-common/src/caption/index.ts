@@ -204,7 +204,8 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     }
     if (la.filter) boxCss.filter = [boxCss.filter, la.filter].filter(Boolean).join(' ');
     cssCamel(s.box, {
-      top: place.top, bottom: place.bottom, maxWidth: `${width}px`, opacity: String(st.opacity * la.opacity * (look.popScale ? pq : 1)), left: left ? `${theme.safe.side * W}px` : '50%', textAlign: left ? 'left' : 'center',
+      // max-content: a box set at left 50% would otherwise be given only the right half of the frame, and its gloss broke there
+      top: place.top, bottom: place.bottom, width: 'max-content', maxWidth: `${width}px`, opacity: String(st.opacity * la.opacity * (look.popScale ? pq : 1)), left: left ? `${theme.safe.side * W}px` : '50%', textAlign: left ? 'left' : 'center',
       transform: `translate(${left ? `${st.x}px` : `calc(-50% + ${st.x}px)`}, calc(${place.yAnchor} + ${st.y}px))${pin}${la.transform}`, transformOrigin: look.origin ?? (left ? '0 100%' : '50% 100%'), clipPath: look.clip?.(e) ?? (la.clip || 'none'),
       fontFamily: `'${sfont || p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${e.fs.toFixed(2)}px`, fontWeight: look.weight ?? '900', fontStyle: p.quote ? 'italic' : 'normal',
       color: look.color ? look.color(e) : ink, webkitTextStroke: stroke ? `${stroke}px ${look.strokeColor ? look.strokeColor(e) : p.outline}` : '0', paintOrder: 'stroke fill',

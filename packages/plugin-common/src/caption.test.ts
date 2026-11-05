@@ -123,3 +123,16 @@ test('a project’s own templates (copied from My caption templates) are found b
   expect(withTemplate(params, {}, 'my-pink', mine)).toMatchObject({ style: 'neon' });
   expect(withTemplate(params, { template: 'my-gone' }, undefined, mine)).toBe(params);
 });
+
+test('a face with wide Latin letters gives English less room and leaves Chinese as it was (the 8-bit face ran off the frame)', async () => {
+  const { faceRoom } = await import('./caption/looks/basic.ts');
+  const env = (text: string) => ({ p: { text }, px: 10 }) as never;
+  const pixel = faceRoom(1.04);
+  expect(pixel(env('今天帶你去吃台南'), 900)).toBeCloseTo(900);
+  const en = pixel(env('We walked all the way'), 900);
+  expect(en).toBeLessThan(600);
+  expect(en).toBeGreaterThan(400);
+  // the spacing a spaced title puts between its letters counts for every letter, Chinese too
+  expect(faceRoom(0.55, 0.32)(env('七百年'), 900)).toBeCloseTo(900 / 1.32);
+  expect(faceRoom(0.6, 0, (_e, w) => w - 12)(env('中文'), 900)).toBeCloseTo(888);
+});

@@ -4,12 +4,12 @@
 // top and bottom), giant (a third bigger, heavy, a deep shadow), script (handwriting underlined), ribbon (each line on a notched ribbon).
 import { cssCamel } from '@tellcut/engine';
 import type { CaptionLook } from '../types.ts';
-import { padded } from './basic.ts';
+import { padded, faceRoom } from './basic.ts';
 
 const shade = (fs: number, a = 0.55) => `0 ${(0.03 * fs).toFixed(1)}px ${(0.08 * fs).toFixed(1)}px rgba(0,0,0,${a}), 0 ${(0.08 * fs).toFixed(1)}px ${(0.4 * fs).toFixed(1)}px rgba(0,0,0,0.35)`;
 
 /** the room a line has when its letters are spaced `em` apart: the caption fits words without their spacing */
-const spacedRoom = (em: number, pad = 0) => (e: { px: number }, width: number) => (width - pad * e.px) / (1 + em);
+const spacedRoom = (em: number, pad = 0) => faceRoom(0.55, em, (e, width) => width - pad * e.px);
 
 /** a documentary's name: a classical serif, a little spaced, a soft shadow */
 export const serif: CaptionLook = {
@@ -58,6 +58,8 @@ export const seal: CaptionLook = {
   box: (e) => ({ border: `${(0.1 * e.fs).toFixed(1)}px double ${e.p.accent || e.theme.palette.accent}`, padding: '0.12em 0.45em 0.18em', borderRadius: '0.12em',
     background: 'rgba(255,250,240,0.9)', letterSpacing: '0.1em' }),
   pin: () => ' rotate(-3deg)',
+  // the line under it is not spaced by the big words' 0.1 em (in their pixels it ran wider than the stamp and broke)
+  gloss: () => ({ letterSpacing: '0.02em' }),
 };
 
 /** two colours, the text colour on top and the highlight colour under it, split across the middle of the line */

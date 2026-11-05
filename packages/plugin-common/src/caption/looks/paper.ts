@@ -4,7 +4,7 @@ import { clamp, cssCamel, eBack, prog } from '@tellcut/engine';
 import { canvasAt } from '../../inkline.ts';
 import { grainBegin, grainEnd, scribbleFill, type Pt } from '../../sketch.ts';
 import type { CaptionLook, CaptionP, CaptionS, LookEnv } from '../types.ts';
-import { padded } from './basic.ts';
+import { faceRoom, padded } from './basic.ts';
 
 /** the ticket's torn edges: 30 teeth top and bottom */
 function teeth() {
@@ -105,7 +105,8 @@ export const postit: CaptionLook = {
 
 /** a label maker's tape a line: a glossy black strip with the words embossed in white capitals, widely spaced */
 export const label: CaptionLook = {
-  id: 'label', weight: '700', font: 'JetBrains Mono', room: padded,
+  // monospaced capitals 0.14 em apart, counted on the Latin letters only (Chinese lines kept as they were)
+  id: 'label', weight: '700', font: 'JetBrains Mono', room: faceRoom(0.74, 0, padded),
   color: () => '#f4f4f4',
   lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.16em' : '0'} ${e.left ? '0' : 'auto'} 0`, padding: '0.08em 0.5em 0.1em',
     background: `linear-gradient(180deg, #2b2b2b, #111 55%, #1c1c1c)`, borderRadius: '0.08em', textTransform: 'uppercase', letterSpacing: '0.14em',
