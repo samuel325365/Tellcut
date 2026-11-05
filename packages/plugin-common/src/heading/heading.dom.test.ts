@@ -53,3 +53,26 @@ test('a short title stays on one line, a little smaller; a long one keeps its si
   const kicker = [...drawn({ text: '許願池', kicker: '第二天', size: 5 }, 1).root.querySelectorAll<HTMLElement>('div')].find((d) => d.textContent === '第二天')!;
   expect(parseFloat(kicker.style.fontSize)).toBeGreaterThanOrEqual(48);
 });
+
+test('track and spread: the spacing at a time is the same whatever was drawn before, and gone once the animation is over', () => {
+  // gold has no letter spacing of its own: the caption's reset was skipped (cached) and each frame wrapped the last one's in calc()
+  const params = { text: '七百年', style: 'gold', animIn: 'track', animOut: 'spread', animDur: 0.6 };
+  const stageAt = () => {
+    const root = document.createElement('div'), st = new Stage(root, createRegistry([{ id: 'x', items: [caption, heading] } as any]), media);
+    st.load({ version: 1, meta: { width: 1080, height: 1920, fps: 30, duration: 4, background: '#000', plugins: [] }, sources: {}, media: {}, grids: [],
+      tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'h', type: 'common.heading', start: 0, end: 3, params }] }] } as any);
+    const box = () => [...root.querySelectorAll<HTMLElement>('div')].find((d) => d.style.fontSize && d.style.whiteSpace === 'pre' && d.style.position === 'absolute' && d.style.transform.includes('translate('))!;
+    return (t: number) => { st.draw(t); return box().style.letterSpacing; };
+  };
+  const walked = stageAt();
+  for (const t of [0.1, 0.2, 0.3, 2.5, 2.6]) walked(t);
+  expect(walked(2.7)).toBe(stageAt()(2.7));
+  expect(walked(2.7)).not.toBe('');
+  expect(walked(1.5)).toBe(stageAt()(1.5));
+});
+
+test('a title of three lines or more keeps its size: the caption\'s two-line limit is only for captions', () => {
+  const sizeOf = (text: string, style = 'heavy') => parseFloat(drawn({ size: 9, text, style }, 1).box.style.fontSize);
+  expect(sizeOf('羅馬\n廣場\n夜晚')).toBeCloseTo(sizeOf('羅馬\n廣場'));
+  expect(sizeOf('MARRAKECH\nMEDINA\nNIGHTS', 'cycle')).toBeCloseTo(sizeOf('MARRAKECH\nMEDINA', 'cycle'));
+});

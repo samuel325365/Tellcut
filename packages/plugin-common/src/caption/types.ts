@@ -10,6 +10,8 @@ export interface CaptionP {
   text: string; template: string; wordFx: string; accent: string; style: string; styleFont: string; y: number; tint: boolean; size: number; font: string; color: string; hl: string; outline: string; boxBg: string; bubbleBg: string;
   position: 'bottom' | 'center' | 'top'; animIn: string; animOut: string; animDur: number; words: Array<[number, number]>; speaker: number; name: string;
   hlScale: number; bigColor: string; badgeTint: boolean; tag: string; gloss: string; glossSize: number; glossColor: string; quote: boolean; fill: boolean; role: string; align: 'center' | 'left'; point: 'none' | 'up' | 'down' | 'left' | 'right';
+  /** not a parameter: the lines the words may take before they shrink (a caption 2; common.heading passes its own line count) */
+  maxLines?: number;
 }
 export interface CaptionS { box: HTMLElement; text: RunBox; words: WordBox; name: HTMLElement; tag: HTMLElement; gloss: HTMLElement; nameText: HTMLElement; role: HTMLElement; chip: HTMLElement; arrow: HTMLElement; chipName: HTMLElement; band: HTMLCanvasElement; layer: GrainLayer; wash: HTMLElement }
 

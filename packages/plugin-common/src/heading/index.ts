@@ -99,7 +99,7 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     const mainPx = (size / 100) * H * sc, floor = Math.min(50 * k, 0.7 * mainPx);
     const capParams: CaptionP = { ...CAPTION_DEFAULTS, text, style: p.style, size, font: p.font, color: p.color, hl: p.hl, outline: p.outline, accent: p.accent, boxBg: p.boxBg, bubbleBg: p.bubbleBg,
       wordFx: p.wordFx, animIn: own ? 'none' : p.animIn, animOut: ownOut ? 'none' : p.animOut, animDur: p.animDur, gloss: p.sub, glossSize: Math.max(p.subSize * small, floor / mainPx), glossColor: p.subColor,
-      position: place.position, align: place.align, y: place.y, words: [] };
+      position: place.position, align: place.align, y: place.y, words: [], maxLines: Math.max(2, text.split('\n').length) };
     // the caption's own templates never reach a title; a font the item sets itself replaces a look's own, as on a caption
     const fontSet = (!!ctx.item?.params && 'font' in ctx.item.params) || p.font !== ctx.params.font;
     const draw = (params: CaptionP) => caption.draw({ ...ctx, params, item: { ...ctx.item, params: fontSet ? { font: p.font } : {} }, project: { ...ctx.project, meta: { ...ctx.project?.meta, captionTemplate: undefined, captionTemplates: undefined } } } as never, s.cap);
@@ -117,7 +117,9 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     if (box.style.textShadow) s.cap.gloss.style.textShadow = box.style.textShadow.replace(/(-?\d*\.?\d+)px/g, (_m, v: string) => `${(parseFloat(v) * capParams.glossSize).toFixed(2)}px`);
     // track and spread: on the words, added to the look's own spacing (which would replace one set on a layer above them)
     const spacing = titleSpacing(p.animIn, p.animOut, local, dur, p.animDur);
-    if (spacing) box.style.letterSpacing = `calc(${box.style.letterSpacing || '0px'} + ${spacing}em)`;
+    // through cssCamel, like the caption's own: its cache then holds what the box really has, so the caption's reset next frame is not
+    // skipped and the look's spacing (what the caption just set) is never one already widened by the frame before
+    if (spacing) cssCamel(box, { letterSpacing: `calc(${box.style.letterSpacing || '0px'} + ${spacing}em)` });
     // the block's box from layout values (a centred box stands on its middle; a centre-placed one is lifted by half its height)
     const fs = parseFloat(box.style.fontSize) || (size / 100) * H, bw = box.offsetWidth, bh = box.offsetHeight;
     const x0 = place.align === 'left' ? box.offsetLeft : box.offsetLeft - bw / 2;
