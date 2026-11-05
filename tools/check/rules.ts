@@ -1,7 +1,7 @@
 // The model layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 4): what the project file alone
 // tells (parseProject already refuses items that end before they start) — offline material, black frames, items past the end, empty text, music stopping early, captions vs speech.
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
-import { allItems, envelopeAt, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
+import { allItems, envelopeAt, OLD_TEXT, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { PANEL_FRAME, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { heardSpeech } from '../cut/mix.ts';
@@ -250,6 +250,18 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   const badT = allItems(p).filter(({ item }) => (item as { type?: string }).type === 'common.heading' && typeof (item as any).params?.template === 'string' && (item as any).params.template && !knownT((item as any).params.template));
   if (badT.length) out.push({ level: 'warn', t: span(badT[0].item.id), ids: badT.map((x) => x.item.id), msg: `標題的範本「${(badT[0].item as any).params.template}」不存在（${badT.length} 個標題）：npm run tellcut -- catalog TTL 列出全部，template 填 id` });
   return byTime(out);
+}
+
+/** The old core.title / core.caption (2026-11-05): kept so older projects open, never for a new film (the page chat's proposals
+ *  and a cut.ts's c.effect could still name one). Apart from modelChecks, whose tests use them as plain test items. */
+export function oldBlocks(p: Project): Finding[] {
+  const times = resolveTimes(p);
+  return Object.entries(OLD_TEXT).flatMap(([type, instead]): Finding[] => {
+    const old = allItems(p).filter(({ item }) => (item as { type?: string }).type === type);
+    if (!old.length) return [];
+    const t = times.get(old[0].item.id)!;
+    return [{ level: 'warn', t: [r3(t.start), r3(t.end)], ids: old.map((x) => x.item.id), msg: `${type} 是舊積木（只為了讓舊專案打得開，${old.length} 個）：新片請改用 ${instead}，照片子的${instead === 'common.heading' ? '標題' : '字幕'}範本` }];
+  });
 }
 
 /** Calls that make a drawing depend on anything but the time it is drawn at (toolkit phase 2a): a render would no longer repeat. */

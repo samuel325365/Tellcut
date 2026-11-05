@@ -1,4 +1,4 @@
-import type { Plugin } from '@tellcut/engine';
+import { OLD_TEXT, type Plugin } from '@tellcut/engine';
 import { readFileSync } from 'node:fs';
 import { BLOCK_CATEGORY, handleOf } from '@tellcut/protocol';
 import { findBlocks, formatCatalog, formatFind, formatIndex, formatLookup, formatType } from './catalog.ts';
@@ -7,7 +7,7 @@ import { plugins } from '@tellcut/plugins';
 
 const fake: Plugin[] = [
   { id: 'core', items: [
-    { type: 'core.title', label: '片名', kind: 'overlay', doc: '大標題，可加副標', build: () => null, draw: () => {},
+    { type: 'core.banner', label: '片名', kind: 'overlay', doc: '大標題，可加副標', build: () => null, draw: () => {},
       params: [{ key: 'size', label: '字級', type: 'number', min: 1, max: 30, step: 0.5, default: 8 }, { key: 'animIn', label: '進場', type: 'enum', options: ['fade', 'rise'], default: 'rise' }] },
   ] },
   { id: 'wedding', items: [
@@ -19,7 +19,7 @@ test('the catalog: one line per block, grouped by plugin with core first; doc wh
   const s = formatCatalog(fake);
   const lines = s.split('\n');
   expect(lines[0]).toContain('core');
-  expect(s).toMatch(/core\.title +片名 — 大標題，可加副標/);
+  expect(s).toMatch(/core\.banner +片名 — 大標題，可加副標/);
   expect(s).toMatch(/wedding\.petals +花瓣/);
   expect(s).toMatch(/音效[\s\S]*wedding\.chime +鈴聲/);
   expect(s).toMatch(/調色[\s\S]*wedding：warm、soft/);
@@ -27,20 +27,21 @@ test('the catalog: one line per block, grouped by plugin with core first; doc wh
 });
 
 test('one block: each param with its type, default and range or options', () => {
-  const s = formatType(fake, 'core.title');
-  expect(s).toContain('core.title 片名 — 大標題，可加副標');
+  const s = formatType(fake, 'core.banner');
+  expect(s).toContain('core.banner 片名 — 大標題，可加副標');
   expect(s).toContain('size（字級）：數字，預設 8，範圍 1–30');
   expect(s).toContain('animIn（進場）：選項 fade / rise，預設 rise');
   expect(formatType(fake, 'wedding.petals')).toContain('color（顏色）：顏色，預設 #fff');
 });
 
 test('an unknown block names the closest ones', () => {
-  expect(() => formatType(fake, 'core.titel')).toThrow(/找不到 core\.titel.*core\.title/);
+  expect(() => formatType(fake, 'core.bannr')).toThrow(/找不到 core\.bannr.*core\.banner/);
 });
 
-test('every registered block is listed and every core block has a doc', () => {
+test('every registered block is listed (but the old core.title / core.caption, still shown by name) and every core block has a doc', () => {
   const s = formatCatalog(plugins);
-  for (const p of plugins) for (const it of p.items ?? []) expect(s).toContain(it.type);
+  for (const p of plugins) for (const it of p.items ?? []) if (!OLD_TEXT[it.type]) expect(s).toContain(it.type);
+  for (const type of Object.keys(OLD_TEXT)) { expect(s).not.toContain(type); expect(formatType(plugins, type)).toContain('舊'); expect(findBlocks(plugins, '字幕').map((t) => t.type)).not.toContain(type); }
   for (const it of plugins.find((p) => p.id === 'core')!.items!) expect(it.doc, it.type).toBeTruthy();
 });
 

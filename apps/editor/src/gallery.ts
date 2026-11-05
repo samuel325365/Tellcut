@@ -132,12 +132,6 @@ export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   return g.recipes.filter((r) => matches(query, handleOf(`recipe:${r.id}`), r.id, ...fields(`recipe:${r.id}`, r)));
 }
 
-/** The Captions tab's blocks (core.caption, common.caption), or the Titles tab's (common.heading, core.title), above their templates;
- *  the Blocks tab leaves them out. */
-export function captionBlocks(g: GalleryIndex, query: string, which: (b: GalleryBlock) => boolean = isCaptionBlock): GalleryBlock[] {
-  const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
-  return g.blocks.filter((b) => which(b) && matches(query, handleOf(b.type), b.type, ...fields(b.type, b))).sort((a, b) => byHandle(a.type, b.type));
-}
 
 /** The sound effects by category (SFX_CATEGORY's order), then any without one (a sample film's own) under 其他. */
 export function sfxSections(list: GallerySfx[]): Array<{ key: string; label: string; sfx: GallerySfx[] }> {

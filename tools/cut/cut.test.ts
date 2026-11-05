@@ -31,7 +31,7 @@ test('a dissolve overlaps the previous clip by its length (linked to the overlap
   expect(items(c, 'v1').map((i) => [i.start, i.end])).toEqual([[0, 2], [1.5, 3.5]]);
 });
 
-test('texts go on the text track; speech becomes captions attached to the clip; the end card comes last', () => {
+test('texts go on the text track (c.title a common.heading, speech common.caption captions attached to the clip); the end card comes last', () => {
   const c = fresh();
   c.title('京都', { at: 0, len: 3 });
   const a = c.clip('v', { from: 0, len: 4 });
@@ -39,7 +39,7 @@ test('texts go on the text track; speech becomes captions attached to the clip; 
   c.endCard(['感謝觀看', '小明']);
   const t = items(c, 'text');
   expect(t.map((i) => [i.type, i.start, i.end, i.parent ?? null])).toEqual([
-    ['core.title', 0, 3, null], ['core.caption', 1, 2.5, a], ['core.endCard', 4, 9, null],
+    ['common.heading', 0, 3, null], ['common.caption', 1, 2.5, a], ['core.endCard', 4, 9, null],
   ]);
   expect([caps.length, t[1].params.text, t[2].params.text]).toEqual([1, '大家好', '感謝觀看\n小明']);
 });

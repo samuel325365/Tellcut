@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionBlocks, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -338,13 +338,15 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   const cats = galleryCategories(g.blocks, CLIP_FX.length, library ? (lib?.blocks.length ?? 0) : undefined, own?.blocks.length ?? 0);
   const showOwn = tab === 'blocks' && (cat === ALL || cat === PROJECT_CATEGORY) && (ownList.length > 0 || !!ownErr);
   const showMine = !!library && tab === 'blocks' && (cat === ALL || cat === MINE_CATEGORY);
-  const list = filterGallery(g, tab, q), capBlocks = tab === 'captions' ? captionBlocks(g, q) : tab === 'titles' ? captionBlocks(g, q, isTitleBlock) : [];
+  // the Captions and Titles tabs show only their templates: the blocks under them (common.caption / common.heading, and the old
+  // core.caption / core.title kept for older projects) would be a second, look-alike card for the same thing (2026-11-05)
+  const list = filterGallery(g, tab, q);
   // what the grid shows, in order: blocks (by category, or one category) then clip effects; or the tab's list
   const sections = tab !== 'blocks' ? [] : cats.filter((c) => cat === ALL || c.key === cat).map((c) => ({ ...c,
     blocks: c.key === CLIP_CATEGORY ? [] : (list as GalleryBlock[]).filter((b) => blockCategory(b) === c.key).sort((a, b) => byHandle(a.type, b.type)),
     clips: c.key === CLIP_CATEGORY ? clips : [] })).filter((x) => x.blocks.length || x.clips.length);
   const names = tab === 'blocks' ? [...(showOwn ? ownList.map((b) => `own:${b.type}`) : []), ...(showMine ? mineBlocks.map((b) => `mine:${b.type}`) : []), ...sections.flatMap((x) => [...x.blocks.map((b) => b.type), ...x.clips.map((f) => f.key)])]
-    : tab === 'captions' || tab === 'titles' ? [...capBlocks.map((b) => b.type), ...(list as GalleryCaption[]).map((c) => `${tab === 'titles' ? 'title' : 'caption'}:${c.id}`)]
+    : tab === 'captions' || tab === 'titles' ? [...(list as GalleryCaption[]).map((c) => `${tab === 'titles' ? 'title' : 'caption'}:${c.id}`)]
     : tab === 'sfx' ? sfxSections(list as GallerySfx[]).flatMap((x) => x.sfx.map((s) => s.type)) : tab === 'styles' ? [...mineStyles.map((x) => `mine-style:${x.id}`), ...(list as GalleryStyle[]).map((s) => s.id)] : (list as GalleryRecipe[]).map((r) => r.id);
   const on = picked && names.includes(picked) ? picked : names[0] ?? null;
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
@@ -388,7 +390,6 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       return b ? <BlockDetail b={b} to={to} /> : f ? <ClipDetail f={f} /> : null;
     }
     if (tab === 'captions' || tab === 'titles') {
-      const b = capBlocks.find((x) => x.type === on); if (b) return <BlockDetail b={b} to={to} />;
       const kind = tab === 'titles' ? 'title' : 'caption', c = ((kind === 'title' ? g.titles : g.captions) ?? []).find((x) => `${kind}:${x.id}` === on);
       return c && <CaptionDetail c={c} kind={kind} caption={g.blocks.find((b) => b.type === (kind === 'title' ? 'common.heading' : 'common.caption'))} to={to} />;
     }
@@ -427,7 +428,6 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
             <ul class="g-grid">{x.blocks.map(blockCard)}{x.clips.map(clipCard)}</ul>
           </section>
         )) : tab === 'captions' || tab === 'titles' ? <section class="g-section" {...(tab === 'titles' ? { 'data-titles': '' } : { 'data-captions': '' })}>
-          {capBlocks.length > 0 && <><h4>{t(tab === 'titles' ? 'gallery.titleBlocks' : 'gallery.capBlocks')}</h4><ul class="g-grid" data-caption-blocks>{capBlocks.map(blockCard)}</ul></>}
           {list.length > 0 && <h4>{t(tab === 'titles' ? 'gallery.titleTemplates' : 'gallery.capTemplates')}</h4>}
           <ul class="g-grid">{(list as GalleryCaption[]).map((c) => { const id = `${tab === 'titles' ? 'title' : 'caption'}:${c.id}`; return card(id, shown(id, c).doc, <>
             <Thumb src={thumbIn(c.thumb, getLang())} />

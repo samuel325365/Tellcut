@@ -3,7 +3,7 @@
 // guides/workflow.md carries only an index of the shared blocks (formatIndex, kept there by npm run blocks:index); the
 // details are looked up here. Every line starts with the block's handle (MRK-03, spec 2026-10-22-block-handles), and a handle
 // can be looked up like a type: `catalog MRK-03` (music styles, recipes and clip effects too).
-import type { ParamDef, Plugin } from '@tellcut/engine';
+import { OLD_TEXT, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
@@ -62,7 +62,8 @@ export function formatCatalog(plugins: Plugin[]): string {
   for (const p of ordered) {
     if (!p.items?.length) continue;
     out.push(`${p.id}（${GROUP[p.id] ?? '外掛'}）`);
-    for (const [name, xs] of grouped(p.items)) out.push(...(name ? [` ${name}：`] : []), ...xs.map(line));
+    // the old core.title / core.caption are not offered (kept only so older projects open; catalog <type> still shows them)
+    for (const [name, xs] of grouped(p.items.filter((t) => !OLD_TEXT[t.type]))) out.push(...(name ? [` ${name}：`] : []), ...xs.map(line));
     out.push('');
   }
   if (sfx.length) {
@@ -86,7 +87,7 @@ export function findBlocks(plugins: Plugin[], query: string): Entry[] {
   if (h) return plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => handleOf(t.type) === h);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const text = (t: Entry) => [t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...(d.type === 'enum' ? d.options : [])])].join(' ').toLowerCase();
-  return words.length ? plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => words.every((x) => text(t).includes(x))) : [];
+  return words.length ? plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => !OLD_TEXT[t.type] && words.every((x) => text(t).includes(x))) : [];
 }
 
 export function formatFind(plugins: Plugin[], query: string): string {

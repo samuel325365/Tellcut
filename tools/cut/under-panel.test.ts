@@ -17,7 +17,7 @@ test('captions with no place of their own hang right under the panel: common.cap
   c.panel({ frame: [0.04, 0.15, 0.92, 0.45] });                                  // its lower edge at 0.6
   c.clip('v', { from: 0, len: 4 });
   const bubble = c.effect('common.caption', { at: 0, len: 1, text: '好香', style: 'bubble' });
-  const plain = c.caption('出發', { at: 1, len: 1 });
+  const plain = c.effect('core.caption', { at: 1, len: 1, text: '出發' });   // the old block: an older cut.ts may still ask for it
   await c.save();
   const hb = captionHeight('common.caption', { style: 'bubble', size: 4.6 }, 1080, 1920, 8);
   expect(byId(c, bubble).params.y).toBeCloseTo(0.6 + GAP + hb, 4);

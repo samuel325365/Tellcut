@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, createRegistry, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, createRegistry, OLD_TEXT, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
@@ -93,9 +93,6 @@ const fileHash = (dir: string) => { const f = join(dir, 'project.json'); return 
 /** project.json changed while the cut ran (save() refuses to write over it): tools/cut.ts prints the message */
 export class EditedDuringCut extends Error {}
 
-/** every caption item of the cut, any track */
-const allCaptions = (p: Project) => p.tracks.flatMap((t) => t.items as Array<{ type?: string }>).filter((i) => i.type === 'core.caption' || i.type === 'common.caption');
-
 export class Cut {
   private cursor = 0;
   private end = 0;
@@ -123,6 +120,8 @@ export class Cut {
   private duckOf = new Map<string, boolean | number>();
   /** what save() did on its own (auto-focus, stickers following faces): tools/cut.ts prints it */
   readonly notes: string[] = [];
+  /** speechCaptions ran before captionTemplate (its captions have no word times to light up) */
+  private plainSpeech = false;
 
   constructor(readonly p: Project, readonly inv: Inventory, readonly dir: string) {
     this.p.tracks = TRACKS() as Project['tracks'];
@@ -337,19 +336,23 @@ export class Cut {
     if (!parent) this.bump(at + len);
     return id;
   }
-  title(text: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) { const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.title', at as number, len as number, { text, ...rest }, undefined, 'c.title'); }
+  // c.title and c.caption make the shared blocks, so the film's title / caption template applies (2026-11-05: the old core.title and
+  // core.caption stay only so older projects open; new films never get one — see OLD_TEXT)
+  title(text: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) {
+    const { at = this.cursor, len = 3, ...rest } = o;
+    this.unknownParams('c.title', 'common.heading', text, rest);
+    return this.text('common.heading', at as number, len as number, { text, ...rest }, undefined, 'c.title');
+  }
   caption(text: string, o: { at: number; len: number; [k: string]: unknown }) {
     const { at, len, ...rest } = o;
-    // c.caption makes a core.caption, which draws only its own params: a common.caption one (style: 'strip', name, gloss…) was dropped
-    // without a word and the film came out with the plain caption (2026-11-01). Say so; c.effect('common.caption', …) is the way.
-    const reg = createRegistry(plugins), keys = (type: string) => new Set(reg.item(type)?.params.map((p) => p.key) ?? []), own = keys('core.caption');
-    const odd = Object.keys(rest).filter((k) => !own.has(k));
-    if (odd.length) {
-      const common = keys('common.caption');
-      const theirs = odd.filter((k) => common.has(k));
-      this.notes.push(`c.caption('${text.slice(0, 20)}')：c.caption 放的是 core.caption，它沒有 ${odd.join('、')} 參數，畫面上不會有效果${theirs.length ? `；${theirs.join('、')} 是 common.caption 的參數，要用 c.effect('common.caption', { at, len, text, ${theirs.map((k) => `${k}: …`).join(', ')} })` : ''}`);
-    }
-    return this.text('core.caption', at, len, { text, ...rest }, undefined, 'c.caption');
+    this.unknownParams('c.caption', 'common.caption', text, rest);
+    return this.text('common.caption', at, len, { text, ...rest }, undefined, 'c.caption');
+  }
+  /** a param the block does not have would be dropped without a word (2026-11-01): say so */
+  private unknownParams(call: string, type: string, text: string, params: Record<string, unknown>) {
+    const own = new Set(createRegistry(plugins).item(type)?.params.map((p) => p.key) ?? []);
+    const odd = Object.keys(params).filter((k) => !own.has(k));
+    if (odd.length) this.notes.push(`${call}('${text.slice(0, 20)}')：${call} 放的是 ${type}，它沒有 ${odd.join('、')} 參數，畫面上不會有效果（npm run tellcut -- catalog ${type} 列出它的參數）`);
   }
   lowerThird(main: string, sub: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) {
     const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.lowerThird', at as number, len as number, { text: main, sub, ...rest }, undefined, 'c.lowerThird');
@@ -608,7 +611,7 @@ export class Cut {
   }
 
   /**
-   * The clip's speech as captions attached to it (they move with the clip). `type`/`params` pick the caption block (default core.caption);
+   * The clip's speech as captions attached to it (they move with the clip). `type`/`params` pick the caption block (default common.caption);
    * `fix` corrects words the transcript misheard ({ 肉蔥: '肉鬆' }); words in `highlight` are wrapped in 【】 and words in `censor` in {}
    * (common.caption shows them highlighted / bleeped). `chunk` splits each sentence into captions of that many words, or a number by the transcript's language
    * ({ zh: 6, ja: 6, '*': 3 }: Whisper gives Chinese and Japanese a character a word; '*' for any other; neither, whole sentences) (a lone last
@@ -624,7 +627,8 @@ export class Cut {
     if (!tr) return [];
     // a film with a caption template (captionTemplate) captions speech in it, lighting up word by word unless told otherwise
     const tpl = !o.type && !!this.p.meta.captionTemplate, opts = tpl && o.karaoke === undefined ? { ...o, karaoke: true } : o;
-    return captionPlan(tr, pieces, opts).map((c) => this.text(o.type ?? (tpl ? 'common.caption' : 'core.caption'), c.at, c.len, { ...(o.params ?? {}), ...c.extra, text: c.text }, c.home.id));
+    if (!o.type && !tpl) this.plainSpeech = true;
+    return captionPlan(tr, pieces, opts).map((c) => this.text(o.type ?? 'common.caption', c.at, c.len, { ...(o.params ?? {}), ...c.extra, text: c.text }, c.home.id));
   }
 
   /** The film's caption template (an id from `catalog CAP`, or its handle CAP-xx): every common.caption that names none of its own
@@ -633,8 +637,8 @@ export class Cut {
     const by = idOfHandle(id), want = by?.startsWith('caption:') ? by.slice(8) : id;
     if (!templateOf(want) && !(this.p.meta.captionTemplates as Record<string, unknown> | undefined)?.[want]) throw new Error(`沒有「${id}」這個字幕範本：npm run tellcut -- catalog CAP 列出全部`);
     this.p.meta.captionTemplate = want;
-    // speech captions made before this call were made as core.caption: they must come after it
-    if (allCaptions(this.p).some((i) => i.type === 'core.caption')) this.notes.push(`c.captionTemplate('${want}') 在 speechCaptions 之後才呼叫：之前做的講話字幕還是 core.caption，請把它移到 cut.ts 前面`);
+    // speech captions made before this call take the template when drawn, but were made without the word times that light them up
+    if (this.plainSpeech) this.notes.push(`c.captionTemplate('${want}') 在 speechCaptions 之後才呼叫：之前做的講話字幕不會逐字亮起，請把它移到 cut.ts 前面`);
     return this;
   }
 
@@ -669,7 +673,7 @@ export class Cut {
   lines(clipIds: string | string[], lines: Line[], o: { type?: string; params?: Record<string, unknown>; hold?: number } = {}): string[] {
     const pieces = this.pieces(clipIds, 'c.lines');
     if (!pieces.length) return [];
-    return linePlan(pieces, lines, o).map((c) => this.text(o.type ?? 'core.caption', c.at, c.len, { ...(o.params ?? {}), ...c.extra, text: c.text }, c.home.id));
+    return linePlan(pieces, lines, o).map((c) => this.text(o.type ?? 'common.caption', c.at, c.len, { ...(o.params ?? {}), ...c.extra, text: c.text }, c.home.id));
   }
 
   /** Where a moment of a clip's source plays in the film ('1:23.5' or seconds; over the pieces tighten() made, a cut pause gives the next piece's start). */
@@ -911,6 +915,9 @@ export class Cut {
       const g = magneticGaps(this.p, mag.id);
       if (g.count) { delete (mag as any).magnetic; this.notes.push(`主軌有 ${g.count} 個空檔（共 ${g.shift} 秒）：存成一般軌（不磁吸），編輯器裡的修改不會把空檔合起來`); }
     }
+    // the old core.title / core.caption (c.effect or a type: option asked for one): new films use the shared blocks
+    const old = allItems(this.p).map((x) => (x.item as { type?: string }).type ?? '').filter((type) => OLD_TEXT[type]);
+    for (const type of new Set(old)) this.notes.push(`${type} 是舊積木（只為了讓舊專案打得開）：這支片有 ${old.filter((x) => x === type).length} 個，請改用 ${OLD_TEXT[type]}`);
     const p = parseProject(this.p);
     // a cut runs for minutes (transcribing, faces, score): an edit the editor saved meanwhile is not the script's to overwrite
     if (this.opened && !this.opened.force && fileHash(this.dir) !== this.opened.hash)

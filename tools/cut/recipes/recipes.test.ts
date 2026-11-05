@@ -48,7 +48,7 @@ test('travel: the title first, each scene’s narration with its shots and capti
   const text = track(p, 'text');
   expect(text.filter((i) => i.type === 'common.caption').map((i) => i.params.text)).toEqual(['第一句', '第二句', '最後一句']);
   expect(text.find((i) => i.type === 'common.header')).toMatchObject({ params: { text: '城南宮' } });
-  expect(text.find((i) => i.type === 'core.title')).toMatchObject({ params: { text: '京都' } });
+  expect(text.find((i) => i.type === 'common.heading')).toMatchObject({ params: { text: '京都' } });
   expect(text.find((i) => i.type === 'core.endCard')!.start).toBeCloseTo(lastClip.end, 3);
   const music = track(p, 'music')[0];
   expect(music.media).toBe('score-pluck');

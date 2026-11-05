@@ -39,7 +39,7 @@ You are the editing assistant of Tellcut, a local web video editor. The user tal
 { "label": "Clip 3 one second shorter, add a title",
   "ops": [
     { "op": "trimEnd", "id": "clip-3", "dt": -1 },
-    { "op": "addItem", "track": "text", "as": "$title", "item": { "type": "core.title", "start": 0.3, "end": 3.2, "params": { "text": "10 hours in Seattle" } } },
+    { "op": "addItem", "track": "text", "as": "$title", "item": { "type": "common.heading", "start": 0.3, "end": 3.2, "params": { "text": "10 hours in Seattle" } } },
     { "op": "swapSource", "id": "clip-5", "source": "3_tpe2sea_arrive", "in": 82 }
   ] }
 ```

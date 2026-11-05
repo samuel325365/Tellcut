@@ -1,5 +1,5 @@
 import { parseProject, type Transcript } from '@tellcut/engine';
-import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
+import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -437,4 +437,15 @@ test('a caption template that does not exist is named: the film’s and a captio
   const found = modelChecks(p, ok).filter((f) => f.msg.includes('範本'));
   expect(found.map((f) => f.ids ?? [])).toEqual([[], ['b']]);
   expect(found[0].msg).toContain('nope');
+});
+
+test('the old core.title / core.caption are warned about once a type, with what to use instead; the shared blocks are not', () => {
+  const p = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [
+    { id: 't', start: 0, end: 2, type: 'core.title', params: { text: '片名' } },
+    { id: 'a', start: 3, end: 4, type: 'core.caption', params: { text: '一' } }, { id: 'b', start: 5, end: 6, type: 'core.caption', params: { text: '二' } },
+    { id: 'h', start: 7, end: 8, type: 'common.heading', params: { text: '章' } }, { id: 'c', start: 8, end: 9, type: 'common.caption', params: { text: '三' } }] }]);
+  expect(msgs(oldBlocks(p))).toEqual([
+    'warn 0-2 core.title 是舊積木（只為了讓舊專案打得開，1 個）：新片請改用 common.heading，照片子的標題範本',
+    'warn 3-4 core.caption 是舊積木（只為了讓舊專案打得開，2 個）：新片請改用 common.caption，照片子的字幕範本']);
+  expect(oldBlocks(project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }]))).toEqual([]);
 });

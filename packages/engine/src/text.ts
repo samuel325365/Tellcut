@@ -5,6 +5,9 @@
 import type { ItemType, ParamDef } from './plugin.ts';
 import { clamp, cssCamel, eOut3, h } from './util.ts';
 
+/** core blocks kept only so older projects open (2026-11-05): new films use the shared block, whose templates do the same and more;
+ *  the Cut API and check say so when one turns up */
+export const OLD_TEXT: Readonly<Record<string, string>> = { 'core.title': 'common.heading', 'core.caption': 'common.caption' };
 export const TEXT_FONTS = ['Noto Sans TC', 'Noto Serif TC', 'Noto Sans JP', 'Microsoft JhengHei', 'DFKai-SB'];
 const ANIMS = ['none', 'fade', 'rise', 'slide', 'typewriter'];
 
@@ -101,7 +104,7 @@ const textEl = (parent: HTMLElement) => h('div', null, null, parent);
 
 type TitleP = TextP & { sub: string };
 const title: ItemType<TitleP, { box: HTMLElement; main: HTMLElement; sub: HTMLElement }> = {
-  type: 'core.title', label: '片名', kind: 'overlay', doc: '畫面中央的大標題，可加一行副標；片頭、章節開場',
+  type: 'core.title', label: '片名', kind: 'overlay', doc: '舊的片名積木，只為了讓舊專案打得開；新片用 common.heading（標題範本 catalog TTL，c.title 放的就是它）',
   params: [{ key: 'text', label: '文字', type: 'text', default: '片名' }, { key: 'sub', label: '副標', type: 'string', default: '' }, ...common(8, 'rise')],
   build(ctx) {
     const box = h('div', null, null, ctx.root);
@@ -120,7 +123,7 @@ const title: ItemType<TitleP, { box: HTMLElement; main: HTMLElement; sub: HTMLEl
 
 type BoxP = TextP & { background: string };
 const caption: ItemType<BoxP, { box: HTMLElement; main: HTMLElement }> = {
-  type: 'core.caption', label: '字幕', kind: 'overlay', doc: '畫面下方一句字幕（可換行、可加底色）；講話字幕、旁白、說明',
+  type: 'core.caption', label: '字幕', kind: 'overlay', doc: '舊的字幕積木，只為了讓舊專案打得開；新片用 common.caption（字幕範本 catalog CAP，c.caption、speechCaptions 放的就是它）',
   params: [{ key: 'text', label: '文字', type: 'text', default: '字幕' },
     { key: 'background', label: '底色（CSS 顏色，空白＝無）', type: 'string', default: 'rgba(0,0,0,0.55)' }, ...common(4.5, 'fade', 'body')],
   build(ctx) {

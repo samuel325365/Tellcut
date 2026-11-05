@@ -114,15 +114,29 @@ describe('Cut API from the sample films', () => {
     expect(saved.find((i) => i.id === id)?.parent).toBe(a);
   });
 
-  test("c.caption makes a core.caption: a common.caption-only param (style: 'strip') is not dropped silently, the note names c.effect", () => {
+  test("c.caption and c.title make the shared blocks (their params, the film's template); a param they lack is not dropped silently; an old core block gets a note", async () => {
     const c = fresh();
-    c.caption('Hello', { at: 0, len: 1, size: 5, color: '#ff0' });                // core.caption's own params: no note
+    c.captionTemplate('bare').titleTemplate('plain-center');
+    const cap = c.caption('Paper strip', { at: 0, len: 1, style: 'strip' }), title = c.title('Kyoto', { at: 1, len: 2, sub: 'day one' });
+    const text = items(c, 'text');
+    expect([text.find((i) => i.id === cap).type, text.find((i) => i.id === title).type]).toEqual(['common.caption', 'common.heading']);
     expect(c.notes).toEqual([]);
-    c.caption('Paper strip', { at: 1, len: 1, style: 'strip', wobble: 2 });
-    expect(c.notes).toHaveLength(1);
-    expect(c.notes[0]).toMatch(/core\.caption.*style、wobble/);
-    expect(c.notes[0]).toMatch(/style 是 common\.caption 的參數.*c\.effect\('common\.caption'/);
-    expect(c.notes[0]).not.toMatch(/wobble 是/);
+    c.caption('Odd', { at: 3, len: 1, wobble: 2 });
+    c.title('Odd', { at: 4, len: 1, background: '#000' });
+    expect(c.notes).toHaveLength(2);
+    expect(c.notes[0]).toMatch(/c\.caption.*common\.caption.*wobble/);
+    expect(c.notes[1]).toMatch(/c\.title.*common\.heading.*background/);
+    // asked for the old block by name: it is made (an old cut.ts still runs), and save says to change it
+    c.effect('core.caption', { at: 5, len: 1, text: 'old' });
+    await c.save();
+    expect(c.notes.at(-1)).toMatch(/core\.caption 是舊積木.*1 個.*common\.caption/);
+  });
+
+  test("speechCaptions before captionTemplate: a note that those captions will not light up word by word", () => {
+    const c = fresh();
+    c.speechCaptions(c.clip('v', { from: 0, len: 3 }));
+    c.captionTemplate('bare');
+    expect(c.notes.join('\n')).toMatch(/captionTemplate\('bare'\) 在 speechCaptions 之後.*不會逐字亮起/);
   });
 
   test('c.filmTime: where a source moment plays, over one clip or the pieces of one; outside them is an error', () => {
