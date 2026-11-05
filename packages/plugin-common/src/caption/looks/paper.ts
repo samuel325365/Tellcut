@@ -140,3 +140,11 @@ export const scrap: CaptionLook = {
   box: (e) => ({ background: e.p.hl, padding: '0.22em 0.6em 0.26em', clipPath: DECKLE }),
   pin: () => ' rotate(-2deg)',
 };
+
+/** a black-and-white caption box (the Mono Frame pilot film's fx.monobox, 2026-11-05): the words on a box of the outline colour with a
+ *  thin line of the words' colour set just inside its edge */
+export const mono: CaptionLook = {
+  id: 'mono', weight: '700', room: (e, width) => width - 1.6 * e.px,
+  box: (e) => ({ background: e.p.outline, padding: '0.32em 0.8em 0.36em',
+    boxShadow: `inset 0 0 0 ${(0.13 * e.fs).toFixed(1)}px ${e.p.outline}, inset 0 0 0 ${(0.18 * e.fs).toFixed(1)}px ${e.p.color}` }),
+};

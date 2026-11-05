@@ -108,4 +108,20 @@ export const scrapbook: CaptionLook = {
   gloss: () => ({ color: '#4a3c30', letterSpacing: '0.12em' }),
 };
 
-export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook];
+/** wide geometric capitals stacked, one line solid and the others outlined, the solid one stepping down a line every 0.45 s (the Mono Frame
+ *  pilot film's fx.monotitle, 2026-11-05). Light words get a soft shade to stay readable on bright footage: a text shadow on the solid
+ *  line, a drop shadow on the outlined ones (a text shadow would show through their empty fill as a grey blur); dark words, none */
+export const CYCLE_STEP = 0.45;
+const light = (c: string) => { const m = /^#?([0-9a-f]{6})/i.exec(String(c ?? '')); if (!m) return true; const n = parseInt(m[1], 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 128; };
+export const cycle: CaptionLook = {
+  id: 'cycle', only: 'title', weight: '700', font: 'Space Grotesk', room: padded,
+  box: () => ({ letterSpacing: '0.01em' }),
+  lines: (lines, e) => {
+    const hot = Math.floor(Math.max(0, e.local) / CYCLE_STEP) % Math.max(1, lines.length), w = Math.max(1.5, 0.028 * e.px), shade = light(e.p.color), b = (0.1 * e.px).toFixed(1);
+    lines.forEach((l, i) => cssCamel(l, i === hot
+      ? { color: '', webkitTextStroke: '0', textShadow: shade ? `0 0 ${b}px rgba(0,0,0,0.4)` : 'none', filter: 'none' }
+      : { color: 'transparent', webkitTextStroke: `${w.toFixed(1)}px ${e.p.color}`, textShadow: 'none', filter: shade ? `drop-shadow(0 0 ${(0.05 * e.px).toFixed(1)}px rgba(0,0,0,0.55))` : 'none' }));
+  },
+};
+
+export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle];

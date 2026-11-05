@@ -68,6 +68,7 @@
   "onomatopoeia-t1.50.png": "400289679835",
   "desktop-t1.80.png": "079228328070",
   "popup-t1.25.png": "92bdeaa9ff81",
+  "monoframe-t1.50.png": "dc4e05f39c7f",
   "heading-center-t1.50.png": "2fde9b1db400",
   "tpl-clean-t1.50.png": "661f0e7c18f8",
   "tpl-bare-t1.50.png": "3e49f7163141",
@@ -156,6 +157,7 @@
   "tpl-chalk-fade-t1.50.png": "ad0d6989737c",
   "tpl-desk-type-t1.50.png": "4711b5f9731d",
   "tpl-scrap-chip-t1.50.png": "4a9e7273e2cf",
+  "tpl-mono-box-t1.50.png": "20fbe1a88f7f",
   "tpl-comic-narration-t1.50.png": "34d718a40cb5",
   "ttl-plain-center-t1.50.png": "5d4f4b9803e6",
   "ttl-doc-rules-t1.50.png": "0e370dbc3247",
@@ -197,7 +199,8 @@
   "ttl-serif-card-t1.50.png": "6d8079c55172",
   "ttl-neon-rules-t1.50.png": "b247bdb1a7c0",
   "ttl-giant-mask-t1.50.png": "a48d9025b94c",
-  "ttl-scrapbook-card-t1.50.png": "253e8c6c3434"
+  "ttl-scrapbook-card-t1.50.png": "253e8c6c3434",
+  "ttl-mono-cycle-t1.50.png": "48f889a8ce19"
  },
  "ja": {
   "core-title-t1.50.png": "cf9552d1c469",
@@ -268,6 +271,7 @@
   "onomatopoeia-t1.50.png": "cd33bcbc2906",
   "desktop-t1.80.png": "3716479e8dbe",
   "popup-t1.25.png": "a9aee8cb87b0",
+  "monoframe-t1.50.png": "80940aebedd1",
   "heading-center-t1.50.png": "6f1da0d25954",
   "tpl-clean-t1.50.png": "eec86b90f9e6",
   "tpl-bare-t1.50.png": "92d8a34d9691",
@@ -356,6 +360,7 @@
   "tpl-chalk-fade-t1.50.png": "ffe1299cb0e6",
   "tpl-desk-type-t1.50.png": "5c861f1700d4",
   "tpl-scrap-chip-t1.50.png": "4d1b672bb18e",
+  "tpl-mono-box-t1.50.png": "76d1f7d1e9a3",
   "tpl-comic-narration-t1.50.png": "7c6b407bed4e",
   "ttl-plain-center-t1.50.png": "514768df5f81",
   "ttl-doc-rules-t1.50.png": "332ff55327f6",
@@ -397,6 +402,7 @@
   "ttl-serif-card-t1.50.png": "b67dc92fbe4e",
   "ttl-neon-rules-t1.50.png": "2251e68ed2a0",
   "ttl-giant-mask-t1.50.png": "f0d75ec2ccce",
-  "ttl-scrapbook-card-t1.50.png": "23b7a493fd43"
+  "ttl-scrapbook-card-t1.50.png": "23b7a493fd43",
+  "ttl-mono-cycle-t1.50.png": "11dd99994fa1"
  }
 }

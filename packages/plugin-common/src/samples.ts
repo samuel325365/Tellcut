@@ -76,7 +76,7 @@ export const CAP_EN = { text: 'We walked all the way to the 【Colosseum】', wo
 export const CAP_JA = { text: '京都の【朝ごはん】は本当においしい', words: [[0.2, 3], [0.6, 7], [0.9, 8], [1.3, 11], [1.7, 15]] };
 const CAP_LOOKS: Array<[string, Record<string, unknown>]> = [['punch', {}], ['double', {}], ['soft', {}], ['frost', { hl: '#9fe3ff' }], ['cinema', { size: 3.6 }], ['slab', {}], ['hollow', {}],
   ['marker', {}], ['neon', { hl: '#ff3db8', accent: '#29e7ff' }], ['gradient', { hl: '#ffe2a8', accent: '#ff8a4c' }], ['extrude', { hl: '#ffd23f', accent: '#e8742c' }], ['sticker', { accent: '#ff4f6a', bubbleBg: '#ffffff' }],
-  ['heavy', {}], ['offset', {}], ['gold', {}], ['chrome', {}], ['flow', { hl: '#7cf8ff', accent: '#ff5fa2' }], ['halo', { hl: '#ffb3e6' }], ['duotone', { hl: '#ffe14d', accent: '#ff5c7a' }], ['longshadow', {}], ['emboss', {}], ['block', {}], ['puffy', { hl: '#ffd1e8', accent: '#ff5fa2' }], ['tape', { hl: '#9fe3c8' }], ['postit', {}], ['label', {}], ['ransom', {}], ['rgb', {}], ['pixel', {}], ['vhs', {}], ['terminal', {}], ['segment', {}], ['scanline', { hl: '#7cf8ff' }], ['news', {}], ['chat', {}], ['lyric', { hl: '#ffd27a' }], ['dialog', {}], ['comic', {}], ['chalk', {}], ['narration', {}], ['desk', { hl: '#f7b2cf', outline: '#4b3a8c' }], ['scrap', { hl: '#d9533a' }]];
+  ['heavy', {}], ['offset', {}], ['gold', {}], ['chrome', {}], ['flow', { hl: '#7cf8ff', accent: '#ff5fa2' }], ['halo', { hl: '#ffb3e6' }], ['duotone', { hl: '#ffe14d', accent: '#ff5c7a' }], ['longshadow', {}], ['emboss', {}], ['block', {}], ['puffy', { hl: '#ffd1e8', accent: '#ff5fa2' }], ['tape', { hl: '#9fe3c8' }], ['postit', {}], ['label', {}], ['ransom', {}], ['rgb', {}], ['pixel', {}], ['vhs', {}], ['terminal', {}], ['segment', {}], ['scanline', { hl: '#7cf8ff' }], ['news', {}], ['chat', {}], ['lyric', { hl: '#ffd27a' }], ['dialog', {}], ['comic', {}], ['chalk', {}], ['narration', {}], ['desk', { hl: '#f7b2cf', outline: '#4b3a8c' }], ['scrap', { hl: '#d9533a' }], ['mono', { color: '#ffffff', outline: '#0d0d0d' }]];
 const CAPTION_SAMPLES: Sample[] = [
   ...CAP_LOOKS.flatMap(([style, own]): Sample[] => [
     { name: `cap-${style}-zh`, type: 'common.caption', params: { ...CAP_ZH, style, ...own }, at: [1.0, 2.4], bg: '#4a5a52' },
@@ -612,6 +612,13 @@ export const samples: Sample[] = [
   { name: 'prints', type: 'common.prints', sources: PIC, params: { source: 'pic', prints: '0|0|0.32,0.36,0.52|-3|4:3|tape\n0.4|0|0.68,0.5,0.46|3|3:4|clip\n0.8|0|0.38,0.7,0.5|2|1:1' }, len: 3, at: [0.95, 2.0], bg: '#f3ece0' },
   { name: 'scraps', type: 'common.scraps', params: { scraps: '0|dots|0.72,0.12,0.4,0.07|-3|#c3b1f5\n0.2|paper|0.3,0.4,0.36,0.14|5|#e8763a\n0.4|tape|0.6,0.6,0.3,0.06|-8|#ece2be\n0.6|pin|0.5,0.75,0.05,0.05|0|#e0552f\n0.8|clip|0.25,0.75,0.06,0.16|10|#9aa3ab\n1.0|grid|5,9|0|#ffffff' }, len: 3, at: [1.5], bg: '#1f9e93' },
   { name: 'wipe-tiles', type: 'common.wipe', params: { mode: 'tiles', color: '#efe6d4', edge: '#ffffff' }, len: 1, at: [0.25, 0.5, 0.8], bg: '#4a6b7c' },
+  // common.monoframe, common.filmstrip and common.wipe's vortex (2026-11-05, the Mono Frame pilot film's fx.monoframe / fx.filmstrip /
+  // fx.vortex): the frame round the window, the window shrunk to a strip, all words; the two strips; the vortex mid-spin
+  { name: 'monoframe', type: 'common.monoframe', params: { text: 'MARRAKECH · 馬拉喀什 · ' }, len: 3, at: [1.5], bg: '#4a6b7c' },
+  { name: 'monoframe-win', type: 'common.monoframe', params: { text: 'SOUK · 市集 · ', win: '0|0.12,0.36,0.76,0.24\n1|0.12,0.36,0.76,0.24\n2|0.045,0.0253,0.91,0.9494' }, len: 3, at: [0.5, 1.5], bg: '#4a6b7c' },
+  { name: 'monoframe-full', type: 'common.monoframe', params: { full: true }, len: 3, at: [1.5], bg: '#4a6b7c' },
+  { name: 'filmstrip', type: 'common.filmstrip', sources: PIC, params: { source: 'pic', stills: '0, 0, 0' }, len: 3, at: [1.5] },
+  { name: 'wipe-vortex', type: 'common.wipe', params: { mode: 'vortex', words: 'MAJORELLE · 馬若雷勒 · ', color: '#0d0d0d', edge: '#f4f4f0' }, len: 1, at: [0.5], bg: '#4a6b7c' },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title

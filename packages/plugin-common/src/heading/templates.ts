@@ -48,6 +48,7 @@ export const TITLE_TEMPLATES: TitleTemplate[] = [
   { id: 'neon-rules', label: '霓虹細線', doc: '上下兩條細線先畫出來，霓虹字再亮起；夜景、酒吧、活動', params: { style: 'neon', backing: 'rules', animIn: 'rule', animOut: 'fade' } },
   { id: 'giant-mask', label: '巨字露出', doc: '撐滿畫面寬的巨大字由下往上露出、往下收掉；章節數字、一個字的開場', params: { style: 'giant', layout: 'full', animIn: 'mask', animOut: 'sink' } },
   { id: 'scrapbook-card', label: '剪貼簿標題卡', doc: '奶油色卡片上橘紅的粗襯線字，上下雙線、左上露出一塊青綠紙片，微斜；剪貼簿、旅行、家庭的片名（配 common.prints）', params: { style: 'scrapbook', layout: 'top', accent: '#d9533a', hl: '#1f9e93', animIn: 'zoom', animOut: 'fade' } },
+  { id: 'mono-cycle', label: '輪流實心疊字', doc: '寬的幾何大寫字疊起來，一次只有一行實心、其他空心，實心的那一行每 0.45 秒往下換，故障閃入；旅行、城市、潮流感的片名和章節（配 common.monoframe）', params: { style: 'cycle', layout: 'center', animIn: 'glitch', animOut: 'fade' } },
 ];
 
 const BY_ID = new Map(TITLE_TEMPLATES.map((t) => [t.id, t]));

@@ -100,6 +100,7 @@ export const TEMPLATES: CaptionTemplate[] = [
   { id: 'chalk-fade', label: '黑板淡入', doc: '黑板粉筆字淡入淡出', params: { style: 'chalk', animIn: 'fade', animOut: 'fade' } },
   { id: 'desk-type', label: '復古桌面訊息框', doc: '粉彩復古視窗樣子的訊息框（粉色標題列、深紫框、硬陰影），字照講話打出來（配 common.desktop 復古桌面）', params: { style: 'desk', wordFx: 'type', animIn: 'rise', size: 3.4, outline: '#4b3a8c', hl: '#f7b2cf' } },
   { id: 'scrap-chip', label: '剪貼簿紙條', doc: '一小張撕邊彩色紙條上的白色襯線字，微斜（配 common.prints 剪貼簿相片）', params: { style: 'scrap', hl: '#d9533a', size: 2.9, animIn: 'zoom', animOut: 'fade' } },
+  { id: 'mono-box', label: '黑白框字幕', doc: '黑底小框、內圈一道白細線、白色粗字（配 common.monoframe 黑白字框；反過來用 color 黑、outline 白）', params: { style: 'mono', size: 2.6, color: '#ffffff', outline: '#0d0d0d', animIn: 'zoom', animOut: 'fade' } },
   { id: 'comic-narration', label: '漫畫旁白框', doc: '黃底細黑框的漫畫旁白框，靠左上角擦出（配 common.comic 漫畫頁）', params: { style: 'narration', position: 'top', size: 3, animIn: 'wipe', hl: '#ffe14d' } },
 ];
 

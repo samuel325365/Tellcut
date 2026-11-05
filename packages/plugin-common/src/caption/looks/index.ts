@@ -7,14 +7,14 @@ import { cinema, double, frost, punch, soft } from './clear.ts';
 import { block, emboss, extrude, longshadow, puffy } from './depth.ts';
 import { chrome, duotone, flow, gold, gradient, halo, neon } from './glow.ts';
 import { bar, chalk, chat, comic, dialog, lyric, narration, news, qa } from './layout.ts';
-import { crayon, label, postit, ransom, scrap, sticker, strip, tape, ticket } from './paper.ts';
+import { crayon, label, mono, postit, ransom, scrap, sticker, strip, tape, ticket } from './paper.ts';
 import { desk, pixel, rgb, scanline, segment, terminal, vhs } from './retro.ts';
 import { TITLE_LOOKS } from './title.ts';
 
 export const LOOKS: CaptionLook[] = [outline, plain, box, bubble, ticket, crayon, bar, qa, auto, big, strip,
   punch, double, soft, frost, cinema, slab, hollow, marker, neon, gradient, extrude, sticker,
   heavy, offset, gold, chrome, flow, halo, duotone, longshadow, emboss, block, puffy, tape, postit, label, ransom,
-  rgb, pixel, vhs, terminal, segment, scanline, news, chat, lyric, dialog, comic, chalk, narration, desk, scrap,
+  rgb, pixel, vhs, terminal, segment, scanline, news, chat, lyric, dialog, comic, chalk, narration, desk, scrap, mono,
   // a title's own (common.heading only)
   ...TITLE_LOOKS];
 const BY_ID = new Map(LOOKS.map((l) => [l.id, l]));
