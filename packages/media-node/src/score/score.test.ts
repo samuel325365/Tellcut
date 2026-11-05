@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readWav } from '../wav.ts';
+import { readWav } from '../test-media.ts';
 import { arrangement, chordOn, composeEvents, encodeWav16, generateScore, inKey, parseKey, scaleNote, STYLES, type Inst } from './index.ts';
 import { rng } from './synth.ts';
 

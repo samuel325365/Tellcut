@@ -1,4 +1,4 @@
-// Generated test media (never real footage). Not a test file itself: tests in several packages import it.
+// Generated test media (never real footage), and reading a WAV back. Not a test file itself: tests in several packages import it.
 import { execFile } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { promisify } from 'node:util';
@@ -53,4 +53,21 @@ export async function makeClicks(out: string, o: { bpm?: number; seconds?: numbe
   data.writeUInt32LE(sr * 2, 28); data.writeUInt16LE(2, 32); data.writeUInt16LE(16, 34); data.write('data', 36); data.writeUInt32LE(n * 2, 40);
   writeFileSync(out, data);
   return out;
+}
+
+/** A 16-bit PCM WAV as samples per channel (-1…1): what a test checks a cut, a mix or a score by */
+export function readWav(buf: Buffer) {
+  if (buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WAVE') throw new Error('Not a WAV file');
+  let o = 12, channels = 0, sampleRate = 0, bits = 0, data: Buffer | null = null;
+  while (o + 8 <= buf.length) {
+    const id = buf.toString('ascii', o, o + 4), size = buf.readUInt32LE(o + 4);
+    if (id === 'fmt ') { channels = buf.readUInt16LE(o + 10); sampleRate = buf.readUInt32LE(o + 12); bits = buf.readUInt16LE(o + 22); }
+    if (id === 'data') data = buf.subarray(o + 8, o + 8 + size);
+    o += 8 + size + (size % 2);
+  }
+  if (!data || bits !== 16) throw new Error('Only 16-bit PCM WAV is supported');
+  const frames = data.length / (2 * channels);
+  const out = Array.from({ length: channels }, () => new Float32Array(frames));
+  for (let i = 0; i < frames; i++) for (let c = 0; c < channels; c++) out[c][i] = data.readInt16LE((i * channels + c) * 2) / 32768;
+  return { sampleRate, channels, frames, data: out };
 }

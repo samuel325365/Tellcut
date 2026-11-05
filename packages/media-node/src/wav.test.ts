@@ -1,5 +1,6 @@
 import { pcm16 } from '@tellcut/engine';
-import { pullWav, readWav, WAV_MAX_DATA, wavDuration, wavHeader, wavTooLong, type PcmFormat } from './wav.ts';
+import { readWav } from './test-media.ts';
+import { pullWav, WAV_MAX_DATA, wavDuration, wavHeader, wavTooLong, type PcmFormat } from './wav.ts';
 
 /** a PCM WAV header (+ data) with an extra chunk before the data, as some writers add */
 const wav = (frames: number, o: { sr?: number; channels?: number; bits?: number; list?: boolean } = {}) => {

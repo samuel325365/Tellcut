@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { join, relative } from 'node:path';
-import { retimeFilter, cutLength, run, ffmpeg, cutVideo, cutAudio, probeDuration, probeHasAudio, readWav, rmsNorm, createStaticServer, sendFile } from './index.ts';
+import { retimeFilter, cutLength, run, ffmpeg, cutVideo, cutAudio, probeDuration, probeHasAudio, readWav, createStaticServer, sendFile } from './index.ts';
 
 test('retime filter mirrors the wedding prep rules', () => {
   expect(retimeFilter(1, 'none')).toBe('fps=30');
@@ -30,7 +30,7 @@ test('cuts video and audio from a generated source', async () => {
   expect(wav.sampleRate).toBe(48000);
   expect(wav.channels).toBe(2);
   expect(wav.frames).toBeGreaterThan(47000);
-  expect(rmsNorm(wav.data[0], 0.1)).toBeGreaterThan(0);
+  expect(wav.data[0].some((x) => Math.abs(x) > 0.01)).toBe(true);   // the tone, not silence
 });
 
 test('static server answers range requests', async () => {
