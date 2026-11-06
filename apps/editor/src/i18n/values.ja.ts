@@ -206,4 +206,5 @@ export const VALUES_JA: Record<string, string> = {
   "common.popup.done": "保存しました ✓",
   "common.desktop.start": "スタート",
   "common.monoframe.text": "HONG KONG · 香港 · ",
+  "common.spread.name": "シーフード",
 };

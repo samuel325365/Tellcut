@@ -90,6 +90,8 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'FRM-13': 'common.prints',
   'FRM-14': 'common.monoframe',
   'FRM-15': 'common.filmstrip',
+  'FRM-16': 'common.masthead',
+  'FRM-17': 'common.spread',
   'PHN-01': 'common.notify',
   'PHN-02': 'common.lockscreen',
   'PHN-03': 'common.reels',
@@ -129,6 +131,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'MOM-06': 'core.endCard',
   // 2026-10-30: Tellcut's own dachshund (MOM-07 was common.logo, retired)
   'MOM-08': 'common.dachshund',
+  'MOM-09': 'common.wordbands',
   'SFX-ALR-01': 'common.beep',
   'SFX-ALR-02': 'common.tick',
   'SFX-ALR-03': 'common.error',
@@ -302,6 +305,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'CAP-87': 'caption:desk-type',
   'CAP-88': 'caption:scrap-chip',
   'CAP-89': 'caption:mono-box',
+  'CAP-90': 'caption:editorial-bar',
   'TTL-01': 'title:plain-center',
   'TTL-02': 'title:doc-rules',
   'TTL-03': 'title:lower-bar',
@@ -344,6 +348,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'TTL-40': 'title:giant-mask',
   'TTL-41': 'title:scrapbook-card',
   'TTL-42': 'title:mono-cycle',
+  'TTL-43': 'title:didone-full',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
 export const RETIRED: Readonly<Record<string, string>> = {

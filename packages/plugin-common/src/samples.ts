@@ -619,6 +619,13 @@ export const samples: Sample[] = [
   { name: 'monoframe-full', type: 'common.monoframe', params: { full: true }, len: 3, at: [1.5], bg: '#4a6b7c' },
   { name: 'filmstrip', type: 'common.filmstrip', sources: PIC, params: { source: 'pic', stills: '0, 0, 0' }, len: 3, at: [1.5] },
   { name: 'wipe-vortex', type: 'common.wipe', params: { mode: 'vortex', words: 'MAJORELLE · 馬若雷勒 · ', color: '#0d0d0d', edge: '#f4f4f0' }, len: 1, at: [0.5], bg: '#4a6b7c' },
+  // common.masthead, common.spread and common.wordbands (2026-11-06, the Fashion pilot film's fx.cover / fx.taste / fx.column /
+  // fx.wordbands): the cover typing and settled, the back cover; a swatch page and a column page settled; the bands mid-run
+  { name: 'masthead', type: 'common.masthead', len: 3, at: [0.25, 2.4], bg: '#4a6b7c' },
+  { name: 'masthead-back', type: 'common.masthead', sources: PIC, params: { mode: 'back', source: 'pic', script: 'Taste · See · Walk' }, len: 3, at: [2.0] },
+  { name: 'spread', type: 'common.spread', sources: PIC, params: { source: 'pic' }, len: 3, at: [1.5] },
+  { name: 'spread-column', type: 'common.spread', sources: PIC, params: { layout: 'column', source: 'pic', header: 'MARKET — SEATTLE' }, len: 3, at: [0.3, 1.5] },
+  { name: 'wordbands', type: 'common.wordbands', sources: PIC, params: { source: 'pic' }, len: 1.6, at: [0.5, 1.4] },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title

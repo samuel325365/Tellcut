@@ -207,4 +207,5 @@ export const VALUES_EN: Record<string, string> = {
   "common.popup.done": "Saved ✓",
   "common.desktop.start": "Start",
   "common.monoframe.text": "HONG KONG · ",
+  "common.spread.name": "Seafood",
 };

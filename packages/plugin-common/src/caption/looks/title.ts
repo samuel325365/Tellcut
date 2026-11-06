@@ -127,4 +127,12 @@ export const cycle: CaptionLook = {
   },
 };
 
-export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle];
+/** a fashion magazine's giant headline (the Fashion pilot film's fx.bighead, 2026-11-06): heavy high-contrast Playfair, tight; with
+ *  more than one line the first is a small kicker-sized word (THE) over the big one (NEEDLE) */
+export const didone: CaptionLook = {
+  id: 'didone', only: 'title', weight: '900', font: 'Playfair Display', room: padded,
+  box: () => ({ letterSpacing: '-0.01em', lineHeight: '0.95' }),
+  lines: (lines) => { if (lines.length > 1) cssCamel(lines[0], { fontSize: '0.45em', textAlign: 'left' }); },
+};
+
+export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle, didone];
