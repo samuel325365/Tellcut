@@ -652,6 +652,14 @@ export const samples: Sample[] = [
   { name: 'sticker', type: 'common.sticker', params: { shape: 'heart', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [0.1, 1.5], bg: '#ff3ea5' },
   { name: 'sticker-smile', type: 'common.sticker', params: { shape: 'smile', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [1.5], bg: '#c6f03a' },
   { name: 'sticker-bolt', type: 'common.sticker', params: { shape: 'bolt', x: 0.35, y: 0.45, size: 0.3, popAt: 0 }, len: 2, at: [1.5], bg: '#3b4cf0' },
+  // the frames derived from the library (2026-11-07): common.grid (bento sliding in and settled, four scaling, two side by side on a wide
+  // frame), common.slant, common.postage, common.letterbox
+  { name: 'grid', type: 'common.grid', sources: PIC, params: { layout: 'bento', shots: 'pic|0||still\npic|0|0.5,0.3,1.6|still\npic|0|0.5,0.7,1.6|still\npic|0|0.5,0.5,1.2|still' }, len: 3, at: [0.3, 1.6] },
+  { name: 'grid-four', type: 'common.grid', sources: PIC, params: { layout: 'four', reveal: 'scale', shots: 'pic|0||still\n-\npic|0|0.5,0.4,1.5|still\npic|0|0.5,0.6,1.5|still' }, len: 3, at: [1.5] },
+  { name: 'wide-grid', type: 'common.grid', sources: PIC, params: { layout: 'two', shots: 'pic|0||still\npic|0|0.5,0.4,1.5|still' }, len: 3, at: [1.5], wide: true },
+  { name: 'slant', type: 'common.slant', sources: PIC, params: { labels: 'BEFORE,,AFTER', shots: 'pic|0||still\npic|0|0.5,0.35,1.5|still\npic|0|0.5,0.65,1.5|still' }, len: 3, at: [0.2, 1.6] },
+  { name: 'slant-two', type: 'common.slant', sources: PIC, params: { count: 2, seam: 0, angle: -10, shots: 'pic|0||still\npic|0|0.5,0.4,1.4|still' }, len: 3, at: [1.5] },
+  { name: 'wide-slant', type: 'common.slant', sources: PIC, params: { shots: 'pic|0||still\npic|0|0.5,0.4,1.4|still\npic|0|0.5,0.6,1.4|still' }, len: 3, at: [1.5], wide: true },
   { name: 'backdrop-words', type: 'common.backdrop', params: { pattern: 'words', word: 'HELLO', color: '#c6f03a', color2: '#ff3ea5', tint: 1, scale: 175, drift: 54, bits: 12 }, at: [0.5] },
   { name: 'wipe-stripes', type: 'common.wipe', params: { mode: 'stripes', colors: '#ff3ea5,#c6f03a,#ff7a1a,#3b4cf0', slant: 1.11, dir: 'left' }, len: 1, at: [0.2, 0.5, 0.75], bg: '#4a6b7c' },
   { name: 'badge-box', type: 'common.badge', params: { shape: 'box', label: 'No.1', plate: '米白休閒', x: 0.08, y: 0.125, size: 26, color: '#111111', textColor: '#ffffff', font: 'Playfair Display' }, at: [1.5], bg: '#3b4cf0' },

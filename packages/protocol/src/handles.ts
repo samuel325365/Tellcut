@@ -99,6 +99,8 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'FRM-20': 'common.binocular',
   'FRM-21': 'common.photostack',
   'FRM-22': 'common.popcard',
+  'FRM-23': 'common.grid',
+  'FRM-24': 'common.slant',
   'PHN-01': 'common.notify',
   'PHN-02': 'common.lockscreen',
   'PHN-03': 'common.reels',
