@@ -626,6 +626,19 @@ export const samples: Sample[] = [
   { name: 'spread', type: 'common.spread', sources: PIC, params: { source: 'pic' }, len: 3, at: [1.5] },
   { name: 'spread-column', type: 'common.spread', sources: PIC, params: { layout: 'column', source: 'pic', header: 'MARKET — SEATTLE' }, len: 3, at: [0.3, 1.5] },
   { name: 'wordbands', type: 'common.wordbands', sources: PIC, params: { source: 'pic' }, len: 1.6, at: [0.5, 1.4] },
+  // common.grade, common.wash, common.viewfinder, common.echo, common.poster, common.band and countdown's look slant (2026-11-06, the
+  // Single Color pilot film's fx.grade / fx.deepen / fx.hud / fx.echo / fx.page / fx.tape / fx.count): a one-colour and a grey grade
+  // over a blue ground, the wash, the viewfinder, the echo word opening and settled (and white on a one-colour step), a poster page
+  // settling and settled, the band, the slanted 3 and 2
+  { name: 'grade', type: 'common.grade', params: { steps: '0|mono' }, len: 2, at: [1.0], bg: '#3a7bd5' },
+  { name: 'grade-bw', type: 'common.grade', params: { steps: '0|bw' }, len: 2, at: [1.0], bg: '#3a7bd5' },
+  { name: 'wash', type: 'common.wash', len: 2, at: [1.0], bg: '#d9d9d9' },
+  { name: 'viewfinder', type: 'common.viewfinder', len: 3, at: [1.5], bg: '#4a6b7c' },
+  { name: 'echo', type: 'common.echo', params: { word: 'RIDE', label: '01' }, len: 2, at: [0.1, 1.0], bg: '#4a6b7c' },
+  { name: 'echo-mono', type: 'common.echo', params: { word: 'WALK', steps: '0|mono' }, len: 2, at: [1.0], bg: '#ff5a1f' },
+  { name: 'poster', type: 'common.poster', sources: PIC, params: { photos: 'pic|0|0.5,0.5', side: 'ROUND · TAIWAN', barcode: 'RIDE · EAT · REPEAT' }, len: 3, at: [0.1, 1.5] },
+  { name: 'band', type: 'common.band', len: 2, at: [0.1, 1.0], bg: '#4a6b7c' },
+  { name: 'countdown-slant', type: 'common.countdown', params: { look: 'slant', from: 3, to: 1, end: '', colors: '#ff5a1f,#ffffff' }, len: 3, at: [0.2, 1.5], bg: '#4a6b7c' },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title

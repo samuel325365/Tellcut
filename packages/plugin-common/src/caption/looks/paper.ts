@@ -152,6 +152,14 @@ export const scrap: CaptionLook = {
 
 /** a black-and-white caption box (the Mono Frame pilot film's fx.monobox, 2026-11-05): the words on a box of the outline colour with a
  *  thin line of the words' colour set just inside its edge */
+/** one box a line (the Single Color pilot film's fx.linebox, 2026-11-06): each line on its own square block of the accent colour, heavy
+ *  words in the words' colour, stacked flush left */
+export const boxes: CaptionLook = {
+  id: 'boxes', weight: '900', left: true, room: (e, width) => width - 0.7 * e.px,
+  lines: (lines, e) => lines.forEach((line, i) => cssCamel(line, { display: 'table', margin: `${i ? '0.16em' : '0'} 0 0`, padding: '0.06em 0.3em 0.08em',
+    background: e.p.accent || e.theme.palette.accent, borderRadius: '0' })),
+};
+
 export const mono: CaptionLook = {
   id: 'mono', weight: '700', room: (e, width) => width - 1.6 * e.px,
   box: (e) => ({ background: e.p.outline, padding: '0.32em 0.8em 0.36em',
