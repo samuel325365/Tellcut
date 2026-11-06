@@ -6,6 +6,7 @@ import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
 import { grid } from './grid.ts';
 import { slant } from './slant.ts';
 import { postage } from './postage.ts';
+import { letterbox } from './letterbox.ts';
 import { cellMedia, parseCellShots, revealTimes } from './cells.ts';
 
 const anything: any = new Proxy(function () {}, {
@@ -109,5 +110,24 @@ describe('common.postage', () => {
     r.draw(2);
     expect(videos).toEqual([]);
     expect(r.el.querySelector('video')).toBeNull();
+  });
+});
+
+describe('common.letterbox', () => {
+  const bars = (el: HTMLElement) => [...el.querySelectorAll('[data-bar]')].map((b) => parseFloat((b as HTMLElement).style.height));
+  test('the bars grow from nothing to the auto ratio and go back after outAt', () => {
+    expect(letterbox.kind).toBe('overlay'); expect(letterbox.category).toBe('frame');
+    const r = run(letterbox, {});
+    expect(bars(r.draw(0))).toEqual([0, 0]);
+    expect(bars(r.draw(2))).toEqual([420, 420]);
+    const out = run(letterbox, { outAt: 2, outDur: 0.8 }, 4);
+    expect(bars(out.draw(3))).toEqual([0, 0]);
+  });
+  test('the title is DOM text, hidden until titleAt (inDur by default)', () => {
+    const r = run(letterbox, { title: 'CHAPTER ONE', sub: 'ROME' });
+    const title = r.draw(0.5).querySelector('[data-title]') as HTMLElement;
+    expect(title.textContent).toBe('CHAPTER ONE'); expect(Number(title.style.opacity)).toBe(0);
+    expect(Number((r.draw(2).querySelector('[data-title]') as HTMLElement).style.opacity)).toBe(1);
+    expect((r.draw(2).querySelector('[data-sub]') as HTMLElement).textContent).toBe('ROME');
   });
 });
