@@ -53,8 +53,16 @@ export function kbMatrix(ax: number, ay: number, zoom: number, cx: number, cy: n
   return { m: k * zoom, tx: k * ax * (1 - zoom) + cx * (1 - k) + sx, ty: k * ay * (1 - zoom) + cy * (1 - k) + sy };
 }
 
-/** shakeX/Y move the picture inside the frame (shakeScale grows it so no edge shows); radius rounds the frame's corners. */
-export interface VideoState { frame: Box; offsetX: number; offsetY: number; opacity: number; filter: string; crop: Crop; mediaLocal: number; held: boolean; shakeX: number; shakeY: number; shakeScale: number; radius: number }
+/** shakeX/Y move the picture inside the frame (shakeScale grows it so no edge shows); radius rounds the frame's corners; clipPath is
+ *  the CSS clip-path of the item's shape ('' for the whole frame). */
+export interface VideoState { frame: Box; offsetX: number; offsetY: number; opacity: number; filter: string; crop: Crop; mediaLocal: number; held: boolean; shakeX: number; shakeY: number; shakeScale: number; radius: number; clipPath: string }
+
+/** a shape (corners in frame fractions) as a CSS clip-path */
+export function shapeClipPath(shape: ReadonlyArray<readonly [number, number]> | undefined): string {
+  if (!shape || shape.length < 3) return '';
+  const pc = (v: number) => `${Math.round(v * 1e5) / 1e3}%`;
+  return `polygon(${shape.map(([x, y]) => `${pc(x)} ${pc(y)}`).join(', ')})`;
+}
 
 export function videoState(item: VideoItem, start: number, end: number, t: number, W: number, H: number, grades: Record<string, string>): VideoState {
   const local = t - start;
@@ -90,7 +98,7 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
   const crop = cropAt(item.crop, local, end - start);
   const mediaLocal = item.freezeAt != null ? Math.min(local, item.freezeAt) : local;
   const held = item.freezeAt != null && local >= item.freezeAt;
-  return { frame, offsetX, offsetY, opacity, filter, crop, mediaLocal, held, shakeX, shakeY, shakeScale, radius: item.radius ?? 0 };
+  return { frame, offsetX, offsetY, opacity, filter, crop, mediaLocal, held, shakeX, shakeY, shakeScale, radius: item.radius ?? 0, clipPath: shapeClipPath(item.shape) };
 }
 
 /** The part of the source a frame shows, in 0..1 source coordinates (the inverse view of coverPlacement). */

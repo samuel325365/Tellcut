@@ -36,6 +36,8 @@ export const VideoItemZ = z.object({
   interp: z.enum(['none', 'blend', 'mci']).default('none'),
   opacity: z.number().min(0).max(1).optional(),
   radius: z.number().min(0).optional(),
+  /** cut the picture to this polygon: corners in fractions of the item's own frame (a slanted comic panel, see common.comic's comicShape) */
+  shape: z.array(z.tuple([z.number(), z.number()])).min(3).optional(),
   shake: z.array(ShakeZ).optional(),
   stabilize: StabilizeZ.optional(),
 });

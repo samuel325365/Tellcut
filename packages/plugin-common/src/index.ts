@@ -101,7 +101,7 @@ import { bounce } from './bounce.ts';
 export { postcardWindow, POSTCARD_LAYOUT } from './postcard.ts';
 export { frameWindow } from './frame.ts';
 export { duoLayout, duoWindow } from './duo.ts';
-export { COMIC_LAYOUTS, comicPanels, comicWindow, type ComicLayout } from './comic.ts';
+export { COMIC_LAYOUTS, comicPanels, comicShape, comicWindow, type ComicLayout } from './comic.ts';
 export { DESK_BARS, deskSlot, popupButton, sheetButton } from './desktop.ts';
 export { phoneScreen, screenFrame } from './phone.ts';
 export { albumTile } from './album.ts';

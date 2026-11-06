@@ -274,6 +274,14 @@ test('beside: a second picture of the same moment in its own window on v2, as lo
   expect(() => c.beside(a, { frame: B, track: 'v1' })).toThrow(/不能是主軌/);
   expect(() => c.beside(a, { frame: B, track: 'text' })).toThrow(/不是影片軌/);
   expect(() => (c as any).beside(a, {})).toThrow(/要給 frame/);
+  // a slanted panel: the picture is cut to its corners, on the main clip and the beside alike; a broken shape is refused
+  const shape: Array<[number, number]> = [[0, 0], [1, 0], [1, 0.9], [0, 1]];
+  const [cut] = c.beside(a, { frame: B, shape, track: 'v4' });
+  expect(items(c, 'v4')[0]).toMatchObject({ id: cut, shape });
+  expect(items(c, 'v2')[0].shape).toBeUndefined();
+  expect(() => c.beside(a, { frame: B, shape: [[0, 0], [1, 1]] as any, track: 'v4' })).toThrow(/至少三個角/);
+  const sh = c.clip('v', { from: 0, len: 0.5, frame: A, shape });
+  expect(items(c, 'v1').find((i) => i.id === sh)).toMatchObject({ frame: A, shape });
   const p = await c.save();
   expect((p.tracks.find((t) => t.id === 'v2')!.items[0] as any)).toMatchObject({ parent: a, start: 0, end: 2 });
   expect(parseProject(p)).toBeTruthy();

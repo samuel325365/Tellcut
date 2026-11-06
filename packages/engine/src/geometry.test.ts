@@ -1,4 +1,4 @@
-import { coverPlacement, cropAt, cropForWindow, kbMatrix, lerpCrop, moveViewfinder, videoState, visibleRegion } from './geometry.ts';
+import { coverPlacement, cropAt, cropForWindow, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion } from './geometry.ts';
 import { eIO3, eOut3 } from './util.ts';
 
 const vid = (o: any = {}): any => ({ id: 'v', source: 's', in: 0, speed: 1, start: 0, end: 4, frame: [0, 0, 1, 1],
@@ -137,6 +137,12 @@ test('defocus can start blurred and clear (px0 → px)', () => {
 test('radius passes through (0 when absent)', () => {
   expect(videoState(vid({ radius: 46 }), 0, 4, 1, 100, 100, {}).radius).toBe(46);
   expect(videoState(vid(), 0, 4, 1, 100, 100, {}).radius).toBe(0);
+});
+
+test('a shape becomes a CSS polygon of the frame (none when absent or under three corners)', () => {
+  expect(videoState(vid({ shape: [[0, 0], [1, 0], [1, 0.8981], [0, 1]] }), 0, 4, 1, 100, 100, {}).clipPath).toBe('polygon(0% 0%, 100% 0%, 100% 89.81%, 0% 100%)');
+  expect(videoState(vid(), 0, 4, 1, 100, 100, {}).clipPath).toBe('');
+  expect(shapeClipPath([[0, 0], [1, 1]])).toBe('');
 });
 
 test('a shaken picture still covers its frame when the Ken Burns focus sits at an edge', () => {

@@ -1,7 +1,8 @@
 // common.comic — a comic page the footage plays in: white gutters round slanted, ink-bordered panels, the panels sliding in one by one,
 // manga focus lines inside a panel. Promoted 2026-11-05 from the comic pilot film's fx.comicpage (after the user's own Comic style
 // film). The page is drawn over the footage with the panels cut out of it, so each panel shows whatever clip plays under it: put a
-// clip in panel n with frame = comicWindow(n, params) (the panel's bounding box; the slant is the page's gutter covering the rest),
+// clip in panel n with frame = comicWindow(n, params) (the panel's bounding box) and shape = comicShape(n, params) (the panel's own
+// corners: two slanted panels' boxes overlap, and without the shape the clip on the higher track shows in its neighbour's corner),
 // the main-track clip in one panel and c.beside(...) clips in the others. A panel not revealed yet is all gutter. A pure function of time.
 import { clamp, rng, type ItemType } from '@tellcut/engine';
 
@@ -39,6 +40,13 @@ export function comicWindow(n: number, p: Partial<Pick<P, 'layout' | 'panels'>> 
   return [r(x), r(y), r(Math.max(...xs) - x), r(Math.max(...ys) - y)];
 }
 
+/** panel n's corners in fractions of its comicWindow box: a clip's `shape`, so the picture stays inside its own slanted panel */
+export function comicShape(n: number, p: Partial<Pick<P, 'layout' | 'panels'>> = {}): Array<[number, number]> {
+  const all = comicPanels(p), poly = all[clamp(Math.round(n) - 1, 0, all.length - 1)], [x, y, w, h] = comicWindow(n, p);
+  const r = (v: number) => Math.round(v * 1e4) / 1e4;
+  return poly.map(([px, py]) => [r(w ? (px - x) / w : 0), r(h ? (py - y) / h : 0)]);
+}
+
 const DIRS: Dir[] = ['none', 'left', 'right', 'top', 'bottom'];
 /** when each panel comes in and from where: `times` / `from` comma lists, missing ones 0.6 s apart and from the right and left in turn */
 export function comicReveal(p: Pick<P, 'times' | 'from'>, count: number): Array<{ at: number; dir: Dir }> {
@@ -62,7 +70,7 @@ const backOut = (q: number) => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Ma
 
 export const comic: ItemType<P, S> = {
   type: 'common.comic', label: '漫畫頁', category: 'frame', kind: 'overlay',
-  doc: '一頁漫畫，影片在格子裡播：白色格線、黑框的斜格子，格子一格一格滑進來，格內可加漫畫集中線；layout 選版面（one 一格、two 上下兩格、two-flip 斜向相反、three 上一下二、four 四格、side 左右兩格，橫式片用），panels 自己畫格子（一行一格「x,y x,y x,y x,y」畫面比例）；times、from 每格出現的秒和方向（逗號分隔；沒寫的每 0.6 秒一格、左右輪流）；focus 一行一條集中線「第幾格|x,y|秒」；影片放進第 n 格用 frame: comicWindow(n, 同一組參數)（從 @tellcut/plugin-common 匯入）：主軌一格、其他格用 c.beside；一頁一個項目，換頁時再放一個；配 common.onomatopoeia 狀聲詞、caption 的 comic-narration 旁白框、burst 的網點陰影、glitch 換頁',
+  doc: '一頁漫畫，影片在格子裡播：白色格線、黑框的斜格子，格子一格一格滑進來，格內可加漫畫集中線；layout 選版面（one 一格、two 上下兩格、two-flip 斜向相反、three 上一下二、four 四格、side 左右兩格，橫式片用），panels 自己畫格子（一行一格「x,y x,y x,y x,y」畫面比例）；times、from 每格出現的秒和方向（逗號分隔；沒寫的每 0.6 秒一格、左右輪流）；focus 一行一條集中線「第幾格|x,y|秒」；影片放進第 n 格用 frame: comicWindow(n, 同一組參數)、shape: comicShape(n, 同一組參數)（從 @tellcut/plugin-common 匯入；不給 shape 時斜格相鄰兩格的影片會露到對方的角）：主軌一格、其他格用 c.beside；一頁一個項目，換頁時再放一個；配 common.onomatopoeia 狀聲詞、caption 的 comic-narration 旁白框、burst 的網點陰影、glitch 換頁',
   params: [
     { key: 'layout', label: '版面（one 一格、two 上下、two-flip 上下斜向相反、three 上一下二、four 四格、side 左右）', type: 'enum', options: ['one', 'two', 'two-flip', 'three', 'four', 'side'], default: 'two' },
     { key: 'panels', label: '自己畫格子（一行一格：x,y x,y x,y x,y，畫面比例；空＝照版面）', type: 'text', default: '' },

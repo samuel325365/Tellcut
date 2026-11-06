@@ -21,6 +21,12 @@ import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, t
 
 type Transition = { type: 'dissolve' | 'slide'; dur: number; dir?: 'l' | 'r' | 'u' | 'd' };
 type Frame = [number, number, number, number];
+/** a polygon the picture is cut to, corners in fractions of its frame (common.comic's comicShape(n, params)) */
+type Shape = Array<[number, number]>;
+function checkShape(shape: Shape, what: string) {
+  if (!Array.isArray(shape) || shape.length < 3 || !shape.every((q) => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite)))
+    throw new Error(`${what}：要給至少三個角 [[x, y], …]（frame 裡的比例）`);
+}
 /** why avoidBurned left a clip as asked: the zoom it needs is past the cap, the detection has not run, or no caption was detected
  *  near it (`fix`: the crop that would clear the caption row anyway, `cap` when even that is past the zoom cap) */
 type BurnedSkip = { kind: 'zoom' | 'pending' | 'unseen'; from: number; to: number; cap?: number; rows?: [number, number]; fix?: { from: Crop; to: Crop } };
@@ -215,7 +221,10 @@ export class Cut {
     }
     this.burnedSkips.clear();   // said once, even if save() runs again
   }
-  private frameFields(frame?: Frame) { return frame ? { frame } : this.layout ? { frame: this.layout.frame, radius: this.layout.radius } : {}; }
+  private frameFields(frame?: Frame, shape?: Shape) {
+    if (shape !== undefined) checkShape(shape, 'shape');
+    return frame ? { frame, ...(shape ? { shape } : {}) } : this.layout ? { frame: this.layout.frame, radius: this.layout.radius } : {};
+  }
   /** a transition overlaps the previous clip by its own length: it stays linked to the overlap */
   private startFor(tr?: Transition) { return tr ? r6(Math.max(0, this.cursor - tr.dur)) : this.cursor; }
 
@@ -224,7 +233,7 @@ export class Cut {
    * `from` may be written as the player shows it ('1:23.5'). `duck`: whether speech in this clip's own sound ducks the music — true,
    * false, or the dB to duck to (default: it does unless the clip's sound is at QUIET_DB or lower, room tone under a montage).
    */
-  clip(source: string, o: { from?: SrcTime; len: number; speed?: number; crop?: CropIn; transition?: Transition; sound?: boolean; gain?: number; avoidBurned?: boolean; frame?: Frame; duck?: boolean | number }): string {
+  clip(source: string, o: { from?: SrcTime; len: number; speed?: number; crop?: CropIn; transition?: Transition; sound?: boolean; gain?: number; avoidBurned?: boolean; frame?: Frame; shape?: Shape; duck?: boolean | number }): string {
     checkFrame(o.frame, `c.clip('${source}')`);
     const s = this.src(source), crop0 = cropOf(o.crop, `c.clip('${source}')`);
     if (s.kind === 'image') {
@@ -238,7 +247,7 @@ export class Cut {
     const start = this.startFor(o.transition);
     const avoided = o.avoidBurned ? this.avoidBurned(source, from, from + len * speed, crop0 ?? { from: STILL, to: STILL }, o.frame) : undefined;
     const crop = avoided?.crop ?? crop0 ?? { from: STILL, to: STILL };
-    const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame), ...(o.transition ? { transitionIn: o.transition } : {}) } });
+    const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame, o.shape), ...(o.transition ? { transitionIn: o.transition } : {}) } });
     // no crop asked for and the picture does not fit the frame's shape: at save() its focus goes to the faces in it (phase 5)
     if (!crop0) this.autoFocus.push([id]);
     if (avoided?.ask) this.burnedAsks.push({ ids: [id], ...avoided.ask });
@@ -276,11 +285,11 @@ export class Cut {
     return r.ids;
   }
 
-  photo(source: string, o: { len?: number; zoom?: [number, number]; focus?: [number, number]; transition?: Transition; frame?: Frame } = {}): string {
+  photo(source: string, o: { len?: number; zoom?: [number, number]; focus?: [number, number]; transition?: Transition; frame?: Frame; shape?: Shape } = {}): string {
     checkFrame(o.frame, `c.photo('${source}')`);
     if (this.src(source).kind !== 'image') throw new Error(`"${source}" is not a photo`);
     const len = num(o.len ?? 3, `c.photo('${source}') 的 len`, { above: 0 }), [z0, z1] = o.zoom ?? [1, 1.1], [x, y] = o.focus ?? [0.5, 0.5], start = this.startFor(o.transition);
-    const id = addItem(this.p, { track: 'v1', item: { source, in: 0, speed: 1, start, end: r6(start + len), crop: { from: { x, y, zoom: z0 }, to: { x, y, zoom: z1 } }, ...this.frameFields(o.frame), ...(o.transition ? { transitionIn: o.transition } : {}) } });
+    const id = addItem(this.p, { track: 'v1', item: { source, in: 0, speed: 1, start, end: r6(start + len), crop: { from: { x, y, zoom: z0 }, to: { x, y, zoom: z1 } }, ...this.frameFields(o.frame, o.shape), ...(o.transition ? { transitionIn: o.transition } : {}) } });
     this.cursor = r6(start + len); this.bump(this.cursor);
     return id;
   }
@@ -337,10 +346,11 @@ export class Cut {
    * duoWindow('b', …)), a listener's face in a picture-in-picture. `crop` is one move spread over the pieces, as tighten spreads a
    * clip's. At save() each rides on its clip, so trimming or ripple-deleting the clip in the editor carries it along. Returns the ids.
    */
-  beside(clipIds: string | string[], o: { frame: Frame; crop?: CropIn; source?: string; offset?: number; track?: string }): string[] {
+  beside(clipIds: string | string[], o: { frame: Frame; shape?: Shape; crop?: CropIn; source?: string; offset?: number; track?: string }): string[] {
     const ids = Array.isArray(clipIds) ? clipIds : [clipIds], what = `c.beside(${JSON.stringify(clipIds)})`;
     if (!o?.frame) throw new Error(`${what}：要給 frame（這段第二個畫面放的框，例如 duoWindow('b', 參數)）`);
     checkFrame(o.frame, what);
+    if (o.shape !== undefined) checkShape(o.shape, `${what} 的 shape`);
     const track = o.track ?? 'v2', offset = o.offset ?? 0;
     if (track === 'v1') throw new Error(`${what}：track 不能是主軌 v1（第二個畫面在自己的影片軌上，預設 v2）`);
     const have = this.p.tracks.find((t) => t.id === track);
@@ -360,7 +370,7 @@ export class Cut {
         throw new Error(`${what}：${source} 沒有 ${from.toFixed(2)}–${(from + len * c.speed).toFixed(2)} 秒（素材長 ${s.duration} 秒）；改 offset`);
       const crop = clips.length > 1 && total > 0 && !(move as { keys?: unknown[] }).keys?.length ? { from: cropAt(move, acc / total, 1), to: cropAt(move, (acc + len) / total, 1) } : move;
       acc += len;
-      return addItem(this.p, { track, item: { source, in: from, speed: c.speed, start: r6(start), end: r6(end), crop, frame: o.frame, ...(c.transitionIn ? { transitionIn: c.transitionIn } : {}) } });
+      return addItem(this.p, { track, item: { source, in: from, speed: c.speed, start: r6(start), end: r6(end), crop, frame: o.frame, ...(o.shape ? { shape: o.shape } : {}), ...(c.transitionIn ? { transitionIn: c.transitionIn } : {}) } });
     });
   }
 

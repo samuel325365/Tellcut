@@ -2,7 +2,7 @@
 // common.comic and common.onomatopoeia (2026-11-05, the comic pilot film's fx.comicpage / fx.comicsfx). jsdom has no canvas or
 // layout: the page's geometry is tested through its helpers, the sound word through what cssCamel last wrote (`_c`).
 import { motion, resolveTheme, withDefaults } from '@tellcut/engine';
-import { COMIC_LAYOUTS, comic, comicFocus, comicPanels, comicReveal, comicWindow } from './comic.ts';
+import { COMIC_LAYOUTS, comic, comicFocus, comicPanels, comicReveal, comicShape, comicWindow } from './comic.ts';
 import { letterPop, onomatopoeia } from './onomatopoeia.ts';
 
 describe('common.comic', () => {
@@ -18,6 +18,13 @@ describe('common.comic', () => {
       for (const poly of polys) for (const [x, y] of poly) { expect(x, name).toBeGreaterThanOrEqual(0); expect(x).toBeLessThanOrEqual(1); expect(y).toBeGreaterThanOrEqual(0); expect(y).toBeLessThanOrEqual(1); }
       expect(polys.length, name).toBe({ one: 1, two: 2, 'two-flip': 2, three: 3, four: 4, side: 2 }[name]);
     }
+  });
+
+  test('comicShape is the panel\'s corners inside its box', () => {
+    // two: the top panel's bottom edge runs from 0.555 (left) up to 0.5 (right) of the frame, in a box 0.015–0.555
+    expect(comicShape(1, { layout: 'two' })).toEqual([[0, 0], [1, 0], [1, 0.8981], [0, 1]]);
+    expect(comicShape(2, { layout: 'two' })).toEqual([[0, 0.1183], [1, 0], [1, 1], [0, 1]]);
+    expect(comicShape(1, { layout: 'one' })).toEqual([[0, 0], [1, 0], [1, 1], [0, 1]]);
   });
 
   test('comicWindow is the panel\'s bounding box, counted from 1 and clamped', () => {

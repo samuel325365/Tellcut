@@ -235,7 +235,7 @@ export class Stage {
         cssCamel(L.frame, {
           left: `${s.frame.left}px`, top: `${s.frame.top}px`, width: `${s.frame.width}px`, height: `${s.frame.height}px`,
           transform: s.offsetX || s.offsetY ? `translate(${s.offsetX}px, ${s.offsetY}px)` : 'none',
-          opacity: s.opacity.toFixed(3), filter: s.filter, borderRadius: s.radius ? `${s.radius}px` : '',
+          opacity: s.opacity.toFixed(3), filter: s.filter, borderRadius: s.radius ? `${s.radius}px` : '', clipPath: s.clipPath,
         });
         const src = this.project.sources[L.item.source];
         // a photo is placed like a video frame, without media time
