@@ -45,6 +45,9 @@ test('on paper the gloss is ink; on strips it is a strip of its own; big’s out
   expect([strip.display, strip.background]).toEqual(['table', 'rgb(255, 248, 236)']);
   expect(drawn({ style: 'outline' }).gloss.style.background).toBe('');
   expect(drawn({ style: 'big', glossSize: 0.5 }).gloss.style.webkitTextStroke).toMatch(/^\d+(\.\d+)?px/);
+  // every other look's gloss inherits the line's outline at its full pixels, on purpose: a sticker title's sub keeps its thick white
+  // edge (thinned with its size, the yellow sub on a white rim went thin and hard to read; tried 2026-11-06, ttl-sticker-bounce)
+  expect(drawn({ style: 'outline', glossSize: 0.5 }).gloss.style.webkitTextStroke).toBe('');
 });
 
 test('with the speaker chip (point) the box is a column, so the gloss goes under the line and not beside it', () => {

@@ -316,10 +316,12 @@ export function osdState(fills: Array<number | null>, local: number): { done: nu
   return { done, last, blink: done === fills.length && since < 1.2 && Math.floor(since * 5) % 2 === 1 };
 }
 
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 /** osd mode: how much of `word` is typed `a` seconds after its tick, one character every 0.045 s and at least one. Counted in
- *  code points, not UTF-16 units: a slice of the string would cut an emoji (two units) in half and draw a broken glyph for a frame. */
+ *  graphemes, not UTF-16 units or code points: a slice of the string would cut an emoji in half, and one made of several joined
+ *  by ZWJ (a family, a flag) would come in piece by piece. */
 export function osdShown(word: string, a: number): string {
-  return [...word].slice(0, Math.max(1, Math.ceil(a / 0.045))).join('');
+  return [...GRAPHEMES.segment(word)].slice(0, Math.max(1, Math.ceil(a / 0.045))).map((x) => x.segment).join('');
 }
 
 /** osd mode: the item whose name is typed under the boxes at `local` — the one ticked last, for `hold` seconds — or −1 */

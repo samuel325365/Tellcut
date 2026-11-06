@@ -38,9 +38,12 @@ test('common.token: a mark sticker whose steps default walks a miss into a made'
   expect(steps.map((l) => l.split('|')[3])).toEqual(['none', 'miss', 'none', 'made']);
 });
 
-test('osd: the typed item grows a code point at a time, so an emoji never shows half of its surrogate pair', () => {
+test('osd: the typed item grows a grapheme at a time, so an emoji never shows in pieces', () => {
   expect(osdShown('🎉ok', 0)).toBe('🎉');
   expect(osdShown('🎉ok', 0.05)).toBe('🎉o');
   expect(osdShown('a🍜b', 0.05)).toBe('a🍜');
   expect(osdShown('a🍜b', 9)).toBe('a🍜b');
+  // an emoji of several joined by ZWJ, and a flag, come whole
+  expect(osdShown('👨‍👩‍👧ok', 0)).toBe('👨‍👩‍👧');
+  expect(osdShown('🇹🇼ok', 0.05)).toBe('🇹🇼o');
 });
