@@ -660,6 +660,8 @@ export const samples: Sample[] = [
   { name: 'slant', type: 'common.slant', sources: PIC, params: { labels: 'BEFORE,,AFTER', shots: 'pic|0||still\npic|0|0.5,0.35,1.5|still\npic|0|0.5,0.65,1.5|still' }, len: 3, at: [0.2, 1.6] },
   { name: 'slant-two', type: 'common.slant', sources: PIC, params: { count: 2, seam: 0, angle: -10, shots: 'pic|0||still\npic|0|0.5,0.4,1.4|still' }, len: 3, at: [1.5] },
   { name: 'wide-slant', type: 'common.slant', sources: PIC, params: { shots: 'pic|0||still\npic|0|0.5,0.4,1.4|still\npic|0|0.5,0.6,1.4|still' }, len: 3, at: [1.5], wide: true },
+  { name: 'postage', type: 'common.postage', sources: PIC, params: { source: 'pic', still: true }, len: 3, at: [0.2, 1.6] },
+  { name: 'wide-postage', type: 'common.postage', sources: PIC, params: { source: 'pic', still: true, backdrop: 'color', y: 0.5 }, len: 3, at: [1.6], wide: true },
   { name: 'backdrop-words', type: 'common.backdrop', params: { pattern: 'words', word: 'HELLO', color: '#c6f03a', color2: '#ff3ea5', tint: 1, scale: 175, drift: 54, bits: 12 }, at: [0.5] },
   { name: 'wipe-stripes', type: 'common.wipe', params: { mode: 'stripes', colors: '#ff3ea5,#c6f03a,#ff7a1a,#3b4cf0', slant: 1.11, dir: 'left' }, len: 1, at: [0.2, 0.5, 0.75], bg: '#4a6b7c' },
   { name: 'badge-box', type: 'common.badge', params: { shape: 'box', label: 'No.1', plate: '米白休閒', x: 0.08, y: 0.125, size: 26, color: '#111111', textColor: '#ffffff', font: 'Playfair Display' }, at: [1.5], bg: '#3b4cf0' },

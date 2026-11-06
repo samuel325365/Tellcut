@@ -76,6 +76,7 @@ import { binocular, photostack } from './storybook.ts';
 import { popcard, sticker } from './dopamine.ts';
 import { grid } from './grid.ts';
 import { slant } from './slant.ts';
+import { postage } from './postage.ts';
 import { versus } from './versus.ts';
 import { chart } from './chart/index.ts';
 import { touch } from './touch.ts';
@@ -106,6 +107,7 @@ export { duoLayout, duoWindow } from './duo.ts';
 export { COMIC_LAYOUTS, comicPanels, comicShape, comicWindow, type ComicLayout } from './comic.ts';
 export { GRID_LAYOUTS, gridBoxes, type GridLayout } from './grid.ts';
 export { polyBox, slantPolys } from './slant.ts';
+export { postageBox } from './postage.ts';
 export { DESK_BARS, deskSlot, popupButton, sheetButton } from './desktop.ts';
 export { phoneScreen, screenFrame } from './phone.ts';
 export { albumTile } from './album.ts';
@@ -119,7 +121,7 @@ export { loadThreeKit } from './three/load.ts';
 import { INTER_3D } from './three/kit.ts';
 export { CJK_3D, INTER_3D, JA_3D, type ThreeKit } from './three/kit.ts';
 
-export const commonItems: ItemType[] = [backdrop, ambient, shader, panel, badge, tag, burst, speedlines, caption, slam, censor, stamp, pen, sparkle, emoji, header, glitch, progress, meter, scoreboard, receipt, tripclock, route, card, countdown, list, rating, info, polaroid, mystery, outro, film, tone, paper, notecard, handwrite, gauge, hangtag, strike, timelapse, routeboard, mapjump, ticket, snap, stations, postcard, postmark, frame, dotmatrix, digits, printer, rolldoor, callout, slip, quote, wipe, duo, versus, chart, touch, headline, mapcam, worldmap, notify, lockscreen, reels, comments, story, album, chat, search, camcorder, casefile, magazine, dachshund, audiogram, quiz, doodle, healthbar, tabletop, bounce, leak, comic, onomatopoeia, desktop, deskWindow, popup, prints, scraps, monoframe, filmstrip, masthead, spread, wordbands, grade, wash, viewfinder, echo, poster, band, binocular, photostack, popcard, sticker, grid, slant, ...tokenItems, heading] as ItemType[];
+export const commonItems: ItemType[] = [backdrop, ambient, shader, panel, badge, tag, burst, speedlines, caption, slam, censor, stamp, pen, sparkle, emoji, header, glitch, progress, meter, scoreboard, receipt, tripclock, route, card, countdown, list, rating, info, polaroid, mystery, outro, film, tone, paper, notecard, handwrite, gauge, hangtag, strike, timelapse, routeboard, mapjump, ticket, snap, stations, postcard, postmark, frame, dotmatrix, digits, printer, rolldoor, callout, slip, quote, wipe, duo, versus, chart, touch, headline, mapcam, worldmap, notify, lockscreen, reels, comments, story, album, chat, search, camcorder, casefile, magazine, dachshund, audiogram, quiz, doodle, healthbar, tabletop, bounce, leak, comic, onomatopoeia, desktop, deskWindow, popup, prints, scraps, monoframe, filmstrip, masthead, spread, wordbands, grade, wash, viewfinder, echo, poster, band, binocular, photostack, popcard, sticker, grid, slant, postage, ...tokenItems, heading] as ItemType[];
 export const commonPlugin: Plugin = { id: 'common', items: commonItems, sfx: commonSfx, fonts: ['Noto Sans TC:wght@500;700;900', 'Noto Sans JP:wght@400;500;700;900', 'Noto Serif TC:wght@500;700;900', 'LXGW WenKai TC:wght@400;700', 'Cormorant Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500', 'JetBrains Mono:wght@400;700', 'Huninn', 'Inter:wght@300;400;600;700', 'VT323', 'Playfair Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900', 'Space Grotesk:wght@500;700', 'Nunito:wght@600;800',
   // the caption looks' own (spec 2026-11-04-caption-styles §7): Chinese handwriting, a rounded bold sans and a classical serif with
   // Traditional Chinese, and Latin display faces (about 10 MB together)

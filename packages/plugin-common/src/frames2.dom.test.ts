@@ -5,15 +5,16 @@
 import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
 import { grid } from './grid.ts';
 import { slant } from './slant.ts';
+import { postage } from './postage.ts';
 import { cellMedia, parseCellShots, revealTimes } from './cells.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : anything),
   apply: () => anything, construct: () => anything, set: () => true,
 });
-const realGetContext = HTMLCanvasElement.prototype.getContext;
-beforeAll(() => { (HTMLCanvasElement.prototype as any).getContext = function () { return new Proxy(anything, { get: (t, k) => (k === 'canvas' ? this : k === 'measureText' ? () => ({ width: 10 }) : t[k]) }); }; });
-afterAll(() => { HTMLCanvasElement.prototype.getContext = realGetContext; });
+const realGetContext = HTMLCanvasElement.prototype.getContext, realToDataURL = HTMLCanvasElement.prototype.toDataURL;
+beforeAll(() => { (HTMLCanvasElement.prototype as any).getContext = function () { return new Proxy(anything, { get: (t, k) => (k === 'canvas' ? this : k === 'measureText' ? () => ({ width: 10 }) : t[k]) }); }; HTMLCanvasElement.prototype.toDataURL = () => 'data:,'; });
+afterAll(() => { HTMLCanvasElement.prototype.getContext = realGetContext; HTMLCanvasElement.prototype.toDataURL = realToDataURL; });
 
 let videos: Array<{ source: string; in: number; out: number; local: number; parent: HTMLElement }> = [];
 const media: any = {
@@ -84,5 +85,29 @@ describe('common.slant', () => {
     const r = run(slant, { count: 2, labels: 'BEFORE,AFTER' });
     r.draw(2);
     expect([...r.el.querySelectorAll('[data-tag]')].map((e) => [e.textContent, (e as HTMLElement).style.display])).toEqual([['BEFORE', 'block'], ['AFTER', 'block']]);
+  });
+});
+
+describe('common.postage', () => {
+  test('an overlay frame; media(): its shot from `from` to the end, or a still, or nothing', () => {
+    expect([postage.kind, postage.category]).toEqual(['overlay', 'frame']);
+    expect(postage.media!(item(postage, { source: 'a', from: 2 }, 4), {} as any)).toEqual({ videos: [{ source: 'a', in: 2, out: 6, speed: 1, interp: 'none' }], stills: [] });
+    expect(postage.media!(item(postage, { source: 'a', from: 2, still: true }, 4), {} as any)).toEqual({ videos: [], stills: [{ source: 'a', t: 2, w: 1080 }] });
+    expect(postage.media!(item(postage, {}, 4), {} as any)).toEqual({ videos: [], stills: [] });
+  });
+  test('the stamp plays its shot while it drops in, keeps its tilt when settled, and prints its value and line', () => {
+    const r = run(postage, { source: 'a', from: 2, tilt: -3, value: 'NT$ 15', line: 'TAIWAN' }, 4);
+    r.draw(0.2);
+    expect(videos).toEqual([expect.objectContaining({ source: 'a', in: 2, local: 0.2 })]);
+    const stamp = r.el.querySelector('[data-stamp]') as HTMLElement;
+    r.draw(2);
+    expect(stamp.style.transform).toContain('rotate(-3.000deg)');
+    expect(stamp.textContent).toContain('NT$ 15'); expect(stamp.textContent).toContain('TAIWAN');
+  });
+  test('no source: the stand-in, no video', () => {
+    const r = run(postage, {}, 4);
+    r.draw(2);
+    expect(videos).toEqual([]);
+    expect(r.el.querySelector('video')).toBeNull();
   });
 });

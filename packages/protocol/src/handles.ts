@@ -101,6 +101,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'FRM-22': 'common.popcard',
   'FRM-23': 'common.grid',
   'FRM-24': 'common.slant',
+  'FRM-25': 'common.postage',
   'PHN-01': 'common.notify',
   'PHN-02': 'common.lockscreen',
   'PHN-03': 'common.reels',
