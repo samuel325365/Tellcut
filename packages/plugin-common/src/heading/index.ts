@@ -86,13 +86,16 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     const look = lookOf(p.style), sc = look.sizeScale ?? 1, width = W * (1 - 2 * theme.safe.side);
     // the room the look leaves words drawn px px in a line of the safe width (as the caption will ask it), or all of it
     const roomAt = (px: number) => (look.room ? look.room({ p: { ...CAPTION_DEFAULTS, text, style: p.style }, theme, W, H, k, px, local, who: p.color, ink: p.color, left: place.align === 'left', opacity: 1 } as never, width) : width);
-    let size = fitTitleSize(text, p.size * place.scale, W, H, theme.safe.side, p.layout === 'full', sc, look.room ? roomAt : undefined);
+    // a look that sets its lines side by side (pop) is fitted as one line, an ideographic space for each block's padding and gap
+    let size = fitTitleSize(look.row ? text.split('\n').join('\u3000') : text, p.size * place.scale, W, H, theme.safe.side, p.layout === 'full', sc, look.room ? roomAt : undefined);
     // a short title with no line break of its own stays on one line, shrunk to fit when that keeps at least 62 % of its size (five
     // characters at the default size broke 3 + 2 in 9:16: 「再見，」「羅馬」, ttl-acc-rome; six 4 + 2: 「山清炭火」「花園」, ttl-acc-food)
-    if (p.layout !== 'full' && !text.includes('\n')) {
-      const em = textEm(charKinds(text).map((c) => c.c).join('').trim()), px = (size / 100) * H * sc;
+    // A look whose lines sit side by side (pop) always shrinks to keep its row in the width.
+    if (p.layout !== 'full' && (!text.includes('\n') || look.row)) {
+      const one = look.row ? text.split('\n').join('\u3000') : text;
+      const em = textEm(charKinds(one).map((c) => c.c).join('').trim()), px = (size / 100) * H * sc;
       const f = em > 0 ? roomAt(px) / (em * 1.04 * px) : 1;
-      if (f < 1 && f >= 0.62) size *= f;
+      if (f < 1 && (f >= 0.62 || look.row)) size *= f;
     }
     // a title grown to fill the width (full) keeps its kicker and sub at the size they had before it grew
     const small = Math.min(1, (p.size * place.scale) / size);
@@ -128,7 +131,8 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     const kick = String(p.kicker ?? ''), kfs = Math.max(fs * 0.3 * small, floor), kh = kick ? kfs * 1.2 + 0.12 * fs : 0;
     s.kicker.textContent = kick;
     cssCamel(s.kicker, { display: kick ? 'block' : 'none', fontSize: `${kfs.toFixed(2)}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, color: p.kickerColor || p.hl,
-      textShadow: `0 ${(2 * k).toFixed(2)}px ${(6 * k).toFixed(2)}px rgba(0,0,0,0.45)`, bottom: `${(H - y + 0.12 * fs).toFixed(2)}px`, top: '',
+      background: 'none', padding: '0', fontWeight: '700', letterSpacing: '0.2em',
+      textShadow: `0 ${(2 * k).toFixed(2)}px ${(6 * k).toFixed(2)}px rgba(0,0,0,0.45)`, ...look.kicker?.({ color: p.color, hl: p.hl, outline: p.outline, accent: p.accent || theme.palette.accent, kickerColor: p.kickerColor }, kfs), bottom: `${(H - y + 0.12 * fs).toFixed(2)}px`, top: '',
       left: `${(place.align === 'left' ? x0 : x0 + bw / 2).toFixed(2)}px`, transform: place.align === 'left' ? 'none' : 'translateX(-50%)', clipPath: 'none', filter: 'none', opacity: '1' });
     // the title's own animation on the inner layer, against the block (its kicker included) where it is before the corner's move
     const a = titleAnim(p.animIn, p.animOut, local, dur, p.animDur, { x: x0, y: y - kh, w: bw, h: bh + kh, W, H, fs });

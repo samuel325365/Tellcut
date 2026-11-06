@@ -644,6 +644,15 @@ export const samples: Sample[] = [
   { name: 'binocular', type: 'common.binocular', len: 2, at: [0.1, 1.0], bg: '#7a9a6a' },
   { name: 'binocular-spyglass', type: 'common.binocular', params: { shape: 'spyglass', r: 0.35 }, len: 2, at: [1.0], bg: '#7a9a6a' },
   { name: 'photostack', type: 'common.photostack', sources: PIC, params: { cards: 'pic|0|records, slowly\npic|0|by the window\npic|0|latte & a book' }, len: 3, at: [0.2, 2.5] },
+  // common.popcard, common.sticker, backdrop words, wipe stripes, badge box (2026-11-06, the Dopamine Colors pilot film's fx.popcard / fx.sticker /
+  // fx.wordwall / fx.stripes): the card popping in and its second shot, the stickers popping and settled, the word wall, the stripes
+  { name: 'popcard', type: 'common.popcard', sources: PIC, params: { shots: '0|pic|0|0.5,0.5,1|WHITE TEE|still\n1.5|pic|0|0.5,0.4,1.4|TOTE BAG|still' }, len: 3, at: [0.12, 1.0, 2.5], bg: '#c6f03a' },
+  { name: 'sticker', type: 'common.sticker', params: { shape: 'heart', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [0.1, 1.5], bg: '#ff3ea5' },
+  { name: 'sticker-smile', type: 'common.sticker', params: { shape: 'smile', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [1.5], bg: '#c6f03a' },
+  { name: 'sticker-bolt', type: 'common.sticker', params: { shape: 'bolt', x: 0.35, y: 0.45, size: 0.3, popAt: 0 }, len: 2, at: [1.5], bg: '#3b4cf0' },
+  { name: 'backdrop-words', type: 'common.backdrop', params: { pattern: 'words', word: 'HELLO', color: '#c6f03a', color2: '#ff3ea5', tint: 1, scale: 175, drift: 54, bits: 12 }, at: [0.5] },
+  { name: 'wipe-stripes', type: 'common.wipe', params: { mode: 'stripes', colors: '#ff3ea5,#c6f03a,#ff7a1a,#3b4cf0', slant: 1.11, dir: 'left' }, len: 1, at: [0.2, 0.5, 0.75], bg: '#4a6b7c' },
+  { name: 'badge-box', type: 'common.badge', params: { shape: 'box', label: 'No.1', plate: '米白休閒', x: 0.08, y: 0.125, size: 26, color: '#111111', textColor: '#ffffff', font: 'Playfair Display' }, at: [1.5], bg: '#3b4cf0' },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title

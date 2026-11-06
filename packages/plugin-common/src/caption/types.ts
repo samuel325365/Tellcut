@@ -56,6 +56,8 @@ export interface CaptionLook {
   weight?: string;
   /** × the size parameter (big: 1.25) */
   sizeScale?: number;
+  /** a title look whose lines sit side by side (pop): common.heading fits the title's size to them as one line */
+  row?: boolean;
   /** always set flush left (qa) */
   left?: boolean;
   /** the room the words have in a line `width` px wide (a box's padding and border taken out); default all of it */
@@ -89,6 +91,9 @@ export interface CaptionLook {
   gloss?(s: CaptionS, e: LookEnv): Css;
   /** draws the name its own way (qa's badge); return false to leave it to the caption */
   name?(s: CaptionS, e: LookEnv): boolean;
+  /** a title's kicker (common.heading): CSS over its plain spaced line, given the title's colours and the kicker's font size in px
+   *  (pop: a small block of the outline colour) */
+  kicker?(p: { color: string; hl: string; outline: string; accent: string; kickerColor: string }, kfs: number): Css;
   /** after the box is styled: decorations that measure it (crayon's band, qa's wash; the caption hides both before every draw) */
   after?(s: CaptionS, e: LookEnv): void;
 }

@@ -98,6 +98,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'FRM-19': 'common.poster',
   'FRM-20': 'common.binocular',
   'FRM-21': 'common.photostack',
+  'FRM-22': 'common.popcard',
   'PHN-01': 'common.notify',
   'PHN-02': 'common.lockscreen',
   'PHN-03': 'common.reels',
@@ -120,6 +121,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'MRK-09': 'common.doodle',
   'MRK-10': 'common.token',
   'MRK-11': 'common.scraps',
+  'MRK-12': 'common.sticker',
   'LOK-01': 'common.backdrop',
   'LOK-02': 'common.ambient',
   'LOK-03': 'common.shader',
@@ -316,6 +318,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'CAP-90': 'caption:editorial-bar',
   'CAP-91': 'caption:color-boxes',
   'CAP-92': 'caption:story-serif',
+  'CAP-93': 'caption:pop-box',
   'TTL-01': 'title:plain-center',
   'TTL-02': 'title:doc-rules',
   'TTL-03': 'title:lower-bar',
@@ -362,6 +365,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'TTL-44': 'title:storybook',
   'TTL-45': 'title:story-card',
   'TTL-46': 'title:fin',
+  'TTL-47': 'title:pop',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
 export const RETIRED: Readonly<Record<string, string>> = {

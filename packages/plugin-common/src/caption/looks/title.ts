@@ -150,6 +150,25 @@ export const storybook: CaptionLook = {
   gloss: () => ({ fontStyle: 'italic', fontWeight: '400', fontFamily: "'Playfair Display', 'Noto Serif TC', serif" }),
 };
 /** storybook's small italic lines: no capital, digit or CJK letter in them */
+/** dopamine colour blocks (the Dopamine Colors pilot film's fx.poptitle, 2026-11-06): each line a flat block, set side by side and
+ *  tipped a little; the last block the accent colour with the words' colour, those before it the outline colour (ink) with the
+ *  highlight's; a line with no CJK letter in heavy italic Playfair (No.1); the kicker a small block of the outline colour */
+export const pop: CaptionLook = {
+  id: 'pop', only: 'title', weight: '900', font: 'Noto Serif TC', room: padded, row: true,
+  lines: (lines, e) => {
+    const n = lines.length, accent = e.p.accent || e.theme.palette.accent;
+    lines.forEach((l, i) => {
+      const last = i === n - 1, latin = !/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(l.textContent ?? '');
+      cssCamel(l, { display: 'inline-block', verticalAlign: 'bottom', margin: `0 0 0 ${i ? '0.1em' : '0'}`, padding: '0.04em 0.2em 0.07em', lineHeight: '1.12',
+        background: last ? accent : e.p.outline, color: last ? e.p.color : e.p.hl,
+        ...(latin ? { fontFamily: "'Playfair Display', 'Noto Serif TC', serif", fontStyle: 'italic' } : {}) });
+    });
+  },
+  pin: () => ' rotate(-2deg)',
+  kicker: (p, kfs) => ({ background: p.outline, color: p.kickerColor || '#ffffff', letterSpacing: '0.04em', textShadow: 'none', fontWeight: '900', fontFamily: "'Noto Serif TC', serif",
+    padding: `${(0.12 * kfs).toFixed(2)}px ${(0.4 * kfs).toFixed(2)}px` }),
+};
+
 export const isSoftLine = (text: string) => !!text.trim() && !/[A-Z0-9\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(text);
 
-export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle, didone, storybook];
+export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle, didone, storybook, pop];
