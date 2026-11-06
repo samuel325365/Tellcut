@@ -1,19 +1,17 @@
 # Credits: the pictures and the video in the README
 
-## The demo video ("Tellcut in 80 Seconds")
+## The demo video ("Tellcut in 30 Seconds")
 
-Screen recordings of Tellcut making, checking and editing videos from one sentence each, with the finished videos shown in a phone and side by side. The footage below appears in those recordings and videos, in short excerpts, re-framed, sped up and with our own captions, titles and effects on top; each is used under the Creative Commons Attribution 3.0 licence (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/).
+Screen recordings of Tellcut turning travel footage into comic-book reels from one sentence each, changing one by asking, and making a second one from a saved preset, with the finished reels shown in phones. The footage below appears in those recordings and reels in short excerpts, re-framed, sped up and with our own captions, titles and effects on top; each is used under the Creative Commons Attribution 3.0 licence (CC BY 3.0, https://creativecommons.org/licenses/by/3.0/).
 
-- **"What happened in Marrakesh, Morocco - BEST riad, food, souks (vlog)"** by **Helen** — https://www.youtube.com/watch?v=LJoXI39UiMw (the Marrakesh reel, made and edited in the recordings)
-- **"3 DAYS IN ROME ⛲️ 🍝 🇮🇹 Vatican City, Trevi Fountain, Colosseum & More | Italy Travel Vlog 2024"** by **Jackie Vlogs** — https://www.youtube.com/watch?v=qQGjPdTekyA (the Rome reel saved as a preset in the recordings)
-- **"Getting Real About Gen-Z Struggles w/@ThatAmberRose | The Lila Rose Podcast E178"** by **Lila Rose** — https://www.youtube.com/watch?v=zQjzr-Q3E_o (the podcast short)
-- **"KATIE'S SURPRISE SWEET SIXTEEN BIRTHDAY PARTY \*it was almost ruined!\*"** by **It's The Donnellys** — https://www.youtube.com/watch?v=YGjW-F2279Y (the birthday video)
+- **"What happened in Marrakesh, Morocco - BEST riad, food, souks (vlog)"** by **Helen** — https://www.youtube.com/watch?v=LJoXI39UiMw (the wall of clips at the start, and the Marrakesh reel made and edited in the recordings)
+- **"3 DAYS IN ROME ⛲️ 🍝 🇮🇹 Vatican City, Trevi Fountain, Colosseum & More | Italy Travel Vlog 2024"** by **Jackie Vlogs** — https://www.youtube.com/watch?v=qQGjPdTekyA (the Rome reel made from the saved preset)
 
-Music: Tellcut's own score ("market-groove"). Voice-over: synthesised (Microsoft edge-tts). The explainer in the video uses no footage. The logo is Tellcut's (`docs/brand/`). Type: Inter (SIL Open Font License).
+Music: Tellcut's own score ("market-groove"). No voice-over. The logo is Tellcut's (`docs/brand/`). Type: Nunito and Inter (SIL Open Font License).
 
-## The stills under "Your phone is full of clips" and "What the agent does"
+## The stills under "What the agent does"
 
-`wall.jpg`, `watch.jpg`, `check.jpg` and `ratio.jpg` are frames of the full-length version of the demo video ("Tellcut in 3 Minutes"); its footage is credited above (the phone in `wall.jpg` shows frames of the Marrakesh vlog, `ratio.jpg` the birthday video; `check.jpg` is the agent's report at the end of the Marrakesh recording). In `watch.jpg` a line with a folder path is blurred. `beat.jpg` is a frame of the podcast example made from the Lila Rose podcast (credited under the editor screenshots below), on a blurred copy of itself.
+`watch.jpg`, `check.jpg` and `ratio.jpg` are frames of an earlier, longer demo video ("Tellcut in 3 Minutes"), made in Tellcut from the Marrakesh vlog above and, in `ratio.jpg`, from **"KATIE'S SURPRISE SWEET SIXTEEN BIRTHDAY PARTY \*it was almost ruined!\*"** by **It's The Donnellys** — https://www.youtube.com/watch?v=YGjW-F2279Y, used under the Creative Commons Attribution 3.0 licence (CC BY 3.0). `check.jpg` is the agent's report at the end of the Marrakesh recording. In `watch.jpg` a line with a folder path is blurred. `beat.jpg` is a frame of the podcast example made from the Lila Rose podcast (credited under the editor screenshots below), on a blurred copy of itself.
 
 ## The banner
 

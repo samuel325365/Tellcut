@@ -34,20 +34,10 @@
 ## Watch
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/0d74927d-927c-434b-b340-e5fbab48c9ae" width="100%" controls></video>
+  <video src="https://github.com/user-attachments/assets/26bcd705-6045-4594-aca9-aaf5642b691c" width="100%" controls></video>
 </div>
 
-> **"Tellcut in 80 Seconds."** Nineteen minutes of Marrakesh footage and one sentence become a reel: the agent watches every clip and writes a storyboard before it cuts. Then fix things by hand, or select a part and ask, and see a preview before anything changes. Keep the effect it wrote, save the way the film was made as your own preset, and the next trip starts from it. Recorded in Tellcut, sped up where the agent works. ([credits](docs/readme/CREDITS.md))
-
----
-
-## Your phone is full of clips nobody edits
-
-<p align="center"><img src="docs/readme/wall.jpg" alt="Your phone is full of clips nobody edits." width="100%"></p>
-
-The trip, the birthday, the podcast you recorded last month: the footage is fine. What stops it from becoming a video is the editing: scrubbing through hours of clips, choosing shots, cutting, captioning, finding music.
-
-Tellcut hands that work to an agent and leaves the decisions with you. You describe the film. The agent makes a first cut you can watch. Then you change whatever you like, by hand or by asking.
+> **"Tellcut in 30 Seconds."** Nineteen minutes of Marrakesh footage and one sentence become a comic-book reel: the agent watches every clip and picks its shots before it cuts. Select a part and ask for a change, and see a preview before anything changes. Save the way the film was made as your own preset, and the next trip (Rome, here) comes out in the same style from one click and one sentence. Recorded in Tellcut, sped up where the agent works. ([credits](docs/readme/CREDITS.md))
 
 ---
 

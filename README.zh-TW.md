@@ -34,20 +34,10 @@
 ## 看片
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/0d74927d-927c-434b-b340-e5fbab48c9ae" width="100%" controls></video>
+  <video src="https://github.com/user-attachments/assets/26bcd705-6045-4594-aca9-aaf5642b691c" width="100%" controls></video>
 </div>
 
-> **「Tellcut in 80 Seconds」** 十九分鐘的馬拉喀什素材加一句話，變成一支短片：Agent 先看完每段素材、寫好分鏡才開剪。之後在時間軸上自己改，或選一段請 Agent 改，套用前先看預覽。它為這支片寫的特效可以留下，這支片的做法可以存成你自己的片型，下一趟旅行就從那裡開始。全程在 Tellcut 裡錄製，Agent 工作的部分有加速。（[出處](docs/readme/CREDITS.md)）
-
----
-
-## 手機裡的影片，大多沒有人剪
-
-<p align="center"><img src="docs/readme/wall.jpg" alt="手機裡塞滿了沒人剪的片段" width="100%"></p>
-
-出去玩、慶生、上個月錄的 Podcast，素材都拍好了，卡住的是剪：一段一段看、挑鏡頭、剪接、上字幕、找配樂。
-
-Tellcut 把這些工作交給 Agent，決定權留在你手上。你說想要什麼片，Agent 先剪出一支能看的初版，之後要怎麼改都可以，自己動手或開口請它改都行。
+> **「Tellcut in 30 Seconds」** 十九分鐘的馬拉喀什素材加一句話，變成一支漫畫風短片：Agent 先看完每段素材、挑好鏡頭才開剪。選一段請 Agent 改，套用前先看預覽。這支片的做法可以存成你自己的片型，下一趟旅行（這裡是羅馬）點一下片型、說一句話，就是同樣的風格。全程在 Tellcut 裡錄製，Agent 工作的部分有加速。（[出處](docs/readme/CREDITS.md)）
 
 ---
 
