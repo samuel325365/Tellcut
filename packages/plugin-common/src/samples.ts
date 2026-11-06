@@ -639,6 +639,11 @@ export const samples: Sample[] = [
   { name: 'poster', type: 'common.poster', sources: PIC, params: { photos: 'pic|0|0.5,0.5', side: 'ROUND · TAIWAN', barcode: 'RIDE · EAT · REPEAT' }, len: 3, at: [0.1, 1.5] },
   { name: 'band', type: 'common.band', len: 2, at: [0.1, 1.0], bg: '#4a6b7c' },
   { name: 'countdown-slant', type: 'common.countdown', params: { look: 'slant', from: 3, to: 1, end: '', colors: '#ff5a1f,#ffffff' }, len: 3, at: [0.2, 1.5], bg: '#4a6b7c' },
+  // common.binocular and common.photostack (2026-11-06, the Wes Anderson pilot film's fx.binocular / fx.cards): the windows opening
+  // and open, a spyglass; the stack with its first card sliding in and all three settled
+  { name: 'binocular', type: 'common.binocular', len: 2, at: [0.1, 1.0], bg: '#7a9a6a' },
+  { name: 'binocular-spyglass', type: 'common.binocular', params: { shape: 'spyglass', r: 0.35 }, len: 2, at: [1.0], bg: '#7a9a6a' },
+  { name: 'photostack', type: 'common.photostack', sources: PIC, params: { cards: 'pic|0|records, slowly\npic|0|by the window\npic|0|latte & a book' }, len: 3, at: [0.2, 2.5] },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title

@@ -135,4 +135,21 @@ export const didone: CaptionLook = {
   lines: (lines) => { if (lines.length > 1) cssCamel(lines[0], { fontSize: '0.45em', textAlign: 'left' }); },
 };
 
-export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle, didone];
+/** a storybook title (the Wes Anderson pilot film's fx.storytitle, 2026-11-06): heavy Playfair with a hard shadow in the outline colour;
+ *  a line with no capital, digit or CJK letter (a day, in, and finally,) is set half size in italic over it, and when every line is like
+ *  that (fin.) they keep their size; the line under it is italic too */
+export const storybook: CaptionLook = {
+  id: 'storybook', only: 'title', weight: '900', font: 'Playfair Display', room: padded,
+  box: (e) => ({ textShadow: `${(0.035 * e.fs).toFixed(1)}px ${(0.035 * e.fs).toFixed(1)}px 0 ${e.p.outline}`, lineHeight: '1' }),
+  lines: (lines) => {
+    const soft = lines.map((l) => isSoftLine(l.textContent ?? '')), all = soft.every(Boolean);
+    lines.forEach((l, i) => {
+      if (soft[i]) cssCamel(l, { fontStyle: 'italic', fontWeight: '400', fontSize: all ? '' : '0.5em', textShadow: '0 0.02em 0.08em rgba(0,0,0,0.5)' });
+    });
+  },
+  gloss: () => ({ fontStyle: 'italic', fontWeight: '400', fontFamily: "'Playfair Display', 'Noto Serif TC', serif" }),
+};
+/** storybook's small italic lines: no capital, digit or CJK letter in them */
+export const isSoftLine = (text: string) => !!text.trim() && !/[A-Z0-9\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(text);
+
+export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle, didone, storybook];

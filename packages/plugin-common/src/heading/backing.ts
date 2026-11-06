@@ -1,8 +1,9 @@
 // What sits behind a title (common.heading's `backing`): nothing, a dark band across the frame, the whole frame darkened, blurred or
-// black, a card, two rules above and below drawn out from the middle, or a bar at its left. Laid out from the title block's box.
+// black, a card, two rules above and below drawn out from the middle, a bar at its left, or (frame, 2026-11-06, the Wes Anderson pilot
+// film's title card) the whole frame in one colour with a double thin frame round the title. Laid out from the title block's box.
 import { cssCamel, h } from '@tellcut/engine';
 
-export const BACKINGS = ['none', 'band', 'scrim', 'blur', 'card', 'rules', 'bar', 'black'] as const;
+export const BACKINGS = ['none', 'band', 'scrim', 'blur', 'card', 'rules', 'bar', 'black', 'frame'] as const;
 export type Backing = typeof BACKINGS[number];
 
 export interface BackingEls { full: HTMLElement; band: HTMLElement; card: HTMLElement; ruleA: HTMLElement; ruleB: HTMLElement; bar: HTMLElement }
@@ -29,7 +30,7 @@ export interface BackingDraw {
 
 /** shows the one backing asked for and hides the others */
 export function drawBacking(els: BackingEls, d: BackingDraw) {
-  for (const e of Object.values(els)) cssCamel(e, { display: 'none' });
+  for (const e of Object.values(els)) cssCamel(e, { display: 'none', border: '' });
   const { block: b, fs, opacity } = d, o = opacity.toFixed(3);
   switch (d.backing) {
     case 'scrim': cssCamel(els.full, { display: 'block', inset: '0', background: d.color, backdropFilter: '', opacity: o }); break;
@@ -42,6 +43,15 @@ export function drawBacking(els: BackingEls, d: BackingDraw) {
       const len = (b.w + 0.6 * fs) * d.ruleP, th = Math.max(2, 3 * d.k), left = d.centered ? b.x + b.w / 2 - len / 2 : b.x;
       cssCamel(els.ruleA, { display: 'block', left: `${left.toFixed(2)}px`, width: `${len.toFixed(2)}px`, top: `${(b.y - 0.3 * fs).toFixed(2)}px`, height: `${th}px`, background: d.accent, opacity: o });
       cssCamel(els.ruleB, { display: 'block', left: `${left.toFixed(2)}px`, width: `${len.toFixed(2)}px`, top: `${(b.y + b.h + 0.3 * fs - th).toFixed(2)}px`, height: `${th}px`, background: d.accent, opacity: o });
+      break;
+    }
+    case 'frame': {
+      // the page, then a frame at least 78% of the width and 30% of the height round the title: a 2.5 px line and a thin one inside it
+      cssCamel(els.full, { display: 'block', inset: '0', background: d.color, backdropFilter: '', opacity: o });
+      const fw = Math.max(b.w + 1.6 * fs, 0.78 * d.W), fh = Math.max(b.h + 1.6 * fs, 0.3 * d.H), k = d.k;
+      cssCamel(els.card, { display: 'block', left: `${(b.x + b.w / 2 - fw / 2).toFixed(2)}px`, top: `${(b.y + b.h / 2 - fh / 2).toFixed(2)}px`, width: `${fw.toFixed(2)}px`, height: `${fh.toFixed(2)}px`,
+        background: 'transparent', borderRadius: '0', border: `${(2.5 * k).toFixed(2)}px solid ${d.accent}`,
+        boxShadow: `inset 0 0 0 ${(12 * k).toFixed(2)}px ${d.color}, inset 0 0 0 ${(13.5 * k).toFixed(2)}px ${d.accent}`, opacity: o });
       break;
     }
     case 'bar': cssCamel(els.bar, { display: 'block', left: `${(b.x - 0.45 * fs).toFixed(2)}px`, top: `${b.y.toFixed(2)}px`, width: `${(0.14 * fs).toFixed(2)}px`, height: `${b.h.toFixed(2)}px`, background: d.accent, opacity: o }); break;

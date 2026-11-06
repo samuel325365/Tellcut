@@ -161,6 +161,7 @@
   "tpl-editorial-bar-t1.50.png": "5200942863d2",
   "tpl-mono-box-t1.50.png": "20fbe1a88f7f",
   "tpl-color-boxes-t1.50.png": "4682adddcedb",
+  "tpl-story-serif-t1.50.png": "09f4aada964c",
   "tpl-comic-narration-t1.50.png": "34d718a40cb5",
   "ttl-plain-center-t1.50.png": "5d4f4b9803e6",
   "ttl-doc-rules-t1.50.png": "0e370dbc3247",
@@ -204,6 +205,9 @@
   "ttl-giant-mask-t1.50.png": "a48d9025b94c",
   "ttl-scrapbook-card-t1.50.png": "2bcafbde235d",
   "ttl-didone-full-t1.50.png": "60d135544171",
+  "ttl-storybook-t1.50.png": "0b2bab5cf2f0",
+  "ttl-story-card-t1.50.png": "e27d26b842f9",
+  "ttl-fin-t1.50.png": "16c7bff96898",
   "ttl-mono-cycle-t1.50.png": "ab49e42ad534"
  },
  "ja": {
@@ -368,6 +372,7 @@
   "tpl-editorial-bar-t1.50.png": "3decffbd805a",
   "tpl-mono-box-t1.50.png": "76d1f7d1e9a3",
   "tpl-color-boxes-t1.50.png": "b9007e0bff2b",
+  "tpl-story-serif-t1.50.png": "b29849a14a5d",
   "tpl-comic-narration-t1.50.png": "7c6b407bed4e",
   "ttl-plain-center-t1.50.png": "514768df5f81",
   "ttl-doc-rules-t1.50.png": "332ff55327f6",
@@ -411,6 +416,9 @@
   "ttl-giant-mask-t1.50.png": "f0d75ec2ccce",
   "ttl-scrapbook-card-t1.50.png": "aa1ab1b85828",
   "ttl-didone-full-t1.50.png": "71768402fc43",
+  "ttl-storybook-t1.50.png": "4d10916d9a21",
+  "ttl-story-card-t1.50.png": "ab0fa1a45225",
+  "ttl-fin-t1.50.png": "0588763c50b1",
   "ttl-mono-cycle-t1.50.png": "9d6942ecd68d"
  }
 }

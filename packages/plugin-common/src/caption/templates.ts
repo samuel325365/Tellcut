@@ -103,6 +103,7 @@ export const TEMPLATES: CaptionTemplate[] = [
   { id: 'editorial-bar', label: '雜誌旁白條', doc: '白底、左邊一條主題第二色（accent2）細條、黑色明體字，靠左；雜誌風的旁白（配 common.masthead、common.spread）', params: { style: 'bar', boxBg: '#ffffff', color: '#161412', font: 'Noto Serif TC', align: 'left', size: 2.6, animIn: 'fade', animOut: 'fade' } },
   { id: 'mono-box', label: '黑白框字幕', doc: '黑底小框、內圈一道白細線、白色粗字（配 common.monoframe 黑白字框；反過來用 color 黑、outline 白）', params: { style: 'mono', size: 2.6, color: '#ffffff', outline: '#0d0d0d', animIn: 'zoom', animOut: 'fade' } },
   { id: 'color-boxes', label: '單色疊框', doc: '一行一塊直角的主色方框、黑色粗黑體，靠左，擦出來；照拍子的快剪（配 common.grade 單色調色、common.poster 海報頁）', params: { style: 'boxes', color: '#111111', size: 2.8, animIn: 'wipe', animOut: 'none' } },
+  { id: 'story-serif', label: '芥末黃明體', doc: '芥末黃的明體字置中、淡入淡出，放在影片上下的素色色塊上（common.backdrop solid ＋片段 frame）；故事書風、Wes Anderson 風的旅行片（配標題範本 storybook）', params: { style: 'plain', font: 'Noto Serif TC', color: '#e8b13c', size: 2.5, animIn: 'fade', animOut: 'fade' } },
   { id: 'comic-narration', label: '漫畫旁白框', doc: '黃底細黑框的漫畫旁白框，靠左上角擦出（配 common.comic 漫畫頁）', params: { style: 'narration', position: 'top', size: 3, animIn: 'wipe', hl: '#ffe14d' } },
 ];
 

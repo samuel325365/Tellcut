@@ -49,6 +49,9 @@ export const TITLE_TEMPLATES: TitleTemplate[] = [
   { id: 'giant-mask', label: '巨字露出', doc: '撐滿畫面寬的巨大字由下往上露出、往下收掉；章節數字、一個字的開場', params: { style: 'giant', layout: 'full', animIn: 'mask', animOut: 'sink' } },
   { id: 'scrapbook-card', label: '剪貼簿標題卡', doc: '奶油色卡片上橘紅的粗襯線字，上下雙線、左上露出一塊青綠紙片，微斜；剪貼簿、旅行、家庭的片名（配 common.prints）', params: { style: 'scrapbook', layout: 'top', accent: '#d9533a', hl: '#1f9e93', animIn: 'zoom', animOut: 'fade' } },
   { id: 'didone-full', label: '雜誌巨標', doc: '時尚雜誌的超大高反差襯線字（深色），第一行是小一號的冠詞（THE），第二行撐滿畫面寬（英文最好看；第一行要比第二行短），由下往上露出；城市、地標、美食專題的大標（配 common.masthead 雜誌刊頭）', params: { style: 'didone', layout: 'full', color: '#141414', animIn: 'mask', animOut: 'fade' } },
+  { id: 'storybook', label: '故事書標題', doc: '芥末黃的粗襯線大字、右下一道深色硬陰影，上面沒有大寫字母的行（a day / in、simply）是小一號的斜體引言，下面一行斜體小字；故事書風、Wes Anderson 風的片名和段落（a day in KYOTO、simply BLOOM.），配 common.binocular、common.photostack、字幕範本 story-serif', params: { style: 'storybook', layout: 'center', color: '#e8b13c', outline: '#3b2516', animIn: 'rise', animOut: 'fade' } },
+  { id: 'story-card', label: '故事書標題卡', doc: '整頁青綠底、兩道芥末黃細框，框裡是故事書標題（斜體引言 and finally,、粗襯線大字、下面一行斜體小字 — the last stop —）；最後一站、下一章的標題卡（backColor 換底色、accent 換框色）', params: { style: 'storybook', layout: 'center', backing: 'frame', backColor: '#4f8d88', accent: '#e8b13c', color: '#e8b13c', outline: '#2c4f4b', size: 7, animIn: 'fade', animOut: 'fade' } },
+  { id: 'fin', label: '故事書片尾', doc: '全黑底上一行芥末黃斜體 fin.，下面一行小字（城市名、片名）；故事書風的片尾', params: { style: 'storybook', layout: 'center', backing: 'black', color: '#e8b13c', size: 7, animIn: 'fade', animOut: 'fade' } },
   { id: 'mono-cycle', label: '輪流實心疊字', doc: '寬的幾何大寫字疊起來，一次只有一行實心、其他空心，實心的那一行每 0.45 秒往下換，故障閃入；旅行、城市、潮流感的片名和章節（配 common.monoframe）', params: { style: 'cycle', layout: 'center', animIn: 'glitch', animOut: 'fade' } },
 ];
 

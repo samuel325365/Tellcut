@@ -35,7 +35,7 @@ const CAPTION_DEFAULTS = Object.fromEntries(caption.params.map((d) => [d.key, d.
 
 export const heading: ItemType<HeadingP, HeadingS> = {
   type: 'common.heading', label: '標題', category: 'title', kind: 'overlay',
-  doc: '一個標題（片名、章節、地名、片尾）：外觀（style，字幕的外觀加標題專用的）、版面（layout）、底（backing）、進場、出場、顏色和字型自由搭配；常用的組合是具名的標題範本（npm run tellcut -- catalog TTL 列出全部，template 填它的 id，整支片用 c.titleTemplate）。kicker 是主標上面的一行小字、sub 是下面小一號的一行；【詞】變高亮色；layout：center 正中、top 上方、bottom 下方、lower 左下（大一點的人名條位置）、left 靠左置中、corner 右上角、full 放大到撐滿安全區寬；backing：band 暗色橫帶、scrim 整個畫面壓暗、blur 整個畫面模糊、card 實色卡片、rules 上下兩條細線、bar 左邊色條、black 全黑；進場另有 track 字距收緊、mask 由下往上露出、open 從中間打開、focus 由模糊放大到清楚、rule 先畫線再出字，出場另有 spread 字距散開、sink 往下收掉',
+  doc: '一個標題（片名、章節、地名、片尾）：外觀（style，字幕的外觀加標題專用的）、版面（layout）、底（backing）、進場、出場、顏色和字型自由搭配；常用的組合是具名的標題範本（npm run tellcut -- catalog TTL 列出全部，template 填它的 id，整支片用 c.titleTemplate）。kicker 是主標上面的一行小字、sub 是下面小一號的一行；【詞】變高亮色；layout：center 正中、top 上方、bottom 下方、lower 左下（大一點的人名條位置）、left 靠左置中、corner 右上角、full 放大到撐滿安全區寬；backing：band 暗色橫帶、scrim 整個畫面壓暗、blur 整個畫面模糊、card 實色卡片、rules 上下兩條細線、bar 左邊色條、black 全黑、frame 整頁 backColor 色加兩道 accent 色的細框（故事書標題卡）；進場另有 track 字距收緊、mask 由下往上露出、open 從中間打開、focus 由模糊放大到清楚、rule 先畫線再出字，出場另有 spread 字距散開、sink 往下收掉',
   params: [
     { key: 'text', label: '主標（可換行；【高亮】）', type: 'text', default: '一座廣場的七百年' },
     { key: 'template', label: '標題範本（catalog TTL 列出全部；空＝專案的預設範本，沒有就照下面的參數）', type: 'string', default: '' },
@@ -43,7 +43,7 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     { key: 'sub', label: '主標下面的一行（空＝不顯示）', type: 'string', default: '' },
     { key: 'style', label: '外觀（字幕的外觀加標題專用的）', type: 'enum', options: HEADING_LOOKS, default: 'heavy' },
     { key: 'layout', label: '版面（center 正中、top 上方、bottom 下方、lower 左下、left 靠左、corner 右上角、full 撐滿寬）', type: 'enum', options: [...TITLE_LAYOUTS], default: 'center' },
-    { key: 'backing', label: '底（band 暗帶、scrim 壓暗、blur 模糊、card 卡片、rules 上下細線、bar 左邊色條、black 全黑）', type: 'enum', options: [...BACKINGS], default: 'none' },
+    { key: 'backing', label: '底（band 暗帶、scrim 壓暗、blur 模糊、card 卡片、rules 上下細線、bar 左邊色條、black 全黑、frame 整頁底色加兩道細框）', type: 'enum', options: [...BACKINGS], default: 'none' },
     { key: 'size', label: '字級（畫面高 %；full 版面照最長一行撐滿寬，不看這個）', type: 'number', min: 2, max: 30, step: 0.1, default: 9 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'color', label: '文字顏色', type: 'color', default: '#ffffff' },
