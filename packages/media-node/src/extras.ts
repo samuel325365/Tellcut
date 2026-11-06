@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { splitAtPauses, type Transcript } from '@tellcut/engine';
 import { analysisFiles, analyzeSource, atomic } from './analysis.ts';
 import { detectBurned, type Burned } from './burned.ts';
+import { readBurnedText } from './burned-read.ts';
 import { ffmpeg, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
 import { analysisName } from './hash.ts';
 import { background } from './limit.ts';
@@ -24,7 +25,7 @@ export interface Beats { bpm: number; offset: number; beats: number[] }
 
 export function extrasFiles(projectDir: string, srcPath: string) {
   const dir = analysisFiles(projectDir, srcPath).dir;
-  return { transcript: join(dir, 'transcript.json'), transcriptBy: join(dir, 'transcript.by'), version: join(dir, 'extras.version'), burned: join(dir, 'burned-v3.json') /* v2: the box re-centred on the text line (phase 5); v3: short captions, other text (2026-11-06) */, sheets: join(dir, 'sheets.json'), sheet: (n: number) => join(dir, `sheet-${n}.jpg`) };
+  return { transcript: join(dir, 'transcript.json'), transcriptBy: join(dir, 'transcript.by'), version: join(dir, 'extras.version'), burned: join(dir, 'burned-v4.json') /* v2: the box re-centred on the text line (phase 5); v3: short captions, other text; v4: that text read (2026-11-06) */, sheets: join(dir, 'sheets.json'), sheet: (n: number) => join(dir, `sheet-${n}.jpg`) };
 }
 /** A source's transcript as everything reads it: a sentence carried across a long pause split at the pause (splitAtPauses). */
 export function readTranscript(projectDir: string, srcPath: string): Transcript | null {
@@ -33,15 +34,15 @@ export function readTranscript(projectDir: string, srcPath: string): Transcript 
 }
 
 /**
- * The burned-caption result of a source: burned-v3.json; else an older one, so a project analysed earlier keeps its checks until
- * inspect (or the server) makes v3: burned-v2.json (no `text`, its caption row missed one- or two-word captions), or one saved
- * before phase 5 (burned.json, its box at − 0.07 … + 0.05 around the text line) moved onto the line the way v2 has it.
+ * The burned-caption result of a source: burned-v4.json; else an older one, so a project analysed earlier keeps its checks until
+ * inspect (or the server) makes v4: burned-v3.json (its other text never read: no `ocr`, every piece a guess), burned-v2.json (no
+ * `text`, its caption row missed one- or two-word captions), or one saved before phase 5 (burned.json, its box at − 0.07 … + 0.05
+ * around the text line) moved onto the line the way v2 has it.
  */
 export function readBurned(projectDir: string, srcPath: string): Burned | null {
-  const f = extrasFiles(projectDir, srcPath).burned, v2 = join(dirname(f), 'burned-v2.json'), old = join(dirname(f), 'burned.json');
+  const f = extrasFiles(projectDir, srcPath).burned, old = join(dirname(f), 'burned.json');
   try {
-    if (existsSync(f)) return JSON.parse(readFileSync(f, 'utf8')) as Burned;
-    if (existsSync(v2)) return JSON.parse(readFileSync(v2, 'utf8')) as Burned;
+    for (const x of [f, join(dirname(f), 'burned-v3.json'), join(dirname(f), 'burned-v2.json')]) if (existsSync(x)) return JSON.parse(readFileSync(x, 'utf8')) as Burned;
     if (!existsSync(old)) return null;
     const b = JSON.parse(readFileSync(old, 'utf8')) as Burned;
     if (b.caption) { const [x, y, w] = b.caption.rect, y2 = +(y + 0.025).toFixed(3); b.caption.rect = [x, y2, w, +Math.min(0.09, 1 - y2).toFixed(3)]; }
@@ -136,7 +137,8 @@ export async function sourceExtras(projectDir: string, srcPath: string, o: { lab
     }
     if (!existsSync(f.burned)) {   // captions burned into the picture (toolkit phase 2d); quick, so before the transcript
       o.onStep?.('burned', 1, 3);
-      try { await atomic(f.burned, async (tmp) => writeFileSync(tmp, JSON.stringify(await detectBurned(a.proxy, { signal: o.signal })))); }
+      // the other text found is then read (burned-read.ts): what reads as nothing is a guess, not listed one by one
+      try { await atomic(f.burned, async (tmp) => writeFileSync(tmp, JSON.stringify(await readBurnedText(a.proxy, await detectBurned(a.proxy, { signal: o.signal }), { signal: o.signal })))); }
       catch (err) { if (o.signal?.aborted) throw err; /* optional: the transcript below still runs */ }
     }
     mkdirSync(dirname(f.version), { recursive: true });

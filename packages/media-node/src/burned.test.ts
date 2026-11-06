@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { BURN_H, BURN_W, captionProfile, detectBurned, isCaption, stillCells, summarizeBurned, summarizeText, type CaptionProfile } from './burned.ts';
+import { BURN_H, BURN_W, captionProfile, detectBurned, isCaption, readableWords, settleText, stillCells, summarizeBurned, summarizeText, type CaptionProfile } from './burned.ts';
 import { run } from './ffmpeg.ts';
 import { extrasFiles, readBurned } from './extras.ts';
 
@@ -82,13 +82,23 @@ test('the summary gives the caption row and the stretches of time, bridges a sho
   // at two frames a second the limits are the same in seconds: 2.5 s of caption in all is noise, a 2 s miss is bridged
   expect(summarizeBurned([...Array.from({ length: 5 }, () => P(true)), ...Array.from({ length: 20 }, () => P(false))], 0.5).caption).toBeNull();
   expect(summarizeBurned([...[1, 1, 1, 0, 0, 0, 1, 1, 1].map((x) => P(!!x)), ...Array.from({ length: 30 }, () => P(false))], 0.5).caption?.spans).toEqual([[0, 4.5]]);
-  // text that stays put on the caption row is the caption's: its time joins the caption's spans (a word the strokes missed), and
-  // it is not listed as other text; a label elsewhere is
+  // the other text found is only candidates: listed, not yet joined to the caption (settleText does that once it is read)
   const label = [31, 32, 33, 34], row = [14 * 30 + 13, 14 * 30 + 14, 14 * 30 + 15];
   const withRow = summarizeBurned(Array.from({ length: 40 }, (_, i) => P(i < 12, 0.85)), 0.5,
     Array.from({ length: 40 }, (_, i) => [...(i >= 2 && i <= 8 ? label : []), ...(i >= 22 && i <= 28 ? row : [])]));
-  expect(withRow.caption?.spans).toEqual([[0, 6], [10.5, 14.5]]);
-  expect(withRow.text?.map((t) => t.band)).toEqual(['top']);
+  expect(withRow.caption?.spans).toEqual([[0, 6]]);
+  expect(withRow.text?.map((t) => t.band)).toEqual(['top', 'bottom']);
+  // read: the words stay on their piece; a piece on the caption row read as words is the caption's (its time joins the spans)
+  const read = settleText(withRow, ['DAY 3', 'enjoy!']);
+  expect(read.caption?.spans).toEqual([[0, 6], [10.5, 14.5]]);
+  expect(read.text).toEqual([{ ...withRow.text![0], words: 'DAY 3' }]);
+  expect(read.ocr).toEqual({ ok: true });
+  // nothing read in it (a railing standing still beside a caption): kept as a guess, the caption's spans as they were
+  const railing = settleText(withRow, ['DAY 3', ' l ']);
+  expect([railing.caption?.spans, railing.text?.map((t) => t.words)]).toEqual([[[0, 6]], ['DAY 3', undefined]]);
+  // no OCR here: every piece a guess, why said, nothing joined
+  expect(settleText(withRow, null, 'no OCR language')).toMatchObject({ caption: { spans: [[0, 6]] }, ocr: { ok: false, why: 'no OCR language' } });
+  expect([readableWords('6:00 AM'), readableWords('台北'), readableWords('l 。'), readableWords('11')]).toEqual([true, true, false, false]);
   // without the frames' cells there is no `text` (nothing was looked for); with them, there is
   expect(summarizeBurned([P(false)], 1)).not.toHaveProperty('text');
   expect(summarizeBurned([P(false)], 1, [[]]).text).toEqual([]);
@@ -130,7 +140,9 @@ test('a result saved before phase 5 is still read, its box moved onto the text l
     expect(readBurned(dir, src)?.caption?.rect).toEqual([0.08, 0.885, 0.84, 0.09]);   // the line at 0.93, as v2 boxes it
     writeFileSync(join(dirname(f), 'burned-v2.json'), JSON.stringify({ version: 1, step: 1, frames: 10, caption: { share: 0.5, rect: [0.08, 0.8, 0.84, 0.09], spans: [[0, 5]] } }));
     expect(readBurned(dir, src)?.caption?.rect[1]).toBe(0.8);   // v2 as it is, ahead of v1
-    writeFileSync(f, JSON.stringify({ version: 1, step: 0.5, frames: 20, caption: null, text: [] }));
+    writeFileSync(join(dirname(f), 'burned-v3.json'), JSON.stringify({ version: 1, step: 0.5, frames: 20, caption: null, text: [] }));
     expect(readBurned(dir, src)).toEqual({ version: 1, step: 0.5, frames: 20, caption: null, text: [] });   // v3 ahead of both
+    writeFileSync(f, JSON.stringify({ version: 1, step: 0.5, frames: 20, caption: null, text: [], ocr: { ok: true } }));
+    expect(readBurned(dir, src)?.ocr).toEqual({ ok: true });   // v4 ahead of all
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

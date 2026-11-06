@@ -77,9 +77,16 @@ export interface BurnedText {
   /** where, as [x, y, w, h] in fractions of the picture (16 px cells of a 480×270 frame: a little larger than the letters) */
   rect: [number, number, number, number];
   band: TextBand;
+  /** what text recognition read in that box (burned-read.ts); none: nothing read, or not read at all (see `Burned.ocr`) */
+  words?: string;
 }
-/** `text`: other text in the picture (2026-11-06); a result saved before that has none, which says nothing either way */
-export interface Burned { version: 1; step: number; frames: number; caption: BurnedCaption | null; text?: BurnedText[] }
+/**
+ * `text`: other text in the picture (2026-11-06); a result saved before that has none, which says nothing either way.
+ * `ocr`: whether `text` was read with text recognition — `ok`: a piece with no `words` is one nothing could be read in (a still
+ * shot's railing, a building; or display lettering OCR cannot read), not `ok`: this PC could not read (`why`), every piece is a
+ * guess. Missing (burned-v3, before the reading): every piece is a guess.
+ */
+export interface Burned { version: 1; step: number; frames: number; caption: BurnedCaption | null; text?: BurnedText[]; ocr?: { ok: boolean; why?: string } }
 
 /** text cells: CELL px squares of the BURN_W×BURN_H frame, numbered row by row */
 const CELL = 16, GW = BURN_W / CELL, GH = Math.ceil(BURN_H / CELL);
@@ -207,6 +214,29 @@ const mergeSpans = (spans: Array<[number, number]>, gap: number) => [...spans].s
   return out;
 }, []);
 
+/** worth taking for text: two CJK characters, or three letters or digits ("6:00 AM"); OCR reads a speck of texture as "l" or "。" */
+const CJK = /[㐀-鿿豈-﫿぀-ヿ가-힯]/g;
+export const readableWords = (s: string) => (s.match(CJK)?.length ?? 0) >= 2 || (s.match(/[A-Za-z0-9]/g)?.length ?? 0) >= 3;
+
+/**
+ * What text recognition read in each piece of `b.text` (`words[i]`, '' for nothing), or null with `why` when it could not read.
+ * Words worth taking are kept on their piece. Pieces read as words on the caption row are the caption's too: a word or two the
+ * stroke profile missed (white letters on a bright pool, busy ground beside them), so their times join the caption's spans and
+ * cropping it away (avoidBurned) covers them — only those read, so a railing standing still beside a caption never widens them.
+ */
+export function settleText(b: Burned, words: string[] | null, why = ''): Burned {
+  const text = b.text ?? [];
+  if (!words) return { ...b, text, ocr: { ok: false, why } };
+  const read = text.map((t, i) => {
+    const w = (words[i] ?? '').replace(/\s+/g, ' ').trim();
+    return readableWords(w) ? { ...t, words: w.slice(0, 80) } : t;
+  });
+  const c = b.caption, row = c ? read.filter((t) => t.words && onRow(t, c)) : [];
+  if (!c || !row.length) return { ...b, text: read, ocr: { ok: true } };
+  const spans = mergeSpans([...c.spans, ...row.map((t) => t.span)], 0).map(([x, y]) => [+x.toFixed(2), +y.toFixed(2)] as [number, number]);
+  return { ...b, caption: { ...c, spans }, text: read.filter((t) => !row.includes(t)), ocr: { ok: true } };
+}
+
 const MIN_SHARE = 0.08, MIN_SECONDS = 3, GAP_SECONDS = 2;
 /**
  * The caption zone and its time spans from one profile per `step` seconds. A few lone hits (under MIN_SECONDS of the whole video)
@@ -215,16 +245,8 @@ const MIN_SHARE = 0.08, MIN_SECONDS = 3, GAP_SECONDS = 2;
 export function summarizeBurned(profiles: CaptionProfile[], step: number, cells?: Array<number[] | null>): Burned {
   const flags = profiles.map(isCaption), hits = flags.filter(Boolean).length;
   const base: Burned = { version: 1, step, frames: profiles.length, caption: null };
-  const withText = (b: Burned): Burned => {
-    if (!cells) return b;
-    const text = summarizeText(cells, step), c = b.caption;
-    if (!c) return { ...b, text };
-    // text that stays put on the caption row is caption too: a word or two the stroke profile missed (white letters on a bright
-    // pool, busy ground beside them), so cropping it away (avoidBurned) covers those times as well
-    const row = text.filter((t) => onRow(t, c));
-    const spans = mergeSpans([...c.spans, ...row.map((t) => t.span)], 0).map(([x, y]) => [+x.toFixed(2), +y.toFixed(2)] as [number, number]);
-    return { ...b, caption: { ...c, spans }, text: text.filter((t) => !onRow(t, c)) };
-  };
+  // the pieces are only candidates until text recognition has looked at them (settleText)
+  const withText = (b: Burned): Burned => (cells ? { ...b, text: summarizeText(cells, step) } : b);
   if (hits * step < MIN_SECONDS - 1e-6 || hits / Math.max(1, profiles.length) < MIN_SHARE) return withText(base);
   const gap = Math.round(GAP_SECONDS / step), spans: Array<[number, number]> = [];
   let start = -1, last = -1;

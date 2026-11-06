@@ -95,15 +95,26 @@ test('burned-in captions show in the overview as one line and in the detail with
   expect(det).toContain('avoidBurned');
   expect(formatInventory(mk(null))).not.toContain('燒字');
   expect(formatSource(mk({ version: 1, step: 1, frames: 10, caption: null }), 'walk')).not.toContain('燒進畫面');
-  // the footage's own text elsewhere (labels, titles): counted by band in the overview, listed with times and place in the detail
-  const text = { version: 1, step: 0.5, frames: 150, caption: null, text: [
-    { span: [1, 5], rect: [0.4, 0.77, 0.2, 0.12], band: 'bottom' }, { span: [20, 23.5], rect: [0.7, 0.06, 0.27, 0.12], band: 'top' },
+  // the footage's own text elsewhere (labels, titles), not read (no OCR here, or an analysis from before the reading): every piece
+  // listed as found, said to be unconfirmed
+  const pieces = [
+    { span: [1, 5], rect: [0.4, 0.77, 0.2, 0.12], band: 'bottom' }, { span: [20, 23.5], rect: [0.7, 0.06, 0.27, 0.12], band: 'top', words: '6:00 AM' },
     { span: [40, 52], rect: [0, 0, 1, 1], band: 'full' },
-  ] };
-  expect(formatInventory(mk(text))).toContain('畫面裡其他的字：3 段（上方 1、下方 1、大半個畫面 1）');
+  ];
+  const text = { version: 1, step: 0.5, frames: 150, caption: null, text: pieces, ocr: { ok: false, why: '沒有文字辨識' } };
+  expect(formatInventory(mk(text))).toContain('畫面裡其他的字：3 段（上方 1、下方 1、大半個畫面 1），可能是地名標籤、標題、浮水印（沒有用文字辨識確認：沒有文字辨識）');
   const td = formatSource(mk(text), 'walk');
-  expect(td).toContain('原片自己的字（字幕列以外，3 段');
-  expect(td).toContain('0:20.0–0:23.5 上方（左右 70–97%、上下 6–18%）');
+  expect(td).toContain('原片自己的字（字幕列以外，3 段；只看畫面找的，沒有用文字辨識確認：沒有文字辨識）');
+  expect(formatSource(mk({ ...text, ocr: undefined }), 'walk')).toContain('0:01.0–0:05.0 下方（左右 40–60%、上下 77–89%）');
+  // read: what was read is listed with its words, the rest is one line
+  const read = { ...text, ocr: { ok: true } };
+  expect(formatInventory(mk(read))).toContain('畫面裡其他的字：1 段（上方 1），像是「6:00 AM」；位置和時間看 --source；另有 2 段可能是字（沒讀出字');
+  const rd = formatSource(mk(read), 'walk');
+  expect(rd).toContain('文字辨識讀到 1 段');
+  expect(rd).toContain('0:20.0–0:23.5 上方「6:00 AM」（左右 70–97%、上下 6–18%）');
+  expect(rd).not.toContain('0:01.0–0:05.0');
+  expect(rd).toContain('另有 2 段可能是字');
+  expect(formatInventory(mk({ ...read, text: [] }))).not.toContain('其他的字');
   expect(formatSource(mk(burned), 'walk')).not.toContain('字幕列以外');   // an analysis from before has no `text`: nothing said
 });
 

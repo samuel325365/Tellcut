@@ -117,7 +117,8 @@ export function formatInventory(inv: Inventory): string {
     const what = s.kind === 'image' ? '照片' : `影片 ${mmss(s.duration)}，${s.segments.length} 段${s.audio ? '，有聲音' : ''}`;
     L.push(`${s.id}：${what}，${s.width}×${s.height}（${{ portrait: '直式', landscape: '橫式', square: '方形' }[s.orientation]}），${s.taken ? `${s.taken.replace('T', ' ')}${s.takenGuess ? '（推測）' : ''}` : '時間不明'}`);
     if (s.burned?.caption) L.push(burnedLine(s.burned.caption));
-    if (s.burned?.text?.length) L.push(textLine(s.burned.text));
+    const own = s.burned ? textLine(s.burned) : null;
+    if (own) L.push(own);
     if (s.speech) L.push(`  說話：${s.speech}${s.speech.length >= 80 ? '…' : ''}`);
     if (s.transcribing) L.push(transcribingLine(s.duration, s.transcribing));
     if (s.pending) L.push(`  伺服器正在分析這段素材（${s.pending}）。不用等，也不要自己再跑：先做不需要它的部分，或結束這一輪，好了會自動送訊息叫你繼續`);
@@ -162,21 +163,40 @@ export function burnedDetail(c: BurnedCaption): string[] {
 }
 
 const BAND = { top: '上方', middle: '中間', bottom: '下方', full: '大半個畫面' } as const;
-/** one line in the overview: the footage's own text elsewhere in the picture (labels, titles, watermarks) */
-export function textLine(t: BurnedText[]): string {
-  const n = (b: BurnedText['band']) => t.filter((x) => x.band === b).length;
-  const where = (['top', 'middle', 'bottom', 'full'] as const).filter((b) => n(b)).map((b) => `${BAND[b]} ${n(b)}`).join('、');
-  return `  畫面裡其他的字：${t.length} 段（${where}），可能是地名標籤、標題、浮水印；用之前先看 --source`;
+/** the pieces text recognition read words in, and the guesses: nothing read in them, or never read (`ocr` not ok, or an analysis
+ *  from before the reading) */
+function sortText(b: Burned) {
+  const t = b.text ?? [], checked = !!b.ocr?.ok;
+  return { read: checked ? t.filter((x) => x.words) : [], guess: checked ? t.filter((x) => !x.words) : t, checked, why: b.ocr?.why };
+}
+const bands = (t: BurnedText[]) => (['top', 'middle', 'bottom', 'full'] as const).map((b) => [b, t.filter((x) => x.band === b).length] as const)
+  .filter(([, n]) => n).map(([b, n]) => `${BAND[b]} ${n}`).join('、');
+const GUESS = '可能是字（沒讀出字：花體字、太小，或固定鏡頭裡不動的東西）';
+/** one line in the overview: the footage's own text elsewhere in the picture (labels, titles, watermarks); null: none found */
+export function textLine(b: Burned): string | null {
+  const { read, guess, checked, why } = sortText(b);
+  if (!checked) return guess.length ? `  畫面裡其他的字：${guess.length} 段（${bands(guess)}），可能是地名標籤、標題、浮水印（沒有用文字辨識確認${why ? `：${why}` : ''}）；用之前先看 --source` : null;
+  if (!read.length && !guess.length) return null;
+  const some = read.slice(0, 3).map((x) => `「${x.words!.slice(0, 20)}」`).join('');
+  return `  畫面裡其他的字：${read.length ? `${read.length} 段（${bands(read)}），像是${some}${read.length > 3 ? '…' : ''}；位置和時間看 --source` : '沒讀到'}${guess.length ? `；另有 ${guess.length} 段${GUESS}` : ''}`;
 }
 const MAX_TEXT = 60;
-/** `inspect --source`: when and where the footage shows its own text outside the caption row */
-const textRow = (x: BurnedText) => `  ${timecode1(x.span[0])}–${timecode1(x.span[1])} ${BAND[x.band]}（左右 ${pct(x.rect[0])}–${pct(x.rect[0] + x.rect[2])}%、上下 ${pct(x.rect[1])}–${pct(x.rect[1] + x.rect[3])}%）`;
-export function textDetail(t: BurnedText[]): string[] {
+const where = (x: BurnedText) => `（左右 ${pct(x.rect[0])}–${pct(x.rect[0] + x.rect[2])}%、上下 ${pct(x.rect[1])}–${pct(x.rect[1] + x.rect[3])}%）`;
+/** one piece: when, where, and what was read in it (or that it is a guess) */
+const textRow = (x: BurnedText, guess = false) => `  ${timecode1(x.span[0])}–${timecode1(x.span[1])} ${BAND[x.band]}${x.words ? `「${x.words}」` : ''}${where(x)}${guess ? ' 未確認' : ''}`;
+/** `inspect --source`: when and where the footage shows its own text outside the caption row, and what it says */
+export function textDetail(b: Burned): string[] {
+  const { read, guess, checked, why } = sortText(b);
+  const advice = '  多半是原片疊上去的地名標籤、標題、時間、浮水印；用到這些時段前先看縮圖（--range），用 crop 把它裁出畫面、把我們的字放到別處，或換鏡頭。';
+  if (!checked) return [
+    `原片自己的字（字幕列以外，${guess.length} 段；只看畫面找的，沒有用文字辨識確認${why ? `：${why}` : ''}）：`,
+    ...guess.slice(0, MAX_TEXT).map((x) => textRow(x)), ...(guess.length > MAX_TEXT ? [`  （還有 ${guess.length - MAX_TEXT} 段沒列出）`] : []),
+    `${advice}「大半個畫面」也可能是字卡、截圖或固定鏡頭。`,
+  ];
   return [
-    `原片自己的字（字幕列以外，${t.length} 段；只看畫面找的，沒有辨識文字）：`,
-    ...t.slice(0, MAX_TEXT).map(textRow),
-    ...(t.length > MAX_TEXT ? [`  （還有 ${t.length - MAX_TEXT} 段沒列出）`] : []),
-    '  多半是原片疊上去的地名標籤、標題、浮水印、分割畫面；「大半個畫面」也可能是字卡、截圖或固定鏡頭。用到這些時段前先看縮圖（--range），用 crop 把它裁出畫面、把我們的字放到別處，或換鏡頭。',
+    ...(read.length ? [`原片自己的字（字幕列以外，文字辨識讀到 ${read.length} 段；讀到的字可能有錯字）：`, ...read.slice(0, MAX_TEXT).map((x) => textRow(x)),
+      ...(read.length > MAX_TEXT ? [`  （還有 ${read.length - MAX_TEXT} 段沒列出）`] : []), advice] : []),
+    ...(guess.length ? [`另有 ${guess.length} 段${GUESS}；--range 會列出該段裡的這些，標「未確認」`] : []),
   ];
 }
 
@@ -193,7 +213,7 @@ export function formatSource(inv: Inventory, sid: string): string {
   L.push(...s.segments.slice(0, MAX_SCENES).map(([a, b], i) => `  #${i + 1} ${timecode1(a)}–${timecode1(b)}`));
   if (s.segments.length > MAX_SCENES) L.push(`  （還有 ${s.segments.length - MAX_SCENES} 段沒列出）`);
   if (s.burned?.caption) L.push('', ...burnedDetail(s.burned.caption));
-  if (s.burned?.text?.length) L.push('', ...textDetail(s.burned.text));
+  if (s.burned?.text?.length) L.push('', ...textDetail(s.burned));
   const said = (s.transcript?.segments ?? []).filter((x) => x.text.trim()), shown = said.slice(0, MAX_SAID);
   L.push('', said.length ? '說話：' : '說話：（沒有逐字稿）', ...shown.map((x) => `  ${timecode1(x.start)}–${timecode1(x.end)} ${x.text.trim()}`));
   // a long talk would not fit in one read: the first sentences, and the way to look at any stretch
@@ -250,7 +270,9 @@ export async function formatSourceRange(inv: Inventory, sid: string, range: [num
     }
     await photoSheet(out, cells, undefined, { cols: 6, cellW: 320 });
   } finally { rmSync(tmp, { recursive: true, force: true }); }
-  const own = (s.burned?.text ?? []).filter((x) => x.span[1] > a && x.span[0] < b);   // the footage's own text in this stretch
+  // the footage's own text in this stretch: what was read, then the guesses, marked
+  const inside = (x: BurnedText) => x.span[1] > a && x.span[0] < b, sorted = s.burned ? sortText(s.burned) : null;
+  const own = sorted ? [...sorted.read.filter(inside).map((x) => textRow(x)), ...sorted.guess.filter(inside).map((x) => textRow(x, true))] : [];
   const scenes = s.segments.filter(([x, y]) => y > a && x < b), said = (s.transcript?.segments ?? []).filter((x) => x.text.trim() && x.end > a && x.start < b);
   // faces at the same times (toolkit phase 5): who is in the shot and where, for follow / who / a crop's focus
   let faces: string;
@@ -260,7 +282,7 @@ export async function formatSourceRange(inv: Inventory, sid: string, range: [num
   } catch (e) { faces = `人臉：（偵測失敗：${(e as Error).message.split('\n')[0].slice(0, 100)}）`; }
   return [
     `專案 ${basename(inv.dir)} · ${s.id} ${timecode1(a)}–${timecode1(b)}（每 ${step} 秒一格，共 ${times.length} 格）`, `縮圖：${out}`, faces,
-    ...(own.length ? ['', '原片自己的字（字幕列以外）：', ...own.map(textRow)] : []),
+    ...(own.length ? ['', '原片自己的字（字幕列以外）：', ...own] : []),
     '', '場景：', ...scenes.map(([x, y]) => `  ${timecode1(x)}–${timecode1(y)}`),
     '', said.length ? '說話：' : '說話：（這段沒有）', ...said.map((x) => `  ${timecode1(x.start)}–${timecode1(x.end)} ${x.text.trim()}`),
   ].join('\n');
