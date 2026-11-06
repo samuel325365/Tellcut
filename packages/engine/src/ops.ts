@@ -68,12 +68,12 @@ export function runOps(d: Project, ops: Op[]) {
 const f2 = (v: number) => v.toFixed(2);
 /** one line of a proposal's summary as data, for the page to word in its language (summary is the same in Chinese, for the
  *  command line and the agent): an item added (with its block type), a number changed, a field changed (a block type: from
- *  and to), moved to a track, deleted; n items moved by the same seconds. An effect module joining or leaving meta.fx (addFx) is
- *  an add / del whose id is its path and whose track is 'meta.fx' (a proposal of only addFx said nothing: "Changes: 0"). */
+ *  and to), moved to a track, deleted; n items moved by the same seconds; one of the project's effect modules joining or leaving
+ *  meta.fx (addFx: a proposal of only that used to say nothing, "Changes: 0"). */
 export type SummaryLine =
   | { k: 'add'; id: string; track: string; type?: string } | { k: 'num'; id: string; key: string; from: string; to: string }
   | { k: 'edit'; id: string; key: string; from?: string; to?: string } | { k: 'track'; id: string; track: string }
-  | { k: 'del'; id: string } | { k: 'shift'; n: number; by: string };
+  | { k: 'del'; id: string } | { k: 'shift'; n: number; by: string } | { k: 'fx'; path: string; added: boolean };
 
 export function summarize(before: Project, after: Project): { changed: string[]; summary: string[]; lines: SummaryLine[] } {
   const flat = (p: Project) => new Map(p.tracks.flatMap((t) => (t.items as any[]).map((i) => [i.id, { t: t.id, i }] as const)));
@@ -117,8 +117,8 @@ export function summarize(before: Project, after: Project): { changed: string[];
   // the project's own effect modules, by path in changed too (it counts the changes; the ids the tools give items have no /, so a
   // path does not mark an item as changed)
   const fxA = before.meta.fx ?? [], fxB = after.meta.fx ?? [];
-  for (const path of fxB) if (!fxA.includes(path)) { changed.push(path); say(`新增 ${path}（meta.fx）`, { k: 'add', id: path, track: 'meta.fx' }); }
-  for (const path of fxA) if (!fxB.includes(path)) { changed.push(path); say(`刪除 ${path}（meta.fx）`, { k: 'del', id: path }); }
+  for (const path of fxB) if (!fxA.includes(path)) { changed.push(path); say(`加入效果檔 ${path}`, { k: 'fx', path, added: true }); }
+  for (const path of fxA) if (!fxB.includes(path)) { changed.push(path); say(`移除效果檔 ${path}`, { k: 'fx', path, added: false }); }
   return { changed, summary: lines, lines: coded };
 }
 

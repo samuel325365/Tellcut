@@ -118,8 +118,8 @@ test('addFx: a project effect module joins meta.fx once (an edited project takes
 
 test('a proposal of only addFx says so: a summary line and a change, not "Changes: 0"', () => {
   const r = applyOps(fixture(), [{ op: 'addFx', path: 'fx/coin.js' }]);
-  expect(r.summary).toEqual(['新增 fx/coin.js（meta.fx）']);
-  expect(r.lines).toEqual([{ k: 'add', id: 'fx/coin.js', track: 'meta.fx' }]);
+  expect(r.summary).toEqual(['加入效果檔 fx/coin.js']);
+  expect(r.lines).toEqual([{ k: 'fx', path: 'fx/coin.js', added: true }]);
   expect(r.changed).toEqual(['fx/coin.js']);
   // a module already there is no change
   const again = applyOps(r.project, [{ op: 'addFx', path: 'fx/coin.js' }]);

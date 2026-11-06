@@ -14,5 +14,6 @@ export function lineText(l: SummaryLine): string {
     case 'track': return t('prop.track', { id: l.id, track: l.track });
     case 'del': return t('prop.del', { id: l.id });
     case 'shift': return tn('prop.shift', l.n, { by: l.by });
+    case 'fx': return t(l.added ? 'prop.fxAdd' : 'prop.fxDel', { path: l.path });
   }
 }

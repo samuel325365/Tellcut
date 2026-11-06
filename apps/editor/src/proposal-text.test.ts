@@ -14,4 +14,6 @@ test('a proposal line in the page language; blocks named by their gallery handle
   // word for word the Chinese summary media-node writes (namedSummary)
   expect(lineText({ k: 'add', id: 'cap2', track: 'text', type: 'common.caption' })).toBe('新增 cap2 TXT-02 caption（text）');
   expect(lineText({ k: 'del', id: 'c3' })).toBe('刪除 c3');
+  expect(lineText({ k: 'fx', path: 'fx/coin.js', added: true })).toBe('加入效果檔 fx/coin.js');
+  expect(lineText({ k: 'fx', path: 'fx/coin.js', added: false })).toBe('移除效果檔 fx/coin.js');
 });
