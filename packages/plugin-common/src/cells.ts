@@ -64,11 +64,22 @@ export function offscreen(dir: CellDir, box: Rect, W: number, H: number): [numbe
 export const cellRef = (s: CellShot, len: number): MediaRef => ({ source: s.source, in: s.from, out: s.from + len, speed: 1, interp: 'none' });
 
 /** the pieces the cells need: a video per playing cell that ever shows, a still per held one */
+/** whether a cell due at `at` comes in at all in an item `dur` s long: one that would be on screen only in the last 0.05 s does
+ *  not (media() declares no clip for it and draw keeps it hidden, so the two never disagree on the last frames) */
+export const cellLive = (at: number, dur: number): boolean => dur - at > 0.05;
+
+/** start loading a still shot's picture before its cell shows (build draws at 0, when no cell is in yet), so ready() can wait for it */
+export function preloadCell(ctx: ItemCtx, win: Win, shot: CellShot | null) {
+  if (!shot?.still) return;
+  const url = ctx.media.stillUrl({ source: shot.source, t: shot.from, w: 1080 });
+  if (win.src !== url) { win.src = url; win.img.src = url; }
+}
+
 export function cellMedia(shots: Array<CellShot | null>, ats: number[], dur: number): { videos: MediaRef[]; stills: StillRef[] } {
   const videos: MediaRef[] = [], stills: StillRef[] = [];
   shots.forEach((s, i) => {
-    const len = dur - (ats[i] ?? 0);
-    if (!s || len <= 0.05) return;
+    const at = ats[i] ?? 0, len = dur - at;
+    if (!s || !cellLive(at, dur)) return;
     if (s.still) stills.push({ source: s.source, t: s.from, w: 1080 });
     else videos.push(cellRef(s, len));
   });
@@ -85,8 +96,7 @@ export function showCell(ctx: ItemCtx, win: Win, shot: CellShot | null, local: n
   if (!shot) { cssCamel(win.img, { display: 'none' }); return; }
   const src = (ctx.project as Project).sources?.[shot.source] as { width?: number; height?: number } | undefined;
   if (shot.still) {
-    const url = ctx.media.stillUrl({ source: shot.source, t: shot.from, w: 1080 });
-    if (win.src !== url) { win.src = url; win.img.src = url; }
+    preloadCell(ctx, win, shot);
     cssCamel(win.img, { display: 'block' });
     ctx.media.place(win.img as unknown as HTMLVideoElement, w, h, shot.crop, src?.width, src?.height);
     return;

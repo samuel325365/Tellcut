@@ -131,3 +131,19 @@ describe('common.letterbox', () => {
     expect((r.draw(2).querySelector('[data-sub]') as HTMLElement).textContent).toBe('ROME');
   });
 });
+
+describe('cells: export path (review fixes)', () => {
+  test('every still starts loading at build, while its cell is still hidden, so ready() can wait for it', () => {
+    const r = run(grid, { layout: 'four', shots: 'a|1||still\na|2||still\na|3||still\na|4||still' });
+    const srcs = [...r.draw(0).querySelectorAll('img')].map((i) => (i as HTMLImageElement).getAttribute('src'));
+    expect(srcs).toEqual(['still:a@1', 'still:a@2', 'still:a@3', 'still:a@4']);
+  });
+  test('a cell due in the last 0.05 s neither shows nor plays (media() does not declare it)', () => {
+    const g = run(grid, { layout: 'four', shots: 'a|1\na|2\na|3\na|9', times: '0,1,2,2.96' });
+    g.draw(2.9667);
+    expect(videos.map((v) => v.in)).not.toContain(9);
+    const s = run(slant, { count: 3, shots: 'a|1\na|2\na|9', times: '0,1,2.97' });
+    s.draw(2.99);
+    expect(videos.map((v) => v.in)).not.toContain(9);
+  });
+});

@@ -3,7 +3,7 @@
 // optional tag in each band's corner (BEFORE / AFTER). Bands stack on a tall frame and stand side by side on a wide one. Derived from
 // common.comic's slanted panels, common.duo's split and common.popcard's shots that play inside the block. A pure function of time.
 import { abs, cssCamel, h, type ItemType } from '@tellcut/engine';
-import { cellDirs, cellEl, cellMedia, cellProgress, offscreen, parseCellShots, revealTimes, showCell, type CellDir, type Rect } from './cells.ts';
+import { cellDirs, cellEl, cellMedia, cellLive, cellProgress, offscreen, parseCellShots, preloadCell, revealTimes, showCell, type CellDir, type Rect } from './cells.ts';
 import { imagesReady, type Win } from './window.ts';
 
 interface P { count: number; shots: string; angle: number; times: string; from: string; slideDur: number; seam: number; seamColor: string; bg: string; labels: string; labelColor: string; labelBg: string; font: string; exitAt: number }
@@ -85,8 +85,8 @@ export const slant: ItemType<P, S> = {
     while (s.bands.length > n) s.bands.pop()!.el.remove();
     cssCamel(s.ground, { background: p.bg });
     polys.forEach((poly, i) => {
-      const b = s.bands[i], q = cellProgress(local, ats[i], p.slideDur, p.exitAt);
-      if (q <= 0.0005) { cssCamel(b.el, { display: 'none' }); return; }
+      const b = s.bands[i], q = cellLive(ats[i], dur) ? cellProgress(local, ats[i], p.slideDur, p.exitAt) : 0;
+      if (q <= 0.0005) { cssCamel(b.el, { display: 'none' }); if (cellLive(ats[i], dur)) preloadCell(ctx, b.win, all[i] ?? null); return; }
       const box = polyBox(poly), [ox, oy] = offscreen(dirs[i], box, W, H), [x, y, w, hh] = box;
       cssCamel(b.el, { display: 'block', transform: `translate(${(ox * (1 - q)).toFixed(2)}px, ${(oy * (1 - q)).toFixed(2)}px)`,
         clipPath: `polygon(${poly.map(([px, py]) => `${px.toFixed(2)}px ${py.toFixed(2)}px`).join(', ')})` });

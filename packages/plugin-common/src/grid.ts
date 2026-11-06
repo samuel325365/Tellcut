@@ -2,7 +2,7 @@
 // its own shot (cells.ts) and coming in one by one: fade, scale, slide or wipe, the picture moving with its cell. Derived from
 // common.comic's one-panel-at-a-time page and common.popcard's shots that play inside the block. A pure function of time.
 import { abs, cssCamel, type ItemType } from '@tellcut/engine';
-import { cellDirs, cellEl, cellMedia, cellProgress, offscreen, parseCellShots, revealTimes, showCell, type CellDir, type Rect } from './cells.ts';
+import { cellDirs, cellEl, cellMedia, cellLive, cellProgress, offscreen, parseCellShots, preloadCell, revealTimes, showCell, type CellDir, type Rect } from './cells.ts';
 import { imagesReady, type Win } from './window.ts';
 
 export type GridLayout = 'two' | 'three' | 'four' | 'bento' | 'six';
@@ -95,8 +95,8 @@ export const grid: ItemType<P, S> = {
     while (s.cells.length > n) s.cells.pop()!.wrap.remove();
     cssCamel(s.ground, { background: p.gutter });
     boxes.forEach((box, i) => {
-      const c = s.cells[i], q = cellProgress(local, ats[i], p.revealDur, p.exitAt);
-      if (q <= 0.0005) { cssCamel(c.wrap, { display: 'none' }); return; }
+      const c = s.cells[i], q = cellLive(ats[i], dur) ? cellProgress(local, ats[i], p.revealDur, p.exitAt) : 0;
+      if (q <= 0.0005) { cssCamel(c.wrap, { display: 'none' }); if (cellLive(ats[i], dur)) preloadCell(ctx, c.win, shots[i]); return; }
       const m = gridMotion(p.reveal, dirs[i], q, box, W, H), [x, y, w, h] = box;
       cssCamel(c.wrap, { display: 'block', left: `${x.toFixed(2)}px`, top: `${y.toFixed(2)}px`, width: `${w.toFixed(2)}px`, height: `${h.toFixed(2)}px`,
         borderRadius: `${(Math.max(0, p.radius) * k).toFixed(2)}px`, opacity: String(m.opacity), clipPath: m.clip,
