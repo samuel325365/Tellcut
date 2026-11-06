@@ -1420,6 +1420,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.camcorder.date": {"name":"日付スタンプ","hint":"「秒[-秒]|2004-08-14 10:30[:00][|行き先の日付 または 倍速]」1 行に 1 つ：日付があればそこまでめくれ、なければ倍速で進む（既定 1＝時計、0＝止まる）。空＝表示しない"},
   "common.camcorder.dateFormat": {"name":"日付スタンプの書式","hint":"| で改行。YYYY YY MMM（月名）MM M DD D HH H mm ss"},
   "common.camcorder.place": {"name":"地名","hint":"「秒-秒|文字」1 行に 1 つ、1 字ずつ打たれる（早送り・巻き戻し中は表示しない）"},
+  "common.camcorder.placeAt": {"name":"地名の位置","hint":"top 左上の REC の下、bottom 左下；下に字幕があるときは top"},
   "common.camcorder.zoom": {"name":"ズームバー","hint":"「秒-秒|から|まで」（0–1）1 行に 1 つ"},
   "common.camcorder.end": {"name":"TAPE END","hint":"点滅する時間「秒-秒」、カンマ区切り"},
   "common.camcorder.corners": {"name":"四隅の枠線"},

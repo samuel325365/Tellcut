@@ -26,13 +26,14 @@ export const camWords = (w: unknown): CamWords => ({ ...CAM_WORDS, ...(w && type
 type Mode = 'osd' | 'ff' | 'rew' | 'snow';
 interface P {
   mode: Mode; status: string; counter: string; counterAt: 'top' | 'bottom'; spin: number; tape: string; battery: string; remain: string;
-  date: string; dateFormat: string; place: string; zoom: string; end: string; corners: boolean; cross: boolean; popAt: number;
+  date: string; dateFormat: string; place: string; placeAt: 'top' | 'bottom'; zoom: string; end: string; corners: boolean; cross: boolean; popAt: number;
   box: string; size: number; words: Partial<CamWords>; font: string; color: string; recColor: string; stbyColor: string;
   from: string; to: string; ffFormat: string; blue: string; snowIn: number; snowOut: number; stills: string;
 }
 interface S {
   cv: HTMLCanvasElement; osd: HTMLElement; tl: HTMLElement; tr: HTMLElement; bl: HTMLElement; br: HTMLElement;
-  icon: HTMLElement; iconKey: string; label: HTMLElement; counter: HTMLElement; tape: HTMLElement; place: HTMLElement;
+  /** tlc: the top-left column, the REC row (tl) and a place typed at the top under it */
+  tlc: HTMLElement; icon: HTMLElement; iconKey: string; label: HTMLElement; counter: HTMLElement; tape: HTMLElement; place: HTMLElement;
   batt: HTMLElement; nub: HTMLElement; bars: HTMLElement[]; remain: HTMLElement; cassette: HTMLElement; remainText: HTMLElement; remainBar: HTMLElement; remainFill: HTMLElement;
   date1: HTMLElement; date2: HTMLElement; zoom: HTMLElement; zoomW: HTMLElement; zoomT: HTMLElement; cells: HTMLElement[];
   end: HTMLElement; endText: HTMLElement; ff: HTMLElement; ffBig: HTMLElement; ffSmall: HTMLElement;
@@ -234,7 +235,7 @@ function standIn(g: CanvasRenderingContext2D, W: number, H: number, i: number) {
 
 export const camcorder: ItemType<P, S> = {
   type: 'common.camcorder', label: '攝影機觀景窗', category: 'frame', kind: 'overlay',
-  doc: '家用攝影機／DV 的觀景窗：mode osd 蓋在影片上——左上 ● REC（每秒閃）／STBY／STOP／PLAY／PAUSE／FF／REW／PHOTO（status「秒|狀態」一行一個），四角框線（popAt 彈出）、中心十字，帶子計數（counter「秒|讀數」設定後依狀態跑：錄影 1 倍、ff／rew spin 倍、其他停住；counterAt top 在右上、bottom 在左下），TAPE 編號（tape「秒|編號」，換帶時一條循軌雜訊帶），電量（battery「秒|格數」，0 格紅色閃），剩餘帶長（remain「秒|分鐘」，1 分鐘以下紅色閃），日期戳（date「秒[-秒]|2004-08-14 10:30[|到日期或倍速]」，dateFormat 排版），地名逐字打出（place「秒-秒|字」），W–T 變焦條（zoom「秒-秒|從|到」），TAPE END（end「秒-秒」）；mode ff 是快轉：雪花→藍底 ▶▶、日期大字從 from 翻到 to→雪花；mode rew 是倒帶：stills「素材|秒|x,y,zoom」的靜態圖倒序加速閃過、畫面撕裂、中央 ◀◀（沒素材用畫的示意圖）；mode snow 只有雪花；所有字（REC、TAPE、月份…）在 words 換；回憶、婚禮、家庭錄影帶、Y2K、旅行 DV；配 common.film look vhs、common.beep kind rec／end、common.rewind',
+  doc: '家用攝影機／DV 的觀景窗：mode osd 蓋在影片上——左上 ● REC（每秒閃）／STBY／STOP／PLAY／PAUSE／FF／REW／PHOTO（status「秒|狀態」一行一個），四角框線（popAt 彈出）、中心十字，帶子計數（counter「秒|讀數」設定後依狀態跑：錄影 1 倍、ff／rew spin 倍、其他停住；counterAt top 在右上、bottom 在左下），TAPE 編號（tape「秒|編號」，換帶時一條循軌雜訊帶），電量（battery「秒|格數」，0 格紅色閃），剩餘帶長（remain「秒|分鐘」，1 分鐘以下紅色閃），日期戳（date「秒[-秒]|2004-08-14 10:30[|到日期或倍速]」，dateFormat 排版），地名逐字打出（place「秒-秒|字」，placeAt top 在左上 REC 下面、bottom 左下），W–T 變焦條（zoom「秒-秒|從|到」），TAPE END（end「秒-秒」）；mode ff 是快轉：雪花→藍底 ▶▶、日期大字從 from 翻到 to→雪花；mode rew 是倒帶：stills「素材|秒|x,y,zoom」的靜態圖倒序加速閃過、畫面撕裂、中央 ◀◀（沒素材用畫的示意圖）；mode snow 只有雪花；所有字（REC、TAPE、月份…）在 words 換；回憶、婚禮、家庭錄影帶、Y2K、旅行 DV；配 common.film look vhs、common.beep kind rec／end、common.rewind',
   params: [
     { key: 'mode', label: '模式（osd 觀景窗介面、ff 快轉藍畫面、rew 倒帶撕裂、snow 雪花）', type: 'enum', options: ['osd', 'ff', 'rew', 'snow'], default: 'osd' },
     { key: 'status', label: '狀態「秒|狀態」一行一個（rec 錄影、stby 待機、stop 停止、play 播放、pause 暫停、ff 快轉、rew 倒帶、photo 拍照）', type: 'text', default: '0|rec' },
@@ -247,6 +248,7 @@ export const camcorder: ItemType<P, S> = {
     { key: 'date', label: '日期戳「秒[-秒]|2004-08-14 10:30[:00][|到的日期 或 倍速]」一行一個：有到的日期就翻過去，否則照倍速走（預設 1＝時鐘、0＝停住）；空＝不顯示', type: 'text', default: '0|2004-08-14 10:30:00' },
     { key: 'dateFormat', label: '日期戳的格式（| 換行；YYYY YY MMM 月份字 MM M DD D HH H mm ss）', type: 'string', default: 'MMM.DD YYYY|HH:mm:ss' },
     { key: 'place', label: '地名「秒-秒|字」一行一個，逐字打出（快轉、倒帶時不顯示）', type: 'text', default: '' },
+    { key: 'placeAt', label: '地名的位置（top 左上 REC 下面、bottom 左下；下緣有字幕時用 top）', type: 'enum', options: ['top', 'bottom'], default: 'bottom' },
     { key: 'zoom', label: '變焦條「秒-秒|從|到」（0–1）一行一個', type: 'text', default: '' },
     { key: 'end', label: 'TAPE END 閃爍的時間「秒-秒」逗號分開', type: 'string', default: '' },
     { key: 'corners', label: '四角框線', type: 'bool', default: true },
@@ -276,7 +278,7 @@ export const camcorder: ItemType<P, S> = {
     const cv = h('canvas', null, null, root);
     cssCamel(cv, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
     const osd = div(root, abs), col = (css: Record<string, string>) => div(osd, { ...abs, display: 'flex', flexDirection: 'column', ...css });
-    const tl = col({ flexDirection: 'row', alignItems: 'center' }), tr = col({ alignItems: 'flex-end' }), bl = col({ alignItems: 'flex-start', justifyContent: 'flex-end' }), br = col({ alignItems: 'flex-end', justifyContent: 'flex-end' });
+    const tlc = col({ alignItems: 'flex-start' }), tl = div(tlc, { display: 'flex', alignItems: 'center' }), tr = col({ alignItems: 'flex-end' }), bl = col({ alignItems: 'flex-start', justifyContent: 'flex-end' }), br = col({ alignItems: 'flex-end', justifyContent: 'flex-end' });
     const icon = div(tl, { position: 'relative', flex: 'none' }), label = div(tl);
     const batt = div(tr, { position: 'relative', boxSizing: 'border-box', display: 'flex', justifyContent: 'flex-end' }), nub = div(batt, abs);
     const bars = [0, 1, 2].map(() => div(batt, { flex: 'none' }));
@@ -289,7 +291,7 @@ export const camcorder: ItemType<P, S> = {
     const zoomW = div(zoom), cellBox = div(zoom, { display: 'flex' }), zoomT = div(zoom), cells = Array.from({ length: 14 }, () => div(cellBox, { flex: 'none' }));
     const end = div(osd, { ...abs, left: '50%', top: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.55)' }), endText = div(end);
     const ff = div(root, { ...abs, left: '0', right: '0', textAlign: 'center' }), ffBig = div(ff), ffSmall = div(ff);
-    const s: S = { cv, osd, tl, tr, bl, br, icon, iconKey: '', label, counter, tape, place, batt, nub, bars, remain, cassette, remainText, remainBar, remainFill, date1, date2, zoom, zoomW, zoomT, cells, end, endText, ff, ffBig, ffSmall, imgs: [], imgKey: '' };
+    const s: S = { cv, osd, tlc, tl, tr, bl, br, icon, iconKey: '', label, counter, tape, place, batt, nub, bars, remain, cassette, remainText, remainBar, remainFill, date1, date2, zoom, zoomW, zoomT, cells, end, endText, ff, ffBig, ffSmall, imgs: [], imgKey: '' };
     camcorder.draw(ctx, s);   // starts loading the rewind's stills now, so ready() can wait for them
     return s;
   },
@@ -372,7 +374,8 @@ export const camcorder: ItemType<P, S> = {
     }
     // the four corners of text
     const m = 22 * k;
-    cssCamel(s.tl, { left: `${m}px`, top: `${m}px`, gap: `${14 * k}px` });
+    cssCamel(s.tlc, { left: `${m}px`, top: `${m}px`, gap: `${12 * k}px` });
+    cssCamel(s.tl, { gap: `${14 * k}px` });
     cssCamel(s.tr, { right: `${m}px`, top: `${m + 4 * k}px`, gap: `${14 * k}px` });
     cssCamel(s.bl, { left: `${m}px`, bottom: `${m}px`, gap: `${10 * k}px` });
     cssCamel(s.br, { right: `${m}px`, bottom: `${m}px`, gap: `${6 * k}px` });
@@ -413,7 +416,9 @@ export const camcorder: ItemType<P, S> = {
     // the date stamp
     const sec = dateAt(parseDates(p.date), t), [d1, d2] = sec === null ? ['', ''] : fmtWhen(sec, p.dateFormat, words.months.split(/\s+/)).split('|');
     for (const [el, txt] of [[s.date1, d1], [s.date2, d2]] as const) { el.textContent = txt ?? ''; osdText(el, 76 * k, p.color, k, p.font); cssCamel(el, { display: txt ? 'block' : 'none' }); }
-    // the place, typed in
+    // the place, typed in: the first line at the bottom left, or under the REC row at the top (speech captions keep the bottom)
+    const pParent = p.placeAt === 'top' ? s.tlc : s.bl;
+    if (s.place.parentElement !== pParent) { if (pParent === s.tlc) s.tlc.appendChild(s.place); else s.bl.insertBefore(s.place, s.bl.firstChild); }
     const place = moving ? '' : placeAt(p.place, t);
     s.place.textContent = place;
     osdText(s.place, 60 * k, p.color, k, p.font);

@@ -466,6 +466,8 @@ export const samples: Sample[] = [
   { name: 'camcorder', type: 'common.camcorder', at: [0.1, 1.5] },
   { name: 'camcorder-tape', type: 'common.camcorder', params: { box: '0.022,0.177,0.956,0.5375', counterAt: 'top', counter: '0|0:05:13\n1.0|0:23:10', tape: '0|1\n1.0|2', status: '0|rec\n2.0|stop', date: '', remain: '', popAt: 0.2 }, at: [1.1, 2.4], bg: '#6b8fa3' },
   { name: 'camcorder-dv', type: 'common.camcorder', params: { place: '0.2-3|港邊 HARBOUR', zoom: '0.4-1.2|0.1|0.7', battery: '0|0', remain: '0|8\n1|0.9', end: '1.5-3', date: '0|2004-08-14 10:30|2004-08-21 09:00', words: { months: '1月 2月 3月 4月 5月 6月 7月 8月 9月 10月 11月 12月' }, dateFormat: 'YYYY MMM D日|HH:mm' }, at: [0.9, 1.6] },
+  // the place under REC at the top, the counter at the top right: the bottom kept clear for speech captions
+  { name: 'camcorder-place-top', type: 'common.camcorder', params: { place: '0-3|DAY 2 港邊', placeAt: 'top', counterAt: 'top' }, at: [1.5] },
   { name: 'camcorder-ff', type: 'common.camcorder', params: { mode: 'ff' }, at: [0.1, 1.5] },
   { name: 'camcorder-rew', type: 'common.camcorder', sources: PIC, params: { mode: 'rew', stills: 'pic|0\n-\npic|0|0.3,0.6,1.6\n-' }, at: [0.3, 2.9] },
   { name: 'wide-camcorder', type: 'common.camcorder', params: { place: '0-3|港邊', status: '0|stby' }, at: [1.5], wide: true },

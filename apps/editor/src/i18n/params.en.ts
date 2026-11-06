@@ -1420,6 +1420,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.camcorder.date": {"name":"Date stamp","hint":"\"seconds[-seconds]|2004-08-14 10:30[:00][|to date or rate]\" one per line: with a date it rolls there, otherwise it runs at the rate (default 1 = a clock, 0 = held); empty = hidden"},
   "common.camcorder.dateFormat": {"name":"Date stamp format","hint":"| breaks the line; YYYY YY MMM (the month word) MM M DD D HH H mm ss"},
   "common.camcorder.place": {"name":"Place","hint":"\"seconds-seconds|words\" one per line, typed in (hidden in ff / rew)"},
+  "common.camcorder.placeAt": {"name":"Place position","hint":"top under REC at the top left, bottom at the bottom left; top when speech captions run along the bottom"},
   "common.camcorder.zoom": {"name":"Zoom bar","hint":"\"seconds-seconds|from|to\" (0–1) one per line"},
   "common.camcorder.end": {"name":"TAPE END","hint":"when it blinks: \"seconds-seconds\", comma separated"},
   "common.camcorder.corners": {"name":"Corner marks"},
