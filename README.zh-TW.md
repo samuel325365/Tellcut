@@ -7,7 +7,7 @@
 <p align="center">把素材丟進來，說一句想要什麼樣的片。Agent 會看完每一段素材、寫好分鏡、剪出初版，<br>全部在你自己的電腦上跑。<br>喜歡的特效和風格可以留下來，下一支從那裡開始。</p>
 
 <p align="center">
-  <a href="README.md">English</a> &nbsp;·&nbsp; <strong>繁體中文</strong>
+  <a href="README.md">English</a> &nbsp;·&nbsp; <strong>繁體中文</strong> &nbsp;·&nbsp; <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">

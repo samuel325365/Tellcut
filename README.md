@@ -7,7 +7,7 @@
 <p align="center">Drop in your footage and say what you want. An agent watches every clip,<br>writes the storyboard and cuts a first draft, all on your own computer.<br>Keep the effects and the style you like: your next film starts from there.</p>
 
 <p align="center">
-  <strong>English</strong> &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a>
+  <strong>English</strong> &nbsp;·&nbsp; <a href="README.zh-TW.md">繁體中文</a> &nbsp;·&nbsp; <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">

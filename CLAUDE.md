@@ -6,7 +6,7 @@ Tellcut: a video editor used in a local browser (Node 24 + TypeScript, **Windows
 
 - The git root is `tellcut/` itself (branch `main`); commit paths have no `tellcut/` prefix.
 - Code comments that cite a "spec 2026-…", a review code (R3-…, review2 B3) or a phase point to the maintainers' design notes, which are not in this repo; the comment itself should still say why.
-- Public docs are in English; code comments are in English. The one exception is `README.zh-TW.md`, the Traditional Chinese README: keep it in sync with `README.md` (change one, change the other). Pictures for the README are in `docs/readme/` (sources in `docs/readme/CREDITS.md`). UI text goes through the three dictionaries in `apps/editor/src/i18n/` (zh / en / ja, with the same keys; the editor's labels are always English, while hints, tips and status text follow the language); never hard-code text in a component. The page chat replies in the UI language.
+- Public docs are in English; code comments are in English. The exceptions are the translated READMEs, `README.zh-TW.md` (Traditional Chinese) and `README.ja.md` (Japanese): keep them in sync with `README.md` (change one, change them all; their language bars link each other). In `README.ja.md`, use the Japanese UI's own words for presets and buttons (`ja.ts`, the presets' `name.ja`), and English for the editor's labels. Pictures for the README are in `docs/readme/` (sources in `docs/readme/CREDITS.md`). UI text goes through the three dictionaries in `apps/editor/src/i18n/` (zh / en / ja, with the same keys; the editor's labels are always English, while hints, tips and status text follow the language); never hard-code text in a component. The page chat replies in the UI language.
 
 ## Common commands
 
