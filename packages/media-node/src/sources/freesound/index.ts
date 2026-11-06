@@ -38,7 +38,7 @@ async function find(ctx: SourceCtx, params: Record<string, string>, ttl = 86400)
 }
 
 export const freesound: SourceAdapter = {
-  id: 'freesound', label: 'Freesound', category: 'sound', kinds: ['audio'], needsKey: true,
+  id: 'freesound', label: 'Freesound', category: 'sound', kinds: ['audio'], needsKey: true, keyUrl: 'https://freesound.org/apiv2/apply/',
   limits: [{ n: 60, per: 60 }, { n: 2000, per: 86400 }],
   summary: 'Freesound 音效：種類最多的擬音、環境音、怪聲、樂器單音和 loop，CC 授權（英文關鍵字；可篩長度、BPM、授權）',
   sample: 'rain',

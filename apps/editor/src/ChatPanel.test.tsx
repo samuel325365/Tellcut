@@ -289,6 +289,66 @@ test('the menu asks for the list again each time it opens: a key added meanwhile
   root.remove();
 });
 
+test('a source that only lacks its key opens a key box: a refused key says so, a kept one reloads the list and is ticked', async () => {
+  const root = document.createElement('div'), s = picking(['wikimedia']);
+  let rows: any[] = ROWS.map((x) => (x.id === 'pexels' ? { ...x, keyUrl: 'https://pexels.example/api' } : x)), lists = 0;
+  const tries: Array<[string, string]> = [];
+  s.listSources = async () => { lists++; return { sources: rows }; };
+  s.takesKeys = true;
+  s.saveSourceKey = async (id: string, key: string) => {
+    tries.push([id, key]);
+    if (key === 'bad') throw Object.assign(new Error('key 不對'), { code: 'source.keyRefused', params: { detail: 'HTTP 401' } });
+    rows = rows.map((x) => (x.id === id ? { ...x, available: true, reason: undefined, keyUrl: undefined } : x));
+    return { ok: true, tried: false, detail: '連不上' };
+  };
+  document.body.append(root);
+  await act(() => render(<ChatPanel session={s} />, root));
+  await flush();
+  await act(() => { root.querySelector<HTMLElement>('[data-api]')!.click(); });
+  await flush();
+  const pop = root.querySelector('[data-api-picker]')!;
+  expect(pop.querySelector('[data-key-box]')).toBeNull();
+  // a source switched off or broken opens nothing; one without its key does
+  await act(() => { pop.querySelector<HTMLElement>('[data-source="pexels"]')!.click(); });
+  const box = pop.querySelector<HTMLElement>('[data-key-box="pexels"]')!;
+  expect(box.closest('[data-api-group]')!.getAttribute('data-api-group')).toBe('media');
+  expect(box.querySelector('a[data-key-get]')!.getAttribute('href')).toBe('https://pexels.example/api');
+  const input = box.querySelector<HTMLInputElement>('[data-key-input]')!;
+  expect(input.type).toBe('password');
+  expect(box.querySelector<HTMLButtonElement>('[data-key-save]')!.disabled).toBe(true);
+  await act(() => { input.value = 'bad'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await act(() => { box.querySelector<HTMLElement>('[data-key-save]')!.click(); });
+  await flush();
+  expect(box.querySelector('[data-key-error]')!.textContent).toBe(t('err.source.keyRefused', { detail: 'HTTP 401' }));
+  expect(s.saved).toEqual([]);
+  await act(() => { input.value = ' good '; input.dispatchEvent(new Event('input', { bubbles: true })); });
+  await act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });
+  await flush();
+  await flush();
+  expect(tries).toEqual([['pexels', 'bad'], ['pexels', 'good']]);
+  // kept: the box goes, the list comes again, the source can be used and is ticked; the source could not be reached, so a note says
+  // the key was not tried
+  expect(pop.querySelector('[data-key-box]')).toBeNull();
+  expect(lists).toBe(3);
+  expect(pop.querySelector('[data-source="pexels"]')!.classList.contains('off')).toBe(false);
+  expect(s.saved).toEqual([['wikimedia', 'pexels']]);
+  expect(pop.querySelector('[data-key-note]')!.textContent).toBe(t('api.key.untried', { name: 'Pexels' }));
+  root.remove();
+});
+
+test('without a key route the pill for a missing key stays a plain greyed-out pill', async () => {
+  const root = document.createElement('div'), s = picking();
+  document.body.append(root);
+  await act(() => render(<ChatPanel session={s} />, root));
+  await flush();
+  await act(() => { root.querySelector<HTMLElement>('[data-api]')!.click(); });
+  const pill = root.querySelector<HTMLElement>('[data-source="pexels"]')!;
+  expect(pill.classList.contains('keyable')).toBe(false);
+  await act(() => { pill.click(); });
+  expect(root.querySelector('[data-key-box]')).toBeNull();
+  root.remove();
+});
+
 test('a click outside closes the menu; the editor\'s opens upward with English labels; a page without the sources API shows no button', async () => {
   const root = document.createElement('div'), s = picking();
   document.body.append(root);

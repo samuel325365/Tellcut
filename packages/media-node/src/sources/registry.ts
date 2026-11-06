@@ -7,7 +7,7 @@ import { dirname, extname, join } from 'node:path';
 import { photoSheet } from '../extras.ts';
 import { createLimiter } from '../limit.ts';
 import { TELLCUT_ROOT } from '../paths.ts';
-import { contactOf, loadSourcesConfig, sourceKey, SOURCES_CACHE_DIR, SOURCES_HEALTH_FILE, type SourcesConfig } from './config.ts';
+import { contactOf, loadSourcesConfig, sourceKey, SOURCES_CACHE_DIR, SOURCES_HEALTH_FILE, SOURCES_LOCAL_FILE, type SourcesConfig } from './config.ts';
 import { readHealth, recordHealth, type HealthEntry } from './health.ts';
 import { createHttp, SourceError } from './http.ts';
 import type { RateLimit } from './rate.ts';
@@ -38,13 +38,14 @@ export const ADAPTERS: Record<string, SourceAdapter> = {
   countries, mealdb, cocktaildb,
 };
 
-export interface Sources { config: SourcesConfig; env: NodeJS.ProcessEnv; cacheDir: string; healthFile: string; fetch: typeof fetch; now: () => number; adapters: Record<string, SourceAdapter> }
+export interface Sources { config: SourcesConfig; /** the user's own file, where a key pasted in the API menu is written */ localFile: string; env: NodeJS.ProcessEnv; cacheDir: string; healthFile: string; fetch: typeof fetch; now: () => number; adapters: Record<string, SourceAdapter> }
 
 /** the sources as configured under `root` (default tellcut/); tests pass their own config, adapters and fetch */
 export function openSources(o: { root?: string; env?: NodeJS.ProcessEnv; fetch?: typeof fetch; now?: () => number; adapters?: Record<string, SourceAdapter>; config?: SourcesConfig } = {}): Sources {
   const root = o.root;
   return {
     config: o.config ?? (root ? loadSourcesConfig({ file: join(root, 'sources.json'), localFile: join(root, 'sources.local.json') }) : loadSourcesConfig()),
+    localFile: root ? join(root, 'sources.local.json') : SOURCES_LOCAL_FILE,
     env: o.env ?? process.env,
     cacheDir: root && root !== TELLCUT_ROOT ? join(root, '.cache', 'sources') : SOURCES_CACHE_DIR,
     healthFile: root && root !== TELLCUT_ROOT ? join(root, '.cache', 'sources-health.json') : SOURCES_HEALTH_FILE,

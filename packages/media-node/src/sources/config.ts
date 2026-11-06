@@ -4,7 +4,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { z } from 'zod';
+import { replaceFile } from '../fsutil.ts';
 import { TELLCUT_ROOT } from '../paths.ts';
+import { withFileLock } from './rate.ts';
 
 export const SOURCES_FILE = join(TELLCUT_ROOT, 'sources.json');
 export const SOURCES_LOCAL_FILE = join(TELLCUT_ROOT, 'sources.local.json');
@@ -50,4 +52,19 @@ export function sourceKey(c: SourcesConfig, id: string, env: NodeJS.ProcessEnv =
 /** who to tell the sources we are (an email or a web address): TELLCUT_CONTACT, else the local file's contact */
 export function contactOf(c: SourcesConfig, env: NodeJS.ProcessEnv = process.env): string | undefined {
   return env.TELLCUT_CONTACT || c.contact || undefined;
+}
+
+/** Writes one source's key into the user's own file (spec: the API menu's key box), keeping everything else in it as it was —
+ *  fields this version does not know included. Under a lock and through a temporary file: a half-written file would stop every
+ *  source from loading. A file that is not valid JSON is left alone (an error), never overwritten. */
+export async function saveSourceKey(file: string, id: string, key: string): Promise<void> {
+  await withFileLock(`${file}.lock`, () => {
+    let raw: Record<string, unknown> = {};
+    if (existsSync(file)) {
+      try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { throw new Error(`${basename(file)} 不是合法的 JSON：${(e as Error).message}`); }
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error(`${basename(file)} 的內容不對：不是一個物件`);
+    }
+    const keys = raw.keys && typeof raw.keys === 'object' && !Array.isArray(raw.keys) ? raw.keys as Record<string, unknown> : {};
+    replaceFile(file, `${JSON.stringify({ ...raw, keys: { ...keys, [id]: key } }, null, 2)}\n`);
+  });
 }

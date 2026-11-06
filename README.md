@@ -357,7 +357,9 @@ Tellcut records where every downloaded file came from and its licence in the pro
 
 ### Adding keys and switching sources
 
-Put the keys in a file called `sources.local.json` in the `tellcut` folder. Git ignores it, so it's never committed:
+The quickest way: in the chat box's **API** menu, click a source marked **No key**, paste its key and press Save. Tellcut tries the key once, then keeps it in `sources.local.json`, a file in the `tellcut` folder that Git ignores, so it's never committed.
+
+You can also write the file yourself (the contact goes here too):
 
 ```json
 {

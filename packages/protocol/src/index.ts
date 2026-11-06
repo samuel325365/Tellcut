@@ -84,7 +84,11 @@ export interface SourceInfo {
   data: boolean; unofficial: boolean; available: boolean; reason?: SourceReason;
   /** the environment variable its key may come from */
   keyEnv?: string;
+  /** where a key is asked for (only while it has none): the API menu links it next to its key box */
+  keyUrl?: string;
 }
+/** POST /api/sources/:id/key: kept; tried false when the source could not be reached to try it (detail says why) */
+export interface SourceKeySaved { ok: true; tried: boolean; detail?: string }
 
 // ---------------------------------------------------------------- jobs (spec §6.2)
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';

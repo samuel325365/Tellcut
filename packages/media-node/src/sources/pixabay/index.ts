@@ -105,7 +105,7 @@ async function searchImages(q: SearchQuery, ctx: SourceCtx): Promise<AssetHit[]>
 }
 
 export const pixabay: SourceAdapter = {
-  id: 'pixabay', label: 'Pixabay', category: 'media', kinds: ['video', 'image'], needsKey: true,
+  id: 'pixabay', label: 'Pixabay', category: 'media', kinds: ['video', 'image'], needsKey: true, keyUrl: 'https://pixabay.com/api/docs/',
   limits: [{ n: 100, per: 60 }],
   summary: 'Pixabay：免費實拍影片和照片，生活、工作、城市、食物、自然空景（英文關鍵字；--kind video|image）',
   sample: 'coffee',

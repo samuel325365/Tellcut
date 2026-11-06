@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { contactOf, loadSourcesConfig, sourceKey, SOURCES_FILE } from './config.ts';
+import { contactOf, loadSourcesConfig, saveSourceKey, sourceKey, SOURCES_FILE } from './config.ts';
 
 let dir: string, file: string, localFile: string;
 beforeEach(() => {
@@ -51,4 +51,21 @@ test('the sources.json in the repo is valid, has no keys or contact, and keeps t
   const c = loadSourcesConfig({ file: SOURCES_FILE, localFile: join(dir, 'none.json') });
   expect([c.sources['bbc-sfx'].enabled, c.sources.incompetech.enabled]).toEqual([false, false]);
   expect([c.sources['bbc-sfx'].unofficial, c.sources.incompetech.unofficial]).toEqual([true, true]);
+});
+
+test('saveSourceKey writes one key into the local file and keeps everything else, unknown fields included', async () => {
+  writeFileSync(localFile, JSON.stringify({ contact: 'me@example.org', sources: { 'bbc-sfx': { enabled: true } }, keys: { pixabay: 'abc' }, later: 1 }));
+  await saveSourceKey(localFile, 'freesound', 'f-123');
+  expect(JSON.parse(readFileSync(localFile, 'utf8'))).toEqual({ contact: 'me@example.org', sources: { 'bbc-sfx': { enabled: true } }, keys: { pixabay: 'abc', freesound: 'f-123' }, later: 1 });
+  await saveSourceKey(localFile, 'pixabay', 'new');
+  expect(loadSourcesConfig({ file, localFile }).keys).toEqual({ pixabay: 'new', freesound: 'f-123' });
+});
+
+test('saveSourceKey makes the local file when there is none, and never overwrites one that is not valid JSON', async () => {
+  rmSync(localFile);
+  await saveSourceKey(localFile, 'carto', 'c1');
+  expect(JSON.parse(readFileSync(localFile, 'utf8'))).toEqual({ keys: { carto: 'c1' } });
+  writeFileSync(localFile, '{ "keys": ');
+  await expect(saveSourceKey(localFile, 'carto', 'c2')).rejects.toThrow(/不是合法的 JSON/);
+  expect(readFileSync(localFile, 'utf8')).toBe('{ "keys": ');
 });

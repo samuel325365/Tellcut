@@ -1,6 +1,6 @@
 // Tellcut server API (apps/server). Every failure becomes an ApiError with the server's message and issues.
 import type { Transcript } from '@tellcut/engine';
-import type { AnalyzeResult, BrokenPresetInfo, ChatEvent, ChatTask, ChatThreadView, DeletePreview, GalleryIndex, ImportEvent, ImportResult, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, LiveEvent, PresetChoice, ProjectLibraryInfo, PresetInfo, ProposalOutcome, SourceInfo } from '@tellcut/protocol';
+import type { AnalyzeResult, BrokenPresetInfo, ChatEvent, ChatTask, ChatThreadView, DeletePreview, GalleryIndex, ImportEvent, ImportResult, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, LiveEvent, PresetChoice, ProjectLibraryInfo, PresetInfo, ProposalOutcome, SourceInfo, SourceKeySaved } from '@tellcut/protocol';
 import type { PeakInfo, ThumbInfo } from './store.ts';
 
 export class ApiError extends Error {
@@ -139,6 +139,8 @@ export const api = {
   chatClear: (thread: string) => req<{ ok: true }>(`/api/chat/${enc(thread)}`, { method: 'DELETE' }),
   /** the API menu (spec 2026-10-24-api-picker §3): every outside source */
   sources: () => req<{ sources: SourceInfo[] }>('/api/sources'),
+  /** a key pasted in the API menu, tried by the server and kept in sources.local.json unless refused */
+  saveSourceKey: (id: string, key: string) => req<SourceKeySaved>(`/api/sources/${enc(id)}/key`, jsonPost({ key })),
   /** "Ask Agent…": stores the request; the server adds its time range (spec 2026-10-16-right-click-claude §3) */
   request: (id: string, b: { text: string; selection: string[]; playhead: number }) =>
     req<{ id: string; range: [number, number] | null }>(`/api/projects/${enc(id)}/requests`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }),

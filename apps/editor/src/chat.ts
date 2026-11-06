@@ -1,5 +1,5 @@
 // One chat thread in the browser (spec 2026-10-16-in-editor-chat §2.3): its messages, the reply streaming in, stop/clear.
-import type { AnalysisState, ChatEvent, ChatMessage, ChatTask, ChatThreadView, ChatTool, Lang, PresetChoice, SourceInfo, Usage } from '@tellcut/protocol';
+import type { AnalysisState, ChatEvent, ChatMessage, ChatTask, ChatThreadView, ChatTool, Lang, PresetChoice, SourceInfo, SourceKeySaved, Usage } from '@tellcut/protocol';
 import { getLang } from './i18n/lang.ts';
 import { errText } from './i18n/index.ts';
 import { chatErrorText } from './i18n/format.ts';
@@ -15,6 +15,7 @@ export interface ChatApi {
   chatClear(thread: string): Promise<unknown>;
   /** the API menu: every outside source (a page without it shows no menu) */
   sources?(): Promise<{ sources: SourceInfo[] }>;
+  saveSourceKey?(id: string, key: string): Promise<SourceKeySaved>;
 }
 
 /** analyzing: the project's material is being analysed; the server tells Claude to go on when it is done */
@@ -104,6 +105,9 @@ export class ChatSession {
   /** whether this page can show the API menu */
   get picksSources() { return !!this.api.sources; }
   listSources() { return this.api.sources!(); }
+  /** the API menu's key box: a pasted key, tried and kept by the server (left out: no key box) */
+  get takesKeys() { return !!this.api.saveSourceKey; }
+  saveSourceKey(id: string, key: string) { return this.api.saveSourceKey!(id, key); }
   /** the ticks the picked preset added (not ticked before it); the user's own ticks are never among them */
   private presetAdded: string[] = [];
   /** The user's ticks, kept only on this page (they go with each message; a reload starts with none). A source the user ticks

@@ -38,3 +38,29 @@ export async function checkSources(s: Sources, o: { live?: boolean; tmpDir?: str
     }));
   } finally { if (!o.tmpDir) rmSync(tmp, { recursive: true, force: true }); }
 }
+
+export type KeyTrial = { result: 'ok' | 'refused' | 'untried'; detail: string };
+
+/** A key pasted in the API menu, tried with the source's own cheapest question before it is kept: `refused` when the source
+ *  turns it down (or answers in a way the adapter cannot read — a key is the only thing that changed), `untried` when the source
+ *  could not be reached (offline, rate-limited, a bot check), so the key may still be right. The health file records the result.
+ *  The question is the adapter's own fixed check, known to work, so any 4xx answer but a timeout, a rate limit or a bot check's web
+ *  page means the key: Pixabay changed the words of its bad-key 400 once, and a key kept on them would have been a wrong one. */
+export async function tryKey(s: Sources, id: string, key: string, tmpDir?: string): Promise<KeyTrial> {
+  const a = s.adapters[id];
+  if (!a?.needsKey) throw new Error(`來源 ${id} 不需要 key`);
+  // the pasted key itself, not one an environment variable would put first
+  const envName = s.config.sources[id]?.keyEnv, { [envName ?? '']: _, ...env } = s.env;
+  const trial: Sources = { ...s, env, config: { ...s.config, keys: { ...s.config.keys, [id]: key } } };
+  const tmp = tmpDir ?? mkdtempSync(join(tmpdir(), 'source-key-'));
+  let out: KeyTrial;
+  try { out = { result: 'ok', detail: await a.check(contextFor(trial, id, tmp)) }; }
+  catch (err) {
+    const said = err instanceof SourceError && err.status !== undefined && err.status >= 400 && err.status < 500 && ![408, 429].includes(err.status) && !/人機驗證/.test(err.message);
+    out = err instanceof SourceError && err.kind !== 'broken' && !said ? { result: 'untried', detail: err.message }
+      : { result: 'refused', detail: (err as Error)?.message ?? String(err) };
+  } finally { if (!tmpDir) rmSync(tmp, { recursive: true, force: true }); }
+  // a refused key is not kept, so the source stays "no key": nothing to record about it
+  if (out.result !== 'refused') await recordHealth(s.healthFile, id, { status: out.result === 'ok' ? 'ok' : 'temporary', detail: out.detail }).catch(() => {});
+  return out;
+}

@@ -16,7 +16,7 @@ export const CARTO_LAYERS: TileLayer[] = STYLES.map(([id, path, label]) => ({
 }));
 
 export const carto: SourceAdapter = {
-  id: 'carto', label: 'Carto 街道圖', category: 'map', kinds: [], needsKey: true,
+  id: 'carto', label: 'Carto 街道圖', category: 'map', kinds: [], needsKey: true, keyUrl: 'https://carto.com/basemaps',
   limits: [{ n: 600, per: 60 }],
   tileLayers: CARTO_LAYERS,
   summary: 'Carto 街道圖（全球，淺色／深色／彩色三種樣式）：台灣以外的街道地圖，用 assets map；要免費 key',

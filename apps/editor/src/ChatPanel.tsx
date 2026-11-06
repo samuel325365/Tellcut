@@ -118,13 +118,13 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
   }, [text]);
   // the API menu: the source list is asked for when the panel first shows, and again each time the menu opens (a key put in
   // sources.local.json meanwhile counts without reloading the page); the last list shows while the new one comes
-  const [picking, setPicking] = useState(false), [rows, setRows] = useState<SourceInfo[] | null>(null), [rowsError, setRowsError] = useState('');
+  const [picking, setPicking] = useState(false), [rows, setRows] = useState<SourceInfo[] | null>(null), [rowsError, setRowsError] = useState(''), [reload, setReload] = useState(0);
   useEffect(() => {
     if (!session.picksSources || (rows && !picking)) return;
     let gone = false;
     session.listSources().then((r) => { if (!gone) { setRows(r.sources); setRowsError(''); } }, (e: Error) => { if (!gone) setRowsError(e.message); });
     return () => { gone = true; };
-  }, [session, picking]);
+  }, [session, picking, reload]);
   const picked = s.sources ?? [], pickedNames = picked.map((id) => sourceName(id, rows?.find((r) => r.id === id)?.label, surface));
   const closePicker = useCallback(() => setPicking(false), []);
   // a message the server refused comes back into the box (a typed-over box keeps what is in it)
@@ -174,7 +174,10 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
       </div>
       {picking && <SourcePicker rows={rows} error={rowsError} picked={picked} surface={surface} onClose={closePicker}
         onToggle={(id) => { const now = session.state.sources ?? []; void session.setSources(now.includes(id) ? now.filter((x) => x !== id) : [...now, id]); }}
-        onClear={() => void session.setSources([])} />}
+        onClear={() => void session.setSources([])}
+        onSaveKey={session.takesKeys ? (id, key) => session.saveSourceKey(id, key) : undefined}
+        // a key just kept: the list again (it can be ticked now) and ticked, since that is what the click was for
+        onKeySaved={(id) => { setReload((n) => n + 1); const now = session.state.sources ?? []; if (!now.includes(id)) void session.setSources([...now, id]); }} />}
     </div>
   );
   if (empty && welcome) return (

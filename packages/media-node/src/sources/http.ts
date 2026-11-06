@@ -25,7 +25,8 @@ export function cleanUrl(url: string): string {
 /** broken: the source is gone or changed (hidden until a check passes); temporary: try later; missing: that one item is not there */
 export class SourceError extends Error {
   override name = 'SourceError';
-  constructor(readonly source: string, readonly kind: 'broken' | 'temporary' | 'missing', message: string) { super(message); }
+  /** status: the HTTP status the source answered with, when it answered */
+  constructor(readonly source: string, readonly kind: 'broken' | 'temporary' | 'missing', message: string, readonly status?: number) { super(message); }
 }
 
 export interface Http {
@@ -46,7 +47,7 @@ export interface HttpOptions {
 const looksHtml = (type: string, text: string) => /text\/html/i.test(type) || /^\s*</.test(text);
 
 export function createHttp(o: HttpOptions): Http {
-  const doFetch = o.fetch ?? globalThis.fetch, now = o.now ?? Date.now, fail = (kind: SourceError['kind'], msg: string) => new SourceError(o.source, kind, msg);
+  const doFetch = o.fetch ?? globalThis.fetch, now = o.now ?? Date.now, fail = (kind: SourceError['kind'], msg: string, status?: number) => new SourceError(o.source, kind, msg, status);
 
   async function request(url: string, init: RequestInit, timeout: number): Promise<Response> {
     try { await takeSlot(join(o.cacheDir, 'rate', `${o.source}.json`), o.limits, { now }); }
@@ -62,14 +63,15 @@ export function createHttp(o: HttpOptions): Http {
   /** A status that is not 2xx, as the error it means (its body is read: a 403 web page is a bot check even when a key was sent).
    *  Other 4xx are about this request (a query the source refuses), never a reason to hide the source (review M-4). */
   async function statusError(r: Response, notFound: SourceError['kind']): Promise<SourceError> {
-    const s = r.status, text = await r.text().catch(() => '');
-    if (s === 404 || s === 410) return fail(notFound, `找不到（HTTP ${s}）`);
-    if (s === 401 || s === 403) return o.hasKey && !looksHtml(r.headers.get('content-type') ?? '', text) ? fail('broken', `key 被拒絕（HTTP ${s}）`) : fail('temporary', `被擋下（可能是人機驗證，HTTP ${s}）`);
-    // a source that takes its key in the query answers a bad one with a 400 naming it (Pixabay: [ERROR 400] "key" is invalid);
-    // only that quoted parameter name: a bare "key" in another source's 400 (a JSON field, "missing key field") is about the query
-    if (s === 400 && o.hasKey && /"key"\s+is\b/i.test(text)) return fail('broken', `key 被拒絕（HTTP ${s}）`);
-    if (s === 429 || s >= 500) return fail('temporary', `暫時不能用（HTTP ${s}）`);
-    return fail('temporary', `請求被拒絕（HTTP ${s}）`);
+    const s = r.status, text = await r.text().catch(() => ''), f = (kind: SourceError['kind'], msg: string) => fail(kind, msg, s);
+    if (s === 404 || s === 410) return f(notFound, `找不到（HTTP ${s}）`);
+    if (s === 401 || s === 403) return o.hasKey && !looksHtml(r.headers.get('content-type') ?? '', text) ? f('broken', `key 被拒絕（HTTP ${s}）`) : f('temporary', `被擋下（可能是人機驗證，HTTP ${s}）`);
+    // a source that takes its key in the query answers a bad one with a 400 naming it (Pixabay, once: [ERROR 400] "key" is invalid;
+    // since 2026: [ERROR 400] Invalid or missing API key); only those words: a bare "key" in another source's 400 (a JSON field,
+    // "missing key field") is about the query
+    if (s === 400 && o.hasKey && /"key"\s+is\b|\binvalid or missing api key\b/i.test(text)) return f('broken', `key 被拒絕（HTTP ${s}）`);
+    if (s === 429 || s >= 500) return f('temporary', `暫時不能用（HTTP ${s}）`);
+    return f('temporary', `請求被拒絕（HTTP ${s}）`);
   }
 
   return {

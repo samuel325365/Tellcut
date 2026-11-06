@@ -770,6 +770,19 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .api-pop .pill.off { cursor: default; border-style: dashed; color: var(--h-disabled); }
 .api-pop .pill.off:hover { background: transparent; }
 .api-pop .pill small { color: var(--h-denied); font-size: 11px; }
+/* a source that only lacks its key: its pill opens the key box under the group */
+.api-pop .pill.keyable { cursor: pointer; }
+.api-pop .pill.keyable:hover, .api-pop .pill.keyable.open { background: var(--h-hover); border-color: var(--h-accent); }
+.api-pop .key-box { display: flex; flex-direction: column; gap: 5px; margin: 2px 4px 6px; padding: 8px; border: 1px solid var(--h-line); border-radius: 8px; background: var(--h-bg); }
+.api-pop .key-box .key-row { display: flex; gap: 6px; }
+.api-pop .key-box input { flex: 1; min-width: 0; padding: 4px 8px; border: 1px solid var(--h-line-strong); border-radius: 6px; background: var(--h-raise); color: var(--h-text); font: inherit; font-size: 12.5px; }
+.api-pop .key-box input:focus { outline: 2px solid var(--h-ring); outline-offset: 0; }
+.api-pop .key-box .btn { padding: 4px 12px; border: 0; border-radius: 6px; background: var(--h-accent); color: var(--h-on-accent); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+.api-pop .key-box .btn:disabled { background: var(--h-disabled-bg); color: var(--h-disabled); cursor: default; }
+.api-pop .key-box a { align-self: flex-start; color: var(--h-accent-2); font-size: 12px; text-decoration: none; }
+.api-pop .key-box a:hover { text-decoration: underline; }
+.api-pop .key-msg { margin: 0 4px 6px; font-size: 12px; line-height: 1.45; } .api-pop .key-box .key-msg { margin: 0; }
+.api-pop .key-msg.err { color: var(--h-err); } .api-pop .key-msg.warn { color: var(--h-faint); }
 
 /* My blocks (spec 2026-10-29-my-library §3.2, §3.3): ☆ on this project's effects (shown on hover; ★ stays once saved), the copy's tag */
 .library .lib-row { display: flex; align-items: center; gap: 4px; }

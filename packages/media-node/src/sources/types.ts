@@ -75,6 +75,8 @@ export interface SourceAdapter {
   tileLayers?: TileLayer[];
   /** the limits when no contact is configured, for a source that gives anonymous callers less */
   limitsWithoutContact?: RateLimit[];
+  /** a source that needs a key: the page where one is asked for (the API menu links it next to its key box) */
+  keyUrl?: string;
   /** one line for `assets sources` */
   summary: string;
   /** the query `npm run sources -- --live` tries */

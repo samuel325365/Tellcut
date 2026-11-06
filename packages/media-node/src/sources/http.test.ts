@@ -76,7 +76,11 @@ test('a 403 web page is a bot check even with a key; a 403 answer with a key is 
 
 test('a 400 that names the key, sent with a key, is a refused key; another 400 stays temporary', async () => {
   reply(400, '[ERROR 400] "key" is invalid', 'text/plain');
+  await expect(h({ hasKey: true }).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken', message: 'key 被拒絕（HTTP 400）', status: 400 });
+  // Pixabay's wording since 2026
+  replies = []; reply(400, '[ERROR 400] Invalid or missing API key (https://pixabay.com/api/docs/).', 'text/plain');
   await expect(h({ hasKey: true }).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken', message: 'key 被拒絕（HTTP 400）' });
+  replies = []; reply(400, '[ERROR 400] "key" is invalid', 'text/plain');
   await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'temporary' });
   replies = []; reply(400, '[ERROR 400] "q" is too long', 'text/plain');
   await expect(h({ hasKey: true }).json('https://api.example/x')).rejects.toMatchObject({ kind: 'temporary', message: '請求被拒絕（HTTP 400）' });

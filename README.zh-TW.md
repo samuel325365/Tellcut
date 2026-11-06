@@ -357,7 +357,9 @@ Agent 下載的每個檔案，出處和授權都會記在專案裡，`npm run te
 
 ### 填 key、開關來源
 
-把 key 寫進 `tellcut` 資料夾裡的 `sources.local.json`。git 會忽略這個檔，不會被 commit：
+最快的方法：在聊天框的 **API** 選單點標著「缺 key」（編輯器裡是 No key）的來源，貼上 key 按儲存（Save）。Tellcut 會先試一次，再把它存進 `sources.local.json`：`tellcut` 資料夾裡的這個檔 git 會忽略，不會被 commit。
+
+也可以自己寫這個檔（聯絡方式也寫在這裡）：
 
 ```json
 {
