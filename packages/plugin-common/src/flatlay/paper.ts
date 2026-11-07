@@ -127,7 +127,11 @@ export function paintBack(o: Obj, local: number, stamp: CanvasImageSource | null
     if (stamp) g.drawImage(stamp, sx, sy, sw, sh); else g.drawImage(paintPlaceholder(Math.round(sw), Math.round(sh), make), sx, sy, sw, sh);
     if (o.mark && local >= o.mark.at) {
       const q = clamp((local - o.mark.at) / 0.15);
-      postmark(g, sx - sw * 0.15, sy + sh * 0.85, sw * 0.62, o.mark, 0.8 * q, 1.35 - 0.35 * q);
+      const cx = sx - sw * 0.15, cy = sy + sh * 0.85, r = sw * 0.62 * (1.35 - 0.35 * q);
+      postmark(g, cx, cy, sw * 0.62, o.mark, 0.8 * q, 1.35 - 0.35 * q);
+      // its words for check: the top arc, the bottom arc, the date across the middle (as boxes round them)
+      const box = (text: string, x0: number, y0: number, bw: number, bh: number) => { if (text) words.push({ text, rect: [(cx + x0 * r) / w, (cy + y0 * r) / h, (bw * r) / w, (bh * r) / h] }); };
+      box(o.mark.top.toUpperCase(), -0.7, -0.98, 1.4, 0.4); box(o.mark.bottom, -0.7, 0.58, 1.4, 0.4); box(o.mark.date, -0.6, -0.14, 1.2, 0.26);
     }
   }
   g.fillStyle = INK; g.font = `${size}px ${HAND}`; g.textAlign = 'left';

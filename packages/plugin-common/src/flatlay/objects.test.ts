@@ -80,3 +80,9 @@ test('picAspect: a portrait postcard is taller than wide, a polaroid is square',
   expect(picAspect(land)).toBeGreaterThan(1);
   expect(picAspect(pola)).toBeCloseTo(1, 6);
 });
+
+test('objects may also be a list (from cut.ts), not only JSON text', () => {
+  const { objs, error } = parseObjects({ objects: [{ kind: 'card', at: 1 }, { kind: 'tv' }] as unknown as string }, 1080, 1920);
+  expect(error).toBeNull();
+  expect(objs.map((o) => [o.kind, o.at])).toEqual([['card', 1], ['tv', 0]]);
+});

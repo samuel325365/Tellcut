@@ -27,7 +27,8 @@ export interface Obj {
 export interface FlatlayParams {
   kind: Kind; shot: string; place: string; year: string; caption: string; back: string; enter: Enter; at: number; flipAt: number;
   mark: string; markAt: number;
-  objects: string;
+  /** JSON text, or the list itself */
+  objects: string | unknown[];
   surface: Surface; side: Side; warmth: Warmth; camera: 'push' | 'still' | 'top'; topAt: number; fly: string; dof: number; seed: number;
 }
 
@@ -54,7 +55,7 @@ export function picAspect(o: Pick<Obj, 'kind' | 'portrait'>): number {
 }
 
 /** where the objects lie when the JSON does not say: [x, y, rot] by order, a column down a tall frame, a row across a wide one */
-const TALL: Array<[number, number, number]> = [[-0.18, 0.62, 0.09], [0.28, -0.42, -0.12], [-0.3, -0.05, 0.05], [0.25, 0.85, -0.06], [0.02, 0.2, 0.03], [-0.25, -0.85, 0.07]];
+const TALL: Array<[number, number, number]> = [[-0.1, 0.62, 0.09], [0.28, -0.42, -0.12], [-0.3, -0.05, 0.05], [0.25, 0.85, -0.06], [0.02, 0.2, 0.03], [-0.25, -0.85, 0.07]];
 const WIDE: Array<[number, number, number]> = [[-0.95, 0.1, 0.07], [0.8, -0.05, -0.1], [0, 0.22, -0.04], [-0.3, -0.28, 0.06], [0.45, 0.32, 0.04], [1.4, 0.2, -0.05]];
 export function slot(i: number, W: number, H: number): [number, number, number] {
   const list = W > H ? WIDE : TALL;
@@ -92,10 +93,11 @@ function objFrom(e: Record<string, unknown>, i: number, W: number, H: number, si
  *  the simple object and says why */
 export function parseObjects(p: Partial<FlatlayParams>, W: number, H: number): { objs: Obj[]; error: string | null } {
   const simple = () => [objFrom(p as Record<string, unknown>, 0, W, H, true)];
-  const text = str(p.objects).trim();
-  if (!text) return { objs: simple(), error: null };
+  // a list as it is (cut.ts may hand one over), else JSON text
+  const raw: unknown = p.objects, text = Array.isArray(raw) ? null : str(raw).trim();
+  if (text === '' || (Array.isArray(raw) && !raw.length)) return { objs: simple(), error: null };
   try {
-    const list = JSON.parse(text);
+    const list = text === null ? raw : JSON.parse(text);
     if (!Array.isArray(list)) throw new Error('not a list');
     return { objs: list.map((e, i) => objFrom(e && typeof e === 'object' ? e : {}, i, W, H, false)), error: null };
   } catch (e) {

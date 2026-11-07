@@ -6,7 +6,7 @@ import { parseObjects, sizeOf } from './objects.ts';
 
 const LEN = 8;
 const objs = (json: string, W = 1080, H = 1920) => parseObjects({ objects: json }, W, H).objs;
-const PUSH = { mode: 'push' as const, topAt: null, fly: null, fov: 30 };
+const PUSH = { mode: 'push' as const, topAt: null, fly: null as Fly | null, fov: 30 };
 const dist = (p: { pos: number[]; look: number[] }) => Math.hypot(p.pos[0] - p.look[0], p.pos[1] - p.look[1], p.pos[2] - p.look[2]);
 
 /** a pose as a three camera, to project points with */
