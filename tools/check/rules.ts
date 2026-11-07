@@ -1,7 +1,7 @@
 // The model layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 4): what the project file alone
 // tells (parseProject already refuses items that end before they start) — offline material, black frames, items past the end, empty text, music stopping early, captions vs speech.
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
-import { allItems, badParamTypes, envelopeAt, OLD_TEXT, PARAM_TYPES, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
+import { allItems, badParamTypes, envelopeAt, OLD_BLOCKS, OLD_TEXT, PARAM_TYPES, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { PANEL_FRAME, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { heardSpeech } from '../cut/mix.ts';
@@ -262,15 +262,16 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   return byTime(out);
 }
 
-/** The old core.title / core.caption (2026-11-05): kept so older projects open, never for a new film (the page chat's proposals
- *  and a cut.ts's c.effect could still name one). Apart from modelChecks, whose tests use them as plain test items. */
+/** The old blocks (OLD_BLOCKS: core.title / core.caption 2026-11-05, the flat common.postcard / common.frame 2026-11-07): kept so older
+ *  projects open, never for a new film (the page chat's proposals and a cut.ts's c.effect could still name one). Apart from
+ *  modelChecks, whose tests use them as plain test items. */
 export function oldBlocks(p: Project): Finding[] {
   const times = resolveTimes(p);
-  return Object.entries(OLD_TEXT).flatMap(([type, instead]): Finding[] => {
+  return Object.entries(OLD_BLOCKS).flatMap(([type, instead]): Finding[] => {
     const old = allItems(p).filter(({ item }) => (item as { type?: string }).type === type);
     if (!old.length) return [];
     const t = times.get(old[0].item.id)!;
-    return [{ level: 'warn', t: [r3(t.start), r3(t.end)], ids: old.map((x) => x.item.id), msg: `${type} 是舊積木（只為了讓舊專案打得開，${old.length} 個）：新片請改用 ${instead}，照片子的${instead === 'common.heading' ? '標題' : '字幕'}範本` }];
+    return [{ level: 'warn', t: [r3(t.start), r3(t.end)], ids: old.map((x) => x.item.id), msg: `${type} 是舊積木（只為了讓舊專案打得開，${old.length} 個）：新片請改用 ${instead}${OLD_TEXT[type] ? `，照片子的${instead === 'common.heading' ? '標題' : '字幕'}範本` : ''}` }];
   });
 }
 

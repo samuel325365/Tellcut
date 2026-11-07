@@ -1,4 +1,4 @@
-import { OLD_TEXT, type Plugin } from '@tellcut/engine';
+import { OLD_BLOCKS, type Plugin } from '@tellcut/engine';
 import { readFileSync } from 'node:fs';
 import { BLOCK_CATEGORY, handleOf } from '@tellcut/protocol';
 import { findBlocks, formatCatalog, formatFind, formatIndex, formatLookup, formatType } from './catalog.ts';
@@ -38,10 +38,10 @@ test('an unknown block names the closest ones', () => {
   expect(() => formatType(fake, 'core.bannr')).toThrow(/找不到 core\.bannr.*core\.banner/);
 });
 
-test('every registered block is listed (but the old core.title / core.caption, still shown by name) and every core block has a doc', () => {
-  const s = formatCatalog(plugins);
-  for (const p of plugins) for (const it of p.items ?? []) if (!OLD_TEXT[it.type]) expect(s).toContain(it.type);
-  for (const type of Object.keys(OLD_TEXT)) { expect(s).not.toContain(type); expect(formatType(plugins, type)).toContain('舊'); expect(findBlocks(plugins, '字幕').map((t) => t.type)).not.toContain(type); }
+test('every registered block is listed (but the old ones, still shown by name) and every core block has a doc', () => {
+  const s = formatCatalog(plugins), listed = new Set(s.split('\n').map((l) => l.trim().split(/\s+/).find((w) => /^(core|common)\./.test(w))).filter(Boolean));
+  for (const p of plugins) for (const it of p.items ?? []) if (!OLD_BLOCKS[it.type]) expect(s).toContain(it.type);
+  for (const type of Object.keys(OLD_BLOCKS)) { expect(listed.has(type)).toBe(false); expect(formatType(plugins, type)).toContain('舊'); expect(findBlocks(plugins, '字幕').map((t) => t.type)).not.toContain(type); }
   for (const it of plugins.find((p) => p.id === 'core')!.items!) expect(it.doc, it.type).toBeTruthy();
 });
 
@@ -78,9 +78,9 @@ test("the block index: one line per category with the short names, then the soun
   expect(idx).toContain(`${handleOf('common.stamp')!.slice(4)} \`stamp\``);
   for (const s of plugins.find((p) => p.id === 'common')!.sfx!) expect(idx).toContain('`' + s.type.slice(7) + '`');
   expect(idx).not.toContain('common.');
-  // every block but the ones used only when asked for (onRequest: the dachshund), which the agent is not offered here
+  // every block but the ones used only when asked for (onRequest: the dachshund) and the old ones, which the agent is not offered here
   for (const it of plugins.find((p) => p.id === 'common')!.items!) {
-    if (it.onRequest) expect(idx).not.toContain('`' + it.type.slice(7) + '`');
+    if (it.onRequest || OLD_BLOCKS[it.type]) expect(idx).not.toContain('`' + it.type.slice(7) + '`');
     else expect(idx).toContain('`' + it.type.slice(7) + '`');
   }
   const prompt = readFileSync(GUIDE_FILE, 'utf8');
@@ -112,4 +112,16 @@ test('a block marked onRequest is listed apart in the catalog and left out of th
   expect(formatIndex(ps)).toContain('`fakeBadge`');
   expect(formatIndex(ps)).not.toContain('fakeDog');
   expect(findBlocks(ps, '假狗').map((t) => t.type)).toEqual(['common.fakeDog']);
+});
+
+test('the old postcard and frame point to the 3D desk: search finds the desk, the old ones say so by name, the index leaves them out', () => {
+  const found = findBlocks(plugins, '明信片').map((t) => t.type);
+  expect(found).toContain('common.flatlay');
+  expect(found).not.toContain('common.postcard');
+  expect(formatType(plugins, 'common.frame')).toContain('舊');
+  expect(formatType(plugins, 'common.frame')).toContain('common.flatlay');
+  const frames = formatIndex(plugins).split('\n').find((l) => l.includes('(FRM)'))!;
+  expect(frames).toContain('27 `flatlay`');
+  expect(frames).not.toContain('`postcard`');
+  expect(frames).not.toContain('`frame`');
 });

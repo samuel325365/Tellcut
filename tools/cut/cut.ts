@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, allItems, createRegistry, OLD_TEXT, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, createRegistry, OLD_BLOCKS, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { flatlayClip, lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
@@ -229,7 +229,7 @@ export class Cut {
   private startFor(tr?: Transition) { return tr ? r6(Math.max(0, this.cursor - tr.dur)) : this.cursor; }
 
   /**
-   * `frame` [x, y, w, h]: the rectangle of the screen the picture lives in (a window of common.postcard / common.frame, a band…), instead of the whole screen or the panel.
+   * `frame` [x, y, w, h]: the rectangle of the screen the picture lives in (a window of common.duo / common.magazine, a band…), instead of the whole screen or the panel.
    * `from` may be written as the player shows it ('1:23.5'). `duck`: whether speech in this clip's own sound ducks the music — true,
    * false, or the dB to duck to (default: it does unless the clip's sound is at QUIET_DB or lower, room tone under a montage).
    */
@@ -382,7 +382,7 @@ export class Cut {
     return id;
   }
   // c.title and c.caption make the shared blocks, so the film's title / caption template applies (2026-11-05: the old core.title and
-  // core.caption stay only so older projects open; new films never get one — see OLD_TEXT)
+  // core.caption stay only so older projects open; new films never get one — see OLD_BLOCKS)
   title(text: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) {
     const { at = this.cursor, len = 3, ...rest } = o;
     this.unknownParams('c.title', 'common.heading', text, rest);
@@ -989,8 +989,8 @@ export class Cut {
       if (g.count) { delete (mag as any).magnetic; this.notes.push(`主軌有 ${g.count} 個空檔（共 ${g.shift} 秒）：存成一般軌（不磁吸），編輯器裡的修改不會把空檔合起來`); }
     }
     // the old core.title / core.caption (c.effect or a type: option asked for one): new films use the shared blocks
-    const old = allItems(this.p).map((x) => (x.item as { type?: string }).type ?? '').filter((type) => OLD_TEXT[type]);
-    for (const type of new Set(old)) this.notes.push(`${type} 是舊積木（只為了讓舊專案打得開）：這支片有 ${old.filter((x) => x === type).length} 個，請改用 ${OLD_TEXT[type]}`);
+    const old = allItems(this.p).map((x) => (x.item as { type?: string }).type ?? '').filter((type) => OLD_BLOCKS[type]);
+    for (const type of new Set(old)) this.notes.push(`${type} 是舊積木（只為了讓舊專案打得開）：這支片有 ${old.filter((x) => x === type).length} 個，請改用 ${OLD_BLOCKS[type]}`);
     const p = parseProject(this.p);
     // a cut runs for minutes (transcribing, faces, score): an edit the editor saved meanwhile is not the script's to overwrite
     if (this.opened && !this.opened.force && fileHash(this.dir) !== this.opened.hash)

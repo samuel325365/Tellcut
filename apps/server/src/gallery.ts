@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, resolve, sep } from 'node:path';
-import type { ItemType, ParamDef, Plugin } from '@tellcut/engine';
+import { OLD_BLOCKS, OLD_TEXT, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
 import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_ROOT, STYLES } from '@tellcut/media-node';
 // the recipes are tools code (they drive Cut); the gallery only reads their names, notes and examples. Moving them into a package of
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
@@ -33,7 +33,9 @@ const TEMPLATE_THUMB = (id: string, pre = 'tpl') => { const c = samples.find((x)
 export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): Promise<GalleryIndex> {
   const order = (p: Plugin) => (p.id === 'core' ? 0 : p.id === 'common' ? 1 : 2);
   const sorted = [...plugins].sort((a, b) => order(a) - order(b));
-  const blocks = sorted.flatMap((p) => (p.items ?? []).map((t): GalleryBlock => ({
+  // the old flat postcard and frame are not offered (the 3D desk took their place; older projects still open them); the old
+  // core.title / core.caption stay: they sit under the Titles and Captions tabs, which show only templates
+  const blocks = sorted.flatMap((p) => (p.items ?? []).filter((t) => !OLD_BLOCKS[t.type] || OLD_TEXT[t.type]).map((t): GalleryBlock => ({
     plugin: p.id, group: GROUP[p.id] ?? '外掛', type: t.type, label: t.label, doc: t.doc ?? '', kind: t.kind, params: t.params, needsMedia: needsMedia(t),
     ...(t.category ?? CORE_CATEGORY[t.type] ? { category: t.category ?? CORE_CATEGORY[t.type] } : {}), ...(THUMBS.has(t.type) ? { thumb: THUMBS.get(t.type) } : {}),
   })));

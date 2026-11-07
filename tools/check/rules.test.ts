@@ -469,3 +469,13 @@ test("a project fx's param of a type ParamDef does not have is warned about, wit
   expect(f.msg).toBe('fx.token 的參數 steps 型別是「textarea」，不是積木參數的型別（應該是 text）；fx.token 的參數 enter 型別是「boolean」，不是積木參數的型別（應該是 bool）；'
     + 'fx.token 的參數 x 型別是「constructor」，不是積木參數的型別：編輯器會把它畫成 JSON 欄位、catalog 印 undefined（可以用：number、string、text、color、bool、enum、source-ref、media-ref、json）');
 });
+
+test('the old common.postcard is warned about with the 3D desk to use instead (and no template)', () => {
+  const p = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [
+    { id: 'pc', start: 1, end: 4, type: 'common.postcard', params: {} }] }]);
+  const [f, ...more] = oldBlocks(p);
+  expect(more).toEqual([]);
+  expect(f.level).toBe('warn');
+  expect(f.msg).toContain('common.flatlay');
+  expect(f.msg).not.toContain('範本');
+});

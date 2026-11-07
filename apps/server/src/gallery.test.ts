@@ -13,6 +13,11 @@ test('the gallery lists every block (core and common first), the sounds, the mus
     expect(slam.doc.length).toBeGreaterThan(5);
     expect(slam.params.find((p: any) => p.key === 'color')).toMatchObject({ type: 'color', theme: 'palette.paper' });
     expect([...new Set(g.blocks.map((b: any) => b.plugin))]).toEqual(['core', 'common']);   // the sample films' plugins are gone
+    // the old frames are not offered: the 3D desk took their place (older projects still open them)
+    const types = g.blocks.map((b: any) => b.type);
+    expect(types).toContain('common.flatlay');
+    expect(types).not.toContain('common.postcard');
+    expect(types).not.toContain('common.frame');
     const media = (type: string) => g.blocks.find((b: any) => b.type === type).needsMedia;
     expect([media('common.backdrop'), media('core.title')]).toEqual([false, false]);
     // a media() hook marks a block, unless it says its footage is optional (the dachshund's film frames are empty without any)
