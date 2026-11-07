@@ -8,6 +8,32 @@ import { handFamily, LATIN } from '../hand.ts';
 import { sentenceCps } from '../handwrite.ts';
 import { sizeOf, type Obj } from './objects.ts';
 
+type Line = Obj['back'][number];
+interface Glyph { ch: string; i: number; x: number; w: number }
+interface Row { line: number; glyphs: Glyph[] }
+
+/** the back's lines broken into rows no wider than maxW: at the last space when the row has one (words stay whole), else at the
+ *  character (CJK); the space a row breaks at is not written. Every line keeps at least one row */
+function backRows(g: CanvasRenderingContext2D, lines: Line[], maxW: number): Row[] {
+  const rows: Row[] = [];
+  lines.forEach((line, li) => {
+    let row: Glyph[] = [], x = 0;
+    const relay = (gs: Glyph[]) => { let nx = 0; const out = gs.map((q) => { const r = { ...q, x: nx }; nx += q.w; return r; }); return { out, nx }; };
+    [...line.text].forEach((ch, i) => {
+      const w = g.measureText(ch).width;
+      if (row.length && x + w > maxW) {
+        if (ch === ' ') { rows.push({ line: li, glyphs: row }); row = []; x = 0; return; }
+        const sp = row.map((q) => q.ch).lastIndexOf(' ');
+        if (sp > 0) { rows.push({ line: li, glyphs: row.slice(0, sp) }); const r = relay(row.slice(sp + 1)); row = r.out; x = r.nx; }
+        else { rows.push({ line: li, glyphs: row }); row = []; x = 0; }
+      }
+      row.push({ ch, i, x, w }); x += w;
+    });
+    rows.push({ line: li, glyphs: row });
+  });
+  return rows;
+}
+
 export const PX = 1000;
 export interface Word { text: string; rect: [number, number, number, number] }
 export interface Painted { canvas: HTMLCanvasElement; words: Word[] }
@@ -114,7 +140,7 @@ export function paintBack(o: Obj, local: number, stamp: CanvasImageSource | null
   if (o.kind === 'tv') { g.fillStyle = '#2b2119'; g.fillRect(0, 0, w, h); return { canvas: c, words }; }
   paper(g, w, h, o.kind === 'polaroid' ? '#f3efe6' : '#f4eee2', o.seed + 100);
   const post = o.kind === 'postcard', textW = post ? w * 0.52 : w * 0.84, x0 = post ? w * 0.06 : w * 0.08;
-  const size = Math.round(Math.min(72, h / 11)), lineH = size * 1.55;
+  let size = Math.round(Math.min(72, h / 11));
   if (post) {
     g.strokeStyle = 'rgba(107,90,72,.45)'; g.lineWidth = 2;
     g.beginPath(); g.moveTo(w * 0.6, h * 0.12); g.lineTo(w * 0.6, h * 0.88); g.stroke();
@@ -134,19 +160,28 @@ export function paintBack(o: Obj, local: number, stamp: CanvasImageSource | null
       box(o.mark.top.toUpperCase(), -0.7, -0.98, 1.4, 0.4); box(o.mark.bottom, -0.7, 0.58, 1.4, 0.4); box(o.mark.date, -0.6, -0.14, 1.2, 0.26);
     }
   }
-  g.fillStyle = INK; g.font = `${size}px ${HAND}`; g.textAlign = 'left';
-  o.back.forEach((line, li) => {
-    const y = h * 0.2 + size + li * lineH, cps = sentenceCps(line, 12), chars = [...line.text];
-    let x = x0;
-    chars.forEach((ch, i) => {
-      const a = clamp((local - line.start - i / cps) / 0.18);
-      const cw = g.measureText(ch).width;
-      if (x + cw > x0 + textW) return;
-      if (a > 0) { g.globalAlpha = a; g.fillText(ch, x, y); }
-      x += cw;
+  g.fillStyle = INK; g.textAlign = 'left';
+  // laid out for the whole text, whatever is written yet, so the rows never move: smaller until every row fits above the bottom
+  let rows: Row[] = [];
+  for (let k = 0; k < 10; k++) {
+    g.font = `${size}px ${HAND}`;
+    rows = backRows(g, o.back, textW);
+    if (size + (rows.length - 1) * size * 1.55 <= h * 0.72 || size <= 24) break;
+    size = Math.max(24, Math.round(size * 0.88));
+  }
+  const lineH = size * 1.55;
+  rows.forEach((row, r) => {
+    const line = o.back[row.line], y = h * 0.2 + size + r * lineH, cps = sentenceCps(line, 12);
+    let end = -1;
+    row.glyphs.forEach((q, n) => {
+      const a = clamp((local - line.start - q.i / cps) / 0.18);
+      if (a <= 0) return;
+      g.globalAlpha = a; g.fillText(q.ch, x0 + q.x, y); end = n;
     });
     g.globalAlpha = 1;
-    if (local > line.start && line.text) words.push({ text: line.text, rect: [x0 / w, (y - size * 0.85) / h, (x - x0) / w, size / h] });
+    // its words for check: only what is written
+    const shown = row.glyphs.slice(0, end + 1), text = shown.map((q) => q.ch).join('');
+    if (text.trim()) { const last = shown[shown.length - 1]; words.push({ text, rect: [x0 / w, (y - size * 0.85) / h, (last.x + last.w) / w, size / h] }); }
   });
   return { canvas: c, words };
 }

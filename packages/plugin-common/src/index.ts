@@ -110,7 +110,7 @@ export { COMIC_LAYOUTS, comicPanels, comicShape, comicWindow, type ComicLayout }
 export { GRID_LAYOUTS, gridBoxes, type GridLayout } from './grid.ts';
 export { polyBox, slantPolys } from './slant.ts';
 export { postageBox } from './postage.ts';
-export { flatlayClip, type FlatlayParams } from './flatlay.ts';
+export { flatlayClip, parseFly, type FlatlayParams } from './flatlay.ts';
 export { letterboxBar, letterboxText } from './letterbox.ts';
 export { DESK_BARS, deskSlot, popupButton, sheetButton } from './desktop.ts';
 export { phoneScreen, screenFrame } from './phone.ts';

@@ -15,7 +15,7 @@ import { imagesReady } from './window.ts';
 import type { ThreeKit } from './three/kit.ts';
 import { cameraPose, flyCover, flyCrop, PIC_LIFT, type CameraMode, type Fly } from './flatlay/camera.ts';
 import { lightRig } from './flatlay/light.ts';
-import { contactShadow, objectPose, type Pose } from './flatlay/motion.ts';
+import { atRest, contactShadow, objectPose, viewHalf, type Pose } from './flatlay/motion.ts';
 import { faceSource, KINDS, parseObjects, picAspect, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
 import { paintBack, paintFront, paintPlaceholder, type Word } from './flatlay/paper.ts';
@@ -83,6 +83,19 @@ interface S {
   dof: number; error: string | null; dead: boolean;
   geos: Set<T.BufferGeometry>; mats: Set<T.Material>; texs: Set<T.Texture>;
   project: Project; fontsText: string;
+  /** without three.js (its chunk failed to load): the objects drawn flat on the desk's colour, no 3D state at all */
+  flat: FlatThing[] | null;
+}
+interface FlatThing {
+  o: Obj; size: ReturnType<typeof sizeOf>; source: 'video' | 'still' | 'placeholder'; flipX: boolean;
+  front: HTMLCanvasElement; placeholder: HTMLCanvasElement; still: HTMLImageElement | null; back: HTMLCanvasElement | null; backKey: string;
+}
+
+/** the picture covers the screen and a main-track clip can show it (a video): the desk is not drawn. A still or the stand-in has no
+ *  clip to take over, so the covering picture stays drawn */
+function handedOver(s: S, local: number): boolean {
+  if (!s.fly || flyCover(s.fly, local) < 1) return false;
+  return (s.flat ?? s.items)[s.fly.index]?.source === 'video';
 }
 
 /** the soft shadow right under an object: a blurred rounded rectangle, drawn once */
@@ -318,8 +331,9 @@ function toScreen(s: S, sheet: T.Object3D, x: number, y: number, z: number, W: n
 /** the words on the visible faces, projected, for check */
 function report(ctx: ItemCtx<FlatlayParams>, s: S) {
   const { W, H } = ctx;
+  if (flyCover(s.fly, ctx.local) > 0) return;
   for (const t of s.items) {
-    if (!t.pose) continue;
+    if (!t.pose || !atRest(t.o, ctx.local)) continue;
     const { w, h, depth, curl } = t.size, backUp = t.pose.flip > Math.PI / 2;
     const words = backUp ? t.backWords : t.frontWords;
     for (const word of words) {
@@ -347,15 +361,19 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     + '多樣東西寫 objects（JSON 陣列）；surface none 是透明桌面，疊在影片上',
   params: PARAMS,
   build(ctx) {
-    const { root, W, H, params: p } = ctx, three = ctx.three as ThreeKit, THREE = three.THREE;
+    const { root, W, H, params: p } = ctx;
     const c = document.createElement('canvas'); c.width = W; c.height = H; c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';
     const holder = document.createElement('div'); holder.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none';
     root.append(c, holder);
     const { objs, error } = parseObjects(p, W, H);
     if (error) console.error(`common.flatlay ${ctx.item.id}: ${error}`);
+    let fly = parseFly(p.fly);
+    if (fly && !objs[fly.index]) { console.error(`common.flatlay ${ctx.item.id}: fly index ${fly.index} names no object (there are ${objs.length}); not flying`); fly = null; }
     const surface = (Object.keys(SURFACE_LOOK).includes(p.surface) ? p.surface : 'linen') as Surface;
+    if (!ctx.three) return buildFlat(ctx, c, holder, objs, surface, fly, error);
+    const three = ctx.three as ThreeKit, THREE = three.THREE;
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(flatlayFov(W, H), W / H, 0.05, 60);
-    const s: S = { c, holder, three, scene, camera, spot: null!, sky: null!, gobo: null, items: [], fly: parseFly(p.fly),
+    const s: S = { c, holder, three, scene, camera, spot: null!, sky: null!, gobo: null, items: [], fly, flat: null,
       mode: (['push', 'still', 'top'].includes(p.camera) ? p.camera : 'push') as CameraMode, topAt: Number(p.topAt) >= 0 ? Number(p.topAt) : null,
       surface, side: p.side === 'right' ? 'right' : 'left', warmth: (['morning', 'afternoon', 'golden'].includes(p.warmth) ? p.warmth : 'afternoon') as S['warmth'],
       dof: clamp(Number(p.dof) || 0), error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project: ctx.project as Project, fontsText: '' };
@@ -386,7 +404,7 @@ export const flatlay: ItemType<FlatlayParams, S> = {
       const text = s.fontsText || 'Aa';
       await Promise.all([`italic 500 40px ${LATIN}`, `500 40px ${LATIN}`, `600 40px ${LATIN}`, `40px '${HAND}'`].map((f) => document.fonts.load(f, text).catch(() => [])));
     }
-    const imgs = s.items.flatMap((t) => [t.still, t.stamp]).filter((i): i is HTMLImageElement => !!i);
+    const imgs = [...s.items.flatMap((t) => [t.still, t.stamp]), ...(s.flat ?? []).map((t) => t.still)].filter((i): i is HTMLImageElement => !!i);
     try { await imagesReady(imgs); } catch { /* no decode() here (tests): the pictures show once they load */ }
     // the words were painted before their fonts: again now
     for (const t of s.items) {
@@ -394,18 +412,22 @@ export const flatlay: ItemType<FlatlayParams, S> = {
       t.frontTex.image = front.canvas; t.frontTex.needsUpdate = true; t.frontWords = front.words;
       t.backKey = '';
     }
+    for (const t of s.flat ?? []) { t.front = paintFront(t.o).canvas; t.backKey = ''; }
   },
   draw(ctx, s) {
     if (s.dead) return;
     const { W, H } = ctx;
     if (s.c.width !== W || s.c.height !== H) { s.c.width = W; s.c.height = H; }
+    if (s.flat) { drawFlat(ctx, s, s.flat); return; }
     // the picture covers the screen: the main track's clip shows it, the desk is not drawn
-    if (flyCover(s.fly, ctx.local) >= 1) { s.c.getContext('2d')?.clearRect(0, 0, W, H); s.items.forEach((t) => { t.pose = null; }); return; }
+    if (handedOver(s, ctx.local)) { s.c.getContext('2d')?.clearRect(0, 0, W, H); s.items.forEach((t) => { t.pose = null; }); return; }
     paint(ctx, s, pose(ctx, s));
     report(ctx, s);
   },
   late(ctx, s) {
-    if (s.dead || flyCover(s.fly, ctx.local) >= 1) return;
+    if (s.dead) return;
+    if (s.flat) { drawFlat(ctx, s, s.flat); return; }
+    if (handedOver(s, ctx.local)) return;
     let any = false;
     for (const t of s.items) if (t.pose && t.vt && t.source === 'video') { upload(ctx, t); any = true; }
     if (!any) return;
@@ -416,7 +438,7 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     s.dead = true;
     for (const t of s.items) { t.vt?.dispose(); t.vt = null; }
     s.geos.forEach((g) => g.dispose()); s.mats.forEach((m) => m.dispose()); s.texs.forEach((x) => x.dispose());
-    s.spot.shadow.dispose?.();
+    s.spot?.shadow.dispose?.();
     s.geos.clear(); s.mats.clear(); s.texs.clear();
   },
   media(item, project) {
@@ -431,6 +453,59 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     return { videos, stills };
   },
 };
+
+/** the block without three.js: the same objects, posed by the same curves, drawn flat over the desk's colour from straight above
+ *  (no camera, no light, no fly but the hand-off); enough to see what is where and what plays */
+function buildFlat(ctx: ItemCtx<FlatlayParams>, c: HTMLCanvasElement, holder: HTMLDivElement, objs: Obj[], surface: Surface, fly: Fly | null, error: string | null): S {
+  const project = ctx.project as Project;
+  const flat = objs.map((o): FlatThing => {
+    const size = sizeOf(o), source = faceSource(o, project), [, , pw, ph] = size.pic;
+    let still: HTMLImageElement | null = null;
+    if (source === 'still' && o.shot) { still = new Image(); still.src = ctx.media.stillUrl(stillRef(o.shot)); }
+    return { o, size, source, flipX: size.w >= size.h, front: paintFront(o).canvas, placeholder: paintPlaceholder(Math.round(pw * size.w * 400), Math.round(ph * size.h * 400)), still, back: null, backKey: '' };
+  });
+  return { c, holder, three: null!, scene: null!, camera: null!, spot: null!, sky: null!, gobo: null, items: [], fly, mode: 'still', topAt: null, surface, side: 'left',
+    warmth: 'afternoon', dof: 0, error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, fontsText: objs.map((o) => [o.place, o.year, o.caption, ...o.back.map((l) => l.text)].join('')).join(''), flat };
+}
+
+function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {
+  const { W, H, local, dur } = ctx;
+  if (s.c.width !== W || s.c.height !== H) { s.c.width = W; s.c.height = H; }
+  const g = s.c.getContext('2d');
+  if (!g) return;
+  g.clearRect(0, 0, W, H);
+  if (handedOver(s, local)) return;
+  if (s.surface !== 'none') { g.fillStyle = SURFACE_LOOK[s.surface].base; g.fillRect(0, 0, W, H); }
+  const k = W / (2 * viewHalf(W, H)[0]);
+  flat.forEach((t, i) => {
+    const p = objectPose(t.o, i, local, W, H);
+    if (!p.visible) return;
+    const { w, h, pic } = t.size, ow = w * k, oh = h * k, lift = 1 + Math.max(0, p.z) * 0.3, turn = Math.max(0.02, Math.abs(Math.cos(p.flip)));
+    g.save();
+    g.translate(W / 2 + p.x * k, H / 2 - p.y * k); g.rotate(-p.rotZ);
+    if (t.flipX) g.scale(lift, lift * turn); else g.scale(lift * turn, lift);
+    g.shadowColor = 'rgba(0,0,0,.28)'; g.shadowBlur = 24 * lift; g.shadowOffsetY = 8 * lift;
+    if (p.flip > Math.PI / 2) {
+      const key = backKey(t.o, local, false);
+      if (key !== t.backKey || !t.back) { t.back = paintBack(t.o, local).canvas; t.backKey = key; }
+      g.drawImage(t.back, -ow / 2, -oh / 2, ow, oh);
+    } else {
+      g.drawImage(t.front, -ow / 2, -oh / 2, ow, oh);
+      g.shadowColor = 'transparent';
+      const [px, py, pw, ph] = pic, bx = -ow / 2 + px * ow, by = -oh / 2 + py * oh, bw = pw * ow, bh = ph * oh;
+      let img: CanvasImageSource = t.placeholder, sw = 0, sh = 0;
+      if (t.source === 'video' && t.o.shot && cellLive(t.o.at, dur)) {
+        const len = dur - t.o.at, el = ctx.media.video(cellRef(t.o.shot, len), s.holder, clamp(local - t.o.at, 0, Math.max(0, len - 0.04))) as HTMLVideoElement | null;
+        if (el && el.readyState >= 2 && el.videoWidth) { img = el; [sw, sh] = sourceSize(ctx, t.o.shot, el); }
+      } else if (t.source === 'still' && loaded(t.still)) { img = t.still; [sw, sh] = sourceSize(ctx, t.o.shot!, t.still); }
+      g.save(); g.beginPath(); g.rect(bx, by, bw, bh); g.clip();
+      if (img === t.placeholder) g.drawImage(img, bx, by, bw, bh);
+      else { const b = coverPlacement(sw, sh, bw, bh, t.o.shot!.crop); try { g.drawImage(img, bx + b.left, by + b.top, b.width, b.height); } catch { /* no picture yet */ } }
+      g.restore();
+    }
+    g.restore();
+  });
+}
 
 /** the depth of field for the frame draw posed (late renders it again) */
 function dofAt(ctx: ItemCtx<FlatlayParams>, s: S) {

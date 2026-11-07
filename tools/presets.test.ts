@@ -274,3 +274,10 @@ test('the card styles build on the 3D desk, never the old flat postcard or frame
     for (const l of ['zh', 'en', 'ja'] as const) expect(st.desc[l], `${p}.${id} desc.${l}`).toBeTruthy();
   }
 });
+
+// c.flatlayClip holds the main track from the object's arrival to the desk item's end: the prompts say how to use that
+test('the card styles say how the hand-off to the main track works', () => {
+  const style = (p: string, id: string) => presets().find((x) => x.id === p)!.styles.find((x) => x.id === id)!.prompt;
+  expect(style('travel', 'postcard')).toMatch(/run on/);
+  for (const id of ['frame', 'postcard']) expect(style('celebration', id), id).toMatch(/its own desk item/);
+});

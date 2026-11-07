@@ -2,10 +2,11 @@
 // common.flatlay (spec 2026-11-07-desk3d): the block's hooks run on a hand-made item context with the real three.js scene and a
 // ThreeKit whose renderer is a stand-in (jsdom has no WebGL and no canvas: a stand-in 2D context takes any call and counts them).
 import * as THREE from 'three';
-import { resolveTheme } from '@tellcut/engine';
+import { itemMediaIssues, resolveTheme } from '@tellcut/engine';
 import { flatlay, flatlayClip } from './flatlay.ts';
 import { flyCrop } from './flatlay/camera.ts';
 import { picAspect, parseObjects } from './flatlay/objects.ts';
+import { paintBack } from './flatlay/paper.ts';
 import { makeKit } from './three/kit.ts';
 
 const calls = new WeakMap<HTMLCanvasElement, string[]>();
@@ -56,7 +57,7 @@ function ctxOf(params: Record<string, unknown>, o: { len?: number; W?: number; H
   const ctx: any = {
     t: 0, local: 0, dur: len, item: { id: 'x', type: 'common.flatlay', start: 0, end: len, params }, params: { ...defaults, ...params }, root, top: document.createElement('div'),
     project: { meta: { width: w, height: h, fps: 30 }, sources: { a: { width: 1920, height: 1080 }, b: { width: 1920, height: 1080 } } },
-    media, W: w, H: h, fps: 30, theme: resolveTheme({}, { width: w, height: h }), grades: {}, three: o.kit ?? dofKit(), motion: undefined,
+    media, W: w, H: h, fps: 30, theme: resolveTheme({}, { width: w, height: h }), grades: {}, three: 'kit' in o ? o.kit : dofKit(), motion: undefined,
     reportText: (b: any) => o.reports?.push(b),
   };
   return ctx;
@@ -115,7 +116,11 @@ test('late uploads every visible video and nothing else', async () => {
   expect(made[0]).toHaveBeenCalledTimes(1);
 });
 
-test('missing source', async () => {
+// a source id the project does not have: the engine fails the item loudly (check and the player name the id, as for every block);
+// built on its own, the face shows the stand-in
+test('a shot naming no source is reported, and its face shows the stand-in', async () => {
+  const item = { id: 'x', type: 'common.flatlay', start: 0, end: 5, params: { objects: JSON.stringify([{ kind: 'polaroid', shot: 'zz|3' }]) } } as any;
+  expect(itemMediaIssues(flatlay as any, item, { sources: { a: {} } } as any)).toEqual(['unknown source "zz"']);
   const { ctx, s } = await built({ objects: JSON.stringify([{ kind: 'polaroid', shot: 'zz|3' }]) });
   videos = [];
   flatlay.draw(at(ctx, 2), s); flatlay.late!(ctx, s);
@@ -218,4 +223,59 @@ test("a box's front lies above its body, so the two never fight", async () => {
     const front = Math.min(...tops.filter(([type, z]) => type !== 'BoxGeometry' && z > body / 2).map(([, z]) => z));
     expect(front - body).toBeGreaterThan(0.0005);
   }
+});
+
+test('without three.js (a failed load) the desk still draws, flat', async () => {
+  const { ctx, s } = await built({ objects: TWO }, { kit: undefined });
+  expect(() => { flatlay.draw(at(ctx, 3), s); flatlay.late!(ctx, s); }).not.toThrow();
+  const log = calls.get((s as any).c) ?? [];
+  expect(log).toContain('fillRect');
+  expect(log.filter((k) => k === 'drawImage').length).toBeGreaterThanOrEqual(2);
+  expect(() => flatlay.dispose!(s)).not.toThrow();
+});
+
+test('a fly to an object that is not there is dropped, with a word why', async () => {
+  const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const { ctx, s } = await built({ objects: TWO, fly: { index: 5, at: 1, dur: 1 } });
+  expect(err.mock.calls.flat().join(' ')).toMatch(/fly/);
+  err.mockRestore();
+  const seen = vi.spyOn(ctx.three, 'render');
+  flatlay.draw(at(ctx, 3), s);
+  expect(seen).toHaveBeenCalled();
+});
+
+test('a fly into a picture no main-track clip can take over keeps drawing that picture', async () => {
+  for (const shot of ['a|3||still', '']) {
+    const { ctx, s } = await built({ objects: JSON.stringify([{ kind: 'polaroid', shot, at: 0 }]), fly: { index: 0, at: 1, dur: 1 } });
+    const seen = vi.spyOn(ctx.three, 'render');
+    flatlay.draw(at(ctx, 3), s);
+    expect(seen, shot || 'stand-in').toHaveBeenCalled();
+    expect(s.items[0].overlay.visible).toBe(true);
+  }
+});
+
+test('only objects at rest report their words (check samples any time: a moving word would read as off the frame)', async () => {
+  const p = { objects: JSON.stringify([{ kind: 'postcard', shot: 'a|1', place: 'Roma', year: '2024', at: 0, enter: 'left', dur: 1, flipAt: 3, flipDur: 1 }]) };
+  const reports: any[] = [];
+  const { ctx, s } = await built(p, { reports });
+  flatlay.draw(at(ctx, 0.4), s); expect(reports, 'sliding in').toEqual([]);
+  flatlay.draw(at(ctx, 3.5), s); expect(reports, 'turning over').toEqual([]);
+  flatlay.draw(at(ctx, 2), s); expect(reports.map((r) => r.text)).toEqual(expect.arrayContaining(['Roma', '2024']));
+  const flying: any[] = [];
+  const b = await built({ ...p, fly: { index: 0, at: 1.5, dur: 1 } }, { reports: flying });
+  flatlay.draw(at(b.ctx, 2), b.s); expect(flying, 'flying in').toEqual([]);
+});
+
+test("the back's handwriting wraps instead of dropping characters, and reports only what is written", () => {
+  const line = 'one two three four five six seven eight nine ten';   // 48 characters of 20 px: wider than the 780 px the back has
+  const { objs } = parseObjects({ objects: JSON.stringify([{ kind: 'postcard', back: `0-2|${line}`, mark: '' }]) }, W, H);
+  const done = paintBack(objs[0], 10);
+  expect(done.words.length).toBe(2);
+  expect(done.words.map((w) => w.text).join(' ')).toBe(line);
+  for (const w of done.words) expect(w.rect[0] + w.rect[2]).toBeLessThanOrEqual(0.06 + 0.52 + 1e-9);
+  expect(done.words[1].rect[1]).toBeGreaterThan(done.words[0].rect[1]);
+  const writing = paintBack(objs[0], 0.2);
+  expect(writing.words.length).toBe(1);
+  expect(line.startsWith(writing.words[0].text)).toBe(true);
+  expect(writing.words[0].text.length).toBeLessThan(12);
 });

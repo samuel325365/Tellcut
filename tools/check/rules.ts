@@ -3,7 +3,7 @@
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { allItems, badParamTypes, envelopeAt, OLD_BLOCKS, OLD_TEXT, PARAM_TYPES, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
-import { PANEL_FRAME, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
+import { flatlayClip, PANEL_FRAME, parseFly, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { heardSpeech } from '../cut/mix.ts';
 
 export type Level = 'error' | 'warn' | 'note';
@@ -272,6 +272,30 @@ export function oldBlocks(p: Project): Finding[] {
     if (!old.length) return [];
     const t = times.get(old[0].item.id)!;
     return [{ level: 'warn', t: [r3(t.start), r3(t.end)], ids: old.map((x) => x.item.id), msg: `${type} 是舊積木（只為了讓舊專案打得開，${old.length} 個）：新片請改用 ${instead}${OLD_TEXT[type] ? `，照片子的${instead === 'common.heading' ? '標題' : '字幕'}範本` : ''}` }];
+  });
+}
+
+/** A common.flatlay that flies into a video's picture until it covers the frame stops drawing there, for the main track's clip of
+ *  that shot (c.flatlayClip) to take over: with no such clip under it, the frame would go empty. A still keeps being drawn. */
+export function flatlayHandOff(p: Project): Finding[] {
+  const times = resolveTimes(p);
+  return allItems(p).flatMap(({ item }): Finding[] => {
+    const it = item as { id: string; type?: string; params?: Record<string, unknown> };
+    if (it.type !== 'common.flatlay') return [];
+    const fly = parseFly(it.params?.fly), t = times.get(it.id)!, dur = t.end - t.start;
+    if (!fly) return [];
+    const full = fly.at + fly.dur, until = fly.back !== null ? fly.back : dur;
+    if (full >= Math.min(dur, until) - 1e-6) return [];
+    const clip = flatlayClip(it.params ?? {}, fly.index, 1920, 1080, p.meta.width, p.meta.height, dur);
+    if (!clip) return [];
+    const at = t.start + full + 0.05;
+    const taken = p.tracks.some((tr) => tr.kind === 'video' && tr.items.some((v) => {
+      const vt = times.get(v.id)!;
+      return (v as { source?: string }).source === clip.source && vt.start <= at && vt.end > at;
+    }));
+    if (taken) return [];
+    return [{ level: 'warn', t: [r3(t.start + full), r3(t.start + Math.min(dur, until))], ids: [it.id],
+      msg: `common.flatlay 飛進第 ${fly.index} 樣東西的照片、蓋滿畫面後就不畫桌面，主軌卻沒有那個鏡頭接手，畫面會空掉：用 c.flatlayClip('${it.id}', ${fly.index}) 放上去` }];
   });
 }
 

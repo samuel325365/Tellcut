@@ -1,5 +1,5 @@
 import { parseProject, type Transcript } from '@tellcut/engine';
-import { canvasFxFiles, chosenSpec, fxChecks, modelChecks, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
+import { canvasFxFiles, chosenSpec, flatlayHandOff, fxChecks, modelChecks, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -478,4 +478,20 @@ test('the old common.postcard is warned about with the 3D desk to use instead (a
   expect(f.level).toBe('warn');
   expect(f.msg).toContain('common.flatlay');
   expect(f.msg).not.toContain('範本');
+});
+
+test('a desk that flies into a video with no main-track clip to take over is warned about', () => {
+  const desk = (fly: object) => ({ id: 'desk', start: 0, end: 6, type: 'common.flatlay', params: { objects: JSON.stringify([{ kind: 'polaroid', shot: 'v|4', at: 0 }]), fly } });
+  const bare = project([{ id: 'main', kind: 'video', items: [] }, { id: 'o', kind: 'overlay', items: [desk({ index: 0, at: 1, dur: 1 })] }]);
+  const [f, ...more] = flatlayHandOff(bare);
+  expect(more).toEqual([]);
+  expect(f.level).toBe('warn');
+  expect(f.ids).toEqual(['desk']);
+  expect(f.msg).toContain('flatlayClip');
+  const handed = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 6, { in: 4 })] }, { id: 'o', kind: 'overlay', items: [desk({ index: 0, at: 1, dur: 1 })] }]);
+  expect(flatlayHandOff(handed)).toEqual([]);
+  const back = project([{ id: 'main', kind: 'video', items: [] }, { id: 'o', kind: 'overlay', items: [desk({ index: 0, at: 1, dur: 1, back: 2.5 })] }]);
+  expect(flatlayHandOff(back).length, 'flies back out: the main track is seen only for a moment').toBe(1);
+  const still = project([{ id: 'main', kind: 'video', items: [] }, { id: 'o', kind: 'overlay', items: [{ ...desk({ index: 0, at: 1, dur: 1 }), params: { objects: JSON.stringify([{ kind: 'polaroid', shot: 'ph|0||still', at: 0 }]), fly: { index: 0, at: 1, dur: 1 } } }] }]);
+  expect(flatlayHandOff(still), 'a still: the desk keeps drawing it').toEqual([]);
 });

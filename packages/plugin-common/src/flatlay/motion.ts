@@ -64,5 +64,12 @@ export function objectPose(o: Obj, index: number, local: number, W: number, H: n
   return pose;
 }
 
+/** the object lies still at `local`: come in, not turning over, not leaving (only then are its words where check expects them) */
+export function atRest(o: Obj, local: number): boolean {
+  if (o.enter !== 'none' && local < o.at + Math.max(0.05, o.dur)) return false;
+  if (o.flipAt !== null && local > o.flipAt && local < o.flipAt + Math.max(0.05, o.flipDur)) return false;
+  return !(o.exit && local >= o.exitAt);
+}
+
 /** the soft shadow right under an object: larger and fainter the higher it is above the table */
 export const contactShadow = (lift: number) => ({ scale: 1 + Math.max(0, lift) * 1.6, opacity: 0.55 / (1 + Math.max(0, lift) * 3) });
