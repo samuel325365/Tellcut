@@ -15,7 +15,7 @@ import { imagesReady } from './window.ts';
 import type { ThreeKit } from './three/kit.ts';
 import { cameraPose, flyCover, flyCrop, PIC_LIFT, type CameraMode, type Fly } from './flatlay/camera.ts';
 import { lightRig } from './flatlay/light.ts';
-import { atRest, contactShadow, objectPose, viewHalf, type Pose } from './flatlay/motion.ts';
+import { atRest, contactShadow, objectPose, REST_Z, viewHalf, type Pose } from './flatlay/motion.ts';
 import { faceSource, KINDS, parseObjects, picAspect, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
 import { paintBack, paintFront, paintPlaceholder, type Word } from './flatlay/paper.ts';
@@ -252,7 +252,7 @@ function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
     t.sheet.scale.z = curl > 0 ? Math.max(0.05, 1 - flying) : 1;
     const op = flying > 0.55 ? clamp((flying - 0.55) / 0.45) : 0;
     t.overlayMat.opacity = op; t.overlay.visible = op > 0;
-    const cs = contactShadow(p.z - 0.004 * (i + 1));
+    const cs = contactShadow(p.z - (t.o.rest ?? REST_Z * (i + 1)));   // the lift above where it rests
     t.shadow.position.set(p.x, 0.001, -p.y); t.shadow.rotation.z = p.rotZ;
     t.shadow.scale.set(w * 1.6 * cs.scale, h * 1.6 * cs.scale, 1);
     (t.shadow.material as T.MeshBasicMaterial).opacity = p.flip > 0 && p.flip < Math.PI ? cs.opacity * 0.8 : cs.opacity;

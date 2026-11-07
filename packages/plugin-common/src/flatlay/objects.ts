@@ -21,6 +21,8 @@ export interface Obj {
   place: string; year: string; caption: string; back: Sentence[]; stamp: CellShot | null; mark: Mark | null;
   /** the object's own seed (its paper fibres) */
   seed: number;
+  /** how high it lies at rest: set by the list (`stack`), else a sheet's thickness above the one before */
+  rest?: number;
 }
 
 /** the block's parameters: the simple fields make one object; `objects` (a JSON list) replaces them with any number */
@@ -99,7 +101,7 @@ export function parseObjects(p: Partial<FlatlayParams>, W: number, H: number): {
   try {
     const list = text === null ? raw : JSON.parse(text);
     if (!Array.isArray(list)) throw new Error('not a list');
-    return { objs: list.map((e, i) => objFrom(e && typeof e === 'object' ? e : {}, i, W, H, false)), error: null };
+    return { objs: stack(list.map((e, i) => objFrom(e && typeof e === 'object' ? e : {}, i, W, H, false))), error: null };
   } catch (e) {
     return { objs: simple(), error: `objects JSON：${(e as Error).message}` };
   }
@@ -109,6 +111,26 @@ export function parseObjects(p: Partial<FlatlayParams>, W: number, H: number): {
 export function faceSource(o: Pick<Obj, 'shot'>, project: Pick<Project, 'sources'> | undefined): 'video' | 'still' | 'placeholder' {
   if (!o.shot || !(project?.sources as Record<string, unknown> | undefined)?.[o.shot.source]) return 'placeholder';
   return o.shot.still ? 'still' : 'video';
+}
+
+/** how far above the one before each later object lies */
+export const REST_Z = 0.004;
+
+/** where each object rests: a sheet's thickness above the one before, and above the curled corners and the thickness of every
+ *  earlier object it may overlap (bounding circles), so nothing shows through it; a box (the tv) is not climbed, a sheet tucks
+ *  under its edge */
+export function stack(objs: Obj[]): Obj[] {
+  const half = (o: Obj) => { const s = sizeOf(o); return Math.hypot(s.w, s.h) / 2; };
+  objs.forEach((o, i) => {
+    let rest = REST_Z * (i + 1);
+    for (let j = 0; j < i; j++) {
+      const u = objs[j], s = sizeOf(u);
+      if (u.kind === 'tv' || Math.hypot(o.x - u.x, o.y - u.y) >= half(o) + half(u)) continue;
+      rest = Math.max(rest, (u.rest ?? REST_Z * (j + 1)) + s.depth + s.curl + REST_Z);
+    }
+    o.rest = rest;
+  });
+  return objs;
 }
 
 /** a sheet curling up at its corners: flat in the middle, `curl` high at each corner (x, y from the sheet's centre) */

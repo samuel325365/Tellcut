@@ -2,13 +2,13 @@
 // turn that overshoots, a slide in from a side, a real flip about the long edge that lifts the object while it turns, an exit, and
 // the stack (each later object lies a sheet's thickness above the one before). Written curves, a pure function of time.
 import { clamp, eBack, eIn3, eIO3, eOut3 } from '@tellcut/engine';
-import { sizeOf, type Enter, type Obj } from './objects.ts';
+import { REST_Z, sizeOf, type Enter, type Obj } from './objects.ts';
+
+export { REST_Z };
 
 /** z, height above the table; flip, the turn about the long edge (0 face up, π back up); tilt, the drop's lean */
 export interface Pose { x: number; y: number; z: number; rotZ: number; flip: number; tilt: number; visible: boolean }
 
-/** how far above the one before each later object lies */
-export const REST_Z = 0.004;
 /** how high a drop starts */
 export const DROP_LIFT = 1.6;
 /** the part of a drop spent falling; the rest is the bounce */
@@ -31,7 +31,7 @@ function outside(dir: Enter, o: Obj, W: number, H: number): { dx: number; dy: nu
 }
 
 export function objectPose(o: Obj, index: number, local: number, W: number, H: number): Pose {
-  const rest = REST_Z * (index + 1);
+  const rest = o.rest ?? REST_Z * (index + 1);
   const pose: Pose = { x: o.x, y: o.y, z: rest, rotZ: o.rot, flip: 0, tilt: 0, visible: true };
   if (o.enter !== 'none' && local < o.at) return { ...pose, visible: false };
   const q = o.enter === 'none' ? 1 : span(local, o.at, o.dur);

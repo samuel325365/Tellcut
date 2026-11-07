@@ -279,3 +279,11 @@ test("the back's handwriting wraps instead of dropping characters, and reports o
   expect(line.startsWith(writing.words[0].text)).toBe(true);
   expect(writing.words[0].text.length).toBeLessThan(12);
 });
+
+// a sheet resting on others lies higher than the table, but it is not hovering: its contact shadow is the one of an object at rest
+test('a sheet lying on the pile keeps the contact shadow of an object at rest', async () => {
+  const objects = JSON.stringify([{ kind: 'photo', x: 0, y: 0, rot: 0, enter: 'none' }, { kind: 'postcard', x: 0.1, y: 0.1, rot: 0, enter: 'none' }]);
+  const { ctx, s } = await built({ objects, camera: 'still' });
+  flatlay.draw(at(ctx, 3), s);
+  for (const t of s.items) expect(t.shadow.scale.x).toBeCloseTo(t.size.w * 1.6, 6);
+});

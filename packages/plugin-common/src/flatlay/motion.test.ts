@@ -13,7 +13,7 @@ test('before it comes in an object is not drawn', () => {
 
 test('a drop lands exactly on its resting pose', () => {
   const [, o] = objs('[{"kind":"card"},{"kind":"polaroid","at":1,"dur":0.9,"x":0.3,"y":-0.4,"rot":-0.12}]');
-  const rest = { x: 0.3, y: -0.4, z: REST_Z * 2, rotZ: -0.12, flip: 0, tilt: 0, visible: true };
+  const rest = { x: 0.3, y: -0.4, z: o.rest!, rotZ: -0.12, flip: 0, tilt: 0, visible: true };
   expect(objectPose(o, 1, 1.9, 1080, 1920)).toEqual(rest);
   expect(objectPose(o, 1, 4.9, 1080, 1920)).toEqual(rest);
 });
@@ -80,4 +80,25 @@ test('objectPose is the same for the same local', () => {
     list.forEach((o, k) => expect(objectPose(o, k, t, 1080, 1920)).toEqual(objectPose(o, k, t, 1080, 1920)));
   }
   expect(sizeOf(list[0]).w).toBe(1.5);
+});
+
+// a sheet that comes later lies on the ones under it: above their curled corners and above a frame's thickness, never through
+// them (the polaroid's corner showed through the postcard dropped on it; the postcard's back went under the photo frame)
+test('a later sheet rests above the curl and thickness of the earlier sheets it overlaps', () => {
+  const list = objs(JSON.stringify([
+    { kind: 'polaroid', x: 0, y: 0, rot: 0 }, { kind: 'photo', x: 0.3, y: 0.1, rot: 0 }, { kind: 'postcard', x: 0.1, y: -0.1, rot: 0 },
+    { kind: 'card', x: 9, y: 9, rot: 0 },
+  ]));
+  const z = (i: number) => objectPose(list[i], i, 99, 1080, 1920).z;
+  const top = (i: number) => z(i) + sizeOf(list[i]).depth + sizeOf(list[i]).curl;
+  expect(z(1)).toBeGreaterThan(top(0));
+  expect(z(2)).toBeGreaterThan(top(1));
+  expect(z(2)).toBeGreaterThan(top(0));
+  expect(z(3), 'far from the others: on the table').toBe(REST_Z * 4);
+});
+
+// a box (the tv) is not climbed: a sheet that overlaps it tucks under its edge rather than floating at its height
+test('a sheet overlapping the tv stays on the table', () => {
+  const list = objs(JSON.stringify([{ kind: 'tv', x: 0, y: 0, rot: 0 }, { kind: 'postcard', x: 0.4, y: -0.6, rot: 0 }]));
+  expect(objectPose(list[1], 1, 99, 1080, 1920).z).toBe(REST_Z * 2);
 });
