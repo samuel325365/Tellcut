@@ -664,6 +664,20 @@ export const samples: Sample[] = [
   { name: 'wide-postage', type: 'common.postage', sources: PIC, params: { source: 'pic', still: true, backdrop: 'color', y: 0.5 }, len: 3, at: [1.6], wide: true },
   { name: 'letterbox', type: 'common.letterbox', params: { sub: 'ROME, SPRING' }, len: 3, at: [0.4, 2], bg: '#4a6b7c' },
   { name: 'wide-letterbox', type: 'common.letterbox', params: { sub: 'ROME, SPRING' }, len: 3, at: [2], bg: '#4a6b7c', wide: true },
+  // common.flatlay, the 3D desk: one sample per surface (the settled frame last: the thumbnails draw the last time), a flip, a wide desk
+  { name: 'flatlay', type: 'common.flatlay', sources: PIC, len: 3.2, at: [0.5, 2.8], params: { surface: 'linen', objects: JSON.stringify([
+    { kind: 'postcard', shot: 'pic|0||still', place: 'Fontana di Trevi', year: '2024', at: 0 }, { kind: 'polaroid', shot: 'pic|0||still', caption: '那年夏天', at: 0.6 }]) } },
+  { name: 'flatlay-flip', type: 'common.flatlay', sources: PIC, len: 3.4, at: [1.2, 3.2], params: { surface: 'marble', objects: JSON.stringify([
+    { kind: 'postcard', shot: 'pic|0||still', place: 'Roma', year: '2024', at: 0, enter: 'none', flipAt: 0.2, flipDur: 0.8, back: '1.0-2.2|謝謝你\n2.2-2.9|那時候願意出發', mark: 'ROMA|羅馬|2024.05.12', markAt: 2.9 }]) } },
+  { name: 'flatlay-tv', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], params: { surface: 'concrete', warmth: 'morning', objects: JSON.stringify([
+    { kind: 'tv', shot: 'pic|0||still', caption: 'Sunrise', at: 0, enter: 'none' }, { kind: 'photo', shot: 'pic|0||still', caption: '1998', at: 0.4 }]) } },
+  { name: 'flatlay-velvet', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], params: { surface: 'velvet', warmth: 'golden', objects: JSON.stringify([
+    { kind: 'card', shot: 'pic|0||still', caption: '生日快樂', at: 0, enter: 'none' }, { kind: 'polaroid', shot: 'pic|0||still', caption: '十八歲', at: 0.3 }]) } },
+  { name: 'flatlay-none', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], bg: '#d9c2f7', params: { surface: 'none', objects: JSON.stringify([
+    { kind: 'polaroid', shot: 'pic|0||still', caption: '那年夏天', at: 0, enter: 'none' }]) } },
+  { name: 'wide-flatlay', type: 'common.flatlay', sources: PIC, len: 3.4, at: [3.2], wide: true, params: { surface: 'linen', side: 'right', objects: JSON.stringify([
+    { kind: 'postcard', shot: 'pic|0||still', place: 'Trastevere', year: '2024', at: 0, enter: 'none' }, { kind: 'polaroid', shot: 'pic|0||still', caption: '那年夏天', at: 0.3 },
+    { kind: 'card', shot: 'pic|0||still', caption: '再見', at: 0.8 }]) } },
   { name: 'backdrop-words', type: 'common.backdrop', params: { pattern: 'words', word: 'HELLO', color: '#c6f03a', color2: '#ff3ea5', tint: 1, scale: 175, drift: 54, bits: 12 }, at: [0.5] },
   { name: 'wipe-stripes', type: 'common.wipe', params: { mode: 'stripes', colors: '#ff3ea5,#c6f03a,#ff7a1a,#3b4cf0', slant: 1.11, dir: 'left' }, len: 1, at: [0.2, 0.5, 0.75], bg: '#4a6b7c' },
   { name: 'badge-box', type: 'common.badge', params: { shape: 'box', label: 'No.1', plate: '米白休閒', x: 0.08, y: 0.125, size: 26, color: '#111111', textColor: '#ffffff', font: 'Playfair Display' }, at: [1.5], bg: '#3b4cf0' },

@@ -155,7 +155,8 @@ function makeThing(s: S, THREE: typeof import('three'), o: Obj, ctx: ItemCtx<Fla
   if (depth > 0) {
     const frontGeo = own(s, sheetGeometry(THREE, w, h, 0)); frontGeo.translate(0, 0, depth);
     const backGeo = own(s, sheetGeometry(THREE, w, h, 0));
-    const bodyGeo = own(s, new THREE.BoxGeometry(w * 0.998, h * 0.998, depth)); bodyGeo.translate(0, 0, depth / 2);
+    // the body stops just under the front panel: a shared top face would flicker between the two (z-fighting)
+    const bodyGeo = own(s, new THREE.BoxGeometry(w * 0.998, h * 0.998, depth - 0.002)); bodyGeo.translate(0, 0, (depth - 0.002) / 2);
     const bodyMat = own(s, new THREE.MeshStandardMaterial({ color: o.kind === 'tv' ? 0x35261b : 0x4f3520, roughness: 0.7 }));
     sheet.add(cast(new THREE.Mesh(frontGeo, frontMat)), cast(new THREE.Mesh(backGeo, backMat)), cast(new THREE.Mesh(bodyGeo, bodyMat)));
   } else {
@@ -276,6 +277,8 @@ function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
 /** the depth of field: off while flying in (the covering picture must be sharp: the composer would tone-map the unlit copy too),
  *  faded out over the fly's first 30 % */
 function dofOf(s: S, cover: number, focus: number) {
+  // a see-through desk: the blur pass writes an opaque picture, which would hide what lies under the item
+  if (s.surface === 'none') return null;
   const d = s.dof * (cover > 0 ? (cover < 0.3 ? 1 - cover / 0.3 : 0) : 1);
   return d > 0 ? { focus, aperture: 0.0046 * d, maxblur: 0.017 * d } : null;
 }

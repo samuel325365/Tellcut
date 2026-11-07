@@ -201,3 +201,21 @@ test("flatlayClip lines up with the object's video", () => {
   expect(flatlayClip({ objects: JSON.stringify([{ kind: 'card' }]) }, 0, 1920, 1080, W, H, 5)).toBeNull();
   expect(flatlayClip({ objects: JSON.stringify([{ kind: 'card', shot: 'a|2||still' }]) }, 0, 1920, 1080, W, H, 5)).toBeNull();
 });
+
+test('a see-through desk renders without depth of field (the blur pass would make it opaque)', async () => {
+  const { ctx, s } = await built({ objects: TWO, surface: 'none' });
+  const seen = vi.spyOn(ctx.three, 'render');
+  flatlay.draw(at(ctx, 3), s);
+  expect((seen.mock.calls.at(-1)![4] as any).dof).toBeNull();
+});
+
+test("a box's front lies above its body, so the two never fight", async () => {
+  const { s } = await built({ objects: JSON.stringify([{ kind: 'tv', shot: 'a|1' }, { kind: 'photo', shot: 'a|1' }]) });
+  for (const t of s.items) {
+    const tops: Array<[string, number]> = t.sheet.children.filter((m: any) => m.geometry).map((m: any) => { m.geometry.computeBoundingBox(); return [m.geometry.type, m.geometry.boundingBox.max.z]; });
+    const body = tops.find(([type]) => type === 'BoxGeometry')![1];
+    // the planes on the front side (the panel, the picture), each clear of the body's top
+    const front = Math.min(...tops.filter(([type, z]) => type !== 'BoxGeometry' && z > body / 2).map(([, z]) => z));
+    expect(front - body).toBeGreaterThan(0.0005);
+  }
+});

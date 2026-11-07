@@ -17,7 +17,7 @@ export interface Rig {
 /** the window light's colour: a cool morning, a warm afternoon, a low golden sun */
 export const WARMTH: Record<Warmth, number> = { morning: 0xdfe8ff, afternoon: 0xffe2bf, golden: 0xffb877 };
 const STRENGTH: Record<Surface, { spot: number; sky: number }> = {
-  linen: { spot: 110, sky: 0.95 }, marble: { spot: 100, sky: 1 }, concrete: { spot: 110, sky: 0.9 }, velvet: { spot: 140, sky: 0.06 }, none: { spot: 110, sky: 0.95 },
+  linen: { spot: 110, sky: 0.95 }, marble: { spot: 100, sky: 1 }, concrete: { spot: 110, sky: 0.9 }, velvet: { spot: 105, sky: 0.06 }, none: { spot: 110, sky: 0.95 },
 };
 
 export function lightRig(o: { surface: Surface; side: Side; warmth: Warmth }, t: number): Rig {
@@ -26,7 +26,7 @@ export function lightRig(o: { surface: Surface; side: Side; warmth: Warmth }, t:
   if (o.surface === 'velvet') {
     // a lamp straight above, a little to the light's side so the objects keep some modelling
     const x = o.side === 'right' ? 0.3 : -0.3;
-    return { spot: { pos: [x, 5.5, -0.35], target: [0, 0, 0], color: 0xffcf94, intensity: s.spot, angle: 0.26, penumbra: 0.9, gobo: false, goboOffset: [0, 0] }, sky, exposure: look.exposure };
+    return { spot: { pos: [x, 5.5, -0.35], target: [0, 0, 0], color: 0xffe4c4, intensity: s.spot, angle: 0.26, penumbra: 0.9, gobo: false, goboOffset: [0, 0] }, sky, exposure: look.exposure };
   }
   const m = o.side === 'right' ? -1 : 1;
   // the leaves: two slow waves on u, one on v, a few thousandths of the picture

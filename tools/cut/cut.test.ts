@@ -1,6 +1,7 @@
 // The Cut API (cut.ts): clips and photos on the main track, texts, effects and their tracks, theme, params, handles.
 // Other topics are in cut-*.test.ts (speech, save, audio, framing, tighten, samples); their shared fixture in cut-test-kit.ts.
 import { parseProject } from '@tellcut/engine';
+import { flatlayClip } from '@tellcut/plugin-common';
 import { fresh, items } from './cut-test-kit.ts';
 
 test('clips and photos go one after another on the main track; a clip brings its own sound along', () => {
@@ -112,4 +113,18 @@ test('a time or a length that is not a number is refused at the call that got it
   expect(items(c, 'text')).toEqual([]);
   c.facesProvider = { id: 'none', check: async () => ({ ok: true }), detect: async () => [] };
   expect((await c.save()).meta.duration).toBe(3);
+});
+
+test("flatlayClip places the object's footage under the desk", () => {
+  const c = fresh();
+  const objects = JSON.stringify([{ kind: 'postcard', shot: 'v|2', at: 0.3 }, { kind: 'polaroid', shot: 'v|3|0.4,0.5,1.1', at: 1.5 }]);
+  const id = c.effect('common.flatlay', { at: 4, len: 6, objects });
+  const clip = c.flatlayClip(id, 1);
+  const want = flatlayClip({ objects }, 1, 1920, 1080, 1920, 1080, 6)!;
+  const v = items(c, 'v1').find((i) => i.id === clip);
+  expect([v.source, v.in, v.start, v.end]).toEqual(['v', 3, 5.5, 10]);
+  expect(v.crop).toEqual({ from: want.crop, to: want.crop });
+  expect(items(c, 'orig').some((i) => i.parent === clip)).toBe(true);
+  expect(() => c.flatlayClip(id, 1)).toThrow('擋住');
+  expect(() => c.flatlayClip(id, 5)).toThrow('第 5 樣');
 });

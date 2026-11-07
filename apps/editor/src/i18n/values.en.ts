@@ -208,4 +208,7 @@ export const VALUES_EN: Record<string, string> = {
   "common.desktop.start": "Start",
   "common.monoframe.text": "HONG KONG · ",
   "common.spread.name": "Seafood",
+  "common.flatlay.caption": "That summer",
+  "common.flatlay.back": "0.5-1.6|Thank you\n1.7-2.8|for setting out back then",
+  "common.flatlay.mark": "ROMA|ROME|2024.05.12",
 };

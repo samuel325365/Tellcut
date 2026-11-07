@@ -103,6 +103,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'FRM-24': 'common.slant',
   'FRM-25': 'common.postage',
   'FRM-26': 'common.letterbox',
+  'FRM-27': 'common.flatlay',
   'PHN-01': 'common.notify',
   'PHN-02': 'common.lockscreen',
   'PHN-03': 'common.reels',

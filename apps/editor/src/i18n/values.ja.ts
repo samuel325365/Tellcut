@@ -207,4 +207,7 @@ export const VALUES_JA: Record<string, string> = {
   "common.desktop.start": "スタート",
   "common.monoframe.text": "HONG KONG · 香港 · ",
   "common.spread.name": "シーフード",
+  "common.flatlay.caption": "あの夏",
+  "common.flatlay.back": "0.5-1.6|ありがとう\n1.7-2.8|あのとき出かけてくれて",
+  "common.flatlay.mark": "ROMA|ローマ|2024.05.12",
 };

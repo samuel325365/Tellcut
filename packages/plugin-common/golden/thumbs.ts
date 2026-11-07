@@ -23,6 +23,7 @@ export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unk
     quiz: { stars: 2, reveal: 2.4, badge: '🌈', fact: '7 colours', factSub: 'red, orange, yellow, green, blue, indigo, violet' },
     desktop: { chapters: '0|Prep|#ffd6b8|#cdb8f5\n1.5|Party|#ffc4dc|#d9c2f7\n2.5|Birthday|#fff0b8|#ffc4dc', menu: 'File,Edit,View,Party', start: 'Start' },
     monoframe: { text: 'MARRAKECH · ' },
+    flatlay: { surface: 'linen', objects: JSON.stringify([{ kind: 'postcard', shot: 'pic|0||still', place: 'Fontana di Trevi', year: '2024', at: 0 }, { kind: 'polaroid', shot: 'pic|0||still', caption: 'That summer', at: 0.6 }]) },
   },
   ja: {
     'core-title': { text: '京都三日間', sub: '秋の最初の旅' },
@@ -45,5 +46,6 @@ export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unk
     quiz: { stars: 2, reveal: 2.4, badge: '🌈', fact: '7色', factSub: '赤・橙・黄・緑・青・藍・紫' },
     desktop: { chapters: '0|準備|#ffd6b8|#cdb8f5\n1.5|パーティー|#ffc4dc|#d9c2f7\n2.5|誕生日|#fff0b8|#ffc4dc', menu: 'ファイル,編集,表示,パーティー', start: 'スタート' },
     monoframe: { text: 'MARRAKECH · マラケシュ · ' },
+    flatlay: { surface: 'linen', objects: JSON.stringify([{ kind: 'postcard', shot: 'pic|0||still', place: 'Fontana di Trevi', year: '2024', at: 0 }, { kind: 'polaroid', shot: 'pic|0||still', caption: 'あの夏', at: 0.6 }]) },
   },
 };

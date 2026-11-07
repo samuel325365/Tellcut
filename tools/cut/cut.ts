@@ -6,7 +6,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, allItems, createRegistry, OLD_TEXT, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
+import { flatlayClip, lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
 import { viewCrop, viewRect, viewHits, type Rect } from './view.ts';
@@ -531,6 +531,33 @@ export class Cut {
     const t = r6(clip.in + ((at as number) - times.get(clip.id)!.start) * clip.speed);
     const id = this.attach(this.effect('common.polaroid', { at: at as number, len: len as number, ...params, source: clip.source, t }), clip.id);
     if (sound) this.attach(this.sfx('common.shutter', { at: at as number, len: 0.2, gain: -6 }), clip.id);
+    return id;
+  }
+  /**
+   * The main-track clip under a common.flatlay item for object `index` (from 0): that object's shot, from the item's start + the
+   * object's `at` to the item's end, cropped so that when the camera has flown into the picture it shows exactly what the picture
+   * shows (the hand-off has no seam), with its own sound (the desk's pictures are silent). The main track must be free then.
+   */
+  flatlayClip(itemId: string, index: number, o: { gain?: number } = {}): string {
+    const it = allItems(this.p).find((x) => (x.item as { id: string }).id === itemId)?.item as { type?: string; params?: Record<string, unknown> } | undefined;
+    if (!it || it.type !== 'common.flatlay') throw new Error(`flatlayClip：${itemId} 不是 common.flatlay 項目`);
+    const t = resolveTimes(this.p).get(itemId)!, dur = r6(t.end - t.start), params = it.params ?? {};
+    // the source's size for the crop: the object's shot names it
+    const probe = flatlayClip(params, index, 1920, 1080, this.p.meta.width, this.p.meta.height, dur);
+    if (!probe) throw new Error(`flatlayClip：${itemId} 沒有第 ${index} 樣東西，或它沒有鏡頭、是定格（index 從 0 數）`);
+    const s = this.src(probe.source);
+    const c = flatlayClip(params, index, s.width, s.height, this.p.meta.width, this.p.meta.height, dur)!;
+    const start = r6(t.start + c.at), len = r6(Math.min(c.len, s.duration - c.from));
+    if (!(len > 0)) throw new Error(`flatlayClip：第 ${index} 樣東西在項目裡沒有時間（at ${c.at} 秒、項目長 ${dur} 秒）`);
+    const times = resolveTimes(this.p);
+    const block = (this.p.tracks.find((x) => x.id === 'v1')!.items as VideoItem[]).find((v) => { const vt = times.get(v.id)!; return vt.start < start + len - 1e-6 && vt.end > start + 1e-6; });
+    if (block) { const bt = times.get(block.id)!; throw new Error(`flatlayClip：主軌 ${start}–${r6(start + len)} 秒被 ${block.id}（${bt.start}–${bt.end} 秒）擋住`); }
+    const id = addItem(this.p, { track: 'v1', item: { source: c.source, in: c.from, speed: 1, start, end: r6(start + len), crop: { from: c.crop, to: c.crop } } });
+    if (s.audio !== false) {
+      const edge = r6(Math.min(0.1, len / 4));
+      addItem(this.p, { track: 'orig', item: { source: c.source, in: c.from, rate: 1, start: 0, end: len, gain: o.gain ?? 0, fadeIn: edge, fadeOut: edge, parent: id } });
+    }
+    this.bump(start + len);
     return id;
   }
   private setTransform(id: string, transform: { x: number; y: number; scale: number }) {
