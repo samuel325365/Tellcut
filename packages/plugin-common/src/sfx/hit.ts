@@ -79,7 +79,7 @@ export const impactSfx: SfxType = { type: 'common.impact', label: '重擊', cate
 export const popSfx: SfxType = { type: 'common.pop', label: '啵', category: 'hit', doc: '短短的氣泡「啵」；貼紙、表情、小元素彈出',
   params: [num('pitch', '音高 (Hz)', 700, 200, 2000, 10)],
   duration: () => 0.12, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderPop(c.sampleRate, p.pitch)) };
-export const thudSfx: SfxType = { type: 'common.thud', label: '悶響', category: 'hit', doc: '短而低的一聲悶響，像印章蓋下去；配 common.stamp；paper: 橡皮章蓋在桌上的紙卡（多一聲木頭敲擊和紙聲），配 common.postmark／common.postcard',
+export const thudSfx: SfxType = { type: 'common.thud', label: '悶響', category: 'hit', doc: '短而低的一聲悶響，像印章蓋下去；配 common.stamp；paper: 橡皮章蓋在桌上的紙卡（多一聲木頭敲擊和紙聲），配 common.postmark／common.flatlay',
   params: [{ key: 'paper', label: '蓋在紙卡上（木桌、紙聲）', type: 'bool', default: false }], duration: (p) => (p.paper ? 0.45 : 0.35), lookback: SHORT,
   synth: (c, b, at, p) => play(c, b, at, renderThud(c.sampleRate, !!p.paper), 0.1) };
 export const explodeSfx: SfxType = { type: 'common.explode', label: '爆炸＋玻璃碎', category: 'hit', doc: '轟的一聲爆炸、低頻下墜，再一陣玻璃碎片；爆表、搞砸、大揭曉；配 common.burst 的 blast',

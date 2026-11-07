@@ -31,7 +31,9 @@ export interface FlatlayParams {
   mark: string; markAt: number;
   /** JSON text, or the list itself */
   objects: string | unknown[];
-  surface: Surface; side: Side; warmth: Warmth; camera: 'push' | 'still' | 'top'; topAt: number; fly: string; dof: number; seed: number;
+  surface: Surface; side: Side; warmth: Warmth; camera: 'push' | 'still' | 'top'; topAt: number;
+  /** a json parameter: the object itself, or its JSON text */
+  fly: string | Record<string, unknown> | null; dof: number; seed: number;
 }
 
 /** sizes in desk units; pic is where the picture sits on the object, as fractions of its width and height (x, y from the top left) */
@@ -74,34 +76,40 @@ function markOf(v: unknown, at: number): Mark | null {
   return { top, bottom, date, at };
 }
 
-function objFrom(e: Record<string, unknown>, i: number, W: number, H: number, simple: boolean): Obj {
+/** how long an exit takes */
+export const EXIT_DUR = 0.8;
+
+function objFrom(e: Record<string, unknown>, i: number, W: number, H: number, simple: boolean, len: number): Obj {
   const kind = KINDS.includes(e.kind as Kind) ? (e.kind as Kind) : 'postcard';
   const enter = ENTERS.includes(e.enter as Enter) ? (e.enter as Enter) : 'drop';
   const [sx, sy, sr] = slot(i, W, H);
   const shot = shotOf(e.shot);
   const flipAt = num(e.flipAt, -1);
   const exit = ENTERS.includes(e.exit as Enter) && e.exit !== 'none' ? (e.exit as Enter) : null;
+  const at = num(e.at, simple ? 0.2 : 0), dur = num(e.dur, enter === 'drop' ? 0.9 : 0.8);
   return {
-    kind, shot, x: num(e.x, sx), y: num(e.y, sy), rot: num(e.rot, sr), portrait: e.portrait === true,
-    enter, at: num(e.at, simple ? 0.2 : 0), dur: num(e.dur, enter === 'drop' ? 0.9 : 0.8),
-    exit, exitAt: num(e.exitAt, 0), flipAt: flipAt >= 0 ? flipAt : null, flipDur: num(e.flipDur, 0.9),
+    kind, shot, x: num(e.x, sx), y: num(e.y, sy), rot: num(e.rot, sr), portrait: e.portrait === true, enter, at, dur,
+    // an exit with no time leaves just as the item ends (not before it has come in)
+    exit, exitAt: num(e.exitAt, Math.max(at + dur, len - EXIT_DUR)), flipAt: flipAt >= 0 ? flipAt : null, flipDur: num(e.flipDur, 0.9),
     place: str(e.place), year: str(e.year), caption: str(e.caption), back: parseSentences(str(e.back)),
     // a postcard's stamp is that stop's own picture unless it says otherwise
     stamp: shotOf(e.stamp) ?? (kind === 'postcard' ? shot : null), mark: markOf(e.mark, num(e.markAt, 1)), seed: i + 1,
   };
 }
 
-/** the objects on the desk: the JSON list when there is one, else the one object of the simple fields; a broken list falls back to
- *  the simple object and says why */
-export function parseObjects(p: Partial<FlatlayParams>, W: number, H: number): { objs: Obj[]; error: string | null } {
-  const simple = () => [objFrom(p as Record<string, unknown>, 0, W, H, true)];
+/** the objects on the desk: the JSON list when there is one, else the one object of the simple fields (an empty list too); a broken
+ *  list falls back to the simple object and says why. `len` is the item's length (an exit with no exitAt ends with it; left out,
+ *  such an exit never comes) */
+export function parseObjects(p: Partial<FlatlayParams>, W: number, H: number, len = Infinity): { objs: Obj[]; error: string | null } {
+  const simple = () => [objFrom(p as Record<string, unknown>, 0, W, H, true, len)];
   // a list as it is (cut.ts may hand one over), else JSON text
   const raw: unknown = p.objects, text = Array.isArray(raw) ? null : str(raw).trim();
   if (text === '' || (Array.isArray(raw) && !raw.length)) return { objs: simple(), error: null };
   try {
     const list = text === null ? raw : JSON.parse(text);
     if (!Array.isArray(list)) throw new Error('not a list');
-    return { objs: stack(list.map((e, i) => objFrom(e && typeof e === 'object' ? e : {}, i, W, H, false))), error: null };
+    if (!list.length) return { objs: simple(), error: null };
+    return { objs: stack(list.map((e, i) => objFrom(e && typeof e === 'object' ? e : {}, i, W, H, false, len))), error: null };
   } catch (e) {
     return { objs: simple(), error: `objects JSON：${(e as Error).message}` };
   }

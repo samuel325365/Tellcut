@@ -3,13 +3,13 @@
 // ThreeKit whose renderer is a stand-in (jsdom has no WebGL and no canvas: a stand-in 2D context takes any call and counts them).
 import * as THREE from 'three';
 import { itemMediaIssues, resolveTheme } from '@tellcut/engine';
-import { flatlay, flatlayClip } from './flatlay.ts';
+import { flatlay, flatlayClip, readFly } from './flatlay.ts';
 import { flyCrop } from './flatlay/camera.ts';
 import { picAspect, parseObjects } from './flatlay/objects.ts';
 import { paintBack } from './flatlay/paper.ts';
 import { makeKit } from './three/kit.ts';
 
-const calls = new WeakMap<HTMLCanvasElement, string[]>();
+const calls = new WeakMap<HTMLCanvasElement, string[]>(), args = new WeakMap<HTMLCanvasElement, Array<[string, unknown[]]>>();
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : anything),
   apply: () => anything, construct: () => anything, set: () => true,
@@ -17,11 +17,11 @@ const anything: any = new Proxy(function () {}, {
 const realGetContext = HTMLCanvasElement.prototype.getContext;
 beforeAll(() => {
   (HTMLCanvasElement.prototype as any).getContext = function (this: HTMLCanvasElement) {
-    const log = calls.get(this) ?? []; calls.set(this, log);
+    const log = calls.get(this) ?? [], argLog = args.get(this) ?? []; calls.set(this, log); args.set(this, argLog);
     return new Proxy(anything, { get: (t, k) => {
       if (k === 'canvas') return this;
       if (k === 'measureText') return (s: string) => ({ width: String(s).length * 20 });
-      if (typeof k === 'string' && ['fillRect', 'drawImage', 'clearRect', 'fillText'].includes(k)) return (...a: unknown[]) => { log.push(k); void a; };
+      if (typeof k === 'string' && ['fillRect', 'drawImage', 'clearRect', 'fillText', 'scale'].includes(k)) return (...a: unknown[]) => { log.push(k); argLog.push([k, a]); };
       return t[k];
     } });
   };
@@ -286,4 +286,88 @@ test('a sheet lying on the pile keeps the contact shadow of an object at rest', 
   const { ctx, s } = await built({ objects, camera: 'still' });
   flatlay.draw(at(ctx, 3), s);
   for (const t of s.items) expect(t.shadow.scale.x).toBeCloseTo(t.size.w * 1.6, 6);
+});
+
+// ---- the final review's minors (2026-11-08)
+test("a replaced video keeps the old one's picture on the face until the new one has its own", async () => {
+  const kit = dofKit(), freed: unknown[] = [], real = kit.mediaTexture.bind(kit);
+  kit.mediaTexture = (el: any) => { const t = real(el); return { ...t, dispose: () => { freed.push(t.texture); t.dispose(); } }; };
+  const { ctx, s } = await built({ objects: JSON.stringify([{ kind: 'polaroid', shot: 'a|3', at: 0 }]) }, { kit });
+  flatlay.draw(at(ctx, 2), s); flatlay.late!(ctx, s);
+  const old = s.items[0].vt!.texture, face = () => (s.items[0].face.material as THREE.MeshPhysicalMaterial).map;
+  expect(face()).toBe(old);
+  let ready = 0;
+  const fresh = document.createElement('video');
+  Object.defineProperty(fresh, 'readyState', { get: () => ready }); Object.defineProperty(fresh, 'videoWidth', { get: () => (ready ? 1920 : 0) }); Object.defineProperty(fresh, 'videoHeight', { get: () => (ready ? 1080 : 0) });
+  const video = media.video;
+  media.video = () => fresh;
+  try {
+    flatlay.draw(at(ctx, 2.1), s); flatlay.late!(ctx, s);
+    expect(face()).toBe(old); expect(freed).not.toContain(old);
+    ready = 4;
+    flatlay.draw(at(ctx, 2.2), s);
+    expect(face()).toBe(s.items[0].vt!.texture); expect(face()).not.toBe(old); expect(freed).toContain(old);
+  } finally { media.video = video; }
+});
+
+test('the fly: a pull back before the fly is over waits for it, and a broken fly says why', async () => {
+  expect(readFly({ index: 0, at: 1, dur: 1.2, back: 1.5 }).fly!.back).toBeCloseTo(2.2, 9);
+  expect(readFly('{"index":0,"at":1').error).toMatch(/^fly JSON：/);
+  expect(readFly('[1]').error).toMatch(/not an object/);
+  expect(readFly('').error).toBeNull(); expect(readFly(null)).toEqual({ fly: null, error: null });
+  const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const { s } = await built({ objects: TWO, fly: '{"index":0,' });
+  expect(err.mock.calls.flat().join(' ')).toMatch(/fly JSON/);
+  err.mockRestore();
+  expect(s.fly).toBeNull(); expect(s.error).toMatch(/fly JSON/);
+});
+
+test('an exit with no exitAt leaves just as the item ends; an empty list is the simple object', () => {
+  const [o] = parseObjects({ objects: JSON.stringify([{ kind: 'card', exit: 'left', at: 0.5 }]) }, W, H, 5).objs;
+  expect(o.exitAt).toBeCloseTo(4.2, 9);
+  const [short] = parseObjects({ objects: JSON.stringify([{ kind: 'card', exit: 'left', at: 0.5 }]) }, W, H, 1).objs;
+  expect(short.exitAt).toBeCloseTo(0.5 + 0.9, 9);   // not before it has come in
+  expect(parseObjects({ objects: JSON.stringify([{ kind: 'card', exit: 'left' }]) }, W, H).objs[0].exitAt).toBe(Infinity);
+  for (const objects of ['[]', ' [ ] ']) expect(parseObjects({ kind: 'tv', objects }, W, H)).toEqual({ objs: [expect.objectContaining({ kind: 'tv' })], error: null });
+});
+
+test("a postcard that never turns over asks for no stamp picture", () => {
+  const media2 = (objects: unknown[]) => flatlay.media!({ id: 'x', type: 'common.flatlay', start: 0, end: 5, params: { objects: JSON.stringify(objects) } } as any, {} as any).stills;
+  expect(media2([{ kind: 'postcard', shot: 'a|12' }])).toEqual([]);
+  expect(media2([{ kind: 'postcard', shot: 'a|12', flipAt: 9 }])).toEqual([]);
+  expect(media2([{ kind: 'postcard', shot: 'a|12', flipAt: 2 }])).toEqual([{ source: 'a', t: 12, w: 1080 }]);
+});
+
+test('without WebGL the picture is cropped to the face, not stretched', async () => {
+  const kit = makeKit(THREE, {} as any, { makeRenderer: () => null });
+  const { ctx, s } = await built({ objects: JSON.stringify([{ kind: 'polaroid', shot: 'a|3', at: 0, enter: 'none' }]) }, { kit });
+  flatlay.draw(at(ctx, 2), s); flatlay.late!(ctx, s);
+  const pic = s.items[0].vt!.texture.image as HTMLCanvasElement;
+  const drawn = (args.get(s.c) ?? []).filter(([k, a]) => k === 'drawImage' && a[0] === pic).at(-1)![1] as number[];
+  expect(drawn[3] / drawn[4]).toBeCloseTo(1920 / 1080, 3);
+});
+
+test('drawn flat, a sheet resting high on the pile is not drawn bigger', async () => {
+  const objects = JSON.stringify([{ kind: 'photo', x: 0, y: 0, enter: 'none' }, { kind: 'postcard', x: 0.1, y: 0.1, enter: 'none' }]);
+  const { ctx, s } = await built({ objects }, { kit: undefined });
+  flatlay.draw(at(ctx, 2), s);
+  expect((args.get(s.c) ?? []).filter(([k]) => k === 'scale').map(([, a]) => a)).toEqual([[1, 1], [1, 1]]);
+});
+
+test("while the back is written, its paper and stamp are painted once", async () => {
+  const p = { objects: JSON.stringify([{ kind: 'postcard', shot: 'a|1', at: 0, enter: 'none', flipAt: 0, flipDur: 0.3, back: '0.4-3|謝謝你那時候願意出發' }]) };
+  const { ctx, s } = await built(p);
+  flatlay.draw(at(ctx, 0.6), s);
+  const base = s.items[0].backBase, key = s.items[0].backKey;
+  flatlay.draw(at(ctx, 0.75), s);
+  expect(s.items[0].backKey).not.toBe(key);
+  expect(s.items[0].backBase).toBe(base);
+});
+
+test('over a see-through desk, flatlayClip runs only while the picture covers the screen', () => {
+  const p = { objects: TWO, surface: 'none' as const, fly: { index: 1, at: 2, dur: 1, back: 4, backDur: 1 } };
+  expect(flatlayClip(p, 1, 1920, 1080, W, H, 5)).toMatchObject({ at: 3, len: 1, source: 'b', from: 3 + 1.5 });
+  expect(flatlayClip({ ...p, fly: { index: 1, at: 2, dur: 1 } }, 1, 1920, 1080, W, H, 5)).toMatchObject({ at: 3, len: 2, from: 4.5 });
+  expect(flatlayClip({ ...p, surface: 'linen' }, 1, 1920, 1080, W, H, 5)).toMatchObject({ at: 1.5, len: 3.5, from: 3 });
+  expect(flatlayClip({ ...p, fly: null as any }, 1, 1920, 1080, W, H, 5)).toMatchObject({ at: 1.5, len: 3.5 });
 });

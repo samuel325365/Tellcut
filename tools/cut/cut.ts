@@ -536,7 +536,9 @@ export class Cut {
   /**
    * The main-track clip under a common.flatlay item for object `index` (from 0): that object's shot, from the item's start + the
    * object's `at` to the item's end, cropped so that when the camera has flown into the picture it shows exactly what the picture
-   * shows (the hand-off has no seam), with its own sound (the desk's pictures are silent). The main track must be free then.
+   * shows (the hand-off has no seam), with its own sound (the desk's pictures are silent). The main track must be free then. Over a
+   * see-through desk (surface none) the clip would show through it, so it runs only while the picture covers the screen (from the end
+   * of the fly into that object to the pull back or the item's end).
    */
   flatlayClip(itemId: string, index: number, o: { gain?: number } = {}): string {
     const it = allItems(this.p).find((x) => (x.item as { id: string }).id === itemId)?.item as { type?: string; params?: Record<string, unknown> } | undefined;

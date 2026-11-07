@@ -2,7 +2,7 @@
 // turn that overshoots, a slide in from a side, a real flip about the long edge that lifts the object while it turns, an exit, and
 // the stack (each later object lies a sheet's thickness above the one before). Written curves, a pure function of time.
 import { clamp, eBack, eIn3, eIO3, eOut3 } from '@tellcut/engine';
-import { REST_Z, sizeOf, type Enter, type Obj } from './objects.ts';
+import { EXIT_DUR, REST_Z, sizeOf, type Enter, type Obj } from './objects.ts';
 
 export { REST_Z };
 
@@ -14,7 +14,6 @@ export const DROP_LIFT = 1.6;
 /** the part of a drop spent falling; the rest is the bounce */
 const FALL = 0.78;
 const BOUNCE = 0.035 * DROP_LIFT;
-const EXIT_DUR = 0.8;
 /** progress 0..1 over [a, a + d], snapped to 1 within float error (1.9 − 1 is 0.8999…: a landing must be exact) */
 const span = (t: number, a: number, d: number) => { const q = clamp((t - a) / Math.max(0.05, d)); return q > 1 - 1e-9 ? 1 : q; };
 

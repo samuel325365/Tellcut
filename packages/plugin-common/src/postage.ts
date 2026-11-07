@@ -3,7 +3,7 @@
 // below, then a round postmark thumps down across its corner (postmark.ts' drawMark). Its moves are common.frame's (framePose, no
 // turning over). Derived from common.frame, postmark.ts' stamp and mark, and common.popcard. A pure function of time.
 import { abs, cssCamel, h, type ItemType } from '@tellcut/engine';
-import { cellEl, showCell, type CellShot, type Rect } from './cells.ts';
+import { cellEl, cropOf, showCell, type CellShot, type Rect } from './cells.ts';
 import { framePose } from './frame.ts';
 import { drawMark, markEl, type MarkEl } from './postmark.ts';
 import { paintDesk } from './postcard.ts';
@@ -16,7 +16,7 @@ interface P {
   paper: string; perf: number; value: string; line: string; ink: string; font: string; place: string; date: string; markAt: number; markX: number; markY: number; markColor: string;
   enter: Move; enterDur: number; exit: Move; exitDur: number; tilt: number; backdrop: 'none' | 'desk' | 'color'; bg: string;
 }
-interface S { under: HTMLCanvasElement; underKey: string; stamp: HTMLElement; paper: HTMLCanvasElement; paperKey: string; win: Win; rule: HTMLElement; value: HTMLElement; line: HTMLElement; mark: MarkEl }
+interface S { under: HTMLCanvasElement; underKey: string; stamp: HTMLElement; paper: HTMLCanvasElement; paperKey: string; win: Win; rule: HTMLElement; value: HTMLElement; line: HTMLElement; mark: MarkEl; meas: HTMLCanvasElement }
 
 /** the stamp (sw × sh px, top left x0, y0) and its picture window: w a share of the short side (the whole stamp kept within 0.9 of
  *  the frame), the margin 0.07 of the picture's width
@@ -42,11 +42,23 @@ function paintPaper(c: HTMLCanvasElement, sw: number, sh: number, r: number, col
   g.globalCompositeOperation = 'source-over';
 }
 
-const shotOf = (p: Partial<P>): CellShot | null => (p.source ? { source: String(p.source), from: Number(p.from) || 0, crop: p.crop ?? { x: 0.5, y: 0.5, zoom: 1 }, still: !!p.still } : null);
+/** the crop as written: an object, or its JSON text; a part left out (or not a number) is the middle and 1 */
+function cropParam(v: unknown) {
+  if (typeof v === 'string') { try { return cropOf(JSON.parse(v)); } catch { return cropOf(null); } }
+  return cropOf(v);
+}
+const shotOf = (p: Partial<P>): CellShot | null => (p.source ? { source: String(p.source), from: Number(p.from) || 0, crop: cropParam(p.crop), still: !!p.still } : null);
+
+/** the value's and the line's font sizes, both shrunk alike when the two side by side (and a gap) are wider than the picture */
+export function postageFoot(value: string, line: string, fs: number, room: number, measure: (text: string, size: number) => number): { value: number; line: number } {
+  const lf = fs * 0.62, wv = value ? measure(value, fs) : 0, wl = line ? measure(line, lf) + [...line].length * 0.12 * lf : 0;
+  const need = wv + wl + (value && line ? fs * 0.5 : 0), k = need > room && need > 0 ? room / need : 1;
+  return { value: fs * k, line: lf * k };
+}
 
 export const postage: ItemType<P, S> = {
   type: 'common.postage', label: '郵票框', category: 'frame', kind: 'overlay',
-  doc: '一張齒孔邊的郵票掉進來（或從一邊滑進來），票面裡自己播一段鏡頭（source 素材、from 素材秒、crop 裁切、still 定格；沒有素材時是示意圖），影片跟著郵票動、停好後保持 tilt 的小傾斜；票面下方印 value 面額和 line 一行小字，markAt 時一個圓形郵戳（place 地名、date 日期）蓋到票面右下角；backdrop 底（desk 木桌、color 純色、none 透明）；票面的影片沒有聲音；和 common.frame 實體框、common.postcard 明信片、common.postmark 只蓋郵戳、common.stamp 印章不同：單張郵票、影片在票面裡播；旅行的一站、回憶的一格',
+  doc: '一張齒孔邊的郵票掉進來（或從一邊滑進來），票面裡自己播一段鏡頭（source 素材、from 素材秒、crop 裁切、still 定格；沒有素材時是示意圖），影片跟著郵票動、停好後保持 tilt 的小傾斜；票面下方印 value 面額和 line 一行小字，markAt 時一個圓形郵戳（place 地名、date 日期）蓋到票面右下角；backdrop 底（desk 木桌、color 純色、none 透明）；票面的影片沒有聲音；和 common.flatlay 3D 桌面（明信片、相框）、common.postmark 只蓋郵戳、common.stamp 印章不同：單張郵票、影片在票面裡播；旅行的一站、回憶的一格',
   params: [
     { key: 'source', label: '票面的素材（空＝示意圖）', type: 'source-ref', default: '' },
     { key: 'from', label: '從素材第幾秒開始播', type: 'number', min: 0, max: 36000, step: 0.1, default: 0 },
@@ -90,12 +102,12 @@ export const postage: ItemType<P, S> = {
     const win = cellEl(stamp), rule = abs(stamp), value = h('div', null, null, stamp), line = h('div', null, null, stamp);
     for (const e of [value, line]) cssCamel(e, { position: 'absolute', whiteSpace: 'nowrap', lineHeight: '1', fontWeight: '700' });
     cssCamel(rule, { pointerEvents: 'none', boxSizing: 'border-box' });
-    const s: S = { under, underKey: '', stamp, paper, paperKey: '', win, rule, value, line, mark: markEl(stamp) };
+    const s: S = { under, underKey: '', stamp, paper, paperKey: '', win, rule, value, line, mark: markEl(stamp), meas: document.createElement('canvas') };
     postage.draw(ctx, s);   // starts loading the still now, so ready() can wait for it
     return s;
   },
   ready: (s) => imagesReady([s.win.img]),
-  hide(s) { freeCanvas(s.under, s.paper); s.underKey = ''; s.paperKey = ''; },
+  hide(s) { freeCanvas(s.under, s.paper, s.mark.cv); s.underKey = ''; s.paperKey = ''; s.mark.key = ''; },
   draw(ctx, s) {
     const p = ctx.params, { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, b = postageBox(p, W, H), [wx, wy, ww, wh] = b.win;
     const underKey = `${p.backdrop}|${W}x${H}|${p.bg}`;
@@ -117,9 +129,11 @@ export const postage: ItemType<P, S> = {
     cssCamel(s.rule, { left: `${lx.toFixed(2)}px`, top: `${ly.toFixed(2)}px`, width: `${ww.toFixed(2)}px`, height: `${wh.toFixed(2)}px`, border: `${(2 * k).toFixed(2)}px solid rgba(0,0,0,0.25)` });
     // the value bottom left and the line bottom right, in the margin under the picture
     const foot = b.sh - (ly + wh), fs = Math.min(foot * 0.42, ww * 0.1), base = ly + wh + foot * 0.5 - fs * 0.45;
-    s.value.textContent = p.value; s.line.textContent = p.line;
-    cssCamel(s.value, { left: `${lx.toFixed(2)}px`, top: `${base.toFixed(2)}px`, fontSize: `${fs.toFixed(2)}px`, color: p.ink, fontFamily: `'${p.font}', serif` });
-    cssCamel(s.line, { right: `${lx.toFixed(2)}px`, top: `${(base + fs * 0.25).toFixed(2)}px`, fontSize: `${(fs * 0.62).toFixed(2)}px`, color: p.ink, fontFamily: `'${p.font}', serif`, letterSpacing: '0.12em' });
+    const value = String(p.value ?? ''), line = String(p.line ?? ''), family = `'${p.font}', serif`, g = s.meas.getContext('2d');
+    const size = g ? postageFoot(value, line, fs, ww, (text, px) => { g.font = `700 ${px}px ${family}`; return g.measureText(text).width; }) : { value: fs, line: fs * 0.62 };
+    s.value.textContent = value; s.line.textContent = line;
+    cssCamel(s.value, { left: `${lx.toFixed(2)}px`, top: `${(base + (fs - size.value) * 0.5).toFixed(2)}px`, fontSize: `${size.value.toFixed(2)}px`, color: p.ink, fontFamily: family });
+    cssCamel(s.line, { right: `${lx.toFixed(2)}px`, top: `${(base + fs * 0.25 + (fs * 0.62 - size.line) * 0.5).toFixed(2)}px`, fontSize: `${size.line.toFixed(2)}px`, color: p.ink, fontFamily: family, letterSpacing: '0.12em' });
     const has = !!(String(p.place ?? '').trim() || String(p.date ?? '').trim());
     drawMark(s.mark, has ? { top: p.place, bottom: '', date: p.date, at: p.markAt } : null, b.sw * 0.2, p.markX * b.sw, p.markY * b.sh, local, false, p.markColor, true, 0.82, Math.max(1, k));
   },

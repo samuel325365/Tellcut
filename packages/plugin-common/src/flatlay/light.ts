@@ -20,13 +20,14 @@ const STRENGTH: Record<Surface, { spot: number; sky: number }> = {
   linen: { spot: 110, sky: 0.95 }, marble: { spot: 100, sky: 1 }, concrete: { spot: 110, sky: 0.9 }, velvet: { spot: 105, sky: 0.06 }, none: { spot: 110, sky: 0.95 },
 };
 
-export function lightRig(o: { surface: Surface; side: Side; warmth: Warmth }, t: number): Rig {
+/** wide: a wide frame, whose objects lie in a row across it: the velvet lamp's pool is made wide enough for that row */
+export function lightRig(o: { surface: Surface; side: Side; warmth: Warmth; wide?: boolean }, t: number): Rig {
   const s = STRENGTH[o.surface] ?? STRENGTH.linen, look = SURFACE_LOOK[o.surface] ?? SURFACE_LOOK.linen;
   const sky = { color: 0xf3efe8, ground: 0x6b5a48, intensity: s.sky };
   if (o.surface === 'velvet') {
     // a lamp straight above, a little to the light's side so the objects keep some modelling
     const x = o.side === 'right' ? 0.3 : -0.3;
-    return { spot: { pos: [x, 5.5, -0.35], target: [0, 0, 0], color: 0xffe4c4, intensity: s.spot, angle: 0.26, penumbra: 0.9, gobo: false, goboOffset: [0, 0] }, sky, exposure: look.exposure };
+    return { spot: { pos: [x, 5.5, -0.35], target: [0, 0, 0], color: 0xffe4c4, intensity: s.spot, angle: o.wide ? 0.36 : 0.26, penumbra: 0.9, gobo: false, goboOffset: [0, 0] }, sky, exposure: look.exposure };
   }
   const m = o.side === 'right' ? -1 : 1;
   // the leaves: two slow waves on u, one on v, a few thousandths of the picture

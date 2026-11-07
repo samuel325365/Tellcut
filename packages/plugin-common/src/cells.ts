@@ -11,6 +11,14 @@ export type Rect = [number, number, number, number];
 export type CellDir = 'left' | 'right' | 'top' | 'bottom';
 export interface CellShot { source: string; from: number; crop: { x: number; y: number; zoom: number }; still: boolean }
 
+/** a crop as written, each part kept when it is a number (x, y) or above 0 (zoom), the rest the middle and 1: "0.5,0.3" keeps its
+ *  x and y, { zoom: 1.5 } its zoom */
+export function cropOf(v: unknown): { x: number; y: number; zoom: number } {
+  const r = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>, n = (x: unknown) => (x === undefined || x === null || x === '' ? NaN : Number(x));
+  const x = n(r.x), y = n(r.y), zoom = n(r.zoom);
+  return { x: Number.isFinite(x) ? x : 0.5, y: Number.isFinite(y) ? y : 0.5, zoom: zoom > 0 && Number.isFinite(zoom) ? zoom : 1 };
+}
+
 /** one shot a line, in cell order; a blank line, "-" or a line with no source is null (the cell keeps its place) */
 export function parseCellShots(text: string): Array<CellShot | null> {
   const lines = String(text ?? '').split('\n').map((l) => l.trim());
@@ -18,9 +26,8 @@ export function parseCellShots(text: string): Array<CellShot | null> {
   return lines.map((l) => {
     const [source = '', from, crop, still] = l.split('|').map((x) => x.trim());
     if (!source || source === '-') return null;
-    const [x, y, zoom] = String(crop || '').split(',').map(Number);
-    const ok = Number.isFinite(x) && Number.isFinite(y) && zoom > 0;
-    return { source, from: Number(from) || 0, crop: ok ? { x, y, zoom } : { x: 0.5, y: 0.5, zoom: 1 }, still: still === 'still' };
+    const [x, y, zoom] = String(crop || '').split(',').map((v) => v.trim());
+    return { source, from: Number(from) || 0, crop: cropOf({ x, y, zoom }), still: still === 'still' };
   });
 }
 
@@ -43,12 +50,12 @@ export function cellDirs(from: string, count: number): CellDir[] {
   });
 }
 
-/** how far a cell is in, 0…1: in over `dur` from `at`; past `exitAt` (≥ 0) back out over `dur` from wherever it had got to */
+/** how far a cell is in, 0…1: in over `dur` from `at`; past `exitAt` (≥ 0) back out over `dur` from wherever it had got to (a cell
+ *  still coming in stops there and turns back, instead of going on in while the way out starts slowly) */
 export function cellProgress(local: number, at: number, dur: number, exitAt: number): number {
-  const d = Math.max(0.01, dur);
-  const inQ = local <= at ? 0 : eOut3(clamp((local - at) / d));
-  if (exitAt < 0 || local <= exitAt) return inQ;
-  return inQ * (1 - eIO3(clamp((local - exitAt) / d)));
+  const d = Math.max(0.01, dur), inAt = (t: number) => (t <= at ? 0 : eOut3(clamp((t - at) / d)));
+  if (exitAt < 0 || local <= exitAt) return inAt(local);
+  return inAt(exitAt) * (1 - eIO3(clamp((local - exitAt) / d)));
 }
 
 /** the move that puts `box` (px) just out of the W×H frame on the `dir` side */
@@ -70,8 +77,9 @@ export const cellLive = (at: number, dur: number): boolean => dur - at > 0.05;
 
 /** start loading a still shot's picture before its cell shows (build draws at 0, when no cell is in yet), so ready() can wait for it */
 export function preloadCell(ctx: ItemCtx, win: Win, shot: CellShot | null) {
-  if (!shot?.still) return;
-  const url = ctx.media.stillUrl({ source: shot.source, t: shot.from, w: 1080 });
+  const s = known(ctx, shot);
+  if (!s?.still) return;
+  const url = ctx.media.stillUrl({ source: s.source, t: s.from, w: 1080 });
   if (win.src !== url) { win.src = url; win.img.src = url; }
 }
 
@@ -86,11 +94,18 @@ export function cellMedia(shots: Array<CellShot | null>, ats: number[], dur: num
   return { videos, stills };
 }
 
+/** the shot when the project has its source, else null: a mistyped source id shows the stand-in (media() still names it, so the
+ *  project's checks report it) */
+function known(ctx: ItemCtx, shot: CellShot | null): CellShot | null {
+  return shot && (ctx.project as Project).sources?.[shot.source] ? shot : null;
+}
+
 /** a cell's element: a clipping box with a still's <img> and the painted stand-in (window.ts) */
 export const cellEl = (parent: HTMLElement): Win => windowEl(parent);
 
 /** fill a cell w × h px: its shot `local` s after the cell came in (`len` s on screen in all), or the stand-in */
-export function showCell(ctx: ItemCtx, win: Win, shot: CellShot | null, local: number, len: number, w: number, h: number) {
+export function showCell(ctx: ItemCtx, win: Win, written: CellShot | null, local: number, len: number, w: number, h: number) {
+  const shot = known(ctx, written);
   cssCamel(win.box, { width: `${w}px`, height: `${h}px` });
   cssCamel(win.ph, { display: shot ? 'none' : 'block' });
   if (!shot) { cssCamel(win.img, { display: 'none' }); return; }

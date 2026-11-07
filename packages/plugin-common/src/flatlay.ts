@@ -16,9 +16,9 @@ import type { ThreeKit } from './three/kit.ts';
 import { cameraPose, flyCover, flyCrop, PIC_LIFT, type CameraMode, type Fly } from './flatlay/camera.ts';
 import { lightRig } from './flatlay/light.ts';
 import { atRest, contactShadow, objectPose, REST_Z, viewHalf, type Pose } from './flatlay/motion.ts';
-import { faceSource, KINDS, parseObjects, picAspect, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
+import { faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
-import { paintBack, paintFront, paintPlaceholder, type Word } from './flatlay/paper.ts';
+import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintFront, paintPlaceholder, type Word } from './flatlay/paper.ts';
 import { paintGobo, paintSurface, SURFACE_LOOK, type Surface } from './flatlay/surface.ts';
 
 export type { FlatlayParams } from './flatlay/objects.ts';
@@ -36,7 +36,7 @@ const PARAMS: ParamDef[] = [
   { key: 'flipAt', label: '翻面秒數（−1＝不翻）', type: 'number', min: -1, max: 600, step: 0.1, default: -1 },
   { key: 'mark', label: '郵戳（上緣字|下緣字|日期；空＝不蓋）', type: 'string', default: 'ROMA|羅馬|2024.05.12' },
   { key: 'markAt', label: '郵戳落下秒數（項目內）', type: 'number', min: 0, max: 600, step: 0.1, default: 1.2 },
-  { key: 'objects', label: '多樣東西（JSON 陣列，每樣的鍵同上，另有 x、y、rot、portrait、dur、exit、exitAt、flipDur、stamp；空＝只放上面那一樣）', type: 'text', default: '' },
+  { key: 'objects', label: '多樣東西（JSON 陣列，每樣的鍵同上，另有 x、y、rot、portrait、dur、exit、exitAt（沒寫＝項目結束時剛好離開）、flipDur、stamp；空或 []＝只放上面那一樣）', type: 'text', default: '' },
   { key: 'fly', label: '飛進畫面（JSON { index, at, dur, back, backDur }；back 是拉回的秒數，null 不拉回；空＝不飛）', type: 'json', default: null },
   { key: 'surface', label: '桌面（linen 亞麻、marble 大理石、concrete 水泥、velvet 絨布、none 透明）', type: 'enum', options: ['linen', 'marble', 'concrete', 'velvet', 'none'], default: 'linen' },
   { key: 'side', label: '窗在哪一邊', type: 'enum', options: ['left', 'right'], default: 'left' },
@@ -51,17 +51,21 @@ const DEFAULTS = Object.fromEntries(PARAMS.map((d) => [d.key, d.default])) as un
 /** the camera's vertical field: a tall frame needs a wider one, or a postcard 1.5 units wide would not fit across it */
 export const flatlayFov = (W: number, H: number) => (W >= H ? 30 : 40);
 
-/** the fly as written: JSON text or an object; null when there is none or it does not parse */
-export function parseFly(v: unknown): Fly | null {
+/** the fly as written: JSON text or an object; null when there is none, with why when it is there but cannot be read. A pull back
+ *  written before the fly is over waits for it (from the screen fully covered, never a jump) */
+export function readFly(v: unknown): { fly: Fly | null; error: string | null } {
   let f = v;
   if (typeof v === 'string') {
-    if (!v.trim()) return null;
-    try { f = JSON.parse(v); } catch { return null; }
+    if (!v.trim()) return { fly: null, error: null };
+    try { f = JSON.parse(v); } catch (e) { return { fly: null, error: `fly JSON：${(e as Error).message}` }; }
   }
-  if (!f || typeof f !== 'object') return null;
+  if (f === null || f === undefined) return { fly: null, error: null };
+  if (typeof f !== 'object' || Array.isArray(f)) return { fly: null, error: 'fly JSON：not an object { index, at, dur, back, backDur }' };
   const r = f as Record<string, unknown>, n = (x: unknown, d: number) => (x === undefined || x === null || x === '' || !Number.isFinite(Number(x)) ? d : Number(x));
-  return { index: Math.max(0, Math.round(n(r.index, 0))), at: n(r.at, 0), dur: Math.max(0.05, n(r.dur, 1.2)), back: r.back === undefined || r.back === null || r.back === '' ? null : n(r.back, 0), backDur: Math.max(0.05, n(r.backDur, 1)) };
+  const at = n(r.at, 0), dur = Math.max(0.05, n(r.dur, 1.2));
+  return { fly: { index: Math.max(0, Math.round(n(r.index, 0))), at, dur, back: r.back === undefined || r.back === null || r.back === '' ? null : Math.max(at + dur, n(r.back, 0)), backDur: Math.max(0.05, n(r.backDur, 1)) }, error: null };
 }
+export const parseFly = (v: unknown): Fly | null => readFly(v).fly;
 
 type MediaTex = ReturnType<ThreeKit['mediaTexture']>;
 interface Thing {
@@ -71,8 +75,11 @@ interface Thing {
   group: T.Group; spin: T.Group; turn: T.Group; sheet: T.Group; shadow: T.Mesh;
   face: T.Mesh; overlay: T.Mesh; faceMat: T.MeshPhysicalMaterial; overlayMat: T.MeshBasicMaterial;
   frontTex: T.CanvasTexture; frontWords: Word[]; backTex: T.CanvasTexture; backWords: Word[]; backKey: string;
+  /** the back's paper and stamp (paintBackBase), painted once per stamp state, under the words written each frame */
+  backBase: HTMLCanvasElement | null; backBaseReady: boolean;
   placeholder: T.CanvasTexture; showing: T.Texture;
-  vt: MediaTex | null; el: HTMLVideoElement | null;
+  /** prev: the texture of a video just replaced, kept on the face until the new video has a picture */
+  vt: MediaTex | null; el: HTMLVideoElement | null; prev: MediaTex | null;
   still: HTMLImageElement | null; stillTex: T.Texture | null; stamp: HTMLImageElement | null;
   pose: Pose | null;
 }
@@ -121,16 +128,16 @@ function stampCanvas(img: HTMLImageElement, crop: Crop): HTMLCanvasElement {
 const stillRef = (s: CellShot): StillRef => ({ source: s.source, t: s.from, w: 1080 });
 const loaded = (img: HTMLImageElement | null): img is HTMLImageElement => !!img && img.complete && img.naturalWidth > 0;
 
-/** what the back shows at `local`, as a key: the time while a character is still fading in (paintBack's 0.18 s) or the postmark
- *  is landing, else which lines are written out and whether the mark is down */
+/** what the back shows at `local`, as a key: the time while a character is still fading in or the postmark is landing (paintBack's
+ *  pace), else which lines are written out and whether the mark is down */
 function backKey(o: Obj, local: number, stampReady: boolean): string {
   let moving = false;
   const done = o.back.map((line) => {
-    const n = [...line.text].length, last = line.start + Math.max(0, n - 1) / sentenceCps(line, 12) + 0.18;
+    const n = [...line.text].length, last = line.start + Math.max(0, n - 1) / sentenceCps(line, BACK_CPS) + BACK_FADE;
     if (local > line.start && local < last) moving = true;
     return local >= last ? 1 : 0;
   });
-  const q = o.mark ? clamp((local - o.mark.at) / 0.15) : 0;
+  const q = o.mark ? clamp((local - o.mark.at) / MARK_LAND) : 0;
   if (q > 0 && q < 1) moving = true;
   return moving ? `t${local.toFixed(3)}|${stampReady}` : `${done.join(',')}|${q}|${stampReady}`;
 }
@@ -198,12 +205,15 @@ function makeThing(s: S, THREE: typeof import('three'), o: Obj, ctx: ItemCtx<Fla
     stillTex = own(s, new THREE.Texture(still)); stillTex.colorSpace = THREE.SRGBColorSpace;
     stillTex.minFilter = THREE.LinearMipmapLinearFilter; stillTex.anisotropy = 8;
   }
-  if (o.kind === 'postcard' && o.stamp && faceSource({ shot: o.stamp }, ctx.project as Project) !== 'placeholder') {
+  if (needsStamp(o, ctx.dur) && faceSource({ shot: o.stamp }, ctx.project as Project) !== 'placeholder') {
     stamp = new Image(); stamp.src = ctx.media.stillUrl(stillRef(o.stamp));
   }
   return { o, size, source, flipX, group, spin, turn, sheet, shadow, face, overlay, faceMat, overlayMat, frontTex, frontWords: front.words, backTex, backWords: back.words, backKey: '',
-    placeholder, showing: placeholder, vt: null, el: null, still, stillTex, stamp, pose: null };
+    backBase: null, backBaseReady: false, placeholder, showing: placeholder, vt: null, el: null, prev: null, still, stillTex, stamp, pose: null };
 }
+
+/** a postcard's stamp is only seen on its back: a card that never turns over within the item needs no stamp picture */
+const needsStamp = (o: Obj, dur: number): o is Obj & { stamp: CellShot } => o.kind === 'postcard' && !!o.stamp && o.flipAt !== null && o.flipAt < dur;
 
 /** put `tex` on the picture face (lit and unlit), cropped as the shot says */
 function show(t: Thing, tex: T.Texture, srcW: number, srcH: number, three: ThreeKit) {
@@ -224,11 +234,21 @@ function sourceSize(ctx: ItemCtx<FlatlayParams>, shot: CellShot, el?: { videoWid
   return [w, h];
 }
 
-/** upload the object's current video picture and show it once the video has one */
+/** upload the object's current video picture and show it once the video has one (only then is a replaced video's texture let go) */
 function upload(ctx: ItemCtx<FlatlayParams>, t: Thing) {
   if (!t.vt || !t.el || !t.o.shot) return;
   t.vt.update();
-  if (t.el.readyState >= 2 && t.el.videoWidth) { const [w, h] = sourceSize(ctx, t.o.shot, t.el); show(t, t.vt.texture, w, h, ctx.three as ThreeKit); }
+  if (t.el.readyState >= 2 && t.el.videoWidth) {
+    const [w, h] = sourceSize(ctx, t.o.shot, t.el); show(t, t.vt.texture, w, h, ctx.three as ThreeKit);
+    t.prev?.dispose(); t.prev = null;
+  }
+}
+
+/** a new video element for the object: the face keeps the old one's last picture until the new one has its own (a replaced video
+ *  that never showed is let go at once) */
+function swapVideo(t: Thing, el: HTMLVideoElement, three: ThreeKit) {
+  if (t.prev) t.vt?.dispose(); else t.prev = t.vt;
+  t.vt = three.mediaTexture(el); t.el = el;
 }
 
 function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
@@ -260,7 +280,7 @@ function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
     if (t.source === 'video' && t.o.shot && cellLive(t.o.at, dur)) {
       const len = dur - t.o.at;
       const el = ctx.media.video(cellRef(t.o.shot, len), s.holder, clamp(local - t.o.at, 0, Math.max(0, len - 0.04))) as HTMLVideoElement;
-      if (el && el !== t.el) { t.vt?.dispose(); t.vt = three.mediaTexture(el); t.el = el; }
+      if (el && el !== t.el) swapVideo(t, el, three);
       upload(ctx, t);
     } else if (t.source === 'still' && t.stillTex && loaded(t.still)) {
       if (t.showing !== t.stillTex) t.stillTex.needsUpdate = true;
@@ -271,12 +291,13 @@ function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
     if (p.flip > 0.01) {
       const ready = loaded(t.stamp), key = backKey(t.o, local, ready);
       if (key !== t.backKey) {
-        const painted = paintBack(t.o, local, ready && t.o.stamp ? stampCanvas(t.stamp!, t.o.stamp.crop) : null);
+        if (!t.backBase || t.backBaseReady !== ready) { t.backBase = paintBackBase(t.o, ready && t.o.stamp ? stampCanvas(t.stamp!, t.o.stamp.crop) : null); t.backBaseReady = ready; }
+        const painted = paintBack(t.o, local, null, undefined, t.backBase);
         t.backTex.image = painted.canvas; t.backTex.needsUpdate = true; t.backWords = painted.words; t.backKey = key;
       }
     }
   });
-  const rig = lightRig({ surface: s.surface, side: s.side, warmth: s.warmth }, local);
+  const rig = lightRig({ surface: s.surface, side: s.side, warmth: s.warmth, wide: W > H }, local);
   s.spot.position.set(...rig.spot.pos); s.spot.target.position.set(...rig.spot.target); s.spot.target.updateMatrixWorld();
   s.spot.color.setHex(rig.spot.color); s.spot.intensity = rig.spot.intensity * rig.exposure;
   s.spot.angle = rig.spot.angle; s.spot.penumbra = rig.spot.penumbra;
@@ -314,8 +335,12 @@ function paint(ctx: ItemCtx<FlatlayParams>, s: S, dof: ReturnType<typeof pose>) 
     g.setTransform((p1[0] - p0[0]) / cw, (p1[1] - p0[1]) / cw, (p3[0] - p0[0]) / ch, (p3[1] - p0[1]) / ch, p0[0], p0[1]);
     g.drawImage(img, 0, 0);
     if (t.pose.flip <= Math.PI / 2) {
-      const [px, py, pw, ph] = t.size.pic, pic = (t.showing.image ?? t.placeholder.image) as CanvasImageSource;
-      try { g.drawImage(pic, px * cw, py * ch, pw * cw, ph * ch); } catch { /* a video with no picture yet */ }
+      const [px, py, pw, ph] = t.size.pic, pic = (t.showing.image ?? t.placeholder.image) as HTMLCanvasElement & HTMLImageElement, bx = px * cw, by = py * ch, bw = pw * cw, bh = ph * ch;
+      g.beginPath(); g.rect(bx, by, bw, bh); g.clip();
+      // the stand-in is painted to the face's shape; a picture is cropped to it as the shot says, never stretched
+      const sw = pic.naturalWidth || pic.width, sh = pic.naturalHeight || pic.height;
+      const b = t.showing === t.placeholder || !t.o.shot || !sw || !sh ? { left: 0, top: 0, width: bw, height: bh } : coverPlacement(sw, sh, bw, bh, t.o.shot.crop);
+      try { g.drawImage(pic, bx + b.left, by + b.top, b.width, b.height); } catch { /* a video with no picture yet */ }
     }
     g.restore();
   }
@@ -365,9 +390,10 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     const c = document.createElement('canvas'); c.width = W; c.height = H; c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';
     const holder = document.createElement('div'); holder.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none';
     root.append(c, holder);
-    const { objs, error } = parseObjects(p, W, H);
-    if (error) console.error(`common.flatlay ${ctx.item.id}: ${error}`);
-    let fly = parseFly(p.fly);
+    const { objs, error: objError } = parseObjects(p, W, H, ctx.dur), read = readFly(p.fly), error = objError ?? read.error;
+    if (objError) console.error(`common.flatlay ${ctx.item.id}: ${objError}`);
+    if (read.error) console.error(`common.flatlay ${ctx.item.id}: ${read.error}; not flying`);
+    let fly = read.fly;
     if (fly && !objs[fly.index]) { console.error(`common.flatlay ${ctx.item.id}: fly index ${fly.index} names no object (there are ${objs.length}); not flying`); fly = null; }
     const surface = (Object.keys(SURFACE_LOOK).includes(p.surface) ? p.surface : 'linen') as Surface;
     if (!ctx.three) return buildFlat(ctx, c, holder, objs, surface, fly, error);
@@ -436,7 +462,7 @@ export const flatlay: ItemType<FlatlayParams, S> = {
   hide(s) { s.c.width = 0; s.c.height = 0; },
   dispose(s) {
     s.dead = true;
-    for (const t of s.items) { t.vt?.dispose(); t.vt = null; }
+    for (const t of s.items) { t.vt?.dispose(); t.prev?.dispose(); t.vt = null; t.prev = null; }
     s.geos.forEach((g) => g.dispose()); s.mats.forEach((m) => m.dispose()); s.texs.forEach((x) => x.dispose());
     s.spot?.shadow.dispose?.();
     s.geos.clear(); s.mats.clear(); s.texs.clear();
@@ -444,11 +470,11 @@ export const flatlay: ItemType<FlatlayParams, S> = {
   media(item, project) {
     const p = { ...DEFAULTS, ...(item.params as Partial<FlatlayParams>) }, dur = item.end - item.start;
     const meta = (project as Project | undefined)?.meta as { width?: number; height?: number } | undefined;
-    const { objs } = parseObjects(p, meta?.width ?? 1080, meta?.height ?? 1920);
+    const { objs } = parseObjects(p, meta?.width ?? 1080, meta?.height ?? 1920, dur);
     const videos: MediaRef[] = [], stills: StillRef[] = [];
     for (const o of objs) {
       if (o.shot && cellLive(o.at, dur)) { if (o.shot.still) stills.push(stillRef(o.shot)); else videos.push(cellRef(o.shot, dur - o.at)); }
-      if (o.kind === 'postcard' && o.stamp) stills.push(stillRef(o.stamp));
+      if (needsStamp(o, dur)) stills.push(stillRef(o.stamp));
     }
     return { videos, stills };
   },
@@ -480,7 +506,8 @@ function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {
   flat.forEach((t, i) => {
     const p = objectPose(t.o, i, local, W, H);
     if (!p.visible) return;
-    const { w, h, pic } = t.size, ow = w * k, oh = h * k, lift = 1 + Math.max(0, p.z) * 0.3, turn = Math.max(0.02, Math.abs(Math.cos(p.flip)));
+    // nearer the eye only while lifted above where it rests (a sheet lying high on the pile is not bigger)
+    const { w, h, pic } = t.size, ow = w * k, oh = h * k, lift = 1 + Math.max(0, p.z - (t.o.rest ?? REST * (i + 1))) * 0.3, turn = Math.max(0.02, Math.abs(Math.cos(p.flip)));
     g.save();
     g.translate(W / 2 + p.x * k, H / 2 - p.y * k); g.rotate(-p.rotZ);
     if (t.flipX) g.scale(lift, lift * turn); else g.scale(lift * turn, lift);
@@ -514,9 +541,17 @@ function dofAt(ctx: ItemCtx<FlatlayParams>, s: S) {
 }
 
 /** the main-track clip that takes over when the camera has flown into object `index`'s picture: from the item's start + `at`, the
- *  shot from its source seconds, cropped to show exactly what the covering picture shows; null for a still or no shot */
+ *  shot from its source seconds, cropped to show exactly what the covering picture shows; null for a still or no shot. Over a
+ *  see-through desk (surface none) the clip would show through it, so there it only runs while the picture covers the screen: from
+ *  the end of the fly into that object until the pull back (or the item's end), from that point of the shot */
 export function flatlayClip(params: Partial<FlatlayParams>, index: number, srcW: number, srcH: number, W: number, H: number, dur: number): { at: number; len: number; source: string; from: number; crop: Crop } | null {
-  const { objs } = parseObjects({ ...DEFAULTS, ...params }, W, H), o = objs[index];
+  const p = { ...DEFAULTS, ...params }, { objs } = parseObjects(p, W, H, dur), o = objs[index];
   if (!o?.shot || o.shot.still) return null;
-  return { at: o.at, len: dur - o.at, source: o.shot.source, from: o.shot.from, crop: flyCrop(o.shot.crop, srcW, srcH, picAspect(o), 1, W, H) };
+  const crop = flyCrop(o.shot.crop, srcW, srcH, picAspect(o), 1, W, H);
+  const fly = p.surface === 'none' ? parseFly(p.fly) : null;
+  if (fly && fly.index === index) {
+    const at = Math.max(o.at, fly.at + fly.dur), end = Math.min(dur, fly.back ?? dur);
+    return end > at ? { at, len: end - at, source: o.shot.source, from: o.shot.from + (at - o.at), crop } : null;
+  }
+  return { at: o.at, len: dur - o.at, source: o.shot.source, from: o.shot.from, crop };
 }

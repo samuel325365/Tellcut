@@ -148,9 +148,9 @@ export const typingSfx: SfxType = { type: 'common.typing', label: '打字', cate
   duration: (p) => p.dur, lookback: LONG, synth: (c, b, at, p) => play(c, b, at, renderTyping(c.sampleRate, p.dur)) };
 export const pageSfx: SfxType = { type: 'common.page', label: '翻頁', category: 'paper', doc: '紙張翻頁：一張紙掀起、翻過去、輕輕落下的柔和沙沙聲（偏中低頻，不刺耳）；換步驟、換卡片、翻開下一頁；配 common.notecard',
   params: [], duration: () => 0.42, lookback: SHORT, synth: (c, b, at) => play(c, b, at, renderPage(c.sampleRate), 0.1) };
-export const slideSfx: SfxType = { type: 'common.slide', label: '紙卡滑入', category: 'paper', doc: '一張卡片在一疊紙上滑過去、最後輕輕落定；明信片、卡片、照片滑進畫面；配 common.postcard／common.frame',
+export const slideSfx: SfxType = { type: 'common.slide', label: '紙卡滑入', category: 'paper', doc: '一張卡片在一疊紙上滑過去、最後輕輕落定；明信片、卡片、照片滑進畫面；配 common.flatlay',
   params: [], duration: () => 1.1, lookback: LONG, synth: (c, b, at) => play(c, b, at, renderSlide(c.sampleRate), 0.1) };
-export const flipSfx: SfxType = { type: 'common.flip', label: '卡片翻面', category: 'paper', doc: '桌上一張卡片翻過來：兩下紙和空氣的拍動、再落定；翻到背面、換一面；配 common.postcard／common.frame',
+export const flipSfx: SfxType = { type: 'common.flip', label: '卡片翻面', category: 'paper', doc: '桌上一張卡片翻過來：兩下紙和空氣的拍動、再落定；翻到背面、換一面；配 common.flatlay',
   params: [], duration: () => 0.8, lookback: SHORT, synth: (c, b, at) => play(c, b, at, renderFlip(c.sampleRate), 0.1) };
 export const printSfx: SfxType = { type: 'common.print', label: '印字', category: 'paper', doc: '熱感應收據機印字的嗡嗡聲（印字頭加步進馬達），長度可調；每印一行一聲；配 common.printer',
   params: [num('dur', '長度 (s)', 0.34, 0.05, 3)], duration: (p) => Math.max(0.05, p.dur), lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderPrint(c.sampleRate, p.dur)) };

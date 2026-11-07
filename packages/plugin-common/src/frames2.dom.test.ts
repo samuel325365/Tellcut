@@ -2,11 +2,11 @@
 // The frames of round two (2026-11-07): common.grid, common.slant, common.postage, common.letterbox — each run on a real Stage with
 // a stand-in media API, so the cells' videos, stills and stand-ins, their timing and the DOM they leave are tested (jsdom has no
 // canvas: a stand-in context takes any call).
-import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
+import { createRegistry, defaultSafe, itemMediaIssues, Stage, type ItemType } from '@tellcut/engine';
 import { grid } from './grid.ts';
-import { slant } from './slant.ts';
+import { slant, slantPolys } from './slant.ts';
 import { postage } from './postage.ts';
-import { letterbox } from './letterbox.ts';
+import { letterbox, letterboxBar } from './letterbox.ts';
 import { cellMedia, parseCellShots, revealTimes } from './cells.ts';
 
 const anything: any = new Proxy(function () {}, {
@@ -129,6 +129,68 @@ describe('common.letterbox', () => {
     expect(title.textContent).toBe('CHAPTER ONE'); expect(Number(title.style.opacity)).toBe(0);
     expect(Number((r.draw(2).querySelector('[data-title]') as HTMLElement).style.opacity)).toBe(1);
     expect((r.draw(2).querySelector('[data-sub]') as HTMLElement).textContent).toBe('ROME');
+  });
+});
+
+describe('round-1 minors (2026-11-08)', () => {
+  test('a shot naming a source the project lacks: the stand-in, nothing played or loaded, and the checks name it', () => {
+    const cases: Array<[ItemType<any, any>, Record<string, unknown>]> = [
+      [grid, { layout: 'two', shots: 'zz|2\nzz|0||still' }], [slant, { count: 2, shots: 'zz|2\nzz|0||still' }], [postage, { source: 'zz', from: 2 }]];
+    for (const [block, params] of cases) {
+      const r = run(block, params);
+      r.draw(2);
+      expect(videos).toEqual([]);
+      expect([...r.el.querySelectorAll('img')].every((i) => !i.getAttribute('src') && (i as HTMLElement).style.display === 'none')).toBe(true);
+      expect(itemMediaIssues(block, item(block, params, 3), { sources: { a: {} } } as any)).toEqual(['unknown source "zz"']);
+    }
+  });
+  test('postage: a crop of only a zoom places the picture with that zoom, never NaN', () => {
+    const crops: unknown[] = [], place = media.place;
+    media.place = (_el: unknown, _w: number, _h: number, crop: unknown) => { crops.push(crop); };
+    try { run(postage, { source: 'a', crop: { zoom: 1.5 } }).draw(2); } finally { media.place = place; }
+    expect(crops.at(-1)).toEqual({ x: 0.5, y: 0.5, zoom: 1.5 });
+  });
+  test('postage: hiding frees the postmark canvas too', () => {
+    const r = run(postage, { source: 'a', markAt: 0.5 });
+    r.draw(2); r.draw(5);
+    expect([...r.el.querySelectorAll('canvas')].map((c) => [c.width, c.height])).toEqual([[0, 0], [0, 0], [0, 0]]);
+  });
+  test('slant on a wide frame: each tag sits inside its own band, below the safe line', () => {
+    const W = 1920, H = 1080, r = run(slant, { count: 3, labels: 'A,B,C' }, 3, W, H), polys = slantPolys(3, 8, W, H);
+    r.draw(2);
+    [...r.el.querySelectorAll('[data-tag]')].forEach((e, i) => {
+      const left = parseFloat((e as HTMLElement).style.left), top = parseFloat((e as HTMLElement).style.top), [tl, tr, , bl] = polys[i];
+      expect(left).toBeGreaterThan(Math.max(tl[0], bl[0])); expect(left).toBeLessThan(tr[0]);
+      expect(top).toBeGreaterThanOrEqual(defaultSafe(W, H).top * H);
+    });
+  });
+  test('letterbox: on a wide frame the title lies in the bottom bar and the small line in the top one; on a tall one both in the top bar below the safe line', () => {
+    const box = (e: Element) => { const s = (e as HTMLElement).style, y = parseFloat(s.top); return [y, y + parseFloat(s.fontSize)]; };
+    const wide = run(letterbox, { title: 'CHAPTER ONE', sub: 'ROME' }, 3, 1920, 1080).draw(2), bw = letterboxBar(0, 1920, 1080);
+    const [t0, t1] = box(wide.querySelector('[data-title]')!), [s0, s1] = box(wide.querySelector('[data-sub]')!);
+    expect(t0).toBeGreaterThanOrEqual(1080 - bw); expect(t1).toBeLessThanOrEqual(1080);
+    expect(s0).toBeGreaterThanOrEqual(0); expect(s1).toBeLessThanOrEqual(bw);
+    const tall = run(letterbox, { title: 'CHAPTER ONE', sub: 'ROME' }).draw(2), safe = defaultSafe(1080, 1920).top * 1920;
+    for (const sel of ['[data-title]', '[data-sub]']) { const [a, b] = box(tall.querySelector(sel)!); expect(a).toBeGreaterThanOrEqual(safe); expect(b).toBeLessThanOrEqual(420); }
+  });
+  test('letterbox: a tall title alone gets 0.6 of the room; the small line never shrinks below 20 px while the bar has room', () => {
+    const room = 420 - defaultSafe(1080, 1920).top * 1920;
+    const alone = run(letterbox, { title: 'ROMA', size: 160 }).draw(2).querySelector('[data-title]') as HTMLElement;
+    expect(parseFloat(alone.style.fontSize)).toBeCloseTo(room * 0.6, 1);
+    const small = run(letterbox, { title: 'ROMA', sub: 'SPRING', size: 30 }).draw(2).querySelector('[data-sub]') as HTMLElement;
+    expect(parseFloat(small.style.fontSize)).toBe(20);
+  });
+  test('letterbox: going back, a word is gone before the bar uncovers it (never half-seen over the picture)', () => {
+    for (const [W, H] of [[1920, 1080], [1080, 1920]]) {
+      const r = run(letterbox, { title: 'CHAPTER ONE', sub: 'ROME', outAt: 2, outDur: 0.8 }, 4, W, H);
+      for (let t = 2; t <= 2.9; t += 0.01) {
+        const el = r.draw(t), bar = parseFloat((el.querySelector('[data-bar]') as HTMLElement).style.height);
+        for (const sel of ['[data-title]', '[data-sub]']) {
+          const s = (el.querySelector(sel) as HTMLElement).style, y0 = parseFloat(s.top), y1 = y0 + parseFloat(s.fontSize), top = sel === '[data-sub]' || H > W;
+          if (Number(s.opacity) > 0) expect(top ? y1 <= bar + 1e-6 : y0 >= H - bar - 1e-6).toBe(true);
+        }
+      }
+    }
   });
 });
 

@@ -673,6 +673,9 @@ export const samples: Sample[] = [
     { kind: 'tv', shot: 'pic|0||still', caption: 'Sunrise', at: 0, enter: 'none' }, { kind: 'photo', shot: 'pic|0||still', caption: '1998', at: 0.4 }]) } },
   { name: 'flatlay-velvet', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], params: { surface: 'velvet', warmth: 'golden', objects: JSON.stringify([
     { kind: 'card', shot: 'pic|0||still', caption: '生日快樂', at: 0, enter: 'none' }, { kind: 'polaroid', shot: 'pic|0||still', caption: '十八歲', at: 0.3 }]) } },
+  { name: 'wide-flatlay-velvet', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], wide: true, params: { surface: 'velvet', warmth: 'golden', objects: JSON.stringify([
+    { kind: 'card', shot: 'pic|0||still', caption: '生日快樂', at: 0, enter: 'none' }, { kind: 'polaroid', shot: 'pic|0||still', caption: '十八歲', at: 0, enter: 'none' },
+    { kind: 'photo', shot: 'pic|0||still', caption: '2008', at: 0, enter: 'none' }]) } },
   { name: 'flatlay-none', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], bg: '#d9c2f7', params: { surface: 'none', objects: JSON.stringify([
     { kind: 'polaroid', shot: 'pic|0||still', caption: '那年夏天', at: 0, enter: 'none' }]) } },
   { name: 'wide-flatlay', type: 'common.flatlay', sources: PIC, len: 3.4, at: [3.2], wide: true, params: { surface: 'linen', side: 'right', objects: JSON.stringify([

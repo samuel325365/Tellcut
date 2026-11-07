@@ -19,13 +19,23 @@ export function letterboxBar(ratio: number, W: number, H: number): number {
 /** where the words go (their centre lines, px), or null when the bars leave no room for them: a tall frame sets both in the top bar
  *  below the safe line (the title lower, nearer the picture), a wide one the title in the middle of the bottom bar and the small
  *  line in the middle of the top one */
-export function letterboxText(W: number, H: number, bar: number, safe: { top: number; bottom: number }): { titleY: number; subY: number; room: number } | null {
+export function letterboxText(W: number, H: number, bar: number, safe: { top: number; bottom: number }, sub = true): { titleY: number; subY: number; room: number; titleMax: number; subMax: number } | null {
   const k = Math.min(W, H) / 1080;
   if (H > W) {
+    // alone, the title takes the middle 0.6 of the room; with the small line above it, 0.44 low down and the line 0.2 high up
     const top = safe.top * H, room = bar - top;
-    return room < 40 * k ? null : { titleY: top + room * 0.62, subY: top + room * 0.28, room };
+    if (room < 40 * k) return null;
+    return sub ? { titleY: top + room * 0.64, subY: top + room * 0.22, room, titleMax: room * 0.44, subMax: room * 0.2 } : { titleY: top + room * 0.5, subY: top, room, titleMax: room * 0.6, subMax: 0 };
   }
-  return bar < 24 * k ? null : { titleY: H - bar / 2, subY: bar / 2, room: bar };
+  return bar < 24 * k ? null : { titleY: H - bar / 2, subY: bar / 2, room: bar, titleMax: bar * 0.45, subMax: bar * 0.45 };
+}
+
+/** how much of a word set in a bar (its box from y0 to y1, px) may show while the bar is `bar` deep: all of it while the bar still
+ *  reaches a quarter of the box's height past it, fading out as the bar's edge comes in to the box and gone when it gets there, so a
+ *  word never lies over the picture (at rest every word has that margin: see letterboxText's places) */
+export function inBar(top: boolean, y0: number, y1: number, bar: number, H: number): number {
+  const fade = Math.max(1, (y1 - y0) * 0.25), edge = top ? bar - y1 : y0 - (H - bar);
+  return clamp(edge / fade, 0, 1);
 }
 
 export const letterbox: ItemType<P, S> = {
@@ -41,7 +51,7 @@ export const letterbox: ItemType<P, S> = {
     { key: 'sub', label: '小字', type: 'string', default: '' },
     { key: 'titleAt', label: '字出現的秒（-1＝黑邊到位時）', type: 'number', min: -1, max: 600, step: 0.05, default: -1 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Serif TC' },
-    { key: 'size', label: '標題大小（px，短邊 1080）', type: 'number', min: 12, max: 160, step: 1, default: 44 },
+    { key: 'size', label: '標題大小（px，短邊 1080；最大到黑邊放得下的大小）', type: 'number', min: 12, max: 160, step: 1, default: 44 },
     { key: 'textColor', label: '字色', type: 'color', default: '#f3ecdc' },
     { key: 'spacing', label: '字距（em）', type: 'number', min: 0, max: 1.5, step: 0.05, default: 0.3 },
     { key: 'align', label: '對齊', type: 'enum', options: ['left', 'center', 'right'], default: 'center' },
@@ -58,18 +68,21 @@ export const letterbox: ItemType<P, S> = {
     const bar = full * eOut3(clamp(local / Math.max(0.01, p.inDur), 0, 1)) * out;
     cssCamel(s.top, { left: '0', top: '0', width: '100%', height: `${bar.toFixed(2)}px`, background: p.color });
     cssCamel(s.bottom, { left: '0', top: `${(H - bar).toFixed(2)}px`, width: '100%', height: `${bar.toFixed(2)}px`, background: p.color });
-    const at = letterboxText(W, H, full, theme.safe), side = Math.max(32 * k, theme.safe.side * W), room = W - 2 * side;
-    const titleAt = p.titleAt >= 0 ? p.titleAt : p.inDur, a = eOut3(clamp((local - titleAt) / 0.5, 0, 1)) * out, rise = 8 * k * (1 - a);
+    const subText = String(p.sub ?? ''), at = letterboxText(W, H, full, theme.safe, !!subText.trim()), side = Math.max(32 * k, theme.safe.side * W), room = W - 2 * side;
+    const titleAt = p.titleAt >= 0 ? p.titleAt : p.inDur, a = eOut3(clamp((local - titleAt) / 0.5, 0, 1)), rise = 8 * k * (1 - a);
     const family = `'${p.font}', serif`, g = s.meas.getContext('2d');
-    const place = (e: HTMLElement, text: string, want: number, y: number) => {
-      const size = g ? fitMeasuredSize(g, [text], want, family, 600, room, want * p.spacing) : want;
+    // each word fades as the bar it lies in pulls back past it (in or out), never lying over the picture
+    const place = (e: HTMLElement, text: string, want: number, y: number, top: boolean) => {
+      const size = g ? fitMeasuredSize(g, [text], want, family, 600, room, want * p.spacing) : want, y0 = y - size / 2 + rise;
       e.textContent = text;
-      cssCamel(e, { display: at && text ? 'block' : 'none', left: `${side.toFixed(2)}px`, width: `${room.toFixed(2)}px`, top: `${(y - size / 2 + rise).toFixed(2)}px`,
-        fontFamily: family, fontWeight: '600', fontSize: `${size.toFixed(2)}px`, letterSpacing: `${p.spacing}em`, color: p.textColor, textAlign: p.align, opacity: String(a) });
+      cssCamel(e, { display: at && text ? 'block' : 'none', left: `${side.toFixed(2)}px`, width: `${room.toFixed(2)}px`, top: `${y0.toFixed(2)}px`,
+        fontFamily: family, fontWeight: '600', fontSize: `${size.toFixed(2)}px`, letterSpacing: `${p.spacing}em`, color: p.textColor, textAlign: p.align,
+        opacity: String(a * inBar(top, y0, y0 + size, bar, H)) });
     };
-    // the title no taller than a third of the room it has (the bar on a wide frame, the bar below the safe line on a tall one)
-    const want = at ? Math.min(p.size * k, at.room * (H > W ? 0.34 : 0.45)) : 0;
-    place(s.title, String(p.title ?? ''), want, at?.titleY ?? 0);
-    place(s.sub, String(p.sub ?? ''), want * 0.45, at?.subY ?? 0);
+    // the title as big as asked within the room the bar gives it; the small line 0.45 of it, but not below 20 px (short side 1080)
+    // while the room allows
+    const want = at ? Math.min(p.size * k, at.titleMax) : 0, subWant = at ? Math.min(at.subMax, Math.max(want * 0.45, 20 * k)) : 0;
+    place(s.title, String(p.title ?? ''), want, at?.titleY ?? 0, H > W);
+    place(s.sub, subText, subWant, at?.subY ?? 0, true);
   },
 };

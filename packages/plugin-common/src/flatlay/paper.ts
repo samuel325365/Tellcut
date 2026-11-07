@@ -35,6 +35,8 @@ function backRows(g: CanvasRenderingContext2D, lines: Line[], maxW: number): Row
 }
 
 export const PX = 1000;
+/** the back's pen: characters a second (before a line's own pace), each fading in over BACK_FADE s; the postmark lands over MARK_LAND s */
+export const BACK_CPS = 12, BACK_FADE = 0.18, MARK_LAND = 0.15;
 export interface Word { text: string; rect: [number, number, number, number] }
 export interface Painted { canvas: HTMLCanvasElement; words: Word[] }
 export type Make = (w: number, h: number) => HTMLCanvasElement;
@@ -133,26 +135,42 @@ function postmark(g: CanvasRenderingContext2D, cx: number, cy: number, rad: numb
 
 /** the back at `local`: handwriting (each character fading in as the pen reaches it), and on a postcard a dividing line, two address
  *  rules, the stamp (its picture, or the stand-in) and the postmark landing at its time */
-export function paintBack(o: Obj, local: number, stamp: CanvasImageSource | null = null, make: Make = blank): Painted {
+/** the back without its words and postmark: the paper, a postcard's dividing line, address lines and stamp; the same at any time,
+ *  so a block painting the back while it is written paints this once and hands it to paintBack */
+export function paintBackBase(o: Obj, stamp: CanvasImageSource | null = null, make: Make = blank): HTMLCanvasElement {
   const s = sizeOf(o), w = Math.round(s.w * PX), h = Math.round(s.h * PX), c = make(w, h), g = c.getContext('2d');
-  const words: Word[] = [];
-  if (!g) return { canvas: c, words };
-  if (o.kind === 'tv') { g.fillStyle = '#2b2119'; g.fillRect(0, 0, w, h); return { canvas: c, words }; }
+  if (!g) return c;
+  if (o.kind === 'tv') { g.fillStyle = '#2b2119'; g.fillRect(0, 0, w, h); return c; }
   paper(g, w, h, o.kind === 'polaroid' ? '#f3efe6' : '#f4eee2', o.seed + 100);
-  const post = o.kind === 'postcard', textW = post ? w * 0.52 : w * 0.84, x0 = post ? w * 0.06 : w * 0.08;
-  let size = Math.round(Math.min(72, h / 11));
-  if (post) {
+  if (o.kind === 'postcard') {
     g.strokeStyle = 'rgba(107,90,72,.45)'; g.lineWidth = 2;
     g.beginPath(); g.moveTo(w * 0.6, h * 0.12); g.lineTo(w * 0.6, h * 0.88); g.stroke();
     for (const y of [0.62, 0.74, 0.86]) { g.beginPath(); g.moveTo(w * 0.65, h * y); g.lineTo(w * 0.94, h * y); g.stroke(); }
     // the stamp: a white perforated edge round the picture
-    const sw = w * 0.17, sh = sw * 1.2, sx = w * 0.94 - sw, sy = h * 0.08;
+    const { sw, sh, sx, sy } = stampBox(w, h);
     g.fillStyle = '#fffdf8'; g.fillRect(sx - 10, sy - 10, sw + 20, sh + 20);
     g.fillStyle = '#f4eee2';
     for (let i = 0; i <= 10; i++) { for (const [ex, ey] of [[sx - 10 + (i * (sw + 20)) / 10, sy - 10], [sx - 10 + (i * (sw + 20)) / 10, sy + sh + 10], [sx - 10, sy - 10 + (i * (sh + 20)) / 10], [sx + sw + 10, sy - 10 + (i * (sh + 20)) / 10]]) { g.beginPath(); g.arc(ex, ey, 5, 0, 7); g.fill(); } }
     if (stamp) g.drawImage(stamp, sx, sy, sw, sh); else g.drawImage(paintPlaceholder(Math.round(sw), Math.round(sh), make), sx, sy, sw, sh);
+  }
+  return c;
+}
+const stampBox = (w: number, h: number) => { const sw = w * 0.17; return { sw, sh: sw * 1.2, sx: w * 0.94 - sw, sy: h * 0.08 }; };
+
+/** the back at `local`: on `base` (paintBackBase's, painted now when not given) the postmark as far as it has landed and the words
+ *  as far as they are written */
+export function paintBack(o: Obj, local: number, stamp: CanvasImageSource | null = null, make: Make = blank, base?: HTMLCanvasElement): Painted {
+  const s = sizeOf(o), w = Math.round(s.w * PX), h = Math.round(s.h * PX), c = make(w, h), g = c.getContext('2d');
+  const words: Word[] = [];
+  if (!g) return { canvas: c, words };
+  g.drawImage(base ?? paintBackBase(o, stamp, make), 0, 0, w, h);
+  if (o.kind === 'tv') return { canvas: c, words };
+  const post = o.kind === 'postcard', textW = post ? w * 0.52 : w * 0.84, x0 = post ? w * 0.06 : w * 0.08;
+  let size = Math.round(Math.min(72, h / 11));
+  if (post) {
+    const { sw, sh, sx, sy } = stampBox(w, h);
     if (o.mark && local >= o.mark.at) {
-      const q = clamp((local - o.mark.at) / 0.15);
+      const q = clamp((local - o.mark.at) / MARK_LAND);
       const cx = sx - sw * 0.15, cy = sy + sh * 0.85, r = sw * 0.62 * (1.35 - 0.35 * q);
       postmark(g, cx, cy, sw * 0.62, o.mark, 0.8 * q, 1.35 - 0.35 * q);
       // its words for check: the top arc, the bottom arc, the date across the middle (as boxes round them)
@@ -171,10 +189,10 @@ export function paintBack(o: Obj, local: number, stamp: CanvasImageSource | null
   }
   const lineH = size * 1.55;
   rows.forEach((row, r) => {
-    const line = o.back[row.line], y = h * 0.2 + size + r * lineH, cps = sentenceCps(line, 12);
+    const line = o.back[row.line], y = h * 0.2 + size + r * lineH, cps = sentenceCps(line, BACK_CPS);
     let end = -1;
     row.glyphs.forEach((q, n) => {
-      const a = clamp((local - line.start - q.i / cps) / 0.18);
+      const a = clamp((local - line.start - q.i / cps) / BACK_FADE);
       if (a <= 0) return;
       g.globalAlpha = a; g.fillText(q.ch, x0 + q.x, y); end = n;
     });
