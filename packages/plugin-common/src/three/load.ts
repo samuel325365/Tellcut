@@ -15,10 +15,11 @@ export function loadThreeKit(): Promise<ThreeKit> {
     import('three/addons/postprocessing/RenderPass.js'),
     import('three/addons/postprocessing/UnrealBloomPass.js'),
     import('three/addons/postprocessing/OutputPass.js'),
+    import('three/addons/postprocessing/BokehPass.js'),
     import('opentype.js'),
     import('clipper-lib'),
-  ]).then(([THREE, rb, env, svg, refl, ec, rp, ub, op, ot, cl]) => makeKit(THREE, { RoundedBoxGeometry: rb.RoundedBoxGeometry, RoomEnvironment: env.RoomEnvironment,
-    SVGLoader: svg.SVGLoader, Reflector: refl.Reflector, EffectComposer: ec.EffectComposer, RenderPass: rp.RenderPass, UnrealBloomPass: ub.UnrealBloomPass, OutputPass: op.OutputPass,
+  ]).then(([THREE, rb, env, svg, refl, ec, rp, ub, op, bk, ot, cl]) => makeKit(THREE, { RoundedBoxGeometry: rb.RoundedBoxGeometry, RoomEnvironment: env.RoomEnvironment,
+    SVGLoader: svg.SVGLoader, Reflector: refl.Reflector, EffectComposer: ec.EffectComposer, RenderPass: rp.RenderPass, UnrealBloomPass: ub.UnrealBloomPass, OutputPass: op.OutputPass, BokehPass: bk.BokehPass,
     opentype: ((ot as { default?: unknown }).default ?? ot) as never,
     clipper: ((cl as { default?: unknown }).default ?? cl) as never }));
   // a failed load (offline chunk) may be tried again

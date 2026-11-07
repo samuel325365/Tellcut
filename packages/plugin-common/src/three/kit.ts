@@ -11,6 +11,7 @@ import type { EffectComposer } from 'three/addons/postprocessing/EffectComposer.
 import type { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import type { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import type { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import type { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import type ClipperLibType from 'clipper-lib';
 import type * as Opentype from 'opentype.js';
 import { glyphsFrom, type Glyphs } from './glyphs.ts';
@@ -24,6 +25,8 @@ export interface ThreeAddons {
   RoundedBoxGeometry: typeof RoundedBoxGeometry; RoomEnvironment: typeof RoomEnvironment;
   SVGLoader: typeof SVGLoader; Reflector: typeof Reflector;
   EffectComposer: typeof EffectComposer; RenderPass: typeof RenderPass; UnrealBloomPass: typeof UnrealBloomPass; OutputPass: typeof OutputPass;
+  /** depth of field (render's dof) */
+  BokehPass: typeof BokehPass;
   /** opentype.js (three's TTFLoader would fetch it from a CDN): TTFs are read with it, see loadFont */
   opentype: typeof Opentype;
   /** Clipper: a letter's overlapping contours unioned by the nonzero rule before three triangulates them (three/glyphs.ts) */
@@ -52,8 +55,10 @@ export interface ThreeKit {
   addons: ThreeAddons;
   /** Draw `scene` through `camera` at w×h on the one shared renderer; the canvas holds it until the next render. null without
    *  WebGL2. toneMapping (default on, ACES) must be off where the picture shows real footage: false for footage handed over to
-   *  a clip (never glows), 'none' for stills that keep their colours but may glow (the wall). */
-  render(scene: T.Scene, camera: T.Camera, w: number, h: number, o?: { toneMapping?: boolean | 'neutral' | 'none'; background?: string | null; bloom?: number }): HTMLCanvasElement | null;
+   *  a clip (never glows), 'none' for stills that keep their colours but may glow (the wall). shadows: soft VSM shadows for this
+   *  render only (the renderer is shared: the next render without it has none). dof: a light depth of field focused `focus` units
+   *  from the camera, never with toneMapping false (that picture is the clip itself); given with bloom, only the depth of field applies. */
+  render(scene: T.Scene, camera: T.Camera, w: number, h: number, o?: RenderOptions): HTMLCanvasElement | null;
   /** A TTF in the player's fonts/files (INTER_3D) as letter shapes to extrude, read once (call it in ready()). */
   loadFont(file: string): Promise<Glyphs>;
   /** RoomEnvironment reflections made once on the shared renderer (scene.environment); null without WebGL2. */
@@ -101,11 +106,16 @@ export interface ThreeKit {
   japaneseGlyphs(): Promise<Glyphs | null>;
 }
 
+export interface Dof { focus: number; aperture: number; maxblur: number }
+export interface RenderOptions { toneMapping?: boolean | 'neutral' | 'none'; background?: string | null; bloom?: number; shadows?: boolean; dof?: Dof | null }
+/** a depth-of-field pass chain for one size */
+export interface DofComposer { setSize(w: number, h: number): void; render(scene: T.Scene, camera: T.Camera, dof: Dof): void; dispose?(): void }
 /** a glow pass chain for one size: strength set before each render */
 export interface Composer { strength: number; setSize(w: number, h: number): void; render(scene: T.Scene, camera: T.Camera): void; dispose?(): void }
 /** test seams: what makes the shared renderer (default: a WebGLRenderer on a new canvas; null where WebGL2 fails), the bloom chain,
  *  and the clock (ms) that spaces the retries after a lost context */
-export interface KitOptions { makeRenderer?: () => T.WebGLRenderer | null; makeComposer?: (r: T.WebGLRenderer, w: number, h: number) => Composer; now?: () => number }
+export interface KitOptions { makeRenderer?: () => T.WebGLRenderer | null; makeComposer?: (r: T.WebGLRenderer, w: number, h: number) => Composer;
+  makeDofComposer?: (r: T.WebGLRenderer, w: number, h: number) => DofComposer; now?: () => number }
 
 /** after a lost context, how long (ms) a failed rebuild waits before the next try */
 export const RETRY_MS = 1000;
@@ -127,6 +137,22 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
       // the composer frees its two targets, each pass its own (the bloom's mip chain)
       dispose: () => { for (const ps of ec.passes) ps.dispose(); ec.dispose(); } };
     return c;
+  });
+  // the depth-of-field chain: render, Bokeh, output; one per renderer and size, like the bloom's
+  let dofc: { c: DofComposer; r: T.WebGLRenderer; w: number; h: number } | null = null;
+  const makeDofComposer = o.makeDofComposer ?? ((r: T.WebGLRenderer, w: number, h: number): DofComposer => {
+    const ec = new addons.EffectComposer(r, new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 }));
+    const pass = new addons.RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+    const bokeh = new addons.BokehPass(new THREE.Scene(), new THREE.PerspectiveCamera(), { focus: 5, aperture: 0.0016, maxblur: 0.006 });
+    ec.addPass(pass); ec.addPass(bokeh); ec.addPass(new addons.OutputPass());
+    const u = bokeh.uniforms as unknown as Record<'focus' | 'aperture' | 'maxblur', { value: number }>;
+    return { setSize: (ww, hh) => ec.setSize(ww, hh),
+      render: (scene, camera, d) => {
+        pass.scene = scene; pass.camera = camera; bokeh.scene = scene; bokeh.camera = camera;
+        u.focus.value = d.focus; u.aperture.value = d.aperture; u.maxblur.value = d.maxblur;
+        ec.render();
+      },
+      dispose: () => { for (const ps of ec.passes) ps.dispose(); ec.dispose(); } };
   });
   const make = o.makeRenderer ?? (() => {
     const canvas = document.createElement('canvas');
@@ -163,8 +189,19 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
       if (!r) return null;
       const cv = r.domElement as HTMLCanvasElement;
       if (cv.width !== w || cv.height !== h) r.setSize(w, h, false);
+      if (r.shadowMap) { r.shadowMap.enabled = !!ro.shadows; if (ro.shadows) r.shadowMap.type = THREE.VSMShadowMap; }
       r.toneMapping = ro.toneMapping === false || ro.toneMapping === 'none' ? THREE.NoToneMapping : ro.toneMapping === 'neutral' ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
       if (ro.background) r.setClearColor(ro.background, 1); else r.setClearColor(0x000000, 0);
+      if (ro.dof && ro.toneMapping !== false) {
+        if (!dofc || dofc.r !== r || dofc.w !== w || dofc.h !== h) {
+          dofc?.c.dispose?.();   // the old size's render targets would stay on the GPU
+          dofc = { c: makeDofComposer(r, w, h), r, w, h };
+        }
+        const before = scene.background;
+        if (ro.background && !before) scene.background = new THREE.Color(ro.background);
+        try { dofc.c.render(scene, camera, ro.dof); } finally { scene.background = before; }
+        return cv;
+      }
       // a glow only where there is no footage (toneMapping false is the footage's mark): a picture must stay as the clip is
       if ((ro.bloom ?? 0) > 0 && ro.toneMapping !== false) {
         if (!comp || comp.r !== r || comp.w !== w || comp.h !== h) {

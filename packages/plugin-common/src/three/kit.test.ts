@@ -160,3 +160,33 @@ test("bloom keeps the background colour: it is the scene's background while the 
   expect(seen).toEqual(['1a1a1a']);
   expect(scene.background).toBeNull();
 });
+
+// spec 2026-11-07-desk3d: the 3D desk's soft window shadows and its light depth of field
+test('render with shadows turns on VSM shadows, and a render without turns them off', () => {
+  const r: any = { domElement: { width: 8, height: 8, addEventListener() {} }, shadowMap: { enabled: false, type: THREE.PCFShadowMap }, setSize() {}, setClearColor() {}, render() {}, dispose() {} };
+  const kit = makeKit(THREE, addons, { makeRenderer: () => r });
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera();
+  kit.render(scene, cam, 8, 8, { shadows: true });
+  expect([r.shadowMap.enabled, r.shadowMap.type]).toEqual([true, THREE.VSMShadowMap]);
+  // the renderer is shared: another 3D item drawn next must not get shadows it did not ask for
+  kit.render(scene, cam, 8, 8);
+  expect(r.shadowMap.enabled).toBe(false);
+});
+
+test('render with dof goes through the depth-of-field chain made once per size', () => {
+  const calls: string[] = [];
+  const r: any = { domElement: { width: 8, height: 8, addEventListener() {} }, shadowMap: { enabled: false }, setSize() {}, setClearColor() {}, render() { calls.push('plain'); }, dispose() {} };
+  const made: string[] = [];
+  const makeDofComposer = (_r: unknown, w: number, h: number) => { made.push(`${w}x${h}`); return { setSize() {}, render(_s: unknown, _c: unknown, d: { focus: number }) { calls.push(`dof ${d.focus}`); }, dispose() { calls.push(`dispose ${w}x${h}`); } }; };
+  const kit = makeKit(THREE, addons, { makeRenderer: () => r, makeDofComposer } as any);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera();
+  const dof = { focus: 5, aperture: 0.0016, maxblur: 0.006 };
+  kit.render(scene, cam, 8, 8, { dof });
+  kit.render(scene, cam, 8, 8, { dof: { ...dof, focus: 4 } });
+  expect(made).toEqual(['8x8']);
+  kit.render(scene, cam, 16, 9, { dof });
+  // footage handed over to a clip (toneMapping false) is the clip itself: never blurred
+  kit.render(scene, cam, 16, 9, { dof, toneMapping: false });
+  expect(calls).toEqual(['dof 5', 'dof 4', 'dispose 8x8', 'dof 5', 'plain']);
+  expect(made).toEqual(['8x8', '16x9']);
+});
