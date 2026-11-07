@@ -111,7 +111,7 @@ test('clips, podcast, food, vlog and celebration: forms first, then the rest, ea
   for (const [p, s, b] of [['clips', 'quote-card', 'common.quote'], ['clips', 'live-replay', 'common.comments'], ['podcast', 'versus', 'common.versus'], ['podcast', 'waveform', 'common.audiogram'],
     ['podcast', 'group-chat', 'chatWindow'], ['food', 'receipt', 'common.printer'], ['food', 'street-route', 'common.route'], ['food', 'shutter', 'common.rolldoor'],
     ['food', 'judge', 'common.gauge'], ['food', 'ember-tag', "look: 'ember'"], ['vlog', 'planner', 'common.paper'], ['vlog', 'silent', "style: 'strip'"],
-    ['celebration', 'frame', 'frameWindow'], ['celebration', 'timeline', "common.meter look: 'band'"], ['celebration', 'memories', 'mode foryou']] as const)
+    ['celebration', 'frame', 'flatlayClip'], ['celebration', 'timeline', "common.meter look: 'band'"], ['celebration', 'memories', 'mode foryou']] as const)
     expect(style(p, s), `${p}.${s}`).toContain(b);
   expect(presets().find((x) => x.id === 'food')!.prompt).toMatch(/info cards .* welcome/i);
   for (const p of ['clips', 'podcast', 'vlog', 'celebration']) expect(presets().find((x) => x.id === p)!.prompt, p).toMatch(/no info cards/i);
@@ -130,7 +130,7 @@ test('travel: nine whole-film forms, two cuts, two looks, and the rules that kee
   expect(travel.prompt).toMatch(/never invent/i);
   expect(travel.prompt).not.toMatch(/fill the frame/i);
   for (const b of ['common.ticket', 'common.routeboard', 'common.stations']) expect(style('rail-trip'), b).toContain(b);
-  expect(style('postcard')).toContain('postcardWindow');
+  expect(style('postcard')).toContain('flatlayClip');
   expect(style('retro')).toMatch(/look vhs/);
   expect(style('cinematic')).toContain('common.tone');
   expect(style('photo-dump')).toContain('common.snap');
@@ -262,4 +262,15 @@ test('a style that names a caption template names one there is, and its prompt a
   const vlog = all.find((p) => p.id === 'vlog')!;
   expect(presetBlock(vlog, ['retro'])).toContain("c.captionTemplate('vhs-fade')");
   expect(presetBlock(vlog, [])).not.toContain('captionTemplate');
+});
+
+// 2026-11-07: the flat postcard and frame gave way to the 3D desk (common.flatlay); the styles built on them say so
+test('the card styles build on the 3D desk, never the old flat postcard or frame', () => {
+  for (const [p, id] of [['travel', 'postcard'], ['celebration', 'frame'], ['celebration', 'postcard']] as const) {
+    const st = presets().find((x) => x.id === p)!.styles.find((x) => x.id === id)!;
+    expect(st.prompt, `${p}.${id}`).toContain('common.flatlay');
+    expect(st.prompt, `${p}.${id}`).toContain('flatlayClip');
+    for (const old of ['common.postcard', 'common.frame', 'postcardWindow', 'frameWindow']) expect(st.prompt, `${p}.${id} ${old}`).not.toContain(old);
+    for (const l of ['zh', 'en', 'ja'] as const) expect(st.desc[l], `${p}.${id} desc.${l}`).toBeTruthy();
+  }
 });
