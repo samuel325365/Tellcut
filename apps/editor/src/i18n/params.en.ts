@@ -1948,7 +1948,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.flatlay.flipAt": {"name":"Turns over at","hint":"seconds; -1 = never"},
   "common.flatlay.mark": {"name":"Postmark","hint":"top words|bottom words|date; empty = none"},
   "common.flatlay.markAt": {"name":"Postmark lands at","hint":"item seconds"},
-  "common.flatlay.objects": {"name":"Several objects","hint":"a JSON list, each with the keys above plus x, y, rot, portrait, dur, exit, exitAt (left out = leaving just as the item ends), flipDur, stamp; empty or [] = just the one above"},
+  "common.flatlay.objects": {"name":"Several objects","hint":"a JSON list, each with the keys above plus x, y (desk units from the table's middle, y up: a 9:16 frame sees ±1.2 across and ±2.0 up, a 16:9 one ±3.0 and ±1.6; a postcard is 1.5 wide), rot (radians, counterclockwise; 0.1 ≈ 6°), portrait, dur, exit, exitAt (left out = leaving just as the item ends), flipDur, stamp; empty or [] = just the one above"},
   "common.flatlay.fly": {"name":"Fly into a picture","hint":"JSON { index, at, dur, back, backDur }; back = when to pull back, null = stays; empty = no fly"},
   "common.flatlay.surface": {"name":"Desk","hint":"linen, marble, concrete, velvet, none = see-through"},
   "common.flatlay.side": {"name":"Window side"},

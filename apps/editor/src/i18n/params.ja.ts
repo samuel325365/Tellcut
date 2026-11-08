@@ -1948,7 +1948,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.flatlay.flipAt": {"name":"裏返す秒","hint":"−1＝裏返さない"},
   "common.flatlay.mark": {"name":"消印","hint":"上の文字|下の文字|日付；空＝押さない"},
   "common.flatlay.markAt": {"name":"消印を押す秒","hint":"項目内"},
-  "common.flatlay.objects": {"name":"複数の物","hint":"JSON の配列、各要素は上と同じキー＋x、y、rot、portrait、dur、exit、exitAt（省略＝項目の終わりにちょうど退場）、flipDur、stamp；空か []＝上の一つだけ"},
+  "common.flatlay.objects": {"name":"複数の物","hint":"JSON の配列、各要素は上と同じキー＋x、y（机の単位、机の中央が 0、y は上向き；9:16 で見えるのは左右 ±1.2・上下 ±2.0、16:9 は ±3.0・±1.6；ポストカードの幅は 1.5）、rot（ラジアン、正＝反時計回り、0.1 で約 6°）、portrait、dur、exit、exitAt（省略＝項目の終わりにちょうど退場）、flipDur、stamp；空か []＝上の一つだけ"},
   "common.flatlay.fly": {"name":"写真に飛び込む","hint":"JSON { index, at, dur, back, backDur }；back は引き戻す秒、null＝戻らない；空＝飛ばない"},
   "common.flatlay.surface": {"name":"机","hint":"linen リネン、marble 大理石、concrete コンクリート、velvet ベルベット、none 透明"},
   "common.flatlay.side": {"name":"窓の側"},
