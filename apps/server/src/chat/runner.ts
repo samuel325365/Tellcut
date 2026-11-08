@@ -302,10 +302,12 @@ export class ChatRunner {
     // once, so its list shows it while the agent goes on; looked for on a timer (the tool event comes before its command runs)
     // and at each tool event (the one after `new` finished)
     const told = new Set<string>();
+    // only the ids the tools named are looked at (not a scan of every project folder each second): a plain folder name, not
+    // _home or the like, holding a project.json
+    const isProject = (id: string) => !id.startsWith('_') && !id.startsWith('.') && !/[\\/:]/.test(id) && existsSync(join(this.o.projectsDir, id, 'project.json'));
     const lookForNew = () => {
       if (!before || closed) return;
-      const mine = touchedProjects(turn.tools);
-      for (const id of projectIds(this.o.projectsDir)) if (!before.has(id) && !told.has(id) && mine.has(id)) {
+      for (const id of touchedProjects(turn.tools)) if (!before.has(id) && !told.has(id) && isProject(id)) {
         told.add(id);
         for (const l of turn.listeners) l({ type: 'project', id });
       }
