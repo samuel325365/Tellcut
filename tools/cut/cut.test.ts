@@ -128,3 +128,13 @@ test("flatlayClip places the object's footage under the desk", () => {
   expect(() => c.flatlayClip(id, 1)).toThrow('擋住');
   expect(() => c.flatlayClip(id, 5)).toThrow('第 5 樣');
 });
+
+test('flatlayClip ends where the block says the object has left the desk, not at the item\'s end', () => {
+  const c = fresh();
+  const objects = JSON.stringify([{ kind: 'polaroid', shot: 'v|3', at: 1, exit: 'left', exitAt: 3 }]);
+  const id = c.effect('common.flatlay', { at: 2, len: 6, objects });
+  const want = flatlayClip({ objects }, 0, 1920, 1080, 1920, 1080, 6)!;
+  const clip = c.flatlayClip(id, 0), v = items(c, 'v1').find((i) => i.id === clip);
+  expect(want.len).toBeLessThan(6 - 1);   // the exit is over before the item ends
+  expect([v.in, v.start, v.end]).toEqual([3, 3, +(3 + want.len).toFixed(6)]);
+});
