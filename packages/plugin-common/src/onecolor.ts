@@ -9,41 +9,36 @@
 //                      behind, a line of side text, a barcode
 //   common.band        a diagonal band of repeated words, scrolling
 // The 3-2-1 is common.countdown's look slant, the caption the template color-boxes (look boxes). Pure functions of time.
-import { clamp, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
+import { canvasIn } from './desktop.ts';
+import { coverImage } from './editorial.ts';
+import { canvasAt, freeCanvas } from './inkline.ts';
 
 const DISPLAY = 'Anton', SANS = 'Inter', TC = 'Noto Sans TC';
 const disp = (px: number) => `400 ${px}px "${DISPLAY}", "${TC}", sans-serif`;
 const sans = (px: number, w = 700) => `${w} ${px}px "${SANS}", "${TC}", sans-serif`;
 /** the faux italic of the display words (Anton has no italic) */
 export const SLANT = -0.2;
-const eOut = (q: number) => 1 - Math.pow(1 - clamp(q), 3);
+const eOut = (q: number) => eOut3(clamp(q));
 type G = CanvasRenderingContext2D;
 
-function canvasIn(root: HTMLElement): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
-  root.appendChild(c);
-  return c;
-}
-const sized = (c: HTMLCanvasElement, W: number, H: number) => { if (c.width !== W || c.height !== H) { c.width = W; c.height = H; } return c.getContext('2d')!; };
 const fontsReady = (text: string) => Promise.all([document.fonts.load(`400 80px "${DISPLAY}"`, text || 'AZ09'), document.fonts.load(`700 30px "${SANS}"`, 'AZ09'),
   document.fonts.load(`600 30px "${SANS}"`, 'AZ09'), document.fonts.load(`900 50px "${TC}"`, text || '字')]).then(() => undefined);
 const spaced = (g: G, px: number) => { try { (g as unknown as { letterSpacing: string }).letterSpacing = `${px.toFixed(1)}px`; } catch { /* older canvases */ } };
 const imgReady = (i: HTMLImageElement) => (i.complete ? Promise.resolve() : i.decode().catch(() => undefined));
-function cover(g: G, img: HTMLImageElement | null, x: number, y: number, w: number, h: number, fx = 0.5, fy = 0.5) {
-  if (!img || !img.complete || !img.naturalWidth) { g.fillStyle = '#777'; g.fillRect(x, y, w, h); return; }
-  const ir = img.naturalWidth / img.naturalHeight, br = w / h;
-  let sw = img.naturalWidth, sh = img.naturalHeight;
-  if (ir > br) sw = sh * br; else sh = sw / br;
-  const sx = clamp(fx * img.naturalWidth - sw / 2, 0, img.naturalWidth - sw), sy = clamp(fy * img.naturalHeight - sh / 2, 0, img.naturalHeight - sh);
-  g.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-}
 
 /** "seconds|value" lines, in time order */
 export function parseSteps(text: string): Array<{ t: number; v: string }> {
   return String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
     .map((l) => { const [a, ...b] = l.split('|'); return { t: Number(a) || 0, v: b.join('|').trim() }; }).sort((a, b) => a.t - b.t);
 }
+/** a steps param parsed once per value and kept on the item's state: draw runs every frame */
+export interface StepsMemo { text?: string; list: Array<{ t: number; v: string }> }
+export function stepsOf(m: StepsMemo, text: string): Array<{ t: number; v: string }> {
+  if (m.text !== text) { m.text = text; m.list = parseSteps(text); }
+  return m.list;
+}
+const noSteps = (): StepsMemo => ({ list: [] });
 /** the step's value in force at `t` (`dflt` before the first) */
 export function stepAt(steps: Array<{ t: number; v: string }>, t: number, dflt = 'none'): string {
   let v = dflt;
@@ -97,35 +92,37 @@ function fitted(g: G, text: string, px: number, maxW: number) {
 // ── common.grade / common.wash
 interface GP { steps: string; color: string }
 interface WP { steps: string; tone: string }
-interface FS { d: HTMLElement }
-const fill = (root: HTMLElement): FS => { const d = document.createElement('div'); d.style.cssText = 'position:absolute;inset:0;pointer-events:none'; root.appendChild(d); return { d }; };
+interface FS { d: HTMLElement; steps: StepsMemo }
+const fill = (root: HTMLElement): FS => { const d = document.createElement('div'); d.style.cssText = 'position:absolute;inset:0;pointer-events:none'; root.appendChild(d); return { d, steps: noSteps() }; };
+/** grade's steps out of the box: wash's default is the same, as its doc says */
+const GRADE_STEPS = '0|bw\n0.4|mono\n0.8|none';
 
 export const grade: ItemType<GP, FS> = {
   type: 'common.grade', label: '單色調色', category: 'look', kind: 'overlay', blend: 'color',
   doc: '照拍子換調色：疊在影片上（整支片一個項目），steps「秒|bw／mono／none」（項目內秒數，一行一個）把下面的畫面換成黑白、color 色的單色、或原色（#顏色＝那個顏色的單色）；單色要更濃（亮的天空也染色）再疊一個 common.wash 用同一份 steps；字幕、文字積木要放在它之後才不會被染色；運動、單車、旅行的快剪，配 common.viewfinder、common.echo、common.poster',
   params: [
-    { key: 'steps', label: '換色（秒|bw／mono／none，一行一個）', type: 'text', default: '0|bw\n0.4|mono\n0.8|none' },
+    { key: 'steps', label: '換色（秒|bw／mono／none，一行一個）', type: 'text', default: GRADE_STEPS },
     { key: 'color', label: '單色（mono）', type: 'color', default: '#ff5a1f', theme: 'palette.accent' },
   ],
   build: (ctx) => fill(ctx.root),
-  draw(ctx, s) { s.d.style.background = gradeFill(stepAt(parseSteps(ctx.params.steps), ctx.local), ctx.params.color); },
+  draw(ctx, s) { s.d.style.background = gradeFill(stepAt(stepsOf(s.steps, ctx.params.steps), ctx.local), ctx.params.color); },
 };
 
 export const wash: ItemType<WP, FS> = {
   type: 'common.wash', label: '色彩加深', category: 'look', kind: 'overlay', blend: 'multiply',
   doc: '在 steps 的 mono 那幾段把一層淺色乘上去（multiply），亮的地方也染上顏色；疊在 common.grade 之後、用同一份 steps（bw、none 那幾段不動）',
   params: [
-    { key: 'steps', label: '換色（跟 common.grade 同一份）', type: 'text', default: '0|mono' },
+    { key: 'steps', label: '換色（跟 common.grade 同一份）', type: 'text', default: GRADE_STEPS },
     { key: 'tone', label: '乘上的顏色', type: 'color', default: '#ffa070' },
   ],
   build: (ctx) => fill(ctx.root),
-  draw(ctx, s) { s.d.style.background = stepAt(parseSteps(ctx.params.steps), ctx.local) === 'mono' ? ctx.params.tone : 'transparent'; },
+  draw(ctx, s) { s.d.style.background = stepAt(stepsOf(s.steps, ctx.params.steps), ctx.local) === 'mono' ? ctx.params.tone : 'transparent'; },
 };
 
 // ── common.viewfinder
 interface VP { title: string; chapters: string; route: string; cuts: string; color: string; ink: string }
 interface CS { c: HTMLCanvasElement }
-export const viewfinder: ItemType<VP, CS> = {
+export const viewfinder: ItemType<VP, CS & { steps: StepsMemo }> = {
   type: 'common.viewfinder', label: '取景框', category: 'frame', kind: 'overlay',
   doc: '整支片的取景框：四角 color 色的 L 角（開場長出來）、左上片名（title）和一行章節（chapters「秒|字」，項目內秒數，到點換字）、右上路線（route）和鏡頭計數（cuts 每次換鏡頭的秒數，逗號分隔，顯示「05 / 16」）、左邊一排刻度和一根跟著片子往下走的指針；小字是裝飾，不算字幕；配 common.grade、common.echo',
   params: [
@@ -136,18 +133,18 @@ export const viewfinder: ItemType<VP, CS> = {
     { key: 'color', label: '角和指針的顏色', type: 'color', default: '#ff5a1f', theme: 'palette.accent' },
     { key: 'ink', label: '小字顏色', type: 'color', default: '#ffffff' },
   ],
-  build: (ctx) => ({ c: canvasIn(ctx.root) }),
+  build: (ctx) => ({ c: canvasIn(ctx.root), steps: noSteps() }),
   ready: () => fontsReady(''),
+  hide: (s) => freeCanvas(s.c),
   draw(ctx, s) {
-    const { local, dur, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = sized(s.c, W, H);
-    g.clearRect(0, 0, W, H);
+    const { local, dur, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const m = 34 * u;
     brackets(g, m, m, W - 2 * m, H - 2 * m, 54 * u * eOut(local / 0.3), 5 * u, p.color);
     g.fillStyle = p.ink; g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 6 * u; g.textBaseline = 'alphabetic';
     const { n, total } = shotNo(p.cuts, local), pad = (v: number) => String(v).padStart(2, '0');
     const x0 = 72 * u, x1 = W - 72 * u, y0 = 92 * u, y1 = 122 * u;
     g.textAlign = 'left'; g.font = sans(24 * u); spaced(g, 4 * u); g.fillText(p.title, x0, y0);
-    g.font = sans(19 * u, 600); spaced(g, 3 * u); g.fillText(stepAt(parseSteps(p.chapters), local, ''), x0, y1);
+    g.font = sans(19 * u, 600); spaced(g, 3 * u); g.fillText(stepAt(stepsOf(s.steps, p.chapters), local, ''), x0, y1);
     g.textAlign = 'right'; g.font = sans(24 * u); spaced(g, 4 * u); g.fillText(p.route, x1, y0);
     g.font = sans(19 * u, 600); spaced(g, 3 * u); g.fillText(`${pad(n)} / ${pad(total)}`, x1, y1);
     spaced(g, 0); g.shadowBlur = 0;
@@ -160,7 +157,9 @@ export const viewfinder: ItemType<VP, CS> = {
 
 // ── common.echo
 interface EP { word: string; label: string; color: string; echo: string; echoes: number; size: number; y: number; steps: string; onMono: string }
-export const echo: ItemType<EP, CS & { text: string }> = {
+/** the word's size fitted to the width and its width at that size, measured once per word, size and frame (and again once the fonts are in) */
+interface EchoFit { key: string; px: number; ww: number }
+export const echo: ItemType<EP, CS & { text: string; steps: StepsMemo; fit?: EchoFit }> = {
   type: 'common.echo', label: '回音大字', category: 'text', kind: 'overlay',
   doc: '畫面上一個粗窄斜體的大字（Anton），上下各疊 echoes 層空心的同一個字、開場從字的位置散開，字先大一點再落定；label 是字左上的小號碼（01、02，地點、章節）；字太寬自動縮到畫面寬 74%；steps 填 common.grade 的同一份（換成這個項目自己的秒數）時，畫面是單色那幾段字和空心字換成 onMono 色（橘色畫面上的橘字會看不見）；運動、旅行快剪的地名、動作字（RIDE、WALK、PARIS）',
   params: [
@@ -169,17 +168,19 @@ export const echo: ItemType<EP, CS & { text: string }> = {
     { key: 'color', label: '字色', type: 'color', default: '#ff5a1f', theme: 'palette.accent' },
     { key: 'echo', label: '空心字的顏色', type: 'color', default: '#ff5a1f', theme: 'palette.accent' },
     { key: 'echoes', label: '上下各幾層空心字', type: 'number', min: 0, max: 4, step: 1, default: 2 },
-    { key: 'size', label: '字高（px，1080 寬時）', type: 'number', min: 60, max: 600, step: 5, default: 250 },
+    { key: 'size', label: '字高（以 1080 短邊計的 px）', type: 'number', min: 60, max: 600, step: 5, default: 250 },
     { key: 'y', label: '中心高度（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.26 },
     { key: 'steps', label: '調色（秒|bw／mono／none，項目內秒數；空＝不換色）', type: 'text', default: '' },
     { key: 'onMono', label: '單色畫面上的字色', type: 'color', default: '#ffffff' },
   ],
-  build: (ctx) => ({ c: canvasIn(ctx.root), text: `${ctx.params.word}${ctx.params.label}` }),
-  ready: (s) => fontsReady(s.text),
+  build: (ctx) => ({ c: canvasIn(ctx.root), text: `${ctx.params.word}${ctx.params.label}`, steps: noSteps() }),
+  ready: (s) => fontsReady(s.text).then(() => { s.fit = undefined; }),
+  hide: (s) => freeCanvas(s.c),
   draw(ctx, s) {
-    const { local, W, H, params: p } = ctx, u = W / 1080, g = sized(s.c, W, H);
-    g.clearRect(0, 0, W, H);
-    const px = fitted(g, p.word, p.size * u, 0.74 * W), mono = stepAt(parseSteps(p.steps), local) === 'mono';
+    const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
+    const key = `${p.word}|${p.size * u}|${W}`;
+    if (s.fit?.key !== key) { const px = fitted(g, p.word, p.size * u, 0.74 * W); g.font = disp(px); s.fit = { key, px, ww: g.measureText(p.word).width }; }
+    const { px, ww } = s.fit, mono = stepAt(stepsOf(s.steps, p.steps), local) === 'mono';
     const col = mono ? p.onMono : p.color, ecol = mono ? p.onMono : p.echo;
     const cx = W / 2, cy = p.y * H, k = eOut(local / 0.3), gap = 0.8 * px * k;
     // the copies stay clear of the top's small lines (a viewfinder's) and of the captions' band
@@ -193,8 +194,7 @@ export const echo: ItemType<EP, CS & { text: string }> = {
     slanted(g, p.word, cx, cy, big, col);
     said(ctx, g, p.word, cx, cy, big);
     if (p.label) {
-      g.font = disp(px);
-      const lpx = 70 * u, lx = Math.max(0.12 * W + 40 * u, cx - g.measureText(p.word).width / 2 + 40 * u), ly = cy - 0.62 * px;
+      const lpx = 70 * u, lx = Math.max(0.12 * W + 40 * u, cx - ww / 2 + 40 * u), ly = cy - 0.62 * px;
       slanted(g, p.label, lx, ly, lpx, col);
       said(ctx, g, p.label, lx, ly, lpx);
     }
@@ -202,6 +202,17 @@ export const echo: ItemType<EP, CS & { text: string }> = {
 };
 
 // ── common.poster
+/** where the poster's parts go in a W×H frame (px), sized by the short side: the photo card (cx, cy, cw, ch; 4:3, 0.76 of the
+ *  width in 9:16), the centres of the words above and below it (ty, by) at size tpx, and the barcode (from bx, byy, bh tall). In a
+ *  frame less tall than 9:16 the card comes down a little and shrinks until the words and the barcode are all inside the height. */
+export function posterLayout(W: number, H: number, barcode: boolean) {
+  const u = Math.min(W, H) / 1080, tpx = 190 * u, half = 0.55 * tpx;
+  // the card's top to the top word's centre, its foot to the bottom word's centre (0.07 H and 0.062 H in 9:16)
+  const above = 134.4 * u, below = 119.04 * u;
+  const cy = Math.max(0.235 * H, above + half + 40 * u), byy = 0.885 * H, bh = 44 * u, floor = barcode ? byy - 30 * u : H - 60 * u;
+  const cw = Math.min(0.76 * W, (floor - cy - below - half) / 0.75), ch = cw * 0.75;
+  return { u, tpx, cw, ch, cx: (W - cw) / 2, cy, ty: cy - above, by: cy + ch + below, bx: 0.12 * W, byy, bh };
+}
 interface PP { top: string; bottom: string; side: string; ghost: string; photos: string; every: number; barcode: string; color: string; ink: string; mark: string }
 interface PS { c: HTMLCanvasElement; imgs: Array<{ img: HTMLImageElement; fx: number; fy: number }>; text: string }
 export const poster: ItemType<PP, PS> = {
@@ -226,18 +237,18 @@ export const poster: ItemType<PP, PS> = {
     return { c: canvasIn(ctx.root), imgs, text: `${p.top}${p.bottom}${p.side}${p.barcode}` };
   },
   ready: (s) => Promise.all([fontsReady(s.text), ...s.imgs.map((i) => imgReady(i.img))]).then(() => undefined),
+  hide: (s) => freeCanvas(s.c),
   draw(ctx, s) {
-    const { local, W, H, params: p } = ctx, u = W / 1080, g = sized(s.c, W, H);
+    const { local, W, H, params: p } = ctx, g = canvasAt(s.c, W, H), L = posterLayout(W, H, !!p.barcode), { u, cw, ch, cx, cy, tpx } = L;
     g.fillStyle = p.color; g.fillRect(0, 0, W, H);
     g.globalAlpha = 0.16; slanted(g, p.ghost || p.top, W / 2 - 30 * u * local, 0.47 * H, 560 * u, null, p.ink, 3 * u); g.globalAlpha = 1;
-    const cw = 0.76 * W, ch = cw * 0.75, cx = (W - cw) / 2, cy = 0.235 * H, k = eOut(local / 0.22), sc = 1.06 - 0.06 * k;
-    const tpx = 190 * u, ty = cy - 0.07 * H - 30 * u * (1 - k), by = cy + ch + 0.062 * H + 30 * u * (1 - k);
+    const k = eOut(local / 0.22), sc = 1.06 - 0.06 * k, ty = L.ty - 30 * u * (1 - k), by = L.by + 30 * u * (1 - k);
     const t1 = fitted(g, p.top, tpx, 0.76 * W), t2 = fitted(g, p.bottom, tpx, 0.76 * W);
     slanted(g, p.top, W / 2, ty, t1, p.ink); said(ctx, g, p.top, W / 2, ty, t1);
     g.save(); g.translate(W / 2, cy + ch / 2); g.scale(sc, sc); g.translate(-W / 2, -(cy + ch / 2));
     g.fillStyle = '#111111'; g.fillRect(cx + 18 * u, cy + 18 * u, cw, ch);
     const i = photoIndex(local, p.every, s.imgs.length), ph = i >= 0 ? s.imgs[i] : null;
-    cover(g, ph?.img ?? null, cx, cy, cw, ch, ph?.fx ?? 0.5, ph?.fy ?? 0.5);
+    coverImage(g, ph?.img ?? null, cx, cy, cw, ch, ph?.fx ?? 0.5, ph?.fy ?? 0.5, '#777');
     g.strokeStyle = 'rgba(17,17,17,0.9)'; g.lineWidth = 3 * u; g.strokeRect(cx, cy, cw, ch);
     brackets(g, cx + 20 * u, cy + 20 * u, cw - 40 * u, ch - 40 * u, 46 * u, 5 * u, p.mark);
     g.restore();
@@ -247,7 +258,7 @@ export const poster: ItemType<PP, PS> = {
       g.font = sans(17 * u); spaced(g, 4 * u); g.fillStyle = p.ink; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(p.side, 0, 0); spaced(g, 0); g.restore();
     }
     if (p.barcode) {
-      const bx = 0.12 * W, byy = 0.885 * H, bh = 44 * u;
+      const { bx, byy, bh } = L;
       g.fillStyle = p.ink;
       for (let x = bx, j = 0; x < bx + 300 * u; j++) { const w = (1 + ((j * 7 + 3) % 4)) * 2 * u; if (j % 3 !== 2) g.fillRect(x, byy, w, bh); x += w + 4 * u; }
       g.font = sans(15 * u); spaced(g, 5 * u); g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText(p.barcode, bx, byy + bh + 10 * u); spaced(g, 0);
@@ -266,13 +277,13 @@ export const band: ItemType<BP, CS> = {
     { key: 'y', label: '中心高度（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.45 },
     { key: 'color', label: '帶子顏色', type: 'color', default: '#ff5a1f', theme: 'palette.accent' },
     { key: 'ink', label: '字色', type: 'color', default: '#111111' },
-    { key: 'speed', label: '捲動速度（px／秒，1080 寬時）', type: 'number', min: 0, max: 800, step: 10, default: 140 },
+    { key: 'speed', label: '捲動速度（以 1080 短邊計的 px／秒）', type: 'number', min: 0, max: 800, step: 10, default: 140 },
   ],
   build: (ctx) => ({ c: canvasIn(ctx.root) }),
   ready: () => fontsReady(''),
+  hide: (s) => freeCanvas(s.c),
   draw(ctx, s) {
-    const { local, W, H, params: p } = ctx, u = W / 1080, g = sized(s.c, W, H);
-    g.clearRect(0, 0, W, H);
+    const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const L = Math.hypot(W, H), bh = 62 * u;
     g.save(); g.translate(W / 2, p.y * H); g.rotate((p.angle * Math.PI) / 180);
     g.beginPath(); g.rect(-L / 2, -bh / 2, L * eOut(local / 0.22), bh); g.clip();
