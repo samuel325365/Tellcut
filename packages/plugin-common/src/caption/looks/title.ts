@@ -149,7 +149,6 @@ export const storybook: CaptionLook = {
   },
   gloss: () => ({ fontStyle: 'italic', fontWeight: '400', fontFamily: "'Playfair Display', 'Noto Serif TC', serif" }),
 };
-/** storybook's small italic lines: no capital, digit or CJK letter in them */
 /** dopamine colour blocks (the Dopamine Colors pilot film's fx.poptitle, 2026-11-06): each line a flat block, set side by side and
  *  tipped a little; the last block the accent colour with the words' colour, those before it the outline colour (ink) with the
  *  highlight's; a line with no CJK letter in heavy italic Playfair (No.1); the kicker a small block of the outline colour */
@@ -169,6 +168,7 @@ export const pop: CaptionLook = {
     padding: `${(0.12 * kfs).toFixed(2)}px ${(0.4 * kfs).toFixed(2)}px` }),
 };
 
-export const isSoftLine = (text: string) => !!text.trim() && !/[A-Z0-9\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(text);
+/** storybook's small italic lines: no capital (any script's: \u00c9, \u00ce), digit or CJK letter in them */
+export const isSoftLine = (text: string) => !!text.trim() && !/[\p{Lu}\p{Lt}\p{Nd}\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}\p{scx=Hangul}]/u.test(text);
 
 export const TITLE_LOOKS: CaptionLook[] = [serif, spaced, stack, sign, vintage, seal, split, giant, script, ribbon, scrapbook, cycle, didone, storybook, pop];
