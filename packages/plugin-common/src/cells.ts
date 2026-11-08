@@ -70,7 +70,6 @@ export function offscreen(dir: CellDir, box: Rect, W: number, H: number): [numbe
 /** a cell's video: from its source seconds, for as long as the cell is on (from `at` to the item's end) */
 export const cellRef = (s: CellShot, len: number): MediaRef => ({ source: s.source, in: s.from, out: s.from + len, speed: 1, interp: 'none' });
 
-/** the pieces the cells need: a video per playing cell that ever shows, a still per held one */
 /** whether a cell due at `at` comes in at all in an item `dur` s long: one that would be on screen only in the last 0.05 s does
  *  not (media() declares no clip for it and draw keeps it hidden, so the two never disagree on the last frames) */
 export const cellLive = (at: number, dur: number): boolean => dur - at > 0.05;
@@ -83,6 +82,7 @@ export function preloadCell(ctx: ItemCtx, win: Win, shot: CellShot | null) {
   if (win.src !== url) { win.src = url; win.img.src = url; }
 }
 
+/** the pieces the cells need: a video per playing cell that ever shows, a still per held one */
 export function cellMedia(shots: Array<CellShot | null>, ats: number[], dur: number): { videos: MediaRef[]; stills: StillRef[] } {
   const videos: MediaRef[] = [], stills: StillRef[] = [];
   shots.forEach((s, i) => {
@@ -116,6 +116,8 @@ export function showCell(ctx: ItemCtx, win: Win, written: CellShot | null, local
     ctx.media.place(win.img as unknown as HTMLVideoElement, w, h, shot.crop, src?.width, src?.height);
     return;
   }
+  // a cell that held a still before (an edit switched it to a video) must not keep showing that still under the video
+  cssCamel(win.img, { display: 'none' });
   const v = ctx.media.video(cellRef(shot, Math.max(0.05, len)), win.box, clamp(local, 0, Math.max(0, len - 0.04)), false);
   ctx.media.place(v, w, h, shot.crop, src?.width, src?.height);
 }

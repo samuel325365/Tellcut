@@ -71,12 +71,15 @@ export const letterbox: ItemType<P, S> = {
     const subText = String(p.sub ?? ''), at = letterboxText(W, H, full, theme.safe, !!subText.trim()), side = Math.max(32 * k, theme.safe.side * W), room = W - 2 * side;
     const titleAt = p.titleAt >= 0 ? p.titleAt : p.inDur, a = eOut3(clamp((local - titleAt) / 0.5, 0, 1)), rise = 8 * k * (1 - a);
     const family = `'${p.font}', serif`, g = s.meas.getContext('2d');
-    // each word fades as the bar it lies in pulls back past it (in or out), never lying over the picture
+    // each word fades as the bar it lies in pulls back past it (in or out), never lying over the picture. 700: the weight fonts.css
+    // loads (a 600 was drawn with the 700 face anyway). CSS letter-spacing also follows the last letter, so a centred line would sit
+    // half a spacing left of the middle and a right-aligned one a whole spacing short of the edge: the box moves right by as much.
+    const lean = p.align === 'center' ? 0.5 : p.align === 'right' ? 1 : 0;
     const place = (e: HTMLElement, text: string, want: number, y: number, top: boolean) => {
-      const size = g ? fitMeasuredSize(g, [text], want, family, 600, room, want * p.spacing) : want, y0 = y - size / 2 + rise;
+      const size = g ? fitMeasuredSize(g, [text], want, family, 700, room, want * p.spacing) : want, y0 = y - size / 2 + rise, x0 = side + lean * p.spacing * size;
       e.textContent = text;
-      cssCamel(e, { display: at && text ? 'block' : 'none', left: `${side.toFixed(2)}px`, width: `${room.toFixed(2)}px`, top: `${y0.toFixed(2)}px`,
-        fontFamily: family, fontWeight: '600', fontSize: `${size.toFixed(2)}px`, letterSpacing: `${p.spacing}em`, color: p.textColor, textAlign: p.align,
+      cssCamel(e, { display: at && text ? 'block' : 'none', left: `${x0.toFixed(2)}px`, width: `${room.toFixed(2)}px`, top: `${y0.toFixed(2)}px`,
+        fontFamily: family, fontWeight: '700', fontSize: `${size.toFixed(2)}px`, letterSpacing: `${p.spacing}em`, color: p.textColor, textAlign: p.align,
         opacity: String(a * inBar(top, y0, y0 + size, bar, H)) });
     };
     // the title as big as asked within the room the bar gives it; the small line 0.45 of it, but not below 20 px (short side 1080)

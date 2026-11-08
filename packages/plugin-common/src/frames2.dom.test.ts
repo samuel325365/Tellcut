@@ -7,7 +7,7 @@ import { grid } from './grid.ts';
 import { slant, slantPolys } from './slant.ts';
 import { postage } from './postage.ts';
 import { letterbox, letterboxBar } from './letterbox.ts';
-import { cellMedia, parseCellShots, revealTimes } from './cells.ts';
+import { cellEl, cellMedia, parseCellShots, revealTimes, showCell } from './cells.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : anything),
@@ -207,5 +207,36 @@ describe('cells: export path (review fixes)', () => {
     const s = run(slant, { count: 3, shots: 'a|1\na|2\na|9', times: '0,1,2.97' });
     s.draw(2.99);
     expect(videos.map((v) => v.in)).not.toContain(9);
+  });
+});
+
+describe('health scan 6 (2026-11-08)', () => {
+  test('postage: an item of 0.05 s or less plays and loads nothing (media() declares nothing), the stand-in shows', () => {
+    for (const still of [false, true]) {
+      const r = run(postage, { source: 'a', from: 2, still }, 0.05);
+      const el = r.draw(0.02);
+      expect(videos).toEqual([]);
+      expect(el.querySelector('video')).toBeNull();
+      expect(el.querySelector('img')!.getAttribute('src')).toBeNull();
+    }
+  });
+  test('showCell: a cell switched from a still to a video hides the still under the video', () => {
+    const ctx: any = { project: { sources: { a: { width: 1920, height: 1080 } } }, media };
+    const win = cellEl(document.createElement('div'));
+    showCell(ctx, win, { source: 'a', from: 1, crop: { x: 0.5, y: 0.5, zoom: 1 }, still: true }, 0.5, 2, 400, 300);
+    expect(win.img.style.display).toBe('block');
+    showCell(ctx, win, { source: 'a', from: 1, crop: { x: 0.5, y: 0.5, zoom: 1 }, still: false }, 0.5, 2, 400, 300);
+    expect(win.img.style.display).toBe('none');
+    expect(win.box.querySelector('video')).not.toBeNull();
+  });
+  test('letterbox: drawn in the 700 weight fonts.css loads; a centred or right-aligned line moves right by half or all of the trailing letter-spacing', () => {
+    const at = (align: string) => {
+      const t = run(letterbox, { title: 'CHAPTER ONE', spacing: 0.3, align }).draw(2).querySelector('[data-title]') as HTMLElement;
+      return { left: parseFloat(t.style.left), size: parseFloat(t.style.fontSize), weight: t.style.fontWeight };
+    };
+    const l = at('left'), c = at('center'), r = at('right');
+    expect(l.weight).toBe('700');
+    expect(c.left - l.left).toBeCloseTo(0.15 * l.size, 1);
+    expect(r.left - l.left).toBeCloseTo(0.3 * l.size, 1);
   });
 });

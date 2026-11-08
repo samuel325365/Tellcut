@@ -3,7 +3,7 @@
 // below, then a round postmark thumps down across its corner (postmark.ts' drawMark). Its moves are common.frame's (framePose, no
 // turning over). Derived from common.frame, postmark.ts' stamp and mark, and common.popcard. A pure function of time.
 import { abs, cssCamel, h, type ItemType } from '@tellcut/engine';
-import { cellEl, cropOf, showCell, type CellShot, type Rect } from './cells.ts';
+import { cellEl, cellLive, cellMedia, cropOf, showCell, type CellShot, type Rect } from './cells.ts';
 import { framePose } from './frame.ts';
 import { drawMark, markEl, type MarkEl } from './postmark.ts';
 import { paintDesk } from './postcard.ts';
@@ -19,13 +19,17 @@ interface P {
 interface S { under: HTMLCanvasElement; underKey: string; stamp: HTMLElement; paper: HTMLCanvasElement; paperKey: string; win: Win; rule: HTMLElement; value: HTMLElement; line: HTMLElement; mark: MarkEl; meas: HTMLCanvasElement }
 
 /** the stamp (sw × sh px, top left x0, y0) and its picture window: w a share of the short side (the whole stamp kept within 0.9 of
- *  the frame), the margin 0.07 of the picture's width
- *  on the left, top and right and 0.22 below it (for the value and the line) */
-export function postageBox(p: Pick<P, 'x' | 'y' | 'w' | 'aspect'>, W: number, H: number): { sw: number; sh: number; x0: number; y0: number; win: Rect } {
+ *  the frame), the margin 0.07 of the picture's width on the left, top and right and 0.22 below it (for the value and the line).
+ *  The centre is x, y, moved in just as far as the settled stamp, turned `tilt` degrees, needs to stay wholly in the frame (a stamp
+ *  as tall as 0.9 of a wide frame at y 0.45 would otherwise poke out over the top edge) */
+export function postageBox(p: Pick<P, 'x' | 'y' | 'w' | 'aspect'> & { tilt?: number }, W: number, H: number): { sw: number; sh: number; x0: number; y0: number; win: Rect } {
   // the stamp is 1.14 picture widths wide and (1 / aspect + 0.29) tall: shrunk, if need be, to 0.9 of the frame both ways
   const a = Math.max(0.2, p.aspect), ww = Math.min(p.w * Math.min(W, H), (0.9 * W) / 1.14, (0.9 * H) / (1 / a + 0.29));
   const wh = ww / a, side = ww * 0.07, foot = ww * 0.22;
-  const sw = ww + 2 * side, sh = wh + side + foot, x0 = p.x * W - sw / 2, y0 = p.y * H - sh / 2;
+  const sw = ww + 2 * side, sh = wh + side + foot;
+  const r = (Math.abs(Number(p.tilt) || 0) * Math.PI) / 180, bw = sw * Math.cos(r) + sh * Math.sin(r), bh = sw * Math.sin(r) + sh * Math.cos(r);
+  const inside = (c: number, half: number, len: number) => (half * 2 >= len ? len / 2 : Math.min(len - half, Math.max(half, c)));
+  const cx = inside(p.x * W, bw / 2, W), cy = inside(p.y * H, bh / 2, H), x0 = cx - sw / 2, y0 = cy - sh / 2;
   return { sw, sh, x0, y0, win: [x0 + side, y0 + side, ww, wh] };
 }
 
@@ -89,9 +93,8 @@ export const postage: ItemType<P, S> = {
     { key: 'bg', label: '純色底的顏色', type: 'color', default: '#e9e1d3', theme: 'palette.paper' },
   ],
   media(item) {
-    const s = shotOf(item.params as Partial<P>), len = item.end - item.start;
-    if (!s || len <= 0.05) return { videos: [], stills: [] };
-    return s.still ? { videos: [], stills: [{ source: s.source, t: s.from, w: 1080 }] } : { videos: [{ source: s.source, in: s.from, out: s.from + len, speed: 1, interp: 'none' }], stills: [] };
+    // the same rule as the cell frames' (cellLive): an item of 0.05 s or less asks for no piece, and draw then shows the stand-in
+    return cellMedia([shotOf(item.params as Partial<P>)], [0], item.end - item.start);
   },
   build(ctx) {
     const under = abs(ctx.root, {}, 'canvas') as HTMLCanvasElement, stamp = abs(ctx.root), paper = abs(stamp, {}, 'canvas') as HTMLCanvasElement;
@@ -125,7 +128,7 @@ export const postage: ItemType<P, S> = {
       filter: `drop-shadow(${(4 * k).toFixed(2)}px ${(12 * k).toFixed(2)}px ${(16 * k).toFixed(2)}px rgba(20,12,6,0.45))` });
     const lx = wx - b.x0, ly = wy - b.y0;
     cssCamel(s.win.box, { left: `${lx.toFixed(2)}px`, top: `${ly.toFixed(2)}px` });
-    showCell(ctx, s.win, shotOf(p), local, dur, ww, wh);
+    showCell(ctx, s.win, cellLive(0, dur) ? shotOf(p) : null, local, dur, ww, wh);
     cssCamel(s.rule, { left: `${lx.toFixed(2)}px`, top: `${ly.toFixed(2)}px`, width: `${ww.toFixed(2)}px`, height: `${wh.toFixed(2)}px`, border: `${(2 * k).toFixed(2)}px solid rgba(0,0,0,0.25)` });
     // the value bottom left and the line bottom right, in the margin under the picture
     const foot = b.sh - (ly + wh), fs = Math.min(foot * 0.42, ww * 0.1), base = ly + wh + foot * 0.5 - fs * 0.45;
