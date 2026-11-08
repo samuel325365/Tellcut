@@ -771,7 +771,8 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .api-pop .pill.off:hover { background: transparent; }
 .api-pop .pill small { color: var(--h-denied); font-size: 11px; }
 /* a source that only lacks its key: its pill opens the key box under the group */
-.api-pop .pill.keyable { cursor: pointer; }
+.api-pop .pill.keyable { cursor: pointer; background: transparent; font-family: inherit; }
+.api-pop .pill.keyable:focus-visible { outline: 2px solid var(--h-ring); outline-offset: 1px; }
 .api-pop .pill.keyable:hover, .api-pop .pill.keyable.open { background: var(--h-hover); border-color: var(--h-accent); }
 .api-pop .key-box { display: flex; flex-direction: column; gap: 5px; margin: 2px 4px 6px; padding: 8px; border: 1px solid var(--h-line); border-radius: 8px; background: var(--h-bg); }
 .api-pop .key-box .key-row { display: flex; gap: 6px; }

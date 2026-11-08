@@ -107,11 +107,17 @@ export function SourcePicker({ rows, error, picked, onToggle, onClear, onClose, 
                 const off = !r.available && !on;
                 const about = has(`src.${r.id}.desc`) ? t(`src.${r.id}.desc` as Key) : r.label;
                 const tip = r.available ? `${about}\n${gives(r, surface)}` : whyTip(r);
-                // only its key is missing: a click opens (or closes) its key box instead
+                // only its key is missing: a button that opens (or closes) its key box instead — reachable by Tab and opened with
+                // Enter or Space like any button (a label round a disabled checkbox was for the mouse only)
                 const keyable = !!onSaveKey && !on && r.reason === 'key';
+                if (keyable) return (
+                  <button type="button" class={`pill${r.available ? '' : ' off'} keyable${keying === r.id ? ' open' : ''}`} data-source={r.id} data-tip={tip || undefined} aria-expanded={keying === r.id}
+                    onClick={() => { setNote(null); setKeying((k) => (k === r.id ? null : r.id)); }}>
+                    <span class="nm">{name}</span><small>{why(r, surface)}</small>
+                  </button>
+                );
                 return (
-                  <label class={`pill${on ? ' on' : ''}${r.available ? '' : ' off'}${keyable ? ' keyable' : ''}${keying === r.id ? ' open' : ''}`} data-source={r.id} data-tip={tip || undefined}
-                    onClick={keyable ? (e) => { e.preventDefault(); setNote(null); setKeying((k) => (k === r.id ? null : r.id)); } : undefined}>
+                  <label class={`pill${on ? ' on' : ''}${r.available ? '' : ' off'}`} data-source={r.id} data-tip={tip || undefined}>
                     <input type="checkbox" checked={on} disabled={off} onChange={() => onToggle(r.id)} />
                     {on && <IconCheck size={12} />}<span class="nm">{name}</span>{!r.available && <small>{why(r, surface)}</small>}
                   </label>

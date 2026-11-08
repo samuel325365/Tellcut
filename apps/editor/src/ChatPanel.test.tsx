@@ -308,8 +308,12 @@ test('a source that only lacks its key opens a key box: a refused key says so, a
   await flush();
   const pop = root.querySelector('[data-api-picker]')!;
   expect(pop.querySelector('[data-key-box]')).toBeNull();
-  // a source switched off or broken opens nothing; one without its key does
-  await act(() => { pop.querySelector<HTMLElement>('[data-source="pexels"]')!.click(); });
+  // a source switched off or broken opens nothing; one without its key does. Its pill is a button, so Tab reaches it and Enter or
+  // Space opens it, and it says whether its box is open
+  const keyPill = pop.querySelector<HTMLButtonElement>('[data-source="pexels"]')!;
+  expect([keyPill.tagName, keyPill.type, keyPill.disabled, keyPill.getAttribute('aria-expanded')]).toEqual(['BUTTON', 'button', false, 'false']);
+  await act(() => { keyPill.click(); });
+  expect(pop.querySelector('[data-source="pexels"]')!.getAttribute('aria-expanded')).toBe('true');
   const box = pop.querySelector<HTMLElement>('[data-key-box="pexels"]')!;
   expect(box.closest('[data-api-group]')!.getAttribute('data-api-group')).toBe('media');
   expect(box.querySelector('a[data-key-get]')!.getAttribute('href')).toBe('https://pexels.example/api');
