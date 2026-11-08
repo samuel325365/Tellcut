@@ -47,5 +47,5 @@ export async function providerReport(config: ProvidersConfig, all = false, lang:
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  try { console.log(await providerReport(loadProvidersConfig(), parseArgsOrExit(process.argv.slice(2), { '--all': 'switch' }, '用法：npm run providers [-- --all]').has('--all'))); } catch (e) { console.error((e as Error).message); process.exit(1); }
+  try { console.log(await providerReport(loadProvidersConfig(), parseArgsOrExit(process.argv.slice(2), { '--all': 'switch' }, '用法：npm run providers [-- --all]', { maxWords: 0 }).has('--all'))); } catch (e) { console.error((e as Error).message); process.exit(1); }
 }

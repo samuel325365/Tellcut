@@ -44,5 +44,5 @@ export async function sourcesReport(s: Sources, o: { live?: boolean; lang?: 'zh'
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  try { console.log(await sourcesReport(openSources(), { live: parseArgsOrExit(process.argv.slice(2), { '--live': 'switch' }, '用法：npm run sources [-- --live]').has('--live') })); } catch (e) { console.error((e as Error).message); process.exit(1); }
+  try { console.log(await sourcesReport(openSources(), { live: parseArgsOrExit(process.argv.slice(2), { '--live': 'switch' }, '用法：npm run sources [-- --live]', { maxWords: 0 }).has('--live') })); } catch (e) { console.error((e as Error).message); process.exit(1); }
 }

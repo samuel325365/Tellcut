@@ -3,6 +3,7 @@
 // the ~1,500 font files back last, so a check, export or golden run loading the player meanwhile got 404s for its fonts.
 import { spawnSync } from 'node:child_process';
 import { rebuildPlayer, TELLCUT_ROOT } from '@tellcut/media-node';
+import { parseArgsOrExit } from './args.ts';
 
 /** vite into `out`, its output shown as it goes; null when it built */
 const viteInto = (root: string) => (out: string): string | null => {
@@ -10,5 +11,7 @@ const viteInto = (root: string) => (out: string): string | null => {
   return b.status === 0 ? null : `vite 結束代碼 ${b.status ?? b.signal}`;
 };
 
+// it takes nothing: --help prints the usage instead of building, and a stray word is refused
+parseArgsOrExit(process.argv.slice(2), {}, '用法：npm run build:player', { maxWords: 0 });
 const failed = await rebuildPlayer({ force: true, build: viteInto(TELLCUT_ROOT) });
 if (failed) { console.error(failed); process.exit(1); }

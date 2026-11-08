@@ -7,10 +7,11 @@ import { spawn } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { FFMPEG, FFPROBE, loadProvidersConfig, locate, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec } from '@tellcut/media-node';
 import { allChecks, CLAUDE_CHECK, checkClaudeLogin, hfCachedWhisper, MODEL_COMPLETE, modelsDir, table, TEST_WHISPER_MODEL, whisperModelDir, whisperModelName } from './setup/checks.ts';
 import { ensureModelFile, ensureVendor, readModelList, readVendorList, VendorInUse } from './setup/vendor.ts';
-import { parseArgsOrExit } from './args.ts';
+import { parseArgs, printFailure } from './args.ts';
 
 const step = (s: string) => console.log(`\n▶ ${s}`);
 
@@ -67,8 +68,12 @@ async function vendorItems() {
   }
 }
 
+/** setup's command line: only --no-login, no other words (a stray word was ignored). Usage / Help, read by printFailure. */
+export const setupArgs = (argv: string[]) => ({ login: !parseArgs(argv, { '--no-login': 'switch' }, 'Usage: npm run setup [-- --no-login]', { lang: 'en', maxWords: 0 }).has('--no-login') });
+
 async function main() {
-  const login = !parseArgsOrExit(process.argv.slice(2), { '--no-login': 'switch' }, 'Usage: npm run setup [-- --no-login]', { lang: 'en' }).has('--no-login');
+  let login: boolean;
+  try { ({ login } = setupArgs(process.argv.slice(2))); } catch (e) { process.exit(printFailure(e)); }
   const config = loadProvidersConfig(), model = whisperModelName(String(config.transcribe.options['faster-whisper']?.model ?? 'large-v3-turbo'));
 
   step(`Downloading ${Object.keys(readVendorList()).join(' and ')} into tellcut/vendor`);
@@ -103,4 +108,5 @@ async function main() {
   if (checks.some((c) => !c.ok)) process.exit(1);
 }
 
-main().catch((e) => { console.error(`\n✗ ${(e as Error).message}`); process.exit(1); });
+// only when run: the tests import setupArgs without installing anything
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main().catch((e) => { console.error(`\n✗ ${(e as Error).message}`); process.exit(1); });

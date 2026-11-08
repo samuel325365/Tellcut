@@ -29,7 +29,7 @@ import { readSite } from './site.ts';
 import { Usage } from './usage.ts';
 import { secsList } from '@tellcut/plugin-common/speech';
 import { projectArg } from './project-arg.ts';
-import { parseArgs, printFailure, type Args, type FlagSpec } from './args.ts';
+import { Help, parseArgs, printFailure, type Args, type FlagSpec } from './args.ts';
 import { registerImage } from './image-source.ts';
 
 const f2 = (v: number) => v.toFixed(2);
@@ -203,8 +203,13 @@ async function main(argv: string[]) {
   if (cmd === 'library') { console.log(await libraryCommand(argv.slice(1))); return; }
   if (cmd === 'catalog') {
     // catalog [類型 | --find <關鍵字>…] [--project <專案>]: with a project, its own fx join the list
-    const a = parseArgs(argv.slice(1), { '--find': 'switch', '--project': 'value' }, '用法：npm run tellcut -- catalog [類型 | 代號 | --find <關鍵字>…] [--project <專案>]');
+    const spec: FlagSpec = { '--find': 'switch', '--project': 'value' }, catalogUsage = '用法：npm run tellcut -- catalog [類型 | 代號 | --find <關鍵字>…] [--project <專案>]';
+    const a = parseArgs(argv.slice(1), spec, catalogUsage);
     const pid = a.get('--project'), words = a.words, find = a.has('--find'), type = find ? undefined : words[0];
+    const templates = words[0] === 'CAP' || words[0] === 'TTL' || (!find && /^(CAP|TTL)$/i.test(words[0] ?? ''));
+    // one type or handle: a second word was dropped without a word (`catalog common.heading extra` showed common.heading);
+    // --find and the CAP / TTL template searches take any number
+    if (!find && !templates) parseArgs(argv.slice(1), spec, catalogUsage, { maxWords: 1 });
     if (find && !words.length) throw new Usage('用法：npm run tellcut -- catalog --find <關鍵字>（幾個字用空白分開，都要符合）');
     // the user's own blocks (spec 2026-10-29-my-library §4.3) are always listed, first
     const mine = await libraryPlugin(libraryRoot(join(TELLCUT_ROOT, 'projects')));
@@ -216,8 +221,7 @@ async function main(argv: string[]) {
       all = [...all, { ...fx.plugin, id: 'fx' }];
     }
     // catalog CAP [--find <關鍵字>]: the caption templates
-    if (words[0] === 'CAP' || (!find && words[0]?.toUpperCase() === 'CAP')) { console.log(formatTemplates(words.slice(1).join(' '))); return; }
-    if (words[0] === 'TTL' || (!find && words[0]?.toUpperCase() === 'TTL')) { console.log(formatTemplates(words.slice(1).join(' '), 'title')); return; }
+    if (templates) { console.log(words[0].toUpperCase() === 'CAP' ? formatTemplates(words.slice(1).join(' ')) : formatTemplates(words.slice(1).join(' '), 'title')); return; }
     console.log(find ? formatFind(all, words.join(' ')) : type ? await formatLookup(all, type) : `${formatCatalog(all)}\n\n${describeRecipe()}`);
     return;
   }
@@ -239,6 +243,8 @@ async function main(argv: string[]) {
   }
   const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|image|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round|ja>、library …';
   if (!cmd) throw new Usage(usage);
+  // asking for the usage is not a mistake: stdout, exit 0 (printFailure)
+  if (cmd === '--help' || cmd === '-h') throw new Help(usage);
   const given = commandArgs(cmd, argv.slice(1), usage), { rest, flags } = given;
   const dir = projectArg(given.id, usage), id = given.id!;   // projectArg refused a missing one
   switch (cmd) {

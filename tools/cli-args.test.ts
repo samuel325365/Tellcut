@@ -39,7 +39,7 @@ test('each command line refuses a flag it does not take, naming it, with exit co
   const { TELLCUT_ROOT } = await import('@tellcut/media-node');
   const cli = join(TELLCUT_ROOT, 'node_modules/tsx/dist/cli.mjs');
   const runs: string[][] = [['cut.ts'], ['check.ts'], ['inspect.ts'], ['render.ts'], ['prepare.ts'], ['promote.ts'], ['promote-style.ts'],
-    ['export-project.ts'], ['tokens.ts'], ['blocks-index.ts'], ['providers.ts'], ['sources.ts'], ['doctor.ts'], ['fonts.ts']];
+    ['export-project.ts'], ['tokens.ts'], ['blocks-index.ts'], ['providers.ts'], ['sources.ts'], ['doctor.ts'], ['fonts.ts'], ['build-player.ts']];
   const run = (args: string[]) => new Promise<{ code: number | null; err: string }>((res) => {
     const c = spawn(process.execPath, [cli, join('tools', args[0]), ...args.slice(1), 'some-project', '--bogus-flag', 'x'], { cwd: TELLCUT_ROOT, stdio: ['ignore', 'ignore', 'pipe'] });
     let err = '';
@@ -118,16 +118,35 @@ test('--help prints the usage on stdout with 0; a word too many is refused with 
     c.stdout.on('data', (d) => (out += d)); c.stderr.on('data', (d) => (err += d));
     c.on('close', (code) => res({ code, out, err }));
   });
-  const [check, tellcut, voice, extraCheck, extraGolden, extraShow] = await Promise.all([
-    run(['check.ts', '--help']), run(['tellcut.ts', 'show', '--help']), run(['voice.ts', '-h']),
-    run(['check.ts', 'some-project', 'extra']), run(['golden.ts', 'heading', 'extra']), run(['tellcut.ts', 'show', 'some-project', 'extra'])]);
-  for (const [r, what] of [[check, 'check'], [tellcut, 'tellcut show'], [voice, 'voice']] as const) {
+  // build:player used to read no arguments: --help started a build
+  const helps = [['check.ts', '--help'], ['tellcut.ts', 'show', '--help'], ['voice.ts', '-h'], ['tellcut.ts', '--help'], ['tellcut.ts', '-h'], ['build-player.ts', '--help']];
+  // providers, sources and build:player took any word (`npm run sources live` ran without --live); catalog took one type and dropped the rest
+  const extras = [['check.ts', 'some-project', 'extra'], ['golden.ts', 'heading', 'extra'], ['tellcut.ts', 'show', 'some-project', 'extra'],
+    ['providers.ts', 'extra'], ['sources.ts', 'extra'], ['build-player.ts', 'extra'], ['tellcut.ts', 'catalog', 'common.heading', 'extra']];
+  const all = [...helps, ...extras, ['doctor.ts', 'extra']], done: Array<{ code: number | null; out: string; err: string }> = [];
+  for (let i = 0; i < all.length; i += 7) done.push(...await Promise.all(all.slice(i, i + 7).map(run)));
+  const helped = done.slice(0, helps.length), extra = done.slice(helps.length, -1), doctor = done.at(-1)!;
+  helps.forEach((h, i) => {
+    const r = helped[i], what = h.join(' ');
     expect(r.code, what).toBe(0);
     expect(r.out, what).toMatch(/^用法：/);
     expect(r.err, what).toBe('');
-  }
-  for (const [r, what] of [[extraCheck, 'check'], [extraGolden, 'golden'], [extraShow, 'tellcut show']] as const) {
+  });
+  extras.forEach((x, i) => {
+    const r = extra[i], what = x.join(' ');
     expect(r.code, what).toBe(2);
     expect(r.err, what).toContain('多了用不到的字：「extra」');
-  }
+  });
+  // doctor prints English, like setup
+  expect(doctor.code).toBe(2);
+  expect(doctor.err).toContain('Unexpected "extra" (this command takes no other words)');
 }, 120_000);
+
+test('setup takes only --no-login: a stray word is refused in English, --help is asking', async () => {
+  const { setupArgs } = await import('./setup.ts');
+  const { Help } = await import('./args.ts');
+  expect(setupArgs([])).toEqual({ login: true });
+  expect(setupArgs(['--no-login'])).toEqual({ login: false });
+  expect(() => setupArgs(['no-login'])).toThrow('Unexpected "no-login" (this command takes no other words)\nUsage: npm run setup');
+  expect(() => setupArgs(['--help'])).toThrow(Help);
+});

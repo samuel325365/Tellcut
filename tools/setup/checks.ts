@@ -71,11 +71,11 @@ export function checkNpm(): Check {
     : { name: 'npm packages', ok: false, detail: 'not installed yet', fix: 'npm run setup' };
 }
 
-async function exeVersion(spec: ExeSpec, args: string[], shell = false): Promise<Check> {
+async function exeVersion(spec: ExeSpec, args: string[]): Promise<Check> {
   const f = where(spec);
   if (!f) return { name: spec.name, ok: false, detail: 'not found', fix: installHint(spec) };
   try {
-    const { stdout } = shell ? await runLine(`"${f.path}" ${args.join(' ')}`) : await run(f.path, args, { windowsHide: true, timeout: 60000 });
+    const { stdout } = await run(f.path, args, { windowsHide: true, timeout: 60000 });
     return { name: spec.name, ok: true, detail: `${stdout.trim().split(/\r?\n/)[0].slice(0, 70)} (${fromLabel[f.from]})` };
   } catch (e) { return { name: spec.name, ok: false, detail: `${f.path} does not run: ${(e as Error).message.slice(0, 100)}`, fix: installHint(spec) }; }
 }

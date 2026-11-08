@@ -6,7 +6,7 @@ import { providerReport } from './providers.ts';
 import { sourcesReport } from './sources.ts';
 import { parseArgsOrExit } from './args.ts';
 
-parseArgsOrExit(process.argv.slice(2), {}, 'Usage: npm run doctor', { lang: 'en' });
+parseArgsOrExit(process.argv.slice(2), {}, 'Usage: npm run doctor', { lang: 'en', maxWords: 0 });
 const config = loadProvidersConfig();
 const checks = await allChecks({ whisperModel: whisperModelName(String(config.transcribe.options['faster-whisper']?.model ?? 'large-v3-turbo')) });
 console.log(table(checks));
