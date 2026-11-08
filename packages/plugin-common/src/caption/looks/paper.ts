@@ -150,8 +150,6 @@ export const scrap: CaptionLook = {
   pin: () => ' rotate(-2deg)',
 };
 
-/** a black-and-white caption box (the Mono Frame pilot film's fx.monobox, 2026-11-05): the words on a box of the outline colour with a
- *  thin line of the words' colour set just inside its edge */
 /** one box a line (the Single Color pilot film's fx.linebox, 2026-11-06): each line on its own square block of the accent colour, heavy
  *  words in the words' colour, stacked flush left */
 export const boxes: CaptionLook = {
@@ -160,6 +158,8 @@ export const boxes: CaptionLook = {
     background: e.p.accent || e.theme.palette.accent, borderRadius: '0' })),
 };
 
+/** a black-and-white caption box (the Mono Frame pilot film's fx.monobox, 2026-11-05): the words on a box of the outline colour with a
+ *  thin line of the words' colour set just inside its edge */
 export const mono: CaptionLook = {
   id: 'mono', weight: '700', room: (e, width) => width - 1.6 * e.px,
   box: (e) => ({ background: e.p.outline, padding: '0.32em 0.8em 0.36em',
