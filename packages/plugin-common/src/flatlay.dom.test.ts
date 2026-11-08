@@ -21,7 +21,7 @@ beforeAll(() => {
     return new Proxy(anything, { get: (t, k) => {
       if (k === 'canvas') return this;
       if (k === 'measureText') return (s: string) => ({ width: String(s).length * 20 });
-      if (typeof k === 'string' && ['fillRect', 'drawImage', 'clearRect', 'fillText', 'scale'].includes(k)) return (...a: unknown[]) => { log.push(k); argLog.push([k, a]); };
+      if (typeof k === 'string' && ['fillRect', 'drawImage', 'clearRect', 'fillText', 'scale', 'setTransform'].includes(k)) return (...a: unknown[]) => { log.push(k); argLog.push([k, a]); };
       return t[k];
     } });
   };
@@ -390,4 +390,28 @@ test('flying into a turned-over card films its picture, not its back', async () 
   const flat = await built({ objects, fly: { index: 0, at: 2, dur: 1 } }, { kit: undefined });
   flatlay.draw(at(flat.ctx, 2.9), flat.s);
   expect((flat.s as any).flat[0].back).toBeNull();
+});
+
+test("without WebGL a turned-over card's back is drawn the right way round, not mirrored", async () => {
+  for (const kind of ['postcard', 'card']) {   // turned about x (wide) and about y (tall)
+    const kit = makeKit(THREE, {} as any, { makeRenderer: () => null });
+    const { ctx, s } = await built({ objects: JSON.stringify([{ kind, at: 0, enter: 'none', flipAt: 0, flipDur: 0.3, back: '0-0.5|謝謝你' }]), camera: 'still' }, { kit });
+    const det = (local: number) => {
+      (args.get(s.c) ?? []).length = 0;
+      flatlay.draw(at(ctx, local), s);
+      const [a, b, c, d] = (args.get(s.c) ?? []).filter(([k]) => k === 'setTransform').at(-1)![1] as number[];
+      return a * d - b * c;
+    };
+    expect(det(2), kind).toBeGreaterThan(0);
+    expect(s.items[0].pose!.flip).toBeCloseTo(Math.PI, 6);
+  }
+});
+
+test('late renders with the depth of field the frame was posed with', async () => {
+  const { ctx, s } = await built({ objects: TWO });
+  const seen = vi.spyOn(ctx.three, 'render');
+  flatlay.draw(at(ctx, 3), s); flatlay.late!(ctx, s);
+  const [drawn, again] = seen.mock.calls.slice(-2).map((c) => c[4] as any);
+  expect(again.dof).toEqual(drawn.dof);
+  expect(drawn.dof).not.toBeNull();
 });

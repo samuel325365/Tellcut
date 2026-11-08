@@ -90,6 +90,10 @@ interface S {
   dof: number; error: string | null; dead: boolean;
   geos: Set<T.BufferGeometry>; mats: Set<T.Material>; texs: Set<T.Texture>;
   project: Project; fontsText: string;
+  /** a scratch vector for toScreen (called for every corner of every word, every frame) */
+  v3: T.Vector3;
+  /** the depth of field the frame's draw posed, rendered again by late (same t) */
+  lastDof: ReturnType<typeof dofOf>;
   /** without three.js (its chunk failed to load): the objects drawn flat on the desk's colour, no 3D state at all */
   flat: FlatThing[] | null;
 }
@@ -328,9 +332,10 @@ function paint(ctx: ItemCtx<FlatlayParams>, s: S, dof: ReturnType<typeof pose>) 
   if (s.surface !== 'none') { g.fillStyle = SURFACE_LOOK[s.surface].base; g.fillRect(0, 0, W, H); }
   for (const t of s.items) {
     if (!t.pose) continue;
-    const { w, h } = t.size, p0 = toScreen(s, t.sheet, -w / 2, h / 2, t.size.depth, W, H), p1 = toScreen(s, t.sheet, w / 2, h / 2, t.size.depth, W, H), p3 = toScreen(s, t.sheet, -w / 2, -h / 2, t.size.depth, W, H);
+    // the face's canvas corners (top left, top right, bottom left) where they lie on the sheet, flat (the corners' curl left out)
+    const backUp = t.pose.flip > Math.PI / 2, [p0, p1, p3] = [[0, 0], [1, 0], [0, 1]].map(([a, b]) => toScreen(s, t.sheet, ...facePoint(t, backUp, a, b, false), W, H));
     if (!p0 || !p1 || !p3) continue;
-    const img = (t.pose.flip > Math.PI / 2 ? t.backTex.image : t.frontTex.image) as HTMLCanvasElement, cw = img.width || 1, ch = img.height || 1;
+    const img = (backUp ? t.backTex.image : t.frontTex.image) as HTMLCanvasElement, cw = img.width || 1, ch = img.height || 1;
     g.save();
     g.setTransform((p1[0] - p0[0]) / cw, (p1[1] - p0[1]) / cw, (p3[0] - p0[0]) / ch, (p3[1] - p0[1]) / ch, p0[0], p0[1]);
     g.drawImage(img, 0, 0);
@@ -348,9 +353,20 @@ function paint(ctx: ItemCtx<FlatlayParams>, s: S, dof: ReturnType<typeof pose>) 
 
 /** a point of an object (its sheet's own coordinates) on the screen, px; null behind the camera */
 function toScreen(s: S, sheet: T.Object3D, x: number, y: number, z: number, W: number, H: number): [number, number] | null {
-  const THREE = s.three.THREE, v = new THREE.Vector3(x, y, z).applyMatrix4(sheet.matrixWorld).project(s.camera);
+  const v = s.v3.set(x, y, z).applyMatrix4(sheet.matrixWorld).project(s.camera);
   if (v.z < -1 || v.z > 1) return null;
   return [((v.x + 1) / 2) * W, ((1 - v.y) / 2) * H];
+}
+
+/** a point of a face's canvas (a, b: fractions from its top left) in the sheet's own coordinates: the front on top of the sheet; the
+ *  back under it, its picture turned so it reads the right way round once the object is turned over about its long side (x for a
+ *  wide object, y for a tall one: makeThing's backTex repeat). `curl` puts the point on the sheet's curl */
+function facePoint(t: Pick<Thing, 'size' | 'flipX'>, back: boolean, a: number, b: number, curl = true): [number, number, number] {
+  const { w, h, depth } = t.size, bend = (x: number, y: number) => (curl ? sheetZ(x, y, w, h, t.size.curl) : 0);
+  let x: number, y: number;
+  if (!back) { x = (a - 0.5) * w; y = (0.5 - b) * h; return [x, y, depth + bend(x, y)]; }
+  if (t.flipX) { x = (a - 0.5) * w; y = (b - 0.5) * h; } else { x = (0.5 - a) * w; y = (0.5 - b) * h; }
+  return [x, y, bend(x, y)];
 }
 
 /** the words on the visible faces, projected, for check */
@@ -359,16 +375,11 @@ function report(ctx: ItemCtx<FlatlayParams>, s: S) {
   if (flyCover(s.fly, ctx.local) > 0) return;
   for (const t of s.items) {
     if (!t.pose || !atRest(t.o, ctx.local)) continue;
-    const { w, h, depth, curl } = t.size, backUp = t.pose.flip > Math.PI / 2;
-    const words = backUp ? t.backWords : t.frontWords;
+    const backUp = t.pose.flip > Math.PI / 2, words = backUp ? t.backWords : t.frontWords;
     for (const word of words) {
       const [fx, fy, fw, fh] = word.rect, pts: Array<[number, number]> = [];
       for (const [a, b] of [[fx, fy], [fx + fw, fy], [fx, fy + fh], [fx + fw, fy + fh]]) {
-        let x: number, y: number, z: number;
-        if (!backUp) { x = (a - 0.5) * w; y = (0.5 - b) * h; z = depth + sheetZ(x, y, w, h, curl); }
-        else if (t.flipX) { x = (a - 0.5) * w; y = (b - 0.5) * h; z = sheetZ(x, y, w, h, curl); }
-        else { x = (0.5 - a) * w; y = (0.5 - b) * h; z = sheetZ(x, y, w, h, curl); }
-        const p = toScreen(s, t.sheet, x, y, z, W, H);
+        const p = toScreen(s, t.sheet, ...facePoint(t, backUp, a, b), W, H);
         if (p) pts.push(p);
       }
       if (pts.length < 4) continue;
@@ -402,7 +413,8 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     const s: S = { c, holder, three, scene, camera, spot: null!, sky: null!, gobo: null, items: [], fly, flat: null,
       mode: (['push', 'still', 'top'].includes(p.camera) ? p.camera : 'push') as CameraMode, topAt: Number(p.topAt) >= 0 ? Number(p.topAt) : null,
       surface, side: p.side === 'right' ? 'right' : 'left', warmth: (['morning', 'afternoon', 'golden'].includes(p.warmth) ? p.warmth : 'afternoon') as S['warmth'],
-      dof: clamp(Number(p.dof) || 0), error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project: ctx.project as Project, fontsText: '' };
+      dof: clamp(Number(p.dof) || 0), error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project: ctx.project as Project, fontsText: '',
+      v3: new THREE.Vector3(), lastDof: null };
     // the table, far wider than any view so its edge never shows
     const look = SURFACE_LOOK[surface], tableGeo = own(s, new THREE.PlaneGeometry(40, 40));
     let tableMat: T.Material;
@@ -447,7 +459,8 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     if (s.flat) { drawFlat(ctx, s, s.flat); return; }
     // the picture covers the screen: the main track's clip shows it, the desk is not drawn
     if (handedOver(s, ctx.local)) { s.c.getContext('2d')?.clearRect(0, 0, W, H); s.items.forEach((t) => { t.pose = null; }); return; }
-    paint(ctx, s, pose(ctx, s));
+    s.lastDof = pose(ctx, s);
+    paint(ctx, s, s.lastDof);
     report(ctx, s);
   },
   late(ctx, s) {
@@ -457,7 +470,7 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     let any = false;
     for (const t of s.items) if (t.pose && t.vt && t.source === 'video') { upload(ctx, t); any = true; }
     if (!any) return;
-    paint(ctx, s, dofAt(ctx, s));
+    paint(ctx, s, s.lastDof);
   },
   hide(s) { s.c.width = 0; s.c.height = 0; },
   dispose(s) {
@@ -491,7 +504,7 @@ function buildFlat(ctx: ItemCtx<FlatlayParams>, c: HTMLCanvasElement, holder: HT
     return { o, size, source, flipX: size.w >= size.h, front: paintFront(o).canvas, placeholder: paintPlaceholder(Math.round(pw * size.w * 400), Math.round(ph * size.h * 400)), still, back: null, backKey: '' };
   });
   return { c, holder, three: null!, scene: null!, camera: null!, spot: null!, sky: null!, gobo: null, items: [], fly, mode: 'still', topAt: null, surface, side: 'left',
-    warmth: 'afternoon', dof: 0, error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, fontsText: objs.map((o) => [o.place, o.year, o.caption, ...o.back.map((l) => l.text)].join('')).join(''), flat };
+    warmth: 'afternoon', dof: 0, error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, v3: null!, lastDof: null, fontsText: objs.map((o) => [o.place, o.year, o.caption, ...o.back.map((l) => l.text)].join('')).join(''), flat };
 }
 
 function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {
@@ -532,12 +545,6 @@ function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {
     }
     g.restore();
   });
-}
-
-/** the depth of field for the frame draw posed (late renders it again) */
-function dofAt(ctx: ItemCtx<FlatlayParams>, s: S) {
-  const objs = s.items.map((t) => t.o), cam = cameraPose({ mode: s.mode, topAt: s.topAt, fly: s.fly, fov: flatlayFov(ctx.W, ctx.H) }, objs, ctx.local, ctx.dur, ctx.W, ctx.H);
-  return dofOf(s, flyCover(s.fly, ctx.local), cam.focus);
 }
 
 /** the main-track clip that takes over when the camera has flown into object `index`'s picture: from the item's start + `at`, the
