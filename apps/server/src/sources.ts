@@ -30,7 +30,8 @@ export function sourceRoutes(r: Router, sources: () => Sources = () => {
     const body = await readJson(req, 4096) as { key?: unknown } | undefined;
     const key = typeof body?.key === 'string' ? body.key.trim() : '';
     if (!KEY_SHAPE.test(key)) throw new HttpError(400, '請只貼上 key 本身（不含空白）', { code: 'source.keyBad' });
-    const s = sources(), a = s.adapters[id];
+    // own keys only: "constructor" or "__proto__" in the URL is an unknown source, not Object's
+    const s = sources(), a = Object.hasOwn(s.adapters, id) ? s.adapters[id] : undefined;
     if (!a) throw new HttpError(404, `沒有「${id}」這個來源`, { code: 'source.unknown', params: { id } });
     if (!a.needsKey) throw new HttpError(400, `來源 ${id} 不需要 key`, { code: 'source.noKeyNeeded', params: { id } });
     // the environment's key wins over the file's (config.ts sourceKey): a pasted one would never be used

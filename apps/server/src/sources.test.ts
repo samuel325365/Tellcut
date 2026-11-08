@@ -57,6 +57,10 @@ test('POST /api/sources/:id/key tries a pasted key, keeps it in sources.local.js
     expect((await (await post('k', { key: 'two words' })).json()).code).toBe('source.keyBad');
     expect((await (await post('k', {})).json()).code).toBe('source.keyBad');
     expect((await (await post('nope', { key: 'x' })).json()).code).toBe('source.unknown');
+    for (const id of ['constructor', '__proto__', 'toString']) {   // Object's own names are no source
+      const r = await post(id, { key: 'x' });
+      expect([id, r.status, (await r.json()).code]).toEqual([id, 404, 'source.unknown']);
+    }
     expect((await (await post('a', { key: 'x' })).json()).code).toBe('source.noKeyNeeded');
     const refused = await post('k', { key: ' bad-key ' });
     expect(refused.status).toBe(422);

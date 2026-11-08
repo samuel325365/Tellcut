@@ -26,6 +26,11 @@ test('tryKey asks the source with the pasted key — not the environment\'s — 
   expect(readHealth(s.healthFile).k.status).toBe('ok');
 });
 
+test('tryKey of a name Object has (constructor, __proto__) is an unknown source, not a crash in Object', async () => {
+  const s = open(adapter(async () => 'x'));
+  for (const id of ['constructor', '__proto__']) await expect(tryKey(s, id, 'k')).rejects.toThrow(/不需要 key/);
+});
+
 test('a key the source turns down is refused and not recorded; a source that cannot be reached leaves it untried', async () => {
   const refused = open(adapter(async () => { throw new SourceError('k', 'broken', 'key 被拒絕（HTTP 401）'); }));
   expect(await tryKey(refused, 'k', 'bad')).toEqual({ result: 'refused', detail: 'key 被拒絕（HTTP 401）' });

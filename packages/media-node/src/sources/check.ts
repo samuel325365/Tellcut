@@ -47,7 +47,7 @@ export type KeyTrial = { result: 'ok' | 'refused' | 'untried'; detail: string };
  *  The question is the adapter's own fixed check, known to work, so any 4xx answer but a timeout, a rate limit or a bot check's web
  *  page means the key: Pixabay changed the words of its bad-key 400 once, and a key kept on them would have been a wrong one. */
 export async function tryKey(s: Sources, id: string, key: string, tmpDir?: string): Promise<KeyTrial> {
-  const a = s.adapters[id];
+  const a = Object.hasOwn(s.adapters, id) ? s.adapters[id] : undefined;   // "constructor" is no source
   if (!a?.needsKey) throw new Error(`來源 ${id} 不需要 key`);
   // the pasted key itself, not one an environment variable would put first
   const envName = s.config.sources[id]?.keyEnv, { [envName ?? '']: _, ...env } = s.env;
