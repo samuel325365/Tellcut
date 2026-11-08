@@ -36,7 +36,7 @@ const PARAMS: ParamDef[] = [
   { key: 'flipAt', label: '翻面秒數（−1＝不翻）', type: 'number', min: -1, max: 600, step: 0.1, default: -1 },
   { key: 'mark', label: '郵戳（上緣字|下緣字|日期；空＝不蓋）', type: 'string', default: 'ROMA|羅馬|2024.05.12' },
   { key: 'markAt', label: '郵戳落下秒數（項目內）', type: 'number', min: 0, max: 600, step: 0.1, default: 1.2 },
-  { key: 'objects', label: '多樣東西（JSON 陣列，每樣的鍵同上，另有 x、y、rot、portrait、dur、exit、exitAt（沒寫＝項目結束時剛好離開）、flipDur、stamp；空或 []＝只放上面那一樣）', type: 'text', default: '' },
+  { key: 'objects', label: '多樣東西（JSON 陣列，每樣的鍵同上，另有 x、y（桌面單位，桌子中央 0，y 朝上；9:16 看得到左右 ±1.2、上下 ±2.0，16:9 是 ±3.0、±1.6；明信片寬 1.5）、rot（弧度，正＝逆時針，0.1 約 6°）、portrait、dur、exit、exitAt（沒寫＝項目結束時剛好離開）、flipDur、stamp；空或 []＝只放上面那一樣）', type: 'text', default: '' },
   { key: 'fly', label: '飛進畫面（JSON { index, at, dur, back, backDur }；back 是拉回的秒數，null 不拉回；空＝不飛）', type: 'json', default: null },
   { key: 'surface', label: '桌面（linen 亞麻、marble 大理石、concrete 水泥、velvet 絨布、none 透明）', type: 'enum', options: ['linen', 'marble', 'concrete', 'velvet', 'none'], default: 'linen' },
   { key: 'side', label: '窗在哪一邊', type: 'enum', options: ['left', 'right'], default: 'left' },
@@ -399,7 +399,8 @@ export const flatlay: ItemType<FlatlayParams, S> = {
   doc: '真的 3D 桌面（three.js）：明信片、拍立得、相框、老電視、卡片放在亞麻、大理石、水泥或絨布上，窗光和樹葉的影子輕輕晃，'
     + '有柔和的陰影和景深；每樣東西的照片面播它自己的鏡頭（沒有聲音），會落下、滑進、在 3D 裡翻面（明信片背面一字一字寫出來，再蓋郵戳），'
     + '鏡頭慢慢推近、升到正上方，或飛進某一張照片直到蓋滿畫面。要原音、或飛進去之後接主軌，用 c.flatlayClip 放那個鏡頭對齊好的片段。'
-    + '多樣東西寫 objects（JSON 陣列）；surface none 是透明桌面，疊在影片上',
+    + '多樣東西寫 objects（JSON 陣列），x、y 是桌面單位（桌子中央 0，y 朝上；9:16 看得到 ±1.2 × ±2.0，16:9 是 ±3.0 × ±1.6），rot 是弧度（正＝逆時針）；'
+    + 'surface none 是透明桌面，疊在影片上',
   params: PARAMS,
   build(ctx) {
     const { root, W, H, params: p } = ctx;

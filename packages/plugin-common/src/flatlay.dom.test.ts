@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { itemMediaIssues, resolveTheme } from '@tellcut/engine';
 import { flatlay, flatlayClip, readFly } from './flatlay.ts';
 import { flyCrop } from './flatlay/camera.ts';
+import { viewHalf } from './flatlay/motion.ts';
 import { picAspect, parseObjects, sizeOf } from './flatlay/objects.ts';
 import { paintBack, paintFront } from './flatlay/paper.ts';
 import { makeKit } from './three/kit.ts';
@@ -483,4 +484,17 @@ test("the leaves' shadow sways: the gobo is painted again with the leaves moved 
   flatlay.draw(at(ctx, 1), s); expect(leaves()).toEqual(a);
   // drawn again at the same time, nothing to upload
   const v2 = s.gobo!.version; flatlay.draw(at(ctx, 1), s); expect(s.gobo!.version).toBe(v2);
+});
+
+// the units the objects parameter's label states: desk units with y up the picture, rot in radians counterclockwise
+test("an object's x, y and rot are desk units (y up) and radians (counterclockwise), as the label says", async () => {
+  expect(viewHalf(1080, 1920)).toEqual([1.2, 2.0]);
+  expect(viewHalf(1920, 1080)).toEqual([3.0, 1.6]);
+  const label = flatlay.params.find((d) => d.key === 'objects')!.label;
+  for (const want of ['±1.2', '±2.0', '±3.0', '±1.6', 'y 朝上', '弧度', '逆時針']) expect(label).toContain(want);
+  const { ctx, s } = await built({ objects: JSON.stringify([{ kind: 'card', x: 0.6, y: 1.5, rot: 0.5, enter: 'none' }]) });
+  flatlay.draw(at(ctx, 1), s);
+  const g = s.items[0].spin, centre = g.getWorldPosition(new THREE.Vector3()), across = new THREE.Vector3(1, 0, 0).transformDirection(g.matrixWorld);
+  expect([centre.x, -centre.z]).toEqual([expect.closeTo(0.6, 9), expect.closeTo(1.5, 9)]);          // desk y runs up the picture: world −z
+  expect([across.x, -across.z]).toEqual([expect.closeTo(Math.cos(0.5), 9), expect.closeTo(Math.sin(0.5), 9)]);   // turned counterclockwise
 });
