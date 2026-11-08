@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { crc32 } from 'node:zlib';
 import { corePlugin, createRegistry, parseProject } from '@tellcut/engine';
 import { ffmpeg, prepareProject, probeDuration } from '@tellcut/media-node';
-import { exportPlan, exportProject, exportProjectTrimmed, importProject, leftoverPaths, scrubText, usedRanges } from './export-project.ts';
+import { exportPlan, exportProject, exportProjectTrimmed, ImportError, importProject, leftoverPaths, oddEntries, scrubText, usedRanges } from './export-project.ts';
 
 /** a tellcut/ with one project whose footage is partly inside it and partly on another folder */
 function world() {
@@ -47,6 +48,62 @@ test('export then import: the project comes back whole under its id or a new one
   expect(() => importProject(zip, other)).toThrow('trip');
   expect(importProject(zip, other, 'trip-2')).toBe(join(other, 'trip-2'));
   expect(() => importProject(zip, join(tellcut, 'projects'), 'bad id!')).toThrow();
+});
+
+/** a stored (uncompressed) zip written by hand, as a Unix zip tool would: each entry's mode in the external attributes, so a
+ *  symbolic link (mode 0o120777, its target as the data) is one — Windows' bsdtar follows a junction when it zips */
+function unixZip(entries: Array<{ name: string; mode: number; data?: string }>): Buffer {
+  const locals: Buffer[] = [], central: Buffer[] = [];
+  let at = 0;
+  for (const e of entries) {
+    const name = Buffer.from(e.name), data = Buffer.from(e.data ?? ''), crc = crc32(data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(10, 4); local.writeUInt16LE(0x21, 12);
+    local.writeUInt32LE(crc, 14); local.writeUInt32LE(data.length, 18); local.writeUInt32LE(data.length, 22); local.writeUInt16LE(name.length, 26);
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(0x02014b50, 0); cd.writeUInt16LE((3 << 8) | 20, 4); cd.writeUInt16LE(10, 6); cd.writeUInt16LE(0x21, 14);
+    cd.writeUInt32LE(crc, 16); cd.writeUInt32LE(data.length, 20); cd.writeUInt32LE(data.length, 24); cd.writeUInt16LE(name.length, 28);
+    cd.writeUInt32LE((e.mode << 16) >>> 0, 38); cd.writeUInt32LE(at, 42);
+    locals.push(local, name, data); central.push(cd, name);
+    at += local.length + name.length + data.length;
+  }
+  const cd = Buffer.concat(central), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(at, 16);
+  return Buffer.concat([...locals, cd, end]);
+}
+
+test('oddEntries: a link (a junction on Windows) is named and never walked into; plain files and folders are not', () => {
+  const root = mkdtempSync(join(tmpdir(), 'odd-')), dir = join(root, 'in'), outside = join(root, 'outside');
+  mkdirSync(join(dir, 'p', 'fx'), { recursive: true }); mkdirSync(outside);
+  writeFileSync(join(dir, 'p', 'project.json'), '{}'); writeFileSync(join(outside, 'secret.txt'), 'x');
+  expect(oddEntries(dir)).toEqual([]);
+  // a junction needs no privileges on Windows; elsewhere a plain symbolic link
+  symlinkSync(outside, join(dir, 'p', 'fx', 'lib'), process.platform === 'win32' ? 'junction' : 'dir');
+  symlinkSync(outside, join(dir, 'top'), process.platform === 'win32' ? 'junction' : 'dir');
+  expect(oddEntries(dir).sort()).toEqual(['p/fx/lib', 'top']);   // not top/secret.txt: never followed
+  rmSync(dir, { recursive: true, force: true });
+  expect(readFileSync(join(outside, 'secret.txt'), 'utf8')).toBe('x');   // removing the links left what they point at
+});
+
+test('import refuses a zip with a symbolic link in it (a Mac unpacks them as links), a symlinked top folder too, and leaves nothing', () => {
+  const root = mkdtempSync(join(tmpdir(), 'symzip-')), projects = join(root, 'projects'), outside = join(root, 'outside');
+  mkdirSync(outside); writeFileSync(join(outside, 'keep.txt'), 'keep');
+  const zips = {
+    inner: unixZip([{ name: 'p/', mode: 0o40755 }, { name: 'p/project.json', mode: 0o100644, data: '{}' }, { name: 'p/.history', mode: 0o120777, data: '../../outside' }]),
+    top: unixZip([{ name: 'p', mode: 0o120777, data: '../outside' }]),
+  };
+  for (const [what, bytes] of Object.entries(zips)) {
+    const zip = join(root, `${what}.zip`);
+    writeFileSync(zip, bytes);
+    // Windows' bsdtar cannot make the link without privileges and fails, a Mac's makes it and the walk refuses: unpack either way
+    let err: unknown;
+    try { importProject(zip, projects); } catch (e) { err = e; }
+    expect(err, what).toBeInstanceOf(ImportError);
+    expect((err as ImportError).code, what).toBe('unpack');
+    expect(readdirSync(projects), what).toEqual([]);                 // the .import- folder is gone, no project p
+    expect(readFileSync(join(outside, 'keep.txt'), 'utf8'), what).toBe('keep');   // cleaning up never went through the link
+  }
 });
 
 /** each name in a zip's central directory with its UTF-8 flag (general purpose bit 11) */

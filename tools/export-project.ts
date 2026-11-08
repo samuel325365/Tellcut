@@ -13,7 +13,7 @@
 // history, the storyboard) stays true, and black frames cost almost nothing in H.264. What was blacked out is gone in the import.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Project, Registry } from '@tellcut/engine';
@@ -230,6 +230,18 @@ export class ImportError extends Error {
   constructor(message: string, readonly code: 'badName' | 'unpack' | 'notExport' | 'exists', /** the zip or the project name it is about */ readonly subject: string) { super(message); }
 }
 
+/** Everything under `dir` (itself left out) that is neither a plain file nor a plain folder, as paths relative to it with /:
+ *  symbolic links (a junction on Windows too), devices, pipes. Read with lstat, so a link is never followed, nor walked into. */
+export function oddEntries(dir: string, sub = ''): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(join(dir, sub))) {
+    const rel = sub ? `${sub}/${name}` : name, s = lstatSync(join(dir, rel));
+    if (s.isDirectory()) out.push(...oddEntries(dir, rel));
+    else if (!s.isFile()) out.push(rel);
+  }
+  return out;
+}
+
 /** unpacks a zip from exportProject into projectsDir/<its id or `as`>; never over an existing project. Returns the folder. */
 export function importProject(zip: string, projectsDir: string, as?: string): string {
   if (as !== undefined && !PROJECT_ID.test(as)) throw new ImportError(`「${as}」不能當專案名稱：英文字母、數字、_ 和 -，不能用 _ 或 - 開頭`, 'badName', as);
@@ -237,6 +249,10 @@ export function importProject(zip: string, projectsDir: string, as?: string): st
   const tmp = mkdtempSync(join(projectsDir, '.import-'));
   try {
     try { tar(['-x', '-f', resolve(zip), '-C', tmp]); } catch (e) { throw new ImportError((e as Error).message, 'unpack', basename(zip)); }
+    // a Mac's bsdtar unpacks a zip's symbolic links as links (Windows' fails on them): the project's history, cache and the
+    // server's static files would be written and served through them, outside the project folder. An export never has one.
+    const odd = oddEntries(tmp);
+    if (odd.length) throw new ImportError(`${basename(zip)} 裡有連結或特殊檔案，不匯入（它們會連到專案資料夾外面）：${odd.slice(0, 10).join('、')}${odd.length > 10 ? `…共 ${odd.length} 個` : ''}`, 'unpack', basename(zip));
     const tops = readdirSync(tmp).filter((n) => existsSync(join(tmp, n, 'project.json')) && statSync(join(tmp, n)).isDirectory());
     if (tops.length !== 1) throw new ImportError(`${basename(zip)} 不是 export-project 做的檔案（裡面要有一個資料夾，放著 project.json）`, 'notExport', basename(zip));
     const id = as ?? tops[0];
