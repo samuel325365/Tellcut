@@ -19,7 +19,7 @@ import { atRest, contactShadow, REST_Z, viewHalf, type Pose } from './flatlay/mo
 import { EXIT_DUR, faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
 import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintedText, paintFront, paintPlaceholder, PRINT, type Word } from './flatlay/paper.ts';
-import { paintGobo, paintSurface, SURFACE_LOOK, type Surface } from './flatlay/surface.ts';
+import { goboLayers, paintGobo, paintSurface, SURFACE_LOOK, type GoboLayers, type Surface } from './flatlay/surface.ts';
 
 export type { FlatlayParams } from './flatlay/objects.ts';
 
@@ -86,6 +86,8 @@ interface Thing {
 interface S {
   c: HTMLCanvasElement; holder: HTMLDivElement; three: ThreeKit;
   scene: T.Scene; camera: T.PerspectiveCamera; spot: T.SpotLight; sky: T.HemisphereLight; gobo: T.CanvasTexture | null;
+  /** the gobo's still frame and swaying leaves, and where the leaves were last painted (repainted when the sway moves them) */
+  goboLayers: GoboLayers | null; goboAt: string;
   items: Thing[]; fly: Fly | null; mode: CameraMode; topAt: number | null; surface: Surface; side: 'left' | 'right'; warmth: 'morning' | 'afternoon' | 'golden';
   dof: number; error: string | null; dead: boolean;
   geos: Set<T.BufferGeometry>; mats: Set<T.Material>; texs: Set<T.Texture>;
@@ -306,7 +308,10 @@ function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
   s.spot.color.setHex(rig.spot.color); s.spot.intensity = rig.spot.intensity * rig.exposure;
   s.spot.angle = rig.spot.angle; s.spot.penumbra = rig.spot.penumbra;
   s.spot.map = rig.spot.gobo ? s.gobo : null;
-  if (s.gobo) s.gobo.offset.set(rig.spot.goboOffset[0], rig.spot.goboOffset[1]);
+  if (rig.spot.gobo && s.gobo && s.goboLayers) {
+    const [dx, dy] = rig.spot.goboOffset, key = `${dx},${dy}`;
+    if (key !== s.goboAt) { paintGobo(s.gobo.image as HTMLCanvasElement, s.goboLayers, dx, dy); s.gobo.needsUpdate = true; s.goboAt = key; }
+  }
   s.sky.color.setHex(rig.sky.color); s.sky.groundColor.setHex(rig.sky.ground); s.sky.intensity = rig.sky.intensity * rig.exposure;
   s.scene.updateMatrixWorld(true); s.camera.updateMatrixWorld();
   return dofOf(s, cover, cam.focus);
@@ -410,7 +415,7 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     if (!ctx.three) return buildFlat(ctx, c, holder, objs, surface, fly, error);
     const three = ctx.three as ThreeKit, THREE = three.THREE;
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(flatlayFov(W, H), W / H, 0.05, 60);
-    const s: S = { c, holder, three, scene, camera, spot: null!, sky: null!, gobo: null, items: [], fly, flat: null,
+    const s: S = { c, holder, three, scene, camera, spot: null!, sky: null!, gobo: null, goboLayers: null, goboAt: '', items: [], fly, flat: null,
       mode: (['push', 'still', 'top'].includes(p.camera) ? p.camera : 'push') as CameraMode, topAt: Number(p.topAt) >= 0 ? Number(p.topAt) : null,
       surface, side: p.side === 'right' ? 'right' : 'left', warmth: (['morning', 'afternoon', 'golden'].includes(p.warmth) ? p.warmth : 'afternoon') as S['warmth'],
       dof: clamp(Number(p.dof) || 0), error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project: ctx.project as Project, fontsText: '',
@@ -430,7 +435,9 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.radius = 10; spot.shadow.blurSamples = 20;
     spot.shadow.bias = -0.0005; spot.shadow.normalBias = 0.01; spot.shadow.camera.near = 2; spot.shadow.camera.far = 12;
     s.spot = spot; s.sky = new THREE.HemisphereLight(0xf3efe8, 0x6b5a48, 1);
-    s.gobo = own(s, canvasTex(THREE, paintGobo(), true));
+    s.goboLayers = goboLayers();
+    const goboCanvas = document.createElement('canvas'); goboCanvas.width = s.goboLayers.frame.width; goboCanvas.height = s.goboLayers.frame.height;
+    s.gobo = own(s, canvasTex(THREE, paintGobo(goboCanvas, s.goboLayers), true));
     scene.add(spot, spot.target, s.sky);
     const shadowTex = own(s, canvasTex(THREE, shadowCanvas(), false)), shadowGeo = own(s, new THREE.PlaneGeometry(1, 1));
     s.items = objs.map((o) => makeThing(s, THREE, o, ctx, shadowTex, shadowGeo));
@@ -503,7 +510,7 @@ function buildFlat(ctx: ItemCtx<FlatlayParams>, c: HTMLCanvasElement, holder: HT
     if (source === 'still' && o.shot) { still = new Image(); still.src = ctx.media.stillUrl(stillRef(o.shot)); }
     return { o, size, source, flipX: size.w >= size.h, front: paintFront(o).canvas, placeholder: paintPlaceholder(Math.round(pw * size.w * 400), Math.round(ph * size.h * 400)), still, back: null, backKey: '' };
   });
-  return { c, holder, three: null!, scene: null!, camera: null!, spot: null!, sky: null!, gobo: null, items: [], fly, mode: 'still', topAt: null, surface, side: 'left',
+  return { c, holder, three: null!, scene: null!, camera: null!, spot: null!, sky: null!, gobo: null, goboLayers: null, goboAt: '', items: [], fly, mode: 'still', topAt: null, surface, side: 'left',
     warmth: 'afternoon', dof: 0, error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, v3: null!, lastDof: null, fontsText: paintedText(objs), flat };
 }
 

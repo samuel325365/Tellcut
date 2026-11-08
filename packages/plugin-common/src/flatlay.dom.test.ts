@@ -468,3 +468,19 @@ test("the front's words fit their card, and the back's rows stop above its botto
     expect(paintBack(o, 0.5).words.every((w) => !w.text.includes('…')), kind).toBe(true);
   }
 });
+
+test("the leaves' shadow sways: the gobo is painted again with the leaves moved (three.js ignores a spot map's offset)", async () => {
+  const { ctx, s } = await built({ objects: TWO, surface: 'linen' });
+  const canvas = s.gobo!.image as HTMLCanvasElement;
+  const leaves = () => (args.get(canvas) ?? []).filter(([k, a]) => k === 'drawImage' && a[0] === s.goboLayers!.leaves).at(-1)![1].slice(1, 3) as number[];
+  const frame = () => (args.get(canvas) ?? []).filter(([k, a]) => k === 'drawImage' && a[0] === s.goboLayers!.frame).at(-1)![1].slice(1, 3);
+  flatlay.draw(at(ctx, 1), s); const a = leaves(), v = s.gobo!.version;
+  flatlay.draw(at(ctx, 4), s); const b = leaves();
+  expect(Math.hypot(b[0] - a[0], b[1] - a[1])).toBeGreaterThan(1);   // pixels of the 1024 px gobo
+  expect(s.gobo!.version).toBeGreaterThan(v);
+  expect(frame()).toEqual([0, 0]);                                     // the window's frame holds still
+  expect(s.spot.map).toBe(s.gobo);
+  flatlay.draw(at(ctx, 1), s); expect(leaves()).toEqual(a);
+  // drawn again at the same time, nothing to upload
+  const v2 = s.gobo!.version; flatlay.draw(at(ctx, 1), s); expect(s.gobo!.version).toBe(v2);
+});

@@ -123,21 +123,36 @@ export function paintSurface(kind: Surface, seed: number, px = 1024, make: (px: 
   return { map: c, bump: c };
 }
 
-/** the window the light comes through, as a projected picture: white light, the window's cross and frame, leaves outside it, all
- *  soft (the SpotLight's map) */
-export function paintGobo(make: (px: number) => HTMLCanvasElement = blank, px = 1024): HTMLCanvasElement {
-  const c = make(px), g = c.getContext('2d');
-  if (!g) return c;
-  const S = px, r = rng(3);
-  g.fillStyle = '#fff'; g.fillRect(0, 0, S, S);
-  g.filter = `blur(${(10 * S) / 1024}px)`; g.fillStyle = '#000';
-  g.fillRect(S * 0.47, 0, S * 0.05, S); g.fillRect(0, S * 0.46, S, S * 0.045);
-  g.fillRect(0, 0, S * 0.12, S); g.fillRect(S * 0.88, 0, S * 0.12, S); g.fillRect(0, 0, S, S * 0.1); g.fillRect(0, S * 0.9, S, S * 0.1);
-  g.filter = `blur(${(14 * S) / 1024}px)`; g.fillStyle = 'rgba(0,0,0,.55)';
-  for (let i = 0; i < 26; i++) {
-    const x = S * (0.6 + r() * 0.35), y = S * (0.05 + r() * 0.5);
-    g.save(); g.translate(x, y); g.rotate(r() * 3); g.beginPath(); g.ellipse(0, 0, ((40 + r() * 40) * S) / 1024, ((16 + r() * 14) * S) / 1024, 0, 0, 7); g.fill(); g.restore();
+export interface GoboLayers { frame: HTMLCanvasElement; leaves: HTMLCanvasElement }
+
+/** the window the light comes through, as the two layers of a projected picture, each a soft black on transparent: the window's
+ *  cross and frame, which hold still, and the leaves outside it, which sway (paintGobo moves them) */
+export function goboLayers(make: (px: number) => HTMLCanvasElement = blank, px = 1024): GoboLayers {
+  const frame = make(px), leaves = make(px), f = frame.getContext('2d'), l = leaves.getContext('2d'), S = px, r = rng(3);
+  if (f) {
+    f.filter = `blur(${(10 * S) / 1024}px)`; f.fillStyle = '#000';
+    f.fillRect(S * 0.47, 0, S * 0.05, S); f.fillRect(0, S * 0.46, S, S * 0.045);
+    f.fillRect(0, 0, S * 0.12, S); f.fillRect(S * 0.88, 0, S * 0.12, S); f.fillRect(0, 0, S, S * 0.1); f.fillRect(0, S * 0.9, S, S * 0.1);
+    f.filter = 'none';
   }
-  g.filter = 'none';
+  if (l) {
+    l.filter = `blur(${(14 * S) / 1024}px)`; l.fillStyle = 'rgba(0,0,0,.55)';
+    for (let i = 0; i < 26; i++) {
+      const x = S * (0.6 + r() * 0.35), y = S * (0.05 + r() * 0.5);
+      l.save(); l.translate(x, y); l.rotate(r() * 3); l.beginPath(); l.ellipse(0, 0, ((40 + r() * 40) * S) / 1024, ((16 + r() * 14) * S) / 1024, 0, 0, 7); l.fill(); l.restore();
+    }
+    l.filter = 'none';
+  }
+  return { frame, leaves };
+}
+
+/** the gobo (the SpotLight's map) on `c`: white light, the leaves moved by (dx, dy) (fractions of the picture), the window's frame
+ *  over them. The sway is painted because three.js samples a spot light's map without the texture's offset or repeat */
+export function paintGobo(c: HTMLCanvasElement, layers: GoboLayers, dx = 0, dy = 0): HTMLCanvasElement {
+  const g = c.getContext('2d'), S = c.width;
+  if (!g) return c;
+  g.fillStyle = '#fff'; g.fillRect(0, 0, S, S);
+  g.drawImage(layers.leaves, dx * S, dy * S, S, S);
+  g.drawImage(layers.frame, 0, 0, S, S);
   return c;
 }
