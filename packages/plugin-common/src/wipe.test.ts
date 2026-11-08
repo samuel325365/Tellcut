@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
-import { wipe } from './wipe.ts';
+import { stripeSpan, wipe } from './wipe.ts';
 
 // jsdom has no canvas: curl's shadow is drawn on a 2D context that takes every call and does nothing
 const noop: any = new Proxy(() => noop, { get: (_, k) => (k === Symbol.toPrimitive ? () => 0 : noop), set: () => true });
@@ -39,4 +39,24 @@ test('dir left mirrors the band and the hand, but never the vortex: its words st
   expect(at('vortex', 'left')).toBe('none');
   expect(at('vortex', 'right')).toBe('none');
   expect(at('tiles', 'left')).toBe('none');
+});
+
+describe('stripeSpan', () => {
+  test('for 1 to 12 colours the last stripe covers all at the middle and every stripe has left at the end', () => {
+    for (let n = 1; n <= 12; n++) {
+      const [l, r] = stripeSpan(0.5, n - 1, n);
+      expect(l).toBeLessThanOrEqual(-1); expect(r).toBeGreaterThanOrEqual(1 - 1e-9);
+      for (let i = 0; i < n; i++) {
+        const [, r0] = stripeSpan(0, i, n);
+        expect(r0).toBeLessThanOrEqual(-1 + 1e-9);   // nothing shows at the start
+        const [l1, r1] = stripeSpan(1, i, n);
+        expect(l1).toBeGreaterThanOrEqual(r1 - 1e-9); expect(l1).toBeGreaterThanOrEqual(1 - 1e-9);
+      }
+    }
+  });
+  test('up to eight colours keep the 0.11 lag the dopamine film was made with', () => {
+    // stripe 1 of 4 is 0.11 behind stripe 0: where stripe 0 is at u, stripe 1 is at u + 0.11 / 2
+    expect(stripeSpan(0.2 + 0.055, 1, 4)[1]).toBeCloseTo(stripeSpan(0.2, 0, 4)[1], 9);
+    expect(stripeSpan(0.2 + 0.055, 1, 8)[1]).toBeCloseTo(stripeSpan(0.2, 0, 8)[1], 9);
+  });
 });

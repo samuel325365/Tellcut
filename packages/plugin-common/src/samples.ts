@@ -181,7 +181,7 @@ export const samples: Sample[] = [
   { name: 'route', type: 'common.route', at: [0.5, 2.6], bg: '#6b5444' },
   { name: 'route-names', type: 'common.route', params: { heads: '', stops: 4, hidden: 1, names: '豆花|蔥油餅|米干', start: '車站', startIcon: '🚉' }, at: [2.6], bg: '#6b5444' },
   { name: 'wide-route', type: 'common.route', at: [2.6], wide: true, bg: '#6b5444' },
-  { name: 'route-next', type: 'common.route', params: { h: 0.85, stops: 6, hidden: 0, names: '阿桃|仁利|新珍香|湯記|驚嘆號臭豆腐|天下奇冰', upto: 3, already: 2, nameSize: 40, from: 0.1, to: 0.9, beat: 0.01, dim: 0.5 }, at: [0.5, 1.5], bg: '#6b5444' },
+  { name: 'route-next', type: 'common.route', params: { h: 0.85, stops: 6, hidden: 0, names: '阿桃|仁利|新珍香|湯記|驚嘆號臭豆腐|天下奇冰', upto: 3, already: 2, nameSize: 40, from: 0.1, to: 0.9, beat: 0.1, dim: 0.5 }, at: [0.5, 1.5], bg: '#6b5444' },
   { name: 'mystery', type: 'common.mystery', params: { hint: '老闆只開到下午兩點' }, at: [0.2, 1.5], bg: '#8a6a4a' },
   { name: 'wide-mystery', type: 'common.mystery', at: [1.5], wide: true, bg: '#8a6a4a' },
   { name: 'outro', type: 'common.outro', at: [0.8, 2.95] },

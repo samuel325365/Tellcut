@@ -44,12 +44,12 @@ export function handPose(local: number, dur: number): HandPose {
 
 export const wipe: ItemType<P, S> = {
   type: 'common.wipe', label: '斜切色帶轉場', category: 'moment', kind: 'overlay',
-  doc: '轉場：一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；mode hand 是手遮鏡頭：一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開（換場、轉身、不想被拍）；mode curl 是翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；rev 反著播（一頁蓋回來，雜誌闔上）；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh；mode tiles 是格子拼貼：畫面切成 cols × rows 格，紙色（color，兩種深淺）的格子一塊塊蓋上、正中間蓋滿，再一塊塊翻開，格子之間是 edge 色的細縫（剪貼簿、拼貼、相片牆換頁，配 common.slide；換頁後要留著格縫，用 common.scraps 的 grid）；mode vortex 是字的漩渦：一圈圈 color／edge 兩色相間的字環（words），相鄰兩圈反方向轉、整個慢慢放大，頭尾 0.12 秒淡入淡出、中間蓋滿畫面（城市、潮流、黑白字框的換章，配 common.monoframe）；mode stripes 是多色斜條：colors 幾種顏色（逗號分隔）的斜色條一條接一條掃過去，項目正中間最後一條蓋滿畫面，再一條條掃出去露出新畫面；斜度看 slant（1 左右是 30 度），dir left 從右邊進來（多巴胺配色的換段，最後一個顏色用新段落的底色，配 common.backdrop 的 words）',
+  doc: '轉場：一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；mode hand 是手遮鏡頭：一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開（換場、轉身、不想被拍）；mode curl 是翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；rev 反著播（一頁蓋回來，雜誌闔上）；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh；mode tiles 是格子拼貼：畫面切成 cols × rows 格，紙色（color，兩種深淺）的格子一塊塊蓋上、正中間蓋滿，再一塊塊翻開，格子之間是 edge 色的細縫（剪貼簿、拼貼、相片牆換頁，配 common.slide；換頁後要留著格縫，用 common.scraps 的 grid）；mode vortex 是字的漩渦：一圈圈 color／edge 兩色相間的字環（words），相鄰兩圈反方向轉、整個慢慢放大，頭尾 0.12 秒淡入淡出、中間蓋滿畫面（城市、潮流、黑白字框的換章，配 common.monoframe）；mode stripes 是多色斜條：colors 幾種顏色（逗號分隔）的斜色條一條接一條掃過去，項目正中間最後一條蓋滿畫面，再一條條掃出去露出新畫面；斜度看 slant（上下兩端錯開幾個畫面寬，所以角度跟著畫面比例變：1 在 9:16 約 30 度、1:1 是 45 度、16:9 約 60 度），dir left 從右邊進來（多巴胺配色的換段，最後一個顏色用新段落的底色，配 common.backdrop 的 words）',
   params: [
     { key: 'color', label: '色帶顏色', type: 'color', default: '#ff4f2a', theme: 'palette.accent' },
     { key: 'edge', label: '前緣細線顏色', type: 'color', default: '#f4ecdc', theme: 'palette.paper' },
     { key: 'line', label: '細線粗細（以 1080 短邊計的 px，0＝沒有）', type: 'number', min: 0, max: 60, step: 1, default: 10 },
-    { key: 'slant', label: '斜度（上下兩端錯開幾個畫面寬）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.35 },
+    { key: 'slant', label: '斜度（上下兩端錯開幾個畫面寬）', type: 'number', min: 0, max: 2, step: 0.01, default: 0.35 },
     { key: 'dir', label: '方向（right 從左往右、left 從右往左）', type: 'enum', options: ['right', 'left'], default: 'right' },
     { key: 'mode', label: '樣式（band 斜切色帶、hand 手遮鏡頭、curl 翻頁、tiles 格子拼貼、vortex 字的漩渦、stripes 多色斜條）', type: 'enum', options: ['band', 'hand', 'curl', 'tiles', 'vortex', 'stripes'], default: 'band' },
     { key: 'hand', label: '手的顏色（hand）', type: 'color', default: '#24140f' },
@@ -154,9 +154,10 @@ function drawTiles(p: P, s: S, W: number, H: number, local: number, dur: number)
 
 /** mode stripes at progress u (0–1) for stripe i of n: the stripe's [left, right] across the slanted frame, from -1 (its far left)
  *  to 1; in the first half each right edge sweeps across (later stripes lag, so the last one covers all at the middle), in the second
- *  each left edge does, the last stripe leaving first */
+ *  each left edge does, the last stripe leaving first. The lags and a stripe's sweep add up to exactly one half: with many colours
+ *  the lag shrinks (a sweep never shorter than 0.2 of a half), so the last stripe still arrives at the middle and leaves by the end */
 export function stripeSpan(u: number, i: number, n: number): [number, number] {
-  const lag = 0.11, span = Math.max(0.2, 1 - (n - 1) * lag), io = (x: number) => eIO3(clamp(x));
+  const lag = Math.min(0.11, 0.8 / Math.max(1, n - 1)), span = 1 - (n - 1) * lag, io = (x: number) => eIO3(clamp(x));
   const inP = io((u * 2 - i * lag) / span), outP = io(((u - 0.5) * 2 - (n - 1 - i) * lag) / span);
   return [u < 0.5 ? -2 : -1 + 2 * outP, -1 + 2 * inP];
 }
