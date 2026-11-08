@@ -7,7 +7,7 @@ models/
 /sources/
 __pycache__/
 # personal source switches, keys and contact
-/sources.local.json
+/sources.local.json*
 
 # builds and generated files (a project's cache/, exports/, .history/ are inside projects/, below)
 **/dist/

@@ -14,6 +14,8 @@ test('the sources code is in git, the personal switch file and root sources/ are
   expect(ignored('packages/media-node/src/sources/bbc/card.md')).toBe(false);
   expect(ignored('sources.json')).toBe(false);
   expect(ignored('sources.local.json')).toBe(true);
+  // saveSourceKey's temporary file (every key in it) and its lock
+  expect([ignored('sources.local.json.1234.tmp'), ignored('sources.local.json.lock')]).toEqual([true, true]);
   expect(ignored('sources/input_x/a.mp4')).toBe(true);
 });
 
