@@ -59,7 +59,7 @@ export async function rebuildPlayer(o: { root?: string; build?: (out: string) =>
       const failed = (o.build ?? viteBuild(root))(out);
       if (failed !== null) return stale ? `${stale}（自動建置失敗：${failed}）` : `播放器建置失敗：${failed}`;
       let before: string[] | null = null;
-      try { before = JSON.parse(readFileSync(list, 'utf8')); } catch { /* built by npm run build:player: nothing is known to be old */ }
+      try { before = JSON.parse(readFileSync(list, 'utf8')); } catch { /* no record yet (a dist built before rebuildPlayer wrote .build.json, or none at all): nothing is known to be old */ }
       const made = files(out).filter((f) => f !== 'index.html');
       for (const f of [...made, 'index.html']) {
         if (f !== 'index.html' && same(join(out, f), join(dist, f))) continue;
