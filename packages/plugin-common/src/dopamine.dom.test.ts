@@ -16,6 +16,13 @@ describe('common.popcard', () => {
       [1.5, 'b', 9, { x: 0.5, y: 0.4, zoom: 1.6 }, '包', true, 1.5],
     ]);
   });
+  test('a line with no source is dropped before the lengths: the shot before it runs on to the next; an empty crop part keeps its default', () => {
+    const shots = parseShots('0|a|2|,0.3,1.5|x\n1|||\n2|b|5', 3);
+    expect(shots.map((s) => [s.t, s.source, s.len, s.crop])).toEqual([[0, 'a', 2, { x: 0.5, y: 0.3, zoom: 1.5 }], [2, 'b', 1, { x: 0.5, y: 0.5, zoom: 1 }]]);
+    // the declared piece is as long as the shot shows: to the item's end, not to the dropped line
+    const item = { id: 'c', type: popcard.type, start: 0, end: 3, params: { shots: '0|a|2\n1.5||9' } } as any;
+    expect(popcard.media!(item, {} as any).videos).toEqual([{ source: 'a', in: 2, out: 5, speed: 1, interp: 'none' }]);
+  });
   test('a video for each playing shot, a still for each held one', () => {
     const item = { id: 'c', type: popcard.type, start: 0, end: 3, params: { shots: '0|a|2|0.5,0.5,1|x\n1|b|5|0.5,0.5,1|y|still' } } as any;
     expect(popcard.media!(item, {} as any)).toEqual({ videos: [{ source: 'a', in: 2, out: 3, speed: 1, interp: 'none' }], stills: [{ source: 'b', t: 5, w: 1080 }] });

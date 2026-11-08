@@ -5,7 +5,8 @@
 // mode osd is the overlay over the footage; ff, rew and snow fill the frame. The OSD sits in `box` (the theme's safe area when empty)
 // and sizes by min(W, H); every word on it is a parameter (`words`), the dates are formatted by `dateFormat`. The tape look under it
 // (scanlines, warm cast, tracking bands) is common.film look vhs; the beeps are common.beep kind rec / end, the spool common.rewind.
-import { clamp, coverPlacement, cssCamel, eIO3, eOut3, h, lerp, rng, type Crop, type ItemType } from '@tellcut/engine';
+import { clamp, coverPlacement, cssCamel, eIO3, eOut3, h, lerp, rng, type ItemType } from '@tellcut/engine';
+import { cropOf } from './cells.ts';
 import { trackingBand } from './film.ts';
 import { keysAt } from './geo.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
@@ -164,9 +165,8 @@ export function camBox(box: string, W: number, H: number, safe: { top: number; b
 /** "source|秒|x,y,zoom" lines: the rewind's stills, the latest first */
 export function parseStills(text: string): Still[] {
   return nl(text).split('\n').map((l) => l.split('|').map((x) => x.trim())).filter(([src]) => !!src).map(([source, t, c]) => {
-    const [x, y, zoom] = String(c ?? '').split(',').map((v) => (v.trim() ? Number(v) : NaN));
-    const crop: Crop = { x: Number.isFinite(x) ? x : 0.5, y: Number.isFinite(y) ? y : 0.5, zoom: Number.isFinite(zoom) && zoom > 0 ? zoom : 1 };
-    return { source: source === '-' ? '' : source, t: Number(t) || 0, crop };
+    const [x, y, zoom] = String(c ?? '').split(',').map((v) => v.trim());
+    return { source: source === '-' ? '' : source, t: Number(t) || 0, crop: cropOf({ x, y, zoom }) };
   });
 }
 /** which of n stills shows at q (0..1 of the rewind): each slot shorter than the one before, as the spool spins up */

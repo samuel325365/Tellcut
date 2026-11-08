@@ -6,6 +6,7 @@
 // The page is common.backdrop's pattern words (with bits), the section wipe common.wipe's mode stripes, the titles common.heading's
 // look pop (templates pop, pop-no), "No.1" common.badge's shape box, the captions the template pop-box. Pure functions of time.
 import { clamp, cssCamel, h, type ItemType, type MediaRef, type Project, type SceneItem } from '@tellcut/engine';
+import { cropOf } from './cells.ts';
 
 const lerp = (a: number, b: number, q: number) => a + (b - a) * q;
 
@@ -19,13 +20,14 @@ export function popAt(local: number, at: number, dur = 0.42): number {
 
 // ── common.popcard
 export interface Shot { t: number; source: string; from: number; crop: { x: number; y: number; zoom: number }; label: string; still: boolean; len: number }
-/** "seconds|source|from|x,y,zoom|label|still" lines: seconds from the item's start, each shot running until the next (the last to `dur`) */
+/** "seconds|source|from|x,y,zoom|label|still" lines: seconds from the item's start, each shot running until the next (the last to `dur`);
+ *  a line with no source is dropped before the lengths are worked out, so the shot before it plays on instead of freezing */
 export function parseShots(text: string, dur: number): Shot[] {
   const shots = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const [t, source = '', from, crop, label = '', still] = l.split('|').map((x) => x.trim());
-    const [x, y, zoom] = String(crop || '0.5,0.5,1').split(',').map(Number);
-    return { t: Number(t) || 0, source, from: Number(from) || 0, crop: { x: Number.isFinite(x) ? x : 0.5, y: Number.isFinite(y) ? y : 0.5, zoom: zoom > 0 ? zoom : 1 }, label, still: still === 'still', len: 0 };
-  }).sort((a, b) => a.t - b.t);
+    const [x, y, zoom] = String(crop ?? '').split(',').map((v) => v.trim());
+    return { t: Number(t) || 0, source, from: Number(from) || 0, crop: cropOf({ x, y, zoom }), label, still: still === 'still', len: 0 };
+  }).filter((s) => s.source).sort((a, b) => a.t - b.t);
   shots.forEach((s, i) => { s.len = Math.max(0.05, (i + 1 < shots.length ? shots[i + 1].t : dur) - s.t); });
   return shots;
 }
@@ -62,7 +64,7 @@ export const popcard: ItemType<PP, PS> = {
     { key: 'popAt', label: '彈進來（秒）', type: 'number', min: 0, max: 30, step: 0.05, default: 0 },
   ],
   media(item: SceneItem) {
-    const shots = parseShots(String((item.params as Partial<PP>).shots ?? ''), item.end - item.start).filter((s) => s.source);
+    const shots = parseShots(String((item.params as Partial<PP>).shots ?? ''), item.end - item.start);
     return { videos: shots.filter((s) => !s.still).map(shotRef), stills: shots.filter((s) => s.still).map((s) => ({ source: s.source, t: s.from, w: 1080 })) };
   },
   build(ctx) {
@@ -72,7 +74,7 @@ export const popcard: ItemType<PP, PS> = {
     cssCamel(card, { position: 'absolute', inset: '0', boxSizing: 'border-box' });
     cssCamel(box, { position: 'absolute', overflow: 'hidden', background: '#222' });
     cssCamel(pill, { position: 'absolute', whiteSpace: 'nowrap', fontFamily: SERIF, fontWeight: '900', lineHeight: '1.1', boxSizing: 'border-box' });
-    const shots = parseShots(ctx.params.shots, ctx.dur).filter((s) => s.source);
+    const shots = parseShots(ctx.params.shots, ctx.dur);
     const imgs = shots.map((s) => {
       if (!s.still) return null;
       const im = h('img', null, null, box) as HTMLImageElement;
