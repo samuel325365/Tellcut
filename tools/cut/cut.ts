@@ -221,9 +221,12 @@ export class Cut {
     }
     this.burnedSkips.clear();   // said once, even if save() runs again
   }
+  /** the item's frame (its own, else the panel's with its rounded corners, else the whole screen) and its shape: a shape is in
+   *  fractions of whichever frame that is, so it is kept in all three (the player cuts a full-screen item to it as well) */
   private frameFields(frame?: Frame, shape?: Shape) {
     if (shape !== undefined) checkShape(shape, 'shape');
-    return frame ? { frame, ...(shape ? { shape } : {}) } : this.layout ? { frame: this.layout.frame, radius: this.layout.radius } : {};
+    const cut = shape ? { shape } : {};
+    return frame ? { frame, ...cut } : this.layout ? { frame: this.layout.frame, radius: this.layout.radius, ...cut } : cut;
   }
   /** a transition overlaps the previous clip by its own length: it stays linked to the overlap */
   private startFor(tr?: Transition) { return tr ? r6(Math.max(0, this.cursor - tr.dur)) : this.cursor; }
@@ -238,7 +241,7 @@ export class Cut {
     const s = this.src(source), crop0 = cropOf(o.crop, `c.clip('${source}')`);
     if (s.kind === 'image') {
       // a photo among clips (a recipe's shot list): its crop / focus is kept, not dropped
-      const id = this.photo(source, { len: o.len, transition: o.transition, frame: o.frame });
+      const id = this.photo(source, { len: o.len, transition: o.transition, frame: o.frame, shape: o.shape });
       if (crop0) (this.p.tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as { crop: unknown }).crop = crop0;
       return id;
     }

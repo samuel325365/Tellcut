@@ -211,6 +211,23 @@ test('clip and photo take a frame of their own (a window of a postcard or a TV),
   expect(v1.find((i) => i.id === d).frame).not.toEqual([0.1, 0.2, 0.5, 0.3]);   // the panel's frame again
 });
 
+test('a shape is kept with every frame: its own, the panel\'s, the whole screen, and on a photo given to clip()', () => {
+  const shape: Array<[number, number]> = [[0, 0], [1, 0], [1, 0.9], [0, 1]];
+  const c = fresh();
+  const full = c.clip('v', { from: 0, len: 1, shape }), ph = c.clip('ph', { len: 1, shape }), own = c.photo('ph', { len: 1, frame: [0, 0, 0.5, 0.5], shape });
+  c.panel({ frame: [0.05, 0.2, 0.9, 0.5], radius: 20 });
+  const inPanel = c.clip('v', { from: 1, len: 1, shape }), photoInPanel = c.photo('ph', { len: 1, shape });
+  const v1 = items(c, 'v1'), of = (id: string) => v1.find((i) => i.id === id);
+  expect(of(full)).toMatchObject({ shape });
+  expect(of(full).frame).toEqual([0, 0, 1, 1]);   // the whole screen (the schema's default frame), the shape in its fractions
+  expect(of(ph)).toMatchObject({ source: 'ph', shape });
+  expect(of(own)).toMatchObject({ frame: [0, 0, 0.5, 0.5], shape });
+  for (const id of [inPanel, photoInPanel]) expect(of(id)).toMatchObject({ frame: [0.05, 0.2, 0.9, 0.5], radius: 20, shape });
+  // and the project still reads: a full-screen item with a shape is a valid one
+  expect(() => parseProject(c.p)).not.toThrow();
+  expect(() => c.clip('ph', { len: 1, shape: [[0, 0], [1, 1]] as any })).toThrow(/至少三個角/);
+});
+
 test('bands: a landscape shot as three cinemascope bands stacked in a tall film, one a beat, ending together, without sound', () => {
   const c = fresh();
   c.p.meta.width = 1080; c.p.meta.height = 1920;
