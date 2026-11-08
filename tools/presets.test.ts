@@ -273,6 +273,10 @@ test('the card styles build on the 3D desk, never the old flat postcard or frame
     for (const old of ['common.postcard', 'common.frame', 'postcardWindow', 'frameWindow']) expect(st.prompt, `${p}.${id} ${old}`).not.toContain(old);
     for (const l of ['zh', 'en', 'ja'] as const) expect(st.desc[l], `${p}.${id} desc.${l}`).toBeTruthy();
   }
+  // no other style of any preset points at the hidden blocks either (a look's prompt once still sent the home video into "a frame look tv window")
+  for (const p of presets()) for (const st of p.styles) {
+    for (const old of ['common.postcard', 'common.frame', 'postcardWindow', 'frameWindow', 'look tv', 'frame look']) expect(st.prompt, `${p.id}.${st.id} ${old}`).not.toContain(old);
+  }
 });
 
 // c.flatlayClip holds the main track from the object's arrival to the desk item's end: the prompts say how to use that

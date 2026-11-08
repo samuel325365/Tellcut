@@ -72,24 +72,24 @@
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/readme/watch.jpg" alt="It watches every clip."><br>
+      <img src="docs/readme/watch.jpg" alt="每段素材都看過。"><br>
       <strong>每一段素材都看過。</strong><br>
       把影片切成場景、做縮圖總覽、把講話轉成逐字稿，也會找出原片自己燒進去的字幕和浮水印。
     </td>
     <td width="50%" valign="top">
-      <img src="docs/readme/beat.jpg" alt="Captions and music, on the beat."><br>
+      <img src="docs/readme/beat.jpg" alt="字幕和音樂，都踩在節拍上。"><br>
       <strong>字幕和配樂，都對在拍子上。</strong><br>
-      內建 130 多種現成的畫面效果和音效，配樂依片長自動作曲；也能照影片的語言加旁白，字幕自動對齊。現成的不夠用時，Agent 會替這支片寫專屬的效果，你還可以<a href="#每剪一支下一支更快">留下來</a>給下一支用。
+      內建 160 多種現成的畫面效果和音效，配樂依片長自動作曲；也能照影片的語言加旁白，字幕自動對齊。現成的不夠用時，Agent 會替這支片寫專屬的效果，你還可以<a href="#每剪一支下一支更快">留下來</a>給下一支用。
     </td>
   </tr>
   <tr>
     <td valign="top">
-      <img src="docs/readme/ratio.jpg" alt="Vertical. Landscape. Square."><br>
+      <img src="docs/readme/ratio.jpg" alt="直式、橫式、方形。"><br>
       <strong>直式、橫式、方形。</strong><br>
       輸出 9:16、16:9、1:1、4:5 的 MP4；橫式素材改成直式時，會跟著人臉取景。
     </td>
     <td valign="top">
-      <img src="docs/readme/check.jpg" alt="It checks its own work."><br>
+      <img src="docs/readme/check.jpg" alt="自己檢查自己的成品。"><br>
       <strong>交給你之前，先自己檢查。</strong><br>
       黑畫面、字幕對不上講話、字跑出畫面、爆音、原片的字露出來，Agent 會先找出來自己修。
     </td>
