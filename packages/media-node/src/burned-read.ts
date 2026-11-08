@@ -45,8 +45,8 @@ async function cutCrops(src: string, jobs: Array<{ at: number; filter: string; o
 /**
  * `b` with its text pieces read by text recognition (settleText), the crops cut from `video` (the proxy): enlarged three times
  * when it is up to 600 px high, twice up to 1080. Never
- * fails for want of OCR: with none (no OCR language, no swiftc on a Mac) or when it breaks, the pieces stay guesses and `ocr`
- * says why. Only an abort is thrown.
+ * fails for want of OCR: with none (no OCR language, no swiftc on a Mac) or when it breaks or runs out of time (the providers'
+ * ocrTimeout), the pieces stay guesses and `ocr` says why; sourceExtras reads such a result again next time. Only an abort is thrown.
  */
 export async function readBurnedText(video: string, b: Burned, o: { ocr?: OcrProvider; signal?: AbortSignal } = {}): Promise<Burned> {
   const text = b.text ?? [];

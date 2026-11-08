@@ -1,11 +1,12 @@
-import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, linkSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { correctBeats, EXTRAS_VERSION, extrasDone, extrasFiles, musicBeats, overviewSheets, overviewTimes, photoSheet, sheetTimes, sourceExtras, timecode, timecode1 } from './extras.ts';
 import { analyzeSource } from './analysis.ts';
 import { ffmpeg } from './ffmpeg.ts';
 import { makeClicks, makePhoneVideo, makeTalkingVideo } from './test-media.ts';
-import { fakeTranscribe } from './providers/fake.ts';
+import { fakeOcr, fakeTranscribe } from './providers/fake.ts';
+import type { OcrProvider } from './providers/types.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'extras-'));
 
@@ -126,6 +127,28 @@ test('a new EXTRAS_VERSION makes the sheets and the burned-caption check again (
   writeFileSync(f.version, 'x0');
   await sourceExtras(d, v, { label: 'v', stt });
   expect([JSON.parse(readFileSync(f.sheets, 'utf8')).pages, readFileSync(f.version, 'utf8'), stt.calls.length]).toEqual([1, EXTRAS_VERSION, 1]);
+}, 120000);
+
+test('a burned check whose text could not be read is read again next time, the detection kept and a linked copy left alone', async () => {
+  const d = mkdtempSync(join(tmpdir(), 'extras-ocr-')), v = await makePhoneVideo(join(d, 'v.mp4')), stt = fakeTranscribe();
+  await sourceExtras(d, v, { label: 'v', stt, ocr: fakeOcr() });
+  const f = extrasFiles(d, v), sibling = join(d, 'sibling-burned.json');
+  // a failed reading as saved (no OCR language then); frames 777 marks it as this file, not a new detection
+  const failed = { version: 1, step: 0.5, frames: 777, caption: null, text: [{ span: [0, 1], rect: [0.1, 0.1, 0.3, 0.1], band: 'top' }], ocr: { ok: false, why: '沒有 zh-Hant-TW 的文字辨識' } };
+  writeFileSync(f.burned, JSON.stringify(failed));
+  linkSync(f.burned, sibling);   // another project sharing it (share.ts)
+  const broken: OcrProvider = { ...fakeOcr(), read: async () => { throw new Error('沒有 zh-Hant-TW 的文字辨識'); } };
+  const before = statSync(f.burned).mtimeMs;
+  await sourceExtras(d, v, { label: 'v', stt, ocr: broken });
+  expect(statSync(f.burned).mtimeMs).toBe(before);   // the same failure: left alone
+  const ocr = fakeOcr({ '0-0.png': 'Trevi Fountain' });
+  await sourceExtras(d, v, { label: 'v', stt, ocr });
+  const b = JSON.parse(readFileSync(f.burned, 'utf8'));
+  expect([b.frames, b.ocr, b.text[0].words, ocr.calls.length]).toEqual([777, { ok: true }, 'Trevi Fountain', 1]);
+  expect(JSON.parse(readFileSync(sibling, 'utf8')).ocr.ok).toBe(false);   // replaced, not rewritten through the link
+  const again = fakeOcr();
+  await sourceExtras(d, v, { label: 'v', stt, ocr: again });
+  expect(again.calls).toEqual([]);   // read once it worked: never again
 }, 120000);
 
 test('correctBeats halves a doubled tempo and fills in a halved one, and leaves a close one alone', () => {

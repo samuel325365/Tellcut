@@ -14,7 +14,7 @@ import { background } from './limit.ts';
 import { isImagePath } from './probe.ts';
 import { runPy } from './py.ts';
 import { transcribeProvider } from './providers/index.ts';
-import type { TranscribeProvider } from './providers/types.ts';
+import type { OcrProvider, TranscribeProvider } from './providers/types.ts';
 import { lockHolder, withLock } from './locks.ts';
 import { labelFolder, shareFolder, siblingFolders } from './share.ts';
 import { replaceFile } from './fsutil.ts';
@@ -110,7 +110,7 @@ const makerOf = (stt: TranscribeProvider) => (stt.model ? `${stt.id}:${stt.model
  * since when) while another process makes it — the server starts it when a project is made, and the page chat's inspect must
  * not run a second one beside it. The basic analysis comes first (spec 2026-10-14 §7).
  */
-export async function sourceExtras(projectDir: string, srcPath: string, o: { label: string; transcribe?: boolean; signal?: AbortSignal; onStep?: (step: string, i: number, n: number) => void; /** a test's stand-in (default: tellcut/providers.json's) */ stt?: TranscribeProvider }): Promise<{ transcribing?: { started: number } }> {
+export async function sourceExtras(projectDir: string, srcPath: string, o: { label: string; transcribe?: boolean; signal?: AbortSignal; onStep?: (step: string, i: number, n: number) => void; /** a test's stand-ins (default: tellcut/providers.json's) */ stt?: TranscribeProvider; ocr?: OcrProvider }): Promise<{ transcribing?: { started: number } }> {
   if (isImagePath(srcPath)) return {};
   let busy: { started: number } | null = null;
   const a = await analyzeSource(projectDir, srcPath, { signal: o.signal });
@@ -138,9 +138,9 @@ export async function sourceExtras(projectDir: string, srcPath: string, o: { lab
     if (!existsSync(f.burned)) {   // captions burned into the picture (toolkit phase 2d); quick, so before the transcript
       o.onStep?.('burned', 1, 3);
       // the other text found is then read (burned-read.ts): what reads as nothing is a guess, not listed one by one
-      try { await atomic(f.burned, async (tmp) => writeFileSync(tmp, JSON.stringify(await readBurnedText(a.proxy, await detectBurned(a.proxy, { signal: o.signal }), { signal: o.signal })))); }
+      try { await atomic(f.burned, async (tmp) => writeFileSync(tmp, JSON.stringify(await readBurnedText(a.proxy, await detectBurned(a.proxy, { signal: o.signal }), { ocr: o.ocr, signal: o.signal })))); }
       catch (err) { if (o.signal?.aborted) throw err; /* optional: the transcript below still runs */ }
-    }
+    } else await rereadBurned(f.burned, a.proxy, o);
     mkdirSync(dirname(f.version), { recursive: true });
     replaceFile(f.version, EXTRAS_VERSION);
     // which speech-to-text tool answers is tellcut/providers.json's business (toolkit phase 3); a transcript another tool or model
@@ -157,6 +157,23 @@ export async function sourceExtras(projectDir: string, srcPath: string, o: { lab
     }
   });
   return busy ? { transcribing: busy } : {};
+}
+
+/**
+ * A saved burned check whose text could not be read then (no OCR language yet, OCR broke or ran out of time) is read again: only
+ * the reading, the detection kept as it is (a failed reading left its pieces and caption untouched: settleText). Still failing
+ * with the same reason, the file is left alone. The file is replaced, never rewritten in place: another project sharing it by a
+ * hard link (share.ts) keeps its own copy, and reads it again itself.
+ */
+async function rereadBurned(file: string, proxy: string, o: { ocr?: OcrProvider; signal?: AbortSignal; onStep?: (step: string, i: number, n: number) => void }) {
+  let saved: Burned;
+  try { saved = JSON.parse(readFileSync(file, 'utf8')) as Burned; } catch { return; }
+  if (saved.ocr?.ok !== false) return;
+  o.onStep?.('burned', 1, 3);
+  try {
+    const b = await readBurnedText(proxy, saved, { ocr: o.ocr, signal: o.signal });
+    if (b.ocr?.ok !== false || b.ocr.why !== saved.ocr.why) replaceFile(file, JSON.stringify(b));
+  } catch (err) { if (o.signal?.aborted) throw err; /* optional, as when it was first made */ }
 }
 
 /** Sheets made and, for a video with sound, the transcript too. */
