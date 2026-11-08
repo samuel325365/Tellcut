@@ -10,6 +10,7 @@ const layer = (id: string) => carto.tileLayers!.find((l) => l.id === id)!;
 test('carto urls carry the key and ask for @2x tiles, z/x/y', () => {
   expect(layer('dark').url(12, 2286, 1388, 'K')).toBe('https://basemaps.cartocdn.com/rastertiles/dark_all/12/2286/1388@2x.png?key=K');
   expect(layer('light').url(3, 1, 2, 'K')).toBe('https://basemaps.cartocdn.com/rastertiles/light_all/3/1/2@2x.png?key=K');
+  expect(layer('light').url(3, 1, 2, 'a&b=c#d')).toBe('https://basemaps.cartocdn.com/rastertiles/light_all/3/1/2@2x.png?key=a%26b%3Dc%23d');   // encoded
   expect(layer('voyager').url(3, 1, 2, 'K')).toBe('https://basemaps.cartocdn.com/rastertiles/voyager/3/1/2@2x.png?key=K');
 });
 

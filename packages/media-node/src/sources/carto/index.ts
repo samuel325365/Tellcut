@@ -10,7 +10,7 @@ import type { SourceAdapter, TileLayer } from '../types.ts';
 
 const STYLES: Array<[string, string, string]> = [['light', 'light_all', 'Carto 淺色街道圖'], ['dark', 'dark_all', 'Carto 深色街道圖'], ['voyager', 'voyager', 'Carto 彩色街道圖']];
 export const CARTO_LAYERS: TileLayer[] = STYLES.map(([id, path, label]) => ({
-  id, label, url: (z, x, y, key) => `https://basemaps.cartocdn.com/rastertiles/${path}/${z}/${x}/${y}@2x.png?key=${key ?? ''}`,
+  id, label, url: (z, x, y, key) => `https://basemaps.cartocdn.com/rastertiles/${path}/${z}/${x}/${y}@2x.png?key=${encodeURIComponent(key ?? '')}`,
   ext: '.png', tileSize: 512, maxZoom: 20, cacheDays: 30,
   attribution: '© OpenStreetMap contributors, © CARTO', license: 'CARTO Basemap Terms', licenseUrl: 'https://carto.com/legal/basemap-terms/', page: 'https://carto.com/attribution/',
 }));
