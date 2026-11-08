@@ -428,3 +428,18 @@ test("flatlayClip ends when its object has left the desk", () => {
   expect(flatlayClip(none, 1, 1920, 1080, W, H, 6)).toMatchObject({ at: 2.5, len: 3.8 - 2.5, from: 3 + 1.5 });
   expect(flatlayClip({ ...none, fly: { index: 1, at: 1.5, dur: 1, back: 3.2 } }, 1, 1920, 1080, W, H, 6)!.len).toBeCloseTo(0.7, 9);
 });
+
+test("ready() loads a Chinese and Japanese serif for the printed words, for every word painted, with or without three.js", async () => {
+  const load = vi.fn(async () => []);
+  Object.defineProperty(document, 'fonts', { value: { load }, configurable: true });
+  try {
+    const objects = JSON.stringify([{ kind: 'postcard', place: '特雷維噴泉', year: '令和六年', mark: 'roma|羅馬|五月', back: '0-1|謝謝你' }, { kind: 'tv', caption: 'sunrise' }]);
+    for (const kit of [dofKit(), undefined]) {
+      load.mockClear();
+      await built({ objects }, { kit });
+      const printed = (load.mock.calls as unknown as Array<[string, string]>).filter(([f]) => /Noto Serif TC/.test(f));
+      expect(printed.length).toBeGreaterThanOrEqual(3);
+      for (const [, text] of printed) for (const want of ['特雷維噴泉', '令和六年', 'ROMA', '羅馬', '五月', 'SUNRISE', '謝謝你']) expect(text).toContain(want);
+    }
+  } finally { delete (document as any).fonts; }
+});

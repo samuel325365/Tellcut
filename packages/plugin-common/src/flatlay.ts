@@ -10,7 +10,7 @@
 import type * as T from 'three';
 import { clamp, coverPlacement, type Crop, type ItemCtx, type ItemType, type MediaRef, type ParamDef, type Project, type StillRef } from '@tellcut/engine';
 import { cellLive, cellRef, type CellShot } from './cells.ts';
-import { HAND, LATIN } from './hand.ts';
+import { HAND } from './hand.ts';
 import { imagesReady } from './window.ts';
 import type { ThreeKit } from './three/kit.ts';
 import { cameraPose, flyCover, flyCrop, PIC_LIFT, posed, type CameraMode, type Fly } from './flatlay/camera.ts';
@@ -18,7 +18,7 @@ import { lightRig } from './flatlay/light.ts';
 import { atRest, contactShadow, REST_Z, viewHalf, type Pose } from './flatlay/motion.ts';
 import { EXIT_DUR, faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
-import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintFront, paintPlaceholder, type Word } from './flatlay/paper.ts';
+import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintedText, paintFront, paintPlaceholder, PRINT, type Word } from './flatlay/paper.ts';
 import { paintGobo, paintSurface, SURFACE_LOOK, type Surface } from './flatlay/surface.ts';
 
 export type { FlatlayParams } from './flatlay/objects.ts';
@@ -434,13 +434,13 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     scene.add(spot, spot.target, s.sky);
     const shadowTex = own(s, canvasTex(THREE, shadowCanvas(), false)), shadowGeo = own(s, new THREE.PlaneGeometry(1, 1));
     s.items = objs.map((o) => makeThing(s, THREE, o, ctx, shadowTex, shadowGeo));
-    s.fontsText = objs.map((o) => [o.place, o.year, o.caption, o.caption.toUpperCase(), ...o.back.map((l) => l.text), o.mark ? `${o.mark.top.toUpperCase()}${o.mark.bottom}${o.mark.date}` : ''].join('')).join('');
+    s.fontsText = paintedText(objs);
     return s;
   },
   async ready(s) {
     if (typeof document !== 'undefined' && document.fonts) {
       const text = s.fontsText || 'Aa';
-      await Promise.all([`italic 500 40px ${LATIN}`, `500 40px ${LATIN}`, `600 40px ${LATIN}`, `40px '${HAND}'`].map((f) => document.fonts.load(f, text).catch(() => [])));
+      await Promise.all([`italic 500 40px ${PRINT}`, `500 40px ${PRINT}`, `600 40px ${PRINT}`, `40px '${HAND}'`].map((f) => document.fonts.load(f, text).catch(() => [])));
     }
     const imgs = [...s.items.flatMap((t) => [t.still, t.stamp]), ...(s.flat ?? []).map((t) => t.still)].filter((i): i is HTMLImageElement => !!i);
     try { await imagesReady(imgs); } catch { /* no decode() here (tests): the pictures show once they load */ }
@@ -504,7 +504,7 @@ function buildFlat(ctx: ItemCtx<FlatlayParams>, c: HTMLCanvasElement, holder: HT
     return { o, size, source, flipX: size.w >= size.h, front: paintFront(o).canvas, placeholder: paintPlaceholder(Math.round(pw * size.w * 400), Math.round(ph * size.h * 400)), still, back: null, backKey: '' };
   });
   return { c, holder, three: null!, scene: null!, camera: null!, spot: null!, sky: null!, gobo: null, items: [], fly, mode: 'still', topAt: null, surface, side: 'left',
-    warmth: 'afternoon', dof: 0, error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, v3: null!, lastDof: null, fontsText: objs.map((o) => [o.place, o.year, o.caption, ...o.back.map((l) => l.text)].join('')).join(''), flat };
+    warmth: 'afternoon', dof: 0, error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, v3: null!, lastDof: null, fontsText: paintedText(objs), flat };
 }
 
 function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {

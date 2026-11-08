@@ -4,7 +4,7 @@
 // its time), and the stand-in picture (a sunset over the sea) for a face with no footage. Each painter also returns where its words
 // are, as fractions of the object, so the block can report them to check. 1000 px a desk unit.
 import { clamp, rng } from '@tellcut/engine';
-import { handFamily, LATIN } from '../hand.ts';
+import { handFamily } from '../hand.ts';
 import { sentenceCps } from '../handwrite.ts';
 import { sizeOf, type Obj } from './objects.ts';
 
@@ -43,6 +43,14 @@ export type Make = (w: number, h: number) => HTMLCanvasElement;
 const blank: Make = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 
 const HAND = handFamily('');
+/** the printed words (a postcard's place and year, the TV's brand, the postmark): a Latin serif, then a serif with Chinese and
+ *  Japanese, both declared by the player (fonts.css), so a place name in Chinese looks the same on every machine */
+export const PRINT = "'Cormorant Garamond', 'Noto Serif TC', serif";
+
+/** every character the objects may paint, for loading their fonts before painting (the block's ready()) */
+export function paintedText(objs: Obj[]): string {
+  return objs.map((o) => [o.place, o.year, o.caption, o.caption.toUpperCase(), ...o.back.map((l) => l.text), o.mark ? `${o.mark.top.toUpperCase()}${o.mark.bottom}${o.mark.date}` : ''].join('')).join('');
+}
 const INK = '#34344c', SEPIA = '#6b5a48';
 
 /** paper: a base colour, soft blots, short fibres and fine dots from the object's seed */
@@ -85,7 +93,7 @@ export function paintFront(o: Obj, make: Make = blank): Painted {
     for (const ky of [0.3, 0.52]) { const gr = g.createRadialGradient(kx - 8, ky * h - 8, 4, kx, ky * h, 52); gr.addColorStop(0, '#d9cbb4'); gr.addColorStop(1, '#5c4a38'); g.fillStyle = gr; g.beginPath(); g.arc(kx, ky * h, 50, 0, 7); g.fill(); }
     g.fillStyle = 'rgba(15,10,6,.7)';
     for (let i = 0; i < 9; i++) g.fillRect(kx - 70, h * 0.66 + i * 22, 140, 9);
-    if (o.caption) { g.fillStyle = '#e8d9bd'; g.font = `600 ${44}px ${LATIN}`; words.push(word(g, o.caption.toUpperCase(), px * w + (pw * w) / 2, bottom + 98, 44, w, h, 'center')); }
+    if (o.caption) { g.fillStyle = '#e8d9bd'; g.font = `600 ${44}px ${PRINT}`; words.push(word(g, o.caption.toUpperCase(), px * w + (pw * w) / 2, bottom + 98, 44, w, h, 'center')); }
     return { canvas: c, words };
   }
   if (o.kind === 'photo') {
@@ -103,9 +111,9 @@ export function paintFront(o: Obj, make: Make = blank): Painted {
   paper(g, w, h, o.kind === 'polaroid' ? '#fbf9f3' : '#f6f1e6', o.seed);
   if (o.kind === 'postcard') {
     const strip = h - bottom, size = Math.round(strip * 0.42);
-    g.fillStyle = SEPIA; g.font = `italic 500 ${size}px ${LATIN}`;
+    g.fillStyle = SEPIA; g.font = `italic 500 ${size}px ${PRINT}`;
     if (o.place) words.push(word(g, o.place, px * w + 6, bottom + strip * 0.68, size, w, h));
-    g.fillStyle = 'rgba(107,90,72,.7)'; g.font = `500 ${Math.round(size * 0.58)}px ${LATIN}`;
+    g.fillStyle = 'rgba(107,90,72,.7)'; g.font = `500 ${Math.round(size * 0.58)}px ${PRINT}`;
     if (o.year) words.push(word(g, o.year, (px + pw) * w - 6, bottom + strip * 0.66, Math.round(size * 0.58), w, h, 'right'));
   } else if (o.caption) {
     const strip = h - bottom, size = Math.round(Math.min(64, strip * 0.4));
@@ -127,9 +135,9 @@ function postmark(g: CanvasRenderingContext2D, cx: number, cy: number, rad: numb
       g.save(); g.rotate(top ? a : -a); g.translate(0, top ? -r : r); g.textAlign = 'center'; g.fillText(ch, 0, top ? 0 : rad * 0.12); g.restore();
     });
   };
-  g.font = `600 ${Math.round(rad * 0.24)}px ${LATIN}, ${HAND}`;
+  g.font = `600 ${Math.round(rad * 0.24)}px ${PRINT}`;
   arc(m.top.toUpperCase(), rad * 0.72, true); arc(m.bottom, rad * 0.72, false);
-  g.font = `600 ${Math.round(rad * 0.2)}px ${LATIN}`; g.textAlign = 'center'; g.fillText(m.date, 0, rad * 0.07);
+  g.font = `600 ${Math.round(rad * 0.2)}px ${PRINT}`; g.textAlign = 'center'; g.fillText(m.date, 0, rad * 0.07);
   g.restore();
 }
 
