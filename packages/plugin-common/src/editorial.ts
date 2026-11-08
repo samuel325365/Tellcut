@@ -12,6 +12,7 @@
 import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
+import { graphemes } from './text.ts';
 
 const DISPLAY = 'Playfair Display', SERIF = 'Noto Serif TC';
 const disp = (px: number, w = 900, it = false) => `${it ? 'italic ' : ''}${w} ${px}px "${DISPLAY}", "${SERIF}", serif`;
@@ -50,9 +51,8 @@ const stillMedia = (item: SceneItem) => {
 
 /** how many of the masthead's letters show at `local`: one every 0.07 s from the start */
 export const typedLetters = (local: number, count: number) => (local < 0 ? 0 : Math.min(count, Math.floor(local / 0.07) + 1));
-const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-/** the letters as they are typed: graphemes, not code points, so a flag or an emoji joined by ZWJ comes in whole (as progress.osdShown) */
-export const graphemes = (text: string) => [...GRAPHEMES.segment(String(text ?? ''))].map((x) => x.segment);
+/** the letters as they are typed: graphemes (text.ts), so a flag or an emoji joined by ZWJ comes in whole, as in progress.osdShown */
+export { graphemes };
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 /** the front cover's italic line in two: its words half and half; a line with no spaces in Chinese, Japanese or Korean is cut in the
  *  middle between its characters when it is wider than `room` (`width` measures a line) */

@@ -40,7 +40,7 @@ export const STYLES: Sample[] = [
   // settling and settled, the band, the slanted 3 and 2
   { name: 'grade', type: 'common.grade', params: { steps: '0|mono' }, len: 2, at: [1.0], bg: '#3a7bd5' },
   { name: 'grade-bw', type: 'common.grade', params: { steps: '0|bw' }, len: 2, at: [1.0], bg: '#3a7bd5' },
-  { name: 'wash', type: 'common.wash', len: 2, at: [1.0], bg: '#d9d9d9' },
+  { name: 'wash', type: 'common.wash', params: { steps: '0|mono' }, len: 2, at: [1.0], bg: '#d9d9d9' },
   { name: 'viewfinder', type: 'common.viewfinder', len: 3, at: [1.5], bg: '#4a6b7c' },
   { name: 'echo', type: 'common.echo', params: { word: 'RIDE', label: '01' }, len: 2, at: [0.1, 1.0], bg: '#4a6b7c' },
   { name: 'echo-mono', type: 'common.echo', params: { word: 'WALK', steps: '0|mono' }, len: 2, at: [1.0], bg: '#ff5a1f' },

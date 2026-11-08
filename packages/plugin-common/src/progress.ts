@@ -11,7 +11,7 @@
 import { clamp, cssCamel, eIO3, eOut3, h, lerp, prog, textEm, type ItemType } from '@tellcut/engine';
 import { backOut, handCircle, handFamily, handPath, tick } from './hand.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
-import { fitPx, EMOJI_STACK } from './text.ts';
+import { fitPx, EMOJI_STACK, graphemes } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
@@ -316,12 +316,11 @@ export function osdState(fills: Array<number | null>, local: number): { done: nu
   return { done, last, blink: done === fills.length && since < 1.2 && Math.floor(since * 5) % 2 === 1 };
 }
 
-const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 /** osd mode: how much of `word` is typed `a` seconds after its tick, one character every 0.045 s and at least one. Counted in
  *  graphemes, not UTF-16 units or code points: a slice of the string would cut an emoji in half, and one made of several joined
  *  by ZWJ (a family, a flag) would come in piece by piece. */
 export function osdShown(word: string, a: number): string {
-  return [...GRAPHEMES.segment(word)].slice(0, Math.max(1, Math.ceil(a / 0.045))).map((x) => x.segment).join('');
+  return graphemes(word).slice(0, Math.max(1, Math.ceil(a / 0.045))).join('');
 }
 
 /** osd mode: the item whose name is typed under the boxes at `local` — the one ticked last, for `hold` seconds — or −1 */

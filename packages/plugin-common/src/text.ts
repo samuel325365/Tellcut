@@ -60,3 +60,8 @@ export function ghostLines(layer: HTMLElement, lines: Array<GhostLine | null>) {
   while (layer.children.length < lines.length) abs(layer);
   [...layer.children].forEach((el, i) => ghostLine(el as HTMLElement, lines[i]));
 }
+
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+/** a text's letters as the eye counts them: graphemes, not UTF-16 units or code points, so typing it out never cuts an emoji in half
+ *  and one made of several joined by ZWJ (a family, a flag) comes in whole */
+export const graphemes = (text: string) => [...GRAPHEMES.segment(String(text ?? ''))].map((x) => x.segment);
