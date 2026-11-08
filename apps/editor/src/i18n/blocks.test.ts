@@ -26,6 +26,13 @@ describe('block texts', () => {
     }
   });
 
+  it('no entry is left over from a block renamed or retired, and English and Japanese have the same keys', () => {
+    const known = new Set(ids);
+    expect(Object.keys(BLOCKS_EN).filter((k) => !known.has(k))).toEqual([]);
+    expect(Object.keys(BLOCKS_JA).filter((k) => !known.has(k))).toEqual([]);
+    expect(Object.keys(BLOCKS_JA).sort()).toEqual(Object.keys(BLOCKS_EN).sort());
+  });
+
   it('every category and group has its name in the dictionaries', () => {
     const keys = [...Object.keys(BLOCK_CATEGORY).map((k) => `cat.block.${k}`), ...Object.keys(SFX_CATEGORY).map((k) => `cat.sfx.${k}`), ...Object.keys(PLUGIN_GROUP).map((k) => `group.${k}`)];
     for (const k of keys) for (const d of Object.values(DICTS)) expect((d as Record<string, string>)[k as Key], k).toBeTruthy();

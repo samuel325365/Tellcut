@@ -30,6 +30,14 @@ test('every shared block parameter has an English and a Japanese name', () => {
   expect(missing).toEqual([]);
 });
 
+test('no entry is left over from a parameter renamed or removed, and English and Japanese have the same keys', () => {
+  const keys = new Set<string>();
+  for (const p of plugins) for (const o of [...(p.items ?? []), ...(p.sfx ?? [])]) for (const d of o.params ?? []) keys.add(`${o.type}.${d.key}`);
+  expect(Object.keys(PARAMS_EN).filter((k) => !keys.has(k))).toEqual([]);
+  expect(Object.keys(PARAMS_JA).filter((k) => !keys.has(k))).toEqual([]);
+  expect(Object.keys(PARAMS_JA).sort()).toEqual(Object.keys(PARAMS_EN).sort());
+});
+
 test('paramText falls back', () => {
   expect(paramText('common.slam', 'size', '字級（畫面高 %）', 'zh')).toEqual({ name: '字級', hint: '畫面高 %' });
   expect(paramText('common.slam', 'size', '字級（畫面高 %）', 'en').name).toBe(PARAMS_EN['common.slam.size'].name);
