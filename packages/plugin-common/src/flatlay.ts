@@ -13,9 +13,9 @@ import { cellLive, cellRef, type CellShot } from './cells.ts';
 import { HAND, LATIN } from './hand.ts';
 import { imagesReady } from './window.ts';
 import type { ThreeKit } from './three/kit.ts';
-import { cameraPose, flyCover, flyCrop, PIC_LIFT, type CameraMode, type Fly } from './flatlay/camera.ts';
+import { cameraPose, flyCover, flyCrop, PIC_LIFT, posed, type CameraMode, type Fly } from './flatlay/camera.ts';
 import { lightRig } from './flatlay/light.ts';
-import { atRest, contactShadow, objectPose, REST_Z, viewHalf, type Pose } from './flatlay/motion.ts';
+import { atRest, contactShadow, REST_Z, viewHalf, type Pose } from './flatlay/motion.ts';
 import { faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
 import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintFront, paintPlaceholder, type Word } from './flatlay/paper.ts';
@@ -257,7 +257,7 @@ function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
   s.camera.fov = cam.fov; s.camera.aspect = W / H; s.camera.position.set(...cam.pos); s.camera.up.set(...cam.up); s.camera.lookAt(...cam.look);
   s.camera.updateProjectionMatrix();
   s.items.forEach((t, i) => {
-    const p = objectPose(t.o, i, local, W, H);
+    const p = posed(t.o, i, s.fly, local, W, H);
     t.pose = p.visible ? p : null;
     t.group.visible = p.visible; t.shadow.visible = p.visible;
     if (!p.visible) return;
@@ -504,7 +504,7 @@ function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {
   if (s.surface !== 'none') { g.fillStyle = SURFACE_LOOK[s.surface].base; g.fillRect(0, 0, W, H); }
   const k = W / (2 * viewHalf(W, H)[0]);
   flat.forEach((t, i) => {
-    const p = objectPose(t.o, i, local, W, H);
+    const p = posed(t.o, i, s.fly, local, W, H);
     if (!p.visible) return;
     // nearer the eye only while lifted above where it rests (a sheet lying high on the pile is not bigger)
     const { w, h, pic } = t.size, ow = w * k, oh = h * k, lift = 1 + Math.max(0, p.z - (t.o.rest ?? REST * (i + 1))) * 0.3, turn = Math.max(0.02, Math.abs(Math.cos(p.flip)));

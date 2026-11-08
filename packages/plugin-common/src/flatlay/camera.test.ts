@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { coverPlacement, type Crop } from '@tellcut/engine';
-import { cameraPose, flyCover, flyCrop, picWorld, type Fly } from './camera.ts';
+import { cameraPose, flyCover, flyCrop, picWorld, posed, type Fly } from './camera.ts';
 import { objectPose } from './motion.ts';
 import { parseObjects, sizeOf } from './objects.ts';
 
@@ -112,4 +112,19 @@ test('focus follows the newest object, or the one flown into', () => {
   const fly: Fly = { index: 0, at: 4, dur: 1, back: null, backDur: 1 };
   const p = at(4.5, { ...PUSH, fly });
   expect(p.focus).toBeCloseTo(toObj(p, 0), 1);
+});
+
+test('a fly into a turned-over object turns it face up, so the camera meets its picture', () => {
+  const W = 1080, H = 1920, list = objs('[{"kind":"postcard","flipAt":0.5,"flipDur":0.5},{"kind":"polaroid"}]', W, H);
+  const fly: Fly = { index: 0, at: 2, dur: 1, back: 5, backDur: 1 };
+  expect(posed(list[0], 0, fly, 1.5, W, H).flip).toBeCloseTo(Math.PI, 9);           // back up before the fly
+  const mid = posed(list[0], 0, fly, 2.5, W, H);
+  expect(mid.flip).toBeGreaterThan(0); expect(mid.flip).toBeLessThan(Math.PI);
+  expect(mid.z).toBeGreaterThan(objectPose(list[0], 0, 2.5, W, H).z);               // lifted while it turns back
+  expect(posed(list[0], 0, fly, 4, W, H)).toEqual({ ...objectPose(list[0], 0, 4, W, H), flip: 0 });
+  expect(posed(list[0], 0, fly, 7, W, H).flip).toBeCloseTo(Math.PI, 9);             // pulled back: turned over again
+  expect(posed(list[1], 1, fly, 4, W, H)).toEqual(objectPose(list[1], 1, 4, W, H));  // only the target
+  // the camera ends over the picture's face, the same as for an object never turned over
+  const p = cameraPose({ ...PUSH, fly }, list, 4, LEN, W, H), plain = objs('[{"kind":"postcard"},{"kind":"polaroid"}]', W, H);
+  expect(p).toEqual(cameraPose({ ...PUSH, fly }, plain, 4, LEN, W, H));
 });

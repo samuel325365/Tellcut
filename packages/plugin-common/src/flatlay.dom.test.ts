@@ -371,3 +371,23 @@ test('over a see-through desk, flatlayClip runs only while the picture covers th
   expect(flatlayClip({ ...p, surface: 'linen' }, 1, 1920, 1080, W, H, 5)).toMatchObject({ at: 1.5, len: 3.5, from: 3 });
   expect(flatlayClip({ ...p, fly: null as any }, 1, 1920, 1080, W, H, 5)).toMatchObject({ at: 1.5, len: 3.5 });
 });
+
+// ---- health scan 6 (2026-11-08)
+test('flying into a turned-over card films its picture, not its back', async () => {
+  const objects = JSON.stringify([{ kind: 'postcard', shot: 'a|3||still', at: 0, enter: 'none', flipAt: 0.5, flipDur: 0.5, back: '0.6-1|謝謝你' }]);
+  const { ctx, s } = await built({ objects, fly: { index: 0, at: 2, dur: 1 } });
+  const facing = () => {
+    const t = s.items[0], n = new THREE.Vector3(0, 0, 1).transformDirection(t.face.matrixWorld), c = new THREE.Vector3();
+    t.face.getWorldPosition(c);
+    return n.dot(s.camera.position.clone().sub(c));
+  };
+  flatlay.draw(at(ctx, 1.5), s);
+  expect(facing(), 'back up before the fly').toBeLessThan(0);
+  flatlay.draw(at(ctx, 3.5), s);
+  expect(s.items[0].pose!.flip).toBe(0);
+  expect(facing(), 'face up once the picture covers the screen').toBeGreaterThan(0);
+  // without three.js the same: the front is drawn, not the back
+  const flat = await built({ objects, fly: { index: 0, at: 2, dur: 1 } }, { kit: undefined });
+  flatlay.draw(at(flat.ctx, 2.9), flat.s);
+  expect((flat.s as any).flat[0].back).toBeNull();
+});

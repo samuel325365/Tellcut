@@ -4,7 +4,7 @@
 // pull back out. World: y up, the table is y = 0, desk (x, y) is world (x, 0, −y). A pure function of time.
 import { clamp, coverPlacement, eIO3, eOut3, type Crop } from '@tellcut/engine';
 import { objectPose, type Pose } from './motion.ts';
-import { sizeOf, type Obj } from './objects.ts';
+import { REST_Z, sizeOf, type Obj } from './objects.ts';
 
 export type Vec3 = [number, number, number];
 export type CameraMode = 'push' | 'still' | 'top';
@@ -69,6 +69,18 @@ export function flyCover(fly: Fly | null, local: number): number {
   return eIO3(span(local, fly.at, fly.dur));
 }
 
+/** an object's pose with the fly folded in: the picture is on the front, so a fly into a turned-over object turns it face up as the
+ *  camera flies in (lifted while it turns, like a flip) and back over as it pulls out. Everything that poses an object (the camera,
+ *  the 3D scene, the flat draw without three.js, the words for check) goes through this, so they all agree */
+export function posed(o: Obj, index: number, fly: Fly | null, local: number, W: number, H: number): Pose {
+  const p = objectPose(o, index, local, W, H);
+  if (!fly || fly.index !== index || p.flip <= 0) return p;
+  const e = flyCover(fly, local);
+  if (e <= 0) return p;
+  const flip = p.flip * (1 - e), rest = o.rest ?? REST_Z * (index + 1);
+  return { ...p, flip, z: Math.max(p.z, rest + 0.25 * Math.sin(flip)) };
+}
+
 export function cameraPose(o: { mode: CameraMode; topAt: number | null; fly: Fly | null; fov: number }, objs: Obj[], local: number, len: number, W: number, H: number): CameraPose {
   const fov = o.fov, centre = middle(objs);
   const k = o.mode === 'still' ? 0 : clamp(local / Math.max(0.1, len));
@@ -83,18 +95,18 @@ export function cameraPose(o: { mode: CameraMode; topAt: number | null; fly: Fly
   }
   // the subject: the newest object that has come in
   let subject = -1;
-  objs.forEach((ob, i) => { if (objectPose(ob, i, local, W, H).visible && (ob.enter === 'none' || local >= ob.at)) subject = i; });
+  objs.forEach((ob, i) => { if (posed(ob, i, o.fly, local, W, H).visible && (ob.enter === 'none' || local >= ob.at)) subject = i; });
   const fly = o.fly && objs[o.fly.index] ? o.fly : null;
   const e = flyCover(fly, local);
   if (fly && e > 0) {
-    const ob = objs[fly.index], pic = picWorld(ob, objectPose(ob, fly.index, local, W, H));
+    const ob = objs[fly.index], pic = picWorld(ob, posed(ob, fly.index, fly, local, W, H));
     const d = fillDistance(Math.min(pic.h, (pic.w * H) / W), fov);
     const end: Vec3 = [pic.center[0], pic.center[1] + d, pic.center[2]];
     const p = lerp3(pos, end, e), l = lerp3(look, pic.center, e), u = lerp3(up, pic.up, e), n = len3(u) || 1;
     return { pos: p, look: l, up: e >= 1 ? pic.up : [u[0] / n, u[1] / n, u[2] / n], fov, focus: dist3(p, pic.center) };
   }
   let focus = dist3(pos, look);
-  if (subject >= 0) { const q = objectPose(objs[subject], subject, local, W, H); focus = dist3(pos, [q.x, q.z, -q.y]); }
+  if (subject >= 0) { const q = posed(objs[subject], subject, fly, local, W, H); focus = dist3(pos, [q.x, q.z, -q.y]); }
   return { pos, look, up, fov, focus };
 }
 
