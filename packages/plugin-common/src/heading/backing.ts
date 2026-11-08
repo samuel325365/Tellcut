@@ -30,7 +30,7 @@ export interface BackingDraw {
 
 /** shows the one backing asked for and hides the others */
 export function drawBacking(els: BackingEls, d: BackingDraw) {
-  for (const e of Object.values(els)) cssCamel(e, { display: 'none', border: '' });
+  for (const e of Object.values(els)) cssCamel(e, { display: 'none', border: '', outline: '', outlineOffset: '' });
   const { block: b, fs, opacity } = d, o = opacity.toFixed(3);
   switch (d.backing) {
     case 'scrim': cssCamel(els.full, { display: 'block', inset: '0', background: d.color, backdropFilter: '', opacity: o }); break;
@@ -46,12 +46,14 @@ export function drawBacking(els: BackingEls, d: BackingDraw) {
       break;
     }
     case 'frame': {
-      // the page, then a frame at least 78% of the width and 30% of the height round the title: a 2.5 px line and a thin one inside it
+      // the page, then a frame at least 78% of the width and 30% of the height round the title: a 2.5 px line and a thin one 12 px
+      // inside it, an outline pulled in by a negative offset (an inset shadow of the page colour for the gap doubled a see-through
+      // backColor between the lines into a darker ring)
       cssCamel(els.full, { display: 'block', inset: '0', background: d.color, backdropFilter: '', opacity: o });
       const fw = Math.max(b.w + 1.6 * fs, 0.78 * d.W), fh = Math.max(b.h + 1.6 * fs, 0.3 * d.H), k = d.k;
       cssCamel(els.card, { display: 'block', left: `${(b.x + b.w / 2 - fw / 2).toFixed(2)}px`, top: `${(b.y + b.h / 2 - fh / 2).toFixed(2)}px`, width: `${fw.toFixed(2)}px`, height: `${fh.toFixed(2)}px`,
-        background: 'transparent', borderRadius: '0', border: `${(2.5 * k).toFixed(2)}px solid ${d.accent}`,
-        boxShadow: `inset 0 0 0 ${(12 * k).toFixed(2)}px ${d.color}, inset 0 0 0 ${(13.5 * k).toFixed(2)}px ${d.accent}`, opacity: o });
+        background: 'transparent', borderRadius: '0', border: `${(2.5 * k).toFixed(2)}px solid ${d.accent}`, boxShadow: 'none',
+        outline: `${(1.5 * k).toFixed(2)}px solid ${d.accent}`, outlineOffset: `${(-16 * k).toFixed(2)}px`, opacity: o });
       break;
     }
     case 'bar': cssCamel(els.bar, { display: 'block', left: `${(b.x - 0.45 * fs).toFixed(2)}px`, top: `${b.y.toFixed(2)}px`, width: `${(0.14 * fs).toFixed(2)}px`, height: `${b.h.toFixed(2)}px`, background: d.accent, opacity: o }); break;
