@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { TELLCUT_ROOT } from '../paths.ts';
-import { parseOcrLines } from './ocr-windows.ts';
+import { ocrTimeout, parseOcrLines, withTimeout } from './ocr-windows.ts';
 import type { OcrProvider, ProviderStatus } from './types.ts';
 
 const SCRIPT = join(TELLCUT_ROOT, 'tools', 'mac', 'ocr.swift');
@@ -53,14 +53,20 @@ async function vision(args: string[], signal?: AbortSignal): Promise<string> {
   });
 }
 
-export function macosOcr(options: { lang?: string } = {}, run: typeof vision = vision): OcrProvider {
+export function macosOcr(options: { lang?: string; /** a test's shorter clock */ timeout?: (images: number) => number } = {}, run: typeof vision = vision): OcrProvider {
+  const timeout = options.timeout ?? ocrTimeout;
+  // the recogniser is built before the clock starts: a first build (swiftc, up to minutes) is not a hanging run
+  const timed = async (images: number, args: string[], signal?: AbortSignal) => {
+    if (run === vision) await binary();
+    return withTimeout(timeout(images), signal, (s) => run(args, s));
+  };
   const langs = visionLangs(options.lang ?? 'zh-Hant-TW');
   return {
     id: 'macos', label: 'macOS 內建文字辨識', online: false,
     async check(): Promise<ProviderStatus> {
       if (process.platform !== 'darwin') return { ok: false, detail: '只有 macOS 有', install: '在 Mac 上使用' };
       try {
-        const out = await run(['--supports', langs[0]]);
+        const out = await timed(0, ['--supports', langs[0]]);
         return out.trim() === 'True' ? { ok: true, detail: `語言 ${langs.join('、')}` } : { ok: false, detail: `這台 Mac 的文字辨識沒有 ${langs[0]}`, install: '更新 macOS' };
       } catch (e) { return { ok: false, detail: `跑不起來：${(e as Error).message.slice(0, 120)}`, install: 'xcode-select --install' }; }
     },
@@ -69,7 +75,7 @@ export function macosOcr(options: { lang?: string } = {}, run: typeof vision = v
       const dir = mkdtempSync(join(tmpdir(), 'ocr-')), list = join(dir, 'list.txt');
       try {
         writeFileSync(list, images.join('\n'), 'utf8');
-        return parseOcrLines(await run(['--list', list, '--lang', langs.join(',')], o.signal));
+        return parseOcrLines(await timed(images.length, ['--list', list, '--lang', langs.join(',')], o.signal));
       } finally { rmSync(dir, { recursive: true, force: true }); }
     },
   };

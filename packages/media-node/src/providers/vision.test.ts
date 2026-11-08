@@ -6,7 +6,7 @@ import { run } from '../ffmpeg.ts';
 import { TELLCUT_ROOT } from '../paths.ts';
 import { ffmpegPath } from '../deps.ts';
 import { faceModel, mediapipeFaces, parseFaceLines } from './faces-mediapipe.ts';
-import { parseOcrLines, windowsOcr } from './ocr-windows.ts';
+import { ocrTimeout, parseOcrLines, windowsOcr } from './ocr-windows.ts';
 import { macosOcr, visionLangs } from './ocr-macos.ts';
 import { ocrProvider } from './index.ts';
 import { DEFAULT_PROVIDERS, ProvidersConfigZ } from './config.ts';
@@ -53,6 +53,27 @@ test('macOS OCR hands Vision the image list and its languages, and reads its lin
   expect(calls[0][0]).toBe('--list');
   expect(calls[0].slice(2)).toEqual(['--lang', 'zh-Hant,en-US']);
   expect(await ocr.read([])).toEqual([]);
+});
+
+test('an OCR run that hangs is ended after its time, scaled to the pictures, as a failure; the caller\'s own abort stays an abort', async () => {
+  const hang = (seen: AbortSignal[]) => (_args: string[], signal?: AbortSignal) => new Promise<string>((_, rej) => {
+    seen.push(signal!);
+    signal!.addEventListener('abort', () => rej(new DOMException('Aborted', 'AbortError')), { once: true });
+  });
+  const asked: number[] = [];
+  for (const make of [windowsOcr, macosOcr]) {
+    const seen: AbortSignal[] = [];
+    const ocr = make({ timeout: (n) => { asked.push(n); return 30; } }, hang(seen));
+    await expect(ocr.read(['a.png', 'b.png'])).rejects.toThrow(/文字辨識超過/);
+    expect(seen[0].aborted).toBe(true);   // the process is killed, not left running
+    const stop = new AbortController();
+    const slow = make({ timeout: () => 60000 }, hang([]));
+    const p = slow.read(['a.png'], { signal: stop.signal });
+    stop.abort();
+    await expect(p).rejects.toThrow(/Aborted/);
+  }
+  expect(asked).toEqual([2, 2]);
+  expect([ocrTimeout(1) < ocrTimeout(40), ocrTimeout(0) >= 30000]).toEqual([true, true]);
 });
 
 const CJK_FONT = ['/System/Library/Fonts/STHeiti Medium.ttc', '/System/Library/Fonts/Hiragino Sans GB.ttc', '/System/Library/Fonts/PingFang.ttc'].find(existsSync);
