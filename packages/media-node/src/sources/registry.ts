@@ -71,7 +71,7 @@ export function pickedSources(env: NodeJS.ProcessEnv): Set<string> | undefined {
 export function sourceStatuses(s: Sources): SourceStatus[] {
   const health = readHealth(s.healthFile), ids = [...new Set([...Object.keys(s.adapters), ...Object.keys(s.config.sources)])], picked = pickedSources(s.env);
   return ids.map((id) => {
-    const adapter = s.adapters[id], entry = s.config.sources[id], enabled = !!entry?.enabled, h = health[id];
+    const adapter = Object.hasOwn(s.adapters, id) ? s.adapters[id] : undefined, entry = Object.hasOwn(s.config.sources, id) ? s.config.sources[id] : undefined, enabled = !!entry?.enabled, h = health[id];
     const key = !adapter?.needsKey ? 'not-needed' as const : sourceKey(s.config, id, s.env) ? 'present' as const : 'missing' as const;
     const reason: SourceReason | undefined = !adapter ? 'no-adapter' : !enabled ? 'off' : key === 'missing' ? 'key' : h?.status === 'broken' ? 'broken' : picked && !picked.has(id) ? 'unpicked' : undefined;
     const why = reason && { 'no-adapter': '還沒有轉接程式', off: '關閉', key: `缺 key（${entry?.keyEnv ?? `sources.local.json 的 keys.${id}`}）`, broken: `壞掉：${h?.detail}`, unpicked: '這次對話沒有勾選' }[reason];
