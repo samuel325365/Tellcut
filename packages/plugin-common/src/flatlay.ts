@@ -16,7 +16,7 @@ import type { ThreeKit } from './three/kit.ts';
 import { cameraPose, flyCover, flyCrop, PIC_LIFT, posed, type CameraMode, type Fly } from './flatlay/camera.ts';
 import { lightRig } from './flatlay/light.ts';
 import { atRest, contactShadow, REST_Z, viewHalf, type Pose } from './flatlay/motion.ts';
-import { faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
+import { EXIT_DUR, faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
 import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintFront, paintPlaceholder, type Word } from './flatlay/paper.ts';
 import { paintGobo, paintSurface, SURFACE_LOOK, type Surface } from './flatlay/surface.ts';
@@ -548,17 +548,20 @@ function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {
 }
 
 /** the main-track clip that takes over when the camera has flown into object `index`'s picture: from the item's start + `at`, the
- *  shot from its source seconds, cropped to show exactly what the covering picture shows; null for a still or no shot. Over a
- *  see-through desk (surface none) the clip would show through it, so there it only runs while the picture covers the screen: from
- *  the end of the fly into that object until the pull back (or the item's end), from that point of the shot */
+ *  shot from its source seconds, cropped to show exactly what the covering picture shows, until the object has left the desk (its
+ *  exit over, when it has one) or the item ends; null for a still or no shot. Over a see-through desk (surface none) the clip would
+ *  show through it, so there it only runs while the picture covers the screen: from the end of the fly into that object until the
+ *  pull back (or the object's leaving, or the item's end), from that point of the shot */
 export function flatlayClip(params: Partial<FlatlayParams>, index: number, srcW: number, srcH: number, W: number, H: number, dur: number): { at: number; len: number; source: string; from: number; crop: Crop } | null {
   const p = { ...DEFAULTS, ...params }, { objs } = parseObjects(p, W, H, dur), o = objs[index];
   if (!o?.shot || o.shot.still) return null;
   const crop = flyCrop(o.shot.crop, srcW, srcH, picAspect(o), 1, W, H);
+  // gone from the desk: the end of its exit (an exit with no time already ends with the item)
+  const gone = o.exit ? Math.min(dur, o.exitAt + EXIT_DUR) : dur;
   const fly = p.surface === 'none' ? parseFly(p.fly) : null;
   if (fly && fly.index === index) {
-    const at = Math.max(o.at, fly.at + fly.dur), end = Math.min(dur, fly.back ?? dur);
+    const at = Math.max(o.at, fly.at + fly.dur), end = Math.min(gone, fly.back ?? dur);
     return end > at ? { at, len: end - at, source: o.shot.source, from: o.shot.from + (at - o.at), crop } : null;
   }
-  return { at: o.at, len: dur - o.at, source: o.shot.source, from: o.shot.from, crop };
+  return { at: o.at, len: gone - o.at, source: o.shot.source, from: o.shot.from, crop };
 }

@@ -415,3 +415,16 @@ test('late renders with the depth of field the frame was posed with', async () =
   expect(again.dof).toEqual(drawn.dof);
   expect(drawn.dof).not.toBeNull();
 });
+
+test("flatlayClip ends when its object has left the desk", () => {
+  const objects = JSON.stringify([{ kind: 'postcard', shot: 'a|12', at: 0.2 }, { kind: 'polaroid', shot: 'b|3', at: 1, exit: 'left', exitAt: 3 }]);
+  expect(flatlayClip({ objects }, 1, 1920, 1080, W, H, 6)).toMatchObject({ at: 1, len: 3 + 0.8 - 1, from: 3 });
+  expect(flatlayClip({ objects }, 0, 1920, 1080, W, H, 6)).toMatchObject({ at: 0.2, len: 5.8 });
+  // an exit with no time leaves as the item ends: the clip runs to the end
+  const late = JSON.stringify([{ kind: 'polaroid', shot: 'b|3', at: 1, exit: 'left' }]);
+  expect(flatlayClip({ objects: late }, 0, 1920, 1080, W, H, 6)).toMatchObject({ at: 1, len: 5 });
+  // over a see-through desk, until the pull back or the leaving, whichever comes first
+  const none = { objects, surface: 'none' as const, fly: { index: 1, at: 1.5, dur: 1 } };
+  expect(flatlayClip(none, 1, 1920, 1080, W, H, 6)).toMatchObject({ at: 2.5, len: 3.8 - 2.5, from: 3 + 1.5 });
+  expect(flatlayClip({ ...none, fly: { index: 1, at: 1.5, dur: 1, back: 3.2 } }, 1, 1920, 1080, W, H, 6)!.len).toBeCloseTo(0.7, 9);
+});
