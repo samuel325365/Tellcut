@@ -1,7 +1,8 @@
 // common.countdown — a big number counting down (3, 2, 1… or 10 to 0) over the item, each step popping in, a ring running out
 // around it; the last step can say a word instead (GO!). Quizzes, challenges, "guess before it ends", ranking reveals.
 // Look slant (2026-11-06, the Single Color pilot film's fx.count): heavy slanted Anton numbers, each step its own colour, an outlined copy
-// set off behind, an arc sweeping open on the right instead of the ring.
+// set off behind, an arc sweeping open on the right instead of the ring (`ring` off hides it). The arc and the numbers take the step's
+// colour, so `accent` and `ink` (the ring's colour and the number's outline) belong to the ring look only.
 import { clamp, cssCamel, eBack, h, prog, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
 
@@ -39,9 +40,9 @@ export const countdown: ItemType<P, S> = {
     { key: 'size', label: '大小（畫面短邊 %）', type: 'number', min: 10, max: 90, step: 1, default: 42 },
     { key: 'y', label: '中心高度（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.45 },
     { key: 'color', label: '數字顏色', type: 'color', default: '#ffffff' },
-    { key: 'accent', label: '環的顏色', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
-    { key: 'ink', label: '數字描邊', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
-    { key: 'ring', label: '外圈的環', type: 'bool', default: true },
+    { key: 'accent', label: '環的顏色（ring 樣式；slant 的弧線用每一下的顏色）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
+    { key: 'ink', label: '數字描邊（ring 樣式；slant 沒有描邊）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
+    { key: 'ring', label: '外圈的環（slant 樣式是右側的弧線）', type: 'bool', default: true },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
   ],
   build(ctx) {
@@ -92,7 +93,7 @@ function drawSlant(ctx: Parameters<typeof countdown.draw>[0], s: S) {
     color: 'transparent', fontFamily: font, webkitTextStroke: `${4 * k}px ${col === '#ffffff' ? 'rgba(255,255,255,0.85)' : col}` });
   // the arc: from about 76° above the right to as far below, opening over each step
   const circ = 2 * Math.PI * 45, open = 0.42 * eOutC(c.into / 0.8);
-  cssCamel(s.svg as unknown as HTMLElement, { display: 'block', transform: 'translateX(12%)' });
+  cssCamel(s.svg as unknown as HTMLElement, { display: p.ring ? 'block' : 'none', transform: 'translateX(12%)' });
   s.track.style.display = 'none';
   s.arc.setAttribute('transform', 'rotate(-75.6 50 50)');
   s.arc.setAttribute('stroke', col); s.arc.setAttribute('stroke-width', String(((6 * k) / d) * 100));
