@@ -9,7 +9,8 @@ import { sentenceCps } from '../handwrite.ts';
 import { sizeOf, type Obj } from './objects.ts';
 
 type Line = Obj['back'][number];
-interface Glyph { ch: string; i: number; x: number; w: number }
+/** `from`: written when that character of that line is (an ellipsis standing for the rows that do not fit) */
+interface Glyph { ch: string; i: number; x: number; w: number; from?: { line: number; i: number } }
 interface Row { line: number; glyphs: Glyph[] }
 
 /** the back's lines broken into rows no wider than maxW: at the last space when the row has one (words stay whole), else at the
@@ -34,6 +35,21 @@ function backRows(g: CanvasRenderingContext2D, lines: Line[], maxW: number): Row
   return rows;
 }
 
+/** at most `max` rows: the rest left out, the last row kept cut short to end in an ellipsis that is written when the first character
+ *  left out would have been */
+function fitRows(g: CanvasRenderingContext2D, rows: Row[], max: number, maxW: number): Row[] {
+  if (rows.length <= max) return rows;
+  const kept = rows.slice(0, max), last = kept[max - 1], glyphs = [...last.glyphs], dot = g.measureText('…').width;
+  let next = rows[max].glyphs[0] ? { line: rows[max].line, i: rows[max].glyphs[0].i } : { line: last.line, i: glyphs.length };
+  while (glyphs.length && (glyphs[glyphs.length - 1].x + glyphs[glyphs.length - 1].w + dot > maxW || glyphs[glyphs.length - 1].ch === ' ')) {
+    const q = glyphs.pop()!;
+    next = { line: last.line, i: q.i };
+  }
+  const x = glyphs.length ? glyphs[glyphs.length - 1].x + glyphs[glyphs.length - 1].w : 0;
+  kept[max - 1] = { line: last.line, glyphs: [...glyphs, { ch: '…', i: next.i, x, w: dot, from: next }] };
+  return kept;
+}
+
 export const PX = 1000;
 /** the back's pen: characters a second (before a line's own pace), each fading in over BACK_FADE s; the postmark lands over MARK_LAND s */
 export const BACK_CPS = 12, BACK_FADE = 0.18, MARK_LAND = 0.15;
@@ -49,7 +65,7 @@ export const PRINT = "'Cormorant Garamond', 'Noto Serif TC', serif";
 
 /** every character the objects may paint, for loading their fonts before painting (the block's ready()) */
 export function paintedText(objs: Obj[]): string {
-  return objs.map((o) => [o.place, o.year, o.caption, o.caption.toUpperCase(), ...o.back.map((l) => l.text), o.mark ? `${o.mark.top.toUpperCase()}${o.mark.bottom}${o.mark.date}` : ''].join('')).join('');
+  return objs.map((o) => [o.place, o.year, o.caption, o.caption.toUpperCase(), ...o.back.map((l) => l.text), o.mark ? `${o.mark.top.toUpperCase()}${o.mark.bottom}${o.mark.date}` : '', '…'].join('')).join('');
 }
 const INK = '#34344c', SEPIA = '#6b5a48';
 
@@ -68,6 +84,20 @@ function paper(g: CanvasRenderingContext2D, w: number, h: number, base: string, 
     g.strokeStyle = `rgba(150,130,100,${r() * 0.1})`; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
   }
   for (let i = 0; i < (w * h) / 300; i++) { g.fillStyle = `rgba(40,30,20,${0.07 * r()})`; g.fillRect(r() * w, r() * h, 1 + r() * 1.5, 1 + r() * 1.5); }
+}
+
+/** `text` no wider than maxW: its font (`font(px)`) made smaller, down to `min` of `size`, then the text cut short with an
+ *  ellipsis; sets g.font to what it chose */
+export function fitText(g: CanvasRenderingContext2D, text: string, font: (px: number) => string, size: number, maxW: number, min = 0.6): { text: string; size: number } {
+  g.font = font(size);
+  const tw = g.measureText(text).width;
+  if (tw <= maxW) return { text, size };
+  const px = Math.max(Math.round(size * min), Math.floor((size * maxW) / tw));
+  g.font = font(px);
+  if (g.measureText(text).width <= maxW) return { text, size: px };
+  const chars = [...text];
+  while (chars.length > 1 && g.measureText(`${chars.join('').trimEnd()}…`).width > maxW) chars.pop();
+  return { text: `${chars.join('').trimEnd()}…`, size: px };
 }
 
 /** a word drawn and measured: its box as fractions of the canvas */
@@ -93,7 +123,7 @@ export function paintFront(o: Obj, make: Make = blank): Painted {
     for (const ky of [0.3, 0.52]) { const gr = g.createRadialGradient(kx - 8, ky * h - 8, 4, kx, ky * h, 52); gr.addColorStop(0, '#d9cbb4'); gr.addColorStop(1, '#5c4a38'); g.fillStyle = gr; g.beginPath(); g.arc(kx, ky * h, 50, 0, 7); g.fill(); }
     g.fillStyle = 'rgba(15,10,6,.7)';
     for (let i = 0; i < 9; i++) g.fillRect(kx - 70, h * 0.66 + i * 22, 140, 9);
-    if (o.caption) { g.fillStyle = '#e8d9bd'; g.font = `600 ${44}px ${PRINT}`; words.push(word(g, o.caption.toUpperCase(), px * w + (pw * w) / 2, bottom + 98, 44, w, h, 'center')); }
+    if (o.caption) { g.fillStyle = '#e8d9bd'; const f = fitText(g, o.caption.toUpperCase(), (n) => `600 ${n}px ${PRINT}`, 44, pw * w); words.push(word(g, f.text, px * w + (pw * w) / 2, bottom + 98, f.size, w, h, 'center')); }
     return { canvas: c, words };
   }
   if (o.kind === 'photo') {
@@ -105,20 +135,26 @@ export function paintFront(o: Obj, make: Make = blank): Painted {
     g.save(); g.beginPath(); g.rect(m, m, w - 2 * m, h - 2 * m); g.clip(); paper(g, w, h, '#f7f4ec', o.seed); g.restore();
     // the mat's bevelled window
     g.strokeStyle = 'rgba(120,100,80,.35)'; g.lineWidth = 6; g.strokeRect(px * w - 3, py * h - 3, pw * w + 6, ph * h + 6);
-    if (o.caption) { g.fillStyle = INK; g.font = `${40}px ${HAND}`; words.push(word(g, o.caption, w / 2, bottom + (h - m - bottom) * 0.62, 40, w, h, 'center')); }
+    if (o.caption) { g.fillStyle = INK; const f = fitText(g, o.caption, (n) => `${n}px ${HAND}`, 40, pw * w); words.push(word(g, f.text, w / 2, bottom + (h - m - bottom) * 0.62, f.size, w, h, 'center')); }
     return { canvas: c, words };
   }
   paper(g, w, h, o.kind === 'polaroid' ? '#fbf9f3' : '#f6f1e6', o.seed);
   if (o.kind === 'postcard') {
-    const strip = h - bottom, size = Math.round(strip * 0.42);
-    g.fillStyle = SEPIA; g.font = `italic 500 ${size}px ${PRINT}`;
-    if (o.place) words.push(word(g, o.place, px * w + 6, bottom + strip * 0.68, size, w, h));
-    g.fillStyle = 'rgba(107,90,72,.7)'; g.font = `500 ${Math.round(size * 0.58)}px ${PRINT}`;
-    if (o.year) words.push(word(g, o.year, (px + pw) * w - 6, bottom + strip * 0.66, Math.round(size * 0.58), w, h, 'right'));
+    // the year on the right (at most a third of the strip), the place in what is left of it
+    const strip = h - bottom, size = Math.round(strip * 0.42), left = px * w + 6, right = (px + pw) * w - 6;
+    let yearW = 0;
+    if (o.year) {
+      g.fillStyle = 'rgba(107,90,72,.7)';
+      const f = fitText(g, o.year, (n) => `500 ${n}px ${PRINT}`, Math.round(size * 0.58), (right - left) / 3);
+      const yw = word(g, f.text, right, bottom + strip * 0.66, f.size, w, h, 'right');
+      words.push(yw); yearW = yw.rect[2] * w + size * 0.6;
+    }
+    g.fillStyle = SEPIA;
+    if (o.place) { const f = fitText(g, o.place, (n) => `italic 500 ${n}px ${PRINT}`, size, right - left - yearW); words.unshift(word(g, f.text, left, bottom + strip * 0.68, f.size, w, h)); }
   } else if (o.caption) {
-    const strip = h - bottom, size = Math.round(Math.min(64, strip * 0.4));
-    g.fillStyle = INK; g.font = `${size}px ${HAND}`;
-    words.push(word(g, o.caption, w / 2, bottom + strip * 0.62, size, w, h, 'center'));
+    const strip = h - bottom, f = fitText(g, o.caption, (n) => `${n}px ${HAND}`, Math.round(Math.min(64, strip * 0.4)), pw * w);
+    g.fillStyle = INK;
+    words.push(word(g, f.text, w / 2, bottom + strip * 0.62, f.size, w, h, 'center'));
   }
   return { canvas: c, words };
 }
@@ -196,11 +232,12 @@ export function paintBack(o: Obj, local: number, stamp: CanvasImageSource | null
     size = Math.max(24, Math.round(size * 0.88));
   }
   const lineH = size * 1.55;
+  rows = fitRows(g, rows, Math.max(1, Math.floor((h * 0.95 - size * 0.25 - (h * 0.2 + size)) / lineH) + 1), textW);
   rows.forEach((row, r) => {
-    const line = o.back[row.line], y = h * 0.2 + size + r * lineH, cps = sentenceCps(line, BACK_CPS);
+    const y = h * 0.2 + size + r * lineH;
     let end = -1;
     row.glyphs.forEach((q, n) => {
-      const a = clamp((local - line.start - q.i / cps) / BACK_FADE);
+      const line = o.back[q.from?.line ?? row.line], a = clamp((local - line.start - (q.from?.i ?? q.i) / sentenceCps(line, BACK_CPS)) / BACK_FADE);
       if (a <= 0) return;
       g.globalAlpha = a; g.fillText(q.ch, x0 + q.x, y); end = n;
     });

@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import { itemMediaIssues, resolveTheme } from '@tellcut/engine';
 import { flatlay, flatlayClip, readFly } from './flatlay.ts';
 import { flyCrop } from './flatlay/camera.ts';
-import { picAspect, parseObjects } from './flatlay/objects.ts';
-import { paintBack } from './flatlay/paper.ts';
+import { picAspect, parseObjects, sizeOf } from './flatlay/objects.ts';
+import { paintBack, paintFront } from './flatlay/paper.ts';
 import { makeKit } from './three/kit.ts';
 
 const calls = new WeakMap<HTMLCanvasElement, string[]>(), args = new WeakMap<HTMLCanvasElement, Array<[string, unknown[]]>>();
@@ -442,4 +442,29 @@ test("ready() loads a Chinese and Japanese serif for the printed words, for ever
       for (const [, text] of printed) for (const want of ['特雷維噴泉', '令和六年', 'ROMA', '羅馬', '五月', 'SUNRISE', '謝謝你']) expect(text).toContain(want);
     }
   } finally { delete (document as any).fonts; }
+});
+
+test("the front's words fit their card, and the back's rows stop above its bottom edge", () => {
+  // the stand-in context measures 20 px a character at any size: long text must be cut short to fit
+  const long = 'Fontana di Trevi, Piazza di Spagna e il Pantheon di Roma, Trastevere e Villa Borghese';
+  const objs = parseObjects({ objects: JSON.stringify([
+    { kind: 'postcard', place: long, year: '2024' }, { kind: 'polaroid', caption: long }, { kind: 'card', caption: long }, { kind: 'photo', caption: long }, { kind: 'tv', caption: long },
+  ]) }, W, H).objs;
+  for (const o of objs) {
+    const { words } = paintFront(o), [px, , pw] = sizeOf(o).pic;
+    expect(words.length, o.kind).toBeGreaterThan(0);
+    for (const w of words) { expect(w.rect[0], o.kind).toBeGreaterThanOrEqual(px - 1e-9); expect(w.rect[0] + w.rect[2], o.kind).toBeLessThanOrEqual(px + pw + 1e-9); }
+    expect(words.find((w) => w.text !== '2024')!.text.endsWith('…'), o.kind).toBe(true);
+  }
+  const [place, year] = paintFront(objs[0]).words;
+  expect(place.rect[0] + place.rect[2]).toBeLessThan(year.rect[0]);
+  // a back far too long for the card: every row reported lies on it, the last one ends in an ellipsis once written
+  const back = Array.from({ length: 30 }, (_, i) => `${i}-${i + 1}|這一行寫得很長很長很長很長很長很長很長`).join('\n');
+  for (const kind of ['postcard', 'card']) {
+    const [o] = parseObjects({ objects: JSON.stringify([{ kind, back, mark: '' }]) }, W, H).objs;
+    const done = paintBack(o, 99).words;
+    for (const w of done) { expect(w.rect[1], kind).toBeGreaterThanOrEqual(0); expect(w.rect[1] + w.rect[3], kind).toBeLessThanOrEqual(1); }
+    expect(done.at(-1)!.text.endsWith('…'), kind).toBe(true);
+    expect(paintBack(o, 0.5).words.every((w) => !w.text.includes('…')), kind).toBe(true);
+  }
 });
