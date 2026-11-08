@@ -9,21 +9,16 @@
 //   common.wordbands  slanted bands of repeated italic serif words, each wider than the last until they fill the frame, a photo card
 //                     in the middle (EAT · EVERY · SINGLE · BITE)
 // The giant headline is the title template didone-full, the caption the template editorial-bar. Pure functions of time.
-import { clamp, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
+import { canvasIn } from './desktop.ts';
+import { canvasAt, freeCanvas } from './inkline.ts';
 
 const DISPLAY = 'Playfair Display', SERIF = 'Noto Serif TC';
 const disp = (px: number, w = 900, it = false) => `${it ? 'italic ' : ''}${w} ${px}px "${DISPLAY}", "${SERIF}", serif`;
 const ser = (px: number, w = 700) => `${w} ${px}px "${SERIF}", serif`;
-const eOut = (q: number) => 1 - Math.pow(1 - clamp(q), 3);
+const eOut = (q: number) => eOut3(clamp(q));
 type G = CanvasRenderingContext2D;
 
-function canvasIn(root: HTMLElement): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
-  root.appendChild(c);
-  return c;
-}
-const sized = (c: HTMLCanvasElement, W: number, H: number) => { if (c.width !== W || c.height !== H) { c.width = W; c.height = H; } return c.getContext('2d'); };
 const fontsReady = (text: string) => Promise.all([
   document.fonts.load(`900 80px "${DISPLAY}"`, 'AZ09'), document.fonts.load(`400 40px "${DISPLAY}"`, 'AZ09'),
   document.fonts.load(`italic 700 80px "${DISPLAY}"`, 'Az'), document.fonts.load(`italic 900 80px "${DISPLAY}"`, 'AZ'), document.fonts.load(`700 60px "${SERIF}"`, text || '字'),
@@ -37,9 +32,9 @@ function photo(s: { img: HTMLImageElement | null; key: string }, media: { stillU
   s.key = key;
   s.img = source ? Object.assign(new Image(), { src: media.stillUrl(stillOf(source, t)) }) : null;
 }
-/** an image covering the box (x, y, w, h), focused at (fx, fy) */
-export function coverImage(g: G, img: HTMLImageElement | null, x: number, y: number, w: number, h: number, fx = 0.5, fy = 0.5) {
-  if (!img || !img.complete || !img.naturalWidth) { g.fillStyle = '#8a8580'; g.fillRect(x, y, w, h); return; }
+/** an image covering the box (x, y, w, h), focused at (fx, fy); the box filled with `stand` while the image is not there */
+export function coverImage(g: G, img: HTMLImageElement | null, x: number, y: number, w: number, h: number, fx = 0.5, fy = 0.5, stand = '#8a8580') {
+  if (!img || !img.complete || !img.naturalWidth) { g.fillStyle = stand; g.fillRect(x, y, w, h); return; }
   const ir = img.naturalWidth / img.naturalHeight, br = w / h;
   let sw = img.naturalWidth, sh = img.naturalHeight;
   if (ir > br) sw = sh * br; else sh = sw / br;
@@ -55,6 +50,21 @@ const stillMedia = (item: SceneItem) => {
 
 /** how many of the masthead's letters show at `local`: one every 0.07 s from the start */
 export const typedLetters = (local: number, count: number) => (local < 0 ? 0 : Math.min(count, Math.floor(local / 0.07) + 1));
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+/** the letters as they are typed: graphemes, not code points, so a flag or an emoji joined by ZWJ comes in whole (as progress.osdShown) */
+export const graphemes = (text: string) => [...GRAPHEMES.segment(String(text ?? ''))].map((x) => x.segment);
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+/** the front cover's italic line in two: its words half and half; a line with no spaces in Chinese, Japanese or Korean is cut in the
+ *  middle between its characters when it is wider than `room` (`width` measures a line) */
+export function scriptLines(text: string, width: (line: string) => number, room: number): string[] {
+  const all = String(text ?? ''), words = all.split(' ');
+  if (words.filter(Boolean).length === 1 && CJK.test(all) && width(all.trim()) > room) {
+    const ch = graphemes(all.trim()), half = Math.ceil(ch.length / 2);
+    return [ch.slice(0, half).join(''), ch.slice(half).join('')];
+  }
+  const half = Math.ceil(words.length / 2);
+  return [words.slice(0, half).join(' '), words.slice(half).join(' ')].filter(Boolean);
+}
 
 // ── common.masthead
 interface MP { mode: 'front' | 'back'; title: string; issueL: string; issueR: string; contents: string; script: string; sub: string; source: string; t: number; color: string; ink: string }
@@ -82,11 +92,9 @@ export const masthead: ItemType<MP, MS> = {
     return s;
   },
   ready(s) { return Promise.all([fontsReady(s.text), imgReady(s.img)]).then(() => undefined); },
-  hide(s) { s.c.width = 0; s.c.height = 0; },
+  hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
-    const { local, dur, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = sized(s.c, W, H);
-    if (!g) return;
-    g.clearRect(0, 0, W, H);
+    const { local, dur, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const back = p.mode === 'back', out = clamp((dur - local) / 0.2);
     if (back) photo(s, ctx.media, p.source, p.t);
     g.globalAlpha = back ? 1 : out;
@@ -99,7 +107,7 @@ export const masthead: ItemType<MP, MS> = {
     g.fillStyle = p.ink; g.textBaseline = 'middle'; g.font = disp(small, 400); track(g, small);
     g.textAlign = 'left'; g.fillText(back ? 'NEXT ISSUE' : p.issueL, 60 * u, 70 * u);
     g.textAlign = 'right'; g.fillText(back ? 'SEE YOU AGAIN' : p.issueR, W - 60 * u, 70 * u); untrack(g);
-    const chars = [...p.title];
+    const chars = graphemes(p.title);
     let px = 190 * u; g.font = disp(px);
     const full = g.measureText(p.title).width;
     if (full > W * 0.86) { px *= (W * 0.86) / full; g.font = disp(px); }
@@ -112,6 +120,8 @@ export const masthead: ItemType<MP, MS> = {
     if (back) {
       g.font = disp(small, 400); track(g, small); g.textAlign = 'center'; g.fillText(p.sub, W / 2, my + px * 0.5 + 44 * u); untrack(g);
       g.globalAlpha = eOut((local - 1.0) / 0.5); g.font = disp(60 * u, 700, true);
+      const sw = g.measureText(p.script).width, room = W - 120 * u;
+      if (sw > room) g.font = disp((60 * u * room) / sw, 700, true);
       g.fillText(p.script, W / 2, 0.79 * H); ctx.reportText(g, p.script, W / 2, 0.79 * H);
       g.globalAlpha = 1;
       return;
@@ -122,12 +132,14 @@ export const masthead: ItemType<MP, MS> = {
       g.globalAlpha = a * out; g.font = disp(32 * u, 400); track(g, 20 * u); g.textAlign = 'right';
       g.fillText(line, W - 60 * u + (1 - a) * 30 * u, 0.5 * H + i * 52 * u); untrack(g);
     });
-    const w = eOut((local - 1.3) / 0.6);   // the italic line, wiped in, broken in two
+    const w = eOut((local - 1.3) / 0.6);   // the italic line, wiped in, broken in two and shrunk to the width like the masthead
     if (w > 0) {
-      g.globalAlpha = out; g.font = disp(110 * u, 700, true); g.textAlign = 'left'; g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowBlur = 14 * u;
-      const words = String(p.script).split(' '), half = Math.ceil(words.length / 2), lines = [words.slice(0, half).join(' '), words.slice(half).join(' ')].filter(Boolean);
+      let spx = 110 * u; g.font = disp(spx, 700, true);
+      const room = W - 120 * u, lines = scriptLines(p.script, (l) => g.measureText(l).width, room), widest = Math.max(1, ...lines.map((l) => g.measureText(l).width));
+      if (widest > room) { spx *= room / widest; g.font = disp(spx, 700, true); }
+      g.globalAlpha = out; g.textAlign = 'left'; g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowBlur = 14 * u;
       g.save(); g.beginPath(); g.rect(0, 0, 60 * u + W * w, H); g.clip();
-      lines.forEach((l, i) => { const y = 0.66 * H + i * 110 * u; g.fillText(l, 60 * u, y); ctx.reportText(g, l, 60 * u, y); });
+      lines.forEach((l, i) => { const y = 0.66 * H + i * spx; g.fillText(l, 60 * u, y); ctx.reportText(g, l, 60 * u, y); });
       g.restore(); g.shadowColor = 'transparent';
     }
     g.globalAlpha = 1;
@@ -161,12 +173,10 @@ export const spread: ItemType<SP, SS> = {
   media: stillMedia,
   build(ctx) { const s: SS = { c: canvasIn(ctx.root), img: null, key: '', text: ctx.params.name }; photo(s, ctx.media, ctx.params.source, ctx.params.t); return s; },
   ready(s) { return Promise.all([fontsReady(s.text), imgReady(s.img)]).then(() => undefined); },
-  hide(s) { s.c.width = 0; s.c.height = 0; },
+  hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
-    const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = sized(s.c, W, H);
-    if (!g) return;
+    const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     photo(s, ctx.media, p.source, p.t);
-    g.clearRect(0, 0, W, H);
     const small = 22 * u;
     if (p.layout === 'column') {
       g.fillStyle = p.paper; g.fillRect(0, 0, W, H);
@@ -203,7 +213,8 @@ export const spread: ItemType<SP, SS> = {
     g.restore();
     const sc = eOut((local - 0.3) / 0.3);   // the swatch card, popping on
     if (sc <= 0) return;
-    const sw = 0.27 * W, sh = 0.17 * H, sx = W - 64 * u - sw, sy = 0.625 * H;
+    // sized by the short side (in 9:16 0.27 W × 0.17 H), so its two lines stay on the card in any frame
+    const sw = 291.6 * u, sh = 326.4 * u, sx = W - 64 * u - sw, sy = Math.min(0.625 * H, H - sh - 40 * u);
     g.save(); g.globalAlpha = sc; g.translate(sx + sw / 2, sy + sh / 2); g.scale(0.9 + 0.1 * sc, 0.9 + 0.1 * sc); g.translate(-(sx + sw / 2), -(sy + sh / 2));
     g.fillStyle = '#ffffff'; g.fillRect(sx, sy, sw, sh);
     g.fillStyle = p.color; g.fillRect(sx + 14 * u, sy + 14 * u, sw - 28 * u, sh * 0.62);
@@ -222,11 +233,16 @@ export function parseBands(text: unknown): Band[] {
     return { t: Number(t) || 0, word, bc: bc || '#c23b2c', tc: tc || '#ffffff' };
   });
 }
-/** band k's height (px) once it has grown in: each about twice the one before, the last as tall as the frame's diagonal at most */
-export const bandHeight = (k: number, W: number, H: number) => Math.min(Math.hypot(W, H), H * 0.12 * Math.pow(2.1, k));
+/** band k of n's height (px) once it has grown in: the last just covers the W×H frame tipped `angle` degrees (W |sin| + H |cos|,
+ *  across the band), each before it 2.1 times thinner than the next, or less (but at least 0.12 H) when there are many */
+export function bandHeight(k: number, n: number, W: number, H: number, angle: number): number {
+  const a = (angle * Math.PI) / 180, full = W * Math.abs(Math.sin(a)) + H * Math.abs(Math.cos(a));
+  const step = n > 1 ? clamp(Math.pow(full / (0.12 * H), 1 / (n - 1)), 1, 2.1) : 1;
+  return full / Math.pow(step, Math.max(0, n - 1 - k));
+}
 
 interface BP { source: string; t: number; bands: string; bg: string; angle: number }
-interface BS { c: HTMLCanvasElement; img: HTMLImageElement | null; key: string }
+interface BS { c: HTMLCanvasElement; img: HTMLImageElement | null; key: string; bandsText?: string; bands: Band[] }
 export const wordbands: ItemType<BP, BS> = {
   type: 'common.wordbands', label: '斜字帶', category: 'moment', kind: 'scene',
   doc: '一串斜的色帶，帶上重複的斜體粗襯線字慢慢滑動，中間一張白框相片（source 在 t 秒的畫面）：bands 一行一條「秒|字|帶色|字色」，每一條在自己的秒出現、比上一條寬一倍，最後一條蓋滿畫面；bg 是底色；放在影片下面當整頁（layer: under）；「EAT · EVERY · SINGLE · BITE」這種一字一拍的口號、章節之間的節奏段、美食雜誌風；配 common.masthead、common.spread',
@@ -238,20 +254,19 @@ export const wordbands: ItemType<BP, BS> = {
     { key: 'angle', label: '斜度（度）', type: 'number', min: -30, max: 30, step: 1, default: -9 },
   ],
   media: stillMedia,
-  build(ctx) { const s: BS = { c: canvasIn(ctx.root), img: null, key: '' }; photo(s, ctx.media, ctx.params.source, ctx.params.t); return s; },
+  build(ctx) { const s: BS = { c: canvasIn(ctx.root), img: null, key: '', bands: [] }; photo(s, ctx.media, ctx.params.source, ctx.params.t); return s; },
   ready(s) { return Promise.all([fontsReady(''), imgReady(s.img)]).then(() => undefined); },
-  hide(s) { s.c.width = 0; s.c.height = 0; },
+  hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
-    const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = sized(s.c, W, H);
-    if (!g) return;
+    const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     photo(s, ctx.media, p.source, p.t);
-    g.clearRect(0, 0, W, H);
     g.globalAlpha = clamp(local / 0.1);
     g.fillStyle = p.bg; g.fillRect(0, 0, W, H);
-    const bands = parseBands(p.bands);
+    if (s.bandsText !== p.bands) { s.bandsText = p.bands; s.bands = parseBands(p.bands); }   // parsed once per value, not every frame
+    const bands = s.bands;
     let k = -1; bands.forEach((b, i) => { if (local >= b.t) k = i; });
     if (k < 0) { g.globalAlpha = 1; return; }
-    const b = bands[k], R = Math.hypot(W, H), h = bandHeight(k, W, H) * (0.75 + 0.25 * eOut((local - b.t) / 0.25));
+    const b = bands[k], R = Math.hypot(W, H), h = bandHeight(k, bands.length, W, H, p.angle) * (0.75 + 0.25 * eOut((local - b.t) / 0.25));
     g.save(); g.translate(W / 2, H / 2); g.rotate((p.angle * Math.PI) / 180);
     g.fillStyle = b.bc; g.fillRect(-R / 2, -h / 2, R, h);
     g.beginPath(); g.rect(-R / 2, -h / 2, R, h); g.clip();
