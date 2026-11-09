@@ -43,7 +43,7 @@ export const countdown: ItemType<P, S> = {
     { key: 'accent', label: '環的顏色（ring 樣式；slant 的弧線用每一下的顏色）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'ink', label: '數字描邊（ring 樣式；slant 沒有描邊）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'ring', label: '外圈的環（slant 樣式是右側的弧線）', type: 'bool', default: true },
-    { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
+    { key: 'font', label: '字型（ring 樣式；slant 固定用 Anton）', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
   ],
   build(ctx) {
     const box = h('div', null, null, ctx.root);

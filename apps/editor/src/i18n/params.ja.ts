@@ -421,7 +421,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.countdown.ring": {"name":"外側のリング","hint":"slant スタイルでは右側の弧"},
   "common.countdown.look": {"name":"スタイル","hint":"ring 輪、slant 斜体の数字と弧"},
   "common.countdown.colors": {"name":"一拍ごとの色","hint":"カンマ区切りで順番に；空＝数字の色"},
-  "common.countdown.font": {"name":"フォント"},
+  "common.countdown.font": {"name":"フォント","hint":"ring スタイルのみ。slant は常に Anton"},
   "common.list.title": {"name":"タイトル","hint":"空欄＝なし"},
   "common.list.items": {"name":"項目","hint":"1行に1つ、または | で区切る"},
   "common.list.style": {"name":"スタイル"},

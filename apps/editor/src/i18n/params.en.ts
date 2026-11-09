@@ -421,7 +421,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.countdown.ring": {"name":"Outer ring","hint":"In the slant look, the arc on the right"},
   "common.countdown.look": {"name":"Look","hint":"ring, or slant: a slanted number with an arc"},
   "common.countdown.colors": {"name":"Tick colours","hint":"comma-separated, taking turns; empty = the number colour"},
-  "common.countdown.font": {"name":"Font"},
+  "common.countdown.font": {"name":"Font","hint":"Ring look only; the slant look is always Anton"},
   "common.list.title": {"name":"Title","hint":"Blank = none"},
   "common.list.items": {"name":"Items","hint":"One per line, or separated by |"},
   "common.list.style": {"name":"Style"},
