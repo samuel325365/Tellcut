@@ -42,7 +42,7 @@ export function thumbCases(lang: ThumbLang): GoldenCase[] {
 const goldenBytes = (c: GoldenCase) => { const f = join(GOLDEN_DIR, goldenFile(c, c.at[0])); return existsSync(f) ? readFileSync(f) : Buffer.alloc(0); };
 
 /** what a thumbnail is drawn from, short: a change in it means the picture is out of date */
-export const thumbKey = (c: GoldenCase) => createHash('sha1').update(JSON.stringify([c.type, c.params, c.theme ?? null, c.bg ?? null, !!c.wide, c.len ?? 3, c.at, c.sources ?? null]))
+export const thumbKey = (c: GoldenCase) => createHash('sha1').update(JSON.stringify([c.type, c.params, c.theme ?? null, c.bg ?? null, !!c.wide, c.len ?? 3, c.at, c.sources ?? null, ...(c.square ? ['square'] : [])]))
   .update(goldenBytes(c)).digest('hex').slice(0, 12);
 
 async function main() {

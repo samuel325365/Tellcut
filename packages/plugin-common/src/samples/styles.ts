@@ -30,6 +30,8 @@ export const STYLES: Sample[] = [
   // common.masthead, common.spread and common.wordbands (2026-11-06, the Fashion pilot film's fx.cover / fx.taste / fx.column /
   // fx.wordbands): the cover typing and settled, the back cover; a swatch page and a column page settled; the bands mid-run
   { name: 'masthead', type: 'common.masthead', len: 3, at: [0.25, 2.4], bg: '#4a6b7c' },
+  // a square frame: the masthead moves down under the issue lines, which reach its middle there
+  { name: 'masthead-square', type: 'common.masthead', square: true, len: 3, at: [2.4], bg: '#4a6b7c' },
   { name: 'masthead-back', type: 'common.masthead', sources: PIC, params: { mode: 'back', source: 'pic', script: 'Taste · See · Walk' }, len: 3, at: [2.0] },
   { name: 'spread', type: 'common.spread', sources: PIC, params: { source: 'pic' }, len: 3, at: [1.5] },
   { name: 'spread-column', type: 'common.spread', sources: PIC, params: { layout: 'column', source: 'pic', header: 'MARKET — SEATTLE' }, len: 3, at: [0.3, 1.5] },

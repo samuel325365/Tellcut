@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // common.masthead / common.spread / common.wordbands and the title look didone (2026-11-06, the Fashion pilot film's fx.cover /
 // fx.taste / fx.column / fx.wordbands / fx.bighead). jsdom has no canvas: the timing helpers, the declared stills and the look are tested.
-import { bandHeight, graphemes, masthead, parseBands, scriptLines, spread, typedLetters, wordbands } from './editorial.ts';
+import { bandHeight, graphemes, masthead, mastheadY, parseBands, scriptLines, spread, typedLetters, wordbands } from './editorial.ts';
 import { didone } from './caption/looks/title.ts';
 
 describe('common.masthead', () => {
@@ -20,6 +20,15 @@ describe('common.masthead', () => {
   });
   test('the masthead is typed a grapheme at a time: a flag or a ZWJ family comes in whole', () => {
     expect(graphemes('NY🇺🇸👨‍👩‍👧')).toEqual(['N', 'Y', '🇺🇸', '👨‍👩‍👧']);
+  });
+  test('the masthead moves down under the issue lines only where it would run into them: a square frame, not a tall or wide one', () => {
+    const title = { w: 900, asc: 80 }, small = 22, under = 70 + 11 + 26 + 80;
+    expect(mastheadY(1080, 1080, 1, false, title, 400, 400, small)).toBeCloseTo(under, 6);
+    expect(mastheadY(1080, 1920, 1, false, title, 400, 400, small)).toBeCloseTo(0.13 * 1920, 6);
+    expect(mastheadY(1920, 1080, 1, false, title, 400, 400, small)).toBeCloseTo(0.13 * 1080, 6);
+    // no issue lines, nothing to clear; the back cover sits lower to begin with
+    expect(mastheadY(1080, 1080, 1, false, title, 0, 0, small)).toBeCloseTo(0.13 * 1080, 6);
+    expect(mastheadY(1080, 1080, 1, true, { w: 900, asc: 40 }, 200, 250, small)).toBeCloseTo(0.165 * 1080, 6);
   });
   test('the italic line: words half and half; a line of Chinese too wide cut between its characters, one that fits left whole', () => {
     const w = (l: string) => l.length * 100;

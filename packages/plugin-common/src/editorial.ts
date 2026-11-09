@@ -66,6 +66,18 @@ export function scriptLines(text: string, width: (line: string) => number, room:
   return [words.slice(0, half).join(' '), words.slice(half).join(' ')].filter(Boolean);
 }
 
+/** the issue lines' middle and the space kept between their lower edge and the masthead's letters, × u */
+const ISSUE_Y = 70, ISSUE_GAP = 26;
+/** where the masthead's middle sits: 0.13 H (0.165 H on the back cover), pushed down under the issue lines only when the title,
+ *  centred, runs into one of them sideways — in a square frame it is about as wide as the page and they reach its middle; a tall
+ *  frame's 0.13 H is already below them and a wide one leaves room on both sides. `asc` is how far the letters rise above the middle,
+ *  `left` / `right` the issue lines' widths, `small` their size. */
+export function mastheadY(W: number, H: number, u: number, back: boolean, title: { w: number; asc: number }, left: number, right: number, small: number): number {
+  const my = (back ? 0.165 : 0.13) * H, x0 = W / 2 - title.w / 2, x1 = W / 2 + title.w / 2;
+  const hits = (left > 0 && x0 < 60 * u + left) || (right > 0 && x1 > W - 60 * u - right);
+  return hits ? Math.max(my, ISSUE_Y * u + small / 2 + ISSUE_GAP * u + title.asc) : my;
+}
+
 // ── common.masthead
 interface MP { mode: 'front' | 'back'; title: string; issueL: string; issueR: string; contents: string; script: string; sub: string; source: string; t: number; color: string; ink: string }
 interface MS { c: HTMLCanvasElement; img: HTMLImageElement | null; key: string; text: string }
@@ -105,13 +117,16 @@ export const masthead: ItemType<MP, MS> = {
     }
     const small = 22 * u;
     g.fillStyle = p.ink; g.textBaseline = 'middle'; g.font = disp(small, 400); track(g, small);
-    g.textAlign = 'left'; g.fillText(back ? 'NEXT ISSUE' : p.issueL, 60 * u, 70 * u);
-    g.textAlign = 'right'; g.fillText(back ? 'SEE YOU AGAIN' : p.issueR, W - 60 * u, 70 * u); untrack(g);
+    const issueL = back ? 'NEXT ISSUE' : String(p.issueL ?? ''), issueR = back ? 'SEE YOU AGAIN' : String(p.issueR ?? '');
+    const lw = issueL ? g.measureText(issueL).width : 0, rw = issueR ? g.measureText(issueR).width : 0;
+    g.textAlign = 'left'; g.fillText(issueL, 60 * u, ISSUE_Y * u);
+    g.textAlign = 'right'; g.fillText(issueR, W - 60 * u, ISSUE_Y * u); untrack(g);
     const chars = graphemes(p.title);
     let px = 190 * u; g.font = disp(px);
     const full = g.measureText(p.title).width;
     if (full > W * 0.86) { px *= (W * 0.86) / full; g.font = disp(px); }
-    const my = back ? 0.165 * H : 0.13 * H, typed = chars.slice(0, typedLetters(local, chars.length)).join(''), mw = g.measureText(p.title).width;
+    const m = g.measureText(p.title), mw = m.width, asc = Number.isFinite(m.actualBoundingBoxAscent) ? m.actualBoundingBoxAscent : px * 0.36;
+    const my = mastheadY(W, H, u, back, { w: mw, asc }, lw, rw, small), typed = chars.slice(0, typedLetters(local, chars.length)).join('');
     g.textAlign = 'left'; g.shadowColor = back ? 'transparent' : 'rgba(0,0,0,0.35)'; g.shadowBlur = 16 * u;
     if (typed) { g.fillText(typed, W / 2 - mw / 2, my); ctx.reportText(g, typed, W / 2 - mw / 2, my); }
     g.shadowColor = 'transparent';

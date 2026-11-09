@@ -2,7 +2,7 @@
 // samples use, and the caption samples (every look, word effect, entrance, template and exit).
 import { TEMPLATES } from '../caption/templates.ts';
 
-export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean;
+export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean; square?: boolean;
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }> }
 
 /** the palettes of the two podcast shorts */

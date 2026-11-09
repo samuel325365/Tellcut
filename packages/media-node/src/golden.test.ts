@@ -28,6 +28,8 @@ test('goldenProject is a 1080×1920 film of one item', () => {
   expect(p.tracks[0].items).toHaveLength(1);
   const w = goldenProject({ name: 'x', type: 'core.flash', at: [0], wide: true });
   expect([w.meta.width, w.meta.height]).toEqual([1920, 1080]);
+  const q = goldenProject({ name: 'x', type: 'core.flash', at: [0], square: true });
+  expect([q.meta.width, q.meta.height]).toEqual([1080, 1080]);
 });
 
 test('a missing golden is new, update writes it, the same picture is ok, a different one is changed, update rewrites it', async () => {

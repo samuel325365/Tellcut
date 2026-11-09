@@ -26,6 +26,8 @@ export interface GoldenCase {
   bg?: string;
   /** a 1920×1080 film (kept at 480×270) instead of 1080×1920 */
   wide?: boolean;
+  /** a 1080×1080 film (kept at 270×270): a block whose layout depends on the frame being square (common.masthead's issue lines) */
+  square?: boolean;
   /** pictures the block reads (common.mapcam's map): source id → a picture file in the golden folder (a made-up one, no licence
    *  question), its size and, for a map, where it lies; copied into the work folder as photo sources */
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }>;
@@ -38,15 +40,15 @@ export const goldenPlatformDir = (goldenDir: string, platform: NodeJS.Platform =
 const sourcePath = (id: string, file: string) => `media/golden-${id}${extname(file)}`;
 
 /** the size a case's picture is kept at */
-const sizeOf = (c: GoldenCase) => (c.wide ? `${GOLDEN_H}:${GOLDEN_W}` : `${GOLDEN_W}:${GOLDEN_H}`);
+const sizeOf = (c: GoldenCase) => (c.wide ? `${GOLDEN_H}:${GOLDEN_W}` : c.square ? `${GOLDEN_W}:${GOLDEN_W}` : `${GOLDEN_W}:${GOLDEN_H}`);
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } };
 
-/** A 1080×1920 (or, wide, 1920×1080) project of one overlay item. */
+/** A 1080×1920 (or, wide, 1920×1080; square, 1080×1080) project of one overlay item. */
 export function goldenProject(c: GoldenCase): Project {
   const len = c.len ?? 3;
   return parseProject({ version: 1,
-    meta: { name: c.name, width: c.wide ? 1920 : 1080, height: c.wide ? 1080 : 1920, fps: 30, duration: len, plugins: [], background: c.bg ?? '#3a4256', mix: MIX, ...(c.theme ? { theme: c.theme } : {}) },
+    meta: { name: c.name, width: c.wide ? 1920 : 1080, height: c.wide || c.square ? 1080 : 1920, fps: 30, duration: len, plugins: [], background: c.bg ?? '#3a4256', mix: MIX, ...(c.theme ? { theme: c.theme } : {}) },
     sources: Object.fromEntries(Object.entries(c.sources ?? {}).map(([id, s]) => [id, { path: sourcePath(id, s.file), duration: 1, width: s.width, height: s.height, kind: 'image', ...(s.map ? { map: s.map } : {}) }])),
     media: {}, grids: [],
     tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'g', type: c.type, start: 0, end: len, params: c.params ?? {} }] }] });
