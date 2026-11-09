@@ -3,13 +3,12 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, allItems, createRegistry, OLD_BLOCKS, cropAt, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, createRegistry, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
-import { viewCrop, viewRect, viewHits, type Rect } from './view.ts';
 import type { Who } from './follow.ts';
 import { parseContent, RECIPES } from './recipes/index.ts';
 import { inventory, type Inventory } from './inventory.ts';
@@ -18,7 +17,8 @@ import { tightenClip } from './tighten.ts';
 import { captionHeight, isCaption, placeCaptions, UNDER_GAP, type CaptionItem } from './under-panel.ts';
 import { addDucking, addScore, clipSpeech, QUIET_DB, type ScoreRequest } from './mix.ts';
 import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, type FollowReq } from './focus.ts';
-import { addFlatlayClip, checkFrame, checkShape, frameFields, type Frame, type Shape } from './frames.ts';
+import { addBands, addBeside, addFlatlayClip, addTrack, checkFrame, cropOf, frameFields, STILL, viewOf, type BandsOpts, type BesideOpts, type CropIn, type Frame, type Shape, type ViewOpts } from './frames.ts';
+export { cropOf, type CropIn };
 
 export { checkFrame };
 
@@ -37,20 +37,6 @@ export function num(v: unknown, what: string, o: { min?: number; above?: number 
   if (o.min !== undefined && v < o.min) throw new Error(`${what} 不能小於 ${o.min}，現在是 ${v}`);
   return v;
 }
-const STILL: Crop = { x: 0.5, y: 0.5, zoom: 1 };
-/** a clip's crop: the full move, or the short form — where it starts (x, y, zoom; default the centre at 1) and what changes by the
- *  end (`to`: any of x, y, zoom; `push`: the zoom times this) — that every cut.ts used to write its own helper for */
-export type CropIn = { from: Crop; to: Crop } | { x?: number; y?: number; zoom?: number; to?: Partial<Crop>; push?: number };
-export function cropOf(c: CropIn | undefined, what: string): { from: Crop; to: Crop } | undefined {
-  if (!c) return undefined;
-  if ('from' in c) return c;
-  const from: Crop = { x: c.x ?? 0.5, y: c.y ?? 0.5, zoom: c.zoom ?? 1 };
-  const to: Crop = { x: c.to?.x ?? from.x, y: c.to?.y ?? from.y, zoom: c.to?.zoom ?? r6(from.zoom * (c.push ?? 1)) };
-  for (const [k, v] of Object.entries({ x: from.x, y: from.y, zoom: from.zoom, 'to.x': to.x, 'to.y': to.y, 'to.zoom': to.zoom }))
-    if (typeof v !== 'number' || !Number.isFinite(v) || (k.endsWith('zoom') && v <= 0)) throw new Error(`${what} 的 crop.${k} 要是數字${k.endsWith('zoom') ? '（大於 0）' : ''}，現在是 ${v}`);
-  return { from, to };
-}
-
 const TRACKS = () => [
   // the main track is magnetic (spec 2026-10-15-proposals-magnetic §4.1): later edits ripple
   { id: 'v1', kind: 'video', name: 'Main', magnetic: true, items: [] }, { id: 'text', kind: 'overlay', name: 'Text', items: [] },
@@ -284,17 +270,11 @@ export class Cut {
    * view would show a `keepOut` rectangle [left, top, right, bottom] of the source (a watermark…) or — unless `burned: false` — the
    * footage's own burned-in caption row the inventory found. Pass the result as a clip's crop: { from: c.view(…), to: c.view(…, zoom 1.05) }.
    */
-  view(source: string, o: { at: [number, number]; zoom?: number; frame?: Frame; keepOut?: Rect[]; burned?: boolean; what?: string }): Crop {
+  view(source: string, o: ViewOpts): Crop {
     checkFrame(o.frame, `c.view('${source}')`);
-    const s = this.src(source), [, , fw, fh] = o.frame ?? this.layout?.frame ?? [0, 0, 1, 1], W = fw * this.p.meta.width, H = fh * this.p.meta.height;
-    const crop = viewCrop(s.width, s.height, W, H, o.at[0], o.at[1], o.zoom ?? 1), view = viewRect(s.width, s.height, W, H, crop);
+    const s = this.src(source), [, , fw, fh] = o.frame ?? this.layout?.frame ?? [0, 0, 1, 1];
     const cap = o.burned === false ? null : this.inv.sources.find((x) => x.id === source)?.burned?.caption;
-    const keep: Array<[Rect, string]> = [...(o.keepOut ?? []).map((r) => [r, '禁區'] as [Rect, string]),
-      ...(cap ? [[[cap.rect[0], cap.rect[1] - 0.012, cap.rect[0] + cap.rect[2], cap.rect[1] + cap.rect[3]], '原片燒進去的字幕'] as [Rect, string]] : [])];
-    const f = (r: Rect) => r.map((x) => x.toFixed(3)).join(', ');
-    for (const [r, name] of keep) if (viewHits(view, [r]).length)
-      throw new Error(`view(${source}${o.what ? `，${o.what}` : ''})：畫面會露出${name}（看到的範圍 ${f(view)}，${name} ${f(r)}）；把 at 移開或放大 zoom`);
-    return crop;
+    return viewOf(s, [fw * this.p.meta.width, fh * this.p.meta.height], source, o, cap);
   }
 
   /**
@@ -305,20 +285,9 @@ export class Cut {
    * `ratio` is a band's width ÷ height (2.7 ≈ 1080 × 400 in a 9:16 film), `gap` the space between bands as a share of the frame height;
    * the stack is centred. No sound (cut to the music). Returns the ids, top band first.
    */
-  bands(source: string, o: { len: number; from?: SrcTime[]; crops?: Array<{ from: Crop; to: Crop }>; count?: number; every?: number; ratio?: number; gap?: number }): string[] {
-    const s = this.src(source), n = Math.max(1, Math.round(o.count ?? o.from?.length ?? o.crops?.length ?? 3)), { width: W, height: H } = this.p.meta;
-    const gap = o.gap ?? 20 / 1920, bh = Math.min((1 - (n - 1) * gap) / n, W / (o.ratio ?? 2.7) / H), top = (1 - n * bh - (n - 1) * gap) / 2;
-    const frame = (i: number): Frame => [0, r6(top + i * (bh + gap)), 1, r6(bh)], every = o.every ?? o.len / (n + 1), t0 = this.cursor;
-    const at = (i: number) => secs(o.from?.[i] ?? 0, `c.bands('${source}') 的 from[${i}]`);
-    const ids = [this.clip(source, { from: at(0), len: o.len, crop: o.crops?.[0], sound: false, frame: frame(0) })];
-    const end = this.cursor, v1 = this.p.tracks.findIndex((t) => t.id === 'v1');
-    for (let i = 1; i < n; i++) {
-      const track = `v${i + 1}`, start = r6(Math.min(end - 1 / this.p.meta.fps, t0 + i * every));
-      if (!this.p.tracks.some((t) => t.id === track)) this.p.tracks.splice(v1 + i, 0, { id: track, kind: 'video', name: `Layer ${i + 1}`, items: [] } as Project['tracks'][number]);
-      const from = Math.max(0, Math.min(at(i), s.duration - (end - start)));
-      ids.push(addItem(this.p, { track, item: { source, in: r6(from), speed: 1, start, end, crop: o.crops?.[i] ?? { from: STILL, to: STILL }, frame: frame(i) } }));
-    }
-    return ids;
+  bands(source: string, o: BandsOpts): string[] {
+    return addBands(this.p, this.src(source), source, o, this.cursor,
+      (from, frame) => ({ id: this.clip(source, { from, len: o.len, crop: o.crops?.[0], sound: false, frame }), end: this.cursor }));
   }
 
   /**
@@ -329,33 +298,7 @@ export class Cut {
    * duoWindow('b', …)), a listener's face in a picture-in-picture. `crop` is one move spread over the pieces, as tighten spreads a
    * clip's. At save() each rides on its clip, so trimming or ripple-deleting the clip in the editor carries it along. Returns the ids.
    */
-  beside(clipIds: string | string[], o: { frame: Frame; shape?: Shape; crop?: CropIn; source?: string; offset?: number; track?: string }): string[] {
-    const ids = Array.isArray(clipIds) ? clipIds : [clipIds], what = `c.beside(${JSON.stringify(clipIds)})`;
-    if (!o?.frame) throw new Error(`${what}：要給 frame（這段第二個畫面放的框，例如 duoWindow('b', 參數)）`);
-    checkFrame(o.frame, what);
-    if (o.shape !== undefined) checkShape(o.shape, `${what} 的 shape`);
-    const track = o.track ?? 'v2', offset = o.offset ?? 0;
-    if (track === 'v1') throw new Error(`${what}：track 不能是主軌 v1（第二個畫面在自己的影片軌上，預設 v2）`);
-    const have = this.p.tracks.find((t) => t.id === track);
-    if (have && have.kind !== 'video') throw new Error(`${what}：${track} 是 ${have.kind} 軌，不是影片軌`);
-    if (o.source !== undefined) this.src(o.source);
-    const v1 = this.p.tracks.find((t) => t.id === 'v1')!.items as VideoItem[], times = resolveTimes(this.p);
-    const clips = ids.map((id) => { const c = v1.find((i) => i.id === id); if (!c) throw new Error(`${what}：主軌上沒有「${id}」`); return c; })
-      .sort((a, b) => times.get(a.id)!.start - times.get(b.id)!.start);
-    const move = cropOf(o.crop, what) ?? { from: STILL, to: STILL };
-    const total = clips.reduce((n, c) => n + (c.end - c.start), 0);
-    this.track(track, 'video', 'Beside', this.p.tracks.findIndex((t) => t.id === 'v1') + 1);
-    let acc = 0;
-    return clips.map((c) => {
-      const source = o.source ?? c.source, s = this.src(source), { start, end } = times.get(c.id)!, len = end - start;
-      const from = s.kind === 'image' ? 0 : r6(c.in + offset);
-      if (s.kind !== 'image' && (from < 0 || from + len * c.speed > s.duration + 1e-6))
-        throw new Error(`${what}：${source} 沒有 ${from.toFixed(2)}–${(from + len * c.speed).toFixed(2)} 秒（素材長 ${s.duration} 秒）；改 offset`);
-      const crop = clips.length > 1 && total > 0 && !(move as { keys?: unknown[] }).keys?.length ? { from: cropAt(move, acc / total, 1), to: cropAt(move, (acc + len) / total, 1) } : move;
-      acc += len;
-      return addItem(this.p, { track, item: { source, in: from, speed: c.speed, start: r6(start), end: r6(end), crop, frame: o.frame, ...(o.shape ? { shape: o.shape } : {}), ...(c.transitionIn ? { transitionIn: c.transitionIn } : {}) } });
-    });
-  }
+  beside(clipIds: string | string[], o: BesideOpts): string[] { return addBeside(this.p, (id) => this.src(id), clipIds, o); }
 
   private text(type: string, at: number, len: number, params: Record<string, unknown>, parent?: string, call = `c.effect('${type}')`): string {
     num(at, `${call} 的 at`, parent ? {} : { min: 0 });
@@ -647,9 +590,7 @@ export class Cut {
     }
   }
   /** make the track when the cut does not have it yet */
-  private track(id: string, kind: string, name: string, index: number) {
-    if (!this.p.tracks.some((t) => t.id === id)) this.p.tracks.splice(index, 0, (kind === 'sfx' || kind === 'music' ? { id, kind, name, gain: 0, items: [] } : { id, kind, name, items: [] }) as Project['tracks'][number]);
-  }
+  private track(id: string, kind: string, name: string, index: number) { addTrack(this.p, id, kind, name, index); }
 
   /**
    * The clip's speech as captions attached to it (they move with the clip). `type`/`params` pick the caption block (default common.caption);
