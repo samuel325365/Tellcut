@@ -35,7 +35,13 @@ test('no result: a missing claude, a missing login, or the end of stderr', () =>
   // the page words these in its language from the code; error stays the Chinese for old pages
   expect(new StreamParser().finish(3, '')).toEqual([{ type: 'done', status: 'error', text: '', error: 'claude 結束（代碼 3）', code: 'chat.exited', detail: '3' }]);
   const p = new StreamParser(); p.push(JSON.stringify({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: '一半' } } }));
-  expect(p.finish(1, 'a\nb\nboom')).toEqual([{ type: 'done', status: 'error', text: '一半', error: expect.stringContaining('boom') }]);   // raw words: no code
+  expect(p.finish(1, 'a\nb\nboom')).toEqual([{ type: 'done', status: 'error', text: '一半', error: expect.stringContaining('boom'), detail: 'a\nb\nboom' }]);   // raw words: no code
+  // claude itself saying "not found" (a file, a model) is not a missing claude: the shell's own words, its exit codes or a
+  // spawn that found no program are
+  const own = "Error: ENOENT: no such file or directory, open 'x.json'\nmodel not found";
+  expect(new StreamParser().finish(1, own)).toEqual([{ type: 'done', status: 'error', text: '', error: own, detail: own }]);
+  for (const [code, said] of [[127, 'sh: 1: claude: not found'], [1, 'bash: claude: command not found'], [1, 'zsh: command not found: claude'], [null, '\nspawn claude ENOENT'], [9009, '']] as const)
+    expect(new StreamParser().finish(code, said)[0], said).toMatchObject({ code: 'chat.notFound' });
   const q = new StreamParser(); q.push(JSON.stringify({ type: 'result', subtype: 'success', is_error: true, result: 'Not logged in · Please run /login' }));
   expect(q.finish(1, '')).toEqual([{ type: 'done', status: 'error', text: '', error: expect.stringContaining('還沒登入'), code: 'chat.notLoggedIn', detail: 'Not logged in · Please run /login' }]);
 });

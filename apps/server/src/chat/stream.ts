@@ -18,6 +18,9 @@ const NOT_LOGGED_IN ='Claude Code 還沒登入：請在終端機執行 claude �
 export const NOT_FOUND = '找不到 claude 指令：請先安裝 Claude Code（npm install -g @anthropic-ai/claude-code）';
 /** a failure as the done event carries it: the Chinese words, and the code and raw cause the page words it from */
 export type Failure = { error: string; code?: ChatErrorCode; detail?: string };
+/** the claude program itself is missing: a spawn that found nothing to run, or a shell's own words for it (cmd, sh, bash, zsh).
+ *  Not any "not found" or ENOENT: claude saying it about a file or a model is claude running. */
+const missingProgram = (s: string) => /^spawn .+ ENOENT$|is not recognized as an internal or external command|^(?:\S+: )*(?:\d+: )?(?:\S*[\\/])?claude(?:\.\w+)?: (?:command )?not found$|command not found: (?:\S*[\\/])?claude\b/im.test(s);
 const loginTrouble = (s: string) => /\/login|not logged in|log ?in|authenticat|invalid api key/i.test(s);
 
 export function toolOf(name: string, input: any): ChatTool {
@@ -99,9 +102,9 @@ export class StreamParser {
       return [{ type: 'done', status: 'done', text: this.text || this.lastResult, ...usage }];
     }
     const tail = stderr.trim().split(/\r?\n/).slice(-5).join('\n');
-    const f: Failure = code === 9009 || code === 127 || /not recognized|not found|ENOENT/i.test(stderr) ? { error: NOT_FOUND, code: 'chat.notFound' }
+    const f: Failure = code === 9009 || code === 127 || missingProgram(stderr) ? { error: NOT_FOUND, code: 'chat.notFound' }
       : loginTrouble(stderr) ? { error: NOT_LOGGED_IN, code: 'chat.notLoggedIn', detail: tail }
-      : tail ? { error: tail } : { error: `claude 結束（代碼 ${code}）`, code: 'chat.exited', detail: String(code) };
+      : tail ? { error: tail, detail: tail } : { error: `claude 結束（代碼 ${code}）`, code: 'chat.exited', detail: String(code) };
     return [{ type: 'done', status: 'error', text: this.text, ...f }];
   }
 
