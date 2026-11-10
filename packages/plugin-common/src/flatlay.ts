@@ -89,7 +89,7 @@ interface S {
   /** the gobo's still frame and swaying leaves, and where the leaves were last painted (repainted when the sway moves them) */
   goboLayers: GoboLayers | null; goboAt: string;
   items: Thing[]; fly: Fly | null; mode: CameraMode; topAt: number | null; surface: Surface; side: 'left' | 'right'; warmth: 'morning' | 'afternoon' | 'golden';
-  dof: number; error: string | null; dead: boolean;
+  dof: number; dead: boolean;
   geos: Set<T.BufferGeometry>; mats: Set<T.Material>; texs: Set<T.Texture>;
   project: Project; fontsText: string;
   /** a scratch vector for toScreen (called for every corner of every word, every frame) */
@@ -407,19 +407,20 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     const c = document.createElement('canvas'); c.width = W; c.height = H; c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';
     const holder = document.createElement('div'); holder.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none';
     root.append(c, holder);
-    const { objs, error: objError } = parseObjects(p, W, H, ctx.dur), read = readFly(p.fly), error = objError ?? read.error;
+    // check reports both (tools/check/rules.ts); here they only reach the console
+    const { objs, error: objError } = parseObjects(p, W, H, ctx.dur), read = readFly(p.fly);
     if (objError) console.error(`common.flatlay ${ctx.item.id}: ${objError}`);
     if (read.error) console.error(`common.flatlay ${ctx.item.id}: ${read.error}; not flying`);
     let fly = read.fly;
     if (fly && !objs[fly.index]) { console.error(`common.flatlay ${ctx.item.id}: fly index ${fly.index} names no object (there are ${objs.length}); not flying`); fly = null; }
     const surface = (Object.keys(SURFACE_LOOK).includes(p.surface) ? p.surface : 'linen') as Surface;
-    if (!ctx.three) return buildFlat(ctx, c, holder, objs, surface, fly, error);
+    if (!ctx.three) return buildFlat(ctx, c, holder, objs, surface, fly);
     const three = ctx.three as ThreeKit, THREE = three.THREE;
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(flatlayFov(W, H), W / H, 0.05, 60);
     const s: S = { c, holder, three, scene, camera, spot: null!, sky: null!, gobo: null, goboLayers: null, goboAt: '', items: [], fly, flat: null,
       mode: (['push', 'still', 'top'].includes(p.camera) ? p.camera : 'push') as CameraMode, topAt: Number(p.topAt) >= 0 ? Number(p.topAt) : null,
       surface, side: p.side === 'right' ? 'right' : 'left', warmth: (['morning', 'afternoon', 'golden'].includes(p.warmth) ? p.warmth : 'afternoon') as S['warmth'],
-      dof: clamp(Number(p.dof) || 0), error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project: ctx.project as Project, fontsText: '',
+      dof: clamp(Number(p.dof) || 0), dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project: ctx.project as Project, fontsText: '',
       v3: new THREE.Vector3(), lastDof: null };
     // the table, far wider than any view so its edge never shows
     const look = SURFACE_LOOK[surface], tableGeo = own(s, new THREE.PlaneGeometry(40, 40));
@@ -505,7 +506,7 @@ export const flatlay: ItemType<FlatlayParams, S> = {
 
 /** the block without three.js: the same objects, posed by the same curves, drawn flat over the desk's colour from straight above
  *  (no camera, no light, no fly but the hand-off); enough to see what is where and what plays */
-function buildFlat(ctx: ItemCtx<FlatlayParams>, c: HTMLCanvasElement, holder: HTMLDivElement, objs: Obj[], surface: Surface, fly: Fly | null, error: string | null): S {
+function buildFlat(ctx: ItemCtx<FlatlayParams>, c: HTMLCanvasElement, holder: HTMLDivElement, objs: Obj[], surface: Surface, fly: Fly | null): S {
   const project = ctx.project as Project;
   const flat = objs.map((o): FlatThing => {
     const size = sizeOf(o), source = faceSource(o, project), [, , pw, ph] = size.pic;
@@ -514,7 +515,7 @@ function buildFlat(ctx: ItemCtx<FlatlayParams>, c: HTMLCanvasElement, holder: HT
     return { o, size, source, flipX: size.w >= size.h, front: paintFront(o).canvas, placeholder: paintPlaceholder(Math.round(pw * size.w * 400), Math.round(ph * size.h * 400)), still, back: null, backKey: '' };
   });
   return { c, holder, three: null!, scene: null!, camera: null!, spot: null!, sky: null!, gobo: null, goboLayers: null, goboAt: '', items: [], fly, mode: 'still', topAt: null, surface, side: 'left',
-    warmth: 'afternoon', dof: 0, error, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, v3: null!, lastDof: null, fontsText: paintedText(objs), flat };
+    warmth: 'afternoon', dof: 0, dead: false, geos: new Set(), mats: new Set(), texs: new Set(), project, v3: null!, lastDof: null, fontsText: paintedText(objs), flat };
 }
 
 function drawFlat(ctx: ItemCtx<FlatlayParams>, s: S, flat: FlatThing[]) {

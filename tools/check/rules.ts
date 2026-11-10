@@ -4,6 +4,8 @@ import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:pa
 import { allItems, badParamTypes, envelopeAt, OLD_BLOCKS, OLD_TEXT, PARAM_TYPES, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { flatlayClip, PANEL_FRAME, parseFly, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
+import { readFly } from '../../packages/plugin-common/src/flatlay.ts';
+import { parseObjects } from '../../packages/plugin-common/src/flatlay/objects.ts';
 import { heardSpeech } from '../cut/mix.ts';
 
 export type Level = 'error' | 'warn' | 'note';
@@ -258,6 +260,7 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   const tt = (p.meta as { titleTemplate?: string }).titleTemplate;
   if (tt && !knownT(tt)) out.push({ level: 'warn', msg: `專案的標題範本「${tt}」不存在，標題會用預設外觀：npm run tellcut -- catalog TTL 列出全部（template 填 id，不是 TTL-xx 代號）` });
   const badT = allItems(p).filter(({ item }) => (item as { type?: string }).type === 'common.heading' && typeof (item as any).params?.template === 'string' && (item as any).params.template && !knownT((item as any).params.template));
+  out.push(...flatlayParamErrors(p));
   if (badT.length) out.push({ level: 'warn', t: span(badT[0].item.id), ids: badT.map((x) => x.item.id), msg: `標題的範本「${(badT[0].item as any).params.template}」不存在（${badT.length} 個標題）：npm run tellcut -- catalog TTL 列出全部，template 填 id` });
   return byTime(out);
 }
@@ -296,6 +299,21 @@ export function flatlayHandOff(p: Project): Finding[] {
     if (taken) return [];
     return [{ level: 'warn', t: [r3(t.start + full), r3(t.start + Math.min(dur, until))], ids: [it.id],
       msg: `common.flatlay 飛進第 ${fly.index} 樣東西的照片、蓋滿畫面後就不畫桌面，主軌卻沒有那個鏡頭接手，畫面會空掉：用 c.flatlayClip('${it.id}', ${fly.index}) 放上去` }];
+  });
+}
+
+/** common.flatlay's objects and fly as written: JSON it cannot read draws only the one object `kind` names, or never flies, and the
+ *  block itself says so only on the browser's console */
+export function flatlayParamErrors(p: Project): Finding[] {
+  const times = resolveTimes(p);
+  return allItems(p).flatMap(({ item }): Finding[] => {
+    const it = item as { id: string; type?: string; params?: Record<string, unknown> };
+    if (it.type !== 'common.flatlay') return [];
+    const t = times.get(it.id)!, at: [number, number] = [r3(t.start), r3(t.end)], out: Finding[] = [];
+    const objs = parseObjects(it.params ?? {}, p.meta.width, p.meta.height, t.end - t.start).error, fly = readFly(it.params?.fly).error;
+    if (objs) out.push({ level: 'error', t: at, ids: [it.id], msg: `common.flatlay（${it.id}）的 objects 讀不懂（${objs}），桌上只會有 kind 那一樣東西：改成 JSON 陣列` });
+    if (fly) out.push({ level: 'error', t: at, ids: [it.id], msg: `common.flatlay（${it.id}）的 fly 讀不懂（${fly}），不會飛進照片：改成 { index, at, dur } 的 JSON` });
+    return out;
   });
 }
 

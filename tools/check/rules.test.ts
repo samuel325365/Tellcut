@@ -495,3 +495,18 @@ test('a desk that flies into a video with no main-track clip to take over is war
   const still = project([{ id: 'main', kind: 'video', items: [] }, { id: 'o', kind: 'overlay', items: [{ ...desk({ index: 0, at: 1, dur: 1 }), params: { objects: JSON.stringify([{ kind: 'polaroid', shot: 'ph|0||still', at: 0 }]), fly: { index: 0, at: 1, dur: 1 } } }] }]);
   expect(flatlayHandOff(still), 'a still: the desk keeps drawing it').toEqual([]);
 });
+
+test("a desk whose objects or fly can't be read is an error (the block would draw one default object, or never fly)", () => {
+  const desk = (params: object) => project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [{ id: 'desk', start: 0, end: 6, type: 'common.flatlay', params }] }]);
+  const errs = (params: object) => modelChecks(desk(params), ok).filter((f) => f.level === 'error');
+  const objs = errs({ objects: '[{"kind":"polaroid",' });
+  expect(objs.length).toBe(1);
+  expect(objs[0].ids).toEqual(['desk']);
+  expect(objs[0].msg).toContain('objects');
+  const fly = errs({ objects: '[{"kind":"polaroid","at":0}]', fly: '{"index":0,' });
+  expect(fly.length).toBe(1);
+  expect(fly[0].msg).toContain('fly');
+  expect(errs({ fly: '[1]' })[0].msg).toContain('fly');
+  expect(errs({ objects: '[{"kind":"polaroid","at":0}]', fly: { index: 0, at: 1, dur: 1 } })).toEqual([]);
+  expect(errs({})).toEqual([]);
+});

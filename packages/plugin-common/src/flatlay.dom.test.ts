@@ -331,7 +331,7 @@ test('the fly: a pull back before the fly is over waits for it, and a broken fly
   const { s } = await built({ objects: TWO, fly: '{"index":0,' });
   expect(err.mock.calls.flat().join(' ')).toMatch(/fly JSON/);
   err.mockRestore();
-  expect(s.fly).toBeNull(); expect(s.error).toMatch(/fly JSON/);
+  expect(s.fly).toBeNull();
 });
 
 test('an exit with no exitAt leaves just as the item ends; an empty list is the simple object', () => {
