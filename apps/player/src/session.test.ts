@@ -396,3 +396,23 @@ test('playback reaching the end draws the last frame once', async () => {
   await new Promise((r) => setTimeout(r, 0));
   expect([ended, drawn, s.busy]).toEqual([1, 1, false]);
 });
+
+test('an edit that rebuilds the stage while playing (the first 3D item) plays on from where it was; paused it stays paused', async () => {
+  const { s, tick } = setup3d();
+  await s.load(project);
+  await s.play(2);
+  tick();
+  expect(s.busy).toBe(true);
+  await s.patch(with3d);
+  expect(s.busy).toBe(true);
+  // and from the time it had reached, not from 0
+  const times: number[] = [];
+  (s as any).d.onTime = (t: number) => times.push(t);
+  tick();
+  expect(times.length).toBe(1);
+  expect(times[0]).toBeGreaterThanOrEqual(2);
+  s.pause();
+  await s.patch(project);
+  await s.patch(with3d);
+  expect(s.busy).toBe(false);
+});

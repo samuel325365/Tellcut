@@ -99,7 +99,13 @@ export class PreviewSession {
     const p = parseProject(raw), prev = this.project;
     // a changed fx list needs a new registry, so a new stage: start over at the same time
     // so does the first 3D item: the stage is built with three.js
-    if (JSON.stringify(p.meta.fx ?? []) !== JSON.stringify(prev.meta.fx ?? []) || (this.three === undefined && !this.threeFailed && usesThree(p, this.registry))) { const t = this.t; await this.load(raw); await this.seek(t); return; }
+    // and plays on if it was playing: the editor still shows it playing (it only hears of an end), but no time came any more
+    if (JSON.stringify(p.meta.fx ?? []) !== JSON.stringify(prev.meta.fx ?? []) || (this.three === undefined && !this.threeFailed && usesThree(p, this.registry))) {
+      const t = this.t, was = this.playing || this.starting > 0;
+      await this.load(raw);
+      if (was) await this.play(t); else await this.seek(t);
+      return;
+    }
     this.project = p;
     this.stage.update(p);
     // the same engine with the new plan and settings: a magnetic edit changes meta.duration on every drag frame, and
