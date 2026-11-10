@@ -576,6 +576,7 @@ export const zh = {
   'err.cmd.pastePastEnd': '播放頭在片尾，沒有東西可以貼上',
   'err.cmd.sourceExists': '專案裡已經有「{id}」',
   'err.cmd.attachSelf': '不能掛在自己身上',
+  'err.cmd.splitInTransition': '不能切在轉場進行中，先把轉場縮短或移開',
   'err.cmd.attachLoop': '不能掛在掛在它身上的項目上',
   'err.cmd.attachMagnetic': '磁吸軌上的片段不能掛在別的項目上',
   'err.cmd.crossfadeAudioOnly': '只有音樂與音訊片段可以交叉淡化',

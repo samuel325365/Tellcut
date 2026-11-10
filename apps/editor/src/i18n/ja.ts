@@ -577,6 +577,7 @@ export const ja: Record<Key, string> = {
   'err.cmd.pastePastEnd': '再生ヘッドが動画の終わりにあるため、貼り付けられません',
   'err.cmd.sourceExists': 'プロジェクトにはすでに「{id}」があります',
   'err.cmd.attachSelf': '自分自身には付けられません',
+  'err.cmd.splitInTransition': 'トランジションの途中では分割できません。先にトランジションを短くするか移動してください',
   'err.cmd.attachLoop': '自分に付いている項目には付けられません',
   'err.cmd.attachMagnetic': 'マグネットトラックのクリップは他の項目に付けられません',
   'err.cmd.crossfadeAudioOnly': 'クロスフェードできるのは音楽とオーディオのクリップだけです',

@@ -577,6 +577,7 @@ export const en: Record<Key, string> = {
   'err.cmd.pastePastEnd': 'The playhead is at the end of the video: nothing can be pasted there',
   'err.cmd.sourceExists': 'The project already has "{id}"',
   'err.cmd.attachSelf': 'An item cannot be attached to itself',
+  'err.cmd.splitInTransition': 'Cannot split inside a transition; shorten or move the transition first',
   'err.cmd.attachLoop': 'Cannot attach to an item that is attached to it',
   'err.cmd.attachMagnetic': 'Clips on the magnetic track cannot be attached to other items',
   'err.cmd.crossfadeAudioOnly': 'Only music and audio clips can crossfade',

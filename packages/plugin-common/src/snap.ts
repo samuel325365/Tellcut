@@ -20,7 +20,7 @@ export const snap: ItemType<P, S> = {
   params: [
     { key: 'date', label: '日期戳（空＝不顯示）', type: 'string', default: "'22 5 26" },
     { key: 'flash', label: '閃白強度（0＝不閃）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.9 },
-    { key: 'border', label: '白框粗細（px，以 1080 寬計；0＝沒有）', type: 'number', min: 0, max: 80, step: 1, default: 26 },
+    { key: 'border', label: '白框粗細（px，以 1080 短邊計；0＝沒有）', type: 'number', min: 0, max: 80, step: 1, default: 26 },
     { key: 'corner', label: '日期戳的角落', type: 'enum', options: ['br', 'bl', 'tr', 'tl'], default: 'br' },
     { key: 'size', label: '日期戳字級（畫面短邊 %）', type: 'number', min: 1, max: 10, step: 0.1, default: 5.2 },
     { key: 'mono', label: '日期戳字型', type: 'string', default: 'JetBrains Mono', theme: 'fonts.mono', themeIfSet: true },
