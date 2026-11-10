@@ -116,3 +116,14 @@ test('save hangs what lies within one clip on that clip, so a trim or ripple del
   expect([card, ding, flash].map((id) => +at.get(id)!.start.toFixed(3))).toEqual([0.3, 0.4, 1.8]);
   expect(at.get(across)!.start).toBe(1);                                                  // across the cut: where it was
 });
+
+test('markCutClean: project.json as written counts as unedited, a project without cache/ too; the next edit is noticed', async () => {
+  const { writeProjectFile } = await import('@tellcut/media-node');
+  const { markCutClean } = await import('./cut.ts');
+  const dir = mkdtempSync(join(tmpdir(), 'cut-clean-')), p = base();
+  p.tracks.push({ id: 'x', kind: 'overlay', items: [{ id: 'x1' }] } as never);   // something on its tracks: with no record it would count as edited
+  markCutClean(dir, writeProjectFile(dir, p, 'cut'));
+  expect(editedSinceCut(dir)).toBe(false);
+  writeFileSync(join(dir, 'project.json'), readFileSync(join(dir, 'project.json'), 'utf8').replace('"x1"', '"x2"'));
+  expect(editedSinceCut(dir)).toBe(true);
+});

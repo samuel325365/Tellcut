@@ -73,6 +73,12 @@ export function editedSinceCut(dir: string): boolean {
   if (typeof was === 'string') return was !== hash(text);
   try { return (JSON.parse(text)?.tracks ?? []).some((t: { items?: unknown[] }) => (t?.items?.length ?? 0) > 0); } catch { return false; }
 }
+/** Records project.json as the cut left it: `written`, the projectHash of the text just written (writeProjectFile returns it).
+ *  The cut's save and a promotion that rewrote a clean project (not an edit) both say so the same way. */
+export function markCutClean(dir: string, written: string) {
+  mkdirSync(join(dir, 'cache'), { recursive: true });
+  writeFileSync(stateFile(dir), JSON.stringify({ hash: written }));
+}
 const fileHash = (dir: string) => { const f = join(dir, 'project.json'); return existsSync(f) ? hash(readFileSync(f, 'utf8')) : null; };
 /** project.json changed while the cut ran (save() refuses to write over it): tools/cut.ts prints the message */
 export class EditedDuringCut extends Error {}
@@ -905,9 +911,7 @@ export class Cut {
     // a cut runs for minutes (transcribing, faces, score): an edit the editor saved meanwhile is not the script's to overwrite
     if (this.opened && !this.opened.force && fileHash(this.dir) !== this.opened.hash)
       throw new EditedDuringCut('初剪執行期間這個專案被編輯過（編輯器存檔或其他工具），沒有寫入，那些修改都還在。確定要覆蓋請加上 --force 重跑');
-    writeProjectFile(this.dir, p, 'cut');
-    mkdirSync(join(this.dir, 'cache'), { recursive: true });
-    writeFileSync(stateFile(this.dir), JSON.stringify({ hash: hash(readFileSync(join(this.dir, 'project.json'), 'utf8')) }));
+    markCutClean(this.dir, writeProjectFile(this.dir, p, 'cut'));
     return p;
   }
 }

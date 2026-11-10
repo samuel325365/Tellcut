@@ -9,7 +9,6 @@
 // file as it was is kept in .history/promote/.
 // The block gets its category (--category, unless the fx has one) and that category's next handle (spec 2026-10-22-block-handles);
 // a name easy to mistake for an existing block's is warned about.
-import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -18,7 +17,7 @@ import { loadProjectFx, TELLCUT_ROOT, saveProjectFile } from '@tellcut/media-nod
 import { plugins } from '@tellcut/plugins';
 import { BLOCK_CATEGORY, BLOCK_PREFIX } from '@tellcut/protocol';
 import { HANDLES_FILE, nextHandle, readHandles, similarNames, withHandle } from './handle-registry.ts';
-import { editedSinceCut } from './cut/cut.ts';
+import { editedSinceCut, markCutClean } from './cut/cut.ts';
 import { projectArgOrExit } from './project-arg.ts';
 import { splitFx, type FxSplit } from './fx-split.ts';
 import { parseArgsOrExit } from './args.ts';
@@ -163,9 +162,9 @@ export async function applyPromotion(o: { dir: string; commonDir: string; plan: 
     if (!raw.meta.fx.length) delete raw.meta.fx;
   }
   // the promotion is not an edit: a project untouched since its last cut stays so (npm run cut without --force), its cut.ts rewritten to match
-  const state = join(o.dir, 'cache', 'cut-state.json'), clean = existsSync(state) && !editedSinceCut(o.dir);
-  saveProjectFile(o.dir, raw, 'promote');
-  if (clean) writeFileSync(state, JSON.stringify({ hash: createHash('sha1').update(readFileSync(join(o.dir, 'project.json'), 'utf8')).digest('hex') }));
+  const clean = existsSync(join(o.dir, 'cache', 'cut-state.json')) && !editedSinceCut(o.dir);
+  const { hash } = saveProjectFile(o.dir, raw, 'promote');
+  if (clean) markCutClean(o.dir, hash);
   if (pl.split) writeFileSync(fxPath, pl.split.rest);
   else rmSync(fxPath, { force: true });
   const script = join(o.dir, 'cut.ts');
