@@ -27,7 +27,9 @@ export function cropStyle(box: Box | null, url: string, picAspect: number, cardA
   const cx = x + w / 2, cy = y + h / 2;
   // the same shape as the card, in the picture's own pixels: grow the narrow side
   if ((w / h) * picAspect < cardAspect) w = (h * cardAspect) / picAspect; else h = (w * picAspect) / cardAspect;
-  if (w > 1 || h > 1) return null;
+  // more than the picture holds in that shape: as much as it does, still about the part (a wide caption at the bottom)
+  const k = Math.max(w, h);
+  if (k > 1) { w /= k; h /= k; }
   x = Math.min(1 - w, Math.max(0, cx - w / 2)); y = Math.min(1 - h, Math.max(0, cy - h / 2));
   const pct = (at: number, size: number) => (size < 1 ? ((at / (1 - size)) * 100).toFixed(2) : '0');
   return { backgroundImage: `url(${url})`, backgroundSize: `${(100 / w).toFixed(2)}% auto`, backgroundPosition: `${pct(x, w)}% ${pct(y, h)}%` };

@@ -1,5 +1,5 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
-import { addCropKey, addItem, addTrack, allItems, removeCropKey, type CropWhich, CommandError, type TrackKind, parseProject, resolveTimes, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, updateItem, type Project, type Registry, type Transform } from '@tellcut/engine';
+import { addCropKey, addItem, addTrack, allItems, magneticTrack, removeCropKey, type CropWhich, CommandError, type TrackKind, parseProject, resolveTimes, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, updateItem, type Project, type Registry, type Transform } from '@tellcut/engine';
 import { captionPlan } from '@tellcut/plugin-common/speech';
 import { zoomAround } from './timeline/geometry.ts';
 import { keyAction, type Action } from './keys.ts';
@@ -844,7 +844,15 @@ export class Editor {
   /** Files from this PC dragged over the timeline: a line where they will start (their lengths are not known until they are in) */
   fileDragTo(at: DropTarget, kind: DropKind) {
     const plan = at.row === null ? null : { ok: true as const, track: at.row === 'new' ? null : at.row, start: at.t, end: at.t };
-    this.set({ libDrag: { kind, len: 0, files: true, plan, ...(plan?.track ? { line: at.t } : {}) } });
+    this.set({ libDrag: { kind, len: 0, files: true, plan, ...(plan?.track ? { line: this.cutNear(plan.track, at.t) } : {}) } });
+  }
+  /** where something let go at `t` goes in: on the magnetic track the cut its packing picks (after each clip whose middle is
+   *  before t), anywhere else t itself */
+  private cutNear(track: string, t: number): number {
+    const p = this.s.project, mag = p && magneticTrack(p);
+    if (!p || !mag || mag.id !== track) return t;
+    const times = resolveTimes(p);
+    return Math.max(0, ...(mag.items as Array<{ id: string }>).map((c) => times.get(c.id)!).filter((c) => (c.start + c.end) / 2 < t).map((c) => c.end));
   }
   /** they left the timeline, or were let go */
   fileDragEnd() { if (this.s.libDrag?.files) this.set({ libDrag: null }); }

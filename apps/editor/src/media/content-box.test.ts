@@ -27,3 +27,11 @@ test('cropStyle: that part, with a margin, widened to the card shape, filling th
   expect(cropStyle({ x: 0.02, y: 0.03, w: 0.95, h: 0.9 }, '/a.png', 1, 0.75)).toBeNull();
   expect(cropStyle(null, '/a.png', 1, 0.75)).toBeNull();
 });
+
+test('cropStyle: a part wider than the card can hold is shown as wide as the card allows, centred on the part, not on the picture', () => {
+  // a 16:9 picture, a caption near the left edge: the 3:4 card can hold at most 0.42 of the width, so it is that, at the part
+  const st = cropStyle({ x: 0.05, y: 0.7, w: 0.3, h: 0.1 }, '/c.png', 16 / 9, 0.75)!;
+  const w = 0.75 / (16 / 9);
+  expect(st.backgroundSize).toBe(`${(100 / w).toFixed(2)}% auto`);
+  expect(parseFloat(st.backgroundPosition)).toBeLessThan(5);       // at the left, where the caption is (cover would be 50 %)
+});

@@ -93,10 +93,17 @@ test('a block dropped on the new-track strip makes an overlay track holding it',
   expect([p.tracks.length, (tr.items[0] as any).type, (tr.items[0] as any).start]).toEqual([n + 1, 'x.title', 3]);
 });
 
-test('files dragged in from the PC: a line at the pointer on the track under it (their lengths are not known yet), cleared after', async () => {
+test('files dragged in from the PC: a line where they will go in on the track under it (their lengths are not known yet), cleared after', async () => {
   const ed = await editor();
+  // the magnetic track (c1 0–4, c2 4–8): the line is at the cut they will go in at, as for a card
   ed.fileDragTo({ t: 3, row: 'v' }, 'video');
-  expect(ed.store.get().libDrag).toEqual({ kind: 'video', len: 0, files: true, line: 3, plan: { ok: true, track: 'v', start: 3, end: 3 } });
+  expect(ed.store.get().libDrag).toEqual({ kind: 'video', len: 0, files: true, line: 4, plan: { ok: true, track: 'v', start: 3, end: 3 } });
+  ed.fileDragTo({ t: 1, row: 'v' }, 'video');
+  expect(ed.store.get().libDrag!.line).toBe(0);
+  ed.fileDragTo({ t: 7, row: 'v' }, 'video');
+  expect(ed.store.get().libDrag!.line).toBe(8);
+  ed.fileDragTo({ t: 2.5, row: 'mu' }, 'music');
+  expect(ed.store.get().libDrag!.line).toBe(2.5);                // any other track: at the pointer
   ed.fileDragTo({ t: 1, row: 'new' }, 'music');
   expect(ed.store.get().libDrag).toMatchObject({ kind: 'music', files: true, plan: { track: null } });
   ed.fileDragTo({ t: 1, row: null }, 'music');
