@@ -37,9 +37,10 @@ async function init() {
   const three = usesThree(project, registry) ? await loadThreeKit() : undefined;
   // measure: items' ctx.reportText boxes are kept in render mode, where check reads them through layout()
   const stage = new Stage(stageEl, registry, pool, { strict: RENDER, subpixelZoom: !RENDER, three, measure: RENDER });
+  // the font faces are declared before any item mounts, as in embed mode, so a render and the preview mount alike
+  await loadFonts(document, location.href);
   stage.load(project);
   const audio = new AudioEngine(planAudio(project, stage.times, resolver, projectUrl), registry.sfx, project.meta.mix, project.meta.duration);
-  await loadFonts(document, location.href);
   await whenReady({
     preload: () => Promise.all([pool.preload(stage.mediaRefs()), stage.ready()]).then(() => {}),
     audio: () => audio.load(),
