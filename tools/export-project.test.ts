@@ -191,6 +191,18 @@ test('--public refuses a project that still names a path elsewhere on this compu
   expect(existsSync(join(root, 'pub.zip'))).toBe(false);
 });
 
+test('--public looks into every text file: an .mjs, .svg or .html is scrubbed, a path left in a .log or .yml is refused', async () => {
+  const { root, tellcut, dir } = world();
+  for (const f of ['fx/lib.mjs', 'fx/mark.svg', 'fx/card.html']) writeFileSync(join(dir, f), `see ${join(tellcut, 'projects', 'trip', 'media', 'b.mp4')}`);
+  const back = importProject(await exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut }, strip: asItIs }), join(root, 'in'));
+  for (const f of ['fx/lib.mjs', 'fx/mark.svg', 'fx/card.html']) expect(readFileSync(join(back, f), 'utf8'), f).toContain('<tellcut>');
+  for (const f of ['score/run.log', 'fx/conf.yml']) {
+    const w = world();
+    writeFileSync(join(w.dir, f), 'from D:\\Trips\\rome.mp4');
+    await expect(exportProjectAsync(w.dir, { media: true, out: join(w.root, 'pub.zip'), public: { root: w.tellcut }, strip: asItIs }), f).rejects.toThrow(/D:\\Trips/);
+  }
+});
+
 test('--public refuses footage that would stay outside the zip: from another folder without --media, or offline', async () => {
   const { root, tellcut, dir } = world();
   expect(() => exportProject(dir, { media: false, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/a.*--media/s);

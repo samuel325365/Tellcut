@@ -50,7 +50,7 @@ export function scrubText(text: string, o: { root: string }): string {
 }
 /** the absolute paths in a text (a drive letter, /Users/…, /home/…), in order */
 export const leftoverPaths = (text: string) => [...text.matchAll(/\b[A-Za-z]:[\\/][^\s"'<>|,;]*|\/(?:Users|home)\/[^\s"'<>|,;]*/g)].map((m) => m[0]);
-const TEXT = /\.(json|jsonl|md|ts|js|txt|srt|vtt|csv)$/i;
+const TEXT = /\.(json|jsonl|md|ts|js|mjs|cjs|txt|srt|vtt|csv|svg|html|css|xml|log|yml|yaml)$/i;
 /** what a source says about where and when it was shot (read from a photo's EXIF or a video's tags when it came in) */
 const PLACE_AND_TIME = ['gps', 'taken', 'takenOffset', 'takenGuess'];
 /** Takes the place and time off every source list in `value` (a project, a version of one in .history/, a proposal holding
