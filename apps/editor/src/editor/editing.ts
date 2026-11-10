@@ -4,7 +4,7 @@
 // the editor's apply(); the editor keeps the project, its history, the preview and crop mode.
 import { addItem, addTrack, allItems, attach as attachCmd, CommandError, copyItems, deleteItems, detach as detachCmd, findItem, magneticGaps, magneticTrack, moveTrack as moveTrackCmd,
   overlapPairs, ownSounds, pasteItems, removeTrack as removeTrackCmd, resolveTimes, restackItem, rippleDelete, setCrossfade, setMagnetic, setTrack as setTrackCmd, split, trimEnd, trimStart,
-  updateItem, withDefaults, type Clip, type Project, type Registry, type TrackKind } from '@tellcut/engine';
+  updateItem, type Clip, type Project, type Registry, type TrackKind } from '@tellcut/engine';
 import type { PlayerBridge } from '../bridge.ts';
 import type { History } from '../history.ts';
 import type { EditorState, PeakInfo, Store } from '../store.ts';
@@ -13,6 +13,8 @@ import { cutPoints, edgeTargets, nextCut, selectionHasNoClip } from './cutting.t
 import { errText, t as say } from '../i18n/index.ts';
 import { blockText } from '../i18n/blocks.ts';
 import { localValues } from '../i18n/values.ts';
+import { materialItem } from './materials.ts';
+import type { Material } from '../audition.ts';
 
 type Recipe = (d: Project) => void;
 /** the track kinds the library adds to */
@@ -271,27 +273,15 @@ export class TimelineEditing {
     return e;
   }
 
-  addClip(source: string, from: number, len: number) {
-    const p = this.s.project!, t = this.s.playhead;
-    // a photo: 3 s with a gentle push-in (spec 2026-10-14 §5)
-    if (p.sources[source]?.kind === 'image') return this.addTo('video', { source, in: 0, speed: 1, start: t, end: t + 3, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.1 } } });
-    const dur = Math.min(len, p.sources[source].duration - from), still = { x: 0.5, y: 0.5, zoom: 1 };
-    return this.addTo('video', { source, in: from, speed: 1, start: t, end: t + dur, crop: { from: still, to: still } });
+  /** the item a piece of the library makes at the playhead (materials.ts), added like the library adds */
+  private addAtPlayhead(m: Material) {
+    const x = materialItem(this.s.project!, m, this.s.playhead, { reg: this.reg, peaks: this.s.peaks, beats: this.s.beats });
+    return this.addTo(x.kind, x.item, x.also);
   }
-
-  addMusic(media: string) {
-    const t = this.s.playhead, len = musicLength(this.s.peaks[`media:${media}`]) ?? 10, b = this.s.beats[media];
-    // with detected beats, a beat grid comes along (snapping finds the beats)
-    return this.addTo('music', { media, in: 0, start: t, end: t + len, gain: 0, fadeIn: 0, fadeOut: 0 },
-      b && b.beats.length ? (d, id) => { d.grids.push({ id: `beats-${id}`, at: Math.round((t + b.offset) * 1e6) / 1e6, bpm: b.bpm, until: t + len }); } : undefined);
-  }
-
+  addClip(source: string, from: number, len: number) { return this.addAtPlayhead({ kind: 'clip', source, from, len }); }
+  addMusic(media: string) { return this.addAtPlayhead({ kind: 'music', media }); }
   /** `params`: values set in the gallery (only the sound's own keys are kept) */
-  addSfx(type: string, params?: Record<string, unknown>) {
-    const def = this.reg?.sfx(type), own = ownParams(def?.params, params);
-    const t = this.s.playhead, dur = def ? def.duration(withDefaults(def.params, own)) : 0.5;
-    return this.addTo('sfx', { type, start: t, end: t + Math.max(dur, 1 / (this.s.project?.meta.fps ?? 30)), params: own, gain: 0 });
-  }
+  addSfx(type: string, params?: Record<string, unknown>) { return this.addAtPlayhead({ kind: 'sfx', type, params }); }
 
   /** The library's "replace": the block becomes another of the same kind (a picture block for one that sits the same way
    *  over or under the video, a sound for a sound), in the same place and length, keeping the parameters both have. */
@@ -309,9 +299,7 @@ export class TimelineEditing {
   addOverlay(type: string, params?: Record<string, unknown>) {
     const why = uniqueBlock(this.reg, this.s.project!, type);
     if (why) { this.set({ notice: why }); return false; }
-    const t = this.s.playhead, defs = this.reg?.item(type)?.params ?? [];
-    // in the English or Japanese UI a block's Chinese words start in that language (written in, so the panel shows what is drawn)
-    return this.addTo('overlay', { type, start: t, end: t + 2, params: { ...localValues(type, defs), ...ownParams(defs, params) } });
+    return this.addAtPlayhead({ kind: 'overlay', type, params });
   }
 
   // ---------------------------------------------------------------- the selection
@@ -345,9 +333,4 @@ export function replaceProblem(registry: Pick<Registry, 'item' | 'sfx'> | undefi
   return registry ? uniqueBlock(registry, p!, type) : '';
 }
 
-/** the values of `params` whose keys the block or sound has */
-const ownParams = (defs: Array<{ key: string }> | undefined, params: Record<string, unknown> | undefined): Record<string, unknown> =>
-  (params && defs ? Object.fromEntries(Object.entries(params).filter(([k]) => defs.some((d) => d.key === k))) : {});
-
-/** Length of a music file from its waveform (peaks per second), if known. */
-export const musicLength = (pk?: PeakInfo) => (pk && pk.rate > 0 && pk.peaks.length ? pk.peaks.length / pk.rate : undefined);
+export { musicLength } from './materials.ts';
