@@ -56,6 +56,12 @@ export function peaksOf(pcm: Buffer, sampleRate: number, rate = PEAK_RATE): numb
   return out;
 }
 
+/** A file's sound levels (peaksOf at PEAK_RATE), read as mono 8 kHz 16-bit PCM: the waveform, prepare's peaks and the music
+ *  waveform all read it this one way, so they agree. The file must have sound (the callers probe first where it may not). */
+export async function readPeaks(path: string, o: { signal?: AbortSignal } = {}): Promise<number[]> {
+  return peaksOf((await ffmpeg(['-i', path, '-vn', '-ac', '1', '-ar', '8000', '-f', 's16le', '-'], { signal: o.signal, stdout: true })).stdout, 8000);
+}
+
 /** pts_time values printed by the showinfo filter. */
 export const parseShowinfo = (stderr: string) => [...stderr.matchAll(/pts_time:\s*([\d.]+)/g)].map((m) => +(+m[1]).toFixed(3));
 
@@ -139,9 +145,7 @@ async function analyzeLocked(f: AnalysisFiles, srcPath: string, stamp: string, o
 
   o.onStep?.('peaks', 3, 4);
   await atomic(f.peaks, async (tmp) => {
-    const peaks = (await probeHasAudio(srcPath))
-      ? peaksOf((await ffmpeg(['-i', srcPath, '-vn', '-ac', '1', '-ar', '8000', '-f', 's16le', '-'], { ...sig, stdout: true })).stdout, 8000)
-      : [];
+    const peaks = (await probeHasAudio(srcPath)) ? await readPeaks(srcPath, sig) : [];
     writeFileSync(tmp, JSON.stringify({ rate: PEAK_RATE, peaks } satisfies Peaks));
   });
   return f;

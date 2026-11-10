@@ -22,6 +22,7 @@ export * from './projectfile.ts';
 export * from './ingest.ts';
 export * from './proposals.ts';
 export * from './stills.ts';
+export * from './grab.ts';
 export * from './logo.ts';
 export * from './requests.ts';
 export * from './fx.ts';

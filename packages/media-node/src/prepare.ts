@@ -9,8 +9,8 @@ import {
   allItems, audioKey, mediaIssues, withDefaults, audioRefOf, parseProject, resolveTimes, soundFiles, stillKey, videoKey, videoRefOf,
   type AudioItem, type AudioRef, type CacheIndex, type MediaRef, type Project, type Registry, type SceneItem, type StillRef, type VideoItem,
 } from '@tellcut/engine';
-import { abortError, cutAudio, cutVideo, ffmpeg, grabStill, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
-import { PEAK_RATE, analysisFiles, peaksOf } from './analysis.ts';
+import { abortError, cutAudio, cutVideo, grabStill, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
+import { PEAK_RATE, analysisFiles, readPeaks } from './analysis.ts';
 import { fitImage } from './photo.ts';
 import { fileHash, sourceHash } from './hash.ts';
 
@@ -134,7 +134,7 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
       try {
         if (existsSync(made)) copyFileSync(made, tmp);
         else {
-          const data = (await probeHasAudio(src)) ? peaksOf((await ffmpeg(['-i', src, '-vn', '-ac', '1', '-ar', '8000', '-f', 's16le', '-'], { stdout: true, signal: ac.signal })).stdout, 8000) : [];
+          const data = (await probeHasAudio(src)) ? await readPeaks(src, { signal: ac.signal }) : [];
           writeFileSync(tmp, JSON.stringify({ rate: PEAK_RATE, peaks: data }));
         }
         renameRetry(tmp, final);

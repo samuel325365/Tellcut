@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { Plugin, Project } from '@tellcut/engine';
 import { parseProject } from '@tellcut/engine';
-import { blockDir, brokenUserPresets, cleanFields, ffmpeg, findPreset, libraryRoot, listLibrary, loadPresets, loadStyles, posterFromImage, PresetDraftZ, presetInfo, projectRegistry, renderStills,
+import { blockDir, brokenUserPresets, cleanFields, findPreset, grabFrame, libraryRoot, listLibrary, loadPresets, loadStyles, posterFromImage, PresetDraftZ, presetInfo, projectRegistry, renderStills,
   projectLinks, saveBlock, saveStyle, THUMB_FILE, writeUserPreset, deleteUserPreset, type Preset, type PresetDirs, type PresetLibrary, type PresetPoint } from '@tellcut/media-node';
 import type { Lang } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
@@ -35,7 +35,7 @@ export function projectPoster(plugins: Plugin[]): PresetPoster {
         const p = posterOf(project), src = p && project.sources[p.source];
         if (!p || !src) throw new Error('the project has no clip to take a poster from');
         still = join(tmp, 'still.png');
-        await ffmpeg(['-y', '-ss', String(p.t), '-i', resolve(dir, (src as { path: string }).path), '-frames:v', '1', still]);
+        await grabFrame(resolve(dir, (src as { path: string }).path), p.t, still);
       }
       await posterFromImage(still, out);
     } finally { rmSync(tmp, { recursive: true, force: true }); }

@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { AUDIO_PAD, stillKey, type StillRef } from '@tellcut/engine';
-import { PEAK_RATE, analysisDone, analysisFiles, analyzeSource, cutAudio, extrasDone, extrasFiles, ffmpeg, fitImage, correctBeats, musicBeats, musicFiles, readAssetRecords, type Beats, sourceExtras, grabStill, isAnalyzed, peaksOf, readTranscript, sendFile, renameRetry, shareAnalysis, sourceHash } from '@tellcut/media-node';
+import { PEAK_RATE, analysisDone, analysisFiles, analyzeSource, cutAudio, extrasDone, extrasFiles, fitImage, correctBeats, musicBeats, musicFiles, readAssetRecords, type Beats, sourceExtras, grabStill, isAnalyzed, readPeaks, readTranscript, sendFile, renameRetry, shareAnalysis, sourceHash } from '@tellcut/media-node';
 import { HttpError, sendJson, type Router } from './http.ts';
 import type { JobInfo, JobQueue } from './jobs.ts';
 import type { AnalyzeResult } from '@tellcut/protocol';
@@ -188,8 +188,7 @@ export function mediaRoutes(r: Router, store: ProjectStore, queue: JobQueue, opt
     const path = resolve(dir, m.path);
     if (!existsSync(path)) throw new HttpError(404, `Media file is offline: ${m.path}`, { offline: true });
     const file = await cached(dir, path, `music-peaks|${PEAK_RATE}`, 'json', async (tmp) => {
-      const { stdout } = await ffmpeg(['-i', path, '-vn', '-ac', '1', '-ar', '8000', '-f', 's16le', '-'], { stdout: true });
-      writeFileSync(tmp, JSON.stringify({ rate: PEAK_RATE, peaks: peaksOf(stdout, 8000) }));
+      writeFileSync(tmp, JSON.stringify({ rate: PEAK_RATE, peaks: await readPeaks(path) }));
     });
     sendFile(req, res, file);
   });

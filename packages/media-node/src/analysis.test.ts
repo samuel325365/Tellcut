@@ -1,8 +1,8 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { analysisFiles, analyzeSource, atomic, isAnalyzed, parseShowinfo, peaksOf, THUMB_COLS, THUMB_H, thumbGrid } from './analysis.ts';
-import { probeSize, run } from './ffmpeg.ts';
+import { analysisFiles, analyzeSource, atomic, isAnalyzed, parseShowinfo, peaksOf, readPeaks, THUMB_COLS, THUMB_H, thumbGrid } from './analysis.ts';
+import { ffmpeg, probeSize, run } from './ffmpeg.ts';
 import { heavy } from './limit.ts';
 
 test('peaksOf keeps the max |sample| of each window', () => {
@@ -50,6 +50,19 @@ test('analyzes a source into proxy, thumbnail atlas, scene cuts and peaks', asyn
   expect(Math.abs(peaks.length - 400)).toBeLessThanOrEqual(3);
   expect(Math.max(...peaks)).toBeCloseTo(0.125, 1);
 }, 120000);
+
+test('readPeaks reads a file\'s sound levels the one way every reader did (mono 8 kHz 16-bit), and stops on its signal', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'an-')), src = join(dir, 'a.m4a');
+  try {
+    await run(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=1.5', '-af', 'volume=0.5', '-c:a', 'aac', src]);
+    const { stdout } = await ffmpeg(['-i', src, '-vn', '-ac', '1', '-ar', '8000', '-f', 's16le', '-'], { stdout: true });
+    const peaks = await readPeaks(src);
+    expect(peaks).toEqual(peaksOf(stdout, 8000));
+    expect(Math.abs(peaks.length - 150)).toBeLessThanOrEqual(3);
+    const ac = new AbortController(); ac.abort();
+    await expect(readPeaks(src, { signal: ac.signal })).rejects.toThrow();
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}, 60000);
 
 test('a source without audio gets empty peaks; a finished analysis is not redone', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'an-'));
