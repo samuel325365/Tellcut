@@ -42,6 +42,7 @@ test('a music style preview is generated once and then served from the cache; an
     await fetch(`${base}/api/gallery/score/lofi.wav?seed=3`);
     expect(readdirSync(join(projectsDir, '_gallery'))).toEqual(cached);
     expect((await fetch(`${base}/api/gallery/score/nope.wav`)).status).toBe(404);
+    expect((await fetch(`${base}/api/gallery/score/constructor.wav`)).status).toBe(404);   // a name every object has is no style
     expect((await fetch(`${base}/api/gallery/score/lofi.wav?bpm=999`)).status).toBe(400);
     expect(existsSync(join(projectsDir, '_gallery'))).toBe(true);
   } finally { await app.close(); }

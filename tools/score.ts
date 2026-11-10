@@ -38,9 +38,10 @@ export async function main(argv: string[]): Promise<string> {
   const style = flags.get('--style');
   if (!id || !style) throw new Usage(`${USAGE}\n\n配樂風格：\n${listStyles(loaded)}`);
   const broken = loaded.errors.find((e) => e.file.endsWith(`${style}.js`));
-  if (!STYLES[style] && !loaded.styles[style]) throw new Error(broken ? `風格「${style}」載入失敗：${broken.message}` : `沒有「${style}」這個風格\n\n配樂風格：\n${listStyles(loaded)}`);
+  // own keys only: "constructor" is on every object's prototype and is no style
+  if (!Object.hasOwn(STYLES, style) && !Object.hasOwn(loaded.styles, style)) throw new Error(broken ? `風格「${style}」載入失敗：${broken.message}` : `沒有「${style}」這個風格\n\n配樂風格：\n${listStyles(loaded)}`);
   // a style that is not built in is code someone wrote for one project: the same rules as a project's own effects
-  const own = loaded.styles[style];
+  const own = Object.hasOwn(loaded.styles, style) ? loaded.styles[style] : undefined;
   if (own) {
     const bad = fxChecks({ [own.file]: readFileSync(own.file, 'utf8') }).filter((f) => f.level === 'error');
     if (bad.length) throw new Error(`風格「${style}」不能用：\n${bad.map((f) => `  ${f.msg}`).join('\n')}`);

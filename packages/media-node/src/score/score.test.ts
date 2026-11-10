@@ -89,6 +89,8 @@ test('length becomes whole bars (at least four), the closing chord rings after t
 
 test('bad requests say what is wrong', () => {
   expect(() => generateScore({ style: 'nope', length: 10 })).toThrow('pluck');
+  // a name every object has: no style, not a crash deep in composing
+  for (const style of ['constructor', 'toString', '__proto__']) expect(() => generateScore({ style, length: 10 }), style).toThrow(`沒有「${style}」這個配樂風格`);
   expect(() => generateScore({ style: 'lofi', length: 10, bpm: 300 })).toThrow('40–200');
   expect(() => generateScore({ style: 'lofi', length: 10, key: 'X' })).toThrow('看不懂調性');
 });

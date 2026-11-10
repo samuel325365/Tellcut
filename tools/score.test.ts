@@ -65,3 +65,7 @@ test('a word more than the project is refused before any music is written', asyn
   await expect(main([id, 'extra', '--style', 'lofi', '--length', '4'])).rejects.toThrow('多了用不到的字：「extra」');
   expect(existsSync(join(dir, 'media'))).toBe(false);
 });
+
+test('a style named like something every object has is no style', async () => {
+  for (const style of ['constructor', 'toString']) await expect(main([id, '--style', style]), style).rejects.toThrow(`沒有「${style}」這個風格`);
+});

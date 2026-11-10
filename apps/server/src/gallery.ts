@@ -90,8 +90,10 @@ export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: st
     const id = style.replace(/\.wav$/, ''), seed = num(url.searchParams.get('seed')) ?? 1, bpm = num(url.searchParams.get('bpm')), key = url.searchParams.get('key') || undefined;
     // a shared style, or one of the user's own (spec 2026-10-29-my-library §3.4): composed from the folder it is in
     const shared = o.library ?? SCORE_LIBRARY, mine = stylesDir(libraryRoot(o.projectsDir));
-    const own = STYLES[id] ? undefined : (await loadStyles([shared])).styles[id] ?? (await loadStyles([mine])).styles[id];
-    if (!STYLES[id] && !own) throw new HttpError(404, `No music style "${id}"`);
+    // own keys only: "constructor" is on every object's prototype and is no style
+    const ownKey = <T extends object>(o: T) => (Object.hasOwn(o, id) ? o[id as keyof T] : undefined);
+    const builtIn = ownKey(STYLES), own = builtIn ? undefined : ownKey((await loadStyles([shared])).styles) ?? ownKey((await loadStyles([mine])).styles);
+    if (!builtIn && !own) throw new HttpError(404, `No music style "${id}"`);
     const library = own && resolve(own.file).startsWith(resolve(mine) + sep) ? mine : shared;
     // a style from a file is named by its content too: one replaced in My blocks (or edited) under the same id is composed afresh
     const version = own ? `-${createHash('sha1').update(readFileSync(own.file)).digest('hex').slice(0, 8)}` : '';

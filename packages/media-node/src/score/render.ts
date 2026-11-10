@@ -79,7 +79,8 @@ export interface ScoreOptions {
 
 /** Compose and render a score of about `length` seconds (whole bars; the last chord rings a little longer). */
 export function generateScore(o: ScoreOptions): Score {
-  const all = { ...STYLES, ...(o.styles ?? {}) }, style = all[o.style];
+  // own keys only: "constructor" is on every object's prototype and is no style
+  const all = { ...STYLES, ...(o.styles ?? {}) }, style = Object.hasOwn(all, o.style) ? all[o.style] : undefined;
   if (!style) throw new Error(`沒有「${o.style}」這個配樂風格；有：${Object.keys(all).join('、')}`);
   const sr = o.sampleRate ?? 44100, bpm = o.bpm ?? style.defaults.bpm, key = o.key ?? style.defaults.key, seed = o.seed ?? 1;
   if (!(bpm >= 40 && bpm <= 200)) throw new Error(`速度 ${bpm} BPM 不在 40–200 之間`);
