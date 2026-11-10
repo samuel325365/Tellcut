@@ -190,3 +190,14 @@ test('render with dof goes through the depth-of-field chain made once per size',
   expect(calls).toEqual(['dof 5', 'dof 4', 'dispose 8x8', 'dof 5', 'plain']);
   expect(made).toEqual(['8x8', '16x9']);
 });
+
+test('environment frees the room scene it baked the reflections from, and bakes once per renderer', () => {
+  const rooms: Array<{ freed: boolean }> = [], tex = new THREE.Texture();
+  class Room { freed = false; constructor() { rooms.push(this); } dispose() { this.freed = true; } }
+  class Pm { fromScene() { return { texture: tex }; } dispose() {} }
+  const r: any = { domElement: { addEventListener() {} }, setSize() {}, setClearColor() {}, render() {}, dispose() {} };
+  const kit = makeKit({ ...THREE, PMREMGenerator: Pm } as any, { RoomEnvironment: Room } as any, { makeRenderer: () => r });
+  expect(kit.environment()).toBe(tex);
+  expect(kit.environment()).toBe(tex);
+  expect(rooms.map((x) => x.freed)).toEqual([true]);
+});

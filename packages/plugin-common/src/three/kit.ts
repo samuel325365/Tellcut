@@ -277,9 +277,10 @@ export function makeKit(THREE: Three, addons: ThreeAddons, o: KitOptions = {}): 
       const r = renderer();
       if (!r) return null;
       if (env && envFor === r) return env;
-      const pm = new THREE.PMREMGenerator(r);
-      env = pm.fromScene(new addons.RoomEnvironment(), 0.04).texture; envFor = r;
-      pm.dispose();
+      // the room's boxes and materials are needed only for the bake: the reflections live on in the texture
+      const pm = new THREE.PMREMGenerator(r), room = new addons.RoomEnvironment();
+      env = pm.fromScene(room, 0.04).texture; envFor = r;
+      pm.dispose(); room.dispose();
       return env;
     },
   };
