@@ -2,8 +2,9 @@
 // hand-written line under it. Highlights, travel, best moments. The still comes from the source at `t` (media(): exports prepare it).
 // `crop` frames the still in the square print like a clip's crop (keep burned-in text out); `font` is the theme's display font unless
 // set (a handwriting font such as LXGW WenKai TC makes the line look written).
-import { clamp, coverPlacement, cssCamel, eBack, h, prog, type Crop, type ItemType } from '@tellcut/engine';
+import { clamp, coverPlacement, cssCamel, eBack, h, prog, textEm, type Crop, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
+import { fitPx } from './text.ts';
 import { imagesReady } from './window.ts';
 
 interface P { source: string; t: number; caption: string; x: number; y: number; size: number; tilt: number; flash: boolean; ink: string; font: string; crop: Crop }
@@ -68,8 +69,10 @@ export const polaroid: ItemType<P, S> = {
       const b = coverPlacement(iw, ih, w - 2 * pad, hgt, crop);
       cssCamel(s.img, { position: 'absolute', maxWidth: 'none', objectFit: 'fill', left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` });
     } else cssCamel(s.img, { position: '', maxWidth: '', objectFit: 'cover', left: '', top: '', width: '100%', height: `${hgt}px` });
+    // the line on one row (white-space pre), shrunk to the print's inner width when long; its longest row when written on several
     s.text.textContent = p.caption;
-    cssCamel(s.text, { height: `${w * 0.22}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${w * 0.075}px`, color: p.ink,
+    const row = String(p.caption ?? '').split('\n').reduce((a, b) => (textEm(b) > textEm(a) ? b : a), '');
+    cssCamel(s.text, { height: `${w * 0.22}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${fitPx(row, w * 0.075, w - 2 * pad)}px`, color: p.ink,
       fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, transform: 'rotate(-1.5deg)', opacity: String(clamp((local - 0.5) / 0.3)) });
   },
 };
