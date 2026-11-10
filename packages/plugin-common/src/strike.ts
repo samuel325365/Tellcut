@@ -3,6 +3,7 @@
 // corrections, expectation vs reality, myth busting.
 import { clamp, cssCamel, eOut3 as eOut, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
+import { fitPx } from './text.ts';
 
 interface P { label: string; before: string; after: string; at: number; y: number; gap: number; size: number; color: string; accent: string; paper: string; softFont: string; font: string }
 interface S { cv: HTMLCanvasElement; label: HTMLElement; before: HTMLElement; stamp: HTMLElement; after: HTMLElement }
@@ -47,10 +48,12 @@ export const strike: ItemType<P, S> = {
     const a = eOut(prog(t, 0.05, 0.6)), y = p.y * H - a * 12 * k, cx = W / 2, soft = `'${p.softFont}', 'Noto Serif TC', serif`;
     s.label.textContent = p.label; s.before.textContent = p.before;
     const shadow = `0 0 ${16 * k}px rgba(0,0,0,0.5)`;
-    cssCamel(s.label, { display: p.label ? 'block' : 'none', left: `${cx}px`, top: `${y - 100 * k}px`, fontSize: `${40 * k}px`, fontWeight: '500', fontFamily: soft, color: p.color, opacity: String(0.9 * a * out), textShadow: shadow });
-    cssCamel(s.before, { left: `${cx}px`, top: `${y - 26 * k}px`, fontSize: `${76 * k}px`, fontWeight: '500', fontFamily: soft, color: p.color, opacity: String(0.9 * a * out), textShadow: shadow });
+    // lines too long for the safe width shrink (the stamp also leaves room for its padding); the marker spans the line as drawn
+    const room = W * (1 - 2 * ctx.theme.safe.side), bf = fitPx(p.before, 76 * k, room);
+    cssCamel(s.label, { display: p.label ? 'block' : 'none', left: `${cx}px`, top: `${y - 100 * k}px`, fontSize: `${fitPx(p.label, 40 * k, room)}px`, fontWeight: '500', fontFamily: soft, color: p.color, opacity: String(0.9 * a * out), textShadow: shadow });
+    cssCamel(s.before, { left: `${cx}px`, top: `${y - 26 * k}px`, fontSize: `${bf}px`, fontWeight: '500', fontFamily: soft, color: p.color, opacity: String(0.9 * a * out), textShadow: shadow });
     // the marker: two strokes across the line, the second slanting
-    const g = canvasAt(s.cv, W, H), half = (textEm(p.before) * 76 * k) / 2 + 40 * k;
+    const g = canvasAt(s.cv, W, H), half = (textEm(p.before) * bf) / 2 + 40 * k;
     g.globalAlpha = out; markerStrokes(g, cx, half, y, k, p.accent, t, p.at);
     // the stamp
     const hp = prog(t, p.at + 0.18, p.at + 0.32);
@@ -58,6 +61,6 @@ export const strike: ItemType<P, S> = {
     cssCamel(s.stamp, { display: hp > 0 ? 'block' : 'none', left: `${cx}px`, top: `${p.y * H + p.gap * Math.min(W, H)}px`, padding: `${14 * k}px ${35 * k}px`, borderRadius: `${16 * k}px`,
       background: p.accent, boxShadow: `inset 0 0 0 ${10 * k}px ${p.accent}, inset 0 0 0 ${15 * k}px ${p.paper}`, opacity: String(clamp(hp * 2) * out),
       transform: `translate(-50%, -50%) rotate(-4deg) scale(${2.2 - 1.2 * eOut(hp)})` });
-    cssCamel(s.after, { fontSize: `${96 * k}px`, fontWeight: '900', lineHeight: '1.2', color: p.paper, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, whiteSpace: 'pre' });
+    cssCamel(s.after, { fontSize: `${fitPx(p.after, 96 * k, room - 70 * k)}px`, fontWeight: '900', lineHeight: '1.2', color: p.paper, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, whiteSpace: 'pre' });
   },
 };

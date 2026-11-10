@@ -9,7 +9,7 @@
 // faint diagonal stripes and an inner rule in `color`, slammed down from 1.45×; the word glows in `color` like a hot iron and cools to
 // `paper` over a second.
 import { clamp, cssCamel, eBack, eOut3, h, prog, textEm, type ItemType } from '@tellcut/engine';
-import { emParts } from './text.ts';
+import { emParts, fitPx } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
 
 interface P { text: string; size: number; y: number; angle: number; color: string; font: string; shape: 'box' | 'circle' | 'card' | 'double' | 'ember'; x: number; tag: string; anchor: 'center' | 'top' | 'bottom'; ink: string; hl: string; head: string; paper: string }
@@ -25,6 +25,11 @@ export const doubleLook = (color: string, paper: string, stroke: number, k: numb
 /** shape ember: lands from 1.45× with an overshoot over 0.22 s, showing within 0.08 s; the word cools from the heat colour to the paper
  *  colour from 0.15 s over 0.9 s */
 export function emberLand(t: number) { return { scale: 1.45 - 0.45 * eBack(clamp(t / 0.22), 1.7), alpha: clamp(t / 0.08), cool: clamp((t - 0.15) / 0.9) }; }
+/** the font size (from `px` down, fitPx's floor kept) at which the widest of `lines` plus `pad` em of padding fits `room` px */
+export function stampPx(lines: string[], px: number, room: number, pad: number) {
+  const wide = lines.reduce((a, l) => (textEm(l) > textEm(a) ? l : a), ''), e = Math.max(0.5, textEm(wide));
+  return fitPx(wide, px, (room * e) / (e + pad));
+}
 
 export const stamp: ItemType<P, S> = {
   type: 'common.stamp', label: '印章', category: 'mark', kind: 'overlay',
@@ -64,12 +69,15 @@ export const stamp: ItemType<P, S> = {
     cssCamel(s.head, { display: p.head ? 'block' : 'none' });
     // the circle: a double ring a little wider than the word, the word centred in it
     const round = p.shape === 'circle', dbl = p.shape === 'double', d = textEm(p.text) + 1.1, dl = doubleLook(p.color, p.paper, theme.stroke, k);
+    // a word too wide for the safe width shrinks, its padding (0.5 em a side; double 0.42, the circle's 0.55) and borders with it
+    const edge = theme.stroke * (dbl ? 1.75 : round ? 2.4 : 1.2) * k, room = W * (1 - 2 * theme.safe.side) - 2 * edge;
+    const fpx = stampPx(String(p.text ?? '').split('\n'), px, room, round ? 1.1 : dbl ? 0.84 : 1);
     cssCamel(s.box, {
       left: `${(p.x ?? 0.5) * W}px`, top: `${p.y * H}px`, width: round ? `${d}em` : '', height: round ? `${d}em` : '', padding: round ? '0' : dbl ? dl.padding : '0.15em 0.5em',
       display: round || p.head || dbl ? 'flex' : '', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       color: p.color, border: dbl ? dl.border : `${theme.stroke * (round ? 2.4 : 1.2) * k}px ${round ? 'double' : 'solid'} ${p.color}`, borderRadius: round ? '50%' : dbl ? dl.borderRadius : `${theme.radius * 0.4 * k}px`,
       background: dbl ? dl.background : '', boxShadow: dbl ? dl.boxShadow : '', lineHeight: dbl ? dl.lineHeight : '',
-      fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`, opacity: String(alpha * out * (dbl ? 1 : 0.92)),
+      fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${fpx}px`, opacity: String(alpha * out * (dbl ? 1 : 0.92)),
       transform: `translate(-50%, -50%) rotate(${p.angle}deg) scale(${scale})`,
     });
   },
@@ -85,10 +93,12 @@ function drawCard(ctx: Parameters<typeof stamp.draw>[0], s: S, k: number, px: nu
   }
   const q = clamp(ctx.local / 0.26), scale = 1.35 - 0.35 * eBack(q, 1.9), out = 1 - prog(ctx.local, ctx.dur - 0.15, ctx.dur);
   const ty = p.anchor === 'top' ? '0%' : p.anchor === 'bottom' ? '-100%' : '-50%', below = p.anchor === 'top';
+  // the lines do not wrap: the longest one (its 【】 marks dropped) and the 0.54 em padding a side fit the card's 86 % width
+  const fpx = stampPx(p.text.replace(/\\n/g, '\n').replace(/[【】]/g, '').split('\n'), px, 0.86 * W - 10 * k, 1.08);
   cssCamel(s.box, {
     left: `${(p.x ?? 0.5) * W}px`, top: `${p.y * H}px`, width: '', height: '', display: 'block', padding: '0.3em 0.54em 0.35em', maxWidth: `${0.86 * W}px`,
     color: '#ffffff', background: p.color, border: `${5 * k}px solid ${p.ink}`, borderRadius: `${16 * k}px`, boxShadow: `${10 * k}px ${10 * k}px 0 ${p.ink}`,
-    fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`, lineHeight: '1.22', opacity: String(clamp(ctx.local / 0.08) * out),
+    fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${fpx}px`, lineHeight: '1.22', opacity: String(clamp(ctx.local / 0.08) * out),
     transformOrigin: below ? '20% 0%' : '20% 100%', transform: `translate(-50%, ${ty}) rotate(${p.angle}deg) scale(${scale.toFixed(4)})`,
   });
   // the tag: on the top edge (or the bottom one when the card hangs from its top), overlapping it a little

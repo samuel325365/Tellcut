@@ -6,7 +6,7 @@
 // sliding in one by one, then a last line that asks the viewer.
 import { clamp, cssCamel, eBack, eIn3, eOut3, h, type ItemType } from '@tellcut/engine';
 import { DUO_TOP, duoLayout } from './duo.ts';
-import { emParts, nl } from './text.ts';
+import { emParts, fitPx, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 import { wordsLang } from './words.ts';
 
@@ -81,10 +81,12 @@ function buildTitle(ctx: Ctx, s: S, k: number) {
     letterSpacing: `${10 * k}px`, webkitTextStroke: `${10 * k}px ${p.ink}`, paintOrder: 'stroke fill', textShadow: `${14 * k}px ${14 * k}px 0 ${color}`, whiteSpace: 'pre' }, text);
   const he = big(wa, p.colorA), she = big(wb, p.colorB);
   const [bx, by, bw, bh] = L.band, cx = (bx + bw / 2) * W, cy = (by + bh / 2) * H, side = p.dir === 'h';
-  // vertical: a's word just above the band, b's just below it; side by side: each in the middle of its panel
+  // vertical: a's word just above the band, b's just below it, shrunk when it (with its 10-unit letter spacing) is wider than the safe
+  // width; side by side: each in the middle of its panel
+  const across = (text: string) => fitPx(text, 210 * k, W * (1 - 2 * ctx.theme.safe.side) - [...text].length * 10 * k);
   const place = (el: HTMLElement, r: number[], below: boolean) => cssCamel(el, side
     ? { left: `${r[0] * W}px`, width: `${r[2] * W}px`, top: `${(r[1] + r[3] / 2) * H - 105 * k}px`, fontSize: `${Math.min(210 * k, (r[2] * W * 0.9) / Math.max(1, [...el.textContent!].length))}px` }
-    : { top: below ? `${(by + bh) * H + 40 * k}px` : `${by * H - 520 * k}px` });
+    : { top: below ? `${(by + bh) * H + 40 * k}px` : `${by * H - 520 * k}px`, fontSize: `${across(el.textContent!)}px` });
   place(he, L.a, false); place(she, L.b, true);
   const badge = div(s.box, { position: 'absolute', left: `${cx - 82 * k}px`, top: `${cy - 82 * k}px`, width: `${164 * k}px`, height: `${164 * k}px` });
   div(badge, { position: 'absolute', inset: '0', background: p.hl, border: `${8 * k}px solid ${p.ink}`, transform: 'rotate(45deg)', borderRadius: `${18 * k}px` });

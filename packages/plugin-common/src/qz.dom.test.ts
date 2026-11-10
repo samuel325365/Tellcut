@@ -6,6 +6,9 @@ import { quote } from './quote.ts';
 import { rating } from './rating.ts';
 import { stations, stationsLayout } from './stations.ts';
 import { marqueeCopies, reels } from './reels.ts';
+import { strike } from './strike.ts';
+import { stamp } from './stamp.ts';
+import { versus } from './versus.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -97,5 +100,35 @@ describe('common.reels marquee', () => {
     const shown = [...s.marquee.children] as HTMLElement[];
     expect(shown.length).toBe(marqueeCopies(textEm('♪ ok') * 28 + 90, 560));
     expect(shown.every((el) => el.textContent === '♪ ok')).toBe(true);
+  });
+});
+
+describe('long lines fit the safe width (strike, stamp, versus)', () => {
+  const W = 1080, safeW = (theme: any) => W - 2 * theme.safe.side * W;
+  test('strike: the soft line, the small label and the stamp shrink; the sample keeps its sizes', () => {
+    const before = 'this was meant to be a slow and gentle film', after = 'now it is a spreadsheet';
+    const { s, theme } = run(strike, { before, after, label: 'the original film said, word for word, in the opening:' }, 2);
+    expect(px(css(s.before).fontSize) * textEm(before)).toBeLessThanOrEqual(safeW(theme) + 0.01);
+    expect(px(css(s.label).fontSize) * textEm('the original film said, word for word, in the opening:')).toBeLessThanOrEqual(safeW(theme) + 0.01);
+    expect(px(css(s.after).fontSize) * textEm(after) + 70).toBeLessThanOrEqual(safeW(theme) + 0.01);
+    const d = run(strike, {}, 2).s;
+    expect([css(d.label).fontSize, css(d.before).fontSize, css(d.after).fontSize]).toEqual(['40px', '76px', '96px']);
+  });
+  test('stamp box, circle and double: the word and its padding fit; card: its longest line fits the card', () => {
+    const text = 'Approved by family';
+    for (const shape of ['box', 'circle', 'double']) {
+      const { s, theme } = run(stamp, { text, shape }, 1), pad = shape === 'circle' ? 1.1 : shape === 'double' ? 0.84 : 1;
+      expect(px(css(s.box).fontSize) * (textEm(text) + pad)).toBeLessThanOrEqual(safeW(theme) + 0.01);
+    }
+    const line = 'Go to bed a little earlier', c = run(stamp, { shape: 'card', text: `short\n${line}` }, 1).s;
+    expect(px(css(c.box).fontSize) * (textEm(line) + 1.08) + 10).toBeLessThanOrEqual(0.86 * W + 0.01);
+    expect(css(run(stamp, { text: '已驗證' }, 1).s.box).fontSize).toBe(`${(7 / 100) * 1920}px`);
+    expect(css(run(stamp, { shape: 'card', text: '你只是沒睡飽，\n要先【早點上床】', size: 2.7 }, 1).s.box).fontSize).toBe(`${(2.7 / 100) * 1920}px`);
+  });
+  test('versus title: a long word fits across the frame; the sample keeps 210 units', () => {
+    const { s, theme } = run(versus, { mode: 'title', words: 'Absolutely|Never' }, 1);
+    const f = px(css(s.el.he).fontSize);
+    expect(f * textEm('Absolutely') + 10 * 10).toBeLessThanOrEqual(safeW(theme) + 0.01);
+    expect(css(run(versus, { mode: 'title' }, 1).s.el.he).fontSize).toBe('210px');
   });
 });
