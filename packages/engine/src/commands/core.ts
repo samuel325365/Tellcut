@@ -62,9 +62,11 @@ export function mediaRate(track: Track, item: AnyItem): number | null {
   return null;
 }
 
-/** Length of the item's source in seconds (music files carry no declared length: Infinity). */
+/** Length of the item's source in seconds (a music file whose length is not recorded: Infinity). */
 export function sourceLength(p: Project, track: Track, item: AnyItem): number {
   if (track.kind === 'video' || track.kind === 'audio') return p.sources[(item as VideoItem | AudioItem).source].duration;
+  // only the commands are limited by it: music already longer than its file (an older project) still loads
+  if (track.kind === 'music') return p.media[(item as any).media]?.duration ?? Infinity;
   return Infinity;
 }
 

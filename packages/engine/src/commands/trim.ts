@@ -4,10 +4,11 @@ import { resolveTimes } from '../time.ts';
 import { CommandError, type Found, findItem, fitOwn, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
 
 /** The longest a media clip may get by moving its end: as far as its source goes. A frozen clip holds one frame after freezeAt,
- *  so when freezeAt falls inside the source it may run on for ever; a freezeAt past the source's end does not lift the limit. */
+ *  so when freezeAt falls inside the source it may run on for ever; a freezeAt past the source's end does not lift the limit.
+ *  Never less than a frame: music may start past the end of its file (its length is not checked on load). */
 function longest(p: Project, f: Found, rate: number): number {
   const it = f.item as any, fits = (sourceLength(p, f.track, f.item) - it.in) / rate;
-  return f.track.kind === 'video' && it.freezeAt != null && it.freezeAt <= fits + 1e-6 ? Infinity : fits;
+  return f.track.kind === 'video' && it.freezeAt != null && it.freezeAt <= fits + 1e-6 ? Infinity : Math.max(minLen(p), fits);
 }
 
 const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('Sound effects have a fixed length', 'cmd.sfxFixedLength'); };

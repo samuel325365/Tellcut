@@ -47,6 +47,17 @@ test("trimming a clip's head keeps the envelope points before it: the level ther
   expect([item(cut, 'm1').envelope, item(cut, b).envelope]).toEqual([[[-2, 0], [2, -4.8]], [[0, -4.8], [1, -6], [6, 0]]]);
 });
 
+test('music stops at the end of its file when its length is known (trimEnd, slip); an unknown length does not limit it', () => {
+  const known = fixture(); (known.media as any).m.duration = 12;   // m1: in 0, 0–10 s
+  expect(item(run(known, trimEnd, { id: 'm1', dt: 5 }), 'm1').end).toBe(12);
+  expect(item(run(known, slip, { id: 'm1', dt: 5 }), 'm1').in).toBe(2);
+  expect(item(run(fixture(), trimEnd, { id: 'm1', dt: 5 }), 'm1').end).toBe(15);
+  // music already past its file's end (an older project) still parses; a trim never leaves it shorter than a frame
+  const over = fixture(); (over.media as any).m.duration = 1; item(over, 'm1').in = 3;
+  expect(ProjectZ.safeParse(over).success).toBe(true);
+  expect(item(run(over, trimEnd, { id: 'm1', dt: 1 }), 'm1').end).toBe(0.04);
+});
+
 test('slip changes only the in-point, within the source', () => {
   expect(item(run(fixture(), slip, { id: 'c2', dt: 5 }), 'c2')).toMatchObject({ in: 15, start: 4, end: 8 });
   // c2 holds its frame from freezeAt 3: it plays 3 × 2 = 6 s of the 30 s source, not 4 × 2
