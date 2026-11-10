@@ -66,6 +66,9 @@ export const rating: ItemType<P, S> = {
         return { row, label, marks, bar, fill, num };
       });
     }
+    // a star's side: 1 em, or less when `max` stars would not fit the room the label (4.2 em), the number (1.8 em) and the gaps
+    // (0.3 em between the row's n + 2 parts) leave inside the card's padding and border
+    const inner = w - 68 * k - 2 * theme.stroke * 0.6 * k, star = Math.max(0.3, Math.min(1, (inner / px - 4.2 - 1.8 - 0.3 * (n + 1)) / n));
     const top = p.y >= 0 ? p.y * H : theme.safe.top * H, inn = eOut3(clamp(local / 0.35)), out = 1 - prog(local, dur - 0.3, dur);
     cssCamel(s.card, { left: `${side}px`, top: `${top}px`, width: `${w}px`, padding: `${28 * k}px ${34 * k}px`, gap: `${px * 0.5}px`, borderRadius: `${theme.radius * k}px`,
       background: p.paper, color: p.ink, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`, border: `${theme.stroke * 0.6 * k}px solid ${p.ink}`,
@@ -79,9 +82,13 @@ export const rating: ItemType<P, S> = {
     s.rows.forEach((r, i) => {
       const it = rows[i], share = eOut3(clamp((local - 0.35 - i * 0.35) / 0.6)), fills = starFills(it.value, n, share);
       r.label.textContent = it.label;
+      // a label too long for its 4.2 em column shrinks; the column keeps its width, now in px since the label's em changed
+      const lf = fitPx(it.label, px, 4.2 * px);
+      cssCamel(r.label, lf < px ? { fontSize: `${lf}px`, width: `${4.2 * px}px` } : { fontSize: '', width: '4.2em' });
       r.num.textContent = (it.value * share).toFixed(Number.isInteger(it.value) ? 0 : 1);
       const stars = p.style === 'stars';
-      r.marks.forEach((m, j) => cssCamel(m, { display: stars ? 'block' : 'none',
+      const side = star < 1 ? `${Math.floor(star * 1000) / 1000}em` : '1em';
+      r.marks.forEach((m, j) => cssCamel(m, { display: stars ? 'block' : 'none', width: side, height: side,
         background: `linear-gradient(90deg, ${p.star} ${fills[j] * 100}%, ${withAlpha(p.ink, 0.15)} ${fills[j] * 100}%)` }));
       cssCamel(r.bar, { display: stars ? 'none' : 'block', background: withAlpha(p.ink, 0.12) });
       cssCamel(r.fill, { width: `${clamp((it.value * share) / n) * 100}%`, background: p.star, borderRight: `${3 * k}px solid ${p.ink}` });
