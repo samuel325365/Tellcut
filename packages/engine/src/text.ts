@@ -27,6 +27,11 @@ const pieces = (t: string) => [...t].reduce<string[]>((out, c) => { if (out.leng
 // word boundaries for Chinese (toolkit phase 5): 咖啡色, 火車 stay whole; the browser and Node both have it (ICU)
 const SEGMENTER = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter('zh-Hant', { granularity: 'word' }) : null;
 
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+/** a text's letters as the eye counts them: graphemes, not UTF-16 units or code points, so typing it out never cuts an emoji in half
+ *  and one made of several joined by ZWJ (a family, a flag) comes in whole */
+export const graphemes = (text: string) => [...GRAPHEMES.segment(String(text ?? ''))].map((x) => x.segment);
+
 /** The pieces a line may break between: Chinese words, Latin words (with the space after them), runs of bleep symbols. */
 export function lineTokens(para: string): string[] {
   if (!SEGMENTER) return para.match(/[A-Za-z0-9'’.,!?:;-]+\s*|[＊＃％＠＆]+|\s+|./gu) ?? [];   // CJK between any two characters
@@ -85,7 +90,7 @@ export function animState(p: Anim, local: number, dur: number, W: number, H: num
   const inA = p.animIn === 'none' || p.animIn === 'typewriter' ? 1 : a, outB = p.animOut === 'none' ? 1 : b;
   return { opacity: Math.round(Math.min(inA, outB) * 1000) / 1000, x: x1 + x2, y: y1 + y2, typed: p.animIn === 'typewriter' ? (d > 0 ? clamp(local / d) : 1) : 1 };
 }
-const typedText = (s: string, share: number) => { const cs = [...s]; return cs.slice(0, Math.ceil(cs.length * share)).join(''); };
+const typedText = (s: string, share: number) => { const cs = graphemes(s); return cs.slice(0, Math.ceil(cs.length * share)).join(''); };
 
 interface TextP extends Anim { text: string; font: string; size: number; color: string }
 const common = (size: number, animIn = 'fade', font: 'display' | 'body' = 'display'): ParamDef[] => [

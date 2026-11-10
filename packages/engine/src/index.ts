@@ -9,7 +9,7 @@ export * from './report.ts';
 export * from './registry.ts';
 export * from './fx.ts';
 export * from './theme.ts';
-export { fitLines, animState, textEm, OLD_TEXT, OLD_BLOCKS, TEXT_FONTS, type Anim } from './text.ts';
+export { fitLines, animState, textEm, graphemes, OLD_TEXT, OLD_BLOCKS, TEXT_FONTS, type Anim } from './text.ts';
 export * from './validate.ts';
 export { corePlugin } from './core.ts';
 export * from './media/refs.ts';

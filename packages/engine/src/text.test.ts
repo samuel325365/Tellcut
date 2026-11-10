@@ -2,7 +2,7 @@
 import { corePlugin } from './core.ts';
 import { withDefaults } from './registry.ts';
 import { resolveTheme } from './theme.ts';
-import { animState, fitLines, textEm } from './text.ts';
+import { animState, fitLines, graphemes, textEm } from './text.ts';
 
 const type = (t: string) => corePlugin.items.find((x) => x.type === t)!;
 /** the main line of a text item: the first element in its box */
@@ -43,6 +43,13 @@ test('the four text items: title, caption (box, two lines), lower third (two lin
   expect(rows.map((r) => r.textContent)).toEqual(['感謝觀看', '導演　小明', '攝影　小華']);
   expect(Number(rows[0].style.opacity)).toBeGreaterThan(Number(rows[2].style.opacity));   // lines come in one after another
   expect(main(run('core.title', { text: '打字機', animIn: 'typewriter', animDur: 1 }, 0.3)).textContent).toBe('打');
+});
+
+test('a typewriter types whole letters as the eye counts them: an emoji joined of several comes in whole, never in pieces', () => {
+  const family = '👨‍👩‍👧';   // one letter of five code points (three people joined by ZWJ)
+  expect(graphemes(`${family}ab`)).toEqual([family, 'a', 'b']);
+  expect(main(run('core.title', { text: `${family}ab`, animIn: 'typewriter', animDur: 1 }, 0.3)).textContent).toBe(family);
+  expect(main(run('core.title', { text: `${family}ab`, animIn: 'typewriter', animDur: 1 }, 0.6)).textContent).toBe(`${family}a`);
 });
 
 test('two lines are balanced: no lone character on the second line', () => {

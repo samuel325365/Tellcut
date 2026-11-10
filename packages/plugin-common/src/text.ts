@@ -61,7 +61,5 @@ export function ghostLines(layer: HTMLElement, lines: Array<GhostLine | null>) {
   [...layer.children].forEach((el, i) => ghostLine(el as HTMLElement, lines[i]));
 }
 
-const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-/** a text's letters as the eye counts them: graphemes, not UTF-16 units or code points, so typing it out never cuts an emoji in half
- *  and one made of several joined by ZWJ (a family, a flag) comes in whole */
-export const graphemes = (text: string) => [...GRAPHEMES.segment(String(text ?? ''))].map((x) => x.segment);
+/** a text's letters as the eye counts them (graphemes): the engine's, which core's typewriter uses too */
+export { graphemes } from '@tellcut/engine';
