@@ -1,7 +1,7 @@
 // The blocks promoted from the food-receipt and food-deep shorts (2026-10-19): the receipt printer kit and the queue-number board kit.
 import { defaultSafe } from '@tellcut/engine';
 import { marqueeX, typedChars, dotmatrix } from './dotmatrix.ts';
-import { digits, digitsAt, flashSpot, hasCjk, parseDigitSteps, vfdMatrix } from './digits.ts';
+import { digits, digitsAt, digitsWanted, flashSpot, hasCjk, ledUnits, parseDigitSteps, vfdMatrix } from './digits.ts';
 import { fedAt, printer, printerAdds, printerLines, stair, stampSpot, totalNumber, userLine } from './printer.ts';
 import { doorAt, rolldoor } from './rolldoor.ts';
 import { callout, calloutLabel } from './callout.ts';
@@ -18,6 +18,16 @@ test('dots: the VFD font has every digit as 7 rows of 5, and the seven segments 
   expect(segsOf('1')).toBe('bc');
   expect(segsOf('-')).toBe('g');
   expect(segsOf('?')).toBe('');
+});
+
+test('digits: the LED shows as many digits as its longest value (at least 2) unless digits is set, and widens to hold them', () => {
+  expect(digitsWanted(parseDigitSteps('0|--|叫號, 0.6|01, 1.4|02'), 0, true)).toBe(2);
+  expect(digitsWanted(parseDigitSteps('0|--, 1|128'), 0, true)).toBe(3);
+  expect(digitsWanted(parseDigitSteps('0|95, 1|+960'), 0, true)).toBe(4);     // 95 + 960 = 1055
+  expect(digitsWanted(parseDigitSteps('0|--, 1|128'), 2, true)).toBe(2);      // the user's own count
+  expect(digitsWanted(parseDigitSteps('0.3|+95, 1.0|+60'), 0, false)).toBe(5); // the VFD keeps its 5
+  expect(ledUnits(2)).toBe(272);
+  expect(ledUnits(4)).toBe(272 + 2 * 62);
 });
 
 test('dotmatrix: typing reaches every character by its time, the marquee enters from the right and wraps', () => {

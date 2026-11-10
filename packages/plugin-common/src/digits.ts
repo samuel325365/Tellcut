@@ -46,6 +46,20 @@ export function digitsAt(steps: Step[], local: number, digits: number, pad: stri
   return { text, last, since: last ? local - last.t : 0 };
 }
 
+/** how many digits the display shows: `digits` when set; else the VFD's 5, and for the LED 2 or its longest value, whichever is more
+ *  (a set value or a running sum: 128 on a 2-digit LED showed 28) */
+export function digitsWanted(steps: Step[], digits: number, led: boolean): number {
+  const n = Math.round(digits);
+  if (n || !led) return n || 5;
+  let most = 2, base = 0;
+  for (const s of steps) {
+    if (!s.add) { base = s.n ?? 0; most = Math.max(most, [...s.v].length); } else if (s.n !== null) { base += s.n; most = Math.max(most, String(Math.round(base)).length); }
+  }
+  return most;
+}
+/** the LED's width in its own units: 272 holds two digits, each one more 62 */
+export const ledUnits = (n: number) => 272 + Math.max(0, n - 2) * 62;
+
 /** Chinese, Japanese or Korean (and their full-width punctuation) in a VFD's small words */
 export const hasCjk = (text: string) => /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/.test(text);
 
@@ -154,13 +168,14 @@ export const digits: ItemType<P, S> = {
   hide(s) { freeCanvas(s.cv, s.off); },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, S = Math.min(W, H), led = p.style === 'led', boardOn = !!p.title;
-    const n = Math.round(p.digits) || (led ? 2 : 5), steps = parseDigitSteps(p.steps), st = digitsAt(steps, local, n, led ? '0' : ' ');
+    const steps = parseDigitSteps(p.steps), n = digitsWanted(steps, p.digits, led), st = digitsAt(steps, local, n, led ? '0' : ' ');
     const total = p.totalAt >= 0 && local >= p.totalAt, out = 1 - prog(local, dur - 0.2, dur);
-    // sizes: a board is 1020 × 128 units; a display alone is the whole width (vfd 720 × 78, led 272 × 104)
+    // sizes: a board is 1020 × 128 units; a display alone is the whole width (vfd 720 × 78, led 272 × 104 for two digits, 62 more
+    // for each digit after them: the digits sit right-aligned and would otherwise run into the tag on the left)
     const bw = Math.min(p.w * S, W * (1 - 2 * theme.safe.side));
-    const u = boardOn ? bw / 1020 : led ? bw / 272 : bw / 720;
+    const lu = ledUnits(n), u = boardOn ? bw / 1020 : led ? bw / lu : bw / 720;
     const bh = boardOn ? 128 * u : led ? 104 * u : 78 * u;
-    const dw = led ? 272 * u : boardOn ? 470 * u : 720 * u, dh = led ? 104 * u : 78 * u;
+    const dw = led ? lu * u : boardOn ? 470 * u : 720 * u, dh = led ? 104 * u : 78 * u;
     const dx = boardOn ? bw - 14 * u - dw : 0, dy = boardOn ? (bh - dh) / 2 : 0;
     const x0 = p.x * W - bw / 2, y0 = p.y >= 0 ? p.y * H : theme.safe.top * H;
     cssCamel(s.box, { left: `${x0}px`, top: `${y0}px`, width: `${bw}px`, height: `${bh}px`, opacity: String(clamp(local / 0.15) * out), fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`,
