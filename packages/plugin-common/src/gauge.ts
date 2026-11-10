@@ -230,7 +230,8 @@ export const gauge: ItemType<P, S> = {
     s.unit.textContent = p.unit;
     cssCamel(s.unit, { display: p.unit && !word && said === null ? 'block' : 'none', left: `${(bx + 292) * u}px`, top: `${(by + 62) * u}px`, fontSize: `${26 * u}px`, color: ledOn });
     s.boomEl.textContent = p.boomText;
-    cssCamel(s.boomEl, { display: word ? 'block' : 'none', left: `${CX * u}px`, top: `${(by + bh / 2 + 4) * u}px`, fontSize: `${78 * u}px`, color: ledOn });
+    // shrunk into the LED window as the readout's words are; 爆表 (two characters) keeps its 78
+    cssCamel(s.boomEl, { display: word ? 'block' : 'none', left: `${CX * u}px`, top: `${(by + bh / 2 + 4) * u}px`, fontSize: `${Math.min(78, 330 / Math.max(1, textEm(p.boomText))) * u}px`, color: ledOn });
     s.read.textContent = said ?? '';
     cssCamel(s.read, { display: said ? 'block' : 'none', left: `${CX * u}px`, top: `${(by + bh / 2 + 4) * u}px`, fontSize: `${(Math.min(70, 330 / Math.max(1, textEm(said ?? ''))) * u).toFixed(2)}px`,
       color: ledOn, textShadow: `0 0 ${10 * u}px ${withAlpha(p.led, 0.6)}` });

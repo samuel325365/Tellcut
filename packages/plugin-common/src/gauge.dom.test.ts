@@ -42,3 +42,20 @@ test('look neutral: no guilt zone names on the band or under the readout', () =>
   for (const w of ['清', '地', '超越地獄', '爆表']) expect(shown).not.toContain(w);
   expect(drawn({}, 2.6).join('')).toMatch(/清/);
 });
+
+test('the boom word shrinks to the LED window like a readout in words (a long one ran past the housing); a short one keeps 78', () => {
+  const boomEl = (boomText: string) => {
+    const root = document.createElement('div'), st = new Stage(root, createRegistry([{ id: 'x', items: [gauge] } as any]), media);
+    st.load({
+      version: 1, meta: { width: 1080, height: 1920, fps: 30, duration: 4, background: '#000', plugins: [] }, sources: {}, media: {}, grids: [],
+      tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'g', type: 'common.gauge', start: 0, end: 3.5, params: { boom: 1, boomText } }] }],
+    } as any);
+    st.draw(1.05);
+    return [...root.querySelectorAll('div')].find((d) => d.style.display !== 'none' && d.textContent === boomText)!;
+  };
+  const u = parseFloat(boomEl('爆表').style.fontSize) / 78;
+  expect(u).toBeGreaterThan(0);
+  const long = boomEl('SYSTEM OVERLOAD');
+  expect(parseFloat(long.style.fontSize)).toBeLessThan(78 * u);
+  expect(parseFloat(long.style.fontSize) * 'SYSTEM OVERLOAD'.length * 0.55).toBeLessThanOrEqual(330 * u + 0.01);
+});
