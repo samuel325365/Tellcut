@@ -19,7 +19,7 @@ test('the viewfinder marks the visible part of the full source frame', () => {
 test('the viewfinder follows the cursor; live crops while dragging and a final one on release', () => {
   const { box, sent } = setup();
   box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 500, clientY: 300 }));
-  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 596, clientY: 300 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 596, clientY: 300, buttons: 1 }));
   window.dispatchEvent(new MouseEvent('mouseup', { clientX: 596, clientY: 300 }));
   expect(sent[0]).toEqual({ type: 'cropChange', itemId: 'c1', which: 'from', crop: { x: 0.7, y: 0.5, zoom: 2 }, final: false });
   expect(sent.at(-1)).toEqual({ type: 'cropChange', itemId: 'c1', which: 'from', crop: { x: 0.7, y: 0.5, zoom: 2 }, final: true });
@@ -73,4 +73,13 @@ test('crop mode shows the frame of a keyframe', () => {
 
 test('a keyframe trimmed off the clip shows the clip\'s last frame', () => {
   expect(cropFrameLocal({ crop: { keys: [{ t: 5 }] } }, 4, 0, 30)).toBeCloseTo(4 - 1 / 30);
+});
+
+test('a drag released outside the preview (no mouseup reaches it) ends on the next move with no button held', () => {
+  const { box, sent } = setup();
+  box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 500, clientY: 300 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 596, clientY: 300, buttons: 1 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 700, clientY: 300, buttons: 0 }));   // back over the preview, button up
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 800, clientY: 300, buttons: 0 }));
+  expect(sent.map((m) => [m.crop.x, m.final])).toEqual([[0.7, false], [0.7, true]]);
 });

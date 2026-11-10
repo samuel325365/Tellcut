@@ -92,15 +92,20 @@ export class StageTools {
   private drag(e: MouseEvent) {
     const it = this.item(this.sel);
     if (!it || e.button !== 0) return;
+    // an item that draws nothing just now (faded out) has no box to drag by
+    const u = union(this.rectsOf(it.id));
+    if (!u) return;
     e.preventDefault(); e.stopPropagation();
     const id = it.id, t0 = it.transform, { r, k, W, H } = this.fit();
     const corner = (e.target as HTMLElement).dataset.corner;
-    const u = union(this.rectsOf(id))!, cx = (u.left + u.right) / 2, cy = (u.top + u.bottom) / 2;
+    const cx = (u.left + u.right) / 2, cy = (u.top + u.bottom) / 2;
     const d0 = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
     // scaling turns around the on-screen centre of what the item draws
     const anchor = { cx: (cx - r.left) / r.width, cy: (cy - r.top) / r.height };
     let last: Transform | null = null;
     const move = (m: MouseEvent) => {
+      // released outside the preview's frame: its mouseup never came here, so the first move with no button ends the drag
+      if (m.buttons === 0) { up(); return; }
       last = corner ? scaledTransform(t0, Math.hypot(m.clientX - cx, m.clientY - cy) / d0, anchor)
         : movedTransform(t0, (m.clientX - e.clientX) / k / W, (m.clientY - e.clientY) / k / H);
       this.dragged = true;
@@ -185,7 +190,8 @@ export class StageTools {
     let t: Transform;
     if (this.burst?.id === it.id) t = scaledTransform(this.burst.t, Math.pow(1.1, -e.deltaY / 100));
     else {
-      const { r } = this.fit(), u = union(this.rectsOf(it.id))!;
+      const { r } = this.fit(), u = union(this.rectsOf(it.id));
+      if (!u) return;   // it draws nothing just now: no centre to scale around
       // the first step of a burst re-anchors at the content centre; later steps keep that origin
       t = scaledTransform(it.transform, Math.pow(1.1, -e.deltaY / 100), { cx: ((u.left + u.right) / 2 - r.left) / r.width, cy: ((u.top + u.bottom) / 2 - r.top) / r.height });
     }

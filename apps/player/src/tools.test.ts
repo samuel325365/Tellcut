@@ -70,7 +70,7 @@ test('releasing a drag outside the preview does not swallow the next click', () 
     tools.select('t');
     const box = viewport.querySelector<HTMLElement>('.sel-box')!;
     box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 50, clientY: 20 }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 60, clientY: 20 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 60, clientY: 20, buttons: 1 }));
     window.dispatchEvent(new MouseEvent('mouseup', { clientX: 60, clientY: 20 }));   // no click follows (released outside)
     vi.advanceTimersByTime(0);
     sent.length = 0;
@@ -144,4 +144,27 @@ test('an element in the middle of a fade-out (opacity close to 0) is not picked'
   (viewport.querySelector('[data-id="t"] div') as HTMLElement).style.opacity = '0.01';
   at('click', viewport);
   expect(sent).toEqual([{ type: 'pick', itemId: null }]);
+});
+
+test('a drag released outside the preview ends on the next move with no button held: one final change, nothing after', () => {
+  const { tools, viewport, sent } = setup();
+  tools.select('t');
+  const box = viewport.querySelector<HTMLElement>('.sel-box')!;
+  box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 50, clientY: 20 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 82, clientY: 20, buttons: 1 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 200, clientY: 100, buttons: 0 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 250, clientY: 120, buttons: 0 }));
+  const moves = sent.filter((m) => m.type === 'transformChange');
+  expect(moves.map((m) => [m.transform.x, m.final])).toEqual([[0.1, false], [0.1, true]]);
+});
+
+test('a selected item that draws nothing just now (faded out) is neither dragged nor scaled, and nothing throws', () => {
+  const { tools, viewport, sent } = setup();
+  tools.select('t');
+  const box = viewport.querySelector<HTMLElement>('.sel-box')!;
+  (viewport.querySelector('.st-item div') as HTMLElement).getBoundingClientRect = rect(0, 0, 0, 0);
+  expect(() => box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 50, clientY: 20 }))).not.toThrow();
+  window.dispatchEvent(new MouseEvent('mousemove', { clientX: 82, clientY: 20, buttons: 1 }));
+  expect(() => box.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100 }))).not.toThrow();
+  expect(sent.filter((m) => m.type === 'transformChange')).toEqual([]);
 });

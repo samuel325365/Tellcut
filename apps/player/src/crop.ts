@@ -78,7 +78,8 @@ export class CropView {
     e.preventDefault();
     const start = this.cur.crop, x0 = e.clientX, y0 = e.clientY;
     let last = start;
-    const move = (m: MouseEvent) => { if (!this.cur) return; const o = this.cur; last = moveViewfinder(o.srcW, o.srcH, o.frameW, o.frameH, start, (m.clientX - x0) / this.img.w, (m.clientY - y0) / this.img.h); this.send(last, false); };
+    // released outside the preview's frame, the mouseup never comes here: the first move with no button held ends the drag
+    const move = (m: MouseEvent) => { if (m.buttons === 0) { up(); return; } if (!this.cur) return; const o = this.cur; last = moveViewfinder(o.srcW, o.srcH, o.frameW, o.frameH, start, (m.clientX - x0) / this.img.w, (m.clientY - y0) / this.img.h); this.send(last, false); };
     const up = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', up); if (this.cur) this.send(last, true); };
     addEventListener('mousemove', move);
     addEventListener('mouseup', up);
