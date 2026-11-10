@@ -25,13 +25,6 @@ const readCache = (f: string): Cache => {
   return { version: VERSION, frames: {} };
 };
 
-/** The grid times from `a` to `b` seconds of the source (both ends included). */
-export function faceTimes(a: number, b: number): number[] {
-  const out: number[] = [];
-  for (let k = Math.round(Math.max(0, a) / FACE_STEP); k * FACE_STEP <= b + 1e-6; k++) out.push(+(k * FACE_STEP).toFixed(1));
-  return out;
-}
-
 /** grid keys in runs of consecutive grid times ("1.0","1.2","1.4" | "3.0"), in order */
 function stretches(keys: string[]): string[][] {
   const out: string[][] = [];

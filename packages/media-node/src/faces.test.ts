@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describeFaces, faceKey, facesAt, facesFile, faceTimes } from './faces.ts';
+import { describeFaces, faceKey, facesAt, facesFile } from './faces.ts';
 import { ffmpeg, run } from './ffmpeg.ts';
 
 // counts the ffmpeg runs facesAt makes (the real ffmpeg underneath)
@@ -12,7 +12,6 @@ import type { FaceInfo } from './providers/types.ts';
 const face = (x: number): FaceInfo => ({ box: [x - 0.05, 0.3, 0.1, 0.16], mouth: [x, 0.4], mouthW: 0.04 });
 
 test('the grid: every 0.2 s, keys snap to it', () => {
-  expect(faceTimes(1, 1.6)).toEqual([1, 1.2, 1.4, 1.6]);
   expect([faceKey(1.29), faceKey(0.05)]).toEqual(['1.2', '0.0']);
 });
 
