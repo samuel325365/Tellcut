@@ -14,6 +14,7 @@ import {
   tick, wrapEm, writeTime, type TextLayer, type Txt,
 } from './hand.ts';
 import { withAlpha } from './color.ts';
+import { fitPx } from './text.ts';
 
 type Mode = 'step' | 'list' | 'title' | 'done';
 interface P {
@@ -153,7 +154,8 @@ export const notecard: ItemType<P, S> = {
     if (p.card) paintCard(g, CARD_W, ch, p.paper, p.rule, red);
     g.globalAlpha = out; g.lineCap = 'round'; g.lineJoin = 'round';
     const T: Txt[] = [], txt = (t: Omit<Txt, 'family' | 'color'> & { color?: string; family?: string }) => T.push({ family: fam, color: p.ink, ...t, alpha: (t.alpha ?? 1) * out });
-    const C = CARD_W / 2;
+    // lines that would run off the card are set smaller to fit between its margins (52 card units each side; maxW)
+    const C = CARD_W / 2, M = 52;
 
     if (p.mode === 'step') {
       // the number in a red pencil ring
@@ -161,36 +163,39 @@ export const notecard: ItemType<P, S> = {
       handCircle(g, 86, 64, 48, ease(clamp(local / 0.45)), Number(p.no) * 13 || 7);
       const q = clamp((local - 0.15) / 0.3);
       txt({ text: String(p.no), x: 86, y: 87, px: 64, weight: 700, color: red, align: 'center', alpha: q, scale: 0.7 + 0.3 * backOut(q) });
-      txt({ text: p.title, x: 160, y: 90, px: 60, weight: 700, t0: 0.2, cps: 16 });
+      txt({ text: p.title, x: 160, y: 90, px: 60, weight: 700, t0: 0.2, cps: 16, maxW: CARD_W - M - 160 });
       const lines = wrapEm(p.text, 830 / 48).slice(0, 2), at = stepTimes(p.title, lines);
       lines.forEach((ln, i) => txt({ text: ln, x: 52, y: RULE0 + RULE * (i + 1) - 12, px: 48, t0: at.lineAt[i], cps: 30 }));
       parseFields(p.fields).forEach(([lab, val], i) => {
         const t0 = at.fieldsAt + i * 0.25, y = RULE0 + RULE * (4 + i) - 14, e = ease(clamp((local - t0) / 0.3)), lw = textEm(lab) * 30 + 28;
         if (e > 0) { g.globalAlpha = e * out; g.strokeStyle = red; g.lineWidth = 2.6; handRect(g, 50, y - 38, lw, 50, 1.6, lab.length * 3 + y); g.stroke(); g.globalAlpha = out; }
         txt({ text: lab, x: 64, y: y - 2, px: 30, weight: 700, color: red, alpha: e });
-        txt({ text: val, x: 50 + lw + 22, y, px: 42, t0: t0 + 0.15, cps: 28 });
+        txt({ text: val, x: 50 + lw + 22, y, px: 42, t0: t0 + 0.15, cps: 28, maxW: CARD_W - M - (50 + lw + 22) });
       });
     } else if (p.mode === 'list') {
       const { z, px, pitch, cols, rows, noteY } = L!;
       if (gt) { gt.save(); gt.scale(u, u); gt.lineCap = 'round'; gt.lineJoin = 'round'; gt.strokeStyle = red; gt.lineWidth = 4.4; gt.globalAlpha = 0.92 * out; }
       // ticking: everything is written already (no t0), only the ticks and the highlighter move
       const w0 = (t0: number, cps: number) => (ticking ? {} : { t0, cps });
-      txt({ text: p.title, x: 52, y: 90, px: 60, weight: 700, ...w0(0.05, 10) });
-      if (p.count) txt({ text: p.count.replace('{n}', String(items.length)), x: CARD_W - 52, y: 88, px: 36, color: pencil, align: 'right', ...w0(0.3, 10) });
+      const count = p.count ? p.count.replace('{n}', String(items.length)) : '';
+      txt({ text: p.title, x: 52, y: 90, px: 60, weight: 700, ...w0(0.05, 10), maxW: CARD_W - 2 * M - (count ? textEm(count) * 36 + 24 : 0) });
+      if (count) txt({ text: count, x: CARD_W - 52, y: 88, px: 36, color: pencil, align: 'right', ...w0(0.3, 10) });
       shown.forEach(({ text: name, ink }, i) => {
         const { col, row } = listSlot(i, items.length, cols), x = 52 + col * 450, y = RULE0 + pitch * (row + 1) - 14, t0 = 0.45 + i * p.every, e = ticking ? 1 : ease(clamp((local - t0) / 0.25));
+        // the room after the box: up to the next column (less a gap) or the card's margin; the highlighter and the red line follow the size
+        const room = (cols > 1 && col < cols - 1 ? x + 450 - 18 : CARD_W - M) - (x + 54 * z), ipx = fitPx(name, px, room);
         if (e <= 0) return;
         const tk = ticking ? tickState(i, now, local, ticked) : null;
-        if (tk && tk.marker > 0) { g.globalAlpha = 0.88 * out; g.fillStyle = p.marker; g.fillRect(x + 46 * z, y - 38 * z, (textEm(name) * px + 16 * z) * tk.marker, 48 * z); g.globalAlpha = out; }
+        if (tk && tk.marker > 0) { g.globalAlpha = 0.88 * out; g.fillStyle = p.marker; g.fillRect(x + 46 * z, y - 38 * z, (textEm(name) * ipx + 16 * z) * tk.marker, 48 * z); g.globalAlpha = out; }
         g.globalAlpha = e * out; g.strokeStyle = p.ink; g.lineWidth = 2.6; handRect(g, x, y - 34 * z, 36 * z, 36 * z, 1.4, i + 3); g.stroke(); g.globalAlpha = out;
         g.strokeStyle = red; g.lineWidth = 4.4;
         if (tk) tick(g, x, y - 34 * z, 36 * z, tk.k1, tk.k2);
         else if (check) tick(g, x, y - 34 * z, 36 * z, clamp((local - t0 - 0.12) / 0.14), clamp((local - t0 - 0.26) / 0.18));
-        txt({ text: name, x: x + 54 * z, y, px, ...(ink ? { color: ink } : {}), ...w0(t0 + 0.05, 26) });
+        txt({ text: name, x: x + 54 * z, y, px, ...(ink ? { color: ink } : {}), ...w0(t0 + 0.05, 26), maxW: room });
         // the red line through a ticked item, across the middle of its letters, rising a little
         const k = gt ? (ticking ? tickStrike(i, now, local, ticked) : writeStrike(local, t0)) : 0;
         if (gt && k > 0) {
-          const x0 = x + 46 * z, x1 = x + 62 * z + textEm(name) * px, ym = y - 15 * z;
+          const x0 = x + 46 * z, x1 = x + 62 * z + textEm(name) * ipx, ym = y - 15 * z;
           handPath(gt, [[x0, ym + 3 * z], [x0 + (x1 - x0) * k, ym + 3 * z - 6 * z * k]], false, 1.2, i + 5); gt.stroke();
         }
       });
@@ -207,8 +212,8 @@ export const notecard: ItemType<P, S> = {
       } else cssCamel(s.stamp, { display: 'none' });
     } else if (p.mode === 'title') {
       // the name is there from the first frame (an opening): it only settles in
-      const e = ease(clamp(local / 0.35)), half = Math.min(420, (textEm(p.title) * 150) / 2 + 10);
-      txt({ text: p.title, x: C, y: 250 - (1 - e) * 10, px: 150, weight: 700, align: 'center', alpha: 0.85 + 0.15 * e });
+      const tpx = fitPx(p.title, 150, CARD_W - 2 * M), e = ease(clamp(local / 0.35)), half = Math.min(420, (textEm(p.title) * tpx) / 2 + 10);
+      txt({ text: p.title, x: C, y: 250 - (1 - e) * 10, px: 150, weight: 700, align: 'center', alpha: 0.85 + 0.15 * e, maxW: CARD_W - 2 * M });
       g.strokeStyle = red; g.lineWidth = 4;
       const k = ease(clamp((local - 0.2) / 0.5));
       if (k > 0) { handPath(g, [[C - half, 286], [C - half + 2 * half * k, 282]], false, 3, 9); g.stroke(); }
