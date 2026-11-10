@@ -9,6 +9,7 @@ import { impactSfx, popSfx, thudSfx, explodeSfx, knockSfx, boingSfx } from './hi
 import { shingSfx, dingSfx, cashSfx, xyloSfx, chimeSfx, coinSfx, fanfareSfx, recvSfx } from './chime.ts';
 import { shutterSfx, typingSfx, pageSfx, slideSfx, flipSfx, printSfx, clunkSfx, tearSfx, scribbleSfx, tapeSfx } from './paper.ts';
 import { clinkSfx, dripSfx, sizzleSfx, pourSfx, crySfx, thunderSfx } from './life.ts';
+import { remembered } from './synth.ts';
 
 export { renderBeep, renderTick, renderError, renderDeflate, renderAlarm, renderDingDong, renderCamBeep, renderBuzz, renderHush, renderRingBell } from './alert.ts';
 export { renderAir, renderWhoosh, renderRiser, renderScratch, renderPowerUp, renderFastForward, renderRattle, renderFootstep, renderFlap, renderWhirr, renderSend, renderRewind } from './move.ts';
@@ -28,4 +29,4 @@ export const commonSfx: SfxType[] = [
   scribbleSfx, tapeSfx, clinkSfx, dripSfx, sizzleSfx, pourSfx, crySfx, thunderSfx,
   // ---- the phone and the camcorder (2026-10-23)
   buzzSfx, sendSfx, recvSfx, hushSfx, rewindSfx,
-];
+].map(remembered);

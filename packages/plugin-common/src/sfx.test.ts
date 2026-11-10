@@ -411,6 +411,24 @@ test('a preview started part way through a sound picks it up there; one already 
   expect(starts).toEqual([[0, 1], [0.03, 0.02], [0.4, 0]]);
 });
 
+test('a sound is synthesised once per type, parameters and rate (the preview restarts often); the rest come from a bounded cache', () => {
+  const seen: Float32Array[] = [], node = () => ({ connect() {}, gain: { value: 0 } });
+  const ctx = (sr: number): any => ({ sampleRate: sr, currentTime: 0, createGain: node, createBufferSource: () => ({ ...node(), start() {} }),
+    createBuffer: () => ({ getChannelData: () => ({ set: (x: Float32Array) => seen.push(x) }) }) });
+  const ding = commonSfx.find((x) => x.type === 'common.ding')!, b: any = { out: node(), verb: node(), noise: null };
+  const p = (pitch: number) => withDefaults(ding.params, { pitch });
+  ding.synth(ctx(48000), b, 0, p(1001)); ding.synth(ctx(48000), b, 2, p(1001));
+  expect(seen[1]).toBe(seen[0]);
+  ding.synth(ctx(44100), b, 0, p(1001)); ding.synth(ctx(48000), b, 0, p(1002));
+  expect([seen[2] === seen[0], seen[3] === seen[0], seen[2].length]).toEqual([false, false, Math.ceil(1.2 * 44100)]);
+  // the same samples as a fresh render, and only the latest 64 kept
+  expect([...seen[0]]).toEqual([...renderDing(48000, scaleStep(1001, 0, 'major'))]);
+  for (let i = 0; i < 64; i++) ding.synth(ctx(48000), b, 0, p(2000 + i));
+  ding.synth(ctx(48000), b, 0, p(1001));
+  expect(seen[seen.length - 1]).not.toBe(seen[0]);
+  expect([...seen[seen.length - 1]]).toEqual([...seen[0]]);
+});
+
 test('a long-tailed sound is still picked up by a preview started in its tail', () => {
   for (const id of ['dingdong', 'ringbell', 'ding', 'cash', 'chime', 'fanfare', 'impact', 'clink', 'thunder']) {
     const s = commonSfx.find((x) => x.type === `common.${id}`)!, longest = (p: Record<string, any>) => s.duration(withDefaults(s.params, p));

@@ -1,5 +1,5 @@
 // The pieces the common sound effects are made of: oscillators, noise, filters, envelopes, a bell, scales, and play() through the bus.
-import { rng, type ParamDef } from '@tellcut/engine';
+import { rng, type ParamDef, type SfxType } from '@tellcut/engine';
 
 export const TAU = Math.PI * 2;
 
@@ -97,10 +97,36 @@ export const ARPEGGIO = [0, 4, 7, 12, 16, 19, 24, 28];
 
 type Bus = { out: AudioNode; verb: AudioNode; noise: AudioBuffer; due?: number };
 
+// The samples a sound rendered, by type, parameters and sample rate: every preview restart rebuilds the mix, and rendering the
+// longer sounds again each time took the main thread for a while. Samples, not AudioBuffers (those belong to one context).
+// The most recently used are kept, within a count and a total length.
+const RENDERED = new Map<string, { x: Float32Array; send: number }>(), KEEP = 64, KEEP_SAMPLES = 16_000_000;
+let rendering: string | null = null, kept = 0;
+function keep(key: string, x: Float32Array, send: number) {
+  RENDERED.set(key, { x, send }); kept += x.length;
+  for (const [k, v] of RENDERED) {
+    if (RENDERED.size <= KEEP && kept <= KEEP_SAMPLES) break;
+    RENDERED.delete(k); kept -= v.x.length;
+  }
+}
+
+/** Makes `s` (whose synth renders its samples and hands them to play once) render each type, parameters and rate once. */
+export function remembered(s: SfxType): SfxType {
+  const render = s.synth;
+  s.synth = (ctx, bus, at, p) => {
+    const key = `${s.type}|${ctx.sampleRate}|${JSON.stringify(Object.keys(p).sort().map((k) => [k, p[k]]))}`, hit = RENDERED.get(key);
+    if (hit) { RENDERED.delete(key); RENDERED.set(key, hit); play(ctx, bus, at, hit.x, hit.send); return; }
+    rendering = key;
+    try { render(ctx, bus, at, p); } finally { rendering = null; }
+  };
+  return s;
+}
+
 /** play `x` at `at` through the bus; `send` is how much goes to the reverb too. A sound due before now (a preview started
  *  after it began; `bus.due` is the real time when `at` was kept at 0) plays from as far in as it got, and not at all once
  *  over: from its start it was heard twice, or late. An export (an offline context at 0, nothing due before 0) is unchanged. */
 export function play(ctx: BaseAudioContext, bus: Bus, at: number, x: Float32Array, send = 0) {
+  if (rendering !== null) { keep(rendering, x, send); rendering = null; }
   const due = bus.due ?? at, late = Math.max(0, ctx.currentTime - due);
   if (late >= x.length / ctx.sampleRate) return;
   const buf = ctx.createBuffer(1, x.length, ctx.sampleRate);
