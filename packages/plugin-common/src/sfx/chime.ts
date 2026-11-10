@@ -101,17 +101,17 @@ export const shingSfx: SfxType = { type: 'common.shing', label: '光掃過', cat
   params: [num('len', '長度 (s)', 1.2, 0.3, 3)], duration: (p) => p.len, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderShing(c.sampleRate, p.len), 0.2) };
 export const dingSfx: SfxType = { type: 'common.ding', label: '叮', category: 'chime', doc: '清脆的一聲叮；答對、重點出現、靈光一閃。一連串叮聲要一階一階往上：同一個 pitch（主音）、step 0、1、2…（scale: major 大調／pentatonic 五聲）',
   params: [num('pitch', '音高 (Hz)', 1568, 600, 4000, 10), ...STEP],
-  duration: () => 1.2, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderDing(c.sampleRate, scaleStep(p.pitch, p.step, p.scale)), 0.15) };
+  duration: () => 1.2, lookback: 1.2, synth: (c, b, at, p) => play(c, b, at, renderDing(c.sampleRate, scaleStep(p.pitch, p.step, p.scale)), 0.15) };
 export const cashSfx: SfxType = { type: 'common.cash', label: '收銀', category: 'chime', doc: '收銀機「鏘鏘」；價錢、省錢、賺錢、花大錢；coins 加上抽屜彈開和銅板聲（合計、結帳）',
-  params: [{ key: 'coins', label: '抽屜和銅板聲', type: 'bool', default: false }], duration: () => 1.1, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderCash(c.sampleRate, !!p.coins), 0.15) };
+  params: [{ key: 'coins', label: '抽屜和銅板聲', type: 'bool', default: false }], duration: () => 1.1, lookback: 1.1, synth: (c, b, at, p) => play(c, b, at, renderCash(c.sampleRate, !!p.coins), 0.15) };
 export const xyloSfx: SfxType = { type: 'common.xylo', label: '木琴', category: 'chime', doc: '一聲短短的木琴；清單打勾、一項一項出現（同一個 pitch 當主音、step 0、1、2… 一階一階往上，scale: major／pentatonic；或直接換 pitch 排成小旋律）',
   params: [num('pitch', '音高 (Hz)', 880, 200, 4000, 10), ...STEP], duration: () => 0.16, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderXylo(c.sampleRate, scaleStep(p.pitch, p.step, p.scale)), 0.15) };
 export const chimeSfx: SfxType = { type: 'common.chime', label: '閃光叮鈴', category: 'chime', doc: '叮鈴鈴往上爬的閃光（鐵琴分解和弦，音數、起音、間隔可調；chip: 8-bit 方波）；亮晶晶、變好看、揭曉、魔法、稀有款；配 common.sparkle 畫面',
   params: [num('notes', '幾個音', 4, 1, 8, 1), num('pitch', '起音 (Hz)', 1568, 300, 4000, 10), num('gap', '間隔 (s)', 0.07, 0.03, 0.3, 0.01), { key: 'chip', label: '8-bit 方波', type: 'bool', default: false }],
-  duration: (p) => (Math.min(8, n2(p, 'notes')) - 1) * p.gap + (p.chip ? 0.35 : 1.2), lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderChime(c.sampleRate, p.notes, p.pitch, p.gap, !!p.chip), 0.15) };
+  duration: (p) => (Math.min(8, n2(p, 'notes')) - 1) * p.gap + (p.chip ? 0.35 : 1.2), lookback: 3.3, synth: (c, b, at, p) => play(c, b, at, renderChime(c.sampleRate, p.notes, p.pitch, p.gap, !!p.chip), 0.15) };
 export const coinSfx: SfxType = { type: 'common.coin', label: '投幣', category: 'chime', doc: '8-bit 遊戲的投幣「叮鈴↑」（方波兩音，音高可調）；投幣、得分、拿到東西、扭蛋、集點',
   params: [num('pitch', '音高 (Hz)', 987.77, 300, 3000, 1)], duration: () => 0.42, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderCoin(c.sampleRate, p.pitch), 0.1) };
 export const fanfareSfx: SfxType = { type: 'common.fanfare', label: '過關號角', category: 'chime', doc: '8-bit 過關號角：四個音往上、再一個大和弦（主音可調）；完成、集滿、獲勝、解鎖、片尾',
-  params: [num('pitch', '主音 (Hz)', 523.25, 200, 1500, 1)], duration: () => 1.3, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderFanfare(c.sampleRate, p.pitch), 0.15) };
+  params: [num('pitch', '主音 (Hz)', 523.25, 200, 1500, 1)], duration: () => 1.3, lookback: 1.3, synth: (c, b, at, p) => play(c, b, at, renderFanfare(c.sampleRate, p.pitch), 0.15) };
 export const recvSfx: SfxType = { type: 'common.recv', label: '收到訊息', category: 'chime', doc: '收到訊息的輕輕兩聲「叮咚↑」（第二聲高五度，音高可調）；新訊息、對方回覆、通知跳出來；跟 common.dingdong（叫號機往下的兩聲）不同',
   params: [num('pitch', '第一聲 (Hz)', 880, 300, 2500, 1)], duration: () => 0.6, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderRecv(c.sampleRate, p.pitch), 0.1) };

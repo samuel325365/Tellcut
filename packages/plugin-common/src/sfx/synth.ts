@@ -95,17 +95,21 @@ export function bandpass(sr: number, x: Buf, f: number, q: number): Buf {
 
 export const ARPEGGIO = [0, 4, 7, 12, 16, 19, 24, 28];
 
-type Bus = { out: AudioNode; verb: AudioNode; noise: AudioBuffer };
+type Bus = { out: AudioNode; verb: AudioNode; noise: AudioBuffer; due?: number };
 
-/** play `x` at `at` through the bus; `send` is how much goes to the reverb too */
+/** play `x` at `at` through the bus; `send` is how much goes to the reverb too. A sound due before now (a preview started
+ *  after it began; `bus.due` is the real time when `at` was kept at 0) plays from as far in as it got, and not at all once
+ *  over: from its start it was heard twice, or late. An export (an offline context at 0, nothing due before 0) is unchanged. */
 export function play(ctx: BaseAudioContext, bus: Bus, at: number, x: Float32Array, send = 0) {
+  const due = bus.due ?? at, late = Math.max(0, ctx.currentTime - due);
+  if (late >= x.length / ctx.sampleRate) return;
   const buf = ctx.createBuffer(1, x.length, ctx.sampleRate);
   buf.getChannelData(0).set(x);
   const src = ctx.createBufferSource();
   src.buffer = buf;
   src.connect(bus.out);
   if (send > 0) { const g = ctx.createGain(); g.gain.value = send; src.connect(g); g.connect(bus.verb); }
-  src.start(Math.max(0, at));   // a start before 0 throws (RangeError): it plays now
+  src.start(Math.max(0, due), late);   // a start before 0 throws (RangeError): it plays now
 }
 
 export const num = (key: string, label: string, def: number, min: number, max: number, step = 0.05): ParamDef => ({ key, label, type: 'number', min, max, step, default: def });

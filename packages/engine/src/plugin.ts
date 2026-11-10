@@ -120,7 +120,12 @@ export interface ItemType<P = Record<string, any>, S = any> {
   media?(item: SceneItem, project: Project, types?: (type: string) => ItemType | undefined): { videos: MediaRef[]; stills: StillRef[]; peaks?: string[] };
 }
 
-export interface SfxBus { out: AudioNode; verb: AudioNode; noise: AudioBuffer }
+export interface SfxBus {
+  out: AudioNode; verb: AudioNode; noise: AudioBuffer;
+  /** When the sound was due to start in context time, before `at` was kept at 0 or later: earlier than now when a preview
+   *  starts after the sound began, so a player can pick it up part way (common's play does) instead of from its start. */
+  due?: number;
+}
 /** a sound effect's group in the gallery and the catalog (names: SFX_CATEGORY in @tellcut/protocol) */
 export type SfxCategory = 'alert' | 'chime' | 'hit' | 'move' | 'paper' | 'life';
 export interface SfxType {

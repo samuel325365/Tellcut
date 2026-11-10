@@ -83,6 +83,15 @@ test('a sound still within its lookback is never scheduled before 0', () => {
   expect(calls).toEqual([0]);
 });
 
+test('a sound begun before the restart is handed the time it was due, below 0 too, beside the start kept at 0 or later', () => {
+  const { ctx } = fakeCtx();
+  const calls: Array<[number, number | undefined]> = [];
+  const type: any = { lookback: 4, synth: (_c: any, b: any, at: number) => calls.push([at, b.due]) };
+  const plan: any = { tracks: [{ id: 'fx', gain: 1 }], segs: [], buffers: {}, sfx: [{ type: 'w', t: 2, params: {}, gain: 1, track: 'fx' }, { type: 'w', t: 3.5, params: {}, gain: 1, track: 'fx' }] };
+  buildMix(ctx, plan, new Map(), () => type, mix, 3, 0.05);
+  expect(calls.map(([a, d]) => [+a.toFixed(4), +d!.toFixed(4)])).toEqual([[0, -0.95], [0.55, 0.55]]);
+});
+
 test('sfx params fall back to the type defaults', () => {
   const { ctx } = fakeCtx();
   let got: any;

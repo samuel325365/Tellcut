@@ -386,11 +386,41 @@ test('thunder (katie-sweet16): a low rumble that rolls away, the same for a seed
   expect(peak(renderThunder(44100))).toBeGreaterThan(0.3);
 });
 
-test('play starts a sound asked for before 0 at once instead of throwing (2026-11-03)', () => {
-  const starts: number[] = [], node = () => ({ connect() {}, gain: { value: 0 } });
-  const ctx: any = { sampleRate: SR, createBuffer: () => ({ getChannelData: () => new Float32Array(4) }), createGain: node,
-    createBufferSource: () => ({ ...node(), start: (at: number) => { if (at < 0) throw new RangeError('negative'); starts.push(at); } }) };
-  play(ctx, { out: {} as any, verb: {} as any, noise: {} as any }, -0.2, new Float32Array(4), 0.3);
-  play(ctx, { out: {} as any, verb: {} as any, noise: {} as any }, 1.5, new Float32Array(4));
-  expect(starts).toEqual([0, 1.5]);
+const playCtx = (now: number) => {
+  const starts: Array<[number, number]> = [], node = () => ({ connect() {}, gain: { value: 0 } });
+  const ctx: any = { sampleRate: SR, currentTime: now, createBuffer: (_c: number, n: number) => ({ getChannelData: () => new Float32Array(n) }), createGain: node,
+    createBufferSource: () => ({ ...node(), start: (at: number, off = 0) => { if (at < 0) throw new RangeError('negative'); starts.push([at, +off.toFixed(6)]); } }) };
+  return { ctx, starts };
+};
+const bus = (due?: number) => ({ out: {} as any, verb: {} as any, noise: {} as any, ...(due === undefined ? {} : { due }) });
+
+test('play starts a sound asked for before 0 at once instead of throwing, and from as far in as it already got', () => {
+  const { ctx, starts } = playCtx(0);
+  play(ctx, bus(), -0.2, new Float32Array(SR), 0.3);
+  play(ctx, bus(), 1.5, new Float32Array(4));
+  expect(starts).toEqual([[0, 0.2], [1.5, 0]]);
+});
+
+test('a preview started part way through a sound picks it up there; one already over does not play again', () => {
+  // the mix hands at (never below 0) and the time the sound was due; now = 0.05 s into a context, the preview 3 s into the film
+  const { ctx, starts } = playCtx(0.05);
+  play(ctx, bus(-0.95), 0, new Float32Array(2 * SR));          // a 2 s sound begun 1 s ago: its last second plays now
+  play(ctx, bus(-1.45), 0, new Float32Array(SR));              // a 1 s sound begun 1.5 s ago: over, nothing plays
+  play(ctx, bus(0.03), 0.03, new Float32Array(SR));            // just in the past by the clock: the little it missed is skipped
+  play(ctx, bus(0.4), 0.4, new Float32Array(SR));              // still ahead: from its start, at its time
+  expect(starts).toEqual([[0, 1], [0.03, 0.02], [0.4, 0]]);
+});
+
+test('a long-tailed sound is still picked up by a preview started in its tail', () => {
+  for (const id of ['dingdong', 'ringbell', 'ding', 'cash', 'chime', 'fanfare', 'impact', 'clink', 'thunder']) {
+    const s = commonSfx.find((x) => x.type === `common.${id}`)!, longest = (p: Record<string, any>) => s.duration(withDefaults(s.params, p));
+    const most = id === 'ringbell' ? longest({ strikes: 6, gap: 1 }) : id === 'chime' ? longest({ notes: 8, gap: 0.3 }) : id === 'clink' ? longest({ glass: false }) : longest({});
+    expect([id, s.lookback! >= most - 1e-9]).toEqual([id, true]);
+  }
+});
+
+test('an export (an offline context at 0, every sound due at or after 0) starts every sound from its beginning, as before', () => {
+  const { ctx, starts } = playCtx(0);
+  for (const at of [0, 0.5, 3]) play(ctx, bus(at), at, new Float32Array(SR / 10));
+  expect(starts).toEqual([[0, 0], [0.5, 0], [3, 0]]);
 });

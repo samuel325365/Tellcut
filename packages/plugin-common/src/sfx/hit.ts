@@ -75,7 +75,7 @@ export function renderKnock(sr: number, knocks = 2, gap = 0.16, pitch = 820): Fl
 }
 
 export const impactSfx: SfxType = { type: 'common.impact', label: '重擊', category: 'hit', doc: '低頻的一記重擊加長尾；爆字落地、標題出現、轉折',
-  params: [], duration: () => 1.4, lookback: SHORT, synth: (c, b, at) => play(c, b, at, renderImpact(c.sampleRate), 0.25) };
+  params: [], duration: () => 1.4, lookback: 1.4, synth: (c, b, at) => play(c, b, at, renderImpact(c.sampleRate), 0.25) };
 export const popSfx: SfxType = { type: 'common.pop', label: '啵', category: 'hit', doc: '短短的氣泡「啵」；貼紙、表情、小元素彈出',
   params: [num('pitch', '音高 (Hz)', 700, 200, 2000, 10)],
   duration: () => 0.12, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderPop(c.sampleRate, p.pitch)) };

@@ -90,8 +90,10 @@ export function buildMix(ctx: BaseAudioContext, plan: AudioPlan, bufs: Map<strin
     if (e.t < from - (type.lookback ?? 0)) continue;
     let out = buses.get(e.track)!;
     if (e.gain !== 1) { const g = ctx.createGain(); g.gain.value = e.gain; g.connect(out); out = g; }
-    // a sound begun before the restart is scheduled in the past (it plays on from there), but never before 0, which throws
-    type.synth(ctx, { out, verb: verbIn, noise }, Math.max(0, at(e.t)), withDefaults(type.params ?? [], e.params));
+    // a sound begun before the restart is scheduled in the past, but never before 0, which throws; `due` keeps the real time
+    // so a sound that can (common's play) joins part way through instead of playing again from its start
+    const due = at(e.t);
+    type.synth(ctx, { out, verb: verbIn, noise, due }, Math.max(0, due), withDefaults(type.params ?? [], e.params));
   }
   return nodes;
 }

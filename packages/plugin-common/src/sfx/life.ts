@@ -78,7 +78,7 @@ export function renderThunder(sr: number, seed = 3): Float32Array {
 }
 
 export const clinkSfx: SfxType = { type: 'common.clink', label: '湯匙碰碗', category: 'life', doc: '湯匙碰瓷碗「叮」的清脆一聲（glass: 冰塊碰玻璃杯，叮叮叮三下）；吃東西、攪拌、喝湯、冰飲、乾杯',
-  params: [{ key: 'glass', label: '冰塊碰玻璃杯', type: 'bool', default: false }], duration: (p) => (p.glass ? 0.9 : 1.1), lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderClink(c.sampleRate, !!p.glass), 0.1) };
+  params: [{ key: 'glass', label: '冰塊碰玻璃杯', type: 'bool', default: false }], duration: (p) => (p.glass ? 0.9 : 1.1), lookback: 1.1, synth: (c, b, at, p) => play(c, b, at, renderClink(c.sampleRate, !!p.glass), 0.1) };
 export const dripSfx: SfxType = { type: 'common.drip', label: '水滴', category: 'life', doc: '水滴「咚～」往上滑的一聲（滴數、間隔、音高可調）；滴水、流汗、冒出一個念頭、慢慢累積',
   params: [num('drops', '幾滴', 1, 1, 12, 1), num('gap', '間隔 (s)', 0.35, 0.1, 2, 0.01), num('pitch', '音高 (Hz)', 650, 200, 2000, 10)],
   duration: (p) => (Math.min(12, n2(p, 'drops')) - 1) * p.gap + 0.22, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderDrip(c.sampleRate, p.drops, p.gap, p.pitch), 0.15) };
@@ -90,4 +90,4 @@ export const crySfx: SfxType = { type: 'common.cry', label: '嬰兒哭', categor
   params: [num('times', '幾聲', 2, 1, 6, 1), num('pitch', '音高 (Hz)', 520, 250, 1000, 5)],
   duration: (p) => Math.min(6, n2(p, 'times')) * 0.75, lookback: LONG, synth: (c, b, at, p) => play(c, b, at, renderCry(c.sampleRate, p.times, p.pitch), 0.1) };
 export const thunderSfx: SfxType = { type: 'common.thunder', label: '遠雷', category: 'life', doc: '遠處的雷聲：開頭輕輕一聲裂響，接著低沉的隆隆聲滾開約三秒（seed 換一種滾法）；暴風雨、天色變暗、壞消息、閃電；配 common.ambient 的 sky 天色和它的閃電',
-  params: [num('seed', '種子（換一種滾法）', 3, 1, 999, 1)], duration: () => 3.2, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderThunder(c.sampleRate, p.seed), 0.2) };
+  params: [num('seed', '種子（換一種滾法）', 3, 1, 999, 1)], duration: () => 3.2, lookback: 3.2, synth: (c, b, at, p) => play(c, b, at, renderThunder(c.sampleRate, p.seed), 0.2) };

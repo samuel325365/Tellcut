@@ -108,11 +108,11 @@ export const deflateSfx: SfxType = { type: 'common.deflate', label: '洩氣', ca
 export const alarmSfx: SfxType = { type: 'common.alarm', label: '警報', category: 'alert', doc: '短促的「嗶、嗶、嗶」警報（聲數可調）；危險、快爆表、倒數最後幾秒',
   params: [num('beeps', '幾聲', 3, 1, 12, 1)], duration: (p) => Math.max(1, Math.round(p.beeps)) * 0.2 + 0.02, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderAlarm(c.sampleRate, p.beeps)) };
 export const dingdongSfx: SfxType = { type: 'common.dingdong', label: '叮咚', category: 'alert', doc: '叫號機的「叮咚」兩聲（高音到低音，預設 A5→F5）；換號、下一位、換段落、到站；配 common.digits 的 led',
-  params: [num('high', '第一聲 (Hz)', 880, 200, 3000, 1), num('low', '第二聲 (Hz)', 698.46, 200, 3000, 1)], duration: () => 1.95, lookback: SHORT,
+  params: [num('high', '第一聲 (Hz)', 880, 200, 3000, 1), num('low', '第二聲 (Hz)', 698.46, 200, 3000, 1)], duration: () => 1.95, lookback: 1.95,
   synth: (c, b, at, p) => play(c, b, at, renderDingDong(c.sampleRate, p.high, p.low), 0.2) };
 export const ringbellSfx: SfxType = { type: 'common.ringbell', label: '擂台鈴', category: 'alert', doc: '拳擊擂台的鈴「叮、叮」（聲數可調）：硬敲一下加長長的金屬餘韻；回合開始、對決、片頭 VS、比賽結束；配 common.versus 的回合卡',
   params: [num('strikes', '幾聲', 2, 1, 6, 1), num('gap', '間隔 (s)', 0.28, 0.1, 1, 0.01), num('pitch', '音高 (Hz)', 1318.51, 300, 3000, 1)],
-  duration: (p) => (Math.max(1, Math.round(p.strikes)) - 1) * p.gap + 1.4, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderRingBell(c.sampleRate, p.strikes, p.gap, p.pitch), 0.2) };
+  duration: (p) => (Math.max(1, Math.round(p.strikes)) - 1) * p.gap + 1.4, lookback: 6.4, synth: (c, b, at, p) => play(c, b, at, renderRingBell(c.sampleRate, p.strikes, p.gap, p.pitch), 0.2) };
 export const buzzSfx: SfxType = { type: 'common.buzz', label: '手機震動', category: 'alert', doc: '手機放在桌上震動的「嗡—嗡—」（次數可調）；來電、通知、訊息進來、被已讀不回、心裡一震；配 common.touch',
   params: [num('pulses', '震幾下', 2, 1, 8, 1)], duration: (p) => Math.min(8, n2(p, 'pulses')) * 0.34 - 0.08, lookback: SHORT, synth: (c, b, at, p) => play(c, b, at, renderBuzz(c.sampleRate, p.pulses)) };
 export const hushSfx: SfxType = { type: 'common.hush', label: '靜音', category: 'alert', doc: '往下掉的兩個音「嘟↓嘟」：通知被關掉、靜音、按掉鬧鐘、拒接、不想理；跟 common.deflate（洩氣滑音）、common.error（答錯）不同',
