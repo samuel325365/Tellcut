@@ -337,4 +337,14 @@ describe('--trim: only the footage the project uses', () => {
     expect(Object.keys(index.videos)).toHaveLength(3);
     expect(await luma(join(back, Object.values(index.videos)[0]), 0.5)).toBeGreaterThan(40);
   }, 120000);
+
+  test('an effect that does not load: said, and every source packed whole (which parts it reads is unknown)', async () => {
+    const { root, dir, footage, project } = await trimWorld(), log: string[] = [];
+    mkdirSync(join(dir, 'fx'));
+    writeFileSync(join(dir, 'fx', 'broken.js'), 'export default [ { type: ');
+    writeFileSync(join(dir, 'project.json'), JSON.stringify({ ...project, meta: { ...project.meta, fx: ['fx/broken.js'] } }));
+    const back = importProject(await exportProjectTrimmed(dir, { out: join(root, 'trip.zip'), log: (s) => log.push(s) }), join(root, 'other'));
+    expect(log.join('\n')).toMatch(/fx\/broken\.js/);
+    expect(readFileSync(join(back, 'media/linked/long-long.mp4')).equals(readFileSync(join(footage, 'long.mp4')))).toBe(true);
+  }, 120000);
 });

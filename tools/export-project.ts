@@ -148,10 +148,18 @@ export async function trimPlan(dir: string, plan: ExportPlan, work: string, o: {
   const log = o.log ?? (() => {});
   const { parseProject } = await import('@tellcut/engine');
   const p = parseProject(structuredClone(plan.project));
-  const registry = o.registry ?? (await (async () => {
+  const loaded = o.registry ? { registry: o.registry, errors: [] } : await (async () => {
     const [{ projectRegistry }, { plugins }] = await Promise.all([import('@tellcut/media-node'), import('@tellcut/plugins')]);
-    return (await projectRegistry(dir, plugins, p)).registry;
-  })());
+    const r = await projectRegistry(dir, plugins, p);
+    return { registry: r.registry, errors: r.fx.errors };
+  })();
+  // an effect that does not load could read any part of any source, and usedRanges cannot see which: black out nothing
+  if (loaded.errors.length) {
+    for (const e of loaded.errors) log(`  ! 效果載入失敗：${e.path}：${e.message}`);
+    log('  素材整個帶走（不知道載入失敗的效果用到哪些部分）');
+    return plan;
+  }
+  const registry = loaded.registry;
   const norm = (path: string) => relative(dir, resolve(dir, path)).split('\\').join('/');
   const files = [...plan.files], project = structuredClone(plan.project);
   const gone = new Set<{ from: string; to: string }>();
