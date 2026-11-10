@@ -56,12 +56,12 @@ test('drop: the words come down one after another and land; scatter: they gather
 
 test('a caption typed by hand is cut into words in the engine\'s locale, not the machine\'s', async () => {
   const Real = Intl.Segmenter, locales: unknown[] = [];
-  (Intl as any).Segmenter = class extends Real { constructor(l?: any, o?: any) { super(l, o); locales.push(l); } };
+  (Intl as any).Segmenter = class extends Real { constructor(l?: any, o?: any) { super(l, o); if (o?.granularity === 'word') locales.push(l); } };
   try {
     vi.resetModules();
     const fresh = await import('./wordfx.ts');
     fresh.evenWords('今天帶你去吃台南', 3);
-    // the engine's own (reloaded with it) and evenWords': every one in zh-Hant
+    // the engine's own (reloaded with it) and evenWords': every word segmenter in zh-Hant (graphemes are cut the same in every locale)
     expect(locales.length).toBeGreaterThan(0);
     expect(locales.every((l) => l === 'zh-Hant')).toBe(true);
   } finally { (Intl as any).Segmenter = Real; vi.resetModules(); }
