@@ -88,3 +88,27 @@ describe('caption look boxes', () => {
     expect(boxes.left).toBe(true);
   });
 });
+
+describe('common.band: fixes', () => {
+  afterEach(() => vi.restoreAllMocks());
+  test('no words: the band alone, not a blank written every pixel along it', () => {
+    const n: Record<string, number> = {};
+    const g: any = new Proxy({}, { get: (_t, k) => (typeof k === 'symbol' ? undefined : k === 'measureText' ? (s: string) => ({ width: String(s).length * 10 }) : (..._a: unknown[]) => { n[k as string] = (n[k as string] ?? 0) + 1; }), set: () => true });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => g);
+    for (const words of ['', '   ']) {
+      for (const k of Object.keys(n)) delete n[k];
+      const params = { ...Object.fromEntries(band.params.map((d) => [d.key, d.default])), words } as any;
+      const ctx: any = { root: document.createElement('div'), params, W: 1080, H: 1920, t: 1, local: 1, dur: 3 }, s = band.build(ctx);
+      band.draw(ctx, s);
+      expect(n.fillRect).toBe(1);
+      expect(n.fillText ?? 0).toBe(0);
+    }
+  });
+  test('a font that fails to load does not fail ready', async () => {
+    const was = Object.getOwnPropertyDescriptor(document, 'fonts');
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { load: () => Promise.reject(new Error('no font')) } });
+    try {
+      await expect(band.ready!({} as any)).resolves.toBeUndefined();
+    } finally { was ? Object.defineProperty(document, 'fonts', was) : delete (document as any).fonts; }
+  });
+});

@@ -22,8 +22,9 @@ export const SLANT = -0.2;
 const eOut = (q: number) => eOut3(clamp(q));
 type G = CanvasRenderingContext2D;
 
+// a face that fails to load draws with the fallback, as in the other blocks, rather than failing the item's ready
 const fontsReady = (text: string) => Promise.all([document.fonts.load(`400 80px "${DISPLAY}"`, text || 'AZ09'), document.fonts.load(`700 30px "${SANS}"`, 'AZ09'),
-  document.fonts.load(`600 30px "${SANS}"`, 'AZ09'), document.fonts.load(`900 50px "${TC}"`, text || '字')]).then(() => undefined);
+  document.fonts.load(`600 30px "${SANS}"`, 'AZ09'), document.fonts.load(`900 50px "${TC}"`, text || '字')].map((l) => l.catch(() => []))).then(() => undefined);
 const spaced = (g: G, px: number) => { try { (g as unknown as { letterSpacing: string }).letterSpacing = `${px.toFixed(1)}px`; } catch { /* older canvases */ } };
 const imgReady = (i: HTMLImageElement) => (i.complete ? Promise.resolve() : i.decode().catch(() => undefined));
 
@@ -290,8 +291,9 @@ export const band: ItemType<BP, CS> = {
     g.fillStyle = p.color; g.fillRect(-L / 2, -bh / 2, L, bh);
     g.fillStyle = p.ink; g.font = sans(30 * u); spaced(g, 2 * u); g.textBaseline = 'middle'; g.textAlign = 'left';
     g.transform(1, 0, SLANT * 0.6, 1, 0, 0);
+    // blank words: the band alone (an empty one measured 0 and was written at every px along it)
     const tw = Math.max(1, g.measureText(p.words).width);
-    for (let x = -L / 2 - ((local * p.speed * u) % tw); x < L / 2 + tw; x += tw) g.fillText(p.words, x, 2 * u);
+    if (String(p.words ?? '').trim()) for (let x = -L / 2 - ((local * p.speed * u) % tw); x < L / 2 + tw; x += tw) g.fillText(p.words, x, 2 * u);
     spaced(g, 0); g.restore();
   },
 };

@@ -68,3 +68,41 @@ describe('title look cycle', () => {
     expect(((lines[0] as any)._c ?? {}).webkitTextStroke).toBe('0');
   });
 });
+
+// a 2D context that counts what it is asked to draw (jsdom has none)
+function counting() {
+  const n: Record<string, number> = {};
+  const g: any = new Proxy({}, { get: (_t, k) => (typeof k === 'symbol' ? undefined : k === 'measureText' ? (s: string) => ({ width: String(s).length * 10 }) : (..._a: unknown[]) => { n[k as string] = (n[k as string] ?? 0) + 1; }), set: () => true });
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => g);
+  return n;
+}
+const frameCtx = (params: Record<string, unknown>) => {
+  const all = { ...Object.fromEntries(monoframe.params.map((d) => [d.key, d.default])), ...params } as any;
+  return { root: document.createElement('div'), params: all, W: 1080, H: 1920, t: 1, local: 1, dur: 3 } as any;
+};
+
+describe('common.monoframe: fixes', () => {
+  afterEach(() => vi.restoreAllMocks());
+  test('window keys written out of order are eased in time order', () => {
+    const keys = '2|0,0,1,1\n0|0.1,0.4,0.8,0.2';
+    expect(monoWindow(keys, 0, 1080, 1920, 0.05)).toEqual([0.1, 0.4, 0.8, 0.2]);
+    expect(monoWindow(keys, 1, 1080, 1920, 0.05)).toEqual(monoWindow('0|0.1,0.4,0.8,0.2\n2|0,0,1,1', 1, 1080, 1920, 0.05));
+    expect(monoWindow(keys, 3, 1080, 1920, 0.05)).toEqual([0, 0, 1, 1]);
+  });
+  test('no words: the bands alone, no line of blanks written across every band', () => {
+    const n = counting(), ctx = frameCtx({ text: '' }), s = monoframe.build(ctx);
+    monoframe.draw(ctx, s);
+    expect(n.fillRect).toBeGreaterThan(10);
+    expect(n.fillText ?? 0).toBe(0);
+    const m = counting(), c2 = frameCtx({ text: '  ' }), s2 = monoframe.build(c2);
+    monoframe.draw(c2, s2);
+    expect(m.fillText ?? 0).toBe(0);
+  });
+  test('a font that fails to load does not fail ready', async () => {
+    const was = Object.getOwnPropertyDescriptor(document, 'fonts');
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { load: () => Promise.reject(new Error('no font')) } });
+    try {
+      await expect(monoframe.ready!({ text: 'X' } as any)).resolves.toBeUndefined();
+    } finally { was ? Object.defineProperty(document, 'fonts', was) : delete (document as any).fonts; }
+  });
+});

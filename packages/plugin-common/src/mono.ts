@@ -12,15 +12,17 @@ import { imagesReady } from './window.ts';
 const LATIN = 'Space Grotesk', CJK = 'Noto Sans TC';
 const face = (px: number) => `700 ${px}px "${LATIN}", "${CJK}", sans-serif`;
 type Rect = [number, number, number, number];
-const fontsReady = (text: string) => Promise.all([document.fonts.load(`700 80px "${LATIN}"`, 'AZaz09·&'), document.fonts.load(`700 80px "${CJK}"`, text || '字')]).then(() => undefined);
+// a face that fails to load draws with the fallback, as in the other blocks, rather than failing the item's ready
+const fontsReady = (text: string) => Promise.all([document.fonts.load(`700 80px "${LATIN}"`, 'AZaz09·&').catch(() => []), document.fonts.load(`700 80px "${CJK}"`, text || '字').catch(() => [])]).then(() => undefined);
 
-/** the window at `local` (frame fractions): "seconds|x,y,w,h" keys eased from one to the next; none = the frame inside the border */
+/** the window at `local` (frame fractions): "seconds|x,y,w,h" keys (in time order, however written) eased from one to the next; none =
+ *  the frame inside the border */
 export function monoWindow(keys: string, local: number, W: number, H: number, border: number): Rect {
   const def: Rect = [border, border * (W / H), 1 - 2 * border, 1 - 2 * border * (W / H)];
   const ks = String(keys ?? '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const [t, r] = l.split('|'), v = String(r ?? '').split(',').map(Number);
     return { t: Number(t) || 0, r: (v.length === 4 && v.every(Number.isFinite) ? v : def) as Rect };
-  });
+  }).sort((a, b) => a.t - b.t);
   if (!ks.length) return def;
   if (local <= ks[0].t) return ks[0].r;
   for (let i = 0; i < ks.length - 1; i++) if (local < ks[i + 1].t) {
@@ -65,7 +67,8 @@ export const monoframe: ItemType<FP, FS> = {
       g.fillStyle = dark ? p.ink : p.paper; g.fillRect(-R / 2, y - band / 2, R, band);
       g.fillStyle = dark ? p.paper : p.ink;
       const off = (((local * p.speed * u * (dark ? 1 : -1) + k * 137 * u) % tw) + tw) % tw;
-      for (let x = -R / 2 - off; x < R / 2; x += tw) g.fillText(text, x, y + px * 0.04);
+      // blank words: the bands alone (a blank is only a few px wide, and was written thousands of times a frame)
+      if (text.trim()) for (let x = -R / 2 - off; x < R / 2; x += tw) g.fillText(text, x, y + px * 0.04);
     }
     g.restore();
     if (!p.full) {
