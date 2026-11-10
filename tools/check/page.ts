@@ -25,7 +25,7 @@ export async function renderedChecks(o: { dir: string; project: Project; registr
     for (const t of at) {
       await s.frame(Math.round(t * s.fps));
       // DOM text, and the words items reported drawing on a canvas (ctx.reportText), marked canvas
-      samples.push({ t, boxes: ((await s.layout()) as TextBox[]).filter((b) => !falling.has(b.id)) });
+      samples.push({ t, boxes: (await s.layout()).filter((b) => !falling.has(b.id)) });
     }
     // toolkit phase 2a: a project-local effect must draw the same picture every time it is drawn at the same time
     // Drawn once at a and b first (a photo or font still loading), then a, b, a, compared as pictures, not bytes: Chrome scales a big

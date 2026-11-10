@@ -7,9 +7,10 @@ import { loadFonts } from './fonts.ts';
 import { drawFrame, settle, settledFrame } from './frame.ts';
 import { mountControls } from './controls.ts';
 import { startEmbed } from './embed.ts';
-import { layoutBoxes, type TextBox } from './layout.ts';
+import { layoutBoxes } from './layout.ts';
+import { DEFAULT_LOUDNESS, type RenderApi } from '@tellcut/protocol';
 
-declare global { interface Window { __tellcut: { ready: Promise<void>; fps: number; duration: number; loudness: number; frame(n: number): Promise<void>; wav(): Promise<{ channels: number; sampleRate: number; frames: number }>; wavSlice(from: number, frames: number): Promise<string>; layout(): Promise<TextBox[]> } } }
+declare global { interface Window { __tellcut: RenderApi } }
 
 const q = new URLSearchParams(location.search);
 const RENDER = q.get('mode') === 'render';
@@ -63,8 +64,8 @@ if (EMBED) {
 } else {
   const boot = init();
   window.__tellcut = {
-    fps: 30, duration: 0, loudness: -14,
-    ready: boot.then(({ project }) => { window.__tellcut.fps = project.meta.fps; window.__tellcut.duration = project.meta.duration; window.__tellcut.loudness = project.meta.loudness ?? -14; }),
+    fps: 30, duration: 0, loudness: DEFAULT_LOUDNESS,
+    ready: boot.then(({ project }) => { window.__tellcut.fps = project.meta.fps; window.__tellcut.duration = project.meta.duration; window.__tellcut.loudness = project.meta.loudness ?? DEFAULT_LOUDNESS; }),
     async frame(n) { const { project, frame } = await boot; await settledFrame(() => frame(n / project.meta.fps), () => settle(document, raf), document.fonts); },
     // the mix is rendered once and kept; media-node reads it in slices of whole sample frames and writes the WAV itself
     async wav() { return (await boot).audio.renderWav(); },

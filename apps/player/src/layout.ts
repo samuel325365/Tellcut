@@ -2,9 +2,8 @@
 // ([data-id]), as boxes in project pixels. Hidden text (display none, visibility hidden, fully transparent) is left out. Words
 // drawn on a canvas come from the items' own reports (ctx.reportText, engine report.ts), marked `canvas`, with their words and type size.
 import { reportedBoxes, type ReportedText } from '@tellcut/engine';
-
-export interface Rect { x: number; y: number; w: number; h: number; /** reported: the type size in px */ size?: number; /** reported: the words */ text?: string }
-export interface TextBox { id: string; rects: Rect[]; /** reported by the item (ctx.reportText), not DOM text */ canvas?: true }
+// the boxes are what __tellcut.layout() hands to Node, so their shape is the render API's
+import type { TextBox, TextRect as Rect } from '@tellcut/protocol';
 
 function shown(el: Element, stop: Element): boolean {
   let alpha = 1;

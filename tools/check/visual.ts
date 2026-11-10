@@ -1,11 +1,11 @@
 // The rendered layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 5): where text lands on
 // screen (measured by the player) and what the mix sounds like (rendered offline). Pure functions; tools/check.ts drives the page.
 import { defaultSafe, type Project, type Times } from '@tellcut/engine';
+import type { TextBox, TextRect as Rect } from '@tellcut/protocol';
 import { byTime, type Finding } from './rules.ts';
 
-export interface Rect { x: number; y: number; w: number; h: number; /** a reported box: its type size (px) */ size?: number; /** a reported box: its words */ text?: string }
-/** `canvas`: words the item reported drawing on a canvas (ctx.reportText), not DOM text; judged by the same rules */
-export interface TextBox { id: string; rects: Rect[]; canvas?: true }
+// the boxes the player's layout() measures (the render API in @tellcut/protocol); `canvas` ones are judged by the same rules
+export type { TextBox };
 
 const r3 = (t: number) => Math.round(t * 1000) / 1000;
 const uniq = (ts: number[]) => [...new Set(ts.map(r3))].sort((a, b) => a - b);

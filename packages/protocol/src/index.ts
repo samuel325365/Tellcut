@@ -233,6 +233,25 @@ export type PlayerMsg =
   | { type: 'key'; key: string; code: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }
   | ToolMsg;
 
+// ---------------------------------------------------------------- the player's render API (window.__tellcut outside embed mode)
+// Driven by media-node's openPage (export, check, golden, frames) in headless Chrome; the player sets it, Node reads it.
+/** the integrated loudness (LUFS) an export is normalised to when the project gives none (project.meta.loudness) */
+export const DEFAULT_LOUDNESS = -14;
+/** a box of words on screen, in project pixels; `size` (the type size, px) and `text` only on a box an item reported drawing on a canvas */
+export interface TextRect { x: number; y: number; w: number; h: number; size?: number; text?: string }
+/** an item's words on screen; `canvas`: reported by the item (ctx.reportText), not DOM text, and judged by the same rules */
+export interface TextBox { id: string; rects: TextRect[]; canvas?: true }
+/** ready: resolves once the project, its media and fonts are loaded (fps, duration and loudness are the project's after it);
+ *  frame(n): draws frame n and waits until it is settled; wav(): renders the mix once and keeps it, giving its format;
+ *  wavSlice(): `frames` sample frames of it from `from`, as base64; layout(): the words on screen after the last frame() */
+export interface RenderApi {
+  ready: Promise<void>; fps: number; duration: number; loudness: number;
+  frame(n: number): Promise<void>;
+  wav(): Promise<{ channels: number; sampleRate: number; frames: number }>;
+  wavSlice(from: number, frames: number): Promise<string>;
+  layout(): Promise<TextBox[]>;
+}
+
 // ---------------------------------------------------------------- the block gallery (spec 2026-10-17-block-gallery)
 export interface GalleryBlock { plugin: string; group: string; type: string; label: string; doc: string; kind: 'scene' | 'overlay'; params: ParamDef[]; needsMedia: boolean;
   /** a BlockCategory key (the core blocks get one in the gallery); none for a sample film's own blocks */

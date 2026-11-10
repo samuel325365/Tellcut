@@ -9,10 +9,13 @@ import { abortError, ffmpegProcess, measureLoudness, run } from './ffmpeg.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 import { chromePath } from './deps.ts';
 import { renameRetry } from './fsutil.ts';
+import { DEFAULT_LOUDNESS, type RenderApi, type TextBox } from '@tellcut/protocol';
 
 
-/** a text item's boxes on screen, in project pixels */
-export interface TextBox { id: string; rects: Array<{ x: number; y: number; w: number; h: number }> }
+export type { TextBox };
+/** the page's API by its name on window: the player's __tellcut, or a test page's __app (types only: the evaluated functions run in
+ *  the page and can name nothing from here) */
+type PageApi = Record<'__tellcut' | '__app', RenderApi>;
 /** loudness: the integrated loudness an export of this page is normalised to (LUFS);
  *  wav(): the whole mix as a WAV in memory; wavFile(): the same written to `path` a slice at a time, for films of any length
  *  (`sliceFrames`: frames read from the page at once, smaller only in tests; `signal` is checked between slices);
@@ -113,8 +116,8 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
       await guard(probe.goto(url, { waitUntil: 'domcontentloaded' }), load);
       const sized = probe.waitForFunction(() => { const s = document.getElementById('stage'); return !!s && s.offsetWidth > 0 && s.offsetHeight > 0; }, null, { timeout: 0 });
       // a player that fails to load never sizes its stage: its own error ends the wait instead of the timeout
-      const failed = probe.waitForFunction((a) => !!(window as any)[a]?.ready, api, { timeout: 0 })
-        .then(() => probe.evaluate((a) => (window as any)[a].ready, api)).then(() => new Promise<never>(() => {}));
+      const failed = probe.waitForFunction((a) => !!(window as unknown as PageApi)[a]?.ready, api, { timeout: 0 })
+        .then(() => probe.evaluate((a) => (window as unknown as PageApi)[a].ready, api)).then(() => new Promise<never>(() => {}));
       sized.catch(() => {}); failed.catch(() => {});
       await guard(Promise.race([sized, failed]), load);
       const s = await probe.evaluate(() => { const el = document.getElementById('stage')!; return { w: el.offsetWidth, h: el.offsetHeight }; });
@@ -131,8 +134,8 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
     page.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('favicon')) console.log('[page]', `${r.status()} ${decodeURIComponent(new URL(r.url()).pathname)}`); });
     await guard(page.goto(url, { waitUntil: 'domcontentloaded' }), load);
     // an export must stay cancellable while the player loads, and must not wait forever on it
-    await guard(page.evaluate((a) => (window as any)[a].ready, api), { signal: o.signal, ms: o.readyTimeout ?? 300000, what: 'Player loading' });
-    const { fps, duration, loudness } = await page.evaluate((a) => ({ fps: (window as any)[a].fps, duration: (window as any)[a].duration, loudness: (window as any)[a].loudness }), api);
+    await guard(page.evaluate((a) => (window as unknown as PageApi)[a].ready, api), { signal: o.signal, ms: o.readyTimeout ?? 300000, what: 'Player loading' });
+    const { fps, duration, loudness } = await page.evaluate((a) => ({ fps: (window as unknown as PageApi)[a].fps, duration: (window as unknown as PageApi)[a].duration, loudness: (window as unknown as PageApi)[a].loudness }), api);
     const cdp = await page.context().newCDPSession(page);
     if (MAC) {
       // the padding must cover what the hidden window leaves unpainted: a clipped capture past it would be cut off silently
@@ -144,15 +147,15 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
         ...(capture.clip ? { clip: capture.clip } : {}) } as any)).data, 'base64');
     // the page renders the mix once and keeps it; it comes over in slices of whole frames (one base64 string of a long
     // film's WAV passed V8's string limit at about 35 minutes)
-    const format = (): Promise<PcmFormat> => page.evaluate((a) => (window as any)[a].wav(), api);
+    const format = (): Promise<PcmFormat> => page.evaluate((a) => (window as unknown as PageApi)[a].wav(), api);
     const slice = (w: WavPull) => async (from: number, n: number) => {
       if (w.signal?.aborted) throw abortError();
-      return Buffer.from(await page.evaluate(([a, x, k]) => (window as any)[a].wavSlice(x, k), [api, from, n] as const), 'base64');
+      return Buffer.from(await page.evaluate(([a, x, k]) => (window as unknown as PageApi)[a].wavSlice(x, k), [api, from, n] as const), 'base64');
     };
     const pull = async (write: (b: Buffer) => void, w: WavPull = {}) => pullWav(await format(), slice(w), write, w.sliceFrames);
     return {
-      fps, duration, loudness: typeof loudness === 'number' ? loudness : -14, version: browser.version(),
-      frame: (n) => page.evaluate(([a, k]) => (window as any)[a].frame(k), [api, n] as const).catch((e: Error) => { throw new Error(`frame ${n}: ${e.message}`); }),
+      fps, duration, loudness: typeof loudness === 'number' ? loudness : DEFAULT_LOUDNESS, version: browser.version(),
+      frame: (n) => page.evaluate(([a, k]) => (window as unknown as PageApi)[a].frame(k), [api, n] as const).catch((e: Error) => { throw new Error(`frame ${n}: ${e.message}`); }),
       png: () => shot('png'),
       jpeg: () => shot('jpeg'),
       wav: async (w) => { const parts: Buffer[] = []; await pull((b) => { parts.push(b); }, w); return Buffer.concat(parts); },
@@ -161,7 +164,7 @@ export async function openPage(path: string, api: '__tellcut' | '__app', o: { si
         const fd = openSync(path, 'w');
         try { return await pull((b) => { for (let o = 0; o < b.length;) o += writeSync(fd, b, o); }, w); } finally { closeSync(fd); }
       },
-      layout: () => page.evaluate((a) => (window as any)[a].layout(), api),
+      layout: () => page.evaluate((a) => (window as unknown as PageApi)[a].layout(), api),
       close: release,
     };
   } catch (e) {
