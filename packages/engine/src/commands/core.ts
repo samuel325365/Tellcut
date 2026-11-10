@@ -68,9 +68,11 @@ export function sourceLength(p: Project, track: Track, item: AnyItem): number {
   return Infinity;
 }
 
-/** Shifts the item-relative fields (envelope points, freezeAt, defocus, keys) by d seconds; envelope points before 0 are dropped. */
+/** Shifts the item-relative fields (envelope points, freezeAt, defocus, keys) by d seconds. */
 export function shiftRelative(track: Track, it: any, d: number) {
-  if (it.envelope) it.envelope = it.envelope.map(([t, db]: [number, number]) => [r6(t + d), db]).filter(([t]: [number, number]) => t >= 0);
+  // envelope points moved before 0 stay, like crop keys: the level at the new head stays on the ramp they make (dropped, it
+  // jumped to the next point's level), and trimming the head back brings them back
+  if (it.envelope) it.envelope = it.envelope.map(([t, db]: [number, number]) => [r6(t + d), db]);
   // a moving layer's path (toolkit phase 5) stays on the same moments; keys before 0 stay, like crop keys
   if (it.transform?.keys) it.transform = { ...it.transform, keys: it.transform.keys.map((k: any) => ({ ...k, t: r6(k.t + d) })) };
   if (track.kind === 'video') {

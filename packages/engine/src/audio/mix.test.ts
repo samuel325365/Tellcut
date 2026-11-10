@@ -123,6 +123,19 @@ test('a preview started exactly on a step (two points at one time) takes the val
   expect(b.calls).toEqual(['set(1,6)']);
 });
 
+test('envelope points before the clip (left by a trimmed head) set the level at its start by their ramp', () => {
+  // a clip at 4–9 s whose envelope ramps 1 → 0.5 from 2 s to 7 s: 0.8 at its start
+  const pts: Array<[number, number]> = [[2, 1], [7, 0.5]];
+  expect(envelopeAt(pts, 4)).toBeCloseTo(0.8, 6);
+  const a = recorder(); envelope(a.param, pts, (t) => t, 0);
+  expect(a.calls).toEqual(['set(1,0)', 'ramp(1,2)', 'ramp(0.5,7)']);
+  const b = recorder(); envelope(b.param, pts, (t) => 10 + (t - 4), 4);
+  expect(b.calls).toEqual(['set(0.8,10)', 'ramp(0.5,13)']);
+  // all of it before the restart: the last level holds, nothing is scheduled before 0
+  const c = recorder(); envelope(c.param, [[-3, 0.2], [-1, 0.6]], (t) => 0.05 + (t - 1), 1);
+  expect(c.calls).toEqual(['set(0.6,0.05)']);
+});
+
 test('a preview started inside a fade-out begins at the level the fade has reached there, not at full level', () => {
   const { ctx, log } = fakeCtx();
   const plan: any = { tracks: [{ id: 'mus', gain: 1 }], sfx: [], buffers: {},

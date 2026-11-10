@@ -31,8 +31,20 @@ test('stretching a block scales its children proportionally; sound effects keep 
 });
 
 test('trimming keeps envelope points on the same moments and refuses sound effects', () => {
-  expect(item(run(fixture(), trimStart, { id: 'm1', dt: 2 }), 'm1')).toMatchObject({ in: 2, envelope: [[3, -6], [8, 0]] });
+  expect(item(run(fixture(), trimStart, { id: 'm1', dt: 2 }), 'm1')).toMatchObject({ in: 2, envelope: [[-2, 0], [3, -6], [8, 0]] });
   expect(() => run(fixture(), trimEnd, { id: 'tap', dt: 1 })).toThrow('Sound effects have a fixed length');
+});
+
+test("trimming a clip's head keeps the envelope points before it: the level there stays on the ramp, and trimming back restores them", async () => {
+  const { envelopeAt } = await import('../audio/mix.ts');
+  const before = item(fixture(), 'm1').envelope, cut = run(fixture(), trimStart, { id: 'm1', dt: 2 });
+  // the ramp 0 → -6 dB over 0–5 s was at -2.4 dB 2 s in; dropping the 0 s point made the new head jump to -6 dB
+  expect(envelopeAt(item(cut, 'm1').envelope, 0)).toBeCloseTo(envelopeAt(before, 2), 6);
+  expect(envelopeAt(item(cut, 'm1').envelope, 0)).toBeCloseTo(-2.4, 6);
+  expect(item(run(cut, trimStart, { id: 'm1', dt: -2 }), 'm1').envelope).toEqual(before);
+  // split after the trim: the first half keeps the point before its head, the second starts on the ramp's value
+  const [b] = split(cut, { t: 4, ids: ['m1'] });
+  expect([item(cut, 'm1').envelope, item(cut, b).envelope]).toEqual([[[-2, 0], [2, -4.8]], [[0, -4.8], [1, -6], [6, 0]]]);
 });
 
 test('slip changes only the in-point, within the source', () => {
@@ -250,7 +262,7 @@ test("a speed change or a block's new length moves a voice-over by its place but
 test("trimming a clip's head keeps its own sound's envelope on the same sound", () => {
   const p = withChildren();
   item(p, 'snd').envelope = [[0, 0], [2, -12], [3, 0]];
-  expect(item(run(p, trimStart, { id: 'c1', dt: 1 }), 'snd').envelope).toEqual([[1, -12], [2, 0]]);
+  expect(item(run(p, trimStart, { id: 'c1', dt: 1 }), 'snd').envelope).toEqual([[-1, 0], [1, -12], [2, 0]]);
   expect(item(run(p, roll, { left: 'c1', right: 'c2', dt: -1 }), 'snd').envelope).toEqual([[0, 0], [2, -12], [3, 0]]);
   // the right side of a roll: c2's own sound loses its head with it
   const q = fixture();
