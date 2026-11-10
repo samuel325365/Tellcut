@@ -32,12 +32,25 @@ function touchedIds(before: Project, after: Project, mag: Track): Set<string> {
     // off the magnetic track a trim or a stretch (one edge where it was) is not a move: the item stays on its clip, or on none.
     // A grade over the whole film trimmed to a shorter film was hung on the first clip, so a later trim of that clip would have
     // dragged it off the others. Both edges moved is a move, with a new length or not. (A clip of the magnetic track itself
-    // still counts: pack places it by its start.)
+    // still counts here; which of them pack places again is placedIds' call.)
     if (t !== mag && (Math.abs(a.start - b.start) <= EPS || Math.abs(a.end - b.end) <= EPS)) continue;
     if (it.parent === undefined) { out.add(it.id); continue; }
     const par = old.get(it.parent)?.i, now = items(mag).find((c) => c.id === it.parent);
     // a child moved by its own drag (its parent unchanged), not by the parent's trim
     if (par && now && JSON.stringify(par) === JSON.stringify(now)) out.add(it.id);
+  }
+  return out;
+}
+
+/** The magnetic clips this command placed: added, brought over from another track, or moved (both edges shifted). A clip with
+ *  only one edge changed was trimmed or stretched, not moved: placing it by its new start (or its middle) let a head pulled out
+ *  past the middle of the clip before it, or a dissolve longer than half that clip, swap the two. */
+function placedIds(before: Project, after: Project, mag: Track): Set<string> {
+  const was = before.tracks.find((t) => t.id === mag.id), old = new Set(was ? items(was).map((c) => c.id) : []);
+  const tb = resolveTimes(before), ta = resolveTimes(after), out = new Set<string>();
+  for (const c of items(mag)) {
+    const b = tb.get(c.id), a = ta.get(c.id)!;
+    if (!old.has(c.id) || !b || (Math.abs(a.start - b.start) > EPS && Math.abs(a.end - b.end) > EPS)) out.add(c.id);
   }
   return out;
 }
@@ -52,19 +65,30 @@ function hang(p: Project, mag: Track, it: AnyItem) {
   it.end = r6(it.start + len);
 }
 
-/** Packs the magnetic track from 0. A clip this command placed (moved, added) goes where its start falls among the middles
- *  of the others — dropped before a clip's middle it lands before that clip, so a drag to 0 makes it the first and a new
- *  clip goes to the nearest cut. A dissolve keeps its overlap, also into a new neighbour (deleting the clip between two
- *  dissolves must not leave a dip to black). */
+/** Packs the magnetic track from 0. The other clips keep their order on the track; a clip this command placed (moved, added)
+ *  goes where its start falls among their middles — dropped before a clip's middle it lands before that clip, so a drag to 0
+ *  makes it the first and a new clip goes to the nearest cut. A dissolve keeps its overlap, also into a new neighbour (deleting
+ *  the clip between two dissolves must not leave a dip to black), but never more than either clip is long. */
 function pack(before: Project, mag: Track, placed: Set<string>) {
   const linked = new Map<string, { a: string; ov: number }>();
   for (const w of overlapPairs(before).values()) if (w.track === mag.id && w.linked) linked.set(w.b, { a: w.a, ov: w.ov });
-  const key = (it: AnyItem) => placed.has(it.id) ? it.start : (it.start + it.end) / 2;
-  const order = items(mag).map((it, i) => ({ it, i, k: key(it) })).sort((x, y) => x.k - y.k || (placed.has(y.it.id) ? 1 : 0) - (placed.has(x.it.id) ? 1 : 0) || x.i - y.i).map((x) => x.it);
+  const tb = resolveTimes(before), was = (it: AnyItem) => { const b = tb.get(it.id) ?? it; return (b.start + b.end) / 2; };
+  const indexed = items(mag).map((it, i) => ({ it, i }));
+  // a trimmed clip's middle may now lie past its neighbours': the clips left in place keep the order they had before the command
+  const stay = indexed.filter((x) => !placed.has(x.it.id)).map((x) => ({ ...x, k: was(x.it) })).sort((x, y) => x.k - y.k || x.i - y.i);
+  const moved = indexed.filter((x) => placed.has(x.it.id)).sort((x, y) => x.it.start - y.it.start || x.i - y.i);
+  const order: AnyItem[] = [];
+  let m = 0;
+  for (const s of stay) {
+    const mid = (s.it.start + s.it.end) / 2;
+    while (m < moved.length && moved[m].it.start <= mid) order.push(moved[m++].it);
+    order.push(s.it);
+  }
+  while (m < moved.length) order.push(moved[m++].it);
   let end = 0, prev: AnyItem | null = null;
   for (const it of order) {
     const l = linked.get(it.id), len = it.end - it.start;
-    const ov = !prev || !l ? 0 : l.a === prev.id ? l.ov : Math.min(l.ov, prev.end - prev.start, len);
+    const ov = !prev || !l ? 0 : Math.min(l.ov, prev.end - prev.start, len);
     it.start = r6(Math.max(0, end - ov)); it.end = r6(it.start + len); end = it.end; prev = it;
   }
   mag.items.splice(0, mag.items.length, ...(order as any[]));
@@ -84,7 +108,7 @@ export function settleMagnetic(before: Project, after: Project) {
     const b = findIn(before, it.id);
     return b && it.parent === undefined && !isBed(t, it) && !touched.has(it.id) && b.start >= oldEnd - EPS;
   }));
-  pack(before, mag, new Set(items(mag).filter((c) => touched.has(c.id)).map((c) => c.id)));
+  pack(before, mag, placedIds(before, after, mag));
   if (!items(mag).length) return;
   const shift = oldEnd === null ? 0 : magEnd(mag) - oldEnd;
   if (Math.abs(shift) > EPS) for (const it of tail) { it.start = r6(it.start + shift); it.end = r6(it.end + shift); }

@@ -60,6 +60,34 @@ test('a speed change pushes the later clips', () => {
   expect(at(p, 'c2').start).toBe(8);
 });
 
+test('a trim or a speed change keeps the clip where it is in the order, however far its edge goes', async () => {
+  const { applyOps } = await import('../ops.ts');
+  const order = (p: Project) => p.tracks[0].items.map((c) => c.id);
+  // its head pulled out past the middle of the clip before it
+  const a = applyOps(mag(), [{ op: 'trimStart', id: 'c2', dt: -3 }]).project;
+  expect(order(a)).toEqual(['c1', 'c2', 'c3']);
+  expect([at(a, 'c2').start, at(a, 'c2').end, item(a, 'c2').in]).toEqual([4, 11, 7]);
+  // its start edge stretched back past the middle of the clip before it
+  const b = applyOps(mag(), [{ op: 'rateStretch', id: 'c2', edge: 'start', dt: -3 }]).project;
+  expect(order(b)).toEqual(['c1', 'c2', 'c3']);
+  expect([at(b, 'c2').start, at(b, 'c2').end]).toEqual([4, 11]);
+  // a dissolve overlapping more than half of the clip before it, then its end trimmed or stretched
+  const dis = mag((q) => { q.tracks[0].items = [clip('c1', 0, 4, 0), clip('c2', 1.5, 5.5, 10, { transitionIn: { type: 'dissolve', dur: 2.5 } }), clip('c3', 5.5, 9.5, 20)]; q.meta.duration = 9.5; });
+  for (const op of [{ op: 'trimEnd', id: 'c2', dt: -1 }, { op: 'rateStretch', id: 'c2', edge: 'end', dt: 1 }] as any[]) {
+    const r = applyOps(dis, [op]).project;
+    expect(order(r)).toEqual(['c1', 'c2', 'c3']);
+    expect([at(r, 'c1').start, at(r, 'c2').start, item(r, 'c2').transitionIn.dur]).toEqual([0, 1.5, 2.5]);
+  }
+});
+
+test('a dissolve never overlaps more than the clip before it is long', () => {
+  // c2 dissolves 1 s out of c1; c1 trimmed to 0.5 s: the overlap is only as long as c1
+  const base = mag((q) => { q.tracks[0].items = [clip('c0', 0, 4, 30), clip('c1', 4, 8, 0), clip('c2', 7, 11, 10, { transitionIn: { type: 'dissolve', dur: 1 } })];
+    q.tracks[1].items = []; q.tracks[2].items = []; q.meta.duration = 11; });
+  const p = go(base, trimEnd, { id: 'c1', dt: -3.5 });
+  expect([at(p, 'c1').start, at(p, 'c1').end, at(p, 'c2').start, item(p, 'c2').transitionIn.dur]).toEqual([4, 4.5, 4, 0.5]);
+});
+
 test('a linked dissolve keeps its overlap when the clips around it move; nothing starts before 0', () => {
   const base = mag((q) => { q.tracks[0].items[2] = clip('c3', 7.5, 11.5, 20, { transitionIn: { type: 'dissolve', dur: 0.5 } }); });
   const p = go(base, trimEnd, { id: 'c1', dt: -1 });
