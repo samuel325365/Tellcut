@@ -59,7 +59,10 @@ export function countAt(text: string, t: number): number {
 /** a button's bounce when it is tapped at `at`: up to 1.35 and back over `dur` */
 export const popAt = (t: number, at: number, dur = 0.35) => { const u = (t - at) / dur; return u < 0 || u > 1 ? 1 : 1 + 0.35 * Math.sin(Math.PI * u); };
 /** times written "1.2, 3.4" (comma, space or line separated) */
-export const timeList = (text: string) => String(text ?? '').split(/[\s,，]+/).filter(Boolean).map(Number).filter(Number.isFinite);
+/** how many copies of a marquee line `mw` wide (line plus gap) keep a `room`-wide window full while it slides by up to one `mw`:
+ *  the last copy must still start at or past the window's right edge at the largest offset */
+export const marqueeCopies = (mw: number, room: number) => Math.ceil(room / Math.max(1, mw)) + 1;
+export const timeList =(text: string) => String(text ?? '').split(/[\s,，]+/).filter(Boolean).map(Number).filter(Number.isFinite);
 
 // ---------------------------------------------------------------- the reply's blacked-out words
 /** "去了████ 👉" → [['去了', false], ['████', true], [' 👉', false]] */
@@ -103,7 +106,7 @@ interface S {
   topShade: HTMLElement; bars: HTMLElement; barEls: Array<[HTMLElement, HTMLElement]>; av: HTMLElement; headRow: HTMLElement; name: HTMLElement; place: HTMLElement; dots: HTMLElement; close: HTMLElement;
   rewind: HTMLElement; sticker: HTMLElement; stickerText: HTMLElement; chip: HTMLElement;
   botShade: HTMLElement; btns: Record<'heart' | 'comment' | 'share' | 'save', HTMLElement>; nums: Record<'heart' | 'comment' | 'share', HTMLElement>;
-  av2: HTMLElement; row2: HTMLElement; name2: HTMLElement; follow: HTMLElement; cap: HTMLElement; capText: HTMLElement; capMore: HTMLElement; note: HTMLElement; marquee: HTMLElement; mq: [HTMLElement, HTMLElement];
+  av2: HTMLElement; row2: HTMLElement; name2: HTMLElement; follow: HTMLElement; cap: HTMLElement; capText: HTMLElement; capMore: HTMLElement; note: HTMLElement; marquee: HTMLElement; mq: HTMLElement[];
   navBar: HTMLElement; navIcons: HTMLElement[]; profile: HTMLElement;
   card: HTMLElement; pin: HTMLElement; pinIcon: HTMLElement; pinText: HTMLElement; rows: [Row, Row]; toast: HTMLElement; toastIcon: HTMLElement; toastText: HTMLElement;
   sheet: HTMLElement; grab: HTMLElement; sheetTitle: HTMLElement; btn: HTMLElement; targets: HTMLElement[]; ring: HTMLElement;
@@ -177,7 +180,7 @@ export const reels: ItemType<P, S> = {
     const botShade = lineAbs(feed);
     const btns = { heart: lineAbs(feed), comment: lineAbs(feed), share: lineAbs(feed), save: lineAbs(feed) }, nums = { heart: lineAbs(feed), comment: lineAbs(feed), share: lineAbs(feed) };
     const av2 = avatarEl(feed), row2 = lineAbs(feed), name2 = h('span', null, null, row2), follow = h('span', null, null, row2), cap = lineAbs(feed), capText = h('span', null, null, cap), capMore = h('span', null, null, cap);
-    const note = lineAbs(feed), marquee = lineAbs(feed), mq: [HTMLElement, HTMLElement] = [lineAbs(marquee, {}, 'span'), lineAbs(marquee, {}, 'span')];
+    const note = lineAbs(feed), marquee = lineAbs(feed), mq: HTMLElement[] = [];
     cssCamel(marquee, { overflow: 'hidden' });
     cssCamel(row2, { display: 'flex', alignItems: 'center' });
     const navBar = lineAbs(feed), navIcons = [0, 1, 2, 3].map(() => lineAbs(feed)), profile = avatarEl(feed);
@@ -284,8 +287,11 @@ export const reels: ItemType<P, S> = {
       const yM = yA + 114, music = !!p.music;
       glyph(s.note, `n${p.color}`, () => G.note(p.color));
       cssCamel(s.note, { display: music ? 'block' : 'none', left: X(40), top: X(yM - 18), width: X(36), height: X(36), filter: `drop-shadow(${shadow(6)})` });
-      // the marquee: two copies of the line, each as wide as the line plus a gap, sliding left at 70 px a second
-      const mw = textEm(p.music) * 28 + 90, off = (t * 70) % mw;
+      // the marquee: copies of the line, each as wide as the line plus a gap, sliding left at 70 px a second; a short line needs more
+      // than two to keep the 560-unit window full (made as the line asks, the same for every frame)
+      const mw = textEm(p.music) * 28 + 90, off = (t * 70) % mw, copies = marqueeCopies(mw, 560);
+      while (s.mq.length < copies) s.mq.push(lineAbs(s.marquee, {}, 'span'));
+      while (s.mq.length > copies) s.mq.pop()!.remove();
       cssCamel(s.marquee, { display: music ? 'block' : 'none', left: X(90), top: X(yM - 24), width: X(560), height: X(48), textShadow: shadow(6) });
       s.mq.forEach((el, i) => {
         el.textContent = p.music;

@@ -5,6 +5,7 @@ import { resolveTheme, textEm, withDefaults, type ItemType } from '@tellcut/engi
 import { quote } from './quote.ts';
 import { rating } from './rating.ts';
 import { stations, stationsLayout } from './stations.ts';
+import { marqueeCopies, reels } from './reels.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -81,5 +82,20 @@ describe('common.stations', () => {
     const theme = resolveTheme(undefined, { width: 1080, height: 1920 }), L = stationsLayout(3, 1080, 1920, theme.safe);
     const bottom = (1 - theme.safe.bottom) * 1920;
     expect(L).toEqual({ u: 1, top: bottom - (3 * 150 + 90), left: theme.safe.side * 1080 + 20, bottom });
+  });
+});
+
+describe('common.reels marquee', () => {
+  test('enough copies of a short line to fill the 560-unit window while it slides', () => {
+    expect(marqueeCopies(140, 560)).toBe(5);
+    expect(marqueeCopies(402, 560)).toBe(3);
+    expect(marqueeCopies(900, 560)).toBe(2);
+    for (const mw of [90, 140, 333, 560, 1000]) expect((marqueeCopies(mw, 560) - 1) * mw).toBeGreaterThanOrEqual(560);   // the last copy starts past the window even at the largest offset
+  });
+  test('the feed draws that many copies', () => {
+    const { s } = run(reels, { music: '♪ ok' }, 1);
+    const shown = [...s.marquee.children] as HTMLElement[];
+    expect(shown.length).toBe(marqueeCopies(textEm('♪ ok') * 28 + 90, 560));
+    expect(shown.every((el) => el.textContent === '♪ ok')).toBe(true);
   });
 });
