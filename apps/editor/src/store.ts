@@ -97,13 +97,15 @@ export interface EditorState {
 export interface SaveDialog { kind: 'block' | 'style'; target: string; name: string; desc: string; category: string; generalize: boolean;
   preview: LibrarySavePreview | null; conflict: string | null; busy: boolean; error: string }
 /** templateThumbs: the built-in caption and title templates' pictures (id → the gallery's thumbnail), fetched once the panel shows */
-export interface LibraryState { index: LibraryIndex | null; project: ProjectLibraryInfo | null; saving: SaveDialog | null; toast: { name: string } | null; templateThumbs: Record<TemplateKind, Record<string, string>> | null }
+export interface LibraryState { index: LibraryIndex | null; project: ProjectLibraryInfo | null; saving: SaveDialog | null; toast: { name: string } | null; templateThumbs: Record<TemplateKind, Record<string, string>> | null;
+  /** the shared blocks' pictures (type → the gallery's thumbnail), fetched once the media panel's Effects page shows */
+  blockThumbs: Record<string, string> | null }
 
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
   pps: 100, scroll: 0, guide: null, libDrag: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
   thumbs: {}, peaks: {}, offline: [], analyzing: 0, analysisFailed: [], notice: '', importing: null, importNote: '', crop: null, cuts: {}, titles: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
-  library: { index: null, project: null, saving: null, toast: null, templateThumbs: null },
+  library: { index: null, project: null, saving: null, toast: null, templateThumbs: null, blockThumbs: null },
   presetSave: { drafting: false, draft: null, poster: null, toast: null },
 });
 

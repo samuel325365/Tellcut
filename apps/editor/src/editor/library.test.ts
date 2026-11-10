@@ -107,3 +107,14 @@ test('the built-in templates’ pictures are the gallery’s, asked for once (ag
   expect(n).toBe(2);
   expect(s().templateThumbs).toEqual({ caption: { clean: '/t/tpl-clean.png' }, title: { doc: '/t/ttl-doc.png' } });
 });
+
+test('the shared blocks’ pictures (for the media panel’s Effects page) are the gallery’s, asked for once (again after a failure)', async () => {
+  let n = 0;
+  const { f, s } = flow({ gallery: async () => { if (n++ === 0) throw new Error('down'); return { blocks: [{ type: 'common.paper', thumb: '/api/gallery/thumb/paper.png' }, { type: 'core.text' }], sfx: [], styles: [], recipes: [] }; } });
+  await f.loadBlockThumbs();
+  expect(s().blockThumbs).toBeNull();
+  await f.loadBlockThumbs();
+  await f.loadBlockThumbs();
+  expect(n).toBe(2);
+  expect(s().blockThumbs).toEqual({ 'common.paper': '/api/gallery/thumb/paper.png' });
+});

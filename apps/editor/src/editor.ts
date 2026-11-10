@@ -781,6 +781,8 @@ export class Editor {
   /** a built-in template's picture (the gallery's thumbnail, in the zh UI's words), once loadTemplateThumbs has them */
   templateThumb(id: string, kind: TemplateKind = 'caption'): string | undefined { return this.s.library.templateThumbs?.[kind][id]; }
   loadTemplateThumbs() { return this.library.loadTemplateThumbs(); }
+  /** the shared blocks' pictures for the media panel's Effects page, asked for once */
+  loadBlockThumbs() { return this.library.loadBlockThumbs(); }
 
   /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */
   projectCaptionTemplate(template: string, kind: TemplateKind = 'caption'): boolean { return this.apply((d) => setCaptionTemplate(d, template, kind)); }

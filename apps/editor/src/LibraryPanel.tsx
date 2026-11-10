@@ -12,11 +12,13 @@ import type { Material } from './audition.ts';
 import { formatTime } from './timeline/geometry.ts';
 import { SceneCard } from './media/SceneCard.tsx';
 import { SoundCard, sfxSign } from './media/SoundCard.tsx';
+import { BlockCard } from './media/BlockCard.tsx';
 import { startCardDrag } from './media/drag.ts';
 import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { t, type Key } from './i18n/index.ts';
-import { matches } from './gallery.ts';
+import { matches, thumbIn } from './gallery.ts';
+import { getLang } from './i18n/lang.ts';
 import { galleryUrl } from './gallery-link.ts';
 import { blockText } from './i18n/blocks.ts';
 import { tip } from './tip.ts';
@@ -89,6 +91,10 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const counts: Record<MediaTab, number> = { video: Object.keys(p.sources).length, audio: Object.keys(p.media).length + (reg?.sfxTypes().length ?? 0),
     effects: (reg?.itemTypes().length ?? 0) + (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).length };
   const setTab = (mediaTab: MediaTab) => editor.setLayout({ mediaTab });
+  // the block cards' pictures: the gallery's, asked for the first time the Effects page shows
+  useEffect(() => { if (tab === 'effects') void editor.loadBlockThumbs?.(); }, [tab]);
+  const mineThumb = (type: string) => (lib.index?.blocks ?? []).find((b) => b.type === type)?.thumb ?? undefined;
+  const blockThumb = (type: string) => thumbIn(lib.blockThumbs?.[type], getLang()) ?? mineThumb(type);
   // an import shows the page its files went to: Audio when they are all sound, else Video
   const importFiles = (a: Array<{ path: string; kind: string }>) => { setTab(a.length && a.every((x) => x.kind === 'audio') ? 'audio' : 'video'); void editor.importMedia(a.map((x) => x.path)); };
   const inOrder = (ids: string[]) => { const o = orderMedia(ids, sort, use.first, label); return [...o.used, ...o.unused]; };
@@ -176,19 +182,21 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
       {/* a group opens by itself while searching; this project's own fx and the few built-in ones are open from the start */}
       {[...blocks.filter((g) => g.key === 'fx'), ...(mine.length ? [{ key: 'mine', label: t('group.mine', {}, 'en'), list: [] as any[] }] : []), ...blocks.filter((g) => g.key !== 'fx')].map((g) => <details class="lib-group" data-lib-group={`block:${g.key}`} open={!!q.trim() || g.key === 'fx' || g.key === 'mine' || g.key === 'core'}>
         <summary>{g.label}<small>{g.key === 'mine' ? mine.length : g.list.length}</small></summary>
-        {g.key === 'mine' ? mine.map((b) => (
-          <button data-add-mine={b.type} {...tip(t('lib.mineTip'))} {...pickLib({ slug: b.slug, type: b.type, kind: b.kind })}>{b.name}</button>
-        )) : g.list.map((d: any) => { const why = uniqueBlock(reg, p, d.type), button = (
-          <button data-add-overlay={d.type} disabled={!!why} {...tip(why || withHandle(d.type, d.kind === 'scene' ? t('ed.sceneTip') : t('ed.dblWatch')))} {...pick(`overlay:${d.type}`, { kind: 'overlay', type: d.type })}>{blockName(d)}</button>
-        );
-          if (g.key !== 'fx') return button;
+        <div class="blk-grid">{g.key === 'mine' ? mine.map((b) => { const x = { slug: b.slug, type: b.type, kind: b.kind }, a = pickLib(x); return (
+          <BlockCard name={b.name} thumb={b.thumb ?? undefined} cls={a.class} attrs={{ 'data-add-mine': b.type, ...tip(t('lib.mineTip')), onClick: a.onClick, onDblClick: a.onDblClick }}
+            onPress={(e) => startCardDrag(e, editor, { lib: x })} />
+        ); }) : g.list.map((d: any) => {
+          const why = uniqueBlock(reg, p, d.type), m: Material = { kind: 'overlay', type: d.type }, a = pick(`overlay:${d.type}`, m);
           // this project's own: ☆ saves it to My blocks; a copy from My blocks says so, and offers a newer version
-          const link = linkOf(d.type);
-          return <div class="lib-row">{button}
+          const link = g.key === 'fx' ? linkOf(d.type) : undefined;
+          const corner = g.key !== 'fx' ? undefined : <>
             {link && <span class="lib-tag" data-from-mine={link.slug} {...tip(t(link.gone ? 'lib.goneTip' : 'lib.fromMineTip'))}>from My blocks</span>}
             {link?.outdated && <button class="lib-update" data-update-block={link.slug} {...tip(t('lib.updateTip'))} onClick={() => void editor.updateLibraryBlock(link.slug)}>Update</button>}
-            {!link && star(d.type)}</div>;
-        })}
+            {!link && star(d.type)}</>;
+          return <BlockCard name={blockName(d)} thumb={blockThumb(d.type)} cls={a.class} disabled={!!why} corner={corner}
+            attrs={{ 'data-add-overlay': d.type, ...tip(why || withHandle(d.type, d.kind === 'scene' ? t('ed.sceneTip') : t('ed.dblWatch'))), onClick: a.onClick, onDblClick: a.onDblClick }}
+            onPress={(e) => startCardDrag(e, editor, m)} />;
+        })}</div>
       </details>)}
       </div>
       {(() => {

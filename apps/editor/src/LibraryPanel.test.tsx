@@ -292,3 +292,30 @@ test('sound cards: music with its waveform and a listen button, a grey line befo
   expect([calls, m.classList.contains('picked')]).toEqual([[{ kind: 'music', media: 'm' }], false]);   // listening is not picking
   expect(root.querySelector('.sfx-grid [data-add-sfx="x.tap"] .sfx-icon')).not.toBeNull();
 });
+
+test('block cards: the gallery’s picture (asked for when the Effects page shows), a dark card for a block with none, a disabled card that does not drag', async () => {
+  const p: any = fixture();
+  p.tracks.push({ id: 'ov', kind: 'overlay', items: [{ id: 't1', type: 'x.title', start: 0, end: 1, params: {} }] });
+  const base = initialState('t');
+  const store = createStore({ ...base, project: p, layout: { ...base.layout, mediaTab: 'effects' as const },
+    library: { ...base.library, blockThumbs: { 'common.paper': '/api/gallery/thumb/paper.png' },
+      index: { blocks: [{ slug: 'chalk', type: 'fx.chalk', name: 'Chalk', desc: '', kind: 'overlay', params: [], thumb: '/api/library/blocks/chalk/thumb.png?v=1', from: { project: 'other' } }], styles: [] } as any } });
+  const types = [{ type: 'common.paper', label: '紙', kind: 'scene', category: 'look' }, { type: 'fx.mine', label: '我的', kind: 'overlay' }, { type: 'x.title', label: '標題', kind: 'overlay', unique: true }];
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [] },
+    loadBlockThumbs: async () => { calls.push('thumbs'); }, beginLibDrag: (m: any) => { calls.push(['drag', m]); return false; }, libDragTo() {}, endLibDrag() {} };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  expect(calls).toEqual(['thumbs']);
+  const card = (sel: string) => root.querySelector<HTMLElement>(sel)!;
+  expect(card('[data-add-overlay="common.paper"] .block-pic').style.backgroundImage).toContain('/api/gallery/thumb/paper.png');
+  expect(card('[data-add-overlay="fx.mine"] .block-pic.none')).not.toBeNull();
+  expect(card('[data-add-mine="fx.chalk"] .block-pic').style.backgroundImage).toContain('/api/library/blocks/chalk/thumb.png');
+  expect(card('[data-add-overlay="fx.mine"] .blk-name').textContent).toBe('我的');
+  const press = (el: HTMLElement) => el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 5, clientY: 5 }));
+  const move = () => dispatchEvent(new MouseEvent('mousemove', { clientX: 60, clientY: 60, buttons: 1 })), up = () => dispatchEvent(new MouseEvent('mouseup', { clientX: 60, clientY: 60 }));
+  press(card('[data-add-overlay="x.title"]')); move(); up();         // already on the timeline: not dragged
+  expect(calls).toEqual(['thumbs']);
+  press(card('[data-add-mine="fx.chalk"]')); move(); up();
+  expect(calls.at(-1)).toEqual(['drag', { lib: { slug: 'chalk', type: 'fx.chalk', kind: 'overlay' } }]);
+});

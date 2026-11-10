@@ -110,6 +110,17 @@ export class LibraryFlow {
       this.set({ templateThumbs: { caption: pick(g.captions), title: pick(g.titles) } });
     } catch { this.thumbsAsked = false; }
   }
+  private blockThumbsAsked = false;
+  /** the shared blocks' pictures, the gallery's (its golden pictures), for the media panel's Effects page; asked for once (again
+   *  only after a failure). Until then, or without one, a card shows its name. */
+  async loadBlockThumbs() {
+    if (this.lib.blockThumbs || this.blockThumbsAsked || !this.c.api.gallery) return;
+    this.blockThumbsAsked = true;
+    try {
+      const g = await this.c.api.gallery();
+      this.set({ blockThumbs: Object.fromEntries((g.blocks ?? []).flatMap((b) => (b.thumb ? [[b.type, b.thumb]] : []))) });
+    } catch { this.blockThumbsAsked = false; }
+  }
 
   /** copies an entry (or, with `style`, a music style) into the project; the editor puts it on the timeline */
   async use(slug: string, o: { style?: boolean } = {}) {
