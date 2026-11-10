@@ -16,3 +16,10 @@ export function thumbAt(info: ThumbInfo, t: number, h: number) {
   const w = (h * info.width) / info.height, idx = Math.max(0, Math.min(info.count - 1, Math.floor(t / info.interval)));
   return { w, bg: `-${(idx % info.cols) * w}px -${Math.floor(idx / info.cols) * h}px`, size: `${info.cols * w}px auto` };
 }
+/** One frame of the atlas for a box of any size with the frame's own aspect (the library's cards): the frame shown at source
+ *  time t, placed by percentages, so the box can be as wide as its grid column makes it. */
+export function thumbPct(info: ThumbInfo, t: number) {
+  const idx = Math.max(0, Math.min(info.count - 1, Math.floor(t / info.interval))), rows = Math.ceil(info.count / info.cols);
+  const col = idx % info.cols, row = Math.floor(idx / info.cols), pct = (i: number, n: number) => (n > 1 ? (i / (n - 1)) * 100 : 0);
+  return { bg: `${pct(col, info.cols)}% ${pct(row, rows)}%`, size: `${info.cols * 100}% auto`, aspect: info.width / info.height };
+}

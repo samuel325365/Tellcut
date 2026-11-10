@@ -63,7 +63,34 @@ test('segments show a thumbnail (once analysed) and their length, so two that st
   await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
   const segs = [...root.querySelectorAll<HTMLElement>('[data-add-source="s"]')];
   expect(segs.map((e) => e.textContent)).toEqual(['0:0012.5s', '0:1217.5s']);
-  expect(segs[1].querySelector<HTMLElement>('.seg-thumb')!.style.backgroundImage).toContain('/t.jpg');
+  // the picture is the stretch's middle frame, placed by percentages (timeline/thumbs.ts thumbPct): 6.25 s → column 6, row 0 of 3
+  const pic = segs[0].querySelector<HTMLElement>('.seg-pic')!;
+  expect(pic.style.backgroundImage).toContain('/t.jpg');
+  expect([pic.style.backgroundPosition, pic.style.backgroundSize]).toEqual([`${(6 / 9) * 100}% 0%`, '1000% auto']);
+  expect(segs.some((e) => e.classList.contains('no-pic'))).toBe(false);
+});
+test('a scene card scrubs: the pointer across it shows that part of its stretch, leaving it shows the middle again', async () => {
+  const thumbs = { s: { interval: 1, width: 160, height: 90, cols: 10, count: 30, url: '/t.jpg' } };
+  const store = createStore({ ...initialState('t'), project: fixture(), cuts: { s: [12.5] }, thumbs });
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, audition() {}, addMaterial() {} };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const seg = root.querySelector<HTMLElement>('[data-add-source="s"][data-range="12.5-30"]')!;
+  seg.getBoundingClientRect = () => ({ left: 0, width: 100, top: 0, height: 56, right: 100, bottom: 56, x: 0, y: 0 }) as DOMRect;
+  const pos = () => seg.querySelector<HTMLElement>('.seg-pic')!.style.backgroundPosition;
+  expect(pos()).toBe(`${(1 / 9) * 100}% 100%`);                       // the middle, 21.25 s
+  await act(() => { seg.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 80 })); });
+  expect(pos()).toBe(`${(6 / 9) * 100}% 100%`);                       // 80 %: 26.5 s
+  await act(() => { seg.dispatchEvent(new MouseEvent('mouseleave', { bubbles: false })); });
+  expect(pos()).toBe(`${(1 / 9) * 100}% 100%`);
+});
+test('a source not analysed yet shows grey cards with their times', async () => {
+  const store = createStore({ ...initialState('t'), project: fixture(), cuts: { s: [12.5] } });
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, audition() {}, addMaterial() {} };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const segs = [...root.querySelectorAll<HTMLElement>('[data-add-source="s"]')];
+  expect(segs.map((e) => [e.classList.contains('no-pic'), !!e.querySelector('.seg-pic')])).toEqual([[true, false], [true, false]]);
 });
 test('a photo is one Photo entry; music shows its tempo', async () => {
   const p: any = fixture(); p.sources.ph = { path: 'p.jpg', duration: 3600, width: 900, height: 1200, kind: 'image' };

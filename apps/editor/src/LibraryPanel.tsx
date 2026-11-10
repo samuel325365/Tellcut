@@ -10,7 +10,8 @@ import { useEffect, useState } from 'preact/hooks';
 import type { EditorState } from './store.ts';
 import type { Material } from './audition.ts';
 import { formatTime } from './timeline/geometry.ts';
-import { thumbAt } from './timeline/thumbs.ts';
+import { SceneCard } from './media/SceneCard.tsx';
+import { startCardDrag } from './media/drag.ts';
 import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { t, type Key } from './i18n/index.ts';
@@ -109,23 +110,14 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
       {s.analysisFailed.includes(id) && <div class="src-failed" data-analysis-failed={id}><span>{t('ed.libAnalysisFailed')}</span>
         <button data-retry-analysis={id} {...tip(t('ed.libRetryTip'))} onClick={() => void editor.retryAnalysis()}>{t('ed.libRetryAnalysis', {}, 'en')}</button></div>}
       <div class="segs">{src.kind === 'image' ? (() => {
-        // a photo: one entry (spec 2026-10-14 §5)
-        const info = s.thumbs[id], tile = info && thumbAt(info, 0, 18);
-        return (
-          <button data-add-source={id} data-range="0-3" {...tip(t('ed.photoTip') + (use.first.has(id) ? t('ed.onTimeline') : ''))} {...pick(`photo:${id}`, { kind: 'clip', source: id, from: 0, len: 3 }, `seg${use.first.has(id) ? ' used' : ''}`)}>
-            {tile && <span class="seg-thumb" style={{ width: `${tile.w}px`, backgroundImage: `url(${info.url})`, backgroundPosition: tile.bg, backgroundSize: tile.size }} />}
-            <span class="seg-t">Photo</span>
-          </button>
-        );
+        // a photo: one card (spec 2026-10-14 §5)
+        const m: Material = { kind: 'clip', source: id, from: 0, len: 3 }, x = pick(`photo:${id}`, m, `seg${use.first.has(id) ? ' used' : ''}`);
+        return <SceneCard info={s.thumbs[id]} a={0} b={3} photo cls={x.class} onPress={(e) => startCardDrag(e, editor, m)}
+          attrs={{ 'data-add-source': id, 'data-range': '0-3', ...tip(t('ed.photoTip') + (use.first.has(id) ? t('ed.onTimeline') : '')), onClick: x.onClick, onDblClick: x.onDblClick }} />;
       })() : segmentsOf(src.duration, s.cuts[id]).map(([a, b]) => {
-        const info = s.thumbs[id], tile = info && thumbAt(info, a + Math.min(1, (b - a) / 2), 18);
-        return (
-          <button data-add-source={id} data-range={`${a}-${b}`} {...tip(t('ed.segTip', { a: a.toFixed(1), b: b.toFixed(1) }) + (segmentUsed(use.ranges.get(id), a, b) ? t('ed.onTimeline') : ''))}
-            {...pick(`clip:${id}:${a}`, { kind: 'clip', source: id, from: a, len: b - a }, `seg${segmentUsed(use.ranges.get(id), a, b) ? ' used' : ''}`)}>
-            {tile && <span class="seg-thumb" style={{ width: `${tile.w}px`, backgroundImage: `url(${info.url})`, backgroundPosition: tile.bg, backgroundSize: tile.size }} />}
-            <span class="seg-t">{formatTime(a)}</span><small>{(b - a).toFixed(1)}s</small>
-          </button>
-        );
+        const m: Material = { kind: 'clip', source: id, from: a, len: b - a }, on = segmentUsed(use.ranges.get(id), a, b), x = pick(`clip:${id}:${a}`, m, `seg${on ? ' used' : ''}`);
+        return <SceneCard key={`${a}`} info={s.thumbs[id]} a={a} b={b} cls={x.class} onPress={(e) => startCardDrag(e, editor, m)}
+          attrs={{ 'data-add-source': id, 'data-range': `${a}-${b}`, ...tip(t('ed.segTip', { a: a.toFixed(1), b: b.toFixed(1) }) + (on ? t('ed.onTimeline') : '')), onClick: x.onClick, onDblClick: x.onDblClick }} />;
       })}</div>
     </div>
   ); };
