@@ -8,7 +8,7 @@
 import { clamp, type ItemType, type MotionKit } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { isClear } from './color.ts';
-import { faceWeight } from './text.ts';
+import { faceWeight, graphemes } from './text.ts';
 
 export type BounceMode = 'drop' | 'pop' | 'slam' | 'float' | 'sway' | 'knock';
 const MODES: BounceMode[] = ['drop', 'pop', 'slam', 'float', 'sway', 'knock'];
@@ -29,7 +29,7 @@ export function parseBounce(s: string): BounceItem[] {
     for (const part of String(extra ?? '').split(/[;；]/)) { const [k, v] = part.split('='); if (k?.trim()) kv[k.trim()] = (v ?? '1').trim(); }
     const chars: BounceChar[] = [];
     let em = false;
-    for (const ch of text) { if (ch === '【') { em = true; continue; } if (ch === '】') { em = false; continue; } chars.push({ ch, em }); }
+    for (const ch of graphemes(text)) { if (ch === '【') { em = true; continue; } if (ch === '】') { em = false; continue; } chars.push({ ch, em }); }
     const num = (v: string | undefined, d: number) => { const n = parseFloat(v ?? ''); return Number.isFinite(n) ? n : d; };
     return [{ at: t, text: chars.map((c) => c.ch).join(''), chars, size: Math.max(10, num(size, 200)), color: color ?? '', x: num(x, 0.5), y: num(y, 0.5),
       mode: MODES.includes(mode as BounceMode) ? (mode as BounceMode) : 'drop', kv }];

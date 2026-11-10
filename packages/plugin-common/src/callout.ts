@@ -2,6 +2,7 @@
 // (a phone, or any emoji, in a ring with a slash) or juice bursting out (rays); the mark draws itself, the leader runs out, the label
 // pops. The label stays inside the safe area wherever the target is. From the food-deep short's fx.mark.
 import { clamp, cssCamel, eBack, eOut3 as eOut, h, prog, textEm, type ItemType } from '@tellcut/engine';
+import { EMOJI_STACK } from './text.ts';
 
 interface P { kind: 'circle' | 'cross' | 'ban' | 'burst'; x: number; y: number; r: number; lx: number; ly: number; text: string; icon: string; tone: 'paper' | 'accent' | 'hl'; color: string; bad: string; paper: string; ink: string; font: string }
 interface Shape { e: SVGElement; len?: number; fade?: boolean; from: number; to: number }
@@ -43,7 +44,7 @@ export const callout: ItemType<P, S> = {
     ctx.root.appendChild(svg);
     cssCamel(svg as unknown as HTMLElement, { position: 'absolute', left: '0', top: '0', overflow: 'visible' });
     const lab = h('div', null, null, ctx.root);
-    cssCamel(icon, { position: 'absolute', lineHeight: '1', transform: 'translate(-50%, -50%)', fontFamily: "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif" });
+    cssCamel(icon, { position: 'absolute', lineHeight: '1', transform: 'translate(-50%, -50%)', fontFamily: `${EMOJI_STACK}, sans-serif` });
     cssCamel(lab, { position: 'absolute', whiteSpace: 'nowrap', fontWeight: '900', lineHeight: '1.2' });
     return { svg, g, shapes: [], icon, lab, key: '' };
   },

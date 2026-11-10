@@ -5,7 +5,7 @@
 // On 9:16 it uses the frame; on a wide or square frame it sits on the same phone as common.reels (device none: the whole frame).
 import { clamp, cssCamel, fitLines, h, type ItemType } from '@tellcut/engine';
 import { avatarEl, DEVICES, drawAvatar, phoneEls, phoneScreen, placePhone, stackAt, stackEnter, type Device, type PhoneEls, type Screen, type StackItem } from './phone.ts';
-import { nl } from './text.ts';
+import { EMOJI_STACK, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 /** the avatar colours a comment without color= takes, by its line */
@@ -97,7 +97,7 @@ export const comments: ItemType<P, S> = {
     const pos = stackAt(items, t, { grow: 'up', top, bottom: bot, gap: 18, full: 99, peek: 0, move: 0.3, fade: 120 });
     const shown = new Set(pos.map((q) => q.i));
     s.rows.forEach((r, i) => { if (!shown.has(i)) cssCamel(r.box, { display: 'none' }); });
-    const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     for (const q of pos) {
       const c = list[q.i], L = lays[q.i], r = s.rows[q.i], en = stackEnter(q.enter, 'up', 50), a = en.alpha * (1 - q.out) * q.fade;
       cssCamel(r.box, { display: a > 0.01 ? 'block' : 'none', left: X(p.x * Wd), top: X(q.y + en.dy), height: X(q.h), opacity: String(clamp(a)), fontFamily: font, color: p.color });

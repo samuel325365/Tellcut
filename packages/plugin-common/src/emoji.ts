@@ -6,13 +6,14 @@
 // from the item's first frame to its last, to hide a face; it can move along a `path`, be cut by a `box` (a page's video window)
 // and have a disc of colour behind it (`backing`) so nothing shows between its petals. follow: 'face' sizes it from chin to hairline.
 import { clamp, cssCamel, eBack, eOut3, h, lerp, prog, rng, transformAt, type ItemType } from '@tellcut/engine';
+import { EMOJI_STACK, graphemes } from './text.ts';
 import { keysAt, rowsOf } from './geo.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 
 interface P { mode: 'sticker' | 'rain' | 'float' | 'tap' | 'cover'; char: string; x: number; y: number; size: number; count: number; seed: number; rate: number; path: string; box: string; backing: string }
 /** cover: its own canvas, a square around the emoji at the resolution it shows at (follow scales the layer up) */
 interface S { drops: HTMLElement[]; cv: HTMLCanvasElement; cover: HTMLCanvasElement | null }
-const FONT = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
+const FONT = `${EMOJI_STACK}, sans-serif`;
 const HEART = '♥';
 type G = CanvasRenderingContext2D;
 
@@ -96,7 +97,7 @@ export const emoji: ItemType<P, S> = {
   },
   hide(s) { freeCanvas(s.cv, s.cover); },
   draw(ctx, s) {
-    const p = ctx.params, { W, H } = ctx, chars = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(p.char)].map((x) => x.segment), px = (p.size / 100) * Math.min(W, H);
+    const p = ctx.params, { W, H } = ctx, chars = graphemes(p.char), px = (p.size / 100) * Math.min(W, H);
     const reactions = p.mode === 'float' || p.mode === 'tap';
     cssCamel(s.cv, { display: reactions ? 'block' : 'none' });
     if (reactions) { drawReactions(ctx, s, chars.length ? chars : [HEART], px); return; }

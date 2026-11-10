@@ -17,7 +17,7 @@ import { clamp, coverPlacement, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, le
 import { countAt, popAt } from './reels.ts';
 import { asFrame, imagesReady, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
 import { DEVICES, drawStatusBar, glyphSvg, parseSteps, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
-import { fitPx, lineAbs, nl } from './text.ts';
+import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 export const ALBUM_MODES = ['grid', 'foryou', 'zoom', 'swipe', 'viewer'] as const;
@@ -308,7 +308,7 @@ export const album: ItemType<P, S> = {
     const p = ctx.params, { W, H, theme, local: t, dur, media } = ctx;
     const { sc, k, Hd, X } = phoneView(W, H, theme.safe, p);
     placePhone(s.ph, sc);
-    const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`, hand = `'${p.hand}', '${p.font}', 'Noto Sans TC', sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, hand = `'${p.hand}', '${p.font}', 'Noto Sans TC', sans-serif`;
     cssCamel(s.ph.screen, { fontFamily: font, color: p.ink });
     const mode: Mode = (ALBUM_MODES as readonly string[]).includes(p.mode) ? p.mode : 'grid';
     const isPage = mode === 'grid' || mode === 'foryou', isGrid = mode === 'grid', isFy = mode === 'foryou', flying = mode === 'zoom' || mode === 'swipe';

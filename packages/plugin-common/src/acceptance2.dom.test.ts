@@ -57,6 +57,8 @@ describe('common.bounce', () => {
     expect(a.chars).toEqual([{ ch: '要', em: false }, { ch: '快', em: true }]);
     expect(b).toMatchObject({ at: 1, text: '走', size: 200, color: '', x: 0.5, y: 0.5, mode: 'drop', kv: {} });
     expect(parseBounce('0|字|100||||spin')[0].mode).toBe('drop');
+    // a letter is what the eye counts: an emoji joined by ZWJ or a flag enters whole, not in pieces
+    expect(parseBounce('0|好👨‍👩‍👧🇹🇼')[0].chars.map((c) => c.ch)).toEqual(['好', '👨‍👩‍👧', '🇹🇼']);
   });
   test('each mode enters from its own pose and lands; out pops it away; jump hops; sink drops the stressed ones', () => {
     const it = (mode: string, extra = '') => parseBounce(`1|字字|200||0.5|0.5|${mode}|${extra}`)[0];
