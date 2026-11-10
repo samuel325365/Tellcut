@@ -110,6 +110,19 @@ test('an fx that already says its category keeps it and needs no --category', as
   expect(readFileSync(join(common, 'src', 'ring.ts'), 'utf8').match(/category/g)).toHaveLength(1);
 });
 
+test('an fx that says its category and a --category that says another is refused: the handle and the block would disagree', async () => {
+  writeFileSync(join(dir, 'fx', 'ring.js'), fxSrc('fx.ring').replace("kind: 'overlay'", "kind: 'overlay', category: 'travel'"));
+  await expect(plan({ type: 'fx.ring', category: 'mark' })).rejects.toThrow(/travel.*mark/);
+  expect((await plan({ type: 'fx.ring', category: 'travel' })).handle).toBe('TRV-01');   // the same one is fine
+});
+
+test('a block with no category of its own gets one, though "category:" is written elsewhere in its file', async () => {
+  writeFileSync(join(dir, 'fx', 'ring.js'), fxSrc('fx.ring').replace("doc: 'd'", "doc: 'sorted by category: name'"));
+  const pl = await plan({ type: 'fx.ring' });
+  await applyPromotion({ dir, commonDir: common, plan: pl, handlesFile });
+  expect(readFileSync(join(common, 'src', 'ring.ts'), 'utf8')).toContain("type: 'common.ring', category: 'mark'");
+});
+
 test("the project's cut.ts is rewritten so the next cut does not bring the fx back; params naming it follow; a clean cut stays clean", async () => {
   // a project made by a cut script: cut-state.json holds project.json's hash as the cut wrote it
   const raw = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));

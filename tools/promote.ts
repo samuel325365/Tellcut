@@ -35,6 +35,8 @@ export interface Promotion { project: string; fxFile: string; from: string; to: 
   cutScript: boolean;
   /** a BlockCategory key, and the handle it gives (MRK-08) */
   category: keyof typeof BLOCK_PREFIX; handle: string;
+  /** the block object has no category of its own: the shared file gets `category` written in */
+  addCategory: boolean;
   /** names it is easy to mistake for */
   warnings: string[] }
 
@@ -89,6 +91,8 @@ export async function planPromotion(o: { dir: string; type: string; name?: strin
   const name = o.name ?? o.type.slice(3);
   if (!/^[a-z][A-Za-z0-9-]*$/.test(name)) throw new Error(`名稱 ${name} 不合法（小寫字母開頭，只能有字母、數字、連字號）`);
   if (/\d$/.test(name)) throw new Error(`名稱 ${name} 不要用數字結尾：取一個看得出外觀的字（--as <名稱>）`);
+  // the block's own category stays in the shared file: another one asked for would give it a handle of the wrong prefix
+  if (own && o.category && own !== o.category) throw new Error(`${o.type} 自己寫了分類 ${own}，和 --category ${o.category} 不同：拿掉 --category，或先在 ${fxFile} 改它的 category`);
   const category = o.category ?? own;
   if (!category || !(category in BLOCK_PREFIX)) throw new Error(`${category ? `沒有「${category}」這個分類` : '要給分類'}：加 --category ${Object.keys(BLOCK_PREFIX).join('|')}（${Object.values(BLOCK_CATEGORY).join('／')}）`);
   const target = join(o.commonDir, 'src', `${name}.ts`);
@@ -105,7 +109,7 @@ export async function planPromotion(o: { dir: string; type: string; name?: strin
     ...(imports ? [`${fxFile} 從專案裡的檔案 import 東西：搬到 plugin-common 後找不到，要把它們一起搬過去、改 import 路徑`] : []),
     ...(like.close.length ? [`名稱 ${name} 跟現有的 ${like.close.join('、')} 只差一兩個字母，容易看錯：可以用 --as 換一個`] : []),
     ...(like.within.length ? [`名稱 ${name} 跟 ${like.within.join('、')} 互相包含：是同一族的積木就沒關係`] : [])];
-  return { project: p.meta.name, fxFile, from: o.type, to: `common.${name}`, name, target, items, refs, cutScript: existsSync(join(o.dir, 'cut.ts')), keepsFxEntry: !!split, ...(split ? { split } : {}), category: cat, handle, warnings };
+  return { project: p.meta.name, fxFile, from: o.type, to: `common.${name}`, name, target, items, refs, cutScript: existsSync(join(o.dir, 'cut.ts')), keepsFxEntry: !!split, ...(split ? { split } : {}), category: cat, addCategory: !own, handle, warnings };
 }
 
 export const describePromotion = (pl: Promotion) => [
@@ -136,8 +140,9 @@ export async function applyPromotion(o: { dir: string; commonDir: string; plan: 
   mkdirSync(backup, { recursive: true });
   copyFileSync(fxPath, join(backup, `${new Date().toISOString().replace(/[:.]/g, '-')}_${basename(pl.fxFile)}`));
   let src = (pl.split?.shared ?? original).replace(new RegExp(`(['"\`])${id(pl.from)}\\1`, 'g'), `$1${pl.to}$1`);
-  // the catalog groups shared blocks by category: given right after the type when the fx had none
-  if (!/\bcategory\s*:/.test(src)) src = src.replace(new RegExp(`(['"\`])${id(pl.to)}\\1`), `$&, category: '${pl.category}'`);
+  // the catalog groups shared blocks by category: given right after the type when the block object had none (the plan read the
+  // loaded object: "category:" elsewhere in the file, in a doc or another object, is not its own)
+  if (pl.addCategory) src = src.replace(new RegExp(`(['"\`])${id(pl.to)}\\1`), `$&, category: '${pl.category}'`);
   const handles = o.handlesFile ?? HANDLES_FILE;
   writeFileSync(handles, withHandle(readHandles(handles), pl.handle, pl.to));
   writeFileSync(pl.target, `// @ts-nocheck — promoted from a project's own effect (${pl.from}); add types when you next touch it.\n${src}`);
