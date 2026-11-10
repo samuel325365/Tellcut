@@ -109,7 +109,8 @@ export function createApp(o: AppOptions) {
   });
   return {
     store, registry, queue, holds,
-    listen: (port = 0) => new Promise<number>((ok) => server.listen(port, '127.0.0.1', () => { const p = (server.address() as AddressInfo).port; chat.serverUrl = `http://127.0.0.1:${p}`; ok(p); })),
+    // a port in use rejects (EADDRINUSE) instead of an 'error' no one listens to
+    listen: (port = 0) => new Promise<number>((ok, no) => { server.once('error', no); server.listen(port, '127.0.0.1', () => { server.off('error', no); const p = (server.address() as AddressInfo).port; chat.serverUrl = `http://127.0.0.1:${p}`; ok(p); }); }),
     close: () => new Promise<void>((ok) => { chat.stopAll(); queue.cancelAll(); server.closeAllConnections(); server.close(() => ok()); }),
   };
 }

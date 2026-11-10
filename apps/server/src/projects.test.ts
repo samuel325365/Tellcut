@@ -104,6 +104,21 @@ test('the server listens on loopback only', async () => {
   expect(base.startsWith('http://127.0.0.1:')).toBe(true);
 });
 
+test('a port already in use: listen rejects, and npm run server says so in a line; a mistyped flag is refused', async () => {
+  const { createApp } = await import('./app.ts');
+  const second = createApp({ projectsDir: root, extras: false });
+  try { await expect(second.listen(Number(new URL(base).port))).rejects.toMatchObject({ code: 'EADDRINUSE' }); } finally { await second.close(); }
+  const { spawnSync } = await import('node:child_process');
+  const { TELLCUT_ROOT } = await import('@tellcut/media-node');
+  const server = (...args: string[]) => spawnSync(process.execPath, [join(TELLCUT_ROOT, 'node_modules/tsx/dist/cli.mjs'), 'apps/server/src/main.ts', ...args], { cwd: TELLCUT_ROOT, encoding: 'utf8', timeout: 60000 });
+  const busy = server('--port', new URL(base).port);
+  expect(busy.status).toBe(1);
+  expect(busy.stderr).toContain(`Port ${new URL(base).port} is already in use`);
+  const typo = server('--prot', '5200');
+  expect(typo.status).toBe(2);
+  expect(typo.stderr).toContain('There is no option --prot');
+}, 120000);
+
 const raw = (path: string, headers: Record<string, string>, method = 'GET') => new Promise<number>((ok, no) => {
   const r = request({ host: '127.0.0.1', port: Number(new URL(base).port), path, method, headers }, (res) => { res.resume(); ok(res.statusCode!); });
   r.on('error', no);

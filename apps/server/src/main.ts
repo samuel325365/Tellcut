@@ -4,8 +4,12 @@ import { join } from 'node:path';
 import { clearServerInfo, DEFAULT_PORT, TELLCUT_ROOT, writeServerInfo } from '@tellcut/media-node';
 import { createApp } from './app.ts';
 import { cleanupLeftovers } from './cleanup.ts';
+import { parseArgsOrExit } from '../../../tools/args.ts';
 
-const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
+// a mistyped flag is refused, not read as the port (--prot 5200 started on the default one)
+const usage = 'Usage: npm run server [-- --port 5174]';
+const args = parseArgsOrExit(process.argv.slice(2), { '--port': 'value' }, usage, { maxWords: 0, lang: 'en' });
+const asked = Number(args.get('--port') ?? DEFAULT_PORT);
 const playerDist = join(TELLCUT_ROOT, 'apps/player/dist');
 if (!existsSync(join(playerDist, 'index.html'))) console.warn('Player not built: run `npm run build:player` (needed by /player/ and exports)');
 const editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
@@ -15,7 +19,12 @@ try {
   if (left.length) console.log(`Removed ${left.length} leftover temp file(s) from an earlier run`);
 } catch (e) { console.warn(`Leftover cleanup skipped: ${(e as Error)?.message ?? e}`); }
 const app = createApp({ projectsDir: join(TELLCUT_ROOT, 'projects'), playerDist, editorDist });
-const port = await app.listen(Number(arg('--port') ?? DEFAULT_PORT));
+const port = await app.listen(asked).catch((e: NodeJS.ErrnoException) => {
+  // another server (or another program) has the port: said in a line, not as an unhandled 'error' event
+  if (e.code === 'EADDRINUSE') console.error(`Port ${asked} is already in use: stop what runs there (npm run server:restart restarts a Tellcut server), or start on another port with npm run server -- --port <port>`);
+  else console.error(`Cannot listen on port ${asked}: ${e.message}`);
+  process.exit(1);
+});
 // the CLI (propose, new, inspect) finds this server here, whatever its port (review3 R3-H6)
 writeServerInfo(port);
 process.on('exit', () => clearServerInfo());
