@@ -38,7 +38,13 @@ async function main() {
 async function renderLocked(projectId: string, pdir: string, { stills, from, to }: RenderArgs) {
   const outDir = join(pdir, 'output');
   // the clips the film uses are cut into cache/ first (incremental: only what changed): render alone used to play missing clips black
-  const { registry } = await projectRegistry(pdir, plugins, parseProject(JSON.parse(readFileSync(join(pdir, 'project.json'), 'utf8'))));
+  const { registry, fx } = await projectRegistry(pdir, plugins, parseProject(JSON.parse(readFileSync(join(pdir, 'project.json'), 'utf8'))));
+  // an effect that does not load would be left out of the film without a word (the editor's export refuses it the same way)
+  if (fx.errors.length) {
+    console.error(`專案的效果載入失敗，沒有輸出：\n${fx.errors.map((e) => `  ${e.path}：${e.message}`).join('\n')}`);
+    process.exitCode = 1;
+    return;
+  }
   await prepareProject(pdir, registry, { log: (l) => console.log(l) });
   if (stills) {
     const s = await openPage(playerPath(projectId), '__tellcut');

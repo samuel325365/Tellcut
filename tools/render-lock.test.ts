@@ -61,3 +61,18 @@ test('a render takes over a stale lock (its process is gone) and lets it go when
   expect(r.stderr + r.stdout).toMatch(/missing\.mp4/);
   expect(existsSync(exportLock(dir))).toBe(false);
 }, 60000);
+
+test('a render whose effects do not load says which and stops before cutting anything, as the editor’s export does', () => {
+  rmSync(exportLock(dir), { force: true });
+  const project = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
+  mkdirSync(join(dir, 'fx'), { recursive: true });
+  writeFileSync(join(dir, 'fx', 'broken.js'), 'export default [ { type: ');
+  writeFileSync(join(dir, 'project.json'), JSON.stringify({ ...project, meta: { ...project.meta, fx: ['fx/broken.js'] } }));
+  try {
+    const r = tsx('tools/render.ts', '--project', id);
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('fx/broken.js');
+    expect(r.stderr + r.stdout).not.toMatch(/missing\.mp4/);   // never got as far as the prepare step
+    expect(existsSync(exportLock(dir))).toBe(false);
+  } finally { writeFileSync(join(dir, 'project.json'), JSON.stringify(project)); }
+}, 60000);
