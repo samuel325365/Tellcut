@@ -44,6 +44,16 @@ export function coverImage(g: G, img: HTMLImageElement | null, x: number, y: num
 }
 const track = (g: G, px: number) => { try { (g as unknown as { letterSpacing: string }).letterSpacing = `${(px * 0.22).toFixed(1)}px`; } catch { /* older canvases */ } };
 const untrack = (g: G) => { try { (g as unknown as { letterSpacing: string }).letterSpacing = '0px'; } catch { /* older canvases */ } };
+/** set `font(px)` on g (tracked as track(g, spacing) when spacing is given), shrunk with its tracking so `text` is at most `room`
+ *  wide, down to `min` of its size; the px it set. A text that fits is set exactly as before. */
+function fitSet(g: G, text: string, px: number, font: (px: number) => string, room: number, spacing?: number, min = 0.4): number {
+  g.font = font(px); if (spacing !== undefined) track(g, spacing);
+  const w = text ? g.measureText(text).width : 0;
+  if (w <= room) return px;
+  const s = Math.max(min, room / w);
+  g.font = font(px * s); if (spacing !== undefined) track(g, spacing * s);
+  return px * s;
+}
 const stillMedia = (item: SceneItem) => {
   const p = item.params as { source?: string; t?: number };
   return { videos: [], stills: p.source ? [stillOf(p.source, Number(p.t) || 0)] : [] };
@@ -115,10 +125,16 @@ export const masthead: ItemType<MP, MS> = {
       const by = 0.33 * H, bh = 0.43 * H, k = eOut((local - 0.3) / 0.5);
       g.save(); g.beginPath(); g.rect(0, by + (bh / 2) * (1 - k), W, bh * k); g.clip(); coverImage(g, s.img, 0, by, W, bh, 0.5, 0.45); g.restore();
     }
-    const small = 22 * u;
+    let small = 22 * u;
     g.fillStyle = p.ink; g.textBaseline = 'middle'; g.font = disp(small, 400); track(g, small);
     const issueL = back ? 'NEXT ISSUE' : String(p.issueL ?? ''), issueR = back ? 'SEE YOU AGAIN' : String(p.issueR ?? '');
-    const lw = issueL ? g.measureText(issueL).width : 0, rw = issueR ? g.measureText(issueR).width : 0;
+    let lw = issueL ? g.measureText(issueL).width : 0, rw = issueR ? g.measureText(issueR).width : 0;
+    // the two issue lines shrink together (with their tracking) when they would come within 40 px of each other
+    const iroom = W - 160 * u;
+    if (lw + rw > iroom) {
+      small *= iroom / (lw + rw); g.font = disp(small, 400); track(g, small);
+      lw = issueL ? g.measureText(issueL).width : 0; rw = issueR ? g.measureText(issueR).width : 0;
+    }
     g.textAlign = 'left'; g.fillText(issueL, 60 * u, ISSUE_Y * u);
     g.textAlign = 'right'; g.fillText(issueR, W - 60 * u, ISSUE_Y * u); untrack(g);
     const chars = graphemes(p.title);
@@ -133,7 +149,7 @@ export const masthead: ItemType<MP, MS> = {
     const rule = eOut((local - 0.07 * chars.length) / 0.4);
     g.fillRect(W / 2 - (mw / 2) * rule, my + px * 0.5, mw * rule, 3 * u);
     if (back) {
-      g.font = disp(small, 400); track(g, small); g.textAlign = 'center'; g.fillText(p.sub, W / 2, my + px * 0.5 + 44 * u); untrack(g);
+      fitSet(g, String(p.sub ?? ''), 22 * u, (q) => disp(q, 400), W - 120 * u, 22 * u); g.textAlign = 'center'; g.fillText(p.sub, W / 2, my + px * 0.5 + 44 * u); untrack(g);
       g.globalAlpha = eOut((local - 1.0) / 0.5); g.font = disp(60 * u, 700, true);
       const sw = g.measureText(p.script).width, room = W - 120 * u;
       if (sw > room) g.font = disp((60 * u * room) / sw, 700, true);
@@ -141,11 +157,14 @@ export const masthead: ItemType<MP, MS> = {
       g.globalAlpha = 1;
       return;
     }
-    String(p.contents).split('\n').filter(Boolean).forEach((line, i) => {   // the contents, a line at a time
+    // the contents, a line at a time, 52 apart; a long list closes up (and its lines get smaller with it) to stay within 0.13 H,
+    // clear of the italic line under it
+    const rows = String(p.contents).split('\n').filter(Boolean), step = rows.length > 1 ? Math.min(52 * u, (0.13 * H) / (rows.length - 1)) : 52 * u, ck = step / (52 * u);
+    rows.forEach((line, i) => {
       const a = eOut((local - 0.9 - i * 0.22) / 0.3);
       if (a <= 0) return;
-      g.globalAlpha = a * out; g.font = disp(32 * u, 400); track(g, 20 * u); g.textAlign = 'right';
-      g.fillText(line, W - 60 * u + (1 - a) * 30 * u, 0.5 * H + i * 52 * u); untrack(g);
+      g.globalAlpha = a * out; g.font = disp(32 * u * ck, 400); track(g, 20 * u * ck); g.textAlign = 'right';
+      g.fillText(line, W - 60 * u + (1 - a) * 30 * u, 0.5 * H + i * 52 * u * ck); untrack(g);
     });
     const w = eOut((local - 1.3) / 0.6);   // the italic line, wiped in, broken in two and shrunk to the width like the masthead
     if (w > 0) {
@@ -223,18 +242,22 @@ export const spread: ItemType<SP, SS> = {
     const b = eOut((local - 0.15) / 0.3), ny = 0.69 * H + (1 - b) * 30 * u;
     g.save(); g.globalAlpha = b; g.fillStyle = '#ffffff'; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
     g.font = disp(230 * u); g.fillText(p.no, 64 * u, ny + 120 * u);   // an ornament, not reported
-    const nw = g.measureText(p.no).width; g.font = ser(64 * u);
+    const sw = 291.6 * u, sh = 326.4 * u, sx = W - 64 * u - sw, sy = Math.min(0.625 * H, H - sh - 40 * u);
+    // the name ends 20 px before the swatch card beside it (smaller when it would run under it)
+    const nw = g.measureText(p.no).width;
+    fitSet(g, String(p.name ?? ''), 64 * u, (q) => ser(q), sx - 20 * u - (64 * u + nw + 26 * u));
     g.fillText(p.name, 64 * u + nw + 26 * u, ny - 20 * u); ctx.reportText(g, p.name, 64 * u + nw + 26 * u, ny - 20 * u);
     g.restore();
     const sc = eOut((local - 0.3) / 0.3);   // the swatch card, popping on
     if (sc <= 0) return;
-    // sized by the short side (in 9:16 0.27 W × 0.17 H), so its two lines stay on the card in any frame
-    const sw = 291.6 * u, sh = 326.4 * u, sx = W - 64 * u - sw, sy = Math.min(0.625 * H, H - sh - 40 * u);
+    // sized by the short side (in 9:16 0.27 W × 0.17 H), so its two lines stay on the card in any frame (sw, sh, sx, sy above)
     g.save(); g.globalAlpha = sc; g.translate(sx + sw / 2, sy + sh / 2); g.scale(0.9 + 0.1 * sc, 0.9 + 0.1 * sc); g.translate(-(sx + sw / 2), -(sy + sh / 2));
     g.fillStyle = '#ffffff'; g.fillRect(sx, sy, sw, sh);
     g.fillStyle = p.color; g.fillRect(sx + 14 * u, sy + 14 * u, sw - 28 * u, sh * 0.62);
-    g.fillStyle = '#1d1a17'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.font = disp(24 * u, 700); g.fillText(p.code, sx + 16 * u, sy + sh * 0.62 + 44 * u);
-    g.font = disp(16 * u, 400); track(g, 14 * u); g.fillText(p.cname, sx + 16 * u, sy + sh * 0.62 + 78 * u); untrack(g);
+    g.fillStyle = '#1d1a17'; g.textAlign = 'left'; g.textBaseline = 'middle';
+    // the code and the colour's name shrink to the card's width less its margins
+    fitSet(g, String(p.code ?? ''), 24 * u, (q) => disp(q, 700), sw - 32 * u); g.fillText(p.code, sx + 16 * u, sy + sh * 0.62 + 44 * u);
+    fitSet(g, String(p.cname ?? ''), 16 * u, (q) => disp(q, 400), sw - 32 * u, 14 * u); g.fillText(p.cname, sx + 16 * u, sy + sh * 0.62 + 78 * u); untrack(g);
     g.restore();
   },
 };
