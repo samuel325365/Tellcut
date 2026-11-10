@@ -12,6 +12,7 @@ import { tableLayout, versus } from './versus.ts';
 import tokenItems from './token.ts';
 import { commonItems } from './index.ts';
 import { route } from './route.ts';
+import { tag } from './tag.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -181,5 +182,31 @@ describe('common.route look page', () => {
     try { const { s } = run(route, { look: 'page', handFont: 'Huninn' }, 0.5); await route.ready!(s); } finally { (document as any).fonts = was; }
     expect(calls.filter((f) => f.includes('Huninn')).length).toBe(2);
     expect(calls.some((f) => f.includes('LXGW WenKai TC'))).toBe(true);
+  });
+});
+
+describe('common.tag', () => {
+  test('pill and glass: the row stops at the right safe edge and wraps; label keeps one unwrapped row', () => {
+    for (const look of ['pill', 'glass']) {
+      const { s, theme } = run(tag, { look, tags: 'one,two,three', x: 0.1 }, 1);
+      expect(px(css(s.row).maxWidth)).toBeCloseTo((1 - theme.safe.side - 0.1) * 1080, 6);
+      expect(css(s.row).flexWrap).toBe('wrap');
+      expect(s.pills.map((e: HTMLElement) => css(e).whiteSpace)).toEqual(['pre-wrap', 'pre-wrap', 'pre-wrap']);
+    }
+    const l = run(tag, { look: 'label', tags: 'a,b' }, 1).s;
+    expect([css(l.row).maxWidth, css(l.row).flexWrap, css(l.pills[0]).whiteSpace]).toEqual(['none', 'nowrap', '']);
+  });
+  test('tape, day and ember measure their words once, not on every frame', () => {
+    const proto = HTMLElement.prototype, was = Object.getOwnPropertyDescriptor(proto, 'offsetWidth')!;
+    let reads = 0;
+    Object.defineProperty(proto, 'offsetWidth', { configurable: true, get() { reads++; return 120; } });
+    try {
+      for (const [look, tags] of [['tape', 'one,two'], ['day', 'Day 2,rain'], ['ember', 'PORK,grill']]) {
+        const { s, ctx } = run(tag, { look, tags }, 0.5);
+        const first = reads;
+        for (const t of [0.6, 0.7, 0.8]) tag.draw({ ...ctx, t, local: t }, s);
+        expect(reads).toBe(first);
+      }
+    } finally { Object.defineProperty(proto, 'offsetWidth', was); }
   });
 });

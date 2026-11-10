@@ -30,9 +30,22 @@ export function tapeTimes(i: number, chars: number, local: number) {
 /** look pin: the pin's drop (0–1, eased over 0.4 s) and the label's pop (from 0.2 s over 0.4 s, overshooting) */
 export const pinTimes = (local: number, check: number) => ({ drop: eOut3(prog(local, 0, 0.4)), label: eBack(prog(local, 0.2, 0.6), 1.9), check: check >= 0 ? eOut3(prog(local, check, check + 0.35)) : 0 });
 
+// a face that finishes loading changes how wide the words are: every width measured before it is measured again
+let fontsLoaded = 0;
+if (typeof document !== 'undefined' && document.fonts?.addEventListener) document.fonts.addEventListener('loadingdone', () => { fontsLoaded++; });
+/** el's offsetWidth, measured again only when `key` (its words and the style that sizes them) or the loaded fonts change: reading it
+ *  every frame forced a layout per strip per frame. A zero width (not on the page yet, or hidden) is never kept. */
+export function widthOf(el: HTMLElement, key: string): number {
+  const k = `${fontsLoaded}|${key}`, c = el as HTMLElement & { _w?: [string, number] };
+  if (c._w && c._w[0] === k) return c._w[1];
+  const w = el.offsetWidth;
+  if (w > 0) c._w = [k, w];
+  return w;
+}
+
 export const tag: ItemType<P, S> = {
   type: 'common.tag', label: '膠囊標籤', category: 'chapter', kind: 'overlay',
-  doc: '一排小膠囊標籤（逗號分隔），一個接一個彈出；標題下面的重點小字：認證、類型、價位、距離；look: label 是方塊相連的地點＋日期標籤（深底白字加強調色邊、螢光底日期），一拍內從左刷進來；look: tape 是紙膠帶標籤：每個標籤用手寫字寫在一條米色紙膠帶上、字底下長出一道螢光筆，no 用紅筆圈在第一條左邊（店號、站號），膠帶彈一下貼上（筆記本、手帳、散步地圖）；look: pin 是圖釘標籤：一根水滴形圖釘落在 x、y（釘尖），上方一張標籤卡（第一個標籤，第二個是下面一行小字），check 那一秒在圖釘頭上打勾（地圖、到過的地方、景點）；look: glass 是毛玻璃標籤（品牌片），stack 直排，check 每個標籤出現後幾秒打上主色的勾（檢查清單、做到的事）；look: day 是手帳的日期標：x、y 一張撕邊小紙條，角上貼一段膠帶，第一個標籤是斜體大字（Day 2、07:30），筆畫一道底線，第二個是手寫小字（天氣、地點），彈一下轉正貼上（vlog 的第幾天、一天的時間軸、旅行日記）；look: ember 是炭火烙印菜名牌：炭黑小牌從左邊滑進來、左緣一條 c1 色發光條，第一個標籤的字一個個像烙鐵燙上去（先發 c1 的光再冷卻成紙色），第二個標籤是下面一行小字（烤肉、燒烤、炭火料理的菜名、店名）',
+  doc: '一排小膠囊標籤（逗號分隔），一個接一個彈出；標題下面的重點小字：認證、類型、價位、距離；look: label 是方塊相連的地點＋日期標籤（深底白字加強調色邊、螢光底日期），一拍內從左刷進來；look: tape 是紙膠帶標籤：每個標籤用手寫字寫在一條米色紙膠帶上、字底下長出一道螢光筆，no 用紅筆圈在第一條左邊（店號、站號），膠帶彈一下貼上（筆記本、手帳、散步地圖）；look: pin 是圖釘標籤：一根水滴形圖釘落在 x、y（釘尖），上方一張標籤卡（第一個標籤，第二個是下面一行小字），check 那一秒在圖釘頭上打勾（地圖、到過的地方、景點）；look: glass 是毛玻璃標籤（品牌片），stack 直排，check 每個標籤出現後幾秒打上主色的勾（檢查清單、做到的事）；look: day 是手帳的日期標：x、y 一張撕邊小紙條，角上貼一段膠帶，第一個標籤是斜體大字（Day 2、07:30），筆畫一道底線，第二個是手寫小字（天氣、地點），彈一下轉正貼上（vlog 的第幾天、一天的時間軸、旅行日記）；look: ember 是炭火烙印菜名牌：炭黑小牌從左邊滑進來、左緣一條 c1 色發光條，第一個標籤的字一個個像烙鐵燙上去（先發 c1 的光再冷卻成紙色），第二個標籤是下面一行小字，照原片的大小要把 size 設成 3.2（預設 1.8 是膠囊的大小）（烤肉、燒烤、炭火料理的菜名、店名）',
   params: [
     { key: 'tags', label: '標籤（用逗號分隔）', type: 'string', default: '標籤一,標籤二' },
     { key: 'x', label: '左邊 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.06 },
@@ -90,23 +103,26 @@ export const tag: ItemType<P, S> = {
     if (p.look === 'label') {
       // joined blocks: the first on ink with an accent edge, then the highlight colour, then the second accent; wiped in from the left
       const w = eOut3(prog(ctx.local, 0, 0.1));
-      cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: '0', opacity: String(out), flexDirection: 'row',
+      cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: '0', opacity: String(out), flexDirection: 'row', maxWidth: 'none', flexWrap: 'nowrap',
         alignItems: 'stretch', boxShadow: `0 ${5 * k}px ${16 * k}px rgba(0,0,0,.35)`, transform: `translateX(${((1 - w) * -60 * k).toFixed(2)}px)`, clipPath: `inset(0 ${((1 - w) * 100).toFixed(2)}% 0 0)` });
       s.pills.forEach((e, i) => {
         const bg = i === 0 ? p.ink : [p.c3, p.c2][(i - 1) % 2];
-        cssCamel(e, { background: bg, color: i === 0 ? '#ffffff' : p.ink, padding: '0 0.46em', lineHeight: '1.6', borderRadius: '0', border: 'none',
+        cssCamel(e, { whiteSpace: '', background: bg, color: i === 0 ? '#ffffff' : p.ink, padding: '0 0.46em', lineHeight: '1.6', borderRadius: '0', border: 'none',
           borderLeft: i === 0 ? `${0.19 * px}px solid ${p.c1}` : 'none', fontWeight: i === 0 ? '900' : '700', fontSize: i === 0 ? '1em' : '0.82em', display: 'flex', alignItems: 'center', transform: 'none', opacity: '1' });
       });
       return;
     }
     cssCamel(s.row, { alignItems: 'center', boxShadow: 'none', transform: 'none', clipPath: 'none', flexDirection: 'row' });
+    // pill and glass: the row stops at the right safe edge, its tags wrapping onto another row and a tag too long for a row wrapping
+    // inside its pill; tags that fit are laid out as before
+    const wrap = { maxWidth: `${Math.max(4 * px, (1 - theme.safe.side - p.x) * W)}px`, flexWrap: 'wrap' }, pillWrap = 'pre-wrap';
     if (p.look === 'glass') {
       // frosted panels (the brand film): the picture under each one blurred, a dark veil, a hairline edge; one after another
       cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: `${p.gap}em`, opacity: String(out),
-        flexDirection: p.stack ? 'column' : 'row', alignItems: p.stack ? 'flex-start' : 'center' });
+        flexDirection: p.stack ? 'column' : 'row', alignItems: p.stack ? 'flex-start' : 'center', ...wrap });
       s.pills.forEach((e, i) => {
         const a = eOut3(prog(ctx.local, i * p.step, i * p.step + 0.35));
-        cssCamel(e, { lineHeight: '', display: '', alignItems: '', background: 'rgba(14,16,22,0.38)', color: '#ffffff', fontWeight: '500', fontSize: '0.8em',
+        cssCamel(e, { whiteSpace: pillWrap, lineHeight: '', display: '', alignItems: '', background: 'rgba(14,16,22,0.38)', color: '#ffffff', fontWeight: '500', fontSize: '0.8em',
           padding: '0.35em 0.85em', borderRadius: '0.45em', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(12px)', webkitBackdropFilter: 'blur(12px)',
           boxShadow: `0 ${6 * k}px ${18 * k}px rgba(0,0,0,0.25)`, opacity: String(a), transform: `translateY(${((1 - a) * 10 * k).toFixed(2)}px)` });
         const m = s.marks[i];
@@ -118,11 +134,11 @@ export const tag: ItemType<P, S> = {
       });
       return;
     }
-    cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: `${p.gap}em`, opacity: String(out) });
+    cssCamel(s.row, { left: `${p.x * W}px`, top: `${p.y * H}px`, fontSize: `${px}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, gap: `${p.gap}em`, opacity: String(out), ...wrap });
     s.pills.forEach((e, i) => {
       const pop = eBack(prog(ctx.local, i * 0.1, i * 0.1 + 0.25), 2);
       const bg = colors[i % 3], dark = i % 3 === 2 || i % 3 === 1;
-      cssCamel(e, { lineHeight: '', fontSize: '', fontWeight: '', display: '', alignItems: '', background: bg, color: dark ? p.ink : '#ffffff', padding: '0.12em 0.7em', borderRadius: '999px', border: `${theme.stroke * 0.35 * k}px solid ${p.ink}`, transform: `scale(${pop})`, opacity: String(Math.min(1, pop * 3)) });
+      cssCamel(e, { whiteSpace: pillWrap, lineHeight: '', fontSize: '', fontWeight: '', display: '', alignItems: '', background: bg, color: dark ? p.ink : '#ffffff', padding: '0.12em 0.7em', borderRadius: '999px', border: `${theme.stroke * 0.35 * k}px solid ${p.ink}`, transform: `scale(${pop})`, opacity: String(Math.min(1, pop * 3)) });
     });
   },
 };
@@ -156,7 +172,7 @@ function drawTape(ctx: Ctx, s: S, k: number, px: number) {
     st.txt.textContent = t; st.sub.textContent = no;
     cssCamel(st.txt, { left: `${padL}px`, fontFamily: fam, fontSize: `${px}px`, fontWeight: '700', color: p.ink, clipPath: `inset(-20% ${((1 - tm.write) * 100).toFixed(2)}% -20% -5%)` });
     cssCamel(st.sub, { display: no ? 'block' : 'none', left: `${0.8 * px}px`, fontFamily: fam, fontSize: `${0.8 * px}px`, fontWeight: '700', color: p.c1, transform: 'translate(-50%, -52%)', opacity: String(clamp(tm.land * 2)) });
-    const tw = st.txt.offsetWidth, w = padL + tw + 0.6 * px;
+    const tw = widthOf(st.txt, `${t}|${fam}|${px}`), w = padL + tw + 0.6 * px;
     cssCamel(st.el, { left: `${p.x * W}px`, top: `${top}px`, width: `${w}px`, height: `${th}px`, opacity: String(out * clamp(tm.land * 1.5)),
       transformOrigin: '0 50%', transform: `rotate(${i % 2 ? 1.4 : -2.6}deg) scale(${(0.85 + 0.15 * eBack(tm.land, 2.2)).toFixed(4)})` });
     cssCamel(st.cv, { left: `${-m}px`, top: `${-m}px`, width: `${w + 2 * m}px`, height: `${th + 2 * m}px`, filter: `drop-shadow(0 ${2 * k}px ${4 * k}px rgba(0,0,0,0.22))` });
@@ -203,7 +219,7 @@ function drawDay(ctx: Ctx, s: S, px: number) {
     fontSize: `${64 * q}px`, fontWeight: '700', color: p.ink, clipPath: 'none' });
   cssCamel(st.sub, { display: sub ? 'block' : 'none', left: `${28 * q}px`, top: `${92 * q}px`, transform: 'none', fontFamily: handFamily(p.handFont), fontSize: `${48 * q}px`,
     fontWeight: '400', color: p.ink, opacity: '1' });
-  const dw = st.txt.offsetWidth, w = Math.max(dw, sub ? st.sub.offsetWidth : 0) + 56 * q, hh = (sub ? 150 : 96) * q, m = 40 * q, sc = 0.7 + 0.3 * tm.pop;
+  const dw = widthOf(st.txt, `${big}|${p.font}|${q}`), w = Math.max(dw, sub ? widthOf(st.sub, `${sub}|${p.handFont}|${q}`) : 0) + 56 * q, hh = (sub ? 150 : 96) * q, m = 40 * q, sc = 0.7 + 0.3 * tm.pop;
   cssCamel(st.el, { display: tm.out >= 1 ? 'none' : 'block', left: `${p.x * W + 10 * q}px`, top: `${p.y * H}px`, width: `${w}px`, height: `${hh}px`, opacity: String(1 - tm.out),
     transformOrigin: '0 50%', transform: `scale(${sc.toFixed(4)}) rotate(${(-0.045 * tm.pop - 0.2 * (1 - tm.pop)).toFixed(4)}rad)` });
   cssCamel(st.cv, { display: 'block', left: `${-m}px`, top: `${-m}px`, width: `${w + 2 * m}px`, height: `${hh + 2 * m}px`, filter: 'none' });
@@ -242,7 +258,7 @@ function drawEmber(ctx: Ctx, s: S, px: number) {
   cssCamel(st.txt, { left: `${left}px`, top: `${30 * q}px`, transform: 'none', transformOrigin: '0 0', fontFamily: fam, fontSize: `${px}px`, fontWeight: '700', letterSpacing: '0.04em', clipPath: 'none' });
   cssCamel(st.sub, { display: sub ? 'block' : 'none', left: `${left}px`, top: `${(30 + 62 + 22) * q}px`, transform: 'none', fontFamily: fam, fontSize: `${48 * q}px`, fontWeight: '600',
     color: cool, opacity: String(clamp((local - 0.45) / 0.3) * 0.82) });
-  const tw = st.txt.offsetWidth, sw = sub ? st.sub.offsetWidth : 0, room = W * 0.76 - left - padX, sc = tw > room ? room / tw : 1;
+  const tw = widthOf(st.txt, `${name}|${fam}|${px}`), sw = sub ? widthOf(st.sub, `${sub}|${fam}|${q}`) : 0, room = W * 0.76 - left - padX, sc = tw > room ? room / tw : 1;
   cssCamel(st.txt, { transform: sc < 1 ? `scaleX(${sc.toFixed(4)})` : 'none' });
   ([...st.txt.children] as HTMLElement[]).forEach((el, i) => {
     const l = emberLetter(i, local);
