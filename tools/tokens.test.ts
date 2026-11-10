@@ -62,7 +62,13 @@ test('a session file: Haiku 5.5 priced by prompt length; a model outside the tab
   const t = sumSession([m('a', 0, 0, 1_000_000), m('b', 0, 0, 1_000_000, 'some-other-model'), m('c', 0, 0, 1_000_000, 'some-other-model')].join('\n'));
   expect(t).toMatchObject({ unpriced: 2, unknownModels: ['some-other-model'] });
   expect(t.usd).toBeCloseTo(0.2 + 0.02, 9);   // the Opus reply alone
-  expect(formatTotals(t)).toContain('照 Claude API 牌價估計約 US$0.22（2 則用了價格表以外的模型 some-other-model，沒算進去）');
+  // the warning comes first, and the sum says it is too low rather than passing for the whole
+  expect(formatTotals(t).split('\n')[0]).toBe('注意：有 2 則用了價格表以外的模型（some-other-model），沒有計價，下面的金額偏低');
+  expect(formatTotals(t)).toContain('照 Claude API 牌價估計至少 US$0.22（有 2 則沒計價，金額偏低）');
+  // nothing priced at all: no US$0.00
+  const none = formatTotals(sumSession(m('q', 0, 0, 1_000_000, 'claude-fable-5-2')));
+  expect(none).toContain('照 Claude API 牌價估計不出來（有 1 則沒計價）');
+  expect(none).not.toContain('US$0.00');
 });
 
 test('the report: totals and the share each part has', () => {
@@ -111,11 +117,13 @@ test('one line per conversation, and the sum that leaves out only the unpriced r
   const t: Totals = { replies: 2, measured: 2, input: 0, cacheWrite: 1_000_000, cacheRead: 2_400_000, output: 100_000, rewrites: 3, usd: 12.345, unpriced: 0 };
   expect(formatLine('review', t)).toBe('review：3.5 M token、整段重寫 3 次、改用 Claude API 約 US$12.35');
   expect(formatLine('chat', { replies: 1, measured: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0 })).toBe('chat：0.0 M token、整段重寫 0 次');
-  expect(formatLine('x', { ...t, unpriced: 1, unknownModels: ['m9'] })).toContain('、改用 Claude API 約 US$12.35（1 則用了價格表以外的模型 m9，沒算進去）');
+  expect(formatLine('x', { ...t, unpriced: 1, unknownModels: ['m9'] })).toContain('、改用 Claude API 至少 US$12.35（有 1 則沒計價，金額偏低）');
+  expect(formatLine('x', { ...t, usd: 0, unpriced: 1, unknownModels: ['m9'] })).toContain('、改用 Claude API 估計不出來（有 1 則沒計價）');
   const s = formatSubagents(sessionAndSubagents(sessionFixture())).split('\n');
-  expect(s).toHaveLength(4);
+  expect(s).toHaveLength(5);
+  expect(s[0]).toBe('注意：有 1 則用了價格表以外的模型（mystery-model），沒有計價，下面的金額偏低');
   // main: writes 110k × $5, reads 20k × $0.20, output 2k × $20 = 0.594; Haiku agent 0.001; agent b2 Opus 0.22, mystery left out
-  expect(s[3]).toBe('合計 3 個對話，改用 Claude API 約 US$0.82（1 則用了價格表以外的模型 mystery-model，沒算進去）');
+  expect(s[4]).toBe('合計 3 個對話，改用 Claude API 至少 US$0.82（有 1 則沒計價，金額偏低）');
 });
 
 test('the --subagents command prints the same report; a missing file is an error', () => {

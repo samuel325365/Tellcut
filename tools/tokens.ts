@@ -90,17 +90,22 @@ export function homeThreads(projectsDir: string): Array<{ messages: Parameters<t
     .flatMap((f) => { try { return [JSON.parse(readFileSync(join(home, f), 'utf8'))]; } catch { return []; } });
 }
 
-const unpricedNote = (t: Totals) => (t.unpriced ? `（${t.unpriced} 則用了價格表以外的模型 ${t.unknownModels?.join('、') ?? ''}，沒算進去）` : '');
+// Replies of a model outside PRICES are left out of the sum. Said before anything else, and in the sum itself: a low sum (US$0.00
+// when every reply was of a new model) read as the real one.
+const unpricedHead = (unpriced: number | undefined, models: string[] = []) => (unpriced ? [`注意：有 ${unpriced} 則用了價格表以外的模型（${models.join('、')}），沒有計價，下面的金額偏低`] : []);
+const amount = (usd: number, unpriced = 0) => (!unpriced ? `約 US$${usd.toFixed(2)}`
+  : usd > 0 ? `至少 US$${usd.toFixed(2)}（有 ${unpriced} 則沒計價，金額偏低）` : `估計不出來（有 ${unpriced} 則沒計價）`);
 
 export function formatTotals(t: Totals): string {
   const total = t.input + t.cacheWrite + t.cacheRead + t.output;
   const row = (label: string, v: number) => `${label}${' '.repeat(Math.max(1, 10 - label.length * 2))}${v.toLocaleString('en-US').padStart(14)}${total ? `  ${((v / total) * 100).toFixed(1).padStart(5)}%` : ''}`;
-  return [`回覆 ${t.replies} 則（${t.measured} 則有用量紀錄）`,
+  const estimate = t.usd !== undefined && t.measured ? amount(t.usd, t.unpriced) : '';
+  return [...unpricedHead(t.unpriced, t.unknownModels), `回覆 ${t.replies} 則（${t.measured} 則有用量紀錄）`,
     row('新輸入', t.input), row('快取寫入', t.cacheWrite), row('快取讀取', t.cacheRead), row('輸出', t.output), row('合計', total),
     ...(t.cacheWrite1h !== undefined ? [`快取寫入裡 1 小時快取 ${t.cacheWrite1h.toLocaleString('en-US')}、5 分鐘快取 ${(t.cacheWrite - t.cacheWrite1h).toLocaleString('en-US')}`] : []),
     ...(t.rewrites !== undefined ? [`整段重寫（快取過期後整段對話重新寫入）${t.rewrites} 次`] : []),
     ...(t.priced && t.cost !== undefined ? [`改用 Claude API 約 US$${t.cost.toFixed(2)}（${t.priced} 則有 API 換算紀錄；訂閱方案不另外收費）`] : []),
-    ...(t.usd !== undefined && t.measured ? [`照 Claude API 牌價估計約 US$${t.usd.toFixed(2)}${unpricedNote(t)}`] : [])].join('\n');
+    ...(estimate ? [`照 Claude API 牌價估計${estimate.replace(/^估計/, '')}`] : [])].join('\n');
 }
 
 /** a session file and the subagents it ran: [name, totals] per file, the session itself first */
@@ -114,15 +119,16 @@ export function sessionAndSubagents(file: string): Array<[string, Totals]> {
 
 export function formatLine(name: string, t: Totals): string {
   const total = t.input + t.cacheWrite + t.cacheRead + t.output;
-  return `${name}：${(total / 1e6).toFixed(1)} M token、整段重寫 ${t.rewrites ?? 0} 次${t.usd !== undefined ? `、改用 Claude API 約 US$${t.usd.toFixed(2)}` : ''}${unpricedNote(t)}`;
+  return `${name}：${(total / 1e6).toFixed(1)} M token、整段重寫 ${t.rewrites ?? 0} 次${t.usd !== undefined ? `、改用 Claude API ${amount(t.usd, t.unpriced)}` : ''}`;
 }
 
-/** the --subagents report: one line per conversation, then the sum (replies of models outside PRICES are left out and counted) */
+/** the --subagents report: the warning when some replies were not priced, one line per conversation, then the sum (replies of
+ *  models outside PRICES are left out and counted) */
 export function formatSubagents(all: Array<[string, Totals]>): string {
   const usd = all.reduce((s, [, t]) => s + (t.usd ?? 0), 0), unpriced = all.reduce((s, [, t]) => s + (t.unpriced ?? 0), 0);
   const models = [...new Set(all.flatMap(([, t]) => t.unknownModels ?? []))];
-  return [...all.map(([k, t]) => formatLine(k, t)),
-    `合計 ${all.length} 個對話，改用 Claude API 約 US$${usd.toFixed(2)}${unpriced ? `（${unpriced} 則用了價格表以外的模型 ${models.join('、')}，沒算進去）` : ''}`].join('\n');
+  return [...unpricedHead(unpriced, models), ...all.map(([k, t]) => formatLine(k, t)),
+    `合計 ${all.length} 個對話，改用 Claude API ${amount(usd, unpriced)}`].join('\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
