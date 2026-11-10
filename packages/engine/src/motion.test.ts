@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { circIn, circInOut, circOut } from 'motion-utils';
 import { motion } from './motion.ts';
+
+const raw = { circIn, circOut, circInOut };
 
 const { spring, bezier, ease, steps, stagger, interpolate, mix } = motion;
 const frames = (n: number, fps = 60) => Array.from({ length: n }, (_, i) => i / fps);
@@ -54,6 +57,13 @@ describe('motion curves', () => {
     expect(interpolate([0, 1], ['#ff0000', '#0000ff'])(0.5)).toMatch(/^rgba\(\d+, 0, \d+, 1\)$/);
     expect(mix(10, 20, 0.25)).toBe(12.5);
     expect(mix('#000000', '#ffffff', 1)).toBe('rgba(255, 255, 255, 1)');
+  });
+
+  it('the circular easings hold their ends outside 0–1 instead of giving NaN (an overshooting input, a time past the end)', () => {
+    for (const k of ['circIn', 'circOut', 'circInOut'] as const) {
+      expect([ease[k](-0.5), ease[k](1.5), ease[k](-Infinity), ease[k](Infinity)], k).toEqual([ease[k](0), ease[k](1), ease[k](0), ease[k](1)]);
+      for (const t of [0, 0.2, 0.5, 0.9, 1]) expect(ease[k](t), k).toBe(raw[k](t));
+    }
   });
 
   it('edge values stay numbers with a finite rest: a 0 duration is already there, 0 stiffness or mass is not NaN, steps(0) is one step', () => {

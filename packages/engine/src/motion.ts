@@ -17,6 +17,7 @@ const springs = new Map<string, Spring>();
 const SETTLE_MAX = 60;
 /** an option given as a finite number, else its default (NaN would make every value NaN) */
 const num = (v: number | undefined, d: number) => (Number.isFinite(v) ? (v as number) : d);
+const clamp01 = (p: number) => (p > 1 ? 1 : p > 0 ? p : 0);
 /** A spring curve. The same options give the same cached curve, so calling it inside draw costs nothing. */
 export function spring(o: SpringOpts = {}): Spring {
   const physical = o.stiffness !== undefined || o.damping !== undefined || o.mass !== undefined;
@@ -46,7 +47,9 @@ export function spring(o: SpringOpts = {}): Spring {
 export const bezier = (x1: number, y1: number, x2: number, y2: number): EaseFn => cubicBezier(x1, y1, x2, y2);
 /** Named easings over 0…1. */
 export const ease: Record<'in' | 'out' | 'inOut' | 'backIn' | 'backOut' | 'backInOut' | 'circIn' | 'circOut' | 'circInOut' | 'anticipate', EaseFn> = {
-  in: easeIn, out: easeOut, inOut: easeInOut, backIn, backOut, backInOut, circIn, circOut, circInOut, anticipate,
+  in: easeIn, out: easeOut, inOut: easeInOut, backIn, backOut, backInOut,
+  // the circle's square root is NaN past 0–1 (a spring's overshoot fed in, a time past the end): its ends hold there
+  circIn: (p) => circIn(clamp01(p)), circOut: (p) => circOut(clamp01(p)), circInOut: (p) => circInOut(clamp01(p)), anticipate,
 };
 /** n hard steps over 0…1 (a ticking clock, a stop-motion feel); n is a whole number, at least 1. */
 export const steps = (n: number, direction: 'start' | 'end' = 'end'): EaseFn => mSteps(Number.isFinite(n) ? Math.max(1, Math.round(n)) : 1, direction);
