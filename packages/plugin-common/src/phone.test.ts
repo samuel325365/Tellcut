@@ -180,3 +180,18 @@ test('an icon tile with no glyph shows its first two characters whole: a family 
   expect(tileText('AB C')).toBe('AB');
   expect(tileText('')).toBe('·');
 });
+
+test('a kind named like an object property (constructor, toString) is no glyph: the app glyph, never a throw', () => {
+  for (const k of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    expect(ICON_KINDS).not.toContain(k);
+    expect(glyphSvg(k)).toBe(glyphSvg('app'));
+  }
+});
+
+test('typing goes a grapheme at a time: a family emoji or a flag comes in whole, as one step', () => {
+  const fam = '👨‍👩‍👧', flag = '🇹🇼';
+  expect(typed(`a${fam}b`, 0.15, { at: 0, cps: 0.1 }).s).toBe(`a${fam}`);
+  expect(typed('x', 0.02, { at: 0, cps: 0.1, erase: `${flag}${fam}` }).s).toBe(flag);
+  expect(typedSpan(`${flag}${fam}`, 0.5, 0, 1)).toBe(flag);
+  expect(typedSpan(`${flag}${fam}`, 0.6, 0, 1, 'delete')).toBe(flag);
+});

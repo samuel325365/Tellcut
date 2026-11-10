@@ -16,7 +16,7 @@
 // nature: stretching one across a wide frame would turn a notification into a banner, so a wide film shows the phone.
 import { clamp, cssCamel, defaultSafe, eBack, eOut3, esc, h, prog, type MediaApi, type Theme } from '@tellcut/engine';
 import { showStill, type Still, type Win, asFrame } from './window.ts';
-import { nl } from './text.ts';
+import { EMOJI_STACK, graphemes, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 // ---------------------------------------------------------------- the screen
@@ -114,9 +114,10 @@ export function drawStatusBar(sb: StatusBar, o: StatusOpts, k: number, y: number
 }
 
 // ---------------------------------------------------------------- typing
-/** Text typed from `at`, one character every `cps` s; `erase` (the old text) is deleted first, twice as fast. */
+/** Text typed from `at`, one character (a grapheme: a family emoji or a flag comes in whole) every `cps` s; `erase` (the old text)
+ *  is deleted first, twice as fast. */
 export function typed(text: string, t: number, o: { at: number; cps: number; erase?: string }): { s: string; typing: boolean } {
-  const chars = [...String(text ?? '')], old = [...String(o.erase ?? '')], cps = Math.max(0.005, o.cps);
+  const chars = graphemes(text), old = graphemes(o.erase ?? ''), cps = Math.max(0.005, o.cps);
   if (t < o.at) return { s: old.join(''), typing: false };
   let k = t - o.at;
   if (old.length) {
@@ -130,7 +131,7 @@ export function typed(text: string, t: number, o: { at: number; cps: number; era
 /** Text typed in (mode type) or deleted (mode delete) evenly between a and b; null outside [a, b] (a typed text stays 0.1 s after b). */
 export function typedSpan(text: string, t: number, a: number, b: number, mode: 'type' | 'delete' = 'type'): string | null {
   if (t < a || t >= b + (mode === 'type' ? 0.1 : 0)) return null;
-  const chars = [...String(text ?? '')], p = clamp((t - a) / Math.max(1e-6, b - a));
+  const chars = graphemes(text), p = clamp((t - a) / Math.max(1e-6, b - a));
   const n = mode === 'type' ? Math.ceil(p * chars.length) : Math.round((1 - p) * chars.length);
   return chars.slice(0, n).join('');
 }
@@ -196,15 +197,17 @@ const GLYPH: Record<string, { bg: [string, string]; ink?: string; g: string }> =
 };
 /** the glyphs iconTile knows; anything else (an emoji, a letter) is written on a gray tile */
 export const ICON_KINDS = Object.keys(GLYPH);
+/** a kind's own glyph: a name like "constructor" or "toString" found the object's prototype instead and threw drawing it */
+const glyphOf = (kind: string) => (Object.hasOwn(GLYPH, kind) ? GLYPH[kind] : undefined);
 const FALLBACK: [string, string] = ['#adb5bd', '#495057'];
 /** a glyph alone as svg (no tile), in `color` (cut-outs in `cut`): for buttons and chips */
 export function glyphSvg(kind: string, color = '#fff', cut = 'transparent'): string {
-  const g = GLYPH[kind] ?? GLYPH.app;
+  const g = glyphOf(kind) ?? GLYPH.app;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%" style="display:block">${g.g.replace(/"C"/g, `"${esc(color)}"`).replace(/"B"/g, `"${esc(cut)}"`)}</svg>`;
 }
 /** An app icon `size` px in `el`: a known kind's glyph on its gradient tile, or the given text (an emoji, a letter) on a gray one. */
 export function iconTile(el: HTMLElement, kind: string, size: number) {
-  const g = GLYPH[kind], [a, b] = g?.bg ?? FALLBACK;
+  const g = glyphOf(kind), [a, b] = g?.bg ?? FALLBACK;
   cssCamel(el, { width: `${size}px`, height: `${size}px`, borderRadius: `${size * 0.26}px`, background: `linear-gradient(180deg, ${a}, ${b})`, overflow: 'hidden', flex: 'none',
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${size * 0.6}px`, lineHeight: '1', color: '#fff' });
   if (el.dataset.k === kind) return;
@@ -213,7 +216,7 @@ export function iconTile(el: HTMLElement, kind: string, size: number) {
   else el.textContent = tileText(kind);
 }
 /** what a tile shows for a kind it has no glyph for: its first two characters as the eye sees them (a family emoji or a flag is one) */
-export const tileText = (kind: string) => [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(String(kind ?? ''))].slice(0, 2).map((x) => x.segment).join('') || '·';
+export const tileText = (kind: string) => graphemes(kind).slice(0, 2).join('') || '·';
 
 // ---------------------------------------------------------------- avatars and counts
 /** the letter on an avatar: the first Latin letter or CJK character of the name, upper case ('·' when there is none) */
@@ -229,7 +232,7 @@ export function drawAvatar(el: HTMLElement, o: AvatarOpts) {
   el.textContent = o.text || initialOf(o.name);
   const ring = o.ring ? `, 0 0 0 ${o.size * 0.06}px #fff, 0 0 0 ${o.size * 0.12}px #ffb02e` : '';
   cssCamel(el, { width: `${o.size}px`, height: `${o.size}px`, background: o.color, fontSize: `${o.size * 0.5}px`, fontWeight: '700',
-    fontFamily: `'${o.font ?? 'Noto Sans TC'}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`, boxShadow: `0 ${o.size * 0.03}px ${o.size * 0.12}px rgba(0,0,0,0.3)${ring}` });
+    fontFamily: `'${o.font ?? 'Noto Sans TC'}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, boxShadow: `0 ${o.size * 0.03}px ${o.size * 0.12}px rgba(0,0,0,0.3)${ring}` });
 }
 export type CountStyle = 'zh' | 'ja' | 'en' | 'plain';
 /** A follower / like count as a phone app writes it: zh 9,999 · 1.2萬 · 3.4億; ja the same with 万; en 999 · 1.2K · 3.4M · 1.2B; plain 12,345. */
