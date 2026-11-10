@@ -178,11 +178,11 @@ test('a number that is not one (NaN, Infinity: an emptied field) is refused with
   bad(() => run(fixture(), setTrack, { id: 'mu', patch: { gain: NaN } }), 'gain');
   bad(() => run(fixture(), setCrop, { id: 'c1', which: 'from', crop: { x: NaN, y: 0.5, zoom: 1 } }), 'crop.x');
   bad(() => run(fixture(), setCrop, { id: 'c1', which: 'to', crop: { x: 0.5, y: 0.5, zoom: Infinity } }), 'crop.zoom');
-  bad(() => run(fixture(), setTransform, { id: 'blk', transform: { x: 0, y: NaN, scale: 1 } }), 'transform.y');
-  bad(() => run(fixture(), setTransform, { id: 'blk', transform: { x: 0, y: 0, scale: 1, keys: [{ t: NaN, x: 0, y: 0, scale: 1 }] } }), 'transform.keys.t');
+  bad(() => run(fixture(), setTransform, { id: 'blk', transform: { x: 0, y: NaN, scale: 1, ox: 0.5, oy: 0.5 } }), 'transform.y');
+  bad(() => run(fixture(), setTransform, { id: 'blk', transform: { x: 0, y: 0, scale: 1, ox: 0.5, oy: 0.5, keys: [{ t: NaN, x: 0, y: 0, scale: 1 }] } }), 'transform.keys.t');
   bad(() => run(fixture(), swapSource, { id: 'c1', source: 's', in: NaN }), 'in');
   // what is still allowed: a finite value, clamped as before
-  expect(run(fixture(), setTrack, { id: 'mu', patch: { gain: 99 } }).tracks.find((t) => t.id === 'mu')!.gain).toBe(12);
+  expect((run(fixture(), setTrack, { id: 'mu', patch: { gain: 99 } }).tracks.find((t) => t.id === 'mu') as { gain?: number }).gain).toBe(12);
 });
 test('updateItem refuses a parent that is missing, the item itself or hangs on it; keys the schema does not know are not written', () => {
   const code = (f: () => unknown, c: string) => expect(f).toThrow(expect.objectContaining({ code: c }));
