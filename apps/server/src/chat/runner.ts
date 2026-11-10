@@ -377,15 +377,17 @@ export class ChatRunner {
       child.on('error', (err) => { for (const e of turn.parser.finish(null, `${stderr}\n${err.message}`)) emit(e); });
       child.on('close', (code) => {
         if (buf.trim()) for (const e of turn.parser.push(buf)) emit(e);
+        // a turn already ended (an 'error' event comes before 'close', and finish() then ended it) is never started again: its lock
+        // is let go and it is no longer in this.turns, so a retry would be a claude nobody can stop, on a session the next turn resumes
         // claude no longer has this conversation (its files were cleaned up): start a new one with the same message
-        if (resume && !turn.parser.initialized && !turn.stopped && /no conversation found/i.test(stderr)) {
+        if (!closed && resume && !turn.parser.initialized && !turn.stopped && /no conversation found/i.test(stderr)) {
           session = randomUUID(); saved = false;
           turn.parser = new StreamParser();
           launch(false);
           return;
         }
         // claude already has this session (a first turn cut off before "started" was saved, its log out of sight): resume it, once
-        if (!resume && !retried && !turn.parser.initialized && !turn.stopped && /already in use/i.test(stderr)) {
+        if (!closed && !resume && !retried && !turn.parser.initialized && !turn.stopped && /already in use/i.test(stderr)) {
           retried = true;
           turn.parser = new StreamParser();
           launch(true);
