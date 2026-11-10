@@ -65,14 +65,18 @@ export const header: ItemType<P, S> = {
     const inn = eOut3(prog(ctx.local, 0, 0.35)), out = eOut3(prog(ctx.local, ctx.dur - 0.3, ctx.dur));
     s.chip.textContent = p.no; s.label.textContent = p.text; s.key = '';
     cssCamel(s.kick, { display: 'none' }); cssCamel(s.chip, { display: '' });
-    cssCamel(s.label, { clipPath: 'none' });
+    // like the kicker, kept between the side safe margins: a long title wraps beside its chip instead of running off the right edge.
+    // The limit is the label's (the room less the chip, its padding and the gap, estimated with bold digits a little wide), so the
+    // box itself and a title that fits are as they always were
+    const left = theme.safe.side * W, chipW = (textEm(String(p.no ?? '')) * 1.1 + 0.9 + 0.5) * px;
+    cssCamel(s.label, { clipPath: 'none', whiteSpace: 'pre-wrap', maxWidth: `${Math.max(px, W - 2 * left - chipW)}px` });
     cssCamel(s.box, {
       flexDirection: 'row', alignItems: 'center', gap: '0.5em', whiteSpace: 'pre', maxWidth: 'none',
-      left: `${theme.safe.side * W}px`, top: `${headerTop(p.y, theme.safe.top) * H}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`,
+      left: `${left}px`, top: `${headerTop(p.y, theme.safe.top) * H}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`,
       color: p.ink, webkitTextStroke: `${theme.stroke * 0.75 * k}px ${p.outline}`, paintOrder: 'stroke fill', opacity: String(inn * (1 - out)), textShadow: `0 ${2 * k}px ${10 * k}px rgba(0,0,0,.6)`,
       transform: `translateX(${-(1 - inn) * W * 0.12 - out * W * 0.12}px)`,
     });
-    cssCamel(s.chip, { background: p.color, color: p.textColor, padding: '0.1em 0.45em', borderRadius: `${theme.radius * 0.5 * k}px`, textShadow: 'none', webkitTextStroke: '0' });
+    cssCamel(s.chip, { flex: 'none', background: p.color, color: p.textColor, padding: '0.1em 0.45em', borderRadius: `${theme.radius * 0.5 * k}px`, textShadow: 'none', webkitTextStroke: '0' });
   },
 };
 
@@ -94,5 +98,5 @@ function drawKicker(ctx: Parameters<typeof header.draw>[0], s: S, k: number, px:
   cssCamel(s.kick, { display: p.kicker ? 'flex' : 'none', whiteSpace: 'pre-wrap', gap: `${12 * k}px`, fontSize: `${kpx}px`, fontWeight: '700', letterSpacing: `${3 * k}px`, lineHeight: '1.3', color: p.muted,
     transform: `translateX(${((1 - a) * -24 * k).toFixed(2)}px)` });
   cssCamel(s.dot, { width: `${14 * k}px`, height: `${14 * k}px`, background: p.color });
-  cssCamel(s.label, { lineHeight: '1.15', letterSpacing: `${k}px`, clipPath: `inset(0 ${((1 - eOut3(prog(local, 0.05, 0.45))) * 100).toFixed(2)}% 0 0)` });
+  cssCamel(s.label, { whiteSpace: '', maxWidth: 'none', lineHeight: '1.15', letterSpacing: `${k}px`, clipPath: `inset(0 ${((1 - eOut3(prog(local, 0.05, 0.45))) * 100).toFixed(2)}% 0 0)` });
 }
