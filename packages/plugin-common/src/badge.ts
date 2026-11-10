@@ -1,7 +1,7 @@
 // common.badge — a numbered badge (star, burst or circle) with a name plate beside it: "No.1  阿桃的店". Pops in, holds, drops out.
 // shape box (the Dopamine Colors pilot film's "No.1" box, 2026-11-06): the number in heavy italic on a flat tilted block of `color`, its
 // plate a small block of the same colour.
-import { cssCamel, eBack, h, prog, type ItemType } from '@tellcut/engine';
+import { cssCamel, eBack, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { polygonSvg, setPolygon, spikePoints } from './shapes.ts';
 
 interface P { label: string; plate: string; shape: 'star' | 'burst' | 'circle' | 'box'; x: number; y: number; size: number; color: string; textColor: string; ink: string; plateColor: string; font: string }
@@ -9,6 +9,10 @@ interface S { box: HTMLElement; badge: HTMLElement; svg: SVGSVGElement; poly: SV
 
 /** the badge's centre in px: `y` (a share of the height), or below 0 the badge's top on the top safe margin */
 export const badgeCenter = (y: number, r: number, H: number, safeTop: number) => (y >= 0 ? y * H : safeTop * H + r);
+
+/** the plate's font size: `px`, or smaller (down to 40 %) so its words and their `padEm` of padding end at `right` from `left` */
+const plateFit = (text: string, px: number, left: number, right: number, padEm: number) =>
+  Math.max(px * 0.4, Math.min(px, (right - left) / (Math.max(0.5, textEm(text)) + padEm)));
 
 export const badge: ItemType<P, S> = {
   type: 'common.badge', label: '編號徽章', category: 'chapter', kind: 'overlay',
@@ -45,7 +49,9 @@ export const badge: ItemType<P, S> = {
     s.plate.textContent = p.plate;
     if (p.shape === 'box') {
       // a flat block sized by its words: the number at 0.42 of the size, the plate at 0.2, both heavy, the number italic
-      const fs = size * 0.42, pfs = size * 0.2, top = badgeCenter(p.y, fs * 0.65, H, theme.safe.top) - fs * 0.65;
+      const fs = size * 0.42, top = badgeCenter(p.y, fs * 0.65, H, theme.safe.top) - fs * 0.65;
+      // the plate starts after the block (its words heavy italic, estimated a little wide, and its padding) and the gap
+      const blockW = (textEm(String(p.label ?? '')) * 1.1 + 0.42) * fs, pfs = plateFit(p.plate, size * 0.2, p.x * W + blockW + size * 0.16, W * (1 - theme.safe.side), 0.8);
       cssCamel(s.svg as unknown as HTMLElement, { display: 'none' });
       cssCamel(s.badge, { width: 'auto', height: 'auto', background: p.color, padding: `${0.04 * fs}px ${0.24 * fs}px ${0.08 * fs}px ${0.18 * fs}px`, transform: 'rotate(-3deg)' });
       cssCamel(s.num, { position: 'static', display: 'block', color: p.textColor, fontSize: `${fs}px`, lineHeight: '1.1', fontStyle: 'italic', fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, transform: 'none' });
@@ -58,9 +64,9 @@ export const badge: ItemType<P, S> = {
     cssCamel(s.svg as unknown as HTMLElement, { display: 'block' });
     setPolygon(s.svg, s.poly, size, pts, p.color, p.ink, stroke);
     cssCamel(s.badge, { width: `${size}px`, height: `${size}px`, background: 'none', padding: '0', transform: 'none' });
-    cssCamel(s.num, { position: 'absolute', display: 'flex', lineHeight: '', fontStyle: 'normal', color: p.textColor, fontSize: `${size * Math.min(0.3, 0.5 / (0.6 * Math.max(1, [...p.label].length)))}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, transform: 'rotate(-8deg)' });
+    cssCamel(s.num, { position: 'absolute', display: 'flex', lineHeight: '', fontStyle: 'normal', color: p.textColor, fontSize: `${size * Math.min(0.3, 0.5 / (0.6 * Math.max(1, [...p.label].length)), 0.5 / Math.max(1, textEm(p.label)))}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, transform: 'rotate(-8deg)' });
     cssCamel(s.plate, {
-      display: p.plate ? 'block' : 'none', alignSelf: 'auto', marginTop: '0', lineHeight: '', fontStyle: 'normal', marginLeft: `${size * 0.12}px`, fontSize: `${size * 0.42}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, color: p.ink,
+      display: p.plate ? 'block' : 'none', alignSelf: 'auto', marginTop: '0', lineHeight: '', fontStyle: 'normal', marginLeft: `${size * 0.12}px`, fontSize: `${plateFit(p.plate, size * 0.42, p.x * W - r + size + size * 0.12, W * (1 - theme.safe.side), 0.3)}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, color: p.ink,
       background: `linear-gradient(transparent 62%, ${p.plateColor} 62%)`, padding: '0 0.15em',
       transform: `translateX(${-(1 - prog(ctx.local, 0.1, 0.4)) * size * 0.4}px)`, opacity: String(prog(ctx.local, 0.1, 0.3)),
     });
