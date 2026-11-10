@@ -26,7 +26,8 @@ import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
 import { PresetSaveFlow } from './editor/preset-save.ts';
 import { ProposalFlow, type ProposalView } from './editor/proposals.ts';
-import { musicLength, TimelineEditing } from './editor/editing.ts';
+import { musicLength, TimelineEditing, type LibPick } from './editor/editing.ts';
+import type { DropTarget } from './timeline/drop.ts';
 import { errCoded, errText, t as say } from './i18n/index.ts';
 import { paramText } from './i18n/params.ts';
 
@@ -324,6 +325,18 @@ export class Editor {
   /** dx in pixels from the drag start; previews live, never recorded until endDrag. */
   dragTo(dx: number, mods: Mods, toTrack?: string) { this.editing.dragTo(dx, mods, toTrack); }
   endDrag() { this.editing.endDrag(); }
+  /** set by the timeline while it is shown: where a drag over it would drop (timeline/Timeline.tsx) */
+  dropProbe: ((clientX: number, clientY: number) => DropTarget) | null = null;
+  /** A library card dragged onto the timeline (spec 2026-11-10-media-panel-visual §5): false when edits are refused now */
+  beginLibDrag(src: Material | { lib: LibPick }): boolean { return this.editing.beginLibDrag(src); }
+  libDragTo(at: DropTarget, mods: Mods) { this.editing.libDragTo(at, mods); }
+  /** the release (commit) or Esc: true when something was added (a block of My blocks is copied in first, after this returns) */
+  endLibDrag(commit: boolean): boolean {
+    const r = this.editing.endLibDrag(commit);
+    if (typeof r === 'boolean') return r;
+    void this.useLibraryBlock(r.lib.slug, r.lib.type, r.at);
+    return true;
+  }
   /** The library's adds at the playhead, and its "replace" */
   addClip(source: string, from: number, len: number) { return this.editing.addClip(source, from, len); }
   addMusic(media: string) { return this.editing.addMusic(media); }
@@ -446,9 +459,9 @@ export class Editor {
    *  same edit as the item (one undo step), and the preview loads it. Nothing is copied when the item would not fit (playhead at
    *  the end); a copy whose add is undone stays on disk (a redo may want it again) but is no link while meta.fx does not name it
    *  (liveLinks); the server's start removes it once nothing in the project names it (media-node pruneCopies). */
-  async useLibraryBlock(slug: string, type: string): Promise<boolean> {
-    const p = this.s.project, t = this.s.playhead;
-    if (!p || this.blocked() || this.editing.fitEnd('overlay', t, t + 2) === null) return false;
+  async useLibraryBlock(slug: string, type: string, at?: { track: string | null; start: number; end: number }): Promise<boolean> {
+    const p = this.s.project, t = at?.start ?? this.s.playhead;
+    if (!p || this.blocked() || (!at && this.editing.fitEnd('overlay', t, t + 2) === null)) return false;
     let file: string, stamp: string | undefined;
     try { ({ file, fx: stamp } = await this.library.use(slug)); }
     catch (e) { this.set({ notice: say('lib.addFailed', { err: errText(e) }) }); return false; }
@@ -456,7 +469,10 @@ export class Editor {
     await this.loadRegistry({ ...now, meta: { ...now.meta, fx } });
     // a background or frame goes under the video: it only replaces one already there (the library and gallery refuse it first)
     if (this.reg?.item(type)?.kind === 'scene') { void this.followFx(this.s.project!); this.set({ notice: say('ed.sceneAdd') }); return false; }
-    const ok = this.editing.addTo('overlay', { type, start: t, end: t + 2, params: {} }, (d) => { d.meta.fx = [...new Set([...(d.meta.fx ?? []), file])]; });
+    // dropped on the timeline: at the place the drop planned; else at the playhead
+    const item = { kind: 'overlay' as const, item: { type, start: t, end: t + 2, params: {} }, also: (d: Project) => { d.meta.fx = [...new Set([...(d.meta.fx ?? []), file])]; } };
+    const ok = at ? this.editing.addPlaced({ ok: true, ...at }, item)
+      : this.editing.addTo('overlay', item.item, item.also);
     if (ok) { this.deps.bridge.load(this.s.project!); this.fxLoaded = stamp; }   // a module the preview has not loaded yet; the copy's fx-changed is then skipped
     else if (this.s.project) void this.followFx(this.s.project);   // not added: the registry goes back to what meta.fx loads
     return ok;

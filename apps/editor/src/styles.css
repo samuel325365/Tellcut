@@ -231,6 +231,15 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .row .head .tdel { flex: none; visibility: hidden; padding: 0 4px; font-size: 10px; line-height: 12px; }
 .row .head:hover .tdel { visibility: visible; }
 .track-drop { position: absolute; left: 0; right: 0; height: 2px; margin-top: -1px; background: var(--accent); z-index: 7; pointer-events: none; }
+/* a library card or files dragged over the timeline: where it would go (red: it cannot), the cut it would go in at, the strip for a new track */
+.drop-ghost { position: absolute; border: 2px solid var(--accent); border-radius: 4px; background: color-mix(in srgb, var(--accent) 18%, transparent); z-index: 7; pointer-events: none; box-sizing: border-box; }
+.drop-ghost.bad { border-color: var(--off); background: color-mix(in srgb, var(--off) 22%, transparent); }
+.drop-line { position: absolute; width: 3px; margin-left: -1px; background: var(--accent); box-shadow: 0 0 6px var(--accent); z-index: 7; pointer-events: none; }
+.drop-new-wrap { position: sticky; height: 0; z-index: 8; pointer-events: none; } .drop-new-wrap.top { top: 0; } .drop-new-wrap.bottom { bottom: 0; }
+.drop-new { position: absolute; right: 0; height: 14px; display: flex; align-items: center; padding-left: 6px; font-size: 10px; color: var(--dim); border: 1px dashed var(--line); border-radius: 3px; background: color-mix(in srgb, var(--panel) 85%, transparent); }
+.drop-new-wrap.top .drop-new { top: 0; } .drop-new-wrap.bottom .drop-new { bottom: 0; }
+.drop-new.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+body.lib-dragging, body.lib-dragging * { cursor: grabbing !important; user-select: none; }
 .hbar .zoom select { width: auto; min-width: 72px; flex: none; font-size: 11px; padding: 0 2px; color: var(--text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 4px; }
 .layer-buttons { display: flex; gap: 6px; align-items: center; margin: 6px 0 8px; color: var(--dim); }
 .layer-buttons span { flex: 1; } .layer-buttons button:disabled { opacity: .45; cursor: default; }

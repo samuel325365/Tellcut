@@ -1,0 +1,94 @@
+// Dragging a library card onto the timeline (spec 2026-11-10-media-panel-visual §5): a live preview while it moves, one undo step
+// on release, nothing when let go off the timeline or on a place that refuses it.
+import { resolveTimes } from '@tellcut/engine';
+import { Editor } from '../editor.ts';
+import { fakes, ids, live, magneticFixture, prop } from '../editor-test-kit.ts';
+import { t } from '../i18n/index.ts';
+
+const NO = { alt: false, ctrl: false, shift: false };
+const registry = {
+  item: (type: string) => ({ 'x.bg': { kind: 'scene', params: [] }, 'x.one': { kind: 'overlay', unique: true, label: 'One', params: [] }, 'x.title': { kind: 'overlay', params: [] } } as any)[type],
+  sfx: () => undefined, itemTypes: () => [], sfxTypes: () => [],
+};
+async function editor(over: Record<string, any> = {}) {
+  const { api, bridge } = fakes({ project: async () => magneticFixture(), ...over });
+  const ed = new Editor('demo', { api, bridge, registryFor: async () => registry as any });
+  await ed.open();
+  return ed;
+}
+const scene = { kind: 'clip' as const, source: 's', from: 20, len: 2 };
+
+test('a scene card dropped on the magnetic track: previewed live, one undo step on release, the new clip selected', async () => {
+  const ed = await editor();
+  const before = ed.store.get().project!;
+  expect(ed.beginLibDrag(scene)).toBe(true);
+  ed.libDragTo({ t: 5, row: 'v' }, NO);
+  const shown = ed.store.get().project!, times = resolveTimes(shown);
+  expect(ids(ed, 'v').length).toBe(3);                       // the preview already has it, before c2
+  expect(times.get('c2')!.start).toBe(6);
+  expect(ed.store.get().libDrag).toMatchObject({ kind: 'video', len: 2, line: 4, plan: { ok: true, track: 'v' } });
+  expect(ed.store.get().canUndo).toBe(false);
+  expect(ed.endLibDrag(true)).toBe(true);
+  const added = ids(ed, 'v').find((i) => !['c1', 'c2'].includes(i))!;
+  expect([ed.store.get().selection, ed.store.get().canUndo, ed.store.get().libDrag]).toEqual([[added], true, null]);
+  ed.undo();
+  expect(ed.store.get().project).toEqual(before);
+});
+
+test('endLibDrag outside the timeline restores the project', async () => {
+  const ed = await editor();
+  const before = ed.store.get().project!;
+  ed.beginLibDrag(scene);
+  ed.libDragTo({ t: 5, row: 'v' }, NO);
+  ed.libDragTo({ t: 5, row: null }, NO);
+  expect(ed.store.get().project).toEqual(before);
+  expect(ed.endLibDrag(true)).toBe(false);
+  expect([ed.store.get().project, ed.store.get().canUndo]).toEqual([before, false]);
+});
+
+test('no library drag while a proposal waits', async () => {
+  const L = live();
+  const ed = await editor(L.over);
+  L.send({ type: 'proposal', proposal: prop([{ op: 'trimEnd', id: 'c1', dt: -1 }]) });
+  await new Promise((r) => setTimeout(r, 0));
+  const before = ed.store.get().project!;
+  expect(ed.beginLibDrag(scene)).toBe(false);
+  ed.libDragTo({ t: 5, row: 'v' }, NO);
+  expect(ed.endLibDrag(true)).toBe(false);
+  expect(ed.store.get().project).toEqual(before);
+});
+
+test('a refused place shows a red plan while dragging and its reason after the release, adding nothing', async () => {
+  const ed = await editor();
+  const before = ed.store.get().project!;
+  ed.beginLibDrag({ kind: 'music', media: 'm' });
+  ed.libDragTo({ t: 2, row: 'v' }, NO);
+  expect(ed.store.get().libDrag!.plan).toMatchObject({ ok: false, why: t('ed.dropWrongKind') });
+  expect(ed.store.get().project).toEqual(before);
+  expect(ed.endLibDrag(true)).toBe(false);
+  expect([ed.store.get().project, ed.store.get().notice]).toEqual([before, t('ed.dropWrongKind')]);
+});
+
+test('a scene block or a one-per-film block already used is refused wherever it goes', async () => {
+  const ed = await editor();
+  ed.beginLibDrag({ kind: 'overlay', type: 'x.bg' });
+  ed.libDragTo({ t: 2, row: 'sc' }, NO);
+  expect(ed.store.get().libDrag!.plan).toMatchObject({ ok: false, why: t('ed.sceneAdd') });
+  ed.endLibDrag(false);
+  ed.seek(1);
+  ed.addOverlay('x.one');
+  ed.beginLibDrag({ kind: 'overlay', type: 'x.one' });
+  ed.libDragTo({ t: 12, row: 'new' }, NO);
+  expect(ed.store.get().libDrag!.plan).toMatchObject({ ok: false });
+  expect((ed.store.get().libDrag!.plan as any).why).toContain('One');
+});
+
+test('a block dropped on the new-track strip makes an overlay track holding it', async () => {
+  const ed = await editor();
+  const n = ed.store.get().project!.tracks.length;
+  ed.beginLibDrag({ kind: 'overlay', type: 'x.title' });
+  ed.libDragTo({ t: 3, row: 'new' }, NO);
+  expect(ed.endLibDrag(true)).toBe(true);
+  const p = ed.store.get().project!, tr = p.tracks.find((x) => x.kind === 'overlay')!;
+  expect([p.tracks.length, (tr.items[0] as any).type, (tr.items[0] as any).start]).toEqual([n + 1, 'x.title', 3]);
+});

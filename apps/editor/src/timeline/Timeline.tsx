@@ -21,6 +21,7 @@ import { startMarquee, type Marquee } from './gestures/marquee.ts';
 import { startTrackDrag } from './gestures/track.ts';
 import { startScrollbarDrag } from './gestures/scrollbar.ts';
 import { ToolTray } from './ToolTray.tsx';
+import type { DropTarget } from './drop.ts';
 import { trayProbe } from './tray.ts';
 import { IconEye, IconEyeOff, IconLock, IconMagnet, IconSpeaker, IconSpeakerOff, IconUnlock } from '../icons.tsx';
 
@@ -29,7 +30,7 @@ const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
 export function Timeline({ editor }: { editor: Editor }) {
   // everything but the playhead: playback must not re-render every row 60×/s
   const s = useStoreSelector(editor.store, (x) => ({ project: x.project, pps: x.pps, scroll: x.scroll, selection: x.selection, guide: x.guide,
-    offline: x.offline, thumbs: x.thumbs, peaks: x.peaks, trackSize: x.layout.trackSize, collapsed: x.collapsed, proposal: x.proposal, locked: x.locked }));
+    offline: x.offline, thumbs: x.thumbs, peaks: x.peaks, trackSize: x.layout.trackSize, collapsed: x.collapsed, proposal: x.proposal, locked: x.locked, libDrag: x.libDrag }));
   const p = s.project!;
   const times = useMemo(() => resolveTimes(p), [p]);
   // the track area's height (set by the layout, not by the rows, so filling it cannot feed back); 0 until measured
@@ -86,6 +87,19 @@ export function Timeline({ editor }: { editor: Editor }) {
   const left = () => (box.current?.getBoundingClientRect().left ?? 0) + HEADER_W;
   const tAt = (clientX: number) => xToTime(clientX - left(), view);
   const height = rows.length ? rows[rows.length - 1].y + rows[rows.length - 1].h : 0;
+  // a library card or files dragged over the timeline (spec 2026-11-10-media-panel-visual §5): the drag asks where the pointer is.
+  // The "+ New track" strip is at the top of the track area for a picture, at the bottom for a sound.
+  const soundDrag = s.libDrag?.kind === 'music' || s.libDrag?.kind === 'sfx';
+  const dropProbe = (cx: number, cy: number): DropTarget => {
+    const t = Math.max(0, tAt(cx)), tr = tracksEl.current?.getBoundingClientRect(), rr = rowsEl.current?.getBoundingClientRect();
+    if (!tr || !rr || cx < left() || cx > tr.right || cy < tr.top || cy > tr.bottom) return { t, row: null };
+    const kind = editor.store.get().libDrag?.kind, sound = kind === 'music' || kind === 'sfx';
+    if (sound ? cy > tr.bottom - NEW_STRIP_H : cy < tr.top + NEW_STRIP_H) return { t, row: 'new' };
+    const r = rowAt(rowsRef.current, cy - rr.top);
+    return { t, row: r ? r.track.id : null };
+  };
+  useEffect(() => { editor.dropProbe = dropProbe; });
+  useEffect(() => () => { editor.dropProbe = null; }, []);
   // a thin line from each item hanging on a magnetic clip to that clip's row, at the item's start
   const hangs = useMemo(() => {
     if (!mag) return [];
@@ -201,6 +215,7 @@ export function Timeline({ editor }: { editor: Editor }) {
       </div>
       {/* only the tracks scroll vertically: the ruler stays on top (small screens could not reach the lower tracks) */}
       <div class="tracks" data-tracks ref={tracksEl}>
+      {s.libDrag && !soundDrag && <div class="drop-new-wrap top"><div class={`drop-new${s.libDrag.plan?.ok && s.libDrag.plan.track === null ? ' on' : ''}`} data-drop-new="top" style={{ left: `${HEADER_W}px` }}>+ New track</div></div>}
       <div class="rows" ref={rowsEl} style={{ height: `${height}px` }} onMouseDown={onRowsDown as any} onDblClick={onRowsDblClick as any} onContextMenu={onCtx as any}>
         {beats.map((b) => { const x = timeToX(b, view); return x >= 0 && x <= width ? <span class="beat" style={{ left: `${HEADER_W + x}px` }} /> : null; })}
         {rows.map((r) => (
@@ -261,9 +276,17 @@ export function Timeline({ editor }: { editor: Editor }) {
         ))}
         {hangs.map((h) => <span class="hang" data-hang={h.id} style={{ left: `${HEADER_W + timeToX(h.t, view)}px`, top: `${h.y0}px`, height: `${Math.max(1, h.y1 - h.y0)}px` }} />)}
         {drop !== null && <span class="track-drop" style={{ top: `${drop}px` }} />}
+        {s.libDrag?.plan?.track && (() => {
+          const d = s.libDrag!, pl = d.plan!, r = rows.find((x) => x.track.id === pl.track);
+          if (!r) return null;
+          if (d.line !== undefined) return <span class="drop-line" style={{ left: `${HEADER_W + timeToX(d.line, view)}px`, top: `${r.y}px`, height: `${r.h}px` }} />;
+          const w = Math.max(2, (pl.ok ? pl.end - pl.start : d.len) * s.pps);
+          return <span class={`drop-ghost${pl.ok ? '' : ' bad'}`} style={{ left: `${HEADER_W + timeToX(pl.start, view)}px`, top: `${r.y}px`, width: `${w}px`, height: `${r.h}px` }} />;
+        })()}
         {s.guide !== null && <span class="guide" style={{ left: `${HEADER_W + timeToX(s.guide, view)}px` }} />}
         {marquee && <span class="marquee" style={{ left: `${HEADER_W + Math.min(marquee.x0, marquee.x1)}px`, top: `${Math.min(marquee.y0, marquee.y1)}px`, width: `${Math.abs(marquee.x1 - marquee.x0)}px`, height: `${Math.abs(marquee.y1 - marquee.y0)}px` }} />}
       </div>
+      {s.libDrag && soundDrag && <div class="drop-new-wrap bottom"><div class={`drop-new${s.libDrag.plan?.ok && s.libDrag.plan.track === null ? ' on' : ''}`} data-drop-new="bottom" style={{ left: `${HEADER_W}px` }}>+ New track</div></div>}
       </div>
       {ctx && <div class="ctx" style={{ left: `${ctx.x}px`, top: `${ctx.y}px` }}>
         <button onClick={() => { editor.openAsk(ctx.id ?? undefined); setCtx(null); }}>Ask Agent…</button>
@@ -285,6 +308,9 @@ export function Timeline({ editor }: { editor: Editor }) {
     </section>
   );
 }
+
+/** the height of the "+ New track" strip a drag shows */
+const NEW_STRIP_H = 14;
 
 /** A press on the timeline lets go of text selected elsewhere (chat, help…): the clips hold mousedown's default back, so the
  *  selection would stay and Ctrl+C would copy that text instead of the clips (keys.ts clipboardFree). */

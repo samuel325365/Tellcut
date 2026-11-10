@@ -13,8 +13,12 @@ import { cutPoints, edgeTargets, nextCut, selectionHasNoClip } from './cutting.t
 import { errText, t as say } from '../i18n/index.ts';
 import { blockText } from '../i18n/blocks.ts';
 import { localValues } from '../i18n/values.ts';
-import { materialItem } from './materials.ts';
+import { materialItem, type MaterialItem } from './materials.ts';
+import { dropRecipe, planDrop, type DropKind, type DropPlan, type DropTarget } from '../timeline/drop.ts';
 import type { Material } from '../audition.ts';
+
+/** a block of My blocks not copied into the project yet (the library panel's pick) */
+export type LibPick = { slug: string; type: string; kind: 'scene' | 'overlay' };
 
 type Recipe = (d: Project) => void;
 /** the track kinds the library adds to */
@@ -241,6 +245,76 @@ export class TimelineEditing {
     this.set({ guide: null });
     if (!d || !h) return;
     if (d.recipe) this.c.apply(d.recipe); else this.c.changed(h.project, false);
+  }
+
+  // ---------------------------------------------------------------- dragging a library card onto the timeline
+  // (spec 2026-11-10-media-panel-visual §5): planned by timeline/drop.ts, previewed live like a drag on the timeline, recorded
+  // once on release. A block of My blocks not in the project yet has no item to preview: only its place is shown, and the
+  // editor copies it in after the release (useLibraryBlock with that place).
+  private libDrag: { item?: MaterialItem; lib?: LibPick; kind: DropKind; len: number; refuse: string; recipe: Recipe | null } | null = null;
+
+  beginLibDrag(src: Material | { lib: LibPick }): boolean {
+    this.c.endAudition();
+    const h = this.c.history();
+    this.libDrag = null;
+    if (!this.s.project || !h || this.c.blocked()) return false;
+    const p = h.project;
+    if ('lib' in src) {
+      const refuse = src.lib.kind === 'scene' ? say('ed.sceneAdd') : '';
+      this.libDrag = { lib: src.lib, kind: 'overlay', len: 2, refuse, recipe: null };
+    } else {
+      const item = materialItem(p, src, 0, { reg: this.reg, peaks: this.s.peaks, beats: this.s.beats });
+      const type = src.kind === 'overlay' ? src.type : '';
+      const refuse = type && this.reg?.item(type)?.kind === 'scene' ? say('ed.sceneAdd') : type ? uniqueBlock(this.reg, p, type) : '';
+      this.libDrag = { item, kind: item.kind, len: (item.item.end as number) - (item.item.start as number), refuse, recipe: null };
+    }
+    this.set({ libDrag: { kind: this.libDrag.kind, len: this.libDrag.len, plan: null } });
+    return true;
+  }
+
+  /** where the pointer is now; previews the drop there (or shows the project as it is when it cannot go there) */
+  libDragTo(at: DropTarget, mods: Mods) {
+    const d = this.libDrag, h = this.c.history();
+    if (!d || !h || this.c.pending()) return;
+    const base = h.project;
+    const plan = planDrop(base, resolveTimes(base), { kind: d.kind, len: d.len, at, locked: new Set(this.s.locked), refuse: d.refuse || undefined },
+      { snap: this.s.layout.snap && !mods.ctrl, threshold: 8 / this.s.pps, playhead: this.s.playhead });
+    d.recipe = null;
+    let line: number | undefined;
+    if (plan?.ok && d.item) {
+      const recipe = dropRecipe(plan, d.kind, d.item.item, d.item.also);
+      try {
+        let id = '';
+        const view = h.preview((x) => { id = recipe(x); });
+        // on the magnetic track the packing moved it to a cut: that cut is marked
+        if (plan.track && plan.track === magneticTrack(base)?.id) line = resolveTimes(view).get(id)?.start;
+        this.c.changed(view, false);
+        d.recipe = (x) => { recipe(x); };
+      } catch (e) { if (!(e instanceof CommandError)) throw e; this.c.changed(base, false); }
+    } else this.c.changed(base, false);
+    this.set({ libDrag: { kind: d.kind, len: d.len, plan, ...(line !== undefined ? { line } : {}) } });
+  }
+
+  /** the release (commit) or Esc: true when something was added. A block of My blocks comes back as the place to copy it to. */
+  endLibDrag(commit: boolean): boolean | { lib: LibPick; at: { track: string | null; start: number; end: number } } {
+    const d = this.libDrag, h = this.c.history(), plan = this.s.libDrag?.plan;
+    this.libDrag = null;
+    this.set({ libDrag: null });
+    if (!d || !h) return false;
+    if (!commit || !plan) { this.c.changed(h.project, false); return false; }
+    if (!plan.ok) { this.c.changed(h.project, false); this.set({ notice: plan.why }); return false; }
+    if (d.lib) return { lib: d.lib, at: { track: plan.track, start: plan.start, end: plan.end } };
+    if (!d.item) return false;
+    return this.addPlaced(plan, d.item);
+  }
+
+  /** adds an item at a planned place (a drop) as one undo step and selects it, keeping the library in front */
+  addPlaced(plan: Extract<DropPlan, { ok: true }>, x: MaterialItem): boolean {
+    let id = '';
+    const recipe = dropRecipe(plan, x.kind, x.item, x.also);
+    const ok = this.c.apply((d) => { id = recipe(d); });
+    if (ok) this.select([id], { reveal: false });
+    return ok;
   }
 
   // ---------------------------------------------------------------- adding at the playhead (the library, the gallery)

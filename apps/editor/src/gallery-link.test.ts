@@ -158,3 +158,14 @@ test('an editor that has the request is waited for past the first wait (copying 
     off();
   } finally { vi.useRealTimers(); }
 });
+
+test('one of My blocks dragged onto the timeline is copied in, then placed where it was let go', async () => {
+  const { ed, used } = await libraryEditor();
+  expect(ed.beginLibDrag({ lib: { slug: 'box', type: 'fx.box', kind: 'overlay' } })).toBe(true);
+  ed.libDragTo({ t: 7, row: 'new' }, { alt: false, ctrl: false, shift: false });
+  expect(ed.store.get().libDrag!.plan).toMatchObject({ ok: true, track: null, start: 7, end: 9 });
+  expect(ed.endLibDrag(true)).toBe(true);
+  await settle(); await settle();
+  const box = items(ed).find((x) => x.type === 'fx.box')!;
+  expect([used, box.start, box.end, ed.store.get().project!.meta.fx]).toEqual([['box'], 7, 9, ['fx/lib/box/_entry.js']]);
+});

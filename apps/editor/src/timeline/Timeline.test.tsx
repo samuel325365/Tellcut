@@ -583,3 +583,30 @@ test('a playhead scrolled out of view is not drawn at all (its head would sit on
   await act(() => store.set({ scroll: 0 }));
   expect(root.querySelector('[data-playhead-head]')).not.toBeNull();
 });
+
+test('a library drag: a red ghost where it cannot go, the cut it would go in at, the new-track strip for its kind', async () => {
+  const { root, editor, store } = mount({ libDrag: { kind: 'music', len: 4, plan: { ok: false, why: 'x', track: 'v', start: 2, end: 6 } } });
+  await act(() => render(<Timeline editor={editor} />, root));
+  const ghost = root.querySelector<HTMLElement>('.drop-ghost.bad')!;
+  expect([ghost.style.left, ghost.style.width, ghost.style.top]).toEqual([`${176 + 100}px`, '200px', root.querySelector<HTMLElement>('[data-row="v"]')!.style.top]);
+  expect([!!root.querySelector('[data-drop-new="bottom"]'), !!root.querySelector('[data-drop-new="top"]')]).toEqual([true, false]);
+  await act(() => store.set({ libDrag: { kind: 'video', len: 2, line: 4, plan: { ok: true, track: 'v', start: 5, end: 7 } } }));
+  expect(root.querySelector<HTMLElement>('.drop-line')!.style.left).toBe(`${176 + 200}px`);
+  expect([!!root.querySelector('.drop-ghost.bad'), !!root.querySelector('[data-drop-new="top"]')]).toEqual([false, true]);
+  await act(() => store.set({ libDrag: null }));
+  expect(root.querySelectorAll('.drop-ghost, .drop-line, [data-drop-new]').length).toBe(0);
+});
+
+test('the drop probe: the track under the pointer and its time, the new-track strip, off the timeline', async () => {
+  const { root, editor, store } = mount({ libDrag: { kind: 'video', len: 2, plan: null } });
+  await act(() => render(<Timeline editor={editor} />, root));
+  const box = { top: 0, left: 0, right: 1400, bottom: 400, width: 1400, height: 400, x: 0, y: 0 };
+  root.querySelector<HTMLElement>('.tracks')!.getBoundingClientRect = () => box as DOMRect;
+  const vTop = parseFloat(root.querySelector<HTMLElement>('[data-row="v"]')!.style.top);
+  expect(editor.dropProbe(176 + 100, vTop + 20)).toEqual({ t: 2, row: 'v' });
+  expect(editor.dropProbe(176 + 100, 5)).toEqual({ t: 2, row: 'new' });           // the strip on top: a picture kind
+  expect(editor.dropProbe(100, vTop + 20).row).toBeNull();                        // over the track headers
+  expect(editor.dropProbe(176 + 100, 500).row).toBeNull();                        // below the track area
+  await act(() => store.set({ libDrag: { kind: 'sfx', len: 1, plan: null } }));
+  expect(editor.dropProbe(176 + 100, 395).row).toBe('new');                       // a sound: the strip at the bottom
+});

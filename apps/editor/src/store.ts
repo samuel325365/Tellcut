@@ -6,6 +6,7 @@ import type { Material } from './audition.ts';
 import { DEFAULT_LAYOUT, type Layout } from './layout.ts';
 import type { LibraryIndex, LibrarySavePreview, ProjectLibraryInfo, TemplateKind } from '@tellcut/protocol';
 import type { PresetDraftView } from './editor/preset-save.ts';
+import type { DropKind, DropPlan } from './timeline/drop.ts';
 
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
 export interface ThumbInfo { interval: number; width: number; height: number; cols: number; count: number; url: string }
@@ -26,6 +27,9 @@ export interface EditorState {
   pps: number;
   scroll: number;
   guide: number | null;
+  /** a library card (or, files: true, files from this PC) being dragged over the timeline: its kind, its length, where it would go */
+  /** line: on the magnetic track, the cut the item would go in at */
+  libDrag: { kind: DropKind; len: number; plan: DropPlan | null; files?: boolean; line?: number } | null;
   save: SaveStatus;
   saveError: string;
   canUndo: boolean;
@@ -97,7 +101,7 @@ export interface LibraryState { index: LibraryIndex | null; project: ProjectLibr
 
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',
-  pps: 100, scroll: 0, guide: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
+  pps: 100, scroll: 0, guide: null, libDrag: null, save: 'saved', saveError: '', canUndo: false, canRedo: false,
   thumbs: {}, peaks: {}, offline: [], analyzing: 0, analysisFailed: [], notice: '', importing: null, importNote: '', crop: null, cuts: {}, titles: {}, level: -120, exportJob: null, exportError: '', exports: [], exportOpen: false, quality: 'full', layout: DEFAULT_LAYOUT, audition: null, beats: {}, collapsed: [], loop: false, helpOpen: false, proposal: null, diskChanged: false, ask: null, clipboard: null, locked: [],
   library: { index: null, project: null, saving: null, toast: null, templateThumbs: null },
   presetSave: { drafting: false, draft: null, poster: null, toast: null },
