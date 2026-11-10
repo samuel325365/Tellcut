@@ -26,6 +26,12 @@ export function quoteLines(text: string): string[][] {
   return nl(text).split('\n').map((l) => l.split(/[\s/]+/).filter(Boolean));
 }
 
+/** a line's words as drawn: a no-break space between two Latin words, none next to Chinese or Japanese ones. The room each line
+ *  is fitted to is measured on these same pieces, so an English line counts the spaces it is drawn with. */
+export function quotePieces(words: string[]): string[] {
+  return words.map((w, i) => (i > 0 && latin.test(words[i - 1]) && latinStart.test(w) ? ' ' : '') + w);
+}
+
 /** the hit line: `hit` when it names a line, else the last line with words */
 export function quoteHit(lines: string[][], hit: number): number {
   if (hit >= 0 && hit < lines.length) return Math.round(hit);
@@ -108,9 +114,9 @@ export const quote: ItemType<P, S> = {
         const row = h('div', null, null, s.body);
         cssCamel(row, { position: 'absolute', whiteSpace: 'nowrap', lineHeight: '1.1' });
         if (!card && pre[li]) { const sp = h('span', null, null, row); sp.textContent = pre[li]; cssCamel(sp, { opacity: '0.5' }); }
-        words.forEach((w, wi) => {
+        quotePieces(words).forEach((w) => {
           const sp = h('span', null, null, row);
-          sp.textContent = (wi > 0 && latin.test(words[wi - 1]) && latinStart.test(w) ? ' ' : '') + w;
+          sp.textContent = w;
           cssCamel(sp, { display: 'inline-block', transformOrigin: '50% 80%' });
           s.toks.push({ el: sp, line: li, t: 0 });
           n++;
@@ -123,7 +129,7 @@ export const quote: ItemType<P, S> = {
     const side = theme.safe.side * W, room = W - 2 * side, win = Array.isArray(p.win) && p.win.length === 4 ? p.win.map(Number) : [0.574, 0.13, 0.352, 0.203];
     const [wx, wy, ww, wh] = [win[0] * W, win[1] * H, win[2] * W, win[3] * H];
     const top = p.y >= 0 ? p.y * H : card ? 0.396 * H : wy + wh + 60 * k, gap = (card ? 18 : 22) * k;
-    let sizes = quoteSizes(p.sizes, lines.length, hit, card).map((x, i) => Math.min(x * k, room / Math.max(0.5, textEm(lines[i].join('') + (pre[i] && !card ? pre[i] : '')))));
+    let sizes = quoteSizes(p.sizes, lines.length, hit, card).map((x, i) => Math.min(x * k, room / Math.max(0.5, textEm(quotePieces(lines[i]).join('') + (pre[i] && !card ? pre[i] : '')))));
     const extra = card ? (p.who ? 40 * k + 46 * k : 0) : 0, total = sizes.reduce((a, x) => a + x * 1.1 + gap, -gap) + extra, avail = (1 - theme.safe.bottom) * H - top - (card ? 60 * k : 0);
     if (total > avail && total > 0) sizes = sizes.map((x) => (x * avail) / total);
     let y = top;
