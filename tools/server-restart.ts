@@ -1,6 +1,7 @@
 // Restarts the Tellcut server safely.   npm run server:restart -- [--port <the running one's, else 5174>] [--wait] [--force]
 // 1. Refuses while a chat turn or an analysis runs (the user may be testing in the browser; a killed turn loses its reply and an
-//    analysis dies with the server); --wait waits for them, --force does not ask.
+//    analysis dies with the server); --wait waits for them, --force does not ask. Not knowing counts as busy: a chat that cannot be
+//    asked, or a port something listens on that does not answer as a Tellcut server, is refused too unless --force.
 // 2. Stops whatever listens on the port (with its child processes: stopping only the npm wrapper leaves node holding the port).
 //    Windows: netstat and taskkill; macOS / Linux: lsof and signals.
 // 3. Starts the server (what `npm run server` runs) on its own (Windows: in a hidden console), in a clean environment: a server started from a Claude Code session would
@@ -36,22 +37,35 @@ export function threads(projectsDir: string): string[] {
   return ids;
 }
 
-const get = async (url: string): Promise<any> => {
+/** a GET that throws on a status other than 2xx, the status on the error */
+export type Getter = (url: string) => Promise<any>;
+const get: Getter = async (url) => {
   const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-  if (!res.ok) throw new Error(`${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(`${res.status}`), { status: res.status });
   return res.json();
 };
 
-/** what still runs on the server: ["分析：food-deep（analyze）", "聊天：demo1"]; null when no Tellcut server answers */
-async function busy(base: string): Promise<string[] | null> {
+/** what still runs on the server: ["分析：food-deep（analyze）", "聊天：demo1"]; null when no Tellcut server answers. A chat that
+ *  cannot be asked (no answer in time, an error other than "no such thread") is listed too: a turn running on a server too
+ *  stuck to answer is not one that has ended */
+export async function busy(base: string, o: { get?: Getter; projectsDir?: string } = {}): Promise<string[] | null> {
+  const ask = o.get ?? get;
   let jobs: Array<{ kind: string; project?: string; status: string }>;
-  try { jobs = await get(`${base}/api/jobs`); } catch { return null; }
+  try { jobs = await ask(`${base}/api/jobs`); } catch { return null; }
   const out = jobs.filter((j) => !TERMINAL.has(j.status)).map((j) => `工作：${j.project ?? ''}（${j.kind}，${j.status}）`);
-  for (const t of threads(join(TELLCUT_ROOT, 'projects'))) {
-    try { if ((await get(`${base}/api/chat/${t}`)).running) out.push(`聊天：${t}`); } catch { /* not a thread this server knows */ }
+  for (const t of threads(o.projectsDir ?? join(TELLCUT_ROOT, 'projects'))) {
+    try { if ((await ask(`${base}/api/chat/${t}`)).running) out.push(`聊天：${t}`); } catch (e) {
+      if ((e as { status?: number }).status !== 404) out.push(`聊天：${t}（問不到有沒有在跑：${(e as Error).message}）`);   // 404: not a thread this server knows
+    }
   }
   return out;
 }
+
+/** Why not to restart when no Tellcut server answered on the port: something still listens there (a server too stuck to answer,
+ *  or another program), and stopping it blind could end a running chat turn or another program's work. null: nothing listens. */
+export const silentListener = (port: number, pids: number[]): string | null => (pids.length
+  ? `埠 ${port} 上有程序在聽（${pids.join('、')}），但它沒有像 Tellcut 伺服器那樣回應，看不出有沒有聊天或分析在跑：沒有重開。\n確定要停掉它就加 --force。`
+  : null);
 
 const WIN = process.platform === 'win32';
 const netstat = () => { try { return execFileSync('netstat', ['-ano', '-p', 'TCP'], { encoding: 'utf8', windowsHide: true }); } catch { return ''; } };
@@ -113,7 +127,12 @@ async function main() {
 
   for (let waited = 0; !flag('--force'); waited += 10) {
     const b = await busy(base);
-    if (!b?.length) break;
+    if (b === null) {
+      const why = silentListener(port, onPort(port));
+      if (why) { console.error(why); process.exit(1); }
+      break;
+    }
+    if (!b.length) break;
     if (!flag('--wait')) { console.error(`伺服器還在忙，沒有重開：\n  ${b.join('\n  ')}\n等它們做完再試，或加 --wait 自動等；--force 不管它們。`); process.exit(1); }
     if (waited % 60 === 0) console.log(`等待中（${waited} 秒）：${b.join('、')}`);
     await pause(10000);

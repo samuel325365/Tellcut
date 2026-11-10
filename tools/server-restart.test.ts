@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
-import { listeners, lsofListeners, stopServer, threads, type Stopper } from './server-restart.ts';
+import { busy, listeners, lsofListeners, silentListener, stopServer, threads, type Stopper } from './server-restart.ts';
 
 test('the processes listening on the port, from netstat', () => {
   const out = [
@@ -40,6 +40,25 @@ test('the threads asked about: home, each project, the home drafts', () => {
   writeFileSync(join(dir, '_home', 'home-abc123.json'), '{}');
   writeFileSync(join(dir, '_home', 'notes.json'), '{}');
   expect(threads(dir).sort()).toEqual(['a', 'b', 'home', 'home-abc123']);
+});
+
+test('busy: running jobs and chats; a chat that cannot be asked counts, one the server does not know does not; no answer at all is null', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'tellcut-busy-'));
+  for (const p of ['gone', 'stuck', 'idle', 'talking']) { mkdirSync(join(dir, p)); writeFileSync(join(dir, p, 'project.json'), '{}'); }
+  const fail = (status?: number) => Object.assign(new Error(status ? String(status) : 'The operation was aborted due to timeout'), status ? { status } : {});
+  const answers: Record<string, () => unknown> = {
+    '/api/jobs': () => [{ kind: 'analyze', project: 'idle', status: 'done' }, { kind: 'export', project: 'talking', status: 'running' }],
+    '/api/chat/home': () => ({ running: null }), '/api/chat/idle': () => ({ running: null }), '/api/chat/talking': () => ({ running: { id: 1 } }),
+    '/api/chat/gone': () => { throw fail(404); }, '/api/chat/stuck': () => { throw fail(); },
+  };
+  const get = async (url: string) => answers[url.replace('http://x', '')]();
+  expect(await busy('http://x', { get, projectsDir: dir })).toEqual(['工作：talking（export，running）', '聊天：stuck（問不到有沒有在跑：The operation was aborted due to timeout）', '聊天：talking']);
+  expect(await busy('http://x', { get: async () => { throw fail(); }, projectsDir: dir })).toBeNull();
+});
+
+test('a port something listens on without answering as Tellcut is not restarted without --force; a free one is', () => {
+  expect(silentListener(5174, [4242])).toMatch(/4242.*--force/s);
+  expect(silentListener(5174, [])).toBeNull();
 });
 
 /** a machine for stopServer: the pids listening, what each does on a signal (gone that many ms later; undefined: ignores it), a
