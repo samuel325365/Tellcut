@@ -226,6 +226,17 @@ test("a box's front lies above its body, so the two never fight", async () => {
   }
 });
 
+test('hide lets go of the 2048² shadow map too (three makes it again on the next render); the flat stand-in hides as well', async () => {
+  const { ctx, s } = await built({ objects: TWO });
+  flatlay.draw(at(ctx, 3), s);
+  const freed = vi.spyOn(s.spot.shadow, 'dispose');
+  flatlay.hide!(s);
+  expect(freed).toHaveBeenCalled();
+  expect([s.c.width, s.c.height]).toEqual([0, 0]);
+  const flat = await built({ objects: TWO }, { kit: undefined });
+  expect(() => flatlay.hide!(flat.s)).not.toThrow();
+});
+
 test('without three.js (a failed load) the desk still draws, flat', async () => {
   const { ctx, s } = await built({ objects: TWO }, { kit: undefined });
   expect(() => { flatlay.draw(at(ctx, 3), s); flatlay.late!(ctx, s); }).not.toThrow();

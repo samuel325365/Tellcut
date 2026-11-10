@@ -480,7 +480,9 @@ export const flatlay: ItemType<FlatlayParams, S> = {
     if (!any) return;
     paint(ctx, s, s.lastDof);
   },
-  hide(s) { s.c.width = 0; s.c.height = 0; },
+  // the spot's shadow map (2048², with its blur target) is the largest thing the item holds on the GPU while off screen: three
+  // frees its render targets here and sets them up again on the next render, as it does for any disposed render target
+  hide(s) { s.c.width = 0; s.c.height = 0; s.spot?.shadow.dispose(); },
   dispose(s) {
     s.dead = true;
     for (const t of s.items) { t.vt?.dispose(); t.prev?.dispose(); t.vt = null; t.prev = null; }
