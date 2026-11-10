@@ -1,7 +1,7 @@
 // Tellcut server.   npm run server [-- --port 5174]
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { clearServerInfo, DEFAULT_PORT, TELLCUT_ROOT, writeServerInfo } from '@tellcut/media-node';
+import { clearServerInfo, DEFAULT_PORT, editorBuildStale, TELLCUT_ROOT, writeServerInfo } from '@tellcut/media-node';
 import { createApp } from './app.ts';
 import { cleanupLeftovers } from './cleanup.ts';
 import { parseArgsOrExit } from '../../../tools/args.ts';
@@ -14,6 +14,8 @@ const playerDist = join(TELLCUT_ROOT, 'apps/player/dist');
 if (!existsSync(join(playerDist, 'index.html'))) console.warn('Player not built: run `npm run build:player` (needed by /player/ and exports)');
 const editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
 if (!existsSync(join(editorDist, 'index.html'))) console.warn('Editor not built: run `npm run build:editor` (needed by /editor/)');
+// a pull without a rebuild: the new server would serve the old page, and nothing else says so
+else if (editorBuildStale()) console.warn('Editor build is older than its source: run `npm run build:editor` (/editor/ would serve the old code)');
 try {
   const left = cleanupLeftovers(join(TELLCUT_ROOT, 'projects'));
   if (left.length) console.log(`Removed ${left.length} leftover temp file(s) from an earlier run`);
