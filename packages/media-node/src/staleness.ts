@@ -1,6 +1,6 @@
 // The player that renders checks, stills and exports is a build (apps/player/dist); after a block or the engine changes it must be rebuilt,
 // or pictures silently come from the old code. This tells when the build is older than the source it is made from, and builds it
-// again without pulling it from under a process using it.
+// again without pulling it from under a process using it. The editor page (apps/editor/dist) is a build too and is told the same way.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -21,14 +21,32 @@ function newest(dir: string): number {
   return t;
 }
 
+const mtime = (f: string) => (existsSync(f) ? statSync(f).mtimeMs : 0);
+
+/** Whether the vite build of `apps/<app>` is missing ('missing'), older than what it is made from ('stale') or fresh (null): its own
+ *  source and page, every package but Node-only media-node, and the installed packages (package-lock.json: an npm install that
+ *  changed a dependency changes what the build bundles). */
+function buildState(root: string, app: 'player' | 'editor'): 'missing' | 'stale' | null {
+  const built = join(root, 'apps', app, 'dist', 'index.html');
+  if (!existsSync(built)) return 'missing';
+  const at = statSync(built).mtimeMs, pkgs = join(root, 'packages');
+  const dirs = [join(root, 'apps', app, 'src'), ...(existsSync(pkgs) ? readdirSync(pkgs).filter((d) => d !== 'media-node').map((d) => join(pkgs, d, 'src')) : [])];
+  const src = Math.max(...dirs.map(newest), mtime(join(root, 'apps', app, 'index.html')), mtime(join(root, 'package-lock.json')));
+  return src > at + 1000 ? 'stale' : null;
+}
+
 /** A sentence when apps/player/dist is missing or older than the engine, the plugins or the player's own source; otherwise null. */
 export function playerBuildStale(root = TELLCUT_ROOT): string | null {
-  const built = join(root, 'apps', 'player', 'dist', 'index.html');
-  if (!existsSync(built)) return '播放器還沒建置：先跑 npm run build:player';
-  const at = statSync(built).mtimeMs, pkgs = join(root, 'packages');
-  const dirs = [join(root, 'apps', 'player', 'src'), ...(existsSync(pkgs) ? readdirSync(pkgs).filter((d) => d !== 'media-node').map((d) => join(pkgs, d, 'src')) : [])];
-  const src = Math.max(...dirs.map(newest));
-  return src > at + 1000 ? '播放器的建置檔比原始碼舊（積木或引擎改過）：畫面會用舊程式算出來。先跑 npm run build:player' : null;
+  const s = buildState(root, 'player');
+  return s === 'missing' ? '播放器還沒建置：先跑 npm run build:player'
+    : s === 'stale' ? '播放器的建置檔比原始碼舊（積木或引擎改過）：畫面會用舊程式算出來。先跑 npm run build:player' : null;
+}
+
+/** The same for apps/editor/dist: a sentence when the editor page would be served from older code than its source; otherwise null. */
+export function editorBuildStale(root = TELLCUT_ROOT): string | null {
+  const s = buildState(root, 'editor');
+  return s === 'missing' ? '編輯器還沒建置：先跑 npm run build:editor'
+    : s === 'stale' ? '編輯器的建置檔比原始碼舊（編輯器、積木或引擎改過）：頁面會用舊程式。先跑 npm run build:editor' : null;
 }
 
 const files = (dir: string, sub = ''): string[] =>

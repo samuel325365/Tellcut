@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { playerBuildStale, rebuildPlayer } from './staleness.ts';
+import { editorBuildStale, playerBuildStale, rebuildPlayer } from './staleness.ts';
 
 test('the player build is stale when a block or the engine changed after it, fresh otherwise, missing is said too', () => {
   const root = mkdtempSync(join(tmpdir(), 'stale-'));
@@ -20,6 +20,47 @@ test('the player build is stale when a block or the engine changed after it, fre
     expect(playerBuildStale(root)).toBeNull();
     utimesSync(join(root, 'packages/plugin-common/src/progress.ts'), new Date(Date.now() + 60_000), new Date(Date.now() + 60_000));
     expect(playerBuildStale(root)).toContain('npm run build:player');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+/** a root with a player and an editor built now from sources a minute old */
+function freshBuilds() {
+  const root = mkdtempSync(join(tmpdir(), 'stale-')), old = new Date(Date.now() - 60_000), now = new Date();
+  for (const d of ['apps/player/src', 'apps/player/dist', 'apps/editor/src', 'apps/editor/dist', 'packages/engine/src', 'packages/media-node/src']) mkdirSync(join(root, d), { recursive: true });
+  for (const f of ['apps/player/src/main.ts', 'apps/player/index.html', 'apps/editor/src/main.tsx', 'apps/editor/index.html', 'packages/engine/src/stage.ts', 'package-lock.json']) { writeFileSync(join(root, f), 'x'); utimesSync(join(root, f), old, old); }
+  for (const f of ['apps/player/dist/index.html', 'apps/editor/dist/index.html']) { writeFileSync(join(root, f), 'x'); utimesSync(join(root, f), now, now); }
+  return root;
+}
+const touch = (root: string, f: string) => { const t = new Date(Date.now() + 60_000); utimesSync(join(root, f), t, t); };
+
+test('the player build is stale when its page or the installed packages changed after it, not only its source', () => {
+  for (const f of ['apps/player/index.html', 'package-lock.json']) {
+    const root = freshBuilds();
+    try {
+      expect(playerBuildStale(root)).toBeNull();
+      touch(root, f);
+      expect(playerBuildStale(root)).toContain('npm run build:player');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+test('the editor build is stale the same way: its own source and page, the packages it is built from, the installed packages', () => {
+  for (const f of ['apps/editor/src/main.tsx', 'apps/editor/index.html', 'packages/engine/src/stage.ts', 'package-lock.json']) {
+    const root = freshBuilds();
+    try {
+      expect(editorBuildStale(root)).toBeNull();
+      touch(root, f);
+      expect(editorBuildStale(root)).toContain('npm run build:editor');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  }
+  const root = freshBuilds();
+  try {
+    writeFileSync(join(root, 'packages/media-node/src/x.ts'), 'x'); touch(root, 'packages/media-node/src/x.ts');   // Node-only code
+    writeFileSync(join(root, 'apps/editor/src/a.e2e.test.ts'), 'x'); touch(root, 'apps/editor/src/a.e2e.test.ts');  // and tests are not built in
+    touch(root, 'apps/player/src/main.ts');                                                                          // nor is the player
+    expect(editorBuildStale(root)).toBeNull();
+    rmSync(join(root, 'apps/editor/dist/index.html'));
+    expect(editorBuildStale(root)).toContain('還沒建置');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

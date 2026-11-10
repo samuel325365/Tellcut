@@ -26,5 +26,6 @@ export const BROWSER_TESTS = [
 const t = base.test!;
 export default defineWorkspace([
   { esbuild: base.esbuild, test: { ...t, name: 'fast', exclude: [...(t.exclude ?? []), ...BROWSER_TESTS] } },
-  { esbuild: base.esbuild, test: { ...t, name: 'browser', include: BROWSER_TESTS } },
+  // the browser group runs the built player and editor: tools/test-builds.ts stops it when either build is missing or stale
+  { esbuild: base.esbuild, test: { ...t, name: 'browser', include: BROWSER_TESTS, globalSetup: [...[t.globalSetup ?? []].flat(), 'tools/test-builds.ts'] } },
 ]);

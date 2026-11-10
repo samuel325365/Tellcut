@@ -8,7 +8,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { chromeSpec, CLAUDE, CLAUDE_MIN_VERSION, claudeEnv, facesProvider, FFMPEG, FFPROBE, loadProvidersConfig, locate, modelsDir, ocrProvider, onPathDirs, playerBuildStale, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec, type Provider } from '@tellcut/media-node';
+import { chromeSpec, CLAUDE, CLAUDE_MIN_VERSION, claudeEnv, editorBuildStale, facesProvider, FFMPEG, FFPROBE, loadProvidersConfig, locate, modelsDir, ocrProvider, onPathDirs, playerBuildStale, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec, type Provider } from '@tellcut/media-node';
 
 const run = promisify(execFile);
 /** a whole command line through the shell (claude is a .cmd file; TELLCUT_CLAUDE may be a command with arguments) */
@@ -173,13 +173,15 @@ export function playerBuildCheck(stale: string | null, built: boolean): Check {
   return { name: 'Player build', ok: false, detail: built ? 'older than its source (a block or the engine changed): pictures would come from the old code' : 'not built yet', fix: 'npm run build:player' };
 }
 
+/** the editor build's row, the same way (editorBuildStale) */
+export function editorBuildCheck(stale: string | null, built: boolean): Check {
+  if (!stale) return { name: 'Editor build', ok: true, detail: 'apps/editor/dist' };
+  return { name: 'Editor build', ok: false, detail: built ? 'older than its source: the editor page would come from the old code' : 'not built yet', fix: 'npm run build:editor' };
+}
+
 export function checkBuilds(): Check[] {
-  const stale = playerBuildStale();
-  const editor = existsSync(join(TELLCUT_ROOT, 'apps', 'editor', 'dist', 'index.html'));
-  return [
-    playerBuildCheck(stale, existsSync(join(TELLCUT_ROOT, 'apps', 'player', 'dist', 'index.html'))),
-    editor ? { name: 'Editor build', ok: true, detail: 'apps/editor/dist' } : { name: 'Editor build', ok: false, detail: 'not built yet', fix: 'npm run build:editor' },
-  ];
+  const built = (app: string) => existsSync(join(TELLCUT_ROOT, 'apps', app, 'dist', 'index.html'));
+  return [playerBuildCheck(playerBuildStale(), built('player')), editorBuildCheck(editorBuildStale(), built('editor'))];
 }
 
 export function checkChrome(): Check {

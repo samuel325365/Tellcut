@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FFMPEG, UV } from '@tellcut/media-node';
-import { checkFonts, checkPlatform, ffmpegMajor, hasCjk, hasVidstab, hfCachedWhisper, installHint, MODEL_COMPLETE, nodeMajor, playerBuildCheck, providerLabel, providerStatus, table, versionAtLeast, whisperModelDir } from './checks.ts';
+import { checkFonts, checkPlatform, editorBuildCheck, ffmpegMajor, hasCjk, hasVidstab, hfCachedWhisper, installHint, MODEL_COMPLETE, nodeMajor, playerBuildCheck, providerLabel, providerStatus, table, versionAtLeast, whisperModelDir } from './checks.ts';
 
 test('versions: Claude Code at least the minimum', () => {
   expect(versionAtLeast('2.1.281 (Claude Code)', '2.1.242')).toBe(true);
@@ -93,6 +93,10 @@ test('setup and doctor speak English: the install hints and the player build say
   expect(playerBuildCheck(null, true)).toMatchObject({ ok: true });
   expect(playerBuildCheck('播放器還沒建置', false)).toMatchObject({ ok: false, detail: 'not built yet', fix: 'npm run build:player' });
   expect(playerBuildCheck('播放器的建置檔比原始碼舊', true).detail).toMatch(/^older than its source/);
+  expect(editorBuildCheck(null, true)).toMatchObject({ ok: true, detail: 'apps/editor/dist' });
+  expect(editorBuildCheck('編輯器還沒建置', false)).toMatchObject({ ok: false, detail: 'not built yet', fix: 'npm run build:editor' });
+  expect(editorBuildCheck('編輯器的建置檔比原始碼舊', true)).toMatchObject({ ok: false, fix: 'npm run build:editor' });
+  expect(editorBuildCheck('編輯器的建置檔比原始碼舊', true).detail).toMatch(/^older than its source/);
 });
 
 test('a provider row keeps only words that read in English, and gives its fix in English', () => {
