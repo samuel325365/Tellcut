@@ -4,6 +4,7 @@
 import { resolveTheme, textEm, withDefaults, type ItemType } from '@tellcut/engine';
 import { quote } from './quote.ts';
 import { rating } from './rating.ts';
+import { stations, stationsLayout } from './stations.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -65,5 +66,20 @@ describe('common.rating', () => {
     const { s, ctx } = run(rating, { rows: 'Value for money:4' }, 3), base = (ctx.params.size / 100) * 1080, l = s.rows[0].label;
     expect(px(css(l).fontSize) * textEm('Value for money')).toBeLessThanOrEqual(4.2 * base + 0.01);
     expect(px(css(l).width)).toBeCloseTo(4.2 * base, 6);
+  });
+});
+
+describe('common.stations', () => {
+  test('eight stations in 16:9 start inside the safe area: the rows and their type shrink together', () => {
+    const theme = resolveTheme(undefined, { width: 1920, height: 1080 }), L = stationsLayout(8, 1920, 1080, theme.safe);
+    expect(L.top).toBeGreaterThanOrEqual(theme.safe.top * 1080 - 1e-6);
+    expect(L.u).toBeLessThan(1);
+    const { s } = run(stations, { stops: Array.from({ length: 8 }, (_, i) => `站${i}|S${i}`).join(', ') }, 1, 1920, 1080);
+    expect(px(css(s.rows[0].row).top)).toBeGreaterThanOrEqual(theme.safe.top * 1080 - 1e-6);
+  });
+  test('three stations in 9:16 keep their layout', () => {
+    const theme = resolveTheme(undefined, { width: 1080, height: 1920 }), L = stationsLayout(3, 1080, 1920, theme.safe);
+    const bottom = (1 - theme.safe.bottom) * 1920;
+    expect(L).toEqual({ u: 1, top: bottom - (3 * 150 + 90), left: theme.safe.side * 1080 + 20, bottom });
   });
 });

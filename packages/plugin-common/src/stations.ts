@@ -10,9 +10,10 @@ interface P { stops: string; dates: string; stagger: number; font: string; mono:
 interface Row { row: HTMLElement; badge: HTMLElement; num: HTMLElement; name: HTMLElement; latin: HTMLElement }
 interface S { shade: HTMLElement; line: HTMLElement; rows: Row[]; dates: HTMLElement; key: string }
 
-/** where the stack goes: u, the first row's top (rows 150 u apart, the dates under the last) so that the dates end on the bottom safe line */
-export function stationsLayout(n: number, W: number, H: number, safe: { bottom: number; side: number }) {
-  const u = Math.min(W, H) / 1080, bottom = (1 - safe.bottom) * H, top = bottom - (Math.max(1, n) * 150 + 90) * u;
+/** where the stack goes: u, the first row's top (rows 150 u apart, the dates under the last) so that the dates end on the bottom safe
+ *  line; when that would start above the top safe line (many stations in a wide frame), u shrinks so the stack fills the safe height */
+export function stationsLayout(n: number, W: number, H: number, safe: { top: number; bottom: number; side: number }) {
+  const bottom = (1 - safe.bottom) * H, units = Math.max(1, n) * 150 + 90, u = Math.min(Math.min(W, H) / 1080, (bottom - safe.top * H) / units), top = bottom - units * u;
   return { u, top, left: safe.side * W + 20 * u, bottom };
 }
 
