@@ -247,24 +247,31 @@ export const magazine: ItemType<P, S> = {
     });
     // head band (feature, list): the masthead, the issue lines, No. and page, the page squares; the foot
     const band = layout === 'feature' || layout === 'list', mpx0 = band ? 84 * k : L.mast, mw0 = measure(p.title, `italic 900 ${mpx0}px ${disp}`) || mastEm(p.title) * mpx0;
-    const mpx = mw0 > L.mastW ? mpx0 * L.mastW / mw0 : mpx0, mastW = Math.min(mw0, L.mastW);
+    // the band's issue lines sit between the masthead and No. (first row) / the page squares (second row), each measured: the fixed
+    // room they used to get let a masthead at its widest push the issue line under No. They keep their size while they fit, shrink to
+    // 60 % when they do not, and past that the masthead gives way
+    const noText = p.page > 0 ? `${p.no} · P.${pad2(p.page)}` : p.no, nsq = band ? Math.max(0, Math.min(12, Math.round(p.pages))) : 0, gap = 18 * k;
+    const issW = band && p.issue ? measure(p.issue, `700 ${24 * k}px ${disp}`) + [...p.issue].length * 0.02 * 24 * k : 0;
+    const subW = band && p.issueSub ? measure(p.issueSub, `700 ${28 * k}px ${ser}`) : 0;
+    const noW = band && noText ? measure(noText, `900 ${34 * k}px ${disp}`) : 0, right1 = noW ? noW + gap : 0, right2 = nsq ? nsq * 30 * k - 8 * k + gap : 0;
+    const mastRoom = Math.min(L.mastW, W - 2 * L.tx - gap - Math.max(issW * 0.6 + right1, subW * 0.6 + right2));
+    const mpx = mw0 > mastRoom ? mpx0 * mastRoom / mw0 : mpx0, mastW = Math.min(mw0, mastRoom);
     s.mast.textContent = p.title;
     const mastY = band ? L.headTop : L.ty;
     cssCamel(s.mast, { display: layout === 'back' ? 'none' : 'block', left: `${band || L.tall ? L.tx - 6 * k : L.tx - 6 * k}px`, top: `${mastY - mpx * 0.12}px`, fontFamily: disp, fontSize: `${mpx}px`, color: p.ink, letterSpacing: `${-0.01 * mpx}px` });
     s.issue.textContent = p.issue; s.issueSub.textContent = p.issueSub;
     if (band) {
-      const ix = L.tx + mastW + 18 * k;
-      cssCamel(s.issue, { display: p.issue ? 'block' : 'none', left: `${ix}px`, top: `${mastY + 12 * k}px`, textAlign: 'left', transform: 'none', width: 'auto', whiteSpace: 'pre', lineHeight: '1', fontFamily: disp, fontSize: `${24 * k}px`, color: p.accent });
-      cssCamel(s.issueSub, { display: p.issueSub ? 'block' : 'none', left: `${ix}px`, top: `${mastY + 46 * k}px`, textAlign: 'left', transform: 'none', fontFamily: ser, fontSize: `${28 * k}px`, color: p.ink });
+      const ix = L.tx + mastW + gap, fit = (w: number, right: number) => (w > 0 && w > W - L.tx - right - ix ? Math.max(0.6, (W - L.tx - right - ix) / w) : 1);
+      cssCamel(s.issue, { display: p.issue ? 'block' : 'none', left: `${ix}px`, top: `${mastY + 12 * k}px`, textAlign: 'left', transform: 'none', width: 'auto', whiteSpace: 'pre', lineHeight: '1', fontFamily: disp, fontSize: `${24 * k * fit(issW, right1)}px`, color: p.accent });
+      cssCamel(s.issueSub, { display: p.issueSub ? 'block' : 'none', left: `${ix}px`, top: `${mastY + 46 * k}px`, textAlign: 'left', transform: 'none', fontFamily: ser, fontSize: `${28 * k * fit(subW, right2)}px`, color: p.ink });
     } else if (layout === 'cover') {
       const rx = L.tall ? W - L.tx : L.tx, al = L.tall ? 'right' : 'left', iy = L.tall ? L.ty + 8 * k : L.ty + mpx * 0.95;
       const tr = L.tall ? 'translateX(-100%)' : 'none';
       cssCamel(s.issue, { display: p.issue ? 'block' : 'none', left: `${rx}px`, top: `${iy}px`, textAlign: al, transform: tr, fontFamily: disp, fontSize: `${30 * k}px`, color: p.accent, whiteSpace: 'pre-wrap', width: L.tall ? `${W * 0.3 - 10 * k}px` : `${W * 0.36 - 2 * L.tx}px`, lineHeight: '1.2' });
       cssCamel(s.issueSub, { display: p.issueSub ? 'block' : 'none', left: `${rx}px`, top: `${iy + 46 * k}px`, textAlign: al, transform: tr, fontFamily: ser, fontSize: `${34 * k}px`, color: p.ink });
     } else { cssCamel(s.issue, { display: 'none' }); cssCamel(s.issueSub, { display: 'none' }); }
-    s.no.textContent = p.page > 0 ? `${p.no} · P.${pad2(p.page)}` : p.no;
+    s.no.textContent = noText;
     cssCamel(s.no, { display: band && (p.no || p.page > 0) ? 'block' : 'none', left: `${W - L.tx}px`, top: `${mastY + 8 * k}px`, transform: 'translateX(-100%)', fontFamily: disp, fontSize: `${34 * k}px`, color: p.ink });
-    const nsq = band ? Math.max(0, Math.min(12, Math.round(p.pages))) : 0;
     if (s.squares.childElementCount !== nsq) { s.squares.replaceChildren(); for (let i = 0; i < nsq; i++) abs(s.squares); }
     [...s.squares.children].forEach((e, i) => cssCamel(e as HTMLElement, { left: `${W - L.tx - (nsq - i) * 30 * k + 8 * k}px`, top: `${mastY + 54 * k}px`, width: `${22 * k}px`, height: `${22 * k}px`, background: i < p.page ? p.accent : withAlpha(p.ink, 0.18) }));
     const footTxt = p.foot || [p.title, p.issue].filter(Boolean).join(' · ');
