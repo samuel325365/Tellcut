@@ -50,6 +50,16 @@ export function checkItem(p: Project, kind: TrackKind, raw: Record<string, unkno
 export function updateItem(p: Project, a: { id: string; patch: Record<string, unknown> }) {
   const f = findItem(p, a.id), it = f.item as any;
   if ('id' in a.patch && a.patch.id !== a.id) throw new CommandError('id: an item id cannot be changed', 'cmd.idFixed');
+  // a parent that is missing or would close a loop made a project.json that loaded nowhere (checkItem sees one item only)
+  if (typeof a.patch.parent === 'string') {
+    if (a.patch.parent === a.id) throw new CommandError('An item cannot be attached to itself', 'cmd.attachSelf');
+    for (let x: AnyItem | undefined = findItem(p, a.patch.parent).item, seen = new Set<string>(); x?.parent !== undefined && !seen.has(x.id); x = findItem(p, x.parent).item) {
+      seen.add(x.id);
+      if (x.parent === a.id) throw new CommandError('Cannot attach to an item that is attached to it', 'cmd.attachLoop');
+    }
+  }
+  // only the fields of this kind of item: zod drops the others in checkItem, but the patch itself was written as given
+  const known = new Set(Object.keys(ITEM_Z[f.track.kind].shape));
   const next = { ...plain(it), ...a.patch };
   for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
   // a new length from the panel keeps the fades inside the clip unless the fades themselves are being set
@@ -73,7 +83,7 @@ export function updateItem(p: Project, a: { id: string; patch: Record<string, un
     const src = next.source ?? c.source, has = p.sources[src]?.duration ?? Infinity, need = Math.max(0, r6(c.in + next.in - oldIn)) + slen * r6(c.rate * k);
     if (need > has + 1e-6 * (1 + slen)) throw new CommandError(`${field}: the clip's own sound runs past the end of source "${src}" (needs ${n3(need)} s, has ${n3(has)} s)`, 'cmd.ownSoundPastEnd', { source: src, need: n3(need), have: n3(has) });
   }
-  for (const [key, v] of Object.entries(a.patch)) { if (v === undefined) delete it[key]; else it[key] = plain(v); }
+  for (const [key, v] of Object.entries(a.patch)) { if (v === undefined) delete it[key]; else if (known.has(key)) it[key] = plain(v); }
   if (fitsFades) fitFades(f.track, it);
   // the sound's in stops at its source's start, as followTrim and slip stop it
   for (const c of own) { c.source = it.source; c.in = Math.max(0, r6(c.in + it.in - oldIn)); c.rate = r6(c.rate * k); }

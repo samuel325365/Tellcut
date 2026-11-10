@@ -184,3 +184,15 @@ test('a number that is not one (NaN, Infinity: an emptied field) is refused with
   // what is still allowed: a finite value, clamped as before
   expect(run(fixture(), setTrack, { id: 'mu', patch: { gain: 99 } }).tracks.find((t) => t.id === 'mu')!.gain).toBe(12);
 });
+test('updateItem refuses a parent that is missing, the item itself or hangs on it; keys the schema does not know are not written', () => {
+  const code = (f: () => unknown, c: string) => expect(f).toThrow(expect.objectContaining({ code: c }));
+  code(() => run(fixture(), updateItem, { id: 'tap', patch: { parent: 'nope' } }), 'cmd.noItem');
+  code(() => run(fixture(), updateItem, { id: 'blk', patch: { parent: 'blk' } }), 'cmd.attachSelf');
+  code(() => run(fixture(), updateItem, { id: 'blk', patch: { parent: 'tap' } }), 'cmd.attachLoop');   // tap hangs on blk
+  expect(item(run(fixture(), updateItem, { id: 'tap2', patch: { parent: 'c1' } }), 'tap2').parent).toBe('c1');
+  expect(item(run(fixture(), updateItem, { id: 'tap2', patch: { parent: undefined } }), 'tap2').parent).toBeUndefined();
+  // a key of another kind of item (toEnd belongs to music) or a typo is left out; the known ones are still set
+  const p = run(fixture(), updateItem, { id: 'c1', patch: { toEnd: true, lable: 'x', label: 'ok' } });
+  expect(item(p, 'c1')).toMatchObject({ label: 'ok' });
+  expect(['toEnd' in item(p, 'c1'), 'lable' in item(p, 'c1')]).toEqual([false, false]);
+});
