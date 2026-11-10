@@ -11,7 +11,7 @@ import { parseArgsOrExit } from './args.ts';
 const USAGE = '用法：npx tsx tools/prepare.ts --project projects/<專案> [--force]';
 
 async function main() {
-  const a = parseArgsOrExit(process.argv.slice(2), { '--project': 'value', '--force': 'switch' }, USAGE);
+  const a = parseArgsOrExit(process.argv.slice(2), { '--project': 'value', '--force': 'switch' }, USAGE, { maxWords: 0 });
   const dir = resolve(a.get('--project') ?? '');
   if (!existsSync(join(dir, 'project.json'))) { console.error(USAGE); process.exit(2); }   // before the lock makes a cache/ there
   // the project's export lock, as render and the server's export take it for their own prepare step: cutting into cache/ beside

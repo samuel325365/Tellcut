@@ -120,7 +120,7 @@ export async function stopServer(port: number, pids: number[], s: Stopper = STOP
 
 async function main() {
   const usage = '用法：npm run server:restart -- [--port 5174] [--wait] [--force]';
-  const a = parseArgsOrExit(process.argv.slice(2), { '--port': 'value', '--wait': 'switch', '--force': 'switch' }, usage), flag = (k: string) => a.has(k);
+  const a = parseArgsOrExit(process.argv.slice(2), { '--port': 'value', '--wait': 'switch', '--force': 'switch' }, usage, { maxWords: 0 }), flag = (k: string) => a.has(k);
   const port = a.has('--port') ? Number(a.get('--port')) : readServerInfo()?.port ?? DEFAULT_PORT;
   if (!Number.isInteger(port) || port <= 0) { console.error(usage); process.exit(2); }
   const base = `http://127.0.0.1:${port}`;

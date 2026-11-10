@@ -90,3 +90,12 @@ test('save --type names that block of a module with several (I2)', async () => {
   expect(s).toMatch(/fx\.chalk-line +粉筆底線 — 底線/);
   expect(s).toMatch(/fx\.chalk-title +chalk-title/);
 });
+
+test('each command refuses a word more than it takes, before doing anything; use takes any number of slugs', async () => {
+  const projects = setup();
+  await run(projects, 'save', 'p1', 'fx/chalk.js');
+  for (const args of [['list', 'x'], ['save', 'p1', 'fx/chalk.js', 'x'], ['use', 'p2', '--style', 'street-jazz', 'x'], ['refresh', 'chalk-title', 'x'], ['remove', 'chalk-title', 'x']])
+    await expect(run(projects, ...args), args.join(' ')).rejects.toThrow('多了用不到的字：「x」');
+  expect(await run(projects, 'list')).toContain('chalk-title');   // remove … x removed nothing
+  await expect(run(projects, 'use', 'p2', 'chalk-title', 'nope')).rejects.toThrow(/nope/);   // a second slug is read, not refused as a word too many
+});

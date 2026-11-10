@@ -60,3 +60,8 @@ test('promote-style moves one style file into the library and gives it the next 
     await expect(planStylePromotion({ dir, id: 'nope', library: lib, handlesFile })).rejects.toThrow('專案裡沒有風格');
   } finally { rmSync(lib, { recursive: true, force: true }); }
 });
+
+test('a word more than the project is refused before any music is written', async () => {
+  await expect(main([id, 'extra', '--style', 'lofi', '--length', '4'])).rejects.toThrow('多了用不到的字：「extra」');
+  expect(existsSync(join(dir, 'media'))).toBe(false);
+});

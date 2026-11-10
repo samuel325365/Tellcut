@@ -22,7 +22,11 @@ const LIBRARY_FLAGS: FlagSpec = { '--replace': 'switch', '--keep-both': 'switch'
 /** projects: the projects folder (tests point it elsewhere); thumb: false skips drawing thumbnails (no Chrome) */
 export async function libraryCommand(args: string[], o: { projects?: string; thumb?: boolean } = {}): Promise<string> {
   const projects = o.projects ?? join(TELLCUT_ROOT, 'projects'), root = libraryRoot(projects);
-  const flags = parseArgs(args, LIBRARY_FLAGS, USAGE);
+  let flags = parseArgs(args, LIBRARY_FLAGS, USAGE);
+  // the words each command takes, itself included (use takes any number of slugs, one with --style): a word too many was dropped
+  const WORDS: Record<string, number | undefined> = { list: 1, save: 3, use: flags.has('--style') ? 3 : undefined, refresh: 2, remove: 2 };
+  const cmd0 = flags.words[0] ?? '', most = Object.hasOwn(WORDS, cmd0) ? WORDS[cmd0] : undefined;
+  if (most !== undefined) flags = parseArgs(args, LIBRARY_FLAGS, USAGE, { maxWords: most });
   const thumb = o.thumb !== false && !flags.has('--no-thumb');
   const [cmd, ...rest] = flags.words;
   // a project id as everywhere else (no ../, no _library or other _ folder, the folder's own spelling): the copy and its links

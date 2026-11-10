@@ -32,7 +32,7 @@ const USAGE = '用法：npm run score -- <專案> --style <風格> [--length 秒
 const SCORE_FLAGS: FlagSpec = { '--styles': 'switch', '--style': 'value', '--length': 'value', '--bpm': 'value', '--key': 'value', '--seed': 'value', '--name': 'value' };
 
 export async function main(argv: string[]): Promise<string> {
-  const flags = parseArgs(argv, SCORE_FLAGS, `${USAGE}\n   或：npm run score -- --styles [<專案>]`), [id] = flags.words;
+  const flags = parseArgs(argv, SCORE_FLAGS, `${USAGE}\n   或：npm run score -- --styles [<專案>]`, { maxWords: 1 }), [id] = flags.words;
   const loaded = await loadAllStyles(id ? projectDir(id) : undefined);
   if (flags.has('--styles')) return `配樂風格：\n${listStyles(loaded, listLibrary(libraryRoot(join(TELLCUT_ROOT, 'projects'))).styles)}`;
   const style = flags.get('--style');

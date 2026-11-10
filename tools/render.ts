@@ -24,7 +24,7 @@ export function renderArgs(get: (k: string) => string | undefined): RenderArgs {
 }
 
 async function main() {
-  const a = parseArgsOrExit(process.argv.slice(2), RENDER_FLAGS, USAGE);
+  const a = parseArgsOrExit(process.argv.slice(2), RENDER_FLAGS, USAGE, { maxWords: 0 });
   const projectId = a.get('--project')!, pdir = projectArgOrExit(projectId, USAGE);
   let times: RenderArgs;
   try { times = renderArgs(a.get); } catch (e) { console.error((e as Error).message); process.exit(2); }

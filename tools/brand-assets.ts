@@ -76,7 +76,7 @@ export async function buildBrandAssets(o: { outDir: string; fontFile: string; pn
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  parseArgsOrExit(process.argv.slice(2), {}, '用法：npm run brand-assets');
+  parseArgsOrExit(process.argv.slice(2), {}, '用法：npm run brand-assets', { maxWords: 0 });
   const out = join(TELLCUT_ROOT, 'docs', 'brand');
   const files = await buildBrandAssets({ outDir: out, fontFile: await ensureNunito(), png: true });
   copyFileSync(join(out, 'tellcut-logo.svg'), join(TELLCUT_ROOT, 'tools', 'fixtures', 'brand', 'tellcut.svg'));
