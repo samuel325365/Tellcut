@@ -8,13 +8,15 @@ import { drawRoutePage, pageState, type PageP, type PageS } from './routepage.ts
 import { canvasAt, parsePairs, penPath, snake, spline, freeCanvas } from './inkline.ts';
 import { fitPx, EMOJI_STACK } from './text.ts';
 import { withAlpha } from './color.ts';
+import { HAND } from './hand.ts';
 
 interface P extends PageP {
   look: 'card' | 'page'; heads: string; stops: number; hidden: number; names: string; start: string; startIcon: string; from: number; to: number; beat: number; upto: number; already: number; nameSize: number;
   x: number; y: number; w: number; h: number; tilt: number; dim: number; font: string; numFont: string; paper: string; ink: string; accent: string; hl: string;
 }
 interface Stop { num: HTMLElement; name: HTMLElement }
-interface S { page?: PageS; dim: HTMLElement; card: HTMLElement; cv: HTMLCanvasElement; rule: HTMLElement; heads: HTMLElement[]; stops: Stop[]; start: HTMLElement; icon: HTMLElement; key: string }
+/** hand: look page's hand font, kept for ready() (which gets no params) */
+interface S { page?: PageS; hand: string; dim: HTMLElement; card: HTMLElement; cv: HTMLCanvasElement; rule: HTMLElement; heads: HTMLElement[]; stops: Stop[]; start: HTMLElement; icon: HTMLElement; key: string }
 
 /** the card in the frame: a w×h share of the short side, shrunk to fit the safe area; u is one pixel of the 864-wide original */
 export function routeBox(p: Pick<P, 'x' | 'y' | 'w' | 'h'>, W: number, H: number, safe: Theme['safe']) {
@@ -99,11 +101,13 @@ export const route: ItemType<P, S> = {
     cssCamel(card, { overflow: 'hidden', boxSizing: 'border-box', transformOrigin: '50% 100%' });
     cssCamel(cv, { left: '0', top: '0', width: '100%', height: '100%' });
     for (const el of [start, icon]) cssCamel(el, { whiteSpace: 'pre', lineHeight: '1', transform: 'translate(-50%, 0)' });
-    return { dim, card, cv, rule, heads: [], stops: [], start, icon, key: '', page: ctx.params.look === 'page' ? pageState(ctx.root) : undefined };
+    return { dim, card, cv, rule, heads: [], stops: [], start, icon, key: '', hand: ctx.params.handFont, page: ctx.params.look === 'page' ? pageState(ctx.root) : undefined };
   },
   async ready(s) {
     if (!s.page || typeof document === 'undefined' || !document.fonts) return;
-    await Promise.all(["700 40px 'LXGW WenKai TC'", "400 40px 'LXGW WenKai TC'"].map((f) => document.fonts.load(f, '站分鐘').catch(() => [])));
+    // the page's hand font, and the default handFamily falls back to
+    const faces = [...new Set([s.hand || HAND, HAND])];
+    await Promise.all(faces.flatMap((f) => [`700 40px '${f}'`, `400 40px '${f}'`]).map((f) => document.fonts.load(f, '站分鐘').catch(() => [])));
   },
   hide(s) { freeCanvas(s.cv, s.page?.cv); },
   draw(ctx, s) {

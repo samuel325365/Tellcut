@@ -11,6 +11,7 @@ import { stamp } from './stamp.ts';
 import { tableLayout, versus } from './versus.ts';
 import tokenItems from './token.ts';
 import { commonItems } from './index.ts';
+import { route } from './route.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -170,5 +171,15 @@ describe('common.token', () => {
     try { const { s } = run(token, { steps: '0|第一次|1|none\n1|第二次|2|made' }, 0.5); await token.ready!(s); } finally { (document as any).fonts = was; }
     expect(calls.some(([f]) => f.includes('Permanent Marker'))).toBe(true);
     expect(calls.some(([f, t]) => f.includes('Noto Sans TC') && t.includes('第二次'))).toBe(true);
+  });
+});
+
+describe('common.route look page', () => {
+  test("ready loads the hand font the page asks for (and the default it falls back to)", async () => {
+    const calls: string[] = [], was = (document as any).fonts;
+    (document as any).fonts = { load: async (f: string) => { calls.push(f); return []; } };
+    try { const { s } = run(route, { look: 'page', handFont: 'Huninn' }, 0.5); await route.ready!(s); } finally { (document as any).fonts = was; }
+    expect(calls.filter((f) => f.includes('Huninn')).length).toBe(2);
+    expect(calls.some((f) => f.includes('LXGW WenKai TC'))).toBe(true);
   });
 });
