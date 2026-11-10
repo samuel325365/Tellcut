@@ -9,7 +9,7 @@ export function itemMediaIssues(type: ItemType, item: SceneItem, project: Projec
   let m: { videos: Array<{ source: string }>; stills: Array<{ source: string }>; peaks?: string[] };
   try { m = type.media({ ...item, params: withDefaults(type.params, item.params) }, project, types); }
   catch (e) { return [`media(): ${(e as Error)?.message ?? e}`]; }
-  const bad = new Set([...[...m.videos, ...m.stills].map((r) => r.source), ...(m.peaks ?? [])].filter((s) => !(s in project.sources)));
+  const bad = new Set([...[...m.videos, ...m.stills].map((r) => r.source), ...(m.peaks ?? [])].filter((s) => !Object.hasOwn(project.sources, s)));
   return [...bad].map((s) => `unknown source "${s}"`);
 }
 

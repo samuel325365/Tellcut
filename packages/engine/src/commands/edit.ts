@@ -25,7 +25,7 @@ export function checkItem(p: Project, kind: TrackKind, raw: Record<string, unkno
   const it = r.data as any;
   if (!(it.end > it.start)) throw new CommandError('end: end must be greater than start', 'cmd.endBeforeStart');
   if ('source' in it) {
-    const s = p.sources[it.source];
+    const s = Object.hasOwn(p.sources, it.source) ? p.sources[it.source] : undefined;
     if (!s) throw new CommandError(`source: unknown source "${it.source}"`, 'cmd.noSource', { source: it.source });
     if (it.in >= s.duration) throw new CommandError(`in: ${it.in} s is past the end of source "${it.source}" (${s.duration} s)`, 'cmd.inPastEnd', { in: it.in, source: it.source, have: s.duration });
   }
@@ -40,7 +40,7 @@ export function checkItem(p: Project, kind: TrackKind, raw: Record<string, unkno
     if (it.in + used > has + 1e-6 * (1 + len))
       throw new CommandError(`end: the clip runs past the end of source "${it.source}" (needs ${n3(it.in + used)} s, has ${n3(has)} s)`, 'cmd.clipPastEnd', { source: it.source, need: n3(it.in + used), have: n3(has) });
   }
-  if ('media' in it && !(it.media in p.media)) throw new CommandError(`media: unknown media "${it.media}"`, 'cmd.noMedia', { media: it.media });
+  if ('media' in it && !Object.hasOwn(p.media, it.media)) throw new CommandError(`media: unknown media "${it.media}"`, 'cmd.noMedia', { media: it.media });
   return it;
 }
 
@@ -112,7 +112,7 @@ export function addSources(p: Project, a: { sources?: Project['sources']; media?
   const added: string[] = [];
   for (const [map, into] of [[a.sources ?? {}, p.sources], [a.media ?? {}, p.media]] as const) {
     for (const [id, entry] of Object.entries(map)) {
-      if (id in p.sources || id in p.media) throw new CommandError(`Source "${id}" already exists`, 'cmd.sourceExists', { id });
+      if (Object.hasOwn(p.sources, id) || Object.hasOwn(p.media, id)) throw new CommandError(`Source "${id}" already exists`, 'cmd.sourceExists', { id });
       if (have.has(key(entry.path))) continue;
       have.add(key(entry.path));
       (into as Record<string, unknown>)[id] = plain(entry);

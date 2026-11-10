@@ -126,10 +126,11 @@ export const ProjectZ = ProjectShape.superRefine((p, ctx) => {
       seen.add(it.id);
       if (!(it.end > it.start)) ctx.addIssue({ code: 'custom', path: [...path, 'end'], message: 'end must be greater than start' });
       if (it.parent !== undefined && !ids.has(it.parent)) ctx.addIssue({ code: 'custom', path: [...path, 'parent'], message: `unknown parent "${it.parent}"` });
-      if ('source' in it && !(it.source in p.sources)) ctx.addIssue({ code: 'custom', path: [...path, 'source'], message: `unknown source "${it.source}"` });
-      if ('source' in it && it.source in p.sources && it.in >= p.sources[it.source].duration)
+      // own keys only: an id like "constructor" is found on every object's prototype
+      if ('source' in it && !Object.hasOwn(p.sources, it.source)) ctx.addIssue({ code: 'custom', path: [...path, 'source'], message: `unknown source "${it.source}"` });
+      if ('source' in it && Object.hasOwn(p.sources, it.source) && it.in >= p.sources[it.source].duration)
         ctx.addIssue({ code: 'custom', path: [...path, 'in'], message: `in (${it.in} s) is past the end of source "${it.source}" (${p.sources[it.source].duration} s)` });
-      if ('media' in it && !(it.media in p.media)) ctx.addIssue({ code: 'custom', path: [...path, 'media'], message: `unknown media "${it.media}"` });
+      if ('media' in it && !Object.hasOwn(p.media, it.media)) ctx.addIssue({ code: 'custom', path: [...path, 'media'], message: `unknown media "${it.media}"` });
     });
   });
   // a loop of parents has no time: the file was written, then opened nowhere (player, editor, export all threw)

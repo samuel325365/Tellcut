@@ -167,3 +167,9 @@ test("a new source from the properties panel takes the clip's own sound along (l
   // the new source's length bounds the sound too: frozen at 1 s the picture needs 2 s of it, the sound at 2× all 4 s, 8 s
   expect(() => run(p, updateItem, { id: 'c1', patch: { source: 't', in: 2, speed: 2, freezeAt: 1 } })).toThrow(/own sound runs past the end of source "t"/);
 });
+
+test('a source or media id named like an Object property is neither taken as existing nor as declared', () => {
+  const p = fixture();
+  expect(addSources(p, { sources: { constructor: { path: 'x.mp4', duration: 5 } as any } })).toEqual(['constructor']);
+  expect(() => run(fixture(), updateItem, { id: 'm1', patch: { media: 'toString' } })).toThrow('media: unknown media "toString"');
+});

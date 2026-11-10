@@ -148,3 +148,11 @@ test('meta.preset is optional; its styles default to none', () => {
   p.meta.preset = { id: 'custom', fields: { ratio: '9:16', length: '45' } };
   expect(parseProject(p).meta.preset).toEqual({ id: 'custom', styles: [], fields: { ratio: '9:16', length: '45' } });
 });
+
+test('a source or media id named like an Object property (constructor, toString) is not taken as declared', async () => {
+  const { itemMediaIssues } = await import('./validate.ts');
+  const bad = minimalProject(); bad.tracks[0].items[0].source = 'constructor'; bad.tracks[1].items[0].media = 'toString';
+  expect(() => parseProject(bad)).toThrow(/unknown source "constructor"[\s\S]*unknown media "toString"|unknown media "toString"[\s\S]*unknown source "constructor"/);
+  const type: any = { type: 'x.pic', params: [{ key: 'src', label: 's', type: 'string', default: '' }], media: (it: any) => ({ videos: [], stills: [{ source: it.params.src }] }) };
+  expect(itemMediaIssues(type, { id: 'a', type: 'x.pic', start: 0, end: 1, params: { src: 'hasOwnProperty' } } as any, parseProject(minimalProject()))).toEqual(['unknown source "hasOwnProperty"']);
+});
