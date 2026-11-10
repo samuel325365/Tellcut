@@ -10,10 +10,23 @@ interface P {
   font: string; markFont: string; paper: string; ink: string; accent: string; hl: string;
 }
 interface Tape { t: HTMLElement; inner: HTMLElement }
-interface S { dim: HTMLElement; tapes: Tape[]; seal: HTMLElement; mark: HTMLElement; label: HTMLElement; hint: HTMLElement }
+/** `meas`: a hidden run of the tape's repeat, measured once per word and size (`unit`, under `unitKey`) */
+interface S { dim: HTMLElement; tapes: Tape[]; seal: HTMLElement; mark: HTMLElement; label: HTMLElement; hint: HTMLElement; meas: HTMLElement; unit: number; unitKey: string }
 
+const SEP = '　・　';
 /** the tape's words repeated along it */
-export const tapeText = (word: string, times = 14) => (word ? Array(times).fill(word).join('　・　') : '');
+export const tapeText = (word: string, times = 14) => (word ? Array(times).fill(word).join(SEP) : '');
+/** how far a tape's words sit from the tape's start, `x` px into their drift (`dir` -1 leftwards, 1 rightwards) from `start`: kept
+ *  within one repeat (`unit` px, a word and its separator) left of the start, so neither end of the words ever comes into view
+ *  however long the item lasts (the rightward tape's first word left its start bare after about 4.5 s). The leftward one is exactly
+ *  as before for its first repeat; the rightward one sits a whole repeat further left, which looks the same. Unit 0 (not measured)
+ *  leaves the drift unwrapped. */
+export function tapeShift(x: number, start: number, unit: number, dir: 1 | -1): number {
+  if (!(unit > 0)) return start + dir * x;
+  const m = x % unit;
+  return dir < 0 ? start - m : start - (m ? unit - m : 0);
+}
+const MEAS_REPEATS = 20;
 
 export const mystery: ItemType<P, S> = {
   type: 'common.mystery', label: '問號懸念', category: 'moment', kind: 'overlay',
@@ -39,23 +52,32 @@ export const mystery: ItemType<P, S> = {
     const dim = abs(ctx.root);
     cssCamel(dim, { inset: '0' });
     const tapes = [0, 1].map(() => { const t = abs(ctx.root), inner = abs(t); cssCamel(t, { overflow: 'hidden', whiteSpace: 'nowrap' }); cssCamel(inner, { left: '0', top: '0', whiteSpace: 'pre', fontWeight: '900' }); return { t, inner }; });
-    const seal = abs(ctx.root), mark = abs(seal), label = abs(ctx.root), hint = abs(ctx.root);
+    const seal = abs(ctx.root), mark = abs(seal), label = abs(ctx.root), hint = abs(ctx.root), meas = abs(ctx.root);
+    cssCamel(meas, { left: '0', top: '0', whiteSpace: 'pre', fontWeight: '900', visibility: 'hidden' });
     cssCamel(seal, { borderRadius: '50%', boxSizing: 'border-box' });
     cssCamel(mark, { left: '50%', top: '50%', transform: 'translate(-50%, -50%)', whiteSpace: 'pre', lineHeight: '1', fontWeight: '900' });
     for (const el of [label, hint]) cssCamel(el, { whiteSpace: 'pre', lineHeight: '1.2', fontWeight: '900', paintOrder: 'stroke fill', color: '#ffffff' });
-    return { dim, tapes, seal, mark, label, hint };
+    return { dim, tapes, seal, mark, label, hint, meas, unit: 0, unitKey: '' };
   },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, u = (Math.min(W, H) / 1080) * (p.size / 0.426), cx = p.x * W, cy = p.y * H, d = 460 * u;
     const font = `'${p.font}', 'Noto Sans TC', sans-serif`, out = 1 - prog(local, dur - 0.15, dur), room = W * (1 - 2 * theme.safe.side);
     cssCamel(s.dim, { background: `radial-gradient(ellipse at ${p.x * 100}% ${p.y * 100 + 2}%, ${withAlpha(p.ink, 0.36 * clamp(p.dim))} 0%, ${withAlpha(p.ink, clamp(p.dim))} 70%)`, opacity: String(prog(local, 0, 0.25) * out) });
-    // the tapes unroll left to right, their words drifting opposite ways
+    // the tapes unroll left to right, their words drifting opposite ways. One repeat's width, from many in a row (offsetWidth is
+    // whole px and untouched by the stage's scale), measured again only when the word or its size changes
+    const unitKey = JSON.stringify([p.tape, font, 50 * u, 6 * u]);
+    if (s.unitKey !== unitKey) {
+      s.unitKey = unitKey;
+      s.meas.textContent = p.tape ? (p.tape + SEP).repeat(MEAS_REPEATS) : '';
+      cssCamel(s.meas, { fontFamily: font, fontSize: `${50 * u}px`, letterSpacing: `${6 * u}px` });
+      s.unit = s.meas.offsetWidth / MEAS_REPEATS;
+    }
     s.tapes.forEach(({ t, inner }, i) => {
       const q = eOut(prog(local, 0.15 + i * 0.12, 0.45 + i * 0.12)), text = tapeText(p.tape);
       if (inner.textContent !== text) inner.textContent = text;
       cssCamel(t, { display: text ? 'block' : 'none', left: `${-0.2 * W}px`, top: `${cy + (i ? 134 : -134) * u - 46 * u}px`, width: `${1.4 * W}px`, height: `${92 * u}px`,
         background: i ? p.hl : p.paper, transform: `rotate(${i ? 9 : -14}deg)`, boxShadow: `0 ${6 * u}px ${14 * u}px rgba(0,0,0,0.35)`, opacity: String(q * out), clipPath: `inset(0 ${(1 - q) * 100}% 0 0)` });
-      cssCamel(inner, { fontFamily: font, fontSize: `${50 * u}px`, lineHeight: `${92 * u}px`, letterSpacing: `${6 * u}px`, color: p.ink, transform: `translateX(${(i ? 1 : -1) * local * 90 * u - 200 * u}px)` });
+      cssCamel(inner, { fontFamily: font, fontSize: `${50 * u}px`, lineHeight: `${92 * u}px`, letterSpacing: `${6 * u}px`, color: p.ink, transform: `translateX(${tapeShift(local * 90 * u, -200 * u, s.unit, i ? 1 : -1)}px)` });
     });
     // the seal spins in and then sways on the beat
     const ps = prog(local, 0.05, 0.4), sway = Math.sin((local * Math.PI * 2) / (p.beat * 2)) * 3;
