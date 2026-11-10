@@ -46,11 +46,6 @@ export function cssCamel(el: Element, props: Record<string, string>) {
   const e = el as El; const c = e._c || (e._c = {});
   for (const k in props) { const v = props[k]; if (c[k] !== v) { c[k] = v; (e.style as any)[k] = v; } }
 }
-/** Sets kebab-case properties / CSS variables via setProperty, skipping unchanged values. */
-export function cssKebab(el: Element, props: Record<string, string>) {
-  const e = el as El; const c = e._c || (e._c = {});
-  for (const k in props) { const v = props[k]; if (c[k] !== v) { c[k] = v; e.style.setProperty(k, v); } }
-}
 export function attr(el: Element, props: Record<string, string | number>) {
   const e = el as unknown as El; const c = e._a || (e._a = {});
   for (const k in props) { const v = String(props[k]); if (c[k] !== v) { c[k] = v; el.setAttribute(k, v); } }

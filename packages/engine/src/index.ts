@@ -1,4 +1,3 @@
-export const ENGINE_VERSION = 1 as const;
 export * from './schema.ts';
 export * from './time.ts';
 export * from './util.ts';
