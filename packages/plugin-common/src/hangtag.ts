@@ -1,13 +1,22 @@
 // common.hangtag — an evidence-style hang tag slammed onto the picture: a big "+12", the name, its original name in small italics
 // and a one-line quip on a pill; then the "+12" flies off to a point (a common.gauge, a score) and lands with a ring.
 // Promoted from the baking-sin short's fx.sinStamp; also prices, calories, points, a counter that adds up.
-import { abs, clamp, cssCamel, eOut3 as eOut, h, type ItemType, prog } from '@tellcut/engine';
+import { abs, clamp, cssCamel, eOut3 as eOut, h, type ItemType, prog, textEm } from '@tellcut/engine';
 
 interface P {
   value: string; name: string; sub: string; quip: string; x: number; y: number; tilt: number; size: number; toX: number; toY: number;
   font: string; paper: string; ink: string; accent: string; hl: string;
 }
 interface S { tag: HTMLElement; hole: HTMLElement; value: HTMLElement; name: HTMLElement; sub: HTMLElement; quip: HTMLElement; fly: HTMLElement; ring: HTMLElement }
+
+/** how much the tag's words shrink (1 = full size, down to 0.4) so the tag, centred on `ax`, keeps within `left`..`right`:
+ *  its words do not wrap, so a long name or quip widened it past the frame. The value and the name (or the line under it) sit side
+ *  by side, the quip's pill under them; the 40 px padding each side and the ~4 px gap keep their size. Estimated (textEm). */
+export function tagFit(p: Pick<P, 'value' | 'name' | 'sub' | 'quip'>, k: number, ax: number, left: number, right: number): number {
+  const room = 2 * Math.min(ax - left, right - ax) - 80 * k;
+  const row = 92 * k * textEm(p.value) + Math.max(64 * k * textEm(p.name), 28 * k * textEm(p.sub)), pill = p.quip ? (34 * textEm(p.quip) + 36) * k : 0;
+  return Math.max(0.4, Math.min(1, row > 0 ? (room - 4) / row : 1, pill > 0 ? room / pill : 1));
+}
 
 /** the slam: big, then landing (0.14 s) with a small bounce, a little smaller as it leaves */
 export const tagScale = (t: number, dur: number) => {
@@ -46,17 +55,19 @@ export const hangtag: ItemType<P, S> = {
     return { tag, hole, value, name, sub, quip, fly, ring };
   },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, local: t, dur } = ctx, k = (Math.min(W, H) / 1080) * p.size, font = `'${p.font}', 'Noto Sans TC', sans-serif`;
+    const p = ctx.params, { W, H, local: t, dur, theme } = ctx, k = (Math.min(W, H) / 1080) * p.size, font = `'${p.font}', 'Noto Sans TC', sans-serif`;
     const alpha = clamp(prog(t, 0, 0.14) * 3) * (1 - prog(t, dur - 0.14, dur)), ax = p.x * W, ay = p.y * H;
     cssCamel(s.tag, { left: `${ax}px`, top: `${ay}px`, minWidth: `${400 * k}px`, padding: `${30 * k}px ${40 * k}px ${p.quip ? 26 * k : 34 * k}px`, borderRadius: `${18 * k}px`,
       background: p.paper, boxShadow: `inset 0 0 0 ${10 * k}px ${p.paper}, inset 0 0 0 ${16 * k}px ${p.accent}, ${10 * k}px ${12 * k}px 0 rgba(0,0,0,0.35)`,
       fontFamily: font, opacity: String(alpha), transform: `translate(-50%, -50%) rotate(${p.tilt}deg) scale(${tagScale(t, dur)})` });
     cssCamel(s.hole, { left: `${25 * k}px`, top: `${25 * k}px`, width: `${18 * k}px`, height: `${18 * k}px`, borderRadius: '50%', background: p.ink });
+    // the words (and the quip's pill) shrink together when the tag would run past the safe sides
+    const f = tagFit(p, k, ax, theme.safe.side * W, (1 - theme.safe.side) * W);
     s.value.textContent = p.value; s.name.textContent = p.name; s.sub.textContent = p.sub; s.quip.textContent = p.quip;
-    cssCamel(s.value, { fontSize: `${92 * k}px`, fontWeight: '900', color: p.accent });
-    cssCamel(s.name, { fontSize: `${64 * k}px`, fontWeight: '900', color: p.ink });
-    cssCamel(s.sub, { display: p.sub ? 'block' : 'none', fontSize: `${28 * k}px`, fontStyle: 'italic', fontWeight: '500', fontFamily: "'Noto Serif TC', serif", color: '#8a6a55' });
-    cssCamel(s.quip, { display: p.quip ? 'inline-block' : 'none', marginTop: `${16 * k}px`, fontSize: `${34 * k}px`, fontWeight: '700', padding: `${8 * k}px ${18 * k}px`, borderRadius: `${25 * k}px`, background: p.ink, color: p.paper });
+    cssCamel(s.value, { fontSize: `${92 * k * f}px`, fontWeight: '900', color: p.accent });
+    cssCamel(s.name, { fontSize: `${64 * k * f}px`, fontWeight: '900', color: p.ink });
+    cssCamel(s.sub, { display: p.sub ? 'block' : 'none', fontSize: `${28 * k * f}px`, fontStyle: 'italic', fontWeight: '500', fontFamily: "'Noto Serif TC', serif", color: '#8a6a55' });
+    cssCamel(s.quip, { display: p.quip ? 'inline-block' : 'none', marginTop: `${16 * k}px`, fontSize: `${34 * k * f}px`, fontWeight: '700', padding: `${8 * k * f}px ${18 * k * f}px`, borderRadius: `${25 * k * f}px`, background: p.ink, color: p.paper });
     // the flying value, then a ring where it lands
     const fp = prog(t, 0.12, 0.45), fly = p.toX >= 0 && fp > 0 && fp < 1, x1 = p.toX * W, y1 = p.toY * H;
     s.fly.textContent = p.value;

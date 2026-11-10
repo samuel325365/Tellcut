@@ -98,7 +98,8 @@ export const card: ItemType<P, S> = {
     // coming and going: the whole stack moves together
     let dy = 0, rot = p.tilt, alpha = 1;
     if (p.enter === 'deal') { const e = eBack(clamp(local / 0.7), 1.9); dy = (1 - e) * H * 0.9; rot += (1 - e) * -14; }
-    if (p.exit) { const e = eOut3(clamp((local - (dur - 0.5)) / 0.5)); rot += e * -11; dy -= e * H; alpha = 1 - e * 0.2; }
+    // the exit takes the last 0.5 s, or the second half of a card shorter than a second (it began sliding out at its start)
+    if (p.exit) { const xw = Math.min(0.5, dur / 2), e = eOut3(clamp((local - (dur - xw)) / xw)); rot += e * -11; dy -= e * H; alpha = 1 - e * 0.2; }
     cssCamel(s.group, { left: `${p.x * W}px`, top: `${p.y * H}px`, width: `${cw}px`, height: `${ch}px`, transform: `translateY(${dy}px) rotate(${rot}deg)`, opacity: String(alpha), fontFamily: font, color: p.ink });
     const sheet = (el: HTMLElement, ox: number, oy: number, r: number, bg: string) => cssCamel(el, { left: '0', top: '0', width: `${cw}px`, height: `${ch}px`, borderRadius: `${22 * k}px`,
       background: bg, boxShadow: `0 ${10 * k}px ${26 * k}px rgba(90,50,30,0.22)`, transform: `translate(${ox}px, ${oy}px) rotate(${r}deg)` });

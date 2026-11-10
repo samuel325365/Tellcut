@@ -1,5 +1,5 @@
 // common.censor — a sticker over the mouth (or any spot) for the word that gets bleeped; pair it with the common.beep sound.
-import { cssCamel, eBack, h, prog, type ItemType } from '@tellcut/engine';
+import { cssCamel, eBack, h, prog, textEm, type ItemType } from '@tellcut/engine';
 
 interface P { label: string; size: number; y: number; angle: number; color: string; textColor: string; outline: string; font: string }
 interface S { box: HTMLElement; label: HTMLElement }
@@ -26,10 +26,12 @@ export const censor: ItemType<P, S> = {
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, w = (p.size / 100) * Math.min(W, H);
     const pop = eBack(prog(ctx.local, 0, 0.2), 2.4), wobble = 3 * Math.sin(ctx.local * 18) * prog(ctx.local, 0.2, 0.5);
     s.label.textContent = p.label;
+    // the label is one line: 22 % of the sticker's width, or smaller so a long one stays inside its border
+    const px = Math.min(w * 0.22, (w * 0.84) / Math.max(0.5, textEm(String(p.label ?? ''))));
     cssCamel(s.box, {
       top: `${p.y * H}px`, width: `${w}px`, height: `${w * 0.42}px`, background: p.color, color: p.textColor,
       border: `${theme.stroke * k}px solid ${p.outline}`, borderRadius: `${theme.radius * k}px`,
-      fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${w * 0.22}px`,
+      fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`,
       opacity: String(Math.min(1, prog(ctx.local, 0, 0.08) * 6)), transform: `translate(-50%, -50%) rotate(${p.angle + wobble}deg) scale(${pop})`,
     });
   },

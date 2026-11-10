@@ -59,3 +59,20 @@ test('the block in the picture window is built with the card, and ready() waits 
   st.draw(1);
   expect(built).toBe(1);   // the first draw keeps the block built with the card
 });
+
+test('exit: a card shorter than a second slides out over its second half, not from its start; a long card over its last 0.5 s', () => {
+  const groupAt = (end: number, t: number) => {
+    const root = document.createElement('div');
+    const st = new Stage(root, createRegistry([{ id: 'x', items: [card] } as any]), media);
+    st.load({ ...project(''), tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'c', type: 'common.card', start: 0, end, params: { enter: 'none', exit: true } }] }] });
+    st.draw(t);
+    const g = [...root.querySelectorAll<HTMLElement>('div')].find((d) => d.style.transform.startsWith('translateY('))!;
+    return Number(/translateY\((-?[\d.e-]+)px\)/.exec(g.style.transform)![1]);
+  };
+  // 0.6 s: still in place at 0.25 s (the old 0.5 s window began at 0.1 s), on its way out after 0.3 s
+  expect(groupAt(0.6, 0.25)).toBe(0);
+  expect(groupAt(0.6, 0.45)).toBeLessThan(0);
+  // 3 s: in place until 2.5 s, as before
+  expect(groupAt(3, 2.45)).toBe(0);
+  expect(groupAt(3, 2.75)).toBeLessThan(0);
+});
