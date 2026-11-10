@@ -5,7 +5,7 @@
 // a flag, a product). An optional fact chip (a big number and its source) drops in above the card after the reveal.
 // All DOM text; times are seconds from the item's start. Sized by the short side (k = min(W, H) / 1080), kept in the safe area.
 import { clamp, cssCamel, h, type ItemType } from '@tellcut/engine';
-import { fitPx } from './text.ts';
+import { EMOJI_STACK, fitPx } from './text.ts';
 import { imagesReady } from './window.ts';
 import { withAlpha } from './color.ts';
 
@@ -132,7 +132,7 @@ export const quiz: ItemType<P, S> = {
 
 /** build the card's elements (again whenever a parameter or the frame size changes) */
 function layout(ctx: Parameters<typeof quiz.draw>[0], s: S, opts: string[], cw: number, k: number) {
-  const p = ctx.params, X = (v: number) => `${v * k}px`, font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`;
+  const p = ctx.params, X = (v: number) => `${v * k}px`, font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
   s.wrap.innerHTML = '';
   cssCamel(s.wrap, { fontFamily: font });
   const card = h('div', null, null, s.wrap);

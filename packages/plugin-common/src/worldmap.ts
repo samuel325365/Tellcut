@@ -8,7 +8,7 @@ import { clamp, cssCamel, eBack, eIO3, eOut3, h, prog, type ItemType } from '@te
 import { canvasAt, spline, freeCanvas } from './inkline.ts';
 import { arcPt, cityOf, cutLine, EUROPE_TRIP, keysAt, mapPin, orthographic, parseCities, pinDrop, placeOf, placesOf, ringsPath, rowsOf, spanOf, type City, type Pt } from './geo.ts';
 import { WORLD_LAND } from './world110.ts';
-import { fitPx } from './text.ts';
+import { EMOJI_STACK, fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
@@ -202,7 +202,7 @@ export const worldmap: ItemType<P, S> = {
       if (tip && head && f < 1) {
         if (head === 'dot') { g.save(); g.fillStyle = p.paper; g.strokeStyle = p.accent; g.lineWidth = 6 * u; g.beginPath(); g.arc(tip[0], tip[1], 13 * u, 0, Math.PI * 2); g.fill(); g.stroke(); g.restore(); }
         else {
-          const e = take('heads', () => { const d = box(0); cssCamel(d, { textAlign: 'center', borderRadius: '50%', boxSizing: 'border-box', fontFamily: "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif" }); return d; }), r = 36 * u;
+          const e = take('heads', () => { const d = box(0); cssCamel(d, { textAlign: 'center', borderRadius: '50%', boxSizing: 'border-box', fontFamily: `${EMOJI_STACK}, sans-serif` }); return d; }), r = 36 * u;
           e.textContent = head;
           cssCamel(e, { left: `${tip[0] - r}px`, top: `${tip[1] - r}px`, width: `${2 * r}px`, height: `${2 * r}px`, lineHeight: `${2 * r - 8 * u}px`, fontSize: `${r * 1.05}px`,
             background: p.paper, border: `${4 * u}px solid ${p.ink}`, boxShadow: `0 ${8 * u}px ${10 * u}px rgba(0,0,0,.25)` });

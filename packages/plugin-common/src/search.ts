@@ -20,7 +20,7 @@ import { clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, textEm, with
 import { asFrame, punch } from './window.ts';
 import { caretOn, DEVICES, drawStatusBar, drawType, glyphSvg, parseSteps, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, typed, typeEl,
   type Device, type PhoneEls, type StatusBar, type TypeEl } from './phone.ts';
-import { fitPx, lineAbs, nl } from './text.ts';
+import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 export const SEARCH_MODES = ['home', 'results', 'ask', 'end', 'bar'] as const;
@@ -225,7 +225,7 @@ export const search: ItemType<P, S> = {
     if (bar) { drawPill(ctx, s); return; }
     const { sc, k, Hd, X } = phoneView(W, H, theme.safe, p);
     placePhone(s.ph, sc);
-    const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     cssCamel(s.ph.screen, { fontFamily: font, color: p.ink });
     const mode = p.mode, full = mode === 'results' && p.view === 'full', win = windowRect(mode, p.view, Hd);
     const sugg = parseSugg(p.sugg, p.query), tabs = listOf(p.tabs), xs = tabXs(tabs);

@@ -10,7 +10,7 @@
 import { clamp, cssCamel, eBack, eIO3, eOut3 as eOut, esc, h, lerp, textEm, type ItemType } from '@tellcut/engine';
 import { liveSpans } from './lockscreen.ts';
 import { avatarEl, DEVICES, drawAvatar, drawRipple, fmtCount, glyphSvg, parseSteps, phoneEls, phoneView, placePhone, rippleAt, timeSpan, type CountStyle, type Device, type PhoneEls } from './phone.ts';
-import { fitPx, lineAbs } from './text.ts';
+import { EMOJI_STACK, fitPx, lineAbs } from './text.ts';
 import { withAlpha } from './color.ts';
 import { wordsLang } from './words.ts';
 
@@ -199,7 +199,7 @@ export const reels: ItemType<P, S> = {
     const p = ctx.params, { W, H, theme, local: t } = ctx;
     const { sc, k, Hd, X } = phoneView(W, H, theme.safe, p);
     placePhone(s.ph, sc);
-    const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`, hand = `'${p.hand}', '${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, hand = `'${p.hand}', '${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     const shadow = (b: number) => `0 0 ${b * k}px rgba(0,0,0,0.45)`;
     cssCamel(s.ph.screen, { color: p.color, fontFamily: font });
     const feed = p.mode !== 'end';

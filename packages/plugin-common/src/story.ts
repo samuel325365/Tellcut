@@ -7,7 +7,7 @@
 // On 9:16 it uses the frame; on a wide or square frame it sits on the same phone as common.reels.
 import { clamp, cssCamel, eBack, eIO3, eOut3 as eOut, fitLines, h, type ItemType } from '@tellcut/engine';
 import { DEVICES, glyphSvg, ICON_KINDS, phoneEls, phoneView, placePhone, type Device, type PhoneEls } from './phone.ts';
-import { fitPx } from './text.ts';
+import { EMOJI_STACK, fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 import { WORDS, wordsLang, type WordsLang } from './words.ts';
 
@@ -80,7 +80,7 @@ export const story: ItemType<P, S> = {
     const p = ctx.params, { W, H, theme, local: t, dur } = ctx;
     const { sc, k, Hd, X } = phoneView(W, H, theme.safe, p);
     placePhone(s.ph, sc);
-    const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     // in with an overshoot, out over the last 0.2 s
     const inn = Math.max(0, eBack(clamp(t / 0.3))), out = clamp((dur - t) / 0.2), sz = p.scale * inn * (0.6 + 0.4 * out);
     const poll = p.kind === 'poll', slider = p.kind === 'slider', timer = p.kind === 'timer';
@@ -123,7 +123,7 @@ export const story: ItemType<P, S> = {
     cssCamel(s.track, { display: slider ? 'block' : 'none', position: 'relative', height: X(18), borderRadius: X(9), background: withAlpha(p.ink, 0.1) });
     cssCamel(s.bar, { position: 'absolute', left: '0', top: '0', bottom: '0', width: X(v * w), borderRadius: X(9), background: grad });
     s.thumb.textContent = p.emoji;
-    cssCamel(s.thumb, { position: 'absolute', left: X(v * w), top: '50%', transform: `translate(-50%, -50%) scale(${1 + 0.18 * mv})`, fontSize: X(84), lineHeight: '1', fontFamily: "'Segoe UI Emoji', 'Noto Color Emoji', sans-serif" });
+    cssCamel(s.thumb, { position: 'absolute', left: X(v * w), top: '50%', transform: `translate(-50%, -50%) scale(${1 + 0.18 * mv})`, fontSize: X(84), lineHeight: '1', fontFamily: `${EMOJI_STACK}, sans-serif` });
     // timer: an icon, the label and the running clock
     const ic = p.icon.trim(), known = ICON_KINDS.includes(ic);
     if (s.icon.dataset.k !== ic) { s.icon.dataset.k = ic; if (known) s.icon.innerHTML = glyphSvg(ic, '#fff', 'rgba(0,0,0,0.6)'); else s.icon.textContent = ic; }
