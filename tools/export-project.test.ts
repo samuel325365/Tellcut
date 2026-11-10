@@ -1,10 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { crc32 } from 'node:zlib';
 import { corePlugin, createRegistry, parseProject } from '@tellcut/engine';
-import { ffmpeg, prepareProject, probeDuration } from '@tellcut/media-node';
-import { exportPlan, exportProject, exportProjectTrimmed, ImportError, importProject, leftoverPaths, oddEntries, scrubText, usedRanges } from './export-project.ts';
+import { ffmpeg, ffprobe, photoMeta, prepareProject, probeDuration, probeSize, runPy } from '@tellcut/media-node';
+import { dropPlaceAndTime, exportPlan, exportProject, exportProjectAsync, exportProjectTrimmed, ImportError, importProject, leftoverPaths, oddEntries, scrubText, usedRanges } from './export-project.ts';
 
 /** a tellcut/ with one project whose footage is partly inside it and partly on another folder */
 function world() {
@@ -173,7 +173,7 @@ test('--public: the zip\u2019s history and project carry no path of this compute
   writeFileSync(join(dir, '.history/chat/chat.json'), chat);
   const { sha1Of } = await import('./export-project.ts');
   writeFileSync(join(dir, 'cache/cut-state.json'), JSON.stringify({ hash: sha1Of(readFileSync(join(dir, 'project.json'), 'utf8')) }));
-  const zip = exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } });
+  const zip = await exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut }, strip: asItIs });
   const back = importProject(zip, join(root, 'in'));
   const said = readFileSync(join(back, '.history/chat/chat.json'), 'utf8');
   expect(said).toContain('<tellcut>');
@@ -183,21 +183,81 @@ test('--public: the zip\u2019s history and project carry no path of this compute
   expect(state).toBe(sha1Of(readFileSync(join(back, 'project.json'), 'utf8')));
 });
 
-test('--public refuses a project that still names a path elsewhere on this computer, and says where', () => {
+test('--public refuses a project that still names a path elsewhere on this computer, and says where', async () => {
   const { root, dir } = world();
   writeFileSync(join(dir, 'storyboard.md'), 'shot list: D:\\Trips\\rome.mp4');
-  expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: join(root, 'tellcut') } }))
-    .toThrow(/storyboard\.md.*D:\\Trips\\rome\.mp4/);
+  await expect(exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: join(root, 'tellcut') }, strip: asItIs }))
+    .rejects.toThrow(/storyboard\.md.*D:\\Trips\\rome\.mp4/);
   expect(existsSync(join(root, 'pub.zip'))).toBe(false);
 });
 
-test('--public refuses footage that would stay outside the zip: from another folder without --media, or offline', () => {
+test('--public refuses footage that would stay outside the zip: from another folder without --media, or offline', async () => {
   const { root, tellcut, dir } = world();
   expect(() => exportProject(dir, { media: false, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/a.*--media/s);
   rmSync(join(root, 'footage', 'a.mp4'));
-  expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/a/);
+  await expect(exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut }, strip: asItIs })).rejects.toThrow(/a/);
   expect(existsSync(join(root, 'pub.zip'))).toBe(false);
 });
+
+/** a Stripper that copies: for the fake footage of world(), which is no picture or video */
+const asItIs = async (from: string, to: string) => copyFileSync(from, to);
+const SHOT = { taken: '2023-05-01T12:00:00', takenOffset: '+08:00', takenGuess: false, gps: [25.03, 121.56] };
+
+test('dropPlaceAndTime takes gps and taken off every source list, nested ones too; what is left still parses', () => {
+  const p = { version: 1, media: {}, grids: [], tracks: [],
+    meta: { name: 't', width: 320, height: 180, fps: 30, duration: 3, plugins: [], mix: { master: 0.9, compressor: { threshold: -12, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0.3 } } },
+    sources: { ph: { path: 'media/p.jpg', duration: 5, width: 64, height: 48, kind: 'image', ...SHOT }, v: { path: 'media/v.mp4', duration: 5, audio: true } } };
+  const proposal = { note: 'x', project: structuredClone(p) };
+  expect(dropPlaceAndTime(p)).toBe(true);
+  expect(p.sources.ph).toEqual({ path: 'media/p.jpg', duration: 5, width: 64, height: 48, kind: 'image' });
+  expect(parseProject(p).sources.ph.gps).toBeUndefined();
+  expect(dropPlaceAndTime(p)).toBe(false);
+  expect(dropPlaceAndTime(proposal)).toBe(true);
+  expect(proposal.project.sources.ph).not.toHaveProperty('taken');
+});
+
+test('--public: project.json and the versions in .history/ say nowhere where and when the footage was shot; a plain export keeps it', async () => {
+  const { root, tellcut, dir } = world();
+  const project = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
+  Object.assign(project.sources.b, SHOT);
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(project));
+  writeFileSync(join(dir, '.history/2026-01-01T00-00-00-000Z_000001_cut.json'), JSON.stringify(project));
+  mkdirSync(join(dir, '.history/proposals'));
+  writeFileSync(join(dir, '.history/proposals/current.json'), JSON.stringify({ project }));
+  const pub = importProject(await exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut }, strip: asItIs }), join(root, 'pub'));
+  for (const f of ['project.json', '.history/2026-01-01T00-00-00-000Z_000001_cut.json', '.history/proposals/current.json']) {
+    const text = readFileSync(join(pub, f), 'utf8');
+    for (const k of ['gps', 'taken', 'takenOffset', 'takenGuess']) expect(text, `${f} ${k}`).not.toContain(`"${k}"`);
+  }
+  expect(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).sources.b.gps).toEqual(SHOT.gps);   // the project itself keeps it
+  const plain = importProject(exportProject(dir, { media: true, out: join(root, 'plain.zip') }), join(root, 'plain'));
+  expect(JSON.parse(readFileSync(join(plain, 'project.json'), 'utf8')).sources.b.gps).toEqual(SHOT.gps);
+});
+
+test('--public --media cannot go through the synchronous exportProject (it would pack the files with their EXIF)', () => {
+  const { root, tellcut, dir } = world();
+  expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/exportProjectAsync/);
+});
+
+test('--public --media packs each photo upright without EXIF, each video without its tags, and leaves the project’s own files as they were', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'pubmedia-')), tellcut = join(root, 'tellcut'), dir = join(tellcut, 'projects', 'trip');
+  mkdirSync(join(dir, 'media'), { recursive: true });
+  const photo = join(dir, 'media', 'p.jpg'), video = join(dir, 'media', 'v.mov');
+  await runPy('fixtures.py', ['jpg', photo, '64', '48', '6', '2023:05:01 12:00:00', '25.03', '121.56', 'offset=+08:00']);   // stored sideways
+  await ffmpeg(['-display_rotation', '90', '-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=30:duration=2', '-f', 'lavfi', '-i', 'sine=duration=2',
+    '-metadata', 'location=+25.0330+121.5654/', '-metadata', 'creation_time=2024-05-01T10:00:00Z', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', video]);
+  writeFileSync(join(dir, 'project.json'), JSON.stringify({ version: 1, meta: { name: 't' }, media: {}, tracks: [],
+    sources: { p: { path: 'media/p.jpg', kind: 'image', width: 48, height: 64, ...SHOT }, v: { path: 'media/v.mov', width: 180, height: 320, duration: 2 } } }));
+  const log: string[] = [];
+  const back = importProject(await exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut }, log: (s) => log.push(s) }), join(root, 'in'));
+  expect(await photoMeta(join(back, 'media', 'p.jpg'))).toEqual({ width: 48, height: 64, taken: null, offset: null, gps: null });
+  const tags = (f: string) => ffprobe(['-show_entries', 'format_tags:stream_tags', '-of', 'json', f]);
+  expect(await tags(join(back, 'media', 'v.mov'))).not.toMatch(/location|creation_time/);
+  expect(await probeSize(join(back, 'media', 'v.mov'))).toEqual({ width: 180, height: 320 });   // still turned: the rotation stays
+  expect(log.join('\n')).toMatch(/1 張照片、1 支影片/);
+  expect((await photoMeta(photo)).gps).toEqual([25.03, 121.56]);   // the stage hard-links: the originals were never written through
+  expect(await tags(video)).toMatch(/location/);
+}, 120000);
 
 describe('--trim: only the footage the project uses', () => {
   const box = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };

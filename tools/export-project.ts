@@ -6,7 +6,8 @@
 // into media/linked/ with project.json pointing there, so the zip stands on its own. cache/ is made again; exports/ are the films
 // themselves (copy them as they are). --public (an example project for GitHub, spec 2026-10-30-showcase-films part 2) writes this
 // computer's tellcut folder as <tellcut> in every text file of the zip, and refuses footage left outside the zip or another absolute
-// path of this computer (its home included) left in them.
+// path of this computer (its home included) left in them. It also says nowhere where and when the footage was shot: the sources
+// lose gps / taken in project.json and .history/, and each photo and video packed is a copy without them in the file (EXIF, tags).
 // --trim (implies --media; CC source films are hundreds of MB each) packs, instead of each video source as it is, a copy of the same
 // length where everything the project does not use (prepare's clips, stills and sound pieces, plus TRIM_MARGIN on each side) is
 // black and silent. A copy of the same length, not the used pieces alone: every source time (the items' in/out, cut.ts, the
@@ -17,11 +18,11 @@ import { copyFileSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, 
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Project, Registry } from '@tellcut/engine';
-import { ffmpeg, mediaRefs, probeDuration, probeHasAudio, probeSize, PROJECT_ID, TELLCUT_ROOT } from '@tellcut/media-node';
+import { ffmpeg, kindOf, mediaRefs, probeDuration, probeHasAudio, probeSize, PROJECT_ID, pyJson, TELLCUT_ROOT } from '@tellcut/media-node';
 import { projectArgOrExit } from './project-arg.ts';
 import { parseArgsOrExit } from './args.ts';
 
-type Raw = { sources?: Record<string, { path: string }>; media?: Record<string, { path: string }>; [k: string]: unknown };
+type Raw = { sources?: Record<string, { path: string; [k: string]: unknown }>; media?: Record<string, { path: string }>; [k: string]: unknown };
 export interface ExportPlan { files: Array<{ from: string; to: string }>; project: Raw; outside: string[] }
 
 // cache/cut-state.json is the one cache file kept: what the last cut wrote, so a cut after the import still notices the
@@ -50,6 +51,23 @@ export function scrubText(text: string, o: { root: string }): string {
 /** the absolute paths in a text (a drive letter, /Users/…, /home/…), in order */
 export const leftoverPaths = (text: string) => [...text.matchAll(/\b[A-Za-z]:[\\/][^\s"'<>|,;]*|\/(?:Users|home)\/[^\s"'<>|,;]*/g)].map((m) => m[0]);
 const TEXT = /\.(json|jsonl|md|ts|js|txt|srt|vtt|csv)$/i;
+/** what a source says about where and when it was shot (read from a photo's EXIF or a video's tags when it came in) */
+const PLACE_AND_TIME = ['gps', 'taken', 'takenOffset', 'takenGuess'];
+/** Takes the place and time off every source list in `value` (a project, a version of one in .history/, a proposal holding
+ *  one), in place; true when there was any. All of them are optional in the schema, so the project still parses. */
+export function dropPlaceAndTime(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  let found = false;
+  for (const [k, v] of Object.entries(value)) {
+    if (k === 'sources' && v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const s of Object.values(v)) {
+        if (!s || typeof s !== 'object' || typeof (s as { path?: unknown }).path !== 'string') continue;
+        for (const key of PLACE_AND_TIME) if (key in s) { delete (s as Record<string, unknown>)[key]; found = true; }
+      }
+    } else if (dropPlaceAndTime(v)) found = true;
+  }
+  return found;
+}
 const insideOf = (dir: string, f: string) => { const r = relative(dir, resolve(dir, f)); return !!r && !r.startsWith('..') && !isAbsolute(r); };
 
 /** what goes into the zip (relative to its <id>/ folder) and the project.json it gets */
@@ -162,21 +180,67 @@ export async function trimPlan(dir: string, plan: ExportPlan, work: string, o: {
   return { ...plan, project, files: files.filter((f) => !gone.has(f) || still.has(f.to)) };
 }
 
-/** writes the zip; returns its path */
+/** a copy of one photo or video at `out` without what its file says about where and when it was shot and with what */
+export type Stripper = (from: string, out: string, kind: 'image' | 'video') => Promise<void>;
+const stripFile: Stripper = async (from, out, kind) => {
+  if (kind === 'image') { await pyJson('meta.py', ['strip', from, out]); return; }
+  // the streams as they are (no new encode), without the file's and the streams' tags (place, creation time, device) or a
+  // phone's timed metadata tracks; the rotation is the stream's side data and stays
+  await ffmpeg(['-i', from, '-map', '0:v', '-map', '0:a?', '-c', 'copy', '-map_metadata', '-1', '-map_chapters', '-1', out]);
+  const [a, b, da, db] = await Promise.all([probeSize(from), probeSize(out), probeDuration(from), probeDuration(out)]);
+  if (a.width !== b.width || a.height !== b.height || Math.abs(da - db) > 0.1) throw new Error(`重新封裝後是 ${b.width}×${b.height}、${db.toFixed(2)} 秒，原本是 ${a.width}×${a.height}、${da.toFixed(2)} 秒`);
+};
+
+/** --public with the footage: each photo and video in the zip is a copy (made in `work`) with no place, time or camera in its
+ *  file, as project.json no longer has them. One that cannot be cleaned stops the export: shipping it as it is would leak them. */
+export async function strippedPlan(plan: ExportPlan, work: string, o: { log?: (s: string) => void; strip?: Stripper } = {}): Promise<ExportPlan> {
+  const strip = o.strip ?? stripFile, own = (to: string) => OWN.includes(to) || OWN_DIRS.some((d) => to.startsWith(`${d}/`));
+  let n = 0, photos = 0, videos = 0;
+  const files = [];
+  for (const f of plan.files) {
+    const kind = own(f.to) ? null : kindOf(f.to);
+    if (kind !== 'image' && kind !== 'video') { files.push(f); continue; }
+    const out = join(work, `.strip-${n++}${extname(f.to)}`);   // never a trimmed copy's name (<source id>.mp4)
+    try { await strip(f.from, out, kind); } catch (e) { throw new Error(`沒辦法拿掉 ${f.to} 檔案裡的拍攝地點和時間（${(e as Error).message.split('\n')[0]}），--public 不能帶它`); }
+    files.push({ from: out, to: f.to });
+    if (kind === 'image') photos++; else videos++;
+  }
+  if (photos + videos) o.log?.(`拿掉了 ${photos} 張照片、${videos} 支影片檔案裡的拍攝地點和時間`);
+  return { ...plan, files };
+}
+
+/** writes the zip; returns its path. --public with the footage goes through exportProjectAsync: its photos and videos are
+ *  cleaned first */
 export function exportProject(dir: string, o: { media: boolean; out?: string; /** clean this computer's paths out (default: the real tellcut folder) */ public?: boolean | { root: string } }): string {
+  if (o.public && o.media) throw new Error('--public 加 --media 要先拿掉照片和影片檔案裡的拍攝地點和時間：用 exportProjectAsync');
   const before = readFileSync(join(dir, 'project.json'), 'utf8');
   return writeZip(dir, before, exportPlan(dir, JSON.parse(before), o), o);
 }
 
-/** exportProject with --trim: --media, and each video source only as far as the project uses it */
-export async function exportProjectTrimmed(dir: string, o: { out?: string; public?: boolean | { root: string }; log?: (s: string) => void; registry?: Registry }): Promise<string> {
+/** every kind of export: --trim (implies --media) packs each video source only as far as the project uses it; --public with the
+ *  footage cleans each photo and video of its place and time */
+export async function exportProjectAsync(dir: string, o: { media: boolean; trim?: boolean; out?: string; public?: boolean | { root: string }; log?: (s: string) => void; registry?: Registry; strip?: Stripper }): Promise<string> {
+  const media = o.media || !!o.trim;
+  if (!o.trim && !(o.public && media)) return exportProject(dir, { ...o, media });
   const before = readFileSync(join(dir, 'project.json'), 'utf8'), out = zipPath(dir, o.out);
   mkdirSync(dirname(out), { recursive: true });
   const work = mkdtempSync(join(dirname(out), '.trim-'));   // beside the zip: the copies are hard-linked into the stage
   try {
-    const plan = await trimPlan(dir, exportPlan(dir, JSON.parse(before), { media: true }), work, o);
+    let plan = exportPlan(dir, JSON.parse(before), { media });
+    if (o.public) refuseOutside(plan);   // before the slow part
+    if (o.trim) plan = await trimPlan(dir, plan, work, o);
+    if (o.public) plan = await strippedPlan(plan, work, o);
     return writeZip(dir, before, plan, { ...o, out });
   } finally { rmSync(work, { recursive: true, force: true }); }
+}
+
+/** exportProject with --trim: --media, and each video source only as far as the project uses it */
+export const exportProjectTrimmed = (dir: string, o: { out?: string; public?: boolean | { root: string }; log?: (s: string) => void; registry?: Registry; strip?: Stripper }): Promise<string> =>
+  exportProjectAsync(dir, { ...o, media: true, trim: true });
+
+// a shared project carries its footage: one left outside the zip (another folder without --media, or offline) is a dead link there
+function refuseOutside(plan: ExportPlan) {
+  if (plan.outside.length) throw new Error(`素材不在打包裡（--public 不能留）：${plan.outside.join('、')}。在專案外面的加 --media；找不到的先接回來。`);
 }
 
 const zipPath = (dir: string, out?: string) => resolve(out ?? join(TELLCUT_ROOT, 'backups', `${basename(dir)}-${stamp()}.zip`));
@@ -185,9 +249,11 @@ function writeZip(dir: string, before: string, plan: ExportPlan, o: { out?: stri
   const id = basename(dir), out = zipPath(dir, o.out);
   // as writeProjectFile writes it; the paths --media rewrote make it a different text from the one the last cut hashed
   const scrub = o.public === true ? { root: TELLCUT_ROOT } : o.public || null;
-  // a shared project carries its footage: one left outside the zip (another folder without --media, or offline) is a dead link there
-  if (scrub && plan.outside.length) throw new Error(`素材不在打包裡（--public 不能留）：${plan.outside.join('、')}。在專案外面的加 --media；找不到的先接回來。`);
-  const text = ((t: string) => (scrub ? scrubText(t, scrub) : t))(JSON.stringify(plan.project, null, 2) + '\n');
+  if (scrub) refuseOutside(plan);
+  // a public project tells nobody where and when its footage was shot (the files themselves: strippedPlan)
+  const project = scrub ? structuredClone(plan.project) : plan.project;
+  if (scrub) dropPlaceAndTime(project);
+  const text = ((t: string) => (scrub ? scrubText(t, scrub) : t))(JSON.stringify(project, null, 2) + '\n');
   mkdirSync(dirname(out), { recursive: true });
   // a folder laid out as the zip, next to it (the same drive: files are hard-linked where they can be, not copied)
   const stage = mkdtempSync(join(dirname(out), '.stage-')), top = join(stage, id);
@@ -202,7 +268,12 @@ function writeZip(dir: string, before: string, plan: ExportPlan, o: { out?: stri
     if (scrub) {
       const left = leftoverPaths(text).map((p) => `project.json：${p}`);
       for (const f of plan.files.filter((x) => TEXT.test(x.to))) {
-        const at = join(top, f.to), was = readFileSync(at, 'utf8'), now = scrubText(was, scrub);
+        const at = join(top, f.to), was = readFileSync(at, 'utf8');
+        let now = scrubText(was, scrub);
+        // the project's earlier versions and proposals hold its sources too
+        if (/^\.history\/.*\.json$/i.test(f.to)) {
+          try { const v = JSON.parse(now); if (dropPlaceAndTime(v)) now = JSON.stringify(v, null, 2) + '\n'; } catch { /* not JSON after all: its paths are scrubbed all the same */ }
+        }
         if (now !== was) { rmSync(at); writeFileSync(at, now); }   // a hard link to the project's own file: written anew, not through it
         left.push(...leftoverPaths(now).map((p) => `${f.to}：${p}`));
       }
@@ -277,7 +348,7 @@ async function main(argv: string[]) {
   const dir = projectArgOrExit(a.words[0], usage);
   const trim = a.has('--trim'), media = trim || a.has('--media'), arg = a.get('--out'), out = arg && resolve(process.env.INIT_CWD ?? process.cwd(), arg);
   if (trim) console.log('只帶用到的素材：每個影片留下用到的部分（前後多 2 秒），其餘變成黑畫面、沒有聲音');
-  const zip = trim ? await exportProjectTrimmed(dir, { public: a.has('--public'), out, log: console.log }) : exportProject(dir, { media, public: a.has('--public'), out });
+  const zip = await exportProjectAsync(dir, { media, trim, public: a.has('--public'), out, log: console.log });
   const plan = exportPlan(dir, JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')), { media });
   console.log(`打包好了：${zip}（${(statSync(zip).size / 1e6).toFixed(1)} MB）`);
   if (!media && plan.outside.length) console.log(`沒有包進素材：${plan.outside.length} 個檔案在專案外面（${plan.outside.slice(0, 6).join('、')}）。要整包帶走就加 --media。`);

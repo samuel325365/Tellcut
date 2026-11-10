@@ -1,7 +1,8 @@
 # Photo helpers for Tellcut (run with the repo .venv: uv run python tellcut/tools/py/meta.py ...)
 #   photo <path>                   -> JSON {"width","height","taken","offset","gps"} (size after EXIF orientation; offset: the EXIF zone of taken)
 #   heic2jpg <in> <out>            -> writes an upright JPG (EXIF kept, orientation reset), prints the photo JSON of <out>
-#   fit <in> <out> <maxW> <maxH>   -> writes an upright JPG inside maxW x maxH (never enlarged), prints {"width","height"}
+#   strip <in> <out>               -> writes the photo upright with no EXIF/XMP/comment, same format, prints the photo JSON of <out>
+#   fit <in> <out> <maxW> <maxH>  -> writes an upright JPG inside maxW x maxH (never enlarged), prints {"width","height"}
 import json
 import math
 import re
@@ -71,6 +72,28 @@ def heic2jpg(src, out):
     return photo(out)
 
 
+def strip(src, out):
+    # A photo for a public export: no EXIF, XMP or comment (where and when it was taken, the camera), in its own format.
+    # Upright, as the EXIF orientation showed it, so it looks the same with the tag gone; the colour profile stays, or a
+    # wide-gamut phone photo would come out duller. An upright JPEG keeps its quantisation tables (next to no loss).
+    im = Image.open(src)
+    fmt = 'JPEG' if im.format in ('JPEG', 'MPO') else im.format
+    turned = im.getexif().get(ORIENTATION, 1) not in (None, 1)
+    up = ImageOps.exif_transpose(im) if turned else im
+    icc = {'icc_profile': im.info['icc_profile']} if im.info.get('icc_profile') else {}
+    if fmt == 'JPEG':
+        up.save(out, 'JPEG', quality=95 if turned else 'keep', exif=b'', comment=b'', **icc)
+    elif fmt == 'PNG':
+        up.save(out, 'PNG', **icc)
+    elif fmt == 'WEBP':
+        up.save(out, 'WEBP', quality=95, exif=b'', xmp=b'', **icc)
+    elif fmt in ('HEIF', 'AVIF'):
+        up.save(out, fmt, quality=95, exif=None, xmp=None, **icc)
+    else:
+        raise ValueError(f'cannot strip a {im.format} picture')
+    return photo(out)
+
+
 def fit(src, out, max_w, max_h):
     up = ImageOps.exif_transpose(Image.open(src)).convert('RGB')
     up.thumbnail((int(max_w), int(max_h)), Image.LANCZOS)
@@ -80,4 +103,4 @@ def fit(src, out, max_w, max_h):
 
 if __name__ == '__main__':
     cmd, args = sys.argv[1], sys.argv[2:]
-    print(json.dumps({'photo': photo, 'heic2jpg': heic2jpg, 'fit': fit}[cmd](*args), allow_nan=False))
+    print(json.dumps({'photo': photo, 'heic2jpg': heic2jpg, 'strip': strip, 'fit': fit}[cmd](*args), allow_nan=False))
