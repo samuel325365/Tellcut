@@ -39,6 +39,7 @@ export const panel: ItemType<P, S> = {
     { key: 'y', label: 'y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: PANEL_FRAME[1] },
     { key: 'w', label: '寬（畫面寬比例）', type: 'number', min: 0.05, max: 1, step: 0.005, default: PANEL_FRAME[2] },
     { key: 'h', label: '高（畫面高比例）', type: 'number', min: 0.05, max: 1, step: 0.005, default: PANEL_FRAME[3] },
+    // raw px in every look, as the stage rounds the video (VideoItem.radius): scaled, the frame's corner missed the picture's off a 1080 short side
     { key: 'radius', label: '圓角（px，等於影片的 radius）', type: 'number', min: 0, max: 200, step: 1, default: PANEL_RADIUS, theme: 'radius' },
     { key: 'border', label: '框的顏色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'shadow', label: '硬陰影偏移（以 1080 短邊計的 px，0＝無）', type: 'number', min: 0, max: 60, step: 1, default: 12 },
@@ -109,7 +110,7 @@ function drawPrint(p: P, s: S, x: number, y: number, w: number, hh: number, k: n
 function drawOffset(p: P, s: S, x: number, y: number, w: number, hh: number, k: number, local: number) {
   for (const t of s.tapes) cssCamel(t, { display: 'none' });
   const o = p.shadow * k * eOut3(prog(local, 0, 0.35));
-  cssCamel(s.box, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${hh}px`, border: '0', borderRadius: `${p.radius * k}px`,
+  cssCamel(s.box, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${hh}px`, border: '0', borderRadius: `${p.radius}px`,
     boxShadow: `${o.toFixed(2)}px ${o.toFixed(2)}px 0 ${p.block}, 0 ${18 * k}px ${50 * k}px rgba(0,0,0,0.55)` });
 }
 
@@ -117,7 +118,7 @@ function drawOffset(p: P, s: S, x: number, y: number, w: number, hh: number, k: 
  *  when the place or colours change) and the window rung in `ring` */
 function drawBezel(p: P, s: S, x: number, y: number, w: number, hh: number, k: number, W: number, H: number) {
   for (const t of s.tapes) cssCamel(t, { display: 'none' });
-  const hole = p.look === 'hole', b = (hole ? 4 : 12) * k, r = p.radius * k;
+  const hole = p.look === 'hole', b = (hole ? 4 : 12) * k, r = p.radius;
   cssCamel(s.box, { left: `${x - b}px`, top: `${y - b}px`, width: `${w + 2 * b}px`, height: `${hh + 2 * b}px`, borderRadius: `${r + b}px`,
     border: `${b}px solid ${hole ? p.ring : p.border}`,
     boxShadow: hole ? `0 ${3 * k}px 0 rgba(0,0,0,0.5)` : `0 ${14 * k}px ${34 * k}px rgba(0,0,0,0.6), 0 0 0 ${1.5 * k}px rgba(255,255,255,0.09)` });
@@ -149,7 +150,7 @@ function drawDrawn(p: P, s: S, x: number, y: number, w: number, hh: number, k: n
   for (const t of s.tapes) cssCamel(t, { display: 'none' });
   s.key = '';
   const main = canvasAt(s.cv, W, H), pen = p.pen ?? 'crayon', crayon = pen === 'crayon', g = crayon ? grainBegin(s.layer, W, H) : main;
-  const pr = p.drawIn > 0 ? eOut3(prog(local, 0, p.drawIn)) : 1, r = p.radius * k;
+  const pr = p.drawIn > 0 ? eOut3(prog(local, 0, p.drawIn)) : 1, r = p.radius;
   const lw = (pen === 'marker' ? 11 : pen === 'crayon' ? 12 : pen === 'pencil' ? 5 : 6) * k, o = { u: k, boil: p.boil, t: local, overshoot: true };
   // the frame: one loop for a rounded window, else four sides one after another, each running past its corners
   const frame = (off: number, width: number, color: string, seed: number, q: number, alpha = 1) => {
