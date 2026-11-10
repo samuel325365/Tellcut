@@ -188,12 +188,12 @@ export function chatGeometry(p: Pick<P, 'items' | 'pin' | 'panel' | 'device' | '
   const pinH = p.pin ? (chapters.length ? 156 : 96) : 0, panel = emojiList(p.panel).length > 0;
   const areaTop = pinH ? PIN_Y + pinH + 14 : HEAD + 6;
   const inputTop = sc.full ? Math.min(Hd - INPUT_H - 36, (1 - safe.bottom) * Hd) : panel ? 0.8 * Hd : Hd - INPUT_H - 36;
-  return { sc, k, Hd, msgs, boxes, chapters, pinH, panel, areaTop, areaBot: inputTop - 10, inputTop, W, H, since: Math.max(0, Number(p.since) || 0), openTime: Number(p.openTime) || 0.45 };
+  return { sc, k, Hd, msgs, boxes, slots: boxes.map((b) => b.slot), chapters, pinH, panel, areaTop, areaBot: inputTop - 10, inputTop, W, H, since: Math.max(0, Number(p.since) || 0), openTime: Number(p.openTime) || 0.45 };
 }
 type Geo = ReturnType<typeof chatGeometry>;
 /** message i's bubble at t in design px of the screen ([x, y, w, h]), null when it is not on screen */
 export function bubbleAt(G: Geo, i: number, t: number): [number, number, number, number] | null {
-  const q = chatPlace(G.msgs, G.boxes.map((b) => b.slot), t, G.areaBot - G.areaTop, 0.32, G.since).pos.find((x) => x.i === i), b = G.boxes[i];
+  const q = chatPlace(G.msgs, G.slots, t, G.areaBot - G.areaTop, 0.32, G.since).pos.find((x) => x.i === i), b = G.boxes[i];
   return q && b ? [b.x, G.areaTop + q.y + b.off, b.w, b.h] : null;
 }
 /** how far message m is opened to the whole frame at t (0 in its bubble … 1 full): open=a-b grows over the first `dur` s from a and
@@ -314,6 +314,8 @@ interface OpenEls { root: HTMLElement; dim: HTMLElement; box: HTMLElement; vid: 
 interface S {
   open: OpenEls;
   ph: PhoneEls; ui: HTMLElement; wall: HTMLElement; area: HTMLElement; msgEls: MsgEl[]; key: string; G: Geo | null;
+  /** what G was worked out for: the params, the frame and its safe area */
+  gk: string;
   head: HTMLElement; back: HTMLElement; hAv: HTMLElement; hName: HTMLElement; hStatus: HTMLElement; hIcons: HTMLElement[]; sb: StatusBar;
   pin: HTMLElement; pinIcon: HTMLElement; pinTitle: HTMLElement; pinTrack: HTMLElement; pinFill: HTMLElement; pinDots: HTMLElement[];
   input: HTMLElement; inIcons: HTMLElement[]; field: HTMLElement; type: TypeEl; hint: HTMLElement; panel: HTMLElement; home: HTMLElement;
@@ -547,7 +549,7 @@ export const chat: ItemType<P, S> = {
     cssCamel(box, { overflow: 'hidden', background: '#000' });
     cssCamel(vid, { inset: '0', overflow: 'hidden' });
     cssCamel(oWin.box, { left: '0', top: '0' });
-    const s: S = { open: { root: oRoot, dim, box, vid, win: oWin }, ph, ui, wall, area, msgEls: [], key: '', G: null, head, back, hAv, hName, hStatus, hIcons, sb, pin, pinIcon, pinTitle, pinTrack, pinFill, pinDots: [],
+    const s: S = { open: { root: oRoot, dim, box, vid, win: oWin }, ph, ui, wall, area, msgEls: [], key: '', G: null, gk: '', head, back, hAv, hName, hStatus, hIcons, sb, pin, pinIcon, pinTitle, pinTrack, pinFill, pinDots: [],
       input, inIcons, field, type, hint, panel, home };
     chat.draw(ctx, s);
     return s;
@@ -555,7 +557,10 @@ export const chat: ItemType<P, S> = {
   ready: (s) => imagesReady(s.msgEls.flatMap((m) => m.wins.map((w) => w.img))),
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, media } = ctx, t = ctx.local + Math.max(0, Number(p.since) || 0);
-    const G = chatGeometry(p, W, H, theme.safe), { sc, k, Hd } = G, X = (v: number) => `${v * k}px`;
+    // the geometry measures every message: worked out again only when the params, the frame or its safe area change, not every frame
+    const gk = `${JSON.stringify(p)}|${W}|${H}|${JSON.stringify(theme.safe)}`;
+    if (s.gk !== gk || !s.G) { s.gk = gk; s.G = chatGeometry(p, W, H, theme.safe); }
+    const G = s.G, { sc, k, Hd } = G, X = (v: number) => `${v * k}px`;
     placePhone(s.ph, sc);
     const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     cssCamel(s.ph.screen, { fontFamily: font, color: p.ink });
@@ -568,14 +573,13 @@ export const chat: ItemType<P, S> = {
       for (const d of s.pinDots) d.remove();
       s.pinDots = G.chapters.map(() => flex(s.pin));
     }
-    s.G = G;
     // the wallpaper
     const [w0, w1] = wallAt(p.wall, t), dots = p.pattern ? `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.28) 0 ${10 * k}px, transparent ${11 * k}px), radial-gradient(circle at 70% 75%, rgba(255,255,255,0.2) 0 ${6 * k}px, transparent ${7 * k}px), ` : '';
     cssCamel(s.wall, { background: `${dots}linear-gradient(180deg, ${w0}, ${w1})`, backgroundSize: p.pattern ? `${190 * k}px ${170 * k}px, ${150 * k}px ${210 * k}px, 100% 100%` : '100% 100%' });
     // the conversation
     const areaH = G.areaBot - G.areaTop;
     cssCamel(s.area, { top: X(G.areaTop), height: X(areaH) });
-    const { pos } = chatPlace(G.msgs, G.boxes.map((b) => b.slot), t, areaH, 0.32, G.since), shown = new Set(pos.map((q) => q.i));
+    const { pos } = chatPlace(G.msgs, G.slots, t, areaH, 0.32, G.since), shown = new Set(pos.map((q) => q.i));
     s.msgEls.forEach((e, i) => { if (!shown.has(i)) cssCamel(e.box, { display: 'none' }); });
     let hole: [number, number, number, number] | null = null, opening: Opening | null = null;
     for (const q of pos) {
@@ -661,7 +665,7 @@ export const chat: ItemType<P, S> = {
     cssCamel(s.hint, { display: typedNow ? 'none' : 'block', left: X(32), top: '50%', transform: 'translateY(-50%)', fontSize: `${fitPx(p.hint, 42 * k, 520 * k)}px`, fontWeight: '500', color: withAlpha(p.ink, 0.38),
       ...(typedNow === '' ? { left: X(46) } : {}) });
     // the sticker panel under it (no panel: the bar's colour down to the bottom), rows fitted above the home bar
-    const em = emojiList(p.panel), pTop = iy + INPUT_H, pH = Math.max(0, Hd - pTop), rows = Math.ceil(em.length / 4), rowH = rows ? Math.min(150, (pH - 90) / rows) : 0;
+    const em = emojiList(p.panel), pTop = iy + INPUT_H, pH = Math.max(0, Hd - pTop), rows = Math.ceil(em.length / 4), rowH = rows ? Math.max(0, Math.min(150, (pH - 90) / rows)) : 0;
     cssCamel(s.panel, { display: pH > 0 ? 'block' : 'none', left: '0', top: X(pTop), width: '100%', height: X(pH), background: em.length ? mixHex(p.bar, '#dfe4ea', 0.35) : p.bar, whiteSpace: 'normal' });
     const pk = `${p.panel}|${k}|${rowH}`;
     if (s.panel.dataset.k !== pk) {

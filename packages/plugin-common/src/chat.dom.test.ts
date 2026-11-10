@@ -97,3 +97,24 @@ test('since: the second item starts with the messages there, settled, and the pl
   const pops = [...fresh.item.querySelectorAll<HTMLElement>('div')].filter((d) => d.style.width === `${W}px` && d.style.display === 'block' && d.style.transform.startsWith('scale'));
   expect(pops.length).toBe(1);
 });
+
+test('the geometry is worked out once per look and size, not every frame; a short sticker panel never gets negative rows', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([{ id: 'common', items: [chat] } as any]), media);
+  const proj = project({ items: '0|me|嗨\n1|them|你好' }, []);
+  st.load(proj);
+  const state = () => ((st as any).layers as any[]).find((L) => L.item?.id === 'chat')?.state;
+  st.draw(1.2); const g1 = state()?.G;
+  st.draw(2.4); const g2 = state()?.G;
+  expect(g1).toBeTruthy();
+  expect(g2).toBe(g1);
+  // no safe margin at the bottom: the input bar sits at the foot and the panel under it is shorter than its own padding
+  const flat = project({ items: '0|me|嗨' }, []);
+  flat.meta.theme = { safe: { bottom: 0 } };
+  const r2 = document.createElement('div');
+  const st2 = new Stage(r2, createRegistry([{ id: 'common', items: [chat] } as any]), media);
+  st2.load(flat); st2.draw(1);
+  const cells = [...r2.querySelectorAll('div')].filter((d) => d.children.length === 0 && d.textContent && d.style.width === '255px');
+  expect(cells.length).toBeGreaterThan(0);
+  for (const c of cells) { expect(parseFloat(c.style.height)).toBeGreaterThanOrEqual(0); expect(parseFloat(c.style.fontSize)).toBeGreaterThanOrEqual(0); }
+});
