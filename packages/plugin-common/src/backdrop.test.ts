@@ -18,3 +18,12 @@ test('every pattern makes its own CSS, solid makes none', () => {
   expect(css('gradient').image).toContain('#fff8ec');
   expect(css('solid').image).toBe('none');
 });
+
+test('the grid and diamond lines scale with the frame like the cells (2 px at 1080, 4 px at 2160)', () => {
+  const at = (pattern: any, k: number) => patternCss({ ...base, pattern }, 70 * k, k).image;
+  expect(at('grid', 1)).toBe(patternCss({ ...base, pattern: 'grid' }, 70).image);
+  expect(at('diamond', 1)).toBe(patternCss({ ...base, pattern: 'diamond' }, 70).image);
+  expect(at('grid', 1)).toContain(' 0 2px, transparent 2px)');
+  expect(at('grid', 2)).toContain(' 0 4px, transparent 4px)');
+  expect(at('diamond', 2)).toContain(' 0 4px, transparent 4px 140px)');
+});

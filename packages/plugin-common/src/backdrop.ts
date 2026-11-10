@@ -63,15 +63,16 @@ export const glowAt = (stops: string, pulse: number, t: number) => {
   return clamp(v * (1 - pulse * 0.5 + pulse * 0.5 * Math.sin(t * 9)));
 };
 
-/** The CSS background (image, size) of a pattern at `s` px cells. */
-export function patternCss(p: Pick<P, 'pattern' | 'color' | 'color2' | 'tint'>, s: number): { image: string; size: string } {
-  const c2 = withAlpha(p.color2, p.tint);
+/** The CSS background (image, size) of a pattern at `s` px cells; the grid's and diamond's lines are 2 px × `k` (the frame's short
+ *  side / 1080), so they keep their weight against the cells in a bigger frame */
+export function patternCss(p: Pick<P, 'pattern' | 'color' | 'color2' | 'tint'>, s: number, k = 1): { image: string; size: string } {
+  const c2 = withAlpha(p.color2, p.tint), lw = 2 * k;
   switch (p.pattern) {
     case 'gingham': return { image: `repeating-linear-gradient(0deg, ${c2} 0 ${s}px, transparent ${s}px ${2 * s}px), repeating-linear-gradient(90deg, ${c2} 0 ${s}px, transparent ${s}px ${2 * s}px)`, size: 'auto' };
     case 'stripes': return { image: `repeating-linear-gradient(45deg, ${c2} 0 ${s / 2}px, transparent ${s / 2}px ${s}px)`, size: 'auto' };
     case 'dots': return { image: `radial-gradient(circle, ${c2} ${s * 0.12}px, transparent ${s * 0.13}px)`, size: `${s}px ${s}px` };
-    case 'grid': return { image: `linear-gradient(0deg, ${c2} 0 2px, transparent 2px), linear-gradient(90deg, ${c2} 0 2px, transparent 2px)`, size: `${s}px ${s}px` };
-    case 'diamond': return { image: `repeating-linear-gradient(45deg, ${c2} 0 2px, transparent 2px ${s}px), repeating-linear-gradient(-45deg, ${c2} 0 2px, transparent 2px ${s}px)`, size: 'auto' };
+    case 'grid': return { image: `linear-gradient(0deg, ${c2} 0 ${lw}px, transparent ${lw}px), linear-gradient(90deg, ${c2} 0 ${lw}px, transparent ${lw}px)`, size: `${s}px ${s}px` };
+    case 'diamond': return { image: `repeating-linear-gradient(45deg, ${c2} 0 ${lw}px, transparent ${lw}px ${s}px), repeating-linear-gradient(-45deg, ${c2} 0 ${lw}px, transparent ${lw}px ${s}px)`, size: 'auto' };
     case 'spot': return { image: `radial-gradient(120% 60% at 50% 0%, ${c2} 0%, ${withAlpha(p.color2, 0)} 55%), linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.38) 100%)`, size: 'auto' };
     case 'gradient': return { image: `linear-gradient(160deg, ${p.color}, ${p.color2})`, size: 'auto' };
     default: return { image: 'none', size: 'auto' };
@@ -113,7 +114,7 @@ export const backdrop: ItemType<P, S> = {
   ready: (s) => (s.word ? document.fonts.load("900 60px 'Playfair Display'", s.word).then(() => undefined) : Promise.resolve()),
   hide(s) { s.cv.width = 0; s.cv.height = 0; },
   draw(ctx, s) {
-    const p = ctx.params, k = Math.min(ctx.W, ctx.H) / 1080, css = patternCss(p, p.scale * k), d = p.drift * k * ctx.local;
+    const p = ctx.params, k = Math.min(ctx.W, ctx.H) / 1080, css = patternCss(p, p.scale * k, k), d = p.drift * k * ctx.local;
     cssCamel(s.el, { backgroundColor: p.pattern === 'gradient' ? 'transparent' : p.color, backgroundImage: css.image, backgroundSize: css.size, backgroundPosition: p.pattern === 'words' ? '0px 0px' : `${d}px ${d}px` });
     const canvas = p.pattern === 'words' || (p.bits ?? 0) > 0;
     cssCamel(s.cv, { display: canvas ? 'block' : 'none' });
