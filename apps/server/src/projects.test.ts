@@ -152,6 +152,8 @@ test('a page on another site cannot reach the API through the browser (it could 
   expect((await get('same-site')).status).toBe(403);                              // another port on this computer
   expect((await get('same-origin')).status).toBe(200);
   expect((await get()).status).toBe(200);                                         // node, curl, the CLI send none
+  // the request target written in absolute form (as to a proxy) reaches the same route: it is checked by its path
+  expect(await raw(`${base}/api/projects`, { 'Sec-Fetch-Site': 'cross-site' })).toBe(403);
 });
 
 test('project files, history versions and music are sandboxed and never sniffed: an SVG or HTML in the folder runs no script here', async () => {

@@ -86,7 +86,8 @@ export function createApp(o: AppOptions) {
       // a GET from a page on another site or another local port (an <img> pointing here) could start proxies and thumbnails: the
       // browser says where it comes from; the tools send no such header, and a link opening the editor (not /api/) still works
       const site = req.headers['sec-fetch-site'];
-      if ((site === 'cross-site' || site === 'same-site') && (req.url ?? '').startsWith('/api/')) throw new HttpError(403, 'Forbidden cross-site request');
+      // by the path the router matches: a target in absolute form (http://host/api/…) reaches the same routes
+      if ((site === 'cross-site' || site === 'same-site') && new URL(req.url ?? '/', 'http://x').pathname.startsWith('/api/')) throw new HttpError(403, 'Forbidden cross-site request');
       if (await r.handle(req, res)) return;
       const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
       if (req.method === 'GET' && path === '/') { res.writeHead(302, { Location: '/editor/' }); res.end(); return; }
