@@ -42,6 +42,8 @@ const sourcePath = (id: string, file: string) => `media/golden-${id}${extname(fi
 /** the size a case's picture is kept at */
 const sizeOf = (c: GoldenCase) => (c.wide ? `${GOLDEN_H}:${GOLDEN_W}` : c.square ? `${GOLDEN_W}:${GOLDEN_W}` : `${GOLDEN_W}:${GOLDEN_H}`);
 
+/** not the engine's DEFAULT_MIX on purpose: a golden case is a picture, nobody hears its sound, so it keeps a plain mix with no
+ *  reverb that never moves when the default sound of a new project is tuned */
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } };
 
 /** A 1080×1920 (or, wide, 1920×1080; square, 1080×1080) project of one overlay item. */

@@ -66,6 +66,9 @@ export const MixZ = z.object({
   compressor: z.object({ threshold: z.number(), ratio: z.number(), attack: z.number(), release: z.number() }),
   reverb: z.object({ seconds: z.number().positive(), send: z.number().min(0) }),
 });
+/** The mix a new project starts with; the gallery's previews and a saved block's thumbnail play through it too, so a sound
+ *  sounds there as it will in a film. */
+export const DEFAULT_MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
 
 const ProjectShape = z.object({
   version: z.literal(1),

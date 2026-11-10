@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, realpathSync, statSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { basename, extname, join, relative, resolve, sep } from 'node:path';
-import { parseProject, type Project } from '@tellcut/engine';
+import { DEFAULT_MIX, parseProject, type Project } from '@tellcut/engine';
 import type { ImportSkip } from '@tellcut/protocol';
 import { heicToJpg } from './photo.ts';
 import { kindOf, probeMedia } from './probe.ts';
@@ -11,7 +11,7 @@ import { writeProjectFile } from './projectfile.ts';
 import { PY_PROJECT, runUv } from './py.ts';
 import { PROJECT_ID } from './paths.ts';
 
-export const DEFAULT_MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
+export { DEFAULT_MIX };   // the engine holds it: the previews play through the same mix
 const ID = PROJECT_ID;
 
 export interface IngestOptions {

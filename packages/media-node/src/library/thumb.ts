@@ -2,14 +2,13 @@
 // as the gallery shows the shared blocks, its module loaded from the entry's own folder.
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { Plugin, Project } from '@tellcut/engine';
+import { DEFAULT_MIX, type Plugin, type Project } from '@tellcut/engine';
 import { renameRetry } from '../fsutil.ts';
 import { projectRegistry } from '../fx.ts';
 import { renderStills } from '../stills.ts';
 import { blockDir, blocksDir, readBlock, type BlockEntry } from './store.ts';
 
 export const PREVIEW_LEN = 3;
-const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.2 } };
 export const THUMB_FILE = 'thumb.png';
 
 /** 1080×1920, 3 s, one item; `theme` replaces the one saved with the entry */
@@ -17,7 +16,7 @@ export function previewProject(e: BlockEntry, type: string, kind: 'scene' | 'ove
   const theme = o.theme ?? e.theme;
   return {
     version: 1,
-    meta: { name: type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: ['fx'], background: '#3a4256', mix: MIX, fx: [e.main], ...(theme ? { theme } : {}) },
+    meta: { name: type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: ['fx'], background: '#3a4256', mix: DEFAULT_MIX, fx: [e.main], ...(theme ? { theme } : {}) },
     sources: {}, media: {}, grids: [],
     tracks: [{ id: 'g', kind, items: [{ id: 'block', type, start: 0, end: PREVIEW_LEN, params: o.params ?? {} }] }],
   } as unknown as Project;
