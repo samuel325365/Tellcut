@@ -29,7 +29,8 @@ export function mountControls(o: { stage: HTMLElement; draw: (t: number) => void
   function pause() { run++; cancelAnimationFrame(frame); playing = false; o.pool.playing = false; o.audio.stop(); btn.textContent = '▶ Play'; still(t); }
   function loop() {
     if (!playing) return;
-    t = from + (o.audio.now() - base);
+    // the audio is scheduled 50 ms ahead of now: the first frames would read a time before the start
+    t = Math.max(from, from + (o.audio.now() - base));
     if (t >= o.duration) { t = o.duration; pause(); label(); return; }
     drawn++; o.draw(t); void o.pool.sync(); o.late(t); label();
     frame = requestAnimationFrame(loop);

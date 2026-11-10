@@ -39,3 +39,22 @@ test('fast scrubbing: the late pass of a time already drawn over is dropped, onl
   syncs[0](); await Promise.resolve(); await Promise.resolve();
   expect(lates).toEqual([2]);
 });
+
+test('the first frames after play never draw a time before the start (the audio starts 50 ms ahead of now)', async () => {
+  document.body.innerHTML = '<div id="viewport"><div id="stage"></div></div><button id="play"></button><input id="scrub" type="range" min="0" max="1000"><span id="clock"></span>';
+  const frames: FrameRequestCallback[] = [];
+  vi.stubGlobal('requestAnimationFrame', (f: FrameRequestCallback) => frames.push(f));
+  vi.stubGlobal('cancelAnimationFrame', () => {});
+  let clock = 1;
+  const audio: any = { play: async () => clock + 0.05, now: () => clock, stop: () => {} };
+  const drawn: number[] = [];
+  mountControls({ stage: document.getElementById('stage')!, draw: (t) => { drawn.push(t); }, late: () => {}, pool: { playing: false, sync: async () => {} } as any, audio, duration: 10 });
+  const scrub = document.getElementById('scrub') as HTMLInputElement;
+  scrub.value = '500'; scrub.dispatchEvent(new Event('input'));
+  drawn.length = 0;
+  document.getElementById('play')!.click();
+  await Promise.resolve(); await Promise.resolve();
+  for (let i = 0; i < 4; i++) { clock += 0.016; for (const f of frames.splice(0)) f(0); }
+  expect(Math.min(...drawn)).toBeGreaterThanOrEqual(5);
+  vi.unstubAllGlobals();
+});
