@@ -21,13 +21,13 @@ import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplat
 import { templateOf } from '@tellcut/plugin-common/templates';
 import { titleTemplateOf } from '@tellcut/plugin-common/title-templates';
 import type { TemplateKind } from '@tellcut/protocol';
-import { importMedia } from './editor/importing.ts';
+import { cancelImport, dropFiles, importMedia, type ImportHost } from './editor/importing.ts';
+import type { DropKind, DropTarget } from './timeline/drop.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
 import { PresetSaveFlow } from './editor/preset-save.ts';
 import { ProposalFlow, type ProposalView } from './editor/proposals.ts';
 import { musicLength, TimelineEditing, type LibPick } from './editor/editing.ts';
-import type { DropTarget } from './timeline/drop.ts';
 import { errCoded, errText, t as say } from './i18n/index.ts';
 import { paramText } from './i18n/params.ts';
 
@@ -838,9 +838,21 @@ export class Editor {
   private waitingAnalysis: string[] = [];
   private analyzeWaiting() { const ids = this.waitingAnalysis; if (!ids.length) return; this.waitingAnalysis = []; void this.analyze(ids); }
   /** The media panel's Import: files from this PC added to the project as one undoable edit, then analysed in the background. */
-  importMedia(paths: string[]) {
-    return importMedia({ id: this.id, api: this.deps.api, store: this.store, apply: (r) => this.apply(r), settle: () => this.autosave?.settle() ?? Promise.resolve(false),
-      analyze: (only) => this.analyze(only), later: (ids) => { this.waitingAnalysis.push(...ids); } }, paths);
+  importMedia(paths: string[]) { return importMedia(this.importHost(), paths); }
+  /** Files dropped from this PC: copied into the project, added, and with `at` (let go over the timeline) placed there */
+  dropFiles(files: File[], at?: DropTarget) { return dropFiles(this.importHost(), files, at); }
+  /** Files from this PC dragged over the timeline: a line where they will start (their lengths are not known until they are in) */
+  fileDragTo(at: DropTarget, kind: DropKind) {
+    const plan = at.row === null ? null : { ok: true as const, track: at.row === 'new' ? null : at.row, start: at.t, end: at.t };
+    this.set({ libDrag: { kind, len: 0, files: true, plan, ...(plan?.track ? { line: at.t } : {}) } });
+  }
+  /** they left the timeline, or were let go */
+  fileDragEnd() { if (this.s.libDrag?.files) this.set({ libDrag: null }); }
+  /** Cancel while dropped files are copied: the one being copied stops, those done are still added */
+  cancelImport() { cancelImport(); }
+  private importHost(): ImportHost {
+    return { id: this.id, api: this.deps.api, store: this.store, apply: (r) => this.apply(r), settle: () => this.autosave?.settle() ?? Promise.resolve(false),
+      analyze: (only) => this.analyze(only), later: (ids) => { this.waitingAnalysis.push(...ids); }, blocked: () => this.blocked(), reg: this.reg };
   }
 }
 

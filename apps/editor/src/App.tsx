@@ -22,6 +22,7 @@ import type { Editor } from './editor.ts';
 import type { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
 import { galleryUrl } from './gallery-link.ts';
+import { guardFileDrops } from './media/file-drop.ts';
 
 /** the project chat, with ＋ to attach photos or footage from this PC (as paths, like the home page) */
 function EditorChat({ editor }: { editor: Editor }) {
@@ -101,6 +102,8 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   const s = useStoreSelector(editor.store, (x) => x, equalIgnoring<EditorState>(['playhead', 'level']));
   const root = useRef<HTMLDivElement>(null), view = useViewSize();
   useEffect(() => { void editor.open(); }, [editor]);
+  // a file from this PC let go where nothing takes it would replace the editor with the file
+  useEffect(() => guardFileDrops(), []);
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       const a = keyAction(e);

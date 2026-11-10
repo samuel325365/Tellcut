@@ -21,7 +21,8 @@ import { startMarquee, type Marquee } from './gestures/marquee.ts';
 import { startTrackDrag } from './gestures/track.ts';
 import { startScrollbarDrag } from './gestures/scrollbar.ts';
 import { ToolTray } from './ToolTray.tsx';
-import type { DropTarget } from './drop.ts';
+import type { DropKind, DropTarget } from './drop.ts';
+import { draggedKind, droppedFiles, hasFiles } from '../media/file-drop.ts';
 import { trayProbe } from './tray.ts';
 import { IconEye, IconEyeOff, IconLock, IconMagnet, IconSpeaker, IconSpeakerOff, IconUnlock } from '../icons.tsx';
 
@@ -90,15 +91,32 @@ export function Timeline({ editor }: { editor: Editor }) {
   // a library card or files dragged over the timeline (spec 2026-11-10-media-panel-visual §5): the drag asks where the pointer is.
   // The "+ New track" strip is at the top of the track area for a picture, at the bottom for a sound.
   const soundDrag = s.libDrag?.kind === 'music' || s.libDrag?.kind === 'sfx';
-  const dropProbe = (cx: number, cy: number): DropTarget => {
+  const dropProbe = (cx: number, cy: number, dragged?: DropKind): DropTarget => {
     const t = Math.max(0, tAt(cx)), tr = tracksEl.current?.getBoundingClientRect(), rr = rowsEl.current?.getBoundingClientRect();
     if (!tr || !rr || cx < left() || cx > tr.right || cy < tr.top || cy > tr.bottom) return { t, row: null };
-    const kind = editor.store.get().libDrag?.kind, sound = kind === 'music' || kind === 'sfx';
+    const kind = dragged ?? editor.store.get().libDrag?.kind, sound = kind === 'music' || kind === 'sfx';
     if (sound ? cy > tr.bottom - NEW_STRIP_H : cy < tr.top + NEW_STRIP_H) return { t, row: 'new' };
     const r = rowAt(rowsRef.current, cy - rr.top);
     return { t, row: r ? r.track.id : null };
   };
   useEffect(() => { editor.dropProbe = dropProbe; });
+  // files from this PC (spec §4): the browser's own drag, so the timeline listens for it itself
+  const fileOver = (e: DragEvent) => {
+    if (!hasFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'copy';
+    const kind = draggedKind(e.dataTransfer!);
+    editor.fileDragTo(dropProbe(e.clientX, e.clientY, kind), kind);
+  };
+  const fileLeave = (e: DragEvent) => { if (!box.current?.contains(e.relatedTarget as Node | null)) editor.fileDragEnd(); };
+  const fileDrop = (e: DragEvent) => {
+    if (!hasFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    const got = droppedFiles(e.dataTransfer!), at = dropProbe(e.clientX, e.clientY, draggedKind(e.dataTransfer!));
+    editor.fileDragEnd();
+    if (got.folders) editor.store.set({ notice: t('ed.dropFolder') });
+    if (got.files.length) void editor.dropFiles(got.files, at.row === null ? undefined : at);
+  };
   useEffect(() => () => { editor.dropProbe = null; }, []);
   // a thin line from each item hanging on a magnetic clip to that clip's row, at the item's start
   const hangs = useMemo(() => {
@@ -206,7 +224,7 @@ export function Timeline({ editor }: { editor: Editor }) {
   </>;
 
   return (
-    <section class="timeline" ref={box} onWheel={onWheel as any} onMouseDownCapture={dropTextSelection as any}>
+    <section class="timeline" ref={box} onWheel={onWheel as any} onMouseDownCapture={dropTextSelection as any} onDragOver={fileOver as any} onDragLeave={fileLeave as any} onDrop={fileDrop as any}>
       <TrayBox editor={editor} addTrack={addTrackMenu} zoom={zoomControls} />
       <div class="ruler" data-ruler style={{ height: `${RULER_H}px` }} onMouseDown={scrubFrom as any}>
         {rulerTicks(view, width).map((k) => (

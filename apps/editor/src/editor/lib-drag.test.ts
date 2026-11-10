@@ -92,3 +92,15 @@ test('a block dropped on the new-track strip makes an overlay track holding it',
   const p = ed.store.get().project!, tr = p.tracks.find((x) => x.kind === 'overlay')!;
   expect([p.tracks.length, (tr.items[0] as any).type, (tr.items[0] as any).start]).toEqual([n + 1, 'x.title', 3]);
 });
+
+test('files dragged in from the PC: a line at the pointer on the track under it (their lengths are not known yet), cleared after', async () => {
+  const ed = await editor();
+  ed.fileDragTo({ t: 3, row: 'v' }, 'video');
+  expect(ed.store.get().libDrag).toEqual({ kind: 'video', len: 0, files: true, line: 3, plan: { ok: true, track: 'v', start: 3, end: 3 } });
+  ed.fileDragTo({ t: 1, row: 'new' }, 'music');
+  expect(ed.store.get().libDrag).toMatchObject({ kind: 'music', files: true, plan: { track: null } });
+  ed.fileDragTo({ t: 1, row: null }, 'music');
+  expect(ed.store.get().libDrag).toMatchObject({ files: true, plan: null });
+  ed.fileDragEnd();
+  expect(ed.store.get().libDrag).toBeNull();
+});

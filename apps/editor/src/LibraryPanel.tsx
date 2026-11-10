@@ -14,6 +14,8 @@ import { SceneCard } from './media/SceneCard.tsx';
 import { SoundCard, sfxSign } from './media/SoundCard.tsx';
 import { BlockCard } from './media/BlockCard.tsx';
 import { startCardDrag } from './media/drag.ts';
+import { droppedFiles, hasFiles } from './media/file-drop.ts';
+import { mediaKindOfName } from '@tellcut/protocol';
 import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { t, type Key } from './i18n/index.ts';
@@ -97,6 +99,21 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const blockThumb = (type: string) => thumbIn(lib.blockThumbs?.[type], getLang()) ?? mineThumb(type);
   // an import shows the page its files went to: Audio when they are all sound, else Video
   const importFiles = (a: Array<{ path: string; kind: string }>) => { setTab(a.length && a.every((x) => x.kind === 'audio') ? 'audio' : 'video'); void editor.importMedia(a.map((x) => x.path)); };
+  // files from this PC dropped anywhere on the panel (spec 2026-11-10-media-panel-visual §4): added, not placed, and their page shown
+  const [fileOver, setFileOver] = useState(false);
+  const panelOver = (e: DragEvent) => { if (!hasFiles(e.dataTransfer)) return; e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; if (!fileOver) setFileOver(true); };
+  const panelLeave = (e: DragEvent) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) setFileOver(false); };
+  const panelDrop = (e: DragEvent) => {
+    if (!hasFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    setFileOver(false);
+    const got = droppedFiles(e.dataTransfer!);
+    if (got.folders) editor.store.set({ notice: t('ed.dropFolder') });
+    if (!got.files.length) return;
+    const kinds = got.files.map((f) => mediaKindOfName(f.name)).filter(Boolean);
+    if (kinds.length) setTab(kinds.every((k) => k === 'audio') ? 'audio' : 'video');
+    void editor.dropFiles(got.files);
+  };
   const inOrder = (ids: string[]) => { const o = orderMedia(ids, sort, use.first, label); return [...o.used, ...o.unused]; };
   /** the click/double-click handlers and the highlight of one library entry */
   const shown = new Set<string>();
@@ -136,7 +153,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
       attrs={{ 'data-add-music': m, ...tip(t('ed.dblListen') + (on ? t('ed.onTimeline') : '')), onClick: b.onClick, onDblClick: b.onDblClick }} />;
   };
   return (
-    <aside class="library">
+    <aside class={`library${fileOver ? ' file-over' : ''}`} onDragOver={panelOver as any} onDragLeave={panelLeave as any} onDrop={panelDrop as any}>
       <div class="lib-pages" role="tablist">{PAGES.map((x) => (
         <button role="tab" data-lib-tab={x.key} aria-selected={tab === x.key} class={litPages.has(x.key) && tab !== x.key ? 'has-lit' : undefined}
           {...(litPages.has(x.key) && tab !== x.key ? tip(t('ed.libTabLit')) : {})} onClick={() => setTab(x.key)}>{x.label}<small>{counts[x.key]}</small></button>
@@ -149,7 +166,9 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
         {tab !== 'video' && <a class="lib-gallery" data-gallery-link href={galleryUrl(s.id)} target="_blank" rel="opener" {...tip(t('ed.galleryTip'))}>Gallery ↗</a>}
         {editor.fs && <button data-import-media disabled={!!s.importing} {...tip(t('ed.importTip'))} onClick={() => setBrowsing(true)}><IconPlus size={12} /> Import</button>}
       </div>
-      {(s.importing || s.importNote) && <p class="lib-note" data-import-note>{s.importing ? t('ed.importing', s.importing) : s.importNote}</p>}
+      {(s.importing || s.importNote) && <p class="lib-note" data-import-note>{!s.importing ? s.importNote : s.importing.pct !== undefined
+        ? <>{t('ed.uploading', { done: s.importing.done, total: s.importing.total, pct: s.importing.pct })} <button class="lib-cancel" data-import-cancel onClick={() => editor.cancelImport()}>Cancel</button></>
+        : t('ed.importing', s.importing)}</p>}
       {browsing && editor.fs && <ImportDialog api={editor.fs} surface="editor" onAdd={importFiles} onClose={() => setBrowsing(false)} />}
       <div class="lib-page" data-lib-page="video" hidden={tab !== 'video'}>
       <select class="media-sort" data-media-sort value={sort} {...tip(t('ed.mediaSortTip'))} onChange={(e) => editor.setLayout({ mediaSort: (e.target as HTMLSelectElement).value as MediaSort })}>

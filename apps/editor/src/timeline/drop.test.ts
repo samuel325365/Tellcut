@@ -1,7 +1,7 @@
 import { resolveTimes, settle, type Project } from '@tellcut/engine';
 import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
 import { t } from '../i18n/index.ts';
-import { dropRecipe, planDrop, type DropKind, type DropTarget } from './drop.ts';
+import { dropRecipe, placeImported, planDrop, type DropKind, type DropTarget } from './drop.ts';
 
 const NO_SNAP = { snap: false, threshold: 0.08, playhead: 0 };
 /** the fixture with its first video track magnetic (c1 0–4, c2 4–8) and an overlay track with one item 1–3 */
@@ -76,4 +76,41 @@ test('new track when the project has none of that kind', () => {
 
 test('off the timeline: no plan', () => {
   expect(plan(project(), 'video', 2, { t: 2, row: null })).toBeNull();
+});
+
+// files dropped from this PC, placed once their copy and import are done (no snapping: the pointer is long gone)
+const IMPORTED = { locked: new Set<string>(), lengths: { song: 12 }, peaks: {}, beats: {} };
+/** the project after the import: two new clips and a song, then placed the way the editor's history does it */
+function imported(at: DropTarget, ids: string[], c = IMPORTED, edit?: (d: any) => void) {
+  const p: any = project();
+  p.sources.n1 = { path: 'n1.mp4', duration: 3 }; p.sources.n2 = { path: 'n2.mp4', duration: 2 }; p.media.song = { path: 'song.wav' };
+  edit?.(p);
+  const d = structuredClone(p);
+  placeImported(d, ids, at, c);
+  settle(p, d);
+  const times = resolveTimes(d), of = (src: string) => d.tracks.flatMap((t: any) => t.items.map((i: any) => ({ ...i, track: t.id }))).find((i: any) => (i.source ?? i.media) === src && !p.tracks.some((t: any) => t.items.some((x: any) => x.id === i.id)));
+  return { d, of, times };
+}
+
+test('placeImported: two clips on the magnetic track go one after another from the drop point; music goes to a music track when dropped on video', () => {
+  const r = imported({ t: 3, row: 'v' }, ['n1', 'n2', 'song']);
+  // 3 s is before c1's middle? no: c1 is 0–4 (middle 2), so the two go after c1, before c2, in drop order
+  const n1 = r.of('n1'), n2 = r.of('n2'), song = r.of('song');
+  expect([n1.track, r.times.get(n1.id)!.start, r.times.get(n1.id)!.end]).toEqual(['v', 4, 7]);
+  expect([n2.track, r.times.get(n2.id)!.start, r.times.get(n2.id)!.end]).toEqual(['v', 7, 9]);
+  expect(r.times.get('c2')!.start).toBe(9);
+  expect([song.track, r.times.get(song.id)!.start, r.times.get(song.id)!.end]).toEqual(['mu', 4, 16]);       // its own length; it hangs on the clip dropped with it, so it starts with it at the cut
+  // on a track that is not magnetic each one follows the one before
+  const o = imported({ t: 1, row: 'v2' }, ['n1', 'n2']);
+  const span = (id: string) => [o.times.get(id)!.start, o.times.get(id)!.end];
+  expect([o.of('n1').track, ...span(o.of('n1').id), ...span(o.of('n2').id)]).toEqual(['v2', 1, 4, 4, 6]);
+});
+
+test('placeImported: the target track was deleted meanwhile → the first open track of the kind', () => {
+  const r = imported({ t: 2, row: 'gone' }, ['song'], { ...IMPORTED, locked: new Set(['mu']) }, (p) => p.tracks.push({ id: 'mu2', kind: 'music', items: [] }));
+  expect(r.of('song').track).toBe('mu2');                                   // mu is locked
+  // "+ New track": one new track for the kind, both clips on it
+  const n = imported({ t: 0, row: 'new' }, ['n1', 'n2']);
+  expect(n.of('n1').track).toBe(n.of('n2').track);
+  expect(['v', 'v2']).not.toContain(n.of('n1').track);
 });

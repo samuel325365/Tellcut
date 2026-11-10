@@ -1,9 +1,14 @@
 // The media panel's Import (spec 2026-10-29-media-import), out of editor.ts: the server looks at the files, the editor adds
 // them as one undoable edit and saves it like any other, and only then (analysis reads project.json on disk) are they analysed.
-import { addSources, type Project } from '@tellcut/engine';
+// Files dropped from this PC (spec 2026-11-10-media-panel-visual §4) take the same way after their bytes are copied into the
+// project's media/import (a page is never told where a dropped file is): those the project has already are not sent again, and
+// once imported they are placed where they were let go, in the same undo step.
+import { addSources, type Project, type Registry } from '@tellcut/engine';
+import { mediaKindOfName, type ImportResult } from '@tellcut/protocol';
 import type { Api } from '../api.ts';
 import { errText, t, tn } from '../i18n/index.ts';
 import type { EditorState, Store } from '../store.ts';
+import { placeImported, type DropTarget } from '../timeline/drop.ts';
 
 export interface ImportHost {
   id: string;
@@ -15,37 +20,116 @@ export interface ImportHost {
   analyze(only: string[]): Promise<void>;
   /** saves are held (another tab or the Agent wrote the file): analyse these once a save goes through */
   later(ids: string[]): void;
+  /** a proposal waits: no edit now (says so itself) */
+  blocked?(): boolean;
+  /** what placing a dropped file needs: the registry, and the editor's analysis so far */
+  reg?: Registry;
 }
 
-const fileName = (p: string) => p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || p;
+const fileName = (p: string) => p.replace(/[\\/]+$/, '').split(/[\\/]+/).pop() || p;
+const key = (p: string) => p.replace(/\\/g, '/').toLowerCase();
 
-export async function importMedia(h: ImportHost, paths: string[]): Promise<void> {
+/** the import's new and already-there ids in the order of `paths` (a new one's path is relative to the project, so it is found as
+ *  the end of the path given; a converted photo, renamed on the way, comes last) */
+function inOrder(paths: string[], r: ImportResult, added: string[]): string[] {
+  const out: string[] = [], add = (id?: string) => { if (id && !out.includes(id)) out.push(id); };
+  const fresh = added.map((id) => ({ id, rel: key((r.sources[id] ?? r.media[id])?.path ?? '').replace(/^(\.\.\/)+/, '') }));
+  for (const p of paths) {
+    const k = key(p);
+    add(r.same.find((s) => key(s.path) === k)?.id);
+    add(fresh.find((f) => f.rel && (k === f.rel || k.endsWith(`/${f.rel}`)))?.id);
+  }
+  added.forEach(add);
+  return out;
+}
+
+/** Imports `paths` into the project as one undoable edit; `place` puts what was imported (and what was there already) on the
+ *  timeline in that same edit. Says what happened in importNote. */
+export async function importPaths(h: ImportHost, paths: string[], place?: (d: Project, ids: string[], r: ImportResult) => void, notes: string[] = []): Promise<void> {
   const p = h.store.get().project;
-  if (!p || !paths.length || h.store.get().importing) return;
+  if (!p || !paths.length) { if (notes.length) h.store.set({ importing: null, importNote: notes.join(' ') }); return; }
   const entries = [...Object.entries(p.sources), ...Object.entries(p.media)];
-  h.store.set({ importing: { done: 0, total: 0 }, importNote: '' });
-  let r;
+  h.store.set({ importing: { done: 0, total: 0 } });
+  let r: ImportResult;
   try {
     r = await h.api.importMedia(h.id, { paths, taken: entries.map(([id]) => id), have: entries.map(([id, x]) => ({ id, path: x.path })) },
       (done, total) => h.store.set({ importing: { done, total } }));
   } catch (e) {
-    h.store.set({ importing: null, importNote: t('ed.importFailed', { why: errText(e) }) });
+    h.store.set({ importing: null, importNote: [...notes, t('ed.importFailed', { why: errText(e) })].join(' ') });
     return;
   }
   const ids = [...Object.keys(r.sources), ...Object.keys(r.media)];
   let added: string[] = [];
-  if (ids.length) h.apply((d) => { added = addSources(d, { sources: r.sources, media: r.media }); });
+  if (ids.length || (place && r.same.length)) h.apply((d) => {
+    added = addSources(d, { sources: r.sources, media: r.media });
+    place?.(d, inOrder(paths, r, added), r);
+  });
   const note = [
     added.length ? tn('ed.imported', added.length) : '',
-    r.same.length ? t('ed.importSame', { list: r.same.map((x) => fileName(x.path)).join(', ') }) : '',
+    // a file dropped on the timeline that the project had already is placed: nothing to say about it
+    r.same.length && !place ? t('ed.importSame', { list: r.same.map((x) => fileName(x.path)).join(', ') }) : '',
     r.skipped.length ? t('ed.importSkipped', { list: r.skipped.map((x) => `${fileName(x.path)} (${errText(x)})`).join(', ') }) : '',
     r.others ? tn('ed.importOthers', r.others) : '',
+    ...notes,
   ].filter(Boolean).join(' ');
-  const shown = note || t('ed.importNothing');
+  const shown = note || (place && r.same.length ? '' : t('ed.importNothing'));
   h.store.set({ importing: null, importNote: shown });
   // a plain "added 3" goes by itself; what was left out stays until the next import
-  if (!r.same.length && !r.skipped.length && added.length) setTimeout(() => { if (h.store.get().importNote === shown) h.store.set({ importNote: '' }); }, 8000);
+  if (!notes.length && !(r.same.length && !place) && !r.skipped.length && added.length) setTimeout(() => { if (h.store.get().importNote === shown) h.store.set({ importNote: '' }); }, 8000);
   if (!added.length) return;
   if (await h.settle()) await h.analyze(added);
   else h.later(added);
+}
+
+/** the media panel's Import: paths on this PC */
+export function importMedia(h: ImportHost, paths: string[]): Promise<void> {
+  if (h.store.get().importing) return Promise.resolve();
+  h.store.set({ importNote: '' });
+  return importPaths(h, paths);
+}
+
+/** the upload under way, for Cancel */
+let cancel: AbortController | null = null;
+/** Cancel in the media panel: the file being copied stops; those already copied are still imported and placed */
+export function cancelImport() { cancel?.abort(); }
+
+/** Files dropped from this PC: on the media panel (no `at`: added only) or on the timeline (placed where let go). */
+export async function dropFiles(h: ImportHost, files: File[], at?: DropTarget): Promise<void> {
+  if (!h.store.get().project || !files.length) return;
+  if (h.store.get().importing) { h.store.set({ notice: t('ed.importBusy') }); return; }
+  if (h.blocked?.()) return;
+  const media = files.filter((f) => mediaKindOfName(f.name)), notes: string[] = [];
+  const not = files.filter((f) => !media.includes(f));
+  if (not.length) notes.push(t('ed.dropNotMedia', { list: not.map((f) => f.name).join(', ') }));
+  h.store.set({ importNote: '' });
+  if (!media.length) { h.store.set({ importNote: notes.join(' ') }); return; }
+  const total = media.length, bytes = media.reduce((n, f) => n + f.size, 0) || 1;
+  h.store.set({ importing: { done: 0, total, pct: 0 } });
+  const ctl = new AbortController();
+  cancel = ctl;
+  const paths: Array<string | null> = media.map(() => null);
+  try {
+    const { found } = await h.api.uploadCheck(h.id, media.map((f) => ({ name: f.name, size: f.size, mtime: f.lastModified })));
+    let sent = 0, done = 0;
+    media.forEach((_, i) => { if (found[i]) { paths[i] = found[i]; done++; sent += media[i].size; } });
+    h.store.set({ importing: { done, total, pct: Math.round((sent / bytes) * 100) } });
+    for (const [i, f] of media.entries()) {
+      if (paths[i]) continue;
+      if (ctl.signal.aborted) break;
+      try {
+        paths[i] = await h.api.upload(h.id, f, (n) => h.store.set({ importing: { done, total, pct: Math.round(((sent + n) / bytes) * 100) } }), ctl.signal);
+      } catch (e) {
+        if (ctl.signal.aborted) break;
+        notes.push(t('ed.importSkipped', { list: `${f.name} (${errText(e)})` }));
+      }
+      sent += f.size; done++;
+      h.store.set({ importing: { done, total, pct: Math.round((sent / bytes) * 100) } });
+    }
+  } catch (e) {
+    h.store.set({ importing: null, importNote: [...notes, t('ed.importFailed', { why: errText(e) })].join(' ') });
+    return;
+  } finally { if (cancel === ctl) cancel = null; }
+  if (ctl.signal.aborted) notes.push(t('ed.uploadCancelled'));
+  const s = h.store.get(), ctx = { locked: new Set(s.locked), lengths: {} as Record<string, number>, reg: h.reg, peaks: s.peaks, beats: s.beats };
+  await importPaths(h, paths.filter((p): p is string => !!p), at ? (d, ids, r) => placeImported(d, ids, at, { ...ctx, lengths: r.lengths ?? {} }) : undefined, notes);
 }

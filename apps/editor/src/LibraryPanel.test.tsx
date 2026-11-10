@@ -319,3 +319,30 @@ test('block cards: the gallery’s picture (asked for when the Effects page show
   press(card('[data-add-mine="fx.chalk"]')); move(); up();
   expect(calls.at(-1)).toEqual(['drag', { lib: { slug: 'chalk', type: 'fx.chalk', kind: 'overlay' } }]);
 });
+
+test('files dropped on the media panel are added (not placed) and the page for them shows; while copying, the note has a Cancel', async () => {
+  const store = createStore({ ...initialState('t'), project: fixture() });
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] },
+    dropFiles: (files: File[], at?: unknown) => calls.push(['drop', files.map((f) => f.name), at]), setLayout: (l: any) => calls.push(['layout', l]),
+    cancelImport: () => calls.push(['cancel']) };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const file = new File(['x'], 'a.wav', { type: 'audio/wav' });
+  const dt = { types: ['Files'], items: [{ kind: 'file', type: 'audio/wav', getAsFile: () => file, webkitGetAsEntry: () => ({ isDirectory: false }) }], files: [file], dropEffect: 'none' };
+  const fire = (type: string) => { const e = new Event(type, { bubbles: true, cancelable: true }); (e as any).dataTransfer = dt; root.querySelector('aside')!.dispatchEvent(e); return e; };
+  let over: Event | null = null;
+  await act(() => { over = fire('dragover'); });
+  expect(over!.defaultPrevented).toBe(true);
+  expect(root.querySelector('aside')!.classList.contains('file-over')).toBe(true);
+  await act(() => { fire('drop'); });
+  expect(calls).toEqual([['layout', { mediaTab: 'audio' }], ['drop', ['a.wav'], undefined]]);
+  expect(root.querySelector('aside')!.classList.contains('file-over')).toBe(false);
+  await act(() => render(<LibraryPanel editor={editor} s={{ ...store.get(), importing: { done: 1, total: 2, pct: 40 } }} />, root));
+  expect(root.querySelector('[data-import-note]')!.textContent).toContain(t('ed.uploading', { done: 1, total: 2, pct: 40 }));
+  await act(() => { root.querySelector<HTMLElement>('[data-import-cancel]')!.click(); });
+  expect(calls.at(-1)).toEqual(['cancel']);
+  // the import itself (no bytes left to copy) has no Cancel
+  await act(() => render(<LibraryPanel editor={editor} s={{ ...store.get(), importing: { done: 1, total: 2 } }} />, root));
+  expect(root.querySelector('[data-import-cancel]')).toBeNull();
+});

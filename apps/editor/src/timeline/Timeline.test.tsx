@@ -610,3 +610,24 @@ test('the drop probe: the track under the pointer and its time, the new-track st
   await act(() => store.set({ libDrag: { kind: 'sfx', len: 1, plan: null } }));
   expect(editor.dropProbe(176 + 100, 395).row).toBe('new');                       // a sound: the strip at the bottom
 });
+
+test('files dragged in from the PC: a line where they will start, the drop hands them over with that place, leaving clears it', async () => {
+  const { root, editor, store, calls } = mount();
+  editor.fileDragTo = (at: any, kind: string) => calls.push(['over', at, kind]);
+  editor.fileDragEnd = () => calls.push(['end']);
+  editor.dropFiles = (files: File[], at: any) => calls.push(['drop', files.map((f) => f.name), at]);
+  await act(() => render(<Timeline editor={editor} />, root));
+  root.querySelector<HTMLElement>('.tracks')!.getBoundingClientRect = () => ({ top: 0, left: 0, right: 1400, bottom: 400, width: 1400, height: 400, x: 0, y: 0 }) as DOMRect;
+  const vTop = parseFloat(root.querySelector<HTMLElement>('[data-row="v"]')!.style.top);
+  const file = new File(['x'], 'a.wav', { type: 'audio/wav' });
+  const dt = { types: ['Files'], items: [{ kind: 'file', type: 'audio/wav', getAsFile: () => file, webkitGetAsEntry: () => ({ isDirectory: false }) }], files: [file], dropEffect: 'none' };
+  const fire = (type: string, x: number, y: number) => { const e = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y }); (e as any).dataTransfer = dt; root.querySelector('.timeline')!.dispatchEvent(e); return e; };
+  expect(fire('dragover', 176 + 100, vTop + 20).defaultPrevented).toBe(true);
+  expect([calls.at(-1), dt.dropEffect]).toEqual([['over', { t: 2, row: 'v' }, 'music'], 'copy']);
+  fire('drop', 176 + 150, vTop + 20);
+  expect(calls.slice(-2)).toEqual([['end'], ['drop', ['a.wav'], { t: 3, row: 'v' }]]);
+  // a drag of text within the page is not taken
+  dt.types = ['text/plain'];
+  expect(fire('dragover', 300, vTop + 20).defaultPrevented).toBe(false);
+  void store;
+});

@@ -5,8 +5,11 @@
 // - the magnetic track takes it at the pointer time and its own packing puts it at the nearest cut (nothing is split or covered);
 // - any other track takes it at the pointer time, overlapping items share the track in another lane (geometry assignLanes),
 //   and like the library's add it ends at the end of the film at the latest.
-import { addItem, addTrack, magneticTrack, snapCandidates, snapDelta, type Project, type Times, type TrackKind } from '@tellcut/engine';
+import { addItem, addTrack, magneticTrack, resolveTimes, snapCandidates, snapDelta, type Project, type Registry, type Times, type TrackKind } from '@tellcut/engine';
+import type { Material } from '../audition.ts';
+import { materialItem } from '../editor/materials.ts';
 import { t } from '../i18n/index.ts';
+import type { EditorState, PeakInfo } from '../store.ts';
 
 /** the track kinds the library and dropped files add to */
 export type DropKind = 'video' | 'music' | 'sfx' | 'overlay';
@@ -46,4 +49,36 @@ export function dropRecipe(plan: Extract<DropPlan, { ok: true }>, kind: DropKind
     also?.(d, id);
     return id;
   };
+}
+
+const NO_SNAP = { snap: false, threshold: 0, playhead: 0 };
+/** apart by this much, clips put at one point of the magnetic track keep their order when it packs them (far less than a frame) */
+const TIE = 1e-4;
+
+/** Files dropped from this PC, once imported: each new source or music `ids` names (in the order dropped) as a clip of the whole
+ *  video, a 3 s photo or the whole sound (`lengths`, else 10 s), from the drop point on, inside the recipe that adds them (one undo
+ *  step). On the magnetic track they all go in at the drop point, packed one after another there; on any other track each follows
+ *  the one before. One the target track does not take (another kind, locked, gone) goes on the first open track of its kind, or on
+ *  a new one; "+ New track" makes one track per kind for all of them. No snapping: the pointer let go long before. */
+export function placeImported(d: Project, ids: string[], at: DropTarget, c: { locked: ReadonlySet<string>; lengths: Record<string, number>; reg?: Registry; peaks: Record<string, PeakInfo>; beats: EditorState['beats'] }) {
+  if (at.row === null) return;
+  const made = new Map<DropKind, string>(), next = new Map<string, number>(), mag = magneticTrack(d)?.id;
+  let tie = 0;
+  for (const id of ids) {
+    const src = d.sources[id];
+    const m: Material | null = src ? { kind: 'clip', source: id, from: 0, len: src.duration } : d.media[id] ? { kind: 'music', media: id, len: c.lengths[id] ?? 10 } : null;
+    if (!m) continue;
+    const x = materialItem(d, m, 0, c), len = (x.item.end as number) - (x.item.start as number), times = resolveTimes(d);
+    const row = (r: string) => (r === 'new' ? made.get(x.kind) ?? 'new' : r);
+    const plan = (r: string) => { const w = row(r); return planDrop(d, times, { kind: x.kind, len, at: { t: next.get(w) ?? at.t, row: w }, locked: c.locked }, NO_SNAP); };
+    let pl = plan(at.row);
+    if (!pl?.ok) pl = plan(d.tracks.find((tr) => tr.kind === x.kind && !c.locked.has(tr.id))?.id ?? 'new');
+    if (!pl?.ok) continue;
+    const track = pl.track ?? addTrack(d, { kind: x.kind as TrackKind });
+    if (pl.track === null) made.set(x.kind, track);
+    const start = track === mag ? r6(at.t + tie++ * TIE) : pl.start, end = track === mag ? r6(start + len) : pl.end;
+    const nid = addItem(d, { track, item: { ...x.item, start, end } });
+    x.also?.(d, nid);
+    if (track !== mag) next.set(track, end);
+  }
 }

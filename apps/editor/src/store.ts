@@ -42,8 +42,8 @@ export interface EditorState {
   analysisFailed: string[];
   /** why the last edit was refused (shown in the properties panel) */
   notice: string;
-  /** the media panel's Import while it runs: files looked at so far */
-  importing: { done: number; total: number } | null;
+  /** the media panel's Import while it runs: files looked at so far; `pct` while dropped files are copied (of all their bytes) */
+  importing: { done: number; total: number; pct?: number } | null;
   /** what the last Import added and left out (worded), shown under the Media heading; empty = nothing to say */
   importNote: string;
   /** crop mode: the clip and which crop (from, to or a keyframe index) */
