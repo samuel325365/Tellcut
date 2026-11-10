@@ -225,6 +225,8 @@ function drawPencil(ctx: Parameters<typeof progress.draw>[0], s: S, x: number, w
       tick(g, cx - 13 * u, cy - 15 * u, 26 * u, clamp(q * 2), clamp(q * 2 - 1));
     }
   }
+  // the canvas keeps its state between frames of one size: a last tick's 0.9 would fade the next frame's title underline
+  g.globalAlpha = 1;
 }
 
 /** timeline mode at `local`: how much of the line is drawn in (0–1), where the dot is (a stop index, fractional while sliding),
