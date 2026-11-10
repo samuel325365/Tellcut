@@ -3,7 +3,7 @@
 // Look slant (2026-11-06, the Single Color pilot film's fx.count): heavy slanted Anton numbers, each step its own colour, an outlined copy
 // set off behind, an arc sweeping open on the right instead of the ring (`ring` off hides it). The arc and the numbers take the step's
 // colour, so `accent` and `ink` (the ring's colour and the number's outline) belong to the ring look only.
-import { clamp, cssCamel, eBack, h, prog, type ItemType } from '@tellcut/engine';
+import { clamp, cssCamel, eBack, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
 
 interface P { look: 'ring' | 'slant'; colors: string; from: number; to: number; end: string; label: string; size: number; y: number; color: string; accent: string; ink: string; ring: boolean; font: string }
@@ -32,7 +32,7 @@ export const countdown: ItemType<P, S> = {
   doc: '大數字從 from 倒數到 to（整個項目平均分），每一下彈一下、外圈一條環跟著跑完；最後一下可以換成字（GO!）；look slant 是粗窄斜體大字（Anton）、斜後方一個空心的影子、右側一道弧線跟著每一下掃開，colors 每一下輪流換色（運動、單色快剪的 3-2-1 開場，配 common.grade）；測驗、挑戰、猜猜看、排行揭曉',
   params: [
     { key: 'look', label: '樣式（ring 環、slant 斜體大字＋弧線）', type: 'enum', options: ['ring', 'slant'], default: 'ring' },
-    { key: 'colors', label: '每一下的顏色（逗號分隔輪流；空＝數字顏色）', type: 'string', default: '' },
+    { key: 'colors', label: '每一下的顏色（slant 樣式；逗號分隔輪流；空＝數字顏色；ring 只用數字顏色）', type: 'string', default: '' },
     { key: 'from', label: '從', type: 'number', min: 0, max: 99, step: 1, default: 3 },
     { key: 'to', label: '到', type: 'number', min: 0, max: 99, step: 1, default: 0 },
     { key: 'end', label: '最後一下改成這幾個字（空＝照數字）', type: 'string', default: 'GO!' },
@@ -72,7 +72,8 @@ export const countdown: ItemType<P, S> = {
     cssCamel(s.ghost, { display: 'none' });
     s.arc.setAttribute('transform', 'rotate(-90 50 50)'); s.track.style.display = '';
     s.num.textContent = c.text;
-    const word = [...c.text].length > 2, px = d * (word ? 0.32 : 0.52);
+    // a word the ring cannot hold (START NOW, 開始) shrinks to 80 % of its width; GO! and the numbers keep their size
+    const word = [...c.text].length > 2, px = Math.min(d * (word ? 0.32 : 0.52), (0.8 * d) / Math.max(0.5, textEm(c.text)));
     cssCamel(s.num, { top: '50%', transform: `translate(-50%, -50%) scale(${pop})`, fontSize: `${px}px`, fontWeight: '900', color: p.color, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`,
       webkitTextStroke: `${theme.stroke * k}px ${p.ink}`, paintOrder: 'stroke fill', opacity: String(clamp(c.into / 0.08)) });
     s.label.textContent = p.label;
