@@ -142,7 +142,8 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     // full size, broke a title shrunk to 0.7 into three lines)
     const roomAt = (x: number) => (look.room ? look.room({ ...pre, px: x }, width) : width) - (point ? 2.05 * x : 0), room = roomAt(px), text = p.quote ? `“${p.text}”` : p.text;
     // one word at a time: the line is never shrunk to fit whole, only so that its longest word fits on a line of its own
-    const plain = charKinds(text).map((c) => c.c).join(''), list = hasWords ? wordsOf(steps, [...plain].length, plain) : evenWords(plain, ctx.dur);
+    // the words are only drawn one by one in word mode (a word effect, `one` among them): a plain line skips the segmenter every frame
+    const plain = charKinds(text).map((c) => c.c).join(''), list = !wordMode ? [] : hasWords ? wordsOf(steps, [...plain].length, plain) : evenWords(plain, ctx.dur);
     const oneFit = fx === 'one' ? Math.min(1, room / px / Math.max(1e-6, ...list.map((w) => textEm([...plain].slice(w.a, w.b).join('').trim()) * 1.08))) : 1;
     // one word at a time: one line (the words not being said are hidden), never broken inside a word (extrude-one split missed.)
     const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, Math.max(0, roomAt(0) - room) / px / hs);
