@@ -260,6 +260,18 @@ body.lib-dragging, body.lib-dragging * { cursor: grabbing !important; user-selec
 .library .segs button.seg.used::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); }
 .library .segs button.seg.picked { background: #0d0c0b; outline: 2px solid var(--accent); outline-offset: -2px; }
 .library .segs button.seg:hover { outline: 1px solid var(--dim); outline-offset: -1px; } .library .segs button.seg.picked:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* the Audio page: music and narration as wide cards over their waveform, sound effects as small cards with their group sign */
+.library button.snd { display: block; width: 100%; margin-bottom: 4px; padding: 4px 6px; text-align: left; cursor: grab; }
+.library .snd-head { display: flex; align-items: center; gap: 6px; } .library .snd-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.library .snd-head small { flex: none; color: var(--dim); } .library .snd.picked .snd-head small { color: var(--on-accent); opacity: .7; }
+.library .snd-play { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-size: 8px; background: var(--line); cursor: pointer; }
+.library .snd-play:hover { background: var(--accent); color: var(--on-accent); }
+.library .snd-wave { display: block; height: 22px; margin-top: 3px; } .library .snd-wave canvas { display: block; width: 100% !important; height: 22px; }
+.library .wave-none { display: block; height: 2px; margin-top: 10px; background: var(--line); }
+.library .sfx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; padding: 2px 0 4px; }
+.library button.sfx-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; text-align: center; cursor: grab; }
+.library .sfx-icon { font-size: 16px; line-height: 18px; color: var(--accent); } .library .sfx-card.picked .sfx-icon { color: var(--on-accent); }
+.library .sfx-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
 .toolbar .help-btn { background: #3b342d; border-color: #5e5246; }
 .help-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
 .help { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }

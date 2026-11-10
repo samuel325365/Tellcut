@@ -278,3 +278,17 @@ test('a source whose analysis failed says so in the UI language, with an English
     expect(root.querySelector('[data-analysis-failed]')).toBeNull();
   } finally { setLang('zh'); }
 });
+test('sound cards: music with its waveform and a listen button, a grey line before the waveform is known, sound effects in a grid', async () => {
+  const p: any = fixture(); p.media.n = { path: 'n.mp3' };
+  const store = createStore({ ...initialState('t'), project: p, layout: { ...initialState('t').layout, mediaTab: 'audio' as const }, peaks: { 'media:m': { rate: 100, peaks: new Array(6000).fill(0.5) } } });
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [{ type: 'x.tap', label: '點', category: 'hit' }] },
+    audition: (m: any) => calls.push(m), addMaterial() {} };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const m = root.querySelector<HTMLElement>('[data-add-music="m"]')!, n = root.querySelector<HTMLElement>('[data-add-music="n"]')!;
+  expect([!!m.querySelector('canvas.wave'), !!n.querySelector('.wave-none'), !!n.querySelector('canvas.wave')]).toEqual([true, true, false]);
+  await act(() => { m.querySelector<HTMLElement>('[data-listen]')!.click(); });
+  expect([calls, m.classList.contains('picked')]).toEqual([[{ kind: 'music', media: 'm' }], false]);   // listening is not picking
+  expect(root.querySelector('.sfx-grid [data-add-sfx="x.tap"] .sfx-icon')).not.toBeNull();
+});

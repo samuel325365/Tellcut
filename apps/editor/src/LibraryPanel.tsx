@@ -11,6 +11,7 @@ import type { EditorState } from './store.ts';
 import type { Material } from './audition.ts';
 import { formatTime } from './timeline/geometry.ts';
 import { SceneCard } from './media/SceneCard.tsx';
+import { SoundCard, sfxSign } from './media/SoundCard.tsx';
 import { startCardDrag } from './media/drag.ts';
 import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
@@ -122,9 +123,12 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
     </div>
   ); };
   // narration shows no tempo: the beats found in speech mean nothing
-  const audio = (m: string) => { const len = musicLength(s.peaks[`media:${m}`]), on = use.first.has(m), b = pick(`music:${m}`, { kind: 'music', media: m }); return (
-    <button data-add-music={m} {...tip(t('ed.dblListen') + (on ? t('ed.onTimeline') : ''))} {...b} class={`${b.class}${on ? ' used' : ''}${lit.has(m) ? ' lit' : ''}`}>{label(m)}{len ? ` · ${formatTime(len)}` : ''}{s.beats[m] && !isVoice(p.media[m]) ? ` · ${Math.round(s.beats[m].bpm)} BPM` : ''}</button>
-  ); };
+  const audio = (m: string) => {
+    const peaks = s.peaks[`media:${m}`], len = musicLength(peaks), on = use.first.has(m), mat: Material = { kind: 'music', media: m }, b = pick(`music:${m}`, mat);
+    return <SoundCard key={m} name={label(m)} len={len} bpm={s.beats[m] && !isVoice(p.media[m]) ? s.beats[m].bpm : undefined} peaks={peaks}
+      cls={`${b.class}${on ? ' used' : ''}${lit.has(m) ? ' lit' : ''}`} listen={() => editor.audition(mat)} onPress={(e) => startCardDrag(e, editor, mat)}
+      attrs={{ 'data-add-music': m, ...tip(t('ed.dblListen') + (on ? t('ed.onTimeline') : '')), onClick: b.onClick, onDblClick: b.onDblClick }} />;
+  };
   return (
     <aside class="library">
       <div class="lib-pages" role="tablist">{PAGES.map((x) => (
@@ -162,7 +166,10 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
       <h4>Sound effects</h4>
       {sfx.map((g) => <details class="lib-group" data-lib-group={`sfx:${g.key}`} open={!!qa.trim() || g.key === 'fx' || g.key === 'core'}>
         <summary>{g.label}<small>{g.list.length}</small></summary>
-        {g.list.map((d: any) => <button data-add-sfx={d.type} {...tip(withHandle(d.type, t('ed.dblListen')))} {...pick(`sfx:${d.type}`, { kind: 'sfx', type: d.type })}>{blockName(d)}</button>)}
+        <div class="sfx-grid">{g.list.map((d: any) => { const mat: Material = { kind: 'sfx', type: d.type }, b = pick(`sfx:${d.type}`, mat); return (
+          <button data-add-sfx={d.type} {...tip(withHandle(d.type, t('ed.dblListen')))} {...b} class={`${b.class} sfx-card`} onMouseDown={(e) => startCardDrag(e as any, editor, mat)}>
+            <span class="sfx-icon">{sfxSign(d.category)}</span><span class="sfx-name">{blockName(d)}</span></button>
+        ); })}</div>
       </details>)}
       </div>
       <div class="lib-page" data-lib-page="effects" hidden={tab !== 'effects'}>
