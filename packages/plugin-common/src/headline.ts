@@ -8,7 +8,7 @@
 // width like dough under a rolling pin; `strikeFrom` / `strikeAt` draw a thin line in the `line` colour through the words from that
 // character on, which then fade back.
 import { abs, clamp, cssCamel, eIO3, eOut3, h, type ItemType, prog, textEm } from '@tellcut/engine';
-import { countUp, drawBlurLine, loadLineFaces } from './brand-text.ts';
+import { countUp, drawBlurLine, isProofNumber, loadLineFaces } from './brand-text.ts';
 import { ghostLayer, ghostLines, nl, type GhostLine } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
 import { isCjk } from './words.ts';
@@ -65,7 +65,7 @@ export const headline: ItemType<P, S> = {
     { key: 'spacing', label: '字距（em）', type: 'number', min: 0, max: 0.5, step: 0.01, default: 0.06 },
     { key: 'bg', label: '底（none 沒有、band 暗色橫帶、black 整個畫面變黑）', type: 'enum', options: ['none', 'band', 'black'], default: 'band' },
     { key: 'rules', label: '上下細線', type: 'bool', default: true },
-    { key: 'type', label: '逐字打出（每秒幾個字；0＝整行一起浮上來）', type: 'number', min: 0, max: 60, step: 1, default: 0 },
+    { key: 'type', label: '逐字打出（每秒幾個字；0＝整行一起浮上來；打字時 enter roll 和劃掉都不作用）', type: 'number', min: 0, max: 60, step: 1, default: 0 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Serif TC' },
     { key: 'color', label: '大字顏色', type: 'color', default: '#f3e9d2', theme: 'palette.paper' },
     { key: 'line', label: '小字與細線的顏色', type: 'color', default: '#d9b13b' },
@@ -152,19 +152,30 @@ export const headline: ItemType<P, S> = {
   hide(s) { s.cv.width = 0; s.cv.height = 0; },
 };
 
+/** the spans charSpans made in an element, and the text they were made for */
+const spanCache = new WeakMap<HTMLElement, { key: string; spans: HTMLElement[] }>();
+
 /** the lines in el as one span a character (`each(i, span)` styles character i, counted over all lines), each carrying a strike line
- *  `thick` px in `color` as its background (sized by `each`; a background, so the line runs on through the letter spacing) */
+ *  `thick` px in `color` as its background (sized by `each`; a background, so the line runs on through the letter spacing). The
+ *  spans are made again only when the text changes or something else (the typed or plain card) has taken the element over, not
+ *  every frame; they are styled every frame. */
 function charSpans(el: HTMLElement, lines: string[], thick: number, color: string, each: (i: number, sp: HTMLElement) => void) {
-  el.replaceChildren();
-  let i = 0;
-  lines.forEach((l, j) => {
-    if (j) el.append('\n');
-    for (const c of l) {
-      const sp = h('span', null, null, el);
-      sp.textContent = c;
-      cssCamel(sp, { whiteSpace: 'pre', backgroundImage: `linear-gradient(${color}, ${color})`, backgroundRepeat: 'no-repeat', backgroundPosition: '0 55%', backgroundSize: `0% ${thick.toFixed(2)}px` });
-      each(i++, sp);
-    }
+  const key = JSON.stringify(lines);
+  let c = spanCache.get(el);
+  const mine = c && c.key === key && (c.spans.length ? c.spans.every((sp) => sp.parentNode === el) : !el.childNodes.length);
+  if (!c || !mine) {
+    el.replaceChildren();
+    const spans: HTMLElement[] = [];
+    lines.forEach((l, j) => {
+      if (j) el.append('\n');
+      for (const ch of l) { const sp = h('span', null, null, el); sp.textContent = ch; spans.push(sp); }
+    });
+    c = { key, spans };
+    spanCache.set(el, c);
+  }
+  c.spans.forEach((sp, i) => {
+    cssCamel(sp, { whiteSpace: 'pre', backgroundImage: `linear-gradient(${color}, ${color})`, backgroundRepeat: 'no-repeat', backgroundPosition: '0 55%', backgroundSize: `0% ${thick.toFixed(2)}px` });
+    each(i, sp);
   });
 }
 
@@ -177,7 +188,7 @@ function drawProof(ctx: Parameters<typeof headline.draw>[0], s: S): GhostLine[] 
   if (!g) return [];
   g.clearRect(0, 0, W, H);
   const family = `'${brandFace(p.font)}', 'Noto Sans TC', sans-serif`, x = theme.safe.side * W, cy = p.y >= 0 ? p.y * H : H * 0.5;
-  const lines = linesOf(p.text).filter((l) => l !== ''), numeric = lines.length === 1 && /^\d/.test(lines[0]);
+  const lines = linesOf(p.text).filter((l) => l !== ''), numeric = lines.length === 1 && isProofNumber(lines[0]);
   if (numeric) {
     const big = fitMeasuredSize(g, [lines[0]], (p.size / 100) * 200 * k, family, 300, W - 2 * x);
     const n = drawBlurLine(g, { text: countUp(lines[0], local, 0.05), x, y: cy + big * 0.35, size: big, family, weight: 300, color: p.color }, local, 0, dur);

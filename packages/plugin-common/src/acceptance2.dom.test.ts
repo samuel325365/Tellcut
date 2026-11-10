@@ -147,4 +147,19 @@ describe('common.headline roll and strike', () => {
     expect([...struck.children].map((c) => css(c).backgroundSize.split(' ')[0])).toEqual(['0.00%', '0.00%', '100.00%', '100.00%']);
     expect(css(struck.children[3]).color).toMatch(/rgba\(.*0\.28/);
   });
+  test('roll and strike keep their character spans from frame to frame, rebuilt only when the text changes', () => {
+    const { s, ctx } = run(headline, { text: '一行字', enter: 'roll' }, 0.5);
+    const first = s.main.children[0];
+    ctx.local = ctx.t = 0.9; headline.draw(ctx, s);
+    expect(s.main.children[0]).toBe(first);
+    expect(css(first).transform).toBe(`scale(${rollChar(0, 0.9).sx.toFixed(4)}, ${rollChar(0, 0.9).sy.toFixed(4)})`);
+    ctx.params = { ...ctx.params, text: '兩行\n字' }; headline.draw(ctx, s);
+    expect(s.main.children[0]).not.toBe(first);
+    expect(s.main.textContent).toBe('兩行\n字');
+    // and after the plain card took the element over, the spans come back
+    ctx.params = { ...ctx.params, enter: 'rise' }; headline.draw(ctx, s);
+    expect(s.main.children.length).toBe(0);
+    ctx.params = { ...ctx.params, enter: 'roll' }; headline.draw(ctx, s);
+    expect(s.main.children.length).toBe(3);
+  });
 });

@@ -41,14 +41,19 @@ export function drawBlurLine(g: CanvasRenderingContext2D, l: BlurLine, t: number
   return ghost;
 }
 
+/** what may stand before a proof's number: a currency (NT$, US$, $, €, £, ¥) or a plus sign, half or full width */
+const NUM_PREFIX = String.raw`(NT\$|US\$|HK\$|[$＄€£¥+＋])?`;
+/** whether a text is a number for look proof: it starts with one, after a currency or plus sign if any */
+export const isProofNumber = (text: string) => new RegExp(`^${NUM_PREFIX}\\d`).test(text);
+
 /** A text that starts with a number counts up to it from t0 over dur (easing out), read and written as chart's numbers are
- *  (thousands grouped as given: 12,000; its decimals kept: 4.5); what follows the number ('+', 'x', ' clips.') stays as it is.
- *  A text that does not start with a number is returned as it is. */
+ *  (thousands grouped as given: 12,000; its decimals kept: 4.5); a currency or plus sign before it ($, NT$, +) and what follows it
+ *  ('+', 'x', ' clips.') stay as they are. A text that does not start with a number is returned as it is. */
 export function countUp(text: string, t: number, t0: number, dur = 0.7): string {
-  const m = /^(\d{1,3}(?:,\d{3})+(?!\d)|\d+)(\.\d+)?(.*)$/s.exec(text);
+  const m = new RegExp(String.raw`^${NUM_PREFIX}(\d{1,3}(?:,\d{3})+(?!\d)|\d+)(\.\d+)?(.*)$`, 's').exec(text);
   if (!m) return text;
-  const n = parseNum(m[1] + (m[2] ?? '')), k = eOut5(clamp((t - t0) / dur));
-  return `${fmtNum(n.v * k, n.dec, n.group)}${m[3]}`;
+  const n = parseNum(m[2] + (m[3] ?? '')), k = eOut5(clamp((t - t0) / dur));
+  return `${m[1] ?? ''}${fmtNum(n.v * k, n.dec, n.group)}${m[4]}`;
 }
 
 /** a character the Latin faces (Inter, Playfair…) have no drawing for: Chinese, Japanese, symbols */
