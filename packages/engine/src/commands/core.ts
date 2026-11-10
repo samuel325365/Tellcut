@@ -8,6 +8,12 @@ export class CommandError extends Error {
 }
 export interface Found { track: Track; ti: number; item: AnyItem; ii: number }
 
+/** Refuses a number argument that is not finite (an emptied field gives NaN): Math.min / max / round pass NaN on, and it was
+ *  written into the project, which then failed to load. Undefined (not given) passes. */
+export function finite(field: string, ...values: Array<number | undefined>) {
+  for (const v of values) if (v !== undefined && !Number.isFinite(v)) throw new CommandError(`${field}: must be a finite number (got ${v})`, 'cmd.fieldInvalid', { field });
+}
+
 /** Rounds to a microsecond so repeated edits keep project.json tidy. */
 export const r6 = (t: number) => Math.round(t * 1e6) / 1e6;
 export const minLen = (p: Project) => 1 / p.meta.fps;

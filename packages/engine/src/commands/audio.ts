@@ -1,6 +1,6 @@
 // Volume envelope points and fades on music/audio clips (spec §4.4). Point times are relative to the clip start.
 import type { Project } from '../schema.ts';
-import { CommandError, findItem, r6 } from './core.ts';
+import { CommandError, findItem, finite, r6 } from './core.ts';
 import { clamp } from '../util.ts';
 
 export const ENV_DB_MIN = -60, ENV_DB_MAX = 12;
@@ -15,6 +15,7 @@ function clip(p: Project, id: string, what: 'envelope' | 'fades') {
 
 /** Inserts a point in time order; returns its index. */
 export function addEnvelopePoint(p: Project, a: { id: string; t: number; db: number }): number {
+  finite('t', a.t); finite('db', a.db);
   const { it, len } = clip(p, a.id, 'envelope');
   const pt: [number, number] = [r6(clamp(a.t, 0, len)), clampDb(a.db)];
   const env: Array<[number, number]> = it.envelope ? [...it.envelope] : [];
@@ -27,6 +28,7 @@ export function addEnvelopePoint(p: Project, a: { id: string; t: number; db: num
 
 /** Moves a point, never past its neighbours (the order stays valid). */
 export function moveEnvelopePoint(p: Project, a: { id: string; index: number; t: number; db: number }) {
+  finite('t', a.t); finite('db', a.db);
   const { it, len } = clip(p, a.id, 'envelope');
   const env: Array<[number, number]> = it.envelope ?? [];
   if (!env[a.index]) throw new CommandError(`No envelope point ${a.index} on "${a.id}"`, 'cmd.noEnvelopePoint', { index: a.index, id: a.id });
@@ -46,6 +48,7 @@ export function removeEnvelopePoint(p: Project, a: { id: string; index: number }
 
 /** Sets a fade length, clamped so fade-in plus fade-out fit the clip. */
 export function setFade(p: Project, a: { id: string; edge: 'in' | 'out'; dur: number }) {
+  finite('dur', a.dur);
   const { it, len } = clip(p, a.id, 'fades');
   const other = a.edge === 'in' ? it.fadeOut : it.fadeIn;
   it[a.edge === 'in' ? 'fadeIn' : 'fadeOut'] = r6(clamp(a.dur, 0, Math.max(0, len - other)));

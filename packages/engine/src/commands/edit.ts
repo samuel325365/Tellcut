@@ -2,7 +2,7 @@
 import type { ZodIssue } from 'zod';
 import { plainCopy as plain } from '../util.ts';
 import { AudioItemZ, MusicItemZ, OverlayItemZ, SceneItemZ, SfxItemZ, VideoItemZ, type AnyItem, type Crop, type Project, type TrackKind, type Transform } from '../schema.ts';
-import { CommandError, findItem, fitFades, fitOwn, followTrim, mediaRate, ownSounds, r6, scaleChildren, sourceNeed, uniqueId } from './core.ts';
+import { CommandError, findItem, finite, fitFades, fitOwn, followTrim, mediaRate, ownSounds, r6, scaleChildren, sourceNeed, uniqueId } from './core.ts';
 import { cropAt } from '../geometry.ts';
 
 const ITEM_Z = { video: VideoItemZ, scene: SceneItemZ, overlay: OverlayItemZ, music: MusicItemZ, audio: AudioItemZ, sfx: SfxItemZ } as const;
@@ -128,6 +128,7 @@ export function setTrack(p: Project, a: { id: string; patch: { gain?: number; mu
   if (!t) throw new CommandError(`No track "${a.id}"`, 'cmd.noTrack', { id: a.id });
   const audio = AUDIO_KINDS.has(t.kind);
   if (!audio && (a.patch.gain !== undefined || a.patch.solo !== undefined)) throw new CommandError(`Track "${a.id}" (${t.kind}) has no bus gain or solo`, 'cmd.noBus', { id: a.id, kind: t.kind });
+  finite('gain', a.patch.gain);
   if (a.patch.gain !== undefined) t.gain = Math.round(Math.min(12, Math.max(-60, a.patch.gain)) * 10) / 10;
   if (a.patch.muted !== undefined) t.muted = a.patch.muted;
   if (a.patch.solo !== undefined) t.solo = a.patch.solo;
@@ -137,7 +138,7 @@ export function setTrack(p: Project, a: { id: string; patch: { gain?: number; mu
 /** Which crop crop mode edits: the clip's first frame, its last, or a keyframe by index. */
 export type CropWhich = 'from' | 'to' | number;
 
-const clampCrop = (c: Crop) => { const k = (v: number, lo: number, hi: number) => r6(Math.min(hi, Math.max(lo, v))); return { x: k(c.x, 0, 1), y: k(c.y, 0, 1), zoom: k(c.zoom, 1, 8) }; };
+const clampCrop = (c: Crop) => { finite('crop.x', c.x); finite('crop.y', c.y); finite('crop.zoom', c.zoom); const k = (v: number, lo: number, hi: number) => r6(Math.min(hi, Math.max(lo, v))); return { x: k(c.x, 0, 1), y: k(c.y, 0, 1), zoom: k(c.zoom, 1, 8) }; };
 const videoOf = (p: Project, id: string) => {
   const f = findItem(p, id);
   if (f.track.kind !== 'video') throw new CommandError('Only video clips have a crop', 'cmd.cropVideoOnly');
@@ -179,6 +180,8 @@ export function setTransform(p: Project, a: { id: string; transform: Transform |
   if (!a.transform) { delete it.transform; return; }
   const c = (v: number, lo: number, hi: number) => Math.round(Math.min(hi, Math.max(lo, v)) * 1e4) / 1e4;
   const t = a.transform, old = it.transform as Transform | undefined;
+  for (const k of ['x', 'y', 'scale', 'ox', 'oy'] as const) finite(`transform.${k}`, t[k]);
+  for (const q of t.keys ?? []) for (const k of ['t', 'x', 'y', 'scale'] as const) finite(`transform.keys.${k}`, q[k]);
   const next: Transform = { x: c(t.x, -1, 1), y: c(t.y, -1, 1), scale: c(t.scale, 0.05, 10), ox: c(t.ox ?? 0.5, 0, 1), oy: c(t.oy ?? 0.5, 0, 1) };
   // a moving layer (toolkit phase 5): moving or scaling it carries its whole path along; keys given anew replace it;
   // `keys: []` stops it moving
@@ -196,6 +199,7 @@ export function setTransform(p: Project, a: { id: string; transform: Transform |
 export function swapSource(p: Project, a: { id: string; source: string; in: number }) {
   const f = findItem(p, a.id), it = f.item as any;
   if (f.track.kind !== 'video') throw new CommandError('Only video clips can swap footage', 'cmd.swapVideoOnly');
+  finite('in', a.in);
   const src = p.sources[a.source];
   if (!src) throw new CommandError(`No source "${a.source}"`, 'cmd.noSource', { source: a.source });
   const need = sourceNeed(f.track.kind, it), have = src.duration - a.in;

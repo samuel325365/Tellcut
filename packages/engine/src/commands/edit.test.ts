@@ -1,6 +1,6 @@
 import { resolveTimes } from '../time.ts';
 import { CommandError, uniqueId } from './core.ts';
-import { addCropKey, addItem, addSources, addTrack, removeCropKey, setCrop, setTrack, setTransform, updateItem } from './edit.ts';
+import { addCropKey, addItem, addSources, addTrack, removeCropKey, setCrop, setTrack, setTransform, swapSource, updateItem } from './edit.ts';
 import { rateStretch, trimEnd } from './trim.ts';
 import { split } from './split.ts';
 import { fixture, item, run } from './test-fixture.ts';
@@ -172,4 +172,15 @@ test('a source or media id named like an Object property is neither taken as exi
   const p = fixture();
   expect(addSources(p, { sources: { constructor: { path: 'x.mp4', duration: 5 } as any } })).toEqual(['constructor']);
   expect(() => run(fixture(), updateItem, { id: 'm1', patch: { media: 'toString' } })).toThrow('media: unknown media "toString"');
+});
+test('a number that is not one (NaN, Infinity: an emptied field) is refused with the field, never written', () => {
+  const bad = (f: () => unknown, field: string) => expect(f).toThrow(expect.objectContaining({ code: 'cmd.fieldInvalid', params: { field } }));
+  bad(() => run(fixture(), setTrack, { id: 'mu', patch: { gain: NaN } }), 'gain');
+  bad(() => run(fixture(), setCrop, { id: 'c1', which: 'from', crop: { x: NaN, y: 0.5, zoom: 1 } }), 'crop.x');
+  bad(() => run(fixture(), setCrop, { id: 'c1', which: 'to', crop: { x: 0.5, y: 0.5, zoom: Infinity } }), 'crop.zoom');
+  bad(() => run(fixture(), setTransform, { id: 'blk', transform: { x: 0, y: NaN, scale: 1 } }), 'transform.y');
+  bad(() => run(fixture(), setTransform, { id: 'blk', transform: { x: 0, y: 0, scale: 1, keys: [{ t: NaN, x: 0, y: 0, scale: 1 }] } }), 'transform.keys.t');
+  bad(() => run(fixture(), swapSource, { id: 'c1', source: 's', in: NaN }), 'in');
+  // what is still allowed: a finite value, clamped as before
+  expect(run(fixture(), setTrack, { id: 'mu', patch: { gain: 99 } }).tracks.find((t) => t.id === 'mu')!.gain).toBe(12);
 });

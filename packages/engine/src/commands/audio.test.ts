@@ -43,3 +43,11 @@ test('after a trim leaves points past the clip end, dragging keeps the points in
   expect(ts).toEqual([...ts].sort((a, b) => a - b));
   expect(ts[0]).toBe(5);
 });
+
+test('a point or fade that is not a number (NaN, Infinity) is refused with the field', () => {
+  const bad = (f: () => unknown, field: string) => expect(f).toThrow(expect.objectContaining({ code: 'cmd.fieldInvalid', params: { field } }));
+  bad(() => addEnvelopePoint(structuredClone(fixture()), { id: 'm1', t: NaN, db: 0 }), 't');
+  bad(() => addEnvelopePoint(structuredClone(fixture()), { id: 'm1', t: 1, db: NaN }), 'db');
+  bad(() => moveEnvelopePoint(structuredClone(fixture()), { id: 'm1', index: 1, t: 1, db: -Infinity }), 'db');
+  bad(() => setFade(structuredClone(fixture()), { id: 'm1', edge: 'in', dur: NaN }), 'dur');
+});
