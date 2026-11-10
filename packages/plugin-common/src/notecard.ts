@@ -42,11 +42,11 @@ export function listSlot(i: number, n: number, cols = n > 4 ? 2 : 1): { col: num
 /** most checklist items (beyond this the rest are left out) */
 export const LIST_MAX = 24;
 /** the checklist's layout in card units for `items` at `size` (× the 44-unit lettering): the row pitch (one rule, two once the
- *  lettering is too big for one), the columns (two past four items, unless the widest item no longer fits half the card), the
+ *  lettering is too big for one), the columns (two past four items, unless the widest item no longer fits half the card, at any size), the
  *  rows, and how tall the card must be — today's card (`ch`) unless the rows run past where the fourth one sat, then grown */
 export function listLayout(items: string[], size: number, ch: number) {
   const z = size > 0 ? size : 1, n = items.length, px = 44 * z, pitch = RULE * Math.max(1, Math.ceil(px / 66));
-  const widest = items.reduce((m, x) => Math.max(m, textEm(x)), 0), cols = n > 4 && (z <= 1 || 54 * z + widest * px <= 440) ? 2 : 1;
+  const widest = items.reduce((m, x) => Math.max(m, textEm(x)), 0), cols = n > 4 && 54 * z + widest * px <= 440 ? 2 : 1;
   const rows = Math.ceil(n / cols), used = rows * pitch, low = Math.max(used, 4 * RULE);
   return { z, px, pitch, cols, rows, noteY: RULE0 + low + RULE - 16, ch: used > 4 * RULE ? Math.max(ch, RULE0 + used + RULE + 40) : ch };
 }
