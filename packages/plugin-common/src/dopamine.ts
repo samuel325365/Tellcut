@@ -5,8 +5,9 @@
 //   common.sticker  a flat sticker (heart, bolt, star, smiley) with a thick ink line and a hard shadow, popping in and wobbling
 // The page is common.backdrop's pattern words (with bits), the section wipe common.wipe's mode stripes, the titles common.heading's
 // look pop (templates pop, pop-no), "No.1" common.badge's shape box, the captions the template pop-box. Pure functions of time.
-import { clamp, cssCamel, h, type ItemType, type MediaRef, type Project, type SceneItem } from '@tellcut/engine';
+import { clamp, cssCamel, h, type ItemType, type MediaRef, type Project, type SceneItem, textEm } from '@tellcut/engine';
 import { cropOf } from './cells.ts';
+import { windowEl } from './window.ts';
 
 const lerp = (a: number, b: number, q: number) => a + (b - a) * q;
 
@@ -42,7 +43,7 @@ export function shotAt(shots: Shot[], local: number): { i: number; labelFrom: nu
 }
 
 interface PP { shots: string; x: number; y: number; w: number; h: number; tilt: number; shadow: string; pill: string; pillInk: string; pillSide: 'left' | 'right'; ink: string; paper: string; popAt: number }
-interface PS { wrap: HTMLElement; shade: HTMLElement; card: HTMLElement; box: HTMLElement; pill: HTMLElement; shots: Shot[]; imgs: Array<HTMLImageElement | null>; text: string }
+interface PS { wrap: HTMLElement; shade: HTMLElement; card: HTMLElement; box: HTMLElement; ph: HTMLElement; pill: HTMLElement; shots: Shot[]; imgs: Array<HTMLImageElement | null>; text: string }
 const SERIF = "'Noto Serif TC', serif";
 
 export const popcard: ItemType<PP, PS> = {
@@ -74,6 +75,9 @@ export const popcard: ItemType<PP, PS> = {
     cssCamel(card, { position: 'absolute', inset: '0', boxSizing: 'border-box' });
     cssCamel(box, { position: 'absolute', overflow: 'hidden', background: '#222' });
     cssCamel(pill, { position: 'absolute', whiteSpace: 'nowrap', fontFamily: SERIF, fontWeight: '900', lineHeight: '1.1', boxSizing: 'border-box' });
+    // the painted stand-in (window.ts) under the shots, shown when the card has none
+    const ph = windowEl(box).box;
+    cssCamel(ph, { left: '0', top: '0', width: '100%', height: '100%' });
     const shots = parseShots(ctx.params.shots, ctx.dur);
     const imgs = shots.map((s) => {
       if (!s.still) return null;
@@ -82,7 +86,7 @@ export const popcard: ItemType<PP, PS> = {
       cssCamel(im, { position: 'absolute', display: 'none' });
       return im;
     });
-    return { wrap, shade, card, box, pill, shots, imgs, text: shots.map((s) => s.label).join('') };
+    return { wrap, shade, card, box, ph, pill, shots, imgs, text: shots.map((s) => s.label).join('') };
   },
   ready: (s) => Promise.all([document.fonts.load(`900 40px 'Noto Serif TC'`, s.text || '標'),
     ...s.imgs.map((im) => (im && !im.complete ? im.decode().catch(() => undefined) : Promise.resolve()))]).then(() => undefined),
@@ -96,7 +100,8 @@ export const popcard: ItemType<PP, PS> = {
     cssCamel(s.shade, { left: `${off}px`, top: `${off}px`, width: `${cw}px`, height: `${ch}px`, background: p.shadow, border: `${line}px solid ${p.ink}`, borderRadius: `${rad}px` });
     cssCamel(s.card, { background: p.paper, border: `${line}px solid ${p.ink}`, borderRadius: `${rad}px` });
     const bw = cw - 2 * (pad + line), bh = ch - 2 * (pad + line);
-    cssCamel(s.box, { left: `${pad}px`, top: `${pad}px`, width: `${bw}px`, height: `${bh}px`, borderRadius: `${rad * 0.5}px` });
+    cssCamel(s.box, { left: `${pad}px`, top: `${pad}px`, width: `${bw}px`, height: `${bh}px`, borderRadius: `${rad * 0.5}px`, background: shot ? '#222' : 'none' });
+    cssCamel(s.ph, { display: shot ? 'none' : 'block' });
     s.imgs.forEach((im, j) => { if (im) cssCamel(im, { display: j === i ? 'block' : 'none' }); });
     if (shot) {
       const src = (project as Project).sources?.[shot.source] as { width?: number; height?: number } | undefined;
@@ -104,7 +109,8 @@ export const popcard: ItemType<PP, PS> = {
       if (img) media.place(img as unknown as HTMLVideoElement, bw, bh, shot.crop, src?.width, src?.height);
       else { const v = media.video(shotRef(shot), s.box, clamp(local - shot.t, 0, shot.len - 0.04), false); media.place(v, bw, bh, shot.crop, src?.width, src?.height); }
     }
-    const label = shot?.label ?? '', fs = 44 * k, lp = clamp(popAt(local, Math.max(p.popAt + 0.2, s.shots[labelFrom]?.t ?? 0), 0.35), 0, 1.2), left = p.pillSide !== 'right';
+    // a long label shrinks (padding and all) to 92 % of the card's width, down to 40 %
+    const label = shot?.label ?? '', fs = Math.max(17.6 * k, Math.min(44 * k, (0.92 * cw) / (textEm(label) + 1.2))), lp = clamp(popAt(local, Math.max(p.popAt + 0.2, s.shots[labelFrom]?.t ?? 0), 0.35), 0, 1.2), left = p.pillSide !== 'right';
     s.pill.textContent = label;
     cssCamel(s.pill, { display: label ? 'block' : 'none', fontSize: `${fs.toFixed(2)}px`, color: p.pillInk, background: p.pill, border: `${4 * k}px solid ${p.ink}`, borderRadius: `${fs}px`,
       padding: `${0.18 * fs}px ${0.6 * fs}px ${0.22 * fs}px`, top: `${-0.55 * fs}px`, left: left ? `${-0.04 * cw}px` : 'auto', right: left ? 'auto' : `${-0.04 * cw}px`,
@@ -126,6 +132,10 @@ export function stickerPath(g: Pick<G, 'beginPath' | 'moveTo' | 'lineTo' | 'bezi
   if (shape === 'smile') g.arc(0, 0, r, 0, Math.PI * 2);
   g.closePath();
 }
+
+/** the settled sticker's wobble in degrees: still until 0.4 s after the pop, then swinging from 0 (its phase counted from then, so
+ *  it does not jump in at a tilt) */
+export const stickerWobble = (local: number, at: number) => (local - at > 0.4 ? Math.sin((local - at - 0.4) * 4.2) * 4 : 0);
 
 export const sticker: ItemType<SP, SS> = {
   type: 'common.sticker', label: '扁平貼紙', category: 'mark', kind: 'overlay',
@@ -154,7 +164,7 @@ export const sticker: ItemType<SP, SS> = {
     g.clearRect(0, 0, W, H);
     const pop = popAt(local, p.popAt, 0.4), k = Math.min(W, H) / 1080;
     if (pop <= 0.001) return;
-    const r = (p.size * W) / 2, wob = local - p.popAt > 0.4 ? Math.sin((local - p.popAt) * 4.2) * 4 : 0;
+    const r = (p.size * W) / 2, wob = stickerWobble(local, p.popAt);
     const line = 5 * k, off = 7 * k;
     g.save(); g.translate(p.x * W, p.y * H); g.rotate(((p.tilt + wob + (1 - Math.min(1, pop)) * -25) * Math.PI) / 180); g.scale(pop, pop); g.lineJoin = 'round';
     g.save(); g.translate(off, off); stickerPath(g, p.shape, r); g.fillStyle = p.ink; g.fill(); g.restore();

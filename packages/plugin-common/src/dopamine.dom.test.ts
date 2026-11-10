@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // common.popcard / common.sticker, backdrop's pattern words and bits, wipe's mode stripes, badge's shape box and the title look pop
 // (2026-11-06, the Dopamine Colors pilot film). jsdom has no canvas: the parsers, timings, declared media, path and DOM styles are tested.
-import { parseShots, popAt, popcard, shotAt, sticker, stickerPath } from './dopamine.ts';
+import { parseShots, popAt, popcard, shotAt, sticker, stickerPath, stickerWobble } from './dopamine.ts';
+import { textEm, withDefaults, resolveTheme } from '@tellcut/engine';
 import { bitAt } from './backdrop.ts';
 import { stripeSpan } from './wipe.ts';
 import { badge } from './badge.ts';
@@ -38,7 +39,35 @@ describe('common.popcard', () => {
   });
 });
 
+describe('common.popcard drawn', () => {
+  const theme = resolveTheme(undefined, { width: 1080, height: 1920 });
+  const run = (params: Record<string, unknown>, local = 1) => {
+    const root = document.createElement('div'), ctx: any = { t: local, local, dur: 3, W: 1080, H: 1920, root, params: withDefaults(popcard.params, params, theme),
+      media: { stillUrl: () => 'x.jpg', place() {}, video: () => document.createElement('video') }, project: { sources: {} } };
+    popcard.draw(ctx, popcard.build(ctx));
+    return root;
+  };
+  test('a long item label shrinks to stay on the card; a short one keeps 44', () => {
+    const label = 'OVERSIZED VINTAGE DENIM JACKET', root = run({ w: 0.4, shots: `0|a|0|0.5,0.5,1|${label}|still` });
+    const pill = [...root.querySelectorAll('div')].find((d) => !d.children.length && d.textContent === label)!, fs = parseFloat(pill.style.fontSize);
+    expect(fs * (textEm(label) + 1.2)).toBeLessThanOrEqual(0.92 * 0.4 * 1080 + 1e-6);
+    const short = run({ shots: '0|a|0|0.5,0.5,1|WHITE TEE|still' });
+    expect(parseFloat([...short.querySelectorAll('div')].find((d) => !d.children.length && d.textContent === 'WHITE TEE')!.style.fontSize)).toBe(44);
+  });
+  test('with no shots the card shows the painted stand-in, not a dark box', () => {
+    const root = run({ shots: '' });
+    const ph = [...root.querySelectorAll('div')].find((d) => d.style.inset === '0' && d.parentElement?.querySelector('img'))!;
+    expect(ph.parentElement!.style.display).not.toBe('none');
+    expect([...root.querySelectorAll('div')].some((d) => d.style.background === 'rgb(34, 34, 34)')).toBe(false);
+  });
+});
+
 describe('common.sticker', () => {
+  test('the wobble after the pop starts from still, with no jump at 0.4 s', () => {
+    expect(stickerWobble(0.3 + 0.4, 0.3)).toBe(0);
+    expect(Math.abs(stickerWobble(0.3 + 0.401, 0.3) - stickerWobble(0.3 + 0.399, 0.3))).toBeLessThan(0.05);
+    expect(Math.max(...[1, 1.2, 1.4, 1.6].map((t) => Math.abs(stickerWobble(t, 0.3))))).toBeGreaterThan(2);
+  });
   test('every shape draws a closed path; the heart and the smile use curves', () => {
     for (const shape of ['heart', 'bolt', 'star', 'smile'] as const) {
       const calls: string[] = [];
