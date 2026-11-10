@@ -5,7 +5,7 @@
 // (phone.ts). Notifications go on top as common.notify (y 0.43).
 import { clamp, cssCamel, eOut3 as eOut, h, lerp, textEm, type ItemType } from '@tellcut/engine';
 import { DEVICES, drawStatusBar, glyphSvg, iconTile, parseSteps, phoneEls, phoneView, placePhone, statusBarEl, stepAt, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
-import { fitPx, lineAbs, nl } from './text.ts';
+import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 export const MODE_LOOKS = ['plain', 'calm', 'accent'] as const;
@@ -88,7 +88,7 @@ export const lockscreen: ItemType<P, S> = {
     const p = ctx.params, { W, H, theme, local: t } = ctx;
     const { sc, k, Hd, X } = phoneView(W, H, theme.safe, p);
     placePhone(s.ph, sc);
-    const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', sans-serif`;
     const shadow = (b: number) => `0 0 ${b * k}px rgba(0,0,0,0.35)`;
     cssCamel(s.ph.screen, { color: p.color, fontFamily: font });
     // wallpaper and the dark at the top and bottom that keeps the white words readable on any footage
@@ -142,7 +142,8 @@ export const lockscreen: ItemType<P, S> = {
       cssCamel(o, { transform: `translateY(${-c.p * 0.5}em)`, opacity: String(1 - c.p) });
     }
     // the title line (crossfading when it changes) and the count dots under it
-    const titles = parseSteps(p.title), tt = stepAt(titles, t), first = titles[0]?.t ?? Infinity;
+    // with no title line the dots come in with the first count (from the title's time they never came in at all)
+    const titles = parseSteps(p.title), tt = stepAt(titles, t), counts = parseSteps(p.count), first = titles[0]?.t ?? counts[0]?.t ?? Infinity;
     const ta = clamp((t - first) / 0.4) * (1 - live), sw = tt.cur ? clamp((t - tt.cur.t) / 0.35) : 1;
     const drawTitle = (el: HTMLElement, text: string, a: number, dy: number) => {
       el.textContent = text;
@@ -150,7 +151,7 @@ export const lockscreen: ItemType<P, S> = {
     };
     drawTitle(s.titles[0], tt.prev?.v[0] ?? '', tt.prev && sw < 1 ? ta * (1 - sw) : 0, -sw * 20);
     drawTitle(s.titles[1], tt.cur?.v[0] ?? '', tt.cur ? ta * (tt.prev && sw < 1 ? sw : 1) : 0, tt.prev && sw < 1 ? 20 - sw * 20 : 0);
-    const counts = parseSteps(p.count), cn = stepAt(counts, t), nv = Number(cn.cur?.v[0]) || 0, popP = cn.cur ? clamp((t - cn.cur.t) / 0.4) : 1;
+    const cn = stepAt(counts, t), nv = Number(cn.cur?.v[0]) || 0, popP = cn.cur ? clamp((t - cn.cur.t) / 0.4) : 1;
     const of = Math.max(0, Math.round(p.of));
     if (s.dotEls.length !== of) {
       for (const d of s.dotEls) d.remove();
