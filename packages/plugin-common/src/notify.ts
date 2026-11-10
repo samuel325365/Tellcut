@@ -8,7 +8,7 @@
 // The stack lives on a phone screen (phone.ts): the frame itself on 9:16, a phone in the middle of a wide or square frame.
 import { clamp, cssCamel, eBack, eOut3 as eOut, fitLines, h, textEm, type ItemType } from '@tellcut/engine';
 import { DEVICES, drawRipple, iconTile, phoneEls, phoneView, placePhone, rippleAt, stackAt, stackEnter, timeSpan, type Device, type PhoneEls, type StackItem } from './phone.ts';
-import { emParts, fitPx, lineAbs, nl } from './text.ts';
+import { EMOJI_STACK, emParts, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 export const TONES = ['plain', 'light', 'dark', 'accent'] as const;
@@ -147,7 +147,7 @@ export const notify: ItemType<P, S> = {
     s.cards.forEach((c, i) => { if (!shown.has(i)) cssCamel(c.box, { display: 'none' }); });
     // lower / older first, so the newest sits on top
     const order = [...pos].sort((a, b) => b.lvl - a.lvl || notes[a.i].at - notes[b.i].at);
-    const font = `'${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', 'Segoe UI Emoji', sans-serif`;
+    const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`, round = `'${p.round}', '${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     order.forEach((q, z) => {
       const n = notes[q.i], L = lays[q.i], c = s.cards[q.i], col = toneColors(n.tone, p), ty = TONE_TYPE[n.tone];
       const en = stackEnter(q.enter, p.grow, 70), a = en.alpha * (1 - q.out) * q.fade * (1 - 0.3 * clamp(q.lvl));

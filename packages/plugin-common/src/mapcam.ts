@@ -8,7 +8,7 @@ import { abs, clamp, cssCamel, eIO3, eOut3, h, type ItemType, lerp, prog, type P
 import { canvasAt, spline, freeCanvas } from './inkline.ts';
 import { cityOf, cutLine, EUROPE_TRIP, keysAt, mapPin, merc, parseCities, pinDrop, placeOf, placesOf, ringsPath, rowsOf, spanOf, type City, type Pt } from './geo.ts';
 import { WORLD_LAND } from './world110.ts';
-import { fitPx, nl } from './text.ts';
+import { EMOJI_STACK, fitPx, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P {
@@ -169,7 +169,7 @@ export const mapcam: ItemType<P, S> = {
     cssCamel(cv, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
     const pill = () => { const d = abs(r, { whiteSpace: 'pre', lineHeight: '1.05' }); h('div', null, null, d); h('div', null, null, d); return d; };
     const s: S = {
-      wrap: r, cv, imgs: new Map(), pins: pool(r, pill), notes: pool(r, pill), heads: pool(r, () => abs(r, { whiteSpace: 'pre', lineHeight: '1', textAlign: 'center', fontFamily: "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif" })),
+      wrap: r, cv, imgs: new Map(), pins: pool(r, pill), notes: pool(r, pill), heads: pool(r, () => abs(r, { whiteSpace: 'pre', lineHeight: '1', textAlign: 'center', fontFamily: `${EMOJI_STACK}, sans-serif` })),
       titles: pool(r, pill), cta: pill(), credit: abs(r, { whiteSpace: 'pre', lineHeight: '1.2' }), side: pill(), job: Promise.resolve(),
     };
     h('div', null, null, s.side);
