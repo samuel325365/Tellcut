@@ -139,3 +139,11 @@ test('the vignette eases in: clear to 30%, then darker step by step, about 0.7 o
   expect(a.find(([, p]) => p === 100)![0]).toBeLessThan(0.8);
   expect(Math.max(...a.map(([x]) => x))).toBeLessThanOrEqual(1);
 });
+
+test('the grain tiles are made once and shared: a second film item (or a reload) does not noise them again', async () => {
+  const tilesOf = (st: Stage) => ((st as any).layers as any[]).find((L) => L.item?.id === 'x').state.tiles as HTMLCanvasElement[];
+  const a = await stage({ grain: 0.5 }), b = await stage({ grain: 0.5 }, { W: 1920, H: 1080 });
+  const ta = tilesOf(a.st), tb = tilesOf(b.st);
+  expect(ta).toHaveLength(TILES);
+  ta.forEach((c, i) => expect(tb[i]).toBe(c));
+});

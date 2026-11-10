@@ -103,6 +103,20 @@ export function trackingBand(g: CanvasRenderingContext2D, W: number, cy: number,
   g.fillStyle = `rgba(255,255,255,${0.6 * strength})`; g.fillRect(0, cy + hh * (r() - 0.5) * 0.6, W, (2 + 2 * strength) * k);
 }
 
+let sharedTiles: HTMLCanvasElement[] | null = null;
+/** the TILES grain tiles as canvases, noised once for the page and shared by every film item (each is 1 MB, and noising one takes
+ *  a while): they only depend on their number, and the items only read them as a pattern */
+function grainTiles(): HTMLCanvasElement[] {
+  return (sharedTiles ??= Array.from({ length: TILES }, (_, k) => {
+    const c = h('canvas', null, null, null) as HTMLCanvasElement;
+    c.width = TILE; c.height = TILE; c.dataset.tile = String(k);
+    const g = c.getContext('2d')!, img = g.createImageData(TILE, TILE);
+    img.data.set(grainTile(k));
+    g.putImageData(img, 0, 0);
+    return c;
+  }));
+}
+
 export const film: ItemType<P, S> = {
   type: 'common.film', label: '底片質感', category: 'look', kind: 'overlay',
   doc: '整個畫面的細顆粒加柔和暗角（一個積木）；顆粒每格都不同、混進畫面裡（暗部和中間調最明顯，純黑和亮到頂的白不變）；想要底片、懷舊、有質感的感覺時蓋在最上層；grain 0.07–0.15 是淡淡的底片感，0.3 以上很粗；look vhs 是家用錄影帶：固定的掃描線、偏暖、黑色浮起來、暗角，tracking「秒:長:強度」那幾段一條追蹤雜訊帶從上往下滑過（換帶、回憶、老錄影帶、DV；配 common.whirr）；blend overlay 對比比較強、集中在中間調（品牌片、電影感，grain 約 0.07）',
@@ -130,15 +144,7 @@ export const film: ItemType<P, S> = {
     const bars = [0, 1].map((i) => { const b = h('div', null, null, host); b.dataset.bar = i ? 'bottom' : 'top'; cssCamel(b, { position: 'absolute', left: '0', right: '0', background: '#000', pointerEvents: 'none', display: 'none' }); return b; });
     cv.width = 1; cv.height = 1;
     band.width = 1; band.height = 1;
-    const tiles = Array.from({ length: TILES }, (_, k) => {
-      const c = h('canvas', null, null, null) as HTMLCanvasElement;
-      c.width = TILE; c.height = TILE; c.dataset.tile = String(k);
-      const g = c.getContext('2d')!, img = g.createImageData(TILE, TILE);
-      img.data.set(grainTile(k));
-      g.putImageData(img, 0, 0);
-      return c;
-    });
-    return { cv, vig, cast, scan, band, tiles, shown: '', bars };
+    return { cv, vig, cast, scan, band, tiles: grainTiles(), shown: '', bars };
   },
   draw(ctx, s) {
     const { vignette, color, rate } = ctx.params, vhs = ctx.params.look === 'vhs', { W, H } = ctx;
