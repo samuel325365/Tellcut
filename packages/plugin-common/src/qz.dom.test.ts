@@ -9,6 +9,8 @@ import { marqueeCopies, reels } from './reels.ts';
 import { strike } from './strike.ts';
 import { stamp } from './stamp.ts';
 import { tableLayout, versus } from './versus.ts';
+import tokenItems from './token.ts';
+import { commonItems } from './index.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -144,5 +146,29 @@ describe('common.versus table', () => {
   test('the 9:16 sample keeps full-size rows', () => {
     const { s } = run(versus, { mode: 'table' }, 2);
     expect(css(s.rows[0].children[1].children[0] as HTMLElement).fontSize).toBe('42px');
+  });
+});
+
+describe('common.token', () => {
+  const [token] = tokenItems;
+  test('still exported as an array of one block, registered under its id', () => {
+    expect(tokenItems.map((t) => t.type)).toEqual(['common.token']);
+    expect(commonItems.filter((t) => t.type === 'common.token')).toEqual([token]);
+  });
+  test('the label and the number fall back to Noto Sans TC for letters the marker font has not', () => {
+    const fonts: string[] = [], was = HTMLCanvasElement.prototype.getContext;
+    (HTMLCanvasElement.prototype as any).getContext = function () {
+      return new Proxy(anything, { get: (t, k) => (k === 'canvas' ? this : k === 'measureText' ? () => ({ width: 50 }) : t[k]), set: (_t, k, v) => { if (k === 'font') fonts.push(v); return true; } });
+    };
+    try { run(token, { steps: '0|第一次|一|none' }, 1); } finally { (HTMLCanvasElement.prototype as any).getContext = was; }
+    expect(fonts.length).toBe(2);
+    for (const f of fonts) expect(f).toMatch(/^400 \d+px "Permanent Marker", 'Noto Sans TC', sans-serif$/);
+  });
+  test('ready loads the marker font, and Noto Sans TC for Chinese steps', async () => {
+    const calls: Array<[string, string]> = [], was = (document as any).fonts;
+    (document as any).fonts = { load: async (f: string, t: string) => { calls.push([f, t]); return []; } };
+    try { const { s } = run(token, { steps: '0|第一次|1|none\n1|第二次|2|made' }, 0.5); await token.ready!(s); } finally { (document as any).fonts = was; }
+    expect(calls.some(([f]) => f.includes('Permanent Marker'))).toBe(true);
+    expect(calls.some(([f, t]) => f.includes('Noto Sans TC') && t.includes('第二次'))).toBe(true);
   });
 });

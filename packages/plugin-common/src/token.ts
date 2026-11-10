@@ -1,12 +1,21 @@
-// @ts-nocheck — promoted from a project's own effect (fx.wishcoin); add types when you next touch it.
-// Token: a hand-drawn gold coin sticker (white sticker edge) with a marker label beside it.
+// Token: a hand-drawn gold coin sticker (white sticker edge) with a marker label beside it. Promoted from a project's own effect
+// (fx.wishcoin); still exported the way that file was, as an array of one block.
 // It walks through "steps" (one per line: seconds|label|number on the coin|mark none/miss/made).
 // When the label or number changes the coin flips over (the new face shows past the half turn);
 // a mark change draws a red cross or a green tick over the coin stroke by stroke.
 // Everything depends only on ctx.local.
+import type { ItemType } from '@tellcut/engine';
+import { loadLineFaces } from './brand-text.ts';
 
-function parseSteps(text) {
-  const out = [];
+/** mark: none, miss (a red cross) or made (a green tick) */
+interface Step { t: number; label: string; num: string; mark: string }
+interface P { steps: string; x: number; y: number; size: number; enter: boolean; exit: boolean; gold: string; miss: string; made: string; ink: string }
+/** the canvas, and the words its steps write (ready() loads a face for any the marker font has no letters for) */
+interface S { c: HTMLCanvasElement; text: string }
+type Pt = [number, number];
+
+function parseSteps(text: unknown): Step[] {
+  const out: Step[] = [];
   for (const line of String(text || '').split('\n')) {
     const f = line.split('|').map((s) => s.trim());
     if (f.length < 2 || f[0] === '') continue;
@@ -21,28 +30,30 @@ function parseSteps(text) {
 
 const FLIP = 0.42; // seconds of a coin flip
 const STROKE = 0.16; // seconds per mark stroke
+// the marker face, then Noto Sans TC for the Chinese and Japanese letters it has not (an English label draws all in the marker)
+const MARKER = `"Permanent Marker", 'Noto Sans TC', sans-serif`;
 
-function strokeLine(g, pts, p, width, color, edge) {
+function strokeLine(g: CanvasRenderingContext2D, pts: Pt[], p: number, width: number, color: string, edge: number) {
   // draw a polyline up to fraction p of its length, white edge under coloured ink
   if (p <= 0) return;
   let total = 0;
-  const seg = [];
+  const seg: number[] = [];
   for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(d); total += d; }
   let left = total * Math.min(1, p);
-  const path = [pts[0]];
+  const path: Pt[] = [pts[0]];
   for (let i = 1; i < pts.length && left > 0; i++) {
     const d = seg[i - 1];
     if (left >= d) { path.push(pts[i]); left -= d; } else { const k = left / d; path.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k]); left = 0; }
   }
   g.lineCap = 'round'; g.lineJoin = 'round';
-  for (const [w, c] of [[width + edge * 2, '#ffffff'], [width, color]]) {
+  for (const [w, c] of [[width + edge * 2, '#ffffff'], [width, color]] as Array<[number, string]>) {
     g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.moveTo(path[0][0], path[0][1]);
     for (let i = 1; i < path.length; i++) g.lineTo(path[i][0], path[i][1]);
     g.stroke();
   }
 }
 
-export default [{
+const token: ItemType<P, S> = {
   type: 'common.token', category: 'mark', label: '硬幣貼紙', kind: 'overlay',
   doc: '手繪金幣貼紙（白色貼紙邊、輕輕浮動）加旁邊一張白膠帶上的馬克筆標籤；steps 一行一步「秒|標籤|硬幣上的字|none/miss/made」：標籤或硬幣上的字換了，硬幣就翻面換成新的一面，miss 一筆一筆畫上紅叉、made 畫上綠勾（標籤字也變綠）；enter 彈出進場、exit 結尾縮回去；第幾次嘗試、許願、挑戰成功失敗、集點、關卡；配 common.coin（投幣）、common.error（失敗）、common.ding（成功）',
   params: [
@@ -57,15 +68,16 @@ export default [{
     { key: 'made', label: '勾的顏色', type: 'color', default: '#22c55e' },
     { key: 'ink', label: '標籤字色', type: 'color', default: '#1a1a1a' },
   ],
-  build({ root, W, H }) {
+  build({ root, W, H, params }) {
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';
     root.appendChild(c);
-    return { c };
+    return { c, text: parseSteps(params.steps).map((s) => `${s.label}${s.num}`).join('') };
   },
-  ready() {
-    return Promise.all([
+  async ready(s) {
+    await Promise.all([
       document.fonts.load('400 60px "Permanent Marker"', 'COIN #12 WISH MADE'),
+      loadLineFaces(document.fonts, [{ weight: 400, family: 'Permanent Marker', text: s.text }]),
     ]);
   },
   hide(state) { state.c.width = 0; state.c.height = 0; },
@@ -73,7 +85,7 @@ export default [{
     const { local, dur, params, W, H, motion } = ctx;
     const c = state.c;
     if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-    const g = c.getContext('2d');
+    const g = c.getContext('2d')!;
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
     const steps = parseSteps(params.steps);
 
@@ -83,7 +95,7 @@ export default [{
     const cur = steps[i];
     const prev = i > 0 ? steps[i - 1] : null;
     const since = local - cur.t;
-    const faceChanged = prev && (prev.label !== cur.label || prev.num !== cur.num);
+    const faceChanged = !!prev && (prev.label !== cur.label || prev.num !== cur.num);
 
     // pop in / out
     let s = 1;
@@ -97,10 +109,10 @@ export default [{
     if (faceChanged && since < FLIP) {
       const p = since / FLIP;
       sx = Math.abs(Math.cos(p * Math.PI));
-      if (p < 0.5) face = prev;
+      if (p < 0.5) face = prev!;
     }
     // the mark: carried over from the old face during a flip only if it had one
-    let markKind = face.mark;
+    const markKind = face.mark;
     let markP = 1;
     // the first step's mark is already there; a later one draws in (after the flip, if the face changed)
     if (face === cur && prev && (prev.mark !== cur.mark || faceChanged)) {
@@ -123,7 +135,7 @@ export default [{
     const label = face.label;
     if (label) {
       const fs = Math.round(R * 0.7);
-      g.font = `400 ${fs}px "Permanent Marker"`;
+      g.font = `400 ${fs}px ${MARKER}`;
       g.textBaseline = 'middle'; g.textAlign = 'left';
       const tw = g.measureText(label).width;
       const lx = R * 0.78, ly = R * 0.06;
@@ -167,7 +179,7 @@ export default [{
     // number
     if (face.num) {
       const ns = Math.round(R * 1.0);
-      g.font = `400 ${ns}px "Permanent Marker"`;
+      g.font = `400 ${ns}px ${MARKER}`;
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillText(face.num, R * 0.03, R * 0.07);
       g.fillStyle = '#7a4a08'; g.fillText(face.num, 0, R * 0.04);
@@ -195,4 +207,6 @@ export default [{
     }
     g.restore();
   },
-}];
+};
+
+export default [token];
