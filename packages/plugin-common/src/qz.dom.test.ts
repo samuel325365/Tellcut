@@ -8,7 +8,7 @@ import { stations, stationsLayout } from './stations.ts';
 import { marqueeCopies, reels } from './reels.ts';
 import { strike } from './strike.ts';
 import { stamp } from './stamp.ts';
-import { versus } from './versus.ts';
+import { tableLayout, versus } from './versus.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -130,5 +130,19 @@ describe('long lines fit the safe width (strike, stamp, versus)', () => {
     const f = px(css(s.el.he).fontSize);
     expect(f * textEm('Absolutely') + 10 * 10).toBeLessThanOrEqual(safeW(theme) + 0.01);
     expect(css(run(versus, { mode: 'title' }, 1).s.el.he).fontSize).toBe('210px');
+  });
+});
+
+describe('common.versus table', () => {
+  test('many rows on a wide frame shrink until a row fits its pitch (no 70 % floor)', () => {
+    const rows = Array.from({ length: 8 }, (_, i) => `Q${i}|a says\nmore|b says\nmore|A|B`).join('\n');
+    const theme = resolveTheme(undefined, { width: 1920, height: 1080 }), T = tableLayout(8, 1080, 1, theme.safe);
+    const { s } = run(versus, { mode: 'table', rows }, 2, 1920, 1080);
+    const cell = s.rows[0].children[1].children[0] as HTMLElement;
+    expect(px(css(cell).fontSize)).toBeLessThanOrEqual((42 * T.pitch) / 230 + 1e-6);
+  });
+  test('the 9:16 sample keeps full-size rows', () => {
+    const { s } = run(versus, { mode: 'table' }, 2);
+    expect(css(s.rows[0].children[1].children[0] as HTMLElement).fontSize).toBe('42px');
   });
 });

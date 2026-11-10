@@ -150,8 +150,9 @@ function buildTable(ctx: Ctx, s: S, k: number) {
   div(head, { display: 'inline', color: p.colorB }, wb);
   const cols = div(s.box, { position: 'absolute', left: `${x0}px`, width: `${w}px`, top: `${T.cols}px`, display: 'flex', gap: `${16 * k}px` });
   for (const [name, c] of [[na, p.colorA], [nb, p.colorB]]) div(cols, { flex: '1', textAlign: 'center', padding: `${8 * k}px 0`, borderRadius: `${12 * k}px`, background: c, color: '#ffffff', fontWeight: '900', fontSize: `${38 * k}px`, lineHeight: '1.2', whiteSpace: 'pre' }, name);
-  // rows closer than the 9:16 plan's 320 units shrink together (down to 70 %)
-  const f = clamp(T.pitch / (230 * k), 0.7, 1), u = k * f;
+  // rows closer than the 230 units a row takes shrink together until one fits its pitch (many rows on a wide frame overlapped at the
+  // old 70 % floor); the 0.1 floor only keeps a frame with no room at all from a zero or negative size
+  const f = clamp(T.pitch / (230 * k), 0.1, 1), u = k * f;
   s.rows = rows.map((r, i) => {
     const row = div(s.box, { position: 'absolute', left: `${x0}px`, width: `${w}px`, top: `${T.first + i * T.pitch}px` });
     div(row, { color: p.hl, fontWeight: '900', fontSize: `${34 * u}px`, lineHeight: '1.3', margin: `0 0 ${10 * u}px ${4 * k}px`, whiteSpace: 'pre' }, `R${i + 1}${bar}${r.q}`);
