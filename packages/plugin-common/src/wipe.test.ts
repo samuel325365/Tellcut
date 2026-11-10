@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
-import { stripeSpan, wipe } from './wipe.ts';
+import { stripeColors, stripeSpan, tileSeam, vortexAlpha, wipe } from './wipe.ts';
 
 // jsdom has no canvas: curl's shadow is drawn on a 2D context that takes every call and does nothing
 const noop: any = new Proxy(() => noop, { get: (_, k) => (k === Symbol.toPrimitive ? () => 0 : noop), set: () => true });
@@ -58,5 +58,24 @@ describe('stripeSpan', () => {
     // stripe 1 of 4 is 0.11 behind stripe 0: where stripe 0 is at u, stripe 1 is at u + 0.11 / 2
     expect(stripeSpan(0.2 + 0.055, 1, 4)[1]).toBeCloseTo(stripeSpan(0.2, 0, 4)[1], 9);
     expect(stripeSpan(0.2 + 0.055, 1, 8)[1]).toBeCloseTo(stripeSpan(0.2, 0, 8)[1], 9);
+  });
+});
+
+describe('small modes', () => {
+  test('vortex: a short item still reaches full cover at its middle (the fade is at most half the item)', () => {
+    expect(vortexAlpha(0.1, 0.2)).toBe(1);
+    expect(vortexAlpha(0.06, 1)).toBeCloseTo(0.5, 9);
+    expect(vortexAlpha(0.5, 1)).toBe(1);
+    expect(vortexAlpha(0.97, 1)).toBeCloseTo(0.25, 9);
+  });
+  test('tiles: line 0 means no seams at all; otherwise at least a pixel', () => {
+    expect(tileSeam(0, 1)).toBe(0);
+    expect(tileSeam(10, 1)).toBe(4);
+    expect(tileSeam(1, 0.5)).toBe(1);
+  });
+  test('stripes: a colour that cannot be read is left out, not painted in the one before it', () => {
+    expect(stripeColors('#ff3ea5, nope ,#3b4cf0', '#000000')).toEqual(['#ff3ea5', '#3b4cf0']);
+    expect(stripeColors('', '#c6f03a')).toEqual(['#c6f03a']);
+    expect(stripeColors('nope', '#c6f03a')).toEqual(['#c6f03a']);
   });
 });

@@ -13,7 +13,7 @@ import { clamp, type Crop, cssCamel, eIn3, eIO3, eOut3, h, type ItemType, lerp, 
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { magazine, magazineLayout } from './magazine.ts';
 import { imagesReady, showStill, stillRef, windowEl, type Win } from './window.ts';
-import { toRgb } from './color.ts';
+import { parseColor, toRgb } from './color.ts';
 
 interface P {
   color: string; edge: string; slant: number; dir: 'right' | 'left'; line: number; mode: 'band' | 'hand' | 'curl' | 'tiles' | 'vortex' | 'stripes'; hand: string; cols: number; rows: number; words: string; colors: string;
@@ -134,10 +134,13 @@ export function tileTimes(c: number, r: number, cols: number, rows: number): [nu
   return [0.04 + 0.34 * h(i), 0.56 + 0.34 * h(i + 911)];
 }
 
+/** mode tiles: the seams' width in px, 0.4 of `line` (px at 1080, k = short side / 1080) and at least a pixel; line 0 asks for none */
+export const tileSeam = (line: number, k: number) => (line > 0 ? Math.max(1, line * 0.4 * k) : 0);
+
 /** mode tiles: paper tiles in two shades of `color` snapping shut over the picture and flipping open again, thin `edge` seams between */
 function drawTiles(p: P, s: S, W: number, H: number, local: number, dur: number) {
   const g = canvasAt(s.cv, W, H), u = dur > 0 ? local / dur : 1, cols = Math.max(2, Math.round(p.cols)), rows = Math.max(2, Math.round(p.rows));
-  const cw = W / cols, ch = H / rows, seam = Math.max(1, p.line * 0.4 * (Math.min(W, H) / 1080)), [cr, cg, cb] = toRgb(p.color);
+  const cw = W / cols, ch = H / rows, seam = tileSeam(p.line, Math.min(W, H) / 1080), [cr, cg, cb] = toRgb(p.color);
   g.clearRect(0, 0, W, H);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const [a, b] = tileTimes(c, r, cols, rows), k = Math.min(clamp((u - a) / 0.07), 1 - clamp((u - b) / 0.07));
@@ -146,9 +149,11 @@ function drawTiles(p: P, s: S, W: number, H: number, local: number, dur: number)
     g.globalAlpha = k; g.fillStyle = `rgb(${Math.round(cr * d)},${Math.round(cg * d)},${Math.round(cb * d)})`;
     g.fillRect(c * cw + (cw - w) / 2, r * ch + (ch - hh) / 2, w, hh);
   }
-  g.globalAlpha = Math.min(1, 4 * Math.min(u, 1 - u)); g.fillStyle = p.edge;
-  for (let c = 1; c < cols; c++) g.fillRect(c * cw - seam / 2, 0, seam, H);
-  for (let r = 1; r < rows; r++) g.fillRect(0, r * ch - seam / 2, W, seam);
+  if (seam > 0) {
+    g.globalAlpha = Math.min(1, 4 * Math.min(u, 1 - u)); g.fillStyle = p.edge;
+    for (let c = 1; c < cols; c++) g.fillRect(c * cw - seam / 2, 0, seam, H);
+    for (let r = 1; r < rows; r++) g.fillRect(0, r * ch - seam / 2, W, seam);
+  }
   g.globalAlpha = 1;
 }
 
@@ -162,11 +167,18 @@ export function stripeSpan(u: number, i: number, n: number): [number, number] {
   return [u < 0.5 ? -2 : -1 + 2 * outP, -1 + 2 * inP];
 }
 
+/** mode stripes: the colours of `colors` (comma separated) that can be read, else `color` alone. A canvas keeps its last fillStyle when
+ *  given one it cannot read, so a mistyped colour used to paint its stripe in the colour before it. */
+export function stripeColors(colors: string, color: string, ok = (c: string) => parseColor(c) !== null): string[] {
+  const cols = String(colors ?? '').split(',').map((c) => c.trim()).filter((c) => c && ok(c));
+  return cols.length ? cols : [color];
+}
+
 /** mode stripes (the Dopamine Colors pilot film's fx.stripes, 2026-11-06): slanted stripes of `colors`, one after another, the last
  *  covering the frame at the middle */
 function drawStripes(p: P, s: S, W: number, H: number, local: number, dur: number) {
   const g = canvasAt(s.cv, W, H), u = dur > 0 ? clamp(local / dur) : 1;
-  const cols = String(p.colors || p.color).split(',').map((c) => c.trim()).filter(Boolean);
+  const cols = stripeColors(p.colors, p.color);
   const a = Math.atan2(p.slant * W, H), D = W * Math.abs(Math.cos(a)) + H * Math.abs(Math.sin(a)), L = D / 2 + 4, T = 2 * D;
   g.clearRect(0, 0, W, H);
   g.save(); g.translate(W / 2, H / 2); g.rotate(a);
@@ -178,13 +190,20 @@ function drawStripes(p: P, s: S, W: number, H: number, local: number, dur: numbe
   g.restore();
 }
 
+/** mode vortex: how far it shows, fading in and out over 0.12 s at its ends, or over half of an item shorter than 0.24 s, so even a
+ *  short one covers the frame at its middle */
+export function vortexAlpha(local: number, dur: number) {
+  const f = Math.max(1e-6, Math.min(0.12, dur / 2));
+  return Math.min(clamp(local / f), clamp((dur - local) / f));
+}
+
 /** mode vortex (the Mono Frame pilot film's fx.vortex, 2026-11-05): rings of `words` in bands of `color` and `edge` by turns, each
  *  ring spinning the other way from its neighbours, the whole slowly zooming in; in and out over 0.12 s at its ends, the frame covered between */
 function drawVortex(p: P, s: S, W: number, H: number, local: number, dur: number) {
   const g = canvasAt(s.cv, W, H), k = Math.min(W, H) / 1080, ring = 78 * k, z = 1 + 0.8 * (dur > 0 ? local / dur : 1), R = Math.hypot(W, H) / 2 / z + ring;
   const chars = [...String(p.words || '·')], px = ring * 0.62;
   g.clearRect(0, 0, W, H);
-  g.save(); g.globalAlpha = Math.min(clamp(local / 0.12), clamp((dur - local) / 0.12)); g.translate(W / 2, H / 2); g.scale(z, z);
+  g.save(); g.globalAlpha = vortexAlpha(local, dur); g.translate(W / 2, H / 2); g.scale(z, z);
   g.fillStyle = p.color; g.beginPath(); g.arc(0, 0, R + ring, 0, Math.PI * 2); g.fill();
   g.font = `700 ${px}px 'Space Grotesk', 'Noto Sans TC', sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   for (let i = 0, r = ring * 0.6; r < R + ring; i++, r += ring) {
@@ -199,9 +218,7 @@ function drawVortex(p: P, s: S, W: number, H: number, local: number, dur: number
 /** mode hand: the palm, four fingers and a thumb as blurred ellipses (in a 1080 × 1920 frame's px, scaled to the frame), drawn at
  *  five poses 12 ms apart for a motion trail, then the flat cover */
 function drawHand(p: P, s: S, W: number, H: number, local: number, dur: number) {
-  const g = s.cv.getContext('2d')!;
-  if (s.cv.width !== Math.round(W) || s.cv.height !== Math.round(H)) { s.cv.width = Math.round(W); s.cv.height = Math.round(H); }
-  g.clearRect(0, 0, s.cv.width, s.cv.height);
+  const g = canvasAt(s.cv, W, H);
   const k = Math.max(W / 1080, H / 1920), [r, gg, b] = toRgb(p.hand), tone = (f: number) => `rgb(${Math.min(255, Math.round(r * f))},${Math.min(255, Math.round(gg * f))},${Math.min(255, Math.round(b * f))})`;
   const one = (q: HandPose, a: number) => {
     g.save(); g.globalAlpha = a; g.translate(q.x * W, q.y * H); g.rotate(q.r); g.scale(q.s * k, q.s * k);
@@ -284,7 +301,7 @@ function disposeArt(sh: Sheet) {
 }
 
 /** the old page's sheet: the colour, the still in its window, the hosted block drawn at artAt */
-function drawSheet(ctx: Parameters<typeof wipe.draw>[0], sh: Sheet, key: string, changed: boolean) {
+function drawSheet(ctx: Parameters<typeof wipe.draw>[0], sh: Sheet, changed: boolean) {
   const p = ctx.params, { W, H } = ctx, r = curlWindow(p, W, H, ctx.theme.safe);
   cssCamel(sh.root, { width: `${W}px`, height: `${H}px` });
   cssCamel(sh.fill, { background: p.source ? '#000000' : p.color });
@@ -301,7 +318,6 @@ function drawSheet(ctx: Parameters<typeof wipe.draw>[0], sh: Sheet, key: string,
       sh.art = { type, params, root, state: type.build({ ...ctx, root, params, local: p.artAt, t: ctx.t }) };
     }
   }
-  void key;
   if (sh.art) sh.art.type.draw({ ...ctx, root: sh.art.root, params: sh.art.params, local: Math.max(0, p.artAt), dur: Math.max(ctx.dur, p.artAt + 0.5) }, sh.art.state);
 }
 
@@ -309,8 +325,8 @@ function drawCurl(ctx: Parameters<typeof wipe.draw>[0], s: S) {
   const p = ctx.params, { W, H } = ctx, c = curlState(ctx, s), k = Math.min(W, H) / 1080;
   const key = JSON.stringify([p.art, p.artParams, W, H]), changed = c.key !== key;
   c.key = key;
-  drawSheet(ctx, c.frontSheet, key, changed);
-  drawSheet(ctx, c.ghostSheet, key, changed);
+  drawSheet(ctx, c.frontSheet, changed);
+  drawSheet(ctx, c.ghostSheet, changed);
   let u = eIO3(clamp(ctx.dur > 0 ? ctx.local / ctx.dur : 1));
   if (p.rev) u = 1 - u;
   const cu = curlAt(u, p.angle, W, H), [a, b, cc, d, e, f] = cu.matrix;
