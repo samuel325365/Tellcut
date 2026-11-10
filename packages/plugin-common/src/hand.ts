@@ -4,10 +4,12 @@
 // with a new wobble that many times a second at `t`), off unless given.
 import { clamp, cssCamel, eBack, eOut3, h, type ParamDef, rng, textEm, type Theme } from '@tellcut/engine';
 import { boiled } from './inkline.ts';
+import { fitPx, graphemes } from './text.ts';
 
 export const HAND = 'LXGW WenKai TC';
 export const handFamily = (f: string) => `'${f || HAND}', '${HAND}', 'Noto Serif TC', serif`;
-export const LATIN = "'Cormorant Garamond', 'Noto Serif', serif";
+// Noto Serif (without TC) is not one of the fonts the player serves; the TC face has the Latin and the CJK a name may carry
+export const LATIN = "'Cormorant Garamond', 'Noto Serif TC', serif";
 
 /** a smooth fixed wobble in −1…1 along x (seed picks another curve) */
 export const wave = (x: number, seed: number) => Math.sin(x * 1.7 + seed * 3.1) * 0.6 + Math.sin(x * 3.9 + seed * 7.3) * 0.4;
@@ -90,29 +92,62 @@ export function heart(g: G, cx: number, cy: number, s: number, p: number) {
 }
 
 /** how long writing `text` takes at `cps` characters a second */
-export const writeTime = (text: string, cps: number, charDur = 0.18) => [...String(text ?? '')].length / Math.max(0.1, cps) + charDur;
+export const writeTime = (text: string, cps: number, charDur = 0.18) => graphemes(text).length / Math.max(0.1, cps) + charDur;
 
 /** how far character i is written at `local` (0–1) */
 export const charAt = (i: number, local: number, t0: number, cps: number, charDur = 0.18) => clamp((local - t0 - i / Math.max(0.1, cps)) / charDur);
 
-/** break text into lines no wider than maxEm (CJK breaks anywhere; balanced, so no one-character orphan; ，。 never start a line) */
-export function wrapEm(text: string, maxEm: number): string[] {
-  const chars = [...String(text ?? '')], total = textEm(chars.join(''));
-  if (!chars.length) return [];
-  const n = Math.max(1, Math.ceil(total / Math.max(1, maxEm))), target = Math.min(maxEm, total / n + 0.5);
-  const lines: string[] = [];
-  let cur = '';
-  for (const ch of chars) {
-    if (textEm(cur + ch) > target && cur && lines.length < n - 1 && !'，。、！？）」,.!?)'.includes(ch)) { lines.push(cur); cur = ch; } else cur += ch;
+// A word in a script with spaces (Latin, Greek, Cyrillic, accents included) or a number is one piece, with the spaces after it;
+// anything else is one letter (grapheme), so Chinese still breaks between any two characters
+const WORD = /[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{M}0-9'’.,!?:;-]+\s*/uy, HANG = /[，。、！？）」]+$/u;
+function wrapTokens(s: string, maxEm: number): Array<{ t: string; word: boolean }> {
+  const out: Array<{ t: string; word: boolean }> = [];
+  for (let i = 0; i < s.length;) {
+    WORD.lastIndex = i;
+    const m = WORD.exec(s);
+    if (m) {
+      // a word wider than any line may still break between its letters
+      if (textEm(m[0].trimEnd()) > maxEm) for (const g of graphemes(m[0])) out.push({ t: g, word: false });
+      else out.push({ t: m[0], word: true });
+      i += m[0].length;
+    } else { const g = graphemes(s.slice(i, i + 8))[0]; out.push({ t: g, word: false }); i += g.length; }
   }
-  if (cur) lines.push(cur);
-  return lines;
+  return out;
 }
 
-/** One piece of text on a layer, in the layer's units (u px each): `y` is the baseline. With `t0` it is written on at `cps`. */
+/** break text into lines no wider than maxEm (CJK breaks anywhere, a Latin word or a number only between words; balanced, so no
+ *  one-character orphan; ，。 never start a line) */
+export function wrapEm(text: string, maxEm: number): string[] {
+  const s = String(text ?? ''), total = textEm(s);
+  if (!s) return [];
+  const toks = wrapTokens(s, maxEm);
+  const run = (n: number) => {
+    const target = Math.min(maxEm, total / n + 0.5), lines: string[] = [];
+    let cur = '';
+    for (const { t, word } of toks) {
+      // a letter is measured as it always was (the lines of films already made must not move); a word without its spaces
+      const w = word ? textEm((cur + t).trimEnd()) : textEm(cur + t);
+      if (w > target && cur && lines.length < n - 1 && !'，。、！？）」,.!?)'.includes(t[0])) { lines.push(cur); cur = t; } else cur += t;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  };
+  const n0 = Math.max(1, Math.ceil(total / Math.max(1, maxEm)));
+  // whole words can leave the last line too long for the balanced count: take one line more until it fits (a closing mark may hang)
+  const words = /[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}0-9]/u.test(s), over = (l: string) => textEm(l.trimEnd().replace(HANG, '')) > maxEm + 1e-9;
+  let lines = run(n0);
+  for (let n = n0 + 1; words && lines.some(over) && n <= toks.length; n++) lines = run(n);
+  // the spaces after a word, or between a Chinese character and a word (約 3 分), left at either end of a line are dropped there
+  return words ? lines.map((l) => l.trim()).filter(Boolean) : lines;
+}
+
+/** One piece of text on a layer, in the layer's units (u px each): `y` is the baseline. With `t0` it is written on at `cps`, one
+ *  letter (grapheme) after another. */
 export interface Txt {
   text: string; x: number; y: number; px: number; color: string; family: string;
   weight?: number; align?: 'left' | 'center' | 'right'; italic?: boolean; t0?: number; cps?: number; alpha?: number; scale?: number; stroke?: string;
+  /** the widest the line may be, in the layer's units: a longer one is set smaller (by the estimated width) so it fits */
+  maxW?: number;
   /** character ranges [from, to) written in `markColor` instead (the red pen); given (even empty), every character's colour is set */
   marks?: Array<[number, number]>; markColor?: string;
 }
@@ -133,12 +168,12 @@ export function drawTexts(L: TextLayer, txts: Txt[], local: number, u: number) {
     L.slots = txts.map((t) => {
       const box = h('div', null, null, L.el);
       cssCamel(box, { position: 'absolute', whiteSpace: 'pre', lineHeight: '1.3' });
-      const chars = [...t.text].map((ch) => { const s = h('span', null, null, box); s.textContent = ch; cssCamel(s, { display: 'inline-block', whiteSpace: 'pre' }); return s; });
+      const chars = graphemes(t.text).map((ch) => { const s = h('span', null, null, box); s.textContent = ch; cssCamel(s, { display: 'inline-block', whiteSpace: 'pre' }); return s; });
       return { box, chars };
     });
   }
   txts.forEach((t, i) => {
-    const { box, chars } = L.slots[i], px = t.px * u, a = t.alpha ?? 1;
+    const { box, chars } = L.slots[i], px = (t.maxW === undefined ? t.px : fitPx(t.text, t.px, t.maxW)) * u, a = t.alpha ?? 1;
     const shift = t.align === 'center' ? '-50%' : t.align === 'right' ? '-100%' : '0';
     cssCamel(box, { display: t.text && a > 0 ? 'block' : 'none', left: `${t.x * u}px`, top: `${t.y * u - px * 1.07}px`, fontSize: `${px}px`, fontFamily: t.family,
       fontWeight: String(t.weight ?? 400), fontStyle: t.italic ? 'italic' : 'normal', color: t.color, opacity: String(clamp(a)),

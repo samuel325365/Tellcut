@@ -8,6 +8,7 @@ import { charAt, drawTexts, handFamily, textLayer, wrapEm, writeTime, type TextL
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { inkStroke, wavePts } from './sketch.ts';
 import { withAlpha } from './color.ts';
+import { graphemes } from './text.ts';
 
 interface P {
   lines: string; mode: 'replace' | 'stack'; x: number; y: number; w: number; align: 'left' | 'center'; size: number; cps: number; tilt: number;
@@ -15,11 +16,12 @@ interface P {
 }
 interface S { group: HTMLElement; note: HTMLElement; small: HTMLElement; tape: HTMLElement; txt: TextLayer; cv: HTMLCanvasElement }
 
-/** where the words of `red` ("詞,詞") stand in a line: [from, to) character ranges, in order, not overlapping */
+/** where the words of `red` ("詞,詞") stand in a line: [from, to) ranges of letters (graphemes, as drawTexts makes its spans), in
+ *  order, not overlapping */
 export function redMarks(text: string, red: string): Array<[number, number]> {
-  const chars = [...String(text ?? '')], words = String(red ?? '').split(/[,，、\n]/).map((w) => w.trim()).filter(Boolean), out: Array<[number, number]> = [];
+  const chars = graphemes(text), words = String(red ?? '').split(/[,，、\n]/).map((w) => w.trim()).filter(Boolean), out: Array<[number, number]> = [];
   for (const w of words) {
-    const wc = [...w];
+    const wc = graphemes(w);
     for (let i = 0; i + wc.length <= chars.length; i++) {
       if (wc.every((c, j) => chars[i + j] === c) && !out.some(([a, b]) => i < b && i + wc.length > a)) out.push([i, i + wc.length]);
     }
@@ -44,7 +46,7 @@ export function parseSentences(s: string, cps = 12): Sentence[] {
 }
 
 /** a sentence's pen speed: spread over 90 % of its spoken time when that is given, else `cps` */
-export const sentenceCps = (s: Sentence, cps: number) => (s.end !== null ? Math.max(1, [...s.text].length / Math.max(0.3, (s.end - s.start) * 0.9)) : cps);
+export const sentenceCps = (s: Sentence, cps: number) => (s.end !== null ? Math.max(1, graphemes(s.text).length / Math.max(0.3, (s.end - s.start) * 0.9)) : cps);
 
 /** replace mode: the sentence showing at `local` and how visible it is: it fades out over 0.25 s before the next one starts, the item
  *  ends, or (a sentence with an end time) `hold` seconds after its end, but not before it has been written */
@@ -97,7 +99,7 @@ export const handwrite: ItemType<P, S> = {
     const add = (sn: Sentence, alpha: number, cap: number) => {
       const cps = sentenceCps(sn, p.cps);
       let before = 0;
-      for (const ln of wrapEm(sn.text, maxEm).slice(0, cap)) { rows.push({ text: ln, t0: sn.start + before / cps, cps, alpha }); before += [...ln].length; }
+      for (const ln of wrapEm(sn.text, maxEm).slice(0, cap)) { rows.push({ text: ln, t0: sn.start + before / cps, cps, alpha }); before += graphemes(ln).length; }
     };
     if (p.mode === 'stack') for (const sn of list) add(sn, 1, 9);
     else { const c = currentSentence(list, local, dur, p.hold); if (c.i >= 0) add(list[c.i], c.alpha, 3); }
