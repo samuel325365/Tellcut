@@ -89,7 +89,7 @@ function recorder() {
     get: (o, k) => {
       if (k === 'measureText') return (t: string) => ({ width: width(t), actualBoundingBoxAscent: px() * 0.7 });
       if (k === 'fillText') return (t: string, x: number, y: number) => { drawn.push({ text: String(t), x, y, px: px(), ls: ls(), w: width(t) }); };
-      if (k in o) return o[k];
+      if (k in o) return o[k as string];
       return () => undefined;
     },
     set: (o, k, v) => { o[k as string] = v; return true; },
