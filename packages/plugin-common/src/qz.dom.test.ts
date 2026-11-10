@@ -13,6 +13,7 @@ import tokenItems from './token.ts';
 import { commonItems } from './index.ts';
 import { route } from './route.ts';
 import { tag } from './tag.ts';
+import { ledBoard, slam } from './slam.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -208,5 +209,24 @@ describe('common.tag', () => {
         expect(reads).toBe(first);
       }
     } finally { Object.defineProperty(proto, 'offsetWidth', was); }
+  });
+});
+
+describe('common.slam look led', () => {
+  test('the default red gives exactly the board it was made with', () => {
+    expect(ledBoard('#ff3b2a')).toEqual({ bg: '#090404', rim: '#4a1a12', dot: '9,4,4' });
+    const { s } = run(slam, { look: 'led', text: 'x' }, 1);
+    expect(css(s.box).background).toBe('#090404');
+    expect(css(s.box).boxShadow).toContain('#4a1a12');
+    expect(css(s.grid).backgroundImage).toBe('radial-gradient(circle, rgba(9,4,4,0) 2.2px, rgba(9,4,4,.55) 2.6px)');
+  });
+  test('another LED colour tints its board and rim (a blue board for blue letters)', () => {
+    const b = ledBoard('#2a6bff');
+    expect(b.bg).not.toBe('#090404');
+    const [r, , bl] = [1, 3, 5].map((i) => parseInt(b.rim.slice(i, i + 2), 16));
+    expect(bl).toBeGreaterThan(r);
+    const { s } = run(slam, { look: 'led', text: 'x', ledColor: '#2a6bff' }, 1);
+    expect(css(s.box).background).toBe(b.bg);
+    expect(css(s.grid).backgroundImage).toContain(`rgba(${b.dot},.55)`);
   });
 });

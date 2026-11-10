@@ -9,7 +9,7 @@
 import { clamp, cssCamel, eBack, eOut3, frameOf, h, prog, rng, type ItemType } from '@tellcut/engine';
 import { layoutMarkup } from './markup.ts';
 import { runBox, setRuns, type RunBox } from './runs.ts';
-import { isClear, luma, withAlpha } from './color.ts';
+import { isClear, luma, mixHex, withAlpha } from './color.ts';
 
 interface P {
   text: string; size: number; font: string; color: string; hl: string; outline: string; y: number; tilt: number; popDur: number; shake: number;
@@ -32,6 +32,14 @@ export function goldFill(gold: boolean, local: number, k: number): Record<string
     backgroundImage: 'linear-gradient(180deg, #fff3d6 0%, #f3dca6 55%, #d8b06a 100%)', webkitBackgroundClip: 'text', backgroundClip: 'text',
     filter: `drop-shadow(0 ${(4 * k).toFixed(1)}px ${(18 * k).toFixed(1)}px rgba(12,6,22,0.9))${flash > 0 ? ` drop-shadow(0 0 ${(40 * k * flash).toFixed(1)}px rgba(255,230,170,${(0.9 * flash).toFixed(3)}))` : ''}`,
   };
+}
+
+/** look led: the board behind the LED letters, from their colour: `bg` a near-black tinted 3 % toward it, `rim` (the inner edge) a
+ *  quarter of the way, `dot` the board's r,g,b for the dot grid. The near-black bases are the ones that give the default red
+ *  (#ff3b2a) exactly the board it was made with (#090404, #4a1a12); a colour that can't be read gives the bases themselves. */
+export function ledBoard(ledColor: string): { bg: string; rim: string; dot: string } {
+  const bg = mixHex('#010203', ledColor, 0.03), rim = mixHex('#0e0f0a', ledColor, 0.25);
+  return { bg, rim, dot: [1, 3, 5].map((i) => parseInt(bg.slice(i, i + 2), 16)).join(',') };
 }
 
 /** how far line i has landed: each line pops in `popDur` seconds, `stagger` seconds after the one before */
@@ -89,7 +97,7 @@ export const slam: ItemType<P, S> = {
     // a shake that dies out over the half second after the landing; the offsets come from the frame number, never from chance
     const decay = 1 - prog(ctx.local, last + p.popDur, last + p.popDur + 0.5), r = rng(frameOf(ctx.local, ctx.fps) + 17);
     const dx = (r() - 0.5) * 2 * p.shake * decay * 14 * k, dy = (r() - 0.5) * 2 * p.shake * decay * 14 * k;
-    const out = 1 - prog(ctx.local, ctx.dur - 0.15, ctx.dur);
+    const out = 1 - prog(ctx.local, ctx.dur - 0.15, ctx.dur), board = ledBoard(p.ledColor);
     cssCamel(s.box, {
       top: `${p.y * H}px`, opacity: String(Math.min(1, pop * (press ? 2 : 4)) * out),
       textShadow: led ? `0 0 ${10 * k}px ${p.ledColor}, 0 0 ${28 * k}px ${withAlpha(p.ledColor, 0.6)}` : gold || isClear(p.shadow) ? 'none' : `0.04em 0.05em 0 ${p.shadow}`,
@@ -97,13 +105,13 @@ export const slam: ItemType<P, S> = {
       fontFamily: gold ? `'Playfair Display', '${p.font}', 'Noto Serif TC', serif` : `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${(px * fit.scale).toFixed(2)}px`,
       color: led ? p.ledColor : gold ? 'transparent' : p.color, fontStyle: gold ? 'italic' : 'normal',
       webkitTextStroke: led ? '0' : gold ? `${2.5 * k}px rgba(70,40,10,0.65)` : `${theme.stroke * 1.4 * k}px ${p.outline}`, paintOrder: 'stroke fill',
-      ...(led ? { padding: `${0.11 * px}px ${0.31 * px}px`, borderRadius: `${16 * k}px`, background: '#090404', letterSpacing: '0.05em',
-        boxShadow: `inset 0 0 0 ${3 * k}px #4a1a12, 0 ${12 * k}px ${30 * k}px rgba(0,0,0,.6)` }
+      ...(led ? { padding: `${0.11 * px}px ${0.31 * px}px`, borderRadius: `${16 * k}px`, background: board.bg, letterSpacing: '0.05em',
+        boxShadow: `inset 0 0 0 ${3 * k}px ${board.rim}, 0 ${12 * k}px ${30 * k}px rgba(0,0,0,.6)` }
         : { padding: '0', borderRadius: '0', background: 'none', letterSpacing: 'normal', boxShadow: 'none' }),
       ...goldFill(gold, ctx.local, k),   // after the background shorthand, which would clear it
     });
     // led: a grid of dark dots over the letters
-    cssCamel(s.grid, { display: led ? 'block' : 'none', backgroundImage: `radial-gradient(circle, rgba(9,4,4,0) ${2.2 * k}px, rgba(9,4,4,.55) ${2.6 * k}px)`, backgroundSize: `${7 * k}px ${7 * k}px` });
+    cssCamel(s.grid, { display: led ? 'block' : 'none', backgroundImage: `radial-gradient(circle, rgba(${board.dot},0) ${2.2 * k}px, rgba(${board.dot},.55) ${2.6 * k}px)`, backgroundSize: `${7 * k}px ${7 * k}px` });
     // the shade: a dark band behind the words, darkest below them
     const sh = p.shade ?? 0;
     cssCamel(s.shade, { display: sh > 0 ? 'block' : 'none', top: `${p.y * H - 1.6 * px}px`, height: `${3.6 * px}px`, opacity: String(sh * eOut3(prog(ctx.local, 0, 0.2)) * out),
