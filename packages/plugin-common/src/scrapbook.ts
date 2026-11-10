@@ -10,13 +10,16 @@ import { imagesReady } from './window.ts';
 
 export interface Print { at: number; t: number; x: number; y: number; w: number; tilt: number; ratio: number; tape: string | null; clip: boolean; fx: number; fy: number }
 /** "seconds|source seconds|x,y,width|tilt|width:height|options" a line; options (spaces or ;): tape, tape=#colour, clip, focus=x,y */
+/** a typed number, or `d` when the piece is missing, empty or not a number */
+const num = (v: string | undefined, d: number) => { const n = Number(v); return v !== undefined && v.trim() !== '' && Number.isFinite(n) ? n : d; };
 export function parsePrints(text: unknown): Print[] {
   return String(text ?? '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const [at, t, box = '0.5,0.5,0.5', tilt, ratio, opts = ''] = l.split('|').map((s) => s.trim());
-    const [x = 0.5, y = 0.5, w = 0.5] = box.split(',').map(Number), [rw, rh] = String(ratio || '4:3').split(':').map(Number);
+    // a number that does not read (a typo, a word) falls back to its default rather than placing the print at NaN
+    const [x, y, w] = [0, 1, 2].map((i) => num(box.split(',')[i], 0.5)), [rw, rh] = String(ratio || '4:3').split(':').map(Number);
     const o: Record<string, string | true> = {};
     for (const kv of opts.split(/[\s;]+/).filter(Boolean)) { const [k, v] = kv.split('='); o[k] = v ?? true; }
-    const [fx = 0.5, fy = 0.5] = String(o.focus ?? '0.5,0.5').split(',').map(Number);
+    const [fx, fy] = [0, 1].map((i) => num(String(o.focus ?? '').split(',')[i], 0.5));
     return { at: Number(at) || 0, t: Number(t) || 0, x, y, w, tilt: Number(tilt) || 0, ratio: rw > 0 && rh > 0 ? rw / rh : 4 / 3,
       tape: o.tape === undefined ? null : o.tape === true ? 'rgba(236,226,190,0.82)' : o.tape, clip: !!o.clip, fx, fy };
   });
@@ -68,14 +71,14 @@ export const prints: ItemType<PP, PS> = {
 
 /** the prints' elements, (re)made when what they show changes */
 function makePrints(ctx: ItemCtx<PP>, s: PS) {
-    const { params: p, media, root } = ctx;
-    const key = `${p.source}|${p.prints}|${p.seed}|${p.paper}`;
+    const { params: p, media, root } = ctx, k = Math.min(ctx.W, ctx.H) / 1080;
+    const key = `${p.source}|${p.prints}|${p.seed}|${p.paper}|${k}`;
     if (s.key !== key) {   // (re)build the prints when what they show changes
       for (const it of s.list) it.wrap.remove();
       const r = rng(p.seed);
       s.list = parsePrints(p.prints).map((q) => {
         const wrap = document.createElement('div'), card = document.createElement('div'), img = document.createElement('img');
-        wrap.style.cssText = 'position:absolute;left:0;top:0;filter:drop-shadow(0 6px 10px rgba(40,25,10,0.38));transform-origin:50% 50%';
+        wrap.style.cssText = `position:absolute;left:0;top:0;filter:drop-shadow(0 ${6 * k}px ${10 * k}px rgba(40,25,10,0.38));transform-origin:50% 50%`;
         card.style.cssText = `position:absolute;inset:0;background:${p.paper};clip-path:${deckle(r)}`;
         if (p.source) img.src = media.stillUrl(stillOf(p.source, q.t));
         img.style.cssText = `position:absolute;object-fit:cover;object-position:${q.fx * 100}% ${q.fy * 100}%`;
