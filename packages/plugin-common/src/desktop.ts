@@ -11,6 +11,7 @@
 import { clamp, eIO3 as eIO, lerp, rng, type ItemType, type MediaRef, type Project, type SceneItem } from '@tellcut/engine';
 import { mixHex } from './color.ts';
 import { fitMeasuredSize } from './headline.ts';
+import { imagesReady, windowEl } from './window.ts';
 
 const CJK = 'Huninn', PIX = 'VT323';
 export const DESK_BARS: Record<string, string> = { lav: '#c3b1f5', pink: '#f7b2cf', mint: '#97e0c6', yellow: '#ffd879' };
@@ -144,13 +145,14 @@ export const desktop: ItemType<DP, DS> = {
     g.fillStyle = p.paper; g.fillRect(0, tbY, W, H - tbY); g.fillStyle = p.ink; g.fillRect(0, tbY, W, 3 * k);
     g.fillStyle = p.ink; rr(g, 22 * k, tbY + 19 * k, 150 * k, 50 * k, 8 * k); g.fill();
     g.fillStyle = '#ffd46b'; rr(g, 16 * k, tbY + 13 * k, 150 * k, 50 * k, 8 * k); g.fill(); g.strokeStyle = p.ink; g.lineWidth = 3 * k; g.stroke();
-    g.fillStyle = p.ink; g.textAlign = 'center'; g.font = `${32 * k}px "${CJK}"`; say(`★ ${p.start}`, 91 * k, tbY + 40 * k);
+    // the start label and the chapter names shrink into their buttons rather than running out of them
+    g.fillStyle = p.ink; g.textAlign = 'center'; g.font = `${fit(g, `★ ${p.start}`, 32 * k, `"${CJK}"`, 130 * k)}px "${CJK}"`; say(`★ ${p.start}`, 91 * k, tbY + 40 * k);
     ch.forEach((c, i) => {
       if (!c.name) return;
       const sl = deskSlot(i + 1, ch.length, W, H), on = i === n;
       g.fillStyle = on ? '#ffffff' : i < n ? '#efe6ff' : '#f6f0e4'; g.fillRect(sl.x - sl.w / 2, sl.y - sl.h / 2, sl.w, sl.h);
       g.strokeStyle = p.ink; g.lineWidth = (on ? 4 : 2) * k; g.strokeRect(sl.x - sl.w / 2, sl.y - sl.h / 2, sl.w, sl.h);
-      g.fillStyle = p.ink; g.font = `${28 * k}px "${CJK}"`; g.globalAlpha = on ? 1 : 0.7; say(`${c.name}.exe`, sl.x, sl.y + 2 * k); g.globalAlpha = 1;
+      g.fillStyle = p.ink; g.font = `${fit(g, `${c.name}.exe`, 28 * k, `"${CJK}"`, sl.w - 16 * k)}px "${CJK}"`; g.globalAlpha = on ? 1 : 0.7; say(`${c.name}.exe`, sl.x, sl.y + 2 * k); g.globalAlpha = 1;
     });
   },
 };
@@ -161,8 +163,15 @@ interface WP {
   x: number; y: number; w: number; h: number; title: string; bar: string; text: string; typeAt: number; progFrom: number; progTo: number;
   exit: 'none' | 'min' | 'close' | 'max'; slot: number; slots: number; maxAt: number; maxH: number; ink: string; paper: string;
 }
-interface WS { wrap: HTMLDivElement; c: HTMLCanvasElement; box: HTMLDivElement; img: HTMLImageElement | null; text: string }
+interface WS { wrap: HTMLDivElement; c: HTMLCanvasElement; box: HTMLDivElement; ph: HTMLElement; img: HTMLImageElement | null; text: string }
 const isImage = (project: Project | undefined, source: string) => (project?.sources as Record<string, { kind?: string }> | undefined)?.[source]?.kind === 'image';
+/** a photo window's <img>, covering the box */
+function photoImg(box: HTMLElement, src: string): HTMLImageElement {
+  const img = document.createElement('img');
+  img.src = src; img.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover';
+  box.appendChild(img);
+  return img;
+}
 /** the clip a media window plays: from `in` for the window's whole time */
 export const windowRef = (p: Pick<WP, 'source' | 'in'>, dur: number): MediaRef => ({ source: p.source, in: p.in, out: p.in + dur, speed: 1, interp: 'none' });
 
@@ -223,9 +232,15 @@ export const deskWindow: ItemType<WP, WS> = {
     ctx.root.appendChild(wrap);
     const c = canvasIn(wrap), box = document.createElement('div'); box.style.cssText = 'position:absolute;overflow:hidden;background:#222';
     wrap.appendChild(box);
-    return { wrap, c, box, img: null, text: `${ctx.params.text}${ctx.params.title}` };
+    // the painted stand-in (window.ts) under the clip, shown when the window has no footage
+    const ph = windowEl(box).box;
+    ph.style.cssText += ';left:0;top:0;width:100%;height:100%';
+    // a photo's <img> is made here, not at the first draw, so the player's ready (which collects the stage's images) waits for it
+    const p = ctx.params;
+    const img = (p.content ?? 'media') === 'media' && p.source && isImage(ctx.project, p.source) ? photoImg(box, ctx.media.stillUrl({ source: p.source, t: 0, w: 1080 })) : null;
+    return { wrap, c, box, ph, img, text: `${ctx.params.text}${ctx.params.title}` };
   },
-  ready(s) { return fonts(s.text); },
+  ready(s) { return Promise.all([fonts(s.text), imagesReady(s.img ? [s.img] : [])]).then(() => undefined); },
   hide(s) { s.c.width = 0; s.c.height = 0; },
   draw(ctx, s) {
     const { local, dur, W, H, params: p, motion, media, project } = ctx;
@@ -242,16 +257,18 @@ export const deskWindow: ItemType<WP, WS> = {
     g.save(); g.globalAlpha = R.chromeA; const { tb, bw } = chrome(g, R.w, R.h, k, p.bar, p.title, p.ink, p.paper, report); g.restore();
     const foot = p.progTo > 0 && p.content === 'media' ? 120 * k : 0, pad = 8 * k * R.chromeA;
     const bx = bw * R.chromeA + pad, by = tb * R.chromeA + pad, bwid = R.w - 2 * bx, bh = R.h - by - pad - foot;
-    if (p.content === 'media' && p.source) {
-      Object.assign(s.box.style, { display: 'block', left: `${(bx / (R.w + sh)) * 100}%`, top: `${(by / (R.h + sh)) * 100}%`, width: `${(bwid / (R.w + sh)) * 100}%`, height: `${(bh / (R.h + sh)) * 100}%`,
+    if (p.content === 'media') {
+      s.ph.style.display = p.source ? 'none' : 'block';
+      Object.assign(s.box.style, { display: 'block', background: p.source ? '#222' : 'none', left: `${(bx / (R.w + sh)) * 100}%`, top: `${(by / (R.h + sh)) * 100}%`, width: `${(bwid / (R.w + sh)) * 100}%`, height: `${(bh / (R.h + sh)) * 100}%`,
         outline: R.chromeA > 0.5 ? `${(3 * k).toFixed(1)}px solid ${p.ink}` : 'none' });
       const src = (project.sources as Record<string, { kind?: string; width?: number; height?: number }>)[p.source];
-      if (src?.kind === 'image') {
-        if (!s.img) { s.img = document.createElement('img'); s.img.src = media.stillUrl({ source: p.source, t: 0, w: 1080 }); s.img.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover'; s.box.appendChild(s.img); }
+      if (!p.source) { /* the stand-in only */ } else if (src?.kind === 'image') {
+        s.img ??= photoImg(s.box, media.stillUrl({ source: p.source, t: 0, w: 1080 }));
         Object.assign(s.img.style, { objectPosition: `${p.cx * 100}% ${p.cy * 100}%`, transformOrigin: `${p.cx * 100}% ${p.cy * 100}%`, transform: `scale(${p.zoom})` });
       } else {
         const v = media.video(windowRef(p, dur), s.box, Math.min(local, dur - 0.04), false);
-        media.place(v, s.box.clientWidth || bwid, s.box.clientHeight || bh, { x: p.cx, y: p.cy, zoom: p.zoom }, src?.width, src?.height);
+        // the box is bwid × bh by construction: reading clientWidth here forced a layout every frame
+        media.place(v, bwid, bh, { x: p.cx, y: p.cy, zoom: p.zoom }, src?.width, src?.height);
       }
     } else s.box.style.display = 'none';
     g.save(); g.textBaseline = 'middle'; g.textAlign = 'left'; g.fillStyle = p.ink;
@@ -261,21 +278,28 @@ export const deskWindow: ItemType<WP, WS> = {
       g.fillStyle = '#ffffff'; g.fillRect(fx, fy, fw, 84 * k); g.strokeStyle = p.ink; g.lineWidth = 3 * k; g.strokeRect(fx, fy, fw, 84 * k);
       g.beginPath(); g.arc(fx + 40 * k, fy + 38 * k, 15 * k, 0, Math.PI * 2); g.moveTo(fx + 51 * k, fy + 49 * k); g.lineTo(fx + 64 * k, fy + 62 * k); g.stroke();
       const chars = [...String(p.text)], n = Math.floor(clamp((local - p.typeAt) / Math.max(0.01, chars.length * 0.12)) * chars.length), typed = chars.slice(0, n).join('');
-      g.fillStyle = p.ink; g.font = `${fs}px "${CJK}"`;
+      // sized for the whole query (so it does not change while typed) to end before the caret's room at the box's right
+      g.fillStyle = p.ink; g.font = `${fit(g, String(p.text), fs, `"${CJK}"`, fw - 104 * k)}px "${CJK}"`;
       if (typed) { g.fillText(typed, fx + 84 * k, fy + 44 * k); report(g, typed, fx + 84 * k, fy + 44 * k); }
       if (Math.floor(local * 2.5) % 2 === 0) g.fillRect(fx + 84 * k + g.measureText(typed).width + 4 * k, fy + 18 * k, 4 * k, 50 * k);
     }
     if (p.content === 'profile') {
-      String(p.text).split('\n').filter(Boolean).forEach((line, i) => {
+      // the values start three ems in, or half an em after the widest name when that is wider
+      const rows = String(p.text).split('\n').filter(Boolean);
+      g.font = `${fs}px "${CJK}"`;
+      const nameW = Math.max(0, ...rows.map((l) => g.measureText(l.split('|')[0]).width)), valX = bx + 26 * k + Math.max(fs * 3, nameW + fs * 0.5);
+      rows.forEach((line, i) => {
         const [name, val = ''] = line.split('|'), ly = by + 50 * k + i * 82 * k, show = clamp((local - 0.25 - i * 0.25) / 0.15);
         if (ly > by + bh || show <= 0) return;
         g.globalAlpha = show; g.font = `${fs}px "${CJK}"`;
         g.fillStyle = 'rgba(75,58,140,0.6)'; g.fillText(name, bx + 26 * k, ly); report(g, name, bx + 26 * k, ly);
-        g.fillStyle = p.ink; g.fillText(val, bx + 26 * k + fs * 3, ly); report(g, val, bx + 26 * k + fs * 3, ly); g.globalAlpha = 1;
+        g.fillStyle = p.ink; g.fillText(val, valX, ly); report(g, val, valX, ly); g.globalAlpha = 1;
       });
     }
     if (p.content === 'progress' || foot > 0) {
-      const [doing = '', done] = String(p.text).split('|'), q = clamp((local - p.progFrom) / Math.max(0.01, p.progTo - p.progFrom)), label = local >= p.progTo ? (done || doing) : doing;
+      // no progTo (or one not after progFrom): the bar fills by half a second before the window's end, rather than at once
+      const end = p.progTo > p.progFrom ? p.progTo : Math.max(p.progFrom + 0.01, dur - 0.5);
+      const [doing = '', done] = String(p.text).split('|'), q = clamp((local - p.progFrom) / Math.max(0.01, end - p.progFrom)), label = local >= end ? (done || doing) : doing;
       const top0 = foot > 0 ? by + bh + 10 * k : by + 20 * k, fx = bx + 18 * k, fw = bwid - 36 * k;
       g.font = `${50 * k}px "${CJK}"`; g.fillStyle = p.ink; g.fillText(label, fx, top0 + 30 * k); report(g, label, fx, top0 + 30 * k);
       g.font = `${38 * k}px "${PIX}"`; g.textAlign = 'right'; g.fillText(`${Math.round(q * 100)}%`, fx + fw, top0 + 30 * k); g.textAlign = 'left';

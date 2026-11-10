@@ -139,6 +139,66 @@ describe('the desktop kit on a canvas', () => {
     expect(d.x + [...title].length * d.px).toBeLessThanOrEqual(0.5 * 1080 - 114 - 12 + 1e-6);
   });
 
+  test('a long start label and long chapter names shrink into their taskbar buttons; the short defaults keep 32 and 28', () => {
+    const start = '開始我們的生日派對吧', names = ['準備派對的所有東西', '佈置整個客廳和餐桌', '大家一起唱生日快樂歌', '切蛋糕和拆禮物時間', '最後的大合照和道別'];
+    run(desktop, { chapters: names.map((n, i) => `${i}|${n}`).join('\n'), start }, 0.5);
+    const st = drawn.find((d) => d.text === `★ ${start}`)!;
+    expect([...st.text].length * st.px).toBeLessThanOrEqual(150 - 20 + 1e-6);
+    const sl = deskSlot(1, 5, 1080, 1920);
+    for (const n of names) { const d = drawn.find((x) => x.text === `${n}.exe`)!; expect([...d.text].length * d.px, n).toBeLessThanOrEqual(sl.w - 16 + 1e-6); }
+    run(desktop, { chapters: '0|準備\n1|派對', start: '開始' }, 0.5);
+    expect(drawn.find((d) => d.text === '★ 開始')!.px).toBe(32);
+    expect(drawn.find((d) => d.text === '準備.exe')!.px).toBe(28);
+  });
+
+  test('progress with no progTo (or one not after progFrom) fills up by half a second before the end, not at once', () => {
+    run(deskWindow, { content: 'progress', text: '佈置中…|佈置完成', progFrom: 0.3, progTo: 0, exit: 'none' }, 1);
+    expect(drawn.some((d) => d.text === '佈置中…')).toBe(true);
+    expect(drawn.find((d) => d.text.endsWith('%'))!.text).toBe(`${Math.round((0.7 / 3.2) * 100)}%`);
+    run(deskWindow, { content: 'progress', text: '佈置中…|佈置完成', progFrom: 0.3, progTo: 0, exit: 'none' }, 3.6);
+    expect(drawn.some((d) => d.text === '佈置完成')).toBe(true);
+    // a progTo after progFrom is as it was
+    run(deskWindow, { content: 'progress', text: 'a|b', progFrom: 0.3, progTo: 2, exit: 'none' }, 1);
+    expect(drawn.find((d) => d.text.endsWith('%'))!.text).toBe(`${Math.round((0.7 / 1.7) * 100)}%`);
+  });
+
+  test('profile: the values start after the widest name; short names keep their place', () => {
+    run(deskWindow, { content: 'profile', text: '名字|Katie\n最喜歡的食物|蛋糕', w: 0.8, h: 0.3, exit: 'none' }, 2);
+    const name = drawn.find((d) => d.text === '最喜歡的食物')!, val = drawn.find((d) => d.text === '蛋糕')!;
+    expect(val.x).toBeGreaterThanOrEqual(name.x + [...name.text].length * name.px);
+    run(deskWindow, { content: 'profile', text: '名字|Katie\n年齡|16', w: 0.8, h: 0.3, exit: 'none' }, 2);
+    const n2 = drawn.find((d) => d.text === '名字')!, v2 = drawn.find((d) => d.text === 'Katie')!;
+    expect(v2.x - n2.x).toBe(52 * 3);
+  });
+
+  test('search: a long query shrinks to stay inside the box; a short one keeps 52', () => {
+    const text = '今天的壽星是誰呢我們一起來找找看吧';
+    run(deskWindow, { content: 'search', text, w: 0.8, exit: 'none', typeAt: 0 }, 3.9);
+    // the box runs from 26 to 46 short of the window's right edge (border 4, padding 8, box inset 14, its own margin and the caret 20)
+    const d = drawn.find((x) => x.text === text)!;
+    expect(d.x + [...text].length * d.px).toBeLessThanOrEqual(0.8 * 1080 - 46 + 1e-6);
+    run(deskWindow, { content: 'search', text: '壽星', w: 0.8, exit: 'none', typeAt: 0 }, 3.9);
+    expect(drawn.find((x) => x.text === '壽星')!.px).toBe(52);
+  });
+
+  test('a photo window makes its <img> when it is built, so the player waits for it before the first frame', () => {
+    const ctx: any = { t: 0, local: 0, dur: 4, W: 1080, H: 1920, params: withDefaults(deskWindow.params, { source: 'p' }, theme), root: document.createElement('div'),
+      media: { stillUrl: () => 'still.jpg' }, project: { sources: { p: { kind: 'image' } } } };
+    deskWindow.build(ctx);
+    expect([...ctx.root.querySelectorAll('img')].some((i: HTMLImageElement) => i.getAttribute('src') === 'still.jpg')).toBe(true);
+  });
+
+  test('a media window with no footage shows the painted stand-in, not a dark box', () => {
+    const root = document.createElement('div'), ctx: any = { t: 1, local: 1, dur: 4, W: 1080, H: 1920, params: withDefaults(deskWindow.params, { exit: 'none' }, theme), root,
+      motion: { spring: () => () => 1 }, media: {}, project: { sources: {} }, reportText() {} };
+    deskWindow.draw(ctx, deskWindow.build(ctx));
+    // window.ts's stand-in: its painted layer (inset 0; jsdom drops the gradient itself) inside a shown holder inside the shown box
+    const ph = [...root.querySelectorAll('div')].find((d) => d.style.inset === '0')!;
+    expect(ph.parentElement!.style.display).toBe('block');
+    expect(ph.parentElement!.parentElement!.style.display).toBe('block');
+    expect([...root.querySelectorAll('div')].some((d) => d.style.display !== 'none' && d.style.background === 'rgb(34, 34, 34)')).toBe(false);
+  });
+
   test('chapter colours mix as CSS colours: #fff is white, not blue', () => {
     const stops: string[] = [];
     (HTMLCanvasElement.prototype as any).getContext = function () { const g = fake(); g.createLinearGradient = () => ({ addColorStop: (_: number, c: string) => stops.push(c) }); return g; };
