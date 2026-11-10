@@ -70,7 +70,7 @@ These are defaults. If the user's message conflicts with any of them, follow the
 
 Goal: the best exchange of an episode as a short that makes people want the full episode.
 - 9:16, 30–120 s. Pick from the transcript an exchange that stands on its own; cold open on its strongest line.
-- The styles are of four kinds, and their prompts begin with the kind. Form (stacked, solo, versus, group-chat, quote-card, waveform) carries the whole exchange: at most one form; if the user picks two, the first is the form and the second only lends its opener or ending; say so in one sentence. Captions and Accent go with any form.
+- The styles are of three kinds, and their prompts begin with the kind. Form (stacked, solo, versus, group-chat, quote-card, waveform) carries the whole exchange: at most one form; if the user picks two, the first is the form and the second only lends its opener or ending; say so in one sentence. Captions and Accent go with any form.
 - No form picked: follow the speaker (solo) when there are close-ups, stacked when it is one wide shot, the audiogram when there is only audio.
 - The viewer always knows who is speaking: speaker labels or colours, framing that follows the speaker, a glow or a slight push-in on the one talking. Labels and colours change exactly on the cut or the speaker change.
 - If the whole exchange is in single close-ups, cut to whoever speaks rather than faking a split with shots from other moments.

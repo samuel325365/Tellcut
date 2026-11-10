@@ -241,7 +241,7 @@ async function main(argv: string[]) {
       : `中文立體字：ready() 裡 const cjk = await kit.loadFont('${file}')；kit.word3d(名稱, { cjk })（不給 glyphs：拉丁字也用這個字型自己的，和中文同一種字感）`);
     return;
   }
-  const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|image|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round|ja>、library …';
+  const usage = '用法：npm run tellcut -- show|selection|propose|status|accept|reject|frames|logo|image|site|request <專案> …，或 catalog [類型]、recipe [配方]、cut-api、font3d <sans|serif|round|ja>、library …、assets …（assets --help 看子指令）';
   if (!cmd) throw new Usage(usage);
   // asking for the usage is not a mistake: stdout, exit 0 (printFailure)
   if (cmd === '--help' || cmd === '-h') throw new Help(usage);

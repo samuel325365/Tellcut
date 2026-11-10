@@ -66,7 +66,7 @@ These are defaults. If the user's message conflicts with any of them, follow the
 
 Goal: one strong moment from a finished long video, as a self-contained short.
 - 9:16, 20–90 s. Find the best moment from the transcript; it must make sense without the rest.
-- The styles are of four kinds, and their prompts begin with the kind. Form (quote-card, search, live-replay, title-bar) carries the whole clip: at most one form; if the user picks two, the first is the form and the second only lends its opener or ending; say so in one sentence. Captions and Cut go with any form.
+- The styles are of three kinds, and their prompts begin with the kind. Form (quote-card, search, live-replay, title-bar) carries the whole clip: at most one form; if the user picks two, the first is the form and the second only lends its opener or ending; say so in one sentence. Captions and Cut go with any form.
 - No form picked: the speaker full-frame with burned-in captions and the user's picks.
 - If the user wants to send viewers to the full video: cold open on the strongest line in the first second, and end with a "watch the full video" card. When the form has its own opening (search), or the strongest line is the payoff a tease hides, open with that or with the next strongest line. The end card names the show or video only if the user gave its title. For a personal post (e.g. their own travel vlog on IG) no hook or end card.
 - Hold back: hiding too much or a title bigger than the clip makes viewers feel cheated.
