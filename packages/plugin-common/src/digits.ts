@@ -148,7 +148,7 @@ export const digits: ItemType<P, S> = {
     cssCamel(tag, { display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-rl', fontWeight: '900', lineHeight: '1.05', textAlign: 'center' });
     cssCamel(ghost, { color: 'transparent', whiteSpace: 'pre', lineHeight: '1', overflow: 'hidden' });
     const p = ctx.params;
-    return { box, cv: cv as HTMLCanvasElement, off: softCanvas(4, 4), title, sub, tag, ghost, want: `${p.label}${p.totalLabel}${parseDigitSteps(p.steps).map((s) => s.label).join('')}` };
+    return { box, cv: cv as HTMLCanvasElement, off: softCanvas(4, 4), title, sub, tag, ghost, want: `${p.label}${p.totalLabel}${p.prefix ?? ''}${parseDigitSteps(p.steps).map((s) => s.label + s.v).join('')}` };
   },
   ready: (s) => loadDots('Noto Sans TC', s.want),
   hide(s) { freeCanvas(s.cv, s.off); },

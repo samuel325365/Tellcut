@@ -78,17 +78,44 @@ export const F57: Record<string, string[]> = {
   ' ': ['00000', '00000', '00000', '00000', '00000', '00000', '00000'],
 };
 
-/** VFD characters right-aligned at `right`: each a 5×7 cell block, `pitch` px a cell; unlit cells faintly in `off` */
+const WIDE = /[⺀-鿿가-힯豈-﫿︰-﹏＀-￯]/;
+
+/** VFD characters right-aligned at `right`: each a 5×7 cell block, `pitch` px a cell; unlit cells faintly in `off`. A run of
+ *  characters the 5×7 font lacks (¥, €, 個, lower case) is rasterised from the font instead, as the display's small words are:
+ *  Latin about 7 dots to the cap line, CJK about 7 dots whole, on the same baseline, as many cells wide as it takes. */
 export function vfdText(g: CanvasRenderingContext2D, text: string, right: number, y: number, pitch: number, dot: number, on: string, off: string) {
   const cell = 6 * pitch;
-  let x = right - text.length * cell + pitch;
-  for (const ch of text) {
-    const rows = F57[ch.toUpperCase()] ?? F57[' '];
-    for (let j = 0; j < 7; j++) for (let i = 0; i < 5; i++) {
-      g.fillStyle = rows[j][i] === '1' ? on : off;
-      g.fillRect(x + i * pitch, y + j * pitch, dot, dot);
+  type Part = { rows: string[] } | { D: Dots; lift: number };
+  const parts: Part[] = [];
+  let miss = '';
+  const flush = () => {
+    if (!miss) return;
+    const px = WIDE.test(miss) ? 7 : 10;
+    // the raster's baseline row lands on the bottom of the 5×7 cells
+    parts.push({ D: dots(miss, px), lift: Math.round(px * 1.02) - 7 });
+    miss = '';
+  };
+  for (const ch of text) { const rows = F57[ch.toUpperCase()]; if (rows) { flush(); parts.push({ rows }); } else miss += ch; }
+  flush();
+  // a raster is drawn from its column 1 (dots() leaves one blank column each side); one blank column after it, as a 5×7 cell has
+  const width = (p: Part) => ('rows' in p ? cell : (p.D.w - 1) * pitch);
+  // cells × cell, not a running sum, so a display of 5×7 characters only lands exactly where it always did
+  const nCells = parts.filter((p) => 'rows' in p).length, rasterW = parts.reduce((a, p) => a + ('rows' in p ? 0 : width(p)), 0);
+  let x = right - (nCells * cell + rasterW) + pitch;
+  for (const p of parts) {
+    if ('rows' in p) {
+      for (let j = 0; j < 7; j++) for (let i = 0; i < 5; i++) {
+        g.fillStyle = p.rows[j][i] === '1' ? on : off;
+        g.fillRect(x + i * pitch, y + j * pitch, dot, dot);
+      }
+    } else {
+      const lit = new Set(p.D.pts.map(([i, j]) => `${i},${j - p.lift}`)), cols = p.D.w - 2;
+      g.fillStyle = off;
+      for (let j = 0; j < 7; j++) for (let i = 0; i < cols; i++) if (!lit.has(`${i + 1},${j}`)) g.fillRect(x + i * pitch, y + j * pitch, dot, dot);
+      g.fillStyle = on;
+      for (const [i, j] of p.D.pts) g.fillRect(x + (i - 1) * pitch, y + (j - p.lift) * pitch, dot, dot);
     }
-    x += cell;
+    x += width(p);
   }
 }
 
