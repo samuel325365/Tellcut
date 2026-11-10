@@ -3,6 +3,7 @@
 // from its neighbour and twitching while it stays. Promoted 2026-11-05 from the comic pilot film's fx.comicsfx. DOM text, so check
 // measures it; a pure function of time (the twitch comes from a seeded generator keyed to the frame's twelfth of a second).
 import { clamp, cssCamel, h, rng, type ItemType } from '@tellcut/engine';
+import { graphemes } from './text.ts';
 
 interface P { text: string; x: number; y: number; size: number; color: string; ink: string; stroke: number; depth: number; tilt: number; rise: number; spacing: number; gap: number; shake: number; font: string; weight: number; outDur: number }
 interface S { box: HTMLElement; chars: HTMLElement[]; text: string }
@@ -43,7 +44,7 @@ export const onomatopoeia: ItemType<P, S> = {
     const p = ctx.params, { W, H, local, dur, motion } = ctx, S = Math.min(W, H), u = S / 1080, px = (p.size / 100) * S;
     if (s.text !== p.text) {
       s.box.replaceChildren();
-      s.chars = [...p.text].map((ch) => { const el = h('span', null, null, s.box); el.textContent = ch; cssCamel(el, { display: 'inline-block', paintOrder: 'stroke fill' }); return el; });
+      s.chars = graphemes(p.text).map((ch) => { const el = h('span', null, null, s.box); el.textContent = ch; cssCamel(el, { display: 'inline-block', paintOrder: 'stroke fill' }); return el; });
       s.text = p.text;
     }
     const out = p.outDur > 0 ? clamp((dur - local) / p.outDur) : 1, n = s.chars.length, spring = motion.spring({ duration: 0.38, bounce: 0.55 });

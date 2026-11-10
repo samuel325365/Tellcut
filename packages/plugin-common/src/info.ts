@@ -1,7 +1,7 @@
 // common.info — an information card in the project's look: a title bar and rows of icon + text (📍 address, 🕐 hours, 💰 price),
 // sliding up from the bottom safe line or down from the top. Travel, food, outfit and shop videos.
 import { clamp, cssCamel, eOut3, h, prog, type ItemType } from '@tellcut/engine';
-import { fitPx, EMOJI_STACK } from './text.ts';
+import { fitPx, EMOJI_STACK, graphemes } from './text.ts';
 import { withAlpha } from './color.ts';
 
 interface P { title: string; rows: string; position: 'bottom' | 'top'; size: number; paper: string; ink: string; accent: string; font: string }
@@ -13,7 +13,7 @@ const PIC = /^\p{Extended_Pictographic}/u;
 /** "📍 台北市, 🕐 11:00–20:00" → rows; a row that does not start with an emoji gets a dot */
 export function infoRows(text: string): Array<{ icon: string; text: string }> {
   return String(text).split(/\n|[,，](?=\s*\p{Extended_Pictographic})/u).map((x) => x.trim()).filter(Boolean).map((x) => {
-    const g = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(x)][0]?.segment ?? '';
+    const g = graphemes(x)[0] ?? '';
     return PIC.test(g) ? { icon: g, text: x.slice(g.length).trim() } : { icon: '•', text: x };
   });
 }
