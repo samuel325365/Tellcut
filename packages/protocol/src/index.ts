@@ -1,5 +1,5 @@
-// What travels between the Tellcut server, the editor and the embedded player (review B3): one definition each, so the two
-// ends cannot drift. Types only, apart from isTerminal.
+// What travels between the Tellcut server, the editor, the player and the Node side that drives it (review B3): the types,
+// constants and few pure functions both ends share, one definition each, so the two ends cannot drift.
 import type { BlockCategory, Op, ParamDef, Project, SfxCategory, Transform } from '@tellcut/engine';
 
 // ---------------------------------------------------------------- chat (spec 2026-10-16-in-editor-chat §3)
