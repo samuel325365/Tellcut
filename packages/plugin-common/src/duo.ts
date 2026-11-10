@@ -84,6 +84,15 @@ const lineWidth = (text: string, px: number, font: string) => {
   return measurer.measureText(text).width || textEm(text) * px;
 };
 
+/** how much a name chip's words shrink (1 = 36 / 26 px × kz, down to 0.4) so the chip — its padding, level bars and gaps, which keep
+ *  their size, and the name and role — is at most `room` px wide; `width(text, px, weight)` measures a line */
+export function chipScale(name: string, role: string, kz: number, room: number, width: (s: string, px: number, weight: number) => number): number {
+  const fixed = (18 + 31 + 12 + 20 + (role ? 12 : 0)) * kz;
+  const words = (name ? width(name, 36 * kz, 900) : 0) + (role ? width(role, 26 * kz, 500) : 0);
+  if (fixed + words <= room || words <= 0) return 1;
+  return Math.max(0.4, (room - fixed) / words);
+}
+
 /** The header topic in `room` px: one line at `px` when it fits, else shrunk down to 3/4 of it, else two lines at 3/4 (smaller when
  *  even they are too wide) — never cut off (a long question lost its last character, the "？", to the strip's edge).
  *  `width(line, px)` measures a line. */
@@ -180,14 +189,16 @@ export const duo: ItemType<P, S> = {
       const topY = Math.max(r[1] * H, theme.safe.top * H * (r[1] > 0 ? 0 : 1)) + 22 * k;
       const botY = Math.min((r[1] + r[3]) * H, (1 - theme.safe.bottom) * H + 38 * k) - 22 * k - th;
       t.name.textContent = name; t.role.textContent = role;
+      // a long name (or role) shrinks so the chip ends a margin short of its panel's edge, not over the other panel
+      const f = chipScale(name, role, k * z, r[2] * W - 2 * side, (l, q, wt) => lineWidth(l, q, `${wt} {px} ${font}`));
       cssCamel(t.box, { left: `${r[0] * W + side}px`, top: `${(i === 1 && p.dir !== 'h' ? botY : topY).toFixed(1)}px`, height: `${th}px`, gap: `${12 * k * z}px`, padding: `0 ${20 * k * z}px 0 ${18 * k * z}px`,
         borderRadius: `${31 * k * z}px`, background: withAlpha(p.ink, 0.72), fontFamily: font, display: name ? 'flex' : 'none' });
       cssCamel(t.fill, { borderRadius: `${31 * k * z}px`, background: color, opacity: lv.toFixed(3) });
       cssCamel(t.bars[0].parentElement!, { gap: `${5 * k * z}px`, height: `${30 * k * z}px`, width: `${31 * k * z}px` });
       t.bars.forEach((b, j) => cssCamel(b, { width: `${7 * k * z}px`, borderRadius: `${3 * k * z}px`, background: p.paper,
         height: `${((8 + lv * 22 * Math.abs(Math.sin(local * (7.3 + j * 2.1) + j * 1.7 + i))) * k * z).toFixed(1)}px` }));
-      cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k * z}px` });
-      cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k * z}px`, display: role ? 'block' : 'none' });
+      cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k * z * f}px` });
+      cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k * z * f}px`, display: role ? 'block' : 'none' });
     });
   },
 };
@@ -217,13 +228,15 @@ function drawSolo(ctx: Parameters<typeof duo.draw>[0], s: S, L: ReturnType<typeo
   ([[p.colorA, p.nameA, p.roleA, 'a'], [p.colorB, p.nameB, p.roleB, 'b']] as const).forEach(([color, name, role, who], i) => {
     const t = s.tags[i], th = 62 * k * z, a = soloChip(segs, who, local), lv = duoLevel(segs, who, local);
     t.name.textContent = name; t.role.textContent = role;
+    // a long name (or role) shrinks so the chip stays inside the window
+    const f = chipScale(name, role, k * z, ww - 2 * 34 * k, (l, q, wt) => lineWidth(l, q, `${wt} {px} ${font}`));
     cssCamel(t.box, { left: `${wx + 34 * k}px`, top: `${wy + 34 * k}px`, height: `${th}px`, gap: `${12 * k * z}px`, padding: `0 ${20 * k * z}px 0 ${18 * k * z}px`, borderRadius: `${31 * k * z}px`,
       background: withAlpha(p.ink, 0.72), fontFamily: font, display: name && a > 0 ? 'flex' : 'none', opacity: a.toFixed(3), transform: `translateX(${((1 - a) * -30 * k).toFixed(1)}px)` });
     cssCamel(t.fill, { borderRadius: `${31 * k * z}px`, background: color, opacity: '1' });
     cssCamel(t.bars[0].parentElement!, { gap: `${5 * k * z}px`, height: `${30 * k * z}px`, width: `${31 * k * z}px` });
     t.bars.forEach((b, j) => cssCamel(b, { width: `${7 * k * z}px`, borderRadius: `${3 * k * z}px`, background: p.paper,
       height: `${((8 + lv * 22 * Math.abs(Math.sin(local * (7.3 + j * 2.1) + j * 1.7 + i))) * k * z).toFixed(1)}px` }));
-    cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k * z}px` });
-    cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k * z}px`, display: role ? 'block' : 'none' });
+    cssCamel(t.name, { color: p.paper, fontWeight: '900', fontSize: `${36 * k * z * f}px` });
+    cssCamel(t.role, { color: p.paper, opacity: '0.8', fontWeight: '500', fontSize: `${26 * k * z * f}px`, display: role ? 'block' : 'none' });
   });
 }

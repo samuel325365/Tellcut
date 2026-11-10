@@ -76,3 +76,22 @@ test('duo: size scales the header and the name chips (default 1 = today\'s 40 / 
   const solo = draw({ mode: 'solo', size: 1.5, segs: '0-3|a' }, 1.2);
   expect(solo.byText('阿明').style.fontSize).toBe('54px');
 });
+
+test('duo: a long name chip shrinks to stay in its panel (side by side and solo); the default chips keep 36 / 26 px', () => {
+  const wide = (el: HTMLElement) => textEm(el.textContent!) * px(el.style.fontSize);
+  const chipW = (n: HTMLElement, r: HTMLElement) => (18 + 31 + 12 + 20 + 12) + wide(n) + wide(r);
+  const name = '阿明・台北早起俱樂部創辦人', role = '每天四點半起床的晨型人代表';
+  const side = draw({ dir: 'h', nameA: name, roleA: role });
+  const n = side.byText(name), r = side.byText(role);
+  expect(px(n.style.fontSize)).toBeLessThan(36);
+  expect(chipW(n, r)).toBeLessThanOrEqual(W / 2 - 2 * 54 + 1e-6);
+  // solo's window is nearly the frame's width: a name twice as long
+  const solo = draw({ mode: 'solo', segs: '0-3|a', nameA: name + name, roleA: role }, 1.2);
+  expect(px(solo.byText(name + name).style.fontSize)).toBeLessThan(36);
+  expect(px(draw({ mode: 'solo', segs: '0-3|a', nameA: name, roleA: role }, 1.2).byText(name).style.fontSize)).toBe(36);
+  const def = draw({});
+  const d = def.divs.filter((e) => e.children.length === 0 && e.style.fontWeight === '500' && e.textContent);
+  expect(def.byText('阿明').style.fontSize).toBe('36px');
+  expect(d.every((e) => e.style.fontSize === '26px')).toBe(true);
+  expect(draw({ dir: 'h' }).byText('阿明').style.fontSize).toBe('36px');
+});
