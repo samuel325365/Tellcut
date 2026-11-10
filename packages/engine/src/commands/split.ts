@@ -37,6 +37,10 @@ export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
       const rel = a.t - tm.start, len = tm.end - tm.start;
       if (rel < m - 1e-9 || len - rel < m - 1e-9) continue;
       if (it.defocus && it.defocus.from < rel && rel < it.defocus.to) throw new CommandError('Cannot split inside a defocus ramp', 'cmd.splitInDefocus');
+      // the first half would be shorter than its own transition in, which then shrank to it with no word (the second half
+      // cannot carry the rest of it)
+      const tr = track.kind === 'video' ? it.transitionIn : undefined;
+      if (tr && tr.type !== 'cut' && rel < tr.dur - TIME_EPS) throw new CommandError('Cannot split inside a transition; shorten or move the transition first', 'cmd.splitInTransition');
       const b = plainCopy(it);
       const rate = mediaRate(track, it)!;
       b.id = uniqueId(p, it.id);

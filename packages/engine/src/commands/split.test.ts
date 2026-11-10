@@ -38,6 +38,16 @@ test('split refuses to cut inside a defocus ramp', () => {
   expect(() => split(p, { t: 2, ids: ['c1'] })).toThrow(expect.objectContaining({ code: 'cmd.splitInDefocus' }));
 });
 
+test('split refuses to cut inside a transition into the clip; at its end or with a plain cut it splits', () => {
+  // c2 (4–8 s) dissolves in over 0.5 s: a cut at 4.2 s would leave a 0.2 s first half and shorten the dissolve to it
+  const p = structuredClone(fixture());
+  expect(() => split(p, { t: 4.2, ids: ['c2'] })).toThrow(expect.objectContaining({ code: 'cmd.splitInTransition' }));
+  expect(p).toEqual(fixture());
+  expect(split(structuredClone(fixture()), { t: 4.5, ids: ['c2'] })).toHaveLength(1);
+  const q = structuredClone(fixture()); (q.tracks[1].items[1] as any).transitionIn = { type: 'cut', dur: 0.5 };
+  expect(split(q, { t: 4.2, ids: ['c2'] })).toHaveLength(1);
+});
+
 test("splitting a clip moves what hangs after the cut onto the second half and cuts the clip's own sound with it", async () => {
   const { addItem } = await import('./edit.ts');
   const { findItem } = await import('./core.ts');
