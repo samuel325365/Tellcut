@@ -43,6 +43,16 @@ describe('tighten (pauses in talk shortened on the word times)', () => {
     expect(() => d.tighten(b)).toThrow('先 tighten');
   });
 
+  test('a head pause that ends inside the dissolve into the clip is still cut, and the dissolve stays', () => {
+    const c = talk([A, B]);
+    c.clip('v', { from: 5, len: 3, sound: false });
+    c.tighten(c.clip('v', { from: 0, len: 10, transition: { type: 'dissolve', dur: 1 } }));   // the head pause ends at 0.85 s, inside the 1 s dissolve
+    const v = items(c, 'v1');
+    expect(v[1].transitionIn).toEqual({ type: 'dissolve', dur: 1 });
+    expect(v[1].start).toBe(2);                                                    // still on the overlap
+    expect(v[1].in).toBe(0.85);
+  });
+
   test('review fixes: an effect laid over the clip keeps the film long enough; a dissolve into the clip stays; the camera move runs on across the joins', async () => {
     const c = talk([A, B]);
     c.effect('common.slam', { at: 0, len: 8, text: '開場' });

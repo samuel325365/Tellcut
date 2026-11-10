@@ -35,6 +35,9 @@ export function tightenClip(p: Project, clipId: string, transcriptOf: (source: s
   const made = new Set<string>();
   const pieces = () => v1.filter((c) => c.id === clipId || made.has(c.id)).sort((x, y) => x.start - y.start);
   let removed = 0;
+  // split refuses a cut inside a transition, and the head pause may end in this one: it comes off for the cutting (the clip
+  // keeps its place on the overlap) and goes back on the first piece below
+  delete it.transitionIn;
   // from the last pause back: the earlier ones keep their film times
   for (const [s0, s1] of cuts.reverse()) {
     const t0 = film(s0), t1 = film(s1);
