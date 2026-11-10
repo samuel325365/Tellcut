@@ -34,6 +34,7 @@ test('imports photos and sound without touching project.json; progress comes fir
   expect(last.done).toBe(true);
   expect(last.sources.pic).toMatchObject({ kind: 'image', width: 640, height: 480, path: relative(join(projects, 'demo'), join(src, 'pic.jpg')).split('\\').join('/') });
   expect(Object.keys(last.media)).toEqual(['song']);
+  expect(last.lengths.song).toBeCloseTo(2, 1);                 // the editor places a dropped sound by it
   expect([last.skipped, last.others]).toEqual([[], 1]);   // notes.txt
   expect(projectFile()).toBe(before);
 }, 60000);

@@ -69,7 +69,7 @@ export function importRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
     chains.set(id, run);
     try {
       const got = await run;
-      send({ done: true, sources: got.sources, media: got.music, skipped: [...skipped, ...got.skipped], same, others: x.others });
+      send({ done: true, sources: got.sources, media: got.music, lengths: got.lengths, skipped: [...skipped, ...got.skipped], same, others: x.others });
     } catch (e) {
       send({ error: (e as Error).message, code: 'import.failed', params: { why: (e as Error).message } });
     } finally {

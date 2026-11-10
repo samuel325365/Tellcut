@@ -51,6 +51,8 @@ test('ingestFiles registers the same entries as a new project, with ids clear of
   const r = await ingestFiles(join(projects, 'x'), [...(await expandInputs([src])).files, join(src, 'notes.txt')], used);
   expect(Object.keys(r.sources).sort()).toEqual(['clip-2', 'img_0001', 'src', 'src-2']);
   expect(r.music.song).toEqual({ path: '../../trip/song.wav' });
+  expect(Object.keys(r.lengths)).toEqual(['song']);           // a sound's length, for the editor to place it without waiting for analysis
+  expect(r.lengths.song).toBeCloseTo(4, 1);
   expect(r.sources['clip-2']).toMatchObject({ kind: 'video', width: 360, height: 640, audio: true, path: '../../trip/clip.mp4' });
   expect(r.sources.src).toMatchObject({ kind: 'image', width: 900, height: 1200, taken: '2026-03-07T10:30:00', gps: [35, 135.7], duration: 3600 });
   expect(r.skipped.map((s) => s.code)).toEqual(['import.notMedia']);

@@ -1,18 +1,12 @@
 // What a media file is (spec 2026-10-14 §4.2): kind, upright size, length, sound, when it was taken and where.
 import { statSync } from 'node:fs';
-import { extname } from 'node:path';
+import { mediaKindOfName } from '@tellcut/protocol';
 import { photoMeta } from './photo.ts';
 import { ffprobe, uprightSize } from './ffmpeg.ts';
 
 export type MediaKind = 'video' | 'image' | 'audio';
-const VIDEO_EXT = new Set(['.mp4', '.mov', '.m4v', '.mkv', '.webm']);
-const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']);
-const AUDIO_EXT = new Set(['.mp3', '.m4a', '.wav', '.aac', '.flac', '.ogg']);
-
-export function kindOf(path: string): MediaKind | null {
-  const e = extname(path).toLowerCase();
-  return VIDEO_EXT.has(e) ? 'video' : IMAGE_EXT.has(e) ? 'image' : AUDIO_EXT.has(e) ? 'audio' : null;
-}
+/** by the file's extension (protocol's lists, shared with the editor) */
+export const kindOf = (path: string): MediaKind | null => mediaKindOfName(path);
 export const isImagePath = (path: string) => kindOf(path) === 'image';
 
 /** taken: wall-clock time where it was shot; takenOffset: its zone when known (to order material shot in several zones) */

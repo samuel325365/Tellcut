@@ -111,7 +111,18 @@ export interface AnalyzeResult { jobs: JobInfo[]; missing: string[]; extras: Job
 export interface ImportSkip { path: string; code: 'import.notFound' | 'import.notMedia' | 'import.failed' | 'import.url' | 'import.unreadable'; params?: Record<string, string>; message: string }
 /** one import's answer: entries for project.json (named like `npm run new` names them; the editor adds them), the files left out
  *  and those already in the project; `others`: files in the folders that are no video, photo or sound (counted, not listed) */
-export interface ImportResult { sources: Record<string, Project['sources'][string]>; media: Record<string, { path: string }>; skipped: ImportSkip[]; same: Array<{ path: string; id: string }>; others?: number }
+/** what a file is by its name alone: the server's import and a file dropped on the editor use the same lists */
+const VIDEO_EXT = new Set(['mp4', 'mov', 'm4v', 'mkv', 'webm']);
+const IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
+const AUDIO_EXT = new Set(['mp3', 'm4a', 'wav', 'aac', 'flac', 'ogg']);
+export function mediaKindOfName(name: string): 'video' | 'image' | 'audio' | null {
+  const base = name.split(/[\\/]/).pop() ?? '', dot = base.lastIndexOf('.');
+  if (dot <= 0) return null;
+  const e = base.slice(dot + 1).toLowerCase();
+  return VIDEO_EXT.has(e) ? 'video' : IMAGE_EXT.has(e) ? 'image' : AUDIO_EXT.has(e) ? 'audio' : null;
+}
+/** `lengths`: each sound's length in seconds (from its probe), so the editor can place a dropped one before analysis */
+export interface ImportResult { sources: Record<string, Project['sources'][string]>; media: Record<string, { path: string }>; skipped: ImportSkip[]; same: Array<{ path: string; id: string }>; others?: number; lengths?: Record<string, number> }
 /** a line of POST /api/projects/:id/import's NDJSON: progress per file, then the result or why it failed */
 export type ImportEvent =
   | { progress: number; total: number }

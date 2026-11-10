@@ -1,6 +1,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { mediaKindOfName } from '@tellcut/protocol';
 import { probeSize } from './ffmpeg.ts';
 import { kindOf, localIso, parseIso6709, probeMedia, takenFromTags } from './probe.ts';
 import { makePhoneVideo, makePhoto } from './test-media.ts';
@@ -11,6 +12,8 @@ const local = (iso: string) => { const d = new Date(iso), p = (n: number) => Str
 
 test('kinds by extension; UTC times become this machine local time, times with an offset keep their own; ISO 6709 locations', () => {
   expect([kindOf('a.MOV'), kindOf('b.heic'), kindOf('c.m4a'), kindOf('d.txt')]).toEqual(['video', 'image', 'audio', null]);
+  // the same lists in the browser (a file dropped on the editor), from a name alone
+  expect([mediaKindOfName('a.MOV'), mediaKindOfName('x.y.webp'), mediaKindOfName('c.flac'), mediaKindOfName('mp4'), mediaKindOfName('d.txt')]).toEqual(['video', 'image', 'audio', null, null]);
   expect(localIso('2026-03-07T01:12:00.000000Z')).toBe(local('2026-03-07T01:12:00Z'));
   // a time with its own offset (iPhone creationdate) is the local time where it was shot, like a photo's EXIF: kept as is
   expect([localIso('2026-07-10T10:00:00+0300'), localIso('2026-07-10T10:00:00-05:00')]).toEqual(['2026-07-10T10:00:00', '2026-07-10T10:00:00']);

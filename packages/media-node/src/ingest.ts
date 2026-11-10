@@ -46,7 +46,8 @@ export async function ytDlp(url: string, dir: string, audio: boolean): Promise<s
  *  left by a Mac) and node_modules */
 const SKIP_NAMES = new Set(['$RECYCLE.BIN', 'System Volume Information', 'node_modules']);
 export const skipName = (name: string) => name.startsWith('.') || SKIP_NAMES.has(name);
-function freeName(file: string): string {
+/** `file`, or the first of file-2.ext, file-3.ext … not taken yet */
+export function freeName(file: string): string {
   if (!existsSync(file)) return file;
   for (let n = 2; ; n++) { const f = file.replace(/(\.\w+)$/, `-${n}$1`); if (!existsSync(f)) return f; }
 }
@@ -54,7 +55,8 @@ function freeName(file: string): string {
 /** a file left out of a project, and why: `code` + `params` for the editor to word it, `message` in English for the CLI */
 export type Skipped = ImportSkip;
 export type ProjectSource = Project['sources'][string];
-export interface Ingested { sources: Record<string, ProjectSource>; music: Record<string, { path: string }>; skipped: Skipped[] }
+/** `lengths`: each sound's length in seconds */
+export interface Ingested { sources: Record<string, ProjectSource>; music: Record<string, { path: string }>; lengths: Record<string, number>; skipped: Skipped[] }
 
 /** the same file named twice (a folder and a file in it, or in another case on Windows or a Mac) counts once */
 export const samePath = (f: string) => {
@@ -117,7 +119,7 @@ export async function expandInputs(inputs: string[], lim: { maxMedia?: number; m
 /** Every usable video, photo and sound among `files`, as project.json entries for the project in `dir` (paths relative to it):
  *  HEIC photos converted into <dir>/media/, ids kept clear of `used` (and added to it). Shared by `new` and the editor's Import. */
 export async function ingestFiles(dir: string, files: string[], used: Set<string>, o: { log?: (s: string) => void; onFile?: (done: number, total: number) => void } = {}): Promise<Ingested> {
-  const sources: Record<string, ProjectSource> = {}, music: Record<string, { path: string }> = {}, skipped: Skipped[] = [], log = o.log ?? (() => {});
+  const sources: Record<string, ProjectSource> = {}, music: Record<string, { path: string }> = {}, lengths: Record<string, number> = {}, skipped: Skipped[] = [], log = o.log ?? (() => {});
   const rel = (f: string) => relative(dir, f).split(sep).join('/'), media = join(dir, 'media');
   const usable = files.filter((f) => {
     if (kindOf(f)) return true;
@@ -129,7 +131,7 @@ export async function ingestFiles(dir: string, files: string[], used: Set<string
       let path = f;
       if (/\.(heic|heif)$/i.test(f)) { mkdirSync(media, { recursive: true }); path = freeName(join(media, basename(f).replace(/\.\w+$/, '.jpg'))); await heicToJpg(f, path); }
       const info = await probeMedia(path), id = sourceId(f, used);
-      if (info.kind === 'audio') { music[id] = { path: rel(path) }; log(`音樂 ${id}`); continue; }
+      if (info.kind === 'audio') { music[id] = { path: rel(path) }; if (info.duration > 0) lengths[id] = Math.round(info.duration * 1000) / 1000; log(`音樂 ${id}`); continue; }
       sources[id] = { path: rel(path), duration: Math.round(info.duration * 1000) / 1000, width: info.width, height: info.height, kind: info.kind,
         ...(info.taken ? { taken: info.taken } : {}), ...(info.takenOffset ? { takenOffset: info.takenOffset } : {}), ...(info.takenGuess ? { takenGuess: true } : {}), ...(info.gps ? { gps: info.gps } : {}),
         ...(info.kind === 'video' ? { audio: info.audio } : {}) } as ProjectSource;
@@ -137,7 +139,7 @@ export async function ingestFiles(dir: string, files: string[], used: Set<string
     } catch (e) { skipped.push({ path: f, code: 'import.failed', params: { path: f, why: (e as Error).message }, message: `${f}: ${(e as Error).message}` }); }
     finally { o.onFile?.(i + 1, usable.length); }
   }
-  return { sources, music, skipped };
+  return { sources, music, lengths, skipped };
 }
 
 export async function createProject(o: IngestOptions): Promise<{ project: Project; file: string; skipped: string[] }> {
