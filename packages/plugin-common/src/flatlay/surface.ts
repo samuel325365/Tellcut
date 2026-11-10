@@ -146,6 +146,11 @@ export function goboLayers(make: (px: number) => HTMLCanvasElement = blank, px =
   return { frame, leaves };
 }
 
+/** the gobo's sway (fractions of its picture) snapped to half a texel of a `px`-wide gobo: what is painted, and its key. Unsnapped, every
+ *  frame's offset differed by a hair and repainted the 1024² gobo and uploaded it again; snapping both keeps the picture a function
+ *  of the offset alone, whichever frame painted it first */
+export const goboStep = ([dx, dy]: readonly [number, number], px: number): [number, number] => [Math.round(dx * 2 * px) / (2 * px), Math.round(dy * 2 * px) / (2 * px)];
+
 /** the gobo (the SpotLight's map) on `c`: white light, the leaves moved by (dx, dy) (fractions of the picture), the window's frame
  *  over them. The sway is painted because three.js samples a spot light's map without the texture's offset or repeat */
 export function paintGobo(c: HTMLCanvasElement, layers: GoboLayers, dx = 0, dy = 0): HTMLCanvasElement {

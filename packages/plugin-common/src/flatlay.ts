@@ -19,7 +19,7 @@ import { atRest, contactShadow, REST_Z, viewHalf, type Pose } from './flatlay/mo
 import { EXIT_DUR, faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
 import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintedText, paintFront, paintPlaceholder, PRINT, type Word } from './flatlay/paper.ts';
-import { goboLayers, paintGobo, paintSurface, SURFACE_LOOK, type GoboLayers, type Surface } from './flatlay/surface.ts';
+import { goboLayers, goboStep, paintGobo, paintSurface, SURFACE_LOOK, type GoboLayers, type Surface } from './flatlay/surface.ts';
 
 export type { FlatlayParams } from './flatlay/objects.ts';
 
@@ -309,7 +309,7 @@ function pose(ctx: ItemCtx<FlatlayParams>, s: S) {
   s.spot.angle = rig.spot.angle; s.spot.penumbra = rig.spot.penumbra;
   s.spot.map = rig.spot.gobo ? s.gobo : null;
   if (rig.spot.gobo && s.gobo && s.goboLayers) {
-    const [dx, dy] = rig.spot.goboOffset, key = `${dx},${dy}`;
+    const [dx, dy] = goboStep(rig.spot.goboOffset, s.goboLayers.frame.width), key = `${dx},${dy}`;
     if (key !== s.goboAt) { paintGobo(s.gobo.image as HTMLCanvasElement, s.goboLayers, dx, dy); s.gobo.needsUpdate = true; s.goboAt = key; }
   }
   s.sky.color.setHex(rig.sky.color); s.sky.groundColor.setHex(rig.sky.ground); s.sky.intensity = rig.sky.intensity * rig.exposure;

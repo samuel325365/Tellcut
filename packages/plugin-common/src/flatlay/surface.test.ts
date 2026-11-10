@@ -44,3 +44,18 @@ test('velvet has a pile direction', () => {
   expect(Math.hypot(...r.pile!)).toBeCloseTo(1, 6);
   expect(r.strands.length).toBeGreaterThan(1000);
 });
+
+test('goboStep: the sway snapped to half a texel, so the 1024² gobo is repainted only when the leaves move that far', async () => {
+  const { goboStep } = await import('./surface.ts');
+  const { lightRig } = await import('./light.ts');
+  const o = { surface: 'concrete', side: 'right', warmth: 'golden' } as const;
+  const keys = new Set<string>();
+  for (let f = 0; f < 30; f++) {
+    const [dx, dy] = goboStep(lightRig(o, 2 + f / 30).spot.goboOffset, 1024);
+    expect(dx * 2048).toBe(Math.round(dx * 2048));
+    expect(dy * 2048).toBe(Math.round(dy * 2048));
+    keys.add(`${dx},${dy}`);
+  }
+  expect(keys.size).toBeLessThan(30);
+  expect(goboStep([0.0123, -0.0041], 1024)).toEqual([25 / 2048, -8 / 2048]);
+});
