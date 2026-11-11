@@ -93,7 +93,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
 - Big text (TXT): 01 `burst`, 03 `slam`, 04 `handwrite`, 05 `strike`, 06 `dotmatrix`, 07 `quote`, 10 `headline`, 11 `bounce`, 12 `onomatopoeia`, 13 `echo`, 14 `band`
 - Chapters, numbers and tags (CHP): 01 `badge`, 02 `tag`, 03 `header`, 04 `progress`, 05 `slip`
 - Info cards, lists and receipts (CRD): 01 `receipt`, 02 `card`, 03 `list`, 04 `rating`, 05 `info`, 06 `notecard`, 07 `printer`, 08 `versus`, 09 `quiz`
-- Numbers and meters (NUM): 01 `meter`, 02 `scoreboard`, 03 `countdown`, 04 `gauge`, 05 `hangtag`, 06 `timelapse`, 07 `digits`, 08 `chart`, 09 `audiogram`, 10 `healthbar`
+- Numbers and meters (NUM): 01 `meter`, 02 `scoreboard`, 03 `countdown`, 04 `gauge`, 05 `hangtag`, 06 `timelapse`, 07 `digits`, 08 `chart`, 09 `audiogram`, 10 `healthbar`, 11 `candles`
 - Maps, routes and journeys (TRV): 01 `tripclock`, 02 `route`, 03 `routeboard`, 04 `mapjump`, 05 `ticket`, 06 `stations`, 07 `postmark`, 08 `mapcam`, 09 `worldmap`
 - Layouts and frames (the video plays inside) (FRM): 01 `panel`, 02 `polaroid`, 03 `snap`, 06 `duo`, 07 `camcorder`, 08 `casefile`, 09 `magazine`, 12 `comic`, 13 `prints`, 14 `monoframe`, 15 `filmstrip`, 16 `masthead`, 17 `spread`, 18 `viewfinder`, 19 `poster`, 20 `binocular`, 21 `photostack`, 22 `popcard`, 23 `grid`, 24 `slant`, 25 `postage`, 26 `letterbox`, 27 `flatlay`
 - Phone and app screens (PHN): 01 `notify`, 02 `lockscreen`, 03 `reels`, 04 `comments`, 05 `story`, 06 `album`, 07 `chat`, 08 `search`, 09 `desktop`, 10 `window`, 11 `popup`

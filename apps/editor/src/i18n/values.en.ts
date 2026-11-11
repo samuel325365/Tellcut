@@ -211,4 +211,11 @@ export const VALUES_EN: Record<string, string> = {
   "common.flatlay.caption": "That summer",
   "common.flatlay.back": "0.5-1.6|Thank you\n1.7-2.8|for setting out back then",
   "common.flatlay.mark": "ROMA|ROME|2024.05.12",
+  "common.candles.label": "Sample index",
+  "common.candles.vs": "vs high",
+  "common.candles.high": "New high",
+  "common.candles.prev": "High",
+  "common.candles.tallyLabel": "Falls over 20%",
+  "common.candles.tag": "Crash",
+  "common.candles.title": "Financial crisis",
 };

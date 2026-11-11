@@ -210,4 +210,11 @@ export const VALUES_JA: Record<string, string> = {
   "common.flatlay.caption": "あの夏",
   "common.flatlay.back": "0.5-1.6|ありがとう\n1.7-2.8|あのとき出かけてくれて",
   "common.flatlay.mark": "ROMA|ローマ|2024.05.12",
+  "common.candles.label": "サンプル指数",
+  "common.candles.vs": "高値比",
+  "common.candles.high": "最高値更新",
+  "common.candles.prev": "高値",
+  "common.candles.tallyLabel": "20% 超の下落",
+  "common.candles.tag": "暴落",
+  "common.candles.title": "金融危機",
 };

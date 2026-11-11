@@ -141,4 +141,13 @@ export const STYLES: Sample[] = [
   { name: 'wide-slip-board', type: 'common.slip', params: { mode: 'board', title: '下一位，換你排', sub: '中壢車站 步行 10 分鐘' }, at: [2.0], wide: true, bg: '#6b5444' },
   { name: 'wide-rating', type: 'common.rating', at: [2.5], wide: true },
   { name: 'wide-scoreboard', type: 'common.scoreboard', params: { title: '🧾 今日釣果', sub: '目標：東洋鱸', icons: '🎯|🐡|🐟|🎣', names: '東洋鱸|河豚|小魚|釣竿', values: '0|3|12|斷了', tones: 'n|n|good|bad', pop: 3, note: '第二支' }, at: [1.5], wide: true },
+  // common.candles on its made-up series (2000–2009, one fall of more than 20%): the chart (the gallery's), the chart with a shock, a
+  // bolt, a marker, a bracket, fireworks and the fall lit up, the header, the tally, a card, a big number, and the chart on 16:9
+  { name: 'candles', type: 'common.candles', at: [1.6, 2.9] },
+  { name: 'candles-fx', type: 'common.candles', params: { shocks: '1.2', bolts: '1.2', bursts: '2.2', markers: '0.4-3|2001-11-29|PEAK', brackets: '2-3|2004-02-03', crashes: '2001-11-29|2004-02-03', glow: '2.4-3' }, at: [1.3, 2.4, 2.9] },
+  { name: 'candles-header', type: 'common.candles', params: { mode: 'header' }, at: [1.6, 2.4], bg: '#030405' },
+  { name: 'candles-tally', type: 'common.candles', params: { mode: 'tally', falls: '2001-11-29|2003-02-07|2007-08-02' }, at: [1.6, 2.4], bg: '#030405' },
+  { name: 'candles-card', type: 'common.candles', params: { mode: 'card', sub: '雷曼兄弟破產' }, at: [0.2, 1.5], bg: '#030405' },
+  { name: 'candles-big', type: 'common.candles', params: { mode: 'big', sub: '單日' }, at: [0.3, 1.5], bg: '#030405' },
+  { name: 'wide-candles', type: 'common.candles', at: [2.9], wide: true },
 ];

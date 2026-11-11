@@ -70,6 +70,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'NUM-08': 'common.chart',
   'NUM-09': 'common.audiogram',
   'NUM-10': 'common.healthbar',
+  'NUM-11': 'common.candles',
   'TRV-01': 'common.tripclock',
   'TRV-02': 'common.route',
   'TRV-03': 'common.routeboard',
