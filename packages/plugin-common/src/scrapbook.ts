@@ -46,7 +46,7 @@ const stillOf = (source: string, t: number) => ({ source, t, w: 720 });
 const sourceOf = (q: Print, p: Pick<PP, 'source'>) => q.source || p.source;
 
 export const prints: ItemType<PP, PS> = {
-  type: 'common.prints', label: '剪貼簿相片', category: 'frame', kind: 'overlay',
+  type: 'common.prints', label: '剪貼簿相片', category: 'photo', kind: 'overlay',
   doc: '剪貼簿的一頁相片：prints 一行一張「秒|素材秒|x,y,寬|傾斜|寬:高|選項」（x,y 是畫面比例，寬是畫面短邊的比例），相片是素材那一刻的靜止畫面（source；src=素材 讓這一張用別的素材），白色毛邊、柔和陰影，從稍大、轉一點的地方落下擺正；選項 tape 貼紙膠帶（tape=#色）、clip 夾迴紋針、crop=x,y,zoom 取景（和主軌片段的 crop、其他相片卡一樣：x、y 是對準的點，zoom 1 以上放大；避開原片燒的字；舊寫法 focus=x,y 照收）；一頁一個項目，可以疊在滿版影片上或紙底（common.paper）上，後面那張大的會蓋住前面；配 common.scraps 紙片、字幕範本 scrap-chip 紙條、標題範本 scrapbook-card、common.wipe 的 tiles 格子轉場；旅行、家庭、寵物的剪貼簿、回憶相簿',
   params: [
     { key: 'source', label: '素材', type: 'source-ref', default: '' },

@@ -88,7 +88,7 @@ function cardImage(g: G, c: PS['cards'][number], x: number, y: number, w: number
   g.drawImage(img, x + b.left, y + b.top, b.width, b.height);
 }
 export const photostack: ItemType<PP, PS> = {
-  type: 'common.photostack', label: '相片卡疊', category: 'frame', kind: 'scene',
+  type: 'common.photostack', label: '相片卡疊', category: 'photo', kind: 'scene',
   doc: '素色頁（bg）上由上往下疊幾張圓角相片卡：cards「素材|秒|標籤|x,y,zoom」一行一張（影片取那一秒的畫面；x,y,zoom 和主軌片段的 crop 一樣，x、y 是對準的點，zoom 可省略＝1），每 every 秒滑上來一張，細邊框（edge）、柔和陰影，右下角一行斜體標籤（label 色，英文小寫最好看）；w 卡片寬（畫面短邊比例）、aspect 高寬比、top 第一張的上緣；排不下時整疊自動縮小，讓最後一張停在字幕上方（安全區下緣）；放在沒有影片的那段（layer under）；一天裡吃的、喝的、看到的幾樣東西一次排出來，故事書風、Wes Anderson 風的旅行片，配 common.shutter',
   params: [
     { key: 'cards', label: '相片（素材|秒|標籤|x,y,zoom，一行一張；zoom 可省略）', type: 'text', default: '' },

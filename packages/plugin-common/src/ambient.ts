@@ -26,7 +26,7 @@ export function rampAt(colors: RGB[], f: number): RGB {
 const css = (c: RGB, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
 export const ambient: ItemType<P, S> = {
-  type: 'common.ambient', label: '漸變氛圍背景', category: 'look', kind: 'scene',
+  type: 'common.ambient', label: '漸變氛圍背景', category: 'background', kind: 'scene',
   doc: '整片背景的顏色沿著一串顏色隨「程度」漸變（越潛越深、越晚越暗、越冷越藍），加上飄動的微粒與漸漸消失的光束；放在影片之下，數值和 common.meter 共用；look sky 是一天的天色：程度的值換成天色（0 清晨、1 暴風雨、2 放晴、3 黃金時刻、4 黃昏、5 夜晚），有飄動的雲、暴風雨的細雨、放晴的陽光、黃昏的燈串光暈、夜晚的星星，flash 的時間閃電（慶生、婚禮、一天的 vlog 的天氣起伏；雷聲配 common.thunder）',
   params: [
     { key: 'stops', label: '程度（秒:值[:s]，逗號分隔；和數值計同一串；:數字＝這一站的變化秒數）', type: 'text', default: '0:0, 0.8:0.5, 1.6:1' },

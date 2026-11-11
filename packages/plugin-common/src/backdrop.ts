@@ -80,7 +80,7 @@ export function patternCss(p: Pick<P, 'pattern' | 'color' | 'color2' | 'tint'>, 
 }
 
 export const backdrop: ItemType<P, S> = {
-  type: 'common.backdrop', label: '背景圖樣', category: 'look', kind: 'scene',
+  type: 'common.backdrop', label: '背景圖樣', category: 'background', kind: 'scene',
   doc: '整片的圖樣背景（格紋、圓點、斜紋、方格、純色、漸層），放在影片之下；影片縮成面板時露出來的底，顏色走 theme；glow 讓底部透出一片光，強度照「秒:強度」變（跟著分數、情緒越來越熱）；diamond 是收銀台止滑墊的菱格紋，pool 加一圈暖光、vignette 壓暗四角（深色收銀台、工作檯）；spot 是深色海報底：上緣透下一片柔光（color2、濃度 tint）、下方漸暗（金句、訪談、Podcast）；words 是多巴胺字牆：整頁一列一列重複 word（外框粗襯線字，color2 色、濃度 tint，列高 scale），相鄰兩列以 drift 反方向滑（段落底色常換：萊姆綠、鈷藍、桃紅、橘，配 common.popcard、common.sticker、標題範本 pop）；bits 在兩側撒幾個小碎片（圓點、四角星、鋸齒線、小叉，theme 的顏色，會閃），任何圖樣都能加',
   params: [
     { key: 'pattern', label: '圖樣', type: 'enum', options: ['gingham', 'dots', 'stripes', 'grid', 'solid', 'gradient', 'diamond', 'spot', 'words'], default: 'gingham' },

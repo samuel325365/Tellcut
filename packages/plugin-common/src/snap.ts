@@ -15,7 +15,7 @@ export function snapWindow(v: unknown): [number, number, number, number] | null 
   return w > 0 && hh > 0 ? [x, y, w, hh] : null;
 }
 export const snap: ItemType<P, S> = {
-  type: 'common.snap', label: '照片閃入', category: 'frame', kind: 'overlay',
+  type: 'common.snap', label: '照片閃入', category: 'photo', kind: 'overlay',
   doc: '照片一進來白光閃一下、白色相框從畫面外收進來，角落一個橘色發光的相機日期戳（\'22 5 26）；預設框住整個畫面，window [x, y, w, h]（畫面比例，跟主軌片段的 frame 一樣，例如 4:5 照片窗）改成框在那個窗外圍、日期戳放進窗的角落；照片連發、回憶、底片相機感',
   params: [
     { key: 'date', label: '日期戳（空＝不顯示）', type: 'string', default: "'22 5 26" },

@@ -40,6 +40,8 @@ test('the plan names the file, the new id, the items that change, the category a
   expect(describePromotion(pl)).toContain('圖鑑代號 MRK-03');
   expect((await plan({ type: 'fx.ring', name: 'halo' })).to).toBe('common.halo');
   expect((await plan({ type: 'fx.ring', name: 'halo', category: 'look' })).handle).toBe('LOK-02');
+  // the newer categories, with no handle of their own yet, start at 01
+  expect([(await plan({ type: 'fx.ring', name: 'halo', category: 'photo' })).handle, (await plan({ type: 'fx.ring', name: 'halo', category: 'background' })).handle]).toEqual(['PIC-01', 'BKG-01']);
 });
 
 test('it refuses what it should: not an fx, unknown, a file it cannot split, a bad, numbered or taken name, no category', async () => {

@@ -39,7 +39,7 @@ export function shaderColors(list: string, theme: { palette: Record<string, stri
 }
 
 export const shader: ItemType<P, S> = {
-  type: 'common.shader', label: '動態背景（GPU）', category: 'look', kind: 'scene',
+  type: 'common.shader', label: '動態背景（GPU）', category: 'background', kind: 'scene',
   doc: '整片會流動的質感背景，GPU 即時畫：mesh 流動漸層、grain 顆粒漸層、rays 光束、smoke 煙圈、warp 扭曲格紋、swirl 漩渦、blobs 流體球、dots 點陣軌道；顏色預設取 theme，放在影片之下（片頭、片尾卡、沒素材的段落、面板底）',
   params: [
     { key: 'look', label: '樣式', type: 'enum', options: [...LOOKS], default: 'mesh' },

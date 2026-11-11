@@ -17,7 +17,7 @@ export const TABLE_COLOR = { steel: '#7c838b', wood: '#86603f' } as const;
 export const tableColor = (p: Pick<P, 'look' | 'color'>) => p.color || TABLE_COLOR[p.look] || TABLE_COLOR.steel;
 
 export const tabletop: ItemType<P, S> = {
-  type: 'common.tabletop', label: '桌面質感', category: 'look', kind: 'scene',
+  type: 'common.tabletop', label: '桌面質感', category: 'background', kind: 'scene',
   doc: '整片桌面底，放在影片之下（靜態）：look steel 不鏽鋼（髮絲紋、上方暖燈的一圈柔光、一道斜斜的亮帶）、wood 木桌（木板、木紋、左上暖燈）；color 換桌面顏色、light 換燈光顏色；grill 在角落嵌一個炭爐（鐵圈、暗紅炭火、烤網：烤肉、火鍋、路邊攤）；美食、開箱、手作，影片縮成面板、收據機或卡片放在桌上時的底；紙張桌面用 common.paper',
   params: [
     { key: 'look', label: '桌面（steel 不鏽鋼、wood 木桌）', type: 'enum', options: ['steel', 'wood'], default: 'steel' },

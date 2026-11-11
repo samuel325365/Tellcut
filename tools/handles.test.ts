@@ -1,3 +1,4 @@
+import { OLD_BLOCKS } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
@@ -11,7 +12,9 @@ const numberOf = (h: string) => Number(/\d+$/.exec(h)![0]);
 async function wanted(): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const common = plugins.find((p) => p.id === 'common')!, core = plugins.find((p) => p.id === 'core')!;
-  for (const t of common.items ?? []) out.set(t.type, BLOCK_PREFIX[t.category!]);
+  // an old block (OLD_BLOCKS) whose handle was retired keeps opening in older projects but is no longer offered or pointed at
+  const gaveUp = new Set(Object.values(RETIRED).filter((id) => OLD_BLOCKS[id]));
+  for (const t of common.items ?? []) if (!gaveUp.has(t.type)) out.set(t.type, BLOCK_PREFIX[t.category!]);
   for (const t of core.items ?? []) out.set(t.type, BLOCK_PREFIX[CORE_CATEGORY[t.type]]);
   for (const s of common.sfx ?? []) out.set(s.type, SFX_PREFIX[s.category!]);
   const lib = await loadStyles([SCORE_LIBRARY]);
@@ -66,4 +69,23 @@ test('what people type is read as a handle: any case, with or without the dash, 
   for (const s of ['stamp', 'common.stamp', 'MR-03', 'MRKS-03', '03', '']) expect(normalizeHandle(s), s).toBeUndefined();
   expect(idOfHandle('txt2')).toBe(HANDLES['TXT-02']);
   expect(idOfHandle('ZZZ-01')).toBeUndefined();
+});
+
+test('photos and cards, and the backgrounds, are categories of their own; the blocks moved there keep the handles they had', () => {
+  const common = plugins.find((p) => p.id === 'common')!, cat = (type: string) => common.items!.find((t) => t.type === type)!.category;
+  const photo = ['common.polaroid', 'common.snap', 'common.postcard', 'common.prints', 'common.photostack', 'common.popcard', 'common.postage'];
+  const background = ['common.backdrop', 'common.ambient', 'common.shader', 'common.paper', 'common.tabletop'];
+  expect(photo.map(cat)).toEqual(photo.map(() => 'photo'));
+  expect(background.map(cat)).toEqual(background.map(() => 'background'));
+  // the grades and textures over the footage stay in look; layouts and frames the video plays in stay in frame
+  expect(['common.grade', 'common.tone', 'common.film', 'common.glitch', 'common.leak'].map(cat)).toEqual(Array(5).fill('look'));
+  expect(['common.panel', 'common.duo', 'common.magazine', 'common.flatlay', 'common.filmstrip', 'common.poster'].map(cat)).toEqual(Array(6).fill('frame'));
+  for (const id of [...photo, ...background]) { expect(MOVED, id).toContain(id); expect(handleOf(id), id).toMatch(/^(FRM|LOK)-/); }
+  expect([BLOCK_PREFIX.photo, BLOCK_PREFIX.background]).toEqual(['PIC', 'BKG']);
+});
+
+test('an old block may give its handle up: common.wash (common.grade deep draws it now) has none, LOK-11 is retired', () => {
+  expect(handleOf('common.wash')).toBeUndefined();
+  expect(RETIRED['LOK-11']).toBe('common.wash');
+  expect(OLD_BLOCKS['common.wash']).toBe('common.grade');
 });

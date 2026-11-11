@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BLOCK_CATEGORY, HANDLES, PLUGIN_GROUP, RETIRED, SFX_CATEGORY } from '@tellcut/protocol';
+import { OLD_BLOCKS } from '@tellcut/engine';
 import { DICTS, type Key } from './index.ts';
 import { BLOCKS_EN } from './blocks.en.ts';
 import { BLOCKS_JA } from './blocks.ja.ts';
@@ -27,7 +28,8 @@ describe('block texts', () => {
   });
 
   it('no entry is left over from a block renamed or retired, and English and Japanese have the same keys', () => {
-    const known = new Set(ids);
+    // an old block that gave its handle up (common.wash) still opens in older projects, under its English and Japanese name
+    const known = new Set([...ids, ...Object.keys(OLD_BLOCKS)]);
     expect(Object.keys(BLOCKS_EN).filter((k) => !known.has(k))).toEqual([]);
     expect(Object.keys(BLOCKS_JA).filter((k) => !known.has(k))).toEqual([]);
     expect(Object.keys(BLOCKS_JA).sort()).toEqual(Object.keys(BLOCKS_EN).sort());

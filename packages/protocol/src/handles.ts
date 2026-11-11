@@ -7,7 +7,8 @@ import type { BlockCategory, SfxCategory } from '@tellcut/engine';
 
 /** a block category's prefix (core blocks take the gallery's category, CORE_CATEGORY) */
 export const BLOCK_PREFIX: Record<BlockCategory, string> = {
-  caption: 'SUB', title: 'HDG', text: 'TXT', chapter: 'CHP', card: 'CRD', number: 'NUM', travel: 'TRV', frame: 'FRM', phone: 'PHN', mark: 'MRK', look: 'LOK', moment: 'MOM',
+  caption: 'SUB', title: 'HDG', text: 'TXT', chapter: 'CHP', card: 'CRD', number: 'NUM', travel: 'TRV', frame: 'FRM', photo: 'PIC', phone: 'PHN', mark: 'MRK',
+  background: 'BKG', look: 'LOK', moment: 'MOM',
 };
 /** a sound effect category's prefix */
 export const SFX_PREFIX: Record<SfxCategory, string> = {
@@ -138,7 +139,6 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'LOK-08': 'common.tabletop',
   'LOK-09': 'common.leak',
   'LOK-10': 'common.grade',
-  'LOK-11': 'common.wash',
   'MOM-01': 'common.mystery',
   'MOM-02': 'common.outro',
   'MOM-03': 'common.rolldoor',
@@ -381,6 +381,8 @@ export const RETIRED: Readonly<Record<string, string>> = {
   'FRM-11': 'common.wall',
   'MOM-07': 'common.logo',
   'RCP-04': 'recipe:brand',
+  // 2026-11-11: common.wash, an old block now (common.grade's deep draws it in the grade's own item); older projects still open it
+  'LOK-11': 'common.wash',
 };
 /** ids that changed category after getting their handle: they keep it, so its prefix no longer matches */
 export const MOVED: readonly string[] = [
@@ -388,6 +390,10 @@ export const MOVED: readonly string[] = [
   'common.caption', 'core.caption',
   // 2026-11-05: core.title joined common.heading in the title category, beside the title templates
   'core.title',
+  // 2026-11-11: one photo or card (a print, a stamp…) left the layouts and frames for 「相片與卡片」, and the pure backgrounds under the
+  // footage left the grades and textures over it for 「背景」
+  'common.polaroid', 'common.snap', 'common.postcard', 'common.prints', 'common.photostack', 'common.popcard', 'common.postage',
+  'common.backdrop', 'common.ambient', 'common.shader', 'common.paper', 'common.tabletop',
 ];
 
 /** a handle as written here: three capitals (two groups for a sound effect), a dash, two digits or more */

@@ -32,7 +32,7 @@ export function itemName(item: AnyItem, kind: TrackKind, reg: Registry | undefin
 export type Tone = 'words' | 'layout' | 'place' | 'look' | 'moment' | 'fx';
 export type Glyph = Tone | 'scene' | 'video' | 'music' | 'audio' | 'sfx';
 export const CATEGORY_TONE: Record<BlockCategory, Tone> = {
-  caption: 'words', title: 'words', text: 'words', chapter: 'words', card: 'layout', number: 'layout', frame: 'layout', phone: 'layout', travel: 'place', mark: 'place', look: 'look', moment: 'moment',
+  caption: 'words', title: 'words', text: 'words', chapter: 'words', card: 'layout', number: 'layout', frame: 'layout', photo: 'layout', phone: 'layout', travel: 'place', mark: 'place', background: 'look', look: 'look', moment: 'moment',
 };
 
 /** blocks: a glyph and tone by category (project fx, which have none: "fx"); media and sounds keep their track colour */

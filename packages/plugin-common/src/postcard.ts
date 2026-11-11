@@ -279,7 +279,7 @@ type Opts = { hole: boolean; stillAlpha: number; useExit: boolean; complete: boo
 interface Shown { el: CardEl; card: Card; pose: Pose; face: 'front' | 'back'; o: Opts; local: number }
 
 export const postcard: ItemType<P, S> = {
-  type: 'common.postcard', label: '明信片', category: 'frame', kind: 'scene',
+  type: 'common.postcard', label: '明信片', category: 'photo', kind: 'scene',
   doc: '明信片旅記的一站：木桌上一疊明信片，新的一張滑入（或翻面）壓上去，角落郵票（該站的畫面）、郵戳（地名＋日期）蓋下，旁白一字一字手寫在卡上；卡片停好時照片窗是透明的洞，主軌片段（frame＝postcardWindow）從裡面播出來，卡片移動時窗裡是靜態圖（卡片蓋在片段上面）；最後一張可翻到背面寫字、全部攤開，drop 讓攤開後再落下最後幾張；pushAt 起照片窗連同片段放大成全螢幕、pushBack 起縮回卡上（放大、縮回時主軌放 frame＝postcardWindow 的片段，滿版那段放全畫面片段，字幕才在上面）；簡單參數一張卡，card／pile／spread 給整套',
   params: [
     { key: 'lines', label: '手寫字（每行「開始秒-結束秒|句子」，最多 3 行）', type: 'text', default: '0.8-1.8|到了巴黎\n1.9-2.8|先好好吃一頓' },

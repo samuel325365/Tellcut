@@ -46,7 +46,7 @@ interface PS { wrap: HTMLElement; shade: HTMLElement; card: HTMLElement; box: HT
 const SERIF = "'Noto Serif TC', serif";
 
 export const popcard: ItemType<PP, PS> = {
-  type: 'common.popcard', label: '彈出相片卡', category: 'frame', kind: 'overlay',
+  type: 'common.popcard', label: '彈出相片卡', category: 'photo', kind: 'overlay',
   doc: '一張微斜的白色相片卡（ink 色細框、右下一塊錯開的 shadow 色陰影）彈進來，卡裡自己播鏡頭：shots 一行一個「秒|素材|素材秒|x,y,zoom|標籤|still」（秒從項目開始算，播到下一行；x,y,zoom 是裁切；still 是停格），換鏡頭時卡片輕輕一跳；標籤是卡片左上角（pillSide right 右上）一顆 pill 色膠囊，標籤換了才彈一次；x、y、w、h 是卡片的框（畫面比例）、tilt 傾斜；整頁都是卡片時主軌不放片段，底下用 common.backdrop（pattern words 字牆）；好物清單、開箱、穿搭、一樣一樣介紹（多巴胺配色，配 common.sticker、common.badge 的 box、標題範本 pop）；幾張小卡並排就是最後的總覽',
   params: [
     { key: 'shots', label: '鏡頭（秒|素材|素材秒|x,y,zoom|標籤|still，一行一個）', type: 'text', default: '' },

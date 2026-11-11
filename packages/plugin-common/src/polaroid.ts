@@ -27,7 +27,7 @@ export function polaroidCrop(c: unknown): Crop | null {
 }
 
 export const polaroid: ItemType<P, S> = {
-  type: 'common.polaroid', label: '定格拍立得', category: 'frame', kind: 'overlay',
+  type: 'common.polaroid', label: '定格拍立得', category: 'photo', kind: 'overlay',
   doc: '把素材某一刻定格成拍立得：先閃白，相片斜斜落下、下方寫一行字；crop { x, y, zoom }（也可以寫成「x,y,zoom」，和其他相片卡、鏡頭行的寫法一樣）像主軌片段的 crop 一樣在方形相片裡取景（避開原片燒進去的字、對準臉）；下方的字預設用主題的標題字型，不是手寫，要手寫給 font（例如 LXGW WenKai TC）；精華、旅遊、最佳瞬間（c.polaroid 會從播放中的片段自動帶 source 與時間，並配快門聲；crop 不會自動帶，要自己給）',
   params: [
     { key: 'source', label: '素材', type: 'source-ref', default: '' },
