@@ -77,7 +77,9 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   const [append, setAppend] = useState<{ text: string; n: number }>({ text: '', n: 0 });
   // a list that could not be read says so: an empty one looked like "no projects" / no presets
   const [projectsErr, setProjectsErr] = useState(''), [presetsErr, setPresetsErr] = useState('');
-  const loadPresets = () => api.presets?.().then((r) => { setPresets(r.presets); setBroken(r.broken ?? []); setPresetsErr(''); }, (e) => setPresetsErr(errText(e)));
+  // the list answered (or failed, or this page has none): until then the strip shows nothing, not a lone "New preset" card
+  const [presetsIn, setPresetsIn] = useState(!api.presets);
+  const loadPresets = () => api.presets?.().then((r) => { setPresets(r.presets); setBroken(r.broken ?? []); setPresetsErr(''); }, (e) => setPresetsErr(errText(e))).finally(() => setPresetsIn(true));
   useEffect(() => { void loadPresets(); }, [api]);
   const pickedInfo = picked ? presets.find((p) => p.id === picked.id) : undefined, infoOf = info ? presets.find((p) => p.id === info) : undefined;
   const presetNames = useMemo(() => Object.fromEntries(presets.map((p) => [p.id, pickText(p.name, lang) ?? p.id])), [presets, lang]);
@@ -141,7 +143,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
         </header>
         <ChatPanel key={thread} session={session}
           hint={thread === 'home' ? t('home.hint') : t('home.chatOf', { name: title })}
-          welcome={thread === 'home' ? { title: t('home.welcome'), below: <><PresetStrip presets={presets} picked={picked?.id ?? null} onOpen={setInfo} onNew={typeof api.savePreset === 'function' ? () => setCreating(true) : undefined} />
+          welcome={thread === 'home' ? { title: t('home.welcome'), below: <><PresetStrip presets={presets} picked={picked?.id ?? null} onOpen={setInfo} onNew={presetsIn && typeof api.savePreset === 'function' ? () => setCreating(true) : undefined} />
             {presetsErr && <p class="note err" data-presets-error>{t('home.presetsFail', { err: presetsErr })}</p>}
             {typeof api.deletePreset === 'function' && <BrokenPresets broken={broken} api={api as PresetApi} onGone={() => void loadPresets()} />}</> } : undefined}
           preset={thread === 'home' && pickedInfo ? { info: pickedInfo, styles: picked!.styles, fields: picked!.fields } : null} onClearPreset={() => { setPicked(null); void session.presetSources([]); }} presetNames={presetNames} append={append}

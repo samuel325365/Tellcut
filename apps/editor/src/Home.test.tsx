@@ -608,3 +608,17 @@ test("the conversation picker shows a broken project's conversation while it is 
   await settle();
   expect([...root.querySelectorAll<HTMLOptionElement>('[data-thread] option')].map((o) => o.value)).toEqual(['home', 'seattle']);
 });
+
+test('the preset strip waits for the list: no lone "New preset" card while it loads; loaded empty, the card shows', async () => {
+  const a = api();
+  let answer!: (x: any) => void;
+  a.presets = () => new Promise((r) => (answer = r));
+  a.savePreset = async () => ({});
+  const root = document.createElement('div');
+  await act(() => render(<Home api={a} />, root));
+  await settle();
+  expect(root.querySelector('[data-preset-new]')).toBeNull();          // still loading
+  await act(async () => { answer({ presets: [] }); });
+  await settle();
+  expect(root.querySelector('[data-preset-new]')).not.toBeNull();      // loaded, empty: one can still be made
+});
