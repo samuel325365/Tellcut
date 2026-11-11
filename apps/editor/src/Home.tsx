@@ -129,7 +129,9 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
           <select class="thread-pick" data-thread data-tip={t('home.threadTip')} aria-label={t('home.threadTip')} value={thread}
             onChange={(e) => pick((e.target as HTMLSelectElement).value)}>
             <option value="home">{t('home.threadHome')}</option>
-            {projects.filter((p) => !p.error).map((p) => <option value={p.id}>{p.name ?? p.id}</option>)}
+            {/* a project whose project.json does not read is not offered, but stays listed while its conversation is the one open
+                (else the picker showed 主頁 over that project's messages) */}
+            {projects.filter((p) => !p.error || p.id === thread).map((p) => <option value={p.id}>{p.error ? t('home.threadBroken', { name: p.name ?? p.id }) : p.name ?? p.id}</option>)}
           </select>
           {thread !== 'home' && <a class="open-editor" data-open-editor href={`?id=${encodeURIComponent(thread)}`}>{t('home.openEditor')}</a>}
           <span class="grow" />

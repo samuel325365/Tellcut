@@ -594,3 +594,17 @@ test('a project list or preset list that cannot be read says so, in the page lan
     expect(note).not.toMatch(/[一-鿿]/);
   } finally { setLang('zh'); }
 });
+
+test("the conversation picker shows a broken project's conversation while it is open, not 主頁 (EP16)", async () => {
+  localStorage.setItem('tellcut.homeThread', 'bad');
+  const a = api(), root = document.createElement('div');
+  await act(() => render(<Home api={a} />, root));
+  await settle(); await settle();
+  const pick = root.querySelector<HTMLSelectElement>('[data-thread]')!;
+  expect(pick.value).toBe('bad');
+  expect(pick.selectedOptions[0].textContent).toBe(DICTS.zh['home.threadBroken'].replace('{name}', 'bad'));
+  // another conversation picked: the broken one is not offered any more
+  await act(() => { pick.value = 'home'; pick.dispatchEvent(new Event('change', { bubbles: true })); });
+  await settle();
+  expect([...root.querySelectorAll<HTMLOptionElement>('[data-thread] option')].map((o) => o.value)).toEqual(['home', 'seattle']);
+});

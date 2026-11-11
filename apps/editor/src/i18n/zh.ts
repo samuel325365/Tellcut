@@ -22,6 +22,7 @@ export const zh = {
   'home.deleteOf': '刪除「{name}」',
   'home.threadTip': '對話：首頁的，或某個專案的（和那個專案的編輯器裡是同一串）',
   'home.threadHome': '主頁',
+  'home.threadBroken': '{name}（讀不出來）',
   'home.openEditor': '進編輯器',
   'home.newChat': '新對話（這段對話留在原處）',
   'home.clearChat': '清除這個專案的對話',

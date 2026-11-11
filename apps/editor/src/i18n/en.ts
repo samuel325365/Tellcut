@@ -23,6 +23,7 @@ export const en: Record<Key, string> = {
   'home.deleteOf': 'Delete "{name}"',
   'home.threadTip': "Conversation: the home page's, or a project's (the same thread as in that project's editor)",
   'home.threadHome': 'Home',
+  'home.threadBroken': '{name} (cannot be read)',
   'home.openEditor': 'Open editor',
   'home.newChat': 'New chat (this one stays where it is)',
   'home.clearChat': "Clear this project's conversation",

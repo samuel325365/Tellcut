@@ -23,6 +23,7 @@ export const ja: Record<Key, string> = {
   'home.deleteOf': '「{name}」を削除',
   'home.threadTip': '会話：ホームのもの、またはプロジェクトのもの（そのプロジェクトのエディタ内と同じ流れ）',
   'home.threadHome': 'ホーム',
+  'home.threadBroken': '{name}（読み込めません）',
   'home.openEditor': 'エディタを開く',
   'home.newChat': '新しい会話（今の会話はそのまま残ります）',
   'home.clearChat': 'このプロジェクトの会話を消去',
