@@ -33,6 +33,15 @@ export interface HeadingS { inner: HTMLElement; cap: CaptionS; kicker: HTMLEleme
 /** the caption's own defaults for what a title never sets (speaker, name, tag…) */
 const CAPTION_DEFAULTS = Object.fromEntries(caption.params.map((d) => [d.key, d.default])) as unknown as CaptionP;
 
+/** The kicker's left padding: its own (from `padding`), plus one letter spacing when it is centred. CSS letter-spacing also follows
+ *  the last letter, so a centred spaced line sat half a spacing left of the title's middle (and of its own pill, for a look that
+ *  draws one); a spacing more on the left puts the letters back on the middle. In px, from em or px values. */
+export function kickerPadLeft(css: Record<string, string>, kfs: number, centred: boolean): string {
+  const px = (v: string | undefined) => { const n = parseFloat(v ?? ''); return !Number.isFinite(n) ? 0 : /em$/.test(String(v).trim()) ? n * kfs : n; };
+  const parts = String(css.padding ?? '0').trim().split(/\s+/), left = px(parts[3] ?? parts[1] ?? parts[0]);
+  return `${(left + (centred ? px(css.letterSpacing) : 0)).toFixed(2)}px`;
+}
+
 export const heading: ItemType<HeadingP, HeadingS> = {
   type: 'common.heading', label: '標題', category: 'title', kind: 'overlay',
   doc: '一個標題（片名、章節、地名、片尾）：外觀（style，字幕的外觀加標題專用的）、版面（layout）、底（backing）、進場、出場、顏色和字型自由搭配；常用的組合是具名的標題範本（npm run tellcut -- catalog TTL 列出全部，template 填它的 id，整支片用 c.titleTemplate）。kicker 是主標上面的一行小字、sub 是下面小一號的一行；【詞】變高亮色；layout：center 正中、top 上方、bottom 下方、lower 左下（大一點的人名條位置）、left 靠左置中、corner 右上角、full 放大到撐滿安全區寬；backing：band 暗色橫帶、scrim 整個畫面壓暗、blur 整個畫面模糊、card 實色卡片、rules 上下兩條細線、bar 左邊色條、black 全黑、frame 整頁 backColor 色加兩道 accent 色的細框（故事書標題卡）；進場另有 track 字距收緊、mask 由下往上露出、open 從中間打開、focus 由模糊放大到清楚、rule 先畫線再出字，出場另有 spread 字距散開、sink 往下收掉',
@@ -130,9 +139,10 @@ export const heading: ItemType<HeadingP, HeadingS> = {
     // the kicker: a small spaced line just above the block, aligned with it (in the inner layer, which moves it by dx)
     const kick = String(p.kicker ?? ''), kfs = Math.max(fs * 0.3 * small, floor), kh = kick ? kfs * 1.2 + 0.12 * fs : 0;
     s.kicker.textContent = kick;
+    const kcss = { background: 'none', padding: '0', fontWeight: '700', letterSpacing: '0.2em', textShadow: `0 ${(2 * k).toFixed(2)}px ${(6 * k).toFixed(2)}px rgba(0,0,0,0.45)`,
+      ...look.kicker?.({ color: p.color, hl: p.hl, outline: p.outline, accent: p.accent || theme.palette.accent, kickerColor: p.kickerColor }, kfs) } as Record<string, string>;
     cssCamel(s.kicker, { display: kick ? 'block' : 'none', fontSize: `${kfs.toFixed(2)}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, color: p.kickerColor || p.hl,
-      background: 'none', padding: '0', fontWeight: '700', letterSpacing: '0.2em',
-      textShadow: `0 ${(2 * k).toFixed(2)}px ${(6 * k).toFixed(2)}px rgba(0,0,0,0.45)`, ...look.kicker?.({ color: p.color, hl: p.hl, outline: p.outline, accent: p.accent || theme.palette.accent, kickerColor: p.kickerColor }, kfs), bottom: `${(H - y + 0.12 * fs).toFixed(2)}px`, top: '',
+      ...kcss, paddingLeft: kickerPadLeft(kcss, kfs, place.align !== 'left'), bottom: `${(H - y + 0.12 * fs).toFixed(2)}px`, top: '',
       left: `${(place.align === 'left' ? x0 : x0 + bw / 2).toFixed(2)}px`, transform: place.align === 'left' ? 'none' : 'translateX(-50%)', clipPath: 'none', filter: 'none', opacity: '1' });
     // the title's own animation on the inner layer, against the block (its kicker included) where it is before the corner's move
     const a = titleAnim(p.animIn, p.animOut, local, dur, p.animDur, { x: x0, y: y - kh, w: bw, h: bh + kh, W, H, fs });

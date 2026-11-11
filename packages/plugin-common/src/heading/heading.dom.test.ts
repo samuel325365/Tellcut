@@ -94,3 +94,16 @@ test('full: a look with a box of its own (sign, ribbon, seal) still sets a short
     expect(runs.children.length, style).toBe(1);
   }
 });
+
+test('a centred kicker is moved right by its letter spacing\'s trailing gap (CSS spaces after the last letter too); a left one is not', () => {
+  const kickerOf = (params: Record<string, unknown>) => [...drawn({ text: '七百年', kicker: '第一章', ...params }, 1.5).root.querySelectorAll<HTMLElement>('div')].find((d) => d.textContent === '第一章')!;
+  const c = kickerOf({}), kfs = parseFloat(c.style.fontSize);
+  expect(c.style.letterSpacing).toBe('0.2em');
+  // a box padded by one spacing on the left and centred on its middle: the letters' middle sits on the title's
+  expect(parseFloat(c.style.paddingLeft)).toBeCloseTo(0.2 * kfs, 1);
+  expect(parseFloat(kickerOf({ layout: 'left' }).style.paddingLeft) || 0).toBe(0);
+  // a look's kicker pill keeps its own padding and adds the spacing on the left, so the word sits in the pill's middle
+  const pop = kickerOf({ style: 'pop' }), pfs = parseFloat(pop.style.fontSize);
+  expect(parseFloat(pop.style.paddingLeft)).toBeCloseTo(0.44 * pfs, 1);
+  expect(parseFloat(pop.style.paddingRight)).toBeCloseTo(0.4 * pfs, 1);
+});
