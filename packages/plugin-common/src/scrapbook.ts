@@ -5,7 +5,7 @@
 //                  a grid of thin seams over the whole frame (after common.wipe's mode tiles)
 // The title card is the title template scrapbook-card, the coloured chips the caption template scrap-chip. Pure functions of time.
 import { clamp, coverPlacement, rng, type Crop, type ItemCtx, type ItemType, type SceneItem } from '@tellcut/engine';
-import { canvasIn } from './desktop.ts';
+import { canvasIn } from './desk-kit.ts';
 import { cropText } from './polaroid.ts';
 import { imagesReady } from './window.ts';
 

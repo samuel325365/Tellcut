@@ -5,7 +5,7 @@
 // The titles are common.heading's look storybook (templates storybook, story-card on the backing frame, fin), the captions the template
 // story-serif; the colour blocks above and below a shot are common.backdrop solid under a clip in a 16:9 frame. Pure functions of time.
 import { clamp, coverPlacement, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
-import { canvasIn } from './desktop.ts';
+import { canvasIn } from './desk-kit.ts';
 import { coverImage } from './editorial.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { imagesReady } from './window.ts';

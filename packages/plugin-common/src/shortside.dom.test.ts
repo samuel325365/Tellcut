@@ -10,7 +10,7 @@ import { filmstrip, monoframe, monoWindow } from './mono.ts';
 import { speedlines } from './speedlines.ts';
 import { sparkle } from './sparkle.ts';
 import { dachshund } from './dachshund-block.ts';
-import { popup, popupButton } from './desktop.ts';
+import { popup, popupButton } from './popup.ts';
 
 type Call = [string, unknown[]];
 let calls: Call[] = [];

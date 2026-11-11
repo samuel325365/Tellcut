@@ -2,7 +2,10 @@
 // common.desktop / common.window / common.popup and common.touch's look cursor (2026-11-05, the retro desktop pilot film's fx.retro*).
 // jsdom has no canvas: the geometry is tested through the helpers, the window's own clip through media().
 import { resolveTheme, withDefaults } from '@tellcut/engine';
-import { deskChapters, deskSlot, deskWindow, desktop, popup, popupButton, sheetButton, windowRectAt, windowRef } from './desktop.ts';
+import { deskSlot } from './desk-kit.ts';
+import { deskChapters, desktop } from './desktop.ts';
+import { deskWindow, windowRectAt, windowRef } from './deskwindow.ts';
+import { popup, popupButton, sheetButton } from './popup.ts';
 import { cursorAt, parseTouches, touch } from './touch.ts';
 
 const theme = resolveTheme(undefined, { width: 1080, height: 1920 });

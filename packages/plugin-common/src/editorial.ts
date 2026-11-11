@@ -10,7 +10,7 @@
 //                     in the middle (EAT · EVERY · SINGLE · BITE)
 // The giant headline is the title template didone-full, the caption the template editorial-bar. Pure functions of time.
 import { clamp, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
-import { canvasIn } from './desktop.ts';
+import { canvasIn } from './desk-kit.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { graphemes } from './text.ts';
 import { imagesReady } from './window.ts';

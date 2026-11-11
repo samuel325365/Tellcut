@@ -6,7 +6,7 @@
 //                     edge numbers
 // The stacked title is the title template mono-cycle, the caption the template mono-box, the vortex common.wipe's mode vortex.
 import { clamp, eIO3 as eIO, type ItemType, type SceneItem } from '@tellcut/engine';
-import { canvasIn, rr } from './desktop.ts';
+import { canvasIn, rr } from './desk-kit.ts';
 import { imagesReady } from './window.ts';
 
 const LATIN = 'Space Grotesk', CJK = 'Noto Sans TC';
