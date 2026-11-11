@@ -22,3 +22,4 @@ export * from './audio/player.ts';
 export * from './commands/index.ts';
 export * from './ops.ts';
 export * from './transcript.ts';
+export * from './preview.ts';

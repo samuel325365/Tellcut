@@ -2,6 +2,7 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { BLOCK_CATEGORY, handleOf } from '@tellcut/protocol';
+import { blockPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
 import { Gallery } from './Gallery.tsx';
 import { PlayerBridge } from './bridge.ts';
 import { blockProject, filterGallery, galleryCategories, scoreUrl, sfxProject, sfxSections, THEMES, type GalleryIndex } from './gallery.ts';
@@ -36,6 +37,11 @@ test('the preview project is the golden kind: one block over a mid ground, the t
   expect(blockProject(G.blocks[2], {}).tracks[0].kind).toBe('scene');
   expect('theme' in blockProject(G.blocks[1], {}).meta).toBe(false);
   expect(sfxProject(G.sfx[0], {}).tracks[0]).toMatchObject({ kind: 'sfx', items: [{ type: 'common.beep', start: 0.2 }] });
+});
+
+test('a preview plays with the mix of a new project, in the film a saved block is pictured in', () => {
+  expect([blockProject(G.blocks[1], {}).meta.mix, sfxProject(G.sfx[0], {}).meta.mix]).toEqual([DEFAULT_MIX, DEFAULT_MIX]);
+  expect(blockProject(G.blocks[1], { size: 12 }, 'warm')).toEqual(blockPreviewProject({ type: 'common.slam', kind: 'overlay', plugins: ['common'], params: { size: 12 }, theme: THEMES.warm.theme }));
 });
 
 test('search matches name, label, doc or group; the score url carries the choices', () => {

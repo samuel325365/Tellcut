@@ -2,24 +2,18 @@
 // as the gallery shows the shared blocks, its module loaded from the entry's own folder.
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { DEFAULT_MIX, type Plugin, type Project } from '@tellcut/engine';
+import { BLOCK_PREVIEW_LEN, blockPreviewProject, type Plugin, type Project } from '@tellcut/engine';
 import { renameRetry } from '../fsutil.ts';
 import { projectRegistry } from '../fx.ts';
 import { renderStills } from '../stills.ts';
 import { blockDir, blocksDir, readBlock, type BlockEntry } from './store.ts';
 
-export const PREVIEW_LEN = 3;
+export const PREVIEW_LEN = BLOCK_PREVIEW_LEN;
 export const THUMB_FILE = 'thumb.png';
 
-/** 1080×1920, 3 s, one item; `theme` replaces the one saved with the entry */
+/** 1080×1920, 3 s, one item (the film the gallery previews the entry in); `theme` replaces the one saved with the entry */
 export function previewProject(e: BlockEntry, type: string, kind: 'scene' | 'overlay', o: { params?: Record<string, unknown>; theme?: unknown } = {}): Project {
-  const theme = o.theme ?? e.theme;
-  return {
-    version: 1,
-    meta: { name: type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: ['fx'], background: '#3a4256', mix: DEFAULT_MIX, fx: [e.main], ...(theme ? { theme } : {}) },
-    sources: {}, media: {}, grids: [],
-    tracks: [{ id: 'g', kind, items: [{ id: 'block', type, start: 0, end: PREVIEW_LEN, params: o.params ?? {} }] }],
-  } as unknown as Project;
+  return blockPreviewProject({ type, kind, plugins: ['fx'], params: o.params, fx: [e.main], theme: o.theme ?? e.theme }) as unknown as Project;
 }
 
 /** runs jobs one at a time (each thumbnail starts a headless Chrome: saving a preset with several blocks asked for them all at

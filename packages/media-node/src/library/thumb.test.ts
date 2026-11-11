@@ -1,5 +1,5 @@
 // The film a saved block is previewed and pictured in (spec 2026-10-29-my-library §3.4, §4.2).
-import { parseProject } from '@tellcut/engine';
+import { blockPreviewProject, DEFAULT_MIX, parseProject } from '@tellcut/engine';
 import type { BlockEntry } from './store.ts';
 import { previewProject, serialQueue } from './thumb.ts';
 
@@ -17,6 +17,12 @@ test('a scene block goes on a scene track; a theme given replaces the saved one'
   const p = previewProject(entry, 'fx.chalk', 'scene', { theme: { palette: { accent: '#00ff00' } } });
   expect(p.tracks[0].kind).toBe('scene');
   expect(p.meta.theme).toEqual({ palette: { accent: '#00ff00' } });
+});
+
+test('the film is the one the gallery previews a block in, with the mix of a new project', () => {
+  const p = previewProject(entry, 'fx.chalk', 'overlay');
+  expect(p.meta.mix).toEqual(DEFAULT_MIX);
+  expect(p).toEqual(blockPreviewProject({ type: 'fx.chalk', kind: 'overlay', plugins: ['fx'], fx: ['fx/chalk.js'], theme: entry.theme }));
 });
 
 test('thumbnails are drawn one at a time; a slug already waiting is not queued twice', async () => {

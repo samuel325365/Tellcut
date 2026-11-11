@@ -1,4 +1,5 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
+import { BLOCK_PREVIEW_LEN, blockPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
 import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryCaption, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
@@ -41,30 +42,17 @@ export const THEMES: Record<string, { theme?: Record<string, unknown> }> = {
   mono: { theme: { palette: { accent: '#111111', accent2: '#555555', hl: '#ffffff', ink: '#111111', paper: '#f5f5f5' }, radius: 4 } },
 };
 
-const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.2 } };
-export const PREVIEW_LEN = 3;
+export const PREVIEW_LEN = BLOCK_PREVIEW_LEN;
 
-/** A 1080×1920 film of one block, as the golden pictures use: a mid grey-blue ground, the block over the whole length. */
+/** A 1080×1920 film of one block, as the golden pictures use (engine blockPreviewProject, shared with a saved block's thumbnail). */
 export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none') {
-  const theme = THEMES[themeId]?.theme;
-  return {
-    version: 1,
-    meta: { name: b.type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: [b.plugin], background: '#3a4256', mix: MIX, ...(theme ? { theme } : {}) },
-    sources: {}, media: {}, grids: [],
-    tracks: [{ id: 'g', kind: b.kind, items: [{ id: 'block', type: b.type, start: 0, end: PREVIEW_LEN, params }] }],
-  };
+  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme: THEMES[themeId]?.theme });
 }
 
 /** One of My blocks as blockProject shows a shared one: its module comes from the entry's folder (the player's project url, libraryPlayer);
  *  the look picked, else the theme of the project it was saved from (spec 2026-10-29-my-library §3.4). */
 export function mineProject(b: LibraryBlockInfo, params: Record<string, unknown>, themeId = 'none') {
-  const theme = THEMES[themeId]?.theme ?? b.theme;
-  return {
-    version: 1,
-    meta: { name: b.type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: ['fx'], background: '#3a4256', mix: MIX, fx: [b.main], ...(theme ? { theme } : {}) },
-    sources: {}, media: {}, grids: [],
-    tracks: [{ id: 'g', kind: b.kind, items: [{ id: 'block', type: b.type, start: 0, end: PREVIEW_LEN, params }] }],
-  };
+  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: ['fx'], params, fx: [b.main], theme: THEMES[themeId]?.theme ?? b.theme });
 }
 
 /** what the gallery needs of the project it was opened from (gallery-link.ts) */
@@ -90,20 +78,14 @@ export function ownBlocks(items: Array<{ type: string; label: string; doc?: stri
 /** One of the project's own blocks as blockProject shows a shared one: its modules load from the project folder (the player's
  *  projectPlayer url); the look picked, else the project's own theme. */
 export function ownProject(o: OwnProject, b: GalleryBlock, params: Record<string, unknown>, themeId = 'none') {
-  const theme = THEMES[themeId]?.theme ?? o.meta.theme;
-  return {
-    version: 1,
-    meta: { name: b.type, width: 1080, height: 1920, fps: 30, duration: PREVIEW_LEN, plugins: o.meta.plugins, background: '#3a4256', mix: MIX, fx: o.meta.fx ?? [], ...(theme ? { theme } : {}) },
-    sources: {}, media: {}, grids: [],
-    tracks: [{ id: 'g', kind: b.kind, items: [{ id: 'block', type: b.type, start: 0, end: PREVIEW_LEN, params }] }],
-  };
+  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: o.meta.plugins, params, fx: o.meta.fx ?? [], theme: THEMES[themeId]?.theme ?? o.meta.theme });
 }
 
 /** A silent film with one sound effect a moment in, so the player plays it through the same synthesis the films use. */
 export function sfxProject(s: GallerySfx, params: Record<string, unknown>) {
   return {
     version: 1,
-    meta: { name: s.type, width: 360, height: 640, fps: 30, duration: 3, plugins: [s.plugin], background: '#3a4256', mix: MIX },
+    meta: { name: s.type, width: 360, height: 640, fps: 30, duration: 3, plugins: [s.plugin], background: '#3a4256', mix: DEFAULT_MIX },
     sources: {}, media: {}, grids: [],
     tracks: [{ id: 'fx', kind: 'sfx', gain: 0, items: [{ id: 'sound', type: s.type, start: 0.2, end: 2.8, params, gain: 0 }] }],
   };
