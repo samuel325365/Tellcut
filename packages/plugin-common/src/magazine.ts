@@ -18,7 +18,7 @@ import { paintPrint } from './paper.ts';
 import { quoteLines } from './quote.ts';
 import { asFrame, imagesReady, showStill, stillRef, windowEl, type Still, type Win } from './window.ts';
 import { timeSpan } from './phone.ts';
-import { nl } from './text.ts';
+import { lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
 type Layout = 'feature' | 'cover' | 'list' | 'back';
@@ -125,7 +125,6 @@ export const mastEm = (s: string) => [...String(s ?? '')].reduce((w, c) => w + (
 let measurer: CanvasRenderingContext2D | null = null;
 /** the drawn width of `text` in `font` (a CSS font), px */
 const measure = (text: string, font: string) => { measurer ??= document.createElement('canvas').getContext('2d'); if (!measurer) return 0; measurer.font = font; return measurer.measureText(text).width; };
-const line = (parent: HTMLElement, css: Record<string, string> = {}) => abs(parent, { whiteSpace: 'pre', lineHeight: '1', ...css });
 
 /** the paper with the window cut out, the rules, the cells' and the window's ink borders, the barcode's bars */
 function paintPage(c: HTMLCanvasElement, p: P, W: number, H: number, L: ReturnType<typeof magazineLayout>) {
@@ -206,15 +205,15 @@ export const magazine: ItemType<P, S> = {
     const root = ctx.root, bg = h('canvas', null, null, root) as HTMLCanvasElement;
     cssCamel(bg, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
     const back = abs(root, { inset: '0' }), cellsEl = abs(root, { inset: '0' }), tagsEl = abs(root, { inset: '0' });
-    const qwrap = abs(root, { overflow: 'hidden' }), q = { wrap: qwrap, wash: abs(qwrap, { inset: '0' }), mark: line(qwrap), en: line(qwrap, { fontStyle: 'italic', fontWeight: '700' }), body: abs(qwrap), rule: abs(qwrap), by: line(qwrap, { fontWeight: '700' }), lines: [] as HTMLElement[], key: '' };
+    const qwrap = abs(root, { overflow: 'hidden' }), q = { wrap: qwrap, wash: abs(qwrap, { inset: '0' }), mark: lineAbs(qwrap), en: lineAbs(qwrap, { fontStyle: 'italic', fontWeight: '700' }), body: abs(qwrap), rule: abs(qwrap), by: lineAbs(qwrap, { fontWeight: '700' }), lines: [] as HTMLElement[], key: '' };
     const s: S = {
-      bg, bgKey: '', cellsEl, cells: [], cellKey: '', mast: line(root, { fontStyle: 'italic', fontWeight: '900' }), issue: line(root, { fontWeight: '700', letterSpacing: '0.02em' }), issueSub: line(root, { fontWeight: '700' }),
-      no: line(root, { fontWeight: '900' }), squares: abs(root), foot: line(root, { fontWeight: '700' }), folio: line(root, { fontWeight: '700' }),
-      kicker: line(root, { fontWeight: '900', color: '#ffffff' }), head: abs(root), headLines: [], headKey: '', deck: line(root, { fontWeight: '700' }),
+      bg, bgKey: '', cellsEl, cells: [], cellKey: '', mast: lineAbs(root, { fontStyle: 'italic', fontWeight: '900' }), issue: lineAbs(root, { fontWeight: '700', letterSpacing: '0.02em' }), issueSub: lineAbs(root, { fontWeight: '700' }),
+      no: lineAbs(root, { fontWeight: '900' }), squares: abs(root), foot: lineAbs(root, { fontWeight: '700' }), folio: lineAbs(root, { fontWeight: '700' }),
+      kicker: lineAbs(root, { fontWeight: '900', color: '#ffffff' }), head: abs(root), headLines: [], headKey: '', deck: lineAbs(root, { fontWeight: '700' }),
       tagsEl, tags: [], tagKey: '', q, rowsEl: abs(root, { inset: '0' }), rows: [], rowKey: '',
-      banner: abs(root), bannerTxt: line(root, { fontWeight: '900', color: '#ffffff', textAlign: 'center' }), bannerEn: line(root, { fontStyle: 'italic', fontWeight: '700', color: '#ffffff', textAlign: 'center' }),
-      covEl: abs(root, { inset: '0' }), cov: [], covKey: '', codeCv: h('canvas', null, null, root) as HTMLCanvasElement, code: line(root, { fontWeight: '700', textAlign: 'center' }), back,
-      cta: abs(root), ctaTxt: line(root, { fontWeight: '900', color: '#ffffff' }),
+      banner: abs(root), bannerTxt: lineAbs(root, { fontWeight: '900', color: '#ffffff', textAlign: 'center' }), bannerEn: lineAbs(root, { fontStyle: 'italic', fontWeight: '700', color: '#ffffff', textAlign: 'center' }),
+      covEl: abs(root, { inset: '0' }), cov: [], covKey: '', codeCv: h('canvas', null, null, root) as HTMLCanvasElement, code: lineAbs(root, { fontWeight: '700', textAlign: 'center' }), back,
+      cta: abs(root), ctaTxt: lineAbs(root, { fontWeight: '900', color: '#ffffff' }),
     };
     magazine.draw(ctx, s);   // starts loading the cells' stills now, so ready() can wait for them
     return s;
@@ -348,7 +347,7 @@ function drawHeadline(ctx: Parameters<typeof magazine.draw>[0], s: S, L: ReturnT
   const maxW = (layout === 'list' ? L.column[2] : back ? ctx.W - 2 * L.tx : win[2] - 56 * k), em = Math.max(1, ...lines.map(textEm));
   const px = back ? Math.min(150 * k, maxW / em) : layout === 'list' ? Math.min(84 * k, maxW / em) : Math.min(lerp(56, 76, big) * k, maxW / em);
   const key = JSON.stringify(lines);
-  if (s.headKey !== key) { s.headKey = key; s.head.replaceChildren(); s.headLines = lines.map(() => line(s.head, { fontWeight: '900' })); }
+  if (s.headKey !== key) { s.headKey = key; s.head.replaceChildren(); s.headLines = lines.map(() => lineAbs(s.head, { fontWeight: '900' })); }
   const top = y + (kick && !back ? 50 * k + 16 * k : 0);
   s.headLines.forEach((e, i) => {
     const q = eOut3(prog(t, (back ? 0.5 : 0.55) + i * 0.12, (back ? 1 : 1) + i * 0.12));
@@ -379,7 +378,7 @@ function drawTags(ctx: Parameters<typeof magazine.draw>[0], s: S, L: ReturnType<
   const p = ctx.params, t = ctx.local, k = L.k, tags = L.layout === 'feature' ? parseTags(p.tags).filter((x) => L.cells[x.cell]) : [], key = String(tags.length);
   if (s.tagKey !== key) {
     s.tagKey = key; s.tagsEl.replaceChildren();
-    s.tags = tags.map(() => { const box = abs(s.tagsEl, { overflow: 'hidden' }); return { box, wash: abs(box), en: line(box, { fontStyle: 'italic', fontWeight: '900', color: '#ffffff' }), zh: line(box, { fontWeight: '900', color: '#ffffff' }) }; });
+    s.tags = tags.map(() => { const box = abs(s.tagsEl, { overflow: 'hidden' }); return { box, wash: abs(box), en: lineAbs(box, { fontStyle: 'italic', fontWeight: '900', color: '#ffffff' }), zh: lineAbs(box, { fontWeight: '900', color: '#ffffff' }) }; });
   }
   tags.forEach((g, i) => {
     const e = s.tags[i], r = L.cells[g.cell], a = eOut3(prog(t, g.at, g.at + 0.4)) * (g.until !== undefined ? 1 - eOut3(prog(t, g.until, g.until + 0.3)) : 1), sl = (1 - eOut3(prog(t, g.at, g.at + 0.5))) * 30 * k;
@@ -413,7 +412,7 @@ function drawQuote(ctx: Parameters<typeof magazine.draw>[0], s: S, L: ReturnType
   cssCamel(q.en, { display: p.quoteEn ? 'block' : 'none', left: `${x + 120 * k}px`, top: `${y - 30 * k}px`, fontFamily: disp, fontSize: `${36 * k}px`, color: 'rgba(255,255,255,0.9)' });
   if (p.quoteEn) y += 30 * k;
   const key = JSON.stringify(lines);
-  if (q.key !== key) { q.key = key; q.body.replaceChildren(); q.lines = lines.map(() => line(q.body, { fontWeight: '900', color: '#ffffff', transformOrigin: '0 100%' })); }
+  if (q.key !== key) { q.key = key; q.body.replaceChildren(); q.lines = lines.map(() => lineAbs(q.body, { fontWeight: '900', color: '#ffffff', transformOrigin: '0 100%' })); }
   q.lines.forEach((e, i) => {
     const ti = p.quoteAt + (p.slam ? 0 : 0.18) * i, pp = p.slam ? eBack(clamp((t - ti) / 0.3), 1.6) : eOut3(prog(t, ti, ti + 0.45));
     const sc = p.slam ? lerp(1.35, 1, clamp(pp)) : 1, op = p.slam ? clamp((t - ti) / 0.08) : pp;
@@ -434,7 +433,7 @@ function drawRows(ctx: Parameters<typeof magazine.draw>[0], s: S, L: ReturnType<
   const p = ctx.params, t = ctx.local, k = L.k, items = L.layout === 'list' ? parseItems(p.items) : [], key = String(items.length);
   if (s.rowKey !== key) {
     s.rowKey = key; s.rowsEl.replaceChildren();
-    s.rows = items.map(() => { const box = abs(s.rowsEl); return { box, no: line(box, { fontStyle: 'italic', fontWeight: '900' }), title: line(box, { fontWeight: '900' }), note: line(box, { fontWeight: '500' }), rule: abs(box) }; });
+    s.rows = items.map(() => { const box = abs(s.rowsEl); return { box, no: lineAbs(box, { fontStyle: 'italic', fontWeight: '900' }), title: lineAbs(box, { fontWeight: '900' }), note: lineAbs(box, { fontWeight: '500' }), rule: abs(box) }; });
   }
   if (!items.length) return;
   const [cx, cy, cw, ch] = L.column, lines = nlLines(p.headline).length, hpx = Math.min(84 * k, cw / Math.max(1, ...nlLines(p.headline).map(textEm)));
