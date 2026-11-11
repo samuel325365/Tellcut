@@ -108,8 +108,9 @@ It only checks; it doesn't install anything. It lists what's wrong and how to fi
 | Downloads fail (a company network blocks them) | Run `npm run setup` again. If your network goes through a proxy, set `HTTPS_PROXY` and `NODE_USE_ENV_PROXY=1` first. If it still fails, install ffmpeg 8 and uv yourself and point `TELLCUT_FFMPEG`, `TELLCUT_FFPROBE` and `TELLCUT_UV` at them; setup won't download them again |
 | The picture doesn't match the code, or an export uses an old effect | `npm run build:player`, then `npm run build:editor` |
 | The port is already in use | `npm run server -- --port <another number>` |
+| Node.js is marked `!` ("update Node.js to 24.22.2 or later", Windows) | Not required, but older Node 24 on Windows now and then dies with a crash code 0xC0000409 when many connections open and close (the test suite does this). Install the current Node 24 LTS |
 | "Text recognition" is crossed on a Mac | Run `xcode-select --install` (the Swift compiler builds the small Vision program), then `npm run doctor` again |
-| "Text recognition" is crossed on Windows ("Windows built-in OCR: does not work") | In Windows Settings → Time & language → Language & region, add "Chinese (Traditional, Taiwan)" and install "Optical character recognition" in its language options. Tellcut works without it; `check` just can't tell whether bleeped words show through the source's own subtitles |
+| "Text recognition" is crossed on Windows ("Windows built-in OCR: no text recognition for zh-Hant-TW") | In Windows Settings → Time & language → Language & region, add "Chinese (Traditional, Taiwan)" and install "Optical character recognition" in its language options. Tellcut works without it; `check` just can't tell whether bleeped words show through the source's own subtitles |
 
 Environment variables you can set:
 
