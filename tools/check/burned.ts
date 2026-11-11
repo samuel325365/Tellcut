@@ -5,6 +5,7 @@ import type { Burned } from '@tellcut/media-node';
 import { timecode1 } from '@tellcut/media-node';
 import type { Finding } from './rules.ts';
 import type { TextBox } from './visual.ts';
+import { pictureTimeAt } from '../cut/frames.ts';
 
 interface Rect { x: number; y: number; w: number; h: number }
 const area = (r: Rect) => Math.max(0, r.w) * Math.max(0, r.h);
@@ -14,7 +15,7 @@ const inter = (a: Rect, b: Rect): Rect => { const x = Math.max(a.x, b.x), y = Ma
 export function burnedRectAt(p: Project, item: VideoItem, start: number, end: number, burned: Burned | null | undefined, t: number): Rect | null {
   const c = burned?.caption;
   if (!c) return null;
-  const src = p.sources[item.source], local = t - start, srcT = item.in + local * item.speed;
+  const src = p.sources[item.source], local = t - start, srcT = pictureTimeAt(item, local);   // a frozen clip holds its freeze frame
   if (!src || !c.spans.some(([a, b]) => srcT >= a && srcT < b)) return null;
   const { width: W, height: H } = p.meta, [fx, fy, fw, fh] = item.frame, frame: Rect = { x: fx * W, y: fy * H, w: fw * W, h: fh * H };
   const box = coverPlacement(src.width, src.height, frame.w, frame.h, cropAt(item.crop, local, end - start));

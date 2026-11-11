@@ -8,6 +8,7 @@ import { plugins } from '@tellcut/plugins';
 import { COVER_LIFT, FOLLOW_SIZE, onFilm, pickFace, smooth, stickerKeys, trackFace, type Who } from './follow.ts';
 import { avoidBurnedMove, spreadMove } from './avoid.ts';
 import type { Rect } from './view.ts';
+import { pictureLen, pictureTimeAt } from './frames.ts';
 
 /** what the face passes work on: the project, its folder, the detector (undefined: tellcut/providers.json's) and Cut's notes */
 export interface FaceCtx { p: Project; dir: string; provider?: FacesProvider; notes: string[] }
@@ -43,7 +44,7 @@ export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
     if (fits || src.image || all.some((c) => c.crop.from[axis] !== 0.5 || c.crop.to[axis] !== 0.5)) continue;
     if (!existsSync(src.path)) continue;   // footage not on this PC
     // a quarter, half and three quarters into the clip (into all its pieces, laid end to end)
-    const lens = all.map((c) => (c.end - c.start) * c.speed), whole = lens.reduce((a, b) => a + b, 0);
+    const lens = all.map(pictureLen), whole = lens.reduce((a, b) => a + b, 0);
     const times = [0.25, 0.5, 0.75].map((f) => { let t = f * whole; for (const [i, c] of all.entries()) { if (t <= lens[i] || i === all.length - 1) return c.in + Math.min(t, lens[i]); t -= lens[i]; } return it.in; });
     const found = await faces(x, src.path, times, id);
     if (!found) continue;
@@ -108,7 +109,7 @@ export async function resolveFollows(x: FaceCtx, follows: FollowReq[]) {
     // film times every 0.2 s over the sticker (the clip's part of it), and the source times they show
     const film: number[] = [];
     for (let t = Math.max(at.start, ct.start); t <= Math.min(at.end, ct.end) + 1e-6; t += FACE_STEP) film.push(r6(t));
-    const srcTime = (t: number) => (src.image ? 0 : clip.in + (t - ct.start) * clip.speed);
+    const srcTime = (t: number) => (src.image ? 0 : pictureTimeAt(clip, t - ct.start));   // past freezeAt the held frame
     if (!existsSync(src.path)) { x.notes.push(`${req.id}：${clip.source} 不在這台電腦上，貼圖留在原本的位置`); continue; }
     const fs = await faces(x, src.path, film.map(srcTime), req.id);
     if (!fs) continue;   // the detector failed: faces() said so

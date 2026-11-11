@@ -40,3 +40,14 @@ test('a bar inside the part of the source on screen is reported where it shows; 
   const mid = project({ x: 0.5, y: 0.53, zoom: 1.6 });
   expect(letterboxFindings(mid, resolveTimes(mid), bars)).toEqual([]);
 });
+
+test('a frozen clip: bars past the freeze point are never on screen; the held frame\'s bars stay up to the clip\'s end', () => {
+  const top = { x: 0.5, y: 0, zoom: 1.4 }, freeze = (at: number) => { const p = project(top); (p.tracks[0].items[0] as any).freezeAt = at; return p; };
+  // source 12–14 s barred; frozen at 1 s (source 11): the picture never reaches the bars
+  const bars = { c: [12, 12.5, 13, 13.5, 14].map((t): Active => ({ t, box: [0, 0.17, 1, 0.9] })) };
+  const early = freeze(1);
+  expect(letterboxFindings(early, resolveTimes(early), bars)).toEqual([]);
+  // frozen at 3 s (source 13), on a barred frame: bars from 2 s through the held frame to the clip's end
+  const held = freeze(3), barsTo13 = { c: [12, 12.5, 13].map((t): Active => ({ t, box: [0, 0.17, 1, 0.9] })) };
+  expect(letterboxFindings(held, resolveTimes(held), barsTo13).map((x) => x.t)).toEqual([[2, 10]]);
+});

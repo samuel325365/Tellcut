@@ -4,6 +4,14 @@ import { secs, type SrcTime } from '@tellcut/plugin-common/speech';
 import { flatlayClip } from '@tellcut/plugin-common';
 import { viewCrop, viewHits, viewRect, type Rect } from './view.ts';
 
+/** The source second a video clip's picture shows `local` seconds into it: past freezeAt it holds the frame there (engine
+ *  videoState's mediaLocal); its sound goes on. Burned captions, leaks, black bars and faces read the picture, so they use this. */
+export const pictureTimeAt = (clip: { in: number; speed: number; freezeAt?: number | null }, local: number) =>
+  clip.in + (clip.freezeAt != null ? Math.min(local, clip.freezeAt) : local) * clip.speed;
+/** How many seconds of its source a video clip's picture runs through (a frozen one stops at its freeze point). */
+export const pictureLen = (clip: { start: number; end: number; speed: number; freezeAt?: number | null }) =>
+  (clip.freezeAt != null ? Math.min(clip.end - clip.start, clip.freezeAt) : clip.end - clip.start) * clip.speed;
+
 export type Frame = [number, number, number, number];
 /** a polygon the picture is cut to, corners in fractions of its frame (common.comic's comicShape(n, params)) */
 export type Shape = Array<[number, number]>;

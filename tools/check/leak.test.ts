@@ -47,3 +47,14 @@ test('a bleep over a clip whose source has no transcript is named as not checked
   expect(leakUnchecked(p, resolveTimes(p), { v: null }).map((f) => [f.level, f.t])).toEqual([['note', [2, 2.6]]]);
   expect(leakUnchecked(p, resolveTimes(p), { v: tr })).toEqual([]);
 });
+
+test('a frozen clip: the frames to read are where its picture shows the sentence (the held frame to the end, or none)', () => {
+  const frozen = (at: number, extra: any[]) => { const p = project(extra); (p.tracks[0].items[0] as any).freezeAt = at; return p; };
+  const beep = [{ id: 'sfx', kind: 'sfx', items: [{ id: 'b', type: 'common.beep', start: 4, end: 5, params: {}, gain: -10 }] }];
+  // held at source 13 (inside the sentence 12–15): from film 2 through the held frame to the clip's end
+  const held = frozen(3, beep), probe = leakProbes(held, resolveTimes(held), { v: tr })[0];
+  expect([probe.word, probe.at[0], probe.at.at(-1)]).toEqual(['出發', 2, 10]);
+  // held at source 11, before the sentence: the picture never shows it, nothing to read
+  const early = frozen(1, beep);
+  expect(leakProbes(early, resolveTimes(early), { v: tr })).toEqual([]);
+});

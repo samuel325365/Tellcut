@@ -60,3 +60,12 @@ test('the footage caption showing in the film is a note even when none of our wo
   expect(burnedChecks(p, { v: burned }, [{ t: 1, boxes: [] }])).toEqual([]);                      // not on screen at the sampled moment
   expect(burnedChecks(proj({ zoom: 1.6, y: 0.2 }), { v: burned }, [{ t: 3, boxes: [] }])).toEqual([]);   // cropped out of the frame
 });
+
+test('a frozen clip shows the caption of its held frame, not of the source past it', () => {
+  const frozen = (at: number) => { const p = proj(); (p.tracks[0].items[0] as any).freezeAt = at; return p; };
+  // held at source 11 (no caption): source 13 is never on screen
+  expect(at(frozen(1), 3)).toBeNull();
+  // held at source 13 (inside the span 12–20): the caption stays up past source 20's film time
+  expect(at(frozen(3), 9.99)).not.toBeNull();
+  expect(at(frozen(3), 10 - 1e-3)).not.toBeNull();
+});

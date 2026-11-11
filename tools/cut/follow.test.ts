@@ -190,3 +190,14 @@ test('a clip tightened into pieces is focused once: every piece gets the same fr
   expect(new Set(xs.flat()).size).toBe(1);
   expect(xs[0][0]).not.toBe(0.5);
 });
+
+test('a sticker on a frozen clip follows the held face: past freezeAt the picture shows the frame at the freeze point', async () => {
+  const c = await portraitCut();
+  const clip = c.clip('v', { from: 1, len: 4, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } });
+  (c.p.tracks.find((t) => t.id === 'v1')!.items[0] as any).freezeAt = 0.5;   // holds source 1.5 s from film 0.5 s
+  const st = c.effect('common.censor', { at: 1, len: 1, follow: 'mouth', clip });
+  const p = await c.save();
+  const keys = p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === st)!.transform.keys as Array<{ x: number }>;
+  expect(keys.length).toBeGreaterThan(1);
+  expect(new Set(keys.map((k) => k.x)).size).toBe(1);   // the held mouth does not drift
+}, 60000);

@@ -2,6 +2,7 @@
 // look for them in the finished picture. The page layer renders those frames and reads them with the OCR provider.
 import type { Project, Transcript } from '@tellcut/engine';
 import type { Finding } from './rules.ts';
+import { pictureTimeAt } from '../cut/frames.ts';
 
 export interface LeakProbe { word: string; /** film times to read */ at: number[]; /** where the word is said (for the report) */ said: number }
 
@@ -30,9 +31,15 @@ export function leakProbes(p: Project, times: Map<string, { start: number; end: 
     const clip = under(a), ct = clip && times.get(clip.id)!, tr: Transcript | null | undefined = clip ? transcripts[clip.source] : undefined;
     let from = a, to = b;
     if (clip && ct && tr) {
-      // the sentence around the word, in film time, cut to the clip
+      // the sentence around the word (heard: the clip's sound goes on past a freeze), then the film times whose picture shows it,
+      // cut to the clip: past freezeAt the picture holds the frame at the freeze point, so only a sentence on that frame stays up
       const srcAt = clip.in + (a - ct.start) * clip.speed, seg = tr.segments.find((s) => s.start <= srcAt + 0.05 && s.end >= srcAt - 0.05);
-      if (seg) { from = Math.max(ct.start, ct.start + (seg.start - clip.in) / clip.speed); to = Math.min(ct.end, ct.start + (seg.end - clip.in) / clip.speed); }
+      if (seg) {
+        const len = ct.end - ct.start, moving = clip.freezeAt != null ? Math.min(len, clip.freezeAt) : len, held = pictureTimeAt(clip, len);
+        const lo = Math.max(0, (seg.start - clip.in) / clip.speed), hi = moving < len && held >= seg.start && held <= seg.end ? len : Math.min(moving, (seg.end - clip.in) / clip.speed);
+        if (lo > hi + 1e-6) return;   // the picture never shows that sentence
+        from = ct.start + lo; to = ct.start + hi;
+      }
     }
     const at: number[] = [];
     for (let t = from; t <= to + 1e-6; t += 0.5) at.push(Math.round(t * 100) / 100);

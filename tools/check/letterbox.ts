@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { coverPlacement, videoState, type Project, type VideoItem } from '@tellcut/engine';
 import { analysisFiles, ffmpeg, timecode1 } from '@tellcut/media-node';
 import type { Finding } from './rules.ts';
+import { pictureLen, pictureTimeAt } from '../cut/frames.ts';
 
 /** the source's picture (black edges trimmed) at source time t, as fractions of the source: [x0, y0, x1, y1] */
 export interface Active { t: number; box: [number, number, number, number] }
@@ -53,8 +54,19 @@ export function letterboxFindings(p: Project, times: Map<string, { start: number
     const ct = times.get(clip.id), src = p.sources[clip.source], samples = bars[clip.id] ?? [];
     if (!ct || !src || !samples.length) continue;
     const hits: Array<{ ft: number; side: string; amount: number }> = [];
-    for (const s of samples) {
+    // the film times a sample shows at: a frozen clip runs to its freeze point, then holds that frame (the sample nearest it,
+    // when it is barred) to its end; samples past the freeze point are never on screen
+    const len = ct.end - ct.start, moving = clip.freezeAt != null ? Math.min(len, clip.freezeAt) : len, held = pictureTimeAt(clip, len);
+    const heldSample = moving < len ? samples.find((s) => Math.abs(s.t - held) <= 0.5 / RATE + 1e-6) : undefined;
+    const placed = samples.flatMap((s) => {
       const ft = ct.start + (s.t - clip.in) / clip.speed;
+      if (ft > ct.start + moving + 1e-6) return [];
+      if (s !== heldSample) return [{ s, ft }];
+      const at = [{ s, ft: Math.min(ft, ct.start + moving) }];
+      for (let k = 1; moving + k / RATE <= len + 1e-6; k++) at.push({ s, ft: ct.start + moving + k / RATE });
+      return at;
+    });
+    for (const { s, ft } of placed) {
       if (ft < ct.start - 1e-6 || ft > ct.end + 1e-6) continue;
       const v = videoState(clip, ct.start, ct.end, ft, W, H, {});
       const b = coverPlacement(src.width, src.height, v.frame.width, v.frame.height, v.crop);
@@ -90,7 +102,7 @@ export async function clipBars(dir: string, p: Project): Promise<Record<string, 
   for (const t of p.tracks) if (t.kind === 'video') for (const clip of t.items as VideoItem[]) {
     const src = p.sources[clip.source];
     if (!src || src.kind === 'image') continue;
-    const proxy = analysisFiles(dir, resolve(dir, src.path)).proxy, len = (clip.end - clip.start) * clip.speed;
+    const proxy = analysisFiles(dir, resolve(dir, src.path)).proxy, len = pictureLen(clip);   // a frozen clip's picture stops at its freeze point
     if (!existsSync(proxy) || !(len > 0)) continue;
     const { stdout } = await ffmpeg(['-ss', clip.in.toFixed(3), '-t', len.toFixed(3), '-i', proxy, '-an', '-vf', `fps=${RATE},scale=${LB_W}:${LB_H},format=gray`, '-f', 'rawvideo', '-'], { stdout: true });
     const samples: Active[] = [];
