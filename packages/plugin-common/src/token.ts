@@ -4,6 +4,7 @@
 // When the label or number changes the coin flips over (the new face shows past the half turn);
 // a mark change draws a red cross or a green tick over the coin stroke by stroke.
 // Everything depends only on ctx.local.
+// Made for one film's wish-coin gag, so the agent does not pick it on its own (onRequest): only when the user asks for it.
 import type { ItemType } from '@tellcut/engine';
 import { loadLineFaces } from './brand-text.ts';
 
@@ -54,7 +55,7 @@ function strokeLine(g: CanvasRenderingContext2D, pts: Pt[], p: number, width: nu
 }
 
 const token: ItemType<P, S> = {
-  type: 'common.token', category: 'mark', label: '硬幣貼紙', kind: 'overlay',
+  type: 'common.token', category: 'mark', label: '硬幣貼紙', kind: 'overlay', onRequest: true,
   doc: '手繪金幣貼紙（白色貼紙邊、輕輕浮動）加旁邊一張白膠帶上的馬克筆標籤；steps 一行一步「秒|標籤|硬幣上的字|none/miss/made」：標籤或硬幣上的字換了，硬幣就翻面換成新的一面，miss 一筆一筆畫上紅叉、made 畫上綠勾（標籤字也變綠）；enter 彈出進場、exit 結尾縮回去；第幾次嘗試、許願、挑戰成功失敗、集點、關卡；配 common.coin（投幣）、common.error（失敗）、common.ding（成功）',
   params: [
     { key: 'steps', label: '步驟（每行：秒|標籤|硬幣上的字|none/miss/made）', type: 'text', default: '0|TRY #1|1|none\n0.8|TRY #1|1|miss\n1.5|TRY #2|2|none\n2.2|TRY #2|2|made' },

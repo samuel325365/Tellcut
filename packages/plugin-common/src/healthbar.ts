@@ -4,6 +4,7 @@
 // card and leaves a white trail that catches up; a heal flashes the cells white; a word on the right says how it stands (high, mid,
 // low). The x stop shatters it: the cells fly apart, the frame turns red and dashed, and the last state word is stamped on.
 // Drawn on a canvas (every word reported with ctx.reportText); draw(t) is a pure function of t. Sized by the short side.
+// Made for one reaction film's look, so the agent does not pick it on its own (onRequest): only when the user asks for it.
 import { clamp, cssCamel, rng, type ItemType } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { faceWeight } from './text.ts';
@@ -50,7 +51,7 @@ export function hitAt(stops: HpStop[], t: number) {
 export const hpBand = (hp: number) => (hp > 60 ? { i: 0, color: '#3ddc84' } : hp > 30 ? { i: 1, color: '#ffd23f' } : { i: 2, color: '#ff4d4f' });
 
 export const healthbar: ItemType<P, S> = {
-  type: 'common.healthbar', label: '直播抬頭＋血條', category: 'number', kind: 'overlay',
+  type: 'common.healthbar', label: '直播抬頭＋血條', category: 'number', kind: 'overlay', onRequest: true,
   doc: '直播回放的抬頭卡：上面一行紅色 LIVE 膠囊（點會閃）、灰色回放膠囊、一行題目（三個都可以空，全空就沒有這一行），下面一行名稱加一條分格的遊戲血條；stops「秒:血量 0–100」逗號分開，掉血時整張卡晃一下、白色殘血慢慢追上，回血時格子閃白，右邊的狀態字跟著血量換（states「高,中,低,碎」）；寫 x 的那一站血條碎掉：格子噴散、外框變紅虛線、蓋上最後一個狀態字（破防）；直播精華、反應片、挑戰、對決、撐不撐得住；y -1 貼著上方安全區；音效配 common.hit 或 common.thud（掉血）、common.glass（碎掉）',
   params: [
     { key: 'title', label: '題目（空＝沒有）', type: 'string', default: '挑戰：一小時不看手機' },
