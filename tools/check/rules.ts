@@ -22,14 +22,17 @@ export interface ModelInput {
 }
 
 const r3 = (t: number) => Math.round(t * 1000) / 1000;
-/** the params whose words a shared block shows, for the pacing rules (a project fx's are read from its declaration instead) */
+/** The params that are always words. A block's other string and text params are words too (they are read from its declaration),
+ *  but may hold an option (a corner list, a mode), so they are read strictly; with no declaration at hand, only these are read. */
 const MAIN_KEYS = ['text', 'label', 'plate', 'tags', 'title', 'items'];
 /** A field that is not words, in a param that holds them: no letter at all (a time, a size, a position), a colour, a file, a
  *  key=value option; with `strict` (a line-structured value "秒|字|大小|顏色|x|y|模式", or an fx param that may be an option) also
  *  one lowercase Latin token (navy, drop, me): fx.words' whole "0.02|出門，|580|navy|960|490|knock|stagger=0.08" used to be read as
- *  thirty letters of a card that says 出門， (acc-b3-outdoor, 2026-11-01). */
-const notWords = (f: string, strict: boolean) => !/\p{L}/u.test(f) || /^#[0-9a-f]{3,8}$/i.test(f) || /^[\w-]+=/.test(f)
-  || /^(https?:|data:)|\.(png|jpe?g|webp|svg|gif|mp4|webm|mov|wav|mp3|js)$/i.test(f) || (strict && /^[a-z][a-z0-9_.-]*$/.test(f));
+ *  thirty letters of a card that says 出門， (acc-b3-outdoor, 2026-11-01). A comma list of such fields (common.ambient's colours,
+ *  common.panel's corners "tl,tr") is not words either. */
+const notWords = (f: string, strict: boolean): boolean => !/\p{L}/u.test(f) || /^#[0-9a-f]{3,8}$/i.test(f) || /^(rgb|hsl)a?\([^)]*\)$/i.test(f) || /^[\w-]+=/.test(f)
+  || /^(https?:|data:)|\.(png|jpe?g|webp|svg|gif|mp4|webm|mov|wav|mp3|js)$/i.test(f) || (strict && /^[a-z][a-z0-9_.-]*$/.test(f))
+  || (f.includes(',') && !/^(rgb|hsl)a?\(/i.test(f) && f.split(',').every((x) => !x.trim() || notWords(x.trim(), strict)));
 /** the words of one param value: its lines and |-fields that are words */
 export function visibleWords(v: string, strict = false): string {
   const fields = v.replace(/\\n/g, '\n').split(/\n|\|/).map((x) => x.trim()).filter(Boolean), lined = v.includes('|');
@@ -192,13 +195,16 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   // pacing (2026-10-18, rules after OpenMontage's short-form craft): what makes a short feel slow or slideshow-like, from the file alone
   // common.chat's items are lines "seconds|who|words|kind|key=value": only the words (and a link card's sub=) are read
   const chatWords = (s: string) => String(s).replace(/\\n/g, '\n').split('\n').map((l) => { const f = l.split('|'); return [f[2] ?? '', ...f.slice(3).filter((x) => /^\s*sub=/.test(x)).map((x) => x.replace(/^\s*sub=/, ''))].join(' '); }).join(' ');
-  // a project fx's words are in any string or text param it declares (t1, items…; the default when not set: the fx draws it), a
-  // shared block's in its main params; either way only the fields that are words (not the times, sizes, colours of a line)
+  // a block's words are in any string or text param it declares but a font (a project fx's t1, items…; common.outro's lines,
+  // common.handwrite's, a slam's kicker): a project fx's default when not set too (the fx draws it), a shared block's only when set
+  // (its defaults are placeholders, some shown only in one look); either way only the fields that are words (not the times,
+  // sizes, colours of a line). With no declaration, a shared block's main params.
   const fontParam = (d: ParamDef) => /font/i.test(d.key) || (typeof d.default === 'string' && !!o.knownFonts?.includes(d.default));
   const wordParams = (it: any): Array<[unknown, boolean]> => {
-    const defs = o.params?.(it.type), kind = (k: string) => defs?.find((d) => d.key === k)?.type;
-    if (it.type?.startsWith('fx.') && defs) return defs.filter((d) => (d.type === 'string' || d.type === 'text') && !fontParam(d)).map((d) => [it.params?.[d.key] ?? d.default, true]);
-    return MAIN_KEYS.filter((k) => !defs || kind(k) === undefined || kind(k) === 'string' || kind(k) === 'text').map((k) => [it.params?.[k], false]);
+    const defs = o.params?.(it.type)?.filter((d) => (d.type === 'string' || d.type === 'text') && !fontParam(d));
+    if (!defs) return MAIN_KEYS.map((k) => [it.params?.[k], false]);
+    if (it.type?.startsWith('fx.')) return defs.map((d) => [it.params?.[d.key] ?? d.default, true]);
+    return defs.map((d) => [it.params?.[d.key], !MAIN_KEYS.includes(d.key)]);
   };
   const textOf = (it: any) => it.type === 'common.chat' ? chatWords(it.params?.items ?? '').replace(/\//g, ' ').trim()
     : wordParams(it).filter(([v]) => typeof v === 'string').map(([v, strict]) => visibleWords(v as string, strict)).join(' ').replace(/[【】{}\n]/g, ' ').trim();

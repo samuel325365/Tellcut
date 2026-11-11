@@ -1,4 +1,5 @@
-import { parseProject, type Transcript } from '@tellcut/engine';
+import { createRegistry, parseProject, type Transcript } from '@tellcut/engine';
+import { plugins } from '@tellcut/plugins';
 import { canvasFxFiles, chosenSpec, flatlayHandOff, fxChecks, modelChecks, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
@@ -334,7 +335,31 @@ describe('pacing rules (2026-10-18)', () => {
     expect(read('這一句畫在畫布上的字很長')).toEqual([expect.stringMatching(/^warn 0-0.8 字卡「這一句畫在畫布上的字很長」只出現 0.8 秒/)]);
   });
 
+  test("a shared block's words are in all the string and text params it declares (outro lines, handwrite lines, a slam's kicker), not its options", () => {
+    const registry = createRegistry(plugins), shared = { ...ok, params: (t: string) => registry.item(t)?.params };
+    const p = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [
+      // c.endCard's credits: 15 Chinese characters ≈ 2.1 s
+      { id: 'end', start: 8, end: 9, type: 'common.outro', params: { lines: '謝謝收看\n下一集見\n記得訂閱頻道喔' } },
+      { id: 'slam', start: 1, end: 1.6, type: 'common.slam', params: { text: '好', kicker: '你絕對想不到的是' } },
+      // options are not words: a corner list, colours
+      { id: 'amb', start: 2, end: 2.3, type: 'common.ambient', params: { colors: '#2bb3d6,#0c4e80', stops: '0:0, 0.8:0.5' } },
+      { id: 'pan', start: 3, end: 3.3, type: 'common.panel', params: { corners: 'tl,br' } },
+    ] }]);
+    expect(msgs(modelChecks(p, shared)).filter((m) => m.includes('字卡'))).toEqual([
+      expect.stringMatching(/^warn 1-1.6 字卡「好 你絕對想不到的是」只出現 0.6 秒.*（slam）/),
+      expect.stringMatching(/^warn 8-9 字卡「謝謝收看 下一集見 記得訂閱頻道喔」只出現 1.0 秒.*（end）/),
+    ]);
+    // a short opening on handwritten lines has words in its first second
+    const tallP = tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [
+      { id: 'hw', start: 0, end: 4, type: 'common.handwrite', params: { lines: '0.1-1.3|今天的風很溫柔\n1.5-2.7|我們沿著河邊慢慢走' } }] }]);
+    expect(msgs(modelChecks(tallP, shared)).filter((m) => !m.includes('theme'))).toEqual([]);
+  });
+
   test('visibleWords keeps the words of a value: lines and |-fields, not numbers, colours, files, key=value or (in a line) lowercase tokens', () => {
+    expect(visibleWords('#2bb3d6,#0c4e80,#051630')).toBe('');                       // a list of colours
+    expect(visibleWords('rgba(0,0,0,0.55)')).toBe('');
+    expect(visibleWords('tl,tr', true)).toBe('');                                   // a list of options
+    expect(visibleWords('Hello, world', true)).toBe('Hello, world');                 // words with a comma stay words
     expect(visibleWords('借來的釣竿\n要價【6萬5】日幣')).toBe('借來的釣竿 要價【6萬5】日幣');
     expect(visibleWords('hello')).toBe('hello');                                     // a plain value's lowercase word is a word
     expect(visibleWords('drop', true)).toBe('');                                     // an fx's lone lowercase token is an option
