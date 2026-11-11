@@ -53,10 +53,28 @@ export class ProjectHolds {
   }
 }
 
-/** why the project cannot go now, in words (and as a code the page words in its language); null when nothing is working on it */
-export function projectBusy(id: string, dir: string, o: { queue: JobQueue; chat: ChatRunner; holds?: ProjectHolds }): Busy | null {
+/** The footage analysis an opened editor queues by itself (media.ts POST /analyze: basic analysis, sheets + transcript +
+ *  burned-in text, a score's beats). It only fills the project's own cache, so a delete stops it instead of waiting minutes
+ *  for a transcript nobody will read; an export, an import or a chat reply still holds the delete. */
+const ANALYSIS = new Set(['analyze', 'extras', 'beats']);
+const STOP_WAIT_MS = 15_000;
+const mine = (id: string) => (j: JobInfo) => j.project.toLowerCase() === id.toLowerCase() && !isTerminal(j.status);   // NTFS: Demo and demo are one folder
+
+/** cancels the project's analysis jobs and waits (up to STOP_WAIT_MS) until they have let go of its files */
+export async function stopAnalysis(id: string, queue: JobQueue, waitMs = STOP_WAIT_MS): Promise<void> {
+  const jobs = queue.list().filter((j) => mine(id)(j) && ANALYSIS.has(j.kind));
+  for (const j of jobs) queue.cancel(j.id);
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<void>((ok) => { timer = setTimeout(ok, waitMs); });
+  await Promise.race([Promise.all(jobs.map((j) => queue.wait(j.id))), late]);
+  clearTimeout(timer);
+}
+
+/** why the project cannot go now, in words (and as a code the page words in its language); null when nothing is working on it.
+ *  `analysis`: count the analysis jobs too (after stopAnalysis: one that has not stopped, or one a page queued meanwhile) */
+export function projectBusy(id: string, dir: string, o: { queue: JobQueue; chat: ChatRunner; holds?: ProjectHolds }, analysis = false): Busy | null {
   if (o.chat.busyWith(id)) return { text: 'Agent 正在處理這個專案（對話還在回覆中），等它回完再刪', code: 'delete.busyChat' };
-  const job = o.queue.list().find((j) => j.project.toLowerCase() === id.toLowerCase() && !isTerminal(j.status));
+  const job = o.queue.list().find((j) => mine(id)(j) && (analysis || !ANALYSIS.has(j.kind)));
   if (job) return { text: `這個專案還有工作在進行（${job.label}），等它結束或取消後再刪`, code: 'delete.busyJob', params: { label: job.label } };
   const held = o.holds?.busy(id);
   if (held) return held;
@@ -87,8 +105,10 @@ export function deleteRoutes(r: Router, store: ProjectStore, o: { queue: JobQueu
   r.del('/api/projects/:id', async (_req, res, { id }) => {
     const dir = guard(id);
     await o.chat.ready(id);
-    const busy = projectBusy(id, dir, o);
-    if (busy) throw new HttpError(409, busy.text, { code: busy.code, ...(busy.params ? { params: busy.params } : {}) });
+    const refuse = (busy: Busy | null) => { if (busy) throw new HttpError(409, busy.text, { code: busy.code, ...(busy.params ? { params: busy.params } : {}) }); };
+    refuse(projectBusy(id, dir, o));
+    await stopAnalysis(id, o.queue);
+    refuse(projectBusy(id, dir, o, true));
     o.live.forget(id);   // its folder watchers would hold the folder open (the rename fails on Windows)
     removeProject(store.root, id);
     store.forget(id);

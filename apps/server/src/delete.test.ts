@@ -47,15 +47,35 @@ test('refuses _-prefixed and invalid ids with 400', async () => {
 });
 
 test('refuses while a job of the project is running, and says which', async () => {
-  const job = app.queue.add('analyze', id, '01.mp4', ({ signal }) => new Promise((ok) => signal.addEventListener('abort', ok)));
+  const job = app.queue.add('export', id, 'final.mp4', ({ signal }) => new Promise((ok) => signal.addEventListener('abort', ok)));
   onTestFinished(async () => { app.queue.cancel(job.id); await app.queue.wait(job.id); });
   const pre = await (await fetch(`${base}/api/projects/${id}/delete-preview`)).json();
-  expect(pre.busy).toContain('01.mp4');
-  expect(pre.busyCode).toEqual({ code: 'delete.busyJob', params: { label: '01.mp4' } });
+  expect(pre.busy).toContain('final.mp4');
+  expect(pre.busyCode).toEqual({ code: 'delete.busyJob', params: { label: 'final.mp4' } });
   const r = await del(id);
   expect(r.status).toBe(409);
-  expect(await r.json()).toEqual({ error: '這個專案還有工作在進行（01.mp4），等它結束或取消後再刪', code: 'delete.busyJob', params: { label: '01.mp4' } });
+  expect(await r.json()).toEqual({ error: '這個專案還有工作在進行（final.mp4），等它結束或取消後再刪', code: 'delete.busyJob', params: { label: 'final.mp4' } });
   expect(existsSync(join(root, id, 'project.json'))).toBe(true);
+});
+
+test('the analysis an opened editor started (analyze, extras, beats) does not block: the delete stops it, waits, then deletes', async () => {
+  const stopped: string[] = [];
+  const job = (kind: string, label: string, background = false) => app.queue.add(kind, id, label, ({ signal }) =>
+    new Promise((ok) => signal.addEventListener('abort', () => setTimeout(() => { stopped.push(kind); ok(null); }, 50))), { background });
+  const jobs = [job('analyze', '01.mp4'), job('extras', '01.mp4', true), job('beats', 'score', true)];
+  expect((await (await fetch(`${base}/api/projects/${id}/delete-preview`)).json()).busy).toBeNull();
+  const r = await del(id);
+  expect([r.status, await r.json()]).toEqual([200, { ok: true }]);
+  expect(stopped.sort()).toEqual(['analyze', 'beats', 'extras']);
+  expect(jobs.map((j) => app.queue.get(j.id)?.status)).toEqual(['cancelled', 'cancelled', 'cancelled']);
+  expect(existsSync(join(root, id))).toBe(false);
+});
+
+test('an analysis of another project goes on', async () => {
+  const other = app.queue.add('extras', `${id}-other`, '01.mp4', ({ signal }) => new Promise((ok) => signal.addEventListener('abort', ok)), { background: true });
+  onTestFinished(async () => { app.queue.cancel(other.id); await app.queue.wait(other.id); });
+  expect((await del(id)).status).toBe(200);
+  expect(app.queue.get(other.id)?.status).toBe('running');
 });
 
 test('refuses while a live analysis lock is held', async () => {
