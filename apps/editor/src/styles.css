@@ -243,6 +243,8 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .drop-new-wrap.top .drop-new { top: 0; } .drop-new-wrap.bottom .drop-new { bottom: 0; }
 .drop-new.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 body.lib-dragging, body.lib-dragging * { cursor: grabbing !important; user-select: none; }
+/* the preview's player iframe would take the moves passing over it (the card would stop following) */
+body.lib-dragging iframe { pointer-events: none; }
 .hbar .zoom select { width: auto; min-width: 72px; flex: none; font-size: 11px; padding: 0 2px; color: var(--text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 4px; }
 .layer-buttons { display: flex; gap: 6px; align-items: center; margin: 6px 0 8px; color: var(--dim); }
 .layer-buttons span { flex: 1; } .layer-buttons button:disabled { opacity: .45; cursor: default; }

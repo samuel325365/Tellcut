@@ -18,7 +18,7 @@ export function startCardDrag(e: MouseEvent, editor: CardDragHost, src: Material
   if (e.button !== 0) return;
   let state: 'pressed' | 'dragging' | 'done' = 'pressed';
   const where = (m: MouseEvent): DropTarget => editor.dropProbe?.(m.clientX, m.clientY) ?? { t: 0, row: null };
-  const esc = (k: KeyboardEvent) => { if (k.key !== 'Escape' || state !== 'dragging') return; state = 'done'; editor.endLibDrag(false); };
+  const esc = (k: KeyboardEvent) => { if (k.key !== 'Escape' || state !== 'dragging') return; state = 'done'; document.body.classList.remove('lib-dragging'); editor.endLibDrag(false); };
   addEventListener('keydown', esc);
   follow((m) => {
     if (state === 'done') return;

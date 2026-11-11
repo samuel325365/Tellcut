@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startCardDrag } from './drag.ts';
 
 function fakeEditor(begin = true) {
@@ -67,4 +70,26 @@ test('a drag that ends without a release seen (the window lost focus, or let go 
   move(300, 80);
   dispatchEvent(new MouseEvent('mousemove', { clientX: 310, clientY: 80, buttons: 0 }));   // back in the window, the button already up
   expect(calls.at(-1)).toEqual(['end', false]);
+});
+
+test('the preview iframe ignores the pointer while a card is dragged (it would swallow the moves): off on every way the drag ends', () => {
+  const css = readFileSync(resolve(fileURLToPath(import.meta.url), '../../styles.css'), 'utf8');
+  expect(css).toMatch(/body\.lib-dragging iframe \{ pointer-events: none; \}/);
+  const { editor } = fakeEditor(), card = document.createElement('button');
+  card.addEventListener('mousedown', (e) => startCardDrag(e, editor, { kind: 'sfx', type: 'x.tap' }));
+  const on = () => document.body.classList.contains('lib-dragging');
+  const ends: Array<[string, () => void]> = [
+    ['drop', () => up(300, 80)],
+    ['Escape', () => dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))],
+    ['focus lost', () => dispatchEvent(new Event('blur'))],
+    ['button up outside', () => dispatchEvent(new MouseEvent('mousemove', { clientX: 310, clientY: 80, buttons: 0 }))],
+  ];
+  for (const [why, end] of ends) {
+    press(card);
+    move(300, 80);
+    expect([why, on()]).toEqual([why, true]);
+    end();
+    expect([why, on()]).toEqual([why, false]);
+    up(300, 80);
+  }
 });
