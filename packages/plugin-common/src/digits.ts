@@ -4,7 +4,7 @@
 // From the food-receipt short's VFD subtotal and the food-deep short's queue-number board.
 import { abs, clamp, cssCamel, eSmooth, type ItemType, prog, textEm } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
-import { dots, drawDots, drawSeg, F57, loadDots, softCanvas, vfdText } from './dots.ts';
+import { dots, drawDots, drawSeg, loadDots, softCanvas, vfdText, vfdWidth } from './dots.ts';
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
@@ -92,16 +92,9 @@ export function flashSpot(x0: number, fw: number, left: number, lo: number, hi: 
   return { x: left, sc: Math.min(1, Math.max(0, hi - left) / fw), over: true };
 }
 
-/** where vfdText starts drawing `text` right-aligned at `right`, k px a unit (7 units a dot): 5×7 cells are 6 dots, a run of
- *  characters outside that font (¥, 元, a CJK label) its raster less one column, wider than a cell. vfdText's own sums, kept in step
- *  with it, so the flash stops at the digits' real left edge, not at one 5×7 cell per character. */
-export function vfdLeft(text: string, right: number, k: number): number {
-  let cells = 0, raster = 0, miss = '';
-  const flush = () => { if (miss) raster += (dots(miss, hasCjk(miss) ? 7 : 10).w - 1) * 7 * k; miss = ''; };
-  for (const ch of text) { if (F57[ch.toUpperCase()]) { flush(); cells++; } else miss += ch; }
-  flush();
-  return right - (cells * 42 * k + raster) + 7 * k;
-}
+/** where vfdText starts drawing `text` right-aligned at `right`, k px a unit (7 units a dot): its own width sum, so the flash
+ *  stops at the digits' real left edge (a ¥ or CJK label is wider than one 5×7 cell per character). */
+export const vfdLeft = (text: string, right: number, k: number): number => right - vfdWidth(text, 7 * k) + 7 * k;
 
 export interface VfdOpts { steps: Step[]; local: number; n: number; text: string | null; prefix: string; label: string; totalLabel: string; totalAt: number; on: string; flash: string }
 

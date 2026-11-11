@@ -80,13 +80,13 @@ export const F57: Record<string, string[]> = {
 
 const WIDE = /[⺀-鿿가-힯豈-﫿︰-﹏＀-￯]/;
 
-/** VFD characters right-aligned at `right`: each a 5×7 cell block, `pitch` px a cell; unlit cells faintly in `off`. A run of
- *  characters the 5×7 font lacks (¥, €, 個, lower case) is rasterised from the font instead, as the display's small words are:
- *  Latin about 7 dots to the cap line, CJK about 7 dots whole, on the same baseline, as many cells wide as it takes. */
-export function vfdText(g: CanvasRenderingContext2D, text: string, right: number, y: number, pitch: number, dot: number, on: string, off: string) {
+type VfdPart = { rows: string[] } | { D: Dots; lift: number };
+
+/** vfdText's characters and widths, `pitch` px a dot: 5×7 cells are 6 dots, a run outside that font its raster less one column.
+ *  The one width sum, so a block that needs where the display starts (digits' flash) cannot drift from what is drawn. */
+function vfdLayout(text: string, pitch: number) {
   const cell = 6 * pitch;
-  type Part = { rows: string[] } | { D: Dots; lift: number };
-  const parts: Part[] = [];
+  const parts: VfdPart[] = [];
   let miss = '';
   const flush = () => {
     if (!miss) return;
@@ -98,10 +98,21 @@ export function vfdText(g: CanvasRenderingContext2D, text: string, right: number
   for (const ch of text) { const rows = F57[ch.toUpperCase()]; if (rows) { flush(); parts.push({ rows }); } else miss += ch; }
   flush();
   // a raster is drawn from its column 1 (dots() leaves one blank column each side); one blank column after it, as a 5×7 cell has
-  const width = (p: Part) => ('rows' in p ? cell : (p.D.w - 1) * pitch);
+  const width = (p: VfdPart) => ('rows' in p ? cell : (p.D.w - 1) * pitch);
   // cells × cell, not a running sum, so a display of 5×7 characters only lands exactly where it always did
   const nCells = parts.filter((p) => 'rows' in p).length, rasterW = parts.reduce((a, p) => a + ('rows' in p ? 0 : width(p)), 0);
-  let x = right - (nCells * cell + rasterW) + pitch;
+  return { parts, width, total: nCells * cell + rasterW };
+}
+
+/** how wide vfdText draws `text`, `pitch` px a dot (it starts at right - vfdWidth + pitch) */
+export const vfdWidth = (text: string, pitch: number) => vfdLayout(text, pitch).total;
+
+/** VFD characters right-aligned at `right`: each a 5×7 cell block, `pitch` px a cell; unlit cells faintly in `off`. A run of
+ *  characters the 5×7 font lacks (¥, €, 個, lower case) is rasterised from the font instead, as the display's small words are:
+ *  Latin about 7 dots to the cap line, CJK about 7 dots whole, on the same baseline, as many cells wide as it takes. */
+export function vfdText(g: CanvasRenderingContext2D, text: string, right: number, y: number, pitch: number, dot: number, on: string, off: string) {
+  const { parts, width, total } = vfdLayout(text, pitch);
+  let x = right - total + pitch;
   for (const p of parts) {
     if ('rows' in p) {
       for (let j = 0; j < 7; j++) for (let i = 0; i < 5; i++) {
