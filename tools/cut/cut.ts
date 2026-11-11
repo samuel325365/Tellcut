@@ -331,11 +331,20 @@ export class Cut {
     const odd = Object.keys(params).filter((k) => !own.has(k));
     if (odd.length) this.notes.push(`${call}('${text.slice(0, 20)}')：${call} 放的是 ${type}，它沒有 ${odd.join('、')} 參數，畫面上不會有效果（npm run tellcut -- catalog ${type} 列出它的參數）`);
   }
+  // c.lowerThird and c.endCard make the shared blocks too (the core lower third and end card stay only so older projects open — see
+  // OLD_BLOCKS): a heading in the lower-bar template (main title, sub line, an accent bar at the left, in the lower left) and the
+  // outro's credits (a line a beat; the old stagger is its beat)
   lowerThird(main: string, sub: string, o: { at?: number; len?: number; [k: string]: unknown } = {}) {
-    const { at = this.cursor, len = 3, ...rest } = o; return this.text('core.lowerThird', at as number, len as number, { text: main, sub, ...rest }, undefined, 'c.lowerThird');
+    const { at = this.cursor, len = 3, ...rest } = o, params = { text: main, ...(sub ? { sub } : {}), template: 'lower-bar', ...rest };
+    this.unknownParams('c.lowerThird', 'common.heading', main, rest);
+    return this.text('common.heading', at as number, len as number, params, undefined, 'c.lowerThird');
   }
   /** after everything else */
-  endCard(lines: string[], o: { len?: number; [k: string]: unknown } = {}) { const { len = 5, ...rest } = o; return this.text('core.endCard', this.end, len as number, { text: lines.join('\n'), ...rest }, undefined, 'c.endCard'); }
+  endCard(lines: string[], o: { len?: number; [k: string]: unknown } = {}) {
+    const { len = 5, stagger, ...rest } = o, params = { look: 'credits', lines: lines.join('\n'), ...(stagger !== undefined ? { beat: stagger } : {}), ...rest };
+    this.unknownParams('c.endCard', 'common.outro', lines[0] ?? '', rest);
+    return this.text('common.outro', this.end, len as number, params, undefined, 'c.endCard');
+  }
 
   /**
    * Lay out a whole kind of video from a data object (toolkit phase 4): travel, hook, montage. `npm run tellcut -- recipe <id>` shows the

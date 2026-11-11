@@ -480,6 +480,21 @@ test('the old common.postcard is warned about with the 3D desk to use instead (a
   expect(f.msg).not.toContain('範本');
 });
 
+test('the old core lower third and end card and common.wash are warned about, each with how its new block does the same', () => {
+  const p = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [
+    { id: 'lt', start: 1, end: 3, type: 'core.lowerThird', params: { text: 'x' } }, { id: 'g', start: 0, end: 10, type: 'common.grade', params: {} },
+    { id: 'w', start: 0, end: 10, type: 'common.wash', params: {} }, { id: 'ec', start: 8, end: 10, type: 'core.endCard', params: {} }] }]);
+  expect(msgs(oldBlocks(p))).toEqual([
+    'warn 1-3 core.lowerThird 是舊積木（只為了讓舊專案打得開，1 個）：新片請改用 common.heading 的標題範本 lower-bar（c.lowerThird 就是）',
+    'warn 8-10 core.endCard 是舊積木（只為了讓舊專案打得開，1 個）：新片請改用 common.outro 的 look credits（c.endCard 就是）',
+    'warn 0-10 common.wash 是舊積木（只為了讓舊專案打得開，1 個）：新片請改用 common.grade 的 deep: true（同一個項目裡畫）']);
+});
+
+test('an outro after the last clip is an end card of its own, not overlays on a black frame', () => {
+  const p = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 7)] }, { id: 'o', kind: 'overlay', items: [{ id: 'end', start: 7, end: 10, type: 'common.outro', params: { look: 'credits' } }] }]);
+  expect(msgs(modelChecks(p, ok)).filter((m) => m.includes('黑'))).toEqual([]);
+});
+
 test('a desk that flies into a video with no main-track clip to take over is warned about', () => {
   const desk = (fly: object) => ({ id: 'desk', start: 0, end: 6, type: 'common.flatlay', params: { objects: JSON.stringify([{ kind: 'polaroid', shot: 'v|4', at: 0 }]), fly } });
   const bare = project([{ id: 'main', kind: 'video', items: [] }, { id: 'o', kind: 'overlay', items: [desk({ index: 0, at: 1, dur: 1 })] }]);

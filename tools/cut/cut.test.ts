@@ -40,9 +40,27 @@ test('texts go on the text track (c.title a common.heading, speech common.captio
   c.endCard(['感謝觀看', '小明']);
   const t = items(c, 'text');
   expect(t.map((i) => [i.type, i.start, i.end, i.parent ?? null])).toEqual([
-    ['common.heading', 0, 3, null], ['common.caption', 1, 2.5, a], ['core.endCard', 4, 9, null],
+    ['common.heading', 0, 3, null], ['common.caption', 1, 2.5, a], ['common.outro', 4, 9, null],
   ]);
-  expect([caps.length, t[1].params.text, t[2].params.text]).toEqual([1, '大家好', '感謝觀看\n小明']);
+  expect([caps.length, t[1].params.text, t[2].params]).toEqual([1, '大家好', { look: 'credits', lines: '感謝觀看\n小明' }]);
+});
+
+test('c.lowerThird makes a common.heading in the lower-bar template and c.endCard a common.outro of credits (the core blocks are old)', () => {
+  const c = fresh();
+  c.clip('v', { from: 0, len: 4 });
+  c.lowerThird('伏見稻荷', '京都', { at: 1, len: 2 });
+  c.lowerThird('嵐山', '', { at: 3, size: 6 });
+  c.endCard(['謝謝', '小明'], { len: 3, stagger: 0.4 });
+  const t = items(c, 'text');
+  expect(t.map((i) => [i.type, i.start, i.end, i.params])).toEqual([
+    ['common.heading', 1, 3, { text: '伏見稻荷', sub: '京都', template: 'lower-bar' }],
+    ['common.heading', 3, 6, { text: '嵐山', template: 'lower-bar', size: 6 }],
+    ['common.outro', 6, 9, { look: 'credits', lines: '謝謝\n小明', beat: 0.4 }],
+  ]);
+  expect(c.notes).toEqual([]);
+  // a param of the old blocks the new ones lack is named, not dropped without a word
+  c.lowerThird('x', 'y', { background: '#000' });
+  expect(c.notes.some((n) => n.includes('c.lowerThird') && n.includes('background'))).toBe(true);
 });
 
 test('fx registers a project-local module once; effect puts any item type on the text track', () => {

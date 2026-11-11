@@ -8,10 +8,15 @@ import { clamp, cssCamel, eOut3, h } from './util.ts';
 /** core blocks kept only so older projects open (2026-11-05): new films use the shared block, whose templates do the same and more;
  *  the Cut API and check say so when one turns up */
 export const OLD_TEXT: Readonly<Record<string, string>> = { 'core.title': 'common.heading', 'core.caption': 'common.caption' };
-/** every block kept only so older projects open, with the one new films use instead: the old text blocks, and the flat postcard and
- *  frame (2026-11-07) whose place the 3D desk took. Not offered by the catalog, its search, the block index or the gallery; the Cut
- *  API and check say so when one turns up */
-export const OLD_BLOCKS: Readonly<Record<string, string>> = { ...OLD_TEXT, 'common.postcard': 'common.flatlay', 'common.frame': 'common.flatlay' };
+/** every block kept only so older projects open, with the one new films use instead: the old text blocks, the flat postcard and
+ *  frame (2026-11-07) whose place the 3D desk took, the core lower third and end card (common.heading's lower-bar template and
+ *  common.outro's credits do the same and follow the film's theme), and common.wash, which common.grade's deep now draws in the
+ *  grade's own item. Not offered by the catalog, its search, the block index or the gallery; the Cut API and check say so when one
+ *  turns up */
+export const OLD_BLOCKS: Readonly<Record<string, string>> = {
+  ...OLD_TEXT, 'common.postcard': 'common.flatlay', 'common.frame': 'common.flatlay',
+  'core.lowerThird': 'common.heading', 'core.endCard': 'common.outro', 'common.wash': 'common.grade',
+};
 export const TEXT_FONTS = ['Noto Sans TC', 'Noto Serif TC', 'Noto Sans JP', 'Microsoft JhengHei', 'DFKai-SB'];
 const ANIMS = ['none', 'fade', 'rise', 'slide', 'typewriter'];
 

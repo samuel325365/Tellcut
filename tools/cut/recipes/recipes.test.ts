@@ -49,7 +49,7 @@ test('travel: the title first, each scene’s narration with its shots and capti
   expect(text.filter((i) => i.type === 'common.caption').map((i) => i.params.text)).toEqual(['第一句', '第二句', '最後一句']);
   expect(text.find((i) => i.type === 'common.header')).toMatchObject({ params: { text: '城南宮' } });
   expect(text.find((i) => i.type === 'common.heading')).toMatchObject({ params: { text: '京都' } });
-  expect(text.find((i) => i.type === 'core.endCard')!.start).toBeCloseTo(lastClip.end, 3);
+  expect(text.find((i) => i.type === 'common.outro')!.start).toBeCloseTo(lastClip.end, 3);
   const music = track(p, 'music')[0];
   expect(music.media).toBe('score-pluck');
   expect(music.envelope?.length).toBeGreaterThanOrEqual(4);
@@ -236,7 +236,7 @@ describe('review findings', () => {
   test('montage: the grain covers the end card; hook: a very short segment with tags does not throw', async () => {
     const m = fresh();
     m.recipe('montage', { shots: [{ src: 'v' }, { src: 'v', from: 4 }], end: ['完'] });
-    const top = m.p.tracks.find((t) => t.id === 'top')!.items as any[], end = (m.p.tracks.find((t) => t.id === 'text')!.items as any[]).find((i) => i.type === 'core.endCard');
+    const top = m.p.tracks.find((t) => t.id === 'top')!.items as any[], end = (m.p.tracks.find((t) => t.id === 'text')!.items as any[]).find((i) => i.type === 'common.outro');
     expect(top.find((i) => i.type === 'common.film').end).toBeCloseTo(end.end, 3);
     const h = fresh();
     expect(() => h.recipe('hook', { hook: { text: 'x' }, segments: [{ src: 'v', from: 0, len: 0.25, tags: ['a'], captions: false }] })).not.toThrow();

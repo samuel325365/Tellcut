@@ -36,7 +36,7 @@ export function visibleWords(v: string, strict = false): string {
   return fields.filter((x) => !notWords(x, strict || lined)).join(' ');
 }
 /** overlay blocks that are a deliberate picture of their own (words on the background) */
-const CARDS = new Set(['core.title', 'core.endCard']);
+const CARDS = new Set(['core.title', 'core.endCard', 'common.outro']);
 /** common.heading (what c.title makes since 2026-11-05) is such a card on a backing of its own (black, a solid card), or standing
  *  alone in the frame like the old core.title (centred, left, full width) on no backing or a line-only one. A band, scrim or blur is
  *  made to lie over a picture, and a lower / corner / top / bottom title is a strap or a label on one: over black, the picture is
@@ -265,16 +265,20 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   return byTime(out);
 }
 
-/** The old blocks (OLD_BLOCKS: core.title / core.caption 2026-11-05, the flat common.postcard / common.frame 2026-11-07): kept so older
- *  projects open, never for a new film (the page chat's proposals and a cut.ts's c.effect could still name one). Apart from
- *  modelChecks, whose tests use them as plain test items. */
+/** how the new block does what the old one did, where it takes more than the new block's name */
+const OLD_HOW: Readonly<Record<string, string>> = {
+  'core.lowerThird': ' 的標題範本 lower-bar（c.lowerThird 就是）', 'core.endCard': ' 的 look credits（c.endCard 就是）', 'common.wash': ' 的 deep: true（同一個項目裡畫）',
+};
+/** The old blocks (OLD_BLOCKS: core.title / core.caption 2026-11-05, the flat common.postcard / common.frame 2026-11-07, the core lower
+ *  third and end card and common.wash 2026-11-11): kept so older projects open, never for a new film (the page chat's proposals and a
+ *  cut.ts's c.effect could still name one). Apart from modelChecks, whose tests use them as plain test items. */
 export function oldBlocks(p: Project): Finding[] {
   const times = resolveTimes(p);
   return Object.entries(OLD_BLOCKS).flatMap(([type, instead]): Finding[] => {
     const old = allItems(p).filter(({ item }) => (item as { type?: string }).type === type);
     if (!old.length) return [];
     const t = times.get(old[0].item.id)!;
-    return [{ level: 'warn', t: [r3(t.start), r3(t.end)], ids: old.map((x) => x.item.id), msg: `${type} 是舊積木（只為了讓舊專案打得開，${old.length} 個）：新片請改用 ${instead}${OLD_TEXT[type] ? `，照片子的${instead === 'common.heading' ? '標題' : '字幕'}範本` : ''}` }];
+    return [{ level: 'warn', t: [r3(t.start), r3(t.end)], ids: old.map((x) => x.item.id), msg: `${type} 是舊積木（只為了讓舊專案打得開，${old.length} 個）：新片請改用 ${instead}${OLD_TEXT[type] ? `，照片子的${instead === 'common.heading' ? '標題' : '字幕'}範本` : OLD_HOW[type] ?? ''}` }];
   });
 }
 

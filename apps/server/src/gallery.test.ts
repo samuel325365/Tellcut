@@ -18,6 +18,9 @@ test('the gallery lists every block (core and common first), the sounds, the mus
     expect(types).toContain('common.flatlay');
     expect(types).not.toContain('common.postcard');
     expect(types).not.toContain('common.frame');
+    // nor the core lower third and end card (a heading template and the outro do the same) or the wash (common.grade's deep)
+    for (const old of ['core.lowerThird', 'core.endCard', 'common.wash']) expect(types).not.toContain(old);
+    expect(types).toEqual(expect.arrayContaining(['common.heading', 'common.outro', 'common.grade']));
     const media = (type: string) => g.blocks.find((b: any) => b.type === type).needsMedia;
     expect([media('common.backdrop'), media('core.title')]).toEqual([false, false]);
     // a media() hook marks a block, unless it says its footage is optional (the dachshund's film frames are empty without any)
@@ -67,8 +70,8 @@ test('blocks carry their category (core ones mapped) and a golden thumbnail; the
     const g = await (await fetch(`${base}/api/gallery`)).json();
     const by = (t: string) => g.blocks.find((b: any) => b.type === t);
     expect(by('core.title')).toMatchObject({ category: 'title', thumb: '/api/gallery/thumb/core-title-t1.50.png' });
-    expect([by('core.caption').category, by('core.lowerThird').category, by('core.flash').category, by('core.endCard').category]).toEqual(['caption', 'chapter', 'moment', 'moment']);
-    expect(by('common.backdrop').category).toBe('look');
+    expect([by('core.caption').category, by('core.flash').category]).toEqual(['caption', 'moment']);
+    expect([by('common.backdrop').category, by('common.grade').category, by('common.polaroid').category]).toEqual(['background', 'look', 'photo']);
     expect(by('common.backdrop').thumb).toBe('/api/gallery/thumb/backdrop-gingham-t0.50.png');
     expect(g.blocks.every((b: any) => b.category && b.thumb)).toBe(true);   // every card has a picture
     const r = await fetch(`${base}${by('core.title').thumb}`);
