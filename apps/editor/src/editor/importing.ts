@@ -80,7 +80,10 @@ export async function importPaths(h: ImportHost, paths: string[], place?: (d: Pr
   if (gone()) return;
   const ids = [...Object.keys(r.sources), ...Object.keys(r.media)];
   let added: string[] = [], unplaced: string[] = [];
-  if (ids.length || (place && r.same.length)) h.apply((d) => {
+  const edit = !!(ids.length || (place && r.same.length));
+  // a proposal came meanwhile: no edit (blocked() says so); dropped files stay copied, found again by a later drop
+  if (edit && h.blocked?.()) { set({ importing: null, importNote: notes.join(' ') }); return; }
+  if (edit) h.apply((d) => {
     added = addSources(d, { sources: r.sources, media: r.media });
     // what no track took (let go past the end of the film) is named, by its file
     unplaced = (place?.(d, inOrder(paths, r, added), r) ?? []).map((id) => fileName((d.sources[id] ?? d.media[id])?.path ?? id));

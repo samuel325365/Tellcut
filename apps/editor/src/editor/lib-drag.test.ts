@@ -142,3 +142,21 @@ test('a drag that does not change where it would go sends nothing again: no new 
   ed.fileDragTo({ t: 2, row: null }, 'video');
   expect(sets).toBe(s2 + 1);
 });
+
+test('a project with no tracks at all: a card dropped on the new-track strip makes its track, one let go elsewhere adds nothing', async () => {
+  const ed = await editor({ project: async () => { const p: any = magneticFixture(); p.tracks = []; return p; } });
+  ed.beginLibDrag(scene);
+  ed.libDragTo({ t: 1, row: null }, NO);
+  expect(ed.endLibDrag(true)).toBe(false);
+  expect([ed.store.get().project!.tracks.length, ed.store.get().canUndo]).toEqual([0, false]);
+  ed.beginLibDrag({ kind: 'overlay', type: 'x.title' });
+  ed.libDragTo({ t: 1, row: 'new' }, NO);
+  expect(ed.store.get().libDrag).toMatchObject({ plan: { ok: true, track: null } });
+  expect(ed.endLibDrag(true)).toBe(true);
+  const p = ed.store.get().project!;
+  expect(p.tracks.map((tr) => [tr.kind, (tr.items as any[]).map((i) => i.type)])).toEqual([['overlay', ['x.title']]]);
+  ed.fileDragTo({ t: 0, row: 'new' }, 'video');
+  expect(ed.store.get().libDrag).toMatchObject({ files: true, plan: { ok: true, track: null } });
+  ed.fileDragEnd();
+  expect(ed.store.get().libDrag).toBeNull();
+});

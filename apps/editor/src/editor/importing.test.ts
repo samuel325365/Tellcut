@@ -4,7 +4,8 @@ import { resolveTimes } from '@tellcut/engine';
 import { IMPORT_MAX } from '@tellcut/protocol';
 import { t } from '../i18n/index.ts';
 import { Editor } from '../editor.ts';
-import { fakes } from '../editor-test-kit.ts';
+import { fakes, live, prop } from '../editor-test-kit.ts';
+import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
@@ -141,4 +142,43 @@ test('the editor closed while the server imports: importing is cleared and the a
   // a new import goes again
   await ed.dropFiles([file('new.mp4')]);
   expect(!!ed.store.get().project!.sources.new).toBe(true);
+});
+
+test('files dropped while a proposal waits: nothing is copied or added, the note says to answer the proposal first', async () => {
+  const L = live();
+  const { ed, calls } = await setup(L.over);
+  L.send({ type: 'proposal', proposal: prop([{ op: 'trimEnd', id: 'c1', dt: -1 }]) });
+  await vi.advanceTimersByTimeAsync(0);
+  const before = ed.store.get().project;
+  await ed.dropFiles([file('new.mp4')], { t: 0, row: 'v2' });
+  expect(calls).toEqual([]);
+  expect([ed.store.get().project, ed.store.get().importing, ed.store.get().notice]).toEqual([before, null, t('ed.pending')]);
+});
+
+test('a proposal that comes while the files are copied: they are not added, and the note does not say nothing was there', async () => {
+  const L = live();
+  let release: (() => void) | null = null;
+  const { ed, calls } = await setup({ ...L.over,
+    upload: async (_id: string, f: File) => { calls.push(['upload', f.name]); await new Promise<void>((ok) => { release = ok; }); return `${IMP}/${f.name}`; } });
+  const done = ed.dropFiles([file('new.mp4')], { t: 0, row: 'v2' });
+  await vi.advanceTimersByTimeAsync(0);
+  L.send({ type: 'proposal', proposal: prop([{ op: 'trimEnd', id: 'c1', dt: -1 }]) });
+  await vi.advanceTimersByTimeAsync(0);
+  release!();
+  await done;
+  // the copy is kept in media/import: dropped again once the proposal is answered, it is found there and not sent again
+  expect(ed.store.get().project!.sources.new).toBeUndefined();
+  expect([ed.store.get().importing, ed.store.get().importNote, ed.store.get().notice]).toEqual([null, '', t('ed.pending')]);
+});
+
+test('a project with no tracks at all: files dropped on the new-track strip make the tracks they need', async () => {
+  const { ed } = await setup({ project: async () => { const p: any = fixture(); p.tracks = []; return p; } });
+  await ed.dropFiles([file('new.mp4'), file('song.wav')], { t: 0, row: 'new' });
+  const p = ed.store.get().project!;
+  expect(p.tracks.map((tr) => [tr.kind, (tr.items as any[]).map((i) => i.source ?? i.media)])).toEqual([['video', ['new']], ['music', ['song']]]);
+  expect(ed.store.get().importNote).not.toContain(t('ed.dropNotPlaced', { list: 'new.mp4' }));
+  // let go where there is no row (no tracks to be under): added, not placed
+  ed.undo();
+  await ed.dropFiles([file('new.mp4')], { t: 0, row: null });
+  expect([!!ed.store.get().project!.sources.new, ed.store.get().project!.tracks.length]).toEqual([true, 0]);
 });
