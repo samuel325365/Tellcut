@@ -11,7 +11,7 @@ import { setLang } from './i18n/lang.ts';
 
 const PINK = { slug: 'pink', name: 'Pink', desc: '', params: { style: 'neon' }, savedAt: '' };
 
-function mount(o: { template?: string; kind?: 'caption' | 'title'; thumbs?: Record<string, string> } = {}) {
+function mount(o: { template?: string; kind?: 'caption' | 'title'; thumbs?: Record<string, string>; film?: string } = {}) {
   const calls: any[] = [];
   const editor: any = {
     myCaptionTemplates: () => [PINK],
@@ -25,7 +25,9 @@ function mount(o: { template?: string; kind?: 'caption' | 'title'; thumbs?: Reco
   const item = { id: 'k', type: o.kind === 'title' ? 'common.heading' : 'common.caption', params: { text: 'hi', ...(o.template ? { template: o.template } : {}) } };
   const root = document.createElement('div');
   document.body.appendChild(root);
-  return { root, calls, show: () => act(() => render(<CaptionTemplates editor={editor} project={fixture() as any} item={item} track="text" defs={[]} kind={o.kind} />, root)) };
+  const project: any = fixture();
+  if (o.film) project.meta.captionTemplate = o.film;
+  return { root, calls, show: () => act(() => render(<CaptionTemplates editor={editor} project={project} item={item} track="text" defs={[]} kind={o.kind} />, root)) };
 }
 const key = (el: Element, k: string) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
 
@@ -77,4 +79,17 @@ test('the hints follow the UI language; a title’s are worded for titles', asyn
   expect(ttl.root.querySelector('[data-caption-track]')!.getAttribute('data-tip')).toBe(DICTS.ja['ed.ttlTrackTip']);
   expect(ttl.root.querySelector('[data-caption-save]')!.getAttribute('data-tip')).toBe(DICTS.ja['ed.ttlSaveTip']);
   expect(ttl.root.querySelector('[data-caption-mine-delete]')!.getAttribute('data-tip')).toBe(DICTS.ja['ed.ttlDeleteTip']);
+});
+
+test('a film default set from one of my templates is shown by its name, not its copy key (EP11)', async () => {
+  const { root, show } = mount({ film: myTemplateKey(PINK) });
+  await show();
+  const head = root.querySelector('[data-group="captionTemplates"] > span')!.textContent!;
+  expect(head).toContain('film: Pink');
+  expect(head).not.toContain('my-pink-');
+  expect(root.querySelector('[data-caption-template=""] .cap-name')!.textContent).toBe("Film's (Pink)");
+  // the template deleted from the library since: its slug, still not the hash
+  const gone = mount({ film: 'my-old-look-1a2b3c' });
+  await gone.show();
+  expect(gone.root.querySelector('[data-caption-template=""] .cap-name')!.textContent).toBe("Film's (old-look)");
 });

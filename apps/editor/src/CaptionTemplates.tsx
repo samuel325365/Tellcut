@@ -45,7 +45,10 @@ export function CaptionTemplates({ editor, project, item, track, defs, kind = 'c
   const mineOf = (key: string | null) => (key?.startsWith('mine:') ? mine.find((m) => `mine:${m.slug}` === key) : undefined);
   const own = String(item.params?.template ?? ''), film = String((project.meta as Record<string, unknown>)[K.meta] ?? '');
   const caption: GalleryBlock = { plugin: 'common', group: '', type: K.block, label: '', doc: '', kind: 'overlay', params: defs, needsMedia: false };
-  const name = (id: string) => blockText(`${kind}:${id}`, ALL.find((x) => x.id === id) ?? { label: id, doc: '' }).label;
+  // a film default set from one of my templates is its copy's key (my-<slug>-<hash>): named by the template, or by its slug once
+  // the template is gone from the library
+  const name = (id: string) => (id.startsWith('my-') ? mine.find((m) => myTemplateKey(m) === id)?.name ?? id.replace(/^my-/, '').replace(/-[^-]*$/, '')
+    : blockText(`${kind}:${id}`, ALL.find((x) => x.id === id) ?? { label: id, doc: '' }).label);
   const list = ALL.filter((x) => matches(q, handleOf(`${kind}:${x.id}`), x.id, x.label, name(x.id), ...Object.values(x.params).map(String)));
   const point = (id: string | null) => ({ onMouseEnter: () => setHover(id), onMouseLeave: () => setHover(null), onFocus: () => setHover(id), onBlur: () => setHover(null) });
   const tile = (id: string, label: string, pic?: string) => (
@@ -63,7 +66,7 @@ export function CaptionTemplates({ editor, project, item, track, defs, kind = 'c
       <ul class="cap-grid">
         {!q && tile('', film ? `Film's (${name(film)})` : 'None')}
         {/* one of mine: the tile and its ✕ side by side in one cell (a button inside a role=button would be two controls in one) */}
-        {mine.filter((m) => matches(q, m.name, m.desc, m.slug)).map((m) => {
+        {mine.filter((m) => matches(q, undefined, m.name, m.desc, m.slug)).map((m) => {
           const on = own === myTemplateKey(m);
           return (
             <li class="cap-mine-cell">
