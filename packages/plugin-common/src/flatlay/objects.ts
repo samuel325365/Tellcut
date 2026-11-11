@@ -12,7 +12,7 @@ import type { Surface } from './surface.ts';
 export type Kind = 'postcard' | 'polaroid' | 'photo' | 'tv' | 'card';
 export type Enter = 'drop' | 'left' | 'right' | 'bottom' | 'none';
 export const KINDS: Kind[] = ['postcard', 'polaroid', 'photo', 'tv', 'card'];
-const ENTERS: Enter[] = ['drop', 'left', 'right', 'bottom', 'none'];
+export const ENTERS: Enter[] = ['drop', 'left', 'right', 'bottom', 'none'];
 
 export interface Mark { top: string; bottom: string; date: string; at: number }
 export interface Obj {

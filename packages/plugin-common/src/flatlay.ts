@@ -16,14 +16,13 @@ import type { ThreeKit } from './three/kit.ts';
 import { cameraPose, flyCover, flyCrop, PIC_LIFT, posed, type CameraMode, type Fly } from './flatlay/camera.ts';
 import { lightRig } from './flatlay/light.ts';
 import { atRest, contactShadow, REST_Z, viewHalf, type Pose } from './flatlay/motion.ts';
-import { EXIT_DUR, faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
+import { ENTERS, EXIT_DUR, faceSource, KINDS, parseObjects, picAspect, REST_Z as REST, sheetGeometry, sheetZ, sizeOf, type FlatlayParams, type Obj } from './flatlay/objects.ts';
 import { sentenceCps } from './handwrite.ts';
 import { BACK_CPS, BACK_FADE, MARK_LAND, paintBack, paintBackBase, paintedText, paintFront, paintPlaceholder, PRINT, type Word } from './flatlay/paper.ts';
 import { goboLayers, goboStep, paintGobo, paintSurface, SURFACE_LOOK, type GoboLayers, type Surface } from './flatlay/surface.ts';
 
 export type { FlatlayParams } from './flatlay/objects.ts';
 
-const ENTERS = ['drop', 'left', 'right', 'bottom', 'none'];
 const PARAMS: ParamDef[] = [
   { key: 'kind', label: '東西（postcard 明信片、polaroid 拍立得、photo 相框、tv 老電視、card 卡片）', type: 'enum', options: KINDS, default: 'postcard' },
   { key: 'shot', label: '畫面（素材|素材秒數|x,y,zoom|still；空＝示意圖）', type: 'string', default: '' },
