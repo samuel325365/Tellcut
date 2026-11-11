@@ -26,7 +26,7 @@ export const sparkle: ItemType<P, S> = {
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.45 },
     { key: 'count', label: '數量', type: 'number', min: 1, max: 80, step: 1, default: 18 },
     { key: 'size', label: '星星大小（畫面短邊 %）', type: 'number', min: 0.5, max: 12, step: 0.1, default: 3.5 },
-    { key: 'spread', label: '散開範圍（畫面寬比例）', type: 'number', min: 0.05, max: 1.5, step: 0.01, default: 0.45 },
+    { key: 'spread', label: '散開範圍（畫面短邊比例）', type: 'number', min: 0.05, max: 1.5, step: 0.01, default: 0.45 },
     { key: 'color', label: '顏色', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
     { key: 'seed', label: '亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 7 },
   ],
@@ -43,7 +43,7 @@ export const sparkle: ItemType<P, S> = {
     g.fillStyle = p.color;
     const base = (p.size / 100) * Math.min(W, H);
     for (let i = 0; i < p.count; i++) {
-      const ang = r() * Math.PI * 2, dist = (0.35 + 0.65 * r()) * p.spread * W, sz = (0.5 + r()) * base, delay = r() * 0.25, spin = (r() - 0.5) * 3, ph = r() * 6.28;
+      const ang = r() * Math.PI * 2, dist = (0.35 + 0.65 * r()) * p.spread * Math.min(W, H), sz = (0.5 + r()) * base, delay = r() * 0.25, spin = (r() - 0.5) * 3, ph = r() * 6.28;
       if (p.mode === 'burst') {
         const t = prog(ctx.local, delay, delay + 0.9), e = eOut3(t);
         if (t <= 0 || t >= 1) continue;

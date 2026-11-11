@@ -327,7 +327,7 @@ export const popup: ItemType<PP, PS> = {
     { key: 'pick', label: '按第幾顆（dialog）', type: 'number', min: 1, max: 2, step: 1, default: 1 },
     { key: 'x', label: '中心 x（dialog）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（dialog）／面板上緣（sheet），畫面高比例', type: 'number', min: 0, max: 1, step: 0.005, default: 0.45 },
-    { key: 'w', label: '寬（dialog，畫面寬比例）', type: 'number', min: 0.3, max: 1, step: 0.01, default: 0.84 },
+    { key: 'w', label: '寬（dialog，畫面短邊比例）', type: 'number', min: 0.3, max: 1, step: 0.01, default: 0.84 },
     { key: 'bar', label: '標題列顏色（dialog）', type: 'string', default: 'lav' },
     { key: 'typeAt', label: '開始打字（sheet，秒）', type: 'number', min: 0, max: 30, step: 0.05, default: 0.5 },
     { key: 'ink', label: '線和字的顏色', type: 'color', default: '#4b3a8c' },
@@ -348,7 +348,7 @@ export const popup: ItemType<PP, PS> = {
     if (p.mode === 'sheet') { drawSheet(g, p, local, W, H, k, bs[0] ?? '', report); return; }
     const close = clamp((local - (dur - 0.22)) / 0.22), sc = (local < 0 ? 0 : 0.55 + 0.45 * motion.spring({ duration: 0.35, bounce: 0.45 })(local)) * (1 - 0.15 * close);
     if (sc <= 0) return;
-    const w = p.w * W, h = 300 * k;
+    const w = p.w * Math.min(W, H), h = 300 * k;
     g.save(); g.globalAlpha = clamp(local / 0.06) * (1 - close);
     g.translate(p.x * W, p.y * H); g.scale(sc, sc); g.translate(-w / 2, -h / 2);
     const { tb } = chrome(g, w, h, k, p.bar, p.title, p.ink, p.paper, report);
@@ -362,7 +362,7 @@ export const popup: ItemType<PP, PS> = {
 
 /** a dialog's button n (from 1) centre in frame fractions, for pointing the cursor at it (the dialog settled, not mid-pop) */
 export function popupButton(n: number, p: Partial<Pick<PP, 'x' | 'y' | 'w' | 'buttons'>> = {}, W = 1080, H = 1920): [number, number] {
-  const k = Math.min(W, H) / 1080, w = (p.w ?? 0.84) * W, count = Math.max(1, String(p.buttons ?? '好啊！|再等等').split('|').filter(Boolean).length);
+  const k = Math.min(W, H) / 1080, w = (p.w ?? 0.84) * Math.min(W, H), count = Math.max(1, String(p.buttons ?? '好啊！|再等等').split('|').filter(Boolean).length);
   const bwid = Math.min(300 * k, (w - 120 * k) / count), gap = (w - count * bwid) / (count + 1), left = (p.x ?? 0.5) * W - w / 2, top = (p.y ?? 0.45) * H - 150 * k;
   const r = (v: number) => Math.round(v * 1e4) / 1e4;
   return [r((left + gap + (clamp(n, 1, count) - 1) * (bwid + gap) + bwid / 2) / W), r((top + 50 * k + 140 * k + 43 * k) / H)];

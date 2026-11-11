@@ -16,9 +16,9 @@ type Rect = [number, number, number, number];
 const fontsReady = (text: string) => Promise.all([document.fonts.load(`700 80px "${LATIN}"`, 'AZaz09·&').catch(() => []), document.fonts.load(`700 80px "${CJK}"`, text || '字').catch(() => [])]).then(() => undefined);
 
 /** the window at `local` (frame fractions): "seconds|x,y,w,h" keys (in time order, however written) eased from one to the next; none =
- *  the frame inside the border */
+ *  the frame inside the border, `border` of the short side on every side */
 export function monoWindow(keys: string, local: number, W: number, H: number, border: number): Rect {
-  const def: Rect = [border, border * (W / H), 1 - 2 * border, 1 - 2 * border * (W / H)];
+  const m = Math.min(W, H), bx = border * (m / W), by = border * (m / H), def: Rect = [bx, by, 1 - 2 * bx, 1 - 2 * by];
   const ks = String(keys ?? '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const [t, r] = l.split('|'), v = String(r ?? '').split(',').map(Number);
     return { t: Number(t) || 0, r: (v.length === 4 && v.every(Number.isFinite) ? v : def) as Rect };
@@ -36,10 +36,10 @@ interface FP { text: string; border: number; band: number; angle: number; speed:
 interface FS { c: HTMLCanvasElement; text: string }
 export const monoframe: ItemType<FP, FS> = {
   type: 'common.monoframe', label: '黑白字框', category: 'frame', kind: 'overlay',
-  doc: '畫面四周一圈黑白斜紋字：一條條斜的帶子，ink 底 paper 字、paper 底 ink 字輪流，text 一直重複、沿著帶子慢慢走（speed），中間一個圓角的窗露出影片（border 框寬）；win 讓窗縮放（一行一個「秒|x,y,寬,高」畫面比例，例如先縮成畫面中間一小條、再放大回滿），full 整個畫面都是字；一章一個項目、換章換字（城市名、主題字、中英文都可以）；配標題範本 mono-cycle、字幕範本 mono-box、common.wipe 的 vortex 換章、common.filmstrip 底片頁；旅行、城市、美食的潮流感短片',
+  doc: '畫面四周一圈黑白斜紋字：一條條斜的帶子，ink 底 paper 字、paper 底 ink 字輪流，text 一直重複、沿著帶子慢慢走（speed），中間一個圓角的窗露出影片（border 框寬，畫面短邊比例）；win 讓窗縮放（一行一個「秒|x,y,寬,高」畫面比例，例如先縮成畫面中間一小條、再放大回滿），full 整個畫面都是字；一章一個項目、換章換字（城市名、主題字、中英文都可以）；配標題範本 mono-cycle、字幕範本 mono-box、common.wipe 的 vortex 換章、common.filmstrip 底片頁；旅行、城市、美食的潮流感短片',
   params: [
     { key: 'text', label: '帶子上的字（會一直重複）', type: 'string', default: 'HONG KONG · 香港 · ' },
-    { key: 'border', label: '框寬（畫面寬比例）', type: 'number', min: 0, max: 0.3, step: 0.005, default: 0.045 },
+    { key: 'border', label: '框寬（畫面短邊比例）', type: 'number', min: 0, max: 0.3, step: 0.005, default: 0.045 },
     { key: 'band', label: '帶子寬（px，短邊 1080）', type: 'number', min: 20, max: 200, step: 1, default: 62 },
     { key: 'angle', label: '斜度（度）', type: 'number', min: -60, max: 60, step: 1, default: -28 },
     { key: 'speed', label: '字走的速度（px／秒）', type: 'number', min: 0, max: 600, step: 5, default: 70 },
@@ -134,7 +134,7 @@ export const filmstrip: ItemType<SP, SS> = {
     g.clearRect(0, 0, W, H);
     g.globalAlpha = clamp(local / 0.15) * clamp((dur - local) / 0.15);
     g.fillStyle = p.bg; g.fillRect(0, 0, W, H);
-    const sw = W * 0.44, fw = sw * 0.76, fh = fw / 1.5, gap = sw * 0.14, pitch = fh + gap, n = s.imgs.length, run = local * p.speed * H;
+    const sw = Math.min(W, H) * 0.44, fw = sw * 0.76, fh = fw / 1.5, gap = sw * 0.14, pitch = fh + gap, n = s.imgs.length, run = local * p.speed * H;
     [0.265, 0.735].forEach((cx, col) => {
       const x0 = cx * W - sw / 2;
       g.fillStyle = '#1b1b1b'; g.fillRect(x0, 0, sw, H);

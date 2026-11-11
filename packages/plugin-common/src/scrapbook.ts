@@ -61,7 +61,7 @@ export const prints: ItemType<PP, PS> = {
     for (const { p: q, wrap, img } of s.list) {
       const t = local - q.at;
       if (t < 0) { wrap.style.display = 'none'; continue; }
-      const k = spring(t), w = q.w * W, h = w / q.ratio, b = p.border * w, sc = 1.18 - 0.18 * k, rot = q.tilt + (1 - k) * 7, dy = (1 - k) * -0.03 * H;
+      const k = spring(t), w = q.w * Math.min(W, H), h = w / q.ratio, b = p.border * w, sc = 1.18 - 0.18 * k, rot = q.tilt + (1 - k) * 7, dy = (1 - k) * -0.03 * H;
       Object.assign(wrap.style, { display: 'block', left: `${((q.x * W - w / 2) / W) * 100}%`, top: `${((q.y * H - h / 2 + dy) / H) * 100}%`, width: `${(w / W) * 100}%`, height: `${(h / H) * 100}%`,
         opacity: String(clamp(t / 0.12) * out), transform: `rotate(${rot.toFixed(2)}deg) scale(${sc.toFixed(4)})` });
       Object.assign(img.style, { left: `${(b / w) * 100}%`, top: `${(b / h) * 100}%`, width: `${((w - 2 * b) / w) * 100}%`, height: `${((h - 2 * b) / h) * 100}%` });
@@ -103,7 +103,7 @@ function makePrints(ctx: ItemCtx<PP>, s: PS) {
 
 export interface Scrap { at: number; kind: 'paper' | 'dots' | 'tape' | 'pin' | 'clip' | 'grid'; x: number; y: number; w: number; h: number; tilt: number; color: string }
 const KINDS = ['paper', 'dots', 'tape', 'pin', 'clip', 'grid'];
-/** "seconds|kind|x,y,w,h|tilt|colour" a line (w, h fractions of the frame width; grid: "cols,rows" in place of the box); a line
+/** "seconds|kind|x,y,w,h|tilt|colour" a line (w, h fractions of the frame's short side; grid: "cols,rows" in place of the box); a line
  *  with no colour keeps it empty, and scrapColor gives that kind's own */
 export function parseScraps(text: unknown): Scrap[] {
   return String(text ?? '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
@@ -130,7 +130,7 @@ interface SP { scraps: string; seed: number }
 interface SS { c: HTMLCanvasElement }
 export const scraps: ItemType<SP, SS> = {
   type: 'common.scraps', label: '紙片和膠帶', category: 'mark', kind: 'overlay',
-  doc: '剪貼簿上貼的東西，scraps 一行一個「秒|種類|x,y,寬,高|傾斜|顏色」（寬高是畫面寬的比例），每個在自己的秒彈出貼上：paper 撕邊紙片、dots 網點紙膠帶、tape 半透明紙膠帶、pin 圓圖釘（寬＝直徑）、clip 迴紋針、grid 整個畫面的白色細縫（位置寫「欄,列」，換頁用 common.wipe 的 tiles 之後留著格縫）；配 common.prints、字幕範本 scrap-chip、標題範本 scrapbook-card',
+  doc: '剪貼簿上貼的東西，scraps 一行一個「秒|種類|x,y,寬,高|傾斜|顏色」（x,y 是畫面比例，寬高是畫面短邊的比例），每個在自己的秒彈出貼上：paper 撕邊紙片、dots 網點紙膠帶、tape 半透明紙膠帶、pin 圓圖釘（寬＝直徑）、clip 迴紋針、grid 整個畫面的白色細縫（位置寫「欄,列」，換頁用 common.wipe 的 tiles 之後留著格縫）；配 common.prints、字幕範本 scrap-chip、標題範本 scrapbook-card',
   params: [
     { key: 'scraps', label: '紙片（一行一個：秒|paper／dots／tape／pin／clip／grid|x,y,寬,高|傾斜|顏色）', type: 'text', default: '0|dots|0.78,0.1,0.34,0.07|-3|#c3b1f5\n0.3|paper|0.25,0.8,0.3,0.1|4|#e8763a\n0.6|pin|0.5,0.45,0.04,0.04|0|#e0552f' },
     { key: 'seed', label: '撕邊亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 7 },
@@ -138,7 +138,7 @@ export const scraps: ItemType<SP, SS> = {
   build(ctx) { return { c: canvasIn(ctx.root) }; },
   hide(s) { s.c.width = 0; s.c.height = 0; },
   draw(ctx, s) {
-    const { local, dur, W, H, params: p, motion } = ctx, u = Math.min(W, H) / 1080;
+    const { local, dur, W, H, params: p, motion } = ctx, m = Math.min(W, H), u = m / 1080;
     if (s.c.width !== W || s.c.height !== H) { s.c.width = W; s.c.height = H; }
     const g = s.c.getContext('2d');
     if (!g) return;
@@ -155,7 +155,7 @@ export const scraps: ItemType<SP, SS> = {
         g.globalAlpha = 1;
         return;
       }
-      const k = spring(t), r = rng(p.seed * 97 + i * 13), w = sc.w * W, h = sc.h * W;
+      const k = spring(t), r = rng(p.seed * 97 + i * 13), w = sc.w * m, h = sc.h * m;
       g.save(); g.globalAlpha = clamp(t / 0.1) * out; g.translate(sc.x * W, sc.y * H); g.rotate((sc.tilt * Math.PI) / 180); g.scale(0.85 + 0.15 * k, 0.85 + 0.15 * k);
       if (sc.kind === 'pin') {
         g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.arc(4 * u, 6 * u, w / 2, 0, Math.PI * 2); g.fill();

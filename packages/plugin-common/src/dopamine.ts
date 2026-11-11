@@ -139,12 +139,12 @@ export const stickerWobble = (local: number, at: number) => (local - at > 0.4 ? 
 
 export const sticker: ItemType<SP, SS> = {
   type: 'common.sticker', label: '扁平貼紙', category: 'mark', kind: 'overlay',
-  doc: '一張扁平的小貼紙：heart 愛心、bolt 閃電、star 星星、smile 笑臉（腮紅、彎彎的嘴），黑色粗框（ink）、往右下錯開的實心影子，從斜斜的小一點彈出來，貼好後輕輕晃；x、y 中心、size 寬（畫面寬比例）；貼在卡片角落、標題旁邊（多巴胺配色的開箱、清單、Vlog，配 common.popcard；有字的爆炸貼紙用 common.burst 的 shadow，游標用 common.touch 的 cursor）',
+  doc: '一張扁平的小貼紙：heart 愛心、bolt 閃電、star 星星、smile 笑臉（腮紅、彎彎的嘴），黑色粗框（ink）、往右下錯開的實心影子，從斜斜的小一點彈出來，貼好後輕輕晃；x、y 中心（畫面比例）、size 寬（畫面短邊比例，直式橫式一樣大）；貼在卡片角落、標題旁邊（多巴胺配色的開箱、清單、Vlog，配 common.popcard；有字的爆炸貼紙用 common.burst 的 shadow，游標用 common.touch 的 cursor）',
   params: [
     { key: 'shape', label: '形狀（heart 愛心、bolt 閃電、star 星星、smile 笑臉）', type: 'enum', options: ['heart', 'bolt', 'star', 'smile'], default: 'heart' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.8 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.7 },
-    { key: 'size', label: '大小（畫面寬比例）', type: 'number', min: 0.02, max: 0.6, step: 0.005, default: 0.12 },
+    { key: 'size', label: '大小（畫面短邊比例）', type: 'number', min: 0.02, max: 0.6, step: 0.005, default: 0.12 },
     { key: 'color', label: '填色', type: 'color', default: '#ffd23f', theme: 'palette.hl' },
     { key: 'ink', label: '框線和影子的顏色', type: 'color', default: '#111111', theme: 'palette.ink' },
     { key: 'tilt', label: '傾斜（度）', type: 'number', min: -45, max: 45, step: 1, default: 8 },
@@ -164,7 +164,7 @@ export const sticker: ItemType<SP, SS> = {
     g.clearRect(0, 0, W, H);
     const pop = springPopAt(local, p.popAt, 0.4), k = Math.min(W, H) / 1080;
     if (pop <= 0.001) return;
-    const r = (p.size * W) / 2, wob = stickerWobble(local, p.popAt);
+    const r = (p.size * Math.min(W, H)) / 2, wob = stickerWobble(local, p.popAt);
     const line = 5 * k, off = 7 * k;
     g.save(); g.translate(p.x * W, p.y * H); g.rotate(((p.tilt + wob + (1 - Math.min(1, pop)) * -25) * Math.PI) / 180); g.scale(pop, pop); g.lineJoin = 'round';
     g.save(); g.translate(off, off); stickerPath(g, p.shape, r); g.fillStyle = p.ink; g.fill(); g.restore();

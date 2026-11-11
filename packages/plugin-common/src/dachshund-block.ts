@@ -135,7 +135,7 @@ export const dachshund: ItemType<P, S> = {
     { key: 'x0', label: '起點 x（身體中心，畫面寬比例；不走路時就站在這裡）', type: 'number', min: -0.5, max: 1.5, step: 0.01, default: 0.2 },
     { key: 'x1', label: '終點 x（走路時，畫面寬比例；比起點小就往左走、面向左）', type: 'number', min: -0.5, max: 1.5, step: 0.01, default: 0.8 },
     { key: 'y', label: '腳底的位置（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.78 },
-    { key: 'size', label: '大小（狗所在方框的寬，畫面寬 %；狗從尾巴到鼻尖約佔方框的 88%）', type: 'number', min: 5, max: 100, step: 0.5, default: 36 },
+    { key: 'size', label: '大小（狗所在方框的寬，畫面短邊 %；狗從尾巴到鼻尖約佔方框的 88%）', type: 'number', min: 5, max: 100, step: 0.5, default: 36 },
     { key: 'facing', label: '朝向（不走路時；走路時一律面向前進的方向）', type: 'enum', options: ['right', 'left'], default: 'right' },
     { key: 'look', label: '樣子（light 黑狗、dark 奶油色的狗，給深色底）', type: 'enum', options: ['light', 'dark'], default: 'light' },
     { key: 'steps', label: '每秒走幾步', type: 'number', min: 0.5, max: 6, step: 0.1, default: 2.2 },
@@ -161,7 +161,7 @@ export const dachshund: ItemType<P, S> = {
   draw(ctx, s) {
     const p = ctx.params, { W, H, local, dur } = ctx;
     loadStills(ctx, s);
-    const L = (clamp(p.size, 5, 100) / 100) * W, k = L / 160, cw = Math.ceil(L * 1.2), ch = Math.ceil(L * 0.62);
+    const L = (clamp(p.size, 5, 100) / 100) * Math.min(W, H), k = L / 160, cw = Math.ceil(L * 1.2), ch = Math.ceil(L * 0.62);
     const cx = (p.action === 'walk' ? lerp(p.x0, p.x1, clamp(local / Math.max(dur, 0.01))) : p.x0) * W, feet = p.y * H;
     cssCamel(s.cv, { left: `${cx - cw / 2}px`, top: `${feet - ch * 0.9}px`, width: `${cw}px`, height: `${ch}px` });
     const g = canvasAt(s.cv, cw, ch);

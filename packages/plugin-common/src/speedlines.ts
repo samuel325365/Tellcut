@@ -12,8 +12,8 @@ export const speedlines: ItemType<P, S> = {
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.4 },
     { key: 'count', label: '線的數量', type: 'number', min: 8, max: 120, step: 1, default: 48 },
-    { key: 'inner', label: '起點半徑（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.3 },
-    { key: 'length', label: '線長（畫面寬比例）', type: 'number', min: 0.05, max: 1.5, step: 0.01, default: 0.7 },
+    { key: 'inner', label: '起點半徑（畫面短邊比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.3 },
+    { key: 'length', label: '線長（畫面短邊比例）', type: 'number', min: 0.05, max: 1.5, step: 0.01, default: 0.7 },
     { key: 'color', label: '顏色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'seed', label: '亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 9 },
     { key: 'flicker', label: '微微閃動', type: 'bool', default: true },
@@ -26,7 +26,7 @@ export const speedlines: ItemType<P, S> = {
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
-    const p = ctx.params, { W, H } = ctx, g = canvasAt(s.cv, W, H), cx = p.x * W, cy = p.y * H;
+    const p = ctx.params, { W, H } = ctx, m = Math.min(W, H), g = canvasAt(s.cv, W, H), cx = p.x * W, cy = p.y * H;
     g.clearRect(0, 0, W, H);
     // every other frame pair the lines swap to a second set, which reads as a shiver
     const set = p.flicker ? Math.floor(frameOf(ctx.local, ctx.fps) / 2) % 2 : 0, r = rng(p.seed + set * 101);
@@ -34,7 +34,7 @@ export const speedlines: ItemType<P, S> = {
     g.fillStyle = p.color;
     g.globalAlpha = clamp(0.85 * fade);
     for (let i = 0; i < p.count; i++) {
-      const a = ((i + r() * 0.8) / p.count) * Math.PI * 2, r0 = p.inner * W * (0.9 + 0.3 * r()), len = p.length * W * (0.35 + 0.65 * r()) * grow, wid = (0.004 + 0.012 * r()) * W;
+      const a = ((i + r() * 0.8) / p.count) * Math.PI * 2, r0 = p.inner * m * (0.9 + 0.3 * r()), len = p.length * m * (0.35 + 0.65 * r()) * grow, wid = (0.004 + 0.012 * r()) * m;
       const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx;
       g.beginPath();
       g.moveTo(cx + dx * r0 + nx * wid, cy + dy * r0 + ny * wid);
