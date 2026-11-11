@@ -134,7 +134,8 @@ export const STYLES: Sample[] = [
     nameB: 'Mia Chen-Oyelaran', roleB: '睡眠醫學中心認證睡眠教練' }, at: [0.6], theme: VS, bg: '#3f9a5c' },
   { name: 'hangtag-long', type: 'common.hangtag', params: { value: 'NT$1,280', name: '手工黑糖老薑母茶', sub: 'Hand-made brown sugar ginger tea', quip: '喝完整個人都暖起來了' }, at: [1.5], bg: '#6b4a3a' },
   { name: 'censor-long', type: 'common.censor', params: { label: '這段真的不能播出來' }, at: [1.5] },
-  { name: 'notecard-done-long', type: 'common.notecard', params: { mode: 'done', title: '義式經典提拉米蘇大功告成', sub: '馬斯卡彭起司配上濃縮咖啡和手指餅乾', latin: 'Tiramisù della nonna, layered', note: '放進冰箱冷藏一個晚上之後再切開最好吃' }, at: [2.5], bg: '#e7d8bd' },
+  // (the done page's note, 18 characters written from 1.4 s at 14 a second, is finished by 2.8 s)
+  { name: 'notecard-done-long', type: 'common.notecard', params: { mode: 'done', title: '義式經典提拉米蘇大功告成', sub: '馬斯卡彭起司配上濃縮咖啡和手指餅乾', latin: 'Tiramisù della nonna, layered', note: '放進冰箱冷藏一個晚上之後再切開最好吃' }, len: 4, at: [3.2], bg: '#e7d8bd' },
   { name: 'magazine-long', type: 'common.magazine', params: { title: 'THE SLOW TRAVELLER QUARTERLY', kicker: 'LONG READ', headline: '一座城市最好的樣子，\n是清晨六點的市場', deck: '從清晨的魚市場一路走到老城區的咖啡館再到河邊看夕陽' }, at: [2.5] },
   // slip, rating and scoreboard in 16:9: capped at the short side's width, centred (they spanned the side margins, about 1700 px)
   { name: 'wide-slip-board', type: 'common.slip', params: { mode: 'board', title: '下一位，換你排', sub: '中壢車站 步行 10 分鐘' }, at: [2.0], wide: true, bg: '#6b5444' },
