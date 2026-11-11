@@ -88,6 +88,14 @@ test('intermediates of an interrupted export and half-cut clips are removed once
   for (const f of kept) expect(existsSync(f)).toBe(true);
 });
 
+test('a dropped file a crashed server left half written (media/import/*.part) goes once stale, freeing its name; files there stay', () => {
+  const { root, put } = project();
+  mkdirSync(join(root, 'demo', 'media', 'import'), { recursive: true });
+  const stale = put('media/import/trip.mp4.part', 120), recent = put('media/import/live.mp4.part', 5), done = put('media/import/old.mp4', 120);
+  expect(cleanupLeftovers(root, { alive: () => true })).toEqual([join('demo', 'media', 'import', 'trip.mp4.part')]);
+  expect([existsSync(stale), existsSync(recent), existsSync(done)]).toEqual([false, true, true]);
+});
+
 test('a leftover named after a process id that is alive again (a reused pid) still goes once it is a day old', () => {
   const { root, put } = project();
   const old = put('project.json.333.tmp', 25 * 60), recent = put('.export-k3-333.json', 5);

@@ -1,7 +1,7 @@
 // spec §8: a server that crashed mid-save or mid-export leaves temp files behind; clear them at the next start. Also a deleted
 // project's folder a locked file kept (delete.ts). Also the home page's
 // conversations nobody wrote in (one moved to its project keeps only a note; the browser started a new one). Also copies of My blocks
-// nothing in their project names any more.
+// nothing in their project names any more. Also a file dropped on the editor that was never finished.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { isAlive, pruneCopies, SNAPSHOT_FILE, SNAPSHOT_INDEX } from '@tellcut/media-node';
@@ -53,6 +53,10 @@ export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number)
     for (const name of existsSync(voice) ? readdirSync(voice) : []) if (leftover(join(voice, name), name, [PID_VOICE])) drop(join(voice, name));
     for (const f of CACHE_DIRS.flatMap((dir) => walk(join(cache, dir)))) if (PARTIAL.test(f) && stale(f)) drop(f);
     for (const f of walk(join(p, 'exports'))) if (INTERMEDIATE.test(f) && stale(f)) drop(f);
+    // a file being dropped on the editor (upload.ts): its .part also holds the name, so the next drop of it would be name-2.
+    // A live upload writes to it all the time; one an hour still is a dead server's (or a page gone without a word)
+    const imp = join(p, 'media', 'import');
+    for (const name of existsSync(imp) ? readdirSync(imp) : []) if (name.endsWith('.part') && stale(join(imp, name))) drop(join(imp, name));
     // copies of My blocks nothing in the project names any more (an add undone in the editor), a day old (media-node pruneCopies)
     if (existsSync(join(p, 'fx', 'lib', 'links.json'))) {
       try { for (const slug of pruneCopies(p, { now })) removed.push(join(d.name, 'fx', 'lib', slug)); } catch { /* left for next time */ }
