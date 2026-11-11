@@ -90,9 +90,17 @@ export function mastheadY(W: number, H: number, u: number, back: boolean, title:
 // ── common.masthead
 interface MP { mode: 'front' | 'back'; title: string; issueL: string; issueR: string; contents: string; script: string; sub: string; source: string; t: number; color: string; ink: string }
 interface MS { c: HTMLCanvasElement; img: HTMLImageElement | null; key: string; text: string }
+/** common.magazine's names for the same things, taken too (an agent that has just used the magazine writes them): layout cover /
+ *  back for mode, issue for the right issue line, no (the issue number) for the left one, accent for the back cover's colour. When
+ *  both are given the magazine's name wins: it is the one written on purpose, the other may be a default. */
+export function mastheadParams(p: MP & { layout?: unknown; issue?: unknown; no?: unknown; accent?: unknown }): MP {
+  const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+  const mode = p.layout === 'cover' || p.layout === 'front' ? 'front' : p.layout === 'back' ? 'back' : p.mode;
+  return { ...p, mode, issueR: str(p.issue) ?? p.issueR, issueL: str(p.no) ?? p.issueL, color: (str(p.accent) || undefined) ?? p.color };
+}
 export const masthead: ItemType<MP, MS> = {
   type: 'common.masthead', label: '雜誌刊頭', category: 'frame', kind: 'overlay',
-  doc: '雜誌的封面與封底：mode front 疊在滿版影片上，刊頭（title）一個字一個字打出來、下面拉出一條細線，左右上角兩行期別小字（issueL、issueR），右邊目錄（contents 一行一條）一行行出現，左下斜體一行（script）擦出來；mode back 是封底：color 色的整頁，上方 NEXT ISSUE／SEE YOU AGAIN、刊頭、細線、期別（sub），中間一條相片（source 在 t 秒的畫面），下面斜體一行（script）；旅行、城市、美食的雜誌風開場和結尾，中間配 common.spread 雜誌頁、common.wordbands 字帶、標題範本 didone-full、字幕範本 editorial-bar',
+  doc: '雜誌的封面與封底：mode front 疊在滿版影片上，刊頭（title）一個字一個字打出來、下面拉出一條細線，左右上角兩行期別小字（issueL、issueR），右邊目錄（contents 一行一條）一行行出現，左下斜體一行（script）擦出來；mode back 是封底：color 色的整頁，上方 NEXT ISSUE／SEE YOU AGAIN、刊頭、細線、期別（sub），中間一條相片（source 在 t 秒的畫面），下面斜體一行（script）；旅行、城市、美食的雜誌風開場和結尾，中間配 common.spread 雜誌頁、common.wordbands 字帶、標題範本 didone-full、字幕範本 editorial-bar；影片要在雜誌版面的窗格裡播（內頁、清單、封面加封面標、封底按鈕）用 common.magazine，masthead 是刊頭疊在滿版影片上、封底整頁色；也收 common.magazine 的參數名：layout（cover＝front、back）、issue（右上）、no（左上）、accent（封底底色）',
   params: [
     { key: 'mode', label: '樣式（front 封面、back 封底）', type: 'enum', options: ['front', 'back'], default: 'front' },
     { key: 'title', label: '刊頭', type: 'string', default: 'SEATTLE' },
@@ -106,16 +114,16 @@ export const masthead: ItemType<MP, MS> = {
     { key: 'color', label: '封底底色（back）', type: 'color', default: '#c23b2c', theme: 'palette.accent' },
     { key: 'ink', label: '字色', type: 'color', default: '#ffffff' },
   ],
-  media: (item) => ((item.params as Partial<MP>).mode === 'back' ? stillMedia(item) : { videos: [], stills: [] }),
+  media: (item) => (mastheadParams(item.params as unknown as MP).mode === 'back' ? stillMedia(item) : { videos: [], stills: [] }),
   build(ctx) {
     const s: MS = { c: canvasIn(ctx.root), img: null, key: '', text: `${ctx.params.title}${ctx.params.script}${ctx.params.sub}` };
-    if (ctx.params.mode === 'back') photo(s, ctx.media, ctx.params.source, ctx.params.t);
+    if (mastheadParams(ctx.params).mode === 'back') photo(s, ctx.media, ctx.params.source, ctx.params.t);
     return s;
   },
   ready(s) { return Promise.all([fontsReady(s.text), imagesReady([s.img])]).then(() => undefined); },
   hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
-    const { local, dur, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
+    const { local, dur, W, H } = ctx, p = mastheadParams(ctx.params), u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const back = p.mode === 'back', out = clamp((dur - local) / 0.2);
     if (back) photo(s, ctx.media, p.source, p.t);
     g.globalAlpha = back ? 1 : out;
@@ -182,9 +190,13 @@ export const masthead: ItemType<MP, MS> = {
 // ── common.spread
 interface SP { layout: 'swatch' | 'column'; source: string; t: number; fx: number; fy: number; no: string; total: string; name: string; header: string; code: string; cname: string; word: string; page: string; color: string; ink: string; paper: string }
 interface SS { c: HTMLCanvasElement; img: HTMLImageElement | null; key: string; text: string }
+/** common.magazine's name for the same thing, taken too: kicker (the column's name) for header (layout and page already match) */
+export function spreadParams(p: SP & { kicker?: unknown }): SP {
+  return typeof p.kicker === 'string' ? { ...p, header: p.kicker } : p;
+}
 export const spread: ItemType<SP, SS> = {
   type: 'common.spread', label: '雜誌跨頁', category: 'frame', kind: 'scene',
-  doc: '一整頁雜誌（放在影片下面當底，layer: under，字幕疊在上面），相片是素材（source）在 t 秒的畫面（fx、fy 對焦）：layout swatch 是「味道索引」的色頁：color 色整頁，上方欄目名（header）和頁數（no／total）、一張大相片、大號襯線數字（no）＋名稱（name）、右下一張色票卡（色塊就是頁面的顏色，下面色號 code 和色名 cname，可以是設計用的字樣）；layout column 是專欄頁：paper 紙色，左上大號數字、一張相片卡疊上去、相片下緣壓一個空心大字（word）、右上欄目名、右下頁碼（page）；一頁一個項目，頁與頁直接切換（配 common.page 翻頁聲）；美食清單（一道菜一個顏色）、一個城市的幾個地方、商品型錄；配 common.masthead 封面封底、字幕範本 editorial-bar',
+  doc: '一整頁雜誌（放在影片下面當底，layer: under，字幕疊在上面），相片是素材（source）在 t 秒的畫面（fx、fy 對焦）：layout swatch 是「味道索引」的色頁：color 色整頁，上方欄目名（header）和頁數（no／total）、一張大相片、大號襯線數字（no）＋名稱（name）、右下一張色票卡（色塊就是頁面的顏色，下面色號 code 和色名 cname，可以是設計用的字樣）；layout column 是專欄頁：paper 紙色，左上大號數字、一張相片卡疊上去、相片下緣壓一個空心大字（word）、右上欄目名、右下頁碼（page）；一頁一個項目，頁與頁直接切換（配 common.page 翻頁聲）；美食清單（一道菜一個顏色）、一個城市的幾個地方、商品型錄；配 common.masthead 封面封底、字幕範本 editorial-bar；spread 的相片是靜圖、整頁在影片下面，要影片在版面的窗格裡播用 common.magazine；也收 common.magazine 的參數名 kicker（＝header）',
   params: [
     { key: 'layout', label: '版型（swatch 色票色頁、column 專欄頁）', type: 'enum', options: ['swatch', 'column'], default: 'swatch' },
     { key: 'source', label: '相片素材', type: 'source-ref', default: '' },
@@ -208,7 +220,7 @@ export const spread: ItemType<SP, SS> = {
   ready(s) { return Promise.all([fontsReady(s.text), imagesReady([s.img])]).then(() => undefined); },
   hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
-    const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
+    const { local, W, H } = ctx, p = spreadParams(ctx.params), u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     photo(s, ctx.media, p.source, p.t);
     const small = 22 * u;
     if (p.layout === 'column') {

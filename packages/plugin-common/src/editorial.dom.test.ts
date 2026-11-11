@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // common.masthead / common.spread / common.wordbands and the title look didone (2026-11-06, the Fashion pilot film's fx.cover /
 // fx.taste / fx.column / fx.wordbands / fx.bighead). jsdom has no canvas: the timing helpers, the declared stills and the look are tested.
-import { bandHeight, graphemes, masthead, mastheadY, parseBands, scriptLines, spread, typedLetters, wordbands } from './editorial.ts';
+import { bandHeight, graphemes, masthead, mastheadParams, mastheadY, spreadParams, parseBands, scriptLines, spread, typedLetters, wordbands } from './editorial.ts';
 import { didone } from './caption/looks/title.ts';
 import type { ItemType } from '@tellcut/engine';
 
@@ -150,5 +150,34 @@ describe('editorial text stays on its page', () => {
     expect(cn.w).toBeLessThanOrEqual((sw - 32) * 1.01);
     const d0 = drawOnce(spread, {}, W, H, 1);
     expect([by(d0, '海鮮')[0].px, by(d0, 'SEA 18-1550')[0].px, by(d0, 'CRAB RED')[0].px]).toEqual([64, 24, 16]);
+  });
+});
+
+describe('masthead and spread also take common.magazine\'s parameter names', () => {
+  const defaults = (b: ItemType) => Object.fromEntries(b.params.map((d) => [d.key, d.default]));
+  test('masthead: layout cover / back for mode, issue and no for the two issue lines, accent for the back cover\'s colour', () => {
+    const p = mastheadParams({ ...defaults(masthead), layout: 'back', issue: 'THE SUMMER ISSUE', no: 'No.01', accent: '#123456' } as any);
+    expect([p.mode, p.issueR, p.issueL, p.color]).toEqual(['back', 'THE SUMMER ISSUE', 'No.01', '#123456']);
+    expect(mastheadParams({ ...defaults(masthead), mode: 'back', layout: 'cover' } as any).mode).toBe('front');
+    // its own names alone, as before
+    const own = mastheadParams(defaults(masthead) as any);
+    expect([own.mode, own.issueR, own.issueL, own.color]).toEqual(['front', 'THE CITY & MARKET ISSUE', 'N° 07 — JULY 2025', '#c23b2c']);
+    // a layout masthead does not have is left to mode
+    expect(mastheadParams({ ...defaults(masthead), mode: 'back', layout: 'list' } as any).mode).toBe('back');
+  });
+  test('the back cover named by layout declares its photo', () => {
+    const item = { id: 'm', type: masthead.type, start: 0, end: 3, params: { layout: 'back', source: 'p', t: 2 } } as any;
+    expect(masthead.media!(item, {} as any)).toEqual({ videos: [], stills: [{ source: 'p', t: 2, w: 1080 }] });
+  });
+  test('spread: kicker for its header', () => {
+    expect(spreadParams({ ...defaults(spread), kicker: 'FEATURE' } as any).header).toBe('FEATURE');
+    expect(spreadParams(defaults(spread) as any).header).toBe('THE TASTE INDEX');
+  });
+  test('each doc says when to use the other', async () => {
+    const { magazine } = await import('./magazine.ts');
+    expect(masthead.doc).toContain('common.magazine');
+    expect(spread.doc).toContain('common.magazine');
+    expect(magazine.doc).toContain('common.masthead');
+    expect(magazine.doc).toContain('common.spread');
   });
 });

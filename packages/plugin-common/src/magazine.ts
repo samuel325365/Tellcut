@@ -156,7 +156,7 @@ function bars(g: CanvasRenderingContext2D, x: number, y: number, w: number, hh: 
 
 export const magazine: ItemType<P, S> = {
   type: 'common.magazine', label: '雜誌頁', category: 'frame', kind: 'overlay',
-  doc: '雜誌的一頁，影片從版面上的影片格（洞）播出來（主軌片段 frame＝magazineWindow(參數)）：雜誌紙、刊頭（title）＋期別（issue／issueSub）、期號與頁碼（no／page）和一排頁碼方塊、雙線；layout feature 內頁：影片格下面幾格慢慢推近的靜態圖（cells「素材|秒|x,y,zoom」，- 是畫的示意圖）、格子上的標籤（tags「秒|格|EN|中文」）、影片左上紅底欄目（kicker）＋白色大標（headline，settleAt 縮小）、拉引言疊在格子上（quote＋quoteAt，slam 砸下、quoteEn 英文小字、quoteBy 出處）、頁腳；cover 封面：超大斜體刊頭、出血大影片、紅色橫幅大標滑進（banner／bannerEn）、下方格子上的封面標（lines）、條碼；list 清單頁：影片在上、紙上欄目＋大標、編號清單一列列進來（items「秒|標題|說明」，目錄、排行）；back 封底：影片滿版壓暗、刊頭、收尾大字（headline／deck）、紅色播放按鈕（cta）；直式影片在上格子在下，方形、橫式格子在右；專訪、旅行特刊、人物誌、開箱、排行；換頁配 common.wipe mode curl',
+  doc: '雜誌的一頁，影片從版面上的影片格（洞）播出來（主軌片段 frame＝magazineWindow(參數)）：雜誌紙、刊頭（title）＋期別（issue／issueSub）、期號與頁碼（no／page）和一排頁碼方塊、雙線；layout feature 內頁：影片格下面幾格慢慢推近的靜態圖（cells「素材|秒|x,y,zoom」，- 是畫的示意圖）、格子上的標籤（tags「秒|格|EN|中文」）、影片左上紅底欄目（kicker）＋白色大標（headline，settleAt 縮小）、拉引言疊在格子上（quote＋quoteAt，slam 砸下、quoteEn 英文小字、quoteBy 出處）、頁腳；cover 封面：超大斜體刊頭、出血大影片、紅色橫幅大標滑進（banner／bannerEn）、下方格子上的封面標（lines）、條碼；list 清單頁：影片在上、紙上欄目＋大標、編號清單一列列進來（items「秒|標題|說明」，目錄、排行）；back 封底：影片滿版壓暗、刊頭、收尾大字（headline／deck）、紅色播放按鈕（cta）；直式影片在上格子在下，方形、橫式格子在右；專訪、旅行特刊、人物誌、開箱、排行；換頁配 common.wipe mode curl；只要刊頭和目錄疊在滿版影片上（城市、美食雜誌風的封面，打字刊頭）或整頁色的封底用 common.masthead，相片靜圖的整頁（色票頁、專欄頁，墊在影片下）用 common.spread',
   params: [
     { key: 'layout', label: '版型（feature 內頁、cover 封面、list 清單頁、back 封底）', type: 'enum', options: ['feature', 'cover', 'list', 'back'], default: 'feature' },
     { key: 'title', label: '刊頭（雜誌名）', type: 'string', default: 'JOURNAL' },
