@@ -141,3 +141,51 @@ test('a video file from the PC dropped on the timeline is copied into media/impo
   expect(existsSync(join(root, 'file', 'media', 'import', 'dropped.mp4'))).toBe(true);
   await poll(() => items('file', 'v').map((i: any) => i.source)).toEqual(['src', 'src', 'dropped']);   // past c2's middle: after it
 }, 120000);
+
+test('a music card let go on the "+ New track" strip under the tracks makes a music track of its own; over the preview the card keeps following', async () => {
+  await open('newtrack');
+  await page.locator('[data-lib-tab="audio"]').click();
+  await page.waitForSelector('[data-add-music="song"]');
+  const from = await center('[data-add-music="song"]'), preview = await center('iframe[data-player]');
+  const pointer = () => page.locator('iframe[data-player]').evaluate((f) => getComputedStyle(f).pointerEvents);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 10, from.y + 10, { steps: 3 });
+  // the player's iframe would take the moves passing over it: it ignores the pointer while a card is dragged
+  await page.mouse.move(preview.x, preview.y, { steps: 6 });
+  expect(await pointer()).toBe('none');
+  const strip = await center('[data-drop-new="bottom"]');
+  await page.mouse.move(strip.x, strip.y, { steps: 12 });
+  await page.waitForSelector('[data-drop-new="bottom"].on');
+  await shot('drag-new-track');
+  await page.mouse.up();
+  await poll(() => disk('newtrack').tracks.filter((x: any) => x.kind === 'music').length).toBe(2);
+  const made = disk('newtrack').tracks.filter((x: any) => x.kind === 'music' && x.id !== 'mu');
+  expect(made[0].items.map((i: any) => i.media)).toEqual(['song']);
+  expect(items('newtrack', 'mu').length).toBe(0);
+  expect(await pointer()).toBe('auto');
+}, 120000);
+
+test('a file from the PC dropped on the media panel is added to the project and placed nowhere', async () => {
+  await open('panel');
+  const bytes = readFileSync(join(root, 'panel', 'song.wav')).toString('base64');
+  const panel = await center('aside.library');
+  const dt = await page.evaluateHandle((b64) => {
+    const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), d = new DataTransfer();
+    d.items.add(new File([raw], 'dropped.wav', { type: 'audio/wav', lastModified: 1_700_000_000_000 }));
+    return d;
+  }, bytes);
+  const fire = (type: string) => page.evaluate(([type, d, x, y]) => {
+    document.querySelector('aside.library')!.dispatchEvent(new DragEvent(type as string, { dataTransfer: d as DataTransfer, clientX: x as number, clientY: y as number, bubbles: true, cancelable: true }));
+  }, [type, dt, panel.x, panel.y] as const);
+  await fire('dragover');
+  await page.waitForSelector('aside.library.file-over');
+  await shot('drag-file-panel');
+  await fire('drop');
+  await poll(() => Object.keys(disk('panel').media)).toContain('dropped');
+  expect(disk('panel').media.dropped.path).toBe('media/import/dropped.wav');
+  await page.waitForTimeout(500);
+  const all = disk('panel').tracks.flatMap((x: any) => x.items).map((i: any) => i.media ?? i.source ?? i.type);
+  expect(all).not.toContain('dropped');
+  await page.waitForSelector('aside.library:not(.file-over)');
+}, 120000);
