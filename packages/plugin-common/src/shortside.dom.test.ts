@@ -6,7 +6,8 @@
 import { resolveTheme, withDefaults, type ItemType } from '@tellcut/engine';
 import { sticker } from './dopamine.ts';
 import { prints, scraps } from './scrapbook.ts';
-import { filmstrip, monoframe, monoWindow } from './mono.ts';
+import { monoframe, monoWindow } from './monoframe.ts';
+import { filmstrip } from './filmstrip.ts';
 import { speedlines } from './speedlines.ts';
 import { sparkle } from './sparkle.ts';
 import { dachshund } from './dachshund-block.ts';
