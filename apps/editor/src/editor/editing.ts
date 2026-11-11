@@ -251,7 +251,8 @@ export class TimelineEditing {
   // (spec 2026-11-10-media-panel-visual §5): planned by timeline/drop.ts, previewed live like a drag on the timeline, recorded
   // once on release. A block of My blocks not in the project yet has no item to preview: only its place is shown, and the
   // editor copies it in after the release (useLibraryBlock with that place).
-  private libDrag: { item?: MaterialItem; lib?: LibPick; kind: DropKind; len: number; refuse: string; recipe: Recipe | null } | null = null;
+  /** last: the project and plan last shown, so a move that changes neither shows nothing again (the player is sent a project each time) */
+  private libDrag: { item?: MaterialItem; lib?: LibPick; kind: DropKind; len: number; refuse: string; recipe: Recipe | null; last?: { base: Project; plan: string } } | null = null;
 
   beginLibDrag(src: Material | { lib: LibPick }): boolean {
     this.c.endAudition();
@@ -279,6 +280,9 @@ export class TimelineEditing {
     const base = h.project;
     const plan = planDrop(base, resolveTimes(base), { kind: d.kind, len: d.len, at, locked: new Set(this.s.locked), refuse: d.refuse || undefined },
       { snap: this.s.layout.snap && !mods.ctrl, threshold: 8 / this.s.pps, playhead: this.s.playhead });
+    const key = JSON.stringify(plan);
+    if (d.last?.base === base && d.last.plan === key) return;
+    d.last = { base, plan: key };
     d.recipe = null;
     let line: number | undefined;
     if (plan?.ok && d.item) {

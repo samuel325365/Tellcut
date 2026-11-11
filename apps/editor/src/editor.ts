@@ -846,7 +846,9 @@ export class Editor {
   /** Files from this PC dragged over the timeline: a line where they will start (their lengths are not known until they are in) */
   fileDragTo(at: DropTarget, kind: DropKind) {
     const plan = at.row === null ? null : { ok: true as const, track: at.row === 'new' ? null : at.row, start: at.t, end: at.t };
-    this.set({ libDrag: { kind, len: 0, files: true, plan, ...(plan?.track ? { line: this.cutNear(plan.track, at.t) } : {}) } });
+    const next = { kind, len: 0, files: true, plan, ...(plan?.track ? { line: this.cutNear(plan.track, at.t) } : {}) };
+    // dragover comes many times a second where the pointer rests: only a change is shown
+    if (JSON.stringify(next) !== JSON.stringify(this.s.libDrag)) this.set({ libDrag: next });
   }
   /** where something let go at `t` goes in: on the magnetic track the cut its packing picks (after each clip whose middle is
    *  before t), anywhere else t itself */

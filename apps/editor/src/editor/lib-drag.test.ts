@@ -111,3 +111,34 @@ test('files dragged in from the PC: a line where they will go in on the track un
   ed.fileDragEnd();
   expect(ed.store.get().libDrag).toBeNull();
 });
+
+test('a drag that does not change where it would go sends nothing again: no new state, no new project to the player', async () => {
+  const { api, bridge } = fakes({ project: async () => magneticFixture() });
+  const ed = new Editor('demo', { api, bridge, registryFor: async () => registry as any });
+  await ed.open();
+  let sets = 0;
+  ed.store.subscribe(() => sets++);
+  const patches = () => bridge.calls.filter((c: any) => c[0] === 'patch').length;
+  ed.beginLibDrag(scene);
+  ed.libDragTo({ t: 5, row: 'v' }, NO);
+  const [p0, s0, d0] = [patches(), sets, ed.store.get().libDrag];
+  ed.libDragTo({ t: 5, row: 'v' }, NO);                 // the same place (a move of a pixel, a dragover of the same spot)
+  expect([patches(), sets, ed.store.get().libDrag]).toEqual([p0, s0, d0]);
+  ed.libDragTo({ t: 5, row: null }, NO);                // off the timeline: the project as it is, once
+  const [p1, s1] = [patches(), sets];
+  expect(p1).toBe(p0 + 1);
+  for (const t of [1, 2, 3]) ed.libDragTo({ t, row: null }, NO);
+  expect([patches(), sets]).toEqual([p1, s1]);
+  ed.libDragTo({ t: 5, row: 'v' }, NO);                 // back on: previewed again, and still dropped there
+  expect(patches()).toBe(p1 + 1);
+  expect(ed.endLibDrag(true)).toBe(true);
+  expect(ids(ed, 'v').length).toBe(3);
+  // files from the PC: dragover comes many times a second on the same spot
+  ed.fileDragTo({ t: 3, row: 'v' }, 'video');
+  const s2 = sets, d2 = ed.store.get().libDrag;
+  ed.fileDragTo({ t: 3, row: 'v' }, 'video');
+  expect([sets, ed.store.get().libDrag]).toEqual([s2, d2]);
+  ed.fileDragTo({ t: 1, row: null }, 'video');
+  ed.fileDragTo({ t: 2, row: null }, 'video');
+  expect(sets).toBe(s2 + 1);
+});
