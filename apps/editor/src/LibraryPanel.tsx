@@ -69,7 +69,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const tab = s.layout.mediaTab, [qs, setQs] = useState<Record<MediaTab, string>>({ video: '', audio: '', effects: '' }), q = qs.effects, qa = qs.audio;
   const hitIn = (query: string) => (d: any) => matches(query, handleOf(d.type), d.type, d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc);
   // old blocks stay registered so older projects still play, but are not offered for new use (like the gallery and catalog)
-  const offered = (reg?.itemTypes() ?? []).filter((d) => !Object.hasOwn(OLD_BLOCKS, d.type));
+  const offered = (reg?.itemTypes() ?? []).filter((d: any) => !Object.hasOwn(OLD_BLOCKS, d.type));
   const blocks = groupsOf(offered.filter(hitIn(q)), Object.keys(BLOCK_CATEGORY), 'block');
   const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hitIn(qa)), Object.keys(SFX_CATEGORY), 'sfx');
   const [picked, setPicked] = useState<{ key: string; m?: Material; lib?: LibPick } | null>(null);
