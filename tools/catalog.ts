@@ -102,14 +102,16 @@ export function formatFind(plugins: Plugin[], query: string): string {
   return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), ...capLine, '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
 }
 
-/** one category of the block index: each block as its handle's number and short name, in handle order; a block that kept the
- *  handle of a category it left shows the whole handle, after the others */
-function indexLine(xs: Entry[], prefix: string): string {
+/** one category of the block index: its name, its handle prefix in brackets, then each block as its handle's number and short name,
+ *  in handle order; a block that kept the handle of a category it left shows the whole handle, after the others. The prefix is left
+ *  out when no block listed carries it (a category holding only moved blocks): there it would point at no handle at all. */
+function indexLine(cat: string, xs: Entry[], prefix: string): string {
   const name = (t: Entry) => '`' + t.type.replace(/^common\./, '') + '`';
   const parts = xs.map((t) => { const h = handleOf(t.type); return { t, h, own: !!h && h === `${prefix}-${numberOf(h)}` }; });
   const no = (h?: string) => (h ? Number(numberOf(h)) : Infinity);
   parts.sort((a, b) => Number(b.own) - Number(a.own) || no(a.h) - no(b.h));
-  return parts.map(({ t, h, own }) => (own ? `${numberOf(h!)} ` : h ? `${h} ` : '') + name(t)).join(', ');
+  const head = parts.some((x) => x.own) ? `${cat} (${prefix})` : cat;
+  return `${head}: ` + parts.map(({ t, h, own }) => (own ? `${numberOf(h!)} ` : h ? `${h} ` : '') + name(t)).join(', ');
 }
 
 /** the block index of guides/workflow.md (between the block-index marks): one line per category with its handle prefix, then
@@ -119,10 +121,10 @@ export function formatIndex(plugins: Plugin[]): string {
   // a block used only when asked for (onRequest), or kept only for older projects, is not offered here: the agent picks from this index
   const items: Entry[] = (common?.items ?? []).filter((t) => !t.onRequest && !OLD_BLOCKS[t.type]), sfx: Entry[] = common?.sfx ?? [];
   const lines = Object.entries(BLOCK_CATEGORY_EN).map(([k, cat]) => ({ cat, p: BLOCK_PREFIX[k as keyof typeof BLOCK_PREFIX], xs: items.filter((t) => t.category === k) }))
-    .filter((c) => c.xs.length).map((c) => `- ${c.cat} (${c.p}): ${indexLine(c.xs, c.p)}`);
+    .filter((c) => c.xs.length).map((c) => `- ${indexLine(c.cat, c.xs, c.p)}`);
   if (sfx.length) lines.push(`- Sound effects (\`c.sfx\`; a sound file the project made itself goes in with \`c.sfxFile\`):`, ...Object.entries(SFX_CATEGORY_EN)
     .map(([k, cat]) => ({ cat, p: SFX_PREFIX[k as keyof typeof SFX_PREFIX], xs: sfx.filter((s) => s.category === k) }))
-    .filter((c) => c.xs.length).map((c) => `  - ${c.cat} (${c.p}): ${indexLine(c.xs, c.p)}`));
+    .filter((c) => c.xs.length).map((c) => `  - ${indexLine(c.cat, c.xs, c.p)}`));
   return lines.join('\n');
 }
 

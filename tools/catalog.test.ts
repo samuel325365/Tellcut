@@ -68,8 +68,9 @@ test('find: every word in the type, label, doc or a param (options too), sound e
 
 test("the block index: one line per category with the short names, then the sound effects; guides/workflow.md carries the current one", () => {
   const idx = formatIndex(plugins);
-  // a block that moved category keeps its old handle, written whole; the others by number after the category's prefix
-  expect(idx.split('\n')[0]).toBe('- Captions (SUB): TXT-02 `caption`');
+  // a block that moved category keeps its old handle, written whole; the others by number after the category's prefix; a category
+  // whose listed blocks all carry another category's handle shows no prefix (nothing listed there is a SUB-nn)
+  expect(idx.split('\n')[0]).toBe('- Captions: TXT-02 `caption`');
   expect(idx.split('\n')[1]).toBe('- Titles (HDG): 01 `heading`');
   expect(idx.split('\n')[2]).toMatch(/^- Big text \(TXT\): 01 `burst`, .*\d\d `slam`/);   // the prefix once, then number and name
   expect(idx).toMatch(/^- Sound effects \(`c\.sfx`; a sound file the project made itself goes in with `c\.sfxFile`\):$/m);
