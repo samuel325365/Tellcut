@@ -44,11 +44,13 @@ export class Autosave {
    *  false = it is not on disk: the save failed (the usual retry keeps running) or writes are held with an edit waiting. */
   async settle(): Promise<boolean> {
     clearTimeout(this.timer);
-    while (!this.dead && !this.held && (this.saving || this.dirty)) {
+    // a write already sent is waited for even when writes were held meanwhile (a changed-on-disk arriving mid-save): that is
+    // the write most likely to fail with a 409
+    while (!this.dead && (this.saving || (!this.held && this.dirty))) {
       await this.flush();
       if (this.status === 'error') return false;
     }
-    return !(this.held && this.dirty);
+    return this.dead || (!this.dirty && this.status !== 'error');
   }
 
   private async write(): Promise<void> {

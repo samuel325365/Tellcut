@@ -64,6 +64,26 @@ test('settle() reports a failed save', async () => {
   expect(await a.settle()).toBe(false);
 });
 
+test('settle() waits for a write in flight even when writes get held meanwhile, and says false when it then fails', async () => {
+  let answer!: (ok: boolean) => void;
+  const a = new Autosave({ save: () => new Promise<void>((r, no) => { answer = (ok) => (ok ? r() : no(new Error('409'))); }), delay: 5 });
+  a.schedule('v1');
+  await vi.advanceTimersByTimeAsync(10);      // the write is in the air
+  a.hold(true);                               // a changed-on-disk arrives
+  let settled: boolean | undefined;
+  void a.settle().then((v) => { settled = v; });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(settled).toBeUndefined();            // not "on disk" before the write has answered
+  answer(false);
+  await vi.advanceTimersByTimeAsync(0);
+  expect([settled, a.dirty, a.status]).toEqual([false, true, 'error']);
+  a.hold(false);
+  const ok = a.settle();
+  await vi.advanceTimersByTimeAsync(0);
+  answer(true);
+  expect(await ok).toBe(true);
+});
+
 test('settle says false while writes are held with an edit waiting (it is not on disk)', async () => {
   const a = new Autosave({ save: async () => {} });
   a.hold(true);
