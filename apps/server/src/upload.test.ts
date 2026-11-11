@@ -1,14 +1,19 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
+import { connect } from 'node:net';
 import { join } from 'node:path';
 import { makeProjects, startApp } from './test-utils.ts';
+import { fileTime } from './upload.ts';
 
 // the upload's file handle belongs to its write stream: after an abort the route must not close it again (the number may
 // already be another open file's)
 const closed: number[] = [];
+// a drive that refuses the time (set by a test)
+let refuseTime = false;
 vi.mock('node:fs', async (orig) => {
   const real = await orig<typeof import('node:fs')>();
-  return { ...real, default: real, closeSync: (fd: number) => { closed.push(fd); return real.closeSync(fd); } };
+  const utimesSync: typeof real.utimesSync = (...a) => { if (refuseTime) throw Object.assign(new Error('EPERM: operation not permitted, utime'), { code: 'EPERM' }); return real.utimesSync(...a); };
+  return { ...real, default: { ...real, utimesSync }, utimesSync, closeSync: (fd: number) => { closed.push(fd); return real.closeSync(fd); } };
 });
 
 let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, projects: string;
@@ -57,9 +62,10 @@ test('a second upload of the same name gets -2', async () => {
   expect(await check([{ name: 'same.wav', size: 3, mtime: st.mtimeMs }])).toEqual([a.path]);
 });
 
-test('an aborted upload leaves no file', async () => {
+test('an aborted upload leaves no file, and the log says which', async () => {
   mkdirSync(importDir(), { recursive: true });
   closed.length = 0;
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   const u = new URL(`${base}/api/projects/demo/upload?name=cut.mp4&mtime=1`);
   await new Promise<void>((done) => {
     const req = request({ host: u.hostname, port: u.port, path: u.pathname + u.search, method: 'PUT', headers: { 'Content-Length': '100000' } });
@@ -70,6 +76,56 @@ test('an aborted upload leaves no file', async () => {
   for (let i = 0; i < 50 && readdirSync(importDir()).some((f) => f.startsWith('cut')); i++) await new Promise((r) => setTimeout(r, 50));
   expect(readdirSync(importDir()).filter((f) => f.startsWith('cut'))).toEqual([]);
   expect(closed).toEqual([]);
+  for (let i = 0; i < 50 && !warn.mock.calls.length; i++) await new Promise((r) => setTimeout(r, 20));
+  expect(warn.mock.calls.map((c) => String(c[0]))).toEqual([expect.stringMatching(/^upload of cut.mp4 into demo cut off mid-file/)]);
+  warn.mockRestore();
+});
+
+test('a dropped file’s time is kept only when it can be one: not before 1970, not more than a day ahead', () => {
+  const now = 1_800_000_000_000;
+  expect([fileTime(1_700_000_000_123, now), fileTime(now + 3600_000, now), fileTime(now + 2 * 24 * 3600_000, now), fileTime(0, now), fileTime(-5, now),
+    fileTime(8.64e15, now), fileTime(NaN, now)]).toEqual([1_700_000_000_123, now + 3600_000, null, null, null, null, null]);
+});
+
+test('an upload whose time is far ahead, or cannot be set, is still written (with the time of its writing)', async () => {
+  const t0 = Date.now(), r = await put('ahead.mp4', 'abc', 8.64e15);
+  expect(r.status).toBe(200);
+  expect(Math.abs(statSync((await r.json()).path).mtimeMs - t0)).toBeLessThan(60_000);
+  refuseTime = true;
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    const q = await put('refused.mp4', 'abc');
+    expect(q.status).toBe(200);
+    expect(readFileSync((await q.json()).path, 'utf8')).toBe('abc');
+    expect(warn.mock.calls.map((c) => String(c[0]))).toEqual([expect.stringMatching(/^upload of refused.mp4 into demo: its time not kept: EPERM/)]);
+  } finally { refuseTime = false; warn.mockRestore(); }
+});
+
+test('a body sent slowly is not cut off (no limit on a whole request), while headers that never end still are', async () => {
+  expect([app.server.requestTimeout, app.server.headersTimeout > 0]).toEqual([0, true]);   // Node's default request limit is 5 minutes
+  // a server whose header limit is short: a body trickling well past it still arrives whole
+  const slow = await startApp({ projectsDir: projects, slowHeaders: { timeout: 300, every: 50 } });
+  try {
+    const u = new URL(`${slow.base}/api/projects/demo/upload?name=slow.mp4&mtime=1700000000000`);
+    const body = await new Promise<string>((done, fail) => {
+      const req = request({ host: u.hostname, port: u.port, path: u.pathname + u.search, method: 'PUT', headers: { 'Content-Length': '10' } }, (res) => {
+        let b = ''; res.on('data', (c) => (b += c)); res.on('end', () => done(b));
+      });
+      req.on('error', fail);
+      let sent = 0;
+      const tick = setInterval(() => { req.write('x'); if (++sent === 10) { clearInterval(tick); req.end(); } }, 100);
+    });
+    expect(readFileSync(JSON.parse(body).path, 'utf8')).toBe('x'.repeat(10));
+    // headers that never end: let go
+    const closedAfter = await new Promise<number>((done) => {
+      const t = Date.now(), s = connect(Number(u.port), u.hostname, () => s.write(`PUT ${u.pathname} HTTP/1.1
+Host: ${u.host}
+`));
+      s.on('data', () => {}); s.on('close', () => done(Date.now() - t)); s.on('error', () => {});
+      setTimeout(() => { s.destroy(); done(Infinity); }, 3000);
+    });
+    expect(closedAfter).toBeLessThan(3000);
+  } finally { await slow.app.close(); }
 });
 
 test('not media → 400 import.notMedia; another origin → 403', async () => {

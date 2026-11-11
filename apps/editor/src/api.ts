@@ -1,6 +1,6 @@
 // Tellcut server API (apps/server). Every failure becomes an ApiError with the server's message and issues.
 import type { Transcript } from '@tellcut/engine';
-import type { AnalyzeResult, BrokenPresetInfo, ChatEvent, ChatTask, ChatThreadView, DeletePreview, GalleryIndex, ImportEvent, ImportResult, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, LiveEvent, PresetChoice, ProjectLibraryInfo, PresetInfo, ProposalOutcome, SourceInfo, SourceKeySaved } from '@tellcut/protocol';
+import type { AnalyzeResult, BrokenPresetInfo, ChatEvent, ChatTask, ChatThreadView, DeletePreview, GalleryIndex, ImportEvent, ImportResult, JobInfo, Lang, LibraryIndex, LibrarySavePreview, LibraryUsage, LiveEvent, PresetChoice, ProjectLibraryInfo, PresetInfo, ProposalOutcome, SourceInfo, SourceKeySaved, UploadCheckRequest, UploadCheckResult, UploadFile, UploadResult } from '@tellcut/protocol';
 import type { PeakInfo, ThumbInfo } from './store.ts';
 
 export class ApiError extends Error {
@@ -102,15 +102,15 @@ export const api = {
     return out;
   },
   /** files dropped from this PC (spec 2026-11-10-media-panel-visual §4): which the project has already (absolute paths, or null) */
-  uploadCheck: (id: string, files: Array<{ name: string; size: number; mtime: number }>) =>
-    req<{ found: Array<string | null> }>(`/api/projects/${enc(id)}/upload/check`, jsonPost({ files })),
+  uploadCheck: (id: string, files: UploadFile[]) =>
+    req<UploadCheckResult>(`/api/projects/${enc(id)}/upload/check`, jsonPost({ files } satisfies UploadCheckRequest)),
   /** one dropped file's bytes into the project's media/import; its path there. XMLHttpRequest: fetch cannot report upload progress */
   upload: (id: string, file: File, onBytes: (sent: number) => void, signal: AbortSignal) => new Promise<string>((ok, no) => {
     const x = new XMLHttpRequest();
     x.open('PUT', `/api/projects/${enc(id)}/upload?name=${enc(file.name)}&mtime=${Math.round(file.lastModified)}`);
     x.upload.onprogress = (e) => onBytes(e.loaded);
     x.onload = () => {
-      let b: any = null;
+      let b: (Partial<UploadResult> & { error?: string; issues?: string[]; code?: string; params?: Record<string, string | number> }) | null = null;
       try { b = JSON.parse(x.responseText); } catch { /* not JSON */ }
       if (x.status >= 200 && x.status < 300 && typeof b?.path === 'string') ok(b.path);
       else no(new ApiError(x.status, b?.error ?? `HTTP ${x.status}`, b?.issues ?? [], b?.code, b?.params));

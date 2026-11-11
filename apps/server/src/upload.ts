@@ -6,13 +6,17 @@
 import { createWriteStream, existsSync, mkdirSync, openSync, readdirSync, renameSync, statSync, unlinkSync, utimesSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { mediaKindOfName } from '@tellcut/protocol';
+import { mediaKindOfName, type UploadCheckResult, type UploadFile, type UploadResult } from '@tellcut/protocol';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
 import type { ProjectHolds } from './delete.ts';
 
 /** two times this close are the same file's (FAT and zip keep two-second times) */
 const SAME_TIME_MS = 2000;
+/** how far ahead of this clock a dropped file's time may be (a FAT drive keeps local time, written in another time zone); a time
+ *  past that, or before 1970, is not the file's: it keeps the time of its writing here */
+const AHEAD_MS = 24 * 3600_000;
+export const fileTime = (mtime: number, now = Date.now()) => (Number.isFinite(mtime) && mtime > 0 && mtime <= now + AHEAD_MS ? mtime : null);
 /** a name with no folder part and nothing the file system refuses (a Mac's name can hold a colon, a Windows one cannot) */
 export function uploadName(raw: string): string {
   const base = raw.split(/[\\/]/).pop() ?? '';
@@ -30,8 +34,7 @@ function reserve(dir: string, name: string): { file: string; part: string; fd: n
   }
 }
 
-type Want = { name: string; size: number; mtime: number };
-function wants(raw: unknown): Want[] {
+function wants(raw: unknown): UploadFile[] {
   const f = (raw as { files?: unknown } | undefined)?.files;
   if (!Array.isArray(f) || !f.every((x) => typeof x?.name === 'string' && Number.isFinite(x?.size) && Number.isFinite(x?.mtime)))
     throw new HttpError(400, 'Expected { files: { name, size, mtime }[] }');
@@ -52,7 +55,7 @@ export function uploadRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
       const n = uploadName(w.name).toLowerCase(), same = known.filter((k) => k.size === w.size && Math.abs(k.mtime - w.mtime) <= SAME_TIME_MS);
       return (same.find((k) => k.names[0] === n) ?? same.find((k) => k.names.includes(n)))?.f ?? null;
     });
-    sendJson(res, 200, { found });
+    sendJson(res, 200, { found } satisfies UploadCheckResult);
   });
 
   r.put('/api/projects/:id/upload', async (req, res, { id }, url) => {
@@ -71,11 +74,14 @@ export function uploadRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
       } catch (e) {
         // the write stream owns the handle and has closed it already: closing it here could close another file now given that number
         try { unlinkSync(part); } catch { /* already gone */ }
-        if (req.destroyed && !req.complete) return;   // the page went away mid-file: nobody to answer
+        // the page went away mid-file (closed, cancelled, or the connection cut): nobody to answer, but the log says which
+        if (req.destroyed && !req.complete) { console.warn(`upload of ${name} into ${id} cut off mid-file: ${(e as Error)?.message ?? e}`); return; }
         throw e;
       }
-      if (Number.isFinite(mtime) && mtime > 0) utimesSync(file, new Date(), new Date(mtime));
-      sendJson(res, 200, { path: file });
+      // the file is written: a time that cannot be set (a drive that keeps none, a time it refuses) only costs sharing its analysis
+      const t = fileTime(mtime);
+      if (t !== null) try { utimesSync(file, new Date(), new Date(t)); } catch (e) { console.warn(`upload of ${name} into ${id}: its time not kept: ${(e as Error).message}`); }
+      sendJson(res, 200, { path: file } satisfies UploadResult);
     } finally { release?.(); }
   });
 }

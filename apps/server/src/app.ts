@@ -38,7 +38,9 @@ export interface AppOptions { projectsDir: string; playerDist?: string; editorDi
   /** draws a saved library entry's thumbnail (tests pass a stand-in: no Chrome); default the player in headless Chrome */
   libraryThumb?: (root: string, slug: string) => Promise<unknown>;
   /** draws a saved preset's poster from its project (tests pass a stand-in); default the timeline frame or the project's home-page frame */
-  presetPoster?: PresetPoster }
+  presetPoster?: PresetPoster;
+  /** how long a request's headers may take and how often that is checked (ms; tests shorten them); default 60 s and Node's 30 s */
+  slowHeaders?: { timeout: number; every: number } }
 
 // a page may change things only from this server's own address: the editor's Vite dev server proxies /api here keeping its
 // Host (127.0.0.1:5173), so its pages still match; a page on any other local port (another dev server, a notebook) does not
@@ -77,7 +79,10 @@ export function createApp(o: AppOptions) {
   uploadRoutes(r, store, holds);
   const all: Array<[string, string | undefined]> = [['/player/', o.playerDist], ['/editor/', o.editorDist]];
   const mounts = all.filter((m): m is [string, string] => !!m[1]).map(([prefix, dir]) => [prefix, resolve(dir)] as const);
-  const server: Server = createServer(async (req, res) => {
+  // no limit on a whole request: a dropped file of a few GB takes longer than Node's default 5 minutes (upload.ts), and a cut
+  // there loses the whole file. A client too slow to send its headers is still let go: headersTimeout said, as Node's default
+  // for it is min(60 s, requestTimeout), 0 here, which would turn it off too.
+  const server: Server = createServer({ requestTimeout: 0, headersTimeout: o.slowHeaders?.timeout ?? 60_000, ...(o.slowHeaders ? { connectionsCheckingInterval: o.slowHeaders.every } : {}) }, async (req, res) => {
     try {
       // loopback binding alone does not stop DNS rebinding or cross-site form posts from a page in the user's browser
       if (!LOOPBACK_HOST.test(req.headers.host ?? '')) throw new HttpError(403, 'Forbidden host');
@@ -108,7 +113,7 @@ export function createApp(o: AppOptions) {
     }
   });
   return {
-    store, registry, queue, holds,
+    store, registry, queue, holds, server,
     // a port in use rejects (EADDRINUSE) instead of an 'error' no one listens to
     listen: (port = 0) => new Promise<number>((ok, no) => { server.once('error', no); server.listen(port, '127.0.0.1', () => { server.off('error', no); const p = (server.address() as AddressInfo).port; chat.serverUrl = `http://127.0.0.1:${p}`; ok(p); }); }),
     close: () => new Promise<void>((ok) => { chat.stopAll(); queue.cancelAll(); server.closeAllConnections(); server.close(() => ok()); }),

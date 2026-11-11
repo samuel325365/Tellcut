@@ -165,6 +165,7 @@ export const SFX_CATEGORY_EN: Record<SfxCategory, string> = {
 
 export * from './handles.ts';
 export * from './templates.ts';
+export * from './upload.ts';
 
 /** the steps of a source's analysis (job messages), in words */
 export const ANALYSIS_STEPS: Record<string, string> = { proxy: '代理檔', thumbs: '縮圖', cuts: '場景', peaks: '聲音波形', sheets: '縮圖總覽', burned: '燒字偵測', transcript: '逐字稿' };
