@@ -1,37 +1,23 @@
 // End-to-end (spec §9.3, M4/M5 part): editor → drag, trim, undo → project.json and the preview change → export.
-import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
-import { makeProjects, makeSource, startApp } from '../../server/src/test-utils.ts';
+import type { Browser, Page } from 'playwright-core';
+import { makeProjects, makeSource } from '@tellcut/server/test-utils';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, type App } from '../e2e-kit.ts';
 
-const CHROME = chromePath();
-const root = join(TELLCUT_ROOT, 'projects/_e2e');
-const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
-let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser, page: Page;
+const root = projectsRoot('_e2e');
+let app: App, base: string, browser: Browser, page: Page;
 
-const onDisk = () => JSON.parse(readFileSync(join(root, 'demo/project.json'), 'utf8')).tracks[0].items[0];
+const onDisk = () => readProject(root, 'demo').tracks[0].items[0];
 const shot = async () => page.locator('iframe').screenshot();
 // the toolbar may still say "saved" for a moment after an edit, so wait on the file itself
-const poll = <T>(fn: () => T) => expect.poll(fn, { timeout: 10000, interval: 200 });
+const poll = poller(200, 10000);
 
 beforeAll(async () => {
-  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
-  rmSync(root, { recursive: true, force: true });
-  makeProjects(root);
-  await makeSource(join(root, 'demo/src.mp4'));
-  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist }));
-  const jobs = (await (await fetch(`${base}/api/projects/demo/analyze`, { method: 'POST' })).json()).jobs;
-  for (const j of jobs) await app.queue.wait(j.id);
-  browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
-  page = await browser.newPage({ viewport: { width: 1600, height: 900 }, locale: 'zh-TW' });
-  await page.goto(`${base}/editor/?id=demo`);
-  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
-  await page.waitForSelector('[data-item-id="c"]');
+  ({ app, base, browser, page } = await startEditor({ root, autoplay: true, viewport: { width: 1600, height: 900 }, analyze: 'demo', open: 'demo', waitFor: '[data-item-id="c"]',
+    setup: async () => { makeProjects(root); await makeSource(join(root, 'demo/src.mp4')); } }));
 }, 120000);
 
-// closing Chrome can take ~25 s while other e2e files render exports in parallel (0.2 s alone)
-afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+afterAll(() => stopEditor(root, { browser, app }));
 
 test('drag, trim and undo change project.json and the preview', async () => {
   for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');   // playhead 0.1 s (30 fps)

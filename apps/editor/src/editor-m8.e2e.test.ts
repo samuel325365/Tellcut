@@ -1,40 +1,31 @@
 // End-to-end for M8 and the playback fixes: click-to-seek, instant first play, export from the toolbar, library music, preview quality.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT, run } from '@tellcut/media-node';
-import { demoProject, makeSource, startApp } from '../../server/src/test-utils.ts';
+import type { Browser, Page } from 'playwright-core';
+import { run } from '@tellcut/media-node';
+import { demoProject } from '@tellcut/server/test-utils';
+import { openProject, poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
 
-const CHROME = chromePath();
-const root = join(TELLCUT_ROOT, 'projects/_e2e3');
-const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
-let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser, page: Page;
-const disk = () => JSON.parse(readFileSync(join(root, 'demo/project.json'), 'utf8'));
-const poll = <T>(fn: () => T, timeout = 10000) => expect.poll(fn, { timeout, interval: 100 });
+const root = projectsRoot('_e2e3');
+let app: App, base: string, browser: Browser, page: Page;
+const disk = () => readProject(root, 'demo');
+const poll = poller(100, 10000);
 const clock = () => page.locator('.clock').textContent();
 
 beforeAll(async () => {
-  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
-  rmSync(root, { recursive: true, force: true });
-  mkdirSync(join(root, 'demo/media'), { recursive: true });
-  await makeSource(join(root, 'demo/src.mp4'));
-  await run(['-f', 'lavfi', '-i', 'sine=frequency=330:duration=6', join(root, 'demo/media/tone.wav')]);
-  const p = demoProject({ media: { tone: { path: 'media/tone.wav' } } });
-  p.meta.duration = 4;
-  p.tracks.push({ id: 'mu', kind: 'music', gain: 0, items: [{ id: 'm', media: 'tone', in: 0, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0 }] });
-  writeFileSync(join(root, 'demo/project.json'), JSON.stringify(p, null, 2));
-  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist }));
-  for (const j of (await (await fetch(`${base}/api/projects/demo/analyze`, { method: 'POST' })).json()).jobs) await app.queue.wait(j.id);
+  const setup = async () => {
+    mkdirSync(join(root, 'demo/media'), { recursive: true });
+    await run(['-f', 'lavfi', '-i', 'sine=frequency=330:duration=6', join(root, 'demo/media/tone.wav')]);
+    const p = demoProject({ media: { tone: { path: 'media/tone.wav' } } });
+    p.meta.duration = 4;
+    p.tracks.push({ id: 'mu', kind: 'music', gain: 0, items: [{ id: 'm', media: 'tone', in: 0, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0 }] });
+    await writeProject(root, 'demo', p);
+  };
   // no autoplay flag: the same policy a person's Chrome applies
-  browser = await chromium.launch({ executablePath: CHROME, headless: true });
-  page = await browser.newPage({ viewport: { width: 1600, height: 900 }, locale: 'zh-TW' });
-  await page.goto(`${base}/editor/?id=demo`);
-  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
-  await page.waitForSelector('[data-item-id="c"]');
+  ({ app, base, browser, page } = await startEditor({ root, setup, analyze: 'demo', viewport: { width: 1600, height: 900 }, open: 'demo', waitFor: '[data-item-id="c"]' }));
 }, 120000);
 
-// closing Chrome can take ~25 s while other e2e files render exports in parallel (0.2 s alone)
-afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+afterAll(() => stopEditor(root, { browser, app }));
 
 test('clicking an empty spot on the timeline jumps there, and play starts within a second', async () => {
   // the overlay track only has a flash at 0.5–0.8 s: around 3 s it is empty
@@ -71,8 +62,7 @@ test('on a small screen the lower tracks can be scrolled into view with the whee
   // a fresh window opened on a small screen; the demo's few tracks overflow a 420 px window
   const small = await browser.newPage({ viewport: { width: 1280, height: 420 }, locale: 'zh-TW' });
   try {
-    await small.goto(`${base}/editor/?id=demo`);
-    await small.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+    await openProject(small, base, 'demo');
     const tracks = small.locator('[data-tracks]');
     const box = (await tracks.boundingBox())!;
     expect(await tracks.evaluate((e) => e.scrollHeight > e.clientHeight)).toBe(true);

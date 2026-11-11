@@ -1,28 +1,19 @@
 // End-to-end: the three interface languages. Home and gallery are fully translated; editor labels are English in every language, tooltips follow the language.
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
-import { demoProject, makeSource, startApp } from '../../server/src/test-utils.ts';
+import type { Browser, Page } from 'playwright-core';
+import { demoProject } from '@tellcut/server/test-utils';
+import { projectsRoot, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
 
-const CHROME = chromePath();
-const root = join(TELLCUT_ROOT, 'projects/_e2e_i18n');
-const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
-let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser;
+const root = projectsRoot('_e2e_i18n');
+let app: App, base: string, browser: Browser;
 const CJK = /[㐀-鿿]/;
 const KANA = /[぀-ヿ]/;
 
+// no shared page: each test opens its own, in the language it checks
 beforeAll(async () => {
-  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
-  rmSync(root, { recursive: true, force: true });
-  mkdirSync(join(root, 'lang'), { recursive: true });
-  await makeSource(join(root, 'lang', 'src.mp4'));
-  writeFileSync(join(root, 'lang', 'project.json'), JSON.stringify(demoProject(), null, 2));
-  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist }));
-  browser = await chromium.launch({ executablePath: CHROME, headless: true });
+  ({ app, base, browser } = await startEditor({ root, setup: () => writeProject(root, 'lang', demoProject()), viewport: null }));
 }, 120000);
 
-afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+afterAll(() => stopEditor(root, { browser, app }));
 
 async function open(locale: string, url: string, ready: string): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale });

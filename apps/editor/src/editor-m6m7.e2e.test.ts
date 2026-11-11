@@ -1,39 +1,30 @@
 // End-to-end for M6/M7: properties panel, crop mode, library, envelope point, track mute → project.json changes → export.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT, run } from '@tellcut/media-node';
-import { demoProject, makeSource, startApp } from '../../server/src/test-utils.ts';
+import type { Browser, Page } from 'playwright-core';
+import { run } from '@tellcut/media-node';
+import { demoProject } from '@tellcut/server/test-utils';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
 
-const CHROME = chromePath();
-const root = join(TELLCUT_ROOT, 'projects/_e2e2');
-const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
-let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser, page: Page;
-const disk = () => JSON.parse(readFileSync(join(root, 'demo/project.json'), 'utf8'));
+const root = projectsRoot('_e2e2');
+let app: App, base: string, browser: Browser, page: Page;
+const disk = () => readProject(root, 'demo');
 const track = (id: string) => disk().tracks.find((t: any) => t.id === id);
 // the toolbar may still say "saved" for a moment after an edit, so wait on the file itself
-const poll = <T>(fn: () => T) => expect.poll(fn, { timeout: 10000, interval: 200 });
+const poll = poller(200, 10000);
 
 beforeAll(async () => {
-  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
-  rmSync(root, { recursive: true, force: true });
-  mkdirSync(join(root, 'demo/media'), { recursive: true });
-  await makeSource(join(root, 'demo/src.mp4'));
-  await run(['-f', 'lavfi', '-i', 'sine=frequency=330:duration=2', join(root, 'demo/media/tone.wav')]);
-  const p = demoProject({ media: { tone: { path: 'media/tone.wav' } } });
-  p.tracks.push({ id: 'mu', kind: 'music', gain: 0, items: [{ id: 'm', media: 'tone', in: 0, start: 0, end: 1, gain: 0, fadeIn: 0, fadeOut: 0 }] });
-  writeFileSync(join(root, 'demo/project.json'), JSON.stringify(p, null, 2));
-  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist }));
-  for (const j of (await (await fetch(`${base}/api/projects/demo/analyze`, { method: 'POST' })).json()).jobs) await app.queue.wait(j.id);
-  browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
-  page = await browser.newPage({ viewport: { width: 1600, height: 900 }, locale: 'zh-TW' });
-  await page.goto(`${base}/editor/?id=demo`);
-  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
-  await page.waitForSelector('[data-item-id="c"]');
+  const setup = async () => {
+    mkdirSync(join(root, 'demo/media'), { recursive: true });
+    await run(['-f', 'lavfi', '-i', 'sine=frequency=330:duration=2', join(root, 'demo/media/tone.wav')]);
+    const p = demoProject({ media: { tone: { path: 'media/tone.wav' } } });
+    p.tracks.push({ id: 'mu', kind: 'music', gain: 0, items: [{ id: 'm', media: 'tone', in: 0, start: 0, end: 1, gain: 0, fadeIn: 0, fadeOut: 0 }] });
+    await writeProject(root, 'demo', p);
+  };
+  ({ app, base, browser, page } = await startEditor({ root, setup, analyze: 'demo', autoplay: true, viewport: { width: 1600, height: 900 }, open: 'demo', waitFor: '[data-item-id="c"]' }));
 }, 120000);
 
-// closing Chrome can take ~25 s while other e2e files render exports in parallel (0.2 s alone)
-afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+afterAll(() => stopEditor(root, { browser, app }));
 
 test('properties panel, crop mode, library, envelope and bus edits reach project.json', async () => {
   // properties panel: a committed number field is one validated edit

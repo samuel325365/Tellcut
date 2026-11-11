@@ -1,25 +1,17 @@
 // End-to-end: overlaps (dissolve, transition length, crossfade), track order and layer order, checked in the saved project.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
-import { demoProject, makeSource, startApp } from '../../server/src/test-utils.ts';
+import type { Browser, Page } from 'playwright-core';
+import { demoProject } from '@tellcut/server/test-utils';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
 
-const CHROME = chromePath();
-const root = join(TELLCUT_ROOT, 'projects/_e2e7');
-const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
-let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser, page: Page;
-const poll = <T>(fn: () => T, timeout = 10000) => expect.poll(fn, { timeout, interval: 100 });
-const disk = () => JSON.parse(readFileSync(join(root, 'ov', 'project.json'), 'utf8'));
+const root = projectsRoot('_e2e7');
+let app: App, browser: Browser, page: Page;
+const poll = poller(100, 10000);
+const disk = () => readProject(root, 'ov');
 const items = (track: string) => disk().tracks.find((t: any) => t.id === track).items;
 const box = async (sel: string) => (await page.locator(sel).boundingBox())!;
 const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
 
 beforeAll(async () => {
-  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
-  rmSync(root, { recursive: true, force: true });
-  mkdirSync(join(root, 'ov'), { recursive: true });
-  await makeSource(join(root, 'ov', 'src.mp4'));
   const p = demoProject();
   Object.assign(p.meta, { duration: 4 });
   p.tracks = [
@@ -27,16 +19,10 @@ beforeAll(async () => {
     { id: 'au', kind: 'audio', gain: 0, items: [{ id: 'a1', source: 's1', in: 0, rate: 1, start: 0, end: 2, gain: 0, fadeIn: 0, fadeOut: 0 },
       { id: 'a2', source: 's1', in: 1.5, rate: 1, start: 1.5, end: 3.5, gain: 0, fadeIn: 0, fadeOut: 0 }] },
   ];
-  writeFileSync(join(root, 'ov', 'project.json'), JSON.stringify(p, null, 2));
-  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist }));
-  browser = await chromium.launch({ executablePath: CHROME, headless: true });
-  page = await browser.newPage({ viewport: { width: 1536, height: 864 }, locale: 'zh-TW' });
-  await page.goto(`${base}/editor/?id=ov`);
-  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  ({ app, browser, page } = await startEditor({ root, setup: () => writeProject(root, 'ov', p), viewport: { width: 1536, height: 864 }, open: 'ov' }));
 }, 120000);
 
-// closing Chrome can take ~25 s while other e2e files render exports in parallel (0.2 s alone)
-afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+afterAll(() => stopEditor(root, { browser, app }));
 
 test('a click on a video overlap adds a dissolve as long as the overlap; its block\'s edge drags the length', async () => {
   const ov = await box('[data-overlap="d"]');
