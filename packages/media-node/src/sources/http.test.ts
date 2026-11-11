@@ -39,14 +39,14 @@ test('an HTML page where JSON was expected is temporary, not empty', async () =>
 
 test('429 and 5xx are temporary; 404 is broken unless the caller says missing; bad JSON is broken', async () => {
   reply(429, '{}');
-  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'temporary', message: '暫時不能用（HTTP 429）' });
+  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'temporary', message: '暫時不能用（HTTP 429）', en: 'unavailable for now (HTTP 429)' });
   replies = []; reply(503, 'busy', 'text/plain');
   await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'temporary', message: '暫時不能用（HTTP 503）' });
   replies = []; reply(404, '{}');
   await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken' });
   await expect(h({}).json('https://api.example/x', { notFound: 'missing' })).rejects.toMatchObject({ kind: 'missing' });
   replies = []; reply(200, '{ nope');
-  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken', message: '回應格式看不懂' });
+  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken', message: '回應格式看不懂', en: 'cannot read the answer' });
 });
 
 test('no connection is temporary', async () => {
@@ -58,7 +58,7 @@ test('a JSON answer cut off while its body is read is temporary, and a timeout t
   replies.push(cut(new TypeError('terminated')));
   await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ name: 'SourceError', kind: 'temporary', message: expect.stringContaining('terminated') });
   replies = [cut(new DOMException('The operation timed out.', 'TimeoutError'))];
-  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ name: 'SourceError', kind: 'temporary', message: expect.stringContaining('逾時') });
+  await expect(h({}).json('https://api.example/x')).rejects.toMatchObject({ name: 'SourceError', kind: 'temporary', message: expect.stringContaining('逾時'), en: expect.stringMatching(/^timed out/) });
 });
 
 test('403 without a key is temporary, with a key broken', async () => {
@@ -76,7 +76,7 @@ test('a 403 web page is a bot check even with a key; a 403 answer with a key is 
 
 test('a 400 that names the key, sent with a key, is a refused key; another 400 stays temporary', async () => {
   reply(400, '[ERROR 400] "key" is invalid', 'text/plain');
-  await expect(h({ hasKey: true }).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken', message: 'key 被拒絕（HTTP 400）', status: 400 });
+  await expect(h({ hasKey: true }).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken', message: 'key 被拒絕（HTTP 400）', en: 'the key was refused (HTTP 400)', status: 400 });
   // Pixabay's wording since 2026
   replies = []; reply(400, '[ERROR 400] Invalid or missing API key (https://pixabay.com/api/docs/).', 'text/plain');
   await expect(h({ hasKey: true }).json('https://api.example/x')).rejects.toMatchObject({ kind: 'broken', message: 'key 被拒絕（HTTP 400）' });

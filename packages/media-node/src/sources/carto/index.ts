@@ -29,7 +29,7 @@ export const carto: SourceAdapter = {
     const file = join(ctx.tmpDir, 'check-carto.png');
     // a wrong key still answers 200 with a picture: only its size (256 px, not 512) tells
     try { await ctx.http.download(CARTO_LAYERS[0].url(2, 2, 1, ctx.key), file, { maxBytes: 2e6 }); checkTile(file, 'carto', CARTO_LAYERS[0]); } finally { rmSync(file, { force: true }); }
-    return 'Carto 圖磚可下載，key 有效';
+    return { zh: 'Carto 圖磚可下載，key 有效', en: 'Carto tiles download, the key works' };
   },
 
   credit: mapCredit,

@@ -72,7 +72,10 @@ test('check: no key says where to put one without calling out; a key is tried ag
   const narrow = async () => new Response(JSON.stringify({ detail: { status: 'missing_permissions', message: 'The API key you used is missing the permission models_read to execute this operation.' } }), { status: 401 });
   expect((await elevenLabsTts({}, { fetch: narrow as never, key: () => 'k' }).check()).ok).toBe(true);
   const wrong = async () => new Response(JSON.stringify({ detail: { status: 'invalid_api_key', message: 'Invalid API key' } }), { status: 401 });
-  expect((await elevenLabsTts({}, { fetch: wrong as never, key: () => 'k' }).check()).ok).toBe(false);
+  const bad = await elevenLabsTts({}, { fetch: wrong as never, key: () => 'k' }).check();
+  expect(bad.ok).toBe(false);
+  // doctor's English beside the Chinese
+  expect(bad.en).toEqual({ detail: 'ElevenLabs answered 401 (a wrong key, or one without this permission): Invalid API key', install: expect.stringContaining('sources.local.json') });
   const p = elevenLabsTts({ voices: ['a', 'b'] });
   expect([p.defaultVoice, p.voices()]).toEqual([ELEVENLABS_DEFAULT_VOICE, [ELEVENLABS_DEFAULT_VOICE, 'a', 'b']]);
   expect(Object.keys(TTS_FACTORIES)).toContain('elevenlabs');
@@ -88,7 +91,7 @@ const stalled = (seen: AbortSignal[] = []) => (async (_url: string, init: Reques
 test('a stalled connection: check and synth give up after their time instead of hanging; the caller’s abort still counts', async () => {
   const p = elevenLabsTts({}, { fetch: stalled(), key: () => 'k', timeouts: { check: 50, synth: 80 } });
   const s = await p.check();
-  expect([s.ok, s.detail]).toEqual([false, expect.stringContaining('沒有回應')]);
+  expect([s.ok, s.detail, s.en?.detail]).toEqual([false, expect.stringContaining('沒有回應'), 'cannot reach ElevenLabs: no answer in 0 s']);
   await expect(p.synth({ text: 'x', out: join(dir, 'f.wav') })).rejects.toThrow(/沒有回應.*不會自動重試/);
   const ac = new AbortController(), seen: AbortSignal[] = [];
   const q = elevenLabsTts({}, { fetch: stalled(seen), key: () => 'k', timeouts: { synth: 60_000 } }).synth({ text: 'x', out: join(dir, 'g.wav'), signal: ac.signal });

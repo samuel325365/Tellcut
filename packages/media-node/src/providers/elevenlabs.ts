@@ -14,6 +14,7 @@ export const ELEVENLABS_DEFAULT_VOICE = 'JBFqnCBsd6RMkjVDRZzb';
 /** speaks Mandarin, English, Japanese … and gives character times */
 export const ELEVENLABS_DEFAULT_MODEL = 'eleven_multilingual_v2';
 const HOW_TO_KEY = `把 key 放進 tellcut/sources.local.json 的 "keys": { "elevenlabs": "…" }，或設環境變數 ${ELEVENLABS_KEY_ENV}（key 在 elevenlabs.io 的設定 › API Keys 建立）`;
+const HOW_TO_KEY_EN = `put the key in tellcut/sources.local.json as "keys": { "elevenlabs": "…" }, or set ${ELEVENLABS_KEY_ENV} (make one at elevenlabs.io: Settings › API Keys)`;
 
 export interface ElevenLabsOptions { voice?: string; model?: string; voices?: string[] }
 /** ms: the key check (doctor, the providers route) and one spoken scene (a long one takes ElevenLabs a while) */
@@ -62,8 +63,8 @@ export function wordsFromAlignment(a: Alignment): TtsWord[] {
   return out;
 }
 
-/** ElevenLabs' error as one line, without the key: { detail: { message } }, { detail: "…" } or the raw text. */
-async function failure(res: Response): Promise<Error> {
+/** ElevenLabs' error as one line, without the key: { detail: { message } }, { detail: "…" } or the raw text; `en` for doctor. */
+async function failureText(res: Response): Promise<{ zh: string; en: string }> {
   const body = await res.text().catch(() => '');
   let msg = body.slice(0, 200);
   try {
@@ -71,8 +72,10 @@ async function failure(res: Response): Promise<Error> {
     msg = typeof d === 'string' ? d : (d as { message?: string })?.message ?? (Array.isArray(d) ? JSON.stringify(d).slice(0, 200) : msg);
   } catch { /* not JSON: the text itself */ }
   const hint = res.status === 401 ? '（key 不對或沒有這個權限）' : res.status === 402 ? '（要付費方案，或額度用完了）' : res.status === 429 ? '（太頻繁，稍後再試）' : '';
-  return new Error(`ElevenLabs 回 ${res.status}${hint}：${msg}`);
+  const hintEn = res.status === 401 ? ' (a wrong key, or one without this permission)' : res.status === 402 ? ' (a paid plan is needed, or the credits ran out)' : res.status === 429 ? ' (too often: try again later)' : '';
+  return { zh: `ElevenLabs 回 ${res.status}${hint}：${msg}`, en: `ElevenLabs answered ${res.status}${hintEn}: ${msg}` };
 }
+const failure = async (res: Response) => new Error((await failureText(res)).zh);
 
 export function elevenLabsTts(options: ElevenLabsOptions = {}, deps: ElevenLabsDeps = {}): TtsProvider {
   const doFetch = deps.fetch ?? fetch, getKey = deps.key ?? (() => elevenLabsKey()), timeouts = { ...ELEVENLABS_TIMEOUTS, ...deps.timeouts };
@@ -82,20 +85,21 @@ export function elevenLabsTts(options: ElevenLabsOptions = {}, deps: ElevenLabsD
     voices: () => [...new Set([defaultVoice, ...(options.voices ?? [])])], defaultVoice,
     async check(): Promise<ProviderStatus> {
       const key = getKey();
-      if (!key) return { ok: false, detail: '沒有 API key', install: HOW_TO_KEY };
+      if (!key) return { ok: false, detail: '沒有 API key', install: HOW_TO_KEY, en: { detail: 'no API key', install: HOW_TO_KEY_EN } };
       try {
         // doctor, the providers route and voice all wait on this: a stalled connection is "can't reach", not a hang
         const res = await doFetch(`${API}/models`, { headers: { 'xi-api-key': key }, signal: AbortSignal.timeout(timeouts.check) });
         if (!res.ok) {
-          const err = (await failure(res)).message;
+          const err = await failureText(res);
           // a key restricted to text-to-speech may not list the models, but ElevenLabs has accepted it: that is all this check asks
-          if (res.status === 401 && /missing the permission/i.test(err)) return { ok: true, detail: `聲音 ${defaultVoice}、模型 ${model}；key 有效（只開了部分權限）；要連網，用的是 ElevenLabs 帳號的額度` };
-          return { ok: false, detail: err, install: HOW_TO_KEY };
+          if (res.status === 401 && /missing the permission/i.test(err.zh)) return { ok: true, detail: `聲音 ${defaultVoice}、模型 ${model}；key 有效（只開了部分權限）；要連網，用的是 ElevenLabs 帳號的額度`,
+            en: { detail: `voice ${defaultVoice}, model ${model}; the key works (with some permissions only); online, on the ElevenLabs account's credits` } };
+          return { ok: false, detail: err.zh, install: HOW_TO_KEY, en: { detail: err.en, install: HOW_TO_KEY_EN } };
         }
-        return { ok: true, detail: `聲音 ${defaultVoice}、模型 ${model}；要連網，用的是 ElevenLabs 帳號的額度` };
+        return { ok: true, detail: `聲音 ${defaultVoice}、模型 ${model}；要連網，用的是 ElevenLabs 帳號的額度`, en: { detail: `voice ${defaultVoice}, model ${model}; online, on the ElevenLabs account's credits` } };
       } catch (e) {
-        const why = (e as Error)?.name === 'TimeoutError' ? `${Math.round(timeouts.check / 1000)} 秒沒有回應` : (e as Error).message.slice(0, 120);
-        return { ok: false, detail: `連不上 ElevenLabs：${why}` };
+        const timedOut = (e as Error)?.name === 'TimeoutError', secs = Math.round(timeouts.check / 1000), msg = (e as Error).message.slice(0, 120);
+        return { ok: false, detail: `連不上 ElevenLabs：${timedOut ? `${secs} 秒沒有回應` : msg}`, en: { detail: `cannot reach ElevenLabs: ${timedOut ? `no answer in ${secs} s` : msg}` } };
       }
     },
     async synth(req) {

@@ -20,11 +20,14 @@ export function mediapipeFaces(options: { model?: string } = {}, py: { runPy: ty
   return {
     id: 'mediapipe', label: 'MediaPipe 臉部關鍵點（本機 CPU）', online: false,
     async check(): Promise<ProviderStatus> {
-      if (!existsSync(model)) return { ok: false, detail: `沒有模型 ${model}`, install: 'npm run setup' };
+      if (!existsSync(model)) return { ok: false, detail: `沒有模型 ${model}`, install: 'npm run setup', en: { detail: `no model at ${model}`, install: 'npm run setup' } };
       try {
         const v = (await py.runUv(['run', '--project', PY_PROJECT, '--quiet', '--no-sync', '--offline', 'python', '-c', 'import importlib.metadata as m; print(m.version("mediapipe"))'])).trim();
-        return { ok: true, version: v, detail: '臉框與嘴唇位置' };
-      } catch (e) { return { ok: false, detail: `跑不起來：${(e as Error).message.slice(0, 120)}`, install: 'npm run setup' }; }
+        return { ok: true, version: v, detail: '臉框與嘴唇位置', en: { detail: 'face boxes and lip positions' } };
+      } catch (e) {
+        const why = (e as Error).message.slice(0, 120);
+        return { ok: false, detail: `跑不起來：${why}`, install: 'npm run setup', en: { detail: `does not run: ${why}`, install: 'npm run setup' } };
+      }
     },
     async detect(images, o = {}) {
       if (!images.length) return [];

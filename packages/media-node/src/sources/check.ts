@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { recordHealth, type HealthEntry } from './health.ts';
-import { SourceError } from './http.ts';
+import { SourceError, type ZhEn } from './http.ts';
 import { contextFor, sourceStatuses, type SourceStatus, type Sources } from './registry.ts';
 
 /** result null: not checked (off, no key, no adapter) */
@@ -15,23 +15,24 @@ export async function checkSources(s: Sources, o: { live?: boolean; tmpDir?: str
       const a = status.adapter;
       if (!a || !status.enabled || status.key === 'missing') return { status, result: null };
       const ctx = contextFor(s, a.id, tmp);
-      let e: { status: HealthEntry['status']; detail: string };
+      let e: Omit<HealthEntry, 'at'>;
       try {
-        let detail = await a.check(ctx);
+        let said: ZhEn = await a.check(ctx);
         // a source that takes no part in searches (maps: tiles only) is fully checked by check(), which downloads
         if (o.live && a.kinds.length) {
           const [hit] = await a.search({ text: a.sample, opts: {}, limit: 1 }, ctx);
-          if (!hit) throw new SourceError(a.id, 'temporary', `搜尋「${a.sample}」沒有結果`);
+          if (!hit) throw new SourceError(a.id, 'temporary', { zh: `搜尋「${a.sample}」沒有結果`, en: `no results for "${a.sample}"` });
           const f = await a.get(hit.id, ctx);
           rmSync(f.file, { force: true });
-          detail += `；實測下載 ${hit.ref}`;
+          said = { zh: `${said.zh}；實測下載 ${hit.ref}`, en: `${said.en}; downloaded ${hit.ref} to try` };
         }
-        e = { status: 'ok', detail };
+        e = { status: 'ok', detail: said.zh, en: said.en };
       } catch (err) {
         // every network failure comes as a SourceError (http.ts); anything else is the adapter failing on what it got back — an
         // answer of another shape — which waiting will not mend (review M-5: it was recorded as temporary)
-        e = err instanceof SourceError ? { status: err.kind === 'temporary' ? 'temporary' : 'broken', detail: err.message }
-          : { status: 'broken', detail: `轉接程式出錯（${(err as Error)?.name ?? 'Error'}：${(err as Error)?.message ?? err}）` };
+        const name = (err as Error)?.name ?? 'Error', msg = (err as Error)?.message ?? err;
+        e = err instanceof SourceError ? { status: err.kind === 'temporary' ? 'temporary' : 'broken', detail: err.message, ...(err.en ? { en: err.en } : {}) }
+          : { status: 'broken', detail: `轉接程式出錯（${name}：${msg}）`, en: `the adapter failed (${name}: ${msg})` };
       }
       await recordHealth(s.healthFile, a.id, e);
       return { status, result: { ...e, at: new Date().toISOString() } };
@@ -54,7 +55,7 @@ export async function tryKey(s: Sources, id: string, key: string, tmpDir?: strin
   const trial: Sources = { ...s, env, config: { ...s.config, keys: { ...s.config.keys, [id]: key } } };
   const tmp = tmpDir ?? mkdtempSync(join(tmpdir(), 'source-key-'));
   let out: KeyTrial;
-  try { out = { result: 'ok', detail: await a.check(contextFor(trial, id, tmp)) }; }
+  try { out = { result: 'ok', detail: (await a.check(contextFor(trial, id, tmp))).zh }; }
   catch (err) {
     const said = err instanceof SourceError && err.status !== undefined && err.status >= 400 && err.status < 500 && ![408, 429].includes(err.status) && !/人機驗證/.test(err.message);
     out = err instanceof SourceError && err.kind !== 'broken' && !said ? { result: 'untried', detail: err.message }

@@ -3,7 +3,7 @@
 // item's id and a small preview; the files are listed per item (/asset/<id>): the original and smaller copies of each.
 import { readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import { cleanUrl, SourceError } from '../http.ts';
+import { cleanUrl, resultsEn, SourceError, unreadable } from '../http.ts';
 import type { AssetHit, AssetKind, SourceAdapter, SourceCtx } from '../types.ts';
 
 const API = 'https://images-api.nasa.gov';
@@ -85,8 +85,8 @@ export const nasa: SourceAdapter = {
   async check(ctx) {
     const r = await ctx.http.json<Collection>(`${API}/search?${new URLSearchParams({ q: 'moon', page_size: '1' })}`);
     const n = r?.collection?.metadata?.total_hits;
-    if (n === undefined) throw new SourceError('nasa', 'broken', '回應格式看不懂（沒有 total_hits）');
-    return `「moon」共 ${n} 筆`;
+    if (n === undefined) throw new SourceError('nasa', 'broken', unreadable('沒有 total_hits', 'no total_hits'));
+    return { zh: `「moon」共 ${n} 筆`, en: `"moon": ${resultsEn(n)}` };
   },
 
   credit: (r) => `- NASA: "${r.title}" by ${r.author} (${r.page}), ${r.license}`,

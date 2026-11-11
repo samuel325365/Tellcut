@@ -75,8 +75,8 @@ export const countries: SourceAdapter = {
 
   async check(ctx) {
     const r = await ctx.http.json<Country[]>(DATASET);
-    if (!Array.isArray(r) || !r.length) throw new SourceError('countries', 'broken', '國家資料集的格式看不懂');
-    return `國家資料集可下載（${r.length} 國）`;
+    if (!Array.isArray(r) || !r.length) throw new SourceError('countries', 'broken', { zh: '國家資料集的格式看不懂', en: 'cannot read the country dataset' });
+    return { zh: `國家資料集可下載（${r.length} 國）`, en: `the country dataset downloads (${r.length} countries)` };
   },
 
   credit: (r) => `- Flag: "${r.title}" (${r.page}), ${r.license}`,

@@ -7,7 +7,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ffmpeg } from '../../ffmpeg.ts';
 import { renameRetry } from '../../fsutil.ts';
-import { SourceError, userAgent } from '../http.ts';
+import { resultsEn, SourceError, unreadable, userAgent } from '../http.ts';
 import type { AssetHit, AssetKind, SourceAdapter, SourceCtx } from '../types.ts';
 
 const STORE = 'https://store.steampowered.com/api';
@@ -123,8 +123,8 @@ export const steam: SourceAdapter = {
 
   async check(ctx) {
     const r = await ctx.http.json<{ items?: unknown[] }>(`${STORE}/storesearch/?${new URLSearchParams({ term: 'portal', l: 'tchinese', cc: 'TW' })}`);
-    if (!Array.isArray(r?.items)) throw new SourceError('steam', 'broken', '回應格式看不懂（storesearch 沒有 items）');
-    return `storesearch 可連線（portal：${r.items.length} 筆）`;
+    if (!Array.isArray(r?.items)) throw new SourceError('steam', 'broken', unreadable('storesearch 沒有 items', 'storesearch has no items'));
+    return { zh: `storesearch 可連線（portal：${r.items.length} 筆）`, en: `storesearch answers (portal: ${resultsEn(r.items.length)})` };
   },
 
   credit: (r) => `- Steam: "${r.title}" by ${r.author} (${r.page}), ${r.license}`,

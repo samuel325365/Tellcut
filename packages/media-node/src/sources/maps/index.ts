@@ -84,7 +84,7 @@ export const maps: SourceAdapter = {
       const file = join(ctx.tmpDir, `check-${layer.id}${layer.ext}`);
       try { await ctx.http.download(layer.url(12, 3430, 1755), file, { maxBytes: 2e6 }); } finally { rmSync(file, { force: true }); }
     }
-    return 'NLSC、EOX 圖磚可下載';
+    return { zh: 'NLSC、EOX 圖磚可下載', en: 'NLSC and EOX tiles download' };
   },
 
   credit: mapCredit,

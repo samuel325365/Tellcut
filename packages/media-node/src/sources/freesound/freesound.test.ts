@@ -65,7 +65,7 @@ test('a refused key is broken, and the key never shows in a url', async () => {
 });
 
 test('check is one tiny search', async () => {
-  expect(await freesound.check(ctx())).toBe('共 2 筆');
+  expect(await freesound.check(ctx())).toEqual({ zh: '共 2 筆', en: '2 results' });
   expect(new URL(sent[0].url).searchParams.get('page_size')).toBe('1');
 });
 

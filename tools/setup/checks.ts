@@ -1,20 +1,21 @@
 // What Tellcut needs on a PC, checked one by one (spec 2026-10-17-studio-handover §7–8). npm run setup installs what it can and
 // then runs these; npm run doctor only runs these (nothing is installed, no Claude tokens are spent).
 // Everything here is in English, like examples.ts: the people who run setup and doctor have just cloned Tellcut from GitHub
-// (the other tools print Chinese). Texts that come from media-node (an ExeSpec's install, a provider's check) are Chinese there,
-// so the rows here carry their own English.
+// (the other tools print Chinese). Texts that come from media-node are Chinese there: a provider's check and a source's check
+// carry their own English beside it (ProviderStatus.en, SourceError.en), the rest (an ExeSpec's install) get theirs here.
 import { exec, execFile } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { chromeSpec, CLAUDE, CLAUDE_MIN_VERSION, claudeEnv, editorBuildStale, facesProvider, FFMPEG, FFPROBE, loadProvidersConfig, locate, modelsDir, ocrProvider, onPathDirs, playerBuildStale, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec, type Provider } from '@tellcut/media-node';
+import { chromeSpec, CLAUDE, CLAUDE_MIN_VERSION, claudeEnv, editorBuildStale, facesProvider, FFMPEG, FFPROBE, loadProvidersConfig, locate, modelsDir, ocrProvider, onPathDirs, playerBuildStale, PY_PROJECT, runUv, TELLCUT_ROOT, UV, VENDOR_DIR, type ExeSpec, type Provider, type ProviderStatus } from '@tellcut/media-node';
 
 const run = promisify(execFile);
 /** a whole command line through the shell (claude is a .cmd file; TELLCUT_CLAUDE may be a command with arguments) */
 const runLine = (line: string, timeout = 60000) => promisify(exec)(line, { windowsHide: true, timeout, env: claudeEnv() });
 
-export interface Check { name: string; ok: boolean; detail: string; fix?: string }
+/** `warn`: an ok row with something to know and do (marked !); it never fails setup or doctor */
+export interface Check { name: string; ok: boolean; detail: string; fix?: string; warn?: string }
 
 /** "ffmpeg version 8.0.1-essentials…" → 8 */
 export const ffmpegMajor = (versionText: string) => { const m = /ffmpeg version n?(\d+)\./.exec(versionText); return m ? Number(m[1]) : null; };
@@ -61,9 +62,21 @@ export function checkPlatform(platform: NodeJS.Platform = process.platform, rele
 /** `ffmpeg -filters` lists vidstabdetect and vidstabtransform: stabilised cuts need them (Homebrew's plain ffmpeg has neither) */
 export const hasVidstab = (filters: string) => /\bvidstabdetect\b/.test(filters) && /\bvidstabtransform\b/.test(filters);
 
-export function checkNode(): Check {
-  const n = nodeMajor();
-  return n >= 24 ? { name: 'Node.js', ok: true, detail: `v${process.versions.node}` } : { name: 'Node.js', ok: false, detail: `v${process.versions.node}`, fix: 'install Node.js 24 or later (https://nodejs.org/)' };
+/** The first release of each Node major that no longer ends now and then with a fail-fast (0xC0000409) on Windows when its dynamic
+ *  ports run out (a test run starting and closing many servers meets it, and so can a long day of the server). 25 is not a
+ *  long-term release and the others are below or past the bug: checkNode's minimum speaks for those. */
+export const NODE_FAIL_FAST_FIXED: Readonly<Record<number, string>> = { 24: '24.22.2', 26: '26.13.0' };
+/** the release to update to when this Node on this system has that fail-fast, else null */
+export function nodeFailFastFix(v = process.versions.node, platform: NodeJS.Platform = process.platform): string | null {
+  const fixed = platform === 'win32' ? NODE_FAIL_FAST_FIXED[nodeMajor(v)] : undefined;
+  return fixed && versionAtLeast(v, fixed) === false ? fixed : null;
+}
+
+export function checkNode(v = process.versions.node, platform: NodeJS.Platform = process.platform): Check {
+  if (nodeMajor(v) < 24) return { name: 'Node.js', ok: false, detail: `v${v}`, fix: 'install Node.js 24 or later (https://nodejs.org/)' };
+  const fixed = nodeFailFastFix(v, platform);
+  return fixed ? { name: 'Node.js', ok: true, detail: `v${v}`, warn: `on Windows this version now and then crashes (0xC0000409) when it runs out of network ports: update Node.js to ${fixed} or later (https://nodejs.org/)` }
+    : { name: 'Node.js', ok: true, detail: `v${v}` };
 }
 
 export function checkNpm(): Check {
@@ -216,32 +229,34 @@ export async function checkClaudeLogin(): Promise<Check> {
 export function table(checks: Check[]): string {
   const w = Math.max(...checks.map((c) => [...c.name].reduce((n, ch) => n + (/[⺀-￯]/.test(ch) ? 2 : 1), 0)));
   const pad = (s: string) => s + ' '.repeat(Math.max(0, w - [...s].reduce((n, ch) => n + (/[⺀-￯]/.test(ch) ? 2 : 1), 0)));
-  const lines = checks.map((c) => `${c.ok ? '✓' : '✗'} ${pad(c.name)}  ${c.detail}${!c.ok && c.fix ? `\n  ${' '.repeat(w)}  → ${c.fix}` : ''}`);
-  const bad = checks.filter((c) => !c.ok).length;
-  return [...lines, '', bad ? `${bad} ${bad === 1 ? 'item needs' : 'items need'} fixing (do what follows each →, then run this again)` : 'All set: npm run server, then open http://127.0.0.1:5174/editor/'].join('\n');
+  const next = (s: string) => `\n  ${' '.repeat(w)}  → ${s}`;
+  const lines = checks.map((c) => `${!c.ok ? '✗' : c.warn ? '!' : '✓'} ${pad(c.name)}  ${c.detail}${!c.ok && c.fix ? next(c.fix) : ''}${c.ok && c.warn ? next(c.warn) : ''}`);
+  const bad = checks.filter((c) => !c.ok).length, warned = checks.filter((c) => c.ok && c.warn).length;
+  const also = warned ? ` (and see the ${warned === 1 ? 'warning' : 'warnings'} marked !)` : '';
+  return [...lines, '', bad ? `${bad} ${bad === 1 ? 'item needs' : 'items need'} fixing (do what follows each →, then run this again)` : `All set${also}: npm run server, then open http://127.0.0.1:5174/editor/`].join('\n');
 }
 
 /** English names of the providers Tellcut has (media-node's labels are Chinese) */
-const PROVIDER_EN: Record<string, { label: string; install?: string }> = {
-  edge: { label: 'edge-tts (Microsoft online voices)', install: 'npm run setup (edge-tts itself downloads on first use)' },
-  elevenlabs: { label: 'ElevenLabs (online voices, needs an API key)', install: 'set ELEVENLABS_API_KEY, or keys.elevenlabs in tellcut/sources.local.json' },
-  'faster-whisper': { label: 'faster-whisper (local CPU)' },
-  mediapipe: { label: 'MediaPipe face landmarks (local CPU)' },
-  windows: { label: 'Windows built-in OCR', install: 'Windows Settings → Time & language → Language & region: add "Chinese (Traditional, Taiwan)" and install "Optical character recognition" in its language options' },
-  macos: { label: 'macOS built-in text recognition', install: 'update macOS: its text recognition does not have the language' },
-  fake: { label: 'test stand-in' },
+const PROVIDER_EN: Record<string, string> = {
+  edge: 'edge-tts (Microsoft online voices)',
+  elevenlabs: 'ElevenLabs (online voices, needs an API key)',
+  'faster-whisper': 'faster-whisper (local CPU)',
+  mediapipe: 'MediaPipe face landmarks (local CPU)',
+  windows: 'Windows built-in OCR',
+  macos: 'macOS built-in text recognition',
+  fake: 'test stand-in',
 };
-export const providerLabel = (p: Pick<Provider, 'id' | 'label'>) => PROVIDER_EN[p.id]?.label ?? english(p.label) ?? p.id;
-/** A provider's check in English: its own words when they are English (a system error), else only whether it works, and for the
- *  fix the provider's own when it is English (npm run setup, xcode-select --install), else this file's for that provider. */
-export function providerStatus(p: Pick<Provider, 'id' | 'label'>, s: { ok: boolean; detail: string; install?: string; version?: string }): { detail?: string; fix?: string } {
-  return { detail: english(s.detail), fix: s.install ? english(s.install) ?? PROVIDER_EN[p.id]?.install ?? 'npm run providers -- --all' : undefined };
+export const providerLabel = (p: Pick<Provider, 'id' | 'label'>) => PROVIDER_EN[p.id] ?? english(p.label) ?? p.id;
+/** A provider's check in English: its own English (ProviderStatus.en); without one (a check that threw, a provider from before
+ *  it had English) its words only when they read in English (a system error), and a fix that does not points at the list. */
+export function providerStatus(s: Pick<ProviderStatus, 'detail' | 'install' | 'en'>): { detail?: string; fix?: string } {
+  return { detail: s.en?.detail ?? english(s.detail), fix: s.install ? s.en?.install ?? english(s.install) ?? 'npm run providers -- --all' : undefined };
 }
 
 /** A provider's own check as a row (the face detection and text recognition of toolkit phase 5). */
 export async function providerCheck(name: string, p: Provider): Promise<Check> {
   const s = await p.check().catch((e: Error) => ({ ok: false, detail: e.message.slice(0, 100), install: undefined, version: undefined }));
-  const { detail, fix } = providerStatus(p, s);
+  const { detail, fix } = providerStatus(s);
   const head = `${providerLabel(p)}${s.version ? ` v${s.version}` : ''}`;
   return { name, ok: s.ok, detail: detail ? `${head}: ${detail}` : s.ok ? head : `${head}: does not work`, fix };
 }

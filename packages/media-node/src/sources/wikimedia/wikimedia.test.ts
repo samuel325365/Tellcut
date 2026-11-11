@@ -98,7 +98,7 @@ test('a page id that is not there is missing', async () => {
 });
 
 test('check asks for the site name', async () => {
-  expect(await wikimedia.check(ctx)).toBe('Commons 可連線（Wikimedia Commons）');
+  expect(await wikimedia.check(ctx)).toEqual({ zh: 'Commons 可連線（Wikimedia Commons）', en: 'Commons answers (Wikimedia Commons)' });
 });
 
 test('the credit names the author in plain text and the licence', () => {

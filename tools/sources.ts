@@ -22,17 +22,17 @@ const WORDS = {
 const width = (s: string) => [...s].reduce((n, c) => n + (c.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
 const pad = (s: string, n: number) => s + ' '.repeat(Math.max(1, n - width(s)));
 
-/** `lang` 'en' for doctor, which prints English (tools/setup/checks.ts): a source's own words are Chinese, so there only those
- *  that read in English are kept. */
+/** `lang` 'en' for doctor, which prints English (tools/setup/checks.ts): a check gives its English beside its Chinese (HealthEntry.en);
+ *  an entry without one (a search recorded it) keeps its words only when they read in English. */
 export async function sourcesReport(s: Sources, o: { live?: boolean; lang?: 'zh' | 'en' } = {}): Promise<string> {
-  const w = WORDS[o.lang ?? 'zh'], said = (d: string) => (o.lang === 'en' && hasCjk(d) ? '' : d);
+  const w = WORDS[o.lang ?? 'zh'], said = (h: { detail: string; en?: string }) => (o.lang !== 'en' ? h.detail : h.en ?? (hasCjk(h.detail) ? '' : h.detail));
   const rows = await checkSources(s, { live: o.live });
   const lines = rows.map(({ status: st, result }) => {
     const entry = s.config.sources[st.id], h = result ?? st.health;
     const name = `${st.id}${st.adapter?.unofficial ?? entry?.unofficial ? w.unofficial : ''}`;
     const key = !st.adapter ? '—' : st.key === 'not-needed' ? w.notNeeded : st.key === 'present' ? w.present : w.missing(entry?.keyEnv ?? `keys.${st.id}`);
     const state = !st.adapter ? w.noAdapter : result ? w.state[result.status] : w.unchecked;
-    const detail = result ? said(result.detail) : h ? w.last(h.at.slice(0, 16).replace('T', ' '), w.state[h.status], said(h.detail)) : '';
+    const detail = result ? said(result) : h ? w.last(h.at.slice(0, 16).replace('T', ' '), w.state[h.status], said(h)) : '';
     return `${pad(name, w.nameWidth)}${pad(st.enabled ? w.on : w.off, 6)}${pad(key, 18)}${pad(state, 16)}${detail}`.trimEnd();
   });
   const [a, b, c, d] = w.head;

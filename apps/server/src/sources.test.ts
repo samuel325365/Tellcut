@@ -6,7 +6,7 @@ import { makeProjects, startApp } from './test-utils.ts';
 
 const adapter = (id: string, o: Partial<SourceAdapter> = {}): SourceAdapter => ({
   id, label: `${id} 名稱`, category: 'media', kinds: ['image'], needsKey: false, limits: [{ n: 100, per: 60 }], summary: id, sample: 'x', card: () => '',
-  search: async () => [], get: async () => { throw new Error('no'); }, check: async () => 'ok', credit: () => '', ...o,
+  search: async () => [], get: async () => { throw new Error('no'); }, check: async () => ({ zh: 'ok', en: 'ok' }), credit: () => '', ...o,
 });
 
 test('GET /api/sources lists every adapter in its group, greying out the ones that cannot be used with the reason', async () => {
@@ -41,7 +41,7 @@ test('POST /api/sources/:id/key tries a pasted key, keeps it in sources.local.js
   const k = adapter('k', { needsKey: true, keyUrl: 'https://k.example/keys', check: async (ctx) => {
     if (answer === 'refused') throw new SourceError('k', 'broken', 'key 被拒絕（HTTP 401）');
     if (answer === 'offline') throw new SourceError('k', 'temporary', '連不上');
-    return `key ${ctx.key}`;
+    return { zh: `key ${ctx.key}`, en: `key ${ctx.key}` };
   } });
   let env: NodeJS.ProcessEnv = {};
   // read from the files on every request, as the server's own does

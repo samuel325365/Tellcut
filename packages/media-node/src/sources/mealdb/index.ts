@@ -4,7 +4,7 @@
 // are the sites': recorded, not a gate.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SourceError } from '../http.ts';
+import { resultsEn, SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 
 const WEEK = 7 * 86400, STEPS_MAX = 1200;
@@ -16,7 +16,7 @@ function make(k: Kind): SourceAdapter {
   const api = `https://www.${k.site}/api/json/v1/1`;
   const ask = async (ctx: SourceCtx, path: string, params: Record<string, string>): Promise<Item[]> => {
     const r = await ctx.http.json<Record<string, unknown>>(`${api}/${path}?${new URLSearchParams(params)}`, { ttl: WEEK });
-    if (!r || !(k.list in r)) throw new SourceError(k.id, 'broken', `回應格式看不懂（沒有 ${k.list}）`);
+    if (!r || !(k.list in r)) throw new SourceError(k.id, 'broken', unreadable(`沒有 ${k.list}`, `no ${k.list}`));
     // nothing found: null, or the words "no data found" (TheCocktailDB's filter)
     const list = r[k.list];
     return Array.isArray(list) ? (list as Item[]) : [];
@@ -54,8 +54,8 @@ function make(k: Kind): SourceAdapter {
 
     async check(ctx) {
       const n = (await ask(ctx, 'search.php', { s: k.sample })).length;
-      if (!n) throw new SourceError(k.id, 'broken', `查「${k.sample}」沒有結果`);
-      return `「${k.sample}」共 ${n} 筆`;
+      if (!n) throw new SourceError(k.id, 'broken', { zh: `查「${k.sample}」沒有結果`, en: `no results for "${k.sample}"` });
+      return { zh: `「${k.sample}」共 ${n} 筆`, en: `"${k.sample}": ${resultsEn(n)}` };
     },
 
     credit: (r) => `- Photo: "${r.title}" (${r.page}), ${r.license}`,

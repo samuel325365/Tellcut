@@ -9,7 +9,7 @@ import { DICTS } from '@tellcut/editor/i18n';
 
 let root: string, projectsDir: string, clip: string, quietClip: string;
 const meta = (id: string): AssetMeta => ({ source: 'fake', id, title: `Rain ${id}`, author: 'A', page: 'https://example.org', license: 'L', quality: 'preview' });
-const base = { category: 'media' as const, needsKey: false, limits: [{ n: 100, per: 60 }], sample: 'x', check: async () => 'ok' };
+const base = { category: 'media' as const, needsKey: false, limits: [{ n: 100, per: 60 }], sample: 'x', check: async () => ({ zh: 'ok', en: 'ok' }) };
 const fake: SourceAdapter = {
   ...base, id: 'fake', label: 'fake', kinds: ['audio'], summary: '假的音效來源', card: () => '# fake 的能力卡',
   search: async (q) => [{ ref: 'fake:1', source: 'fake', id: '1', kind: 'audio', title: `Rain on window (${q.text})`, duration: 12.34, detail: 'Weather', tags: ['rain', 'window', 'interior', 'storm'] },

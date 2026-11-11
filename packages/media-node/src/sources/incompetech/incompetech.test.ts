@@ -75,7 +75,7 @@ test('an id that is not in the catalog is missing', async () => {
 });
 
 test('check asks the mirror for the first piece', async () => {
-  expect(await incompetechSource(small).check(ctx)).toBe('清單 4 首（快照 2026-09-28），鏡像可下載');
+  expect(await incompetechSource(small).check(ctx)).toEqual({ zh: '清單 4 首（快照 2026-09-28），鏡像可下載', en: 'a list of 4 tracks (snapshot 2026-09-28), the mirror downloads' });
   expect(urls).toEqual(['HEAD https://archive.org/download/abook-music-incompetech-cc-by-4.0/incompetech-Pamgaea.mp3']);
 });
 

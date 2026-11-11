@@ -104,10 +104,10 @@ export const gameWikis: SourceAdapter = {
   async check(ctx) {
     const names = await Promise.all(WIKIS.map(async (w) => {
       const r = await ctx.sub(w.id, WIKI_LIMITS).json<{ query?: { general?: { sitename?: string } } }>(`${w.api}?action=query&format=json&formatversion=2&meta=siteinfo&siprop=general`);
-      if (!r?.query?.general?.sitename) throw new SourceError('game-wikis', 'broken', `${w.name} 的回應格式看不懂（沒有 siteinfo）`);
+      if (!r?.query?.general?.sitename) throw new SourceError('game-wikis', 'broken', { zh: `${w.name} 的回應格式看不懂（沒有 siteinfo）`, en: `cannot read the answer of ${w.name} (no siteinfo)` });
       return r.query.general.sitename;
     }));
-    return `${names.join('、')} 可連線`;
+    return { zh: `${names.join('、')} 可連線`, en: `${names.join(', ')} answer` };
   },
 
   credit: (r) => `- Image: "${r.title}" via ${r.author} (${r.page}), ${r.license}`,

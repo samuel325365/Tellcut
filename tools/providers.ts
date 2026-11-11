@@ -21,7 +21,7 @@ const WORDS = {
 };
 
 /** One line per provider; the check results are fetched together. `lang` 'en' for doctor, which prints English (tools/setup/checks.ts):
- *  a provider's own words are Chinese, so there only those that read in English are kept. */
+ *  a provider's check gives its English beside its Chinese (providerStatus). */
 export async function providerReport(config: ProvidersConfig, all = false, lang: 'zh' | 'en' = 'zh'): Promise<string> {
   const w = WORDS[lang];
   const rows: Row[] = [];
@@ -40,7 +40,7 @@ export async function providerReport(config: ProvidersConfig, all = false, lang:
   }
   const lines = await Promise.all(rows.map(async ({ capability, chosen, p }) => {
     const s = await p.check().catch((e: Error) => ({ ok: false, detail: e.message.slice(0, 120), install: undefined, version: undefined }));
-    const { detail, fix } = lang === 'en' ? providerStatus(p, s) : { detail: s.detail, fix: s.install };
+    const { detail, fix } = lang === 'en' ? providerStatus(s) : { detail: s.detail, fix: s.install };
     return `${capability.padEnd(11)} ${chosen ? w.chosen : w.option} ${p.id.padEnd(15)} ${s.ok ? w.ok : w.bad}  ${p.online ? w.online : w.local} ${s.version ? `v${s.version} ` : ''}${detail ?? ''}${!s.ok && fix ? `\n${' '.repeat(38)}→ ${fix}` : ''}`.trimEnd();
   }));
   return [w.head, ...lines, '', w.foot].join('\n');

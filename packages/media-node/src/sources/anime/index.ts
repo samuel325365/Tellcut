@@ -4,7 +4,7 @@
 // now" (http.ts), never "nothing found". The pictures belong to the shows' rights holders: recorded, not a gate.
 import { readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import { SourceError } from '../http.ts';
+import { SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 import { plainText } from '../wikimedia/index.ts';
 
@@ -18,8 +18,8 @@ interface Character { id: number; name: { full?: string | null; native?: string 
 
 async function gql<T>(ctx: SourceCtx, query: string, variables: Record<string, unknown>, ttl = DAY): Promise<T> {
   const r = await ctx.http.json<{ data?: T; errors?: Array<{ message?: string; status?: number }> }>(API, { method: 'POST', body: { query, variables }, ttl, notFound: 'missing', cacheIf: (b) => !b?.errors });
-  if (r?.errors?.length) throw new SourceError('anime', 'broken', `GraphQL 查詢被拒絕（${r.errors[0].message ?? 'error'}）`);
-  if (!r?.data) throw new SourceError('anime', 'broken', '回應格式看不懂（沒有 data）');
+  if (r?.errors?.length) { const why = r.errors[0].message ?? 'error'; throw new SourceError('anime', 'broken', { zh: `GraphQL 查詢被拒絕（${why}）`, en: `the GraphQL query was refused (${why})` }); }
+  if (!r?.data) throw new SourceError('anime', 'broken', unreadable('沒有 data', 'no data'));
   return r.data;
 }
 
@@ -83,8 +83,8 @@ export const anime: SourceAdapter = {
   // never from the cache: an API that was switched off must show in `npm run sources`
   async check(ctx) {
     const d = await gql<{ Media?: { id?: number } }>(ctx, ONE_MEDIA, { id: 1 }, 0);
-    if (!d.Media?.id) throw new SourceError('anime', 'broken', '回應格式看不懂（查不到 1 號作品）');
-    return 'AniList 可連線';
+    if (!d.Media?.id) throw new SourceError('anime', 'broken', unreadable('查不到 1 號作品', 'no title number 1'));
+    return { zh: 'AniList 可連線', en: 'AniList answers' };
   },
 
   credit: (r) => `- Image: "${r.title}" (${r.page}), ${r.license}`,

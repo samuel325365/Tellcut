@@ -11,8 +11,12 @@ export function fasterWhisper(options: { model?: string } = {}): TranscribeProvi
     async check(): Promise<ProviderStatus> {
       try {
         const v = (await runUv(['run', '--project', PY_PROJECT, '--quiet', '--no-sync', '--offline', 'python', '-c', 'import importlib.metadata as m; print(m.version("faster-whisper"))'])).trim();
-        return { ok: true, version: v, detail: `模型 ${options.model ?? 'large-v3-turbo'}（第一次使用會下載模型）` };
-      } catch (e) { return { ok: false, detail: `跑不起來：${(e as Error).message.slice(0, 120)}`, install: 'npm run setup' }; }
+        const model = options.model ?? 'large-v3-turbo';
+        return { ok: true, version: v, detail: `模型 ${model}（第一次使用會下載模型）`, en: { detail: `model ${model} (downloaded on first use)` } };
+      } catch (e) {
+        const why = (e as Error).message.slice(0, 120);
+        return { ok: false, detail: `跑不起來：${why}`, install: 'npm run setup', en: { detail: `does not run: ${why}`, install: 'npm run setup' } };
+      }
     },
     async transcribe(src, out, o = {}) {
       const model = process.env.TELLCUT_WHISPER_MODEL ?? o.model ?? options.model;   // the env override stays the strongest (tests use a tiny model)

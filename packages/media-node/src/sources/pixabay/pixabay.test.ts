@@ -127,7 +127,7 @@ test('a key of another shape is refused before any request, without showing it',
 });
 
 test('check does not use the cache and reports the hit count', async () => {
-  expect(await pixabay.check(ctx())).toMatch(/共 3 筆/);
+  expect(await pixabay.check(ctx())).toEqual({ zh: '「coffee」共 3 筆', en: '"coffee": 3 results' });
   await pixabay.check(ctx());
   expect(sent.filter((s) => s.url.includes('/api/videos/')).length).toBe(2);
 });

@@ -4,14 +4,15 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { renameRetry } from '../fsutil.ts';
 import { withFileLock } from './rate.ts';
 
-export interface HealthEntry { status: 'ok' | 'broken' | 'temporary'; detail: string; at: string }
+/** `en`: the detail in English, when the check had it (doctor prints English); a search that met a broken answer records none */
+export interface HealthEntry { status: 'ok' | 'broken' | 'temporary'; detail: string; en?: string; at: string }
 
 export function readHealth(file: string): Record<string, HealthEntry> {
   try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return {}; }
 }
 
 /** one source's result, merged into the file under its lock (several processes check and search at once) */
-export async function recordHealth(file: string, id: string, e: { status: HealthEntry['status']; detail: string }, now: () => Date = () => new Date()): Promise<void> {
+export async function recordHealth(file: string, id: string, e: Omit<HealthEntry, 'at'>, now: () => Date = () => new Date()): Promise<void> {
   await withFileLock(`${file}.lock`, () => {
     const all = readHealth(file);
     all[id] = { ...e, at: now().toISOString() };

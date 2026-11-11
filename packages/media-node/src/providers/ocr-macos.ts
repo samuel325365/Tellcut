@@ -64,11 +64,15 @@ export function macosOcr(options: { lang?: string; /** a test's shorter clock */
   return {
     id: 'macos', label: 'macOS 內建文字辨識', online: false,
     async check(): Promise<ProviderStatus> {
-      if (process.platform !== 'darwin') return { ok: false, detail: '只有 macOS 有', install: '在 Mac 上使用' };
+      if (process.platform !== 'darwin') return { ok: false, detail: '只有 macOS 有', install: '在 Mac 上使用', en: { detail: 'only macOS has it', install: 'use it on a Mac' } };
       try {
         const out = await timed(0, ['--supports', langs[0]]);
-        return out.trim() === 'True' ? { ok: true, detail: `語言 ${langs.join('、')}` } : { ok: false, detail: `這台 Mac 的文字辨識沒有 ${langs[0]}`, install: '更新 macOS' };
-      } catch (e) { return { ok: false, detail: `跑不起來：${(e as Error).message.slice(0, 120)}`, install: 'xcode-select --install' }; }
+        return out.trim() === 'True' ? { ok: true, detail: `語言 ${langs.join('、')}`, en: { detail: `languages ${langs.join(', ')}` } }
+          : { ok: false, detail: `這台 Mac 的文字辨識沒有 ${langs[0]}`, install: '更新 macOS', en: { detail: `this Mac's text recognition has no ${langs[0]}`, install: 'update macOS: its text recognition does not have the language' } };
+      } catch (e) {
+        const why = (e as Error).message.slice(0, 120);
+        return { ok: false, detail: `跑不起來：${why}`, install: 'xcode-select --install', en: { detail: `does not run: ${why}`, install: 'xcode-select --install' } };
+      }
     },
     async read(images, o = {}) {
       if (!images.length) return [];

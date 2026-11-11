@@ -9,6 +9,8 @@ export interface ProviderStatus {
   detail: string;
   /** the command that fixes it, when it is not ok */
   install?: string;
+  /** detail and install in English, for doctor (it prints English; the two above are Chinese, like the other tools) */
+  en?: { detail: string; install?: string };
 }
 
 export interface Provider {

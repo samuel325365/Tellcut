@@ -1,5 +1,5 @@
 // What every source adapter is (spec 2026-10-22-external-sources §4.2): search, get, a capability card, a health check, a credit line.
-import type { Http } from './http.ts';
+import type { Http, ZhEn } from './http.ts';
 import type { RateLimit } from './rate.ts';
 import type { SourceCategory } from '@tellcut/protocol';
 /** the groups of the chat's API menu (spec 2026-10-24-api-picker §3) */
@@ -85,8 +85,9 @@ export interface SourceAdapter {
   card(): string;
   search(q: SearchQuery, ctx: SourceCtx): Promise<AssetHit[]>;
   get(id: string, ctx: SourceCtx): Promise<Fetched>;
-  /** the cheapest request that proves the source works; throws a SourceError; returns a detail line */
-  check(ctx: SourceCtx): Promise<string>;
+  /** the cheapest request that proves the source works; throws a SourceError (with its English, SourceError.en); returns a detail
+   *  line in Chinese and in English (doctor prints English) */
+  check(ctx: SourceCtx): Promise<ZhEn>;
   /** the credits line for one downloaded asset */
   credit(r: AssetRecord): string;
   /** a data source's answer to a question, as text for Claude (`assets data <id> <query>`; conditions in ctx.options) */

@@ -17,8 +17,11 @@ export function edgeTts(options: { version?: string; voice?: string } = {}, run:
     async check(): Promise<ProviderStatus> {
       try {
         const v = (await run(['tool', 'run', '--from', pkg, 'python', '-c', 'import importlib.metadata as m; print(m.version("edge-tts"))'])).trim();
-        return { ok: true, version: v, detail: `聲音 ${defaultVoice}；要連網才能說話` };
-      } catch (e) { return { ok: false, detail: `跑不起來：${(e as Error).message.slice(0, 120)}`, install: `npm run setup（edge-tts 本身在第一次使用時自動下載）` }; }
+        return { ok: true, version: v, detail: `聲音 ${defaultVoice}；要連網才能說話`, en: { detail: `voice ${defaultVoice}; speaking needs the internet` } };
+      } catch (e) {
+        const why = (e as Error).message.slice(0, 120);
+        return { ok: false, detail: `跑不起來：${why}`, install: `npm run setup（edge-tts 本身在第一次使用時自動下載）`, en: { detail: `does not run: ${why}`, install: 'npm run setup (edge-tts itself downloads on first use)' } };
+      }
     },
     async synth(req) {
       // this process's own temp names, the wav renamed into place only when whole: an interrupted run never leaves half a wav

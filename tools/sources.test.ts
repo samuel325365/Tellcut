@@ -7,7 +7,7 @@ import { sourcesReport } from './sources.ts';
 let root: string, clip: string, checked: string[];
 const adapter = (id: string, o: Partial<SourceAdapter> = {}): SourceAdapter => ({
   id, label: id, category: 'sound', kinds: ['audio'], needsKey: false, limits: [{ n: 100, per: 60 }], summary: id, sample: 'rain', card: () => '',
-  check: async () => { checked.push(id); return '共 3 筆'; },
+  check: async () => { checked.push(id); return { zh: '共 3 筆', en: '3 results' }; },
   search: async () => [{ ref: `${id}:1`, source: id, id: '1', kind: 'audio', title: 'one' }],
   get: async (x, ctx) => { const file = join(ctx.tmpDir, `${x}.wav`); copyFileSync(clip, file); return { file, kind: 'audio', meta: { source: id, id: x, title: 'one', author: 'a', page: 'p', license: 'l', quality: 'preview' } }; },
   credit: () => '', ...o,
@@ -25,21 +25,24 @@ test('a broken source that answers again is available again', async () => {
   await recordHealth(s.healthFile, 'fake', { status: 'broken', detail: '404' });
   expect(availableSources(s)).toEqual([]);
   await checkSources(s);
-  expect(readHealth(s.healthFile).fake).toMatchObject({ status: 'ok', detail: '共 3 筆' });
+  expect(readHealth(s.healthFile).fake).toEqual({ status: 'ok', detail: '共 3 筆', en: '3 results', at: expect.any(String) });
   expect(availableSources(s).map((a) => a.id)).toEqual(['fake']);
 });
 
 test('a check that fails is recorded as broken or temporary by its kind', async () => {
-  const s = open({ fake: adapter('fake', { check: async () => { throw new SourceError('fake', 'broken', '找不到（HTTP 404）'); } }),
+  const s = open({ fake: adapter('fake', { check: async () => { throw new SourceError('fake', 'broken', { zh: '找不到（HTTP 404）', en: 'not found (HTTP 404)' }); } }),
     later: adapter('later', { check: async () => { throw new SourceError('later', 'temporary', '暫時不能用（HTTP 503）'); } }) });
   await checkSources(s);
   expect([readHealth(s.healthFile).fake.status, readHealth(s.healthFile).later.status]).toEqual(['broken', 'temporary']);
+  // the error's English is kept beside its Chinese; one without English records none
+  expect(readHealth(s.healthFile).fake).toMatchObject({ detail: '找不到（HTTP 404）', en: 'not found (HTTP 404)' });
+  expect(readHealth(s.healthFile).later).not.toHaveProperty('en');
 });
 
 test('an adapter that fails on the answer itself (not a SourceError) is broken, not temporary', async () => {
-  const s = open({ fake: adapter('fake', { check: async () => { const r = {} as { results: string[] }; return `共 ${r.results.length} 筆`; } }) });
+  const s = open({ fake: adapter('fake', { check: async () => { const r = {} as { results: string[] }; const n = r.results.length; return { zh: `共 ${n} 筆`, en: `${n} results` }; } }) });
   await checkSources(s);
-  expect(readHealth(s.healthFile).fake).toMatchObject({ status: 'broken', detail: expect.stringMatching(/^轉接程式出錯（TypeError：/) });
+  expect(readHealth(s.healthFile).fake).toMatchObject({ status: 'broken', detail: expect.stringMatching(/^轉接程式出錯（TypeError：/), en: expect.stringMatching(/^the adapter failed \(TypeError: /) });
 });
 
 test('off sources and sources without a key are listed but not checked', async () => {
@@ -65,7 +68,7 @@ test('--live searches and downloads one, then cleans up', async () => {
     get: async (x, ctx) => { got = x; const file = join(ctx.tmpDir, 'x.wav'); copyFileSync(clip, file); return { file, kind: 'audio', meta: { source: 'fake', id: x, title: 'x', author: 'a', page: 'p', license: 'l', quality: 'preview' } }; } }) });
   const [r] = await checkSources(s, { live: true, tmpDir: tmp });
   expect(got).toBe('rain');
-  expect(r.result).toMatchObject({ status: 'ok', detail: '共 3 筆；實測下載 fake:rain' });
+  expect(r.result).toMatchObject({ status: 'ok', detail: '共 3 筆；實測下載 fake:rain', en: '3 results; downloaded fake:rain to try' });
   expect(readdirSync(tmp)).toEqual([]);
 });
 
@@ -78,13 +81,21 @@ test('--live does not search a source that takes no part in searches (maps): its
   expect(r.result).toMatchObject({ status: 'ok', detail: '共 3 筆' });
 });
 
-test('in English (doctor) the report keeps the same columns and drops the sources\' Chinese words', async () => {
+test('in English (doctor) the report keeps the same columns and says each check in its English', async () => {
   const s = open({ fake: adapter('fake'), off: adapter('off'), keyed: adapter('keyed', { needsKey: true }) });
+  // earlier checks of sources not checked now: one with its English says it, a search's record without English leaves it out
+  const at = () => new Date('2026-11-01T08:30:00Z');
+  await recordHealth(s.healthFile, 'off', { status: 'broken', detail: '找不到（HTTP 404）', en: 'not found (HTTP 404)' }, at);
+  await recordHealth(s.healthFile, 'keyed', { status: 'broken', detail: '搜尋時壞掉' }, at);
   const report = await sourcesReport(s, { lang: 'en' });
   const line = (id: string) => report.split('\n').find((l) => l.startsWith(id))!;
-  expect(line('fake')).toMatch(/^fake\s+on\s+not needed\s+works$/);
-  expect(line('off (unofficial)')).toMatch(/off\s+not needed\s+not checked/);
-  expect(line('keyed')).toMatch(/on\s+missing \(K_KEY\)\s+not checked/);
+  expect(line('fake')).toMatch(/^fake\s+on\s+not needed\s+works\s+3 results$/);
+  expect(line('off (unofficial)')).toMatch(/off\s+not needed\s+not checked\s+last checked 2026-11-01 08:30: broken, not found \(HTTP 404\)$/);
+  expect(line('keyed')).toMatch(/on\s+missing \(K_KEY\)\s+not checked\s+last checked 2026-11-01 08:30: broken$/);
+  // npm run sources (Chinese) says what it said before
+  const zh = (await sourcesReport(s)).split('\n');
+  expect(zh.find((l) => l.startsWith('fake'))).toMatch(/可用\s+共 3 筆$/);
+  expect(zh.find((l) => l.startsWith('off'))).toMatch(/上次 2026-11-01 08:30：壞掉，找不到（HTTP 404）$/);
   expect(line('later')).toMatch(/on\s+—\s+no adapter yet/);
   expect(report).toContain('No contact yet');
   expect(report).not.toMatch(/[⺀-鿿＀-￯]/);

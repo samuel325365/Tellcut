@@ -20,14 +20,14 @@ const open = (a: SourceAdapter, env: NodeJS.ProcessEnv = {}) => openSources({ ro
 
 test('tryKey asks the source with the pasted key — not the environment\'s — and records a good one as ok', async () => {
   let seen: string | undefined;
-  const s = open(adapter(async (ctx) => { seen = ctx.key; return '共 3 筆'; }), { K_KEY: 'from-env' });
+  const s = open(adapter(async (ctx) => { seen = ctx.key; return { zh: '共 3 筆', en: '3 results' }; }), { K_KEY: 'from-env' });
   expect(await tryKey(s, 'k', 'pasted')).toEqual({ result: 'ok', detail: '共 3 筆' });
   expect(seen).toBe('pasted');
   expect(readHealth(s.healthFile).k.status).toBe('ok');
 });
 
 test('tryKey of a name Object has (constructor, __proto__) is an unknown source, not a crash in Object', async () => {
-  const s = open(adapter(async () => 'x'));
+  const s = open(adapter(async () => ({ zh: 'x', en: 'x' })));
   for (const id of ['constructor', '__proto__']) await expect(tryKey(s, id, 'k')).rejects.toThrow(/不需要 key/);
 });
 

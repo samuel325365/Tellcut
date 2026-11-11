@@ -23,7 +23,7 @@ interface PdbSpell { id: string; attributes: { name: string; incantation?: strin
 
 async function hpList<T>(ctx: SourceCtx, path: string, ttl = WEEK): Promise<T[]> {
   const r = await ctx.http.json<T[]>(`${HP}/${path}`, { ttl });
-  if (!Array.isArray(r)) throw new SourceError('hp-api', 'broken', `HP-API 的回應格式看不懂（/${path} 不是清單）`);
+  if (!Array.isArray(r)) throw new SourceError('hp-api', 'broken', { zh: `HP-API 的回應格式看不懂（/${path} 不是清單）`, en: `cannot read the answer of HP-API (/${path} is not a list)` });
   return r;
 }
 async function pdb<T>(ctx: SourceCtx, path: string, params: Record<string, string> = {}, o: { notFound?: 'missing' } = {}): Promise<T> {
@@ -97,8 +97,8 @@ export const hpApi: SourceAdapter = {
 
   async check(ctx) {
     const n = (await hpList<HpSpell>(ctx, 'spells', 0)).length;
-    if (!n) throw new SourceError('hp-api', 'broken', 'HP-API 沒有咒語清單');
-    return `HP-API 可連線（咒語 ${n} 個）`;
+    if (!n) throw new SourceError('hp-api', 'broken', { zh: 'HP-API 沒有咒語清單', en: 'HP-API has no list of spells' });
+    return { zh: `HP-API 可連線（咒語 ${n} 個）`, en: `HP-API answers (${n} spells)` };
   },
 
   credit: (r) => `- Image: "${r.title}" (${r.page}), ${r.license}`,

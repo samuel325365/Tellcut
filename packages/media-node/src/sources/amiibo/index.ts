@@ -3,7 +3,7 @@
 // key. It moved to amiiboapi.org in 2026 (the .com answers 404). The pictures belong to Nintendo: recorded, not a gate.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SourceError } from '../http.ts';
+import { SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 
 const API = 'https://www.amiiboapi.org/api/amiibo/';
@@ -13,7 +13,7 @@ interface Amiibo { name: string; character: string; gameSeries: string; amiiboSe
 
 async function ask(ctx: SourceCtx, params: Record<string, string>, ttl = WEEK): Promise<Amiibo[]> {
   const r = await ctx.http.json<{ amiibo?: Amiibo[] | Amiibo | null }>(`${API}?${new URLSearchParams(params)}`, { ttl });
-  if (!r || !('amiibo' in r)) throw new SourceError('amiibo', 'broken', '回應格式看不懂（沒有 amiibo）');
+  if (!r || !('amiibo' in r)) throw new SourceError('amiibo', 'broken', unreadable('沒有 amiibo', 'no amiibo'));
   // one id answers with the amiibo itself, an unknown one with null
   return r.amiibo == null ? [] : Array.isArray(r.amiibo) ? r.amiibo : [r.amiibo];
 }
@@ -55,8 +55,8 @@ export const amiibo: SourceAdapter = {
 
   async check(ctx) {
     const n = (await ask(ctx, { name: 'mario' }, 0)).length;
-    if (!n) throw new SourceError('amiibo', 'broken', '查「mario」沒有結果');
-    return `「mario」共 ${n} 個`;
+    if (!n) throw new SourceError('amiibo', 'broken', { zh: '查「mario」沒有結果', en: 'no results for "mario"' });
+    return { zh: `「mario」共 ${n} 個`, en: `"mario": ${n} found` };
   },
 
   credit: (r) => `- amiibo: "${r.title}" (${r.page}), ${r.license}`,

@@ -53,12 +53,14 @@ export function windowsOcr(options: { lang?: string; /** a test's shorter clock 
   return {
     id: 'windows', label: 'Windows 內建文字辨識', online: false,
     async check(): Promise<ProviderStatus> {
-      if (process.platform !== 'win32') return { ok: false, detail: '只有 Windows 有', install: '把 tellcut/providers.json 裡 ocr 的 "use" 改成 "system"（用這台系統自己的文字辨識）' };
+      if (process.platform !== 'win32') return { ok: false, detail: '只有 Windows 有', install: '把 tellcut/providers.json 裡 ocr 的 "use" 改成 "system"（用這台系統自己的文字辨識）',
+        en: { detail: 'only Windows has it', install: 'set "use" under ocr in tellcut/providers.json to "system" (the text recognition of the system it runs on)' } };
       try {
         const out = await withTimeout(timeout(0), undefined, (s) => run(['-Command', `[Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime] | Out-Null; [Windows.Globalization.Language, Windows.Globalization, ContentType = WindowsRuntime] | Out-Null; [Windows.Media.Ocr.OcrEngine]::IsLanguageSupported((New-Object Windows.Globalization.Language '${lang}'))`], s));
-        return out.trim() === 'True' ? { ok: true, detail: `語言 ${lang}` }
-          : { ok: false, detail: `沒有 ${lang} 的文字辨識`, install: '設定 → 時間與語言 → 語言：加入中文（台灣），在語言選項裡安裝「光學字元辨識」' };
-      } catch (e) { return { ok: false, detail: `跑不起來：${(e as Error).message.slice(0, 120)}` }; }
+        return out.trim() === 'True' ? { ok: true, detail: `語言 ${lang}`, en: { detail: `language ${lang}` } }
+          : { ok: false, detail: `沒有 ${lang} 的文字辨識`, install: '設定 → 時間與語言 → 語言：加入中文（台灣），在語言選項裡安裝「光學字元辨識」',
+            en: { detail: `no text recognition for ${lang}`, install: 'Windows Settings → Time & language → Language & region: add "Chinese (Traditional, Taiwan)" and install "Optical character recognition" in its language options' } };
+      } catch (e) { const why = (e as Error).message.slice(0, 120); return { ok: false, detail: `跑不起來：${why}`, en: { detail: `does not run: ${why}` } }; }
     },
     async read(images, o = {}) {
       if (!images.length) return [];

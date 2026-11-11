@@ -68,7 +68,7 @@ test('an answer without results is broken', async () => {
 });
 
 test('check is one tiny search', async () => {
-  expect(await bbcSfx.check(ctx)).toBe('共 2991 筆');
+  expect(await bbcSfx.check(ctx)).toEqual({ zh: '共 2991 筆', en: '2991 results' });
   expect(sent[0].body).toEqual({ criteria: { from: 0, size: 1, query: 'rain' } });
 });
 

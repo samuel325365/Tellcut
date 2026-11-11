@@ -82,6 +82,6 @@ test('a GraphQL answer with errors is broken, never cached', async () => {
   await expect(pokeapi.search({ text: 'x', opts: {}, limit: 5 }, ctx())).rejects.toMatchObject({ kind: 'broken', message: expect.stringContaining('not found') });
   gqlAnswer = null;
   expect(await pokeapi.search({ text: '25', opts: {}, limit: 5 }, ctx())).toHaveLength(1);
-  expect(await pokeapi.check(ctx())).toBe('GraphQL 可連線（25 號是 pikachu）');
+  expect(await pokeapi.check(ctx())).toEqual({ zh: 'GraphQL 可連線（25 號是 pikachu）', en: 'GraphQL answers (number 25 is pikachu)' });
   expect(describeSpecies).toBeTypeOf('function');
 });

@@ -78,6 +78,6 @@ test('the tile urls follow WMTS z/y/x', () => {
 
 test('maps never takes part in a search, and its check fetches one NLSC and one EOX tile', async () => {
   expect(maps.kinds).toEqual([]);
-  expect(await maps.check(ctx)).toBe('NLSC、EOX 圖磚可下載');
+  expect(await maps.check(ctx)).toEqual({ zh: 'NLSC、EOX 圖磚可下載', en: 'NLSC and EOX tiles download' });
   expect(asked.map((u) => u.hostname)).toEqual(['wmts.nlsc.gov.tw', 'tiles.maps.eox.at']);
 });

@@ -3,7 +3,7 @@
 // say who they are to about 10 requests a minute (and answers 429 at once to a bare user agent); with a contact it allows 200.
 import { readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import { cleanUrl, SourceError } from '../http.ts';
+import { cleanUrl, SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 
 const COMMONS = 'https://commons.wikimedia.org/w/api.php';
@@ -37,7 +37,7 @@ const titleOf = (p: Page) => p.title.replace(/^File:/, '').replace(/\.[^.]+$/, '
 /** MediaWiki answers an error with HTTP 200 and `error` ("Search is currently too busy", maxlag): busy for now, never "nothing found" */
 const NOT_AN_ERROR = (b: { error?: unknown } | null) => !b?.error;
 function mediaWikiError(r: { error?: { code?: string; info?: string } } | null) {
-  if (r?.error) throw new SourceError('wikimedia', 'temporary', `暫時不能用（${r.error.info ?? r.error.code ?? 'error'}）`);
+  if (r?.error) { const why = r.error.info ?? r.error.code ?? 'error'; throw new SourceError('wikimedia', 'temporary', { zh: `暫時不能用（${why}）`, en: `unavailable for now (${why})` }); }
 }
 
 async function pages(ctx: SourceCtx, params: Record<string, string>, ttl: number): Promise<Page[]> {
@@ -102,8 +102,8 @@ export const wikimedia: SourceAdapter = {
     const r = await ctx.http.json<{ query?: { general?: { sitename?: string } }; error?: { code?: string; info?: string } }>(api({ meta: 'siteinfo', siprop: 'general' }));
     mediaWikiError(r);
     const name = r?.query?.general?.sitename;
-    if (!name) throw new SourceError('wikimedia', 'broken', '回應格式看不懂（沒有 siteinfo）');
-    return `Commons 可連線（${name}）`;
+    if (!name) throw new SourceError('wikimedia', 'broken', unreadable('沒有 siteinfo', 'no siteinfo'));
+    return { zh: `Commons 可連線（${name}）`, en: `Commons answers (${name})` };
   },
 
   credit: (r) => `- Image: "${r.title}" by ${r.author} (${r.page}), ${r.license}${r.licenseUrl ? ` ${r.licenseUrl}` : ''}`,

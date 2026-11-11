@@ -109,7 +109,7 @@ describe('getAsset', () => {
   let gets = 0;
   const fake: SourceAdapter = {
     id: 'fake', label: 'fake', category: 'sound', kinds: ['audio'], needsKey: false, limits: [{ n: 100, per: 60 }], summary: '', sample: 'x', card: () => '',
-    search: async () => [], check: async () => 'ok', credit: (r) => `- SFX: fake ${r.id} "${r.title}"`,
+    search: async () => [], check: async () => ({ zh: 'ok', en: 'ok' }), credit: (r) => `- SFX: fake ${r.id} "${r.title}"`,
     get: async (id, ctx) => { gets++; const file = join(ctx.tmpDir, `${id}.wav`); copyFileSync(hot, file); return { file, kind: 'audio', meta: meta('fake', id) }; },
   };
   const config: SourcesConfig = { contact: '', keys: {}, sources: { fake: { enabled: true, options: {} } } };

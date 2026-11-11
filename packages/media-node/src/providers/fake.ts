@@ -8,7 +8,7 @@ export function fakeTts(o: { words?: boolean; ok?: boolean; voice?: string } = {
   return {
     id: 'fake', label: '假的語音引擎（測試用）', online: false, calls, defaultVoice: o.voice,
     voices: () => ['fake-a', 'fake-b'],
-    async check(): Promise<ProviderStatus> { return o.ok === false ? { ok: false, detail: '故意壞掉', install: 'none' } : { ok: true, version: '0', detail: 'fake' }; },
+    async check(): Promise<ProviderStatus> { return o.ok === false ? { ok: false, detail: '故意壞掉', install: 'none', en: { detail: 'broken on purpose', install: 'none' } } : { ok: true, version: '0', detail: 'fake' }; },
     async synth(req): Promise<TtsResult> {
       calls.push(req);
       const chars = [...req.text.replace(/\s+/g, '')], per = 0.18 * (1 - (req.rate ?? 0) / 100), sr = 16000, n = Math.round(chars.length * per * sr);

@@ -3,7 +3,7 @@
 // source is off by default and may change without notice; `npm run sources` notices when it does.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SourceError } from '../http.ts';
+import { resultsEn, SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 
 const API = 'https://sound-effects-api.bbcrewind.co.uk/api/sfx/search', MEDIA = 'https://sound-effects-media.bbcrewind.co.uk';
@@ -14,7 +14,7 @@ interface Result { id: string; description: string; duration: number; tags?: str
 
 async function find(ctx: SourceCtx, query: string, size: number): Promise<{ total: number; results: Result[] }> {
   const r = await ctx.http.json<{ total?: number; results?: Result[] }>(API, { method: 'POST', body: { criteria: { from: 0, size, query } }, ttl: 7 * 86400 });
-  if (!Array.isArray(r?.results)) throw new SourceError('bbc-sfx', 'broken', '回應格式看不懂（沒有 results）');
+  if (!Array.isArray(r?.results)) throw new SourceError('bbc-sfx', 'broken', unreadable('沒有 results', 'no results'));
   return { total: r.total ?? r.results.length, results: r.results };
 }
 
@@ -51,7 +51,7 @@ export const bbcSfx: SourceAdapter = {
       license: 'RemArc（限個人、教育、研究用途）', licenseUrl: 'https://sound-effects.bbcrewind.co.uk/licensing', quality: wav ? 'original' : 'preview' } };
   },
 
-  async check(ctx) { return `共 ${(await find(ctx, 'rain', 1)).total} 筆`; },
+  async check(ctx) { const n = (await find(ctx, 'rain', 1)).total; return { zh: `共 ${n} 筆`, en: resultsEn(n) }; },
 
   credit: (r) => `- SFX: BBC Sound Effects ${r.id} "${r.title}" (bbcrewind, RemArc licence, personal use)`,
 };

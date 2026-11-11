@@ -21,11 +21,12 @@ export const tileFile = (cacheRoot: string, source: string, layer: TileLayer, z:
 export function checkTile(file: string, source: string, layer: TileLayer): void {
   const b = readFileSync(file);
   const png = b.length > 24 && b.readUInt32BE(0) === 0x89504e47, jpeg = b.length > 3 && b[0] === 0xff && b[1] === 0xd8;
-  if (!png && !jpeg) { rmSync(file, { force: true }); throw new SourceError(source, 'temporary', `${layer.label} 回的不是圖片`); }
+  if (!png && !jpeg) { rmSync(file, { force: true }); throw new SourceError(source, 'temporary', { zh: `${layer.label} 回的不是圖片`, en: `the ${layer.id} layer sent no picture` }); }
   const width = png ? b.readUInt32BE(16) : layer.tileSize;
   if (width !== layer.tileSize) {
     rmSync(file, { force: true });
-    throw new SourceError(source, 'broken', `${layer.label} 回的圖磚是 ${width} px，應該是 ${layer.tileSize} px（多半是 key 不對或沒填）`);
+    throw new SourceError(source, 'broken', { zh: `${layer.label} 回的圖磚是 ${width} px，應該是 ${layer.tileSize} px（多半是 key 不對或沒填）`,
+      en: `the ${layer.id} layer sent a ${width} px tile, not ${layer.tileSize} px (most likely a wrong or missing key)` });
   }
 }
 

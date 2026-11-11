@@ -16,7 +16,7 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 const hit = (source: string, id: string, kind: AssetHit['kind']): AssetHit => ({ ref: `${source}:${id}`, source, id, kind, title: id });
 function fake(id: string, kind: AssetHit['kind'], search: SourceAdapter['search'], needsKey = false): SourceAdapter {
   return { id, label: id, category: 'media', kinds: [kind], needsKey, limits: [{ n: 100, per: 60 }], summary: `${id} 的說明`, sample: 'x', card: () => `# ${id}`, search,
-    get: async () => { throw new Error('not here'); }, check: async () => 'ok', credit: (r) => `- ${r.title}` };
+    get: async () => { throw new Error('not here'); }, check: async () => ({ zh: 'ok', en: 'ok' }), credit: (r) => `- ${r.title}` };
 }
 const config: SourcesConfig = { contact: '', keys: {}, sources: { a: { enabled: true, options: {} }, b: { enabled: true, keyEnv: 'B_KEY', options: {} }, c: { enabled: false, options: {} } } };
 const noNet = (async () => { throw new Error('no network in tests'); }) as unknown as typeof fetch;

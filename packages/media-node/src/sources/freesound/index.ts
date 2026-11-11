@@ -4,7 +4,7 @@
 // only what a film uses is downloaded.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SourceError } from '../http.ts';
+import { resultsEn, SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 
 const API = 'https://freesound.org/apiv2';
@@ -25,7 +25,7 @@ export function licenseName(url: string): string {
  *  its message: it is refused first, without being repeated. */
 function auth(ctx: SourceCtx) {
   const key = (ctx.key ?? '').trim();
-  if (!/^[A-Za-z0-9]+$/.test(key)) throw new SourceError('freesound', 'broken', 'Freesound 的 key 格式不對（只能有英文字母和數字）');
+  if (!/^[A-Za-z0-9]+$/.test(key)) throw new SourceError('freesound', 'broken', { zh: 'Freesound 的 key 格式不對（只能有英文字母和數字）', en: 'the Freesound key is not of its form (letters and digits only)' });
   return { Authorization: `Token ${key}` };
 }
 
@@ -33,7 +33,7 @@ interface Result { id: number; name: string; duration: number; license: string; 
 
 async function find(ctx: SourceCtx, params: Record<string, string>, ttl = 86400): Promise<{ count: number; results: Result[] }> {
   const r = await ctx.http.json<{ count?: number; results?: Result[] }>(`${API}/search/text/?${new URLSearchParams(params)}`, { headers: auth(ctx), ttl });
-  if (!Array.isArray(r?.results)) throw new SourceError('freesound', 'broken', '回應格式看不懂（沒有 results）');
+  if (!Array.isArray(r?.results)) throw new SourceError('freesound', 'broken', unreadable('沒有 results', 'no results'));
   return { count: r.count ?? r.results.length, results: r.results };
 }
 
@@ -82,7 +82,7 @@ export const freesound: SourceAdapter = {
   },
 
   // never from the cache: a key that went bad must show in `npm run sources`, not a day later
-  async check(ctx) { return `共 ${(await find(ctx, { query: 'rain', page_size: '1', fields: 'id' }, 0)).count} 筆`; },
+  async check(ctx) { const n = (await find(ctx, { query: 'rain', page_size: '1', fields: 'id' }, 0)).count; return { zh: `共 ${n} 筆`, en: resultsEn(n) }; },
 
   credit: (r) => `- SFX: "${r.title}" by ${r.author} (${r.page}), ${r.license}${r.licenseUrl ? ` ${r.licenseUrl}` : ''}`,
 };

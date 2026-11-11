@@ -74,8 +74,8 @@ export function incompetechSource(catalog: Catalog = CATALOG): SourceAdapter {
 
     async check(ctx) {
       const h = await ctx.http.head(url(catalog.items[0]));
-      if (!/^audio\//.test(h.type)) throw new SourceError('incompetech', 'temporary', `鏡像回的不是音檔（${h.type || '沒有類型'}）`);
-      return `清單 ${catalog.items.length} 首（快照 ${catalog.snapshot}），鏡像可下載`;
+      if (!/^audio\//.test(h.type)) throw new SourceError('incompetech', 'temporary', { zh: `鏡像回的不是音檔（${h.type || '沒有類型'}）`, en: `the mirror sent no audio file (${h.type || 'no type'})` });
+      return { zh: `清單 ${catalog.items.length} 首（快照 ${catalog.snapshot}），鏡像可下載`, en: `a list of ${catalog.items.length} tracks (snapshot ${catalog.snapshot}), the mirror downloads` };
     },
 
     credit: (r) => `- Music: "${r.title}" by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0 (${LICENSE})`,

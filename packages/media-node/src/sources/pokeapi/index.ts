@@ -5,7 +5,7 @@
 // GAME FREAK: recorded in the credits, not a gate.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SourceError } from '../http.ts';
+import { SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 
 const GQL = 'https://beta.pokeapi.co/graphql/v1beta';
@@ -24,8 +24,8 @@ interface Species { id: number; name: string; names: Name[] }
 async function gql<T>(ctx: SourceCtx, query: string, variables: Record<string, unknown> = {}, ttl = MONTH): Promise<T> {
   const r = await ctx.sub('gql', GQL_LIMITS).json<{ data?: T; errors?: Array<{ message?: string }> }>(GQL, { method: 'POST', body: { query, variables }, ttl, cacheIf: (b) => !b?.errors });
   // a query PokeAPI no longer understands (its schema changed) is not a passing problem
-  if (r?.errors?.length) throw new SourceError('pokeapi', 'broken', `GraphQL 查詢被拒絕（${r.errors[0].message ?? 'error'}）`);
-  if (!r?.data) throw new SourceError('pokeapi', 'broken', '回應格式看不懂（沒有 data）');
+  if (r?.errors?.length) { const why = r.errors[0].message ?? 'error'; throw new SourceError('pokeapi', 'broken', { zh: `GraphQL 查詢被拒絕（${why}）`, en: `the GraphQL query was refused (${why})` }); }
+  if (!r?.data) throw new SourceError('pokeapi', 'broken', unreadable('沒有 data', 'no data'));
   return r.data;
 }
 
@@ -129,8 +129,8 @@ export const pokeapi: SourceAdapter = {
   // never from the cache: a GraphQL that stopped answering must show in `npm run sources`
   async check(ctx) {
     const d = await gql<{ s?: { name?: string } }>(ctx, '{ s: pokemon_v2_pokemonspecies_by_pk(id: 25) { name } }', {}, 0);
-    if (!d.s?.name) throw new SourceError('pokeapi', 'broken', '回應格式看不懂（查不到 25 號）');
-    return `GraphQL 可連線（25 號是 ${d.s.name}）`;
+    if (!d.s?.name) throw new SourceError('pokeapi', 'broken', unreadable('查不到 25 號', 'no number 25'));
+    return { zh: `GraphQL 可連線（25 號是 ${d.s.name}）`, en: `GraphQL answers (number 25 is ${d.s.name})` };
   },
 
   credit: (r) => `- Pokémon: "${r.title}" (${r.page}), ${r.license}`,

@@ -5,7 +5,7 @@
 // refs carry the kind: pixabay:video-123, pixabay:image-123.
 import { readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import { SourceError } from '../http.ts';
+import { resultsEn, SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SearchQuery, SourceAdapter, SourceCtx } from '../types.ts';
 
 const API = 'https://pixabay.com/api';
@@ -45,7 +45,7 @@ export function pickForFrame(videos: VideoHit['videos'], fw: number, fh: number)
 /** the key as it may go into a URL; another shape (a stray character when pasted) would change the query itself */
 function keyOf(ctx: SourceCtx): string {
   const key = (ctx.key ?? '').trim();
-  if (!/^[A-Za-z0-9-]+$/.test(key)) throw new SourceError('pixabay', 'broken', 'Pixabay 的 key 格式不對（只能有英文字母、數字和 -）');
+  if (!/^[A-Za-z0-9-]+$/.test(key)) throw new SourceError('pixabay', 'broken', { zh: 'Pixabay 的 key 格式不對（只能有英文字母、數字和 -）', en: 'the Pixabay key is not of its form (letters, digits and - only)' });
   return key;
 }
 
@@ -63,7 +63,7 @@ function shapeOf(ratio?: string): 'wide' | 'tall' | null {
 async function ask<T>(ctx: SourceCtx, path: '/' | '/videos/', params: Record<string, string>, ttl = DAY): Promise<Answer<T>> {
   const qs = new URLSearchParams({ key: keyOf(ctx), ...params });
   const r = await ctx.http.json<Answer<T>>(`${API}${path}?${qs}`, { ttl });
-  if (!Array.isArray(r?.hits)) throw new SourceError('pixabay', 'broken', '回應格式看不懂（沒有 hits）');
+  if (!Array.isArray(r?.hits)) throw new SourceError('pixabay', 'broken', unreadable('沒有 hits', 'no hits'));
   return r;
 }
 
@@ -143,7 +143,8 @@ export const pixabay: SourceAdapter = {
 
   async check(ctx) {
     const r = await ask<VideoHit>(ctx, '/videos/', { q: 'coffee', per_page: '3', safesearch: 'true' }, 0);
-    return `「coffee」共 ${r.totalHits ?? r.hits!.length} 筆`;
+    const n = r.totalHits ?? r.hits!.length;
+    return { zh: `「coffee」共 ${n} 筆`, en: `"coffee": ${resultsEn(n)}` };
   },
 
   credit: (r) => `- Pixabay: "${r.title}" by ${r.author} (${r.page}), ${r.license}`,

@@ -23,10 +23,18 @@ export function cleanUrl(url: string): string {
 }
 
 /** broken: the source is gone or changed (hidden until a check passes); temporary: try later; missing: that one item is not there */
+/** one line in both languages: Chinese for the tools and the page, English for doctor (it prints English) */
+export interface ZhEn { zh: string; en: string }
+
 export class SourceError extends Error {
   override name = 'SourceError';
+  /** the message in English, when it has one: the errors a health check can meet do (doctor says them) */
+  readonly en?: string;
   /** status: the HTTP status the source answered with, when it answered */
-  constructor(readonly source: string, readonly kind: 'broken' | 'temporary' | 'missing', message: string, readonly status?: number) { super(message); }
+  constructor(readonly source: string, readonly kind: 'broken' | 'temporary' | 'missing', message: string | ZhEn, readonly status?: number) {
+    super(typeof message === 'string' ? message : message.zh);
+    if (typeof message !== 'string') this.en = message.en;
+  }
 }
 
 export interface Http {
@@ -44,34 +52,45 @@ export interface HttpOptions {
   timeoutMs?: number;
 }
 
+const keyRefused = (s: number): ZhEn => ({ zh: `key 被拒絕（HTTP ${s}）`, en: `the key was refused (HTTP ${s})` });
+/** an answer the adapter cannot read (a source that changed): what it missed, in Chinese and in English, when it can say */
+export const unreadable = (zh?: string, en?: string): ZhEn => (zh ? { zh: `回應格式看不懂（${zh}）`, en: `cannot read the answer (${en ?? zh})` } : { zh: '回應格式看不懂', en: 'cannot read the answer' });
+const UNREADABLE = unreadable();
+/** "1 result", "3 results": a check's count in English */
+export const resultsEn = (n: number | string) => `${n} ${Number(n) === 1 ? 'result' : 'results'}`;
 const looksHtml = (type: string, text: string) => /text\/html/i.test(type) || /^\s*</.test(text);
 
 export function createHttp(o: HttpOptions): Http {
-  const doFetch = o.fetch ?? globalThis.fetch, now = o.now ?? Date.now, fail = (kind: SourceError['kind'], msg: string, status?: number) => new SourceError(o.source, kind, msg, status);
+  const doFetch = o.fetch ?? globalThis.fetch, now = o.now ?? Date.now, fail = (kind: SourceError['kind'], msg: ZhEn, status?: number) => new SourceError(o.source, kind, msg, status);
 
   async function request(url: string, init: RequestInit, timeout: number): Promise<Response> {
     try { await takeSlot(join(o.cacheDir, 'rate', `${o.source}.json`), o.limits, { now }); }
-    catch (e) { if (e instanceof RateWait) throw fail('temporary', `額度暫時用完，約 ${Math.ceil(e.seconds / 60)} 分鐘後再試`); throw e; }
+    catch (e) {
+      if (e instanceof RateWait) { const min = Math.ceil(e.seconds / 60); throw fail('temporary', { zh: `額度暫時用完，約 ${min} 分鐘後再試`, en: `out of requests for now: try again in about ${min} min` }); }
+      throw e;
+    }
     const headers = new Headers(init.headers);
     headers.set('User-Agent', userAgent(o.contact));
     try { return await doFetch(url, { ...init, headers, signal: AbortSignal.timeout(timeout) }); }
-    catch (e) { throw cutOff(e as Error, timeout, '連不上'); }
+    catch (e) { throw cutOff(e as Error, timeout, { zh: '連不上', en: 'cannot connect' }); }
   }
   /** a fetch, or the reading of its answer, that failed on the way: the time ran out or the connection dropped (try later) */
-  const cutOff = (err: Error, timeout: number, what: string) =>
-    fail('temporary', err?.name === 'TimeoutError' ? `逾時（${Math.round(timeout / 1000)} 秒）` : `${what}（${err?.message ?? err}）`);
+  const cutOff = (err: Error, timeout: number, what: ZhEn) => {
+    const secs = Math.round(timeout / 1000), why = err?.message ?? err;
+    return fail('temporary', err?.name === 'TimeoutError' ? { zh: `逾時（${secs} 秒）`, en: `timed out (${secs} s)` } : { zh: `${what.zh}（${why}）`, en: `${what.en} (${why})` });
+  };
   /** A status that is not 2xx, as the error it means (its body is read: a 403 web page is a bot check even when a key was sent).
    *  Other 4xx are about this request (a query the source refuses), never a reason to hide the source (review M-4). */
   async function statusError(r: Response, notFound: SourceError['kind']): Promise<SourceError> {
-    const s = r.status, text = await r.text().catch(() => ''), f = (kind: SourceError['kind'], msg: string) => fail(kind, msg, s);
-    if (s === 404 || s === 410) return f(notFound, `找不到（HTTP ${s}）`);
-    if (s === 401 || s === 403) return o.hasKey && !looksHtml(r.headers.get('content-type') ?? '', text) ? f('broken', `key 被拒絕（HTTP ${s}）`) : f('temporary', `被擋下（可能是人機驗證，HTTP ${s}）`);
+    const s = r.status, text = await r.text().catch(() => ''), f = (kind: SourceError['kind'], msg: ZhEn) => fail(kind, msg, s);
+    if (s === 404 || s === 410) return f(notFound, { zh: `找不到（HTTP ${s}）`, en: `not found (HTTP ${s})` });
+    if (s === 401 || s === 403) return o.hasKey && !looksHtml(r.headers.get('content-type') ?? '', text) ? f('broken', keyRefused(s)) : f('temporary', { zh: `被擋下（可能是人機驗證，HTTP ${s}）`, en: `blocked (perhaps a bot check, HTTP ${s})` });
     // a source that takes its key in the query answers a bad one with a 400 naming it (Pixabay, once: [ERROR 400] "key" is invalid;
     // since 2026: [ERROR 400] Invalid or missing API key); only those words: a bare "key" in another source's 400 (a JSON field,
     // "missing key field") is about the query
-    if (s === 400 && o.hasKey && /"key"\s+is\b|\binvalid or missing api key\b/i.test(text)) return f('broken', `key 被拒絕（HTTP ${s}）`);
-    if (s === 429 || s >= 500) return f('temporary', `暫時不能用（HTTP ${s}）`);
-    return f('temporary', `請求被拒絕（HTTP ${s}）`);
+    if (s === 400 && o.hasKey && /"key"\s+is\b|\binvalid or missing api key\b/i.test(text)) return f('broken', keyRefused(s));
+    if (s === 429 || s >= 500) return f('temporary', { zh: `暫時不能用（HTTP ${s}）`, en: `unavailable for now (HTTP ${s})` });
+    return f('temporary', { zh: `請求被拒絕（HTTP ${s}）`, en: `request refused (HTTP ${s})` });
   }
 
   return {
@@ -89,10 +108,10 @@ export function createHttp(o: HttpOptions): Http {
       // the body streams after the headers: a connection dropped or the timeout reached while reading it is as temporary as one
       // before (it was a bare TypeError, which the health check recorded as a broken source)
       let text: string;
-      try { text = await r.text(); } catch (e) { throw cutOff(e as Error, timeout, '回應讀到一半中斷'); }
-      if (looksHtml(r.headers.get('content-type') ?? '', text)) throw fail('temporary', '被人機驗證擋下或在維護（回的是網頁，不是資料）');
+      try { text = await r.text(); } catch (e) { throw cutOff(e as Error, timeout, { zh: '回應讀到一半中斷', en: 'the answer broke off halfway' }); }
+      if (looksHtml(r.headers.get('content-type') ?? '', text)) throw fail('temporary', { zh: '被人機驗證擋下或在維護（回的是網頁，不是資料）', en: 'stopped by a bot check, or down for maintenance (it sent a web page, not data)' });
       let body: T;
-      try { body = JSON.parse(text); } catch { throw fail('broken', '回應格式看不懂'); }
+      try { body = JSON.parse(text); } catch { throw fail('broken', UNREADABLE); }
       // cacheIf: an answer that is an error in disguise (MediaWiki says "busy" with HTTP 200) is not kept for the ttl
       if (ttl > 0 && (q.cacheIf?.(body) ?? true)) {
         mkdirSync(dirname(cached), { recursive: true });
@@ -114,7 +133,7 @@ export function createHttp(o: HttpOptions): Http {
       const r = await request(url, { headers: d.headers }, 600_000);
       if (!r.ok) throw await statusError(r, 'missing');
       const type = r.headers.get('content-type') ?? '';
-      if (/text\/html/i.test(type)) { await r.body?.cancel(); throw fail('temporary', '被人機驗證擋下或在維護（回的是網頁，不是檔案）'); }
+      if (/text\/html/i.test(type)) { await r.body?.cancel(); throw fail('temporary', { zh: '被人機驗證擋下或在維護（回的是網頁，不是檔案）', en: 'stopped by a bot check, or down for maintenance (it sent a web page, not a file)' }); }
       mkdirSync(dirname(dest), { recursive: true });
       // its own name: parallel agents share the tile and thumbnail caches and may fetch the same file at once
       const part = `${dest}.${process.pid}-${randomBytes(4).toString('hex')}.part`, fd = openSync(part, 'w');
@@ -131,7 +150,8 @@ export function createHttp(o: HttpOptions): Http {
       } catch (e) {
         // the connection dropped or the time ran out halfway: nothing half-written stays behind
         closeSync(fd); rmSync(part, { force: true });
-        throw fail('temporary', (e as Error).name === 'TimeoutError' ? '下載中斷（逾時 10 分鐘）' : `下載中斷（${(e as Error).message}）`);
+        throw fail('temporary', (e as Error).name === 'TimeoutError' ? { zh: '下載中斷（逾時 10 分鐘）', en: 'the download broke off (timed out after 10 min)' }
+          : { zh: `下載中斷（${(e as Error).message}）`, en: `the download broke off (${(e as Error).message})` });
       }
       closeSync(fd);
       if (over) { rmSync(part, { force: true }); throw new Error(`檔案超過上限 ${Math.round(d.maxBytes / 1e6)} MB：${url.split('?')[0]}`); }   // no query: a key may ride in it
