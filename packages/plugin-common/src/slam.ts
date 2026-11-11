@@ -53,7 +53,7 @@ export const slam: ItemType<P, S> = {
     { key: 'size', label: '字級（畫面高 %）', type: 'number', min: 2, max: 40, step: 0.5, default: 9 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'color', label: '文字顏色', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
-    { key: 'hl', label: '強調顏色', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
+    { key: 'hl', label: '強調顏色', type: 'color', default: '#ff4d4f', theme: 'palette.hl', themeIfSet: true }, // the project's palette.hl only when it sets one: the built-in one is yellow, and this red would turn in every unthemed project
     { key: 'outline', label: '描邊顏色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'y', label: '垂直位置（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.42 },
     { key: 'tilt', label: '傾斜（度）', type: 'number', min: -20, max: 20, step: 0.5, default: -4 },

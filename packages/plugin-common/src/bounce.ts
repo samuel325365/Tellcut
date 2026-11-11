@@ -73,7 +73,7 @@ export const bounce: ItemType<P, S> = {
     { key: 'items', label: '字（每行「秒|文字|大小|顏色|x|y|模式|參數」；【強調】）', type: 'text', default: '0.1|出發！|260||0.5|0.36|drop\n0.8|就是【現在】|150||0.5|0.6|pop|jump=2' },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'color', label: '文字顏色', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
-    { key: 'hl', label: '強調顏色（【強調】、顏色欄寫 hl）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
+    { key: 'hl', label: '強調顏色（【強調】、顏色欄寫 hl）', type: 'color', default: '#ff4d4f', theme: 'palette.hl', themeIfSet: true }, // the project's palette.hl only when it sets one: the built-in one is yellow, and this red would turn in every unthemed project
     { key: 'outline', label: '描邊顏色（knock 是洞的外框；透明＝沒有）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'hlScale', label: '強調字放大（倍）', type: 'number', min: 1, max: 2, step: 0.05, default: 1.5 },
     { key: 'sheet', label: 'knock 的色紙顏色', type: 'color', default: '#fff8ec', theme: 'palette.paper' },

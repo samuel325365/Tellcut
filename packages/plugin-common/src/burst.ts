@@ -31,7 +31,7 @@ export const burst: ItemType<P, S> = {
     { key: 'fill', label: '填色', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
     { key: 'ink', label: '外框顏色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'textColor', label: '字色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
-    { key: 'hl', label: '強調顏色', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
+    { key: 'hl', label: '強調顏色', type: 'color', default: '#ff4d4f', theme: 'palette.hl', themeIfSet: true }, // the project's palette.hl only when it sets one: the built-in one is yellow, and this red would turn in every unthemed project
     { key: 'tilt', label: '傾斜（度）', type: 'number', min: -30, max: 30, step: 0.5, default: -6 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'outDur', label: '出場時間 (s)（縮小並淡出）', type: 'number', min: 0, max: 2, step: 0.05, default: 0.2 },
