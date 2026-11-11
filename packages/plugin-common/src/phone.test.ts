@@ -1,6 +1,6 @@
 // Group B1 (2026-10-23): the shared phone pieces (phone.ts), common.notify and common.lockscreen.
 import { defaultSafe, prog, eOut3 } from '@tellcut/engine';
-import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, svgIn, tileText, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
+import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, svgBox, svgIn, tileText, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
 import { roundRectUrl } from './window.ts';
 import { noteLayout, notify, parseNotes, withLockText } from './notify.ts';
 import { clockAt, liveAt, liveSpans, lockscreen } from './lockscreen.ts';
@@ -206,4 +206,9 @@ test('svgIn: the SVG is set only when its key changes; without a maker the key i
   expect(el.innerHTML).toBe('<svg>b</svg>');
   el.innerHTML = 'touched'; svgIn(el, '<svg>b</svg>');
   expect(el.innerHTML).toBe('touched');
+});
+
+test('svgBox: a 100 × 100 SVG filling its box and drawing past it, or another viewBox', () => {
+  expect(svgBox('<path/>')).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%" style="display:block;overflow:visible"><path/></svg>');
+  expect(svgBox('<path/>', '0 0 26 30')).toContain('viewBox="0 0 26 30"');
 });

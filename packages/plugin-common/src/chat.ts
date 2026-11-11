@@ -20,7 +20,7 @@ import { activeAt, clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, esc, fitLin
   type Crop, type ItemCtx, type ItemType, type MediaApi, type Project, type Theme, type Times, type VideoItem } from '@tellcut/engine';
 import { standIn } from './album.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
-import { avatarEl, caretOn, DEVICES, drawAvatar, drawStatusBar, drawType, glyphSvg, parseSteps, svgIn, phoneEls, phoneView, placePhone, statusBarEl, timeSpan, typedSpan, typeEl,
+import { avatarEl, caretOn, DEVICES, drawAvatar, drawStatusBar, drawType, glyphSvg, parseSteps, svgBox, svgIn, phoneEls, phoneView, placePhone, statusBarEl, timeSpan, typedSpan, typeEl,
   type Device, type PhoneEls, type StatusBar, type TypeEl } from './phone.ts';
 import { fitPx, lineAbs, nl, EMOJI_STACK } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
@@ -282,19 +282,18 @@ export function inputAt(text: string, t: number): string | null {
 }
 
 // ---------------------------------------------------------------- drawn glyphs
-const SVG = (vb: string, inner: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="100%" height="100%" style="display:block;overflow:visible">${inner}</svg>`;
 const ST = (c: string, w = 7) => `fill="none" stroke="${esc(c)}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
 const GL = {
-  back: (c: string) => SVG('0 0 100 100', `<path d="M64 18L32 50l32 32" ${ST(c, 10)}/>`),
-  menu: (c: string) => SVG('0 0 100 100', `<path d="M20 28h60M20 50h60M20 72h60" ${ST(c, 8)}/>`),
-  plus: (c: string) => SVG('0 0 100 100', `<path d="M50 22v56M22 50h56" ${ST(c, 8)}/>`),
-  face: (c: string) => SVG('0 0 100 100', `<circle cx="50" cy="50" r="34" ${ST(c, 7)}/><circle cx="38" cy="42" r="5" fill="${esc(c)}"/><circle cx="62" cy="42" r="5" fill="${esc(c)}"/><path d="M34 60q16 16 32 0" ${ST(c, 7)}/>`),
-  play: (bg: string) => SVG('0 0 100 100', `<circle cx="50" cy="50" r="46" fill="${esc(bg)}" stroke="#fff" stroke-width="5"/><path d="M40 30l32 20-32 20z" fill="#fff"/>`),
-  mute: (c: string) => SVG('0 0 100 100', `<path d="M14 38h18l24-20v64L32 62H14z" fill="${esc(c)}"/><path d="M66 38l24 24M90 38L66 62" ${ST(c, 8)}/>`),
-  pause: (c: string) => SVG('0 0 100 100', `<rect x="30" y="26" width="14" height="48" rx="4" fill="${esc(c)}"/><rect x="56" y="26" width="14" height="48" rx="4" fill="${esc(c)}"/>`),
-  tri: (c: string) => SVG('0 0 100 100', `<path d="M36 26l40 24-40 24z" fill="${esc(c)}"/>`),
+  back: (c: string) => svgBox(`<path d="M64 18L32 50l32 32" ${ST(c, 10)}/>`),
+  menu: (c: string) => svgBox(`<path d="M20 28h60M20 50h60M20 72h60" ${ST(c, 8)}/>`),
+  plus: (c: string) => svgBox(`<path d="M50 22v56M22 50h56" ${ST(c, 8)}/>`),
+  face: (c: string) => svgBox(`<circle cx="50" cy="50" r="34" ${ST(c, 7)}/><circle cx="38" cy="42" r="5" fill="${esc(c)}"/><circle cx="62" cy="42" r="5" fill="${esc(c)}"/><path d="M34 60q16 16 32 0" ${ST(c, 7)}/>`),
+  play: (bg: string) => svgBox(`<circle cx="50" cy="50" r="46" fill="${esc(bg)}" stroke="#fff" stroke-width="5"/><path d="M40 30l32 20-32 20z" fill="#fff"/>`),
+  mute: (c: string) => svgBox(`<path d="M14 38h18l24-20v64L32 62H14z" fill="${esc(c)}"/><path d="M66 38l24 24M90 38L66 62" ${ST(c, 8)}/>`),
+  pause: (c: string) => svgBox(`<rect x="30" y="26" width="14" height="48" rx="4" fill="${esc(c)}"/><rect x="56" y="26" width="14" height="48" rx="4" fill="${esc(c)}"/>`),
+  tri: (c: string) => svgBox(`<path d="M36 26l40 24-40 24z" fill="${esc(c)}"/>`),
   /** the little tail at a bubble's top corner (drawn for the right side; mirrored for the left) */
-  tail: (c: string) => SVG('0 0 26 30', `<path d="M0 0H8Q22 0 26 4Q14 10 6 30H0z" fill="${esc(c)}"/>`),
+  tail: (c: string) => svgBox(`<path d="M0 0H8Q22 0 26 4Q14 10 6 30H0z" fill="${esc(c)}"/>`, '0 0 26 30'),
 };
 
 // ---------------------------------------------------------------- the block

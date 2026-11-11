@@ -16,7 +16,7 @@
 import { clamp, coverPlacement, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, withDefaults, type Crop, type ItemType, type MediaApi, type Theme } from '@tellcut/engine';
 import { countAt, popAt } from './reels.ts';
 import { asFrame, imagesReady, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
-import { DEVICES, drawStatusBar, glyphSvg, parseSteps, svgIn, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
+import { DEVICES, drawStatusBar, glyphSvg, parseSteps, svgBox, svgIn, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
 import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
@@ -477,7 +477,7 @@ export const album: ItemType<P, S> = {
       if (a <= 0.001) for (const e of [s.vTop, s.vBottom, s.back, s.date, s.when, s.action, s.sb.el, s.home, ...s.tools]) cssCamel(e, { display: 'none' });
       cssCamel(s.vTop, { left: '0', top: '0', width: '100%', height: X(262), background: vbar });
       cssCamel(s.vBottom, { left: '0', top: X(Hd - 220), width: '100%', height: X(220), background: vbar });
-      svgIn(s.back, `b${p.accent}`, () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 64" width="100%" height="100%" style="display:block;overflow:visible"><path d="M32 6L8 32l24 26" fill="none" stroke="${p.accent}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
+      svgIn(s.back, `b${p.accent}`, () => svgBox(`<path d="M32 6L8 32l24 26" fill="none" stroke="${p.accent}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`, '0 0 40 64'));
       cssCamel(s.back, { left: X(38), top: X(160), width: X(40), height: X(64) });
       s.date.textContent = p.date; s.when.textContent = p.when; s.action.textContent = p.action;
       const room = p.action ? 620 : 860;

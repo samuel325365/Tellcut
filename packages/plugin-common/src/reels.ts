@@ -9,7 +9,7 @@
 // On 9:16 it covers the frame; on a wide or square frame it is a phone in the middle (phone.ts).
 import { clamp, cssCamel, eBack, eIO3, eOut3 as eOut, esc, h, lerp, textEm, type ItemType } from '@tellcut/engine';
 import { liveSpans } from './lockscreen.ts';
-import { avatarEl, DEVICES, drawAvatar, drawRipple, fmtCount, glyphSvg, parseSteps, svgIn, phoneEls, phoneView, placePhone, rippleAt, timeSpan, type CountStyle, type Device, type PhoneEls } from './phone.ts';
+import { avatarEl, DEVICES, drawAvatar, drawRipple, fmtCount, glyphSvg, parseSteps, svgBox, svgIn, phoneEls, phoneView, placePhone, rippleAt, timeSpan, type CountStyle, type Device, type PhoneEls } from './phone.ts';
 import { EMOJI_STACK, fitPx, lineAbs } from './text.ts';
 import { withAlpha } from './color.ts';
 import { wordsLang } from './words.ts';
@@ -69,23 +69,22 @@ export const timeList =(text: string) => String(text ?? '').split(/[\s,，]+/).f
 export const barParts = (text: string): Array<[string, boolean]> => String(text ?? '').split(/(█+)/).filter(Boolean).map((x) => [x, x.startsWith('█')]);
 
 // ---------------------------------------------------------------- the glyphs (drawn here, in a 100 × 100 box)
-const SVG = (inner: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%" style="display:block;overflow:visible">${inner}</svg>`;
 const ST = (c: string, w = 7) => `fill="none" stroke="${esc(c)}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
 const HEART = 'M50 84C21 63 12 49 12 35a19 19 0 0 1 38-8a19 19 0 0 1 38 8c0 14-9 28-38 49z';
 const G = {
-  heart: (c: string, fill: string | null) => SVG(fill ? `<path d="${HEART}" fill="${esc(fill)}"/>` : `<path d="${HEART}" ${ST(c)}/>`),
-  comment: (c: string) => SVG(`<path d="M50 14c-21 0-37 14-37 32 0 9 4 17 11 23l-4 17 18-8c4 1 8 2 12 2 21 0 37-15 37-34S71 14 50 14z" ${ST(c)}/>`),
-  share: (c: string) => SVG(`<path d="M87 14L13 43l30 11 11 30zM43 54L87 14" ${ST(c)}/>`),
-  save: (c: string, filled: boolean) => SVG(`<path d="M27 13h46v74L50 69 27 87z" ${filled ? `fill="${esc(c)}" stroke="${esc(c)}" stroke-width="7" stroke-linejoin="round"` : ST(c)}/>`),
-  dots: (c: string) => SVG(`<g fill="${esc(c)}"><circle cx="24" cy="50" r="7"/><circle cx="50" cy="50" r="7"/><circle cx="76" cy="50" r="7"/></g>`),
-  close: (c: string) => SVG(`<path d="M25 25l50 50M75 25L25 75" ${ST(c, 8)}/>`),
-  rewind: (c: string) => SVG(`<g fill="${esc(c)}"><path d="M48 20L12 50l36 30z"/><path d="M86 20L50 50l36 30z"/></g>`),
-  home: (c: string) => SVG(`<path d="M16 46L50 16l34 30v38H16z" ${ST(c)}/>`),
-  search: (c: string) => SVG(`<circle cx="44" cy="44" r="24" ${ST(c)}/><path d="M62 62l20 20" ${ST(c)}/>`),
-  plus: (c: string) => SVG(`<rect x="16" y="16" width="68" height="68" rx="18" ${ST(c)}/><path d="M50 34v32M34 50h32" ${ST(c)}/>`),
-  reel: (c: string) => SVG(`<rect x="14" y="14" width="72" height="72" rx="18" fill="${esc(c)}"/><path d="M41 34l25 16-25 16z" fill="#000"/>`),
-  link: (c: string) => SVG(`<path d="M44 58l14-14M40 44l-8 8a13 13 0 0 0 18 18l8-8M60 56l8-8a13 13 0 0 0-18-18l-8 8" ${ST(c)}/>`),
-  add: (c: string) => SVG(`<circle cx="50" cy="50" r="32" ${ST(c)}/><path d="M50 36v28M36 50h28" ${ST(c)}/>`),
+  heart: (c: string, fill: string | null) => svgBox(fill ? `<path d="${HEART}" fill="${esc(fill)}"/>` : `<path d="${HEART}" ${ST(c)}/>`),
+  comment: (c: string) => svgBox(`<path d="M50 14c-21 0-37 14-37 32 0 9 4 17 11 23l-4 17 18-8c4 1 8 2 12 2 21 0 37-15 37-34S71 14 50 14z" ${ST(c)}/>`),
+  share: (c: string) => svgBox(`<path d="M87 14L13 43l30 11 11 30zM43 54L87 14" ${ST(c)}/>`),
+  save: (c: string, filled: boolean) => svgBox(`<path d="M27 13h46v74L50 69 27 87z" ${filled ? `fill="${esc(c)}" stroke="${esc(c)}" stroke-width="7" stroke-linejoin="round"` : ST(c)}/>`),
+  dots: (c: string) => svgBox(`<g fill="${esc(c)}"><circle cx="24" cy="50" r="7"/><circle cx="50" cy="50" r="7"/><circle cx="76" cy="50" r="7"/></g>`),
+  close: (c: string) => svgBox(`<path d="M25 25l50 50M75 25L25 75" ${ST(c, 8)}/>`),
+  rewind: (c: string) => svgBox(`<g fill="${esc(c)}"><path d="M48 20L12 50l36 30z"/><path d="M86 20L50 50l36 30z"/></g>`),
+  home: (c: string) => svgBox(`<path d="M16 46L50 16l34 30v38H16z" ${ST(c)}/>`),
+  search: (c: string) => svgBox(`<circle cx="44" cy="44" r="24" ${ST(c)}/><path d="M62 62l20 20" ${ST(c)}/>`),
+  plus: (c: string) => svgBox(`<rect x="16" y="16" width="68" height="68" rx="18" ${ST(c)}/><path d="M50 34v32M34 50h32" ${ST(c)}/>`),
+  reel: (c: string) => svgBox(`<rect x="14" y="14" width="72" height="72" rx="18" fill="${esc(c)}"/><path d="M41 34l25 16-25 16z" fill="#000"/>`),
+  link: (c: string) => svgBox(`<path d="M44 58l14-14M40 44l-8 8a13 13 0 0 0 18 18l8-8M60 56l8-8a13 13 0 0 0-18-18l-8 8" ${ST(c)}/>`),
+  add: (c: string) => svgBox(`<circle cx="50" cy="50" r="32" ${ST(c)}/><path d="M50 36v28M36 50h28" ${ST(c)}/>`),
   note: (c: string) => glyphSvg('music', c),
 };
 type Glyph = keyof typeof G;
