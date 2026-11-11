@@ -2,7 +2,13 @@
 // common.grade / common.wash / common.viewfinder / common.echo / common.poster / common.band, countdown's look slant and the caption
 // look boxes (2026-11-06, the Single Color pilot film). jsdom has no canvas: the step and photo helpers, the declared stills and the
 // layers' blend modes are tested.
-import { band, echo, echoMono, grade, gradeFill, parsePhotos, parseValueSteps, photoIndex, poster, posterLayout, shotNo, valueAt, stepsOf, viewfinder, wash } from './onecolor.ts';
+import { band } from './band.ts';
+import { echo, echoMono } from './echo.ts';
+import { grade, gradeFill } from './grade.ts';
+import { parseValueSteps, stepsOf, valueAt } from './onecolor-kit.ts';
+import { parsePhotos, photoIndex, poster, posterLayout } from './poster.ts';
+import { shotNo, viewfinder } from './viewfinder.ts';
+import { wash } from './wash.ts';
 import { stepColor } from './countdown.ts';
 import { boxes } from './caption/looks/paper.ts';
 
