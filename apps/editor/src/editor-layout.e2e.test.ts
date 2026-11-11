@@ -1,7 +1,7 @@
 // End-to-end for the layout: a laptop-sized window (1536×864) shows a big preview for landscape and portrait projects.
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e5');
 let app: App, base: string, browser: Browser, page: Page;

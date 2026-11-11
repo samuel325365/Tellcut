@@ -1,7 +1,7 @@
 // End-to-end: the timeline's scrollbar and zoom slider, double-click to play an item, and the library audition.
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e6');
 let app: App, browser: Browser, page: Page;

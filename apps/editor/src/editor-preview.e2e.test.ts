@@ -1,7 +1,7 @@
 // End-to-end for Plan 6: pick on the preview, drag to move, double-click text to edit, lanes for overlapping clips; then export.
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e4');
 let app: App, base: string, browser: Browser, page: Page;

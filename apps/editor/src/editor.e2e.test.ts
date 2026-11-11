@@ -2,7 +2,7 @@
 import { join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { makeProjects, makeSource } from '@tellcut/server/test-utils';
-import { poller, projectsRoot, readProject, startEditor, stopEditor, type App } from '../e2e-kit.ts';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e');
 let app: App, base: string, browser: Browser, page: Page;

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { makeClicks, TELLCUT_ROOT } from '@tellcut/media-node';
 import { demoProject, makeSource } from '@tellcut/server/test-utils';
-import { openProject, poller, projectsRoot, readProject, startEditor, stopEditor, type App } from '../e2e-kit.ts';
+import { openProject, poller, projectsRoot, readProject, startEditor, stopEditor, type App } from './e2e-kit.ts';
 import { t } from './i18n/index.ts';
 
 const root = projectsRoot('_e2e_drag');

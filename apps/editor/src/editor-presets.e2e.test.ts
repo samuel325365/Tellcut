@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const FAKE = `node "${fileURLToPath(new URL('../../server/src/chat/fake-claude.mjs', import.meta.url))}"`;
 const root = projectsRoot('_e2e-presets');

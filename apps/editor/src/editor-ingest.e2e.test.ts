@@ -6,7 +6,7 @@ import type { Browser, Page } from 'playwright-core';
 import { createProject, makeClicks, makePhoneVideo, makePhoto, makeTalkingVideo, probeDuration } from '@tellcut/media-node';
 import { Cut } from '../../../tools/cut/cut.ts';
 import { demoProject, makeSource, sse } from '@tellcut/server/test-utils';
-import { poller, projectsRoot, readProject, startEditor, stopEditor, type App } from '../e2e-kit.ts';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e10'), src = join(root, '_src');
 let app: App, base: string, browser: Browser, page: Page;

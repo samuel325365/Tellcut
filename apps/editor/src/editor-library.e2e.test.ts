@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e-library');
 let app: App, base: string, browser: Browser, page: Page;

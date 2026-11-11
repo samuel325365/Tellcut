@@ -1,7 +1,7 @@
 // End-to-end: overlaps (dissolve, transition length, crossfade), track order and layer order, checked in the saved project.
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e7');
 let app: App, browser: Browser, page: Page;

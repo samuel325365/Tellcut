@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Browser, Page } from 'playwright-core';
 import { TELLCUT_ROOT } from '@tellcut/media-node';
 import { denseProject } from '../../../tools/fixtures/dense.ts';
-import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e_tl');
 const shots = join(TELLCUT_ROOT, '.cache/timeline-shots');

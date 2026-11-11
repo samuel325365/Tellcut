@@ -1,7 +1,7 @@
 // End-to-end UI checks: the help, controls that must not cover each other on a zoomed-out timeline, collapsing, transport.
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { poller, projectsRoot, readProject, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e8');
 let app: App, browser: Browser, page: Page;

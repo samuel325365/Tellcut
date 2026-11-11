@@ -1,7 +1,6 @@
 // What the editor's browser tests (src/*.e2e.test.ts) share: a fresh projects folder, the server on a free port serving the built
 // player and editor, headless Chrome, and the editor page open on a project. The jsdom tests have their own kit
-// (src/editor-test-kit.ts). This file sits outside src/ on purpose: the build's staleness check counts every .ts under src/ that is
-// not a *.test.ts as editor source, so a test helper newer than the build would stop the browser group until a rebuild.
+// (editor-test-kit.ts). Like it, no bundle imports it, and the builds' staleness check leaves both out (their names say test).
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Browser, type Page } from 'playwright-core';

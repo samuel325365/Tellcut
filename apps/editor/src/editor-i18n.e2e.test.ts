@@ -1,7 +1,7 @@
 // End-to-end: the three interface languages. Home and gallery are fully translated; editor labels are English in every language, tooltips follow the language.
 import type { Browser, Page } from 'playwright-core';
 import { demoProject } from '@tellcut/server/test-utils';
-import { projectsRoot, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
+import { projectsRoot, startEditor, stopEditor, writeProject, type App } from './e2e-kit.ts';
 
 const root = projectsRoot('_e2e_i18n');
 let app: App, base: string, browser: Browser;

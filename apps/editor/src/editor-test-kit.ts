@@ -1,6 +1,6 @@
 // What the Editor's unit tests share (editor*.test.ts): a fake API and player bridge, a proposal and a live event stream, small
 // project fixtures and lookups.
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { ApiError } from './api.ts';
 import { Editor } from './editor.ts';
 
