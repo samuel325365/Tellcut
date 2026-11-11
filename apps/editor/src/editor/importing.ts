@@ -52,13 +52,14 @@ function turnOf(store: Store<EditorState>) {
   const r = runOf(store), turn = r.turn, gone = () => r.turn !== turn;
   return { gone, set: (patch: Partial<EditorState>) => { if (!gone()) store.set(patch); } };
 }
-/** The project went away (opened again, or the editor closed): the upload stops, Importing is cleared, what comes back is dropped. */
-export function endImports(store: Store<EditorState>) {
+/** The project went away (opened again, or the editor closed): the upload stops, Importing is cleared, what comes back is dropped.
+ *  say: the note says the import was cancelled (Reload, a history version: the panel is still there to show it). */
+export function endImports(store: Store<EditorState>, o: { say?: boolean } = {}) {
   const r = runOf(store);
   r.turn++;
   r.cancel?.abort();
   r.cancel = null;
-  if (store.get().importing) store.set({ importing: null });
+  if (store.get().importing) store.set(o.say ? { importing: null, importNote: t('ed.importStopped') } : { importing: null });
 }
 
 /** Imports `paths` into the project as one undoable edit; `place` puts what was imported (and what was there already) on the

@@ -370,6 +370,7 @@ export const zh = {
   'ed.dropNotMedia': '不是影片、照片或聲音，沒有加入：{list}。',
   'ed.dropNotPlaced': '已加入，但放不上時間軸（放在影片結尾之後）：{list}。',
   'ed.uploadCancelled': '已取消，複製完的照樣加入。',
+  'ed.importStopped': '專案重新開啟了，進行中的加入已取消，沒有加入任何檔案。',
   'ed.importOthers.one': '另有 1 個檔案不是影片、照片或聲音，沒有加入。',
   'ed.importNothing': '沒有加入任何東西。',
   'ed.importFailed': '加入失敗：{why}',

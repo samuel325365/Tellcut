@@ -371,6 +371,7 @@ export const ja: Record<Key, string> = {
   'ed.dropNotMedia': '動画・写真・音声ではないため追加しませんでした：{list}。',
   'ed.dropNotPlaced': '追加しましたが、タイムラインには置けませんでした（動画の終わりより後）：{list}。',
   'ed.uploadCancelled': 'キャンセルしました。コピー済みのファイルは追加しました。',
+  'ed.importStopped': 'プロジェクトを開き直したため、進行中の追加はキャンセルしました。何も追加していません。',
   'ed.importOthers.one': '動画・写真・音声ではないファイル 1 個は追加しませんでした。',
   'ed.importNothing': '何も追加されませんでした。',
   'ed.importFailed': '追加できませんでした：{why}',

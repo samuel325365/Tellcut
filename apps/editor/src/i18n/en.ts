@@ -371,6 +371,7 @@ export const en: Record<Key, string> = {
   'ed.dropNotMedia': 'Not a video, photo or sound, left out: {list}.',
   'ed.dropNotPlaced': 'Added, but not put on the timeline (let go past the end of the film): {list}.',
   'ed.uploadCancelled': 'Cancelled; the files already copied were added.',
+  'ed.importStopped': 'The project was opened again, so the import in progress was cancelled; nothing was added.',
   'ed.importOthers.one': '1 other file is not a video, photo or sound and was left out.',
   'ed.importNothing': 'Nothing was added.',
   'ed.importFailed': 'Could not add them: {why}',

@@ -123,7 +123,8 @@ test('the project opened again (Reload, a history version) while files are copie
   (release as (() => void) | null)?.();   // aborted already: a late answer, if it came
   await done;
   expect(calls.some((c) => c[0] === 'import')).toBe(false);
-  expect([ed.store.get().project!.sources.new, ed.store.get().importing, ed.store.get().importNote, ed.store.get().canUndo]).toEqual([undefined, null, '', false]);
+  // the panel says the copy was cancelled, instead of its note just going away
+  expect([ed.store.get().project!.sources.new, ed.store.get().importing, ed.store.get().importNote, ed.store.get().canUndo]).toEqual([undefined, null, t('ed.importStopped'), false]);
 });
 
 test('the editor closed while the server imports: importing is cleared and the answer coming late adds nothing', async () => {

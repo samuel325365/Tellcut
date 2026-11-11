@@ -156,7 +156,7 @@ export class Editor {
 
   async open() {
     // an import of the version shown until now would land in the one opened instead: it stops here
-    endImports(this.store);
+    endImports(this.store, { say: true });
     try {
       // My blocks are fetched with the project and in the store before it shows: an answer landing later re-rendered the panels
       // and reset a number the user was typing (Preact writes a controlled input's value on every render)
