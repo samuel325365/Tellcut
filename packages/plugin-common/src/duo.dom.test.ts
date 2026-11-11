@@ -3,7 +3,7 @@
 // area (under the platform's account name); a long question lost its last character, the "？", to the strip's edge (overflow
 // hidden), and check did not see it; the small text had no size.
 import { createRegistry, defaultSafe, Stage, textEm } from '@tellcut/engine';
-import { duo, topicFit } from './duo.ts';
+import { duo, pillFit, topicFit } from './duo.ts';
 
 // jsdom has no 2D context (it says so on stderr): lines are measured by the estimate
 const realGetContext = HTMLCanvasElement.prototype.getContext;
@@ -94,4 +94,17 @@ test('duo: a long name chip shrinks to stay in its panel (side by side and solo)
   expect(def.byText('阿明').style.fontSize).toBe('36px');
   expect(d.every((e) => e.style.fontSize === '26px')).toBe(true);
   expect(draw({ dir: 'h' }).byText('阿明').style.fontSize).toBe('36px');
+});
+
+test('duo: a long header chip shrinks to 45 % of the header and leaves the topic its room (its size went below zero)', () => {
+  const est = (s: string, size: number) => textEm(s) * size;
+  expect(pillFit('ROUND 1', 1, 400, est)).toEqual({ px: 34, f: 1, w: textEm('ROUND 1') * 34 + 14 + 54 });   // fits: as it was
+  const label = '第一回合・觀眾現場提問時間', room = 0.45 * (W - 54 - 130), f = pillFit(label, 1, room, est);
+  expect(f.f).toBeLessThan(1);
+  expect(f.w).toBeCloseTo(room, 6);
+  const { byText } = draw({ label, topic: '早起真的比較有效率？' });
+  expect(px(byText(label).style.fontSize)).toBeCloseTo(f.px, 6);
+  const topic = px(byText('早起真的比較有效率？').style.fontSize);
+  expect(topic).toBeGreaterThan(0);
+  expect(textEm('早起真的比較有效率？') * topic).toBeLessThanOrEqual(W - 54 - 130 - room + 1);
 });

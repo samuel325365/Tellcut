@@ -93,6 +93,18 @@ export function chipScale(name: string, role: string, kz: number, room: number, 
   return Math.max(0.4, (room - fixed) / words);
 }
 
+/** The header chip: its letters at 34 px (× kz) with 2 px tracking, 18 px padding a side and the 18 px gap to the topic; when that is
+ *  wider than `room` the letters and tracking shrink (down to 0.4) so the whole takes `room`. `w` is the room it then takes, `f` the
+ *  factor (1 for every chip that fit before, so those keep their size exactly). */
+export function pillFit(label: string, kz: number, room: number, width: (s: string, px: number) => number): { px: number; f: number; w: number } {
+  const px = 34 * kz, fixed = 36 * kz + 18 * kz;
+  if (!label) return { px, f: 1, w: 0 };
+  const words = width(label, px) + [...label].length * 2 * kz, w = words + fixed;
+  if (w <= room) return { px, f: 1, w };
+  const f = Math.max(0.4, (room - fixed) / words);
+  return { px: px * f, f, w: fixed + words * f };
+}
+
 /** The header topic in `room` px: one line at `px` when it fits, else shrunk down to 3/4 of it, else two lines at 3/4 (smaller when
  *  even they are too wide) — never cut off (a long question lost its last character, the "？", to the strip's edge).
  *  `width(line, px)` measures a line. */
@@ -170,12 +182,13 @@ export const duo: ItemType<P, S> = {
     cssCamel(s.edgeA, { left: `${bx * W}px`, top: `${by * H}px`, width: `${(p.dir === 'h' ? bw / 2 : bw) * W}px`, height: `${e}px`, background: p.colorA, opacity: (0.35 + 0.65 * lvA).toFixed(3) });
     cssCamel(s.edgeB, { left: `${(p.dir === 'h' ? bx + bw / 2 : bx) * W}px`, top: `${p.dir === 'h' ? by * H : (by + bh) * H - e}px`, width: `${(p.dir === 'h' ? bw / 2 : bw) * W}px`, height: `${e}px`, background: p.colorB, opacity: (0.35 + 0.65 * lvB).toFixed(3) });
     // the header: chip and topic, sitting at the strip's foot; the topic shrinks or takes two lines rather than run past the strip
-    const kz = k * z, hh = 64 * kz, pillPx = 34 * kz;
+    const kz = k * z, hh = 64 * kz, headRoom = W - side - 130 * k;
     s.pill.textContent = p.label;
+    // a long chip shrinks to 45 % of the header, leaving the topic room (it took all of it, and the topic's size went below zero)
+    const pf = pillFit(p.label, kz, headRoom * 0.45, (l, q) => lineWidth(l, q, `900 {px} ${font}`)), pillW = pf.w;
     cssCamel(s.head, { left: `${side}px`, right: `${130 * k}px`, top: `${Math.max(0, L.head[3] * H - 18 * k - hh)}px`, height: `${hh}px`, gap: `${18 * kz}px`, fontFamily: font, display: L.head[3] > 0 ? 'flex' : 'none' });
-    cssCamel(s.pill, { display: p.label ? 'block' : 'none', padding: `${6 * kz}px ${18 * kz}px`, borderRadius: `${10 * kz}px`, background: p.hl, color: p.ink, fontSize: `${pillPx}px`, letterSpacing: `${2 * kz}px` });
-    const pillW = p.label ? lineWidth(p.label, pillPx, `900 {px} ${font}`) + [...p.label].length * 2 * kz + 36 * kz + 18 * kz : 0;
-    const fit = topicFit(p.topic, 40 * kz, W - side - 130 * k - pillW, (l, px) => lineWidth(l, px, `700 {px} ${font}`));
+    cssCamel(s.pill, { display: p.label ? 'block' : 'none', padding: `${6 * kz}px ${18 * kz}px`, borderRadius: `${10 * kz}px`, background: p.hl, color: p.ink, fontSize: `${pf.px}px`, letterSpacing: `${2 * kz * pf.f}px` });
+    const fit = topicFit(p.topic, 40 * kz, headRoom - pillW, (l, px) => lineWidth(l, px, `700 {px} ${font}`));
     s.topic.textContent = fit.lines.join('\n');
     cssCamel(s.topic, { color: p.paper, fontSize: `${+fit.px.toFixed(2)}px`, lineHeight: fit.lines.length > 1 ? '1.05' : '1.2' });
     if (p.mode === 'solo') { drawSolo(ctx, s, L, segs); return; }
