@@ -30,7 +30,7 @@ const OVERLAP = 0.25;
 export function burnedChecks(p: Project, burned: Record<string, Burned | null>, samples: Array<{ t: number; boxes: TextBox[] }>): Finding[] {
   if (!Object.values(burned).some((b) => b?.caption)) return [];
   const times = resolveTimes(p);
-  const videos = p.tracks.filter((t) => t.kind === 'video').flatMap((t) => t.items as VideoItem[]);
+  const videos = p.tracks.filter((t) => t.kind === 'video' && !t.muted).flatMap((t) => t.items as VideoItem[]);   // a hidden track shows no caption
   const textOf = new Map<string, string>();
   for (const t of p.tracks) if (t.kind === 'overlay' || t.kind === 'scene') for (const it of t.items as Array<{ id: string; params?: { text?: unknown } }>) if (typeof it.params?.text === 'string') textOf.set(it.id, it.params.text);
   const over = new Map<string, number[]>(), leak = new Map<string, number[]>(), shown: number[] = [];

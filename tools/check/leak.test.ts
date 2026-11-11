@@ -58,3 +58,22 @@ test('a frozen clip: the frames to read are where its picture shows the sentence
   const early = frozen(1, beep);
   expect(leakProbes(early, resolveTimes(early), { v: tr })).toEqual([]);
 });
+
+test('the clip under a beep is the one whose sound plays then: not a b-roll listed earlier, nor a hidden track', () => {
+  const broll = (o: object = {}) => ({ id: 'b', kind: 'video', ...o, items: [{ id: 'br', source: 'w', in: 0, speed: 1, start: 0, end: 10, frame: [0.6, 0.6, 0.3, 0.3], crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } }] });
+  const sound = { id: 'orig', kind: 'audio', items: [{ id: 's', parent: 'c', source: 'v', in: 10, rate: 1, start: 0, end: 10, gain: 0, fadeIn: 0, fadeOut: 0 }] };
+  const beep = { id: 'sfx', kind: 'sfx', items: [{ id: 'bp', type: 'common.beep', start: 2, end: 2.6, params: {}, gain: -10 }] };
+  const make = (first: any, withSound = true) => {
+    const p = project([beep, ...(withSound ? [sound] : [])]) as any;
+    p.sources.w = { path: 'w.mp4', duration: 60, width: 1920, height: 1080, kind: 'video' };
+    p.tracks.unshift(first);
+    return parseProject(p);
+  };
+  // the b-roll (no transcript) is listed before the main clip, whose own sound carries the speech
+  const p = make(broll());
+  expect(leakProbes(p, resolveTimes(p), { v: tr, w: null }).map((x) => x.word)).toEqual(['大家']);
+  expect(leakUnchecked(p, resolveTimes(p), { v: tr, w: null })).toEqual([]);
+  // a hidden video track is not on screen: with no sound to go by, the clip shown is the main one
+  const q = make(broll({ muted: true }), false);
+  expect(leakUnchecked(q, resolveTimes(q), { v: tr, w: null })).toEqual([]);
+});

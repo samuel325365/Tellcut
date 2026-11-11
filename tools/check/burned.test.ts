@@ -69,3 +69,9 @@ test('a frozen clip shows the caption of its held frame, not of the source past 
   expect(at(frozen(3), 9.99)).not.toBeNull();
   expect(at(frozen(3), 10 - 1e-3)).not.toBeNull();
 });
+
+test('a clip on a hidden video track shows no caption', () => {
+  const p = proj();
+  p.tracks[0].muted = true;
+  expect(burnedChecks(p, { v: burned }, [{ t: 3, boxes: [boxAt(at(proj(), 3)!.y, at(proj(), 3)!.h)] }])).toEqual([]);
+});

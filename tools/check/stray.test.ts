@@ -51,3 +51,14 @@ test('two CJK letters are readable; two private-use or symbol characters OCR mad
   expect(at('。。')).toEqual([]);
   for (const text of ['外面', 'ひと', '안녕', '豈更']) expect(at(text), text).toHaveLength(1);
 });
+
+test('text is the topmost shown clip\'s: a hidden track draws nothing, and its clips get no edge frames', () => {
+  const p = project() as any;
+  p.tracks.push({ id: 'hid', kind: 'video', muted: true, items: [clip('ghost', 0, 1.2, { frame: [0, 0, 1, 1] })] });
+  p.tracks.push({ id: 'over', kind: 'video', items: [clip('pip', 3, 6, { frame: [0.25, 0.25, 0.5, 0.5] })] });
+  const q = parseProject(p), times = resolveTimes(q);
+  expect(strayTimes(q, times).some((x) => x.t === 1.15)).toBe(false);   // the hidden clip's tail
+  const read = new Map([[3.5, [{ text: '在家做生魚片', box: [0.3, 0.45, 0.2, 0.04] as [number, number, number, number] }]], [0.5, [{ text: 'Raw sugar', box: [0.4, 0.75, 0.2, 0.04] as [number, number, number, number] }]]]);
+  // at 3.5 the picture-in-picture is on top of the full clip; at 0.5 the text lies outside the panel and only the hidden clip covers it
+  expect(strayFindings(q, times, read).map((f) => f.ids)).toEqual([['pip']]);
+});

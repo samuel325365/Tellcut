@@ -3,6 +3,18 @@
 import type { Project, Transcript } from '@tellcut/engine';
 import type { Finding } from './rules.ts';
 import { pictureTimeAt } from '../cut/frames.ts';
+import { playingSounds } from '../cut/mix.ts';
+
+type Times = Map<string, { start: number; end: number }>;
+/** The clip whose speech is heard at film time `t`: one whose own sound (its item on the sound track) plays then, else the topmost
+ *  clip shown then (later tracks draw over earlier ones). A hidden video track shows nothing: a b-roll or beside track listed
+ *  before the main one, or a hidden one, used to be taken for the clip under a beep, and its transcript (none) looked up. */
+export function clipUnder(p: Project, times: Times, t: number): any | undefined {
+  const at = (id: string) => { const x = times.get(id); return !!x && x.start <= t + 1e-6 && x.end > t; };
+  const shown = p.tracks.filter((tr) => tr.kind === 'video' && !tr.muted).flatMap((tr) => tr.items as any[]).filter((c) => at(c.id));
+  const heard = new Set(playingSounds(p).filter(({ item }) => item.parent !== undefined && at(item.id)).map(({ item }) => item.parent));
+  return shown.find((c) => heard.has(c.id)) ?? shown.at(-1);
+}
 
 export interface LeakProbe { word: string; /** film times to read */ at: number[]; /** where the word is said (for the report) */ said: number }
 
@@ -22,8 +34,7 @@ const CJK = /[㐀-鿿豈-﫿]/;
  * sentence the word is in (as far as the clip shows it), every 0.5 s.
  */
 export function leakProbes(p: Project, times: Map<string, { start: number; end: number }>, transcripts: Record<string, Transcript | null>): LeakProbe[] {
-  const clips = p.tracks.filter((t) => t.kind === 'video').flatMap((t) => t.items as any[]);
-  const under = (t: number) => clips.find((c) => { const ct = times.get(c.id)!; return ct.start <= t + 1e-6 && ct.end > t; });
+  const under = (t: number) => clipUnder(p, times, t);
   const out: LeakProbe[] = [];
   const add = (word: string, a: number, b: number) => {
     const w = probeWord(word);
@@ -92,9 +103,8 @@ export function leakFindings(probes: LeakProbe[], read: Map<number, string>): Fi
 
 /** each common.beep over a clip whose source has no transcript: what it bleeps is unknown, so its leak is not looked for */
 export function leakUnchecked(p: Project, times: Map<string, { start: number; end: number }>, transcripts: Record<string, Transcript | null>): Finding[] {
-  const clips = p.tracks.filter((t) => t.kind === 'video').flatMap((t) => t.items as any[]);
   return p.tracks.filter((t) => t.kind === 'sfx').flatMap((t) => t.items as any[]).filter((it) => it.type === 'common.beep').flatMap((it): Finding[] => {
-    const span = times.get(it.id), clip = span && clips.find((c) => { const ct = times.get(c.id)!; return ct.start <= span.start + 1e-6 && ct.end > span.start; });
+    const span = times.get(it.id), clip = span && clipUnder(p, times, span.start);
     return span && clip && !transcripts[clip.source] ? [{ level: 'note', t: [span.start, span.end], ids: [it.id], msg: `這個消音下面的素材「${clip.source}」沒有逐字稿，沒辦法檢查被消音的字有沒有從原片字幕露出來` }] : [];
   });
 }
