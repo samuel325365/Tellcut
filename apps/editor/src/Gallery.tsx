@@ -147,6 +147,7 @@ function SfxDetail({ s, plays, to }: { s: GallerySfx; plays: number; to?: ToProj
   );
 }
 
+/** keyed by the style: the seed, tempo and key typed for one style must not carry over to the next one picked */
 function StyleDetail({ s }: { s: GalleryStyle }) {
   const [seed, setSeed] = useState(1), [bpm, setBpm] = useState(''), [key, setKey] = useState(''), x = shown(`style:${s.id}`, s);
   return (
@@ -382,7 +383,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
     if (!on) return <p class="dim g-hint">{t('gallery.emptyHint')}</p>;
     if (on.startsWith('own:') && own) { const b = own.blocks.find((x) => `own:${x.type}` === on); return b && <BlockDetail b={b} own={own} to={to} />; }
     if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} to={to} />; }
-    if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} />; }
+    if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail key={on} s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} />; }
     if (tab === 'blocks') {
       const b = g.blocks.find((x) => x.type === on), f = CLIP_FX.find((x) => x.key === on);
       return b ? <BlockDetail b={b} to={to} /> : f ? <ClipDetail f={f} /> : null;
@@ -392,7 +393,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       return c && <CaptionDetail c={c} kind={kind} caption={g.blocks.find((b) => b.type === (kind === 'title' ? 'common.heading' : 'common.caption'))} to={to} />;
     }
     if (tab === 'sfx') { const s = g.sfx.find((x) => x.type === on); return s && <SfxDetail s={s} plays={plays} to={to} />; }
-    if (tab === 'styles') { const s = g.styles.find((x) => x.id === on); return s && <StyleDetail s={s} />; }
+    if (tab === 'styles') { const s = g.styles.find((x) => x.id === on); return s && <StyleDetail key={s.id} s={s} />; }
     const r = g.recipes.find((x) => x.id === on); return r && <RecipeDetail r={r} />;
   };
 

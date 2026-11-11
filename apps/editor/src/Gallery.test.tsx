@@ -165,6 +165,17 @@ test('a picked block or sound starts from its own defaults, not the changes made
   expect(field().value).toBe('0.8');
 });
 
+test('a picked music style starts from its own tempo, key and seed, not the ones typed for the last one (EP12)', async () => {
+  const root = await page();
+  await click(root, '[data-tab="styles"]');
+  const box = (n: number) => root.querySelectorAll<HTMLInputElement>('[data-detail="lofi"] .g-bar input, [data-detail="koto"] .g-bar input')[n];
+  await act(() => { box(1).value = '140'; box(1).dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(root.querySelector('audio')!.getAttribute('src')).toContain('bpm=140');
+  await click(root, '[data-card="koto"]');
+  expect([box(1).value, box(1).placeholder]).toEqual(['', '66']);
+  expect(root.querySelector('audio')!.getAttribute('src')).toBe('/api/gallery/score/koto.wav?seed=1');
+});
+
 test('a failed load says so', async () => {
   const root = document.createElement('div');
   await act(async () => { render(<Gallery load={async () => { throw new Error('boom'); }} />, root); });
