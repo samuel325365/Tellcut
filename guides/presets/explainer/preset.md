@@ -34,7 +34,7 @@
     { "id": "essay",
       "name": { "zh": "影像論文", "en": "Video essay", "ja": "映像エッセイ" },
       "desc": { "zh": "形式｜地圖飛進去、圖表、老照片和文件，紙張和底片質感，旁白帶著走，節奏慢、比較有份量。適合歷史和社會題材。", "en": "Form | Maps flying in, charts, archive photos and documents, paper and film texture, led by the voice; slower and weightier, for history and society.", "ja": "形式｜地図へ飛び込み、グラフ、古い写真や資料、紙とフィルムの質感、ナレーションが導く。ゆっくり重みのある語りで、歴史や社会のテーマに。" },
-      "prompt": "Form: a video essay, narration first and the music low: maps that fly in (common.worldmap from the globe down to a country, common.mapcam over an assets map picture), charts (common.chart), archive photos and documents from assets (wikimedia) panned slowly, chapter titles with common.headline, paper or film texture (common.paper, common.film grain). Slower and weightier: for history and society." },
+      "prompt": "Form: a video essay, narration first and the music low: maps that fly in (common.worldmap from the globe down to a country, common.mapcam over an assets map picture), charts (common.chart), archive photos and documents from assets (wikimedia) panned slowly, chapter titles with common.heading (the title template doc-rules: serif words between two thin rules), paper or film texture (common.paper, common.film grain). Slower and weightier: for history and society." },
     { "id": "kinetic",
       "name": { "zh": "動態文字", "en": "Kinetic text", "ja": "キネティックタイポ" },
       "desc": { "zh": "形式｜關鍵字本身就是畫面，跟著旁白的字一個個出來，粗細和大小拉開，一個畫面一句。", "en": "Form | The key words are the picture, each arriving on the word spoken, with big contrasts of weight and size, one line at a time.", "ja": "形式｜キーワードそのものが画面。話す言葉に合わせて現れ、太さと大きさにメリハリ、1 画面に 1 行。" },

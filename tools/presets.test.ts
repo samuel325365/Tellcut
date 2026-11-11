@@ -285,3 +285,14 @@ test('the card styles say how the hand-off to the main track works', () => {
   expect(style('travel', 'postcard')).toMatch(/run on/);
   for (const id of ['frame', 'postcard']) expect(style('celebration', id), id).toMatch(/its own desk item/);
 });
+
+test('titles in the presets are common.heading; common.headline only where it does what heading has no match for (the name title)', () => {
+  const all = presets(), text = (p: string) => readFileSync(join(TELLCUT_ROOT, 'guides', 'presets', p, 'preset.md'), 'utf8');
+  const essay = all.find((x) => x.id === 'explainer')!.styles.find((x) => x.id === 'essay')!;
+  expect(essay.prompt).toContain('common.heading');
+  expect(essay.prompt).not.toContain('common.headline');
+  for (const p of all) for (const m of text(p.id).matchAll(/common\.headline[^)]*/g)) expect(m[0], p.id).toMatch(/look: 'name'/);
+  const headline = commonPlugin.items!.find((t) => t.type === 'common.headline')!;
+  expect(headline.doc).toMatch(/common\.heading/);
+  expect(headline.doc).toMatch(/doc-rules/);
+});
