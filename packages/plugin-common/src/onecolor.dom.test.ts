@@ -2,7 +2,7 @@
 // common.grade / common.wash / common.viewfinder / common.echo / common.poster / common.band, countdown's look slant and the caption
 // look boxes (2026-11-06, the Single Color pilot film). jsdom has no canvas: the step and photo helpers, the declared stills and the
 // layers' blend modes are tested.
-import { band, echo, grade, gradeFill, parsePhotos, parseValueSteps, photoIndex, poster, posterLayout, shotNo, valueAt, stepsOf, viewfinder, wash } from './onecolor.ts';
+import { band, echo, echoMono, grade, gradeFill, parsePhotos, parseValueSteps, photoIndex, poster, posterLayout, shotNo, valueAt, stepsOf, viewfinder, wash } from './onecolor.ts';
 import { stepColor } from './countdown.ts';
 import { boxes } from './caption/looks/paper.ts';
 
@@ -110,5 +110,65 @@ describe('common.band: fixes', () => {
     try {
       await expect(band.ready!({} as any)).resolves.toBeUndefined();
     } finally { was ? Object.defineProperty(document, 'fonts', was) : delete (document as any).fonts; }
+  });
+});
+
+describe('common.grade deep (what common.wash did, in the same item)', () => {
+  const params = (over: Record<string, unknown> = {}) => ({ ...Object.fromEntries(grade.params.map((d) => [d.key, d.default])), ...over }) as any;
+  const stage = () => { const host = document.createElement('div'), root = document.createElement('div'), next = document.createElement('div'); host.append(root, next); root.style.zIndex = '4'; return { host, root, next }; };
+  test('deep is off by default and tone is the old wash colour; the wash is an old block now, pointing at the grade', async () => {
+    const p = params();
+    expect([p.deep, p.tone]).toEqual([false, wash.params.find((d) => d.key === 'tone')!.default]);
+    const { OLD_BLOCKS } = await import('@tellcut/engine');
+    expect(OLD_BLOCKS['common.wash']).toBe('common.grade');
+  });
+  test('without deep the grade is one layer, as it always was', () => {
+    const { host, root } = stage(), ctx: any = { root, params: params({ steps: '0|mono' }), local: 0.5, W: 1080, H: 1920 }, s = grade.build(ctx);
+    grade.draw(ctx, s);
+    expect(host.children.length).toBe(2);
+    expect(root.firstElementChild!.getAttribute('style')).toContain('background');
+  });
+  test('deep multiplies the tone over the mono steps from a layer right above the grade, as a wash item after it did', () => {
+    const { host, root, next } = stage(), p = params({ steps: '0|bw\n1|mono\n2|none', deep: true, tone: '#ffa070' }), ctx: any = { root, params: p, local: 1.5, W: 1080, H: 1920 };
+    const s = grade.build(ctx);
+    grade.draw(ctx, s);
+    const w = root.nextElementSibling as HTMLElement;
+    expect(w).not.toBe(next);
+    expect([w.style.mixBlendMode, w.style.background, w.style.zIndex, w.style.display]).toEqual(['multiply', 'rgb(255, 160, 112)', '4', '']);
+    // the same fill the old wash gave at each step
+    for (const [local, want] of [[0.5, 'transparent'], [1.5, 'rgb(255, 160, 112)'], [2.5, 'transparent']] as const) {
+      grade.draw({ ...ctx, local }, s);
+      const old = wash.build({ root: document.createElement('div'), params: { steps: p.steps, tone: p.tone } } as any);
+      wash.draw({ local, params: { steps: p.steps, tone: p.tone } } as any, old);
+      expect([w.style.background, old.d.style.background]).toEqual([want, want]);
+    }
+    // it follows the grade's layer: its place in the stack, its transform, its showing
+    root.style.zIndex = '7'; root.style.transform = 'scale(2)';
+    grade.draw(ctx, s);
+    expect([w.style.zIndex, w.style.transform]).toEqual(['7', 'scale(2)']);
+    grade.hide!(s);
+    expect(w.style.display).toBe('none');
+    grade.draw(ctx, s);
+    expect(w.style.display).toBe('');
+    grade.dispose!(s);
+    expect(w.isConnected).toBe(false);
+    expect(host.children.length).toBe(2);
+  });
+});
+
+describe('common.echo: steps can be left out', () => {
+  const proj = (items: any[]) => ({ tracks: [{ id: 'o', kind: 'overlay', items }] }) as any;
+  const g = (start: number, end: number, steps: string) => ({ id: `g${start}`, type: 'common.grade', start, end, params: { steps } });
+  test('empty steps follow the film\'s common.grade at the same moment (its own seconds, from its start)', () => {
+    const p = proj([g(2, 10, '0|bw\n1|mono\n3|none'), { id: 'e', type: 'common.echo', start: 3, end: 6, params: {} }]), memo = {};
+    expect([1, 2.5, 3.2, 4.9, 5.5].map((t) => echoMono(memo, p, '', t, t - 3))).toEqual([false, false, true, true, false]);
+  });
+  test('its own steps still win; no grade, or one with no steps given, is never mono', () => {
+    const p = proj([g(0, 10, '0|mono')]), memo = {};
+    expect([echoMono(memo, p, '', 1, 1), echoMono(memo, p, '0|none', 1, 1), echoMono(memo, p, '0.5|mono', 1, 1)]).toEqual([true, false, true]);
+    expect(echoMono({}, proj([]), '', 1, 1)).toBe(false);
+    expect(echoMono({}, undefined, '', 1, 1)).toBe(false);
+    // a grade item with no steps of its own uses the grade's default steps (bw, then mono at 0.4, then none at 0.8)
+    expect(echoMono({}, proj([{ id: 'g', type: 'common.grade', start: 0, end: 5, params: {} }]), '', 0.5, 0.5)).toBe(true);
   });
 });

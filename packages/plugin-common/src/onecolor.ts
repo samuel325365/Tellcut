@@ -1,15 +1,16 @@
 // A one-colour beat kit, promoted 2026-11-06 from the Single Color pilot film's fx.grade / fx.deepen / fx.hud / fx.echo / fx.page /
 // fx.tape (after the user's own Single Color style film):
 //   common.grade       the footage under it in black-and-white, in one colour, or as it is, switched on the beat (a flat fill blended
-//                      'color': grey takes the colour out, a colour gives every pixel its hue at the pixel's own lightness)
-//   common.wash        a light colour multiplied over the same steps: with grade's one colour alone a bright sky stays nearly white
+//                      'color': grey takes the colour out, a colour gives every pixel its hue at the pixel's own lightness); deep also
+//                      multiplies a light colour over the mono steps: with the one colour alone a bright sky stays nearly white
+//   common.wash        that multiplied colour as an item of its own after a grade: an old block now (OLD_BLOCKS), for older projects
 //   common.viewfinder  corner brackets, a title and chapter line, a route and a shot counter, a tick ruler with a needle walking down
 //   common.echo        a heavy slanted word with outlined copies stacked above and below it, a small number over its left end
 //   common.poster      a one-colour page: a slanted word over and under a bracketed photo card with a hard shadow, a faint giant word
 //                      behind, a line of side text, a barcode
 //   common.band        a diagonal band of repeated words, scrolling
 // The 3-2-1 is common.countdown's look slant, the caption the template color-boxes (look boxes). Pure functions of time.
-import { clamp, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, eOut3Clamped, resolveTimes, type ItemType, type Project, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { coverImage } from './editorial.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
@@ -90,33 +91,59 @@ function fitted(g: G, text: string, px: number, maxW: number) {
 }
 
 // ── common.grade / common.wash
-interface GP { steps: string; color: string }
+interface GP { steps: string; color: string; deep: boolean; tone: string }
 interface WP { steps: string; tone: string }
 interface FS { d: HTMLElement; steps: StepsMemo }
-const fill = (root: HTMLElement): FS => { const d = document.createElement('div'); d.style.cssText = 'position:absolute;inset:0;pointer-events:none'; root.appendChild(d); return { d, steps: noSteps() }; };
+/** a grade's state: deep adds `w`, the multiplied layer beside its own */
+interface GS extends FS { w?: HTMLElement }
+const FILL_CSS = 'position:absolute;inset:0;pointer-events:none';
+const fill = (root: HTMLElement): FS => { const d = document.createElement('div'); d.style.cssText = FILL_CSS; root.appendChild(d); return { d, steps: noSteps() }; };
 /** grade's steps out of the box: wash's default is the same, as its doc says */
 const GRADE_STEPS = '0|bw\n0.4|mono\n0.8|none';
+/** the multiplied colour of deep (and of the old wash): the tone on the mono steps, nothing on the others */
+const deepFill = (v: string, tone: string) => (v === 'mono' ? tone : 'transparent');
+/** Deep's layer goes beside the grade's own, right after it. Each item's layer is isolated and blends with one mode, and deep
+ *  needs two over the footage (the colour, then a multiply): an element inside the grade's layer would only multiply the grade's
+ *  own fill. Beside it, at the grade's place in the stack, it multiplies the graded picture below exactly as a wash item placed
+ *  after the grade did. It keeps the layer's stacking, transform and showing, and leaves with it (hide, dispose). */
+function deepLayer(root: HTMLElement, s: GS): HTMLElement | null {
+  if (!root.parentElement) return null;
+  if (!s.w) { s.w = document.createElement('div'); s.w.style.cssText = `${FILL_CSS};mix-blend-mode:multiply`; }
+  if (s.w.previousElementSibling !== root) root.after(s.w);
+  const r = root.style, w = s.w.style;
+  w.zIndex = r.zIndex; w.transform = r.transform; w.transformOrigin = r.transformOrigin; w.display = '';
+  return s.w;
+}
 
-export const grade: ItemType<GP, FS> = {
+export const grade: ItemType<GP, GS> = {
   type: 'common.grade', label: '單色調色', category: 'look', kind: 'overlay', blend: 'color',
-  doc: '照拍子換調色：疊在影片上（整支片一個項目），steps「秒|bw／mono／none」（項目內秒數，一行一個）把下面的畫面換成黑白、color 色的單色、或原色（#顏色＝那個顏色的單色）；單色要更濃（亮的天空也染色）再疊一個 common.wash 用同一份 steps；字幕、文字積木要放在它之後才不會被染色；運動、單車、旅行的快剪，配 common.viewfinder、common.echo、common.poster',
+  doc: '照拍子換調色：疊在影片上（整支片一個項目），steps「秒|bw／mono／none」（項目內秒數，一行一個）把下面的畫面換成黑白、color 色的單色、或原色（#顏色＝那個顏色的單色）；deep 讓單色更濃：mono 那幾段再乘上一層 tone 淺色（multiply），亮的天空也染色（以前要另外疊一個 common.wash）；字幕、文字積木要放在它之後才不會被染色；運動、單車、旅行的快剪，配 common.viewfinder、common.echo、common.poster',
   params: [
     { key: 'steps', label: '換色（秒|bw／mono／none，一行一個）', type: 'text', default: GRADE_STEPS },
     { key: 'color', label: '單色（mono）', type: 'color', default: '#ff5a1f', theme: 'palette.accent' },
+    { key: 'deep', label: '加深（mono 那幾段再乘上 tone，亮的地方也染色）', type: 'bool', default: false },
+    { key: 'tone', label: '加深乘上的顏色（deep）', type: 'color', default: '#ffa070' },
   ],
   build: (ctx) => fill(ctx.root),
-  draw(ctx, s) { s.d.style.background = gradeFill(valueAt(stepsOf(s.steps, ctx.params.steps), ctx.local), ctx.params.color); },
+  draw(ctx, s) {
+    const v = valueAt(stepsOf(s.steps, ctx.params.steps), ctx.local);
+    s.d.style.background = gradeFill(v, ctx.params.color);
+    if (ctx.params.deep) { const w = deepLayer(ctx.root, s); if (w) w.style.background = deepFill(v, ctx.params.tone); }
+    else if (s.w) s.w.style.display = 'none';
+  },
+  hide(s) { if (s.w) s.w.style.display = 'none'; },
+  dispose(s) { s.w?.remove(); s.w = undefined; },
 };
 
 export const wash: ItemType<WP, FS> = {
   type: 'common.wash', label: '色彩加深', category: 'look', kind: 'overlay', blend: 'multiply',
-  doc: '在 steps 的 mono 那幾段把一層淺色乘上去（multiply），亮的地方也染上顏色；疊在 common.grade 之後、用同一份 steps（bw、none 那幾段不動）',
+  doc: '舊積木（新片用 common.grade 的 deep）：在 steps 的 mono 那幾段把一層淺色乘上去（multiply），亮的地方也染上顏色；疊在 common.grade 之後、用同一份 steps（bw、none 那幾段不動）',
   params: [
     { key: 'steps', label: '換色（跟 common.grade 同一份）', type: 'text', default: GRADE_STEPS },
     { key: 'tone', label: '乘上的顏色', type: 'color', default: '#ffa070' },
   ],
   build: (ctx) => fill(ctx.root),
-  draw(ctx, s) { s.d.style.background = valueAt(stepsOf(s.steps, ctx.params.steps), ctx.local) === 'mono' ? ctx.params.tone : 'transparent'; },
+  draw(ctx, s) { s.d.style.background = deepFill(valueAt(stepsOf(s.steps, ctx.params.steps), ctx.local), ctx.params.tone); },
 };
 
 // ── common.viewfinder
@@ -156,12 +183,29 @@ export const viewfinder: ItemType<VP, CS & { steps: StepsMemo }> = {
 };
 
 // ── common.echo
+/** the film's grade items with their steps, read once per project (an edit hands the stage a new project object) */
+export interface GradeMemo { project?: Project; grades?: Array<{ start: number; end: number; steps: Array<{ t: number; v: string }> }>; own?: StepsMemo }
+/** Whether the picture under an echo is one colour at film time `t` (`local` its own seconds): its own steps when given, else the
+ *  film's common.grade at that moment (the last one listed, the top one, when two overlap), in the grade's own seconds. Leaving the
+ *  steps out is then right: an echo written over a grade turns onMono on the grade's mono stretches without copying its steps. */
+export function echoMono(m: GradeMemo, project: Project | undefined, steps: string, t: number, local: number): boolean {
+  if (String(steps ?? '').trim()) return valueAt(stepsOf(m.own ??= noSteps(), steps), local) === 'mono';
+  if (!project?.tracks) return false;
+  if (m.project !== project) {
+    const times = resolveTimes(project), def = grade.params.find((d) => d.key === 'steps')!.default as string;
+    m.project = project;
+    m.grades = project.tracks.flatMap((tr) => (tr.items as SceneItem[]).filter((it) => it.type === grade.type && times.has(it.id)).map((it) => ({
+      ...times.get(it.id)!, steps: parseValueSteps(typeof it.params?.steps === 'string' ? it.params.steps : def) })));
+  }
+  const on = (m.grades ?? []).filter((g) => t >= g.start - 1e-6 && t < g.end - 1e-6).pop();
+  return !!on && valueAt(on.steps, t - on.start) === 'mono';
+}
 interface EP { word: string; label: string; color: string; echo: string; echoes: number; size: number; y: number; steps: string; onMono: string }
 /** the word's size fitted to the width and its width at that size, measured once per word, size and frame (and again once the fonts are in) */
 interface EchoFit { key: string; px: number; ww: number }
-export const echo: ItemType<EP, CS & { text: string; steps: StepsMemo; fit?: EchoFit }> = {
+export const echo: ItemType<EP, CS & { text: string; grades: GradeMemo; fit?: EchoFit }> = {
   type: 'common.echo', label: '回音大字', category: 'text', kind: 'overlay',
-  doc: '畫面上一個粗窄斜體的大字（Anton），上下各疊 echoes 層空心的同一個字、開場從字的位置散開，字先大一點再落定；label 是字左上的小號碼（01、02，地點、章節）；字太寬自動縮到畫面寬 74%；steps 填 common.grade 的同一份（換成這個項目自己的秒數）時，畫面是單色那幾段字和空心字換成 onMono 色（橘色畫面上的橘字會看不見）；運動、旅行快剪的地名、動作字（RIDE、WALK、PARIS）',
+  doc: '畫面上一個粗窄斜體的大字（Anton），上下各疊 echoes 層空心的同一個字、開場從字的位置散開，字先大一點再落定；label 是字左上的小號碼（01、02，地點、章節）；字太寬自動縮到畫面寬 74%；畫面是單色（common.grade 的 mono）那幾段字和空心字換成 onMono 色（橘色畫面上的橘字會看不見）：steps 空著就照片子裡那一刻的 common.grade，要自己定才填 steps（這個項目自己的秒數；0|none＝永遠不換）；運動、旅行快剪的地名、動作字（RIDE、WALK、PARIS）',
   params: [
     { key: 'word', label: '大字', type: 'string', default: 'RIDE' },
     { key: 'label', label: '左上小號碼（空＝沒有）', type: 'string', default: '' },
@@ -170,17 +214,17 @@ export const echo: ItemType<EP, CS & { text: string; steps: StepsMemo; fit?: Ech
     { key: 'echoes', label: '上下各幾層空心字', type: 'number', min: 0, max: 4, step: 1, default: 2 },
     { key: 'size', label: '字高（以 1080 短邊計的 px）', type: 'number', min: 60, max: 600, step: 5, default: 250 },
     { key: 'y', label: '中心高度（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.26 },
-    { key: 'steps', label: '調色（秒|bw／mono／none，項目內秒數；空＝不換色）', type: 'text', default: '' },
+    { key: 'steps', label: '調色（秒|bw／mono／none，項目內秒數；空＝跟著片子的 common.grade）', type: 'text', default: '' },
     { key: 'onMono', label: '單色畫面上的字色', type: 'color', default: '#ffffff' },
   ],
-  build: (ctx) => ({ c: canvasIn(ctx.root), text: `${ctx.params.word}${ctx.params.label}`, steps: noSteps() }),
+  build: (ctx) => ({ c: canvasIn(ctx.root), text: `${ctx.params.word}${ctx.params.label}`, grades: {} }),
   ready: (s) => fontsReady(s.text).then(() => { s.fit = undefined; }),
   hide: (s) => freeCanvas(s.c),
   draw(ctx, s) {
     const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const key = `${p.word}|${p.size * u}|${W}`;
     if (s.fit?.key !== key) { const px = fitted(g, p.word, p.size * u, 0.74 * W); g.font = disp(px); s.fit = { key, px, ww: g.measureText(p.word).width }; }
-    const { px, ww } = s.fit, mono = valueAt(stepsOf(s.steps, p.steps), local) === 'mono';
+    const { px, ww } = s.fit, mono = echoMono(s.grades, ctx.project, p.steps, ctx.t, local);
     const col = mono ? p.onMono : p.color, ecol = mono ? p.onMono : p.echo;
     const cx = W / 2, cy = p.y * H, k = eOut3Clamped(local / 0.3), gap = 0.8 * px * k;
     // the copies stay clear of the top's small lines (a viewfinder's) and of the captions' band
