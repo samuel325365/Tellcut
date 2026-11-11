@@ -28,10 +28,10 @@ test('quote: lines and words, the hit line, word times spread over the item when
   expect(t[6]).toBeCloseTo(Math.max(0.62 * 3, t[5] + 0.35), 6);
   expect(quoteSizes('60,118', 3, 2, false)).toEqual([60, 118, 232]);
   expect(quoteSizes('', 3, 1, true)).toEqual([64, 92, 64]);
-  // the gallery's 3 s preview: the default quote slams inside it, and the defaults are the podcast-quote layout
+  // the gallery's 3 s preview: the default quote slams inside it; its line sizes are the automatic ones, not one film's
   const d = quoteTimes(quoteLines(def(quote, 'text')), [], quoteHit(quoteLines(def(quote, 'text')), -1), 3);
   expect(d[d.length - 1]).toBeLessThan(2.5);
-  expect(def(quote, 'sizes')).toBe('60,118,118,96,232');
+  expect(def(quote, 'sizes')).toBe('');
 });
 
 test('wipe: the band grows from the left, covers everything at the middle, then leaves to the right', () => {
