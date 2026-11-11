@@ -15,15 +15,15 @@ import { charKinds, layoutMarkup } from '../markup.ts';
 import { runBox, setRuns } from '../runs.ts';
 import { freeCanvas } from '../inkline.ts';
 import { LOOKS, lookOf } from './looks/index.ts';
-import { speakerColor } from './colors.ts';
-import { karaokeRange, popAt, saidLevel } from './words.ts';
+import { speakerTextColor } from './colors.ts';
+import { karaokeRange, charPopAt, saidLevel } from './words.ts';
 import { ANIM_IN, ANIM_OUT, ENGINE_IN, ENGINE_OUT, lineAnim, WORD_IN } from './anim.ts';
 import { drawWords, evenWords, setWords, WORD_FX, wordBox, wordsOf } from './wordfx.ts';
 import { withTemplate } from './templates.ts';
 import type { CaptionP, CaptionS, LookEnv } from './types.ts';
 
-export { speakerColor } from './colors.ts';
-export { karaokeRange, popAt, saidLevel } from './words.ts';
+export { speakerTextColor } from './colors.ts';
+export { karaokeRange, charPopAt, saidLevel } from './words.ts';
 export { bigColorOf } from './looks/bold.ts';
 export { qaBadge, qaBadgeColors } from './looks/layout.ts';
 export { stripTilt } from './looks/paper.ts';
@@ -134,7 +134,7 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     const fx = p.wordFx && p.wordFx !== 'auto' ? p.wordFx : 'auto', wordMode = (fx !== 'auto' && fx !== 'none') || !!look.word || WORD_IN.has(p.animIn);
     const lit = !wordMode && hasWords && !fill ? karaokeRange(steps, ctx.local) : null;
     // the speaker's colour; with tint off the words keep their own colour and only the name chip (or the point chip) shows it
-    const who = speakerColor(p.speaker ?? 0, p.color, theme), ink = p.tint === false ? p.color : who;
+    const who = speakerTextColor(p.speaker ?? 0, p.color, theme), ink = p.tint === false ? p.color : who;
     const pre = { p, theme, W, H, local: ctx.local, k, px, who, ink, left, opacity: st.opacity };
     // the room the words have: the look's box takes its padding out, the speaker chip of `point` 2.05 em at the left
     // as a function of the font size: the padding and borders it takes out shrink with the words when they shrink to fit, so the line
@@ -173,11 +173,11 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     }
     if (pop && !wordMode) {
       const chars = [...s.text.el.querySelectorAll('span')] as HTMLElement[];
-      chars.forEach((el, i) => { const c = popAt(i, chars.length, ctx.local); cssCamel(el, { opacity: String(c.opacity), transform: `translateY(${(c.rise * 34 * k).toFixed(2)}px) scale(${c.scale.toFixed(4)})` }); });
+      chars.forEach((el, i) => { const c = charPopAt(i, chars.length, ctx.local); cssCamel(el, { opacity: String(c.opacity), transform: `translateY(${(c.rise * 34 * k).toFixed(2)}px) scale(${c.scale.toFixed(4)})` }); });
     }
     if (fill && !wordMode) {   // every character dim until it is said, then lit for good (times on pop's own opacity when both are on)
       const chars = [...s.text.el.querySelectorAll('span')] as HTMLElement[];
-      chars.forEach((el, i) => { const o = 0.32 + 0.68 * saidLevel(steps, i, ctx.local); cssCamel(el, { opacity: String(pop ? o * popAt(i, chars.length, ctx.local).opacity : o) }); });
+      chars.forEach((el, i) => { const o = 0.32 + 0.68 * saidLevel(steps, i, ctx.local); cssCamel(el, { opacity: String(pop ? o * charPopAt(i, chars.length, ctx.local).opacity : o) }); });
     }
     // the speaker's name: a small chip in their colour above the caption (unless the look draws it its own way)
     s.nameText.textContent = p.name ?? ''; s.role.textContent = p.role ?? '';

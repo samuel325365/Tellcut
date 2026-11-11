@@ -35,13 +35,13 @@ export function cropAt(c: VideoItem['crop'], local: number, len: number): Crop {
 }
 
 /** Smooth value noise in [-1, 1] on two channels; the same key and phase always give the same pair. */
-const hash = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
+const fnv1a = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 const rnd = (seed: number, i: number) => {
   let x = Math.imul(seed ^ Math.imul(i, 0x9e3779b1), 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16;
   return ((x >>> 0) / 4294967295) * 2 - 1;
 };
 export function shakeNoise(key: string, u: number): [number, number] {
-  const s = hash(key), i = Math.floor(u), f = u - i, w = f * f * (3 - 2 * f);
+  const s = fnv1a(key), i = Math.floor(u), f = u - i, w = f * f * (3 - 2 * f);
   const ch = (c: number) => rnd(s + c, i) * (1 - w) + rnd(s + c, i + 1) * w;
   return [ch(0), ch(7919)];
 }

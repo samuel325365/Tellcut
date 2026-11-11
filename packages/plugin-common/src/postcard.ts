@@ -15,7 +15,7 @@
 import { abs, activeAt, cachedTimes, clamp, cssCamel, eIO3, eOut3, h, type ItemType, type MediaApi, type Project, type VideoItem, videoRefOf, videoState } from '@tellcut/engine';
 import { drawTexts, handFamily, LATIN, textLayer, writeTime, type TextLayer, type Txt } from './hand.ts';
 import { parseSentences } from './handwrite.ts';
-import { drawMark, drawStamp, hash, markEl, SERIF, stampEl, type Mark, type MarkEl, type StampEl, type StampSpec } from './postmark.ts';
+import { drawMark, drawStamp, postmarkNoise, markEl, SERIF, stampEl, type Mark, type MarkEl, type StampEl, type StampSpec } from './postmark.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, windowEl, type Still, type Win } from './window.ts';
 import { freeCanvas } from './inkline.ts';
 import { withAlpha } from './color.ts';
@@ -56,12 +56,12 @@ export type Drop = Card & { at: number };
 export const cardSpace = (W: number, H: number) => { const k = Math.min(W / 1080, H / 1920); return { k, ox: (W - 1080 * k) / 2, oy: (H - 1920 * k) / 2 }; };
 
 /** the window of a settled card in a W×H frame, in px */
-export function windowRect(orient: Orient, W: number, H: number): Rect {
+export function cardWindowRect(orient: Orient, W: number, H: number): Rect {
   const L = POSTCARD_LAYOUT[orient], { k, ox, oy } = cardSpace(W, H), [x, y, w, hh] = L.win;
   return [ox + (L.at[0] + x) * k, oy + (L.at[1] + y) * k, w * k, hh * k];
 }
 /** the settled card's window as the main-track clip's `frame` ([x, y, w, h], fractions of the frame) */
-export const postcardWindow = (orient: Orient, W = 1080, H = 1920) => asFrame(windowRect(orient, W, H), W, H);
+export const postcardWindow = (orient: Orient, W = 1080, H = 1920) => asFrame(cardWindowRect(orient, W, H), W, H);
 
 /** the face a card ends on (after its flip, if any) */
 export const finalFace = (c: Card) => (c.flip ? (c.show === 'back' ? 'front' : 'back') : c.show ?? 'front');
@@ -168,8 +168,8 @@ function paperCanvas(c: HTMLCanvasElement, card: Card, face: 'front' | 'back', p
   grd.addColorStop(0, 'rgba(255,255,255,0.35)'); grd.addColorStop(1, 'rgba(150,120,80,0.10)');
   g.fillStyle = grd; g.fillRect(0, 0, L.w, L.h);
   for (let i = 0; i < 900; i++) {   // fibres: short pale strokes
-    const x = hash(seed + i * 3.1) * L.w, y = hash(seed + i * 7.7) * L.h, a = hash(seed + i * 1.3) * Math.PI, l = 4 + hash(i + seed * 2) * 10;
-    g.strokeStyle = hash(i * 9.1 + seed) > 0.5 ? 'rgba(120,95,60,0.07)' : 'rgba(255,255,255,0.25)';
+    const x = postmarkNoise(seed + i * 3.1) * L.w, y = postmarkNoise(seed + i * 7.7) * L.h, a = postmarkNoise(seed + i * 1.3) * Math.PI, l = 4 + postmarkNoise(i + seed * 2) * 10;
+    g.strokeStyle = postmarkNoise(i * 9.1 + seed) > 0.5 ? 'rgba(120,95,60,0.07)' : 'rgba(255,255,255,0.25)';
     g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
   }
   g.strokeStyle = 'rgba(120,96,64,0.28)'; g.lineWidth = 2; g.strokeRect(12, 12, L.w - 24, L.h - 24);
@@ -257,11 +257,11 @@ export function paintDesk(c: HTMLCanvasElement, W: number, H: number, o: { wood?
   const grd = g.createLinearGradient(0, 0, W * 0.3, H);
   grd.addColorStop(0, wood[0]); grd.addColorStop(0.5, wood[1]); grd.addColorStop(1, wood[2]);
   g.fillStyle = grd; g.fillRect(0, 0, W, H);
-  // planks and grain: long gently waving lines, all from the hash
+  // planks and grain: long gently waving lines, all from postmarkNoise
   for (let i = 0; i < 260; i++) {
-    const y0 = hash(i * 2.3) * H, amp = (3 + hash(i * 5.9) * 9) * u, len = (0.004 + hash(i * 1.7) * 0.006) / u, ph = hash(i * 8.3) * 6.28;
-    g.strokeStyle = hash(i * 4.4) > 0.55 ? `rgba(60,36,18,${0.06 + hash(i) * 0.1})` : `rgba(210,170,120,${0.04 + hash(i * 3) * 0.06})`;
-    g.lineWidth = (0.8 + hash(i * 6.6) * 2.2) * u;
+    const y0 = postmarkNoise(i * 2.3) * H, amp = (3 + postmarkNoise(i * 5.9) * 9) * u, len = (0.004 + postmarkNoise(i * 1.7) * 0.006) / u, ph = postmarkNoise(i * 8.3) * 6.28;
+    g.strokeStyle = postmarkNoise(i * 4.4) > 0.55 ? `rgba(60,36,18,${0.06 + postmarkNoise(i) * 0.1})` : `rgba(210,170,120,${0.04 + postmarkNoise(i * 3) * 0.06})`;
+    g.lineWidth = (0.8 + postmarkNoise(i * 6.6) * 2.2) * u;
     g.beginPath();
     for (let x = -10; x <= W + 10; x += 12 * u) { const y = y0 + Math.sin(x * len + ph) * amp + (x / W) * 40 * u; if (x === -10) g.moveTo(x, y); else g.lineTo(x, y); }
     g.stroke();
@@ -373,7 +373,7 @@ export const postcard: ItemType<P, S> = {
       shown.push({ el: s.drops[i], card: d, pose: ds.x.pose, face: ds.x.face, local: dl, o: ds.o });
     });
     for (const x of shown) drawCard(ctx.media, x.el, x.card, x.pose, x.face, x.local, x.o, p, dpr, lang);
-    const head = shown[shown.length - 1], win = windowRect(head.card.orient, W, H);
+    const head = shown[shown.length - 1], win = cardWindowRect(head.card.orient, W, H);
     // the hole goes through the desk and the pile too: the clip below shows only there
     punch(s.under, top.hole ? win : null);
     // a clip in the window while the card on top is not a hole: that card above the clip, over the desk and the cards under it

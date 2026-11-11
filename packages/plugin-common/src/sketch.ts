@@ -18,7 +18,7 @@ export { boiled, handLoopPts, heartPts };
 /** a fixed sequence of numbers in 0–1 from a seed: the engine's LCG, any number taken as a seed (the sketches' pictures depend on this mapping) */
 export const rng = (seed: number) => lcg((Math.abs(Math.floor(seed)) % 2147483646) + 1);
 /** a fixed number in 0–1 for (i, s) */
-export const hash = (i: number, s = 0) => hash01(i, s, 0.5);
+export const sketchNoise = (i: number, s = 0) => hash01(i, s, 0.5);
 
 // ---------- paths ----------
 export const pathLen = (p: Pt[]) => { let L = 0; for (let i = 1; i < p.length; i++) L += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); return L; };
@@ -39,7 +39,7 @@ export function cutPath(p: Pt[], f: number): Pt[] {
 
 export interface Sample { x: number; y: number; d: number; nx: number; ny: number }
 /** the path resampled every `step` px: each sample with its distance along and the unit normal */
-export function resample(pts: Pt[], step: number): Sample[] {
+export function resampleByStep(pts: Pt[], step: number): Sample[] {
   const out: Sample[] = [];
   let d = 0;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -123,7 +123,7 @@ export function crayonStroke(g: G, pts: Pt[], o: StrokeOpts) {
   const prog = clamp(o.prog ?? 1);
   if (prog <= 0 || pts.length < 2) return;
   const u = o.u ?? 1, w = o.w, seed = boiled(o.seed ?? 1, o.t, o.boil), amp = o.amp ?? 1.6 * u, passes = o.passes ?? 3, alpha = o.alpha ?? 0.9;
-  const P = resample(pts, 5 * u), total = P[P.length - 1].d, upto = total * prog, end = 18 * u;
+  const P = resampleByStep(pts, 5 * u), total = P[P.length - 1].d, upto = total * prog, end = 18 * u;
   g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = o.color;
   for (let p = 0; p < passes; p++) {
     const r = rng(seed * 31 + p * 7 + 3), ox = (r() - 0.5) * w * 0.45, oy = (r() - 0.5) * w * 0.45, pw = p === 0 ? w : w * (0.45 + 0.35 * r());
@@ -150,18 +150,18 @@ export function pencilStroke(g: G, pts: Pt[], o: StrokeOpts) {
   const prog = clamp(o.prog ?? 1);
   if (pts.length < 2 || prog <= 0) return;
   const u = o.u ?? 1, w = o.w, amp = o.amp ?? 1.2 * u, sd = boiled(o.seed ?? 1, o.t, o.boil), a0 = o.alpha ?? 0.92;
-  const P = resample(pts, 3 * u), total = P[P.length - 1].d, upto = total * prog, end = Math.min(26 * u, total * 0.3);
+  const P = resampleByStep(pts, 3 * u), total = P[P.length - 1].d, upto = total * prog, end = Math.min(26 * u, total * 0.3);
   // a smooth normal at each sample (across its neighbours), so corners do not tear the passes apart
   const N = P.map((_, j) => {
     const a = P[Math.max(0, j - 1)], b = P[Math.min(P.length - 1, j + 1)], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
     return [-dy / L, dx / L] as Pt;
   });
-  const ph = [0, 1, 2, 3].map((i) => hash(sd * 3 + i, i + 1) * Math.PI * 2);
+  const ph = [0, 1, 2, 3].map((i) => sketchNoise(sd * 3 + i, i + 1) * Math.PI * 2);
   const sway = (d: number, k: number) => amp * (Math.sin((d / u) * 0.018 + ph[k * 2]) + 0.6 * Math.sin((d / u) * 0.051 + ph[k * 2 + 1]));
   const press = (d: number) => 0.74 + 0.26 * wave(d / (70 * u), sd);
   const lift = (d: number, from: number, to: number) => clamp(Math.min((d - from) / end, (to - d) / end));
   // the second pass: a little late, a little early, drifting 0.15–0.95 widths off the line
-  const s0 = (0.02 + 0.05 * hash(sd, 7)) * total, s1 = total * (1 - 0.06 * hash(sd, 8));
+  const s0 = (0.02 + 0.05 * sketchNoise(sd, 7)) * total, s1 = total * (1 - 0.06 * sketchNoise(sd, 8));
   const passes: Array<{ off: (d: number) => number; w: number; a: number; from: number; to: number; grain: number; k: number }> = [
     { off: (d) => sway(d, 0), w: w * 1.2, a: a0 * 0.5, from: 0, to: total, grain: 0.7, k: 0 },
     { off: (d) => sway(d, 0), w: w * 0.55, a: a0, from: 0, to: total, grain: 0.4, k: 1 },
@@ -175,7 +175,7 @@ export function pencilStroke(g: G, pts: Pt[], o: StrokeOpts) {
       if (A.d >= upto) break;
       if (B.d <= ps.from || A.d >= ps.to) continue;
       const f = B.d > upto ? (upto - A.d) / (B.d - A.d || 1) : 1, mid = (A.d + Math.min(B.d, upto)) / 2;
-      const t = lift(mid, ps.from, ps.to), pr = press(mid), gr = hash(j * 3 + ps.k, sd + 11);
+      const t = lift(mid, ps.from, ps.to), pr = press(mid), gr = sketchNoise(j * 3 + ps.k, sd + 11);
       const alpha = ps.a * pr * (1 - ps.grain + ps.grain * gr) * (0.5 + 0.5 * t);
       if (alpha <= 0.004) continue;
       const oa = ps.off(A.d), ob = ps.off(B.d), bx = A.x + (B.x - A.x) * f, by = A.y + (B.y - A.y) * f;
@@ -267,7 +267,7 @@ export interface FillOpts { u?: number; w?: number; gap?: number; angle?: number
 export function hatchFill(g: G, pts: Pt[], color: string, o: FillOpts = {}) {
   const prog = clamp(o.prog ?? 1);
   if (prog <= 0 || pts.length < 3) return;
-  const u = o.u ?? 1, sd = boiled(o.seed ?? 1, o.t, o.boil), b = bounds(pts), sc = 1 + (o.spill ?? 0.03), ox = (hash(sd, 2) - 0.5) * 7 * u, oy = (hash(sd, 3) - 0.5) * 7 * u;
+  const u = o.u ?? 1, sd = boiled(o.seed ?? 1, o.t, o.boil), b = bounds(pts), sc = 1 + (o.spill ?? 0.03), ox = (sketchNoise(sd, 2) - 0.5) * 7 * u, oy = (sketchNoise(sd, 3) - 0.5) * 7 * u;
   g.save();
   clipTo(g, pts.map(([x, y]) => [b.cx + (x - b.cx) * sc + ox, b.cy + (y - b.cy) * sc + oy]));
   const R = Math.hypot(b.x1 - b.x0, b.y1 - b.y0) / 2 + 12 * u, gap = (o.gap ?? 5.5) * u, n = Math.ceil((2 * R) / gap), alpha = o.alpha ?? 0.6;
@@ -277,8 +277,8 @@ export function hatchFill(g: G, pts: Pt[], color: string, o: FillOpts = {}) {
     const ang = (o.angle ?? -1.05) + layer * 0.55, dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
     for (let i = 0; i < n; i++) {
       if (i / n > prog) break;
-      const hh = hash(i + layer * 997, sd), off = -R + i * gap + (hh - 0.5) * gap * 0.7, bx = b.cx + nx * off, by = b.cy + ny * off;
-      g.globalAlpha = a0 * alpha * (layer ? 0.5 : 1) * (0.6 + 0.4 * hash(i, sd + 1));
+      const hh = sketchNoise(i + layer * 997, sd), off = -R + i * gap + (hh - 0.5) * gap * 0.7, bx = b.cx + nx * off, by = b.cy + ny * off;
+      g.globalAlpha = a0 * alpha * (layer ? 0.5 : 1) * (0.6 + 0.4 * sketchNoise(i, sd + 1));
       g.lineWidth = (o.w ?? 6.5) * u * (0.7 + 0.6 * hh);
       g.beginPath(); g.moveTo(bx - dx * R, by - dy * R);
       g.quadraticCurveTo(bx + nx * (hh - 0.5) * 5 * u, by + ny * (hh - 0.5) * 5 * u, bx + dx * R, by + dy * R); g.stroke();
@@ -318,7 +318,7 @@ function softCanvas(w: number, h: number) {
 }
 let TILE: HTMLCanvasElement | null = null;
 /** a fixed 192 px tile of little holes and short streaks (crayon skipping over the paper's tooth) */
-export function grainTile(): HTMLCanvasElement {
+export function crayonGrainTile(): HTMLCanvasElement {
   if (TILE) return TILE;
   const c = softCanvas(192, 192), g = c.getContext('2d')!, r = rng(9173);
   for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(0,0,0,${(0.25 + r() * 0.55).toFixed(3)})`; const s = 0.8 + r() * 1.8; g.fillRect(r() * 192, r() * 192, s, s * (0.6 + r())); }
@@ -342,7 +342,7 @@ export function grainEnd(L: GrainLayer, target: G, density = 0.5, u = 1) {
   if (!cv) return;
   const g = cv.getContext('2d')!;
   if (density > 0) {
-    const pat = g.createPattern(grainTile(), 'repeat');
+    const pat = g.createPattern(crayonGrainTile(), 'repeat');
     if (pat) {
       if (u !== 1 && pat.setTransform) pat.setTransform(new DOMMatrix().scale(u, u));
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = clamp(density); g.globalCompositeOperation = 'destination-out';

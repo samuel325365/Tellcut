@@ -18,7 +18,7 @@ export function liveSpans(text: string): Array<[number, number]> {
 }
 export const liveAt = (spans: Array<[number, number]>, t: number) => spans.reduce((m, [a, b]) => Math.max(m, Math.min(clamp((t - a) / 0.4), clamp((b - t) / 0.4))), 0);
 /** the clock's characters at t: what shows, what it changed from, and how far the flip is (0→1 over 0.4 s) */
-export function clockAt(steps: Array<{ t: number; v: string[] }>, t: number): { cur: string; old: string; p: number } {
+export function clockFlipAt(steps: Array<{ t: number; v: string[] }>, t: number): { cur: string; old: string; p: number } {
   const { cur, prev } = stepAt(steps, t);
   if (!cur) return { cur: steps[0]?.v[0] ?? '', old: steps[0]?.v[0] ?? '', p: 1 };
   const p = eOut(clamp((t - cur.t) / 0.4));
@@ -119,7 +119,7 @@ export const lockscreen: ItemType<P, S> = {
     // the date and the clock
     s.date.textContent = p.date;
     cssCamel(s.date, { left: '50%', top: X(372), transform: 'translate(-50%, -50%)', fontSize: X(fitPx(p.date, 50, 960)), fontWeight: '700', textShadow: shadow(18) });
-    const c = clockAt(parseSteps(p.clock), t), cur = [...c.cur], old = [...c.old];
+    const c = clockFlipAt(parseSteps(p.clock), t), cur = [...c.cur], old = [...c.old];
     const key = `${c.old}>${c.cur}`;
     if (s.clockKey !== key) {
       s.clockKey = key; s.clock.textContent = '';

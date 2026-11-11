@@ -2,7 +2,7 @@
 import { clamp, eBack, eOut3, prog } from '@tellcut/engine';
 
 /** character i of n popping in at `local`: the start is 0.08 s, then one every 0.04 s (closer when there are more than 15) */
-export function popAt(i: number, n: number, local: number) {
+export function charPopAt(i: number, n: number, local: number) {
   const step = Math.min(0.04, 0.6 / Math.max(1, n)), q = prog(local, 0.08 + i * step, 0.26 + i * step);
   return { opacity: clamp(q * 3), rise: 1 - eOut3(q), scale: 0.7 + 0.3 * eBack(q, 1.9) };
 }

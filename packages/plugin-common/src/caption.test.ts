@@ -1,5 +1,5 @@
 import { DEFAULT_THEME } from '@tellcut/engine';
-import { LOOKS, TEMPLATES, templateOf, withTemplate, bigColorOf, caption, glossColorOf, karaokeRange, lineColorKey, qaBadge, qaBadgeColors, speakerColor, styleFontOf, stylePop } from './caption.ts';
+import { LOOKS, TEMPLATES, templateOf, withTemplate, bigColorOf, caption, glossColorOf, karaokeRange, lineColorKey, qaBadge, qaBadgeColors, speakerTextColor, styleFontOf, stylePop } from './caption.ts';
 import { layoutMarkup } from './markup.ts';
 
 test('karaoke: the word being said is the range between the last step reached and the one before it', () => {
@@ -21,7 +21,7 @@ test('a lit range of visible characters is drawn highlighted; the lines do not m
 
 test('speakers: 0 keeps the caption colour, 1–3 take the theme accent2, hl and accent', () => {
   const t = DEFAULT_THEME;
-  expect([0, 1, 2, 3].map((s) => speakerColor(s, '#ffffff', t))).toEqual(['#ffffff', t.palette.accent2, t.palette.hl, t.palette.accent]);
+  expect([0, 1, 2, 3].map((s) => speakerTextColor(s, '#ffffff', t))).toEqual(['#ffffff', t.palette.accent2, t.palette.hl, t.palette.accent]);
 });
 
 test('styles bar, qa, auto and big are offered; the default stays outline', () => {

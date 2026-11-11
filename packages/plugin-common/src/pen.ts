@@ -23,7 +23,7 @@ const SVG_KINDS: Kind[] = ['circle', 'arrow', 'underline'];
 /** "0.2,0.8 0.5,0.2 0.8,0.8" → points (frame fractions); pieces that are not two numbers are left out */
 export const parsePts = (s: string): Pt[] => String(s ?? '').trim().split(/\s+/).filter(Boolean).map((p) => p.split(',').map(Number) as Pt).filter((p) => p.length === 2 && p.every(Number.isFinite));
 /** `pts` as n points evenly spaced along their length */
-export function resample(pts: Pt[], n: number): Pt[] {
+export function resampleToCount(pts: Pt[], n: number): Pt[] {
   if (pts.length < 2) return Array.from({ length: n }, () => pts[0] ?? [0.5, 0.5]);
   const L = [0];
   for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
@@ -40,7 +40,7 @@ export function resample(pts: Pt[], n: number): Pt[] {
 /** kind trace at `local`: the line (120 frame-fraction points between the two shapes), how much of it is drawn and the lock flash (0–1).
  *  Drawing starts drawDur + 0.12 s before the cut (or at 0), the morph starts at the cut. */
 export function tracePose(local: number, from: Pt[], to: Pt[], cut: number, drawDur: number, morph: number): { pts: Pt[]; drawn: number; flash: number } {
-  const a = resample(from, 120), b = resample(to.length ? to : from, 120), start = Math.max(0, cut - drawDur - 0.12);
+  const a = resampleToCount(from, 120), b = resampleToCount(to.length ? to : from, 120), start = Math.max(0, cut - drawDur - 0.12);
   const drawn = drawDur > 0 ? eOut3(clamp((local - start) / drawDur)) : 1, m = morph > 0 ? eIO3(clamp((local - cut) / morph)) : local >= cut ? 1 : 0, lock = local - cut - morph;
   return { pts: a.map((p, i) => [lerp(p[0], b[i][0], m), lerp(p[1], b[i][1], m)] as Pt), drawn: local < start ? 0 : drawn, flash: lock > 0 ? Math.exp(-lock * 7) : 0 };
 }

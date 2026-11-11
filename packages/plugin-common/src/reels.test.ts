@@ -1,8 +1,8 @@
 // Group B2 (2026-10-23): common.reels, common.comments and common.story.
 import { liveSpans } from './lockscreen.ts';
-import { barParts, countAt, parseHook, popAt, reels, segAt, segFill, timeList } from './reels.ts';
+import { barParts, keyedCountAt, parseHook, tapBounceAt, reels, segAt, segFill, timeList } from './reels.ts';
 import { commentLayout, comments, COMMENT_COLORS, parseComments } from './comments.ts';
-import { clockText, pollOf, sliderAt, story, timerAt } from './story.ts';
+import { durationText, pollOf, sliderAt, story, timerAt } from './story.ts';
 
 const def = (t: { params: Array<{ key: string; default: unknown }> }, k: string) => t.params.find((p) => p.key === k)!.default;
 
@@ -32,15 +32,15 @@ test('reels cold open: a later segment plays first, then every bar runs back to 
 });
 
 test('reels counts ease between keyframes; taps and blacked-out words read', () => {
-  expect(countAt('0|100\n2|300', -1)).toBe(100);
-  expect(countAt('0|100\n2|300', 1)).toBeCloseTo(200, 9);
-  expect(countAt('0|100\n2|300', 5)).toBe(300);
-  expect(countAt('', 1)).toBe(0);
-  expect(countAt('0|1027', 1)).toBe(1027);
+  expect(keyedCountAt('0|100\n2|300', -1)).toBe(100);
+  expect(keyedCountAt('0|100\n2|300', 1)).toBeCloseTo(200, 9);
+  expect(keyedCountAt('0|100\n2|300', 5)).toBe(300);
+  expect(keyedCountAt('', 1)).toBe(0);
+  expect(keyedCountAt('0|1027', 1)).toBe(1027);
   expect(timeList('1.2, 3 4.5')).toEqual([1.2, 3, 4.5]);
   expect(timeList('')).toEqual([]);
-  expect(popAt(1.175, 1)).toBeCloseTo(1.35, 9);
-  expect(popAt(0.9, 1)).toBe(1);
+  expect(tapBounceAt(1.175, 1)).toBeCloseTo(1.35, 9);
+  expect(tapBounceAt(0.9, 1)).toBe(1);
   expect(barParts('去了████ 👉 長片')).toEqual([['去了', false], ['████', true], [' 👉 長片', false]]);
   expect(barParts('')).toEqual([]);
 });
@@ -65,9 +65,9 @@ test('story: poll shares scale to 100 %, two answers at least; the slider eases 
   expect(sliderAt(0, 0.5, 2, 0.9)).toBe(0);
   expect(sliderAt(1.25, 0.5, 2, 0.9)).toBeCloseTo(0.45, 9);
   expect(sliderAt(3, 0.5, 2, 0.9)).toBeCloseTo(0.9, 9);
-  expect(clockText(timerAt(1.5, 0.8, 2.2, 0, 600))).toBe('05:00');
-  expect(clockText(timerAt(9, 0, 1, 600, 0))).toBe('00:00');
-  expect(clockText(3725)).toBe('1:02:05');
+  expect(durationText(timerAt(1.5, 0.8, 2.2, 0, 600))).toBe('05:00');
+  expect(durationText(timerAt(9, 0, 1, 600, 0))).toBe('00:00');
+  expect(durationText(3725)).toBe('1:02:05');
 });
 
 test('the three blocks play out inside the 3 s gallery preview', () => {

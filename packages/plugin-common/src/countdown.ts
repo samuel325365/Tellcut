@@ -19,7 +19,7 @@ export function stepColor(colors: string, step: number, color: string): string {
 const LEAN = 'skewX(-11.31deg)';
 
 /** the step showing at `local` of a `dur`-long item counting from `from` to `to` (each step an equal share), and how far into it */
-export function countAt(from: number, to: number, dur: number, local: number, end = ''): { text: string; step: number; into: number } {
+export function countStepAt(from: number, to: number, dur: number, local: number, end = ''): { text: string; step: number; into: number } {
   const n = Math.max(1, Math.abs(Math.round(from) - Math.round(to)) + 1), len = dur / n;
   const step = Math.min(n - 1, Math.max(0, Math.floor(local / len))), into = Math.round(clamp((local - step * len) / len) * 1e6) / 1e6;
   const dir = from >= to ? -1 : 1, v = Math.round(from) + dir * step;
@@ -62,7 +62,7 @@ export const countdown: ItemType<P, S> = {
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, d = (p.size / 100) * Math.min(W, H);
     if (p.look === 'slant') return drawSlant(ctx, s);
-    const c = countAt(p.from, p.to, dur, local, p.end), pop = eBack(clamp(c.into / 0.35), 2.4), fade = 1 - prog(local, dur - 0.2, dur);
+    const c = countStepAt(p.from, p.to, dur, local, p.end), pop = eBack(clamp(c.into / 0.35), 2.4), fade = 1 - prog(local, dur - 0.2, dur);
     cssCamel(s.box, { left: `${W / 2 - d / 2}px`, top: `${p.y * H - d / 2}px`, width: `${d}px`, height: `${d}px`, opacity: String(fade) });
     const sw = 7, left = 1 - clamp(local / dur), circ = 2 * Math.PI * 45;
     s.track.setAttribute('stroke', withAlpha(p.accent, 0.25)); s.track.setAttribute('stroke-width', String(sw));
@@ -85,7 +85,7 @@ export const countdown: ItemType<P, S> = {
 /** look slant: the number slanted and huge, an outlined copy behind, an arc on the right sweeping open over each step */
 function drawSlant(ctx: Parameters<typeof countdown.draw>[0], s: S) {
   const p = ctx.params, { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, d = (p.size / 100) * Math.min(W, H);
-  const c = countAt(p.from, p.to, dur, local, p.end), col = stepColor(p.colors, c.step, p.color), fade = 1 - prog(local, dur - 0.12, dur);
+  const c = countStepAt(p.from, p.to, dur, local, p.end), col = stepColor(p.colors, c.step, p.color), fade = 1 - prog(local, dur - 0.12, dur);
   cssCamel(s.box, { left: `${W / 2 - d / 2}px`, top: `${p.y * H - d / 2}px`, width: `${d}px`, height: `${d}px`, opacity: String(fade) });
   const word = [...c.text].length > 2, px = d * (word ? 0.42 : 0.82) * (1 + 0.18 * (1 - eOut3Clamped(c.into / 0.35))), font = `'Anton', 'Noto Sans TC', sans-serif`;
   s.num.textContent = c.text; s.ghost.textContent = c.text;

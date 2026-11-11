@@ -14,7 +14,7 @@
 import { clamp, cssCamel, eOut3, h, prog, textEm, type ItemType, type Theme } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from '../inkline.ts';
 import { HAND } from '../hand.ts';
-import { grainBegin, grainEnd, hash, type GrainLayer, type PenStyle } from '../sketch.ts';
+import { grainBegin, grainEnd, sketchNoise, type GrainLayer, type PenStyle } from '../sketch.ts';
 import { emParts } from '../text.ts';
 import { withAlpha } from '../color.ts';
 import { textLang, WORDS, wordsLang, type WordsLang } from '../words.ts';
@@ -159,7 +159,7 @@ function syncTexts(s: S, texts: Txt[], family: string, look: Look, u: number) {
       if (t.em) for (const [piece, em] of emParts(t.text)) { const sp = h('span', null, null, el); sp.textContent = piece; if (em) cssCamel(sp, { color: t.em.color, fontSize: `${t.em.scale}em` }); }
       else el.textContent = t.text;
     }
-    const rot = (t.rot ?? 0) + (look === 'hand' ? (hash(i, 5) - 0.5) * 3 : 0);
+    const rot = (t.rot ?? 0) + (look === 'hand' ? (sketchNoise(i, 5) - 0.5) * 3 : 0);
     cssCamel(el, { display: t.text && a > 0 ? 'block' : 'none', left: `${t.x.toFixed(2)}px`, top: `${t.y.toFixed(2)}px`, fontSize: `${t.size.toFixed(2)}px`, color: t.color,
       fontWeight: String(weightOf(look, t.weight ?? 700)), opacity: a.toFixed(3), transformOrigin: t.align === 'l' ? '0 50%' : t.align === 'r' ? '100% 50%' : '50% 50%',
       transform: `translate(${sh}, -50%) scale(${Math.max(0.01, t.sc ?? 1).toFixed(4)}) rotate(${rot.toFixed(2)}deg)`,

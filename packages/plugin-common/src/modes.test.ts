@@ -4,9 +4,9 @@ import { pinTimes, tag, tapeTimes } from './tag.ts';
 import { pinCheckPts } from './geo.ts';
 import { coverAt, coverBox, coverPath, emoji, floaters, tapPose } from './emoji.ts';
 import { formatValue, meter, niceStep, parsePins, pinAt } from './meter.ts';
-import { levelAt, levelFrac, parseLevels } from './levels.ts';
+import { keyedLevelAt, levelFrac, parseLevels } from './levels.ts';
 import { dotRow, progress, timelineState } from './progress.ts';
-import { parsePts, pen, resample, tracePose } from './pen.ts';
+import { parsePts, pen, resampleToCount, tracePose } from './pen.ts';
 import { handPose, wipe } from './wipe.ts';
 
 const def = (t: { params: Array<{ key: string; default: unknown }> }, key: string) => t.params.find((p) => p.key === key)!.default;
@@ -78,10 +78,10 @@ test('meter: the default look stays center; a number after a stop is its own eas
   const lv = parseLevels('0:2026, 1:1241:2, 4:1257:s, 5:1300');
   expect(lv.map((l) => l.ease)).toEqual([undefined, 2, undefined, undefined]);
   expect(lv[2].snap).toBe(true);
-  expect(levelAt(lv, 2, 0.5)).not.toBeCloseTo(1241, 0);            // still easing at 1 s of its 2
-  expect(levelAt(lv, 3, 0.5)).toBeCloseTo(1241, 6);
-  expect(levelAt(lv, 4, 0.5)).toBe(1257);
-  expect(levelAt(lv, 5.5, 0.5)).toBeCloseTo(1300, 6);
+  expect(keyedLevelAt(lv, 2, 0.5)).not.toBeCloseTo(1241, 0);            // still easing at 1 s of its 2
+  expect(keyedLevelAt(lv, 3, 0.5)).toBeCloseTo(1241, 6);
+  expect(keyedLevelAt(lv, 4, 0.5)).toBe(1257);
+  expect(keyedLevelAt(lv, 5.5, 0.5)).toBeCloseTo(1300, 6);
 });
 
 test('meter: a ruler from min to max; min 0 keeps the old fractions', () => {
@@ -120,7 +120,7 @@ test('progress timeline: drawn in, or slid from stop from to stop step; step -1 
 test('pen trace: points parsed, resampled evenly; drawn before the cut, morphed to the next shape after it, flashing as it locks', () => {
   expect(def(pen, 'kind')).toBe('circle');
   expect(parsePts('0.2,0.8 0.5,0.2 x 0.8,0.8')).toEqual([[0.2, 0.8], [0.5, 0.2], [0.8, 0.8]]);
-  const r = resample([[0, 0], [1, 0]], 5);
+  const r = resampleToCount([[0, 0], [1, 0]], 5);
   expect(r.map((p) => p[0])).toEqual([0, 0.25, 0.5, 0.75, 1]);
   const A = parsePts('0,0 1,0'), B = parsePts('0,1 1,1');
   expect(tracePose(0.1, A, B, 1, 0.4, 0.3).drawn).toBe(0);           // drawing starts 0.52 s before the cut

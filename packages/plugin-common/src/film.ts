@@ -47,7 +47,7 @@ const made = new Map<string, Uint8ClampedArray>();
 /** one grain tile as RGBA bytes: opaque grey around 128 (128 leaves the picture as it is under soft-light and overlay), soft
  *  clumps of 1–2 px (fine noise blurred a little, plus a weaker coarser layer so it does not look like digital noise); it wraps
  *  without a seam. The same k gives the same tile (made once and kept). */
-export function grainTile(k: number, size = TILE): Uint8ClampedArray {
+export function filmGrainBytes(k: number, size = TILE): Uint8ClampedArray {
   const key = `${k}:${size}`, kept = made.get(key);
   if (kept) return kept;
   const r = rng(1000 + k * 7919), fine = field(r, size, 0.65), coarse = field(r, size, 1.6), d = new Uint8ClampedArray(size * size * 4);
@@ -111,7 +111,7 @@ function grainTiles(): HTMLCanvasElement[] {
     const c = h('canvas', null, null, null) as HTMLCanvasElement;
     c.width = TILE; c.height = TILE; c.dataset.tile = String(k);
     const g = c.getContext('2d')!, img = g.createImageData(TILE, TILE);
-    img.data.set(grainTile(k));
+    img.data.set(filmGrainBytes(k));
     g.putImageData(img, 0, 0);
     return c;
   }));

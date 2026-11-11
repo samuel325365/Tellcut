@@ -3,7 +3,7 @@ import { defaultSafe, prog, eOut3 } from '@tellcut/engine';
 import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, svgBox, svgIn, tileText, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
 import { roundRectUrl } from './window.ts';
 import { noteLayout, notify, parseNotes, withLockText } from './notify.ts';
-import { clockAt, liveAt, liveSpans, lockscreen } from './lockscreen.ts';
+import { clockFlipAt, liveAt, liveSpans, lockscreen } from './lockscreen.ts';
 
 test('phone screen: the whole frame on 9:16; a 9:16 phone inside the safe area on wide and square frames; px moves it, never out', () => {
   expect(phoneScreen(1080, 1920, defaultSafe(1080, 1920))).toMatchObject({ x: 0, y: 0, w: 1080, h: 1920, k: 1, body: false, full: true });
@@ -160,11 +160,11 @@ test('lockscreen: steps by time, the clock flips the changed characters, live sp
   expect(stepAt(steps, 0.5).cur!.v[0]).toBe('14:59');
   expect(stepAt(steps, 1.3).prev!.v[0]).toBe('14:59');
   expect(stepAt(steps, -1).cur).toBeNull();
-  expect(clockAt(steps, 0.5)).toEqual({ cur: '14:59', old: '14:59', p: 1 });
-  const mid = clockAt(steps, 1.4);
+  expect(clockFlipAt(steps, 0.5)).toEqual({ cur: '14:59', old: '14:59', p: 1 });
+  const mid = clockFlipAt(steps, 1.4);
   expect(mid.cur).toBe('15:00'); expect(mid.old).toBe('14:59'); expect(mid.p).toBeGreaterThan(0); expect(mid.p).toBeLessThan(1);
-  expect(clockAt(steps, 2).old).toBe('15:00');
-  expect(clockAt(steps, -1).cur).toBe('14:59');
+  expect(clockFlipAt(steps, 2).old).toBe('15:00');
+  expect(clockFlipAt(steps, -1).cur).toBe('14:59');
   const spans = liveSpans('1-3, 5-6\nx\n7');
   expect(spans).toEqual([[1, 3], [5, 6]]);
   expect(liveAt(spans, 0.5)).toBe(0);

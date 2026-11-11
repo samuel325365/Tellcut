@@ -14,7 +14,7 @@
 // On 9:16 the screen is the frame; on a wide or square frame it is a phone in the middle (phone.ts): the main-track clip then takes
 // `frame: screenFrame(W, H)`. common.touch draws the finger (albumTile gives where a tile is), common.handwrite the hand-written notes.
 import { clamp, coverPlacement, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, numOr, withDefaults, type Crop, type ItemType, type MediaApi, type Theme } from '@tellcut/engine';
-import { countAt, popAt } from './reels.ts';
+import { keyedCountAt, tapBounceAt } from './reels.ts';
 import { asFrame, imagesReady, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
 import { DEVICES, drawStatusBar, glyphSvg, parseSteps, svgBox, svgIn, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
 import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
@@ -469,7 +469,7 @@ export const album: ItemType<P, S> = {
       });
     }
 
-    function viewerAlpha() { return clamp(countAt(p.show, t)); }
+    function viewerAlpha() { return clamp(keyedCountAt(p.show, t)); }
     function drawViewer() {
       const a = viewerAlpha(), vbar = withAlpha(p.paper, 0.86);
       for (const e of [s.vTop, s.vBottom, s.back, s.date, s.when, s.action, s.sb.el, ...s.tools]) cssCamel(e, { opacity: String(a) });
@@ -489,7 +489,7 @@ export const album: ItemType<P, S> = {
       kinds.forEach((kind, i) => {
         const el = s.tools[i], heart = kind === 'heart', col = heart && liked ? p.heart : p.accent, cx = kinds.length > 1 ? 122 + (i * 836) / (kinds.length - 1) : 540;
         svgIn(el, `${kind}${col}${p.paper}`, () => glyphSvg(kind, col, p.paper));
-        cssCamel(el, { display: a > 0.001 ? 'block' : 'none', left: X(cx - 34), top: X(Hd - 146), width: X(68), height: X(68), transform: `scale(${heart && p.heartAt >= 0 ? popAt(t, p.heartAt) : 1})` });
+        cssCamel(el, { display: a > 0.001 ? 'block' : 'none', left: X(cx - 34), top: X(Hd - 146), width: X(68), height: X(68), transform: `scale(${heart && p.heartAt >= 0 ? tapBounceAt(t, p.heartAt) : 1})` });
       });
     }
   },

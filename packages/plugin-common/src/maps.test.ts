@@ -1,7 +1,7 @@
 // Group D (2026-10-23): common.mapcam's pictures and camera, common.worldmap's camera and regions, the shared geo helpers.
 import { defaultSafe } from '@tellcut/engine';
 import { cutLine, keysAt, merc, orthographic, parseCities, placeOf, placesOf, radiusOfZoom, rowsOf, spanOf, unmerc, zoomOfRadius } from './geo.ts';
-import { autoCam, coverZoom, irisAt, mapPictures, miniCircle, parseCam, pictureAlphas, routeAt } from './mapcam.ts';
+import { autoCam, coverZoom, irisAt, mapPictures, miniCircle, parseCam, pictureAlphas, routeDrawnAt } from './mapcam.ts';
 import { globeShare, legShare, parseGlobeCam, regionRing } from './worldmap.ts';
 import { WORLD_LAND } from './world110.ts';
 
@@ -107,9 +107,9 @@ test('mapcam: the small map sits inside the safe area in each corner on 9:16 and
   expect(irisAt(0.6, '0-0.6', '')).toBe(1);
   expect(irisAt(3, '0-0.6', '2.4-3')).toBe(0);
   expect(irisAt(1, '', '')).toBe(1);
-  expect(routeAt([-Infinity, Infinity], 0)).toBe(1);
-  expect(routeAt([1, 2], 1.5)).toBeCloseTo(0.5, 9);
-  expect(routeAt([1, Infinity], 2.2)).toBe(1);
+  expect(routeDrawnAt([-Infinity, Infinity], 0)).toBe(1);
+  expect(routeDrawnAt([1, 2], 1.5)).toBeCloseTo(0.5, 9);
+  expect(routeDrawnAt([1, Infinity], 2.2)).toBe(1);
 });
 
 test('worldmap: camera keys turn the short way round the date line; the globe gives way to the chart; boxes and legs', () => {

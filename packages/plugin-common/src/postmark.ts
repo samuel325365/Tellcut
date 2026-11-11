@@ -7,8 +7,8 @@ import { showStill, stillRef, windowEl, imagesReady, type Still, type Win } from
 import { freeCanvas } from './inkline.ts';
 
 export const SERIF = "'Noto Serif TC', serif";
-/** deterministic hash noise in 0..1 */
-export const hash = (n: number) => hash01(n, 1);
+/** deterministic hash noise in 0..1 (the paper, wood and ink texture of the postcard and its postmark) */
+export const postmarkNoise = (n: number) => hash01(n, 1);
 const DEG = Math.PI / 180;
 
 export interface Mark { top: string; bottom: string; date: string; at?: number }
@@ -33,8 +33,8 @@ function speckMask(w: number, hh: number, r: number, dpr = 1, ink = 1) {
     g.fillStyle = '#fff'; g.fillRect(0, 0, w, hh); g.globalCompositeOperation = 'destination-out';
     const n = Math.round(380 * (w * hh) / 40000);
     for (let i = 0; i < n; i++) {
-      const x = hash(i * 1.37 + r) * w, y = hash(i * 2.71 + r) * hh, s = (0.6 + hash(i * 5.3) * 2.2) * (r / 74);
-      g.globalAlpha = (0.35 + hash(i * 3.9) * 0.6) / Math.max(1, ink); g.beginPath(); g.arc(x, y, s, 0, 7); g.fill();
+      const x = postmarkNoise(i * 1.37 + r) * w, y = postmarkNoise(i * 2.71 + r) * hh, s = (0.6 + postmarkNoise(i * 5.3) * 2.2) * (r / 74);
+      g.globalAlpha = (0.35 + postmarkNoise(i * 3.9) * 0.6) / Math.max(1, ink); g.beginPath(); g.arc(x, y, s, 0, 7); g.fill();
     }
     if (specks.size >= SPECKS) specks.clear();
     specks.set(key, c.toDataURL());

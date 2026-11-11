@@ -2,7 +2,7 @@
 // common.desktop / common.window / common.popup and common.touch's look cursor (2026-11-05, the retro desktop pilot film's fx.retro*).
 // jsdom has no canvas: the geometry is tested through the helpers, the window's own clip through media().
 import { resolveTheme, withDefaults } from '@tellcut/engine';
-import { deskChapters, deskSlot, deskWindow, desktop, popup, popupButton, sheetButton, windowRect, windowRef } from './desktop.ts';
+import { deskChapters, deskSlot, deskWindow, desktop, popup, popupButton, sheetButton, windowRectAt, windowRef } from './desktop.ts';
 import { cursorAt, parseTouches, touch } from './touch.ts';
 
 const theme = resolveTheme(undefined, { width: 1080, height: 1920 });
@@ -37,9 +37,9 @@ describe('common.window', () => {
 
   test('settled it is where x, y, w, h say; min ends shrunk onto its taskbar button', () => {
     const p = winParams({ x: 0.1, y: 0.2, w: 0.8, h: 0.25, exit: 'min', slot: 3, slots: 5 });
-    const mid = windowRect(p, 1.5, 3, 1080, 1920, 1);
+    const mid = windowRectAt(p, 1.5, 3, 1080, 1920, 1);
     expect([mid.left, mid.top, mid.w, mid.h]).toEqual([108, 384, 864, 480]);
-    const end = windowRect(p, 3, 3, 1080, 1920, 1), sl = deskSlot(3, 5, 1080, 1920);
+    const end = windowRectAt(p, 3, 3, 1080, 1920, 1), sl = deskSlot(3, 5, 1080, 1920);
     expect(end.left + end.w / 2).toBeCloseTo(sl.x, 6);
     expect(end.top + end.h / 2).toBeCloseTo(sl.y, 6);
     expect(end.w).toBeCloseTo(864 * 0.05, 6);
@@ -48,7 +48,7 @@ describe('common.window', () => {
 
   test('max grows over the top of the frame and lets the chrome go', () => {
     const p = winParams({ exit: 'max', maxAt: 0.5, maxH: 0.72 });
-    const r = windowRect(p, 2, 4, 1080, 1920, 1);
+    const r = windowRectAt(p, 2, 4, 1080, 1920, 1);
     expect(r.left).toBe(-14); expect(r.top).toBe(-50); expect(r.w).toBe(1108); expect(r.h).toBeCloseTo(0.72 * 1920 + 50, 6);
     expect(r.chromeA).toBe(0);
   });

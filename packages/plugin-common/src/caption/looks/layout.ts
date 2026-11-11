@@ -2,7 +2,7 @@
 import { cssCamel, textEm, type Theme } from '@tellcut/engine';
 import { isLight } from '../../color.ts';
 import { SVG_NS } from '../../shapes.ts';
-import { speakerColor } from '../colors.ts';
+import { speakerTextColor } from '../colors.ts';
 import type { CaptionLook } from '../types.ts';
 import { faceRoom } from './basic.ts';
 
@@ -26,7 +26,7 @@ export function qaBadge(name: string) {
  *  letters on a light fill, white on a dark one */
 export function qaBadgeColors(speaker: number, color: string, theme: Theme, tint: boolean) {
   if (!speaker) return { bg: color, fg: theme.palette.ink };
-  const bg = tint ? speakerColor(speaker, color, theme) : theme.palette.accent;
+  const bg = tint ? speakerTextColor(speaker, color, theme) : theme.palette.accent;
   return { bg, fg: tint && isLight(bg) ? theme.palette.ink : '#ffffff' };
 }
 

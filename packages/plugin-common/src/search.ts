@@ -69,7 +69,7 @@ const ROW_H = 118, WIN_Y = 620, WIN_R = 30, ASK_Y = 470, ASK_H = 130, SNIP_Y = 4
 const homeY = (Hd: number) => Math.round(Hd / 3);
 export type Rect = [number, number, number, number];
 /** the video window of a mode, in design px: results and ask under the title, end the result card's thumbnail, home / full the screen */
-export function windowRect(mode: Mode, view: View, Hd: number): Rect {
+export function modeWindowRect(mode: Mode, view: View, Hd: number): Rect {
   if (mode === 'end') return [24, CARD_Y, 1032, Math.max(300, Math.min(700, Hd - 220 - CARD_Y))];
   if (mode === 'ask' || (mode === 'results' && view === 'window')) return [24, WIN_Y, 1032, Math.max(400, Hd - 420 - WIN_Y)];
   return [0, 0, 1080, Hd];
@@ -105,7 +105,7 @@ const geo = (params: Record<string, unknown>, W: number, H: number, safe?: Parti
 /** The video window of the item on a W×H frame as a clip `frame` (fractions): the main-track clip that plays through it. home and the
  *  results' full view: the whole screen (the phone's screen on a wide frame). */
 export function searchWindow(params: Record<string, unknown>, W = 1080, H = 1920, o: { safe?: Partial<Theme['safe']> } = {}) {
-  const { p, sc, k, Hd } = geo(params, W, H, o.safe), r = windowRect(p.mode, p.view, Hd);
+  const { p, sc, k, Hd } = geo(params, W, H, o.safe), r = modeWindowRect(p.mode, p.view, Hd);
   return asFrame([sc.x + r[0] * k, sc.y + r[1] * k, r[2] * k, r[3] * k], W, H);
 }
 /** Where to tap (fractions of the frame, for common.touch): pick the picked autocomplete row, bar the box's right end (search), play
@@ -115,7 +115,7 @@ export function searchPoint(params: Record<string, unknown>, target: 'pick' | 'b
   let x = 540, y = y0 + BAR_H / 2;
   if (target === 'pick') { x = 620; y = y0 + BAR_H + 14 + Math.max(0, p.pick) * ROW_H + ROW_H / 2; }
   else if (target === 'bar') x = BAR_X + BAR_W - 64;
-  else { const r = windowRect('end', p.view, Hd); y = r[1] + r[3] / 2 + 70; }
+  else { const r = modeWindowRect('end', p.view, Hd); y = r[1] + r[3] / 2 + 70; }
   const f = (v: number) => Math.round(v * 1e4) / 1e4;
   return { x: f((sc.x + x * k) / W), y: f((sc.y + y * k) / H) };
 }
@@ -225,7 +225,7 @@ export const search: ItemType<P, S> = {
     placePhone(s.ph, sc);
     const font = `'${p.font}', 'Noto Sans TC', ${EMOJI_STACK}, sans-serif`;
     cssCamel(s.ph.screen, { fontFamily: font, color: p.ink });
-    const mode = p.mode, full = mode === 'results' && p.view === 'full', win = windowRect(mode, p.view, Hd);
+    const mode = p.mode, full = mode === 'results' && p.view === 'full', win = modeWindowRect(mode, p.view, Hd);
     const sugg = parseSugg(p.sugg, p.query), tabs = listOf(p.tabs), xs = tabXs(tabs);
     const y0 = mode === 'home' ? homeY(Hd) : BAR_Y;
     // ------------------------------------------------ the elements, built again only when something but the time changes

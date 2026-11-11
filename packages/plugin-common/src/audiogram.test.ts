@@ -1,5 +1,5 @@
 import { parseProject, type SceneItem } from '@tellcut/engine';
-import { DEMO, audiogram, fullScale, levelAt, sourceAt, soundSpans, speakerAt, speakerColor } from './audiogram.ts';
+import { DEMO, audiogram, fullScale, peakLevelAt, sourceAt, soundSpans, speakerAt, speakerPaletteColor } from './audiogram.ts';
 
 const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
 const audio = (id: string, source: string, start: number, end: number, inS: number, rate = 1) => ({ id, source, in: inS, rate, start, end, gain: 0, fadeIn: 0, fadeOut: 0 });
@@ -78,21 +78,21 @@ test('level: root mean square of the peaks around the moment, against the 95th p
   const peaks = [...Array(100).fill(0.5), ...Array(100).fill(0), ...Array(50).fill(0), 1, ...Array(49).fill(0)];
   const d = { rate: 100, peaks };
   expect(fullScale(d)).toBe(0.5);   // the spike is above the 95th percentile: it does not make everything else small
-  expect(levelAt(d, 0.5, 0.06)).toBeCloseTo(1, 9);
-  expect(levelAt(d, 0.5, 0.06, 0.5)).toBeCloseTo(0.5, 9);
-  expect(levelAt(d, 1.5, 0.06)).toBe(0);
-  expect(levelAt(d, 2.5, 0.06)).toBeGreaterThan(0.5);
-  expect(levelAt(d, 2.5, 0.06)).toBeLessThan(1);   // one spike in a 0.12 s window is softened
+  expect(peakLevelAt(d, 0.5, 0.06)).toBeCloseTo(1, 9);
+  expect(peakLevelAt(d, 0.5, 0.06, 0.5)).toBeCloseTo(0.5, 9);
+  expect(peakLevelAt(d, 1.5, 0.06)).toBe(0);
+  expect(peakLevelAt(d, 2.5, 0.06)).toBeGreaterThan(0.5);
+  expect(peakLevelAt(d, 2.5, 0.06)).toBeLessThan(1);   // one spike in a 0.12 s window is softened
   // the window straddling the end of the loud second falls off smoothly
-  const edge = [0.94, 0.97, 1, 1.03, 1.06].map((s) => levelAt(d, s, 0.06));
+  const edge = [0.94, 0.97, 1, 1.03, 1.06].map((s) => peakLevelAt(d, s, 0.06));
   expect(edge.every((v, i) => i === 0 || v < edge[i - 1])).toBe(true);
   // outside the data, no data, all silence: 0, never a throw
-  expect(levelAt(d, -3, 0.06)).toBe(0);
-  expect(levelAt(d, 99, 0.06)).toBe(0);
-  expect(levelAt(null, 1, 0.06)).toBe(0);
-  expect(levelAt({ rate: 100, peaks: [] }, 1, 0.06)).toBe(0);
-  expect(levelAt({ rate: 100, peaks: [0, 0, 0] }, 0.01, 0.06)).toBe(0);
-  expect(levelAt(d, 0.5, 0.06, 5)).toBe(1);
+  expect(peakLevelAt(d, -3, 0.06)).toBe(0);
+  expect(peakLevelAt(d, 99, 0.06)).toBe(0);
+  expect(peakLevelAt(null, 1, 0.06)).toBe(0);
+  expect(peakLevelAt({ rate: 100, peaks: [] }, 1, 0.06)).toBe(0);
+  expect(peakLevelAt({ rate: 100, peaks: [0, 0, 0] }, 0.01, 0.06)).toBe(0);
+  expect(peakLevelAt(d, 0.5, 0.06, 5)).toBe(1);
 });
 
 test('speaker: the colour and the name switch exactly on the change, colours from the theme unless given', () => {
@@ -104,15 +104,15 @@ test('speaker: the colour and the name switch exactly on the change, colours fro
   expect(speakerAt('nonsense', 3)).toBe(0);
   expect(speakerAt([[1, 'x', 2], null], 1.5)).toBe(0);
   const theme = { palette: { ink: '#111111', paper: '#ffffff', accent: '#ff0000', accent2: '#00ff00', hl: '#0000ff' } } as any;
-  expect([0, 1, 2, 3, 4].map((w) => speakerColor(w, [], theme))).toEqual(['#ff0000', '#ff0000', '#00ff00', '#0000ff', '#ff0000']);
-  expect(speakerColor(2, ['', '', '#abcdef'], theme)).toBe('#abcdef');
-  expect(speakerColor(1, ['', '', '#abcdef'], theme)).toBe('#ff0000');
+  expect([0, 1, 2, 3, 4].map((w) => speakerPaletteColor(w, [], theme))).toEqual(['#ff0000', '#ff0000', '#00ff00', '#0000ff', '#ff0000']);
+  expect(speakerPaletteColor(2, ['', '', '#abcdef'], theme)).toBe('#abcdef');
+  expect(speakerPaletteColor(1, ['', '', '#abcdef'], theme)).toBe('#ff0000');
 });
 
 test('with nothing to listen to it shows made-up speech: the same every time, with pauses', () => {
   expect(DEMO.rate).toBe(100);
   expect(DEMO.peaks.length).toBeGreaterThan(800);
-  const levels = DEMO.peaks.map((_, i) => levelAt(DEMO, i / 100, 0.06));
+  const levels = DEMO.peaks.map((_, i) => peakLevelAt(DEMO, i / 100, 0.06));
   expect(Math.max(...levels)).toBeGreaterThan(0.9);
   expect(levels.filter((v) => v < 0.05).length).toBeGreaterThan(50);   // breaths between phrases
   expect(DEMO.peaks.every((v) => v >= 0 && v <= 1)).toBe(true);

@@ -114,7 +114,7 @@ export function irisAt(t: number, open: string, close: string): number {
 }
 
 /** a route's share drawn at t: "-" (or nothing) already drawn; "a" drawn over 1.2 s from a; "a-b" over a…b */
-export function routeAt(span: [number, number], t: number) {
+export function routeDrawnAt(span: [number, number], t: number) {
   if (!Number.isFinite(span[0])) return 1;
   return eIO3(prog(t, span[0], Number.isFinite(span[1]) && span[1] > span[0] ? span[1] : span[0] + 1.2));
 }
@@ -231,7 +231,7 @@ export const mapcam: ItemType<P, S> = {
     }
     // routes: a glow, a dark casing, the line (dots for a planned one), a head on the moving end
     for (const [sp, pts, head = '', look = ''] of rowsOf(p.routes)) {
-      const f = routeAt(spanOf(sp), t), ll = placesOf(pts, places);
+      const f = routeDrawnAt(spanOf(sp), t), ll = placesOf(pts, places);
       if (f <= 0 || ll.length < 2) continue;
       const path = cutLine(spline(ll.map(([lo, la]) => px(lo, la)), 10), f), w = 8 * k;
       const stroke = (color: string, lw: number, dash: number[] = []) => {

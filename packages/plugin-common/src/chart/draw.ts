@@ -1,6 +1,6 @@
 // common.chart's drawing: each shape of the plan painted in the look (clean, hand, woodcut), and the card under it.
 import { clamp, eOut3 } from '@tellcut/engine';
-import { bounds, cutPath, ellipsePts, hash, hatchFill, inkStroke, inkStrokes, loopPts, markerStroke, quadPts, rectSides, rrectPts, type PenStyle, type Pt } from '../sketch.ts';
+import { bounds, cutPath, ellipsePts, sketchNoise, hatchFill, inkStroke, inkStrokes, loopPts, markerStroke, quadPts, rectSides, rrectPts, type PenStyle, type Pt } from '../sketch.ts';
 import { type Look, type ChartP, type Box, type Mk, boxLoopPts } from './shared.ts';
 
 export interface R { look: Look; pen: PenStyle; u: number; boil: number; t: number; ink: string }
@@ -164,10 +164,10 @@ export function drawCard(g: CanvasRenderingContext2D, c: Box, p: ChartP, r: R, r
   const u = r.u;
   if (r.look === 'woodcut') {
     const edge: Pt[] = [];
-    for (let i = 0; i <= 40; i++) edge.push([c.x + (i / 40) * c.w, c.y + (hash(i, 1) - 0.5) * 6 * u]);
-    for (let i = 0; i <= 30; i++) edge.push([c.x + c.w + (hash(i, 2) - 0.5) * 6 * u, c.y + (i / 30) * c.h]);
-    for (let i = 40; i >= 0; i--) edge.push([c.x + (i / 40) * c.w, c.y + c.h + (hash(i, 3) - 0.5) * 6 * u]);
-    for (let i = 30; i >= 0; i--) edge.push([c.x + (hash(i, 4) - 0.5) * 6 * u, c.y + (i / 30) * c.h]);
+    for (let i = 0; i <= 40; i++) edge.push([c.x + (i / 40) * c.w, c.y + (sketchNoise(i, 1) - 0.5) * 6 * u]);
+    for (let i = 0; i <= 30; i++) edge.push([c.x + c.w + (sketchNoise(i, 2) - 0.5) * 6 * u, c.y + (i / 30) * c.h]);
+    for (let i = 40; i >= 0; i--) edge.push([c.x + (i / 40) * c.w, c.y + c.h + (sketchNoise(i, 3) - 0.5) * 6 * u]);
+    for (let i = 30; i >= 0; i--) edge.push([c.x + (sketchNoise(i, 4) - 0.5) * 6 * u, c.y + (i / 30) * c.h]);
     g.save(); g.shadowColor = 'rgba(40,20,5,0.35)'; g.shadowBlur = 30 * u; g.shadowOffsetY = 12 * u; g.fillStyle = p.paper; trace(g, edge); g.fill(); g.restore();
     g.save(); g.strokeStyle = p.ink; g.lineWidth = 3 * u; g.strokeRect(c.x + 14 * u, c.y + 14 * u, c.w - 28 * u, c.h - 28 * u);
     g.lineWidth = 1.2 * u; g.strokeRect(c.x + 22 * u, c.y + 22 * u, c.w - 44 * u, c.h - 44 * u); g.restore();

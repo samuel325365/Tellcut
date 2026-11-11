@@ -177,7 +177,7 @@ export const windowRef = (p: Pick<WP, 'source' | 'in'>, dur: number): MediaRef =
 
 /** where the window is at `local` (frame px) and how much of its chrome shows: popping in, growing to the top (max) or flying into
  *  its taskbar button (min) / shrinking away (close) at its end */
-export function windowRect(p: WP, local: number, dur: number, W: number, H: number, pop: number) {
+export function windowRectAt(p: WP, local: number, dur: number, W: number, H: number, pop: number) {
   const k = Math.min(W, H) / 1080;
   let x = p.x * W, y = p.y * H, w = p.w * W, h = p.h * H, sc = pop, alpha = clamp(local / 0.06), chromeA = 1;
   if (p.exit === 'max' && local > p.maxAt) {
@@ -245,7 +245,7 @@ export const deskWindow: ItemType<WP, WS> = {
   draw(ctx, s) {
     const { local, dur, W, H, params: p, motion, media, project } = ctx;
     const pop = local < 0 ? 0 : 0.55 + 0.45 * motion.spring({ duration: 0.35, bounce: 0.45 })(local);
-    const R = windowRect(p, local, dur, W, H, pop), k = R.k, sh = 12 * k;
+    const R = windowRectAt(p, local, dur, W, H, pop), k = R.k, sh = 12 * k;
     Object.assign(s.wrap.style, { left: `${(R.left / W) * 100}%`, top: `${(R.top / H) * 100}%`, width: `${((R.w + sh) / W) * 100}%`, height: `${((R.h + sh) / H) * 100}%`,
       opacity: String(R.alpha), display: R.w > 2 ? 'block' : 'none' });
     const cw = Math.max(1, Math.round(R.w + sh)), chh = Math.max(1, Math.round(R.h + sh));

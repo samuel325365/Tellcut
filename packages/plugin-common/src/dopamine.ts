@@ -12,7 +12,7 @@ import { imagesReady, windowEl } from './window.ts';
 const lerp = (a: number, b: number, q: number) => a + (b - a) * q;
 
 /** a springy pop: 0 before `at`, then 0→1 with a little overshoot (an underdamped spring of about `dur` s) */
-export function popAt(local: number, at: number, dur = 0.42): number {
+export function springPopAt(local: number, at: number, dur = 0.42): number {
   const t = local - at;
   if (t <= 0) return 0;
   const w = (2 * Math.PI) / dur, z = 0.38;
@@ -91,7 +91,7 @@ export const popcard: ItemType<PP, PS> = {
   ready: (s) => Promise.all([document.fonts.load(`900 40px 'Noto Serif TC'`, s.text || '標'),
     imagesReady(s.imgs)]).then(() => undefined),
   draw(ctx, s) {
-    const { local, W, H, params: p, media, project } = ctx, k = Math.min(W, H) / 1080, pop = clamp(popAt(local, p.popAt), 0, 1.2);
+    const { local, W, H, params: p, media, project } = ctx, k = Math.min(W, H) / 1080, pop = clamp(springPopAt(local, p.popAt), 0, 1.2);
     const { i, labelFrom } = shotAt(s.shots, local), shot = s.shots[i];
     const bump = i > 0 && shot ? 1 - 0.035 * Math.sin(Math.PI * clamp((local - shot.t) / 0.2)) : 1;
     const cw = p.w * W, ch = p.h * H, line = 5 * k, pad = 16 * k, off = 18 * k, rad = 20 * k;
@@ -110,7 +110,7 @@ export const popcard: ItemType<PP, PS> = {
       else { const v = media.video(shotRef(shot), s.box, clamp(local - shot.t, 0, shot.len - 0.04), false); media.place(v, bw, bh, shot.crop, src?.width, src?.height); }
     }
     // a long label shrinks (padding and all) to 92 % of the card's width, down to 40 %
-    const label = shot?.label ?? '', fs = Math.max(17.6 * k, Math.min(44 * k, (0.92 * cw) / (textEm(label) + 1.2))), lp = clamp(popAt(local, Math.max(p.popAt + 0.2, s.shots[labelFrom]?.t ?? 0), 0.35), 0, 1.2), left = p.pillSide !== 'right';
+    const label = shot?.label ?? '', fs = Math.max(17.6 * k, Math.min(44 * k, (0.92 * cw) / (textEm(label) + 1.2))), lp = clamp(springPopAt(local, Math.max(p.popAt + 0.2, s.shots[labelFrom]?.t ?? 0), 0.35), 0, 1.2), left = p.pillSide !== 'right';
     s.pill.textContent = label;
     cssCamel(s.pill, { display: label ? 'block' : 'none', fontSize: `${fs.toFixed(2)}px`, color: p.pillInk, background: p.pill, border: `${4 * k}px solid ${p.ink}`, borderRadius: `${fs}px`,
       padding: `${0.18 * fs}px ${0.6 * fs}px ${0.22 * fs}px`, top: `${-0.55 * fs}px`, left: left ? `${-0.04 * cw}px` : 'auto', right: left ? 'auto' : `${-0.04 * cw}px`,
@@ -162,7 +162,7 @@ export const sticker: ItemType<SP, SS> = {
     const g = s.c.getContext('2d');
     if (!g) return;
     g.clearRect(0, 0, W, H);
-    const pop = popAt(local, p.popAt, 0.4), k = Math.min(W, H) / 1080;
+    const pop = springPopAt(local, p.popAt, 0.4), k = Math.min(W, H) / 1080;
     if (pop <= 0.001) return;
     const r = (p.size * W) / 2, wob = stickerWobble(local, p.popAt);
     const line = 5 * k, off = 7 * k;

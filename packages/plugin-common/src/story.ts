@@ -23,7 +23,7 @@ export function pollOf(options: string, votes: string, lang: WordsLang = 'zh'): 
   return { opts, shares: sum > 0 ? raw.map((x) => x / sum) : opts.map(() => 1 / opts.length) };
 }
 /** a clock of `sec` seconds: m:ss under an hour (mm with two digits), h:mm:ss above */
-export function clockText(sec: number): string {
+export function durationText(sec: number): string {
   const s = Math.max(0, Math.floor(sec + 1e-6)), hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60, two = (n: number) => String(n).padStart(2, '0');
   return hh ? `${hh}:${two(mm)}:${two(ss)}` : `${two(mm)}:${two(ss)}`;
 }
@@ -131,7 +131,7 @@ export const story: ItemType<P, S> = {
     cssCamel(s.col, { display: timer ? 'block' : 'none' });
     s.label.textContent = p.text;
     cssCamel(s.label, { display: p.text ? 'block' : 'none', fontSize: X(fitPx(p.text, 36, 420)), fontWeight: '700', opacity: '0.85', marginBottom: X(10) });
-    s.num.textContent = clockText(timerAt(t, p.at, p.end, p.from, p.to));
+    s.num.textContent = durationText(timerAt(t, p.at, p.end, p.from, p.to));
     cssCamel(s.num, { fontSize: X(92), fontWeight: '700', fontVariantNumeric: 'tabular-nums', letterSpacing: X(2), color: p.hl });
   },
 };

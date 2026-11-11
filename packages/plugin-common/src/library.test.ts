@@ -1,5 +1,5 @@
 // The blocks added with the library expansion (2026-10-18): countdown, list, rating, info card, polaroid.
-import { countAt } from './countdown.ts';
+import { countStepAt } from './countdown.ts';
 import { listItems, shownItems } from './list.ts';
 import { ratingRows, starFills } from './rating.ts';
 import { infoBottom, infoRows } from './info.ts';
@@ -8,12 +8,12 @@ import { DEFAULT_THEME } from '@tellcut/engine';
 import { polaroid } from './polaroid.ts';
 
 test('countdown: the item is shared evenly from `from` to `to`; the last step can say a word instead', () => {
-  expect(countAt(3, 0, 4, 0)).toEqual({ text: '3', step: 0, into: 0 });
-  expect(countAt(3, 0, 4, 1.5)).toEqual({ text: '2', step: 1, into: 0.5 });
-  expect(countAt(3, 0, 4, 3.9).text).toBe('0');
-  expect(countAt(3, 0, 4, 3.5, 'GO!').text).toBe('GO!');
-  expect(countAt(3, 0, 4, 10).text).toBe('0');                                     // past the end: the last step stays
-  expect(countAt(10, 0, 11, 2.2).text).toBe('8');
+  expect(countStepAt(3, 0, 4, 0)).toEqual({ text: '3', step: 0, into: 0 });
+  expect(countStepAt(3, 0, 4, 1.5)).toEqual({ text: '2', step: 1, into: 0.5 });
+  expect(countStepAt(3, 0, 4, 3.9).text).toBe('0');
+  expect(countStepAt(3, 0, 4, 3.5, 'GO!').text).toBe('GO!');
+  expect(countStepAt(3, 0, 4, 10).text).toBe('0');                                     // past the end: the last step stays
+  expect(countStepAt(10, 0, 11, 2.2).text).toBe('8');
 });
 
 test('list: one item a line; pros marks lines starting with - as cons; items come in one by one', () => {

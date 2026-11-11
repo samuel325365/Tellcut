@@ -1,4 +1,4 @@
-import { levelAt, levelFrac, parseLevels, parseStages, stageAt } from './levels.ts';
+import { keyedLevelAt, levelFrac, parseLevels, parseStages, stageAt } from './levels.ts';
 import { formatValue } from './meter.ts';
 import { rampAt } from './ambient.ts';
 import { toRgb } from './color.ts';
@@ -6,12 +6,12 @@ import { toRgb } from './color.ts';
 test('levels: sorted, eased from the last value over `ease` seconds, `:s` jumps; junk left out', () => {
   const l = parseLevels('4:70, 0:0，9:332:s, x:y');
   expect(l).toEqual([{ t: 0, v: 0, snap: false }, { t: 4, v: 70, snap: false }, { t: 9, v: 332, snap: true }]);
-  expect(levelAt(l, 2, 0.8)).toBe(0);
-  expect(levelAt(l, 4, 0.8)).toBe(0);                         // the move starts at the stop
-  expect(levelAt(l, 4.4, 0.8)).toBeCloseTo(70 * 0.875, 5);    // ease-out: most of the way at half time
-  expect(levelAt(l, 6, 0.8)).toBe(70);
-  expect(levelAt(l, 9, 0.8)).toBe(332);                       // a jump
-  expect(levelAt([], 1, 0.8)).toBe(0);
+  expect(keyedLevelAt(l, 2, 0.8)).toBe(0);
+  expect(keyedLevelAt(l, 4, 0.8)).toBe(0);                         // the move starts at the stop
+  expect(keyedLevelAt(l, 4.4, 0.8)).toBeCloseTo(70 * 0.875, 5);    // ease-out: most of the way at half time
+  expect(keyedLevelAt(l, 6, 0.8)).toBe(70);
+  expect(keyedLevelAt(l, 9, 0.8)).toBe(332);                       // a jump
+  expect(keyedLevelAt([], 1, 0.8)).toBe(0);
 });
 
 test('where a value sits on the ruler: straight or log; max 0 means the largest stop', () => {

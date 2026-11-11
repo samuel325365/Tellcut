@@ -5,7 +5,7 @@
 // 3 golden hour, 4 dusk, 5 night; fractions blend), with drifting soft clouds, thin rain in the storm, a sun glow and slow rays as it
 // clears, warm string-light glow at dusk, still stars at night, and lightning flashes at the `flash` times.
 import { cssCamel, h, rng, type ItemType } from '@tellcut/engine';
-import { levelAt, levelFrac, parseLevels } from './levels.ts';
+import { keyedLevelAt, levelFrac, parseLevels } from './levels.ts';
 import { toRgb, type RGB } from './color.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 
@@ -55,7 +55,7 @@ export const ambient: ItemType<P, S> = {
   draw(ctx, s) {
     if (ctx.params.look === 'sky') { drawSky(ctx, s); return; }
     const p = ctx.params, { W, H } = ctx, k = Math.min(W, H) / 1080, g = canvasAt(s.cv, W, H), t = ctx.local;
-    const levels = parseLevels(p.stops), f = levelFrac(levelAt(levels, t, p.ease), levels, p.max, p.scale);
+    const levels = parseLevels(p.stops), f = levelFrac(keyedLevelAt(levels, t, p.ease), levels, p.max, p.scale);
     const ramp = p.colors.split(/[,，]/).map((c) => c.trim()).filter(Boolean).map(hex), colors = ramp.length ? ramp : [[0, 0, 0] as RGB];
     const bg = g.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, css(rampAt(colors, f)));
@@ -115,7 +115,7 @@ export function flashAt(times: string, t: number): number {
 
 function drawSky(ctx: Parameters<typeof ambient.draw>[0], s: S) {
   const p = ctx.params, { W, H } = ctx, S0 = Math.min(W, H), k = S0 / 1080, g = canvasAt(s.cv, W, H), t = ctx.local, wide = W / S0;
-  const M = skyMood(levelAt(parseLevels(p.stops), t, p.ease));
+  const M = skyMood(keyedLevelAt(parseLevels(p.stops), t, p.ease));
   const css = (c: RGB, a = 1) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
   // every place comes from the seed in the same order each frame (the parts a mood leaves out still take their numbers)
   const r = rng(p.seed);

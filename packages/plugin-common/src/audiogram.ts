@@ -71,7 +71,7 @@ export function fullScale(d: SourcePeaks): number {
 }
 
 /** 0..1: the root mean square of the peaks within `smooth` seconds of source second `s`, against fullScale, times `gain` */
-export function levelAt(d: SourcePeaks | null | undefined, s: number, smooth: number, gain = 1): number {
+export function peakLevelAt(d: SourcePeaks | null | undefined, s: number, smooth: number, gain = 1): number {
   if (!d || !d.peaks.length || !Number.isFinite(s)) return 0;
   const full = fullScale(d);
   if (!(full > 0)) return 0;
@@ -135,7 +135,7 @@ export function heardAt(spans: Span[], t: number): { source: string; s: number }
 }
 
 /** speaker `who`'s colour: colors[who] when given, else the theme's accent (nobody and the first), accent2, hl, then round again */
-export function speakerColor(who: number, colors: unknown, theme: Pick<Theme, 'palette'>): string {
+export function speakerPaletteColor(who: number, colors: unknown, theme: Pick<Theme, 'palette'>): string {
   const own = Array.isArray(colors) ? colors[who] : undefined;
   if (typeof own === 'string' && own.trim()) return own.trim();
   const { accent, accent2, hl } = theme.palette;
@@ -247,11 +247,11 @@ export const audiogram: ItemType<P, S> = {
     const level = (u: number) => {
       const x = at(u);
       if (!x || (only && speakerAt(p.speakers, x.s) !== only)) return 0;
-      return levelAt(spans ? s.data.get(x.source) : DEMO, x.s, smooth, gain);
+      return peakLevelAt(spans ? s.data.get(x.source) : DEMO, x.s, smooth, gain);
     };
     const amp = (u: number) => FLOOR + (1 - FLOOR) * level(u);
     const whoAt = (u: number) => { const x = at(u); return x ? speakerAt(p.speakers, x.s) : 0; };
-    const who = only || heldSpeaker(whoAt, ctx.t, Number(p.hold) || 0), color = speakerColor(who, p.colors, theme);
+    const who = only || heldSpeaker(whoAt, ctx.t, Number(p.hold) || 0), color = speakerPaletteColor(who, p.colors, theme);
     const { cx, cy, bw, bh } = layout(p, W, H);
     const fadeIn = Number(p.fadeIn) || 0, fadeOut = Number(p.fadeOut) || 0;
     const alpha = Math.min(fadeIn > 0 ? clamp(ctx.local / fadeIn) : 1, fadeOut > 0 ? clamp((ctx.dur - ctx.local) / fadeOut) : 1);

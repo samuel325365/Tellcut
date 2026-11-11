@@ -4,7 +4,7 @@ import { ambient } from './ambient.ts';
 import { badge, badgeCenter } from './badge.ts';
 import { header, headerTop } from './header.ts';
 import { progress, TOP_LANE } from './progress.ts';
-import { levelAt, parseLevels } from './levels.ts';
+import { keyedLevelAt, parseLevels } from './levels.ts';
 import { meter, meterBaseline } from './meter.ts';
 import { list } from './list.ts';
 import { routeboard } from './routeboard.ts';
@@ -25,8 +25,8 @@ test('meter: by default the number sits right under the top safe margin of the f
 test('meter and ambient: the default stops reach their last value inside the 3 s gallery preview', () => {
   for (const t of [meter, ambient]) {
     const levels = parseLevels(def(t, 'stops').default as string), ease = def(t, 'ease').default as number;
-    expect(levelAt(levels, 0, ease)).not.toBe(levels.at(-1)!.v);
-    expect(levelAt(levels, 2.6, ease)).toBeCloseTo(levels.at(-1)!.v, 0);
+    expect(keyedLevelAt(levels, 0, ease)).not.toBe(levels.at(-1)!.v);
+    expect(keyedLevelAt(levels, 2.6, ease)).toBeCloseTo(levels.at(-1)!.v, 0);
   }
 });
 

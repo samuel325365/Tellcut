@@ -1,5 +1,5 @@
 // common.search (group C2): the word lists, the question list's state at t, the video window and the tap points.
-import { askAt, askRowY, listOf, parseAsk, parseFacts, parseRelated, parseSugg, search, searchPoint, searchWindow, tabXs, windowRect } from './search.ts';
+import { askAt, askRowY, listOf, parseAsk, parseFacts, parseRelated, parseSugg, search, searchPoint, searchWindow, tabXs, modeWindowRect } from './search.ts';
 import { screenFrame } from './phone.ts';
 
 test('words: suggestions split where the query ends (or at "|"), fact cards, questions with their spans, related rows, tabs', () => {
@@ -37,10 +37,10 @@ test('ask: a question opens, closes, the list scrolls a row and the next one tak
 });
 
 test('the window and the tap points: 9:16 the page itself, 16:9 inside the phone; home is the whole screen', () => {
-  expect(windowRect('results', 'window', 1920)).toEqual([24, 620, 1032, 880]);
-  expect(windowRect('ask', 'window', 1920)).toEqual([24, 620, 1032, 880]);
-  expect(windowRect('end', 'window', 1920)).toEqual([24, 1000, 1032, 700]);
-  expect(windowRect('results', 'full', 1920)).toEqual([0, 0, 1080, 1920]);
+  expect(modeWindowRect('results', 'window', 1920)).toEqual([24, 620, 1032, 880]);
+  expect(modeWindowRect('ask', 'window', 1920)).toEqual([24, 620, 1032, 880]);
+  expect(modeWindowRect('end', 'window', 1920)).toEqual([24, 1000, 1032, 700]);
+  expect(modeWindowRect('results', 'full', 1920)).toEqual([0, 0, 1080, 1920]);
   expect(searchWindow({ mode: 'results' })).toEqual([24 / 1080, 620 / 1920, 1032 / 1080, 880 / 1920].map((v) => Math.round(v * 1e5) / 1e5));
   expect(searchWindow({ mode: 'home' }, 1920, 1080)).toEqual(screenFrame(1920, 1080));
   const wide = searchWindow({ mode: 'results' }, 1920, 1080), phone = screenFrame(1920, 1080);

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // common.popcard / common.sticker, backdrop's pattern words and bits, wipe's mode stripes, badge's shape box and the title look pop
 // (2026-11-06, the Dopamine Colors pilot film). jsdom has no canvas: the parsers, timings, declared media, path and DOM styles are tested.
-import { parseShots, popAt, popcard, shotAt, sticker, stickerPath, stickerWobble } from './dopamine.ts';
+import { parseShots, springPopAt, popcard, shotAt, sticker, stickerPath, stickerWobble } from './dopamine.ts';
 import { textEm, withDefaults, resolveTheme } from '@tellcut/engine';
 import { bitAt } from './backdrop.ts';
 import { stripeSpan } from './wipe.ts';
@@ -33,9 +33,9 @@ describe('common.popcard', () => {
     expect([shotAt(shots, 0.5), shotAt(shots, 1.5), shotAt(shots, 2.5)]).toEqual([{ i: 0, labelFrom: 0 }, { i: 1, labelFrom: 0 }, { i: 2, labelFrom: 2 }]);
   });
   test('the pop: nothing before its time, past 1 once (the overshoot), settling at 1', () => {
-    expect(popAt(0.9, 1)).toBe(0);
-    expect(Math.max(...[0.15, 0.2, 0.25, 0.3].map((t) => popAt(t, 0)))).toBeGreaterThan(1);
-    expect(popAt(3, 0)).toBeCloseTo(1, 3);
+    expect(springPopAt(0.9, 1)).toBe(0);
+    expect(Math.max(...[0.15, 0.2, 0.25, 0.3].map((t) => springPopAt(t, 0)))).toBeGreaterThan(1);
+    expect(springPopAt(3, 0)).toBeCloseTo(1, 3);
   });
 });
 

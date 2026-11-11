@@ -11,7 +11,7 @@
 // zigzags, crosses) down both sides, twinkling, on any pattern.
 import { clamp, cssCamel, h, rng, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
-import { levelAt, parseLevels } from './levels.ts';
+import { keyedLevelAt, parseLevels } from './levels.ts';
 
 interface P { pattern: 'gingham' | 'dots' | 'stripes' | 'grid' | 'solid' | 'gradient' | 'diamond' | 'spot' | 'words'; word: string; bits: number; seed: number; color: string; color2: string; tint: number; scale: number; drift: number; glow: string; glowColor: string; glowPulse: number; pool: number; poolColor: string; poolY: number; vignette: number }
 interface S { el: HTMLElement; glow: HTMLElement; pool: HTMLElement; cv: HTMLCanvasElement; word: string }
@@ -59,7 +59,7 @@ function drawBits(g: CanvasRenderingContext2D, n: number, seed: number, cols: st
 export const glowAt = (stops: string, pulse: number, t: number) => {
   const lv = parseLevels(stops);
   if (!lv.length) return 0;
-  const v = clamp(levelAt(lv, t, 0.4));
+  const v = clamp(keyedLevelAt(lv, t, 0.4));
   return clamp(v * (1 - pulse * 0.5 + pulse * 0.5 * Math.sin(t * 9)));
 };
 

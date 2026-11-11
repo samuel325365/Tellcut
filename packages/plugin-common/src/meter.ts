@@ -5,7 +5,7 @@
 // the flag the number has reached beside it. look ruler (t2-line's height ruler): an upright ruler at the right edge; every stop
 // reached leaves an arrow with its value, the newest big in the accent colour (a pin at the same value adds its label).
 import { clamp, cssCamel, eBack, eOut3, h, prog, type ItemType } from '@tellcut/engine';
-import { levelAt, levelFrac, parseLevels, parseStages, stageAt } from './levels.ts';
+import { keyedLevelAt, levelFrac, parseLevels, parseStages, stageAt } from './levels.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { withAlpha } from './color.ts';
 
@@ -97,7 +97,7 @@ export const meter: ItemType<P, S> = {
     if (ctx.params.look === 'ruler') { drawRuler(ctx, s); return; }
     hide(s.band, s.cv, s.unit, s.label, ...s.marks);
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, levels = parseLevels(p.stops), stages = parseStages(p.stages);
-    const v = levelAt(levels, ctx.local, p.ease), f = levelFrac(v, levels, p.max, p.scale, p.min ?? 0), y = meterBaseline(p.y, p.size, theme.safe.top);
+    const v = keyedLevelAt(levels, ctx.local, p.ease), f = levelFrac(v, levels, p.max, p.scale, p.min ?? 0), y = meterBaseline(p.y, p.size, theme.safe.top);
     const fade = Math.min(prog(ctx.local, 0, 0.25), 1 - prog(ctx.local, ctx.dur - 0.25, ctx.dur)), px = (p.size / 100) * H, glow = p.glow * 26 * k;
     s.num.textContent = `${p.prefix}${formatValue(v, p.decimals, p.sep ?? true)}${p.suffix}`;
     cssCamel(s.num, { top: `${y * H}px`, transform: 'translate(-50%, -100%)', fontSize: `${px}px`, fontWeight: '900', fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`,
@@ -135,7 +135,7 @@ const rulerEnds = (p: P, levels: ReturnType<typeof parseLevels>) => [p.min ?? 0,
 function drawBand(ctx: Ctx, s: S) {
   const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, levels = parseLevels(p.stops), pins = parsePins(p.pins);
   hide(s.stage, s.track, s.knob, ...s.marks);
-  const v = levelAt(levels, local, p.ease), intro = eOut3(prog(local, 0, 0.6)), fade = intro * (1 - prog(local, dur - 0.25, dur)), dy = (1 - intro) * -40 * k;
+  const v = keyedLevelAt(levels, local, p.ease), intro = eOut3(prog(local, 0, 0.6)), fade = intro * (1 - prog(local, dur - 0.25, dur)), dy = (1 - intro) * -40 * k;
   const fs = (p.size / 100) * H, top = (p.y >= 0 ? p.y : theme.safe.top) * H + dy, x0 = theme.safe.side * W, x1 = W - x0, font = `'${p.font}', 'Noto Sans TC', sans-serif`;
   cssCamel(s.band, { display: 'block', top: `${top - 0.4 * fs}px`, height: `${3.3 * fs}px`, opacity: String(fade),
     background: 'linear-gradient(180deg, rgba(18,14,10,0) 0%, rgba(18,14,10,.62) 22%, rgba(18,14,10,.62) 78%, rgba(18,14,10,0) 100%)' });

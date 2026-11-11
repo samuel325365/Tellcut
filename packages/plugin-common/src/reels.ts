@@ -49,7 +49,7 @@ export function segAt(segs: Span[], hook: ReturnType<typeof parseHook>, t: numbe
   return { i, since: segs[i]?.[0] ?? -9 };
 }
 /** a count at t from "秒|數" keyframes, eased from one to the next */
-export function countAt(text: string, t: number): number {
+export function keyedCountAt(text: string, t: number): number {
   const ks = parseSteps(text).map((s) => ({ t: s.t, v: Number(s.v[0]) })).filter((s) => Number.isFinite(s.v));
   if (!ks.length) return 0;
   if (t <= ks[0].t) return ks[0].v;
@@ -57,7 +57,7 @@ export function countAt(text: string, t: number): number {
   return ks[ks.length - 1].v;
 }
 /** a button's bounce when it is tapped at `at`: up to 1.35 and back over `dur` */
-export const popAt = (t: number, at: number, dur = 0.35) => { const u = (t - at) / dur; return u < 0 || u > 1 ? 1 : 1 + 0.35 * Math.sin(Math.PI * u); };
+export const tapBounceAt = (t: number, at: number, dur = 0.35) => { const u = (t - at) / dur; return u < 0 || u > 1 ? 1 : 1 + 0.35 * Math.sin(Math.PI * u); };
 /** times written "1.2, 3.4" (comma, space or line separated) */
 /** how many copies of a marquee line `mw` wide (line plus gap) keep a `room`-wide window full while it slides by up to one `mw`:
  *  the last copy must still start at or past the window's right edge at the largest offset */
@@ -247,9 +247,9 @@ export const reels: ItemType<P, S> = {
       const cur = segAt(segs, hook, t), chipOn = p.count && n > 1;
       s.chip.textContent = `${cur.i + 1}/${n}`;
       cssCamel(s.chip, { display: chipOn ? 'flex' : 'none', right: X(-54), top: X(-30), minWidth: X(124), height: X(68), borderRadius: X(34), alignItems: 'center', justifyContent: 'center', background: p.hl, color: p.ink,
-        fontFamily: font, fontSize: X(38), fontWeight: '700', transform: `rotate(7deg) scale(${popAt(t, cur.since, 0.4)})` });
+        fontFamily: font, fontSize: X(38), fontWeight: '700', transform: `rotate(7deg) scale(${tapBounceAt(t, cur.since, 0.4)})` });
       // the button column
-      const taps = timeList(p.taps), liked = taps.some((x) => t >= x), hs = taps.reduce((m, x) => m * popAt(t, x), 1);
+      const taps = timeList(p.taps), liked = taps.some((x) => t >= x), hs = taps.reduce((m, x) => m * tapBounceAt(t, x), 1);
       const sv = Number(p.saveAt), saved = sv >= 0 && t >= sv, cx = 1000;
       const col = [['heart', base - 616], ['comment', base - 464], ['share', base - 318], ['save', base - 174]] as const;
       for (const [key, y] of col) {
@@ -257,13 +257,13 @@ export const reels: ItemType<P, S> = {
         if (key === 'heart') svgIn(el, `h${liked}${p.color}${p.heart}`, () => G.heart(p.color, liked ? p.heart : null));
         else if (key === 'save') svgIn(el, `s${saved}${p.color}`, () => G.save(p.color, saved));
         else svgIn(el, `${key}${p.color}`, () => g1(key, p.color));
-        const sc2 = key === 'heart' ? hs : key === 'save' && sv >= 0 ? popAt(t, sv, 0.4) : 1;
+        const sc2 = key === 'heart' ? hs : key === 'save' && sv >= 0 ? tapBounceAt(t, sv, 0.4) : 1;
         cssCamel(el, { left: X(cx - size / 2), top: X(y - size / 2), width: X(size), height: X(size), transform: `scale(${sc2})`, filter: `drop-shadow(${shadow(8)})` });
       }
       const counts: Array<[keyof S['nums'], string, number]> = [['heart', p.likes, base - 554], ['comment', p.comments, base - 402], ['share', p.shares, base - 256]];
       for (const [key, text, y] of counts) {
         const el = s.nums[key];
-        el.textContent = fmtCount(countAt(text, t), p.counts);
+        el.textContent = fmtCount(keyedCountAt(text, t), p.counts);
         cssCamel(el, { left: X(cx), top: X(y), transform: 'translate(-50%, -50%)', fontSize: X(28), fontWeight: '700', textShadow: shadow(8) });
       }
       // the bottom: account and follow, the caption, the music

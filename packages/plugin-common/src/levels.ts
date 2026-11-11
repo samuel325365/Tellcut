@@ -16,7 +16,7 @@ export function parseLevels(s: string): Level[] {
 }
 
 /** the value at item time t */
-export function levelAt(levels: Level[], t: number, ease: number): number {
+export function keyedLevelAt(levels: Level[], t: number, ease: number): number {
   if (!levels.length) return 0;
   let i = -1;
   for (let k = 0; k < levels.length; k++) if (levels[k].t <= t + 1e-9) i = k;

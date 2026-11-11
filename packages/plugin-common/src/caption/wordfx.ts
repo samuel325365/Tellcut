@@ -5,7 +5,7 @@
 // typed as said, with a caret), wave (the characters bob gently). A look styles the words through its word() parts.
 import { clamp, cssCamel, eBack, eOut3, h, lerp, prog } from '@tellcut/engine';
 import type { Run } from '../markup.ts';
-import { popAt } from './words.ts';
+import { charPopAt } from './words.ts';
 import { wordIn } from './anim.ts';
 import type { Css, WordStyle } from './types.ts';
 
@@ -124,7 +124,7 @@ export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: nu
     let op = 1, y = 0, sc = 1;
     if (fx === 'type') op = i < typedTo ? 1 : 0;
     if (fx === 'wave') y = Math.sin(2 * Math.PI * (local * 0.9 - i * 0.11)) * 0.07 * o.fs;
-    if (o.animIn === 'pop') { const c = popAt(i, wb.chars.length, local); op *= c.opacity; y += c.rise * 0.32 * o.fs; sc = c.scale; }
+    if (o.animIn === 'pop') { const c = charPopAt(i, wb.chars.length, local); op *= c.opacity; y += c.rise * 0.32 * o.fs; sc = c.scale; }
     const moved = y || sc !== 1 ? `translateY(${y.toFixed(2)}px) scale(${sc.toFixed(4)})` : '';
     cssCamel(ch, { ...css, opacity: op === 1 ? '' : op.toFixed(3), transform: [css.transform, moved].filter(Boolean).join(' ') });
   });

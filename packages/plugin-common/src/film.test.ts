@@ -3,7 +3,7 @@
 // frame's own pixels, blended into the picture, a different tile/offset every frame picked from the frame's number only.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
-import { film, grainOpacity, grainPick, grainTile, TILE, TILES, vignetteCss } from './film.ts';
+import { film, grainOpacity, grainPick, filmGrainBytes, TILE, TILES, vignetteCss } from './film.ts';
 
 type Op = [string, ...unknown[]];
 let ops: Op[];
@@ -42,7 +42,7 @@ function corr(v: Float64Array, size: number, dx: number) {
 }
 
 test('a grain tile: opaque grey around 128, soft clumps of 1–2 px (neighbours alike, 4 px apart not), the same for the same k', () => {
-  const d = grainTile(1), v = lum(d);
+  const d = filmGrainBytes(1), v = lum(d);
   let odd = 0, sum = 0, sq = 0;
   for (let i = 0; i < d.length; i += 4) { if (d[i + 3] !== 255 || d[i] !== d[i + 1] || d[i] !== d[i + 2]) odd++; sum += d[i]; sq += d[i] * d[i]; }
   const n = d.length / 4, mean = sum / n, sd = Math.sqrt(sq / n - mean * mean);
@@ -53,12 +53,12 @@ test('a grain tile: opaque grey around 128, soft clumps of 1–2 px (neighbours 
   expect(corr(v, TILE, 1)).toBeGreaterThan(0.5);
   expect(corr(v, TILE, 4)).toBeLessThan(0.2);
   const same = (x: Uint8ClampedArray, y: Uint8ClampedArray) => Buffer.from(x.buffer).equals(Buffer.from(y.buffer));
-  expect(same(grainTile(1), d)).toBe(true);
-  expect(same(grainTile(2), d)).toBe(false);
+  expect(same(filmGrainBytes(1), d)).toBe(true);
+  expect(same(filmGrainBytes(2), d)).toBe(false);
 });
 
 test('a grain tile wraps without a seam: across the edge neighbours are as alike as inside', () => {
-  const v = lum(grainTile(0)), size = TILE;
+  const v = lum(filmGrainBytes(0)), size = TILE;
   let edge = 0, inner = 0, m = 0;
   for (const x of v) m += x; m /= v.length;
   for (let y = 0; y < size; y++) { edge += (v[y * size + size - 1] - m) * (v[y * size] - m); inner += (v[y * size + 100] - m) * (v[y * size + 101] - m); }

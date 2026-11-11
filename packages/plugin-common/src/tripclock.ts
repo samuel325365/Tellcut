@@ -17,7 +17,7 @@ const DAY = 1440;
 /** b − a the short way round the clock face, in [−720, 720): 23:50 → 00:10 is +20, not −1420 */
 const turn = (a: number, b: number) => ((((b - a) % DAY) + DAY * 1.5) % DAY) - DAY / 2;
 /** minutes on any day (above 1440 or below 0 too) → "HH:MM" */
-export const clockText = (mins: number) => { const m = ((Math.floor(mins) % DAY) + DAY) % DAY; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+export const timeOfDayText = (mins: number) => { const m = ((Math.floor(mins) % DAY) + DAY) % DAY; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
 
 /** "0=06:26, 3=09:24" → sorted [seconds, minutes] pairs */
 export function parseClock(s: string): Array<[number, number]> {
@@ -26,8 +26,8 @@ export function parseClock(s: string): Array<[number, number]> {
 }
 
 /** the clock's minutes at item time t: after each stop it rolls to the new time over `roll` seconds, the short way round. Past
- *  midnight the value runs on above 1440 (or below 0), so the time since arrival can be counted from it; clockText shows it. */
-export function clockAt(stops: Array<[number, number]>, t: number, roll: number): number {
+ *  midnight the value runs on above 1440 (or below 0), so the time since arrival can be counted from it; timeOfDayText shows it. */
+export function clockMinutesAt(stops: Array<[number, number]>, t: number, roll: number): number {
   if (!stops.length) return 0;
   let v = stops[0][1];
   for (let i = 1; i < stops.length; i++) {
@@ -38,7 +38,7 @@ export function clockAt(stops: Array<[number, number]>, t: number, roll: number)
 }
 
 /** where along the route the traveller is (0 = first station; eases into each station at its time) */
-export function routeAt(at: number[], n: number, t: number): number {
+export function stationPosAt(at: number[], n: number, t: number): number {
   let pos = 0;
   for (let i = 1; i < n; i++) if (Number.isFinite(at[i]) && t >= at[i]) pos = i - 1 + eOut3(clamp((t - at[i]) / 0.9));
   return Math.min(pos, n - 1);
@@ -91,8 +91,8 @@ export const tripclock: ItemType<P, S> = {
       cssCamel(el, { display: str === '' ? 'none' : 'block', top: at(base, size), fontSize: `${size}px`, fontWeight: String(weight), fontFamily: font, color, textShadow: shadow, opacity: String(fade), ...extra });
     };
     text(s.city, [p.city, p.cityLabel].filter(Boolean).join('  ·  '), top + 30 * z, 30 * z, 400, withAlpha(p.color, 0.82), { letterSpacing: `${6 * z}px` });
-    const stops = parseClock(p.stops), mins = Math.floor(clockAt(stops, local, p.roll) + 1e-6), cy = top + 175 * z;
-    const colon = local % 1 < 0.6 ? 1 : 0.35, clock = clockText(mins);
+    const stops = parseClock(p.stops), mins = Math.floor(clockMinutesAt(stops, local, p.roll) + 1e-6), cy = top + 175 * z;
+    const colon = local % 1 < 0.6 ? 1 : 0.35, clock = timeOfDayText(mins);
     if (s.clock.dataset.v !== clock) { s.clock.dataset.v = clock; s.clock.innerHTML = `${clock.slice(0, 2)}<span>:</span>${clock.slice(3)}`; }
     text(s.clock, null, cy, 160 * z, 400, p.color, { fontVariantNumeric: 'tabular-nums' });
     cssCamel(s.clock.firstElementChild as HTMLElement, { opacity: String(colon), position: 'relative', top: `${-8 * z}px` });
@@ -111,7 +111,7 @@ export const tripclock: ItemType<P, S> = {
       });
     }
     const lx = Math.max(W * 0.17, theme.safe.side * W + 50 * z), rx = W - lx, ly = cy + 145 * z, th = 4 * z;
-    const pos = routeAt(p.stationAt.split(/[,，]/).map(Number), n, local), cur = Math.round(pos), sx = (i: number) => lx + ((rx - lx) * i) / Math.max(1, n - 1);
+    const pos = stationPosAt(p.stationAt.split(/[,，]/).map(Number), n, local), cur = Math.round(pos), sx = (i: number) => lx + ((rx - lx) * i) / Math.max(1, n - 1);
     cssCamel(s.track, { display: show ? 'block' : 'none', left: `${lx}px`, top: `${ly - th / 2}px`, width: `${rx - lx}px`, height: '0', opacity: String(fade),
       borderTop: `${th}px dotted ${withAlpha(p.color, 0.35)}` });
     cssCamel(s.fill, { display: show ? 'block' : 'none', left: `${lx}px`, top: `${ly - 2.5 * z}px`, width: `${((rx - lx) * pos) / Math.max(1, n - 1)}px`, height: `${5 * z}px`,

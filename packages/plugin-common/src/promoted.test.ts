@@ -1,6 +1,6 @@
 // The blocks promoted from the simulated-user shorts (2026-10-18/19): progress tabs, scoreboard, tripclock, card, receipt.
 import { activeStep } from './progress.ts';
-import { clockAt, clockText, hm, parseClock, routeAt, sinceText } from './tripclock.ts';
+import { clockMinutesAt, timeOfDayText, hm, parseClock, stationPosAt, sinceText } from './tripclock.ts';
 import { cardLayout } from './card.ts';
 import { feed, parseReceipt } from './receipt.ts';
 import { subChip } from './scoreboard.ts';
@@ -30,10 +30,10 @@ test('tripclock: times parsed and sorted, the clock rolls to each stop, junk lef
   expect(hm('6.26')).toBeNaN();
   const stops = parseClock('3=09:24, 0=06:26, x=1:00, 5=nope');
   expect(stops).toEqual([[0, 386], [3, 564]]);
-  expect(clockAt(stops, 2.9, 1)).toBe(386);
-  expect(clockAt(stops, 3.5, 1)).toBeGreaterThan(386);
-  expect(clockAt(stops, 4.1, 1)).toBe(564);
-  expect(clockAt(stops, 3, 0)).toBe(564);
+  expect(clockMinutesAt(stops, 2.9, 1)).toBe(386);
+  expect(clockMinutesAt(stops, 3.5, 1)).toBeGreaterThan(386);
+  expect(clockMinutesAt(stops, 4.1, 1)).toBe(564);
+  expect(clockMinutesAt(stops, 3, 0)).toBe(564);
 });
 
 test('tripclock: the since line uses the words given, and is empty without an arrival time', () => {
@@ -44,11 +44,11 @@ test('tripclock: the since line uses the words given, and is empty without an ar
 
 test('tripclock: midnight — the clock rolls the short way round, the since line keeps counting past 00:00', () => {
   const fwd = parseClock('0=23:50, 1=00:10');
-  expect(clockAt(fwd, 1.5, 1)).toBeGreaterThan(1430);   // 23:50 → 00:10 goes forward 20 minutes, not back through the day
-  expect(clockText(clockAt(fwd, 2, 1))).toBe('00:10');
+  expect(clockMinutesAt(fwd, 1.5, 1)).toBeGreaterThan(1430);   // 23:50 → 00:10 goes forward 20 minutes, not back through the day
+  expect(timeOfDayText(clockMinutesAt(fwd, 2, 1))).toBe('00:10');
   const back = parseClock('0=00:10, 1=23:50');
-  expect(clockAt(back, 1.5, 1)).toBeLessThan(10);
-  expect(clockText(clockAt(back, 2, 1))).toBe('23:50');
+  expect(clockMinutesAt(back, 1.5, 1)).toBeLessThan(10);
+  expect(timeOfDayText(clockMinutesAt(back, 2, 1))).toBe('23:50');
   expect(hm('6：26')).toBe(386);   // typed with a CJK IME
   // landed 23:00; the clock started at 22:30
   expect(sinceText(1350, '23:00', '落地後', '降落中', 1350)).toBe('降落中');
@@ -61,10 +61,10 @@ test('tripclock: midnight — the clock rolls the short way round, the since lin
 
 test('tripclock: the route eases into each station at its time and stops at the last', () => {
   const at = [0, 1, 2];
-  expect(routeAt(at, 3, 0.5)).toBe(0);
-  expect(routeAt(at, 3, 1.45)).toBeGreaterThan(0.5);
-  expect(routeAt(at, 3, 1.95)).toBeCloseTo(1, 5);
-  expect(routeAt(at, 3, 9)).toBe(2);
+  expect(stationPosAt(at, 3, 0.5)).toBe(0);
+  expect(stationPosAt(at, 3, 1.45)).toBeGreaterThan(0.5);
+  expect(stationPosAt(at, 3, 1.95)).toBeCloseTo(1, 5);
+  expect(stationPosAt(at, 3, 9)).toBe(2);
 });
 
 test('card: the picture window takes what the text rows leave; a short card shrinks the rows so the picture keeps 40 %', () => {
@@ -111,7 +111,7 @@ import { reachAt, routeBox } from './route.ts';
 import { parsePairs, snake } from './inkline.ts';
 import { outroLayout, outroLines } from './outro.ts';
 import { tapeText } from './mystery.ts';
-import { popAt } from './caption.ts';
+import { charPopAt } from './caption.ts';
 import { emParts, fitPx } from './text.ts';
 
 test('route: the promises are number|words pairs, blanks dropped', () => {
@@ -157,8 +157,8 @@ test('mystery: the tape word repeats, none when empty', () => {
 });
 
 test('caption pop: characters come in one after another, all in by the end', () => {
-  expect(popAt(0, 10, 0).opacity).toBe(0);
-  expect(popAt(0, 10, 0.2).opacity).toBeGreaterThan(popAt(5, 10, 0.2).opacity);
-  expect(popAt(9, 10, 1)).toEqual({ opacity: 1, rise: 0, scale: 1 });
-  expect(popAt(29, 30, 0.08 + 29 * 0.02 + 0.18).opacity).toBe(1);
+  expect(charPopAt(0, 10, 0).opacity).toBe(0);
+  expect(charPopAt(0, 10, 0.2).opacity).toBeGreaterThan(charPopAt(5, 10, 0.2).opacity);
+  expect(charPopAt(9, 10, 1)).toEqual({ opacity: 1, rise: 0, scale: 1 });
+  expect(charPopAt(29, 30, 0.08 + 29 * 0.02 + 0.18).opacity).toBe(1);
 });
