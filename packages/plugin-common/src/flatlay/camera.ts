@@ -3,7 +3,7 @@
 // screen exactly so the main track's clip of the same shot can take over without a seam (flyCrop is that clip's crop), and can
 // pull back out. World: y up, the table is y = 0, desk (x, y) is world (x, 0, −y). A pure function of time.
 import { clamp, coverPlacement, eIO3, eOut3, type Crop } from '@tellcut/engine';
-import { objectPose, type Pose } from './motion.ts';
+import { objectPose, span, type Pose } from './motion.ts';
 import { REST_Z, sizeOf, type Obj } from './objects.ts';
 
 export type Vec3 = [number, number, number];
@@ -18,7 +18,6 @@ export const PIC_LIFT = 0.0015;
 
 /** the distance at which a face `faceH` tall fills a camera of vertical field fovDeg (ThreeKit.fillDistance; here for node) */
 export const fillDistance = (faceH: number, fovDeg: number) => (faceH / 2) / Math.tan((fovDeg * Math.PI) / 360);
-const span = (t: number, a: number, d: number) => { const q = clamp((t - a) / Math.max(0.05, d)); return q > 1 - 1e-9 ? 1 : q; };
 const lerp3 = (a: Vec3, b: Vec3, e: number): Vec3 => [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e];
 const len3 = (v: Vec3) => Math.hypot(v[0], v[1], v[2]);
 const dist3 = (a: Vec3, b: Vec3) => len3([a[0] - b[0], a[1] - b[1], a[2] - b[2]]);

@@ -15,7 +15,7 @@ export const DROP_LIFT = 1.6;
 const FALL = 0.78;
 const BOUNCE = 0.035 * DROP_LIFT;
 /** progress 0..1 over [a, a + d], snapped to 1 within float error (1.9 − 1 is 0.8999…: a landing must be exact) */
-const span = (t: number, a: number, d: number) => { const q = clamp((t - a) / Math.max(0.05, d)); return q > 1 - 1e-9 ? 1 : q; };
+export const span = (t: number, a: number, d: number) => { const q = clamp((t - a) / Math.max(0.05, d)); return q > 1 - 1e-9 ? 1 : q; };
 
 /** half the desk the resting camera sees, [across, up], in desk units */
 export const viewHalf = (W: number, H: number): [number, number] => (W > H ? [3.0, 1.6] : [1.2, 2.0]);

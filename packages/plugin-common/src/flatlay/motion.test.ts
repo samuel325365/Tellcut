@@ -1,4 +1,4 @@
-import { contactShadow, DROP_LIFT, objectPose, REST_Z, viewHalf } from './motion.ts';
+import { contactShadow, DROP_LIFT, objectPose, REST_Z, span, viewHalf } from './motion.ts';
 import { parseObjects, sizeOf } from './objects.ts';
 
 const objs = (json: string, W = 1080, H = 1920) => parseObjects({ objects: json }, W, H).objs;
@@ -101,4 +101,10 @@ test('a later sheet rests above the curl and thickness of the earlier sheets it 
 test('a sheet overlapping the tv stays on the table', () => {
   const list = objs(JSON.stringify([{ kind: 'tv', x: 0, y: 0, rot: 0 }, { kind: 'postcard', x: 0.4, y: -0.6, rot: 0 }]));
   expect(objectPose(list[1], 1, 99, 1080, 1920).z).toBe(REST_Z * 2);
+});
+
+test('span: 0 before, 1 after, snapped to exactly 1 within float error; a duration below 0.05 s counts as 0.05', () => {
+  expect([span(0.5, 1, 1), span(1.5, 1, 1), span(3, 1, 1)]).toEqual([0, 0.5, 1]);
+  expect(span(1.9, 1, 0.9)).toBe(1);        // 1.9 - 1 is 0.8999…
+  expect(span(1.025, 1, 0)).toBeCloseTo(0.5);
 });
