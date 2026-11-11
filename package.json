@@ -17,7 +17,7 @@
     "test:browser": "vitest run --project browser --maxWorkers 2 --minWorkers 1",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build:player": "tsx tools/build-player.ts",
-    "build:editor": "npm run build -w @tellcut/editor",
+    "build:editor": "tsx tools/build-editor.ts",
     "dev:editor": "npm run dev -w @tellcut/editor",
     "prepare:project": "tsx tools/prepare.ts",
     "render": "tsx tools/render.ts",
