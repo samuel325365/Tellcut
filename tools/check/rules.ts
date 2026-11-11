@@ -113,12 +113,14 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
     if (it.params && typeof it.params.text === 'string' && !it.params.text.trim()) out.push({ level: 'warn', t: s, ids: [it.id], msg: `文字是空的（${it.id}）` });
   }
 
-  // music that stops before the film does (narration sits on a music track too, but is not a bed that should last)
+  // music that stops before the film does (narration sits on a music track too, but is not a bed that should last). Judged by
+  // where the music really ends: toEnd only asks it to follow the film's end, and the file caps it (Cut.save writes toEnd on a
+  // song shorter than the film, the editor's magnetic pack ends it where the file runs out), so a toEnd item can stop early too
   const isNarration = (t: (typeof p.tracks)[number]) => t.kind === 'music' && (t.id === 'voice' || t.name === 'Narration' || t.name === '旁白');
   const music = p.tracks.filter((t) => t.kind === 'music' && !t.muted && !isNarration(t)).flatMap((t) => t.items as any[]);
-  if (music.length && !music.some((m) => m.toEnd)) {
-    const end = Math.max(...music.map((m) => span(m.id)[1]));
-    if (end < D - 1) out.push({ level: 'warn', t: [end, r3(D)], msg: `配樂在 ${timecode1(end)} 就停了，片長 ${timecode1(D)}` });
+  if (music.length) {
+    const end = Math.max(...music.map((m) => span(m.id)[1])), last = music.find((m) => span(m.id)[1] === end);
+    if (end < D - 1) out.push({ level: 'warn', t: [end, r3(D)], msg: `配樂在 ${timecode1(end)} 就停了，片長 ${timecode1(D)}${last?.toEnd ? '：它設成跟著片尾，但音樂檔不夠長；換長一點的、從前面一點開始，或後面再接一首' : ''}` });
   }
 
   // captions vs speech: sentences actually heard, in timeline time — from the sound items that play (a clip's own sound, as the

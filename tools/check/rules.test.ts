@@ -81,7 +81,9 @@ test('music that stops before the film ends is a warning unless it runs to the e
   const music = (o: object) => [{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'm', kind: 'music', items: [{ id: 'mu', start: 0, end: 6, media: 'song', in: 0, gain: 0, fadeIn: 0, fadeOut: 0, ...o }] }];
   expect(msgs(modelChecks(project(music({})), ok))).toEqual(['warn 6-10 配樂在 0:06.0 就停了，片長 0:10.0']);
   expect(modelChecks(project(music({ end: 9.5 })), ok)).toEqual([]);
-  expect(modelChecks(project(music({ toEnd: true })), ok)).toEqual([]);
+  expect(modelChecks(project(music({ toEnd: true, end: 10 })), ok)).toEqual([]);
+  // toEnd asks the music to follow the film's end, but a file shorter than the film still stops early (Cut.save writes toEnd on it)
+  expect(msgs(modelChecks(project(music({ toEnd: true })), ok))).toEqual(['warn 6-10 配樂在 0:06.0 就停了，片長 0:10.0：它設成跟著片尾，但音樂檔不夠長；換長一點的、從前面一點開始，或後面再接一首']);
   // narration lives on a music track too: a film with a voice and no bed is not "music that stops"
   const voiceOnly = [{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'voice', kind: 'music', name: '旁白', items: [{ id: 'v1', start: 0, end: 6, media: 'song', in: 0, gain: 0, fadeIn: 0, fadeOut: 0 }] }];
   expect(modelChecks(project(voiceOnly), ok)).toEqual([]);

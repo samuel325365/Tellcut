@@ -888,6 +888,8 @@ export class Cut {
     if (m) {
       const info = this.inv.music.find((x) => x.id === m.media), len = r6(Math.min(duration, info?.duration ? info.duration - m.from : duration));
       addItem(this.p, { track: 'music', item: { media: m.media, in: m.from, start: 0, end: len, gain: m.gain, fadeIn: Math.min(m.fadeIn, len / 2), fadeOut: Math.min(m.fadeOut, len / 2), toEnd: true } });
+      // toEnd is what the editor keeps it at (the film's end, as far as the file goes): a song shorter than the film still stops early
+      if (len < duration - 1e-3) this.notes.push(`c.music('${m.media}')：音樂檔從 ${m.from} 秒起只有 ${len} 秒，片長 ${duration} 秒，最後 ${r6(duration - len)} 秒沒有配樂；換長一點的、from 提早，或後面再接一首`);
       // the music file's length: music ending with the film stops there
       if (info?.duration) this.p.media[m.media] = { ...this.p.media[m.media], duration: info.duration };
       const first = info?.beats?.beats.find((x) => x >= m.from);

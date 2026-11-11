@@ -72,6 +72,22 @@ test('a first cut has a magnetic main track and music that ends with the film', 
   expect(items(c, 'v1').map((i) => [i.start, i.end])).toEqual([[0, 2], [2, 4]]);
 });
 
+test('a song shorter than the film: the music item stops where the file does, still toEnd, and save says so', async () => {
+  const c = fresh();
+  c.music('song', { from: 25 });   // inv(): the song is 30 s, so 5 s are left
+  c.clip('v', { from: 0, len: 6 });
+  const p = await c.save();
+  const m = p.tracks.find((t) => t.id === 'music')!.items[0] as any;
+  expect([m.start, m.end, m.toEnd]).toEqual([0, 5, true]);
+  expect(c.notes.join('\n')).toContain("c.music('song')：音樂檔從 25 秒起只有 5 秒，片長 6 秒，最後 1 秒沒有配樂");
+  // one long enough says nothing
+  const d = fresh();
+  d.music('song');
+  d.clip('v', { from: 0, len: 6 });
+  await d.save();
+  expect(d.notes.join('\n')).not.toMatch(/音樂檔/);
+});
+
 test('a cut that leaves gaps on the main track saves it as not magnetic, so the first edit in the editor moves nothing', async () => {
   // a brand film's way: 3D overlays sit over a gap in the main track, the logo after the last clip
   const c = fresh();
