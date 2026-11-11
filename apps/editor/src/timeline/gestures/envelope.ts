@@ -16,10 +16,16 @@ export function startEnvelopeDrag(e: MouseEvent, g: GestureCtx): boolean {
   const w = Number(svg?.getAttribute('width')), pps = box.width && w ? (g.view.pps * box.width) / w : g.view.pps;
   const at = (m: MouseEvent) => ({ t: (m.clientX - box.left) / pps, db: yToDb(m.clientY - box.top, h) });
   const index = envEl.getAttribute('data-env-index'), fade = envEl.getAttribute('data-fade') as 'in' | 'out' | null;
+  // a point moves by the mouse's offset from the press, starting where its handle is drawn: a press anywhere on the ring
+  // does not snap it under the cursor, and a point a trim left outside the clip (drawn just inside the edge) enters the
+  // clip there instead of at the mouse
+  const sx = box.width && w ? box.width / w : 1, svgH = Number(svg?.getAttribute('height')), sy = box.height && svgH ? box.height / svgH : 1;
+  const hx = box.left + Number(envEl.getAttribute('cx')) * sx, hy = box.top + Number(envEl.getAttribute('cy')) * sy;
+  const pointAt = (m: MouseEvent) => at({ clientX: hx + m.clientX - e.clientX, clientY: hy + m.clientY - e.clientY } as MouseEvent);
   let moved = false;
   const move = (m: MouseEvent) => {
     moved = true;
-    const pt = at(m);
+    const pt = index !== null ? pointAt(m) : at(m);
     if (index !== null) g.editor.livePreview((d: any) => moveEnvelopePoint(d, { id, index: Number(index), t: pt.t, db: pt.db }));
     else if (fade) g.editor.livePreview((d: any) => setFade(d, { id, edge: fade, dur: fade === 'in' ? pt.t : it.end - it.start - pt.t }));
   };

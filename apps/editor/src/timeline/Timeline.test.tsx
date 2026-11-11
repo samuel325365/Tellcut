@@ -81,6 +81,35 @@ test('a click on the volume line adds the point under the mouse even when the pa
   expect(m1.envelope.some(([t]: [number]) => Math.abs(t - 1.5) < 1e-6)).toBe(true);
 });
 
+test('dragging a volume point moves it by the mouse offset from the press, also one a trim left outside the clip', async () => {
+  const p = fixture();
+  (p.tracks[3].items[0] as any).envelope = [[-2, -6], [5, -6], [10, 0]];   // point 0 lies 2 s before the head
+  const { root, editor } = mount({ project: p, selection: ['m1'] });
+  let recipe: any = null;
+  editor.livePreview = (r: any) => { recipe = r; };
+  editor.commitLive = () => {};
+  await act(() => render(<Timeline editor={editor} />, root));
+  const svg = root.querySelector<SVGSVGElement>('[data-item-id="m1"] svg.env')!, w = Number(svg.getAttribute('width')), h = Number(svg.getAttribute('height'));
+  svg.getBoundingClientRect = () => ({ left: 100, top: 50, width: w, height: h, right: 100 + w, bottom: 50 + h, x: 100, y: 50, toJSON() {} }) as DOMRect;
+  const after = (index: number, dx: number, dy: number) => {
+    const c = root.querySelector(`[data-item-id="m1"] [data-env-index="${index}"]`)!;
+    const x = 100 + Number(c.getAttribute('cx')) + 3, y = 50 + Number(c.getAttribute('cy')) + 2;   // pressed off the ring's centre
+    c.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: x, clientY: y }));
+    window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: x + dx, clientY: y + dy }));
+    window.dispatchEvent(new MouseEvent('mouseup', { clientX: x + dx, clientY: y + dy }));
+    const d = structuredClone(p);
+    recipe(d);
+    return (d.tracks[3].items[0] as any).envelope[index];
+  };
+  expect(root.querySelector('[data-env-index="0"]')!.classList.contains('env-out')).toBe(true);
+  expect(root.querySelector('[data-env-index="1"]')!.classList.contains('env-out')).toBe(false);
+  // the outside point enters the clip where its ring is drawn (4 px in) plus the 50 px moved, at its own level
+  const [t0, db0] = after(0, 50, 0);
+  expect([t0, db0]).toEqual([(4 + 50) / 50, -6]);
+  // an inside point moves by the offset, not to the cursor (a 3 px / 2 px grab off centre would make it 5.06 s and a lower level)
+  expect(after(1, 25, 0)).toEqual([5.5, -6]);
+});
+
 test('track headers mute, solo and set bus gain', async () => {
   const { root, editor } = mount();
   const calls: any[] = [];
