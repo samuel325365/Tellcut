@@ -61,8 +61,8 @@ export function postageFoot(value: string, line: string, fs: number, room: numbe
 }
 
 export const postage: ItemType<P, S> = {
-  type: 'common.postage', label: '郵票框', category: 'frame', kind: 'overlay',
-  doc: '一張齒孔邊的郵票掉進來（或從一邊滑進來），票面裡自己播一段鏡頭（source 素材、from 素材秒、crop 裁切、still 定格；沒有素材時是示意圖），影片跟著郵票動、停好後保持 tilt 的小傾斜；票面下方印 value 面額和 line 一行小字，markAt 時一個圓形郵戳（place 地名、date 日期）蓋到票面右下角；backdrop 底（desk 木桌、color 純色、none 透明）；票面的影片沒有聲音；和 common.flatlay 3D 桌面（明信片、相框）、common.postmark 只蓋郵戳、common.stamp 印章不同：單張郵票、影片在票面裡播；旅行的一站、回憶的一格',
+  type: 'common.postage', label: '郵票框', category: 'photo', kind: 'overlay',
+  doc: '一張齒孔邊的郵票掉進來（或從一邊滑進來），票面裡自己播一段鏡頭（source 素材、from 素材秒、crop 裁切、still 定格；沒有素材時是示意圖），影片跟著郵票動、停好後保持 tilt 的小傾斜；票面下方印 value 面額和 line 一行小字，markAt 時一個圓形郵戳（place 地名、date 日期）蓋到票面右下角；backdrop 底（desk 木桌、color 純色、none 透明）；票面的影片沒有聲音；和 common.flatlay 3D 桌面（明信片、相框；明信片背面的郵票是貼在卡上的靜止圖）、common.postmark 只蓋郵戳、common.stamp 印章不同：單張平面郵票、影片在票面裡播、可以透明疊在影片上；要幾樣東西一起放在 3D 桌上用 flatlay，一張郵票撐一個畫面用這個；旅行的一站、回憶的一格',
   params: [
     { key: 'source', label: '票面的素材（空＝示意圖）', type: 'source-ref', default: '' },
     { key: 'from', label: '從素材第幾秒開始播', type: 'number', min: 0, max: 36000, step: 0.1, default: 0 },
@@ -76,7 +76,7 @@ export const postage: ItemType<P, S> = {
     { key: 'perf', label: '齒孔大小（px，短邊 1080）', type: 'number', min: 3, max: 30, step: 0.5, default: 10 },
     { key: 'value', label: '面額', type: 'string', default: 'NT$ 15' },
     { key: 'line', label: '票面小字', type: 'string', default: 'TAIWAN' },
-    { key: 'ink', label: '印刷字色', type: 'color', default: '#b2382c', theme: 'palette.accent' },
+    { key: 'ink', label: '印刷字色', type: 'color', default: '#b2382c', theme: 'palette.ink', themeIfSet: true },   // the project's palette.ink only when it sets one: the built-in one is near-black, not this stamp red
     { key: 'font', label: '印刷字型', type: 'string', default: 'Noto Serif TC' },
     { key: 'place', label: '郵戳上的地名（空且沒有日期＝不蓋）', type: 'string', default: 'TAIPEI' },
     { key: 'date', label: '郵戳上的日期', type: 'string', default: '2026.11.07' },
