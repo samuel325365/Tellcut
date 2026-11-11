@@ -105,12 +105,16 @@ test('a photo is one Photo entry; music shows its tempo', async () => {
 test('blocks come in groups (this project, built-in, the shared categories); the search narrows them and opens the groups', async () => {
   const base = initialState('t'), store = createStore({ ...base, project: fixture(), layout: { ...base.layout, mediaTab: 'effects' as const } });
   const types = [{ type: 'common.slam', label: '大字', kind: 'overlay', category: 'text', doc: '一個字砸進畫面' }, { type: 'core.flash', label: '閃白', kind: 'overlay' },
-    { type: 'fx.mine', label: '我的特效', kind: 'overlay' }, { type: 'common.paper', label: '紙', kind: 'scene', category: 'look' }];
+    { type: 'fx.mine', label: '我的特效', kind: 'overlay' }, { type: 'common.paper', label: '紙', kind: 'scene', category: 'look' },
+    { type: 'common.wash', label: '染色', kind: 'overlay', category: 'look' }, { type: 'core.lowerThird', label: '下標', kind: 'overlay' }];
   const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [] } };
   const root = document.createElement('div');
   await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
   const groups = () => [...root.querySelectorAll<HTMLDetailsElement>('[data-lib-group^="block:"]')].map((d) => [d.dataset.libGroup, d.open]);
   expect(groups()).toEqual([['block:fx', true], ['block:core', true], ['block:text', false], ['block:look', false]]);
+  // old blocks (kept only so older projects play) are not offered
+  expect(root.querySelector('[data-add-overlay="common.wash"]')).toBeNull();
+  expect(root.querySelector('[data-add-overlay="core.lowerThird"]')).toBeNull();
   const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
   await act(() => { search.value = '砸進'; search.dispatchEvent(new Event('input', { bubbles: true })); });
   expect(groups()).toEqual([['block:text', true]]);

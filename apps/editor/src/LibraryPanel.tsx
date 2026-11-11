@@ -18,6 +18,7 @@ import { droppedFiles, hasFiles } from './media/file-drop.ts';
 import { mediaKindOfName } from '@tellcut/protocol';
 import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
+import { OLD_BLOCKS } from '@tellcut/engine';
 import { t, type Key } from './i18n/index.ts';
 import { matches, thumbIn } from './gallery.ts';
 import { getLang } from './i18n/lang.ts';
@@ -67,7 +68,9 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const p = s.project!, reg = editor.registry;
   const tab = s.layout.mediaTab, [qs, setQs] = useState<Record<MediaTab, string>>({ video: '', audio: '', effects: '' }), q = qs.effects, qa = qs.audio;
   const hitIn = (query: string) => (d: any) => matches(query, handleOf(d.type), d.type, d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc);
-  const blocks = groupsOf((reg?.itemTypes() ?? []).filter(hitIn(q)), Object.keys(BLOCK_CATEGORY), 'block');
+  // old blocks stay registered so older projects still play, but are not offered for new use (like the gallery and catalog)
+  const offered = (reg?.itemTypes() ?? []).filter((d) => !Object.hasOwn(OLD_BLOCKS, d.type));
+  const blocks = groupsOf(offered.filter(hitIn(q)), Object.keys(BLOCK_CATEGORY), 'block');
   const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hitIn(qa)), Object.keys(SFX_CATEGORY), 'sfx');
   const [picked, setPicked] = useState<{ key: string; m?: Material; lib?: LibPick } | null>(null);
   // My blocks (spec 2026-10-29-my-library §3.2, §3.3): the ones saved from this project (★), this project's copies, the rest to add
@@ -91,7 +94,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const media = Object.keys(p.media).filter((m) => matches(qa, undefined, m, s.titles[m] ?? ''));
   const voice = media.filter((m) => isVoice(p.media[m])), music = media.filter((m) => !isVoice(p.media[m]));
   const counts: Record<MediaTab, number> = { video: Object.keys(p.sources).length, audio: Object.keys(p.media).length + (reg?.sfxTypes().length ?? 0),
-    effects: (reg?.itemTypes().length ?? 0) + (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).length };
+    effects: offered.length + (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).length };
   const setTab = (mediaTab: MediaTab) => editor.setLayout({ mediaTab });
   // the block cards' pictures: the gallery's, asked for the first time the Effects page shows
   useEffect(() => { if (tab === 'effects') void editor.loadBlockThumbs?.(); }, [tab]);
