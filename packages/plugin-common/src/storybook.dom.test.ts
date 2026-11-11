@@ -7,7 +7,7 @@ import { buildBacking, drawBacking } from './heading/backing.ts';
 
 describe('common.binocular', () => {
   test('an overlay frame; two windows a radius less their overlap apart, a spyglass one', () => {
-    expect([binocular.kind, binocular.category, photostack.kind, photostack.category]).toEqual(['overlay', 'frame', 'scene', 'frame']);
+    expect([binocular.kind, binocular.category, photostack.kind, photostack.category]).toEqual(['overlay', 'frame', 'scene', 'photo']);
     expect(windowCentres('binocular', 500, 100, 0.3)).toEqual([430, 570]);
     expect(windowCentres('spyglass', 500, 100, 0.3)).toEqual([500]);
   });

@@ -6,7 +6,7 @@ import { tileTimes } from './wipe.ts';
 
 describe('common.prints', () => {
   test('a frame block; a print reads seconds|source seconds|x,y,w|tilt|w:h|options', () => {
-    expect([prints.kind, prints.category, scraps.category]).toEqual(['overlay', 'frame', 'mark']);
+    expect([prints.kind, prints.category, scraps.category]).toEqual(['overlay', 'photo', 'mark']);
     const [a, b] = parsePrints('0.5|28.5|0.7,0.42,0.5|4|4:3|tape clip focus=0.3,0.6\n1|120|0.3,0.5,0.4|-2|3:4|tape=#c3b1f5');
     expect(a).toEqual({ at: 0.5, t: 28.5, x: 0.7, y: 0.42, w: 0.5, tilt: 4, ratio: 4 / 3, tape: 'rgba(236,226,190,0.82)', clip: true, fx: 0.3, fy: 0.6, source: '', crop: null });
     expect([b.ratio, b.tape, b.clip, b.fx]).toEqual([0.75, '#c3b1f5', false, 0.5]);

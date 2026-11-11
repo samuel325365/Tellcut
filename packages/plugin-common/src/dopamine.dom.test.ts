@@ -10,7 +10,7 @@ import { pop } from './caption/looks/title.ts';
 
 describe('common.popcard', () => {
   test('an overlay frame; shots read seconds|source|from|crop|label|still and run until the next one', () => {
-    expect([popcard.kind, popcard.category, sticker.kind, sticker.category]).toEqual(['overlay', 'frame', 'overlay', 'mark']);
+    expect([popcard.kind, popcard.category, sticker.kind, sticker.category]).toEqual(['overlay', 'photo', 'overlay', 'mark']);
     const shots = parseShots('1.5|b|9|0.5,0.4,1.6|包|still\n0|a|2.1||白T', 3);
     expect(shots.map((s) => [s.t, s.source, s.from, s.crop, s.label, s.still, s.len])).toEqual([
       [0, 'a', 2.1, { x: 0.5, y: 0.5, zoom: 1 }, '白T', false, 1.5],
