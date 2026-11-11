@@ -4,7 +4,7 @@
 // already wrote it so; common.prints (src=, crop= options), common.photostack (a zoom after its focus) and common.polaroid (its crop
 // as text too) now read it as well, and still read what they read before.
 import { coverPlacement, resolveTheme, withDefaults } from '@tellcut/engine';
-import { parseShots } from './dopamine.ts';
+import { parseShots } from './popcard.ts';
 import { cropText, polaroidCrop } from './polaroid.ts';
 import { parsePrints, prints } from './prints.ts';
 import { parseCards, photostack } from './photostack.ts';

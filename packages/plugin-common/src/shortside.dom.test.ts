@@ -4,7 +4,7 @@
 // retro dialog were 1.78 times their 9:16 size (a dialog stretched into a strip across the frame). 9:16 is unchanged: the numbers
 // pinned here are the ones drawn before the change.
 import { resolveTheme, withDefaults, type ItemType } from '@tellcut/engine';
-import { sticker } from './dopamine.ts';
+import { sticker } from './sticker.ts';
 import { prints } from './prints.ts';
 import { scraps } from './scraps.ts';
 import { monoframe, monoWindow } from './monoframe.ts';

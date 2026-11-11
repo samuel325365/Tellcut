@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 // common.popcard / common.sticker, backdrop's pattern words and bits, wipe's mode stripes, badge's shape box and the title look pop
 // (2026-11-06, the Dopamine Colors pilot film). jsdom has no canvas: the parsers, timings, declared media, path and DOM styles are tested.
-import { parseShots, springPopAt, popcard, shotAt, sticker, stickerPath, stickerWobble } from './dopamine.ts';
+import { springPopAt } from './dopamine-kit.ts';
+import { parseShots, popcard, shotAt } from './popcard.ts';
+import { sticker, stickerPath, stickerWobble } from './sticker.ts';
 import { textEm, withDefaults, resolveTheme } from '@tellcut/engine';
 import { bitAt } from './backdrop.ts';
 import { stripeSpan } from './wipe.ts';
