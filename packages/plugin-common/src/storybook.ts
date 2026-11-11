@@ -4,7 +4,7 @@
 //   common.photostack  rounded photo cards sliding up one after another down a plain page, each with an italic label
 // The titles are common.heading's look storybook (templates storybook, story-card on the backing frame, fin), the captions the template
 // story-serif; the colour blocks above and below a shot are common.backdrop solid under a clip in a 16:9 frame. Pure functions of time.
-import { clamp, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, coverPlacement, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { coverImage } from './editorial.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
@@ -51,11 +51,12 @@ export const binocular: ItemType<BP, CS> = {
 };
 
 // ── common.photostack
-/** "source|seconds|label|fx,fy" lines */
-export function parseCards(text: string): Array<{ source: string; t: number; label: string; fx: number; fy: number }> {
+/** "source|seconds|label|x,y,zoom" lines: the picture and its crop written as every photo card writes them (the zoom may be left
+ *  out: 1, the card's plain cover about x,y as before) */
+export function parseCards(text: string): Array<{ source: string; t: number; label: string; fx: number; fy: number; zoom: number }> {
   return String(text || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-    const [source, t, label, f] = l.split('|'), [fx, fy] = String(f || '0.5,0.5').split(',').map(Number);
-    return { source: source.trim(), t: Number(t) || 0, label: (label ?? '').trim(), fx: Number.isFinite(fx) ? fx : 0.5, fy: Number.isFinite(fy) ? fy : 0.5 };
+    const [source, t, label, f] = l.split('|'), [fx, fy, z] = String(f || '0.5,0.5').split(',').map(Number);
+    return { source: source.trim(), t: Number(t) || 0, label: (label ?? '').trim(), fx: Number.isFinite(fx) ? fx : 0.5, fy: Number.isFinite(fy) ? fy : 0.5, zoom: z > 0 ? z : 1 };
   });
 }
 /** how far card `i` has slid in at `local` (0–1), one every `every` seconds over 0.4 s */
@@ -77,12 +78,20 @@ export function stackLayout(n: number, W: number, H: number, p: { w: number; asp
 }
 
 interface PP { cards: string; every: number; bg: string; edge: string; label: string; top: number; w: number; aspect: number }
-interface PS { c: HTMLCanvasElement; cards: Array<{ img: HTMLImageElement; label: string; fx: number; fy: number }>; text: string }
+interface PS { c: HTMLCanvasElement; cards: Array<{ img: HTMLImageElement; label: string; fx: number; fy: number; zoom: number }>; text: string }
+/** a card's picture in its box: at zoom 1 it covers the box about the focus as it always did; zoomed, it is placed the way a clip's
+ *  crop places its picture (the caller has clipped to the box) */
+function cardImage(g: G, c: PS['cards'][number], x: number, y: number, w: number, h: number) {
+  const img = c.img;
+  if (c.zoom === 1 || !img.complete || !img.naturalWidth) { coverImage(g, img, x, y, w, h, c.fx, c.fy, '#555'); return; }
+  const b = coverPlacement(img.naturalWidth, img.naturalHeight, w, h, { x: c.fx, y: c.fy, zoom: c.zoom });
+  g.drawImage(img, x + b.left, y + b.top, b.width, b.height);
+}
 export const photostack: ItemType<PP, PS> = {
   type: 'common.photostack', label: '相片卡疊', category: 'frame', kind: 'scene',
-  doc: '素色頁（bg）上由上往下疊幾張圓角相片卡：cards「素材|秒|標籤|fx,fy」一行一張（影片取那一秒的畫面），每 every 秒滑上來一張，細邊框（edge）、柔和陰影，右下角一行斜體標籤（label 色，英文小寫最好看）；w 卡片寬（畫面短邊比例）、aspect 高寬比、top 第一張的上緣；排不下時整疊自動縮小，讓最後一張停在字幕上方（安全區下緣）；放在沒有影片的那段（layer under）；一天裡吃的、喝的、看到的幾樣東西一次排出來，故事書風、Wes Anderson 風的旅行片，配 common.shutter',
+  doc: '素色頁（bg）上由上往下疊幾張圓角相片卡：cards「素材|秒|標籤|x,y,zoom」一行一張（影片取那一秒的畫面；x,y,zoom 和主軌片段的 crop 一樣，x、y 是對準的點，zoom 可省略＝1），每 every 秒滑上來一張，細邊框（edge）、柔和陰影，右下角一行斜體標籤（label 色，英文小寫最好看）；w 卡片寬（畫面短邊比例）、aspect 高寬比、top 第一張的上緣；排不下時整疊自動縮小，讓最後一張停在字幕上方（安全區下緣）；放在沒有影片的那段（layer under）；一天裡吃的、喝的、看到的幾樣東西一次排出來，故事書風、Wes Anderson 風的旅行片，配 common.shutter',
   params: [
-    { key: 'cards', label: '相片（素材|秒|標籤|fx,fy，一行一張）', type: 'text', default: '' },
+    { key: 'cards', label: '相片（素材|秒|標籤|x,y,zoom，一行一張；zoom 可省略）', type: 'text', default: '' },
     { key: 'every', label: '每幾秒上一張', type: 'number', min: 0.1, max: 5, step: 0.05, default: 0.6 },
     { key: 'bg', label: '底色', type: 'color', default: '#000000' },
     { key: 'edge', label: '邊框顏色', type: 'color', default: '#8a5a3c' },
@@ -94,7 +103,7 @@ export const photostack: ItemType<PP, PS> = {
   media: (item: SceneItem) => ({ videos: [], stills: parseCards((item.params as Partial<PP>).cards ?? '').map((c) => ({ source: c.source, t: c.t, w: 1080 })) }),
   build(ctx) {
     const cards = parseCards(ctx.params.cards);
-    return { c: canvasIn(ctx.root), cards: cards.map((c) => ({ img: Object.assign(new Image(), { src: ctx.media.stillUrl({ source: c.source, t: c.t, w: 1080 }) }), label: c.label, fx: c.fx, fy: c.fy })), text: cards.map((c) => c.label).join('') };
+    return { c: canvasIn(ctx.root), cards: cards.map((c) => ({ img: Object.assign(new Image(), { src: ctx.media.stillUrl({ source: c.source, t: c.t, w: 1080 }) }), label: c.label, fx: c.fx, fy: c.fy, zoom: c.zoom })), text: cards.map((c) => c.label).join('') };
   },
   ready: (s) => Promise.all([document.fonts.load('italic 400 40px "Playfair Display"', s.text || 'az'),
     imagesReady(s.cards.map((c) => c.img))]).then(() => undefined),
@@ -111,7 +120,7 @@ export const photostack: ItemType<PP, PS> = {
       g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowBlur = 18 * u; g.shadowOffsetY = 6 * u;
       rounded(g, x, y, cw, ch, r); g.fillStyle = p.edge; g.fill();
       g.shadowColor = 'transparent';
-      g.save(); rounded(g, x + b, y + b, cw - 2 * b, ch - 2 * b, r - 4 * u); g.clip(); coverImage(g, c.img, x + b, y + b, cw - 2 * b, ch - 2 * b, c.fx, c.fy, '#555'); g.restore();
+      g.save(); rounded(g, x + b, y + b, cw - 2 * b, ch - 2 * b, r - 4 * u); g.clip(); cardImage(g, c, x + b, y + b, cw - 2 * b, ch - 2 * b); g.restore();
       if (c.label) {
         // a small ornament on the photo, not a caption: not reported to check
         g.font = `italic 400 ${34 * u}px "Playfair Display", "Noto Serif TC", serif`; g.textAlign = 'right'; g.textBaseline = 'alphabetic';

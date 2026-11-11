@@ -6,7 +6,7 @@
 // The page is common.backdrop's pattern words (with bits), the section wipe common.wipe's mode stripes, the titles common.heading's
 // look pop (templates pop, pop-no), "No.1" common.badge's shape box, the captions the template pop-box. Pure functions of time.
 import { clamp, cssCamel, h, type ItemType, type MediaRef, type Project, type SceneItem, textEm } from '@tellcut/engine';
-import { cropOf } from './cells.ts';
+import { cropText } from './polaroid.ts';
 import { imagesReady, windowEl } from './window.ts';
 
 const lerp = (a: number, b: number, q: number) => a + (b - a) * q;
@@ -26,8 +26,7 @@ export interface Shot { t: number; source: string; from: number; crop: { x: numb
 export function parseShots(text: string, dur: number): Shot[] {
   const shots = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const [t, source = '', from, crop, label = '', still] = l.split('|').map((x) => x.trim());
-    const [x, y, zoom] = String(crop ?? '').split(',').map((v) => v.trim());
-    return { t: Number(t) || 0, source, from: Number(from) || 0, crop: cropOf({ x, y, zoom }), label, still: still === 'still', len: 0 };
+    return { t: Number(t) || 0, source, from: Number(from) || 0, crop: cropText(crop), label, still: still === 'still', len: 0 };
   }).filter((s) => s.source).sort((a, b) => a.t - b.t);
   shots.forEach((s, i) => { s.len = Math.max(0.05, (i + 1 < shots.length ? shots[i + 1].t : dur) - s.t); });
   return shots;

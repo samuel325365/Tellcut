@@ -15,7 +15,7 @@ describe('common.binocular', () => {
 
 describe('common.photostack', () => {
   test('cards read source|seconds|label|focus; each declared as a still', () => {
-    expect(parseCards('a|2|latte|0.3,0.6\nb')).toEqual([{ source: 'a', t: 2, label: 'latte', fx: 0.3, fy: 0.6 }, { source: 'b', t: 0, label: '', fx: 0.5, fy: 0.5 }]);
+    expect(parseCards('a|2|latte|0.3,0.6\nb')).toEqual([{ source: 'a', t: 2, label: 'latte', fx: 0.3, fy: 0.6, zoom: 1 }, { source: 'b', t: 0, label: '', fx: 0.5, fy: 0.5, zoom: 1 }]);
     const item = { id: 'p', type: photostack.type, start: 0, end: 3, params: { cards: 'a|2|x\nb|5|y' } } as any;
     expect(photostack.media!(item, {} as any)).toEqual({ videos: [], stills: [{ source: 'a', t: 2, w: 1080 }, { source: 'b', t: 5, w: 1080 }] });
   });
