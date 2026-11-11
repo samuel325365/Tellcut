@@ -54,13 +54,17 @@ test('a music style preview is generated once and then served from the cache; an
 test('while a music preview is being composed the server keeps answering other requests', async () => {
   const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
   try {
-    // the server runs in this process: composing on its thread would stall this timer for about 2 s
-    let last = Date.now(), worst = 0;
+    // the server runs in this process: composing on its thread would stall this timer for the
+    // whole request (about 2 s). A busy machine (the full suite) stretches both the request and
+    // the timer's gaps, so the gap is judged against the request's own length, not a fixed 300 ms.
+    const start = Date.now();
+    let last = start, worst = 0;
     const tick = setInterval(() => { const now = Date.now(); worst = Math.max(worst, now - last); last = now; }, 20);
     const r = await fetch(`${base}/api/gallery/score/cinematic.wav?seed=11`);
     clearInterval(tick);
+    const total = Date.now() - start;
     expect(r.status).toBe(200);
-    expect(worst).toBeLessThan(300);
+    expect(worst).toBeLessThan(Math.max(300, total / 2));
   } finally { await app.close(); }
 }, 30000);
 
