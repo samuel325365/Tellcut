@@ -24,6 +24,7 @@ import { ToolTray } from './ToolTray.tsx';
 import type { DropKind, DropTarget } from './drop.ts';
 import { draggedKind, droppedFiles, hasFiles } from '../media/file-drop.ts';
 import { trayProbe } from './tray.ts';
+import { useDraft } from '../fields.tsx';
 import { IconEye, IconEyeOff, IconLock, IconMagnet, IconSpeaker, IconSpeakerOff, IconUnlock } from '../icons.tsx';
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
@@ -257,8 +258,7 @@ export function Timeline({ editor }: { editor: Editor }) {
                   onClick={() => editor.toggleLock(r.track.id)}>{lockedSet.has(r.track.id) ? <IconLock size={13} /> : <IconUnlock size={13} />}</button>
                 {'gain' in r.track && <>
                   <button data-solo class={(r.track as any).solo ? 'on' : ''} {...tip(t('ed.soloTip'))} onMouseDown={(e) => e.stopPropagation()} onClick={() => editor.toggleTrack(r.track.id, 'solo')}>S</button>
-                  <input data-bus-gain type="number" step={0.5} value={(r.track as any).gain ?? 0} {...tip(t('ed.gainTip'))} onMouseDown={(e) => e.stopPropagation()}
-                    onChange={(e) => editor.setTrack(r.track.id, { gain: Number((e.target as HTMLInputElement).value) })} />
+                  <BusGain value={(r.track as any).gain ?? 0} onCommit={(gain) => editor.setTrack(r.track.id, { gain })} />
                 </>}
               </span>
               <button class="tdel" data-track-delete={r.track.id} disabled={lockedSet.has(r.track.id)} {...tip(t('ed.trackDelTip'))} onMouseDown={(e) => e.stopPropagation()} onClick={() => deleteTrack(r.track)}>×</button>
@@ -326,6 +326,13 @@ export function Timeline({ editor }: { editor: Editor }) {
       <Playhead editor={editor} onGrab={scrubFrom} width={width} />
     </section>
   );
+}
+
+/** A track's bus gain in dB. Its text is a draft while typed (a re-render, a save coming back, must not put the old value under
+ *  the cursor); an emptied or unreadable box changes nothing and shows the gain again. */
+function BusGain({ value, onCommit }: { value: number; onCommit: (db: number) => void }) {
+  const box = useDraft(String(value), (text) => { const db = Number(text); if (text.trim() !== '' && Number.isFinite(db)) onCommit(db); });
+  return <input data-bus-gain type="number" step={0.5} {...tip(t('ed.gainTip'))} onMouseDown={(e) => e.stopPropagation()} {...box} />;
 }
 
 /** the height of the "+ New track" strip a drag shows */

@@ -21,7 +21,7 @@ const Row = ({ label, name, hint, children }: { label: string; name?: string; hi
 /** A typed box's text until it is committed (change: blur / Enter) or left: the box is controlled, so any re-render meanwhile
  *  (the playhead moving the panel, a save coming back) would otherwise put the old value back under the cursor. Without a
  *  draft the box shows `value`, so changes from outside (undo, the timeline) still show while it is not being typed in. */
-function useDraft(value: string, commit: (text: string) => void) {
+export function useDraft(value: string, commit: (text: string) => void) {
   const [draft, setDraft] = useState<string | null>(null);
   const text = (e: Event) => (e.currentTarget as HTMLInputElement | HTMLTextAreaElement).value;
   return { value: draft ?? value, onInput: (e: Event) => setDraft(text(e)), onBlur: () => setDraft(null),

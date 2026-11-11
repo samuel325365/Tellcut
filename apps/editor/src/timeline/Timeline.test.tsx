@@ -126,6 +126,19 @@ test('track headers mute, solo and set bus gain', async () => {
   expect(calls).toEqual([['mu', 'muted'], ['mu', 'solo'], ['mu', { gain: -6 }], ['v', 'muted']]);
 });
 
+test('an emptied bus gain box changes nothing; a value being typed survives a re-render', async () => {
+  const { root, editor, store } = mount();
+  const calls: any[] = [];
+  editor.setTrack = (id: string, patch: any) => calls.push([id, patch]);
+  await act(() => render(<Timeline editor={editor} />, root));
+  const g = root.querySelector<HTMLInputElement>('[data-row="mu"] [data-bus-gain]')!, was = g.value;
+  await act(() => { g.value = '-3'; g.dispatchEvent(new Event('input', { bubbles: true })); });
+  await act(() => store.set({ project: structuredClone(store.get().project) }));   // a save coming back, say
+  expect(g.value).toBe('-3');
+  await act(() => { g.value = ''; g.dispatchEvent(new Event('input', { bubbles: true })); g.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect([calls, g.value]).toEqual([[], was]);
+});
+
 test('clicking an empty spot on a track moves the playhead there; a marquee drag does not', async () => {
   const { root, editor, calls } = mount();
   await act(() => render(<Timeline editor={editor} />, root));
