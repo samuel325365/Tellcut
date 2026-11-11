@@ -18,12 +18,13 @@ export function PlayerPreview({ project, loop = true, playKey, autoplay = true, 
   const loaded = useRef(false), lastKey = useRef(playKey), wanted = useRef(false);
   useEffect(() => {
     const win = frame.current?.contentWindow;
-    if (!win) return;
+    if (!win) return () => bridge.dispose();
     bridge.attach(win);
     const on = (e: MessageEvent) => { if (e.origin === location.origin && e.source === win) bridge.handle(e.data); };
     addEventListener('message', on);
     bridge.onError = (m) => setError(m);
-    return () => removeEventListener('message', on);
+    // the bridge follows the language until disposed: one per preview ever opened stayed listening (with its iframe's window)
+    return () => { removeEventListener('message', on); bridge.dispose(); };
   }, []);
   // loop by starting over just before the end: at the end the player shows the last frame without the block (an item ends there),
   // and a restart takes a moment, which would flash the bare ground
