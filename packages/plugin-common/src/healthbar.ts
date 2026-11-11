@@ -4,7 +4,7 @@
 // card and leaves a white trail that catches up; a heal flashes the cells white; a word on the right says how it stands (high, mid,
 // low). The x stop shatters it: the cells fly apart, the frame turns red and dashed, and the last state word is stamped on.
 // Drawn on a canvas (every word reported with ctx.reportText); draw(t) is a pure function of t. Sized by the short side.
-import { clamp, cssCamel, type ItemType } from '@tellcut/engine';
+import { clamp, cssCamel, rng, type ItemType } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { faceWeight } from './text.ts';
 
@@ -152,8 +152,7 @@ export const healthbar: ItemType<P, S> = {
     } else {
       // broken: the cells fly apart, spin and fade; the empty frame turns red and dashed
       const dt = t - breakAt!;
-      let seed = 977;
-      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const rnd = rng(977);
       for (let i = 0; i < N; i++) {
         const vx = (rnd() - 0.5) * 900 * k, vy = -(200 + rnd() * 500) * k, rot = (rnd() - 0.5) * 9, a = Math.max(0, 1 - dt / 0.9);
         if (a <= 0) continue;
