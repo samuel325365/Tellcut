@@ -13,6 +13,7 @@ import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { graphemes } from './text.ts';
+import { imagesReady } from './window.ts';
 
 const DISPLAY = 'Playfair Display', SERIF = 'Noto Serif TC';
 const disp = (px: number, w = 900, it = false) => `${it ? 'italic ' : ''}${w} ${px}px "${DISPLAY}", "${SERIF}", serif`;
@@ -25,7 +26,6 @@ const fontsReady = (text: string) => Promise.all([
   document.fonts.load(`italic 700 80px "${DISPLAY}"`, 'Az'), document.fonts.load(`italic 900 80px "${DISPLAY}"`, 'AZ'), document.fonts.load(`700 60px "${SERIF}"`, text || '字'),
 ]).then(() => undefined);
 const stillOf = (source: string, t: number) => ({ source, t, w: 1080 });
-const imgReady = (i: HTMLImageElement | null) => (!i || i.complete ? Promise.resolve() : i.decode().catch(() => undefined));
 /** the photo for `source` at `t`, made again when either changes */
 function photo(s: { img: HTMLImageElement | null; key: string }, media: { stillUrl(r: { source: string; t: number; w?: number }): string }, source: string, t: number) {
   const key = `${source}|${t}`;
@@ -113,7 +113,7 @@ export const masthead: ItemType<MP, MS> = {
     if (ctx.params.mode === 'back') photo(s, ctx.media, ctx.params.source, ctx.params.t);
     return s;
   },
-  ready(s) { return Promise.all([fontsReady(s.text), imgReady(s.img)]).then(() => undefined); },
+  ready(s) { return Promise.all([fontsReady(s.text), imagesReady([s.img])]).then(() => undefined); },
   hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
     const { local, dur, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
@@ -206,7 +206,7 @@ export const spread: ItemType<SP, SS> = {
   ],
   media: stillMedia,
   build(ctx) { const s: SS = { c: canvasIn(ctx.root), img: null, key: '', text: ctx.params.name }; photo(s, ctx.media, ctx.params.source, ctx.params.t); return s; },
-  ready(s) { return Promise.all([fontsReady(s.text), imgReady(s.img)]).then(() => undefined); },
+  ready(s) { return Promise.all([fontsReady(s.text), imagesReady([s.img])]).then(() => undefined); },
   hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
     const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
@@ -293,7 +293,7 @@ export const wordbands: ItemType<BP, BS> = {
   ],
   media: stillMedia,
   build(ctx) { const s: BS = { c: canvasIn(ctx.root), img: null, key: '', bands: [] }; photo(s, ctx.media, ctx.params.source, ctx.params.t); return s; },
-  ready(s) { return Promise.all([fontsReady(''), imgReady(s.img)]).then(() => undefined); },
+  ready(s) { return Promise.all([fontsReady(''), imagesReady([s.img])]).then(() => undefined); },
   hide(s) { freeCanvas(s.c); },
   draw(ctx, s) {
     const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);

@@ -8,6 +8,7 @@ import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { coverImage } from './editorial.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
+import { imagesReady } from './window.ts';
 
 const eOut = (q: number) => eOut3(clamp(q));
 type G = CanvasRenderingContext2D;
@@ -97,7 +98,7 @@ export const photostack: ItemType<PP, PS> = {
     return { c: canvasIn(ctx.root), cards: cards.map((c) => ({ img: Object.assign(new Image(), { src: ctx.media.stillUrl({ source: c.source, t: c.t, w: 1080 }) }), label: c.label, fx: c.fx, fy: c.fy })), text: cards.map((c) => c.label).join('') };
   },
   ready: (s) => Promise.all([document.fonts.load('italic 400 40px "Playfair Display"', s.text || 'az'),
-    ...s.cards.map((c) => (c.img.complete ? Promise.resolve() : c.img.decode().catch(() => undefined)))]).then(() => undefined),
+    imagesReady(s.cards.map((c) => c.img))]).then(() => undefined),
   hide: (s) => freeCanvas(s.c),
   draw(ctx, s) {
     const { local, W, H, params: p } = ctx, g = canvasAt(s.c, W, H);

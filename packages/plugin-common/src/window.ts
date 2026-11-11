@@ -37,9 +37,9 @@ export function showStill(media: MediaApi, win: Win, s: Still | null | undefined
   cssCamel(win.img, { display: 'block', left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` });
 }
 
-/** resolves once every image has loaded (or failed): ItemType.ready */
-export const imagesReady = (imgs: HTMLImageElement[]) =>
-  Promise.all(imgs.filter((i) => i.getAttribute('src')).map((i) => (i.complete ? Promise.resolve() : i.decode().catch(() => {})))).then(() => {});
+/** resolves once every image has loaded (or failed): ItemType.ready; a missing image or one with no src is not waited for */
+export const imagesReady = (imgs: Array<HTMLImageElement | null | undefined>) =>
+  Promise.all(imgs.filter((i): i is HTMLImageElement => !!i?.getAttribute('src')).map((i) => (i.complete ? Promise.resolve() : i.decode().catch(() => {})))).then(() => {});
 
 /** Cut a hole the size of `rect` ([x, y, w, h] px in `el`) out of `el` with a CSS mask (null: no hole) — what lies under the window.
  *  `r` rounds the hole's corners (a phone's video window); the layer must cover the corners round it, or the clip's own square

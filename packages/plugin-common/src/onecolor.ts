@@ -13,6 +13,7 @@ import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { coverImage } from './editorial.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
+import { imagesReady } from './window.ts';
 
 const DISPLAY = 'Anton', SANS = 'Inter', TC = 'Noto Sans TC';
 const disp = (px: number) => `400 ${px}px "${DISPLAY}", "${TC}", sans-serif`;
@@ -26,7 +27,6 @@ type G = CanvasRenderingContext2D;
 const fontsReady = (text: string) => Promise.all([document.fonts.load(`400 80px "${DISPLAY}"`, text || 'AZ09'), document.fonts.load(`700 30px "${SANS}"`, 'AZ09'),
   document.fonts.load(`600 30px "${SANS}"`, 'AZ09'), document.fonts.load(`900 50px "${TC}"`, text || '字')].map((l) => l.catch(() => []))).then(() => undefined);
 const spaced = (g: G, px: number) => { try { (g as unknown as { letterSpacing: string }).letterSpacing = `${px.toFixed(1)}px`; } catch { /* older canvases */ } };
-const imgReady = (i: HTMLImageElement) => (i.complete ? Promise.resolve() : i.decode().catch(() => undefined));
 
 /** "seconds|value" lines, in time order */
 export function parseSteps(text: string): Array<{ t: number; v: string }> {
@@ -237,7 +237,7 @@ export const poster: ItemType<PP, PS> = {
     const imgs = parsePhotos(p.photos).map((ph) => ({ img: Object.assign(new Image(), { src: ctx.media.stillUrl({ source: ph.source, t: ph.t, w: 1080 }) }), fx: ph.fx, fy: ph.fy }));
     return { c: canvasIn(ctx.root), imgs, text: `${p.top}${p.bottom}${p.side}${p.barcode}` };
   },
-  ready: (s) => Promise.all([fontsReady(s.text), ...s.imgs.map((i) => imgReady(i.img))]).then(() => undefined),
+  ready: (s) => Promise.all([fontsReady(s.text), imagesReady(s.imgs.map((i) => i.img))]).then(() => undefined),
   hide: (s) => freeCanvas(s.c),
   draw(ctx, s) {
     const { local, W, H, params: p } = ctx, g = canvasAt(s.c, W, H), L = posterLayout(W, H, !!p.barcode), { u, cw, ch, cx, cy, tpx } = L;

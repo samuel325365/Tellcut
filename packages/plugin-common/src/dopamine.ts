@@ -7,7 +7,7 @@
 // look pop (templates pop, pop-no), "No.1" common.badge's shape box, the captions the template pop-box. Pure functions of time.
 import { clamp, cssCamel, h, type ItemType, type MediaRef, type Project, type SceneItem, textEm } from '@tellcut/engine';
 import { cropOf } from './cells.ts';
-import { windowEl } from './window.ts';
+import { imagesReady, windowEl } from './window.ts';
 
 const lerp = (a: number, b: number, q: number) => a + (b - a) * q;
 
@@ -89,7 +89,7 @@ export const popcard: ItemType<PP, PS> = {
     return { wrap, shade, card, box, ph, pill, shots, imgs, text: shots.map((s) => s.label).join('') };
   },
   ready: (s) => Promise.all([document.fonts.load(`900 40px 'Noto Serif TC'`, s.text || '標'),
-    ...s.imgs.map((im) => (im && !im.complete ? im.decode().catch(() => undefined) : Promise.resolve()))]).then(() => undefined),
+    imagesReady(s.imgs)]).then(() => undefined),
   draw(ctx, s) {
     const { local, W, H, params: p, media, project } = ctx, k = Math.min(W, H) / 1080, pop = clamp(popAt(local, p.popAt), 0, 1.2);
     const { i, labelFrom } = shotAt(s.shots, local), shot = s.shots[i];
