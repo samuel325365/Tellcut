@@ -6,7 +6,7 @@ import { withAlpha } from './color.ts';
 
 interface P {
   title: string; sub: string; icons: string; names: string; values: string; tones: string; pop: number; note: string; enter: boolean;
-  texture: 'receipt' | 'plain'; y: number; h: number; valueSize: number; font: string; paper: string; ink: string; bad: string; good: string; hl: string;
+  texture: 'receipt' | 'plain'; y: number; w: number; h: number; valueSize: number; font: string; paper: string; ink: string; bad: string; good: string; hl: string;
 }
 interface Cell { box: HTMLElement; icon: HTMLElement; name: HTMLElement; value: HTMLElement }
 interface S { card: HTMLElement; head: HTMLElement; title: HTMLElement; sub: HTMLElement; body: HTMLElement; grid: HTMLElement; holes: HTMLElement[]; cells: Cell[]; seps: HTMLElement[]; ring: HTMLElement; flash: HTMLElement; note: HTMLElement; key: string }
@@ -37,6 +37,7 @@ export const scoreboard: ItemType<P, S> = {
     { key: 'enter', label: '整張卡從上面滑入（第一段用）', type: 'bool', default: false },
     { key: 'texture', label: '質感', type: 'enum', options: ['receipt', 'plain'], default: 'receipt' },
     { key: 'y', label: '上緣（畫面高比例；-1＝安全區上緣）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
+    { key: 'w', label: '最大寬（畫面短邊的比例；不超過左右安全區，窄於安全區時置中）', type: 'number', min: 0.3, max: 1.6, step: 0.01, default: 1 },
     { key: 'h', label: '高（畫面高比例）', type: 'number', min: 0.08, max: 0.5, step: 0.005, default: 0.17 },
     { key: 'valueSize', label: '數值放大倍數（只放大數字，圖示和名稱不變，卡片往下長高；1＝原本；太寬會縮到放得進格子）', type: 'number', min: 1, max: 4, step: 0.05, default: 1 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
@@ -69,7 +70,7 @@ export const scoreboard: ItemType<P, S> = {
       });
       s.seps = names.slice(1).map(() => { const d = h('div', null, null, s.grid); cssCamel(d, { position: 'absolute' }); return d; });
     }
-    const x0 = theme.safe.side * W, w = W - 2 * x0, top0 = p.y >= 0 ? p.y * H : theme.safe.top * H, hh0 = Math.min(76 * k, p.h * H * 0.3), pad = 46 * k, cw = (w - pad * 2) / Math.max(1, n);
+    const full = W - 2 * theme.safe.side * W, w = Math.min(full, p.w * Math.min(W, H)), x0 = w < full ? (W - w) / 2 : theme.safe.side * W, top0 = p.y >= 0 ? p.y * H : theme.safe.top * H, hh0 = Math.min(76 * k, p.h * H * 0.3), pad = 46 * k, cw = (w - pad * 2) / Math.max(1, n);
     const sv = scoreValues(names.map((_, i) => values[i] ?? ''), p.valueSize ?? 1, p.h * H - hh0, k, cw), ch0 = p.h * H + sv.grow;
     const y0 = top0 + (p.enter ? (1 - eBack(clamp(ctx.local / 0.6), 2.2)) * -(ch0 + top0 + 40 * k) : 0);
     const out = 1 - clamp((ctx.local - ctx.dur + 0.2) / 0.2), hh = hh0, bh = ch0 - hh, bh0 = bh - sv.grow;

@@ -4,7 +4,7 @@ import { clamp, cssCamel, eOut3, h, prog, type ItemType } from '@tellcut/engine'
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
-interface P { title: string; rows: string; max: number; style: 'stars' | 'bar'; total: string; y: number; size: number; paper: string; ink: string; accent: string; star: string; font: string }
+interface P { title: string; rows: string; max: number; style: 'stars' | 'bar'; total: string; y: number; w: number; size: number; paper: string; ink: string; accent: string; star: string; font: string }
 interface Row { row: HTMLElement; label: HTMLElement; marks: HTMLElement[]; bar: HTMLElement; fill: HTMLElement; num: HTMLElement }
 interface S { card: HTMLElement; title: HTMLElement; total: HTMLElement; rows: Row[]; key: string }
 
@@ -34,6 +34,7 @@ export const rating: ItemType<P, S> = {
     { key: 'style', label: '樣式', type: 'enum', options: ['stars', 'bar'], default: 'stars' },
     { key: 'total', label: '總分大字（空＝沒有；例 9/10）', type: 'string', default: '4.5' },
     { key: 'y', label: '卡片上緣（畫面高比例；-1＝安全區上緣）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
+    { key: 'w', label: '最大寬（畫面短邊的比例；不超過左右安全區，窄於安全區時置中）', type: 'number', min: 0.3, max: 1.6, step: 0.01, default: 1 },
     { key: 'size', label: '字級（畫面短邊 %）', type: 'number', min: 2, max: 12, step: 0.1, default: 5 },
     { key: 'paper', label: '卡片底色', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
     { key: 'ink', label: '字色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
@@ -49,7 +50,8 @@ export const rating: ItemType<P, S> = {
     return { card, title, total, rows: [], key: '' };
   },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, side = theme.safe.side * W, w = W - 2 * side;
+    const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, full = W - 2 * theme.safe.side * W;
+    const w = Math.min(full, p.w * Math.min(W, H)), side = w < full ? (W - w) / 2 : theme.safe.side * W;
     const rows = ratingRows(p.rows), px = (p.size / 100) * Math.min(W, H), n = Math.max(1, Math.round(p.max)), key = JSON.stringify([p.rows, n, p.style]);
     if (s.key !== key) {   // rows rebuilt only when they change
       s.key = key;

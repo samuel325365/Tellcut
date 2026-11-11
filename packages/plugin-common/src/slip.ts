@@ -9,7 +9,7 @@ import { withAlpha } from './color.ts';
 import { slotRects } from './progress.ts';
 import { WORDS, wordsLang } from './words.ts';
 
-interface P { slot: number; slots: number; slotY: number; mode: 'stub' | 'board'; no: string; noLabel: string; title: string; sub: string; items: string; y: number; dim: number; font: string; paper: string; stub: string; ink: string; muted: string }
+interface P { slot: number; slots: number; slotY: number; mode: 'stub' | 'board'; no: string; noLabel: string; title: string; sub: string; items: string; y: number; w: number; dim: number; font: string; paper: string; stub: string; ink: string; muted: string }
 interface Row { row: HTMLElement; chip: HTMLElement; text: HTMLElement }
 interface S { dim: HTMLElement; box: HTMLElement; stubEl: HTMLElement; noLab: HTMLElement; noEl: HTMLElement; perf: HTMLElement; title: HTMLElement; sub: HTMLElement; rule: HTMLElement; rows: Row[]; key: string }
 
@@ -36,6 +36,7 @@ export const slip: ItemType<P, S> = {
     { key: 'sub', label: '小字（board 最下面一行）', type: 'string', default: '老闆自己用味噌炒醬' },
     { key: 'items', label: '回顧（board；一行一個或用 | 分開）', type: 'text', default: '沒有蒜蓉，自己炒味噌醬\n方的嫩　三角的脆\n不接電話訂，只賣現炸' },
     { key: 'y', label: '上緣（畫面高比例；-1＝stub 貼在下方安全區上面、board 畫面中間）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
+    { key: 'w', label: '最大寬（畫面短邊的比例；不超過左右安全區，窄於安全區時置中）', type: 'number', min: 0.3, max: 1.6, step: 0.01, default: 1 },
     { key: 'dim', label: '背後壓暗（board；0–1）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.42 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'paper', label: '票的紙色', type: 'color', default: '#f3e6c8' },
@@ -55,7 +56,7 @@ export const slip: ItemType<P, S> = {
   },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme, local, dur } = ctx, k = Math.min(W, H) / 1080, font = `'${p.font}', 'Noto Sans TC', sans-serif`;
-    const side = theme.safe.side * W, w = W - 2 * side, out = 1 - prog(local, dur - 0.18, dur), board = p.mode === 'board';
+    const full = W - 2 * theme.safe.side * W, w = Math.min(full, p.w * Math.min(W, H)), side = w < full ? (W - w) / 2 : theme.safe.side * W, out = 1 - prog(local, dur - 0.18, dur), board = p.mode === 'board';
     const items = board ? slipRows(p.items) : [];
     if (s.key !== JSON.stringify(items)) {
       s.key = JSON.stringify(items);
