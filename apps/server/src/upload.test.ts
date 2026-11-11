@@ -128,6 +128,20 @@ Host: ${u.host}
   } finally { await slow.app.close(); }
 });
 
+test('an upload under way is listed in GET /api/jobs (server:restart waits for it), and gone once written', async () => {
+  const u = new URL(`${base}/api/projects/demo/upload?name=busy.mp4&mtime=1700000000000`);
+  const req = request({ host: u.hostname, port: u.port, path: u.pathname + u.search, method: 'PUT', headers: { 'Content-Length': '4' } });
+  const answered = new Promise<number>((done, fail) => { req.on('response', (res) => { res.resume(); res.on('end', () => done(res.statusCode ?? 0)); }); req.on('error', fail); });
+  req.write('ab');
+  const jobs = async () => (await (await fetch(`${base}/api/jobs`)).json()) as Array<{ kind: string; project: string; label: string; status: string }>;
+  let seen: Awaited<ReturnType<typeof jobs>> = [];
+  for (let i = 0; i < 50 && !seen.length; i++) { seen = (await jobs()).filter((j) => j.kind === 'import'); if (!seen.length) await new Promise((r) => setTimeout(r, 20)); }
+  expect(seen.map((j) => [j.kind, j.project, j.label, j.status])).toEqual([['import', 'demo', 'busy.mp4', 'running']]);
+  req.end('cd');
+  expect(await answered).toBe(200);
+  expect((await jobs()).filter((j) => j.kind === 'import')).toEqual([]);
+});
+
 test('not media → 400 import.notMedia; another origin → 403', async () => {
   const r = await put('notes.txt', 'x');
   expect(r.status).toBe(400);

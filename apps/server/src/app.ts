@@ -56,7 +56,7 @@ export function createApp(o: AppOptions) {
   // work outside the queue that a delete must wait for (imports, a preset's poster)
   const holds = new ProjectHolds();
   projectRoutes(r, store);
-  jobRoutes(r, queue);
+  jobRoutes(r, queue, () => holds.jobs());
   // a project's analysis finished: its chat may be waiting for it (set once the chat routes exist)
   let analyzed = (_id: string, _since: number, _jobs: JobInfo[]) => {};
   mediaRoutes(r, store, queue, { extras: o.extras !== false, onAnalyzed: (id, since, jobs) => analyzed(id, since, jobs) });

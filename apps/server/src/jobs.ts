@@ -92,9 +92,10 @@ export class JobQueue extends EventEmitter {
   private changed(info: JobInfo) { this.emit('change', info); }
 }
 
-export function jobRoutes(r: Router, queue: JobQueue) {
+/** `also`: work outside the queue listed with it (delete.ts ProjectHolds: uploads, imports), so a restart waits for it too */
+export function jobRoutes(r: Router, queue: JobQueue, also?: () => JobInfo[]) {
   const need = (id: string) => { const j = queue.get(id); if (!j) throw new HttpError(404, `No job "${id}"`); return j; };
-  r.get('/api/jobs', (_req, res) => sendJson(res, 200, queue.list().map(publicInfo)));
+  r.get('/api/jobs', (_req, res) => sendJson(res, 200, [...queue.list(), ...(also?.() ?? [])].sort((a, b) => b.created - a.created || b.id.localeCompare(a.id)).map(publicInfo)));
   r.get('/api/jobs/:id', (_req, res, { id }) => sendJson(res, 200, publicInfo(need(id))));
   r.del('/api/jobs/:id', (_req, res, { id }) => { need(id); queue.cancel(id); sendJson(res, 200, { ok: true }); });
   r.get('/api/jobs/:id/events', (req, res, { id }) => {

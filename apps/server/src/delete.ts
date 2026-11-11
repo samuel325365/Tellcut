@@ -3,7 +3,7 @@
 // fails the rename, which leaves the project whole, instead of a delete that stops halfway.
 import { existsSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { isTerminal, type BusyCode, type DeletePreview } from '@tellcut/protocol';
+import { isTerminal, type BusyCode, type DeletePreview, type JobInfo } from '@tellcut/protocol';
 import { exportLock, lockHolder, PROJECT_ID } from '@tellcut/media-node';
 import { HttpError, sendJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
@@ -26,23 +26,31 @@ export interface Busy extends BusyCode { text: string }
 /** Work on a project the job queue does not list (an import converting HEICs into media/, a preset saved from it drawing its
  *  poster): a delete under it would leave the folder to be recreated, half, by the work's next write. */
 export class ProjectHolds {
-  private held = new Map<string, Busy[]>();
+  private held = new Map<string, Array<{ id: string; why: Busy; since: number; n: number }>>();
+  private seq = 0;
   /** `why` is what the delete says while it holds (its own code: a file name alone tells the user nothing);
    *  returns the release (calling it again does nothing) */
   hold(id: string, why: Busy): () => void {
-    const k = id.toLowerCase(), list = this.held.get(k) ?? [];   // NTFS: Demo and demo are one folder
-    list.push(why); this.held.set(k, list);
+    const k = id.toLowerCase(), list = this.held.get(k) ?? [], h = { id, why, since: Date.now(), n: ++this.seq };   // NTFS: Demo and demo are one folder
+    list.push(h); this.held.set(k, list);
     let done = false;
     return () => {
       if (done) return;
       done = true;
-      const l = this.held.get(k) ?? [], i = l.indexOf(why);
+      const l = this.held.get(k) ?? [], i = l.indexOf(h);
       if (i >= 0) l.splice(i, 1);
       if (!l.length) this.held.delete(k);
     };
   }
   /** what holds it, or null */
-  busy(id: string): Busy | null { return this.held.get(id.toLowerCase())?.[0] ?? null; }
+  busy(id: string): Busy | null { return this.held.get(id.toLowerCase())?.[0]?.why ?? null; }
+  /** every hold as a running job of GET /api/jobs, so `npm run server:restart` waits for an upload or an import as it does for
+   *  an analysis (kind: import, preset, from the delete's code); not in the queue, so /api/jobs/:id does not know them */
+  jobs(): JobInfo[] {
+    return [...this.held.values()].flat().map(({ id, why, since, n }) => ({
+      id: `hold-${since.toString(36)}-${n}`, kind: why.code.replace(/^delete.busy/, '').toLowerCase() || 'hold', project: id, label: why.params?.file ?? why.text,
+      status: 'running', progress: 0, message: '', log: [], created: since, started: since }));
+  }
 }
 
 /** why the project cannot go now, in words (and as a code the page words in its language); null when nothing is working on it */
