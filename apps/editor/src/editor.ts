@@ -1,14 +1,13 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
 import { addCropKey, addItem, addTrack, allItems, magneticTrack, removeCropKey, type CropWhich, CommandError, type TrackKind, parseProject, resolveTimes, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, updateItem, type Project, type Registry, type Transform } from '@tellcut/engine';
 import { captionPlan } from '@tellcut/plugin-common/speech';
-import { zoomAround } from './timeline/geometry.ts';
 import { keyAction, type Action } from './keys.ts';
 import { ChatSession } from './chat.ts';
 import type { FsApi } from './ImportDialog.tsx';
 import type { LiveEvent } from '@tellcut/protocol';
 import type { DragStart, Mods } from './timeline/drag.ts';
 import { materialOf, planAudition, type Material } from './audition.ts';
-import { FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll } from './timeline/geometry.ts';
+import { FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll, zoomAround } from './timeline/geometry.ts';
 import { ApiError, type Api } from './api.ts';
 import { Autosave } from './autosave.ts';
 import { History } from './history.ts';
@@ -527,13 +526,13 @@ export class Editor {
   sendAskToChat(text: string) { return this.ask.sendToChat(text); }
   /** Stores the request, then copies the message for the chat (or shows it to copy by hand). */
   sendAsk(text: string) { return this.ask.send(text); }
-  /** Keep this version: the held edits are saved over the outside change. */
   /** Reload on the changed-on-disk bar: edits made since then wait unsaved, and reloading drops them, so it asks first */
   async reload(ask: (msg: string) => boolean = (m) => globalThis.confirm(m)): Promise<boolean> {
     if (this.autosave?.dirty && !ask(say('ed.reloadLoses'))) return false;
     await this.open();
     return true;
   }
+  /** Keep this version: the held edits are saved over the outside change. */
   ignoreDisk() { this.set({ diskChanged: false }); this.deps.api.forgetVersion?.(this.id); this.autosave?.hold(false); }
 
   private queueState() {

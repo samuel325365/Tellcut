@@ -83,7 +83,7 @@ export const timeToX = (t: number, v: View) => (t - v.scroll) * v.pps;
 export const xToTime = (x: number, v: View) => v.scroll + x / v.pps;
 
 export function zoomAround(v: View, factor: number, anchorX: number): View {
-  const pps = Math.max(5, Math.min(400, v.pps * factor));
+  const pps = Math.max(MIN_PPS, Math.min(MAX_PPS, v.pps * factor));
   const t = xToTime(anchorX, v);
   return { pps, scroll: Math.max(0, t - anchorX / pps) };
 }

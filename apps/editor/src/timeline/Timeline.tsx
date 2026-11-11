@@ -3,7 +3,7 @@ import { allItems, beatTimes, overlapPairs, removeEnvelopePoint, resolveTimes, t
 import type { Editor } from '../editor.ts';
 import { useStoreSelector } from '../store.ts';
 import { liveLinks } from '../editor/library.ts';
-import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, drawnSpan, fitHeights, RULER_H, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { AIR, HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, drawnSpan, fitHeights, RULER_H, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 import { ItemBlock } from './ItemBlock.tsx';
 import { Playhead } from './Playhead.tsx';
 import { thumbTiles } from './thumbs.ts';
@@ -201,7 +201,7 @@ export function Timeline({ editor }: { editor: Editor }) {
   };
 
   // the bar under the tracks: a scrollbar over the whole project (drag the thumb, click beside it for a page) and the zoom
-  const thumb = scrollThumb(view, p.meta.duration, width), span = p.meta.duration + 1;
+  const thumb = scrollThumb(view, p.meta.duration, width), span = p.meta.duration + AIR;
   const onBarDown = (e: MouseEvent) => startScrollbarDrag(e, editor, { thumb, width, span, scroll: s.scroll, pps: s.pps });
   // the slider zooms around the playhead when it is in view, else around the middle
   const onZoom = (e: Event) => {
