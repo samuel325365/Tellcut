@@ -254,7 +254,8 @@ export function inkStrokes(g: G, list: Pt[][], style: PenStyle, o: StrokeOpts) {
 }
 
 // ---------- colouring in ----------
-const bounds = (pts: Pt[]) => {
+/** the box round `pts` and its centre */
+export const bounds = (pts: Pt[]) => {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   return { x0, y0, x1, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };

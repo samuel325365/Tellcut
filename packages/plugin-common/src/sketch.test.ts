@@ -3,7 +3,7 @@
 import { boiled, penPath } from './inkline.ts';
 import { handCircle, handLoopPts, heart, heartPts, tick, tickPts } from './hand.ts';
 import {
-  ballpointStroke, crayonStroke, cutPath, hatchFill, inkStroke, markerStroke, pathLen, pencilStroke, rectSides, rrectPts, scribbleFill, starPts, wavePts,
+  ballpointStroke, bounds, crayonStroke, cutPath, hatchFill, inkStroke, markerStroke, pathLen, pencilStroke, rectSides, rrectPts, scribbleFill, starPts, wavePts,
   type PenStyle, type Pt,
 } from './sketch.ts';
 import { doodleMarks, pen, PEN_KINDS } from './pen.ts';
@@ -133,4 +133,8 @@ test('the new modes leave every default as it was, and draw on inside the 3 s ga
   expect(def(handwrite, 'red')).toBe('');
   expect(def(pen, 'drawDur') as number).toBeLessThan(1);
   expect(def(panel, 'drawIn') as number).toBeLessThan(1);
+});
+
+test('bounds: the box round the points and its centre', () => {
+  expect(bounds([[2, 5], [-4, 1], [6, -3]])).toEqual({ x0: -4, y0: -3, x1: 6, y1: 5, cx: 1, cy: 1 });
 });

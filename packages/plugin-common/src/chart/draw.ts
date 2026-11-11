@@ -1,14 +1,9 @@
 // common.chart's drawing: each shape of the plan painted in the look (clean, hand, woodcut), and the card under it.
 import { clamp, eOut3 } from '@tellcut/engine';
-import { cutPath, ellipsePts, hash, hatchFill, inkStroke, inkStrokes, loopPts, markerStroke, quadPts, rectSides, rrectPts, type PenStyle, type Pt } from '../sketch.ts';
+import { bounds, cutPath, ellipsePts, hash, hatchFill, inkStroke, inkStrokes, loopPts, markerStroke, quadPts, rectSides, rrectPts, type PenStyle, type Pt } from '../sketch.ts';
 import { type Look, type ChartP, type Box, type Mk, boxLoopPts } from './shared.ts';
 
 export interface R { look: Look; pen: PenStyle; u: number; boil: number; t: number; ink: string }
-const bounds = (pts: Pt[]) => {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-  return { x0, y0, x1, y1 };
-};
 const trace = (g: CanvasRenderingContext2D, pts: Pt[]) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
 const rectPts = (x: number, y: number, w: number, hh: number): Pt[] => [[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]];
 
