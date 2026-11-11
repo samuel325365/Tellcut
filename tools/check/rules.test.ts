@@ -1,6 +1,6 @@
 import { createRegistry, parseProject, type Transcript } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
-import { canvasFxFiles, chosenSpec, flatlayHandOff, fxChecks, modelChecks, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
+import { canvasFxFiles, chosenSpec, flatlayHandOff, fxChecks, modelChecks, noTranscript, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -279,6 +279,20 @@ describe('pacing rules (2026-10-18)', () => {
     expect(modelChecks(talk, { ...ok, transcripts: { v: say } })).toEqual([]);
     expect(modelChecks(project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }]), ok)).toEqual([]);
     expect(modelChecks(tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 200)] }], 200), ok)).toEqual([]);
+  });
+
+  test('footage with sound and no transcript: the first second is not known (a note, not a warning), and one note names it', () => {
+    const talk = tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, sound([{ id: 's', start: 0, end: 10, source: 'v', in: 0, rate: 1, gain: 0, fadeIn: 0, fadeOut: 0 }])]);
+    expect(msgs(modelChecks(talk, ok))).toEqual([expect.stringMatching(/^note 0-1 開頭第一秒看不到字幕或字卡；素材 v 沒有逐字稿，不知道這一秒有沒有人說話/)]);
+    expect(msgs(noTranscript(talk, ok))).toEqual([expect.stringMatching(/^note  素材 v 有聲音但沒有逐字稿.*字幕對不對得上講話、可能漏字幕、開頭第一秒有沒有人說話都沒檢查/)]);
+    // transcribed (even with nobody speaking at 0), offline (reported as such) or muted: nothing to say
+    const quiet: Transcript = { language: 'zh', segments: [{ start: 5, end: 6, text: '後來才講話' }] };
+    expect(noTranscript(talk, { ...ok, transcripts: { v: quiet } })).toEqual([]);
+    expect(msgs(modelChecks(talk, { ...ok, transcripts: { v: quiet } }))).toEqual([expect.stringMatching(/^warn 0-1 開頭第一秒沒有字也沒有人說話/)]);
+    expect(noTranscript(talk, { ...ok, exists: () => false })).toEqual([]);
+    const muted = tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { ...sound([{ id: 's', start: 0, end: 10, source: 'v', in: 0, rate: 1, gain: 0, fadeIn: 0, fadeOut: 0 }]), muted: true }]);
+    expect(noTranscript(muted, ok)).toEqual([]);
+    expect(msgs(modelChecks(muted, ok))).toEqual([expect.stringMatching(/^warn 0-1 開頭第一秒沒有字也沒有人說話/)]);
   });
 
   test('a word card shorter than its reading time is warned; captions are not (they follow the speech)', () => {

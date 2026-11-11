@@ -15,7 +15,7 @@ import { inventory, type Inventory } from './inventory.ts';
 import { captionPlan, filmOf, linePlan, secs, wordSpans, type CaptionOptions, type Line, type SpeechPiece, type SrcTime } from '@tellcut/plugin-common/speech';
 import { tightenClip } from './tighten.ts';
 import { captionHeight, isCaption, placeCaptions, UNDER_GAP, type CaptionItem } from './under-panel.ts';
-import { addDucking, addScore, clipSpeech, QUIET_DB, type ScoreRequest } from './mix.ts';
+import { addDucking, addScore, clipSpeech, playingSounds, QUIET_DB, untranscribed, type ScoreRequest, type SpeechLevel } from './mix.ts';
 import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, type FollowReq } from './focus.ts';
 import { addBands, addBeside, addFlatlayClip, addTrack, checkFrame, cropOf, frameFields, STILL, viewOf, type BandsOpts, type BesideOpts, type CropIn, type Frame, type Shape, type ViewOpts } from './frames.ts';
 export { cropOf, type CropIn };
@@ -898,14 +898,21 @@ export class Cut {
     if (this.scoreReq) await addScore(this.p, this.dir, this.scoreReq, duration);
     // speech in the clips' own sound: as duck() says, a clip's duck option over that, room tone (QUIET_DB or lower) left out
     const byDefault = this.duckDb !== false && this.duckSpeech, fallback = this.duckDb === false ? -10 : this.duckDb;
-    const speech = clipSpeech(this.p, (src) => this.transcriptOf(src), (it, level) => {
+    const counts: SpeechLevel = (it, level) => {
       const own = this.duckOf.get(it.parent ?? '');
       if (own === false) return null;
       if (own === true) return fallback;
       if (typeof own === 'number') return own;
       return byDefault && level > QUIET_DB ? undefined : null;
-    });
+    };
+    const speech = clipSpeech(this.p, (src) => this.transcriptOf(src), counts);
     addDucking(this.p, { duckDb: this.duckDb, speech, dips: this.dips, curve: this.curve });
+    // a clip sound that would duck the music but has no transcript: its speech is not known, so nothing ducks under it
+    if (this.song || this.scoreReq) {
+      const deaf = new Set(untranscribed(this.p, (src) => this.transcriptOf(src)));
+      const unducked = [...new Set(playingSounds(this.p).filter(({ item, level }) => deaf.has(item.source) && counts(item, level) !== null).map(({ item }) => item.source))];
+      if (unducked.length) this.notes.push(`素材 ${unducked.join('、')} 沒有逐字稿（還在轉、--no-transcribe 或轉失敗）：不知道哪裡有人說話，配樂沒有在這些片段的講話下壓低；轉好後重跑 cut`);
+    }
     this.pruneGenerated();
     this.attachToShots();
     // a magnetic track is packed from 0 by the editor's first command: a main track with gaps left on purpose (3D over nothing,

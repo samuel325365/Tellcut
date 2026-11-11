@@ -26,37 +26,44 @@ export type SpeechLevel = (it: { id: string; parent?: string }, level: number) =
 
 /** a source sound item on the timeline, as heardSpeech gives it */
 export interface HeardItem { id: string; parent?: string; source: string; in: number; rate: number; gain: number; muted?: boolean }
+/** The source sound items that play as the mix plays them (muted tracks and items say nothing; when a sound track is solo only
+ *  solo ones play), each with its level in dB (the item's and its track's). */
+export function playingSounds(p: Project): Array<{ item: HeardItem; level: number }> {
+  const solo = p.tracks.some((t) => (t.kind === 'audio' || t.kind === 'music' || t.kind === 'sfx') && !t.muted && (t as { solo?: boolean }).solo);
+  return p.tracks.filter((t) => t.kind === 'audio' && !t.muted && (!solo || (t as { solo?: boolean }).solo))
+    .flatMap((t) => (t.items as HeardItem[]).filter((c) => !c.muted).map((item) => ({ item, level: (item.gain ?? 0) + ((t as { gain?: number }).gain ?? 0) })));
+}
+/** The sources of sound items that play (playingSounds) and have no transcript (not transcribed yet, cut --no-transcribe, a failed
+ *  transcription): heardSpeech hears nothing in them, so nobody can tell whether anyone speaks there. `skip`: sources to leave out. */
+export function untranscribed(p: Project, transcriptOf: (source: string) => Transcript | null | undefined, skip: (source: string) => boolean = () => false): string[] {
+  return [...new Set(playingSounds(p).map((x) => x.item.source))].filter((s) => p.sources[s]?.audio !== false && !transcriptOf(s) && !skip(s));
+}
 /**
- * The sentences heard in the film: each transcript sentence over each source sound item that plays as the mix plays it (muted
- * tracks and items say nothing; when a sound track is solo only solo ones play), at least 0.3 s of it inside the item, in film
- * seconds. `span` gives an item's film start and end (default: resolveTimes). The music ducks under them (clipSpeech) and check
- * matches captions against them (check/rules.ts).
+ * The sentences heard in the film: each transcript sentence over each source sound item that plays as the mix plays it
+ * (playingSounds), at least 0.3 s of it inside the item, in film seconds. `span` gives an item's film start and end (default:
+ * resolveTimes). The music ducks under them (clipSpeech) and check matches captions against them (check/rules.ts).
  */
 export function heardSpeech(p: Project, transcriptOf: (source: string) => Transcript | null | undefined, span?: (id: string) => [number, number]): Array<{ item: HeardItem; level: number; t: [number, number]; text: string }> {
   const times = span ? null : resolveTimes(p), at = span ?? ((id: string): [number, number] => { const x = times!.get(id)!; return [x.start, x.end]; });
-  const solo = p.tracks.some((t) => (t.kind === 'audio' || t.kind === 'music' || t.kind === 'sfx') && !t.muted && (t as { solo?: boolean }).solo);
   const out: Array<{ item: HeardItem; level: number; t: [number, number]; text: string }> = [];
-  for (const t of p.tracks) {
-    if (t.kind !== 'audio' || t.muted || (solo && !(t as { solo?: boolean }).solo)) continue;
-    for (const c of t.items as HeardItem[]) {
-      const tr = transcriptOf(c.source);
-      if (!tr || c.muted) continue;
-      const [cs, ce] = at(c.id), level = (c.gain ?? 0) + ((t as { gain?: number }).gain ?? 0);
-      const film = (s: number) => cs + (s - c.in) / c.rate, srcEnd = c.in + (ce - cs) * c.rate;
-      for (const seg of tr.segments) {
-        if (!seg.text.trim()) continue;
-        // with word times, only the words the clip plays: a sentence its in or out point cuts is heard as the part inside (its
-        // whole text matched check's caption of that part to another sentence: acceptance films cap-acc-trip, cap-acc-rome)
-        const inside = seg.words?.filter((w) => { const m = (w.start + w.end) / 2; return m >= c.in && m <= srcEnd; });
-        if (seg.words?.length && inside) {
-          if (!inside.length) continue;
-          const a = Math.max(cs, film(inside[0].start)), b = Math.min(ce, film(inside[inside.length - 1].end));
-          if (b - a >= 0.3) out.push({ item: c, level, t: [a, b], text: inside.map((w) => w.word).join('').replace(/\s+/g, ' ').trim() });
-          continue;
-        }
-        const a = Math.max(cs, film(seg.start)), b = Math.min(ce, film(seg.end));
-        if (b - a >= 0.3) out.push({ item: c, level, t: [a, b], text: seg.text.trim() });
+  for (const { item: c, level } of playingSounds(p)) {
+    const tr = transcriptOf(c.source);
+    if (!tr) continue;
+    const [cs, ce] = at(c.id);
+    const film = (s: number) => cs + (s - c.in) / c.rate, srcEnd = c.in + (ce - cs) * c.rate;
+    for (const seg of tr.segments) {
+      if (!seg.text.trim()) continue;
+      // with word times, only the words the clip plays: a sentence its in or out point cuts is heard as the part inside (its
+      // whole text matched check's caption of that part to another sentence: acceptance films cap-acc-trip, cap-acc-rome)
+      const inside = seg.words?.filter((w) => { const m = (w.start + w.end) / 2; return m >= c.in && m <= srcEnd; });
+      if (seg.words?.length && inside) {
+        if (!inside.length) continue;
+        const a = Math.max(cs, film(inside[0].start)), b = Math.min(ce, film(inside[inside.length - 1].end));
+        if (b - a >= 0.3) out.push({ item: c, level, t: [a, b], text: inside.map((w) => w.word).join('').replace(/\s+/g, ' ').trim() });
+        continue;
       }
+      const a = Math.max(cs, film(seg.start)), b = Math.min(ce, film(seg.end));
+      if (b - a >= 0.3) out.push({ item: c, level, t: [a, b], text: seg.text.trim() });
     }
   }
   return out;

@@ -6,7 +6,7 @@ import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { flatlayClip, PANEL_FRAME, parseFly, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { readFly } from '../../packages/plugin-common/src/flatlay.ts';
 import { parseObjects } from '../../packages/plugin-common/src/flatlay/objects.ts';
-import { heardSpeech } from '../cut/mix.ts';
+import { heardSpeech, playingSounds, untranscribed } from '../cut/mix.ts';
 
 export type Level = 'error' | 'warn' | 'note';
 export interface Finding { level: Level; t?: [number, number]; ids?: string[]; msg: string; /** 'offline': material the page layer needs is missing (report.ts isOffline) */ code?: 'offline' }
@@ -220,7 +220,12 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
     const early = (it: any) => !!o.drawn?.early.has(it.id);
     const blind = shown.filter(({ it, s }) => s[0] < 1 && o.canvasText?.(it.type) && !measured(it)).map(({ it }) => it);
     const quick = !o.drawn && blind.length > 0 && blind.every((it) => o.reportsText?.(it.type)), ids = blind.map((it) => it.id);
-    if (!said && !shown.some(({ it, s }) => s[0] < 1 && (measured(it) ? early(it) : textOf(it) || early(it)))) out.push(blind.length
+    // a sound with no transcript playing in the first second: nobody can tell whether someone speaks there
+    const unheard = untranscribed(p, (src) => o.transcripts[src], (src) => !!p.sources[src] && !o.exists(p.sources[src].path))
+      .filter((src) => playingSounds(p).some(({ item }) => item.source === src && span(item.id)[0] < 1 && span(item.id)[1] > 0));
+    if (!said && !shown.some(({ it, s }) => s[0] < 1 && (measured(it) ? early(it) : textOf(it) || early(it)))) out.push(!blind.length && unheard.length
+      ? { level: 'note', t: [0, 1], msg: `開頭第一秒看不到字幕或字卡；素材 ${unheard.join('、')} 沒有逐字稿，不知道這一秒有沒有人說話：有人說話就沒問題，沒有的話第一秒放一句字卡／爆字` }
+      : blind.length
       ? { level: 'note', t: [0, 1], ids, msg: quick
         ? `開頭第一秒沒有人說話，也看不到字幕或字卡；${ids.join('、')} 在 canvas 上畫字，--quick 不量畫面：不加 --quick 再跑一次 check 才知道第一秒有沒有字`
         : `開頭第一秒沒有人說話，也看不到字幕或字卡；${ids.join('、')} 在 canvas 上畫字，check 看不到 canvas 上的字：它第一秒就有字就沒問題，沒有的話第一秒放一句字卡／爆字，或從講話的地方開始` }
@@ -271,6 +276,14 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
   out.push(...flatlayParamErrors(p));
   if (badT.length) out.push({ level: 'warn', t: span(badT[0].item.id), ids: badT.map((x) => x.item.id), msg: `標題的範本「${(badT[0].item as any).params.template}」不存在（${badT.length} 個標題）：npm run tellcut -- catalog TTL 列出全部，template 填 id` });
   return byTime(out);
+}
+
+/** The footage whose sound plays but has no transcript (not transcribed yet, cut --no-transcribe, a failed transcription): the
+ *  rules that go by what is heard cannot see anyone speak there, and would otherwise say nothing about it. Offline footage is
+ *  reported as such instead. Apart from modelChecks, whose tests mostly have no transcripts. */
+export function noTranscript(p: Project, o: Pick<ModelInput, 'exists' | 'transcripts'>): Finding[] {
+  const ids = untranscribed(p, (src) => o.transcripts[src], (src) => !!p.sources[src] && !o.exists(p.sources[src].path));
+  return ids.length ? [{ level: 'note', msg: `素材 ${ids.join('、')} 有聲音但沒有逐字稿（還在轉、用了 --no-transcribe 或轉失敗）：字幕對不對得上講話、可能漏字幕、開頭第一秒有沒有人說話都沒檢查，配樂也不會在這些講話下壓低；轉好逐字稿後重跑 cut 和 check` }] : [];
 }
 
 /** how the new block does what the old one did, where it takes more than the new block's name */

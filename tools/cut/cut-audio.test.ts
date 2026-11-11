@@ -255,3 +255,22 @@ test('c.level refuses points out of order or a gain over 1.5', () => {
   expect(() => c.level([[2, 1], [1, 0.5]])).toThrow(/順序/);
   expect(() => c.level([[0, 2]])).toThrow(/1\.5/);
 });
+
+test('save notes footage whose sound would duck the music but has no transcript (nothing ducks under it); none without music', async () => {
+  const c = fresh();
+  c.inv.sources[0].transcript = null;   // not transcribed yet
+  c.music('song');
+  c.clip('v', { from: 0, len: 4 });
+  await c.save();
+  expect(c.notes.join('\n')).toContain('素材 v 沒有逐字稿');
+  const quiet = fresh();
+  quiet.inv.sources[0].transcript = null;
+  quiet.clip('v', { from: 0, len: 4 });
+  await quiet.save();
+  expect(quiet.notes.join('\n')).not.toMatch(/逐字稿/);
+  const heard = fresh();   // transcribed: says nothing
+  heard.music('song');
+  heard.clip('v', { from: 0, len: 4 });
+  await heard.save();
+  expect(heard.notes.join('\n')).not.toMatch(/逐字稿/);
+});

@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { parseProject, resolveTimes, type Transcript } from '@tellcut/engine';
 import { analysisFiles, extrasFiles, findPreset, loadProjectFx, playerBuildStale, projectRegistry, readBurned, rebuildPlayer, readTranscript, TELLCUT_ROOT, type Burned } from '@tellcut/media-node';
 import { edgeFindings } from './check/edges.ts';
-import { canvasFxFiles, chosenSpec, fxChecks, fxParamTypeChecks, modelChecks, oldBlocks, flatlayHandOff, outsideFiles, presetChecks, reportsCanvasText, type Finding } from './check/rules.ts';
+import { canvasFxFiles, chosenSpec, fxChecks, fxParamTypeChecks, modelChecks, noTranscript, oldBlocks, flatlayHandOff, outsideFiles, presetChecks, reportsCanvasText, type Finding } from './check/rules.ts';
 import { formatReport, isOffline, pageLayer, pageLayerSkip } from './check/report.ts';
 import { renderedChecks, type Drawn } from './check/page.ts';
 import { clipBars, letterboxFindings } from './check/letterbox.ts';
@@ -41,7 +41,7 @@ const canvasTypes = await typesOf(canvasFxFiles(p.meta.fx ?? [], readFx)), repor
 // the model layer again once the page layer has measured what the fx drew (its first-second and reading-time rules use it)
 const model = (drawn?: Drawn) => modelChecks(p, { exists: (path) => existsSync(resolve(dir, path)), transcripts, knownFonts, params: (t) => registry.item(t)?.params, canvasText: (t) => canvasTypes.has(t), reportsText: (t) => reportTypes.has(t), drawn });
 const modelFindings = model();
-let findings: Finding[] = [...fx.errors.map((e): Finding => ({ level: 'error', msg: `fx 載入失敗 ${e.path}：${e.message}` })), ...fx.warnings.map((w): Finding => ({ level: 'warn', msg: `fx ${w.path}：${w.message}` })), ...fxChecks(Object.fromEntries([...(p.meta.fx ?? []), ...projectStyleFiles(dir)].filter((f) => existsSync(join(dir, f))).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))), ...fxParamTypeChecks([...(fx.plugin.items ?? []), ...(fx.plugin.sfx ?? [])]), ...modelFindings, ...outsideFiles(p, dir, TELLCUT_ROOT)];
+let findings: Finding[] = [...fx.errors.map((e): Finding => ({ level: 'error', msg: `fx 載入失敗 ${e.path}：${e.message}` })), ...fx.warnings.map((w): Finding => ({ level: 'warn', msg: `fx ${w.path}：${w.message}` })), ...fxChecks(Object.fromEntries([...(p.meta.fx ?? []), ...projectStyleFiles(dir)].filter((f) => existsSync(join(dir, f))).map((f) => [f, readFileSync(join(dir, f), 'utf8')]))), ...fxParamTypeChecks([...(fx.plugin.items ?? []), ...(fx.plugin.sfx ?? [])]), ...modelFindings, ...noTranscript(p, { exists: (path) => existsSync(resolve(dir, path)), transcripts }), ...outsideFiles(p, dir, TELLCUT_ROOT)];
 // the length and ratio of the preset the project was made from (where the server reads presets from)
 const made = p.meta.preset && findPreset({ repo: join(TELLCUT_ROOT, 'guides', 'presets'), user: join(TELLCUT_ROOT, 'projects', '_presets') }, p.meta.preset.id);
 findings.push(...presetChecks(p, made ? chosenSpec({ id: made.id, name: made.name.zh ?? made.name.en ?? made.id, length: made.length, ratios: made.ratios }, p.meta.preset?.fields) : null));
