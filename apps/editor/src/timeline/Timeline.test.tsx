@@ -140,6 +140,22 @@ test('clicking an empty spot on a track moves the playhead there; a marquee drag
   expect(calls.filter((c) => c[0] === 'seek')).toEqual([]);
 });
 
+test('Shift + a marquee adds what the box touches to the selection', async () => {
+  const box = async (shiftKey: boolean) => {
+    const { root, editor, calls } = mount({ selection: ['c1'] });
+    await act(() => render(<Timeline editor={editor} />, root));
+    const rows = root.querySelector<HTMLElement>('.rows')!;
+    rows.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, shiftKey, clientX: 176 + 450, clientY: 2 }));   // 9 s, past c1
+    window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, shiftKey, clientX: 176 + 520, clientY: 300 }));
+    window.dispatchEvent(new MouseEvent('mouseup', { shiftKey, clientX: 176 + 520, clientY: 300 }));
+    return calls.filter((c) => c[0] === 'select').at(-1)![1] as string[];
+  };
+  const plain = await box(false);
+  expect(plain.length).toBeGreaterThan(0);
+  expect(plain).not.toContain('c1');
+  expect(await box(true)).toEqual(['c1', ...plain]);
+});
+
 test('the track area scrolls vertically: a plain wheel is left to it, Shift+wheel scrolls time', async () => {
   const { root, editor, store } = mount();
   await act(() => render(<Timeline editor={editor} />, root));

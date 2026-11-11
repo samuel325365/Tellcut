@@ -10,13 +10,15 @@ export function startMarquee(e: MouseEvent, g: GestureCtx, show: (m: Marquee | n
   const rect = g.rowsEl.getBoundingClientRect(), y = (cy: number) => cy - rect.top, x = (cx: number) => cx - rect.left - HEADER_W;
   if (x(e.clientX) < 0) return;
   const start = { x0: x(e.clientX), y0: y(e.clientY) };
+  // Shift adds what the box touches to the selection held at the press
+  const kept = e.shiftKey ? g.selection : [];
   let dragged = false;
   const move = (m: MouseEvent) => {
     if (!dragged && Math.abs(m.clientX - e.clientX) < 3 && Math.abs(m.clientY - e.clientY) < 3) return;
     dragged = true;
     const r = { ...start, x1: x(m.clientX), y1: y(m.clientY) };
     show(r);
-    g.editor.select(itemsInRect(g.p, g.times, g.rows(), g.view, r));
+    g.editor.select([...new Set([...kept, ...itemsInRect(g.p, g.times, g.rows(), g.view, r)])]);
   };
   if (!e.shiftKey) g.editor.select([]);
   follow(move, (m) => {
