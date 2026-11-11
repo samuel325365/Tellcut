@@ -174,6 +174,38 @@ test('the same footage at another path in another project is shared once its con
   expect(await siblingFolders(analysisFiles(b, mine).dir)).toContain(fa.dir);   // so a transcript being made in a is waited for, not made twice
 });
 
+test('a file dropped on the editor (media/import, its time from the browser in whole ms) shares with the original either way', async () => {
+  // the original's time has a fraction of a millisecond (NTFS, APFS); the browser's lastModified, and so the upload's, has none
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), fine = T.getTime() / 1000 + 0.1234567;
+  const a = footage(projects, 'a', { 'media/clip.mp4': bytes(1) }), orig = join(a, 'media/clip.mp4');
+  utimesSync(orig, fine, fine);
+  const whole = new Date(Math.floor(statSync(orig).mtimeMs));
+  const b = footage(projects, 'b', { 'media/import/clip.mp4': bytes(1) }), up = join(b, 'media/import/clip.mp4');
+  utimesSync(up, whole, whole);
+  expect(statSync(orig).mtimeMs).not.toBe(statSync(up).mtimeMs);
+  analysed(a, orig);
+  expect(await shareAnalysis(b, up)).toBeGreaterThan(5);
+  expect(readFileSync(extrasFiles(b, up).transcript, 'utf8')).toBe(`made for ${orig}`);
+  // the other way round: the upload analysed first, the original's project takes it
+  const back = mkdtempSync(join(tmpdir(), 'share-')), u = footage(back, 'u', { 'media/import/clip.mp4': bytes(1) }), up2 = join(u, 'media/import/clip.mp4');
+  utimesSync(up2, whole, whole); analysed(u, up2);
+  const c = footage(back, 'c', { 'media/clip.mp4': bytes(1) }), orig2 = join(c, 'media/clip.mp4');
+  utimesSync(orig2, fine, fine);
+  expect(await shareAnalysis(c, orig2)).toBeGreaterThan(5);
+  expect(readFileSync(extrasFiles(c, orig2).transcript, 'utf8')).toBe(`made for ${up2}`);
+  // another file of that size and nearly that time never shares
+  const d = footage(projects, 'd', { 'media/import/clip-2.mp4': bytes(2) }), other = join(d, 'media/import/clip-2.mp4');
+  utimesSync(other, whole, whole);
+  expect(await shareAnalysis(d, other)).toBe(0);
+  // nor does an upload a millisecond and more apart, nor a file that is no upload, with only the original to share with
+  const alone = mkdtempSync(join(tmpdir(), 'share-')), x = footage(alone, 'x', { 'media/clip.mp4': bytes(1) }), o2 = join(x, 'media/clip.mp4');
+  utimesSync(o2, fine, fine); analysed(x, o2);
+  const e = footage(alone, 'e', { 'media/import/clip.mp4': bytes(1), 'media/clip.mp4': bytes(1) }), later = new Date(whole.getTime() + 2);
+  utimesSync(join(e, 'media/import/clip.mp4'), later, later); utimesSync(join(e, 'media/clip.mp4'), whole, whole);
+  expect(await shareAnalysis(e, join(e, 'media/import/clip.mp4'))).toBe(0);
+  expect(await shareAnalysis(e, join(e, 'media/clip.mp4'))).toBe(0);
+});
+
 test('two different files of one size and time never share, whether the other is still there or was renamed', async () => {
   const projects = mkdtempSync(join(tmpdir(), 'share-'));
   // the other one still there (a dual-track recorder's two WAVs)
