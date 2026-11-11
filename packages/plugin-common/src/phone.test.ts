@@ -1,6 +1,6 @@
 // Group B1 (2026-10-23): the shared phone pieces (phone.ts), common.notify and common.lockscreen.
 import { defaultSafe, prog, eOut3 } from '@tellcut/engine';
-import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, tileText, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
+import { caretOn, fmtCount, glyphSvg, ICON_KINDS, initialOf, parseSteps, phoneScreen, rippleAt, screenFrame, stackAt, stackLayout, statusIconsSvg, stepAt, svgIn, tileText, timeSpan, typed, typedSpan, type StackItem } from './phone.ts';
 import { roundRectUrl } from './window.ts';
 import { noteLayout, notify, parseNotes, withLockText } from './notify.ts';
 import { clockAt, liveAt, liveSpans, lockscreen } from './lockscreen.ts';
@@ -194,4 +194,16 @@ test('typing goes a grapheme at a time: a family emoji or a flag comes in whole,
   expect(typed('x', 0.02, { at: 0, cps: 0.1, erase: `${flag}${fam}` }).s).toBe(flag);
   expect(typedSpan(`${flag}${fam}`, 0.5, 0, 1)).toBe(flag);
   expect(typedSpan(`${flag}${fam}`, 0.6, 0, 1, 'delete')).toBe(flag);
+});
+
+test('svgIn: the SVG is set only when its key changes; without a maker the key is the SVG', () => {
+  const el = { dataset: {} as Record<string, string>, innerHTML: '' } as unknown as HTMLElement;
+  let made = 0;
+  const make = () => { made++; return '<svg>a</svg>'; };
+  svgIn(el, 'k1', make); svgIn(el, 'k1', make);
+  expect([made, el.innerHTML]).toEqual([1, '<svg>a</svg>']);
+  svgIn(el, '<svg>b</svg>'); svgIn(el, '<svg>b</svg>');
+  expect(el.innerHTML).toBe('<svg>b</svg>');
+  el.innerHTML = 'touched'; svgIn(el, '<svg>b</svg>');
+  expect(el.innerHTML).toBe('touched');
 });

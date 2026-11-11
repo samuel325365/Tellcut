@@ -16,7 +16,7 @@
 import { clamp, coverPlacement, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, withDefaults, type Crop, type ItemType, type MediaApi, type Theme } from '@tellcut/engine';
 import { countAt, popAt } from './reels.ts';
 import { asFrame, imagesReady, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
-import { DEVICES, drawStatusBar, glyphSvg, parseSteps, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
+import { DEVICES, drawStatusBar, glyphSvg, parseSteps, svgIn, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
 import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
@@ -189,7 +189,6 @@ interface S {
 }
 const asCrop = (c: unknown, d: Crop = { x: 0.5, y: 0.5, zoom: 1 }): Crop => { const o = (c ?? {}) as Partial<Crop>; return { x: num(o.x, d.x), y: num(o.y, d.y), zoom: num(o.zoom, d.zoom) }; };
 /** put svg in el, rebuilt only when it changes */
-const svgIn = (el: HTMLElement, key: string, svg: () => string) => { if (el.dataset.k !== key) { el.dataset.k = key; el.innerHTML = svg(); } };
 /** the memory card on a screen Hd design px tall */
 export const cardRect = (Hd: number): Rect => [60, 440, 960, Hd - 770];
 

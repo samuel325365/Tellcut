@@ -200,6 +200,8 @@ export const ICON_KINDS = Object.keys(GLYPH);
 /** a kind's own glyph: a name like "constructor" or "toString" found the object's prototype instead and threw drawing it */
 const glyphOf = (kind: string) => (Object.hasOwn(GLYPH, kind) ? GLYPH[kind] : undefined);
 const FALLBACK: [string, string] = ['#adb5bd', '#495057'];
+/** sets `el`'s SVG only when `key` changed (draw runs every frame; `make` runs only then); without `make` the key is the SVG itself */
+export function svgIn(el: HTMLElement, key: string, make?: () => string) { if (el.dataset.k !== key) { el.dataset.k = key; el.innerHTML = make ? make() : key; } }
 /** a glyph alone as svg (no tile), in `color` (cut-outs in `cut`): for buttons and chips */
 export function glyphSvg(kind: string, color = '#fff', cut = 'transparent'): string {
   const g = glyphOf(kind) ?? GLYPH.app;

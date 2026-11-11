@@ -20,7 +20,7 @@ import { activeAt, clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, esc, fitLin
   type Crop, type ItemCtx, type ItemType, type MediaApi, type Project, type Theme, type Times, type VideoItem } from '@tellcut/engine';
 import { standIn } from './album.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
-import { avatarEl, caretOn, DEVICES, drawAvatar, drawStatusBar, drawType, glyphSvg, parseSteps, phoneEls, phoneView, placePhone, statusBarEl, timeSpan, typedSpan, typeEl,
+import { avatarEl, caretOn, DEVICES, drawAvatar, drawStatusBar, drawType, glyphSvg, parseSteps, svgIn, phoneEls, phoneView, placePhone, statusBarEl, timeSpan, typedSpan, typeEl,
   type Device, type PhoneEls, type StatusBar, type TypeEl } from './phone.ts';
 import { fitPx, lineAbs, nl, EMOJI_STACK } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
@@ -296,7 +296,6 @@ const GL = {
   /** the little tail at a bubble's top corner (drawn for the right side; mirrored for the left) */
   tail: (c: string) => SVG('0 0 26 30', `<path d="M0 0H8Q22 0 26 4Q14 10 6 30H0z" fill="${esc(c)}"/>`),
 };
-const svgIn = (el: HTMLElement, svg: string) => { if (el.dataset.k !== svg) { el.dataset.k = svg; el.innerHTML = svg; } };
 
 // ---------------------------------------------------------------- the block
 interface P {

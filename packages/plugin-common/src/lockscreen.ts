@@ -4,7 +4,7 @@
 // parameter; times are from the item's start. On 9:16 it covers the frame; on a wide or square frame it is a phone in the middle
 // (phone.ts). Notifications go on top as common.notify (y 0.43).
 import { clamp, cssCamel, eOut3 as eOut, h, lerp, textEm, type ItemType } from '@tellcut/engine';
-import { DEVICES, drawStatusBar, glyphSvg, iconTile, parseSteps, phoneEls, phoneView, placePhone, statusBarEl, stepAt, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
+import { DEVICES, drawStatusBar, glyphSvg, iconTile, parseSteps, phoneEls, phoneView, placePhone, statusBarEl, stepAt, svgIn, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
 import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
 
@@ -184,7 +184,7 @@ export const lockscreen: ItemType<P, S> = {
     const icons = String(p.dockIcons ?? '').split(/[,，]/).map((x) => x.trim()).filter(Boolean);
     s.buttons.forEach((b, i) => {
       const kind = icons[i] ?? '';
-      if (b.dataset.k !== kind) { b.dataset.k = kind; b.innerHTML = kind ? `<div style="position:absolute;inset:26%">${glyphSvg(kind, '#fff', 'rgba(0,0,0,0.25)')}</div>` : ''; }
+      svgIn(b, kind, () => (kind ? `<div style="position:absolute;inset:26%">${glyphSvg(kind, '#fff', 'rgba(0,0,0,0.25)')}</div>` : ''));
       cssCamel(b, { display: dock && kind ? 'block' : 'none', left: X(i ? 930 - 62 : 150 - 62), top: X(Hd - 190 - 62), width: X(124), height: X(124), borderRadius: '50%', background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(6px)' });
     });
     const hints = parseSteps(p.hint), hs = stepAt(hints, t), hp = hs.cur ? clamp((t - hs.cur.t) / 0.3) : 0;
@@ -196,7 +196,7 @@ export const lockscreen: ItemType<P, S> = {
     };
     drawHint(s.hints[0], hs.prev?.v[0] ?? '', hs.prev && hp < 1 ? 1 - hp : 0, false, 0);
     drawHint(s.hints[1], hs.cur?.v[0] ?? '', hs.cur ? (hs.prev ? hp : hs.cur.t <= 0 ? 0.95 : hp * 0.95) : 0, up, bounce);
-    if (s.chevron.dataset.k !== p.accent) { s.chevron.dataset.k = p.accent; s.chevron.innerHTML = CHEVRON(p.accent); }
+    svgIn(s.chevron, p.accent, () => CHEVRON(p.accent));
     cssCamel(s.chevron, { display: dock && up ? 'block' : 'none', left: X(500), top: X(hy - 92 - bounce), width: X(80), height: X(40), opacity: String(hp) });
     cssCamel(s.homeBar, { display: dock ? 'block' : 'none', left: X(390), top: X(Hd - 52), width: X(300), height: X(11), borderRadius: X(6), background: withAlpha(p.color, 0.9) });
   },

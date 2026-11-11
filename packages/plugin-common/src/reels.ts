@@ -9,7 +9,7 @@
 // On 9:16 it covers the frame; on a wide or square frame it is a phone in the middle (phone.ts).
 import { clamp, cssCamel, eBack, eIO3, eOut3 as eOut, esc, h, lerp, textEm, type ItemType } from '@tellcut/engine';
 import { liveSpans } from './lockscreen.ts';
-import { avatarEl, DEVICES, drawAvatar, drawRipple, fmtCount, glyphSvg, parseSteps, phoneEls, phoneView, placePhone, rippleAt, timeSpan, type CountStyle, type Device, type PhoneEls } from './phone.ts';
+import { avatarEl, DEVICES, drawAvatar, drawRipple, fmtCount, glyphSvg, parseSteps, svgIn, phoneEls, phoneView, placePhone, rippleAt, timeSpan, type CountStyle, type Device, type PhoneEls } from './phone.ts';
 import { EMOJI_STACK, fitPx, lineAbs } from './text.ts';
 import { withAlpha } from './color.ts';
 import { wordsLang } from './words.ts';
@@ -91,7 +91,6 @@ const G = {
 type Glyph = keyof typeof G;
 const g1 = (n: Glyph, c: string) => (G as unknown as Record<string, (c: string) => string>)[n](c);
 /** put a glyph in el, rebuilt only when it changes */
-function glyph(el: HTMLElement, key: string, svg: () => string) { if (el.dataset.k !== key) { el.dataset.k = key; el.innerHTML = svg(); } }
 
 interface P {
   mode: 'feed' | 'end'; segs: string; slow: number; hook: string; title: string; count: boolean; handle: string; place: string; avatar: string; avatarColor: string;
@@ -233,12 +232,12 @@ export const reels: ItemType<P, S> = {
       cssCamel(s.headRow, { left: X(128), top: X(y0 + 104), transform: 'translateY(-50%)', textShadow: shadow(8) });
       cssCamel(s.name, { fontSize: X(34 * headSize), fontWeight: '700' });
       cssCamel(s.place, { fontSize: X(30 * headSize), fontWeight: '500', opacity: '0.85' });
-      glyph(s.dots, `d${p.color}`, () => G.dots(p.color)); glyph(s.close, `c${p.color}`, () => G.close(p.color));
+      svgIn(s.dots, `d${p.color}`, () => G.dots(p.color)); svgIn(s.close, `c${p.color}`, () => G.close(p.color));
       cssCamel(s.dots, { left: X(910), top: X(y0 + 84), width: X(56), height: X(40), filter: `drop-shadow(${shadow(6)})` });
       cssCamel(s.close, { left: X(1004), top: X(y0 + 82), width: X(44), height: X(44), filter: `drop-shadow(${shadow(6)})` });
       // the rewind badge at the end of the cold open
       const rw = hook && t > hook.b - 0.55 && t < hook.b ? Math.sin((Math.PI * (t - (hook.b - 0.55))) / 0.55) : 0;
-      glyph(s.rewind, `r${p.color}`, () => `<div style="position:absolute;inset:28% 30% 28% 26%">${G.rewind(p.color)}</div>`);
+      svgIn(s.rewind, `r${p.color}`, () => `<div style="position:absolute;inset:28% 30% 28% 26%">${G.rewind(p.color)}</div>`);
       cssCamel(s.rewind, { display: rw > 0 ? 'block' : 'none', left: X(430), top: X(Hd * 0.427 - 110), width: X(220), height: X(220), borderRadius: '50%', background: 'rgba(0,0,0,0.45)', opacity: String(rw) });
       // the title sticker and its segment chip
       const tin = Math.max(0, eBack(clamp(t / 0.35)));
@@ -256,9 +255,9 @@ export const reels: ItemType<P, S> = {
       const col = [['heart', base - 616], ['comment', base - 464], ['share', base - 318], ['save', base - 174]] as const;
       for (const [key, y] of col) {
         const el = s.btns[key], size = key === 'save' ? 62 : 68;
-        if (key === 'heart') glyph(el, `h${liked}${p.color}${p.heart}`, () => G.heart(p.color, liked ? p.heart : null));
-        else if (key === 'save') glyph(el, `s${saved}${p.color}`, () => G.save(p.color, saved));
-        else glyph(el, `${key}${p.color}`, () => g1(key, p.color));
+        if (key === 'heart') svgIn(el, `h${liked}${p.color}${p.heart}`, () => G.heart(p.color, liked ? p.heart : null));
+        else if (key === 'save') svgIn(el, `s${saved}${p.color}`, () => G.save(p.color, saved));
+        else svgIn(el, `${key}${p.color}`, () => g1(key, p.color));
         const sc2 = key === 'heart' ? hs : key === 'save' && sv >= 0 ? popAt(t, sv, 0.4) : 1;
         cssCamel(el, { left: X(cx - size / 2), top: X(y - size / 2), width: X(size), height: X(size), transform: `scale(${sc2})`, filter: `drop-shadow(${shadow(8)})` });
       }
@@ -285,7 +284,7 @@ export const reels: ItemType<P, S> = {
       cssCamel(s.cap, { display: p.caption ? 'block' : 'none', left: X(44), top: X(yA + 62), transform: 'translateY(-50%)', fontSize: X(fitPx(`${p.caption}${moreGap}${p.more}`, 30, 860)), fontWeight: '500', textShadow: shadow(8) });
       cssCamel(s.capMore, { opacity: '0.7', fontWeight: '700' });
       const yM = yA + 114, music = !!p.music;
-      glyph(s.note, `n${p.color}`, () => G.note(p.color));
+      svgIn(s.note, `n${p.color}`, () => G.note(p.color));
       cssCamel(s.note, { display: music ? 'block' : 'none', left: X(40), top: X(yM - 18), width: X(36), height: X(36), filter: `drop-shadow(${shadow(6)})` });
       // the marquee: copies of the line, each as wide as the line plus a gap, sliding left at 70 px a second; a short line needs more
       // than two to keep the 560-unit window full (made as the line asks, the same for every frame)
@@ -301,7 +300,7 @@ export const reels: ItemType<P, S> = {
       cssCamel(s.navBar, { display: p.nav ? 'block' : 'none', left: '0', top: X(base), width: '100%', height: X(navH + 2), background: '#000', borderTop: `${2 * k}px solid rgba(255,255,255,0.14)` });
       const ny = base + 72, names: Glyph[] = ['home', 'search', 'plus', 'reel'];
       s.navIcons.forEach((el, i) => {
-        glyph(el, `${names[i]}${p.color}`, () => g1(names[i], p.color));
+        svgIn(el, `${names[i]}${p.color}`, () => g1(names[i], p.color));
         cssCamel(el, { display: p.nav ? 'block' : 'none', left: X(108 + i * 216 - 34), top: X(ny - 34), width: X(68), height: X(68) });
       });
       drawAvatar(s.profile, { name: p.handle, text: p.avatar, color: p.avatarColor, size: 60 * k, font: p.hand });
@@ -314,7 +313,7 @@ export const reels: ItemType<P, S> = {
       const cu = Math.max(0, eBack(clamp((t - qa) / 0.4)));
       cssCamel(s.card, { display: t >= qa ? 'block' : 'none', left: X(120), top: X(Hd * 0.29), width: X(840), boxSizing: 'border-box', padding: `${X(26)} ${X(32)} ${X(30)}`, borderRadius: X(32),
         background: withAlpha(p.paper, 0.97), color: p.ink, boxShadow: `0 ${14 * k}px ${40 * k}px rgba(0,0,0,0.35)`, transformOrigin: '50% 0', opacity: String(clamp((t - qa) / 0.2)), transform: `scale(${0.85 + 0.15 * cu})` });
-      glyph(s.pinIcon, `p${p.ink}`, () => glyphSvg('pin', withAlpha(p.ink, 0.5), p.paper));
+      svgIn(s.pinIcon, `p${p.ink}`, () => glyphSvg('pin', withAlpha(p.ink, 0.5), p.paper));
       cssCamel(s.pinIcon, { width: X(32), height: X(32), marginRight: X(8) });
       s.pinText.textContent = p.pinLabel;
       cssCamel(s.pin, { fontSize: X(28), fontWeight: '700', color: withAlpha(p.ink, 0.5), marginBottom: X(16) });
@@ -340,7 +339,7 @@ export const reels: ItemType<P, S> = {
       drawRow(s.rows[1], p.replyName || p.handle, p.reply, p.avatarColor, 70, true, clamp((t - ra) / 0.25), (1 - eOut(clamp((t - ra) / 0.3))) * 24);
       // the "saved" toast
       const tu = t - sa, tA = sa < 0 || !p.toast || tu < 0 ? 0 : tu < 0.25 ? tu / 0.25 : tu < 1.4 ? 1 : clamp(1 - (tu - 1.4) / 0.3);
-      glyph(s.toastIcon, `t${p.color}`, () => G.save('#fff', true));
+      svgIn(s.toastIcon, `t${p.color}`, () => G.save('#fff', true));
       cssCamel(s.toastIcon, { width: X(34), height: X(34), marginRight: X(14) });
       s.toastText.textContent = p.toast;
       cssCamel(s.toast, { display: tA > 0 ? 'flex' : 'none', left: '50%', top: X(Hd * 0.23), padding: `${X(18)} ${X(40)}`, borderRadius: X(40), background: 'rgba(20,20,20,0.88)', color: '#fff',
@@ -362,7 +361,7 @@ export const reels: ItemType<P, S> = {
       // where to share: drawn glyphs, no names (no real app's mark)
       const kinds: Glyph[] = ['link', 'share', 'add', 'dots'];
       s.targets.forEach((el, i) => {
-        glyph(el, kinds[i], () => `<div style="position:absolute;inset:26%">${g1(kinds[i], '#333')}</div>`);
+        svgIn(el, kinds[i], () => `<div style="position:absolute;inset:26%">${g1(kinds[i], '#333')}</div>`);
         cssCamel(el, { left: X(210 + i * 220 - 62), top: X(400 - 62), width: X(124), height: X(124), borderRadius: '50%', background: '#e9ecef' });
       });
     }

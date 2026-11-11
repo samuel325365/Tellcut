@@ -18,7 +18,7 @@
 // Fingers are common.touch (searchPoint gives where the picked row, the box and the play button are); white flashes core.flash.
 import { clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, textEm, withDefaults, type ItemType, type Theme } from '@tellcut/engine';
 import { asFrame, punch } from './window.ts';
-import { caretOn, DEVICES, drawStatusBar, drawType, glyphSvg, parseSteps, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, typed, typeEl,
+import { caretOn, DEVICES, drawStatusBar, drawType, glyphSvg, parseSteps, svgIn, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, typed, typeEl,
   type Device, type PhoneEls, type StatusBar, type TypeEl } from './phone.ts';
 import { EMOJI_STACK, fitPx, lineAbs, nl } from './text.ts';
 import { withAlpha } from './color.ts';
@@ -139,7 +139,6 @@ interface S {
   ph: PhoneEls; veil: HTMLElement; pane: HTMLElement; base: HTMLElement; ui: HTMLElement; key: string;
   sb: StatusBar; R: Record<string, HTMLElement>; L: Record<string, HTMLElement[]>; bar: Bar | null;
 }
-const svgIn = (el: HTMLElement, svg: string) => { if (el.dataset.k !== svg) { el.dataset.k = svg; el.innerHTML = svg; } };
 const SVG = (inner: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%" style="display:block;overflow:visible">${inner}</svg>`;
 const CHEV = (c: string) => SVG(`<path d="M26 38l24 24 24-24" fill="none" stroke="${c}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`);
 const PLAY = (c: string, bg: string) => SVG(`<circle cx="50" cy="50" r="46" fill="${bg}" stroke="${c}" stroke-width="5"/><path d="M40 28l34 22-34 22z" fill="${c}"/>`);

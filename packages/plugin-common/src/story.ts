@@ -6,7 +6,7 @@
 // common.tag's label, common.hangtag and common.tag / common.caption; a ring timer is common.countdown.)
 // On 9:16 it uses the frame; on a wide or square frame it sits on the same phone as common.reels.
 import { clamp, cssCamel, eBack, eIO3, eOut3 as eOut, fitLines, h, type ItemType } from '@tellcut/engine';
-import { DEVICES, glyphSvg, ICON_KINDS, phoneEls, phoneView, placePhone, type Device, type PhoneEls } from './phone.ts';
+import { DEVICES, glyphSvg, ICON_KINDS, phoneEls, phoneView, placePhone, svgIn, type Device, type PhoneEls } from './phone.ts';
 import { EMOJI_STACK, fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 import { WORDS, wordsLang, type WordsLang } from './words.ts';
@@ -113,7 +113,7 @@ export const story: ItemType<P, S> = {
       cssCamel(o.fill, { left: '0', top: '0', bottom: '0', width: `${(voted ? share * u : 0) * 100}%`, borderRadius: X(43), background: grad });
       o.label.textContent = pl.opts[i];
       cssCamel(o.label, { left: X(30), top: '50%', transform: 'translateY(-50%)', fontSize: X(fitPx(pl.opts[i], 46, 430)), fontWeight: '700' });
-      if (o.tick.dataset.k !== p.ink) { o.tick.dataset.k = p.ink; o.tick.innerHTML = glyphSvg('check', p.ink); }
+      svgIn(o.tick, p.ink, () => glyphSvg('check', p.ink));
       cssCamel(o.tick, { display: ticked ? 'block' : 'none', right: X(150), top: X(21), width: X(44), height: X(44), opacity: String(clamp((t - p.at) / 0.2)) });
       o.pct.textContent = `${Math.round(share * u * 100)}%`;
       cssCamel(o.pct, { display: voted ? 'block' : 'none', right: X(30), top: '50%', transform: 'translateY(-50%)', fontSize: X(44), fontWeight: '900', fontVariantNumeric: 'tabular-nums', opacity: String(clamp((t - p.at) / 0.2)) });
