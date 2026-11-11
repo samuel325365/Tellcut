@@ -45,7 +45,7 @@ test('travel: the title first, each scene’s narration with its shots and capti
   expect(clips[1].transitionIn).toEqual({ type: 'dissolve', dur: 0.4 });
   const lastClip = times.get(clips[2].id)!;
   expect(lastClip.end).toBeCloseTo(voices[1].end + 0.5 + 1.5, 2);                       // the last scene lingers lead + 1.5 s
-  expect(RECIPES.travel.notes.join()).toContain('最後一場在旁白結束後多留 lead＋1.5 秒（預設 2 秒）');
+  expect(RECIPES.travel.notes!.join()).toContain('最後一場在旁白結束後多留 lead＋1.5 秒（預設 2 秒）');
   const text = track(p, 'text');
   expect(text.filter((i) => i.type === 'common.caption').map((i) => i.params.text)).toEqual(['第一句', '第二句', '最後一句']);
   expect(text.find((i) => i.type === 'common.header')).toMatchObject({ params: { text: '城南宮' } });
@@ -263,7 +263,7 @@ test('hook on a 9:16 film keeps badge and tags under the top 11.5 % the app cove
   expect(frame[1]).toBeGreaterThanOrEqual(tags.params.y + 0.03);                    // under the row of tags
   expect(frame[1] + frame[3]).toBeCloseTo(0.62, 3);
   // the recipe's note says the same stack (an agent places its own items by it)
-  const note = RECIPES.hook.notes.find((n) => n.startsWith('版面由上到下'))!;
+  const note = RECIPES.hook.notes!.find((n) => n.startsWith('版面由上到下'))!;
   expect(note).toContain(`9:16 預設 ${top}`);
   expect(note).toContain(`標籤在徽章正下方（9:16 約 ${tags.params.y.toFixed(2)}）`);
   expect(note).toContain(`面板從標籤下方（9:16 約 ${frame[1].toFixed(2)}）到 0.62`);
