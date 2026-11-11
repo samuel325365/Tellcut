@@ -76,6 +76,56 @@ test('another project transcribing or analysing the same footage right now is wa
   expect(done).toBe(true);
 }, 120000);
 
+test('the same new footage analysed in two projects at once in one process is made once, the other project gets hard links', async () => {
+  // one server, the same file dropped on two projects: this process's own analysis.lock never counted as held (lockHolder)
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), src = join(projects, 'clip.mp4');
+  await makePhoneVideo(src, { seconds: 1 });
+  const dirs = ['a', 'b'].map((x) => { mkdirSync(join(projects, x)); return join(projects, x); });
+  const steps = dirs.map(() => [] as string[]);
+  // and the same project asked twice meanwhile (an overview beside the analyze job) waits too, rather than for itself
+  await Promise.all([...dirs, dirs[0]].map((d, i) => analyzeSource(d, src, { onStep: (s) => steps[i % 2].push(s) })));
+  expect(steps.map((s) => s.length).sort()).toEqual([0, 4]);                        // one made it, step by step
+  const [fa, fb] = dirs.map((d) => analysisFiles(d, src));
+  expect(analysisDone(fa, src) && analysisDone(fb, src)).toBe(true);
+  for (const k of ['proxy', 'thumbs', 'thumbIndex', 'cuts', 'peaks'] as const) expect(statSync(fb[k]).ino).toBe(statSync(fa[k]).ino);
+}, 120000);
+
+test('when the first of two analyses of the same footage is aborted, the one waiting for it does the work itself', async () => {
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), src = join(projects, 'clip.mp4');
+  await makePhoneVideo(src, { seconds: 1 });
+  const dirs = ['a', 'b'].map((x) => { mkdirSync(join(projects, x)); return join(projects, x); });
+  const acs = dirs.map(() => new AbortController()), steps = dirs.map(() => [] as string[]);
+  let first = -1;
+  // whichever starts first is aborted as it starts its proxy
+  const runs = dirs.map((d, i) => analyzeSource(d, src, { signal: acs[i].signal, onStep: (s) => {
+    steps[i].push(s);
+    if (first < 0) { first = i; acs[i].abort(); }
+  } }).then(() => 'done', (e: Error) => e.name));
+  const results = await Promise.all(runs), other = 1 - first;
+  expect(results[first]).toBe('AbortError');
+  expect(results[other]).toBe('done');
+  expect(steps[other]).toEqual(['proxy', 'thumbs', 'cuts', 'peaks']);
+  expect(analysisDone(analysisFiles(dirs[other], src), src)).toBe(true);
+  expect(analysisDone(analysisFiles(dirs[first], src), src)).toBe(false);
+}, 120000);
+
+test('an analysis waiting for the same footage in this process stops on its own signal', async () => {
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), src = join(projects, 'clip.mp4');
+  await makePhoneVideo(src, { seconds: 1 });
+  const dirs = ['a', 'b'].map((x) => { mkdirSync(join(projects, x)); return join(projects, x); });
+  const ac = new AbortController(), steps: string[] = [];
+  let started!: () => void;
+  const going = new Promise<void>((r) => { started = r; });
+  const a = analyzeSource(dirs[0], src, { onStep: (s) => { steps.push(s); started(); } });
+  await going;                                                                     // a is making it
+  const b = analyzeSource(dirs[1], src, { signal: ac.signal, onStep: () => { throw new Error('b should only wait'); } });
+  setTimeout(() => ac.abort(), 50);
+  await expect(b).rejects.toMatchObject({ name: 'AbortError' });
+  await a;
+  expect(steps).toEqual(['proxy', 'thumbs', 'cuts', 'peaks']);
+  expect(analysisDone(analysisFiles(dirs[1], src), src)).toBe(false);
+}, 120000);
+
 test('a transcript another project finishes after this one was analysed is still taken over', async () => {
   const projects = mkdtempSync(join(tmpdir(), 'share-')), a = join(projects, 'a'), b = join(projects, 'b'), src = join(projects, 'clip.mp4');
   mkdirSync(a); mkdirSync(b);

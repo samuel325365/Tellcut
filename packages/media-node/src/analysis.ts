@@ -2,9 +2,10 @@
 import { renameRetry } from './fsutil.ts';
 import { heavy } from './limit.ts';
 import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ffmpeg, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
-import { analysisName } from './hash.ts';
+import { analysisName, contentPrintAsync } from './hash.ts';
 import { fitImage } from './photo.ts';
 import { isImagePath } from './probe.ts';
 import { waitForLock, withLock } from './locks.ts';
@@ -100,7 +101,8 @@ async function analyzeSourceNow(projectDir: string, srcPath: string, o: { signal
   // another process (the server, the page chat's inspect) analysing this source: wait for it rather than writing the same files
   const lock = join(f.dir, 'analysis.lock');
   await waitForLock(lock, { signal: o.signal });
-  // another project with the same footage analysing it now: wait, then take its work over (share.ts)
+  // another project with the same footage analysing it now in another process: wait, then take its work over (share.ts); one in
+  // this process holds no lock lockHolder counts, and was waited for before this one took a heavy slot (behindSameFootage)
   for (const d of await siblingFolders(f.dir)) await waitForLock(join(d, 'analysis.lock'), { signal: o.signal });
   await shareFolder(f.dir);
   if (analysisDone(f, srcPath)) return f;
@@ -151,10 +153,53 @@ async function analyzeLocked(f: AnalysisFiles, srcPath: string, stamp: string, o
   return f;
 }
 
+/** an analysis running in this process, of footage of this size, time and content print (what share.ts tells footage apart by) */
+interface Running { size: number; mtimeMs: number; print: string; over: Promise<void> }
+/** this process's analyses, oldest first. The locks leave this process's own holders out (lockHolder), so two projects given the
+ *  same new footage at once on one server both made it, side by side: separate files, twice the work and the disk. */
+const running: Running[] = [];
+/** the same footage: one size, one print, one time within a millisecond (as share.ts takes a file dropped on the editor, whose
+ *  time is the browser's, in whole ms). Taken too widely it only costs a wait: share.ts still decides what is shared. */
+const sameFootage = (a: Running, b: Running) => a.size === b.size && Math.abs(a.mtimeMs - b.mtimeMs) < 1 && a.print === b.print;
+
+/** until `p` settles, or `signal` aborts (an AbortError, as waitForLock's) */
+function until(p: Promise<unknown>, signal?: AbortSignal): Promise<void> {
+  if (!signal) return p.then(() => {});
+  return new Promise<void>((resolve, reject) => {
+    const stop = () => reject(new DOMException('Aborted', 'AbortError'));
+    if (signal.aborted) return stop();
+    signal.addEventListener('abort', stop, { once: true });
+    p.then(() => { signal.removeEventListener('abort', stop); resolve(); });
+  });
+}
+
+/**
+ * This analysis listed as running, after every analysis of the same footage this process started before it has ended (done, failed
+ * or aborted: then this one does what is left); returns the call that ends it, which must always be made. Each waits only for those
+ * listed before it, so none waits for itself or in a circle; and waiting comes before a heavy slot is taken, so a waiter never holds
+ * up the one it waits for. The same footage in another process is waited for by its analysis.lock (analyzeSourceNow).
+ */
+async function behindSameFootage(srcPath: string, signal?: AbortSignal): Promise<() => void> {
+  let me: Running, end!: () => void;
+  try {
+    const st = await stat(srcPath), print = await contentPrintAsync(srcPath);
+    me = { size: st.size, mtimeMs: st.mtimeMs, print, over: new Promise<void>((r) => { end = r; }) };
+  } catch { return () => {}; }   // unreadable: the analysis says why
+  // looked through and joined at once (no await between), so of two started together one is always listed before the other
+  const before = running.filter((r) => sameFootage(r, me));
+  running.push(me);
+  const done = () => { const i = running.indexOf(me); if (i >= 0) running.splice(i, 1); end(); };
+  try { if (before.length) await until(Promise.all(before.map((r) => r.over)), signal); } catch (e) { done(); throw e; }
+  return done;
+}
+
 /** One source's analysis holds one of the two heavy ffmpeg slots from start to end (spec §6.2). */
 export const analyzeSource = async (...a: Parameters<typeof analyzeSourceNow>): Promise<AnalysisFiles> => {
   const f = analysisFiles(a[0], a[1]);
   if (analysisDone(f, a[1])) return f;
-  await shareFolder(f.dir);   // the same footage analysed in another project: taken over, not made again (share.ts)
-  return analysisDone(f, a[1]) ? f : heavy.run(() => analyzeSourceNow(...a));
+  const done = await behindSameFootage(a[1], a[2]?.signal);
+  try {
+    await shareFolder(f.dir);   // the same footage analysed in another project: taken over, not made again (share.ts)
+    return analysisDone(f, a[1]) ? f : await heavy.run(() => analyzeSourceNow(...a));
+  } finally { done(); }
 };
