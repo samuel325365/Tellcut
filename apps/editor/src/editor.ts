@@ -163,7 +163,6 @@ export class Editor {
       const lib = typeof (this.deps.api as any).library === 'function' ? this.library.load() : Promise.resolve();   // test fakes without the library
       const p = parseProject(await this.deps.api.project(this.id));
       await this.loadRegistry(p);
-      this.fitted = false;
       // an audition or crop mode of the version before a reload has nothing to end on in the new one: its banner would stay
       this.aud = null;
       this.set({ audition: null });
@@ -174,7 +173,15 @@ export class Editor {
       this.autosave = new Autosave({ save: async (x) => { try { await this.deps.api.save(this.id, x); } catch (e) { if (e instanceof ApiError && e.status === 409) this.outside(); throw e; } }, onStatus: (save, err) => { this.set({ save, saveError: err ?? '' }); if (save === 'saved') this.analyzeWaiting(); } });
       this.waitingAnalysis = [];   // a reload analyses everything
       await lib;
-      this.set({ project: p, error: null, pps: Math.max(5, Math.min(400, (innerWidthSafe() - 160) / p.meta.duration)), scroll: 0 });
+      // a reload starts this session clean: the save status, undo buttons, notice and live preview of the one before are not
+      // about this project, and ids it lacks leave the selection (it goes to the player and to the agent's editor state)
+      const known = new Set(allItems(p).map((x) => x.item.id)), before = this.s.selection, selection = before.filter((x) => known.has(x));
+      this.live = null;
+      this.set({ project: p, error: null, save: 'saved', saveError: '', canUndo: false, canRedo: false, notice: '', selection, playhead: Math.min(this.s.playhead, p.meta.duration) });
+      // the timeline stays mounted over a reload and does not measure again: fit now with the width it has; with none known
+      // yet (the first open) a guess, and its first measure fits
+      if (this.laneW > 0) { this.fitted = true; this.setView({ pps: Math.max(FIT_MIN_PPS, this.laneW / p.meta.duration), scroll: 0 }); }
+      else { this.fitted = false; this.set({ pps: Math.max(MIN_PPS, Math.min(MAX_PPS, (innerWidthSafe() - 160) / p.meta.duration)), scroll: 0 }); }
       try {
         const saved = JSON.parse(this.storage?.getItem(this.collapseKey) ?? '[]');
         this.set({ collapsed: Array.isArray(saved) ? saved.filter((x) => p.tracks.some((t) => t.id === x)) : [] });
@@ -184,6 +191,7 @@ export class Editor {
         this.set({ locked: Array.isArray(locked) ? locked.filter((x) => p.tracks.some((t) => t.id === x)) : [] });
       } catch { this.set({ locked: [] }); }
       this.deps.bridge.load(p);
+      if (selection.length !== before.length) this.deps.bridge.select(selection.length === 1 ? selection[0] : null);
       this.proposals.reset();
       this.set({ diskChanged: false });
       this.offLive?.();

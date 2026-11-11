@@ -1,5 +1,5 @@
 // The Editor: the agent’s proposals, the live stream from the server, and changes made outside (another tab, the agent, the disk).
-import { corePlugin, createRegistry, moveItems } from '@tellcut/engine';
+import { corePlugin, createRegistry, deleteItems, moveItems } from '@tellcut/engine';
 import { fixture } from '@tellcut/engine/test-fixture';
 import { ApiError } from './api.ts';
 import { Editor } from './editor.ts';
@@ -236,6 +236,29 @@ test('a save refused because another tab or Claude wrote first (409) holds the e
   ed.ignoreDisk();
   await vi.advanceTimersByTimeAsync(10);
   expect([forgot, (saved.at(-1) as any).tracks[1].items[1].start]).toEqual([1, 5]);
+});
+
+test('a reload starts clean: no save error or undo of the session before, no ids the reloaded project lacks, and its zoom stays on a later resize', async () => {
+  let opened = 0;
+  const L = live();
+  const { api, bridge } = fakes({ ...L.over, project: async () => { const p = fixture(); if (opened++) deleteItems(p, { ids: ['c2'] }); return p; },
+    save: async () => { throw new ApiError(409, '專案在別的地方被改過'); } });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.fitTimeline(1000);
+  ed.apply((d) => moveItems(d, { ids: ['a1'], dt: 1 }));
+  ed.select(['c1', 'c2']);
+  await vi.advanceTimersByTimeAsync(1100);
+  expect([ed.store.get().save, ed.store.get().diskChanged, ed.store.get().canUndo]).toEqual(['error', true, true]);
+  await ed.reload(() => true);
+  const s = ed.store.get();
+  expect([s.save, s.saveError, s.canUndo, s.canRedo, s.diskChanged, s.selection]).toEqual(['saved', '', false, false, false, ['c1']]);
+  expect(bridge.calls.filter((c: any) => c[0] === 'select').at(-1)).toEqual(['select', 'c1']);
+  // fitted at once with the timeline's width (it does not measure again over a reload); a later resize keeps the user's zoom
+  expect([s.pps, s.scroll]).toEqual([50, 0]);
+  ed.setView({ pps: 200, scroll: 3 });
+  ed.fitTimeline(990);
+  expect([ed.store.get().pps, ed.store.get().scroll]).toEqual([200, 3]);
 });
 
 test('while the file was changed outside, accepting a proposal is refused (reported stale) and an export says why it cannot start', async () => {
