@@ -79,7 +79,7 @@ You can switch between these at any time. Nothing the agent does overwrites what
     <td width="50%" valign="top">
       <img src="docs/readme/beat.jpg" alt="Captions and music, on the beat."><br>
       <strong>Captions and music, on the beat.</strong><br>
-      It has more than 160 ready-made effects and sounds, and composes a score to fit the length. It can also add voice-over in the film's language, with the captions aligned to it. When nothing in the library fits, it writes a new effect for that film, and you can <a href="#every-film-makes-the-next-one-easier">keep it</a> for the next one.
+      It has more than 160 ready-made effects and sounds and about 140 caption and title styles, and composes a score to fit the length. It can also add voice-over in the film's language, with the captions aligned to it. When nothing in the library fits, it writes a new effect for that film, and you can <a href="#every-film-makes-the-next-one-easier">keep it</a> for the next one.
     </td>
   </tr>
   <tr>
