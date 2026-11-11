@@ -71,5 +71,6 @@ export class Autosave {
   }
 
   private arm(ms: number) { clearTimeout(this.timer); this.timer = setTimeout(() => void this.flush(), ms); }
-  private setStatus(s: SaveStatus, error?: string) { this.status = s; this.o.onStatus?.(s, error); }
+  /** a disposed session's write answering late reports nothing: the page shows the session after it (a reload) */
+  private setStatus(s: SaveStatus, error?: string) { if (this.dead) return; this.status = s; this.o.onStatus?.(s, error); }
 }

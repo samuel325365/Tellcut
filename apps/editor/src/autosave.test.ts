@@ -84,6 +84,19 @@ test('settle() waits for a write in flight even when writes get held meanwhile, 
   expect(await ok).toBe(true);
 });
 
+test('a disposed autosave whose write answers late reports nothing and retries nothing', async () => {
+  const statuses: string[] = [], calls: unknown[] = [];
+  let fail!: () => void;
+  const a = new Autosave({ save: (p) => { calls.push(p); return new Promise<void>((_, no) => { fail = () => no(new Error('409')); }); }, onStatus: (s) => statuses.push(s) });
+  a.schedule('v1');
+  await vi.advanceTimersByTimeAsync(1000);
+  a.dispose();
+  const before = statuses.length;
+  fail();
+  await vi.advanceTimersByTimeAsync(10000);
+  expect([statuses.length - before, calls]).toEqual([0, ['v1']]);
+});
+
 test('settle says false while writes are held with an edit waiting (it is not on disk)', async () => {
   const a = new Autosave({ save: async () => {} });
   a.hold(true);

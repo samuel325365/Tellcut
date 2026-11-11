@@ -169,8 +169,10 @@ export class Editor {
       this.exitCrop();
       this.history = new History(p);
       this.autosave?.dispose();   // a reload: the previous session's unsaved edit must not be written over the reloaded project
-      // a 409: another tab or Claude wrote a newer version first; this one's edits wait like after any outside change
-      this.autosave = new Autosave({ save: async (x) => { try { await this.deps.api.save(this.id, x); } catch (e) { if (e instanceof ApiError && e.status === 409) this.outside(); throw e; } }, onStatus: (save, err) => { this.set({ save, saveError: err ?? '' }); if (save === 'saved') this.analyzeWaiting(); } });
+      // a 409: another tab or Claude wrote a newer version first; this one's edits wait like after any outside change (not when
+      // it answers a write of the session before a reload: the reloaded project is the newer version)
+      const autosave: Autosave = new Autosave({ save: async (x) => { try { await this.deps.api.save(this.id, x); } catch (e) { if (e instanceof ApiError && e.status === 409 && this.autosave === autosave) this.outside(); throw e; } }, onStatus: (save, err) => { this.set({ save, saveError: err ?? '' }); if (save === 'saved') this.analyzeWaiting(); } });
+      this.autosave = autosave;
       this.waitingAnalysis = [];   // a reload analyses everything
       await lib;
       // a reload starts this session clean: the save status, undo buttons, notice and live preview of the one before are not

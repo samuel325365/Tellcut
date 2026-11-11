@@ -261,6 +261,23 @@ test('a reload starts clean: no save error or undo of the session before, no ids
   expect([ed.store.get().pps, ed.store.get().scroll]).toEqual([200, 3]);
 });
 
+test('a save of the session before a reload that answers 409 afterwards neither holds the new session nor brings the bar back', async () => {
+  const L = live(), answers: Array<() => void> = [];
+  const { api, bridge } = fakes({ ...L.over, save: () => new Promise<void>((_, no) => { answers.push(() => no(new ApiError(409, '專案在別的地方被改過'))); }) });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  ed.apply((d) => moveItems(d, { ids: ['c2'], dt: 1 }));
+  await vi.advanceTimersByTimeAsync(1000);            // the PUT is in the air
+  L.send({ type: 'changed-on-disk' });
+  await ed.reload(() => true);
+  answers[0]();                                        // the old PUT answers late
+  await vi.advanceTimersByTimeAsync(0);
+  expect([ed.store.get().diskChanged, ed.store.get().save, ed.store.get().saveError]).toEqual([false, 'saved', '']);
+  ed.apply((d) => moveItems(d, { ids: ['c2'], dt: 1 }));
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(answers).toHaveLength(2);                     // the new session's edit is written, not held
+});
+
 test('while the file was changed outside, accepting a proposal is refused (reported stale) and an export says why it cannot start', async () => {
   const L = live(), started: string[] = [];
   const { api, bridge, saved } = fakes({ ...L.over, exportStart: async () => { started.push('x'); return {} as any; } });
