@@ -5,7 +5,7 @@
 // LED instead of the number; look 'neutral' turns the guilt-meter defaults (sin zones, halo, alarm, blow-up) into a plain gauge.
 import { clamp, cssCamel, h, hash01, type ItemType, prog, textEm } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
-import { luma, mixHex, withAlpha } from './color.ts';
+import { isLight, mixHex, withAlpha } from './color.ts';
 import { drawSegBars } from './dots.ts';
 
 interface P {
@@ -22,7 +22,6 @@ const BW = 880, BH = 670, CX = 440, CY = 440, R = 392, BAND = 64, M = 60;   // t
 export const parseHits = (s: string): Array<[number, number]> => String(s ?? '').split(/[,，\n]/).map((x) => x.trim()).filter(Boolean)
   .map((x) => x.split(/[:：]/).map(Number) as [number, number]).filter(([t, d]) => Number.isFinite(t) && Number.isFinite(d)).sort((a, b) => a[0] - b[0]);
 
-const light = (c: string) => (luma(c) ?? 0) > 0.6;
 
 /** look 'neutral': four equal zones of `max` with no names (the colour ramp only), no halo, no alarm, no blow-up */
 export const neutralOf = (max: number) => ({ zones: [0, 0.25, 0.5, 0.75].map((q) => `${+(q * (max || 100)).toFixed(2)}:`).join(', '), halo: false, danger: -1, boom: -1 });
@@ -217,7 +216,7 @@ export const gauge: ItemType<P, S> = {
       const chars = [...z.name], mid = ang((z.from + z.to) / 2), step = 36 / rb, on = lit(z);
       chars.forEach((_, i) => {
         const th = mid + (i - (chars.length - 1) / 2) * step, d = s.chars[ci++];
-        cssCamel(d, { left: `${(CX + Math.cos(th) * rb) * u}px`, top: `${(CY + Math.sin(th) * rb) * u}px`, fontSize: `${32 * u}px`, color: light(z.color) ? p.body : p.face,
+        cssCamel(d, { left: `${(CX + Math.cos(th) * rb) * u}px`, top: `${(CY + Math.sin(th) * rb) * u}px`, fontSize: `${32 * u}px`, color: isLight(z.color) ? p.body : p.face,
           opacity: on ? '1' : '0.5', transform: `translate(-50%, -50%) rotate(${((th + Math.PI / 2) * 180) / Math.PI}deg)` });
       });
     }

@@ -1,6 +1,6 @@
 // Looks laid out for a situation: bar (a search snippet) and qa (a magazine interview's subtitle).
 import { cssCamel, textEm, type Theme } from '@tellcut/engine';
-import { luma } from '../../color.ts';
+import { isLight } from '../../color.ts';
 import { SVG_NS } from '../../shapes.ts';
 import { speakerColor } from '../colors.ts';
 import type { CaptionLook } from '../types.ts';
@@ -27,7 +27,7 @@ export function qaBadge(name: string) {
 export function qaBadgeColors(speaker: number, color: string, theme: Theme, tint: boolean) {
   if (!speaker) return { bg: color, fg: theme.palette.ink };
   const bg = tint ? speakerColor(speaker, color, theme) : theme.palette.accent;
-  return { bg, fg: tint && (luma(bg) ?? 0) > 0.6 ? theme.palette.ink : '#ffffff' };
+  return { bg, fg: tint && isLight(bg) ? theme.palette.ink : '#ffffff' };
 }
 
 /** an interview subtitle set flush left in a serif over a dark wash rising from below the lines, with `name` (Q, A, or a short

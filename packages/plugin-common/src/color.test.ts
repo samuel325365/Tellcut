@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { browserColor, isClear, lift, luma, mixHex, parseColor, shade, toRgb, withAlpha } from './color.ts';
+import { browserColor, isClear, isLight, lift, luma, mixHex, parseColor, shade, toRgb, withAlpha } from './color.ts';
 
 test('parseColor reads hex (3, 4, 6, 8 digits), rgb()/rgba() and transparent; null for what it cannot read outside a page', () => {
   expect(parseColor('#fff')).toEqual([255, 255, 255, 1]);
@@ -63,4 +63,9 @@ test('a word the browser reads as no colour (none) is not black: browserColor sa
     expect(browserColor('none')).toBe('');
     expect(withAlpha('none', 0.5)).toBe('none');
   } finally { vi.unstubAllGlobals(); }
+});
+
+test('isLight: above 0.6 luma in any form it reads; a colour that cannot be read counts as dark', () => {
+  for (const c of ['#ffffff', '#ffd23f', '#fff8', 'rgb(240,240,200)']) expect(isLight(c), c).toBe(true);
+  for (const c of ['#000', '#0e2a47', '#e8483b', 'not a colour', '']) expect(isLight(c), c).toBe(false);
 });

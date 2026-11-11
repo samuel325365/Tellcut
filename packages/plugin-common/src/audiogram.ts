@@ -5,7 +5,7 @@
 // trims and moves stay in step) or, not hung, through whichever audio-track clip plays then (a tightened talk of many clips too).
 // draw(t) keeps no state from the frame before: the softness comes from a window of `smooth` seconds round the moment.
 import { clamp, cssCamel, h, resolveTimes, rng, TIME_EPS, type ItemType, type Project, type SceneItem, type SourcePeaks, type Theme, type Times } from '@tellcut/engine';
-import { luma, mixHex, withAlpha } from './color.ts';
+import { isLight, mixHex, withAlpha } from './color.ts';
 import { imagesReady, showStill, stillRef, windowEl, type Still, type Win } from './window.ts';
 
 type Look = 'bars' | 'wave' | 'ring';
@@ -317,7 +317,7 @@ export const audiogram: ItemType<P, S> = {
     }
     const name = Array.isArray(p.names) && typeof p.names[who] === 'string' ? p.names[who].trim() : '';
     s.pill.textContent = name;
-    const light = (luma(color) ?? 0) > 0.6;
+    const light = isLight(color);
     // nameX / nameY: the tag's centre where asked (each on its own), else today's place
     const nx = Number(p.nameX), ny = Number(p.nameY), placed = ny >= 0;
     cssCamel(s.pill, { display: name && alpha > 0 ? 'block' : 'none', opacity: alpha.toFixed(3), left: `${nx >= 0 ? nx * W : cx}px`, top: `${placed ? ny * H : pillY}px`,

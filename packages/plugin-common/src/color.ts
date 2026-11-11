@@ -67,6 +67,8 @@ export function lift(color: string, dr: number, dg: number, db: number): string 
 }
 /** perceived brightness 0–1 (0.299 r + 0.587 g + 0.114 b), or null when it can't be read */
 export const luma = (color: string): number | null => { const c = parseColor(color); return c ? (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255 : null; };
+/** a light colour (luma above 0.6), that dark text goes on; one that can't be read counts as dark */
+export const isLight = (color: string) => (luma(color) ?? 0) > 0.6;
 /** no colour at all: empty, `transparent`, alpha 0 (#rrggbb00, rgba(…, 0)), or words the browser reads as no colour (none) */
 export const isClear = (color: string | undefined, other: (c: string) => string | null = browserColor) => {
   if (!color || !String(color).trim()) return true;
