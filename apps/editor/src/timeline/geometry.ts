@@ -111,6 +111,16 @@ export function rulerTicks(v: View, width: number): Array<{ t: number; major: bo
   return out;
 }
 
+/** The piece size drawnSpan widens the view to. */
+export const DRAW_CHUNK = 1024;
+/** The stretch of an item `total` px wide, its left edge at `left` on a lane `laneW` px wide, that its thumbnails and waveform
+ *  are drawn for: what is in view, widened to whole DRAW_CHUNK pieces so scrolling redraws only when it crosses one (a canvas the
+ *  whole length of a long clip at a high zoom is wider than a browser draws, and shows nothing). [x0, x1] in px from the item's
+ *  left edge; nothing is in view when x1 <= x0. */
+export function drawnSpan(left: number, total: number, laneW: number): [number, number] {
+  return [Math.max(0, Math.floor(-left / DRAW_CHUNK) * DRAW_CHUNK), Math.min(total, Math.ceil((laneW - left) / DRAW_CHUNK) * DRAW_CHUNK)];
+}
+
 /** Zoom range (px per second) and the empty second shown after the end. */
 export const MIN_PPS = 5, MAX_PPS = 400, FIT_MIN_PPS = 20, AIR = 1;
 /** Furthest scroll: the end of the project (plus AIR) at the right edge of the lane. */

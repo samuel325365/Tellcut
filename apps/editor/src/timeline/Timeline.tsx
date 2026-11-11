@@ -3,7 +3,7 @@ import { allItems, beatTimes, overlapPairs, removeEnvelopePoint, resolveTimes, t
 import type { Editor } from '../editor.ts';
 import { useStoreSelector } from '../store.ts';
 import { liveLinks } from '../editor/library.ts';
-import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, fitHeights, RULER_H, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, drawnSpan, fitHeights, RULER_H, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 import { ItemBlock } from './ItemBlock.tsx';
 import { Playhead } from './Playhead.tsx';
 import { thumbTiles } from './thumbs.ts';
@@ -268,14 +268,17 @@ export function Timeline({ editor }: { editor: Editor }) {
                 const tm = times.get(it.id)!;
                 const x = it as any, len = tm.end - tm.start, h0 = r.laneH - 4, lane = r.lanes.get(it.id) ?? 0;
                 const strip = (r.track.kind === 'video' || r.track.kind === 'audio' || r.track.kind === 'music') && h0 >= STRIP_MIN_H, h = strip ? h0 - STRIP_H : h0;
+                // thumbnails and the waveform only for the stretch in view (at a high zoom a long clip is tens of thousands of px)
+                const span = drawnSpan(timeToX(tm.start, view), len * s.pps, width);
                 let media: any = null;
                 if (r.track.kind === 'video' && s.thumbs[x.source]) {
                   const info = s.thumbs[x.source];
-                  media = thumbTiles({ in: x.in, speed: x.speed, len, pps: s.pps, rowH: h, info }).map((t) =>
+                  media = thumbTiles({ in: x.in, speed: x.speed, len, pps: s.pps, rowH: h, info, span }).map((t) =>
                     <span class="thumb" style={{ left: `${t.x}px`, width: `${t.w}px`, backgroundImage: `url(${info.url})`, backgroundPosition: t.bg, backgroundSize: t.size }} />);
                 } else {
                   const peaks = r.track.kind === 'audio' ? s.peaks[`source:${x.source}`] : r.track.kind === 'music' ? s.peaks[`media:${x.media}`] : undefined;
-                  if (peaks) media = <Wave info={peaks} from={x.in} dur={len * (x.rate ?? 1)} width={len * s.pps} height={h} />;
+                  const rate = x.rate ?? 1, [x0, x1] = span;
+                  if (peaks && x1 > x0) media = <Wave info={peaks} from={x.in + (x0 / s.pps) * rate} dur={((x1 - x0) / s.pps) * rate} width={x1 - x0} left={x0} height={h} />;
                   if (r.track.kind === 'audio' || r.track.kind === 'music') media = <>{media}<EnvelopeLayer item={x} len={len} pps={s.pps} h={h} active={s.selection.includes(it.id) && !lockedSet.has(r.track.id)} /></>;
                 }
                 return <ItemBlock key={it.id} item={it} track={r.track} name={itemName(it, r.track.kind, reg, lang)} look={itemLook(it, r.track.kind, reg)} strip={strip} media={media} left={timeToX(tm.start, view)} top={lane * r.laneH} width={len * s.pps} height={h0}

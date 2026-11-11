@@ -1,9 +1,11 @@
 import type { ThumbInfo } from '../store.ts';
 
-/** Background tiles from the 1 fps thumbnail atlas for a clip `len` timeline seconds long. */
-export function thumbTiles(o: { in: number; speed: number; len: number; pps: number; rowH: number; info: ThumbInfo }) {
+/** Background tiles from the 1 fps thumbnail atlas for a clip `len` timeline seconds long; `span` (px from the clip's left edge,
+ *  geometry.ts drawnSpan): only the tiles that reach into it, at the places they have in the whole row. */
+export function thumbTiles(o: { in: number; speed: number; len: number; pps: number; rowH: number; info: ThumbInfo; span?: [number, number] }) {
   const w = (o.rowH * o.info.width) / o.info.height, total = o.len * o.pps, out: Array<{ x: number; w: number; bg: string; size: string }> = [];
-  for (let x = 0; x < total; x += w) {
+  const [a, b] = o.span ?? [0, total], end = Math.min(total, b);
+  for (let k = Math.max(0, Math.floor(a / w)), x = k * w; x < end; k++, x = k * w) {
     const t = o.in + (x / o.pps) * o.speed;
     const idx = Math.max(0, Math.min(o.info.count - 1, Math.floor(t / o.info.interval)));
     const col = idx % o.info.cols, row = Math.floor(idx / o.info.cols);

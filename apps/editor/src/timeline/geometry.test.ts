@@ -1,6 +1,6 @@
 import { fixture } from '@tellcut/engine/test-fixture';
 import { resolveTimes } from '@tellcut/engine';
-import { COLLAPSED_H, ROW_H, ROW_H_MAX, fitHeights, layoutRows, maxScroll, ppsFromZoom, rowAt, rulerLabel, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { COLLAPSED_H, ROW_H, ROW_H_MAX, drawnSpan, fitHeights, layoutRows, maxScroll, ppsFromZoom, rowAt, rulerLabel, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 
 test('visual tracks are listed top layer first, audio tracks after', () => {
   const rows = layoutRows(fixture());
@@ -80,4 +80,12 @@ test('fitHeights: rows grow evenly to fill the timeline, never past ROW_H_MAX; c
   const folded = new Set(['mu']), avail = total(ROW_H, folded) + 100;
   expect(Math.abs(total(fitHeights(p, times, ROW_H, folded, avail), folded) - avail)).toBeLessThanOrEqual(6);
   expect(layoutRows(p, times, fitHeights(p, times, ROW_H, folded, avail), folded).find((r) => r.track.id === 'mu')!.h).toBe(COLLAPSED_H);
+});
+
+test('only the stretch of a clip in view is drawn, widened to whole pieces so a small scroll does not redraw it', () => {
+  expect(drawnSpan(200, 3000, 1100)).toEqual([0, 1024]);                     // starts in view
+  expect(drawnSpan(-4200, 72000, 1100)).toEqual([4096, 6144]);               // a 3-minute song at 400 px/s, 10.5 s in
+  expect(drawnSpan(-5000, 72000, 1100)).toEqual([4096, 6144]);               // the same pieces 2 s later
+  const [a, b] = drawnSpan(2000, 500, 1100), [c, d] = drawnSpan(-9000, 500, 1100);   // right of the view, left of it
+  expect([b <= a, d <= c]).toEqual([true, true]);
 });

@@ -16,3 +16,10 @@ test('peak slices keep the loudest sample of each column', () => {
   expect(peakSlice(p, 0.3, 0.2, 1)).toEqual([0.9]);
   expect(peakSlice({ rate: 10, peaks: [] }, 0, 1, 3)).toEqual([0, 0, 0]);
 });
+
+test('thumbnail tiles for a stretch of the clip keep the places they have in the whole row', () => {
+  const all = thumbTiles({ in: 0, speed: 1, len: 20, pps: 80, rowH: 45, info });
+  const some = thumbTiles({ in: 0, speed: 1, len: 20, pps: 80, rowH: 45, info, span: [200, 420] });
+  expect(some).toEqual(all.filter((t) => t.x + t.w > 200 && t.x < 420));
+  expect(some.map((t) => t.x)).toEqual([160, 240, 320, 400]);
+});

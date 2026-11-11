@@ -140,6 +140,15 @@ test('an emptied bus gain box changes nothing; a value being typed survives a re
   expect([calls, g.value]).toEqual([[], was]);
 });
 
+test('a long sound clip at a high zoom draws its waveform only for the stretch in view (a canvas its whole length would show nothing)', async () => {
+  const ctx = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);   // jsdom has no canvas
+  const { root, editor } = mount({ pps: 400, scroll: 5, peaks: { 'media:m': { rate: 100, peaks: [] } } });   // m1: 10 s = 4000 px, 2000 px scrolled off
+  await act(() => render(<Timeline editor={editor} />, root));
+  const c = root.querySelector<HTMLCanvasElement>('[data-item-id="m1"] canvas.wave')!;
+  expect([c.style.left, c.style.width]).toEqual(['1024px', '2976px']);   // from the 1024 px piece before the view to the clip's end
+  ctx.mockRestore();
+});
+
 test('clicking an empty spot on a track moves the playhead there; a marquee drag does not', async () => {
   const { root, editor, calls } = mount();
   await act(() => render(<Timeline editor={editor} />, root));
