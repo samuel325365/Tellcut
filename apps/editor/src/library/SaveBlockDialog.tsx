@@ -7,6 +7,7 @@ import type { BlockCategory, Project } from '@tellcut/engine';
 import { PlayerPreview, projectPlayer } from '../PlayerPreview.tsx';
 import { nameList, t, type Key } from '../i18n/index.ts';
 import type { SaveDialog } from '../store.ts';
+import { useModal } from '../modal.ts';
 
 const LEN = 3;
 /** the block alone, as the gallery shows it, with this project's own modules and theme (its preview loads them from the project folder) */
@@ -23,13 +24,15 @@ export function SaveBlockDialog({ d, project, projectId, kind, onPatch, onSave, 
   const nameBox = useRef<HTMLInputElement>(null);
   useEffect(() => { nameBox.current?.focus(); nameBox.current?.select(); }, [d.target]);
   const close = () => { if (!d.busy) onClose(); };
+  const box = useRef<HTMLDivElement>(null);
+  useModal(box, close);
   const block = d.kind === 'block', files = d.preview?.files.filter((f) => !f.startsWith('fx/')) ?? [];
   const group = d.preview?.group ?? [];
   // a conflict is settled by the two buttons; making it generic hands it to the Agent, which saves with replace
   const conflict = d.conflict && !d.generalize;
   return (
     <div class="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div class="save-block" data-save-dialog={d.kind} role="dialog" aria-labelledby="save-block-title" onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
+      <div ref={box} tabIndex={-1} class="save-block" data-save-dialog={d.kind} role="dialog" aria-modal="true" aria-labelledby="save-block-title">
         <h3 id="save-block-title">{t(block ? 'lib.dialogTitle' : 'lib.dialogStyleTitle')}</h3>
         <div class={`save-block-body${block ? '' : ' no-preview'}`}>
           {block && kind && <div class="save-block-preview" aria-label={t('lib.previewTitle')}><PlayerPreview project={previewOf(project, d.target, kind)} src={projectPlayer(projectId)} /></div>}

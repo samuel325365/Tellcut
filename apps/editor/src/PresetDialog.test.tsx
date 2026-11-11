@@ -272,6 +272,23 @@ test('a new preset from nothing starts on one empty point and saves only the use
   expect([saved, closed]).toEqual([1, 1]);
 });
 
+test('Enter on a tick of the Edit dialog opened inside the preset dialog does not confirm the preset dialog (EP9)', async () => {
+  const root = document.createElement('div'), { api } = presetApi(), used: string[][] = [];
+  let closed = 0;
+  await act(() => render(<PresetDialog preset={MINE} styles={[]} onConfirm={(s) => used.push(s)} onClose={() => closed++} api={api} onChanged={() => {}} />, root));
+  await clickOn(root, '[data-preset-edit]');
+  const theme = root.querySelector<HTMLElement>('[data-save-preset-dialog="edit"] [data-bring="theme"] input')!;
+  const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+  await act(() => { theme.dispatchEvent(enter); });
+  expect([used, closed, !!root.querySelector('[data-save-preset-dialog="edit"]')]).toEqual([[], 0, true]);
+  // and Esc there closes only the Edit dialog
+  await act(() => { theme.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  expect([closed, !!root.querySelector('[data-save-preset-dialog]'), !!root.querySelector('[data-preset-dialog]')]).toEqual([0, false, true]);
+  // back in the preset dialog, Enter confirms it again
+  await act(() => { root.querySelector('[data-preset-dialog]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
+  expect(used).toEqual([[]]);
+});
+
 test('"Save as my preset" after its points request failed: pressing it again asks again (EP10)', async () => {
   const CUSTOM: any = { ...TRAVEL, id: 'custom', styles: [], fields: [{ id: 'ratio', name: { zh: '比例' }, options: [{ id: '9:16', name: { zh: '9:16 直式' } }] }] };
   const root = document.createElement('div'), { api, calls } = presetApi();

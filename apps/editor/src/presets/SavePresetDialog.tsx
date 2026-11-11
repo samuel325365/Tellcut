@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { errText, t, uiLabel } from '../i18n/index.ts';
 import { pointsOut, type PointOut, type PointRow } from './save.ts';
+import { useModal } from '../modal.ts';
 
 export interface PresetBring { fonts: string[]; colors: string[]; score?: string; blocks: string[] }
 export interface PresetDialogValue { name: string; summary: string; points: PointOut[]; include: { theme: boolean; score: boolean; blocks: boolean }; useFrame: boolean; upload: File | null; color?: string }
@@ -30,6 +31,8 @@ export function SavePresetDialog({ mode, surface, initial, bring, poster, onSave
   useEffect(() => { nameBox.current?.focus(); }, []);
   useEffect(() => () => { if (uploadUrl) URL.revokeObjectURL(uploadUrl); }, [uploadUrl]);
   const close = () => { if (!busy) onClose(); };
+  const box = useRef<HTMLDivElement>(null);
+  useModal(box, close);
   const setRow = (i: number, text: string) => setRows((r) => r.map((x, k) => (k === i ? { ...x, text } : x)));
   const theme = bring.fonts.length > 0 || bring.colors.length > 0, said = rows.some((r) => r.text.trim());
   const save = async () => {
@@ -39,7 +42,7 @@ export function SavePresetDialog({ mode, surface, initial, bring, poster, onSave
   };
   return (
     <div class="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div class="save-preset" data-save-preset-dialog={mode} role="dialog" aria-labelledby="save-preset-title" onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
+      <div ref={box} tabIndex={-1} class="save-preset" data-save-preset-dialog={mode} role="dialog" aria-modal="true" aria-labelledby="save-preset-title">
         <h3 id="save-preset-title">{uiLabel(mode === 'save' ? 'preset.saveTitle' : 'preset.editTitle', surface)}</h3>
         <div class="save-preset-top">
           <div class="save-preset-poster">

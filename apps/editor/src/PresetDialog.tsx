@@ -2,13 +2,14 @@
 // what material it suits, and the styles to tick. Confirm hands the ticked ones back (none = Claude picks);
 // Cancel, Esc and a click outside change nothing.
 // A preset with a form (spec 2026-10-24-custom-preset §5) shows it too, every field starting on auto, and style examples to put in the chat box.
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { pickText, type Lang, type PresetFieldInfo, type PresetInfo } from '@tellcut/protocol';
 import { PresetPoster } from './PresetStrip.tsx';
 import { MinePresetActions, MinePresetBody, SaveFormPreset, type PresetApi } from './presets/MinePreset.tsx';
 import { t } from './i18n/index.ts';
 import { composing } from './keys.ts';
 import { useLang } from './i18n/lang.ts';
+import { isTopModal, useModal } from './modal.ts';
 
 const AUTO = 'auto', OWN = 'own';
 // a length typed in the field's own box: whole seconds in this range, else the field counts as auto
@@ -36,7 +37,7 @@ export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose, 
   const [picked, setPicked] = useState<number[]>([]);
   const box = useRef<HTMLDivElement>(null);
   // focus the dialog itself, not a button: the Space that opened it from a thumbnail must not click Confirm on key-up
-  useEffect(() => { box.current?.focus(); }, []);
+  useModal(box, onClose);
   const toggle = (id: string) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
   const set = (id: string, v: string) => setVals((x) => ({ ...x, [id]: v }));
   /** the form as set (auto left out; an own length only when it is one) */
@@ -76,11 +77,11 @@ export function PresetDialog({ preset, styles, fields = {}, onConfirm, onClose, 
   };
   return (
     <div class="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={box} tabIndex={-1} class="preset-dialog" data-preset-dialog role="dialog" aria-labelledby="preset-title" onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
-        // Enter confirms (a focused button keeps its own Enter; a select or the seconds box takes it as typing); either way it never reaches the chat composer
+      <div ref={box} tabIndex={-1} class="preset-dialog" data-preset-dialog role="dialog" aria-modal="true" aria-labelledby="preset-title" onKeyDown={(e) => {
+        // Enter confirms (a focused button keeps its own Enter; a select or the seconds box takes it as typing); either way it never reaches the chat composer.
+        // A dialog opened inside this one (Edit, Save as my preset) keeps its Enter: on a tick there it confirmed this one and lost the edit
         // a held-down Enter (the one that opened the dialog from a thumbnail) is swallowed, not acted on
-        else if (e.key === 'Enter' && !composing(e)) { e.stopPropagation(); if (!(e.target as HTMLElement).closest('button, select, input:not([type=checkbox])')) { e.preventDefault(); if (!e.repeat) confirm(); } }
+        if (e.key === 'Enter' && !composing(e)) { e.stopPropagation(); if (isTopModal(box.current) && !(e.target as HTMLElement).closest('button, select, input:not([type=checkbox])')) { e.preventDefault(); if (!e.repeat) confirm(); } }
       }}>
         <div class="preset-preview"><PresetPoster preset={preset} play /></div>
         <div class="preset-body">

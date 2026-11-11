@@ -166,3 +166,18 @@ test('places are worded in the UI language from the server code, not from the Ch
   expect(names.slice(0, 4)).toEqual(['Desktop', 'Sources folder', 'Local disk D:', 'Root']);
   expect(names[4]).toBe('舊的');     // an old server without a code: its own label
 });
+
+test('the import browser takes the focus, so Esc closes it with the opener still focused behind it (EP6)', async () => {
+  const root = document.createElement('div'), opener = document.createElement('button');
+  document.body.append(opener, root);
+  let closed = 0;
+  try {
+    opener.focus();
+    await act(() => render(<ImportDialog api={fakeFs()} onAdd={() => {}} onClose={() => closed++} />, root));
+    await tick();
+    expect(document.activeElement).toBe(root.querySelector('[data-import]'));
+    opener.focus();                                     // even with the focus left outside it
+    await act(() => { opener.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+    expect(closed).toBe(1);
+  } finally { render(null, root); root.remove(); opener.remove(); }
+});

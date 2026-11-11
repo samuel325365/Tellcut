@@ -5,6 +5,7 @@ import { IconUp, IconX, kindIcon } from './icons.tsx';
 import { DICTS, errText, t, uiLabel, type Key } from './i18n/index.ts';
 import { composing } from './keys.ts';
 import { useLang } from './i18n/lang.ts';
+import { useModal } from './modal.ts';
 
 /** a place from the server: `key` (and `drive`) let the page word it; `label` is the server's Chinese, kept for an older server */
 export type Place = { key?: string; label: string; path: string; kind: string; drive?: string };
@@ -46,11 +47,13 @@ export function ImportDialog({ api, onAdd, onClose, surface = 'home' }: { api: F
     // user back to the first place (the editor's Import e2e, on a loaded machine)
     void api.places().then((r) => { setPlaces(r.places); if (r.places[0] && !latest.current && !edits.current) void open(r.places[0].path); }).catch((e) => setError(errText(e)));
   }, []);
+  const box = useRef<HTMLDivElement>(null);
+  useModal(box, onClose);
   const has = (p: string) => picked.some((x) => x.path === p);
   const toggle = (a: Attachment) => setPicked(has(a.path) ? picked.filter((x) => x.path !== a.path) : [...picked, a]);
   return (
     <div class="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div class="import" data-import role="dialog" aria-labelledby="import-title" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+      <div ref={box} tabIndex={-1} class="import" data-import role="dialog" aria-modal="true" aria-labelledby="import-title">
         <header>
           <h3 id="import-title">{uiLabel('import.title', surface)}</h3>
           <button class="icon-btn" data-tip={t('import.close')} aria-label={t('import.close')} onClick={onClose}><IconX /></button>

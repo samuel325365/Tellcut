@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { IconFilm } from './icons.tsx';
 import { errText, t, uiLabel } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
+import { useModal } from './modal.ts';
 import type { DeletePreview } from '@tellcut/protocol';
 
 export type { DeletePreview };
@@ -20,6 +21,8 @@ export function DeleteDialog({ project, api, onClose, onDeleted, surface = 'home
     api.deletePreview(project.id).then(setPre, (e: Error) => setError(errText(e)));
   }, [project.id]);
   const close = () => { if (!working) onClose(); };
+  const box = useRef<HTMLDivElement>(null);
+  useModal(box, close);
   const confirm = async () => {
     setWorking(true); setError('');
     try { await api.deleteProject(project.id); onDeleted(); }
@@ -27,7 +30,7 @@ export function DeleteDialog({ project, api, onClose, onDeleted, surface = 'home
   };
   return (
     <div class="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div class="delete-dialog" data-delete-dialog role="alertdialog" aria-labelledby="delete-title" onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
+      <div ref={box} tabIndex={-1} class="delete-dialog" data-delete-dialog role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
         <div class="delete-head">
           <span class="thumb">{project.thumb ? <img src={project.thumb} alt="" /> : <IconFilm size={18} />}</span>
           <h3 id="delete-title">{uiLabel('delete.title', surface, { name })}</h3>
