@@ -1,6 +1,8 @@
-// The bit of Markdown Claude's replies use (spec 2026-10-16-in-editor-chat §2.3): paragraphs, lists, bold, inline code and
-// code blocks. Everything becomes Preact text nodes — a reply can never inject HTML.
+// The bit of Markdown Claude's replies use (spec 2026-10-16-in-editor-chat §2.3): paragraphs, headings (a bold line), lists,
+// tables, bold, inline code and code blocks. Everything becomes Preact text nodes — a reply can never inject HTML.
 import type { VNode } from 'preact';
+
+const HEADING = /^\s{0,3}#{1,6}\s+(.*?)(?:\s+#+)?\s*$/;
 
 function inline(s: string): Array<string | VNode> {
   const out: Array<string | VNode> = [];
@@ -37,16 +39,27 @@ export function renderMarkdown(text: string): VNode {
         <tbody>{rows.map((r) => <tr>{r.map((c) => <td>{inline(c)}</td>)}</tr>)}</tbody></table>);
       continue;
     }
+    // a heading is a bold line of its own (the chat has no room for big type); its #s never show
+    const h = HEADING.exec(l);
+    if (h) { blocks.push(<p><strong>{inline(h[1])}</strong></p>); i++; continue; }
     if (/^\s*[-*] /.test(l) || /^\s*\d+\. /.test(l)) {
-      const ordered = /^\s*\d+\. /.test(l), items: string[] = [];
-      for (; i < lines.length && (ordered ? /^\s*\d+\. /.test(lines[i]) : /^\s*[-*] /.test(lines[i])); i++) items.push(lines[i].replace(/^\s*(?:[-*]|\d+\.) /, ''));
-      const lis = items.map((x) => <li>{inline(x)}</li>);
-      blocks.push(ordered ? <ol>{lis}</ol> : <ul>{lis}</ul>);
+      const ordered = /^\s*\d+\. /.test(l), item = ordered ? /^\s*\d+\. / : /^\s*[-*] /, items: string[] = [];
+      for (;;) {
+        if (i < lines.length && item.test(lines[i])) { items.push(lines[i].replace(/^\s*(?:[-*]|\d+\.) /, '')); i++; continue; }
+        // a loose list (blank lines between its items) goes on: "1. a / 2. b" apart used to be lists each numbered 1
+        let j = i;
+        while (j < lines.length && !lines[j].trim()) j++;
+        if (j > i && j < lines.length && item.test(lines[j])) { i = j; continue; }
+        break;
+      }
+      const lis = items.map((x) => <li>{inline(x)}</li>), start = ordered ? parseInt(l, 10) : 1;
+      // a numbered list that starts after something else (a code block between steps) keeps its own number
+      blocks.push(ordered ? <ol start={start !== 1 ? start : undefined}>{lis}</ol> : <ul>{lis}</ul>);
       continue;
     }
     if (!l.trim()) { i++; continue; }
     const para: string[] = [];
-    for (; i < lines.length && lines[i].trim() && !/^```/.test(lines[i]) && !/^\s*(?:[-*]|\d+\.) /.test(lines[i]); i++) para.push(lines[i]);
+    for (; i < lines.length && lines[i].trim() && !/^```/.test(lines[i]) && !/^\s*(?:[-*]|\d+\.) /.test(lines[i]) && !HEADING.test(lines[i]); i++) para.push(lines[i]);
     blocks.push(<p>{para.flatMap((x, k) => (k ? [<br />, ...inline(x)] : inline(x)))}</p>);
   }
   return <div class="md">{blocks}</div>;
