@@ -357,7 +357,9 @@ function drawHeadline(ctx: Parameters<typeof magazine.draw>[0], s: S, L: ReturnT
   });
   const deckY = top + px * 1.14 * lines.length + 18 * k, dq = eOut3(prog(t, back ? 1.0 : 0.9, back ? 1.45 : 1.3));
   s.deck.textContent = p.deck;
-  cssCamel(s.deck, { display: show && p.deck ? 'block' : 'none', left: `${x}px`, top: `${back ? backLines(L, ctx.H).second : deckY}px`, fontFamily: ser, fontSize: `${(back ? 76 : layout === 'list' ? 36 : 34) * k}px`,
+  // the deck shrinks to the headline's width like the headline (one unbroken line: a long one ran off the page)
+  const deckPx = Math.min((back ? 76 : layout === 'list' ? 36 : 34) * k, maxW / Math.max(1, ...nlLines(p.deck ?? '').map(textEm)));
+  cssCamel(s.deck, { display: show && p.deck ? 'block' : 'none', left: `${x}px`, top: `${back ? backLines(L, ctx.H).second : deckY}px`, fontFamily: ser, fontSize: `${deckPx}px`,
     color: onPhoto ? '#ffffff' : withAlpha(p.ink, 0.75), textShadow: onPhoto ? SHADOW(k, 0.6) : 'none', opacity: String(dq) });
   // the back cover's masthead and issue line (white, on the footage)
   if (back) {
