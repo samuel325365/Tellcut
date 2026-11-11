@@ -7,7 +7,8 @@
 // themselves (copy them as they are). --public (an example project for GitHub, spec 2026-10-30-showcase-films part 2) writes this
 // computer's tellcut folder as <tellcut> in every text file of the zip, and refuses footage left outside the zip or another absolute
 // path of this computer (its home included) left in them. It also says nowhere where and when the footage was shot: the sources
-// lose gps / taken in project.json and .history/, and each photo and video packed is a copy without them in the file (EXIF, tags).
+// lose gps / taken in project.json and .history/, the chat (.history/chat/) has the shooting times and coordinates said in it
+// written as <time> / <place>, and each photo, video and sound file packed is a copy without them in the file (EXIF, tags).
 // --trim (implies --media; CC source films are hundreds of MB each) packs, instead of each video source as it is, a copy of the same
 // length where everything the project does not use (prepare's clips, stills and sound pieces, plus TRIM_MARGIN on each side) is
 // black and silent. A copy of the same length, not the used pieces alone: every source time (the items' in/out, cut.ts, the
@@ -18,7 +19,7 @@ import { copyFileSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, 
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Project, Registry } from '@tellcut/engine';
-import { ffmpeg, kindOf, mediaRefs, probeDuration, probeHasAudio, probeSize, PROJECT_ID, pyJson, TELLCUT_ROOT } from '@tellcut/media-node';
+import { ffmpeg, ffprobe, kindOf, mediaRefs, probeDuration, probeHasAudio, probeSize, PROJECT_ID, pyJson, TELLCUT_ROOT } from '@tellcut/media-node';
 import { projectArgOrExit } from './project-arg.ts';
 import { parseArgsOrExit } from './args.ts';
 
@@ -53,27 +54,74 @@ export const leftoverPaths = (text: string) => [...text.matchAll(/\b[A-Za-z]:[\\
 const TEXT = /\.(json|jsonl|md|ts|js|mjs|cjs|txt|srt|vtt|csv|svg|html|css|xml|log|yml|yaml)$/i;
 /** what a source says about where and when it was shot (read from a photo's EXIF or a video's tags when it came in) */
 const PLACE_AND_TIME = ['gps', 'taken', 'takenOffset', 'takenGuess'];
+/** the shooting times (as project.json keeps them, 2023-05-01T12:00:00) and places ([lat, lon]) the sources had */
+export interface Shots { taken: Set<string>; gps: Array<[number, number]> }
+export const noShots = (): Shots => ({ taken: new Set(), gps: [] });
 /** Takes the place and time off every source list in `value` (a project, a version of one in .history/, a proposal holding
- *  one), in place; true when there was any. All of them are optional in the schema, so the project still parses. */
-export function dropPlaceAndTime(value: unknown): boolean {
+ *  one), in place, noting them in `seen`; true when there was any. All of them are optional in the schema, so the project still parses. */
+export function dropPlaceAndTime(value: unknown, seen?: Shots): boolean {
   if (!value || typeof value !== 'object') return false;
   let found = false;
   for (const [k, v] of Object.entries(value)) {
     if (k === 'sources' && v && typeof v === 'object' && !Array.isArray(v)) {
       for (const s of Object.values(v)) {
         if (!s || typeof s !== 'object' || typeof (s as { path?: unknown }).path !== 'string') continue;
+        const { taken, gps } = s as { taken?: unknown; gps?: unknown };
+        if (seen && typeof taken === 'string') seen.taken.add(taken);
+        if (seen && Array.isArray(gps) && gps.length === 2 && gps.every((n) => typeof n === 'number' && Number.isFinite(n))) seen.gps.push([gps[0], gps[1]]);
         for (const key of PLACE_AND_TIME) if (key in s) { delete (s as Record<string, unknown>)[key]; found = true; }
       }
-    } else if (dropPlaceAndTime(v)) found = true;
+    } else if (dropPlaceAndTime(v, seen)) found = true;
   }
   return found;
+}
+
+// The chat keeps what was said (the user's words, the agent's replies, the commands it ran), not the tools' output; but a reply
+// often repeats what inspect printed ("p3：照片，2023-05-01 12:00:00") and may quote a place read from project.json. Every
+// date with a time of day in it is a shooting time as far as a public chat is concerned (the thread's own `time` stamps are
+// not words anyone said: kept); a date alone or a short "05-01 12:00" only when it is a known shooting day; a coordinate pair
+// written out, and any number within 0.01 of a known source's latitude or longitude.
+const CLOCK = /(?<!\d)(?:1[89]|20)\d{2}[-:/.]\d{1,2}[-:/.]\d{1,2}[T ]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2}(?!\d))?/g;
+const PAIR = /[+-]?\d{1,3}\.\d{4,}\s*[,，]\s*[+-]?\d{1,3}\.\d{4,}/g;
+const ISO6709 = /[+-]\d{1,2}\.\d{3,}[+-]\d{1,3}\.\d{3,}(?:[+-]\d+(?:\.\d+)?)?(?:CRS[A-Z0-9:]+)?\/?/g;
+const DMS = /\d{1,3}\s*°\s*\d{1,2}\s*['′](?:\s*\d{1,2}(?:\.\d+)?\s*["″])?(?:\s*[NSEW](?![A-Za-z]))?/g;
+const NUMBER = /(?<![\d.])[+-]?\d{1,3}\.\d{2,}(?![\d.])/g;
+/** `s` with the shooting times and places it says written as <time> and <place> */
+export function scrubShots(s: string, shots: Shots): string {
+  let t = s.replace(CLOCK, '<time>');
+  for (const taken of shots.taken) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(taken);
+    if (!m) continue;
+    const [, y, mo, d, h, mi] = m, M = `0?${Number(mo)}`, D = `0?${Number(d)}`;
+    t = t.replace(new RegExp(`(?<!\\d)${y}(?:[-:/.]${M}[-:/.]${D}|\\s*年\\s*${M}\\s*月\\s*${D}\\s*日)(?!\\d)`, 'g'), '<time>');
+    if (h) t = t.replace(new RegExp(`(?<![\\d-])${M}[-/]${D}[ T]${h}:${mi}(?::\\d{2})?(?!\\d)`, 'g'), '<time>');
+  }
+  t = t.replace(ISO6709, '<place>').replace(PAIR, '<place>').replace(DMS, '<place>');
+  if (shots.gps.length) t = t.replace(NUMBER, (n) => (shots.gps.some((g) => g.some((c) => Math.abs(Number(n) - c) < 0.01)) ? '<place>' : n));
+  return t;
+}
+/** the thread's own fields, never words anyone said */
+const THREAD_KEYS = new Set(['time', 'sessionId', 'spentIn']);
+const mapStrings = (v: unknown, f: (s: string) => string, key?: string): unknown =>
+  typeof v === 'string' ? (key && THREAD_KEYS.has(key) ? v : f(v))
+  : Array.isArray(v) ? v.map((x) => mapStrings(x, f))
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, mapStrings(x, f, k)])) : v;
+/** A chat thread (.history/chat/chat.json) with every string said in it scrubbed of shooting times and places; the text as it
+ *  was when nothing changed. Throws when it is not a thread: what is in it, and so what to take out, is unknown. */
+export function scrubChat(text: string, shots: Shots): string {
+  let t: unknown;
+  try { t = JSON.parse(text); } catch { t = null; }
+  if (!t || typeof t !== 'object' || !Array.isArray((t as { messages?: unknown }).messages)) throw new Error('不是看得懂的對話紀錄');
+  const out = mapStrings(t, (s) => scrubShots(s, shots));
+  return JSON.stringify(out) === JSON.stringify(t) ? text : JSON.stringify(out, null, 2) + '\n';
 }
 const insideOf = (dir: string, f: string) => { const r = relative(dir, resolve(dir, f)); return !!r && !r.startsWith('..') && !isAbsolute(r); };
 
 /** what goes into the zip (relative to its <id>/ folder) and the project.json it gets */
 export function exportPlan(dir: string, project: Raw, o: { media: boolean }): ExportPlan {
-  // a lock or a half-written file of work running as it is zipped (a chat turn's) is not part of the project
-  const files = [...OWN.filter((f) => existsSync(join(dir, f))), ...OWN_DIRS.flatMap((d) => walk(dir, d)).filter((f) => !/\.lock$|\.tmp(\.|$)/.test(f))].map((to) => ({ from: join(dir, to), to }));
+  // a lock or a half-written file of work running as it is zipped (a chat turn's) is not part of the project, nor the note of the
+  // claude a turn started (<chat>.claude): on another computer its pid is some other live process, and the chat looked busy
+  const files = [...OWN.filter((f) => existsSync(join(dir, f))), ...OWN_DIRS.flatMap((d) => walk(dir, d)).filter((f) => !/\.lock$|\.tmp(\.|$)|\.json\.claude$/.test(f))].map((to) => ({ from: join(dir, to), to }));
   const p: Raw = structuredClone(project);
   const refs = [...Object.entries(p.sources ?? {}), ...Object.entries(p.media ?? {})];
   const outside = refs.filter(([, s]) => !insideOf(dir, s.path)).map(([id]) => id);
@@ -188,10 +236,25 @@ export async function trimPlan(dir: string, plan: ExportPlan, work: string, o: {
   return { ...plan, project, files: files.filter((f) => !gone.has(f) || still.has(f.to)) };
 }
 
-/** a copy of one photo or video at `out` without what its file says about where and when it was shot and with what */
-export type Stripper = (from: string, out: string, kind: 'image' | 'video') => Promise<void>;
+/** a copy of one photo, video or sound file at `out` without what its file says about where and when it was shot and with what */
+export type Stripper = (from: string, out: string, kind: 'image' | 'video' | 'audio') => Promise<void>;
+/** the tags ffmpeg writes itself or that say only what the file is */
+const PLAIN_TAGS = new Set(['encoder', 'major_brand', 'minor_version', 'compatible_brands', 'language', 'handler_name', 'vendor_id']);
 const stripFile: Stripper = async (from, out, kind) => {
   if (kind === 'image') { await pyJson('meta.py', ['strip', from, out]); return; }
+  if (kind === 'audio') {
+    // a phone recording's place, time and device are the container's tags (an m4a's ©xyz and dates, a WAV's bext and INFO, ID3,
+    // Vorbis comments): the sound streams as they are, without them or a cover picture
+    await ffmpeg(['-i', from, '-map', '0:a', '-c', 'copy', '-map_metadata', '-1', '-map_chapters', '-1', out]);
+    // the same packets, counted (a VBR MP3 without its header reads another length once a header is written: no duration test)
+    const sound = (f: string) => ffprobe(['-select_streams', 'a', '-count_packets', '-show_entries', 'stream=codec_name,sample_rate,channels,nb_read_packets', '-of', 'csv=p=0', f]);
+    const [a, b] = await Promise.all([sound(from), sound(out)]);
+    if (a !== b) throw new Error(`重新封裝後的聲音是 ${b || '（沒有）'}，原本是 ${a}`);
+    const info = JSON.parse(await ffprobe(['-show_entries', 'format_tags:stream_tags', '-of', 'json', out])) as { format?: { tags?: object }; streams?: Array<{ tags?: object }> };
+    const left = [info.format?.tags, ...(info.streams ?? []).map((s) => s.tags)].flatMap((t) => Object.keys(t ?? {})).filter((k) => !PLAIN_TAGS.has(k));
+    if (left.length) throw new Error(`重新封裝後還有 ${[...new Set(left)].join('、')}`);
+    return;
+  }
   // the streams as they are (no new encode), without the file's and the streams' tags (place, creation time, device) or a
   // phone's timed metadata tracks; the rotation is the stream's side data and stays
   await ffmpeg(['-i', from, '-map', '0:v', '-map', '0:a?', '-c', 'copy', '-map_metadata', '-1', '-map_chapters', '-1', out]);
@@ -199,28 +262,30 @@ const stripFile: Stripper = async (from, out, kind) => {
   if (a.width !== b.width || a.height !== b.height || Math.abs(da - db) > 0.1) throw new Error(`重新封裝後是 ${b.width}×${b.height}、${db.toFixed(2)} 秒，原本是 ${a.width}×${a.height}、${da.toFixed(2)} 秒`);
 };
 
-/** --public with the footage: each photo and video in the zip is a copy (made in `work`) with no place, time or camera in its
- *  file, as project.json no longer has them. One that cannot be cleaned stops the export: shipping it as it is would leak them. */
+/** --public with the footage: each photo, video and sound file in the zip (footage, music, and the voice-over and score the
+ *  project made, all of media/) is a copy (made in `work`) with no place, time or device in its file, as project.json no longer
+ *  has them. One that cannot be cleaned stops the export: shipping it as it is would leak them. */
 export async function strippedPlan(plan: ExportPlan, work: string, o: { log?: (s: string) => void; strip?: Stripper } = {}): Promise<ExportPlan> {
   const strip = o.strip ?? stripFile, own = (to: string) => OWN.includes(to) || OWN_DIRS.some((d) => to.startsWith(`${d}/`));
-  let n = 0, photos = 0, videos = 0;
-  const files = [];
+  let n = 0;
+  const files = [], count = { image: 0, video: 0, audio: 0 };
   for (const f of plan.files) {
     const kind = own(f.to) ? null : kindOf(f.to);
-    if (kind !== 'image' && kind !== 'video') { files.push(f); continue; }
+    if (!kind) { files.push(f); continue; }
     const out = join(work, `.strip-${n++}${extname(f.to)}`);   // never a trimmed copy's name (<source id>.mp4)
     try { await strip(f.from, out, kind); } catch (e) { throw new Error(`沒辦法拿掉 ${f.to} 檔案裡的拍攝地點和時間（${(e as Error).message.split('\n')[0]}），--public 不能帶它`); }
     files.push({ from: out, to: f.to });
-    if (kind === 'image') photos++; else videos++;
+    count[kind]++;
   }
-  if (photos + videos) o.log?.(`拿掉了 ${photos} 張照片、${videos} 支影片檔案裡的拍攝地點和時間`);
+  const said = [count.image && `${count.image} 張照片`, count.video && `${count.video} 支影片`, count.audio && `${count.audio} 個聲音`].filter(Boolean);
+  if (said.length) o.log?.(`拿掉了 ${said.join('、')}檔案裡的拍攝地點和時間`);
   return { ...plan, files };
 }
 
 /** writes the zip; returns its path. --public with the footage goes through exportProjectAsync: its photos and videos are
  *  cleaned first */
 export function exportProject(dir: string, o: { media: boolean; out?: string; /** clean this computer's paths out (default: the real tellcut folder) */ public?: boolean | { root: string } }): string {
-  if (o.public && o.media) throw new Error('--public 加 --media 要先拿掉照片和影片檔案裡的拍攝地點和時間：用 exportProjectAsync');
+  if (o.public && o.media) throw new Error('--public 加 --media 要先拿掉照片、影片和聲音檔案裡的拍攝地點和時間：用 exportProjectAsync');
   const before = readFileSync(join(dir, 'project.json'), 'utf8');
   return writeZip(dir, before, exportPlan(dir, JSON.parse(before), o), o);
 }
@@ -259,8 +324,8 @@ function writeZip(dir: string, before: string, plan: ExportPlan, o: { out?: stri
   const scrub = o.public === true ? { root: TELLCUT_ROOT } : o.public || null;
   if (scrub) refuseOutside(plan);
   // a public project tells nobody where and when its footage was shot (the files themselves: strippedPlan)
-  const project = scrub ? structuredClone(plan.project) : plan.project;
-  if (scrub) dropPlaceAndTime(project);
+  const project = scrub ? structuredClone(plan.project) : plan.project, shots = noShots();
+  if (scrub) dropPlaceAndTime(project, shots);
   const text = ((t: string) => (scrub ? scrubText(t, scrub) : t))(JSON.stringify(project, null, 2) + '\n');
   mkdirSync(dirname(out), { recursive: true });
   // a folder laid out as the zip, next to it (the same drive: files are hard-linked where they can be, not copied)
@@ -274,17 +339,23 @@ function writeZip(dir: string, before: string, plan: ExportPlan, o: { out?: stri
     mkdirSync(top, { recursive: true });
     writeFileSync(join(top, 'project.json'), text);
     if (scrub) {
-      const left = leftoverPaths(text).map((p) => `project.json：${p}`);
-      for (const f of plan.files.filter((x) => TEXT.test(x.to))) {
+      const left = leftoverPaths(text).map((p) => `project.json：${p}`), unsure: string[] = [];
+      // every file of the chat, whatever its name: one not read as a thread is not shipped unread. The chat last, once the
+      // versions in .history/ have said every shooting time and place the sources ever had
+      const chat = (to: string) => to.startsWith('.history/chat/');
+      for (const f of [...plan.files.filter((x) => TEXT.test(x.to) && !chat(x.to)), ...plan.files.filter((x) => chat(x.to))]) {
         const at = join(top, f.to), was = readFileSync(at, 'utf8');
         let now = scrubText(was, scrub);
-        // the project's earlier versions and proposals hold its sources too
-        if (/^\.history\/.*\.json$/i.test(f.to)) {
-          try { const v = JSON.parse(now); if (dropPlaceAndTime(v)) now = JSON.stringify(v, null, 2) + '\n'; } catch { /* not JSON after all: its paths are scrubbed all the same */ }
+        if (chat(f.to)) {
+          try { now = scrubChat(now, shots); } catch (e) { unsure.push(`${f.to}：${(e as Error).message}`); continue; }
+        } else if (/^\.history\/.*\.json$/i.test(f.to)) {
+          // the project's earlier versions and proposals hold its sources too
+          try { const v = JSON.parse(now); if (dropPlaceAndTime(v, shots)) now = JSON.stringify(v, null, 2) + '\n'; } catch { /* not JSON after all: its paths are scrubbed all the same */ }
         }
         if (now !== was) { rmSync(at); writeFileSync(at, now); }   // a hard link to the project's own file: written anew, not through it
         left.push(...leftoverPaths(now).map((p) => `${f.to}：${p}`));
       }
+      if (unsure.length) throw new Error(`看不出這些聊天紀錄裡有沒有拍攝地點和時間（--public 不能帶）：\n${unsure.join('\n')}\n不是頁面聊天寫的檔案就先移走再匯出。`);
       if (left.length) throw new Error(`還有這台電腦上的路徑，沒有打包（--public 不能留）：\n${left.slice(0, 20).join('\n')}${left.length > 20 ? `\n…共 ${left.length} 個` : ''}\n素材在專案外面就加 --media；聊天紀錄或文字檔裡的，改掉再匯出。`);
     }
     // unedited since the last cut: the zip's cut-state names the text in the zip, or the import's next cut refused for nothing.

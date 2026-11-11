@@ -4,7 +4,11 @@ import { join } from 'node:path';
 import { crc32 } from 'node:zlib';
 import { corePlugin, createRegistry, parseProject } from '@tellcut/engine';
 import { ffmpeg, ffprobe, photoMeta, prepareProject, probeDuration, probeSize, runPy } from '@tellcut/media-node';
-import { dropPlaceAndTime, exportPlan, exportProject, exportProjectAsync, exportProjectTrimmed, ImportError, importProject, leftoverPaths, oddEntries, scrubText, usedRanges } from './export-project.ts';
+import { dropPlaceAndTime, exportPlan, exportProject, exportProjectAsync, exportProjectTrimmed, ImportError, importProject, leftoverPaths, oddEntries, scrubShots, scrubText, usedRanges } from './export-project.ts';
+
+/** a chat thread as the server writes it (apps/server/src/chat/store.ts) */
+const thread = (messages: Array<{ role: string; text: string; time?: string; tools?: unknown[] }>) =>
+  JSON.stringify({ sessionId: '11111111-1111-4111-8111-111111111111', started: true, messages: messages.map((m) => ({ time: '2026-11-01T09:30:00.000Z', ...m })) }, null, 2) + '\n';
 
 /** a tellcut/ with one project whose footage is partly inside it and partly on another folder */
 function world() {
@@ -14,7 +18,7 @@ function world() {
   const project = { version: 1, meta: { name: '旅行' }, sources: { a: { path: '../../../footage/a.mp4' }, b: { path: 'media/b.mp4' } }, media: { v: { path: 'media/voice/1.wav' } }, tracks: [] };
   const put = (f: string, s = f) => writeFileSync(join(dir, f), s);
   put('project.json', JSON.stringify(project)); put('cut.ts'); put('narration.json'); put('storyboard.md'); put('brand.md'); put('CREDITS.md'); put('fx/ring.js'); put('score/waltz.js');
-  put('media/b.mp4'); put('media/voice/1.wav'); put('.history/chat/chat.json'); put('.history/chat/chat.json.lock'); put('.history/chat/chat.json.123.tmp'); put('cache/proxy.mp4'); put('cache/cut-state.json'); put('exports/film.mp4');   // the lock and .tmp: a chat turn running as it was zipped
+  put('media/b.mp4'); put('media/voice/1.wav'); put('.history/chat/chat.json', thread([])); put('.history/chat/chat.json.lock'); put('.history/chat/chat.json.123.tmp'); put('.history/chat/chat.json.claude', '{"pid":4,"at":1,"session":"s"}'); put('cache/proxy.mp4'); put('cache/cut-state.json'); put('exports/film.mp4');   // the lock, .tmp and .claude note: a chat turn running as it was zipped
   writeFileSync(join(root, 'footage', 'a.mp4'), 'footage a');
   return { root, tellcut, dir };
 }
@@ -168,7 +172,7 @@ test('leftoverPaths finds the absolute paths still in a text', () => {
 
 test('--public: the zip\u2019s history and project carry no path of this computer, the project itself is untouched, and its cut state still matches', async () => {
   const { root, tellcut, dir } = world();
-  const chat = JSON.stringify({ said: `read ${join(tellcut, 'projects', 'trip', 'media', 'b.mp4')}` });
+  const chat = thread([{ role: 'assistant', text: `read ${join(tellcut, 'projects', 'trip', 'media', 'b.mp4')}` }]);
   rmSync(join(dir, '.history/chat/chat.json'));
   writeFileSync(join(dir, '.history/chat/chat.json'), chat);
   const { sha1Of } = await import('./export-project.ts');
@@ -245,6 +249,71 @@ test('--public: project.json and the versions in .history/ say nowhere where and
   const plain = importProject(exportProject(dir, { media: true, out: join(root, 'plain.zip') }), join(root, 'plain'));
   expect(JSON.parse(readFileSync(join(plain, 'project.json'), 'utf8')).sources.b.gps).toEqual(SHOT.gps);
 });
+
+test('scrubShots writes the shooting times and places said in a chat as <time> / <place>; other numbers and dates stay', () => {
+  const shots = { taken: new Set(['2023-05-01T12:00:00']), gps: [[25.033, 121.5654]] as Array<[number, number]> };
+  expect(scrubShots('p3：照片，2023-05-01 12:00:00（推測）', shots)).toBe('p3：照片，<time>（推測）');   // as inspect prints it
+  expect(scrubShots('shot 2024:06:02 08:15:30 and 2022-01-09T07:00Z', shots)).toBe('shot <time> and <time>');   // any date with a time of day
+  expect(scrubShots('on 2023-05-01, 2023/5/1, 2023年5月1日; the sheet says 05-01 12:00', shots)).toBe('on <time>, <time>, <time>; the sheet says <time>');
+  expect(scrubShots('at 25.0330, 121.5654 or +25.0330+121.5654/ or 25°01′59″N, near 25.03', shots)).toBe('at <place> or <place> or <place>, near <place>');
+  expect(scrubShots('cut at 12.5 s, 2024-03-02 alone, fade 0.25, 1.25x', shots)).toBe('cut at 12.5 s, 2024-03-02 alone, fade 0.25, 1.25x');
+});
+
+test('--public: the chat says no shooting time or place (one only an old version knew too), keeps its own time stamps and drops a turn’s note; a plain export keeps it word for word', async () => {
+  const { root, tellcut, dir } = world();
+  const project = JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8'));
+  Object.assign(project.sources.b, SHOT);
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(project));
+  // a source deleted since: only this version still has it
+  writeFileSync(join(dir, '.history/2026-01-01T00-00-00-000Z_000001_cut.json'), JSON.stringify({ ...project, sources: { ...project.sources, c: { path: 'media/c.jpg', gps: [48.8566, 2.3522] } } }));
+  const chat = thread([{ role: 'user', text: '剪一支旅行片', time: '2026-11-01T09:30:00.000Z' },
+    { role: 'assistant', text: 'b：影片，320×180，2023-05-01 12:00:00，在 25.03, 121.56 附近；c 在 48.8566', time: '2026-11-01T09:31:00.000Z', tools: [{ kind: 'run', label: '執行：npm run inspect', detail: 'npm run inspect -- trip' }] }]);
+  rmSync(join(dir, '.history/chat/chat.json'));
+  writeFileSync(join(dir, '.history/chat/chat.json'), chat);
+  const pub = importProject(await exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut }, strip: asItIs }), join(root, 'pub'));
+  const t = JSON.parse(readFileSync(join(pub, '.history/chat/chat.json'), 'utf8'));
+  expect(t.messages[1].text).toBe('b：影片，320×180，<time>，在 <place>, <place> 附近；c 在 <place>');
+  expect(t.messages[1].tools[0].detail).toBe('npm run inspect -- trip');
+  expect(t.messages.map((m: { time: string }) => m.time)).toEqual(['2026-11-01T09:30:00.000Z', '2026-11-01T09:31:00.000Z']);
+  expect(t.sessionId).toBe(JSON.parse(chat).sessionId);
+  expect(existsSync(join(pub, '.history/chat/chat.json.claude'))).toBe(false);
+  expect(readFileSync(join(dir, '.history/chat/chat.json'), 'utf8')).toBe(chat);   // the project's own, never written through the link
+  const plain = importProject(exportProject(dir, { media: true, out: join(root, 'plain.zip') }), join(root, 'plain'));
+  expect(readFileSync(join(plain, '.history/chat/chat.json'), 'utf8')).toBe(chat);
+  expect(existsSync(join(plain, '.history/chat/chat.json.claude'))).toBe(false);
+});
+
+test('--public refuses a chat file it cannot read as a thread, whatever its name, and names it', async () => {
+  for (const [f, text] of [['.history/chat/chat.json', '{"said":"2023-05-01 12:00"}'], ['.history/chat/old.bak', 'at 2023-05-01 12:00']]) {
+    const w = world();
+    writeFileSync(join(w.dir, f), text);
+    await expect(exportProjectAsync(w.dir, { media: true, out: join(w.root, 'pub.zip'), public: { root: w.tellcut }, strip: asItIs }), f).rejects.toThrow(f);
+    expect(existsSync(join(w.root, 'pub.zip')), f).toBe(false);
+  }
+});
+
+test('--public --media packs each sound file (a phone recording, music, the voice-over) as the same sound without its tags; one that cannot be cleaned stops the export', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'pubaudio-')), tellcut = join(root, 'tellcut'), dir = join(tellcut, 'projects', 'trip');
+  mkdirSync(join(dir, 'media', 'voice'), { recursive: true });
+  const tags = ['-metadata', 'location=+25.0330+121.5654/', '-metadata', 'creation_time=2024-05-01T10:00:00Z', '-metadata', 'date=2024-05-01', '-metadata', 'originator=Phone'];
+  const make = (f: string, extra: string[] = []) => ffmpeg(['-f', 'lavfi', '-i', 'sine=duration=1', ...extra, ...tags, join(dir, f)]);
+  await Promise.all([make('media/rec.m4a'), make('media/song.mp3'), make('media/voice/1.wav', ['-write_bext', '1'])]);
+  writeFileSync(join(dir, 'project.json'), JSON.stringify({ version: 1, meta: { name: 't' }, tracks: [],
+    sources: { rec: { path: 'media/rec.m4a', duration: 1 } }, media: { song: { path: 'media/song.mp3' }, v: { path: 'media/voice/1.wav' } } }));
+  const log: string[] = [];
+  const back = importProject(await exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut }, log: (s) => log.push(s) }), join(root, 'in'));
+  const tagsOf = (f: string) => ffprobe(['-show_entries', 'format_tags:stream_tags', '-of', 'json', f]);
+  const packets = (f: string) => ffprobe(['-select_streams', 'a', '-count_packets', '-show_entries', 'stream=codec_name,nb_read_packets', '-of', 'csv=p=0', f]);
+  for (const f of ['media/rec.m4a', 'media/song.mp3', 'media/voice/1.wav']) {
+    expect(await tagsOf(join(dir, f)), f).toMatch(/2024-05-01/);   // the originals have them, and keep them
+    expect(await tagsOf(join(back, f)), f).not.toMatch(/location|creation_time|"date"|originator|Phone|2024/i);
+    expect(await packets(join(back, f)), f).toBe(await packets(join(dir, f)));
+  }
+  expect(log.join('\n')).toMatch(/3 個聲音/);
+  writeFileSync(join(dir, 'media', 'broken.mp3'), 'not a sound');
+  await expect(exportProjectAsync(dir, { media: true, out: join(root, 'pub2.zip'), public: { root: tellcut } })).rejects.toThrow(/media\/broken\.mp3/);
+  expect(existsSync(join(root, 'pub2.zip'))).toBe(false);
+}, 120000);
 
 test('--public --media cannot go through the synchronous exportProject (it would pack the files with their EXIF)', () => {
   const { root, tellcut, dir } = world();
