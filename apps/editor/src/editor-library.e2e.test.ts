@@ -1,40 +1,34 @@
 // My blocks in the editor (spec 2026-10-29-my-library §3.2, §3.3): ☆ saves a project's own block, another project adds it from
 // the My blocks group, and the copy lands in its fx/lib/ with meta.fx and the item in one edit.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, TELLCUT_ROOT } from '@tellcut/media-node';
-import { demoProject, makeSource, startApp } from '../../server/src/test-utils.ts';
+import type { Browser, Page } from 'playwright-core';
+import { demoProject } from '@tellcut/server/test-utils';
+import { openProject, poller, projectsRoot, startEditor, stopEditor, writeProject, type App } from '../e2e-kit.ts';
 
-const CHROME = chromePath();
-const root = join(TELLCUT_ROOT, 'projects/_e2e-library');
-const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
-let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser, page: Page;
-const poll = <T>(fn: () => T, timeout = 15000) => expect.poll(fn, { timeout, interval: 150 });
+const root = projectsRoot('_e2e-library');
+let app: App, base: string, browser: Browser, page: Page;
+const poll = poller(150, 15000);
 const BOX = `export default [{ type: 'fx.box', label: 'Box', doc: 'a red box', kind: 'overlay', params: [],
   build: (ctx) => { const el = document.createElement('div'); el.style.cssText = 'position:absolute;inset:30%;background:#f00'; ctx.root.appendChild(el); return {}; }, draw: () => {} }];\n`;
 
 beforeAll(async () => {
-  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
-  rmSync(root, { recursive: true, force: true });
-  for (const id of ['one', 'two']) {
-    mkdirSync(join(root, id, 'fx'), { recursive: true });
-    await makeSource(join(root, id, 'src.mp4'));
-    const p = demoProject();
-    Object.assign(p.meta, { name: id, duration: 4, ...(id === 'one' ? { fx: ['fx/box.js'] } : {}) });
-    writeFileSync(join(root, id, 'project.json'), JSON.stringify(p, null, 2));
-  }
-  writeFileSync(join(root, 'one', 'fx', 'box.js'), BOX);
-  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist, libraryThumb: async () => {} }));
-  browser = await chromium.launch({ executablePath: CHROME, headless: true });
-  page = await browser.newPage({ viewport: { width: 1400, height: 820 }, locale: 'zh-TW' });
+  const setup = async () => {
+    for (const id of ['one', 'two']) {
+      mkdirSync(join(root, id, 'fx'), { recursive: true });
+      const p = demoProject();
+      Object.assign(p.meta, { name: id, duration: 4, ...(id === 'one' ? { fx: ['fx/box.js'] } : {}) });
+      await writeProject(root, id, p);
+    }
+    writeFileSync(join(root, 'one', 'fx', 'box.js'), BOX);
+  };
+  ({ app, base, browser, page } = await startEditor({ root, setup, viewport: { width: 1400, height: 820 }, app: { libraryThumb: async () => {} } }));
 }, 120000);
 
-afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+afterAll(() => stopEditor(root, { browser, app }));
 
 test('☆ saves a project block to My blocks; another project adds it from the My blocks group', async () => {
-  await page.goto(`${base}/editor/?id=one`);
-  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  await openProject(page, base, 'one');
   await page.click('[data-lib-tab="effects"]');
   await page.hover('[data-add-overlay="fx.box"]');
   await page.click('[data-save-block="fx.box"]');
@@ -46,8 +40,7 @@ test('☆ saves a project block to My blocks; another project adds it from the M
   expect(existsSync(join(root, '_library', 'blocks', 'box', 'fx', 'box.js'))).toBe(true);
   await poll(() => page.locator('[data-save-block="fx.box"]').textContent()).toBe('★');
 
-  await page.goto(`${base}/editor/?id=two`);
-  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  await openProject(page, base, 'two');
   await page.click('[data-lib-tab="effects"]');
   await page.waitForSelector('[data-lib-group="block:mine"] [data-add-mine="fx.box"]');
   expect(await page.locator('[data-add-mine="fx.box"]').textContent()).toBe('紅盒子');
@@ -70,8 +63,7 @@ test('a slow answer about My blocks does not reset a field being typed in', asyn
   const p = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   try {
     await p.route('**/api/projects/two/library', async (r) => { await new Promise((ok) => setTimeout(ok, 3000)); await r.continue(); });
-    await p.goto(`${base}/editor/?id=two`);
-    await p.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+    await openProject(p, base, 'two');
     await p.click('[data-item-id="c"]');
     const speed = p.locator('[data-field="speed"] input');
     await speed.fill('0.5');
@@ -87,8 +79,7 @@ test('a slow answer about My blocks does not reset a field being typed in', asyn
 test('the gallery opened from a project lists its own blocks and adds one at the playhead of the tab that opened it', async () => {
   const p = await browser.newPage({ viewport: { width: 1400, height: 820 }, locale: 'en-US' });
   try {
-    await p.goto(`${base}/editor/?id=one`);
-    await p.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+    await openProject(p, base, 'one');
     await p.click('[data-lib-tab="effects"]');
     const [g] = await Promise.all([p.context().waitForEvent('page'), p.click('[data-gallery-link]')]);
     await g.waitForSelector('[data-own-section] [data-card="own:fx.box"]', { timeout: 30000 });

@@ -1,18 +1,17 @@
 // End-to-end for the media panel (spec 2026-11-10-media-panel-visual): library cards dragged onto the timeline with the mouse,
 // a file from the PC dropped on it, and screenshots of the three pages and of a drag for a person to look at.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { chromePath, makeClicks, TELLCUT_ROOT } from '@tellcut/media-node';
-import { demoProject, makeSource, startApp } from '../../server/src/test-utils.ts';
+import type { Browser, Page } from 'playwright-core';
+import { makeClicks, TELLCUT_ROOT } from '@tellcut/media-node';
+import { demoProject, makeSource } from '@tellcut/server/test-utils';
+import { openProject, poller, projectsRoot, readProject, startEditor, stopEditor, type App } from '../e2e-kit.ts';
 import { t } from './i18n/index.ts';
 
-const CHROME = chromePath();
-const root = join(TELLCUT_ROOT, 'projects/_e2e_drag');
+const root = projectsRoot('_e2e_drag');
 const shots = join(TELLCUT_ROOT, '.cache/media-shots');
-const playerDist = join(TELLCUT_ROOT, 'apps/player/dist'), editorDist = join(TELLCUT_ROOT, 'apps/editor/dist');
-let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, browser: Browser, page: Page;
-const poll = <T>(fn: () => T, timeout = 15000) => expect.poll(fn, { timeout, interval: 100 });
+let app: App, base: string, browser: Browser, page: Page;
+const poll = poller(100, 15000);
 const shot = (name: string) => page.screenshot({ path: join(shots, `${name}.png`) });
 
 const FLASH = { peak: 1, rise: 0, hold: 0, fall: 0.3, power: 1, color: '#fff' };
@@ -32,7 +31,7 @@ function project() {
     ],
   });
 }
-const disk = (id: string) => JSON.parse(readFileSync(join(root, id, 'project.json'), 'utf8'));
+const disk = (id: string) => readProject(root, id);
 const items = (id: string, track: string) => disk(id).tracks.find((x: any) => x.id === track)?.items ?? [];
 
 async function open(id: string) {
@@ -40,8 +39,7 @@ async function open(id: string) {
   await makeSource(join(root, id, 'src.mp4'));
   await makeClicks(join(root, id, 'song.wav'), { seconds: 3 });
   writeFileSync(join(root, id, 'project.json'), JSON.stringify(project(), null, 2));
-  await page.goto(`${base}/editor/?id=${id}`);
-  await page.waitForSelector('[data-player="ready"]', { timeout: 30000 });
+  await openProject(page, base, id);
   await page.bringToFront();
 }
 const center = async (sel: string) => { const b = (await page.locator(sel).first().boundingBox())!; return { x: b.x + b.width / 2, y: b.y + b.height / 2, b }; };
@@ -58,14 +56,9 @@ async function drag(card: string, to: { x: number; y: number }, name?: string) {
 }
 
 beforeAll(async () => {
-  for (const d of [playerDist, editorDist]) if (!existsSync(join(d, 'index.html'))) throw new Error(`Build first: npm run build:player && npm run build:editor (${d})`);
-  rmSync(root, { recursive: true, force: true });
-  mkdirSync(shots, { recursive: true });
-  ({ app, base } = await startApp({ projectsDir: root, playerDist, editorDist }));
-  browser = await chromium.launch({ executablePath: CHROME, headless: true });
-  page = await browser.newPage({ viewport: { width: 1536, height: 864 }, locale: 'zh-TW' });
+  ({ app, base, browser, page } = await startEditor({ root, setup: () => mkdirSync(shots, { recursive: true }), viewport: { width: 1536, height: 864 } }));
 }, 120000);
-afterAll(async () => { await browser?.close(); await app?.close(); rmSync(root, { recursive: true, force: true }); });
+afterAll(() => stopEditor(root, { browser, app }));
 
 test('a scene card dragged between the two clips of the magnetic track goes in there and pushes the second on; Ctrl+Z takes it out', async () => {
   await open('scene');
