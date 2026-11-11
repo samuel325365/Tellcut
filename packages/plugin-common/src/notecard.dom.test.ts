@@ -20,7 +20,7 @@ function sizes(params: Record<string, unknown>, local = 3) {
 }
 
 test('step: a long title and a long field value shrink; the defaults keep 60 and 42', () => {
-  expect(sizes({ mode: 'step' })).toMatchObject({ 打發鮮奶油: expect.closeTo(60, 6), 電動打蛋器: expect.closeTo(42, 6) });
+  expect(sizes({ mode: 'step' })).toMatchObject({ 把東西準備好: expect.closeTo(60, 6), 清單上的東西: expect.closeTo(42, 6) });
   const long = sizes({ mode: 'step', title: '把鮮奶油和糖一起打發到濃稠綿密的程度', fields: '用具|電動打蛋器或者手動打蛋器加上一個大碗' });
   expect(long['把鮮奶油和糖一起打發到濃稠綿密的程度']).toBeLessThan(60);
   expect(long['電動打蛋器或者手動打蛋器加上一個大碗']).toBeLessThan(42);
