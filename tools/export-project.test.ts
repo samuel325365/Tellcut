@@ -315,6 +315,28 @@ test('--public --media packs each sound file (a phone recording, music, the voic
   expect(existsSync(join(root, 'pub2.zip'))).toBe(false);
 }, 120000);
 
+test('--public --media packs a sound-only .mp4 or .webm as its sound without its tags; a file with neither pictures nor sound stops the export with a clear reason', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'pubsoundonly-')), tellcut = join(root, 'tellcut'), dir = join(tellcut, 'projects', 'trip');
+  mkdirSync(join(dir, 'media'), { recursive: true });
+  const tags = ['-metadata', 'location=+25.0330+121.5654/', '-metadata', 'creation_time=2024-05-01T10:00:00Z', '-metadata', 'date=2024-05-01'];
+  await Promise.all(['media/rec.mp4', 'media/rec.webm'].map((f) => ffmpeg(['-f', 'lavfi', '-i', 'sine=duration=1', ...tags, join(dir, f)])));
+  writeFileSync(join(dir, 'project.json'), JSON.stringify({ version: 1, meta: { name: 't' }, tracks: [],
+    sources: { rec: { path: 'media/rec.mp4', duration: 1, audio: true } }, media: { song: { path: 'media/rec.webm' } } }));
+  const back = importProject(await exportProjectAsync(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } }), join(root, 'in'));
+  const tagsOf = (f: string) => ffprobe(['-show_entries', 'format_tags:stream_tags', '-of', 'json', f]);
+  const packets = (f: string) => ffprobe(['-show_entries', 'stream=codec_type,codec_name,nb_read_packets', '-count_packets', '-of', 'csv=p=0', f]);
+  for (const f of ['media/rec.mp4', 'media/rec.webm']) {
+    expect(await tagsOf(join(dir, f)), f).toMatch(/2024-05-01/);
+    expect(await tagsOf(join(back, f)), f).not.toMatch(/location|creation_time|"date"|2024/i);
+    expect(await packets(join(back, f)), f).toBe(await packets(join(dir, f)));
+  }
+  // an .mp4 holding only a subtitle track: no picture, no sound
+  writeFileSync(join(root, 'sub.srt'), '1\n00:00:00,000 --> 00:00:01,000\nhi\n');
+  await ffmpeg(['-i', join(root, 'sub.srt'), '-c:s', 'mov_text', join(dir, 'media', 'words.mp4')]);
+  await expect(exportProjectAsync(dir, { media: true, out: join(root, 'pub2.zip'), public: { root: tellcut } })).rejects.toThrow(/media\/words\.mp4.*沒有影像也沒有聲音/);
+  expect(existsSync(join(root, 'pub2.zip'))).toBe(false);
+}, 120000);
+
 test('--public --media cannot go through the synchronous exportProject (it would pack the files with their EXIF)', () => {
   const { root, tellcut, dir } = world();
   expect(() => exportProject(dir, { media: true, out: join(root, 'pub.zip'), public: { root: tellcut } })).toThrow(/exportProjectAsync/);

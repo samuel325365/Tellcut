@@ -238,11 +238,17 @@ export async function trimPlan(dir: string, plan: ExportPlan, work: string, o: {
 
 /** a copy of one photo, video or sound file at `out` without what its file says about where and when it was shot and with what */
 export type Stripper = (from: string, out: string, kind: 'image' | 'video' | 'audio') => Promise<void>;
-/** the tags ffmpeg writes itself or that say only what the file is */
-const PLAIN_TAGS = new Set(['encoder', 'major_brand', 'minor_version', 'compatible_brands', 'language', 'handler_name', 'vendor_id']);
+/** the tags ffmpeg writes itself or that say only what the file is (Matroska and WebM write ENCODER and a stream's DURATION) */
+const PLAIN_TAGS = new Set(['encoder', 'major_brand', 'minor_version', 'compatible_brands', 'language', 'handler_name', 'vendor_id', 'duration']);
 const stripFile: Stripper = async (from, out, kind) => {
   if (kind === 'image') { await pyJson('meta.py', ['strip', from, out]); return; }
-  if (kind === 'audio') {
+  // what the file holds, not what its name says: an .mp4 or .webm can be sound only (a cover picture is not a picture track)
+  const streams = (JSON.parse(await ffprobe(['-show_entries', 'stream=codec_type:stream_disposition=attached_pic', '-of', 'json', from])) as
+    { streams?: Array<{ codec_type?: string; disposition?: { attached_pic?: number } }> }).streams ?? [];
+  const pictures = streams.some((s) => s.codec_type === 'video' && !s.disposition?.attached_pic), hears = streams.some((s) => s.codec_type === 'audio');
+  if (!pictures && !hears) throw new Error('檔案裡沒有影像也沒有聲音');
+  if (kind === 'audio' || !pictures) {
+    if (!hears) throw new Error('檔案裡沒有聲音');
     // a phone recording's place, time and device are the container's tags (an m4a's ©xyz and dates, a WAV's bext and INFO, ID3,
     // Vorbis comments): the sound streams as they are, without them or a cover picture
     await ffmpeg(['-i', from, '-map', '0:a', '-c', 'copy', '-map_metadata', '-1', '-map_chapters', '-1', out]);
@@ -251,7 +257,7 @@ const stripFile: Stripper = async (from, out, kind) => {
     const [a, b] = await Promise.all([sound(from), sound(out)]);
     if (a !== b) throw new Error(`重新封裝後的聲音是 ${b || '（沒有）'}，原本是 ${a}`);
     const info = JSON.parse(await ffprobe(['-show_entries', 'format_tags:stream_tags', '-of', 'json', out])) as { format?: { tags?: object }; streams?: Array<{ tags?: object }> };
-    const left = [info.format?.tags, ...(info.streams ?? []).map((s) => s.tags)].flatMap((t) => Object.keys(t ?? {})).filter((k) => !PLAIN_TAGS.has(k));
+    const left = [info.format?.tags, ...(info.streams ?? []).map((s) => s.tags)].flatMap((t) => Object.keys(t ?? {})).filter((k) => !PLAIN_TAGS.has(k.toLowerCase()));
     if (left.length) throw new Error(`重新封裝後還有 ${[...new Set(left)].join('、')}`);
     return;
   }
