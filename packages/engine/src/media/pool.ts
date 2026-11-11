@@ -18,6 +18,9 @@ export function renderSeekTime(mt: number, fps: number): number {
   return (frameOf(mt, fps) + 0.5) / fps;
 }
 
+/** lets an element go: paused, its source dropped and reset (load()) so the browser frees its buffers and decoder, out of the page */
+function empty(v: HTMLVideoElement) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }
+
 interface Use { v: HTMLVideoElement; mt: number; rate: number; url: string; held: boolean }
 
 /** how long a media URL that failed to load is left alone before a preload tries it again (a proxy may be made meanwhile) */
@@ -30,7 +33,9 @@ export class MediaPool implements MediaApi {
   private used = new Map<HTMLVideoElement, Use>();
   /** per element, the one wait for its picture that every preload shares: the editor preloads on each drag frame, and each
    *  call used to add its own listeners, of which only the one that fired went away */
-  private waits = new Map<HTMLVideoElement, Promise<boolean>>();
+  private waits = new Map<HTMLVideoElement, { p: Promise<boolean>; end(ok: boolean): void }>();
+  /** the source each element key is of (retry() lets go of one source's elements) */
+  private sourceOf = new Map<string, string>();
   /** URLs that failed to load, and when: a missing proxy was fetched again (one 404) on every drag frame */
   private failed = new Map<string, number>();
   /** sound levels by source (common.audiogram): one fetch each, kept; a source that had none is asked again after RETRY_MS */
@@ -47,6 +52,7 @@ export class MediaPool implements MediaApi {
     const key = this.keyOf(ref, url);
     const list = this.videos.get(key) ?? [];
     this.videos.set(key, list);
+    this.sourceOf.set(key, ref.source);
     let v = pick(list);
     if (!v) {
       v = document.createElement('video');
@@ -80,10 +86,11 @@ export class MediaPool implements MediaApi {
 
   /** true once the element has a picture, false if it fails; one set of listeners per element, all taken off by either */
   private picture(v: HTMLVideoElement, url: string): Promise<boolean> {
-    let w = this.waits.get(v);
-    if (w) return w;
-    w = new Promise<boolean>((res) => {
-      const end = (ok: boolean) => {
+    const had = this.waits.get(v);
+    if (had) return had.p;
+    let end!: (ok: boolean) => void;
+    const p = new Promise<boolean>((res) => {
+      end = (ok: boolean) => {
         for (const [e, f] of on) v.removeEventListener(e, f);
         this.waits.delete(v);
         if (ok) this.failed.delete(url); else this.failed.set(url, Date.now());
@@ -93,8 +100,35 @@ export class MediaPool implements MediaApi {
       const on: Array<[string, () => void]> = [['loadeddata', () => end(true)], ['seeked', () => end(true)], ['error', () => end(false)]];
       for (const [e, f] of on) v.addEventListener(e, f);
     });
-    this.waits.set(v, w);
-    return w;
+    this.waits.set(v, { p, end });
+    return p;
+  }
+
+  /** Asks a source's video afresh: its media is there now (the analysis that makes the preview's proxy finished after the preview
+   *  asked for it, which answered 409). The pool kept such an element, failed, and tried it again only on a preload at least
+   *  RETRY_MS later, so the picture stayed black. Its elements with no media yet are let go (paused, emptied so the browser frees
+   *  the decoder, taken out of the page; a preload still waiting for one ends as for a failure) and the next video() or preload()
+   *  makes a new one at the same URL: the server answers a missing proxy with Cache-Control: no-store, so nothing cached stands in
+   *  the way. One that has its media (HAVE_METADATA or more: a seek drops a loaded one to that) is kept, since a new element would
+   *  show black until it loaded. What draws a video asks video() for it every frame (stage layers, ThreeKit.mediaTexture via
+   *  flatlay's swap), so the next frame takes the new element. Returns how many elements were let go. */
+  retry(source: string): number {
+    let dropped = 0;
+    for (const [key, list] of this.videos) {
+      if (this.sourceOf.get(key) !== source) continue;
+      const keep = list.filter((v) => !v.error && v.readyState >= 1);
+      for (const v of list) {
+        if (keep.includes(v)) continue;
+        this.waits.get(v)?.end(false);
+        this.used.delete(v);
+        this.failed.delete(v.getAttribute('src') ?? '');
+        empty(v);
+        dropped++;
+      }
+      if (keep.length) this.videos.set(key, keep);
+      else { this.videos.delete(key); this.sourceOf.delete(key); }
+    }
+    return dropped;
   }
 
   begin() { this.used.clear(); }
@@ -128,8 +162,8 @@ export class MediaPool implements MediaApi {
 
   /** Lets every video element go (another project is loaded): paused, its source dropped, reset so the browser frees it. */
   dispose() {
-    for (const list of this.videos.values()) for (const v of list) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }
-    this.videos.clear(); this.used.clear(); this.waits.clear(); this.failed.clear(); this.peakData.clear(); this.peakFailed.clear();
+    for (const list of this.videos.values()) for (const v of list) empty(v);
+    this.videos.clear(); this.sourceOf.clear(); this.used.clear(); this.waits.clear(); this.failed.clear(); this.peakData.clear(); this.peakFailed.clear();
   }
 
   stillUrl(ref: StillRef): string { return this.resolver.still(ref); }

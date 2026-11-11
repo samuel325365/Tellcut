@@ -29,16 +29,6 @@ export interface SessionDeps {
   loadThree?: () => Promise<unknown>; plugins?: Plugin[];
 }
 
-/** The resolver with a source's video asked for afresh: `fresh` counts, per source, the times it was (mediaReady). A new URL is a
- *  new pool element: the pool keeps an element that failed (a proxy asked for before its analysis was done answers 409) and
- *  tries it again only on a preload at least 5 s later, so the picture stayed black once the analysis was done. */
-export function freshResolver(r: MediaResolver, fresh: ReadonlyMap<string, number>): MediaResolver {
-  return { ...r, video: (ref, local) => {
-    const v = r.video(ref, local), n = fresh.get(ref.source);
-    return n ? { ...v, url: `${v.url}${v.url.includes('?') ? '&' : '?'}fresh=${n}` } : v;
-  } };
-}
-
 export class PreviewSession {
   /** the shared plugins, then plus the project's own fx once a project is loaded */
   registry;
@@ -65,8 +55,6 @@ export class PreviewSession {
   private loading = false;
   private cropLater = false;
   private raf: (f: () => void) => void;
-  /** per source, how many times its video was asked for afresh (see freshResolver) */
-  private fresh = new Map<string, number>();
   private resolver: MediaResolver;
   private audioOffline = (url: string, e: Error) =>
     this.d.onError(undefined, `Audio not available (${e.message}): ${url}`, { code: 'player.audioOffline', params: { error: e.message, url } });
@@ -75,7 +63,7 @@ export class PreviewSession {
     this.raf = d.raf ?? ((f) => { requestAnimationFrame(() => f()); });
     this.plugins = d.plugins ?? sharedPlugins;
     this.registry = createRegistry(this.plugins);
-    this.resolver = freshResolver(d.resolver, this.fresh);
+    this.resolver = d.resolver;
   }
 
   async load(raw: unknown): Promise<number> {
@@ -134,19 +122,17 @@ export class PreviewSession {
     else await this.show();
   }
 
-  /** A source's media is there now (its analysis finished after the preview asked for it): its video is asked for again under a new
-   *  URL, and the still frame redrawn; the other sources' videos are left as they are, playing or not. One already on screen with
-   *  its picture (asked for after the analysis was done) is kept: a new element would show black until it loaded. */
+  /** A source's media is there now (its analysis finished after the preview asked for it): the pool lets go of that source's
+   *  elements that have no media yet (MediaPool.retry) and loads new ones, and the still frame is redrawn; the other sources' videos
+   *  are left as they are, playing or not, and so is one of this source already showing its picture. Crop mode: its own video of
+   *  this source is loaded again if it failed. */
   async mediaReady(source: string) {
     if (!this.stage) return;   // nothing loaded yet: the first load asks for it then
-    const refs = this.stage.mediaRefs().filter((r) => r.source === source), urls = new Set(refs.map((r) => this.resolver.video(r, 0).url));
-    const fine = [...this.d.stageEl.querySelectorAll('video')].some((v) => urls.has(v.dataset.key ?? '') && !v.error && v.readyState >= 2);
-    if (fine) return;
-    this.fresh.set(source, (this.fresh.get(source) ?? 0) + 1);
-    await this.pool.preload(refs);
-    // playing: the next frame takes the new element; cropping: the crop view shows the new URL
-    if (this.cropSel) { this.showCrop(); return; }
-    if (!this.busy) await this.show();
+    const dropped = this.pool.retry(source);
+    if (dropped) await this.pool.preload(this.stage.mediaRefs().filter((r) => r.source === source));
+    // playing: the next frame takes the new element
+    if (this.cropSel) { this.showCrop(source); return; }
+    if (dropped && !this.busy) await this.show();
   }
 
   async seek(t: number) { this.pause(); this.t = clamp(t, 0, this.project.meta.duration); await this.show(); }
@@ -223,7 +209,8 @@ export class PreviewSession {
     this.d.onDrawn?.();
   }
 
-  private showCrop() {
+  /** `retry`: a source whose media is there now (mediaReady): the crop view's video of it loads again if it has none */
+  private showCrop(retry?: string) {
     if (this.loading) { this.cropLater = true; return; }
     const sel = this.cropSel!, p = this.project;
     const found = p.tracks.flatMap((t) => (t.kind === 'video' ? (t.items as VideoItem[]) : [])).find((i) => i.id === sel.itemId);
@@ -240,7 +227,7 @@ export class PreviewSession {
     this.crop ??= new CropView(this.d.stageEl.parentElement!, (m) => this.d.post?.(m));
     this.d.stageEl.style.visibility = 'hidden';
     this.crop.show({ itemId: found.id, which: sel.which, url: image ? this.resolver.image!(found.source) : r.url, image, time: r.time, srcW: src.width, srcH: src.height,
-      frameW: fw * p.meta.width, frameH: fh * p.meta.height, crop, view: this.d.viewport?.() ?? { w: 960, h: 540 } });
+      frameW: fw * p.meta.width, frameH: fh * p.meta.height, crop, view: this.d.viewport?.() ?? { w: 960, h: 540 }, retry: retry === found.source });
   }
 
   private async show() {

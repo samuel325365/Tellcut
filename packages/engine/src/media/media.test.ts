@@ -281,6 +281,53 @@ test('dispose lets every video element go: paused, its source dropped and reset,
   pool.begin(); expect(pool.video(ref0, parent, 0)).not.toBe(v);
 });
 
+test('retry(source) lets go of that source\'s elements that have no media (a proxy asked for before its analysis); the next use makes a new one at the same URL', async () => {
+  const resolver: any = { video: (ref: any, local: number) => ({ url: `http://h/proxy/${ref.source}`, time: ref.in + local }), rate: () => 1 };
+  const pool = new MediaPool(resolver, { render: false, fps: 30, preloadTimeout: 2000 });
+  const A = document.createElement('div'), B = document.createElement('div');
+  const s1 = { source: 's1', in: 0, out: 5, speed: 1, interp: 'none' as const }, s2 = { ...s1, source: 's2' };
+  pool.begin(); const v1 = pool.video(s1, A, 1), v2 = pool.video(s2, B, 1);
+  // s1 failed (409 before the analysis was done); a preload of it is still waiting on the element
+  let err: unknown = null;
+  Object.defineProperty(v1, 'error', { get: () => err });
+  Object.defineProperty(v1, 'networkState', { get: () => (err ? 3 : 2) });
+  const load1 = vi.spyOn(v1, 'load').mockImplementation(() => {}), pause1 = vi.spyOn(v1, 'pause').mockImplementation(() => {});
+  const waiting = pool.preload([s1]);
+  err = { code: 4 };
+  expect(pool.retry('s1')).toBe(1);
+  await waiting;   // ends at once, not after the preload timeout
+  expect([pause1.mock.calls.length, v1.hasAttribute('src'), load1.mock.calls.length, v1.parentNode]).toEqual([1, false, 1, null]);
+  // the other source is left alone
+  expect(v2.parentNode).toBe(B);
+  pool.begin();
+  const n1 = pool.video(s1, A, 1);
+  expect([n1 === v1, n1.getAttribute('src'), n1.parentNode === A, pool.video(s2, B, 1)]).toEqual([false, 'http://h/proxy/s1', true, v2]);
+  // a sync does not touch the dropped one, and the new one is not marked failed (a preload loads it at once)
+  await pool.sync();
+  const loadN = vi.spyOn(n1, 'load').mockImplementation(() => {});
+  const p = pool.preload([s1]);
+  n1.dispatchEvent(new Event('loadeddata'));
+  await p;
+  expect(loadN).toHaveBeenCalledTimes(1);
+  // an element that has its media (HAVE_METADATA or more) is kept: a new one would show black until it loaded
+  Object.defineProperty(n1, 'readyState', { get: () => 1 });
+  expect(pool.retry('s1')).toBe(0);
+  pool.begin(); expect(pool.video(s1, A, 1)).toBe(n1);
+  expect(pool.retry('nothing')).toBe(0);
+});
+
+test('retry in render mode: every clip key of the source is let go', () => {
+  const resolver: any = { video: (ref: any) => ({ url: `http://h/cut/${ref.source}-${ref.in}.mp4`, time: 0 }), rate: () => 1 };
+  const pool = new MediaPool(resolver, { render: true, fps: 30 });
+  const P = document.createElement('div');
+  const a = { source: 's1', in: 0, out: 2, speed: 1, interp: 'none' as const }, b = { ...a, in: 4, out: 6 }, c = { ...a, source: 's2' };
+  pool.begin(); const va = pool.video(a, P, 0), vb = pool.video(b, P, 0), vc = pool.video(c, P, 0);
+  for (const v of [va, vb]) { vi.spyOn(v, 'load').mockImplementation(() => {}); vi.spyOn(v, 'pause').mockImplementation(() => {}); }
+  expect(pool.retry('s1')).toBe(2);
+  pool.begin();
+  expect([pool.video(a, P, 0) === va, pool.video(b, P, 0) === vb, pool.video(c, P, 0) === vc]).toEqual([false, false, true]);
+});
+
 test('peaks (a source sound level, common.audiogram): the server analysis in the editor, the prepared copy in an export, the cache from the source files', () => {
   expect(apiResolver('my proj', 'http://h').peaks!('s 1')).toBe('http://h/api/projects/my%20proj/media/peaks/s%201');
   const cache = cacheResolver({ videos: {}, stills: {}, audio: {}, peaks: { s1: 'cache/peaks/a.json' } }, 'http://h/p/x/project.json');

@@ -6,6 +6,8 @@ export interface CropShow {
   /** a photo source: the url is an image */
   image?: boolean;
   srcW: number; srcH: number; frameW: number; frameH: number; crop: Crop; view: { w: number; h: number };
+  /** the source's media is there now (its analysis finished): a video at this URL that failed or never loaded is loaded again */
+  retry?: boolean;
 }
 export type CropChange = { type: 'cropChange'; itemId: string; which: CropWhich; crop: Crop; final: boolean };
 
@@ -48,6 +50,7 @@ export class CropView {
     if (o.image) { if (this.photo.getAttribute('src') !== o.url) this.photo.src = o.url; }
     else {
       if (this.video.getAttribute('src') !== o.url) this.video.src = o.url;
+      else if (o.retry && (this.video.error || this.video.readyState < 1)) this.video.load();
       if (Math.abs(this.video.currentTime - o.time) > 0.01) try { this.video.currentTime = o.time; } catch { /* not loaded yet */ }
     }
     // the whole source, contained in the view

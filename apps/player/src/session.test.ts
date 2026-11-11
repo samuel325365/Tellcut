@@ -416,9 +416,10 @@ test('an edit that rebuilds the stage while playing (the first 3D item) plays on
   await s.patch(with3d);
   expect(s.busy).toBe(false);
 });
-test('a source analysed after the preview asked for it gets a new video element (a new URL); the other source keeps its own', async () => {
+test('a source analysed after the preview asked for it: the pool lets go of its failed element and draws a new one at the same URL; the other source keeps its own', async () => {
   vi.stubGlobal('fetch', async () => ({ ok: false, status: 404 }));
   const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(function (this: HTMLMediaElement) { setTimeout(() => this.dispatchEvent(new Event('loadeddata')), 0); });
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   try {
     const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
     const clip = (id: string, source: string) => ({ id, source, in: 0, speed: 1, start: 0, end: 4, frame: [0, 0, 1, 1], crop, interp: 'none' });
@@ -429,15 +430,47 @@ test('a source analysed after the preview asked for it gets a new video element 
     const stageEl = document.createElement('div');
     const s = new PreviewSession({ stageEl, resolver, projectUrl: 'http://h/p.json', onTime() {}, onEnded() {}, onError() {}, raf() {}, makeAudioContext: () => fakeCtx() });
     await s.load(p);
-    const shown = () => [...stageEl.querySelectorAll('video')].map((v) => v.dataset.key);
+    const shown = () => [...stageEl.querySelectorAll('video')].map((v) => v.getAttribute('src'));
+    const first = stageEl.querySelector<HTMLVideoElement>('video[data-key="http://h/proxy/s1"]')!;
     const other = stageEl.querySelector<HTMLVideoElement>('video[data-key="http://h/proxy/s2"]');
     expect(shown()).toEqual(['http://h/proxy/s1', 'http://h/proxy/s2']);
+    Object.defineProperty(first, 'error', { value: { code: 4 } });   // the proxy answered 409 then
+    const retry = vi.spyOn(MediaPool.prototype, 'retry');
     await s.mediaReady('s1');
-    expect(shown()).toEqual(['http://h/proxy/s1?fresh=1', 'http://h/proxy/s2']);
+    expect(retry.mock.calls).toEqual([['s1']]);
+    expect(shown()).toEqual(['http://h/proxy/s1', 'http://h/proxy/s2']);
+    const now = stageEl.querySelector<HTMLVideoElement>('video[data-key="http://h/proxy/s1"]')!;
+    expect([now === first, first.parentNode, first.hasAttribute('src')]).toEqual([false, null, false]);
     expect(stageEl.querySelector('video[data-key="http://h/proxy/s2"]')).toBe(other);
     // one already showing its picture is kept
-    Object.defineProperty(stageEl.querySelector('video')!, 'readyState', { value: 2 });
+    Object.defineProperty(now, 'readyState', { value: 2 });
     await s.mediaReady('s1');
-    expect(shown()).toEqual(['http://h/proxy/s1?fresh=1', 'http://h/proxy/s2']);
-  } finally { load.mockRestore(); vi.unstubAllGlobals(); }
+    expect(stageEl.querySelector('video[data-key="http://h/proxy/s1"]')).toBe(now);
+  } finally { load.mockRestore(); vi.restoreAllMocks(); vi.unstubAllGlobals(); }
+});
+
+test('mediaReady in crop mode loads the failed video of that source in the crop view again, not one of another source', async () => {
+  vi.stubGlobal('fetch', async () => ({ ok: false, status: 404 }));
+  const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(function (this: HTMLMediaElement) { setTimeout(() => this.dispatchEvent(new Event('loadeddata')), 0); });
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  try {
+    const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+    const p = { ...project, sources: { s1: { path: 'a.mp4', duration: 20, width: 320, height: 180 } },
+      tracks: [{ id: 'v', kind: 'video', items: [{ id: 'a', source: 's1', in: 0, speed: 1, start: 0, end: 4, frame: [0, 0, 1, 1], crop, interp: 'none' }] }] };
+    const resolver: any = { video: (ref: any, local: number) => ({ url: `http://h/proxy/${ref.source}`, time: ref.in + local }), rate: () => 1, still: () => '',
+      audio: () => ({ url: 'http://h/a.wav', offset: 0 }) };
+    const host = document.createElement('div'), stageEl = document.createElement('div');
+    host.appendChild(stageEl);
+    const s = new PreviewSession({ stageEl, resolver, projectUrl: 'http://h/p.json', onTime() {}, onEnded() {}, onError() {}, raf() {}, makeAudioContext: () => fakeCtx() });
+    await s.load(p);
+    s.cropMode({ itemId: 'a', which: 'from' });
+    const v = host.querySelector<HTMLVideoElement>('.crop-view video')!;
+    expect(v.getAttribute('src')).toBe('http://h/proxy/s1');
+    Object.defineProperty(v, 'error', { value: { code: 4 } });
+    const before = load.mock.contexts.filter((x) => x === v).length;
+    await s.mediaReady('s2');
+    expect(load.mock.contexts.filter((x) => x === v).length).toBe(before);
+    await s.mediaReady('s1');
+    expect(load.mock.contexts.filter((x) => x === v).length).toBe(before + 1);
+  } finally { load.mockRestore(); vi.restoreAllMocks(); vi.unstubAllGlobals(); }
 });
