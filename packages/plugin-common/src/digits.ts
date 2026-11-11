@@ -4,7 +4,7 @@
 // From the food-receipt short's VFD subtotal and the food-deep short's queue-number board.
 import { abs, clamp, cssCamel, eSmooth, type ItemType, prog, textEm } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
-import { dots, drawDots, drawSeg, loadDots, softCanvas, vfdText } from './dots.ts';
+import { dots, drawDots, drawSeg, F57, loadDots, softCanvas, vfdText } from './dots.ts';
 import { fitPx } from './text.ts';
 import { withAlpha } from './color.ts';
 
@@ -92,6 +92,17 @@ export function flashSpot(x0: number, fw: number, left: number, lo: number, hi: 
   return { x: left, sc: Math.min(1, Math.max(0, hi - left) / fw), over: true };
 }
 
+/** where vfdText starts drawing `text` right-aligned at `right`, k px a unit (7 units a dot): 5×7 cells are 6 dots, a run of
+ *  characters outside that font (¥, 元, a CJK label) its raster less one column, wider than a cell. vfdText's own sums, kept in step
+ *  with it, so the flash stops at the digits' real left edge, not at one 5×7 cell per character. */
+export function vfdLeft(text: string, right: number, k: number): number {
+  let cells = 0, raster = 0, miss = '';
+  const flush = () => { if (miss) raster += (dots(miss, hasCjk(miss) ? 7 : 10).w - 1) * 7 * k; miss = ''; };
+  for (const ch of text) { if (F57[ch.toUpperCase()]) { flush(); cells++; } else miss += ch; }
+  flush();
+  return right - (cells * 42 * k + raster) + 7 * k;
+}
+
 export interface VfdOpts { steps: Step[]; local: number; n: number; text: string | null; prefix: string; label: string; totalLabel: string; totalAt: number; on: string; flash: string }
 
 /** a VFD till display with its bezel at (x, y), dw × dh px (78 units tall), `off` a scratch canvas for the glow; the words it shows */
@@ -110,7 +121,7 @@ export function paintVfd(g: CanvasRenderingContext2D, off: HTMLCanvasElement, x:
   const last = [...steps].reverse().find((x) => local >= x.t && local < x.t + 1.1 && (x.label || x.add));
   const flash = last ? last.label || last.v : '';
   const spot = flash ? flashSpot(168 * k * (dw / dh / (720 / 78)), vfdWordsW(flash, k, 12, 3.2, 2.6), 22 * k,
-    22 * k + (lab ? vfdWordsW(lab, k, 13, 3.1, 2.5) + 8 * k : 0), dw - 22 * k - (pre + body).length * 42 * k + 7 * k - 8 * k) : null;
+    22 * k + (lab ? vfdWordsW(lab, k, 13, 3.1, 2.5) + 8 * k : 0), vfdLeft(pre + body, dw - 22 * k, k) - 8 * k) : null;
   const q = last ? (local - last.t) / 1.1 : 0, a = clamp(q < 0.15 ? q / 0.15 : q > 0.75 ? (1 - q) / 0.25 : 1), r = clamp(q * 3);
   if (lab) {
     // a flash over the label fades it out and back in
