@@ -113,3 +113,11 @@ test('"New preset" is the last card, only when it can be saved', async () => {
   await act(() => render(<PresetStrip presets={PRESETS} picked={null} onOpen={() => {}} />, root));
   expect(root.querySelector('[data-preset-new]')).toBeNull();
 });
+
+test('with no presets to show, "New preset" is still there when one can be made (EP15)', async () => {
+  const root = document.createElement('div');
+  await act(() => render(<PresetStrip presets={[]} picked={null} onOpen={() => {}} onNew={() => {}} />, root));
+  expect([...root.querySelectorAll('[data-preset-strip] > *')].map((c) => c.hasAttribute('data-preset-new'))).toEqual([true]);
+  await act(() => render(<PresetStrip presets={[]} picked={null} onOpen={() => {}} />, root));
+  expect(root.querySelector('[data-preset-strip]')).toBeNull();
+});

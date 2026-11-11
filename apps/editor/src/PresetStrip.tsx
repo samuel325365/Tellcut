@@ -46,7 +46,8 @@ export function PresetStrip({ presets, picked, onOpen, onNew }: { presets: Prese
     e.preventDefault();
     el.scrollBy({ left: e.deltaY });
   };
-  if (!presets.length) return null;
+  // with no presets (none yet, or the list could not be read) the strip still holds "New preset" when one can be made
+  if (!presets.length && !onNew) return null;
   const prevTip = t('preset.scrollPrev'), nextTip = t('preset.scrollNext');
   return (
     <div class={`preset-strip-wrap${edge.prev ? ' fade-l' : ''}${edge.next ? ' fade-r' : ''}`}>
