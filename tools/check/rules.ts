@@ -178,18 +178,27 @@ export function modelChecks(p: Project, o: ModelInput): Finding[] {
     if (seen <= 0) out.push({ level: 'error', t: span(v.id), ids: [v.id], msg: `影片 ${v.id} 的 frame [${v.frame.join(', ')}] 整個在畫面外，看不到${px}` });
     else if (seen < 0.5) out.push({ level: 'warn', t: span(v.id), ids: [v.id], msg: `影片 ${v.id} 的 frame [${v.frame.join(', ')}] 只有 ${Math.round(seen * 100)}% 在畫面裡${px}` });
   }
-  // toolkit phase 3: narration the music is not quiet enough under (levels from the clip and track gains and any dip envelope;
-  // generated music and edge-tts speech come out at similar loudness, so 6 dB below the voice is the floor)
-  const trackGain = (t: unknown) => (t as { gain?: number }).gain ?? 0;
+  // toolkit phase 3: narration the music is not quiet enough under (levels from the item and track gains and envelopes: a dip, the
+  // ducking, the track's own curve; generated music and edge-tts speech come out at similar loudness, so 6 dB below the voice is
+  // the floor). Only what the mix plays (engine audio/plan.ts: muted tracks and items are silent, a solo track silences the
+  // others), read near the start, the middle and the end of each narration line: the worst of them counts.
+  type Sound = { id: string; gain: number; muted?: boolean; envelope?: Array<[number, number]> };
+  type Mixed = (typeof p.tracks)[number] & { gain?: number; solo?: boolean; envelope?: Array<[number, number]> };
   const narration = p.tracks.filter(isNarration);
-  const beds = p.tracks.filter((t) => t.kind === 'music' && !narration.includes(t));
-  for (const vt of narration) for (const v of vt.items as Array<{ id: string; gain: number }>) {
-    const tv = times.get(v.id)!, mid = (tv.start + tv.end) / 2, voiceDb = v.gain + trackGain(vt);
-    for (const bt of beds) for (const m of bt.items as Array<{ id: string; gain: number; envelope?: Array<[number, number]> }>) {
+  const soloed = (p.tracks as Mixed[]).some((t) => (t.kind === 'audio' || t.kind === 'music' || t.kind === 'sfx') && !t.muted && t.solo);
+  const plays = (t: Mixed) => !t.muted && (!soloed || !!t.solo);
+  const levelAt = (t: Mixed, it: Sound, at: number) => it.gain + (it.envelope?.length ? envelopeAt(it.envelope, at - times.get(it.id)!.start) : 0)
+    + (t.gain ?? 0) + (t.envelope?.length ? envelopeAt(t.envelope, at) : 0);
+  const beds = (p.tracks as Mixed[]).filter((t) => t.kind === 'music' && !narration.includes(t) && plays(t));
+  for (const vt of (narration as Mixed[]).filter(plays)) for (const v of (vt.items as Sound[]).filter((x) => !x.muted)) {
+    const tv = times.get(v.id)!, mid = (tv.start + tv.end) / 2;
+    const at = tv.end - tv.start > 0.6 ? [tv.start + 0.3, mid, tv.end - 0.3] : [mid];
+    for (const bt of beds) for (const m of (bt.items as Sound[]).filter((x) => !x.muted)) {
       const tm = times.get(m.id)!;
-      if (mid < tm.start || mid >= tm.end) continue;
-      const musicDb = m.gain + trackGain(bt) + (m.envelope?.length ? envelopeAt(m.envelope, mid - tm.start) : 0);
-      if (musicDb > voiceDb - 6) out.push({ level: 'warn', t: span(v.id), ids: [v.id, m.id], msg: `旁白可能被配樂蓋過（${v.id}：配樂只比旁白小 ${(voiceDb - musicDb).toFixed(0)} dB）；配樂調小，或用 c.duck() 壓低` });
+      const gaps = at.filter((x) => x >= tm.start && x < tm.end).map((x) => levelAt(vt, v, x) - levelAt(bt, m, x));
+      if (!gaps.length) continue;
+      const gap = Math.min(...gaps);
+      if (gap < 6) out.push({ level: 'warn', t: span(v.id), ids: [v.id, m.id], msg: `旁白可能被配樂蓋過（${v.id}：配樂只比旁白小 ${gap.toFixed(0)} dB）；配樂調小，或用 c.duck() 壓低` });
     }
   }
   // pacing (2026-10-18, rules after OpenMontage's short-form craft): what makes a short feel slow or slideshow-like, from the file alone

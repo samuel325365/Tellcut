@@ -250,6 +250,16 @@ describe('narration and music', () => {
     expect(warns(tracks(-8))).toEqual([]);
     expect(warns(tracks(0, [[1.75, 0], [2, -10], [4, -10], [4.25, 0]]))).toEqual([]);
   });
+  test('only what the mix plays counts (muted track or item, solo), the track envelope adds, and the worst moment of the line decides', () => {
+    const [bed, voice] = tracks(0);
+    expect(warns([{ ...bed, muted: true }, voice])).toEqual([]);                                             // the music muted to judge the voice
+    expect(warns([{ ...bed, items: [{ ...bed.items[0], muted: true }] }, voice])).toEqual([]);
+    expect(warns([bed, { ...voice, solo: true }])).toEqual([]);                                             // the voice soloed: the bed is silent
+    expect(warns([{ ...bed, envelope: [[0, -12], [10, -12]] }, voice])).toEqual([]);                        // the bed track's own curve, in film time
+    expect(warns([bed, { ...voice, envelope: [[0, -10], [10, -10]] }])).toHaveLength(1);                   // the voice track's own curve
+    // a dip only under the middle of the line (2.9–3.1): the rest of it sits under music as loud as the voice
+    expect(warns(tracks(0, [[2.8, 0], [2.9, -10], [3.1, -10], [3.2, 0]]))).toEqual([expect.stringContaining('配樂只比旁白小 0 dB')]);
+  });
   test('a sound file on the sound-effect track (c.sfxFile) is a sound effect, not music: loud under the voice is no warning; missing is offline', () => {
     const fx = { id: 'sfx', kind: 'sfx', gain: 0, items: [{ id: 'f', type: 'core.file', start: 2.5, end: 3.5, params: { path: 'media/sfx/gone.wav' }, gain: 6 }] };
     const t = [...tracks(-8), fx];
