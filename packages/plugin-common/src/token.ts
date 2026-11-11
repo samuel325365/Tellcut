@@ -14,7 +14,7 @@ interface P { steps: string; x: number; y: number; size: number; enter: boolean;
 interface S { c: HTMLCanvasElement; text: string }
 type Pt = [number, number];
 
-function parseSteps(text: unknown): Step[] {
+function parseTokenSteps(text: unknown): Step[] {
   const out: Step[] = [];
   for (const line of String(text || '').split('\n')) {
     const f = line.split('|').map((s) => s.trim());
@@ -72,7 +72,7 @@ const token: ItemType<P, S> = {
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';
     root.appendChild(c);
-    return { c, text: parseSteps(params.steps).map((s) => `${s.label}${s.num}`).join('') };
+    return { c, text: parseTokenSteps(params.steps).map((s) => `${s.label}${s.num}`).join('') };
   },
   async ready(s) {
     await Promise.all([
@@ -87,7 +87,7 @@ const token: ItemType<P, S> = {
     if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
     const g = c.getContext('2d')!;
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
-    const steps = parseSteps(params.steps);
+    const steps = parseTokenSteps(params.steps);
 
     // current step, the previous one (for flips) and when the current began
     let i = 0;

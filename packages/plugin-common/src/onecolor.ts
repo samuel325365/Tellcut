@@ -28,20 +28,20 @@ const fontsReady = (text: string) => Promise.all([document.fonts.load(`400 80px 
   document.fonts.load(`600 30px "${SANS}"`, 'AZ09'), document.fonts.load(`900 50px "${TC}"`, text || '字')].map((l) => l.catch(() => []))).then(() => undefined);
 const spaced = (g: G, px: number) => { try { (g as unknown as { letterSpacing: string }).letterSpacing = `${px.toFixed(1)}px`; } catch { /* older canvases */ } };
 
-/** "seconds|value" lines, in time order */
-export function parseSteps(text: string): Array<{ t: number; v: string }> {
+/** "seconds|value" lines, in time order: one string a step (phone.ts parseSteps keeps every | field) */
+export function parseValueSteps(text: string): Array<{ t: number; v: string }> {
   return String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
     .map((l) => { const [a, ...b] = l.split('|'); return { t: Number(a) || 0, v: b.join('|').trim() }; }).sort((a, b) => a.t - b.t);
 }
 /** a steps param parsed once per value and kept on the item's state: draw runs every frame */
 export interface StepsMemo { text?: string; list: Array<{ t: number; v: string }> }
 export function stepsOf(m: StepsMemo, text: string): Array<{ t: number; v: string }> {
-  if (m.text !== text) { m.text = text; m.list = parseSteps(text); }
+  if (m.text !== text) { m.text = text; m.list = parseValueSteps(text); }
   return m.list;
 }
 const noSteps = (): StepsMemo => ({ list: [] });
-/** the step's value in force at `t` (`dflt` before the first) */
-export function stepAt(steps: Array<{ t: number; v: string }>, t: number, dflt = 'none'): string {
+/** the step's value in force at `t` (`dflt` before the first); phone.ts stepAt returns the steps themselves */
+export function valueAt(steps: Array<{ t: number; v: string }>, t: number, dflt = 'none'): string {
   let v = dflt;
   for (const s of steps) if (s.t <= t + 1e-6) v = s.v;
   return v;
@@ -106,7 +106,7 @@ export const grade: ItemType<GP, FS> = {
     { key: 'color', label: '單色（mono）', type: 'color', default: '#ff5a1f', theme: 'palette.accent' },
   ],
   build: (ctx) => fill(ctx.root),
-  draw(ctx, s) { s.d.style.background = gradeFill(stepAt(stepsOf(s.steps, ctx.params.steps), ctx.local), ctx.params.color); },
+  draw(ctx, s) { s.d.style.background = gradeFill(valueAt(stepsOf(s.steps, ctx.params.steps), ctx.local), ctx.params.color); },
 };
 
 export const wash: ItemType<WP, FS> = {
@@ -117,7 +117,7 @@ export const wash: ItemType<WP, FS> = {
     { key: 'tone', label: '乘上的顏色', type: 'color', default: '#ffa070' },
   ],
   build: (ctx) => fill(ctx.root),
-  draw(ctx, s) { s.d.style.background = stepAt(stepsOf(s.steps, ctx.params.steps), ctx.local) === 'mono' ? ctx.params.tone : 'transparent'; },
+  draw(ctx, s) { s.d.style.background = valueAt(stepsOf(s.steps, ctx.params.steps), ctx.local) === 'mono' ? ctx.params.tone : 'transparent'; },
 };
 
 // ── common.viewfinder
@@ -145,7 +145,7 @@ export const viewfinder: ItemType<VP, CS & { steps: StepsMemo }> = {
     const { n, total } = shotNo(p.cuts, local), pad = (v: number) => String(v).padStart(2, '0');
     const x0 = 72 * u, x1 = W - 72 * u, y0 = 92 * u, y1 = 122 * u;
     g.textAlign = 'left'; g.font = sans(24 * u); spaced(g, 4 * u); g.fillText(p.title, x0, y0);
-    g.font = sans(19 * u, 600); spaced(g, 3 * u); g.fillText(stepAt(stepsOf(s.steps, p.chapters), local, ''), x0, y1);
+    g.font = sans(19 * u, 600); spaced(g, 3 * u); g.fillText(valueAt(stepsOf(s.steps, p.chapters), local, ''), x0, y1);
     g.textAlign = 'right'; g.font = sans(24 * u); spaced(g, 4 * u); g.fillText(p.route, x1, y0);
     g.font = sans(19 * u, 600); spaced(g, 3 * u); g.fillText(`${pad(n)} / ${pad(total)}`, x1, y1);
     spaced(g, 0); g.shadowBlur = 0;
@@ -181,7 +181,7 @@ export const echo: ItemType<EP, CS & { text: string; steps: StepsMemo; fit?: Ech
     const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const key = `${p.word}|${p.size * u}|${W}`;
     if (s.fit?.key !== key) { const px = fitted(g, p.word, p.size * u, 0.74 * W); g.font = disp(px); s.fit = { key, px, ww: g.measureText(p.word).width }; }
-    const { px, ww } = s.fit, mono = stepAt(stepsOf(s.steps, p.steps), local) === 'mono';
+    const { px, ww } = s.fit, mono = valueAt(stepsOf(s.steps, p.steps), local) === 'mono';
     const col = mono ? p.onMono : p.color, ecol = mono ? p.onMono : p.echo;
     const cx = W / 2, cy = p.y * H, k = eOut(local / 0.3), gap = 0.8 * px * k;
     // the copies stay clear of the top's small lines (a viewfinder's) and of the captions' band

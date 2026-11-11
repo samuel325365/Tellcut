@@ -2,7 +2,7 @@
 // common.grade / common.wash / common.viewfinder / common.echo / common.poster / common.band, countdown's look slant and the caption
 // look boxes (2026-11-06, the Single Color pilot film). jsdom has no canvas: the step and photo helpers, the declared stills and the
 // layers' blend modes are tested.
-import { band, echo, grade, gradeFill, parsePhotos, parseSteps, photoIndex, poster, posterLayout, shotNo, stepAt, stepsOf, viewfinder, wash } from './onecolor.ts';
+import { band, echo, grade, gradeFill, parsePhotos, parseValueSteps, photoIndex, poster, posterLayout, shotNo, valueAt, stepsOf, viewfinder, wash } from './onecolor.ts';
 import { stepColor } from './countdown.ts';
 import { boxes } from './caption/looks/paper.ts';
 
@@ -14,11 +14,11 @@ describe('kinds and blends', () => {
 });
 
 describe('steps', () => {
-  const steps = parseSteps('0.8|none\n0|bw\n0.4|mono\n\n');
+  const steps = parseValueSteps('0.8|none\n0|bw\n0.4|mono\n\n');
   test('read in time order; the value in force at a time, none before the first', () => {
     expect(steps).toEqual([{ t: 0, v: 'bw' }, { t: 0.4, v: 'mono' }, { t: 0.8, v: 'none' }]);
-    expect([stepAt(steps, 0.2), stepAt(steps, 0.4), stepAt(steps, 5)]).toEqual(['bw', 'mono', 'none']);
-    expect(stepAt(parseSteps('1|bw'), 0.5)).toBe('none');
+    expect([valueAt(steps, 0.2), valueAt(steps, 0.4), valueAt(steps, 5)]).toEqual(['bw', 'mono', 'none']);
+    expect(valueAt(parseValueSteps('1|bw'), 0.5)).toBe('none');
   });
   test('parsed once per value: the same text gives the list kept, another text a new one', () => {
     const m = { list: [] as Array<{ t: number; v: string }> }, a = stepsOf(m, '0|bw\n1|mono');
