@@ -155,14 +155,16 @@ export const route: ItemType<P, S> = {
     const cw = b.w - 10 * u, ch = b.h - 10 * u, mh = ch - top, g = canvasAt(s.cv, cw, ch);
     cssCamel(s.cv, { width: `${cw}px`, height: `${ch}px` });
     const at = ([x, y]: [number, number]): [number, number] => [x * cw, top + y * mh];
-    // streets: two long avenues, one more below, three cross streets and a rail line (decor, not a real map)
-    const street = (pts: Array<[number, number]>, seed: number) => penPath(g, pts.map(at), 5 * u, withAlpha(p.ink, 0.28), seed);
-    if (eOut(prog(local, 0.3, 1.1)) > 0) {
+    // streets: two long avenues, one more below, three cross streets and a rail line (decor, not a real map), fading in together
+    // over 0.3–1.1 s rather than popping up whole on the first frame they are drawn
+    const sf = eOut(prog(local, 0.3, 1.1)), street = (pts: Array<[number, number]>, seed: number) => penPath(g, pts.map(at), 5 * u, withAlpha(p.ink, 0.28), seed, 1, { alpha: sf });
+    if (sf > 0) {
       street([[0.03, 0.22], [0.5, 0.2], [0.97, 0.24]], 11); street([[0.03, 0.3], [0.5, 0.28], [0.97, 0.32]], 12); street([[0.04, 0.7], [0.5, 0.72], [0.96, 0.69]], 13);
       [0.22, 0.5, 0.78].forEach((x, i) => street([[x, 0.05], [x + 0.01, 0.95]], 20 + i));
-      penPath(g, [at([0.02, 0.06]), at([0.98, 0.05])], 4 * u, withAlpha(p.ink, 0.4), 30);
-      g.strokeStyle = withAlpha(p.ink, 0.4); g.lineWidth = 3 * u;
+      penPath(g, [at([0.02, 0.06]), at([0.98, 0.05])], 4 * u, withAlpha(p.ink, 0.4), 30, 1, { alpha: sf });
+      g.strokeStyle = withAlpha(p.ink, 0.4); g.lineWidth = 3 * u; g.globalAlpha = sf;
       for (let x = 0.04; x < 0.97; x += 0.035) { const [X, Y] = at([x, 0.055]); g.beginPath(); g.moveTo(X, Y - 9 * u); g.lineTo(X + 2 * u, Y + 9 * u); g.stroke(); }
+      g.globalAlpha = 1;
     }
     // the route: dashed, drawn as it goes, a walker dot at its head
     const P = snake(count + 1, names.some(Boolean)).map(at), path = spline(P, 18);
