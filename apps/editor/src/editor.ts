@@ -35,7 +35,7 @@ type Recipe = (d: Project) => void;
 export type { ProposalView } from './editor/proposals.ts';
 /** Actions that only change the view: an audition goes on through them. */
 const AUDITION_PASS = new Set<Action>(['maxPreview', 'zoomFit', 'help']);
-type BridgeLike = Pick<PlayerBridge, 'load' | 'patch' | 'seek' | 'play' | 'pause' | 'cropMode' | 'quality' | 'select'> & Partial<Pick<PlayerBridge, 'onBoot' | 'onReady' | 'onTime' | 'onEnded' | 'onError' | 'onKey' | 'onCropChange' | 'onLevel' | 'onPick' | 'onTransformChange' | 'onParamEdit'>>;
+type BridgeLike = Pick<PlayerBridge, 'load' | 'patch' | 'seek' | 'play' | 'pause' | 'cropMode' | 'quality' | 'select'> & Partial<Pick<PlayerBridge, 'onBoot' | 'onReady' | 'onTime' | 'onEnded' | 'onError' | 'onKey' | 'onCropChange' | 'onLevel' | 'onPick' | 'onTransformChange' | 'onParamEdit' | 'mediaReady'>>;
 
 export class Editor {
   store: Store<EditorState>;
@@ -832,9 +832,11 @@ export class Editor {
   /** An export started before a reload keeps running on the server: show and follow it again. */
   private resumeExport() { return this.exportsCtl.resume(); }
   /** Requests source analysis and loads thumbnails/peaks as they become available. */
-  analyze(only?: string[]) { return analyzeProject({ id: this.id, api: this.deps.api, store: this.store }, only); }
+  analyze(only?: string[]) { return analyzeProject(this.analysisDeps, only); }
   /** The sources whose analysis failed, analysed again (the server forgets every failure it remembers for this project's files). */
-  retryAnalysis() { const ids = this.s.analysisFailed; return ids.length ? analyzeProject({ id: this.id, api: this.deps.api, store: this.store }, ids, { retry: true }) : Promise.resolve(); }
+  retryAnalysis() { const ids = this.s.analysisFailed; return ids.length ? analyzeProject(this.analysisDeps, ids, { retry: true }) : Promise.resolve(); }
+  /** the preview asks again for the video of a source analysed meanwhile (it got a 409 before and stayed black) */
+  private get analysisDeps() { return { id: this.id, api: this.deps.api, store: this.store, mediaReady: (src: string) => this.deps.bridge.mediaReady?.(src) }; }
 
   /** imported sources and music whose save was held (the changed-on-disk bar): analysed once a save goes through */
   private waitingAnalysis: string[] = [];

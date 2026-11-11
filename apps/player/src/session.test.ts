@@ -416,3 +416,28 @@ test('an edit that rebuilds the stage while playing (the first 3D item) plays on
   await s.patch(with3d);
   expect(s.busy).toBe(false);
 });
+test('a source analysed after the preview asked for it gets a new video element (a new URL); the other source keeps its own', async () => {
+  vi.stubGlobal('fetch', async () => ({ ok: false, status: 404 }));
+  const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(function (this: HTMLMediaElement) { setTimeout(() => this.dispatchEvent(new Event('loadeddata')), 0); });
+  try {
+    const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+    const clip = (id: string, source: string) => ({ id, source, in: 0, speed: 1, start: 0, end: 4, frame: [0, 0, 1, 1], crop, interp: 'none' });
+    const p = { ...project, sources: { s1: { path: 'a.mp4', duration: 20, width: 320, height: 180 }, s2: { path: 'b.mp4', duration: 20, width: 320, height: 180 } },
+      tracks: [{ id: 'v', kind: 'video', items: [clip('a', 's1')] }, { id: 'v2', kind: 'video', items: [clip('b', 's2')] }] };
+    const resolver: any = { video: (ref: any, local: number) => ({ url: `http://h/proxy/${ref.source}`, time: ref.in + local }), rate: () => 1, still: () => '',
+      audio: () => ({ url: 'http://h/a.wav', offset: 0 }) };
+    const stageEl = document.createElement('div');
+    const s = new PreviewSession({ stageEl, resolver, projectUrl: 'http://h/p.json', onTime() {}, onEnded() {}, onError() {}, raf() {}, makeAudioContext: () => fakeCtx() });
+    await s.load(p);
+    const shown = () => [...stageEl.querySelectorAll('video')].map((v) => v.dataset.key);
+    const other = stageEl.querySelector<HTMLVideoElement>('video[data-key="http://h/proxy/s2"]');
+    expect(shown()).toEqual(['http://h/proxy/s1', 'http://h/proxy/s2']);
+    await s.mediaReady('s1');
+    expect(shown()).toEqual(['http://h/proxy/s1?fresh=1', 'http://h/proxy/s2']);
+    expect(stageEl.querySelector('video[data-key="http://h/proxy/s2"]')).toBe(other);
+    // one already showing its picture is kept
+    Object.defineProperty(stageEl.querySelector('video')!, 'readyState', { value: 2 });
+    await s.mediaReady('s1');
+    expect(shown()).toEqual(['http://h/proxy/s1?fresh=1', 'http://h/proxy/s2']);
+  } finally { load.mockRestore(); vi.unstubAllGlobals(); }
+});

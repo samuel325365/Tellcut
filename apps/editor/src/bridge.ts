@@ -90,6 +90,9 @@ export class PlayerBridge {
   select(id: string | null) { if (this.ready) this.post({ type: 'select', itemId: id }); }
   quality(v: 'full' | 'draft') { if (this.ready) this.post({ type: 'quality', value: v }); }
   cropMode(sel: CropSel | null) { if (this.ready) this.post({ type: 'cropMode', sel }); }
+  /** a source's analysis finished after the preview may have asked for its video (a 409, left black): it asks again. A player still
+   *  loading runs it after the load; one not booted yet asks for everything when its load comes. (The player's MediaReadyMsg.) */
+  mediaReady(source: string) { if (this.booted) this.post({ type: 'mediaReady', source }); }
 
   private flush() { if (this.ready && this.pending) { this.post({ type: 'patch', project: this.pending }); this.pending = null; } }
   private post(m: unknown) { this.target?.postMessage(m, this.origin); }

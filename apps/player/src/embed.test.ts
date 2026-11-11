@@ -16,6 +16,7 @@ function fake() {
     cropMode: () => {},
     quality: (v: string) => { calls.push(`quality ${v}`); },
     select: (id: string | null) => { calls.push(`select ${id}`); },
+    mediaReady: async (src: string) => { calls.push(`media ${src}`); },
   };
   return { s, calls, release };
 }
@@ -30,6 +31,18 @@ test('messages run in order and queued patches collapse to the newest', async ()
   release(); await flush();
   expect(calls).toEqual(['load', 'patch 2', 'seek 3']);
   expect(posted).toEqual([{ type: 'ready', duration: 12 }]);
+});
+
+test('a source whose media is there now waits for the load before it, and a newer seek or patch does not drop it', async () => {
+  const { s, calls, release } = fake();
+  const send = createDispatcher(s, () => {});
+  send({ type: 'load', project: {} });
+  send({ type: 'mediaReady', source: 's1' });
+  send({ type: 'mediaReady', source: 's2' });
+  send({ type: 'seek', t: 3 });
+  send({ type: 'patch', project: { n: 1 } });
+  release(); await flush();
+  expect(calls).toEqual(['load', 'media s1', 'media s2', 'seek 3', 'patch 1']);
 });
 
 test('pause acts immediately and drops a queued play; failures are posted as errors', async () => {

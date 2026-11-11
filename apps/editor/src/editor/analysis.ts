@@ -6,8 +6,9 @@ import type { EditorState, Store } from '../store.ts';
 
 /** Requests source analysis and loads thumbnails/peaks as they become available. only: just these sources and music (an import
  *  adds a few to a project whose others are loaded already); retry: the analyses that failed before are tried again. A source
- *  whose basic analysis failed (before, or now) is listed in analysisFailed. */
-export async function analyzeProject(c: { id: string; api: Api; store: Store<EditorState> }, only?: string[], o: { retry?: boolean } = {}) {
+ *  whose basic analysis failed (before, or now) is listed in analysisFailed. mediaReady: a source whose analysis this waited for is
+ *  done, so its preview video (asked for before, and refused) can be asked for again. */
+export async function analyzeProject(c: { id: string; api: Api; store: Store<EditorState>; mediaReady?: (src: string) => void }, only?: string[], o: { retry?: boolean } = {}) {
   const p = c.store.get().project;
   if (!p) return;
   let res: AnalyzeResult;
@@ -27,6 +28,7 @@ export async function analyzeProject(c: { id: string; api: Api; store: Store<Edi
       const end = await c.api.waitJob(running).catch(() => '');
       c.store.set((s) => ({ analyzing: Math.max(0, s.analyzing - 1) }));
       if (end === 'failed') { failed(src); return; }
+      if (end === 'done') c.mediaReady?.(src);
     }
     try {
       const [thumbs, peaks, cuts] = await Promise.all([c.api.thumbs(c.id, src), c.api.peaks(c.id, src), c.api.cuts(c.id, src)]);
@@ -38,6 +40,7 @@ export async function analyzeProject(c: { id: string; api: Api; store: Store<Edi
       const end = await c.api.waitJob(job);
       c.store.set((s) => ({ analyzing: Math.max(0, s.analyzing - 1) }));
       if (end === 'failed') { failed(src); return; }
+      if (end === 'done') c.mediaReady?.(src);
       await loadSource(src);
       return;
     }

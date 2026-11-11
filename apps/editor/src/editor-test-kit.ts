@@ -6,7 +6,7 @@ import { Editor } from './editor.ts';
 
 export function fakes(over: Record<string, any> = {}) {
   const saved: unknown[] = [], bridge: any = { calls: [] as any[] };
-  for (const k of ['load', 'patch', 'seek', 'play', 'pause', 'cropMode', 'quality', 'select']) bridge[k] = (...a: any[]) => bridge.calls.push([k, ...a]);
+  for (const k of ['load', 'patch', 'seek', 'play', 'pause', 'cropMode', 'quality', 'select', 'mediaReady']) bridge[k] = (...a: any[]) => bridge.calls.push([k, ...a]);
   const api: any = { project: async () => fixture(), save: async (_: string, p: unknown) => { saved.push(p); }, history: async () => ['h1.json'],
     analyze: async () => ({ jobs: [], missing: [] }), thumbs: async () => { throw new ApiError(409, 'x'); }, peaks: async () => { throw new ApiError(409, 'x'); },
     musicPeaks: async () => ({ rate: 100, peaks: [] }), cuts: async () => [], waitJob: async () => 'done',

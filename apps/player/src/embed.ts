@@ -6,15 +6,19 @@ import { fitStage } from './fit.ts';
 import { StageTools } from './tools.ts';
 
 export type { EditorMsg, PlayerMsg };
+/** a source's media is there now (its analysis finished): the preview asks for its video again (PreviewSession.mediaReady).
+ *  The editor's PlayerBridge.mediaReady sends it; it belongs in the protocol's EditorMsg. */
+export type MediaReadyMsg = { type: 'mediaReady'; source: string };
+export type EmbedMsg = EditorMsg | MediaReadyMsg;
 /** what failed in the preview, by the message it was running: the code the editor words it by when the error has none of its own */
-const FAILED = { load: 'player.loadFailed', patch: 'player.updateFailed', seek: 'player.seekFailed', play: 'player.playFailed' } as const;
+const FAILED = { load: 'player.loadFailed', patch: 'player.updateFailed', seek: 'player.seekFailed', play: 'player.playFailed', mediaReady: 'player.updateFailed' } as const;
 /** a failure as the editor gets it: its own code (a ProjectError's project.tooNew) if it has one, else `code` with its words as {error} */
 export function errorMsg(e: unknown, code: string): PlayerError {
   const message = String((e as Error)?.message ?? e), own = e as { code?: unknown; params?: PlayerError['params'] } | null;
   return typeof own?.code === 'string' ? { type: 'error', message, code: own.code, ...(own.params ? { params: own.params } : {}) }
     : { type: 'error', message, code, params: { error: message } };
 }
-export interface SessionApi { load(p: unknown): Promise<number>; patch(p: unknown): Promise<void>; seek(t: number): Promise<void>; play(from: number): Promise<void>; pause(): void; cropMode(sel: CropSel | null): void; quality(v: 'full' | 'draft'): void; select(id: string | null): void }
+export interface SessionApi { load(p: unknown): Promise<number>; patch(p: unknown): Promise<void>; seek(t: number): Promise<void>; play(from: number): Promise<void>; pause(): void; cropMode(sel: CropSel | null): void; quality(v: 'full' | 'draft'): void; select(id: string | null): void; mediaReady(source: string): Promise<void> }
 
 /** Keys typed into the preview's text box stay there (Space must not start playback). */
 export const shouldForwardKey = (e: Pick<KeyboardEvent, 'target'>) => !(e.target as HTMLElement | null)?.closest?.('input, textarea');
@@ -29,7 +33,7 @@ export const keyMessage = (e: KeyboardEvent): PlayerMsg =>
 
 /** Runs editor messages one after another; queued patches collapse to the newest, pause acts at once. */
 export function createDispatcher(s: SessionApi, post: (m: PlayerMsg) => void) {
-  let queue: EditorMsg[] = [];
+  let queue: EmbedMsg[] = [];
   let busy = false;
   async function pump() {
     if (busy) return;
@@ -41,11 +45,13 @@ export function createDispatcher(s: SessionApi, post: (m: PlayerMsg) => void) {
         else if (m.type === 'patch') await s.patch(m.project);
         else if (m.type === 'seek') await s.seek(m.t);
         else if (m.type === 'play') await s.play(m.from);
+        else if (m.type === 'mediaReady') await s.mediaReady(m.source);
       } catch (e) { post(errorMsg(e, FAILED[m.type as keyof typeof FAILED])); }
     }
     busy = false;
   }
-  return (m: EditorMsg) => {
+  // a mediaReady waits its turn like a seek (after a load or patch still running) and is never dropped for a newer one
+  return (m: EmbedMsg) => {
     if (m.type === 'cropMode') { s.cropMode(m.sel); return; }
     if (m.type === 'quality') { s.quality(m.value); return; }
     if (m.type === 'select') { s.select(m.itemId); return; }
@@ -79,11 +85,12 @@ export function startEmbed(win: Window, stageEl: HTMLElement, viewport: HTMLElem
     cropMode: (sel) => session.cropMode(sel),
     quality: (v) => { win.document.body.classList.toggle('draft', v === 'draft'); },
     select: (id) => tools!.select(id),
+    mediaReady: (source) => session.mediaReady(source),
   };
   const send = createDispatcher(api, post);
   win.addEventListener('message', (e) => {
     if (e.origin !== win.location.origin || e.source !== win.parent) return;
-    const m = e.data as EditorMsg;
+    const m = e.data as EmbedMsg;
     if (m.type === 'texts') tools!.texts = m.texts; else send(m);
   });
   win.addEventListener('resize', () => { fit(); tools?.refresh(); });

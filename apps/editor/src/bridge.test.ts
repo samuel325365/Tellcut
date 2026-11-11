@@ -180,3 +180,13 @@ test('coded player errors reach onError worded in the current language', () => {
   setLang('zh');
   expect(seen).toEqual(['v1: Crop mode: the clip no longer exists', '3D を使えないため、平面でプレビューします（x）']);
 });
+
+test('a source analysed meanwhile is sent to a booted player (even one still loading), never before boot', () => {
+  const { b, sent } = setup();
+  b.mediaReady('s1');
+  expect(sent).toEqual([]);   // a player not booted yet asks for everything when its load comes
+  b.load({ v: 0 });
+  b.handle({ type: 'boot' });
+  b.mediaReady('s1');
+  expect(sent).toEqual([{ type: 'load', project: { v: 0 } }, { type: 'mediaReady', source: 's1' }]);
+});

@@ -29,6 +29,16 @@ export interface SessionDeps {
   loadThree?: () => Promise<unknown>; plugins?: Plugin[];
 }
 
+/** The resolver with a source's video asked for afresh: `fresh` counts, per source, the times it was (mediaReady). A new URL is a
+ *  new pool element: the pool keeps an element that failed (a proxy asked for before its analysis was done answers 409) and
+ *  tries it again only on a preload at least 5 s later, so the picture stayed black once the analysis was done. */
+export function freshResolver(r: MediaResolver, fresh: ReadonlyMap<string, number>): MediaResolver {
+  return { ...r, video: (ref, local) => {
+    const v = r.video(ref, local), n = fresh.get(ref.source);
+    return n ? { ...v, url: `${v.url}${v.url.includes('?') ? '&' : '?'}fresh=${n}` } : v;
+  } };
+}
+
 export class PreviewSession {
   /** the shared plugins, then plus the project's own fx once a project is loaded */
   registry;
@@ -55,6 +65,9 @@ export class PreviewSession {
   private loading = false;
   private cropLater = false;
   private raf: (f: () => void) => void;
+  /** per source, how many times its video was asked for afresh (see freshResolver) */
+  private fresh = new Map<string, number>();
+  private resolver: MediaResolver;
   private audioOffline = (url: string, e: Error) =>
     this.d.onError(undefined, `Audio not available (${e.message}): ${url}`, { code: 'player.audioOffline', params: { error: e.message, url } });
   constructor(private d: SessionDeps) {
@@ -62,6 +75,7 @@ export class PreviewSession {
     this.raf = d.raf ?? ((f) => { requestAnimationFrame(() => f()); });
     this.plugins = d.plugins ?? sharedPlugins;
     this.registry = createRegistry(this.plugins);
+    this.resolver = freshResolver(d.resolver, this.fresh);
   }
 
   async load(raw: unknown): Promise<number> {
@@ -84,7 +98,7 @@ export class PreviewSession {
     this.three = usesThree(p, this.registry) ? await this.loadThree() : undefined;
     // the old pool's <video> elements keep their buffered media until they are emptied
     this.pool?.dispose();
-    this.pool = new MediaPool(this.d.resolver, { render: false, fps: p.meta.fps });
+    this.pool = new MediaPool(this.resolver, { render: false, fps: p.meta.fps });
     // the old stage's items let go of their GPU things first: nothing else ever disposes them (a new stage starts empty)
     this.stage?.destroy();
     this.stage = new Stage(this.d.stageEl, this.registry, this.pool, { onError: (id, m, c) => this.d.onError(id, m, c), subpixelZoom: true, three: this.three });
@@ -110,7 +124,7 @@ export class PreviewSession {
     this.stage.update(p);
     // the same engine with the new plan and settings: a magnetic edit changes meta.duration on every drag frame, and
     // recreating the engine closed the AudioContext and decoded every buffer again each time
-    this.audio.setPlan(planAudio(p, this.stage.times, this.d.resolver, this.d.projectUrl), p.meta.mix, p.meta.duration);
+    this.audio.setPlan(planAudio(p, this.stage.times, this.resolver, this.d.projectUrl), p.meta.mix, p.meta.duration);
     await Promise.all([this.pool.preload(this.stage.mediaRefs()), this.stage.ready(), this.audio.load(undefined, this.audioOffline)]);
     void this.audio.prepare().catch(() => {});   // decode now, not on the first play
     this.t = clamp(this.t, 0, p.meta.duration);
@@ -118,6 +132,21 @@ export class PreviewSession {
     // spec §5: editing while playing rebuilds the audio 150 ms after the last change
     if (this.playing) { clearTimeout(this.restart); this.restart = setTimeout(() => { if (this.playing) void this.play(this.t).catch((e) => { const error = String((e as Error)?.message ?? e); this.d.onError(undefined, error, { code: 'player.playFailed', params: { error } }); }); }, 150); }
     else await this.show();
+  }
+
+  /** A source's media is there now (its analysis finished after the preview asked for it): its video is asked for again under a new
+   *  URL, and the still frame redrawn; the other sources' videos are left as they are, playing or not. One already on screen with
+   *  its picture (asked for after the analysis was done) is kept: a new element would show black until it loaded. */
+  async mediaReady(source: string) {
+    if (!this.stage) return;   // nothing loaded yet: the first load asks for it then
+    const refs = this.stage.mediaRefs().filter((r) => r.source === source), urls = new Set(refs.map((r) => this.resolver.video(r, 0).url));
+    const fine = [...this.d.stageEl.querySelectorAll('video')].some((v) => urls.has(v.dataset.key ?? '') && !v.error && v.readyState >= 2);
+    if (fine) return;
+    this.fresh.set(source, (this.fresh.get(source) ?? 0) + 1);
+    await this.pool.preload(refs);
+    // playing: the next frame takes the new element; cropping: the crop view shows the new URL
+    if (this.cropSel) { this.showCrop(); return; }
+    if (!this.busy) await this.show();
   }
 
   async seek(t: number) { this.pause(); this.t = clamp(t, 0, this.project.meta.duration); await this.show(); }
@@ -206,11 +235,11 @@ export class PreviewSession {
     const tm = this.stage.times.get(found.id)!, len = tm.end - tm.start;
     // the frame the chosen Ken Burns end point applies to: the first or the last of the clip
     const local = cropFrameLocal(found, len, sel.which, p.meta.fps);
-    const r = this.d.resolver.video(videoRefOf(found, tm.start, tm.end), local);
-    const src = p.sources[found.source], [, , fw, fh] = found.frame, image = src.kind === 'image' && !!this.d.resolver.image;
+    const r = this.resolver.video(videoRefOf(found, tm.start, tm.end), local);
+    const src = p.sources[found.source], [, , fw, fh] = found.frame, image = src.kind === 'image' && !!this.resolver.image;
     this.crop ??= new CropView(this.d.stageEl.parentElement!, (m) => this.d.post?.(m));
     this.d.stageEl.style.visibility = 'hidden';
-    this.crop.show({ itemId: found.id, which: sel.which, url: image ? this.d.resolver.image!(found.source) : r.url, image, time: r.time, srcW: src.width, srcH: src.height,
+    this.crop.show({ itemId: found.id, which: sel.which, url: image ? this.resolver.image!(found.source) : r.url, image, time: r.time, srcW: src.width, srcH: src.height,
       frameW: fw * p.meta.width, frameH: fh * p.meta.height, crop, view: this.d.viewport?.() ?? { w: 960, h: 540 } });
   }
 
@@ -238,7 +267,7 @@ export class PreviewSession {
   }
 
   private makeAudio(p: Project) {
-    const a = new AudioEngine(planAudio(p, this.stage.times, this.d.resolver, this.d.projectUrl), this.registry.sfx, p.meta.mix, p.meta.duration, this.d.makeAudioContext);
+    const a = new AudioEngine(planAudio(p, this.stage.times, this.resolver, this.d.projectUrl), this.registry.sfx, p.meta.mix, p.meta.duration, this.d.makeAudioContext);
     a.onDecodeError = (k, e) =>
       this.d.onError(undefined, `Audio could not be decoded, skipped when playing (${k}): ${e.message}`, { code: 'player.audioDecode', params: { key: k, error: e.message } });
     return a;

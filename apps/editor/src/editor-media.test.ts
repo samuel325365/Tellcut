@@ -92,6 +92,23 @@ test('music analysed after the editor opened: its tempo arrives once the beats j
   expect(early).toBe(0);
 });
 
+test('the preview asks again for the video of a source whose analysis the editor waited for (it was refused before), not for the others', async () => {
+  const { api, bridge } = fakes({
+    analyze: async () => ({ jobs: [{ id: 'j1', label: 's' }], missing: [], extras: [] }),
+    thumbs: async () => ({ interval: 1, width: 160, height: 90, cols: 10, count: 30, url: '/t' }), peaks: async () => ({ rate: 100, peaks: [0.5] }),
+  });
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  await vi.runAllTimersAsync();
+  expect(bridge.calls.filter((c: any) => c[0] === 'mediaReady')).toEqual([['mediaReady', 's']]);
+  // a job that failed: nothing to show
+  bridge.calls.length = 0;
+  const failing = new Editor('demo', { api: { ...api, waitJob: async () => 'failed' }, bridge });
+  await failing.open();
+  await vi.runAllTimersAsync();
+  expect(bridge.calls.filter((c: any) => c[0] === 'mediaReady')).toEqual([]);
+});
+
 test('a basic analysis that failed (before, or while the editor waits) is listed and not loaded; Analyse again asks the server to retry it', async () => {
   const asked: any[] = [], loaded: string[] = [];
   let round = 0;
