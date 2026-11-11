@@ -91,7 +91,7 @@ describe('common.slant', () => {
 
 describe('common.postage', () => {
   test('an overlay frame; media(): its shot from `from` to the end, or a still, or nothing', () => {
-    expect([postage.kind, postage.category]).toEqual(['overlay', 'frame']);
+    expect([postage.kind, postage.category]).toEqual(['overlay', 'photo']);
     expect(postage.media!(item(postage, { source: 'a', from: 2 }, 4), {} as any)).toEqual({ videos: [{ source: 'a', in: 2, out: 6, speed: 1, interp: 'none' }], stills: [] });
     expect(postage.media!(item(postage, { source: 'a', from: 2, still: true }, 4), {} as any)).toEqual({ videos: [], stills: [{ source: 'a', t: 2, w: 1080 }] });
     expect(postage.media!(item(postage, {}, 4), {} as any)).toEqual({ videos: [], stills: [] });

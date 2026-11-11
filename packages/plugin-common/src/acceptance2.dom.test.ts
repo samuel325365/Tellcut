@@ -32,7 +32,7 @@ const css = (el: Element) => (el as any)._c as Record<string, string>;
 
 describe('common.tabletop', () => {
   test('a static scene: steel by default, the grill off, each look its own colour unless one is given', () => {
-    expect([tabletop.kind, tabletop.category]).toEqual(['scene', 'look']);
+    expect([tabletop.kind, tabletop.category]).toEqual(['scene', 'background']);
     const d = withDefaults(tabletop.params, {}, resolveTheme(undefined, { width: 1080, height: 1920 }));
     expect([d.look, d.grill]).toEqual(['steel', false]);
     expect(tableColor({ look: 'steel', color: '' })).toBe('#7c838b');
