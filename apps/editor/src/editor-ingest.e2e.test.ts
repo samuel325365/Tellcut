@@ -63,6 +63,18 @@ test('Import in the media panel adds footage and music that analyse in the backg
   await page.click('[data-import-media]');
   await page.fill('[data-path]', more);
   await page.press('[data-path]', 'Enter');
+  // on a busy machine this wait has timed out now and then (30 s) with no clue why: wait longer, and when it still
+  // fails say what the dialog showed instead (which folder, which entries, which error)
+  try {
+    await page.locator('[data-entry="beat.wav"] input').waitFor({ timeout: 60000 });
+  } catch (e) {
+    const seen = await page.evaluate(() => ({
+      path: (document.querySelector('[data-path]') as HTMLInputElement | null)?.value,
+      entries: [...document.querySelectorAll('[data-entry]')].map((x) => x.getAttribute('data-entry')),
+      error: document.querySelector('.import-error')?.textContent ?? null,
+    }));
+    throw new Error(`beat.wav never showed in Import: ${JSON.stringify(seen)}; expected folder ${more}`, { cause: e });
+  }
   await page.locator('[data-entry="beat.wav"] input').check();
   await page.locator('[data-entry="more.mp4"] input').check();
   await page.click('[data-add]');
