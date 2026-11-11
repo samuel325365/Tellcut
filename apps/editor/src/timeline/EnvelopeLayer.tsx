@@ -2,9 +2,6 @@
 // the line's hit area come only with `active` (the clip is selected, spec 2026-10-28-timeline-refresh A1): a first click selects.
 import { dbToY, envelopeHandles, envelopeLine, envelopePoints } from './envelope.ts';
 
-// a point a trim left outside the clip: a hollow ring at the edge (the style beats the stylesheet's filled circle)
-const OUT = { fill: 'transparent', stroke: '#ffd60a', strokeWidth: 1.5, strokeDasharray: '2 1.5' };
-
 export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: number; pps: number; h: number; active: boolean }) {
   const pts = envelopePoints(item.envelope, len, pps, h), w = len * pps;
   const points = envelopeLine(pts, w).map((p) => `${p.x},${p.y}`).join(' ');
@@ -17,7 +14,8 @@ export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: n
       <polyline class="env-line" points={points} />
       {active && <>
         <polyline class="env-hit" data-env-line points={points} />
-        {handles.map((p, i) => <circle data-env-index={i} data-env-out={p.out ? '' : undefined} cx={p.x} cy={p.y} r={4} style={p.out ? OUT : undefined} />)}
+        {/* env-out: a point a trim left outside the clip, drawn as a hollow ring at the edge */}
+        {handles.map((p, i) => <circle data-env-index={i} data-env-out={p.out ? '' : undefined} cx={p.x} cy={p.y} r={4} class={p.out ? 'env-out' : undefined} />)}
         <path data-fade="in" class="fade-handle" d={`M${fi} 0 l10 0 l-10 10 z`} />
         <path data-fade="out" class="fade-handle" d={`M${fo} 0 l-10 0 l10 10 z`} />
       </>}

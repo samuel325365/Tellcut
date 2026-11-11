@@ -138,6 +138,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .item .env .env-line { fill: none; stroke: #ffd60a; stroke-width: 1.5; pointer-events: none; }
 .item .env .env-hit { fill: none; stroke: transparent; stroke-width: 8; cursor: copy; }
 .item .env circle { fill: #ffd60a; stroke: #000; cursor: grab; }
+.item .env circle.env-out { fill: transparent; stroke: #ffd60a; stroke-width: 1.5; stroke-dasharray: 2 1.5; }   /* a point a trim left outside the clip: a hollow ring at the edge */
 .item .env .fade { fill: none; stroke: rgba(255,255,255,.6); stroke-dasharray: 3 2; pointer-events: none; }
 .item .env .fade-handle { fill: #fff; cursor: ew-resize; }
 .row .head { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; box-sizing: border-box; }
