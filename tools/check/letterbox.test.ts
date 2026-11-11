@@ -51,3 +51,12 @@ test('a frozen clip: bars past the freeze point are never on screen; the held fr
   const held = freeze(3), barsTo13 = { c: [12, 12.5, 13].map((t): Active => ({ t, box: [0, 0.17, 1, 0.9] })) };
   expect(letterboxFindings(held, resolveTimes(held), barsTo13).map((x) => x.t)).toEqual([[2, 10]]);
 });
+
+test('a side bar is said as a share of the frame\'s width, a top or bottom one of its height', () => {
+  // a pillarboxed source (picture between 20 % and 80 % of its width) full screen in a landscape film
+  const wide = parseProject({ version: 1, meta: { name: 't', width: 1920, height: 1080, fps: 30, duration: 10, plugins: [], mix: MIX },
+    sources: { v: { path: 'v.mp4', duration: 60, width: 1920, height: 1080 } }, media: {}, grids: [],
+    tracks: [{ id: 'v1', kind: 'video', items: [{ id: 'c', source: 'v', in: 10, speed: 1, start: 0, end: 10, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } }] }] });
+  const bars = { c: [12, 12.5, 13].map((t): Active => ({ t, box: [0.2, 0, 0.8, 1] })) };
+  expect(letterboxFindings(wide, resolveTimes(wide), bars)[0].msg).toMatch(/（左邊約 20% 畫面寬度，/);
+});

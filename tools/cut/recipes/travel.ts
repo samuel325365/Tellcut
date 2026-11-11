@@ -33,7 +33,7 @@ export const travel: Recipe<typeof Content> = {
     end: ['京都・春', '謝謝收看'], music: { style: 'pluck', gain: -4 }, captions: { style: 'outline' },
   },
   notes: [
-    '每場的長度由旁白決定（旁白長度＋場與場之間 gap 秒），場內的鏡頭依 weight 分配這段時間；最後一場會多留 1.5 秒。',
+    '每場的長度由旁白決定（旁白長度＋場與場之間 gap 秒），場內的鏡頭依 weight 分配這段時間；最後一場在旁白結束後多留 lead＋1.5 秒（預設 2 秒）。',
     '鏡頭不會跨到素材的下一個場景：要的長度超出 from 所在的場景時，會把 from 往前挪；整個場景都不夠長時照用並在結果裡警告（換一段素材或多加一個鏡頭）。',
     '片頭（title）約 2.4 秒、片尾卡（end）3.5 秒，都算在片長裡。',
     'music 可以是風格名稱，或 { style, bpm, key, seed, gain }；新寫的風格放 projects/<id>/score/。',

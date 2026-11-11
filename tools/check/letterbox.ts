@@ -85,7 +85,7 @@ export function letterboxFindings(p: Project, times: Map<string, { start: number
       if (!run.length) return;
       const a = run[0].ft, z = run[run.length - 1].ft, most = run.reduce((m, h) => (h.amount > m.amount ? h : m));
       out.push({ level: 'warn', t: [+a.toFixed(2), +z.toFixed(2)], ids: [clip.id],
-        msg: `原片自己的黑邊露出來了（${most.side}約 ${Math.round(most.amount * 100)}% 畫面高度，${timecode1(a)}–${timecode1(z)}）：放大或移動 crop 焦點把它裁掉，或換一段沒有黑邊的鏡頭` });
+        msg: `原片自己的黑邊露出來了（${most.side}約 ${Math.round(most.amount * 100)}% 畫面${most.side === '左邊' || most.side === '右邊' ? '寬' : '高'}度，${timecode1(a)}–${timecode1(z)}）：放大或移動 crop 焦點把它裁掉，或換一段沒有黑邊的鏡頭` });
       run = [];
     };
     for (const h of hits) { if (run.length && h.ft - run[run.length - 1].ft > 1.1) flush(); run.push(h); }

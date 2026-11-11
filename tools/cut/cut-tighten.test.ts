@@ -3,6 +3,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Cut } from './cut.ts';
+import { CUT_API } from './api-doc.ts';
 import { base, inv, items } from './cut-test-kit.ts';
 
 describe('tighten (pauses in talk shortened on the word times)', () => {
@@ -19,6 +20,8 @@ describe('tighten (pauses in talk shortened on the word times)', () => {
     expect(items(c, 'orig').every((i) => i.fadeIn >= 0.03 && i.fadeOut >= 0.03)).toBe(true);
     expect(c.time).toBe(2.7);
     expect(c.notes.join()).toContain('3 個停頓');
+    // the head and tail keep half of keep (0.85 is 0.15 before the first word), as the cut-api line says
+    expect(CUT_API.find(([n]) => n === 'tighten')![2]).toContain('頭尾超過 maxGap 秒的只留 keep 的一半');
     // the rest of the script goes on from the new end
     c.clip('v', { from: 0, len: 1 });
     expect(items(c, 'v1').at(-1).start).toBe(2.7);
