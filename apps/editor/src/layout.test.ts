@@ -1,4 +1,4 @@
-import { DEFAULT_LAYOUT, arrangementOf, gridFor, nextArrange, previewWOf, sanitizeLayout, sizePatch, orientationOf, portraitPreviewWidth, previewWFromX, sideWFromX, splitFromY } from './layout.ts';
+import { DEFAULT_LAYOUT, arrangementOf, gridFor, nextArrange, previewWOf, sanitizeLayout, sizePatch, orientationOf, portraitPreviewWidth, previewWFromX, sideWFromX, sideWidth, splitFromY } from './layout.ts';
 
 const wedding = { width: 1920, height: 1080 }, kyoto = { width: 1080, height: 1920 };
 const view = { w: 1536, h: 864 };
@@ -59,6 +59,16 @@ test('the left panel is as wide as it was dragged (both orientations), within 20
   expect(gridFor({ ...DEFAULT_LAYOUT, sideW: 420, libClosed: true }, landscape, view).columns.startsWith('24px ')).toBe(true);   // closed stays a strip
   expect([sideWFromX(350, 10, 1600), sideWFromX(50, 10, 1600), sideWFromX(1500, 10, 1600), sideWFromX(1500, 10, 1000)]).toEqual([340, 200, 720, 500]);
   expect([sanitizeLayout({ sideW: 333 }).sideW, sanitizeLayout({ sideW: 5000 }).sideW, sanitizeLayout({}).sideW]).toEqual([333, null, null]);
+});
+
+test('a wide left panel saved in a big window fits a narrow one: at most half of it, the saved width kept (EP5)', () => {
+  const portrait = { width: 1080, height: 1920 }, landscape = { width: 1920, height: 1080 }, half = { w: 960, h: 900 };
+  const l = { ...DEFAULT_LAYOUT, sideW: 700 };
+  expect(gridFor(l, landscape, half).columns).toBe('480px minmax(0, 1fr) 300px');                // stacked: the preview keeps 180 px
+  expect(gridFor(l, portrait, half).columns.startsWith('480px minmax(0, 1fr) 6px ')).toBe(true);  // side: the timeline keeps its room
+  expect(sideWidth(l, half.w)).toBe(480);
+  expect([gridFor(l, landscape, { w: 1920, h: 1080 }).columns.startsWith('700px '), l.sideW]).toEqual([true, 700]);   // a big window: as dragged
+  expect(sideWidth({ ...l, libClosed: true }, half.w)).toBe(24);
 });
 
 test('arrangement: auto follows the project, a choice is kept per orientation', () => {

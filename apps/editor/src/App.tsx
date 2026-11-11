@@ -146,7 +146,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
           </aside>
         )}
         <Timeline editor={editor} />
-        <Splitter dir="cols" editor={editor} root={root} side={sideWidth(l)} meta={s.project.meta} view={view} />
+        <Splitter dir="cols" editor={editor} root={root} side={sideWidth(l, view.w)} meta={s.project.meta} view={view} />
         <Preview editor={editor} bridge={bridge} s={s} />
       </> : <>
         {l.libClosed ? expander('library', 'lib') : (

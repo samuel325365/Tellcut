@@ -62,8 +62,13 @@ export function sizePatch(l: Layout, meta: { width: number; height: number }, pa
 
 /** Width of a column that shows the whole video at full height (plus a little margin). */
 export const portraitPreviewWidth = (viewH: number, aspect: number) => Math.round((viewH - TOOLBAR_H - TRANSPORT_H) * aspect) + 16;
+/** The widest the left panel may be in a window this wide: what dragging allows (SIDE_MAX, half the window). */
+const sideMax = (viewW: number) => Math.max(SIDE_MIN, Math.min(SIDE_MAX, Math.round(viewW / 2)));
+/** The left panel's dragged width as this window allows: a width saved in a wide window would squeeze the preview (stacked)
+ *  or the timeline (side) to nothing in a narrow one. The saved width itself is kept for the wide window. */
+const fitSideW = (w: number, viewW: number) => Math.min(w, sideMax(viewW));
 /** Portrait side column width (a closed side leaves a strip). */
-export const sideWidth = (l: Pick<Layout, 'libClosed' | 'sideW'>) => (l.libClosed ? CLOSED : l.sideW ?? SIDE_W);
+export const sideWidth = (l: Pick<Layout, 'libClosed' | 'sideW'>, viewW: number) => (l.libClosed ? CLOSED : l.sideW !== null ? fitSideW(l.sideW, viewW) : SIDE_W);
 /** The preview may grow only while the timeline keeps MIN_TIMELINE px; on narrow windows the 200 px minimum wins. */
 const maxPreviewW = (viewW: number, side: number) => Math.max(200, viewW - side - SPLITTER - MIN_TIMELINE);
 /** Side layout's default preview column: the video at full height, but at most 45% of the room beside the side panel
@@ -73,7 +78,7 @@ export const sidePreviewWidth = (viewW: number, viewH: number, aspect: number, s
 
 export function gridFor(l: Layout, meta: { width: number; height: number }, view: { w: number; h: number }) {
   if (arrangementOf(l, meta) === 'side') {
-    const side = sideWidth(l), aspect = meta.width / meta.height, saved = previewWOf(l, meta);
+    const side = sideWidth(l, view.w), aspect = meta.width / meta.height, saved = previewWOf(l, meta);
     const pw = saved !== null ? clamp(saved, 200, maxPreviewW(view.w, side))
       : orientationOf(meta) === 'portrait' ? clamp(portraitPreviewWidth(view.h, aspect), 200, maxPreviewW(view.w, side)) : sidePreviewWidth(view.w, view.h, aspect, side);
     return { areas: '"tb tb tb tb" "sd tl sp pv"', columns: `${side}px minmax(0, 1fr) ${SPLITTER}px ${pw}px`, rows: `${TOOLBAR_H}px minmax(0, 1fr)` };
@@ -81,7 +86,7 @@ export function gridFor(l: Layout, meta: { width: number; height: number }, view
   const split = splitOf(l, meta) ?? DEFAULT_SPLIT, r2 = (v: number) => Math.round(v * 100) / 100;
   return {
     areas: '"tb tb tb" "lib pv pr" "sp sp sp" "tl tl tl"',
-    columns: `${l.libClosed ? CLOSED : l.sideW ?? LIB_W}px minmax(0, 1fr) ${l.propsClosed ? CLOSED : 300}px`,
+    columns: `${l.libClosed ? CLOSED : l.sideW !== null ? fitSideW(l.sideW, view.w) : LIB_W}px minmax(0, 1fr) ${l.propsClosed ? CLOSED : 300}px`,
     rows: l.maxPreview ? `${TOOLBAR_H}px minmax(0, 1fr) ${SPLITTER}px ${TRAY_H + RULER_ROW}px` : `${TOOLBAR_H}px minmax(160px, ${r2(split)}fr) ${SPLITTER}px minmax(80px, ${r2(1 - split)}fr)`,
   };
 }
@@ -89,7 +94,7 @@ export function gridFor(l: Layout, meta: { width: number; height: number }, view
 /** Stacked splitter: pointer y (editor top / height) → share of the height for the preview. */
 export const splitFromY = (y: number, top: number, height: number) => clamp((y - top - TOOLBAR_H) / (height - TOOLBAR_H - SPLITTER), 0.3, 0.85);
 /** The left panel's edge: pointer x (editor left edge) → panel width, within SIDE_MIN–SIDE_MAX and half the window. */
-export const sideWFromX = (x: number, left: number, viewW: number) => clamp(Math.round(x - left), SIDE_MIN, Math.max(SIDE_MIN, Math.min(SIDE_MAX, Math.round(viewW / 2))));
+export const sideWFromX = (x: number, left: number, viewW: number) => clamp(Math.round(x - left), SIDE_MIN, sideMax(viewW));
 /** Side splitter: pointer x (editor right edge / width) → preview column width. */
 export const previewWFromX = (x: number, right: number, width: number, side: number) => clamp(Math.round(right - x), 200, maxPreviewW(width, side));
 
