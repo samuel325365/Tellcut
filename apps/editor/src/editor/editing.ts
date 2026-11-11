@@ -34,6 +34,8 @@ export interface EditingDeps {
   apply: (recipe: Recipe) => boolean;
   /** a project shown in the store and the preview; commit: a recorded edit to save */
   changed: (p: Project, commit: boolean) => void;
+  /** back to what is current once a drag lets go without an edit: the waiting proposal's preview, else the project */
+  showCurrent: () => void;
   livePreview: (recipe: Recipe) => void;
   seek: (t: number) => void;
   endAudition: () => void;
@@ -244,7 +246,7 @@ export class TimelineEditing {
     this.drag = null;
     this.set({ guide: null });
     if (!d || !h) return;
-    if (d.recipe) this.c.apply(d.recipe); else this.c.changed(h.project, false);
+    if (d.recipe) this.c.apply(d.recipe); else this.c.showCurrent();
   }
 
   // ---------------------------------------------------------------- dragging a library card onto the timeline
@@ -305,8 +307,9 @@ export class TimelineEditing {
     this.libDrag = null;
     this.set({ libDrag: null });
     if (!d || !h) return false;
-    if (!commit || !plan) { this.c.changed(h.project, false); return false; }
-    if (!plan.ok) { this.c.changed(h.project, false); this.set({ notice: plan.why }); return false; }
+    // a proposal that arrived during the drag stays on show (libDragTo stopped previewing then)
+    if (!commit || !plan) { this.c.showCurrent(); return false; }
+    if (!plan.ok) { this.c.showCurrent(); this.set({ notice: plan.why }); return false; }
     if (d.lib) return { lib: d.lib, at: { track: plan.track, start: plan.start, end: plan.end } };
     if (!d.item) return false;
     return this.addPlaced(plan, d.item);

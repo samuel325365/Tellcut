@@ -3,7 +3,7 @@ import { corePlugin, createRegistry, moveItems } from '@tellcut/engine';
 import { fixture } from '@tellcut/engine/test-fixture';
 import { ApiError } from './api.ts';
 import { Editor } from './editor.ts';
-import { fakes, live, prop } from './editor-test-kit.ts';
+import { fakes, live, prop, shown } from './editor-test-kit.ts';
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
@@ -133,6 +133,35 @@ test('while a proposal waits, a timeline drag changes nothing and the proposal s
   expect([shown.tracks[1].items[0].end, shown.tracks[1].items[1].start]).toEqual([3, 4]);
   await vi.advanceTimersByTimeAsync(2000);
   expect(saved).toHaveLength(0);
+});
+
+test('an audition while a proposal waits gives the player back the proposal, as the timeline shows it', async () => {
+  const L = live(), { api, bridge } = fakes(L.over);
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  L.send({ type: 'proposal', proposal: prop([{ op: 'trimEnd', id: 'c1', dt: -1 }]) });
+  expect(ed.auditionItem('c2')).toBe(true);
+  ed.endAudition();
+  const end = (p: any) => p.tracks[1].items[0].end;
+  expect([end(shown(bridge)), end(ed.store.get().project), !!ed.store.get().proposal]).toEqual([3, 3, true]);
+});
+
+test('a proposal that lands during a drag stays on show when the drag is let go without an edit', async () => {
+  const L = live(), { api, bridge } = fakes(L.over);
+  const ed = new Editor('demo', { api, bridge });
+  await ed.open();
+  const end = (p: any) => p.tracks[1].items[0].end;
+  // a library card let go outside the timeline (Esc, a refused place)
+  expect(ed.beginLibDrag({ kind: 'clip', source: 's', from: 20, len: 2 })).toBe(true);
+  L.send({ type: 'proposal', proposal: prop([{ op: 'trimEnd', id: 'c1', dt: -1 }]) });
+  expect(ed.endLibDrag(false)).toBe(false);
+  expect([end(ed.store.get().project), end(shown(bridge)), ed.store.get().canUndo, !!ed.store.get().proposal]).toEqual([3, 3, false, true]);
+  await ed.rejectProposal();
+  // a press on a clip that never moved
+  ed.beginDrag({ grip: 'body', id: 'c2', mods: { alt: false, ctrl: false, shift: false }, selection: [] });
+  L.send({ type: 'proposal', proposal: { ...prop([{ op: 'trimEnd', id: 'c1', dt: -1 }]), id: 'p2' } });
+  ed.endDrag();
+  expect([end(ed.store.get().project), end(shown(bridge)), ed.store.get().canUndo]).toEqual([3, 3, false]);
 });
 
 test('a proposal is applied once even when accept comes twice; a request for another proposal is ignored', async () => {

@@ -41,6 +41,8 @@ export class ProposalFlow {
 
   /** whether a proposal waits to be decided */
   get pending(): boolean { return !!this.prop; }
+  /** the waiting proposal's preview (what the timeline and the player show instead of the project), or null */
+  get shown(): Project | null { return this.view; }
 
   /** A (re)opened project: whatever was shown is forgotten (the live stream's hello brings a waiting one back). */
   reset() { this.prop = null; this.view = null; this.set({ proposal: null }); }

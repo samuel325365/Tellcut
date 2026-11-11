@@ -293,7 +293,7 @@ export class Editor {
   private editFlow: TimelineEditing | undefined;
   private get editing() {
     return (this.editFlow ??= new TimelineEditing({ id: this.id, store: this.store, bridge: this.deps.bridge, history: () => this.history, registry: () => this.reg,
-      apply: (r) => this.apply(r), changed: (p, commit) => this.changed(p, commit), livePreview: (r) => this.livePreview(r), seek: (t) => this.seek(t),
+      apply: (r) => this.apply(r), changed: (p, commit) => this.changed(p, commit), showCurrent: () => this.showCurrent(), livePreview: (r) => this.livePreview(r), seek: (t) => this.seek(t),
       endAudition: () => this.endAudition(), blocked: () => this.blocked(), pending: () => this.proposals.pending, isLocked: (id) => this.isLocked(id), checkCrop: () => this.checkCrop() }));
   }
   /** Click on a same-track overlap (spec 2026-10-14 §5.1–5.2); `id` is the later item B. */
@@ -416,6 +416,16 @@ export class Editor {
   }
   /** While a proposal waits, edits are refused (the preview shows the proposal, not the project). */
   private blocked(): boolean { return this.proposals.blocked(); }
+  /** what the timeline and the player show when nothing is being dragged or auditioned: a waiting proposal's preview, else the project */
+  private current(): Project | undefined { return this.proposals.shown ?? this.history?.project; }
+  /** Back to what is current after a preview that recorded nothing (a drag let go without an edit): a proposal that arrived
+   *  meanwhile stays on show, as undoable as it was (not at all). */
+  private showCurrent() {
+    const p = this.current();
+    if (!p) return;
+    this.changed(p, false);
+    if (this.proposals.shown) this.set({ canUndo: false, canRedo: false });
+  }
   private onLive(m: LiveEvent) {
     if (this.proposals.onLive(m)) return;
     // a save of this page's own (the server leaves it out; a stream opened again by a reload could still hear it)
@@ -589,7 +599,8 @@ export class Editor {
   }
   /** Records the last live preview as one undo step. */
   commitLive() { const r = this.live; this.live = null; if (r) this.apply(r); }
-  cancelLive() { this.live = null; if (this.history) this.changed(this.history.project, false); }
+  /** Drops the last live preview: what is current comes back. */
+  cancelLive() { this.live = null; this.showCurrent(); }
 
   /** Audition: the material plays alone on temporary tracks of a project sent to the player only (audition.ts); it ends
    *  when its time is over, at the project end, on Space/Esc, a seek or any edit, and the real project and playhead come back. */
@@ -635,10 +646,11 @@ export class Editor {
     if (!a) return;
     this.aud = null;
     // the player's errors were about the audition's items; a temporary item could have been picked meanwhile
-    const ids = new Set(this.history ? allItems(this.history.project).map((x) => x.item.id) : []);
+    // the player gets back what the timeline shows: a proposal waiting (one that came during the audition too) is still on show
+    const cur = this.current(), ids = new Set(cur ? allItems(cur).map((x) => x.item.id) : []);
     this.set({ audition: null, playerError: '', selection: this.s.selection.filter((id) => ids.has(id)) });
     this.pause();
-    if (this.history) this.deps.bridge.patch(this.history.project);
+    if (cur) this.deps.bridge.patch(cur);
     this.seekTo(a.back);
     this.setView({ scroll: a.scroll });
   }
