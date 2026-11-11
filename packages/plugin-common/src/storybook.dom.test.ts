@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // common.binocular / common.photostack, the title look storybook and the heading backing frame (2026-11-06, the Wes Anderson pilot
 // film). jsdom has no canvas: the window and card helpers, the declared stills, the look's lines and the backing's boxes are tested.
-import { binocular, cardIn, parseCards, photostack, stackLayout, windowCentres } from './storybook.ts';
+import { binocular, windowCentres } from './binocular.ts';
+import { cardIn, parseCards, photostack, stackLayout } from './photostack.ts';
 import { isSoftLine, storybook } from './caption/looks/title.ts';
 import { buildBacking, drawBacking } from './heading/backing.ts';
 
