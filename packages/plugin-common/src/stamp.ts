@@ -9,7 +9,7 @@
 // faint diagonal stripes and an inner rule in `color`, slammed down from 1.45×; the word glows in `color` like a hot iron and cools to
 // `paper` over a second.
 import { clamp, cssCamel, eBack, eOut3, h, prog, textEm, type ItemType } from '@tellcut/engine';
-import { emParts, fitPx } from './text.ts';
+import { emParts } from './text.ts';
 import { mixHex, withAlpha } from './color.ts';
 
 interface P { text: string; size: number; y: number; angle: number; color: string; font: string; shape: 'box' | 'circle' | 'card' | 'double' | 'ember'; x: number; tag: string; anchor: 'center' | 'top' | 'bottom'; ink: string; hl: string; head: string; paper: string }
@@ -25,10 +25,14 @@ export const doubleLook = (color: string, paper: string, stroke: number, k: numb
 /** shape ember: lands from 1.45× with an overshoot over 0.22 s, showing within 0.08 s; the word cools from the heat colour to the paper
  *  colour from 0.15 s over 0.9 s */
 export function emberLand(t: number) { return { scale: 1.45 - 0.45 * eBack(clamp(t / 0.22), 1.7), alpha: clamp(t / 0.08), cool: clamp((t - 0.15) / 0.9) }; }
-/** the font size (from `px` down, fitPx's floor kept) at which the widest of `lines` plus `pad` em of padding fits `room` px */
-export function stampPx(lines: string[], px: number, room: number, pad: number) {
-  const wide = lines.reduce((a, l) => (textEm(l) > textEm(a) ? l : a), ''), e = Math.max(0.5, textEm(wide));
-  return fitPx(wide, px, (room * e) / (e + pad));
+/** the width of the small `head` line in the stamp's em: 0.53 em type, 0.5 of its em letter spacing after every character, and the
+ *  0.5 em indent that centres the spaced line */
+export const headEm = (head: string) => (head ? 0.53 * (textEm(head) + 0.5 * [...head].length + 0.5) : 0);
+/** the font size (from `px` down, fitPx's floor kept) at which the widest of `lines` (and the `head` line above them) plus `pad` em
+ *  of padding fits `room` px */
+export function stampPx(lines: string[], px: number, room: number, pad: number, head = '') {
+  const e = Math.max(0.5, ...lines.map(textEm), headEm(head));
+  return Math.max(px * 0.4, Math.min(px, room / (e + pad)));
 }
 
 export const stamp: ItemType<P, S> = {
@@ -68,10 +72,10 @@ export const stamp: ItemType<P, S> = {
     s.head.textContent = p.head ?? '';
     cssCamel(s.head, { display: p.head ? 'block' : 'none' });
     // the circle: a double ring a little wider than the word, the word centred in it
-    const round = p.shape === 'circle', dbl = p.shape === 'double', d = textEm(p.text) + 1.1, dl = doubleLook(p.color, p.paper, theme.stroke, k);
+    const round = p.shape === 'circle', dbl = p.shape === 'double', d = Math.max(textEm(p.text), headEm(p.head ?? '')) + 1.1, dl = doubleLook(p.color, p.paper, theme.stroke, k);
     // a word too wide for the safe width shrinks, its padding (0.5 em a side; double 0.42, the circle's 0.55) and borders with it
     const edge = theme.stroke * (dbl ? 1.75 : round ? 2.4 : 1.2) * k, room = W * (1 - 2 * theme.safe.side) - 2 * edge;
-    const fpx = stampPx(String(p.text ?? '').split('\n'), px, room, round ? 1.1 : dbl ? 0.84 : 1);
+    const fpx = stampPx(String(p.text ?? '').split('\n'), px, room, round ? 1.1 : dbl ? 0.84 : 1, p.head ?? '');
     cssCamel(s.box, {
       left: `${(p.x ?? 0.5) * W}px`, top: `${p.y * H}px`, width: round ? `${d}em` : '', height: round ? `${d}em` : '', padding: round ? '0' : dbl ? dl.padding : '0.15em 0.5em',
       display: round || p.head || dbl ? 'flex' : '', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -111,6 +115,8 @@ function drawCard(ctx: Parameters<typeof stamp.draw>[0], s: S, k: number, px: nu
  *  glowing like a hot iron and cooling to the paper colour; `head` is a small line above it in the heat colour */
 function drawEmber(ctx: Parameters<typeof stamp.draw>[0], s: S, px: number) {
   const p = ctx.params, { W, H } = ctx, l = emberLand(ctx.local), out = 1 - prog(ctx.local, ctx.dur - 0.25, ctx.dur);
+  // the word and the head shrink to the plate's 0.9 W (0.34 em padding a side): a long word in 9:16 ran off both edges
+  const fpx = stampPx(String(p.text ?? '').split('\n'), px, 0.9 * W, 0.68, p.head ?? '');
   s.label.textContent = p.text; s.key = '';
   s.head.textContent = p.head ?? '';
   cssCamel(s.head, { display: p.head ? 'block' : 'none', color: p.color });
@@ -119,9 +125,9 @@ function drawEmber(ctx: Parameters<typeof stamp.draw>[0], s: S, px: number) {
     left: `${(p.x ?? 0.5) * W}px`, top: `${p.y * H}px`, width: '', height: '', maxWidth: `${0.9 * W}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     padding: '0.1em 0.34em 0.16em', color: p.color, border: 'none', borderRadius: '0.11em', lineHeight: '1.05',
     background: `repeating-linear-gradient(45deg, rgba(255,255,255,0) 0 0.35em, rgba(255,255,255,0.05) 0.35em 0.41em), ${withAlpha(p.ink, 0.88)}`,
-    boxShadow: `0 ${0.05 * px}px ${0.16 * px}px rgba(0,0,0,0.4)`, outline: `${(0.03 * px).toFixed(2)}px solid ${withAlpha(p.color, 0.9)}`, outlineOffset: `${(-0.08 * px).toFixed(2)}px`,
-    fontFamily: `'Playfair Display', '${p.font}', 'Noto Serif TC', serif`, fontStyle: 'italic', fontSize: `${px}px`, opacity: String(l.alpha * out), transformOrigin: '50% 50%',
+    boxShadow: `0 ${0.05 * fpx}px ${0.16 * fpx}px rgba(0,0,0,0.4)`, outline: `${(0.03 * fpx).toFixed(2)}px solid ${withAlpha(p.color, 0.9)}`, outlineOffset: `${(-0.08 * fpx).toFixed(2)}px`,
+    fontFamily: `'Playfair Display', '${p.font}', 'Noto Serif TC', serif`, fontStyle: 'italic', fontSize: `${fpx}px`, opacity: String(l.alpha * out), transformOrigin: '50% 50%',
     transform: `translate(-50%, -50%) rotate(${p.angle}deg) scale(${l.scale.toFixed(4)})`,
   });
-  cssCamel(s.label, { color: mixHex(p.color, p.paper, l.cool), textShadow: `0 0 ${((0.27 - 0.22 * l.cool) * px).toFixed(2)}px ${p.color}` });
+  cssCamel(s.label, { color: mixHex(p.color, p.paper, l.cool), textShadow: `0 0 ${((0.27 - 0.22 * l.cool) * fpx).toFixed(2)}px ${p.color}` });
 }
