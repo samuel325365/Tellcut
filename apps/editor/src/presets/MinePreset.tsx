@@ -108,9 +108,10 @@ export function NewPresetDialog({ api, fields, examples, onSaved, onClose }: { a
 
 /** the custom form's "Save as my preset": keeps the options chosen, without making a film first */
 export function SaveFormPreset({ api, fields, examples, onSaved }: { api: PresetApi; fields: () => Record<string, string>; examples: () => string[]; onSaved: () => void }) {
-  const [open, setOpen] = useState<{ fields: Record<string, string>; examples: string[] } | null>(null);
+  // n: each click opens a fresh dialog; the one left showing a failed points request kept its error and never asked again
+  const [open, setOpen] = useState<{ fields: Record<string, string>; examples: string[]; n: number } | null>(null);
   return <>
-    <button data-preset-save-form data-tip={t('preset.saveFormTip')} onClick={() => setOpen({ fields: fields(), examples: examples() })}>{t('preset.saveForm')}</button>
-    {open && <NewPresetDialog api={api} fields={open.fields} examples={open.examples} onSaved={onSaved} onClose={() => setOpen(null)} />}
+    <button data-preset-save-form data-tip={t('preset.saveFormTip')} onClick={() => setOpen({ fields: fields(), examples: examples(), n: (open?.n ?? 0) + 1 })}>{t('preset.saveForm')}</button>
+    {open && <NewPresetDialog key={open.n} api={api} fields={open.fields} examples={open.examples} onSaved={onSaved} onClose={() => setOpen(null)} />}
   </>;
 }

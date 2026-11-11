@@ -271,3 +271,21 @@ test('a new preset from nothing starts on one empty point and saves only the use
   expect(calls).toEqual([['save', { from: 'form', name: '我的節奏', summary: '', color: '#4263eb', fields: {}, lang: 'zh', points: [{ text: '每段不超過 3 秒', prompt: '每段不超過 3 秒' }] }]]);
   expect([saved, closed]).toEqual([1, 1]);
 });
+
+test('"Save as my preset" after its points request failed: pressing it again asks again (EP10)', async () => {
+  const CUSTOM: any = { ...TRAVEL, id: 'custom', styles: [], fields: [{ id: 'ratio', name: { zh: '比例' }, options: [{ id: '9:16', name: { zh: '9:16 直式' } }] }] };
+  const root = document.createElement('div'), { api, calls } = presetApi();
+  let fail = true;
+  const formPoints = api.formPoints;
+  api.formPoints = async (b: any) => { if (fail) { calls.push(['points-failed']); throw new Error('連不上'); } return formPoints(b); };
+  await act(() => render(<PresetDialog preset={CUSTOM} styles={[]} onConfirm={() => {}} onClose={() => {}} api={api} />, root));
+  await clickOn(root, '[data-preset-save-form]');
+  await tick();
+  expect(root.querySelector('.err[role=alert]')!.textContent).toContain('連不上');
+  fail = false;
+  await clickOn(root, '[data-preset-save-form]');
+  await tick();
+  expect(calls.map((c) => c[0])).toEqual(['points-failed', 'points']);
+  expect(root.querySelector('.err[role=alert]')).toBeNull();
+  expect(root.querySelector('[data-save-preset-dialog="save"]')).not.toBeNull();
+});
