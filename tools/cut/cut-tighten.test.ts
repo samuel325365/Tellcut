@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Cut } from './cut.ts';
 import { CUT_API } from './api-doc.ts';
+import { tightenClip } from './tighten.ts';
 import { base, inv, items } from './cut-test-kit.ts';
 
 describe('tighten (pauses in talk shortened on the word times)', () => {
@@ -84,5 +85,26 @@ describe('tighten (pauses in talk shortened on the word times)', () => {
     d.speechCaptions(jd);
     expect(items(d, 'text').map((i) => [i.parent, i.start, i.end])).toEqual([[jd[0], 0.15, 2.55]]);
     expect(d.wordTimes(jd, '出發')).toEqual([[2.05, 2.55]]);
+  });
+});
+
+describe('tighten counts what it cut', () => {
+  const talk = (segments: any[]) => { const dir = mkdtempSync(join(tmpdir(), 'cut-')), i = inv(dir); i.sources[0].transcript = { language: 'zh', segments }; return new Cut(base(), i, dir); };
+  // with keep 0.02, the pause after a word ending at the clip's in point starts 0.02 s in: closer than a frame to the clip's edge,
+  // so split cannot cut it there and it stays
+  const edge = { start: -0.5, end: 0.01, text: '前', words: [{ start: -0.5, end: 0.01, word: '前' }] };
+  const mid = { start: 2, end: 2.5, text: '大家好', words: [{ start: 2, end: 2.5, word: '大家好' }] };
+  const last = { start: 4, end: 5, text: '出發', words: [{ start: 4, end: 5, word: '出發' }] };
+
+  test('the note counts only the pauses really cut', () => {
+    const c = talk([edge, mid, last]), id = c.clip('v', { from: 0, len: 5 });
+    c.tighten(id, { keep: 0.02 });
+    expect(c.notes.join()).toContain('tighten 剪掉 1 個停頓');
+  });
+
+  test('nothing cut: not reported as cut (the cursor and the end are left alone)', () => {
+    const c = talk([edge, { ...mid, end: 5, words: [{ start: 2, end: 5, word: '大家好' }] }]), id = c.clip('v', { from: 0, len: 5 });
+    expect(tightenClip(c.p, id, () => c.inv.sources[0].transcript, { keep: 0.02 }, []).cut).toBe(false);
+    expect(c.notes.join()).not.toMatch(/剪掉/);
   });
 });

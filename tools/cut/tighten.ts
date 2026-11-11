@@ -3,7 +3,7 @@ import { cropAt, r6, rippleDelete, split, type Project, type Transcript, type Vi
 
 /**
  * Shortens the pauses in the main-track clip `clipId` of `p` (see Cut.tighten). `autoFocus` (Cut's face-focus groups) is updated
- * for the pieces. Returns the pieces in order, the note to print, and whether anything was cut (the cursor and the end move then).
+ * for the pieces. Returns the pieces in order, the note to print, and whether a pause was cut out (the cursor and the end move then).
  */
 export function tightenClip(p: Project, clipId: string, transcriptOf: (source: string) => Transcript | null | undefined, o: { maxGap?: number; keep?: number },
   autoFocus: string[][]): { ids: string[]; note?: string; cut: boolean } {
@@ -34,7 +34,7 @@ export function tightenClip(p: Project, clipId: string, transcriptOf: (source: s
   const crop0 = structuredClone(it.crop), len0 = it.end - it.start, into = it.transitionIn;
   const made = new Set<string>();
   const pieces = () => v1.filter((c) => c.id === clipId || made.has(c.id)).sort((x, y) => x.start - y.start);
-  let removed = 0;
+  let removed = 0, count = 0;   // seconds and pauses really cut (one within a frame of an edge is not)
   // split refuses a cut inside a transition, and the head pause may end in this one: it comes off for the cutting (the clip
   // keeps its place on the overlap) and goes back on the first piece below
   delete it.transitionIn;
@@ -44,7 +44,7 @@ export function tightenClip(p: Project, clipId: string, transcriptOf: (source: s
     for (const t of [t1, t0]) for (const n of split(p, { t, ids: pieces().map((c) => c.id) })) made.add(n);
     const gone = pieces().find((c) => Math.abs(c.start - t0) < 1e-3 && Math.abs(c.end - t1) < 2e-3);
     if (!gone) continue;   // closer than a frame to an edge: split would not cut it
-    removed += gone.end - gone.start;
+    removed += gone.end - gone.start; count++;
     made.delete(gone.id);
     rippleDelete(p, { ids: [gone.id] });
   }
@@ -71,5 +71,5 @@ export function tightenClip(p: Project, clipId: string, transcriptOf: (source: s
     const f = Math.min(0.03, (s.end - s.start) / 4);
     s.fadeIn = r6(Math.max(s.fadeIn, f)); s.fadeOut = r6(Math.max(s.fadeOut, f));
   }
-  return { ids: out.map((c) => c.id), note: removed > 0 ? `${clipId}：tighten 剪掉 ${cuts.length} 個停頓，共 ${removed.toFixed(1)} 秒（${out.length} 段）` : undefined, cut: true };
+  return { ids: out.map((c) => c.id), note: count ? `${clipId}：tighten 剪掉 ${count} 個停頓，共 ${removed.toFixed(1)} 秒（${out.length} 段）` : undefined, cut: count > 0 };
 }
