@@ -4,6 +4,7 @@ import { act } from 'preact/test-utils';
 import { fixture } from '@tellcut/engine/test-fixture';
 import { createStore, initialState } from '../store.ts';
 import { Timeline } from './Timeline.tsx';
+import { NumberField } from '../fields.tsx';
 
 function mount(patch = {}) {
   // the geometry assertions below are in standard track heights
@@ -612,6 +613,35 @@ test('a press on the timeline clears a text selection left elsewhere on the page
   getSelection()!.addRange(r);
   root.querySelector<HTMLElement>('[data-tool="split"]')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
   expect(getSelection()!.isCollapsed).toBe(true);
+});
+
+test('a press on a clip commits the properties field being typed in and leaves it, so the keys go to the timeline', async () => {
+  const { root, editor, calls } = mount();
+  await act(() => render(<Timeline editor={editor} />, root));
+  const props = document.createElement('div');
+  document.body.appendChild(props);
+  await act(() => render(<NumberField label="Speed" value={1} onCommit={(v) => calls.push(['commit', v])} />, props));
+  const box = props.querySelector('input')!;
+  // jsdom fires no change when a typed-in box loses focus; a browser does, before blur
+  let typedAt = '';
+  const onFocus = () => { typedAt = box.value; }, onBlur = (e: Event) => { if (e.target === box && box.value !== typedAt) box.dispatchEvent(new Event('change', { bubbles: true })); };
+  box.addEventListener('focus', onFocus);
+  document.addEventListener('blur', onBlur, true);
+  box.focus();
+  await act(() => { box.value = '1.5'; box.dispatchEvent(new Event('input', { bubbles: true })); });
+  const c1 = root.querySelector<HTMLElement>('[data-item-id="c1"]')!;
+  c1.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0, clientX: 20, clientY: 60 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 20, clientY: 60 }));
+  expect(document.activeElement).not.toBe(box);
+  // the typed value is committed (for the item it was typed for) before the press selects the clip
+  expect(calls.filter((c) => c[0] === 'commit' || c[0] === 'select')).toEqual([['commit', 1.5], ['select', ['c1']]]);
+  // a press on the focused field itself (a track's gain box) keeps it
+  const gain = root.querySelector<HTMLInputElement>('[data-row="mu"] [data-bus-gain]')!;
+  gain.focus();
+  gain.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+  expect(document.activeElement).toBe(gain);
+  document.removeEventListener('blur', onBlur, true);
+  render(null, props); props.remove();
 });
 
 test('locked: a transition takes no drag or click, a drag cannot land on a locked track, Detach is not offered', async () => {

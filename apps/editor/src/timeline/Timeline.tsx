@@ -226,7 +226,7 @@ export function Timeline({ editor }: { editor: Editor }) {
   </>;
 
   return (
-    <section class="timeline" ref={box} onWheel={onWheel as any} onMouseDownCapture={dropTextSelection as any} onDragOver={fileOver as any} onDragLeave={fileLeave as any} onDrop={fileDrop as any}>
+    <section class="timeline" ref={box} onWheel={onWheel as any} onMouseDownCapture={onPressCapture as any} onDragOver={fileOver as any} onDragLeave={fileLeave as any} onDrop={fileDrop as any}>
       <TrayBox editor={editor} addTrack={addTrackMenu} zoom={zoomControls} />
       <div class="ruler" data-ruler style={{ height: `${RULER_H}px` }} onMouseDown={scrubFrom as any}>
         {rulerTicks(view, width).map((k) => (
@@ -341,6 +341,16 @@ const NEW_STRIP_H = 14;
 /** A press on the timeline lets go of text selected elsewhere (chat, help…): the clips hold mousedown's default back, so the
  *  selection would stay and Ctrl+C would copy that text instead of the clips (keys.ts clipboardFree). */
 function dropTextSelection() { const sel = getSelection(); if (sel && !sel.isCollapsed) sel.removeAllRanges(); }
+/** A press on the timeline commits the field being typed in elsewhere (the properties panel) and leaves it, as a press anywhere
+ *  else would: the clips hold mousedown's default back, so focus stayed in it. The keys then went on editing it (↑ stepping a
+ *  number, Space ticking Mute) instead of the timeline, and a press on another clip remounted the panel and dropped what was
+ *  typed. blur() fires the field's change first, for the item it was typed for. A press on the focused field itself keeps it. */
+function commitField(e: MouseEvent) {
+  const a = document.activeElement as HTMLElement | null;
+  if (!a || !(e.target instanceof Node) || a.contains(e.target)) return;
+  if (a.matches('input, textarea, select') || a.isContentEditable) a.blur();
+}
+function onPressCapture(e: MouseEvent) { dropTextSelection(); commitField(e); }
 
 /** The tray subscribes on its own: it needs the playhead (what is under it); while playing it redraws only when the
  *  playhead crosses a cut point (trayProbe), not every frame. */
