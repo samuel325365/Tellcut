@@ -104,3 +104,41 @@ test('a dropped file that cannot be placed (let go past the end of the film) is 
   expect(placed(ed, 'new').length).toBe(0);
   expect(ed.store.get().importNote).toContain(t('ed.dropNotPlaced', { list: 'new.mp4' }));
 });
+
+test('the project opened again (Reload, a history version) while files are copied: importing is cleared, the late upload writes nothing', async () => {
+  let release: (() => void) | null = null;
+  const { ed, calls } = await setup({
+    upload: async (_id: string, f: File, _on: any, signal: AbortSignal) => {
+      calls.push(['upload', f.name]);
+      await new Promise<void>((ok, no) => { release = ok; signal.addEventListener('abort', () => no(new DOMException('Aborted', 'AbortError'))); });
+      return `${IMP}/${f.name}`;
+    },
+  });
+  const done = ed.dropFiles([file('new.mp4')], { t: 0, row: 'v2' });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(ed.store.get().importing).toMatchObject({ done: 0, total: 1 });
+  await ed.open();
+  expect(ed.store.get().importing).toBeNull();
+  release?.();
+  await done;
+  expect(calls.some((c) => c[0] === 'import')).toBe(false);
+  expect([ed.store.get().project!.sources.new, ed.store.get().importing, ed.store.get().importNote, ed.store.get().canUndo]).toEqual([undefined, null, '', false]);
+});
+
+test('the editor closed while the server imports: importing is cleared and the answer coming late adds nothing', async () => {
+  let answer: ((r: any) => void) | null = null;
+  let n = 0;
+  const late = { sources: { new: clip }, media: {}, skipped: [], same: [] };
+  const { ed } = await setup({ importMedia: () => (n++ ? Promise.resolve(late) : new Promise((ok) => { answer = ok; })) });
+  const done = ed.importMedia(['D:/x/new.mp4']);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(ed.store.get().importing).not.toBeNull();
+  ed.close();
+  expect(ed.store.get().importing).toBeNull();
+  answer!(late);
+  await done;
+  expect([ed.store.get().project!.sources.new, ed.store.get().importNote, ed.store.get().canUndo]).toEqual([undefined, '', false]);
+  // a new import goes again
+  await ed.dropFiles([file('new.mp4')]);
+  expect(!!ed.store.get().project!.sources.new).toBe(true);
+});

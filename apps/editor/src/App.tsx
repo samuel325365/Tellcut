@@ -101,7 +101,8 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   // (it would also rewrite every input under the cursor 60×/s)
   const s = useStoreSelector(editor.store, (x) => x, equalIgnoring<EditorState>(['playhead', 'level']));
   const root = useRef<HTMLDivElement>(null), view = useViewSize();
-  useEffect(() => { void editor.open(); }, [editor]);
+  // unmounted: an import under way stops with it (editor.close)
+  useEffect(() => { void editor.open(); return () => editor.close(); }, [editor]);
   // a file from this PC let go where nothing takes it would replace the editor with the file
   useEffect(() => guardFileDrops(), []);
   useEffect(() => {

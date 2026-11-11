@@ -43,21 +43,41 @@ function inOrder(paths: string[], r: ImportResult, added: string[]): string[] {
   return out;
 }
 
+/** Each editor's import under way: the upload's Cancel, and a turn that the project opened again (Reload, a history version) or
+ *  the editor closed moves on. An import of an earlier turn that ends late writes nothing: its project is not the one shown. */
+const runs = new WeakMap<Store<EditorState>, { turn: number; cancel: AbortController | null }>();
+const runOf = (store: Store<EditorState>) => { let r = runs.get(store); if (!r) runs.set(store, (r = { turn: 0, cancel: null })); return r; };
+/** a store setter that goes quiet once the turn it was made in is over */
+function turnOf(store: Store<EditorState>) {
+  const r = runOf(store), turn = r.turn, gone = () => r.turn !== turn;
+  return { gone, set: (patch: Partial<EditorState>) => { if (!gone()) store.set(patch); } };
+}
+/** The project went away (opened again, or the editor closed): the upload stops, Importing is cleared, what comes back is dropped. */
+export function endImports(store: Store<EditorState>) {
+  const r = runOf(store);
+  r.turn++;
+  r.cancel?.abort();
+  r.cancel = null;
+  if (store.get().importing) store.set({ importing: null });
+}
+
 /** Imports `paths` into the project as one undoable edit; `place` puts what was imported (and what was there already) on the
  *  timeline in that same edit. Says what happened in importNote. */
 export async function importPaths(h: ImportHost, paths: string[], place?: (d: Project, ids: string[], r: ImportResult) => string[], notes: string[] = []): Promise<void> {
-  const p = h.store.get().project;
-  if (!p || !paths.length) { if (notes.length) h.store.set({ importing: null, importNote: notes.join(' ') }); return; }
+  const p = h.store.get().project, { gone, set } = turnOf(h.store);
+  // a dropped file's Importing ends here too, project or not
+  if (!p || !paths.length) { set(notes.length ? { importing: null, importNote: notes.join(' ') } : { importing: null }); return; }
   const entries = [...Object.entries(p.sources), ...Object.entries(p.media)];
-  h.store.set({ importing: { done: 0, total: 0 } });
+  set({ importing: { done: 0, total: 0 } });
   let r: ImportResult;
   try {
     r = await h.api.importMedia(h.id, { paths, taken: entries.map(([id]) => id), have: entries.map(([id, x]) => ({ id, path: x.path })) },
-      (done, total) => h.store.set({ importing: { done, total } }));
+      (done, total) => set({ importing: { done, total } }));
   } catch (e) {
-    h.store.set({ importing: null, importNote: [...notes, t('ed.importFailed', { why: errText(e) })].join(' ') });
+    set({ importing: null, importNote: [...notes, t('ed.importFailed', { why: errText(e) })].join(' ') });
     return;
   }
+  if (gone()) return;
   const ids = [...Object.keys(r.sources), ...Object.keys(r.media)];
   let added: string[] = [], unplaced: string[] = [];
   if (ids.length || (place && r.same.length)) h.apply((d) => {
@@ -75,11 +95,13 @@ export async function importPaths(h: ImportHost, paths: string[], place?: (d: Pr
     ...notes,
   ].filter(Boolean).join(' ');
   const shown = note || (place && r.same.length ? '' : t('ed.importNothing'));
-  h.store.set({ importing: null, importNote: shown });
+  set({ importing: null, importNote: shown });
   // a plain "added 3" goes by itself; what was left out stays until the next import
-  if (!notes.length && !unplaced.length && !(r.same.length && !place) && !r.skipped.length && added.length) setTimeout(() => { if (h.store.get().importNote === shown) h.store.set({ importNote: '' }); }, 8000);
+  if (!notes.length && !unplaced.length && !(r.same.length && !place) && !r.skipped.length && added.length) setTimeout(() => { if (h.store.get().importNote === shown) set({ importNote: '' }); }, 8000);
   if (!added.length) return;
-  if (await h.settle()) await h.analyze(added);
+  const saved = await h.settle();
+  if (gone()) return;
+  if (saved) await h.analyze(added);
   else h.later(added);
 }
 
@@ -90,10 +112,8 @@ export function importMedia(h: ImportHost, paths: string[]): Promise<void> {
   return importPaths(h, paths);
 }
 
-/** the upload under way, for Cancel */
-let cancel: AbortController | null = null;
 /** Cancel in the media panel: the file being copied stops; those already copied are still imported and placed */
-export function cancelImport() { cancel?.abort(); }
+export function cancelImport(store: Store<EditorState>) { runOf(store).cancel?.abort(); }
 
 /** Files dropped from this PC: on the media panel (no `at`: added only) or on the timeline (placed where let go). */
 export async function dropFiles(h: ImportHost, files: File[], at?: DropTarget): Promise<void> {
@@ -107,32 +127,33 @@ export async function dropFiles(h: ImportHost, files: File[], at?: DropTarget): 
   if (!media.length) { h.store.set({ importNote: notes.join(' ') }); return; }
   // the server would refuse them all once they were copied: say so before copying any
   if (media.length > IMPORT_MAX) { h.store.set({ importNote: t('err.import.tooMany', { n: media.length, max: IMPORT_MAX }) }); return; }
-  const total = media.length, bytes = media.reduce((n, f) => n + f.size, 0) || 1;
-  h.store.set({ importing: { done: 0, total, pct: 0 } });
+  const total = media.length, bytes = media.reduce((n, f) => n + f.size, 0) || 1, run = runOf(h.store), { gone, set } = turnOf(h.store);
+  set({ importing: { done: 0, total, pct: 0 } });
   const ctl = new AbortController();
-  cancel = ctl;
+  run.cancel = ctl;
   const paths: Array<string | null> = media.map(() => null);
   try {
     const { found } = await h.api.uploadCheck(h.id, media.map((f) => ({ name: f.name, size: f.size, mtime: f.lastModified })));
     let sent = 0, done = 0;
     media.forEach((_, i) => { if (found[i]) { paths[i] = found[i]; done++; sent += media[i].size; } });
-    h.store.set({ importing: { done, total, pct: Math.round((sent / bytes) * 100) } });
+    set({ importing: { done, total, pct: Math.round((sent / bytes) * 100) } });
     for (const [i, f] of media.entries()) {
       if (paths[i]) continue;
       if (ctl.signal.aborted) break;
       try {
-        paths[i] = await h.api.upload(h.id, f, (n) => h.store.set({ importing: { done, total, pct: Math.round(((sent + n) / bytes) * 100) } }), ctl.signal);
+        paths[i] = await h.api.upload(h.id, f, (n) => set({ importing: { done, total, pct: Math.round(((sent + n) / bytes) * 100) } }), ctl.signal);
       } catch (e) {
         if (ctl.signal.aborted) break;
         notes.push(t('ed.importSkipped', { list: `${f.name} (${errText(e)})` }));
       }
       sent += f.size; done++;
-      h.store.set({ importing: { done, total, pct: Math.round((sent / bytes) * 100) } });
+      set({ importing: { done, total, pct: Math.round((sent / bytes) * 100) } });
     }
   } catch (e) {
-    h.store.set({ importing: null, importNote: [...notes, t('ed.importFailed', { why: errText(e) })].join(' ') });
+    set({ importing: null, importNote: [...notes, t('ed.importFailed', { why: errText(e) })].join(' ') });
     return;
-  } finally { if (cancel === ctl) cancel = null; }
+  } finally { if (run.cancel === ctl) run.cancel = null; }
+  if (gone()) return;
   if (ctl.signal.aborted) notes.push(t('ed.uploadCancelled'));
   const s = h.store.get(), ctx = { locked: new Set(s.locked), lengths: {} as Record<string, number>, reg: h.reg, peaks: s.peaks, beats: s.beats };
   await importPaths(h, paths.filter((p): p is string => !!p), at ? (d, ids, r) => placeImported(d, ids, at, { ...ctx, lengths: r.lengths ?? {} }) : undefined, notes);

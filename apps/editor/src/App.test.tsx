@@ -8,7 +8,7 @@ import { setLang } from './i18n/lang.ts';
 
 const editorWith = (patch: Partial<EditorState>) => {
   const store = createStore({ ...initialState('demo'), ...patch });
-  return { store, open: async () => {}, undo() {}, redo() {}, run(a: string) { (this as any).runs.push(a); }, restore: async () => {}, exportVideo() {}, toggleExports() {}, cancelExport() {}, setQuality() {},
+  return { store, open: async () => {}, close() {}, undo() {}, redo() {}, run(a: string) { (this as any).runs.push(a); }, restore: async () => {}, exportVideo() {}, toggleExports() {}, cancelExport() {}, setQuality() {},
     registry: { grades: {}, item: () => undefined, sfx: () => undefined, itemTypes: () => [], sfxTypes: () => [] },
     setLayout(p: any) { store.set({ layout: { ...store.get().layout, ...p } }); }, runs: [] as string[] } as any;
 };

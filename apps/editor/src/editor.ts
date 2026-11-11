@@ -21,7 +21,7 @@ import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplat
 import { templateOf } from '@tellcut/plugin-common/templates';
 import { titleTemplateOf } from '@tellcut/plugin-common/title-templates';
 import type { TemplateKind } from '@tellcut/protocol';
-import { cancelImport, dropFiles, importMedia, type ImportHost } from './editor/importing.ts';
+import { cancelImport, dropFiles, endImports, importMedia, type ImportHost } from './editor/importing.ts';
 import type { DropKind, DropTarget } from './timeline/drop.ts';
 import { AskFlow } from './editor/ask-flow.ts';
 import { LibraryFlow } from './editor/library.ts';
@@ -155,6 +155,8 @@ export class Editor {
   }
 
   async open() {
+    // an import of the version shown until now would land in the one opened instead: it stops here
+    endImports(this.store);
     try {
       // My blocks are fetched with the project and in the store before it shows: an answer landing later re-rendered the panels
       // and reset a number the user was typing (Preact writes a controlled input's value on every render)
@@ -857,7 +859,9 @@ export class Editor {
   /** they left the timeline, or were let go */
   fileDragEnd() { if (this.s.libDrag?.files) this.set({ libDrag: null }); }
   /** Cancel while dropped files are copied: the one being copied stops, those done are still added */
-  cancelImport() { cancelImport(); }
+  cancelImport() { cancelImport(this.store); }
+  /** The editor goes away (its page unmounts it): an import under way stops and leaves nothing set behind. */
+  close() { endImports(this.store); }
   private importHost(): ImportHost {
     return { id: this.id, api: this.deps.api, store: this.store, apply: (r) => this.apply(r), settle: () => this.autosave?.settle() ?? Promise.resolve(false),
       analyze: (only) => this.analyze(only), later: (ids) => { this.waitingAnalysis.push(...ids); }, blocked: () => this.blocked(), reg: this.reg };
