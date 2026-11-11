@@ -1,7 +1,8 @@
 // common.paper — a desk of paper under the video: kraft (or any colour) paper with fibres, specks and a soft vignette, a slightly
 // tilted ruled index card held by a strip of tape (where common.notecard writes with `card: false`), pencil doodles and an italic
-// signature. Static: painted once per size. Promoted from the baking-steps short's fx.paper. The doodles are a recipe's (coffee beans,
-// a whisk) and the signature reads "Recipe" by default: `doodleSet` picks other doodles, `doodles: false` and `sign: ''` leave them out.
+// signature. Static: painted once per size. Promoted from the baking-steps short's fx.paper, whose recipe doodles (coffee beans, a
+// whisk) and "Recipe" signature are no longer the defaults (a plain desk should not say recipe): `doodles: true` draws `doodleSet`'s
+// doodles (kitchen, journal, travel), `sign` writes a signature.
 // look 'book' is a picture-book page (fd-tangyuan's fx.tyPaper): soft blotches, fibres and specks, the spine's shadow and stitching
 // on the left, the page stack on the right, a vignette and a crayon meadow along the foot. look 'grid' is a squared notebook page
 // (fd-map's fx.nbPage): fibres, a 5 mm grid, a red margin line, a spiral binding along the top and a vignette. look 'print' is
@@ -21,16 +22,16 @@ interface S { cv: HTMLCanvasElement; sign: HTMLElement; key: string; layer: Grai
 
 
 export const paper: ItemType<P, S> = {
-  type: 'common.paper', label: '紙張桌面', category: 'look', kind: 'scene',
-  doc: '整片紙張底（預設牛皮紙：纖維紋、斑點、暗角），可加一張微斜的橫線索引卡（紅頂線藍橫線、紙膠帶）、鉛筆小塗鴉和一行斜體簽名（預設是食譜的：咖啡豆、打蛋器和「Recipe」；doodleSet 換塗鴉：journal 星星、愛心、漩渦，travel 紙飛機、虛線航跡、小太陽；doodles: false 不要塗鴉，sign 換簽名的字、空＝不要）；look: book 是繪本內頁（紙色 paper、斑駁紙紋、左邊書脊陰影和縫線、右邊書頁厚度、暗角、底部一條蠟筆草地 meadow）；grid 是方格筆記本（方格 cell、紅色邊線、上緣線圈 binding、暗角）；print 是雜誌紙（平滑米白紙、細斑點、淡纖維、暖色暗角，common.magazine 的紙）；靜態，放在影片之下；手帳、食譜、手寫教學、繪本、筆記本，配 common.notecard（card: false 就寫在這張卡上）',
+  type: 'common.paper', label: '紙張桌面', category: 'background', kind: 'scene',
+  doc: '整片紙張底（預設牛皮紙：纖維紋、斑點、暗角），可加一張微斜的橫線索引卡（紅頂線藍橫線、紙膠帶）、鉛筆小塗鴉和一行斜體簽名（預設都沒有：doodles: true 畫塗鴉，doodleSet 選圖案：kitchen 咖啡豆、打蛋器（食譜），journal 星星、愛心、漩渦，travel 紙飛機、虛線航跡、小太陽；doodles: false 不要塗鴉；sign 寫簽名的字（例如 Recipe），空＝不要）；look: book 是繪本內頁（紙色 paper、斑駁紙紋、左邊書脊陰影和縫線、右邊書頁厚度、暗角、底部一條蠟筆草地 meadow）；grid 是方格筆記本（方格 cell、紅色邊線、上緣線圈 binding、暗角）；print 是雜誌紙（平滑米白紙、細斑點、淡纖維、暖色暗角，common.magazine 的紙）；靜態，放在影片之下；手帳、食譜、手寫教學、繪本、筆記本，配 common.notecard（card: false 就寫在這張卡上）',
   params: [
     { key: 'look', label: '紙（desk 牛皮紙桌面＋索引卡、book 繪本內頁、grid 方格筆記本、print 雜誌紙）', type: 'enum', options: ['desk', 'book', 'grid', 'print'], default: 'desk' },
     { key: 'color', label: '紙色（desk）', type: 'color', default: '#e7d8bd' },
     { key: 'card', label: '索引卡（desk）', type: 'bool', default: true },
     ...cardParams,
-    { key: 'doodles', label: '鉛筆塗鴉（desk；圖案看 doodleSet）', type: 'bool', default: true },
+    { key: 'doodles', label: '鉛筆塗鴉（desk；圖案看 doodleSet）', type: 'bool', default: false },
     { key: 'doodleSet', label: '塗鴉的圖案（desk；kitchen 咖啡豆、打蛋器（食譜），journal 星星、愛心、漩渦（手帳、日記），travel 紙飛機、虛線航跡、小太陽（旅行））', type: 'enum', options: ['kitchen', 'journal', 'travel'], default: 'kitchen' },
-    { key: 'sign', label: '底部斜體簽名（desk；預設 Recipe 是食譜用的，換成自己的字；空＝不顯示）', type: 'string', default: 'Recipe' },
+    { key: 'sign', label: '底部斜體簽名（desk；例如食譜的 Recipe；空＝不顯示）', type: 'string', default: '' },
     { key: 'paper', label: '索引卡紙色（desk）／整頁的紙色（book、grid、print）', type: 'color', default: '#fbf7ee', theme: 'palette.paper' },
     { key: 'ink', label: '鉛筆色', type: 'color', default: '#4a3a2e', theme: 'palette.ink' },
     { key: 'accent', label: '卡片頂線（desk）／紅色邊線（grid）的顏色', type: 'color', default: '#c2533b', theme: 'palette.accent' },

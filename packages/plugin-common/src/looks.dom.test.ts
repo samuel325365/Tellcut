@@ -76,10 +76,11 @@ test('paper: the doodles can be chosen or left out, the signature changed or lef
   expect(paper.params.find((p) => p.key === 'doodleSet')).toMatchObject({ type: 'enum', default: 'kitchen', options: ['kitchen', 'journal', 'travel'] });
   expect(paper.doc).toMatch(/doodleSet/);
   expect(paper.doc).toMatch(/doodles: false/);
-  expect(paper.doc).toMatch(/sign 換簽名的字、空＝不要/);
+  expect(paper.doc).toMatch(/sign 寫簽名的字（例如 Recipe），空＝不要/);
   for (const doodleSet of ['kitchen', 'journal', 'travel']) expect(() => stage('common.paper', { doodleSet })).not.toThrow();
   const sign = (params: Record<string, unknown>) => [...stage('common.paper', params).root.querySelectorAll('div')].filter((d) => d.style.fontStyle === 'italic').pop()!;
-  expect([sign({}).textContent, sign({}).style.display]).toEqual(['Recipe', 'block']);
+  expect([sign({ sign: 'Recipe' }).textContent, sign({ sign: 'Recipe' }).style.display]).toEqual(['Recipe', 'block']);
   expect(sign({ sign: '' }).style.display).toBe('none');
+  expect(sign({}).style.display).toBe('none');   // no signature by default
   expect(sign({ sign: 'Day 3' }).textContent).toBe('Day 3');
 });
