@@ -9,7 +9,7 @@
 //                      behind, a line of side text, a barcode
 //   common.band        a diagonal band of repeated words, scrolling
 // The 3-2-1 is common.countdown's look slant, the caption the template color-boxes (look boxes). Pure functions of time.
-import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { coverImage } from './editorial.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
@@ -20,7 +20,6 @@ const disp = (px: number) => `400 ${px}px "${DISPLAY}", "${TC}", sans-serif`;
 const sans = (px: number, w = 700) => `${w} ${px}px "${SANS}", "${TC}", sans-serif`;
 /** the faux italic of the display words (Anton has no italic) */
 export const SLANT = -0.2;
-const eOut = (q: number) => eOut3(clamp(q));
 type G = CanvasRenderingContext2D;
 
 // a face that fails to load draws with the fallback, as in the other blocks, rather than failing the item's ready
@@ -140,7 +139,7 @@ export const viewfinder: ItemType<VP, CS & { steps: StepsMemo }> = {
   draw(ctx, s) {
     const { local, dur, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const m = 34 * u;
-    brackets(g, m, m, W - 2 * m, H - 2 * m, 54 * u * eOut(local / 0.3), 5 * u, p.color);
+    brackets(g, m, m, W - 2 * m, H - 2 * m, 54 * u * eOut3Clamped(local / 0.3), 5 * u, p.color);
     g.fillStyle = p.ink; g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 6 * u; g.textBaseline = 'alphabetic';
     const { n, total } = shotNo(p.cuts, local), pad = (v: number) => String(v).padStart(2, '0');
     const x0 = 72 * u, x1 = W - 72 * u, y0 = 92 * u, y1 = 122 * u;
@@ -183,7 +182,7 @@ export const echo: ItemType<EP, CS & { text: string; steps: StepsMemo; fit?: Ech
     if (s.fit?.key !== key) { const px = fitted(g, p.word, p.size * u, 0.74 * W); g.font = disp(px); s.fit = { key, px, ww: g.measureText(p.word).width }; }
     const { px, ww } = s.fit, mono = valueAt(stepsOf(s.steps, p.steps), local) === 'mono';
     const col = mono ? p.onMono : p.color, ecol = mono ? p.onMono : p.echo;
-    const cx = W / 2, cy = p.y * H, k = eOut(local / 0.3), gap = 0.8 * px * k;
+    const cx = W / 2, cy = p.y * H, k = eOut3Clamped(local / 0.3), gap = 0.8 * px * k;
     // the copies stay clear of the top's small lines (a viewfinder's) and of the captions' band
     g.save(); g.beginPath(); g.rect(0, 0.115 * H, W, 0.7 * H); g.clip();
     for (let j = Math.round(p.echoes); j >= 1; j--) {
@@ -191,7 +190,7 @@ export const echo: ItemType<EP, CS & { text: string; steps: StepsMemo; fit?: Ech
       for (const d of [-1, 1]) slanted(g, p.word, cx, cy + d * j * gap, px, null, ecol, 3 * u);
     }
     g.restore();
-    const big = px * (1 + 0.12 * (1 - eOut(local / 0.18)));
+    const big = px * (1 + 0.12 * (1 - eOut3Clamped(local / 0.18)));
     slanted(g, p.word, cx, cy, big, col);
     said(ctx, g, p.word, cx, cy, big);
     if (p.label) {
@@ -243,7 +242,7 @@ export const poster: ItemType<PP, PS> = {
     const { local, W, H, params: p } = ctx, g = canvasAt(s.c, W, H), L = posterLayout(W, H, !!p.barcode), { u, cw, ch, cx, cy, tpx } = L;
     g.fillStyle = p.color; g.fillRect(0, 0, W, H);
     g.globalAlpha = 0.16; slanted(g, p.ghost || p.top, W / 2 - 30 * u * local, 0.47 * H, 560 * u, null, p.ink, 3 * u); g.globalAlpha = 1;
-    const k = eOut(local / 0.22), sc = 1.06 - 0.06 * k, ty = L.ty - 30 * u * (1 - k), by = L.by + 30 * u * (1 - k);
+    const k = eOut3Clamped(local / 0.22), sc = 1.06 - 0.06 * k, ty = L.ty - 30 * u * (1 - k), by = L.by + 30 * u * (1 - k);
     const t1 = fitted(g, p.top, tpx, 0.76 * W), t2 = fitted(g, p.bottom, tpx, 0.76 * W);
     slanted(g, p.top, W / 2, ty, t1, p.ink); said(ctx, g, p.top, W / 2, ty, t1);
     g.save(); g.translate(W / 2, cy + ch / 2); g.scale(sc, sc); g.translate(-W / 2, -(cy + ch / 2));
@@ -287,7 +286,7 @@ export const band: ItemType<BP, CS> = {
     const { local, W, H, params: p } = ctx, u = Math.min(W, H) / 1080, g = canvasAt(s.c, W, H);
     const L = Math.hypot(W, H), bh = 62 * u;
     g.save(); g.translate(W / 2, p.y * H); g.rotate((p.angle * Math.PI) / 180);
-    g.beginPath(); g.rect(-L / 2, -bh / 2, L * eOut(local / 0.22), bh); g.clip();
+    g.beginPath(); g.rect(-L / 2, -bh / 2, L * eOut3Clamped(local / 0.22), bh); g.clip();
     g.fillStyle = p.color; g.fillRect(-L / 2, -bh / 2, L, bh);
     g.fillStyle = p.ink; g.font = sans(30 * u); spaced(g, 2 * u); g.textBaseline = 'middle'; g.textAlign = 'left';
     g.transform(1, 0, SLANT * 0.6, 1, 0, 0);

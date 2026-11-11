@@ -9,7 +9,7 @@
 //   common.wordbands  slanted bands of repeated italic serif words, each wider than the last until they fill the frame, a photo card
 //                     in the middle (EAT · EVERY · SINGLE · BITE)
 // The giant headline is the title template didone-full, the caption the template editorial-bar. Pure functions of time.
-import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { graphemes } from './text.ts';
@@ -18,7 +18,6 @@ import { imagesReady } from './window.ts';
 const DISPLAY = 'Playfair Display', SERIF = 'Noto Serif TC';
 const disp = (px: number, w = 900, it = false) => `${it ? 'italic ' : ''}${w} ${px}px "${DISPLAY}", "${SERIF}", serif`;
 const ser = (px: number, w = 700) => `${w} ${px}px "${SERIF}", serif`;
-const eOut = (q: number) => eOut3(clamp(q));
 type G = CanvasRenderingContext2D;
 
 const fontsReady = (text: string) => Promise.all([
@@ -122,7 +121,7 @@ export const masthead: ItemType<MP, MS> = {
     g.globalAlpha = back ? 1 : out;
     if (back) {
       g.fillStyle = p.color; g.fillRect(0, 0, W, H);
-      const by = 0.33 * H, bh = 0.43 * H, k = eOut((local - 0.3) / 0.5);
+      const by = 0.33 * H, bh = 0.43 * H, k = eOut3Clamped((local - 0.3) / 0.5);
       g.save(); g.beginPath(); g.rect(0, by + (bh / 2) * (1 - k), W, bh * k); g.clip(); coverImage(g, s.img, 0, by, W, bh, 0.5, 0.45); g.restore();
     }
     let small = 22 * u;
@@ -146,11 +145,11 @@ export const masthead: ItemType<MP, MS> = {
     g.textAlign = 'left'; g.shadowColor = back ? 'transparent' : 'rgba(0,0,0,0.35)'; g.shadowBlur = 16 * u;
     if (typed) { g.fillText(typed, W / 2 - mw / 2, my); ctx.reportText(g, typed, W / 2 - mw / 2, my); }
     g.shadowColor = 'transparent';
-    const rule = eOut((local - 0.07 * chars.length) / 0.4);
+    const rule = eOut3Clamped((local - 0.07 * chars.length) / 0.4);
     g.fillRect(W / 2 - (mw / 2) * rule, my + px * 0.5, mw * rule, 3 * u);
     if (back) {
       fitSet(g, String(p.sub ?? ''), 22 * u, (q) => disp(q, 400), W - 120 * u, 22 * u); g.textAlign = 'center'; g.fillText(p.sub, W / 2, my + px * 0.5 + 44 * u); untrack(g);
-      g.globalAlpha = eOut((local - 1.0) / 0.5); g.font = disp(60 * u, 700, true);
+      g.globalAlpha = eOut3Clamped((local - 1.0) / 0.5); g.font = disp(60 * u, 700, true);
       const sw = g.measureText(p.script).width, room = W - 120 * u;
       if (sw > room) g.font = disp((60 * u * room) / sw, 700, true);
       g.fillText(p.script, W / 2, 0.79 * H); ctx.reportText(g, p.script, W / 2, 0.79 * H);
@@ -161,12 +160,12 @@ export const masthead: ItemType<MP, MS> = {
     // clear of the italic line under it
     const rows = String(p.contents).split('\n').filter(Boolean), step = rows.length > 1 ? Math.min(52 * u, (0.13 * H) / (rows.length - 1)) : 52 * u, ck = step / (52 * u);
     rows.forEach((line, i) => {
-      const a = eOut((local - 0.9 - i * 0.22) / 0.3);
+      const a = eOut3Clamped((local - 0.9 - i * 0.22) / 0.3);
       if (a <= 0) return;
       g.globalAlpha = a * out; g.font = disp(32 * u * ck, 400); track(g, 20 * u * ck); g.textAlign = 'right';
       g.fillText(line, W - 60 * u + (1 - a) * 30 * u, 0.5 * H + i * 52 * u * ck); untrack(g);
     });
-    const w = eOut((local - 1.3) / 0.6);   // the italic line, wiped in, broken in two and shrunk to the width like the masthead
+    const w = eOut3Clamped((local - 1.3) / 0.6);   // the italic line, wiped in, broken in two and shrunk to the width like the masthead
     if (w > 0) {
       let spx = 110 * u; g.font = disp(spx, 700, true);
       const room = W - 120 * u, lines = scriptLines(p.script, (l) => g.measureText(l).width, room), widest = Math.max(1, ...lines.map((l) => g.measureText(l).width));
@@ -217,12 +216,12 @@ export const spread: ItemType<SP, SS> = {
       g.fillStyle = p.ink; g.font = disp(small * 0.9, 400); track(g, small); g.textBaseline = 'middle'; g.textAlign = 'right';
       g.fillText(p.header, W - 60 * u, 0.09 * H); g.fillText(p.page, W - 60 * u, 0.94 * H); untrack(g);
       // the big number is an ornament bleeding off the edge, not words to read: it is not reported
-      const a = eOut(local / 0.35); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.font = disp(380 * u);
+      const a = eOut3Clamped(local / 0.35); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.font = disp(380 * u);
       g.save(); g.globalAlpha = a; g.fillText(p.no, 40 * u - (1 - a) * 80 * u, 0.25 * H); g.restore();
-      const b = eOut((local - 0.12) / 0.35), cx = 0.2 * W, cy = 0.17 * H + (1 - b) * 50 * u, cw = 0.74 * W, ch = 0.5 * H;
+      const b = eOut3Clamped((local - 0.12) / 0.35), cx = 0.2 * W, cy = 0.17 * H + (1 - b) * 50 * u, cw = 0.74 * W, ch = 0.5 * H;
       g.save(); g.globalAlpha = b; g.shadowColor = 'rgba(0,0,0,0.25)'; g.shadowBlur = 18 * u; g.fillStyle = '#fff'; g.fillRect(cx, cy, cw, ch); g.shadowColor = 'transparent';
       coverImage(g, s.img, cx, cy, cw, ch, p.fx, p.fy); g.restore();
-      const c = eOut((local - 0.35) / 0.45);
+      const c = eOut3Clamped((local - 0.35) / 0.45);
       if (c <= 0) return;
       let px = 230 * u; g.font = disp(px);
       const ww = g.measureText(p.word).width;
@@ -237,9 +236,9 @@ export const spread: ItemType<SP, SS> = {
     g.fillStyle = '#ffffff'; g.font = disp(small, 400); track(g, small); g.textBaseline = 'middle';
     g.textAlign = 'left'; g.fillText(p.header, 64 * u, 0.04 * H); g.textAlign = 'right'; g.fillText(`${p.no} / ${p.total}`, W - 64 * u, 0.04 * H); untrack(g);
     g.fillRect(64 * u, 0.04 * H + 26 * u, W - 128 * u, 2 * u);
-    const a = eOut(local / 0.3);
+    const a = eOut3Clamped(local / 0.3);
     g.save(); g.globalAlpha = a; coverImage(g, s.img, 64 * u, 0.065 * H + (1 - a) * 40 * u, W - 128 * u, 0.52 * H, p.fx, p.fy); g.restore();
-    const b = eOut((local - 0.15) / 0.3), ny = 0.69 * H + (1 - b) * 30 * u;
+    const b = eOut3Clamped((local - 0.15) / 0.3), ny = 0.69 * H + (1 - b) * 30 * u;
     g.save(); g.globalAlpha = b; g.fillStyle = '#ffffff'; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
     g.font = disp(230 * u); g.fillText(p.no, 64 * u, ny + 120 * u);   // an ornament, not reported
     const sw = 291.6 * u, sh = 326.4 * u, sx = W - 64 * u - sw, sy = Math.min(0.625 * H, H - sh - 40 * u);
@@ -248,7 +247,7 @@ export const spread: ItemType<SP, SS> = {
     fitSet(g, String(p.name ?? ''), 64 * u, (q) => ser(q), sx - 20 * u - (64 * u + nw + 26 * u));
     g.fillText(p.name, 64 * u + nw + 26 * u, ny - 20 * u); ctx.reportText(g, p.name, 64 * u + nw + 26 * u, ny - 20 * u);
     g.restore();
-    const sc = eOut((local - 0.3) / 0.3);   // the swatch card, popping on
+    const sc = eOut3Clamped((local - 0.3) / 0.3);   // the swatch card, popping on
     if (sc <= 0) return;
     // sized by the short side (in 9:16 0.27 W × 0.17 H), so its two lines stay on the card in any frame (sw, sh, sx, sy above)
     g.save(); g.globalAlpha = sc; g.translate(sx + sw / 2, sy + sh / 2); g.scale(0.9 + 0.1 * sc, 0.9 + 0.1 * sc); g.translate(-(sx + sw / 2), -(sy + sh / 2));
@@ -304,7 +303,7 @@ export const wordbands: ItemType<BP, BS> = {
     const bands = s.bands;
     let k = -1; bands.forEach((b, i) => { if (local >= b.t) k = i; });
     if (k < 0) { g.globalAlpha = 1; return; }
-    const b = bands[k], R = Math.hypot(W, H), h = bandHeight(k, bands.length, W, H, p.angle) * (0.75 + 0.25 * eOut((local - b.t) / 0.25));
+    const b = bands[k], R = Math.hypot(W, H), h = bandHeight(k, bands.length, W, H, p.angle) * (0.75 + 0.25 * eOut3Clamped((local - b.t) / 0.25));
     g.save(); g.translate(W / 2, H / 2); g.rotate((p.angle * Math.PI) / 180);
     g.fillStyle = b.bc; g.fillRect(-R / 2, -h / 2, R, h);
     g.beginPath(); g.rect(-R / 2, -h / 2, R, h); g.clip();

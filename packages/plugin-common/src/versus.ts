@@ -4,7 +4,7 @@
 // b's colour slide in from both sides and meet on a slant, ROUND n pops, the question rises; it is pulled up and away at the end.
 // mode table: the closing comparison — "a vs b", the two names over two columns, one row a question (what a said | what b said),
 // sliding in one by one, then a last line that asks the viewer.
-import { clamp, cssCamel, eBack, eIn3, eOut3, h, type ItemType } from '@tellcut/engine';
+import { clamp, cssCamel, eBack, eIn3Clamped, eOut3Clamped, h, type ItemType } from '@tellcut/engine';
 import { DUO_TOP, duoLayout } from './duo.ts';
 import { emParts, fitPx, nl } from './text.ts';
 import { withAlpha } from './color.ts';
@@ -16,8 +16,6 @@ interface P {
 }
 interface S { box: HTMLElement; key: string; el: Record<string, HTMLElement>; rows: HTMLElement[] }
 
-const eOut = (x: number) => eOut3(clamp(x));
-const eIn = (x: number) => eIn3(clamp(x));
 const backOut = (x: number) => eBack(clamp(x), 1.9);
 /** "a|b" as two parts */
 const pair = (s: string): [string, string] => { const [a, b] = String(s ?? '').split('|'); return [(a ?? '').trim(), (b ?? '').trim()]; };
@@ -103,8 +101,8 @@ function drawTitle(ctx: Ctx, s: S) {
   cssCamel(he, { transform: `translateY(${((1 - p1) * -260 * k).toFixed(1)}px)`, opacity: clamp(local / 0.08).toFixed(3) });
   cssCamel(she, { transform: `translateY(${((1 - p2) * 260 * k).toFixed(1)}px)`, opacity: clamp((local - 0.12) / 0.08).toFixed(3) });
   cssCamel(badge, { transform: `rotate(${((1 - p3) * -180).toFixed(1)}deg) scale(${clamp(p3, 0, 2).toFixed(4)})` });
-  cssCamel(sub, { opacity: eOut((local - 0.45) / 0.25).toFixed(3) });
-  cssCamel(s.box, { opacity: (1 - eIn((local - (dur - 0.12)) / 0.12)).toFixed(3) });
+  cssCamel(sub, { opacity: eOut3Clamped((local - 0.45) / 0.25).toFixed(3) });
+  cssCamel(s.box, { opacity: (1 - eIn3Clamped((local - (dur - 0.12)) / 0.12)).toFixed(3) });
 }
 
 function buildRound(ctx: Ctx, s: S, k: number) {
@@ -124,12 +122,12 @@ function buildRound(ctx: Ctx, s: S, k: number) {
 }
 
 function drawRound(ctx: Ctx, s: S, k: number) {
-  const { local, dur } = ctx, { inner, a, b, num, q } = s.el, pa = eOut(local / 0.3), n = (local - 0.12) / 0.3, qp = eOut((local - 0.25) / 0.25);
+  const { local, dur } = ctx, { inner, a, b, num, q } = s.el, pa = eOut3Clamped(local / 0.3), n = (local - 0.12) / 0.3, qp = eOut3Clamped((local - 0.25) / 0.25);
   cssCamel(a, { transform: `translateX(${((1 - pa) * -100).toFixed(2)}%)` });
   cssCamel(b, { transform: `translateX(${((1 - pa) * 100).toFixed(2)}%)` });
   cssCamel(num, { opacity: clamp(n * 3).toFixed(3), transform: `scale(${(1.6 - 0.6 * backOut(n)).toFixed(4)})` });
   cssCamel(q, { opacity: qp.toFixed(3), transform: `translateY(${((1 - qp) * 40 * k).toFixed(1)}px)` });
-  cssCamel(inner, { transform: `translateY(${(-eIn((local - (dur - 0.2)) / 0.2) * 100).toFixed(2)}%)` });
+  cssCamel(inner, { transform: `translateY(${(-eIn3Clamped((local - (dur - 0.2)) / 0.2) * 100).toFixed(2)}%)` });
 }
 
 /** the table's vertical plan (px): head, the name chips, the first row, the row pitch, the last line */
@@ -170,9 +168,9 @@ function buildTable(ctx: Ctx, s: S, k: number) {
 }
 
 function drawTable(ctx: Ctx, s: S, k: number) {
-  const { local } = ctx, { head, ask } = s.el, hp = eOut(local / 0.3);
+  const { local } = ctx, { head, ask } = s.el, hp = eOut3Clamped(local / 0.3);
   cssCamel(head, { opacity: hp.toFixed(3), transform: `scale(${(1.2 - 0.2 * hp).toFixed(4)})` });
-  s.rows.forEach((r, i) => { const q = eOut((local - 0.3 - i * 0.32) / 0.3); cssCamel(r, { opacity: q.toFixed(3), transform: `translateX(${((1 - q) * (i % 2 ? 80 : -80) * k).toFixed(1)}px)` }); });
+  s.rows.forEach((r, i) => { const q = eOut3Clamped((local - 0.3 - i * 0.32) / 0.3); cssCamel(r, { opacity: q.toFixed(3), transform: `translateX(${((1 - q) * (i % 2 ? 80 : -80) * k).toFixed(1)}px)` }); });
   const ap = backOut((local - 1.5) / 0.3);
   cssCamel(ask, { opacity: clamp((local - 1.5) / 0.1).toFixed(3), transform: `scale(${clamp(ap, 0, 2).toFixed(4)})` });
 }

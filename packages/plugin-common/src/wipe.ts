@@ -9,7 +9,7 @@
 // fold sweeps across, the lifted part is its mirrored back (`back` colour, a sheen from the fold, the print showing through faintly)
 // throwing a soft shadow, a strip of shadow lies on the new page by the fold; `rev` plays it backwards (a page laid down: a
 // magazine closing).
-import { clamp, type Crop, cssCamel, eIn3, eIO3, eOut3, h, type ItemType, lerp, resolveTheme, type Theme, withDefaults } from '@tellcut/engine';
+import { clamp, type Crop, cssCamel, eIn3Clamped, eIO3, eOut3, eOut3Clamped, h, type ItemType, lerp, resolveTheme, type Theme, withDefaults } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { magazine, magazineLayout } from './magazine.ts';
 import { imagesReady, showStill, stillRef, windowEl, type Win } from './window.ts';
@@ -21,13 +21,11 @@ interface P {
 }
 interface S { wrap: HTMLElement; band: HTMLElement; edge: HTMLElement; cv: HTMLCanvasElement; curl?: CurlS }
 
-const eOut = (x: number) => eOut3(clamp(x));
-const eIn = (x: number) => eIn3(clamp(x));
 
 /** the band's left and right foot (px, before the slant) at progress u (0–1) of the item: [left, right] */
 export function wipeEdges(u: number, W: number, sl: number): [number, number] {
-  const L = u < 0.5 ? -sl : -sl + (W + 2 * sl) * eIn((u - 0.5) * 2);
-  const R = u < 0.5 ? -sl + (W + 2 * sl) * eOut(u * 2) : W + sl;
+  const L = u < 0.5 ? -sl : -sl + (W + 2 * sl) * eIn3Clamped((u - 0.5) * 2);
+  const R = u < 0.5 ? -sl + (W + 2 * sl) * eOut3Clamped(u * 2) : W + sl;
   return [L, R];
 }
 

@@ -4,7 +4,7 @@
 // them into cache/peaks), read at the source second the film moment plays: through the clip it hangs on (its source, in and speed, so
 // trims and moves stay in step) or, not hung, through whichever audio-track clip plays then (a tightened talk of many clips too).
 // draw(t) keeps no state from the frame before: the softness comes from a window of `smooth` seconds round the moment.
-import { clamp, cssCamel, h, resolveTimes, rng, TIME_EPS, type ItemType, type Project, type SceneItem, type SourcePeaks, type Theme, type Times } from '@tellcut/engine';
+import { cachedTimes, clamp, cssCamel, h, rng, TIME_EPS, type ItemType, type Project, type SceneItem, type SourcePeaks, type Theme, type Times } from '@tellcut/engine';
 import { isLight, mixHex, withAlpha } from './color.ts';
 import { imagesReady, showStill, stillRef, windowEl, type Still, type Win } from './window.ts';
 
@@ -25,14 +25,11 @@ const FLOOR = 0.06;
 /** seconds between neighbouring bars (bars: from the middle out; ring: from the top round both sides), and the wave's span */
 const STEP = 0.04, RING_STEP = 0.025, WAVE_SPAN = 1.5;
 
-const timesOf = new WeakMap<Project, Times>();
-/** the project's film times, worked out once per project object (draw runs every frame; an edit makes a new project) */
-const filmTimes = (p: Project) => { let t = timesOf.get(p); if (!t) { t = resolveTimes(p); timesOf.set(p, t); } return t; };
 
 /** What the item listens to, as spans of film time. Hung on a clip with sound (`parent`): that clip. Else with `source` and `at` ≥ 0:
  *  the item's start is source second `at`. Else every unmuted audio-track clip (of `source` when given). null: the project has no
  *  sound clip at all — the block shows made-up levels (the gallery, a mock-up), as other blocks show a painted stand-in. */
-export function soundSpans(item: SceneItem, p: { source: string; at: number }, project: Project, times: Times = filmTimes(project)): Span[] | null {
+export function soundSpans(item: SceneItem, p: { source: string; at: number }, project: Project, times: Times = cachedTimes(project)): Span[] | null {
   if (item.parent !== undefined) {
     const clip = project.tracks.flatMap((t) => t.items as Array<{ id: string; source?: unknown; in?: number; speed?: number; rate?: number }>).find((i) => i.id === item.parent);
     const tm = times.get(item.parent);

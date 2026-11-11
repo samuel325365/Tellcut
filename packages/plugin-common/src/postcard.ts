@@ -12,7 +12,7 @@
 // card was still sliding in). (For those moments the card is above the text items too: the top container is above every item.)
 // pushAt / pushBack grow the window to the whole frame and back: the block draws the window's clip itself in the top container, in
 // the growing rectangle, from the clip's own frame to the full screen.
-import { abs, activeAt, clamp, cssCamel, eIO3, eOut3, h, type ItemType, type MediaApi, type Project, resolveTimes, type Times, type VideoItem, videoRefOf, videoState } from '@tellcut/engine';
+import { abs, activeAt, cachedTimes, clamp, cssCamel, eIO3, eOut3, h, type ItemType, type MediaApi, type Project, type VideoItem, videoRefOf, videoState } from '@tellcut/engine';
 import { drawTexts, handFamily, LATIN, textLayer, writeTime, type TextLayer, type Txt } from './hand.ts';
 import { parseSentences } from './handwrite.ts';
 import { drawMark, drawStamp, hash, markEl, SERIF, stampEl, type Mark, type MarkEl, type StampEl, type StampSpec } from './postmark.ts';
@@ -129,12 +129,10 @@ export function pushAmount(p: Pick<P, 'pushAt' | 'pushDur' | 'pushBack'>, local:
 /** the rectangle between `from` (px) and the whole W×H frame, `q` of the way */
 export const pushRect = (from: Rect, W: number, H: number, q: number): Rect => [from[0] * (1 - q), from[1] * (1 - q), from[2] + (W - from[2]) * q, from[3] + (H - from[3]) * q];
 
-const timesCache = new WeakMap<object, Times>();
-const timesOf = (p: Project) => { let t = timesCache.get(p); if (!t) { t = resolveTimes(p); timesCache.set(p, t); } return t; };
 /** the clips showing at film time `t` (the visible video tracks), the topmost last */
 export function clipsAt(project: Project | undefined, t: number): Array<{ item: VideoItem; start: number; end: number }> {
   if (!project?.tracks) return [];
-  const times = timesOf(project), out: Array<{ item: VideoItem; start: number; end: number }> = [];
+  const times = cachedTimes(project), out: Array<{ item: VideoItem; start: number; end: number }> = [];
   for (const tr of project.tracks) {
     if (tr.kind !== 'video' || tr.muted) continue;
     for (const it of tr.items) { const tm = times.get(it.id); if (tm && activeAt(tm, t)) out.push({ item: it as VideoItem, start: tm.start, end: tm.end }); }

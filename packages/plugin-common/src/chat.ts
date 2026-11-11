@@ -16,8 +16,8 @@
 // New messages pop in at the bottom and push the conversation up; the input bar types and deletes (`inputs`); the wallpaper changes
 // colour with `wall`. Only time and the parameters decide what shows: bubble heights come from the lines the block wraps itself.
 // On 9:16 the screen is the frame; on a wide or square frame it is a phone in the middle (phone.ts), the clip then takes chatWindow.
-import { activeAt, clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, esc, fitLines, h, resolveTimes, rng, textEm, videoRefOf, videoState, withDefaults,
-  type Crop, type ItemCtx, type ItemType, type MediaApi, type Project, type Theme, type Times, type VideoItem } from '@tellcut/engine';
+import { activeAt, cachedTimes, clamp, cssCamel, defaultSafe, eBack, eIO3, eOut3, esc, fitLines, h, numOr, rng, textEm, videoRefOf, videoState, withDefaults,
+  type Crop, type ItemCtx, type ItemType, type MediaApi, type Project, type Theme, type VideoItem } from '@tellcut/engine';
 import { standIn } from './album.ts';
 import { asFrame, imagesReady, punch, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
 import { avatarEl, caretOn, DEVICES, drawAvatar, drawStatusBar, drawType, glyphSvg, parseSteps, svgBox, svgIn, phoneEls, phoneView, placePhone, statusBarEl, timeSpan, typedSpan, typeEl,
@@ -38,7 +38,6 @@ export interface ChatMsg {
   pics: Pic[]; labels: string[]; sub: string; button: string; badge: string; press: number; read: number; when: string; icon: string;
 }
 const WHO: Record<string, Who> = { me: 'me', 我: 'me', self: 'me', them: 'them', other: 'them', 對方: 'them', sys: 'sys', system: 'sys', 系統: 'sys', ch: 'ch', chapter: 'ch', 章節: 'ch' };
-const num = (v: unknown, d: number) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Number(v));
 /** "4:5" / "16x9" → width ÷ height; a bare number is that ratio already; NaN when it does not read */
 export function aspectOf(v: string): number {
   const m = String(v ?? '').trim().match(/^(\d+(?:\.\d+)?)\s*[:x×/]\s*(\d+(?:\.\d+)?)$/);
@@ -46,7 +45,7 @@ export function aspectOf(v: string): number {
   const n = Number(v);
   return v !== '' && n > 0 ? n : NaN;
 }
-const picOf = (s: string): Pic => { const [a = '', b] = s.split('@').map((x) => x.trim()); return { src: a === '-' ? '' : a, t: num(b, 0) }; };
+const picOf = (s: string): Pic => { const [a = '', b] = s.split('@').map((x) => x.trim()); return { src: a === '-' ? '' : a, t: numOr(b, 0) }; };
 const list = (s: string) => String(s ?? '').split(/[,，]/).map((x) => x.trim());
 
 /** the messages of `items`, one per line (a typed \n too); lines without a time are dropped */
@@ -69,11 +68,11 @@ export function parseChat(text: string): ChatMsg[] {
         case 'avatar': m.avatar = v; break;
         case 'color': m.color = v; break;
         case 'src': m.src = v === '-' ? '' : v; break;
-        case 't': m.t = num(v, 0); break;
-        case 't2': m.t2 = num(v, NaN); break;
-        case 'crop': { const [x, y, z] = v.split(/[,，]/).map((q) => q.trim()); m.crop = { x: clamp(num(x, 0.5)), y: clamp(num(y, 0.5)), zoom: Math.max(1, num(z, 1)) }; break; }
+        case 't': m.t = numOr(v, 0); break;
+        case 't2': m.t2 = numOr(v, NaN); break;
+        case 'crop': { const [x, y, z] = v.split(/[,，]/).map((q) => q.trim()); m.crop = { x: clamp(numOr(x, 0.5)), y: clamp(numOr(y, 0.5)), zoom: Math.max(1, numOr(z, 1)) }; break; }
         case 'ratio': m.aspect = aspectOf(v); break;
-        case 'w': m.w = clamp(num(v, 0), 0, 1); break;
+        case 'w': m.w = clamp(numOr(v, 0), 0, 1); break;
         case 'dur': m.dur = v; break;
         case 'mute': m.mute = i < 0 || !/^(0|false|no)$/i.test(v); break;
         case 'tag': m.tag = v; break;
@@ -84,8 +83,8 @@ export function parseChat(text: string): ChatMsg[] {
         case 'sub': m.sub = v; break;
         case 'button': m.button = v; break;
         case 'badge': m.badge = v; break;
-        case 'press': m.press = num(v, -1); break;
-        case 'read': m.read = num(v, NaN); break;
+        case 'press': m.press = numOr(v, -1); break;
+        case 'read': m.read = numOr(v, NaN); break;
         case 'unread': m.read = -1; break;
         case 'when': m.when = v; break;
         case 'icon': m.icon = v; break;
@@ -236,12 +235,10 @@ export function chatPoint(params: Record<string, unknown>, i: number, t: number,
 }
 
 // ---------------------------------------------------------------- the clip a bubble opens
-const timesOf = new WeakMap<Project, Times>();
 /** The main-track clip showing in a bubble at film time t: an active clip on a video track whose frame is the bubble's window `win`
  *  (fractions, as chatWindow gave it), else one about that size whose middle is inside it. The last track's wins, as on the stage. */
 export function clipIn(project: Project, t: number, win: number[]): { item: VideoItem; start: number; end: number } | null {
-  let times = timesOf.get(project);
-  if (!times) { times = resolveTimes(project); timesOf.set(project, times); }
+  const times = cachedTimes(project);
   type Hit = { item: VideoItem; start: number; end: number };
   let same: Hit | null = null, near: Hit | null = null;
   for (const tr of project.tracks) {

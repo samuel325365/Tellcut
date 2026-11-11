@@ -4,13 +4,12 @@
 //   common.photostack  rounded photo cards sliding up one after another down a plain page, each with an italic label
 // The titles are common.heading's look storybook (templates storybook, story-card on the backing frame, fin), the captions the template
 // story-serif; the colour blocks above and below a shot are common.backdrop solid under a clip in a 16:9 frame. Pure functions of time.
-import { clamp, eOut3, type ItemType, type SceneItem } from '@tellcut/engine';
+import { clamp, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desktop.ts';
 import { coverImage } from './editorial.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { imagesReady } from './window.ts';
 
-const eOut = (q: number) => eOut3(clamp(q));
 type G = CanvasRenderingContext2D;
 
 /** the round windows' centres: two `r` apart less their overlap, or the one */
@@ -40,7 +39,7 @@ export const binocular: ItemType<BP, CS> = {
   draw(ctx, s) {
     const { local, W, H, params: p } = ctx, g = canvasAt(s.c, W, H);
     g.globalCompositeOperation = 'source-over'; g.fillStyle = p.color; g.fillRect(0, 0, W, H);
-    const r = p.r * Math.min(W, H) * (p.open > 0 ? 0.6 + 0.4 * eOut(local / p.open) : 1), cy = p.cy * H;
+    const r = p.r * Math.min(W, H) * (p.open > 0 ? 0.6 + 0.4 * eOut3Clamped(local / p.open) : 1), cy = p.cy * H;
     g.globalCompositeOperation = 'destination-out';
     for (const cx of windowCentres(p.shape, p.cx * W, r, p.overlap)) {
       const grad = g.createRadialGradient(cx, cy, r * 0.9, cx, cy, r);
@@ -60,7 +59,7 @@ export function parseCards(text: string): Array<{ source: string; t: number; lab
   });
 }
 /** how far card `i` has slid in at `local` (0–1), one every `every` seconds over 0.4 s */
-export const cardIn = (local: number, i: number, every: number) => eOut((local - i * every) / 0.4);
+export const cardIn = (local: number, i: number, every: number) => eOut3Clamped((local - i * every) / 0.4);
 
 function rounded(g: G, x: number, y: number, w: number, h: number, r: number) {
   g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();

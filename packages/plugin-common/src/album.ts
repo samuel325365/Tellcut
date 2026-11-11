@@ -13,7 +13,7 @@
 // Pictures are the project's sources (a still at t s; a photo: 0) or, with no source, painted stand-ins (a gallery preview, goldens).
 // On 9:16 the screen is the frame; on a wide or square frame it is a phone in the middle (phone.ts): the main-track clip then takes
 // `frame: screenFrame(W, H)`. common.touch draws the finger (albumTile gives where a tile is), common.handwrite the hand-written notes.
-import { clamp, coverPlacement, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, withDefaults, type Crop, type ItemType, type MediaApi, type Theme } from '@tellcut/engine';
+import { clamp, coverPlacement, cssCamel, defaultSafe, eBack, eIO3, eOut3, h, lerp, numOr, withDefaults, type Crop, type ItemType, type MediaApi, type Theme } from '@tellcut/engine';
 import { countAt, popAt } from './reels.ts';
 import { asFrame, imagesReady, showStill, stillRef, stillUrl, windowEl, type Still, type Win } from './window.ts';
 import { DEVICES, drawStatusBar, glyphSvg, parseSteps, svgBox, svgIn, phoneEls, phoneScreen, phoneView, placePhone, statusBarEl, timeSpan, type Device, type PhoneEls, type StatusBar } from './phone.ts';
@@ -32,7 +32,6 @@ export type Rect = [number, number, number, number];
 // ---------------------------------------------------------------- the photos and their groups
 export interface AlbumPhoto { source: string; t: number; label: string; fx: number; fy: number }
 export interface AlbumGroup { place: string; date: string; day: string; layout: string; photos: number[] }
-const num = (v: unknown, d: number) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Number(v));
 /** "# 地點|日期|泡泡字|版型" starts a group; every other line is a photo "素材|秒|角落字|x,y" (素材 - or empty: a stand-in) */
 export function parseAlbum(text: string): { groups: AlbumGroup[]; photos: AlbumPhoto[] } {
   const groups: AlbumGroup[] = [], photos: AlbumPhoto[] = [];
@@ -48,7 +47,7 @@ export function parseAlbum(text: string): { groups: AlbumGroup[]; photos: AlbumP
     const [src = '', t = '', label = '', focus = ''] = line.split('|').map((x) => x.trim());
     const [fx, fy] = focus ? focus.split(/[,，\s]+/) : [];
     groups[groups.length - 1].photos.push(photos.length);
-    photos.push({ source: src === '-' ? '' : src, t: num(t, 0), label, fx: clamp(num(fx, 0.5)), fy: clamp(num(fy, 0.5)) });
+    photos.push({ source: src === '-' ? '' : src, t: numOr(t, 0), label, fx: clamp(numOr(fx, 0.5)), fy: clamp(numOr(fy, 0.5)) });
   }
   return { groups, photos };
 }
@@ -92,8 +91,8 @@ export function albumScroll(text: string, t: number, groupY: number[], maxY: num
   const at = (v: string) => {
     v = String(v ?? '').trim();
     if (v === 'end') return maxY;
-    if (/px$/i.test(v)) return num(v.slice(0, -2), 0);
-    const g = num(v, 0);
+    if (/px$/i.test(v)) return numOr(v.slice(0, -2), 0);
+    const g = numOr(v, 0);
     if (!groupY.length) return 0;
     const i = clamp(g, 0, groupY.length - 1), a = Math.floor(i), b = Math.min(groupY.length - 1, a + 1);
     return lerp(groupY[a], groupY[b], i - a) - 40;
@@ -187,7 +186,7 @@ interface S {
   vTop: HTMLElement; vBottom: HTMLElement; back: HTMLElement; date: HTMLElement; when: HTMLElement; action: HTMLElement; tools: HTMLElement[];
   sb: StatusBar; home: HTMLElement;
 }
-const asCrop = (c: unknown, d: Crop = { x: 0.5, y: 0.5, zoom: 1 }): Crop => { const o = (c ?? {}) as Partial<Crop>; return { x: num(o.x, d.x), y: num(o.y, d.y), zoom: num(o.zoom, d.zoom) }; };
+const asCrop = (c: unknown, d: Crop = { x: 0.5, y: 0.5, zoom: 1 }): Crop => { const o = (c ?? {}) as Partial<Crop>; return { x: numOr(o.x, d.x), y: numOr(o.y, d.y), zoom: numOr(o.zoom, d.zoom) }; };
 /** put svg in el, rebuilt only when it changes */
 /** the memory card on a screen Hd design px tall */
 export const cardRect = (Hd: number): Rect => [60, 440, 960, Hd - 770];

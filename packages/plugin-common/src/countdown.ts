@@ -3,7 +3,7 @@
 // Look slant (2026-11-06, the Single Color pilot film's fx.count): heavy slanted Anton numbers, each step its own colour, an outlined copy
 // set off behind, an arc sweeping open on the right instead of the ring (`ring` off hides it). The arc and the numbers take the step's
 // colour, so `accent` and `ink` (the ring's colour and the number's outline) belong to the ring look only.
-import { clamp, cssCamel, eBack, h, prog, textEm, type ItemType } from '@tellcut/engine';
+import { clamp, cssCamel, eBack, eOut3Clamped, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
 import { SVG_NS } from './shapes.ts';
 
@@ -87,13 +87,13 @@ function drawSlant(ctx: Parameters<typeof countdown.draw>[0], s: S) {
   const p = ctx.params, { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, d = (p.size / 100) * Math.min(W, H);
   const c = countAt(p.from, p.to, dur, local, p.end), col = stepColor(p.colors, c.step, p.color), fade = 1 - prog(local, dur - 0.12, dur);
   cssCamel(s.box, { left: `${W / 2 - d / 2}px`, top: `${p.y * H - d / 2}px`, width: `${d}px`, height: `${d}px`, opacity: String(fade) });
-  const word = [...c.text].length > 2, px = d * (word ? 0.42 : 0.82) * (1 + 0.18 * (1 - eOutC(c.into / 0.35))), font = `'Anton', 'Noto Sans TC', sans-serif`;
+  const word = [...c.text].length > 2, px = d * (word ? 0.42 : 0.82) * (1 + 0.18 * (1 - eOut3Clamped(c.into / 0.35))), font = `'Anton', 'Noto Sans TC', sans-serif`;
   s.num.textContent = c.text; s.ghost.textContent = c.text;
   cssCamel(s.num, { top: '50%', transform: `translate(-50%, -50%) ${LEAN}`, fontSize: `${px}px`, fontWeight: '400', color: col, fontFamily: font, webkitTextStroke: '0', opacity: '1' });
   cssCamel(s.ghost, { display: 'block', top: '50%', transform: `translate(-50%, -50%) translate(${0.06 * px}px, ${0.05 * px}px) ${LEAN}`, fontSize: `${px}px`, fontWeight: '400',
     color: 'transparent', fontFamily: font, webkitTextStroke: `${4 * k}px ${col === '#ffffff' ? 'rgba(255,255,255,0.85)' : col}` });
   // the arc: from about 76° above the right to as far below, opening over each step
-  const circ = 2 * Math.PI * 45, open = 0.42 * eOutC(c.into / 0.8);
+  const circ = 2 * Math.PI * 45, open = 0.42 * eOut3Clamped(c.into / 0.8);
   cssCamel(s.svg as unknown as HTMLElement, { display: p.ring ? 'block' : 'none', transform: 'translateX(12%)' });
   s.track.style.display = 'none';
   s.arc.setAttribute('transform', 'rotate(-75.6 50 50)');
@@ -102,4 +102,3 @@ function drawSlant(ctx: Parameters<typeof countdown.draw>[0], s: S) {
   s.label.textContent = p.label;
   cssCamel(s.label, { display: p.label ? 'block' : 'none', top: `${-d * 0.08}px`, transform: `translate(-50%, -100%) ${LEAN}`, fontSize: `${d * 0.12}px`, color: col, fontFamily: font, webkitTextStroke: '0' });
 }
-const eOutC = (q: number) => 1 - Math.pow(1 - clamp(q), 3);

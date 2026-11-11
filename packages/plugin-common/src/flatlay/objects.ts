@@ -3,7 +3,7 @@
 // Desk units: the table is the plane y = 0 of the 3D scene; an object's x runs right, its y runs up the picture (away from the
 // camera, world z = −y), rot turns it on the table. Everything here is a pure function.
 import type * as T from 'three';
-import type { Project } from '@tellcut/engine';
+import { numOr, type Project } from '@tellcut/engine';
 import { parseCellShots, type CellShot } from '../cells.ts';
 import { parseSentences, sentenceCps, type Sentence } from '../handwrite.ts';
 import type { Side, Warmth } from './light.ts';
@@ -66,7 +66,6 @@ export function slot(i: number, W: number, H: number): [number, number, number] 
   return list[i % list.length];
 }
 
-const num = (v: unknown, d: number) => (v === undefined || v === null || v === '' || !Number.isFinite(Number(v)) ? d : Number(v));
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : v === undefined || v === null ? d : String(v));
 const shotOf = (v: unknown): CellShot | null => (typeof v === 'string' && v.trim() ? parseCellShots(v)[0] ?? null : null);
 function markOf(v: unknown, at: number): Mark | null {
@@ -84,16 +83,16 @@ function objFrom(e: Record<string, unknown>, i: number, W: number, H: number, si
   const enter = ENTERS.includes(e.enter as Enter) ? (e.enter as Enter) : 'drop';
   const [sx, sy, sr] = slot(i, W, H);
   const shot = shotOf(e.shot);
-  const flipAt = num(e.flipAt, -1);
+  const flipAt = numOr(e.flipAt, -1);
   const exit = ENTERS.includes(e.exit as Enter) && e.exit !== 'none' ? (e.exit as Enter) : null;
-  const at = num(e.at, simple ? 0.2 : 0), dur = num(e.dur, enter === 'drop' ? 0.9 : 0.8);
+  const at = numOr(e.at, simple ? 0.2 : 0), dur = numOr(e.dur, enter === 'drop' ? 0.9 : 0.8);
   return {
-    kind, shot, x: num(e.x, sx), y: num(e.y, sy), rot: num(e.rot, sr), portrait: e.portrait === true, enter, at, dur,
+    kind, shot, x: numOr(e.x, sx), y: numOr(e.y, sy), rot: numOr(e.rot, sr), portrait: e.portrait === true, enter, at, dur,
     // an exit with no time leaves just as the item ends (not before it has come in)
-    exit, exitAt: num(e.exitAt, Math.max(at + dur, len - EXIT_DUR)), flipAt: flipAt >= 0 ? flipAt : null, flipDur: num(e.flipDur, 0.9),
+    exit, exitAt: numOr(e.exitAt, Math.max(at + dur, len - EXIT_DUR)), flipAt: flipAt >= 0 ? flipAt : null, flipDur: numOr(e.flipDur, 0.9),
     place: str(e.place), year: str(e.year), caption: str(e.caption), back: parseSentences(str(e.back)),
     // a postcard's stamp is that stop's own picture unless it says otherwise
-    stamp: shotOf(e.stamp) ?? (kind === 'postcard' ? shot : null), mark: markOf(e.mark, num(e.markAt, 1)), seed: i + 1,
+    stamp: shotOf(e.stamp) ?? (kind === 'postcard' ? shot : null), mark: markOf(e.mark, numOr(e.markAt, 1)), seed: i + 1,
   };
 }
 
