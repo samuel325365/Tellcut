@@ -1,7 +1,15 @@
 // Golden samples, in order (samples.ts joins the parts):
 // the eight style pilots' kits, the derived frames, the 3D desk, the captions and titles (2026-11-05 on).
 import { TITLE_TEMPLATES } from '../heading/templates.ts';
-import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES } from './fixtures.ts';
+import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS } from './fixtures.ts';
+
+/** the shader looks' palette (shader-mesh's) */
+const SHADER_THEME = { palette: { accent: '#ff6b2c', accent2: '#1f9e8a', hl: '#ffd23f', ink: '#0b1a2c', paper: '#f6efe2' } };
+/** the blocks built on phone.ts with a device param: the moment, params and backdrop of their first wide sample */
+const PHONES: Array<[string, number, Record<string, unknown>, string?]> = [
+  ['album', 2.6, {}], ['chat', 2.9, {}], ['comments', 2.6, {}, '#4f7a8c'], ['lockscreen', 2.6, { wall: 'gradient' }], ['notify', 2.7, {}],
+  ['reels', 2.6, {}, '#4f7a8c'], ['search', 2.4, { out: 0.3 }, '#4a7a8c'], ['story', 2.6, { options: 'A|B|C', votes: '5,3,2', pick: 2 }, '#4f7a8c'],
+];
 
 export const STYLES: Sample[] = [
   // common.desktop, common.window, common.popup and touch's look cursor (2026-11-05, the retro desktop pilot film's fx.retro*): the
@@ -110,4 +118,26 @@ export const STYLES: Sample[] = [
   ...['serif', 'spaced', 'stack', 'sign', 'vintage', 'seal', 'split', 'giant', 'script', 'ribbon'].map((style): Sample => ({ name: `heading-look-${style}`, type: 'common.heading', params: { ...HEAD_ZH, style }, at: [1.5], bg: '#4a5a52' })),
   ...TITLE_TEMPLATES.map((t): Sample => ({ name: `ttl-${t.id}`, type: 'common.heading', params: { ...HEAD_ZH, template: t.id }, at: [1.5], bg: '#4a5a52' })),
   { name: 'token', type: 'common.token', params: { x: 0.3, y: 0.42, size: 0.3 }, at: [1.2, 1.7, 2.9] },
+  // gaps filled 2026-11-11: the shader looks with no picture yet (GPU: another machine may need its own update)
+  ...['rays', 'smoke', 'warp', 'swirl', 'blobs', 'dots'].map((look): Sample => ({ name: `shader-${look}`, type: 'common.shader', params: { look }, theme: SHADER_THEME, at: [1.5] })),
+  // the phone family with the phone body forced on a tall frame, and with no body on a wide one
+  ...PHONES.flatMap(([b, at, params, bg]): Sample[] => [
+    { name: `${b}-phone`, type: `common.${b}`, params: { ...params, device: 'phone' }, at: [at], ...(bg ? { bg } : {}) },
+    { name: `wide-${b}-bare`, type: `common.${b}`, params: { ...params, device: 'bare' }, at: [at], wide: true, ...(bg ? { bg } : {}) },
+  ]),
+  // a three-digit LED queue number on its board
+  { name: 'digits-led-three', type: 'common.digits', params: { style: 'led', steps: '0|--|叫號, 0.6|98, 1.4|99, 2.2|100|下一位', label: '叫號', totalAt: -1, title: '驚嘆號臭豆腐', sub: '中壢・街邊排隊名店', w: 0.944 }, at: [0.65, 2.5], bg: '#17110d' },
+  // long words: the ring's end word, eight contents lines, a duo header and name chips, a hang tag, a censor sticker, a done page, a magazine
+  { name: 'countdown-ring-long', type: 'common.countdown', params: { look: 'ring', label: '倒數', end: 'READY, SET, GO!' }, at: [2.6] },
+  { name: 'masthead-contents', type: 'common.masthead', params: { contents: '01 — TASTE\n02 — SEE\n03 — WALK\n04 — SHOP\n05 — STAY\n06 — DRINK\n07 — LISTEN\n08 — REST' }, len: 3.5, at: [3.1], bg: '#4a6b7c' },
+  { name: 'duo-long', type: 'common.duo', params: { label: '第一回合・觀眾現場提問', topic: '每天早上五點起床真的會比較有效率嗎？還是只是更累？', nameA: '阿明・台北早起俱樂部創辦人', roleA: '節目主持人',
+    nameB: 'Mia Chen-Oyelaran', roleB: '睡眠醫學中心認證睡眠教練' }, at: [0.6], theme: VS, bg: '#3f9a5c' },
+  { name: 'hangtag-long', type: 'common.hangtag', params: { value: 'NT$1,280', name: '手工黑糖老薑母茶', sub: 'Hand-made brown sugar ginger tea', quip: '喝完整個人都暖起來了' }, at: [1.5], bg: '#6b4a3a' },
+  { name: 'censor-long', type: 'common.censor', params: { label: '這段真的不能播出來' }, at: [1.5] },
+  { name: 'notecard-done-long', type: 'common.notecard', params: { mode: 'done', title: '義式經典提拉米蘇大功告成', sub: '馬斯卡彭起司配上濃縮咖啡和手指餅乾', latin: 'Tiramisù della nonna, layered', note: '放進冰箱冷藏一個晚上之後再切開最好吃' }, at: [2.5], bg: '#e7d8bd' },
+  { name: 'magazine-long', type: 'common.magazine', params: { title: 'THE SLOW TRAVELLER QUARTERLY', kicker: 'LONG READ', headline: '一座城市最好的樣子，\n是清晨六點的市場', deck: '從清晨的魚市場一路走到老城區的咖啡館再到河邊看夕陽' }, at: [2.5] },
+  // slip, rating and scoreboard in 16:9: capped at the short side's width, centred (they spanned the side margins, about 1700 px)
+  { name: 'wide-slip-board', type: 'common.slip', params: { mode: 'board', title: '下一位，換你排', sub: '中壢車站 步行 10 分鐘' }, at: [2.0], wide: true, bg: '#6b5444' },
+  { name: 'wide-rating', type: 'common.rating', at: [2.5], wide: true },
+  { name: 'wide-scoreboard', type: 'common.scoreboard', params: { title: '🧾 今日釣果', sub: '目標：東洋鱸', icons: '🎯|🐡|🐟|🎣', names: '東洋鱸|河豚|小魚|釣竿', values: '0|3|12|斷了', tones: 'n|n|good|bad', pop: 3, note: '第二支' }, at: [1.5], wide: true },
 ];
