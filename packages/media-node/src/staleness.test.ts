@@ -64,6 +64,22 @@ test('the editor build is stale the same way: its own source and page, the packa
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('test helpers (test-*.ts, *-test-kit.ts, e2e-*.ts) are not source either; a file that only contains the letters is', () => {
+  const helpers = ['apps/editor/src/editor-test-kit.ts', 'apps/editor/src/test-setup.ts', 'apps/editor/src/e2e-kit.ts', 'packages/engine/src/commands/test-fixture.ts'];
+  const root = freshBuilds();
+  try {
+    mkdirSync(join(root, 'packages/engine/src/commands'), { recursive: true });
+    for (const f of helpers) { writeFileSync(join(root, f), 'x'); touch(root, f); }
+    expect(editorBuildStale(root)).toBeNull();
+    expect(playerBuildStale(root)).toBeNull();
+    for (const f of ['packages/engine/src/latest-items.ts', 'packages/engine/src/contest.ts']) {
+      writeFileSync(join(root, f), 'x'); touch(root, f);
+      expect(playerBuildStale(root), f).toContain('npm run build:player');
+      rmSync(join(root, f));
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 /** a root whose player source is a minute old and whose build (index.html, one chunk) is older still */
 function oldBuild() {
   const root = mkdtempSync(join(tmpdir(), 'rebuild-')), old = new Date(Date.now() - 60_000), older = new Date(Date.now() - 120_000);

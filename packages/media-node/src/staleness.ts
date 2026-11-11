@@ -8,7 +8,11 @@ import { renameRetry, replaceFile } from './fsutil.ts';
 import { withLock } from './locks.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 
-/** the newest modification time (ms) of a source file under `dir` (tests and builds left out) */
+/** tests and the helpers only tests import, named with a `test` or `e2e` word: x.test.ts, a.e2e.test.ts, test-setup.ts,
+ *  test-fixture.ts, editor-test-kit.ts, e2e-kit.ts. No bundle reaches them, so editing one leaves a build fresh. */
+const TEST_FILE = /(^|[-.])(test|e2e)[-.]/;
+
+/** the newest modification time (ms) of a source file under `dir` (tests, their helpers and builds left out) */
 function newest(dir: string): number {
   let t = 0;
   if (!existsSync(dir)) return t;
@@ -16,7 +20,7 @@ function newest(dir: string): number {
     if (e.name === 'node_modules' || e.name === 'dist' || e.name === 'golden') continue;
     const p = join(dir, e.name);
     if (e.isDirectory()) t = Math.max(t, newest(p));
-    else if (/\.(ts|tsx|css)$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) t = Math.max(t, statSync(p).mtimeMs);
+    else if (/\.(ts|tsx|css)$/.test(e.name) && !TEST_FILE.test(e.name)) t = Math.max(t, statSync(p).mtimeMs);
   }
   return t;
 }
