@@ -79,7 +79,7 @@ export const monoframe: ItemType<FP, FS> = {
 };
 
 /** the stills: source seconds, comma or space separated */
-export const parseStills = (text: unknown) => String(text ?? '').split(/[\s,，]+/).filter(Boolean).map(Number).filter(Number.isFinite);
+export const parseStillTimes = (text: unknown) => String(text ?? '').split(/[\s,，]+/).filter(Boolean).map(Number).filter(Number.isFinite);
 /** strip `col` (0 left, scrolling up; 1 right, scrolling down): which still frame `k` of the strip shows, `scrolled` frames along */
 export function stripStill(k: number, col: number, scrolled: number, n: number): number {
   if (n <= 0) return 0;
@@ -104,7 +104,7 @@ const stillOf = (source: string, t: number) => ({ source, t, w: 640 });
 function makeImgs(ctx: { params: SP; media: { stillUrl(r: { source: string; t: number; w?: number }): string } }, s: SS) {
   const key = `${ctx.params.source}|${ctx.params.stills}`;
   if (s.key === key) return;
-  s.imgs = ctx.params.source ? parseStills(ctx.params.stills).map((t) => { const i = new Image(); i.src = ctx.media.stillUrl(stillOf(ctx.params.source, t)); return i; }) : [];
+  s.imgs = ctx.params.source ? parseStillTimes(ctx.params.stills).map((t) => { const i = new Image(); i.src = ctx.media.stillUrl(stillOf(ctx.params.source, t)); return i; }) : [];
   s.key = key;
 }
 
@@ -120,7 +120,7 @@ export const filmstrip: ItemType<SP, SS> = {
   ],
   media(item: SceneItem) {
     const p = item.params as unknown as SP;
-    return { videos: [], stills: p.source ? parseStills(p.stills).map((t) => stillOf(p.source, t)) : [] };
+    return { videos: [], stills: p.source ? parseStillTimes(p.stills).map((t) => stillOf(p.source, t)) : [] };
   },
   build(ctx) { const s: SS = { c: canvasIn(ctx.root), imgs: [], key: '' }; makeImgs(ctx, s); return s; },
   ready(s) { return Promise.all([fontsReady('字'), imagesReady(s.imgs)]).then(() => undefined); },

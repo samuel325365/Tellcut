@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // common.monoframe / common.filmstrip and the title look cycle (2026-11-05, the Mono Frame pilot film's fx.monoframe / fx.filmstrip /
 // fx.monotitle). jsdom has no canvas: the window keys, the strips' stills and the look's per-line styles are tested directly.
-import { filmstrip, monoframe, monoWindow, parseStills, stripFrames, stripStill } from './mono.ts';
+import { filmstrip, monoframe, monoWindow, parseStillTimes, stripFrames, stripStill } from './mono.ts';
 import { CYCLE_STEP, cycle } from './caption/looks/title.ts';
 
 describe('common.monoframe', () => {
@@ -23,7 +23,7 @@ describe('common.monoframe', () => {
 
 describe('common.filmstrip', () => {
   test('stills read as numbers; it declares one still each', () => {
-    expect(parseStills('53.6, 837.4 990.5,，x')).toEqual([53.6, 837.4, 990.5]);
+    expect(parseStillTimes('53.6, 837.4 990.5,，x')).toEqual([53.6, 837.4, 990.5]);
     const item = { id: 'f', type: filmstrip.type, start: 0, end: 4, params: { source: 'v', stills: '1, 2' } } as any;
     expect(filmstrip.media!(item, {} as any)).toEqual({ videos: [], stills: [{ source: 'v', t: 1, w: 640 }, { source: 'v', t: 2, w: 640 }] });
   });
