@@ -29,7 +29,7 @@ interface S { wrap: HTMLElement; cv: HTMLCanvasElement; txt: TextLayer; top: HTM
 export const parseFields = (s: string, max = 2): Array<[string, string]> => String(s ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
   .map((l) => { const [a, b] = l.split('|').map((x) => x.trim()); return [a ?? '', b ?? ''] as [string, string]; }).slice(0, max);
 /** one item a line, or split by | */
-export const parseItems = (s: string) => String(s ?? '').split(/\n|\|/).map((x) => x.trim()).filter(Boolean);
+export const parseChecklist = (s: string) => String(s ?? '').split(/\n|\|/).map((x) => x.trim()).filter(Boolean);
 /** with `addInk` set, an item starting with + was added later: written "+ item" in that ink; without it every item is written as it is */
 export const addedItem = (item: string, addInk: string) =>
   (addInk && /^[+＋]/.test(item) ? { text: `+ ${item.replace(/^[+＋]\s*/, '')}`, ink: addInk } : { text: item, ink: '' });
@@ -136,7 +136,7 @@ export const notecard: ItemType<P, S> = {
   },
   hide(s) { freeCanvas(s.top, s.cv); },
   draw(ctx, s) {
-    const p = ctx.params, { W, H, theme, local, dur } = ctx, b0 = cardBox(p, W, H, theme.safe), items = parseItems(p.items).slice(0, LIST_MAX);
+    const p = ctx.params, { W, H, theme, local, dur } = ctx, b0 = cardBox(p, W, H, theme.safe), items = parseChecklist(p.items).slice(0, LIST_MAX);
     const shown = items.map((x) => addedItem(x, p.addInk ?? ''));
     const L = p.mode === 'list' ? listLayout(shown.map((x) => x.text), p.size ?? 1, b0.h / b0.u) : null;
     // a list longer than the card: the card grows upwards (its top moves up when it sits on the bottom safe line)

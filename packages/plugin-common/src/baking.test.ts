@@ -3,7 +3,7 @@
 import { DEFAULT_THEME, defaultSafe } from '@tellcut/engine';
 import { charAt, cardBox, wrapEm, writeTime } from './hand.ts';
 import { currentSentence, parseSentences, sentenceCps } from './handwrite.ts';
-import { listSlot, parseFields, parseItems, stepTimes } from './notecard.ts';
+import { listSlot, parseFields, parseChecklist, stepTimes } from './notecard.ts';
 import { gauge, gaugeBox, gaugeValue, needleAt, parseHits, parseZones } from './gauge.ts';
 import { tagScale } from './hangtag.ts';
 import { strokesAt } from './strike.ts';
@@ -56,7 +56,7 @@ test('notecard: by default the card sits inside the safe area, its foot on the b
 
 test('notecard: fields and items parsed; a list of more than four goes in two columns; the step parts are written in turn', () => {
   expect(parseFields('用料|濃咖啡\n\n時間|約 3 分鐘\n多的|不要')).toEqual([['用料', '濃咖啡'], ['時間', '約 3 分鐘']]);
-  expect(parseItems('a|b\nc')).toEqual(['a', 'b', 'c']);
+  expect(parseChecklist('a|b\nc')).toEqual(['a', 'b', 'c']);
   expect([listSlot(2, 3), listSlot(5, 8), listSlot(3, 8)]).toEqual([{ col: 0, row: 2 }, { col: 1, row: 1 }, { col: 0, row: 3 }]);
   const t = stepTimes('打發鮮奶油', ['第一行字', '第二行']);
   expect(t.lineAt[0]).toBeGreaterThan(0.2);

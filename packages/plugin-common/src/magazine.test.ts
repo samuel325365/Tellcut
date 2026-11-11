@@ -1,6 +1,6 @@
 // Group F (2026-10-24): common.magazine, common.wipe mode curl and common.route look page — their layouts, timings and geometry.
 import { defaultSafe, withDefaults, type ItemType } from '@tellcut/engine';
-import { cellCrop, magazine, magazineLayout, magazineWindow, mastEm, parseItems, parseTags } from './magazine.ts';
+import { cellCrop, magazine, magazineLayout, magazineWindow, mastEm, parseListRows, parseTags } from './magazine.ts';
 import { clipPoly, curlAt, curlWindow, wipe } from './wipe.ts';
 import { route } from './route.ts';
 import { paper } from './paper.ts';
@@ -50,7 +50,7 @@ test('magazine: the window as the clip frame (fractions), a given win wins', () 
 
 test('magazine: tags, list rows, the cells drift and the masthead width', () => {
   expect(parseTags('1.2-3|0|HIDDEN GEM|隱藏版的寶石\nx|1|A|B\n2|1||字')).toEqual([{ at: 1.2, until: 3, cell: 0, en: 'HIDDEN GEM', zh: '隱藏版的寶石' }, { at: 2, until: undefined, cell: 1, en: '', zh: '字' }]);
-  expect(parseItems('0.5|第一站|市場\n1|第二站\n|')).toEqual([{ at: 0.5, title: '第一站', note: '市場' }, { at: 1, title: '第二站', note: '' }]);
+  expect(parseListRows('0.5|第一站|市場\n1|第二站\n|')).toEqual([{ at: 0.5, title: '第一站', note: '市場' }, { at: 1, title: '第二站', note: '' }]);
   const s = { source: 'a', t: 0, crop: { x: 0.5, y: 0.5, zoom: 1 } };
   expect(cellCrop(s, 0, 0, 0.012).zoom).toBe(1);
   expect(cellCrop(s, 0, 5, 0.012).zoom).toBeCloseTo(1.06);

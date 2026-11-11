@@ -109,7 +109,7 @@ export function parseTags(text: string) {
     .filter((x) => x.span && (x.en || x.zh)).map((x) => ({ at: x.span![0], until: x.span![1], cell: x.cell, en: x.en, zh: x.zh }));
 }
 /** "seconds|title|note" lines: the list layout's rows */
-export function parseItems(text: string) {
+export function parseListRows(text: string) {
   return nl(text).split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((x) => x.length >= 2 && x[1])
     .map(([t, title, note]) => ({ at: Number(t) || 0, title, note: note ?? '' })).slice(0, 8);
 }
@@ -430,7 +430,7 @@ function drawQuote(ctx: Parameters<typeof magazine.draw>[0], s: S, L: ReturnType
 
 /** the list layout's rows: a big red italic number, the serif title and a note, a hairline under each, sliding in one by one */
 function drawRows(ctx: Parameters<typeof magazine.draw>[0], s: S, L: ReturnType<typeof magazineLayout>, disp: string, ser: string) {
-  const p = ctx.params, t = ctx.local, k = L.k, items = L.layout === 'list' ? parseItems(p.items) : [], key = String(items.length);
+  const p = ctx.params, t = ctx.local, k = L.k, items = L.layout === 'list' ? parseListRows(p.items) : [], key = String(items.length);
   if (s.rowKey !== key) {
     s.rowKey = key; s.rowsEl.replaceChildren();
     s.rows = items.map(() => { const box = abs(s.rowsEl); return { box, no: lineAbs(box, { fontStyle: 'italic', fontWeight: '900' }), title: lineAbs(box, { fontWeight: '900' }), note: lineAbs(box, { fontWeight: '500' }), rule: abs(box) }; });
