@@ -1,11 +1,9 @@
 // npm run build:editor: the editor is built beside the one in use and moved into apps/editor/dist file by file, index.html last,
-// under a lock (tools/build-swap.ts). vite's plain build empties dist first and writes it again over seconds, and a running server
-// serves /editor/ from that dist: a page loaded meanwhile came up broken.
+// under a lock (media-node build-swap.ts, which rebuildPlayer uses for the player). vite's plain build empties dist first and
+// writes it again over seconds, and a running server serves /editor/ from that dist: a page loaded meanwhile came up broken.
 import { spawnSync } from 'node:child_process';
-import { editorBuildStale } from '../packages/media-node/src/staleness.ts';
-import { TELLCUT_ROOT } from '../packages/media-node/src/paths.ts';
+import { editorBuildStale, swapBuild, TELLCUT_ROOT } from '@tellcut/media-node';
 import { parseArgsOrExit } from './args.ts';
-import { swapBuild } from './build-swap.ts';
 
 /** vite into `out`, its output shown as it goes; null when it built */
 const viteInto = (root: string) => (out: string): string | null => {

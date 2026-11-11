@@ -33,6 +33,7 @@ export * from './providers/index.ts';
 export * from './voice.ts';
 export * from './score/index.ts';
 export * from './staleness.ts';
+export { buildInto, moveBuildInto, swapBuild } from './build-swap.ts';
 export * from './sources/index.ts';
 export * from './presets.ts';
 export { lockHolder, tryLock } from './locks.ts';

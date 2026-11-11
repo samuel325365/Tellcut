@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSy
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { filesUnder, moveBuildInto, RECORD, swapBuild } from './build-swap.ts';
+import { BUILD_RECORD, buildFiles, moveBuildInto, swapBuild } from './build-swap.ts';
 
 /** a vite-like build into `out`: index.html naming its chunk, the chunk, a stylesheet and a file from public/ */
 const fake = (chunk: string, css = 'index-a.css') => (out: string) => {
@@ -12,7 +12,7 @@ const fake = (chunk: string, css = 'index-a.css') => (out: string) => {
   writeFileSync(join(out, 'theme-first.js'), 'theme'); writeFileSync(join(out, 'index.html'), `<script src="/editor/assets/${chunk}">`);
   return null;
 };
-const sorted = (dir: string) => filesUnder(dir).sort();
+const sorted = (dir: string) => buildFiles(dir).sort();
 function tmpRoot() {
   const root = mkdtempSync(join(tmpdir(), 'swap-'));
   return { root, dist: join(root, 'apps/editor/dist'), out: join(root, 'out') };
@@ -24,14 +24,14 @@ test('new files go in first and index.html last: every file it names is in place
     fake('index-1.js')(out); mkdirSync(join(out, 'assets/deep'), { recursive: true }); writeFileSync(join(out, 'assets/deep/x.woff2'), 'w');
     const order: string[] = [];
     const rename = (a: string, b: string) => {
-      if (b.endsWith('index.html')) expect(filesUnder(out)).toEqual(['index.html']);   // the rest are in dist already
+      if (b.endsWith('index.html')) expect(buildFiles(out)).toEqual(['index.html']);   // the rest are in dist already
       order.push(b.slice(dist.length + 1).replace(/\\/g, '/')); renameSync(a, b);
     };
     const r = moveBuildInto(out, dist, { rename });
     expect(order.at(-1)).toBe('index.html');
     expect(r).toEqual({ moved: order, removed: [] });
-    expect(sorted(dist)).toEqual([RECORD, 'assets/deep/x.woff2', 'assets/index-1.js', 'assets/index-a.css', 'index.html', 'theme-first.js']);
-    expect(JSON.parse(readFileSync(join(dist, RECORD), 'utf8')).sort()).toEqual(['assets/deep/x.woff2', 'assets/index-1.js', 'assets/index-a.css', 'theme-first.js']);
+    expect(sorted(dist)).toEqual([BUILD_RECORD, 'assets/deep/x.woff2', 'assets/index-1.js', 'assets/index-a.css', 'index.html', 'theme-first.js']);
+    expect(JSON.parse(readFileSync(join(dist, BUILD_RECORD), 'utf8')).sort()).toEqual(['assets/deep/x.woff2', 'assets/index-1.js', 'assets/index-a.css', 'theme-first.js']);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -57,12 +57,12 @@ test('the files the build before made stay for pages open on it; older ones and 
     expect(build('index-1.js').removed).toEqual([]);
     expect(sorted(dist)).toContain('assets/index-0.js');
     expect(build('index-2.js', 'index-b.css').removed).toEqual(['assets/index-0.js']);
-    expect(sorted(dist)).toEqual([RECORD, 'assets/index-1.js', 'assets/index-2.js', 'assets/index-a.css', 'assets/index-b.css', 'index.html', 'theme-first.js']);
+    expect(sorted(dist)).toEqual([BUILD_RECORD, 'assets/index-1.js', 'assets/index-2.js', 'assets/index-a.css', 'assets/index-b.css', 'index.html', 'theme-first.js']);
     expect(build('index-3.js', 'index-b.css').removed.sort()).toEqual(['assets/index-1.js', 'assets/index-a.css']);
-    expect(sorted(dist)).toEqual([RECORD, 'assets/index-2.js', 'assets/index-3.js', 'assets/index-b.css', 'index.html', 'theme-first.js']);
+    expect(sorted(dist)).toEqual([BUILD_RECORD, 'assets/index-2.js', 'assets/index-3.js', 'assets/index-b.css', 'index.html', 'theme-first.js']);
     // the same build again: only the one in use is left
     expect(build('index-3.js', 'index-b.css').removed).toEqual(['assets/index-2.js']);
-    expect(sorted(dist)).toEqual([RECORD, 'assets/index-3.js', 'assets/index-b.css', 'index.html', 'theme-first.js']);
+    expect(sorted(dist)).toEqual([BUILD_RECORD, 'assets/index-3.js', 'assets/index-b.css', 'index.html', 'theme-first.js']);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -97,6 +97,18 @@ test('two processes building at once: the second waits for the first to finish m
     }));
     expect(await Promise.all(runs)).toEqual(['null', 'null']);
     expect(readFileSync(log, 'utf8')).toBe('start end start end ');
-    expect(sorted(dist)).toEqual([RECORD, 'assets/b.js', 'index.html']);
+    expect(sorted(dist)).toEqual([BUILD_RECORD, 'assets/b.js', 'index.html']);
   } finally { rmSync(root, { recursive: true, force: true }); }
 }, 30000);
+
+test('clean names the one folder old files are removed from: the player keeps what lies outside assets/', () => {
+  const { root, dist, out } = tmpRoot();
+  const build = (chunk: string) => { rmSync(out, { recursive: true, force: true }); fake(chunk)(out); return moveBuildInto(out, dist, { clean: 'assets/' }); };
+  try {
+    build('index-1.js');
+    writeFileSync(join(dist, 'stray.txt'), 'x'); writeFileSync(join(dist, 'assets/stray.js'), 'x');
+    expect(build('index-2.js').removed).toEqual(['assets/stray.js']);
+    expect(build('index-3.js').removed).toEqual(['assets/index-1.js']);
+    expect(buildFiles(dist)).toContain('stray.txt');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
