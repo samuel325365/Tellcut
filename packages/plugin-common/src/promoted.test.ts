@@ -3,6 +3,7 @@ import { activeStep } from './progress.ts';
 import { clockAt, clockText, hm, parseClock, routeAt, sinceText } from './tripclock.ts';
 import { cardLayout } from './card.ts';
 import { feed, parseReceipt } from './receipt.ts';
+import { subChip } from './scoreboard.ts';
 
 test('tabs: a fixed step lights that chapter from the item start; -1 walks through them with the time', () => {
   expect(activeStep(2, 5, 0.3, 4)).toEqual({ active: 2, since: 0.3 });
@@ -15,6 +16,13 @@ test('scoreboard: text shrinks to its room, never below 40 %', () => {
   expect(fitPx('12', 60, 500)).toBe(60);
   expect(fitPx('東洋鱸東洋鱸', 60, 180)).toBe(30);
   expect(fitPx('一二三四五六七八九十', 60, 10)).toBe(24);
+});
+
+test('scoreboard: the top-right chip keeps its look in a 76 px bar and scales down in a lower one, never a negative padding', () => {
+  expect(subChip(76, 1)).toEqual({ px: 33, padY: 8.5 });
+  const wide = subChip(0.17 * 1080 * 0.3, 1);                       // 16:9: the bar is 55 px
+  expect(wide.padY).toBeGreaterThan(0);
+  expect(wide.px + 2 * wide.padY).toBeCloseTo((0.17 * 1080 * 0.3 * 50) / 76);   // the chip fills the bar as in 9:16
 });
 
 test('tripclock: times parsed and sorted, the clock rolls to each stop, junk left out', () => {

@@ -22,6 +22,14 @@ export function scoreValues(values: string[], valueSize: number, bh: number, k: 
   return { px, grow };
 }
 
+/** the top-right chip in a title bar `hh` px tall: 33 px words with 26 px of padding in a 76 px bar (k px a unit); a lower bar (16:9,
+ *  where the bar is 30 % of a 17 % card, 55 px) scales both, as a negative padding is no padding at all: the words ran into the
+ *  pill's rounded ends */
+export function subChip(hh: number, k: number): { px: number; padY: number } {
+  const z = Math.min(1, hh / (76 * k)), px = 33 * k * z;
+  return { px, padY: Math.max(0, (hh - 26 * k * z - px) / 2) };
+}
+
 export const scoreboard: ItemType<P, S> = {
   type: 'common.scoreboard', label: '計分票', category: 'number', kind: 'overlay',
   doc: '上方一張票卡：標題列加幾格（圖示、名稱、數值），每段放一個狀態，改變的那格彈一下、可掛小註；valueSize 只放大數字（卡片往下長高，圖示和名稱不變）；戰績、釣果、收集進度、評分卡（味道 ★★★★）',
@@ -78,10 +86,10 @@ export const scoreboard: ItemType<P, S> = {
       borderRadius: `${26 * k}px`, boxShadow: `${8 * k}px ${10 * k}px 0 rgba(0,0,0,0.35)`, fontFamily: font, opacity: String(out) });
     cssCamel(s.head, { left: '0', top: '0', width: '100%', height: `${hh}px`, background: p.ink });
     s.title.textContent = p.title; s.sub.textContent = p.sub;
-    const subPx = 33 * k, subW = p.sub ? textEm(p.sub) * subPx + 36 * k : 0;
+    const chip = subChip(hh, k), subPx = chip.px, subW = p.sub ? textEm(p.sub) * subPx + 36 * k : 0;
     cssCamel(s.title, { left: `${26 * k}px`, transform: 'translateY(-50%)', color: p.paper, fontSize: `${fitPx(p.title, 44 * k, w - subW - 70 * k)}px` });
     cssCamel(s.sub, { display: p.sub ? 'block' : 'none', right: `${18 * k}px`, transform: 'translateY(-50%)', fontSize: `${subPx}px`, fontWeight: '700',
-      color: p.ink, background: p.hl, padding: `${(hh - 26 * k - subPx) / 2}px ${18 * k}px`, borderRadius: '999px' });
+      color: p.ink, background: p.hl, padding: `${chip.padY}px ${18 * k}px`, borderRadius: '999px' });
     const lines = p.texture === 'receipt' ? `repeating-linear-gradient(180deg, transparent 0 ${12 * k}px, ${withAlpha(p.ink, 0.06)} ${12 * k}px ${14 * k}px)` : 'none';
     cssCamel(s.body, { left: '0', top: `${hh}px`, width: '100%', height: `${bh}px`, backgroundImage: lines });
     cssCamel(s.grid, { left: `${x0}px`, top: `${y0 + hh}px`, width: `${w}px`, height: `${bh}px`, fontFamily: font, opacity: String(out) });
