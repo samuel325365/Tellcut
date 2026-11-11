@@ -6,7 +6,7 @@
 import { coverPlacement, resolveTheme, withDefaults } from '@tellcut/engine';
 import { parseShots } from './dopamine.ts';
 import { cropText, polaroidCrop } from './polaroid.ts';
-import { parsePrints, prints } from './scrapbook.ts';
+import { parsePrints, prints } from './prints.ts';
 import { parseCards, photostack } from './storybook.ts';
 
 const CROP = { x: 0.3, y: 0.2, zoom: 1.5 };

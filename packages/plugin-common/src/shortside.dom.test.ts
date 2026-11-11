@@ -5,7 +5,8 @@
 // pinned here are the ones drawn before the change.
 import { resolveTheme, withDefaults, type ItemType } from '@tellcut/engine';
 import { sticker } from './dopamine.ts';
-import { prints, scraps } from './scrapbook.ts';
+import { prints } from './prints.ts';
+import { scraps } from './scraps.ts';
 import { monoframe, monoWindow } from './monoframe.ts';
 import { filmstrip } from './filmstrip.ts';
 import { speedlines } from './speedlines.ts';

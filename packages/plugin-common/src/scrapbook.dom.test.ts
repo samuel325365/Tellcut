@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // common.prints / common.scraps and common.wipe's mode tiles (2026-11-05, the Collage pilot film's fx.prints / fx.scraps / fx.mosaic).
 import { rng } from '@tellcut/engine';
-import { deckle, parsePrints, parseScraps, prints, scrapColor, scraps, type Scrap } from './scrapbook.ts';
+import { deckle, parsePrints, prints } from './prints.ts';
+import { parseScraps, scrapColor, scraps, type Scrap } from './scraps.ts';
 import { tileTimes } from './wipe.ts';
 
 describe('common.prints', () => {
