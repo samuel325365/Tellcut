@@ -3,7 +3,7 @@ import { allItems, beatTimes, overlapPairs, removeEnvelopePoint, resolveTimes, t
 import type { Editor } from '../editor.ts';
 import { useStoreSelector } from '../store.ts';
 import { liveLinks } from '../editor/library.ts';
-import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, fitHeights, RULER_H, formatTime, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { HEADER_W, ROW_H, ROW_H_COMPACT, STRIP_H, STRIP_MIN_H, fitHeights, RULER_H, layoutRows, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 import { ItemBlock } from './ItemBlock.tsx';
 import { Playhead } from './Playhead.tsx';
 import { thumbTiles } from './thumbs.ts';
@@ -230,7 +230,7 @@ export function Timeline({ editor }: { editor: Editor }) {
       <TrayBox editor={editor} addTrack={addTrackMenu} zoom={zoomControls} />
       <div class="ruler" data-ruler style={{ height: `${RULER_H}px` }} onMouseDown={scrubFrom as any}>
         {rulerTicks(view, width).map((k) => (
-          <span class={k.major ? 'tick major' : 'tick'} style={{ left: `${HEADER_W + timeToX(k.t, view)}px` }}>{k.major ? formatTime(k.t) : ''}</span>
+          <span class={k.major ? 'tick major' : 'tick'} style={{ left: `${HEADER_W + timeToX(k.t, view)}px` }}>{k.label ?? ''}</span>
         ))}
       </div>
       {/* only the tracks scroll vertically: the ruler stays on top (small screens could not reach the lower tracks) */}

@@ -89,13 +89,24 @@ export function zoomAround(v: View, factor: number, anchorX: number): View {
 }
 
 const STEPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60];
-export function rulerTicks(v: View, width: number): Array<{ t: number; major: boolean }> {
+
+/** A ruler label: whole seconds as formatTime (0:01); under a one-second step the others show the fraction too, with the decimals
+ *  the step needs (0:00.5, 0:00.25): floored to the second they all read 0:00 at high zoom. */
+export function rulerLabel(t: number, step: number): string {
+  if (Math.abs(t - Math.round(t)) < 1e-6) return formatTime(Math.round(t));
+  const d = String(step).split('.')[1]?.length ?? 0, m = Math.floor(t / 60), s = t - m * 60;
+  return `${m}:${s.toFixed(d).padStart(3 + d, '0')}`;
+}
+
+/** The ruler's ticks across the lane: the majors (at least 60 px apart) carry their label. */
+export function rulerTicks(v: View, width: number): Array<{ t: number; major: boolean; label?: string }> {
   const step = STEPS.find((s) => s * v.pps >= 60) ?? 60, minor = step / 5;
-  const out: Array<{ t: number; major: boolean }> = [];
+  const out: Array<{ t: number; major: boolean; label?: string }> = [];
   const t0 = Math.floor(v.scroll / minor) * minor, t1 = xToTime(width, v);
   for (let k = 0, t = t0; t <= t1 + 1e-9; k++, t = t0 + k * minor) {
     const r = Math.round(t * 1000) / 1000;
-    out.push({ t: r, major: Math.abs(r / step - Math.round(r / step)) < 1e-6 });
+    const major = Math.abs(r / step - Math.round(r / step)) < 1e-6;
+    out.push(major ? { t: r, major, label: rulerLabel(r, step) } : { t: r, major });
   }
   return out;
 }

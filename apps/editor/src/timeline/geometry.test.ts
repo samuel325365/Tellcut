@@ -1,6 +1,6 @@
 import { fixture } from '@tellcut/engine/test-fixture';
 import { resolveTimes } from '@tellcut/engine';
-import { COLLAPSED_H, ROW_H, ROW_H_MAX, fitHeights, layoutRows, maxScroll, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
+import { COLLAPSED_H, ROW_H, ROW_H_MAX, fitHeights, layoutRows, maxScroll, ppsFromZoom, rowAt, rulerLabel, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 
 test('visual tracks are listed top layer first, audio tracks after', () => {
   const rows = layoutRows(fixture());
@@ -25,6 +25,15 @@ test('ruler ticks are at least 60 px apart', () => {
   const majors = t.filter((x) => x.major).map((x) => x.t);
   expect(majors.slice(0, 3)).toEqual([0, 2, 4]);
   expect(t.filter((x) => !x.major && x.t < 2).length).toBe(4);
+});
+
+test('ruler labels stay whole seconds at normal zoom and tell sub-second steps apart at high zoom', () => {
+  const labels = (pps: number, scroll = 0, w = 400) => rulerTicks({ pps, scroll }, w).filter((x) => x.major).map((x) => x.label);
+  expect(labels(50).slice(0, 3)).toEqual(['0:00', '0:02', '0:04']);
+  expect(labels(400, 59, 600)).toEqual(['0:59', '0:59.25', '0:59.50', '0:59.75', '1:00', '1:00.25', '1:00.50']);   // the 0.25 s step
+  const close = labels(400, 0, 1000);
+  expect(new Set(close).size).toBe(close.length);
+  expect([rulerLabel(1.5, 0.5), rulerLabel(0.3, 0.1), rulerLabel(2, 0.5), rulerLabel(90, 10)]).toEqual(['0:01.5', '0:00.3', '0:02', '1:30']);
 });
 
 const withC3 = () => {
