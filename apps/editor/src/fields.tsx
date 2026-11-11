@@ -66,6 +66,23 @@ export function JsonField({ label, name, hint, value, onCommit }: { label: strin
   );
 }
 
+/** A `text` / `string` param a project's cut.ts gave as an array (common.routeboard's stops and legs, common.touch's touches,
+ *  common.flatlay's objects), as the box shows it: in the line syntax those blocks read, so the text parses back to the same
+ *  thing — an entry per line (`multiline`) or `, ` between entries, an entry's own fields joined by `|`, nothing for null like
+ *  Array.join. An entry that is an object (or nested deeper) has no line form: the whole list shows as JSON, which is what the
+ *  blocks taking objects read in their text. Only an edit stores the box's text; until then the array stays as it is. */
+export function arrayText(v: unknown[], multiline: boolean): string {
+  const flat = (x: unknown) => (x === null || x === undefined ? '' : typeof x === 'object' ? null : String(x));
+  const rows = v.map((x) => {
+    if (!Array.isArray(x)) return flat(x);
+    const fields = x.map(flat);
+    return fields.includes(null) ? null : fields.join('|');
+  });
+  if (rows.includes(null)) return multiline ? JSON.stringify(v, null, 2) : JSON.stringify(v);
+  return rows.join(multiline ? '\n' : ', ');
+}
+const textOf = (v: unknown, multiline: boolean) => (Array.isArray(v) ? arrayText(v, multiline) : (v as string));
+
 /** One field per ParamDef (spec §2.1: the panel is generated from the plugin's parameter definitions).
  *  `type`: the block / sound the definition belongs to, so its name can be translated; the gallery shows the name in the page's language,
  *  the properties panel (editor labels are always English) in English with the hint, in the page's language, as a tooltip. Without `type` the label is shown as written. */
@@ -77,8 +94,8 @@ export function ParamField({ def, value, project, type, surface = 'editor', onCo
   const field = (() => {
     switch (def.type) {
       case 'number': return <NumberField label={label} hint={hint} value={v as number} step={def.step ?? 0.01} min={def.min} max={def.max} onCommit={onCommit} />;
-      case 'string': return <TextField label={label} hint={hint} value={v as string} onCommit={onCommit} />;
-      case 'text': return <TextArea label={label} hint={hint} value={v as string} onCommit={onCommit} />;
+      case 'string': return <TextField label={label} hint={hint} value={textOf(v, false)} onCommit={onCommit} />;
+      case 'text': return <TextArea label={label} hint={hint} value={textOf(v, true)} onCommit={onCommit} />;
       case 'color': return <ColorField label={label} hint={hint} value={v as string} onCommit={onCommit} />;
       case 'bool': return <CheckField label={label} hint={hint} value={!!v} onCommit={onCommit} />;
       case 'enum': return <SelectField label={label} hint={hint} value={v as string} options={def.options.map((o) => [o, o])} onCommit={onCommit} />;
