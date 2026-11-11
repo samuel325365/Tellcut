@@ -510,3 +510,18 @@ test("a desk whose objects or fly can't be read is an error (the block would dra
   expect(errs({ objects: '[{"kind":"polaroid","at":0}]', fly: { index: 0, at: 1, dur: 1 } })).toEqual([]);
   expect(errs({})).toEqual([]);
 });
+
+test('a desk whose fly index names no object is an error (the block never flies, saying so only on the console)', () => {
+  const desk = (params: object) => project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'o', kind: 'overlay', items: [{ id: 'desk', start: 0, end: 6, type: 'common.flatlay', params }] }]);
+  const errs = (params: object) => modelChecks(desk(params), ok).filter((f) => f.level === 'error');
+  const two = JSON.stringify([{ kind: 'polaroid', at: 0 }, { kind: 'postcard', at: 0.5 }]);
+  const [f, ...more] = errs({ objects: two, fly: { index: 2, at: 1, dur: 1 } });
+  expect(more).toEqual([]);
+  expect(f.ids).toEqual(['desk']);
+  expect(f.msg).toContain('第 2 樣');
+  expect(f.msg).toContain('只有 2 樣');
+  expect(errs({ objects: two, fly: '{"index":1,"at":1,"dur":1}' })).toEqual([]);
+  // no objects list: the one object kind names is index 0
+  expect(errs({ fly: { index: 1, at: 1, dur: 1 } }).length).toBe(1);
+  expect(errs({ fly: { index: 0, at: 1, dur: 1 } })).toEqual([]);
+});

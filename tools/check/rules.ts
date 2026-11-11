@@ -302,17 +302,20 @@ export function flatlayHandOff(p: Project): Finding[] {
   });
 }
 
-/** common.flatlay's objects and fly as written: JSON it cannot read draws only the one object `kind` names, or never flies, and the
- *  block itself says so only on the browser's console */
+/** common.flatlay's objects and fly as written: JSON it cannot read draws only the one object `kind` names, or never flies, and a fly
+ *  whose index names no object never flies either; the block itself says so only on the browser's console */
 export function flatlayParamErrors(p: Project): Finding[] {
   const times = resolveTimes(p);
   return allItems(p).flatMap(({ item }): Finding[] => {
     const it = item as { id: string; type?: string; params?: Record<string, unknown> };
     if (it.type !== 'common.flatlay') return [];
     const t = times.get(it.id)!, at: [number, number] = [r3(t.start), r3(t.end)], out: Finding[] = [];
-    const objs = parseObjects(it.params ?? {}, p.meta.width, p.meta.height, t.end - t.start).error, fly = readFly(it.params?.fly).error;
-    if (objs) out.push({ level: 'error', t: at, ids: [it.id], msg: `common.flatlay（${it.id}）的 objects 讀不懂（${objs}），桌上只會有 kind 那一樣東西：改成 JSON 陣列` });
+    const objs = parseObjects(it.params ?? {}, p.meta.width, p.meta.height, t.end - t.start), read = readFly(it.params?.fly), fly = read.error;
+    if (objs.error) out.push({ level: 'error', t: at, ids: [it.id], msg: `common.flatlay（${it.id}）的 objects 讀不懂（${objs.error}），桌上只會有 kind 那一樣東西：改成 JSON 陣列` });
     if (fly) out.push({ level: 'error', t: at, ids: [it.id], msg: `common.flatlay（${it.id}）的 fly 讀不懂（${fly}），不會飛進照片：改成 { index, at, dur } 的 JSON` });
+    else if (read.fly && read.fly.index >= objs.objs.length) {
+      out.push({ level: 'error', t: at, ids: [it.id], msg: `common.flatlay（${it.id}）的 fly 指到第 ${read.fly.index} 樣東西，桌上只有 ${objs.objs.length} 樣（0 起算到 ${objs.objs.length - 1}），不會飛進照片：改 fly 的 index` });
+    }
     return out;
   });
 }
