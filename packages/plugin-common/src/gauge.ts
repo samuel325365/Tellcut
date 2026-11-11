@@ -2,7 +2,8 @@
 // along the band, a needle on a spring that jumps at every hit, an LED readout, the zone's name under it, a halo that turns into
 // devil horns, warning lamps, and a "blown" ending (the needle slams past the end, the glass cracks). Promoted from the
 // baking-sin short's fx.sinMeter; the score, the zone names and the hits are all params. `readout` puts words (a rank, No.1) in the
-// LED instead of the number; look 'neutral' turns the guilt-meter defaults (sin zones, halo, alarm, blow-up) into a plain gauge.
+// LED instead of the number. look 'neutral' (the default: a gauge dropped in should not read as a sin meter) turns the guilt-meter
+// defaults (sin zones, halo, alarm, blow-up) into a plain gauge; look 'guilt' keeps them.
 import { clamp, cssCamel, h, hash01, type ItemType, prog, textEm } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { isLight, mixHex, withAlpha } from './color.ts';
@@ -25,8 +26,8 @@ export const parseHits = (s: string): Array<[number, number]> => String(s ?? '')
 
 /** look 'neutral': four equal zones of `max` with no names (the colour ramp only), no halo, no alarm, no blow-up */
 export const neutralOf = (max: number) => ({ zones: [0, 0.25, 0.5, 0.75].map((q) => `${+(q * (max || 100)).toFixed(2)}:`).join(', '), halo: false, danger: -1, boom: -1 });
-/** the guilt meter's zones in Chinese (the default), English and Japanese: the editor writes the UI language's words into a gauge
- *  added in the English or Japanese UI (apps/editor/src/i18n/values.*.ts, kept the same by apps/editor/src/i18n/gauge-values.test.ts), and those are still the
+/** the guilt meter's zones in Chinese (the zones param's default, drawn as they are only with look guilt), English and Japanese:
+ *  the editor writes the UI language's words into a gauge added in the English or Japanese UI (apps/editor/src/i18n/values.*.ts, kept the same by apps/editor/src/i18n/gauge-values.test.ts), and those are still the
  *  guilt default, not zones the user chose */
 export const GUILT_ZONES = ['0:清白, 20:小確幸, 40:有點罪, 60:罪孽深重, 85:地獄級', '0:Clean, 20:Treat, 40:Naughty, 60:Sinful, 85:Hell', '0:潔白, 20:小さな幸せ, 40:ちょい罪, 60:罪深い, 85:地獄'];
 const squash = (v: unknown) => String(v ?? '').replace(/\s+/g, '');
@@ -86,7 +87,7 @@ export function gaugeBox(p: Pick<P, 'x' | 'y' | 'size'>, W: number, H: number, s
 
 export const gauge: ItemType<P, S> = {
   type: 'common.gauge', label: '儀表計量表', category: 'number', kind: 'overlay',
-  doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；readout 讓 LED 顯示字而不是數字（名次 No.1、一個詞；逗號分開就每筆加分換下一個，{v}＝目前分數）；預設是「罪惡指數」的樣子（清白…地獄級的色區、光環、警報、爆表），要中性的量表用 look: neutral（色區只留顏色不寫名稱、沒有光環、警報、爆表；自己給的 zones、halo、danger、boom 照樣算），或自己給 zones 並設 halo: false、danger: -1、boom: -1；罪惡指數、辣度、心動指數、熱度、分數、名次',
+  doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；readout 讓 LED 顯示字而不是數字（名次 No.1、一個詞；逗號分開就每筆加分換下一個，{v}＝目前分數）；預設 look: neutral 是中性的量表（色區只留顏色不寫名稱、沒有光環、警報、爆表；自己給的 zones、halo、danger、boom 照樣算，例如自己給 zones 就有色區名稱）；要「罪惡指數」的樣子（清白…地獄級的色區、光環、警報、爆表）用 look: guilt；guilt 下不要這些就自己給 zones 並設 halo: false、danger: -1、boom: -1；罪惡指數、辣度、心動指數、熱度、分數、名次',
   params: [
     { key: 'hits', label: '加分（秒:分數，逗號分隔）', type: 'text', default: '0.3:12, 0.7:15, 1.1:20, 1.5:26, 1.9:24' },
     { key: 'zones', label: '色區（起點:名稱[:顏色]，逗號分隔）', type: 'text', default: GUILT_ZONES[0] },
@@ -112,7 +113,7 @@ export const gauge: ItemType<P, S> = {
     { key: 'hl', label: '光環與低分色', type: 'color', default: '#ffc94a', theme: 'palette.hl' },
     { key: 'led', label: 'LED 顏色', type: 'color', default: '#ffb13b' },
     { key: 'readout', label: 'LED 顯示的字（空＝數字；一個詞一直顯示，逗號分開就第 n 筆加分後顯示第 n 個；{v}＝目前分數；顯示字時不加單位）', type: 'string', default: '' },
-    { key: 'look', label: '樣子（guilt 罪惡指數：預設色區、光環、警報、爆表；neutral 中性：沒自己設定的 zones、halo、danger、boom 換成只有顏色的色區、不要光環、警報、爆表）', type: 'enum', options: ['guilt', 'neutral'], default: 'guilt' },
+    { key: 'look', label: '樣子（neutral 中性：沒自己設定的 zones、halo、danger、boom 換成只有顏色的色區、不要光環、警報、爆表；guilt 罪惡指數：預設色區、光環、警報、爆表）', type: 'enum', options: ['guilt', 'neutral'], default: 'neutral' },
   ],
   build(ctx) {
     const box = h('div', null, null, ctx.root), cv = h('canvas', null, null, box);

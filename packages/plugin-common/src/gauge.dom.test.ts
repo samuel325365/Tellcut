@@ -40,7 +40,9 @@ test('a readout in words is shown in the LED, the unit is not; it changes at eac
 test('look neutral: no guilt zone names on the band or under the readout', () => {
   const shown = drawn({ look: 'neutral' }, 2.6);
   for (const w of ['清', '地', '超越地獄', '爆表']) expect(shown).not.toContain(w);
-  expect(drawn({}, 2.6).join('')).toMatch(/清/);
+  // neutral is the default; the sin meter is look guilt
+  expect(drawn({}, 2.6).join('')).not.toMatch(/清/);
+  expect(drawn({ look: 'guilt' }, 2.6).join('')).toMatch(/清/);
 });
 
 test('the boom word shrinks to the LED window like a readout in words (a long one ran past the housing); a short one keeps 78', () => {

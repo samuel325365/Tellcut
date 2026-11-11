@@ -12,9 +12,10 @@ test('readout: empty keeps the number; one word stays; several change at each hi
   expect(readoutText('{v} 分', 3, 27)).toBe('27 分');
 });
 
-test('look guilt (the default) keeps every param; neutral swaps only the guilt defaults the item did not set itself', () => {
-  expect(P.look).toBe('guilt');
-  expect(gaugeLook(P)).toBe(P);
+test('look guilt keeps every param; neutral (the default) swaps only the guilt defaults the item did not set itself', () => {
+  expect(P.look).toBe('neutral');
+  const G = { ...P, look: 'guilt' };
+  expect(gaugeLook(G)).toBe(G);
   const n = gaugeLook({ ...P, look: 'neutral' });
   expect([n.zones, n.halo, n.danger, n.boom]).toEqual(['0:, 25:, 50:, 75:', false, -1, -1]);
   expect(gaugeLook({ ...P, look: 'neutral', max: 40 }).zones).toBe(neutralOf(40).zones);
@@ -25,6 +26,7 @@ test('look guilt (the default) keeps every param; neutral swaps only the guilt d
 
 test('the doc says how to make a neutral gauge and that the readout can be words', () => {
   expect(gauge.doc).toMatch(/look: neutral/);
+  expect(gauge.doc).toMatch(/look: guilt/);
   expect(gauge.doc).toMatch(/halo: false、danger: -1、boom: -1/);
   expect(gauge.doc).toMatch(/readout/);
 });
@@ -35,7 +37,7 @@ test('neutral: the guilt zones the English or Japanese UI writes into the item c
   for (const zones of GUILT_ZONES) expect(gaugeLook({ ...P, zones, look: 'neutral' }, { zones }).zones).toBe(neutralOf(100).zones);
   expect(gaugeLook({ ...P, zones: '0:Clean,20:Treat,40:Naughty,60:Sinful,85:Hell', look: 'neutral' }, { zones: '0:Clean,20:Treat,40:Naughty,60:Sinful,85:Hell' }).zones).toBe(neutralOf(100).zones);
   // a guilt look keeps them, and zones of the item's own stay in neutral
-  expect(gaugeLook({ ...P, zones: GUILT_ZONES[1] }, { zones: GUILT_ZONES[1] }).zones).toBe(GUILT_ZONES[1]);
+  expect(gaugeLook({ ...P, look: 'guilt', zones: GUILT_ZONES[1] }, { zones: GUILT_ZONES[1] }).zones).toBe(GUILT_ZONES[1]);
   expect(gaugeLook({ ...P, zones: '0:Mild, 50:Hot', look: 'neutral' }, { zones: '0:Mild, 50:Hot' }).zones).toBe('0:Mild, 50:Hot');
 });
 
