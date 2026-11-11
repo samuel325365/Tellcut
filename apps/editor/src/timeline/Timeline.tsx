@@ -13,7 +13,7 @@ import { t } from '../i18n/index.ts';
 import { trackLabel } from '../trackNames.ts';
 import { getLang } from '../i18n/lang.ts';
 import { itemLook, itemName } from './names.ts';
-import type { GestureCtx } from './gestures/follow.ts';
+import { follow, type GestureCtx } from './gestures/follow.ts';
 import { startTransitionDrag, watchOverlapClick } from './gestures/transition.ts';
 import { startEnvelopeDrag } from './gestures/envelope.ts';
 import { startItemDrag } from './gestures/item.ts';
@@ -156,9 +156,8 @@ export function Timeline({ editor }: { editor: Editor }) {
   const scrubFrom = (e: MouseEvent) => {
     if (e.button !== 0) return;
     editor.seek(tAt(e.clientX));
-    const move = (m: MouseEvent) => editor.seek(tAt(m.clientX));
-    const up = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', up); };
-    addEventListener('mousemove', move); addEventListener('mouseup', up);
+    // like the other gestures, it also ends on a release it never saw (Alt+Tab mid-scrub)
+    follow((m) => editor.seek(tAt(m.clientX)), () => {});
   };
 
   const [marquee, setMarquee] = useState<Marquee | null>(null);

@@ -537,6 +537,23 @@ test('the playhead head drags the playhead', async () => {
   expect(calls.filter((c) => c[0] === 'seek').at(-1)![1]).toBeCloseTo(3);
 });
 
+test('a ruler scrub ends when the window loses focus or a move finds the button released', async () => {
+  const { root, editor, calls } = mount();
+  await act(() => render(<Timeline editor={editor} />, root));
+  const ruler = root.querySelector<HTMLElement>('[data-ruler]')!;
+  const seeks = () => calls.filter((c) => c[0] === 'seek').length;
+  ruler.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 176 + 100 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 176 + 150 }));
+  expect(seeks()).toBe(2);
+  window.dispatchEvent(new Event('blur'));                                          // Alt+Tab, released elsewhere
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 0, clientX: 176 + 200 }));
+  expect(seeks()).toBe(2);
+  ruler.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 176 + 100 }));
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 0, clientX: 176 + 200 }));   // released outside the window
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: 176 + 250 }));
+  expect(seeks()).toBe(3);
+});
+
 test('track headers: eye on picture tracks, speaker on sound tracks, a lock on every track; the delete and magnet buttons are off while locked', async () => {
   const { root, editor } = mount({ locked: ['v'] });
   const calls: any[] = [];
