@@ -12,6 +12,8 @@ export const ja: Record<Key, string> = {
   'home.gallery': 'ブロック図鑑',
   'home.galleryDesc': '全ブロックを見て、聴いて、試せます',
   'home.projects': 'プロジェクト',
+  'home.projectsFail': 'プロジェクト一覧を読み込めませんでした：{err}',
+  'home.presetsFail': 'プリセットを読み込めませんでした：{err}',
   'home.shape.portrait': '縦',
   'home.shape.landscape': '横',
   'home.shape.square': '正方形',

@@ -11,6 +11,8 @@ export const zh = {
   'home.gallery': '積木圖鑑',
   'home.galleryDesc': '看、聽、試每個積木',
   'home.projects': '專案',
+  'home.projectsFail': '讀不到專案清單：{err}',
+  'home.presetsFail': '讀不到片型：{err}',
   'home.shape.portrait': '直式',
   'home.shape.landscape': '橫式',
   'home.shape.square': '方形',

@@ -13,7 +13,7 @@ import { PresetStrip } from './PresetStrip.tsx';
 import { PresetDialog } from './PresetDialog.tsx';
 import { BrokenPresets, NewPresetDialog, type PresetApi } from './presets/MinePreset.tsx';
 import { pickText, type BrokenPresetInfo, type ChatTask, type Lang, type PresetInfo } from '@tellcut/protocol';
-import { t } from './i18n/index.ts';
+import { errText, t } from './i18n/index.ts';
 import { useLang } from './i18n/lang.ts';
 import { LangSwitch } from './LangSwitch.tsx';
 
@@ -75,7 +75,9 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   const [picked, setPicked] = useState<{ id: string; styles: string[]; fields: Record<string, string> } | null>(null), [info, setInfo] = useState<string | null>(null);
   // a preset's style examples picked in its dialog go into the chat box once (they are only words there, not part of the preset)
   const [append, setAppend] = useState<{ text: string; n: number }>({ text: '', n: 0 });
-  const loadPresets = () => api.presets?.().then((r) => { setPresets(r.presets); setBroken(r.broken ?? []); }, () => {});
+  // a list that could not be read says so: an empty one looked like "no projects" / no presets
+  const [projectsErr, setProjectsErr] = useState(''), [presetsErr, setPresetsErr] = useState('');
+  const loadPresets = () => api.presets?.().then((r) => { setPresets(r.presets); setBroken(r.broken ?? []); setPresetsErr(''); }, (e) => setPresetsErr(errText(e)));
   useEffect(() => { void loadPresets(); }, [api]);
   const pickedInfo = picked ? presets.find((p) => p.id === picked.id) : undefined, infoOf = info ? presets.find((p) => p.id === info) : undefined;
   const presetNames = useMemo(() => Object.fromEntries(presets.map((p) => [p.id, pickText(p.name, lang) ?? p.id])), [presets, lang]);
@@ -93,10 +95,10 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
   }, [api, thread, draft]);
   /** the project list; false when the chosen project is gone (deleted): 主頁 then, its conversation never asked for (a 404) */
   const loadProjects = () => api.projects().then((ps) => {
-    setProjects(ps);
+    setProjects(ps); setProjectsErr('');
     if (thread !== 'home' && !ps.some((p) => p.id === thread)) { pick('home'); return false; }
     return true;
-  }).catch(() => true);
+  }).catch((e) => { setProjectsErr(errText(e)); return true; });
   useEffect(() => {
     session.onTurnEnd = () => { void loadProjects(); if (thread === 'home') sendPending(session); };   // a project the chat created shows up; a handed-over request waiting for the reply goes
     session.onProject = () => { void loadProjects(); };   // as soon as `new` made it, while the agent goes on working in it
@@ -119,6 +121,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
           <a class="gallery-link" href="?gallery" data-gallery-link><IconSpark size={17} /><span>{t('home.gallery')}<small>{t('home.galleryDesc')}</small></span></a>
         </nav>
         <h4>{t('home.projects')}<small>{projects.length || ''}</small></h4>
+        {projectsErr && <p class="side-err" data-projects-error role="alert">{t('home.projectsFail', { err: projectsErr })}</p>}
         <ul>{projects.map((p) => <Card p={p} onDelete={() => setDeleting(p)} />)}</ul>
       </aside>
       <main class="home-main">
@@ -137,6 +140,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
         <ChatPanel key={thread} session={session}
           hint={thread === 'home' ? t('home.hint') : t('home.chatOf', { name: title })}
           welcome={thread === 'home' ? { title: t('home.welcome'), below: <><PresetStrip presets={presets} picked={picked?.id ?? null} onOpen={setInfo} onNew={typeof api.savePreset === 'function' ? () => setCreating(true) : undefined} />
+            {presetsErr && <p class="note err" data-presets-error>{t('home.presetsFail', { err: presetsErr })}</p>}
             {typeof api.deletePreset === 'function' && <BrokenPresets broken={broken} api={api as PresetApi} onGone={() => void loadPresets()} />}</> } : undefined}
           preset={thread === 'home' && pickedInfo ? { info: pickedInfo, styles: picked!.styles, fields: picked!.fields } : null} onClearPreset={() => { setPicked(null); void session.presetSources([]); }} presetNames={presetNames} append={append}
           attachments={atts} onAttach={() => setImporting(true)} onDetach={(i) => setAtts(atts.filter((_, k) => k !== i))} onSent={() => { setAtts([]); setPicked(null); session.keepPresetSources(); }} />

@@ -12,6 +12,8 @@ export const en: Record<Key, string> = {
   'home.gallery': 'Block gallery',
   'home.galleryDesc': 'See, hear and try every block',
   'home.projects': 'Projects',
+  'home.projectsFail': 'Could not read the project list: {err}',
+  'home.presetsFail': 'Could not read the presets: {err}',
   'home.shape.portrait': 'Vertical',
   'home.shape.landscape': 'Horizontal',
   'home.shape.square': 'Square',

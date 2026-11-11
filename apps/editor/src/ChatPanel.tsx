@@ -7,7 +7,7 @@ import { pickText, type Lang, type PresetInfo } from '@tellcut/protocol';
 import type { ChatMessage, ChatSession, ChatTool, Usage } from './chat.ts';
 import { renderMarkdown } from './markdown.tsx';
 import { withAttachments, type Attachment } from './attachments.ts';
-import { listJoin, t, tn, uiLabel } from './i18n/index.ts';
+import { errText, listJoin, t, tn, uiLabel } from './i18n/index.ts';
 import { composing } from './keys.ts';
 import { getLang, useLang } from './i18n/lang.ts';
 import { analysisText, chatErrorText, noticeText, toolText } from './i18n/format.ts';
@@ -122,7 +122,7 @@ export function ChatPanel({ session, surface = 'home', hint, welcome, attachment
   useEffect(() => {
     if (!session.picksSources || (rows && !picking)) return;
     let gone = false;
-    session.listSources().then((r) => { if (!gone) { setRows(r.sources); setRowsError(''); } }, (e: Error) => { if (!gone) setRowsError(e.message); });
+    session.listSources().then((r) => { if (!gone) { setRows(r.sources); setRowsError(''); } }, (e: Error) => { if (!gone) setRowsError(errText(e)); });
     return () => { gone = true; };
   }, [session, picking, reload]);
   const picked = s.sources ?? [], pickedNames = picked.map((id) => sourceName(id, rows?.find((r) => r.id === id)?.label, surface));

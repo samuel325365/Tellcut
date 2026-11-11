@@ -318,10 +318,10 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   // the name is cleared once the confirmation opened (one-shot: a detail mounted again later must not reopen it)
   const [del, setDel] = useState<{ name: string; n: number }>({ name: '', n: 0 });
   const asked = () => setDel((d) => ({ name: '', n: d.n }));
-  useEffect(() => { load().then(setG, (e: Error) => setErr(e.message)); }, []);
+  useEffect(() => { load().then(setG, (e: Error) => setErr(errText(e))); }, []);
   // My blocks: loaded alongside, again after a rename or delete; a failure leaves Mine empty (with its note) rather than the page broken
   const [lib, setLib] = useState<LibraryIndex | null>(null), [libErr, setLibErr] = useState('');
-  const reloadLib = () => library?.load().then((x) => { setLib(x); setLibErr(''); }, (e: Error) => { setLib({ blocks: [], styles: [] }); setLibErr(e.message); });
+  const reloadLib = () => library?.load().then((x) => { setLib(x); setLibErr(''); }, (e: Error) => { setLib({ blocks: [], styles: [] }); setLibErr(errText(e)); });
   useEffect(() => { void reloadLib(); }, []);
   // the project it was opened from: its own blocks; a failure says so above them and leaves the rest of the page as it is
   const [own, setOwn] = useState<OwnProject | null>(null), [ownErr, setOwnErr] = useState('');

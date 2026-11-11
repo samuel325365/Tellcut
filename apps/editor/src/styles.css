@@ -390,6 +390,7 @@ body.lib-dragging iframe { pointer-events: none; }
 .home-side .gallery-link:hover, .home-side .gallery-link:focus-visible { background: var(--s-sel); outline: none; }
 .home-side h4 { display: flex; align-items: baseline; gap: 8px; margin: 6px 10px 8px; color: var(--s-faint); font-size: 12.5px; font-weight: 500; letter-spacing: .04em; }
 .home-side h4 small { font-size: 12px; color: var(--s-faint); font-variant-numeric: tabular-nums; }
+.home-side .side-err { margin: 0 10px 8px; color: var(--h-err); font-size: 12.5px; }
 .home-side ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .home-side li { position: relative; }
 .home-side .card { display: flex; align-items: center; gap: 12px; padding: 7px 40px 7px 8px; border-radius: 12px; color: var(--s-text); text-decoration: none; transition: background .12s; }

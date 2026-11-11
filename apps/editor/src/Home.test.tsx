@@ -578,3 +578,19 @@ test('a preset of the user’s own that no longer reads gets a line under the st
   expect(deleted).toEqual(['my-old']);
   expect(root.querySelector('[data-preset-broken]')).toBeNull();
 });
+
+test('a project list or preset list that cannot be read says so, in the page language (EP14)', async () => {
+  setLang('en');
+  try {
+    const a = api();
+    a.projects = async () => { throw new TypeError('Failed to fetch'); };
+    a.presets = async () => { throw new ApiError(409, '還在回覆中', [], 'chat.busy'); };   // any coded error: worded by the page
+    const root = document.createElement('div');
+    await act(() => render(<Home api={a} />, root));
+    await settle(); await settle();
+    expect(root.querySelector('[data-projects-error]')!.textContent).toBe(DICTS.en['home.projectsFail'].replace('{err}', 'Failed to fetch'));
+    const note = root.querySelector('[data-presets-error]')!.textContent!;
+    expect(note).toContain(DICTS.en['err.chat.busy']);
+    expect(note).not.toMatch(/[一-鿿]/);
+  } finally { setLang('zh'); }
+});
