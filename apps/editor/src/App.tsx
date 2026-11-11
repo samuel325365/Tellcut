@@ -21,6 +21,7 @@ import { arrangementOf, gridFor, previewWFromX, sideWFromX, sideWidth, sizePatch
 import type { Editor } from './editor.ts';
 import type { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
+import { useLang } from './i18n/lang.ts';
 import { galleryUrl } from './gallery-link.ts';
 import { guardFileDrops } from './media/file-drop.ts';
 
@@ -101,6 +102,7 @@ export function App({ editor, bridge }: { editor: Editor; bridge: PlayerBridge }
   // (it would also rewrite every input under the cursor 60×/s)
   const s = useStoreSelector(editor.store, (x) => x, equalIgnoring<EditorState>(['playhead', 'level']));
   const root = useRef<HTMLDivElement>(null), view = useViewSize();
+  useLang();   // a language switch (here or in another tab) re-renders the whole editor at once
   // unmounted: an import under way stops with it (editor.close)
   useEffect(() => { void editor.open(); return () => editor.close(); }, [editor]);
   // a file from this PC let go where nothing takes it would replace the editor with the file

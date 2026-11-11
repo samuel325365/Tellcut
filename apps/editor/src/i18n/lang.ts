@@ -40,6 +40,17 @@ export function setLang(l: Lang): void {
 /** called once at start: the page's lang attribute follows the stored language */
 export function initDocumentLang(): void { markDocument(getLang()); }
 
+// a switch made in another tab (the home page beside an open editor) reaches this one through the storage event: else the
+// editor's texts changed piece by piece as parts happened to re-render, while its messages went out in the new language at once
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== LANG_KEY && e.key !== null) return;   // null: the storage was cleared
+    const l = getLang();
+    markDocument(l);
+    for (const f of [...listeners]) f(l);
+  });
+}
+
 export function onLang(f: (l: Lang) => void): () => void {
   listeners.add(f);
   return () => { listeners.delete(f); };

@@ -190,6 +190,16 @@ test('the toolbar has a home button; the side panel has a chat tab', async () =>
   expect(ed.store.get().layout.sideTab).toBe('chat');
 });
 
+test('a language switched in another tab re-words the editor at once (EP17)', async () => {
+  setLang('zh');
+  const { root } = await mountApp(1080, 1920);
+  try {
+    localStorage.setItem('tellcut.lang', 'en');
+    await act(() => { window.dispatchEvent(new StorageEvent('storage', { key: 'tellcut.lang', newValue: 'en' })); });
+    expect(root.querySelector('[data-help]')!.getAttribute('data-tip')).toBe('Help and shortcuts (? or F1)');
+  } finally { await act(() => render(null, root)); setLang('zh'); }
+});
+
 test("the editor's labels are English in every language; the tooltips follow the language", async () => {
   const labels = async (lang: 'zh' | 'en' | 'ja') => {
     setLang(lang);

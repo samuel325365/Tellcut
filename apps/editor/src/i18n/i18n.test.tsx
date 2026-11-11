@@ -23,6 +23,16 @@ describe('i18n', () => {
     expect(defaultLang({})).toBe('en');
   });
 
+  it('a switch made in another tab is heard here: listeners are told and <html lang> follows (EP17)', () => {
+    const heard: string[] = [], off = onLang((l) => heard.push(l));
+    try {
+      localStorage.setItem(LANG_KEY, 'ja');                     // what the other tab wrote
+      window.dispatchEvent(new StorageEvent('storage', { key: LANG_KEY, newValue: 'ja' }));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'tellcut.layout', newValue: '{}' }));   // another key: nothing
+      expect([heard, document.documentElement.lang]).toEqual([['ja'], 'ja']);
+    } finally { off(); }
+  });
+
   it("a blocked or odd stored language falls back to the browser's", () => {
     localStorage.setItem(LANG_KEY, 'fr');
     expect(getLang()).toBe(defaultLang());
