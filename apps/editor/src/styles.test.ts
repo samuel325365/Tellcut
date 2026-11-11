@@ -68,9 +68,10 @@ test('every rule that paints the accent as a background sets the matching on-acc
   const rules = css.split('}').filter((r) => /background:\s*var\(--(s-accent|s-grad|accent|h-accent)\)/.test(r) && /(button|\.on\b|primary|picked|aria-selected|\.mark|\.logo)/.test(r) && !/::(after|before)/.test(r));   // a dot or a bar has no text
   expect(rules.length).toBeGreaterThan(8);
   expect(rules.filter((r) => !/color:\s*var\(--(s-|h-)?on-accent\)/.test(r)).map((r) => r.trim().slice(0, 70))).toEqual([]);
-  // the small counts inside a picked segment or page read on the accent too
-  for (const sel of ['.library .lib-pages button[aria-selected="true"] small', '.library .seg.picked small'])
-    expect(css).toContain(`${sel} { color: var(--on-accent)`);
+  // the small count inside a picked page reads on the accent too; a picked scene card keeps its picture and is ringed in the accent
+  // instead (its times sit on their own dark chips over the picture)
+  expect(css).toContain('.library .lib-pages button[aria-selected="true"] small { color: var(--on-accent)');
+  expect(css).toContain('.library .segs button.seg.picked { background: #0d0c0b; outline: 2px solid var(--accent)');
 });
 test('the playhead has a dark edge, so it reads on brown clips and bright thumbnails', () => {
   expect(/\.playhead \{[^}]*box-shadow:[^}]*rgba\(0,\s*0,\s*0/.test(css)).toBe(true);

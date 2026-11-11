@@ -95,7 +95,9 @@ export function Timeline({ editor }: { editor: Editor }) {
     const t = Math.max(0, tAt(cx)), tr = tracksEl.current?.getBoundingClientRect(), rr = rowsEl.current?.getBoundingClientRect();
     if (!tr || !rr || cx < left() || cx > tr.right || cy < tr.top || cy > tr.bottom) return { t, row: null };
     const kind = dragged ?? editor.store.get().libDrag?.kind, sound = kind === 'music' || kind === 'sfx';
-    if (sound ? cy > tr.bottom - NEW_STRIP_H : cy < tr.top + NEW_STRIP_H) return { t, row: 'new' };
+    // where the strip is drawn (under short rows it is not at the bottom edge); before it is drawn, the edge of the track area
+    const strip = tracksEl.current?.querySelector('[data-drop-new]')?.getBoundingClientRect();
+    if (strip && strip.height > 0 ? cy >= strip.top && cy <= strip.bottom : sound ? cy > tr.bottom - NEW_STRIP_H : cy < tr.top + NEW_STRIP_H) return { t, row: 'new' };
     const r = rowAt(rowsRef.current, cy - rr.top);
     return { t, row: r ? r.track.id : null };
   };

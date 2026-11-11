@@ -155,7 +155,10 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .export-panel a { color: var(--accent); } .export-panel .history { padding-left: 16px; margin: 4px 0; } .export-panel h4 { margin: 12px 0 4px; color: var(--dim); }
 .toolbar select { font: inherit; color: var(--text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 6px; padding: 3px 6px; }
 .timeline > .ruler { flex: none; }
-.timeline > .tracks { flex: 1; min-height: 0; position: relative; overflow-x: hidden; overflow-y: auto; }
+.timeline > .tracks { flex: 1; min-height: 0; position: relative; overflow-x: hidden; overflow-y: auto; display: flex; flex-direction: column; }
+.timeline > .tracks > * { flex: none; }
+/* the bottom "+ New track" strip at the bottom of the visible track area even when the rows are short (or there are none) */
+.timeline > .tracks > .drop-new-wrap.bottom { margin-top: auto; }
 .item .overlap { position: absolute; top: 0; bottom: 0; z-index: 1; cursor: pointer; background: repeating-linear-gradient(135deg, rgba(255,255,255,.35) 0 4px, transparent 4px 8px); background-size: var(--w, 100%) 100%; background-repeat: no-repeat; border-left: 1px dashed rgba(255,255,255,.6); box-sizing: border-box; }
 .item .overlap.inert { cursor: default; }
 /* the bar under the tracks: zoom slider (under the track names) + horizontal scrollbar (under the lanes) */

@@ -73,7 +73,7 @@ test('Import in the media panel adds footage and music that analyse in the backg
   await poll(() => page.locator('[data-add-source="more"]').count()).toBeGreaterThan(0);
   await poll(() => disk().sources.more?.kind).toBe('video');
   expect(disk().media.beat.path).toBe('../_more/beat.wav');
-  await poll(() => page.locator('[data-add-source="more"] .seg-thumb').count(), 120000).toBeGreaterThan(0);
+  await poll(() => page.locator('[data-add-source="more"] .seg-pic').count(), 120000).toBeGreaterThan(0);
   await poll(() => page.locator('[data-add-music="beat"]').textContent(), 120000).toContain('BPM');
   await page.reload();
   await page.waitForSelector('[data-player="ready"]', { timeout: 60000 });
@@ -99,6 +99,6 @@ test('footage whose analysis failed says so in the media panel, is not run again
   rmSync(file);
   await makeSource(file);
   await failed.locator('[data-retry-analysis]').click();
-  await poll(() => page.locator('[data-add-source="s1"] .seg-thumb').count(), 120000).toBeGreaterThan(0);
+  await poll(() => page.locator('[data-add-source="s1"] .seg-pic').count(), 120000).toBeGreaterThan(0);
   expect(await failed.count()).toBe(0);
 }, 300000);

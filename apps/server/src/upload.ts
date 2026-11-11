@@ -3,7 +3,7 @@
 // when taken), keeping its modified time so analysis shares its results with another project that has the same file. `check` asks
 // first whether the project already has each one (same name, size and time: the project's own files and what media/import holds),
 // so dropping a file twice adds it once and sends nothing. The editor then imports the paths given back, the way Import does.
-import { closeSync, createWriteStream, existsSync, mkdirSync, openSync, readdirSync, renameSync, statSync, unlinkSync, utimesSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, openSync, readdirSync, renameSync, statSync, unlinkSync, utimesSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { mediaKindOfName } from '@tellcut/protocol';
@@ -69,7 +69,7 @@ export function uploadRoutes(r: Router, store: ProjectStore, holds?: ProjectHold
         await pipeline(req, createWriteStream('', { fd }));
         renameSync(part, file);
       } catch (e) {
-        try { closeSync(fd); } catch { /* the stream closed it */ }
+        // the write stream owns the handle and has closed it already: closing it here could close another file now given that number
         try { unlinkSync(part); } catch { /* already gone */ }
         if (req.destroyed && !req.complete) return;   // the page went away mid-file: nobody to answer
         throw e;

@@ -114,3 +114,19 @@ test('placeImported: the target track was deleted meanwhile → the first open t
   expect(n.of('n1').track).toBe(n.of('n2').track);
   expect(['v', 'v2']).not.toContain(n.of('n1').track);
 });
+
+test('placeImported: what fits nowhere is left off and returned; a normal track that runs out goes on to a new track, not the main one', () => {
+  // let go past the end of the film on a normal track: no track takes it there (new tracks end with the film too)
+  let p: any = project(); p.sources.n1 = { path: 'n1.mp4', duration: 3 };
+  let d = structuredClone(p);
+  expect(placeImported(d, ['n1'], { t: 25, row: 'v2' }, IMPORTED)).toEqual(['n1']);
+  expect(d.tracks.flatMap((x: any) => x.items).some((i: any) => i.source === 'n1')).toBe(false);
+  // two clips at the end of a normal track: the first fills it to the end of the film, the second is not pushed into the main track
+  p = project(); p.sources.n1 = { path: 'n1.mp4', duration: 3 }; p.sources.n2 = { path: 'n2.mp4', duration: 2 };
+  d = structuredClone(p);
+  const end = p.meta.duration;
+  expect(placeImported(d, ['n1', 'n2'], { t: end - 1, row: 'v2' }, IMPORTED)).toEqual([]);
+  expect(d.tracks.find((x: any) => x.id === 'v').items.map((i: any) => i.id)).toEqual(['c1', 'c2']);
+  const n2 = d.tracks.find((x: any) => x.items.some((i: any) => i.source === 'n2'));
+  expect([n2.kind, ['v', 'v2'].includes(n2.id)]).toEqual(['video', false]);   // a new video track, at the drop point
+});

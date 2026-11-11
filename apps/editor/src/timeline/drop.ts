@@ -59,21 +59,24 @@ const TIE = 1e-4;
  *  video, a 3 s photo or the whole sound (`lengths`, else 10 s), from the drop point on, inside the recipe that adds them (one undo
  *  step). On the magnetic track they all go in at the drop point, packed one after another there; on any other track each follows
  *  the one before. One the target track does not take (another kind, locked, gone) goes on the first open track of its kind, or on
- *  a new one; "+ New track" makes one track per kind for all of them. No snapping: the pointer let go long before. */
-export function placeImported(d: Project, ids: string[], at: DropTarget, c: { locked: ReadonlySet<string>; lengths: Record<string, number>; reg?: Registry; peaks: Record<string, PeakInfo>; beats: EditorState['beats'] }) {
-  if (at.row === null) return;
+ *  a new one, never the magnetic main track unless it was the target (a normal track that runs out at the end of the film must not
+ *  push a clip into the main film); "+ New track" makes one track per kind for all of them. No snapping: the pointer let go long
+ *  before. Returns the ids no track took (let go past the end of the film): added, not placed. */
+export function placeImported(d: Project, ids: string[], at: DropTarget, c: { locked: ReadonlySet<string>; lengths: Record<string, number>; reg?: Registry; peaks: Record<string, PeakInfo>; beats: EditorState['beats'] }): string[] {
+  const left: string[] = [];
+  if (at.row === null) return left;
   const made = new Map<DropKind, string>(), next = new Map<string, number>(), mag = magneticTrack(d)?.id;
   let tie = 0;
   for (const id of ids) {
     const src = d.sources[id];
     const m: Material | null = src ? { kind: 'clip', source: id, from: 0, len: src.duration } : d.media[id] ? { kind: 'music', media: id, len: c.lengths[id] ?? 10 } : null;
-    if (!m) continue;
+    if (!m) { left.push(id); continue; }
     const x = materialItem(d, m, 0, c), len = (x.item.end as number) - (x.item.start as number), times = resolveTimes(d);
     const row = (r: string) => (r === 'new' ? made.get(x.kind) ?? 'new' : r);
     const plan = (r: string) => { const w = row(r); return planDrop(d, times, { kind: x.kind, len, at: { t: next.get(w) ?? at.t, row: w }, locked: c.locked }, NO_SNAP); };
     let pl = plan(at.row);
-    if (!pl?.ok) pl = plan(d.tracks.find((tr) => tr.kind === x.kind && !c.locked.has(tr.id))?.id ?? 'new');
-    if (!pl?.ok) continue;
+    if (!pl?.ok) pl = plan(d.tracks.find((tr) => tr.kind === x.kind && !c.locked.has(tr.id) && (tr.id !== mag || at.row === mag) && tr.id !== pl?.track)?.id ?? 'new');
+    if (!pl?.ok) { left.push(id); continue; }
     const track = pl.track ?? addTrack(d, { kind: x.kind as TrackKind });
     if (pl.track === null) made.set(x.kind, track);
     const start = track === mag ? r6(at.t + tie++ * TIE) : pl.start, end = track === mag ? r6(start + len) : pl.end;
@@ -81,4 +84,5 @@ export function placeImported(d: Project, ids: string[], at: DropTarget, c: { lo
     x.also?.(d, nid);
     if (track !== mag) next.set(track, end);
   }
+  return left;
 }

@@ -4,13 +4,12 @@
 import type { ServerResponse } from 'node:http';
 import { basename, isAbsolute, resolve } from 'node:path';
 import { expandInputs, ingestFiles, kindOf, samePath, type Skipped } from '@tellcut/media-node';
-import type { ImportEvent } from '@tellcut/protocol';
+import { IMPORT_MAX, type ImportEvent } from '@tellcut/protocol';
 import { HttpError, readJson, type Router } from './http.ts';
 import type { ProjectStore } from './projects.ts';
 import type { ProjectHolds } from './delete.ts';
 
-/** at most this many media files in one import (a whole drive picked by mistake is refused before anything is read) */
-export const IMPORT_MAX = 200;
+export { IMPORT_MAX };
 /** and the folder walk gives up after looking at this many names (a drive of mostly other files) */
 export const IMPORT_SCAN_MAX = 10000;
 

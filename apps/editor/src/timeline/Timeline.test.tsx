@@ -631,3 +631,13 @@ test('files dragged in from the PC: a line where they will start, the drop hands
   expect(fire('dragover', 300, vTop + 20).defaultPrevented).toBe(false);
   void store;
 });
+
+test('the "+ New track" strip takes the drop where it is drawn, not a fixed band at the edge of the track area', async () => {
+  const { root, editor } = mount({ libDrag: { kind: 'music', len: 2, plan: null } });
+  await act(() => render(<Timeline editor={editor} />, root));
+  root.querySelector<HTMLElement>('.tracks')!.getBoundingClientRect = () => ({ top: 0, left: 0, right: 1400, bottom: 400, width: 1400, height: 400, x: 0, y: 0 }) as DOMRect;
+  // the rows are short: the strip is drawn right under them, at 300–314, with empty space below
+  root.querySelector<HTMLElement>('[data-drop-new="bottom"]')!.getBoundingClientRect = () => ({ top: 300, left: 176, right: 1400, bottom: 314, width: 1224, height: 14, x: 176, y: 300 }) as DOMRect;
+  expect(editor.dropProbe(176 + 100, 305).row).toBe('new');
+  expect(editor.dropProbe(176 + 100, 395).row).not.toBe('new');
+});

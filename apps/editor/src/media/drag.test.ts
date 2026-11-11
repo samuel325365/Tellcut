@@ -54,3 +54,17 @@ test('a press without moving stays a click; Esc cancels a drag; a refused start 
   up(250, 80);
   expect(refused.calls).toEqual([['begin', { kind: 'music', media: 'm' }]]);
 });
+
+test('a drag that ends without a release seen (the window lost focus, or let go outside it) adds nothing', () => {
+  const { editor, calls } = fakeEditor(), card = document.createElement('button');
+  card.addEventListener('mousedown', (e) => startCardDrag(e, editor, { kind: 'sfx', type: 'x.tap' }));
+  press(card);
+  move(300, 80);
+  dispatchEvent(new Event('blur'));
+  expect(calls.at(-1)).toEqual(['end', false]);
+  calls.length = 0;
+  press(card);
+  move(300, 80);
+  dispatchEvent(new MouseEvent('mousemove', { clientX: 310, clientY: 80, buttons: 0 }));   // back in the window, the button already up
+  expect(calls.at(-1)).toEqual(['end', false]);
+});

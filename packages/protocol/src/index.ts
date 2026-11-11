@@ -111,6 +111,8 @@ export interface AnalyzeResult { jobs: JobInfo[]; missing: string[]; extras: Job
 export interface ImportSkip { path: string; code: 'import.notFound' | 'import.notMedia' | 'import.failed' | 'import.url' | 'import.unreadable'; params?: Record<string, string>; message: string }
 /** one import's answer: entries for project.json (named like `npm run new` names them; the editor adds them), the files left out
  *  and those already in the project; `others`: files in the folders that are no video, photo or sound (counted, not listed) */
+/** at most this many media files in one import (a whole drive picked by mistake, or dropped, is refused before anything is read or copied) */
+export const IMPORT_MAX = 200;
 /** what a file is by its name alone: the server's import and a file dropped on the editor use the same lists */
 const VIDEO_EXT = new Set(['mp4', 'mov', 'm4v', 'mkv', 'webm']);
 const IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);

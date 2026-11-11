@@ -1,6 +1,7 @@
 // Files dropped from this PC (spec 2026-11-10-media-panel-visual §4): looked for in the project first, the rest copied into
 // media/import, then imported and placed where they were let go, as one undoable edit.
 import { resolveTimes } from '@tellcut/engine';
+import { IMPORT_MAX } from '@tellcut/protocol';
 import { t } from '../i18n/index.ts';
 import { Editor } from '../editor.ts';
 import { fakes } from '../editor-test-kit.ts';
@@ -86,4 +87,20 @@ test('not media is left out before uploading and named in the note', async () =>
   expect(ed.store.get().importNote).toContain(t('ed.dropNotMedia', { list: 'notes.txt' }));
   // dropped on the media panel (no place): added, not placed
   expect([!!ed.store.get().project!.sources.new, placed(ed, 'new').length]).toEqual([true, 0]);
+});
+
+test('more files than one import takes are refused before any is copied', async () => {
+  const { ed, calls } = await setup();
+  await ed.dropFiles(Array.from({ length: IMPORT_MAX + 1 }, (_, i) => file(`p${i}.jpg`)), { t: 0, row: 'v2' });
+  expect(calls).toEqual([]);
+  expect(ed.store.get().importNote).toBe(t('err.import.tooMany', { n: IMPORT_MAX + 1, max: IMPORT_MAX }));
+  expect(ed.store.get().importing).toBeNull();
+});
+
+test('a dropped file that cannot be placed (let go past the end of the film) is added, and the note says it was not placed', async () => {
+  const { ed } = await setup();
+  await ed.dropFiles([file('new.mp4')], { t: 500, row: 'v2' });
+  expect(!!ed.store.get().project!.sources.new).toBe(true);
+  expect(placed(ed, 'new').length).toBe(0);
+  expect(ed.store.get().importNote).toContain(t('ed.dropNotPlaced', { list: 'new.mp4' }));
 });

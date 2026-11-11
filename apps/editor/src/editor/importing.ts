@@ -4,7 +4,7 @@
 // project's media/import (a page is never told where a dropped file is): those the project has already are not sent again, and
 // once imported they are placed where they were let go, in the same undo step.
 import { addSources, type Project, type Registry } from '@tellcut/engine';
-import { mediaKindOfName, type ImportResult } from '@tellcut/protocol';
+import { IMPORT_MAX, mediaKindOfName, type ImportResult } from '@tellcut/protocol';
 import type { Api } from '../api.ts';
 import { errText, t, tn } from '../i18n/index.ts';
 import type { EditorState, Store } from '../store.ts';
@@ -45,7 +45,7 @@ function inOrder(paths: string[], r: ImportResult, added: string[]): string[] {
 
 /** Imports `paths` into the project as one undoable edit; `place` puts what was imported (and what was there already) on the
  *  timeline in that same edit. Says what happened in importNote. */
-export async function importPaths(h: ImportHost, paths: string[], place?: (d: Project, ids: string[], r: ImportResult) => void, notes: string[] = []): Promise<void> {
+export async function importPaths(h: ImportHost, paths: string[], place?: (d: Project, ids: string[], r: ImportResult) => string[], notes: string[] = []): Promise<void> {
   const p = h.store.get().project;
   if (!p || !paths.length) { if (notes.length) h.store.set({ importing: null, importNote: notes.join(' ') }); return; }
   const entries = [...Object.entries(p.sources), ...Object.entries(p.media)];
@@ -59,10 +59,11 @@ export async function importPaths(h: ImportHost, paths: string[], place?: (d: Pr
     return;
   }
   const ids = [...Object.keys(r.sources), ...Object.keys(r.media)];
-  let added: string[] = [];
+  let added: string[] = [], unplaced: string[] = [];
   if (ids.length || (place && r.same.length)) h.apply((d) => {
     added = addSources(d, { sources: r.sources, media: r.media });
-    place?.(d, inOrder(paths, r, added), r);
+    // what no track took (let go past the end of the film) is named, by its file
+    unplaced = (place?.(d, inOrder(paths, r, added), r) ?? []).map((id) => fileName((d.sources[id] ?? d.media[id])?.path ?? id));
   });
   const note = [
     added.length ? tn('ed.imported', added.length) : '',
@@ -70,12 +71,13 @@ export async function importPaths(h: ImportHost, paths: string[], place?: (d: Pr
     r.same.length && !place ? t('ed.importSame', { list: r.same.map((x) => fileName(x.path)).join(', ') }) : '',
     r.skipped.length ? t('ed.importSkipped', { list: r.skipped.map((x) => `${fileName(x.path)} (${errText(x)})`).join(', ') }) : '',
     r.others ? tn('ed.importOthers', r.others) : '',
+    unplaced.length ? t('ed.dropNotPlaced', { list: unplaced.join(', ') }) : '',
     ...notes,
   ].filter(Boolean).join(' ');
   const shown = note || (place && r.same.length ? '' : t('ed.importNothing'));
   h.store.set({ importing: null, importNote: shown });
   // a plain "added 3" goes by itself; what was left out stays until the next import
-  if (!notes.length && !(r.same.length && !place) && !r.skipped.length && added.length) setTimeout(() => { if (h.store.get().importNote === shown) h.store.set({ importNote: '' }); }, 8000);
+  if (!notes.length && !unplaced.length && !(r.same.length && !place) && !r.skipped.length && added.length) setTimeout(() => { if (h.store.get().importNote === shown) h.store.set({ importNote: '' }); }, 8000);
   if (!added.length) return;
   if (await h.settle()) await h.analyze(added);
   else h.later(added);
@@ -103,6 +105,8 @@ export async function dropFiles(h: ImportHost, files: File[], at?: DropTarget): 
   if (not.length) notes.push(t('ed.dropNotMedia', { list: not.map((f) => f.name).join(', ') }));
   h.store.set({ importNote: '' });
   if (!media.length) { h.store.set({ importNote: notes.join(' ') }); return; }
+  // the server would refuse them all once they were copied: say so before copying any
+  if (media.length > IMPORT_MAX) { h.store.set({ importNote: t('err.import.tooMany', { n: media.length, max: IMPORT_MAX }) }); return; }
   const total = media.length, bytes = media.reduce((n, f) => n + f.size, 0) || 1;
   h.store.set({ importing: { done: 0, total, pct: 0 } });
   const ctl = new AbortController();

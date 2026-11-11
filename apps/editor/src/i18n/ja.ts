@@ -369,6 +369,7 @@ export const ja: Record<Key, string> = {
   'ed.importBusy': 'ファイルを追加中です。終わってからドロップしてください。',
   'ed.dropFolder': 'フォルダは Import で追加してください。',
   'ed.dropNotMedia': '動画・写真・音声ではないため追加しませんでした：{list}。',
+  'ed.dropNotPlaced': '追加しましたが、タイムラインには置けませんでした（動画の終わりより後）：{list}。',
   'ed.uploadCancelled': 'キャンセルしました。コピー済みのファイルは追加しました。',
   'ed.importOthers.one': '動画・写真・音声ではないファイル 1 個は追加しませんでした。',
   'ed.importNothing': '何も追加されませんでした。',

@@ -3,6 +3,14 @@ import { request } from 'node:http';
 import { join } from 'node:path';
 import { makeProjects, startApp } from './test-utils.ts';
 
+// the upload's file handle belongs to its write stream: after an abort the route must not close it again (the number may
+// already be another open file's)
+const closed: number[] = [];
+vi.mock('node:fs', async (orig) => {
+  const real = await orig<typeof import('node:fs')>();
+  return { ...real, default: real, closeSync: (fd: number) => { closed.push(fd); return real.closeSync(fd); } };
+});
+
 let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, projects: string;
 beforeAll(async () => { projects = makeProjects(); ({ app, base } = await startApp({ projectsDir: projects })); });
 afterAll(async () => { await app?.close(); });
@@ -51,6 +59,7 @@ test('a second upload of the same name gets -2', async () => {
 
 test('an aborted upload leaves no file', async () => {
   mkdirSync(importDir(), { recursive: true });
+  closed.length = 0;
   const u = new URL(`${base}/api/projects/demo/upload?name=cut.mp4&mtime=1`);
   await new Promise<void>((done) => {
     const req = request({ host: u.hostname, port: u.port, path: u.pathname + u.search, method: 'PUT', headers: { 'Content-Length': '100000' } });
@@ -60,6 +69,7 @@ test('an aborted upload leaves no file', async () => {
   });
   for (let i = 0; i < 50 && readdirSync(importDir()).some((f) => f.startsWith('cut')); i++) await new Promise((r) => setTimeout(r, 50));
   expect(readdirSync(importDir()).filter((f) => f.startsWith('cut'))).toEqual([]);
+  expect(closed).toEqual([]);
 });
 
 test('not media → 400 import.notMedia; another origin → 403', async () => {
