@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // common.notecard: a line too long for the card is written smaller so it stays on the card; lines that fit keep their size.
 import { resolveTheme, withDefaults } from '@tellcut/engine';
-import { notecard } from './notecard.ts';
+import { DONE_TITLE_W, notecard } from './notecard.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : anything), apply: () => anything, construct: () => anything, set: () => true,
@@ -36,4 +36,20 @@ test('list: an item too long even for one column shrinks to the card, a long tit
   expect(s['我的超長購物清單標題一二三四五']).toBeLessThan(60);
   expect(sizes({ mode: 'title', title: '義式經典提拉米蘇蛋糕' })['義式經典提拉米蘇蛋糕']).toBeLessThan(150);
   expect(sizes({ mode: 'title', title: '提拉米蘇' })['提拉米蘇']).toBeCloseTo(150, 6);
+});
+
+test('done: a long big word shrinks to end clear of the heart, its lines to the card; the defaults keep their sizes', () => {
+  expect(DONE_TITLE_W).toBe(680);
+  const def = sizes({ mode: 'done', title: '完成！', sub: '提拉米蘇', latin: 'Tiramisu', note: '慢慢做，慢慢吃' });
+  expect(def).toMatchObject({ '完成！': expect.closeTo(132, 6), 提拉米蘇: expect.closeTo(56, 6), Tiramisu: expect.closeTo(52, 6), '慢慢做，慢慢吃': expect.closeTo(42, 6) });
+  const title = '義式經典提拉米蘇大功告成', sub = '馬斯卡彭起司配上濃縮咖啡和手指餅乾一層一層疊', note = '慢慢做慢慢吃，放進冰箱冷藏一個晚上之後再切開最好吃';
+  const s = sizes({ mode: 'done', title, sub, note });
+  expect(s[title]).toBeLessThan(132);
+  expect(s[title] * 12).toBeLessThanOrEqual(DONE_TITLE_W + 1e-6);
+  expect(s[sub] * 22).toBeLessThanOrEqual(940 - 2 * 52 + 1e-6);
+  expect(s[note] * 25).toBeLessThanOrEqual(940 - 2 * 52 + 1e-6);
+  // title mode's sub and foreign name too
+  const t = sizes({ mode: 'title', title: '提拉米蘇', sub, latin: 'Tiramisu della nonna, the classic layered dessert' });
+  expect(t[sub] * 22).toBeLessThanOrEqual(940 - 2 * 52 + 1e-6);
+  expect(t['Tiramisu della nonna, the classic layered dessert']).toBeLessThan(58);
 });

@@ -81,6 +81,9 @@ export function stampTime(n: number, o: { ticking: boolean; now: number; ticked:
 }
 /** the stamp at `s` s after it lands: dropping from 1.8× with an overshoot, showing within 0.1 s */
 export const stampLanding = (s: number) => ({ scale: 1.8 - 0.8 * backOut(s / 0.35), alpha: clamp(s / 0.1) });
+/** the done page's big word at its widest, in card units: centred, it ends clear of the heart beside it, whose stroke reaches about 51
+ *  units each side of a centre that stops 70 short of the card's edge (a long word ran off the card under the heart) */
+export const DONE_TITLE_W = 2 * (CARD_W - 70 - 51 - 9 - CARD_W / 2);
 
 /** when the step card's parts start writing: title, the text lines, the fields */
 export function stepTimes(title: string, lines: string[]) {
@@ -217,17 +220,17 @@ export const notecard: ItemType<P, S> = {
       g.strokeStyle = red; g.lineWidth = 4;
       const k = ease(clamp((local - 0.2) / 0.5));
       if (k > 0) { handPath(g, [[C - half, 286], [C - half + 2 * half * k, 282]], false, 3, 9); g.stroke(); }
-      txt({ text: p.sub, x: C, y: 388, px: 50, align: 'center', t0: 0.35, cps: 22 });
-      if (p.latin) txt({ text: p.latin, x: C, y: 470, px: 58, family: LATIN, italic: true, color: red, align: 'center', alpha: ease(clamp((local - 0.9) / 0.5)) });
+      txt({ text: p.sub, x: C, y: 388, px: 50, align: 'center', t0: 0.35, cps: 22, maxW: CARD_W - 2 * M });
+      if (p.latin) txt({ text: p.latin, x: C, y: 470, px: 58, family: LATIN, italic: true, color: red, align: 'center', alpha: ease(clamp((local - 0.9) / 0.5)), maxW: CARD_W - 2 * M });
     } else {
-      const k = backOut(local / 0.5);
-      txt({ text: p.title, x: C, y: 210, px: 132, weight: 700, color: red, align: 'center', alpha: clamp(local / 0.25), scale: 0.6 + 0.4 * k });
-      txt({ text: p.sub, x: C, y: 330, px: 56, weight: 700, align: 'center', t0: 0.5, cps: 12 });
-      if (p.latin) txt({ text: p.latin, x: C, y: 395, px: 52, family: LATIN, italic: true, color: pencil, align: 'center', alpha: ease(clamp((local - 1) / 0.5)) });
-      if (p.note) txt({ text: p.note, x: C, y: RULE0 + RULE * 5 - 16, px: 42, align: 'center', t0: 1.4, cps: 14 });
-      // a heart in one stroke beside the big word
+      const k = backOut(local / 0.5), tmax = DONE_TITLE_W;
+      txt({ text: p.title, x: C, y: 210, px: 132, weight: 700, color: red, align: 'center', alpha: clamp(local / 0.25), scale: 0.6 + 0.4 * k, maxW: tmax });
+      txt({ text: p.sub, x: C, y: 330, px: 56, weight: 700, align: 'center', t0: 0.5, cps: 12, maxW: CARD_W - 2 * M });
+      if (p.latin) txt({ text: p.latin, x: C, y: 395, px: 52, family: LATIN, italic: true, color: pencil, align: 'center', alpha: ease(clamp((local - 1) / 0.5)), maxW: CARD_W - 2 * M });
+      if (p.note) txt({ text: p.note, x: C, y: RULE0 + RULE * 5 - 16, px: 42, align: 'center', t0: 1.4, cps: 14, maxW: CARD_W - 2 * M });
+      // a heart in one stroke beside the big word (as it is drawn: shrunk when long)
       g.strokeStyle = red; g.lineWidth = 4.5;
-      heart(g, Math.min(CARD_W - 70, C + (textEm(p.title) * 132) / 2 + 110), 175, 3.2, clamp((local - 0.7) / 0.7));
+      heart(g, Math.min(CARD_W - 70, C + (textEm(p.title) * fitPx(p.title, 132, tmax)) / 2 + 110), 175, 3.2, clamp((local - 0.7) / 0.7));
     }
     g.restore();
     drawTexts(s.txt, T, local, u);
