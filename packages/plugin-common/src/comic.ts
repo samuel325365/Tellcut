@@ -4,7 +4,7 @@
 // clip in panel n with frame = comicWindow(n, params) (the panel's bounding box) and shape = comicShape(n, params) (the panel's own
 // corners: two slanted panels' boxes overlap, and without the shape the clip on the higher track shows in its neighbour's corner),
 // the main-track clip in one panel and c.beside(...) clips in the others. A panel not revealed yet is all gutter. A pure function of time.
-import { clamp, rng, type ItemType } from '@tellcut/engine';
+import { clamp, eBack, rng, type ItemType } from '@tellcut/engine';
 
 type Pt = [number, number];
 type Rect = [number, number, number, number];
@@ -65,9 +65,6 @@ export function comicFocus(text: string): Array<{ panel: number; x: number; y: n
   });
 }
 
-/** a slide's overshoot (back out) */
-const backOut = (q: number) => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(q - 1, 3) + c1 * Math.pow(q - 1, 2); };
-
 export const comic: ItemType<P, S> = {
   type: 'common.comic', label: '漫畫頁', category: 'frame', kind: 'overlay',
   doc: '一頁漫畫，影片在格子裡播：白色格線、黑框的斜格子，格子一格一格滑進來，格內可加漫畫集中線；layout 選版面（one 一格、two 上下兩格、two-flip 斜向相反、three 上一下二、four 四格、side 左右兩格，橫式片用），panels 自己畫格子（一行一格「x,y x,y x,y x,y」畫面比例）；times、from 每格出現的秒和方向（逗號分隔；沒寫的每 0.6 秒一格、左右輪流）；focus 一行一條集中線「第幾格|x,y|秒」；影片放進第 n 格用 frame: comicWindow(n, 同一組參數)、shape: comicShape(n, 同一組參數)（從 @tellcut/plugin-common 匯入；不給 shape 時斜格相鄰兩格的影片會露到對方的角）：主軌一格、其他格用 c.beside；一頁一個項目，換頁時再放一個；配 common.onomatopoeia 狀聲詞、caption 的 comic-narration 旁白框、burst 的網點陰影、glitch 換頁',
@@ -105,7 +102,7 @@ export const comic: ItemType<P, S> = {
     panels.forEach((poly, k) => {
       const { at, dir } = reveal[k];
       if (local < at) return;
-      const off = 1 - backOut(clamp((local - at) / Math.max(0.01, p.slide)));
+      const off = 1 - eBack(clamp((local - at) / Math.max(0.01, p.slide)), 1.4);   // a slide's overshoot (back out)
       const dx = dir === 'left' ? -off * W * 0.7 : dir === 'right' ? off * W * 0.7 : 0, dy = dir === 'top' ? -off * H * 0.45 : dir === 'bottom' ? off * H * 0.45 : 0;
       g.save(); g.globalCompositeOperation = 'destination-out'; path(poly, dx, dy); g.fill(); g.restore();
       for (const f of focus.filter((q) => q.panel === k + 1)) {
