@@ -19,15 +19,6 @@ export type G = CanvasRenderingContext2D;
  *  running out of its dialog or button */
 export const fit = (g: G, text: string, px: number, family: string, room: number) => fitMeasuredSize(g, [text], px, family, 400, room);
 
-/** a canvas over the whole of `parent` (the blocks of this kit and of several others draw on one each) */
-export function canvasIn(parent: HTMLElement): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
-  parent.appendChild(c);
-  return c;
-}
-/** a rounded rectangle's path on `g` (arcTo, so a radius bigger than the box still closes) */
-export function rr(g: G, x: number, y: number, w: number, h: number, r: number) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 export const fonts = (text: string) => Promise.all([document.fonts.load(`40px "${PIX}"`, 'Aa.exe0123456789%_'), document.fonts.load(`56px "${CJK}"`, text || '桌面')]).then(() => undefined);
 
 /** the taskbar's button n (from 1) of `count`: centre and size in frame px (common.window flies into it) */

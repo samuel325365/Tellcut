@@ -4,9 +4,8 @@
 // The round windows are common.binocular (binocular.ts), the titles common.heading's look storybook, the captions the template
 // story-serif; the colour blocks above and below a shot are common.backdrop solid under a clip in a 16:9 frame. A pure function of time.
 import { coverPlacement, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
 import { coverImage } from './editorial-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { imagesReady } from './window.ts';
 
 type G = CanvasRenderingContext2D;

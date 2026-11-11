@@ -3,7 +3,8 @@
 // the current one lit. A pure function of time.
 import { clamp, eIO3 as eIO, rng, type ItemType } from '@tellcut/engine';
 import { mixHex } from './color.ts';
-import { CJK, PIX, canvasIn, deskSlot, fit, fonts, rr } from './desk-kit.ts';
+import { CJK, PIX, deskSlot, fit, fonts } from './desk-kit.ts';
+import { canvasIn, rr } from './inkline.ts';
 
 export interface DeskChapter { t: number; name: string; top: string; bottom: string }
 /** the chapters: "seconds|name|top colour|bottom colour" one a line */

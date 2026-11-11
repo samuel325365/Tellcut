@@ -4,8 +4,7 @@
 // The photo cards are common.photostack (photostack.ts), the titles common.heading's look storybook (templates storybook, story-card on
 // the backing frame, fin), the captions the template story-serif. A pure function of time.
 import { clamp, eOut3Clamped, type ItemType } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 
 /** the round windows' centres: two `r` apart less their overlap, or the one */
 export function windowCentres(shape: string, cx: number, r: number, overlap: number): number[] {

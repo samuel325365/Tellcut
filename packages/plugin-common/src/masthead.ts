@@ -2,9 +2,8 @@
 // time with a rule drawn under it, issue lines, contents down the right, an italic line wiped in; back, the back cover, a colour page
 // with NEXT ISSUE, the masthead, a photo band and an italic line. A pure function of time.
 import { clamp, eOut3Clamped, type ItemType } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
 import { coverImage, disp, fitSet, fontsReady, photo, stillMedia, track, untrack } from './editorial-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { graphemes } from './text.ts';
 import { imagesReady } from './window.ts';
 

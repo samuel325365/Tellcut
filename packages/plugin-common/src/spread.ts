@@ -2,9 +2,8 @@
 // card, big number and a name, a swatch card in the page's colour); layout column, a paper page (a big number, a photo card, an outlined
 // word over its foot, the column's name and a page number). A pure function of time.
 import { eOut3Clamped, type ItemType } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
 import { SERIF, coverImage, disp, fitSet, fontsReady, photo, stillMedia, track, untrack } from './editorial-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { imagesReady } from './window.ts';
 
 const ser = (px: number, w = 700) => `${w} ${px}px "${SERIF}", serif`;

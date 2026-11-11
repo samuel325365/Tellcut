@@ -2,7 +2,8 @@
 // `press`; mode sheet is the closing panel: a cream sheet with a typed line and a button that is pressed, turns into its done label and
 // throws pixel confetti. A pure function of time.
 import { clamp, eIO3 as eIO, rng, type ItemType } from '@tellcut/engine';
-import { CJK, canvasIn, chrome, fit, fonts, rr, type G, type Report } from './desk-kit.ts';
+import { CJK, chrome, fit, fonts, type G, type Report } from './desk-kit.ts';
+import { canvasIn, rr } from './inkline.ts';
 
 /** a button with a hard shadow, its label fitted inside; pressed, it sits down into the shadow */
 function button(g: G, x: number, y: number, w: number, h: number, k: number, fill: string, label: string, pressed: boolean, ink: string, report: Report) {

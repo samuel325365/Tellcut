@@ -1,8 +1,8 @@
+import { canvasIn, rr } from './inkline.ts';
 // common.monoframe, the black-and-white kit's (mono-kit.ts) frame: diagonal bands of repeated words round the picture, black on white
 // and white on black by turns, the words drifting along their bands; a rounded window shows the footage, and can shrink and grow (win
 // keys). A pure function of time.
 import { eIO3 as eIO, type ItemType } from '@tellcut/engine';
-import { canvasIn, rr } from './desk-kit.ts';
 import { CJK, LATIN, fontsReady } from './mono-kit.ts';
 
 const face = (px: number) => `700 ${px}px "${LATIN}", "${CJK}", sans-serif`;

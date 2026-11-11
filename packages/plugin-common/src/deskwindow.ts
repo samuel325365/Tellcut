@@ -3,7 +3,8 @@
 // chapter's taskbar button on common.desktop, closes, or grows to fill the top of the frame. A pure function of time. (window.ts is the
 // picture window the photo blocks share, hence this file's name.)
 import { clamp, eIO3 as eIO, lerp, type ItemType, type MediaRef, type Project, type SceneItem } from '@tellcut/engine';
-import { CJK, PIX, canvasIn, chrome, deskSlot, fit, fonts, type Report } from './desk-kit.ts';
+import { CJK, PIX, chrome, deskSlot, fit, fonts, type Report } from './desk-kit.ts';
+import { canvasIn } from './inkline.ts';
 import { imagesReady, windowEl } from './window.ts';
 
 interface WP {

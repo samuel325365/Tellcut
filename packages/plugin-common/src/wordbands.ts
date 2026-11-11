@@ -1,9 +1,8 @@
 // common.wordbands, the magazine kit's (editorial-kit.ts) beat page: slanted bands of repeated italic serif words, each wider than the
 // last until they fill the frame, a photo card in the middle (EAT · EVERY · SINGLE · BITE). A pure function of time.
 import { clamp, eOut3Clamped, type ItemType } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
 import { coverImage, disp, fontsReady, photo, stillMedia } from './editorial-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { imagesReady } from './window.ts';
 
 export interface Band { t: number; word: string; bc: string; tc: string }

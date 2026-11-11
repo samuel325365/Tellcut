@@ -1,7 +1,6 @@
 // common.band, the one-colour kit's (onecolor-kit.ts) tape: a diagonal band of repeated words, scrolling. A pure function of time.
 import { eOut3Clamped, type ItemType } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { SLANT, fontsReady, sans, spaced } from './onecolor-kit.ts';
 
 interface CS { c: HTMLCanvasElement }

@@ -1,8 +1,7 @@
 // common.viewfinder, the one-colour kit's (onecolor-kit.ts) frame for the whole film: corner brackets, a title and chapter line, a
 // route and a shot counter, a tick ruler with a needle walking down. A pure function of time.
 import { clamp, eOut3Clamped, type ItemType } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { brackets, fontsReady, noSteps, sans, spaced, stepsOf, valueAt, type StepsMemo } from './onecolor-kit.ts';
 
 /** the shot counter: how many of the cut times have come by `local` (at least 1) */

@@ -1,9 +1,8 @@
 // common.echo, the one-colour kit's (onecolor-kit.ts) big word: a heavy slanted word with outlined copies stacked above and below it,
 // a small number over its left end, turning white over the stretches common.grade makes one colour. A pure function of time.
 import { eOut3Clamped, resolveTimes, type ItemType, type Project, type SceneItem } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
 import { grade } from './grade.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { disp, fitted, fontsReady, noSteps, parseValueSteps, said, slanted, stepsOf, valueAt, type StepsMemo } from './onecolor-kit.ts';
 
 interface CS { c: HTMLCanvasElement }

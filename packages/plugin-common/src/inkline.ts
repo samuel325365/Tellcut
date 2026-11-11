@@ -48,6 +48,15 @@ export function spline(ctrl: Array<[number, number]>, per = 16): Array<[number, 
   return out;
 }
 
+/** a canvas over the whole of `parent` (many blocks draw on one each) */
+export function canvasIn(parent: HTMLElement): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none';
+  parent.appendChild(c);
+  return c;
+}
+/** a rounded rectangle's path on `g` (arcTo, so a radius bigger than the box still closes) */
+export function rr(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 /** the canvas sized to w×h device pixels (cleared either way) and its context, its transform back to identity: a resize resets it,
  *  but a canvas kept at its size still has the last frame's (a scale left over would clear only part of it) */
 export function canvasAt(cv: HTMLCanvasElement, w: number, h: number): CanvasRenderingContext2D {

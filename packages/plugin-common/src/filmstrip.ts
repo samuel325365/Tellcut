@@ -1,7 +1,7 @@
+import { canvasIn, rr } from './inkline.ts';
 // common.filmstrip, the black-and-white kit's (mono-kit.ts) page of two 35 mm film strips scrolling opposite ways, stills of the
 // footage in their frames, sprocket holes and edge numbers. A pure function of time.
 import { clamp, type ItemType, type SceneItem } from '@tellcut/engine';
-import { canvasIn, rr } from './desk-kit.ts';
 import { LATIN, fontsReady } from './mono-kit.ts';
 import { imagesReady } from './window.ts';
 

@@ -1,9 +1,9 @@
+import { canvasIn } from './inkline.ts';
 // A scrapbook, promoted 2026-11-05 from the Collage pilot film's fx.prints / fx.scraps (after the user's own Collage style film):
 //   common.scraps  the bits pasted round common.prints' prints (prints.ts): torn paper scraps, halftone-dotted tape, translucent tape,
 //                  round pins, paperclips, and a grid of thin seams over the whole frame (after common.wipe's mode tiles)
 // The title card is the title template scrapbook-card, the coloured chips the caption template scrap-chip. A pure function of time.
 import { clamp, rng, type ItemType } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
 
 export interface Scrap { at: number; kind: 'paper' | 'dots' | 'tape' | 'pin' | 'clip' | 'grid'; x: number; y: number; w: number; h: number; tilt: number; color: string }
 const KINDS = ['paper', 'dots', 'tape', 'pin', 'clip', 'grid'];

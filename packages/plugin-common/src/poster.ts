@@ -1,9 +1,8 @@
 // common.poster, the one-colour kit's (onecolor-kit.ts) page: a slanted word over and under a bracketed photo card with a hard
 // shadow, a faint giant word behind, a line of side text, a barcode. A pure function of time.
 import { eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
-import { canvasIn } from './desk-kit.ts';
 import { coverImage } from './editorial-kit.ts';
-import { canvasAt, freeCanvas } from './inkline.ts';
+import { canvasAt, freeCanvas, canvasIn } from './inkline.ts';
 import { brackets, fitted, fontsReady, said, sans, slanted, spaced } from './onecolor-kit.ts';
 import { imagesReady } from './window.ts';
 
