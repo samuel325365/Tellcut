@@ -32,9 +32,11 @@ export function moveEnvelopePoint(p: Project, a: { id: string; index: number; t:
   const { it, len } = clip(p, a.id, 'envelope');
   const env: Array<[number, number]> = it.envelope ?? [];
   if (!env[a.index]) throw new CommandError(`No envelope point ${a.index} on "${a.id}"`, 'cmd.noEnvelopePoint', { index: a.index, id: a.id });
-  // never past a neighbour (order stays valid); inside the clip unless a neighbour already lies past its end (after a trim)
-  const lo = a.index > 0 ? env[a.index - 1][0] : 0;
-  const hi = Math.max(lo, Math.min(len, a.index < env.length - 1 ? env[a.index + 1][0] : len));
+  // never past a neighbour (order stays valid); inside the clip unless a neighbour already lies outside it (a trim keeps
+  // points before the head and past the tail): then the point stops at that neighbour
+  const prev = a.index > 0 ? env[a.index - 1][0] : -Infinity, next = a.index < env.length - 1 ? env[a.index + 1][0] : Infinity;
+  const lo = Math.min(Math.max(prev, 0), next);
+  const hi = Math.max(lo, Math.min(len, next));
   it.envelope = env.map((pt, i) => (i === a.index ? [r6(clamp(a.t, lo, hi)), clampDb(a.db)] : pt));
 }
 

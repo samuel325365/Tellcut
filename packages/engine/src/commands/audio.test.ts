@@ -44,6 +44,15 @@ test('after a trim leaves points past the clip end, dragging keeps the points in
   expect(ts[0]).toBe(5);
 });
 
+test('after a head trim leaves two points before the start, dragging the first keeps it behind the second', () => {
+  const p = structuredClone(fixture());
+  item(p, 'm1').envelope = [[-2, 0], [-1, -6], [3, 0]];
+  moveEnvelopePoint(p, { id: 'm1', index: 0, t: 0.5, db: 0 });
+  expect(item(p, 'm1').envelope.map(([t]: [number, number]) => t)).toEqual([-1, -1, 3]);
+  moveEnvelopePoint(p, { id: 'm1', index: 1, t: -5, db: 0 });   // the second one drags into the clip, not before its start
+  expect(item(p, 'm1').envelope[1][0]).toBe(0);
+});
+
 test('a point or fade that is not a number (NaN, Infinity) is refused with the field', () => {
   const bad = (f: () => unknown, field: string) => expect(f).toThrow(expect.objectContaining({ code: 'cmd.fieldInvalid', params: { field } }));
   bad(() => addEnvelopePoint(structuredClone(fixture()), { id: 'm1', t: NaN, db: 0 }), 't');
