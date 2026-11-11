@@ -1,7 +1,8 @@
 // SVG helpers shared by the shape blocks (badge, burst).
 import { rng } from '@tellcut/engine';
 
-const NS = 'http://www.w3.org/2000/svg';
+/** the SVG namespace, for document.createElementNS */
+export const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /** The points of a spiky star centred on (0,0): `n` spikes, tips at `outer`, valleys at `inner`; `wobble` (0–1) varies the tips from a seeded generator. */
 export function spikePoints(n: number, outer: number, inner: number, rot = 0, wobble = 0, seed = 1): Array<[number, number]> {
@@ -16,7 +17,7 @@ export function spikePoints(n: number, outer: number, inner: number, rot = 0, wo
 
 /** An <svg> of `size` px square centred at its own middle (viewBox −size/2…size/2) holding one polygon. */
 export function polygonSvg(): { svg: SVGSVGElement; poly: SVGPolygonElement } {
-  const svg = document.createElementNS(NS, 'svg'), poly = document.createElementNS(NS, 'polygon');
+  const svg = document.createElementNS(SVG_NS, 'svg'), poly = document.createElementNS(SVG_NS, 'polygon');
   poly.setAttribute('stroke-linejoin', 'round');
   svg.appendChild(poly);
   svg.style.overflow = 'visible';

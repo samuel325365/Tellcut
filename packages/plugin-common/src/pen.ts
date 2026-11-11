@@ -9,6 +9,7 @@
 import { clamp, cssCamel, eIO3, eOut3, lerp, prog, type ItemType } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { backOut } from './hand.ts';
+import { SVG_NS } from './shapes.ts';
 import {
   arrowHead, ellipsePts, flatFill, grainBegin, grainEnd, hatchFill, heartPts, inkStroke, loopPts, pathLen, place, quadPts, rectSides, starPts, wavePts,
   type GrainLayer, type PenStyle, type Pt,
@@ -46,7 +47,6 @@ export function tracePose(local: number, from: Pt[], to: Pt[], cut: number, draw
 
 interface P { from: string; to: string; cut: number; morph: number; kind: Kind; x: number; y: number; w: number; h: number; color: string; width: number; drawDur: number; angle: number; style: PenStyle; boil: number; filled: boolean; fill: string }
 interface S { svg: SVGSVGElement; path: SVGPathElement; key: string; cv: HTMLCanvasElement; layer: GrainLayer }
-const NS = 'http://www.w3.org/2000/svg';
 
 /** The shape in a 0–100 box as absolute path commands (numbers in pairs), scaled to w×h pixels. */
 function shape(kind: Kind, w: number, h: number): string {
@@ -175,7 +175,7 @@ export const pen: ItemType<P, S> = {
     { key: 'morph', label: '變形時間（trace，秒）', type: 'number', min: 0, max: 3, step: 0.05, default: 0.3 },
   ],
   build(ctx) {
-    const svg = document.createElementNS(NS, 'svg'), path = document.createElementNS(NS, 'path');
+    const svg = document.createElementNS(SVG_NS, 'svg'), path = document.createElementNS(SVG_NS, 'path');
     path.setAttribute('pathLength', '1');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke-linecap', 'round');

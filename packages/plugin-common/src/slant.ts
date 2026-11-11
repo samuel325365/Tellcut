@@ -5,11 +5,11 @@
 import { abs, cssCamel, h, type ItemType } from '@tellcut/engine';
 import { cellDirs, cellEl, cellMedia, cellLive, cellProgress, offscreen, parseCellShots, preloadCell, revealTimes, showCell, type CellDir, type Rect } from './cells.ts';
 import { imagesReady, type Win } from './window.ts';
+import { SVG_NS } from './shapes.ts';
 
 interface P { count: number; shots: string; angle: number; times: string; from: string; slideDur: number; seam: number; seamColor: string; bg: string; labels: string; labelColor: string; labelBg: string; font: string; exitAt: number }
 interface Band { el: HTMLElement; win: Win; seam: SVGPolylineElement; svg: SVGSVGElement; tag: HTMLElement }
 interface S { ground: HTMLElement; bands: Band[] }
-const SVG = 'http://www.w3.org/2000/svg';
 
 export type Pt = [number, number];
 
@@ -74,7 +74,7 @@ export const slant: ItemType<P, S> = {
     while (s.bands.length < n) {
       const i = s.bands.length, el = abs(ctx.root, { inset: '0' });
       el.dataset.band = String(i);
-      const win = cellEl(el), svg = document.createElementNS(SVG, 'svg') as SVGSVGElement, seam = document.createElementNS(SVG, 'polyline') as SVGPolylineElement;
+      const win = cellEl(el), svg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement, seam = document.createElementNS(SVG_NS, 'polyline') as SVGPolylineElement;
       svg.appendChild(seam); el.appendChild(svg);
       cssCamel(svg as unknown as HTMLElement, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', overflow: 'visible' });
       const tag = h('div', null, null, el);

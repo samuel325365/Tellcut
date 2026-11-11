@@ -5,13 +5,12 @@
 // down from big at (tx, ty), tilted, in the highlight colour with a hard ink outline.
 import { clamp, cssCamel, eBack, eOut3, h, prog, type ItemType } from '@tellcut/engine';
 import { layoutMarkup } from './markup.ts';
-import { polygonSvg, setPolygon, spikePoints } from './shapes.ts';
+import { polygonSvg, setPolygon, spikePoints, SVG_NS } from './shapes.ts';
 import { runBox, setRuns, type RunBox } from './runs.ts';
 import { withAlpha } from './color.ts';
 
 interface P { tx: number; ty: number; mode: 'sticker' | 'blast' | 'rays'; text: string; points: number; x: number; y: number; size: number; fill: string; ink: string; textColor: string; hl: string; tilt: number; font: string; seed: number; outDur: number; shadow: string; dots: string }
 interface S { box: HTMLElement; svg: SVGSVGElement; poly: SVGPolygonElement; under: SVGPolygonElement; halftone: SVGPolygonElement; dot: SVGCircleElement; pattern: SVGPatternElement; text: RunBox; flash: HTMLElement; rays: HTMLElement; vig: HTMLElement; back: RunBox; lines: SVGSVGElement }
-const NS = 'http://www.w3.org/2000/svg';
 
 /** ray i of n (mode rays) at `local`: its angle and inner / outer radius as shares of the burst's radius */
 export function rayAt(i: number, n: number, local: number) {
@@ -46,8 +45,8 @@ export const burst: ItemType<P, S> = {
     const box = h('div', null, null, ctx.root), { svg, poly } = polygonSvg();
     box.appendChild(svg);
     // the comic look: an offset copy of the shape under it (shadow) and a halftone over its fill (dots), both hidden until set
-    const under = document.createElementNS(NS, 'polygon') as SVGPolygonElement, halftone = document.createElementNS(NS, 'polygon') as SVGPolygonElement;
-    const defs = document.createElementNS(NS, 'defs'), pattern = document.createElementNS(NS, 'pattern') as SVGPatternElement, dot = document.createElementNS(NS, 'circle') as SVGCircleElement;
+    const under = document.createElementNS(SVG_NS, 'polygon') as SVGPolygonElement, halftone = document.createElementNS(SVG_NS, 'polygon') as SVGPolygonElement;
+    const defs = document.createElementNS(SVG_NS, 'defs'), pattern = document.createElementNS(SVG_NS, 'pattern') as SVGPatternElement, dot = document.createElementNS(SVG_NS, 'circle') as SVGCircleElement;
     pattern.setAttribute('id', `tc-burst-dots-${++dotsId}`); pattern.setAttribute('patternUnits', 'userSpaceOnUse');
     pattern.appendChild(dot); defs.appendChild(pattern);
     under.setAttribute('stroke-linejoin', 'round'); halftone.setAttribute('stroke', 'none');
@@ -59,10 +58,10 @@ export const burst: ItemType<P, S> = {
     for (const el of [flash, vig]) cssCamel(el, { position: 'absolute', inset: '0', display: 'none' });
     cssCamel(rays, { position: 'absolute', borderRadius: '50%', display: 'none' });
     cssCamel(bk, { position: 'absolute', textAlign: 'center', whiteSpace: 'pre', lineHeight: '1.1', fontWeight: '900', display: 'none' });
-    const lines = document.createElementNS(NS, 'svg') as SVGSVGElement;
+    const lines = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement;
     ctx.root.appendChild(lines);
     cssCamel(lines as unknown as HTMLElement, { position: 'absolute', left: '0', top: '0', overflow: 'visible', display: 'none' });
-    for (let i = 0; i < 14; i++) { const l = document.createElementNS(NS, 'line'); l.setAttribute('stroke-linecap', 'round'); lines.appendChild(l); }
+    for (let i = 0; i < 14; i++) { const l = document.createElementNS(SVG_NS, 'line'); l.setAttribute('stroke-linecap', 'round'); lines.appendChild(l); }
     ctx.root.appendChild(box);   // the word stays on top of the blast layers
     return { box, svg, poly, under, halftone, dot, pattern, text: runBox(t), flash, rays, vig, back: runBox(bk), lines };
   },

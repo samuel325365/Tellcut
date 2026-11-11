@@ -5,6 +5,7 @@
 // colour, so `accent` and `ink` (the ring's colour and the number's outline) belong to the ring look only.
 import { clamp, cssCamel, eBack, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
+import { SVG_NS } from './shapes.ts';
 
 interface P { look: 'ring' | 'slant'; colors: string; from: number; to: number; end: string; label: string; size: number; y: number; color: string; accent: string; ink: string; ring: boolean; font: string }
 interface S { box: HTMLElement; svg: SVGSVGElement; track: SVGCircleElement; arc: SVGCircleElement; num: HTMLElement; ghost: HTMLElement; label: HTMLElement }
@@ -25,7 +26,6 @@ export function countAt(from: number, to: number, dur: number, local: number, en
   return { text: step === n - 1 && end ? end : String(v), step, into };
 }
 
-const NS = 'http://www.w3.org/2000/svg';
 
 export const countdown: ItemType<P, S> = {
   type: 'common.countdown', label: '倒數計時', category: 'number', kind: 'overlay',
@@ -48,7 +48,7 @@ export const countdown: ItemType<P, S> = {
   build(ctx) {
     const box = h('div', null, null, ctx.root);
     cssCamel(box, { position: 'absolute' });
-    const svg = document.createElementNS(NS, 'svg'), track = document.createElementNS(NS, 'circle'), arc = document.createElementNS(NS, 'circle');
+    const svg = document.createElementNS(SVG_NS, 'svg'), track = document.createElementNS(SVG_NS, 'circle'), arc = document.createElementNS(SVG_NS, 'circle');
     svg.setAttribute('viewBox', '0 0 100 100');
     for (const c of [track, arc]) { c.setAttribute('cx', '50'); c.setAttribute('cy', '50'); c.setAttribute('r', '45'); c.setAttribute('fill', 'none'); svg.appendChild(c); }
     arc.setAttribute('transform', 'rotate(-90 50 50)');

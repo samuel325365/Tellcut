@@ -3,12 +3,12 @@
 // pops. The label stays inside the safe area wherever the target is. From the food-deep short's fx.mark.
 import { clamp, cssCamel, eBack, eOut3 as eOut, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { EMOJI_STACK } from './text.ts';
+import { SVG_NS } from './shapes.ts';
 
 interface P { kind: 'circle' | 'cross' | 'ban' | 'burst'; x: number; y: number; r: number; lx: number; ly: number; text: string; icon: string; tone: 'paper' | 'accent' | 'hl'; color: string; bad: string; paper: string; ink: string; font: string }
 interface Shape { e: SVGElement; len?: number; fade?: boolean; from: number; to: number }
 interface S { svg: SVGSVGElement; g: SVGGElement; shapes: Shape[]; icon: HTMLElement; lab: HTMLElement; key: string }
-const NS = 'http://www.w3.org/2000/svg';
-const el = (tag: string, attrs: Record<string, string | number>, parent: Element) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v)); parent.appendChild(e); return e; };
+const el = (tag: string, attrs: Record<string, string | number>, parent: Element) => { const e = document.createElementNS(SVG_NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v)); parent.appendChild(e); return e; };
 
 /** where the label goes: given (lx, ly ≥ 0, frame fractions) or beside the target on the roomier side and a little above;
  *  then kept inside the safe area ([left, top] of a label `lw` × `lh` px, and the side its leader comes in from) */
@@ -40,7 +40,7 @@ export const callout: ItemType<P, S> = {
   ],
   build(ctx) {
     // the emoji under the ring's slash, the label on top
-    const icon = h('div', null, null, ctx.root), svg = document.createElementNS(NS, 'svg') as SVGSVGElement, g = el('g', {}, svg) as SVGGElement;
+    const icon = h('div', null, null, ctx.root), svg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement, g = el('g', {}, svg) as SVGGElement;
     ctx.root.appendChild(svg);
     cssCamel(svg as unknown as HTMLElement, { position: 'absolute', left: '0', top: '0', overflow: 'visible' });
     const lab = h('div', null, null, ctx.root);

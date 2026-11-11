@@ -1,6 +1,7 @@
 // Looks laid out for a situation: bar (a search snippet) and qa (a magazine interview's subtitle).
 import { cssCamel, textEm, type Theme } from '@tellcut/engine';
 import { luma } from '../../color.ts';
+import { SVG_NS } from '../../shapes.ts';
 import { speakerColor } from '../colors.ts';
 import type { CaptionLook } from '../types.ts';
 import { faceRoom } from './basic.ts';
@@ -126,7 +127,7 @@ export const chalk: CaptionLook = {
   after: () => {
     // the chalk's rough edge: a noise filter the box points at, made once a page
     if (typeof document === 'undefined' || document.getElementById('tc-chalk')) return;
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('width', '0'); svg.setAttribute('height', '0'); svg.style.position = 'absolute';
     svg.innerHTML = '<filter id="tc-chalk"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.2"/></filter>';
     document.body.appendChild(svg);
