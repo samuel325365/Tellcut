@@ -6,7 +6,7 @@
 // story-serif; the colour blocks above and below a shot are common.backdrop solid under a clip in a 16:9 frame. Pure functions of time.
 import { clamp, coverPlacement, eOut3Clamped, type ItemType, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desk-kit.ts';
-import { coverImage } from './editorial.ts';
+import { coverImage } from './editorial-kit.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { imagesReady } from './window.ts';
 

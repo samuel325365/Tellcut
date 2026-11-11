@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 // common.masthead / common.spread / common.wordbands and the title look didone (2026-11-06, the Fashion pilot film's fx.cover /
 // fx.taste / fx.column / fx.wordbands / fx.bighead). jsdom has no canvas: the timing helpers, the declared stills and the look are tested.
-import { bandHeight, graphemes, masthead, mastheadParams, mastheadY, spreadParams, parseBands, scriptLines, spread, typedLetters, wordbands } from './editorial.ts';
+import { graphemes, masthead, mastheadParams, mastheadY, scriptLines, typedLetters } from './masthead.ts';
+import { spread, spreadParams } from './spread.ts';
+import { bandHeight, parseBands, wordbands } from './wordbands.ts';
 import { didone } from './caption/looks/title.ts';
 import type { ItemType } from '@tellcut/engine';
 

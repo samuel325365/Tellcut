@@ -12,7 +12,7 @@
 // The 3-2-1 is common.countdown's look slant, the caption the template color-boxes (look boxes). Pure functions of time.
 import { clamp, eOut3Clamped, resolveTimes, type ItemType, type Project, type SceneItem } from '@tellcut/engine';
 import { canvasIn } from './desk-kit.ts';
-import { coverImage } from './editorial.ts';
+import { coverImage } from './editorial-kit.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { imagesReady } from './window.ts';
 
