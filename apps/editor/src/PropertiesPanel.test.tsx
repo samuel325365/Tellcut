@@ -2,7 +2,7 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { createRegistry, corePlugin } from '@tellcut/engine';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { createStore, initialState } from './store.ts';
 import { PropertiesPanel } from './PropertiesPanel.tsx';
 

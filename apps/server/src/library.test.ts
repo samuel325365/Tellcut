@@ -1,7 +1,7 @@
 // The library's routes (spec 2026-10-29-my-library §4.2–4.4): save, list, serve, rename, delete, use in a project.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fxModule, makeProject, tempProjects } from '../../../packages/media-node/src/library/fixture.ts';
+import { fxModule, makeProject, tempProjects } from '@tellcut/media-node/library/fixture';
 import { startApp } from './test-utils.ts';
 
 async function app() {

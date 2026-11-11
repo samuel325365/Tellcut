@@ -1,4 +1,4 @@
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { deleteItems, moveItems, parseProject, trimEnd } from '@tellcut/engine';
 import { History } from './history.ts';
 

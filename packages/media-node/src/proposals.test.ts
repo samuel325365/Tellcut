@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFil
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseProject } from '@tellcut/engine';
-import { fixture } from '../../engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { closeProposal, makeProposal, readProposal, saveProposal } from './proposals.ts';
 import { projectHash, saveProjectFile } from './projectfile.ts';
 

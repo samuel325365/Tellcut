@@ -6,7 +6,7 @@ import { parseStops, routeboard } from '../../../packages/plugin-common/src/rout
 import { parseTouches, touch } from '../../../packages/plugin-common/src/touch.ts';
 import { parseObjects } from '../../../packages/plugin-common/src/flatlay/objects.ts';
 import { flatlay } from '../../../packages/plugin-common/src/flatlay.ts';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 
 test('a short hex color shows as its full form; a color the picker cannot show stays editable as text', async () => {
   const root = document.createElement('div');

@@ -5,7 +5,8 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./test-fixture": "./src/commands/test-fixture.ts"
   },
   "dependencies": {
     "motion-dom": "12.43.0",

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { options, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { createStore, initialState } from '../store.ts';
 import { Timeline } from './Timeline.tsx';
 

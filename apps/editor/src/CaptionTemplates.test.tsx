@@ -3,7 +3,7 @@
 // from the gallery (a name when there is none), its hints in the UI language, a title's never worded as a caption's.
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { CaptionTemplates } from './CaptionTemplates.tsx';
 import { myTemplateKey } from './editor/captions.ts';
 import { DICTS } from './i18n/index.ts';

@@ -1,6 +1,6 @@
 // The Editor: auditioning a clip, music, an effect or a sound effect alone, and what ends an audition.
 import { corePlugin, createRegistry } from '@tellcut/engine';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { Editor } from './editor.ts';
 import { fakes, tracksOf, shown } from './editor-test-kit.ts';
 

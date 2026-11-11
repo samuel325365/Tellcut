@@ -1,4 +1,4 @@
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { initialState } from '../store.ts';
 import { trayProbe, trayState } from './tray.ts';
 

@@ -1,7 +1,7 @@
 // The Editor: track settings, magnetic tracks, copy and paste, muting items, locked tracks.
 import { findItem, moveItems, resolveTimes } from '@tellcut/engine';
 import { t } from './i18n/index.ts';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { Editor } from './editor.ts';
 import { fakes, magneticFixture, ids } from './editor-test-kit.ts';
 

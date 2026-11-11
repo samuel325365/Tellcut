@@ -5,7 +5,7 @@ import { IMPORT_MAX } from '@tellcut/protocol';
 import { t } from '../i18n/index.ts';
 import { Editor } from '../editor.ts';
 import { fakes, live, prop } from '../editor-test-kit.ts';
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });

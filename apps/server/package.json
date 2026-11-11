@@ -4,6 +4,9 @@
   "private": true,
   "license": "MIT",
   "type": "module",
+  "exports": {
+    "./test-utils": "./src/test-utils.ts"
+  },
   "dependencies": {
     "@tellcut/engine": "*",
     "@tellcut/media-node": "*",

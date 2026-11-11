@@ -1,6 +1,6 @@
 // The proposal flow on its own, against a real History: what it touches of the undo history and what it reports.
 import type { Project } from '@tellcut/engine';
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { History } from '../history.ts';
 import { createStore, initialState } from '../store.ts';
 import { ProposalFlow } from './proposals.ts';

@@ -1,5 +1,5 @@
 import { resolveTimes, settle, type Project } from '@tellcut/engine';
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { t } from '../i18n/index.ts';
 import { dropRecipe, placeImported, planDrop, type DropKind, type DropTarget } from './drop.ts';
 

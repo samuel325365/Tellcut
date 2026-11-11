@@ -1,7 +1,7 @@
 // The Editor: the timeline view (zoom, scrolling, turning the page), overlaps and transitions, tracks, view keys, loop, help, layout.
 import { corePlugin, createRegistry, findItem, resolveTimes } from '@tellcut/engine';
 import { t } from './i18n/index.ts';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { Editor } from './editor.ts';
 import { fakes } from './editor-test-kit.ts';
 

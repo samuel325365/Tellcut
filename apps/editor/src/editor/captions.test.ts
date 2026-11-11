@@ -1,4 +1,4 @@
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { applyCaptionTemplate, captionLook, captionLookParams, myTemplateKey, setCaptionTemplate, useMyCaptionTemplate } from './captions.ts';
 
 /** the fixture with a Text track: a bubble caption said in c2, a title on the scene block, an effect */

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // The track-order and scrollbar drags end like the other timeline drags: a release outside the window (no mouseup seen) ends
 // them, so the next release over the timeline is not taken as their drop.
-import { fixture } from '../../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { startScrollbarDrag } from './scrollbar.ts';
 import { startTrackDrag } from './track.ts';
 

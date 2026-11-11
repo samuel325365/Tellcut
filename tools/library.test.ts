@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { plugins } from '@tellcut/plugins';
 import { libraryPlugin, libraryRoot } from '@tellcut/media-node';
-import { fxModule, makeProject, tempProjects } from '../packages/media-node/src/library/fixture.ts';
+import { fxModule, makeProject, tempProjects } from '@tellcut/media-node/library/fixture';
 import { findBlocks, formatCatalog, formatFind } from './catalog.ts';
 import { libraryCommand } from './library.ts';
 

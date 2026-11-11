@@ -176,7 +176,7 @@ test('fieldsNote: the options in one line for a project chat', () => {
 
 // ---------------------------------------------------------------- presets of the user's own (spec 2026-10-29-my-library §3.5–3.7, §4.5)
 import { existsSync, readFileSync } from 'node:fs';
-import { fxModule, makeProject } from '../../../packages/media-node/src/library/fixture.ts';
+import { fxModule, makeProject } from '@tellcut/media-node/library/fixture';
 
 const CUSTOM = { order: 0, name: { zh: '自定義', en: 'Custom' }, summary: { zh: 's' }, fields: [RATIO, LENGTH] };
 async function mine() {

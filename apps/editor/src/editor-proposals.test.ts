@@ -1,6 +1,6 @@
 // The Editor: the agent’s proposals, the live stream from the server, and changes made outside (another tab, the agent, the disk).
 import { corePlugin, createRegistry, moveItems } from '@tellcut/engine';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { ApiError } from './api.ts';
 import { Editor } from './editor.ts';
 import { fakes, live, prop } from './editor-test-kit.ts';

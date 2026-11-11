@@ -1,5 +1,5 @@
 import { resolveTimes } from '@tellcut/engine';
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { cutPoints, edgeTargets, nextCut } from './cutting.ts';
 
 test('cutPoints and nextCut: nearest edge on any track, half a frame of slack, ends at 0 and the duration', () => {

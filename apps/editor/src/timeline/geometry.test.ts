@@ -1,4 +1,4 @@
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { resolveTimes } from '@tellcut/engine';
 import { COLLAPSED_H, ROW_H, ROW_H_MAX, fitHeights, layoutRows, maxScroll, ppsFromZoom, rowAt, rulerTicks, scrollThumb, timeToX, xToTime, zoomAround, zoomFromPps } from './geometry.ts';
 

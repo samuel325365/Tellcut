@@ -1,4 +1,4 @@
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { materialOf, planAudition } from './audition.ts';
 import { setLang } from './i18n/lang.ts';
 

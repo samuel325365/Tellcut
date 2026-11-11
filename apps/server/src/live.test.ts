@@ -165,7 +165,7 @@ test('a project folder deleted outside the app while the editor has it open does
 
 test('copying a block of My blocks answers with the same fx stamp the fx-changed it sets off carries', async () => {
   const { root, url, base } = setup();
-  const { makeProject } = await import('../../../packages/media-node/src/library/fixture.ts');
+  const { makeProject } = await import('@tellcut/media-node/library/fixture');
   makeProject(root, 'src');
   const saved = await (await fetch(`${base}/api/library/blocks`, post({ project: 'src', type: 'fx.chalk-title' }))).json();
   const ev = events(`${url}/events`); await ev.next();

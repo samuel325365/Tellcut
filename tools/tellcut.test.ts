@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseProject } from '@tellcut/engine';
 import { readProposal } from '@tellcut/media-node';
-import { fixture } from '../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { decideOnDisk, proposeOnDisk, showProject } from './tellcut.ts';
 import { saveRequest, projectHash as hashOf } from '@tellcut/media-node';
 import { call, commandArgs, describeRequest, inSize } from './tellcut.ts';

@@ -1,5 +1,5 @@
 import { resolveTimes } from '@tellcut/engine';
-import { fixture } from '../../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { layoutRows } from './geometry.ts';
 import { dragRecipe, itemsInRect, planDrag } from './drag.ts';
 

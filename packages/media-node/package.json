@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./score/local": "./src/score/local.ts",
-    "./score/render": "./src/score/render.ts"
+    "./score/render": "./src/score/render.ts",
+    "./library/fixture": "./src/library/fixture.ts"
   },
   "dependencies": {
     "@tellcut/engine": "*",

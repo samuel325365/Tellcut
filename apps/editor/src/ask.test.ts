@@ -1,4 +1,4 @@
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { askLines, askMessage } from './ask.ts';
 
 test('the copied message names the project, the instruction, the selection and the command to read it', () => {

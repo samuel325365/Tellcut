@@ -1,6 +1,6 @@
 // The Editor: photos, speech captions, music beats, crop mode and crop keyframes, and the media panel’s Import.
 import { t } from './i18n/index.ts';
-import { fixture } from '../../../packages/engine/src/commands/test-fixture.ts';
+import { fixture } from '@tellcut/engine/test-fixture';
 import { ApiError } from './api.ts';
 import { Editor } from './editor.ts';
 import { fakes, live, prop, withPhoto } from './editor-test-kit.ts';
