@@ -1,13 +1,30 @@
 import { ChatSession } from './chat.ts';
 import { setLang } from './i18n/lang.ts';
 
+/** A server that keeps the thread: what a turn sends is saved, as the runner does (the page reads the thread back after a turn). */
 function fakeApi(o: { events?: any[]; running?: boolean } = {}) {
-  const calls: any[] = [];
+  const calls: any[] = [], saved: any[] = [{ role: 'user', text: '舊', time: 't' }];
+  let running = !!o.running;
+  const now = () => new Date().toISOString();
   return {
-    calls,
-    chat: async () => ({ thread: { messages: [{ role: 'user', text: '舊', time: 't' }], sessionId: 's', started: true }, running: o.running ? { text: '進行中', tools: [] } : null }),
-    chatSend: async (_t: string, text: string, on: (e: any) => void) => { calls.push(['send', text]); for (const e of o.events ?? []) on(e); },
-    chatAttach: async (_t: string, on: (e: any) => void) => { calls.push(['attach']); on({ type: 'done', status: 'done', text: '進行中，完成' }); },
+    calls, saved,
+    chat: async () => ({ thread: { messages: [...saved], sessionId: 's', started: true }, running: running ? { text: '進行中', tools: [] } : null }),
+    chatSend: async (_t: string, text: string, on: (e: any) => void) => {
+      calls.push(['send', text]);
+      saved.push({ role: 'user', text, time: now() });
+      let words = ''; const tools: any[] = [];
+      for (const e of o.events ?? []) {
+        if (e.type === 'text') words += e.delta;
+        if (e.type === 'tool') tools.push(e.tool);
+        if (e.type === 'done') saved.push({ role: 'assistant', text: e.text || words, time: now(), tools, status: e.status, ...(e.error ? { error: e.error } : {}), ...(e.code ? { code: e.code } : {}), ...(e.usage ? { usage: e.usage } : {}) });
+        on(e);
+      }
+    },
+    chatAttach: async (_t: string, on: (e: any) => void) => {
+      calls.push(['attach']);
+      running = false; saved.push({ role: 'assistant', text: '進行中，完成', time: now(), status: 'done' });
+      on({ type: 'done', status: 'done', text: '進行中，完成' });
+    },
     chatStop: async () => { calls.push(['stop']); }, chatClear: async () => { calls.push(['clear']); },
   };
 }
@@ -36,8 +53,9 @@ test('a page opened during a reply attaches to it; an error is shown', async () 
 
 test('a dropped stream reads the saved thread back; a second load while this tab streams does not attach twice', async () => {
   let loads = 0, attaches = 0;
+  const saved: any[] = [{ role: 'user', text: 'x', time: '9' }, { role: 'assistant', text: '存好的', time: '9', status: 'done' }];
   const api: any = {
-    chat: async () => { loads++; return { thread: { messages: [{ role: 'user', text: 'x', time: 't' }, { role: 'assistant', text: '存好的', time: 't', status: 'done' }] }, running: loads === 2 ? { text: '', tools: [] } : null }; },
+    chat: async () => { loads++; return { thread: { messages: [...saved] }, running: loads === 2 ? { text: '', tools: [] } : null }; },
     chatSend: async (_t: string, _x: string, on: (e: any) => void) => { on({ type: 'text', delta: '一' }); throw new TypeError('Failed to fetch'); },
     chatAttach: async () => { attaches++; },
     chatStop: async () => {}, chatClear: async () => {},
@@ -46,7 +64,7 @@ test('a dropped stream reads the saved thread back; a second load while this tab
   await s.send('x');
   expect([s.state.running, s.state.messages.at(-1)?.text, loads]).toEqual([false, '存好的', 1]);
   let release!: () => void;
-  api.chatSend = async (_t: string, _x: string, on: (e: any) => void) => { await new Promise<void>((r) => (release = r)); on({ type: 'done', status: 'done', text: '好' }); };
+  api.chatSend = async (_t: string, _x: string, on: (e: any) => void) => { await new Promise<void>((r) => (release = r)); saved.push({ role: 'assistant', text: '好', time: '9', status: 'done' }); on({ type: 'done', status: 'done', text: '好' }); };
   const sending = s.send('y');
   await s.load();                     // e.g. the editor re-opened while this tab streams the turn
   release(); await sending;
@@ -72,13 +90,13 @@ test('while the material is analysed and nobody replies, the page looks again; t
     const api: any = {
       ...fakeApi(),
       // analysing twice, then the server's automatic turn is running
-      chat: async () => { n++; return { thread: { messages: [], sessionId: 's', started: true }, running: n >= 3 ? { text: '分析好了，', tools: [] } : null, analyzing: n < 3 ? '01：逐字稿（已 0 分鐘）' : null, analysis: null }; },
+      chat: async () => { n++; return { thread: { messages: n > 3 ? [{ role: 'assistant', text: '進行中，完成', time: 't', status: 'done' }] : [], sessionId: 's', started: true }, running: n === 3 ? { text: '分析好了，', tools: [] } : null, analyzing: n < 3 ? '01：逐字稿（已 0 分鐘）' : null, analysis: null }; },
     };
     const s = new ChatSession('demo', api);
     await s.load();
     expect(s.state.analyzing).toBe('01：逐字稿（已 0 分鐘）');                            // the server's words (GET /api/chat sends a line or null)
     await new Promise((r) => setTimeout(r, 120));
-    expect(n).toBe(3);
+    expect(n).toBe(4);                                                                       // the thread read again after the turn
     expect(s.state.messages.at(-1)).toMatchObject({ role: 'assistant', text: '進行中，完成' });   // attached to the automatic turn
     const quiet: any = { ...fakeApi(), chat: async () => { n++; return { thread: { messages: [] }, running: null, analyzing: '01：代理檔（已 0 分鐘）', analysis: null }; } };
     const q = new ChatSession('demo', quiet);
@@ -215,9 +233,85 @@ test('a failed turn keeps its code and cause on the message and words the error 
 test("a button's task goes with the message, and the message shown is only the words", async () => {
   const sent: any[] = [];
   const api: any = { ...fakeApi(), chatSend: async (...a: any[]) => { sent.push(a[7]); a[2]({ type: 'done', status: 'done', text: '好' }); } };
-  const s = new ChatSession('demo', api);
+  const s = new ChatSession('demo', api), shown: any[] = [];
+  s.subscribe(() => { if (s.state.running) shown.push(s.state.messages.at(-1)); });
   await s.send('存成我的片型', undefined, { kind: 'preset-draft' });
   expect(sent).toEqual([{ kind: 'preset-draft' }]);
-  expect(s.state.messages[0]).toMatchObject({ role: 'user', text: '存成我的片型' });
-  expect(s.state.messages[0]).not.toHaveProperty('task');
+  expect(shown[0]).toMatchObject({ role: 'user', text: '存成我的片型' });
+  expect(shown[0]).not.toHaveProperty('task');
+});
+
+test('a turn sent while the material is analysed: the page looks again after it, and follows the automatic reply (EP1)', async () => {
+  const old = ChatSession.POLL; ChatSession.POLL = 20;
+  try {
+    const api: any = fakeApi({ events: [] });
+    let phase: 'analysing' | 'auto' | 'over' = 'analysing', release!: () => void;
+    const chat = api.chat;
+    api.chat = async () => ({ ...(await chat()), running: phase === 'auto' ? { text: '', tools: [] } : null, analyzing: phase === 'analysing' ? '01：逐字稿' : null, analysis: null });
+    api.chatSend = async (_t: string, text: string, on: (e: any) => void) => {
+      api.saved.push({ role: 'user', text, time: new Date().toISOString() });
+      await new Promise<void>((r) => (release = r));
+      api.saved.push({ role: 'assistant', text: '好', time: new Date().toISOString(), status: 'done' });
+      on({ type: 'done', status: 'done', text: '好' });
+    };
+    api.chatAttach = async (_t: string, on: (e: any) => void) => {
+      phase = 'over'; api.saved.push({ role: 'assistant', text: '分析好了，繼續', time: new Date().toISOString(), status: 'done' });
+      on({ type: 'done', status: 'done', text: '分析好了，繼續' });
+    };
+    const s = new ChatSession('demo', api);
+    await s.load();
+    const sending = s.send('也加個標題');
+    await new Promise((r) => setTimeout(r, 60));                 // the poll fires while this tab streams the turn
+    release(); await sending;
+    expect(s.state.analyzing).toBe('01：逐字稿');                 // read again after the turn: still analysing, and looking
+    phase = 'auto';                                              // the analysis ended and the server started its own turn
+    await new Promise((r) => setTimeout(r, 80));
+    expect(phase).toBe('over');
+    expect([s.state.messages.at(-1)?.text, s.state.analyzing, s.state.running]).toEqual(['分析好了，繼續', null, false]);
+    s.close();
+  } finally { ChatSession.POLL = old; }
+});
+
+test('a reply that ends between the read and the stream shows as saved, not cut short (EP3)', async () => {
+  let ended = false;
+  const api: any = { ...fakeApi(),
+    chat: async () => ({ thread: { messages: ended ? [{ role: 'assistant', text: '整段回覆，完整。', time: 't', status: 'done', usage: { input: 1, cacheWrite: 0, cacheRead: 0, output: 2 } }] : [] }, running: ended ? null : { text: '整段', tools: [] } }),
+    chatAttach: async (_t: string, on: (e: any) => void) => { ended = true; on({ type: 'done', status: 'done', text: '' }); } };
+  const s = new ChatSession('demo', api);
+  await s.load();
+  expect(s.state.messages).toHaveLength(1);
+  expect(s.state.messages[0]).toMatchObject({ text: '整段回覆，完整。', usage: { output: 2 } });
+});
+
+test('a message sent before the thread loaded: the earlier conversation shows after the turn (EP8)', async () => {
+  const api: any = fakeApi({ events: [{ type: 'done', status: 'done', text: '好' }] });
+  const s = new ChatSession('demo', api);
+  await s.send('再來');                                          // the first load has not answered yet
+  expect(s.state.messages.map((m) => m.text)).toEqual(['舊', '再來', '好']);
+});
+
+test('a refusal is not taken for sent because an earlier message has the same words; a failed read-back hands them back too (EP7)', async () => {
+  const refused: any = { ...fakeApi(), chatSend: async () => { throw Object.assign(new Error('還在回覆中'), { status: 409 }); } };
+  refused.saved.push({ role: 'user', text: '繼續', time: 't' });
+  const s = new ChatSession('demo', refused);
+  await s.load();
+  await s.send('繼續');
+  expect([s.state.error, s.state.unsent, s.state.messages.map((m) => m.text)]).toEqual(['還在回覆中', '繼續', ['舊', '繼續']]);
+  // the connection dropped and the server cannot be read either: the message is not left in the list as sent
+  const down: any = { ...fakeApi(), chatSend: async () => { throw new TypeError('Failed to fetch'); } };
+  const d = new ChatSession('demo', down);
+  await d.load();
+  down.chat = async () => { throw new TypeError('Failed to fetch'); };
+  await d.send('好');
+  expect([d.state.unsent, d.state.messages.map((m) => m.text), d.state.running]).toEqual(['好', ['舊'], false]);
+  // dropped after the server saved it: kept, nothing handed back
+  const kept: any = fakeApi();
+  kept.chatSend = async (_t: string, text: string) => { kept.saved.push({ role: 'user', text, time: new Date().toISOString() }); throw new TypeError('Failed to fetch'); };
+  const k = new ChatSession('demo', kept);
+  await k.load(); await k.send('舊');
+  expect([k.state.unsent, k.state.messages.map((m) => m.text)]).toEqual([undefined, ['舊', '舊']]);
+  // the server took it but another reply was starting there: the words come back
+  const busy = new ChatSession('demo', fakeApi({ events: [{ type: 'done', status: 'error', text: '', error: '還在回覆中', code: 'chat.busy' }] }) as any);
+  await busy.send('剪短');
+  expect(busy.state.unsent).toBe('剪短');
 });

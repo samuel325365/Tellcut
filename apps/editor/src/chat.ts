@@ -46,45 +46,70 @@ export class ChatSession {
   subscribe(fn: () => void) { this.subs.add(fn); return () => { this.subs.delete(fn); }; }
   private set(p: Partial<ChatState>) { this.state = { ...this.state, ...p }; for (const f of [...this.subs]) f(); }
 
-  /** The thread as saved; a reply still running (the page came back) is followed to its end. */
-  async load() {
-    try {
-      const r = await this.api.chat(this.thread);
-      if (this.following) return;
-      this.set({ messages: r.thread.messages, error: '', running: !!r.running, partial: r.running ? { text: r.running.text, tools: [...r.running.tools] } : null, analyzing: r.analyzing ?? null, analysis: r.analysis ?? null });
-      // while the material is analysed and nobody replies, look again now and then: the reply the server starts when it is done shows up
-      clearTimeout(this.poll);
-      if (r.analyzing && !r.running && !this.closed) this.poll = setTimeout(() => void this.load(), ChatSession.POLL);
-      if (r.running) { this.following = true; try { await this.api.chatAttach(this.thread, (e) => this.on(e), this.following$.signal); } finally { this.following = false; } await this.afterMove(); }
-    } catch (e) { if (!this.closed) this.set({ error: errText(e), running: false, partial: null }); }   // let go: its stream was aborted
+  /** The thread as saved; a reply still running (the page came back) is followed to its end, then the thread is read again.
+   *  quiet: a failed read keeps what is shown (the re-read after a turn); returns whether the thread was read. */
+  async load(quiet = false): Promise<boolean> {
+    let r: ChatThreadView;
+    try { r = await this.api.chat(this.thread); }
+    catch (e) { if (!this.closed && !quiet) this.set({ error: errText(e), running: false, partial: null }); return false; }
+    // this tab streams the turn: the read after it shows the saved thread (and looks again while analysing)
+    if (this.following || this.closed) return true;
+    this.set({ messages: r.thread.messages, error: '', running: !!r.running, partial: r.running ? { text: r.running.text, tools: [...r.running.tools] } : null, analyzing: r.analyzing ?? null, analysis: r.analysis ?? null });
+    // while the material is analysed and nobody replies, look again now and then: the reply the server starts when it is done shows up
+    clearTimeout(this.poll);
+    if (r.analyzing && !r.running) this.poll = setTimeout(() => void this.load(), ChatSession.POLL);
+    if (!r.running) return true;
+    this.following = true;
+    try { await this.api.chatAttach(this.thread, (e) => this.on(e), this.following$.signal); }
+    catch (e) { if (!this.closed) this.set({ error: errText(e), running: false, partial: null }); return true; }   // let go: its stream was aborted
+    finally { this.following = false; }
+    // what streamed between the two requests (or the whole end of a turn that ended in that gap) is only in the saved thread
+    await this.reread();
+    return true;
+  }
+
+  /** After a turn this tab followed: the saved thread (the earlier messages a send made before the first load hid, the
+   *  analysis line, the poll re-armed, a moved conversation's note). A turn's error stays shown. */
+  private async reread(): Promise<boolean> {
+    if (this.closed) return false;
+    const error = this.state.error;
+    const read = await this.load(true);
+    if (error && !this.state.error && !this.state.running) this.set({ error });
+    return read;
   }
 
   /** preset: the one picked on the home page (a message may be the preset alone); task: what a button asks of the agent (its words stay off the thread) */
   async send(text: string, preset?: PresetChoice, task?: ChatTask) {
     const t = text.trim();
     if ((!t && !preset) || this.state.running) return;
-    this.set({ messages: [...this.state.messages, { role: 'user', text: t, time: new Date().toISOString(), ...(preset ? { preset } : {}) }], running: true, partial: { text: '', tools: [] }, error: '' });
+    const sent: ChatMessage = { role: 'user', text: t, time: new Date().toISOString(), ...(preset ? { preset } : {}) };
+    this.set({ messages: [...this.state.messages, sent], running: true, partial: { text: '', tools: [] }, error: '' });
     this.following = true;
-    let failed: Error | null = null;
+    this.busy = false;
+    let failed: unknown = null;
     try { await this.api.chatSend(this.thread, t, (e) => this.on(e), this.from, preset, getLang(), this.picksSources ? this.state.sources ?? [] : undefined, task); }
-    catch (e) { failed = e as Error; }
+    catch (e) { failed = e; }
     finally { this.following = false; }
-    await this.afterMove();
-    // the stream ended without its last event (the connection dropped, or the request failed): the server has the truth
-    if (this.state.running) {
-      this.set({ running: false, partial: null });
-      await this.load();
-      // refused (a reply already running there, the project gone): the thread has no such message, and the words were lost
-      if (failed && !this.state.messages.some((m) => m.role === 'user' && m.text === t)) this.set({ error: errText(failed), unsent: t });
-    }
+    if (this.closed) return;
+    // the stream ended without its last event (the connection dropped, or the request was refused): the server has the truth
+    const cut = this.state.running;
+    if (cut) this.set({ running: false, partial: null });
+    const busy = this.busy, read = await this.reread();
+    // the server took the request but found another reply starting there: its words were not kept either
+    if (busy && !cut) { this.set({ unsent: t }); return; }
+    if (!cut || !failed) return;
+    // Refused (an HTTP answer: a reply already running there, the project gone): nothing was saved. Dropped: saved only if the
+    // thread read back has this message from now on; a same-words message from earlier ("ok", "go on") is not it.
+    const refused = typeof (failed as { status?: unknown }).status === 'number';
+    const kept = read && !refused && this.state.messages.some((m) => m.role === 'user' && m.text === t && m.time >= sent.time);
+    if (!kept) this.set({ error: errText(failed), unsent: t, ...(read ? {} : { messages: this.state.messages.filter((m) => m !== sent) }) });
   }
 
   /** the refused words, once: the chat box puts them back */
   takeUnsent(): string | undefined { const x = this.state.unsent; if (x !== undefined) this.set({ unsent: undefined }); return x; }
 
-  /** the conversation went on in a new project's chat (server handOver): this thread now holds only a note */
-  private moved = false;
-  private async afterMove() { if (this.moved) { this.moved = false; await this.load(); } }
+  /** the turn ended at once with "a reply is still running" (another tab's turn started in between): nothing was saved */
+  private busy = false;
 
   private on(e: ChatEvent) {
     const p = this.state.partial ?? { text: '', tools: [] };
@@ -93,8 +118,8 @@ export class ChatSession {
     if (e.type === 'project') { if (!this.closed) this.onProject?.(e.id); return; }
     const msg: ChatMessage = { role: 'assistant', text: e.text || p.text, time: new Date().toISOString(), tools: p.tools, status: e.status, ...(e.error ? { error: e.error } : {}),
       ...(e.code ? { code: e.code } : {}), ...(e.detail !== undefined ? { detail: e.detail } : {}), ...(e.usage ? { usage: e.usage } : {}) };
+    if (e.code === 'chat.busy') this.busy = true;
     this.set({ messages: [...this.state.messages, msg], running: false, partial: null, error: e.status === 'error' ? chatErrorText(e) : '' });
-    if (e.moved) this.moved = true;
     if (this.closed) return;
     this.onTurnEnd?.();
     if (e.moved) this.onMoved?.(e.moved);
