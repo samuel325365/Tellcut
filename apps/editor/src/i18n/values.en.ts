@@ -48,7 +48,7 @@ export const VALUES_EN: Record<string, string> = {
   "common.notecard.title": "Whipped cream",
   "common.notecard.text": "Cream and sugar, whipped until thick and fluffy with soft peaks",
   "common.notecard.fields": "Tool|Electric mixer\nTime|About 3 min",
-  "common.notecard.items": "Espresso|Raw sugar|Coffee liqueur|Cream|Vanilla pod|Mascarpone|Ladyfingers|Cocoa powder",
+  "common.notecard.items": "Check the key points|Get it done|Look it over",
   "common.notecard.count": "{n} items",
   "common.notecard.sub": "No oven · 8 steps",
   "common.handwrite.lines": "0.1-1.3|The wind is gentle today\n1.5-2.7|We walk slowly along the river",

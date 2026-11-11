@@ -22,11 +22,16 @@ export const STYLES: Sample[] = [
   { name: 'window-progress', type: 'common.window', params: { content: 'progress', text: '佈置中…|佈置完成 ✓', title: 'setup.exe', bar: 'yellow', h: 0.13, progTo: 2, exit: 'none' }, len: 3, at: [1.2, 2.5], bg: '#d9c2f7' },
   { name: 'popup', type: 'common.popup', params: { press: 1.2 }, len: 3, at: [0.12, 1.25], bg: '#ffc4dc' },
   { name: 'popup-sheet', type: 'common.popup', params: { mode: 'sheet', text: 'Katie，十六歲生日快樂', buttons: '儲存回憶', y: 0.72, typeAt: 0.3, press: 1.8 }, len: 3, at: [1.5, 2.1], bg: '#ffc4dc' },
+  // 16:9: the dialog is 0.84 of the short side wide, not a strip across the frame
+  { name: 'wide-popup', type: 'common.popup', params: { press: -1 }, len: 3, at: [1.25], wide: true, bg: '#ffc4dc' },
   { name: 'touch-cursor', type: 'common.touch', params: { look: 'cursor', color: '#ffffff', edge: '#4b3a8c', touches: '0.5|tap|0.5,0.38\n1.6-2.2|drag|0.3,0.6>0.7,0.6' }, len: 3, at: [0.55, 1.2, 2.0], bg: '#d9c2f7' },
   // common.prints, common.scraps and common.wipe's tiles (2026-11-05, the Collage pilot film's fx.prints / fx.scraps / fx.mosaic):
   // prints dropping and settled, the bits pasted round them and the seams, tiles closing over the cut and opening
   { name: 'prints', type: 'common.prints', sources: PIC, params: { source: 'pic', prints: '0|0|0.32,0.36,0.52|-3|4:3|tape\n0.4|0|0.68,0.5,0.46|3|3:4|clip\n0.8|0|0.38,0.7,0.5|2|1:1' }, len: 3, at: [0.95, 2.0], bg: '#f3ece0' },
   { name: 'scraps', type: 'common.scraps', params: { scraps: '0|dots|0.72,0.12,0.4,0.07|-3|#c3b1f5\n0.2|paper|0.3,0.4,0.36,0.14|5|#e8763a\n0.4|tape|0.6,0.6,0.3,0.06|-8|#ece2be\n0.6|pin|0.5,0.75,0.05,0.05|0|#e0552f\n0.8|clip|0.25,0.75,0.06,0.16|10|#9aa3ab\n1.0|grid|5,9|0|#ffffff' }, len: 3, at: [1.5], bg: '#1f9e93' },
+  // 16:9: prints and scraps sized by the short side; the right print framed with crop= (a clip's crop: aimed high, zoomed in)
+  { name: 'wide-prints', type: 'common.prints', sources: PIC, params: { source: 'pic', prints: '0|0|0.3,0.45,0.5|-3|4:3|tape\n0.4|0|0.68,0.5,0.46|3|3:4|clip crop=0.5,0.3,1.6' }, len: 3, at: [2.0], wide: true, bg: '#f3ece0' },
+  { name: 'wide-scraps', type: 'common.scraps', params: { scraps: '0|dots|0.72,0.12,0.4,0.07|-3|#c3b1f5\n0.2|paper|0.3,0.4,0.36,0.14|5|#e8763a\n0.6|pin|0.5,0.75,0.05,0.05|0|#e0552f\n1.0|grid|9,5|0|#ffffff' }, len: 3, at: [1.5], wide: true, bg: '#1f9e93' },
   { name: 'wipe-tiles', type: 'common.wipe', params: { mode: 'tiles', color: '#efe6d4', edge: '#ffffff' }, len: 1, at: [0.25, 0.5, 0.8], bg: '#4a6b7c' },
   // common.monoframe, common.filmstrip and common.wipe's vortex (2026-11-05, the Mono Frame pilot film's fx.monoframe / fx.filmstrip /
   // fx.vortex): the frame round the window, the window shrunk to a strip, all words; the two strips; the vortex mid-spin
@@ -34,6 +39,9 @@ export const STYLES: Sample[] = [
   { name: 'monoframe-win', type: 'common.monoframe', params: { text: 'SOUK · 市集 · ', win: '0|0.12,0.36,0.76,0.24\n1|0.12,0.36,0.76,0.24\n2|0.045,0.0253,0.91,0.9494' }, len: 3, at: [0.5, 1.5], bg: '#4a6b7c' },
   { name: 'monoframe-full', type: 'common.monoframe', params: { full: true }, len: 3, at: [1.5], bg: '#4a6b7c' },
   { name: 'filmstrip', type: 'common.filmstrip', sources: PIC, params: { source: 'pic', stills: '0, 0, 0' }, len: 3, at: [1.5] },
+  // 16:9: the border and the strips go by the short side
+  { name: 'wide-monoframe', type: 'common.monoframe', params: { text: 'MARRAKECH · 馬拉喀什 · ' }, len: 3, at: [1.5], wide: true, bg: '#4a6b7c' },
+  { name: 'wide-filmstrip', type: 'common.filmstrip', sources: PIC, params: { source: 'pic', stills: '0, 0, 0' }, len: 3, at: [1.5], wide: true },
   { name: 'wipe-vortex', type: 'common.wipe', params: { mode: 'vortex', words: 'MAJORELLE · 馬若雷勒 · ', color: '#0d0d0d', edge: '#f4f4f0' }, len: 1, at: [0.5], bg: '#4a6b7c' },
   // common.masthead, common.spread and common.wordbands (2026-11-06, the Fashion pilot film's fx.cover / fx.taste / fx.column /
   // fx.wordbands): the cover typing and settled, the back cover; a swatch page and a column page settled; the bands mid-run
@@ -50,6 +58,7 @@ export const STYLES: Sample[] = [
   // settling and settled, the band, the slanted 3 and 2
   { name: 'grade', type: 'common.grade', params: { steps: '0|mono' }, len: 2, at: [1.0], bg: '#3a7bd5' },
   { name: 'grade-bw', type: 'common.grade', params: { steps: '0|bw' }, len: 2, at: [1.0], bg: '#3a7bd5' },
+  { name: 'grade-deep', type: 'common.grade', params: { steps: '0|mono', deep: true }, len: 2, at: [1.0], bg: '#d9d9d9' },
   { name: 'wash', type: 'common.wash', params: { steps: '0|mono' }, len: 2, at: [1.0], bg: '#d9d9d9' },
   { name: 'viewfinder', type: 'common.viewfinder', len: 3, at: [1.5], bg: '#4a6b7c' },
   { name: 'echo', type: 'common.echo', params: { word: 'RIDE', label: '01' }, len: 2, at: [0.1, 1.0], bg: '#4a6b7c' },
@@ -68,6 +77,8 @@ export const STYLES: Sample[] = [
   { name: 'sticker', type: 'common.sticker', params: { shape: 'heart', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [0.1, 1.5], bg: '#ff3ea5' },
   { name: 'sticker-smile', type: 'common.sticker', params: { shape: 'smile', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [1.5], bg: '#c6f03a' },
   { name: 'sticker-bolt', type: 'common.sticker', params: { shape: 'bolt', x: 0.35, y: 0.45, size: 0.3, popAt: 0 }, len: 2, at: [1.5], bg: '#3b4cf0' },
+  // 16:9: the sticker is a share of the short side, the size it is at 9:16
+  { name: 'wide-sticker', type: 'common.sticker', params: { shape: 'smile', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [1.5], wide: true, bg: '#c6f03a' },
   // the frames derived from the library (2026-11-07): common.grid (bento sliding in and settled, four scaling, two side by side on a wide
   // frame), common.slant, common.postage, common.letterbox
   { name: 'grid', type: 'common.grid', sources: PIC, params: { layout: 'bento', shots: 'pic|0||still\npic|0|0.5,0.3,1.6|still\npic|0|0.5,0.7,1.6|still\npic|0|0.5,0.5,1.2|still' }, len: 3, at: [0.3, 1.6] },
