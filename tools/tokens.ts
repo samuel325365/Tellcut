@@ -31,10 +31,11 @@ export function sumChat(thread: { messages: Array<{ role: string; usage?: { inpu
   return { ...t, cost, priced };
 }
 
-/** US$ per million tokens (platform.claude.com/docs/en/about-claude/pricing, checked 2026-10-24): cache writes cost 1.25× input (5
- *  minutes) or 2× (1 hour), fast mode (usage.speed "fast", Opus 5.5 and 5) twice everything; `long`: a reply whose prompt (input + cache writes + cache reads) is over `above` tokens pays these prices instead */
+/** US$ per million tokens (platform.claude.com/docs/en/about-claude/pricing, checked 2026-10-24; Fable 5.2 from the Claude API model table, 2026-11-11): cache writes cost 1.25× input (5
+ *  minutes) or 2× (1 hour), fast mode (usage.speed "fast", Opus 5.5 and 5, Fable 5.2) twice everything; `long`: a reply whose prompt (input + cache writes + cache reads) is over `above` tokens pays these prices instead */
 type Rates = { input: number; output: number; read: number };
 export const PRICES: Record<string, Rates & { long?: Rates & { above: number } }> = {
+  'claude-fable-5-2': { input: 8, output: 40, read: 0.2 },
   'claude-opus-5-5': { input: 4, output: 20, read: 0.2 },
   'claude-sonnet-5-5': { input: 2, output: 10, read: 0.2 },
   'claude-fable-5-1': { input: 10, output: 50, read: 0.25 },

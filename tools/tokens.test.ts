@@ -57,6 +57,8 @@ test('a session file: Haiku 5.5 priced by prompt length; a model outside the tab
   const fast = JSON.parse(m('x', 0, 0, 1_000_000));
   fast.message.usage.speed = 'fast';
   expect(sumSession(JSON.stringify(fast)).usd).toBeCloseTo(2 * (0.2 + 0.02), 9);
+  // Fable 5.2: cache reads $0.20, output $40
+  expect(sumSession(m('g', 0, 0, 1_000_000, 'claude-fable-5-2')).usd).toBeCloseTo(0.2 + 0.04, 9);
   // a dated id is priced as its model: Haiku 4.5 reads $0.10, output $5
   expect(sumSession(m('d', 0, 0, 1_000_000, 'claude-haiku-4-5-20251001')).usd).toBeCloseTo(0.1 + 0.005, 9);
   const t = sumSession([m('a', 0, 0, 1_000_000), m('b', 0, 0, 1_000_000, 'some-other-model'), m('c', 0, 0, 1_000_000, 'some-other-model')].join('\n'));
@@ -66,7 +68,7 @@ test('a session file: Haiku 5.5 priced by prompt length; a model outside the tab
   expect(formatTotals(t).split('\n')[0]).toBe('注意：有 2 則用了價格表以外的模型（some-other-model），沒有計價，下面的金額偏低');
   expect(formatTotals(t)).toContain('照 Claude API 牌價估計至少 US$0.22（有 2 則沒計價，金額偏低）');
   // nothing priced at all: no US$0.00
-  const none = formatTotals(sumSession(m('q', 0, 0, 1_000_000, 'claude-fable-5-2')));
+  const none = formatTotals(sumSession(m('q', 0, 0, 1_000_000, 'some-other-model')));
   expect(none).toContain('照 Claude API 牌價估計不出來（有 1 則沒計價）');
   expect(none).not.toContain('US$0.00');
 });
