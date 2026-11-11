@@ -6,10 +6,6 @@ import { fitStage } from './fit.ts';
 import { StageTools } from './tools.ts';
 
 export type { EditorMsg, PlayerMsg };
-/** a source's media is there now (its analysis finished): the preview asks for its video again (PreviewSession.mediaReady).
- *  The editor's PlayerBridge.mediaReady sends it; it belongs in the protocol's EditorMsg. */
-export type MediaReadyMsg = { type: 'mediaReady'; source: string };
-export type EmbedMsg = EditorMsg | MediaReadyMsg;
 /** what failed in the preview, by the message it was running: the code the editor words it by when the error has none of its own */
 const FAILED = { load: 'player.loadFailed', patch: 'player.updateFailed', seek: 'player.seekFailed', play: 'player.playFailed', mediaReady: 'player.updateFailed' } as const;
 /** a failure as the editor gets it: its own code (a ProjectError's project.tooNew) if it has one, else `code` with its words as {error} */
@@ -33,7 +29,7 @@ export const keyMessage = (e: KeyboardEvent): PlayerMsg =>
 
 /** Runs editor messages one after another; queued patches collapse to the newest, pause acts at once. */
 export function createDispatcher(s: SessionApi, post: (m: PlayerMsg) => void) {
-  let queue: EmbedMsg[] = [];
+  let queue: EditorMsg[] = [];
   let busy = false;
   async function pump() {
     if (busy) return;
@@ -51,7 +47,7 @@ export function createDispatcher(s: SessionApi, post: (m: PlayerMsg) => void) {
     busy = false;
   }
   // a mediaReady waits its turn like a seek (after a load or patch still running) and is never dropped for a newer one
-  return (m: EmbedMsg) => {
+  return (m: EditorMsg) => {
     if (m.type === 'cropMode') { s.cropMode(m.sel); return; }
     if (m.type === 'quality') { s.quality(m.value); return; }
     if (m.type === 'select') { s.select(m.itemId); return; }
@@ -90,7 +86,7 @@ export function startEmbed(win: Window, stageEl: HTMLElement, viewport: HTMLElem
   const send = createDispatcher(api, post);
   win.addEventListener('message', (e) => {
     if (e.origin !== win.location.origin || e.source !== win.parent) return;
-    const m = e.data as EmbedMsg;
+    const m = e.data as EditorMsg;
     if (m.type === 'texts') tools!.texts = m.texts; else send(m);
   });
   win.addEventListener('resize', () => { fit(); tools?.refresh(); });

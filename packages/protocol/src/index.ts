@@ -217,7 +217,9 @@ export type EditorMsg =
   | { type: 'seek'; t: number } | { type: 'play'; from: number } | { type: 'pause' }
   | { type: 'cropMode'; sel: CropSel | null }
   | { type: 'quality'; value: 'full' | 'draft' }
-  | { type: 'select'; itemId: string | null };
+  | { type: 'select'; itemId: string | null }
+  /** a source's media is there now (its analysis finished): the preview asks for its video again */
+  | { type: 'mediaReady'; source: string };
 /** the preview tools' messages (picking, moving and editing items on the preview) */
 export type ToolMsg =
   | { type: 'pick'; itemId: string | null }
