@@ -1,12 +1,14 @@
 // The volume line, its control points and the fade handles drawn over a music/audio clip (spec §4.4). The points, handles and
 // the line's hit area come only with `active` (the clip is selected, spec 2026-10-28-timeline-refresh A1): a first click selects.
-import { dbToY, envelopePoints } from './envelope.ts';
+import { dbToY, envelopeHandles, envelopeLine, envelopePoints } from './envelope.ts';
+
+// a point a trim left outside the clip: a hollow ring at the edge (the style beats the stylesheet's filled circle)
+const OUT = { fill: 'transparent', stroke: '#ffd60a', strokeWidth: 1.5, strokeDasharray: '2 1.5' };
 
 export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: number; pps: number; h: number; active: boolean }) {
   const pts = envelopePoints(item.envelope, len, pps, h), w = len * pps;
-  // the gain holds flat before the first point and after the last one
-  const line = [{ x: 0, y: pts[0].y }, ...pts, { x: w, y: pts[pts.length - 1].y }];
-  const points = line.map((p) => `${p.x},${p.y}`).join(' ');
+  const points = envelopeLine(pts, w).map((p) => `${p.x},${p.y}`).join(' ');
+  const handles = item.envelope?.length ? envelopeHandles(pts, w, 4) : [];
   const fi = item.fadeIn * pps, fo = w - item.fadeOut * pps, top = dbToY(0, h);
   return (
     <svg class="env" width={w} height={h} style={{ width: `${w}px`, height: `${h}px` }}>
@@ -15,7 +17,7 @@ export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: n
       <polyline class="env-line" points={points} />
       {active && <>
         <polyline class="env-hit" data-env-line points={points} />
-        {item.envelope?.map((_: unknown, i: number) => <circle data-env-index={i} cx={pts[i].x} cy={pts[i].y} r={4} />)}
+        {handles.map((p, i) => <circle data-env-index={i} data-env-out={p.out ? '' : undefined} cx={p.x} cy={p.y} r={4} style={p.out ? OUT : undefined} />)}
         <path data-fade="in" class="fade-handle" d={`M${fi} 0 l10 0 l-10 10 z`} />
         <path data-fade="out" class="fade-handle" d={`M${fo} 0 l-10 0 l10 10 z`} />
       </>}
