@@ -44,6 +44,32 @@ test('the player build is stale when its page or the installed packages changed 
   }
 });
 
+test('the player build is stale when a file in public/ or vite.config.ts changed after it, or a file was copied into public/', () => {
+  for (const f of ['apps/player/public/fonts/a.ttf', 'apps/player/vite.config.ts']) {
+    const root = freshBuilds();
+    try {
+      mkdirSync(join(root, 'apps/player/public/fonts'), { recursive: true });
+      writeFileSync(join(root, f), 'x');
+      const old = new Date(Date.now() - 60_000);
+      utimesSync(join(root, f), old, old); utimesSync(join(root, 'apps/player/public/fonts'), old, old); utimesSync(join(root, 'apps/player/public'), old, old);
+      expect(playerBuildStale(root)).toBeNull();
+      touch(root, f);
+      expect(playerBuildStale(root), f).toContain('npm run build:player');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  }
+  const root = freshBuilds();
+  try {
+    mkdirSync(join(root, 'apps/player/public/fonts'), { recursive: true });
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(join(root, 'apps/player/public/fonts'), old, old); utimesSync(join(root, 'apps/player/public'), old, old);
+    expect(playerBuildStale(root)).toBeNull();
+    // a font copied in keeps its old time; its folder's time says it arrived
+    writeFileSync(join(root, 'apps/player/public/fonts/b.ttf'), 'x'); utimesSync(join(root, 'apps/player/public/fonts/b.ttf'), old, old);
+    touch(root, 'apps/player/public/fonts');
+    expect(playerBuildStale(root)).toContain('npm run build:player');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the editor build is stale the same way: its own source and page, the packages it is built from, the installed packages', () => {
   for (const f of ['apps/editor/src/main.tsx', 'apps/editor/index.html', 'packages/engine/src/stage.ts', 'package-lock.json']) {
     const root = freshBuilds();

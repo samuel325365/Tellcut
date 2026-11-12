@@ -12,15 +12,17 @@ import { TELLCUT_ROOT } from './paths.ts';
  *  test-fixture.ts, editor-test-kit.ts, e2e-kit.ts. No bundle reaches them, so editing one leaves a build fresh. */
 const TEST_FILE = /(^|[-.])(test|e2e)[-.]/;
 
-/** the newest modification time (ms) of a source file under `dir` (tests, their helpers and builds left out) */
-function newest(dir: string): number {
-  let t = 0;
-  if (!existsSync(dir)) return t;
+/** the newest modification time (ms) of a source file under `dir` (tests, their helpers and builds left out); `any`: every file
+ *  counts (public/, which vite copies into the build as it is: fonts, pictures) */
+function newest(dir: string, any = false): number {
+  if (!existsSync(dir)) return 0;
+  // a folder's own time changes when a file is added or removed: a font copied in keeps its old modification time on Windows
+  let t = any ? statSync(dir).mtimeMs : 0;
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (e.name === 'node_modules' || e.name === 'dist' || e.name === 'golden') continue;
     const p = join(dir, e.name);
-    if (e.isDirectory()) t = Math.max(t, newest(p));
-    else if (/\.(ts|tsx|css)$/.test(e.name) && !TEST_FILE.test(e.name)) t = Math.max(t, statSync(p).mtimeMs);
+    if (e.isDirectory()) t = Math.max(t, newest(p, any));
+    else if (any || (/\.(ts|tsx|css)$/.test(e.name) && !TEST_FILE.test(e.name))) t = Math.max(t, statSync(p).mtimeMs);
   }
   return t;
 }
@@ -28,14 +30,16 @@ function newest(dir: string): number {
 const mtime = (f: string) => (existsSync(f) ? statSync(f).mtimeMs : 0);
 
 /** Whether the vite build of `apps/<app>` is missing ('missing'), older than what it is made from ('stale') or fresh (null): its own
- *  source and page, every package but Node-only media-node, and the installed packages (package-lock.json: an npm install that
- *  changed a dependency changes what the build bundles). */
+ *  source, page, public/ (copied in as it is: a font added there is missing from an older build) and vite.config.ts, every
+ *  package but Node-only media-node, and the installed packages (package-lock.json: an npm install that changed a dependency
+ *  changes what the build bundles). */
 function buildState(root: string, app: 'player' | 'editor'): 'missing' | 'stale' | null {
   const built = join(root, 'apps', app, 'dist', 'index.html');
   if (!existsSync(built)) return 'missing';
-  const at = statSync(built).mtimeMs, pkgs = join(root, 'packages');
-  const dirs = [join(root, 'apps', app, 'src'), ...(existsSync(pkgs) ? readdirSync(pkgs).filter((d) => d !== 'media-node').map((d) => join(pkgs, d, 'src')) : [])];
-  const src = Math.max(...dirs.map(newest), mtime(join(root, 'apps', app, 'index.html')), mtime(join(root, 'package-lock.json')));
+  const at = statSync(built).mtimeMs, pkgs = join(root, 'packages'), own = join(root, 'apps', app);
+  const dirs = [join(own, 'src'), ...(existsSync(pkgs) ? readdirSync(pkgs).filter((d) => d !== 'media-node').map((d) => join(pkgs, d, 'src')) : [])];
+  const src = Math.max(...dirs.map((d) => newest(d)), newest(join(own, 'public'), true), mtime(join(own, 'index.html')), mtime(join(own, 'vite.config.ts')),
+    mtime(join(root, 'package-lock.json')));
   return src > at + 1000 ? 'stale' : null;
 }
 
