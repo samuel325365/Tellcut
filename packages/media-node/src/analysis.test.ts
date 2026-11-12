@@ -15,6 +15,15 @@ test('parseShowinfo reads pts_time values', () => {
   expect(parseShowinfo('[Parsed_showinfo_1 @ 0x1] n:   0 pts:  60 pts_time:2.002 duration:1\n[Parsed_showinfo_1 @ 0x1] n: 1 pts: 9 pts_time:5.5 x')).toEqual([2.002, 5.5]);
 });
 
+test('a WebM recorded through a pipe (no length in its header) is analysed by its measured length: a tile a second, not NaN', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'an-rec-')), src = join(dir, 'rec.webm');
+  const { stdout } = await ffmpeg(['-f', 'lavfi', '-i', 'testsrc=s=320x240:r=30:d=3', '-f', 'lavfi', '-i', 'sine=d=3', '-c:v', 'libvpx-vp9', '-deadline', 'realtime',
+    '-cpu-used', '8', '-b:v', '300k', '-c:a', 'libopus', '-f', 'webm', '-'], { stdout: true });
+  writeFileSync(src, stdout);
+  const f = await analyzeSource(dir, src);
+  expect(JSON.parse(readFileSync(f.thumbIndex, 'utf8'))).toMatchObject({ interval: 1, count: 3 });
+}, 120000);
+
 test('thumbGrid: a tile a second, wider apart for a source too long for one atlas', () => {
   expect(thumbGrid(4)).toEqual({ interval: 1, count: 4, rows: 1 });
   expect(thumbGrid(0.2)).toEqual({ interval: 1, count: 1, rows: 1 });

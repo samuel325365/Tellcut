@@ -2,7 +2,7 @@
 import { statSync } from 'node:fs';
 import { mediaKindOfName } from '@tellcut/protocol';
 import { photoMeta } from './photo.ts';
-import { ffprobe, uprightSize } from './ffmpeg.ts';
+import { ffprobe, lengthOrNull, measureDuration, uprightSize } from './ffmpeg.ts';
 
 export type MediaKind = 'video' | 'image' | 'audio';
 /** by the file's extension (protocol's lists, shared with the editor) */
@@ -50,7 +50,11 @@ export async function probeMedia(path: string): Promise<MediaInfo> {
   const j = JSON.parse(await ffprobe(['-show_streams', '-show_format', '-of', 'json', path])), streams: any[] = j.streams ?? [], tags: Record<string, string> = j.format?.tags ?? {};
   const v = streams.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
   const audio = streams.some((s) => s.codec_type === 'audio');
-  const duration = Number(j.format?.duration ?? v?.duration ?? 0);
+  // the header's length, else measured from the packets (a WebM written through a pipe has none in its header); a 0 here made a
+  // whole `new` fail its schema check and the editor's Import hand the page a 0-second source
+  const duration = lengthOrNull(j.format?.duration) ?? lengthOrNull(v?.duration) ?? streams.map((s) => lengthOrNull(s.duration)).find((d) => d !== null)
+    ?? (await measureDuration(path));
+  if (duration === null) throw new Error(`no length: none in its header, and none could be measured from its packets (a recording cut off before its end was written?)`);
   const when = takenFromTags(tags) ?? guess();
   if (kind === 'audio' || !v) return { kind: 'audio', duration, width: 0, height: 0, audio, ...when };
   const loc = tags['com.apple.quicktime.location.ISO6709'] ?? tags.location, gps = loc ? parseIso6709(loc) : undefined;

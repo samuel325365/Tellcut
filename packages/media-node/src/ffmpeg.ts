@@ -68,10 +68,49 @@ export function uprightSize(s: { width?: number; height?: number; side_data_list
 }
 
 export const probeHasAudio = async (path: string) => (await probe(['-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', path])) !== '';
-export const probeDuration = async (path: string) => parseFloat(await probe(['-show_entries', 'format=duration', '-of', 'csv=p=0', path]));
-/** Synchronous duration probe for one-off CLI tools (importers); the server uses the async probes. */
-export const probeDurationSync = (path: string) =>
-  parseFloat(execFileSync(ffprobePath(), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', path], { windowsHide: true }).toString());
+
+/** a length that is one: ffprobe says "N/A" (NaN), or nothing, for a file whose header has none */
+export const lengthOrNull = (x: unknown): number | null => { const n = Number(x); return x !== undefined && x !== null && x !== '' && Number.isFinite(n) && n > 0 ? n : null; };
+const PACKETS = ['-v', 'quiet', '-show_entries', 'packet=pts_time,duration_time', '-of', 'csv=p=0'];
+/** the end of the last packet in ffprobe's `pts_time,duration_time` lines (the latest pts plus its packet's length), or null */
+export function packetsEnd(lines: Iterable<string>): number | null {
+  let end = 0;
+  for (const l of lines) {
+    const [pts, dur] = l.split(',').map(Number);
+    if (Number.isFinite(pts)) end = Math.max(end, pts + (Number.isFinite(dur) ? dur : 0));
+  }
+  return end > 0 ? end : null;
+}
+/**
+ * A file's length measured from its packets, for one whose header gives none: a WebM written through a pipe (a browser's
+ * MediaRecorder, a screen recorder) or a recording cut off before its end was written. ffprobe only reads the packets (no
+ * decoding); its lines are read as they come, as an hour of footage prints a few hundred thousand. Null when no packet has a time.
+ */
+export function measureDuration(path: string): Promise<number | null> {
+  return new Promise((res) => {
+    const p = spawn(ffprobePath(), [...PACKETS, path], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    let end = 0, rest = '';
+    const take = (lines: string[]) => { const e = packetsEnd(lines); if (e) end = Math.max(end, e); };
+    p.stdout!.setEncoding('utf8').on('data', (d: string) => { const lines = (rest + d).split(/\r?\n/); rest = lines.pop()!; take(lines); });
+    p.on('error', () => res(null));
+    p.on('close', () => { take([rest]); res(end > 0 ? end : null); });
+  });
+}
+const noLength = (path: string) => new Error(`${path}: no length in its header, and none could be measured from its packets (a recording cut off, or not a media file?)`);
+/** A file's length in seconds: its header's, else measured from its packets (measureDuration); throws when neither gives one,
+ *  never NaN (a NaN length made thumbGrid ask ffmpeg for a NaN-row atlas and an export cut NaN seconds) */
+export async function probeDuration(path: string): Promise<number> {
+  const d = lengthOrNull(await probe(['-show_entries', 'format=duration', '-of', 'csv=p=0', path])) ?? (await measureDuration(path));
+  if (d === null) throw noLength(path);
+  return d;
+}
+/** Synchronous duration probe for one-off CLI tools (importers); the server uses the async probes. Like probeDuration. */
+export function probeDurationSync(path: string): number {
+  const run = (args: string[]) => execFileSync(ffprobePath(), args, { windowsHide: true, maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
+  const d = lengthOrNull(run(['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', path]).trim()) ?? packetsEnd(run([...PACKETS, path]).split(/\r?\n/));
+  if (d === null) throw noLength(path);
+  return d;
+}
 
 export async function probeSize(path: string): Promise<{ width: number; height: number }> {
   const j = JSON.parse(await probe(['-select_streams', 'v:0', '-show_entries', 'stream=width,height:stream_side_data=rotation:stream_tags=rotate', '-of', 'json', path]));

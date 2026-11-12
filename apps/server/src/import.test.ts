@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
-import { makeClicks, makePhoto } from '@tellcut/media-node';
+import { ffmpeg, makeClicks, makePhoto } from '@tellcut/media-node';
 import { makeProjects, startApp } from './test-utils.ts';
 
 let app: Awaited<ReturnType<typeof startApp>>['app'], base: string, projects: string, src: string;
@@ -37,6 +37,19 @@ test('imports photos and sound without touching project.json; progress comes fir
   expect(last.lengths.song).toBeCloseTo(2, 1);                 // the editor places a dropped sound by it
   expect([last.skipped, last.others]).toEqual([[], 1]);   // notes.txt
   expect(projectFile()).toBe(before);
+}, 60000);
+
+test('a WebM recorded through a pipe comes with its measured length, never 0 s; one with nothing to measure is skipped as unreadable', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'imp-rec-'));
+  // as a browser's MediaRecorder writes one: through a pipe, so its header has no length
+  const { stdout } = await ffmpeg(['-f', 'lavfi', '-i', 'testsrc=s=320x240:r=30:d=3', '-f', 'lavfi', '-i', 'sine=d=3', '-c:v', 'libvpx-vp9', '-deadline', 'realtime',
+    '-cpu-used', '8', '-b:v', '300k', '-c:a', 'libopus', '-f', 'webm', '-'], { stdout: true });
+  writeFileSync(join(dir, 'rec.webm'), stdout);
+  writeFileSync(join(dir, 'stub.webm'), stdout.subarray(0, stdout.indexOf(0xa3, stdout.indexOf(Buffer.from([0x1f, 0x43, 0xb6, 0x75])) + 4)));   // up to its first frame
+  const last = (await post({ paths: [dir], taken: [], have: [] })).lines.at(-1);
+  expect(Object.keys(last.sources)).toEqual(['rec']);
+  expect(last.sources.rec.duration).toBeCloseTo(3, 1);
+  expect(last.skipped).toEqual([expect.objectContaining({ path: join(dir, 'stub.webm'), code: 'import.failed', params: expect.objectContaining({ why: expect.stringMatching(/^no length/) }) })]);
 }, 60000);
 
 test('a file the project has (in any case on Windows) is reported as already there; ids stay clear of the taken ones', async () => {
