@@ -1,6 +1,6 @@
 // The user's own library (spec 2026-10-29-my-library §4.1): blocks and music styles saved from projects, kept in
 // projects/_library/ (not in git, like every project). The tools and the server read and write it only through here.
-//   blocks/<slug>/entry.json   the entry (BlockEntry without its slug); fx/…, media/… laid out as in the project; thumb.jpg
+//   blocks/<slug>/entry.json   the entry (BlockEntry without its slug); fx/…, media/… laid out as in the project; thumb.png
 //   score/<slug>.js, <slug>.json  a music style and its entry (StyleEntry without its slug)
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';

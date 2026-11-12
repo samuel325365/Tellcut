@@ -1,9 +1,9 @@
 // Saving a project's fx and music styles into the user's library (spec 2026-10-29-my-library §4.1, §4.2).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fxModule, makeProject, tempProjects } from './fixture.ts';
+import { fxModule, makeProject, styleModule, tempProjects } from './fixture.ts';
 import { findFxFile, renameId, saveBlock, saveStyle } from './save.ts';
-import { blockDir, libraryRoot, slugFor } from './store.ts';
+import { blockDir, libraryRoot, listLibrary, slugFor } from './store.ts';
 
 const setup = () => { const projects = tempProjects(); return { projects, root: libraryRoot(projects), p1: makeProject(projects, 'p1'), p2: makeProject(projects, 'p2') }; };
 const entryOf = (r: Awaited<ReturnType<typeof saveBlock>>) => { if (!('entry' in r)) throw new Error(`expected an entry, got ${JSON.stringify(r)}`); return r; };
@@ -119,6 +119,15 @@ test('a style id already in the library from elsewhere is a conflict; keep-both 
   expect(readFileSync(join(root, 'score', 'street-jazz-2.js'), 'utf8')).toContain("'street-jazz-2'");
 });
 
+
+test('a style renamed in its project and saved again updates its entry instead of adding a second one', async () => {
+  const { root, p1 } = setup();
+  await saveStyle({ root, projectDir: p1, projectId: 'p1', id: 'street-jazz' });
+  writeFileSync(join(p1, 'score', 'street-jazz.js'), styleModule('street-blues'));
+  const r = await saveStyle({ root, projectDir: p1, projectId: 'p1', id: 'street-blues' });
+  expect(r).toMatchObject({ entry: { id: 'street-blues', slug: 'street-jazz', from: { project: 'p1', file: 'score/street-jazz.js' } } });
+  expect(listLibrary(root).styles.map((e) => e.id)).toEqual(['street-blues']);
+});
 
 test('the same file saved again after its type id was renamed replaces its entry instead of adding a second one', async () => {
   const { root, p1 } = setup();

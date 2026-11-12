@@ -179,12 +179,13 @@ export async function saveStyle(i: { root: string; projectDir: string; projectId
   if (!s) throw new LibraryError('library.noStyle', `專案裡沒有配樂風格 ${i.id}`, { id: i.id });
   const file = posix.join('score', toPosix(relative(join(i.projectDir, 'score'), s.file)));
   const from: LibraryFrom = { project: i.projectId, file };
-  const lib = listLibrary(i.root), hit = lib.styles.find((e) => e.id === i.id);
-  let id = i.id, slug: string | undefined, drop: StyleEntry | undefined;
-  if (hit && sameFrom(hit.from, from)) { slug = hit.slug; drop = hit; }
-  else if (hit) {
+  // the same file saved again is an update, matched by where it came from as blocks are: a style renamed in the project since
+  // (its id changed, its file not) once became a second entry beside its old one
+  const lib = listLibrary(i.root), mine = lib.styles.find((e) => sameFrom(e.from, from)), hit = lib.styles.find((e) => e !== mine && e.id === i.id);
+  let id = i.id, slug = mine?.slug, drop: StyleEntry[] = mine ? [mine] : [];
+  if (hit) {
     if (!i.onConflict) return { conflict: { slug: hit.slug, name: hit.name } };
-    if (i.onConflict === 'replace') { slug = hit.slug; drop = hit; }
+    if (i.onConflict === 'replace') { slug ??= hit.slug; drop = [...drop, hit]; }
     else {
       const shared = await loadStyles([SCORE_LIBRARY]);
       id = freeId(i.id, new Set([...lib.styles.map((e) => e.id), ...Object.keys(STYLES), ...Object.keys(shared.styles)]));
@@ -205,7 +206,7 @@ export async function saveStyle(i: { root: string; projectDir: string; projectId
   const entry: StyleEntry = { slug, id, name: i.name?.trim() || s.label, desc: (i.desc ?? s.doc ?? '').trim(), from, savedAt: new Date().toISOString(),
     version: versionOf(stylesDir(i.root), [`${slug}.js`]) };
   writeStyleEntry(i.root, entry);
-  if (drop && drop.slug !== slug) removeStyleFiles(i.root, drop.slug);
+  for (const d of drop) if (d.slug !== slug) removeStyleFiles(i.root, d.slug);
   return { entry };
 }
 
@@ -232,9 +233,11 @@ export async function refreshBlock(root: string, slug: string, check?: (files: s
 export async function previewBlock(i: SaveBlockInput & { type?: string }): Promise<{ files: string[]; skipped: string[]; group: string[]; conflict: { slug: string; name: string; types: string[] } | null }> {
   const loaded = await loadProjectFx(i.projectDir, [i.file]);
   if (loaded.errors.length) throw new LibraryError('library.loadFailed', `${i.file} 載入失敗：${loaded.errors[0].message}`, { file: i.file });
-  const ids = (loaded.plugin.items ?? []).map((t) => t.type), { files, skipped } = collectFiles(i.projectDir, i.file);
+  // the files as saveBlock gathers and names them: a copy's _entry.js followed to its module, its fx/lib/<slug>/ paths back at fx/
+  const ids = (loaded.plugin.items ?? []).map((t) => t.type), main = realModule(i.projectDir, i.file), { files: found, skipped } = collectFiles(i.projectDir, main);
+  const files = found.map(entryPathOf(main));
   const from: LibraryFrom = { project: i.projectId, file: i.file }, lib = listLibrary(i.root).blocks;
-  const base = copiedEntry(lib, i.projectDir, realModule(i.projectDir, i.file), ids);   // saveBlock's update of the entry it is a copy of
+  const base = copiedEntry(lib, i.projectDir, main, ids);   // saveBlock's update of the entry it is a copy of
   const hit = lib.find((e) => e !== base && !sameFrom(e.from, from) && e.types.some((t) => ids.includes(t.type)));
   return { files, skipped, group: ids.filter((x) => x !== i.type),
     conflict: hit ? { slug: hit.slug, name: hit.types[0]?.name ?? hit.slug, types: ids.filter((x) => hit.types.some((t) => t.type === x)) } : null };

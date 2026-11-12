@@ -212,3 +212,14 @@ test('two entries used in one project at once both keep their link', async () =>
   expect([existsSync(join(p2, a.file)), existsSync(join(p2, b.file))]).toEqual([true, true]);
   expect(Object.keys(JSON.parse(readFileSync(join(p2, 'fx/lib/links.json'), 'utf8'))).sort()).toEqual([slug, r.entry.slug].sort());
 });
+
+test('the save dialog\'s preview of a project\'s copy lists the files the save will write, under their entry paths', async () => {
+  const { root, p2, slug } = await saved();
+  const copy = await useBlock({ root, projectDir: p2, projectId: 'p2', slug, fx: [] });
+  const preview = await previewBlock({ root, projectDir: p2, projectId: 'p2', file: copy.file });
+  expect(preview.files).not.toContain(copy.file);
+  expect(preview.files.filter((f) => f.startsWith('fx/lib/'))).toEqual([]);
+  const r = await saveBlock({ root, projectDir: p2, projectId: 'p2', file: copy.file });
+  if (!('entry' in r)) throw new Error('conflict');
+  expect([...preview.files].sort()).toEqual([...r.entry.files].sort());
+});
