@@ -202,3 +202,13 @@ test('a copy nothing in the project names any more (an undone add) is removed on
   expect(JSON.parse(readFileSync(join(p2, 'fx/lib/links.json'), 'utf8'))[slug]).toBeUndefined();
   expect(existsSync(join(p2, 'fx', 'chalk.js'))).toBe(true);
 });
+
+test('two entries used in one project at once both keep their link', async () => {
+  const { root, p1, p2, slug } = await saved();
+  writeFileSync(join(p1, 'fx/ink.js'), fxModule(['fx.ink-title']));
+  const r = await saveBlock({ root, projectDir: p1, projectId: 'p1', file: 'fx/ink.js' });
+  if (!('entry' in r)) throw new Error('conflict');
+  const [a, b] = await Promise.all([useBlock({ root, projectDir: p2, projectId: 'p2', slug, fx: [] }), useBlock({ root, projectDir: p2, projectId: 'p2', slug: r.entry.slug, fx: [] })]);
+  expect([existsSync(join(p2, a.file)), existsSync(join(p2, b.file))]).toEqual([true, true]);
+  expect(Object.keys(JSON.parse(readFileSync(join(p2, 'fx/lib/links.json'), 'utf8'))).sort()).toEqual([slug, r.entry.slug].sort());
+});

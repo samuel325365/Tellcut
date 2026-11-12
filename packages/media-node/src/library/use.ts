@@ -57,7 +57,10 @@ export async function useBlock(o: { root: string; projectDir: string; projectId:
     swapDir(stage, join(o.projectDir, lib));
   } finally { rmSync(stage, { recursive: true, force: true }); }
   const file = `${lib}/${COPY_ENTRY}`;
-  writeJsonFile(linksFile(o.projectDir), { ...links, [o.slug]: { file, version: e.version, types: ids } });
+  // read again here, not the copy read at the top: another use in the same project (two My blocks added in quick succession, the
+  // editor and the agent's `library use` at once) may have written its link while this one awaited; from here to the write is
+  // synchronous, so within one process no link is lost
+  writeJsonFile(linksFile(o.projectDir), { ...readLinks(o.projectDir), [o.slug]: { file, version: e.version, types: ids } });
   return { file, types: ids, copied };
 }
 
