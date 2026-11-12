@@ -56,3 +56,14 @@ test('a template from the item, else the project’s; the item’s own parameter
   expect(drawn({ ...ZH }, 0.7, { captionTemplate: 'extrude-one' }).words.filter((w) => w.style.display !== 'none').length).toBe(1);
   expect(drawn({ ...ZH, template: 'extrude-one', wordFx: 'none' }, 0.7).words.filter((w) => w.style.display !== 'none').length).toBe(4);
 });
+
+test('hlScale grows the 【marked】 characters when the caption draws a span a word too (the line is broken for it)', () => {
+  for (const params of [{ wordFx: 'pop' }, { animIn: 'drop' }, { style: 'neon' }]) {
+    const chars = drawn({ text: '今天吃【牛肉湯】好嗎', hlScale: 1.4, ...params }, 1.5).words.flatMap((w) => [...w.children] as HTMLElement[]);
+    expect(chars.filter((c) => c.style.fontSize === '1.4em').map((c) => c.textContent).join(''), JSON.stringify(params)).toBe('牛肉湯');
+    expect(chars.filter((c) => c.style.fontSize && c.style.fontSize !== '1.4em')).toEqual([]);
+  }
+  // back to 1: nothing left of it
+  const st = drawn({ text: '今天吃【牛肉湯】好嗎', wordFx: 'pop' }, 1.5).words.flatMap((w) => [...w.children] as HTMLElement[]);
+  expect(st.every((c) => !c.style.fontSize)).toBe(true);
+});

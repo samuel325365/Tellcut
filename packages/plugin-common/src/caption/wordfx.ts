@@ -110,7 +110,7 @@ const merge = (...xs: Array<Css | undefined | false>): Css => Object.assign({}, 
 const keysOf = (s: WordStyle) => new Set([s.base, s.hot, s.dim, s.onbox].flatMap((x) => Object.keys(x ?? {})));
 
 /** what a word effect draws at `local` (the caption's own seconds) of `dur`, with the look's word styles `ws` */
-export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: number; dur: number; fs: number; ws: WordStyle; animIn: string; boxColor: string }) {
+export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: number; dur: number; fs: number; ws: WordStyle; animIn: string; boxColor: string; hlScale?: number }) {
   const { fx, words, local, ws } = o, n = words.length;
   // the word being said: the last whose time has come (-1 before the first)
   let now = -1;
@@ -119,8 +119,10 @@ export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: nu
   const reset = Object.fromEntries([...keysOf(ws), 'backgroundImage', 'backgroundRepeat', 'backgroundPosition', 'backgroundSize'].map((k) => [k, ''])) as Css;
   const typedTo = fx === 'type' ? typedCount(words, local) : Infinity;
   // characters first (their own looks change the words' widths, which the words below measure): 【marked】 ones hot, typed ones shown, the wave, an entrance that pops them
+  // 【marked】 ones hlScale times the size, as the runs draw them: the line was broken for it (else it was broken narrower for nothing)
+  const big = (o.hlScale ?? 1) !== 1 ? `${o.hlScale}em` : '';
   wb.chars.forEach((ch, i) => {
-    const css: Css = { ...(wb.marked[i] ? merge(reset, ws.hot) : {}), ...(ws.char ? ws.char(i, ch.textContent ?? '') : {}) };
+    const css: Css = { ...(wb.marked[i] ? merge(reset, ws.hot) : {}), fontSize: wb.marked[i] ? big : '', ...(ws.char ? ws.char(i, ch.textContent ?? '') : {}) };
     let op = 1, y = 0, sc = 1;
     if (fx === 'type') op = i < typedTo ? 1 : 0;
     if (fx === 'wave') y = Math.sin(2 * Math.PI * (local * 0.9 - i * 0.11)) * 0.07 * o.fs;

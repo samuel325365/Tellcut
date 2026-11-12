@@ -163,7 +163,7 @@ export const caption: ItemType<CaptionP, CaptionS> = {
       for (const l of s.words.lines) { clearStyle(l); cssCamel(l, { position: 'relative' }); }
       look.lines?.(s.words.lines, pre, true);
       // auto: what words did before there were word effects (lighting up the word being said, or dim until said with fill)
-      drawWords(s.words, { fx: fx === 'auto' ? (hasWords ? (fill ? 'fill' : 'color') : 'none') : fx, words: list, local: ctx.local, dur: ctx.dur, fs, ws, animIn: p.animIn, boxColor: ws.box ?? hot });
+      drawWords(s.words, { fx: fx === 'auto' ? (hasWords ? (fill ? 'fill' : 'color') : 'none') : fx, words: list, local: ctx.local, dur: ctx.dur, fs, ws, animIn: p.animIn, boxColor: ws.box ?? hot, hlScale: hs });
     } else {
       setRuns(s.text, fit.lines, look.hl ? look.hl(pre) : p.hl, { perChar: pop || fill, hlScale: hs });
       // a line keeps no look of the last style (strips, slabs): only what this look sets
