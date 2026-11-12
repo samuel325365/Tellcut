@@ -1,8 +1,9 @@
 // The same footage in a second project: its analysis is shared (hard links), not made again (TODO chat-fixes).
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { analysisDone, analysisFiles, analyzeSource, shareAnalysis } from './analysis.ts';
+import { ffmpeg, probeSize } from './ffmpeg.ts';
 import { EXTRAS_VERSION, extrasFiles, readBurned, readTranscript, sourceExtras } from './extras.ts';
 import { fakeTranscribe } from './providers/fake.ts';
 import { labelFolder, siblingFolders } from './share.ts';
@@ -169,6 +170,34 @@ test('a sibling\u2019s sheets and burned check made by an older EXTRAS_VERSION a
   writeFileSync(fa.version, EXTRAS_VERSION);
   expect(await shareAnalysis(c, src)).toBeGreaterThan(5);
   expect(JSON.parse(readFileSync(extrasFiles(c, src).sheets, 'utf8')).pages).toBe(99);
+}, 120000);
+
+test('an old low-resolution proxy in two projects with the same footage is made again in both, not linked back from the other', async () => {
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), a = join(projects, 'a'), b = join(projects, 'b'), src = join(projects, 'clip.mp4');
+  mkdirSync(a); mkdirSync(b);
+  await makePhoneVideo(src);
+  await analyzeSource(a, src);
+  // both projects analysed before the 540 px proxy: a 480×270 proxy (here 270×480, the clip is portrait) and no stamp
+  const fa = analysisFiles(a, src), fb = analysisFiles(b, src), old = join(projects, 'old.mp4');
+  await ffmpeg(['-i', fa.proxy, '-vf', 'scale=270:480', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', old]);
+  rmSync(join(fa.dir, 'proxy.v3'));
+  mkdirSync(fb.dir, { recursive: true });
+  for (const n of readdirSync(fa.dir)) copyFileSync(join(fa.dir, n), join(fb.dir, n));
+  for (const f of [fa, fb]) copyFileSync(old, f.proxy);
+  await analyzeSource(a, src);
+  await analyzeSource(b, src);
+  for (const f of [fa, fb]) expect(Math.min(...Object.values(await probeSize(f.proxy)))).toBeGreaterThanOrEqual(530);
+}, 120000);
+
+test('a sibling’s lock side files (a takeover guard, a lock moved aside) are never linked in', async () => {
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), a = join(projects, 'a'), b = join(projects, 'b'), src = join(projects, 'clip.mp4');
+  mkdirSync(a); mkdirSync(b);
+  await makePhoneVideo(src);
+  await analyzeSource(a, src);
+  const fa = analysisFiles(a, src), fb = analysisFiles(b, src), side = ['analysis.lock.takeover', 'transcript.lock.4321.k3j9.stale', 'analysis.lock'];
+  for (const n of side) writeFileSync(join(fa.dir, n), String(process.ppid));
+  expect(await shareAnalysis(b, src)).toBeGreaterThan(5);
+  expect(side.filter((n) => existsSync(join(fb.dir, n)))).toEqual([]);
 }, 120000);
 
 /** a project folder naming `files` (relative paths) as sources; each file made with `bytes` and one time */

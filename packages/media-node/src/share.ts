@@ -14,8 +14,14 @@ import { basename, join, relative, resolve, sep } from 'node:path';
 import { EXTRAS_VERSION } from './extras-version.ts';
 import { contentPrint, contentPrintAsync, legacyNameOf, originOf, sameStamp, sourceHashAt } from './hash.ts';
 
-/** work in progress (locks, half-written temps) is never taken, nor the other folder's note: it names the other file */
-const PRIVATE = /\.lock$|\.tmp(\.|$)|^mono(\.\d+)?\.f32$|^source\.json$/;
+/** work in progress (locks, half-written temps) is never taken, nor the other folder's note: it names the other file. A lock's
+ *  own side files count as the lock (locks.ts: `<lock>.takeover`, the guard of a takeover, and `<lock>.<pid>.<rand>.stale`, one
+ *  moved aside): a guard linked into another project's folder made that folder's lock look taken over by someone for a minute */
+const PRIVATE = /\.lock(\.|$)|\.tmp(\.|$)|^mono(\.\d+)?\.f32$|^source\.json$/;
+/** the proxy and its stamp (analysis.ts) are taken together or not at all: an old 270-line proxy that analysis had just removed
+ *  here was linked straight back from a sibling as old as it, and a sibling's stamp linked beside this folder's own old proxy
+ *  marked it checked, so neither was ever made again */
+const PROXY = 'proxy.mp4', PROXY_STAMP = 'proxy.v3';
 /** what extras.version stamps (extras.ts): taken only from a folder stamped with this code's version, or an older version's
  *  sheets were linked in right after sourceExtras had removed its own, and stamped current */
 const VERSIONED = /^(extras\.version|sheets\.json|sheet-\d+\.jpg|burned(-v\d+)?\.json)$/;
@@ -141,6 +147,10 @@ export async function shareFolder(dir: string): Promise<number> {
     let names: string[] = [];
     try { names = (await readdir(from)).filter((n) => !PRIVATE.test(n)); } catch { continue; }
     if (names.some((n) => VERSIONED.test(n)) && !(await current(from))) names = names.filter((n) => !VERSIONED.test(n));
+    if (names.includes(PROXY) && !names.includes(PROXY_STAMP)) names = names.filter((n) => n !== PROXY);
+    // the stamp goes only with the proxy it is about: beside a proxy of this folder's own, the sibling's stamp would vouch for a
+    // file it never looked at (analysis.ts checks an unstamped proxy of its own, and stamps it once it has)
+    if (await exists(join(dir, PROXY))) names = names.filter((n) => n !== PROXY_STAMP);
     for (const n of names) {
       const src = join(from, n), dst = join(dir, n);
       try {
