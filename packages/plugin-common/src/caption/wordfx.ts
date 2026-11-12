@@ -1,8 +1,9 @@
 // Word effects: the caption drawn one span a word (a word broken over two lines is two spans), each word timed by `words` (the
 // transcript's, [seconds, visible characters said by then]) or, for a caption typed by hand, spread evenly over its length.
 // What the effects do: color (the word being said takes the highlight and grows a little), box (a block slides behind it), one
-// (only it is shown), pop (each word pops in when said), fill (dim until said), underline (a bar draws under it), type (words
-// typed as said, with a caret), wave (the characters bob gently). A look styles the words through its word() parts.
+// (only it is shown), pop (each word pops in when said), fill (dim until said; the word being said hot in a look whose hot word has
+// a look of its own), underline (a bar draws under it), type (words typed as said, with a caret), wave (the characters bob gently).
+// A look styles the words through its word() parts.
 import { clamp, cssCamel, eBack, eOut3, h, lerp, prog } from '@tellcut/engine';
 import type { Run } from '../markup.ts';
 import { charPopAt } from './words.ts';
@@ -110,7 +111,9 @@ const merge = (...xs: Array<Css | undefined | false>): Css => Object.assign({}, 
 const keysOf = (s: WordStyle) => new Set([s.base, s.hot, s.dim, s.onbox].flatMap((x) => Object.keys(x ?? {})));
 
 /** what a word effect draws at `local` (the caption's own seconds) of `dur`, with the look's word styles `ws` */
-export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: number; dur: number; fs: number; ws: WordStyle; animIn: string; boxColor: string; hlScale?: number }) {
+export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: number; dur: number; fs: number; ws: WordStyle; animIn: string; boxColor: string; hlScale?: number;
+  /** fill marks the word being said hot too: set when the look gives a hot word a look of its own (neon's glow in the second colour) */
+  fillHot?: boolean }) {
   const { fx, words, local, ws } = o, n = words.length;
   // the word being said: the last whose time has come (-1 before the first)
   let now = -1;
@@ -140,7 +143,8 @@ export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: nu
       case 'box': onbox = isNow; break;
       case 'one': show = isNow; if (isNow) { const p = prog(local, w.t, w.t + 0.16); sc = 0.55 + 0.45 * eBack(p, 2); op *= clamp(p * 4); } break;
       case 'pop': op *= clamp(q * 4); sc = said ? 0.4 + 0.6 * eBack(q, 2.2) : 0.4; y += (1 - eOut3(q)) * 0.35 * o.fs; break;
-      case 'fill': { const f = prog(local, w.t - 0.03, w.t + 0.1); op *= 0.3 + 0.7 * f; dim = f < 0.5; break; }
+      // dim until said; the word being said hot when the look has a hot word of its own (neon-fill promised its blue glow and never showed it)
+      case 'fill': { const f = prog(local, w.t - 0.03, w.t + 0.1); op *= 0.3 + 0.7 * f; dim = f < 0.5; hot = isNow && !!o.fillHot; break; }
       case 'type': show = said; break;
     }
     const css = merge(reset, ws.base, hot && ws.hot, dim && ws.dim, onbox && (ws.onbox ?? {}));

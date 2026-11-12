@@ -163,7 +163,9 @@ export const caption: ItemType<CaptionP, CaptionS> = {
       for (const l of s.words.lines) { clearStyle(l); cssCamel(l, { position: 'relative' }); }
       look.lines?.(s.words.lines, pre, true);
       // auto: what words did before there were word effects (lighting up the word being said, or dim until said with fill)
-      drawWords(s.words, { fx: fx === 'auto' ? (hasWords ? (fill ? 'fill' : 'color') : 'none') : fx, words: list, local: ctx.local, dur: ctx.dur, fs, ws, animIn: p.animIn, boxColor: ws.box ?? hot, hlScale: hs });
+      drawWords(s.words, { fx: fx === 'auto' ? (hasWords ? (fill ? 'fill' : 'color') : 'none') : fx, words: list, local: ctx.local, dur: ctx.dur, fs, ws, animIn: p.animIn, boxColor: ws.box ?? hot, hlScale: hs,
+        // only a look that styles its hot word itself: elsewhere fill would turn into color (the plain highlight colour on the word said)
+        fillHot: !!ws0.hot });
     } else {
       setRuns(s.text, fit.lines, look.hl ? look.hl(pre) : p.hl, { perChar: pop || fill, hlScale: hs });
       // a line keeps no look of the last style (strips, slabs): only what this look sets

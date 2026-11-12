@@ -67,3 +67,11 @@ test('hlScale grows the 【marked】 characters when the caption draws a span a 
   const st = drawn({ text: '今天吃【牛肉湯】好嗎', wordFx: 'pop' }, 1.5).words.flatMap((w) => [...w.children] as HTMLElement[]);
   expect(st.every((c) => !c.style.fontSize)).toBe(true);
 });
+
+test('fill: a look with its own hot word (neon\'s blue glow) shows it on the word being said; a look without one only lights it', () => {
+  // at 1.1 s 去吃 is being said (from 1.0 s), 今天 and 帶你 were said before
+  const neon = drawn({ ...ZH, template: 'neon-fill' }, 1.1).words;
+  expect(neon.map((w) => /29e7ff|41, 231, 255/i.test(w.style.textShadow))).toEqual([false, false, true, false]);
+  const marker = drawn({ ...ZH, template: 'marker-fill' }, 1.1).words;
+  expect(marker.map((w) => w.style.color)).toEqual(['', '', '', '']);
+});
