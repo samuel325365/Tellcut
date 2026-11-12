@@ -6,12 +6,12 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join } from 'node:path';
 import { ffmpeg, probeDuration } from '../ffmpeg.ts';
-import { renameRetry } from '../fsutil.ts';
+import { renameRetry, replaceFile } from '../fsutil.ts';
 import { kindOf, probeMedia } from '../probe.ts';
 import { updateProjectFile } from '../projectfile.ts';
 import { SourceError } from './http.ts';
 import { limitPeaks } from './peaks.ts';
-import { withFileLock } from './rate.ts';
+import { withFileLock, withFileLockSync } from './rate.ts';
 import { ADAPTERS, contextFor, markBroken, usableSource, type Sources } from './registry.ts';
 import type { AssetKind, AssetRecord, Fetched, MapGeo, SourceAdapter } from './types.ts';
 
@@ -69,13 +69,25 @@ type ImportOpts = { from?: number; len?: number; opts?: Record<string, string>; 
 /** a map picture's place on the earth as its project.json source keeps it (common.mapcam turns longitude/latitude into its pixels) */
 const sourceMap = (m: MapGeo | undefined, credit: string) => (m ? { map: { center: m.center, zoom: m.zoom, ...(credit ? { credit } : {}) } } : {});
 
+/** `out` written through this process's temporary file beside it (same extension, so probeMedia knows its kind): `write` fills
+ *  it, `check` reads it (a probe), and only then is it renamed into place. A picture probeMedia cannot read or a cut ffmpeg gave up
+ *  on halfway never sits in media/<source>/ without a record or a project entry. */
+async function landChecked<T>(out: string, write: (tmp: string) => Promise<void> | void, check: (tmp: string) => Promise<T>): Promise<T> {
+  const ext = extname(out), tmp = `${out.slice(0, out.length - ext.length)}.${process.pid}.tmp${ext}`;
+  try {
+    await write(tmp);
+    const r = await check(tmp);
+    renameRetry(tmp, out);
+    return r;
+  } finally { rmSync(tmp, { force: true }); }
+}
+
 /** A picture copied into its place and registered as a photo source, the way createProject registers one. */
 async function importImage(dir: string, f: Fetched, o: ImportOpts): Promise<{ record: AssetRecord; usage: string }> {
   if (o.from !== undefined || o.len !== undefined) throw new Error('圖片沒有 --from／--len');
   const { path, sourceId } = assetFile(f, { opts: o.opts }), out = join(dir, path);
   mkdirSync(dirname(out), { recursive: true });
-  copyFileSync(f.file, out);
-  const info = await probeMedia(out);
+  const info = await landChecked(out, (tmp) => copyFileSync(f.file, tmp), (tmp) => probeMedia(tmp));
   const record: AssetRecord = { ...f.meta, path, downloaded: (o.now ?? (() => new Date()))().toISOString(), sourceId, ...optsField(o.opts), ...(f.map ? { map: f.map } : {}) };
   await withFileLock(join(dir, 'media', '.assets.lock'), () => {
     updateProjectFile(dir, (p) => { p.sources[sourceId!] = { path, duration: info.duration, width: info.width, height: info.height, kind: 'image', ...sourceMap(f.map, f.meta.author) }; }, 'assets');
@@ -86,8 +98,8 @@ async function importImage(dir: string, f: Fetched, o: ImportOpts): Promise<{ re
 }
 
 /** project.json's entry for a footage file, the way createProject registers one */
-const videoSource = async (dir: string, path: string) => {
-  const info = await probeMedia(join(dir, path));
+const videoSource = async (dir: string, path: string, file = join(dir, path)) => {
+  const info = await probeMedia(file);
   return { path, duration: Math.round(info.duration * 1000) / 1000, width: info.width, height: info.height, kind: 'video' as const, audio: info.audio };
 };
 
@@ -102,10 +114,11 @@ async function importVideo(dir: string, f: Fetched, o: ImportOpts): Promise<{ re
   }
   const { path, sourceId } = assetFile(f, o), out = join(dir, path);
   mkdirSync(dirname(out), { recursive: true });
-  if (cut) await ffmpeg([...(o.from ? ['-ss', String(o.from)] : []), '-i', f.file, ...(o.len !== undefined ? ['-t', String(o.len)] : []),
-    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]);
-  else copyFileSync(f.file, out);
-  const entry = await videoSource(dir, path);
+  const entry = await landChecked(out, async (tmp) => {
+    if (cut) await ffmpeg([...(o.from ? ['-ss', String(o.from)] : []), '-i', f.file, ...(o.len !== undefined ? ['-t', String(o.len)] : []),
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', tmp]);
+    else copyFileSync(f.file, tmp);
+  }, (tmp) => videoSource(dir, path, tmp));
   const record: AssetRecord = { ...f.meta, path, downloaded: (o.now ?? (() => new Date()))().toISOString(), sourceId,
     ...(o.from !== undefined ? { from: o.from } : {}), ...(o.len !== undefined ? { len: o.len } : {}), ...optsField(o.opts) };
   await withFileLock(join(dir, 'media', '.assets.lock'), () => {
@@ -233,10 +246,14 @@ export function writeCredits(dir: string, adapters: Record<string, SourceAdapter
   const a = md.indexOf(BEGIN), b = md.indexOf(END);
   md = a >= 0 && b > a ? md.slice(0, a) + block + md.slice(b + END.length) : `${md.replace(/\n*$/, '\n\n')}${block}\n`;
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, md);
+  // through a temporary file: a reader (an export copying it, an editor) never sees half of it
+  replaceFile(file, md);
   return file;
 }
 
 /** the credits written again for the film as it is now (after a cut, an export); null when the project downloaded nothing */
 export const refreshCredits = (dir: string, o: { adapters?: Record<string, SourceAdapter>; project?: { tracks?: unknown } } = {}): string | null =>
-  (existsSync(join(dir, ASSET_MANIFEST)) ? writeCredits(dir, o.adapters, o.project) : null);
+  // under the same lock `assets get` writes the records and the credits under: a render finishing while the agent gets an asset
+  // read the records before the new one was added and would write its credits over the get's (synchronous: its callers use the
+  // answer at once, and the lock is held only while two small files are written)
+  (existsSync(join(dir, ASSET_MANIFEST)) ? withFileLockSync(join(dir, 'media', '.assets.lock'), () => writeCredits(dir, o.adapters, o.project)) : null);

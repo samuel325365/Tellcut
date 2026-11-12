@@ -1,4 +1,5 @@
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ffmpeg, measureLoudness } from '../ffmpeg.ts';
@@ -77,6 +78,17 @@ test('an image with --from or in a format the player cannot read is refused', as
   await expect(importAsset(dir, { file: photo, kind: 'image', meta: meta('fake', 'x') }, { from: 1 })).rejects.toThrow('圖片沒有 --from／--len');
   await expect(importAsset(dir, { file: svgFile, kind: 'image', meta: meta('fake', 'y') })).rejects.toThrow('圖片格式 .svg 不能用');
   expect(readAssetRecords(dir)).toEqual([]);
+});
+
+test('a picture or footage that cannot be read leaves no file behind in media/<source>/', async () => {
+  const bad = join(root, 'bad.jpg'), badClip = join(root, 'bad.mp4');
+  writeFileSync(bad, 'not a picture'); writeFileSync(badClip, 'not a film');
+  await expect(importAsset(dir, { file: bad, kind: 'image', meta: meta('fake', 'trunc') })).rejects.toThrow();
+  await expect(importAsset(dir, { file: badClip, kind: 'video', meta: meta('fake', 'trunc2') })).rejects.toThrow();
+  await expect(importAsset(dir, { file: badClip, kind: 'video', meta: meta('fake', 'trunc3') }, { from: 0, len: 1 })).rejects.toThrow();
+  expect(existsSync(join(dir, 'media', 'fake')) ? readdirSync(join(dir, 'media', 'fake')) : []).toEqual([]);
+  expect(readAssetRecords(dir)).toEqual([]);
+  expect(readProject().sources).toEqual({});
 });
 
 test('footage goes into media/<source>/ and is registered as a video source, for c.clip after inspect', async () => {
@@ -235,6 +247,21 @@ describe('getAsset', () => {
     expect([done, readAssetRecords(dir)]).toEqual([false, []]);
     rmSync(lock);
     expect((await p).record.path).toBe('media/sfx/fake-0703.wav');
+  });
+
+  test('refreshCredits waits while another process holds the project\'s assets lock', async () => {
+    await getAsset(s(), dir, 'fake:0704');
+    const lock = join(dir, 'media', '.assets.lock');
+    writeFileSync(lock, '');
+    // another process lets go after 800 ms; refreshCredits blocks this one until then
+    const child = spawn(process.execPath, ['-e', `setTimeout(() => require('fs').rmSync(${JSON.stringify(lock)}), 800)`], { stdio: 'ignore' });
+    await new Promise((r) => child.once('spawn', r));
+    const t0 = Date.now();
+    refreshCredits(dir, { adapters: { fake } });
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(500);
+    expect(existsSync(lock)).toBe(false);
+    expect(readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8')).toContain('fake 0704');
+    await new Promise((r) => child.once('exit', r));
   });
 
   test('a ref without a source, or a source that is off, is a sentence', async () => {

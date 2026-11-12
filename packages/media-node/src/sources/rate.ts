@@ -4,7 +4,7 @@ import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFi
 import { dirname } from 'node:path';
 import { renameRetry } from '../fsutil.ts';
 import { takeOver as takeOverIf } from '../locks.ts';
-import { pause } from '../proc.ts';
+import { nap, pause } from '../proc.ts';
 
 /** at most `n` requests in any `per` seconds */
 export interface RateLimit { n: number; per: number }
@@ -19,16 +19,36 @@ export async function withFileLock<T>(file: string, fn: () => T | Promise<T>, o:
   const stale = o.staleMs ?? 10_000;
   mkdirSync(dirname(file), { recursive: true });
   for (;;) {
-    try { closeSync(openSync(file, 'wx')); break; } catch (e) {
-      // EPERM/EBUSY/EACCES: on Windows a lock another process just removed is still "delete pending" — taken, for now
-      const code = (e as NodeJS.ErrnoException).code;
-      if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') { await pause(20); continue; }
-      if (code !== 'EEXIST') throw e;
-      try { if (Date.now() - statSync(file).mtimeMs > stale && takeOver(file, stale)) continue; } catch { continue; }
-      await pause(20);
-    }
+    const r = tryLock(file, stale);
+    if (r === 'taken') break;
+    if (r === 'wait') await pause(20);
   }
   try { return await fn(); } finally { rmSync(file, { force: true }); }
+}
+
+/** withFileLock for synchronous callers (refreshCredits, whose callers use its answer at once); the wait blocks the event loop,
+ *  which is fine for a lock held only while a few small files are written */
+export function withFileLockSync<T>(file: string, fn: () => T, o: { staleMs?: number } = {}): T {
+  const stale = o.staleMs ?? 10_000;
+  mkdirSync(dirname(file), { recursive: true });
+  for (;;) {
+    const r = tryLock(file, stale);
+    if (r === 'taken') break;
+    if (r === 'wait') nap(20);
+  }
+  try { return fn(); } finally { rmSync(file, { force: true }); }
+}
+
+/** one try at the lock: taken, worth trying again at once (a stale lock was taken over), or to wait a moment */
+function tryLock(file: string, stale: number): 'taken' | 'again' | 'wait' {
+  try { closeSync(openSync(file, 'wx')); return 'taken'; } catch (e) {
+    // EPERM/EBUSY/EACCES: on Windows a lock another process just removed is still "delete pending" — taken, for now
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') return 'wait';
+    if (code !== 'EEXIST') throw e;
+    try { if (Date.now() - statSync(file).mtimeMs > stale && takeOver(file, stale)) return 'again'; } catch { return 'again'; }
+    return 'wait';
+  }
 }
 
 /** the quota is spent for longer than the caller wants to wait */
