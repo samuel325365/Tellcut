@@ -16,7 +16,9 @@ export function SoundCard(p: { name: string; len?: number; bpm?: number; peaks?:
   return (
     <button {...p.attrs} class={`${p.cls} snd`} onMouseDown={p.onPress as any}>
       <span class="snd-head">
-        <span class="snd-play" role="button" data-listen onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); p.listen(); }}>▶</span>
+        {/* reachable by Tab too (Enter / Space listen), not only by the mouse */}
+        <span class="snd-play" role="button" tabIndex={0} data-listen onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); p.listen(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); p.listen(); } }}>▶</span>
         <span class="snd-name">{p.name}</span>
         <small>{[p.len ? formatTime(p.len) : '', p.bpm ? `${Math.round(p.bpm)} BPM` : ''].filter(Boolean).join(' · ')}</small>
       </span>

@@ -294,6 +294,11 @@ test('sound cards: music with its waveform and a listen button, a grey line befo
   expect([!!m.querySelector('canvas.wave'), !!n.querySelector('.wave-none'), !!n.querySelector('canvas.wave')]).toEqual([true, true, false]);
   await act(() => { m.querySelector<HTMLElement>('[data-listen]')!.click(); });
   expect([calls, m.classList.contains('picked')]).toEqual([[{ kind: 'music', media: 'm' }], false]);   // listening is not picking
+  // the keyboard reaches it too: Tab stops on it and Enter listens
+  const play = n.querySelector<HTMLElement>('[data-listen]')!;
+  expect(play.tabIndex).toBe(0);
+  await act(() => { play.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); });
+  expect(calls).toEqual([{ kind: 'music', media: 'm' }, { kind: 'music', media: 'n' }]);
   expect(root.querySelector('.sfx-grid [data-add-sfx="x.tap"] .sfx-icon')).not.toBeNull();
 });
 

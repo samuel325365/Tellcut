@@ -129,7 +129,7 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .library .src { margin-bottom: 8px; } .library .src-name { margin-bottom: 4px; } .library .src-name small { color: var(--dim); }
 .library .src-failed { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; color: var(--off); }
 .library .src-failed button { flex: none; padding: 0 6px; font-size: 10px; }
-.library .segs { display: flex; flex-wrap: wrap; gap: 4px; } .library .segs button, .library .lib-item { padding: 2px 6px; font-size: 11px; }
+.library .segs button, .library .lib-item { padding: 2px 6px; font-size: 11px; }
 .library .lib-item { display: block; width: 100%; text-align: left; margin: 2px 0; }
 .preview { position: relative; }
 .crop-banner { background: rgba(255,214,10,.92); color: #000; padding: 4px 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; }
@@ -271,7 +271,10 @@ body.lib-dragging iframe { pointer-events: none; }
 .library .snd-head { display: flex; align-items: center; gap: 6px; } .library .snd-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .library .snd-head small { flex: none; color: var(--dim); } .library .snd.picked .snd-head small { color: var(--on-accent); opacity: .7; }
 .library .snd-play { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-size: 8px; background: var(--line); cursor: pointer; }
-.library .snd-play:hover { background: var(--accent); color: var(--on-accent); }
+.library .snd-play:hover, .library .snd-play:focus-visible { background: var(--accent); color: var(--on-accent); }
+/* a picked card is the accent: the listen dot and the waveform (drawn white) turn dark on it instead of vanishing */
+.library .snd.picked .snd-play { background: var(--on-accent); color: var(--accent); }
+.library .snd.picked .snd-wave canvas { filter: invert(1); }
 .library .snd-wave { display: block; height: 22px; margin-top: 3px; } .library .snd-wave canvas { display: block; width: 100% !important; height: 22px; }
 .library .wave-none { display: block; height: 2px; margin-top: 10px; background: var(--line); }
 .library .sfx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; padding: 2px 0 4px; }
@@ -349,14 +352,14 @@ body.lib-dragging iframe { pointer-events: none; }
 /* ───────────────────────── home page and chat (2026-10-16 redesign) ───────────────────────── */
 /* the chat reads --h-*: the editor's 對話 tab keeps its warm values; the home page, the gallery and the import browser take the theme */
 .chat-tab {
-  --h-bg: #1e1d1b; --h-side: #262522; --h-raise: #2f2d2a; --h-line: #3a3834; --h-text: #ecebe6; --h-dim: #a3a199; --h-faint: #74726b;
+  --h-bg: #1e1d1b; --h-raise: #2f2d2a; --h-line: #3a3834; --h-text: #ecebe6; --h-dim: #a3a199; --h-faint: #74726b;
   --h-accent: #d8b88a; --h-accent-2: #e6cfa5; --h-on-accent: #161412; --h-user: #34322e;
   --h-line-strong: #4a4742; --h-focus: #57524b; --h-ring: rgba(216,184,138,.14); --h-mark: rgba(216,184,138,.18); --h-strong: #fff; --h-title: #f1efe9;
   --h-code: #151413; --h-code-inline: rgba(255,255,255,.07); --h-chip: #3a3733; --h-hover: rgba(255,255,255,.08); --h-err: #e5786a; --h-denied: #e5866a;
   --h-disabled-bg: #4a4540; --h-disabled: #8f8a83; --h-shadow: rgba(0,0,0,.28); --h-shadow-focus: rgba(0,0,0,.35); --h-th: #292623; --h-cell-line: var(--line);
 }
 .home, .gallery, .import {
-  --h-bg: var(--s-bg); --h-side: var(--s-side); --h-raise: var(--s-raise); --h-line: var(--s-line); --h-text: var(--s-text); --h-dim: var(--s-dim); --h-faint: var(--s-faint);
+  --h-bg: var(--s-bg); --h-raise: var(--s-raise); --h-line: var(--s-line); --h-text: var(--s-text); --h-dim: var(--s-dim); --h-faint: var(--s-faint);
   --h-accent: var(--s-accent); --h-accent-2: var(--s-accent-text); --h-on-accent: var(--s-on-accent); --h-user: var(--s-user);
   --h-line-strong: var(--s-line-strong); --h-focus: var(--s-line-strong); --h-ring: var(--s-ring); --h-mark: var(--s-sel); --h-strong: var(--s-strong); --h-title: var(--s-text);
   --h-code: var(--s-code-bg); --h-code-inline: var(--s-code-inline); --h-chip: var(--s-chip); --h-hover: var(--s-hover); --h-err: var(--s-danger); --h-denied: var(--s-danger);
