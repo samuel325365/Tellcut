@@ -1,6 +1,7 @@
 // Stills of a project version that is not saved (a proposal, spec 2026-10-15-proposals-magnetic §6): a snapshot next to
 // project.json, its clips cut into the cache, frames captured by the player — the export's path, a few frames only.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import type { Project, Registry } from '@tellcut/engine';
 import { ffmpeg } from './ffmpeg.ts';
@@ -50,7 +51,7 @@ export async function renderStills(o: { dir: string; project: Project; times: nu
       const f = join(o.outDir, `${o.tag}-t${t.toFixed(2)}.png`);
       if (scale === 1) writeFileSync(f, await s.png());
       else {
-        const full = `${f}.${process.pid}.full.png`;   // pid: two runs on the same time don't share the capture
+        const full = `${f}.${process.pid}-${randomBytes(4).toString('hex')}.full.png`;   // pid + random: two runs on the same time, in one process or two, don't share the capture
         writeFileSync(full, await s.png());
         try { await ffmpeg(['-i', full, '-vf', `scale=${Math.round(W * scale / 2) * 2}:-2:flags=lanczos`, f]); } finally { rmSync(full, { force: true }); }
       }
