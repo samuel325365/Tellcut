@@ -37,8 +37,15 @@ const fold = (x: string) => x.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g
 const hit = (q: string, ...words: Array<string | undefined | null>) => { const f = fold(q); return !!f && words.some((w) => !!w && fold(w).includes(f)); };
 /** a picture the player can show (PotterDB's spells and some characters are animated GIFs) */
 const usable = (url?: string | null): url is string => !!url && !/\.gif($|[/?])/i.test(url);
-/** the file's extension from what the server says it is: wiki images named .jpg are often WebP */
-const extOf = (type: string, url: string) => (/webp/.test(type) ? '.webp' : /png/.test(type) ? '.png' : /jpe?g/.test(type) ? '.jpg' : /\.(png|webp)(\?|\/|$)/i.exec(url)?.[0].slice(0, -1).toLowerCase() ?? '.jpg');
+/** the file's extension from what the server says it is (wiki images named .jpg are often WebP), else from the URL's name: the
+ *  captured name, not the whole match, since a URL ending in .png has no ? or / after it to cut off */
+export const extOf = (type: string, url: string) => {
+  if (/webp/.test(type)) return '.webp';
+  if (/png/.test(type)) return '.png';
+  if (/jpe?g/.test(type)) return '.jpg';
+  const m = /\.(png|webp)(\?|\/|$)/i.exec(url);
+  return m ? `.${m[1].toLowerCase()}` : '.jpg';
+};
 
 /** one character as text for the agent */
 function hpLine(c: HpCharacter): string {

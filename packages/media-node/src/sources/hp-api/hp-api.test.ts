@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHttp } from '../http.ts';
 import type { SourceCtx } from '../types.ts';
-import { hpApi } from './index.ts';
+import { extOf, hpApi } from './index.ts';
 
 const fx = (name: string) => readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8');
 const DOBBY = 'b1f099e4-c360-4c61-af9d-57a3e49935eb';
@@ -50,6 +50,12 @@ test('get downloads the picture under the extension of what came back', async ()
   await expect(hpApi.get(`hp-${vernon.id}`, ctx())).rejects.toMatchObject({ kind: 'missing', message: 'Vernon Dursley 沒有可用的圖' });
   await expect(hpApi.get('pdb-00000000-0000-0000-0000-000000000000', ctx())).rejects.toMatchObject({ kind: 'missing' });
   await expect(hpApi.get('dobby', ctx())).rejects.toMatchObject({ kind: 'missing' });
+});
+
+test('a content type that names no picture format falls back to the URL\'s whole extension', () => {
+  const bin = 'application/octet-stream';
+  expect([extOf(bin, 'https://x/a.png'), extOf(bin, 'https://x/a.WEBP'), extOf(bin, 'https://x/a.png?x=1'), extOf(bin, 'https://x/a.webp/revision/latest'), extOf(bin, 'https://x/a.jpg')])
+    .toEqual(['.png', '.webp', '.png', '.webp', '.jpg']);
 });
 
 test('data tells characters and spells', async () => {
