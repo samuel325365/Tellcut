@@ -57,9 +57,28 @@ export function evenWords(plain: string, dur: number): Word[] {
 }
 
 const CARET_GAP = 0.1;
-/** the room (em of the line's font) a line of the type effect leaves its caret: the gap, and half the widest face's '|' (the 8-bit
- *  face's, 1 em) hanging past it */
+/** the room (em of the line's font) a line of the type effect leaves its caret when its face can't be measured: the gap, and half
+ *  the widest face's '|' (the 8-bit face's, 1 em) hanging past it */
 export const CARET_EM = CARET_GAP + 0.5;
+const caretRoom = new Map<string, number>();
+/**
+ * The room a typed line leaves its caret in this face: the gap and half its own '|'. Reserving the 8-bit face's 0.6 em for every
+ * face shrank a full line of the boxed type templates (emboss, terminal) about 9 %; Noto's bar needs about 0.23 em. Measured
+ * once the face has loaded (cached only then); CARET_EM where nothing can measure (no canvas, the face still loading).
+ */
+export function caretEm(family: string, weight = '400'): number {
+  const font = `${weight} 100px '${family}', 'Noto Sans TC', sans-serif`, known = caretRoom.get(font);
+  if (known !== undefined) return known;
+  if (typeof document === 'undefined') return CARET_EM;
+  const g = document.createElement('canvas').getContext('2d');
+  if (!g) return CARET_EM;
+  g.font = font;
+  const w = g.measureText('|').width;
+  if (!(w > 0)) return CARET_EM;
+  const em = CARET_GAP + w / 200;
+  if (document.fonts?.check?.(font) !== false) caretRoom.set(font, em);
+  return em;
+}
 
 export interface WordBox {
   el: HTMLElement; key: string;

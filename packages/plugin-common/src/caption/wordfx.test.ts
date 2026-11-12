@@ -66,3 +66,9 @@ test('a caption typed by hand is cut into words in the engine\'s locale, not the
     expect(locales.every((l) => l === 'zh-Hant')).toBe(true);
   } finally { (Intl as any).Segmenter = Real; vi.resetModules(); }
 });
+
+test('a boxed look\'s right padding (em) is what the typing caret may hang into', async () => {
+  const { rightPadEm } = await import('./index.ts');
+  expect([rightPadEm({ padding: '0.18em 0.6em' }), rightPadEm({ padding: '0.28em 0.7em 0.3em 0.95em' }), rightPadEm({ padding: '0.5em' })]).toEqual([0.6, 0.7, 0.5]);
+  expect([rightPadEm({ padding: '0 12px' }), rightPadEm({}), rightPadEm(undefined)]).toEqual([0, 0, 0]);
+});

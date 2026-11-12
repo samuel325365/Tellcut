@@ -82,8 +82,9 @@ test('type: the caret never widens a line, and the line is broken with room for 
   const caret = typed.words.flatMap((w) => [...w.children] as HTMLElement[]).find((c) => c.textContent === '|')!;
   expect(caret.style.width).toBe('0px');
   expect(parseFloat(caret.style.marginLeft) + parseFloat(caret.style.marginRight)).toBe(0);
-  // nine characters fill a 9:16 line (9.29 em of room at the default size): typed, they leave room for the caret
-  const lines = (fx: string) => new Set(drawn({ text: '一二三四五六七八九', wordFx: fx }, 2.9).words.map((w) => w.parentElement)).size;
+  // 9.2 em of words in a 9:16 line's 9.29 em of room (the default size): typed, the caret's gap alone (0.1 em, before half its own
+  // bar, measured in the face: caretEm) does not fit, so the line breaks
+  const lines = (fx: string) => new Set(drawn({ text: '一二三四五六七abcd', wordFx: fx }, 2.9).words.map((w) => w.parentElement)).size;
   expect(lines('pop')).toBe(1);
   expect(lines('type')).toBe(2);
 });

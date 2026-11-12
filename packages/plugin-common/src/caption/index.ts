@@ -18,7 +18,7 @@ import { LOOKS, lookOf } from './looks/index.ts';
 import { speakerTextColor } from './colors.ts';
 import { karaokeRange, charPopAt, saidLevel } from './words.ts';
 import { ANIM_IN, ANIM_OUT, ENGINE_IN, ENGINE_OUT, lineAnim, WORD_IN } from './anim.ts';
-import { CARET_EM, drawWords, evenWords, setWords, WORD_FX, wordBox, wordsOf } from './wordfx.ts';
+import { caretEm, drawWords, evenWords, setWords, WORD_FX, wordBox, wordsOf } from './wordfx.ts';
 import { withTemplate } from './templates.ts';
 import type { CaptionP, CaptionS, LookEnv } from './types.ts';
 
@@ -53,6 +53,13 @@ const FONT_KEYS = new Set(['letterSpacing', 'wordSpacing', 'textTransform', 'lin
 /** what a look's box() may set beyond the basics, cleared first: switching looks on a caption leaves nothing of the last one;
  *  cleared in a call of its own before the box is styled: in one object a reset key would land after the look's background shorthand and wipe it */
 const LOOK_RESET = { boxShadow: '', backdropFilter: '', letterSpacing: '', wordSpacing: '', textTransform: '', minWidth: '', borderLeft: '', backgroundColor: '', backgroundImage: '', backgroundSize: '', lineHeight: '1.25' };
+
+/** a box's right padding in em of its font, from its CSS padding shorthand ('0.18em 0.6em', '0.28em 0.7em 0.3em 0.95em'); 0 when
+ *  it has none or gives it in other units */
+export function rightPadEm(css?: Record<string, unknown>): number {
+  const v = String(css?.padding ?? '').trim().split(/\s+/), m = /^(\d*\.?\d+)em$/.exec((v.length >= 2 ? v[1] : v[0]) ?? '');
+  return m ? Number(m[1]) : 0;
+}
 
 export const caption: ItemType<CaptionP, CaptionS> = {
   type: 'common.caption', label: '字幕（共用）', category: 'caption', kind: 'overlay',
@@ -150,12 +157,15 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     const plain = charKinds(text).map((c) => c.c).join(''), list = !wordMode ? [] : hasWords ? wordsOf(steps, [...plain].length, plain) : evenWords(plain, ctx.dur);
     const oneFit = fx === 'one' ? Math.min(1, room / px / Math.max(1e-6, ...list.map((w) => textEm([...plain].slice(w.a, w.b).join('').trim()) * 1.08))) : 1;
     // one word at a time: one line (the words not being said are hidden), never broken inside a word (extrude-one split missed.)
-    // typed (type), every line leaves room for the caret hanging past its end
-    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, (Math.max(0, roomAt(0) - room) / px + (fx === 'type' ? CARET_EM : 0)) / hs);
+    // typed (type), every line leaves room for the caret hanging past its end (its weight is 400: wordBox), less what the box's
+    // own right padding already gives it: a boxed look's caret hangs into its padding and its words keep their size
+    const sfont = styleFontOf(p.style, p.styleFont, !!ctx.item?.params?.font || p.font !== ctx.params.font);
+    const caret = fx === 'type' ? Math.max(0, caretEm(sfont || p.font) - rightPadEm(look.box?.({ ...pre, fs: px, opacity: 1 }))) : 0;
+    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, (Math.max(0, roomAt(0) - room) / px + caret) / hs);
     if (fx === 'one') fit.scale = oneFit;
     const fs = px * fit.scale, la = lineAnim(p.animIn, p.animOut, ctx.local, ctx.dur, p.animDur, fs), e: LookEnv = { ...pre, fs, opacity: st.opacity * la.opacity };
     // the font first: word effects measure the words (a growing word's room, the sliding box), which must already be in it
-    const sfont = styleFontOf(p.style, p.styleFont, !!ctx.item?.params?.font || p.font !== ctx.params.font), boxCss = look.box?.(e) ?? {};
+    const boxCss = look.box?.(e) ?? {};
     cssCamel(s.box, LOOK_RESET);
     cssCamel(s.box, { fontFamily: `'${sfont || p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${e.fs.toFixed(2)}px`, fontWeight: look.weight ?? '900', fontStyle: p.quote ? 'italic' : 'normal',
       ...Object.fromEntries(Object.entries(boxCss).filter(([k]) => FONT_KEYS.has(k))) });
