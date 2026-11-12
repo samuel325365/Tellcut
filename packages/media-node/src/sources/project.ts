@@ -197,13 +197,16 @@ export function formatCredits(records: AssetRecord[], adapters: Record<string, S
 }
 
 /** every string on the project's tracks: an item's source or media id, a sound file's path, an fx parameter naming a picture; a
- *  comma list (an fx parameter of pictures "id@2.5, id") also adds each of its ids */
+ *  list also adds each of its fields: a comma list (an fx parameter of pictures "id@2.5, id") and the lines of `source | t | label`
+ *  that common.album, common.cells and common.camcorder's stills take. Splitting more than a block means only ever moves a credit
+ *  up to "used", which is the safe side: a CC BY line under the unused heading tells the user they may drop it. */
 function trackStrings(dir: string, project?: { tracks?: unknown }): Set<string> {
   const out = new Set<string>();
+  const norm = (s: string) => s.trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '');
   const walk = (v: unknown): void => {
     if (typeof v === 'string') {
-      out.add(v.replace(/\\/g, '/').replace(/^(\.\/)+/, ''));
-      if (v.includes(',')) for (const part of v.split(',')) out.add(part.trim().replace(/@[\d.]+$/, ''));
+      out.add(norm(v));
+      if (/[,，|\n]/.test(v)) for (const part of v.split(/[,，|\r\n]/)) out.add(norm(part).replace(/@[\d.]+$/, ''));
     }
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === 'object') Object.values(v).forEach(walk);

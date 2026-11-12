@@ -203,6 +203,23 @@ describe('getAsset', () => {
     expect(block).toBe('- "t-1" by a (https://x/1), L\n- "t-2" by a (https://x/2), L\n\n下載了但片裡沒用到（不必署名）：\n- "t-3" by a (https://x/3), L\n');
   });
 
+  test('pictures named in the lines of album, cells and camcorder stills are credited as used', () => {
+    mkdirSync(join(dir, 'media'), { recursive: true });
+    const rec = (n: string) => ({ source: 'wikimedia', ref: `wikimedia:${n}`, sourceId: `wikimedia-${n}`, kind: 'image', path: `media/wikimedia/${n}.jpg`, title: `t-${n}`, author: 'a', page: `https://x/${n}`, license: 'CC BY 4.0' });
+    writeFileSync(join(dir, 'media', 'assets.json'), JSON.stringify({ version: 1, items: [rec('111'), rec('222'), rec('333'), rec('444')] }));
+    const p = readProject();
+    p.tracks.push({ id: 'o', kind: 'overlay', items: [
+      { id: 'a', type: 'common.album', start: 0, end: 4, params: { photos: '# Rome | 2026 | D1\nwikimedia-111 | 0 | Colosseum | 0.5,0.4' } },
+      { id: 'c', type: 'common.cells', start: 0, end: 4, params: { shots: 'wikimedia-222|0|0.5,0.5,1.2|still\r\n-' } },
+      { id: 'k', type: 'common.camcorder', start: 0, end: 4, params: { stills: '-|0\nwikimedia-333|1.5|0.5,0.5,1' } },
+    ] });
+    writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
+    refreshCredits(dir, { adapters: {} });
+    const block = readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8').split('<!-- tellcut assets: begin -->\n')[1].split('<!--')[0];
+    expect(block.split('\n\n')[0].split('\n').sort()).toEqual(['- "t-111" by a (https://x/111), CC BY 4.0', '- "t-222" by a (https://x/222), CC BY 4.0', '- "t-333" by a (https://x/333), CC BY 4.0']);
+    expect(block.split('\n\n')[1]).toBe('下載了但片裡沒用到（不必署名）：\n- "t-444" by a (https://x/444), CC BY 4.0\n');
+  });
+
   test('refreshCredits leaves a project that downloaded nothing alone', () => {
     expect(refreshCredits(dir)).toBeNull();
     expect(existsSync(join(dir, 'media', 'CREDITS.md'))).toBe(false);
