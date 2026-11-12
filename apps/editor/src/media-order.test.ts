@@ -22,6 +22,23 @@ test('the timeline order follows where each source is first used, the unused one
   expect(orderMedia(Object.keys(P.sources), 'name', u.first, (x) => names[x]).used).toEqual(['c', 'b', 'a', 'd']);
 });
 
+test('a clip\'s own sound (a child on orig, start counted from its parent) is ordered by its film time', () => {
+  // what c.clip() writes: each clip's sound on orig as { start: 0, parent: <clip> }
+  const p: any = {
+    sources: { a: {}, b: {}, c: {} },
+    tracks: [
+      { kind: 'video', items: [{ id: 'v1', source: 'c', start: 0, end: 5, in: 0, speed: 1 }, { id: 'v2', source: 'b', start: 5, end: 10, in: 0, speed: 1 }, { id: 'v3', source: 'a', start: 10, end: 15, in: 0, speed: 1 }] },
+      { kind: 'audio', items: [{ id: 'o2', source: 'b', start: 0, end: 5, in: 0, rate: 1, parent: 'v2' }, { id: 'o3', source: 'a', start: 0, end: 5, in: 0, rate: 1, parent: 'v3' }] },
+    ],
+  };
+  const u = mediaUse(p);
+  expect(Object.fromEntries(u.first)).toEqual({ c: 0, b: 5, a: 10 });
+  expect(orderMedia(Object.keys(p.sources), 'timeline', u.first, (x) => x).used).toEqual(['c', 'b', 'a']);
+  // an unknown parent does not throw: the stored times are used
+  p.tracks[1].items[0].parent = 'gone';
+  expect(() => mediaUse(p)).not.toThrow();
+});
+
 test('a segment is used when an item plays part of it (speed counted), not when it only touches its edge', () => {
   const r = mediaUse(P).ranges;
   expect(r.get('b')).toEqual([[0, 8]]);

@@ -1,6 +1,6 @@
 // The Media panel's order (the UX pass of 2026-10-29): which sources and music the timeline uses, where each is first heard or seen,
 // and which stretches of a source are on it, so the panel can follow the film instead of the order the files were added in.
-import type { Project } from '@tellcut/engine';
+import { resolveTimes, type Project } from '@tellcut/engine';
 
 export type MediaSort = 'timeline' | 'added' | 'name';
 /** the Media panel's pages */
@@ -22,10 +22,15 @@ export interface MediaUse {
 export function mediaUse(p: Project): MediaUse {
   const first = new Map<string, number>(), ranges = new Map<string, Array<[number, number]>>();
   const seen = (id: string, t: number) => { if (!(first.get(id)! <= t)) first.set(id, t); };
+  // a child item's stored start is an offset from its parent (a clip's own sound on `orig` is { start: 0, parent }): film times
+  // come from resolveTimes; a project it cannot resolve (an unknown parent) falls back to the stored times
+  let times: ReturnType<typeof resolveTimes> | undefined;
+  try { times = resolveTimes(p); } catch { times = undefined; }
+  const at = (it: { id?: string; start: number }) => (it.id !== undefined ? times?.get(it.id)?.start : undefined) ?? it.start;
   for (const tr of p.tracks) for (const it of tr.items as any[]) {
-    if (tr.kind === 'music' && typeof it.media === 'string') { seen(it.media, it.start); continue; }
+    if (tr.kind === 'music' && typeof it.media === 'string') { seen(it.media, at(it)); continue; }
     if ((tr.kind !== 'video' && tr.kind !== 'audio') || typeof it.source !== 'string') continue;
-    seen(it.source, it.start);
+    seen(it.source, at(it));
     const rate = (tr.kind === 'video' ? it.speed : it.rate) ?? 1, from = it.in ?? 0;
     const list = ranges.get(it.source) ?? [];
     list.push([from, from + (it.end - it.start) * rate]);
