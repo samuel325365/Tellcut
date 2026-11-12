@@ -15,7 +15,7 @@ import { getLang } from '../i18n/lang.ts';
 import { itemLook, itemName } from './names.ts';
 import { follow, type GestureCtx } from './gestures/follow.ts';
 import { startTransitionDrag, watchOverlapClick } from './gestures/transition.ts';
-import { startEnvelopeDrag } from './gestures/envelope.ts';
+import { addedByThisClick, startEnvelopeDrag } from './gestures/envelope.ts';
 import { startItemDrag } from './gestures/item.ts';
 import { startMarquee, type Marquee } from './gestures/marquee.ts';
 import { startTrackDrag } from './gestures/track.ts';
@@ -193,7 +193,7 @@ export function Timeline({ editor }: { editor: Editor }) {
   const onRowsDblClick = (e: MouseEvent) => {
     const target = e.target as Element, pt = target.closest('[data-env-index]'), itemEl = target.closest<HTMLElement>('[data-item-id]');
     if (!itemEl) return;
-    if (pt) { editor.apply((d: any) => removeEnvelopePoint(d, { id: itemEl.dataset.itemId!, index: Number(pt.getAttribute('data-env-index')) })); return; }
+    if (pt) { if (addedByThisClick(itemEl.dataset.itemId!)) return; editor.apply((d: any) => removeEnvelopePoint(d, { id: itemEl.dataset.itemId!, index: Number(pt.getAttribute('data-env-index')) })); return; }
     if (target.closest('[data-env-line], [data-fade]')) return;
     // Shift: the finished video from the item's start; otherwise the item's raw material alone (audition.ts)
     if (e.shiftKey) { const tm = times.get(itemEl.dataset.itemId!); if (tm) { editor.seek(tm.start); editor.play(); } return; }

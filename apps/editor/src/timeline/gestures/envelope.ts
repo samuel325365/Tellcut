@@ -4,6 +4,18 @@ import { addEnvelopePoint, allItems, moveEnvelopePoint, setFade } from '@tellcut
 import { yToDb } from '../envelope.ts';
 import { follow, type GestureCtx } from './follow.ts';
 
+/** The point a click on the line has just added (its item, when): a double-click's second press lands on that new point, and
+ *  the double-click that follows must not take it out again (two undo steps for nothing). */
+let added: { id: string; at: number } | null = null;
+/** how long after the click that added a point a double-click still belongs to that click (a browser's double-click time) */
+export const ADDED_DBLCLICK_MS = 600;
+/** true when a double-click on a point of item `id` is the end of the click that just added it (and so does not remove it) */
+export function addedByThisClick(id: string, now = performance.now()): boolean {
+  const yes = !!added && added.id === id && now - added.at < ADDED_DBLCLICK_MS;
+  added = null;
+  return yes;
+}
+
 /** true when the press was on the volume line, a point or a fade handle (handled here) */
 export function startEnvelopeDrag(e: MouseEvent, g: GestureCtx): boolean {
   const target = e.target as HTMLElement, el = target.closest<HTMLElement>('[data-item-id]');
@@ -31,7 +43,7 @@ export function startEnvelopeDrag(e: MouseEvent, g: GestureCtx): boolean {
   };
   follow(move, (m) => {
     if (moved && (index !== null || fade)) g.editor.commitLive();
-    else if (m && !moved && envEl.hasAttribute('data-env-line')) { const pt = at(m); g.editor.apply((d: any) => addEnvelopePoint(d, { id, t: pt.t, db: pt.db })); }
+    else if (m && !moved && envEl.hasAttribute('data-env-line')) { const pt = at(m); if (g.editor.apply((d: any) => addEnvelopePoint(d, { id, t: pt.t, db: pt.db }))) added = { id, at: performance.now() }; }
   });
   return true;
 }

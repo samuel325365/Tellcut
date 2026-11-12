@@ -82,6 +82,23 @@ test('a click on the volume line adds the point under the mouse even when the pa
   expect(m1.envelope.some(([t]: [number]) => Math.abs(t - 1.5) < 1e-6)).toBe(true);
 });
 
+test('a double-click on the volume line adds one point: the second press lands on the new point and does not take it out (EC13)', async () => {
+  const { root, editor } = mount({ selection: ['m1'] });
+  const calls: string[] = [];
+  editor.apply = (r: any) => { calls.push(String(r).includes('removeEnvelopePoint') ? 'remove' : 'add'); return true; };
+  await act(() => render(<Timeline editor={editor} />, root));
+  const line = root.querySelector('[data-item-id="m1"] [data-env-line]')!;
+  line.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 200, clientY: 170 }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: 200, clientY: 170 }));
+  // the second press is on the point drawn there now; its dblclick follows
+  const pt = root.querySelector('[data-item-id="m1"] [data-env-index="1"]')!;
+  pt.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(calls).toEqual(['add']);
+  // a later double-click on a point still removes it
+  pt.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(calls).toEqual(['add', 'remove']);
+});
+
 test('dragging a volume point moves it by the mouse offset from the press, also one a trim left outside the clip', async () => {
   const p = fixture();
   (p.tracks[3].items[0] as any).envelope = [[-2, -6], [5, -6], [10, 0]];   // point 0 lies 2 s before the head
