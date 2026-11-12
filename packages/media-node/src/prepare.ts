@@ -156,7 +156,7 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
     index.images![sid] = rel;
     if (!opts.force && existsSync(join(projectDir, rel))) continue;
     jobs.push(async () => {
-      await makeOnce(join(projectDir, rel), { force: opts.force, signal: ac.signal }, (tmp) => fitImage(srcPath(sid), tmp, L, L, ac.signal));
+      await makeOnce(join(projectDir, rel), { force: opts.force, signal: ac.signal }, async (tmp) => { await fitImage(srcPath(sid), tmp, L, L, ac.signal); });
       log(`image ${sid}`);
       opts.onProgress?.(++done, jobs.length);
     });
