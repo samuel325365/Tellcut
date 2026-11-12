@@ -25,10 +25,14 @@ export function writeProjectFile(dir: string, project: unknown, tag: string): st
   const tmp = join(dir, `project.json.${process.pid}.tmp`), text = JSON.stringify(project, null, 2) + '\n';
   writeFileSync(tmp, text);
   renameRetry(tmp, file);
-  if (existsSync(hist)) {
-    const all = readdirSync(hist).filter((f) => f.endsWith('.json')).sort();
-    for (const f of all.slice(0, Math.max(0, all.length - PROJECT_HISTORY_KEEP))) rmSync(join(hist, f));
-  }
+  // pruning is housekeeping after the write: a version another writer pruned first (ENOENT) or one held open for a moment must
+  // not turn a save that happened into a failed one (the next write prunes what is left)
+  try {
+    if (existsSync(hist)) {
+      const all = readdirSync(hist).filter((f) => f.endsWith('.json')).sort();
+      for (const f of all.slice(0, Math.max(0, all.length - PROJECT_HISTORY_KEEP))) try { rmSync(join(hist, f), { force: true }); } catch { /* next time */ }
+    }
+  } catch { /* .history unreadable: next time */ }
   return projectHash(text);
 }
 

@@ -4,6 +4,29 @@ import { join } from 'node:path';
 import { createProject } from './ingest.ts';
 import { PROJECT_HISTORY_KEEP, projectHash, updateProjectFile, writeProjectFile } from './projectfile.ts';
 
+// another writer pruning at the same time: readdirSync names a version already gone, or one held open (EPERM on Windows)
+const race = vi.hoisted(() => ({ gone: [] as string[], held: [] as string[] }));
+vi.mock('node:fs', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...real,
+    readdirSync: ((p: any, o?: any) => { const r = real.readdirSync(p, o) as any[]; return race.gone.length && !o ? [...race.gone, ...r] : r; }) as typeof real.readdirSync,
+    rmSync: ((p: any, o?: any) => { if (race.held.some((n) => String(p).endsWith(n))) throw Object.assign(new Error(`EPERM: ${p}`), { code: 'EPERM' }); return real.rmSync(p, o); }) as typeof real.rmSync,
+  };
+});
+afterEach(() => { race.gone.length = 0; race.held.length = 0; });
+
+test('a version another writer pruned first, or one held open, does not fail a save that happened', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pf-'));
+  for (let i = 0; i < PROJECT_HISTORY_KEEP + 1; i++) writeProjectFile(dir, { v: i }, 'cut');
+  race.gone.push('0000-already-pruned_cut.json');
+  expect(() => writeProjectFile(dir, { v: 'gone' }, 'cut')).not.toThrow();
+  race.gone.length = 0;
+  race.held.push(readdirSync(join(dir, '.history')).sort()[0]);
+  expect(() => writeProjectFile(dir, { v: 'held' }, 'cut')).not.toThrow();
+  expect(JSON.parse(readFileSync(join(dir, 'project.json'), 'utf8')).v).toBe('held');
+});
+
 test('every write keeps the old version in .history (in write order, even within a millisecond) and only the newest 20 stay', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pf-'));
   for (let i = 0; i < 25; i++) writeProjectFile(dir, { v: i }, 'cut');

@@ -16,8 +16,11 @@ const list = (dir: string) => existsSync(requestsDir(dir)) ? readdirSync(request
 export function saveRequest(dir: string, r: AskRequest) {
   mkdirSync(requestsDir(dir), { recursive: true });
   writeFileSync(join(requestsDir(dir), `${r.id}.json`), JSON.stringify(r, null, 2) + '\n');
-  const all = list(dir);
-  for (const f of all.slice(0, Math.max(0, all.length - REQUESTS_KEEP))) rmSync(join(requestsDir(dir), f));
+  // pruning after the request is saved: one another process pruned first (ENOENT) or held open must not fail the save
+  try {
+    const all = list(dir);
+    for (const f of all.slice(0, Math.max(0, all.length - REQUESTS_KEEP))) try { rmSync(join(requestsDir(dir), f), { force: true }); } catch { /* next time */ }
+  } catch { /* unreadable folder: next time */ }
 }
 
 export function readRequest(dir: string, id: string): AskRequest | null {
