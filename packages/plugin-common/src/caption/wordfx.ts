@@ -56,6 +56,11 @@ export function evenWords(plain: string, dur: number): Word[] {
   return pieces.map(([a, b]) => { const t = from + ((to - from) * done) / total; done += solid(a, b); return { a, b, t }; });
 }
 
+const CARET_GAP = 0.1;
+/** the room (em of the line's font) a line of the type effect leaves its caret: the gap, and half the widest face's '|' (the 8-bit
+ *  face's, 1 em) hanging past it */
+export const CARET_EM = CARET_GAP + 0.5;
+
 export interface WordBox {
   el: HTMLElement; key: string;
   lines: HTMLElement[];
@@ -73,7 +78,10 @@ export function wordBox(parent: HTMLElement): WordBox {
   const box = h('div', null, null, null as any), caret = h('span', null, null, null as any);
   cssCamel(box, { position: 'absolute', zIndex: '0', pointerEvents: 'none' });
   caret.textContent = '|';
-  cssCamel(caret, { display: 'inline-block', marginLeft: '0.04em', fontWeight: '400' });
+  // no width of its own: its bar is centred on a point CARET_GAP past the last typed character and hangs there, so the line never
+  // widens or shifts as it moves (it sat 60 px past the safe side at the end of a full line of the 8-bit face); the line breaking
+  // leaves CARET_EM for it instead
+  cssCamel(caret, { display: 'inline-flex', justifyContent: 'center', width: '0', marginLeft: `${CARET_GAP}em`, marginRight: `-${CARET_GAP}em`, fontWeight: '400' });
   return { el, key: '', lines: [], spans: [], chars: [], wordOf: [], marked: [], box, caret };
 }
 
@@ -163,7 +171,7 @@ export function drawWords(wb: WordBox, o: { fx: string; words: Word[]; local: nu
     const last = wb.chars[Math.min(typedTo, wb.chars.length) - 1];
     if (last && last.parentElement) last.parentElement.insertBefore(wb.caret, last.nextSibling);
     const typing = typedTo < wb.chars.length;
-    cssCamel(wb.caret, { display: last ? 'inline-block' : 'none', opacity: typing || Math.floor(local * 2.5) % 2 === 0 ? '1' : '0' });
+    cssCamel(wb.caret, { display: last ? 'inline-flex' : 'none', opacity: typing || Math.floor(local * 2.5) % 2 === 0 ? '1' : '0' });
   } else if (wb.caret.parentElement) wb.caret.remove();
   // the box behind the word being said, sliding from the word before over 0.13 s
   if (fx === 'box' && now >= 0) {

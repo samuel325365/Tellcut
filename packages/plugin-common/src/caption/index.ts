@@ -18,7 +18,7 @@ import { LOOKS, lookOf } from './looks/index.ts';
 import { speakerTextColor } from './colors.ts';
 import { karaokeRange, charPopAt, saidLevel } from './words.ts';
 import { ANIM_IN, ANIM_OUT, ENGINE_IN, ENGINE_OUT, lineAnim, WORD_IN } from './anim.ts';
-import { drawWords, evenWords, setWords, WORD_FX, wordBox, wordsOf } from './wordfx.ts';
+import { CARET_EM, drawWords, evenWords, setWords, WORD_FX, wordBox, wordsOf } from './wordfx.ts';
 import { withTemplate } from './templates.ts';
 import type { CaptionP, CaptionS, LookEnv } from './types.ts';
 
@@ -146,7 +146,8 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     const plain = charKinds(text).map((c) => c.c).join(''), list = !wordMode ? [] : hasWords ? wordsOf(steps, [...plain].length, plain) : evenWords(plain, ctx.dur);
     const oneFit = fx === 'one' ? Math.min(1, room / px / Math.max(1e-6, ...list.map((w) => textEm([...plain].slice(w.a, w.b).join('').trim()) * 1.08))) : 1;
     // one word at a time: one line (the words not being said are hidden), never broken inside a word (extrude-one split missed.)
-    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, Math.max(0, roomAt(0) - room) / px / hs);
+    // typed (type), every line leaves room for the caret hanging past its end
+    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, (Math.max(0, roomAt(0) - room) / px + (fx === 'type' ? CARET_EM : 0)) / hs);
     if (fx === 'one') fit.scale = oneFit;
     const fs = px * fit.scale, la = lineAnim(p.animIn, p.animOut, ctx.local, ctx.dur, p.animDur, fs), e: LookEnv = { ...pre, fs, opacity: st.opacity * la.opacity };
     // the font first: word effects measure the words (a growing word's room, the sliding box), which must already be in it
