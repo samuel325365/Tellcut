@@ -163,6 +163,15 @@ describe('thumbnails', () => {
     expect(await searchSheet([{ ...r.hits[0], thumb: undefined }], s.cacheDir)).toBeNull();
   });
 
+  test('a thumbnail fetched again makes a new sheet, not the old one from the cache', async () => {
+    const s = openPics(['1.jpg']), r = await searchAll(s, { text: 'x', opts: {}, limit: 5 });
+    const first = await searchSheet(r.hits, s.cacheDir);
+    expect(await searchSheet(r.hits, s.cacheDir)).toBe(first);
+    // the file replaced on its source under the same id: same path and label, a newer file
+    utimesSync(r.hits[0].thumb!, new Date(), new Date(Date.now() + 5000));
+    expect(await searchSheet(r.hits, s.cacheDir)).not.toBe(first);
+  });
+
   test('one very tall thumbnail does not make the sheet several screens high', async () => {
     const tower = await makePhoto(join(dir, 'tower.jpg'), { w: 100, h: 1000 }), wide = await makePhoto(join(dir, 'wide.jpg'), { w: 330, h: 220 });
     const h = (id: string, thumb: string): AssetHit => ({ ...hit('a', id, 'image'), thumb });

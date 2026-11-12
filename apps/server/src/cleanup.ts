@@ -1,10 +1,11 @@
 // spec §8: a server that crashed mid-save or mid-export leaves temp files behind; clear them at the next start. Also a deleted
 // project's folder a locked file kept (delete.ts). Also the home page's
 // conversations nobody wrote in (one moved to its project keeps only a note; the browser started a new one). Also copies of My blocks
-// nothing in their project names any more. Also a file dropped on the editor that was never finished.
+// nothing in their project names any more. Also a file dropped on the editor that was never finished. Also the outside sources'
+// cached answers, thumbnails and contact sheets a month old (they only grow: every distinct search adds some).
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
-import { isAlive, pruneCopies, SNAPSHOT_FILE, SNAPSHOT_INDEX } from '@tellcut/media-node';
+import { dirname, join, relative } from 'node:path';
+import { isAlive, pruneCopies, pruneSourceCache, SNAPSHOT_FILE, SNAPSHOT_INDEX } from '@tellcut/media-node';
 import { noteFile as noteOf } from './chat/leftover.ts';
 
 // temp names that carry the writing process id (projects.ts write; the snapshot and index of an export, or of the stills check,
@@ -28,7 +29,8 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 /** Removes leftovers of dead processes (and partial files older than maxAge); returns the removed paths. */
-export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number) => boolean; now?: number; maxAge?: number; remove?: (f: string) => void } = {}): string[] {
+/** `sourcesCache`: the outside sources' cache, by default <tellcut>/.cache/sources beside <tellcut>/projects (as openSources puts it) */
+export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number) => boolean; now?: number; maxAge?: number; remove?: (f: string) => void; sourcesCache?: string } = {}): string[] {
   const alive = o.alive ?? isAlive, now = o.now ?? Date.now(), maxAge = o.maxAge ?? 3600_000, removed: string[] = [];
   const remove = o.remove ?? ((f: string) => rmSync(f, { force: true }));
   // a locked file (antivirus, a player holding it) is left for next time: cleanup must never stop the server starting
@@ -62,6 +64,7 @@ export function cleanupLeftovers(projectsDir: string, o: { alive?: (pid: number)
       try { for (const slug of pruneCopies(p, { now })) removed.push(join(d.name, 'fx', 'lib', slug)); } catch { /* left for next time */ }
     }
   }
+  try { for (const f of pruneSourceCache(o.sourcesCache ?? join(dirname(projectsDir), '.cache', 'sources'), { now })) removed.push(relative(projectsDir, f)); } catch { /* left for next time */ }
   // a delete whose folder could not be removed at once (a file in use then: delete.ts)
   for (const d of existsSync(projectsDir) ? readdirSync(projectsDir, { withFileTypes: true }) : []) {
     if (!d.isDirectory() || !d.name.startsWith('.deleting-')) continue;

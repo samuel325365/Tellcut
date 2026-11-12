@@ -2,7 +2,7 @@
 // needs, not marked broken. Those that may not are invisible to the agents (`assets sources`) and told with the reason by
 // `npm run sources`. One search asks every available source of the kind at once and keeps what each one could answer.
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
 import { photoSheet } from '../extras.ts';
 import { createLimiter } from '../limit.ts';
@@ -165,15 +165,43 @@ const THUMB_TIMEOUT_MS = 20_000;
 export async function searchSheet(hits: AssetHit[], cacheDir: string): Promise<string | null> {
   const cells = hits.filter((h) => h.thumb && existsSync(h.thumb)).map((h) => ({ img: h.thumb!, label: h.ref }));
   if (!cells.length) return null;
+  // the key holds each thumbnail's time too: one fetched again (a file replaced on Commons under the same id) makes a new sheet
+  const times = cells.map((c) => { try { return statSync(c.img).mtimeMs; } catch { return 0; } });
   // the cells are as tall as the tallest picture needs, up to 1.5 × their width: one very tall picture (a tower, a scroll) made
   // every row of the sheet tall and the sheet several screens high
   const layout = { cols: 4, cellW: SHEET_CELL_W, maxCellH: Math.round(SHEET_CELL_W * MAX_CELL_RATIO) };
-  const out = join(cacheDir, 'sheets', `${createHash('sha1').update(JSON.stringify([cells, layout])).digest('hex')}.jpg`);
+  const out = join(cacheDir, 'sheets', `${createHash('sha1').update(JSON.stringify([cells, layout, times])).digest('hex')}.jpg`);
   if (!existsSync(out)) {
     mkdirSync(dirname(out), { recursive: true });
     await photoSheet(out, cells, undefined, layout);
   }
   return out;
+}
+
+/** the folders of .cache/sources/ that only grow (every distinct search adds its answers, thumbnails and a sheet): rate/ is the
+ *  shared quota and Carto's tiles prune themselves by their own terms */
+const PRUNED = ['http', 'thumbs', 'sheets'];
+/** a cached file older than this goes: no answer is kept longer (the longest ttl is 30 days) and a thumbnail is fetched again by then */
+export const SOURCE_CACHE_DAYS = 30;
+
+/** Files under the sources cache's http/, thumbs/ and sheets/ older than SOURCE_CACHE_DAYS removed (the server does it at start);
+ *  returns them. A file in use is left for next time. */
+export function pruneSourceCache(cacheDir: string, o: { now?: number; maxAgeDays?: number } = {}): string[] {
+  const now = o.now ?? Date.now(), maxAge = (o.maxAgeDays ?? SOURCE_CACHE_DAYS) * 86_400_000, removed: string[] = [];
+  const walk = (dir: string) => {
+    let names: string[];
+    try { names = readdirSync(dir); } catch { return; }
+    for (const name of names) {
+      const p = join(dir, name);
+      try {
+        const st = statSync(p);
+        if (st.isDirectory()) walk(p);
+        else if (now - st.mtimeMs > maxAge) { rmSync(p, { force: true }); removed.push(p); }
+      } catch { /* gone meanwhile, or locked */ }
+    }
+  };
+  for (const d of PRUNED) walk(join(cacheDir, d));
+  return removed;
 }
 
 /** best effort: a health file that cannot be written must not cost a search or a download its answer */

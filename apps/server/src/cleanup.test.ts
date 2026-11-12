@@ -151,3 +151,23 @@ test('a copy of My blocks that nothing in its project names any more is removed 
   expect(cleanupLeftovers(root, { alive: () => true, now: Date.now() + 2 * 24 * 3600_000 })).toEqual([join('demo', 'fx', 'lib', 'box')]);
   expect([existsSync(join(p, 'fx', 'lib', 'box')), existsSync(join(p, 'fx', 'lib', 'used'))]).toEqual([false, true]);
 });
+
+test('the outside sources\' cached answers, thumbnails and sheets a month old are removed; newer ones and the rate state stay', () => {
+  const root = mkdtempSync(join(tmpdir(), 'clean-')), projects = join(root, 'projects'), cache = join(root, '.cache', 'sources');
+  mkdirSync(projects, { recursive: true });
+  const put = (rel: string, ageDays: number) => {
+    const f = join(cache, rel);
+    mkdirSync(join(f, '..'), { recursive: true });
+    writeFileSync(f, 'x');
+    const t = Date.now() / 1000 - ageDays * 86400;
+    utimesSync(f, t, t);
+    return f;
+  };
+  const old = [put('http/wikimedia/a.json', 40), put('thumbs/wikimedia/1.jpg', 31), put('sheets/abc.jpg', 45)];
+  const kept = [put('http/wikimedia/b.json', 3), put('sheets/def.jpg', 29), put('rate/wikimedia.json', 90)];
+  // the default place: .cache/sources beside projects/
+  const removed = cleanupLeftovers(projects, { alive: () => true });
+  expect(removed.sort()).toEqual(old.map((f) => join('..', '.cache', 'sources', f.slice(cache.length + 1))).sort());
+  for (const f of old) expect(existsSync(f)).toBe(false);
+  for (const f of kept) expect(existsSync(f)).toBe(true);
+});
