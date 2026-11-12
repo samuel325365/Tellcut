@@ -48,10 +48,10 @@ export const scaleShadow = (shadow: string, by: number) => shadow.replace(/(-?\d
 const STYLE_IDS = LOOKS.filter((l) => l.only !== 'title').map((l) => l.id);
 /** an element's inline style gone, and cssCamel's memory of it (else it would skip setting the same values again) */
 const clearStyle = (el: HTMLElement) => { el.removeAttribute('style'); delete (el as unknown as { _c?: unknown })._c; };
-/** what a look's box() may set beyond the basics, cleared first: switching looks on a caption leaves nothing of the last one */
 /** what of a look's box() decides the words' size (set before word effects measure them) */
 const FONT_KEYS = new Set(['letterSpacing', 'wordSpacing', 'textTransform', 'lineHeight', 'fontStyle']);
-/** cleared in a call of its own before the box is styled: in one object a reset key would land after the look's background shorthand and wipe it */
+/** what a look's box() may set beyond the basics, cleared first: switching looks on a caption leaves nothing of the last one;
+ *  cleared in a call of its own before the box is styled: in one object a reset key would land after the look's background shorthand and wipe it */
 const LOOK_RESET = { boxShadow: '', backdropFilter: '', letterSpacing: '', wordSpacing: '', textTransform: '', minWidth: '', borderLeft: '', backgroundColor: '', backgroundImage: '', backgroundSize: '', lineHeight: '1.25' };
 
 export const caption: ItemType<CaptionP, CaptionS> = {
