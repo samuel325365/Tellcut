@@ -21,6 +21,10 @@ test('a bar is one that stays: a lone sample or a tiny lit spot is not a bar', (
   expect(barred([s(0, lb), s(0.5, lb), s(1, [0, 0, 1, 1])]).map((x) => x.t)).toEqual([0, 0.5]);
   expect(barred([s(0, [0, 0, 1, 1]), s(0.5, lb), s(1, [0, 0, 1, 1])])).toEqual([]);                  // one sample: a cut, not a bar
   expect(barred([s(0, [0.4, 0.4, 0.6, 0.6]), s(0.5, [0.4, 0.4, 0.6, 0.6])])).toEqual([]);              // a lit spot in the dark
+  // a portrait picture pillarboxed in a landscape file keeps (9/16)² ≈ 31.6 % of it: still bars (CC4)
+  const side: Active['box'] = [0.342, 0, 0.658, 1];
+  expect(barred([s(0, side), s(0.5, side)]).map((x) => x.t)).toEqual([0, 0.5]);
+  expect(barred([s(0, [0.3, 0.3, 0.7, 0.7]), s(0.5, [0.3, 0.3, 0.7, 0.7])])).toEqual([]);              // 16 %: a lit area, not a picture
 });
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };

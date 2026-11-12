@@ -30,13 +30,15 @@ export function edgesOf(g: ArrayLike<number>, w = LB_W, h = LB_H): Active['box']
   return [x0 / w, y0 / h, (x1 + 1) / w, (y1 + 1) / h];
 }
 
-const EDGE = 0.03, SAME = 0.03;
+/** PICTURE: the least of the frame a barred picture keeps. A 16:9 picture in a 9:16 file (or the reverse) keeps (9/16)² ≈ 31.6 %,
+ *  missed at the old 40 % (health8 CC4); a dark scene with one lit spot keeps far less, and its edges do not hold still. */
+const EDGE = 0.03, SAME = 0.03, PICTURE = 0.25;
 /**
- * The samples with a bar: some edge trimmed by 3 % or more, most of the picture left (not a dark scene with one lit spot), and the
- * next or previous sample agreeing (a bar stays; a dark shot's ragged edges move).
+ * The samples with a bar: some edge trimmed by 3 % or more, a quarter of the frame or more left (not a dark scene with one lit
+ * spot), and the next or previous sample agreeing (a bar stays; a dark shot's ragged edges move).
  */
 export function barred(samples: Active[]): Active[] {
-  const isBar = ([x0, y0, x1, y1]: Active['box']) => (x1 - x0) * (y1 - y0) >= 0.4 && (y0 >= EDGE || 1 - y1 >= EDGE || x0 >= EDGE || 1 - x1 >= EDGE);
+  const isBar = ([x0, y0, x1, y1]: Active['box']) => (x1 - x0) * (y1 - y0) >= PICTURE && (y0 >= EDGE || 1 - y1 >= EDGE || x0 >= EDGE || 1 - x1 >= EDGE);
   const same = (a: Active, b: Active) => a.box.every((v, i) => Math.abs(v - b.box[i]) <= SAME);
   return samples.filter((s, i) => isBar(s.box) && ((i > 0 && same(s, samples[i - 1])) || (i + 1 < samples.length && same(s, samples[i + 1]))));
 }
