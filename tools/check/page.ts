@@ -17,10 +17,10 @@ import { AudioCheck, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds,
 export type Drawn = ReturnType<typeof drawnText>;
 
 export async function renderedChecks(o: { dir: string; project: Project; registry: Registry; /** footage captions per source (toolkit phase 2d) */ burned?: Record<string, Burned | null>; /** per source, for the bleep-leak check (phase 5) */ transcripts?: Record<string, Transcript | null>; /** the OCR to read frames with (a test gives a stand-in) */ ocr?: OcrProvider; /** Simplified → Traditional for what OCR read (a test gives a stand-in) */ traditional?: (texts: string[]) => Promise<string[]>; sheet?: boolean; log?: (s: string) => void }): Promise<{ findings: Finding[]; sheet?: string; drawn: Drawn }> {
-  const p = o.project, times = resolveTimes(p), log = o.log ?? (() => {});
+  const p = o.project, times = resolveTimes(p), log = o.log ?? (() => {}), params = (t: string) => o.registry.item(t)?.params;
   const result = await withProjectPage(o, async (s): Promise<{ findings: Finding[]; sheet?: string; drawn: Drawn }> => {
     const samples: Array<{ t: number; boxes: TextBox[] }> = [], findings0: Finding[] = [];
-    const at = sampleTimes(p, times), falling = fallingIds(p);
+    const at = sampleTimes(p, times, params), falling = fallingIds(p);
     log(`量文字位置：${at.length} 個時間點`);
     for (const t of at) {
       await s.frame(Math.round(t * s.fps));
@@ -52,13 +52,13 @@ export async function renderedChecks(o: { dir: string; project: Project; registr
     let audio = undefined as AudioCheck | undefined;
     await s.pcm((b, f) => (audio ??= new AudioCheck(f.channels, f.sampleRate)).pcm(b));
     const captions = new Set(p.tracks.flatMap((t) => (t.items as Array<{ id: string; type?: string }>).filter((i) => /^(core|common)\.caption$/.test(i.type ?? '')).map((i) => i.id)));
-    const findings = [...findings0, ...layoutChecks(samples, { W: p.meta.width, H: p.meta.height, spans: times, settled: settledWindows(p, times) }), ...captionSizeChecks(samples, { W: p.meta.width, H: p.meta.height, captions }), ...canvasSizeChecks(samples, { W: p.meta.width, H: p.meta.height }), ...burnedChecks(p, o.burned ?? {}, samples), ...(audio?.done() ?? [])];
+    const findings = [...findings0, ...layoutChecks(samples, { W: p.meta.width, H: p.meta.height, spans: times, settled: settledWindows(p, times, params) }), ...captionSizeChecks(samples, { W: p.meta.width, H: p.meta.height, captions }), ...canvasSizeChecks(samples, { W: p.meta.width, H: p.meta.height }), ...burnedChecks(p, o.burned ?? {}, samples), ...(audio?.done() ?? [])];
     // an old sheet left from an earlier --sheet run reads as this film (a review mistook one for the current cut): gone
     const drawn = drawnText(samples);
     if (!o.sheet) { rmSync(join(o.dir, 'cache', 'check', 'sheet.jpg'), { force: true }); return { findings, drawn }; }
     const tmp = mkdtempSync(join(tmpdir(), 'check-sheet-')), cells: Array<{ img: string; label: string }> = [];
     try {
-      for (const [i, t] of sheetTimes(p, times).entries()) {
+      for (const [i, t] of sheetTimes(p, times, params).entries()) {
         await s.frame(Math.round(t * s.fps));
         const img = join(tmp, `${i}.jpg`);
         writeFileSync(img, await s.jpeg());

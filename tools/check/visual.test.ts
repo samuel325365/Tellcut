@@ -14,6 +14,23 @@ test('text items are looked at once their entrance is over and in their middle',
   expect(sampleTimes(p, resolveTimes(p))).toEqual([2.6, 4, 10.2]);
 });
 
+test('with the registry, a block whose words are in params other than text is looked at too, a font param is not words (CC2)', () => {
+  const p = proj([
+    { id: 'list', start: 2, end: 6, type: 'common.list', params: { title: '三件事', items: 'a/b/c' } },
+    { id: 'outro', start: 10, end: 14, type: 'common.outro', params: {} },                 // its default lines are drawn
+    { id: 'deco', start: 16, end: 18, type: 'common.deco', params: { fontFamily: 'Noto Sans TC' } },
+  ]);
+  const defs: Record<string, any[]> = {
+    'common.list': [{ key: 'title', type: 'string', default: '' }, { key: 'items', type: 'text', default: '' }, { key: 'size', type: 'number', default: 5 }],
+    'common.outro': [{ key: 'lines', type: 'text', default: '謝謝收看' }],
+    'common.deco': [{ key: 'fontFamily', type: 'string', default: '' }, { key: 'color', type: 'color', default: '#fff' }],
+  };
+  const times = resolveTimes(p), params = (t: string) => defs[t];
+  expect(sampleTimes(p, times)).toEqual([]);                                 // without the registry: only `text`
+  expect(sampleTimes(p, times, params)).toEqual([2.55, 4, 10.55, 12]);
+  expect([...settledWindows(p, times, params).keys()]).toEqual(['list', 'outro']);
+});
+
 test('the check sheet: twelve frames across the film and the middle of each text item, sixteen at most', () => {
   const p = proj([{ id: 'a', start: 2, end: 8, type: 'core.caption', params: { text: 'x' } }]);
   const t = sheetTimes(p, resolveTimes(p));

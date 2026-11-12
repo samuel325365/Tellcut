@@ -1,6 +1,6 @@
 // The rendered layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 5): where text lands on
 // screen (measured by the player) and what the mix sounds like (rendered offline). Pure functions; tools/check.ts drives the page.
-import { defaultSafe, type Project, type Times } from '@tellcut/engine';
+import { defaultSafe, type ParamDef, type Project, type Times } from '@tellcut/engine';
 import type { TextBox, TextRect as Rect } from '@tellcut/protocol';
 import { byTime, type Finding } from './rules.ts';
 
@@ -9,16 +9,27 @@ export type { TextBox };
 
 const r3 = (t: number) => Math.round(t * 1000) / 1000;
 const uniq = (ts: number[]) => [...new Set(ts.map(r3))].sort((a, b) => a - b);
-/** visible items with words (their params have a `text`), with their times */
-function textItems(p: Project, times: Times) {
+/** a block's declared params (the registry, with the project's fx) */
+export type ParamsOf = (type: string) => ParamDef[] | undefined;
+const nonEmpty = (v: unknown) => typeof v === 'string' && !!v.trim();
+/** whether an item shows words: a `text` param, or (with the registry) any string or text param it declares but a font, set or
+ *  left at its default (the block draws that): common.list's items, card's title and lines, outro's lines (c.endCard), badge,
+ *  tag, magazine, receipt… have no `text` and were never sampled on their own (health8 CC2) */
+function hasWords(it: any, params?: ParamsOf): boolean {
+  if (nonEmpty(it.params?.text)) return true;
+  const defs = params?.(it.type);
+  return !!defs?.some((d) => (d.type === 'string' || d.type === 'text') && !/font/i.test(d.key) && nonEmpty(it.params?.[d.key] ?? d.default));
+}
+/** visible items with words, with their times */
+function textItems(p: Project, times: Times, params?: ParamsOf) {
   return p.tracks.filter((t) => (t.kind === 'overlay' || t.kind === 'scene') && !t.muted).flatMap((t) => t.items as any[])
-    .filter((it) => typeof it.params?.text === 'string' && it.params.text.trim()).map((it) => ({ it, s: times.get(it.id)!.start, e: times.get(it.id)!.end }));
+    .filter((it) => hasWords(it, params)).map((it) => ({ it, s: times.get(it.id)!.start, e: times.get(it.id)!.end }));
 }
 
 /** the items whose words are measured: the text items, and project fx (their words are in params of their own, or drawn and
  *  reported with ctx.reportText) */
-function measuredItems(p: Project, times: Times) {
-  const text = textItems(p, times), seen = new Set(text.map((x) => x.it.id));
+function measuredItems(p: Project, times: Times, params?: ParamsOf) {
+  const text = textItems(p, times, params), seen = new Set(text.map((x) => x.it.id));
   const fx = p.tracks.filter((t) => (t.kind === 'overlay' || t.kind === 'scene') && !t.muted).flatMap((t) => t.items as any[])
     .filter((it) => !seen.has(it.id) && typeof it.type === 'string' && it.type.startsWith('fx.')).map((it) => ({ it, s: times.get(it.id)!.start, e: times.get(it.id)!.end }));
   return [...text, ...fx];
@@ -29,8 +40,8 @@ const ENTER = 0.45, EXIT = 0.3;
 
 /** When to measure text: once each item's entrance animation is over, and in its middle. A portrait short with an fx starting
  *  in its first second is also measured at 0.9 s: whether it shows words then (the first-second rule) is read off the frame. */
-export function sampleTimes(p: Project, times: Times): number[] {
-  const items = measuredItems(p, times), short = p.meta.height > p.meta.width && p.meta.duration <= 180;
+export function sampleTimes(p: Project, times: Times, params?: ParamsOf): number[] {
+  const items = measuredItems(p, times, params), short = p.meta.height > p.meta.width && p.meta.duration <= 180;
   const early = short && items.some(({ it, s }) => it.type?.startsWith('fx.') && s < 0.9) ? [0.9] : [];
   return uniq([...early, ...items.flatMap(({ it, s, e }) => {
     const own = [it.params?.animDur, it.params?.popDur].find((x) => typeof x === 'number') as number | undefined;
@@ -43,9 +54,9 @@ export function sampleTimes(p: Project, times: Times): number[] {
  * judged while it slides in or pops would read as outside the safe area or on top of another (seen on the Seattle sample's
  * header): layoutChecks looks at a text only inside this window.
  */
-export function settledWindows(p: Project, times: Times): Map<string, [number, number]> {
+export function settledWindows(p: Project, times: Times, params?: ParamsOf): Map<string, [number, number]> {
   const out = new Map<string, [number, number]>();
-  for (const { it, s, e } of measuredItems(p, times)) {
+  for (const { it, s, e } of measuredItems(p, times, params)) {
     const own = [it.params?.animDur, it.params?.popDur].find((x) => typeof x === 'number') as number | undefined, len = e - s;
     out.set(it.id, [s + Math.min(own ?? ENTER, len / 2), e - Math.min(EXIT, len / 2)]);
   }
@@ -53,10 +64,10 @@ export function settledWindows(p: Project, times: Times): Map<string, [number, n
 }
 
 /** The check sheet's frames: twelve across the film plus each text item's middle, sixteen at most. */
-export function sheetTimes(p: Project, times: Times): number[] {
+export function sheetTimes(p: Project, times: Times, params?: ParamsOf): number[] {
   const D = p.meta.duration, even = Array.from({ length: 12 }, (_, k) => ((k + 0.5) * D) / 12);
   const gap = Math.min(1, D / 36);   // a third of the spacing of the twelve, at most a second
-  let mids = uniq(textItems(p, times).map(({ s, e }) => (s + e) / 2)).filter((m) => even.every((x) => Math.abs(x - m) >= gap));
+  let mids = uniq(textItems(p, times, params).map(({ s, e }) => (s + e) / 2)).filter((m) => even.every((x) => Math.abs(x - m) >= gap));
   if (mids.length > 4 && even.length + mids.length > 16) mids = Array.from({ length: 4 }, (_, k) => mids[Math.round((k * (mids.length - 1)) / 3)]);
   return uniq([...even, ...mids]);
 }
