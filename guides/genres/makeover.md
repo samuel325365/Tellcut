@@ -5,7 +5,7 @@ Chinese name: 改造前後. Category: Real life.
 - Definition: Show the bad starting point first, reveal the result at the end.
 - Goal: completion rate (viewers wait for the result)
 - Ratios: 9:16 (main), 16:9, 1:1
-- Length: 20 s–10 min; short (under 60 s), mid (1–5 min)
+- Length: 20 s–10 min; short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: optional
 - Production: footage plus packaging made in code
 
@@ -13,7 +13,7 @@ Chinese name: 改造前後. Category: Real life.
 
 1. Open with the "before" and tease the "after"
 2. Timelapse of the process
-3. Reveal from the same angle, ideally as a draggable comparison
+3. Reveal from the same angle, ideally as a wipe or split-screen comparison
 
 ## Extras
 

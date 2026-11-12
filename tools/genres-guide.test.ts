@@ -45,3 +45,24 @@ test("the ratios table's safe-area pixels are the theme's defaultSafe", () => {
   // the 9:16 platform note says the same in round numbers
   expect(readme).toMatch(/top ~220 px.*bottom ~420 px.*right ~130 px/);
 });
+
+// A card's length classes follow its own range (README: short = under 60 s, mid = 1–5 min, long = over 5 min): an agent reading
+// "vlog … short" would aim for a length the card's range excludes (health scan 9 CG9).
+test("every card's length classes match the length range on the same line", () => {
+  const unit: Record<string, number> = { s: 1, min: 60, h: 3600 };
+  const span = (text: string) => {
+    const vals: number[] = []; let pending: number[] = [];
+    for (const m of text.matchAll(/(\d+(?:\.\d+)?)\s*(min|s|h)?\b|several hours/g)) {
+      if (m[0] === 'several hours') { vals.push(Infinity); continue; }
+      if (!m[2]) { pending.push(Number(m[1])); continue; }
+      const u = unit[m[2]]; vals.push(...pending.map((p) => p * u), Number(m[1]) * u); pending = [];
+    }
+    return { min: Math.min(...vals), max: Math.max(...vals) };
+  };
+  const classes = ({ min, max }: { min: number; max: number }) =>
+    [min < 60 && 'short (under 60 s)', max > 60 && min <= 300 && 'mid (1–5 min)', max > 300 && 'long (over 5 min)'].filter(Boolean).join(', ');
+  for (const id of ids) {
+    const m = /^- Length: (.*?); (.*)$/m.exec(readFileSync(join(dir, `${id}.md`), 'utf8'));
+    expect([id, m?.[2]]).toEqual([id, m && classes(span(m[1]))]);
+  }
+});

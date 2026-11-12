@@ -5,7 +5,7 @@ Chinese name: 排行清單. Category: Education.
 - Definition: "5 things…" counting down to number one; fixed structure, easy to template.
 - Goal: completion rate, comments
 - Ratios: 9:16 (main), 16:9, 1:1
-- Length: 30 s–8 min; short (under 60 s), mid (1–5 min)
+- Length: 30 s–8 min; short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: not needed
 - Production: can be made without filming
 

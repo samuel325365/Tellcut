@@ -5,7 +5,7 @@ Chinese name: 街訪. Category: Entertainment & drama.
 - Definition: Ask strangers on the street the same question and keep the funniest answers.
 - Goal: comment discussion
 - Ratios: 9:16 (main), 16:9
-- Length: 30 s–10 min; short (under 60 s), mid (1–5 min)
+- Length: 30 s–10 min; short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: needed (a real person on camera or performing)
 - Production: relies mainly on filming or performance
 

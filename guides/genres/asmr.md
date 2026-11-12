@@ -5,7 +5,7 @@ Chinese name: ASMR. Category: Sensory & soothing.
 - Definition: Sound is the subject, bringing relaxation or tingles.
 - Goal: long watch time, replays
 - Ratios: 9:16 (main), 16:9
-- Length: 30 s–1 h; short (under 60 s), long (over 5 min)
+- Length: 30 s–1 h; short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: optional
 - Production: relies mainly on filming or performance
 

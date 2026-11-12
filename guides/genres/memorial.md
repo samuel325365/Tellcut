@@ -5,7 +5,7 @@ Chinese name: 追思紀念影片. Category: Live events & keepsakes.
 - Definition: Played at a funeral or memorial, looking back on a life.
 - Goal: help family and friends say goodbye
 - Ratios: 16:9 (main), 4:3
-- Length: 3–8 min; mid (1–5 min)
+- Length: 3–8 min; mid (1–5 min), long (over 5 min)
 - Face: not needed
 - Production: can be made without filming
 

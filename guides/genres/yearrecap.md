@@ -5,7 +5,7 @@ Chinese name: 年度回顧. Category: Live events & keepsakes.
 - Definition: Look back on the key moments of a year (personal, team, company).
 - Goal: togetherness, shares
 - Ratios: 16:9 (main), 9:16
-- Length: 1–5 min; short (under 60 s), mid (1–5 min)
+- Length: 1–5 min; mid (1–5 min)
 - Face: optional
 - Production: footage plus packaging made in code
 

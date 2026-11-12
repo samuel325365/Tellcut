@@ -5,7 +5,7 @@ Chinese name: Vlog／我的一天. Category: Real life.
 - Definition: A stretch of time strung together from the main character's point of view; viewers watch the person and the lifestyle.
 - Goal: follows, attachment to the person
 - Ratios: 16:9 (main), 9:16
-- Length: 1–20 min; short (under 60 s), mid (1–5 min), long (over 5 min)
+- Length: 1–20 min; mid (1–5 min), long (over 5 min)
 - Face: needed (a real person on camera or performing)
 - Production: relies mainly on filming or performance
 

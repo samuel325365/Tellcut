@@ -5,7 +5,7 @@ Chinese name: 精華高光. Category: Repurposing.
 - Definition: One key moment, plus the build-up and replays that make it hit.
 - Goal: completion rate, rewatches
 - Ratios: 16:9 (main), 9:16
-- Length: 10–60 s (compilations up to 10 min); short (under 60 s), mid (1–5 min)
+- Length: 10–60 s (compilations up to 10 min); short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: not needed
 - Production: footage plus packaging made in code
 

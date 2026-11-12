@@ -5,7 +5,7 @@ Chinese name: 成長／愛情故事影片. Category: Live events & keepsakes.
 - Definition: Played at a wedding banquet: the couple's photos from childhood on tell how they met.
 - Goal: emotion and laughter in the room
 - Ratios: 16:9 (main), 4:3
-- Length: 3–6 min; mid (1–5 min)
+- Length: 3–6 min; mid (1–5 min), long (over 5 min)
 - Face: not needed
 - Production: can be made without filming
 

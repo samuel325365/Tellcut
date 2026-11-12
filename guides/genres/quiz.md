@@ -5,7 +5,7 @@ Chinese name: 測驗互動. Category: Templates & interaction.
 - Definition: Question, countdown, reveal: viewers answer as they watch.
 - Goal: comments, completion rate
 - Ratios: 9:16 (main), 16:9
-- Length: 30 s–10 min; short (under 60 s), mid (1–5 min)
+- Length: 30 s–10 min; short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: not needed
 - Production: can be made without filming
 

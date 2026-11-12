@@ -5,7 +5,7 @@ Chinese name: 反應／評論. Category: Repurposing.
 - Definition: The original video fills the main frame; you react and comment from a corner.
 - Goal: comments, follows
 - Ratios: 16:9 (main), 9:16
-- Length: 1–20 min; short (under 60 s), mid (1–5 min), long (over 5 min)
+- Length: 1–20 min; mid (1–5 min), long (over 5 min)
 - Face: needed (a real person on camera or performing)
 - Production: relies mainly on filming or performance
 

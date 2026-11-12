@@ -5,7 +5,7 @@ Chinese name: 療癒／過程縮時. Category: Sensory & soothing.
 - Definition: Show a whole process: cleaning, restoring, crafting, assembling.
 - Goal: completion rate, rewatches
 - Ratios: 9:16 (main), 16:9, 1:1
-- Length: 15 s–10 min; short (under 60 s), mid (1–5 min)
+- Length: 15 s–10 min; short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: not needed
 - Production: footage plus packaging made in code
 

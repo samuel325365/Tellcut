@@ -5,7 +5,7 @@ Chinese name: 短劇／POV. Category: Entertainment & drama.
 - Definition: One situation, one twist, often one person playing several roles.
 - Goal: shares, following the series
 - Ratios: 9:16 (main)
-- Length: 15–90 s; short (under 60 s)
+- Length: 15–90 s; short (under 60 s), mid (1–5 min)
 - Face: needed (a real person on camera or performing)
 - Production: relies mainly on filming or performance
 

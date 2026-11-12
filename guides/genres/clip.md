@@ -5,7 +5,7 @@ Chinese name: 長片切片. Category: Repurposing.
 - Definition: Pick the most gripping 30–90 s of a long video, to send viewers back to the original.
 - Goal: clicks back to the original, new followers
 - Ratios: 9:16 (main), 1:1, 16:9
-- Length: 20–90 s; short (under 60 s)
+- Length: 20–90 s; short (under 60 s), mid (1–5 min)
 - Face: optional
 - Production: footage plus packaging made in code
 

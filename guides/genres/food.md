@@ -5,7 +5,7 @@ Chinese name: 美食. Category: Real life.
 - Definition: A restaurant visit or a recipe; it has to look delicious.
 - Goal: saves, visiting the place or cooking it
 - Ratios: 9:16 (main), 16:9, 1:1
-- Length: 20 s–10 min; short (under 60 s), mid (1–5 min)
+- Length: 20 s–10 min; short (under 60 s), mid (1–5 min), long (over 5 min)
 - Face: optional
 - Production: footage plus packaging made in code
 
