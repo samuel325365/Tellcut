@@ -181,20 +181,32 @@ export function maxRateKbps(w: number, h: number, fps: number): number {
   return Math.max(4000, Math.round((24_000 * (w * h)) / (1920 * 1080) * Math.max(1, fps / 30)));
 }
 
-/** JPEG frames → libx264. write() waits for back-pressure; end() resolves only on exit code 0. */
-function encoder(out: string, fps: number, size: { w: number; h: number } | undefined, signal?: AbortSignal) {
+/** how long a cleanup waits for a killed encoder to let go of its file (a kill ends ffmpeg in milliseconds; this only bounds it) */
+const CLOSE_WAIT_MS = 10_000;
+
+/** JPEG frames → libx264. write() waits for back-pressure; end() resolves only on exit code 0. stop(): kills it and resolves once
+ *  the process is gone — on Windows a file ffmpeg still has open cannot be removed (EPERM), so a cancelled or failed export
+ *  left its `.video.mp4` behind when the cleanup ran straight after the kill. */
+export function encoder(out: string, fps: number, size: { w: number; h: number } | undefined, signal?: AbortSignal) {
   const k = size ? maxRateKbps(size.w, size.h, fps) : undefined;
   const { proc, done, kill } = ffmpegProcess(['-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', ...(k ? ['-maxrate', `${k}k`, '-bufsize', `${2 * k}k`] : []), '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
     '-movflags', '+faststart', out], { signal, stdin: true, label: 'encoder' });
   done.catch(() => {});   // observed through write()/end()
+  // settles when the process has closed (or never started), whatever its exit
+  const closed = done.then(() => {}, () => {});
   const stdin = proc.stdin!;
   return {
     async write(buf: Buffer) {
       if (!stdin.write(buf)) await Promise.race([new Promise((r) => stdin.once('drain', r)), done]);
     },
     async end() { stdin.end(); await done; },
-    kill,
+    async stop() {
+      kill();
+      let timer: NodeJS.Timeout | undefined;
+      await Promise.race([closed, new Promise<void>((r) => { timer = setTimeout(r, CLOSE_WAIT_MS); })]);
+      clearTimeout(timer);
+    },
   };
 }
 
@@ -267,8 +279,10 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
     renameRetry(part, o.out);
     return o.out;
   } finally {
-    enc?.kill();
+    // the encoder must be gone before its file can be removed (Windows); Chrome closes meanwhile
+    const stopping = enc?.stop();
     await s.close();
+    await stopping;
     // a cleanup failure (e.g. a directory in the way) must not mask the render error
     for (const f of [vOut, wav, part]) try { rmSync(f, { force: true }); } catch { /* not a removable file */ }
   }
