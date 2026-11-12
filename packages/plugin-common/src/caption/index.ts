@@ -124,7 +124,11 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     // its own parameters, then its template's (or the project's default template), then the defaults and the theme
     const p = withTemplate(ctx.params, ctx.item?.params, ctx.project?.meta?.captionTemplate, ctx.project?.meta?.captionTemplates as Record<string, Record<string, unknown>> | undefined), { W, H, theme } = ctx, k = Math.min(W, H) / 1080, look = lookOf(p.style);
     // the engine draws the first entrances and exits (animState); the others are lineAnim's and the word effects'
-    const pop = p.animIn === 'pop', st = animState({ ...p, animIn: pop || !ENGINE_IN.has(p.animIn) ? 'none' : p.animIn, animOut: ENGINE_OUT.has(p.animOut) ? p.animOut : 'none' }, ctx.local, ctx.dur, W, H), px = (p.size / 100) * H * (look.sizeScale ?? 1), hs = Math.max(1, p.hlScale ?? 1);
+    // a size from a template is never under guides/quality.md's 48 px on a 1080 short side: sizes are a share of the frame height,
+    // and those tuned on 9:16 pilots (story-serif's 2.5 is 48 px there) were 27 px on 16:9 and 1:1. A size the caption sets itself
+    // stays its own; withTemplate hands back ctx.params itself when no template applies
+    const templated = p !== ctx.params && !(ctx.item?.params && 'size' in ctx.item.params), size = (p.size / 100) * H * (look.sizeScale ?? 1);
+    const pop = p.animIn === 'pop', st = animState({ ...p, animIn: pop || !ENGINE_IN.has(p.animIn) ? 'none' : p.animIn, animOut: ENGINE_OUT.has(p.animOut) ? p.animOut : 'none' }, ctx.local, ctx.dur, W, H), px = templated ? Math.max(size, 48 * k) : size, hs = Math.max(1, p.hlScale ?? 1);
     const width = W * (1 - 2 * theme.safe.side);
     const hasWords = Array.isArray(p.words) && p.words.length > 0, fill = !!p.fill && hasWords, point = p.point && p.point !== 'none', left = p.align === 'left' || !!look.left;
     // `words` counts the characters of the text as written; quoted, every count is one on for the opening mark, and a step that has

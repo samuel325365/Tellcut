@@ -3,6 +3,7 @@
 // jsdom lays nothing out: these check the elements and what they are told, the golden pictures how they look.
 import { createRegistry, Stage } from '@tellcut/engine';
 import { caption } from '../caption.ts';
+import { lookOf, TEMPLATES } from './index.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : anything),
@@ -85,4 +86,20 @@ test('type: the caret never widens a line, and the line is broken with room for 
   const lines = (fx: string) => new Set(drawn({ text: '一二三四五六七八九', wordFx: fx }, 2.9).words.map((w) => w.parentElement)).size;
   expect(lines('pop')).toBe(1);
   expect(lines('type')).toBe(2);
+});
+
+test('every template draws its letters at least 48 px on a 1080 short side on 16:9 and 1:1, and exactly its own size on 9:16', () => {
+  const small: string[] = [];
+  for (const t of TEMPLATES) {
+    const size = Number(t.params.size ?? 4.6), scale = lookOf(String(t.params.style)).sizeScale ?? 1;
+    for (const [W, H] of [[1080, 1920], [1920, 1080], [1080, 1080]]) {
+      const fs = parseFloat(drawn({ text: '今天', template: t.id }, 1.5, { width: W, height: H }).box.style.fontSize), floor = (48 * Math.min(W, H)) / 1080;
+      if (H > W) expect(fs, t.id).toBeCloseTo((size / 100) * H * scale, 2);
+      else if (fs < floor - 0.005) small.push(`${t.id} ${W}x${H}: ${fs}`);
+    }
+  }
+  expect(small).toEqual([]);
+  // a size the caption sets itself is its own, under the floor or not; so is one with no template
+  expect(drawn({ text: '今天', template: 'story-serif', size: 2.5 }, 1.5, { width: 1920, height: 1080 }).box.style.fontSize).toBe('27px');
+  expect(drawn({ text: '今天', size: 2.5 }, 1.5, { width: 1920, height: 1080 }).box.style.fontSize).toBe('27px');
 });
