@@ -1,6 +1,7 @@
 // Where the words on screen are (toolkit phase 1, `npm run check`): every visible text run inside an item layer
 // ([data-id]), as boxes in project pixels. Hidden text (display none, visibility hidden, fully transparent) is left out. Words
-// drawn on a canvas come from the items' own reports (ctx.reportText, engine report.ts), marked `canvas`, with their words and type size.
+// drawn on a canvas come from the items' own reports (ctx.reportText, engine report.ts), marked `canvas`, with their words and type size;
+// DOM words carry their type size too (typeSize).
 import { reportedBoxes, type ReportedText } from '@tellcut/engine';
 // the boxes are what __tellcut.layout() hands to Node, so their shape is the render API's
 import type { TextBox, TextRect as Rect } from '@tellcut/protocol';
@@ -15,8 +16,22 @@ function shown(el: Element, stop: Element): boolean {
   return alpha > 0.05;
 }
 
+/**
+ * The type size of an element's words in project pixels: its CSS font size times the scale its ancestors' transforms give it
+ * (a caption popping in, the stage fitted to the window), found as its drawn box over its layout box. check judges words
+ * by it: a line box is 1.45 times the type size only for Noto Sans TC (Huninn's is 1.12–1.33), so height alone misjudged them.
+ * Undefined when the element has no layout box (an SVG text, display: contents).
+ */
+function typeSize(el: Element, k: number): number | undefined {
+  if (!(el instanceof HTMLElement) || !el.offsetWidth || !el.offsetHeight) return undefined;
+  const r = el.getBoundingClientRect(), px = parseFloat(getComputedStyle(el).fontSize);
+  // the smaller ratio: a rotation widens the drawn box, a scale widens both
+  const scale = Math.min(r.width / el.offsetWidth, r.height / el.offsetHeight);
+  return Number.isFinite(px) && scale > 0 ? (px * scale) / k : undefined;
+}
+
 export function textBoxes(stage: HTMLElement, W: number): TextBox[] {
-  const box = stage.getBoundingClientRect(), k = box.width / W || 1, by = new Map<string, Rect[]>();
+  const box = stage.getBoundingClientRect(), k = box.width / W || 1, by = new Map<string, Rect[]>(), sizes = new Map<Element, number | undefined>();
   const walk = document.createTreeWalker(stage, NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
     const el = n.parentElement;
@@ -28,7 +43,9 @@ export function textBoxes(stage: HTMLElement, W: number): TextBox[] {
     for (const r of range.getClientRects()) {
       if (r.width <= 0 || r.height <= 0) continue;
       if (!by.has(item.dataset.id)) by.set(item.dataset.id, []);
-      by.get(item.dataset.id)!.push({ x: (r.left - box.left) / k, y: (r.top - box.top) / k, w: r.width / k, h: r.height / k });
+      if (!sizes.has(el)) sizes.set(el, typeSize(el, k));
+      const size = sizes.get(el);
+      by.get(item.dataset.id)!.push({ x: (r.left - box.left) / k, y: (r.top - box.top) / k, w: r.width / k, h: r.height / k, ...(size ? { size } : {}) });
     }
   }
   return [...by].map(([id, rects]) => ({ id, rects }));

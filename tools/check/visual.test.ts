@@ -142,6 +142,12 @@ test('caption text under 48 px (on a 1080 short side) is a warning with the size
   expect(f[0].msg).toContain('size 至少 4.5');
   // a portrait film: the short side is its width; a 4.2 % caption there (117 px box) is fine
   expect(captionSizeChecks([{ t: 1, boxes: [box('p', 117)] }], { W: 1080, H: 1920, captions: new Set(['p']) })).toEqual([]);
+  // the player's measured type size wins over the line box: 48 px Huninn has a line box of only about 56 px (1.17), which read
+  // as 39 px; and a 40 px type in a tall line box is still too small
+  const sized = (id: string, h: number, size: number) => ({ id, rects: [{ x: 100, y: 500, w: 400, h, size }] });
+  expect(captionSizeChecks([{ t: 1, boxes: [sized('huninn', 56, 48)] }], { W: 1920, H: 1080, captions: new Set(['huninn']) })).toEqual([]);
+  const tall = captionSizeChecks([{ t: 1, boxes: [sized('airy', 90, 40)] }], { W: 1920, H: 1080, captions: new Set(['airy']) });
+  expect(tall.map((x) => [x.ids, x.msg.includes('約 40 px')])).toEqual([[['airy'], true]]);
 });
 
 test('words an fx reports drawing on a canvas: measured like DOM text (fx items sampled, safe area, overlap), too small, and what they say', () => {

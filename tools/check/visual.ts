@@ -192,7 +192,8 @@ export function fallingIds(p: { tracks: Array<{ items: unknown[] }> }): Set<stri
   return out;
 }
 
-/** a Noto Sans TC line box is 1.45 times the type size (measured in the player: 66 px for 45.4 px type, 72 for 49.7) */
+/** a Noto Sans TC line box is 1.45 times the type size (measured in the player: 66 px for 45.4 px type, 72 for 49.7); used only
+ *  for a box the player gave no type size (an older build, an SVG text): other faces' line boxes differ (Huninn 1.12–1.33) */
 const LINE_BOX = 1.45;
 /**
  * guides/quality.md: words on screen at least 48 px tall, on a 1080 short side (review3 R3-H3: a rule nothing enforced, and the
@@ -200,10 +201,12 @@ const LINE_BOX = 1.45;
  */
 export function captionSizeChecks(samples: Array<{ t: number; boxes: TextBox[] }>, o: { W: number; H: number; captions: Set<string> }): Finding[] {
   const k = Math.min(o.W, o.H) / 1080, tall = new Map<string, number>();
-  for (const s of samples) for (const b of s.boxes) if (o.captions.has(b.id)) tall.set(b.id, Math.max(tall.get(b.id) ?? 0, ...b.rects.map((r) => r.h)));
-  const small = [...tall].filter(([, h]) => h / LINE_BOX < 48 * k - 0.5);
+  // the type size the player measured (layout.ts typeSize), else the line box over a Noto Sans TC line's ratio
+  const letter = (r: TextBox['rects'][number]) => r.size ?? r.h / LINE_BOX;
+  for (const s of samples) for (const b of s.boxes) if (o.captions.has(b.id)) tall.set(b.id, Math.max(tall.get(b.id) ?? 0, ...b.rects.map(letter)));
+  const small = [...tall].filter(([, px]) => px < 48 * k - 0.5);
   if (!small.length) return [];
-  const px = Math.round(Math.min(...small.map(([, h]) => h)) / LINE_BOX / k), need = Math.ceil(((48 * k) / o.H) * 1000) / 10;
+  const px = Math.round(Math.min(...small.map(([, x]) => x)) / k), need = Math.ceil(((48 * k) / o.H) * 1000) / 10;
   return [{ level: 'warn', ids: small.map(([id]) => id), msg: `字幕的字太小：字高約 ${px} px（以 1080 計），至少要 48 px（${small.slice(0, 4).map(([id]) => id).join('、')}${small.length > 4 ? ` 等 ${small.length} 個` : ''}）。把字調大（size 至少 ${need.toFixed(1)}）` }];
 }
 
