@@ -143,7 +143,8 @@ export function presetRoutes(r: Router, dirs: PresetDirs, o?: PresetRouteOptions
     const keep = (k: 'theme' | 'score' | 'blocks') => (inc && inc[k] === false ? undefined : p[k]);
     if (Array.isArray(b?.points) && !pointsOf(b.points, p.points).length) throw new HttpError(400, 'A preset needs at least one point', { code: 'preset.noPoints' });
     answer(res, writeUserPreset(dirs, { name: str(b?.name) || (p.name[lang] ?? Object.values(p.name)[0] ?? id), summary: typeof b?.summary === 'string' ? b.summary : p.summary[lang] ?? Object.values(p.summary)[0] ?? '',
-      points: Array.isArray(b?.points) ? pointsOf(b.points, p.points) : p.points, lang, color: p.color, ratios: p.ratios, length: p.length, genres: p.genres,
+      points: Array.isArray(b?.points) ? pointsOf(b.points, p.points) : p.points, lang,
+      color: typeof b?.color === 'string' && /^#[0-9a-f]{6}$/i.test(b.color) ? b.color : p.color, ratios: p.ratios, length: p.length, genres: p.genres,
       theme: keep('theme'), score: keep('score') as string | undefined, blocks: keep('blocks') as string[] | undefined }, id));
   });
 

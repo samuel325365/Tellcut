@@ -272,6 +272,29 @@ test('a new preset from nothing starts on one empty point and saves only the use
   expect([saved, closed]).toEqual([1, 1]);
 });
 
+test('a new preset whose picture is refused: Save again updates that preset and sends only the picture, no second preset (EP4)', async () => {
+  const root = document.createElement('div'), { api, calls } = presetApi();
+  let saved = 0, closed = 0, refuse = true;
+  api.presetPoster = async (id: string) => { calls.push(['poster', id]); if (refuse) { refuse = false; throw new Error('The picture is too large'); } return MINE; };
+  const url = URL.createObjectURL, revoke = URL.revokeObjectURL;
+  URL.createObjectURL = () => 'blob:x'; URL.revokeObjectURL = () => {};
+  try {
+    await act(() => render(<NewPresetDialog api={api} onSaved={() => saved++} onClose={() => closed++} />, root));
+    const dlg = root.querySelector('[data-save-preset-dialog="save"]')!;
+    await type(dlg.querySelector('[data-preset-name]'), '我的節奏');
+    await type(dlg.querySelector('[data-preset-point="0"]'), '每段不超過 3 秒');
+    const file = dlg.querySelector<HTMLInputElement>('[data-preset-upload]')!;
+    Object.defineProperty(file, 'files', { value: [new File(['x'], 'big.jpg', { type: 'image/jpeg' })], configurable: true });
+    await act(() => { file.dispatchEvent(new Event('change', { bubbles: true })); });
+    await clickOn(dlg, '[data-preset-save]');
+    expect(calls.map((c) => c[0])).toEqual(['save', 'poster']);
+    expect([saved, closed]).toEqual([1, 0]);             // the strip shows it already; the dialog stays with the error
+    await clickOn(dlg, '[data-preset-save]');
+    expect(calls.map((c) => c.slice(0, 2))).toEqual([['save', calls[0][1]], ['poster', 'my-x'], ['update', 'my-x'], ['poster', 'my-x']]);
+    expect([saved, closed]).toEqual([2, 1]);
+  } finally { render(null, root); URL.createObjectURL = url; URL.revokeObjectURL = revoke; }
+});
+
 test('Enter on a tick of the Edit dialog opened inside the preset dialog does not confirm the preset dialog (EP9)', async () => {
   const root = document.createElement('div'), { api } = presetApi(), used: string[][] = [];
   let closed = 0;

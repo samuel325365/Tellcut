@@ -3,7 +3,7 @@
 // custom form's "Save as my preset" (§3.7), which keeps the options chosen without making a film first, and the home page's "New
 // preset", which starts from nothing: both open the dialog a film's preset is saved in. A folder of one that no longer reads gets a
 // line of its own under the strip, so it can still be deleted.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { pickText, type BrokenPresetInfo, type PresetInfo } from '@tellcut/protocol';
 import { errText, t } from '../i18n/index.ts';
 import { getLang } from '../i18n/lang.ts';
@@ -88,6 +88,9 @@ const COLOR = '#4263eb';
  *  film's, its points first filled from the options chosen (the server words them, with their lines for the agent) */
 export function NewPresetDialog({ api, fields, examples, onSaved, onClose }: { api: PresetApi; fields?: Record<string, string>; examples?: string[]; onSaved: () => void; onClose: () => void }) {
   const [rows, setRows] = useState<PointRow[] | null>(fields ? null : [{ text: '' }]), [error, setError] = useState('');
+  // the preset made by an earlier Save whose picture was then refused (too large, not a picture): Save again only updates it and
+  // sends the picture, else each retry made one more preset of the same name
+  const made = useRef<string | null>(null);
   useEffect(() => {
     if (!fields) return;
     api.formPoints({ fields, examples: examples ?? [], lang: getLang() })
@@ -99,9 +102,15 @@ export function NewPresetDialog({ api, fields, examples, onSaved, onClose }: { a
     poster={{ src: null, upload: true, color: COLOR }} onClose={onClose}
     onSave={async (v) => {
       try {
-        const info = await api.savePreset({ from: 'form', name: v.name, summary: v.summary, color: v.color, fields: fields ?? {}, points: v.points, lang: getLang() });
-        if (v.upload) await api.presetPoster(info.id, v.upload);
-      } catch (e) { throw new Error(errText(e)); }
+        if (made.current) await api.updatePreset(made.current, { name: v.name, summary: v.summary, color: v.color, points: v.points, lang: getLang() });
+        else {
+          made.current = (await api.savePreset({ from: 'form', name: v.name, summary: v.summary, color: v.color, fields: fields ?? {}, points: v.points, lang: getLang() })).id;
+        }
+        if (v.upload) await api.presetPoster(made.current, v.upload);
+      } catch (e) {
+        if (made.current) onSaved();   // it is there now, picture or not: the strip shows it even if the dialog is closed after this
+        throw new Error(errText(e));
+      }
       onSaved(); onClose();
     }} />;
 }

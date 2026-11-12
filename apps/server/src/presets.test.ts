@@ -273,6 +273,11 @@ test('a preset of the user’s own is edited, renamed, given a poster and delete
     const info = await (await send('POST', '/api/presets', { from: 'form', name: 'A', fields: { ratio: '9:16' }, examples: [], lang: 'zh' })).json();
     const edited = await (await send('PUT', `/api/presets/${info.id}`, { name: 'B', points: [{ text: '慢一點', prompt: '慢一點' }], lang: 'zh' })).json();
     expect(edited).toMatchObject({ id: info.id, name: { zh: 'B' }, points: ['慢一點'] });
+    // the colour of a preset with no picture yet (a new preset's Save again after its picture was refused), a bad one kept out
+    await send('PUT', `/api/presets/${info.id}`, { color: '#12ab34', lang: 'zh' });
+    expect(findPreset(d, info.id)!.color).toBe('#12ab34');
+    await send('PUT', `/api/presets/${info.id}`, { color: 'red', lang: 'zh' });
+    expect(findPreset(d, info.id)!.color).toBe('#12ab34');
     const img = join(tmpdir(), `poster-${process.pid}.png`);
     await run(['-y', '-f', 'lavfi', '-i', 'color=blue:s=640x360:d=1', '-frames:v', '1', img]);
     const up = await fetch(`${base}/api/presets/${info.id}/poster`, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: readFileSync(img) });
