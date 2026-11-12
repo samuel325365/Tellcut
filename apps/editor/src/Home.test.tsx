@@ -107,6 +107,32 @@ test('主頁 is this browser’s own draft conversation; 新對話 starts anothe
   expect(localStorage.getItem('tellcut.homeDraft')).toBe(second);
 });
 
+test('新對話 is off while the 主頁 reply runs (a new draft would leave that turn running, unseen and unstoppable), on again after', async () => {
+  const a = api(), root = document.createElement('div');
+  let finish = () => {};
+  a.chatSend = (t: string, text: string, on: (e: any) => void) => new Promise<void>((ok) => {
+    a.sent.push([t, text, undefined]);
+    finish = () => { on({ type: 'done', status: 'done', text: '好' }); ok(); };
+  });
+  await act(async () => { render(<Home api={a} />, root); });
+  await settle();
+  const first = a.asked.at(-1), btn = () => root.querySelector<HTMLButtonElement>('[data-new-chat]')!;
+  const box = root.querySelector<HTMLTextAreaElement>('[data-chat-input]')!;
+  await act(() => { box.value = '用素材剪一支'; box.dispatchEvent(new Event('input')); });
+  await act(async () => { (root.querySelector('[data-chat-send]') as HTMLElement).click(); });
+  await settle();
+  expect(btn().disabled).toBe(true);
+  await act(() => { btn().click(); });
+  await settle();
+  expect(localStorage.getItem('tellcut.homeDraft')).toBe(first);
+  await act(async () => { finish(); });
+  await settle();
+  expect(btn().disabled).toBe(false);
+  await act(() => { btn().click(); });
+  await settle();
+  expect(localStorage.getItem('tellcut.homeDraft')).not.toBe(first);
+});
+
 test('a kept choice of a project that was deleted since falls back to 主頁 without asking for its conversation (a 404)', async () => {
   localStorage.setItem('tellcut.homeThread', 'trip');
   const a = api(), root = document.createElement('div');

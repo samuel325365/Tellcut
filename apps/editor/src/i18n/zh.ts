@@ -25,6 +25,7 @@ export const zh = {
   'home.threadBroken': '{name}（讀不出來）',
   'home.openEditor': '進編輯器',
   'home.newChat': '新對話（這段對話留在原處）',
+  'home.newChatBusy': '要開新對話，請先停止回覆',
   'home.clearChat': '清除這個專案的對話',
   'home.clearConfirm': '清除「{name}」的對話？',
   'preset.mine': '我的',

@@ -113,6 +113,9 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
     else void loadProjects().then((there) => { if (there) void session.load(); });
     return () => session.close();
   }, [session]);
+  // while a reply runs, a new draft would orphan that turn (still running on the server, no longer seen nor stoppable here)
+  const [running, setRunning] = useState(session.state.running);
+  useEffect(() => { setRunning(session.state.running); return session.subscribe(() => setRunning(session.state.running)); }, [session]);
   const current = projects.find((p) => p.id === thread), title = current?.name ?? thread;
   const add = (a: Attachment[]) => setAtts([...atts, ...a.filter((x) => !atts.some((y) => y.path === x.path))]);
   return (
@@ -138,7 +141,7 @@ export function Home({ api }: { api: ChatApi & FsApi & DeleteApi & { projects():
           {thread !== 'home' && <a class="open-editor" data-open-editor href={`?id=${encodeURIComponent(thread)}`}>{t('home.openEditor')}</a>}
           <span class="grow" />
           {thread === 'home'
-            ? <button class="icon-btn" data-new-chat data-tip={t('home.newChat')} aria-label={t('home.newChat')} onClick={() => setDraft(newDraft())}><IconPlus size={16} /></button>
+            ? <button class="icon-btn" data-new-chat data-tip={t(running ? 'home.newChatBusy' : 'home.newChat')} aria-label={t(running ? 'home.newChatBusy' : 'home.newChat')} disabled={running} onClick={() => { if (!session.state.running) setDraft(newDraft()); }}><IconPlus size={16} /></button>
             : <button class="icon-btn" data-tip={t('home.clearChat')} aria-label={t('home.clearChat')} onClick={() => { if (confirm(t('home.clearConfirm', { name: title }))) void session.clear().catch(() => {}); }}><IconTrash size={16} /></button>}
         </header>
         <ChatPanel key={thread} session={session}

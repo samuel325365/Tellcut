@@ -26,6 +26,7 @@ export const ja: Record<Key, string> = {
   'home.threadBroken': '{name}（読み込めません）',
   'home.openEditor': 'エディタを開く',
   'home.newChat': '新しい会話（今の会話はそのまま残ります）',
+  'home.newChatBusy': '新しい会話を始めるには、先に返信を止めてください',
   'home.clearChat': 'このプロジェクトの会話を消去',
   'home.clearConfirm': '「{name}」の会話を消去しますか？',
   'preset.mine': 'マイ',

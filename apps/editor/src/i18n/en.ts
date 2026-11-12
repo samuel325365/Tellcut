@@ -26,6 +26,7 @@ export const en: Record<Key, string> = {
   'home.threadBroken': '{name} (cannot be read)',
   'home.openEditor': 'Open editor',
   'home.newChat': 'New chat (this one stays where it is)',
+  'home.newChatBusy': 'Stop the reply first to start a new chat',
   'home.clearChat': "Clear this project's conversation",
   'home.clearConfirm': 'Clear the conversation for "{name}"?',
   'preset.mine': 'Mine',
