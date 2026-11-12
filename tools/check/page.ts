@@ -9,7 +9,7 @@ import { ffmpeg, ocrProvider, photoSheet, pyJson, timecode1, withProjectPage, ty
 import type { Finding } from './rules.ts';
 import { burnedChecks } from './burned.ts';
 import { leakFindings, leakProbes, leakUnchecked, type LeakProbe } from './leak.ts';
-import { strayFindings, strayTimes, videoOnly } from './stray.ts';
+import { STRAY_MAX, strayFindings, strayPlan, videoOnly } from './stray.ts';
 import type { Burned } from '@tellcut/media-node';
 import { AudioCheck, canvasSizeChecks, captionSizeChecks, drawnText, fallingIds, layoutChecks, sampleTimes, settledWindows, sheetTimes, type TextBox } from './visual.ts';
 
@@ -73,8 +73,9 @@ export async function renderedChecks(o: { dir: string; project: Project; registr
   });
   // the footage's own text in the picture, read with the video tracks alone (stray.ts): a second page, after the first
   if (p.tracks.some((t) => t.kind === 'video' && (t.items as Array<{ source: string }>).some((c) => p.sources[c.source]?.kind !== 'image'))) {
-    const at = strayTimes(p, times);
+    const { at, skipped } = strayPlan(p, times);
     log(`讀畫面裡原片自己的字：${at.length} 格`);
+    if (skipped) result.findings.push({ level: 'note', msg: `片段太多：有 ${skipped} 個片段頭尾的格沒讀原片自己的字（每次最多讀 ${STRAY_MAX} 格，片段頭尾優先），剪接點一閃而過的字可能漏掉` });
     // a failure here is this page's alone: thrown, it took the first page's findings and words down with it
     try {
       const read = await withProjectPage({ ...o, project: videoOnly(p) }, (s) => ocrLines(s, at, o.dir, o.ocr, log));

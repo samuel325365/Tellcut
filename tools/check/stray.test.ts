@@ -1,5 +1,5 @@
 import { parseProject, resolveTimes } from '@tellcut/engine';
-import { strayFindings, strayTimes, videoOnly } from './stray.ts';
+import { strayFindings, strayPlan, strayTimes, videoOnly } from './stray.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
 const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
@@ -26,6 +26,11 @@ test('sample times: every second, and one frame inside both ends of each clip, w
   // both sides of a cut are read (the text may be on either)
   expect(at).toEqual([{ t: 0.05, edge: true }, { t: 0.5 }, { t: 1.5 }, { t: 2.5 }, { t: 2.95, edge: true }, { t: 3.05, edge: true }, { t: 3.5 }, { t: 4.5 }, { t: 5.5 }, { t: 5.95, edge: true }]);
   expect(strayTimes(p, resolveTimes(p), 4).length).toBeLessThanOrEqual(5);
+  // over the limit the clip ends stay and the seconds are thinned (CC7); clip ends alone over it are spread and counted
+  const six = strayPlan(p, resolveTimes(p), 6);
+  expect([six.at.filter((x) => x.edge).length, six.at.length, six.skipped]).toEqual([4, 6, 0]);
+  const two = strayPlan(p, resolveTimes(p), 2);
+  expect([two.at, two.skipped]).toEqual([[{ t: 0.05, edge: true }, { t: 5.95, edge: true }], 2]);
 });
 
 test('text read in a clip: against the frame edge a warning, whole text one note, readable only, the same text once over its span', () => {

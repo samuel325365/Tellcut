@@ -22,18 +22,37 @@ export function videoOnly(p: Project): Project {
   return q;
 }
 
+/** `n` of `list`, spread evenly over it (its first and last kept) */
+function spread<T>(list: T[], n: number): T[] {
+  if (n >= list.length) return list;
+  if (n <= 0) return [];
+  if (n === 1) return [list[0]];
+  return [...new Set(Array.from({ length: n }, (_, k) => Math.round((k * (list.length - 1)) / (n - 1))))].map((i) => list[i]);
+}
+
+/** strayTimes' frames at most read in one check */
+export const STRAY_MAX = 90;
+
 /**
  * Every second, and one frame inside both ends of each clip (`edge`: a label or a subtitle a cut lets in for a moment — r3c-baking's
- * "Cre…" typed on in a clip's last 0.3 s, read one frame before the cut and not 0.12 s before it); at most `max`.
+ * "Cre…" typed on in a clip's last 0.3 s, read one frame before the cut and not 0.12 s before it); at most `max`. Over `max`, the
+ * clip-end frames are kept first (the ones this check is for) and only the per-second ones thinned; clip ends past `max` on their
+ * own are thinned evenly, and `skipped` says how many were left out (once the list was thinned as a whole, whichever kind fell on
+ * a kept place stayed: half a 90 s film's cut edges went unread — health8 CC7).
  */
-export function strayTimes(p: Project, times: Times, max = 90): Array<{ t: number; edge?: true }> {
+export function strayPlan(p: Project, times: Times, max = STRAY_MAX): { at: Array<{ t: number; edge?: true }>; skipped: number } {
   const D = p.meta.duration, inset = 1.5 / p.meta.fps, r2 = (t: number) => Math.round(t * 100) / 100;
   const inside = (t: number) => t >= 0 && t <= D - 0.02;
   const edges = [...new Set(clips(p).filter((c) => p.sources[c.source]?.kind !== 'image').flatMap((c) => { const t = times.get(c.id)!; return t.end - t.start > 0.4 ? [r2(t.start + inset), r2(t.end - inset)] : []; }))].filter(inside);
   const seconds = Array.from({ length: Math.floor(D) }, (_, i) => i + 0.5).filter((t) => inside(t) && !edges.some((e) => Math.abs(e - t) < 0.3));
-  const out = [...edges.map((t) => ({ t, edge: true as const })), ...seconds.map((t) => ({ t }))].sort((a, b) => a.t - b.t);
-  return out.length > max ? out.filter((_, i) => i % Math.ceil(out.length / max) === 0) : out;
+  const sorted = (xs: number[]) => [...xs].sort((a, b) => a - b), keptEdges = spread(sorted(edges), max);
+  const keptSeconds = spread(seconds, max - keptEdges.length);
+  const at = [...keptEdges.map((t) => ({ t, edge: true as const })), ...keptSeconds.map((t) => ({ t }))].sort((a, b) => a.t - b.t);
+  return { at, skipped: edges.length - keptEdges.length };
 }
+
+/** strayPlan's frames alone */
+export const strayTimes = (p: Project, times: Times, max = STRAY_MAX) => strayPlan(p, times, max).at;
 
 // the letters of any CJK script OCR may read in the footage (Han with Extension A and the compatibility ideographs, kana, Hangul),
 // unlike leak.ts's Han only: punctuation and full-width forms are left out, a lone 。 is the speck of texture this counts against
