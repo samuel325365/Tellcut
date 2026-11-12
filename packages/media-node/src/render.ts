@@ -5,7 +5,7 @@ import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { chromium, type Browser, type BrowserContext } from 'playwright-core';
 import { createStaticServer } from './static-server.ts';
 import { pullPcm, pullWav, wavTooLong, type PcmFormat } from './wav.ts';
-import { abortError, ffmpegProcess, measureLoudness, run } from './ffmpeg.ts';
+import { abortError, ffmpeg, ffmpegProcess, measureLoudness, parseLoudness, run } from './ffmpeg.ts';
 import { TELLCUT_ROOT } from './paths.ts';
 import { chromePath } from './deps.ts';
 import { renameRetry } from './fsutil.ts';
@@ -234,6 +234,31 @@ export async function master(target: number, input: number, encode: (gain: numbe
 export const masterFilter = (gain: number, ceiling: number) =>
   `volume=${gain}dB,aresample=192000,alimiter=limit=${(10 ** (ceiling / 20)).toFixed(4)}:attack=3:release=60:level=0:latency=1,aresample=48000`;
 
+type Loudness = { lufs: number; peak?: number } | null;
+/** The steps of an export's sound. `mux(af)`: the film (or its range) muxed into the output, through `af` when given;
+ *  `measureOut`: the output's loudness after a mux. `range`, for an export of part of the film: `excerpt` measures that part of
+ *  the mix, `encode(af)` encodes the whole mix alone through `af` and `measure` measures that. */
+export interface MixSteps {
+  mux: (af?: string) => Promise<void>;
+  measureOut: () => Promise<Loudness>;
+  range?: { excerpt: () => Promise<Loudness>; encode: (af: string) => Promise<void>; measure: () => Promise<Loudness> };
+}
+
+/** Masters an export's sound (`input`: the whole mix's loudness; null when it is silent): the whole film through master().
+ *  A range sounds as it does in the film: its gain and ceiling are found on the whole mix and applied to the range as they are
+ *  (normalising the range alone brought a quiet passage up to the target, 12 dB louder than in the full export). A range with
+ *  nothing to hear is muxed as it is, without the four encodes of a correction loop. null when nothing was mastered. */
+export async function masterExport(target: number, input: number | null | undefined, steps: MixSteps): Promise<{ gain: number; ceiling: number; passes: number } | null> {
+  if (input === null || input === undefined || input < -70) { await steps.mux(); return null; }
+  if (!steps.range) return master(target, input, (gain, ceiling) => steps.mux(masterFilter(gain, ceiling)), steps.measureOut);
+  const ex = await steps.range.excerpt();
+  // digital silence, or nothing above ebur128's absolute gate (-70 LUFS); the AAC encoder also rejects what the chain makes of silence
+  if (!ex || ex.peak === -Infinity || ex.lufs <= -70) { await steps.mux(); return null; }
+  const m = await master(target, input, (gain, ceiling) => steps.range!.encode(masterFilter(gain, ceiling)), steps.range.measure);
+  await steps.mux(masterFilter(m.gain, m.ceiling));
+  return m;
+}
+
 export interface RenderOpts {
   target: PlayerTarget; out: string; from?: number; to?: number;
   signal?: AbortSignal; onProgress?: (frame: number, total: number) => void; log?: (line: string) => void;
@@ -244,7 +269,8 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
   mkdirSync(dirname(o.out), { recursive: true });
   // the intermediates sit next to the output whatever it is called (an `out` without .mp4 made the video pass write onto it)
   // the film is muxed (up to 4 times, mastering) into .part.mp4 and renamed when done: the export list never shows a half-made one
-  const stem = o.out.replace(/\.mp4$/i, ''), vOut = `${stem}.video.mp4`, wav = `${stem}.mix.wav`, part = `${stem}.part.mp4`;
+  // a range's whole mix, mastered alone to find the film's gain, is a .part.mp4 too: hidden from the export list, cleaned at start-up
+  const stem = o.out.replace(/\.mp4$/i, ''), vOut = `${stem}.video.mp4`, wav = `${stem}.mix.wav`, part = `${stem}.part.mp4`, whole = `${stem}.mix.part.mp4`;
   const size = stageSizeOf(o.target), s = await openPage(playerUrl(o.target), '__tellcut', { signal: o.signal, size });
   let enc: ReturnType<typeof encoder> | undefined;
   try {
@@ -271,11 +297,16 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
     const mux = (af?: string) => run(['-i', vOut, ...range, '-i', wav, ...(af ? ['-af', af] : []), '-ar', '48000',
       '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', part], { signal: o.signal });
     const input = silent ? null : (await measureLoudness(wav, { signal: o.signal }))?.lufs;
-    if (input === null || input === undefined || input < -70) await mux();
-    else {
-      const m = await master(s.loudness, input, (gain, ceiling) => mux(masterFilter(gain, ceiling)), () => measureLoudness(part, { signal: o.signal }));
-      log(`loudness: ${input.toFixed(1)} LUFS mix, gain ${m.gain} dB, ceiling ${m.ceiling} dB, ${m.passes} encode${m.passes > 1 ? 's' : ''}`);
-    }
+    const m = await masterExport(s.loudness, input, {
+      mux, measureOut: () => measureLoudness(part, { signal: o.signal }),
+      range: partial ? {
+        excerpt: async () => parseLoudness((await ffmpeg(['-nostats', ...range, '-i', wav, '-af', 'ebur128=peak=true', '-f', 'null', '-'], { signal: o.signal, level: 'info' })).stderr),
+        // the whole mix alone, encoded as the mux encodes it (the AAC encoder's overshoot is part of what is measured)
+        encode: (af) => run(['-i', wav, '-af', af, '-ar', '48000', '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', whole], { signal: o.signal }),
+        measure: () => measureLoudness(whole, { signal: o.signal }),
+      } : undefined,
+    });
+    if (m && input != null) log(`loudness: ${input.toFixed(1)} LUFS mix, gain ${m.gain} dB, ceiling ${m.ceiling} dB, ${m.passes} encode${m.passes > 1 ? 's' : ''}${partial ? ' (the whole film\'s, applied to the range)' : ''}`);
     renameRetry(part, o.out);
     return o.out;
   } finally {
@@ -284,6 +315,6 @@ export async function renderVideo(o: RenderOpts): Promise<string> {
     await s.close();
     await stopping;
     // a cleanup failure (e.g. a directory in the way) must not mask the render error
-    for (const f of [vOut, wav, part]) try { rmSync(f, { force: true }); } catch { /* not a removable file */ }
+    for (const f of [vOut, wav, part, whole]) try { rmSync(f, { force: true }); } catch { /* not a removable file */ }
   }
 }
