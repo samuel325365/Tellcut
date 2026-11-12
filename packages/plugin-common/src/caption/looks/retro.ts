@@ -20,8 +20,9 @@ export const pixel: CaptionLook = {
 /** a camcorder's on-screen text: white monospaced capitals with a slight colour fringe and glow, as on tape */
 export const vhs: CaptionLook = {
   // a thin dark edge and a dark halo under the colour fringe: on a white wall it was unreadable; normal size, as capitals in this
-  // face run wide and a spoken sentence took five lines at 1.2× (acceptance film cap-acc-vlog)
-  id: 'vhs', weight: '400', font: 'VT323', room: faceRoom(0.55, 0.04),
+  // face run wide and a spoken sentence took five lines at 1.2× (acceptance film cap-acc-vlog); its capitals are 0.6 em, not the
+  // 0.55 the line breaking counts (English ran 12–41 px past the safe side)
+  id: 'vhs', weight: '400', font: 'VT323', room: faceRoom(0.6, 0.04),
   stroke: (e) => 0.05 * e.fs,
   box: (e) => ({ textShadow: `${(0.03 * e.fs).toFixed(1)}px 0 0 rgba(255,60,60,0.75), ${(-0.03 * e.fs).toFixed(1)}px 0 0 rgba(60,160,255,0.75), 0 0 ${(0.25 * e.fs).toFixed(1)}px rgba(0,0,0,0.7)`, textTransform: 'uppercase', letterSpacing: '0.04em' }),
 };
@@ -61,6 +62,9 @@ export const desk: CaptionLook = {
   id: 'desk', paper: true, weight: '400', font: 'Huninn', room: (e, width) => width - 1.8 * e.px,
   color: (e) => e.p.outline,
   hl: (e) => e.theme.palette.accent,
-  box: (e) => ({ background: `linear-gradient(${e.p.hl} 0 0.42em, ${e.p.outline} 0.42em 0.48em, #fffaf0 0.48em)`, padding: '0.66em 0.8em 0.22em', minWidth: '78%',
+  // at least 78 % of the frame wide, but never wider than the safe area: a min-width beats the box's max-width, and on 9:16 78 % is
+  // 842 px of an 821 px safe width
+  box: (e) => ({ background: `linear-gradient(${e.p.hl} 0 0.42em, ${e.p.outline} 0.42em 0.48em, #fffaf0 0.48em)`, padding: '0.66em 0.8em 0.22em',
+    minWidth: `${Math.min(0.78 * e.W, e.W * (1 - 2 * e.theme.safe.side)).toFixed(1)}px`,
     border: `${(0.06 * e.fs).toFixed(1)}px solid ${e.p.outline}`, boxShadow: `${(0.13 * e.fs).toFixed(1)}px ${(0.13 * e.fs).toFixed(1)}px 0 color-mix(in srgb, ${e.p.outline} 55%, transparent)` }),
 };

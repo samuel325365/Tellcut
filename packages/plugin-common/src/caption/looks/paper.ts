@@ -127,7 +127,9 @@ export const label: CaptionLook = {
 const SCRAPS = [['#fff8ec', '#1a1a1a'], ['#1a1a1a', '#ffffff'], ['#ffe14d', '#1a1a1a'], ['#ff5c7a', '#ffffff'], ['#7fd4c8', '#1a1a1a'], ['#ffffff', '#c62828'], ['#3d7bff', '#ffffff']];
 const SCRAP_FONTS = ["'Noto Serif TC'", "'Noto Sans TC'", "'Huninn'", "'LXGW WenKai TC'", "'Cactus Classical Serif'", "'Bebas Neue', 'Noto Sans TC'", "'Anton', 'Noto Sans TC'"];
 export const ransom: CaptionLook = {
-  id: 'ransom', weight: '700',
+  // every letter's scrap adds 0.08 em of padding and 0.03 em of margin a side (0.22 em), which the line breaking does not count: a
+  // full line ran up to 236 px off a 16:9 frame
+  id: 'ransom', weight: '700', room: faceRoom(0.55, 0.22),
   word: () => ({
     char: (i: number, c: string): Record<string, string> => {
       if (!c.trim()) return { background: '', margin: '' };
