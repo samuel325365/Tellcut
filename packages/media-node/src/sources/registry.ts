@@ -38,10 +38,14 @@ export const ADAPTERS: Record<string, SourceAdapter> = {
   countries, mealdb, cocktaildb,
 };
 
-export interface Sources { config: SourcesConfig; /** the user's own file, where a key pasted in the API menu is written */ localFile: string; env: NodeJS.ProcessEnv; cacheDir: string; healthFile: string; fetch: typeof fetch; now: () => number; adapters: Record<string, SourceAdapter> }
+export interface Sources {
+  config: SourcesConfig; /** the user's own file, where a key pasted in the API menu is written */ localFile: string; env: NodeJS.ProcessEnv; cacheDir: string; healthFile: string; fetch: typeof fetch; now: () => number; adapters: Record<string, SourceAdapter>;
+  /** how long one thumbnail may take (default THUMB_TIMEOUT_MS; a test gives a short one) */
+  thumbTimeoutMs?: number;
+}
 
 /** the sources as configured under `root` (default tellcut/); tests pass their own config, adapters and fetch */
-export function openSources(o: { root?: string; env?: NodeJS.ProcessEnv; fetch?: typeof fetch; now?: () => number; adapters?: Record<string, SourceAdapter>; config?: SourcesConfig } = {}): Sources {
+export function openSources(o: { root?: string; env?: NodeJS.ProcessEnv; fetch?: typeof fetch; now?: () => number; adapters?: Record<string, SourceAdapter>; config?: SourcesConfig; thumbTimeoutMs?: number } = {}): Sources {
   const root = o.root;
   return {
     config: o.config ?? (root ? loadSourcesConfig({ file: join(root, 'sources.json'), localFile: join(root, 'sources.local.json') }) : loadSourcesConfig()),
@@ -52,6 +56,7 @@ export function openSources(o: { root?: string; env?: NodeJS.ProcessEnv; fetch?:
     fetch: o.fetch ?? globalThis.fetch,
     now: o.now ?? Date.now,
     adapters: o.adapters ?? ADAPTERS,
+    ...(o.thumbTimeoutMs ? { thumbTimeoutMs: o.thumbTimeoutMs } : {}),
   };
 }
 
@@ -131,17 +136,19 @@ export async function searchAll(s: Sources, q: SearchQuery & { source?: string }
 }
 
 /** Each hit's thumbnail downloaded once into .cache/sources/thumbs/<source>/ (4 at a time), so Claude can look before choosing.
- *  One that fails leaves its hit without a picture; the hit still counts. */
+ *  One that fails leaves its hit without a picture; the hit still counts. Each gets THUMB_TIMEOUT_MS, not a footage download's
+ *  10 minutes: a CDN that stalls after the headers would hold the whole search that long. A thumbUrl that is not an absolute URL
+ *  is one that fails, never an error that takes every source's hits with it. */
 async function fetchThumbs(s: Sources, hits: AssetHit[]): Promise<void> {
   const limiter = createLimiter(4), http = new Map<string, SourceCtx['http']>();
   await Promise.all(hits.filter((h) => h.thumbUrl).map((h) => limiter.run(async () => {
-    const ext = extname(new URL(h.thumbUrl!).pathname).toLowerCase() || '.jpg';
-    const file = join(s.cacheDir, 'thumbs', h.source, `${h.id.replace(/[^A-Za-z0-9_-]/g, '-')}${ext}`);
     try {
+      const ext = extname(new URL(h.thumbUrl!).pathname).toLowerCase() || '.jpg';
+      const file = join(s.cacheDir, 'thumbs', h.source, `${h.id.replace(/[^A-Za-z0-9_-]/g, '-')}${ext}`);
       // kept by id, but not forever: a file replaced on Commons keeps its id and would show its old picture
       if (!existsSync(file) || s.now() - statSync(file).mtimeMs > THUMB_DAYS * 86_400_000) {
         if (!http.has(h.source)) http.set(h.source, contextFor(s, h.source, dirname(file)).http);
-        await http.get(h.source)!.download(h.thumbUrl!, file, { maxBytes: 5e6 });
+        await http.get(h.source)!.download(h.thumbUrl!, file, { maxBytes: 5e6, timeoutMs: s.thumbTimeoutMs ?? THUMB_TIMEOUT_MS });
       }
       h.thumb = file;
     } catch { /* no picture for this one */ }
@@ -151,6 +158,8 @@ async function fetchThumbs(s: Sources, hits: AssetHit[]): Promise<void> {
 const SHEET_CELL_W = 320, MAX_CELL_RATIO = 1.5;
 /** a thumbnail older than this is fetched again */
 const THUMB_DAYS = 30;
+/** one thumbnail's whole download */
+const THUMB_TIMEOUT_MS = 20_000;
 
 /** One contact sheet of the hits' thumbnails, each labelled with its ref (cached by its pictures); null when none has one. */
 export async function searchSheet(hits: AssetHit[], cacheDir: string): Promise<string | null> {

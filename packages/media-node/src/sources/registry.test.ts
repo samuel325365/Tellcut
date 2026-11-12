@@ -135,6 +135,26 @@ describe('thumbnails', () => {
     expect(r.problems).toEqual([]);
   });
 
+  test('a thumbnail whose body stalls is given up on its own timeout, not a footage download\'s 10 minutes', async () => {
+    // the headers come, then the body never ends; the stream ends only when the request's signal fires
+    const stalled = (async (url: string | URL, init?: RequestInit) => {
+      if (!String(url).endsWith('stall.jpg')) return thumbFetch(url);
+      const signal = init!.signal!;
+      return new Response(new ReadableStream({ start(c) { c.enqueue(new Uint8Array(jpeg.subarray(0, 100))); signal.addEventListener('abort', () => c.error(signal.reason)); } }), { headers: { 'content-type': 'image/jpeg' } });
+    }) as typeof fetch;
+    const s = openSources({ root: dir, config, adapters: { a: pics(['1.jpg', 'stall.jpg']) }, env: {}, fetch: stalled, thumbTimeoutMs: 300 });
+    const t0 = Date.now(), r = await searchAll(s, { text: 'x', opts: {}, limit: 5 });
+    expect(Date.now() - t0).toBeLessThan(5000);
+    expect(r.hits.map((h) => !!h.thumb)).toEqual([true, false]);
+  });
+
+  test('a thumbnail field that is not an absolute URL costs only its own picture', async () => {
+    const mixed = fake('a', 'image', async () => [{ ...hit('a', '1', 'image'), thumbUrl: 'https://thumb.example/1.jpg' }, { ...hit('a', '2', 'image'), thumbUrl: '/img/x.png' }]);
+    const r = await searchAll(openSources({ root: dir, config, adapters: { a: mixed }, env: {}, fetch: thumbFetch }), { text: 'x', opts: {}, limit: 5 });
+    expect(r.hits.map((h) => [h.id, !!h.thumb])).toEqual([['1', true], ['2', false]]);
+    expect(r.problems).toEqual([]);
+  });
+
   test('searchSheet makes one labelled sheet of the thumbnails, none without any', async () => {
     const s = openPics(['1.jpg', '2.jpg']), r = await searchAll(s, { text: 'x', opts: {}, limit: 5 });
     const sheet = await searchSheet(r.hits, s.cacheDir);

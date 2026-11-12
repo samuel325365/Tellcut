@@ -40,7 +40,8 @@ export class SourceError extends Error {
 export interface Http {
   json<T = unknown>(url: string, o?: { method?: 'GET' | 'POST'; body?: unknown; headers?: Record<string, string>; ttl?: number; notFound?: 'broken' | 'missing'; cacheIf?: (body: any) => boolean; acceptStatus?: number[] }): Promise<T>;
   head(url: string): Promise<{ type: string; length?: number }>;
-  download(url: string, dest: string, o: { maxBytes: number; headers?: Record<string, string> }): Promise<{ bytes: number; type: string }>;
+  /** timeoutMs: the whole download's time, 10 minutes unless given (footage is large; a thumbnail asks for much less) */
+  download(url: string, dest: string, o: { maxBytes: number; headers?: Record<string, string>; timeoutMs?: number }): Promise<{ bytes: number; type: string }>;
 }
 
 export interface HttpOptions {
@@ -48,7 +49,7 @@ export interface HttpOptions {
   /** a key was sent: 401/403 then means the key is refused (broken), not a bot check (temporary) */
   hasKey?: boolean;
   fetch?: typeof fetch; now?: () => number;
-  /** for JSON and HEAD; downloads get 10 minutes */
+  /** for JSON and HEAD; downloads get 10 minutes unless the call gives its own */
   timeoutMs?: number;
 }
 
@@ -58,6 +59,9 @@ export const unreadable = (zh?: string, en?: string): ZhEn => (zh ? { zh: `回�
 const UNREADABLE = unreadable();
 /** "1 result", "3 results": a check's count in English */
 export const resultsEn = (n: number | string) => `${n} ${Number(n) === 1 ? 'result' : 'results'}`;
+const DOWNLOAD_TIMEOUT_MS = 600_000;
+const spanZh = (ms: number) => (ms >= 60_000 && ms % 60_000 === 0 ? `${ms / 60_000} 分鐘` : `${Math.round(ms / 1000)} 秒`);
+const spanEn = (ms: number) => (ms >= 60_000 && ms % 60_000 === 0 ? `${ms / 60_000} min` : `${Math.round(ms / 1000)} s`);
 const looksHtml = (type: string, text: string) => /text\/html/i.test(type) || /^\s*</.test(text);
 
 export function createHttp(o: HttpOptions): Http {
@@ -130,7 +134,8 @@ export function createHttp(o: HttpOptions): Http {
     },
 
     async download(url, dest, d) {
-      const r = await request(url, { headers: d.headers }, 600_000);
+      const timeout = d.timeoutMs ?? DOWNLOAD_TIMEOUT_MS;
+      const r = await request(url, { headers: d.headers }, timeout);
       if (!r.ok) throw await statusError(r, 'missing');
       const type = r.headers.get('content-type') ?? '';
       if (/text\/html/i.test(type)) { await r.body?.cancel(); throw fail('temporary', { zh: '被人機驗證擋下或在維護（回的是網頁，不是檔案）', en: 'stopped by a bot check, or down for maintenance (it sent a web page, not a file)' }); }
@@ -150,7 +155,7 @@ export function createHttp(o: HttpOptions): Http {
       } catch (e) {
         // the connection dropped or the time ran out halfway: nothing half-written stays behind
         closeSync(fd); rmSync(part, { force: true });
-        throw fail('temporary', (e as Error).name === 'TimeoutError' ? { zh: '下載中斷（逾時 10 分鐘）', en: 'the download broke off (timed out after 10 min)' }
+        throw fail('temporary', (e as Error).name === 'TimeoutError' ? { zh: `下載中斷（逾時 ${spanZh(timeout)}）`, en: `the download broke off (timed out after ${spanEn(timeout)})` }
           : { zh: `下載中斷（${(e as Error).message}）`, en: `the download broke off (${(e as Error).message})` });
       }
       closeSync(fd);
