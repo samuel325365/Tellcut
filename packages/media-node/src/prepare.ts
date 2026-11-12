@@ -1,6 +1,7 @@
 // Cuts every clip / still / audio segment a project references into <project>/cache and writes cache/index.json; also the sound
 // levels (peaks) blocks read (common.audiogram), and a copy of every music file the music tracks play.
 import { heavy } from './limit.ts';
+import { randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { copyFile } from 'node:fs/promises';
 import { renameRetry } from './fsutil.ts';
@@ -17,6 +18,45 @@ import { fileHash, sourceHash } from './hash.ts';
 /** The cut file name's salt: encoding settings, plus a version for stabilised cuts (vs2 = vidstab on copied frames,
  *  so cuts made before that fix — broken into blocks on VP9 sources — are not reused). */
 export const cutSalt = (r: MediaRef, base: string) => base + (r.stab ? '|vs2' : '');
+
+/** Cache files being made in this process, by final path. Two prepareProject runs of one project in one process (an export
+ *  and a preset's poster, the stills check) plan the same missing files: the later one waits for the file being made instead of
+ *  cutting it again into the same place. */
+const making = new Map<string, Promise<void>>();
+
+/** A temp name of this job's own next to `final` (the pid and a random part: another process, or another call in this one, never
+ *  writes the same one). It keeps the `.tmp.<ext>` ending the server's start-up cleanup looks for. */
+export const tempName = (final: string) => {
+  const ext = extname(final);
+  return `${final.slice(0, final.length - ext.length)}.${process.pid}-${randomBytes(4).toString('hex')}.tmp${ext}`;
+};
+
+/** `p` settled (either way), or the abort as an AbortError */
+const settledOrAbort = (p: Promise<unknown>, signal: AbortSignal) => new Promise<void>((res, rej) => {
+  if (signal.aborted) return rej(abortError());
+  const onAbort = () => rej(abortError());
+  signal.addEventListener('abort', onAbort, { once: true });
+  p.then(() => res(), () => res()).finally(() => signal.removeEventListener('abort', onAbort));
+});
+
+/** Makes `final` through `make(tmp)` and a rename, one job per file in this process at a time: a file another call is making
+ *  is waited for, and taken as it is once made (unless `force`); when that call failed, this one makes it. A failed or
+ *  interrupted job leaves no temp behind and nothing under the final name, so it never poisons the cache. */
+export async function makeOnce(final: string, o: { force?: boolean; signal: AbortSignal }, make: (tmp: string) => Promise<void>): Promise<void> {
+  const key = resolve(final);
+  for (let other = making.get(key); other; other = making.get(key)) {
+    await settledOrAbort(other, o.signal);
+    if (!o.force && existsSync(final)) return;
+  }
+  // the plan's own check is from before the wait for a heavy slot: another call may have made it meanwhile
+  if (!o.force && existsSync(final)) return;
+  const tmp = tempName(final);
+  const job = (async () => {
+    try { await make(tmp); renameRetry(tmp, final); } catch (e) { rmSync(tmp, { force: true }); throw e; }
+  })();
+  making.set(key, job);
+  try { await job; } finally { if (making.get(key) === job) making.delete(key); }
+}
 
 /** Runs jobs n at a time. On the first failure it aborts `ac` (stopping running cuts), starts nothing new,
  *  waits for every running job to settle, then throws that first error — no cut outlives the call. */
@@ -95,9 +135,7 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
       slot[key] = rel;
       if (!opts.force && existsSync(join(projectDir, rel))) continue;
       jobs.push(async () => {
-        // write to a temp name and rename on success: an interrupted cut must not poison the cache
-        const final = join(projectDir, rel), tmp = join(projectDir, `cache/${dir}/${name}.${process.pid}.tmp.${ext}`);   // the server and a CLI may prepare at once
-        try { await cut(srcPath(r.source), r, tmp); renameRetry(tmp, final); } catch (e) { rmSync(tmp, { force: true }); throw e; }
+        await makeOnce(join(projectDir, rel), { force: opts.force, signal: ac.signal }, (tmp) => cut(srcPath(r.source), r, tmp));
         log(`${dir} ${key}`);
         opts.onProgress?.(++done, jobs.length);
       });
@@ -118,8 +156,7 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
     index.images![sid] = rel;
     if (!opts.force && existsSync(join(projectDir, rel))) continue;
     jobs.push(async () => {
-      const final = join(projectDir, rel), tmp = final.replace(/\.jpg$/, `.${process.pid}.tmp.jpg`);
-      try { await fitImage(srcPath(sid), tmp, L, L, ac.signal); renameRetry(tmp, final); } catch (e) { rmSync(tmp, { force: true }); throw e; }
+      await makeOnce(join(projectDir, rel), { force: opts.force, signal: ac.signal }, (tmp) => fitImage(srcPath(sid), tmp, L, L, ac.signal));
       log(`image ${sid}`);
       opts.onProgress?.(++done, jobs.length);
     });
@@ -130,15 +167,14 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
     index.peaks![sid] = rel;
     if (!opts.force && existsSync(join(projectDir, rel))) continue;
     jobs.push(async () => {
-      const final = join(projectDir, rel), tmp = final.replace(/.json$/, `.${process.pid}.tmp.json`), src = srcPath(sid), made = analysisFiles(projectDir, src).peaks;
-      try {
+      const src = srcPath(sid), made = analysisFiles(projectDir, src).peaks;
+      await makeOnce(join(projectDir, rel), { force: opts.force, signal: ac.signal }, async (tmp) => {
         if (existsSync(made)) copyFileSync(made, tmp);
         else {
           const data = (await probeHasAudio(src)) ? await readPeaks(src, { signal: ac.signal }) : [];
           writeFileSync(tmp, JSON.stringify({ rate: PEAK_RATE, peaks: data }));
         }
-        renameRetry(tmp, final);
-      } catch (e) { rmSync(tmp, { force: true }); throw e; }
+      });
       log(`peaks ${sid}`);
       opts.onProgress?.(++done, jobs.length);
     });
@@ -151,8 +187,7 @@ export async function prepareProject(projectDir: string, registry: Registry, opt
     index.music![id] = rel;
     if (!opts.force && existsSync(join(projectDir, rel))) continue;
     jobs.push(async () => {
-      const final = join(projectDir, rel), tmp = final.slice(0, -ext.length) + `.${process.pid}.tmp${ext}`;
-      try { await copyFile(src, tmp); renameRetry(tmp, final); } catch (e) { rmSync(tmp, { force: true }); throw e; }
+      await makeOnce(join(projectDir, rel), { force: opts.force, signal: ac.signal }, (tmp) => copyFile(src, tmp));
       log(`music ${id}`);
       opts.onProgress?.(++done, jobs.length);
     });

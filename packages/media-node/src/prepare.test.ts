@@ -2,8 +2,8 @@ import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync, existsSync, readFi
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createRegistry, corePlugin, parseProject, type Plugin } from '@tellcut/engine';
-import { cutSalt, prepareProject, runPool } from './prepare.ts';
-import { run, probeSize } from './ffmpeg.ts';
+import { cutSalt, makeOnce, prepareProject, runPool } from './prepare.ts';
+import { ffprobe, run, probeSize } from './ffmpeg.ts';
 import { analysisFiles } from './analysis.ts';
 
 const stillPlugin: Plugin = { id: 't', items: [{ type: 't.still', label: 's', kind: 'overlay', params: [], build: () => null, draw: () => {},
@@ -199,6 +199,51 @@ test('peaks of an unknown source are refused like any other media reference', as
   p.tracks = [{ id: 'o', kind: 'overlay', items: [{ id: 'lv', type: 'l.level', start: 0, end: 1, params: {} }] }] as any;
   writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
   await expect(prepareProject(dir, createRegistry([corePlugin, bad]))).rejects.toThrow('Item "lv" (l.level): unknown source "nope"');
+});
+
+test('two prepareProject runs of one folder at once both resolve, and every cut is whole (one cuts, the other waits for it)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'prep-'));
+  await run(['-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=30:duration=4', '-c:v', 'libx264', join(dir, 'src.mp4')]);
+  const p = project({ s1: 'src.mp4' });
+  (p.sources.s1 as any).width = 640; (p.sources.s1 as any).height = 360;
+  p.meta.duration = 4; p.meta.cut.preset = 'medium';
+  const clip = (i: number) => ({ id: `c${i}`, source: 's1', in: i * 0.7, speed: 1, start: i, end: i + 1,
+    crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } });
+  p.tracks = [{ id: 'v', kind: 'video', items: [0, 1, 2, 3].map(clip) }] as any;
+  writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
+  const reg = createRegistry([corePlugin]);
+  const [a, b] = await Promise.all([prepareProject(dir, reg), prepareProject(dir, reg)]);
+  expect(b.videos).toEqual(a.videos);
+  expect(Object.keys(a.videos)).toHaveLength(4);
+  // the same cuts made by one run alone, in a folder of their own (a cut carries handles, so its length is not just the clip's)
+  const solo = mkdtempSync(join(tmpdir(), 'prep-'));
+  copyFileSync(join(dir, 'src.mp4'), join(solo, 'src.mp4'));
+  writeFileSync(join(solo, 'project.json'), JSON.stringify(p));
+  const ref = await prepareProject(solo, reg);
+  const frames = (f: string) => ffprobe(['-count_frames', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_frames', '-of', 'csv=p=0', f]).then(Number);
+  for (const [key, rel] of Object.entries(a.videos)) expect([key, await frames(join(dir, rel))]).toEqual([key, await frames(join(solo, ref.videos[key]))]);
+  expect(readdirSync(join(dir, 'cache/cuts')).filter((f) => f.includes('.tmp'))).toEqual([]);
+}, 120000);
+
+test('makeOnce: a second request for a file being made waits for it; after a failed one it makes the file itself', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'prep-')), final = join(dir, 'x.mp4'), signal = new AbortController().signal;
+  const temps: string[] = [];
+  let release!: () => void;
+  const first = makeOnce(final, { signal }, async (tmp) => { temps.push(tmp); await new Promise<void>((r) => { release = r; }); writeFileSync(tmp, 'a'); });
+  let secondMade = false;
+  const second = makeOnce(final, { signal }, async (tmp) => { secondMade = true; writeFileSync(tmp, 'b'); });
+  await new Promise((r) => setTimeout(r, 20));
+  release();
+  await Promise.all([first, second]);
+  expect([secondMade, readFileSync(final, 'utf8')]).toEqual([false, 'a']);
+  expect(temps[0]).toMatch(new RegExp(`x\\.${process.pid}-[0-9a-f]{8}\\.tmp\\.mp4$`));   // the cleanup's .tmp.<ext> ending
+  const other = join(dir, 'y.mp4');
+  const failing = makeOnce(other, { signal }, async () => { throw new Error('cut failed'); });
+  const after = makeOnce(other, { signal }, async (tmp) => { writeFileSync(tmp, 'c'); });
+  await expect(failing).rejects.toThrow('cut failed');
+  await after;
+  expect(readFileSync(other, 'utf8')).toBe('c');
+  expect(readdirSync(dir).sort()).toEqual(['x.mp4', 'y.mp4']);
 });
 
 test('music outside the project folder (or named with # and %) is copied into the cache for the export to serve', async () => {
