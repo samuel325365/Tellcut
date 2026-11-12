@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createReadStream, existsSync, statSync, type ReadStream } from 'node:fs';
+import { createReadStream, statSync, type ReadStream, type Stats } from 'node:fs';
 import { extname, join, resolve, sep } from 'node:path';
 
 const TYPES: Record<string, string> = {
@@ -16,8 +16,11 @@ export const contentType = (p: string) => TYPES[extname(p).toLowerCase()] ?? 'ap
 /** Streams a file with Range support (the caller has already decided the path is allowed).
  *  Returns the read stream (undefined when nothing is streamed). */
 export function sendFile(req: IncomingMessage, res: ServerResponse, p: string): ReadStream | undefined {
-  if (!existsSync(p) || statSync(p).isDirectory()) { res.writeHead(404); res.end(); return; }
-  const size = statSync(p).size, type = contentType(p);
+  // one stat, caught: a file removed between a check and a second stat threw inside the request listener (nothing catches it there)
+  let st: Stats | undefined;
+  try { st = statSync(p, { throwIfNoEntry: false }); } catch { /* unreadable: as missing */ }
+  if (!st || st.isDirectory()) { res.writeHead(404); res.end(); return; }
+  const size = st.size, type = contentType(p);
   const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? '');
   let head: [number, Record<string, string | number>], range: { start: number; end: number } | undefined;
   if (m) {

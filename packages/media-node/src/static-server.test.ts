@@ -1,8 +1,9 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { request } from 'node:http';
+import { createServer, request } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createStaticServer } from './static-server.ts';
+import { createStaticServer, sendFile } from './static-server.ts';
 
 test('serves files under its root and nothing outside it', async () => {
   const root = mkdtempSync(join(tmpdir(), 'ss-root-'));
@@ -30,4 +31,35 @@ test('answers only requests addressed to the loopback host (a page on another si
     expect(await status(`localhost:${port}`)).toBe(200);
     expect(await status(`evil.example:${port}`)).toBe(403);
   } finally { await s.close(); }
+});
+
+// a file removed while the request is answered: the first stat still sees it, every later one does not
+const vanish = vi.hoisted(() => ({ name: '', stats: 0 }));
+vi.mock('node:fs', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs')>();
+  const gone = (p: unknown) => vanish.name !== '' && String(p).endsWith(vanish.name);
+  return {
+    ...real,
+    existsSync: ((p: any) => gone(p) || real.existsSync(p)) as typeof real.existsSync,
+    statSync: ((p: any, o?: any) => {
+      if (!gone(p)) return real.statSync(p, o);
+      if (vanish.stats++ === 0) return real.statSync(import.meta.filename);
+      if (o?.throwIfNoEntry === false) return undefined;
+      throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' });
+    }) as typeof real.statSync,
+  };
+});
+
+test('a file removed while its request is answered gets a 404, not an exception in the request listener', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'ss-root-'));
+  vanish.name = 'vanish.txt'; vanish.stats = 0;
+  let thrown: unknown;
+  const server = createServer((req, res) => {
+    try { sendFile(req, res, join(root, 'vanish.txt')); } catch (e) { thrown = e; res.writeHead(599); res.end(); }
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+  try {
+    const r = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/vanish.txt`);
+    expect([r.status, thrown]).toEqual([404, undefined]);
+  } finally { vanish.name = ''; server.closeAllConnections(); await new Promise((r) => server.close(r)); }
 });
