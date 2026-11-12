@@ -7,7 +7,7 @@ import type { FsApi } from './ImportDialog.tsx';
 import type { LiveEvent } from '@tellcut/protocol';
 import type { DragStart, Mods } from './timeline/drag.ts';
 import { materialOf, planAudition, type Material } from './audition.ts';
-import { FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll, zoomAround } from './timeline/geometry.ts';
+import { FIT_FLOOR_PPS, FIT_MIN_PPS, MAX_PPS, MIN_PPS, maxScroll, zoomAround } from './timeline/geometry.ts';
 import { ApiError, type Api } from './api.ts';
 import { Autosave } from './autosave.ts';
 import { History } from './history.ts';
@@ -643,7 +643,7 @@ export class Editor {
   }
   toggleLoop() { this.set({ loop: !this.s.loop }); }
   /** The whole project in the timeline (\), however small that makes it. */
-  zoomToFit() { const p = this.s.project; if (p && this.laneW > 0) this.setView({ pps: this.laneW / p.meta.duration, scroll: 0 }); }
+  zoomToFit() { const p = this.s.project; if (p && this.laneW > 0) this.setView({ pps: this.laneW / p.meta.duration, scroll: 0 }, FIT_FLOOR_PPS); }
   /** The audition ends when its time is over (reports of the old position were already dropped by stale()). */
   private auditionTime(t: number) {
     const a = this.aud;
@@ -836,8 +836,10 @@ export class Editor {
     if (last === null ? t < scroll || t > right : last <= right && t > right) this.setView({ scroll: t });
   }
 
-  setView(v: { pps?: number; scroll?: number }) {
-    const pps = Math.max(MIN_PPS, Math.min(MAX_PPS, v.pps ?? this.s.pps)), p = this.s.project;
+  /** min: the lowest zoom asked for (only Zoom to fit asks below MIN_PPS); a view kept as it is (no pps) keeps a zoom it already has */
+  setView(v: { pps?: number; scroll?: number }, min = MIN_PPS) {
+    const lo = v.pps === undefined ? Math.min(min, this.s.pps) : min;
+    const pps = Math.max(lo, Math.min(MAX_PPS, v.pps ?? this.s.pps)), p = this.s.project;
     const hi = p && this.laneW > 0 ? maxScroll(p.meta.duration, this.laneW, pps) : Infinity;
     this.set({ pps, scroll: Math.max(0, Math.min(hi, v.scroll ?? this.s.scroll)) });
   }

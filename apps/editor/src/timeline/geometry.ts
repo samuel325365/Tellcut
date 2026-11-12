@@ -83,12 +83,13 @@ export const timeToX = (t: number, v: View) => (t - v.scroll) * v.pps;
 export const xToTime = (x: number, v: View) => v.scroll + x / v.pps;
 
 export function zoomAround(v: View, factor: number, anchorX: number): View {
-  const pps = Math.max(MIN_PPS, Math.min(MAX_PPS, v.pps * factor));
+  // below MIN_PPS only Zoom to fit goes (a long film): zooming out from there stays put, zooming in goes on from it
+  const pps = Math.max(Math.min(MIN_PPS, v.pps), Math.min(MAX_PPS, v.pps * factor));
   const t = xToTime(anchorX, v);
   return { pps, scroll: Math.max(0, t - anchorX / pps) };
 }
 
-const STEPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60];
+const STEPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200];
 
 /** A ruler label: whole seconds as formatTime (0:01); under a one-second step the others show the fraction too, with the decimals
  *  the step needs (0:00.5, 0:00.25): floored to the second they all read 0:00 at high zoom. */
@@ -100,7 +101,7 @@ export function rulerLabel(t: number, step: number): string {
 
 /** The ruler's ticks across the lane: the majors (at least 60 px apart) carry their label. */
 export function rulerTicks(v: View, width: number): Array<{ t: number; major: boolean; label?: string }> {
-  const step = STEPS.find((s) => s * v.pps >= 60) ?? 60, minor = step / 5;
+  const step = STEPS.find((s) => s * v.pps >= 60) ?? STEPS[STEPS.length - 1], minor = step / 5;
   const out: Array<{ t: number; major: boolean; label?: string }> = [];
   const t0 = Math.floor(v.scroll / minor) * minor, t1 = xToTime(width, v);
   for (let k = 0, t = t0; t <= t1 + 1e-9; k++, t = t0 + k * minor) {
@@ -121,8 +122,9 @@ export function drawnSpan(left: number, total: number, laneW: number): [number, 
   return [Math.max(0, Math.floor(-left / DRAW_CHUNK) * DRAW_CHUNK), Math.min(total, Math.ceil((laneW - left) / DRAW_CHUNK) * DRAW_CHUNK)];
 }
 
-/** Zoom range (px per second) and the empty second shown after the end. */
-export const MIN_PPS = 5, MAX_PPS = 400, FIT_MIN_PPS = 20, AIR = 1;
+/** Zoom range (px per second) and the empty second shown after the end. FIT_FLOOR_PPS: how far Zoom to fit may go below
+ *  MIN_PPS, so a long film fits too (0.5 px/s: 36 minutes in 1100 px). */
+export const MIN_PPS = 5, MAX_PPS = 400, FIT_MIN_PPS = 20, FIT_FLOOR_PPS = 0.5, AIR = 1;
 /** Furthest scroll: the end of the project (plus AIR) at the right edge of the lane. */
 export const maxScroll = (duration: number, laneW: number, pps: number) => Math.max(0, duration + AIR - laneW / pps);
 /** Horizontal scrollbar thumb (px within a track of `trackW`) for the visible part of the project. */

@@ -18,6 +18,12 @@ test('time and x convert with zoom and scroll; zoom keeps the anchor in place', 
   expect(z.pps).toBe(100);
   expect(xToTime(50, z)).toBeCloseTo(3);
   expect(zoomAround(v, 100, 0).pps).toBe(400);
+  // below 5 px/s (where Zoom to fit put a long film): zooming out stays, zooming in goes on from there
+  expect(zoomAround({ pps: 1, scroll: 0 }, 0.5, 0).pps).toBe(1);
+  expect(zoomAround({ pps: 1, scroll: 0 }, 2, 0).pps).toBe(2);
+  expect(zoomAround({ pps: 20, scroll: 0 }, 0.01, 0).pps).toBe(5);
+  // a 30-minute film at 0.6 px/s: majors two minutes apart
+  expect(rulerTicks({ pps: 0.6, scroll: 0 }, 400).filter((x) => x.major).map((x) => x.label)).toEqual(['0:00', '2:00', '4:00', '6:00', '8:00', '10:00']);
 });
 
 test('ruler ticks are at least 60 px apart', () => {

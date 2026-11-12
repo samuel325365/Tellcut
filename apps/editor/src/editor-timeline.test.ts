@@ -195,7 +195,14 @@ test('zoom to fit (\\) shows the whole project however long; the snap switch tur
   ed.fitTimeline(100);                                        // 20 s at the 20 px/s minimum
   ed.setView({ pps: 100, scroll: 3 });
   ed.run('zoomFit');
-  expect([ed.store.get().pps, ed.store.get().scroll]).toEqual([5, 0]);   // 100 px / 20 s, at the 5 px/s floor
+  expect([ed.store.get().pps, ed.store.get().scroll]).toEqual([5, 0]);   // 100 px / 20 s
+  ed.fitTimeline(50);                                         // a narrower lane (a long film's case): fit goes below the slider's 5 px/s
+  ed.run('zoomFit');
+  expect(ed.store.get().pps).toBe(2.5);
+  ed.fitTimeline(60);                                         // a resize keeps it
+  expect(ed.store.get().pps).toBe(2.5);
+  ed.setView({ pps: 1 });                                     // anything else stops at 5 px/s
+  expect(ed.store.get().pps).toBe(5);
   ed.setView({ pps: 50, scroll: 0 });
   const drag = () => { ed.beginDrag({ grip: 'body', id: 'c2', mods: { alt: false, ctrl: false, shift: false }, selection: ['c2'] }); ed.dragTo(5, { alt: false, ctrl: false, shift: false }); ed.endDrag(); };
   drag();                                                     // 0.1 s: snaps back onto c1's end
