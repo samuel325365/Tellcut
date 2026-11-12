@@ -60,7 +60,7 @@ npm run setup / npm run doctor         # install the outside dependencies into v
 - Which outside tool is used is set in `providers.json` (tts=edge, or elevenlabs with a key from `ELEVENLABS_API_KEY` / `keys.elevenlabs` in `sources.local.json`; transcribe=faster-whisper, ocr=system — Windows' own or macOS' Vision, faces=mediapipe), implemented in `media-node/src/providers/`, `tools/py/`, `tools/ps/`, `tools/mac/`.
 - Outside media sources are in `media-node/src/sources/`:
   - One folder per source, holding the adapter and its `card.md` (English, read by agents through `assets source <id>`).
-  - Every request online goes through `http.ts` (identifying header, cross-process rate limiting, cache, block detection).
+  - Every request online goes through `http.ts` (identifying header, cross-process rate limiting, cache, block detection). The server's start-up cleanup removes cached answers, thumbnails and contact sheets in `.cache/sources/` older than 30 days (`pruneSourceCache`); search thumbnails give up after 20 s.
   - After download, `project.ts` registers the asset in the project and writes `media/assets.json` and `CREDITS.md`.
   - Maps are in `maps/`; tiles are stitched by `tools/py/map.py`.
   - The CLI is `tools/assets.ts` (`npm run tellcut -- assets …`); the health check is `npm run sources` (`--live` really downloads).
