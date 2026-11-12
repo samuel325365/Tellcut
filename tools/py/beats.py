@@ -7,16 +7,26 @@ import sys
 import numpy as np
 
 SR, HOP, WIN = 11025, 128, 1024
+# frames analysed at once: the whole file's frame matrix took about 134 MB a minute (an hour-long mix needed 8 GB); in blocks
+# the memory stays near 40 MB whatever the length, and the result is the same (each frame's spectrum is its own row)
+BLOCK = 2048
 
 
-def onset_env(x):
+def onset_env(x, block=BLOCK):
     n = 1 + max(0, (len(x) - WIN) // HOP)
-    idx = np.arange(WIN)[None, :] + HOP * np.arange(n)[:, None]
-    frames = x[np.minimum(idx, len(x) - 1)] * np.hanning(WIN)
-    mag = np.log1p(100 * np.abs(np.fft.rfft(frames, axis=1)))
-    flux = np.concatenate([[0.0], np.maximum(0, np.diff(mag, axis=0)).sum(axis=1)])
+    win, last = np.hanning(WIN), len(x) - 1
+    flux, prev = np.zeros(n), None
+    for s in range(0, n, block):
+        idx = np.arange(WIN)[None, :] + HOP * np.arange(s, min(n, s + block))[:, None]
+        mag = np.log1p(100 * np.abs(np.fft.rfft(x[np.minimum(idx, last)] * win, axis=1)))
+        # the previous block's last row carried over: the first frame of a block is compared with the frame before it
+        rows = mag if prev is None else np.vstack([prev, mag])
+        flux[s + (1 if prev is None else 0):s + len(mag)] = np.maximum(0, np.diff(rows, axis=0)).sum(axis=1)
+        prev = mag[-1:]
     k = int(SR / HOP * 0.5)
-    flux = np.maximum(0, flux - np.convolve(flux, np.ones(2 * k + 1) / (2 * k + 1), mode='same'))
+    # the full convolution's middle: what mode='same' gives when the music is longer than the 1 s window, and still as long as the
+    # flux when it is shorter ('same' then returned the window's length, and a sound under a second failed to broadcast)
+    flux = np.maximum(0, flux - np.convolve(flux, np.ones(2 * k + 1) / (2 * k + 1), mode='full')[k:k + n])
     return flux / (flux.std() + 1e-9)
 
 
