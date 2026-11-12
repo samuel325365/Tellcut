@@ -31,7 +31,7 @@ const idOf = (a: Amiibo) => `${a.head}${a.tail}`;
 const firstRelease = (a: Amiibo) => Object.values(a.release ?? {}).filter((d): d is string => !!d).sort()[0];
 
 export const amiibo: SourceAdapter = {
-  id: 'amiibo', label: 'AmiiboAPI', category: 'fandom', kinds: ['image'], needsKey: false,
+  id: 'amiibo', label: 'AmiiboAPI', category: 'fandom', kinds: ['image'], needsKey: false, lowerCaseIds: true,
   limits: [{ n: 60, per: 60 }],
   summary: '任天堂角色（AmiiboAPI）：約 900 隻 amiibo 的去背圖、角色、遊戲系列、發售日（英文名搜：Mario、Link、Splatoon）',
   sample: 'Yoshi',

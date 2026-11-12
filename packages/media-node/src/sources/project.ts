@@ -178,7 +178,7 @@ function frameOf(dir: string): { frame?: string } {
 export async function getAsset(s: Sources, dir: string, ref: string, o: { from?: number; len?: number; opts?: Record<string, string> } = {}): Promise<{ record: AssetRecord; usage: string; reused: boolean }> {
   const i = ref.indexOf(':');
   if (i <= 0 || i === ref.length - 1) throw new Error(`編號要像 bbc-sfx:07043376（來源:編號），收到「${ref}」`);
-  const src = ref.slice(0, i), id = ref.slice(i + 1), adapter = usableSource(s, src);
+  const src = ref.slice(0, i), adapter = usableSource(s, src), id = adapter.lowerCaseIds ? ref.slice(i + 1).toLowerCase() : ref.slice(i + 1);
   // what can be told wrong without the file is told before downloading it (review M-11)
   if (o.len !== undefined && !(o.len > 0)) throw new Error('--len 要大於 0');
   if (o.from !== undefined && !(o.from >= 0)) throw new Error('--from 不能是負的');

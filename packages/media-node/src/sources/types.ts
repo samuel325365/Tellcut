@@ -73,6 +73,9 @@ export interface SourceAdapter {
   id: string; label: string; category: SourceCategory; kinds: AssetKind[]; needsKey: boolean; unofficial?: boolean; limits: RateLimit[];
   /** the map tile layers it serves (assets map) */
   tileLayers?: TileLayer[];
+  /** its ids are case-blind and its records keep them lower-cased (a country code, an amiibo id): `assets get countries:JP` reuses
+   *  the copy `countries:jp` made instead of downloading it again. Never for a source whose ids differ by case (Wikimedia titles) */
+  lowerCaseIds?: true;
   /** the limits when no contact is configured, for a source that gives anonymous callers less */
   limitsWithoutContact?: RateLimit[];
   /** a source that needs a key: the page where one is asked for (the API menu links it next to its key box) */

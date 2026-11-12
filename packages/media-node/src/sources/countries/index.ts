@@ -52,7 +52,7 @@ async function population(ctx: SourceCtx, cca3: string): Promise<{ value: number
 const people = (n: number) => (n >= 1e8 ? `${(n / 1e8).toFixed(2)} 億` : n >= 1e4 ? `${Math.round(n / 1e4).toLocaleString('en-US')} 萬` : n.toLocaleString('en-US'));
 
 export const countries: SourceAdapter = {
-  id: 'countries', label: 'Countries', category: 'knowledge', kinds: ['image'], needsKey: false,
+  id: 'countries', label: 'Countries', category: 'knowledge', kinds: ['image'], needsKey: false, lowerCaseIds: true,
   limits: [{ n: 120, per: 60 }],
   summary: '各國資料：國旗（PNG，寬 2560）；資料有繁中國名、首都、人口、面積、語言、貨幣、區域、鄰國（中文、英文名或代碼都能找）',
   sample: '日本',

@@ -147,6 +147,16 @@ describe('getAsset', () => {
     expect(existsSync(join(dir, 'cache', 'sources', '0701.wav'))).toBe(false);
   });
 
+  test('a source with case-blind ids reuses its copy whatever the case asked for (countries:JP after countries:jp)', async () => {
+    const flags: SourceAdapter = { ...fake, lowerCaseIds: true, get: async (id, ctx) => { gets++; const file = join(ctx.tmpDir, `${id}.wav`); copyFileSync(hot, file); return { file, kind: 'audio', meta: meta('fake', id.toLowerCase()) }; } };
+    const s2 = () => openSources({ root, config, adapters: { fake: flags }, env: {}, fetch: (async () => { throw new Error('offline'); }) as unknown as typeof fetch });
+    expect((await getAsset(s2(), dir, 'fake:JP')).record.id).toBe('jp');
+    expect([(await getAsset(s2(), dir, 'fake:JP')).reused, (await getAsset(s2(), dir, 'fake:jp')).reused, gets]).toEqual([true, true, 1]);
+    // a source whose ids differ by case keeps them apart
+    await getAsset(s(), dir, 'fake:Ab');
+    expect((await getAsset(s(), dir, 'fake:ab')).reused).toBe(false);
+  });
+
   test('a segment that cannot be right is refused before anything is downloaded', async () => {
     await expect(getAsset(s(), dir, 'fake:0701', { len: 0 })).rejects.toThrow('--len 要大於 0');
     await expect(getAsset(s(), dir, 'fake:0701', { from: -2 })).rejects.toThrow('--from 不能是負的');
