@@ -19,6 +19,14 @@ const packed = (f: Found) => f.track.kind === 'video' && !!(f.track as any).magn
  *  there by a head trim of its clip): a lower bound of -start made any edit of it jump its start to 0. */
 const backTo0 = (p: Project, id: string) => Math.min(0, -resolveTimes(p).get(id)!.start);
 
+/** How far a media clip's end may move out (dt > 0) or must come in (< 0) to stay within its source. A clip already past its
+ *  source's end (an older project, music longer than its file) may still be pulled back to it, but an end dragged outwards
+ *  stays where it is: the edit made it shorter. */
+const room = (p: Project, f: Found, rate: number, len: number, dt: number) => {
+  const r = longest(p, f, rate) - len;
+  return r < 0 && dt > 0 ? 0 : r;
+};
+
 const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('Sound effects have a fixed length', 'cmd.sfxFixedLength'); };
 
 /** Moves the item's start by dt; media items keep showing the same content at the same moments. */
@@ -47,7 +55,7 @@ export function trimEnd(p: Project, a: { id: string; dt: number }) {
   noSfx(f.track.kind);
   const rate = mediaRate(f.track, f.item), len = it.end - it.start;
   let dt = Math.max(a.dt, -(len - minLen(p)));
-  if (rate !== null) dt = Math.min(dt, longest(p, f, rate) - len);
+  if (rate !== null) dt = Math.min(dt, room(p, f, rate, len, dt));
   it.end = r6(it.end + dt);
   fitFades(f.track, it);
   if (rate !== null) followTrim(p, it.id, len, it.end - it.start, 0); else scaleChildren(p, it.id, len, it.end - it.start);
@@ -78,7 +86,7 @@ export function roll(p: Project, a: { left: string; right: string; dt: number })
   const rl = mediaRate(L.track, L.item), rr = mediaRate(R.track, R.item);
   const lenL = l.end - l.start, lenR = r.end - r.start;
   let dt = Math.min(Math.max(a.dt, -(lenL - m)), lenR - m);
-  if (rl !== null) dt = Math.min(dt, longest(p, L, rl) - lenL);
+  if (rl !== null) dt = Math.min(dt, room(p, L, rl, lenL, dt));
   if (rr !== null) dt = Math.max(dt, -r.in / rr);
   l.end = r6(l.end + dt);
   r.start = r6(r.start + dt);

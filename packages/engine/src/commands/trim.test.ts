@@ -53,10 +53,12 @@ test('music stops at the end of its file when its length is known (trimEnd, slip
   expect(item(run(known, trimEnd, { id: 'm1', dt: 5 }), 'm1').end).toBe(12);
   expect(item(run(known, slip, { id: 'm1', dt: 5 }), 'm1').in).toBe(2);
   expect(item(run(fixture(), trimEnd, { id: 'm1', dt: 5 }), 'm1').end).toBe(15);
-  // music already past its file's end (an older project) still parses; a trim never leaves it shorter than a frame
+  // music already past its file's end (an older project) still parses; pulling its end in never leaves it shorter than a
+  // frame, dragging it out leaves it as it is (it used to cut it to that frame)
   const over = fixture(); (over.media as any).m.duration = 1; item(over, 'm1').in = 3;
   expect(ProjectZ.safeParse(over).success).toBe(true);
-  expect(item(run(over, trimEnd, { id: 'm1', dt: 1 }), 'm1').end).toBe(0.04);
+  expect(item(run(over, trimEnd, { id: 'm1', dt: -1 }), 'm1').end).toBe(0.04);
+  expect(item(run(over, trimEnd, { id: 'm1', dt: 1 }), 'm1').end).toBe(10);
 });
 
 test('slip changes only the in-point, within the source', () => {
@@ -365,4 +367,15 @@ test('trims, slip, roll and rateStretch refuse a missing or non-finite dt before
     bad(() => run(fixture(), rateStretch, { id: 'c1', edge: 'end', dt } as any));
   }
   expect(() => run(fixture(), rateStretch, { id: 'c1', edge: 'middle', dt: 1 } as any)).toThrow(/edge: must be "start" or "end"/);
+});
+
+test('dragging out the end of a clip already past its source end leaves it there; pulling it in still stops at the source (health10)', () => {
+  const p = fixture();
+  (p.media.m as any).duration = 8;   // m1 0–10 plays a file of 8 s (an older project)
+  expect(item(run(p, trimEnd, { id: 'm1', dt: 1 }), 'm1').end).toBe(10);
+  expect(item(run(p, trimEnd, { id: 'm1', dt: -0.5 }), 'm1').end).toBe(8);
+  item(p, 'c1').in = 28;   // c1 0–4 at 1× needs 32 s of a 30 s source
+  const q = run(p, roll, { left: 'c1', right: 'c2', dt: 1 });
+  expect([item(q, 'c1').end, item(q, 'c2').start]).toEqual([4, 4]);
+  expect(item(run(p, trimEnd, { id: 'c1', dt: 1 }), 'c1').end).toBe(4);
 });
