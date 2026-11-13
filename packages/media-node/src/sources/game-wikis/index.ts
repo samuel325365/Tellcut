@@ -11,9 +11,9 @@ import { plainText } from '../wikimedia/index.ts';
 
 interface Wiki { id: string; name: string; api: string; text: string; textUrl: string }
 export const WIKIS: Wiki[] = [
-  // MarioWiki:Copyrights: text since 27 February 2026 is CC BY-SA 4.0, older text stays CC BY-SA 3.0 Unported — and most article
-  // intros are older, so both are named
-  { id: 'mario', name: 'Super Mario Wiki', api: 'https://www.mariowiki.com/api.php', text: 'CC BY-SA 4.0（2026-02-27 以前寫的文字是 CC BY-SA 3.0）', textUrl: 'https://www.mariowiki.com/MarioWiki:Copyrights' },
+  // MarioWiki:Copyrights: text since 27 February 2026 is CC BY-SA 4.0, older text stays CC BY-SA 3.0 Unported "and in some
+  // cases" GFDL 1.2 (the page does not say which) — and most article intros are older, so all three are named
+  { id: 'mario', name: 'Super Mario Wiki', api: 'https://www.mariowiki.com/api.php', text: 'CC BY-SA 4.0（2026-02-27 以前寫的文字是 CC BY-SA 3.0，部分另有 GFDL 1.2）', textUrl: 'https://www.mariowiki.com/MarioWiki:Copyrights' },
   { id: 'zelda', name: 'Zelda Wiki', api: 'https://zeldawiki.wiki/w/api.php', text: 'GFDL 1.3', textUrl: 'https://www.gnu.org/licenses/fdl-1.3.html' },
 ];
 /** each wiki is a site of its own: its own rate limit */
