@@ -63,10 +63,24 @@ def photo(path):
     return {'width': w, 'height': h, 'taken': _taken(exif), 'offset': str(offset).strip() if offset else None, 'gps': _gps(exif)}
 
 
+# what shows through a picture's transparent parts once it is a JPEG (which has none): white, as a page shows it; a plain
+# convert('RGB') kept the colour stored under them, black for most PNGs (a logo or a cut-out sticker became a black box)
+PAPER = (255, 255, 255)
+
+
+def _opaque(im):
+    if not im.has_transparency_data:
+        return im.convert('RGB')
+    rgba = im.convert('RGBA')
+    flat = Image.new('RGB', rgba.size, PAPER)
+    flat.paste(rgba, mask=rgba.getchannel('A'))
+    return flat
+
+
 def heic2jpg(src, out):
     im = Image.open(src)
     exif = im.getexif()
-    up = ImageOps.exif_transpose(im).convert('RGB')
+    up = _opaque(ImageOps.exif_transpose(im))
     exif[ORIENTATION] = 1
     up.save(out, 'JPEG', quality=92, exif=exif.tobytes())
     return photo(out)
@@ -95,7 +109,8 @@ def strip(src, out):
 
 
 def fit(src, out, max_w, max_h):
-    up = ImageOps.exif_transpose(Image.open(src)).convert('RGB')
+    # every copy fit makes is a JPEG (analysis proxy.jpg / thumbs.jpg, export's cache/images, the preview's 1920 px copy): flattened
+    up = _opaque(ImageOps.exif_transpose(Image.open(src)))
     up.thumbnail((int(max_w), int(max_h)), Image.LANCZOS)
     up.save(out, 'JPEG', quality=90)
     return {'width': up.width, 'height': up.height}

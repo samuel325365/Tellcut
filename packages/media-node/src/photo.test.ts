@@ -1,6 +1,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ffmpeg } from './ffmpeg.ts';
 import { fitImage, heicToJpg, photoMeta } from './photo.ts';
 import { makeHeic, makePhoto } from './test-media.ts';
 
@@ -23,4 +24,16 @@ test('fitImage turns the photo upright and shrinks it into the box', async () =>
   const f = await makePhoto(join(dir, 'd.jpg'), { w: 1200, h: 900, orientation: 6 });
   expect(await fitImage(f, join(dir, 'd-fit.jpg'), 300, 300)).toEqual({ width: 225, height: 300 });
   expect((await photoMeta(join(dir, 'd-fit.jpg'))).width).toBe(225);   // no orientation left to apply
+}, 120000);
+
+test('a transparent picture used as a photo comes out on white, not on the black stored under its clear parts', async () => {
+  // left half opaque red, right half fully clear (its stored colour black, as most PNGs keep it)
+  const png = join(dir, 'clear.png');
+  await ffmpeg(['-f', 'lavfi', '-i', 'color=black:s=64x32,format=rgba,geq=r=\'if(lt(X,32),255,0)\':g=0:b=0:a=\'if(lt(X,32),255,0)\'', '-frames:v', '1', '-update', '1', png]);
+  const rgb = async (f: string, x: number) => [...(await ffmpeg(['-i', f, '-vf', `format=rgb24,crop=1:1:${x}:16`, '-f', 'rawvideo', '-'], { stdout: true })).stdout];
+  const near = (a: number[], b: number[]) => a.every((v, i) => Math.abs(v - b[i]) <= 12);
+  for (const out of [join(dir, 'clear-fit.jpg'), join(dir, 'clear-heic.jpg')]) {
+    if (out.endsWith('fit.jpg')) await fitImage(png, out, 64, 64); else await heicToJpg(png, out);
+    expect(near(await rgb(out, 8), [255, 0, 0]) && near(await rgb(out, 56), [255, 255, 255])).toBe(true);
+  }
 }, 120000);
