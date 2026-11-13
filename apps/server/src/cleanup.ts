@@ -13,7 +13,8 @@ import { noteFile as noteOf } from './chat/leftover.ts';
 const PID_FILES = [/^project\.json\.(\d+)\.tmp$/, SNAPSHOT_FILE, /^score-[^/\\]+\.wav\.(\d+)\.tmp$/];
 const PID_CACHE = SNAPSHOT_INDEX;
 // a voice-over scene being spoken (media-node providers edge.ts / elevenlabs.ts: the mp3 and the wav before its rename). A
-// result ElevenLabs sent whose wav was never made (<scene>.wav.elevenlabs.json) is not a temp: it is paid for and reused.
+// result ElevenLabs sent (<scene>.wav.elevenlabs.json) is not a temp: it is paid for, kept until the scene's .json is
+// written (voice.ts settle()), and reused by a rerun.
 const PID_VOICE = /^[^/\\]+\.wav\.(\d+)\.tmp\.(?:wav|mp3)$/;
 // half-written files with no pid, so only stale ones go: cache temps (media.ts cached, analysis.ts atomic, prepare.ts cuts and
 // music) and an interrupted export's intermediates (render.ts .video.mp4 / .mix.wav and the film being muxed, .part.mp4, all
