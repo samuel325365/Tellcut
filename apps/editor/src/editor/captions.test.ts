@@ -109,3 +109,23 @@ test('title templates: on a track only common.heading changes, keeping its words
   items.at(-1).params = { text: 'x', kicker: 'k', template: 'doc-rules', size: 6 };
   expect(captionLookParams(p, items.at(-1), (t) => (t === 'doc-rules' ? { style: 'soft', backing: 'rules' } : undefined), 'title')).toEqual({ style: 'soft', backing: 'rules', size: 6 });
 });
+
+test('a template keeps where a caption sits (its position) unless the template places its words itself; fill goes with the look', () => {
+  const p: any = withCaptions(), [say, say2] = p.tracks.at(-1).items;
+  say.params.position = 'top'; say.params.fill = true; say2.params.position = 'top';
+  // neon has no position of its own: the caption stays at the top (it jumped to the bottom); fill lights words like a word effect
+  applyCaptionTemplate(p, 'text', 'neon', ['say']);
+  expect(say.params).toEqual({ text: 'take the train to', words: [[0, 4], [0.5, 9]], position: 'top', template: 'neon' });
+  // sticker puts its big words in the middle: its placement wins
+  applyCaptionTemplate(p, 'text', 'sticker', ['say']);
+  expect('position' in say.params).toBe(false);
+  // the project's default template decides when '' is put on it; and a project's own template is looked up first
+  p.meta.captionTemplate = 'mine';
+  p.meta.captionTemplates = { mine: { style: 'box', position: 'center' } };
+  applyCaptionTemplate(p, 'text', '', ['say2']);
+  expect(say2.params).toEqual({ text: 'Rome', words: [[0, 4]] });
+  say2.params.position = 'top';
+  p.meta.captionTemplates.mine = { style: 'box' };
+  applyCaptionTemplate(p, 'text', '', ['say2']);
+  expect(say2.params).toEqual({ text: 'Rome', words: [[0, 4]], position: 'top' });
+});

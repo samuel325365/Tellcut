@@ -3,6 +3,7 @@
 // whole sentences beside them. Pure: the project in, the block and the caption plan's options out.
 import { resolveTimes, type Project } from '@tellcut/engine';
 import type { CaptionOptions } from '@tellcut/plugin-common/speech';
+import { templateOf } from '@tellcut/plugin-common/templates';
 import { TEMPLATE_KINDS, type TemplateKind } from '@tellcut/protocol';
 
 /** the caption blocks speech is put in */
@@ -33,7 +34,8 @@ export function captionLook(p: Project, id: string): CaptionLook {
 }
 
 /** what a caption keeps when a template is put on it: its words, their timing, who says them and where it sits; the rest (style,
- *  colours, font, size, animation) is the template's */
+ *  colours, font, size, animation, and `fill`, which lights its words like a word effect) is the template's. `position` is kept
+ *  too unless the template places its words itself (sticker and the one-word looks in the middle, comic-narration at the top) */
 const KEEP = new Set(['text', 'words', 'speaker', 'name', 'role', 'tag', 'gloss', 'quote', 'point', 'y', 'align', 'tint']);
 /** what a title keeps: its words (spec 2026-11-05-title-templates); its look, layout and backing are the template's */
 const KEEP_BY: Record<TemplateKind, Set<string>> = { caption: KEEP, title: new Set(['text', 'kicker', 'sub']) };
@@ -42,11 +44,16 @@ const KEEP_BY: Record<TemplateKind, Set<string>> = { caption: KEEP, title: new S
  *  dropped so the template's show (spec 2026-11-04-caption-styles §4); `only`: just these items. Returns how many captions changed. */
 export function applyCaptionTemplate(d: Project, track: string, template: string, only?: string[], kind: TemplateKind = 'caption'): number {
   let n = 0;
+  // a caption placed at the top stayed at the top under any template but jumped to the bottom (the default) once its position
+  // was dropped with the look; it goes only when the template it will draw with (its own, else the project's) sets one
+  const id = template || String((d.meta as Record<string, unknown>)[TEMPLATE_KINDS[kind].meta] ?? '');
+  const tpl = (id && ((d.meta as any)[TEMPLATE_KINDS[kind].own]?.[id] ?? templateOf(id)?.params)) as Record<string, unknown> | undefined;
+  const keep = kind === 'caption' && !(tpl && 'position' in tpl) ? new Set([...KEEP, 'position']) : KEEP_BY[kind];
   for (const t of d.tracks) {
     if (t.id !== track) continue;
     for (const it of t.items as any[]) {
       if (it.type !== TEMPLATE_KINDS[kind].block || (only && !only.includes(it.id))) continue;
-      const params = Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => KEEP_BY[kind].has(k)));
+      const params = Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => keep.has(k)));
       if (template) params.template = template;
       if (JSON.stringify(params) === JSON.stringify(it.params ?? {})) continue;
       it.params = params;
