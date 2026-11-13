@@ -96,3 +96,20 @@ test('fitLines: padding given in the font\'s own em shrinks with the font', () =
   // the same padding taken out at full size (5.5 − 1.8 = 3.7 em, as before) shrank the words to the floor
   expect(fitLines('一二三四五', 3.7, 1, 0.7).scale).toBe(0.7);
 });
+
+test('fitLines never breaks a Latin word while the font may shrink: below minScale too, down to half of it', () => {
+  const words = (lines: string[]) => lines.join(' ').split(/\s+/);
+  // Colosseum is 4.95 em: in a 3 em box at the 0.7 floor (4.29 em) it broke 「Colosse」「um」; now the font shrinks until it fits
+  const a = fitLines('Welcome to the Colosseum', 3, 2, 0.7);
+  expect(words(a.lines)).toEqual(['Welcome', 'to', 'the', 'Colosseum']);
+  expect(a.scale).toBeLessThan(0.7);
+  expect(a.scale).toBeGreaterThanOrEqual(0.35);
+  // balancing the lines never narrows the box past the widest word (it gave 「to the C」「olosseum」 at three lines)
+  for (const box of [5, 5.6, 6, 7]) expect(words(fitLines('Welcome to the Colosseum', box, 2, 0.7).lines)).toEqual(['Welcome', 'to', 'the', 'Colosseum']);
+  // a word too long even at half the floor still breaks, and a caller that never shrinks (minScale 1) keeps breaking it
+  expect(fitLines('Supercalifragilistic', 2, 2, 0.7).scale).toBe(0.35);
+  const never = fitLines('Colosseum', 3, 9, 1);
+  expect([never.lines.length, never.lines.join(''), never.scale]).toEqual([2, 'Colosseum', 1]);
+  // Chinese words still break between characters as before (no extra shrinking for them)
+  expect(fitLines('一二三四五六七八九十', 3, 2, 0.7).scale).toBe(0.7);
+});

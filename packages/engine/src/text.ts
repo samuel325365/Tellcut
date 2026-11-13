@@ -71,16 +71,34 @@ function wrap(text: string, em: number): string[] {
 /** Lines of `text` in a box `boxEm` wide; above maxLines the font shrinks in 5 % steps down to minScale. `padEm`: what the box takes
  *  out in the font's own em (a look's padding and border), which shrinks with the font, while `boxEm` (in em at scale 1) does not */
 export function fitLines(text: string, boxEm: number, maxLines: number, minScale = 0.7, padEm = 0): { lines: string[]; scale: number } {
+  // a Latin word is never broken while the font may still shrink (「Colosse」「um」): with any shrinking allowed, the font keeps
+  // getting smaller until the widest one fits a line, below minScale too but not under half of it (a URL-long word still breaks)
+  const word = minScale < 1 ? latinWordEm(text) : 0;
   for (let k = 0; ; k++) {
-    const scale = Math.max(minScale, 1 - k * 0.05), em = boxEm / scale - padEm, lines = wrap(text, em);
-    if (lines.length <= maxLines || scale <= minScale) return { lines: balance(text, lines, em), scale: Math.round(scale * 100) / 100 };
+    const scale = Math.max(minScale, 1 - k * 0.05), em = boxEm / scale - padEm;
+    if (em < word && scale > minScale) continue;
+    const lines = wrap(text, em);
+    if (lines.length <= maxLines || scale <= minScale) {
+      if (em < word) {
+        const small = Math.max(minScale / 2, Math.floor((boxEm / (word + padEm)) * 1000) / 1000), wide = boxEm / small - padEm;
+        return { lines: balance(text, wrap(text, wide), wide), scale: small };
+      }
+      return { lines: balance(text, lines, em), scale: Math.round(scale * 100) / 100 };
+    }
   }
 }
 
-/** The narrowest box that still gives the same number of lines: lines of even length, no lone word left at the end. */
+/** the widest Latin word of `text` in em (at scale 1); none: 0 */
+const latinWordEm = (text: string) =>
+  Math.max(0, ...text.split('\n').flatMap(lineTokens).map((t) => t.trimEnd()).filter((t) => /[A-Za-z0-9]/.test(t) && LATIN.test(t)).map(textEm));
+
+/** The narrowest box that still gives the same number of lines: lines of even length, no lone word left at the end. Never narrower
+ *  than the widest word that fits the box whole: a narrower one broke that word into letters and could still keep the line count
+ *  (「to the C」「olosseum」) */
 function balance(text: string, lines: string[], em: number): string[] {
   if (lines.length < 2) return lines;
-  let lo = 0, hi = em;
+  const words = text.split('\n').flatMap(lineTokens).map((t) => textEm(t.trimEnd())).filter((w) => w <= em);
+  let lo = Math.max(0, ...words), hi = em;
   for (let i = 0; i < 20; i++) { const mid = (lo + hi) / 2; if (wrap(text, mid).length <= lines.length) hi = mid; else lo = mid; }
   return wrap(text, hi);
 }
