@@ -212,6 +212,8 @@ export function swapSource(p: Project, a: { id: string; source: string; in: numb
   finite('in', a.in);
   const src = p.sources[a.source];
   if (!src) throw new CommandError(`No source "${a.source}"`, 'cmd.noSource', { source: a.source });
+  // a clip frozen at its first frame needs no source time, but an in-point at (or past) the source's end fails the schema
+  if (a.in >= src.duration) throw new CommandError(`in: ${a.in} s is past the end of source "${a.source}" (${src.duration} s)`, 'cmd.inPastEnd', { in: a.in, source: a.source, have: src.duration });
   const need = sourceNeed(f.track.kind, it), have = src.duration - a.in;
   if (a.in < 0 || have + 1e-6 < need) throw new CommandError(`"${a.source}" has only ${Math.max(0, have).toFixed(2)} s from ${a.in} s; the clip needs ${need.toFixed(2)} s`, 'cmd.sourceShort', { source: a.source, in: a.in, have: Math.max(0, have).toFixed(2), need: need.toFixed(2) });
   const own = ownSounds(p, it.id);

@@ -291,3 +291,11 @@ test('a clip frozen past the end of its source still stops at the source end (tr
   expect(ProjectZ.safeParse(run(p, trimEnd, { id: 'c1', dt: 1 })).success).toBe(true);
   expect(item(run(p, trimEnd, { id: 'c1', dt: 1 }), 'c1').end).toBe(4);
 });
+
+test('slipping a clip frozen at its first frame keeps its in-point a frame short of the source end (health10 EC1)', () => {
+  const p = fixture();
+  item(p, 'c2').freezeAt = 0;   // as split leaves the half after a freeze: it needs no source time
+  const q = run(p, slip, { id: 'c2', dt: 100 });
+  expect(item(q, 'c2').in).toBe(29.96);   // 30 s source, one frame at 25 fps
+  expect(ProjectZ.safeParse(q).success).toBe(true);
+});

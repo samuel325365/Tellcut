@@ -196,3 +196,10 @@ test('updateItem refuses a parent that is missing, the item itself or hangs on i
   expect(item(p, 'c1')).toMatchObject({ label: 'ok' });
   expect(['toEnd' in item(p, 'c1'), 'lable' in item(p, 'c1')]).toEqual([false, false]);
 });
+
+test('swapSource refuses an in-point at the end of the new source, even for a clip frozen at its first frame (health10 EC1)', () => {
+  const p = fixture();
+  item(p, 'c2').freezeAt = 0;
+  expect(() => run(p, swapSource, { id: 'c2', source: 's', in: 30 })).toThrow(/past the end of source "s"/);
+  expect(item(run(p, swapSource, { id: 'c2', source: 's', in: 29.9 }), 'c2').in).toBe(29.9);
+});

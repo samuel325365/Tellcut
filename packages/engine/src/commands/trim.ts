@@ -45,7 +45,9 @@ export function trimEnd(p: Project, a: { id: string; dt: number }) {
 export function slip(p: Project, a: { id: string; dt: number }) {
   const f = findItem(p, a.id), it = f.item as any, rate = mediaRate(f.track, f.item);
   if (rate === null) throw new CommandError('Only media items can be slipped', 'cmd.slipMediaOnly');
-  const max = Math.max(0, sourceLength(p, f.track, f.item) - sourceNeed(f.track.kind, it));
+  // a clip frozen at its first frame needs no source time, but its in-point must still be a frame of the source: one equal to
+  // the source's length fails the schema (the project would no longer save)
+  const len = sourceLength(p, f.track, f.item), max = Math.max(0, Math.min(len - sourceNeed(f.track.kind, it), len - minLen(p)));
   const own = ownSounds(p, it.id);
   const was = it.in;
   it.in = r6(Math.min(max, Math.max(0, it.in + a.dt)));
