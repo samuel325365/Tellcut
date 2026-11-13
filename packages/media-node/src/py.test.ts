@@ -33,3 +33,18 @@ test('a helper that fails before its result is in place still fails', async () =
   const run = runUv(['run', '--project', PY_PROJECT, '--quiet', 'python', '-c', 'import sys; sys.exit(3)'], { done: () => false, grace: 500 });
   await expect(run).rejects.toThrow(/failed \(3\)/);
 }, 90000);
+
+test('a helper past its overall timeout is ended with its Python child, and the run fails saying so', async () => {
+  const f = join(mkdtempSync(join(tmpdir(), 'py-')), 'pid.txt').split('\\').join('/');
+  // uv itself can take a few seconds to start Python, so the limit is counted from the spawn: give it enough to write the pid
+  const run = runUv(['run', '--project', PY_PROJECT, '--quiet', 'python', '-c', `import os, time; open('${f}', 'w').write(str(os.getpid())); time.sleep(120)`], { timeout: 8000 });
+  run.catch(() => {});
+  await expect.poll(() => existsSync(f) && readFileSync(f, 'utf8').length > 0, { timeout: 60000 }).toBe(true);
+  const pid = Number(readFileSync(f, 'utf8'));
+  await expect(run).rejects.toThrow(/超過 8 秒沒有結束/);
+  await expect.poll(() => alive(pid), { timeout: 10000 }).toBe(false);
+}, 90000);
+
+test('a helper that ends inside its timeout is unaffected', async () => {
+  await expect(runUv(['run', '--project', PY_PROJECT, '--quiet', 'python', '-c', 'print("ok")'], { timeout: 60000 })).resolves.toMatch(/ok/);
+}, 90000);
