@@ -19,7 +19,9 @@ export interface IngestOptions {
   size?: [number, number]; fps?: number; name?: string; force?: boolean; audioUrls?: boolean;
   /** no footage needed (review3 R3-H4): an animated explainer made of blocks, narration and a score; 1920×1080 unless `size` */
   blank?: boolean;
-  download?: (url: string, dir: string, audio: boolean) => Promise<string>;
+  download?: (url: string, dir: string, audio: boolean, signal?: AbortSignal) => Promise<string>;
+  /** a cancelled import stops its downloads (yt-dlp's whole tree) instead of letting them run on */
+  signal?: AbortSignal;
   log?: (s: string) => void;
 }
 
@@ -33,10 +35,10 @@ export function sourceId(file: string, used: Set<string>): string {
 }
 
 /** Downloads a URL with yt-dlp (repo .venv) into dir; returns the file. */
-export async function ytDlp(url: string, dir: string, audio: boolean): Promise<string> {
+export async function ytDlp(url: string, dir: string, audio: boolean, signal?: AbortSignal): Promise<string> {
   mkdirSync(dir, { recursive: true });
   const fmt = audio ? ['-x', '--audio-format', 'm4a'] : ['-f', 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b', '--merge-output-format', 'mp4'];
-  const out = await runUv(['run', '--project', PY_PROJECT, '--quiet', 'yt-dlp', ...fmt, '--no-playlist', '-o', join(dir, '%(title).80B-%(id)s.%(ext)s'), '--print', 'after_move:filepath', url]);
+  const out = await runUv(['run', '--project', PY_PROJECT, '--quiet', 'yt-dlp', ...fmt, '--no-playlist', '-o', join(dir, '%(title).80B-%(id)s.%(ext)s'), '--print', 'after_move:filepath', url], { signal });
   const file = out.trim().split(/\r?\n/).pop();
   if (!file || !existsSync(file)) throw new Error(`yt-dlp did not produce a file for ${url}`);
   return file;
@@ -150,7 +152,11 @@ export async function createProject(o: IngestOptions): Promise<{ project: Projec
   for (const input of o.inputs) {
     if (/^https?:\/\//i.test(input)) {
       log(`下載 ${input}（只下載你有權使用的素材）`);
-      try { mkdirSync(media, { recursive: true }); files.push(await (o.download ?? ytDlp)(input, media, !!o.audioUrls)); } catch (e) { skipped.push(`${input}: ${(e as Error).message}`); }
+      try { mkdirSync(media, { recursive: true }); files.push(await (o.download ?? ytDlp)(input, media, !!o.audioUrls, o.signal)); } catch (e) {
+        // a cancel is not one URL that failed: the whole import stops, nothing is written
+        if (o.signal?.aborted) throw e;
+        skipped.push(`${input}: ${(e as Error).message}`);
+      }
       continue;
     }
     const x = await expandInputs([input]);
