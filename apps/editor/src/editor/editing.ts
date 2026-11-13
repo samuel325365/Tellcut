@@ -141,11 +141,14 @@ export class TimelineEditing {
     if (!clip || !p) return false;
     if (clip.project !== this.c.id) { this.set({ notice: say('ed.pasteOtherProject') }); return false; }
     // a one-per-film block the project already has is left out (with what hangs on it), and the notice says so
-    const why = new Set<string>();
+    const why = new Set<string>(), left = new Set<string>();
+    // entries list parents before their children, so a child of a left-out block is seen after it and goes with it (when nothing
+    // else is left the notice says why, not "nothing to paste before the end")
     const entries = clip.entries.filter((e) => {
       const type = (e.item as any).type, w = typeof type === 'string' ? uniqueBlock(this.reg, p, type) : '';
       if (w) why.add(w);
-      return !w;
+      if (w || (e.item.parent !== undefined && left.has(e.item.parent))) { left.add(e.item.id); return false; }
+      return true;
     });
     if (!entries.length) { this.set({ notice: [...why].join(' ') }); return false; }
     let made: string[] = [];

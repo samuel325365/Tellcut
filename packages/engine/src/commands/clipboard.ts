@@ -4,9 +4,10 @@
 import { plainCopy } from '../util.ts';
 import type { AnyItem, Project, Track, TrackKind } from '../schema.ts';
 import { resolveTimes, TIME_EPS } from '../time.ts';
-import { CommandError, childrenOf, fitFades, r6, topLevel, uniqueId } from './core.ts';
+import { CommandError, childrenOf, fitFades, minLen, r6, topLevel, uniqueId } from './core.ts';
 import { addTrack } from './edit.ts';
 import { magneticTrack } from './magnetic.ts';
+import { trimStart } from './trim.ts';
 
 export interface ClipEntry { track: string; kind: TrackKind; item: AnyItem }
 /** entries: the top-level items first (made absolute and parentless), then their children (times relative to the parent, as
@@ -34,13 +35,18 @@ export function copyItems(p: Project, ids: string[], projectId: string): Clip {
 /** Pastes at t: each item on its own track (else the first track of its kind, else a new one), new ids, children on the new
  *  ids. Clips from the magnetic track go after the magnetic clip under t (or at the end) and the rest keep their timing to
  *  them (the editor's settle packs the track and pushes the later clips). Everything else ends with the film: what runs past
- *  the end is cut there, what would start at or after it is left out (with a magnetic track the film grows only by the clips
- *  pasted on it, and an end card is placed by moving it, not by pasting past the end). skip: tracks not pasted onto (the
+ *  the end is cut there, what would have less than a frame before it is left out (with a magnetic track the film grows only by
+ *  the clips pasted on it, and an end card is placed by moving it, not by pasting past the end); likewise at time 0, which the
+ *  rest reaches when the magnetic clips go earlier than they were (a sound effect starting before 0 is left out, having its
+ *  length). An entry whose parent is not in the clip (the caller left it out) is left out with it. skip: tracks not pasted onto (the
  *  editor's locked ones). dropped: filled with the top-level ids left out; renamed: each pasted id → its copy's. Returns the new
  *  top-level ids. */
 export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: ReadonlySet<string>; dropped?: string[]; renamed?: Map<string, string> }): string[] {
-  const { entries } = a.clip, mag = magneticTrack(p), copied = new Set(entries.map((e) => e.item.id));
-  const isTop = (e: ClipEntry) => e.item.parent === undefined || !copied.has(e.item.parent);
+  // copyItems makes every top-level entry parentless, so an entry naming a parent that is not in the clip is a child whose
+  // parent the caller left out (the editor's one-per-film blocks): it goes with it, instead of hanging on the original
+  const copied = new Set(a.clip.entries.map((e) => e.item.id));
+  const entries = a.clip.entries.filter((e) => e.item.parent === undefined || copied.has(e.item.parent)), mag = magneticTrack(p);
+  const isTop = (e: ClipEntry) => e.item.parent === undefined;
   const magTops = mag ? entries.filter((e) => isTop(e) && e.track === mag.id && e.kind === 'video') : [];
   let shift = a.t - a.clip.anchor;
   if (mag && magTops.length) {
@@ -50,8 +56,9 @@ export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: Readon
   }
   const end = p.meta.duration + magTops.reduce((n, e) => n + (e.item.end - e.item.start), 0);
   const newId = new Map<string, string>(), absStart = new Map<string, number>(), made: Array<{ id: string; mag: boolean }> = [];
+  const frame = minLen(p), heads: Array<{ id: string; dt: number }> = [];
   for (const e of entries) {
-    const top = isTop(e), it: any = plainCopy(e.item);
+    const top = isTop(e), it: any = plainCopy(e.item), onMag = magTops.includes(e);
     let base = 0;
     if (top) { it.start = r6(it.start + shift); it.end = r6(it.end + shift); }
     else {
@@ -60,8 +67,12 @@ export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: Readon
       base = absStart.get(par)!;
       it.parent = par;
     }
-    const limit = magTops.includes(e) ? Infinity : end;
-    if (base + it.start >= limit - TIME_EPS) { if (top) a.dropped?.push(e.item.id); continue; }
+    const limit = onMag ? Infinity : end, from = base + it.start;
+    // less than a frame left before the end of the film (a sliver nobody sees), or — pasted with magnetic clips that went later
+    // than the playhead — less than a frame left after time 0: left out
+    const out = limit - from < frame - 1e-9 || (!onMag && base + it.end < frame - 1e-9);
+    // a sound effect has its length: one that would start before 0 cannot be cut there
+    if (out || (top && !onMag && from < -TIME_EPS && e.kind === 'sfx')) { if (top) a.dropped?.push(e.item.id); continue; }
     if (base + it.end > limit) it.end = r6(limit - base);
     const open = p.tracks.filter((t) => !a.skip?.has(t.id));
     let track = open.find((t) => t.id === e.track && t.kind === e.kind) ?? open.find((t) => t.kind === e.kind);
@@ -70,8 +81,11 @@ export function pasteItems(p: Project, a: { clip: Clip; t: number; skip?: Readon
     fitFades(track, it);
     items(track).push(it);
     newId.set(e.item.id, it.id); absStart.set(it.id, base + it.start); a.renamed?.set(e.item.id, it.id);
-    if (top) made.push({ id: it.id, mag: magTops.includes(e) });
+    if (top) made.push({ id: it.id, mag: onMag });
+    if (top && !onMag && from < -TIME_EPS) heads.push({ id: it.id, dt: -from });
   }
   if (!made.length) throw new CommandError('Nothing to paste before the end of the video', 'cmd.pastePastEnd');
+  // what starts before 0 is cut there once its children are in, as a trim of its head would (a clip keeps its picture in time)
+  for (const h of heads) trimStart(p, h);
   return [...made.filter((m) => m.mag), ...made.filter((m) => !m.mag)].map((m) => m.id);
 }

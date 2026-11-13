@@ -117,3 +117,44 @@ test('skip: a paste passes over the listed (locked) tracks, onto another of the 
   pasteItems(q, { clip: c2, t: 10, skip: new Set(['v', 'v2']) });
   expect(q.tracks.filter((t) => t.kind === 'video').length).toBe(3);
 });
+
+/** three 4 s clips on a magnetic track (c1 with its own sound), a 12 s film; extra items on an overlay and a second video track */
+function magFilm(over: (p: any) => void = () => {}): Project {
+  const clip = (id: string, s: number, e: number, inp = 0) => ({ id, source: 's', in: inp, speed: 1, start: s, end: e, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } });
+  const p: any = fixture();
+  p.tracks = [
+    { id: 'v', kind: 'video', magnetic: true, items: [clip('c1', 0, 4), clip('c2', 4, 8), clip('c3', 8, 12)] },
+    { id: 'v2', kind: 'video', items: [clip('b', 2, 6, 10)] },
+    { id: 'o', kind: 'overlay', items: [{ id: 'title', type: 'x.cap', start: 0.5, end: 1.5, params: {} }, { id: 'long', type: 'x.cap', start: 2, end: 6, params: {} }] },
+    { id: 'fx', kind: 'sfx', items: [{ id: 'hit', type: 'x.tap', start: 3.9, end: 4.1, params: {}, gain: 0 }] },
+  ];
+  p.meta.duration = 12;
+  over(p);
+  return p;
+}
+
+test('magnetic: what is pasted with a clip that goes later than the playhead never lands before 0 — left out, or cut at 0', () => {
+  // c3 (8–12) pastes after c1 (the playhead is in it), 4 s earlier than it was: the rest moves 4 s earlier with it
+  const p = magFilm(), copied = copyItems(p, ['title', 'long', 'b', 'hit', 'c3'], 'demo'), dropped: string[] = [];
+  expect(pasteItems(p, { clip: copied, t: 1, dropped })).toEqual(['c3-2', 'long-2', 'b-2']);
+  expect(dropped).toEqual(['title', 'hit']);                                         // −3.5..−2.5: nothing after 0; a sound effect cannot be cut
+  expect([item(p, 'long-2').start, item(p, 'long-2').end]).toEqual([0, 2]);         // −2..2 cut at 0
+  expect(item(p, 'b-2')).toMatchObject({ start: 0, end: 2, in: 12 });                // a clip cut at 0 keeps its picture in time
+});
+
+test('a child whose parent the caller left out is not pasted (it would hang on the original)', () => {
+  const p = fixture(), copied = copyItems(p, ['blk'], 'demo');                       // blk with tap and tap2
+  const entries = copied.entries.filter((e) => e.item.id !== 'blk');                 // what the editor does with a one-per-film block
+  expect(() => pasteItems(p, { clip: { ...copied, entries }, t: 8 })).toThrow(CommandError);
+  expect(ids(p, 'fx')).toEqual(['tap', 'tap2']);
+});
+
+test('a paste leaves out what would be less than a frame long at the end of the film', () => {
+  const p = fixture();
+  (p.tracks.find((t) => t.id === 'au')!.items as any[]).push({ id: 'o1', source: 's', in: 1, rate: 1, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c1' });
+  const copied = copyItems(p, ['c1'], 'demo'), dropped: string[] = [];
+  expect(() => pasteItems(p, { clip: copied, t: 19.99, dropped })).toThrow(CommandError);   // 25 fps: 0.01 s is a quarter frame
+  expect(dropped).toEqual(['c1']);
+  expect(pasteItems(p, { clip: copied, t: 19.96 })).toEqual(['c1-2']);                       // one frame is kept
+  expect([item(p, 'c1-2').end, item(p, 'o1-2').end]).toEqual([20, 0.04]);
+});
