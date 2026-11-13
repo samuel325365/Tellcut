@@ -11,6 +11,14 @@ function longest(p: Project, f: Found, rate: number): number {
   return f.track.kind === 'video' && it.freezeAt != null && it.freezeAt <= fits + 1e-6 ? Infinity : Math.max(minLen(p), fits);
 }
 
+/** A clip of the magnetic main track: settle packs it from 0 after every command, so where its head lands on the timeline is
+ *  not this command's to limit. */
+const packed = (f: Found) => f.track.kind === 'video' && !!(f.track as any).magnetic;
+
+/** How far an item's start may move back: to time 0, and not at all for one that already starts before 0 (a caption left
+ *  there by a head trim of its clip): a lower bound of -start made any edit of it jump its start to 0. */
+const backTo0 = (p: Project, id: string) => Math.min(0, -resolveTimes(p).get(id)!.start);
+
 const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('Sound effects have a fixed length', 'cmd.sfxFixedLength'); };
 
 /** Moves the item's start by dt; media items keep showing the same content at the same moments. */
@@ -19,7 +27,9 @@ export function trimStart(p: Project, a: { id: string; dt: number }) {
   noSfx(f.track.kind);
   const rate = mediaRate(f.track, f.item), len = it.end - it.start;
   let dt = Math.min(a.dt, len - minLen(p));
-  dt = Math.max(dt, -resolveTimes(p).get(it.id)!.start);
+  // on the magnetic track the clamp to 0 only stopped the first clip's head from being pulled back out (its source's start
+  // below still limits it)
+  if (!packed(f)) dt = Math.max(dt, backTo0(p, it.id));
   if (rate !== null) dt = Math.max(dt, -it.in / rate);
   it.start = r6(it.start + dt);
   if (rate !== null) it.in = headIn(f.track, it, dt, rate);
@@ -87,8 +97,8 @@ export function rateStretch(p: Project, a: { id: string; edge: 'start' | 'end'; 
   // an own sound speeds up with the clip and a sound plays at most 4×: the stretch stops when the fastest one gets there
   const maxRate = Math.min(key === 'speed' ? 16 : 4, ...own.map((c) => (old * 4) / c.rate));
   let newLen = Math.max(minLen(p), a.edge === 'end' ? oldLen + a.dt : oldLen - a.dt);
-  // the start edge cannot pass time 0
-  if (a.edge === 'start') newLen = Math.min(newLen, oldLen + resolveTimes(p).get(it.id)!.start);
+  // the start edge cannot pass time 0 (one already before 0 is not made shorter for it; the magnetic track packs from 0 anyway)
+  if (a.edge === 'start' && !packed(f)) newLen = Math.min(newLen, oldLen - backTo0(p, it.id));
   let next = (old * oldLen) / newLen;
   if (next > maxRate) { next = maxRate; newLen = (old * oldLen) / maxRate; }
   it[key] = r6(next);

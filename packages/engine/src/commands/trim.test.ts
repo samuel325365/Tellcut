@@ -2,6 +2,7 @@ import { ProjectZ, type Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
 import { addItem, checkItem, swapSource, updateItem } from './edit.ts';
 import { CommandError, ownSounds, r6 } from './core.ts';
+import { settle } from './magnetic.ts';
 import { split } from './split.ts';
 import { rateStretch, roll, slip, trimEnd, trimStart } from './trim.ts';
 import { fixture, item, run } from './test-fixture.ts';
@@ -321,4 +322,35 @@ test('a child scaled with a block made very short keeps a frame (health10)', () 
   const q = run(p, trimEnd, { id: 'blk', dt: -100 });   // blk 2–6 → one frame
   expect(item(q, 'cap').start).toBe(0.01);
   expect(r6(item(q, 'cap').end - item(q, 'cap').start)).toBe(0.04);
+});
+
+// health10 EC3: the magnetic track packs from 0 after every command, so "the start cannot pass 0" only stopped the first
+// clip's trimmed head from being pulled back out
+test("the first magnetic clip's head can be pulled back out after a trim, as far as its source goes", () => {
+  const mag = () => { const p = fixture(); (p.tracks[1] as any).magnetic = true; return p; };
+  const go = <A>(p: Project, cmd: (d: Project, a: A) => unknown, a: A) => { const d = run(p, cmd, a); settle(p, d); return d; };
+  const cut = go(mag(), trimStart, { id: 'c1', dt: 1 });   // c1: in 1, 0–4
+  expect(item(cut, 'c1')).toMatchObject({ start: 0, end: 3, in: 2 });
+  expect(item(go(cut, trimStart, { id: 'c1', dt: -1 }), 'c1')).toMatchObject({ start: 0, end: 4, in: 1 });
+  const out = go(cut, trimStart, { id: 'c1', dt: -10 });   // only 2 s of source before in 2
+  expect(item(out, 'c1')).toMatchObject({ start: 0, end: 5, in: 0 });
+  expect(item(out, 'c2').start).toBe(5);
+  // a speed change from the start edge too: 4 s of picture over 8 s, packed back to 0
+  expect(item(go(mag(), rateStretch, { id: 'c1', edge: 'start', dt: -4 }), 'c1')).toMatchObject({ start: 0, end: 8, speed: 0.5 });
+});
+
+// health10 EC11: an item already before 0 (a caption left there by a head trim of its clip) jumped its start to 0 on any
+// edit of its head, and one wholly before 0 got a start past its end
+test('editing the head of an item before 0 moves it only as asked', () => {
+  const p = fixture();
+  addItem(p, { track: 'sc', item: { id: 'cap', type: 'x.cap', start: -1.5, end: 1.5, params: {}, parent: 'c1' } });
+  addItem(p, { track: 'sc', item: { id: 'gone', type: 'x.cap', start: -2, end: -1, params: {}, parent: 'c1' } });
+  expect(item(run(p, trimStart, { id: 'cap', dt: 0.04 }), 'cap')).toMatchObject({ start: -1.46, end: 1.5 });
+  expect(item(run(p, trimStart, { id: 'cap', dt: -1 }), 'cap')).toMatchObject({ start: -1.5 });
+  const g = run(p, trimStart, { id: 'gone', dt: 0.04 });
+  expect(item(g, 'gone')).toMatchObject({ start: -1.96, end: -1 });
+  expect(ProjectZ.safeParse(g).success).toBe(true);
+  // a clip before 0 made shorter from its start edge is not shortened further for it
+  addItem(p, { track: 'v2', item: { id: 'br', source: 's', in: 5, speed: 1, start: -1, end: 1, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } }, parent: 'c1' } });
+  expect(item(run(p, rateStretch, { id: 'br', edge: 'start', dt: 0.04 }), 'br')).toMatchObject({ start: -0.96, end: 1 });
 });

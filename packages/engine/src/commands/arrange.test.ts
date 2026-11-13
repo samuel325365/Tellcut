@@ -88,3 +88,11 @@ test("rippleDelete keeps what hangs on a clip that dissolved in over the deleted
   expect(item(r, 'c2')).toMatchObject({ start: 0, end: 5 });
   expect(item(r, 'snd')).toMatchObject({ start: 0, end: 5, in: 10 });
 });
+
+test('moving an item that already starts before 0 does not jump it to 0 (health10 EC11)', () => {
+  const p = fixture();
+  addItem(p, { track: 'sc', item: { id: 'cap', type: 'x.cap', start: -1.5, end: 1.5, params: {}, parent: 'c1' } });
+  expect(item(run(p, moveItems, { ids: ['cap'], dt: 0.04 }), 'cap')).toMatchObject({ start: -1.46, end: 1.54 });
+  expect(item(run(p, moveItems, { ids: ['cap'], dt: -1 }), 'cap')).toMatchObject({ start: -1.5, end: 1.5 });
+  expect(item(run(p, moveItems, { ids: ['blk'], dt: -5 }), 'blk')).toMatchObject({ start: 0, end: 4 });
+});

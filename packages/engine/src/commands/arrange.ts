@@ -9,7 +9,8 @@ export function moveItems(p: Project, a: { ids: string[]; dt: number; toTrack?: 
   const ids = topLevel(p, a.ids);
   const found = ids.map((id) => findItem(p, id));
   const times = resolveTimes(p);
-  const dt = Math.max(a.dt, -Math.min(...ids.map((id) => times.get(id)!.start)));
+  // an item already before 0 (a caption left there by a head trim of its clip) does not jump to 0 when it is moved
+  const dt = Math.max(a.dt, Math.min(0, -Math.min(...ids.map((id) => times.get(id)!.start))));
   for (const f of found) { f.item.start = r6(f.item.start + dt); f.item.end = r6(f.item.end + dt); }
   if (a.toTrack === undefined) return;
   if (found.length !== 1) throw new CommandError('Only one item can change track at a time', 'cmd.oneTrackMove');
