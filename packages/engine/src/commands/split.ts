@@ -4,6 +4,7 @@ import type { AnyItem, Project } from '../schema.ts';
 import { resolveTimes, TIME_EPS } from '../time.ts';
 import { cropAt } from '../geometry.ts';
 import { CommandError, fitFades, mediaRate, ownSounds, minLen, r6, required, uniqueId } from './core.ts';
+import { overlapPairs } from './overlap.ts';
 
 const MEDIA = new Set(['video', 'audio', 'music']);
 
@@ -29,6 +30,11 @@ export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
   const times = resolveTimes(p), m = minLen(p), made: string[] = [], halves: Array<{ a: string; b: string; rel: number }> = [];
   // a listed clip takes its own sound along (spec 2026-10-15-proposals-magnetic §4.3)
   const ids = a.ids && [...a.ids, ...a.ids.flatMap((id) => ownSounds(p, id).map((c) => c.id))];
+  // where the next clip's linked dissolve or crossfade starts over each clip: a cut after it leaves the overlap to the second
+  // half, which the next clip then overlaps instead (the dissolve shrank to the first half's share on a normal track, and the
+  // magnetic track packed the film longer)
+  const tail = new Map<string, number>();
+  for (const w of overlapPairs(p, times).values()) if (w.linked) tail.set(w.a, Math.min(tail.get(w.a) ?? Infinity, times.get(w.b)!.start));
   for (const track of p.tracks) {
     if (!MEDIA.has(track.kind)) continue;
     const list = track.items as AnyItem[];
@@ -42,6 +48,7 @@ export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
       // cannot carry the rest of it)
       const tr = track.kind === 'video' ? it.transitionIn : undefined;
       if (tr && tr.type !== 'cut' && rel < tr.dur - TIME_EPS) throw new CommandError('Cannot split inside a transition; shorten or move the transition first', 'cmd.splitInTransition');
+      if (a.t > (tail.get(it.id) ?? Infinity) + TIME_EPS) throw new CommandError('Cannot split inside the transition into the next clip; shorten or move the transition first', 'cmd.splitInTransition');
       const b = plainCopy(it);
       const rate = mediaRate(track, it)!;
       b.id = uniqueId(p, it.id);
