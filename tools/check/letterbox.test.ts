@@ -56,11 +56,34 @@ test('a frozen clip: bars past the freeze point are never on screen; the held fr
   expect(letterboxFindings(held, resolveTimes(held), barsTo13).map((x) => x.t)).toEqual([[2, 10]]);
 });
 
+// a 16:9 source full screen in a landscape film, the source showing 10–20 s at film 0–10 s
+const wideProject = () => parseProject({ version: 1, meta: { name: 't', width: 1920, height: 1080, fps: 30, duration: 10, plugins: [], mix: MIX },
+  sources: { v: { path: 'v.mp4', duration: 60, width: 1920, height: 1080 } }, media: {}, grids: [],
+  tracks: [{ id: 'v1', kind: 'video', items: [{ id: 'c', source: 'v', in: 10, speed: 1, start: 0, end: 10, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } }] }] });
+const barsAt = (ts: number[], box: Active['box']) => ({ c: ts.map((t): Active => ({ t, box })) });
+
 test('a side bar is said as a share of the frame\'s width, a top or bottom one of its height', () => {
-  // a pillarboxed source (picture between 20 % and 80 % of its width) full screen in a landscape film
-  const wide = parseProject({ version: 1, meta: { name: 't', width: 1920, height: 1080, fps: 30, duration: 10, plugins: [], mix: MIX },
-    sources: { v: { path: 'v.mp4', duration: 60, width: 1920, height: 1080 } }, media: {}, grids: [],
-    tracks: [{ id: 'v1', kind: 'video', items: [{ id: 'c', source: 'v', in: 10, speed: 1, start: 0, end: 10, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } }] }] });
-  const bars = { c: [12, 12.5, 13].map((t): Active => ({ t, box: [0.2, 0, 0.8, 1] })) };
-  expect(letterboxFindings(wide, resolveTimes(wide), bars)[0].msg).toMatch(/（左邊約 20% 畫面寬度，/);
+  // a pillarboxed source (picture between 20 % and 80 % of its width)
+  const wide = wideProject();
+  expect(letterboxFindings(wide, resolveTimes(wide), barsAt([12, 12.5, 13], [0.2, 0, 0.8, 1]))[0].msg).toMatch(/（左邊約 20% 畫面寬度，/);
+  // black on the right only (TT7)
+  expect(letterboxFindings(wide, resolveTimes(wide), barsAt([12, 12.5, 13], [0, 0, 0.8, 1]))[0].msg).toMatch(/（右邊約 20% 畫面寬度，/);
+  // the source letterboxed, the focus pushed to the bottom: the top bar is cropped away, the bottom one shows (TT7)
+  const low = project({ x: 0.5, y: 1, zoom: 1.4 });
+  expect(letterboxFindings(low, resolveTimes(low), barsAt([12, 12.5, 13], [0, 0.17, 1, 0.9]))[0].msg).toMatch(/（下方約 \d+% 畫面高度，/);
+});
+
+test('a bar of 1 % of the frame or more counts, a thinner one does not; bars more than a second apart are two warnings (TT7)', () => {
+  const wide = wideProject(), at = (box: Active['box']) => letterboxFindings(wide, resolveTimes(wide), barsAt([12, 12.5, 13], box));
+  expect(at([0.05, 0, 1, 1]).map((x) => x.msg.match(/（左邊約 \d+%/)?.[0])).toEqual(['（左邊約 5%']);
+  expect(at([0.005, 0, 1, 1])).toEqual([]);
+  const top = project({ x: 0.5, y: 0, zoom: 1.4 });
+  expect(letterboxFindings(top, resolveTimes(top), barsAt([12, 12.5, 13, 16, 16.5, 17], [0, 0.17, 1, 0.9])).map((x) => x.t)).toEqual([[2, 3], [6, 7]]);
+});
+
+test('a clip at speed 2 shows a source bar at half its source time from the clip\'s in (TT2)', () => {
+  // source 14–16 s barred: film 2–3 s at speed 2 (it would be film 4–6 s at speed 1)
+  const p = project({ x: 0.5, y: 0, zoom: 1.4 });
+  (p.tracks[0].items[0] as any).speed = 2;
+  expect(letterboxFindings(p, resolveTimes(p), barsAt([14, 14.5, 15, 15.5, 16], [0, 0.17, 1, 0.9])).map((x) => x.t)).toEqual([[2, 3]]);
 });
