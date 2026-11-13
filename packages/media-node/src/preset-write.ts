@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { DEFAULT_THEME } from '@tellcut/engine';
 import type { L10n, Lang } from '@tellcut/protocol';
-import { ffmpeg } from './ffmpeg.ts';
+import { ffmpeg, inFile, oneImage } from './ffmpeg.ts';
 import { renameRetry, replaceFile } from './fsutil.ts';
 import { findPreset, type Preset, type PresetDirs, type PresetPoint } from './presets.ts';
 import { slugFor } from './library/store.ts';
@@ -95,6 +95,6 @@ export function deleteUserPreset(dirs: PresetDirs, id: string) {
 /** any picture as a preset's poster: covered and cut to 9:16, 540 wide (the home page's thumbnails, spec 2026-10-23-presets-and-languages §5.1) */
 export async function posterFromImage(input: string, out: string) {
   const tmp = `${out}.${process.pid}.jpg`;
-  await ffmpeg(['-y', '-i', input, '-vf', 'scale=540:960:force_original_aspect_ratio=increase,crop=540:960', '-frames:v', '1', '-q:v', '3', tmp]);
+  await ffmpeg(['-y', ...inFile(input), '-vf', 'scale=540:960:force_original_aspect_ratio=increase,crop=540:960', '-q:v', '3', ...oneImage(tmp)]);
   renameRetry(tmp, out);
 }

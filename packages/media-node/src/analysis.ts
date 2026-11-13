@@ -4,7 +4,7 @@ import { heavy } from './limit.ts';
 import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { ffmpeg, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
+import { ffmpeg, oneImage, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
 import { analysisName, contentPrintAsync } from './hash.ts';
 import { fitImage } from './photo.ts';
 import { isImagePath } from './probe.ts';
@@ -136,7 +136,7 @@ async function analyzeLocked(f: AnalysisFiles, srcPath: string, stamp: string, o
   const { interval, count, rows } = thumbGrid(duration);
   const tw = 2 * Math.round((THUMB_H * width) / height / 2);
   // thumbnails and scene cuts from the proxy just made: the source is decoded once (an AV1 or 4K source decodes slowly)
-  await atomic(f.thumbs, (tmp) => ffmpeg(['-i', f.proxy, '-an', '-vf', `fps=1/${interval},scale=${tw}:${THUMB_H},tile=${THUMB_COLS}x${rows}`, '-frames:v', '1', '-q:v', '4', tmp], sig));
+  await atomic(f.thumbs, (tmp) => ffmpeg(['-i', f.proxy, '-an', '-vf', `fps=1/${interval},scale=${tw}:${THUMB_H},tile=${THUMB_COLS}x${rows}`, '-q:v', '4', ...oneImage(tmp)], sig));
   await atomic(f.thumbIndex, async (tmp) => writeFileSync(tmp, JSON.stringify({ interval, width: tw, height: THUMB_H, cols: THUMB_COLS, count } satisfies ThumbIndex)));
 
   o.onStep?.('cuts', 2, 4);

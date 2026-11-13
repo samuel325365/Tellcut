@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveTimes, type Project, type Registry, type Transcript } from '@tellcut/engine';
-import { ffmpeg, ocrProvider, photoSheet, pyJson, timecode1, withProjectPage, type OcrLine, type OcrProvider, type PageSession } from '@tellcut/media-node';
+import { ffmpeg, inFile, ocrProvider, oneImage, photoSheet, pyJson, timecode1, withProjectPage, type OcrLine, type OcrProvider, type PageSession } from '@tellcut/media-node';
 import type { Finding } from './rules.ts';
 import { burnedChecks } from './burned.ts';
 import { leakFindings, leakProbes, leakUnchecked, type LeakProbe } from './leak.ts';
@@ -112,7 +112,7 @@ async function ocrLines(s: PageSession, at: Array<{ t: number; edge?: true }>, d
       if (!(key in cache)) todo.push({ img, key });
       if (edge && !(`${key}:x2` in cache)) {
         const big = join(tmp, `${t}-x2.png`);
-        await ffmpeg(['-i', img, '-vf', 'scale=iw*2:ih*2:flags=lanczos', big]);
+        await ffmpeg([...inFile(img), '-vf', 'scale=iw*2:ih*2:flags=lanczos', ...oneImage(big)]);
         todo.push({ img: big, key: `${key}:x2` });
       }
     }

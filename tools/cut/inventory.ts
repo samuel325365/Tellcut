@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { parseProject, type Project, type Transcript } from '@tellcut/engine';
-import { analysisDone, analysisFiles, analyzeSource, describeFaces, extrasFiles, faceKey, facesAt, ffmpeg, musicBeats, overviewSheets, readAssetRecords, photoSheet, probeDuration, readBurned, readTranscript, sourceExtras, timecode, timecode1, type Beats, type Burned, type BurnedCaption, type BurnedText } from '@tellcut/media-node';
+import { analysisDone, analysisFiles, analyzeSource, describeFaces, extrasFiles, faceKey, facesAt, ffmpeg, musicBeats, oneImage, overviewSheets, readAssetRecords, photoSheet, probeDuration, readBurned, readTranscript, sourceExtras, timecode, timecode1, type Beats, type Burned, type BurnedCaption, type BurnedText } from '@tellcut/media-node';
 import { chapters, chronological, type Chapter } from './chapters.ts';
 import { ANALYSIS_STEPS } from '@tellcut/protocol';
 
@@ -265,7 +265,7 @@ export async function formatSourceRange(inv: Inventory, sid: string, range: [num
     const cells: Array<{ img: string; label: string }> = [];
     for (const [i, t] of times.entries()) {
       const img = join(tmp, `${i}.jpg`);
-      await ffmpeg(['-ss', String(t), '-i', src, '-frames:v', '1', '-vf', 'scale=320:-2', '-q:v', '4', img]);
+      await ffmpeg(['-ss', String(t), '-i', src, '-vf', 'scale=320:-2', '-q:v', '4', ...oneImage(img)]);
       cells.push({ img, label: `${s.id} ${timecode1(t)}` });
     }
     await photoSheet(out, cells, undefined, { cols: 6, cellW: 320 });

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync } 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { analysisFiles } from './analysis.ts';
-import { ffmpeg } from './ffmpeg.ts';
+import { ffmpeg, inFile, oneImage, patternDir } from './ffmpeg.ts';
 import { isImagePath } from './probe.ts';
 import { facesProvider } from './providers/index.ts';
 import type { FaceInfo, FacesProvider } from './providers/types.ts';
@@ -54,12 +54,12 @@ export async function facesAt(projectDir: string, srcPath: string, times: number
         // a photo is one frame at pts 0, which a seek drops while ffmpeg still exits 0 (as grabStill knows): read it once, unseeked,
         // and give its faces to every time asked
         const img = join(tmp, 'photo.jpg');
-        await ffmpeg(['-i', from, '-frames:v', '1', '-update', '1', '-q:v', '3', img], { signal: o.signal });
+        await ffmpeg([...inFile(from), '-q:v', '3', ...oneImage(img)], { signal: o.signal });
         if (!existsSync(img)) throw new Error(`ffmpeg read no frame from ${from}`);
         const [found] = await (o.provider ?? facesProvider()).detect([img], { signal: o.signal });
         for (const k of missing) cache.frames[k] = found ?? [];
       } else for (const [r, run] of stretches(missing).entries()) {
-        const a = Number(run[0]), pattern = join(tmp, `r${r}-%04d.jpg`);
+        const a = Number(run[0]), pattern = join(patternDir(tmp), `r${r}-%04d.jpg`);
         try { await ffmpeg(['-ss', a.toFixed(3), '-i', from, '-t', ((run.length - 1) * FACE_STEP + FACE_STEP / 2).toFixed(3), '-vf', `fps=${1 / FACE_STEP}:round=near`, '-q:v', '3', pattern], { signal: o.signal }); }
         catch (e) { if (o.signal?.aborted || !NO_FRAMES.test((e as Error)?.message ?? '')) throw e; }
         // each frame named by its source time (<t>.jpg), as a single grab named it

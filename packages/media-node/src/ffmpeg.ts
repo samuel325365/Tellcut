@@ -43,6 +43,39 @@ export async function ffmpeg(args: string[], o: FfOpts = {}): Promise<{ stdout: 
 }
 export const run = (args: string[], o: Pick<FfOpts, 'signal' | 'cwd'> = {}) => ffmpeg(args, o).then(() => {});
 
+/**
+ * The output arguments for one picture at `out`. ffmpeg's image2 muxer reads a `%d` (or `%03d`…) anywhere in an output path as
+ * a frame-number pattern, so a folder named "100%done" (the tellcut folder's, or TEMP's) sent the picture to ".../1001one/..."
+ * instead: an error when no such folder exists, another file when one does. `-update 1` takes the path as it is.
+ */
+export const oneImage = (out: string) => ['-frames:v', '1', '-update', '1', out];
+/** a folder inside an image-sequence pattern: its own `%` doubled (image2 reads `%%` as one `%`), so only the pattern's counter counts */
+export const patternDir = (dir: string) => dir.replaceAll('%', '%%');
+/** whether ffmpeg reads `path` as a frame-number pattern, the way av_filename_number_test does: exactly one `%d` (`%03d`…), any
+ *  other `%` only as `%%` (a lone `%20` makes it no pattern at all, and the path is taken as it is) */
+export function isFramePattern(path: string): boolean {
+  let found = false;
+  for (let i = 0; i < path.length; i++) {
+    if (path[i] !== '%') continue;
+    while (/\d/.test(path[i + 1] ?? '')) i++;
+    const c = path[++i];
+    if (c === '%') continue;
+    if (c !== 'd' || found) return false;
+    found = true;
+  }
+  return found;
+}
+/** the pictures ffmpeg opens with its image2 demuxer (a GIF, AVIF or HEIC has a demuxer of its own, which has no pattern_type) */
+const IMAGE2 = /\.(jpe?g|png|webp|bmp|tiff?)$/i;
+/**
+ * What ffmpeg or ffprobe needs before `path` to open it as it is. A picture whose path reads as a frame pattern (a folder named
+ * "100%done") was looked for as ".../1001one/..." and not found; `-pattern_type none` takes it literally. Only then: the other
+ * demuxers (a video's, a JPEG read without a pattern) refuse the option.
+ */
+export const literalInput = (path: string) => (IMAGE2.test(path) && isFramePattern(path) ? ['-pattern_type', 'none'] : []);
+/** the input arguments for `path`, taken as it is (literalInput) */
+export const inFile = (path: string) => [...literalInput(path), '-i', path];
+
 /** ffmpeg's ebur128 filter logs a running "I:" on every line; the integrated loudness is the one after "Summary:". */
 export function parseLoudness(stderr: string): { lufs: number; peak?: number } | null {
   const i = stderr.lastIndexOf('Summary:');
@@ -113,7 +146,7 @@ export function probeDurationSync(path: string): number {
 }
 
 export async function probeSize(path: string): Promise<{ width: number; height: number }> {
-  const j = JSON.parse(await probe(['-select_streams', 'v:0', '-show_entries', 'stream=width,height:stream_side_data=rotation:stream_tags=rotate', '-of', 'json', path]));
+  const j = JSON.parse(await probe(['-select_streams', 'v:0', '-show_entries', 'stream=width,height:stream_side_data=rotation:stream_tags=rotate', '-of', 'json', ...literalInput(path), path]));
   return uprightSize(j.streams?.[0] ?? {});
 }
 
@@ -158,12 +191,12 @@ export async function cutAudio(o: { src: string; ref: AudioRef; out: string; sig
 export function grabStill(o: { src: string; ref: StillRef; out: string; signal?: AbortSignal }) {
   if (o.ref.strip) {   // filmstrip: n frames across the range, 90×120 each, tiled horizontally
     const { n, dur } = o.ref.strip;
-    return run(['-ss', String(o.ref.t), '-t', dur.toFixed(3), '-i', o.src, '-vf', `fps=${n}/${dur},scale=-2:120,crop=90:120,tile=${n}x1`, '-frames:v', '1', '-q:v', '4', o.out], { signal: o.signal });
+    return run(['-ss', String(o.ref.t), '-t', dur.toFixed(3), '-i', o.src, '-vf', `fps=${n}/${dur},scale=-2:120,crop=90:120,tile=${n}x1`, '-q:v', '4', ...oneImage(o.out)], { signal: o.signal });
   }
   const vf = o.ref.square ? `scale=-2:${o.ref.square},crop=${o.ref.square}:${o.ref.square}` : o.ref.w ? `scale=${o.ref.w}:-2` : 'null';
   // no seek at 0 s, nor in a photo: seeking a phone JPG (one frame at pts 0) to 0 s drops that frame and ffmpeg still exits 0
   const seek = o.ref.t > 0 && !PHOTO.test(o.src) ? ['-ss', String(o.ref.t)] : [];
-  return run([...seek, '-i', o.src, '-frames:v', '1', '-update', '1', '-vf', vf, '-q:v', '2', o.out], { signal: o.signal }).then(() => {
+  return run([...seek, ...inFile(o.src), '-vf', vf, '-q:v', '2', ...oneImage(o.out)], { signal: o.signal }).then(() => {
     if (!existsSync(o.out)) throw new Error(`no still at ${o.ref.t} s in ${o.src}: ffmpeg wrote no frame`);
   });
 }

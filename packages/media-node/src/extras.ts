@@ -8,7 +8,7 @@ import { splitAtPauses, type Transcript } from '@tellcut/engine';
 import { analysisFiles, analyzeSource, atomic } from './analysis.ts';
 import { detectBurned, type Burned } from './burned.ts';
 import { readBurnedText } from './burned-read.ts';
-import { ffmpeg, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
+import { ffmpeg, oneImage, probeDuration, probeHasAudio, probeSize } from './ffmpeg.ts';
 import { analysisName } from './hash.ts';
 import { background } from './limit.ts';
 import { isImagePath } from './probe.ts';
@@ -84,7 +84,7 @@ async function makeSheets(srcPath: string, label: string, cuts: number[], durati
   try {
     for (const [i, t] of sheetTimes(cuts, duration).entries()) {
       const img = join(tmp, `${i}.jpg`);
-      await ffmpeg(['-ss', String(t), '-i', srcPath, '-frames:v', '1', '-vf', 'scale=480:-2', '-q:v', '4', img], { signal });
+      await ffmpeg(['-ss', String(t), '-i', srcPath, '-vf', 'scale=480:-2', '-q:v', '4', ...oneImage(img)], { signal });
       // ffmpeg ends without a frame past the last one (a video stream shorter than the file, say): a blank cell
       cells.push({ img: existsSync(img) ? img : null, label: `${label} ${timecode(t)}` });
     }
@@ -255,7 +255,7 @@ export async function overviewSheets(projectDir: string, videos: Array<{ id: str
         const cells: Array<{ img: string | null; label: string }> = [];
         for (const [k, t] of overviewTimes(cuts[i], v.duration, OV_FRAMES).entries()) {
           const img = join(tmp, `${i}-${k}.jpg`);
-          await ffmpeg(['-ss', String(t), '-i', proxies[i], '-frames:v', '1', '-vf', `scale=${OV_CELL}:${OV_CELL}:force_original_aspect_ratio=decrease`, '-q:v', '5', img], { signal: o.signal });
+          await ffmpeg(['-ss', String(t), '-i', proxies[i], '-vf', `scale=${OV_CELL}:${OV_CELL}:force_original_aspect_ratio=decrease`, '-q:v', '5', ...oneImage(img)], { signal: o.signal });
           cells.push({ img: existsSync(img) ? img : null, label: timecode1(t) });   // none grabbed: blank, as in makeSheets
         }
         while (cells.length < OV_FRAMES) cells.push({ img: null, label: '' });

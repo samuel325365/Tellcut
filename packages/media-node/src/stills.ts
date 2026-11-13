@@ -4,7 +4,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import type { Project, Registry } from '@tellcut/engine';
-import { ffmpeg } from './ffmpeg.ts';
+import { ffmpeg, inFile, oneImage } from './ffmpeg.ts';
 import { prepareProject } from './prepare.ts';
 import { openPage, playerUrl, sitePath, type PageHost, type PageSession } from './render.ts';
 
@@ -53,7 +53,7 @@ export async function renderStills(o: { dir: string; project: Project; times: nu
       else {
         const full = `${f}.${process.pid}-${randomBytes(4).toString('hex')}.full.png`;   // pid + random: two runs on the same time, in one process or two, don't share the capture
         writeFileSync(full, await s.png());
-        try { await ffmpeg(['-i', full, '-vf', `scale=${Math.round(W * scale / 2) * 2}:-2:flags=lanczos`, f]); } finally { rmSync(full, { force: true }); }
+        try { await ffmpeg([...inFile(full), '-vf', `scale=${Math.round(W * scale / 2) * 2}:-2:flags=lanczos`, ...oneImage(f)]); } finally { rmSync(full, { force: true }); }
       }
       out.push(f);
     }

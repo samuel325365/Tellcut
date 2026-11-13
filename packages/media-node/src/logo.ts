@@ -4,7 +4,7 @@
 // loadMark (plugin-common/src/three/marks.ts), which makes the same extrude-or-plate choice.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
-import { ffmpeg, probeSize } from './ffmpeg.ts';
+import { ffmpeg, inFile, probeSize } from './ffmpeg.ts';
 import { renameRetry } from './fsutil.ts';
 
 export interface LogoInfo {
@@ -103,7 +103,7 @@ function paints(text: string): { filled: number; strokeOnly: number; gradient: n
 
 async function inspectRaster(file: string, kind: LogoInfo['kind']): Promise<LogoInfo> {
   const { width, height } = await probeSize(file);
-  const { stdout } = await ffmpeg(['-i', file, '-frames:v', '1', '-vf', 'scale=64:64:force_original_aspect_ratio=decrease,format=rgba', '-f', 'rawvideo', '-'], { stdout: true });
+  const { stdout } = await ffmpeg([...inFile(file), '-frames:v', '1', '-vf', 'scale=64:64:force_original_aspect_ratio=decrease,format=rgba', '-f', 'rawvideo', '-'], { stdout: true });
   const n = Math.floor(stdout.length / 4), px = (i: number) => [stdout[i * 4], stdout[i * 4 + 1], stdout[i * 4 + 2], stdout[i * 4 + 3]];
   let clear = 0;
   for (let i = 0; i < n; i++) if (stdout[i * 4 + 3] < 250) clear++;

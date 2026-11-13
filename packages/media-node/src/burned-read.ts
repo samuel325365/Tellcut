@@ -8,7 +8,7 @@
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { abortError, ffmpeg, probeSize } from './ffmpeg.ts';
+import { abortError, ffmpeg, oneImage, probeSize } from './ffmpeg.ts';
 import { ocrProvider } from './providers/index.ts';
 import type { OcrProvider } from './providers/types.ts';
 import { readableWords, settleText, type Burned, type BurnedText } from './burned.ts';
@@ -33,11 +33,11 @@ async function cutCrops(src: string, jobs: Array<{ at: number; filter: string; o
   for (let i = 0; i < jobs.length; i += BATCH) {
     const part = jobs.slice(i, i + BATCH);
     const args = [...part.flatMap((j) => ['-ss', String(j.at), '-i', src]), '-filter_complex', part.map((j, k) => `[${k}:v]${j.filter}[o${k}]`).join(';'),
-      ...part.flatMap((j, k) => ['-map', `[o${k}]`, '-frames:v', '1', j.out])];
+      ...part.flatMap((j, k) => ['-map', `[o${k}]`, ...oneImage(j.out)])];
     try { await ffmpeg(args, { signal }); } catch (e) {
       if (signal?.aborted) throw e;
       // one bad crop failed them all: each on its own
-      for (const j of part) await ffmpeg(['-ss', String(j.at), '-i', src, '-vf', j.filter, '-frames:v', '1', j.out], { signal }).catch((e2) => { if (signal?.aborted) throw e2; });
+      for (const j of part) await ffmpeg(['-ss', String(j.at), '-i', src, '-vf', j.filter, ...oneImage(j.out)], { signal }).catch((e2) => { if (signal?.aborted) throw e2; });
     }
   }
 }

@@ -9,7 +9,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { parseProject, type Project, type Registry, type ThemeInput } from '@tellcut/engine';
-import { ffmpeg } from './ffmpeg.ts';
+import { ffmpeg, inFile, oneImage } from './ffmpeg.ts';
 import { openHost, type PageHost } from './render.ts';
 import { withProjectPage } from './stills.ts';
 
@@ -128,7 +128,7 @@ export async function runGolden(cases: GoldenCase[], o: { registry: Registry; go
         await s.frame(Math.round(t * s.fps));
         writeFileSync(fresh, await s.png());
         const name = goldenFile(c, t), shared = join(o.goldenDir, name), own = o.platformDir && join(o.platformDir, name);
-        const save = async (to: string) => { mkdirSync(join(to, '..'), { recursive: true }); await ffmpeg(['-y', '-i', fresh, '-vf', `scale=${sizeOf(c)}:flags=area`, to]); };
+        const save = async (to: string) => { mkdirSync(join(to, '..'), { recursive: true }); await ffmpeg(['-y', ...inFile(fresh), '-vf', `scale=${sizeOf(c)}:flags=area`, ...oneImage(to)]); };
         if (own) {
           // A system with pictures of its own matches either its own or the shared one (Windows' may have moved on since).
           // An update writes its own folder only, and only where it differs from the shared picture: the shared pictures
