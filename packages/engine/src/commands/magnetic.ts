@@ -88,6 +88,10 @@ function pack(before: Project, mag: Track, placed: Set<string>) {
   let end = 0, prev: AnyItem | null = null;
   for (const it of order) {
     const l = linked.get(it.id), len = it.end - it.start;
+    // a clip that dissolved (or slid) into the clip before it and now opens the film (that clip deleted, lifted off or moved
+    // behind it) would play its transition from black. Only a transition linked to an overlap goes: a fade from black set on
+    // the first clip on purpose was never linked, so it stays.
+    if (!prev && l && (it as any).transitionIn) delete (it as any).transitionIn;
     const ov = !prev || !l ? 0 : Math.min(l.ov, prev.end - prev.start, len);
     it.start = r6(Math.max(0, end - ov)); it.end = r6(it.start + len); end = it.end; prev = it;
   }

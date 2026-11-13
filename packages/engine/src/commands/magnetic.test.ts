@@ -2,7 +2,7 @@ import { parseProject, type Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
 import { addItem, updateItem } from './edit.ts';
 import { split } from './split.ts';
-import { deleteItems, moveItems } from './arrange.ts';
+import { deleteItems, moveItems, rippleDelete } from './arrange.ts';
 import { rateStretch, trimEnd, trimStart } from './trim.ts';
 import { item } from './test-fixture.ts';
 import { attach, detach, magneticGaps, magneticWarnings, setMagnetic, settle } from './magnetic.ts';
@@ -227,6 +227,24 @@ test('deleting a clip between two dissolves keeps a dissolve into the next one (
     clip('c3', 7, 11, 20, { transitionIn: { type: 'dissolve', dur: 0.5 } })]; q.tracks[1].items = []; q.tracks[2].items = []; });
   const p = go(base, deleteItems, { ids: ['c2'] });
   expect([at(p, 'c3').start, item(p, 'c3').transitionIn.dur]).toEqual([3.5, 0.5]);
+});
+
+test('the clip that dissolved into a deleted first clip opens the film with no transition; a fade from black set on purpose stays', () => {
+  const base = mag((q) => { q.tracks[0].items = [clip('c1', 0, 4, 0), clip('c2', 3.5, 7.5, 10, { transitionIn: { type: 'dissolve', dur: 0.5 } }),
+    clip('c3', 7, 11, 20, { transitionIn: { type: 'dissolve', dur: 0.5 } })]; q.tracks[1].items = []; q.tracks[2].items = []; q.meta.duration = 11; });
+  for (const cmd of [deleteItems, rippleDelete]) {
+    const p = go(base, cmd, { ids: ['c1'] });
+    expect([at(p, 'c2').start, item(p, 'c2').transitionIn]).toEqual([0, undefined]);
+    expect([at(p, 'c3').start, item(p, 'c3').transitionIn.dur]).toEqual([3.5, 0.5]);   // the next dissolve is untouched
+  }
+  // the first clip lifted off the magnetic track to another one: the same
+  const lifted = go(mag((q) => { q.tracks[0].items[1] = clip('c2', 3.5, 7.5, 10, { transitionIn: { type: 'dissolve', dur: 0.5 } });
+    q.tracks.push({ id: 'v2', kind: 'video', items: [] }); }), moveItems, { ids: ['c1'], dt: 0, toTrack: 'v2' });
+  expect(item(lifted, 'c2').transitionIn).toBeUndefined();
+  // a fade from black on the first clip (no clip before it, so linked to nothing) is kept through other edits
+  const fade = mag((q) => { q.tracks[0].items[0] = clip('c1', 0, 4, 0, { transitionIn: { type: 'dissolve', dur: 1 } }); });
+  expect(item(go(fade, deleteItems, { ids: ['c2'] }), 'c1').transitionIn).toEqual({ type: 'dissolve', dur: 1 });
+  expect(item(go(fade, trimEnd, { id: 'c1', dt: -1 }), 'c1').transitionIn).toEqual({ type: 'dissolve', dur: 1 });
 });
 
 test('splitting music that follows the film leaves two halves one after the other, only the second following the film', () => {
