@@ -33,8 +33,13 @@ export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
   // where the next clip's linked dissolve or crossfade starts over each clip: a cut after it leaves the overlap to the second
   // half, which the next clip then overlaps instead (the dissolve shrank to the first half's share on a normal track, and the
   // magnetic track packed the film longer)
-  const tail = new Map<string, number>();
-  for (const w of overlapPairs(p, times).values()) if (w.linked) tail.set(w.a, Math.min(tail.get(w.a) ?? Infinity, times.get(w.b)!.start));
+  // (the kind is kept to word the refusal: a picture dissolves, a sound crossfades)
+  const tail = new Map<string, { at: number; video: boolean }>();
+  for (const w of overlapPairs(p, times).values()) {
+    if (!w.linked) continue;
+    const at = times.get(w.b)!.start;
+    if (at < (tail.get(w.a)?.at ?? Infinity)) tail.set(w.a, { at, video: w.kind === 'video' });
+  }
   for (const track of p.tracks) {
     if (!MEDIA.has(track.kind)) continue;
     const list = track.items as AnyItem[];
@@ -48,7 +53,11 @@ export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
       // cannot carry the rest of it)
       const tr = track.kind === 'video' ? it.transitionIn : undefined;
       if (tr && tr.type !== 'cut' && rel < tr.dur - TIME_EPS) throw new CommandError('Cannot split inside a transition; shorten or move the transition first', 'cmd.splitInTransition');
-      if (a.t > (tail.get(it.id) ?? Infinity) + TIME_EPS) throw new CommandError('Cannot split inside the transition into the next clip; shorten or move the transition first', 'cmd.splitInTransition');
+      const next = tail.get(it.id);
+      if (next && a.t > next.at + TIME_EPS) {
+        if (next.video) throw new CommandError('Cannot split inside the transition into the next clip; shorten or move the transition first', 'cmd.splitInTransition');
+        throw new CommandError('Cannot split inside the crossfade into the next clip; shorten or turn off the crossfade first', 'cmd.splitInCrossfade');
+      }
       const b = plainCopy(it);
       const rate = mediaRate(track, it)!;
       b.id = uniqueId(p, it.id);

@@ -106,13 +106,14 @@ test('split refuses a cut inside the next clip\'s linked dissolve or crossfade, 
   const p = fixture();
   const v: any = p.tracks[1];
   v.items[1].start = 3.5; v.items[1].end = 7.5;   // c2 dissolves in over c1's last 0.5 s (its transitionIn is 0.5)
-  for (const ids of [['c1'], undefined]) expect(() => split(p, { t: 3.75, ids })).toThrow(CommandError);
+  for (const ids of [['c1'], undefined]) expect(() => split(p, { t: 3.75, ids })).toThrow(expect.objectContaining({ code: 'cmd.splitInTransition' }));
   expect(split(structuredClone(p), { t: 3.4, ids: ['c1'] })).toEqual(['c1-2']);
   const q = fixture();
   const au: any = q.tracks.find((t) => t.id === 'au');
   au.items.push({ id: 'a2', source: 'a', in: 10, rate: 1, start: 2.5, end: 5, gain: 0, fadeIn: 0.5, fadeOut: 0 });
   au.items[0].fadeOut = 0.5;   // a1 1–3 crossfades into a2 over 2.5–3
-  expect(() => split(q, { t: 2.75, ids: ['a1'] })).toThrow(/transition into the next clip/);
+  // a sound's overlap is a crossfade, worded as one (its own code, not the picture's "transition")
+  expect(() => split(q, { t: 2.75, ids: ['a1'] })).toThrow(expect.objectContaining({ code: 'cmd.splitInCrossfade', message: expect.stringMatching(/crossfade into the next clip/) }));
   expect(split(structuredClone(q), { t: 2.25, ids: ['a1'] })).toEqual(['a1-2']);
 });
 
