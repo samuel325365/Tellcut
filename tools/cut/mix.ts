@@ -34,7 +34,8 @@ export function playingSounds(p: Project): Array<{ item: HeardItem; level: numbe
     .flatMap((t) => (t.items as HeardItem[]).filter((c) => !c.muted).map((item) => ({ item, level: (item.gain ?? 0) + ((t as { gain?: number }).gain ?? 0) })));
 }
 /** The sources of sound items that play (playingSounds) and have no transcript (not transcribed yet, cut --no-transcribe, a failed
- *  transcription): heardSpeech hears nothing in them, so nobody can tell whether anyone speaks there. `skip`: sources to leave out. */
+ *  transcription): heardSpeech hears nothing in them, so nobody can tell whether anyone speaks there. `skip`: sources to leave out.
+ *  Footage with no sound is never listed: Cut.clip gives it no sound item, but check reads editor-made projects, which can have one. */
 export function untranscribed(p: Project, transcriptOf: (source: string) => Transcript | null | undefined, skip: (source: string) => boolean = () => false): string[] {
   return [...new Set(playingSounds(p).map((x) => x.item.source))].filter((s) => p.sources[s]?.audio !== false && !transcriptOf(s) && !skip(s));
 }
@@ -79,8 +80,9 @@ export function clipSpeech(p: Project, transcriptOf: (source: string) => Transcr
 
 /**
  * The music's volume curve: it dips under the narration and under `speech` (Cut.duck), and where dip() asked for a drop; where two
- * overlap the lower one wins; the level curve (Cut.level) adds under it. Every music item that is not narration gets it (one with
- * its own envelope is left alone).
+ * overlap the lower one wins; the level curve (Cut.level) adds under it. Every music item that is not narration gets it: Cut.save
+ * calls it once, right after adding the music items, so none has an envelope of its own yet. The times are film seconds and an
+ * envelope is the item's own seconds, so they are taken from the item's start (0 for every item save adds today).
  */
 export function addDucking(p: Project, o: { duckDb: number | false; speech: Speech[]; dips: Array<{ at: number; len: number; db: number }>; curve: Array<[number, number]> }) {
   const RAMP = 0.25, spans: Array<{ a: number; b: number; db: number }> = [];
@@ -107,7 +109,6 @@ export function addDucking(p: Project, o: { duckDb: number | false; speech: Spee
   for (const t of p.tracks) {
     if (t.kind !== 'music' || t.id === 'voice') continue;
     for (const it of t.items as Array<{ start: number; end: number; envelope?: Array<[number, number]> }>) {
-      if (it.envelope?.length) continue;
       const len = it.end - it.start, rel = spans.map((x) => ({ a: x.a - it.start, b: x.b - it.start, db: x.db })).filter((x) => x.b > 0 && x.a < len);
       if (!rel.length && !cv.length) continue;
       // each span ramps down over RAMP before it, holds, ramps back up after; the lowest span wins; the level curve adds under it

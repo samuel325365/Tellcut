@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseProject } from '@tellcut/engine';
 import { Cut } from './cut.ts';
+import { addDucking } from './mix.ts';
 import { base, fresh, items, silentWav } from './cut-test-kit.ts';
 
 test('beatLen measures to the n-th next beat of the music; bestSegments spreads picks over the scenes', () => {
@@ -155,16 +156,22 @@ describe('narration and generated music', () => {
     const c = fresh();
     await withVoice(c, [{ id: 'a', text: '一二三四五六' }, { id: 'b', text: '七八' }]);
     c.clip('v', { from: 0, len: 9 });
+    // 45 s in all: longer than the 4-bar minimum (12.3 s at lofi's 78 BPM), so the score must be composed to the film's length
+    for (let i = 0; i < 4; i++) c.clip('v', { from: 0, len: 9, sound: false });
     c.voice('a', { at: 1 });
     c.voice('b', { at: 3 });                                                 // less than a second after the first ends: one dip, not two
     c.score('lofi', { seed: 2 });
     const p = await c.save();
+    expect(p.meta.duration).toBe(45);
     const music = p.tracks.find((t) => t.id === 'music')!.items as any[];
     expect(music).toHaveLength(1);
     expect(music[0].media).toBe('score-lofi');
-    expect(music[0].end).toBeCloseTo(9, 3);
-    expect(p.media['score-lofi'].duration!).toBeGreaterThanOrEqual(9);
+    expect(music[0].end).toBeCloseTo(45, 3);
+    expect(music[0].toEnd).toBe(true);
+    expect(p.media['score-lofi'].duration!).toBeGreaterThanOrEqual(45);
     expect(p.grids).toEqual([{ id: 'music', at: 0, bpm: 78 }]);
+    // the music ducks under the narration; the narration itself is never ducked
+    expect((p.tracks.find((t) => t.id === 'voice')!.items as any[]).map((v) => v.envelope)).toEqual([undefined, undefined]);
     // the narration (1 s on, the clip's "大家好" inside it) and then the clip's own "出發" at 6–8 s
     expect(music[0].envelope.map((x: number[]) => x[1])).toEqual([0, -10, -10, 0, 0, -10, -10, 0]);
     expect(music[0].envelope[1][0]).toBeCloseTo(1, 3);
@@ -248,6 +255,8 @@ test('c.level shapes the music over the film; dips still go lower where they say
   expect(at(5.5)).toBeLessThan(-17);
   // smooth between points: more than the two ends between 0 and 4
   expect(env.filter(([x]) => x > 0 && x < 4).length).toBeGreaterThanOrEqual(3);
+  // eased, not straight: a fifth of the way from 0.8 to 0.55 the gain has moved smoothstep(0.2) = 0.104 of it (a line: 0.2)
+  expect(env.find(([x]) => Math.abs(x - 0.8) < 1e-6)![1]).toBeCloseTo(20 * Math.log10(0.8 - 0.25 * 0.104), 4);
 });
 
 test('c.level refuses points out of order or a gain over 1.5', () => {
@@ -273,4 +282,15 @@ test('save notes footage whose sound would duck the music but has no transcript 
   heard.clip('v', { from: 0, len: 4 });
   await heard.save();
   expect(heard.notes.join('\n')).not.toMatch(/逐字稿/);
+});
+
+// health scan 10 (TT11): every music item Cut.save adds starts at 0, so only a direct call shows the envelope is in the item's own seconds
+test('addDucking writes each music item its envelope in its own seconds; the narration track is never ducked', () => {
+  const p = base();
+  p.tracks = [{ id: 'music', kind: 'music', name: 'Music', gain: 0, items: [{ id: 'm', media: 'song', in: 0, start: 5, end: 15, gain: 0, fadeIn: 0, fadeOut: 0 }] },
+    { id: 'voice', kind: 'music', name: 'Narration', gain: 0, items: [{ id: 'n', media: 'song', in: 0, start: 7, end: 8, gain: 0, fadeIn: 0, fadeOut: 0 }] }] as any;
+  addDucking(p, { duckDb: -10, speech: [], dips: [], curve: [] });
+  const [m, n] = p.tracks.map((t) => t.items[0] as any);
+  expect(m.envelope).toEqual([[1.75, 0], [2, -10], [3, -10], [3.25, 0]]);   // the narration at film 7–8 s is 2–3 s into the music
+  expect(n.envelope).toBeUndefined();
 });
