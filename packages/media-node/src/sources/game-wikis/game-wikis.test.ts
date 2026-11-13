@@ -64,7 +64,7 @@ test('data gives each wiki\'s article intro with its licence, or the nearest tit
   expect(out).toContain('【Super Mario Wiki】Yoshi（https://www.mariowiki.com/Yoshi）');
   expect(out).toContain('主圖：SMPJ_Yoshi.png');
   expect(out).toContain('Yoshi is a dinosaur-like character');
-  expect(out).toContain('文字授權：CC BY-SA 4.0');
+  expect(out).toContain('文字授權：CC BY-SA 4.0（2026-02-27 以前寫的文字是 CC BY-SA 3.0）');
   // a redirect to an article with no intro still names it
   expect(out).toContain('【Zelda Wiki】Yoshi Doll（https://zeldawiki.wiki/wiki/Yoshi_Doll）\n主圖：LANS Yoshi Doll Model.png');
   expect(out).toContain('（這個條目沒有導言，見網址）');

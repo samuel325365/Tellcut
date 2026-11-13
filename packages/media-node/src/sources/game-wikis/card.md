@@ -30,5 +30,5 @@ npm run tellcut -- assets get <project> game-wikis:mario-457287
 ## Pitfalls
 
 - The introduction is the wiki's English original: rewrite it for the voice-over, don't translate and paste it sentence by sentence.
-- Text licences: Super Mario Wiki CC BY-SA 4.0, Zelda Wiki GFDL 1.3.
+- Text licences: Super Mario Wiki CC BY-SA 4.0 (text written before 27 February 2026: CC BY-SA 3.0 Unported, which most article introductions are), Zelda Wiki GFDL 1.3.
 - There are many in-game screenshots and small icons (like 160×160 icons) that blur when enlarged.
