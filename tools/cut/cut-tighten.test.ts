@@ -36,6 +36,18 @@ describe('tighten (pauses in talk shortened on the word times)', () => {
     const none = talk([A]), n = none.clip('v', { from: 5, len: 3 });
     expect(none.tighten(n)).toEqual([n]);
     expect(none.notes.join()).toContain('沒有講話');
+    // a 0.5 s pause is under the default maxGap (0.6 s)
+    const half = talk([{ start: 3.5, end: 5, text: '我們出發', words: [{ start: 3.5, end: 4, word: '我們' }, { start: 4.5, end: 5, word: '出發' }] }]);
+    const h = half.clip('v', { from: 3.5, len: 1.5 });
+    expect(half.tighten(h)).toEqual([h]);
+    // over maxGap, but what keep leaves of it is under 0.1 s: not worth a cut (0.3 s pause, 0.25 s kept)
+    const tiny = talk([{ start: 3.5, end: 4.8, text: '我們出發', words: [{ start: 3.5, end: 4, word: '我們' }, { start: 4.3, end: 4.8, word: '出發' }] }]);
+    const t = tiny.clip('v', { from: 3.5, len: 1.3 });
+    expect(tiny.tighten(t, { maxGap: 0.2, keep: 0.25 })).toEqual([t]);
+    // a long word that overlaps the next one: the pause is measured from where the long one ends, not the short one
+    const over = talk([{ start: 1, end: 3.5, text: '啊好了', words: [{ start: 1, end: 3, word: '啊' }, { start: 1.5, end: 2, word: '好' }, { start: 3.2, end: 3.5, word: '了' }] }]);
+    const o = over.clip('v', { from: 1, len: 2.5 });
+    expect(over.tighten(o)).toEqual([o]);
   });
 
   test('only the newest clip, before anything hangs on it', () => {
@@ -72,6 +84,12 @@ describe('tighten (pauses in talk shortened on the word times)', () => {
     const [p1, p2] = ids.map((id) => items(e, 'v1').find((i) => i.id === id));
     expect([p1.crop.from.zoom, p2.crop.to.zoom]).toEqual([1, 1.27]);
     expect(p1.crop.to.zoom).toBeCloseTo(p2.crop.from.zoom, 6);                       // no jump at the join
+    // a move with keys is left as the engine's split cut it, each piece where its source moment is (it starts 0.85 s in, x 0.466),
+    // not spread over the pieces from the move's start (x 0.5)
+    const keyed = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.27 }, keys: [{ t: 0, x: 0.5, y: 0.5, zoom: 1 }, { t: 5, x: 0.3, y: 0.5, zoom: 1.2 }] };
+    const k = talk([A, B]), kids = k.tighten(k.clip('v', { from: 0, len: 10, crop: keyed as any }));
+    expect(kids.length).toBe(2);
+    expect(items(k, 'v1').find((i) => i.id === kids[0]).crop.from.x).toBeCloseTo(0.466, 6);
   });
 
   test('captions over the pieces: each sentence once, on the piece it starts in; a sentence across a join is one caption', () => {

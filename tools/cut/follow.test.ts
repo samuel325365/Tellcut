@@ -2,9 +2,10 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { parseProject, resolveTimes } from '@tellcut/engine';
-import { fakeFaces, run, type FaceInfo } from '@tellcut/media-node';
+import { fakeFaces, makePhoto, run, type FaceInfo } from '@tellcut/media-node';
 import { Cut } from './cut.ts';
 import { onFilm, pickFace, smooth, stickerKeys, trackFace } from './follow.ts';
+import { resolveAutoFocus } from './focus.ts';
 import type { Inventory } from './inventory.ts';
 
 const face = (x: number, w = 0.1): FaceInfo => ({ box: [x - w / 2, 0.3, w, w * 1.6], mouth: [x, 0.4], mouthW: w * 0.4 });
@@ -200,4 +201,44 @@ test('a sticker on a frozen clip follows the held face: past freezeAt the pictur
   const keys = p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === st)!.transform.keys as Array<{ x: number }>;
   expect(keys.length).toBeGreaterThan(1);
   expect(new Set(keys.map((k) => k.x)).size).toBe(1);   // the held mouth does not drift
+}, 60000);
+
+// health scan 10 (TT9): guards the face passes had none of
+test("avoidBurned's face-keeping crop goes to every piece a tighten made of the clip", async () => {
+  const c = await burnedCut(() => [{ box: [0.03, 0.55, 0.1, 0.2], mouth: [0.08, 0.7], mouthW: 0.03 }]);   // low on the left
+  (c.inv.sources[0] as any).transcript = { language: 'zh', segments: [{ start: 1.2, end: 2.5, text: '你好' }, { start: 4, end: 5, text: '再見' }] };
+  const pieces = c.tighten(c.clip('v', { from: 1, len: 4, avoidBurned: true }));
+  expect(pieces.length).toBe(2);
+  const v1 = (await c.save()).tracks.find((t) => t.id === 'v1')!.items as any[];
+  for (const id of pieces) expect(v1.find((i) => i.id === id).crop.from.x).toBeLessThan(0.2);
+}, 60000);
+
+test('a sticker given clip: follows that clip, not the one playing when it starts', async () => {
+  const c = await portraitCut();
+  const keep = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+  const a = c.clip('v', { from: 0, len: 2, crop: keep });
+  const b = c.clip('v', { from: 4, len: 2, crop: keep });                     // film 2–4, source 4–6
+  const st = c.effect('common.censor', { at: 1.5, len: 2, follow: 'mouth', clip: b });
+  const p = await c.save();
+  // b's part of the sticker, film 2–3.4 every 0.2 s; a would have given 1.5–2 and "longer than a"
+  expect(p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === st)!.transform.keys.length).toBe(8);
+  expect(c.notes.some((n) => n.includes(`跟著 v 的嘴移動`))).toBe(true);
+  expect(c.notes.some((n) => n.includes(`比片段 ${a} 長`))).toBe(false);
+}, 60000);
+
+test('the face focus leaves a crop the script set after clip() alone, and never focuses a photo', async () => {
+  const c = await portraitCut();
+  const id = c.clip('v', { from: 1, len: 4 });
+  (c.p.tracks.find((t) => t.id === 'v1')!.items[0] as any).crop = { from: { x: 0.7, y: 0.5, zoom: 1 }, to: { x: 0.7, y: 0.5, zoom: 1 } };
+  const v = (await c.save()).tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as any;
+  expect([v.crop.from.x, v.crop.to.x]).toEqual([0.7, 0.7]);
+  expect(c.notes.some((n) => n.includes('自動對焦到人臉'))).toBe(false);
+  // a landscape photo in the portrait film, handed to the focus pass: a still is framed by its own crop (photo()'s focus)
+  const d = await portraitCut();
+  await makePhoto(join(d.dir, 'ph.jpg'), { w: 320, h: 180 });
+  d.p.sources.ph = { path: 'ph.jpg', duration: 3600, width: 1920, height: 1080, kind: 'image' } as any;
+  const ph = d.photo('ph', { len: 2 });
+  await resolveAutoFocus({ p: d.p, dir: d.dir, provider: d.facesProvider, notes: d.notes }, [[ph]]);
+  expect((d.p.tracks.find((t) => t.id === 'v1')!.items[0] as any).crop.from.x).toBe(0.5);
+  expect(d.notes).toEqual([]);
 }, 60000);

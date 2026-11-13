@@ -12,6 +12,14 @@ test('clips and photos go one after another on the main track; a clip brings its
   expect(items(c, 'v1')[1].crop).toEqual({ from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1.1 } });
   expect(items(c, 'orig').map((i) => [i.source, i.in, i.start, i.end, i.parent])).toEqual([['v', 1, 0, 2, a]]);
   expect(c.time).toBe(5);
+  // the sound's fades are 0.1 s, at most a quarter of a short clip; footage without sound brings none
+  const short = c.clip('v', { from: 3, len: 0.2 });
+  expect(items(c, 'orig').find((i) => i.parent === short)).toMatchObject({ fadeIn: 0.05, fadeOut: 0.05 });
+  expect(items(c, 'orig').find((i) => i.parent === a)).toMatchObject({ fadeIn: 0.1, fadeOut: 0.1 });
+  const mute = fresh();
+  mute.p.sources.v.audio = false;
+  mute.clip('v', { from: 0, len: 2 });
+  expect(items(mute, 'orig')).toEqual([]);
 });
 
 test('camera shake lands on the clip playing then, in its own seconds; across a cut both clips shake', () => {
@@ -145,6 +153,13 @@ test("flatlayClip places the object's footage under the desk", () => {
   expect(items(c, 'orig').some((i) => i.parent === clip)).toBe(true);
   expect(() => c.flatlayClip(id, 1)).toThrow('擋住');
   expect(() => c.flatlayClip(id, 5)).toThrow('第 5 樣');
+  // a shot near the end of its footage: the clip stops where the 10 s source does
+  const d = fresh();
+  const late = JSON.stringify([{ kind: 'postcard', shot: 'v|9', at: 0.3 }]);
+  const lid = d.effect('common.flatlay', { at: 0, len: 6, objects: late });
+  expect(flatlayClip({ objects: late }, 0, 1920, 1080, 1920, 1080, 6)!.len).toBeGreaterThan(1);
+  const lclip = d.flatlayClip(lid, 0), lv = items(d, 'v1').find((i) => i.id === lclip);
+  expect([lv.in, lv.start, lv.end]).toEqual([9, 0.3, 1.3]);
 });
 
 test('flatlayClip ends where the block says the object has left the desk, not at the item\'s end', () => {

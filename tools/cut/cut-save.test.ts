@@ -79,6 +79,7 @@ test('a song shorter than the film: the music item stops where the file does, st
   const p = await c.save();
   const m = p.tracks.find((t) => t.id === 'music')!.items[0] as any;
   expect([m.start, m.end, m.toEnd]).toEqual([0, 5, true]);
+  expect(p.grids).toEqual([{ id: 'music', at: 0.25, bpm: 120 }]);   // the first beat after from (25.25 s into the song) is 0.25 s into the film
   expect(c.notes.join('\n')).toContain("c.music('song')：音樂檔從 25 秒起只有 5 秒，片長 6 秒，最後 1 秒沒有配樂");
   // one long enough says nothing
   const d = fresh();
