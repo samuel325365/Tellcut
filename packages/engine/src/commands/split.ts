@@ -3,7 +3,7 @@ import { plainCopy } from '../util.ts';
 import type { AnyItem, Project } from '../schema.ts';
 import { resolveTimes, TIME_EPS } from '../time.ts';
 import { cropAt } from '../geometry.ts';
-import { CommandError, fitFades, mediaRate, ownSounds, minLen, r6, uniqueId } from './core.ts';
+import { CommandError, fitFades, mediaRate, ownSounds, minLen, r6, required, uniqueId } from './core.ts';
 
 const MEDIA = new Set(['video', 'audio', 'music']);
 
@@ -25,6 +25,7 @@ function envAfter(env: Array<[number, number]>, t: number): number {
 
 /** Splits media items crossing t (absolute); returns the ids of the new second halves. */
 export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
+  required('t', a.t);
   const times = resolveTimes(p), m = minLen(p), made: string[] = [], halves: Array<{ a: string; b: string; rel: number }> = [];
   // a listed clip takes its own sound along (spec 2026-10-15-proposals-magnetic §4.3)
   const ids = a.ids && [...a.ids, ...a.ids.flatMap((id) => ownSounds(p, id).map((c) => c.id))];

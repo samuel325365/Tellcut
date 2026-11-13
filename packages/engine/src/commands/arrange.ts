@@ -2,10 +2,11 @@
 import { plainCopy } from '../util.ts';
 import type { AnyItem, Project } from '../schema.ts';
 import { resolveTimes, TIME_EPS, type Times } from '../time.ts';
-import { CommandError, childrenOf, findItem, fitFades, mediaRate, minLen, r6, shiftRelative, topLevel } from './core.ts';
+import { CommandError, childrenOf, findItem, required, fitFades, mediaRate, minLen, r6, shiftRelative, topLevel } from './core.ts';
 
 /** Shifts items by dt (clamped so none starts before 0); a single item may move to another track of the same kind. */
 export function moveItems(p: Project, a: { ids: string[]; dt: number; toTrack?: string }) {
+  required('dt', a.dt);
   const ids = topLevel(p, a.ids);
   const found = ids.map((id) => findItem(p, id));
   const times = resolveTimes(p);

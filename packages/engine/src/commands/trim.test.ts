@@ -354,3 +354,15 @@ test('editing the head of an item before 0 moves it only as asked', () => {
   addItem(p, { track: 'v2', item: { id: 'br', source: 's', in: 5, speed: 1, start: -1, end: 1, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } }, parent: 'c1' } });
   expect(item(run(p, rateStretch, { id: 'br', edge: 'start', dt: 0.04 }), 'br')).toMatchObject({ start: -0.96, end: 1 });
 });
+
+test('trims, slip, roll and rateStretch refuse a missing or non-finite dt before writing NaN (health10 EC12)', () => {
+  const bad = (f: () => unknown) => { try { f(); } catch (e) { expect(e).toBeInstanceOf(CommandError); expect((e as CommandError).params).toEqual({ field: 'dt' }); return; } throw new Error('not refused'); };
+  for (const dt of [undefined, NaN, Infinity, '1']) {
+    bad(() => run(fixture(), trimStart, { id: 'c1', dt } as any));
+    bad(() => run(fixture(), trimEnd, { id: 'c1', dt } as any));
+    bad(() => run(fixture(), slip, { id: 'c1', dt } as any));
+    bad(() => run(fixture(), roll, { left: 'c1', right: 'c2', dt } as any));
+    bad(() => run(fixture(), rateStretch, { id: 'c1', edge: 'end', dt } as any));
+  }
+  expect(() => run(fixture(), rateStretch, { id: 'c1', edge: 'middle', dt: 1 } as any)).toThrow(/edge: must be "start" or "end"/);
+});

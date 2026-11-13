@@ -1,7 +1,7 @@
 // Trimming, slipping, rolling and speed changes.
 import type { Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
-import { CommandError, type Found, findItem, fitOwn, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
+import { CommandError, type Found, findItem, required, fitOwn, followTrim, headIn, mediaRate, minLen, ownSounds, r6, scaleChildren, scaleRelative, shiftRelative, sourceLength, sourceNeed, fitFades } from './core.ts';
 
 /** The longest a media clip may get by moving its end: as far as its source goes. A frozen clip holds one frame after freezeAt,
  *  so when freezeAt falls inside the source it may run on for ever; a freezeAt past the source's end does not lift the limit.
@@ -23,6 +23,7 @@ const noSfx = (kind: string) => { if (kind === 'sfx') throw new CommandError('So
 
 /** Moves the item's start by dt; media items keep showing the same content at the same moments. */
 export function trimStart(p: Project, a: { id: string; dt: number }) {
+  required('dt', a.dt);
   const f = findItem(p, a.id), it = f.item as any;
   noSfx(f.track.kind);
   const rate = mediaRate(f.track, f.item), len = it.end - it.start;
@@ -41,6 +42,7 @@ export function trimStart(p: Project, a: { id: string; dt: number }) {
 
 /** Moves the item's end by dt, never past the end of its source. */
 export function trimEnd(p: Project, a: { id: string; dt: number }) {
+  required('dt', a.dt);
   const f = findItem(p, a.id), it = f.item as any;
   noSfx(f.track.kind);
   const rate = mediaRate(f.track, f.item), len = it.end - it.start;
@@ -53,6 +55,7 @@ export function trimEnd(p: Project, a: { id: string; dt: number }) {
 
 /** Changes which part of the source is shown without moving the item (dt in source seconds). */
 export function slip(p: Project, a: { id: string; dt: number }) {
+  required('dt', a.dt);
   const f = findItem(p, a.id), it = f.item as any, rate = mediaRate(f.track, f.item);
   if (rate === null) throw new CommandError('Only media items can be slipped', 'cmd.slipMediaOnly');
   // a clip frozen at its first frame needs no source time, but its in-point must still be a frame of the source: one equal to
@@ -68,6 +71,7 @@ export function slip(p: Project, a: { id: string; dt: number }) {
 
 /** Moves the cut between two touching items on the same track. */
 export function roll(p: Project, a: { left: string; right: string; dt: number }) {
+  required('dt', a.dt);
   const L = findItem(p, a.left), R = findItem(p, a.right), times = resolveTimes(p);
   if (L.track !== R.track || Math.abs(times.get(a.left)!.end - times.get(a.right)!.start) > 1e-6) throw new CommandError('Items are not adjacent', 'cmd.notAdjacent');
   const l = L.item as any, r = R.item as any, m = minLen(p);
@@ -88,6 +92,9 @@ export function roll(p: Project, a: { left: string; right: string; dt: number })
 
 /** Changes the item's length by moving one edge while the same source range fills it (speed follows). */
 export function rateStretch(p: Project, a: { id: string; edge: 'start' | 'end'; dt: number }) {
+  required('dt', a.dt);
+  // anything but 'end' used to move the start edge
+  if (a.edge !== 'start' && a.edge !== 'end') throw new CommandError(`edge: must be "start" or "end" (got ${a.edge})`, 'cmd.fieldInvalid', { field: 'edge' });
   const f = findItem(p, a.id), it = f.item as any;
   const key = f.track.kind === 'video' ? 'speed' : f.track.kind === 'audio' ? 'rate' : null;
   if (!key) throw new CommandError('Only video and audio clips can change speed', 'cmd.speedMediaOnly');

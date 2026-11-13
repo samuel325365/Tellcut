@@ -14,6 +14,13 @@ export function finite(field: string, ...values: Array<number | undefined>) {
   for (const v of values) if (v !== undefined && !Number.isFinite(v)) throw new CommandError(`${field}: must be a finite number (got ${v})`, 'cmd.fieldInvalid', { field });
 }
 
+/** Like finite, for a time argument a command cannot do without (a proposal's op missing its dt): undefined is refused too.
+ *  Left through, NaN reached the project and failed only the final check, which did not name the op; a split with no t cut
+ *  every media item. */
+export function required(field: string, v: unknown) {
+  if (typeof v !== 'number' || !Number.isFinite(v)) throw new CommandError(`${field}: must be a finite number (got ${v})`, 'cmd.fieldInvalid', { field });
+}
+
 /** Rounds to a microsecond so repeated edits keep project.json tidy. */
 export const r6 = (t: number) => Math.round(t * 1e6) / 1e6;
 export const minLen = (p: Project) => 1 / p.meta.fps;

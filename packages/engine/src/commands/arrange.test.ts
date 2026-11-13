@@ -96,3 +96,8 @@ test('moving an item that already starts before 0 does not jump it to 0 (health1
   expect(item(run(p, moveItems, { ids: ['cap'], dt: -1 }), 'cap')).toMatchObject({ start: -1.5, end: 1.5 });
   expect(item(run(p, moveItems, { ids: ['blk'], dt: -5 }), 'blk')).toMatchObject({ start: 0, end: 4 });
 });
+
+test('moveItems refuses a missing dt instead of writing NaN (health10 EC12)', () => {
+  expect(() => run(fixture(), moveItems, { ids: ['blk'] } as any)).toThrow(/dt: must be a finite number/);
+  expect(() => run(fixture(), moveItems, { ids: ['blk'], dt: 'abc' } as any)).toThrow(/dt: must be a finite number/);
+});
