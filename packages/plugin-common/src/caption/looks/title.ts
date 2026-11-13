@@ -8,8 +8,15 @@ import { padded, faceRoom } from './basic.ts';
 
 const shade = (fs: number, a = 0.55) => `0 ${(0.03 * fs).toFixed(1)}px ${(0.08 * fs).toFixed(1)}px rgba(0,0,0,${a}), 0 ${(0.08 * fs).toFixed(1)}px ${(0.4 * fs).toFixed(1)}px rgba(0,0,0,0.35)`;
 
-/** the room a line has when its letters are spaced `em` apart: the caption fits words without their spacing */
-const spacedRoom = (em: number, pad = 0) => faceRoom(0.55, em, (e, width) => width - pad * e.px);
+/** the room a line has when its letters are spaced `em` apart: the caption fits words without their spacing; `latin`: how wide its
+ *  Latin letters really are (0.55 em, what the line breaking counts, unless the look sets them in capitals) */
+const spacedRoom = (em: number, pad = 0, latin: number | ((c: string) => number) = 0.55) => faceRoom(latin, em, (e, width) => width - pad * e.px);
+/** Noto Sans TC's capitals at weight 400 (the default font), measured in Chrome: I is 0.29 em and W 0.88, most 0.55–0.75. Counted at
+ *  the line breaking's 0.55, MOROCCO at the default size ran 58 px past the safe side in 9:16; counted at one wider number (0.65)
+ *  ISTANBUL, narrow with its I, no longer shrank onto one line and broke in two. Other characters keep 0.55 */
+const CAPS: Record<string, number> = { A: 0.61, B: 0.66, C: 0.64, D: 0.69, E: 0.59, F: 0.55, G: 0.69, H: 0.73, I: 0.29, J: 0.54, K: 0.65, L: 0.54, M: 0.81,
+  N: 0.72, O: 0.74, P: 0.63, Q: 0.74, R: 0.64, S: 0.6, T: 0.6, U: 0.72, V: 0.58, W: 0.88, X: 0.57, Y: 0.53, Z: 0.6 };
+export const capEm = (c: string) => CAPS[c.toUpperCase()] ?? 0.55;
 
 /** a documentary's name: a classical serif, a little spaced, a soft shadow */
 export const serif: CaptionLook = {
@@ -19,7 +26,7 @@ export const serif: CaptionLook = {
 
 /** wide-tracked capitals in a light weight: a film's name */
 export const spaced: CaptionLook = {
-  id: 'spaced', only: 'title', weight: '400', room: spacedRoom(0.32),
+  id: 'spaced', only: 'title', weight: '400', room: spacedRoom(0.32, 0, capEm),
   box: (e) => ({ textShadow: shade(e.fs, 0.7), letterSpacing: '0.32em', textTransform: 'uppercase' }),
   // the line under it keeps a modest spacing, not the title's
   gloss: () => ({ letterSpacing: '0.12em' }),

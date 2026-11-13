@@ -9,11 +9,12 @@ export const padded = (e: { px: number }, width: number) => width - 1.2 * e.px;
 type Room = (e: Omit<LookEnv, 'fs'>, width: number) => number;
 /** the room of a look whose face sets Latin letters `latin` em wide and every letter `spacing` em apart: lines are broken with
  *  Latin letters counted 0.55 em and Chinese 1 em, no spacing, so the room shrinks by how much wider this text really is. Without
- *  it English in the 8-bit face (1 em a letter) and in spaced capitals ran off the frame. `room`: the look's room before */
-export const faceRoom = (latin: number, spacing = 0, room?: Room): Room => (e, width) => {
+ *  it English in the 8-bit face (1 em a letter) and in spaced capitals ran off the frame. `room`: the look's room before. `latin`
+ *  may be a width a character instead, for a face whose letters differ too much for one number (spaced's capitals: I to W) */
+export const faceRoom = (latin: number | ((c: string) => number), spacing = 0, room?: Room): Room => (e, width) => {
   const w = room ? room(e, width) : width, s = charKinds(String(e.p.text ?? '')).map((c) => c.c).join('').replace(/\s+/g, ' ').trim();
-  const chars = [...s], est = textEm(s), lat = chars.filter((c) => textEm(c) < 1).length;
-  return est > 0 ? (w * est) / (est + lat * (latin - 0.55) + chars.length * spacing) : w / (1 + spacing);
+  const chars = [...s], est = textEm(s), lat = chars.filter((c) => textEm(c) < 1), wide = typeof latin === 'number' ? lat.length * (latin - 0.55) : lat.reduce((n, c) => n + latin(c) - 0.55, 0);
+  return est > 0 ? (w * est) / (est + wide + chars.length * spacing) : w / (1 + spacing);
 };
 
 /** the words in the caption colour with an outline in the ink colour */
