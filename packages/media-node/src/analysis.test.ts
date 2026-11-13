@@ -4,6 +4,7 @@ import { basename, join } from 'node:path';
 import { analysisFiles, analyzeSource, atomic, isAnalyzed, parseShowinfo, peaksOf, readPeaks, THUMB_COLS, THUMB_H, thumbGrid } from './analysis.ts';
 import { ffmpeg, probeSize, run } from './ffmpeg.ts';
 import { heavy } from './limit.ts';
+import { makePipedWebm } from './test-media.ts';
 
 test('peaksOf keeps the max |sample| of each window', () => {
   const b = Buffer.alloc(16);
@@ -17,9 +18,7 @@ test('parseShowinfo reads pts_time values', () => {
 
 test('a WebM recorded through a pipe (no length in its header) is analysed by its measured length: a tile a second, not NaN', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'an-rec-')), src = join(dir, 'rec.webm');
-  const { stdout } = await ffmpeg(['-f', 'lavfi', '-i', 'testsrc=s=320x240:r=30:d=3', '-f', 'lavfi', '-i', 'sine=d=3', '-c:v', 'libvpx-vp9', '-deadline', 'realtime',
-    '-cpu-used', '8', '-b:v', '300k', '-c:a', 'libopus', '-f', 'webm', '-'], { stdout: true });
-  writeFileSync(src, stdout);
+  await makePipedWebm(src);
   const f = await analyzeSource(dir, src);
   expect(JSON.parse(readFileSync(f.thumbIndex, 'utf8'))).toMatchObject({ interval: 1, count: 3 });
 }, 120000);

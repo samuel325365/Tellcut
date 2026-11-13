@@ -26,6 +26,20 @@ export async function makePhoneVideo(out: string, o: { seconds?: number; created
   return out;
 }
 
+/**
+ * A 3 s WebM (VP9 + Opus) written through a pipe, as a browser's MediaRecorder writes one: the muxer never goes back to write the
+ * length, so its header has none. `stub`: also the same recording cut off before its first frame (it stopped before one was
+ * written) — its streams, but no packet to measure: the first Cluster's header (Matroska ID 1F43B675) whole, cut before its first
+ * SimpleBlock (A3).
+ */
+export async function makePipedWebm(out: string, o: { stub?: string } = {}) {
+  const { stdout } = await ffmpeg(['-f', 'lavfi', '-i', 'testsrc=s=320x240:r=30:d=3', '-f', 'lavfi', '-i', 'sine=d=3', '-c:v', 'libvpx-vp9', '-deadline', 'realtime',
+    '-cpu-used', '8', '-b:v', '300k', '-c:a', 'libopus', '-f', 'webm', '-'], { stdout: true });
+  writeFileSync(out, stdout);
+  if (o.stub) writeFileSync(o.stub, stdout.subarray(0, stdout.indexOf(0xa3, stdout.indexOf(Buffer.from([0x1f, 0x43, 0xb6, 0x75])) + 4)));
+  return out;
+}
+
 /** A gray video whose sound is the system's built-in English speech saying `text` (Windows' System.Speech, macOS' say). */
 export async function makeTalkingVideo(out: string, text: string) {
   const wav = out.replace(/\.mp4$/, '.speech.wav');

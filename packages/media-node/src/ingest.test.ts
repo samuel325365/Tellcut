@@ -1,9 +1,8 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ffmpeg } from './ffmpeg.ts';
 import { createProject, expandInputs, ingestFiles, sourceId } from './ingest.ts';
-import { makeClicks, makeHeic, makePhoneVideo, makePhoto } from './test-media.ts';
+import { makeClicks, makeHeic, makePhoneVideo, makePhoto, makePipedWebm } from './test-media.ts';
 
 // a folder named "locked" cannot be read (as EPERM on a system folder of a drive)
 vi.mock('node:fs/promises', async (orig) => {
@@ -50,11 +49,7 @@ test('a folder and a URL become a project: photos (HEIC converted), videos, musi
 test('a WebM recorded through a pipe (no length in its header) is measured; one cut off before its first frame is skipped, the rest still become a project', async () => {
   const dir = join(root, 'rec'), out = join(root, 'projects');
   mkdirSync(dir, { recursive: true });
-  // as a browser's MediaRecorder writes one: through a pipe, so the muxer never goes back to write the length
-  const { stdout } = await ffmpeg(['-f', 'lavfi', '-i', 'testsrc=s=320x240:r=30:d=3', '-f', 'lavfi', '-i', 'sine=d=3', '-c:v', 'libvpx-vp9', '-deadline', 'realtime',
-    '-cpu-used', '8', '-b:v', '300k', '-c:a', 'libopus', '-f', 'webm', '-'], { stdout: true });
-  writeFileSync(join(dir, 'rec.webm'), stdout);
-  writeFileSync(join(dir, 'stub.webm'), stdout.subarray(0, stdout.indexOf(0xa3, stdout.indexOf(Buffer.from([0x1f, 0x43, 0xb6, 0x75])) + 4)));   // up to its first frame
+  await makePipedWebm(join(dir, 'rec.webm'), { stub: join(dir, 'stub.webm') });   // the stub: up to its first frame
   copyFileSync(join(src, '大阪.jpg'), join(dir, 'pic.jpg'));
   const r = await createProject({ id: 'rec', inputs: [dir], projectsDir: out });
   expect(Object.keys(r.project.sources).sort()).toEqual(['pic', 'rec']);

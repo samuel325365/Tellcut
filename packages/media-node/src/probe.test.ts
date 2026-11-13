@@ -2,9 +2,9 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mediaKindOfName } from '@tellcut/protocol';
-import { ffmpeg, ffprobe, lengthOrNull, packetsEnd, probeDuration, probeDurationSync, probeSize } from './ffmpeg.ts';
+import { ffprobe, lengthOrNull, packetsEnd, probeDuration, probeDurationSync, probeSize } from './ffmpeg.ts';
 import { kindOf, localIso, parseIso6709, probeMedia, takenFromTags } from './probe.ts';
-import { makePhoneVideo, makePhoto } from './test-media.ts';
+import { makePhoneVideo, makePhoto, makePipedWebm } from './test-media.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'probe-'));
 const local = (iso: string) => { const d = new Date(iso), p = (n: number) => String(n).padStart(2, '0');
@@ -29,16 +29,8 @@ test('a phone video flagged as rotated is portrait; its creation time and sound 
   expect(await probeSize(f)).toEqual({ width: 360, height: 640 });   // prepare checks declared sizes against this
 }, 120000);
 
-/** a 3 s WebM written through a pipe, as a browser's MediaRecorder writes one: no length in its header */
-async function pipedWebm(file: string) {
-  const { stdout } = await ffmpeg(['-f', 'lavfi', '-i', 'testsrc=s=320x240:r=30:d=3', '-f', 'lavfi', '-i', 'sine=d=3', '-c:v', 'libvpx-vp9', '-deadline', 'realtime',
-    '-cpu-used', '8', '-b:v', '300k', '-c:a', 'libopus', '-f', 'webm', '-'], { stdout: true });
-  writeFileSync(file, stdout);
-  return { file, bytes: stdout };
-}
-
 test('a piped WebM with no length in its header is measured from its packets; one with no packets at all has no length, never 0 or NaN', async () => {
-  const { file, bytes } = await pipedWebm(join(dir, 'rec.webm'));
+  const cut = join(dir, 'cut.webm'), file = await makePipedWebm(join(dir, 'rec.webm'), { stub: cut });
   expect(await ffprobe(['-show_entries', 'format=duration', '-of', 'csv=p=0', file])).toMatch(/^(N\/A)?$/);   // what made it 0 before
   const m = await probeMedia(file);
   expect([m.kind, m.width, m.height, m.audio]).toEqual(['video', 320, 240, true]);
@@ -46,10 +38,6 @@ test('a piped WebM with no length in its header is measured from its packets; on
   expect(await probeDuration(file)).toBeCloseTo(3, 1);
   expect(probeDurationSync(file)).toBeCloseTo(3, 1);
   // only the header of the recording (it stopped before its first frame was written): its streams, but no packet to measure
-  const cut = join(dir, 'cut.webm');
-  // up to its first frame: the first Cluster's header (Matroska ID 1F43B675) whole, cut before its first SimpleBlock (A3)
-  const cluster = bytes.indexOf(Buffer.from([0x1f, 0x43, 0xb6, 0x75]));
-  writeFileSync(cut, bytes.subarray(0, bytes.indexOf(0xa3, cluster + 4)));
   await expect(probeMedia(cut)).rejects.toThrow(/no length/);
   await expect(probeDuration(cut)).rejects.toThrow(/no length/);
   expect(() => probeDurationSync(cut)).toThrow(/no length/);
