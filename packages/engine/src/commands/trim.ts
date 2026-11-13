@@ -41,7 +41,7 @@ export function trimStart(p: Project, a: { id: string; dt: number }) {
   if (!packed(f)) dt = Math.max(dt, backTo0(p, it.id));
   if (rate !== null) dt = Math.max(dt, -it.in / rate);
   it.start = r6(it.start + dt);
-  if (rate !== null) it.in = headIn(f.track, it, dt, rate);
+  if (rate !== null) it.in = headIn(p, f.track, it, dt, rate);
   shiftRelative(f.track, it, -dt);
   fitFades(f.track, it);
   // a media clip's children follow its picture; a block's keep their proportional place
@@ -90,7 +90,7 @@ export function roll(p: Project, a: { left: string; right: string; dt: number })
   if (rr !== null) dt = Math.max(dt, -r.in / rr);
   l.end = r6(l.end + dt);
   r.start = r6(r.start + dt);
-  if (rr !== null) r.in = headIn(R.track, r, dt, rr);
+  if (rr !== null) r.in = headIn(p, R.track, r, dt, rr);
   shiftRelative(R.track, r, -dt);
   fitFades(L.track, l); fitFades(R.track, r);
   // like a trim: a media clip's children stay on the same picture, the others keep their proportional place

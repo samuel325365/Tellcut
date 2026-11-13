@@ -3,7 +3,7 @@ import { plainCopy } from '../util.ts';
 import type { AnyItem, Project } from '../schema.ts';
 import { resolveTimes, TIME_EPS } from '../time.ts';
 import { cropAt } from '../geometry.ts';
-import { CommandError, fitFades, mediaRate, ownSounds, minLen, r6, required, uniqueId } from './core.ts';
+import { CommandError, fitFades, heldIn, mediaRate, ownSounds, minLen, r6, required, uniqueId } from './core.ts';
 import { overlapPairs } from './overlap.ts';
 
 const MEDIA = new Set(['video', 'audio', 'music']);
@@ -71,7 +71,7 @@ export function split(p: Project, a: { t: number; ids?: string[] }): string[] {
         delete b.transitionIn;
         if (it.freezeAt != null) {
           if (it.freezeAt >= rel) { b.freezeAt = r6(it.freezeAt - rel); it.freezeAt = null; }
-          else { b.in = r6(it.in + it.freezeAt * rate); b.freezeAt = 0; }
+          else { b.in = heldIn(p, track, it, rate); b.freezeAt = 0; }
         }
         // a ramp finished before the cut: the second half is blurred all through (the ramp cannot cross the cut: refused above)
         if (it.defocus) { if (it.defocus.from >= rel) { b.defocus = { ...it.defocus, from: r6(it.defocus.from - rel), to: r6(it.defocus.to - rel) }; delete it.defocus; } else b.defocus = { from: 0, to: 0, px: it.defocus.px, px0: it.defocus.px }; }

@@ -101,3 +101,12 @@ test('moveItems refuses a missing dt instead of writing NaN (health10 EC12)', ()
   expect(() => run(fixture(), moveItems, { ids: ['blk'] } as any)).toThrow(/dt: must be a finite number/);
   expect(() => run(fixture(), moveItems, { ids: ['blk'], dt: 'abc' } as any)).toThrow(/dt: must be a finite number/);
 });
+
+test('rippleDelete trimming the head of a frozen clip past its freeze keeps the frame it held (health10)', () => {
+  // br hangs on c1 but plays 5–10 s, over c2 (4–8 s, deleted); from 1 s in it holds the source frame at 21 s
+  const p = fixture();
+  addItem(p, { track: 'v2', item: { id: 'br', source: 's', in: 20, speed: 1, start: 5, end: 10, freezeAt: 1, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } }, parent: 'c1' } });
+  const r = run(p, rippleDelete, { ids: ['c2'] });
+  expect(resolveTimes(r).get('br')).toEqual({ start: 4, end: 6 });
+  expect(item(r, 'br')).toMatchObject({ in: 21, freezeAt: 0 });
+});

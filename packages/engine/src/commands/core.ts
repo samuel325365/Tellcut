@@ -99,9 +99,17 @@ export function shiftRelative(track: Track, it: any, d: number) {
   }
 }
 
+/** The in-point of the frame a frozen video clip holds, for a part of it that starts on that frame (frozen at 0 from there).
+ *  A clip may freeze on the source's very end (in + freezeAt × speed = its length), but an in-point there fails the schema:
+ *  the part holds the frame one frame before it. */
+export function heldIn(p: Project, track: Track, it: any, rate: number): number {
+  return r6(Math.max(it.in, Math.min(it.in + it.freezeAt * rate, sourceLength(p, track, it) - minLen(p))));
+}
+
 /** The in-point after the head moves by dt: past freezeAt the clip holds the same frame, so in stops at it (like split). */
-export function headIn(track: Track, it: any, dt: number, rate: number): number {
-  return r6(it.in + (track.kind === 'video' && it.freezeAt != null && dt > it.freezeAt ? it.freezeAt : dt) * rate);
+export function headIn(p: Project, track: Track, it: any, dt: number, rate: number): number {
+  if (track.kind === 'video' && it.freezeAt != null && dt > it.freezeAt) return heldIn(p, track, it, rate);
+  return r6(it.in + dt * rate);
 }
 
 /** Scales the item-relative fields by k (a speed change keeps them on the same content). */

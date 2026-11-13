@@ -2,7 +2,7 @@
 import { plainCopy } from '../util.ts';
 import type { AnyItem, Project } from '../schema.ts';
 import { resolveTimes, TIME_EPS, type Times } from '../time.ts';
-import { CommandError, childrenOf, findItem, required, fitFades, mediaRate, minLen, r6, shiftRelative, topLevel } from './core.ts';
+import { CommandError, childrenOf, findItem, required, fitFades, headIn, mediaRate, minLen, r6, shiftRelative, topLevel } from './core.ts';
 
 /** Shifts items by dt (clamped so none starts before 0); a single item may move to another track of the same kind. */
 export function moveItems(p: Project, a: { ids: string[]; dt: number; toTrack?: string }) {
@@ -91,7 +91,8 @@ function hangersLoseCut(p: Project, times: Times, cuts: Map<string, Array<{ star
     moves.push(() => {
       const x = it as any;
       x.start = r6(ns - base); x.end = r6(ne - base);
-      if (head > 0) { if (rate !== null) x.in = r6(x.in + head * rate); shiftRelative(t, x, -head); }
+      // a frozen clip that loses its head past the freeze holds the same frame (headIn), not a source moment past it
+      if (head > 0) { if (rate !== null) x.in = headIn(p, t, x, head, rate); shiftRelative(t, x, -head); }
       fitFades(t, x);
     });
   }

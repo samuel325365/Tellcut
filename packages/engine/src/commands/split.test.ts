@@ -115,3 +115,12 @@ test('split refuses a cut inside the next clip\'s linked dissolve or crossfade, 
   expect(() => split(q, { t: 2.75, ids: ['a1'] })).toThrow(/transition into the next clip/);
   expect(split(structuredClone(q), { t: 2.25, ids: ['a1'] })).toEqual(['a1-2']);
 });
+
+test('splitting a clip frozen on the last frame of its source after the freeze keeps a valid in-point (health10)', async () => {
+  const { ProjectZ } = await import('../schema.ts');
+  const p = fixture();
+  (p.tracks[1].items[1] as any).in = 24;   // c2: in 24 at 2×, freezeAt 3 holds the frame at 30 s, the source's very end
+  split(p, { t: 7.5, ids: ['c2'] });
+  expect(p.tracks[1].items[2]).toMatchObject({ id: 'c2-2', in: 29.96, freezeAt: 0 });
+  expect(ProjectZ.safeParse(p).success).toBe(true);
+});

@@ -379,3 +379,13 @@ test('dragging out the end of a clip already past its source end leaves it there
   expect([item(q, 'c1').end, item(q, 'c2').start]).toEqual([4, 4]);
   expect(item(run(p, trimEnd, { id: 'c1', dt: 1 }), 'c1').end).toBe(4);
 });
+
+test('a clip frozen on the last frame of its source keeps a valid in-point when its head is trimmed past the freeze (health10)', () => {
+  const p = fixture();
+  item(p, 'c2').in = 24;   // in 24 at 2×, freezeAt 3: it holds the frame at 30 s, the source's very end
+  expect(ProjectZ.safeParse(p).success).toBe(true);
+  const q = run(p, trimStart, { id: 'c2', dt: 3.5 });
+  expect(item(q, 'c2')).toMatchObject({ in: 29.96, freezeAt: 0 });
+  expect(ProjectZ.safeParse(q).success).toBe(true);
+  expect(item(run(p, roll, { left: 'c1', right: 'c2', dt: 3.5 }), 'c2').in).toBe(29.96);
+});
