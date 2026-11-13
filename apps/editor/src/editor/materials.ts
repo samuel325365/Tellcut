@@ -1,9 +1,10 @@
 // What a piece of the library becomes on the timeline (spec 2026-11-10-media-panel-visual §5): the one place that builds the
 // item, for "+ Add at playhead", the gallery's add, a card dragged onto the timeline and a file dropped there.
 // - a photo: 3 s with a gentle push-in (spec 2026-10-14 §5); a clip: its stretch of the source, still framing
-// - music: its whole length (from the waveform; 10 s until that is known), with a beat grid when beats were found
+// - music: its whole length (from the waveform; 10 s until that is known), with a beat grid when beats were found; on a
+//   magnetic film, ending with the film (toEnd) when it reaches the film's end
 // - a sound effect: the length the sound says for its parameters; a block: 2 s, its Chinese words in the UI's language
-import { withDefaults, type Project, type Registry } from '@tellcut/engine';
+import { magneticTrack, withDefaults, type Project, type Registry } from '@tellcut/engine';
 import type { Material } from '../audition.ts';
 import type { EditorState, PeakInfo } from '../store.ts';
 import { localValues } from '../i18n/values.ts';
@@ -29,13 +30,19 @@ export function materialItem(p: Project, m: Material, t: number, c: { reg?: Regi
     }
     case 'music': {
       const len = m.len ?? musicLength(c.peaks[`media:${m.media}`]) ?? 10, b = c.beats[m.media];
-      // with detected beats, a beat grid comes along (snapping finds the beats)
       return { kind: 'music', item: { media: m.media, in: 0, start: t, end: t + len, gain: 0, fadeIn: 0, fadeOut: 0 },
-        also: b && b.beats.length ? (d, id) => {
-          // where the item really starts: a drop may have snapped it
-          const at = d.tracks.flatMap((x) => x.items as any[]).find((x) => x.id === id)?.start ?? t;
-          d.grids.push({ id: `beats-${id}`, at: Math.round((at + b.offset) * 1e6) / 1e6, bpm: b.bpm, until: at + len });
-        } : undefined };
+        also: (d, id) => {
+          // the item as added: a drop may have snapped it, and every way of adding cuts it at the end of the film
+          const it = d.tracks.flatMap((x) => x.items as any[]).find((x) => x.id === id);
+          // on a magnetic film, music that reaches the end (or was cut there) ends with the film: as a plain item it would hang
+          // on the clip under its start and hold the film at its length after the clips get shorter (a black tail, no warning)
+          if (it && magneticTrack(d) && it.end >= d.meta.duration - 1e-6) it.toEnd = true;
+          // with detected beats, a beat grid comes along (snapping finds the beats)
+          if (b && b.beats.length) {
+            const at = it?.start ?? t;
+            d.grids.push({ id: `beats-${id}`, at: Math.round((at + b.offset) * 1e6) / 1e6, bpm: b.bpm, until: at + len });
+          }
+        } };
     }
     case 'sfx': {
       const def = c.reg?.sfx(m.type), own = ownParams(def?.params, m.params);
