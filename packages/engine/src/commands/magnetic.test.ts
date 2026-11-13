@@ -236,3 +236,12 @@ test('splitting music that follows the film leaves two halves one after the othe
   const q = go(p, trimEnd, { id: 'c3', dt: -2 });   // a shorter film: the second half still ends with it
   expect((q.tracks.find((t) => t.id === 'mu')!.items as any[]).map((m) => m.end)).toEqual([5, 10]);
 });
+
+test('a clip lifted off the magnetic track hangs on the clip that packing brings under it, and follows it after', () => {
+  // c2 (4–8) up to v2: nothing was under 4 s while c2 was still there, then c3 closes the gap to 4–8 beneath it
+  const base = mag((q) => { q.tracks.push({ id: 'v2', kind: 'video', items: [] }); });
+  const p = go(base, moveItems, { ids: ['c2'], dt: 0, toTrack: 'v2' });
+  expect([at(p, 'c3').start, at(p, 'c2').start, item(p, 'c2').parent, p.meta.duration]).toEqual([4, 4, 'c3', 8]);
+  const q = go(p, trimEnd, { id: 'c1', dt: -2 });
+  expect([at(q, 'c3').start, at(q, 'c2').start]).toEqual([2, 2]);
+});

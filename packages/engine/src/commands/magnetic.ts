@@ -110,6 +110,9 @@ export function settleMagnetic(before: Project, after: Project) {
   }));
   pack(before, mag, placedIds(before, after, mag));
   if (!items(mag).length) return;
+  // an item this command placed where no clip was (a clip lifted off the magnetic track leaves a gap under itself) may sit on
+  // one now that pack closed the gap: hung by the places before packing, it stayed on nothing and a later trim left it behind
+  for (const t of after.tracks) for (const it of items(t)) if (touched.has(it.id) && it.parent === undefined && eligible(after, mag, t, it)) hang(after, mag, it);
   const shift = oldEnd === null ? 0 : magEnd(mag) - oldEnd;
   if (Math.abs(shift) > EPS) for (const it of tail) { it.start = r6(it.start + shift); it.end = r6(it.end + shift); }
   // the film lasts until the last clip or whatever comes after it (not counting the music that follows the film)
