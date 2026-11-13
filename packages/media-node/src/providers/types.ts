@@ -35,7 +35,13 @@ export interface TtsRequest {
 }
 export interface TtsWord { text: string; start: number; end: number }
 /** `words: null` when the engine gives no word times: the caller aligns the audio with the transcribe provider */
-export interface TtsResult { dur: number; words: TtsWord[] | null }
+export interface TtsResult {
+  dur: number; words: TtsWord[] | null;
+  /** called by the caller once it has stored everything it needs from this result (voice.ts: the scene's .json written). A
+   *  provider whose results are billed keeps what it received until then, so a rerun after a later failure (the fallback
+   *  transcription, say) reuses it instead of paying again; a caller that never calls it only leaves that kept copy behind. */
+  settle?: () => void;
+}
 export interface TtsProvider extends Provider {
   voices(): string[];
   /** the voice a request without one is spoken in (providers.json): part of what decides a narration scene is still good */

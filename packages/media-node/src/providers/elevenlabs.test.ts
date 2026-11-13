@@ -111,11 +111,14 @@ test('a received result whose conversion fails is kept and used by the next run 
   // the same request again: no new call (whatever ElevenLabs sent is what is converted)
   await expect(p.synth({ text: 'hi', out })).rejects.toThrow('轉成 wav 失敗');
   expect(calls).toBe(1);
-  // say the kept audio converts this time: the wav is made from it, still without a call, and the kept file goes
+  // say the kept audio converts this time: the wav is made from it, still without a call; the kept file stays until the caller
+  // settles the result (the scene's .json written), then goes
   const kept = JSON.parse(readFileSync(paid, 'utf8'));
   writeFileSync(paid, JSON.stringify({ ...kept, audio_base64: readFileSync(mp3).toString('base64') }));
   const r = await p.synth({ text: 'hi', out });
-  expect([calls, r.words!.map((w) => w.text), existsSync(paid), readFileSync(out).subarray(0, 4).toString()]).toEqual([1, ['hi'], false, 'RIFF']);
+  expect([calls, r.words!.map((w) => w.text), existsSync(paid), readFileSync(out).subarray(0, 4).toString()]).toEqual([1, ['hi'], true, 'RIFF']);
+  r.settle!();
+  expect(existsSync(paid)).toBe(false);
   // another text is another request: it is asked for
   await expect(p.synth({ text: 'other', out })).rejects.toThrow('轉成 wav 失敗');
   expect(calls).toBe(2);

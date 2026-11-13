@@ -1,6 +1,8 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { run as ff } from './ffmpeg.ts';
+import { elevenLabsPaidFile, elevenLabsTts } from './providers/elevenlabs.ts';
 import { fakeTts, type TranscribeProvider } from './providers/index.ts';
 import { parseNarration, phraseParts, phrasesOf, ratePercent, renderVoice, voiceFiles, voiceFor, wordsFromTranscript } from './voice.ts';
 
@@ -164,4 +166,27 @@ test('Chinese written with half-width punctuation and no spaces still splits (a 
   expect(phraseParts('今天很好吃,我們再來!好嗎?')).toEqual(['今天很好吃', '我們再來', '好嗎']);
   expect(phraseParts('版本 3.5,很快')).toEqual(['版本 3.5', '很快']);
   expect(phraseParts('github.com 上有')).toEqual(['github.com 上有']);
+});
+
+test('a paid voice (ElevenLabs) whose word timing then fails is reused by the rerun, not paid for again; it goes once the scene is written', async () => {
+  const mp3 = join(dir, 'src.mp3');
+  await ff(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.6', '-c:a', 'libmp3lame', mp3]);
+  let calls = 0;
+  // no character times: renderVoice falls back to transcribing the wav
+  const fetchVoice = async () => { calls++; return new Response(JSON.stringify({ audio_base64: readFileSync(mp3).toString('base64'), alignment: null }), { status: 200 }); };
+  const tts = elevenLabsTts({}, { fetch: fetchVoice as never, key: () => 'k' });
+  let fail = true;
+  const heard: TranscribeProvider = {
+    id: 'heard', label: 'h', online: false, async check() { return { ok: true, detail: '' }; },
+    async transcribe(_src, out) {
+      if (fail) throw new Error('whisper broke');
+      writeFileSync(out, JSON.stringify({ language: 'zh', segments: [{ start: 0, end: 0.6, text: '', words: [{ start: 0, end: 0.6, word: '你好' }] }] }));
+    },
+  };
+  const narration = parseNarration({ scenes: [{ id: 'a', text: '你好。' }] }), f = voiceFiles(dir, 'a'), paid = elevenLabsPaidFile(f.wav);
+  await expect(renderVoice({ dir, narration, tts, transcribe: heard })).rejects.toThrow('whisper broke');
+  expect([calls, existsSync(f.wav), existsSync(f.info), existsSync(paid)]).toEqual([1, true, false, true]);
+  fail = false;
+  const out = await renderVoice({ dir, narration, tts, transcribe: heard });
+  expect([calls, out.a.phrases.map((p) => p.text), existsSync(f.info), existsSync(paid)]).toEqual([1, ['你好'], true, false]);
 });

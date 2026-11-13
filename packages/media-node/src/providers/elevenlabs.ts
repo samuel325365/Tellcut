@@ -22,7 +22,8 @@ export const ELEVENLABS_TIMEOUTS = { check: 15_000, synth: 90_000 };
 export interface ElevenLabsDeps { fetch?: typeof fetch; key?: () => string | undefined; timeouts?: Partial<typeof ELEVENLABS_TIMEOUTS> }
 
 interface Paid { audio_base64?: string; alignment?: Alignment | null }
-/** where a received result waits until its wav is made (next to the scene's wav; removed once the wav is in place) */
+/** where a received result waits until the caller has used it (next to the scene's wav; removed by the result's settle(), once
+ *  the scene's .json is written: a wav alone is not enough, the transcription that times it may still fail) */
 export const elevenLabsPaidFile = (out: string) => `${out}.elevenlabs.json`;
 /** the kept result of the very same request (url and body: voice, model, text, speed), else null */
 function readPaid(file: string, ask: string): Paid | null {
@@ -139,10 +140,11 @@ export function elevenLabsTts(options: ElevenLabsOptions = {}, deps: ElevenLabsD
         if (req.signal?.aborted) throw e;
         throw new Error(`ElevenLabs 的聲音收到了，但轉成 wav 失敗（收到的留在 ${basename(paid)}，同樣的句子再跑一次會直接用它、不再計費）：${(e as Error).message.slice(0, 200)}`);
       } finally { rmSync(mp3, { force: true }); rmSync(wav, { force: true }); }
-      rmSync(paid, { force: true });
       // without character times the caller times the words from a transcript of the audio
       const words = data.alignment?.characters?.length ? wordsFromAlignment(data.alignment) : null;
-      return { dur, words };
+      // the kept result goes only when the caller says the scene is stored: if timing the words fails after this, the next run
+      // of the same request converts it again instead of paying for it again
+      return { dur, words, settle: () => rmSync(paid, { force: true }) };
     },
   };
 }

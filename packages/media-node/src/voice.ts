@@ -164,6 +164,8 @@ export async function renderVoice(o: RenderVoiceOptions): Promise<Record<string,
       words = null;
     }
     const info = writeInfo(f.info, { text: scene.text, dur: r.dur, phrases: phrasesOf(scene.text, timed), words: timed, engine: o.tts.id, key });
+    // only now is the scene whole: until here a failure (the transcription above) must leave a paid result for the rerun to reuse
+    r.settle?.();
     out[scene.id] = info;
     log(`${scene.id} ${r.dur.toFixed(2)}s ${info.phrases.map((p) => p.text).join(' | ')}`);
   }
