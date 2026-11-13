@@ -36,6 +36,8 @@ test('a bleep and its sticker ride on the clip: they stay on the word when the c
   expect(attached.map((i) => [i.type, i.parent])).toEqual([['common.beep', id], ['common.censor', id]]);
   const t0 = resolveTimes(c.p);
   expect(attached.map((i) => t0.get(i.id)!.start)).toEqual([a, a]);
+  c.attach(attached[0].id, id);                                               // attached already: its times stay as they are
+  expect(resolveTimes(c.p).get(attached[0].id)!.start).toBe(a);
   (items(c, 'v1').find((i) => i.id === id) as any).start += 3;                // the clip moves 3 s later
   const t1 = resolveTimes(c.p);
   expect(attached.map((i) => t1.get(i.id)!.start)).toEqual([a + 3, a + 3]);
@@ -201,4 +203,39 @@ test('speechCaptions chunk by the transcript’s language: a preset gives Chines
   expect(texts(c2, c2.speechCaptions(id2, { type: 'common.caption', chunk: by }))).toEqual(['we took', 'a train', 'to rome']);   // not listed: '*'
   const c3 = new Cut(base(), i, dir), id3 = c3.clip('v', { from: 0, len: 6 });
   expect(texts(c3, c3.speechCaptions(id3, { type: 'common.caption', chunk: { zh: 4 } }))).toEqual(['we took a train to rome']);   // neither: whole sentences
+});
+
+// health scan 10 (TT2): no other cut test played speech at a speed other than 1. Source 0–8 s at speed 2 is film 0–4 s: the kit's
+// 大家好 (source 1–2.5) is heard at film 0.5–1.25 and 出發 (source 6–8) at 3–4.
+describe('a clip at speed 2: its sound, captions, words, ducking, tighten and avoidBurned all run in its film time', () => {
+  const none = { id: 'none', check: async () => ({ ok: true }), detect: async () => [] } as any;   // no face detector needed
+
+  test('captions, word times and film times; the clip sound at the same rate; the music ducks where the words are heard', async () => {
+    const c = fresh();
+    c.facesProvider = none;
+    c.music('song');
+    const id = c.clip('v', { from: 0, len: 4, speed: 2 });
+    const caps = c.speechCaptions(id), T = resolveTimes(c.p);
+    expect(caps.map((x) => [T.get(x)!.start, T.get(x)!.end])).toEqual([[0.5, 1.25], [3, 4]]);
+    expect(c.wordTimes(id, '大家')).toEqual([[0.5, 1]]);
+    expect(c.filmTime(id, 6)).toBe(3);
+    expect(items(c, 'orig').map((i) => [i.in, i.rate, i.start, i.end])).toEqual([[0, 2, 0, 4]]);
+    const p = await c.save();
+    expect((p.tracks.find((t) => t.id === 'music')!.items[0] as any).envelope).toEqual([[0.25, 0], [0.5, -10], [1.25, -10], [1.5, 0], [2.75, 0], [3, -10], [4, -10]]);
+  });
+
+  test('tighten cuts the pauses at their film times: the pieces and their sound keep the speed', () => {
+    const c = fresh();
+    c.tighten(c.clip('v', { from: 0, len: 4, speed: 2 }));   // the head pause (source 0–1) and the one between the sentences (2.5–6)
+    expect(items(c, 'v1').map((i) => [i.in, i.start, i.end, i.speed])).toEqual([[0.85, 0, 0.9, 2], [5.85, 0.9, 1.975, 2]]);
+    expect(items(c, 'orig').map((i) => [i.in, i.rate, i.end - i.start])).toEqual([[0.85, 2, 0.9], [5.85, 2, 1.075]]);
+  });
+
+  test('avoidBurned looks at the source stretch the clip really shows (len × speed)', () => {
+    const c = fresh();
+    // source 0–4 s at speed 2; a caption at 6.5–7 is within BURNED_PAD (3 s) of 4 s, not of 2 s
+    c.inv.sources[0].burned = { version: 1, step: 1, frames: 10, caption: { share: 0.1, rect: [0.08, 0.86, 0.84, 0.12], spans: [[6.5, 7]] } };
+    const id = c.clip('v', { from: 0, len: 2, speed: 2, avoidBurned: true });
+    expect(items(c, 'v1').find((i) => i.id === id).crop.from.zoom).toBeGreaterThan(1.1);
+  });
 });

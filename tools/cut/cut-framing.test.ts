@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { parseProject, resolveTimes } from '@tellcut/engine';
 import { checkFrame, Cut } from './cut.ts';
 import { base, inv, fresh, items } from './cut-test-kit.ts';
+import { pictureLen } from './frames.ts';
 
 test('a photo given to clip() keeps the crop it was asked for (a recipe shot with a focus)', () => {
   const c = fresh(), crop = { from: { x: 0.3, y: 0.4, zoom: 1 }, to: { x: 0.3, y: 0.4, zoom: 1.05 } };
@@ -251,6 +252,10 @@ test('bands: a landscape shot as three cinemascope bands stacked in a tall film,
   // the tracks sit right above the main track, in order
   expect(c.p.tracks.map((t) => t.id).slice(0, 3)).toEqual(['v1', 'v2', 'v3']);
   expect(parseProject(c.p)).toBeTruthy();
+  // a beat longer than the bands: a later band still starts a frame before they all end, never after
+  const e = fresh();
+  const [, late] = e.bands('v', { len: 1, count: 2, every: 3 });
+  expect(items(e, 'v2').find((i) => i.id === late)).toMatchObject({ start: 0.966667, end: 1 });
 });
 
 test('view: one camera cut into virtual ones — the crop centred where asked, refused when it shows a watermark or the burned captions', () => {
@@ -267,6 +272,11 @@ test('view: one camera cut into virtual ones — the crop centred where asked, r
   expect(() => c.view('v', { at: [0.5, 0.8], zoom: 1.6, frame })).toThrow(/燒進去的字幕/);
   expect(() => c.view('v', { at: [0.5, 0.8], zoom: 1.6, frame, burned: false })).not.toThrow();
   expect(() => c.view('v', { at: [0.5, 0.4], zoom: 1.6, frame })).not.toThrow();
+  // the row is kept clear with a margin of 0.012 above it: a view ending at 0.855 (half the source, centred at 0.605) is refused
+  const w = fresh();
+  (w.inv.sources[0] as any).burned = { version: 1, step: 1, frames: 10, caption: { share: 0.5, rect: [0.08, 0.86, 0.84, 0.09], spans: [[0, 5]] } };
+  expect(() => w.view('v', { at: [0.5, 0.605], zoom: 2 })).toThrow(/燒進去的字幕/);
+  expect(() => w.view('v', { at: [0.5, 0.58], zoom: 2 })).not.toThrow();   // ends at 0.83
 });
 
 test('beside: a second picture of the same moment in its own window on v2, as long as each clip, silent, riding on its clip at save', async () => {
@@ -302,6 +312,12 @@ test('beside: a second picture of the same moment in its own window on v2, as lo
   const p = await c.save();
   expect((p.tracks.find((t) => t.id === 'v2')!.items[0] as any)).toMatchObject({ parent: a, start: 0, end: 2 });
   expect(parseProject(p)).toBeTruthy();
+  // a clip that dissolves in: its second picture dissolves in with it
+  const d = fresh();
+  d.clip('v', { from: 0, len: 2 });
+  const dis = d.clip('v', { from: 3, len: 2, transition: { type: 'dissolve', dur: 0.5 } });
+  const [db] = d.beside(dis, { frame: B });
+  expect(items(d, 'v2')[0]).toMatchObject({ id: db, start: 1.5, end: 3.5, transitionIn: { type: 'dissolve', dur: 0.5 } });
 });
 
 test('beside on the pieces of a tighten: one each, in step through every cut, the move spread over them without a jump', () => {
@@ -324,6 +340,14 @@ test('a frame is fractions of the screen: pixels, an empty or an off-screen fram
   expect(() => checkFrame([80, 300, 920, 1100], 'c.panel')).toThrow(/c\.panel 的 frame \[80, 300, 920, 1100\] 看起來是像素/);
   expect(() => checkFrame([0.1, 0.1, 0, 0.5], 'c.clip')).toThrow(/寬、高要大於 0/);
   expect(() => checkFrame([1.1, 0.1, 0.3, 0.3], 'c.clip')).toThrow(/整個在畫面外/);
+  expect(() => checkFrame([-0.5, 0.1, 0.4, 0.3], 'c.clip')).toThrow(/整個在畫面外/);   // off the left edge
+  expect(() => checkFrame([0.1, -0.6, 0.3, 0.5], 'c.clip')).toThrow(/整個在畫面外/);   // off the top
   expect(() => checkFrame([-0.02, 0.1, 1.04, 0.6], 'c.clip')).not.toThrow();
   expect(() => checkFrame(undefined, 'c.clip')).not.toThrow();
+});
+
+test("pictureLen: the source seconds a clip's picture runs through, at its speed, stopping at its freeze point", () => {
+  expect(pictureLen({ start: 0, end: 4, speed: 2 })).toBe(8);
+  expect(pictureLen({ start: 0, end: 4, speed: 2, freezeAt: 1 })).toBe(2);   // frozen 1 s in: 2 s of source at speed 2
+  expect(pictureLen({ start: 1, end: 3, speed: 1, freezeAt: 5 })).toBe(2);   // a freeze point past the end changes nothing
 });
