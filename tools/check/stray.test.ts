@@ -67,3 +67,28 @@ test('text is the topmost shown clip\'s: a hidden track draws nothing, and its c
   // at 3.5 the picture-in-picture is on top of the full clip; at 0.5 the text lies outside the panel and only the hidden clip covers it
   expect(strayFindings(q, times, read).map((f) => f.ids)).toEqual([['pip']]);
 });
+
+test('text against a clip\'s right or bottom edge is cut, within 1 % of it; a frame past the screen is cut by the screen\'s edge', () => {
+  const p = project() as any;
+  // a clip hanging off the bottom right of the screen from 3 s: [0.5, 0.5] to [1.2, 1.2], the screen's edge cuts it at 1
+  p.tracks.push({ id: 'over', kind: 'video', items: [clip('big', 3, 6, { frame: [0.5, 0.5, 0.7, 0.7] })] });
+  const q = parseProject(p), times = resolveTimes(q), b = (x: number, y: number, w: number, h: number) => [x, y, w, h] as [number, number, number, number];
+  const read = new Map([
+    // the panel clip [0.1, 0.2, 0.8, 0.5]: its right edge at 0.9, its bottom at 0.7
+    [0.5, [{ text: 'right cut', box: b(0.7, 0.4, 0.195, 0.03) }, { text: 'right whole', box: b(0.7, 0.3, 0.17, 0.03) },
+      { text: 'bottom cut', box: b(0.4, 0.66, 0.1, 0.035) }, { text: 'bottom whole', box: b(0.25, 0.64, 0.1, 0.03) }]],
+    [3.5, [{ text: 'screen right', box: b(0.8, 0.7, 0.195, 0.03) }, { text: 'screen bottom', box: b(0.6, 0.9, 0.1, 0.095) }, { text: 'inside big', box: b(0.6, 0.6, 0.2, 0.03) }]],
+  ]);
+  const f = strayFindings(q, times, read);
+  expect(f.filter((x) => x.level === 'warn').map((x) => [x.msg.match(/「(.+?)」/)![1], x.ids![0]])).toEqual([['right cut', 'pan'], ['bottom cut', 'pan'], ['screen right', 'big'], ['screen bottom', 'big']]);
+  expect(f.filter((x) => x.level === 'note').map((x) => [...x.msg.matchAll(/「(.+?)」/g)].map((m) => m[1]))).toEqual([['right whole', 'bottom whole', 'inside big']]);
+});
+
+test('a still photo gets no clip-end frames (nothing types on in it), nor does a clip of under 0.4 s; text in a photo is read at the seconds', () => {
+  const p = project() as any, before = strayTimes(project(), resolveTimes(project()));
+  p.tracks.push({ id: 'top', kind: 'video', items: [clip('photo', 1, 2.5, { source: 'ph' }), clip('blip', 4, 4.3)] });
+  const q = parseProject(p), times = resolveTimes(q);
+  expect(strayTimes(q, times)).toEqual(before);
+  const read = new Map([[1.5, [{ text: '在家做生魚片', box: [0.3, 0.45, 0.2, 0.04] as [number, number, number, number] }]]]);
+  expect(strayFindings(q, times, read).map((f) => f.ids)).toEqual([['photo']]);
+});
