@@ -25,7 +25,7 @@ test('sample times: every second, and one frame inside both ends of each clip, w
   // r3c-baking: a subtitle typing on in a clip's last 0.3 s showed "Cre" one frame before the cut and nothing 0.12 s before it;
   // both sides of a cut are read (the text may be on either)
   expect(at).toEqual([{ t: 0.05, edge: true }, { t: 0.5 }, { t: 1.5 }, { t: 2.5 }, { t: 2.95, edge: true }, { t: 3.05, edge: true }, { t: 3.5 }, { t: 4.5 }, { t: 5.5 }, { t: 5.95, edge: true }]);
-  expect(strayTimes(p, resolveTimes(p), 4).length).toBeLessThanOrEqual(5);
+  expect(strayTimes(p, resolveTimes(p), 4)).toHaveLength(4);
   // over the limit the clip ends stay and the seconds are thinned (CC7); clip ends alone over it are spread and counted
   const six = strayPlan(p, resolveTimes(p), 6);
   expect([six.at.filter((x) => x.edge).length, six.at.length, six.skipped]).toEqual([4, 6, 0]);
