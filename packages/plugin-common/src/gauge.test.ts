@@ -14,7 +14,7 @@ test('readout: empty keeps the number; one word stays; several change at each hi
 
 test('look guilt keeps every param; neutral (the default) swaps only the guilt defaults the item did not set itself', () => {
   expect(P.look).toBe('neutral');
-  const G = { ...P, look: 'guilt' };
+  const G = { ...P, look: 'guilt', zones: '0:辣, 50:很辣' };
   expect(gaugeLook(G)).toBe(G);
   const n = gaugeLook({ ...P, look: 'neutral' });
   expect([n.zones, n.halo, n.danger, n.boom]).toEqual(['0:, 25:, 50:, 75:', false, -1, -1]);
@@ -32,8 +32,8 @@ test('the doc says how to make a neutral gauge and that the readout can be words
 });
 
 test('neutral: the guilt zones the English or Japanese UI writes into the item count as not set (2026-11-03)', () => {
-  // that the English and Japanese ones are the editor's words is apps/editor/src/i18n/gauge-values.test.ts's to check
-  expect([GUILT_ZONES.length, GUILT_ZONES[0]]).toEqual([3, P.zones]);
+  // (the English and Japanese ones are frozen: the words the editor wrote into a gauge added in that UI until 2026-11-13)
+  expect(GUILT_ZONES.length).toBe(3);
   for (const zones of GUILT_ZONES) expect(gaugeLook({ ...P, zones, look: 'neutral' }, { zones }).zones).toBe(neutralOf(100).zones);
   expect(gaugeLook({ ...P, zones: '0:Clean,20:Treat,40:Naughty,60:Sinful,85:Hell', look: 'neutral' }, { zones: '0:Clean,20:Treat,40:Naughty,60:Sinful,85:Hell' }).zones).toBe(neutralOf(100).zones);
   // a guilt look keeps them, and zones of the item's own stay in neutral
@@ -43,4 +43,11 @@ test('neutral: the guilt zones the English or Japanese UI writes into the item c
 
 test('the LED has a cell for every digit of max, at least three', () => {
   expect([1, 100, 999, 1000, 25000, 100000].map(ledCells)).toEqual([3, 3, 3, 4, 5, 6]);
+});
+
+test('zones are empty by default (the editor no longer shows guilt words on a neutral gauge); guilt fills its own in the film\'s language', () => {
+  expect(P.zones).toBe('');
+  const G = { ...P, look: 'guilt' };
+  expect(['zh', 'en', 'ja'].map((l) => gaugeLook(G, {}, l as never).zones)).toEqual(GUILT_ZONES);
+  expect(gaugeLook({ ...P, look: 'neutral' }, { zones: '' }).zones).toBe(neutralOf(100).zones);
 });

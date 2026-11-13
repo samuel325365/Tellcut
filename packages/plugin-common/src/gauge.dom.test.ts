@@ -61,3 +61,10 @@ test('the boom word shrinks to the LED window like a readout in words (a long on
   expect(parseFloat(long.style.fontSize)).toBeLessThan(78 * u);
   expect(parseFloat(long.style.fontSize) * 'SYSTEM OVERLOAD'.length * 0.55).toBeLessThanOrEqual(330 * u + 0.01);
 });
+
+test('look guilt with no zones of its own draws the guilt zones in the language of the words the item was given', () => {
+  const en = drawn({ look: 'guilt', unit: 'pts', danger: -1, boom: -1 }, 1.6).join('');
+  expect(en).toContain('C');
+  expect(en).not.toMatch(/[清罪地獄]/);
+  expect(drawn({ look: 'guilt', danger: -1, boom: -1 }, 1.6).join('')).toMatch(/罪/);
+});

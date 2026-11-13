@@ -580,7 +580,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.handwrite.red": {"name":"Red pen keywords","hint":"Comma-separated; underlined in red pen when written"},
   "common.handwrite.redColor": {"name":"Red pen color"},
   "common.gauge.hits": {"name":"Bonus","hint":"seconds:score, comma-separated"},
-  "common.gauge.zones": {"name":"Color zones","hint":"start:name[:color], comma-separated"},
+  "common.gauge.zones": {"name":"Color zones","hint":"start:name[:color], comma-separated; empty = the look's own: neutral four colour-only zones, guilt Clean…Hell"},
   "common.gauge.max": {"name":"Max score"},
   "common.gauge.unit": {"name":"Unit after reading"},
   "common.gauge.scramble": {"name":"Random jump until","hint":"Shows ???; 0 = no random jumping"},

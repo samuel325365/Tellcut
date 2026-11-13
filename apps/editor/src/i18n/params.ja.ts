@@ -580,7 +580,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.handwrite.red": {"name":"赤ペンのキーワード","hint":"カンマ区切り。書かれるときに赤ペンで下線を引く"},
   "common.handwrite.redColor": {"name":"赤ペンの色"},
   "common.gauge.hits": {"name":"ボーナス","hint":"秒:スコア、カンマ区切り"},
-  "common.gauge.zones": {"name":"カラーゾーン","hint":"開始点:名前[:色]、カンマ区切り"},
+  "common.gauge.zones": {"name":"カラーゾーン","hint":"開始点:名前[:色]、カンマ区切り。空＝look に従う：neutral は色だけの 4 区間、guilt は潔白…地獄"},
   "common.gauge.max": {"name":"満点"},
   "common.gauge.unit": {"name":"数値の後の単位"},
   "common.gauge.scramble": {"name":"開始時のランダム表示の終了秒","hint":"??? を表示。0＝ランダムに動かない"},

@@ -8,6 +8,7 @@ import { clamp, cssCamel, h, hash01, type ItemType, prog, textEm } from '@tellcu
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { isLight, mixHex, withAlpha } from './color.ts';
 import { drawSegBars } from './dots.ts';
+import { wordsLang, type WordsLang } from './words.ts';
 
 interface P {
   hits: string; zones: string; max: number; unit: string; scramble: number; boot: number; danger: number; boom: number; boomText: string; boomLabel: string;
@@ -26,16 +27,22 @@ export const parseHits = (s: string): Array<[number, number]> => String(s ?? '')
 
 /** look 'neutral': four equal zones of `max` with no names (the colour ramp only), no halo, no alarm, no blow-up */
 export const neutralOf = (max: number) => ({ zones: [0, 0.25, 0.5, 0.75].map((q) => `${+(q * (max || 100)).toFixed(2)}:`).join(', '), halo: false, danger: -1, boom: -1 });
-/** the guilt meter's zones in Chinese (the zones param's default, drawn as they are only with look guilt), English and Japanese:
- *  the editor writes the UI language's words into a gauge added in the English or Japanese UI (apps/editor/src/i18n/values.*.ts, kept the same by apps/editor/src/i18n/gauge-values.test.ts), and those are still the
- *  guilt default, not zones the user chose */
+/** the guilt meter's zones in Chinese, English and Japanese: what look guilt draws when zones is empty (the default since
+ *  2026-11-13; the editor showed the guilt words in the zones field of a neutral gauge, which drew none of them), in the film's
+ *  language. Until then the default was the Chinese ones and the editor wrote the English or Japanese ones into a gauge added in
+ *  that UI, so all three in an item's params still count as not set */
 export const GUILT_ZONES = ['0:清白, 20:小確幸, 40:有點罪, 60:罪孽深重, 85:地獄級', '0:Clean, 20:Treat, 40:Naughty, 60:Sinful, 85:Hell', '0:潔白, 20:小さな幸せ, 40:ちょい罪, 60:罪深い, 85:地獄'];
+const LANGS: WordsLang[] = ['zh', 'en', 'ja'];
 const squash = (v: unknown) => String(v ?? '').replace(/\s+/g, '');
-/** the params the gauge draws with: look 'neutral' swaps the guilt-meter defaults for neutralOf's, except the ones the item sets itself
- *  (the guilt zones in any of the three languages count as not set) */
-export function gaugeLook<T extends Pick<P, 'look' | 'zones' | 'halo' | 'danger' | 'boom' | 'max'>>(p: T, own: Record<string, unknown> = {}): T {
-  if (p.look !== 'neutral') return p;
-  const out: Record<string, unknown> = { ...p }, set = (k: string) => own[k] !== undefined && !(k === 'zones' && GUILT_ZONES.some((z) => squash(z) === squash(own[k])));
+/** the words the gauge draws besides its zones, as the item sets them: their language is the one guilt's own zones are drawn in */
+const GAUGE_WORDS = ['unit', 'boomText', 'boomLabel', 'scrambleLabel', 'standbyLabel', 'readout', 'countLabel'] as const;
+/** the params the gauge draws with: empty zones are the look's own (guilt's named ones in `lang`, neutral's colours only); look
+ *  'neutral' also swaps the guilt-meter defaults for neutralOf's, except the ones the item sets itself (the guilt zones in any of
+ *  the three languages count as not set) */
+export function gaugeLook<T extends Pick<P, 'look' | 'zones' | 'halo' | 'danger' | 'boom' | 'max'>>(p: T, own: Record<string, unknown> = {}, lang: WordsLang = 'zh'): T {
+  const blank = !String(p.zones ?? '').trim();
+  if (p.look !== 'neutral') return blank ? { ...p, zones: GUILT_ZONES[Math.max(0, LANGS.indexOf(lang))] } : p;
+  const out: Record<string, unknown> = { ...p }, set = (k: string) => own[k] !== undefined && !(k === 'zones' && (blank || GUILT_ZONES.some((z) => squash(z) === squash(own[k]))));
   for (const [k, v] of Object.entries(neutralOf(p.max))) if (!set(k)) out[k] = v;
   return out as T;
 }
@@ -87,10 +94,10 @@ export function gaugeBox(p: Pick<P, 'x' | 'y' | 'size'>, W: number, H: number, s
 
 export const gauge: ItemType<P, S> = {
   type: 'common.gauge', label: '儀表計量表', category: 'number', kind: 'overlay',
-  doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；readout 讓 LED 顯示字而不是數字（名次 No.1、一個詞；逗號分開就每筆加分換下一個，{v}＝目前分數）；預設 look: neutral 是中性的量表（色區只留顏色不寫名稱、沒有光環、警報、爆表；自己給的 zones、halo、danger、boom 照樣算，例如自己給 zones 就有色區名稱）；要「罪惡指數」的樣子（清白…地獄級的色區、光環、警報、爆表）用 look: guilt；guilt 下不要這些就自己給 zones 並設 halo: false、danger: -1、boom: -1；罪惡指數、辣度、心動指數、熱度、分數、名次',
+  doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；readout 讓 LED 顯示字而不是數字（名次 No.1、一個詞；逗號分開就每筆加分換下一個，{v}＝目前分數）；預設 look: neutral 是中性的量表（色區只留顏色不寫名稱、沒有光環、警報、爆表；自己給的 zones、halo、danger、boom 照樣算，例如自己給 zones 就有色區名稱）；要「罪惡指數」的樣子（清白…地獄級的色區，跟著片子的語言；光環、警報、爆表）用 look: guilt；guilt 下不要這些就自己給 zones 並設 halo: false、danger: -1、boom: -1；罪惡指數、辣度、心動指數、熱度、分數、名次',
   params: [
     { key: 'hits', label: '加分（秒:分數，逗號分隔）', type: 'text', default: '0.3:12, 0.7:15, 1.1:20, 1.5:26, 1.9:24' },
-    { key: 'zones', label: '色區（起點:名稱[:顏色]，逗號分隔）', type: 'text', default: GUILT_ZONES[0] },
+    { key: 'zones', label: '色區（起點:名稱[:顏色]，逗號分隔；空＝照 look：neutral 四段只有顏色，guilt 清白…地獄級）', type: 'text', default: '' },
     { key: 'max', label: '滿分', type: 'number', min: 1, max: 100000, step: 1, default: 100 },
     { key: 'unit', label: '讀數後面的單位', type: 'string', default: '分' },
     { key: 'scramble', label: '開場亂跳到第幾秒（顯示 ???；0＝不亂跳）', type: 'number', min: 0, max: 600, step: 0.05, default: 0 },
@@ -124,7 +131,7 @@ export const gauge: ItemType<P, S> = {
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
-    const p = gaugeLook(ctx.params, ctx.item?.params), { W, H, theme, local: t, dur } = ctx, b = gaugeBox(p, W, H, theme.safe), u = b.u, mx = p.max || 100;
+    const own = ctx.item?.params ?? {}, p = gaugeLook(ctx.params, own, wordsLang(GAUGE_WORDS.map((k) => own[k]), ctx)), { W, H, theme, local: t, dur } = ctx, b = gaugeBox(p, W, H, theme.safe), u = b.u, mx = p.max || 100;
     const zones = parseZones(p.zones, mx, [p.face, p.hl, p.accent, mixHex(p.accent, '#000000', 0.45)]), hits = parseHits(p.hits);
     const { v, shown, count } = gaugeValue(hits, t), booming = p.boom >= 0 && t >= p.boom, danger = p.danger >= 0 && t >= p.danger && !booming;
     const scrambling = t < p.scramble, standby = !scrambling && p.boot >= 0 && t < p.boot, nv = needleAt(p, v, t);

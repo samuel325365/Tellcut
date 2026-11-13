@@ -51,7 +51,6 @@ export const VALUES_JA: Record<string, string> = {
   "common.notecard.count": "{n} 項目",
   "common.notecard.sub": "かんたん3ステップ",
   "common.handwrite.lines": "0.1-1.3|今日の風はやさしい\n1.5-2.7|川沿いをゆっくり歩いた",
-  "common.gauge.zones": "0:潔白, 20:小さな幸せ, 40:ちょい罪, 60:罪深い, 85:地獄",
   "common.gauge.unit": "点",
   "common.gauge.boomText": "振り切れ",
   "common.gauge.boomLabel": "地獄超え",

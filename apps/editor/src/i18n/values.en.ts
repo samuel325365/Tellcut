@@ -52,7 +52,6 @@ export const VALUES_EN: Record<string, string> = {
   "common.notecard.count": "{n} items",
   "common.notecard.sub": "3 easy steps",
   "common.handwrite.lines": "0.1-1.3|The wind is gentle today\n1.5-2.7|We walk slowly along the river",
-  "common.gauge.zones": "0:Clean, 20:Treat, 40:Naughty, 60:Sinful, 85:Hell",
   "common.gauge.unit": "pts",
   "common.gauge.boomText": "OFF THE CHART",
   "common.gauge.boomLabel": "Beyond hell",
