@@ -156,16 +156,18 @@ export function followTrim(p: Project, id: string, oldLen: number, newLen: numbe
 }
 
 /** When an item's length changes, its children keep their proportional place (spec §3.1), and what moves inside a child (its
- *  keys, envelope) stretches with it. Sounds keep their length (a voice-over or recording plays at its own speed: stretched, it
- *  was cut short or ran past its source); only a media clip's own sound, which plays at the clip's new speed, stretches with it. */
+ *  keys, envelope) stretches with it. Sounds and video clips keep their length (a voice-over, a recording or a B-roll shot plays
+ *  at its own speed: stretched, it showed footage nobody chose and ran past its source); only a media clip's own sound, which
+ *  plays at the clip's new speed, stretches with it. A child that does stretch keeps at least a frame: shrunk under one, it
+ *  stayed in the project and was never drawn. */
 export function scaleChildren(p: Project, id: string, oldLen: number, newLen: number) {
   if (!(oldLen > 0) || oldLen === newLen) return;
-  const k = newLen / oldLen, own = new Set<AnyItem>(ownSounds(p, id, oldLen));
+  const k = newLen / oldLen, own = new Set<AnyItem>(ownSounds(p, id, oldLen)), m = minLen(p);
   for (const t of p.tracks) for (const c of items(t)) {
     if (c.parent !== id) continue;
-    const before = c.end - c.start, keeps = (t.kind === 'sfx' || t.kind === 'music' || t.kind === 'audio') && !own.has(c);
+    const before = c.end - c.start, keeps = (t.kind === 'sfx' || t.kind === 'music' || t.kind === 'audio' || t.kind === 'video') && !own.has(c);
     c.start = r6(c.start * k);
-    c.end = keeps ? r6(c.start + before) : r6(c.end * k);
+    c.end = keeps ? r6(c.start + before) : r6(Math.max(c.end * k, c.start + Math.min(m, before)));
     if (!keeps && before > 0) scaleRelative(t, c, (c.end - c.start) / before);
     fitFades(t, c);
     scaleChildren(p, c.id, before, c.end - c.start);

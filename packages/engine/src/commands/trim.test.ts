@@ -1,7 +1,7 @@
 import { ProjectZ, type Project } from '../schema.ts';
 import { resolveTimes } from '../time.ts';
-import { addItem, swapSource, updateItem } from './edit.ts';
-import { CommandError, ownSounds } from './core.ts';
+import { addItem, checkItem, swapSource, updateItem } from './edit.ts';
+import { CommandError, ownSounds, r6 } from './core.ts';
 import { split } from './split.ts';
 import { rateStretch, roll, slip, trimEnd, trimStart } from './trim.ts';
 import { fixture, item, run } from './test-fixture.ts';
@@ -298,4 +298,27 @@ test('slipping a clip frozen at its first frame keeps its in-point a frame short
   const q = run(p, slip, { id: 'c2', dt: 100 });
   expect(item(q, 'c2').in).toBe(29.96);   // 30 s source, one frame at 25 fps
   expect(ProjectZ.safeParse(q).success).toBe(true);
+});
+
+// health10 EC2 (the user's call): a video clip hung on an item whose length changes keeps its own length, like a sound;
+// stretched at the same speed it showed footage nobody chose and ran past its source
+test('a video clip hung on a stretched clip or a resized block keeps its length; only its start scales', () => {
+  const broll = (parent: string) => ({ id: 'br', source: 's', in: 27, speed: 1, start: 1, end: 3, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } }, parent });
+  const p = fixture();
+  addItem(p, { track: 'v2', item: broll('c1') });
+  const s = run(p, rateStretch, { id: 'c1', edge: 'end', dt: 4 });   // c1 0–4 → 0–8 at half speed
+  expect(item(s, 'br')).toMatchObject({ start: 2, end: 4, speed: 1, in: 27 });
+  const q = fixture();
+  addItem(q, { track: 'v2', item: broll('blk') });
+  const b = run(q, trimEnd, { id: 'blk', dt: 4 });   // blk 2–6 → 2–10
+  expect(item(b, 'br')).toMatchObject({ start: 2, end: 4 });
+  for (const r of [s, b]) for (const t of r.tracks) for (const it of t.items) expect(() => checkItem(r, t.kind, it as any)).not.toThrow();
+});
+
+test('a child scaled with a block made very short keeps a frame (health10)', () => {
+  const p = fixture();
+  addItem(p, { track: 'sc', item: { id: 'cap', type: 'x.cap', start: 1, end: 2, params: {}, parent: 'blk' } });
+  const q = run(p, trimEnd, { id: 'blk', dt: -100 });   // blk 2–6 → one frame
+  expect(item(q, 'cap').start).toBe(0.01);
+  expect(r6(item(q, 'cap').end - item(q, 'cap').start)).toBe(0.04);
 });
