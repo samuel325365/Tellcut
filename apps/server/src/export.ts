@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { FxIssue, Project, Registry } from '@tellcut/engine';
-import { exportLock, listExports, lockHolder, nextExportBase, prepareProject, refreshCreditsAsync, renderVideo, sitePath, snapshotStamp, tryExportLock } from '@tellcut/media-node';
+import { exportLock, listExports, lockHolder, nextExportBase, prepareProject, refreshCredits, renderVideo, sitePath, snapshotStamp, tryExportLock } from '@tellcut/media-node';
 import { HttpError, readJson, sendJson, type Router } from './http.ts';
 import { JobError, type JobCtx, type JobQueue } from './jobs.ts';
 import type { ProjectStore } from './projects.ts';
@@ -47,7 +47,7 @@ async function exportLocked(o: { dir: string; id: string; project: Project; from
     log(`done in ${seconds} s`);
     // the credits of what this film uses; a credits file that cannot be written must not fail the export. The async one: waiting
     // for another process's assets lock must not stop the server answering
-    try { if (await refreshCreditsAsync(dir, { project })) log('credits → media/CREDITS.md'); } catch (e) { log(`credits not written: ${(e as Error).message}`); }
+    try { if (await refreshCredits(dir, { project })) log('credits → media/CREDITS.md'); } catch (e) { log(`credits not written: ${(e as Error).message}`); }
     const rel = (p: string) => `exports/${p.slice(exportsDir.length + 1)}`;
     return { file: rel(`${base}.mp4`), log: rel(`${base}.log`), seconds };
   } catch (e) {

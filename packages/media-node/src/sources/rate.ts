@@ -4,7 +4,7 @@ import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFi
 import { dirname } from 'node:path';
 import { renameRetry } from '../fsutil.ts';
 import { takeOver as takeOverIf } from '../locks.ts';
-import { nap, pause } from '../proc.ts';
+import { pause } from '../proc.ts';
 
 /** at most `n` requests in any `per` seconds */
 export interface RateLimit { n: number; per: number }
@@ -24,19 +24,6 @@ export async function withFileLock<T>(file: string, fn: () => T | Promise<T>, o:
     if (r === 'wait') await pause(20);
   }
   try { return await fn(); } finally { rmSync(file, { force: true }); }
-}
-
-/** withFileLock for synchronous callers (refreshCredits in the command-line tools, which use its answer at once); the wait
- *  blocks the event loop, so a server never uses it (refreshCreditsAsync) */
-export function withFileLockSync<T>(file: string, fn: () => T, o: { staleMs?: number } = {}): T {
-  const stale = o.staleMs ?? 10_000;
-  mkdirSync(dirname(file), { recursive: true });
-  for (;;) {
-    const r = tryLock(file, stale);
-    if (r === 'taken') break;
-    if (r === 'wait') nap(20);
-  }
-  try { return fn(); } finally { rmSync(file, { force: true }); }
 }
 
 /** one try at the lock: taken, worth trying again at once (a stale lock was taken over), or to wait a moment */

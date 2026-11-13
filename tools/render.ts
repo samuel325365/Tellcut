@@ -68,7 +68,7 @@ async function renderLocked(projectId: string, pdir: string, { stills, from, to 
       out: `${base}.mp4`, log: (l) => { lines.push(l); console.log(l); } });
     lines.push(`done in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     console.log('done →', out);
-    if (refreshCredits(dir)) console.log('credits →', join(dir, 'media', 'CREDITS.md'));
+    if (await refreshCredits(dir)) console.log('credits →', join(dir, 'media', 'CREDITS.md'));
   } finally { writeFileSync(`${base}.log`, `${lines.join('\n')}\n`); }
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main().catch((e) => { console.error(e); process.exit(1); });

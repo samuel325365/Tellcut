@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,7 +5,7 @@ import { ffmpeg, measureLoudness } from '../ffmpeg.ts';
 import { createProject } from '../ingest.ts';
 import { makePhoto } from '../test-media.ts';
 import type { SourcesConfig } from './config.ts';
-import { formatCredits, getAsset, importAsset, readAssetRecords, refreshCredits, refreshCreditsAsync } from './project.ts';
+import { formatCredits, getAsset, importAsset, readAssetRecords, refreshCredits } from './project.ts';
 import { openSources } from './registry.ts';
 import type { AssetMeta, Fetched, SourceAdapter } from './types.ts';
 
@@ -209,23 +208,23 @@ describe('getAsset', () => {
     writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
     const block = () => readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8').split('<!-- tellcut assets: begin -->\n')[1].split('<!--')[0];
     expect(block()).toMatch(/^下載了但片裡沒用到/);
-    expect(refreshCredits(dir, { adapters: { fake } })).toBe(join(dir, 'media', 'CREDITS.md'));
+    expect(await refreshCredits(dir, { adapters: { fake } })).toBe(join(dir, 'media', 'CREDITS.md'));
     expect(block()).toBe('- SFX: fake 0702 "t-0702"\n\n下載了但片裡沒用到（不必署名）：\n- SFX: fake 0701 "t-0701"\n');
   });
 
-  test('photos a block names in a comma list (the tiles of an fx, with @seconds) are used, not listed as unused', () => {
+  test('photos a block names in a comma list (the tiles of an fx, with @seconds) are used, not listed as unused', async () => {
     mkdirSync(join(dir, 'media'), { recursive: true });
     const rec = (n: string) => ({ source: 'pix', ref: `pix:${n}`, sourceId: `pix-${n}`, kind: 'image', path: `media/pix/${n}.jpg`, title: `t-${n}`, author: 'a', page: `https://x/${n}`, license: 'L' });
     writeFileSync(join(dir, 'media', 'assets.json'), JSON.stringify({ version: 1, items: [rec('1'), rec('2'), rec('3')] }));
     const p = readProject();
     p.tracks.push({ id: 'o', kind: 'overlay', items: [{ id: 'w', type: 'fx.tiles', start: 0, end: 4, params: { tiles: 'pix-1@2.5, pix-2' } }] });
     writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
-    refreshCredits(dir, { adapters: {} });
+    await refreshCredits(dir, { adapters: {} });
     const block = readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8').split('<!-- tellcut assets: begin -->\n')[1].split('<!--')[0];
     expect(block).toBe('- "t-1" by a (https://x/1), L\n- "t-2" by a (https://x/2), L\n\n下載了但片裡沒用到（不必署名）：\n- "t-3" by a (https://x/3), L\n');
   });
 
-  test('pictures named in the lines of album, cells and camcorder stills are credited as used', () => {
+  test('pictures named in the lines of album, cells and camcorder stills are credited as used', async () => {
     mkdirSync(join(dir, 'media'), { recursive: true });
     const rec = (n: string) => ({ source: 'wikimedia', ref: `wikimedia:${n}`, sourceId: `wikimedia-${n}`, kind: 'image', path: `media/wikimedia/${n}.jpg`, title: `t-${n}`, author: 'a', page: `https://x/${n}`, license: 'CC BY 4.0' });
     writeFileSync(join(dir, 'media', 'assets.json'), JSON.stringify({ version: 1, items: [rec('111'), rec('222'), rec('333'), rec('444')] }));
@@ -236,14 +235,14 @@ describe('getAsset', () => {
       { id: 'k', type: 'common.camcorder', start: 0, end: 4, params: { stills: '-|0\nwikimedia-333|1.5|0.5,0.5,1' } },
     ] });
     writeFileSync(join(dir, 'project.json'), JSON.stringify(p));
-    refreshCredits(dir, { adapters: {} });
+    await refreshCredits(dir, { adapters: {} });
     const block = readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8').split('<!-- tellcut assets: begin -->\n')[1].split('<!--')[0];
     expect(block.split('\n\n')[0].split('\n').sort()).toEqual(['- "t-111" by a (https://x/111), CC BY 4.0', '- "t-222" by a (https://x/222), CC BY 4.0', '- "t-333" by a (https://x/333), CC BY 4.0']);
     expect(block.split('\n\n')[1]).toBe('下載了但片裡沒用到（不必署名）：\n- "t-444" by a (https://x/444), CC BY 4.0\n');
   });
 
-  test('refreshCredits leaves a project that downloaded nothing alone', () => {
-    expect(refreshCredits(dir)).toBeNull();
+  test('refreshCredits leaves a project that downloaded nothing alone', async () => {
+    expect(await refreshCredits(dir)).toBeNull();
     expect(existsSync(join(dir, 'media', 'CREDITS.md'))).toBe(false);
   });
 
@@ -259,31 +258,16 @@ describe('getAsset', () => {
     expect((await p).record.path).toBe('media/sfx/fake-0703.wav');
   });
 
-  test('refreshCredits waits while another process holds the project\'s assets lock', async () => {
-    await getAsset(s(), dir, 'fake:0704');
-    const lock = join(dir, 'media', '.assets.lock');
-    writeFileSync(lock, '');
-    // another process lets go after 800 ms; refreshCredits blocks this one until then
-    const child = spawn(process.execPath, ['-e', `setTimeout(() => require('fs').rmSync(${JSON.stringify(lock)}), 800)`], { stdio: 'ignore' });
-    await new Promise((r) => child.once('spawn', r));
-    const t0 = Date.now();
-    refreshCredits(dir, { adapters: { fake } });
-    expect(Date.now() - t0).toBeGreaterThanOrEqual(500);
-    expect(existsSync(lock)).toBe(false);
-    expect(readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8')).toContain('fake 0704');
-    await new Promise((r) => child.once('exit', r));
-  });
-
-  test('refreshCreditsAsync waits for the assets lock without blocking this process (the server keeps answering)', async () => {
+  test('refreshCredits waits for the assets lock without blocking this process (the server keeps answering)', async () => {
     await getAsset(s(), dir, 'fake:0705');
     const lock = join(dir, 'media', '.assets.lock');
     writeFileSync(lock, '');
     let ticks = 0;
     const tick = setInterval(() => { ticks++; }, 50);
     try {
-      const p = refreshCreditsAsync(dir, { adapters: { fake } });
+      const p = refreshCredits(dir, { adapters: { fake } });
       await new Promise((r) => setTimeout(r, 600));
-      // still waiting for the lock, and the event loop ran meanwhile (the sync one would have frozen it)
+      // still waiting for the lock, and the event loop ran meanwhile (a synchronous wait would have frozen it)
       expect([existsSync(lock), ticks >= 5]).toEqual([true, true]);
       rmSync(lock);
       expect(await p).toBe(join(dir, 'media', 'CREDITS.md'));

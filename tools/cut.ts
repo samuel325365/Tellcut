@@ -22,6 +22,6 @@ const c = await Cut.open(dir, { transcribe: !args.has('--no-transcribe'), log: (
 await run(c);
 const p = await c.save().catch((e) => { if (e instanceof EditedDuringCut) { console.error(e.message); process.exit(1); } throw e; });
 for (const n of c.notes) console.log(n);
-if (refreshCredits(dir)) console.log('media/CREDITS.md 已照這版初剪重寫（片裡沒用到的素材列在最後）');
+if (await refreshCredits(dir)) console.log('media/CREDITS.md 已照這版初剪重寫（片裡沒用到的素材列在最後）');
 console.log(`初剪完成：${p.meta.duration.toFixed(1)} 秒、${p.tracks.reduce((n, t) => n + t.items.length, 0)} 個項目 → ${join(dir, 'project.json')}`);
 console.log('編輯器開著的話請重新整理頁面。');
