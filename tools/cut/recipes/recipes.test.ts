@@ -230,7 +230,7 @@ describe('review findings', () => {
     expect(orig.end - orig.start).toBeCloseTo(2, 3);
     c.update(id, { start: 5 });
     const clip = c.p.tracks.find((t) => t.id === 'v1')!.items[0] as any;
-    expect(clip.end - clip.start).toBeGreaterThan(0);
+    expect(clip.end - clip.start).toBeGreaterThanOrEqual(1 / 30 - 1e-6);   // a frame at 30 fps, not just "more than nothing"
     await c.save();
   });
 

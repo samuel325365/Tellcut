@@ -147,8 +147,8 @@ test('a source the server is analysing is not analysed here: inspect says how fa
     { kind: 'analyze', project: 'busy', label: 'old', status: 'done' },
   ], 'busy');
   expect(busy).toEqual({ walk: { analyze: '基本分析：縮圖 25%', extras: '縮圖總覽與逐字稿：排隊中' } });
-  const t0 = Date.now(), inv = await inventory(join(dir, 'busy'), { transcribe: false, busy });
-  expect(Date.now() - t0).toBeLessThan(15000);
+  // not analysed here: no segments and no overview sheet (a time limit could not tell, and failed on a slow machine)
+  const inv = await inventory(join(dir, 'busy'), { transcribe: false, busy });
   const walk = inv.sources.find((s) => s.id === 'walk')!;
   expect([walk.pending, walk.segments, inv.overview]).toEqual(['基本分析：縮圖 25%', [], []]);
   expect(formatInventory(inv)).toContain('伺服器正在分析這段素材（基本分析：縮圖 25%）');
