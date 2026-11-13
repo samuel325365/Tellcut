@@ -6,7 +6,7 @@ import { ffmpeg, measureLoudness } from '../ffmpeg.ts';
 import { createProject } from '../ingest.ts';
 import { makePhoto } from '../test-media.ts';
 import type { SourcesConfig } from './config.ts';
-import { formatCredits, getAsset, importAsset, readAssetRecords, refreshCredits } from './project.ts';
+import { formatCredits, getAsset, importAsset, readAssetRecords, refreshCredits, refreshCreditsAsync } from './project.ts';
 import { openSources } from './registry.ts';
 import type { AssetMeta, Fetched, SourceAdapter } from './types.ts';
 
@@ -272,6 +272,24 @@ describe('getAsset', () => {
     expect(existsSync(lock)).toBe(false);
     expect(readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8')).toContain('fake 0704');
     await new Promise((r) => child.once('exit', r));
+  });
+
+  test('refreshCreditsAsync waits for the assets lock without blocking this process (the server keeps answering)', async () => {
+    await getAsset(s(), dir, 'fake:0705');
+    const lock = join(dir, 'media', '.assets.lock');
+    writeFileSync(lock, '');
+    let ticks = 0;
+    const tick = setInterval(() => { ticks++; }, 50);
+    try {
+      const p = refreshCreditsAsync(dir, { adapters: { fake } });
+      await new Promise((r) => setTimeout(r, 600));
+      // still waiting for the lock, and the event loop ran meanwhile (the sync one would have frozen it)
+      expect([existsSync(lock), ticks >= 5]).toEqual([true, true]);
+      rmSync(lock);
+      expect(await p).toBe(join(dir, 'media', 'CREDITS.md'));
+      expect(readFileSync(join(dir, 'media', 'CREDITS.md'), 'utf8')).toContain('fake 0705');
+      expect(existsSync(lock)).toBe(false);
+    } finally { clearInterval(tick); }
   });
 
   test('a ref without a source, or a source that is off, is a sentence', async () => {

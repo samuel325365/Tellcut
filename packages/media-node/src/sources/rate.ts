@@ -26,8 +26,8 @@ export async function withFileLock<T>(file: string, fn: () => T | Promise<T>, o:
   try { return await fn(); } finally { rmSync(file, { force: true }); }
 }
 
-/** withFileLock for synchronous callers (refreshCredits, whose callers use its answer at once); the wait blocks the event loop,
- *  which is fine for a lock held only while a few small files are written */
+/** withFileLock for synchronous callers (refreshCredits in the command-line tools, which use its answer at once); the wait
+ *  blocks the event loop, so a server never uses it (refreshCreditsAsync) */
 export function withFileLockSync<T>(file: string, fn: () => T, o: { staleMs?: number } = {}): T {
   const stale = o.staleMs ?? 10_000;
   mkdirSync(dirname(file), { recursive: true });

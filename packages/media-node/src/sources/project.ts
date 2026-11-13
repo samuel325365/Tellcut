@@ -251,9 +251,16 @@ export function writeCredits(dir: string, adapters: Record<string, SourceAdapter
   return file;
 }
 
-/** the credits written again for the film as it is now (after a cut, an export); null when the project downloaded nothing */
-export const refreshCredits = (dir: string, o: { adapters?: Record<string, SourceAdapter>; project?: { tracks?: unknown } } = {}): string | null =>
+type CreditsOptions = { adapters?: Record<string, SourceAdapter>; project?: { tracks?: unknown } };
+/** the credits written again for the film as it is now (after a cut, an export); null when the project downloaded nothing.
+ *  Synchronous, for the command-line tools (cut, render), which use the answer at once and have nothing else to serve; the
+ *  wait for another process's lock blocks the event loop, so the server uses refreshCreditsAsync. */
+export const refreshCredits = (dir: string, o: CreditsOptions = {}): string | null =>
   // under the same lock `assets get` writes the records and the credits under: a render finishing while the agent gets an asset
-  // read the records before the new one was added and would write its credits over the get's (synchronous: its callers use the
-  // answer at once, and the lock is held only while two small files are written)
+  // read the records before the new one was added and would write its credits over the get's
   (existsSync(join(dir, ASSET_MANIFEST)) ? withFileLockSync(join(dir, 'media', '.assets.lock'), () => writeCredits(dir, o.adapters, o.project)) : null);
+
+/** refreshCredits waiting for the lock without blocking: the server's export keeps answering while an agent's `assets get`
+ *  (or a lock left by a crash, up to its 10 s stale age) holds the project's assets lock */
+export const refreshCreditsAsync = async (dir: string, o: CreditsOptions = {}): Promise<string | null> =>
+  (existsSync(join(dir, ASSET_MANIFEST)) ? withFileLock(join(dir, 'media', '.assets.lock'), () => writeCredits(dir, o.adapters, o.project)) : null);
