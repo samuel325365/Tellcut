@@ -42,6 +42,26 @@ test('a beep over part of a Chinese word looks for the characters it covers', ()
   expect(leakProbes(p, resolveTimes(p), { v: t2 }).map((x) => x.word)).toEqual(['媽']);
 });
 
+test('a beep over English speech looks for the words mostly under it, as one phrase (TT6)', () => {
+  const en: Transcript = { language: 'en', segments: [{ start: 12, end: 13.2, text: 'what the hell', words: [
+    { start: 12, end: 12.4, word: ' what' }, { start: 12.4, end: 12.7, word: ' the' }, { start: 12.7, end: 13.2, word: ' hell' }] }] };
+  // film 2.4–3.2 = source 12.4–13.2: "the" and "hell", not "what"; read over the sentence (film 2–3.2)
+  const p = project([{ id: 'sfx', kind: 'sfx', items: [{ id: 'b', type: 'common.beep', start: 2.4, end: 3.2, params: {}, gain: -10 }] }]);
+  expect(leakProbes(p, resolveTimes(p), { v: en }).map((x) => [x.word, x.at])).toEqual([['the hell', [2, 2.5, 3]]]);
+});
+
+test('a {word} in a caption with no beep is looked for on its own, over its sentence (TT6)', () => {
+  const p = project([{ id: 'text', kind: 'overlay', items: [{ id: 'cap', type: 'common.caption', start: 2, end: 5, params: { text: '{大家}好' } }] }]);
+  expect(leakProbes(p, resolveTimes(p), { v: tr }).map((x) => [x.word, x.at[0], x.at.at(-1)])).toEqual([['大家', 2, 5]]);
+});
+
+test('a beep over a clip at speed 2 looks up the source time the clip plays then (TT2)', () => {
+  // source 10–30 s at film 0–10 s: the sentence (source 12–15) is film 1–2.5, and the beep at film 2–2.5 covers source 14–15
+  const p = project([{ id: 'sfx', kind: 'sfx', items: [{ id: 'b', type: 'common.beep', start: 2, end: 2.5, params: {}, gain: -10 }] }]);
+  (p.tracks[0].items[0] as any).speed = 2;
+  expect(leakProbes(p, resolveTimes(p), { v: tr }).map((x) => [x.word, x.at])).toEqual([['出發', [1, 1.5, 2, 2.5]]]);
+});
+
 test('a bleep over a clip whose source has no transcript is named as not checked, rather than passing in silence', () => {
   const p = project([{ id: 'sfx', kind: 'sfx', items: [{ id: 'b', type: 'common.beep', start: 2, end: 2.6, params: {}, gain: -10 }] }]);
   expect(leakUnchecked(p, resolveTimes(p), { v: null }).map((f) => [f.level, f.t])).toEqual([['note', [2, 2.6]]]);
