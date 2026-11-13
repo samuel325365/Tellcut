@@ -66,6 +66,19 @@ test('data tells the show: format, dates, studio, score, cast with voices, a sho
   expect(await anime.data!('nothing', ctx())).toContain('AniList 找不到「nothing」');
 });
 
+test('errors inside an HTTP 200 answer are read by their status, never as a broken source outside the check', async () => {
+  const answer = (b: string) => (async () => new Response(b, { headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+  const ctxWith = (f: typeof fetch): SourceCtx => { const http = createHttp({ source: 'anime', cacheDir: dir, limits: anime.limits, fetch: f }); return { http, sub: () => http, options: {}, tmpDir: dir }; };
+  const busy = ctxWith(answer('{"errors":[{"message":"Internal Server Error","status":500}],"data":null}'));
+  await expect(anime.search({ text: 'Frieren', opts: {}, limit: 4 }, busy)).rejects.toMatchObject({ kind: 'temporary' });
+  await expect(anime.check(busy)).rejects.toMatchObject({ kind: 'temporary' });
+  const gone = ctxWith(answer('{"errors":[{"message":"Not Found.","status":404}],"data":{"Media":null}}'));
+  await expect(anime.get('999-cover', gone)).rejects.toMatchObject({ kind: 'missing' });
+  const refused = ctxWith(answer('{"errors":[{"message":"Cannot query field \\"x\\" on type \\"Media\\".","status":400}],"data":null}'));
+  await expect(anime.search({ text: 'Frieren', opts: {}, limit: 4 }, refused)).rejects.toMatchObject({ kind: 'temporary' });
+  await expect(anime.check(refused)).rejects.toMatchObject({ kind: 'broken' });
+});
+
 test('AniList switching its API off is unavailable for now, not broken', async () => {
   status = 403;
   await expect(anime.search({ text: 'Frieren', opts: {}, limit: 4 }, ctx())).rejects.toMatchObject({ kind: 'temporary' });

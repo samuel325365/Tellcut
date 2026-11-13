@@ -77,9 +77,15 @@ test('data tells a species in Traditional Chinese: types, stats with their total
   expect(await pokeapi.data!('不存在的', ctx())).toBe('找不到寶可夢「不存在的」（中文、英文、日文名或編號都可以）');
 });
 
-test('a GraphQL answer with errors is broken, never cached', async () => {
-  gqlAnswer = '{"errors":[{"message":"field \'pokemon_v2_pokemonspecies\' not found"}]}';
-  await expect(pokeapi.search({ text: 'x', opts: {}, limit: 5 }, ctx())).rejects.toMatchObject({ kind: 'broken', message: expect.stringContaining('not found') });
+test('a GraphQL answer with errors is never cached; a refused query hides the source only from the health check', async () => {
+  gqlAnswer = '{"errors":[{"extensions":{"path":"$.selectionSet.species","code":"validation-failed"},"message":"field \'pokemon_v2_pokemonspecies\' not found"}]}';
+  // a search's refused query is about that request (http.ts reads other 4xx so): it must not hide the source until `npm run sources`
+  await expect(pokeapi.search({ text: 'x', opts: {}, limit: 5 }, ctx())).rejects.toMatchObject({ kind: 'temporary', message: expect.stringContaining('not found') });
+  await expect(pokeapi.check(ctx())).rejects.toMatchObject({ kind: 'broken', message: expect.stringContaining('not found') });
+  // Hasura's database trouble comes with HTTP 200 too: passing, even in the check
+  gqlAnswer = '{"errors":[{"extensions":{"path":"$","code":"unexpected"},"message":"database query error"}]}';
+  await expect(pokeapi.search({ text: 'x', opts: {}, limit: 5 }, ctx())).rejects.toMatchObject({ kind: 'temporary' });
+  await expect(pokeapi.check(ctx())).rejects.toMatchObject({ kind: 'temporary' });
   gqlAnswer = null;
   expect(await pokeapi.search({ text: '25', opts: {}, limit: 5 }, ctx())).toHaveLength(1);
   expect(await pokeapi.check(ctx())).toEqual({ zh: 'GraphQL 可連線（25 號是 pikachu）', en: 'GraphQL answers (number 25 is pikachu)' });

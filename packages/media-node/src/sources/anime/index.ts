@@ -4,6 +4,7 @@
 // now" (http.ts), never "nothing found". The pictures belong to the shows' rights holders: recorded, not a gate.
 import { readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import { gqlError, type GqlError } from '../graphql.ts';
 import { SourceError, unreadable } from '../http.ts';
 import type { AssetHit, SourceAdapter, SourceCtx } from '../types.ts';
 import { plainText } from '../wikimedia/index.ts';
@@ -16,9 +17,11 @@ interface Title { romaji?: string | null; english?: string | null; native?: stri
 interface Media { id: number; title: Title; format?: string | null; seasonYear?: number | null; episodes?: number | null; chapters?: number | null; coverImage?: { extraLarge?: string | null }; bannerImage?: string | null; averageScore?: number | null }
 interface Character { id: number; name: { full?: string | null; native?: string | null }; image?: { large?: string | null }; media?: { nodes?: Array<{ title: Title }> } }
 
-async function gql<T>(ctx: SourceCtx, query: string, variables: Record<string, unknown>, ttl = DAY): Promise<T> {
-  const r = await ctx.http.json<{ data?: T; errors?: Array<{ message?: string; status?: number }> }>(API, { method: 'POST', body: { query, variables }, ttl, notFound: 'missing', cacheIf: (b) => !b?.errors });
-  if (r?.errors?.length) { const why = r.errors[0].message ?? 'error'; throw new SourceError('anime', 'broken', { zh: `GraphQL 查詢被拒絕（${why}）`, en: `the GraphQL query was refused (${why})` }); }
+/** check: the health check's own query, where a refused query means AniList's schema changed (graphql.ts) */
+async function gql<T>(ctx: SourceCtx, query: string, variables: Record<string, unknown>, ttl = DAY, check = false): Promise<T> {
+  const r = await ctx.http.json<{ data?: T; errors?: GqlError[] }>(API, { method: 'POST', body: { query, variables }, ttl, notFound: 'missing', cacheIf: (b) => !b?.errors });
+  // AniList's errors carry the HTTP status they mean; one inside a 200 is read as that status, never as a source gone for good
+  if (r?.errors?.length) throw gqlError('anime', r.errors, { check });
   if (!r?.data) throw new SourceError('anime', 'broken', unreadable('沒有 data', 'no data'));
   return r.data;
 }
@@ -82,7 +85,7 @@ export const anime: SourceAdapter = {
 
   // never from the cache: an API that was switched off must show in `npm run sources`
   async check(ctx) {
-    const d = await gql<{ Media?: { id?: number } }>(ctx, ONE_MEDIA, { id: 1 }, 0);
+    const d = await gql<{ Media?: { id?: number } }>(ctx, ONE_MEDIA, { id: 1 }, 0, true);
     if (!d.Media?.id) throw new SourceError('anime', 'broken', unreadable('查不到 1 號作品', 'no title number 1'));
     return { zh: 'AniList 可連線', en: 'AniList answers' };
   },
