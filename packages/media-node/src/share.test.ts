@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { analysisDone, analysisFiles, analyzeSource, shareAnalysis } from './analysis.ts';
 import { ffmpeg, probeSize } from './ffmpeg.ts';
-import { EXTRAS_VERSION, extrasFiles, readBurned, readTranscript, sourceExtras } from './extras.ts';
+import { EXTRAS_VERSION, extrasDone, extrasFiles, readBurned, readTranscript, sourceExtras } from './extras.ts';
 import { fakeTranscribe } from './providers/fake.ts';
 import { labelFolder, siblingFolders } from './share.ts';
 import { makePhoneVideo } from './test-media.ts';
@@ -149,6 +149,36 @@ test('projects made at once from the same footage transcribe it once: the ones q
   await Promise.all(dirs.map((d, i) => sourceExtras(d, src, { label: 'clip', stt: stts[i] })));
   // once, by whichever reaches the slot first (each looks for a sibling's analysis first, without blocking: on a busy machine b can win)
   expect(stts.map((s) => s.calls.length).sort()).toEqual([0, 0, 1]);
+}, 120000);
+
+test('a transcript taken over from a sibling comes with its own record of the model: an older record here never deletes it', async () => {
+  const projects = mkdtempSync(join(tmpdir(), 'share-')), a = join(projects, 'a'), b = join(projects, 'b'), src = join(projects, 'clip.mp4');
+  mkdirSync(a); mkdirSync(b);
+  await makePhoneVideo(src);
+  const stt = (text: string, model: string) => ({ ...fakeTranscribe(text), model });
+  await analyzeSource(b, src);
+  await sourceExtras(b, src, { label: 'clip', stt: stt('舊', 'small') });            // b transcribed with the older model
+  await analyzeSource(a, src);
+  const large = stt('新', 'large');
+  await sourceExtras(a, src, { label: 'clip', stt: large });                         // b's is the older model's: a makes its own
+  expect(large.calls).toHaveLength(1);
+  const fb = extrasFiles(b, src), text = () => JSON.parse(readFileSync(fb.transcript, 'utf8')).segments[0].text;
+  // b moves to the larger model: a's transcript, made with it since, is taken with a's record instead of being made a third time
+  const again = stt('再', 'large');
+  await sourceExtras(b, src, { label: 'clip', stt: again });
+  expect([again.calls.length, text(), readFileSync(fb.transcriptBy, 'utf8'), statSync(fb.transcript).nlink]).toEqual([0, '新', 'fake:large', 2]);
+  // b's old record left without its transcript (dropped while a sibling was still busy): a's transcript comes with a's record
+  rmSync(fb.transcript); rmSync(fb.transcriptBy); writeFileSync(fb.transcriptBy, 'fake:small');   // its own file, not through the link to a's
+  await sourceExtras(b, src, { label: 'clip', stt: again });
+  expect([again.calls.length, text(), readFileSync(fb.transcriptBy, 'utf8')]).toEqual([0, '新', 'fake:large']);
+  expect(await extrasDone(b, src, again)).toBe(true);
+  // a transcript from before records were kept is kept: a sibling's record is never linked in beside it to speak for it
+  rmSync(fb.transcriptBy);
+  writeFileSync(fb.transcript + '.new', JSON.stringify({ language: 'zh', segments: [{ start: 0, end: 1, text: '老' }] }));
+  renameSync(fb.transcript + '.new', fb.transcript);
+  await shareAnalysis(b, src);   // looks at the siblings whatever this folder has
+  await sourceExtras(b, src, { label: 'clip', stt: again });
+  expect([again.calls.length, text(), existsSync(fb.transcriptBy)]).toEqual([0, '老', false]);
 }, 120000);
 
 test('a sibling\u2019s sheets and burned check made by an older EXTRAS_VERSION are not taken (they would be stamped current here)', async () => {

@@ -146,8 +146,12 @@ export async function sourceExtras(projectDir: string, srcPath: string, o: { lab
     // which speech-to-text tool answers is tellcut/providers.json's business (toolkit phase 3); a transcript another tool or model
     // made is made again (one from before this was recorded has no maker and is kept)
     const stt = o.stt ?? transcribeProvider(), by = makerOf(stt);
+    const stale = () => o.transcribe !== false && existsSync(f.transcript) && existsSync(f.transcriptBy) && readFileSync(f.transcriptBy, 'utf8') !== by;
+    // a stale transcript goes with its record (a record left behind would speak for the next one), then a sibling's is looked
+    // for again: one another project made with this model since is taken, under its own record (share.ts keeps the two together)
+    const drop = () => { rmSync(f.transcript, { force: true }); rmSync(f.transcriptBy, { force: true }); };
     await take();
-    if (o.transcribe !== false && existsSync(f.transcript) && existsSync(f.transcriptBy) && readFileSync(f.transcriptBy, 'utf8') !== by) rmSync(f.transcript, { force: true });
+    if (stale()) { drop(); await take(); if (stale()) drop(); }
     if (o.transcribe !== false && !existsSync(f.transcript) && (await probeHasAudio(srcPath))) {
       busy = await transcribing(projectDir, srcPath);
       if (busy) return;

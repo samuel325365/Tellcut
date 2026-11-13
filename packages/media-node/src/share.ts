@@ -25,6 +25,10 @@ const PROXY = 'proxy.mp4', PROXY_STAMP = 'proxy.v3';
 /** what extras.version stamps (extras.ts): taken only from a folder stamped with this code's version, or an older version's
  *  sheets were linked in right after sourceExtras had removed its own, and stamped current */
 const VERSIONED = /^(extras\.version|sheets\.json|sheet-\d+\.jpg|burned(-v\d+)?\.json)$/;
+/** a transcript's record of which tool and model made it (extras.ts) goes with that transcript, never apart: linked beside this
+ *  folder's own transcript it would speak for a file it never saw, and this folder's own record left beside a sibling's
+ *  transcript named an older model, so a current transcript just taken over was deleted and made again */
+const TRANSCRIPT = 'transcript.json', TRANSCRIPT_BY = 'transcript.by';
 const current = async (from: string) => { try { return (await readFile(join(from, 'extras.version'), 'utf8')) === EXTRAS_VERSION; } catch { return false; } };
 
 /** a folder's note: the file it was made for, and that file's content print (contentPrint; notes written before it have none) */
@@ -151,6 +155,9 @@ export async function shareFolder(dir: string): Promise<number> {
     // the stamp goes only with the proxy it is about: beside a proxy of this folder's own, the sibling's stamp would vouch for a
     // file it never looked at (analysis.ts checks an unstamped proxy of its own, and stamps it once it has)
     if (await exists(join(dir, PROXY))) names = names.filter((n) => n !== PROXY_STAMP);
+    if (await exists(join(dir, TRANSCRIPT))) names = names.filter((n) => n !== TRANSCRIPT_BY);
+    // the sibling's record, or none (a transcript from before records: kept as one), comes with its transcript
+    else if (names.includes(TRANSCRIPT)) await rm(join(dir, TRANSCRIPT_BY), { force: true }).catch(() => {});
     for (const n of names) {
       const src = join(from, n), dst = join(dir, n);
       try {
