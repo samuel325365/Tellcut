@@ -101,3 +101,13 @@ test('a PowerShell script with any non-ASCII text starts with a UTF-8 BOM (Windo
     if (b.some((x) => x > 0x7f)) expect([f, b[0], b[1], b[2]]).toEqual([f, 0xef, 0xbb, 0xbf]);
   }
 });
+
+test('mediapipe: the version check has a time limit, so a stuck interpreter cannot hold doctor or the provider list', async () => {
+  const seen: Array<{ timeout?: number }> = [];
+  const p = mediapipeFaces({ model: join(TELLCUT_ROOT, 'package.json') }, {
+    runPy: (async () => '') as never,
+    runUv: (async (_args: string[], o: { timeout?: number } = {}) => { seen.push(o); return '0.10.0\n'; }) as never,
+  });
+  expect((await p.check()).version).toBe('0.10.0');
+  expect(seen[0].timeout).toBeGreaterThan(0);
+});

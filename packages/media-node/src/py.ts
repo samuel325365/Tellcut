@@ -26,6 +26,10 @@ type RunOptions = {
  *  for a first run that has to sync the environment. */
 export const PY_JSON_TIMEOUT = 10 * 60_000;
 
+/** a provider's version check (`--offline`, nothing to sync or download): uv and the interpreter start in seconds, so one
+ *  still going after this is stuck, and `doctor` or the server's provider list would otherwise wait on it for ever */
+export const PY_CHECK_TIMEOUT = 60_000;
+
 /** `uv <args>` in tellcut/; resolves stdout, rejects with the last lines of stderr. */
 export function runUv(args: string[], o: RunOptions = {}): Promise<string> {
   return new Promise((res, rej) => {

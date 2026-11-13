@@ -1,6 +1,6 @@
 // The speech-to-text provider Tellcut has always used: faster-whisper on the CPU, run in tellcut's own Python environment (tools/py/transcribe.py).
 import { readFileSync, rmSync } from 'node:fs';
-import { PY_PROJECT, runPy, runUv } from '../py.ts';
+import { PY_CHECK_TIMEOUT, PY_PROJECT, runPy, runUv } from '../py.ts';
 import type { ProviderStatus, TranscribeProvider } from './types.ts';
 
 export function fasterWhisper(options: { model?: string } = {}): TranscribeProvider {
@@ -10,7 +10,7 @@ export function fasterWhisper(options: { model?: string } = {}): TranscribeProvi
     get model() { return process.env.TELLCUT_WHISPER_MODEL ?? options.model ?? 'large-v3-turbo'; },
     async check(): Promise<ProviderStatus> {
       try {
-        const v = (await runUv(['run', '--project', PY_PROJECT, '--quiet', '--no-sync', '--offline', 'python', '-c', 'import importlib.metadata as m; print(m.version("faster-whisper"))'])).trim();
+        const v = (await runUv(['run', '--project', PY_PROJECT, '--quiet', '--no-sync', '--offline', 'python', '-c', 'import importlib.metadata as m; print(m.version("faster-whisper"))'], { timeout: PY_CHECK_TIMEOUT })).trim();
         const model = options.model ?? 'large-v3-turbo';
         return { ok: true, version: v, detail: `模型 ${model}（第一次使用會下載模型）`, en: { detail: `model ${model} (downloaded on first use)` } };
       } catch (e) {

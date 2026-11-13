@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { ffmpeg, probeDuration } from '../ffmpeg.ts';
 import { renameRetry } from '../fsutil.ts';
-import { PY_DIR, runUv } from '../py.ts';
+import { PY_CHECK_TIMEOUT, PY_DIR, runUv } from '../py.ts';
 import type { ProviderStatus, TtsProvider } from './types.ts';
 
 export const EDGE_VOICES = ['zh-TW-HsiaoChenNeural', 'zh-TW-HsiaoYuNeural', 'zh-TW-YunJheNeural', 'zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural', 'en-US-JennyNeural', 'ja-JP-NanamiNeural'];
@@ -16,7 +16,8 @@ export function edgeTts(options: { version?: string; voice?: string } = {}, run:
     voices: () => EDGE_VOICES, defaultVoice,
     async check(): Promise<ProviderStatus> {
       try {
-        const v = (await run(['tool', 'run', '--from', pkg, 'python', '-c', 'import importlib.metadata as m; print(m.version("edge-tts"))'])).trim();
+        // not --offline: the first check may download edge-tts into uv's tool cache, so it gets a few check-lengths
+        const v = (await run(['tool', 'run', '--from', pkg, 'python', '-c', 'import importlib.metadata as m; print(m.version("edge-tts"))'], { timeout: 5 * PY_CHECK_TIMEOUT })).trim();
         return { ok: true, version: v, detail: `聲音 ${defaultVoice}；要連網才能說話`, en: { detail: `voice ${defaultVoice}; speaking needs the internet` } };
       } catch (e) {
         const why = (e as Error).message.slice(0, 120);

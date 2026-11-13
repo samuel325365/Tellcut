@@ -37,3 +37,10 @@ test('edge: a failing run is the caller\'s error and leaves no temp mp3 behind; 
   const s = await p.check();
   expect([s.ok, s.detail.includes('no network'), !!s.install]).toEqual([false, true, true]);
 });
+
+test('edge: the check has a time limit long enough for its first download', async () => {
+  let limit: number | undefined;
+  const p = edgeTts({}, (async (_args: string[], o: { timeout?: number } = {}) => { limit = o.timeout; return '7.3.1\n'; }) as never);
+  expect((await p.check()).version).toBe('7.3.1');
+  expect(limit).toBeGreaterThanOrEqual(5 * 60_000);
+});

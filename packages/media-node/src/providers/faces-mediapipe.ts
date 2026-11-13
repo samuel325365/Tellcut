@@ -3,7 +3,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { modelsDir } from '../deps.ts';
-import { PY_PROJECT, runPy, runUv } from '../py.ts';
+import { PY_CHECK_TIMEOUT, PY_PROJECT, runPy, runUv } from '../py.ts';
 import type { FaceInfo, FacesProvider, ProviderStatus } from './types.ts';
 
 /** the model file, under TELLCUT_MODELS_DIR when it is set (where npm run setup puts it) */
@@ -22,7 +22,7 @@ export function mediapipeFaces(options: { model?: string } = {}, py: { runPy: ty
     async check(): Promise<ProviderStatus> {
       if (!existsSync(model)) return { ok: false, detail: `沒有模型 ${model}`, install: 'npm run setup', en: { detail: `no model at ${model}`, install: 'npm run setup' } };
       try {
-        const v = (await py.runUv(['run', '--project', PY_PROJECT, '--quiet', '--no-sync', '--offline', 'python', '-c', 'import importlib.metadata as m; print(m.version("mediapipe"))'])).trim();
+        const v = (await py.runUv(['run', '--project', PY_PROJECT, '--quiet', '--no-sync', '--offline', 'python', '-c', 'import importlib.metadata as m; print(m.version("mediapipe"))'], { timeout: PY_CHECK_TIMEOUT })).trim();
         return { ok: true, version: v, detail: '臉框與嘴唇位置', en: { detail: 'face boxes and lip positions' } };
       } catch (e) {
         const why = (e as Error).message.slice(0, 120);
