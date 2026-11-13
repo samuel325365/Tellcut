@@ -26,6 +26,27 @@ test('the caption row lands where the cover-fit puts it, and only while the sour
   expect(at(p, 10)).toBeNull();                                     // source time 20: the span has ended
 });
 
+// a clip in a window (frame 0.1, 0.25, 0.8 × 0.5 of 1080 × 1920 = x 108, y 480, 864 × 960): the 1920 × 1080 source covers it
+// at 1706.7 × 960 with its left edge at −421.3, so the caption row [0.08, 0.86, 0.84, 0.12] runs from x −176.8 to 1256.8, is cut
+// to the window's 108…972, and sits at y 480 + 0.86 × 960 = 1305.6, 0.12 × 960 = 115.2 tall
+const windowed = () => proj({ frame: [0.1, 0.25, 0.8, 0.5] });
+test('the caption row of a clip in a window lands at its exact place on the picture, cut to the window', () => {
+  const r = at(windowed(), 3)!;
+  expect(r.x).toBeCloseTo(108, 6);
+  expect(r.y).toBeCloseTo(1305.6, 6);
+  expect(r.w).toBeCloseTo(864, 6);
+  expect(r.h).toBeCloseTo(115.2, 6);
+});
+
+test('our words count as on the footage caption from a quarter of their box: 20 % is not, 30 % is; the clip\'s own box is never ours', () => {
+  const p = windowed();
+  // a 100 px tall box reaching 20 px / 30 px into the row's top (y 1305.6)
+  expect(onlyWarn(p, { v: burned }, [{ t: 3, boxes: [boxAt(1305.6 - 80, 100)] }])).toEqual([]);
+  expect(onlyWarn(p, { v: burned }, [{ t: 3, boxes: [boxAt(1305.6 - 70, 100)] }]).map((f) => f.ids)).toEqual([['cap']]);
+  // the player measures the video item too (its id is the clip's): the footage's caption on itself is the note, not a warning
+  expect(onlyWarn(p, { v: burned }, [{ t: 3, boxes: [boxAt(1305.6, 115.2, 'c1')] }])).toEqual([]);
+});
+
 test('zooming in and pushing the focus up cuts the caption row off the picture', () => {
   const tight = proj({ zoom: 1.6, y: 0.2 });
   expect(at(tight, 3)).toBeNull();
