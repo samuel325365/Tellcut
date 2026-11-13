@@ -214,3 +214,61 @@ test('words an fx reports drawing on a canvas: measured like DOM text (fx items 
   expect(d.words).toEqual(new Map([['paint', '出門了 這次去海邊'], ['tiny', '小字 更小']]));
   expect([...d.early]).toEqual(['cap', 'paint']);
 });
+
+test('a frame with no words, a box with no rects and a zero-size rect: nothing judged, measured or counted as early words', () => {
+  const p = proj([
+    { id: 'cap', start: 0, end: 4, type: 'core.caption', params: { text: 'x' } },
+    { id: 'paint', start: 0, end: 4, type: 'fx.paint', params: {} },
+  ]);
+  const W = 1080, H = 1920, spans = resolveTimes(p);
+  // a frame the player found no words in, and boxes with nothing measured in them (the caption not drawn yet)
+  const empty = [{ t: 0.5, boxes: [] }, { t: 0.6, boxes: [{ id: 'cap', rects: [] }, { id: 'paint', canvas: true as const, rects: [] }] }];
+  expect(layoutChecks(empty, { W, H, spans })).toEqual([]);
+  expect(captionSizeChecks(empty, { W, H, captions: new Set(['cap']) })).toEqual([]);
+  expect(canvasSizeChecks(empty, { W, H })).toEqual([]);
+  const d = drawnText(empty);
+  expect([d.words, d.early]).toEqual([new Map(), new Set()]);
+  // the caption measured later at a big enough size: its empty frame does not make it "0 px"
+  expect(captionSizeChecks([...empty, { t: 2, boxes: [{ id: 'cap', rects: [{ x: 200, y: 900, w: 400, h: 117 }] }] }], { W, H, captions: new Set(['cap']) })).toEqual([]);
+  // a zero-size rect in the corner or at the bottom is no text past the margin
+  expect(layoutChecks([{ t: 2, boxes: [{ id: 'cap', rects: [{ x: 0, y: 0, w: 0, h: 60 }, { x: 0, y: 1900, w: 400, h: 0 }] }] }], { W, H, spans })).toEqual([]);
+});
+
+test('early words: a box with rects before 1 s; an empty box before it, or words from 1 s on, are not', () => {
+  const r = [{ x: 200, y: 900, w: 400, h: 100 }];
+  const d = drawnText([
+    { t: 0.5, boxes: [{ id: 'blank', rects: [] }, { id: 'seen', rects: r }] },
+    { t: 1, boxes: [{ id: 'blank', rects: r }, { id: 'late', rects: r }] },
+  ]);
+  expect([...d.early]).toEqual(['seen']);
+});
+
+test('overlap is between two items: one item\'s DOM and canvas words over each other are not, each pair once over the time both show', () => {
+  const p = proj([
+    { id: 'a', start: 10, end: 12, type: 'core.caption', params: { text: 'x' } },
+    { id: 'b', start: 11, end: 14, type: 'core.lowerThird', params: { text: 'x' } },
+  ]);
+  const o = { W: 1080, H: 1920, spans: resolveTimes(p) }, r = { x: 200, y: 1000, w: 400, h: 60 };
+  // layoutBoxes hands an item's DOM text and what it reported drawing on its canvas as two boxes of the same id
+  expect(layoutChecks([{ t: 11.5, boxes: [{ id: 'a', rects: [r] }, { id: 'a', canvas: true as const, rects: [{ ...r, x: 300 }] }] }], o)).toEqual([]);
+  const f = layoutChecks([
+    { t: 11.5, boxes: [{ id: 'b', rects: [r] }, { id: 'a', rects: [{ ...r, x: 300 }] }, { id: 'a', canvas: true as const, rects: [r] }] },
+    { t: 11.8, boxes: [{ id: 'a', rects: [r] }, { id: 'b', rects: [{ ...r, y: 1030 }] }] },
+  ], o);
+  expect(f.map((x) => `${x.level} ${x.t!.join('-')} ${x.msg}`)).toEqual(['warn 11-12 文字互相重疊（a、b）']);
+  // side by side, touching: not on top of each other
+  expect(layoutChecks([{ t: 11.5, boxes: [{ id: 'a', rects: [r] }, { id: 'b', rects: [{ ...r, x: 600, w: 300 }] }] }], o)).toEqual([]);
+});
+
+test('the 0.9 s frame: only for an fx that starts before 0.9 s, in a portrait film of three minutes at most', () => {
+  const at = (items: any[], w = 1080, h = 1920, duration = 20) => { const p = proj(items, w, h); p.meta.duration = duration; return sampleTimes(p, resolveTimes(p)); };
+  const fx = (start: number) => ({ id: 'fx', start, end: start + 4, type: 'fx.paint', params: {} });
+  expect(at([fx(0.5)])).toEqual([0.9, 1.05, 2.5]);
+  expect(at([fx(0.85)])).toEqual([0.9, 1.4, 2.85]);
+  expect(at([fx(0.9)])).toEqual([1.45, 2.9]);                                                   // from 0.9 s on: its own frames
+  expect(at([{ id: 'cap', start: 0.5, end: 4.5, type: 'core.caption', params: { text: 'x' } }])).toEqual([1.05, 2.5]);   // a text, not an fx
+  expect(at([fx(0.5)], 1920, 1080)).toEqual([1.05, 2.5]);                                       // landscape
+  expect(at([fx(0.5)], 1080, 1080)).toEqual([1.05, 2.5]);                                       // square
+  expect(at([fx(0.5)], 1080, 1920, 180)).toEqual([0.9, 1.05, 2.5]);
+  expect(at([fx(0.5)], 1080, 1920, 181)).toEqual([1.05, 2.5]);                                  // longer than a short
+});

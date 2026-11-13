@@ -203,7 +203,7 @@ export function captionSizeChecks(samples: Array<{ t: number; boxes: TextBox[] }
   const k = Math.min(o.W, o.H) / 1080, tall = new Map<string, number>();
   // the type size the player measured (layout.ts typeSize), else the line box over a Noto Sans TC line's ratio
   const letter = (r: TextBox['rects'][number]) => r.size ?? r.h / LINE_BOX;
-  for (const s of samples) for (const b of s.boxes) if (o.captions.has(b.id)) tall.set(b.id, Math.max(tall.get(b.id) ?? 0, ...b.rects.map(letter)));
+  for (const s of samples) for (const b of s.boxes) if (o.captions.has(b.id) && b.rects.length) tall.set(b.id, Math.max(tall.get(b.id) ?? 0, ...b.rects.map(letter)));
   const small = [...tall].filter(([, px]) => px < 48 * k - 0.5);
   if (!small.length) return [];
   const px = Math.round(Math.min(...small.map(([, x]) => x)) / k), need = Math.ceil(((48 * k) / o.H) * 1000) / 10;
