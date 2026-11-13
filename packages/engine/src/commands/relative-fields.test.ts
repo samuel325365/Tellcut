@@ -27,6 +27,26 @@ test('split keeps the crop keys, the easing and the picture at the cut', () => {
   expect(b.crop.keys).toEqual([{ t: 0.25, ...C(1.5) }]);
 });
 
+test('split of a linear keyed move: every moment of both halves shows the picture it showed before, a key on the cut included', () => {
+  const p = structuredClone(fixture());
+  const c1 = item(p, 'c1');                                   // 0–4 s
+  c1.crop = { from: C(1), to: C(2, 0.6), keys: [{ t: 1, ...C(1.2, 0.3) }, { t: 2, ...C(1.5, 0.4) }, { t: 3, ...C(1.8, 0.7) }] };
+  const before = structuredClone(c1.crop);
+  for (const cut of [1.5, 2]) {                               // between two keys, and right on one
+    const q = structuredClone(p);
+    split(q, { t: cut, ids: ['c1'] });
+    const a = item(q, 'c1'), b = item(q, 'c1-2');
+    for (let t = 0; t <= 4 + 1e-9; t += 0.1) {
+      const was = cropAt(before, t, 4), now = t <= cut ? cropAt(a.crop, t, cut) : cropAt(b.crop, t - cut, 4 - cut);
+      expect([now.x, now.zoom].map((v) => v.toFixed(6))).toEqual([was.x, was.zoom].map((v) => v.toFixed(6)));
+    }
+    // each half keeps the keys inside it, on its own time; the cut itself is the first half's to and the second's from
+    expect(a.crop.keys.every((k: any) => k.t > 0 && k.t < cut)).toBe(true);
+    expect(b.crop.keys.every((k: any) => k.t > 0 && k.t < 4 - cut)).toBe(true);
+    expect(a.crop.keys.length + b.crop.keys.length).toBe(cut === 2 ? 2 : 3);
+  }
+});
+
 test('split gives each shake to its half, moved to the half\'s own time', () => {
   const p = withPunchIn();
   split(p, { t: 2, ids: ['c1'] });

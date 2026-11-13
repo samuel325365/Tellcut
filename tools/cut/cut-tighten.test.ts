@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Cut } from './cut.ts';
 import { CUT_API } from './api-doc.ts';
 import { tightenClip } from './tighten.ts';
+import { cropAt } from '@tellcut/engine';
 import { base, inv, items } from './cut-test-kit.ts';
 
 describe('tighten (pauses in talk shortened on the word times)', () => {
@@ -90,6 +91,20 @@ describe('tighten (pauses in talk shortened on the word times)', () => {
     const k = talk([A, B]), kids = k.tighten(k.clip('v', { from: 0, len: 10, crop: keyed as any }));
     expect(kids.length).toBe(2);
     expect(items(k, 'v1').find((i) => i.id === kids[0]).crop.from.x).toBeCloseTo(0.466, 6);
+    // the keys are kept, not flattened into each piece's from / to: a key inside a piece stays on its source moment, and every
+    // moment of every piece shows what that source moment showed in the untightened clip (source 0, speed 1: a piece's in is the
+    // clip's own time). Pieces: source 0.85–2.15 and 3.35–4.75.
+    const turn = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 }, keys: [{ t: 1.5, x: 0.3, y: 0.5, zoom: 1.2 }, { t: 4, x: 0.7, y: 0.5, zoom: 1.6 }] };
+    const m = talk([A, B]), mids = m.tighten(m.clip('v', { from: 0, len: 10, crop: turn as any }));
+    const piece = (id: string) => items(m, 'v1').find((i) => i.id === id);
+    expect([piece(mids[0]).crop.keys, piece(mids[1]).crop.keys]).toEqual([[{ t: 0.65, x: 0.3, y: 0.5, zoom: 1.2 }], [{ t: 0.65, x: 0.7, y: 0.5, zoom: 1.6 }]]);
+    for (const id of mids) {
+      const c = piece(id), len = c.end - c.start;
+      for (let s = 0; s <= len + 1e-9; s += len / 8) {
+        const now = cropAt(c.crop, s, len), was = cropAt(turn as any, c.in + s, 10);
+        expect([now.x, now.zoom].map((v) => v.toFixed(6))).toEqual([was.x, was.zoom].map((v) => v.toFixed(6)));
+      }
+    }
   });
 
   test('captions over the pieces: each sentence once, on the piece it starts in; a sentence across a join is one caption', () => {
