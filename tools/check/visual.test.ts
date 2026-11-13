@@ -72,6 +72,40 @@ test('layout: text outside the 5% margin is an error, in a portrait film the pla
   expect(layoutChecks([{ t: 6, boxes: [{ id: 'corner', rects: [box(1700, 900, 100, 50)] }] }], { W: 1920, H: 1080, spans: resolveTimes(q) })).toEqual([]);
 });
 
+test('layout: each margin of a portrait film, the platform\'s right side, and a 4:5 film has no platform area (TT4)', () => {
+  const p = proj([{ id: 't', start: 0, end: 4, type: 'core.caption', params: { text: 'x' } }]);
+  const o = { W: 1080, H: 1920, spans: resolveTimes(p) };
+  const judge = (x: number, y: number, w: number, h: number, oo: typeof o = o) => layoutChecks([{ t: 2, boxes: [{ id: 't', rects: [{ x, y, w, h }] }] }], oo).map((f) => `${f.level} ${f.msg}`);
+  // past the 5 % margins (y 1824 at the bottom, 96 at the top, x 1026 on the right): an error, and not also a platform note
+  expect(judge(200, 1850, 400, 60)).toEqual(['error 文字超出安全區（下方）（t）']);
+  expect(judge(200, 40, 400, 60)).toEqual(['error 文字超出安全區（上方）（t）']);
+  expect(judge(900, 900, 160, 60)).toEqual(['error 文字超出安全區（右邊）（t）']);
+  // inside the margins but past the platform's right side (12 %: x 950.4), half way down: one note
+  expect(judge(600, 900, 400, 60)).toEqual(['note 文字在短影音平台的介面區（右側），可能被按鈕或說明蓋住（t）']);
+  // 4:5 sits in a feed with nothing over it: y 1200–1260 is inside its 5 % margin (1282.5) and judged no further
+  const f45 = proj([{ id: 't', start: 0, end: 4, type: 'core.caption', params: { text: 'x' } }], 1080, 1350);
+  expect(judge(200, 1200, 400, 60, { W: 1080, H: 1350, spans: resolveTimes(f45) })).toEqual([]);
+});
+
+test('a hidden overlay track is not sampled; popDur sets when a popping text stands still (TT4)', () => {
+  const hidden = proj([{ id: 'a', start: 2, end: 6, type: 'core.caption', params: { text: '你好' } }]);
+  hidden.tracks[0].muted = true;
+  expect(sampleTimes(hidden, resolveTimes(hidden))).toEqual([]);
+  const pop = proj([{ id: 'a', start: 2, end: 6, type: 'common.slam', params: { text: '好', popDur: 0.8 } }]);
+  expect(settledWindows(pop, resolveTimes(pop)).get('a')).toEqual([2.8, 5.7]);
+  expect(sampleTimes(pop, resolveTimes(pop))).toEqual([2.9, 4]);
+});
+
+test('sound: quiet is under −50 dBFS in the loudest channel, so a soft passage or one silent channel is not "no sound"', () => {
+  const rate = 1000, n = 6 * rate, wave = (amp: number) => Float32Array.from({ length: n }, (_, i) => amp * Math.sin(i / 3));
+  // −30 dBFS RMS (peak 0.0447) for the whole film: soft, not silent
+  expect(audioChecks([wave(0.0447)], rate)).toEqual([]);
+  // −60 dBFS RMS is
+  expect(audioChecks([wave(0.00141)], rate).map((f) => f.msg)).toEqual(['沒有聲音']);
+  // left silent, right playing: the right channel is heard
+  expect(audioChecks([new Float32Array(n), wave(0.3)], rate)).toEqual([]);
+});
+
 test('sound: samples at full scale are clipping, two seconds and more of near silence are flagged', () => {
   const rate = 1000, n = 10 * rate, ch = new Float32Array(n);
   for (let i = 0; i < n; i++) ch[i] = 0.3 * Math.sin(i / 3);
@@ -173,6 +207,9 @@ test('words an fx reports drawing on a canvas: measured like DOM text (fx items 
   expect(small).toHaveLength(1);
   expect(small[0]).toMatchObject({ level: 'warn', ids: ['tiny'] });
   expect(small[0].msg).toContain('約 30 px');
+  // the floor is 48 px, not just "very small": 47 px is under it, 48 px is not
+  expect(canvasSizeChecks([{ t: 6, boxes: [canvas('tiny', 200, 700, 47, '小字')] }], { W: 1080, H: 1920 }).map((x) => x.ids)).toEqual([['tiny']]);
+  expect(canvasSizeChecks([{ t: 6, boxes: [canvas('tiny', 200, 700, 48, '小字')] }], { W: 1080, H: 1920 })).toEqual([]);
   const d = drawnText(samples);
   expect(d.words).toEqual(new Map([['paint', '出門了 這次去海邊'], ['tiny', '小字 更小']]));
   expect([...d.early]).toEqual(['cap', 'paint']);
