@@ -203,3 +203,12 @@ test('swapSource refuses an in-point at the end of the new source, even for a cl
   expect(() => run(p, swapSource, { id: 'c2', source: 's', in: 30 })).toThrow(/past the end of source "s"/);
   expect(item(run(p, swapSource, { id: 'c2', source: 's', in: 29.9 }), 'c2').in).toBe(29.9);
 });
+
+test('addItem refuses a parent that is not in the project, as updateItem does (health10)', () => {
+  const p = fixture(), was = JSON.stringify(p);
+  expect(() => addItem(p, { track: 'sc', item: { type: 'x.b', start: 0, end: 1, params: {}, parent: 'nope' } })).toThrow(/parent: no item "nope"/);
+  // its own id is not taken yet: it cannot hang on itself
+  expect(() => addItem(p, { track: 'sc', item: { id: 'new', type: 'x.b', start: 0, end: 1, params: {}, parent: 'new' } })).toThrow(CommandError);
+  expect(JSON.stringify(p)).toBe(was);
+  expect(item(run(p, addItem, { track: 'sc', item: { type: 'x.b', start: 0, end: 1, params: {}, parent: 'c1' } }), 'scene').parent).toBe('c1');
+});

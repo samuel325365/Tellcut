@@ -99,6 +99,11 @@ export function addItem(p: Project, a: { track: string; item: Record<string, unk
   // the page chat once guessed a "v2" and did not know a track can be added in the same proposal
   if (!t) throw new CommandError(`No track "${a.track}" (tracks: ${p.tracks.map((x) => x.id).join(', ')}; a new one: addTrack {kind, name?, as} first, then use its "$name")`, 'cmd.noTrack', { id: a.track });
   const id = uniqueId(p, typeof a.item.id === 'string' ? a.item.id : BASE[t.kind]);
+  // a parent that is not in the project made a project.json that loaded nowhere (checkItem sees one item only; updateItem
+  // checks it too). The new item has no children yet, so it cannot close a loop.
+  const par = a.item.parent;
+  if (typeof par === 'string' && !p.tracks.some((x) => (x.items as AnyItem[]).some((i) => i.id === par)))
+    throw new CommandError(`parent: no item "${par}"`, 'cmd.noItem', { id: par });
   (t.items as AnyItem[]).push(plain(checkItem(p, t.kind, { ...a.item, id })));
   return id;
 }
