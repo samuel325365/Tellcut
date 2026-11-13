@@ -6,6 +6,9 @@
 // file hard-linked to the lock's name), so it is never seen empty and judged stale; one that is unreadable all the same (made the
 // old way, or on a file system without links) counts as held while it is young; a stale lock is moved aside before it is removed
 // (takeOver), so a late waiter cannot delete the fresh lock another waiter has just made in its place.
+// After the machine sleeps longer than STALE every lock looks stale on waking, live holders' too, until their next heartbeat; a
+// waiter that ran first would take one over (wakeWatch): a process that has just woken counts a stale-looking lock whose pid is
+// alive as held for one more heartbeat period, and a holder refreshes its own locks as soon as it notices it has woken.
 import { closeSync, linkSync, openSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync, writeSync } from 'node:fs';
 import { isAlive, nap, pause } from './proc.ts';
 
@@ -17,15 +20,37 @@ const GUARD_STALE = 60_000;
 const BUSY = new Set(['EPERM', 'EBUSY', 'EACCES']);
 const code = (e: unknown) => (e as NodeJS.ErrnoException)?.code ?? '';
 
+/** the wake watch looks every TICK ms; a wall-clock gap past WAKE_GAP between looks is a suspension (sleep, hibernation), far
+ *  longer than any pause of a busy event loop; for WAKE_GRACE after one, a live pid's stale-looking lock is still held: its holder,
+ *  frozen too, refreshes within one heartbeat (EVERY) of waking, the margin for a slow resume */
+const TICK = 1000, WAKE_GAP = 30_000, WAKE_GRACE = EVERY + 15_000;
+let lastTick = 0, wokeAt = Number.NEGATIVE_INFINITY, watching: ReturnType<typeof setInterval> | undefined;
+/** this process's own lock files, touched as soon as a wake is noticed (keepFresh's interval may be up to EVERY away) */
+const heldHere = new Map<string, number>();   // a count: two holds of one file in a process end separately
+const touch = (file: string) => { try { const now = new Date(); utimesSync(file, now, now); } catch { /* gone */ } };
+/** Notices that this process was suspended: Date.now() jumped past WAKE_GAP since the last look. Called by an unref'd interval
+ *  and on every lockHolder, so the first look after a wake sees the gap even when it runs before the interval does. */
+function wakeWatch(now = Date.now()) {
+  if (!watching) { lastTick = now; watching = setInterval(() => wakeWatch(), TICK); watching.unref(); return; }
+  if (now - lastTick > WAKE_GAP) { wokeAt = now; for (const f of heldHere.keys()) touch(f); }
+  lastTick = now;
+}
+/** woken within WAKE_GRACE (a clock set back leaves wokeAt ahead of now: not a wake) */
+const justWoke = (now: number) => now - wokeAt >= 0 && now - wokeAt < WAKE_GRACE;
+
 /** the other live process holding `file`, and since when (ms); null when free, stale or held by this process. A lock that cannot
  *  be read yet (just made, not written) is held by someone unknown (pid 0) while it is young. */
 export function lockHolder(file: string): { pid: number; started: number } | null {
   let mtime: number;
   try { mtime = statSync(file).mtimeMs; } catch { return null; }
-  if (Date.now() - mtime > STALE) return null;
+  const now = Date.now();
+  wakeWatch(now);
+  // stale by its age, unless this process has just woken: then the holder may simply not have had its heartbeat yet
+  const stale = now - mtime > STALE;
+  if (stale && !justWoke(now)) return null;
   let l: { pid: number; started: number } | null = null;
   try { l = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { if (code(e) === 'ENOENT') return null; }
-  if (typeof l?.pid !== 'number') return Date.now() - mtime < YOUNG ? { pid: 0, started: mtime } : null;
+  if (typeof l?.pid !== 'number') return !stale && now - mtime < YOUNG ? { pid: 0, started: mtime } : null;
   return l.pid !== process.pid && isAlive(l.pid) ? l : null;
 }
 
@@ -92,10 +117,14 @@ const mine = () => JSON.stringify({ pid: process.pid, started: Date.now() });
 const free = (f: string) => !lockHolder(f);   // stale, or this process's own (its callers keep their own jobs apart)
 
 function keepFresh(file: string, every: number) {
-  const beat = setInterval(() => { try { const now = new Date(); utimesSync(file, now, now); } catch { /* gone */ } }, every);
+  const beat = setInterval(() => touch(file), every);
   beat.unref();
+  heldHere.set(file, (heldHere.get(file) ?? 0) + 1);
+  wakeWatch();
   return () => {
     clearInterval(beat);
+    const n = (heldHere.get(file) ?? 1) - 1;
+    if (n > 0) heldHere.set(file, n); else heldHere.delete(file);
     try { if (JSON.parse(readFileSync(file, 'utf8')).pid === process.pid) rmSync(file, { force: true }); } catch { /* gone */ }
   };
 }

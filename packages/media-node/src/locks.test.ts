@@ -199,3 +199,42 @@ test('a file system without hard links still gets a lock (made the old way)', as
   fail.link.push('ENOTSUP');
   await expect(withLock(file, async () => JSON.parse(readFileSync(file, 'utf8')).pid)).resolves.toBe(process.pid);
 });
+
+// after a machine sleep past STALE (3 min) every lock looks stale until its holder's next heartbeat (every 30 s)
+const shiftClock = () => {
+  const realNow = Date.now, clock = { offset: 0 };
+  const spy = vi.spyOn(Date, 'now').mockImplementation(() => realNow.call(Date) + clock.offset);
+  return { clock, restore: () => spy.mockRestore() };
+};
+
+test('a waiter that has just woken from a sleep leaves a live holder’s stale-looking lock alone for one more heartbeat', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lock-')), file = join(dir, 'x.lock');
+  const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)']);
+  const lock = JSON.stringify({ pid: child.pid, started: Date.now() });
+  const { clock, restore } = shiftClock();
+  try {
+    writeFileSync(file, lock);
+    expect(lockHolder(file)?.pid).toBe(child.pid);
+    clock.offset = 5 * 60_000;                                  // the machine slept 5 minutes: the lock is now 5 minutes old
+    expect(lockHolder(file)?.pid).toBe(child.pid);              // held: its holder has not had its heartbeat yet
+    expect(tryLock(file)).toBeNull();
+    expect(readFileSync(file, 'utf8')).toBe(lock);
+    // a holder that does not refresh within a heartbeat (and a margin) of the wake is gone after all (its pid reused)
+    for (let s = 1; s <= 46; s++) { clock.offset += 1000; lockHolder(file); }
+    expect(lockHolder(file)).toBeNull();
+  } finally { restore(); child.kill(); }
+}, 30000);
+
+test('a holder refreshes its own locks as soon as it notices it has woken, not only at its next heartbeat', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lock-')), file = join(dir, 'x.lock');
+  await withLock(file, async () => {
+    const old = new Date(Date.now() - 4 * 60_000);
+    utimesSync(file, old, old);                                 // its last heartbeat before the sleep
+    const { clock, restore } = shiftClock();
+    try {
+      clock.offset = 5 * 60_000;
+      await new Promise((r) => setTimeout(r, 1600));            // the wake watch looks every second
+    } finally { restore(); }
+    expect(Date.now() - statSync(file).mtimeMs).toBeLessThan(5_000);
+  });                                                           // the default 30 s heartbeat: only the wake can have touched it
+}, 30000);
