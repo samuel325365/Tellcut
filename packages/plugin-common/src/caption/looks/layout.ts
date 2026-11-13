@@ -77,7 +77,9 @@ export const chat: CaptionLook = {
     return { background: right ? (e.p.accent || e.theme.palette.accent) : '#eef0f3', padding: '0.28em 0.7em', borderRadius: right ? '0.9em 0.9em 0.2em 0.9em' : '0.9em 0.9em 0.9em 0.2em',
       boxShadow: `0 ${(0.05 * e.fs).toFixed(1)}px ${(0.14 * e.fs).toFixed(1)}px rgba(0,0,0,0.3)` };
   },
-  pin: (e) => ` translateX(${(e.p.speaker ?? 0) >= 2 ? 9 : -9}%)`,
+  // centred, each side's bubble leans 9 % of its width toward its speaker; set flush left, the left speaker's bubble already
+  // starts at the safe edge, and leaning further put it (and its first letter) 46 px past it in 9:16
+  pin: (e) => ((e.p.speaker ?? 0) >= 2 ? ' translateX(9%)' : e.left ? '' : ' translateX(-9%)'),
 };
 
 /** song lyrics: a classical serif in white, softly glowing, with the words not sung yet dim */
@@ -116,6 +118,9 @@ export const narration: CaptionLook = {
   box: (e) => ({ backgroundColor: e.p.hl, padding: '0.2em 0.45em', border: `${(0.08 * e.fs).toFixed(1)}px solid ${e.p.outline}` }),
 };
 
+/** the id of chalk's rough-edge filter at frame scale `k` (one a scale: a page may hold stages of different sizes) */
+export const chalkFilter = (k: number) => `tc-chalk-${Math.round(k * 1000)}`;
+
 /** chalk on a blackboard: a dark green board with a wooden edge, the words in white chalk with rough edges */
 export const chalk: CaptionLook = {
   // 0.7 em of padding and the 0.12 em wooden frame a side
@@ -123,13 +128,16 @@ export const chalk: CaptionLook = {
   color: () => '#f4f4ee',
   hl: () => '#ffe98a',
   box: (e) => ({ background: 'radial-gradient(120% 140% at 30% 20%, #2f4a3a, #1b2b22)', padding: '0.3em 0.7em', border: `${(0.12 * e.fs).toFixed(1)}px solid #7a5230`, borderRadius: `${(0.06 * e.fs).toFixed(1)}px`,
-    textShadow: `0 0 ${(0.03 * e.fs).toFixed(1)}px rgba(255,255,255,0.7)`, boxShadow: `0 ${(0.06 * e.fs).toFixed(1)}px ${(0.2 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)`, filter: 'url(#tc-chalk)' }),
-  after: () => {
-    // the chalk's rough edge: a noise filter the box points at, made once a page
-    if (typeof document === 'undefined' || document.getElementById('tc-chalk')) return;
+    textShadow: `0 0 ${(0.03 * e.fs).toFixed(1)}px rgba(255,255,255,0.7)`, boxShadow: `0 ${(0.06 * e.fs).toFixed(1)}px ${(0.2 * e.fs).toFixed(1)}px rgba(0,0,0,0.5)`, filter: `url(#${chalkFilter(e.k)})` }),
+  after: (_s, e) => {
+    // the chalk's rough edge: a noise filter the box points at, made once a page for each frame scale. Filter units are the
+    // stage's own px, so the grain and the displacement grow with min(W, H) / 1080: a 4K export's edge is the 1080 one scaled up
+    // (fixed at 0.9 and 2.2 it came out half as rough), and 1080 keeps exactly the numbers it always had
+    const id = chalkFilter(e.k);
+    if (typeof document === 'undefined' || document.getElementById(id)) return;
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('width', '0'); svg.setAttribute('height', '0'); svg.style.position = 'absolute';
-    svg.innerHTML = '<filter id="tc-chalk"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.2"/></filter>';
+    svg.innerHTML = `<filter id="${id}"><feTurbulence type="fractalNoise" baseFrequency="${+(0.9 / e.k).toFixed(4)}" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="${+(2.2 * e.k).toFixed(3)}"/></filter>`;
     document.body.appendChild(svg);
   },
 };
