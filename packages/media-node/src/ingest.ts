@@ -180,6 +180,8 @@ export async function createProject(o: IngestOptions): Promise<{ project: Projec
       { id: 'music', kind: 'music', name: 'Music', gain: 0, items: [] }, { id: 'orig', kind: 'audio', name: 'Source', gain: 0, items: [] },
     ],
   });
+  // a cancel that came while local files were being probed still writes nothing (the downloads above stop at once)
+  o.signal?.throwIfAborted();
   writeProjectFile(dir, project, 'new');
   return { project, file, skipped };
 }

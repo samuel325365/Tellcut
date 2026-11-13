@@ -32,9 +32,13 @@ async function main(argv: string[]) {
   let a: NewArgs;
   try { a = newArgs(argv); } catch (e) { process.exit(printFailure(e)); }
   const { id } = a;
+  // the first Ctrl+C (or the chat runner's stop) ends yt-dlp's whole tree and writes no project.json; a second one exits at once
+  const ac = new AbortController(), stop = () => ac.abort();
+  process.once('SIGINT', stop);
+  process.once('SIGTERM', stop);
   try {
     const r = await createProject({ id, inputs: a.inputs, projectsDir: join(TELLCUT_ROOT, 'projects'), size: a.size, force: a.force, audioUrls: a.audio, blank: a.blank,
-      fps: a.fps, name: a.name, log: console.log });
+      fps: a.fps, name: a.name, log: console.log, signal: ac.signal });
     const p = r.project;
     console.log(`\n專案 ${id}：${p.meta.width}×${p.meta.height}、${Object.keys(p.sources).length} 個影片／照片、${Object.keys(p.media).length} 首音樂 → ${r.file}`);
     if (r.skipped.length) console.log(`略過：\n  ${r.skipped.join('\n  ')}`);
@@ -45,8 +49,12 @@ async function main(argv: string[]) {
     } catch { /* no server: inspect does it */ }
     console.log(a.blank && !Object.keys(p.sources).length ? `下一步：寫 projects/${id}/cut.ts（方法：npm run tellcut -- cut-api），再 npm run cut -- ${id}` : `下一步：npm run inspect -- ${id}`);
   } catch (e) {
+    if (ac.signal.aborted) { console.error('已取消，沒有建立專案。'); process.exit(130); }
     console.error(`無法建立專案：${(e as Error).message}`);
     process.exit(1);
+  } finally {
+    process.off('SIGINT', stop);
+    process.off('SIGTERM', stop);
   }
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main(process.argv.slice(2));

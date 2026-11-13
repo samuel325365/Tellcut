@@ -32,3 +32,10 @@ test('a download that fails on its own is still a skipped URL', async () => {
   const download = async () => { throw new Error('404'); };
   await expect(createProject({ id: 'p', inputs: ['https://example.invalid/v'], projectsDir: dir, download })).rejects.toThrow(/No usable media[\s\S]*404/);
 });
+
+test('a cancel that comes after the downloads (while local files are probed) still writes no project', async () => {
+  const ac = new AbortController();
+  ac.abort();
+  await expect(createProject({ id: 'p', inputs: [], blank: true, projectsDir: dir, signal: ac.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  expect(existsSync(join(dir, 'p', 'project.json'))).toBe(false);
+});
