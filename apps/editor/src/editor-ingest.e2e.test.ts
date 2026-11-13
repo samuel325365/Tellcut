@@ -61,7 +61,12 @@ test('Import in the media panel adds footage and music that analyse in the backg
   await makePhoneVideo(join(more, 'more.mp4'), { created: '2026-03-07T01:12:00Z' });
   await makeClicks(join(more, 'beat.wav'), { bpm: 100, seconds: 12 });
   await page.click('[data-import-media]');
+  // let the dialog open its first place before typing: fill selects the box and then inserts, and the first place's answer
+  // landing in between (before fill's input event counts as an edit) replaced the value under the selection, so the path was
+  // appended to it ("…\DesktopC:\…\_more") and the folder was never found
+  await page.waitForFunction(() => !!(document.querySelector('[data-path]') as HTMLInputElement | null)?.value, undefined, { timeout: 20000 }).catch(() => {});
   await page.fill('[data-path]', more);
+  expect(await page.inputValue('[data-path]')).toBe(more);
   await page.press('[data-path]', 'Enter');
   // on a busy machine this wait has timed out now and then (30 s) with no clue why: wait longer, and when it still
   // fails say what the dialog showed instead (which folder, which entries, which error)
