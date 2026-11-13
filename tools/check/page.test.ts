@@ -1,17 +1,23 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { writeFileSync } from 'node:fs';
 import { createRegistry, parseProject } from '@tellcut/engine';
-import { fakeOcr, projectRegistry, TELLCUT_ROOT, run } from '@tellcut/media-node';
+import { fakeOcr, isAlive, projectRegistry, TELLCUT_ROOT, run, withProjectPage } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { renderedChecks, samePicture } from './page.ts';
 
-const dir = join(TELLCUT_ROOT, 'projects/_check-test');
+// one folder per process: two runs at once (a full run beside a single file) deleted each other's footage in a shared one
+const dir = join(TELLCUT_ROOT, `projects/_check-test-${process.pid}`);
 const MIX = { master: 0.9, compressor: { threshold: -12, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 0.5, send: 0.3 } };
 
 beforeAll(async () => {
-  // a run stopped midway leaves its OCR caches behind (afterAll never ran): the next run read every frame from them
+  // a run stopped midway leaves its folder behind (afterAll never ran): one of a process that is gone is removed here
+  for (const name of readdirSync(join(TELLCUT_ROOT, 'projects'))) {
+    const pid = Number(/^_check-test-(\d+)$/.exec(name)?.[1]);
+    if (pid && !isAlive(pid)) rmSync(join(TELLCUT_ROOT, 'projects', name), { recursive: true, force: true });
+  }
+  // its own from an earlier run of this pid would hand over its OCR caches: the run read every frame from them
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   await run(['-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=30:duration=3', '-c:v', 'libx264', join(dir, 'src.mp4')]);
@@ -29,7 +35,8 @@ test('the page layer: a title pushed off the frame is reported, the sheet is mad
         { id: 'fine', type: 'core.caption', start: 1.5, end: 3, params: { text: '這句沒問題' } },
       ] },
     ] });
-  const r = await renderedChecks({ dir, project: p, registry: createRegistry(plugins), sheet: true });
+  // a stand-in OCR: the footage's own text is read on this clip too, and this machine's real OCR is not what is tested here
+  const r = await renderedChecks({ dir, project: p, registry: createRegistry(plugins), sheet: true, ocr: fakeOcr() });
   const msgs = r.findings.map((f) => f.msg);
   expect(msgs).toContain('文字超出安全區（右邊）（off）');
   expect(msgs.some((m) => m.includes('fine'))).toBe(false);
@@ -80,12 +87,19 @@ test('a 3D fx drawn with ctx.three (the example) draws the same picture at the s
   mkdirSync(join(dir, 'fx'), { recursive: true });
   writeFileSync(join(dir, 'fx', 'spin3d.js'), readFileSync(join(TELLCUT_ROOT, 'tools/fx-example/spin3d.js'), 'utf8'));
   const p = parseProject({ version: 1,
-    meta: { name: 's', width: 320, height: 180, fps: 30, duration: 2, plugins: [], fx: ['fx/spin3d.js'], mix: MIX }, sources: {}, media: {}, grids: [],
+    meta: { name: 's', width: 320, height: 180, fps: 30, duration: 3, plugins: [], fx: ['fx/spin3d.js'], mix: MIX }, sources: {}, media: {}, grids: [],
     tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'spin', type: 'fx.spin3d', start: 0, end: 2, params: { text: 'Hi' } }] }] });
   const { registry } = await projectRegistry(dir, plugins, p);
   const msgs = (await renderedChecks({ dir, project: p, registry })).findings.map((f) => f.msg);
   expect(msgs.filter((m) => m.startsWith('fx 不是決定性的'))).toEqual([]);
   expect(msgs.filter((m) => m.includes('spin') && /失敗|錯誤|error/i.test(m))).toEqual([]);
+  // and it draws something: two blank frames are "the same picture" too, so a fx that drew nothing passed the lines above.
+  // Its frame differs from the empty one after it (2.5 s, past the item)
+  const [shown, empty] = await withProjectPage({ dir, project: p, registry }, async (s) => {
+    const at = async (t: number) => { await s.frame(Math.round(t * s.fps)); return s.png(); };
+    return [await at(0.5), await at(2.5)];
+  });
+  expect(await samePicture(shown, empty)).toBe(false);
 }, 300000);
 
 test('a bleeped word the finished frame still shows is reported, Simplified or not (frames read once, then from the cache); no OCR is a note', async () => {
@@ -96,7 +110,9 @@ test('a bleeped word the finished frame still shows is reported, Simplified or n
       { id: 'v', kind: 'video', items: [{ id: 'c', source: 's1', in: 0, speed: 1, start: 0, end: 3, crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } } }] },
       { id: 'o', kind: 'overlay', items: [{ id: 'cap', type: 'common.caption', start: 1, end: 2, params: { text: '{發票}對獎' } }] },
     ] });
+  // both caches: the first test reads the same clip's own text with the same stand-in OCR, and its empty answers would be kept
   rmSync(join(dir, 'cache', 'check', 'ocr-v2.json'), { force: true });
+  rmSync(join(dir, 'cache', 'check', 'ocr-lines-v2.json'), { force: true });
   // frames are written as <film seconds>.png; Simplified, as some footage is. A few letters typing on one frame before the clip
   // ends are read only enlarged (r3c-baking's "Cre…")
   const ocr = fakeOcr({ '1.5.png': '这张发票对奖', '2.95-x2.png': 'Crea' });
