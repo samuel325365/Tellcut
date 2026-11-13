@@ -45,3 +45,21 @@ test('a marquee in the second lane selects only the item in that lane', () => {
   const rows = layoutRows(p), v = rows.find((r) => r.track.id === 'v')!;
   expect(itemsInRect(p, resolveTimes(p), rows, { pps: 50, scroll: 0 }, { x0: 160, y0: v.y + 60, x1: 240, y1: v.y + 70 })).toEqual(['c3']);
 });
+
+test("a drag does not snap to the old places of the dragged item's own children", () => {
+  // blk 2–6 with sounds at 2.5 and 5 hung on it; no beat grid, so 2.5 is only tap's old start
+  const p = fixture(); p.grids = [];
+  const t = resolveTimes(p), plan = planDrag(p, t, { grip: 'body', id: 'blk', mods: none, selection: [] });
+  const r = dragRecipe(p, t, plan, 0.45, { snap: true, threshold: 0.1, playhead: 0 });
+  expect(r.guide).toBeNull();
+  const d = structuredClone(p); r.recipe(d);
+  expect((d.tracks[0].items[0] as any).start).toBe(2.45);
+});
+
+test("a trim does not snap to the clip's own sound, which shares its edges", () => {
+  // c2 4–8 with its own sound; nothing else ends at 8
+  const p = fixture(); p.grids = [];
+  (p.tracks.find((x) => x.id === 'au')!.items as any[]).push({ id: 'o2', source: 's', in: 10, rate: 2, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, parent: 'c2' });
+  const t = resolveTimes(p), plan = planDrag(p, t, { grip: 'end', id: 'c2', mods: none, selection: [] });
+  expect(dragRecipe(p, t, plan, -0.05, { snap: true, threshold: 0.1, playhead: 0 }).guide).toBeNull();
+});

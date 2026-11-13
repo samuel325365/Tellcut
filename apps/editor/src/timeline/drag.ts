@@ -1,5 +1,5 @@
 // Pointer drags → edit commands (spec §4.2), with snapping.
-import { findItem, mediaRate, moveItems, rateStretch, roll, slip, snapCandidates, snapDelta, trimEnd, trimStart, type AnyItem, type Project, type Times } from '@tellcut/engine';
+import { childrenOf, findItem, mediaRate, moveItems, ownSounds, rateStretch, roll, slip, snapCandidates, snapDelta, trimEnd, trimStart, type AnyItem, type Project, type Times } from '@tellcut/engine';
 import { timeToX, type Row, type View } from './geometry.ts';
 
 export interface Mods { alt: boolean; ctrl: boolean; shift: boolean }
@@ -42,6 +42,11 @@ export function dragRecipe(p: Project, times: Times, plan: DragPlan, dt: number,
   const e = edges(plan, times);
   if (o.snap && e.length) {
     const exclude = new Set([...plan.ids, ...(plan.left ? [plan.left] : []), ...(plan.right ? [plan.right] : [])]);
+    // what hangs on a moved item moves with it, so its old place is no target (a clip with its own sound stuck at its origin);
+    // a trim leaves a clip's captions where they are in time, still targets, but its own sound shares the clip's edges
+    const under = (id: string) => { for (const c of childrenOf(p, id)) if (!exclude.has(c.id)) { exclude.add(c.id); under(c.id); } };
+    if (plan.kind === 'move') [...exclude].forEach(under);
+    else for (const id of [...exclude]) for (const c of ownSounds(p, id)) exclude.add(c.id);
     const cands = snapCandidates(p, times, { playhead: o.playhead, exclude });
     d = snapDelta(e, dt, cands, o.threshold);
     if (d !== dt) guide = e.map((x) => x + d).find((x) => cands.some((c) => Math.abs(c - x) < 1e-6)) ?? null;
