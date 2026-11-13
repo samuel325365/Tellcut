@@ -591,3 +591,87 @@ test('a desk whose fly index names no object is an error (the block never flies,
   expect(errs({ fly: { index: 1, at: 1, dur: 1 } }).length).toBe(1);
   expect(errs({ fly: { index: 0, at: 1, dur: 1 } })).toEqual([]);
 });
+
+// health10 TT8: the thresholds and guards of modelChecks, one case each, the input on either side of the line where it has one
+describe('thresholds and guards (TT8)', () => {
+  const said = (text: string, start = 24, end = 26) => ({ language: 'zh', segments: [{ start, end, text }] }) as Transcript;
+  // c1 plays v from 20 s with its own sound: source 24–26 s is film 4–6 s
+  const speech = (...overlay: any[]) => project([
+    { id: 'main', kind: 'video', items: [clip('c1', 0, 10, { in: 20 })] },
+    { id: 'orig', kind: 'audio', gain: 0, items: [{ id: 'a1', source: 'v', in: 20, rate: 1, start: 0, end: 10, gain: 0, fadeIn: 0, fadeOut: 0 }] },
+    { id: 'o', kind: 'overlay', items: overlay },
+  ]);
+  const cap = (id: string, start: number, end: number, text: string) => ({ id, start, end, type: 'core.caption', params: { text } });
+  const late = (f: ReturnType<typeof modelChecks>) => msgs(f).filter((m) => m.includes('字幕時間沒對上講話'));
+
+  test('a caption is on time from half of it said under it: 40 % is late, 60 % is not', () => {
+    const tr = { ...ok, transcripts: { v: said('今天去京都') } };
+    expect(late(modelChecks(speech(cap('c', 5.2, 7.2, '今天去京都')), tr))).toHaveLength(1);
+    expect(late(modelChecks(speech(cap('c', 4.8, 6.8, '今天去京都')), tr))).toEqual([]);
+  });
+
+  test('a caption showing a piece of a sentence is that sentence, however little of it the piece is', () => {
+    // 去京都 shares 3 of the sentence's 10 characters (Dice 0.46): only the piece match finds it, and it is shown 3 s late
+    const tr = { ...ok, transcripts: { v: said('今天我們一起去京都玩') } };
+    expect(late(modelChecks(speech(cap('c', 8, 9, '去京都')), tr))).toEqual([expect.stringContaining('「去京都」在 0:04.0–0:06.0')]);
+  });
+
+  test('a long sentence counts as captioned from 30 % covered, even by a caption that says something else', () => {
+    // 大家好 (film 1–3) is captioned; 好開心喔 (film 7–9) is half under a narration caption
+    const tr = { ...ok, transcripts: { v: { language: 'zh', segments: [{ start: 21, end: 23, text: '大家好' }, { start: 27, end: 29, text: '好開心喔' }] } as Transcript } };
+    expect(msgs(modelChecks(speech(cap('a', 1, 3, '大家好'), cap('n', 8, 9, '晚點見')), tr)).filter((m) => m.includes('可能漏字幕'))).toEqual([]);
+    expect(msgs(modelChecks(speech(cap('a', 1, 3, '大家好')), tr)).filter((m) => m.includes('可能漏字幕'))).toHaveLength(1);
+  });
+
+  test('a panel border is matched only against the clips on screen while it is', () => {
+    const f = [0.05, 0.2, 0.9, 0.5], at = (id: string, start: number, end: number, frame: number[]) => ({ ...clip(id, start, end), frame });
+    const p = project([{ id: 'v1', kind: 'video', items: [at('c1', 0, 4, f), at('c2', 4, 8, [0, 0, 1, 1])] },
+      { id: 'pn', kind: 'overlay', items: [{ id: 'pb', type: 'common.panel', start: 0, end: 4, params: { x: 0.05, y: 0.2, w: 0.9, h: 0.5 } }] }], { duration: 8 });
+    expect(msgs(modelChecks(p, ok)).filter((m) => m.includes('面板'))).toEqual([]);
+  });
+
+  const bed = (gain: number, o: object = {}) => ({ id: 'music', kind: 'music', gain: 0, items: [{ id: 'm', media: 'song', in: 0, start: 0, end: 10, gain, fadeIn: 0, fadeOut: 0, ...o }] });
+  const voice = (o: object = {}, item: object = {}) => ({ id: 'voice', kind: 'music', name: '旁白', gain: 0, ...o, items: [{ id: 'v', media: 'song', in: 0, start: 2, end: 4, gain: 0, fadeIn: 0, fadeOut: 0, ...item }] });
+  const buried = (t: any[]) => msgs(modelChecks(project(t), ok)).filter((m) => m.includes('旁白可能被配樂蓋過'));
+
+  test('narration needs the music 6 dB under it: 4 dB is a warning', () => {
+    expect(buried([bed(-4), voice()])).toEqual([expect.stringContaining('配樂只比旁白小 4 dB')]);
+  });
+
+  test("a music item's envelope is in the item's own time", () => {
+    // the item starts at 1 s: its dip at item 1–3 s is film 2–4 s, under the whole line (read in film time it ends at 3.25 s)
+    expect(buried([bed(0, { start: 1, envelope: [[0.75, 0], [1, -10], [3, -10], [3.25, 0]] }), voice()])).toEqual([]);
+  });
+
+  test('a track named Narration is narration, whatever its id', () => {
+    expect(buried([bed(0), voice({ id: 'nar', name: 'Narration' })])).toHaveLength(1);
+  });
+
+  const tall = (tracks: any[], duration = 10) => { const p = project(tracks, { duration }); p.meta.width = 1080; p.meta.height = 1920; return p; };
+  const firstSecond = (p: ReturnType<typeof project>) => msgs(modelChecks(p, ok)).filter((m) => m.includes('開頭第一秒'));
+
+  test("a short's first second: narration starting before 1 s is speech; words on a hidden track are not text", () => {
+    const main = { id: 'main', kind: 'video', items: [clip('c1', 0, 10)] };
+    expect(firstSecond(tall([main, voice({}, { start: 0.5, end: 3 })]))).toEqual([]);
+    const title = { id: 't', start: 0.1, end: 3, type: 'core.title', params: { text: '你絕對想不到' } };
+    expect(firstSecond(tall([main, { id: 'o', kind: 'overlay', muted: true, items: [title] }]))).toHaveLength(1);
+  });
+
+  test("a short's first second is asked up to 3 minutes: 180 s is, 181 s is not", () => {
+    expect(firstSecond(tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 180)] }], 180))).toHaveLength(1);
+    expect(firstSecond(tall([{ id: 'main', kind: 'video', items: [clip('c1', 0, 181)] }], 181))).toEqual([]);
+  });
+
+  test('a still photo with crop keys moves', () => {
+    const k = (t: number, zoom: number) => ({ t, x: 0.5, y: 0.5, zoom });
+    const p = project([{ id: 'main', kind: 'video', items: [clip('p1', 0, 10, { source: 'ph', crop: { from: k(0, 1), to: k(0, 1), keys: [k(0, 1), k(5, 1.2), k(10, 1)] } })] }]);
+    expect(msgs(modelChecks(p, ok)).filter((m) => m.includes('照片'))).toEqual([]);
+  });
+
+  test('past the film\'s end: half a second over is an error; music may run on past it', () => {
+    const p = project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] },
+      { id: 'o', kind: 'overlay', items: [{ id: 't', start: 8, end: 10.5, type: 'core.title', params: { text: '片名' } }] },
+      { id: 'm', kind: 'music', items: [{ id: 'mu', start: 0, end: 12, media: 'song', in: 0, gain: 0, fadeIn: 0, fadeOut: 0 }] }]);
+    expect(msgs(modelChecks(p, ok)).filter((m) => m.includes('超出片長'))).toEqual(['error 8-10.5 超出片長 10 秒（t）']);
+  });
+});
