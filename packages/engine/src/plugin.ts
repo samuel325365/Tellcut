@@ -61,6 +61,8 @@ export interface MediaApi {
 export interface ItemCtx<P = Record<string, any>> {
   t: number; local: number; dur: number;
   item: SceneItem; params: P; root: HTMLElement;
+  /** the item's further layers, one for each blend mode after the first (ItemType.blend as a list); empty otherwise */
+  layers?: HTMLElement[];
   /** Container above every item (e.g. screen-recording touch indicators); shown only while the item is. */
   top: HTMLElement;
   project: Project; media: MediaApi; W: number; H: number; fps: number;
@@ -96,8 +98,10 @@ export interface ItemType<P = Record<string, any>, S = any> {
    *  footage, though it has a media() hook */
   footage?: 'optional';
   params: ParamDef[];
-  /** CSS mix-blend-mode for the whole item layer against the items below it (layers are otherwise isolated). */
-  blend?: string;
+  /** CSS mix-blend-mode for the whole item layer against the items below it (layers are otherwise isolated). Several modes: one
+   *  layer each, stacked in order at the item's place, each blending with the picture the ones before made (common.grade's deep:
+   *  'color', then 'multiply'); the further layers are ctx.layers, which the stage shows, moves and removes with the item. */
+  blend?: string | string[];
   /** The layer is built on fixed element ids (styled by #id): only one item of this type per project. */
   unique?: boolean;
   /** draws with three.js: the player loads ThreeKit before building it; ctx.three is set */

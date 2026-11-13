@@ -134,6 +134,25 @@ test('an item type with a blend mode blends its whole layer with the items below
   expect(root.querySelector<HTMLElement>('.st-item[data-id="glow"]')!.style.mixBlendMode).toBe('screen');
 });
 
+test('several blend modes: a layer each right after the item\'s, handed to it as ctx.layers and dropped when it fails', () => {
+  const root = document.createElement('div'), seen: HTMLElement[][] = [];
+  let boom = false;
+  const two = { type: 'p.two', label: 't', kind: 'overlay' as const, params: [], blend: ['color', 'multiply'],
+    build: (ctx: any) => { seen.push(ctx.layers); return null; }, draw: (ctx: any) => { seen.push(ctx.layers); if (boom) throw new Error('x'); } };
+  const p = project();
+  p.tracks.push({ id: 'g', kind: 'overlay', items: [{ id: 'two', type: 'p.two', start: 0, end: 2, params: {} }] });
+  const st = new Stage(root, createRegistry([corePlugin, { id: 'p', items: [two] }]), fakeMedia());
+  st.load(p);
+  const own = root.querySelector<HTMLElement>('.st-item[data-id="two"]')!, more = root.querySelector<HTMLElement>('.st-more[data-id="two"]')!;
+  expect([own.style.mixBlendMode, more.style.mixBlendMode, own.nextElementSibling === more, more.style.zIndex === own.style.zIndex]).toEqual(['color', 'multiply', true, true]);
+  st.draw(1);
+  expect(seen.every((l) => l.length === 1 && l[0] === more)).toBe(true);
+  expect(more.style.display).toBe('');
+  boom = true;
+  st.draw(1.5);
+  expect(more.isConnected).toBe(false);
+});
+
 test('missing params fall back to the type defaults', () => {
   const root = document.createElement('div');
   const p = project();

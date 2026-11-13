@@ -15,7 +15,8 @@ import { itemMediaIssues } from './validate.ts';
 import { NO_REPORT, textReporter, type ReportedText } from './report.ts';
 
 /** sig = the item's JSON: update() compares content, since projects posted into the preview iframe are copies. */
-type Common = { id: string; el: HTMLElement; sig: string; muted: boolean };
+/** `more`: the item's further layers, one per blend mode after its first (ItemType.blend), each right above `el` */
+type Common = { id: string; el: HTMLElement; sig: string; muted: boolean; more?: HTMLElement[] };
 type Layer =
   | (Common & { kind: 'video'; frame: HTMLElement; holder: HTMLElement; kb: HTMLElement | null; img: HTMLImageElement | null; item: VideoItem; ref: MediaRef })
   | (Common & { kind: 'plugin'; slot: HTMLElement; item: SceneItem; params: Record<string, any>; type: ItemType; state: unknown; shown?: boolean; readied?: Promise<void> })
@@ -39,6 +40,8 @@ export function transformAt(t: Transform, local: number): Transform {
 const transformCss = (t: Transform | undefined, W: number, H: number) => (t
   ? { transform: `translate(${+(t.x * W).toFixed(2)}px, ${+(t.y * H).toFixed(2)}px) scale(${+t.scale.toFixed(4)})`, transformOrigin: `${+((t.ox ?? 0.5) * 100).toFixed(2)}% ${+((t.oy ?? 0.5) * 100).toFixed(2)}%` }
   : { transform: '', transformOrigin: '' });
+/** a layer's elements: its own and the further ones of its other blend modes */
+const layerEls = (L: { el: HTMLElement; more?: HTMLElement[] }) => (L.more ? [L.el, ...L.more] : [L.el]);
 const STYLE_ID = 'tellcut-plugin-css';
 const SVG_ID = 'tellcut-svg-defs';
 const MISSING_BG = 'repeating-linear-gradient(45deg, rgba(255,0,80,.35) 0 12px, transparent 12px 24px)';
@@ -68,6 +71,7 @@ export class Stage {
     if (this.opts.strict) throw new Error(msg);
     this.opts.onError?.(item.id, msg, { code: 'player.itemFailed', params: { type: item.type, error } });
     console.error(msg);
+    for (const m of L.more ?? []) m.remove();
     L.el.innerHTML = '';
     const m = h('div', 'st-missing', null, L.el);
     cssCamel(m, { position: 'absolute', inset: '0', background: MISSING_BG });
@@ -109,7 +113,7 @@ export class Stage {
       if (!VISUAL.has(track.kind)) continue;
       const L = old.get(item.id), a = before.get(item.id), b = this.times.get(item.id)!;
       if (L && L.sig === sigOf(item) && L.muted === !!track.muted && a && a.start === b.start && a.end === b.end) {
-        if (L.kind !== 'video') { const tcss = transformCss((item as SceneItem).transform, p.meta.width, p.meta.height); cssCamel(L.el, tcss); if (L.kind === 'plugin') cssCamel(L.slot, tcss); }
+        if (L.kind !== 'video') { const tcss = transformCss((item as SceneItem).transform, p.meta.width, p.meta.height); for (const e of layerEls(L)) cssCamel(e, tcss); if (L.kind === 'plugin') cssCamel(L.slot, tcss); }
         // the signature leaves the transform out: draw() reads the keys (and ctx.item) from the item, so it must be the new one
         if (L.kind === 'plugin') L.item = item as SceneItem;
         next.push(L); old.delete(item.id); continue;
@@ -123,7 +127,7 @@ export class Stage {
   }
 
   private dispose(L: Layer) {
-    L.el.remove();
+    for (const e of layerEls(L)) e.remove();
     if (L.kind === 'plugin') L.slot.remove();
     this.release(L);
   }
@@ -134,7 +138,7 @@ export class Stage {
 
   /** z-order follows track order then array order; the top container stays above all items. */
   private restack() {
-    this.layers.forEach((L, i) => { L.el.style.zIndex = String(i + 1); if (L.kind === 'plugin') this.top.appendChild(L.slot); });
+    this.layers.forEach((L, i) => { for (const e of layerEls(L)) e.style.zIndex = String(i + 1); if (L.kind === 'plugin') this.top.appendChild(L.slot); });
     this.top.style.zIndex = String(this.layers.length + 1);
   }
 
@@ -191,7 +195,21 @@ export class Stage {
       console.warn(`Unknown item type "${it.type}" (${it.id})`);
       return { ...c, kind: 'missing' };
     }
-    if (type.blend) cssCamel(el, { mixBlendMode: type.blend });
+    const modes = typeof type.blend === 'string' ? [type.blend] : type.blend ?? [];
+    if (modes[0]) cssCamel(el, { mixBlendMode: modes[0] });
+    // a further mode is a layer of its own, isolated like the item's, right after it at the same stacking (same z-index: the order
+    // in the document decides), so it blends with the picture the item's first layer already made
+    let after = el;
+    const more = modes.slice(1).map((mode) => {
+      const x = document.createElement('div');
+      x.className = 'st-more';
+      x.dataset.id = it.id;
+      cssCamel(x, { position: 'absolute', inset: '0', isolation: 'isolate', display: 'none', mixBlendMode: mode, ...tcss });
+      after.after(x);
+      after = x;
+      return x;
+    });
+    if (more.length) c.more = more;
     const slot = h('div', null, null, this.top);
     slot.dataset.id = it.id;
     cssCamel(slot, { position: 'absolute', inset: '0', display: 'none', ...tcss });
@@ -200,7 +218,7 @@ export class Stage {
       // a typo in a media ref inside params must name the item, not surface later as a resolver TypeError
       const bad = itemMediaIssues(type, it, p, this.types);
       if (bad.length) throw new Error(bad.join('; '));
-      const state = type.build(this.ctx(it, params, this.times.get(it.id)!.start, el, slot));
+      const state = type.build(this.ctx(it, params, this.times.get(it.id)!.start, el, slot, more));
       return { ...c, kind: 'plugin', slot, item: it, params, type, state };
     } catch (e) {
       slot.remove();
@@ -208,10 +226,10 @@ export class Stage {
     }
   }
 
-  private ctx(item: SceneItem, params: Record<string, any>, t: number, root: HTMLElement, top: HTMLElement): ItemCtx {
+  private ctx(item: SceneItem, params: Record<string, any>, t: number, root: HTMLElement, top: HTMLElement, more: HTMLElement[] = []): ItemCtx {
     const tm = this.times.get(item.id)!;
     const { width: W, height: H, fps } = this.project.meta;
-    return { t, local: t - tm.start, dur: tm.end - tm.start, item, params, root, top, project: this.project, media: this.media, W, H, fps, theme: resolveTheme(this.project.meta.theme, this.project.meta), types: this.types,
+    return { t, local: t - tm.start, dur: tm.end - tm.start, item, params, root, top, layers: more, project: this.project, media: this.media, W, H, fps, theme: resolveTheme(this.project.meta.theme, this.project.meta), types: this.types,
       grades: this.registry.grades ?? {}, motion, reportText: this.opts.measure ? textReporter(item.id, this.reports, root, W, H) : NO_REPORT, ...(this.opts.three !== undefined ? { three: this.opts.three } : {}) };
   }
 
@@ -222,7 +240,7 @@ export class Stage {
     this.layers.forEach((L, i) => {
       const tm = this.times.get(L.id)!;
       const on = activeAt(tm, t);   // an end stored a hair late used to show over the next item for one frame
-      showCamel(L.el, on);
+      for (const e of layerEls(L)) showCamel(e, on);
       if (L.kind === 'plugin') {
         showCamel(L.slot, on);
         // hidden after showing: let the item free what it holds (it draws again when it comes back)
@@ -263,8 +281,8 @@ export class Stage {
       } else if (L.kind === 'plugin') {
         // a layer that moves (a sticker following a mouth): its place this frame
         const tf = L.item.transform;
-        if (tf?.keys?.length) { const tcss = transformCss(transformAt(tf, t - tm.start), W, H); cssCamel(L.el, tcss); cssCamel(L.slot, tcss); }
-        try { L.type.draw(this.ctx(L.item, L.params, t, L.el, L.slot), L.state); } catch (e) { L.slot.remove(); this.release(L); this.layers[i] = this.fail(L, L.item, e); }
+        if (tf?.keys?.length) { const tcss = transformCss(transformAt(tf, t - tm.start), W, H); for (const e of layerEls(L)) cssCamel(e, tcss); cssCamel(L.slot, tcss); }
+        try { L.type.draw(this.ctx(L.item, L.params, t, L.el, L.slot, L.more), L.state); } catch (e) { L.slot.remove(); this.release(L); this.layers[i] = this.fail(L, L.item, e); }
       }
     });
   }
@@ -273,7 +291,7 @@ export class Stage {
   late(t: number) {
     this.layers.forEach((L, i) => {
       if (L.kind !== 'plugin' || !L.type.late || !activeAt(this.times.get(L.id)!, t)) return;
-      try { L.type.late(this.ctx(L.item, L.params, t, L.el, L.slot), L.state); } catch (e) { L.slot.remove(); this.release(L); this.layers[i] = this.fail(L, L.item, e); }
+      try { L.type.late(this.ctx(L.item, L.params, t, L.el, L.slot, L.more), L.state); } catch (e) { L.slot.remove(); this.release(L); this.layers[i] = this.fail(L, L.item, e); }
     });
   }
 

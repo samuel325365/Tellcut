@@ -11,10 +11,11 @@ import { shotNo, viewfinder } from './viewfinder.ts';
 import { wash } from './wash.ts';
 import { stepColor } from './countdown.ts';
 import { boxes } from './caption/looks/paper.ts';
+import { createRegistry, Stage } from '@tellcut/engine';
 
 describe('kinds and blends', () => {
-  test('the grade blends colour, the wash multiplies, the poster sits under the footage', () => {
-    expect([grade.blend, wash.blend, grade.kind, wash.kind]).toEqual(['color', 'multiply', 'overlay', 'overlay']);
+  test('the grade blends colour (then deep\'s multiply), the wash multiplies, the poster sits under the footage', () => {
+    expect([grade.blend, wash.blend, grade.kind, wash.kind]).toEqual([['color', 'multiply'], 'multiply', 'overlay', 'overlay']);
     expect([viewfinder, echo, poster, band].map((b) => [b.kind, b.category])).toEqual([['overlay', 'frame'], ['overlay', 'text'], ['scene', 'frame'], ['overlay', 'text']]);
   });
 });
@@ -121,44 +122,53 @@ describe('common.band: fixes', () => {
 
 describe('common.grade deep (what common.wash did, in the same item)', () => {
   const params = (over: Record<string, unknown> = {}) => ({ ...Object.fromEntries(grade.params.map((d) => [d.key, d.default])), ...over }) as any;
-  const stage = () => { const host = document.createElement('div'), root = document.createElement('div'), next = document.createElement('div'); host.append(root, next); root.style.zIndex = '4'; return { host, root, next }; };
+  const media: any = { begin() {}, video() {}, place() {}, stillUrl: () => '', fileUrl: () => '', sync: async () => {}, image() {} };
+  const film = (p: Record<string, unknown>) => ({ version: 1, meta: { width: 1080, height: 1920, fps: 30, duration: 4, background: '#000', plugins: [] }, sources: {}, media: {}, grids: [],
+    tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'g', type: 'common.grade', start: 0, end: 3, params: p }, { id: 'w', type: 'common.wash', start: 0, end: 3, params: {} }] }] }) as any;
+  const staged = (p: Record<string, unknown>) => {
+    const root = document.createElement('div'), st = new Stage(root, createRegistry([{ id: 'x', items: [grade, wash] } as any]), media);
+    st.load(film(p));
+    const own = root.querySelector<HTMLElement>('.st-item[data-id="g"]')!, deep = root.querySelector<HTMLElement>('.st-more[data-id="g"]')!;
+    return { root, st, own, deep };
+  };
   test('deep is off by default and tone is the old wash colour; the wash is an old block now, pointing at the grade', async () => {
     const p = params();
     expect([p.deep, p.tone]).toEqual([false, wash.params.find((d) => d.key === 'tone')!.default]);
     const { OLD_BLOCKS } = await import('@tellcut/engine');
     expect(OLD_BLOCKS['common.wash']).toBe('common.grade');
   });
-  test('without deep the grade is one layer, as it always was', () => {
-    const { host, root } = stage(), ctx: any = { root, params: params({ steps: '0|mono' }), local: 0.5, W: 1080, H: 1920 }, s = grade.build(ctx);
-    grade.draw(ctx, s);
-    expect(host.children.length).toBe(2);
-    expect(root.firstElementChild!.getAttribute('style')).toContain('background');
+  test('without deep the second layer draws nothing', () => {
+    const { st, own, deep } = staged({ steps: '0|mono' });
+    st.draw(0.5);
+    expect(own.firstElementChild!.getAttribute('style')).toContain('background');
+    expect((deep.firstElementChild as HTMLElement).style.background).toBe('transparent');
   });
-  test('deep multiplies the tone over the mono steps from a layer right above the grade, as a wash item after it did', () => {
-    const { host, root, next } = stage(), p = params({ steps: '0|bw\n1|mono\n2|none', deep: true, tone: '#ffa070' }), ctx: any = { root, params: p, local: 1.5, W: 1080, H: 1920 };
-    const s = grade.build(ctx);
-    grade.draw(ctx, s);
-    const w = root.nextElementSibling as HTMLElement;
-    expect(w).not.toBe(next);
-    expect([w.style.mixBlendMode, w.style.background, w.style.zIndex, w.style.display]).toEqual(['multiply', 'rgb(255, 160, 112)', '4', '']);
+  test('deep multiplies the tone over the mono steps from the stage\'s layer right above the grade, as a wash item after it did', () => {
+    const p = { steps: '0|bw\n1|mono\n2|none', deep: true, tone: '#ffa070' }, { root, st, own, deep } = staged(p);
+    st.draw(1.5);
+    const fillOf = () => (deep.firstElementChild as HTMLElement).style.background;
+    expect(own.nextElementSibling).toBe(deep);
+    expect([own.style.mixBlendMode, deep.style.mixBlendMode, deep.style.zIndex, deep.style.display]).toEqual(['color', 'multiply', own.style.zIndex, '']);
     // the same fill the old wash gave at each step
     for (const [local, want] of [[0.5, 'transparent'], [1.5, 'rgb(255, 160, 112)'], [2.5, 'transparent']] as const) {
-      grade.draw({ ...ctx, local }, s);
+      st.draw(local);
       const old = wash.build({ root: document.createElement('div'), params: { steps: p.steps, tone: p.tone } } as any);
       wash.draw({ local, params: { steps: p.steps, tone: p.tone } } as any, old);
-      expect([w.style.background, old.d.style.background]).toEqual([want, want]);
+      expect([fillOf(), old.d.style.background]).toEqual([want, want]);
     }
-    // it follows the grade's layer: its place in the stack, its transform, its showing
-    root.style.zIndex = '7'; root.style.transform = 'scale(2)';
-    grade.draw(ctx, s);
-    expect([w.style.zIndex, w.style.transform]).toEqual(['7', 'scale(2)']);
-    grade.hide!(s);
-    expect(w.style.display).toBe('none');
-    grade.draw(ctx, s);
-    expect(w.style.display).toBe('');
-    grade.dispose!(s);
-    expect(w.isConnected).toBe(false);
-    expect(host.children.length).toBe(2);
+    // the stage shows, moves and removes it with the grade
+    st.draw(3.5);
+    expect(deep.style.display).toBe('none');
+    const moved = film(p);
+    moved.tracks[0].items[0].transform = { x: 0.1, y: 0, scale: 2 };
+    st.update(moved);
+    st.draw(1.5);
+    expect([deep.style.display, deep.style.transform]).toEqual(['', own.style.transform]);
+    expect(deep.style.transform).toContain('scale(2)');
+    const gone = film(p);
+    gone.tracks[0].items.shift();
+    st.update(gone);
+    expect([deep.isConnected, root.querySelectorAll('[data-id="g"]').length]).toEqual([false, 0]);
   });
 });
 
