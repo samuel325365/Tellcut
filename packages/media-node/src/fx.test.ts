@@ -32,6 +32,9 @@ test('an edited module is read again, not taken from the module cache', async ()
 
 test('an edit to a file an fx imports (./util.js) loads afresh too, not only the file meta.fx names', () => {
   // in a Node of its own run as the server is (tsx): vitest loads modules through its own runner, which Node's resolve hook never sees
+  // a real project sits under tellcut/projects/ and so inherits tellcut's "type": "module"; without it tsx (4.23) turns a bare
+  // .js into CommonJS, whose require cache ignores the ?fxv= stamp, so the temp folder says it too
+  writeFileSync(join(dir, 'package.json'), '{ "type": "module" }\n');
   writeFileSync(join(dir, 'fx', 'a.js'), `import { label } from './util.js';\nexport default [{ type: 'fx.a', label, kind: 'overlay', doc: 'd', params: [], build() { return 0; }, draw() {} }];\n`);
   writeFileSync(join(dir, 'fx', 'util.js'), "export const label = 'one';\n");
   const script = join(dir, 'run.mts');
