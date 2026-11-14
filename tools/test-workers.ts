@@ -36,7 +36,7 @@ if (g.__vitest_worker__) {
   }
 }
 
-/** global setup (run once per workspace project, hence the guard): the log of the earlier runs put aside once it passes 2 MB
+/** global setup (run once per test project, hence the guard): the log of the earlier runs put aside once it passes 2 MB
  *  (one older one kept); every worker process vitest forks from here on has its exit code written down. Vitest's pool imports
  *  fork from node:child_process; syncBuiltinESMExports hands it the wrapper (which keeps fork's own properties). */
 export default function setup() {

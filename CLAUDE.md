@@ -12,7 +12,7 @@ Tellcut: a video editor used in a local browser (Node 24 + TypeScript, **Windows
 
 ```
 npm run server                         # http://127.0.0.1:5174/editor/ (local connections only; -- --port 5200 for another port)
-npm test                               # everything: the fast group, then the browser group (tools/test-all.mjs, see vitest.workspace.ts)
+npm test                               # everything: the fast group, then the browser group (tools/test-all.mjs, see vitest.config.ts)
 npm run test:fast                      # the group that needs no Chrome; run this first after a change
 npm run test:browser                   # export, check's picture layer, golden, editor e2e (at most two files at once)
 npx vitest run tools/cut/cut.test.ts   # one test file; add -t "<name>" for one case

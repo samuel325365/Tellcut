@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildProblems } from './test-builds.ts';
-import workspace from '../vitest.workspace.ts';
+import config from '../vitest.config.ts';
 
 test('the browser tests stop on a missing or stale build and name the command, without building', () => {
   const root = mkdtempSync(join(tmpdir(), 'builds-')), old = new Date(Date.now() - 60_000), now = new Date(), later = new Date(Date.now() + 60_000);
@@ -19,10 +19,18 @@ test('the browser tests stop on a missing or stale build and name the command, w
 
 test('only the browser group checks the builds, after the shared global setups', () => {
   const setups = (name: string) => {
-    const p = (workspace as { test?: { name?: string; globalSetup?: string | string[] } }[]).find((w) => w.test?.name === name);
+    const p = (config.test?.projects as { test?: { name?: string; globalSetup?: string | string[] } }[]).find((w) => w.test?.name === name);
     return [p?.test?.globalSetup ?? []].flat();
   };
   expect(setups('fast')).not.toContain('tools/test-builds.ts');
   expect(setups('browser')).toEqual([...setups('fast'), 'tools/test-builds.ts']);
   expect(setups('browser')).toContain('tools/test-cleanup.ts');
+});
+
+test('the browser group keeps to two files at once, after the fast group, even in a bare `npx vitest run`', () => {
+  const group = (name: string) => (config.test?.projects as { test?: { name?: string; maxWorkers?: number; sequence?: { groupOrder?: number } } }[])
+    .find((w) => w.test?.name === name)?.test;
+  expect(group('browser')?.maxWorkers).toBe(2);
+  // vitest 4 sizes a pool per groupOrder: the two groups sharing one would make it refuse the run or ignore the limit
+  expect(group('browser')?.sequence?.groupOrder).toBeGreaterThan(group('fast')?.sequence?.groupOrder ?? 0);
 });

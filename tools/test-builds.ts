@@ -1,4 +1,4 @@
-// The browser group's global setup (vitest.workspace.ts): those tests run the built player and editor, so a build older than its
+// The browser group's global setup (vitest.config.ts): those tests run the built player and editor, so a build older than its
 // source made them pass or fail on old code without a word. It stops the run before any test and says which build to run; it
 // never builds by itself (a build in the middle of a test run hides that the build was forgotten, and the user decides when).
 import { existsSync } from 'node:fs';

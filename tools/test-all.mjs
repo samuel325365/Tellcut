@@ -1,4 +1,5 @@
-// npm test: the fast group, then the browser group with at most two files at once (why it is a run of its own: vitest.workspace.ts).
+// npm test: the fast group, then the browser group (at most two files at once: its maxWorkers in vitest.config.ts), as two runs
+// so the summary says which group failed.
 // Both always run; the exit code fails when either did. Arguments go to both runs (a file filter, -t "<name>"); a group with
 // no file matching them passes.
 import { spawnSync } from 'node:child_process';
@@ -10,6 +11,6 @@ const vitest = (group) => spawnSync(process.execPath, [join(root, 'node_modules/
   { cwd: root, stdio: 'inherit' }).status ?? 1;
 
 const fast = vitest(['--project', 'fast']);
-const browser = vitest(['--project', 'browser', '--maxWorkers', '2', '--minWorkers', '1']);
+const browser = vitest(['--project', 'browser']);
 if (fast || browser) console.error(`\nnpm test: ${[fast && 'fast', browser && 'browser'].filter(Boolean).join(' and ')} failed`);
 process.exit(fast || browser);
