@@ -1,13 +1,13 @@
 // common.shader — a moving full-picture background drawn by a GPU shader (Paper Shaders: flowing mesh gradient, grainy gradient,
-// god rays, smoke ring, warp, swirl, metaballs, orbiting dots). It lies under the video like common.ambient. The colours come
-// from the theme unless given; the time is the item's own, so the same moment always draws the same frame. Without WebGL2 it
-// draws a plain gradient of the same colours.
+// god rays, smoke ring, warp, swirl, metaballs, orbiting dots; since 2026-11-15 also a glowing web, cells and a dithered warp). It lies
+// under the video like common.ambient. The colours come from the theme unless given; the time is the item's own, so the same moment
+// always draws the same frame. Without WebGL2 it draws a plain gradient of the same colours.
 import { cssCamel, h, type ItemType } from '@tellcut/engine';
-import { dotOrbitFragmentShader, godRaysFragmentShader, grainGradientFragmentShader, GrainGradientShapes, meshGradientFragmentShader, metaballsFragmentShader, smokeRingFragmentShader, swirlFragmentShader, warpFragmentShader, WarpPatterns } from '@paper-design/shaders';
+import { ditheringFragmentShader, DitheringShapes, DitheringTypes, dotOrbitFragmentShader, godRaysFragmentShader, grainGradientFragmentShader, GrainGradientShapes, meshGradientFragmentShader, metaballsFragmentShader, neuroNoiseFragmentShader, smokeRingFragmentShader, swirlFragmentShader, voronoiFragmentShader, warpFragmentShader, WarpPatterns } from '@paper-design/shaders';
 import { noiseReady, renderShader, rgba, type Uniform } from './shader-gl.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 
-export const LOOKS = ['mesh', 'grain', 'rays', 'smoke', 'warp', 'swirl', 'blobs', 'dots'] as const;
+export const LOOKS = ['mesh', 'grain', 'rays', 'smoke', 'warp', 'swirl', 'blobs', 'dots', 'neuro', 'cells', 'dither'] as const;
 export type Look = (typeof LOOKS)[number];
 interface P { look: Look; colors: string; back: string; speed: number; amount: number; grain: number; scale: number; phase: number }
 interface S { cv: HTMLCanvasElement }
@@ -29,7 +29,19 @@ const DEF: Record<Look, { frag: string; speed: number; max: number; u: (c: numbe
   swirl: { frag: swirlFragmentShader, speed: 0.32, max: 10, u: (c, b, a, p) => ({ ...OBJECT, u_colorBack: b, u_colors: c, u_colorsCount: c.length, u_bandCount: 4, u_twist: Math.min(1, 0.1 * a), u_center: 0.2, u_proportion: 0.5, u_softness: 0, u_noiseFrequency: 0.4, u_noise: p.grain || 0.2 }) },
   blobs: { frag: metaballsFragmentShader, speed: 1, max: 8, u: (c, b, a) => ({ ...OBJECT, u_colorBack: b, u_colors: c, u_colorsCount: c.length, u_count: Math.round(5 + 10 * Math.min(1, a / 2)), u_size: 0.83, u_noiseTexture: 'noise' }) },
   dots: { frag: dotOrbitFragmentShader, speed: 1.5, max: 10, u: (c, b, a) => ({ ...PATTERN, u_colorBack: b, u_colors: c, u_colorsCount: c.length, u_size: 1, u_sizeRange: 0, u_spreading: Math.min(1, a), u_stepsPerColor: 4, u_noiseTexture: 'noise' }) },
+  // a web of glowing lines on back: the first colour the lines, the last the hot points where they cross; amount brightens the crossings
+  neuro: { frag: neuroNoiseFragmentShader, speed: 1, max: 3, u: (c, b, a) => ({ ...PATTERN, u_colorBack: b, u_colorMid: c[0], u_colorFront: c[c.length - 1], u_brightness: 0.05 * a, u_contrast: 0.3 }) },
+  // cells of the colours, back in the gaps between them; amount moves the cells' centres about, grain is a soft shade inside each cell
+  cells: { frag: voronoiFragmentShader, speed: 0.5, max: 5, u: (c, b, a, p) => ({ ...PATTERN, u_scale: CELLS_SCALE, u_colors: c, u_colorsCount: c.length, u_stepsPerColor: 1, u_colorGlow: b, u_colorGap: b, u_distortion: Math.min(0.5, 0.4 * a), u_gap: 0.03, u_glow: p.grain, u_noiseTexture: 'noise' }) },
+  // the first colour on back in ordered (4×4 Bayer) dither dots over a flowing warp, like an old one-bit screen; amount is the dot size
+  dither: { frag: ditheringFragmentShader, speed: 1, max: 1, u: (c, b, a) => ({ ...PATTERN, u_scale: 0.6, u_colorBack: b, u_colorFront: c[0], u_shape: DitheringShapes.warp, u_type: DitheringTypes['4x4'], u_pxSize: ditherPx(a) }) },
 };
+
+/** cells' own zoom: Paper's preset (0.5) is drawn for a small canvas and gives a confetti of tiny cells on a 1080-px frame */
+const CELLS_SCALE = 1.6;
+
+/** dither's dot size (px at a 1080-px short side) for amount × 2: 2 at amount 0, 4 at 0.5, 6 at 1 */
+export const ditherPx = (a: number) => 2 + 2 * Math.max(0, a);
 
 /** the colours to use: the param's list, or the theme's accent, accent2, highlight and paper */
 export function shaderColors(list: string, theme: { palette: Record<string, string> }, max: number): string[] {
@@ -38,16 +50,25 @@ export function shaderColors(list: string, theme: { palette: Record<string, stri
   return (own.length ? own : [pal.accent, pal.accent2, pal.hl, pal.paper].filter(Boolean)).slice(0, max);
 }
 
+/** what one frame draws at `local`: the look (an unknown one is mesh), its fragment shader, the colours used and every uniform */
+export function shaderFrame(p: P, theme: { palette: Record<string, string> }, local: number): { look: Look; frag: string; names: string[]; uniforms: Record<string, Uniform> } {
+  const look = DEF[p.look] ? p.look : 'mesh', d = DEF[look];
+  const names = shaderColors(p.colors, theme, d.max), a = p.amount * 2;
+  const uniforms: Record<string, Uniform> = { ...d.u(names.map(rgba), rgba(p.back), a, p), u_time: p.phase + local * p.speed * d.speed };
+  uniforms.u_scale = (uniforms.u_scale as number) * p.scale;
+  return { look, frag: d.frag, names, uniforms };
+}
+
 export const shader: ItemType<P, S> = {
   type: 'common.shader', label: '動態背景（GPU）', category: 'background', kind: 'scene',
-  doc: '整片會流動的質感背景，GPU 即時畫：mesh 流動漸層、grain 顆粒漸層、rays 光束、smoke 煙圈、warp 扭曲格紋、swirl 漩渦、blobs 流體球、dots 點陣軌道；顏色預設取 theme，放在影片之下（片頭、片尾卡、沒素材的段落、面板底）',
+  doc: '整片會流動的質感背景，GPU 即時畫：mesh 流動漸層、grain 顆粒漸層、rays 光束、smoke 煙圈、warp 扭曲格紋、swirl 漩渦、blobs 流體球、dots 點陣軌道；顏色預設取 theme，放在影片之下（片頭、片尾卡、沒素材的段落、面板底）。neuro 深色底上一張會流動的發光細線網，交叉點特別亮（第一個顏色是線、最後一個是亮點；科技、AI、神經網路、深夜、懸疑的片頭或段落底，amount 越大交叉點越亮）；cells 一格格不規則的色塊（像細胞或彩繪玻璃），慢慢蠕動，格子之間是 back 色的細縫（自然、生物、拼貼、活潑的資訊底，amount 越大格子越歪，grain 給每格一點往內的暗影）；dither 復古點陣：只用第一個顏色和 back 兩色，用規則排列的網點畫出一片流動的扭曲圖樣，像老電腦、Game Boy 的單色螢幕（復古、像素、遊戲、駭客、Lo-fi，amount 是網點大小）',
   params: [
     { key: 'look', label: '樣式', type: 'enum', options: [...LOOKS], default: 'mesh' },
     { key: 'colors', label: '顏色（逗號分隔；空白＝theme 的主色、副色、強調色、紙色）', type: 'string', default: '' },
-    { key: 'back', label: '底色（mesh、warp 不用）', type: 'color', default: '#101018', theme: 'palette.ink' },
+    { key: 'back', label: '底色（mesh、warp 不用；cells 是格子間的細縫）', type: 'color', default: '#101018', theme: 'palette.ink' },
     { key: 'speed', label: '速度（1＝原速，0＝不動）', type: 'number', min: 0, max: 4, step: 0.05, default: 1 },
-    { key: 'amount', label: '強度（0 平靜 … 0.5 標準 … 1 強烈）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.5 },
-    { key: 'grain', label: '顆粒（0–1；mesh、grain、swirl；grain、swirl 填 0 是樣式自己的顆粒量 0.25、0.2）', type: 'number', min: 0, max: 1, step: 0.05, default: 0 },
+    { key: 'amount', label: '強度（0 平靜 … 0.5 標準 … 1 強烈；dither 是網點大小）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.5 },
+    { key: 'grain', label: '顆粒（0–1；mesh、grain、swirl；grain、swirl 填 0 是樣式自己的顆粒量 0.25、0.2；cells 是每格往內的暗影）', type: 'number', min: 0, max: 1, step: 0.05, default: 0 },
     { key: 'scale', label: '圖樣大小', type: 'number', min: 0.2, max: 4, step: 0.05, default: 1 },
     { key: 'phase', label: '起始時間（秒；換一個就是另一個樣子）', type: 'number', min: 0, max: 1000, step: 1, default: 0 },
   ],
@@ -60,11 +81,9 @@ export const shader: ItemType<P, S> = {
   ready: () => noiseReady(),
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {
-    const p = ctx.params, d = DEF[p.look] ?? DEF.mesh, { W, H } = ctx, g = canvasAt(s.cv, W, H);
-    const names = shaderColors(p.colors, ctx.theme as never, d.max), a = p.amount * 2;
-    const uniforms: Record<string, Uniform> = { ...d.u(names.map(rgba), rgba(p.back), a, p), u_time: p.phase + ctx.local * p.speed * d.speed };
-    uniforms.u_scale = (uniforms.u_scale as number) * p.scale;
-    const frame = renderShader(p.look, d.frag, uniforms, W, H, Math.min(W, H) / 1080);
+    const p = ctx.params, { W, H } = ctx, g = canvasAt(s.cv, W, H);
+    const { look, frag, names, uniforms } = shaderFrame(p, ctx.theme as never, ctx.local);
+    const frame = renderShader(look, frag, uniforms, W, H, Math.min(W, H) / 1080);
     g.clearRect(0, 0, W, H);
     if (frame) { g.drawImage(frame, 0, 0); return; }
     // no WebGL2: the same colours as a still gradient

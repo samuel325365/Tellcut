@@ -195,4 +195,8 @@ export const STYLES: Sample[] = [
   { name: 'backdrop-waves', type: 'common.backdrop', params: { pattern: 'waves', color: '#e9f6f7', color2: '#1f8fb0', tint: 0.5 }, len: 3, at: [0.5, 2.5] },
   { name: 'wide-backdrop-halftone', type: 'common.backdrop', params: { pattern: 'halftone', color: '#14213d', color2: '#fca311', tint: 0.9, scale: 40 }, len: 3, at: [0.5], wide: true },
   { name: 'wide-backdrop-waves', type: 'common.backdrop', params: { pattern: 'waves', color: '#fff4e6', color2: '#ff6b4a', tint: 0.45 }, len: 3, at: [0.5], wide: true },
+  // common.shader's looks (2026-11-15): the glowing web, the cells (plain and shaded, and on 16:9), the dither dots
+  ...['neuro', 'cells', 'dither'].map((look): Sample => ({ name: `shader-${look}`, type: 'common.shader', params: { look }, theme: SHADER_THEME, at: [1.5] })),
+  { name: 'shader-cells-shade', type: 'common.shader', params: { look: 'cells', grain: 0.6, amount: 1 }, theme: SHADER_THEME, at: [1.5] },
+  { name: 'wide-shader-dither', type: 'common.shader', params: { look: 'dither', colors: '#c6f03a', back: '#14213d' }, at: [1.5], wide: true },
 ];
