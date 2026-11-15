@@ -185,4 +185,8 @@ export const STYLES: Sample[] = [
   { name: 'sparkle-confetti', type: 'common.sparkle', params: { mode: 'confetti' }, len: 3, at: [0.4, 1.6], bg: '#2b2f45' },
   { name: 'sparkle-glint', type: 'common.sparkle', params: { mode: 'glint', size: 5 }, len: 2, at: [0.1, 0.3, 0.7], bg: '#3a3f4a' },
   { name: 'wide-sparkle-confetti', type: 'common.sparkle', params: { mode: 'confetti' }, len: 3, at: [1.6], wide: true, bg: '#2b2f45' },
+  // common.countdown's looks (2026-11-15): flip settled, its flap falling and landing, the end word; leader's hand at three points
+  { name: 'countdown-flip', type: 'common.countdown', params: { look: 'flip', label: '倒數' }, len: 3, at: [0.4, 0.9, 1.0, 2.6], bg: '#4a6b7c' },
+  { name: 'countdown-leader', type: 'common.countdown', params: { look: 'leader' }, len: 3, at: [0.3, 1.2, 2.6], bg: '#4a6b7c' },
+  { name: 'wide-countdown-flip', type: 'common.countdown', params: { look: 'flip', from: 10, to: 8, end: '' }, len: 3, at: [1.2], wide: true, bg: '#4a6b7c' },
 ];
