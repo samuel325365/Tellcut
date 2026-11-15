@@ -2,11 +2,15 @@
 // rose glow trailing behind it, drifting in from a corner or side and fading out again over the item, no grain, no flicker. travel 0
 // keeps it at (x, y) instead, fading in and out and breathing a little (a low sun in a corner). Promoted 2026-11-03 from the Egypt photo
 // films' own fx.leak, fx.lightleak and fx.glow. A pure function of time.
-import { clamp, cssCamel, h, type ItemType } from '@tellcut/engine';
+// The other looks (2026-11-15) keep the same sweep (from / travel / x / y, the brightness over time) and the screen blend:
+// prism, a slanted rainbow band across the drift; bokeh, out-of-focus discs drifting and breathing (seeded); flare, an anamorphic
+// streak through a bright point with ghost discs on the line through the frame's centre.
+import { clamp, cssCamel, h, rng, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
 
 type From = 'tl' | 'tr' | 'bl' | 'br' | 'l' | 'r';
-interface P { from: From; travel: number; x: number; y: number; peak: number; size: number; color: string; core: string; rose: string }
+type Look = 'glow' | 'prism' | 'bokeh' | 'flare';
+interface P { look: Look; from: From; travel: number; x: number; y: number; peak: number; size: number; color: string; core: string; rose: string; seed: number; streak: string }
 interface S { el: HTMLElement }
 
 /** where the glow starts (frame fractions, just outside the frame) and the way it drifts, for each `from` */
@@ -28,10 +32,45 @@ export function leakCentre(p: Pick<P, 'from' | 'travel' | 'x' | 'y'>, k: number)
   return [sx + dx * p.travel * k, sy + dy * p.travel * k];
 }
 
+/** the drift's direction in px (a unit vector): along the path for a sweep, down-left for a still light */
+export function leakDirection(p: Pick<P, 'from' | 'travel'>, W: number, H: number): [number, number] {
+  const [, , dx, dy] = PATHS[p.from] ?? PATHS.tr, v = p.travel > 0 ? [dx * W, dy * H] : [-0.6 * W, 0.3 * H], n = Math.hypot(v[0], v[1]) || 1;
+  return [v[0] / n, v[1] / n];
+}
+
+/** the prism's band: a CSS linear-gradient across the drift, its rainbow centred on (px, py), `half` px either side */
+export function prismBand(W: number, H: number, u: [number, number], px: number, py: number, half: number, a: number): string {
+  const deg = (Math.atan2(u[0], -u[1]) * 180) / Math.PI, L = Math.abs(W * u[0]) + Math.abs(H * u[1]);
+  const at = (px - W / 2) * u[0] + (py - H / 2) * u[1] + L / 2;
+  const hues: Array<[number, number, number, number]> = [[255, 60, 60, -0.8], [255, 150, 40, -0.5], [255, 235, 70, -0.22], [90, 255, 120, 0.05], [60, 200, 255, 0.32], [90, 90, 255, 0.58], [190, 80, 255, 0.82]];
+  const al = clamp(a).toFixed(3);
+  const stops = [`rgba(255,60,60,0) ${(at - half).toFixed(1)}px`, ...hues.map(([r, g, b, o]) => `rgba(${r},${g},${b},${al}) ${(at + o * half).toFixed(1)}px`), `rgba(190,80,255,0) ${(at + half).toFixed(1)}px`];
+  return `linear-gradient(${deg.toFixed(2)}deg, ${stops.join(', ')})`;
+}
+
+/** how much farther the prism's band goes than the glow */
+export const PRISM_REACH = 1.8;
+
+/** the bokeh discs at `local` (`k` 0…1 of the way along the drift): a seeded spread over the frame (fractions), each drifting
+ *  slowly and breathing; r in px */
+export function bokehDiscs(p: Pick<P, 'seed' | 'size' | 'from' | 'travel'>, local: number, k: number, W: number, H: number): Array<{ x: number; y: number; r: number; level: number; tone: number }> {
+  const [, , dx, dy] = PATHS[p.from] ?? PATHS.tr, drift = p.travel > 0 ? p.travel * 0.12 : 0;
+  return Array.from({ length: 14 }, (_, i) => {
+    const r = rng((Number(p.seed) || 1) * 977 + i * 7919 + 13);
+    const x = r(), y = r(), vx = (r() - 0.5) * 0.02, vy = (r() - 0.5) * 0.02, rad = (0.035 + 0.075 * r() * r()) * p.size * Math.max(W, H), w = 0.6 + 0.9 * r(), ph = r() * Math.PI * 2, tone = r();
+    return { x: x + vx * local + dx * drift * k, y: y + vy * local + dy * drift * k, r: rad, level: 0.55 + 0.45 * Math.sin(local * w + ph), tone };
+  });
+}
+
+/** the flare's ghosts: [how far along the line from the light through the frame's centre (1 = the mirror point), radius (of the long
+ *  side at size 0.6), colour (streak, color, rose)] */
+export const GHOSTS: Array<[number, number, number]> = [[0.55, 0.035, 0], [1.2, 0.07, 1], [1.45, 0.022, 2], [1.75, 0.1, 0], [2.15, 0.045, 1]];
+
 export const leak: ItemType<P, S> = {
   type: 'common.leak', label: '柔光漏光', category: 'look', kind: 'overlay', blend: 'screen',
-  doc: '暖色柔光（light leak）：一大團暖光加淡色光心、後面拖一團玫瑰色，從一角或一側慢慢掃過畫面再退去（screen 疊色只變亮、沒有顆粒、不閃）；travel 0 停在 (x, y) 淡入淡出、微微呼吸（角落的夕陽）；回憶、旅行相簿、翻頁落地、封面、片頭片尾的暖色過場；color、core、rose 換顏色，換成藍白就是冷光',
+  doc: '暖色柔光（light leak）：一大團暖光加淡色光心、後面拖一團玫瑰色，從一角或一側慢慢掃過畫面再退去（screen 疊色只變亮、沒有顆粒、不閃）；travel 0 停在 (x, y) 淡入淡出、微微呼吸（角落的夕陽）；回憶、旅行相簿、翻頁落地、封面、片頭片尾的暖色過場；color、core、rose 換顏色，換成藍白就是冷光。look 換光的樣子（掃過的路線和亮暗一樣）：prism 一道斜斜的彩虹光帶掃過（掃得比 glow 遠，travel 的 1.8 倍；陽光穿過玻璃、夢幻、青春、音樂）；bokeh 十幾顆失焦的圓形光斑慢慢飄、一明一暗（夜景、節慶、浪漫、溫馨的結尾，seed 換位置）；flare 一條橫向拉長的變形鏡頭光條穿過一個亮點，連著畫面中心的斜線上有幾個小光圈（電影感、科幻、科技、片頭；streak 是光條顏色，預設藍白）',
   params: [
+    { key: 'look', label: '樣子（glow 暖色柔光、prism 彩虹光帶、bokeh 失焦光斑、flare 變形鏡頭光條）', type: 'enum', options: ['glow', 'prism', 'bokeh', 'flare'], default: 'glow' },
     { key: 'from', label: '從哪裡進來（tl 左上、tr 右上、bl 左下、br 右下、l 左、r 右）', type: 'enum', options: ['tl', 'tr', 'bl', 'br', 'l', 'r'], default: 'tr' },
     { key: 'travel', label: '掃過的距離（畫面比例；0＝停在 x, y）', type: 'number', min: 0, max: 1.5, step: 0.05, default: 0.6 },
     { key: 'x', label: '停留中心 x（travel 0）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.8 },
@@ -41,6 +80,8 @@ export const leak: ItemType<P, S> = {
     { key: 'color', label: '主色', type: 'color', default: '#ff9a52' },
     { key: 'core', label: '光心', type: 'color', default: '#ffe2b8' },
     { key: 'rose', label: '拖在後面的第三色（空＝不要）', type: 'color', default: '#ff6f7d' },
+    { key: 'seed', label: '亂數種子（bokeh 光斑的位置）', type: 'number', min: 1, max: 9999, step: 1, default: 3 },
+    { key: 'streak', label: '光條顏色（flare）', type: 'color', default: '#9cc4ff' },
   ],
   build(ctx) {
     const el = h('div', null, null, ctx.root);
@@ -56,6 +97,41 @@ export const leak: ItemType<P, S> = {
     const [, , dx, dy] = PATHS[p.from] ?? PATHS.tr;
     const glow = (cx: number, cy: number, r: number, stops: Array<[string, number, number]>) =>
       `radial-gradient(circle ${r.toFixed(1)}px at ${(cx * W).toFixed(1)}px ${(cy * H).toFixed(1)}px, ${stops.map(([c, al, at]) => `${withAlpha(c, clamp(al))} ${at}%`).join(', ')})`;
+    if (p.look === 'prism') {
+      // the rainbow band across the drift, a fainter narrower echo behind it, a soft haze of the core colour round the light
+      // the band goes 1.8 times as far as the glow would: a thin band at the glow's place would only cross a corner
+      const u = leakDirection(p, W, H), half = R * 0.3, back = half * 2.2, [bx, by] = leakCentre({ ...p, travel: p.travel * PRISM_REACH }, k);
+      cssCamel(s.el, { background: [prismBand(W, H, u, bx * W, by * H, half, a * 0.9), prismBand(W, H, u, bx * W - u[0] * back, by * H - u[1] * back, half * 0.45, a * 0.35),
+        glow(fx, fy, R * 0.6, [[p.core, a * 0.35, 0], [p.core, 0, 100]])].join(', ') });
+      return;
+    }
+    if (p.look === 'bokeh') {
+      // soft-edged discs a little brighter at the rim, as an out-of-focus lens draws a point of light
+      const tones = [p.color, p.core, p.rose || p.core];
+      cssCamel(s.el, { background: bokehDiscs(p, ctx.local, k, W, H).map((d) => {
+        const c = tones[Math.min(2, Math.floor(d.tone * 3))], al = a * d.level * 1.1;
+        return `radial-gradient(circle ${d.r.toFixed(1)}px at ${(d.x * W).toFixed(1)}px ${(d.y * H).toFixed(1)}px, ${withAlpha(c, clamp(al * 0.55))} 0%, ${withAlpha(c, clamp(al * 0.7))} 64%, ${withAlpha(c, clamp(al))} 80%, ${withAlpha(c, clamp(al * 0.4))} 90%, ${withAlpha(c, 0)} 100%)`;
+      }).join(', ') });
+      return;
+    }
+    if (p.look === 'flare') {
+      // a hot point, a thin bright line and a wider faint one stretched far sideways, a halo; ghost discs on the line from the light
+      // through the frame's centre, in the streak's and the leak's colours
+      const X = fx * W, Y = fy * H, M = Math.max(W, H), tones = [p.streak, p.color, p.rose || p.core];
+      const line = (rx: number, ry: number, al: number) =>
+        `radial-gradient(ellipse ${rx.toFixed(1)}px ${ry.toFixed(1)}px at ${X.toFixed(1)}px ${Y.toFixed(1)}px, ${withAlpha(p.streak, clamp(al))} 0%, ${withAlpha(p.streak, clamp(al * 0.45))} 25%, ${withAlpha(p.streak, 0)} 100%)`;
+      const ghost = ([t, r, tone]: [number, number, number]) => {
+        const gx = X + (W / 2 - X) * t, gy = Y + (H / 2 - Y) * t, c = tones[tone], al = a * 0.3;
+        return `radial-gradient(circle ${((r * p.size) / 0.6 * M).toFixed(1)}px at ${gx.toFixed(1)}px ${gy.toFixed(1)}px, ${withAlpha(c, clamp(al * 0.5))} 0%, ${withAlpha(c, clamp(al))} 78%, ${withAlpha(c, 0)} 100%)`;
+      };
+      cssCamel(s.el, { background: [
+        glow(fx, fy, R * 0.1, [['#ffffff', a * 1.5, 0], [p.streak, a, 40], [p.streak, 0, 100]]),
+        line(R * 1.6, R * 0.016, a * 1.4), line(R * 1.1, R * 0.06, a * 0.5),
+        glow(fx, fy, R * 0.35, [[p.streak, a * 0.5, 0], [p.streak, 0, 100]]),
+        ...GHOSTS.map(ghost),
+      ].join(', ') });
+      return;
+    }
     // top to bottom: the pale core, the warm body, the rose trailing behind (back along the drift; up-left of a still glow)
     const layers = [
       glow(fx, fy, R * 0.5, [[p.core, a * 0.9, 0], [p.core, 0, 100]]),

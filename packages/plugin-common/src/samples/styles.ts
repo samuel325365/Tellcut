@@ -168,4 +168,9 @@ export const STYLES: Sample[] = [
   { name: 'glitch-scan', type: 'common.glitch', params: { look: 'scan', density: 1 }, at: [0.3, 1.5], bg: GLITCH_BG },
   { name: 'glitch-rgb', type: 'common.glitch', params: { look: 'rgb', density: 1 }, at: [0.3, 0.5], bg: GLITCH_BG },
   { name: 'glitch-block', type: 'common.glitch', params: { look: 'block', density: 1 }, at: [0.3, 1.1], bg: GLITCH_BG },
+  // common.leak's looks (2026-11-15): the rainbow band, the bokeh discs breathing, the anamorphic flare, each at its peak
+  { name: 'leak-prism', type: 'common.leak', params: { look: 'prism' }, len: 3, at: [1.5], bg: '#4d5866' },
+  { name: 'leak-bokeh', type: 'common.leak', params: { look: 'bokeh' }, len: 3, at: [0.8, 1.5], bg: '#4d5866' },
+  { name: 'leak-flare', type: 'common.leak', params: { look: 'flare' }, len: 3, at: [1.5], bg: '#4d5866' },
+  { name: 'wide-leak-flare', type: 'common.leak', params: { look: 'flare', from: 'l' }, len: 3, at: [1.5], wide: true, bg: '#4d5866' },
 ];
