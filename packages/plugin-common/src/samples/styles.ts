@@ -189,4 +189,10 @@ export const STYLES: Sample[] = [
   { name: 'countdown-flip', type: 'common.countdown', params: { look: 'flip', label: '倒數' }, len: 3, at: [0.4, 0.9, 1.0, 2.6], bg: '#4a6b7c' },
   { name: 'countdown-leader', type: 'common.countdown', params: { look: 'leader' }, len: 3, at: [0.3, 1.2, 2.6], bg: '#4a6b7c' },
   { name: 'wide-countdown-flip', type: 'common.countdown', params: { look: 'flip', from: 10, to: 8, end: '' }, len: 3, at: [1.2], wide: true, bg: '#4a6b7c' },
+  // common.backdrop's patterns (2026-11-15): halftone (drifting), sunburst (turning: two moments), waves (sliding: two moments)
+  { name: 'backdrop-halftone', type: 'common.backdrop', params: { pattern: 'halftone', color: '#fff3d6', color2: '#ff4d4f', tint: 0.85, scale: 48, drift: 20 }, len: 3, at: [0.5] },
+  { name: 'backdrop-sunburst', type: 'common.backdrop', params: { pattern: 'sunburst', color: '#ffd23f', color2: '#ff8a1f', tint: 0.55 }, len: 3, at: [0.5, 2.5] },
+  { name: 'backdrop-waves', type: 'common.backdrop', params: { pattern: 'waves', color: '#e9f6f7', color2: '#1f8fb0', tint: 0.5 }, len: 3, at: [0.5, 2.5] },
+  { name: 'wide-backdrop-halftone', type: 'common.backdrop', params: { pattern: 'halftone', color: '#14213d', color2: '#fca311', tint: 0.9, scale: 40 }, len: 3, at: [0.5], wide: true },
+  { name: 'wide-backdrop-waves', type: 'common.backdrop', params: { pattern: 'waves', color: '#fff4e6', color2: '#ff6b4a', tint: 0.45 }, len: 3, at: [0.5], wide: true },
 ];
