@@ -177,4 +177,8 @@ export const STYLES: Sample[] = [
   { name: 'film-super8', type: 'common.film', params: { look: 'super8', grain: 0.2 }, at: [0.5, 1.2], bg: '#7a8a6a' },
   { name: 'film-print', type: 'common.film', params: { look: 'print' }, at: [0.5], bg: 'linear-gradient(180deg, #1d2a3a 0%, #c0603a 45%, #e8c27a 70%, #f6f0e4 100%)' },
   { name: 'wide-film-print', type: 'common.film', params: { look: 'print', grain: 0 }, at: [0.5], wide: true, bg: 'linear-gradient(90deg, #101820 0%, #3a7ab8 50%, #f2f2f2 100%)' },
+  // common.speedlines' looks (2026-11-15): the focus lines coming in and settled, the streaks flying left (white over a dark ground)
+  { name: 'speedlines-focus', type: 'common.speedlines', params: { look: 'focus' }, at: [0.1, 1.5], bg: '#ffd9a0' },
+  { name: 'speedlines-streak', type: 'common.speedlines', params: { look: 'streak', angle: 180, color: '#ffffff' }, at: [0.5, 1.5], bg: '#2f4a66' },
+  { name: 'wide-speedlines-focus', type: 'common.speedlines', params: { look: 'focus', y: 0.5 }, at: [1.5], wide: true, bg: '#ffd9a0' },
 ];
