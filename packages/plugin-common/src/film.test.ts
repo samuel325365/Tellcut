@@ -3,7 +3,7 @@
 // frame's own pixels, blended into the picture, a different tile/offset every frame picked from the frame's number only.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createRegistry, Stage, type ItemType } from '@tellcut/engine';
-import { film, grainOpacity, grainPick, filmGrainBytes, TILE, TILES, vignetteCss } from './film.ts';
+import { dotScreenCss, film, filmDirt, filmFlicker, gateWeave, grainOpacity, grainPick, filmGrainBytes, TILE, TILES, vignetteCss } from './film.ts';
 
 type Op = [string, ...unknown[]];
 let ops: Op[];
@@ -17,6 +17,8 @@ beforeEach(() => {
       setTransform: (...a: number[]) => { if (cv.width > 1) ops.push(['setTransform', ...a]); },
       clearRect: (...a: number[]) => { if (cv.width > 1) ops.push(['clearRect', ...a]); },
       fillRect(...a: number[]) { if (cv.width > 1) ops.push(['fillRect', JSON.stringify(g.fillStyle), ...a]); } };
+    // the paths super8's dirt draws
+    for (const k of ['beginPath', 'ellipse', 'fill', 'moveTo', 'quadraticCurveTo', 'stroke']) g[k] = (...a: unknown[]) => { if (cv.width > 1) ops.push([k, JSON.stringify(g.fillStyle), ...a]); };
     return g;
   });
 });
@@ -146,4 +148,53 @@ test('the grain tiles are made once and shared: a second film item (or a reload)
   const ta = tilesOf(a.st), tb = tilesOf(b.st);
   expect(ta).toHaveLength(TILES);
   ta.forEach((c, i) => expect(tb[i]).toBe(c));
+});
+
+test('super8: a heavier vignette, a rounded gate, the warm cast; the dirt drawn once per two frames and the same at the same time', async () => {
+  const { root, st } = await stage({ look: 'super8' });
+  const top = root.querySelector<HTMLElement>('.st-top')!;
+  const at = (t: number) => { ops = []; st.draw(t); return ops.slice(); };
+  const first = at(1);
+  expect(first.some((o) => o[0] === 'clearRect')).toBe(true);
+  at(2.5); at(0.2);
+  // grain and dirt alike: the same moment draws the same, whatever came before
+  expect(at(1)).toEqual(first);
+  const vig = top.querySelector<HTMLElement>('div[style*="radial-gradient"]')!;
+  expect(Number(vig.style.opacity)).toBeCloseTo(0.4 * 1.6, 6);
+  expect(vig.style.transform).toMatch(/^translate\(/);
+  expect(top.querySelector<HTMLElement>('div[style*="border-radius"]')!.style.boxShadow).toContain('inset');
+  expect(top.querySelector<HTMLElement>('div[style*="rgba(255, 150, 70"]')).not.toBeNull();
+});
+
+test('super8 helpers: the weave wanders a pixel or two smoothly; the flicker is seeded by the frame; the dirt changes every two frames', () => {
+  for (let i = 0; i < 300; i++) {
+    const [x, y] = gateWeave(i / 30), [x2, y2] = gateWeave((i + 1) / 30);
+    expect(Math.abs(x)).toBeLessThan(2); expect(Math.abs(y)).toBeLessThan(1);
+    expect(Math.hypot(x2 - x, y2 - y)).toBeLessThan(0.5);
+    expect(Math.abs(filmFlicker(i))).toBeLessThanOrEqual(1);
+  }
+  expect(filmFlicker(12)).toBe(filmFlicker(12));
+  expect(filmFlicker(12)).not.toBe(filmFlicker(13));
+  for (let m = 0; m < 60; m++) expect(filmDirt(2 * m + 1, 30)).toEqual(filmDirt(2 * m, 30));
+  expect(filmDirt(20, 30)).not.toEqual(filmDirt(22, 30));
+  const specks = Array.from({ length: 60 }, (_, m) => filmDirt(2 * m, 30).specks.length);
+  expect(Math.min(...specks)).toBeGreaterThanOrEqual(2); expect(Math.max(...specks)).toBeLessThanOrEqual(7);
+  // a scratch stays for a while at about one place
+  const xs = Array.from({ length: 10 }, (_, m) => filmDirt(2 * m, 30).scratches.map((s) => s.x));
+  expect(xs.flat().length).toBeGreaterThan(0);
+});
+
+test('print: the dot screen at dot % of the short side, a contrast backdrop filter above it, no vignette', async () => {
+  const { root, st } = await stage({ look: 'print', dot: 1 });
+  st.draw(1);
+  const top = root.querySelector<HTMLElement>('.st-top')!;
+  const dots = [...top.querySelectorAll<HTMLElement>('div')].find((d) => d.style.transform === 'rotate(45deg)')!;
+  expect((dots as any)._c.background).toBe(dotScreenCss(10.8));
+  const wide = await stage({ look: 'print', dot: 1 }, { W: 1920, H: 1080 });
+  wide.st.draw(1);
+  expect(([...wide.root.querySelectorAll<HTMLElement>('.st-top div')].find((d) => d.style.transform === 'rotate(45deg)') as any)._c.background).toBe(dotScreenCss(10.8));
+  expect([...top.querySelectorAll<HTMLElement>('div')].some((d) => ((d as any)._c?.backdropFilter ?? '').startsWith('contrast('))).toBe(true);
+  const vig = [...top.querySelectorAll<HTMLElement>('div')].find((d) => ((d as any)._c?.background ?? '').startsWith('radial-gradient(ellipse'))!;
+  expect(vig.style.opacity).toBe('0');
+  expect(dotScreenCss(10)).toBe('radial-gradient(circle at 50% 50%, #000 0px, #fff 7.07px) 0 0 / 10.00px 10.00px');
 });

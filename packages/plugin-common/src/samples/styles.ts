@@ -173,4 +173,8 @@ export const STYLES: Sample[] = [
   { name: 'leak-bokeh', type: 'common.leak', params: { look: 'bokeh' }, len: 3, at: [0.8, 1.5], bg: '#4d5866' },
   { name: 'leak-flare', type: 'common.leak', params: { look: 'flare' }, len: 3, at: [1.5], bg: '#4d5866' },
   { name: 'wide-leak-flare', type: 'common.leak', params: { look: 'flare', from: 'l' }, len: 3, at: [1.5], wide: true, bg: '#4d5866' },
+  // common.film's looks (2026-11-15): super8 (its gate, flicker and dirt at two moments) and print (the dots over a dark-to-light ramp)
+  { name: 'film-super8', type: 'common.film', params: { look: 'super8', grain: 0.2 }, at: [0.5, 1.2], bg: '#7a8a6a' },
+  { name: 'film-print', type: 'common.film', params: { look: 'print' }, at: [0.5], bg: 'linear-gradient(180deg, #1d2a3a 0%, #c0603a 45%, #e8c27a 70%, #f6f0e4 100%)' },
+  { name: 'wide-film-print', type: 'common.film', params: { look: 'print', grain: 0 }, at: [0.5], wide: true, bg: 'linear-gradient(90deg, #101820 0%, #3a7ab8 50%, #f2f2f2 100%)' },
 ];
