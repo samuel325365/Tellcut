@@ -3,6 +3,8 @@
 import { TITLE_TEMPLATES } from '../heading/templates.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS } from './fixtures.ts';
 
+/** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
+const GLITCH_BG = 'repeating-linear-gradient(90deg, #e8dcc0 0px, #e8dcc0 90px, #24303c 90px, #24303c 180px)';
 /** the shader looks' palette (shader-mesh's) */
 const SHADER_THEME = { palette: { accent: '#ff6b2c', accent2: '#1f9e8a', hl: '#ffd23f', ink: '#0b1a2c', paper: '#f6efe2' } };
 /** the blocks built on phone.ts with a device param: the moment, params and backdrop of their first wide sample */
@@ -161,4 +163,9 @@ export const STYLES: Sample[] = [
   { name: 'candles-card', type: 'common.candles', params: { mode: 'card', sub: '雷曼兄弟破產' }, at: [0.2, 1.5], bg: '#030405' },
   { name: 'candles-big', type: 'common.candles', params: { mode: 'big', sub: '單日' }, at: [0.3, 1.5], bg: '#030405' },
   { name: 'wide-candles', type: 'common.candles', at: [2.9], wide: true },
+  // common.glitch's looks over vertical stripes (2026-11-15): the picture under them is what they move, and the stage background is
+  // the only picture a golden case has; a burst at 0.3 s (frames 8–10 at seed 5), calm at 0.5 and 1.5 s, the next burst at 1.1 s
+  { name: 'glitch-scan', type: 'common.glitch', params: { look: 'scan', density: 1 }, at: [0.3, 1.5], bg: GLITCH_BG },
+  { name: 'glitch-rgb', type: 'common.glitch', params: { look: 'rgb', density: 1 }, at: [0.3, 0.5], bg: GLITCH_BG },
+  { name: 'glitch-block', type: 'common.glitch', params: { look: 'block', density: 1 }, at: [0.3, 1.1], bg: GLITCH_BG },
 ];
