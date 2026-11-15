@@ -64,7 +64,7 @@ export function bokehDiscs(p: Pick<P, 'seed' | 'size' | 'from' | 'travel'>, loca
 
 /** the flare's ghosts: [how far along the line from the light through the frame's centre (1 = the mirror point), radius (of the long
  *  side at size 0.6), colour (streak, color, rose)] */
-export const GHOSTS: Array<[number, number, number]> = [[0.55, 0.035, 0], [1.2, 0.07, 1], [1.45, 0.022, 2], [1.75, 0.1, 0], [2.15, 0.045, 1]];
+export const GHOSTS: Array<[number, number, number]> = [[0.55, 0.045, 0], [1.2, 0.09, 1], [1.45, 0.03, 2], [1.75, 0.13, 0], [2.15, 0.06, 1]];
 
 export const leak: ItemType<P, S> = {
   type: 'common.leak', label: '柔光漏光', category: 'look', kind: 'overlay', blend: 'screen',
@@ -115,19 +115,20 @@ export const leak: ItemType<P, S> = {
       return;
     }
     if (p.look === 'flare') {
-      // a hot point, a thin bright line and a wider faint one stretched far sideways, a halo; ghost discs on the line from the light
-      // through the frame's centre, in the streak's and the leak's colours
+      // a hot point with a soft core, a bright line and a wider soft body stretched far sideways, a halo; ghost discs with a brighter
+      // rim on the line from the light through the frame's centre, in the streak's and the leak's colours. Tuned 2026-11-15 to read over
+      // bright footage (a pale sky), where the first, thinner streak and fainter ghosts all but vanished in the screen blend
       const X = fx * W, Y = fy * H, M = Math.max(W, H), tones = [p.streak, p.color, p.rose || p.core];
       const line = (rx: number, ry: number, al: number) =>
-        `radial-gradient(ellipse ${rx.toFixed(1)}px ${ry.toFixed(1)}px at ${X.toFixed(1)}px ${Y.toFixed(1)}px, ${withAlpha(p.streak, clamp(al))} 0%, ${withAlpha(p.streak, clamp(al * 0.45))} 25%, ${withAlpha(p.streak, 0)} 100%)`;
+        `radial-gradient(ellipse ${rx.toFixed(1)}px ${ry.toFixed(1)}px at ${X.toFixed(1)}px ${Y.toFixed(1)}px, ${withAlpha(p.streak, clamp(al))} 0%, ${withAlpha(p.streak, clamp(al * 0.55))} 22%, ${withAlpha(p.streak, 0)} 100%)`;
       const ghost = ([t, r, tone]: [number, number, number]) => {
-        const gx = X + (W / 2 - X) * t, gy = Y + (H / 2 - Y) * t, c = tones[tone], al = a * 0.3;
-        return `radial-gradient(circle ${((r * p.size) / 0.6 * M).toFixed(1)}px at ${gx.toFixed(1)}px ${gy.toFixed(1)}px, ${withAlpha(c, clamp(al * 0.5))} 0%, ${withAlpha(c, clamp(al))} 78%, ${withAlpha(c, 0)} 100%)`;
+        const gx = X + (W / 2 - X) * t, gy = Y + (H / 2 - Y) * t, c = tones[tone], al = a * 0.85;
+        return `radial-gradient(circle ${((r * p.size) / 0.6 * M).toFixed(1)}px at ${gx.toFixed(1)}px ${gy.toFixed(1)}px, ${withAlpha(c, clamp(al * 0.35))} 0%, ${withAlpha(c, clamp(al * 0.6))} 60%, ${withAlpha(c, clamp(al))} 84%, ${withAlpha(c, 0)} 100%)`;
       };
       cssCamel(s.el, { background: [
-        glow(fx, fy, R * 0.1, [['#ffffff', a * 1.5, 0], [p.streak, a, 40], [p.streak, 0, 100]]),
-        line(R * 1.6, R * 0.016, a * 1.4), line(R * 1.1, R * 0.06, a * 0.5),
-        glow(fx, fy, R * 0.35, [[p.streak, a * 0.5, 0], [p.streak, 0, 100]]),
+        glow(fx, fy, R * 0.16, [['#ffffff', a * 1.8, 0], ['#ffffff', a * 1.1, 30], [p.streak, a * 0.8, 55], [p.streak, 0, 100]]),
+        line(R * 2.4, R * 0.034, a * 1.9), line(R * 1.7, R * 0.12, a * 0.9),
+        glow(fx, fy, R * 0.5, [[p.streak, a * 0.6, 0], [p.streak, 0, 100]]),
         ...GHOSTS.map(ghost),
       ].join(', ') });
       return;
