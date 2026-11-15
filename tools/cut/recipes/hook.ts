@@ -18,7 +18,7 @@ const Segment = z.object({
   /** words said in this stretch to highlight in the captions / to bleep (beep, sticker, the sound cut out) */
   highlight: z.array(z.string()).default([]), censor: z.array(z.string()).default([]),
   /** words the transcript misheard in this stretch: { 聽成的: 實際的 } */
-  fix: z.record(z.string()).default({}),
+  fix: z.record(z.string(), z.string()).default({}),
   /** speech captions: true (all), false (none), or the sentences to keep (any caption containing one of these) */
   captions: z.union([z.boolean(), z.array(z.string())]).default(true), focus: z.number().min(0).max(1).optional(),
   /** the pauses in the speech cut out (c.tighten): a talk segment plays tight, the segment ends up shorter than len */
@@ -38,9 +38,9 @@ const Content = z.object({
   music: z.union([z.string(), z.object({ style: z.string(), bpm: z.number().optional(), key: z.string().optional(), seed: z.number().optional(), gain: z.number().optional() })]).default('playful'),
   /** one emoji per segment for the chapter dots (cycled); none: plain dots */
   icons: z.string().optional(),
-  captions: z.record(z.unknown()).default({ style: 'bubble' }),
+  captions: z.record(z.string(), z.unknown()).default({ style: 'bubble' }),
   /** misheard words fixed in every segment's captions */
-  fix: z.record(z.string()).default({}),
+  fix: z.record(z.string(), z.string()).default({}),
 });
 export type HookContent = z.input<typeof Content>;
 

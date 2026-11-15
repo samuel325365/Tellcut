@@ -13,8 +13,8 @@ const VISUAL_KINDS = new Set<TrackKind>(['scene', 'video', 'overlay']);
 /** A field the schema refuses: the message lists every problem, the code words the first one for the panel. */
 function fieldError(issues: ZodIssue[]): CommandError {
   const i = issues[0], field = i.path.join('.') || 'item', msg = issues.map((x) => `${x.path.join('.') || 'item'}: ${x.message}`).join('; ');
-  if (i.code === 'too_small' && i.type === 'number') return new CommandError(msg, i.inclusive ? 'cmd.fieldMin' : 'cmd.fieldAbove', { field, min: Number(i.minimum) });
-  if (i.code === 'too_big' && i.type === 'number') return new CommandError(msg, i.inclusive ? 'cmd.fieldMax' : 'cmd.fieldBelow', { field, max: Number(i.maximum) });
+  if (i.code === 'too_small' && i.origin === 'number') return new CommandError(msg, i.inclusive ? 'cmd.fieldMin' : 'cmd.fieldAbove', { field, min: Number(i.minimum) });
+  if (i.code === 'too_big' && i.origin === 'number') return new CommandError(msg, i.inclusive ? 'cmd.fieldMax' : 'cmd.fieldBelow', { field, max: Number(i.maximum) });
   return new CommandError(msg, 'cmd.fieldInvalid', { field });
 }
 

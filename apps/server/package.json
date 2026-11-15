@@ -12,7 +12,7 @@
     "@tellcut/media-node": "*",
     "@tellcut/plugin-common": "*",
     "@tellcut/plugins": "*",
-    "zod": "3.23.8",
+    "zod": "4.6.7",
     "@tellcut/protocol": "*"
   }
 }

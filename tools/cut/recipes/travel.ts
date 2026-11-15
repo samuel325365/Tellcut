@@ -13,7 +13,7 @@ const Content = z.object({
   seed: z.number().optional(),
   theme: ThemeSchema.optional(),
   /** caption block params (common.caption), e.g. { style: 'outline' } */
-  captions: z.record(z.unknown()).default({ style: 'outline' }),
+  captions: z.record(z.string(), z.unknown()).default({ style: 'outline' }),
   /** dB of the footage's own sound under the narration; false for none */
   ambience: z.union([z.number(), z.literal(false)]).default(-20),
   /** seconds of picture before the first word, between scenes and after the last */

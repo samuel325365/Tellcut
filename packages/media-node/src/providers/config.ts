@@ -7,7 +7,7 @@ import { TELLCUT_ROOT } from '../paths.ts';
 const CapabilityZ = z.object({
   use: z.string().min(1),
   /** options by provider id (voice, model folder, pinned version …) */
-  options: z.record(z.record(z.unknown())).default({}),
+  options: z.record(z.string(), z.record(z.string(), z.unknown())).default({}),
 });
 const OCR_DEFAULT = { use: 'system', options: { system: { lang: 'zh-Hant-TW' } } };
 const FACES_DEFAULT = { use: 'mediapipe', options: { mediapipe: {} } };

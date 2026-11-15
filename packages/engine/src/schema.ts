@@ -21,7 +21,7 @@ export const TransformZ = z.object({ x: z.number().min(-1).max(1), y: z.number()
   ox: z.number().min(0).max(1).default(0.5), oy: z.number().min(0).max(1).default(0.5), keys: z.array(TransformKeyZ).optional() });
 export const Rect01Z = z.tuple([z.number(), z.number(), z.number().positive(), z.number().positive()]);
 export const GainPointZ = z.tuple([sec, db]);
-const Params = z.record(z.unknown());
+const Params = z.record(z.string(), z.unknown());
 const base = { id: z.string().min(1), start: sec, end: sec, parent: z.string().optional(), label: z.string().optional() };
 
 export const VideoItemZ = z.object({
@@ -89,18 +89,18 @@ const ProjectShape = z.object({
     loudness: z.number().min(-30).max(-6).optional(),
     /** the home-page preset the project was made from (spec 2026-10-23-presets-and-languages §6.3) */
     // fields: the options set in its form (spec 2026-10-24-custom-preset §6)
-    preset: z.object({ id: z.string(), styles: z.array(z.string()).default([]), fields: z.record(z.string()).optional() }).optional(),
+    preset: z.object({ id: z.string(), styles: z.array(z.string()).default([]), fields: z.record(z.string(), z.string()).optional() }).optional(),
     /** the caption template (common.caption's CAP-xx, by id) every caption that names none of its own draws with */
     captionTemplate: z.string().optional(),
     /** caption templates of the project's own (copied from My caption templates, my-<slug>): id → the parameters it sets */
-    captionTemplates: z.record(z.record(z.unknown())).optional(),
+    captionTemplates: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
     /** the title template (common.heading's TTL-xx, by id) every title that names none of its own draws with */
     titleTemplate: z.string().optional(),
     /** title templates of the project's own (copied from My title templates, my-<slug>): id → the parameters it sets */
-    titleTemplates: z.record(z.record(z.unknown())).optional(),
+    titleTemplates: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
     mix: MixZ,
   }),
-  sources: z.record(z.object({ path: z.string(), duration: z.number().positive(), width: z.number().int().positive().default(1920), height: z.number().int().positive().default(1080),
+  sources: z.record(z.string(), z.object({ path: z.string(), duration: z.number().positive(), width: z.number().int().positive().default(1920), height: z.number().int().positive().default(1080),
     // optional (spec 2026-10-14 §4.2): a photo, when and where it was taken, whether a video has sound
     kind: z.enum(['video', 'image']).optional(), taken: z.string().optional(), takenOffset: z.string().optional(), takenGuess: z.boolean().optional(),
     gps: z.tuple([z.number(), z.number()]).optional(), audio: z.boolean().optional(),
@@ -108,7 +108,7 @@ const ProjectShape = z.object({
     // credit: the tiles' attribution (common.mapcam shows it)
     map: z.object({ center: z.tuple([z.number(), z.number()]), zoom: z.number(), credit: z.string().optional() }).optional() })),
   // duration: the music file's length in seconds when known (music ending with the film stops there)
-  media: z.record(z.object({ path: z.string(), duration: z.number().positive().optional() })),
+  media: z.record(z.string(), z.object({ path: z.string(), duration: z.number().positive().optional() })),
   grids: z.array(z.object({ id: z.string(), at: sec, bpm: z.number().positive(), until: sec.optional() })),
   markers: z.array(z.object({ t: sec, label: z.string() })).optional(),
   tracks: z.array(TrackZ),

@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import type { Cut } from '../cut.ts';
 
-export const ThemeSchema = z.record(z.unknown());
+export const ThemeSchema = z.record(z.string(), z.unknown());
 
 export interface Recipe<S extends z.ZodTypeAny> {
   id: string; label: string;

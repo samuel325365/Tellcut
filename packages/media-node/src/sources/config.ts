@@ -14,8 +14,8 @@ export const SOURCES_LOCAL_FILE = join(TELLCUT_ROOT, 'sources.local.json');
 export const SOURCES_CACHE_DIR = join(TELLCUT_ROOT, '.cache', 'sources');
 export const SOURCES_HEALTH_FILE = join(TELLCUT_ROOT, '.cache', 'sources-health.json');
 
-const EntryZ = z.object({ enabled: z.boolean(), keyEnv: z.string().min(1), unofficial: z.boolean(), options: z.record(z.unknown()) }).partial();
-const FileZ = z.object({ contact: z.string().optional(), sources: z.record(EntryZ).default({}), keys: z.record(z.string()).optional() });
+const EntryZ = z.object({ enabled: z.boolean(), keyEnv: z.string().min(1), unofficial: z.boolean(), options: z.record(z.string(), z.unknown()) }).partial();
+const FileZ = z.object({ contact: z.string().optional(), sources: z.record(z.string(), EntryZ).default({}), keys: z.record(z.string(), z.string()).optional() });
 
 export interface SourceEntry { enabled: boolean; keyEnv?: string; unofficial?: boolean; options: Record<string, unknown> }
 export interface SourcesConfig { contact: string; sources: Record<string, SourceEntry>; keys: Record<string, string> }

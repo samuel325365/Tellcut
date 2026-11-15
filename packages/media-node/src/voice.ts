@@ -13,13 +13,13 @@ export const NarrationZ = z.object({
   /** the voice of the edge engine (what earlier narration.json files wrote) */
   voice: z.string().optional(),
   /** voices by engine id ({ edge: 'zh-TW-HsiaoChenNeural', other: 'a-voice-of-another-engine' }): a voice name only means something to its own engine */
-  voices: z.record(z.string()).default({}),
+  voices: z.record(z.string(), z.string()).default({}),
   /** speed: a number of percent (8) or the "+8%" an earlier narration.json wrote */
   rate: RateZ,
   /** a pitch shift as the engine writes it (edge: "+5Hz") */
   pitch: z.string().optional(),
   /** same-length homophone swaps for the speech engine only (一行 → 一航); captions keep the written text */
-  pron: z.record(z.string()).default({}),
+  pron: z.record(z.string(), z.string()).default({}),
   scenes: z.array(z.object({ id: z.string().regex(/^[\w-]+$/, '場景 id 只能用字母、數字、底線、連字號'), text: z.string().min(1), rate: RateZ, voice: z.string().optional(),
     /** bilingual captions: one translation per caption phrase (phraseParts), shown under it */
     gloss: z.array(z.string()).optional() })).min(1),
