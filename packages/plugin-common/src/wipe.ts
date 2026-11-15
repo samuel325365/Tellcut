@@ -9,17 +9,25 @@
 // fold sweeps across, the lifted part is its mirrored back (`back` colour, a sheen from the fold, the print showing through faintly)
 // throwing a soft shadow, a strip of shadow lies on the new page by the fold; `rev` plays it backwards (a page laid down: a
 // magazine closing).
-import { clamp, type Crop, cssCamel, eIn3Clamped, eIO3, eOut3, eOut3Clamped, h, type ItemType, lerp, resolveTheme, type Theme, withDefaults } from '@tellcut/engine';
+// 2026-11-15: mode iris (the picture as a circle closing to a point at x, y and opening again from it), blinds (horizontal slats
+// turning shut one after another, then on round to open) and ink (seeded blots growing and merging, then the cover receding from
+// other seeded points). All three are covered exactly at the middle, as the others are.
+import { clamp, type Crop, cssCamel, eIn3Clamped, eIO3, eOut3, eOut3Clamped, h, type ItemType, lerp, mulberry32, resolveTheme, type Theme, withDefaults } from '@tellcut/engine';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { magazine, magazineLayout } from './magazine.ts';
 import { imagesReady, showStill, stillRef, windowEl, type Win } from './window.ts';
 import { parseColor, toRgb } from './color.ts';
 
 interface P {
-  color: string; edge: string; slant: number; dir: 'right' | 'left'; line: number; mode: 'band' | 'hand' | 'curl' | 'tiles' | 'vortex' | 'stripes'; hand: string; cols: number; rows: number; words: string; colors: string;
+  color: string; edge: string; slant: number; dir: 'right' | 'left'; line: number; mode: Mode; hand: string; cols: number; rows: number; words: string; colors: string;
+  x: number; y: number; seed: number;
   source: string; t: number; crop: Crop; win: string; art: string; artParams: Record<string, unknown>; artAt: number; angle: number; back: string; rev: boolean;
 }
 interface S { wrap: HTMLElement; band: HTMLElement; edge: HTMLElement; cv: HTMLCanvasElement; curl?: CurlS }
+export const MODES = ['band', 'hand', 'curl', 'tiles', 'vortex', 'stripes', 'iris', 'blinds', 'ink'] as const;
+type Mode = (typeof MODES)[number];
+/** the modes drawn on the canvas (band is two clipped divs, curl its own sheets) */
+const CANVAS_MODES: readonly Mode[] = ['hand', 'tiles', 'vortex', 'stripes', 'iris', 'blinds', 'ink'];
 
 
 /** the band's left and right foot (px, before the slant) at progress u (0–1) of the item: [left, right] */
@@ -42,19 +50,22 @@ export function handPose(local: number, dur: number): HandPose {
 
 export const wipe: ItemType<P, S> = {
   type: 'common.wipe', label: '斜切色帶轉場', category: 'moment', kind: 'overlay',
-  doc: '轉場：一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；mode hand 是手遮鏡頭：一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開（換場、轉身、不想被拍）；mode curl 是翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；rev 反著播（一頁蓋回來，雜誌闔上）；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh；mode tiles 是格子拼貼：畫面切成 cols × rows 格，紙色（color，兩種深淺）的格子一塊塊蓋上、正中間蓋滿，再一塊塊翻開，格子之間是 edge 色的細縫（剪貼簿、拼貼、相片牆換頁，配 common.slide；換頁後要留著格縫，用 common.scraps 的 grid）；mode vortex 是字的漩渦：一圈圈 color／edge 兩色相間的字環（words），相鄰兩圈反方向轉、整個慢慢放大，頭尾 0.12 秒淡入淡出、中間蓋滿畫面（城市、潮流、黑白字框的換章，配 common.monoframe）；mode stripes 是多色斜條：colors 幾種顏色（逗號分隔）的斜色條一條接一條掃過去，項目正中間最後一條蓋滿畫面，再一條條掃出去露出新畫面；斜度看 slant（上下兩端錯開幾個畫面寬，所以角度跟著畫面比例變：1 在 9:16 約 30 度、1:1 是 45 度、16:9 約 60 度），dir left 從右邊進來（多巴胺配色的換段，最後一個顏色用新段落的底色，配 common.backdrop 的 words）',
+  doc: '轉場：一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；mode hand 是手遮鏡頭：一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開（換場、轉身、不想被拍）；mode curl 是翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；rev 反著播（一頁蓋回來，雜誌闔上）；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh；mode tiles 是格子拼貼：畫面切成 cols × rows 格，紙色（color，兩種深淺）的格子一塊塊蓋上、正中間蓋滿，再一塊塊翻開，格子之間是 edge 色的細縫（剪貼簿、拼貼、相片牆換頁，配 common.slide；換頁後要留著格縫，用 common.scraps 的 grid）；mode vortex 是字的漩渦：一圈圈 color／edge 兩色相間的字環（words），相鄰兩圈反方向轉、整個慢慢放大，頭尾 0.12 秒淡入淡出、中間蓋滿畫面（城市、潮流、黑白字框的換章，配 common.monoframe）；mode stripes 是多色斜條：colors 幾種顏色（逗號分隔）的斜色條一條接一條掃過去，項目正中間最後一條蓋滿畫面，再一條條掃出去露出新畫面；斜度看 slant（上下兩端錯開幾個畫面寬，所以角度跟著畫面比例變：1 在 9:16 約 30 度、1:1 是 45 度、16:9 約 60 度），dir left 從右邊進來（多巴胺配色的換段，最後一個顏色用新段落的底色，配 common.backdrop 的 words）；mode iris 是圓形收光：畫面縮成一個圓，color 色從外面往內收，項目正中間收成 (x, y) 一點、整個畫面蓋滿，再從同一點打開成新畫面，圓的邊上有一圈 edge 色細線（line 粗細）（老電影、默片、卡通的收場和開場、聚焦到一個人或一件東西上：把 x, y 放在那裡）；mode blinds 是百葉窗：畫面分成 rows 條橫的葉片，從上到下一片接一片翻轉關上（翻的時候有明暗），項目正中間全部關上蓋滿畫面，再繼續往同一個方向翻開（居家、室內、早晨、偷看、懸疑的換場）；mode ink 是墨水暈開：幾團 color 色、邊緣微微不規則的墨跡（帶幾滴濺出的小墨點）在畫面各處長大、融在一起，項目正中間蓋滿，再從另外幾個點像被吸掉一樣退開露出新畫面（水墨、書法、手作、藝術、文青的換場；seed 換墨跡的位置）；iris、blinds、ink 不看 dir',
   params: [
     { key: 'color', label: '色帶顏色', type: 'color', default: '#ff4f2a', theme: 'palette.accent' },
     { key: 'edge', label: '前緣細線顏色', type: 'color', default: '#f4ecdc', theme: 'palette.paper' },
     { key: 'line', label: '細線粗細（以 1080 短邊計的 px，0＝沒有）', type: 'number', min: 0, max: 60, step: 1, default: 10 },
     { key: 'slant', label: '斜度（上下兩端錯開幾個畫面寬）', type: 'number', min: 0, max: 2, step: 0.01, default: 0.35 },
     { key: 'dir', label: '方向（right 從左往右、left 從右往左）', type: 'enum', options: ['right', 'left'], default: 'right' },
-    { key: 'mode', label: '樣式（band 斜切色帶、hand 手遮鏡頭、curl 翻頁、tiles 格子拼貼、vortex 字的漩渦、stripes 多色斜條）', type: 'enum', options: ['band', 'hand', 'curl', 'tiles', 'vortex', 'stripes'], default: 'band' },
+    { key: 'mode', label: '樣式（band 斜切色帶、hand 手遮鏡頭、curl 翻頁、tiles 格子拼貼、vortex 字的漩渦、stripes 多色斜條、iris 圓形收光、blinds 百葉窗、ink 墨水暈開）', type: 'enum', options: [...MODES], default: 'band' },
     { key: 'hand', label: '手的顏色（hand）', type: 'color', default: '#24140f' },
     { key: 'cols', label: '格子欄數（tiles；橫的那一邊）', type: 'number', min: 2, max: 20, step: 1, default: 5 },
-    { key: 'rows', label: '格子列數（tiles）', type: 'number', min: 2, max: 30, step: 1, default: 9 },
+    { key: 'rows', label: '格子列數（tiles；blinds 是葉片數）', type: 'number', min: 2, max: 30, step: 1, default: 9 },
     { key: 'words', label: '漩渦環上的字（vortex，會一直重複）', type: 'string', default: 'TELLCUT · ' },
     { key: 'colors', label: '斜條的顏色（stripes；逗號分隔，最後一條蓋滿畫面）', type: 'string', default: '#c6f03a,#ff3ea5,#ff7a1a,#3b4cf0' },
+    { key: 'x', label: '收光的中心 x（iris；畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
+    { key: 'y', label: '收光的中心 y（iris；畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
+    { key: 'seed', label: '亂數種子（ink 墨跡的位置）', type: 'number', min: 1, max: 9999, step: 1, default: 1 },
     { key: 'source', label: '翻頁：舊的那一頁上的素材（它的靜態圖；空＝一張 color 色的紙）', type: 'source-ref', default: '' },
     { key: 't', label: '翻頁：靜態圖取素材第幾秒（上一個鏡頭的最後一格）', type: 'number', min: 0, max: 36000, step: 0.01, default: 0 },
     { key: 'crop', label: '翻頁：靜態圖的裁切 { x, y, zoom }（配合上一個鏡頭）', type: 'json', default: { x: 0.5, y: 0.5, zoom: 1 } },
@@ -106,7 +117,7 @@ export const wipe: ItemType<P, S> = {
     cssCamel(s.wrap, { display: curl ? 'none' : 'block' });
     if (s.curl) cssCamel(s.curl.box, { display: curl ? 'block' : 'none' });
     if (curl) { drawCurl(ctx, s); return; }
-    const hand = ctx.params.mode === 'hand' || ctx.params.mode === 'tiles' || ctx.params.mode === 'vortex' || ctx.params.mode === 'stripes';
+    const hand = CANVAS_MODES.includes(ctx.params.mode);
     for (const e of [s.band, s.edge]) if (hand) cssCamel(e, { display: 'none' }); else if (e === s.band) cssCamel(e, { display: 'block' });
     cssCamel(s.cv, { display: hand ? 'block' : 'none' });
     // dir left mirrors only the shapes of band and hand (the hand then comes in from the lower left); the vortex draws words, which a
@@ -116,6 +127,9 @@ export const wipe: ItemType<P, S> = {
     if (ctx.params.mode === 'vortex') { drawVortex(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     if (ctx.params.mode === 'tiles') { drawTiles(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     if (ctx.params.mode === 'stripes') { drawStripes(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
+    if (ctx.params.mode === 'iris') { drawIris(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
+    if (ctx.params.mode === 'blinds') { drawBlinds(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
+    if (ctx.params.mode === 'ink') { drawInk(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     if (hand) { drawHand(ctx.params, s, ctx.W, ctx.H, ctx.local, ctx.dur); return; }
     const p = ctx.params, { W, H } = ctx, sl = p.slant * W, u = ctx.dur > 0 ? ctx.local / ctx.dur : 1, [L, R] = wipeEdges(u, W, sl);
     const poly = (a: number, b: number) => `polygon(${(a + sl).toFixed(1)}px 0px, ${(b + sl).toFixed(1)}px 0px, ${b.toFixed(1)}px ${H}px, ${a.toFixed(1)}px ${H}px)`;
@@ -211,6 +225,101 @@ function drawVortex(p: P, s: S, W: number, H: number, local: number, dur: number
     for (let j = 0; j < count; j++) { g.save(); g.rotate(rot + (j / count) * Math.PI * 2); g.translate(0, -mid); g.fillText(chars[j % chars.length], 0, 0); g.restore(); }
   }
   g.restore();
+}
+
+/** mode iris at progress u (0–1): the radius in px of the circle of picture round (x, y) (fractions): from just past the farthest
+ *  corner (and a rim of `rim` px) it closes, easing in and out, to nothing at the middle, then opens again the same way */
+export function irisRadius(u: number, W: number, H: number, x: number, y: number, rim = 0): number {
+  const cx = x * W, cy = y * H, far = Math.max(Math.hypot(cx, cy), Math.hypot(W - cx, cy), Math.hypot(cx, H - cy), Math.hypot(W - cx, H - cy)) + rim + 2;
+  return far * (u < 0.5 ? 1 - eIO3(clamp(u * 2)) : eIO3(clamp(u * 2 - 1)));
+}
+
+/** mode iris: the frame in `color` with a round hole of picture closing to (x, y) and opening again, an `edge` ring on its rim */
+function drawIris(p: P, s: S, W: number, H: number, local: number, dur: number) {
+  const g = canvasAt(s.cv, W, H), u = dur > 0 ? clamp(local / dur) : 1, e = p.line * (Math.min(W, H) / 1080);
+  const cx = clamp(p.x) * W, cy = clamp(p.y) * H, r = irisRadius(u, W, H, clamp(p.x), clamp(p.y), e);
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = p.color; g.beginPath(); g.rect(0, 0, W, H);
+  if (r > 0.5) g.arc(cx, cy, r, 0, Math.PI * 2);
+  g.fill('evenodd');
+  if (e > 0 && r > 0.5) { g.strokeStyle = p.edge; g.lineWidth = e; g.beginPath(); g.arc(cx, cy, r + e / 2, 0, Math.PI * 2); g.stroke(); }
+}
+
+/** mode blinds at progress u (0–1): how far slat i of n (from the top) has turned: 0 edge on (open) … π/2 flat (shut) … π edge on
+ *  again, showing its other face. Each slat starts a lag after the one above; the lags and a slat's turn add up to one half, so the
+ *  last slat shuts exactly at the middle and has opened again by the end (the lag shrinks with many slats, as stripeSpan's does) */
+export function blindTurn(u: number, i: number, n: number): number {
+  const lag = Math.min(0.08, 0.6 / Math.max(1, n - 1)), span = 1 - (n - 1) * lag, io = (v: number) => eIO3(clamp(v));
+  return u < 0.5 ? (Math.PI / 2) * io((u * 2 - i * lag) / span) : (Math.PI / 2) * (1 + io(((u - 0.5) * 2 - i * lag) / span));
+}
+
+/** mode blinds: `rows` horizontal slats in `color`, each turning on its own middle line: its visible height is the slat's times
+ *  sin(turn), lit from above (lighter at the top edge, darker as it stands steeper; the far face a shade darker), a thin dark seam
+ *  under each; shut, they tile the frame with no gap */
+function drawBlinds(p: P, s: S, W: number, H: number, local: number, dur: number) {
+  const g = canvasAt(s.cv, W, H), u = dur > 0 ? clamp(local / dur) : 1, n = Math.max(2, Math.round(p.rows)), sh = H / n, k = Math.min(W, H) / 1080;
+  const [cr, cg, cb] = toRgb(p.color), tone = (f: number) => `rgb(${Math.min(255, Math.round(cr * f))},${Math.min(255, Math.round(cg * f))},${Math.min(255, Math.round(cb * f))})`;
+  g.clearRect(0, 0, W, H);
+  for (let i = 0; i < n; i++) {
+    const th = blindTurn(u, i, n), vis = Math.sin(th);
+    if (vis <= 0.002) continue;
+    const mid = (i + 0.5) * sh, half = (sh * vis) / 2, top = Math.floor(mid - half), bot = Math.ceil(mid + half);
+    const lit = (th > Math.PI / 2 ? 0.9 : 1) * (0.72 + 0.28 * vis), gr = g.createLinearGradient(0, top, 0, bot);
+    gr.addColorStop(0, tone(lit * 1.08)); gr.addColorStop(1, tone(lit * 0.86));
+    g.fillStyle = gr; g.fillRect(0, top, W, bot - top);
+    const seam = Math.max(1, 3 * k) * vis;
+    g.fillStyle = tone(0.62); g.fillRect(0, bot - seam, W, seam);
+  }
+}
+
+export interface Blot { x: number; y: number; at: number; ph: [number, number, number]; drops: Array<[number, number, number]> }
+/** mode ink: the six blots of one half (`which` 0: the ink coming in, 1: the holes the cover recedes from), seeded and spread one to
+ *  a cell of a 2 × 3 grid (3 × 2 on a wide frame): the centre (fractions), when it starts (share of the half), the phases of its
+ *  wobbly edge and three droplets [angle, distance and radius as shares of the blot's radius] */
+export function inkBlots(seed: number, which: 0 | 1, wide: boolean): Blot[] {
+  const r = mulberry32((Math.round(seed) || 1) * 7919 + which * 104729 + 31), cols = wide ? 3 : 2, rows = wide ? 2 : 3, tau = Math.PI * 2;
+  const cells = Array.from({ length: 6 }, (_, i) => i).sort((a, b) => Math.sin(a * 91.7 + seed * 3.1 + which) - Math.sin(b * 91.7 + seed * 3.1 + which));
+  return cells.map((c, i) => ({
+    x: ((c % cols) + 0.15 + 0.7 * r()) / cols, y: (Math.floor(c / cols) + 0.15 + 0.7 * r()) / rows, at: i === 0 ? 0 : 0.04 + 0.3 * r(),
+    ph: [r() * tau, r() * tau, r() * tau], drops: [0, 1, 2].map((): [number, number, number] => [r() * tau, 1.12 + 0.3 * r(), 0.05 + 0.08 * r()]),
+  }));
+}
+
+/** mode ink: the most a blot's edge dips under its radius (the three waves of inkEdge together) */
+export const INK_DIP = 0.07 + 0.045 + 0.025;
+/** mode ink: a blot's radius in px at progress p (0–1) of its half: nothing before `at`, then spreading as ink does, fast and then
+ *  slower, towards `need` (about what six blots together need to meet), and in the last stretch surging on to `big` by the end, which
+ *  alone covers the frame: growing straight to `big` covered it a third of the way in and held it there */
+export function inkGrow(p: number, at: number, need: number, big: number): number {
+  const q = clamp((p - at) / Math.max(1e-6, 1 - at));
+  return need * (1 - (1 - q) * (1 - q)) + Math.max(0, big - need) * Math.pow(q, 8);
+}
+/** mode ink: a blot's edge at angle a as a share of its radius, the waves creeping round as p goes on */
+export const inkEdge = (a: number, ph: Blot['ph'], p: number) => 1 + 0.07 * Math.sin(3 * a + ph[0] + 2 * p) + 0.045 * Math.sin(5 * a + ph[1] - 3 * p) + 0.025 * Math.sin(11 * a + ph[2]);
+
+/** mode ink: in the first half `color` blots grow and merge (each alone would cover the frame by the middle: its smallest reach is
+ *  past the frame's diagonal), in the second the cover is eaten away by other seeded blots the same way */
+function drawInk(p: P, s: S, W: number, H: number, local: number, dur: number) {
+  const g = canvasAt(s.cv, W, H), u = dur > 0 ? clamp(local / dur) : 1, wide = W > H, big = (Math.hypot(W, H) / (1 - INK_DIP)) * 1.02;
+  const need = 0.5 * Math.hypot(W / (wide ? 3 : 2), H / (wide ? 2 : 3));
+  const second = u >= 0.5, q = second ? clamp(u * 2 - 1) : clamp(u * 2), blots = inkBlots(p.seed, second ? 1 : 0, wide);
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = p.color;
+  if (second) { g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'destination-out'; }
+  g.beginPath();
+  for (const b of blots) {
+    const R = inkGrow(q, b.at, need, big);
+    if (R < 0.5) continue;
+    const cx = b.x * W, cy = b.y * H, steps = 96;
+    for (let j = 0; j <= steps; j++) {
+      const a = (j / steps) * Math.PI * 2, rr = R * inkEdge(a, b.ph, q);
+      if (j === 0) g.moveTo(cx + rr * Math.cos(a), cy + rr * Math.sin(a)); else g.lineTo(cx + rr * Math.cos(a), cy + rr * Math.sin(a));
+    }
+    g.closePath();
+    for (const [a, d, rad] of b.drops) { const dx = cx + R * d * Math.cos(a), dy = cy + R * d * Math.sin(a); g.moveTo(dx + R * rad, dy); g.arc(dx, dy, R * rad, 0, Math.PI * 2); }
+  }
+  g.fill('nonzero');
+  g.globalCompositeOperation = 'source-over';
 }
 
 /** mode hand: the palm, four fingers and a thumb as blurred ellipses (in a 1080 × 1920 frame's px, scaled to the frame), drawn at

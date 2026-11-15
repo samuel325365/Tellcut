@@ -199,4 +199,10 @@ export const STYLES: Sample[] = [
   ...['neuro', 'cells', 'dither'].map((look): Sample => ({ name: `shader-${look}`, type: 'common.shader', params: { look }, theme: SHADER_THEME, at: [1.5] })),
   { name: 'shader-cells-shade', type: 'common.shader', params: { look: 'cells', grain: 0.6, amount: 1 }, theme: SHADER_THEME, at: [1.5] },
   { name: 'wide-shader-dither', type: 'common.shader', params: { look: 'dither', colors: '#c6f03a', back: '#14213d' }, at: [1.5], wide: true },
+  // common.wipe's modes iris, blinds and ink (2026-11-15): closing, nearly shut and opening again (the middle is all colour)
+  { name: 'wipe-iris', type: 'common.wipe', params: { mode: 'iris', color: '#111111', x: 0.62, y: 0.4 }, len: 1, at: [0.25, 0.45, 0.75], bg: '#2a6b8f' },
+  { name: 'wipe-blinds', type: 'common.wipe', params: { mode: 'blinds', color: '#efe6d4' }, len: 1, at: [0.2, 0.4, 0.5, 0.7], bg: '#2a6b8f' },
+  { name: 'wipe-ink', type: 'common.wipe', params: { mode: 'ink', color: '#16161a' }, len: 1, at: [0.2, 0.35, 0.65, 0.8], bg: '#2a6b8f' },
+  { name: 'wide-wipe-blinds', type: 'common.wipe', params: { mode: 'blinds', color: '#efe6d4' }, len: 1, at: [0.35], wide: true, bg: '#2a6b8f' },
+  { name: 'wide-wipe-ink', type: 'common.wipe', params: { mode: 'ink' }, len: 1, at: [0.3], wide: true, bg: '#2a6b8f' },
 ];
