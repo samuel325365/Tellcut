@@ -181,4 +181,8 @@ export const STYLES: Sample[] = [
   { name: 'speedlines-focus', type: 'common.speedlines', params: { look: 'focus' }, at: [0.1, 1.5], bg: '#ffd9a0' },
   { name: 'speedlines-streak', type: 'common.speedlines', params: { look: 'streak', angle: 180, color: '#ffffff' }, at: [0.5, 1.5], bg: '#2f4a66' },
   { name: 'wide-speedlines-focus', type: 'common.speedlines', params: { look: 'focus', y: 0.5 }, at: [1.5], wide: true, bg: '#ffd9a0' },
+  // common.sparkle's modes (2026-11-15): the confetti early and in full fall; the glint growing, at its peak and dying
+  { name: 'sparkle-confetti', type: 'common.sparkle', params: { mode: 'confetti' }, len: 3, at: [0.4, 1.6], bg: '#2b2f45' },
+  { name: 'sparkle-glint', type: 'common.sparkle', params: { mode: 'glint', size: 5 }, len: 2, at: [0.1, 0.3, 0.7], bg: '#3a3f4a' },
+  { name: 'wide-sparkle-confetti', type: 'common.sparkle', params: { mode: 'confetti' }, len: 3, at: [1.6], wide: true, bg: '#2b2f45' },
 ];
