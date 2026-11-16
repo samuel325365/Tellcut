@@ -361,7 +361,7 @@ test('the Effects page lists the combos in a group of their own with their peak 
   store.set({ library: { ...store.get().library, blockThumbs: { 'combo:impact': '/api/gallery/thumb/combo-impact-t0.30.png' } } });
   const calls: any[] = [];
   const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, addMaterial: (m: any) => calls.push(['add', m]),
-    combos: [{ id: 'impact', label: '重擊', doc: 'A punch' }, { id: 'glitchcut', label: '故障切換', doc: 'A sudden change of topic' }], insertCombo: (id: string) => calls.push(['combo', id]) };
+    combos: [{ id: 'impact', label: '重擊', doc: '重擊、打臉' }, { id: 'glitchcut', label: '故障切換', doc: '話題急轉' }], insertCombo: (id: string) => calls.push(['combo', id]) };
   const root = document.createElement('div');
   await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
   const group = root.querySelector('[data-lib-group="block:combos"]')!;

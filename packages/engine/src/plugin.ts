@@ -189,8 +189,8 @@ export interface ComboPart {
   px?: number; hz?: number;
 }
 /** A named moment (spec 2026-11-16-combos): several layers with their offsets. Placing one expands it into ordinary timeline items
- *  (expandCombo): project.json never names a combo. `label` in Traditional Chinese like a block's; `doc` one English line saying
- *  when to use it (English and Japanese names in the editor's blocks.en.ts / blocks.ja.ts, keyed `combo:<id>`). */
+ *  (expandCombo): project.json never names a combo. `label` and `doc` in Traditional Chinese like a block template's (`doc`: the
+ *  occasion, then what it looks and sounds like); English and Japanese in the editor's blocks.en.ts / blocks.ja.ts, keyed `combo:<id>`. */
 export interface Combo { id: string; label: string; doc: string; parts: ComboPart[] }
 
 /** A Google Fonts family spec ('Noto Serif TC:wght@200;300') or an open font file to download as is. `file`: keep it under that

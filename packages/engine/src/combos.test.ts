@@ -22,7 +22,7 @@ test('comboProblems finds each kind of mistake', () => {
   expect(comboProblems({ id: 'Big-Hit', label: '', doc: ' ', parts: [part({ kind: 'sfx', type: 'fx.hit' })] }, lookup)).toEqual([
     '組合 Big-Hit：id 要是一個小寫英文字（例如 impact）',
     '組合 Big-Hit：沒有 label',
-    '組合 Big-Hit：沒有 doc（一行英文：什麼場合用）',
+    '組合 Big-Hit：沒有 doc（一行：什麼場合用，看起來、聽起來怎樣）',
     '組合 Big-Hit：至少要兩層，現在 1 層',
     "組合 Big-Hit：至少要有一層畫面（kind: 'effect'）",
   ]);

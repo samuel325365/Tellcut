@@ -141,7 +141,7 @@ test('block templates: the index lists each as <block>/<id> with its English doc
 });
 
 test('combos: the catalog lists them by handle, a handle or combo:<id> shows the layers, search and the index find them', async () => {
-  expect(formatCatalog(plugins)).toMatch(/^組合（[^\n]*c\.combo\('<id>', \{ at \}\)[^\n]*\n {2}CMB-01 +impact +重擊 — A punch/m);
+  expect(formatCatalog(plugins)).toMatch(/^組合（[^\n]*c\.combo\('<id>', \{ at \}\)[^\n]*\n {2}CMB-01 +impact +重擊 — 重擊、打臉/m);
   const one = await formatLookup(plugins, 'cmb1');
   expect(one).toMatch(/^CMB-01 impact 重擊（組合）— /);
   expect(one).toMatch(/^ {4}flash（畫面：core\.flash，範本 bloom-pop，layer top）0 秒起 0\.5 秒：\{"y":0\.4\}$/m);

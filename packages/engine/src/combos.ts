@@ -32,7 +32,7 @@ export function comboProblems(c: Combo, lookup: ComboLookup): string[] {
   const out: string[] = [], id = String(c?.id), name = `組合 ${id}`;
   if (!COMBO_ID.test(id)) out.push(`${name}：id 要是一個小寫英文字（例如 impact）`);
   if (typeof c?.label !== 'string' || !c.label.trim()) out.push(`${name}：沒有 label`);
-  if (typeof c?.doc !== 'string' || !c.doc.trim()) out.push(`${name}：沒有 doc（一行英文：什麼場合用）`);
+  if (typeof c?.doc !== 'string' || !c.doc.trim()) out.push(`${name}：沒有 doc（一行：什麼場合用，看起來、聽起來怎樣）`);
   const parts = Array.isArray(c?.parts) ? c.parts : [];
   if (parts.length < 2) out.push(`${name}：至少要兩層，現在 ${parts.length} 層`);
   if (!parts.some((p) => p?.kind === 'effect')) out.push(`${name}：至少要有一層畫面（kind: 'effect'）`);
