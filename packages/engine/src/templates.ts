@@ -36,7 +36,8 @@ export function paramValueProblem(d: ParamDef, v: unknown): string | undefined {
 }
 
 /** What is wrong with a block's templates (none: an empty list): ids unique and kebab-case, at most MAX_TEMPLATES, every param one
- *  the block declares and every value one it takes, no empty template, and no list on a block that has a `template` param. */
+ *  the block declares and every value one it takes, no empty template nor one that only writes the defaults, and no list on a block
+ *  that has a `template` param. */
 export function templateProblems(t: Pick<ItemType, 'type' | 'params' | 'templates'>): string[] {
   const list = t.templates;
   if (list === undefined) return [];
@@ -53,12 +54,16 @@ export function templateProblems(t: Pick<ItemType, 'type' | 'params' | 'template
     if (typeof x?.doc !== 'string' || !x.doc.trim()) out.push(`${name}：沒有 doc（要寫用在什麼場合）`);
     const params = x?.params && typeof x.params === 'object' && !Array.isArray(x.params) ? x.params : null;
     if (!params || !Object.keys(params).length) { out.push(`${name}：params 是空的`); continue; }
+    let changes = false;
     for (const [k, v] of Object.entries(params)) {
       const d = t.params.find((p) => p.key === k);
-      if (!d) { out.push(`${name}：${t.type} 沒有 ${k} 參數`); continue; }
+      if (!d) { out.push(`${name}：${t.type} 沒有 ${k} 參數`); changes = true; continue; }
       const bad = paramValueProblem(d, v);
       if (bad) out.push(`${name}：${k} ${bad}`);
+      if (!same(v, d.default)) changes = true;
     }
+    // applying it would change nothing: the block as it comes
+    if (!changes) out.push(`${name}：params 全都是預設值，套用它什麼都不會變`);
   }
   return out;
 }
@@ -67,16 +72,26 @@ export function templateProblems(t: Pick<ItemType, 'type' | 'params' | 'template
 const valueIn = (t: Pick<ItemType, 'params'>, x: BlockTemplate, key: string) => (Object.hasOwn(x.params, key) ? x.params[key] : t.params.find((d) => d.key === key)?.default);
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+/** whether two templates (or a template and the block's defaults, an empty template) differ in nothing but colour: colours dropped,
+ *  they must differ in the block's main choice (look / mode / pattern), or in at least two other params */
+function colourOnly(t: Pick<ItemType, 'params'>, a: BlockTemplate, b: BlockTemplate): boolean {
+  const differ = t.params.filter((d) => !isColourParam(d)).map((d) => d.key).filter((k) => !same(valueIn(t, a, k), valueIn(t, b, k)));
+  return !differ.some((k) => (MAIN_PARAMS as readonly string[]).includes(k)) && differ.length < 2;
+}
+
 /** Admission rule 1: the pairs of a block's templates that differ in nothing but colour. Colours dropped, two templates must still
  *  differ in the block's main choice (look / mode / pattern), or in at least two other params. */
 export function colourOnlyPairs(t: Pick<ItemType, 'type' | 'params' | 'templates'>): Array<[string, string]> {
   const list = t.templates ?? [], out: Array<[string, string]> = [];
-  const keys = t.params.filter((d) => !isColourParam(d)).map((d) => d.key);
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
-    const differ = keys.filter((k) => !same(valueIn(t, list[i], k), valueIn(t, list[j], k)));
-    if (!differ.some((k) => (MAIN_PARAMS as readonly string[]).includes(k)) && differ.length < 2) out.push([list[i].id, list[j].id]);
-  }
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (colourOnly(t, list[i], list[j])) out.push([list[i].id, list[j].id]);
   return out;
+}
+
+/** Admission rule 1 against the block itself: the templates that differ from the block's defaults in nothing but colour (by the same
+ *  measure as two templates), so choosing one would only recolour the block as it comes. */
+export function colourOnlyFromDefault(t: Pick<ItemType, 'type' | 'params' | 'templates'>): string[] {
+  const plain: BlockTemplate = { id: '', label: '', doc: '', params: {} };
+  return (t.templates ?? []).filter((x) => colourOnly(t, x, plain)).map((x) => x.id);
 }
 
 /** The params an item of block `t` gets from template `id`: the template's, with `own` (what the caller sets itself) over them.

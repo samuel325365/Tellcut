@@ -1,7 +1,7 @@
 // The block templates of every registered block (engine templates.ts, spec 2026-11-16-block-templates): well formed, within the
-// limit, more than a colour apart (admission rule 1), each with its golden sample. Rule 2, how different their pictures are, is
+// limit, more than a colour apart from each other and from the block's defaults (admission rule 1), each with its golden sample. Rule 2, how different their pictures are, is
 // golden/templates.test.ts.
-import { colourOnlyPairs, MAX_TEMPLATES, templateProblems, type ItemType } from '@tellcut/engine';
+import { colourOnlyFromDefault, colourOnlyPairs, MAX_TEMPLATES, templateProblems, type ItemType } from '@tellcut/engine';
 import { TEMPLATE_KINDS } from '@tellcut/protocol';
 import { plugins } from '@tellcut/plugins';
 import { samples, templateSample } from './samples.ts';
@@ -45,13 +45,16 @@ test('templateProblems finds each kind of mistake', () => {
     'fx.t/what：fx.t 沒有 size 參數',
     'fx.t/what：on 要是 true 或 false，現在是 "yes"',
   ]);
+  // a template that writes only the defaults (the colour included) would change nothing
+  expect(templateProblems({ ...block, templates: [tpl('plain', { look: 'a', n: 0.5, on: false })] })).toEqual(['fx.t/plain：params 全都是預設值，套用它什麼都不會變']);
   const many = Array.from({ length: MAX_TEMPLATES + 1 }, (_, i) => tpl(`t${i}`, { n: i / 10 }));
   expect(templateProblems({ ...block, templates: many })[0]).toMatch(/最多 8 個/);
   expect(templateProblems({ ...block, params: [...block.params, { key: 'template', label: '', type: 'string', default: '' }], templates: [tpl('x', { look: 'b' })] })[0]).toMatch(/有 template 參數/);
 });
 
-test('admission rule 1: no two templates of a block differ only in colour', () => {
+test('admission rule 1: no two templates of a block differ only in colour, nor a template from the block\'s defaults', () => {
   expect(withTemplates.flatMap((t) => colourOnlyPairs(t).map(([a, b]) => `${t.type}: ${a} / ${b}`))).toEqual([]);
+  expect(withTemplates.flatMap((t) => colourOnlyFromDefault(t).map((a) => `${t.type}: ${a} / 預設`))).toEqual([]);
 });
 
 test('rule 1 itself: colour dropped, the look differs or at least two other params do', () => {
@@ -70,6 +73,9 @@ test('rule 1 itself: colour dropped, the look differs or at least two other para
   expect(colourOnlyPairs({ ...block, templates: [tpl('x', { n: 0.1 }), tpl('y', { m: 2 })] })).toEqual([]);
   // a template that writes the default value is the same as one that leaves it out
   expect(colourOnlyPairs({ ...block, templates: [tpl('x', { look: 'a', n: 0.2 }), tpl('y', { n: 0.3 })] })).toEqual([['x', 'y']]);
+  // against the block's defaults, the same measure: a colour, or a colour and one param, is not enough; the look or two params are
+  expect(colourOnlyFromDefault({ ...block, templates: [tpl('tint', { color: '#f00', colors: '#0f0,#00f' }), tpl('one', { color: '#f00', n: 0.9 }), tpl('look', { look: 'b' }), tpl('two', { n: 0.1, m: 2 }), tpl('same-look', { look: 'a', m: 3 })] }))
+    .toEqual(['tint', 'one', 'same-look']);
 });
 
 test('every template has its golden sample, <block>-tpl-<id>, drawn with the template\'s params', () => {
