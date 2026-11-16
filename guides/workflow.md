@@ -103,9 +103,32 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
 - Grades and textures (over the video) (LOK): 04 `glitch`, 05 `film`, 06 `tone`, 09 `leak`, 10 `grade`
 - Transitions, suspense and endings (MOM): 01 `mystery`, 02 `outro`, 03 `rolldoor`, 04 `wipe`, 09 `wordbands`
 - Block templates (`c.effect(type, { template: '<id>' })`: the template's params go in first, the script's own over them):
+  - `speedlines/manga-focus`: Surprise, singling out a person or a thing: dense concentration lines closing in from every edge, leaving a large clear ellipse in the middle for the subject.
+  - `speedlines/rush-right`: Running, driving, moving fast: parallel speed streaks across the whole frame flying to the right.
+  - `speedlines/fall-down`: Falling, diving, jumping off: long straight streaks across the whole frame flying downward.
+  - `speedlines/burst-center`: An entrance, a dash, a big reveal: many long lines radiating from close round the centre, denser and starting nearer the centre than the default.
+  - `sparkle/confetti-rain`: Celebrations, awards, birthdays: twice as much coloured paper as mode confetti falls from the top and fills the frame.
+  - `sparkle/glint-once`: A product's highlight, jewellery, a sparkling smile: one very large cross flare grows, turns a little and dies, just once.
+  - `sparkle/star-burst`: A right answer, a transformation, a level-up: more stars than the default bursting from one point and flying farther.
+  - `sparkle/twinkle-field`: Night skies, dreamy or fairy-tale moments: dozens of stars scattered over the frame around its middle, more and wider than mode twinkle, twinkling.
+  - `glitch/signal-loss`: Surveillance footage, a bad signal, cutting into a memory: fine scan lines and a bright band rolling down, the whole picture jumping sideways more often and farther than look scan alone.
+  - `glitch/rgb-hit`: A musical downbeat, the instant of a scare: every burst pulls the red and blue plates far apart, harder than look rgb alone.
+  - `glitch/data-break`: Tech, hacking, a system error: many tall rectangles of the picture shoved sideways, tinted cyan and magenta.
+  - `glitch/soft-tear`: A suspenseful build-up, quiet interference: now and then two or three thin colourless inverted bands flash by without stealing the scene.
+  - `countdown/flip-clock`: A launch countdown, New Year's Eve: a split-flap clock flipping down one card at a time, the last step a number too.
+  - `countdown/film-leader`: A retro opening, an old-movie start: a large leader disc almost the frame's width, its hand sweeping a turn each second from 5 down to 0, the last step a number too.
+  - `countdown/slant-go`: Sports, the start of a challenge: very large slanted numbers with an arc on the right, ending in GO!
+  - `countdown/ring-corner`: Quizzes, timed tasks: a small ring timer held near the top, out of the way of the picture, the last step a number too.
   - `film/super8-home`: Childhood, a past generation's home videos, a retro wedding: projected Super 8 home movie film, warmer, grainier and with a heavier vignette than look super8 alone.
+  - `film/vhs-tape`: Nineties home tapes, a retro vlog, a memory after a tape change: denser scan lines than look vhs alone, warm, and a tracking noise band sliding down soon after the start.
+  - `film/print-zine`: Magazine, poster or pop-art passages: the whole picture turned into somewhat coarser print dots, with no vignette.
+  - `film/cinema-scope`: Cinematic travel films and title sequences: 2.39:1 black bars top and bottom, light grain and a soft vignette.
+  - `film/heavy-grain`: Street photography, documentary, raw passages: very coarse, contrasty grain that changes only 12 times a second, like high-speed film stock.
   - `leak/prism-sweep`: Music passages, teenage memories, dreamy transitions: a wide rainbow band sweeps the whole frame from the left, brighter and bigger than usual.
   - `leak/bokeh-night`: Night views, night markets, festivals, a warm ending: a field of out-of-focus discs stays on the frame, slowly brightening and dimming, without sweeping.
+  - `leak/flare-top`: A cinematic opening, a backlit shot, a sci-fi title: a very bright sideways flare streak held near the top right, its ghost discs lined up to the far side of the frame.
+  - `leak/warm-corner`: Memories, family, a quiet interview: a soft warm glow resting in the top-left corner, barely moving, there for the whole item.
+  - `leak/sweep-fast`: A transition between two shots: a small, bright warm glow sweeping from the left edge all the way out the right.
 - Sound effects (`c.sfx`; a sound file the project made itself goes in with `c.sfxFile`):
   - Alerts, right and wrong, alarms (SFX-ALR): 01 `beep`, 02 `tick`, 03 `error`, 04 `deflate`, 05 `alarm`, 06 `dingdong`, 07 `ringbell`, 08 `buzz`, 09 `hush`
   - Chimes, rewards and melodies (SFX-CHM): 01 `ding`, 02 `cash`, 03 `xylo`, 04 `chime`, 05 `coin`, 06 `fanfare`, 07 `recv`, 08 `shing`
