@@ -404,7 +404,7 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.backdrop#halftone-pop': {"label":"Pop halftone","doc":"Pop art, comics, a sporty feel: denser, stronger halftone dots than the halftone pattern alone, largest at the lower left and shrinking toward the upper right."},
   'common.backdrop#sunburst-show': {"label":"Show sunburst","doc":"Prize draws, announcements, a variety-show feel: wide two-color rays from the middle, slowly turning."},
   'common.backdrop#waves-summer': {"label":"Summer waves","doc":"Beaches, summer, easygoing passages: four layers of larger waves stacked from the bottom, each sliding sideways at its own pace."},
-  'common.backdrop#spot-quote': {"label":"Quote spotlight","doc":"Quotes, interviews, podcasts: a stronger soft light from the top edge, darkening below and in the corners."},
+  'common.backdrop#spot-quote': {"label":"Quote spotlight","doc":"Quotes, interviews, podcasts: a near-black blue-grey ground with a stronger soft light from the top edge, darkening below and in the corners."},
   'common.backdrop#dots-party': {"label":"Party dots","doc":"Cute, celebrations, children: larger, stronger dots slowly sliding, with small twinkling bits scattered along both sides."},
   'common.shader#neuro-tech': {"label":"Tech web","doc":"Tech, AI, data: a glowing web of thin lines on a dark ground, flowing more slowly than look neuro alone."},
   'common.shader#cells-glass': {"label":"Stained glass","doc":"Handmade, stained glass, art: more irregular colored cells than look cells alone, slowly squirming."},

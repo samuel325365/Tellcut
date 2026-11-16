@@ -160,7 +160,7 @@ export const backdrop: ItemType<P, S> = {
     { id: 'halftone-pop', label: '普普網點', doc: '普普、漫畫、運動感的底：比 halftone 預設更密、更濃的網點，左下最大往右上越來越小', params: { pattern: 'halftone', scale: 40, tint: 0.5 } },
     { id: 'sunburst-show', label: '綜藝放射光', doc: '開獎、宣布、綜藝節目感的底：從中心放射、比較寬的兩色光芒，慢慢轉', params: { pattern: 'sunburst', drift: 40, tint: 0.35, scale: 90 } },
     { id: 'waves-summer', label: '夏日波浪', doc: '海邊、夏天、輕鬆的段落底：大一點的四層波浪色帶從下面疊上來，各自往旁邊滑', params: { pattern: 'waves', drift: 40, scale: 120 } },
-    { id: 'spot-quote', label: '金句聚光', doc: '金句、訪談、Podcast 的底：上緣透下一片較濃的柔光，下方漸暗，四角壓暗', params: { pattern: 'spot', tint: 0.5, vignette: 0.4 } },
+    { id: 'spot-quote', label: '金句聚光', doc: '金句、訪談、Podcast 的底：近黑的藍灰底，上緣透下一片較濃的柔光，下方漸暗，四角壓暗', params: { pattern: 'spot', color: '#1b2029', tint: 0.5, vignette: 0.4 } },
     { id: 'dots-party', label: '派對圓點', doc: '可愛、慶祝、兒童的底：大一點、濃一點的圓點慢慢滑動，兩側撒著會閃的小碎片', params: { pattern: 'dots', bits: 16, drift: 20, tint: 0.5, scale: 90 } },
   ],
   build(ctx) {

@@ -106,7 +106,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `backdrop/halftone-pop`: Pop art, comics, a sporty feel: denser, stronger halftone dots than the halftone pattern alone, largest at the lower left and shrinking toward the upper right.
   - `backdrop/sunburst-show`: Prize draws, announcements, a variety-show feel: wide two-color rays from the middle, slowly turning.
   - `backdrop/waves-summer`: Beaches, summer, easygoing passages: four layers of larger waves stacked from the bottom, each sliding sideways at its own pace.
-  - `backdrop/spot-quote`: Quotes, interviews, podcasts: a stronger soft light from the top edge, darkening below and in the corners.
+  - `backdrop/spot-quote`: Quotes, interviews, podcasts: a near-black blue-grey ground with a stronger soft light from the top edge, darkening below and in the corners.
   - `backdrop/dots-party`: Cute, celebrations, children: larger, stronger dots slowly sliding, with small twinkling bits scattered along both sides.
   - `shader/neuro-tech`: Tech, AI, data: a glowing web of thin lines on a dark ground, flowing more slowly than look neuro alone.
   - `shader/cells-glass`: Handmade, stained glass, art: more irregular colored cells than look cells alone, slowly squirming.

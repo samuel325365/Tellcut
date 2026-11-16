@@ -404,7 +404,7 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.backdrop#halftone-pop': {"label":"ポップな網点","doc":"ポップアート、マンガ、スポーツ感の背景に：halftone だけより細かく濃い網点。左下が最大で右上へ小さくなる。"},
   'common.backdrop#sunburst-show': {"label":"バラエティの放射","doc":"抽選、発表、バラエティ番組風の背景に：中心から放射する幅広の 2 色の光線がゆっくり回る。"},
   'common.backdrop#waves-summer': {"label":"夏の波","doc":"海辺、夏、ゆったりした段落の背景に：大きめの 4 層の波の帯が下から重なり、それぞれの速さで横へ流れる。"},
-  'common.backdrop#spot-quote': {"label":"名言スポット","doc":"名言、インタビュー、ポッドキャストの背景に：上端から濃いめのやわらかい光が差し、下と四隅が暗くなる。"},
+  'common.backdrop#spot-quote': {"label":"名言スポット","doc":"名言、インタビュー、ポッドキャストの背景に：黒に近い青灰色の地に、上端から濃いめのやわらかい光が差し、下と四隅が暗くなる。"},
   'common.backdrop#dots-party': {"label":"パーティードット","doc":"かわいい、お祝い、子ども向けの背景に：大きめで濃い水玉がゆっくり流れ、両側に小さな飾りがきらめく。"},
   'common.shader#neuro-tech': {"label":"テックな網","doc":"テック、AI、データの段落の背景に：暗い地に光る細い線の網が、look neuro だけよりゆっくり流れる。"},
   'common.shader#cells-glass': {"label":"ステンドグラス","doc":"手作り、ステンドグラス、アートの背景に：look cells だけよりいびつな色のセルが、ゆっくりうごめく。"},
