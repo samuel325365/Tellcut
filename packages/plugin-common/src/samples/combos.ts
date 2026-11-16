@@ -30,4 +30,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('punchline', [0.05, 0.3, 0.8]),
   // the tape with the first tears; the tracking band halfway down with the second; the tape alone
   comboSample('rewind', [0.1, 0.5, 1.0]),
+  // the moment at 0.6: the band coming in at the left; the band across the frame and the glint at its full size; the glint dying
+  comboSample('reveal', [0.15, 0.62, 1.1]),
 ];

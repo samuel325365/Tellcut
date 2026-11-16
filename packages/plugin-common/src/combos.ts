@@ -36,4 +36,11 @@ export const combos: Combo[] = [
     { name: 'tear', kind: 'effect', type: 'common.glitch', template: 'soft-tear', params: { seed: 6 }, at: 0, len: 1.1 },
     { name: 'spool', kind: 'sfx', type: 'common.rewind', params: { dur: 1 }, at: 0, len: 1, gain: -8 },
   ] },
+  // the rainbow band crosses the middle of the frame at the moment; the glint grows from 0.2 s before it to its full size just after
+  // (over its first quarter second), on the shing's attack
+  { id: 'reveal', label: '揭曉', doc: '揭曉答案、成品亮相、商品登場：一道彩虹光帶從左邊掃過整個畫面，正中間的時候亮點拉出一個大十字光芒，配一聲光掃過的「鏘」', parts: [
+    { name: 'sweep', kind: 'effect', type: 'common.leak', template: 'prism-sweep', at: -0.6, len: 1.2 },
+    { name: 'glint', kind: 'effect', type: 'common.sparkle', template: 'glint-once', params: { x: 0.66, y: 0.36 }, at: -0.2, len: 0.8 },
+    { name: 'shing', kind: 'sfx', type: 'common.shing', at: 0, len: 1.2, gain: -8 },
+  ] },
 ];
