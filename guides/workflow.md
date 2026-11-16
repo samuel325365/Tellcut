@@ -146,7 +146,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `leak/flare-top`: A cinematic opening, a backlit shot, a sci-fi title: a very bright sideways flare streak held near the top right, its ghost discs lined up to the far side of the frame.
   - `leak/warm-corner`: Memories, family, a quiet interview: a soft warm glow resting in the top-left corner, barely moving, there for the whole item.
   - `leak/sweep-fast`: A transition between two shots: a small, bright warm glow sweeping from the left edge all the way out the right.
-- Combos (CMB) (`c.combo('<id>', { at })`: a key moment's picture layers, sounds and the clip's shake placed at once; `catalog CMB-01` lists its layers): 01 `impact`, 02 `glitchcut`, 03 `punchline`, 04 `rewind`, 05 `reveal`, 06 `celebrate`
+- Combos (CMB) (`c.combo('<id>', { at })`: a key moment's picture layers, sounds and the clip's shake placed at once; `catalog CMB-01` lists its layers): 01 `impact`, 02 `glitchcut`, 03 `punchline`, 04 `rewind`, 05 `reveal`, 06 `celebrate`, 07 `leader`
 - Sound effects (`c.sfx`; a sound file the project made itself goes in with `c.sfxFile`):
   - Alerts, right and wrong, alarms (SFX-ALR): 01 `beep`, 02 `tick`, 03 `error`, 04 `deflate`, 05 `alarm`, 06 `dingdong`, 07 `ringbell`, 08 `buzz`, 09 `hush`
   - Chimes, rewards and melodies (SFX-CHM): 01 `ding`, 02 `cash`, 03 `xylo`, 04 `chime`, 05 `coin`, 06 `fanfare`, 07 `recv`, 08 `shing`

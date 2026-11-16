@@ -418,4 +418,5 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'combo:rewind': {"label":"Rewind","doc":"Going back to look again, back to a moment ago, once more: the picture turns into a videotape, a tracking band slides down and a few inverted strips flicker across, with the whirr of a tape rewinding."},
   'combo:reveal': {"label":"Reveal","doc":"The answer revealed, the finished thing shown, a product's entrance: a rainbow band sweeps the frame from the left and, as it crosses the middle, a bright point flares into a big four-way glint, with a bright shing."},
   'combo:celebrate': {"label":"Celebrate","doc":"A goal reached, a level cleared, an award, a birthday: a golden glow flares in the middle and coloured confetti rains down from the top, with an 8-bit victory fanfare."},
+  'combo:leader': {"label":"Film leader","doc":"The film starts, a nostalgic opening: a projected home movie, the old leader's big disc counting down from 3 to 1 with its hand sweeping a turn a second, a tick on each count and a beep at the end."},
 };

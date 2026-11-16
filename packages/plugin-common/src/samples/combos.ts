@@ -34,4 +34,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('reveal', [0.15, 0.62, 1.1]),
   // the moment at 0.4: the first confetti in at the top; the glow over the frame half full of confetti; the confetti fading
   comboSample('celebrate', [0.15, 0.7, 2.2]),
+  // 3 with the hand a third round; 2 halfway; 1 nearly done
+  comboSample('leader', [0.3, 1.5, 2.7]),
 ];

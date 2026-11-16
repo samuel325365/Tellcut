@@ -51,4 +51,14 @@ export const combos: Combo[] = [
     { name: 'glow', kind: 'effect', type: 'core.flash', template: 'bloom-pop', params: { color: '#ffd23f', y: 0.45, peak: 0.5, fall: 0.8, power: 2 }, at: 0, len: 0.9 },
     { name: 'fanfare', kind: 'sfx', type: 'common.fanfare', at: -0.38, len: 1.3, gain: -8 },
   ] },
+  // a projected home movie over the whole countdown; the leader's disc counts 3, 2, 1, a second each with its hand sweeping a full
+  // turn, a tick as each count comes up and the beep as the disc fades out
+  { id: 'leader', label: '片頭倒數', doc: '片頭、影片開始、懷舊的開場：放映出來的八釐米老電影，片頭的大圓盤從 3 倒數到 1、指針一秒轉一圈，每一下一聲滴答，最後嗶一聲', parts: [
+    { name: 'count', kind: 'effect', type: 'common.countdown', template: 'film-leader', params: { from: 3, to: 1 }, at: 0, len: 3 },
+    { name: 'film', kind: 'effect', type: 'common.film', template: 'super8-home', at: 0, len: 3 },
+    { name: 'tick1', kind: 'sfx', type: 'common.tick', at: 0, len: 0.04, gain: -6 },
+    { name: 'tick2', kind: 'sfx', type: 'common.tick', at: 1, len: 0.04, gain: -6 },
+    { name: 'tick3', kind: 'sfx', type: 'common.tick', at: 2, len: 0.04, gain: -6 },
+    { name: 'beep', kind: 'sfx', type: 'common.beep', params: { dur: 0.15 }, at: 2.85, len: 0.15, gain: -12 },
+  ] },
 ];
