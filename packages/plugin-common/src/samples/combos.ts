@@ -40,4 +40,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('memory', [0.3, 1.25, 2.3]),
   // the moment at 0.3: the light coming in at the left; the streaks over the light at its brightest; the streaks alone, fading
   comboSample('rush', [0.15, 0.45, 1.1]),
+  // the door three quarters down; down with its sign as the dark comes in; nearly black
+  comboSample('closing', [0.6, 1.9, 2.2]),
 ];

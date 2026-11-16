@@ -77,4 +77,13 @@ export const combos: Combo[] = [
     { name: 'ffwd', kind: 'sfx', type: 'common.ffwd', params: { dur: 0.9 }, at: 0, len: 0.9, gain: -12 },
     { name: 'shake', kind: 'shake', at: 0, len: 0.4, px: 10 },
   ] },
+  // the door starts down at 0.2 s and lands at 1 s, where the rattle's thump (0.55 s into it) and the clunk fall and the sign pops on;
+  // from 1.5 s the frame fades to black. (Black rather than the flash's white fade-in: once the door is down a white light would only
+  // hide the sign, and a fade to black is what "that's all for today" ends on)
+  { id: 'closing', label: '收工', doc: '收工、打烊、今天就到這裡、片尾：整個畫面的鐵捲門嘩啦啦拉下來，到底「喀」一聲貼上「今日打烊」，再慢慢暗到全黑', parts: [
+    { name: 'door', kind: 'effect', type: 'common.rolldoor', template: 'shop-close', at: 0, len: 2.4 },
+    { name: 'dark', kind: 'effect', type: 'core.flash', params: { fade: 'out', color: '#000000' }, at: 1.5, len: 0.9, layer: 'top' },
+    { name: 'rattle', kind: 'sfx', type: 'common.rattle', at: 0.45, len: 0.65, gain: -8 },
+    { name: 'clunk', kind: 'sfx', type: 'common.clunk', at: 1, len: 0.16, gain: -6 },
+  ] },
 ];

@@ -421,4 +421,5 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'combo:leader': {"label":"Film leader","doc":"The film starts, a nostalgic opening: a projected home movie, the old leader's big disc counting down from 3 to 1 with its hand sweeping a turn a second, a tick on each count and a beep at the end."},
   'combo:memory': {"label":"Memory","doc":"A memory, the old days, thinking back: a warm light rises in the top left corner and fades again while coarse film grain covers the frame, with a soft chime."},
   'combo:rush': {"label":"Rush","doc":"Speeding up, hurrying, fast-forward, a dash: white speed lines fly to the right across the frame as a small bright light sweeps from the left, with a whoosh, a rising fast-forward and a small shake."},
+  'combo:closing': {"label":"Closing time","doc":"Done for the day, closed, that's all for today, the end: a roller shutter rattles down over the whole frame, lands with a clunk and gets a closed sign taped on, then everything fades to black."},
 };
