@@ -381,4 +381,8 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.film#print-zine': {"label":"Zine print","doc":"Magazine, poster or pop-art passages: the whole picture turned into somewhat coarser print dots, with no vignette."},
   'common.film#cinema-scope': {"label":"Cinemascope","doc":"Cinematic travel films and title sequences: 2.39:1 black bars top and bottom, light grain and a soft vignette."},
   'common.film#heavy-grain': {"label":"Heavy grain","doc":"Street photography, documentary, raw passages: very coarse, contrasty grain that changes only 12 times a second, like high-speed film stock."},
+  'common.speedlines#manga-focus': {"label":"Manga focus","doc":"Surprise, singling out a person or a thing: dense concentration lines closing in from every edge, leaving a large clear ellipse in the middle for the subject."},
+  'common.speedlines#rush-right': {"label":"Rush right","doc":"Running, driving, moving fast: parallel speed streaks across the whole frame flying to the right."},
+  'common.speedlines#fall-down': {"label":"Fall down","doc":"Falling, diving, jumping off: long straight streaks across the whole frame flying downward."},
+  'common.speedlines#burst-center': {"label":"Center burst","doc":"An entrance, a dash, a big reveal: many long lines radiating from close round the centre, denser and starting nearer the centre than the default."},
 };

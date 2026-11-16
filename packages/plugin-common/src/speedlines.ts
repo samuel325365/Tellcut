@@ -61,6 +61,13 @@ export const speedlines: ItemType<P, S> = {
     { key: 'seed', label: '亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 9 },
     { key: 'flicker', label: '微微閃動', type: 'bool', default: true },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are speedlines-tpl-<id>
+  templates: [
+    { id: 'manga-focus', label: '漫畫集中線', doc: '驚訝、強調一個人或一樣東西：很密的集中線從四邊往中間收，中間留一大塊乾淨的橢圓給主角', params: { look: 'focus', count: 90, inner: 0.38 } },
+    { id: 'rush-right', label: '往右衝', doc: '奔跑、開車、快速移動：整面平行的速度線往右飛', params: { look: 'streak', count: 60 } },
+    { id: 'fall-down', label: '往下墜', doc: '下墜、往下衝、跳下去：長長的直線整面往下飛', params: { look: 'streak', angle: 90, count: 40, length: 1.2 } },
+    { id: 'burst-center', label: '中心爆發', doc: '登場、衝刺、大揭曉：很多長線從中心附近一圈放射出去，比預設更密、更靠近中心', params: { count: 80, inner: 0.15, length: 1 } },
+  ],
   build(ctx) {
     const cv = h('canvas', null, null, ctx.root);
     cv.width = ctx.W; cv.height = ctx.H;

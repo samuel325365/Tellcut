@@ -381,4 +381,8 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.film#print-zine': {"label":"雑誌の網点","doc":"雑誌、ポスター、ポップアートのパートに：画面全体がやや粗い印刷の網点になる。ビネットなし。"},
   'common.film#cinema-scope': {"label":"シネマスコープ","doc":"映画のような旅の動画、タイトルに：上下に 2.39:1 の黒帯、淡い粒子とやわらかいビネット。"},
   'common.film#heavy-grain': {"label":"粗い粒子","doc":"ストリートスナップ、ドキュメンタリー、荒々しいパートに：とても粗くコントラストの強い粒子が 1 秒に 12 回だけ変わる。高感度フィルムのよう。"},
+  'common.speedlines#manga-focus': {"label":"マンガの集中線","doc":"驚き、人や物を強調するときに：密な集中線が四辺から中心へ迫り、真ん中に主役のための大きなきれいな楕円を残す。"},
+  'common.speedlines#rush-right': {"label":"右へ突進","doc":"走る、運転する、速く動くときに：画面全体の平行なスピード線が右へ飛ぶ。"},
+  'common.speedlines#fall-down': {"label":"下へ落下","doc":"落ちる、急降下、飛び降りるときに：長い直線が画面全体で下へ飛ぶ。"},
+  'common.speedlines#burst-center': {"label":"中心から爆発","doc":"登場、ダッシュ、大きな発表に：中心のすぐ近くから長い線がたくさん放射する。デフォルトより密で、中心に近いところから始まる。"},
 };

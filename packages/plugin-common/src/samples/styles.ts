@@ -5,6 +5,7 @@ import { TITLE_TEMPLATES } from '../heading/templates.ts';
 import { glitch } from '../glitch.ts';
 import { leak } from '../leak.ts';
 import { film } from '../film.ts';
+import { speedlines } from '../speedlines.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -230,4 +231,9 @@ export const STYLES: Sample[] = [
   tpl(film, 'print-zine', { at: [0.5], bg: FILM_BG }),
   tpl(film, 'cinema-scope', { at: [0.5], bg: FILM_BG }),
   tpl(film, 'heavy-grain', { at: [0.5], bg: FILM_BG }),
+  // speedlines: over the default's backdrop, settled (the streaks also earlier, crossing)
+  tpl(speedlines, 'manga-focus', { at: [1.5], bg: '#ffd9a0' }),
+  tpl(speedlines, 'rush-right', { at: [0.5, 1.5], bg: '#ffd9a0' }),
+  tpl(speedlines, 'fall-down', { at: [0.5, 1.5], bg: '#ffd9a0' }),
+  tpl(speedlines, 'burst-center', { at: [1.5], bg: '#ffd9a0' }),
 ];
