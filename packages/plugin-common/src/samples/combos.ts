@@ -28,4 +28,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('glitchcut', [0.03, 0.17, 0.4]),
   // the dots and the focus lines' tips just in from the edges; the lines closed in round the middle; the same, fading
   comboSample('punchline', [0.05, 0.3, 0.8]),
+  // the tape with the first tears; the tracking band halfway down with the second; the tape alone
+  comboSample('rewind', [0.1, 0.5, 1.0]),
 ];

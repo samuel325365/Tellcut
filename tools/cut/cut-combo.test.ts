@@ -46,7 +46,7 @@ test('c.combo with no clip at the moment: the layers stay at film time, the shak
 
 test('c.combo errors name the combo and what it has', () => {
   const c = fresh();
-  expect(() => c.combo('slam')).toThrow("c.combo('slam')：沒有這個組合；有：impact（CMB-01 重擊）、glitchcut（CMB-02 故障切換）、punchline（CMB-03 笑點）");
+  expect(() => c.combo('slam')).toThrow("c.combo('slam')：沒有這個組合；有：impact（CMB-01 重擊）、glitchcut（CMB-02 故障切換）、punchline（CMB-03 笑點）、rewind（CMB-04 倒帶）");
   expect(() => c.combo('MRK-03')).toThrow("c.combo('MRK-03')：MRK-03 是 common.stamp 的代號，不是組合");
   expect(() => c.combo('impact', { parts: { line: false } })).toThrow("c.combo('impact')：組合 impact 沒有「line」這一層；它有：lines、flash、hit、shake");
   expect(() => c.combo('impact', { at: -1 })).toThrow("c.combo('impact') 的 at 不能小於 0");

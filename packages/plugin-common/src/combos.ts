@@ -29,4 +29,11 @@ export const combos: Combo[] = [
     { name: 'boing', kind: 'sfx', type: 'common.boing', at: 0, len: 0.62, gain: -8 },
     { name: 'shake', kind: 'shake', at: 0, len: 0.25, px: 12 },
   ] },
+  // the tape look holds while its tracking band slides down the frame from 0.2 s to 0.8 s; the seed puts the tears' flickers in pairs
+  // at about 0.1, 0.45 and 0.85 s (a tear step is two frames, glitch.ts); the rewind sound swells to its loudest in the middle
+  { id: 'rewind', label: '倒帶', doc: '倒回去重看、回到剛才、再來一次：畫面變成錄影帶，一條追蹤雜訊帶往下滑過，幾條反相細帶閃過，配錄影帶倒帶的「嘰嚕嚕」', parts: [
+    { name: 'tape', kind: 'effect', type: 'common.film', template: 'vhs-tape', params: { tracking: '0.2:0.6:0.9' }, at: 0, len: 1.1 },
+    { name: 'tear', kind: 'effect', type: 'common.glitch', template: 'soft-tear', params: { seed: 6 }, at: 0, len: 1.1 },
+    { name: 'spool', kind: 'sfx', type: 'common.rewind', params: { dur: 1 }, at: 0, len: 1, gain: -8 },
+  ] },
 ];

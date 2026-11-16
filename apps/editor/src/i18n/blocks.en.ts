@@ -415,4 +415,5 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'combo:impact': {"label":"Impact","doc":"A punch, a slap, a landing, a big word slammed in: lines burst from the middle as a glow flares there and shrinks back, with a heavy hit and the clip shaking."},
   'combo:glitchcut': {"label":"Glitch cut","doc":"A sudden change of topic, something going wrong, a jump to another scene: scan lines and a sideways jump across the cut, then the colours split, with a record scratch."},
   'combo:punchline': {"label":"Punchline","doc":"A joke landing, a comeback, a deadpan stare: the picture turns into comic-book halftone dots as thick black focus lines close in from the edges, with a cartoon spring boing and a small shake."},
+  'combo:rewind': {"label":"Rewind","doc":"Going back to look again, back to a moment ago, once more: the picture turns into a videotape, a tracking band slides down and a few inverted strips flicker across, with the whirr of a tape rewinding."},
 };

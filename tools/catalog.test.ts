@@ -152,5 +152,5 @@ test('combos: the catalog lists them by handle, a handle or combo:<id> shows the
   expect(findCombos(plugins, 'speedlines').map((c) => c.id)).toEqual(['impact', 'punchline']);
   expect(findCombos(plugins, '組合').length).toBe(plugins.flatMap((p) => p.combos ?? []).length);
   expect(formatFind(plugins, 'glitchcut')).toMatch(/^組合 1 個符合[^\n]*\n {2}CMB-02 +glitchcut/);
-  expect(formatIndex(plugins)).toMatch(/^- Combos \(CMB\) \(`c\.combo\('<id>', \{ at \}\)`[^\n]*\): 01 `impact`, 02 `glitchcut`, 03 `punchline`$/m);
+  expect(formatIndex(plugins)).toMatch(/^- Combos \(CMB\) \(`c\.combo\('<id>', \{ at \}\)`[^\n]*\): 01 `impact`, 02 `glitchcut`, 03 `punchline`, 04 `rewind`$/m);
 });
