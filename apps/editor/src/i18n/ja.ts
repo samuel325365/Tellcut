@@ -550,6 +550,8 @@ export const ja: Record<Key, string> = {
   'gallery.needsMediaWarn': 'このブロックはプロジェクトの写真や動画を使います。ここには素材がないため、プレビューが空だったり一部欠けたりすることがあります。',
   'gallery.needsMedia': '素材が必要',
   'gallery.params': 'パラメータ',
+  'gallery.templates': 'テンプレート',
+  'gallery.templateTip': 'このテンプレートの設定でプレビュー。プロジェクトに追加するとその設定のまま入ります',
   'gallery.noParams': '（パラメータなし）',
   'gallery.clipCode': 'cut.ts での書き方',
   'gallery.clipSub': 'cut.ts での書き方',

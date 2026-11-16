@@ -29,6 +29,13 @@ test('the gallery lists every block (core and common first), the sounds, the mus
     expect(g.styles.filter((s: any) => s.origin === 'built-in').map((s: any) => s.id)).toEqual(['pluck', 'lofi', 'cinematic', 'tech', 'playful']);
     expect(g.recipes.map((r: any) => r.id)).toEqual(['travel', 'hook', 'montage']);
     expect(g.recipes[0].example.scenes.length).toBeGreaterThan(0);
+    // a block's templates, each with the golden picture of its sample <block>-tpl-<id>
+    const leak = g.blocks.find((b: any) => b.type === 'common.leak');
+    expect(leak.templates.map((x: any) => [x.id, x.thumb])).toEqual([['prism-sweep', '/api/gallery/thumb/leak-tpl-prism-sweep-t1.50.png'], ['bokeh-night', '/api/gallery/thumb/leak-tpl-bokeh-night-t1.50.png']]);
+    expect(leak.templates[0]).toMatchObject({ label: '彩虹光帶橫掃', params: { look: 'prism' } });
+    expect(leak.templates[0].doc.length).toBeGreaterThan(5);
+    expect(slam.templates).toBeUndefined();
+    expect((await fetch(base + leak.templates[0].thumb)).status).toBe(200);
   } finally { await app.close(); }
 });
 

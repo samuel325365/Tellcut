@@ -677,6 +677,15 @@ body.lib-dragging iframe { pointer-events: none; }
 .g-params .field { color: var(--s-dim); }
 .g-params .field input, .g-params .field select, .g-params .field textarea { color: var(--s-text); background: var(--s-input); border-color: var(--s-line); }
 .g-notes { line-height: 1.7; color: var(--s-dim); padding-left: 20px; }
+/* a block's templates in its detail: a row each, its picture, name, how it is named and what it is for */
+.g-templates { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.g-templates > li { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; cursor: pointer; background: var(--s-raise); border: 1px solid var(--s-line); transition: border-color .12s; }
+.g-templates > li:hover { border-color: var(--s-line-strong); }
+.g-templates > li.on { border-color: var(--s-accent); box-shadow: 0 0 0 1px var(--s-accent); }
+.g-templates .g-thumb { flex: none; width: 48px; border-radius: 8px; }
+.g-tpl-text { display: grid; gap: 2px; min-width: 0; line-height: 1.5; }
+.g-tpl-text code { color: var(--s-accent-text); font: 11.5px Consolas, "Cascadia Mono", monospace; }
+.g-tpl-text small { color: var(--s-dim); font-size: 12px; }
 .g-detail pre { overflow: auto; padding: 12px; background: var(--s-code-bg); border: 1px solid var(--s-line); border-radius: 10px; font: 12px Consolas, "Cascadia Mono", monospace; color: var(--s-text); white-space: pre-wrap; }
 .g-detail audio { width: 100%; margin-top: 12px; }
 

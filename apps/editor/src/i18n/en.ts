@@ -550,6 +550,8 @@ export const en: Record<Key, string> = {
   'gallery.needsMediaWarn': 'This block uses a project\'s photos or videos; there is no footage here, so the preview may be empty or missing a part.',
   'gallery.needsMedia': 'Needs footage',
   'gallery.params': 'Parameters',
+  'gallery.templates': 'Templates',
+  'gallery.templateTip': 'Preview with the settings of this template; Add to project then adds the block with them',
   'gallery.noParams': '(No parameters)',
   'gallery.clipCode': 'In cut.ts',
   'gallery.clipSub': 'How to write it in cut.ts',

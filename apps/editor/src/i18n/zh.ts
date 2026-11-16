@@ -549,6 +549,8 @@ export const zh = {
   'gallery.needsMediaWarn': '這個積木要用專案裡的照片或影片，這裡沒有素材，預覽可能是空的或缺一塊。',
   'gallery.needsMedia': '需要素材',
   'gallery.params': '參數',
+  'gallery.templates': '範本',
+  'gallery.templateTip': '用這個範本的參數預覽；加到專案時就帶著這組參數',
   'gallery.noParams': '（沒有參數）',
   'gallery.clipCode': 'cut.ts 寫法',
   'gallery.clipSub': 'cut.ts 的寫法',

@@ -555,3 +555,29 @@ test("the Captions tab: only the templates' pictures (no card for the blocks und
   expect(root.querySelector('[data-caption-params]')?.textContent).toContain('wordFx');
   expect(filterGallery(withCaption, 'captions', 'neon').map((c: any) => c.id)).toEqual(['neon-fill']);
 });
+
+test('a block\'s detail lists its templates: picking one previews it with their params, and Add to project adds the block with them', async () => {
+  const thumb = '/api/gallery/thumb/slam-tpl-huge-t1.00.png';
+  const T: GalleryIndex = { ...G, blocks: G.blocks.map((b) => (b.type === 'common.slam' ? { ...b, templates: [{ id: 'huge', label: '超大', doc: '開場用', params: { size: 14 }, thumb }] } : b)) };
+  const root = document.createElement('div'), asked: GalleryAdd[] = [];
+  const project = { id: 'trip', load: async () => OWN, add: async (a: GalleryAdd) => { asked.push(a); return { ok: true }; } };
+  await act(async () => { render(<Gallery load={async () => T} project={project} />, root); });
+  await settle();
+  await click(root, '[data-card="common.slam"]');
+  const row = () => root.querySelector('[data-detail="common.slam"] [data-block-template="huge"]')!;
+  expect(row().textContent).toContain('超大');
+  expect(row().textContent).toContain('slam/huge');
+  expect(row().textContent).toContain('開場用');
+  expect(row().querySelector('img')!.getAttribute('src')).toBe(thumb);
+  expect(row().getAttribute('aria-pressed')).toBe('false');
+  await click(root, '[data-block-template="huge"]');
+  expect(row().getAttribute('aria-pressed')).toBe('true');
+  expect((root.querySelector('[data-detail="common.slam"] [data-param="size"] input') as HTMLInputElement).value).toBe('14');
+  await click(root, '[data-detail="common.slam"] [data-gallery-add]');
+  await settle();
+  expect(asked.at(-1)).toEqual({ kind: 'block', type: 'common.slam', params: { size: 14 } });
+  // a block without templates has no list; a project's own block keeps its templates (without pictures)
+  await click(root, '[data-card="core.title"]');
+  expect(root.querySelector('[data-block-templates]')).toBeNull();
+  expect(ownBlocks([{ type: 'fx.t', label: 't', kind: 'overlay', params: [], templates: [{ id: 'a', label: 'A', doc: 'd', params: { n: 1 } }] }])[0].templates).toEqual([{ id: 'a', label: 'A', doc: 'd', params: { n: 1 } }]);
+});

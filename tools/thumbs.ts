@@ -1,5 +1,5 @@
 // The gallery's thumbnails in English and Japanese (spec 2026-10-30-showcase-films part 2):  npm run thumbs
-// A block's thumbnail is its first sample, a caption template's its tpl-<id> sample (plugin-common/src/samples.ts), at its last
+// A block's thumbnail is its first sample, a block template's its <block>-tpl-<id> sample, a caption template's its tpl-<id> sample (plugin-common/src/samples.ts), at its last
 // moment; when that shows Chinese words (the case's own, or ones the block starts with), it is drawn again here with them in the other language: the case's params from golden/thumbs.ts, the block's words from
 // apps/editor/src/i18n/values.*.ts. The pictures go to packages/plugin-common/golden/thumbs/<lang>/, with a manifest of what each was
 // drawn from (thumbs.test.ts fails when a table or the block's own golden picture changed and they were not drawn again). Run
@@ -25,11 +25,13 @@ export function thumbCases(lang: ThumbLang): GoldenCase[] {
   const defs = new Map(plugins.flatMap((p) => p.items ?? []).map((t) => [t.type, t.params]));
   const first = new Map<string, GoldenCase>();
   for (const c of samples as GoldenCase[]) if (!first.has(c.type)) first.set(c.type, c);
+  // a block template's sample (<block>-tpl-<id>) is its card in the gallery's detail: drawn again like a block's first one
+  const blockTemplates = (samples as GoldenCase[]).filter((c) => /.-tpl-/.test(c.name));
   // every caption template's card (tpl-<id>) and title template's (ttl-<id>) too: the template's own params with the English or
   // Japanese line (or title) in place of the Chinese one
   const line = (name: string) => (name.startsWith('ttl-') ? (lang === 'en' ? HEAD_EN : HEAD_JA) : lang === 'en' ? CAP_EN : CAP_JA);
   const templates = (samples as GoldenCase[]).filter((c) => c.name.startsWith('tpl-') || c.name.startsWith('ttl-')).map((c) => ({ ...c, params: { ...c.params, ...line(c.name) }, at: [c.at[c.at.length - 1]] }));
-  return [...[...first.values()].flatMap((c) => {
+  return [...[...first.values(), ...blockTemplates].flatMap((c) => {
     const params = THUMB_PARAMS[lang][c.name] ?? c.params ?? {};
     const words = Object.fromEntries(Object.entries(localValues(c.type, defs.get(c.type) ?? [], lang)).filter(([k]) => !(k in params)));
     if (!hasCjk(JSON.stringify(c.params ?? {})) && !Object.keys(words).length) return [];

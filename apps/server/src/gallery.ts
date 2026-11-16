@@ -11,7 +11,7 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 // each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
-import { samples } from '@tellcut/plugin-common/samples';
+import { samples, templateSample } from '@tellcut/plugin-common/samples';
 import { CORE_CATEGORY, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
@@ -27,8 +27,12 @@ const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
 /** each block's thumbnail: its first sample at its last moment (the animation settled) */
 const THUMBS = new Map<string, string>();
 for (const c of samples) if (!THUMBS.has(c.type)) THUMBS.set(c.type, `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`);
-/** each caption template's picture: its sample tpl-<id> (samples.ts) */
-const TEMPLATE_THUMB = (id: string, pre = 'tpl') => { const c = samples.find((x) => x.name === `${pre}-${id}`); return c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`; };
+/** a sample's picture at its last moment, by the sample's name */
+const sampleThumb = (name: string) => { const c = samples.find((x) => x.name === name); return c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`; };
+/** each caption template's picture: its sample tpl-<id> (samples.ts); a title template's ttl-<id> */
+const TEMPLATE_THUMB = (id: string, pre = 'tpl') => sampleThumb(`${pre}-${id}`);
+/** a block template's picture: its sample <block>-tpl-<id> */
+const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => sampleThumb(templateSample(type, id));
 
 export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): Promise<GalleryIndex> {
   const order = (p: Plugin) => (p.id === 'core' ? 0 : p.id === 'common' ? 1 : 2);
@@ -38,6 +42,7 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
   const blocks = sorted.flatMap((p) => (p.items ?? []).filter((t) => !OLD_BLOCKS[t.type] || OLD_TEXT[t.type]).map((t): GalleryBlock => ({
     plugin: p.id, group: GROUP[p.id] ?? '外掛', type: t.type, label: t.label, doc: t.doc ?? '', kind: t.kind, params: t.params, needsMedia: needsMedia(t),
     ...(t.category ?? CORE_CATEGORY[t.type] ? { category: t.category ?? CORE_CATEGORY[t.type] } : {}), ...(THUMBS.has(t.type) ? { thumb: THUMBS.get(t.type) } : {}),
+    ...(t.templates?.length ? { templates: t.templates.map((x) => { const thumb = BLOCK_TEMPLATE_THUMB(t.type, x.id); return { id: x.id, label: x.label, doc: x.doc, params: x.params, ...(thumb ? { thumb } : {}) }; }) } : {}),
   })));
   const sfx = sorted.flatMap((p) => (p.sfx ?? []).map((s): GallerySfx => ({ plugin: p.id, type: s.type, label: s.label, doc: s.doc ?? '', params: s.params, ...(s.category ? { category: s.category } : {}) })));
   const lib = await loadStyles([library]);

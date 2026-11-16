@@ -261,7 +261,11 @@ export interface GalleryBlock { plugin: string; group: string; type: string; lab
   /** a BlockCategory key (the core blocks get one in the gallery); none for a sample film's own blocks */
   category?: string;
   /** a golden picture of the block (/api/gallery/thumb/…), when it has one */
-  thumb?: string }
+  thumb?: string;
+  /** its named templates (engine ItemType.templates), each with its golden picture when it has one */
+  templates?: GalleryBlockTemplate[] }
+/** a block template in the gallery: its id, names, the params it writes and its golden picture (<block>-tpl-<id>) */
+export interface GalleryBlockTemplate { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
 export interface GallerySfx { plugin: string; type: string; label: string; doc: string; params: ParamDef[];
   /** an SfxCategory key; none for a sample film's own sounds */
   category?: string }

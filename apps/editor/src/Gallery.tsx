@@ -4,7 +4,7 @@
 // people point with (MRK-03, spec 2026-10-22-block-handles); the search finds either. Opened from a project's editor (gallery-link.ts) it lists
 // that project's own blocks first and each detail offers "Add to project", which adds at the playhead of the tab that opened it.
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Project } from '@tellcut/engine';
+import { templateName, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
 import { blockCategory, blockProject, byHandle, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
@@ -113,10 +113,32 @@ function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: Ow
       <AddBar id={id} to={to} add={{ kind: 'block', type: b.type, ...(Object.keys(set).length ? { params: set } : {}) }} scene={b.kind === 'scene'} />
       <p class="g-doc">{x.doc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       {b.needsMedia && <p class="g-warn" data-needs-media>{t('gallery.needsMediaWarn')}</p>}
+      {b.templates?.length ? <Templates b={b} set={set} pick={(p) => setParams({ ...p })} /> : null}
       <h3>{t('gallery.params')}</h3>
       <Params type={b.type} defs={b.params} values={params} theme={theme} onChange={(k, v) => setParams({ ...set, [k]: v })} />
     </section>
   );
+}
+
+/** A block's named templates (engine templates.ts): picking one puts its params in place of what was set, so the preview plays it
+ *  and Add to project adds the block with them; the one whose params are exactly what is set is marked. */
+function Templates({ b, set, pick }: { b: GalleryBlock; set: Record<string, unknown>; pick: (params: Record<string, unknown>) => void }) {
+  const same = (p: Record<string, unknown>) => JSON.stringify(Object.entries(p).sort()) === JSON.stringify(Object.entries(set).sort());
+  return <>
+    <h3>{t('gallery.templates')}</h3>
+    <ul class="g-templates" data-block-templates>
+      {b.templates!.map((x) => {
+        const s = shown(`${b.type}#${x.id}`, x), on = same(x.params);
+        return (
+          <li class={on ? 'on' : ''} data-block-template={x.id} role="button" tabIndex={0} aria-pressed={on} {...tip(t('gallery.templateTip'))} onClick={() => pick(x.params)}
+            onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(x.params); } }}>
+            <Thumb src={thumbIn(x.thumb, getLang())} />
+            <span class="g-tpl-text"><strong>{s.label}</strong><code>{templateName(b.type, x.id)}</code><small>{s.doc}</small></span>
+          </li>
+        );
+      })}
+    </ul>
+  </>;
 }
 
 function ClipDetail({ f }: { f: ClipFx }) {

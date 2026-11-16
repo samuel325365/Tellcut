@@ -1,11 +1,11 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
 import { BLOCK_PREVIEW_LEN, blockPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryCaption, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryBlockTemplate, type GalleryCaption, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 
-export type { GalleryBlock, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
+export type { GalleryBlock, GalleryBlockTemplate, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
 export type Tab = 'blocks' | 'captions' | 'titles' | 'sfx' | 'styles' | 'recipes';
 
 /** the line a caption template is shown with, in the UI language, with its word times (spec 2026-11-04-caption-styles §5) */
@@ -68,10 +68,12 @@ export const ownModules = (fx: string[] | undefined) => (fx ?? []).filter((m) =>
 
 /** The project's own blocks as cards. Whether one needs footage is told as the server tells it for the shared ones, from its
  *  parameters and media() hook (the server also reads its code, which the page does not). */
-export function ownBlocks(items: Array<{ type: string; label: string; doc?: string; kind: string; params: GalleryBlock['params']; footage?: string; media?: unknown }>): GalleryBlock[] {
+export function ownBlocks(items: Array<{ type: string; label: string; doc?: string; kind: string; params: GalleryBlock['params']; footage?: string; media?: unknown; templates?: GalleryBlockTemplate[] }>): GalleryBlock[] {
   return items.filter((x) => x.kind === 'scene' || x.kind === 'overlay').map((x) => ({
     plugin: 'fx', group: t('group.fx'), type: x.type, label: x.label, doc: x.doc ?? '', kind: x.kind as GalleryBlock['kind'], params: x.params,
     needsMedia: x.footage !== 'optional' && (x.params.some((d) => d.type === 'source-ref' || d.type === 'media-ref') || typeof x.media === 'function'),
+    // its templates too (no picture: a project's own blocks have no golden ones)
+    ...(x.templates?.length ? { templates: x.templates.map(({ id, label, doc, params }) => ({ id, label, doc, params })) } : {}),
   }));
 }
 
