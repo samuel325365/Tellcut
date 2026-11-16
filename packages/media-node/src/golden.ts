@@ -31,7 +31,12 @@ export interface GoldenCase {
   /** pictures the block reads (common.mapcam's map): source id → a picture file in the golden folder (a made-up one, no licence
    *  question), its size and, for a map, where it lies; copied into the work folder as photo sources */
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }>;
+  /** several items drawn together instead of the one block (a combo's picture layers): `type` and `params` are then not drawn;
+   *  'under' goes below the others, 'top' above them, as a cut script places them */
+  items?: GoldenItem[];
 }
+/** one of a several-item case's items, in film seconds */
+export interface GoldenItem { type: string; params?: Record<string, unknown>; start: number; end: number; layer?: 'top' | 'under' }
 
 /** the folder of this system's own pictures, where they differ from the shared ones (macOS: <goldenDir>/darwin) */
 export const goldenPlatformDir = (goldenDir: string, platform: NodeJS.Platform = process.platform) => (platform === 'darwin' ? join(goldenDir, 'darwin') : undefined);
@@ -46,14 +51,22 @@ const sizeOf = (c: GoldenCase) => (c.wide ? `${GOLDEN_H}:${GOLDEN_W}` : c.square
  *  reverb that never moves when the default sound of a new project is tuned */
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } };
 
-/** A 1080×1920 (or, wide, 1920×1080; square, 1080×1080) project of one overlay item. */
+/** the tracks of a case: its one block on an overlay track, or its items under, beside and over each other */
+function goldenTracks(c: GoldenCase, len: number) {
+  if (!c.items) return [{ id: 'o', kind: 'overlay', items: [{ id: 'g', type: c.type, start: 0, end: len, params: c.params ?? {} }] }];
+  const on = (layer?: 'top' | 'under') => c.items!.map((it, i) => ({ it, i })).filter(({ it }) => it.layer === layer)
+    .map(({ it, i }) => ({ id: `g${i}`, type: it.type, start: it.start, end: it.end, params: it.params ?? {} }));
+  return [{ id: 'u', kind: 'scene', items: on('under') }, { id: 'o', kind: 'overlay', items: on(undefined) }, { id: 't', kind: 'overlay', items: on('top') }].filter((t) => t.items.length);
+}
+
+/** A 1080×1920 (or, wide, 1920×1080; square, 1080×1080) project of one overlay item (or of a case's several items). */
 export function goldenProject(c: GoldenCase): Project {
   const len = c.len ?? 3;
   return parseProject({ version: 1,
     meta: { name: c.name, width: c.wide ? 1920 : 1080, height: c.wide || c.square ? 1080 : 1920, fps: 30, duration: len, plugins: [], background: c.bg ?? '#3a4256', mix: MIX, ...(c.theme ? { theme: c.theme } : {}) },
     sources: Object.fromEntries(Object.entries(c.sources ?? {}).map(([id, s]) => [id, { path: sourcePath(id, s.file), duration: 1, width: s.width, height: s.height, kind: 'image', ...(s.map ? { map: s.map } : {}) }])),
     media: {}, grids: [],
-    tracks: [{ id: 'o', kind: 'overlay', items: [{ id: 'g', type: c.type, start: 0, end: len, params: c.params ?? {} }] }] });
+    tracks: goldenTracks(c, len) });
 }
 
 /** RGB bytes of a picture file scaled to the golden size (ffmpeg decodes png and jpeg alike). */

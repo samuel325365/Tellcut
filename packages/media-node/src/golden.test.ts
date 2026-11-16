@@ -32,6 +32,16 @@ test('goldenProject is a 1080×1920 film of one item', () => {
   expect([q.meta.width, q.meta.height]).toEqual([1080, 1080]);
 });
 
+test('goldenProject of several items: under below the others, top above them, each at its own times', () => {
+  const p = goldenProject({ name: 'x', type: 'combo:x', at: [0.2], len: 1, items: [
+    { type: 'common.speedlines', start: 0, end: 0.8 }, { type: 'core.flash', params: { peak: 1 }, start: 0.1, end: 0.6, layer: 'top' }, { type: 'common.backdrop', start: 0, end: 1, layer: 'under' },
+  ] });
+  expect(p.tracks.map((t) => [t.kind, (t.items as Array<{ type: string; start: number; end: number }>).map((i) => `${i.type} ${i.start}-${i.end}`)])).toEqual([
+    ['scene', ['common.backdrop 0-1']], ['overlay', ['common.speedlines 0-0.8']], ['overlay', ['core.flash 0.1-0.6']],
+  ]);
+  expect(goldenProject({ name: 'x', type: 'combo:x', at: [0], items: [{ type: 'core.flash', start: 0, end: 1 }] }).tracks).toHaveLength(1);
+});
+
 test('a missing golden is new, update writes it, the same picture is ok, a different one is changed, update rewrites it', async () => {
   const flash = (color: string): GoldenCase => ({ name: 'flash', type: 'core.flash', params: { color, peak: 1 }, len: 1, at: [0.1] });
   const o = { registry, goldenDir: dir, work };
