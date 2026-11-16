@@ -388,7 +388,6 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.sparkle#confetti-rain': {"label":"紙吹雪の雨","doc":"お祝い、受賞、誕生日に：mode confetti の倍の色とりどりの紙が上から降り、画面をいっぱいにする。"},
   'common.sparkle#glint-once': {"label":"一度きりのきらめき","doc":"商品の見どころ、ジュエリー、きらりと光る歯に：とても大きな十字の光が現れ、少し回って消える。一度だけ。"},
   'common.sparkle#star-burst': {"label":"星の大爆発","doc":"正解、変身、レベルアップに：デフォルトより多くの星が一点からはじけ、より遠くまで飛ぶ。"},
-  'common.sparkle#twinkle-field': {"label":"満天の星","doc":"夜空、夢のような場面、おとぎ話に：数十個の星が画面の中央のまわりに散らばり、きらきら瞬く。mode twinkle より多く、広く散る。"},
   'common.countdown#flip-clock': {"label":"パタパタ時計","doc":"新製品発表のカウントダウン、年越しに：パタパタ時計が 1 枚ずつめくれる。最後も数字のまま。"},
   'common.countdown#film-leader': {"label":"昔の映画のリーダー","doc":"レトロなオープニング、昔の映画の始まりに：画面の幅近くある大きな円盤で、針が 1 秒に 1 回転しながら 5 から 0 まで数える。最後も数字のまま。"},
   'common.countdown#slant-go': {"label":"斜体の GO","doc":"スポーツ、チャレンジの開始に：とても大きな斜体の数字と右側の弧。最後は GO!"},

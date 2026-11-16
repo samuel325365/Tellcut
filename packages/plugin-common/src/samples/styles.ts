@@ -249,7 +249,6 @@ export const STYLES: Sample[] = [
   tpl(sparkle, 'confetti-rain', { at: [0.4, 1.6] }),
   tpl(sparkle, 'glint-once', { len: 2, at: [0.3] }),
   tpl(sparkle, 'star-burst', { at: [0.4, 1.0] }),
-  tpl(sparkle, 'twinkle-field', { at: [1.5] }),
   // countdown: over the looks' backdrop, early and on the last step (leader at its hand's two points, as its look's sample)
   tpl(countdown, 'flip-clock', { at: [0.4, 2.6], bg: '#4a6b7c' }),
   tpl(countdown, 'film-leader', { at: [0.3, 1.2], bg: '#4a6b7c' }),

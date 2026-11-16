@@ -388,7 +388,6 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.sparkle#confetti-rain': {"label":"Confetti rain","doc":"Celebrations, awards, birthdays: twice as much coloured paper as mode confetti falls from the top and fills the frame."},
   'common.sparkle#glint-once': {"label":"Single glint","doc":"A product's highlight, jewellery, a sparkling smile: one very large cross flare grows, turns a little and dies, just once."},
   'common.sparkle#star-burst': {"label":"Star burst","doc":"A right answer, a transformation, a level-up: more stars than the default bursting from one point and flying farther."},
-  'common.sparkle#twinkle-field': {"label":"Starry field","doc":"Night skies, dreamy or fairy-tale moments: dozens of stars scattered over the frame around its middle, more and wider than mode twinkle, twinkling."},
   'common.countdown#flip-clock': {"label":"Flip clock","doc":"A launch countdown, New Year's Eve: a split-flap clock flipping down one card at a time, the last step a number too."},
   'common.countdown#film-leader': {"label":"Film leader","doc":"A retro opening, an old-movie start: a large leader disc almost the frame's width, its hand sweeping a turn each second from 5 down to 0, the last step a number too."},
   'common.countdown#slant-go': {"label":"Slanted GO","doc":"Sports, the start of a challenge: very large slanted numbers with an arc on the right, ending in GO!"},

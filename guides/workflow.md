@@ -120,7 +120,6 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `sparkle/confetti-rain`: Celebrations, awards, birthdays: twice as much coloured paper as mode confetti falls from the top and fills the frame.
   - `sparkle/glint-once`: A product's highlight, jewellery, a sparkling smile: one very large cross flare grows, turns a little and dies, just once.
   - `sparkle/star-burst`: A right answer, a transformation, a level-up: more stars than the default bursting from one point and flying farther.
-  - `sparkle/twinkle-field`: Night skies, dreamy or fairy-tale moments: dozens of stars scattered over the frame around its middle, more and wider than mode twinkle, twinkling.
   - `glitch/signal-loss`: Surveillance footage, a bad signal, cutting into a memory: fine scan lines and a bright band rolling down, the whole picture jumping sideways more often and farther than look scan alone.
   - `glitch/rgb-hit`: A musical downbeat, the instant of a scare: every burst pulls the red and blue plates far apart, harder than look rgb alone.
   - `glitch/data-break`: Tech, hacking, a system error: many tall rectangles of the picture shoved sideways, tinted cyan and magenta.
