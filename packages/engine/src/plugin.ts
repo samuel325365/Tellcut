@@ -82,6 +82,11 @@ export interface ItemCtx<P = Record<string, any>> {
   reportText: ReportText;
 }
 
+/** one named template of a block (templates.ts): `label` / `doc` in Traditional Chinese like the block's own (English and Japanese in
+ *  the editor's blocks.en.ts / blocks.ja.ts, keyed `<type>#<id>`); `doc` says the occasion it is for; `params` only what differs
+ *  from the defaults (no colour unless the colour is the point: colours come from the theme) */
+export interface BlockTemplate { id: string; label: string; doc: string; params: Record<string, unknown> }
+
 /** a shared block's group in the catalog and in the page chat's block index (names: BLOCK_CATEGORY in @tellcut/protocol) */
 export type BlockCategory = 'caption' | 'title' | 'text' | 'chapter' | 'card' | 'number' | 'travel' | 'frame' | 'photo' | 'phone' | 'mark' | 'background' | 'look' | 'moment';
 
@@ -98,6 +103,10 @@ export interface ItemType<P = Record<string, any>, S = any> {
    *  footage, though it has a media() hook */
   footage?: 'optional';
   params: ParamDef[];
+  /** named sets of this block's params (templates.ts): choosing one writes its params into the item, which keeps no template name.
+   *  At most MAX_TEMPLATES. Never on common.caption / common.heading, whose `template` PARAM is the other kind (caption and title
+   *  templates, resolved at draw time). A project's own fx may carry it too. */
+  templates?: BlockTemplate[];
   /** CSS mix-blend-mode for the whole item layer against the items below it (layers are otherwise isolated). Several modes: one
    *  layer each, stacked in order at the item's place, each blending with the picture the ones before made (common.grade's deep:
    *  'color', then 'multiply'); the further layers are ctx.layers, which the stage shows, moves and removes with the item. */
