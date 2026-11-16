@@ -35,22 +35,27 @@ describe('common.backdrop halftone, sunburst, waves', () => {
     }
   });
 
-  test('every new pattern draws the same picture at the same moment and moves over time, even at drift 0', () => {
+  test('every new pattern draws the same picture at the same moment and moves over time with a drift', () => {
     for (const pattern of ['halftone', 'sunburst', 'waves']) {
-      const a = run({ pattern, drift: pattern === 'halftone' ? 20 : 0 }, 1.2);
-      expect(run({ pattern, drift: pattern === 'halftone' ? 20 : 0 }, 1.2)).toEqual(a);
-      expect(run({ pattern, drift: pattern === 'halftone' ? 20 : 0 }, 1.7)).not.toEqual(a);
+      const a = run({ pattern, drift: 40 }, 1.2);
+      expect(run({ pattern, drift: 40 }, 1.2)).toEqual(a);
+      expect(run({ pattern, drift: 40 }, 1.7)).not.toEqual(a);
     }
-    // halftone without drift holds still
-    expect(run({ pattern: 'halftone' }, 1.2).log).toBe(run({ pattern: 'halftone' }, 2).log);
+  });
+
+  test('without a drift every new pattern holds still', () => {
+    for (const pattern of ['halftone', 'sunburst', 'waves']) expect(run({ pattern }, 1.2)).toEqual(run({ pattern }, 2));
+    // waves still draws its bands
+    expect(run({ pattern: 'waves' }, 2).log).toContain('fill()');
   });
 
   test('halftone and waves draw on the canvas, sunburst is CSS and keeps its gradient centred', () => {
     expect(run({ pattern: 'halftone' }, 1).canvas).toBe('block');
     expect(run({ pattern: 'waves' }, 1).canvas).toBe('block');
-    const s = run({ pattern: 'sunburst', drift: 0 }, 1);
+    const s = run({ pattern: 'sunburst', drift: 40 }, 1);
     expect(s.canvas).toBe('none');
     expect(s.bg).toContain('repeating-conic-gradient(from 4.000deg at 50% 50%');
+    expect(run({ pattern: 'sunburst', drift: 0 }, 1).bg).toContain('repeating-conic-gradient(from 0.000deg at 50% 50%');
     expect(s.pos).toBe('0px 0px');
     // waves: four filled bands
     expect(run({ pattern: 'waves' }, 1).log.split('\n').filter((l) => l === 'fill()').length).toBe(4);

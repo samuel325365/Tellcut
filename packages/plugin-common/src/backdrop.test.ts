@@ -1,4 +1,4 @@
-import { DRIFT_IDLE, halftoneRadius, patternCss, sunburstTurn, WAVE_BANDS, waveEdge } from './backdrop.ts';
+import { halftoneRadius, patternCss, sunburstTurn, WAVE_BANDS, waveEdge } from './backdrop.ts';
 import { withAlpha } from './color.ts';
 
 const base = { pattern: 'gingham' as const, color: '#fff8ec', color2: '#ff4d4f', tint: 0.2, scale: 70, drift: 0 };
@@ -28,14 +28,18 @@ test('the grid and diamond lines scale with the frame like the cells (2 px at 10
   expect(at('diamond', 2)).toContain(' 0 4px, transparent 4px 140px)');
 });
 
-test('sunburst: 1080 / scale rays a turn from the frame centre, turned by the time; drift 0 still turns', () => {
+test('sunburst: 1080 / scale rays a turn from the frame centre, turned by the time at drift / 10 degrees a second', () => {
   const c = patternCss({ ...base, pattern: 'sunburst' as const }, 70, 1, 12.5).image;
   expect(c).toContain('repeating-conic-gradient(from 12.500deg at 50% 50%');
   // 15 rays at scale 70: a ray and a gap every 24 degrees
   expect(c).toContain('transparent 12.500deg 23.500deg');
   expect(patternCss({ ...base, pattern: 'sunburst' as const }, 140, 2).image).toBe(patternCss({ ...base, pattern: 'sunburst' as const }, 70, 1).image.replace('circle 110.0px', 'circle 220.0px'));
-  expect(sunburstTurn(0, 2)).toBe((DRIFT_IDLE / 10) * 2);
+  expect(sunburstTurn(40, 2)).toBe(8);
   expect(sunburstTurn(-30, 2)).toBe(-6);
+});
+
+test('sunburst holds still at drift 0, like every other pattern', () => {
+  for (const t of [0, 0.5, 2, 37.25]) expect(sunburstTurn(0, t)).toBe(0);
 });
 
 test('halftone: the dots shrink from 0.4 of the cell at the bottom left to nothing at the top right', () => {
@@ -47,9 +51,18 @@ test('halftone: the dots shrink from 0.4 of the cell at the bottom left to nothi
 });
 
 test('waves: each band\'s edge is a function of the time alone, the bands stacked from the top down and sliding at their own speeds', () => {
-  expect(waveEdge(1, 300, 1920, 70, 0, 1, 1.5)).toBe(waveEdge(1, 300, 1920, 70, 0, 1, 1.5));
-  for (let i = 0; i < WAVE_BANDS - 1; i++) expect(waveEdge(i + 1, 0, 1920, 70, 0, 1, 0)).toBeGreaterThan(waveEdge(i, 0, 1920, 70, 0, 1, 0));
-  // drift 0 slides at DRIFT_IDLE: the same as drift 40
-  expect(waveEdge(2, 300, 1920, 70, 0, 1, 1)).toBe(waveEdge(2, 300, 1920, 70, DRIFT_IDLE, 1, 1));
-  expect(waveEdge(2, 300, 1920, 70, 0, 1, 1)).not.toBe(waveEdge(2, 300, 1920, 70, 0, 1, 0));
+  expect(waveEdge(1, 300, 1920, 70, 40, 1, 1.5)).toBe(waveEdge(1, 300, 1920, 70, 40, 1, 1.5));
+  for (let i = 0; i < WAVE_BANDS - 1; i++) expect(waveEdge(i + 1, 0, 1920, 70, 40, 1, 0)).toBeGreaterThan(waveEdge(i, 0, 1920, 70, 40, 1, 0));
+  expect(waveEdge(2, 300, 1920, 70, 40, 1, 1)).not.toBe(waveEdge(2, 300, 1920, 70, 40, 1, 0));
+  // the bands slide at their own speeds: band 0 and band 3 move by different amounts over the same second
+  const moved = (i: number) => waveEdge(i, 300, 1920, 70, 40, 1, 1) - waveEdge(i, 300, 1920, 70, 40, 1, 0);
+  expect(moved(0)).not.toBeCloseTo(moved(3), 3);
+});
+
+test('waves hold still at drift 0 (both the band and the smaller wave on it), and still draw their shape', () => {
+  for (let i = 0; i < WAVE_BANDS; i++) {
+    for (const x of [0, 300, 777]) expect(waveEdge(i, x, 1920, 70, 0, 1, 0.5)).toBe(waveEdge(i, x, 1920, 70, 0, 1, 2.75));
+  }
+  // not flat: the edge still waves along x
+  expect(waveEdge(1, 0, 1920, 70, 0, 1, 1)).not.toBeCloseTo(waveEdge(1, 200, 1920, 70, 0, 1, 1), 3);
 });

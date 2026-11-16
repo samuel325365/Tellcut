@@ -11,7 +11,8 @@
 // zigzags, crosses) down both sides, twinkling, on any pattern.
 // Patterns of 2026-11-15: halftone, a 45° dot screen (color2 at `tint`) whose dots shrink from big at the bottom left to nothing at the
 // top right, on the canvas; sunburst, color2 rays from the frame's centre, turning slowly (CSS); waves, four layered wavy bands of color2
-// rising from the bottom, each sliding sideways at its own speed (canvas). sunburst and waves move even at drift 0 (40 px/s then).
+// rising from the bottom, each sliding sideways at its own speed (canvas). Like every other pattern they hold still at drift 0; 40 is a
+// good drift for them.
 import { clamp, cssCamel, h, rng, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
 import { keyedLevelAt, parseLevels } from './levels.ts';
@@ -58,10 +59,6 @@ function drawBits(g: CanvasRenderingContext2D, n: number, seed: number, cols: st
   }
 }
 
-/** sunburst and waves keep moving at drift 0: this many px/s then */
-export const DRIFT_IDLE = 40;
-const moving = (drift: number) => (drift ? drift : DRIFT_IDLE);
-
 /** pattern halftone: a dot's radius at (x, y) on a `cell` px screen; 0.4 of the cell (almost touching) at the bottom-left corner,
  *  shrinking evenly to nothing at the top right */
 export function halftoneRadius(x: number, y: number, W: number, H: number, cell: number): number {
@@ -85,13 +82,13 @@ function drawHalftone(g: CanvasRenderingContext2D, p: P, W: number, H: number, c
   g.fill();
 }
 
-/** pattern sunburst: the rays' turn in degrees at `local` (drift / 10 degrees a second) */
-export const sunburstTurn = (drift: number, local: number) => (moving(drift) / 10) * local;
+/** pattern sunburst: the rays' turn in degrees at `local` (drift / 10 degrees a second; still at drift 0) */
+export const sunburstTurn = (drift: number, local: number) => (drift / 10) * local;
 
 /** pattern waves: band i's top edge (0 the highest, drawn first) at x; px. Each band has its own height, length and speed, a second
- *  smaller wave riding on it the other way so the edge never repeats exactly */
+ *  smaller wave riding on it the other way so the edge never repeats exactly; both move only with drift, so drift 0 holds still */
 export function waveEdge(i: number, x: number, H: number, cell: number, drift: number, k: number, local: number): number {
-  const v = moving(drift) * k * (0.55 + 0.45 * i), lam = cell * (7.5 + 1.7 * ((i * 3) % 4)), amp = cell * (0.38 + 0.12 * i), ph = i * 2.1;
+  const v = drift * k * (0.55 + 0.45 * i), lam = cell * (7.5 + 1.7 * ((i * 3) % 4)), amp = cell * (0.38 + 0.12 * i), ph = i * 2.1;
   return H * (0.3 + 0.17 * i) + amp * Math.sin((2 * Math.PI * (x + v * local)) / lam + ph) + amp * 0.3 * Math.sin((2 * Math.PI * (x - 0.6 * v * local)) / (lam * 0.53) + ph * 1.7);
 }
 export const WAVE_BANDS = 4;
@@ -139,7 +136,7 @@ export function patternCss(p: Pick<P, 'pattern' | 'color' | 'color2' | 'tint'>, 
 
 export const backdrop: ItemType<P, S> = {
   type: 'common.backdrop', label: '背景圖樣', category: 'background', kind: 'scene',
-  doc: '整片的圖樣背景（格紋、圓點、斜紋、方格、純色、漸層），放在影片之下；影片縮成面板時露出來的底，顏色走 theme；glow 讓底部透出一片光，強度照「秒:強度」變（跟著分數、情緒越來越熱）；diamond 是收銀台止滑墊的菱格紋，pool 加一圈暖光、vignette 壓暗四角（深色收銀台、工作檯）；spot 是深色海報底：上緣透下一片柔光（color2、濃度 tint）、下方漸暗（金句、訪談、Podcast）；words 是多巴胺字牆：整頁一列一列重複 word（外框粗襯線字，color2 色、濃度 tint，列高 scale），相鄰兩列以 drift 反方向滑（段落底色常換：萊姆綠、鈷藍、桃紅、橘，配 common.popcard、common.sticker、標題範本 pop）；bits 在兩側撒幾個小碎片（圓點、四角星、鋸齒線、小叉，theme 的顏色，會閃），任何圖樣都能加；halftone 是網點：45 度的一格格圓點（color2、濃度 tint、間距 scale），左下最大、往右上越來越小到沒有（普普風、漫畫、復古印刷、運動感的底）；sunburst 是從畫面中心放射的兩色光芒（color2、濃度 tint），慢慢轉（scale 越大光芒越少、越寬；drift 是轉速，十分之一度／秒，0 也會慢慢轉）（開獎、宣布、促銷、復古海報、綜藝感）；waves 是四層波浪色帶從下面疊上來（color2，越下面越濃），每層用自己的速度往旁邊滑（scale 是波浪大小；drift 0 也會動）（海邊、夏天、輕鬆、清爽、音樂）',
+  doc: '整片的圖樣背景（格紋、圓點、斜紋、方格、純色、漸層），放在影片之下；影片縮成面板時露出來的底，顏色走 theme；glow 讓底部透出一片光，強度照「秒:強度」變（跟著分數、情緒越來越熱）；diamond 是收銀台止滑墊的菱格紋，pool 加一圈暖光、vignette 壓暗四角（深色收銀台、工作檯）；spot 是深色海報底：上緣透下一片柔光（color2、濃度 tint）、下方漸暗（金句、訪談、Podcast）；words 是多巴胺字牆：整頁一列一列重複 word（外框粗襯線字，color2 色、濃度 tint，列高 scale），相鄰兩列以 drift 反方向滑（段落底色常換：萊姆綠、鈷藍、桃紅、橘，配 common.popcard、common.sticker、標題範本 pop）；bits 在兩側撒幾個小碎片（圓點、四角星、鋸齒線、小叉，theme 的顏色，會閃），任何圖樣都能加；halftone 是網點：45 度的一格格圓點（color2、濃度 tint、間距 scale），左下最大、往右上越來越小到沒有（普普風、漫畫、復古印刷、運動感的底）；sunburst 是從畫面中心放射的兩色光芒（color2、濃度 tint），慢慢轉（scale 越大光芒越少、越寬；drift 是轉速，十分之一度／秒，要給 drift 才會轉，40 剛好）（開獎、宣布、促銷、復古海報、綜藝感）；waves 是四層波浪色帶從下面疊上來（color2，越下面越濃），每層用自己的速度往旁邊滑（scale 是波浪大小；要給 drift 才會動，40 剛好）（海邊、夏天、輕鬆、清爽、音樂）',
   params: [
     { key: 'pattern', label: '圖樣', type: 'enum', options: ['gingham', 'dots', 'stripes', 'grid', 'solid', 'gradient', 'diamond', 'spot', 'words', 'halftone', 'sunburst', 'waves'], default: 'gingham' },
     { key: 'word', label: '重複的字（words）', type: 'string', default: 'HELLO' },
@@ -147,7 +144,7 @@ export const backdrop: ItemType<P, S> = {
     { key: 'color2', label: '圖樣顏色', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'tint', label: '圖樣濃度（0–1）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.14 },
     { key: 'scale', label: '格子大小（以 1080 短邊計的 px；sunburst 越大光芒越少，waves 是波浪大小）', type: 'number', min: 10, max: 400, step: 1, default: 70 },
-    { key: 'drift', label: '圖樣漂移（px／秒；sunburst 是轉速，十分之一度／秒；sunburst、waves 為 0 時用 40）', type: 'number', min: -400, max: 400, step: 1, default: 0 },
+    { key: 'drift', label: '圖樣漂移（px／秒；sunburst 是轉速，十分之一度／秒；sunburst、waves 要給 drift 才會動，40 剛好）', type: 'number', min: -400, max: 400, step: 1, default: 0 },
     { key: 'glow', label: '底部光暈強度（秒:0–1，逗號分隔；空＝沒有）', type: 'string', default: '' },
     { key: 'glowColor', label: '光暈顏色', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'glowPulse', label: '光暈脈動（0–1）', type: 'number', min: 0, max: 1, step: 0.05, default: 0 },
