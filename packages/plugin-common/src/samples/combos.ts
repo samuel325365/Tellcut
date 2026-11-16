@@ -32,4 +32,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('rewind', [0.1, 0.5, 1.0]),
   // the moment at 0.6: the band coming in at the left; the band across the frame and the glint at its full size; the glint dying
   comboSample('reveal', [0.15, 0.62, 1.1]),
+  // the moment at 0.4: the first confetti in at the top; the glow over the frame half full of confetti; the confetti fading
+  comboSample('celebrate', [0.15, 0.7, 2.2]),
 ];

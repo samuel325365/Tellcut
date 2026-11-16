@@ -377,6 +377,7 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'CMB-03': 'combo:punchline',
   'CMB-04': 'combo:rewind',
   'CMB-05': 'combo:reveal',
+  'CMB-06': 'combo:celebrate',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
 export const RETIRED: Readonly<Record<string, string>> = {
