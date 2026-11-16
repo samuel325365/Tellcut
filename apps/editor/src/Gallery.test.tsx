@@ -581,3 +581,67 @@ test('a block\'s detail lists its templates: picking one previews it with their 
   expect(root.querySelector('[data-block-templates]')).toBeNull();
   expect(ownBlocks([{ type: 'fx.t', label: 't', kind: 'overlay', params: [], templates: [{ id: 'a', label: 'A', doc: 'd', params: { n: 1 } }] }])[0].templates).toEqual([{ id: 'a', label: 'A', doc: 'd', params: { n: 1 } }]);
 });
+
+const frames = (id: string, at: string[]) => at.map((x) => `/api/gallery/thumb/combo-${id}-t${x}.png`);
+const C: GalleryIndex = { ...G,
+  blocks: G.blocks.map((b) => (b.type === 'common.slam' ? { ...b, templates: [{ id: 'huge', label: '超大', doc: '開場用', params: { size: 14 } }] } : b)),
+  sfx: [...G.sfx, { plugin: 'common', type: 'common.impact', label: '重擊聲', doc: '低沉', params: [] }],
+  combos: [
+    { id: 'impact', handle: 'CMB-01', label: '重擊', doc: '打擊的一刻', frames: frames('impact', ['0.08', '0.30', '0.60']), parts: [
+      { name: 'lines', kind: 'effect', type: 'common.slam', template: 'huge', at: 0, len: 0.8 },
+      { name: 'flash', kind: 'effect', type: 'core.title', at: 0, len: 0.5, layer: 'top' },
+      { name: 'hit', kind: 'sfx', type: 'common.impact', at: 0, len: 1.4 },
+      { name: 'shake', kind: 'shake', at: 0, len: 0.4 },
+    ] },
+    { id: 'glitchcut', handle: 'CMB-02', label: '故障切換', doc: '話題急轉', frames: frames('glitchcut', ['0.03', '0.17', '0.40']), parts: [
+      { name: 'scan', kind: 'effect', type: 'common.backdrop', at: -0.1, len: 0.5 },
+      { name: 'scratch', kind: 'sfx', type: 'common.beep', at: -0.1, len: 0.42 },
+    ] },
+  ] };
+
+test('the Combos tab: a card per combo with its handle and three pictures; the detail lists each layer with what it is and when, and how cut.ts places it', async () => {
+  const root = document.createElement('div');
+  await act(async () => { render(<Gallery load={async () => C} />, root); });
+  await settle();
+  await click(root, '[data-tab="combos"]');
+  expect(cards(root)).toEqual(['combo:impact', 'combo:glitchcut']);
+  const card = root.querySelector('[data-combo="impact"]')!;
+  expect([...card.querySelectorAll('[data-combo-frames] img')].map((i) => i.getAttribute('src'))).toEqual(frames('impact', ['0.08', '0.30', '0.60']));
+  expect(card.querySelector('[data-card-handle]')!.textContent).toBe('CMB-01');
+  expect(card.textContent).toContain('重擊');
+  const d = root.querySelector('[data-detail="combo:impact"]')!;   // the first card is picked on arrival
+  expect(d.querySelectorAll('[data-combo-frames] img').length).toBe(3);
+  expect([...d.querySelectorAll('[data-combo-part]')].map((e) => e.getAttribute('data-combo-part'))).toEqual(['lines', 'flash', 'hit', 'shake']);
+  const part = (n: string) => d.querySelector(`[data-combo-part="${n}"]`)!.textContent!;
+  expect(part('lines')).toContain('爆字 · 超大');
+  expect(part('lines')).toContain('slam/huge');
+  expect(part('lines')).toContain('0.8');
+  expect(part('flash')).toContain('在字幕上面');
+  expect(part('hit')).toContain('重擊聲');
+  expect(part('shake')).toContain('晃');
+  expect(d.querySelector('pre')!.textContent).toBe("c.combo('impact', { at })");
+  expect(d.querySelector('[data-combo-add]')).toBeNull();   // not opened from a project
+  await click(root, '[data-card="combo:glitchcut"]');
+  expect(root.querySelector('[data-detail="combo:glitchcut"] [data-combo-part="scan"]')!.textContent).toContain('−0.1');
+  // search finds a combo by a layer's name, block or handle
+  const search = root.querySelector('.g-search') as HTMLInputElement;
+  for (const [q, want] of [['scan', ['combo:glitchcut']], ['common.slam', ['combo:impact']], ['cmb2', ['combo:glitchcut']]] as const) {
+    await act(() => { search.value = q; search.dispatchEvent(new Event('input')); });
+    expect(cards(root), q).toEqual(want);
+  }
+  expect(filterGallery(C, 'combos', 'huge').map((c: any) => c.id)).toEqual(['impact']);
+});
+
+test('opened from a project, a combo\'s Add to timeline asks the editor for the whole combo and says how it went', async () => {
+  const root = document.createElement('div'), asked: GalleryAdd[] = [];
+  const project = { id: 'trip', load: async () => OWN, add: async (a: GalleryAdd) => { asked.push(a); return { ok: true }; } };
+  await act(async () => { render(<Gallery load={async () => C} project={project} />, root); });
+  await settle();
+  await click(root, '[data-tab="combos"]');
+  const add = root.querySelector('[data-detail="combo:impact"] [data-combo-add]') as HTMLButtonElement;
+  expect(add.textContent).toBe('加到時間軸');
+  await click(root, '[data-detail="combo:impact"] [data-combo-add]');
+  await settle();
+  expect(asked).toEqual([{ kind: 'combo', type: 'impact' }]);
+  expect(root.querySelector('[data-add-status]')?.textContent).toContain('三天的旅行');
+});

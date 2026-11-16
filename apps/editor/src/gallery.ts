@@ -1,12 +1,12 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
 import { BLOCK_PREVIEW_LEN, blockPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryBlockTemplate, type GalleryCaption, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryBlockTemplate, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 
-export type { GalleryBlock, GalleryBlockTemplate, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
-export type Tab = 'blocks' | 'captions' | 'titles' | 'sfx' | 'styles' | 'recipes';
+export type { GalleryBlock, GalleryBlockTemplate, GalleryCombo, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
+export type Tab = 'blocks' | 'captions' | 'titles' | 'sfx' | 'combos' | 'styles' | 'recipes';
 
 /** the line a caption template is shown with, in the UI language, with its word times (spec 2026-11-04-caption-styles §5) */
 export const CAPTION_LINE: Record<string, { text: string; words: Array<[number, number]> }> = {
@@ -112,6 +112,8 @@ export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   if (tab === 'titles') return (g.titles ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`title:${c.id}`), c.id, ...fields(`title:${c.id}`, c), ...Object.values(c.params).map(String)));
   if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), s.type, ...fields(s.type, s)));
   if (tab === 'styles') return g.styles.filter((s) => matches(query, handleOf(`style:${s.id}`), s.id, ...fields(`style:${s.id}`, s)));
+  // a combo is found by its layers too: their names, blocks and templates
+  if (tab === 'combos') return (g.combos ?? []).filter((c) => matches(query, c.handle ?? handleOf(`combo:${c.id}`), c.id, ...fields(`combo:${c.id}`, c), ...c.parts.flatMap((x) => [x.name, x.type ?? '', x.template ?? ''])));
   if (tab === 'captions') return (g.captions ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`caption:${c.id}`), c.id, ...fields(`caption:${c.id}`, c), ...Object.values(c.params).map(String)));
   return g.recipes.filter((r) => matches(query, handleOf(`recipe:${r.id}`), r.id, ...fields(`recipe:${r.id}`, r)));
 }

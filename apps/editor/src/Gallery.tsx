@@ -2,12 +2,13 @@
 // categories, a grid of cards that show what each block looks like, and a detail panel that is never empty — the first card is picked
 // on arrival, and again whenever a tab, category or search leaves the pick out. Cards show the name Claude uses and the handle
 // people point with (MRK-03, spec 2026-10-22-block-handles); the search finds either. Opened from a project's editor (gallery-link.ts) it lists
-// that project's own blocks first and each detail offers "Add to project", which adds at the playhead of the tab that opened it.
+// that project's own blocks first and each detail offers "Add to project", which adds at the playhead of the tab that opened it
+// (a combo's detail: "Add to timeline", all its layers at once).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { templateName, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -21,7 +22,7 @@ import { localValues } from './i18n/values.ts';
 import { CLIP_FX, handleOf, type ClipFx, type LibraryBlockInfo, type LibraryIndex, type LibraryStyleInfo, type LibraryUsage } from '@tellcut/protocol';
 import { getLang } from './i18n/lang.ts';
 
-const TABS: Tab[] = ['blocks', 'captions', 'titles', 'sfx', 'styles', 'recipes'];
+const TABS: Tab[] = ['blocks', 'captions', 'titles', 'sfx', 'combos', 'styles', 'recipes'];
 const ALL = 'all';
 /** what ParamField needs of a project: no material, and the theme the preview shows (so themed defaults show as such) */
 const fieldProject = (themeId = 'none') => ({ sources: {}, media: {}, meta: { theme: THEMES[themeId]?.theme } }) as unknown as Project;
@@ -70,7 +71,7 @@ type ToProject = { project: GalleryProject; name: string };
 /** "Add to project": what the detail shows, at the playhead of the project's editor tab. `scene`: a background or frame, which the
  *  editor only takes in place of one already there (the library's Add refuses it too). `id`: the detail's own name (two caption
  *  templates add the same block, and a status said for one must not show on the other). */
-function AddBar({ id, to, add, scene = false }: { id: string; to?: ToProject; add: GalleryAdd; scene?: boolean }) {
+function AddBar({ id, to, add, scene = false, label = 'gallery.add', tipKey = 'gallery.addTip', mark }: { id: string; to?: ToProject; add: GalleryAdd; scene?: boolean; label?: Key; tipKey?: Key; mark?: string }) {
   const [state, setState] = useState<{ busy: boolean; key: string; answer?: AddAnswer }>({ busy: false, key: '' });
   if (!to) return null;
   const key = id, answer = state.key === key ? state.answer : undefined;   // a card picked since: its own status
@@ -81,8 +82,8 @@ function AddBar({ id, to, add, scene = false }: { id: string; to?: ToProject; ad
   };
   return (
     <div class="g-add" data-gallery-add-bar>
-      <button class="primary" data-gallery-add disabled={scene || state.busy} {...tip(scene ? t('ed.sceneAdd') : t('gallery.addTip', { name: to.name }))} onClick={() => void go()}>
-        {state.busy && state.key === key ? t('gallery.adding') : t('gallery.add')}</button>
+      <button class="primary" data-gallery-add {...(mark ? { [mark]: '' } : {})} disabled={scene || state.busy} {...tip(scene ? t('ed.sceneAdd') : t(tipKey, { name: to.name }))} onClick={() => void go()}>
+        {state.busy && state.key === key ? t('gallery.adding') : t(label)}</button>
       {answer && <span class={answer.ok ? 'dim' : 'err'} role="status" data-add-status>{answer.ok ? t('gallery.added', { name: to.name }) : answer.notice ?? ''}</span>}
     </div>
   );
@@ -218,6 +219,45 @@ function RecipeDetail({ r }: { r: GalleryRecipe }) {
   );
 }
 
+/** a combo's three pictures side by side (start, peak, end: its golden sample); `named`: each with its caption under it */
+function ComboStrip({ c, named = false }: { c: GalleryCombo; named?: boolean }) {
+  const names: Key[] = ['gallery.comboStart', 'gallery.comboPeak', 'gallery.comboEnd'];
+  return <span class={`g-combo-strip${named ? ' g-combo-strip-big' : ''}`} data-combo-frames>{c.frames.map((src, i) => (
+    <span class="g-combo-frame"><Thumb src={thumbIn(src, getLang())} />{named && <small>{t(names[i] ?? 'gallery.comboEnd')}</small>}</span>))}</span>;
+}
+
+/** seconds from the moment: +0.1, −0.1, 0 */
+const fromMoment = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
+
+/** A combo (engine combos.ts): its pictures, what it is for, each layer (what it is and when it comes), Add to timeline (every
+ *  layer at the playhead, one undo step in the editor) and how cut.ts places it. */
+function ComboDetail({ c, g, to }: { c: GalleryCombo; g: GalleryIndex; to?: ToProject }) {
+  const id = `combo:${c.id}`, x = shown(id, c), code = `c.combo('${c.id}', { at })`;
+  const what = (p: GalleryCombo['parts'][number]) => {
+    if (p.kind === 'shake') return <span>{t('gallery.comboShakeWhat')}</span>;
+    if (p.kind === 'sfx') { const s = g.sfx.find((y) => y.type === p.type); return <><span>{s ? shown(s.type, s).label : p.type}</span><code>{p.type}</code></>; }
+    const b = g.blocks.find((y) => y.type === p.type), tpl = p.template ? b?.templates?.find((y) => y.id === p.template) : undefined;
+    const label = [b ? shown(b.type, b).label : p.type, tpl ? shown(`${b!.type}#${tpl.id}`, tpl).label : ''].filter(Boolean).join(' · ');
+    return <><span>{label}{p.layer && <span class="tag">{t(p.layer === 'top' ? 'gallery.comboTop' : 'gallery.comboUnder')}</span>}</span><code>{p.template ? templateName(p.type!, p.template) : p.type}</code></>;
+  };
+  return (
+    <section class="g-detail" data-detail={id}>
+      <Head label={x.label} name={c.id} id={id} />
+      <ComboStrip c={c} named />
+      <AddBar id={id} to={to} add={{ kind: 'combo', type: c.id }} label="gallery.addCombo" tipKey="gallery.comboAddTip" mark="data-combo-add" />
+      <p class="g-doc">{x.doc}</p>
+      <h3>{t('gallery.comboLayers')}</h3>
+      <ul class="g-combo-parts" data-combo-parts>{c.parts.map((p) => (
+        <li data-combo-part={p.name}>
+          <span class="g-combo-kind">{t(`gallery.comboKind.${p.kind}` as Key)}</span>
+          <span class="g-tpl-text"><strong>{p.name}</strong>{what(p)}<small>{t('gallery.comboWhen', { at: fromMoment(p.at), len: p.len })}</small></span>
+        </li>))}</ul>
+      <h3>{t('gallery.clipCode')} <CopyName name={code} /></h3>
+      <pre>{code}</pre>
+      <p class="dim">{t('gallery.comboNote')}</p>
+    </section>
+  );
+}
 
 // ---------------------------------------------------------------- Mine: the user's own blocks and music styles (spec 2026-10-29-my-library §3.4)
 /** what the page needs of My blocks; absent, the page shows no Mine */
@@ -368,13 +408,13 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
     clips: c.key === CLIP_CATEGORY ? clips : [] })).filter((x) => x.blocks.length || x.clips.length);
   const names = tab === 'blocks' ? [...(showOwn ? ownList.map((b) => `own:${b.type}`) : []), ...(showMine ? mineBlocks.map((b) => `mine:${b.type}`) : []), ...sections.flatMap((x) => [...x.blocks.map((b) => b.type), ...x.clips.map((f) => f.key)])]
     : tab === 'captions' || tab === 'titles' ? [...(list as GalleryCaption[]).map((c) => `${tab === 'titles' ? 'title' : 'caption'}:${c.id}`)]
-    : tab === 'sfx' ? sfxSections(list as GallerySfx[]).flatMap((x) => x.sfx.map((s) => s.type)) : tab === 'styles' ? [...mineStyles.map((x) => `mine-style:${x.id}`), ...(list as GalleryStyle[]).map((s) => s.id)] : (list as GalleryRecipe[]).map((r) => r.id);
+    : tab === 'sfx' ? sfxSections(list as GallerySfx[]).flatMap((x) => x.sfx.map((s) => s.type)) : tab === 'combos' ? (list as GalleryCombo[]).map((c) => `combo:${c.id}`) : tab === 'styles' ? [...mineStyles.map((x) => `mine-style:${x.id}`), ...(list as GalleryStyle[]).map((s) => s.id)] : (list as GalleryRecipe[]).map((r) => r.id);
   const on = picked && names.includes(picked) ? picked : names[0] ?? null;
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
   // only Mine's cards can be deleted: a trash button at the corner on hover and the Delete key both pick the card and open its confirmation
   const askDelete = (name: string) => { setPicked(name); setDel((d) => ({ name, n: d.n + 1 })); };
-  const card = (name: string, title: string, body: preact.ComponentChildren, extra = '', deletable = false) => (
-    <li class={`${on === name ? 'on' : ''} ${extra}`} data-card={name} {...tip(title)} role="button" aria-pressed={on === name} tabIndex={0} onClick={() => pick(name)}
+  const card = (name: string, title: string, body: preact.ComponentChildren, extra = '', deletable = false, attrs: Record<string, string> = {}) => (
+    <li class={`${on === name ? 'on' : ''} ${extra}`} data-card={name} {...attrs} {...tip(title)} role="button" aria-pressed={on === name} tabIndex={0} onClick={() => pick(name)}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(name); }
@@ -415,6 +455,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       return c && <CaptionDetail c={c} kind={kind} caption={g.blocks.find((b) => b.type === (kind === 'title' ? 'common.heading' : 'common.caption'))} to={to} />;
     }
     if (tab === 'sfx') { const s = g.sfx.find((x) => x.type === on); return s && <SfxDetail s={s} plays={plays} to={to} />; }
+    if (tab === 'combos') { const c = (g.combos ?? []).find((x) => `combo:${x.id}` === on); return c && <ComboDetail c={c} g={g} to={to} />; }
     if (tab === 'styles') { const s = g.styles.find((x) => x.id === on); return s && <StyleDetail key={s.id} s={s} />; }
     const r = g.recipes.find((x) => x.id === on); return r && <RecipeDetail r={r} />;
   };
@@ -462,7 +503,12 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
               <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(s.type, s).label)}>{shown(s.type, s).label}</strong><Handle id={s.type} /><CopyName name={s.type} /></span>
             </>, 'g-row'))}</ul>
           </section>
-        )) : (
+        )) : tab === 'combos' ? <section class="g-section" data-combos>
+          <ul class="g-grid g-grid-wide">{(list as GalleryCombo[]).map((c) => { const id = `combo:${c.id}`; return card(id, shown(id, c).doc, <>
+            <ComboStrip c={c} />
+            <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(id, c).label)}>{shown(id, c).label}</strong><Handle id={id} /><CopyName name={c.id} /></span>
+          </>, 'g-combo', false, { 'data-combo': c.id }); })}</ul>
+        </section> : (
           <>{tab === 'styles' && mineStyles.length > 0 && <><h4 class="g-mine-h">{t('lib.mineStyles')}</h4><ul class="g-grid g-grid-wide" data-mine-styles>{mineStyles.map((x) => card(`mine-style:${x.id}`, x.desc, <>
               <span class="g-thumb g-thumb-icon g-sound"><IconMusic size={20} /></span>
               <span class="g-card-body card-lines"><strong data-card-name {...tip(x.name)}>{x.name}</strong><span class="g-sub">{fromLine(x)}　{x.defaults.bpm} BPM · {x.defaults.key}</span></span>
