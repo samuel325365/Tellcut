@@ -1,10 +1,10 @@
 // The timeline's edit commands and the selection, out of editor.ts like the other flows: the tracks' buttons and order, overlaps
 // and transitions, the cutting keys (Q / W, ↑ / ↓, S, Delete), copy, paste and duplicate, muting, magnetic tracks, dragging on the
-// timeline, adding from the library at the playhead, replacing a block, and what is selected. Every edit is one undo step through
+// timeline, adding from the library at the playhead (a combo too), replacing a block, and what is selected. Every edit is one undo step through
 // the editor's apply(); the editor keeps the project, its history, the preview and crop mode.
-import { addItem, addTrack, allItems, attach as attachCmd, CommandError, copyItems, deleteItems, detach as detachCmd, findItem, magneticGaps, magneticTrack, moveTrack as moveTrackCmd,
-  overlapPairs, ownSounds, pasteItems, removeTrack as removeTrackCmd, resolveTimes, restackItem, rippleDelete, setCrossfade, setMagnetic, setTrack as setTrackCmd, split, trimEnd, trimStart,
-  updateItem, type Clip, type Project, type Registry, type TrackKind } from '@tellcut/engine';
+import { addItem, addTrack, allItems, attach as attachCmd, CommandError, copyItems, deleteItems, detach as detachCmd, expandCombo, findItem, magneticGaps, magneticTrack, moveTrack as moveTrackCmd,
+  overlapPairs, ownSounds, pasteItems, placeCombo, removeTrack as removeTrackCmd, resolveTimes, restackItem, rippleDelete, setCrossfade, setMagnetic, setTrack as setTrackCmd, split, trimEnd, trimStart,
+  updateItem, type Clip, type Combo, type ComboPlaced, type ComboPlacement, type Project, type Registry, type TrackKind } from '@tellcut/engine';
 import type { PlayerBridge } from '../bridge.ts';
 import type { History } from '../history.ts';
 import type { EditorState, PeakInfo, Store } from '../store.ts';
@@ -384,6 +384,26 @@ export class TimelineEditing {
     const why = uniqueBlock(this.reg, this.s.project!, type);
     if (why) { this.set({ notice: why }); return false; }
     return this.addAtPlayhead({ kind: 'overlay', type, params });
+  }
+
+  /** A combo (engine combos.ts) at the playhead: its layers as ordinary items, all in one undo step, placed by engine placeCombo
+   *  (the tracks Cut uses, hung on the main-track clip playing there) and selected together. The shake is the clip's own: with no
+   *  clip at the playhead it is left out, and the notice says so. */
+  insertCombo(combo: Combo): boolean {
+    const reg = this.reg, p = this.s.project;
+    if (!reg || !p) return false;
+    let layers: ComboPlacement[];
+    try { layers = expandCombo(combo, reg); } catch (e) { this.set({ notice: errText(e) }); return false; }
+    for (const l of layers) {
+      const why = l.kind === 'effect' ? uniqueBlock(reg, p, l.type!) : '';
+      if (why) { this.set({ notice: why }); return false; }
+    }
+    let placed: ComboPlaced | undefined;
+    const at = this.s.playhead, skip = this.skipTracks();
+    if (!this.c.apply((d) => { placed = placeCombo(d, { layers, at, skip }); }) || !placed) return false;
+    this.select(Object.values(placed.items), { reveal: false });   // keep the library (or the gallery's tab) in front
+    if (layers.some((l) => l.kind === 'shake') && !placed.shaken.length) this.set({ notice: say('ed.comboNoShake') });
+    return true;
   }
 
   // ---------------------------------------------------------------- the selection

@@ -37,7 +37,7 @@ if (q.has('gallery')) {
   render(<Home api={api as any} />, root);
 } else {
   const bridge = new PlayerBridge(location.origin);
-  const editor = new Editor(id, { api, bridge, registry: createRegistry(plugins), registryFor: async (p) => registryWith(plugins, await projectFx(id, p.meta.fx)) });
+  const editor = new Editor(id, { api, bridge, registry: createRegistry(plugins), combos: plugins.flatMap((x) => x.combos ?? []), registryFor: async (p) => registryWith(plugins, await projectFx(id, p.meta.fx)) });
   render(<App editor={editor} bridge={bridge} />, root);
   answerGallery(editor);   // "Add to project" from a gallery this tab opened
   addEventListener('beforeunload', (e) => { if (editor.store.get().save !== 'saved') e.preventDefault(); });

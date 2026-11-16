@@ -322,6 +322,7 @@ export const en: Record<Key, string> = {
   'ed.diskShort': 'The project file was changed outside: Reload or Ignore',
   'ed.magnetMerge': 'This closes {n} gaps; later clips move up by at most {s} s (can be undone)',
   'ed.atEnd': 'The playhead is at the end of the project, so nothing can be added',
+  'ed.comboNoShake': 'No clip on the main track at the playhead: the camera shake was left out (it is the clip’s own effect)',
   'ed.dropWrongKind': 'This kind of material cannot go on this track',
   'ed.dropLocked': 'This track is locked: unlock it in the track header first',
   'ed.dropAtEnd': 'That spot is past the end of the project',

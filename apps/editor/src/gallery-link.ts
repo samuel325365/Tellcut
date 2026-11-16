@@ -1,5 +1,5 @@
 // The block gallery opened from a project's editor (`?gallery&project=<id>`): the gallery lists that project's own blocks too,
-// and its "Add to project" puts a block or sound at the playhead of the editor tab that opened it. The gallery is a page of its own
+// and its "Add to project" puts a block, sound or combo at the playhead of the editor tab that opened it. The gallery is a page of its own
 // in another tab, so it cannot drag onto that timeline; it asks the editor by postMessage through window.opener (the link keeps the
 // opener: rel="opener"), and the editor answers with how it went. Both pages are this server's (same origin, checked both ways).
 import { t } from './i18n/index.ts';
@@ -8,9 +8,10 @@ import type { EditorState } from './store.ts';
 
 const ASK = 'tellcut:gallery-add', ANSWER = 'tellcut:gallery-added';
 
-/** what the gallery asks to add: a block (shared or the project's own), a sound effect, or one of My blocks (copied in first;
- *  `blockKind`: whether it is a background, which the editor cannot know before the copy is loaded) */
-export type GalleryAdd = { kind: 'block' | 'sfx'; type: string; params?: Record<string, unknown> } | { kind: 'mine'; type: string; slug: string; blockKind?: string };
+/** what the gallery asks to add: a block (shared or the project's own), a sound effect, one of My blocks (copied in first;
+ *  `blockKind`: whether it is a background, which the editor cannot know before the copy is loaded), or a combo (`type`: its id) */
+export type GalleryAdd = { kind: 'block' | 'sfx'; type: string; params?: Record<string, unknown> } | { kind: 'mine'; type: string; slug: string; blockKind?: string }
+  | { kind: 'combo'; type: string };
 export type AddAnswer = { ok: boolean; notice?: string };
 
 /** the gallery for one project, opened from its editor */
@@ -44,9 +45,12 @@ export interface AddTarget {
   addOverlay(type: string, params?: Record<string, unknown>): boolean;
   addSfx(type: string, params?: Record<string, unknown>): boolean;
   useLibraryBlock(slug: string, type: string): Promise<boolean>;
+  /** a combo's layers at the playhead, one undo step (false: the notice says why) */
+  insertCombo(id: string): boolean;
 }
 
-/** The editor's side: adds what the gallery asked for at the playhead, as the library's "Add at playhead" does (one undo step). */
+/** The editor's side: adds what the gallery asked for at the playhead, as the library's "Add at playhead" does (one undo step;
+ *  a combo's layers too). */
 export async function addFromGallery(ed: AddTarget, project: string, add: GalleryAdd): Promise<AddAnswer> {
   if (project !== ed.id) return { ok: false, notice: t('gallery.addOtherProject') };
   let ok: boolean;
@@ -57,6 +61,8 @@ export async function addFromGallery(ed: AddTarget, project: string, add: Galler
     const kind = copied ? ed.registry?.item(add.type)?.kind : add.blockKind;
     if (kind === 'scene') return { ok: false, notice: t('ed.sceneAdd') };
     ok = copied ? ed.addOverlay(add.type) : await ed.useLibraryBlock(add.slug, add.type);
+  } else if (add.kind === 'combo') {
+    ok = ed.insertCombo(add.type);
   } else if (add.kind === 'sfx') {
     if (!ed.registry?.sfx(add.type)) return { ok: false, notice: t('gallery.addUnknown', { type: add.type }) };
     ok = ed.addSfx(add.type, add.params);

@@ -18,11 +18,12 @@ function link(gallery: any, editor: any) {
   gallery.postMessage = (data: unknown, target: string) => { gallery.sent.push(target); gallery.deliver(data, editor); };
 }
 const block = (type: string, kind: string) => ({ type, label: type, kind, params: [{ key: 'text', label: 'text', type: 'string', default: '' }], build: () => null, draw: () => {} });
-const registry = () => createRegistry([corePlugin, { id: 'x', items: [block('x.card', 'overlay'), block('x.paper', 'scene')],
+const registry = () => createRegistry([corePlugin, { id: 'x', items: [block('x.card', 'overlay'), block('x.paper', 'scene'), block('x.ring', 'overlay')],
   sfx: [{ type: 'x.tick', label: 'tick', params: [{ key: 'len', label: 'len', type: 'number', default: 0.2 }], duration: (p: any) => p.len, synth: () => {} }] } as any]);
 async function editor() {
   const { api, bridge } = fakes({ useLibrary: async () => ({ file: 'fx/lib/box/_entry.js', fx: 's1' }) });
-  const ed = new Editor('demo', { api, bridge, registry: registry() });
+  const ed = new Editor('demo', { api, bridge, registry: registry(), combos: [{ id: 'pop', label: '砰', doc: 'a ring and a tick', parts: [
+    { name: 'ring', kind: 'effect', type: 'x.ring', at: 0, len: 0.6 }, { name: 'tick', kind: 'sfx', type: 'x.tick', at: 0, len: 0.2 }] }] });
   await ed.open();
   ed.seek(2);
   return ed;
@@ -45,6 +46,15 @@ test('a block from the gallery goes in at the playhead as one undo step, with th
   expect(items(ed).length).toBe(before);
 });
 
+test('a combo from the gallery puts all its layers in at the playhead as one undo step; an unknown one is refused with its name', async () => {
+  const ed = await editor(), before = items(ed).length;
+  expect(await addFromGallery(ed, 'demo', { kind: 'combo', type: 'pop' })).toEqual({ ok: true });
+  expect(items(ed).filter((x) => ed.store.get().selection.includes(x.id)).map((x) => x.type)).toEqual(['x.ring', 'x.tick']);
+  ed.undo();
+  expect(items(ed).length).toBe(before);
+  expect(await addFromGallery(ed, 'demo', { kind: 'combo', type: 'nope' })).toMatchObject({ ok: false, notice: expect.stringContaining('combo:nope') });
+});
+
 test('refusals come back with their reason: another project, an unknown type, a background, the playhead at the end', async () => {
   const ed = await editor();
   expect(await addFromGallery(ed, 'other', { kind: 'block', type: 'x.card' })).toMatchObject({ ok: false, notice: expect.any(String) });
@@ -59,7 +69,7 @@ test('refusals come back with their reason: another project, an unknown type, a 
 
 test('one of My blocks is copied in first; one the project already has is just added (its copy is not updated)', async () => {
   const ed = await editor(), used: string[] = [];
-  const target = { id: ed.id, registry: ed.registry, store: ed.store, addOverlay: (t: string) => ed.addOverlay(t), addSfx: () => false,
+  const target = { id: ed.id, registry: ed.registry, store: ed.store, addOverlay: (t: string) => ed.addOverlay(t), addSfx: () => false, insertCombo: () => false,
     useLibraryBlock: async (slug: string) => { used.push(slug); return true; } };
   expect(await addFromGallery(target, 'demo', { kind: 'mine', type: 'fx.box', slug: 'box' })).toEqual({ ok: true });
   expect(await addFromGallery(target, 'demo', { kind: 'mine', type: 'x.card', slug: 'card' })).toEqual({ ok: true });
@@ -149,7 +159,7 @@ test('an editor that has the request is waited for past the first wait (copying 
     link(g, e);
     let finish!: (ok: boolean) => void;
     const slow = { id: 'demo', registry: createRegistry([corePlugin]), store: { get: () => ({ notice: '', project: null, library: { project: null } }) } as any,
-      addOverlay: () => false, addSfx: () => false, useLibraryBlock: () => new Promise<boolean>((r) => { finish = r; }) };
+      addOverlay: () => false, addSfx: () => false, insertCombo: () => false, useLibraryBlock: () => new Promise<boolean>((r) => { finish = r; }) };
     const off = answerGallery(slow, e);
     const p = askEditor(e, 'demo', { kind: 'mine', type: 'fx.box', slug: 'box' }, { self: g, timeout: 1000 });
     await vi.advanceTimersByTimeAsync(5000);

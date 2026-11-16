@@ -1,5 +1,5 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
-import { addCropKey, addItem, addTrack, allItems, applyTemplate, magneticTrack, removeCropKey, type CropWhich, CommandError, type TrackKind, parseProject, resolveTimes, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, updateItem, type Project, type Registry, type Transform } from '@tellcut/engine';
+import { addCropKey, addItem, addTrack, allItems, applyTemplate, magneticTrack, removeCropKey, type CropWhich, CommandError, type Combo, type TrackKind, parseProject, resolveTimes, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, updateItem, type Project, type Registry, type Transform } from '@tellcut/engine';
 import { captionPlan } from '@tellcut/plugin-common/speech';
 import { keyAction, type Action } from './keys.ts';
 import { ChatSession } from './chat.ts';
@@ -45,7 +45,7 @@ export class Editor {
   /** the folder browser behind the chat's ＋ (absent with a test api that has none) */
   readonly fs: FsApi | undefined;
 
-  constructor(public id: string, private deps: { api: Api; bridge: BridgeLike; registry?: Registry; /** the registry for a project, with its own fx (absent: `registry` as is) */ registryFor?: (p: Project) => Promise<Registry>; storage?: { getItem(k: string): string | null; setItem(k: string, v: string): void }; clipboard?: { writeText(t: string): Promise<void> } }) {
+  constructor(public id: string, private deps: { api: Api; bridge: BridgeLike; registry?: Registry; /** the registry for a project, with its own fx (absent: `registry` as is) */ registryFor?: (p: Project) => Promise<Registry>; /** the shared combos (Plugin.combos) Add to timeline places */ combos?: Combo[]; storage?: { getItem(k: string): string | null; setItem(k: string, v: string): void }; clipboard?: { writeText(t: string): Promise<void> } }) {
     this.store = createStore(initialState(id));
     this.reg = deps.registry;
     this.chat = new ChatSession(id, deps.api as any);
@@ -364,6 +364,15 @@ export class Editor {
   /** `params`: values set in the gallery (only the sound's or block's own keys are kept) */
   addSfx(type: string, params?: Record<string, unknown>) { return this.editing.addSfx(type, params); }
   addOverlay(type: string, params?: Record<string, unknown>) { return this.editing.addOverlay(type, params); }
+  /** the shared combos, in their order (the library's Combos group) */
+  get combos(): Combo[] { return this.deps.combos ?? []; }
+  /** A combo by id at the playhead (the library's and the gallery's Add to timeline): all its layers, one undo step. */
+  insertCombo(id: string): boolean {
+    this.endAudition();   // at the real playhead, checked against the real project
+    const c = this.combos.find((x) => x.id === id);
+    if (!c) { this.set({ notice: say('gallery.addUnknown', { type: `combo:${id}` }) }); return false; }
+    return this.editing.insertCombo(c);
+  }
   replaceBlock(id: string, type: string): boolean { return this.editing.replaceBlock(id, type); }
   select(ids: string[], o: { reveal?: boolean } = {}) { this.editing.select(ids, o); }
 

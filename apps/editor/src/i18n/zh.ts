@@ -321,6 +321,7 @@ export const zh = {
   'ed.diskShort': '專案檔在外面被改過：重新載入（Reload）或忽略（Ignore）',
   'ed.magnetMerge': '會合併 {n} 個空隙，後面的片段最多前移 {s} 秒（可復原）',
   'ed.atEnd': '播放頭在專案結尾，無法加入',
+  'ed.comboNoShake': '播放頭下沒有主軌片段：鏡頭晃動那一層沒有放（晃動是片段本身的效果）',
   'ed.dropWrongKind': '這種素材不能放在這條軌',
   'ed.dropLocked': '這條軌鎖住了，先在軌道標頭解鎖',
   'ed.dropAtEnd': '這個位置已經在專案結尾之後',
