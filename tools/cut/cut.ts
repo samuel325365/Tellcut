@@ -3,8 +3,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, allItems, createRegistry, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
-import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
+import { addItem, allItems, applyTemplate, createRegistry, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, projectRegistry, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
@@ -45,6 +45,8 @@ const TRACKS = () => [
 /** a narration scene on the timeline (Cut.voice) */
 export interface VoicePlaced { id: string; start: number; end: number; phrases: Array<{ text: string; t0: number; t1: number; gloss?: string }> }
 const hash = (s: string) => createHash('sha1').update(s).digest('hex');
+/** the shared blocks (core and common): a block template named in c.effect is checked against them at once */
+const SHARED = createRegistry(plugins);
 /** the shared backgrounds (common.*, kind 'scene'): c.effect puts them under the video. Legacy full-screen scenes (kyoto.*) are not backgrounds */
 const SCENE_TYPES = new Set(plugins.flatMap((p) => p.items ?? []).filter((t) => t?.kind === 'scene' && t.type.startsWith('common.')).map((t) => t!.type));
 /** a gallery handle (MRK-03) where a type id belongs: handles are only for pointing, the project keeps type ids */
@@ -102,6 +104,8 @@ export class Cut {
   private song: { media: string; from: number; gain: number; fadeIn: number; fadeOut: number } | null = null;
   /** stickers to put on a mouth or a face at save() (effect({ follow })) */
   private follows: FollowReq[] = [];
+  /** effects made from a block template (effect({ template })): its params go under the item's own at save() */
+  private templated: Array<{ id: string; type: string; template: string }> = [];
   /** clips without a crop of their own: their focus goes to the faces in them at save() */
   private autoFocus: string[][] = [];
   /** clips avoidBurned cropped: at save() the crop is worked out again so the faces in them stay in frame */
@@ -411,10 +415,21 @@ export class Cut {
    * decide, since a project 'scene' can as well be a full-screen picture meant on top).
    * Other keys are the block's params; `params: { … }` holds params whose names the options above take (common.progress's `at`,
    * common.quote's `who`): they win over the loose keys.
+   * `template: '<id>'` starts from one of the block's named templates (`catalog <type>` lists them): at save() the template's params
+   * go in first and the ones given here over them; project.json gets the params only. (common.caption and common.heading take
+   * `template` as a param of their own: a caption or title template, kept as it is.)
    */
-  effect(type: string, o: { at?: number; len: number; layer?: 'top' | 'under'; transform?: { x: number; y: number; scale: number }; follow?: 'mouth' | 'face'; who?: Who; clip?: string; params?: Record<string, unknown>; [k: string]: unknown }) {
+  effect(type: string, o: { at?: number; len: number; layer?: 'top' | 'under'; transform?: { x: number; y: number; scale: number }; follow?: 'mouth' | 'face'; who?: Who; clip?: string; params?: Record<string, unknown>; template?: string; [k: string]: unknown }) {
     notAHandle(type, 'c.effect');
-    const { at = this.cursor, len, layer, transform, follow, who, clip, params: own, ...rest } = o, params = { ...rest, ...ownParams(own, `c.effect('${type}')`) };
+    const { at = this.cursor, len, layer, transform, follow, who, clip, params: own, ...loose } = o;
+    // `template` names a block template, unless the block takes it as a param of its own (common.caption / common.heading)
+    const shared = SHARED.item(type), named = loose.template !== undefined && !shared?.params.some((d) => d.key === 'template');
+    const { template, ...rest } = loose, params = { ...(named ? rest : loose), ...ownParams(own, `c.effect('${type}')`) };
+    if (named) {
+      if (typeof template !== 'string' || !template) throw new Error(`c.effect('${type}') 的 template 要是範本 id（文字），現在是 ${JSON.stringify(template)}`);
+      // a shared block's template is checked now, where the script names it; a project's own fx at save(), once its modules load
+      if (shared) applyTemplate(shared, template);
+    }
     num(at, `c.effect('${type}') 的 at`, { min: 0 });
     num(len, `c.effect('${type}') 的 len`, { above: 0 });
     let id: string;
@@ -435,7 +450,23 @@ export class Cut {
       this.bump((at as number) + len);
     }
     if (follow) this.follows.push({ id, follow, who: who ?? 'largest', clip });
+    if (named) this.templated.push({ id, type, template: template as string });
     return id;
+  }
+
+  /** The block templates effect() was given: each template's params under the item's own (what the script set, there or with
+   *  update() since). A project's own fx are looked up in its modules; an item removed since is skipped. */
+  private async applyTemplates() {
+    if (!this.templated.length) return;
+    const reg = this.templated.some((x) => !SHARED.item(x.type)) ? (await projectRegistry(this.dir, plugins, this.p)).registry : SHARED;
+    for (const x of this.templated) {
+      const it = allItems(this.p).find((y) => y.item.id === x.id)?.item as { params?: Record<string, unknown> } | undefined;
+      if (!it) continue;
+      const t = reg.item(x.type);
+      if (!t) throw new Error(`c.effect('${x.type}', { template: '${x.template}' })：找不到 ${x.type} 這個積木（專案的 fx 要先用 c.fx 登記）`);
+      // a project's own block that takes `template` as a param of its own keeps it as one
+      it.params = t.params.some((d) => d.key === 'template') ? { template: x.template, ...it.params } : applyTemplate(t, x.template, it.params ?? {});
+    }
   }
   /**
    * Camera shake (toolkit phase 5): the picture of whatever clip plays at film time `at` shakes for `dur` seconds, up to `px`
@@ -878,6 +909,7 @@ export class Cut {
   async save(): Promise<Project> {
     const duration = r6(Math.max(this.end, 0.5));
     this.p.meta.duration = duration;
+    await this.applyTemplates();
     this.burnedSkipNotes();
     await resolveBurnedFaces(this.faceCtx(), this.burnedAsks, this.autoFocus);   // before the focus: it may take a clip's focus over
     await resolveAutoFocus(this.faceCtx(), this.autoFocus);   // the crops first: a sticker follows a face through the final crop, a blur backdrop copies it

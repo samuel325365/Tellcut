@@ -1,5 +1,5 @@
 // The Cut API: re-running a cut and saving it (length, magnetic main track, what hangs on clips, edits made since).
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveTimes, runOps, settle } from '@tellcut/engine';
@@ -143,4 +143,45 @@ test('markCutClean: project.json as written counts as unedited, a project withou
   expect(editedSinceCut(dir)).toBe(false);
   writeFileSync(join(dir, 'project.json'), readFileSync(join(dir, 'project.json'), 'utf8').replace('"x1"', '"x2"'));
   expect(editedSinceCut(dir)).toBe(true);
+});
+
+test('effect({ template }): at save the template\'s params go in first and the script\'s own over them; project.json keeps params only', async () => {
+  const c = fresh();
+  c.clip('v', { from: 0, len: 4 });
+  const a = c.effect('common.leak', { at: 0, len: 2, layer: 'top', template: 'prism-sweep', size: 0.5 });
+  const b = c.effect('common.film', { at: 0, len: 4, layer: 'top', template: 'super8-home', params: { grain: 0.1 } });
+  // a caption takes `template` as a param of its own (a caption template): it stays one
+  const cap = c.effect('common.caption', { at: 1, len: 1, text: 'hi', template: 'pill' });
+  const p = await c.save();
+  const byId = (id: string) => p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id)!;
+  expect(byId(a).params).toEqual({ look: 'prism', from: 'l', travel: 0.9, peak: 0.7, size: 0.5 });
+  expect(byId(b).params).toEqual({ look: 'super8', grain: 0.1, vignette: 0.6, tint: 0.14 });
+  expect(byId(cap).params.template).toBe('pill');
+  expect('template' in byId(a)).toBe(false);
+  expect(JSON.stringify(JSON.parse(readFileSync(join(c.dir, 'project.json'), 'utf8')).tracks)).not.toContain('prism-sweep');
+});
+
+test('effect({ template }): an unknown id fails where the script names it, listing the ids the block has', () => {
+  const c = fresh();
+  expect(() => c.effect('common.leak', { at: 0, len: 1, layer: 'top', template: 'prism' })).toThrow('common.leak 沒有「prism」這個範本；它有：prism-sweep、bokeh-night');
+  expect(() => c.effect('core.flash', { at: 0, len: 1, template: 'x' })).toThrow('core.flash 沒有範本（「x」）');
+  expect(() => c.effect('common.leak', { at: 0, len: 1, layer: 'top', template: 3 as any })).toThrow(/template 要是範本 id/);
+});
+
+test('effect({ template }) on a project\'s own fx: looked up in its module at save; an unknown id fails there', async () => {
+  const make = () => {
+    const c = fresh();
+    mkdirSync(join(c.dir, 'fx'), { recursive: true });
+    writeFileSync(join(c.dir, 'fx', 'glow.js'), "export default [{ type: 'fx.glow', label: 'g', kind: 'overlay', params: [{ key: 'size', label: 's', type: 'number', default: 1 }, { key: 'look', label: 'l', type: 'string', default: 'a' }],\n"
+      + "  templates: [{ id: 'soft', label: '柔光', doc: 'd', params: { look: 'b', size: 2 } }], build() {}, draw() {} }];\n");
+    c.fx('fx/glow.js');
+    c.clip('v', { from: 0, len: 2 });
+    return c;
+  };
+  const c = make(), id = c.effect('fx.glow', { at: 0, len: 1, template: 'soft', size: 3 });
+  const p = await c.save();
+  expect(p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === id)!.params).toEqual({ look: 'b', size: 3 });
+  const d = make();
+  d.effect('fx.glow', { at: 0, len: 1, template: 'hard' });
+  await expect(d.save()).rejects.toThrow('fx.glow 沒有「hard」這個範本；它有：soft');
 });
