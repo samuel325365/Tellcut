@@ -66,6 +66,13 @@ export const countdown: ItemType<P, S> = {
     { key: 'ring', label: '外圈的環（slant 樣式是右側的弧線；flip、leader 不用）', type: 'bool', default: true },
     { key: 'font', label: '字型（ring、flip、leader 樣式；slant 固定用 Anton）', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are countdown-tpl-<id>
+  templates: [
+    { id: 'flip-clock', label: '翻牌倒數', doc: '新品發表的倒數、跨年：翻牌鐘一格一格翻下來，最後一下也是數字', params: { look: 'flip', end: '' } },
+    { id: 'film-leader', label: '老電影片頭', doc: '復古片頭、老電影的開場：佔滿畫面寬的大圓盤，指針一秒轉一圈，從 5 數到 0，最後一下也是數字', params: { look: 'leader', from: 5, end: '', size: 80 } },
+    { id: 'slant-go', label: '斜體大字倒數', doc: '運動、挑戰開始：很大的斜體數字加右側的弧線，最後喊 GO!', params: { look: 'slant', size: 60 } },
+    { id: 'ring-corner', label: '角落小計時', doc: '問答、限時任務：小小的環形計時停在畫面上方，不擋主畫面，最後一下也是數字', params: { size: 22, y: 0.15, end: '' } },
+  ],
   build(ctx) {
     // the flip and leader looks' canvas, under the number (hidden in the other looks)
     const cv = h('canvas', null, null, ctx.root);

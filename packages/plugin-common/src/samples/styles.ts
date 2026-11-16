@@ -7,6 +7,7 @@ import { leak } from '../leak.ts';
 import { film } from '../film.ts';
 import { speedlines } from '../speedlines.ts';
 import { sparkle } from '../sparkle.ts';
+import { countdown } from '../countdown.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -242,4 +243,9 @@ export const STYLES: Sample[] = [
   tpl(sparkle, 'glint-once', { len: 2, at: [0.3] }),
   tpl(sparkle, 'star-burst', { at: [0.4, 1.0] }),
   tpl(sparkle, 'twinkle-field', { at: [1.5] }),
+  // countdown: over the looks' backdrop, early and on the last step (leader at its hand's two points, as its look's sample)
+  tpl(countdown, 'flip-clock', { at: [0.4, 2.6], bg: '#4a6b7c' }),
+  tpl(countdown, 'film-leader', { at: [0.3, 1.2], bg: '#4a6b7c' }),
+  tpl(countdown, 'slant-go', { at: [0.4, 2.6], bg: '#4a6b7c' }),
+  tpl(countdown, 'ring-corner', { at: [0.4, 2.6], bg: '#4a6b7c' }),
 ];
