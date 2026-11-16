@@ -164,7 +164,34 @@ export interface Plugin {
   svg?: string;
   /** fonts the plugin draws with; `npm run fonts` downloads them for offline preview and export */
   fonts?: FontSpec[];
+  /** named moments of several layers (combos.ts): pure data, so the cut script, the editor and the catalog read the same list */
+  combos?: Combo[];
 }
+
+/** One layer of a combo: a picture block (`effect`, from one of its templates or not), a sound effect (`sfx`) or the clip's camera
+ *  shake (`shake`, no type). `at` is seconds from the moment (negative: it comes first, a riser), `len` its length. */
+export interface ComboPart {
+  /** the layer's name in its combo ('lines', 'flash', 'hit'): what `parts: { <name>: false | params }` points at */
+  name: string;
+  kind: 'effect' | 'sfx' | 'shake';
+  /** a block or sound effect type id; none for the shake */
+  type?: string;
+  /** one of the block's templates (templates.ts) */
+  template?: string;
+  /** the block's (or sound's) params, over the template's */
+  params?: Record<string, unknown>;
+  at: number; len: number;
+  /** an effect above the captions ('top') or under the video ('under'), as c.effect takes it */
+  layer?: 'top' | 'under';
+  /** a sound's level in dB */
+  gain?: number;
+  /** the shake's reach and speed, as c.shake takes them */
+  px?: number; hz?: number;
+}
+/** A named moment (spec 2026-11-16-combos): several layers with their offsets. Placing one expands it into ordinary timeline items
+ *  (expandCombo): project.json never names a combo. `label` in Traditional Chinese like a block's; `doc` one English line saying
+ *  when to use it (English and Japanese names in the editor's blocks.en.ts / blocks.ja.ts, keyed `combo:<id>`). */
+export interface Combo { id: string; label: string; doc: string; parts: ComboPart[] }
 
 /** A Google Fonts family spec ('Noto Serif TC:wght@200;300') or an open font file to download as is. `file`: keep it under that
  *  name (fonts/files/<file>) instead of a hashed one; `face: false`: download only, no @font-face (a TTF that three.js extrudes). */

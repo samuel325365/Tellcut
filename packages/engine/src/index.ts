@@ -6,6 +6,7 @@ export { motion, type MotionKit, type Spring, type SpringOpts, type EaseFn } fro
 export * from './geometry.ts';
 export * from './plugin.ts';
 export * from './templates.ts';
+export * from './combos.ts';
 export * from './report.ts';
 export * from './registry.ts';
 export * from './fx.ts';
