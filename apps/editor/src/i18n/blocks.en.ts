@@ -399,4 +399,6 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.wipe#stripes-pop': {"label":"Color stripes","doc":"Trends, outfits, dopamine colors: slanted stripes in four colors sweep in one after another until the last covers the frame, then sweep out."},
   'common.wipe#tiles-collage': {"label":"Collage tiles","doc":"Collage, journals, photo walls turning a page: the frame cut into 6 × 10 small tiles that cover it one by one, then flip open one by one."},
   'common.wipe#band-steep': {"label":"Steep band","doc":"Sports, breaking news: a steeply slanted color band sweeping across from right to left."},
+  'common.rolldoor#shop-close': {"label":"Closing time","doc":"The end of the film, the day's work done: a shutter over the whole frame comes slowly down from 0.2 s (down by 0.8 s later), then the \"Closed today\" sign is taped on."},
+  'common.rolldoor#shop-open': {"label":"Opening time","doc":"An opening, a shop opening: the shutter starts closed with an \"open for business\" sign on it (in Chinese) and rolls up from 0.2 s to show the picture."},
 };

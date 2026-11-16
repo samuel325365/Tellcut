@@ -1,5 +1,6 @@
 // The gallery's English and Japanese thumbnails (spec 2026-10-30-showcase-films part 2): a block's thumbnail is its first sample
-// (src/samples.ts); where that sample's own params are Chinese, these are its params in the other language (whole, in place of the sample's).
+// (src/samples.ts), a block template's its <block>-tpl-<id> sample; where that sample's own params are Chinese, these are its params
+// in the other language (whole, in place of the sample's).
 // The words a block starts with come from apps/editor/src/i18n/values.*.ts. `npm run thumbs` draws them into thumbs/<lang>/.
 export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unknown>>> = {
   en: {
@@ -25,6 +26,8 @@ export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unk
     desktop: { chapters: '0|Prep|#ffd6b8|#cdb8f5\n1.5|Party|#ffc4dc|#d9c2f7\n2.5|Birthday|#fff0b8|#ffc4dc', menu: 'File,Edit,View,Party', start: 'Start' },
     monoframe: { text: 'MARRAKECH · ' },
     flatlay: { surface: 'linen', objects: JSON.stringify([{ kind: 'postcard', shot: 'pic|0||still', place: 'Fontana di Trevi', year: '2024', at: 0 }, { kind: 'polaroid', shot: 'pic|0||still', caption: 'That summer', at: 0.6 }]) },
+    // a block template's sample whose own params are Chinese (rolldoor/shop-open's sign)
+    'rolldoor-tpl-shop-open': { dir: 'up', sign: 'Open', at: 0.2 },
   },
   ja: {
     'core-title': { text: '京都三日間', sub: '秋の最初の旅' },
@@ -49,5 +52,6 @@ export const THUMB_PARAMS: Record<'en' | 'ja', Record<string, Record<string, unk
     desktop: { chapters: '0|準備|#ffd6b8|#cdb8f5\n1.5|パーティー|#ffc4dc|#d9c2f7\n2.5|誕生日|#fff0b8|#ffc4dc', menu: 'ファイル,編集,表示,パーティー', start: 'スタート' },
     monoframe: { text: 'MARRAKECH · マラケシュ · ' },
     flatlay: { surface: 'linen', objects: JSON.stringify([{ kind: 'postcard', shot: 'pic|0||still', place: 'Fontana di Trevi', year: '2024', at: 0 }, { kind: 'polaroid', shot: 'pic|0||still', caption: 'あの夏', at: 0.6 }]) },
+    'rolldoor-tpl-shop-open': { dir: 'up', sign: '営業中', at: 0.2 },
   },
 };

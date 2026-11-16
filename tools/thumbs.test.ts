@@ -8,12 +8,14 @@ import { THUMBS_DIR, thumbCases, thumbKey } from './thumbs.ts';
 const IDEOGRAPH = /[぀-ヿ一-鿿]/;
 const CJK = /[　-鿿＀-￯]/;
 const firsts = () => { const m = new Map<string, (typeof samples)[number]>(); for (const c of samples) if (!m.has(c.type)) m.set(c.type, c); return [...m.values()]; };
+/** the block templates' samples, <block>-tpl-<id>: each is a thumbnail too (thumbs.ts thumbCases) */
+const blockTemplates = () => samples.filter((c) => /.-tpl-/.test(c.name));
 
 test('the English thumbnails show no Chinese, and every thumbnail whose case is Chinese has its words in both languages', () => {
   const en = thumbCases('en');
   expect(en.length).toBeGreaterThan(50);
   expect(en.filter((c) => IDEOGRAPH.test(JSON.stringify(c.params))).map((c) => c.name)).toEqual([]);
-  const chinese = firsts().filter((c) => CJK.test(JSON.stringify(c.params ?? {}))).map((c) => c.name);
+  const chinese = [...firsts(), ...blockTemplates()].filter((c) => CJK.test(JSON.stringify(c.params ?? {}))).map((c) => c.name);
   for (const lang of ['en', 'ja'] as const) {
     expect(chinese.filter((n) => !THUMB_PARAMS[lang][n])).toEqual([]);
     expect(Object.keys(THUMB_PARAMS[lang]).filter((n) => !chinese.includes(n))).toEqual([]);

@@ -399,4 +399,6 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.wipe#stripes-pop': {"label":"カラーストライプ","doc":"トレンド、コーデ、ドーパミンカラーの段落替えに：4 色の斜めの帯が次々と掃いて画面を覆い、また 1 本ずつ掃き出ていく。"},
   'common.wipe#tiles-collage': {"label":"コラージュタイル","doc":"コラージュ、手帳、写真の壁のページ替えに：画面を 6 × 10 の小さなマスに分け、1 枚ずつ覆ってから 1 枚ずつめくる。"},
   'common.wipe#band-steep': {"label":"急角度の帯","doc":"スポーツ、ニュース速報の場面転換に：とても斜めの色帯が右から左へ掃く。"},
+  'common.rolldoor#shop-close': {"label":"閉店","doc":"動画の終わり、今日の仕事納めに：画面全体のシャッターが 0.2 秒からゆっくり下り（0.8 秒で下まで）、「本日閉店」の札が貼られる。"},
+  'common.rolldoor#shop-open': {"label":"開店","doc":"オープニング、お店の開店に：最初はシャッターが閉まって「營業中」（営業中）の札が貼られ、0.2 秒から上へ巻き上がって画面が見える。"},
 };

@@ -9,6 +9,7 @@ import { speedlines } from '../speedlines.ts';
 import { sparkle } from '../sparkle.ts';
 import { countdown } from '../countdown.ts';
 import { wipe } from '../wipe.ts';
+import { rolldoor } from '../rolldoor.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -257,4 +258,7 @@ export const STYLES: Sample[] = [
   tpl(wipe, 'stripes-pop', { len: 1, at: [0.3, 0.7], bg: '#2a6b8f' }),
   tpl(wipe, 'tiles-collage', { len: 1, at: [0.3, 0.7], bg: '#2a6b8f' }),
   tpl(wipe, 'band-steep', { len: 1, at: [0.12, 0.88], bg: '#2a6b8f' }),
+  // rolldoor: over the default's backdrop, the door on its way, and down with its sign (or closed with it before rolling up)
+  tpl(rolldoor, 'shop-close', { at: [0.5, 1.5], bg: '#3d4a57' }),
+  tpl(rolldoor, 'shop-open', { at: [0.1, 0.4], bg: '#3d4a57' }),
 ];

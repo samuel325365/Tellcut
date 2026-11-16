@@ -31,6 +31,11 @@ export const rolldoor: ItemType<P, S> = {
     { key: 'signPaper', label: '紙牌顏色', type: 'color', default: '#fbf7ee' },
     { key: 'steel', label: '鋼板顏色', type: 'color', default: '#c9d0d6' },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are rolldoor-tpl-<id>
+  templates: [
+    { id: 'shop-close', label: '打烊拉下', doc: '片尾、今天收工：整個畫面的鐵捲門從 0.2 秒起慢慢拉下來（0.8 秒拉到底），再貼上「今日打烊」，整支片就此打烊', params: { x: 0, y: 0, w: 1, h: 1, radius: 0, at: 0.2, dur: 0.8 } },
+    { id: 'shop-open', label: '開店捲起', doc: '開場、開店：一開始鐵捲門關著、貼著「營業中」，0.2 秒起往上捲開露出畫面', params: { dir: 'up', sign: '營業中', at: 0.2 } },
+  ],
   build(ctx) {
     const win = abs(ctx.root), door = abs(win), bar = abs(door), handle = abs(door), sign = abs(ctx.root), tape = abs(sign), word = abs(sign);
     cssCamel(win, { overflow: 'hidden' });
