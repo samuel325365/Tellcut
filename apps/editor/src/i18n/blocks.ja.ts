@@ -385,4 +385,8 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.speedlines#rush-right': {"label":"右へ突進","doc":"走る、運転する、速く動くときに：画面全体の平行なスピード線が右へ飛ぶ。"},
   'common.speedlines#fall-down': {"label":"下へ落下","doc":"落ちる、急降下、飛び降りるときに：長い直線が画面全体で下へ飛ぶ。"},
   'common.speedlines#burst-center': {"label":"中心から爆発","doc":"登場、ダッシュ、大きな発表に：中心のすぐ近くから長い線がたくさん放射する。デフォルトより密で、中心に近いところから始まる。"},
+  'common.sparkle#confetti-rain': {"label":"紙吹雪の雨","doc":"お祝い、受賞、誕生日に：mode confetti の倍の色とりどりの紙が上から降り、画面をいっぱいにする。"},
+  'common.sparkle#glint-once': {"label":"一度きりのきらめき","doc":"商品の見どころ、ジュエリー、きらりと光る歯に：とても大きな十字の光が現れ、少し回って消える。一度だけ。"},
+  'common.sparkle#star-burst': {"label":"星の大爆発","doc":"正解、変身、レベルアップに：デフォルトより多くの星が一点からはじけ、より遠くまで飛ぶ。"},
+  'common.sparkle#twinkle-field': {"label":"満天の星","doc":"夜空、夢のような場面、おとぎ話に：数十個の星が画面の中央のまわりに散らばり、きらきら瞬く。mode twinkle より多く、広く散る。"},
 };

@@ -6,6 +6,7 @@ import { glitch } from '../glitch.ts';
 import { leak } from '../leak.ts';
 import { film } from '../film.ts';
 import { speedlines } from '../speedlines.ts';
+import { sparkle } from '../sparkle.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -236,4 +237,9 @@ export const STYLES: Sample[] = [
   tpl(speedlines, 'rush-right', { at: [0.5, 1.5], bg: '#ffd9a0' }),
   tpl(speedlines, 'fall-down', { at: [0.5, 1.5], bg: '#ffd9a0' }),
   tpl(speedlines, 'burst-center', { at: [1.5], bg: '#ffd9a0' }),
+  // sparkle: over the default's backdrop; the confetti early and in full fall, the glint at its peak, the burst flying and nearly gone
+  tpl(sparkle, 'confetti-rain', { at: [0.4, 1.6] }),
+  tpl(sparkle, 'glint-once', { len: 2, at: [0.3] }),
+  tpl(sparkle, 'star-burst', { at: [0.4, 1.0] }),
+  tpl(sparkle, 'twinkle-field', { at: [1.5] }),
 ];

@@ -385,4 +385,8 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.speedlines#rush-right': {"label":"Rush right","doc":"Running, driving, moving fast: parallel speed streaks across the whole frame flying to the right."},
   'common.speedlines#fall-down': {"label":"Fall down","doc":"Falling, diving, jumping off: long straight streaks across the whole frame flying downward."},
   'common.speedlines#burst-center': {"label":"Center burst","doc":"An entrance, a dash, a big reveal: many long lines radiating from close round the centre, denser and starting nearer the centre than the default."},
+  'common.sparkle#confetti-rain': {"label":"Confetti rain","doc":"Celebrations, awards, birthdays: twice as much coloured paper as mode confetti falls from the top and fills the frame."},
+  'common.sparkle#glint-once': {"label":"Single glint","doc":"A product's highlight, jewellery, a sparkling smile: one very large cross flare grows, turns a little and dies, just once."},
+  'common.sparkle#star-burst': {"label":"Star burst","doc":"A right answer, a transformation, a level-up: more stars than the default bursting from one point and flying farther."},
+  'common.sparkle#twinkle-field': {"label":"Starry field","doc":"Night skies, dreamy or fairy-tale moments: dozens of stars scattered over the frame around its middle, more and wider than mode twinkle, twinkling."},
 };

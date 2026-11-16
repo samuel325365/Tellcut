@@ -69,6 +69,13 @@ export const sparkle: ItemType<P, S> = {
     { key: 'color', label: '顏色', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
     { key: 'seed', label: '亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 7 },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are sparkle-tpl-<id>
+  templates: [
+    { id: 'confetti-rain', label: '彩紙雨', doc: '慶祝、得獎、生日：比 mode confetti 多一倍的彩色紙片從頂端整片落下，落滿畫面', params: { mode: 'confetti', count: 40 } },
+    { id: 'glint-once', label: '亮點一閃', doc: '產品的亮點、珠寶、牙齒一閃：一個很大的十字光芒長出來、轉一點、消失，只一下', params: { mode: 'glint', size: 8 } },
+    { id: 'star-burst', label: '星星大爆發', doc: '答對、變身、升級：比預設多、飛得更遠的星星從一點炸開', params: { count: 30, spread: 0.7 } },
+    { id: 'twinkle-field', label: '滿天星', doc: '夜空、夢幻、童話：幾十顆星星繞著中間散滿畫面，比 mode twinkle 多、散得更開，一閃一閃', params: { mode: 'twinkle', count: 60, spread: 0.85, size: 3 } },
+  ],
   build(ctx) {
     const cv = h('canvas', null, null, ctx.root);
     cv.width = ctx.W; cv.height = ctx.H;
