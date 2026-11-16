@@ -377,4 +377,8 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.leak#warm-corner': {"label":"Warm corner","doc":"Memories, family, a quiet interview: a soft warm glow resting in the top-left corner, barely moving, there for the whole item."},
   'common.leak#sweep-fast': {"label":"Fast sweep","doc":"A transition between two shots: a small, bright warm glow sweeping from the left edge all the way out the right."},
   'common.film#super8-home': {"label":"Old home movie","doc":"Childhood, a past generation's home videos, a retro wedding: projected Super 8 home movie film, warmer, grainier and with a heavier vignette than look super8 alone."},
+  'common.film#vhs-tape': {"label":"Nineties tape","doc":"Nineties home tapes, a retro vlog, a memory after a tape change: denser scan lines than look vhs alone, warm, and a tracking noise band sliding down soon after the start."},
+  'common.film#print-zine': {"label":"Zine print","doc":"Magazine, poster or pop-art passages: the whole picture turned into somewhat coarser print dots, with no vignette."},
+  'common.film#cinema-scope': {"label":"Cinemascope","doc":"Cinematic travel films and title sequences: 2.39:1 black bars top and bottom, light grain and a soft vignette."},
+  'common.film#heavy-grain': {"label":"Heavy grain","doc":"Street photography, documentary, raw passages: very coarse, contrasty grain that changes only 12 times a second, like high-speed film stock."},
 };

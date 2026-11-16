@@ -9,6 +9,8 @@ import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from '
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
 const GLITCH_BG = 'repeating-linear-gradient(90deg, #e8dcc0 0px, #e8dcc0 90px, #24303c 90px, #24303c 180px)';
+/** common.film's templates' backdrop: dark to light, so the grain, the tint and the print dots show at every tone */
+const FILM_BG = 'linear-gradient(180deg, #1d2a3a 0%, #5a6a4a 35%, #c0905a 65%, #f2ead8 100%)';
 /** the shader looks' palette (shader-mesh's) */
 const SHADER_THEME = { palette: { accent: '#ff6b2c', accent2: '#1f9e8a', hl: '#ffd23f', ink: '#0b1a2c', paper: '#f6efe2' } };
 /** a block template's sample: its name (templateSample), the template's params alone, and the rest of the case */
@@ -223,5 +225,9 @@ export const STYLES: Sample[] = [
   tpl(leak, 'flare-top', { len: 3, at: [1.5], bg: '#4d5866' }),
   tpl(leak, 'warm-corner', { len: 3, at: [1.5], bg: '#4d5866' }),
   tpl(leak, 'sweep-fast', { len: 3, at: [0.8, 1.5], bg: '#4d5866' }),
-  tpl(film, 'super8-home', { at: [0.5], bg: '#7a8a6a' }),
+  tpl(film, 'super8-home', { at: [0.5], bg: FILM_BG }),
+  tpl(film, 'vhs-tape', { at: [0.5], bg: FILM_BG }),
+  tpl(film, 'print-zine', { at: [0.5], bg: FILM_BG }),
+  tpl(film, 'cinema-scope', { at: [0.5], bg: FILM_BG }),
+  tpl(film, 'heavy-grain', { at: [0.5], bg: FILM_BG }),
 ];
