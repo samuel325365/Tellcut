@@ -358,7 +358,7 @@ test('files dropped on the media panel are added (not placed) and the page for t
 
 test('the Effects page lists the combos in a group of their own with their peak picture; the pick is added whole, and cannot replace', async () => {
   const store = createStore({ ...initialState('t'), project: fixture(), selection: ['blk'] });
-  store.set({ library: { ...store.get().library, blockThumbs: { 'combo:impact': '/api/gallery/thumb/combo-impact-t0.30.png' } } });
+  store.set({ library: { ...store.get().library, blockThumbs: { 'combo:impact': '/api/gallery/thumb/combo-impact-t0.15.png' } } });
   const calls: any[] = [];
   const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, addMaterial: (m: any) => calls.push(['add', m]),
     combos: [{ id: 'impact', label: '重擊', doc: '重擊、打臉' }, { id: 'glitchcut', label: '故障切換', doc: '話題急轉' }], insertCombo: (id: string) => calls.push(['combo', id]) };

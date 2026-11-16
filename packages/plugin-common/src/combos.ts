@@ -5,10 +5,11 @@
 import type { Combo } from '@tellcut/engine';
 
 export const combos: Combo[] = [
-  // the lines burst out as the glow fills the frame and shrinks back within half a second; the hit's low thump lands with them
+  // the lines burst out as a glow flares over the middle and shrinks back within a third of a second (low and steep: the lines read
+  // through it from the first frame on footage); the hit's low thump lands with them
   { id: 'impact', label: '重擊', doc: '重擊、打臉、落地、大字砸下來：放射線從中間炸開，中間的光暈一亮再縮回去，配一記低沉的重擊，畫面跟著晃', parts: [
     { name: 'lines', kind: 'effect', type: 'common.speedlines', template: 'burst-center', at: 0, len: 0.8 },
-    { name: 'flash', kind: 'effect', type: 'core.flash', template: 'bloom-pop', params: { y: 0.4 }, at: 0, len: 0.5, layer: 'top' },
+    { name: 'flash', kind: 'effect', type: 'core.flash', template: 'bloom-pop', params: { y: 0.4, peak: 0.65, fall: 0.35, power: 3 }, at: 0, len: 0.5, layer: 'top' },
     { name: 'hit', kind: 'sfx', type: 'common.impact', at: 0, len: 1.4, gain: -6 },
     { name: 'shake', kind: 'shake', at: 0, len: 0.4, px: 28 },
   ] },

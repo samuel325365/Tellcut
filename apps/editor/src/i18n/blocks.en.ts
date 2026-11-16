@@ -412,6 +412,6 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.shader#rays-stage': {"label":"Stage rays","doc":"Stages, announcements, award ceremonies: stronger rays than look rays alone, shining down from above."},
   'core.flash#bloom-pop': {"label":"Bloom flash","doc":"A beat, a camera flash: a glow from the middle fills the frame at once, then shrinks back to a point within half a second."},
   'core.flash#fade-in': {"label":"White fade-in","doc":"An opening, waking from a memory: the frame starts all white, thins over the whole item to a glow in the middle, and the glow shrinks away to show the picture."},
-  'combo:impact': {"label":"Impact","doc":"A punch, a slap, a landing, a big word slammed in: lines burst from the middle as a glow fills the frame and shrinks back, with a heavy hit and the clip shaking."},
+  'combo:impact': {"label":"Impact","doc":"A punch, a slap, a landing, a big word slammed in: lines burst from the middle as a glow flares there and shrinks back, with a heavy hit and the clip shaking."},
   'combo:glitchcut': {"label":"Glitch cut","doc":"A sudden change of topic, something going wrong, a jump to another scene: scan lines and a sideways jump across the cut, then the colours split, with a record scratch."},
 };

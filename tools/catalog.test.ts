@@ -144,7 +144,7 @@ test('combos: the catalog lists them by handle, a handle or combo:<id> shows the
   expect(formatCatalog(plugins)).toMatch(/^組合（[^\n]*c\.combo\('<id>', \{ at \}\)[^\n]*\n {2}CMB-01 +impact +重擊 — 重擊、打臉/m);
   const one = await formatLookup(plugins, 'cmb1');
   expect(one).toMatch(/^CMB-01 impact 重擊（組合）— /);
-  expect(one).toMatch(/^ {4}flash（畫面：core\.flash，範本 bloom-pop，layer top）0 秒起 0\.5 秒：\{"y":0\.4\}$/m);
+  expect(one).toMatch(/^ {4}flash（畫面：core\.flash，範本 bloom-pop，layer top）0 秒起 0\.5 秒：\{"y":0\.4,"peak":0\.65,"fall":0\.35,"power":3\}$/m);
   expect(one).toMatch(/^ {4}shake（鏡頭晃動：28 px）0 秒起 0\.4 秒$/m);
   expect(await formatLookup(plugins, 'combo:glitchcut')).toMatch(/^CMB-02 glitchcut[\s\S]*scan（畫面：common\.glitch，範本 signal-loss）-0\.1 秒起/);
   await expect(formatLookup(plugins, 'combo:nope')).rejects.toThrow(/沒有組合 nope/);

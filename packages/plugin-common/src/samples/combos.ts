@@ -21,8 +21,9 @@ export function comboSample(id: string, at: number[], rest: Partial<Omit<Sample,
 }
 
 export const COMBO_SAMPLES: Sample[] = [
-  // the glow nearly white over the lines just out; the glow shrinking with the lines at full length; the lines alone, fading
-  comboSample('impact', [0.08, 0.3, 0.6]),
+  // the glow over the frame, the lines half out through it; the lines at full length round the glow shrinking in the middle; the
+  // lines alone, fading
+  comboSample('impact', [0.06, 0.15, 0.7]),
   // the moment at 0.1: the scan lines before the cut, both bursts across it, the scan lines and a faint fringe after
   comboSample('glitchcut', [0.03, 0.17, 0.4]),
 ];

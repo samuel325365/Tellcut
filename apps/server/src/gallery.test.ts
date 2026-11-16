@@ -153,7 +153,7 @@ test('combos: each with its handle, its layers and the three golden pictures of 
     const g = await (await fetch(`${base}/api/gallery`)).json();
     expect(g.combos.map((c: any) => [c.id, c.handle])).toEqual(expect.arrayContaining([['impact', 'CMB-01'], ['glitchcut', 'CMB-02']]));
     const impact = g.combos.find((c: any) => c.id === 'impact');
-    expect(impact).toMatchObject({ label: '重擊', frames: ['/api/gallery/thumb/combo-impact-t0.08.png', '/api/gallery/thumb/combo-impact-t0.30.png', '/api/gallery/thumb/combo-impact-t0.60.png'] });
+    expect(impact).toMatchObject({ label: '重擊', frames: ['/api/gallery/thumb/combo-impact-t0.06.png', '/api/gallery/thumb/combo-impact-t0.15.png', '/api/gallery/thumb/combo-impact-t0.70.png'] });
     expect(impact.doc.length).toBeGreaterThan(5);
     expect(impact.parts).toEqual([
       { name: 'lines', kind: 'effect', type: 'common.speedlines', template: 'burst-center', at: 0, len: 0.8 },
