@@ -355,3 +355,27 @@ test('files dropped on the media panel are added (not placed) and the page for t
   await act(() => render(<LibraryPanel editor={editor} s={{ ...store.get(), importing: { done: 1, total: 2 } }} />, root));
   expect(root.querySelector('[data-import-cancel]')).toBeNull();
 });
+
+test('the Effects page lists the combos in a group of their own with their peak picture; the pick is added whole, and cannot replace', async () => {
+  const store = createStore({ ...initialState('t'), project: fixture(), selection: ['blk'] });
+  store.set({ library: { ...store.get().library, blockThumbs: { 'combo:impact': '/api/gallery/thumb/combo-impact-t0.30.png' } } });
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => [], item: () => undefined, sfxTypes: () => [] }, addMaterial: (m: any) => calls.push(['add', m]),
+    combos: [{ id: 'impact', label: '重擊', doc: 'A punch' }, { id: 'glitchcut', label: '故障切換', doc: 'A sudden change of topic' }], insertCombo: (id: string) => calls.push(['combo', id]) };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const group = root.querySelector('[data-lib-group="block:combos"]')!;
+  expect(group.querySelector('summary')!.textContent).toBe('Combos2');
+  expect([...group.querySelectorAll<HTMLElement>('[data-add-combo]')].map((e) => [e.dataset.addCombo, e.textContent])).toEqual([['impact', 'Impact'], ['glitchcut', 'Glitch cut']]);
+  expect(root.querySelector<HTMLElement>('[data-add-combo="impact"]')!.dataset.tip).toMatch(/^CMB-01 · /);
+  await act(() => { root.querySelector<HTMLElement>('[data-add-combo="impact"]')!.click(); });
+  const replace = root.querySelector<HTMLButtonElement>('[data-replace-picked]')!;
+  expect([replace.disabled, replace.dataset.tip]).toEqual([true, t('ed.comboReplace')]);
+  await act(() => { root.querySelector<HTMLButtonElement>('[data-add-picked]')!.click(); });
+  expect(calls).toEqual([['combo', 'impact']]);
+  // the search finds one by its handle
+  const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  await act(() => { store.set({ layout: { ...store.get().layout, mediaTab: 'effects' } }); render(<LibraryPanel editor={editor} s={store.get()} />, root); });
+  await act(() => { search.value = 'CMB-02'; search.dispatchEvent(new Event('input')); });
+  expect([...root.querySelectorAll<HTMLElement>('[data-add-combo]')].map((e) => e.dataset.addCombo)).toEqual(['glitchcut']);
+});

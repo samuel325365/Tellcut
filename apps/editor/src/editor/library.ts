@@ -112,13 +112,14 @@ export class LibraryFlow {
   }
   private blockThumbsAsked = false;
   /** the shared blocks' pictures, the gallery's (its golden pictures), for the media panel's Effects page; asked for once (again
-   *  only after a failure). Until then, or without one, a card shows its name. */
+   *  only after a failure). Until then, or without one, a card shows its name. A combo's is its peak picture, under combo:<id>. */
   async loadBlockThumbs() {
     if (this.lib.blockThumbs || this.blockThumbsAsked || !this.c.api.gallery) return;
     this.blockThumbsAsked = true;
     try {
       const g = await this.c.api.gallery();
-      this.set({ blockThumbs: Object.fromEntries((g.blocks ?? []).flatMap((b) => (b.thumb ? [[b.type, b.thumb]] : []))) });
+      const peak = (g.combos ?? []).flatMap((c) => (c.frames.length ? [[`combo:${c.id}`, c.frames[Math.floor(c.frames.length / 2)]]] : []));
+      this.set({ blockThumbs: Object.fromEntries([...(g.blocks ?? []).flatMap((b) => (b.thumb ? [[b.type, b.thumb]] : [])), ...peak]) });
     } catch { this.blockThumbsAsked = false; }
   }
 

@@ -1,7 +1,8 @@
 // Left-hand library (spec §4.1): click picks a source segment, a piece of music, a sound effect or a block;
 // double-click auditions it in the preview (audition.ts); the buttons at the bottom add the pick at the playhead, or put a
 // picked block or sound in place of the one selected on the timeline. Blocks and sounds are every one the project can use
-// (its own fx, the built-in ones, the shared library by category), with a search over names, handles and descriptions.
+// (its own fx, the built-in ones, the shared library by category, then the combos: several layers placed at once), with a search
+// over names, handles and descriptions.
 // Media follows the film by default (media-order.ts): sources in the order the timeline first uses them, the unused ones apart, the
 // stretches on the timeline marked, the selected clip's source lit; a downloaded one goes by its title. Narration is apart from music.
 // Three pages (Video, Audio: music, narration and sound effects, Effects), each with its own search; all three stay rendered, the
@@ -72,7 +73,10 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const offered = (reg?.itemTypes() ?? []).filter((d: any) => !Object.hasOwn(OLD_BLOCKS, d.type));
   const blocks = groupsOf(offered.filter(hitIn(q)), Object.keys(BLOCK_CATEGORY), 'block');
   const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hitIn(qa)), Object.keys(SFX_CATEGORY), 'sfx');
-  const [picked, setPicked] = useState<{ key: string; m?: Material; lib?: LibPick } | null>(null);
+  // the combos (engine combos.ts): a card each, added at the playhead with all their layers (no audition, no drag)
+  const combos = ((editor.combos ?? []) as Array<{ id: string; label: string; doc: string }>).filter((c) => { const id = `combo:${c.id}`;
+    return matches(q, handleOf(id), c.id, c.label, c.doc, blockText(id, c, 'en').label, blockText(id, c).doc); });
+  const [picked, setPicked] = useState<{ key: string; m?: Material; lib?: LibPick; combo?: string } | null>(null);
   // My blocks (spec 2026-10-29-my-library §3.2, §3.3): the ones saved from this project (★), this project's copies, the rest to add
   const lib = s.library, links = liveLinks(s);
   const savedHere = new Set((lib.index?.blocks ?? []).filter((b) => b.from.project === s.id).map((b) => b.type));
@@ -94,7 +98,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const media = Object.keys(p.media).filter((m) => matches(qa, undefined, m, s.titles[m] ?? ''));
   const voice = media.filter((m) => isVoice(p.media[m])), music = media.filter((m) => !isVoice(p.media[m]));
   const counts: Record<MediaTab, number> = { video: Object.keys(p.sources).length, audio: Object.keys(p.media).length + (reg?.sfxTypes().length ?? 0),
-    effects: offered.length + (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).length };
+    effects: offered.length + (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).length + (editor.combos?.length ?? 0) };
   const setTab = (mediaTab: MediaTab) => editor.setLayout({ mediaTab });
   // the block cards' pictures: the gallery's, asked for the first time the Effects page shows
   useEffect(() => { if (tab === 'effects') void editor.loadBlockThumbs?.(); }, [tab]);
@@ -220,6 +224,13 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
             onPress={(e) => startCardDrag(e, editor, m)} />;
         })}</div>
       </details>)}
+      {combos.length > 0 && <details class="lib-group" data-lib-group="block:combos" open={!!q.trim()}>
+        <summary>{t('group.combos', {}, 'en')}<small>{combos.length}</small></summary>
+        <div class="blk-grid">{combos.map((c) => { const key = `combo:${c.id}`; shown.add(key); return (
+          <BlockCard name={blockText(key, c, 'en').label} thumb={thumbIn(lib.blockThumbs?.[key], getLang())} cls={`lib-item${picked?.key === key ? ' picked' : ''}`}
+            attrs={{ 'data-add-combo': c.id, ...tip(withHandle(key, t('ed.comboTip'))), onClick: () => setPicked({ key, combo: c.id }) }} />
+        ); })}</div>
+      </details>}
       </div>
       {(() => {
         // the pick must still be in the library: analysis can re-cut a source's segments
@@ -228,11 +239,11 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
         const scene = live?.lib ? live.lib.kind === 'scene' : live?.m?.kind === 'overlay' && reg?.item(live.m.type)?.kind === 'scene';
         const sel = s.selection.length === 1 ? s.selection[0] : undefined;
         const swap = live?.m && (live.m.kind === 'overlay' || live.m.kind === 'sfx') ? live.m.type : undefined;
-        const why = swap ? replaceProblem(reg, p, sel, swap) : t('ed.replacePickFirst');
+        const why = live?.combo ? t('ed.comboReplace') : swap ? replaceProblem(reg, p, sel, swap) : t('ed.replacePickFirst');
         return (
           <div class="lib-add">
             <button class="primary" data-add-picked disabled={!live || scene} {...tip(!live ? t('ed.addPickedFirst') : scene ? t('ed.sceneAdd') : t('ed.addPickedTip'))}
-              onClick={() => { if (live?.lib) void editor.useLibraryBlock(live.lib.slug, live.lib.type); else if (live?.m) editor.addMaterial(live.m); }}>+ Add at playhead</button>
+              onClick={() => { if (live?.lib) void editor.useLibraryBlock(live.lib.slug, live.lib.type); else if (live?.combo) editor.insertCombo(live.combo); else if (live?.m) editor.addMaterial(live.m); }}>+ Add at playhead</button>
             <button data-replace-picked disabled={!!why} {...tip(why || t('ed.replaceTip'))}
               onClick={() => sel && swap && editor.replaceBlock(sel, swap)}>⇄ Replace selected</button>
           </div>
