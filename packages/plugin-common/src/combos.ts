@@ -86,4 +86,11 @@ export const combos: Combo[] = [
     { name: 'rattle', kind: 'sfx', type: 'common.rattle', at: 0.45, len: 0.65, gain: -8 },
     { name: 'clunk', kind: 'sfx', type: 'common.clunk', at: 1, len: 0.16, gain: -6 },
   ] },
+  // the iris closes over 0.6 s to a point in the middle at the moment and opens again over the next 0.6 s, black as an old cartoon's;
+  // the stars burst from that point at the moment, above the iris, on the xylophone
+  { id: 'irisout', label: '圈出收尾', doc: '老卡通式的收場或換場：畫面縮成一個圓收到正中間一點，一把星星從那一點炸開，再從同一點打開成新畫面，配一聲木琴', parts: [
+    { name: 'iris', kind: 'effect', type: 'common.wipe', template: 'iris-close', params: { color: '#141414' }, at: -0.6, len: 1.2, layer: 'top' },
+    { name: 'stars', kind: 'effect', type: 'common.sparkle', template: 'star-burst', params: { y: 0.5 }, at: 0, len: 1, layer: 'top' },
+    { name: 'xylo', kind: 'sfx', type: 'common.xylo', at: 0, len: 0.16, gain: -6 },
+  ] },
 ];

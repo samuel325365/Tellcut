@@ -42,4 +42,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('rush', [0.15, 0.45, 1.1]),
   // the door three quarters down; down with its sign as the dark comes in; nearly black
   comboSample('closing', [0.6, 1.9, 2.2]),
+  // the moment at 0.6: the circle half closed; opening again with the stars flying out of it; the stars alone, fading
+  comboSample('irisout', [0.3, 0.85, 1.4]),
 ];
