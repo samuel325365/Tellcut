@@ -273,7 +273,13 @@ export interface GalleryStyle { id: string; label: string; doc: string; defaults
 export interface GalleryRecipe { id: string; label: string; doc: string; notes: string[]; example: unknown }
 /** a caption template (common.caption's CAP-xx): its id, names, the parameters it sets and its golden picture */
 export interface GalleryCaption { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
-export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[]; titles?: GalleryCaption[] }
+/** one layer of a combo in the gallery: its name in the combo, a picture block (from a template or not), a sound or the clip's
+ *  shake, and its offset from the moment and length in seconds; `layer`: over the captions (top) or under the video (under) */
+export interface GalleryComboPart { name: string; kind: 'effect' | 'sfx' | 'shake'; type?: string; template?: string; at: number; len: number; layer?: 'top' | 'under' }
+/** a combo (engine combos.ts, CMB-xx): its handle, names, layers and the golden pictures of its sample combo-<id>, in time order
+ *  (start, peak, end) */
+export interface GalleryCombo { id: string; handle?: string; label: string; doc: string; parts: GalleryComboPart[]; frames: string[] }
+export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[]; titles?: GalleryCaption[]; combos?: GalleryCombo[] }
 
 // ---------------------------------------------------------------- the user's own library (spec 2026-10-29-my-library)
 /** where an entry was saved from: the project's id and file, and the project's name now (absent when the project is gone) */

@@ -1,4 +1,4 @@
-// The block gallery's data (spec 2026-10-17-block-gallery): every block, sound effect, music style and recipe, read from the same
+// The block gallery's data (spec 2026-10-17-block-gallery): every block, sound effect, music style, recipe and combo, read from the same
 // places `npm run tellcut -- catalog` reads, so the gallery never needs updating by hand. Score previews are generated on request and cached.
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -12,7 +12,7 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 // each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
 import { samples, templateSample } from '@tellcut/plugin-common/samples';
-import { CORE_CATEGORY, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
+import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
 
@@ -33,6 +33,8 @@ const sampleThumb = (name: string) => { const c = samples.find((x) => x.name ===
 const TEMPLATE_THUMB = (id: string, pre = 'tpl') => sampleThumb(`${pre}-${id}`);
 /** a block template's picture: its sample <block>-tpl-<id> */
 const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => sampleThumb(templateSample(type, id));
+/** a combo's pictures: every moment of its sample combo-<id> (start, peak, end), in time order */
+const COMBO_FRAMES = (id: string) => { const c = samples.find((x) => x.name === `combo-${id}`); return c ? [...c.at].sort((a, b) => a - b).map((t) => `/api/gallery/thumb/${c.name}-t${t.toFixed(2)}.png`) : []; };
 
 export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): Promise<GalleryIndex> {
   const order = (p: Plugin) => (p.id === 'core' ? 0 : p.id === 'common' ? 1 : 2);
@@ -53,7 +55,13 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
   const recipes = Object.values(RECIPES).map((r) => ({ id: r.id, label: r.label, doc: r.doc, notes: r.notes ?? [], example: r.example }));
   const captions = TEMPLATES.map((t) => ({ id: t.id, label: t.label, doc: t.doc, params: t.params, ...(TEMPLATE_THUMB(t.id) ? { thumb: TEMPLATE_THUMB(t.id) } : {}) }));
   const titles = TITLE_TEMPLATES.map((t) => ({ id: t.id, label: t.label, doc: t.doc, params: t.params, ...(TEMPLATE_THUMB(t.id, 'ttl') ? { thumb: TEMPLATE_THUMB(t.id, 'ttl') } : {}) }));
-  return { blocks, sfx, styles, recipes, captions, titles };
+  // the combos' layers as data (their params stay in the catalog: the card says what each layer is and when it comes)
+  const combos = sorted.flatMap((p) => p.combos ?? []).map((c): GalleryCombo => {
+    const handle = handleOf(`combo:${c.id}`);
+    return { id: c.id, ...(handle ? { handle } : {}), label: c.label, doc: c.doc, frames: COMBO_FRAMES(c.id),
+      parts: c.parts.map((x) => ({ name: x.name, kind: x.kind, ...(x.type ? { type: x.type } : {}), ...(x.template ? { template: x.template } : {}), at: x.at, len: x.len, ...(x.layer ? { layer: x.layer } : {}) })) };
+  });
+  return { blocks, sfx, styles, recipes, captions, titles, combos };
 }
 
 /** composes a preview in a child process (score-child.ts), so the server keeps answering meanwhile; a refused one throws its reason */

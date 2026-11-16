@@ -146,3 +146,24 @@ test('caption templates: every one in the index with what it sets and its golden
     expect((await fetch(`${base}/api/gallery/thumb/tpl-neon-fill-t1.50.png`)).status).toBe(200);
   } finally { await app.close(); }
 });
+
+test('combos: each with its handle, its layers and the three golden pictures of its sample in time order, which the thumbnail route serves', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  try {
+    const g = await (await fetch(`${base}/api/gallery`)).json();
+    expect(g.combos.map((c: any) => [c.id, c.handle])).toEqual(expect.arrayContaining([['impact', 'CMB-01'], ['glitchcut', 'CMB-02']]));
+    const impact = g.combos.find((c: any) => c.id === 'impact');
+    expect(impact).toMatchObject({ label: '重擊', frames: ['/api/gallery/thumb/combo-impact-t0.08.png', '/api/gallery/thumb/combo-impact-t0.30.png', '/api/gallery/thumb/combo-impact-t0.60.png'] });
+    expect(impact.doc.length).toBeGreaterThan(5);
+    expect(impact.parts).toEqual([
+      { name: 'lines', kind: 'effect', type: 'common.speedlines', template: 'burst-center', at: 0, len: 0.8 },
+      { name: 'flash', kind: 'effect', type: 'core.flash', template: 'bloom-pop', at: 0, len: 0.5, layer: 'top' },
+      { name: 'hit', kind: 'sfx', type: 'common.impact', at: 0, len: 1.4 },
+      { name: 'shake', kind: 'shake', at: 0, len: 0.4 },
+    ]);
+    for (const c of g.combos) {
+      expect(c.frames, c.id).toHaveLength(3);
+      for (const f of c.frames) expect((await fetch(base + f)).status, f).toBe(200);
+    }
+  } finally { await app.close(); }
+});
