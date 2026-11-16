@@ -1,7 +1,7 @@
 import { OLD_BLOCKS, type Plugin } from '@tellcut/engine';
 import { readFileSync } from 'node:fs';
 import { BLOCK_CATEGORY, handleOf } from '@tellcut/protocol';
-import { findBlocks, formatCatalog, formatFind, formatIndex, formatLookup, formatType } from './catalog.ts';
+import { findBlocks, findCombos, formatCatalog, formatFind, formatIndex, formatLookup, formatType } from './catalog.ts';
 import { GUIDE_FILE, withIndex } from './blocks-index.ts';
 import { plugins } from '@tellcut/plugins';
 
@@ -138,4 +138,19 @@ test('block templates: the index lists each as <block>/<id> with its English doc
   expect(t).toMatch(/^ {4}bokeh-night（夜景光斑）— .*：\{"look":"bokeh"/m);
   expect(formatType(plugins, 'common.stamp')).not.toContain('範本（');
   expect(findBlocks(plugins, 'bokeh-night').map((x) => x.type)).toEqual(['common.leak']);
+});
+
+test('combos: the catalog lists them by handle, a handle or combo:<id> shows the layers, search and the index find them', async () => {
+  expect(formatCatalog(plugins)).toMatch(/^組合（[^\n]*c\.combo\('<id>', \{ at \}\)[^\n]*\n {2}CMB-01 +impact +重擊 — A punch/m);
+  const one = await formatLookup(plugins, 'cmb1');
+  expect(one).toMatch(/^CMB-01 impact 重擊（組合）— /);
+  expect(one).toMatch(/^ {4}flash（畫面：core\.flash，範本 bloom-pop，layer top）0 秒起 0\.5 秒：\{"y":0\.4\}$/m);
+  expect(one).toMatch(/^ {4}shake（鏡頭晃動：28 px）0 秒起 0\.4 秒$/m);
+  expect(await formatLookup(plugins, 'combo:glitchcut')).toMatch(/^CMB-02 glitchcut[\s\S]*scan（畫面：common\.glitch，範本 signal-loss）-0\.1 秒起/);
+  await expect(formatLookup(plugins, 'combo:nope')).rejects.toThrow(/沒有組合 nope/);
+  expect(findCombos(plugins, '故障').map((c) => c.id)).toEqual(['glitchcut']);
+  expect(findCombos(plugins, 'speedlines').map((c) => c.id)).toEqual(['impact']);
+  expect(findCombos(plugins, '組合').length).toBe(plugins.flatMap((p) => p.combos ?? []).length);
+  expect(formatFind(plugins, 'glitchcut')).toMatch(/^組合 1 個符合[^\n]*\n {2}CMB-02 +glitchcut/);
+  expect(formatIndex(plugins)).toMatch(/^- Combos \(CMB\) \(`c\.combo\('<id>', \{ at \}\)`[^\n]*\): 01 `impact`, 02 `glitchcut`$/m);
 });

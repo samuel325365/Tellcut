@@ -2,8 +2,8 @@
 // read from the plugins themselves so it never goes stale.  npm run tellcut -- catalog [type] | --find <words>
 // guides/workflow.md carries only an index of the shared blocks (formatIndex, kept there by npm run blocks:index); the
 // details are looked up here. Every line starts with the block's handle (MRK-03, spec 2026-10-22-block-handles), and a handle
-// can be looked up like a type: `catalog MRK-03` (music styles, recipes and clip effects too).
-import { OLD_BLOCKS, templateName, type BlockTemplate, type ParamDef, type Plugin } from '@tellcut/engine';
+// can be looked up like a type: `catalog MRK-03` (music styles, recipes, clip effects and combos too).
+import { OLD_BLOCKS, templateName, type BlockTemplate, type Combo, type ComboPart, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
@@ -39,6 +39,28 @@ const mineOf = (plugins: Plugin[]) => { MINE = new Set(plugins.filter((p) => p.i
 const handleCol = (id: string) => (MINE.has(id) ? '我的' : handleOf(id) ?? '').padEnd(10);
 const lineOf = (w: number) => (t: Entry) => `  ${handleCol(t.type)}  ${t.type.padEnd(w)}  ${t.label}${t.doc ? ` — ${t.doc}` : ''}`;
 const numberOf = (h: string) => /\d+$/.exec(h)![0];
+
+/** the combos of the plugins (engine combos.ts) */
+const combosOf = (plugins: Plugin[]): Combo[] => plugins.flatMap((p) => p.combos ?? []);
+const comboLine = (c: Combo) => `  ${(handleOf(`combo:${c.id}`) ?? '').padEnd(10)}  ${c.id.padEnd(10)}  ${c.label} — ${c.doc}`;
+/** a combo's words for --find: its id, names, doc and its layers' names, types and templates (and combo / 組合: those words list them all) */
+const comboText = (c: Combo) => ['combo', '組合', c.id, c.label, c.doc, ...c.parts.flatMap((p) => [p.name, p.type ?? '', p.template ?? ''])].join(' ').toLowerCase();
+/** the combos matching every word of `query` (a handle: the combo it names) */
+export function findCombos(plugins: Plugin[], query: string): Combo[] {
+  const h = normalizeHandle(query);
+  if (h) return combosOf(plugins).filter((c) => handleOf(`combo:${c.id}`) === h);
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return words.length ? combosOf(plugins).filter((c) => words.every((w) => comboText(c).includes(w))) : [];
+}
+const PART_KIND: Record<ComboPart['kind'], string> = { effect: '畫面', sfx: '音效', shake: '鏡頭晃動' };
+/** `catalog CMB-01` / `catalog combo:<id>`: the combo and each of its layers, its times from the moment */
+export function formatCombo(c: Combo): string {
+  const h = handleOf(`combo:${c.id}`), what = (p: ComboPart) => [p.type, p.template && `範本 ${p.template}`, p.layer && `layer ${p.layer}`, p.gain !== undefined && `${p.gain} dB`,
+    p.px !== undefined && `${p.px} px`, p.hz !== undefined && `${p.hz} Hz`].filter(Boolean).join('，');
+  return [`${h ? `${h} ` : ''}${c.id} ${c.label}（組合）— ${c.doc}`, '  各層（秒數相對那一刻，負的是提前開始）：',
+    ...c.parts.map((p) => `    ${p.name}（${PART_KIND[p.kind]}${what(p) ? `：${what(p)}` : ''}）${p.at} 秒起 ${p.len} 秒${p.params ? `：${JSON.stringify(p.params)}` : ''}`),
+    `  用法：c.combo('${c.id}', { at })；sound: false 不要音效；parts: { ${c.parts[0].name}: false } 拿掉一層，parts: { ${c.parts[0].name}: { …參數 } } 改那層的參數；全部掛在那一刻主軌正在播的片段上`].join('\n');
+}
 
 /** items (or sounds) in catalog order: by category (the order of `names`, BLOCK_CATEGORY by default) when they have one, else as
  *  registered; the ones the agent uses only when asked for (onRequest) last, in a group of their own */
@@ -76,6 +98,8 @@ export function formatCatalog(plugins: Plugin[]): string {
   if (grades.length) out.push('調色（畫面項目的 grade 欄位）：', ...grades, '');
   // not blocks but things a clip itself does (toolkit phase 5): said here so they are found where blocks are looked for
   out.push('片段本身的效果（不是積木，在 cut.ts 裡呼叫）：', ...CLIP_FX.map((c) => `  ${handleCol(c.key)}  ${c.label}：${c.code}`), '');
+  const combos = combosOf(ordered);
+  if (combos.length) out.push("組合（一個重點時刻的畫面、音效、鏡頭晃動一次放好：c.combo('<id>', { at })；看它有哪幾層：catalog <代號>）：", ...combos.map(comboLine), '');
   out.push(`字幕範本（${TEMPLATES.length} 個，common.caption 的 template）：npm run tellcut -- catalog CAP`, `標題範本（${TITLE_TEMPLATES.length} 個，common.heading 的 template）：npm run tellcut -- catalog TTL`, '');
   out.push('找積木：npm run tellcut -- catalog --find <關鍵字>；看某個積木的參數：npm run tellcut -- catalog <類型或代號>；cut.ts 的方法：npm run tellcut -- cut-api');
   return out.join('\n');
@@ -96,12 +120,13 @@ export function formatFind(plugins: Plugin[], query: string): string {
   mineOf(plugins);
   const mineFirst = [...plugins].sort((a, b) => Number(b.id === 'mine') - Number(a.id === 'mine'));
   const hits = findBlocks(mineFirst, query), caps = normalizeHandle(query) ? [] : findTemplates(query), ttls = normalizeHandle(query) ? [] : findTemplates(query, 'title');
+  const combos = findCombos(plugins, query), comboLines = combos.length ? [`組合 ${combos.length} 個符合（c.combo('<id>', { at })；看各層：catalog <代號>）：`, ...combos.map(comboLine)] : [];
   // caption templates fold into one line: there are many, and they are all the one block
   const capLine = [...(caps.length ? [`字幕範本 ${caps.length} 個符合（${caps.slice(0, 3).map((t) => t.id).join('、')}${caps.length > 3 ? '…' : ''}）：npm run tellcut -- catalog CAP --find ${query}`] : []),
     ...(ttls.length ? [`標題範本 ${ttls.length} 個符合（${ttls.slice(0, 3).map((t) => t.id).join('、')}${ttls.length > 3 ? '…' : ''}）：npm run tellcut -- catalog TTL --find ${query}`] : [])];
-  if (!hits.length && capLine.length) return capLine.join('\n');
+  if (!hits.length && (capLine.length || comboLines.length)) return [...comboLines, ...capLine].join('\n');
   if (!hits.length) return `找不到符合「${query}」的積木；換個說法（例如「收據」「路線」「手寫」「計分」），或看整份：npm run tellcut -- catalog`;
-  return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), ...capLine, '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
+  return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), ...comboLines, ...capLine, '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
 }
 
 /** one category of the block index: its name, its handle prefix in brackets, then each block as its handle's number and short name,
@@ -130,6 +155,9 @@ export function formatIndex(plugins: Plugin[]): string {
   const tpls = items.flatMap((t) => templatesOf(t).map((x) => ({ type: t.type, x })));
   if (tpls.length) lines.push("- Block templates (`c.effect(type, { template: '<id>' })`: the template's params go in first, the script's own over them):",
     ...tpls.map(({ type, x }) => `  - \`${templateName(type, x.id)}\`: ${BLOCKS_EN[`${type}#${x.id}`]?.doc ?? x.doc}`));
+  const combos = combosOf(plugins);
+  if (combos.length) lines.push("- Combos (CMB) (`c.combo('<id>', { at })`: a key moment's picture layers, sounds and the clip's shake placed at once; `catalog CMB-01` lists its layers): "
+    + combos.map((c) => { const h = handleOf(`combo:${c.id}`); return `${h ? `${numberOf(h)} ` : ''}\`${c.id}\``; }).join(', '));
   if (sfx.length) lines.push(`- Sound effects (\`c.sfx\`; a sound file the project made itself goes in with \`c.sfxFile\`):`, ...Object.entries(SFX_CATEGORY_EN)
     .map(([k, cat]) => ({ cat, p: SFX_PREFIX[k as keyof typeof SFX_PREFIX], xs: sfx.filter((s) => s.category === k) }))
     .filter((c) => c.xs.length).map((c) => `  - ${indexLine(c.cat, c.xs, c.p)}`));
@@ -188,10 +216,14 @@ export function formatType(plugins: Plugin[], type: string): string {
 /** `catalog <類型或代號>`: a type as formatType shows it; a handle (any case, mrk-3 too) as what it names — a block's or sound
  *  effect's params, a music style, a recipe's content format, a clip effect's cut.ts call */
 export async function formatLookup(plugins: Plugin[], query: string): Promise<string> {
-  const h = normalizeHandle(query);
+  const h = normalizeHandle(query), id = h ? HANDLES[h] : query;
+  if (h && !id) throw new Error(`沒有 ${h} 這個代號；找積木：npm run tellcut -- catalog --find <關鍵字>`);
+  if (id.startsWith('combo:')) {
+    const c = combosOf(plugins).find((x) => x.id === id.slice(6));
+    if (!c) throw new Error(`${h ? `${h} 是` : '沒有'}組合 ${id.slice(6)}${h ? '，但找不到它' : ''}；全部的組合：npm run tellcut -- catalog --find combo`);
+    return formatCombo(c);
+  }
   if (!h) return formatType(plugins, query);
-  const id = HANDLES[h];
-  if (!id) throw new Error(`沒有 ${h} 這個代號；找積木：npm run tellcut -- catalog --find <關鍵字>`);
   if (id.startsWith('recipe:')) return `${h} ${describeRecipe(id.slice(7))}`;
   if (id.startsWith('caption:')) {
     const t = TEMPLATES.find((x) => x.id === id.slice(8));

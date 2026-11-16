@@ -29,6 +29,7 @@ Most of this holds for a film of any length. The lines marked **Short-form** are
 - Whether to use a library block or write a new one is decided by **whether the result looks good and suits this film**, not by "the library has something that will just about do": a checkered sticker look does not suit a deep-sea mystery, and a small badge cannot carry a film's through-line.
 - The style (the theme's colours, fonts, background) suits the subject. From the viewer's seat: anywhere that reads at a glance as "this is a template" is where to write something new or adjust.
 - A recipe is only a skeleton: a film that is just a recipe with nothing added is usually a poor film.
+- **Key moments** (a hit, a punchline, a sudden turn) get a combo (`c.combo`: picture, sound and shake together) rather than a lone flash or sound, and the same combo at most twice in a film.
 
 ## Technical floor
 
