@@ -95,7 +95,10 @@ export const leak: ItemType<P, S> = {
   // named sets of these params (engine templates.ts); their golden samples are leak-tpl-<id>
   templates: [
     { id: 'prism-sweep', label: '彩虹光帶橫掃', doc: '音樂段落、青春回憶、夢幻的轉場：一道寬寬的彩虹光帶從左邊整片掃過去，比平常更亮更大', params: { look: 'prism', from: 'l', travel: 0.9, peak: 0.7, size: 0.8 } },
-    { id: 'bokeh-night', label: '夜景光斑', doc: '夜景、夜市、節慶、溫馨的片尾：一大片失焦光斑停在畫面上慢慢一明一暗，不掃過', params: { look: 'bokeh', travel: 0, x: 0.5, y: 0.35, size: 1, peak: 0.65, seed: 11 } },
+    { id: 'bokeh-night', label: '夜景光斑', doc: '夜景、夜市、節慶、溫馨的片尾：一大片失焦光斑停在畫面上慢慢一明一暗，不掃過', params: { look: 'bokeh', travel: 0, x: 0.5, y: 0.35, size: 1, peak: 0.65, seed: 14 } },
+    { id: 'flare-top', label: '頂上的鏡頭光條', doc: '電影感的開場、逆光鏡頭、科幻片頭：一條很亮的橫向光條停在畫面上方偏右，光圈沿著斜線排到畫面另一邊', params: { look: 'flare', travel: 0, x: 0.7, y: 0.12, peak: 0.8 } },
+    { id: 'warm-corner', label: '角落暖光', doc: '回憶、家庭、安靜的訪談：一團淡淡的暖光停在左上角，只微微挪一點，整段都在', params: { from: 'tl', travel: 0.2, peak: 0.4, size: 0.9 } },
+    { id: 'sweep-fast', label: '快速掃光', doc: '兩個鏡頭之間的轉場：一團小而亮的暖光從左邊一路掃到右邊出去', params: { from: 'l', travel: 1.5, size: 0.4, peak: 0.8 } },
   ],
   build(ctx) {
     const el = h('div', null, null, ctx.root);

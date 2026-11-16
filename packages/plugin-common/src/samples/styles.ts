@@ -220,5 +220,8 @@ export const STYLES: Sample[] = [
   tpl(glitch, 'soft-tear', { at: [0.4, 1.2], bg: GLITCH_BG }),
   tpl(leak, 'prism-sweep', { len: 3, at: [0.8, 1.5], bg: '#4d5866' }),
   tpl(leak, 'bokeh-night', { len: 3, at: [1.5], bg: '#4d5866' }),
+  tpl(leak, 'flare-top', { len: 3, at: [1.5], bg: '#4d5866' }),
+  tpl(leak, 'warm-corner', { len: 3, at: [1.5], bg: '#4d5866' }),
+  tpl(leak, 'sweep-fast', { len: 3, at: [0.8, 1.5], bg: '#4d5866' }),
   tpl(film, 'super8-home', { at: [0.5], bg: '#7a8a6a' }),
 ];

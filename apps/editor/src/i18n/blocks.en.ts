@@ -373,5 +373,8 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.glitch#soft-tear': {"label":"Soft tear","doc":"A suspenseful build-up, quiet interference: now and then two or three thin colourless inverted bands flash by without stealing the scene."},
   'common.leak#prism-sweep': {"label":"Rainbow sweep","doc":"Music passages, teenage memories, dreamy transitions: a wide rainbow band sweeps the whole frame from the left, brighter and bigger than usual."},
   'common.leak#bokeh-night': {"label":"Night bokeh","doc":"Night views, night markets, festivals, a warm ending: a field of out-of-focus discs stays on the frame, slowly brightening and dimming, without sweeping."},
+  'common.leak#flare-top': {"label":"Top flare","doc":"A cinematic opening, a backlit shot, a sci-fi title: a very bright sideways flare streak held near the top right, its ghost discs lined up to the far side of the frame."},
+  'common.leak#warm-corner': {"label":"Warm corner","doc":"Memories, family, a quiet interview: a soft warm glow resting in the top-left corner, barely moving, there for the whole item."},
+  'common.leak#sweep-fast': {"label":"Fast sweep","doc":"A transition between two shots: a small, bright warm glow sweeping from the left edge all the way out the right."},
   'common.film#super8-home': {"label":"Old home movie","doc":"Childhood, a past generation's home videos, a retro wedding: projected Super 8 home movie film, warmer, grainier and with a heavier vignette than look super8 alone."},
 };
