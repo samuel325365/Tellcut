@@ -27,6 +27,7 @@ export * from './logo.ts';
 export * from './requests.ts';
 export * from './fx.ts';
 export * from './golden.ts';
+export * from './likeness.ts';
 export * from './burned.ts';
 export * from './faces.ts';
 export * from './providers/index.ts';
