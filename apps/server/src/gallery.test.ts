@@ -31,7 +31,9 @@ test('the gallery lists every block (core and common first), the sounds, the mus
     expect(g.recipes[0].example.scenes.length).toBeGreaterThan(0);
     // a block's templates, each with the golden picture of its sample <block>-tpl-<id>
     const leak = g.blocks.find((b: any) => b.type === 'common.leak');
-    expect(leak.templates.map((x: any) => [x.id, x.thumb])).toEqual([['prism-sweep', '/api/gallery/thumb/leak-tpl-prism-sweep-t1.50.png'], ['bokeh-night', '/api/gallery/thumb/leak-tpl-bokeh-night-t1.50.png']]);
+    expect(leak.templates.slice(0, 2).map((x: any) => [x.id, x.thumb])).toEqual([['prism-sweep', '/api/gallery/thumb/leak-tpl-prism-sweep-t1.50.png'], ['bokeh-night', '/api/gallery/thumb/leak-tpl-bokeh-night-t1.50.png']]);
+    for (const x of leak.templates) expect(x.thumb, x.id).toMatch(new RegExp(`^/api/gallery/thumb/leak-tpl-${x.id}-t\\d+\\.\\d\\d\\.png$`));
+    expect(leak.templates.length).toBeGreaterThan(2);
     expect(leak.templates[0]).toMatchObject({ label: '彩虹光帶橫掃', params: { look: 'prism' } });
     expect(leak.templates[0].doc.length).toBeGreaterThan(5);
     expect(slam.templates).toBeUndefined();
