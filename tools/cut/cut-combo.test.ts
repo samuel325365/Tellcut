@@ -16,7 +16,7 @@ test('c.combo places every layer at its offset, templates applied, all on the cl
   expect([of(ids.lines).type, of(ids.lines).track, of(ids.lines).start, of(ids.lines).end, of(ids.lines).parent]).toEqual(['common.speedlines', 'text', 1, 1.8, b]);
   expect(of(ids.lines).params).toEqual(applyTemplate(speedlines, 'burst-center'));
   expect([of(ids.flash).type, of(ids.flash).track, of(ids.flash).parent]).toEqual(['core.flash', 'top', b]);
-  expect(of(ids.flash).params).toEqual(applyTemplate(flash, 'bloom-pop', { y: 0.4 }));
+  expect(of(ids.flash).params).toEqual(applyTemplate(flash, 'bloom-pop', { y: 0.4, peak: 0.65, fall: 0.35, power: 3 }));
   expect([of(ids.hit).type, of(ids.hit).track, of(ids.hit).gain, of(ids.hit).start, of(ids.hit).end]).toEqual(['common.impact', 'sfx', -6, 1, 2.4]);
   expect(items(c, 'v1').find((i) => i.id === b).shake).toEqual([{ at: 1, dur: 0.4, px: 28, hz: 18 }]);
   expect(items(c, 'v1').find((i) => i.id === a).shake).toBeUndefined();
