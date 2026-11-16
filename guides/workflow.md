@@ -103,6 +103,16 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
 - Grades and textures (over the video) (LOK): 04 `glitch`, 05 `film`, 06 `tone`, 09 `leak`, 10 `grade`
 - Transitions, suspense and endings (MOM): 01 `mystery`, 02 `outro`, 03 `rolldoor`, 04 `wipe`, 09 `wordbands`
 - Block templates (`c.effect(type, { template: '<id>' })`: the template's params go in first, the script's own over them):
+  - `backdrop/halftone-pop`: Pop art, comics, a sporty feel: denser, stronger halftone dots than the halftone pattern alone, largest at the lower left and shrinking toward the upper right.
+  - `backdrop/sunburst-show`: Prize draws, announcements, a variety-show feel: wide two-color rays from the middle, slowly turning.
+  - `backdrop/waves-summer`: Beaches, summer, easygoing passages: four layers of larger waves stacked from the bottom, each sliding sideways at its own pace.
+  - `backdrop/spot-quote`: Quotes, interviews, podcasts: a stronger soft light from the top edge, darkening below and in the corners.
+  - `backdrop/dots-party`: Cute, celebrations, children: larger, stronger dots slowly sliding, with small twinkling bits scattered along both sides.
+  - `shader/neuro-tech`: Tech, AI, data: a glowing web of thin lines on a dark ground, flowing more slowly than look neuro alone.
+  - `shader/cells-glass`: Handmade, stained glass, art: more irregular colored cells than look cells alone, slowly squirming.
+  - `shader/dither-retro`: Retro games, electronic music: larger dither dots drawing broad flowing shapes, like an old one-color computer screen.
+  - `shader/smoke-slow`: Brands, calm passages: a quieter smoke ring than look smoke alone, slowly drifting.
+  - `shader/rays-stage`: Stages, announcements, award ceremonies: stronger rays than look rays alone, shining down from above.
   - `speedlines/manga-focus`: Surprise, singling out a person or a thing: dense concentration lines closing in from every edge, leaving a large clear ellipse in the middle for the subject.
   - `speedlines/rush-right`: Running, driving, moving fast: parallel speed streaks across the whole frame flying to the right.
   - `speedlines/fall-down`: Falling, diving, jumping off: long straight streaks across the whole frame flying downward.
@@ -122,8 +132,16 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `film/super8-home`: Childhood, a past generation's home videos, a retro wedding: projected Super 8 home movie film, warmer, grainier and with a heavier vignette than look super8 alone.
   - `film/vhs-tape`: Nineties home tapes, a retro vlog, a memory after a tape change: denser scan lines than look vhs alone, warm, and a tracking noise band sliding down soon after the start.
   - `film/print-zine`: Magazine, poster or pop-art passages: the whole picture turned into somewhat coarser print dots, with no vignette.
-  - `film/cinema-scope`: Cinematic travel films and title sequences: 2.39:1 black bars top and bottom, light grain and a soft vignette.
+  - `film/cinema-scope`: For 16:9 films: cinematic travel films and title sequences, with 2.39:1 black bars top and bottom, light grain and a soft vignette (on a vertical frame the bars leave only a thin strip).
   - `film/heavy-grain`: Street photography, documentary, raw passages: very coarse, contrasty grain that changes only 12 times a second, like high-speed film stock.
+  - `rolldoor/shop-close`: The end of the film, the day's work done: a shutter over the whole frame comes slowly down from 0.2 s (down by 0.8 s later), then the "Closed today" sign is taped on.
+  - `rolldoor/shop-open`: An opening, a shop opening: the shutter starts closed with an "open for business" sign on it (in Chinese) and rolls up from 0.2 s to show the picture.
+  - `wipe/iris-close`: The end of a section, a cartoonish change of scene: the picture shrinks into a circle closing to a point in the middle, then opens again from it, like an old cartoon signing off.
+  - `wipe/blinds-turn`: Business, presentation-like scene changes: 12 narrower horizontal slats turn shut one after another from top to bottom, then turn on round to open.
+  - `wipe/ink-spread`: Culture, ink painting, tea and books: blots of ink spread across the frame and merge, then draw back as if soaked up.
+  - `wipe/stripes-pop`: Trends, outfits, dopamine colors: slanted stripes in four colors sweep in one after another until the last covers the frame, then sweep out.
+  - `wipe/tiles-collage`: Collage, journals, photo walls turning a page: the frame cut into 6 × 10 small tiles that cover it one by one, then flip open one by one.
+  - `wipe/band-steep`: Sports, breaking news: a steeply slanted color band sweeping across from right to left.
   - `leak/prism-sweep`: Music passages, teenage memories, dreamy transitions: a wide rainbow band sweeps the whole frame from the left, brighter and bigger than usual.
   - `leak/bokeh-night`: Night views, night markets, festivals, a warm ending: a field of out-of-focus discs stays on the frame, slowly brightening and dimming, without sweeping.
   - `leak/flare-top`: A cinematic opening, a backlit shot, a sci-fi title: a very bright sideways flare streak held near the top right, its ghost discs lined up to the far side of the frame.
