@@ -58,6 +58,9 @@ test('locked tracks are passed over: another of the kind, a new one (a scene tra
   const glow = trackOf(p, r.items.glow), hit = trackOf(p, r.items.hit);
   expect([glow.kind, p.tracks.indexOf(glow), hit.kind, hit.id === 'fx']).toEqual(['scene', 0, 'sfx', false]);
   expect([r.clip, r.shaken, item(p, r.items.lines).parent]).toEqual([undefined, [], undefined]);
+  // a scene track made under the video, and the shake still reaches the clip
+  const q = fixture(), s = placeCombo(q, { layers: LAYERS, at: 5, skip: new Set(['sc']) });
+  expect([q.tracks.indexOf(trackOf(q, s.items.glow)), s.shaken, item(q, 'c2').shake?.length]).toEqual([0, ['c2'], 1]);
 });
 
 test('existing overlay tracks are used: the plain layers on the first, the top layer on the topmost one above it', () => {

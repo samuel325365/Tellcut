@@ -62,9 +62,10 @@ export function placeCombo(p: Project, a: { layers: ComboPlacement[]; at: number
   for (const { l, start, end } of fit) {
     if (l.kind === 'shake') {
       if (!clip) continue;
-      // c.shake: every main-track clip the shake falls on, in its own seconds
+      // c.shake: every main-track clip the shake falls on, in its own seconds (the track found again: a scene track made under
+      // the video put copies of the picture tracks in place)
       const times = resolveTimes(p);
-      for (const c of (main!.items as VideoItem[])) {
+      for (const c of (mainTrack(p)!.items as VideoItem[])) {
         const r = times.get(c.id)!;
         if (!(r.start < end - TIME_EPS && r.end > start + TIME_EPS)) continue;
         updateItem(p, { id: c.id, patch: { shake: [...(c.shake ?? []), { at: r6(start - r.start), dur: r6(end - start), px: l.px ?? SHAKE.px, hz: l.hz ?? SHAKE.hz }] } });
