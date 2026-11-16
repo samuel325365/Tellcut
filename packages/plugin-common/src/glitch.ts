@@ -87,6 +87,13 @@ export const glitch: ItemType<P, S> = {
     { key: 'tint', label: '帶青／洋紅色（tear、block）', type: 'bool', default: true },
     { key: 'shift', label: '錯位量（畫面短邊 %；rgb 一閃時紅、藍各移開約一半，block 錯開 2.5–6 倍，scan 跳動約一半）', type: 'number', min: 0, max: 5, step: 0.1, default: 1 },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are glitch-tpl-<id>
+  templates: [
+    { id: 'signal-loss', label: '訊號不良', doc: '監視器畫面、訊號不良、切進回憶：細掃描線加一條往下滾的亮帶，比 look scan 更常、更大幅地整個畫面往旁邊一跳', params: { look: 'scan', density: 0.8, shift: 2 } },
+    { id: 'rgb-hit', label: '重拍色版分離', doc: '音樂重拍、驚嚇的一瞬間：每一陣都把紅、藍色版拉得很開，比 look rgb 更狠', params: { look: 'rgb', density: 1, shift: 2.5 } },
+    { id: 'data-break', label: '資料損毀', doc: '科技、駭客、系統出錯：很多塊高高的長方形往旁邊錯開、帶青／洋紅色', params: { look: 'block', bands: 10, density: 0.7, maxHeight: 0.09 } },
+    { id: 'soft-tear', label: '低調撕裂', doc: '懸疑的鋪陳、低調的干擾：偶爾閃過兩三條不帶顏色的反相細帶，不搶戲', params: { bands: 3, density: 0.3, tint: false } },
+  ],
   build(ctx) {
     const p = ctx.params, look: Look = p.look === 'scan' || p.look === 'rgb' || p.look === 'block' ? p.look : 'tear';
     if (look === 'tear') {

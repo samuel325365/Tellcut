@@ -2,6 +2,7 @@
 // the eight style pilots' kits, the derived frames, the 3D desk, the captions and titles (2026-11-05 on).
 import { applyTemplate, type ItemType } from '@tellcut/engine';
 import { TITLE_TEMPLATES } from '../heading/templates.ts';
+import { glitch } from '../glitch.ts';
 import { leak } from '../leak.ts';
 import { film } from '../film.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
@@ -212,6 +213,11 @@ export const STYLES: Sample[] = [
   { name: 'wide-wipe-ink', type: 'common.wipe', params: { mode: 'ink' }, len: 1, at: [0.3], wide: true, bg: '#2a6b8f' },
   // the block templates (2026-11-16, engine templates.ts): one sample per template, named <block>-tpl-<id> (templateSample), with
   // the template's params alone, at the moments of the block's first sample where it can (the admission test compares them)
+  // glitch: over the looks' stripes, at a burst (and a second one; tear and scan at two of their own)
+  tpl(glitch, 'signal-loss', { at: [0.3, 1.87], bg: GLITCH_BG }),
+  tpl(glitch, 'rgb-hit', { at: [0.3, 1.1], bg: GLITCH_BG }),
+  tpl(glitch, 'data-break', { at: [0.3, 2.33], bg: GLITCH_BG }),
+  tpl(glitch, 'soft-tear', { at: [0.4, 1.2], bg: GLITCH_BG }),
   tpl(leak, 'prism-sweep', { len: 3, at: [0.8, 1.5], bg: '#4d5866' }),
   tpl(leak, 'bokeh-night', { len: 3, at: [1.5], bg: '#4d5866' }),
   tpl(film, 'super8-home', { at: [0.5], bg: '#7a8a6a' }),
