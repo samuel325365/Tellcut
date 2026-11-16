@@ -401,4 +401,9 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.wipe#band-steep': {"label":"急角度の帯","doc":"スポーツ、ニュース速報の場面転換に：とても斜めの色帯が右から左へ掃く。"},
   'common.rolldoor#shop-close': {"label":"閉店","doc":"動画の終わり、今日の仕事納めに：画面全体のシャッターが 0.2 秒からゆっくり下り（0.8 秒で下まで）、「本日閉店」の札が貼られる。"},
   'common.rolldoor#shop-open': {"label":"開店","doc":"オープニング、お店の開店に：最初はシャッターが閉まって「營業中」（営業中）の札が貼られ、0.2 秒から上へ巻き上がって画面が見える。"},
+  'common.backdrop#halftone-pop': {"label":"ポップな網点","doc":"ポップアート、マンガ、スポーツ感の背景に：halftone だけより細かく濃い網点。左下が最大で右上へ小さくなる。"},
+  'common.backdrop#sunburst-show': {"label":"バラエティの放射","doc":"抽選、発表、バラエティ番組風の背景に：中心から放射する幅広の 2 色の光線がゆっくり回る。"},
+  'common.backdrop#waves-summer': {"label":"夏の波","doc":"海辺、夏、ゆったりした段落の背景に：大きめの 4 層の波の帯が下から重なり、それぞれの速さで横へ流れる。"},
+  'common.backdrop#spot-quote': {"label":"名言スポット","doc":"名言、インタビュー、ポッドキャストの背景に：上端から濃いめのやわらかい光が差し、下と四隅が暗くなる。"},
+  'common.backdrop#dots-party': {"label":"パーティードット","doc":"かわいい、お祝い、子ども向けの背景に：大きめで濃い水玉がゆっくり流れ、両側に小さな飾りがきらめく。"},
 };

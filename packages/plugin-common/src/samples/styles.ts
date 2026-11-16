@@ -10,6 +10,7 @@ import { sparkle } from '../sparkle.ts';
 import { countdown } from '../countdown.ts';
 import { wipe } from '../wipe.ts';
 import { rolldoor } from '../rolldoor.ts';
+import { backdrop } from '../backdrop.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -261,4 +262,10 @@ export const STYLES: Sample[] = [
   // rolldoor: over the default's backdrop, the door on its way, and down with its sign (or closed with it before rolling up)
   tpl(rolldoor, 'shop-close', { at: [0.5, 1.5], bg: '#3d4a57' }),
   tpl(rolldoor, 'shop-open', { at: [0.1, 0.4], bg: '#3d4a57' }),
+  // backdrop: the still patterns once, the moving ones at two moments
+  tpl(backdrop, 'halftone-pop', { at: [0.5] }),
+  tpl(backdrop, 'sunburst-show', { at: [0.5, 2.5] }),
+  tpl(backdrop, 'waves-summer', { at: [0.5, 2.5] }),
+  tpl(backdrop, 'spot-quote', { at: [0.5] }),
+  tpl(backdrop, 'dots-party', { at: [0.5, 2.5] }),
 ];

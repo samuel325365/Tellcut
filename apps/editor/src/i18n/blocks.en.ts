@@ -401,4 +401,9 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.wipe#band-steep': {"label":"Steep band","doc":"Sports, breaking news: a steeply slanted color band sweeping across from right to left."},
   'common.rolldoor#shop-close': {"label":"Closing time","doc":"The end of the film, the day's work done: a shutter over the whole frame comes slowly down from 0.2 s (down by 0.8 s later), then the \"Closed today\" sign is taped on."},
   'common.rolldoor#shop-open': {"label":"Opening time","doc":"An opening, a shop opening: the shutter starts closed with an \"open for business\" sign on it (in Chinese) and rolls up from 0.2 s to show the picture."},
+  'common.backdrop#halftone-pop': {"label":"Pop halftone","doc":"Pop art, comics, a sporty feel: denser, stronger halftone dots than the halftone pattern alone, largest at the lower left and shrinking toward the upper right."},
+  'common.backdrop#sunburst-show': {"label":"Show sunburst","doc":"Prize draws, announcements, a variety-show feel: wide two-color rays from the middle, slowly turning."},
+  'common.backdrop#waves-summer': {"label":"Summer waves","doc":"Beaches, summer, easygoing passages: four layers of larger waves stacked from the bottom, each sliding sideways at its own pace."},
+  'common.backdrop#spot-quote': {"label":"Quote spotlight","doc":"Quotes, interviews, podcasts: a stronger soft light from the top edge, darkening below and in the corners."},
+  'common.backdrop#dots-party': {"label":"Party dots","doc":"Cute, celebrations, children: larger, stronger dots slowly sliding, with small twinkling bits scattered along both sides."},
 };
