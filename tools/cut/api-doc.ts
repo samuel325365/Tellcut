@@ -34,6 +34,7 @@ export const CUT_API: Array<[name: string, signature: string, what: string]> = [
   ['filmTime', "c.filmTime(clipId | [id...], 素材秒 | '分:秒') → 秒", '素材的這一刻在片中是第幾秒（對 tighten 切開的那組：落在剪掉的停頓裡就給下一段的開頭）；不在片段裡會報錯。用來把貼圖、音效對到某句話'],
   ['audio', "c.audio(src, { from, len, at?, gain?, fadeIn?, fadeOut? }) → id", 'J-cut／L-cut：只放素材的聲音（不帶畫面），在影片 at 秒（預設游標；游標不動）；下一個鏡頭的聲音先進來，或一句話延續到下一個鏡頭；跟片段原音同一軌（會壓低配樂、消音照樣切）；同一句不要放兩次（那段 clip 給 sound: false 或晚一點開始）'],
   ['polaroid', 'c.polaroid({ at?, len?=2.5, caption?, sound?=true, ...參數 }) → id', '把 at 那一刻正在播的畫面定格成拍立得（common.polaroid，閃白、斜斜落下、下方手寫字），配快門聲；都掛在那段 clip 上'],
+  ['combo', "c.combo(id | 'CMB-xx', { at?, sound?=true, parts?: { 層名: false | {...參數} } }) → { 層名: id }", '一個重點時刻的組合（重擊、故障切換…；catalog 的「組合」列出全部，catalog CMB-01 看它有哪幾層）：畫面積木、音效、鏡頭晃動照各自的時間差一次放好，放完都是普通項目；sound: false 不要音效；parts 拿掉一層（false）或改那層的參數（音效改 gain、晃動改 px／hz）；全部掛在 at 那一刻主軌正在播的片段上，那時沒有片段就不放晃動（存檔時會說）；同一個組合一支片最多用兩次'],
   ['flatlayClip', 'c.flatlayClip(itemId, index, { gain? }) → id', "3D 桌面（common.flatlay）第 index 樣東西（從 0 數）的鏡頭放到主軌：從項目開始＋那樣東西的 at 到它離開桌面（有 exit 的話，出場結束時）或項目結束，帶原音（桌上的照片沒有聲音），裁切對齊照片面，鏡頭用 fly 飛進那張照片蓋滿畫面時無縫接手；那段時間主軌要空著，不然報錯說哪一段擋住；surface none（透明桌面）時片段會透出來，所以只放在照片蓋滿畫面的那段（fly 飛進那樣東西結束到拉回、它離開或項目結束），原音也只有那段"],
   ['wordTimes', 'c.wordTimes(clipId | [id...], 詞) → [[a,b]...]', '某個詞在片中的時間'],
   ['censorSpeech', 'c.censorSpeech(clipId | [id...], 詞, { sticker?=true, label?, gain?, follow?, who? }) → spans', '整套消音：切原音＋嗶聲＋貼紙（都掛在 clip 上）；sticker 給一個 emoji（如 "🤐"）就用它代替「消音」標籤；follow: true 讓貼紙跟著說話的人的嘴'],

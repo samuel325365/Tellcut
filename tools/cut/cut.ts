@@ -3,11 +3,11 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, allItems, applyTemplate, createRegistry, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, applyTemplate, comboSpan, createRegistry, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, projectRegistry, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
-import { idOfHandle, normalizeHandle } from '@tellcut/protocol';
+import { handleOf, idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
 import type { Who } from './follow.ts';
 import { parseContent, RECIPES } from './recipes/index.ts';
@@ -49,6 +49,8 @@ const hash = (s: string) => createHash('sha1').update(s).digest('hex');
 const SHARED = createRegistry(plugins);
 /** the shared backgrounds (common.*, kind 'scene'): c.effect puts them under the video. Legacy full-screen scenes (kyoto.*) are not backgrounds */
 const SCENE_TYPES = new Set(plugins.flatMap((p) => p.items ?? []).filter((t) => t?.kind === 'scene' && t.type.startsWith('common.')).map((t) => t!.type));
+/** the shared combos (engine combos.ts), by id: c.combo places one */
+const COMBOS = new Map(plugins.flatMap((p) => p.combos ?? []).map((c) => [c.id, c]));
 /** a gallery handle (MRK-03) where a type id belongs: handles are only for pointing, the project keeps type ids */
 function notAHandle(type: string, call: string) {
   if (!normalizeHandle(type)) return;
@@ -498,12 +500,50 @@ export class Cut {
    */
   polaroid(o: { at?: number; len?: number; sound?: boolean; [k: string]: unknown } = {}): string {
     const { at = this.cursor, len = 2.5, sound = true, ...params } = o, times = resolveTimes(this.p);
-    const clip = (this.p.tracks.find((t) => t.id === 'v1')?.items as VideoItem[] | undefined)?.find((c) => { const ct = times.get(c.id)!; return ct.start <= (at as number) + 1e-6 && ct.end > (at as number); });
+    const clip = this.clipAt(at as number);
     if (!clip) throw new Error(`polaroid：${at} 秒沒有片段可以定格`);
     const t = r6(clip.in + ((at as number) - times.get(clip.id)!.start) * clip.speed);
     const id = this.attach(this.effect('common.polaroid', { at: at as number, len: len as number, ...params, source: clip.source, t }), clip.id);
     if (sound) this.attach(this.sfx('common.shutter', { at: at as number, len: 0.2, gain: -6 }), clip.id);
     return id;
+  }
+  /** the main-track clip playing at film time `at` */
+  private clipAt(at: number): VideoItem | undefined {
+    const times = resolveTimes(this.p);
+    return (this.p.tracks.find((t) => t.id === 'v1')?.items as VideoItem[] | undefined)?.find((c) => { const ct = times.get(c.id)!; return ct.start <= at + 1e-6 && ct.end > at; });
+  }
+  /**
+   * A named moment, a combo (its id or handle: `catalog CMB-01`), at film time `at` (default: the cursor): its picture layers, sounds
+   * and the clip's shake, each at its offset from the moment, as ordinary items (project.json never names the combo). `sound: false`
+   * leaves the sounds out; `parts: { <layer>: false | { …params } }` leaves a layer out or sets its params (a sound's `gain`, the
+   * shake's `px` / `hz`). Every item rides on the main-track clip playing at `at`, as c.polaroid's do; with no clip there the shake
+   * is left out and save() says so. A layer that would start before 0 starts at 0. Returns { <layer name>: item id } (not the shake).
+   */
+  combo(id: string, o: { at?: number; sound?: boolean; parts?: Record<string, false | Record<string, unknown>> } = {}): Record<string, string> {
+    const by = idOfHandle(id);
+    if (by && !by.startsWith('combo:')) throw new Error(`c.combo('${id}')：${id} 是 ${by} 的代號，不是組合`);
+    const combo = COMBOS.get(by ? by.slice(6) : id);
+    if (!combo) throw new Error(`c.combo('${id}')：沒有這個組合；有：${[...COMBOS.values()].map((c) => `${c.id}（${handleOf(`combo:${c.id}`) ?? ''} ${c.label}）`).join('、')}`);
+    const { at = this.cursor, sound, parts } = o, call = `c.combo('${combo.id}')`;
+    num(at, `${call} 的 at`, { min: 0 });
+    let layers;
+    try { layers = expandCombo(combo, SHARED, { sound, parts }); } catch (e) { throw new Error(`${call}：${(e as Error).message}`); }
+    const clip = this.clipAt(at), out: Record<string, string> = {};
+    for (const p of layers) {
+      const span = comboSpan(p, at);
+      if (!span) continue;
+      const len = r6(span.end - span.start);
+      if (p.kind === 'shake') {
+        // a shake is the clip's own: with no clip at the moment there is nothing to shake
+        if (clip) this.shake(span.start, { dur: len, ...(p.px !== undefined ? { px: p.px } : {}), ...(p.hz !== undefined ? { hz: p.hz } : {}) });
+        else this.notes.push(`${call}：${at} 秒沒有主軌片段，鏡頭晃動那一層（${p.name}）沒有放（晃動是片段本身的效果）`);
+        continue;
+      }
+      const item = p.kind === 'sfx' ? this.sfx(p.type!, { at: span.start, len, ...(p.gain !== undefined ? { gain: p.gain } : {}), params: p.params })
+        : this.effect(p.type!, { at: span.start, len, ...(p.layer ? { layer: p.layer } : {}), params: p.params });
+      out[p.name] = clip ? this.attach(item, clip.id) : item;
+    }
+    return out;
   }
   /**
    * The main-track clip under a common.flatlay item for object `index` (from 0): that object's shot, from the item's start + the
