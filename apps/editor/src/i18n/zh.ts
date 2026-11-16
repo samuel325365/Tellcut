@@ -597,6 +597,7 @@ export const zh = {
   'err.cmd.ownSoundPastEnd': '片段自己的聲音會超過素材「{source}」的結尾（要用到 {need} 秒，素材只有 {have} 秒）',
   'err.cmd.noItem': '沒有項目「{id}」',
   'err.cmd.oneTrackMove': '一次只能把一個項目移到別的軌道',
+  'err.cmd.comboAtEnd': '播放頭太接近片尾：組合沒有一層放得下',
   'err.cmd.wrongTrackKind': '{kind}項目不能放到軌道「{track}」（{trackKind}）',
   'err.cmd.envelopeAudioOnly': '只有音樂與音訊片段有音量曲線',
   'err.cmd.fadesAudioOnly': '只有音樂與音訊片段可以淡入淡出',

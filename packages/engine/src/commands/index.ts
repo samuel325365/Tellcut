@@ -9,3 +9,4 @@ export * from './overlap.ts';
 export * from './layer.ts';
 export * from './magnetic.ts';
 export * from './clipboard.ts';
+export * from './combo.ts';

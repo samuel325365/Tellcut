@@ -598,6 +598,7 @@ export const en: Record<Key, string> = {
   'err.cmd.ownSoundPastEnd': 'The clip\'s own sound would run past the end of "{source}" (it needs {need} s, the source has {have} s)',
   'err.cmd.noItem': 'No item "{id}"',
   'err.cmd.oneTrackMove': 'Only one item can change track at a time',
+  'err.cmd.comboAtEnd': 'The playhead is too close to the end of the video: no layer of the combo fits',
   'err.cmd.wrongTrackKind': 'A {kind} item cannot go onto track "{track}" ({trackKind})',
   'err.cmd.envelopeAudioOnly': 'Only music and audio clips have a volume envelope',
   'err.cmd.fadesAudioOnly': 'Only music and audio clips have fades',

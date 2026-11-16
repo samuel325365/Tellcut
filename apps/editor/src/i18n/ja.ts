@@ -598,6 +598,7 @@ export const ja: Record<Key, string> = {
   'err.cmd.ownSoundPastEnd': 'クリップ自身の音が素材「{source}」の終わりを超えます（{need} 秒まで必要、素材は {have} 秒）',
   'err.cmd.noItem': '項目「{id}」がありません',
   'err.cmd.oneTrackMove': '別のトラックへ移せる項目は一度に一つだけです',
+  'err.cmd.comboAtEnd': '再生ヘッドが動画の終わりに近すぎて、コンボのどのレイヤーも入りません',
   'err.cmd.wrongTrackKind': '{kind}の項目はトラック「{track}」（{trackKind}）に置けません',
   'err.cmd.envelopeAudioOnly': '音量カーブがあるのは音楽とオーディオのクリップだけです',
   'err.cmd.fadesAudioOnly': 'フェードがあるのは音楽とオーディオのクリップだけです',
