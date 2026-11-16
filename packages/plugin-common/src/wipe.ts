@@ -77,6 +77,15 @@ export const wipe: ItemType<P, S> = {
     { key: 'back', label: '翻頁：紙背面的顏色', type: 'color', default: '#e7dfcf' },
     { key: 'rev', label: '翻頁：反著播（一頁蓋回來）', type: 'bool', default: false },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are wipe-tpl-<id>. curl needs a source, so no template uses it
+  templates: [
+    { id: 'iris-close', label: '圓形收光', doc: '段落結束、卡通感的換場：畫面縮成一個圓收到正中間一點，再從同一點打開成新畫面，像老卡通的收場', params: { mode: 'iris' } },
+    { id: 'blinds-turn', label: '百葉窗翻轉', doc: '商務、簡報感的換場景：12 片細一點的橫葉片從上到下一片接一片翻轉關上，再往同一個方向翻開', params: { mode: 'blinds', rows: 12 } },
+    { id: 'ink-spread', label: '墨水暈開', doc: '人文、水墨、茶和書的換場：幾團墨跡在畫面各處暈開、融成一片，再像被吸掉一樣退開', params: { mode: 'ink' } },
+    { id: 'stripes-pop', label: '多色斜條', doc: '潮流、穿搭、多巴胺配色的換段：四種顏色的斜條一條接一條掃過蓋滿畫面，再一條條掃出去', params: { mode: 'stripes' } },
+    { id: 'tiles-collage', label: '拼貼格子', doc: '拼貼、手帳、相片牆的換頁：畫面切成 6 × 10 的小格子，一塊塊蓋上，再一塊塊翻開', params: { mode: 'tiles', cols: 6, rows: 10 } },
+    { id: 'band-steep', label: '陡斜色帶', doc: '運動、新聞快報的換場：一條很斜的色帶從右往左掃過', params: { dir: 'left', slant: 1 } },
+  ],
   // curl: the old page's still, and whatever the block hosted on it (art) needs, looked up in the registry as common.card does
   media(item, project, types) {
     const p = item.params as Partial<P>;

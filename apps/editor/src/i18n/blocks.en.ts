@@ -393,4 +393,10 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.countdown#film-leader': {"label":"Film leader","doc":"A retro opening, an old-movie start: a large leader disc almost the frame's width, its hand sweeping a turn each second from 5 down to 0, the last step a number too."},
   'common.countdown#slant-go': {"label":"Slanted GO","doc":"Sports, the start of a challenge: very large slanted numbers with an arc on the right, ending in GO!"},
   'common.countdown#ring-corner': {"label":"Corner timer","doc":"Quizzes, timed tasks: a small ring timer held near the top, out of the way of the picture, the last step a number too."},
+  'common.wipe#iris-close': {"label":"Iris close","doc":"The end of a section, a cartoonish change of scene: the picture shrinks into a circle closing to a point in the middle, then opens again from it, like an old cartoon signing off."},
+  'common.wipe#blinds-turn': {"label":"Turning blinds","doc":"Business, presentation-like scene changes: 12 narrower horizontal slats turn shut one after another from top to bottom, then turn on round to open."},
+  'common.wipe#ink-spread': {"label":"Ink spread","doc":"Culture, ink painting, tea and books: blots of ink spread across the frame and merge, then draw back as if soaked up."},
+  'common.wipe#stripes-pop': {"label":"Color stripes","doc":"Trends, outfits, dopamine colors: slanted stripes in four colors sweep in one after another until the last covers the frame, then sweep out."},
+  'common.wipe#tiles-collage': {"label":"Collage tiles","doc":"Collage, journals, photo walls turning a page: the frame cut into 6 × 10 small tiles that cover it one by one, then flip open one by one."},
+  'common.wipe#band-steep': {"label":"Steep band","doc":"Sports, breaking news: a steeply slanted color band sweeping across from right to left."},
 };

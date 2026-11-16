@@ -8,6 +8,7 @@ import { film } from '../film.ts';
 import { speedlines } from '../speedlines.ts';
 import { sparkle } from '../sparkle.ts';
 import { countdown } from '../countdown.ts';
+import { wipe } from '../wipe.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -248,4 +249,12 @@ export const STYLES: Sample[] = [
   tpl(countdown, 'film-leader', { at: [0.3, 1.2], bg: '#4a6b7c' }),
   tpl(countdown, 'slant-go', { at: [0.4, 2.6], bg: '#4a6b7c' }),
   tpl(countdown, 'ring-corner', { at: [0.4, 2.6], bg: '#4a6b7c' }),
+  // wipe: over the modes' backdrop, a one-second wipe on its way in and out (its middle is all colour; the band and the iris earlier
+  // and later, while they still cross the frame)
+  tpl(wipe, 'iris-close', { len: 1, at: [0.2, 0.8], bg: '#2a6b8f' }),
+  tpl(wipe, 'blinds-turn', { len: 1, at: [0.3, 0.7], bg: '#2a6b8f' }),
+  tpl(wipe, 'ink-spread', { len: 1, at: [0.3, 0.7], bg: '#2a6b8f' }),
+  tpl(wipe, 'stripes-pop', { len: 1, at: [0.3, 0.7], bg: '#2a6b8f' }),
+  tpl(wipe, 'tiles-collage', { len: 1, at: [0.3, 0.7], bg: '#2a6b8f' }),
+  tpl(wipe, 'band-steep', { len: 1, at: [0.12, 0.88], bg: '#2a6b8f' }),
 ];
