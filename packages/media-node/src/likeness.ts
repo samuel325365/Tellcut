@@ -49,6 +49,10 @@ export function edgePrint(g: Float32Array): Float32Array {
   return Float32Array.from(e, (v) => (v - mean) / sd);
 }
 
+/** how far apart two golden pictures must be: a block template's from its block's default and from the block's other templates, a
+ *  combo's peak from every other combo's (calibrated in plugin-common/golden/templates.test.ts) */
+export const TEMPLATE_LIKENESS = 0.21;
+
 /** the picture's print: its grey square's edge map */
 export const printOf = (p: Rgba) => edgePrint(greySquare(p));
 

@@ -8,14 +8,17 @@ import { BASICS } from './samples/basics.ts';
 import { KITS } from './samples/kits.ts';
 import { GROUPS } from './samples/groups.ts';
 import { STYLES } from './samples/styles.ts';
+import { COMBO_SAMPLES } from './samples/combos.ts';
 import type { Sample } from './samples/fixtures.ts';
 
 export type { Sample } from './samples/fixtures.ts';
 export { CAP_EN, CAP_JA, HEAD_EN, HEAD_JA, templateSample } from './samples/fixtures.ts';
+export { comboSample } from './samples/combos.ts';
 
 export const samples: Sample[] = [
   ...BASICS,
   ...KITS,
   ...GROUPS,
   ...STYLES,
+  ...COMBO_SAMPLES,
 ];

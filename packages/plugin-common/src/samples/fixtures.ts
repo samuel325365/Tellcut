@@ -3,7 +3,9 @@
 import { TEMPLATES } from '../caption/templates.ts';
 
 export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean; square?: boolean;
-  sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }> }
+  sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }>;
+  /** a combo's sample (samples/combos.ts): the combo's id, and its picture layers drawn together (`type` is then combo:<id>, not a block) */
+  combo?: string; items?: Array<{ type: string; params?: Record<string, unknown>; start: number; end: number; layer?: 'top' | 'under' }> }
 
 /** A block template's golden sample (engine templates.ts): `<block>-tpl-<template id>`, the block named as its own samples are
  *  (common.leak → leak, core.flash → core-flash). The admission test finds a template's pictures by it, and the gallery its thumbnail. */

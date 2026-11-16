@@ -16,13 +16,11 @@
 // against the default burst) while a colour-only variant went as far as 79 (backdrop sunburst), so grey values are not compared.
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { chromaRotate, meanAbsDiff, printOf, readPng, sampleDistance, TELLCUT_ROOT, tintBy, type Rgba, type TimedPrint } from '@tellcut/media-node';
+import { chromaRotate, meanAbsDiff, printOf, readPng, sampleDistance, TELLCUT_ROOT, TEMPLATE_LIKENESS, tintBy, type Rgba, type TimedPrint } from '@tellcut/media-node';
 import type { ItemType } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
 import { samples, templateSample, type Sample } from '../src/samples.ts';
 
-/** a template's picture must be at least this far from the default's and from each other template's */
-export const TEMPLATE_LIKENESS = 0.21;
 
 const GOLDEN = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
 const fileOf = (s: Sample, t: number) => join(GOLDEN, `${s.name}-t${t.toFixed(2)}.png`);

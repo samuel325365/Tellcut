@@ -6,10 +6,11 @@ import { samples } from './samples.ts';
 
 test('every sample param is within its ParamDef: numbers inside min / max, enum values among the options', () => {
   const registry = createRegistry(plugins), bad: string[] = [];
-  for (const s of samples) {
-    const t = registry.item(s.type);
-    if (!t) { bad.push(`${s.name}: no block ${s.type}`); continue; }
-    for (const [key, v] of Object.entries(s.params ?? {})) {
+  // a combo's sample draws several blocks: each of its items is checked
+  for (const s of samples) for (const it of s.items ?? [{ type: s.type, params: s.params }]) {
+    const t = registry.item(it.type);
+    if (!t) { bad.push(`${s.name}: no block ${it.type}`); continue; }
+    for (const [key, v] of Object.entries(it.params ?? {})) {
       const def = t.params.find((d) => d.key === key);
       if (!def) continue;
       if (def.type === 'number' && typeof v === 'number') {
