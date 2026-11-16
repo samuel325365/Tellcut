@@ -184,7 +184,7 @@ export const film: ItemType<P, S> = {
     { id: 'super8-home', label: '老家庭電影', doc: '童年、上一代的家庭錄影、復古婚禮：放映機放出來的八釐米家庭電影，比 look super8 更暖、顆粒更粗、暗角更重', params: { look: 'super8', grain: 0.24, vignette: 0.6, tint: 0.14 } },
     { id: 'vhs-tape', label: '九〇年代錄影帶', doc: '九〇年代的錄影帶、復古 vlog、換帶的回憶：掃描線比 look vhs 濃、偏暖，開頭不久一條追蹤雜訊帶從上往下滑過', params: { look: 'vhs', lines: 0.3, tint: 0.12, tracking: '0.4:0.3:0.8' } },
     { id: 'print-zine', label: '雜誌網點', doc: '雜誌、海報、普普風的段落：整個畫面變成粗一點的印刷網點，沒有暗角', params: { look: 'print', dot: 1.2, vignette: 0 } },
-    { id: 'cinema-scope', label: '電影寬銀幕', doc: '電影感的旅行片、片頭：上下加 2.39:1 的黑邊，淡淡的顆粒和柔和暗角', params: { grain: 0.12, letterbox: 2.39, vignette: 0.5 } },
+    { id: 'cinema-scope', label: '電影寬銀幕', doc: '16:9 橫式影片的電影感旅行片、片頭：上下加 2.39:1 的黑邊，淡淡的顆粒和柔和暗角（直式畫面上黑邊會只剩中間一條，不適合）', params: { grain: 0.12, letterbox: 2.39, vignette: 0.5 } },
     { id: 'heavy-grain', label: '粗顆粒', doc: '街拍、紀錄片、粗獷的段落：很粗、對比強的顆粒，每秒只換 12 次，像高感光度的底片', params: { grain: 0.35, blend: 'overlay', rate: 12 } },
   ],
   build(ctx) {

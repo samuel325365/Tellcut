@@ -379,7 +379,7 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.film#super8-home': {"label":"Old home movie","doc":"Childhood, a past generation's home videos, a retro wedding: projected Super 8 home movie film, warmer, grainier and with a heavier vignette than look super8 alone."},
   'common.film#vhs-tape': {"label":"Nineties tape","doc":"Nineties home tapes, a retro vlog, a memory after a tape change: denser scan lines than look vhs alone, warm, and a tracking noise band sliding down soon after the start."},
   'common.film#print-zine': {"label":"Zine print","doc":"Magazine, poster or pop-art passages: the whole picture turned into somewhat coarser print dots, with no vignette."},
-  'common.film#cinema-scope': {"label":"Cinemascope","doc":"Cinematic travel films and title sequences: 2.39:1 black bars top and bottom, light grain and a soft vignette."},
+  'common.film#cinema-scope': {"label":"Cinemascope","doc":"For 16:9 films: cinematic travel films and title sequences, with 2.39:1 black bars top and bottom, light grain and a soft vignette (on a vertical frame the bars leave only a thin strip)."},
   'common.film#heavy-grain': {"label":"Heavy grain","doc":"Street photography, documentary, raw passages: very coarse, contrasty grain that changes only 12 times a second, like high-speed film stock."},
   'common.speedlines#manga-focus': {"label":"Manga focus","doc":"Surprise, singling out a person or a thing: dense concentration lines closing in from every edge, leaving a large clear ellipse in the middle for the subject."},
   'common.speedlines#rush-right': {"label":"Rush right","doc":"Running, driving, moving fast: parallel speed streaks across the whole frame flying to the right."},

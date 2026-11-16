@@ -237,7 +237,8 @@ export const STYLES: Sample[] = [
   tpl(film, 'super8-home', { at: [0.5], bg: FILM_BG }),
   tpl(film, 'vhs-tape', { at: [0.5], bg: FILM_BG }),
   tpl(film, 'print-zine', { at: [0.5], bg: FILM_BG }),
-  tpl(film, 'cinema-scope', { at: [0.5], bg: FILM_BG }),
+  // cinema-scope is for 16:9 films: drawn 16:9, compared with wide-film (the default's 16:9 copy, at the end of the list)
+  tpl(film, 'cinema-scope', { at: [0.5], bg: FILM_BG, wide: true }),
   tpl(film, 'heavy-grain', { at: [0.5], bg: FILM_BG }),
   // speedlines: over the default's backdrop, settled (the streaks also earlier, crossing)
   tpl(speedlines, 'manga-focus', { at: [1.5], bg: '#ffd9a0' }),
@@ -280,4 +281,6 @@ export const STYLES: Sample[] = [
   // core.flash: over the default's plain stage, so the measure sees only what the flash draws
   tpl(flash, 'bloom-pop', { len: 1, at: [0.15, 0.35] }),
   tpl(flash, 'fade-in', { at: [1.2, 2.0] }),
+  // common.film's first sample (basics.ts film) drawn 16:9: the default picture the 16:9 template cinema-scope is compared with
+  { name: 'wide-film', type: 'common.film', params: { grain: 0.3, vignette: 0.5 }, at: [0.5], wide: true },
 ];

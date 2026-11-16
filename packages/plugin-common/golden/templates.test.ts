@@ -2,7 +2,8 @@
 // block's default picture (its first sample) and from every other template of the block. The pictures are the golden ones,
 // compared as media-node's likeness.ts prints them: shrunk to 64 × 64 grey, then their edge maps (unit spread), mean absolute
 // difference. A template's sample is <block>-tpl-<id> (samples/fixtures.ts templateSample); each of its times is compared with the
-// other sample's nearest time, and either time passing is enough.
+// other sample's nearest time, and either time passing is enough. A template made for horizontal films has a 16:9 sample: it is
+// compared with the block's first sample drawn 16:9 (wide-<name>) and with the block's other 16:9 templates only.
 //
 // The threshold was calibrated on the 23 looks of 2026-11-15 (glitch scan/rgb/block, leak prism/bokeh/flare, film super8/print,
 // speedlines focus/streak, sparkle confetti/glint, countdown flip/leader, backdrop halftone/sunburst/waves, shader neuro/cells/dither,
@@ -34,18 +35,29 @@ function printsOf(s: Sample): TimedPrint[] {
   return s.at.map((t) => ({ t, print: printOf(picture(fileOf(s, t))) }));
 }
 const sample = (name: string) => { const s = samples.find((x) => x.name === name); if (!s) throw new Error(`沒有樣本 ${name}`); return s; };
+/** a sample's frame: 9:16, 16:9 or square */
+const shapeOf = (s: Sample) => (s.wide ? 'wide' : s.square ? 'square' : 'tall');
+/** the block's default picture in a template sample's frame: its first sample, or, for a 16:9 template (one made for horizontal
+ *  films) when the first is 9:16, that first sample's 16:9 copy wide-<name>; squeezed into the square, a 16:9 picture and a 9:16 one
+ *  would differ by the frame alone */
+function defaultFor(first: Sample, s: Sample): Sample {
+  if (shapeOf(s) === shapeOf(first)) return first;
+  if (shapeOf(s) === 'wide' && shapeOf(first) === 'tall') return sample(`wide-${first.name}`);
+  throw new Error(`${s.name} 的畫面比例和 ${first.name} 不同，沒有同比例的預設樣子可以比`);
+}
 
 test('admission rule 2: every template\'s picture differs from its block\'s default and from the block\'s other templates', () => {
   const near: string[] = [];
   for (const t of plugins.flatMap((p) => p.items ?? []) as ItemType[]) {
     if (!t.templates?.length) continue;
-    const first = samples.find((s) => s.type === t.type)!, own = t.templates.map((x) => ({ id: x.id, prints: printsOf(sample(templateSample(t.type, x.id))) }));
-    const def = printsOf(first);
+    const first = samples.find((s) => s.type === t.type)!;
+    const own = t.templates.map((x) => { const s = sample(templateSample(t.type, x.id)); return { id: x.id, s, prints: printsOf(s) }; });
     for (const a of own) {
-      const d = sampleDistance(a.prints, def);
-      if (d <= TEMPLATE_LIKENESS) near.push(`${t.type}/${a.id} 和預設的樣子（${first.name}）太像：${d.toFixed(3)}`);
+      const base = defaultFor(first, a.s), d = sampleDistance(a.prints, printsOf(base));
+      if (d <= TEMPLATE_LIKENESS) near.push(`${t.type}/${a.id} 和預設的樣子（${base.name}）太像：${d.toFixed(3)}`);
       for (const b of own) {
-        if (a === b) continue;
+        // two templates drawn in different frames (a 16:9 one beside 9:16 ones) are not compared: the frame alone would set them apart
+        if (a === b || shapeOf(a.s) !== shapeOf(b.s)) continue;
         const e = sampleDistance(a.prints, b.prints);
         if (e <= TEMPLATE_LIKENESS) near.push(`${t.type}/${a.id} 和 ${b.id} 太像：${e.toFixed(3)}`);
       }
