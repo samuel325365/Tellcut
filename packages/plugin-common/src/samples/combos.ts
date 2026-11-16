@@ -26,4 +26,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('impact', [0.06, 0.15, 0.7]),
   // the moment at 0.1: the scan lines before the cut, both bursts across it, the scan lines and a faint fringe after
   comboSample('glitchcut', [0.03, 0.17, 0.4]),
+  // the dots and the focus lines' tips just in from the edges; the lines closed in round the middle; the same, fading
+  comboSample('punchline', [0.05, 0.3, 0.8]),
 ];

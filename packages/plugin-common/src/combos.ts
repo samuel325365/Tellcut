@@ -20,4 +20,13 @@ export const combos: Combo[] = [
     { name: 'split', kind: 'effect', type: 'common.glitch', template: 'rgb-hit', params: { seed: 9 }, at: 0, len: 0.4 },
     { name: 'scratch', kind: 'sfx', type: 'common.scratch', at: -0.1, len: 0.42, gain: -8 },
   ] },
+  // the picture turns to comic-book halftone dots and the focus lines close in from the edges over a quarter second, both at once on
+  // the boing. (The backdrop's halftone pattern is a background, under the clip where a full-frame clip hides it: the film's print
+  // look puts the dots on the picture itself instead, under the lines so they stay solid ink)
+  { id: 'punchline', label: '笑點', doc: '笑點落下、吐槽、傻眼的一瞬間：畫面變成漫畫的印刷網點，粗黑的集中線從四邊往中間收，配一聲彈簧「啵嚶～」，畫面輕輕一晃', parts: [
+    { name: 'dots', kind: 'effect', type: 'common.film', template: 'print-zine', at: 0, len: 0.9 },
+    { name: 'lines', kind: 'effect', type: 'common.speedlines', template: 'manga-focus', at: 0, len: 0.9 },
+    { name: 'boing', kind: 'sfx', type: 'common.boing', at: 0, len: 0.62, gain: -8 },
+    { name: 'shake', kind: 'shake', at: 0, len: 0.25, px: 12 },
+  ] },
 ];
