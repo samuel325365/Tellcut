@@ -96,6 +96,13 @@ test('the gallery opened from a project lists its own blocks and adds one at the
     await g.click('[data-card="core.flash"]');
     await g.click('[data-detail="core.flash"] [data-gallery-add]');
     await poll(() => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => i.type === 'core.flash').length).toBe(2);
+    // a combo: all its layers in this tab at once, hung on the clip under the playhead, its shake written into that clip
+    await g.click('[data-tab="combos"]');
+    await g.click('[data-card="combo:impact"]');
+    await g.click('[data-detail="combo:impact"] [data-combo-add]');
+    const made = () => disk().tracks.flatMap((t: any) => t.items).filter((i: any) => ['common.speedlines', 'common.impact'].includes(i.type));
+    await poll(() => made().map((i: any) => [i.type, i.parent]).sort()).toEqual([['common.impact', 'c'], ['common.speedlines', 'c']]);
+    expect(disk().tracks.find((t: any) => t.id === 'v').items[0].shake).toEqual([{ at: 0, dur: 0.4, px: 28, hz: 18 }]);
     await g.close();
   } finally { await p.close(); }
 }, 120000);
