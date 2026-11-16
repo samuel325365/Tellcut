@@ -83,6 +83,11 @@ export const leak: ItemType<P, S> = {
     { key: 'seed', label: '亂數種子（bokeh 光斑的位置）', type: 'number', min: 1, max: 9999, step: 1, default: 3 },
     { key: 'streak', label: '光條顏色（flare）', type: 'color', default: '#9cc4ff' },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are leak-tpl-<id>
+  templates: [
+    { id: 'prism-sweep', label: '彩虹光帶橫掃', doc: '音樂段落、青春回憶、夢幻的轉場：一道寬寬的彩虹光帶從左邊整片掃過去，比平常更亮更大', params: { look: 'prism', from: 'l', travel: 0.9, peak: 0.7, size: 0.8 } },
+    { id: 'bokeh-night', label: '夜景光斑', doc: '夜景、夜市、節慶、溫馨的片尾：一大片失焦光斑停在畫面上慢慢一明一暗，不掃過', params: { look: 'bokeh', travel: 0, x: 0.5, y: 0.35, size: 1, peak: 0.65, seed: 11 } },
+  ],
   build(ctx) {
     const el = h('div', null, null, ctx.root);
     cssCamel(el, { position: 'absolute', inset: '0', pointerEvents: 'none' });

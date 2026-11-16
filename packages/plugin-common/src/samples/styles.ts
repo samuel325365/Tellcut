@@ -1,12 +1,17 @@
 // Golden samples, in order (samples.ts joins the parts):
 // the eight style pilots' kits, the derived frames, the 3D desk, the captions and titles (2026-11-05 on).
+import { applyTemplate, type ItemType } from '@tellcut/engine';
 import { TITLE_TEMPLATES } from '../heading/templates.ts';
-import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS } from './fixtures.ts';
+import { leak } from '../leak.ts';
+import { film } from '../film.ts';
+import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
 const GLITCH_BG = 'repeating-linear-gradient(90deg, #e8dcc0 0px, #e8dcc0 90px, #24303c 90px, #24303c 180px)';
 /** the shader looks' palette (shader-mesh's) */
 const SHADER_THEME = { palette: { accent: '#ff6b2c', accent2: '#1f9e8a', hl: '#ffd23f', ink: '#0b1a2c', paper: '#f6efe2' } };
+/** a block template's sample: its name (templateSample), the template's params alone, and the rest of the case */
+const tpl = (b: ItemType, id: string, rest: Omit<Sample, 'name' | 'type' | 'params'>): Sample => ({ name: templateSample(b.type, id), type: b.type, params: applyTemplate(b, id), ...rest });
 /** the blocks built on phone.ts with a device param: the moment, params and backdrop of their first wide sample */
 const PHONES: Array<[string, number, Record<string, unknown>, string?]> = [
   ['album', 2.6, {}], ['chat', 2.9, {}], ['comments', 2.6, {}, '#4f7a8c'], ['lockscreen', 2.6, { wall: 'gradient' }], ['notify', 2.7, {}],
@@ -205,4 +210,9 @@ export const STYLES: Sample[] = [
   { name: 'wipe-ink', type: 'common.wipe', params: { mode: 'ink', color: '#16161a' }, len: 1, at: [0.2, 0.35, 0.65, 0.8], bg: '#2a6b8f' },
   { name: 'wide-wipe-blinds', type: 'common.wipe', params: { mode: 'blinds', color: '#efe6d4' }, len: 1, at: [0.35], wide: true, bg: '#2a6b8f' },
   { name: 'wide-wipe-ink', type: 'common.wipe', params: { mode: 'ink' }, len: 1, at: [0.3], wide: true, bg: '#2a6b8f' },
+  // the block templates (2026-11-16, engine templates.ts): one sample per template, named <block>-tpl-<id> (templateSample), with
+  // the template's params alone, at the moments of the block's first sample where it can (the admission test compares them)
+  tpl(leak, 'prism-sweep', { len: 3, at: [0.8, 1.5], bg: '#4d5866' }),
+  tpl(leak, 'bokeh-night', { len: 3, at: [1.5], bg: '#4d5866' }),
+  tpl(film, 'super8-home', { at: [0.5], bg: '#7a8a6a' }),
 ];

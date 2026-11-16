@@ -11,7 +11,7 @@ import { STYLES } from './samples/styles.ts';
 import type { Sample } from './samples/fixtures.ts';
 
 export type { Sample } from './samples/fixtures.ts';
-export { CAP_EN, CAP_JA, HEAD_EN, HEAD_JA } from './samples/fixtures.ts';
+export { CAP_EN, CAP_JA, HEAD_EN, HEAD_JA, templateSample } from './samples/fixtures.ts';
 
 export const samples: Sample[] = [
   ...BASICS,

@@ -179,6 +179,10 @@ export const film: ItemType<P, S> = {
     { key: 'dot', label: '網點間距（畫面短邊 %；print）', type: 'number', min: 0.3, max: 3, step: 0.05, default: 0.8 },
     { key: 'blend', label: '顆粒的混合方式（normal 柔光，暗部和中間調最明顯；overlay 疊加，對比較強、集中在中間調；兩種的純黑、純白都不變）', type: 'enum', options: ['normal', 'overlay'], default: 'normal' },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are film-tpl-<id>
+  templates: [
+    { id: 'super8-home', label: '老家庭電影', doc: '童年、上一代的家庭錄影、復古婚禮：放映機放出來的八釐米家庭電影，比 look super8 更暖、顆粒更粗、暗角更重', params: { look: 'super8', grain: 0.24, vignette: 0.6, tint: 0.14 } },
+  ],
   build(ctx) {
     const abs = <T extends HTMLElement>(e: T) => { cssCamel(e, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none' }); return e; };
     // the item's layer is blended into the picture (an isolated layer's own children cannot blend with what is under it), so it

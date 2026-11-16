@@ -5,6 +5,10 @@ import { TEMPLATES } from '../caption/templates.ts';
 export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean; square?: boolean;
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }> }
 
+/** A block template's golden sample (engine templates.ts): `<block>-tpl-<template id>`, the block named as its own samples are
+ *  (common.leak → leak, core.flash → core-flash). The admission test finds a template's pictures by it, and the gallery its thumbnail. */
+export const templateSample = (type: string, id: string) => `${type.startsWith('common.') ? type.slice(7) : type.replace(/\./g, '-')}-tpl-${id}`;
+
 /** the palettes of the two podcast shorts */
 export const QUOTE = { palette: { accent: '#ff4f2a', accent2: '#7fd4c8', paper: '#f4ecdc', ink: '#121015' } };
 /** the amber-podcast short's palette */
