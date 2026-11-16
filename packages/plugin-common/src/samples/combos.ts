@@ -36,4 +36,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('celebrate', [0.15, 0.7, 2.2]),
   // 3 with the hand a third round; 2 halfway; 1 nearly done
   comboSample('leader', [0.3, 1.5, 2.7]),
+  // the grain with the light coming in; the light at its brightest; fading again
+  comboSample('memory', [0.3, 1.25, 2.3]),
 ];

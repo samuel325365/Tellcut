@@ -61,4 +61,11 @@ export const combos: Combo[] = [
     { name: 'tick3', kind: 'sfx', type: 'common.tick', at: 2, len: 0.04, gain: -6 },
     { name: 'beep', kind: 'sfx', type: 'common.beep', params: { dur: 0.15 }, at: 2.85, len: 0.15, gain: -12 },
   ] },
+  // the warm light rises in the corner and fades again over the 2.5 s (brighter and bigger than its template, so it still reads over
+  // bright footage) while the grain holds throughout; the chime comes in, quiet, as the light warms
+  { id: 'memory', label: '回憶', doc: '回憶、以前、想起那時候：左上角一團暖光慢慢亮起來又退掉，整個畫面蒙上粗粗的底片顆粒，配一串輕輕的叮鈴', parts: [
+    { name: 'glow', kind: 'effect', type: 'common.leak', template: 'warm-corner', params: { peak: 1, size: 1.2 }, at: 0, len: 2.5 },
+    { name: 'grain', kind: 'effect', type: 'common.film', template: 'heavy-grain', at: 0, len: 2.5 },
+    { name: 'chime', kind: 'sfx', type: 'common.chime', at: 0.2, len: 1.4, gain: -16 },
+  ] },
 ];
