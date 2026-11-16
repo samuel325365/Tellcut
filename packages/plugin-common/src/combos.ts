@@ -68,4 +68,13 @@ export const combos: Combo[] = [
     { name: 'grain', kind: 'effect', type: 'common.film', template: 'heavy-grain', at: 0, len: 2.5 },
     { name: 'chime', kind: 'sfx', type: 'common.chime', at: 0.2, len: 1.4, gain: -16 },
   ] },
+  // the small light sweeps across from 0.3 s ahead, at its brightest just after the moment; the white streaks fly from 0.1 s ahead
+  // (white reads over footage); the whoosh swells with the sweep, the fast-forward climbs from the moment
+  { id: 'rush', label: '趕路', doc: '加速、趕路、快轉、衝刺：整面白色速度線往右飛，一團小而亮的光從左邊一路掃過去，配一聲「咻」和快轉往上爬的聲音，畫面輕輕晃', parts: [
+    { name: 'sweep', kind: 'effect', type: 'common.leak', template: 'sweep-fast', at: -0.3, len: 0.8 },
+    { name: 'lines', kind: 'effect', type: 'common.speedlines', template: 'rush-right', params: { color: '#ffffff' }, at: -0.1, len: 1 },
+    { name: 'whoosh', kind: 'sfx', type: 'common.whoosh', params: { dur: 0.6 }, at: -0.2, len: 0.6, gain: -8 },
+    { name: 'ffwd', kind: 'sfx', type: 'common.ffwd', params: { dur: 0.9 }, at: 0, len: 0.9, gain: -12 },
+    { name: 'shake', kind: 'shake', at: 0, len: 0.4, px: 10 },
+  ] },
 ];

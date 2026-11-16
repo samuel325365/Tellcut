@@ -38,4 +38,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('leader', [0.3, 1.5, 2.7]),
   // the grain with the light coming in; the light at its brightest; fading again
   comboSample('memory', [0.3, 1.25, 2.3]),
+  // the moment at 0.3: the light coming in at the left; the streaks over the light at its brightest; the streaks alone, fading
+  comboSample('rush', [0.15, 0.45, 1.1]),
 ];
