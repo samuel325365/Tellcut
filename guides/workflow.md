@@ -111,7 +111,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `shader/neuro-tech`: Tech, AI, data: a glowing web of thin lines on a dark ground, flowing more slowly than look neuro alone.
   - `shader/cells-glass`: Handmade, stained glass, art: more irregular colored cells than look cells alone, slowly squirming.
   - `shader/dither-retro`: Retro games, electronic music: larger dither dots drawing broad flowing shapes, like an old one-color computer screen.
-  - `shader/smoke-slow`: Brands, calm passages: a quieter smoke ring than look smoke alone, slowly drifting.
+  - `shader/smoke-slow`: Brands, calm passages: a smoke ring enlarged past the frame's edges, so smoke fills the whole picture around a dark middle; calmer than look smoke alone, slowly drifting.
   - `shader/rays-stage`: Stages, announcements, award ceremonies: stronger rays than look rays alone, shining down from above.
   - `speedlines/manga-focus`: Surprise, singling out a person or a thing: dense concentration lines closing in from every edge, leaving a large clear ellipse in the middle for the subject.
   - `speedlines/rush-right`: Running, driving, moving fast: parallel speed streaks across the whole frame flying to the right.

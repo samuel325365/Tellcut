@@ -77,7 +77,7 @@ export const shader: ItemType<P, S> = {
     { id: 'neuro-tech', label: '科技神經網', doc: '科技、AI、資料的段落底：深色底上一張發光的細線網，流動得比 look neuro 慢', params: { look: 'neuro', speed: 0.6 } },
     { id: 'cells-glass', label: '彩繪玻璃', doc: '手作、彩繪玻璃、藝術的底：比 look cells 更歪的一格格色塊，慢慢蠕動', params: { look: 'cells', amount: 0.7, speed: 0.5 } },
     { id: 'dither-retro', label: '復古點陣', doc: '復古遊戲、電子音樂的底：大一點的網點畫出大片流動的圖樣，像老電腦的單色螢幕', params: { look: 'dither', amount: 0.6, scale: 1.4 } },
-    { id: 'smoke-slow', label: '沉靜煙圈', doc: '品牌、沉靜的段落底：比 look smoke 平靜的煙圈，慢慢飄', params: { look: 'smoke', speed: 0.4, amount: 0.3 } },
+    { id: 'smoke-slow', label: '沉靜煙霧', doc: '品牌、沉靜的段落底：煙圈放大到滿出畫面，煙霧鋪滿整個畫面、中間留一塊暗處，比 look smoke 平靜，慢慢飄', params: { look: 'smoke', speed: 0.4, amount: 0.35, scale: 2.75 } },
     { id: 'rays-stage', label: '舞台光束', doc: '舞台、宣布、頒獎的底：從上面打下來、比 look rays 更強的光束', params: { look: 'rays', amount: 0.8 } },
   ],
   build(ctx) {

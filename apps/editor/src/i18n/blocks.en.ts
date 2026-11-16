@@ -409,7 +409,7 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.shader#neuro-tech': {"label":"Tech web","doc":"Tech, AI, data: a glowing web of thin lines on a dark ground, flowing more slowly than look neuro alone."},
   'common.shader#cells-glass': {"label":"Stained glass","doc":"Handmade, stained glass, art: more irregular colored cells than look cells alone, slowly squirming."},
   'common.shader#dither-retro': {"label":"Retro dither","doc":"Retro games, electronic music: larger dither dots drawing broad flowing shapes, like an old one-color computer screen."},
-  'common.shader#smoke-slow': {"label":"Calm smoke","doc":"Brands, calm passages: a quieter smoke ring than look smoke alone, slowly drifting."},
+  'common.shader#smoke-slow': {"label":"Calm smoke","doc":"Brands, calm passages: a smoke ring enlarged past the frame's edges, so smoke fills the whole picture around a dark middle; calmer than look smoke alone, slowly drifting."},
   'common.shader#rays-stage': {"label":"Stage rays","doc":"Stages, announcements, award ceremonies: stronger rays than look rays alone, shining down from above."},
   'core.flash#bloom-pop': {"label":"Bloom flash","doc":"A beat, a camera flash: a glow from the middle fills the frame at once, then shrinks back to a point within half a second."},
   'core.flash#fade-in': {"label":"White fade-in","doc":"An opening, waking from a memory: the frame starts all white, thins over the whole item to a glow in the middle, and the glow shrinks away to show the picture."},

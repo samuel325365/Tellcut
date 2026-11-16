@@ -409,7 +409,7 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.shader#neuro-tech': {"label":"テックな網","doc":"テック、AI、データの段落の背景に：暗い地に光る細い線の網が、look neuro だけよりゆっくり流れる。"},
   'common.shader#cells-glass': {"label":"ステンドグラス","doc":"手作り、ステンドグラス、アートの背景に：look cells だけよりいびつな色のセルが、ゆっくりうごめく。"},
   'common.shader#dither-retro': {"label":"レトロなドット","doc":"レトロゲーム、電子音楽の背景に：大きめの網点で描く大きく流れる模様。昔のパソコンの単色画面のように。"},
-  'common.shader#smoke-slow': {"label":"静かな煙","doc":"ブランド、落ち着いた段落の背景に：look smoke だけより穏やかな煙の輪がゆっくり漂う。"},
+  'common.shader#smoke-slow': {"label":"静かな煙","doc":"ブランド、落ち着いた段落の背景に：煙の輪を画面からはみ出すほど大きくし、中央の暗がりのまわりを煙が画面いっぱいに覆う。look smoke だけより穏やかに、ゆっくり漂う。"},
   'common.shader#rays-stage': {"label":"ステージの光線","doc":"ステージ、発表、授賞式の背景に：上から差し込む、look rays だけより強い光線。"},
   'core.flash#bloom-pop': {"label":"光のフラッシュ","doc":"強拍、写真のフラッシュに：中心の光がいっきに画面を覆い、0.5 秒で一点に縮んで消える。"},
   'core.flash#fade-in': {"label":"白からフェードイン","doc":"オープニング、思い出から目覚める場面に：最初は画面全体が白く、アイテムの長さをかけて中央の光のかたまりへ引き、それも縮んで画面が現れる。"},
