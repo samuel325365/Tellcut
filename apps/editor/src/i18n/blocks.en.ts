@@ -423,4 +423,5 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'combo:rush': {"label":"Rush","doc":"Speeding up, hurrying, fast-forward, a dash: white speed lines fly to the right across the frame as a small bright light sweeps from the left, with a whoosh, a rising fast-forward and a small shake."},
   'combo:closing': {"label":"Closing time","doc":"Done for the day, closed, that's all for today, the end: a roller shutter rattles down over the whole frame, lands with a clunk and gets a closed sign taped on, then everything fades to black."},
   'combo:irisout': {"label":"Iris out","doc":"An old-cartoon ending or scene change: the picture closes to a circle and down to a point in the middle, a handful of stars bursts from that point, and it opens from there onto the next shot, with a xylophone plink."},
+  'combo:stage': {"label":"Entrance","doc":"The star walks on, an announcement, an award: out-of-focus stage lights come up with a rising sound, and at the moment a very bright lens flare streak hits the top of the frame, with a heavy hit."},
 };

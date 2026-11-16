@@ -44,4 +44,6 @@ export const COMBO_SAMPLES: Sample[] = [
   comboSample('closing', [0.6, 1.9, 2.2]),
   // the moment at 0.6: the circle half closed; opening again with the stars flying out of it; the stars alone, fading
   comboSample('irisout', [0.3, 0.85, 1.4]),
+  // the moment at 0.8: the lights coming up; the lights and the flare full; both fading
+  comboSample('stage', [0.15, 0.9, 1.7]),
 ];

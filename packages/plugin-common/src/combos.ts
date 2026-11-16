@@ -93,4 +93,13 @@ export const combos: Combo[] = [
     { name: 'stars', kind: 'effect', type: 'common.sparkle', template: 'star-burst', params: { y: 0.5 }, at: 0, len: 1, layer: 'top' },
     { name: 'xylo', kind: 'sfx', type: 'common.xylo', at: 0, len: 0.16, gain: -6 },
   ] },
+  // the bokeh lights come up with the riser over the 0.8 s ahead (a still leak takes 0.6 s to come in); the flare is full from the
+  // moment, where the riser tops out and the hit lands. (The shader's stage rays are a background, under the clip where a full-frame
+  // clip hides them: the out-of-focus stage lights stand in)
+  { id: 'stage', label: '登場', doc: '主角登場、宣布、頒獎：一片失焦的舞台光斑跟著上升音亮起來，到那一刻頂上一條很亮的鏡頭光條打下來，配一記重擊', parts: [
+    { name: 'lights', kind: 'effect', type: 'common.leak', template: 'bokeh-night', at: -0.8, len: 2 },
+    { name: 'flare', kind: 'effect', type: 'common.leak', template: 'flare-top', at: -0.6, len: 1.6 },
+    { name: 'riser', kind: 'sfx', type: 'common.riser', params: { dur: 0.8 }, at: -0.8, len: 0.8, gain: -10 },
+    { name: 'hit', kind: 'sfx', type: 'common.impact', at: 0, len: 1.4, gain: -8 },
+  ] },
 ];
