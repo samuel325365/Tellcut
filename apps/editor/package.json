@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     "./i18n": "./src/i18n/index.ts",
-    "./i18n/values": "./src/i18n/values.ts"
+    "./i18n/values": "./src/i18n/values.ts",
+    "./i18n/blocks.en": "./src/i18n/blocks.en.ts"
   },
   "scripts": {
     "dev": "vite",

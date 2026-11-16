@@ -3,10 +3,11 @@
 // guides/workflow.md carries only an index of the shared blocks (formatIndex, kept there by npm run blocks:index); the
 // details are looked up here. Every line starts with the block's handle (MRK-03, spec 2026-10-22-block-handles), and a handle
 // can be looked up like a type: `catalog MRK-03` (music styles, recipes and clip effects too).
-import { OLD_BLOCKS, type ParamDef, type Plugin } from '@tellcut/engine';
+import { OLD_BLOCKS, templateName, type BlockTemplate, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
+import { BLOCKS_EN } from '@tellcut/editor/i18n/blocks.en';
 import { describeRecipe } from './cut/recipes/index.ts';
 
 type Kind = 'caption' | 'title';
@@ -30,7 +31,7 @@ export function formatTemplates(query = '', kind: Kind = 'caption'): string {
       : "看某個範本設了什麼：npm run tellcut -- catalog TTL-01；用法：c.effect('common.heading', { at, len, text, kicker, sub, template: '<id>' })"].join('\n');
 }
 
-type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[]; onRequest?: boolean };
+type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[]; onRequest?: boolean; templates?: BlockTemplate[] };
 /** the user's own blocks (the plugin `mine`, spec 2026-10-29-my-library §4.3): no handle, marked 我的 in its place */
 let MINE = new Set<string>();
 const mineOf = (plugins: Plugin[]) => { MINE = new Set(plugins.filter((p) => p.id === 'mine').flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])].map((t) => t.type))); };
@@ -80,13 +81,14 @@ export function formatCatalog(plugins: Plugin[]): string {
   return out.join('\n');
 }
 
-/** every word (case does not matter) is in the block's type, label, doc, or one of its params' key, label or options; a handle
- *  (mrk-3 as well as MRK-03) finds its block */
+/** every word (case does not matter) is in the block's type, label, doc, one of its params' key, label or options, or one of its
+ *  templates' id, label or doc; a handle (mrk-3 as well as MRK-03) finds its block */
 export function findBlocks(plugins: Plugin[], query: string): Entry[] {
   const h = normalizeHandle(query);
   if (h) return plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => handleOf(t.type) === h);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const text = (t: Entry) => [t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...(d.type === 'enum' ? d.options : [])])].join(' ').toLowerCase();
+  const text = (t: Entry) => [t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...(d.type === 'enum' ? d.options : [])]),
+    ...templatesOf(t).flatMap((x) => [x.id, x.label, x.doc])].join(' ').toLowerCase();
   return words.length ? plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => !OLD_BLOCKS[t.type] && words.every((x) => text(t).includes(x))) : [];
 }
 
@@ -114,14 +116,20 @@ function indexLine(cat: string, xs: Entry[], prefix: string): string {
   return `${head}: ` + parts.map(({ t, h, own }) => (own ? `${numberOf(h!)} ` : h ? `${h} ` : '') + name(t)).join(', ');
 }
 
+/** a block's named templates (a sound effect has none) */
+const templatesOf = (t: Entry) => t.templates ?? [];
+
 /** the block index of guides/workflow.md (between the block-index marks): one line per category with its handle prefix, then
- *  the blocks as number and short name */
+ *  the blocks as number and short name; then the blocks' named templates (`<block>/<id>` and its English doc), then the sounds */
 export function formatIndex(plugins: Plugin[]): string {
   const common = plugins.find((p) => p.id === 'common');
   // a block used only when asked for (onRequest), or kept only for older projects, is not offered here: the agent picks from this index
   const items: Entry[] = (common?.items ?? []).filter((t) => !t.onRequest && !OLD_BLOCKS[t.type]), sfx: Entry[] = common?.sfx ?? [];
   const lines = Object.entries(BLOCK_CATEGORY_EN).map(([k, cat]) => ({ cat, p: BLOCK_PREFIX[k as keyof typeof BLOCK_PREFIX], xs: items.filter((t) => t.category === k) }))
     .filter((c) => c.xs.length).map((c) => `- ${indexLine(c.cat, c.xs, c.p)}`);
+  const tpls = items.flatMap((t) => templatesOf(t).map((x) => ({ type: t.type, x })));
+  if (tpls.length) lines.push("- Block templates (`c.effect(type, { template: '<id>' })`: the template's params go in first, the script's own over them):",
+    ...tpls.map(({ type, x }) => `  - \`${templateName(type, x.id)}\`: ${BLOCKS_EN[`${type}#${x.id}`]?.doc ?? x.doc}`));
   if (sfx.length) lines.push(`- Sound effects (\`c.sfx\`; a sound file the project made itself goes in with \`c.sfxFile\`):`, ...Object.entries(SFX_CATEGORY_EN)
     .map(([k, cat]) => ({ cat, p: SFX_PREFIX[k as keyof typeof SFX_PREFIX], xs: sfx.filter((s) => s.category === k) }))
     .filter((c) => c.xs.length).map((c) => `  - ${indexLine(c.cat, c.xs, c.p)}`));
@@ -172,7 +180,9 @@ export function formatType(plugins: Plugin[], type: string): string {
   const h = handleOf(t.type);
   const head = `${h ? `${h} ` : ''}${t.type} ${t.label}${t.doc ? ` — ${t.doc}` : ''}`;
   const old = OLD_BLOCKS[t.type] ? [`  （舊積木，只為了讓舊專案打得開：新片用 ${OLD_BLOCKS[t.type]}）`] : [];
-  return [head, ...old, ...(t.params.length ? t.params.map((d) => `  ${d.key}（${d.label}）：${describe(d)}`) : ['  （沒有參數）'])].join('\n');
+  const tpls = templatesOf(t), named = tpls.length ? [`  範本（c.effect('${t.type}', { at, len, template: '<id>' })；範本的參數先放，自己給的蓋在上面）：`,
+    ...tpls.map((x) => `    ${x.id}（${x.label}）— ${x.doc}：${JSON.stringify(x.params)}`)] : [];
+  return [head, ...old, ...(t.params.length ? t.params.map((d) => `  ${d.key}（${d.label}）：${describe(d)}`) : ['  （沒有參數）']), ...named].join('\n');
 }
 
 /** `catalog <類型或代號>`: a type as formatType shows it; a handle (any case, mrk-3 too) as what it names — a block's or sound

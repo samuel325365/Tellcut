@@ -126,3 +126,16 @@ test('the old postcard and frame point to the 3D desk: search finds the desk, th
   expect(frames).not.toContain('`postcard`');
   expect(frames).not.toContain('`frame`');
 });
+
+test('block templates: the index lists each as <block>/<id> with its English doc; catalog <type> shows them with their params; search finds them', () => {
+  const idx = formatIndex(plugins).split('\n'), at = idx.findIndex((l) => l.startsWith('- Block templates'));
+  expect(at).toBeGreaterThan(0);
+  expect(at).toBeLessThan(idx.findIndex((l) => l.startsWith('- Sound effects')));
+  expect(idx).toContain('  - `leak/prism-sweep`: Music passages, teenage memories, dreamy transitions: a wide rainbow band sweeps the whole frame from the left, brighter and bigger than usual.');
+  expect(idx.some((l) => l.startsWith('  - `film/super8-home`: '))).toBe(true);
+  const t = formatType(plugins, 'common.leak');
+  expect(t).toContain("範本（c.effect('common.leak', { at, len, template: '<id>' })");
+  expect(t).toMatch(/^ {4}bokeh-night（夜景光斑）— .*：\{"look":"bokeh"/m);
+  expect(formatType(plugins, 'common.stamp')).not.toContain('範本（');
+  expect(findBlocks(plugins, 'bokeh-night').map((x) => x.type)).toEqual(['common.leak']);
+});
