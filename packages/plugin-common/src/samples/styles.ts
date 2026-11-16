@@ -11,6 +11,7 @@ import { countdown } from '../countdown.ts';
 import { wipe } from '../wipe.ts';
 import { rolldoor } from '../rolldoor.ts';
 import { backdrop } from '../backdrop.ts';
+import { shader } from '../shader.ts';
 import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -268,4 +269,10 @@ export const STYLES: Sample[] = [
   tpl(backdrop, 'waves-summer', { at: [0.5, 2.5] }),
   tpl(backdrop, 'spot-quote', { at: [0.5] }),
   tpl(backdrop, 'dots-party', { at: [0.5, 2.5] }),
+  // shader: in the shader looks' palette, at the default's two moments
+  tpl(shader, 'neuro-tech', { theme: SHADER_THEME, at: [0.5, 2.5] }),
+  tpl(shader, 'cells-glass', { theme: SHADER_THEME, at: [0.5, 2.5] }),
+  tpl(shader, 'dither-retro', { theme: SHADER_THEME, at: [0.5, 2.5] }),
+  tpl(shader, 'smoke-slow', { theme: SHADER_THEME, at: [0.5, 2.5] }),
+  tpl(shader, 'rays-stage', { theme: SHADER_THEME, at: [0.5, 2.5] }),
 ];

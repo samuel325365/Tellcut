@@ -406,4 +406,9 @@ export const BLOCKS_JA: Record<string, BlockText> = {
   'common.backdrop#waves-summer': {"label":"夏の波","doc":"海辺、夏、ゆったりした段落の背景に：大きめの 4 層の波の帯が下から重なり、それぞれの速さで横へ流れる。"},
   'common.backdrop#spot-quote': {"label":"名言スポット","doc":"名言、インタビュー、ポッドキャストの背景に：上端から濃いめのやわらかい光が差し、下と四隅が暗くなる。"},
   'common.backdrop#dots-party': {"label":"パーティードット","doc":"かわいい、お祝い、子ども向けの背景に：大きめで濃い水玉がゆっくり流れ、両側に小さな飾りがきらめく。"},
+  'common.shader#neuro-tech': {"label":"テックな網","doc":"テック、AI、データの段落の背景に：暗い地に光る細い線の網が、look neuro だけよりゆっくり流れる。"},
+  'common.shader#cells-glass': {"label":"ステンドグラス","doc":"手作り、ステンドグラス、アートの背景に：look cells だけよりいびつな色のセルが、ゆっくりうごめく。"},
+  'common.shader#dither-retro': {"label":"レトロなドット","doc":"レトロゲーム、電子音楽の背景に：大きめの網点で描く大きく流れる模様。昔のパソコンの単色画面のように。"},
+  'common.shader#smoke-slow': {"label":"静かな煙","doc":"ブランド、落ち着いた段落の背景に：look smoke だけより穏やかな煙の輪がゆっくり漂う。"},
+  'common.shader#rays-stage': {"label":"ステージの光線","doc":"ステージ、発表、授賞式の背景に：上から差し込む、look rays だけより強い光線。"},
 };

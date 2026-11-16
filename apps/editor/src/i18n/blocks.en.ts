@@ -406,4 +406,9 @@ export const BLOCKS_EN: Record<string, BlockText> = {
   'common.backdrop#waves-summer': {"label":"Summer waves","doc":"Beaches, summer, easygoing passages: four layers of larger waves stacked from the bottom, each sliding sideways at its own pace."},
   'common.backdrop#spot-quote': {"label":"Quote spotlight","doc":"Quotes, interviews, podcasts: a stronger soft light from the top edge, darkening below and in the corners."},
   'common.backdrop#dots-party': {"label":"Party dots","doc":"Cute, celebrations, children: larger, stronger dots slowly sliding, with small twinkling bits scattered along both sides."},
+  'common.shader#neuro-tech': {"label":"Tech web","doc":"Tech, AI, data: a glowing web of thin lines on a dark ground, flowing more slowly than look neuro alone."},
+  'common.shader#cells-glass': {"label":"Stained glass","doc":"Handmade, stained glass, art: more irregular colored cells than look cells alone, slowly squirming."},
+  'common.shader#dither-retro': {"label":"Retro dither","doc":"Retro games, electronic music: larger dither dots drawing broad flowing shapes, like an old one-color computer screen."},
+  'common.shader#smoke-slow': {"label":"Calm smoke","doc":"Brands, calm passages: a quieter smoke ring than look smoke alone, slowly drifting."},
+  'common.shader#rays-stage': {"label":"Stage rays","doc":"Stages, announcements, award ceremonies: stronger rays than look rays alone, shining down from above."},
 };

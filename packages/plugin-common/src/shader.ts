@@ -72,6 +72,14 @@ export const shader: ItemType<P, S> = {
     { key: 'scale', label: '圖樣大小', type: 'number', min: 0.2, max: 4, step: 0.05, default: 1 },
     { key: 'phase', label: '起始時間（秒；換一個就是另一個樣子）', type: 'number', min: 0, max: 1000, step: 1, default: 0 },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are shader-tpl-<id>
+  templates: [
+    { id: 'neuro-tech', label: '科技神經網', doc: '科技、AI、資料的段落底：深色底上一張發光的細線網，流動得比 look neuro 慢', params: { look: 'neuro', speed: 0.6 } },
+    { id: 'cells-glass', label: '彩繪玻璃', doc: '手作、彩繪玻璃、藝術的底：比 look cells 更歪的一格格色塊，慢慢蠕動', params: { look: 'cells', amount: 0.7, speed: 0.5 } },
+    { id: 'dither-retro', label: '復古點陣', doc: '復古遊戲、電子音樂的底：大一點的網點畫出大片流動的圖樣，像老電腦的單色螢幕', params: { look: 'dither', amount: 0.6, scale: 1.4 } },
+    { id: 'smoke-slow', label: '沉靜煙圈', doc: '品牌、沉靜的段落底：比 look smoke 平靜的煙圈，慢慢飄', params: { look: 'smoke', speed: 0.4, amount: 0.3 } },
+    { id: 'rays-stage', label: '舞台光束', doc: '舞台、宣布、頒獎的底：從上面打下來、比 look rays 更強的光束', params: { look: 'rays', amount: 0.8 } },
+  ],
   build(ctx) {
     const cv = h('canvas', null, null, ctx.root);
     cv.width = ctx.W; cv.height = ctx.H;
