@@ -5,7 +5,7 @@
 // The other looks (2026-11-15) keep the same sweep (from / travel / x / y, the brightness over time) and the screen blend:
 // prism, a slanted rainbow band across the drift; bokeh, out-of-focus discs drifting and breathing (seeded); flare, an anamorphic
 // streak through a bright point with ghost discs on the line through the frame's centre.
-import { clamp, cssCamel, h, rng, type ItemType } from '@tellcut/engine';
+import { clamp, cssCamel, h, mulberry32, type ItemType } from '@tellcut/engine';
 import { withAlpha } from './color.ts';
 
 type From = 'tl' | 'tr' | 'bl' | 'br' | 'l' | 'r';
@@ -51,13 +51,22 @@ export function prismBand(W: number, H: number, u: [number, number], px: number,
 /** how much farther the prism's band goes than the glow */
 export const PRISM_REACH = 1.8;
 
+/** how many bokeh discs */
+const BOKEH_DISCS = 14;
+
 /** the bokeh discs at `local` (`k` 0…1 of the way along the drift): a seeded spread over the frame (fractions), each drifting
- *  slowly and breathing; r in px */
+ *  slowly and breathing; r in px. One mulberry32 sequence for the whole set: a Park-Miller generator per disc, seeded at even steps,
+ *  started every disc in step, and its first two draws (x, y) put the discs on a few parallel diagonals. Each disc also gets its own
+ *  row of the frame's height (a seeded shuffle, jittered within the row), so the discs scatter over the whole frame instead of
+ *  clumping. */
 export function bokehDiscs(p: Pick<P, 'seed' | 'size' | 'from' | 'travel'>, local: number, k: number, W: number, H: number): Array<{ x: number; y: number; r: number; level: number; tone: number }> {
   const [, , dx, dy] = PATHS[p.from] ?? PATHS.tr, drift = p.travel > 0 ? p.travel * 0.12 : 0;
-  return Array.from({ length: 14 }, (_, i) => {
-    const r = rng((Number(p.seed) || 1) * 977 + i * 7919 + 13);
-    const x = r(), y = r(), vx = (r() - 0.5) * 0.02, vy = (r() - 0.5) * 0.02, rad = (0.035 + 0.075 * r() * r()) * p.size * Math.max(W, H), w = 0.6 + 0.9 * r(), ph = r() * Math.PI * 2, tone = r();
+  const r = mulberry32(Math.imul(Math.round(Number(p.seed) || 1), 0x9e3779b1) ^ 0x5bd1e995);
+  const rows = Array.from({ length: BOKEH_DISCS }, (_, i) => i);
+  for (let i = rows.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [rows[i], rows[j]] = [rows[j], rows[i]]; }
+  return rows.map((row) => {
+    const x = 0.03 + 0.94 * r(), y = (row + 0.15 + 0.7 * r()) / BOKEH_DISCS, vx = (r() - 0.5) * 0.02, vy = (r() - 0.5) * 0.02;
+    const rad = (0.035 + 0.075 * r() * r()) * p.size * Math.max(W, H), w = 0.6 + 0.9 * r(), ph = r() * Math.PI * 2, tone = r();
     return { x: x + vx * local + dx * drift * k, y: y + vy * local + dy * drift * k, r: rad, level: 0.55 + 0.45 * Math.sin(local * w + ph), tone };
   });
 }

@@ -98,4 +98,18 @@ describe('common.leak', () => {
     }
     expect(bokehDiscs(p, 1, 0.3, 1920, 1080).map((d) => d.r)).toEqual(a.map((d) => d.r));
   });
+
+  test('bokeh: the discs scatter, not lined up on diagonals (a generator per disc at even seeds did that) and over the whole height', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const d = bokehDiscs({ seed, size: 0.6, from: 'tr', travel: 0 }, 0, 0, 1080, 1920);
+      // triples of discs on one line (the triangle they make all but flat): the lined-up placement had 19 or more for every seed, a
+      // scatter has a few
+      let flat = 0;
+      for (let i = 0; i < d.length; i++) for (let j = i + 1; j < d.length; j++) for (let k = j + 1; k < d.length; k++)
+        if (Math.abs((d[j].x - d[i].x) * (d[k].y - d[i].y) - (d[k].x - d[i].x) * (d[j].y - d[i].y)) / 2 < 0.0005) flat++;
+      expect(flat, `seed ${seed}`).toBeLessThanOrEqual(8);
+      // every seventh of the height holds two discs
+      for (let band = 0; band < 7; band++) expect(d.filter((x) => x.y >= band / 7 && x.y < (band + 1) / 7).length, `seed ${seed} band ${band}`).toBe(2);
+    }
+  });
 });
