@@ -230,3 +230,25 @@ test('parameter names are English, their hints follow the language', async () =>
     expect(m.root.querySelector('[data-param="n"] span')!.textContent).toBe('數量（個）');
   } finally { setLang('zh'); localStorage.clear(); }
 });
+
+test('a block with templates gets a Template row at the top of its params: an action that always shows its placeholder', async () => {
+  const reg = createRegistry([corePlugin, { id: 'x', items: [{ type: 'x.block', label: '區塊', kind: 'scene', build: () => null, draw: () => {},
+    params: [{ key: 'mode', label: '模式', type: 'enum', options: ['a', 'b'], default: 'a' }],
+    templates: [{ id: 'big-b', label: '大大的 B', doc: '開場用', params: { mode: 'b' } }] }] } as any]);
+  const { root, editor, calls } = mount(['blk']);
+  editor.registry = reg;
+  editor.applyBlockTemplate = (id: string, x: string) => { calls.push(['template', id, x]); return true; };
+  await act(() => render(<PropertiesPanel editor={editor} s={editor.store.get()} />, root));
+  const row = root.querySelector('[data-field="template"]')!, box = row.querySelector('select')!;
+  // before the first parameter field
+  expect(row.compareDocumentPosition(root.querySelector('[data-param="mode"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(row.querySelector('span')!.textContent).toBe('Template');
+  expect([...box.options].map((o) => [o.value, o.textContent, o.title])).toEqual([['', '套用範本…', ''], ['big-b', '大大的 B', '開場用']]);
+  change(box, 'big-b');
+  expect(calls).toEqual([['template', 'blk', 'big-b']]);
+  expect(box.value).toBe('');
+  // a block without templates has no row
+  const plain = mount(['blk']);
+  await act(() => render(<PropertiesPanel editor={plain.editor} s={plain.editor.store.get()} />, plain.root));
+  expect(plain.root.querySelector('[data-field="template"]')).toBeNull();
+});

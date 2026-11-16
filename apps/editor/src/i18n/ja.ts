@@ -342,6 +342,8 @@ export const ja: Record<Key, string> = {
   'ed.ttlDeleteTip': '自分のタイトルテンプレートから削除（使っている作品は自分のコピーを持つ）',
   'ed.ttlDeleteAsk': '自分のタイトルテンプレート「{name}」を削除しますか？使っている作品には影響しません。',
   'ed.capSearch': '字幕テンプレートを検索',
+  'ed.tplPick': 'テンプレートを適用…',
+  'ed.tplTip': '選ぶとその設定がこの項目に書き込まれます（元に戻せます）。あとで変えた値はそのまま残り、どれを使ったかは記録されません',
   'ed.ttlSearch': 'タイトルテンプレートを検索',
   'ed.templateName': '自分のテンプレートの名前',
   'ed.unique': '「{label}」はプロジェクトに1つしか置けません',

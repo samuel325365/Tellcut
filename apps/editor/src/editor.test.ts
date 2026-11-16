@@ -407,3 +407,23 @@ test('a restarted preview (the Layout button moves it) is not ready until it say
   expect(plays.length).toBe(1);
   expect(plays[0][1]).toBeCloseTo(0.5, 1);                     // from the playhead (the editor's clock may have moved it on a hair)
 });
+
+test('a block template is written into the item as one undo step, keeping the params it does not mention', async () => {
+  const registry = createRegistry([corePlugin, { id: 'x', items: [{ type: 'x.block', label: '區塊', kind: 'scene', build: () => null, draw: () => {},
+    params: [{ key: 'mode', label: '模式', type: 'enum', options: ['a', 'b'], default: 'a' }, { key: 'n', label: 'n', type: 'number', default: 1 }, { key: 'k', label: 'k', type: 'string', default: '' }],
+    templates: [{ id: 'big-b', label: '大', doc: '某個場合', params: { mode: 'b', n: 3 } }] }] } as any]);
+  const { api, bridge } = fakes();
+  const ed = new Editor('demo', { api, bridge, registry });
+  await ed.open();
+  const params = () => (ed.store.get().project!.tracks[0].items[0] as any).params;
+  ed.updateParam('blk', 'k', 'mine');
+  ed.updateParam('blk', 'n', 2);
+  expect(ed.applyBlockTemplate('blk', 'big-b')).toBe(true);
+  expect(params()).toEqual({ k: 'mine', n: 3, mode: 'b' });
+  ed.undo();
+  expect(params()).toEqual({ k: 'mine', n: 2 });
+  // an id the block does not have: refused, with the ids it has
+  expect(ed.applyBlockTemplate('blk', 'nope')).toBe(false);
+  expect(ed.store.get().notice).toContain('big-b');
+  expect(params()).toEqual({ k: 'mine', n: 2 });
+});

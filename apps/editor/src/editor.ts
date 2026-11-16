@@ -1,5 +1,5 @@
 // The editor controller: project + history + autosave + preview bridge + UI state.
-import { addCropKey, addItem, addTrack, allItems, magneticTrack, removeCropKey, type CropWhich, CommandError, type TrackKind, parseProject, resolveTimes, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, updateItem, type Project, type Registry, type Transform } from '@tellcut/engine';
+import { addCropKey, addItem, addTrack, allItems, applyTemplate, magneticTrack, removeCropKey, type CropWhich, CommandError, type TrackKind, parseProject, resolveTimes, setCrop, setTrack as setTrackCmd, setTransform as setTransformCmd, updateItem, type Project, type Registry, type Transform } from '@tellcut/engine';
 import { captionPlan } from '@tellcut/plugin-common/speech';
 import { keyAction, type Action } from './keys.ts';
 import { ChatSession } from './chat.ts';
@@ -242,6 +242,16 @@ export class Editor {
 
   /** A validated field edit from the properties panel. */
   update(id: string, patch: Record<string, unknown>) { return this.apply((d) => updateItem(d, { id, patch })); }
+  /** A block template (engine templates.ts) on one item: its params written over the item's, the others kept; one undo step. The
+   *  item keeps no template name. */
+  applyBlockTemplate(id: string, template: string): boolean {
+    const it = this.s.project && (allItems(this.s.project).find((x) => x.item.id === id)?.item as { type?: string; params?: Record<string, unknown> } | undefined);
+    const type = it?.type ? this.registry?.item(it.type) : undefined;
+    if (!it || !type) return false;
+    let params: Record<string, unknown>;
+    try { params = { ...it.params, ...applyTemplate(type, template) }; } catch (e) { this.set({ notice: errText(e) }); return false; }
+    return this.update(id, { params });
+  }
   /** One plugin parameter: the whole params object is replaced (old values plus the new one). */
   updateParam(id: string, key: string, value: unknown) {
     const p = this.s.project;

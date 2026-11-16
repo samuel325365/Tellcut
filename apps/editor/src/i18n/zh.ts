@@ -341,6 +341,8 @@ export const zh = {
   'ed.ttlDeleteTip': '從我的標題範本刪掉（已經用了它的影片保留自己的副本）',
   'ed.ttlDeleteAsk': '刪掉我的標題範本「{name}」？用了它的影片不受影響。',
   'ed.capSearch': '搜尋字幕範本',
+  'ed.tplPick': '套用範本…',
+  'ed.tplTip': '選一個就把那組參數寫進這個項目（可以復原）；之後改參數不會變回去，這裡也不記得用了哪個',
   'ed.ttlSearch': '搜尋標題範本',
   'ed.templateName': '我的範本名稱',
   'ed.unique': '「{label}」在專案裡只能有一個',

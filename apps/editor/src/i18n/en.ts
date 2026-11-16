@@ -342,6 +342,8 @@ export const en: Record<Key, string> = {
   'ed.ttlDeleteTip': 'Delete from my title templates (films that use it keep their own copy)',
   'ed.ttlDeleteAsk': 'Delete my title template "{name}"? Films that use it are not affected.',
   'ed.capSearch': 'Search caption templates',
+  'ed.tplPick': 'Apply a template…',
+  'ed.tplTip': 'Picking one writes its settings into this item (undoable); later edits stay, and the item does not remember which one it was',
   'ed.ttlSearch': 'Search title templates',
   'ed.templateName': 'Name of my template',
   'ed.unique': '"{label}" can only appear once in a project',
