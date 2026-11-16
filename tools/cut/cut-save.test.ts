@@ -164,7 +164,7 @@ test('effect({ template }): at save the template\'s params go in first and the s
 test('effect({ template }): an unknown id fails where the script names it, listing the ids the block has', () => {
   const c = fresh();
   expect(() => c.effect('common.leak', { at: 0, len: 1, layer: 'top', template: 'prism' })).toThrow('common.leak 沒有「prism」這個範本；它有：prism-sweep、bokeh-night');
-  expect(() => c.effect('core.flash', { at: 0, len: 1, template: 'x' })).toThrow('core.flash 沒有範本（「x」）');
+  expect(() => c.effect('common.wash', { at: 0, len: 1, template: 'x' })).toThrow('common.wash 沒有範本（「x」）');
   expect(() => c.effect('common.leak', { at: 0, len: 1, layer: 'top', template: 3 as any })).toThrow(/template 要是範本 id/);
 });
 

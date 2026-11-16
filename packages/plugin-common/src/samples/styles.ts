@@ -1,6 +1,6 @@
 // Golden samples, in order (samples.ts joins the parts):
 // the eight style pilots' kits, the derived frames, the 3D desk, the captions and titles (2026-11-05 on).
-import { applyTemplate, type ItemType } from '@tellcut/engine';
+import { applyTemplate, corePlugin, type ItemType } from '@tellcut/engine';
 import { TITLE_TEMPLATES } from '../heading/templates.ts';
 import { glitch } from '../glitch.ts';
 import { leak } from '../leak.ts';
@@ -20,6 +20,8 @@ const GLITCH_BG = 'repeating-linear-gradient(90deg, #e8dcc0 0px, #e8dcc0 90px, #
 const FILM_BG = 'linear-gradient(180deg, #1d2a3a 0%, #5a6a4a 35%, #c0905a 65%, #f2ead8 100%)';
 /** the shader looks' palette (shader-mesh's) */
 const SHADER_THEME = { palette: { accent: '#ff6b2c', accent2: '#1f9e8a', hl: '#ffd23f', ink: '#0b1a2c', paper: '#f6efe2' } };
+/** core.flash, the core plugin's block, for its templates' samples */
+const flash = corePlugin.items.find((t) => t.type === 'core.flash')! as ItemType;
 /** a block template's sample: its name (templateSample), the template's params alone, and the rest of the case */
 const tpl = (b: ItemType, id: string, rest: Omit<Sample, 'name' | 'type' | 'params'>): Sample => ({ name: templateSample(b.type, id), type: b.type, params: applyTemplate(b, id), ...rest });
 /** the blocks built on phone.ts with a device param: the moment, params and backdrop of their first wide sample */
@@ -275,4 +277,7 @@ export const STYLES: Sample[] = [
   tpl(shader, 'dither-retro', { theme: SHADER_THEME, at: [0.5, 2.5] }),
   tpl(shader, 'smoke-slow', { theme: SHADER_THEME, at: [0.5, 2.5] }),
   tpl(shader, 'rays-stage', { theme: SHADER_THEME, at: [0.5, 2.5] }),
+  // core.flash: over the default's plain stage, so the measure sees only what the flash draws
+  tpl(flash, 'bloom-pop', { len: 1, at: [0.15, 0.35] }),
+  tpl(flash, 'fade-in', { at: [1.2, 2.0] }),
 ];

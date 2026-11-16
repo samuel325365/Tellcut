@@ -40,6 +40,10 @@ const flash: ItemType<FlashP, HTMLElement> = {
     { key: 'blend', label: '混合方式（normal 蓋上去、screen 只變亮、multiply 只變暗、overlay 疊加）', type: 'enum', options: ['normal', 'screen', 'multiply', 'overlay', 'soft-light'], default: 'normal' },
     { key: 'fade', label: '淡入淡出（out 整個項目長度慢慢蓋滿顏色、in 從顏色慢慢淡開；不看最大不透明度、上升、停留、衰減、關鍵影格）', type: 'enum', options: ['none', 'in', 'out'], default: 'none' },
   ],
+  // named sets of these params (templates.ts); their golden samples are core-flash-tpl-<id>
+  templates: [
+    { id: 'bloom-pop', label: '光暈一閃', doc: '重拍、拍照的一閃：中心的光暈一下蓋滿畫面，再在半秒內縮回一點消失', params: { mode: 'bloom', peak: 1, fall: 0.5 } },
+    { id: 'fade-in', label: '白光淡入', doc: '開場、從回憶醒來：一開始整個畫面是白光，在整個項目裡慢慢退成中間一團光暈再收掉，露出畫面', params: { fade: 'in', mode: 'bloom' } },  ],
   build(ctx) {
     const el = h('div', null, null, ctx.root);
     cssCamel(el, { position: 'absolute', inset: '0', pointerEvents: 'none', background: ctx.params.color });
