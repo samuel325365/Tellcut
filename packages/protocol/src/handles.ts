@@ -1,5 +1,5 @@
-// Block handles (spec 2026-10-22-block-handles): a short, permanent code for every shared block, sound effect, music style, recipe and
-// clip effect (MRK-03, SFX-HIT-02, MUS-07), shown in the gallery, the editor, the catalog and the page chat so people can point at one.
+// Block handles (spec 2026-10-22-block-handles): a short, permanent code for every shared block, sound effect, music style, recipe,
+// clip effect and combo (MRK-03, SFX-HIT-02, MUS-07, CMB-01), shown in the gallery, the editor, the catalog and the page chat so people can point at one.
 // Only for showing and pointing: project.json and cut.ts keep using type ids. A handle is never renumbered or given out again:
 // a removed block's handle moves to RETIRED, a block that changes category keeps its handle (listed in MOVED). tools/handles.test.ts
 // checks it all; npm run promote / promote-style add the next handle of a prefix.
@@ -14,8 +14,8 @@ export const BLOCK_PREFIX: Record<BlockCategory, string> = {
 export const SFX_PREFIX: Record<SfxCategory, string> = {
   alert: 'SFX-ALR', chime: 'SFX-CHM', hit: 'SFX-HIT', move: 'SFX-MOV', paper: 'SFX-PAP', life: 'SFX-LIF',
 };
-/** music styles (built in and in score-library/), recipes, clip effects, caption templates (common.caption's, caption:<id>), title templates (common.heading's, title:<id>) */
-export const STYLE_PREFIX = 'MUS', RECIPE_PREFIX = 'RCP', CLIP_PREFIX = 'CLP', CAPTION_PREFIX = 'CAP', TITLE_PREFIX = 'TTL';
+/** music styles (built in and in score-library/), recipes, clip effects, caption templates (common.caption's, caption:<id>), title templates (common.heading's, title:<id>), combos (combo:<id>) */
+export const STYLE_PREFIX = 'MUS', RECIPE_PREFIX = 'RCP', CLIP_PREFIX = 'CLP', CAPTION_PREFIX = 'CAP', TITLE_PREFIX = 'TTL', COMBO_PREFIX = 'CMB';
 
 /** the core blocks have no category of their own (only common blocks need one for the catalog): where the gallery puts them */
 export const CORE_CATEGORY: Record<string, BlockCategory> = { 'core.title': 'title', 'core.caption': 'caption', 'core.lowerThird': 'chapter', 'core.flash': 'moment', 'core.endCard': 'moment' };
@@ -29,7 +29,7 @@ export const CLIP_FX = [
 export type ClipFx = typeof CLIP_FX[number];
 
 // The handles, one per line, each prefix numbered 01, 02, … with no gaps (the retired ones included). Ids: block and sound
-// effect type ids, style:<id>, recipe:<id>, clip.<name>, caption:<template id>, title:<template id>.
+// effect type ids, style:<id>, recipe:<id>, clip.<name>, caption:<template id>, title:<template id>, combo:<id>.
 export const HANDLES: Readonly<Record<string, string>> = {
   'TXT-01': 'common.burst',
   'TXT-02': 'common.caption',
@@ -372,6 +372,8 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'TTL-45': 'title:story-card',
   'TTL-46': 'title:fin',
   'TTL-47': 'title:pop',
+  'CMB-01': 'combo:impact',
+  'CMB-02': 'combo:glitchcut',
 };
 /** handles whose block (or style, recipe…) is gone: kept so they are never given out again, with the id they had */
 export const RETIRED: Readonly<Record<string, string>> = {
@@ -400,7 +402,7 @@ export const MOVED: readonly string[] = [
 export const HANDLE_FORMAT = /^[A-Z]{3}(-[A-Z]{3})?-\d{2,}$/;
 const ID_TO_HANDLE = new Map(Object.entries(HANDLES).map(([h, id]) => [id, h]));
 
-/** the handle of a block or sound effect type id (or style:<id>, recipe:<id>, clip.<name>) */
+/** the handle of a block or sound effect type id (or style:<id>, recipe:<id>, clip.<name>, combo:<id>) */
 export const handleOf = (id: string): string | undefined => ID_TO_HANDLE.get(id);
 
 /** what someone typed (mrk-3, MRK3, sfx hit 2, Mrk-003) as a handle (MRK-03, SFX-HIT-02); undefined when it does not look like one */

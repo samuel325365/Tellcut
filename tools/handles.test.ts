@@ -2,7 +2,7 @@ import { OLD_BLOCKS } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
-import { BLOCK_PREFIX, CAPTION_PREFIX, TITLE_PREFIX, CLIP_FX, CLIP_PREFIX, CORE_CATEGORY, HANDLE_FORMAT, HANDLES, handleOf, idOfHandle, MOVED, normalizeHandle, RECIPE_PREFIX, RETIRED, SFX_PREFIX, STYLE_PREFIX } from '@tellcut/protocol';
+import { BLOCK_PREFIX, CAPTION_PREFIX, COMBO_PREFIX, TITLE_PREFIX, CLIP_FX, CLIP_PREFIX, CORE_CATEGORY, HANDLE_FORMAT, HANDLES, handleOf, idOfHandle, MOVED, normalizeHandle, RECIPE_PREFIX, RETIRED, SFX_PREFIX, STYLE_PREFIX } from '@tellcut/protocol';
 import { RECIPES } from './cut/recipes/index.ts';
 
 const prefixOf = (h: string) => h.replace(/-\d+$/, '');
@@ -23,10 +23,11 @@ async function wanted(): Promise<Map<string, string>> {
   for (const c of CLIP_FX) out.set(c.key, CLIP_PREFIX);
   for (const t of TEMPLATES) out.set(`caption:${t.id}`, CAPTION_PREFIX);
   for (const t of TITLE_TEMPLATES) out.set(`title:${t.id}`, TITLE_PREFIX);
+  for (const c of plugins.flatMap((p) => p.combos ?? [])) out.set(`combo:${c.id}`, COMBO_PREFIX);
   return out;
 }
 
-test('every shared block, sound effect, music style, recipe, clip effect and caption template has a handle, and no handle points at something gone', async () => {
+test('every shared block, sound effect, music style, recipe, clip effect, caption template and combo has a handle, and no handle points at something gone', async () => {
   const want = await wanted();
   const missing = [...want.keys()].filter((id) => !handleOf(id));
   expect(missing, '沒有代號：在 packages/protocol/src/handles.ts 的 HANDLES 加下一個號碼').toEqual([]);
