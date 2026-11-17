@@ -74,6 +74,27 @@ describe('common.lens', () => {
     expect(lensBox({ look: 'mosaic', shape: 'full', size: 40, x: 0.3, y: 0.6, travel: 0.5 }, 1080, 1920)).toMatchObject({ w: 1080, moves: false });
   });
 
+  test('a full mapped lens whose travel takes its centre out of the frame still covers the whole frame at both ends', () => {
+    const cases = [
+      { look: 'magnify', x: 0.5, y: 0.5, travel: 1.2, from: 'l' },
+      { look: 'fisheye', x: 0.2, y: 0.8, travel: 1.5, from: 'tr' },
+      { look: 'prism', x: 0.5, y: 0.1, travel: 0.6, from: 'b' },
+    ] as const;
+    for (const W of [1080, 1920]) for (const c of cases) {
+      const H = W === 1080 ? 1920 : 1080, p = { ...c, shape: 'full', size: 40 } as const, b = lensBox(p, W, H);
+      for (const k of [0, 0.5, 1]) {
+        const [fx, fy] = lensCentre(p, k, W, H), left = fx * W - b.cx, top = fy * H - b.cy;
+        expect(left).toBeLessThanOrEqual(0); expect(left + b.w).toBeGreaterThanOrEqual(W);
+        expect(top).toBeLessThanOrEqual(0); expect(top + b.h).toBeGreaterThanOrEqual(H);
+      }
+    }
+    // the drawn div too, at the item's first and last moment
+    for (const t of [0, 3]) {
+      const { s } = run({ look: 'magnify', shape: 'full', travel: 1.2, enter: 'none', exit: 'none' }, t), st = css(s.lens);
+      expect(parseFloat(st.left)).toBeLessThanOrEqual(0); expect(parseFloat(st.left) + parseFloat(st.width)).toBeGreaterThanOrEqual(1080);
+    }
+  });
+
   test('the bends: magnify pulls in proportion, fisheye only inside the radius, prism nothing in the middle and most at the rim', () => {
     expect(bend('magnify', 30, -40, 100)).toEqual([-30, 40]);
     expect(bend('fisheye', 120, 0, 100)).toEqual([0, 0]);

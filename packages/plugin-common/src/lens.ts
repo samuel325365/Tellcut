@@ -19,8 +19,8 @@ type From = 'l' | 'r' | 't' | 'b' | 'tl' | 'tr' | 'bl' | 'br';
 interface P { look: Look; shape: Shape; x: number; y: number; size: number; strength: number; enter: Move; exit: Move; from: From; travel: number;
   axis: 'across' | 'down'; speed: number; rim: 'none' | 'line' | 'glass'; seed: number }
 interface S { look: Look; lens: HTMLElement; rim: HTMLElement; img?: SVGElement; filter: string; nodes: SVGElement[]; box: Box; unit: number; ready: Promise<void> }
-/** the lens div's box in stage px (for `full`, the frame; twice the frame round the moving centre when it travels) and the lens
- *  centre and radius inside it */
+/** the lens div's box in stage px (for `full`, the frame; at least twice the frame round the moving centre when a mapped look
+ *  travels, see lensBox) and the lens centre and radius inside it */
 export interface Box { w: number; h: number; cx: number; cy: number; R: number; moves: boolean }
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -77,12 +77,19 @@ export function lensCentre(p: Pick<P, 'x' | 'y' | 'from' | 'travel'>, k: number,
   return [p.x + dx * d, p.y + dy * d * (dx ? W / H : 1)];
 }
 
-/** the lens div's box: a square of `size` % of the short side round the centre; the frame for `full` (a mapped look that travels
- *  gets twice the frame round its centre, so the centre stays in the box's middle and the map need not be redrawn) */
-export function lensBox(p: Pick<P, 'look' | 'shape' | 'size' | 'x' | 'y' | 'travel'>, W: number, H: number): Box {
+/** the lens div's box: a square of `size` % of the short side round the centre; the frame for `full`. A mapped `full` look that
+ *  travels gets a box round its centre that moves with it, so the map need not be redrawn: half of it each way is the frame (as
+ *  long as the centre stays inside the frame, twice the frame) or, when the travel takes the centre out of the frame, the farthest
+ *  the centre gets from a frame edge along its path (at one of the path's ends: the path is straight), so it covers the whole
+ *  frame at every moment instead of leaving a strip at the far edge unbent */
+export function lensBox(p: Pick<P, 'look' | 'shape' | 'size' | 'x' | 'y' | 'travel'> & Partial<Pick<P, 'from'>>, W: number, H: number): Box {
   if (p.shape === 'full') {
     const R = Math.hypot(W, H) / 2;
-    if (p.travel > 0 && MAPPED.includes(p.look)) return { w: 2 * W, h: 2 * H, cx: W, cy: H, R, moves: true };
+    if (p.travel > 0 && MAPPED.includes(p.look)) {
+      const q = { ...p, from: p.from ?? 'l' }, ends = [lensCentre(q, 0, W, H), lensCentre(q, 1, W, H)];
+      const hw = W * Math.max(1, ...ends.map(([x]) => Math.max(x, 1 - x))), hh = H * Math.max(1, ...ends.map(([, y]) => Math.max(y, 1 - y)));
+      return { w: 2 * hw, h: 2 * hh, cx: hw, cy: hh, R, moves: true };
+    }
     return { w: W, h: H, cx: p.x * W, cy: p.y * H, R, moves: false };
   }
   const side = Math.max(4, (p.size / 100) * Math.min(W, H));
