@@ -67,7 +67,7 @@ test('unparsed JSON stays with its item: selecting another item shows that item\
   expect(root.querySelector('[data-param="t"]')!.textContent).not.toContain('JSON 格式錯誤');
 });
 
-test('a list a project gave a text param shows in its line form, is left alone until edited, and an edit stores text', async () => {
+test('a list a project gave a text param shows in its line form, is left alone until edited, and an edit stores a list again', async () => {
   const { root, editor, calls, store } = mount(['blk']);
   editor.registry = createRegistry([corePlugin, { id: 'x', items: [{ type: 'x.block', label: '區塊', kind: 'scene', build: () => null, draw: () => {},
     params: [{ key: 'rows', label: '列', type: 'text', default: '' }, { key: 'nums', label: '數', type: 'string', default: '' }] }] } as any]);
@@ -78,7 +78,8 @@ test('a list a project gave a text param shows in its line form, is left alone u
   expect([rows.value, nums.value]).toEqual(['0|0|05.26\n2|all|', '1, 2.5']);
   expect(calls).toEqual([]);
   change(nums, '1, 3');
-  expect(calls).toEqual([['param', 'blk', 'nums', '1, 3']]);
+  change(rows, '0|0|05.26\n2|all|\n3|1|09.01');
+  expect(calls).toEqual([['param', 'blk', 'nums', [1, 3]], ['param', 'blk', 'rows', [[0, 0, '05.26'], [2, 'all', ''], [3, 1, '09.01']]]]);
 });
 
 test('scene and overlay items have position and size fields in percent', async () => {

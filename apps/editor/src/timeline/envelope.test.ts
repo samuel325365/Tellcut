@@ -33,9 +33,29 @@ test('the line holds flat outside the points and takes the level that plays insi
   expect(envelopeLine(envelopePoints([[11, -6], [14, 0]], 10, 10, 46), 100)).toEqual([{ x: 0, y: 12 }, { x: 100, y: 12 }]);
 });
 
-test('a point outside the clip gets a handle just inside the nearer edge, flagged, at its own height', () => {
+test('a point outside the clip gets a handle just inside the nearer edge, flagged, on the drawn line there (not at its own height)', () => {
+  // the line: 34.571 at the head (the ramp from -40 dB at -2 s to 0 dB at 5 s), 6 at 50 px, 10.286 at the tail
   const pts = envelopePoints([[-2, -40], [5, 0], [12, -6]], 10, 10, 46);
-  expect(envelopeHandles(pts, 100, 4)).toEqual([{ x: 4, y: 46, out: true }, { x: 50, y: 6, out: false }, { x: 96, y: 12, out: true }]);
+  const line = envelopeLine(pts, 100);
+  expect(line).toEqual([{ x: 0, y: 34.571 }, { x: 50, y: 6 }, { x: 100, y: 10.286 }]);
+  // each ring sits on that line 4 px in from its edge: 34.571 → 6 over 50 px, 4 px in; 6 → 10.286 over 50 px, 46 px in
+  expect(envelopeHandles(pts, 100, 4)).toEqual([{ x: 4, y: 32.285, out: true }, { x: 50, y: 6, out: false }, { x: 96, y: 9.943, out: true }]);
   // points on the edges are inside
   expect(envelopeHandles(envelopePoints([[0, 0], [10, 0]], 10, 10, 46), 100, 4).map((p) => p.out)).toEqual([false, false]);
+});
+
+test('several points out on one side each keep a handle, stacked on the line at that edge', () => {
+  const pts = envelopePoints([[-3, 0], [-1, -10], [4, -6], [11, -40], [14, 0]], 10, 10, 46);
+  const hs = envelopeHandles(pts, 100, 4);
+  expect(hs.map((p) => p.out)).toEqual([true, true, false, true, true]);
+  // the two head rings share one spot, on the ramp from -1 s to 4 s; the two tail rings on the one from 4 s to 11 s
+  expect(hs[0]).toEqual(hs[1]);
+  expect(hs[3]).toEqual(hs[4]);
+  const at = (x: number) => { const [a, b] = x < 40 ? [pts[1], pts[2]] : [pts[2], pts[3]]; return a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x); };
+  expect(hs[0].x).toBe(4);
+  expect(hs[0].y).toBeCloseTo(at(4), 2);
+  expect(hs[3].x).toBe(96);
+  expect(hs[3].y).toBeCloseTo(at(96), 2);
+  // a clip narrower than two rings (4 px, the ramp crossing it from 26 to 18): both rings in the middle, still on the line
+  expect(envelopeHandles(envelopePoints([[-1, -40], [1, 0]], 0.4, 10, 46), 4, 4)).toEqual([{ x: 2, y: 22, out: true }, { x: 2, y: 22, out: true }]);
 });

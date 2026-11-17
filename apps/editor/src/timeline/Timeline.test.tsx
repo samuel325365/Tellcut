@@ -101,29 +101,48 @@ test('a double-click on the volume line adds one point: the second press lands o
 
 test('dragging a volume point moves it by the mouse offset from the press, also one a trim left outside the clip', async () => {
   const p = fixture();
-  (p.tracks[3].items[0] as any).envelope = [[-2, -6], [5, -6], [10, 0]];   // point 0 lies 2 s before the head
+  (p.tracks[3].items[0] as any).envelope = [[-2, -40], [5, -6], [10, 0]];   // point 0 lies 2 s before the head
   const { root, editor } = mount({ project: p, selection: ['m1'] });
-  let recipe: any = null;
+  let recipe: any = null, commits = 0;
   editor.livePreview = (r: any) => { recipe = r; };
-  editor.commitLive = () => {};
+  editor.commitLive = () => { commits++; };
   await act(() => render(<Timeline editor={editor} />, root));
   const svg = root.querySelector<SVGSVGElement>('[data-item-id="m1"] svg.env')!, w = Number(svg.getAttribute('width')), h = Number(svg.getAttribute('height'));
   svg.getBoundingClientRect = () => ({ left: 100, top: 50, width: w, height: h, right: 100 + w, bottom: 50 + h, x: 100, y: 50, toJSON() {} }) as DOMRect;
-  const after = (index: number, dx: number, dy: number) => {
-    const c = root.querySelector(`[data-item-id="m1"] [data-env-index="${index}"]`)!;
+  const ring = (index: number) => root.querySelector(`[data-item-id="m1"] [data-env-index="${index}"]`)!;
+  const press = (index: number, moves: Array<[number, number]>) => {
+    const c = ring(index);
     const x = 100 + Number(c.getAttribute('cx')) + 3, y = 50 + Number(c.getAttribute('cy')) + 2;   // pressed off the ring's centre
     c.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: x, clientY: y }));
-    window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: x + dx, clientY: y + dy }));
+    for (const [dx, dy] of moves) window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: x + dx, clientY: y + dy }));
+    const [dx, dy] = moves.at(-1) ?? [0, 0];
     window.dispatchEvent(new MouseEvent('mouseup', { clientX: x + dx, clientY: y + dy }));
+  };
+  const after = (index: number, dx: number, dy: number) => {
+    recipe = null;
+    press(index, [[dx, dy]]);
     const d = structuredClone(p);
     recipe(d);
     return (d.tracks[3].items[0] as any).envelope[index];
   };
-  expect(root.querySelector('[data-env-index="0"]')!.classList.contains('env-out')).toBe(true);
-  expect(root.querySelector('[data-env-index="1"]')!.classList.contains('env-out')).toBe(false);
-  // the outside point enters the clip where its ring is drawn (4 px in) plus the 50 px moved, at its own level
+  expect(ring(0).classList.contains('env-out')).toBe(true);
+  expect(ring(1).classList.contains('env-out')).toBe(false);
+  // the ring sits on the line where the line enters the clip (on the ramp from -40 dB at -2 s to -6 dB at 5 s), not at -40 dB
+  const lineDb = (t: number) => -40 + (34 * (t + 2)) / 7;
+  const ringDb = Number(((6 - (Number(ring(0).getAttribute('cy')) / h) * 46)).toFixed(1));
+  expect(ringDb).toBeCloseTo(lineDb(4 / 50), 1);
+  // a plain click on it, or a move that never leaves the press, changes nothing
+  press(0, []);
+  press(0, [[0, 0]]);
+  expect([recipe, commits]).toEqual([null, 0]);
+  // the outside point enters the clip where its ring is drawn (4 px in) plus the 50 px moved, at the level the line had there
   const [t0, db0] = after(0, 50, 0);
-  expect([t0, db0]).toEqual([(4 + 50) / 50, -6]);
+  expect(t0).toBe((4 + 50) / 50);
+  expect(db0).toBeCloseTo(lineDb(4 / 50), 1);
+  // nudged by one pixel, it becomes a point on the line just inside the edge: the line from there on barely moves
+  const [t1, db1] = after(0, 1, 0);
+  expect(t1).toBe(5 / 50);
+  expect(Math.abs(db1 - lineDb(t1))).toBeLessThan(0.5);
   // an inside point moves by the offset, not to the cursor (a 3 px / 2 px grab off centre would make it 5.06 s and a lower level)
   expect(after(1, 25, 0)).toEqual([5.5, -6]);
 });

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { arrayText, ColorField, JsonField, NumberField, ParamField, TextField } from './fields.tsx';
+import { arrayForm, arrayText, parseArrayText, ColorField, JsonField, NumberField, ParamField, TextField } from './fields.tsx';
 import { parseStops, routeboard } from '../../../packages/plugin-common/src/routeboard.ts';
 import { parseTouches, touch } from '../../../packages/plugin-common/src/touch.ts';
 import { parseObjects } from '../../../packages/plugin-common/src/flatlay/objects.ts';
@@ -85,11 +85,83 @@ test('a list given to a text param shows one entry per line in the block\'s own 
   const b = await shown(touch, 'touches', touches);
   expect(b.box.value).toBe(touches.join('\n'));
   expect(parseTouches(b.box.value)).toEqual(parseTouches(touches));
-  // nothing is stored until the box is edited; an edit stores the text
+  // nothing is stored until the box is edited; an edit stores a list again, shaped like the one shown
   expect([a.commits, b.commits]).toEqual([[], []]);
-  b.box.value = '0.5|tap|0.5,0.38';
+  b.box.value = '0.5|tap|0.5,0.38\n';
   await act(() => { b.box.dispatchEvent(new Event('change', { bubbles: true })); });
-  expect(b.commits).toEqual(['0.5|tap|0.5,0.38']);
+  expect(b.commits).toEqual([['0.5|tap|0.5,0.38']]);
+  expect(parseTouches(b.commits[0])).toEqual(parseTouches(['0.5|tap|0.5,0.38']));
+  // rows stay rows, numbers stay numbers where the column held numbers ('-' and 'all' stay words), a cleared date stays ''
+  a.box.value = '0|0|05.26\n1.5|-|\n2.6|all|05.26–08.21\n 4 | 1 | 09.01 ';
+  await act(() => { a.box.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(a.commits).toEqual([[...stops, [4, 1, '09.01']]]);
+  expect(parseStops(a.commits[0], 3)).toEqual(parseStops('0|0|05.26\n1.5|-|\n2.6|all|05.26–08.21\n4|1|09.01', 3));
+});
+
+test('an edit of a one-line list commits a list, empty entries in place; a string param stays a string', async () => {
+  const a = await shown(routeboard, 'legs', [1.2, null, 3]);
+  a.box.value = '1.2, ,2.5，4';
+  await act(() => { a.box.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(a.commits).toEqual([[1.2, null, 2.5, 4]]);
+  expect(legsOf(a.commits[0])).toEqual([1.2, NaN, 2.5, 4]);
+  for (const [key, text] of [['legs', '1, 2'], ['stops', '0|0|05.26']] as const) {
+    const b = await shown(routeboard, key, 'old');
+    b.box.value = text;
+    await act(() => { b.box.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(b.commits).toEqual([text]);
+  }
+});
+
+test('a list shown as JSON commits the parsed list; text that is not a JSON list stays in the box with the hint', async () => {
+  const objects = [{ kind: 'polaroid', x: -0.4 }];
+  const a = await shown(flatlay, 'objects', objects);
+  const root = a.box.parentElement!;
+  for (const bad of ['[{"kind": "tv"', '{"kind": "tv"}']) {
+    a.box.value = bad;
+    await act(() => { a.box.dispatchEvent(new Event('change', { bubbles: true })); a.box.dispatchEvent(new Event('blur')); });
+    expect(a.box.value).toBe(bad);
+    expect(root.querySelector('em.bad')).not.toBeNull();
+  }
+  expect(a.commits).toEqual([]);
+  a.box.value = '[{"kind": "tv", "at": 1}]';
+  await act(() => { a.box.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(a.commits).toEqual([[{ kind: 'tv', at: 1 }]]);
+  expect(root.querySelector('em.bad')).toBeNull();
+  expect(parseObjects({ objects: a.commits[0] } as any, 1080, 1920).objs[0].kind).toBe('tv');
+  a.box.value = ' ';
+  await act(() => { a.box.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(a.commits[1]).toEqual([]);
+});
+
+// Every list the line form shows reads back as the same list (undefined as null, which is how project.json stores it);
+// a list it could not read back the same shows as JSON instead
+test('the line form reads back to the list it shows; lists it cannot show that way are JSON', () => {
+  const same = (v: unknown[], multiline: boolean) => expect(parseArrayText(arrayText(v, multiline), v, multiline)).toEqual(JSON.parse(JSON.stringify(v)));
+  const lines: Array<[unknown[], boolean]> = [
+    [[[0, 0, '05.26'], [1.5, '-', ''], [2.6, 'all', '05.26–08.21']], true],   // routeboard stops (cut.ts)
+    [[[0, 0, '05.26'], [1.5, '-', '']], false],                               // the same in a one-line box
+    [['0.5|tap|0.5,0.38', '1.1-1.9|drag|0.3,0.6>0.7,0.6'], true],             // touch touches
+    [[1.2, null, 3], false], [[1.2, undefined, 3], false], [[null, 2], false], // routeboard legs, gaps by position
+    [[0.5, 1, 2e-7, -3], true], [[true, false], false], [['a', 'b c'], false],
+    [[[1, 'a', true], [2], [3, 'b', false, 'x']], true],                      // rows of different lengths
+    [[[1, null], [2, 5]], true], [[['', 'a'], ['b', '']], false],
+    [[], true], [[], false],
+  ];
+  for (const [v, multiline] of lines) {
+    expect(arrayForm(v, multiline).json, JSON.stringify(v)).toBe(false);
+    same(v, multiline);
+  }
+  const json: Array<[unknown[], boolean]> = [
+    [['a, b', 'c'], false], [['a\nb'], true], [[[1, 'a|b']], true],   // an entry holding the separator
+    [[1, '1'], false], [[['a', ''], ['b', null]], true],            // a word that reads as a number, '' and null in one column
+    [[null, 'a'], true], [[null], false], [[' a'], false],           // a blank line, a lone empty entry, spaces at an end
+    [[[1, 2], 3], true], [[{ a: 1 }], true],                        // rows and plain entries mixed, an object
+  ];
+  for (const [v, multiline] of json) {
+    const f = arrayForm(v, multiline);
+    expect(f.json, JSON.stringify(v)).toBe(true);
+    expect(JSON.parse(f.text)).toEqual(JSON.parse(JSON.stringify(v)));
+  }
 });
 
 test('a list given to a one-line param is joined with commas; empty entries stay empty', async () => {

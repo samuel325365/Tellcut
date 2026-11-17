@@ -28,8 +28,17 @@ export function envelopeLine(pts: Pt[], w: number): Pt[] {
 }
 
 /** Where each point's handle is drawn: a point outside the clip sits just inside the nearer edge, flagged `out` (drawn
- *  differently), so it can still be grabbed, dragged in or deleted; it keeps its own height (a drag sets the level too). */
+ *  differently), so it can still be grabbed, dragged in or deleted. Its ring sits on the drawn line there, not at the point's
+ *  own level: the line enters the clip at its ramp's height (`envelopeLine`), and a ring at another height would look
+ *  detached from it, as if it were a point inside. The drag starts from the ring, so nudging it brings the point in at the
+ *  level the line already had there and the line inside barely changes. Several points out on one side share that spot
+ *  (stacked rings, each still its own handle). */
 export function envelopeHandles(pts: Pt[], w: number, r: number): Array<Pt & { out: boolean }> {
-  const inset = Math.min(r, w / 2);
-  return pts.map((p) => (p.x < -1e-6 ? { x: inset, y: p.y, out: true } : p.x > w + 1e-6 ? { x: w - inset, y: p.y, out: true } : { ...p, out: false }));
+  const inset = Math.min(r, w / 2), line = envelopeLine(pts, w);
+  // the drawn line's height at x (0..w): its xs run from 0 to w in order
+  const onLine = (x: number) => {
+    const i = line.findIndex((p) => p.x >= x);
+    return i <= 0 ? line[Math.max(i, 0)].y : line[i].x === x ? line[i].y : lerp(line[i - 1], line[i], x);
+  };
+  return pts.map((p) => (p.x < -1e-6 ? { x: inset, y: onLine(inset), out: true } : p.x > w + 1e-6 ? { x: w - inset, y: onLine(w - inset), out: true } : { ...p, out: false }));
 }

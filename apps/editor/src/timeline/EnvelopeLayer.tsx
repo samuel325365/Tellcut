@@ -14,7 +14,7 @@ export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: n
       <polyline class="env-line" points={points} />
       {active && <>
         <polyline class="env-hit" data-env-line points={points} />
-        {/* env-out: a point a trim left outside the clip, drawn as a hollow ring at the edge */}
+        {/* env-out: a point a trim left outside the clip, drawn as a hollow ring on the line at the nearer edge */}
         {handles.map((p, i) => <circle data-env-index={i} data-env-out={p.out ? '' : undefined} cx={p.x} cy={p.y} r={4} class={p.out ? 'env-out' : undefined} />)}
         <path data-fade="in" class="fade-handle" d={`M${fi} 0 l10 0 l-10 10 z`} />
         <path data-fade="out" class="fade-handle" d={`M${fo} 0 l-10 0 l10 10 z`} />
