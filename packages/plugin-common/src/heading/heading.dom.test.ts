@@ -95,6 +95,25 @@ test('full: a look with a box of its own (sign, ribbon, seal) still sets a short
   }
 });
 
+test('a big title in a wide face (spaced capitals, the 8-bit face) shrinks a long word instead of breaking it, down to a legible size', () => {
+  // the visible lines (the runs, or the word spans when the look draws word by word) and the size they are drawn at
+  const linesOf = (params: Record<string, unknown>) => {
+    const d = drawn(params, 1.5), groups = [...d.box.children].filter((c) => (c as HTMLElement).style.display !== 'none' && c.children.length && [...c.children].every((x) => x.tagName === 'DIV'));
+    return { lines: groups.flatMap((g) => [...g.children].map((l) => l.textContent ?? '')), fs: parseFloat(d.box.style.fontSize) };
+  };
+  // these faces set a letter about 1 em wide against the 0.55 the line breaking counts: at size 15 in 9:16, 「Colosseum」 needs a
+  // third of the size, under the half a word used to be allowed, and broke 「Colos」「seum」
+  for (const template of ['spaced-track', 'pixel-top', 'credit-bottom', '']) {
+    for (const text of ['Colosseum', 'Welcome to the Colosseum', 'Constantinople']) {
+      const { lines, fs } = linesOf({ text, template, size: 15 });
+      expect(lines.join(' ').split(/\s+/), `${template} ${text}`).toEqual(text.split(' '));
+      expect(fs, `${template} ${text}`).toBeGreaterThanOrEqual(48);
+    }
+  }
+  // a word too long even at the 48 px floor still breaks between its letters
+  expect(linesOf({ text: 'Supercalifragilisticexpialidocious', template: 'spaced-track', size: 15 }).lines.length).toBeGreaterThan(1);
+});
+
 test('a centred kicker is moved right by its letter spacing\'s trailing gap (CSS spaces after the last letter too); a left one is not', () => {
   const kickerOf = (params: Record<string, unknown>) => [...drawn({ text: '七百年', kicker: '第一章', ...params }, 1.5).root.querySelectorAll<HTMLElement>('div')].find((d) => d.textContent === '第一章')!;
   const c = kickerOf({}), kfs = parseFloat(c.style.fontSize);

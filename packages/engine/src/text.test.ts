@@ -113,3 +113,15 @@ test('fitLines never breaks a Latin word while the font may shrink: below minSca
   // Chinese words still break between characters as before (no extra shrinking for them)
   expect(fitLines('一二三四五六七八九十', 3, 2, 0.7).scale).toBe(0.7);
 });
+
+test('fitLines: a caller may let a word shrink below half the floor (a big font that stays legible smaller), and no further', () => {
+  // Colosseum (4.95 em) in a 1.59 em box (a size-15 spaced title in 9:16) needs 0.32: under the default 0.35 it broke
+  expect(fitLines('Colosseum', 1.59, 2, 0.7).lines).toEqual(['Colos', 'seum']);
+  const low = fitLines('Colosseum', 1.59, 2, 0.7, 0, 0.167);
+  expect(low.lines).toEqual(['Colosseum']);
+  expect(low.scale).toBeCloseTo(1.59 / 4.95, 2);
+  // too long even at the floor given: the floor, and the word breaks
+  const url = fitLines('Supercalifragilisticexpialidocious', 1.59, 2, 0.7, 0, 0.167);
+  expect(url.scale).toBe(0.167);
+  expect(url.lines.length).toBeGreaterThan(1);
+});

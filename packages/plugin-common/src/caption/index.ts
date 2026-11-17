@@ -161,7 +161,13 @@ export const caption: ItemType<CaptionP, CaptionS> = {
     // own right padding already gives it: a boxed look's caret hangs into its padding and its words keep their size
     const sfont = styleFontOf(p.style, p.styleFont, !!ctx.item?.params?.font || p.font !== ctx.params.font);
     const caret = fx === 'type' ? Math.max(0, caretEm(sfont || p.font) - rightPadEm(look.box?.({ ...pre, fs: px, opacity: 1 }))) : 0;
-    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, (Math.max(0, roomAt(0) - room) / px + caret) / hs);
+    // a Latin word shrinks to fit a line whole rather than break, by default to half the size asked for. A big font in a wide face
+    // (spaced capitals, the 8-bit face: about 1 em a letter, so the look's room is half what the line breaking counts) needs less:
+    // 「Colosseum」 in a size-15 spaced title in 9:16 needed 0.32 and broke 「Colos」「seum」. So a word may also go down to the 48 px
+    // floor of words on screen (guides/quality.md, on a 1080 short side), whichever is smaller: a big title shrinks a long word as far
+    // as it stays legible, a caption at an ordinary size keeps the half, and a word too long even at 48 px still breaks
+    const wordFloor = Math.min(0.35, (48 * k) / px);
+    const fit = fx === 'one' ? layoutMarkup(text, 1e6, 1, st.typed, lit) : layoutMarkup(text, roomAt(0) / px / hs, p.maxLines ?? 2, st.typed, lit, (Math.max(0, roomAt(0) - room) / px + caret) / hs, wordFloor);
     if (fx === 'one') fit.scale = oneFit;
     const fs = px * fit.scale, la = lineAnim(p.animIn, p.animOut, ctx.local, ctx.dur, p.animDur, fs), e: LookEnv = { ...pre, fs, opacity: st.opacity * la.opacity };
     // the font first: word effects measure the words (a growing word's room, the sliding box), which must already be in it
