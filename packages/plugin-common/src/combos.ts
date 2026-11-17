@@ -49,7 +49,7 @@ export const combos: Combo[] = [
   // stands in.) The glow's keys drop off its top within two frames: a bloom fills the whole frame while its curve is high (core.flash),
   // which over footage washed it gold for the first tenth of a second; screen lightens without covering, so the footage shows through
   // even that first frame, and the low rest of the curve keeps the glow a patch of light round (0.5, 0.35)
-  { id: 'celebrate', label: '慶祝', doc: '達成目標、過關、得獎、生日：中間一團金色的光一亮，彩色紙片從頂端整片落下，配 8-bit 過關號角', parts: [
+  { id: 'celebrate', label: '慶祝', doc: '達成目標、過關、得獎、生日：畫面中間偏上亮起一團柔和的金光再慢慢淡掉（不是閃一下），彩色紙片從頂端整片落下，配 8-bit 過關號角', parts: [
     { name: 'confetti', kind: 'effect', type: 'common.sparkle', template: 'confetti-rain', at: -0.4, len: 2.4 },
     { name: 'glow', kind: 'effect', type: 'core.flash', template: 'bloom-pop', params: { color: '#ffd23f', y: 0.35, keys: '0:0.45, 0.07:0.11, 0.5:0.09, 0.85:0', blend: 'screen' }, at: 0, len: 0.9 },
     { name: 'fanfare', kind: 'sfx', type: 'common.fanfare', at: -0.38, len: 1.3, gain: -8 },

@@ -7,7 +7,8 @@
 // and the div's place change, so draw stays cheap and a pure function of time. Every number in the filters is in the stage's px
 // (userSpaceOnUse), which Chrome scales with the preview's frame; the one primitive it does not, feTurbulence, is not used.
 // backdrop-filter with url() is Chromium only: other browsers'
-// previews show the picture unbent; the export always uses Chrome. The layer must not be blended (a blended layer is a backdrop
+// previews show the picture unbent, and so does the editor's "Preview: Smooth" (body.draft in apps/player/index.html turns every
+// backdrop-filter off); the export always uses Chrome. The layer must not be blended (a blended layer is a backdrop
 // root and would see nothing under it).
 import { attr, clamp, cssCamel, h, mulberry32, type ItemType } from '@tellcut/engine';
 
@@ -182,7 +183,7 @@ const mod = (a: number, n: number) => ((a % n) + n) % n;
 
 export const lens: ItemType<P, S> = {
   type: 'common.lens', label: '鏡頭變形', category: 'look', kind: 'overlay',
-  doc: '鏡頭：把底下的畫面本身變形（影片和下面軌道的積木、字幕都一起變），不是蓋一層東西上去。look magnify 放大鏡，範圍裡放大 1–2.5 倍（指出畫面裡的小東西，travel 讓它掃過畫面＝找東西）；fisheye 魚眼，中間鼓起來、邊緣擠扁（搞笑、誇張、湊近看）；mosaic 馬賽克，格子最大到畫面短邊 6%（遮住不能看的；shape full 加 enter、exit grow＝像素化轉場）；ripple 水波／熱氣，畫面一直波動、往一個方向流（熱、暈、夢、水底；speed 流速）；streak 單向模糊，橫向或直向拉成線（甩鏡頭、快速換場；axis 方向）；prism 色散，越靠邊緣紅、青分得越開，中間清楚（夢幻、恍神、科技感）。shape circle 圓形、box 方形、full 整個畫面；strength 是各樣子的強度，enter／exit 讓強度從 0 長出來或衝過頭再回來。注意：鏡頭下面的字幕也會一起變形，字幕要清楚就把鏡頭放在字幕下面的軌道；不能和混色（blend）的積木疊成同一層；預覽只有 Chromium 系瀏覽器（Chrome、Edge）看得到，輸出一律用 Chrome',
+  doc: '鏡頭：把底下的畫面本身變形（影片和下面軌道的積木、字幕都一起變），不是蓋一層東西上去。look magnify 放大鏡，範圍裡放大 1–2.5 倍（指出畫面裡的小東西，travel 讓它掃過畫面＝找東西）；fisheye 魚眼，中間鼓起來、邊緣擠扁（搞笑、誇張、湊近看）；mosaic 馬賽克，格子最大到畫面短邊 6%（遮住不能看的；shape full 加 enter、exit grow＝像素化轉場）；ripple 水波／熱氣，畫面一直波動、往一個方向流（熱、暈、夢、水底；speed 流速）；streak 單向模糊，橫向或直向拉成線（甩鏡頭、快速換場；axis 方向）；prism 色散，越靠邊緣紅、青分得越開，中間清楚（夢幻、恍神、科技感）。shape circle 圓形、box 方形、full 整個畫面；strength 是各樣子的強度，enter／exit 讓強度從 0 長出來或衝過頭再回來。注意：鏡頭下面的字幕也會一起變形，字幕要清楚就把鏡頭放在字幕下面的軌道；不能和混色（blend）的積木疊成同一層；預覽只有 Chromium 系瀏覽器（Chrome、Edge）看得到，輸出一律用 Chrome；編輯器的「Preview: Smooth」也看不到（馬賽克在那裡什麼都遮不住），「Preview: Full」和輸出才看得到',
   params: [
     { key: 'look', label: '樣子（magnify 放大鏡、fisheye 魚眼、mosaic 馬賽克、ripple 水波、streak 單向模糊、prism 色散）', type: 'enum', options: [...LOOKS], default: 'magnify' },
     { key: 'shape', label: '範圍（circle 圓形、box 方形、full 整個畫面）', type: 'enum', options: ['circle', 'box', 'full'], default: 'circle' },
