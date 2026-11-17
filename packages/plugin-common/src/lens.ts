@@ -192,6 +192,15 @@ export const lens: ItemType<P, S> = {
     { key: 'rim', label: '鏡框（none 無、line 細白邊、glass 白邊加玻璃反光；full 沒有）', type: 'enum', options: ['none', 'line', 'glass'], default: 'line' },
     { key: 'seed', label: '亂數種子（ripple 的波紋）', type: 'number', min: 1, max: 9999, step: 1, default: 7 },
   ],
+  // named sets of these params (engine templates.ts); their golden samples are lens-tpl-<id>, drawn over the lens samples' ground
+  templates: [
+    { id: 'spot-zoom', label: '小東西放大', doc: '指出畫面裡的小東西（價錢、招牌上的字、手上的小物）：一個比預設小的圓形放大鏡，細白邊，衝過頭再彈回來，裡面放大到 2.5 倍；停在畫面左下，把 x、y 移到那個東西上', params: { look: 'magnify', x: 0.3, y: 0.7, size: 32, strength: 1, enter: 'pop' } },
+    { id: 'scan-glass', label: '放大鏡掃過', doc: '找東西、檢查、仔細看：一個白邊加玻璃反光的圓形放大鏡，整個項目從左到右橫掃過畫面，經過的地方放大 2 倍；y 移到要掃的那一排', params: { look: 'magnify', size: 40, strength: 0.7, travel: 0.8, from: 'l', rim: 'glass' } },
+    { id: 'censor', label: '馬賽克遮擋', doc: '遮住不能看的（路人的臉、車牌、商標）：一個方形馬賽克，格子最大（畫面短邊 6%），停在原地，沒有進退場動畫，從頭到尾都一樣；把 x、y、size 移到要遮的東西上', params: { look: 'mosaic', shape: 'box', size: 40, strength: 1, enter: 'none', exit: 'none', rim: 'none' } },
+    { id: 'pixel-cut', label: '像素化轉場', doc: '換話題、換段落的轉場：整個畫面變成馬賽克，格子由小變大再變小。項目放 0.5–0.8 秒，跨在剪接點上（一半在前一段的尾巴、一半在下一段的開頭），最大的格子剛好蓋住換鏡頭的那一格', params: { look: 'mosaic', shape: 'full', strength: 1, enter: 'grow', exit: 'grow' } },
+    { id: 'heat-haze', label: '熱氣扭曲', doc: '熱、頭暈、作夢、水底：整個畫面輕輕扭動，橫躺的波紋慢慢往上飄，頭尾淡入淡出；可以放很長', params: { look: 'ripple', shape: 'full', strength: 0.3, speed: 3 } },
+    { id: 'whip', label: '甩鏡頭', doc: '快速換場、甩頭、看向另一邊：整個畫面瞬間橫向糊成線再清楚回來。項目放 0.3–0.5 秒，跨在剪接點上，最糊的時候剛好換鏡頭', params: { look: 'streak', shape: 'full', axis: 'across', strength: 1, enter: 'grow', exit: 'grow' } },
+  ],
   build(ctx) {
     const p = ctx.params, { W, H } = ctx, look: Look = isLook(p.look) ? p.look : 'magnify', box = lensBox({ ...p, look }, W, H), id = `tc-lens-${++seq}`;
     const S = Math.min(W, H);
