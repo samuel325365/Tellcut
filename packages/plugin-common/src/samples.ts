@@ -9,6 +9,7 @@ import { KITS } from './samples/kits.ts';
 import { GROUPS } from './samples/groups.ts';
 import { STYLES } from './samples/styles.ts';
 import { COMBO_SAMPLES } from './samples/combos.ts';
+import { LENS_SAMPLES } from './samples/lens.ts';
 import type { Sample } from './samples/fixtures.ts';
 
 export type { Sample } from './samples/fixtures.ts';
@@ -21,4 +22,5 @@ export const samples: Sample[] = [
   ...GROUPS,
   ...STYLES,
   ...COMBO_SAMPLES,
+  ...LENS_SAMPLES,
 ];
