@@ -6,7 +6,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, allItems, applyTemplate, comboSpan, createRegistry, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, projectRegistry, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
+import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf, withTemplate } from '@tellcut/plugin-common';
 import { handleOf, idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
 import type { Who } from './follow.ts';
@@ -15,6 +15,7 @@ import { inventory, type Inventory } from './inventory.ts';
 import { captionPlan, filmOf, linePlan, secs, wordSpans, type CaptionOptions, type Line, type SpeechPiece, type SrcTime } from '@tellcut/plugin-common/speech';
 import { tightenClip } from './tighten.ts';
 import { captionHeight, isCaption, placeCaptions, UNDER_GAP, type CaptionItem } from './under-panel.ts';
+import { burnedZone, planCaptionsTop, type GaveUpClip, type Stay, type TimedCaption, type TimedItem } from './burned-captions.ts';
 import { addDucking, addScore, clipSpeech, playingSounds, QUIET_DB, untranscribed, type ScoreRequest, type SpeechLevel } from './mix.ts';
 import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, type FollowReq } from './focus.ts';
 import { addBands, addBeside, addFlatlayClip, addTrack, checkFrame, cropOf, frameFields, STILL, viewOf, type BandsOpts, type BesideOpts, type CropIn, type Frame, type Shape, type ViewOpts } from './frames.ts';
@@ -24,8 +25,9 @@ export { checkFrame };
 
 type Transition = { type: 'dissolve' | 'slide'; dur: number; dir?: 'l' | 'r' | 'u' | 'd' };
 /** why avoidBurned left a clip as asked: the zoom it needs is past the cap, the detection has not run, or no caption was detected
- *  near it (`fix`: the crop that would clear the caption row anyway, `cap` when even that is past the zoom cap) */
-type BurnedSkip = { kind: 'zoom' | 'pending' | 'unseen'; from: number; to: number; cap?: number; rows?: [number, number]; fix?: { from: Crop; to: Crop } };
+ *  near it (`fix`: the crop that would clear the caption row anyway, `cap` when even that is past the zoom cap); `cropOnly`:
+ *  avoidBurned: 'crop', our captions are not moved off the row */
+type BurnedSkip = { kind: 'zoom' | 'pending' | 'unseen'; from: number; to: number; cap?: number; rows?: [number, number]; fix?: { from: Crop; to: Crop }; cropOnly?: boolean };
 /** clips listed in one avoidBurned note at most */
 const MAX_SKIPS = 8;
 const cropText = (c: Crop) => `{ x: ${+c.x.toFixed(3)}, y: ${+c.y.toFixed(3)}, zoom: ${+c.zoom.toFixed(3)} }`;
@@ -184,17 +186,42 @@ export class Cut {
   }
   /** clips avoidBurned left as asked, by source: said once per source at save() (a recipe asks it of every clip) */
   private burnedSkips = new Map<string, Array<BurnedSkip & { ids: string[] }>>();
-  private burnedSkipNotes() {
+  /**
+   * At save(), once the panel layout has placed its captions (`hung`: the ones it hung under the panel): what avoidBurned left as
+   * asked, said once per source. Where it gave up with a caption row really there — the zoom past the cap, or `faces`: clearing it
+   * would cut a face (resolveBurnedFaces) — our captions sitting on that row move to the top first (captionsOffBurned), and the
+   * note says how many did and which stayed and why. 'pending' and 'unseen' clips have no detected row to go by: nothing moves.
+   */
+  private burnedSkipNotes(faces: BurnedAsk[] = [], hung = new Set<string>()) {
     // source times as the script writes them ('9:46.0')
     const span = (k: { ids: string[]; from: number; to: number }, more = '') => `${k.ids.join('、')}（素材 ${timecode1(k.from)}–${timecode1(k.to)}${more}）`;
-    const list = <T,>(xs: T[], f: (x: T) => string) => xs.slice(0, MAX_SKIPS).map(f).join('、') + (xs.length > MAX_SKIPS ? `…（還有 ${xs.length - MAX_SKIPS} 段）` : '');
+    const list = <T,>(xs: T[], f: (x: T) => string, unit = '段') => xs.slice(0, MAX_SKIPS).map(f).join('、') + (xs.length > MAX_SKIPS ? `…（還有 ${xs.length - MAX_SKIPS} ${unit}）` : '');
     const live = new Set(allItems(this.p).map((x) => (x.item as { id: string }).id));
-    for (const [source, asked] of this.burnedSkips) {
-      // a clip the script removed again is not news
-      const all = asked.map((k) => ({ ...k, ids: k.ids.filter((id) => live.has(id)) })).filter((k) => k.ids.length);
-      const src = this.p.sources[source], by = (kind: BurnedSkip['kind']) => all.filter((k) => k.kind === kind);
-      const zoom = by('zoom'), pending = by('pending'), unseen = by('unseen');
-      if (zoom.length) this.notes.push(`avoidBurned：${source} 有 ${zoom.length} 段要放大超過 ${zoom[0].cap} 倍才避得開燒進去的字幕（素材 ${src.width}×${src.height}，再放大會糊），沒有改裁切：${list(zoom, (k) => span(k))}；字幕改放畫面上方或換鏡頭`);
+    // a clip the script removed again is not news
+    const alive = <K extends { ids: string[] }>(ks: K[]) => ks.map((k) => ({ ...k, ids: k.ids.filter((id) => live.has(id)) })).filter((k) => k.ids.length);
+    const asked = new Map([...this.burnedSkips].map(([s, ks]) => [s, alive(ks)]));
+    const faced = alive(faces);
+    const gave = [...asked].flatMap(([source, ks]) => ks.filter((k) => k.kind === 'zoom').map((k) => ({ source, ids: k.ids, cropOnly: k.cropOnly })))
+      .concat(faced.map((a) => ({ source: a.source, ids: a.ids, cropOnly: a.cropOnly })));
+    const plan = this.captionsOffBurned(gave, hung);
+    const why: Record<Stay, string> = { placed: '是自己給了位置（y、position 或 transform）', taken: '上方同時已經有別的東西（標題、標籤…）或原片的字也在上方', crop: "在 avoidBurned: 'crop' 的片段上" };
+    for (const source of new Set([...asked.keys(), ...faced.map((a) => a.source)])) {
+      const all = asked.get(source) ?? [], src = this.p.sources[source], by = (kind: BurnedSkip['kind']) => all.filter((k) => k.kind === kind);
+      const zoom = by('zoom'), pending = by('pending'), unseen = by('unseen'), face = faced.filter((a) => a.source === source);
+      if (zoom.length || face.length) {
+        const parts = [
+          ...(zoom.length ? [`有 ${zoom.length} 段要放大超過 ${zoom[0].cap} 倍才避得開燒進去的字幕（素材 ${src.width}×${src.height}，再放大會糊），沒有改裁切：${list(zoom, (k) => span(k))}`] : []),
+          ...(face.length ? [`有 ${face.length} 段裁掉燒進去的字幕會切到畫面裡的人臉，照原本的裁切：${list(face, (k) => span(k))}`] : []),
+        ];
+        // what became of our captions over those clips
+        const ids = new Set([...zoom, ...face].flatMap((k) => k.ids)), moved = plan.moves.filter((m) => ids.has(m.clip));
+        const stays = (['placed', 'taken', 'crop'] as Stay[]).map((w) => [w, plan.stays.filter((s) => s.why === w && ids.has(s.clip)).map((s) => s.id)] as const).filter(([, xs]) => xs.length);
+        const fate = [
+          ...(moved.length ? [`疊在原片字幕上的 ${moved.length} 張字幕自動移到畫面上方`] : []),
+          ...(stays.length ? [`${stays.map(([w, xs]) => `${xs.length} 張${why[w]}：${list(xs, (x) => x, '張')}`).join('；')}，沒有移：這幾張自己改位置或換鏡頭`] : []),
+        ];
+        this.notes.push(`avoidBurned：${source} ${parts.join('；')}；${fate.length ? fate.join('；') : "目前沒有我們的字幕疊在原片字幕上；之後再加的字幕放畫面上方（position: 'top'）或換鏡頭"}`);
+      }
       if (pending.length) this.notes.push(`avoidBurned：${source} 沒有燒字偵測的結果（分析還沒跑完或失敗了），${pending.length} 段沒有裁：${list(pending, (k) => span(k))}；分析完再重跑 cut`);
       if (unseen.length) {
         const [top, bottom] = unseen[0].rows!, pct = (x: number) => Math.round(x * 100);
@@ -205,6 +232,39 @@ export class Cut {
     }
     this.burnedSkips.clear();   // said once, even if save() runs again
   }
+  /** Our captions on the caption row of the clips avoidBurned gave up on, moved to the top where nothing else sits (see
+   *  burned-captions.ts); returns what moved and what stayed, by clip. */
+  private captionsOffBurned(gave: Array<{ source: string; ids: string[]; cropOnly?: boolean }>, hung: Set<string>) {
+    const { width: W, height: H } = this.p.meta, meta = this.p.meta, times = resolveTimes(this.p);
+    const v1 = (this.p.tracks.find((t) => t.id === 'v1')?.items ?? []) as VideoItem[], clips: GaveUpClip[] = [];
+    for (const g of gave) {
+      const cap = this.inv.sources.find((x) => x.id === g.source)?.burned?.caption, src = this.p.sources[g.source];
+      if (!cap || !src) continue;
+      for (const id of g.ids) {
+        const c = v1.find((i) => i.id === id), t = times.get(id);
+        const zone = c && t && burnedZone({ srcW: src.width, srcH: src.height, W, H, frame: c.frame, crops: [c.crop.from, ...(c.crop.keys ?? []), c.crop.to], rect: cap.rect });
+        if (zone) clips.push({ id, start: t!.start, end: t!.end, zone, move: !g.cropOnly });
+      }
+    }
+    if (!clips.length) return { moves: [], stays: [] };
+    // every overlay item with its film times and its params as drawn: the block's defaults, then a caption or title template
+    const reg = SHARED, theme = resolveTheme(meta.theme, meta);
+    const drawn = (type: string, own: Record<string, unknown>) => {
+      const full = { ...Object.fromEntries((reg.item(type)?.params ?? []).map((d) => [d.key, d.default])), ...own };
+      if (type === 'common.caption') return withTemplate(full, own, meta.captionTemplate, meta.captionTemplates as Record<string, Record<string, unknown>> | undefined);
+      if (type === 'common.heading') return withTemplate(full, own, meta.titleTemplate, meta.titleTemplates as Record<string, Record<string, unknown>> | undefined, titleTemplateOf);
+      return full;
+    };
+    // the panel layout's own frame spans the film and is not something at the top
+    const all = this.p.tracks.filter((t) => t.kind === 'overlay' && t.id !== 'panel').flatMap((t) => t.items as unknown as Array<CaptionItem & { params?: Record<string, unknown> }>)
+      .map((it) => ({ ...it, params: it.params ?? {}, ...times.get(it.id)!, eff: drawn(it.type, it.params ?? {}), defs: reg.item(it.type)?.params ?? [] })) as Array<TimedCaption & TimedItem>;
+    const plan = planCaptionsTop(all.filter((it) => isCaption(it.type)), { clips, others: all, safe: theme.safe, hung, heightOf: (it) => captionHeight(it.type, it.eff, W, H, theme.stroke) });
+    for (const m of plan.moves) {
+      const it = this.p.tracks.flatMap((t) => t.items as Array<{ id: string; params?: Record<string, unknown>; transform?: unknown }>).find((x) => x.id === m.id)!;
+      if ('params' in m) it.params = { ...(it.params ?? {}), ...m.params }; else it.transform = { ox: 0.5, oy: 0.5, ...m.transform };
+    }
+    return plan;
+  }
   private frameFields(frame?: Frame, shape?: Shape) { return frameFields(this.layout, frame, shape); }
   /** a transition overlaps the previous clip by its own length: it stays linked to the overlap */
   private startFor(tr?: Transition) { return tr ? r6(Math.max(0, this.cursor - tr.dur)) : this.cursor; }
@@ -213,9 +273,12 @@ export class Cut {
    * `frame` [x, y, w, h]: the rectangle of the screen the picture lives in (a window of common.duo / common.magazine, a band…), instead of the whole screen or the panel.
    * `from` may be written as the player shows it ('1:23.5'). `duck`: whether speech in this clip's own sound ducks the music — true,
    * false, or the dB to duck to (default: it does unless the clip's sound is at QUIET_DB or lower, room tone under a montage).
+   * `avoidBurned`: crop the footage's own caption row out (see avoidBurned); where it cannot, save() moves our captions sitting on
+   * that row to the top; `'crop'` only crops and leaves our captions where they are.
    */
-  clip(source: string, o: { from?: SrcTime; len: number; speed?: number; crop?: CropIn; transition?: Transition; sound?: boolean; gain?: number; avoidBurned?: boolean; frame?: Frame; shape?: Shape; duck?: boolean | number }): string {
+  clip(source: string, o: { from?: SrcTime; len: number; speed?: number; crop?: CropIn; transition?: Transition; sound?: boolean; gain?: number; avoidBurned?: boolean | 'crop'; frame?: Frame; shape?: Shape; duck?: boolean | number }): string {
     checkFrame(o.frame, `c.clip('${source}')`);
+    if (o.avoidBurned !== undefined && typeof o.avoidBurned !== 'boolean' && o.avoidBurned !== 'crop') throw new Error(`c.clip('${source}') 的 avoidBurned 只能是 true、false 或 'crop'（只裁切、不移字幕），現在是 ${JSON.stringify(o.avoidBurned)}`);
     const s = this.src(source), crop0 = cropOf(o.crop, `c.clip('${source}')`);
     if (s.kind === 'image') {
       // a photo among clips (a recipe's shot list): its crop / focus is kept, not dropped
@@ -231,8 +294,9 @@ export class Cut {
     const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame, o.shape), ...(o.transition ? { transitionIn: o.transition } : {}) } });
     // no crop asked for and the picture does not fit the frame's shape: at save() its focus goes to the faces in it (phase 5)
     if (!crop0) this.autoFocus.push([id]);
-    if (avoided?.ask) this.burnedAsks.push({ ids: [id], ...avoided.ask });
-    if (avoided?.skip) this.burnedSkips.set(source, [...(this.burnedSkips.get(source) ?? []), { ids: [id], ...avoided.skip }]);
+    const cropOnly = o.avoidBurned === 'crop' ? { cropOnly: true } : {};
+    if (avoided?.ask) this.burnedAsks.push({ ids: [id], ...avoided.ask, ...cropOnly });
+    if (avoided?.skip) this.burnedSkips.set(source, [...(this.burnedSkips.get(source) ?? []), { ids: [id], ...avoided.skip, ...cropOnly }]);
     if (o.duck !== undefined) this.duckOf.set(id, o.duck);
     if ((o.sound ?? true) && s.audio !== false) {
       const edge = r6(Math.min(0.1, len / 4));
@@ -632,10 +696,10 @@ export class Cut {
       addItem(this.p, { track: 'panel', item: { type: 'common.panel', start: 0, end: duration, params: { x, y, w, h, radius: l.radius, ...l.border } } });
     }
   }
-  /** At save(), in a panel layout: the captions nobody placed hang right under the panel (see under-panel.ts). */
-  private captionsUnderPanel() {
+  /** At save(), in a panel layout: the captions nobody placed hang right under the panel (see under-panel.ts). Returns their ids. */
+  private captionsUnderPanel(): Set<string> {
     const l = this.layout;
-    if (!l) return;
+    if (!l) return new Set();
     const { width: W, height: H } = this.p.meta, theme = resolveTheme(this.p.meta.theme, this.p.meta), reg = createRegistry(plugins);
     const withDefaults = (it: CaptionItem) => ({ ...Object.fromEntries((reg.item(it.type)?.params ?? []).map((d) => [d.key, d.default])), ...it.params });
     const all = this.p.tracks.filter((t) => t.kind === 'overlay').flatMap((t) => t.items as unknown as CaptionItem[]).filter((it) => isCaption(it.type));
@@ -652,6 +716,7 @@ export class Cut {
     const designed = W > H && l.frame.every((v, i) => v === panelFrame(W, H)[i]);
     if (covering.length && !designed)
       this.notes.push(`c.panel：面板下緣 ${panelBottom.toFixed(3)} 到畫面安全區下緣 ${(1 - theme.safe.bottom).toFixed(3)} 之間放不下兩行字幕，${covering.length} 張字幕留在安全區下緣、蓋到面板下緣；要字幕排在面板正下方，給 c.panel 一個底邊高一點的 frame（hook 配方的直式面板底邊在 0.62），或給字幕自己的 y`);
+    return new Set(moves.map((m) => m.id));
   }
   /**
    * At save(): what lies within one clip of the main track — a card or a background over that shot, a flash at its start, a sound
@@ -950,11 +1015,13 @@ export class Cut {
     const duration = r6(Math.max(this.end, 0.5));
     this.p.meta.duration = duration;
     await this.applyTemplates();
-    this.burnedSkipNotes();
-    await resolveBurnedFaces(this.faceCtx(), this.burnedAsks, this.autoFocus);   // before the focus: it may take a clip's focus over
+    const faced = await resolveBurnedFaces(this.faceCtx(), this.burnedAsks, this.autoFocus);   // before the focus: it may take a clip's focus over
     await resolveAutoFocus(this.faceCtx(), this.autoFocus);   // the crops first: a sticker follows a face through the final crop, a blur backdrop copies it
     this.addLayout(duration);
-    this.captionsUnderPanel();
+    // the panel layout places its captions first: one hung under the panel is off the picture, one left on the bottom margin over
+    // the panel may still sit on a burned caption row and move to the top (burnedSkipNotes, with the crops final by now)
+    const hung = this.captionsUnderPanel();
+    this.burnedSkipNotes(faced, hung);
     await resolveFollows(this.faceCtx(), this.follows);
     const m = this.song;
     if (m) {

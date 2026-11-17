@@ -149,9 +149,12 @@ test('avoidBurned keeps the face in frame: the crop that clears the caption look
 test('avoidBurned gives up on a clip whose face runs into the rows it would crop, and says so', async () => {
   const c = await burnedCut(() => [{ box: [0.4, 0.6, 0.15, 0.255], mouth: [0.47, 0.8], mouthW: 0.04 }]);
   const id = c.clip('v', { from: 1, len: 4, avoidBurned: true });
-  const v = (await c.save()).tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as any;
+  const cap = c.caption('疊在原片字幕上', { at: 1, len: 1 });
+  const p = await c.save(), v = p.tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as any;
   expect(v.crop).toMatchObject({ from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } });
-  expect(c.notes.some((n) => n.includes('會切到畫面裡的人臉，照原本的裁切'))).toBe(true);
+  // so our caption on the footage's row goes to the top, and one note for the source says both
+  expect((p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === cap)).params.position).toBe('top');
+  expect(c.notes.filter((n) => n.includes('會切到畫面裡的人臉，照原本的裁切'))).toEqual([`avoidBurned：v 有 1 段裁掉燒進去的字幕會切到畫面裡的人臉，照原本的裁切：${id}（素材 0:01.0–0:05.0）；疊在原片字幕上的 1 張字幕自動移到畫面上方`]);
 }, 60000);
 
 test('a landscape clip in a portrait film that avoidBurned zooms is looked at where the face is, once', async () => {

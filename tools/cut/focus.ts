@@ -15,8 +15,9 @@ export interface FaceCtx { p: Project; dir: string; provider?: FacesProvider; no
 /** a sticker asked to follow a mouth or a face (Cut.effect({ follow })) */
 export interface FollowReq { id: string; follow: 'mouth' | 'face'; who: Who; clip?: string }
 
-/** a clip avoidBurned cropped (Cut.clip): its pieces (tighten's), the stretch of the source, the crop asked for, the geometry */
-export interface BurnedAsk { ids: string[]; source: string; from: number; to: number; want: { from: Crop; to: Crop }; geo: Parameters<typeof avoidBurnedMove>[0] }
+/** a clip avoidBurned cropped (Cut.clip): its pieces (tighten's), the stretch of the source, the crop asked for, the geometry;
+ *  `cropOnly`: avoidBurned: 'crop', our captions stay where they are when the crop has to give up */
+export interface BurnedAsk { ids: string[]; source: string; from: number; to: number; want: { from: Crop; to: Crop }; geo: Parameters<typeof avoidBurnedMove>[0]; cropOnly?: boolean }
 
 /** Faces at source times; a detector that fails is a note, not a failed cut. */
 async function faces(x: FaceCtx, path: string, times: number[], what: string) {
@@ -62,9 +63,11 @@ export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
  * stretch): the crop that clears the caption must go on showing whatever of them the asked-for crop showed, the focus moving
  * sideways onto them if need be. A clip waiting for the face focus (no crop of its own, another shape than its frame) is looked at
  * where the faces are first, as that focus would, and leaves the focus pass. When the caption cannot be cleared without cutting
- * a face, the clip keeps the crop asked for and a note says so (check then reports the caption). No faces: the crop stays.
+ * a face, the clip keeps the crop asked for and is returned: Cut.save() moves our captions over it to the top and says so once per
+ * source, together with the clips avoidBurned gave up on for the zoom. No faces: the crop stays.
  */
-export async function resolveBurnedFaces(x: FaceCtx, asks: BurnedAsk[], autoFocus: string[][]) {
+export async function resolveBurnedFaces(x: FaceCtx, asks: BurnedAsk[], autoFocus: string[][]): Promise<BurnedAsk[]> {
+  const gaveUp: BurnedAsk[] = [];
   const v1 = (x.p.tracks.find((t) => t.id === 'v1')?.items ?? []) as VideoItem[];
   for (const a of asks) {
     const all = a.ids.map((id) => v1.find((i) => i.id === id)).filter((c): c is VideoItem => !!c);
@@ -86,10 +89,11 @@ export async function resolveBurnedFaces(x: FaceCtx, asks: BurnedAsk[], autoFocu
     const crops = all.length > 1 ? spreadMove(move, all.map((c) => c.end - c.start)) : [move];
     const before = JSON.stringify(all.map((c) => [c.crop.from, c.crop.to]));
     all.forEach((c, i) => { c.crop = { ...c.crop, ...crops[i] }; });
-    if (r.why) x.notes.push(`avoidBurned：${a.source}（${id}）裁掉燒進去的字幕會切到畫面裡的人臉，照原本的裁切；字幕改放畫面上方或換鏡頭`);
+    if (r.why) gaveUp.push(a);
     else if (JSON.stringify(all.map((c) => [c.crop.from, c.crop.to])) !== before)
       x.notes.push(`avoidBurned：${a.source}（${id}）裁掉燒進去的字幕時保住人臉（x=${r6(move.from.x)}、y=${r6(move.from.y)}、放大 ${r6(move.from.zoom)} 倍）`);
   }
+  return gaveUp;
 }
 
 /** Stickers asked to follow a mouth or a face: their transform keys, from the faces of the clip under them. A face cover
