@@ -1,11 +1,12 @@
 // common.lens's golden samples: a lens over nothing shows nothing, so each is drawn over a gingham ground (its checks show every
-// bend) and a big line of words, the lens on the top track at full strength.
+// bend) and a big word (in no one language: the gallery's English and Japanese cards show it as it is), the lens on the top track
+// at full strength.
 import type { Sample } from './fixtures.ts';
 
 /** what the lens bends: the ground under everything, the words over it */
 const UNDER: NonNullable<Sample['items']> = [
   { type: 'common.backdrop', params: { pattern: 'gingham', color: '#f6efe2', color2: '#2f5d8a', tint: 0.55, scale: 60 }, start: 0, end: 3, layer: 'under' },
-  { type: 'common.slam', params: { text: '看清楚【細節】', size: 7, y: 0.45, tilt: 0, shake: 0 }, start: 0, end: 3 },
+  { type: 'common.slam', params: { text: 'TELL【CUT】', size: 9, y: 0.45, tilt: 0, shake: 0 }, start: 0, end: 3 },
 ];
 const lensSample = (name: string, params: Record<string, unknown>, at = [1.5]): Sample =>
   ({ name, type: 'common.lens', params, at, len: 3, items: [...UNDER, { type: 'common.lens', params, start: 0, end: 3, layer: 'top' }] });

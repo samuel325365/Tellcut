@@ -100,7 +100,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
 - Phone and app screens (PHN): 01 `notify`, 02 `lockscreen`, 03 `reels`, 04 `comments`, 05 `story`, 06 `album`, 07 `chat`, 08 `search`, 09 `desktop`, 10 `window`, 11 `popup`
 - Stickers and marks (MRK): 01 `speedlines`, 02 `censor`, 03 `stamp`, 04 `pen`, 05 `sparkle`, 06 `emoji`, 07 `callout`, 08 `touch`, 09 `doodle`, 11 `scraps`, 12 `sticker`
 - Backgrounds (under the video): LOK-01 `backdrop`, LOK-02 `ambient`, LOK-03 `shader`, LOK-07 `paper`, LOK-08 `tabletop`
-- Grades and textures (over the video) (LOK): 04 `glitch`, 05 `film`, 06 `tone`, 09 `leak`, 10 `grade`
+- Grades and textures (over the video) (LOK): 04 `glitch`, 05 `film`, 06 `tone`, 09 `leak`, 10 `grade`, 12 `lens`
 - Transitions, suspense and endings (MOM): 01 `mystery`, 02 `outro`, 03 `rolldoor`, 04 `wipe`, 09 `wordbands`
 - Block templates (`c.effect(type, { template: '<id>' })`: the template's params go in first, the script's own over them):
   - `backdrop/halftone-pop`: Pop art, comics, a sporty feel: denser, stronger halftone dots than the halftone pattern alone, largest at the lower left and shrinking toward the upper right.

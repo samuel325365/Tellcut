@@ -3,7 +3,7 @@
 // block adds its samples here (golden.test.ts refuses a block without one; `npm run promote` appends one). Regenerate its picture with
 // `npm run golden -- --update <name>` after a change you meant.
 // The samples themselves are in samples/, in parts kept in order (the golden pictures and the gallery's first-sample thumbnails
-// go by it): fixtures.ts holds the shared pieces; a new sample goes at the end of the list below.
+// go by it): fixtures.ts holds the shared pieces; a new block's samples go at the end of the list below, before the combos'.
 import { BASICS } from './samples/basics.ts';
 import { KITS } from './samples/kits.ts';
 import { GROUPS } from './samples/groups.ts';
@@ -21,6 +21,7 @@ export const samples: Sample[] = [
   ...KITS,
   ...GROUPS,
   ...STYLES,
-  ...COMBO_SAMPLES,
+  // a block's samples go before the combos', which stay last (combos.test.ts: a new combo's sample goes at the very end)
   ...LENS_SAMPLES,
+  ...COMBO_SAMPLES,
 ];

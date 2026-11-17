@@ -1,10 +1,12 @@
 // common.lens — a lens over the picture: it bends what is under it (the footage and every item below) instead of drawing on top.
 // A div inside the item's layer carries `backdrop-filter: url(#filter)`, an SVG filter of the item's own (as common.glitch's rgb /
 // block). The bends that vary over the lens (magnify, fisheye, prism) are a displacement map drawn once on a canvas in build, read
-// by feImage and applied by feDisplacementMap; mosaic is feFlood + feTile + feMorphology (a few px in the middle of each cell spread over it);
-// ripple is feTurbulence moved by feOffset inside an feTile (a stitched tile, so the shift wraps without a seam); streak is a
-// one-way feGaussianBlur. Per frame only attributes (the displacement's scale, the cell size, the noise's shift, the blur) and the
-// div's place change, so draw stays cheap and a pure function of time. backdrop-filter with url() is Chromium only: other browsers'
+// by feImage and applied by feDisplacementMap; mosaic is feFlood + feTile + feMorphology (a few px in the middle of each cell spread
+// over it); ripple is a tile of seeded waves (another map) moved by feOffset inside an feTile, so the shift wraps without a seam;
+// streak is a one-way feGaussianBlur. Per frame only attributes (the displacement's scale, the cell size, the waves' shift, the blur)
+// and the div's place change, so draw stays cheap and a pure function of time. Every number in the filters is in the stage's px
+// (userSpaceOnUse), which Chrome scales with the preview's frame; the one primitive it does not, feTurbulence, is not used.
+// backdrop-filter with url() is Chromium only: other browsers'
 // previews show the picture unbent; the export always uses Chrome. The layer must not be blended (a blended layer is a backdrop
 // root and would see nothing under it).
 import { attr, clamp, cssCamel, h, mulberry32, type ItemType } from '@tellcut/engine';
@@ -30,7 +32,8 @@ export const MAP_SIDE = 256;
 export const MAX_MAGNIFY = 2.5;
 /** the looks whose bend is a displacement map */
 const MAPPED: readonly Look[] = ['magnify', 'fisheye', 'prism'];
-/** how far prism's red and cyan part at the lens edge at strength 1, of the lens radius (at most 0.4 of the short side counted) */
+/** how far each of prism's red and cyan moves at the lens edge at strength 1, of the lens radius (at most 0.4 of the short side
+ *  counted, so the whole frame splits no wider than a big lens) */
 const PRISM_SPLIT = 0.06;
 
 const isLook = (v: unknown): v is Look => (LOOKS as readonly unknown[]).includes(v);
