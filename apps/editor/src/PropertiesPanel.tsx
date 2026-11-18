@@ -1,5 +1,5 @@
 // Right-hand panel (spec §4.1): fields of the one selected item; plugin params come from their ParamDefs.
-import { allItems, resolveTimes, restackTarget, soundFilePath, type AnyItem, type Track } from '@tellcut/engine';
+import { allItems, resolveTimes, restackTarget, soundFilePath, transitionFallbacks, type AnyItem, type Track } from '@tellcut/engine';
 import { handleOf } from '@tellcut/protocol';
 import type { EditorState } from './store.ts';
 import { liveLinks } from './editor/library.ts';
@@ -9,12 +9,9 @@ import { keyWords } from './platform.ts';
 import { CheckField, NumberField, ParamField, SelectField, TextField } from './fields.tsx';
 import { CaptionTemplates } from './CaptionTemplates.tsx';
 import { BlockTemplates } from './BlockTemplates.tsx';
+import { fallbackNote, retype, TRANSITION_MENU, usesCentre, usesDir } from './transitions.ts';
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
-/** the transition menu: cut, dissolve, slide, and the clip's own type when it is another one (set by a cut script or a proposal;
- *  the menu does not offer the others yet), so the box shows what the clip has instead of the first entry */
-const transitionOptions = (cur?: string): Array<[string, string]> => [['cut', 'Cut'], ['dissolve', 'Dissolve'], ['slide', 'Slide'],
-  ...(cur && cur !== 'cut' && cur !== 'dissolve' && cur !== 'slide' ? [[cur, cur[0].toUpperCase() + cur.slice(1)] as [string, string]] : [])];
 
 export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) {
   const p = s.project!;
@@ -44,6 +41,8 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
   let body: any = null;
   if (track.kind === 'video') {
     const grades = Object.keys(editor.registry?.grades ?? {}), image = p.sources[it.source]?.kind === 'image';
+    // drawn as a dissolve instead (a reveal on a shaped clip, a push, zoom or whip off the whole picture): said under the menu
+    const fallback = it.transitionIn && it.transitionIn.type !== 'cut' ? transitionFallbacks(p).get(id) : undefined;
     // a photo has no media time (spec 2026-10-14 §5): no in-point, speed, freeze or frame interpolation
     body = <>
       <SelectField label="Source" name="source" value={it.source} options={Object.keys(p.sources).map((x) => [x, x])} onCommit={up('source')} />
@@ -52,12 +51,16 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
         <NumberField label="Speed" name="speed" value={it.speed} step={0.05} min={0.0625} max={16} onCommit={up('speed')} />
       </>}
       <SelectField label="Grade" name="grade" value={it.grade ?? ''} options={[['', 'None'], ...grades.map((g) => [g, g] as [string, string])]} onCommit={(v) => editor.update(id, { grade: v || null })} />
-      <SelectField label="Transition" name="transition" value={it.transitionIn?.type ?? 'cut'} options={transitionOptions(it.transitionIn?.type)}
-        onCommit={(v) => editor.update(id, { transitionIn: v === 'cut' ? undefined : { type: v, dur: it.transitionIn?.dur ?? 0.5, ...(v === 'slide' ? { dir: it.transitionIn?.dir ?? 'l' } : {}) } })} />
+      <SelectField label="Transition" name="transition" value={it.transitionIn?.type ?? 'cut'} options={TRANSITION_MENU}
+        onCommit={(v) => editor.update(id, { transitionIn: retype(it.transitionIn, v) })} />
+      {fallback && <p class="hint" data-transition-note={fallback.why}>{fallbackNote(fallback.type, fallback.why)}</p>}
       {it.transitionIn && <NumberField label="Transition length (s)" name="transitionDur" value={it.transitionIn.dur} onCommit={(v) => editor.update(id, { transitionIn: { ...it.transitionIn, dur: v ?? 0 } })} />}
-      {it.transitionIn?.type === 'slide' && <SelectField label="Slide direction" name="transitionDir" value={it.transitionIn.dir ?? 'l'}
+      {it.transitionIn && usesDir(it.transitionIn.type) && <SelectField label="Direction" name="transitionDir" hint={t('ed.transDirHint')} value={it.transitionIn.dir ?? 'l'}
         options={[['l', 'From left'], ['r', 'From right'], ['u', 'From top'], ['d', 'From bottom']]}
         onCommit={(v) => editor.update(id, { transitionIn: { ...it.transitionIn, dir: v } })} />}
+      {it.transitionIn && usesCentre(it.transitionIn.type) && (['x', 'y'] as const).map((k) =>
+        <NumberField key={k} label={`Centre ${k.toUpperCase()}`} name={`transition${k.toUpperCase()}`} hint={t(k === 'x' ? 'ed.transCentreXHint' : 'ed.transCentreYHint')} value={it.transitionIn[k] ?? 0.5} step={0.01} min={0} max={1}
+          onCommit={(v) => { const { [k]: _, ...rest } = it.transitionIn; editor.update(id, { transitionIn: v == null ? rest : { ...rest, [k]: Math.min(1, Math.max(0, v)) } }); }} />)}
       {!image && <>
         <NumberField label="Freeze (s)" name="freezeAt" value={it.freezeAt ?? undefined} onCommit={(v) => editor.update(id, { freezeAt: v ?? null })} />
         <SelectField label="Slow-mo interpolation" name="interp" value={it.interp} options={[['none', 'None'], ['blend', 'Blend'], ['mci', 'Motion compensated']]} onCommit={up('interp')} />

@@ -791,3 +791,27 @@ test('the "+ New track" strip takes the drop where it is drawn, not a fixed band
   expect(editor.dropProbe(176 + 100, 305).row).toBe('new');
   expect(editor.dropProbe(176 + 100, 395).row).not.toBe('new');
 });
+
+test('each transition type has its own mark on its block, and the tooltip names it in the UI language', async () => {
+  const { TRANSITION_TYPES } = await import('@tellcut/engine');
+  const { setLang } = await import('../i18n/lang.ts');
+  const { root, editor, store } = mount();
+  const marks: string[] = [];
+  try {
+    setLang('en');
+    for (const type of TRANSITION_TYPES.filter((x) => x !== 'cut')) {
+      const p: any = structuredClone(store.get().project); p.tracks[1].items[1].transitionIn = { type, dur: 0.5 };
+      await act(() => { store.set({ project: p }); });
+      await act(() => render(<Timeline editor={editor} />, root));
+      const block = root.querySelector<HTMLElement>('[data-transition="c2"]')!;
+      expect(block.classList.contains(`t-${type}`)).toBe(true);
+      marks.push(block.textContent!);
+      if (type === 'iris') expect(block.getAttribute('data-tip')).toBe('Transition: iris 0.5 s (drag the right edge to change the length)');
+    }
+    expect(new Set(marks).size).toBe(12);
+    expect(marks.slice(0, 2)).toEqual(['◢', '➜']);                         // dissolve and slide keep their marks
+    setLang('ja');
+    await act(() => render(<Timeline editor={editor} />, root));
+    expect(root.querySelector('[data-transition="c2"]')!.getAttribute('data-tip')).toContain('白フラッシュ');
+  } finally { setLang('zh'); localStorage.clear(); }
+});

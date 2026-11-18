@@ -253,3 +253,72 @@ test('a block with templates gets a Template row at the top of its params: an ac
   await act(() => render(<PropertiesPanel editor={plain.editor} s={plain.editor.store.get()} />, plain.root));
   expect(plain.root.querySelector('[data-field="template"]')).toBeNull();
 });
+
+test('the transition menu lists every type, cut first; direction only for the types that read it, the centre only for iris', async () => {
+  const { TRANSITION_TYPES } = await import('@tellcut/engine');
+  const { root, editor, store } = mount(['c2']);
+  await act(() => render(<PropertiesPanel editor={editor} s={store.get()} />, root));
+  const opts = [...root.querySelectorAll<HTMLOptionElement>('[data-field="transition"] option')];
+  expect(opts.map((o) => o.value)).toEqual([...TRANSITION_TYPES]);
+  expect(opts.slice(0, 4).map((o) => o.textContent)).toEqual(['Cut', 'Dissolve', 'Slide', 'Wipe']);
+  const shown = async (type: string) => {
+    const p: any = store.get().project; p.tracks[1].items[1].transitionIn = { type, dur: 0.5 };
+    await act(() => render(<PropertiesPanel editor={editor} s={{ ...store.get() }} />, root));
+    return ['transitionDir', 'transitionX', 'transitionY'].filter((n) => root.querySelector(`[data-field="${n}"]`));
+  };
+  for (const type of ['slide', 'wipe', 'bars', 'push', 'whip']) expect(await shown(type)).toEqual(['transitionDir']);
+  expect(await shown('iris')).toEqual(['transitionX', 'transitionY']);
+  for (const type of ['dissolve', 'clock', 'zoom', 'blur', 'dip', 'flash']) expect(await shown(type)).toEqual([]);
+  expect(root.querySelector('[data-field="transitionDir"] span')).toBe(null);
+  await shown('wipe');
+  expect(root.querySelector('[data-field="transitionDir"] span')!.textContent).toBe('Direction');
+});
+
+test('a new transition type keeps the length, keeps dir where the new type reads it and drops what it does not; the centre is one update', async () => {
+  const { root, editor, calls, store } = mount(['c2']);
+  const set = async (tr: any) => { (store.get().project as any).tracks[1].items[1].transitionIn = tr; await act(() => render(<PropertiesPanel editor={editor} s={{ ...store.get() }} />, root)); };
+  const pick = (v: string) => change(root.querySelector<HTMLSelectElement>('[data-field="transition"] select')!, v);
+  await set({ type: 'slide', dur: 0.8, dir: 'u' });
+  pick('push'); pick('iris'); pick('cut');
+  await set({ type: 'iris', dur: 0.6, x: 0.2, y: 0.7 });
+  pick('wipe'); pick('iris');
+  await set(undefined);
+  pick('whip');
+  expect(calls.map((c) => c[2].transitionIn)).toEqual([
+    { type: 'push', dur: 0.8, dir: 'u' }, { type: 'iris', dur: 0.8 }, undefined,
+    { type: 'wipe', dur: 0.6, dir: 'l' }, { type: 'iris', dur: 0.6, x: 0.2, y: 0.7 },
+    { type: 'whip', dur: 0.5, dir: 'l' }]);
+  calls.length = 0;
+  await set({ type: 'iris', dur: 0.6, x: 0.2 });
+  expect(root.querySelector<HTMLInputElement>('[data-field="transitionY"] input')!.value).toBe('0.5');
+  change(root.querySelector<HTMLInputElement>('[data-field="transitionY"] input')!, '0.3');
+  change(root.querySelector<HTMLInputElement>('[data-field="transitionX"] input')!, '');
+  change(root.querySelector<HTMLInputElement>('[data-field="transitionY"] input')!, '1.4');
+  expect(calls).toEqual([['update', 'c2', { transitionIn: { type: 'iris', dur: 0.6, x: 0.2, y: 0.3 } }], ['update', 'c2', { transitionIn: { type: 'iris', dur: 0.6 } }],
+    ['update', 'c2', { transitionIn: { type: 'iris', dur: 0.6, x: 0.2, y: 1 } }]]);
+});
+
+test('a transition drawn as a dissolve says so under the menu, and why, in the UI language', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const { root, editor, store } = mount(['c2']);
+  const note = async (tr: any, o: any = {}, before: any = {}) => {
+    const p: any = store.get().project, c1 = p.tracks[1].items[0], c2 = p.tracks[1].items[1];
+    delete c2.shape; c2.frame = [0, 0, 1, 1]; c1.frame = [0, 0, 1, 1]; c2.start = 3.5;
+    Object.assign(c2, o, { transitionIn: tr }); Object.assign(c1, before);
+    await act(() => render(<PropertiesPanel editor={editor} s={{ ...store.get() }} />, root));
+    const el = root.querySelector<HTMLElement>('[data-transition-note]');
+    return el && [el.dataset.transitionNote, el.textContent];
+  };
+  try {
+    setLang('en');
+    const shape = { shape: [[0, 0], [1, 0], [1, 1], [0, 1]] };
+    expect(await note({ type: 'iris', dur: 0.5 }, shape)).toEqual(['shape', 'Shown as a dissolve: this clip is cut to a shape, and the iris needs its outline.']);
+    expect((await note({ type: 'push', dur: 0.5, dir: 'l' }, { frame: [0, 0, 0.5, 1] }))![0]).toBe('frame');
+    expect((await note({ type: 'zoom', dur: 0.5 }, {}, { frame: [0.5, 0, 0.5, 1] }))![0]).toBe('from');      // linked: the overlap is 0.5 s
+    expect(await note({ type: 'zoom', dur: 0.3 }, {}, { frame: [0.5, 0, 0.5, 1] })).toBe(null);           // not linked: the previous frame does not matter
+    expect(await note({ type: 'flash', dur: 0.5 }, shape)).toBe(null);
+    expect(await note({ type: 'whip', dur: 0.5, dir: 'r' }, shape)).toBe(null);
+    setLang('zh');
+    expect((await note({ type: 'wipe', dur: 0.5 }, shape))![1]).toContain('擦除');
+  } finally { setLang('zh'); localStorage.clear(); }
+});

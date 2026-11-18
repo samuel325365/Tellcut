@@ -13,6 +13,7 @@ import { t } from '../i18n/index.ts';
 import { trackLabel } from '../trackNames.ts';
 import { getLang } from '../i18n/lang.ts';
 import { itemLook, itemName } from './names.ts';
+import { transMark, transName } from '../transitions.ts';
 import { follow, type GestureCtx } from './gestures/follow.ts';
 import { startTransitionDrag, watchOverlapClick } from './gestures/transition.ts';
 import { addedByThisClick, startEnvelopeDrag } from './gestures/envelope.ts';
@@ -29,10 +30,6 @@ import { IconEye, IconEyeOff, IconLock, IconMagnet, IconSpeaker, IconSpeakerOff,
 
 /** a tooltip: the explanation goes in data-tip (the TooltipLayer shows it) and aria-label */
 const tip = (text: string) => ({ 'data-tip': text, 'aria-label': text });
-/** a transition block's tooltip: dissolve and slide by name, the others (not named in the editor yet) without one */
-const transTip = (tr: { type: string; dur: number }) => (tr.type === 'slide' || tr.type === 'dissolve'
-  ? t('ed.transTip', { kind: t(tr.type === 'slide' ? 'ed.transSlide' : 'ed.transDissolve'), dur: tr.dur })
-  : t('ed.transTipOther', { dur: tr.dur }));
 export function Timeline({ editor }: { editor: Editor }) {
   // everything but the playhead: playback must not re-render every row 60×/s
   const s = useStoreSelector(editor.store, (x) => ({ project: x.project, pps: x.pps, scroll: x.scroll, selection: x.selection, guide: x.guide,
@@ -290,8 +287,8 @@ export function Timeline({ editor }: { editor: Editor }) {
                   marks={[s.proposal?.changed.includes(it.id) ? 'proposed' : '', over.has(it.id) ? 'hanging' : ''].filter(Boolean).join(' ')}>
                   {r.track.kind === 'video' && x.transitionIn && x.transitionIn.type !== 'cut' && x.transitionIn.dur > 0 &&
                     <span class={`trans t-${x.transitionIn.type}`} data-transition={it.id} style={{ width: `${Math.max(10, x.transitionIn.dur * s.pps)}px` }}
-                      {...tip(transTip(x.transitionIn))}>
-                      {x.transitionIn.type === 'slide' ? '➜' : x.transitionIn.type === 'dissolve' ? '◢' : '◆'}<i data-transition-edge /></span>}
+                      {...tip(t('ed.transTip', { kind: transName(x.transitionIn.type), dur: x.transitionIn.dur }))}>
+                      {transMark(x.transitionIn.type)}<i data-transition-edge /></span>}
                   {(spans.get(it.id) ?? []).map((o) => (
                     <span class={`overlap${o.linked ? ' linked' : ''}${o.linked && (o.kind === 'music' || o.kind === 'audio') ? ' xfade' : ''}${o.kind === 'video' || o.kind === 'music' || o.kind === 'audio' ? '' : ' inert'}`} data-overlap={o.b}
                       {...tip(o.title)} style={{ left: `${o.off * s.pps}px`, width: `${Math.max(12, o.ov * s.pps)}px`, '--w': `${o.ov * s.pps}px` }}><b class="top-mark">▲</b></span>
