@@ -515,3 +515,23 @@ test('an item that fails while drawing lets go of its state first (its GPU thing
   st.destroy();
   expect(freed).toEqual(['k.bad', 'k.ok']);
 });
+
+test('a linked push moves both frames and a wipe clips the incoming one; the outgoing clip learns of a new transition without a rebuild', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  const p = project();                                   // a 0–4, b 3–6: a 1 s overlap
+  p.tracks[0].items[1].transitionIn = { type: 'push', dur: 1, dir: 'l' };
+  st.load(p);
+  const frame = (id: string) => root.querySelector<HTMLElement>(`[data-id="${id}"] .st-frame`)!;
+  st.draw(3.5);
+  expect([frame('a').style.transform, frame('b').style.transform, frame('b').style.opacity]).toEqual(['translate(50px, 0px)', 'translate(-50px, 0px)', '1']);
+  const a = frame('a');
+  const q = structuredClone(p);
+  q.tracks[0].items[1].transitionIn = { type: 'wipe', dur: 1, dir: 'l' };
+  st.update(q);
+  expect(frame('a')).toBe(a);                            // A kept its layer
+  st.draw(3.5);
+  expect([frame('a').style.transform, frame('a').style.clipPath, frame('b').style.transform, frame('b').style.clipPath]).toEqual(['none', '', 'none', 'inset(0 50% 0 0)']);
+  st.draw(4.5);
+  expect(frame('b').style.clipPath).toBe('');
+});

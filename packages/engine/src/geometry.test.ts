@@ -1,4 +1,5 @@
-import { coverPlacement, cropAt, cropForWindow, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion } from './geometry.ts';
+import { coverPlacement, cropAt, cropForWindow, drawnTransition, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion } from './geometry.ts';
+import { TRANSITION_TYPES } from './schema.ts';
 import { eIO3, eOut3 } from './util.ts';
 
 const vid = (o: any = {}): any => ({ id: 'v', source: 's', in: 0, speed: 1, start: 0, end: 4, frame: [0, 0, 1, 1],
@@ -171,4 +172,95 @@ test('cropForWindow shows exactly a pixel window of the source, edges included',
     expect(r.y0 * 720).toBeCloseTo(win[1], 1);
     expect(r.w * 1280).toBeCloseTo(win[2], 1);
   }
+});
+
+// ── transitions in which both pictures show (wipe, push) and the outgoing clip's side of them
+const W = 1920, H = 1080;
+const vs = (o: any, t: number, link?: any, start = 0) => videoState(vid(o), start, start + 4, t, W, H, {}, link);
+/** the outgoing clip A of a linked 1 s transition starting 3 s into it */
+const outOf = (type: string, dir?: string, more: any = {}) => ({ out: { type, ...(dir ? { dir } : {}), at: 3, dur: 1, frame: [0, 0, 1, 1], shaped: false, ...more } });
+
+test('wipe: B is revealed from its dir side, eased in-out, A stays still', () => {
+  const at = (dir: string, t: number) => vs({ transitionIn: { type: 'wipe', dur: 1, dir } }, t, { from: [0, 0, 1, 1] }).clipPath;
+  expect([0, 0.5].map((t) => at('l', t))).toEqual(['inset(0 100% 0 0)', 'inset(0 50% 0 0)']);
+  expect([0, 0.5].map((t) => at('r', t))).toEqual(['inset(0 0 0 100%)', 'inset(0 0 0 50%)']);
+  expect([0, 0.5].map((t) => at('u', t))).toEqual(['inset(0 0 100% 0)', 'inset(0 0 50% 0)']);
+  expect([0, 0.5].map((t) => at('d', t))).toEqual(['inset(100% 0 0 0)', 'inset(50% 0 0 0)']);
+  for (const d of ['l', 'r', 'u', 'd']) expect(at(d, 1)).toBe('');   // whole again: no clip-path at all
+  expect(at('l', 0.25)).toBe(`inset(0 ${+((1 - eIO3(0.25)) * 100).toFixed(3)}% 0 0)`);
+  expect(vs({ transitionIn: { type: 'wipe', dur: 1 } }, 0.5).clipPath).toBe('inset(0 50% 0 0)');   // no dir: from the left, like slide
+  const b = vs({ transitionIn: { type: 'wipe', dur: 1, dir: 'l' } }, 0.5);
+  expect([b.opacity, b.offsetX, b.offsetY]).toEqual([1, 0, 0]);
+  for (const t of [3, 3.5, 3.99]) {
+    const a = vs({}, t, outOf('wipe', 'l'));
+    expect([a.opacity, a.offsetX, a.offsetY, a.clipPath]).toEqual([1, 0, 0, '']);
+  }
+});
+
+test('push: B slides in from its dir side at full opacity while A slides out the other, edges touching', () => {
+  const cases: Array<[string, [number, number], [number, number]]> = [
+    // dir, B's offset at 0.5, A's offset at 0.5
+    ['l', [-960, 0], [960, 0]], ['r', [960, 0], [-960, 0]], ['u', [0, -540], [0, 540]], ['d', [0, 540], [0, -540]],
+  ];
+  for (const [dir, b5, a5] of cases) {
+    const b = (t: number) => { const s = vs({ transitionIn: { type: 'push', dur: 1, dir } }, t, { from: [0, 0, 1, 1] }); return [s.offsetX, s.offsetY, s.opacity]; };
+    const a = (t: number) => { const s = vs({}, t, outOf('push', dir)); return [s.offsetX, s.offsetY, s.opacity]; };
+    const sx = dir === 'l' ? -1 : dir === 'r' ? 1 : 0, sy = dir === 'u' ? -1 : dir === 'd' ? 1 : 0;
+    expect(b(0)).toEqual([sx * W, sy * H, 1]);
+    expect(b(0.5)).toEqual([...b5, 1]);
+    expect(b(1)).toEqual([0, 0, 1]);
+    expect(a(3)).toEqual([0, 0, 1]);
+    expect(a(3.5)).toEqual([...a5, 1]);
+    // B and A one picture apart all along (no gap, no overlap), in whole pixels
+    for (const f of [0.1, 0.33, 0.77, 0.95]) {
+      const [bx, by] = b(f), [ax, ay] = a(3 + f);
+      expect([ax - bx, ay - by]).toEqual([-sx * W + 0, -sy * H + 0]);
+      expect(Number.isInteger(bx) && Number.isInteger(by)).toBe(true);
+    }
+  }
+  // eased in-out, like the wipe
+  expect(vs({ transitionIn: { type: 'push', dur: 1, dir: 'l' } }, 0.25).offsetX).toBe(-Math.round((1 - eIO3(0.25)) * W));
+  // A before and after the transition does not move
+  expect([vs({}, 2.9, outOf('push', 'l')).offsetX, vs({}, 4, outOf('push', 'l')).offsetX]).toEqual([0, 0]);
+});
+
+test('a push not linked to a clip before it (the film\'s first clip) only slides B in, at full opacity', () => {
+  const s = vs({ transitionIn: { type: 'push', dur: 1, dir: 'r' } }, 0.5);
+  expect([s.offsetX, s.opacity]).toEqual([960, 1]);
+});
+
+test('a push needs both frames whole: otherwise B dissolves and A stays still', () => {
+  const half = [0, 0, 0.5, 1];
+  const dissolve = vs({ transitionIn: { type: 'dissolve', dur: 1 } }, 0.25);
+  for (const [o, link] of [[{ frame: half }, { from: [0, 0, 1, 1] }], [{}, { from: half }], [{ frame: half }, undefined]] as const) {
+    const s = vs({ ...o, transitionIn: { type: 'push', dur: 1, dir: 'l' } }, 0.25, link);
+    expect([s.offsetX, s.offsetY, s.opacity]).toEqual([0, 0, dissolve.opacity]);
+  }
+  expect(vs({ frame: half }, 3.5, outOf('push', 'l')).offsetX).toBe(0);                     // A not whole
+  expect(vs({}, 3.5, outOf('push', 'l', { frame: half })).offsetX).toBe(0);                 // B not whole
+});
+
+test('a clip cut to a shape cannot also wipe: it dissolves and keeps its shape', () => {
+  const shape = [[0, 0], [1, 0], [1, 1], [0, 0.8]];
+  const s = vs({ shape, transitionIn: { type: 'wipe', dur: 1, dir: 'l' } }, 0.25);
+  expect(s.clipPath).toBe(shapeClipPath(shape as any));
+  expect(s.opacity).toBeCloseTo(eIO3(0.25));
+  expect(drawnTransition('wipe', [0, 0, 1, 1], true)).toBe('dissolve');
+  expect(drawnTransition('wipe', [0, 0, 1, 1], false)).toBe('wipe');
+});
+
+test('types not drawn yet are drawn exactly as a dissolve, for B and (not at all) for A', () => {
+  const later = TRANSITION_TYPES.filter((x) => !['cut', 'dissolve', 'slide', 'wipe', 'push'].includes(x));
+  expect(later).toEqual(['iris', 'clock', 'bars', 'zoom', 'whip', 'blur', 'dip', 'flash']);
+  const like = (type: string, t: number) => { const s = vs({ transitionIn: { type, dur: 1, dir: 'l', x: 0.3, y: 0.7 } }, t, { from: [0, 0, 1, 1] }); return { ...s, crop: null }; };
+  for (const type of later) {
+    expect(drawnTransition(type as any, [0, 0, 1, 1], false)).toBe('dissolve');
+    for (const t of [0, 0.25, 0.5, 1]) expect(like(type, t)).toEqual(like('dissolve', t));
+    expect(vs({}, 3.5, outOf(type, 'l'))).toEqual(vs({}, 3.5));
+  }
+});
+
+test('without the link argument a clip draws as before (callers outside the stage)', () => {
+  expect(vs({}, 3.5)).toEqual(vs({}, 3.5, {}));
+  expect(vs({ transitionIn: { type: 'push', dur: 1, dir: 'l' } }, 0.5).offsetX).toBe(-960);
 });

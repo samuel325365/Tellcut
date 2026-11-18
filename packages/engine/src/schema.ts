@@ -19,6 +19,11 @@ export const TransformKeyZ = z.object({ t: sec, x: z.number().min(-1).max(1), y:
  *  moves along them (linear between points, held before the first and after the last); x, y, scale are then its place at the start. */
 export const TransformZ = z.object({ x: z.number().min(-1).max(1), y: z.number().min(-1).max(1), scale: z.number().min(0.05).max(10),
   ox: z.number().min(0).max(1).default(0.5), oy: z.number().min(0).max(1).default(0.5), keys: z.array(TransformKeyZ).optional() });
+/** A video clip's transition in. cut / dissolve / slide show only the incoming clip changing; the others show both pictures at
+ *  once (the outgoing clip moves or changes too when the transition is linked to the overlap). geometry.ts drawnTransition says
+ *  which ones are drawn yet: the rest are drawn as a dissolve. */
+export const TRANSITION_TYPES = ['cut', 'dissolve', 'slide', 'wipe', 'iris', 'clock', 'bars', 'push', 'zoom', 'whip', 'blur', 'dip', 'flash'] as const;
+export type TransitionType = (typeof TRANSITION_TYPES)[number];
 export const Rect01Z = z.tuple([z.number(), z.number(), z.number().positive(), z.number().positive()]);
 export const GainPointZ = z.tuple([sec, db]);
 const Params = z.record(z.string(), z.unknown());
@@ -29,7 +34,9 @@ export const VideoItemZ = z.object({
   source: z.string(), in: nonneg, speed: z.number().positive().max(16),
   frame: Rect01Z.default([0, 0, 1, 1]),
   crop: z.object({ from: CropZ, to: CropZ, keys: z.array(CropKeyZ).optional(), ease: z.enum(EASES).optional() }),
-  transitionIn: z.object({ type: z.enum(['cut', 'dissolve', 'slide']), dur: nonneg, dir: z.enum(['l', 'r', 'u', 'd']).optional() }).optional(),
+  /** x, y: the centre of a transition that has one (iris), as fractions of the clip's frame */
+  transitionIn: z.object({ type: z.enum(TRANSITION_TYPES), dur: nonneg, dir: z.enum(['l', 'r', 'u', 'd']).optional(),
+    x: z.number().min(0).max(1).optional(), y: z.number().min(0).max(1).optional() }).optional(),
   grade: z.string().nullable().optional(),
   freezeAt: nonneg.nullable().optional(),
   defocus: z.object({ from: nonneg, to: nonneg, px: z.number().min(0), px0: z.number().min(0).optional() }).optional(),

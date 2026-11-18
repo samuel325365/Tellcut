@@ -1,6 +1,7 @@
 // Shared helpers for edit commands. A command is a recipe that mutates a draft Project in place:
 // the editor wraps it with immer to record undo patches; tests run it on a structuredClone.
 import type { AnyItem, AudioItem, Project, Track, VideoItem } from '../schema.ts';
+import { r6 } from '../time.ts';
 
 /** A refused edit. message: English (agents read it through propose); code + params: the editor's translated notice (err.cmd.<code>). */
 export class CommandError extends Error {
@@ -21,8 +22,7 @@ export function required(field: string, v: unknown) {
   if (typeof v !== 'number' || !Number.isFinite(v)) throw new CommandError(`${field}: must be a finite number (got ${v})`, 'cmd.fieldInvalid', { field });
 }
 
-/** Rounds to a microsecond so repeated edits keep project.json tidy. */
-export const r6 = (t: number) => Math.round(t * 1e6) / 1e6;
+export { r6 };
 export const minLen = (p: Project) => 1 / p.meta.fps;
 const items = (t: Track) => t.items as AnyItem[];
 

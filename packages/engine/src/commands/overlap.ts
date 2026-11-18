@@ -1,34 +1,12 @@
-// Same-track overlaps (spec 2026-10-14 §3): which item precedes which and by how much, and whether a video transition or
-// an audio crossfade is linked to the overlap. relink() keeps linked ones following the overlap after any edit.
-import type { AnyItem, Project, Track, TrackKind } from '../schema.ts';
-import { resolveTimes, TIME_EPS, type Times } from '../time.ts';
+// The edits on same-track overlaps: crossfades on and off, and relink() keeping linked transitions and crossfades following
+// the overlap after any edit. Finding the pairs (overlapPairs) is in ../pairs.ts, shared with the stage.
+import type { Project } from '../schema.ts';
+import { TIME_EPS } from '../time.ts';
+import { overlapPairs, type OverlapPair } from '../pairs.ts';
 import { CommandError, findItem, r6 } from './core.ts';
 
-export interface OverlapPair { track: string; kind: TrackKind; a: string; b: string; ov: number; linked: boolean; top: 'a' | 'b' }
+export { overlapPairs, type OverlapPair };
 const EPS = TIME_EPS;
-
-function isLinked(t: Track, a: any, b: any, ov: number): boolean {
-  if (t.kind === 'video') return !!b.transitionIn && b.transitionIn.type !== 'cut' && Math.abs(b.transitionIn.dur - ov) <= EPS;
-  if (t.kind === 'music' || t.kind === 'audio') return Math.abs(a.fadeOut - ov) <= EPS && Math.abs(b.fadeIn - ov) <= EPS;
-  return false;
-}
-
-/** Every item B that starts inside an earlier item A of its own track (A: the earlier one reaching furthest), by B's id. */
-export function overlapPairs(p: Pick<Project, 'tracks'>, times: Times = resolveTimes(p)): Map<string, OverlapPair> {
-  const out = new Map<string, OverlapPair>();
-  for (const t of p.tracks) {
-    const order = (t.items as AnyItem[]).map((it, i) => ({ it, i, ...times.get(it.id)! })).sort((x, y) => x.start - y.start || x.i - y.i);
-    let reach: (typeof order)[number] | null = null;
-    for (const x of order) {
-      if (reach && reach.end > x.start + EPS) {
-        const ov = r6(Math.min(reach.end, x.end) - x.start);
-        out.set(x.it.id, { track: t.id, kind: t.kind, a: reach.it.id, b: x.it.id, ov, linked: isLinked(t, reach.it, x.it, ov), top: x.i > reach.i ? 'b' : 'a' });
-      }
-      if (!reach || x.end > reach.end) reach = x;
-    }
-  }
-  return out;
-}
 
 /** A fades out and B fades in over ov seconds; each clip's other fade gives way when the clip is too short for both. */
 function crossfade(a: any, b: any, ov: number) {

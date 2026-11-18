@@ -3,7 +3,8 @@
 import type { AnyItem, Project, SceneItem, Track, Transform, VideoItem } from './schema.ts';
 import { allItems } from './schema.ts';
 import { activeAt, resolveTimes, type Times } from './time.ts';
-import { coverPlacement, kbMatrix, videoState } from './geometry.ts';
+import { coverPlacement, kbMatrix, videoState, type VideoLink } from './geometry.ts';
+import { videoLinks } from './pairs.ts';
 import type { ItemCtx, ItemType, MediaRef } from './plugin.ts';
 import { withDefaults, type Registry } from './registry.ts';
 import { resolveTheme } from './theme.ts';
@@ -53,6 +54,8 @@ const visualMeta = (p: Project) => { const { duration: _d, name: _n, mix: _m, lo
 export class Stage {
   project!: Project;
   times!: Times;
+  /** the video clips in a linked transition, made with the times: a kept layer A still learns of a new transition on the clip after it */
+  private links = new Map<string, VideoLink>();
   private layers: Layer[] = [];
   /** another registered item type, by id (ctx.types and media()'s third argument) */
   private types = (type: string) => this.registry.item(type);
@@ -81,6 +84,7 @@ export class Stage {
   load(p: Project) {
     this.project = p;
     this.times = resolveTimes(p);
+    this.links = videoLinks(p, this.times);
     const { width, height, background } = p.meta;
     this.destroy();
     this.root.innerHTML = '';
@@ -106,6 +110,7 @@ export class Stage {
     const before = this.times;
     this.project = p;
     this.times = resolveTimes(p);
+    this.links = videoLinks(p, this.times);
     this.styles(p);
     const old = new Map(this.layers.map((L) => [L.id, L]));
     const next: Layer[] = [];
@@ -249,7 +254,7 @@ export class Stage {
       }
       if (!on) return;
       if (L.kind === 'video') {
-        const s = videoState(L.item, tm.start, tm.end, t, W, H, this.registry.grades);
+        const s = videoState(L.item, tm.start, tm.end, t, W, H, this.registry.grades, this.links.get(L.id));
         cssCamel(L.frame, {
           left: `${s.frame.left}px`, top: `${s.frame.top}px`, width: `${s.frame.width}px`, height: `${s.frame.height}px`,
           transform: s.offsetX || s.offsetY ? `translate(${s.offsetX}px, ${s.offsetY}px)` : 'none',

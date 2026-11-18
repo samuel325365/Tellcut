@@ -7,6 +7,8 @@ export type Times = Map<string, { start: number; end: number }>;
 // left a sound on the wrong half and an item stayed one frame too long. Compare them through these.
 /** how far apart two times may be and still be the same moment: the stored precision */
 export const TIME_EPS = 1e-6;
+/** Rounds to a microsecond (the stored precision) so repeated edits keep project.json tidy. */
+export const r6 = (t: number) => Math.round(t * 1e6) / 1e6;
 /** the frame `t` seconds land on (a thousandth of a frame of slack: a boundary a hair under is still that frame) */
 export const frameOf = (t: number, fps: number) => Math.floor(t * fps + 1e-3);
 /** whether `t` is inside [start, end) at the stored precision: on from its first frame, off on the first frame after it */
