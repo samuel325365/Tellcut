@@ -32,7 +32,8 @@ export function overlapPairs(p: Pick<Project, 'tracks'>, times: Times = resolveT
 }
 
 /** What each video clip in a linked transition needs to draw it (videoState's `link`), by clip id: the incoming clip B gets the
- *  frame of the clip A it comes from, A gets B's transition, timed in A's own seconds. Clips in no linked pair are absent.
+ *  frame of the clip A it comes from (and A's id as `lift` when A is stacked above it: every transition draws B over A), A gets
+ *  B's transition, timed in A's own seconds. Clips in no linked pair are absent.
  *  A clip with two linked clips starting inside it gets the later one's. */
 export function videoLinks(p: Pick<Project, 'tracks'>, times: Times = resolveTimes(p)): Map<string, VideoLink> {
   const out = new Map<string, VideoLink>();
@@ -46,7 +47,7 @@ export function videoLinks(p: Pick<Project, 'tracks'>, times: Times = resolveTim
     if (prev && prev.at > at) continue;
     out.set(w.a, { ...out.get(w.a), out: { type: tr.type, ...(tr.dir ? { dir: tr.dir } : {}), ...(tr.x != null ? { x: tr.x } : {}), ...(tr.y != null ? { y: tr.y } : {}),
       at, dur: tr.dur, frame: B.frame, shaped: !!B.shape && B.shape.length >= 3 } });
-    out.set(w.b, { ...out.get(w.b), from: A.frame });
+    out.set(w.b, { ...out.get(w.b), from: A.frame, ...(w.top === 'a' ? { lift: w.a } : {}) });
   }
   return out;
 }

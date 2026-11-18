@@ -24,3 +24,9 @@ test('a clip both incoming and outgoing gets both sides', () => {
   const m = videoLinks(tracks(clip('a', 0, 5), clip('b', 4, 9, { transitionIn: { type: 'wipe', dur: 1 } }), clip('c', 8, 12, { transitionIn: { type: 'push', dur: 1, dir: 'r' } })));
   expect(m.get('b')).toEqual({ from: [0, 0, 1, 1], out: { type: 'push', dir: 'r', at: 4, dur: 1, frame: [0, 0, 1, 1], shaped: false } });
 });
+
+test('B stacked under A (A later in the array) gets A\'s id to be lifted over it', () => {
+  const a = clip('a', 0, 5), b = clip('b', 4, 8, { transitionIn: { type: 'iris', dur: 1 } });
+  expect(videoLinks(tracks(b, a)).get('b')).toEqual({ from: [0, 0, 1, 1], lift: 'a' });
+  expect(videoLinks(tracks(a, b)).get('b')).toEqual({ from: [0, 0, 1, 1] });
+});

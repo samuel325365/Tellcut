@@ -1,4 +1,5 @@
-import { coverPlacement, cropAt, cropForWindow, drawnTransition, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion } from './geometry.ts';
+import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clockClip, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
+  WHIP_BLUR, ZOOM_BLUR, ZOOM_IN, ZOOM_OUT } from './geometry.ts';
 import { TRANSITION_TYPES } from './schema.ts';
 import { eIO3, eOut3 } from './util.ts';
 
@@ -249,14 +250,183 @@ test('a clip cut to a shape cannot also wipe: it dissolves and keeps its shape',
   expect(drawnTransition('wipe', [0, 0, 1, 1], false)).toBe('wipe');
 });
 
-test('types not drawn yet are drawn exactly as a dissolve, for B and (not at all) for A', () => {
-  const later = TRANSITION_TYPES.filter((x) => !['cut', 'dissolve', 'slide', 'wipe', 'push'].includes(x));
-  expect(later).toEqual(['iris', 'clock', 'bars', 'zoom', 'whip', 'blur', 'dip', 'flash']);
-  const like = (type: string, t: number) => { const s = vs({ transitionIn: { type, dur: 1, dir: 'l', x: 0.3, y: 0.7 } }, t, { from: [0, 0, 1, 1] }); return { ...s, crop: null }; };
-  for (const type of later) {
-    expect(drawnTransition(type as any, [0, 0, 1, 1], false)).toBe('dissolve');
-    for (const t of [0, 0.25, 0.5, 1]) expect(like(type, t)).toEqual(like('dissolve', t));
-    expect(vs({}, 3.5, outOf(type, 'l'))).toEqual(vs({}, 3.5));
+test('every transition type is drawn as itself; the fallback is only for a type added later', () => {
+  for (const type of TRANSITION_TYPES) expect(drawnTransition(type, [0, 0, 1, 1], false, [0, 0, 1, 1])).toBe(type);
+  expect(drawnTransition('later' as any, [0, 0, 1, 1], false)).toBe('dissolve');
+});
+
+/** B of a linked 1 s transition at progress p (B starts at 0), and the outgoing A at progress p (A's transition starts at 3) */
+const B = (type: string, p: number, o: any = {}, link: any = { from: [0, 0, 1, 1] }) => vs({ ...o, transitionIn: { type, dur: 1, dir: 'l', ...o.tr } }, p, link);
+const A = (type: string, p: number, more: any = {}, o: any = {}) => vs(o, 3 + p, outOf(type, more.dir ?? 'l', more));
+const PS = [0, 0.25, 0.5, 0.75, 1];
+/** the parts of a state a transition may change, the frame and crop left out */
+const parts = (s: any) => ({ offsetX: s.offsetX, offsetY: s.offsetY, opacity: s.opacity, filter: s.filter, clipPath: s.clipPath, scale: s.scale, streak: s.streak, veil: s.veil });
+const STILL = { offsetX: 0, offsetY: 0, opacity: 1, filter: 'none', clipPath: '', scale: 1, streak: [0, 0], veil: null };
+
+test('iris: B through a circle growing from (x, y) until it reaches the farthest corner, in px; A still', () => {
+  const R = Math.hypot(960, 540);
+  expect(PS.map((p) => B('iris', p).clipPath)).toEqual([0, 0.25, 0.5, 0.75].map((p) => `circle(${+(eIO3(p) * R).toFixed(3)}px at 50% 50%)`).concat(''));
+  // off centre: the farthest corner from (0.25, 0.75) is the top right one
+  expect(B('iris', 0.5, { tr: { x: 0.25, y: 0.75 } }).clipPath).toBe(`circle(${+(0.5 * Math.hypot(1440, 810)).toFixed(3)}px at 25% 75%)`);
+  expect(irisClip(1 - 1e-9, 100, 100, 0, 0)).toBe(`circle(${+((1 - 1e-9) * Math.hypot(100, 100)).toFixed(3)}px at 0% 0%)`);
+  for (const p of PS) { expect(parts(B('iris', p))).toEqual({ ...STILL, clipPath: B('iris', p).clipPath }); expect(parts(A('iris', p))).toEqual(STILL); }
+});
+
+test('clock: a hand sweeping clockwise from 12 o\'clock round the centre, at an even angle on the real frame', () => {
+  expect(B('clock', 0).clipPath).toBe('polygon(50% 50%, 50% 0%, 50% 0%)');                        // nothing swept yet
+  const x = (deg: number) => +((960 + 540 * Math.tan((deg * Math.PI) / 180)) / 19.2).toFixed(3);   // where the hand meets the top edge, %
+  expect(B('clock', 0.25).clipPath).toBe(`polygon(50% 50%, 50% 0%, ${x(22.5)}% 0%)`);              // eIO3(0.25) of 360° = 22.5°
+  expect(B('clock', 0.5).clipPath).toBe('polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 50% 100%)'); // half way: the right half
+  expect(B('clock', 0.75).clipPath).toBe(`polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${x(-22.5)}% 0%)`);
+  expect(B('clock', 1).clipPath).toBe('');
+  // a quarter turn on a tall frame ends at 3 o'clock, the right edge's middle, past the top right corner
+  expect(clockClip(0.25, 1080, 1920)).toBe('polygon(50% 50%, 50% 0%, 100% 0%, 100% 50%)');
+  for (const p of PS) expect(parts(A('clock', p))).toEqual(STILL);
+});
+
+/** bars' clip-path read back: each rectangle as [x0, y0, x1, y1] in px */
+const rects = (clip: string) => [...clip.matchAll(/M([\d.]+) ([\d.]+)H([\d.]+)V([\d.]+)H[\d.]+Z/g)].map((m) => m.slice(1).map(Number));
+test('bars: six strips across the travel wiping one after another, every other one from the other end', () => {
+  expect(B('bars', 0).clipPath).toBe('inset(50%)');
+  expect(B('bars', 1).clipPath).toBe('');
+  const w = 1920 / 6, q = (i: number, p: number) => eIO3(Math.min(1, Math.max(0, (p - i * BAR_GAP) / BAR_LEN)));
+  expect(BAR_GAP * (BARS - 1) + BAR_LEN).toBeCloseTo(1, 12);
+  // dir l, half way: strips 0 and 1 whole, 2 mostly (from the top), 3 a little (from the bottom), 4 and 5 not begun
+  const r = rects(B('bars', 0.5).clipPath);
+  expect(r.map(([x0]) => Math.round(x0 / w))).toEqual([0, 1, 2, 3]);
+  expect(r[0]).toEqual([0, 0, 320, 1080]);
+  expect(r[1]).toEqual([320, 0, 640, 1080]);
+  expect(r[2][1]).toBe(0); expect(r[2][3]).toBeCloseTo(1080 * q(2, 0.5), 2);
+  expect(r[3][3]).toBe(1080); expect(r[3][1]).toBeCloseTo(1080 * (1 - q(3, 0.5)), 2);
+  expect(q(2, 0.5)).toBeGreaterThan(0.8); expect(q(3, 0.5)).toBeLessThan(0.2);
+  // dir r starts at the right; u / d are horizontal strips, from the top / the bottom, along x
+  expect(rects(B('bars', 0.1, { tr: { dir: 'r' } }).clipPath).map(([x0]) => Math.round(x0 / w))).toEqual([5]);
+  const u = rects(B('bars', 0.25, { tr: { dir: 'u' } }).clipPath);
+  expect(u.map(([, y0]) => Math.round(y0 / 180))).toEqual([0, 1]);
+  expect(u[0][0]).toBe(0); expect(u[1][2]).toBe(1920);                                            // the first from the left, the second from the right
+  expect(rects(B('bars', 0.1, { tr: { dir: 'd' } }).clipPath).map(([, y0]) => Math.round(y0 / 180))).toEqual([5]);
+  // strips that touch share their edge to the digit
+  const all = rects(B('bars', 0.9).clipPath);
+  for (let i = 1; i < all.length; i++) expect(all[i][0]).toBe(all[i - 1][2]);
+  for (const p of PS) expect(parts(A('bars', p))).toEqual(STILL);
+});
+
+test('zoom: A grows 1 → 1.8 accelerating and stays opaque; B settles from 1.35, fading in over the middle; a little blur there', () => {
+  const S = 1080;
+  for (const p of PS) {
+    const b = B('zoom', p), a = A('zoom', p), blur = +(ZOOM_BLUR * S * (4 * p * (1 - p)) ** 2).toFixed(3);
+    expect(b.scale).toBeCloseTo(1 + ZOOM_IN * (1 - p) ** 2, 12);
+    expect(b.opacity).toBeCloseTo(eIO3(Math.min(1, Math.max(0, (p - 0.25) / 0.5))), 12);
+    expect(b.streak).toEqual([blur, blur]);
+    if (p < 1) { expect(a.scale).toBeCloseTo(1 + ZOOM_OUT * p * p, 12); expect(a.streak).toEqual([blur, blur]); expect(a.opacity).toBe(1); }
+  }
+  [[B('zoom', 0).scale, 1.35], [B('zoom', 0.25).opacity, 0], [B('zoom', 0.5).opacity, 0.5], [A('zoom', 0.5).scale, 1.2]].forEach(([got, want]) => expect(got).toBeCloseTo(want, 12));
+  expect(B('zoom', 0.5).streak).toEqual([6.48, 6.48]);
+  // nothing else moves
+  expect([B('zoom', 0.5).offsetX, A('zoom', 0.5).offsetX, B('zoom', 0.5).clipPath, A('zoom', 0.5).filter]).toEqual([0, 0, '', 'none']);
+});
+
+test('whip: push\'s motion with a sharper ease and a blur along the travel only, strongest in the middle, none at the ends', () => {
+  const e5 = (p: number) => (p < 0.5 ? 16 * p ** 5 : 1 - (-2 * p + 2) ** 5 / 2);
+  for (const [dir, w, h, sx, sy] of [['l', 1920, 0, -1, 0], ['r', 1920, 0, 1, 0], ['u', 0, 1080, 0, -1], ['d', 0, 1080, 0, 1]] as const) {
+    for (const p of PS) {
+      const b = B('whip', p, { tr: { dir } }), a = A('whip', p, { dir });
+      expect([b.offsetX, b.offsetY]).toEqual([sx * Math.round((1 - e5(p)) * 1920) + 0, sy * Math.round((1 - e5(p)) * 1080) + 0]);
+      const blur = +(WHIP_BLUR * 16 * Math.min(p, 1 - p) ** 4 * (w || h)).toFixed(3);
+      expect(b.streak).toEqual(w ? [blur, 0] : [0, blur]);
+      if (p < 1) {
+        expect([a.offsetX - b.offsetX, a.offsetY - b.offsetY]).toEqual([-sx * 1920 + 0, -sy * 1080 + 0]);   // one picture apart, no gap
+        expect(a.streak).toEqual(b.streak);
+      }
+      expect([b.opacity, a.opacity]).toEqual([1, 1]);
+    }
+  }
+  expect(B('whip', 0.5).streak).toEqual([115.2, 0]);
+  expect(B('whip', 0.5, { tr: { dir: 'u' } }).streak).toEqual([0, 64.8]);
+  // sharper than push: less far at a quarter, as far in the middle
+  expect(Math.abs(B('whip', 0.25).offsetX)).toBeGreaterThan(Math.abs(B('push', 0.25).offsetX));
+  expect(B('whip', 0.5).offsetX).toBe(B('push', 0.5).offsetX);
+});
+
+test('blur: A blurs up by the middle; B, fully blurred, fades in and is sharp at the end; with the grade and defocus kept', () => {
+  const M = BLUR_MAX * 1080;
+  expect(PS.map((p) => B('blur', p).streak[0])).toEqual([M, M, M, M * (1 - eIO3(0.5)), 0].map((v) => +v.toFixed(3)));
+  expect(PS.map((p) => B('blur', p).opacity)).toEqual(PS.map(eIO3));
+  expect(PS.slice(0, 4).map((p) => A('blur', p).streak)).toEqual([0, M * eIO3(0.5), M, M].map((v) => [+v.toFixed(3), +v.toFixed(3)]));
+  expect(A('blur', 0.5).opacity).toBe(1);
+  // the blur is the streak's, never the filter string's: the grade and a running defocus stay as they were
+  const g = { grade: 'g', defocus: { from: 0, to: 1, px: 4 } };
+  const withG = (t: number, link?: any, o: any = {}) => videoState(vid({ ...g, ...o }), 0, 4, t, W, H, { g: 'saturate(1.1)' }, link);
+  expect(withG(0.5, { from: [0, 0, 1, 1] }, { transitionIn: { type: 'blur', dur: 1 } }).filter).toBe(withG(0.5).filter);
+  expect(withG(3.5, outOf('blur')).filter).toBe(withG(3.5).filter);
+});
+
+test('dip: A goes to black by the middle; B, unseen before it, comes up from black', () => {
+  const v = (s: any) => s.veil && [s.veil.color, s.veil.opacity];
+  expect(PS.map((p) => v(A('dip', p)))).toEqual([null, ['#000', eIO3(0.5)], ['#000', 1], ['#000', 1], null]);
+  expect(PS.map((p) => v(B('dip', p)))).toEqual([['#000', 1], ['#000', 1], ['#000', 1], ['#000', 0.5], null]);
+  expect(PS.map((p) => B('dip', p).opacity)).toEqual([0, 0, 1, 1, 1]);
+  // just before and at the middle: A all black, B nothing or all black, so neither picture shows for a frame
+  expect(A('dip', 0.4999).veil!.opacity).toBeGreaterThan(0.999);
+  expect([B('dip', 0.4999).opacity, v(B('dip', 0.5))]).toEqual([0, ['#000', 1]]);
+  // unlinked: B itself fades in black over the first half
+  expect([0, 0.25, 0.5].map((p) => B('dip', p, {}, null).opacity)).toEqual([0, 0.5, 1]);
+  // any frame, any shape
+  const odd = { frame: [0.1, 0.1, 0.5, 0.5], shape: [[0, 0], [1, 0], [0, 1]] };
+  expect(v(B('dip', 0.75, odd))).toEqual(['#000', 0.5]);
+  expect(B('dip', 0.75, odd).clipPath).toBe(shapeClipPath(odd.shape as any));
+  expect(A('dip', 0.5).filter).toBe('none');
+});
+
+test('flash: A burns out to white by the middle (brighter, then covered); B comes back from white', () => {
+  const v = (s: any) => s.veil && [s.veil.color, s.veil.opacity];
+  expect(PS.map((p) => v(A('flash', p)))).toEqual([null, ['#fff', 0.25], ['#fff', 1], ['#fff', 1], null]);
+  expect(PS.map((p) => A('flash', p).filter)).toEqual(['none', 'brightness(2.000)', 'brightness(3.000)', 'brightness(3.000)', 'none']);
+  expect(PS.map((p) => v(B('flash', p)))).toEqual([['#fff', 1], ['#fff', 1], ['#fff', 1], ['#fff', 0.25], null]);
+  expect(PS.map((p) => B('flash', p).filter)).toEqual(['brightness(3.000)', 'brightness(3.000)', 'brightness(3.000)', 'brightness(2.000)', 'none']);
+  expect(PS.map((p) => B('flash', p).opacity)).toEqual([0, 0, 1, 1, 1]);
+  // after a grade
+  expect(videoState(vid({ grade: 'g' }), 0, 4, 3.25, W, H, { g: 'saturate(1.1)' }, outOf('flash')).filter).toBe('saturate(1.1) brightness(2.000)');
+});
+
+test('at the end of B\'s transition and after, and outside A\'s, every type leaves the clip exactly as with none', () => {
+  for (const type of TRANSITION_TYPES) for (const dir of ['l', 'r', 'u', 'd']) {
+    for (const t of [1, 1.5, 3.99]) for (const link of [{ from: [0, 0, 1, 1] }, undefined])
+      expect(vs({ transitionIn: { type, dur: 1, dir, x: 0.3, y: 0.6 } }, t, link), `${type} ${dir} B at ${t}`).toEqual(vs({}, t));
+    for (const t of [0, 2.99, 3])                                          // A before and at the start of the transition (p = 0)
+      expect(vs({}, t, outOf(type, dir)), `${type} ${dir} A at ${t}`).toEqual(vs({}, t));
+    expect(vs({}, 4, outOf(type, dir)), `${type} ${dir} A at its end`).toEqual(vs({}, 4));
+  }
+});
+
+test('fallbacks: a shaped clip\'s reveal and a zoom or whip of a frame not whole are drawn as a dissolve', () => {
+  const shape = [[0, 0], [1, 0], [1, 1], [0, 0.8]];
+  const dissolve = vs({ shape, transitionIn: { type: 'dissolve', dur: 1 } }, 0.25, { from: [0, 0, 1, 1] });
+  for (const type of ['wipe', 'iris', 'clock', 'bars']) {
+    expect(drawnTransition(type as any, [0, 0, 1, 1], true)).toBe('dissolve');
+    expect(vs({ shape, transitionIn: { type, dur: 1 } }, 0.25, { from: [0, 0, 1, 1] })).toEqual(dissolve);
+  }
+  const half = [0, 0, 0.5, 1];
+  for (const type of ['zoom', 'whip']) {
+    for (const [o, link] of [[{ frame: half }, { from: [0, 0, 1, 1] }], [{}, { from: half }], [{ frame: half }, undefined]] as const) {
+      const s = vs({ ...o, transitionIn: { type, dur: 1, dir: 'l' } }, 0.25, link);
+      expect(parts(s)).toEqual({ ...STILL, opacity: eIO3(0.25) });
+    }
+    expect(parts(vs({ frame: half }, 3.5, outOf(type, 'l')))).toEqual(STILL);   // A not whole
+    expect(parts(vs({}, 3.5, outOf(type, 'l', { frame: half })))).toEqual(STILL); // B not whole
+  }
+  // blur, dip and flash work on any frame
+  expect(B('blur', 0.5, { frame: half }).streak[0]).toBeGreaterThan(0);
+  expect(A('flash', 0.5, { frame: half }).veil).not.toBeNull();
+});
+
+test('unlinked (the film\'s first clip, or a transition not the overlap\'s length), B draws its own half only', () => {
+  for (const type of ['zoom', 'whip', 'blur', 'iris', 'clock', 'bars', 'wipe', 'push']) for (const p of [0.25, 0.5, 0.75])
+    expect(B(type, p, {}, null), `${type} ${p}`).toEqual(B(type, p));
+  // dip and flash: B has nothing of its own under it, so it comes in as the colour itself in the first half
+  for (const type of ['dip', 'flash']) {
+    expect(B(type, 0.25, {}, null).opacity).toBe(eIO3(0.5));
+    expect(B(type, 0.75, {}, null)).toEqual(B(type, 0.75));
   }
 });
 

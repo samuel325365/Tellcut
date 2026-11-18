@@ -54,9 +54,15 @@ export function kbMatrix(ax: number, ay: number, zoom: number, cx: number, cy: n
 }
 
 /** offsetX/Y move the whole frame (a slide or push); shakeX/Y move the picture inside the frame (shakeScale grows it so no edge
- *  shows); radius rounds the frame's corners; clipPath is the CSS clip-path of the item's shape, or of a wipe while one runs
- *  (never both: a shaped clip's wipe is drawn as a dissolve), '' for the whole frame. */
-export interface VideoState { frame: Box; offsetX: number; offsetY: number; opacity: number; filter: string; crop: Crop; mediaLocal: number; held: boolean; shakeX: number; shakeY: number; shakeScale: number; radius: number; clipPath: string }
+ *  shows); radius rounds the frame's corners; clipPath is the CSS clip-path of the item's shape, or of a reveal (wipe, iris, clock,
+ *  bars) while one runs (never both: a shaped clip's reveal is drawn as a dissolve), '' for the whole frame. The last three are a
+ *  transition's: `scale` grows the whole frame round its centre (zoom; 1 = none); `streak` blurs the frame's picture by this
+ *  deviation (px) along x and along y, drawn by the stage's own SVG filter, which leaves no fringe at the frame's edges ([0, 0] =
+ *  none; whip blurs along its travel only, blur and zoom evenly); `veil` covers the picture inside the frame with a colour (dip,
+ *  flash; null = none). With no transition running they are 1, [0, 0] and null, and `filter` is the grade and defocus alone. */
+export interface VideoState { frame: Box; offsetX: number; offsetY: number; opacity: number; filter: string; crop: Crop; mediaLocal: number; held: boolean; shakeX: number; shakeY: number; shakeScale: number; radius: number; clipPath: string;
+  scale: number; streak: [number, number]; veil: Veil | null }
+export interface Veil { color: string; opacity: number }
 
 /** a shape (corners in frame fractions) as a CSS clip-path */
 export function shapeClipPath(shape: ReadonlyArray<readonly [number, number]> | undefined): string {
@@ -72,20 +78,27 @@ type Dir = 'l' | 'r' | 'u' | 'd';
  *  cut to a shape (both decide whether B's transition is drawn as itself, see drawnTransition). */
 export interface OutTransition { type: TransitionType; dir?: Dir; x?: number; y?: number; at: number; dur: number; frame: Rect; shaped: boolean }
 /** videoState's optional last argument, made by the stage from the overlaps (pairs.ts videoLinks): `from` on B, the frame of the
- *  clip A its transition is linked to; `out` on A, B's transition. Without it a clip draws as if in no linked pair. */
-export interface VideoLink { from?: Rect; out?: OutTransition }
+ *  clip A its transition is linked to; `out` on A, B's transition; `lift` on B when B is stacked under A (A later in the track's
+ *  array): A's id, for the stage to draw B just above A while the transition runs (videoState does not read it). Without it a
+ *  clip draws as if in no linked pair. */
+export interface VideoLink { from?: Rect; out?: OutTransition; lift?: string }
 
 const isFull = (f: Rect) => Math.abs(f[0]) < 1e-6 && Math.abs(f[1]) < 1e-6 && Math.abs(f[2] - 1) < 1e-6 && Math.abs(f[3] - 1) < 1e-6;
-/** The transitions drawn so far. THE one fallback place: any other type is drawn as a dissolve until it is added here. */
-const DRAWN: ReadonlySet<TransitionType> = new Set<TransitionType>(['cut', 'dissolve', 'slide', 'wipe', 'push']);
+/** The transitions drawn. THE one fallback place: a type added to the schema is drawn as a dissolve until it is added here. */
+const DRAWN: ReadonlySet<TransitionType> = new Set<TransitionType>(['cut', 'dissolve', 'slide', 'wipe', 'iris', 'clock', 'bars', 'push', 'zoom', 'whip', 'blur', 'dip', 'flash']);
+/** the reveals: B uncovered through a clip-path, which a clip cut to a shape already has */
+const REVEALS: ReadonlySet<TransitionType> = new Set<TransitionType>(['wipe', 'iris', 'clock', 'bars']);
+/** the ones that move or grow whole pictures: both frames must be the whole picture */
+const WHOLE: ReadonlySet<TransitionType> = new Set<TransitionType>(['push', 'zoom', 'whip']);
 
 /** The transition actually drawn for an incoming clip of frame `frame` (cut to a shape: `shaped`) coming from a clip of frame
- *  `from` (absent: not linked): a type not drawn yet is a dissolve; so is a wipe on a shaped clip (both are the frame's
- *  clip-path) and a push unless both frames are the whole picture (a push is two pictures moving edge to edge). */
+ *  `from` (absent: not linked): a type not drawn yet is a dissolve; so is a reveal on a shaped clip (both are the frame's
+ *  clip-path) and a push, zoom or whip unless both frames are the whole picture (two pictures moving edge to edge, or one
+ *  grown through the other). blur, dip and flash work on any frame and shape. */
 export function drawnTransition(type: TransitionType, frame: Rect, shaped: boolean, from?: Rect): TransitionType {
   if (!DRAWN.has(type)) return 'dissolve';
-  if (type === 'wipe' && shaped) return 'dissolve';
-  if (type === 'push' && (!isFull(frame) || (from && !isFull(from)))) return 'dissolve';
+  if (REVEALS.has(type) && shaped) return 'dissolve';
+  if (WHOLE.has(type) && (!isFull(frame) || (from && !isFull(from)))) return 'dissolve';
   return type;
 }
 
@@ -93,11 +106,68 @@ export function drawnTransition(type: TransitionType, frame: Rect, shaped: boole
 // edge moving left to right, a push moving both pictures rightwards; 'r' the mirror; 'u' from the top, moving down; 'd' from
 // the bottom, moving up.
 
+const n3 = (v: number) => +v.toFixed(3);
+/** quintic in-out: whip's motion, slower at both ends and faster in the middle than push's cubic */
+const eIO5 = (p: number) => (p < 0.5 ? 16 * p ** 5 : 1 - (-2 * p + 2) ** 5 / 2);
+/** eIO5's speed over its top speed: 0 at both ends, 1 in the middle (whip's blur follows it) */
+const speed5 = (p: number) => 16 * Math.min(p, 1 - p) ** 4;
+/** 0 at both ends, 1 in the middle (zoom's blur) */
+const bump = (p: number) => (4 * p * (1 - p)) ** 2;
+
 /** A wipe's clip-path on B at eased progress e: the part of B on its `dir` side, (e × 100)% of it ('' once whole). */
 export function wipeClip(dir: Dir, e: number): string {
   if (e >= 1) return '';
   const r = `${+((1 - e) * 100).toFixed(3)}%`;   // inset(top right bottom left)
   return dir === 'r' ? `inset(0 0 0 ${r})` : dir === 'u' ? `inset(0 0 ${r} 0)` : dir === 'd' ? `inset(${r} 0 0 0)` : `inset(0 ${r} 0 0)`;
+}
+
+/** An iris's clip-path on a w × h frame at eased progress e: a circle round (x, y) (frame fractions) whose radius reaches the
+ *  farthest corner at e = 1 ('' then). In px: a percentage radius of circle() is of the box's diagonal over √2, not of the
+ *  distance to a corner. */
+export function irisClip(e: number, w: number, h: number, x = 0.5, y = 0.5): string {
+  if (e >= 1) return '';
+  const cx = x * w, cy = y * h, R = Math.max(Math.hypot(cx, cy), Math.hypot(w - cx, cy), Math.hypot(cx, h - cy), Math.hypot(w - cx, h - cy));
+  return `circle(${n3(e * R)}px at ${n3(x * 100)}% ${n3(y * 100)}%)`;
+}
+
+/** A clock wipe's clip-path on a w × h frame at eased progress e: the sector a hand round the frame centre has swept, clockwise
+ *  from 12 o'clock, e × 360° of it, as a polygon from the centre along the frame's edge (each corner passed is a point). The hand
+ *  turns at an even angle on the real frame (worked out in px), not on the frame squeezed into a square. '' once whole. */
+export function clockClip(e: number, w: number, h: number): string {
+  if (e >= 1) return '';
+  const cx = w / 2, cy = h / 2, a = 2 * Math.PI * Math.max(0, e), c = Math.atan2(cx, cy);
+  const pt = (x: number, y: number) => `${n3((x / w) * 100)}% ${n3((y / h) * 100)}%`;
+  // the corners clockwise from 12 o'clock, each with its angle from 12 o'clock as seen from the centre
+  const corners: Array<[number, number, number]> = [[w, 0, c], [w, h, Math.PI - c], [0, h, Math.PI + c], [0, 0, 2 * Math.PI - c]];
+  // where the hand meets the frame's edge
+  const dx = Math.sin(a), dy = -Math.cos(a), k = Math.min(Math.abs(dx) > 1e-12 ? cx / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-12 ? cy / Math.abs(dy) : Infinity);
+  const pts = [pt(cx, cy), pt(cx, 0), ...corners.filter((q) => q[2] < a).map(([x, y]) => pt(x, y)), pt(cx + k * dx, cy + k * dy)];
+  return `polygon(${pts.join(', ')})`;
+}
+
+/** how many strips bars cuts the frame into, and when each runs, in the transition's progress: strip i (counted from the `dir`
+ *  side) from i × BAR_GAP for BAR_LEN, so each starts a third of the way through the one before it and the last ends at 1 */
+export const BARS = 6, BAR_LEN = 0.375, BAR_GAP = (1 - BAR_LEN) / (BARS - 1);
+
+/** Bars' clip-path on a w × h frame at progress p (linear: each strip eases on its own): the frame in BARS equal strips across the
+ *  direction of travel (dir l / r: vertical strips, the first at that side; u / d: horizontal ones), each wiping to B along its
+ *  length one after another, the 1st, 3rd and 5th from the top (or the left) and the others from the bottom (or the right). One
+ *  path() of separate rectangles (px; drawn the same way round and not overlapping, so the nonzero rule fills each once and no
+ *  bridge between them shows); adjacent strips share their edge exactly, so no seam. '' once whole, an empty inset before any
+ *  strip has begun. */
+export function barsClip(dir: Dir, p: number, w: number, h: number): string {
+  if (p >= 1) return '';
+  const across = dir === 'l' || dir === 'r', rects: string[] = [];
+  for (let k = 0; k < BARS; k++) {
+    const i = dir === 'l' || dir === 'u' ? k : BARS - 1 - k, q = eIO3(clamp((p - i * BAR_GAP) / BAR_LEN));
+    if (q <= 0) continue;
+    const odd = i % 2 === 1;
+    // along the strip: [s0, s1] of its length L; across it: the k-th sixth of the frame's other side S
+    const L = across ? h : w, S = across ? w : h, s0 = odd ? L * (1 - q) : 0, s1 = odd ? L : L * q, a0 = (k * S) / BARS, a1 = ((k + 1) * S) / BARS;
+    const [x0, x1, y0, y1] = across ? [a0, a1, s0, s1] : [s0, s1, a0, a1];
+    rects.push(`M${n3(x0)} ${n3(y0)}H${n3(x1)}V${n3(y1)}H${n3(x0)}Z`);
+  }
+  return rects.length ? `path('${rects.join('')}')` : 'inset(50%)';
 }
 
 /** A push's offsets at eased progress e in a w × h picture: B's, and A's exactly one picture further on, in whole pixels so the
@@ -111,38 +181,107 @@ export function pushOffsets(dir: Dir, e: number, w: number, h: number): { b: [nu
   return { b: [-x + 0, 0], a: [w - x, 0] };
 }
 
+/** zoom: A grows to 1 + ZOOM_OUT (accelerating), B settles from 1 + ZOOM_IN (decelerating) and fades in over ZOOM_FADE of the
+ *  progress (eased in-out), both with an even blur of up to ZOOM_BLUR of the short side in the middle, where they move fastest */
+export const ZOOM_OUT = 0.8, ZOOM_IN = 0.35, ZOOM_FADE: readonly [number, number] = [0.25, 0.75], ZOOM_BLUR = 0.006;
+/** whip: the blur along the travel at its fastest (the middle), of the frame's length along it */
+export const WHIP_BLUR = 0.06;
+/** blur: the deviation at its blurriest (the middle), of the frame's short side */
+export const BLUR_MAX = 0.03;
+/** flash: how far the burning picture's brightness goes up (to 1 + FLASH_BRIGHT) as the white comes over it */
+export const FLASH_BRIGHT = 2;
+const VEIL = { dip: '#000', flash: '#fff' } as const;
+
+/** What a transition does to one picture at its progress: multiplied into the opacity and scale, added to the offsets, the larger
+ *  streak and the stronger veil kept, the brightness multiplied, the clip-path set (B's reveals only). */
+interface Look { opacity: number; dx: number; dy: number; scale: number; streak: [number, number]; veil: Veil | null; bright: number; clip: string | null }
+const none = (): Look => ({ opacity: 1, dx: 0, dy: 0, scale: 1, streak: [0, 0], veil: null, bright: 1, clip: null });
+/** dip's black veil goes as u, flash's white one as u² (the brightness does the start of the burn) */
+const veilOf = (kind: 'dip' | 'flash', u: number): Veil | null => (u > 0 ? { color: VEIL[kind], opacity: +(kind === 'flash' ? u * u : u).toFixed(4) } : null);
+const streakAlong = (d: Dir, s: number, w: number, h: number): [number, number] => (d === 'l' || d === 'r' ? [n3(s * w), 0] : [0, n3(s * h)]);
+
+/** the incoming clip B at progress p of its own transition (drawn as `kind`) in a w × h frame; `linked`: A is under it doing its half */
+function incoming(kind: TransitionType, p: number, tr: { dir?: Dir; x?: number; y?: number }, w: number, h: number, linked: boolean): Look {
+  const L = none(), d = tr.dir ?? 'l', S = Math.min(w, h);
+  if (kind === 'dissolve') L.opacity = eIO3(p);
+  else if (kind === 'slide') {
+    const a = eOut3(p);
+    if (d === 'l') L.dx = -(1 - a) * w + 0;   // + 0: no -0 once in, so a finished slide equals no transition exactly
+    if (d === 'r') L.dx = (1 - a) * w;
+    if (d === 'u') L.dy = -(1 - a) * h + 0;
+    if (d === 'd') L.dy = (1 - a) * h;
+    L.opacity = a;
+  } else if (kind === 'wipe') L.clip = wipeClip(d, eIO3(p));
+  else if (kind === 'iris') L.clip = irisClip(eIO3(p), w, h, tr.x, tr.y);
+  else if (kind === 'clock') L.clip = clockClip(eIO3(p), w, h);
+  else if (kind === 'bars') L.clip = barsClip(d, p, w, h);
+  else if (kind === 'push') [L.dx, L.dy] = pushOffsets(d, eIO3(p), w, h).b;
+  else if (kind === 'whip') { [L.dx, L.dy] = pushOffsets(d, eIO5(p), w, h).b; L.streak = streakAlong(d, WHIP_BLUR * speed5(p), w, h); }
+  else if (kind === 'zoom') {
+    L.scale = 1 + ZOOM_IN * (1 - p) ** 2;
+    L.opacity = eIO3(prog(p, ZOOM_FADE[0], ZOOM_FADE[1]));
+    const b = n3(ZOOM_BLUR * S * bump(p)); L.streak = [b, b];
+  } else if (kind === 'blur') {
+    // fades in as a dissolve does, fully blurred until the middle, sharp at the end
+    L.opacity = eIO3(p);
+    const b = n3(BLUR_MAX * S * (1 - eIO3(clamp(2 * p - 1)))); L.streak = [b, b];
+  } else if (kind === 'dip' || kind === 'flash') {
+    // the first half is A's (going to black or white) and B, under a full veil, is not seen till the middle; unlinked (nothing of
+    // its own under it) B itself comes in as the veil's colour over that half
+    if (p < 0.5) { L.opacity = linked ? 0 : eIO3(2 * p); L.veil = veilOf(kind, 1); if (kind === 'flash') L.bright = 1 + FLASH_BRIGHT; }
+    else { const u = 1 - eIO3(2 * p - 1); L.veil = veilOf(kind, u); if (kind === 'flash') L.bright = 1 + FLASH_BRIGHT * u; }
+  }
+  return L;
+}
+
+/** the outgoing clip A at progress p of the next clip's linked transition (drawn as `kind`); the types not named leave A still */
+function outgoing(kind: TransitionType, p: number, d: Dir, w: number, h: number): Look {
+  const L = none(), S = Math.min(w, h);
+  if (kind === 'push') [L.dx, L.dy] = pushOffsets(d, eIO3(p), w, h).a;
+  else if (kind === 'whip') { [L.dx, L.dy] = pushOffsets(d, eIO5(p), w, h).a; L.streak = streakAlong(d, WHIP_BLUR * speed5(p), w, h); }
+  else if (kind === 'zoom') {
+    // accelerating into the cut; it stays opaque (B comes in over it: A fading too would only let the background through)
+    L.scale = 1 + ZOOM_OUT * p * p;
+    const b = n3(ZOOM_BLUR * S * bump(p)); L.streak = [b, b];
+  } else if (kind === 'blur') { const b = n3(BLUR_MAX * S * eIO3(clamp(2 * p))); L.streak = [b, b]; }
+  else if (kind === 'dip' || kind === 'flash') {
+    const u = eIO3(clamp(2 * p));
+    L.veil = veilOf(kind, u);
+    if (kind === 'flash') L.bright = 1 + FLASH_BRIGHT * u;
+  }
+  return L;
+}
+
+/** a clip that is B of one transition and A of the next while both run (a clip shorter than the two) */
+const merge = (a: Look, b: Look): Look => ({
+  opacity: a.opacity * b.opacity, dx: a.dx + b.dx, dy: a.dy + b.dy, scale: a.scale * b.scale,
+  streak: [Math.max(a.streak[0], b.streak[0]), Math.max(a.streak[1], b.streak[1])],
+  veil: !a.veil ? b.veil : !b.veil ? a.veil : a.veil.opacity >= b.veil.opacity ? a.veil : b.veil,
+  bright: a.bright * b.bright, clip: a.clip ?? b.clip,
+});
+
 export function videoState(item: VideoItem, start: number, end: number, t: number, W: number, H: number, grades: Record<string, string>, link?: VideoLink): VideoState {
   const local = t - start;
   const [fx, fy, fw, fh] = item.frame;
   const frame: Box = { left: fx * W, top: fy * H, width: fw * W, height: fh * H };
-  let opacity = item.opacity ?? 1, offsetX = 0, offsetY = 0, wipe: string | null = null;
+  let look = none();
   const tr = item.transitionIn;
   if (tr && tr.type !== 'cut' && tr.dur > 0) {
-    const kind = drawnTransition(tr.type, item.frame, !!item.shape && item.shape.length >= 3, link?.from), p = prog(local, 0, tr.dur);
-    const d = tr.dir ?? 'l';
-    if (kind === 'dissolve') opacity *= eIO3(p);
-    else if (kind === 'slide') {
-      const a = eOut3(p);
-      if (d === 'l') offsetX = -(1 - a) * frame.width;
-      if (d === 'r') offsetX = (1 - a) * frame.width;
-      if (d === 'u') offsetY = -(1 - a) * frame.height;
-      if (d === 'd') offsetY = (1 - a) * frame.height;
-      opacity *= a;
-    } else if (kind === 'wipe') wipe = wipeClip(d, eIO3(p));
-    else if (kind === 'push') [offsetX, offsetY] = pushOffsets(d, eIO3(p), frame.width, frame.height).b;
+    const kind = drawnTransition(tr.type, item.frame, !!item.shape && item.shape.length >= 3, link?.from);
+    look = incoming(kind, prog(local, 0, tr.dur), tr, frame.width, frame.height, !!link?.from);
   }
-  // the outgoing side: only while the next clip's linked transition runs, and only for the types that move A
+  // the outgoing side: only while the next clip's linked transition runs
   const o = link?.out;
-  if (o && o.dur > 0 && local >= o.at && local < o.at + o.dur && drawnTransition(o.type, o.frame, o.shaped, item.frame) === 'push') {
-    const [ax, ay] = pushOffsets(o.dir ?? 'l', eIO3(prog(local, o.at, o.at + o.dur)), frame.width, frame.height).a;
-    offsetX += ax; offsetY += ay;
-  }
+  if (o && o.dur > 0 && local >= o.at && local < o.at + o.dur)
+    look = merge(look, outgoing(drawnTransition(o.type, o.frame, o.shaped, item.frame), prog(local, o.at, o.at + o.dur), o.dir ?? 'l', frame.width, frame.height));
   let filter = item.grade ? grades[item.grade] ?? 'none' : 'none';
+  const add = (f: string) => { filter = `${filter === 'none' ? '' : `${filter} `}${f}`; };
   if (item.defocus && local >= item.defocus.from) {
     const d = item.defocus, p0 = d.px0 ?? 0;
     const b = p0 + (d.px - p0) * eIO3(prog(local, d.from, d.to));
-    if (b > 0) filter = `${filter === 'none' ? '' : `${filter} `}blur(${b.toFixed(2)}px)`;
+    if (b > 0) add(`blur(${b.toFixed(2)}px)`);
   }
+  if (look.bright !== 1) add(`brightness(${look.bright.toFixed(3)})`);
   let shakeX = 0, shakeY = 0, amp = 0;
   (item.shake ?? []).forEach((s, k) => {
     if (local < s.at || local >= s.at + s.dur) return;
@@ -155,7 +294,8 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
   const crop = cropAt(item.crop, local, end - start);
   const mediaLocal = item.freezeAt != null ? Math.min(local, item.freezeAt) : local;
   const held = item.freezeAt != null && local >= item.freezeAt;
-  return { frame, offsetX, offsetY, opacity, filter, crop, mediaLocal, held, shakeX, shakeY, shakeScale, radius: item.radius ?? 0, clipPath: wipe ?? shapeClipPath(item.shape) };
+  return { frame, offsetX: look.dx, offsetY: look.dy, opacity: (item.opacity ?? 1) * look.opacity, filter, crop, mediaLocal, held, shakeX, shakeY, shakeScale,
+    radius: item.radius ?? 0, clipPath: look.clip ?? shapeClipPath(item.shape), scale: look.scale, streak: look.streak, veil: look.veil };
 }
 
 /** The part of the source a frame shows, in 0..1 source coordinates (the inverse view of coverPlacement). */

@@ -35,7 +35,7 @@ test('layers stack by track then array order', () => {
   const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
   st.load(project());
   const z = [...root.querySelectorAll<HTMLElement>('.st-item')].map((e) => [e.dataset.id, Number(e.style.zIndex)]);
-  expect(z).toEqual([['a', 1], ['b', 2], ['f', 3], ['q', 4]]);
+  expect(z).toEqual([['a', 2], ['b', 4], ['f', 6], ['q', 8]]);   // steps of two: room for a clip lifted over the one before it
   expect(root.style.width).toBe('100px');
 });
 
@@ -243,7 +243,7 @@ test('update removes deleted items and reloads fully when meta changes', () => {
   const q = edit(p, 'v', (items) => [items[0]]);
   st.update(q);
   expect([...root.querySelectorAll('.st-item')].map((e) => (e as HTMLElement).dataset.id)).toEqual(['a', 'f', 'q']);
-  expect([...root.querySelectorAll<HTMLElement>('.st-item')].map((e) => e.style.zIndex)).toEqual(['1', '2', '3']);
+  expect([...root.querySelectorAll<HTMLElement>('.st-item')].map((e) => e.style.zIndex)).toEqual(['2', '4', '6']);
   const elA = root.querySelector('.st-item[data-id="a"]');
   st.update({ ...q, meta: { ...q.meta, width: 200 } });
   expect(root.style.width).toBe('200px');
@@ -534,4 +534,106 @@ test('a linked push moves both frames and a wipe clips the incoming one; the out
   expect([frame('a').style.transform, frame('a').style.clipPath, frame('b').style.transform, frame('b').style.clipPath]).toEqual(['none', '', 'none', 'inset(0 50% 0 0)']);
   st.draw(4.5);
   expect(frame('b').style.clipPath).toBe('');
+});
+
+test('a zoom scales both frames round their centres; a scale of 1 leaves the transform as it was, a push still composes with it', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  const p = project();                                   // a 0–4, b 3–6: a 1 s overlap
+  p.tracks[0].items[1].transitionIn = { type: 'zoom', dur: 1 };
+  st.load(p);
+  const frame = (id: string) => root.querySelector<HTMLElement>(`[data-id="${id}"] .st-frame`)!;
+  st.draw(3.5);
+  expect([frame('a').style.transform, frame('b').style.transform, frame('a').style.transformOrigin]).toEqual(['scale(1.2000)', 'scale(1.0875)', '']);
+  st.draw(4.5);
+  expect(frame('b').style.transform).toBe('none');
+  st.draw(2);
+  expect(frame('a').style.transform).toBe('none');
+  // a clip still sliding in while the clip after it zooms through it: the move first, then the scale
+  const q = project();
+  q.tracks[0].items = [
+    { ...q.tracks[0].items[0], end: 5 },
+    { ...q.tracks[0].items[1], start: 3, end: 8, transitionIn: { type: 'slide', dur: 2, dir: 'l' } },
+    { ...q.tracks[0].items[1], id: 'c', start: 4, end: 10, transitionIn: { type: 'zoom', dur: 4 } },
+  ];
+  st.load(q);
+  st.draw(4.5);
+  expect(frame('b').style.transform).toMatch(/^translate\(-[\d.]+px, 0px\) scale\(1\.01\d\d\)$/);
+});
+
+test('a blur draws with the layer\'s own SVG filter, made once and reused, after the grade; gone from the filter once over', () => {
+  const reg = createRegistry([corePlugin, { id: 'red', svg: '<filter id="red-dawn"><feColorMatrix type="saturate" values="0.6"/></filter>', grades: { dawn: 'url(#red-dawn)' } }]);
+  const root = document.createElement('div');
+  const st = new Stage(root, reg, fakeMedia());
+  const p = project();
+  Object.assign(p.tracks[0].items[1], { grade: 'dawn', transitionIn: { type: 'whip', dur: 1, dir: 'r' } });
+  st.load(p);
+  const frame = (id: string) => root.querySelector<HTMLElement>(`[data-id="${id}"] .st-frame`)!;
+  const filters = (id: string) => [...root.querySelectorAll(`[data-id="${id}"] filter`)];
+  expect(filters('b')).toEqual([]);                      // nothing made before it is needed
+  st.draw(3.5);
+  const [f] = filters('b'), id = f.getAttribute('id')!;
+  expect(frame('b').style.filter).toBe(`url(#red-dawn) url(#${id})`);
+  expect(f.querySelector('feGaussianBlur')!.getAttribute('stdDeviation')).toBe('6 0');   // along x only: 6% of the 100 px frame
+  expect(frame('a').style.filter).toMatch(/^url\(#tc-streak-\d+\)$/);                     // A has its own
+  expect(filters('a')[0].getAttribute('id')).not.toBe(id);
+  st.draw(3.25);
+  expect(filters('b')).toEqual([f]);                     // the same element, its deviation rewritten
+  expect(Number(f.querySelector('feGaussianBlur')!.getAttribute('stdDeviation')!.split(' ')[0])).toBeLessThan(6);
+  st.draw(4.5);
+  expect([frame('b').style.filter, filters('b').length]).toEqual(['url(#red-dawn)', 1]);
+  // an even blur: both deviations
+  const q = structuredClone(p);
+  q.tracks[0].items[1].transitionIn = { type: 'blur', dur: 1 };
+  st.update(q);
+  st.draw(3.5);
+  expect(filters('b')[0].querySelector('feGaussianBlur')!.getAttribute('stdDeviation')).toBe('1.5 1.5');   // 3% of the 50 px side
+});
+
+test('dip and flash cover the picture with a veil inside the frame, made once; hidden again after', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  const p = project();
+  Object.assign(p.tracks[0].items[1], { radius: 8, transitionIn: { type: 'dip', dur: 1 } });
+  st.load(p);
+  const frame = (id: string) => root.querySelector<HTMLElement>(`[data-id="${id}"] .st-frame`)!;
+  const veil = (id: string) => frame(id).querySelector<HTMLElement>(':scope > .st-veil');
+  expect(veil('a')).toBeNull();
+  st.draw(3.25);
+  expect([veil('a')!.style.display, parseFloat(veil('a')!.style.opacity), veil('a')!.style.zIndex]).toEqual(['', 0.5, '1']);
+  expect(veil('a')!.style.background).toMatch(/^(#000|rgb\(0, 0, 0\)|black)$/);
+  expect(parseFloat(frame('b').style.opacity)).toBe(0);  // B unseen before the middle
+  st.draw(3.75);
+  const v = veil('b')!;
+  expect([parseFloat(v.style.opacity), parseFloat(frame('b').style.opacity), frame('b').style.borderRadius]).toEqual([0.5, 1, '8px']);
+  st.draw(4.5);
+  expect([veil('b'), v.style.display]).toEqual([v, 'none']);
+  expect(frame('b').querySelectorAll('.st-veil').length).toBe(1);
+  // flash: white, and brighter
+  const q = structuredClone(p);
+  q.tracks[0].items[1].transitionIn = { type: 'flash', dur: 1 };
+  st.update(q);
+  st.draw(3.25);
+  expect(veil('a')!.style.background).toMatch(/^(#fff|rgb\(255, 255, 255\)|white)$/);
+  expect(frame('a').style.filter).toBe('brightness(2.000)');
+});
+
+test('a clip stacked under the clip its linked transition comes from is lifted just above it while the transition runs', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  const p = project();
+  const [a, b] = p.tracks[0].items;
+  b.transitionIn = { type: 'iris', dur: 1 };
+  p.tracks[0].items = [b, a];                            // b first in the array: under a
+  st.load(p);
+  const z = () => Object.fromEntries([...root.querySelectorAll<HTMLElement>('.st-item')].map((e) => [e.dataset.id, e.style.zIndex]));
+  expect(z()).toEqual({ b: '2', a: '4', f: '6', q: '8' });
+  st.draw(3.5);
+  expect(z()).toEqual({ b: '5', a: '4', f: '6', q: '8' });
+  st.draw(4.5);
+  expect(z().b).toBe('2');
+  // in the usual order nothing is lifted
+  st.load(project());
+  st.draw(3.5);
+  expect(z()).toEqual({ a: '2', b: '4', f: '6', q: '8' });
 });

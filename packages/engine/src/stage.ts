@@ -15,11 +15,43 @@ import { motion } from './motion.ts';
 import { itemMediaIssues } from './validate.ts';
 import { NO_REPORT, textReporter, type ReportedText } from './report.ts';
 
+/** a video layer's own blur filter: the CSS filter() that names it and its feGaussianBlur, with the deviation last written */
+type Streak = { url: string; blur: SVGElement; dev: string };
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** streak filter ids, document-wide (several stages may share a page) */
+let streakSeq = 0;
+/** A blur of the frame that leaves no fringe at its edges: a CSS blur() (or feGaussianBlur's edgeMode, which Chrome ignores on an
+ *  element's filter) fades the frame's edge rows into transparency, showing what is under them. Here the blur's alpha is set back
+ *  to full (feComponentTransfer works on unpremultiplied colour, so an edge pixel keeps the colour of the picture near it, as if
+ *  the edge were repeated) and cut to the frame's own alpha again, so rounded corners stay round. The region is the frame's box;
+ *  the deviation is in the frame's own px (userSpaceOnUse), "x y". */
+function streakFilter(parent: HTMLElement): Streak {
+  const id = `tc-streak-${++streakSeq}`, el = (name: string, a: Record<string, string>, to: Element) => {
+    const e = document.createElementNS(SVG_NS, name);
+    for (const [k, v] of Object.entries(a)) e.setAttribute(k, v);
+    to.appendChild(e);
+    return e;
+  };
+  const svg = el('svg', { width: '0', height: '0', 'aria-hidden': 'true' }, parent) as SVGSVGElement;
+  svg.style.position = 'absolute';
+  const f = el('filter', { id, x: '0', y: '0', width: '100%', height: '100%', 'color-interpolation-filters': 'sRGB', primitiveUnits: 'userSpaceOnUse' }, svg);
+  const blur = el('feGaussianBlur', { in: 'SourceGraphic', stdDeviation: '0 0', result: 'b' }, f);
+  const ct = el('feComponentTransfer', { in: 'b', result: 'o' }, f);
+  el('feFuncA', { type: 'table', tableValues: '1 1' }, ct);
+  el('feComposite', { in: 'o', in2: 'SourceAlpha', operator: 'in' }, f);
+  return { url: `url(#${id})`, blur, dev: '0 0' };
+}
+
 /** sig = the item's JSON: update() compares content, since projects posted into the preview iframe are copies. */
 /** `more`: the item's further layers, one per blend mode after its first (ItemType.blend), each right above `el` */
 type Common = { id: string; el: HTMLElement; sig: string; muted: boolean; more?: HTMLElement[] };
 type Layer =
-  | (Common & { kind: 'video'; frame: HTMLElement; holder: HTMLElement; kb: HTMLElement | null; img: HTMLImageElement | null; item: VideoItem; ref: MediaRef })
+  | (Common & { kind: 'video'; frame: HTMLElement; holder: HTMLElement; kb: HTMLElement | null; img: HTMLImageElement | null; item: VideoItem; ref: MediaRef;
+      /** made the first time a transition needs them, then kept: the veil over the picture, the streak's filter */
+      veil?: HTMLElement; streak?: Streak;
+      /** a clip stacked under the clip its linked transition comes from: its own z-index, the one just above that clip's, and the
+       *  time the transition ends (restack) */
+      lift?: { base: string; z: string; until: number } })
   | (Common & { kind: 'plugin'; slot: HTMLElement; item: SceneItem; params: Record<string, any>; type: ItemType; state: unknown; shown?: boolean; readied?: Promise<void> })
   | (Common & { kind: 'missing' });
 
@@ -141,10 +173,19 @@ export class Stage {
     if (L.kind === 'plugin') { try { L.type.dispose?.(L.state); } catch (e) { console.error(e); } }
   }
 
-  /** z-order follows track order then array order; the top container stays above all items. */
+  /** z-order follows track order then array order, in steps of two: a clip stacked under the clip its linked transition comes
+   *  from (moved below it on the timeline, or that clip moved to start first) is drawn one above that clip while the transition
+   *  runs, as every transition is drawn with the incoming clip on top, and nothing else changes place. The top container stays
+   *  above all items. */
   private restack() {
-    this.layers.forEach((L, i) => { for (const e of layerEls(L)) e.style.zIndex = String(i + 1); if (L.kind === 'plugin') this.top.appendChild(L.slot); });
-    this.top.style.zIndex = String(this.layers.length + 1);
+    const z = new Map<string, number>();
+    this.layers.forEach((L, i) => { z.set(L.id, 2 * (i + 1)); for (const e of layerEls(L)) e.style.zIndex = String(2 * (i + 1)); if (L.kind === 'plugin') this.top.appendChild(L.slot); });
+    for (const L of this.layers) {
+      if (L.kind !== 'video') continue;
+      const under = this.links.get(L.id)?.lift, tm = this.times.get(L.id)!, tr = L.item.transitionIn;
+      L.lift = under && z.has(under) && tr ? { base: String(z.get(L.id)), z: String(z.get(under)! + 1), until: tm.start + tr.dur } : undefined;
+    }
+    this.top.style.zIndex = String(2 * this.layers.length + 2);
   }
 
   private styles(p: Project) {
@@ -255,11 +296,26 @@ export class Stage {
       if (!on) return;
       if (L.kind === 'video') {
         const s = videoState(L.item, tm.start, tm.end, t, W, H, this.registry.grades, this.links.get(L.id));
+        if (L.lift) { const z = t < L.lift.until ? L.lift.z : L.lift.base; if (L.el.style.zIndex !== z) L.el.style.zIndex = z; }
+        const move = s.offsetX || s.offsetY ? `translate(${s.offsetX}px, ${s.offsetY}px)` : '';
+        // a streak: the layer's own filter after the grade's and defocus's; its deviation written only when it changes
+        let filter = s.filter;
+        if (s.streak[0] > 0 || s.streak[1] > 0) {
+          const k = (L.streak ??= streakFilter(L.el)), dev = `${s.streak[0]} ${s.streak[1]}`;
+          if (k.dev !== dev) { k.blur.setAttribute('stdDeviation', dev); k.dev = dev; }
+          filter = filter === 'none' ? k.url : `${filter} ${k.url}`;
+        }
         cssCamel(L.frame, {
           left: `${s.frame.left}px`, top: `${s.frame.top}px`, width: `${s.frame.width}px`, height: `${s.frame.height}px`,
-          transform: s.offsetX || s.offsetY ? `translate(${s.offsetX}px, ${s.offsetY}px)` : 'none',
-          opacity: s.opacity.toFixed(3), filter: s.filter, borderRadius: s.radius ? `${s.radius}px` : '', clipPath: s.clipPath,
+          // the frame grows round its own centre (the default transform-origin)
+          transform: s.scale !== 1 ? `${move ? `${move} ` : ''}scale(${s.scale.toFixed(4)})` : move || 'none',
+          opacity: s.opacity.toFixed(3), filter, borderRadius: s.radius ? `${s.radius}px` : '', clipPath: s.clipPath,
         });
+        // a veil: over the picture inside the frame, so the frame's corners and shape cut it too
+        if (s.veil) {
+          if (!L.veil) { L.veil = h('div', 'st-veil', null, L.frame); cssCamel(L.veil, { position: 'absolute', inset: '0', zIndex: '1', pointerEvents: 'none' }); }
+          cssCamel(L.veil, { display: '', background: s.veil.color, opacity: s.veil.opacity.toFixed(4) });
+        } else if (L.veil) cssCamel(L.veil, { display: 'none' });
         const src = this.project.sources[L.item.source];
         // a photo is placed like a video frame, without media time
         const v = L.img ?? this.media.video(L.ref, L.holder, s.mediaLocal, s.held);
