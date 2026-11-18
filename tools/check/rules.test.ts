@@ -1,6 +1,6 @@
 import { createRegistry, parseProject, type Transcript } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
-import { canvasFxFiles, chosenSpec, flatlayHandOff, fxChecks, modelChecks, noTranscript, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
+import { canvasFxFiles, chosenSpec, flatlayHandOff, transitionNotes, fxChecks, modelChecks, noTranscript, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -674,4 +674,20 @@ describe('thresholds and guards (TT8)', () => {
       { id: 'm', kind: 'music', items: [{ id: 'mu', start: 0, end: 12, media: 'song', in: 0, gain: 0, fadeIn: 0, fadeOut: 0 }] }]);
     expect(msgs(modelChecks(p, ok)).filter((m) => m.includes('超出片長'))).toEqual(['error 8-10.5 超出片長 10 秒（t）']);
   });
+});
+
+test('a transition drawn as a dissolve, and a film of more than two kinds of transition, are gentle notes', () => {
+  const shape = [[0, 0], [1, 0], [1, 1], [0, 1]], half = [0, 0, 0.5, 1];
+  const p = project([{ id: 'main', kind: 'video', items: [clip('a', 0, 2, { frame: half }), clip('b', 1.5, 4, { transitionIn: { type: 'push', dur: 0.5 } }),
+    clip('c', 3.6, 6, { shape, transitionIn: { type: 'iris', dur: 0.4 } }), clip('d', 5.5, 8, { frame: half, transitionIn: { type: 'zoom', dur: 0.5 } })] }]);
+  expect(msgs(transitionNotes(p))).toEqual([
+    'note 1.5-2 b 的轉場 push 會畫成溶接：前一段 a 沒有占滿畫面（frame），push 要前後兩段都是全畫面；改用 dissolve、blur、dip 或 flash',
+    'note 3.6-4 c 的轉場 iris 會畫成溶接：片段切成了形狀（shape），iris 要用片段的輪廓；要這個轉場就拿掉 shape，不然改用 dissolve、blur、dip 或 flash',
+    'note 5.5-6 d 的轉場 zoom 會畫成溶接：片段沒有占滿畫面（frame），zoom 要前後兩段都是全畫面；改用 dissolve、blur、dip 或 flash',
+    'note  這支片用了 3 種轉場（push、iris、zoom）：一支片最多兩種，預設直接剪，只在換章節、地點、時間的地方用轉場']);
+  expect(transitionNotes(p).at(-1)!.ids).toEqual(['b', 'c', 'd']);
+  // two kinds drawn as themselves: nothing to say
+  const two = project([{ id: 'main', kind: 'video', items: [clip('a', 0, 2), clip('b', 1.5, 4, { transitionIn: { type: 'dissolve', dur: 0.5 } }),
+    clip('c', 3.6, 6, { shape, transitionIn: { type: 'flash', dur: 0.4 } }), clip('d', 5.5, 8, { transitionIn: { type: 'dissolve', dur: 0.5 } }), clip('e', 7.5, 10, { transitionIn: { type: 'cut', dur: 0 } })] }]);
+  expect(transitionNotes(two)).toEqual([]);
 });

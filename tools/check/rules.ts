@@ -1,7 +1,7 @@
 // The model layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 4): what the project file alone
 // tells (parseProject already refuses items that end before they start) — offline material, black frames, items past the end, empty text, music stopping early, captions vs speech.
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
-import { allItems, badParamTypes, envelopeAt, OLD_BLOCKS, OLD_TEXT, PARAM_TYPES, resolveTimes, soundFiles, type ParamDef, type Project, type Transcript } from '@tellcut/engine';
+import { allItems, badParamTypes, envelopeAt, OLD_BLOCKS, OLD_TEXT, overlapPairs, PARAM_TYPES, resolveTimes, soundFiles, transitionFallbacks, type ParamDef, type Project, type Transcript, type VideoItem } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { flatlayClip, PANEL_FRAME, parseFly, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { readFly } from '../../packages/plugin-common/src/flatlay.ts';
@@ -334,6 +334,27 @@ export function flatlayHandOff(p: Project): Finding[] {
     return [{ level: 'warn', t: [r3(t.start + full), r3(t.start + Math.min(dur, until))], ids: [it.id],
       msg: `common.flatlay 飛進第 ${fly.index} 樣東西的照片、蓋滿畫面後就不畫桌面，主軌卻沒有那個鏡頭接手，畫面會空掉：用 c.flatlayClip('${it.id}', ${fly.index}) 放上去` }];
   });
+}
+
+/** Clip transitions: one drawn as a dissolve instead of its own type (engine transitionFallbacks: a reveal on a clip cut to a shape;
+ *  push, zoom or whip off the whole picture), and a film using more than two kinds (the workflow's rule: cut straight, a transition
+ *  only where the chapter, place or time changes, at most two kinds). Notes only: the film still plays. */
+export function transitionNotes(p: Project): Finding[] {
+  const times = resolveTimes(p), out: Finding[] = [];
+  const span = (id: string, dur: number): [number, number] => { const t = times.get(id)!; return [r3(t.start), r3(Math.min(t.end, t.start + dur))]; };
+  const clips = p.tracks.filter((t) => t.kind === 'video').flatMap((t) => t.items as VideoItem[]).filter((c) => c.transitionIn && c.transitionIn.type !== 'cut');
+  const pairs = overlapPairs(p, times), falls = transitionFallbacks(p, times);
+  for (const c of clips) {
+    const f = falls.get(c.id);
+    if (!f) continue;
+    const why = f.why === 'shape' ? `片段切成了形狀（shape），${f.type} 要用片段的輪廓；要這個轉場就拿掉 shape，不然改用 dissolve、blur、dip 或 flash`
+      : `${f.why === 'from' ? `前一段 ${pairs.get(c.id)?.a ?? ''} ` : '片段'}沒有占滿畫面（frame），${f.type} 要前後兩段都是全畫面；改用 dissolve、blur、dip 或 flash`;
+    out.push({ level: 'note', t: span(c.id, c.transitionIn!.dur), ids: [c.id], msg: `${c.id} 的轉場 ${f.type} 會畫成溶接：${why}` });
+  }
+  const kinds = [...new Set(clips.map((c) => c.transitionIn!.type))];
+  if (kinds.length > 2) out.push({ level: 'note', ids: clips.map((c) => c.id),
+    msg: `這支片用了 ${kinds.length} 種轉場（${kinds.join('、')}）：一支片最多兩種，預設直接剪，只在換章節、地點、時間的地方用轉場` });
+  return out;
 }
 
 /** common.flatlay's objects and fly as written: JSON it cannot read draws only the one object `kind` names, or never flies, and a fly
