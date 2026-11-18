@@ -1,4 +1,4 @@
-import { videoLinks } from './pairs.ts';
+import { transitionFallbacks, videoLinks } from './pairs.ts';
 
 const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
 const clip = (id: string, start: number, end: number, o: any = {}) => ({ id, source: 's', in: 0, speed: 1, start, end, frame: [0, 0, 1, 1], crop, interp: 'none', ...o });
@@ -29,4 +29,12 @@ test('B stacked under A (A later in the array) gets A\'s id to be lifted over it
   const a = clip('a', 0, 5), b = clip('b', 4, 8, { transitionIn: { type: 'iris', dur: 1 } });
   expect(videoLinks(tracks(b, a)).get('b')).toEqual({ from: [0, 0, 1, 1], lift: 'a' });
   expect(videoLinks(tracks(a, b)).get('b')).toEqual({ from: [0, 0, 1, 1] });
+});
+
+test('transitionFallbacks: the clips drawn as a dissolve and why, the previous frame counting only when linked', () => {
+  const half = [0, 0, 0.5, 1];
+  const p = tracks(clip('a', 0, 5, { frame: half }), clip('b', 4, 8, { transitionIn: { type: 'push', dur: 1 } }),
+    clip('c', 7.5, 10, { shape: [[0, 0], [1, 0], [1, 1]], transitionIn: { type: 'wipe', dur: 0.5 } }), clip('d', 9.5, 12, { frame: half, transitionIn: { type: 'zoom', dur: 0.5 } }),
+    clip('e', 11.5, 14, { transitionIn: { type: 'whip', dur: 0.2 } }), clip('f', 13.5, 16, { shape: [[0, 0], [1, 0], [1, 1]], transitionIn: { type: 'flash', dur: 0.5 } }));
+  expect(Object.fromEntries(transitionFallbacks(p))).toEqual({ b: { type: 'push', why: 'from' }, c: { type: 'wipe', why: 'shape' }, d: { type: 'zoom', why: 'frame' } });
 });

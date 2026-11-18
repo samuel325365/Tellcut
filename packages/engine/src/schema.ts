@@ -24,6 +24,9 @@ export const TransformZ = z.object({ x: z.number().min(-1).max(1), y: z.number()
  *  which ones are drawn yet: the rest are drawn as a dissolve. */
 export const TRANSITION_TYPES = ['cut', 'dissolve', 'slide', 'wipe', 'iris', 'clock', 'bars', 'push', 'zoom', 'whip', 'blur', 'dip', 'flash'] as const;
 export type TransitionType = (typeof TRANSITION_TYPES)[number];
+/** the types that read `dir` (the side the incoming picture comes from) and the one that reads `x`, `y` (its centre) */
+export const TRANSITION_DIR_TYPES: readonly TransitionType[] = ['slide', 'wipe', 'bars', 'push', 'whip'];
+export const TRANSITION_CENTRE_TYPES: readonly TransitionType[] = ['iris'];
 export const Rect01Z = z.tuple([z.number(), z.number(), z.number().positive(), z.number().positive()]);
 export const GainPointZ = z.tuple([sec, db]);
 const Params = z.record(z.string(), z.unknown());

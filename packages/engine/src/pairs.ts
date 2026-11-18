@@ -1,9 +1,9 @@
 // Same-track overlaps (spec 2026-10-14 §3): which item precedes which and by how much, and whether a video transition or an
 // audio crossfade is linked to the overlap. Here rather than in commands/ because the stage needs it too (a linked
 // transition moves the outgoing clip as well), and drawing must not depend on the edit commands.
-import type { AnyItem, Project, Track, TrackKind, VideoItem } from './schema.ts';
+import type { AnyItem, Project, Track, TrackKind, TransitionType, VideoItem } from './schema.ts';
 import { r6, resolveTimes, TIME_EPS, type Times } from './time.ts';
-import type { VideoLink } from './geometry.ts';
+import { transitionFallback, type TransitionFallback, type VideoLink } from './geometry.ts';
 
 export interface OverlapPair { track: string; kind: TrackKind; a: string; b: string; ov: number; linked: boolean; top: 'a' | 'b' }
 const EPS = TIME_EPS;
@@ -26,6 +26,24 @@ export function overlapPairs(p: Pick<Project, 'tracks'>, times: Times = resolveT
         out.set(x.it.id, { track: t.id, kind: t.kind, a: reach.it.id, b: x.it.id, ov, linked: isLinked(t, reach.it, x.it, ov), top: x.i > reach.i ? 'b' : 'a' });
       }
       if (!reach || x.end > reach.end) reach = x;
+    }
+  }
+  return out;
+}
+
+/** Every video clip whose transition is drawn as a dissolve instead of its own type (geometry.ts transitionFallback), by clip id,
+ *  with its type and why. The frame of the clip it comes from counts only when the transition is linked to the overlap. */
+export function transitionFallbacks(p: Pick<Project, 'tracks'>, times: Times = resolveTimes(p)): Map<string, { type: TransitionType; why: TransitionFallback }> {
+  const out = new Map<string, { type: TransitionType; why: TransitionFallback }>();
+  let links: Map<string, VideoLink> | null = null;
+  for (const t of p.tracks) {
+    if (t.kind !== 'video') continue;
+    for (const it of t.items as VideoItem[]) {
+      const tr = it.transitionIn;
+      if (!tr || tr.type === 'cut' || tr.type === 'dissolve') continue;
+      links ??= videoLinks(p, times);
+      const why = transitionFallback(tr.type, it.frame, !!it.shape && it.shape.length >= 3, links.get(it.id)?.from);
+      if (why) out.set(it.id, { type: tr.type, why });
     }
   }
   return out;

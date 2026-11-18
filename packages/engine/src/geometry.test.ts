@@ -1,4 +1,4 @@
-import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clockClip, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
+import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clockClip, transitionFallback, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
   WHIP_BLUR, ZOOM_BLUR, ZOOM_IN, ZOOM_OUT, ZOOM_POW } from './geometry.ts';
 import { TRANSITION_TYPES } from './schema.ts';
 import { eIO3, eOut3 } from './util.ts';
@@ -248,6 +248,16 @@ test('a clip cut to a shape cannot also wipe: it dissolves and keeps its shape',
   expect(s.opacity).toBeCloseTo(eIO3(0.25));
   expect(drawnTransition('wipe', [0, 0, 1, 1], true)).toBe('dissolve');
   expect(drawnTransition('wipe', [0, 0, 1, 1], false)).toBe('wipe');
+});
+
+test('transitionFallback says why a type is drawn as a dissolve, and nothing when it is drawn as itself', () => {
+  const full = [0, 0, 1, 1] as const, half = [0, 0, 0.5, 1] as const;
+  expect(transitionFallback('iris', full, true)).toBe('shape');
+  expect(transitionFallback('iris', full, false)).toBe(null);
+  expect(transitionFallback('push', half, false)).toBe('frame');
+  expect(transitionFallback('zoom', full, false, half)).toBe('from');
+  expect(transitionFallback('whip', full, true, full)).toBe(null);          // a shaped clip may push: only its frame matters
+  for (const type of ['blur', 'dip', 'flash', 'dissolve', 'cut'] as const) expect(transitionFallback(type, half, true, half)).toBe(null);
 });
 
 test('every transition type is drawn as itself; the fallback is only for a type added later', () => {

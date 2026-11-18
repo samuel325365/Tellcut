@@ -102,6 +102,17 @@ export function drawnTransition(type: TransitionType, frame: Rect, shaped: boole
   return type;
 }
 
+/** Why drawnTransition draws `type` as a dissolve, for the editor's note and check's: 'shape' a reveal on a clip cut to a
+ *  shape, 'frame' a push, zoom or whip on a clip whose frame is not the whole picture, 'from' the same when it is the frame of
+ *  the clip it comes from that is not; null when the type is drawn as itself (a dissolve or a cut always is). */
+export type TransitionFallback = 'shape' | 'frame' | 'from';
+export function transitionFallback(type: TransitionType, frame: Rect, shaped: boolean, from?: Rect): TransitionFallback | null {
+  if (drawnTransition(type, frame, shaped, from) === type) return null;
+  if (REVEALS.has(type) && shaped) return 'shape';
+  if (WHOLE.has(type)) return isFull(frame) ? 'from' : 'frame';
+  return 'frame';   // a type not drawn yet (none today): no better reason to give
+}
+
 // Directions keep slide's meaning: `dir` is the side the incoming picture comes from. 'l': B enters from the left, a wipe's
 // edge moving left to right, a push moving both pictures rightwards; 'r' the mirror; 'u' from the top, moving down; 'd' from
 // the bottom, moving up.
