@@ -40,6 +40,27 @@ test('a dissolve overlaps the previous clip by its length (linked to the overlap
   expect(items(c, 'v1').map((i) => [i.start, i.end])).toEqual([[0, 2], [1.5, 3.5]]);
 });
 
+test('every transition type passes through c.clip and c.photo with its own options; a wrong one is refused naming the valid ones', () => {
+  const c = fresh();
+  c.clip('v', { from: 0, len: 2 });
+  c.clip('v', { from: 3, len: 2, transition: { type: 'wipe', dur: 0.4, dir: 'u' } });
+  c.photo('ph', { len: 2, transition: { type: 'iris', dur: 0.5, x: 0.3, y: 0.6 } });
+  c.clip('ph', { len: 2, transition: { type: 'flash', dur: 0.3 } });      // a photo given to c.clip goes through c.photo
+  expect(items(c, 'v1').slice(1).map((i) => i.transitionIn)).toEqual([{ type: 'wipe', dur: 0.4, dir: 'u' }, { type: 'iris', dur: 0.5, x: 0.3, y: 0.6 }, { type: 'flash', dur: 0.3 }]);
+  expect(items(c, 'v1').map((i) => i.start)).toEqual([0, 1.6, 3.1, 4.8]);
+  const bad = (transition: any, call: 'clip' | 'photo' = 'clip') => () => (call === 'clip' ? c.clip('v', { from: 0, len: 1, transition }) : c.photo('ph', { transition }));
+  expect(bad({ type: 'crossfade', dur: 0.5 })).toThrow("c.clip('v') 的 transition.type 只能是 dissolve、slide、wipe、iris、clock、bars、push、zoom、whip、blur、dip、flash，現在是 \"crossfade\"");
+  expect(bad({ type: 'cut', dur: 0.5 })).toThrow('直接剪就不要給 transition');
+  expect(bad({ type: 'dissolve' })).toThrow('transition.dur 要是數字');
+  expect(bad({ type: 'dissolve', dur: 0.5, dir: 'l' })).toThrow('dissolve 沒有方向，dir 只給 slide、wipe、bars、push、whip');
+  expect(bad({ type: 'push', dur: 0.5, dir: 'left' })).toThrow("transition.dir 只能是 'l'、'r'、'u'、'd'");
+  expect(bad({ type: 'wipe', dur: 0.5, x: 0.5 }, 'photo')).toThrow("c.photo('ph') 的 transition：wipe 沒有圓心");
+  expect(bad({ type: 'iris', dur: 0.5, y: 1.5 })).toThrow('transition.y 是畫面的比例，要在 0–1 之間');
+  expect(bad({ type: 'iris', dur: 0.5, centre: [0.5, 0.5] })).toThrow('transition 沒有「centre」');
+  expect(bad('dissolve')).toThrow('transition 要是物件');
+  expect(items(c, 'v1')).toHaveLength(4);                                   // nothing was added by a refused call
+});
+
 test('texts go on the text track (c.title a common.heading, speech common.caption captions attached to the clip); the end card comes last', () => {
   const c = fresh();
   c.title('京都', { at: 0, len: 3 });

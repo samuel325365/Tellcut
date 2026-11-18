@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, allItems, applyTemplate, comboSpan, createRegistry, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, applyTemplate, comboSpan, createRegistry, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, TRANSITION_CENTRE_TYPES, TRANSITION_DIR_TYPES, TRANSITION_TYPES, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type TransitionType, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, projectRegistry, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf, withTemplate } from '@tellcut/plugin-common';
@@ -23,7 +23,8 @@ export { cropOf, type CropIn };
 
 export { checkFrame };
 
-type Transition = { type: 'dissolve' | 'slide'; dur: number; dir?: 'l' | 'r' | 'u' | 'd' };
+/** a clip's transition in (engine schema.ts TRANSITION_TYPES; a cut is no transition): dir for the types that read it, x, y for iris */
+type Transition = { type: Exclude<TransitionType, 'cut'>; dur: number; dir?: 'l' | 'r' | 'u' | 'd'; x?: number; y?: number };
 /** why avoidBurned left a clip as asked: the zoom it needs is past the cap, the detection has not run, or no caption was detected
  *  near it (`fix`: the crop that would clear the caption row anyway, `cap` when even that is past the zoom cap); `cropOnly`:
  *  avoidBurned: 'crop', our captions are not moved off the row */
@@ -38,6 +39,31 @@ export function num(v: unknown, what: string, o: { min?: number; above?: number 
   if (o.above !== undefined && !(v > o.above)) throw new Error(`${what} 要大於 ${o.above}，現在是 ${v}`);
   if (o.min !== undefined && v < o.min) throw new Error(`${what} 不能小於 ${o.min}，現在是 ${v}`);
   return v;
+}
+const TRANSITION_NAMES = TRANSITION_TYPES.filter((x) => x !== 'cut');
+const DIRS = ['l', 'r', 'u', 'd'];
+/** A transition given to c.clip / c.photo, checked: a type the engine draws, a length, and only the options that type reads, so a
+ *  misspelt type or a dir on a dissolve is said at once instead of failing at save() or doing nothing. */
+export function transitionOf(tr: unknown, call: string): Transition | undefined {
+  if (tr === undefined) return undefined;
+  if (!tr || typeof tr !== 'object' || Array.isArray(tr)) throw new Error(`${call} 的 transition 要是物件（例如 { type: 'dissolve', dur: 0.5 }），現在是 ${JSON.stringify(tr)}`);
+  const o = tr as Record<string, unknown>;
+  if (o.type === 'cut') throw new Error(`${call} 的 transition：直接剪就不要給 transition`);
+  if (typeof o.type !== 'string' || !(TRANSITION_NAMES as string[]).includes(o.type)) throw new Error(`${call} 的 transition.type 只能是 ${TRANSITION_NAMES.join('、')}，現在是 ${JSON.stringify(o.type)}`);
+  const type = o.type as Transition['type'], out: Transition = { type, dur: num(o.dur, `${call} 的 transition.dur`, { min: 0 }) };
+  for (const k of Object.keys(o)) if (!['type', 'dur', 'dir', 'x', 'y'].includes(k)) throw new Error(`${call} 的 transition 沒有「${k}」（只有 type、dur、dir、x、y）`);
+  if (o.dir !== undefined) {
+    if (!(TRANSITION_DIR_TYPES as string[]).includes(type)) throw new Error(`${call} 的 transition：${type} 沒有方向，dir 只給 ${TRANSITION_DIR_TYPES.join('、')}`);
+    if (typeof o.dir !== 'string' || !DIRS.includes(o.dir)) throw new Error(`${call} 的 transition.dir 只能是 'l'、'r'、'u'、'd'（新畫面從左、右、上、下進來），現在是 ${JSON.stringify(o.dir)}`);
+    out.dir = o.dir as Transition['dir'];
+  }
+  for (const k of ['x', 'y'] as const) {
+    if (o[k] === undefined) continue;
+    if (!(TRANSITION_CENTRE_TYPES as string[]).includes(type)) throw new Error(`${call} 的 transition：${type} 沒有圓心，x、y 只給 ${TRANSITION_CENTRE_TYPES.join('、')}`);
+    out[k] = num(o[k], `${call} 的 transition.${k}`, { min: 0 });
+    if (out[k]! > 1) throw new Error(`${call} 的 transition.${k} 是畫面的比例，要在 0–1 之間，現在是 ${out[k]}`);
+  }
+  return out;
 }
 const TRACKS = () => [
   // the main track is magnetic (spec 2026-10-15-proposals-magnetic §4.1): later edits ripple
@@ -278,20 +304,21 @@ export class Cut {
    */
   clip(source: string, o: { from?: SrcTime; len: number; speed?: number; crop?: CropIn; transition?: Transition; sound?: boolean; gain?: number; avoidBurned?: boolean | 'crop'; frame?: Frame; shape?: Shape; duck?: boolean | number }): string {
     checkFrame(o.frame, `c.clip('${source}')`);
+    const tr = transitionOf(o.transition, `c.clip('${source}')`);
     if (o.avoidBurned !== undefined && typeof o.avoidBurned !== 'boolean' && o.avoidBurned !== 'crop') throw new Error(`c.clip('${source}') 的 avoidBurned 只能是 true、false 或 'crop'（只裁切、不移字幕），現在是 ${JSON.stringify(o.avoidBurned)}`);
     const s = this.src(source), crop0 = cropOf(o.crop, `c.clip('${source}')`);
     if (s.kind === 'image') {
       // a photo among clips (a recipe's shot list): its crop / focus is kept, not dropped
-      const id = this.photo(source, { len: o.len, transition: o.transition, frame: o.frame, shape: o.shape });
+      const id = this.photo(source, { len: o.len, transition: tr, frame: o.frame, shape: o.shape });
       if (crop0) (this.p.tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as { crop: unknown }).crop = crop0;
       return id;
     }
     const speed = o.speed ?? 1, from = secs(o.from ?? 0, `c.clip('${source}') 的 from`), len = r6(Math.min(num(o.len, `c.clip('${source}') 的 len`, { above: 0 }), (s.duration - from) / speed));
     if (!(len > 0)) throw new Error(`A clip of "${source}" from ${from} s has no length`);
-    const start = this.startFor(o.transition);
+    const start = this.startFor(tr);
     const avoided = o.avoidBurned ? this.avoidBurned(source, from, from + len * speed, crop0 ?? { from: STILL, to: STILL }, o.frame) : undefined;
     const crop = avoided?.crop ?? crop0 ?? { from: STILL, to: STILL };
-    const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame, o.shape), ...(o.transition ? { transitionIn: o.transition } : {}) } });
+    const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame, o.shape), ...(tr ? { transitionIn: tr } : {}) } });
     // no crop asked for and the picture does not fit the frame's shape: at save() its focus goes to the faces in it (phase 5)
     if (!crop0) this.autoFocus.push([id]);
     const cropOnly = o.avoidBurned === 'crop' ? { cropOnly: true } : {};
@@ -332,9 +359,10 @@ export class Cut {
 
   photo(source: string, o: { len?: number; zoom?: [number, number]; focus?: [number, number]; transition?: Transition; frame?: Frame; shape?: Shape } = {}): string {
     checkFrame(o.frame, `c.photo('${source}')`);
+    const tr = transitionOf(o.transition, `c.photo('${source}')`);
     if (this.src(source).kind !== 'image') throw new Error(`"${source}" is not a photo`);
-    const len = num(o.len ?? 3, `c.photo('${source}') 的 len`, { above: 0 }), [z0, z1] = o.zoom ?? [1, 1.1], [x, y] = o.focus ?? [0.5, 0.5], start = this.startFor(o.transition);
-    const id = addItem(this.p, { track: 'v1', item: { source, in: 0, speed: 1, start, end: r6(start + len), crop: { from: { x, y, zoom: z0 }, to: { x, y, zoom: z1 } }, ...this.frameFields(o.frame, o.shape), ...(o.transition ? { transitionIn: o.transition } : {}) } });
+    const len = num(o.len ?? 3, `c.photo('${source}') 的 len`, { above: 0 }), [z0, z1] = o.zoom ?? [1, 1.1], [x, y] = o.focus ?? [0.5, 0.5], start = this.startFor(tr);
+    const id = addItem(this.p, { track: 'v1', item: { source, in: 0, speed: 1, start, end: r6(start + len), crop: { from: { x, y, zoom: z0 }, to: { x, y, zoom: z1 } }, ...this.frameFields(o.frame, o.shape), ...(tr ? { transitionIn: tr } : {}) } });
     this.cursor = r6(start + len); this.bump(this.cursor);
     return id;
   }
