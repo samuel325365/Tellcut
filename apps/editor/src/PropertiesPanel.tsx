@@ -11,6 +11,10 @@ import { CaptionTemplates } from './CaptionTemplates.tsx';
 import { BlockTemplates } from './BlockTemplates.tsx';
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
+/** the transition menu: cut, dissolve, slide, and the clip's own type when it is another one (set by a cut script or a proposal;
+ *  the menu does not offer the others yet), so the box shows what the clip has instead of the first entry */
+const transitionOptions = (cur?: string): Array<[string, string]> => [['cut', 'Cut'], ['dissolve', 'Dissolve'], ['slide', 'Slide'],
+  ...(cur && cur !== 'cut' && cur !== 'dissolve' && cur !== 'slide' ? [[cur, cur[0].toUpperCase() + cur.slice(1)] as [string, string]] : [])];
 
 export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) {
   const p = s.project!;
@@ -48,7 +52,7 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
         <NumberField label="Speed" name="speed" value={it.speed} step={0.05} min={0.0625} max={16} onCommit={up('speed')} />
       </>}
       <SelectField label="Grade" name="grade" value={it.grade ?? ''} options={[['', 'None'], ...grades.map((g) => [g, g] as [string, string])]} onCommit={(v) => editor.update(id, { grade: v || null })} />
-      <SelectField label="Transition" name="transition" value={it.transitionIn?.type ?? 'cut'} options={[['cut', 'Cut'], ['dissolve', 'Dissolve'], ['slide', 'Slide']]}
+      <SelectField label="Transition" name="transition" value={it.transitionIn?.type ?? 'cut'} options={transitionOptions(it.transitionIn?.type)}
         onCommit={(v) => editor.update(id, { transitionIn: v === 'cut' ? undefined : { type: v, dur: it.transitionIn?.dur ?? 0.5, ...(v === 'slide' ? { dir: it.transitionIn?.dir ?? 'l' } : {}) } })} />
       {it.transitionIn && <NumberField label="Transition length (s)" name="transitionDur" value={it.transitionIn.dur} onCommit={(v) => editor.update(id, { transitionIn: { ...it.transitionIn, dur: v ?? 0 } })} />}
       {it.transitionIn?.type === 'slide' && <SelectField label="Slide direction" name="transitionDir" value={it.transitionIn.dir ?? 'l'}

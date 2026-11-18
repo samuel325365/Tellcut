@@ -264,6 +264,7 @@ export const zh = {
   'ed.transTip': '轉場：{kind} {dur} s（拖右緣調整長度）',
   'ed.transSlide': '滑入',
   'ed.transDissolve': '溶接',
+  'ed.transTipOther': '轉場 {dur} s（拖右緣調整長度）',
   'ed.addTrackTip': '新增軌道',
   'ed.zoomTip': '時間軸縮放（Ctrl＋滾輪）',
   'ed.zoomFitTip': '縮放到整支 (\\)',

@@ -265,6 +265,7 @@ export const ja: Record<Key, string> = {
   'ed.transTip': 'トランジション：{kind} {dur} s（右端をドラッグで長さを調整）',
   'ed.transSlide': 'スライド',
   'ed.transDissolve': 'ディゾルブ',
+  'ed.transTipOther': 'トランジション {dur} s（右端をドラッグで長さを調整）',
   'ed.addTrackTip': 'トラックを追加',
   'ed.zoomTip': 'タイムラインのズーム（Ctrl+ホイール）',
   'ed.zoomFitTip': '全体が収まるようにズーム (\\)',

@@ -265,6 +265,7 @@ export const en: Record<Key, string> = {
   'ed.transTip': 'Transition: {kind} {dur} s (drag the right edge to change the length)',
   'ed.transSlide': 'slide',
   'ed.transDissolve': 'dissolve',
+  'ed.transTipOther': 'Transition {dur} s (drag the right edge to change the length)',
   'ed.addTrackTip': 'Add a track',
   'ed.zoomTip': 'Timeline zoom (Ctrl+wheel)',
   'ed.zoomFitTip': 'Zoom to fit the whole video (\\)',
