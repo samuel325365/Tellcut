@@ -1,5 +1,5 @@
 import type { Crop, TransitionType, VideoItem } from './schema.ts';
-import { clamp, eIO3, eOut3, lerp, prog } from './util.ts';
+import { clamp, eIO3, eOut3, eSmooth, lerp, prog } from './util.ts';
 
 export interface Box { left: number; top: number; width: number; height: number }
 
@@ -146,10 +146,12 @@ export function clockClip(e: number, w: number, h: number): string {
 }
 
 /** how many strips bars cuts the frame into, and when each runs, in the transition's progress: strip i (counted from the `dir`
- *  side) from i × BAR_GAP for BAR_LEN, so each starts a third of the way through the one before it and the last ends at 1 */
-export const BARS = 6, BAR_LEN = 0.375, BAR_GAP = (1 - BAR_LEN) / (BARS - 1);
+ *  side) from i × BAR_GAP for BAR_LEN, so four or five strips are on the move at once, each at its own height, and the last ends
+ *  at 1 */
+export const BARS = 6, BAR_LEN = 0.6, BAR_GAP = (1 - BAR_LEN) / (BARS - 1);
 
-/** Bars' clip-path on a w × h frame at progress p (linear: each strip eases on its own): the frame in BARS equal strips across the
+/** Bars' clip-path on a w × h frame at progress p (linear: each strip eases on its own, with a smoothstep, gentler than
+ *  the cubic, so their heights spread over the whole frame): the frame in BARS equal strips across the
  *  direction of travel (dir l / r: vertical strips, the first at that side; u / d: horizontal ones), each wiping to B along its
  *  length one after another, the 1st, 3rd and 5th from the top (or the left) and the others from the bottom (or the right). One
  *  path() of separate rectangles (px; drawn the same way round and not overlapping, so the nonzero rule fills each once and no
@@ -159,7 +161,7 @@ export function barsClip(dir: Dir, p: number, w: number, h: number): string {
   if (p >= 1) return '';
   const across = dir === 'l' || dir === 'r', rects: string[] = [];
   for (let k = 0; k < BARS; k++) {
-    const i = dir === 'l' || dir === 'u' ? k : BARS - 1 - k, q = eIO3(clamp((p - i * BAR_GAP) / BAR_LEN));
+    const i = dir === 'l' || dir === 'u' ? k : BARS - 1 - k, q = eSmooth((p - i * BAR_GAP) / BAR_LEN);
     if (q <= 0) continue;
     const odd = i % 2 === 1;
     // along the strip: [s0, s1] of its length L; across it: the k-th sixth of the frame's other side S
@@ -181,9 +183,10 @@ export function pushOffsets(dir: Dir, e: number, w: number, h: number): { b: [nu
   return { b: [-x + 0, 0], a: [w - x, 0] };
 }
 
-/** zoom: A grows to 1 + ZOOM_OUT (accelerating), B settles from 1 + ZOOM_IN (decelerating) and fades in over ZOOM_FADE of the
- *  progress (eased in-out), both with an even blur of up to ZOOM_BLUR of the short side in the middle, where they move fastest */
-export const ZOOM_OUT = 0.8, ZOOM_IN = 0.35, ZOOM_FADE: readonly [number, number] = [0.25, 0.75], ZOOM_BLUR = 0.006;
+/** zoom: A grows to 1 + ZOOM_OUT (accelerating: 1 + ZOOM_OUT × p^ZOOM_POW, about 1.6 by the middle), B settles from 1 + ZOOM_IN
+ *  (decelerating: (1 − p)²) and fades in over ZOOM_FADE of the progress (eased in-out), both with an even blur of up to ZOOM_BLUR of the
+ *  short side in the middle, where they move fastest */
+export const ZOOM_OUT = 1.4, ZOOM_POW = 1.2, ZOOM_IN = 0.8, ZOOM_FADE: readonly [number, number] = [0.35, 0.65], ZOOM_BLUR = 0.01;
 /** whip: the blur along the travel at its fastest (the middle), of the frame's length along it */
 export const WHIP_BLUR = 0.06;
 /** blur: the deviation at its blurriest (the middle), of the frame's short side */
@@ -241,7 +244,7 @@ function outgoing(kind: TransitionType, p: number, d: Dir, w: number, h: number)
   else if (kind === 'whip') { [L.dx, L.dy] = pushOffsets(d, eIO5(p), w, h).a; L.streak = streakAlong(d, WHIP_BLUR * speed5(p), w, h); }
   else if (kind === 'zoom') {
     // accelerating into the cut; it stays opaque (B comes in over it: A fading too would only let the background through)
-    L.scale = 1 + ZOOM_OUT * p * p;
+    L.scale = 1 + ZOOM_OUT * p ** ZOOM_POW;
     const b = n3(ZOOM_BLUR * S * bump(p)); L.streak = [b, b];
   } else if (kind === 'blur') { const b = n3(BLUR_MAX * S * eIO3(clamp(2 * p))); L.streak = [b, b]; }
   else if (kind === 'dip' || kind === 'flash') {

@@ -1,5 +1,5 @@
 import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clockClip, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
-  WHIP_BLUR, ZOOM_BLUR, ZOOM_IN, ZOOM_OUT } from './geometry.ts';
+  WHIP_BLUR, ZOOM_BLUR, ZOOM_IN, ZOOM_OUT, ZOOM_POW } from './geometry.ts';
 import { TRANSITION_TYPES } from './schema.ts';
 import { eIO3, eOut3 } from './util.ts';
 
@@ -286,42 +286,48 @@ test('clock: a hand sweeping clockwise from 12 o\'clock round the centre, at an 
 
 /** bars' clip-path read back: each rectangle as [x0, y0, x1, y1] in px */
 const rects = (clip: string) => [...clip.matchAll(/M([\d.]+) ([\d.]+)H([\d.]+)V([\d.]+)H[\d.]+Z/g)].map((m) => m.slice(1).map(Number));
-test('bars: six strips across the travel wiping one after another, every other one from the other end', () => {
+test('bars: six strips across the travel wiping at once at different stages, every other one from the other end', () => {
   expect(B('bars', 0).clipPath).toBe('inset(50%)');
   expect(B('bars', 1).clipPath).toBe('');
-  const w = 1920 / 6, q = (i: number, p: number) => eIO3(Math.min(1, Math.max(0, (p - i * BAR_GAP) / BAR_LEN)));
+  const w = 1920 / 6, q = (i: number, p: number) => { const v = Math.min(1, Math.max(0, (p - i * BAR_GAP) / BAR_LEN)); return v * v * (3 - 2 * v); };
   expect(BAR_GAP * (BARS - 1) + BAR_LEN).toBeCloseTo(1, 12);
-  // dir l, half way: strips 0 and 1 whole, 2 mostly (from the top), 3 a little (from the bottom), 4 and 5 not begun
+  // dir l, half way: every strip on its way, each further than the next, the even ones from the top and the odd ones from the bottom
   const r = rects(B('bars', 0.5).clipPath);
-  expect(r.map(([x0]) => Math.round(x0 / w))).toEqual([0, 1, 2, 3]);
-  expect(r[0]).toEqual([0, 0, 320, 1080]);
-  expect(r[1]).toEqual([320, 0, 640, 1080]);
-  expect(r[2][1]).toBe(0); expect(r[2][3]).toBeCloseTo(1080 * q(2, 0.5), 2);
-  expect(r[3][3]).toBe(1080); expect(r[3][1]).toBeCloseTo(1080 * (1 - q(3, 0.5)), 2);
-  expect(q(2, 0.5)).toBeGreaterThan(0.8); expect(q(3, 0.5)).toBeLessThan(0.2);
+  expect(r.map(([x0]) => Math.round(x0 / w))).toEqual([0, 1, 2, 3, 4, 5]);
+  r.forEach(([x0, y0, x1, y1], k) => {
+    expect([x0, x1]).toEqual([+(k * w).toFixed(3), +((k + 1) * w).toFixed(3)]);
+    if (k % 2) { expect(y1).toBe(1080); expect(y0).toBeCloseTo(1080 * (1 - q(k, 0.5)), 2); } else { expect(y0).toBe(0); expect(y1).toBeCloseTo(1080 * q(k, 0.5), 2); }
+  });
+  const qs = [0, 1, 2, 3, 4, 5].map((i) => q(i, 0.5));
+  for (let i = 1; i < 6; i++) expect(qs[i]).toBeLessThan(qs[i - 1]);
+  expect(qs.filter((v) => v > 0.05 && v < 0.95).length).toBeGreaterThanOrEqual(4);
   // dir r starts at the right; u / d are horizontal strips, from the top / the bottom, along x
-  expect(rects(B('bars', 0.1, { tr: { dir: 'r' } }).clipPath).map(([x0]) => Math.round(x0 / w))).toEqual([5]);
+  expect(rects(B('bars', 0.05, { tr: { dir: 'r' } }).clipPath).map(([x0]) => Math.round(x0 / w))).toEqual([5]);
   const u = rects(B('bars', 0.25, { tr: { dir: 'u' } }).clipPath);
-  expect(u.map(([, y0]) => Math.round(y0 / 180))).toEqual([0, 1]);
+  expect(u.map(([, y0]) => Math.round(y0 / 180))).toEqual([0, 1, 2, 3]);
   expect(u[0][0]).toBe(0); expect(u[1][2]).toBe(1920);                                            // the first from the left, the second from the right
-  expect(rects(B('bars', 0.1, { tr: { dir: 'd' } }).clipPath).map(([, y0]) => Math.round(y0 / 180))).toEqual([5]);
+  expect(rects(B('bars', 0.05, { tr: { dir: 'd' } }).clipPath).map(([, y0]) => Math.round(y0 / 180))).toEqual([5]);
   // strips that touch share their edge to the digit
   const all = rects(B('bars', 0.9).clipPath);
   for (let i = 1; i < all.length; i++) expect(all[i][0]).toBe(all[i - 1][2]);
   for (const p of PS) expect(parts(A('bars', p))).toEqual(STILL);
 });
 
-test('zoom: A grows 1 → 1.8 accelerating and stays opaque; B settles from 1.35, fading in over the middle; a little blur there', () => {
+test('zoom: A grows 1 → 2.4 accelerating and stays opaque; B settles from 1.8 decelerating, fading in over the middle; blurred there', () => {
   const S = 1080;
   for (const p of PS) {
     const b = B('zoom', p), a = A('zoom', p), blur = +(ZOOM_BLUR * S * (4 * p * (1 - p)) ** 2).toFixed(3);
     expect(b.scale).toBeCloseTo(1 + ZOOM_IN * (1 - p) ** 2, 12);
-    expect(b.opacity).toBeCloseTo(eIO3(Math.min(1, Math.max(0, (p - 0.25) / 0.5))), 12);
+    expect(b.opacity).toBeCloseTo(eIO3(Math.min(1, Math.max(0, (p - 0.35) / 0.3))), 12);
     expect(b.streak).toEqual([blur, blur]);
-    if (p < 1) { expect(a.scale).toBeCloseTo(1 + ZOOM_OUT * p * p, 12); expect(a.streak).toEqual([blur, blur]); expect(a.opacity).toBe(1); }
+    if (p < 1) { expect(a.scale).toBeCloseTo(1 + ZOOM_OUT * p ** ZOOM_POW, 12); expect(a.streak).toEqual([blur, blur]); expect(a.opacity).toBe(1); }
   }
-  [[B('zoom', 0).scale, 1.35], [B('zoom', 0.25).opacity, 0], [B('zoom', 0.5).opacity, 0.5], [A('zoom', 0.5).scale, 1.2]].forEach(([got, want]) => expect(got).toBeCloseTo(want, 12));
-  expect(B('zoom', 0.5).streak).toEqual([6.48, 6.48]);
+  [[B('zoom', 0).scale, 1.8], [B('zoom', 0.5).scale, 1.2], [B('zoom', 0.3).opacity, 0], [B('zoom', 0.5).opacity, 0.5], [B('zoom', 0.7).opacity, 1], [A('zoom', 0.999999).scale, 2.4]]
+    .forEach(([got, want]) => expect(got).toBeCloseTo(want, 4));
+  expect(A('zoom', 0.5).scale).toBeGreaterThan(1.6); expect(A('zoom', 0.5).scale).toBeLessThan(1.62);
+  // accelerating: it grows more in the second half than in the first
+  expect(A('zoom', 0.999999).scale - A('zoom', 0.5).scale).toBeGreaterThan(A('zoom', 0.5).scale - 1);
+  expect(B('zoom', 0.5).streak).toEqual([10.8, 10.8]);
   // nothing else moves
   expect([B('zoom', 0.5).offsetX, A('zoom', 0.5).offsetX, B('zoom', 0.5).clipPath, A('zoom', 0.5).filter]).toEqual([0, 0, '', 'none']);
 });

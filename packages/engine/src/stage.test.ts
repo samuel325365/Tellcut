@@ -544,7 +544,7 @@ test('a zoom scales both frames round their centres; a scale of 1 leaves the tra
   st.load(p);
   const frame = (id: string) => root.querySelector<HTMLElement>(`[data-id="${id}"] .st-frame`)!;
   st.draw(3.5);
-  expect([frame('a').style.transform, frame('b').style.transform, frame('a').style.transformOrigin]).toEqual(['scale(1.2000)', 'scale(1.0875)', '']);
+  expect([frame('a').style.transform, frame('b').style.transform, frame('a').style.transformOrigin]).toEqual(['scale(1.6094)', 'scale(1.2000)', '']);
   st.draw(4.5);
   expect(frame('b').style.transform).toBe('none');
   st.draw(2);
@@ -558,7 +558,7 @@ test('a zoom scales both frames round their centres; a scale of 1 leaves the tra
   ];
   st.load(q);
   st.draw(4.5);
-  expect(frame('b').style.transform).toMatch(/^translate\(-[\d.]+px, 0px\) scale\(1\.01\d\d\)$/);
+  expect(frame('b').style.transform).toMatch(/^translate\(-[\d.]+px, 0px\) scale\(1\.1155\)$/);
 });
 
 test('a blur draws with the layer\'s own SVG filter, made once and reused, after the grade; gone from the filter once over', () => {

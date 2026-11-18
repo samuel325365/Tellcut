@@ -213,17 +213,19 @@ describe('every transition halfway between two structured pictures', () => {
     expectWhose(s, [[170, 15, 'B'], [240, 45, 'B'], [300, 160, 'B'], [170, 165, 'B'], [150, 15, 'A'], [80, 45, 'A'], [20, 160, 'A'], [150, 165, 'A']]);
   }, 180000);
 
-  test('bars: the left strips done, the third filled from the top, the fourth just begun from the bottom, the rest still A', async () => {
+  test('bars: every strip on its way at its own height, the even ones filling from the top and the odd ones from the bottom', async () => {
     const s = await mid('bars');
     const x = (k: number) => Math.round((k + 0.5) * (W / 6));
-    expectWhose(s, [[x(0), 90, 'B'], [x(1), 90, 'B'], [x(2), 90, 'B'], [x(2), 172, 'A'], [x(3), 90, 'A'], [x(3), 172, 'B'], [x(4), 90, 'A'], [x(4), 172, 'A'], [x(5), 90, 'A']]);
+    // filled to about 93 %, 78 %, 60 %, 40 %, 22 % and 7 % of the height
+    expectWhose(s, [[x(0), 90, 'B'], [x(0), 176, 'A'], [x(1), 90, 'B'], [x(1), 8, 'A'], [x(2), 90, 'B'], [x(2), 172, 'A'], [x(3), 90, 'A'], [x(3), 172, 'B'],
+      [x(4), 8, 'B'], [x(4), 90, 'A'], [x(5), 90, 'A'], [x(5), 8, 'A'], [x(5), 176, 'B']]);
   }, 180000);
 
-  test('zoom: both pictures blended, A grown 1.2× and B still 1.0875× round the centre', async () => {
+  test('zoom: both pictures blended, A grown 1.61× and B still 1.2× round the centre', async () => {
     const s = await mid('zoom');
     const at = (x: number, y: number, k: number) => [C[0] + (x - C[0]) / k, C[1] + (y - C[1]) / k];
     for (const [x, y] of [C, [40, 30], [280, 150], [60, 160], [270, 25]] as Array<[number, number]>) {
-      const want = (dx: number, dy: number) => { const [ax, ay] = at(x + dx, y + dy, 1.2), [bx, by] = at(x + dx, y + dy, 1.0875); return mix(fixA(ax, ay), fixB(bx, by), 0.5); };
+      const want = (dx: number, dy: number) => { const [ax, ay] = at(x + dx, y + dy, 1 + 1.4 * 0.5 ** 1.2), [bx, by] = at(x + dx, y + dy, 1.2); return mix(fixA(ax, ay), fixB(bx, by), 0.5); };
       expect(nearest(s, x, y, want), `(${x}, ${y})`).toBeLessThanOrEqual(28);
     }
     // not merely a dissolve: away from the centre the pictures are where the scales put them
@@ -340,3 +342,4 @@ test.runIf(!!SHEETS)('review sheets', async () => {
   await sheet('transitions.png', TYPES.map((t) => cells.filter((c) => c.row === t)));
   await sheet('transitions-dirs.png', [...['wipe', 'push', 'whip', 'bars'].map((t, i) => [...dirCells.filter((c) => c.row === t), ...(tall[i] ? [tall[i]] : [])])]);
 }, 900000);
+
