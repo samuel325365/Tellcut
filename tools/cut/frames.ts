@@ -1,5 +1,5 @@
 // The Cut API's framing helpers: where a picture sits (a frame, a shape) and the main-track clip under a common.flatlay desk.
-import { addItem, allItems, cropAt, r6, resolveTimes, type Crop, type Project, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, cropAt, isNamedShape, NamedShapeZ, r6, resolveTimes, SHAPE_PARAMS, SHAPE_TYPES, type Crop, type NamedShape, type Project, type ShapeType, type VideoItem } from '@tellcut/engine';
 import { secs, type SrcTime } from '@tellcut/plugin-common/speech';
 import { flatlayClip } from '@tellcut/plugin-common';
 import { viewCrop, viewHits, viewRect, type Rect } from './view.ts';
@@ -14,10 +14,89 @@ export const pictureLen = (clip: { start: number; end: number; speed: number; fr
 
 export type Frame = [number, number, number, number];
 /** a polygon the picture is cut to, corners in fractions of its frame (common.comic's comicShape(n, params)) */
-export type Shape = Array<[number, number]>;
-export function checkShape(shape: Shape, what: string) {
-  if (!Array.isArray(shape) || shape.length < 3 || !shape.every((q) => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite)))
-    throw new Error(`${what}：要給至少三個角 [[x, y], …]（frame 裡的比例）`);
+export type Polygon = Array<[number, number]>;
+/** what c.clip / c.photo / c.beside take as a shape: a polygon, a named shape's type ('circle'), or the named shape itself
+ *  ({ type: 'star', points: 6 }); written to project.json as a polygon or a named shape object */
+export type Shape = Polygon | ShapeType | NamedShape;
+/** the line round a window: true for the engine's default (8 px at a 1080 short side, white) */
+export type OutlineIn = true | { width?: number; color?: string };
+/** the soft shadow under a window: true for the engine's default */
+export type ShadowIn = true | { blur?: number; y?: number; opacity?: number };
+
+const listOf = (xs: readonly string[]) => xs.join('、');
+/**
+ * A shape given to the Cut API, checked and as project.json keeps it. As strict as transitions: an unknown type, a key the type
+ * does not have, a value out of its range or of the wrong kind is said at once, by name, rather than failing at save() with zod's
+ * words or quietly doing something else. The parameters come from the engine's SHAPE_PARAMS, so a new one needs no change here.
+ */
+export function checkShape(shape: unknown, what: string): Polygon | NamedShape {
+  if (Array.isArray(shape)) {
+    if (shape.length < 3 || !shape.every((q) => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite)))
+      throw new Error(`${what}：要給至少三個角 [[x, y], …]（frame 裡的比例）`);
+    return shape as Polygon;
+  }
+  const o: Record<string, unknown> | null = typeof shape === 'string' ? { type: shape } : shape && typeof shape === 'object' ? shape as Record<string, unknown> : null;
+  if (!o) throw new Error(`${what} 要是形狀名稱（例如 'circle'）、{ type: …, 參數 } 或至少三個角 [[x, y], …]，現在是 ${JSON.stringify(shape)}`);
+  const type = o.type;
+  if (typeof type !== 'string' || !(SHAPE_TYPES as readonly string[]).includes(type))
+    throw new Error(`${what}：沒有 ${JSON.stringify(type)} 這種形狀（只有 ${listOf(SHAPE_TYPES)}）`);
+  const params = SHAPE_PARAMS[type as ShapeType], keys = params.map((p) => p.key);
+  for (const k of Object.keys(o)) if (k !== 'type' && !keys.includes(k))
+    throw new Error(`${what}：${type} 沒有「${k}」${keys.length ? `（只有 ${listOf(keys)}）` : '（這個形狀沒有參數）'}`);
+  for (const p of params) {
+    const v = o[p.key], at = `${what} 的 ${type}.${p.key}`;
+    if (v === undefined) {
+      if (p.required) throw new Error(typeof shape === 'string' ? `${what}：${type} 形狀要給字，寫成 { type: '${type}', ${p.key}: 'ROMA' }` : `${at} 一定要給`);
+      continue;
+    }
+    if (p.kind === 'int' || p.kind === 'number') {
+      if (typeof v !== 'number' || !Number.isFinite(v) || (p.kind === 'int' && !Number.isInteger(v)) || v < p.min! || v > p.max!)
+        throw new Error(`${at} 要是 ${p.min}–${p.max} 的${p.kind === 'int' ? '整數' : '數字'}，現在是 ${JSON.stringify(v)}`);
+    } else if (p.kind === 'enum') {
+      if (typeof v !== 'string' || !p.options!.includes(v)) throw new Error(`${at} 只能是 ${listOf(p.options!)}，現在是 ${JSON.stringify(v)}`);
+    } else if (p.kind === 'sides') {
+      if (typeof v !== 'string' || !/^(?!.*(.).*\1)[tblr]{1,4}$/.test(v)) throw new Error(`${at} 是 t（上）、b（下）、l（左）、r（右）的組合，每個字母最多一次，例如 'tb'，現在是 ${JSON.stringify(v)}`);
+    } else if (typeof v !== 'string' || !v.trim()) throw new Error(`${at} 要是字，現在是 ${JSON.stringify(v)}`);
+    else if (v.split('\n').length > 2 || v.split('\n').some((l) => !l.trim())) throw new Error(`${at} 最多兩行（用一個 \\n 分行，不能有空行），現在是 ${JSON.stringify(v)}`);
+    else if (v.length > 60) throw new Error(`${at} 最多 60 個字元，現在 ${v.length} 個；字少才看得到畫面`);
+  }
+  // the engine's own schema has the last word (what the editor and the player read)
+  return NamedShapeZ.parse(o);
+}
+
+/** an outline given to the Cut API, as project.json keeps it ({} draws the engine's default) */
+export function checkOutline(o: unknown, what: string): { width?: number; color?: string } | undefined {
+  if (o === undefined || o === false) return undefined;
+  if (o === true) return {};
+  if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error(`${what} 的 outline 要是 true 或 { width?, color? }，現在是 ${JSON.stringify(o)}`);
+  const r = o as Record<string, unknown>;
+  for (const k of Object.keys(r)) if (k !== 'width' && k !== 'color') throw new Error(`${what} 的 outline 沒有「${k}」（只有 width、color）`);
+  if (r.width !== undefined && (typeof r.width !== 'number' || !Number.isFinite(r.width) || r.width <= 0 || r.width > 100))
+    throw new Error(`${what} 的 outline.width 是線寬（1080 短邊的 px），要大於 0、最多 100，現在是 ${JSON.stringify(r.width)}`);
+  if (r.color !== undefined && (typeof r.color !== 'string' || !r.color.trim())) throw new Error(`${what} 的 outline.color 要是顏色字串（例如 '#ffffff'），現在是 ${JSON.stringify(r.color)}`);
+  return { ...(r.width !== undefined ? { width: r.width as number } : {}), ...(r.color !== undefined ? { color: r.color as string } : {}) };
+}
+
+/** a shadow given to the Cut API, as project.json keeps it */
+export function checkShadow(o: unknown, what: string): true | { blur?: number; y?: number; opacity?: number } | undefined {
+  if (o === undefined || o === false) return undefined;
+  if (o === true) return true;
+  if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error(`${what} 的 shadow 要是 true 或 { blur?, y?, opacity? }，現在是 ${JSON.stringify(o)}`);
+  const r = o as Record<string, unknown>, range = { blur: [0, 300], y: [-300, 300], opacity: [0, 1] } as const;
+  for (const k of Object.keys(r)) if (!(k in range)) throw new Error(`${what} 的 shadow 沒有「${k}」（只有 blur、y、opacity）`);
+  for (const [k, [lo, hi]] of Object.entries(range)) {
+    const v = r[k];
+    if (v !== undefined && (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi)) throw new Error(`${what} 的 shadow.${k} 要在 ${lo}–${hi} 之間，現在是 ${JSON.stringify(v)}`);
+  }
+  return Object.keys(r).length ? r as { blur?: number; y?: number; opacity?: number } : true;
+}
+
+/** the window's dressing fields of a clip (shape, outline, shadow), checked */
+export interface Dress { shape?: Shape; outline?: OutlineIn; shadow?: ShadowIn }
+export function dressFields(o: Dress, what: string) {
+  const shape = o.shape === undefined ? undefined : checkShape(o.shape, `${what} 的 shape`);
+  const outline = checkOutline(o.outline, what), shadow = checkShadow(o.shadow, what);
+  return { ...(shape ? { shape } : {}), ...(outline ? { outline } : {}), ...(shadow ? { shadow } : {}) };
 }
 /** A frame is fractions of the screen: pixels (a 1080 × 1920 rectangle) pushed the whole picture off screen with no error,
  *  and the r3b-baking chat spent several turns finding it from the contact sheet. Some bleed past the edges is allowed. */
@@ -30,12 +109,13 @@ export function checkFrame(f: Frame | undefined, what: string): void {
   if (x >= 1 || y >= 1 || x + w <= 0 || y + h <= 0) throw new Error(`${what} 的 frame [${f.join(', ')}] 整個在畫面外`);
 }
 
-/** the item's frame (its own, else the panel's with its rounded corners, else the whole screen) and its shape: a shape is in
- *  fractions of whichever frame that is, so it is kept in all three (the player cuts a full-screen item to it as well) */
-export function frameFields(layout: { frame: Frame; radius: number } | null, frame?: Frame, shape?: Shape) {
-  if (shape !== undefined) checkShape(shape, 'shape');
-  const cut = shape ? { shape } : {};
-  return frame ? { frame, ...cut } : layout ? { frame: layout.frame, radius: layout.radius, ...cut } : cut;
+/** the item's frame (its own, else the panel's with its rounded corners, else the whole screen) and its dressing: a shape is in
+ *  fractions of whichever frame that is, so it is kept in all three (the player cuts a full-screen item to it as well). A named
+ *  shape in the panel's frame does not take the panel's radius: the engine ignores it there, and a radius left in project.json
+ *  would come back as soon as the shape is taken off in the editor, a rounded corner nobody asked for. */
+export function frameFields(layout: { frame: Frame; radius: number } | null, frame: Frame | undefined, dress: Dress, what: string) {
+  const d = dressFields(dress, what);
+  return frame ? { frame, ...d } : layout ? { frame: layout.frame, ...(isNamedShape(d.shape) ? {} : { radius: layout.radius }), ...d } : d;
 }
 
 /** Cut.flatlayClip's work (see there): the clip and its sound added to `p`; returns its id and where it ends on the film */
@@ -112,13 +192,13 @@ export function addBands(p: Project, s: Source, source: string, o: BandsOpts, t0
   return ids;
 }
 
-export type BesideOpts = { frame: Frame; shape?: Shape; crop?: CropIn; source?: string; offset?: number; track?: string };
+export type BesideOpts = { frame: Frame; crop?: CropIn; source?: string; offset?: number; track?: string } & Dress;
 /** Cut.beside's work (see there): `src` finds a source or throws */
 export function addBeside(p: Project, src: (id: string) => Source, clipIds: string | string[], o: BesideOpts): string[] {
   const ids = Array.isArray(clipIds) ? clipIds : [clipIds], what = `c.beside(${JSON.stringify(clipIds)})`;
   if (!o?.frame) throw new Error(`${what}：要給 frame（這段第二個畫面放的框，例如 duoWindow('b', 參數)）`);
   checkFrame(o.frame, what);
-  if (o.shape !== undefined) checkShape(o.shape, `${what} 的 shape`);
+  const dress = dressFields(o, what);
   const track = o.track ?? 'v2', offset = o.offset ?? 0;
   if (track === 'v1') throw new Error(`${what}：track 不能是主軌 v1（第二個畫面在自己的影片軌上，預設 v2）`);
   const have = p.tracks.find((t) => t.id === track);
@@ -138,6 +218,6 @@ export function addBeside(p: Project, src: (id: string) => Source, clipIds: stri
       throw new Error(`${what}：${source} 沒有 ${from.toFixed(2)}–${(from + len * c.speed).toFixed(2)} 秒（素材長 ${s.duration} 秒）；改 offset`);
     const crop = clips.length > 1 && total > 0 && !(move as { keys?: unknown[] }).keys?.length ? { from: cropAt(move, acc / total, 1), to: cropAt(move, (acc + len) / total, 1) } : move;
     acc += len;
-    return addItem(p, { track, item: { source, in: from, speed: c.speed, start: r6(start), end: r6(end), crop, frame: o.frame, ...(o.shape ? { shape: o.shape } : {}), ...(c.transitionIn ? { transitionIn: c.transitionIn } : {}) } });
+    return addItem(p, { track, item: { source, in: from, speed: c.speed, start: r6(start), end: r6(end), crop, frame: o.frame, ...dress, ...(c.transitionIn ? { transitionIn: c.transitionIn } : {}) } });
   });
 }

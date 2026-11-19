@@ -351,3 +351,58 @@ test("pictureLen: the source seconds a clip's picture runs through, at its speed
   expect(pictureLen({ start: 0, end: 4, speed: 2, freezeAt: 1 })).toBe(2);   // frozen 1 s in: 2 s of source at speed 2
   expect(pictureLen({ start: 1, end: 3, speed: 1, freezeAt: 5 })).toBe(2);   // a freeze point past the end changes nothing
 });
+
+test('named shapes, outline and shadow in clip, photo and beside: a name or the object, true for the defaults, written as project.json keeps them', () => {
+  const c = fresh();
+  const a = c.clip('v', { from: 0, len: 1, shape: 'circle', outline: true, shadow: true });
+  const b = c.clip('v', { from: 1, len: 1, frame: [0.1, 0.1, 0.5, 0.8], shape: { type: 'star', points: 6, round: 0.2 }, outline: { width: 6, color: '#111' }, shadow: { blur: 20, opacity: 0.6 } });
+  const t = c.clip('v', { from: 2, len: 1, shape: { type: 'text', text: 'ROMA\nCIAO', weight: 800 } });
+  const ph = c.photo('ph', { len: 1, shape: 'arch', shadow: { y: -4 } }), ph2 = c.clip('ph', { len: 1, shape: 'heart', outline: true });
+  const [bs] = c.beside(a, { frame: [0.6, 0.1, 0.3, 0.3], shape: 'blob', outline: { color: '#fff' }, shadow: true });
+  const of = (id: string, track = 'v1') => items(c, track).find((i) => i.id === id);
+  expect(of(a)).toMatchObject({ shape: { type: 'circle' }, outline: {}, shadow: true });
+  expect(of(b)).toMatchObject({ frame: [0.1, 0.1, 0.5, 0.8], shape: { type: 'star', points: 6, round: 0.2 }, outline: { width: 6, color: '#111' }, shadow: { blur: 20, opacity: 0.6 } });
+  expect(of(t).shape).toEqual({ type: 'text', text: 'ROMA\nCIAO', weight: 800 });
+  expect([of(t).outline, of(t).shadow]).toEqual([undefined, undefined]);
+  expect(of(ph)).toMatchObject({ shape: { type: 'arch' }, shadow: { y: -4 } });
+  expect(of(ph2)).toMatchObject({ shape: { type: 'heart' }, outline: {} });
+  expect(of(bs, 'v2')).toMatchObject({ shape: { type: 'blob' }, outline: { color: '#fff' }, shadow: true });
+  // outline and shadow on a plain frame too (a picture-in-picture with an edge); false is none
+  const pip = c.clip('v', { from: 3, len: 1, frame: [0.6, 0.6, 0.3, 0.3], outline: { width: 4 }, shadow: false });
+  expect(of(pip)).toMatchObject({ outline: { width: 4 } });
+  expect(of(pip).shadow).toBeUndefined();
+  expect(() => parseProject(c.p)).not.toThrow();
+});
+
+test('a shape, an outline or a shadow that is not right is refused at once, saying what is wrong', () => {
+  const c = fresh(), clip = (o: any) => () => c.clip('v', { from: 0, len: 1, ...o });
+  expect(clip({ shape: 'hexagon' })).toThrow(/沒有 "hexagon" 這種形狀（只有 circle、ellipse/);
+  expect(clip({ shape: { type: 'circle', points: 5 } })).toThrow(/circle 沒有「points」（這個形狀沒有參數）/);
+  expect(clip({ shape: { type: 'star', spikes: 5 } })).toThrow(/star 沒有「spikes」（只有 points、inner、round）/);
+  expect(clip({ shape: { type: 'star', points: 2.5 } })).toThrow(/star\.points 要是 3–24 的整數，現在是 2\.5/);
+  expect(clip({ shape: { type: 'blob', wobble: 2 } })).toThrow(/blob\.wobble 要是 0–1 的數字/);
+  expect(clip({ shape: { type: 'bubble', tail: 'up' } })).toThrow(/bubble\.tail 只能是 bottom-left、bottom/);
+  expect(clip({ shape: { type: 'torn', sides: 'ttb' } })).toThrow(/torn\.sides 是 t（上）/);
+  expect(clip({ shape: 'text' })).toThrow(/text 形狀要給字/);
+  expect(clip({ shape: { type: 'text' } })).toThrow(/text\.text 一定要給/);
+  expect(clip({ shape: { type: 'text', text: 'A\nB\nC' } })).toThrow(/最多兩行/);
+  expect(clip({ shape: { type: 'text', text: '  ' } })).toThrow(/text\.text 要是字/);
+  expect(clip({ shape: 42 })).toThrow(/要是形狀名稱/);
+  expect(clip({ outline: { width: 0 } })).toThrow(/outline\.width 是線寬/);
+  expect(clip({ outline: { colour: '#fff' } })).toThrow(/outline 沒有「colour」（只有 width、color）/);
+  expect(clip({ outline: 'white' })).toThrow(/outline 要是 true 或/);
+  expect(clip({ shadow: { opacity: 2 } })).toThrow(/shadow\.opacity 要在 0–1 之間/);
+  expect(clip({ shadow: { spread: 2 } })).toThrow(/shadow 沒有「spread」/);
+  expect(() => c.beside('x', { frame: [0, 0, 0.5, 0.5], shape: 'oval' as any })).toThrow(/沒有 "oval" 這種形狀/);
+  expect(items(c, 'v1')).toEqual([]);
+});
+
+test('in a panel layout a named shape does not take the panel\'s radius (the engine ignores it there); a polygon still does', () => {
+  const c = fresh();
+  c.panel({ frame: [0.05, 0.2, 0.9, 0.5], radius: 20 });
+  const named = c.clip('v', { from: 0, len: 1, shape: 'circle' }), poly = c.clip('v', { from: 1, len: 1, shape: [[0, 0], [1, 0], [1, 1]] }), plain = c.clip('v', { from: 2, len: 1 });
+  const of = (id: string) => items(c, 'v1').find((i) => i.id === id);
+  expect(of(named)).toMatchObject({ frame: [0.05, 0.2, 0.9, 0.5], shape: { type: 'circle' } });
+  expect(of(named).radius).toBeUndefined();
+  expect([of(poly).radius, of(plain).radius]).toEqual([20, 20]);
+});

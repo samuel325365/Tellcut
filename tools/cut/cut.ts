@@ -18,7 +18,7 @@ import { captionHeight, isCaption, placeCaptions, UNDER_GAP, type CaptionItem } 
 import { burnedZone, planCaptionsTop, type GaveUpClip, type Stay, type TimedCaption, type TimedItem } from './burned-captions.ts';
 import { addDucking, addScore, clipSpeech, playingSounds, QUIET_DB, untranscribed, type ScoreRequest, type SpeechLevel } from './mix.ts';
 import { resolveAutoFocus, resolveBurnedFaces, resolveFollows, type BurnedAsk, type FollowReq } from './focus.ts';
-import { addBands, addBeside, addFlatlayClip, addTrack, checkFrame, cropOf, frameFields, STILL, viewOf, type BandsOpts, type BesideOpts, type CropIn, type Frame, type Shape, type ViewOpts } from './frames.ts';
+import { addBands, addBeside, addFlatlayClip, addTrack, checkFrame, cropOf, frameFields, STILL, viewOf, type BandsOpts, type BesideOpts, type CropIn, type Dress, type Frame, type ViewOpts } from './frames.ts';
 export { cropOf, type CropIn };
 
 export { checkFrame };
@@ -291,7 +291,7 @@ export class Cut {
     }
     return plan;
   }
-  private frameFields(frame?: Frame, shape?: Shape) { return frameFields(this.layout, frame, shape); }
+  private frameFields(frame: Frame | undefined, dress: Dress, what: string) { return frameFields(this.layout, frame, dress, what); }
   /** a transition overlaps the previous clip by its own length: it stays linked to the overlap */
   private startFor(tr?: Transition) { return tr ? r6(Math.max(0, this.cursor - tr.dur)) : this.cursor; }
 
@@ -302,14 +302,14 @@ export class Cut {
    * `avoidBurned`: crop the footage's own caption row out (see avoidBurned); where it cannot, save() moves our captions sitting on
    * that row to the top; `'crop'` only crops and leaves our captions where they are.
    */
-  clip(source: string, o: { from?: SrcTime; len: number; speed?: number; crop?: CropIn; transition?: Transition; sound?: boolean; gain?: number; avoidBurned?: boolean | 'crop'; frame?: Frame; shape?: Shape; duck?: boolean | number }): string {
+  clip(source: string, o: { from?: SrcTime; len: number; speed?: number; crop?: CropIn; transition?: Transition; sound?: boolean; gain?: number; avoidBurned?: boolean | 'crop'; frame?: Frame; duck?: boolean | number } & Dress): string {
     checkFrame(o.frame, `c.clip('${source}')`);
     const tr = transitionOf(o.transition, `c.clip('${source}')`);
     if (o.avoidBurned !== undefined && typeof o.avoidBurned !== 'boolean' && o.avoidBurned !== 'crop') throw new Error(`c.clip('${source}') 的 avoidBurned 只能是 true、false 或 'crop'（只裁切、不移字幕），現在是 ${JSON.stringify(o.avoidBurned)}`);
     const s = this.src(source), crop0 = cropOf(o.crop, `c.clip('${source}')`);
     if (s.kind === 'image') {
       // a photo among clips (a recipe's shot list): its crop / focus is kept, not dropped
-      const id = this.photo(source, { len: o.len, transition: tr, frame: o.frame, shape: o.shape });
+      const id = this.photo(source, { len: o.len, transition: tr, frame: o.frame, shape: o.shape, outline: o.outline, shadow: o.shadow });
       if (crop0) (this.p.tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === id) as { crop: unknown }).crop = crop0;
       return id;
     }
@@ -318,7 +318,7 @@ export class Cut {
     const start = this.startFor(tr);
     const avoided = o.avoidBurned ? this.avoidBurned(source, from, from + len * speed, crop0 ?? { from: STILL, to: STILL }, o.frame) : undefined;
     const crop = avoided?.crop ?? crop0 ?? { from: STILL, to: STILL };
-    const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame, o.shape), ...(tr ? { transitionIn: tr } : {}) } });
+    const id = addItem(this.p, { track: 'v1', item: { source, in: from, speed, start, end: r6(start + len), crop, ...this.frameFields(o.frame, o, `c.clip('${source}')`), ...(tr ? { transitionIn: tr } : {}) } });
     // no crop asked for and the picture does not fit the frame's shape: at save() its focus goes to the faces in it (phase 5)
     if (!crop0) this.autoFocus.push([id]);
     const cropOnly = o.avoidBurned === 'crop' ? { cropOnly: true } : {};
@@ -357,12 +357,12 @@ export class Cut {
     return r.ids;
   }
 
-  photo(source: string, o: { len?: number; zoom?: [number, number]; focus?: [number, number]; transition?: Transition; frame?: Frame; shape?: Shape } = {}): string {
+  photo(source: string, o: { len?: number; zoom?: [number, number]; focus?: [number, number]; transition?: Transition; frame?: Frame } & Dress = {}): string {
     checkFrame(o.frame, `c.photo('${source}')`);
     const tr = transitionOf(o.transition, `c.photo('${source}')`);
     if (this.src(source).kind !== 'image') throw new Error(`"${source}" is not a photo`);
     const len = num(o.len ?? 3, `c.photo('${source}') 的 len`, { above: 0 }), [z0, z1] = o.zoom ?? [1, 1.1], [x, y] = o.focus ?? [0.5, 0.5], start = this.startFor(tr);
-    const id = addItem(this.p, { track: 'v1', item: { source, in: 0, speed: 1, start, end: r6(start + len), crop: { from: { x, y, zoom: z0 }, to: { x, y, zoom: z1 } }, ...this.frameFields(o.frame, o.shape), ...(tr ? { transitionIn: tr } : {}) } });
+    const id = addItem(this.p, { track: 'v1', item: { source, in: 0, speed: 1, start, end: r6(start + len), crop: { from: { x, y, zoom: z0 }, to: { x, y, zoom: z1 } }, ...this.frameFields(o.frame, o, `c.photo('${source}')`), ...(tr ? { transitionIn: tr } : {}) } });
     this.cursor = r6(start + len); this.bump(this.cursor);
     return id;
   }
