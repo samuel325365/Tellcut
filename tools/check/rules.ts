@@ -353,7 +353,7 @@ export function transitionNotes(p: Project): Finding[] {
   }
   const kinds = [...new Set(clips.map((c) => c.transitionIn!.type))];
   if (kinds.length > 2) out.push({ level: 'note', ids: clips.map((c) => c.id),
-    msg: `這支片用了 ${kinds.length} 種轉場（${kinds.join('、')}）：一支片最多兩種，預設直接剪，只在換章節、地點、時間的地方用轉場` });
+    msg: `這支片用了 ${kinds.length} 種轉場（${kinds.join('、')}）：一支片最多兩種（片型風格說整支片用轉場時也一樣），預設直接剪，只在換章節、地點、時間的地方用轉場` });
   return out;
 }
 

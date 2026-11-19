@@ -684,7 +684,7 @@ test('a transition drawn as a dissolve, and a film of more than two kinds of tra
     'note 1.5-2 b 的轉場 push 會畫成溶接：前一段 a 沒有占滿畫面（frame），push 要前後兩段都是全畫面；改用 dissolve、blur、dip 或 flash',
     'note 3.6-4 c 的轉場 iris 會畫成溶接：片段切成了形狀（shape），iris 要用片段的輪廓；要這個轉場就拿掉 shape，不然改用 dissolve、blur、dip 或 flash',
     'note 5.5-6 d 的轉場 zoom 會畫成溶接：片段沒有占滿畫面（frame），zoom 要前後兩段都是全畫面；改用 dissolve、blur、dip 或 flash',
-    'note  這支片用了 3 種轉場（push、iris、zoom）：一支片最多兩種，預設直接剪，只在換章節、地點、時間的地方用轉場']);
+    'note  這支片用了 3 種轉場（push、iris、zoom）：一支片最多兩種（片型風格說整支片用轉場時也一樣），預設直接剪，只在換章節、地點、時間的地方用轉場']);
   expect(transitionNotes(p).at(-1)!.ids).toEqual(['b', 'c', 'd']);
   // two kinds drawn as themselves: nothing to say
   const two = project([{ id: 'main', kind: 'video', items: [clip('a', 0, 2), clip('b', 1.5, 4, { transitionIn: { type: 'dissolve', dur: 0.5 } }),
