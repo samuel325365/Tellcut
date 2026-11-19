@@ -3,14 +3,15 @@
 import type { AnyItem, Project, SceneItem, Track, Transform, VideoItem } from './schema.ts';
 import { allItems } from './schema.ts';
 import { activeAt, resolveTimes, type Times } from './time.ts';
-import { coverPlacement, kbMatrix, videoState, type VideoLink } from './geometry.ts';
+import { coverPlacement, kbMatrix, videoState, type VideoLink, type VideoState } from './geometry.ts';
+import { fitText, isNamedShape, textFont, type FittedText, type InkBox, type TextShape } from './shapes.ts';
 import { videoLinks } from './pairs.ts';
 import type { ItemCtx, ItemType, MediaRef } from './plugin.ts';
 import { withDefaults, type Registry } from './registry.ts';
 import { resolveTheme } from './theme.ts';
 import type { MediaPool } from './media/pool.ts';
 import { videoRefOf } from './media/refs.ts';
-import { cssCamel, h, showCamel } from './util.ts';
+import { attr, cssCamel, h, showCamel } from './util.ts';
 import { motion } from './motion.ts';
 import { itemMediaIssues } from './validate.ts';
 import { NO_REPORT, textReporter, type ReportedText } from './report.ts';
@@ -42,6 +43,56 @@ function streakFilter(parent: HTMLElement): Streak {
   return { url: `url(#${id})`, blur, dev: '0 0' };
 }
 
+const svgEl = <K extends keyof SVGElementTagNameMap>(name: K, a: Record<string, string>, to: Element): SVGElementTagNameMap[K] => {
+  const e = document.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(a)) e.setAttribute(k, v);
+  to.appendChild(e);
+  return e;
+};
+/** A video layer's text shape: an SVG <clipPath> of <text> rows (one per line) the frame is cut to through clip-path: url(#id),
+ *  in the frame's own px (userSpaceOnUse is the frame's box for an HTML element); `key` says what the rows were last fitted for. */
+type TextClip = { url: string; clip: SVGClipPathElement; key: string; fit: FittedText | null };
+/** text-shape clip ids, document-wide like the streak's */
+let textSeq = 0;
+function makeTextClip(parent: HTMLElement): TextClip {
+  const id = `tc-text-${++textSeq}`, svg = svgEl('svg', { width: '0', height: '0', 'aria-hidden': 'true' }, parent);
+  svg.style.position = 'absolute';
+  return { url: `url(#${id})`, clip: svgEl('clipPath', { id, clipPathUnits: 'userSpaceOnUse' }, svg), key: '', fit: null };
+}
+/** The outline drawn over a video layer's picture: an SVG the size of the frame, moved, grown and faded with it, holding the line
+ *  on the shape's path, the frame's rounded rectangle, or the text shape's letters (whichever the clip has). */
+type Deco = { svg: SVGSVGElement; path: SVGPathElement; rect: SVGRectElement; text: SVGGElement; key: string };
+function decoOf(parent: HTMLElement, under: HTMLElement | null): Deco {
+  const svg = svgEl('svg', { 'aria-hidden': 'true', class: 'st-outline' }, parent);
+  if (under) parent.insertBefore(svg, under);
+  // above the frame (later in the item's own stacking context; `under`: just below it), never catching the pointer
+  cssCamel(svg as unknown as HTMLElement, { position: 'absolute', overflow: 'visible', pointerEvents: 'none' });
+  const paint = { fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' };
+  return { svg, path: svgEl('path', paint, svg), rect: svgEl('rect', paint, svg), text: svgEl('g', paint, svg), key: '' };
+}
+
+/** A line's ink at font size 100 (canvas TextMetrics' actual box, which a heavy display face fills to its edges). Without a canvas
+ *  (jsdom) a rough guess: wide letters as tall as capitals. */
+let inkCanvas: CanvasRenderingContext2D | null | undefined;
+function inkOf(font: string): (line: string) => InkBox {
+  // jsdom has a canvas whose getContext only complains: no canvas there
+  if (inkCanvas === undefined) { try { inkCanvas = /jsdom/.test(navigator.userAgent) ? null : document.createElement('canvas').getContext('2d'); } catch { inkCanvas = null; } }
+  const g = inkCanvas;
+  if (!g) return (line) => ({ left: 0, right: 62 * [...line].length, ascent: 72, descent: 0 });
+  return (line) => { g.font = font; const m = g.measureText(line); return { left: m.actualBoundingBoxLeft, right: m.actualBoundingBoxRight, ascent: m.actualBoundingBoxAscent, descent: m.actualBoundingBoxDescent }; };
+}
+/** the CSS font family of a theme font: quoted unless it is already a list */
+const family = (f: string) => (/[,'"]/.test(f) ? f : `"${f}"`);
+/** a fitted text shape's rows as <text> elements (made in `parent`'s document, not attached) */
+function textRows(fit: FittedText, fam: string, weight: number, parent: Element): SVGTextElement[] {
+  return fit.rows.map((r) => {
+    const t = parent.ownerDocument.createElementNS(SVG_NS, 'text');
+    for (const [k, v] of Object.entries({ x: r.x, y: r.y, 'font-family': fam, 'font-weight': weight, 'font-size': fit.size })) t.setAttribute(k, String(v));
+    t.textContent = r.text;
+    return t;
+  });
+}
+
 /** sig = the item's JSON: update() compares content, since projects posted into the preview iframe are copies. */
 /** `more`: the item's further layers, one per blend mode after its first (ItemType.blend), each right above `el` */
 type Common = { id: string; el: HTMLElement; sig: string; muted: boolean; more?: HTMLElement[] };
@@ -49,6 +100,8 @@ type Layer =
   | (Common & { kind: 'video'; frame: HTMLElement; holder: HTMLElement; kb: HTMLElement | null; img: HTMLImageElement | null; item: VideoItem; ref: MediaRef;
       /** made the first time a transition needs them, then kept: the veil over the picture, the streak's filter */
       veil?: HTMLElement; streak?: Streak;
+      /** made the first time the clip needs them: its text shape's clipPath, its outline */
+      text?: TextClip; deco?: Deco;
       /** a clip stacked under the clip its linked transition comes from: its own z-index, the one just above that clip's, and the
        *  time the transition ends (restack) */
       lift?: { base: string; z: string; until: number } })
@@ -305,12 +358,14 @@ export class Stage {
           if (k.dev !== dev) { k.blur.setAttribute('stdDeviation', dev); k.dev = dev; }
           filter = filter === 'none' ? k.url : `${filter} ${k.url}`;
         }
-        cssCamel(L.frame, {
+        const box = {
           left: `${s.frame.left}px`, top: `${s.frame.top}px`, width: `${s.frame.width}px`, height: `${s.frame.height}px`,
           // the frame grows round its own centre (the default transform-origin)
           transform: s.scale !== 1 ? `${move ? `${move} ` : ''}scale(${s.scale.toFixed(4)})` : move || 'none',
-          opacity: s.opacity.toFixed(3), filter, borderRadius: s.radius ? `${s.radius}px` : '', clipPath: s.clipPath,
-        });
+          opacity: s.opacity.toFixed(3),
+        };
+        cssCamel(L.frame, { ...box, filter, borderRadius: s.radius ? `${s.radius}px` : '', clipPath: s.text ? this.textClip(L, s) : s.clipPath });
+        this.dress(L, s, box);
         // a veil: over the picture inside the frame, so the frame's corners and shape cut it too
         if (s.veil) {
           if (!L.veil) { L.veil = h('div', 'st-veil', null, L.frame); cssCamel(L.veil, { position: 'absolute', inset: '0', zIndex: '1', pointerEvents: 'none' }); }
@@ -348,6 +403,55 @@ export class Stage {
     });
   }
 
+  /** The text shape's clip-path for a video layer: its rows fitted to the frame again only when the words, the font (or whether
+   *  it has loaded: before it has, the rows are fitted to the fallback's measures, and once it has they are fitted again), the
+   *  frame's size or the inset change. */
+  private textClip(L: Extract<Layer, { kind: 'video' }>, s: VideoState): string {
+    const tc = (L.text ??= makeTextClip(L.el)), sh = s.text!, { font, fam, weight } = this.textFontOf(sh);
+    const loaded = typeof document !== 'undefined' && document.fonts?.check ? document.fonts.check(font, sh.text) : true;
+    const key = `${font}|${sh.text}|${sh.line ?? ''}|${s.frame.width}|${s.frame.height}|${s.inset}|${loaded}`;
+    if (tc.key !== key) {
+      tc.key = key;
+      tc.fit = fitText(sh, s.frame.width, s.frame.height, inkOf(font), s.inset);
+      tc.clip.replaceChildren(...textRows(tc.fit, fam, weight, tc.clip));
+    }
+    return tc.url;
+  }
+
+  /** a text shape's font from the project's theme: the CSS font at size 100 (to measure and load), its family and weight */
+  private textFontOf(sh: TextShape) {
+    const { role, weight } = textFont(sh), fam = family(resolveTheme(this.project.meta.theme, this.project.meta).fonts[role]);
+    return { font: `${weight} 100px ${fam}`, fam, weight };
+  }
+
+  /** A video layer's dressing: the shadow on the item's own layer (a drop-shadow follows what the layer shows: the frame as its
+   *  shape cuts it, and the outline), the outline over the picture, moved, grown and faded with the frame (`box`). */
+  private dress(L: Extract<Layer, { kind: 'video' }>, s: VideoState, box: Record<string, string>) {
+    const sd = s.shadow, n = (v: number) => +v.toFixed(2);
+    cssCamel(L.el, { filter: sd ? `drop-shadow(0px ${n(sd.y)}px ${n(sd.blur)}px rgba(0, 0, 0, ${n(sd.opacity)}))` : '' });
+    const o = s.outline;
+    if (!o) { if (L.deco) cssCamel(L.deco.svg as unknown as HTMLElement, { display: 'none' }); return; }
+    // A text shape's line goes under the picture, twice as wide: a font's glyphs are often drawn as overlapping contours (an A's
+    // bar, most CJK strokes), whose stroke on top would show lines crossing inside the letters; under the picture only the half
+    // outside the letters shows, the outline of the word as read. (A shape's path is one contour: its line goes on top, its inner
+    // half covering the picture's cut edge.)
+    const d = (L.deco ??= decoOf(L.el, s.text ? L.frame : null)), kind = s.text ? 'text' : o.path ? 'path' : 'rect', w = n(kind === 'text' ? 2 * o.width : o.width);
+    cssCamel(d.svg as unknown as HTMLElement, { display: '', transformOrigin: '50% 50%', ...box });
+    attr(d.path, { display: kind === 'path' ? 'inline' : 'none' }); attr(d.rect, { display: kind === 'rect' ? 'inline' : 'none' }); attr(d.text, { display: kind === 'text' ? 'inline' : 'none' });
+    const paint = { stroke: o.color, 'stroke-width': w };
+    if (kind === 'path') attr(d.path, { d: o.path, ...paint });
+    else if (kind === 'rect') {
+      // on the frame's edge, half the width in, its corners following the frame's rounded ones
+      const r = n(Math.max(0, s.radius - o.width / 2));
+      attr(d.rect, { x: n(o.width / 2), y: n(o.width / 2), width: n(Math.max(0, s.frame.width - o.width)), height: n(Math.max(0, s.frame.height - o.width)), rx: r, ry: r, ...paint });
+    } else {
+      // the letters' own edges: the rows the clip was just fitted to, stroked
+      attr(d.text, paint);
+      const tc = L.text!;
+      if (d.key !== tc.key && tc.fit) { const { fam, weight } = this.textFontOf(s.text!); d.text.replaceChildren(...textRows(tc.fit, fam, weight, d.text)); d.key = tc.key; }
+    }
+  }
+
   /** The late pass, after the caller awaited media.sync(): items that read a video's current picture draw it now. */
   late(t: number) {
     this.layers.forEach((L, i) => {
@@ -361,6 +465,12 @@ export class Stage {
    *  run again over the old state. A failed load is forgotten, so the next edit tries it again. */
   async ready(): Promise<void> {
     await Promise.all(this.layers.map(async (L) => {
+      // a text shape's font, for its letters' first frame (the rows are fitted to its measures)
+      if (L.kind === 'video' && isNamedShape(L.item.shape) && L.item.shape.type === 'text') {
+        const sh = L.item.shape;
+        if (typeof document !== 'undefined' && document.fonts) await document.fonts.load(this.textFontOf(sh).font, sh.text).catch(() => []);
+        return;
+      }
       if (L.kind !== 'plugin' || !L.type.ready) return;
       try { await (L.readied ??= L.type.ready(L.state)); } catch (e) {
         L.readied = undefined;

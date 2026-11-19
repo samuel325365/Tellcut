@@ -52,6 +52,14 @@ export const VideoItemZ = z.object({
    *  see common.comic's comicShape), or a named shape `{ type: 'circle' }`, `{ type: 'star', points: 5 }`… (shapes.ts
    *  SHAPE_PARAMS lists the types and their parameters). */
   shape: z.union([z.array(z.tuple([z.number(), z.number()])).min(3), NamedShapeZ]).optional(),
+  /** A line round the picture's outline (its shape, the letters of a text shape, or the frame with its rounded corners): width in
+   *  px at a 1080 short side, scaled with the stage (default 8), colour (default white). Drawn inside the frame: the shape is
+   *  inset by half the width, so the line never runs off the frame's edge. */
+  outline: z.strictObject({ width: z.number().positive().max(100).optional(), color: z.string().min(1).optional() }).optional(),
+  /** A soft shadow under the picture's outline, following its shape: true for the default, or its blur and drop (px at a 1080
+   *  short side; defaults 30 and 12) and opacity (default 0.45). false is none. */
+  shadow: z.union([z.boolean(), z.strictObject({ blur: z.number().min(0).max(300).optional(), y: z.number().min(-300).max(300).optional(),
+    opacity: z.number().min(0).max(1).optional() })]).optional(),
   shake: z.array(ShakeZ).optional(),
   stabilize: StabilizeZ.optional(),
 });

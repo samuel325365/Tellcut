@@ -637,3 +637,36 @@ test('a clip stacked under the clip its linked transition comes from is lifted j
   st.draw(3.5);
   expect(z()).toEqual({ a: '2', b: '4', f: '6', q: '8' });
 });
+
+test('a picture window\'s dressing: the outline over the frame, the shadow on the layer, a text shape cut by its own clipPath', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  const p = project();
+  Object.assign(p.tracks[0].items[0], { shape: { type: 'circle' }, outline: { width: 20, color: '#00ff00' }, shadow: true });
+  Object.assign(p.tracks[0].items[1], { shape: { type: 'text', text: 'ROMA\nCITY' }, outline: {} });
+  st.load(p);
+  st.draw(0.5);
+  const el = (id: string) => root.querySelector<HTMLElement>(`[data-id="${id}"]`)!;
+  const a = el('a'), line = a.querySelector('svg.st-outline')!;
+  // over the frame, its box and transform; the circle's line on its path, 20 px at 1080 → 20 × 50 / 1080 here
+  expect(line.previousElementSibling).toBe(a.querySelector('.st-frame'));
+  expect((line as unknown as HTMLElement).style.width).toBe('100px');
+  expect(line.querySelector('path')!.getAttribute('d')).toMatch(/^M.*Z$/);
+  expect([line.querySelector('path')!.getAttribute('stroke'), +line.querySelector('path')!.getAttribute('stroke-width')!]).toEqual(['#00ff00', +(20 * 50 / 1080).toFixed(2)]);
+  expect(line.querySelector('rect')!.getAttribute('display')).toBe('none');
+  expect((a as any)._c.filter).toMatch(/^drop-shadow\(0px [\d.]+px [\d.]+px rgba\(0, 0, 0, 0\.45\)\)$/);
+  // the text shape: a clipPath of one <text> a line, the frame cut by it; its line under the frame, twice as wide
+  st.draw(3.5);
+  const b = el('b'), clip = b.querySelector('clipPath')!;
+  expect([...clip.querySelectorAll('text')].map((t) => t.textContent)).toEqual(['ROMA', 'CITY']);
+  expect((b.querySelector<HTMLElement>('.st-frame') as any)._c.clipPath).toBe(`url(#${clip.id})`);
+  const under = b.querySelector('svg.st-outline')!;
+  expect(under.nextElementSibling).toBe(b.querySelector('.st-frame'));
+  expect([...under.querySelectorAll('g text')].map((t) => t.textContent)).toEqual(['ROMA', 'CITY']);
+  expect(+under.querySelector('g')!.getAttribute('stroke-width')!).toBeCloseTo(2 * 8 * 50 / 1080, 1);
+  expect((b as any)._c.filter).toBe('');
+  // drawn again with nothing changed: the rows are not made again
+  const rows = clip.querySelector('text');
+  st.draw(3.6);
+  expect(clip.querySelector('text')).toBe(rows);
+});

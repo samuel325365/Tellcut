@@ -1,6 +1,6 @@
 import type { Crop, TransitionType, VideoItem } from './schema.ts';
 import { clamp, eIO3, eOut3, eSmooth, lerp, prog } from './util.ts';
-import { isNamedShape, isShaped, shapePath } from './shapes.ts';
+import { isNamedShape, isShaped, shapePath, type TextShape } from './shapes.ts';
 
 export interface Box { left: number; top: number; width: number; height: number }
 
@@ -60,9 +60,18 @@ export function kbMatrix(ax: number, ay: number, zoom: number, cx: number, cy: n
  *  transition's: `scale` grows the whole frame round its centre (zoom; 1 = none); `streak` blurs the frame's picture by this
  *  deviation (px) along x and along y, drawn by the stage's own SVG filter, which leaves no fringe at the frame's edges ([0, 0] =
  *  none; whip blurs along its travel only, blur and zoom evenly); `veil` covers the picture inside the frame with a colour (dip,
- *  flash; null = none). With no transition running they are 1, [0, 0] and null, and `filter` is the grade and defocus alone. */
+ *  flash; null = none). With no transition running they are 1, [0, 0] and null, and `filter` is the grade and defocus alone.
+ *  The picture window's dressing: `text` the text shape the stage cuts the frame to itself (fitted inside `inset` px all round);
+ *  `outline` the line round the outline, its width in stage px and the path it is stroked on ('' for the frame's own rectangle
+ *  with its radius, or the text shape's letters), the clip inset by half its width so the line stays inside the frame (by all of
+ *  it for the text shape, whose line is drawn outside the letters);
+ *  `shadow` in stage px (null = none). */
 export interface VideoState { frame: Box; offsetX: number; offsetY: number; opacity: number; filter: string; crop: Crop; mediaLocal: number; held: boolean; shakeX: number; shakeY: number; shakeScale: number; radius: number; clipPath: string;
-  scale: number; streak: [number, number]; veil: Veil | null }
+  scale: number; streak: [number, number]; veil: Veil | null; text: TextShape | null; inset: number; outline: Outline | null; shadow: Shadow | null }
+export interface Outline { width: number; color: string; path: string }
+export interface Shadow { blur: number; y: number; opacity: number }
+/** an outline's and a shadow's defaults, in px at a 1080 short side */
+export const OUTLINE_DEFAULT = { width: 8, color: '#ffffff' }, SHADOW_DEFAULT: Shadow = { blur: 30, y: 12, opacity: 0.45 };
 export interface Veil { color: string; opacity: number }
 
 /** a polygon shape (corners in frame fractions) as a CSS clip-path */
@@ -74,16 +83,22 @@ export function shapeClipPath(shape: ReadonlyArray<readonly [number, number]> | 
 
 /** A clip's shape as the CSS clip-path of its w × h frame at its local second: a polygon as polygon() (as it always was), a named
  *  shape as path() in px (shapes.ts shapePath; the stage writes it only when it changes, so a still shape is set once per frame
- *  size), '' for none and for the text shape, which the stage cuts with an SVG clipPath of its own. */
-export function shapeClip(item: Pick<VideoItem, 'shape'>, w: number, h: number, local: number): string {
+ *  size), '' for none and for the text shape, which the stage cuts with an SVG clipPath of its own. `inset`: px kept free all round
+ *  for an outline (half its width), a polygon then given as path() too. */
+export function shapeClip(item: Pick<VideoItem, 'shape'>, w: number, h: number, local: number, inset = 0): string {
   const s = item.shape;
-  if (!isNamedShape(s)) return shapeClipPath(s);
-  // only a wobbling blob changes with time: any other shape's path is worked out once per frame size, not every frame
-  const key = `${JSON.stringify(s)}|${w}|${h}${s.type === 'blob' && s.wobble ? `|${local}` : ''}`;
+  if (!inset && !isNamedShape(s)) return shapeClipPath(s);
+  return (s && shapePathOnce(s, w, h, local, inset, 'clip')) || '';
+}
+
+/** shapePath, worked out once per shape, frame size and inset (and second, for a wobbling blob) rather than every frame; as a
+ *  path() clip-path when `as` is 'clip' */
+function shapePathOnce(s: NonNullable<VideoItem['shape']>, w: number, h: number, local: number, inset: number, as: 'clip' | 'path'): string {
+  const key = `${as}|${JSON.stringify(s)}|${w}|${h}|${inset}${isNamedShape(s) && s.type === 'blob' && s.wobble ? `|${local}` : ''}`;
   let c = CLIPS.get(key);
   if (c === undefined) {
-    const d = shapePath(s, w, h, local);
-    c = d ? `path('${d}')` : '';
+    const d = shapePath(s, w, h, local, inset);
+    c = d && as === 'clip' ? `path('${d}')` : d;
     if (CLIPS.size >= 256) CLIPS.clear();
     CLIPS.set(key, c);
   }
@@ -331,9 +346,17 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
   const crop = cropAt(item.crop, local, end - start);
   const mediaLocal = item.freezeAt != null ? Math.min(local, item.freezeAt) : local;
   const named = isNamedShape(item.shape);
+  // the dressing: sizes in px at a 1080 short side, scaled with the stage like the blocks'
+  const k = Math.min(W, H) / 1080, ol = item.outline, sh = item.shadow;
+  const text = isNamedShape(item.shape) && item.shape.type === 'text' ? item.shape : null;
+  // a text shape's line lies wholly outside its letters (see the stage's dress), so its letters keep the whole width free
+  const ow = ol ? (ol.width ?? OUTLINE_DEFAULT.width) * k : 0, inset = text ? ow : ow / 2;
+  const outline: Outline | null = ol ? { width: ow, color: ol.color ?? OUTLINE_DEFAULT.color, path: item.shape && !text ? shapePathOnce(item.shape, frame.width, frame.height, local, inset, 'path') : '' } : null;
+  const shadow: Shadow | null = sh ? { blur: ((sh === true ? undefined : sh.blur) ?? SHADOW_DEFAULT.blur) * k, y: ((sh === true ? undefined : sh.y) ?? SHADOW_DEFAULT.y) * k, opacity: (sh === true ? undefined : sh.opacity) ?? SHADOW_DEFAULT.opacity } : null;
   const held = item.freezeAt != null && local >= item.freezeAt;
   return { frame, offsetX: look.dx, offsetY: look.dy, opacity: (item.opacity ?? 1) * look.opacity, filter, crop, mediaLocal, held, shakeX, shakeY, shakeScale,
-    radius: named ? 0 : item.radius ?? 0, clipPath: look.clip ?? shapeClip(item, frame.width, frame.height, local), scale: look.scale, streak: look.streak, veil: look.veil };
+    radius: named ? 0 : item.radius ?? 0, clipPath: look.clip ?? shapeClip(item, frame.width, frame.height, local, inset), scale: look.scale, streak: look.streak, veil: look.veil,
+    text, inset, outline, shadow };
 }
 
 /** The part of the source a frame shows, in 0..1 source coordinates (the inverse view of coverPlacement). */
