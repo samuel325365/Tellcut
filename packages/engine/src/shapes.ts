@@ -311,33 +311,63 @@ function torn(s: NamedShape, b: Box): string {
 }
 
 /** One brush stroke laid across the frame: a band, at most 1 : 2.6 high, landing round at the left, its edges slightly uneven, and
- *  running out at the right in bristle streaks of different lengths (dry brush). */
+ *  running out at the right as a dry brush does: the bristles part into tufts of uneven widths, some splitting off deep inside
+ *  the stroke (a thin dry streak) and some only at its end, fanning a little apart, each tapering its own way (to a needle, or
+ *  full-bellied and late) to a different length, a few of them ending blunt and ragged. All of it from the seed, more uneven
+ *  the rougher. (Even streaks tapering alike read as a comb, not a hand.) */
 function brush(s: NamedShape, b: Box): string {
   const sd = opt<number>(s, 'seed'), rg = opt<number>(s, 'rough');
   const bh = Math.min(b.h, b.w / 2.6), band: Box = { x: b.x, y: b.y + (b.h - bh) / 2, w: b.w, h: bh };
   // unit space: u along (0..1), v across (the band 1 high round 0); a gentle bow and tilt from the seed
   const bow = 0.06 + 0.08 * rand(sd, 1), tilt = (rand(sd, 2) - 0.5) * 0.08, cl = (u: number) => -bow * Math.sin(Math.PI * u) + tilt * (u - 0.5);
   const half = (u: number, side: number) => 0.5 * (1 - 0.1 * u) * (1 + rg * (0.05 * noise1(sd * 3 + side, u * 9) + 0.025 * noise1(sd * 5 + side, u * 47)));
-  const U0 = 0.06, END = 0.8, M = 5 + Math.floor(rand(sd, 3) * 3), top: Pt[] = [], bottom: Pt[] = [];
-  for (let u = U0; u <= END + 1e-9; u += 0.004) { top.push([u, cl(u) - half(u, 0)]); bottom.push([u, cl(u) + half(u, 1)]); }
+  const U0 = 0.06, END = 0.8, M = 5 + Math.floor(rand(sd, 3) * 4);
+  // the tufts' shares of the band's height, uneven (up to about 1 : 4, more when rough)
+  // (spread out first and then shuffled, so a seed never draws them all alike)
+  const wts = Array.from({ length: M }, (_, j) => 0.25 + ((j + rand(sd, 70 + j)) / M) * (0.9 + 1.2 * rg));
+  for (let j = M - 1; j > 0; j--) { const k = Math.floor(rand(sd, 170 + j) * (j + 1)); [wts[j], wts[k]] = [wts[k], wts[j]]; }
+  const total = wts.reduce((x, y) => x + y, 0);
+  const at: number[] = [0];
+  for (const w of wts) at.push(at[at.length - 1] + w / total);
+  const minShare = Math.min(...wts) / total, fan = (0.6 + 1.2 * rand(sd, 4)) * (0.5 + rg);
+  /** the line between tuft k − 1 and tuft k (k = 0 the band's top edge, k = M its bottom one): its share of the way across, a
+   *  little fanned out past END, and wavering a little (less than a fifth of the narrowest tuft, so the lines keep their order) */
+  const line = (k: number, u: number) => {
+    const top = cl(u) - half(u, 0), bot = cl(u) + half(u, 1), past = Math.max(0, u - END);
+    const waver = k === 0 || k === M ? 0 : 0.2 * minShare * noise1(sd * 13 + k, u * 30);
+    return top + (at[k] + waver) * (bot - top) + fan * (at[k] - 0.5) * past * past;
+  };
+  // where each line parts (the outer edges begin to taper): some deep inside the stroke, some only at its end
+  const part = Array.from({ length: M + 1 }, (_, k) => END + (k === 0 || k === M ? 0.01 + 0.03 * rand(sd, 80 + k) : (rand(sd, 60 + k) - 0.62) * (0.1 + 0.12 * rg)));
+  const tail: Pt[] = [];
+  for (let j = 0; j < M; j++) {
+    const a = part[j], c = part[j + 1], from = Math.max(a, c) + 0.035;
+    // how far it reaches, where its tip sits across it, how its sides taper (power above 1: full-bellied, late; below: a needle)
+    const reach = Math.max(from, 0.84 + 0.16 * rand(sd, 40 + j) ** (1.2 - 0.6 * rg));
+    const mid = 0.25 + 0.5 * rand(sd, 90 + j), pt = 0.8 + 1.3 * rand(sd, 100 + j), pb = 0.8 + 1.3 * rand(sd, 110 + j);
+    const blunt = rand(sd, 120 + j) < 0.2 + 0.25 * rg, end = blunt ? 0.55 + 0.2 * rand(sd, 130 + j) : 1;
+    const spine = (u: number) => line(j, u) + mid * (line(j + 1, u) - line(j, u));
+    /** a side of the tuft from its line (k) at `start` to the tip, at u: g its share of the way to the spine */
+    const side = (k: number, start: number, u: number, p: number): Pt => [u, line(k, u) + end * ((u - start) / (reach - start)) ** p * (spine(u) - line(k, u))];
+    /** the u a side is drawn at: every STEP from where its line parts, then the tip. The two sides that part from one line share
+     *  them, so at each one the upper side is above the lower and their straight pieces cannot cross (sampled each at its own
+     *  pace, the pieces cut across each other where they part). */
+    const STEP = 0.005, us = (start: number, stop: number) => { const o: number[] = []; for (let u = start + STEP; u < stop - 0.3 * STEP; u += STEP) o.push(u); return [...o, stop]; };
+    for (const u of us(a, reach)) tail.push(side(j, a, u, pt));
+    // a blunt end is cut off askew: its lower side stops a little short of the upper one
+    const back = [c, ...us(c, blunt ? reach - Math.min(0.4 * (reach - c), 0.006 + 0.014 * rand(sd, 140 + j)) : reach)].reverse();
+    for (const u of blunt ? back : back.slice(1)) tail.push(side(j + 1, c, u, pb));
+  }
+  const top: Pt[] = [], bottom: Pt[] = [];
+  for (let u = U0; u < part[0]; u += 0.004) top.push([u, line(0, u)]);
+  for (let u = U0; u < part[M]; u += 0.004) bottom.push([u, line(M, u)]);
   // the landing: a round cap with a slight flattening, from the bottom edge round to the top
   const cap: Pt[] = [];
   for (let i = 1; i < 24; i++) {
     const a = Math.PI / 2 + (i / 24) * Math.PI, r = 1 + rg * 0.06 * noise1(sd * 11, i * 0.7);
     cap.push([U0 + U0 * 1.15 * r * Math.cos(a), cl(U0) + (half(U0, 0) + half(U0, 1)) / 2 * r * Math.sin(a) * 0.98]);
   }
-  // the run-out: M streaks across the band's end, each tapering to a point somewhere in [0.86, 1]; the band stays whole up to
-  // where two streaks part (a little past END, different for each pair), so the split looks frayed rather than combed
-  const vTop = cl(END) - half(END, 0), vBot = cl(END) + half(END, 1), tail: Pt[] = [];
-  const lift = (u: number) => cl(u) - cl(END);   // the streaks follow the stroke's bow
-  const part = Array.from({ length: M + 1 }, (_, j) => (j === 0 || j === M ? END : END + (0.01 + 0.07 * rand(sd, 60 + j)) * (0.5 + rg)));
-  for (let j = 0; j < M; j++) {
-    const v0 = vTop + ((vBot - vTop) * j) / M, v1 = vTop + ((vBot - vTop) * (j + 1)) / M, vm = (v0 + v1) / 2;
-    const reach = 0.86 + 0.14 * (j === Math.floor(M / 2) ? 1 : rand(sd, 40 + j) ** (1 - 0.5 * rg));
-    for (let i = 1; i <= 8; i++) { const u = part[j] + ((reach - part[j]) * i) / 8, w = 1 - (i / 8) ** 1.6; tail.push([u, vm - (vm - v0) * w + lift(u)]); }
-    for (let i = 7; i >= 0; i--) { const u = part[j + 1] + ((reach - part[j + 1]) * i) / 8, w = 1 - (i / 8) ** 1.6; tail.push([u, vm + (v1 - vm) * w + lift(u)]); }
-  }
-  const pts = [...top, ...tail, ...bottom.reverse(), ...cap];
+  const pts = [...top, [part[0], line(0, part[0])] as Pt, ...tail, ...bottom.reverse(), ...cap];
   return polyline(stretchPoints(pts, band));
 }
 

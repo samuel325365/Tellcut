@@ -46,6 +46,33 @@ test('seeded shapes: the same seed draws the same shape, another seed another on
   expect(shapePath({ type: 'torn' }, 800, 450)).toBe(shapePath({ type: 'torn', seed: 1 }, 800, 450));
 });
 
+test('a brush stroke runs out unevenly, as a hand\'s does: tufts of different widths and lengths, its outline never crossing itself', () => {
+  type Pt = [number, number];
+  const cross = (a: Pt, b: Pt, c: Pt, d: Pt) => {
+    const o = (p: Pt, q: Pt, r: Pt) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+    return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+  };
+  const W = 1600, H = 900;
+  for (const rough of [0, 0.5, 1]) for (let seed = 1; seed <= 12; seed++) {
+    const polys = flattenPath(shapePath({ type: 'brush', seed, rough }, W, H)) as Pt[][];
+    expect(polys.length).toBe(1);
+    const p = polys[0], n = p.length, tag = `seed ${seed} rough ${rough}`;
+    for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue;
+      if (cross(p[i], p[(i + 1) % n], p[j], p[(j + 1) % n])) throw new Error(`${tag}: edges ${i} and ${j} cross`);
+    }
+    // the tips: points further right than both neighbours, in the run-out (the right fifth)
+    const tips = p.filter((q, i) => q[0] > 0.8 * W && q[0] > p[(i + n - 1) % n][0] && q[0] > p[(i + 1) % n][0]);
+    expect(tips.length, tag).toBeGreaterThanOrEqual(4);
+    // of different lengths
+    const xs = tips.map((q) => q[0]);
+    expect(Math.max(...xs) - Math.min(...xs), tag).toBeGreaterThan(0.03 * W);
+    // and not evenly spaced across the stroke: the widest space between neighbouring tips well over the narrowest
+    const ys = tips.map((q) => q[1]).sort((a, b) => a - b), gaps = ys.slice(1).map((y, i) => y - ys[i]);
+    expect(Math.max(...gaps) / Math.min(...gaps), tag).toBeGreaterThan(1.6);
+  }
+});
+
 test('a blob is a pure function of time: the same second twice is one shape; still unless it wobbles', () => {
   const still = { type: 'blob', seed: 5 } as const, moving = { type: 'blob', seed: 5, wobble: 0.6 } as const;
   expect(shapePath(moving, 640, 360, 2.25)).toBe(shapePath(moving, 640, 360, 2.25));

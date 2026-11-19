@@ -238,12 +238,13 @@ test('defocus: blurred to the frame\'s very edges with no fringe; a shape and ro
 
 // The review sheets, only when asked for: TELLCUT_SHAPE_SHEETS=<folder> writes there shapes.png (every type plain, then with a
 // white outline and a shadow, on a paper-coloured stage), shapes-params.png (parameters at work), shapes-text.png (the text shape:
-// one line, two lines, outlined, on a 9:16 frame) and shapes-blob.png (a wobbling blob at three times), 480 × 270 a cell.
+// one line, two lines, outlined, on a 9:16 frame), shapes-blob.png (a wobbling blob at three times) and shapes-more.png (brush
+// strokes of several seeds, tilted slats, an outlined text shape dissolving in, a defocused clip's edges), 480 × 270 a cell.
 const SHEETS = process.env.TELLCUT_SHAPE_SHEETS;
 test.runIf(!!SHEETS)('review sheets', async () => {
   type Cell = { label: string; png: Buffer; w: number; h: number };
   const PAPER = '#efe6d6', DRESS = { outline: { width: 14, color: '#ffffff' }, shadow: true };
-  const cell = async (clip: Record<string, unknown>, lbl: string, o: { w?: number; h?: number; t?: number } = {}): Promise<Cell> => {
+  const cell = async (clip: Record<string, unknown>, lbl: string, o: { w?: number; h?: number; t?: number; bg?: string } = {}): Promise<Cell> => {
     const [s] = await shoot([clip], [o.t ?? 0.5], { bg: PAPER, ...o });
     return { label: lbl, png: s.png, w: s.w, h: s.h };
   };
@@ -288,4 +289,18 @@ test.runIf(!!SHEETS)('review sheets', async () => {
   ]]);
   const blob = { frame: win, shape: { type: 'blob', seed: 4, wobble: 0.8 }, ...DRESS };
   await sheet('shapes-blob.png', [[await cell(blob, 'blob wobble 0.8, t = 0', { t: 0 }), await cell(blob, 't = 1.5', { t: 1.5 }), await cell(blob, 't = 3', { t: 3 })]]);
+  const more: Cell[] = [];
+  for (const s of [{ type: 'brush' }, { type: 'brush', seed: 2 }, { type: 'brush', seed: 5 }, { type: 'brush', seed: 9, rough: 0 }, { type: 'brush', seed: 3, rough: 1 }, { type: 'brush', seed: 12, rough: 0.8 }] as NamedShape[])
+    more.push(await cell({ frame: win, shape: s }, label(s)));
+  more.push(await cell({ frame: win, shape: { type: 'brush', seed: 2 }, ...DRESS }, 'brush seed 2 + outline, shadow'), await cell({ shape: { type: 'brush', seed: 4 } }, 'brush seed 4, 9:16', { w: 152, h: 270 }));
+  for (const s of [{ type: 'slats', angle: 30 }, { type: 'slats', count: 5, angle: 30 }, { type: 'slats', count: 12, gap: 0, angle: -45 }, { type: 'slats', count: 3, angle: 60, gap: 0.08 },
+    { type: 'slats', count: 6, angle: 15 }, { type: 'slats', count: 4, angle: -75 }, { type: 'slats', count: 2, angle: 45, gap: 0.2 }] as NamedShape[])
+    more.push(await cell({ frame: win, shape: s, ...DRESS }, label(s)));
+  more.push(await cell({ shape: { type: 'slats', count: 5, angle: 30 } }, 'slats count 5 angle 30, 9:16', { w: 152, h: 270 }));
+  const fading = { shape: { type: 'text', text: 'ROMA' }, outline: { width: 40, color: '#00ff00' }, transitionIn: { type: 'dissolve', dur: 1 } };
+  for (const t of [0.3, 0.5, 0.7, 1.5]) more.push(await cell(fading, `text ROMA, green outline, dissolve in, t = ${t}`, { t }));
+  const soft = { defocus: { from: 0, to: 0, px: 12, px0: 12 } };
+  more.push(await cell(soft, 'defocus 12 px, full frame, magenta stage', { bg: '#ff00ff' }), await cell({ ...soft, frame: win, shape: { type: 'star' } }, 'defocus 12 px, star', { bg: '#ff00ff' }),
+    await cell({ ...soft, frame: win, radius: 40 }, 'defocus 12 px, frame radius 40', { bg: '#ff00ff' }), await cell({ defocus: { from: 0, to: 0, px: 30, px0: 30 } }, 'defocus 30 px', { bg: '#ff00ff' }));
+  await sheet('shapes-more.png', rows4(more));
 }, 900000);
