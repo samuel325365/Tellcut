@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { parseProject, shapeSafe, visibleRegion, type Crop } from '@tellcut/engine';
 import { fakeFaces, run, type FaceInfo } from '@tellcut/media-node';
 import { Cut } from './cut.ts';
-import { SHAPE_FOCUS_ZOOM, shapedFocus } from './focus.ts';
+import { SHAPE_FOCUS_ZOOM, shapedFocus, shapedSubject } from './focus.ts';
 import type { Inventory } from './inventory.ts';
 import type { Rect } from './view.ts';
 
@@ -46,6 +46,44 @@ test('a landscape picture in a tall heart: the face moves sideways into the hear
   expect(big.crop.zoom).toBe(1);
 });
 
+test('a big face that shows whole in the circle is inside: its margin does not grow past a share of the picture', () => {
+  // a close-up in a circle in a wide frame: the bare face sits inside the circle's safe box at zoom 1, with a 12 % pad it would not
+  const safe = shapeSafe({ type: 'circle' }, 16 / 9)!, face: Rect = [0.36, 0.2, 0.64, 0.8];
+  expect(within(onFrame({ x: 0.5, y: 0.5, zoom: 1 }, face), safe)).toBe(true);
+  expect(shapedFocus(1920, 1080, 1920, 1080, safe, face)).toEqual({ crop: { x: 0.5, y: 0.5, zoom: 1 }, inside: true });
+});
+
+test('a small or medium face keeps its full 12 % margin clear of the shape', () => {
+  const safe = shapeSafe({ type: 'circle' }, 16 / 9)!;
+  // a face 15 % of the picture's height, near the left edge
+  const h = 0.15, w = h * (9 / 16), face: Rect = [0.2, 0.35, 0.2 + w, 0.35 + h];
+  const r = shapedFocus(1920, 1080, 1920, 1080, safe, face);
+  expect(r.inside).toBe(true);
+  const padded: Rect = [face[0] - 0.12 * w, face[1] - 0.12 * h, face[2] + 0.12 * w, face[3] + 0.12 * h];
+  expect(within(onFrame(r.crop, padded), safe)).toBe(true);
+});
+
+/** a detector's face: its box centred at x, `h` tall as a share of the picture's height, square in a 16:9 picture */
+const at = (x: number, h: number, ar = 16 / 9): FaceInfo => ({ box: [x - h / ar / 2, 0.3, h / ar, h], mouth: [x, 0.3 + h * 0.75], mouthW: h / ar / 3 });
+const box = (f: FaceInfo): Rect => [f.box[0], f.box[1], f.box[0] + f.box[2], f.box[1] + f.box[3]];
+
+test('the shaped focus frames the main subject and leaves small faces in the background alone', () => {
+  const main = at(0.45, 0.3), passer = at(0.9, 0.11), other = at(0.08, 0.11);
+  // passers-by: the largest face of a sample where the subject looks away, or beside the subject
+  expect(shapedSubject([[main, passer], [other], [main]], 1920, 1080)).toEqual(box(main));
+  // only passers-by: nothing to frame
+  expect(shapedSubject([[passer], [], [other]], 1920, 1080)).toBeNull();
+  // someone further back, big enough to count on their own, is less than half the subject's size: the subject wins
+  const back = at(0.85, 0.14);
+  expect(shapedSubject([[main], [back], [main]], 1920, 1080)).toEqual(box(main));
+  // the subject walking closer through the clip stays one subject
+  const near = at(0.5, 0.45);
+  expect(shapedSubject([[main], [near]], 1920, 1080)).toEqual([box(main)[0], 0.3, box(near)[2], 0.3 + 0.45]);
+  // the size is a share of the short side: in a portrait picture a face 8 % of the height is 14 % of the width
+  expect(shapedSubject([[at(0.5, 0.08, 9 / 16)]], 1080, 1920)).toEqual(box(at(0.5, 0.08, 9 / 16)));
+  expect(shapedSubject([[at(0.5, 0.06, 9 / 16)]], 1080, 1920)).toBeNull();
+});
+
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
 const face = (x: number, w = 0.08): FaceInfo => ({ box: [x - w / 2, 0.3, w, w * 1.6], mouth: [x, 0.4], mouthW: w * 0.4 });
 /** a 16:9 film over a 16:9 source whose one person stands at x = 0.25 */
@@ -75,4 +113,14 @@ test('at save(), a clip in a circle focuses its face into the circle even though
   expect(within(onFrame(crop(circle).from, [f[0], f[1], f[0] + f[2], f[1] + f[3]]), safe)).toBe(true);
   for (const id of [text, plain, own]) expect(crop(id).from).toEqual({ x: 0.5, y: 0.5, zoom: 1 });
   expect(c.notes.filter((n) => n.includes('自動對焦到人臉'))).toEqual([expect.stringContaining('放進 circle 形狀一定看得到的範圍')]);
+}, 60000);
+
+test('at save(), a circle clip whose only faces are small passers-by stays centred and says why', async () => {
+  const c = await wideCut();
+  c.facesProvider = fakeFaces(() => [at(0.1, 0.1), at(0.88, 0.1)]);
+  const circle = c.clip('v', { from: 0, len: 1, shape: 'circle' });
+  const p = await c.save();
+  expect((p.tracks.find((t) => t.id === 'v1')!.items.find((i) => i.id === circle) as any).crop.from).toEqual({ x: 0.5, y: 0.5, zoom: 1 });
+  expect(c.notes.filter((n) => n.includes('自動對焦到人臉') || n.includes('放不進'))).toEqual([]);
+  expect(c.notes).toContainEqual(expect.stringContaining('臉都太小'));
 }, 60000);

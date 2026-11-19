@@ -3,7 +3,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createRegistry, isNamedShape, r6, resolveTimes, shapeSafe, videoLinks, visibleRegion, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
-import { FACE_STEP, faceKey, facesAt, type FacesProvider } from '@tellcut/media-node';
+import { FACE_STEP, faceKey, facesAt, type FaceInfo, type FacesProvider } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { COVER_LIFT, FOLLOW_SIZE, movingTimes, pickFace, smooth, sourceSpot, spotAt, spotOnFilm, stickerKeys, trackFace, type Who } from './follow.ts';
 import { avoidBurnedMove, spreadMove } from './avoid.ts';
@@ -33,6 +33,30 @@ export const SHAPE_FOCUS_ZOOM = 2;
 /** the face box is padded by this share of its size on each side: a detector's box is tight round the features, and hair or a
  *  chin cut by the shape's edge reads as a face cut too */
 const FACE_PAD = 0.12;
+/** ...but by at most this share of the picture's short side: a close-up (a face over a sixth of the short side) cut at the hair by
+ *  the shape is how a portrait in a round frame looks anyway, and the safe box is already the shape's inscribed rectangle, so a
+ *  pad growing with the face reported faces that showed whole as not fitting */
+const FACE_PAD_MOST = 0.02;
+/** a face shorter than this share of the picture's short side is not framed into a shape: the detector's floor is about 0.1 (it
+ *  misses smaller faces, faces.py), so this band is people some way off, passers-by behind the subject; chasing one zoomed in
+ *  and pushed the view to the picture's edge. A travel subject talking to the camera or in a medium shot is 0.15–0.5. */
+const SHAPE_FACE_MIN = 0.12;
+/** a sample's face shorter than this share of the largest face in the clip is someone further back, not the subject (the subject
+ *  walking closer through a clip stays within it): framing both would spread the faces over the picture */
+const SHAPE_FACE_SHARE = 0.5;
+
+/**
+ * The faces a shaped window frames, from the faces found at each sample (the clip's quarter, half and three quarters), as
+ * [left, top, right, bottom] in fractions of the source: each sample's largest face of at least SHAPE_FACE_MIN, and of those the
+ * ones at least SHAPE_FACE_SHARE as tall as the largest, so the main subject wins over passers-by. null: only small faces.
+ */
+export function shapedSubject(samples: FaceInfo[][], srcW: number, srcH: number): Rect | null {
+  const short = Math.min(srcW, srcH), tall = (f: FaceInfo) => (f.box[3] * srcH) / short;
+  const picks = samples.map((fs) => fs.filter((f) => tall(f) >= SHAPE_FACE_MIN)).filter((fs) => fs.length).map((fs) => pickFace(fs, 'largest'));
+  if (!picks.length) return null;
+  const most = Math.max(...picks.map(tall)), boxes = picks.filter((f) => tall(f) >= SHAPE_FACE_SHARE * most).map((f) => f.box);
+  return [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[0] + b[2])), Math.max(...boxes.map((b) => b[1] + b[3]))];
+}
 
 /**
  * The crop that puts `subject` (the faces, [left, top, right, bottom] in fractions of the source) inside `safe`, the part of the
@@ -44,7 +68,8 @@ const FACE_PAD = 0.12;
  */
 export function shapedFocus(srcW: number, srcH: number, frameW: number, frameH: number, safe: [number, number, number, number], subject: Rect): { crop: Crop; inside: boolean } {
   const one = visibleRegion(srcW, srcH, frameW, frameH, { x: 0.5, y: 0.5, zoom: 1 });
-  const pw = (subject[2] - subject[0]) * FACE_PAD, ph = (subject[3] - subject[1]) * FACE_PAD;
+  const short = Math.min(srcW, srcH);
+  const pw = Math.min((subject[2] - subject[0]) * FACE_PAD, (FACE_PAD_MOST * short) / srcW), ph = Math.min((subject[3] - subject[1]) * FACE_PAD, (FACE_PAD_MOST * short) / srcH);
   const face = [Math.max(0, subject[0] - pw), Math.max(0, subject[1] - ph), Math.min(1, subject[2] + pw), Math.min(1, subject[3] + ph)];
   // per axis: the view (in fractions of the source; one.w / zoom across) must be at most `most` for the faces to be placed inside
   // the safe box without the view leaving the picture, and at least `least` for them to fit in it
@@ -73,7 +98,8 @@ export function shapedFocus(srcW: number, srcH: number, frameW: number, frameH: 
  * shot in a portrait film) is cropped at the sides, so the focus moves sideways; a taller one (portrait in landscape) moves up or down.
  * Each group is one clip (or the pieces tighten made of it), focused alike. A clip cut to a named shape shows less than its frame
  * (a circle in a wide frame, only its middle): the faces go into the part the shape certainly shows (shapedFocus), even when the
- * picture fits the frame; a text shape gets no focus at all (letters show no whole face, on purpose).
+ * picture fits the frame (only the main subject's face, shapedSubject: passers-by are left alone); a text shape gets no focus at
+ * all (letters show no whole face, on purpose).
  */
 export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
   const W = x.p.meta.width, H = x.p.meta.height;
@@ -98,9 +124,10 @@ export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
     const found = await faces(x, src.path, times, id);
     if (!found) continue;
     if (shape && safe) {
-      const boxes = [...found.values()].filter((fs) => fs.length).map((fs) => pickFace(fs, 'largest').box);
-      if (!boxes.length) continue;
-      const subject: Rect = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[0] + b[2])), Math.max(...boxes.map((b) => b[1] + b[3]))];
+      const samples = [...found.values()];
+      if (!samples.some((fs) => fs.length)) continue;
+      const subject = shapedSubject(samples, src.width, src.height);
+      if (!subject) { x.notes.push(`${it.source}（${id}）找到的臉都太小（遠處的路人），不對焦，留在 ${shape.type} 形狀的中間`); continue; }
       const r = shapedFocus(src.width, src.height, fw * W, fh * H, safe, subject);
       for (const c of all) c.crop = { ...c.crop, from: { ...r.crop }, to: { ...r.crop } };
       x.notes.push(r.inside ? `${it.source}（${id}）自動對焦到人臉，放進 ${shape.type} 形狀一定看得到的範圍（x=${r.crop.x}、y=${r.crop.y}、放大 ${r.crop.zoom} 倍）`

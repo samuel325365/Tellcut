@@ -77,7 +77,7 @@ export function shapesDoc(): string {
     `    形狀畫在 frame 裡（沒給 frame 是面板或整個畫面），circle、heart、star、ngon、arch 保持自己的比例置中，其他貼滿 frame；參數都可省略（text 的字除外），多的鍵、超出範圍都是錯誤。`
       + `${bare.join('、')} 沒有參數；${rest.map((t) => `${t}：${SHAPE_PARAMS[t].map((p) => shapeParam(t, p)).join('、')}`).join('；')}。`
       + "outline: true（白線 8）或 { width?: 線寬（1080 短邊的 px）, color? }；shadow: true 或 { blur?=30, y?=12（往下，px）, opacity?=0.45 }；有沒有形狀都能用，背景雜時加一個。"
-      + '有形狀、沒給 crop 的片段存檔時把人臉對進形狀一定看得到的範圍（text 不對臉）。一支片怎麼用形狀看 workflow.md 的 Picture windows',
+      + '有形狀、沒給 crop 的片段存檔時把人臉對進形狀一定看得到的範圍（主角的臉；遠處路人那種小臉不管，只有小臉就留在中間；text 不對臉）。一支片怎麼用形狀看 workflow.md 的 Picture windows',
   ].join('\n');
 }
 
