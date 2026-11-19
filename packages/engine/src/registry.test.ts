@@ -36,6 +36,17 @@ test('core.flash follows rise / hold / fall with a power curve', () => {
   expect((root.lastChild as HTMLElement).style.opacity).toBe('1');
 });
 
+test('core.flash glow: a patch of a fixed size, shown while the curve is up and hidden at 0, never a flat fill', () => {
+  const flash = createRegistry([corePlugin]).item('core.flash')!, root = document.createElement('div');
+  const ctx = (local: number, params: any): any => ({ t: local, local, dur: 1, item: { id: 'f', start: 0, end: 1, type: 'core.flash', params }, params, root, W: 10, H: 10 });
+  const glow = { peak: 0.8, rise: 0, hold: 0, fall: 0, power: 1, color: '#fff', mode: 'glow', x: 0.5, y: 0.35, size: 0.4, keys: '0:0, 0.2:0.7, 0.8:0', blend: 'normal', fade: 'none' };
+  const st = flash.build(ctx(0, glow)), el = root.lastChild as HTMLElement;
+  flash.draw(ctx(0, glow), st);
+  expect(el.style.opacity).toBe('0');
+  flash.draw(ctx(0.2, glow), st);
+  expect(el.style.opacity).toBe('1');   // its strength is in the gradient (color-mix, which jsdom does not parse)
+});
+
 test('core.flash fade: out covers the frame fully by the item end, in clears it, both eased; peak and keys do not count', () => {
   const flash = createRegistry([corePlugin]).item('core.flash')!, root = document.createElement('div');
   const ctx = (local: number, params: any): any => ({ t: local, local, dur: 4, item: { id: 'f', start: 0, end: 4, type: 'core.flash', params }, params, root, W: 10, H: 10 });
