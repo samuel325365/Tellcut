@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Cut } from './cut.ts';
-import { CUT_API, formatCutApi } from './api-doc.ts';
+import { SHAPE_PARAMS, SHAPE_TYPES } from '@tellcut/engine';
+import { CUT_API, formatCutApi, SHAPE_PARAM_WORDS, shapesDoc } from './api-doc.ts';
 
 test('the cheat sheet names every public method of Cut, and nothing that is gone', () => {
   // `private` exists only in the TypeScript source (the running code has lost it): read the source to tell
@@ -10,6 +11,19 @@ test('the cheat sheet names every public method of Cut, and nothing that is gone
   const statics = Object.getOwnPropertyNames(Cut).filter((k) => typeof (Cut as any)[k] === 'function');
   expect(new Set(CUT_API.map(([n]) => n))).toEqual(new Set([...own, ...statics]));
   // two lines a method: raised with each batch of methods (lines, filmTime, audio, beats: 2026-10-26; captionTemplate:
-  // 2026-11-05; titleTemplate: 2026-11-05; flatlayClip: 2026-11-07; combo: 2026-11-16), kept a glance
-  expect(formatCutApi().split('\n').length).toBeLessThan(103);
+  // 2026-11-05; titleTemplate: 2026-11-05; flatlayClip: 2026-11-07; combo: 2026-11-16; the picture windows' entry: 2026-11-19),
+  // kept a glance
+  expect(formatCutApi().split('\n').length).toBeLessThan(106);
+});
+
+test('the picture windows entry names every shape and every parameter, each with the words the reference says it in', () => {
+  const doc = shapesDoc();
+  for (const t of SHAPE_TYPES) {
+    expect(doc).toContain(t);
+    for (const p of SHAPE_PARAMS[t]) {
+      expect(SHAPE_PARAM_WORDS[`${t}.${p.key}`] ?? SHAPE_PARAM_WORDS[p.key], `${t}.${p.key}`).toBeTruthy();
+      expect(doc).toContain(`${p.key}（`);
+    }
+  }
+  expect(formatCutApi().endsWith(doc)).toBe(true);
 });

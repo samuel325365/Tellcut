@@ -1,15 +1,17 @@
 // The Cut API at a glance (`npm run tellcut -- cut-api`): what the page chat reads instead of the 400 lines of cut.ts.
 // One line per public method; cut-api.test.ts fails when a method is added to Cut and not here.
+import { SHAPE_PARAMS, SHAPE_TYPES, type ShapeParam } from '@tellcut/engine';
+
 export const CUT_API: Array<[name: string, signature: string, what: string]> = [
   ['open', 'Cut.open(dir) → c', '（tools/cut.ts 已經幫你開好，cut.ts 裡直接用 c）'],
   ['time', 'c.time', '目前游標（秒）；clip/photo 之後往後移'],
   ['at', 'c.at(t)', '把游標移到 t 秒'],
-  ['clip', "c.clip(src, { from, len, speed?, crop?: { from: {x,y,zoom}, to: {...} } | { x?, y?, zoom?, to?: {x?,y?,zoom?}, push? }, transition?: { type, dur, dir?, x?, y? }, sound?, gain?, duck?: true|false|dB, avoidBurned?: true|'crop', frame?: [x,y,w,h], shape?: [[x,y]…] }) → id", "主軌接一段影片（照片也可以，crop 照樣用）；帶原音；from 可以寫播放器顯示的 '1:23.5'；crop 的簡寫：x、y、zoom 是開頭（預設正中、1；x、y 是放大時不動的那一點：先照 zoom 1 盡量擺到畫面中央，再以它為中心放大，所以 zoom 1.25、y 0.4 看到的是素材高的 0.08–0.88，要切掉下緣用 y 0），to 寫結尾改了哪幾個，push 是結尾 zoom 乘幾倍（{ x: 0.4, push: 1.05 } 慢慢推近）；duck：這段原音裡的講話要不要壓低配樂（true／false／壓到幾 dB；預設會壓，但 gain 加音軌在 -20 dB 以下的環境音不壓）；avoidBurned 放大裁掉原片燒進去的字幕（只在偵測到字幕的時間前後 3 秒內放大；放大的上限看素材解析度：1080p 放進 1080p 片最多 1.6 倍、720p 只到 1.25 倍；畫面裡的人臉留在畫面內；做不到（放大超過上限、或會裁到人臉）時照原本的裁切，存檔時把疊在原片字幕上、沒有自己位置（y、position、transform）的字幕自動移到畫面上方，上方同時已經有標題、標籤這類東西就不移，筆記會說移了幾張、哪幾張沒移；'crop' 只裁切、不移字幕；附近沒偵測到字幕而沒放大的段落也會列出來，附上裁得掉字幕的 crop：偵測一秒只看一格，常漏掉短句，畫面上看得到字就照它自己裁）；沒給 crop 又形狀不合（橫拍放直式片）時，存檔時自動對焦到人臉；frame 讓畫面只佔螢幕的一塊（例如 common.duo 的 duoWindow('a', 參數)、common.magazine 的 magazineWindow(參數)，從 @tellcut/plugin-common 匯入）；shape 把畫面裁成多邊形（角的座標是 frame 裡的比例，沒給 frame 就是面板或整個畫面的比例；例如漫畫斜格 comicShape(n, 參數)）；transition 是進這段的轉場，跟上一段重疊 dur 秒（預設直接剪，只在換章節、地點、時間的地方用，一支片最多兩種；片型風格說整支片用轉場時照它，也最多兩種）：dissolve 溶接（最通用）、slide 新畫面滑進來、wipe 一條直邊掃過去、iris 從一個圓打開（x、y 圓心，片段的比例，預設 0.5）、clock 時鐘指針掃一圈、bars 分條一條接一條換、push 新畫面把舊的推出去、zoom 舊畫面放大衝過去、新的從大縮回、whip 甩鏡頭（帶動態模糊的推移）、blur 舊的糊掉新的清楚、dip 先暗到黑再亮、flash 先白閃再回來；dir 是新畫面從哪邊進來（'l'|'r'|'u'|'d'，預設 'l'；slide、wipe、bars、push、whip 用）；切成 shape 的片段 wipe、iris、clock、bars 會畫成溶接，push、zoom、whip 要前後兩段都是全畫面（沒有 frame），不然也畫成溶接（check 會提醒）"],
+  ['clip', "c.clip(src, { from, len, speed?, crop?: { from: {x,y,zoom}, to: {...} } | { x?, y?, zoom?, to?: {x?,y?,zoom?}, push? }, transition?: { type, dur, dir?, x?, y? }, sound?, gain?, duck?: true|false|dB, avoidBurned?: true|'crop', frame?: [x,y,w,h], shape?, outline?, shadow? }) → id", "主軌接一段影片（照片也可以，crop 照樣用）；帶原音；from 可以寫播放器顯示的 '1:23.5'；crop 的簡寫：x、y、zoom 是開頭（預設正中、1；x、y 是放大時不動的那一點：先照 zoom 1 盡量擺到畫面中央，再以它為中心放大，所以 zoom 1.25、y 0.4 看到的是素材高的 0.08–0.88，要切掉下緣用 y 0），to 寫結尾改了哪幾個，push 是結尾 zoom 乘幾倍（{ x: 0.4, push: 1.05 } 慢慢推近）；duck：這段原音裡的講話要不要壓低配樂（true／false／壓到幾 dB；預設會壓，但 gain 加音軌在 -20 dB 以下的環境音不壓）；avoidBurned 放大裁掉原片燒進去的字幕（只在偵測到字幕的時間前後 3 秒內放大；放大的上限看素材解析度：1080p 放進 1080p 片最多 1.6 倍、720p 只到 1.25 倍；畫面裡的人臉留在畫面內；做不到（放大超過上限、或會裁到人臉）時照原本的裁切，存檔時把疊在原片字幕上、沒有自己位置（y、position、transform）的字幕自動移到畫面上方，上方同時已經有標題、標籤這類東西就不移，筆記會說移了幾張、哪幾張沒移；'crop' 只裁切、不移字幕；附近沒偵測到字幕而沒放大的段落也會列出來，附上裁得掉字幕的 crop：偵測一秒只看一格，常漏掉短句，畫面上看得到字就照它自己裁）；沒給 crop 又形狀不合（橫拍放直式片）時，存檔時自動對焦到人臉；frame 讓畫面只佔螢幕的一塊（例如 common.duo 的 duoWindow('a', 參數)、common.magazine 的 magazineWindow(參數)，從 @tellcut/plugin-common 匯入）；shape 把畫面裁成形狀（'circle'、{ type: 'star', points: 6 }…，見最後的「畫面視窗」，outline、shadow 也在那裡）或多邊形（角的座標是 frame 裡的比例，沒給 frame 就是面板或整個畫面的比例；例如漫畫斜格 comicShape(n, 參數)）；transition 是進這段的轉場，跟上一段重疊 dur 秒（預設直接剪，只在換章節、地點、時間的地方用，一支片最多兩種；片型風格說整支片用轉場時照它，也最多兩種）：dissolve 溶接（最通用）、slide 新畫面滑進來、wipe 一條直邊掃過去、iris 從一個圓打開（x、y 圓心，片段的比例，預設 0.5）、clock 時鐘指針掃一圈、bars 分條一條接一條換、push 新畫面把舊的推出去、zoom 舊畫面放大衝過去、新的從大縮回、whip 甩鏡頭（帶動態模糊的推移）、blur 舊的糊掉新的清楚、dip 先暗到黑再亮、flash 先白閃再回來；dir 是新畫面從哪邊進來（'l'|'r'|'u'|'d'，預設 'l'；slide、wipe、bars、push、whip 用）；切成 shape 的片段 wipe、iris、clock、bars 會畫成溶接，push、zoom、whip 要前後兩段都是全畫面（沒有 frame），不然也畫成溶接（check 會提醒）"],
   ['tighten', 'c.tighten(clipId, { maxGap?=0.6, keep?=0.3 }) → [id...]', '講話片段剪掉停頓：詞與詞之間超過 maxGap 秒的空白縮成 keep 秒，頭尾超過 maxGap 秒的只留 keep 的一半（第一個詞前、最後一個詞後各 keep/2 秒），原音一起切；maxGap、keep 是素材的秒數，speed 不是 1 時畫面上留下 keep/speed 秒；緊接在那段 c.clip 之後、加字幕之前用；之後字幕、消音都傳回傳的這組 id'],
-  ['photo', 'c.photo(src, { len?=3, zoom?: [a,b], focus?: [x,y], transition?, frame?: [x,y,w,h], shape? }) → id', '主軌接一張照片（Ken Burns 推近）；frame、shape、transition 同 clip。assets get（圖片）和 assets map 下載的圖也用這個，id 照它印的；專案自己做出來的圖（腳本畫的海報…）先 npm run tellcut -- image <專案> <檔案> 登記，id 照它印的（地圖上要推拉、畫路線、插圖釘：c.effect("common.mapcam", { source: id, … })）'],
+  ['photo', 'c.photo(src, { len?=3, zoom?: [a,b], focus?: [x,y], transition?, frame?: [x,y,w,h], shape?, outline?, shadow? }) → id', '主軌接一張照片（Ken Burns 推近）；frame、shape、outline、shadow、transition 同 clip。assets get（圖片）和 assets map 下載的圖也用這個，id 照它印的；專案自己做出來的圖（腳本畫的海報…）先 npm run tellcut -- image <專案> <檔案> 登記，id 照它印的（地圖上要推拉、畫路線、插圖釘：c.effect("common.mapcam", { source: id, … })）'],
   ['view', "c.view(src, { at: [x, y], zoom?=1, frame?: [x,y,w,h], keepOut?: [[左,上,右,下]…], burned?=true, what? }) → crop", '「讓畫面看到素材的這一塊」：以素材比例 at 為中心、zoom 倍（1＝剛好蓋滿）算出 crop，超出畫面會往內收；露出 keepOut 禁區（浮水印…）或 inventory 找到的原片燒字幕就報錯；一個鏡頭裁成好幾個虛擬機位（雙人鏡的近景／中景、上下分割各一人）時用，crop: { from: c.view(…), to: c.view(…, zoom 稍大) }；frame 給片段要放的框（例如 common.duo 的 duoWindow("a", 參數)）'],
   ['bands', "c.bands(src, { len, from?: [秒 | '分:秒'…], crops?: [{from,to}…], count?=3, every?, ratio?=2.7, gap? }) → [id…]", '橫式素材切成幾條寬銀幕橫帶疊在直式畫面裡：第一條在主軌（游標往後 len），其他各在自己的影片軌（v2、v3…），每 every 秒砸進一條、一起結束；每條取素材不同段落（from）與不同裁切（全景／特寫）；不帶原音（對拍剪）'],
-  ['beside', "c.beside(clipId | [tighten 的 id...], { frame: [x,y,w,h], shape?, crop?, source?, offset?=0, track?='v2' }) → [id…]", "主軌已經放好的片段旁邊同時再放一個畫面：每段（tighten 切開的每一段也是）同一刻的素材（source 預設同一個；offset 往後幾秒＝另一台機器晚開錄的檔）放在自己的影片軌（預設 v2，在主軌正上方）的 frame 裡，開始結束跟那段一樣、不帶聲音（聲音是主軌那段的）；雙人分割的第二格：a 的片段 frame: duoWindow('a', 參數)，接著 c.beside(id, { frame: duoWindow('b', 參數), crop: c.view(…, { frame: duoWindow('b', 參數) }) })；子母畫面裡聽的人的臉；shape 同 clip（漫畫斜格 comicShape）；crop 一個運鏡分給各段；存檔時掛在那段上，編輯器修剪、漣漪刪除時跟著走"],
+  ['beside', "c.beside(clipId | [tighten 的 id...], { frame: [x,y,w,h], shape?, outline?, shadow?, crop?, source?, offset?=0, track?='v2' }) → [id…]", "主軌已經放好的片段旁邊同時再放一個畫面：每段（tighten 切開的每一段也是）同一刻的素材（source 預設同一個；offset 往後幾秒＝另一台機器晚開錄的檔）放在自己的影片軌（預設 v2，在主軌正上方）的 frame 裡，開始結束跟那段一樣、不帶聲音（聲音是主軌那段的）；雙人分割的第二格：a 的片段 frame: duoWindow('a', 參數)，接著 c.beside(id, { frame: duoWindow('b', 參數), crop: c.view(…, { frame: duoWindow('b', 參數) }) })；子母畫面裡聽的人的臉；shape、outline、shadow 同 clip（漫畫斜格 comicShape）；crop 一個運鏡分給各段；存檔時掛在那段上，編輯器修剪、漣漪刪除時跟著走"],
   ['title', 'c.title(text, { at?, len?=3, ...params }) → id', '片名、章節標題（common.heading，照片子的標題範本 c.titleTemplate；kicker 上面一行小字、sub 下面一行）'],
   ['caption', 'c.caption(text, { at, len, ...params }) → id', "一句字幕（common.caption，照片子的字幕範本 c.captionTemplate；style、name、gloss 等參數直接給）；講話字幕用 speechCaptions。core.title、core.caption 是舊積木，只為了讓舊專案打得開，新片不要用"],
   ['lowerThird', 'c.lowerThird(主標, 副標, { at?, len?=3, ...params }) → id', '左下角地點／人名（common.heading 的標題範本 lower-bar：左下、左邊一條主色色條；template 換別的範本，其他參數同 c.title）'],
@@ -52,11 +54,40 @@ export const CUT_API: Array<[name: string, signature: string, what: string]> = [
   ['save', 'await c.save()', '（tools/cut.ts 會呼叫）'],
 ];
 
+/** what each shape parameter is, in the reference's words (SHAPE_PARAMS' docs are English, for the code and project.json);
+ *  keyed `<type>.<key>` where one key means two things, else by key. cut-api.test.ts fails when a parameter has none. */
+export const SHAPE_PARAM_WORDS: Record<string, string> = {
+  points: '尖角數', inner: '內角離中心／尖角', round: '角的圓弧', 'ngon.sides': '邊數', turn: '旋轉度數', teeth: '長邊齒孔數', tail: '尾巴方向',
+  seed: '第幾種變化', lobes: '鼓起數', wobble: '蠕動，0 不動', rough: '毛邊', 'torn.sides': '撕開的邊，t b l r 的組合', count: '條數',
+  gap: '間隙，frame 短邊的比例', angle: '傾斜度數，0 直立', text: '字，一或兩行（\\n 分行）', font: '主題字型', weight: '粗細', line: '兩行基線距離，字級',
+};
+const paramWords = (type: string, p: ShapeParam) => SHAPE_PARAM_WORDS[`${type}.${p.key}`] ?? SHAPE_PARAM_WORDS[p.key];
+/** one shape parameter: its key, what it is, its range or choices and its default, from SHAPE_PARAMS so the two cannot drift */
+const shapeParam = (type: string, p: ShapeParam) => {
+  const range = p.kind === 'int' || p.kind === 'number' ? `：${p.min}–${p.max}` : p.kind === 'enum' ? `：${p.options!.join('|')}` : '';
+  return `${p.key}（${paramWords(type, p)}${range}${p.default !== undefined ? `，預設 ${p.default}` : p.required ? '，必給' : ''}）`;
+};
+
+/** The picture windows: every named shape with its parameters, and outline and shadow, as one entry that clip, photo and beside
+ *  point to (written into each, the clip entry alone would have doubled). */
+export function shapesDoc(): string {
+  const bare = SHAPE_TYPES.filter((t) => !SHAPE_PARAMS[t].length), rest = SHAPE_TYPES.filter((t) => SHAPE_PARAMS[t].length);
+  return [
+    "畫面視窗：clip、photo、beside 的 shape（'circle' 這樣的名稱、{ type, …參數 }，或多邊形 [[x,y]…]）、outline、shadow",
+    `    形狀畫在 frame 裡（沒給 frame 是面板或整個畫面），circle、heart、star、ngon、arch 保持自己的比例置中，其他貼滿 frame；參數都可省略（text 的字除外），多的鍵、超出範圍都是錯誤。`
+      + `${bare.join('、')} 沒有參數；${rest.map((t) => `${t}：${SHAPE_PARAMS[t].map((p) => shapeParam(t, p)).join('、')}`).join('；')}。`
+      + "outline: true（白線 8）或 { width?: 線寬（1080 短邊的 px）, color? }；shadow: true 或 { blur?=30, y?=12（往下，px）, opacity?=0.45 }；有沒有形狀都能用，背景雜時加一個。"
+      + '有形狀、沒給 crop 的片段存檔時把人臉對進形狀一定看得到的範圍（text 不對臉）。一支片怎麼用形狀看 workflow.md 的 Picture windows',
+  ].join('\n');
+}
+
 export function formatCutApi(): string {
   return [
     'Cut API（projects/<id>/cut.ts：export default async function (c: Cut) { … }）',
     '時間都是秒；id 是放上去的項目，可以給 update／remove／attach。積木參數：npm run tellcut -- catalog <類型>',
     '',
     ...CUT_API.map(([, sig, what]) => `${sig}\n    ${what}`),
+    '',
+    shapesDoc(),
   ].join('\n');
 }
