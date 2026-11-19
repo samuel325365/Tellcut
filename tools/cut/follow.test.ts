@@ -4,7 +4,7 @@ import { basename, join } from 'node:path';
 import { parseProject, resolveTimes } from '@tellcut/engine';
 import { fakeFaces, makePhoto, run, type FaceInfo } from '@tellcut/media-node';
 import { Cut } from './cut.ts';
-import { onFilm, pickFace, smooth, stickerKeys, trackFace } from './follow.ts';
+import { movingTimes, onFilm, pickFace, smooth, spotAt, stickerKeys, trackFace } from './follow.ts';
 import { resolveAutoFocus } from './focus.ts';
 import type { Inventory } from './inventory.ts';
 
@@ -41,6 +41,49 @@ test('a face is mapped through the clip crop onto the film; the path is smoothed
   expect(stickerKeys([{ t: 1.2, x: 0.6, y: 0.4, w: 0.1 }], 1, { x: 0.5, y: 0.55, width: 0.26 }, 2.4)).toEqual([{ t: 0.2, x: 0.1, y: -0.15, scale: 0.9231 }]);
 });
 
+test('a face is followed through a transition that grows or moves the clip: zoom round the centre, push and whip with the frame', () => {
+  // a 16:9 source filling a 16:9 film; a mouth three quarters of the way across
+  const keep = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+  const clip = (transitionIn?: any): any => ({ id: 'c', source: 's', in: 0, speed: 1, start: 2, end: 5, frame: [0, 0, 1, 1], crop: keep, ...(transitionIn ? { transitionIn } : {}) });
+  const at = (c: any, t: number) => onFilm(face(0.75), 'mouth', c, { start: 2, end: 5 }, t, 1920, 1080, { width: 1920, height: 1080 });
+  const on = (c: any, t: number, link?: any) => onFilm(face(0.75), 'mouth', c, { start: 2, end: 5 }, t, 1920, 1080, { width: 1920, height: 1080 }, link);
+  const from = { from: [0, 0, 1, 1] };
+  expect(at(clip(), 2).x).toBeCloseTo(0.75, 6);
+  // zoom: B starts 1.8× round the centre and is 1.2× halfway (1 + 0.8 (1 − p)²), its width with it
+  const zoom = clip({ type: 'zoom', dur: 1 });
+  expect(on(zoom, 2, from).x).toBeCloseTo(0.5 + 0.25 * 1.8, 6);
+  expect(on(zoom, 2.5, from).x).toBeCloseTo(0.5 + 0.25 * 1.2, 6);
+  expect(on(zoom, 2.5, from).w / at(clip(), 2.5).w).toBeCloseTo(1.2, 6);
+  expect(on(zoom, 3, from).x).toBeCloseTo(0.75, 6);
+  // push from the left, halfway: B is half a frame to the left of its place...
+  expect(on(clip({ type: 'push', dur: 1, dir: 'l' }), 2.5, from).x).toBeCloseTo(0.25, 6);
+  // ...and the clip it pushes out (A, through its link) half a frame to the right; A grown by a zoom coming after it likewise
+  const out = (type: string) => ({ out: { type, dir: 'l', at: 2, dur: 1, frame: [0, 0, 1, 1], shaped: false } });
+  expect(on(clip(), 4.5, out('push')).x).toBeCloseTo(1.25, 6);
+  expect(on(clip(), 4.5, out('whip')).x).toBeGreaterThan(1.2);
+  expect(on(clip(), 4.5, out('zoom')).x).toBeCloseTo(0.5 + 0.25 * (1 + 1.4 * 0.5 ** 1.2), 6);
+  // a dissolve moves nothing
+  expect(on(clip(), 4.5, out('dissolve')).x).toBeCloseTo(0.75, 6);
+});
+
+test('a key a frame where a transition moves or grows the clip, none where it does not', () => {
+  const keep = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+  const clip = (o: any = {}): any => ({ id: 'c', source: 's', in: 0, speed: 1, start: 2, end: 5, frame: [0, 0, 1, 1], crop: keep, ...o });
+  const ct = { start: 2, end: 5 }, from: any = { from: [0, 0, 1, 1] };
+  const zoom = movingTimes(clip({ transitionIn: { type: 'zoom', dur: 0.2 } }), ct, from, 0, 10, 30);
+  expect(zoom).toEqual([2, 2.033333, 2.066667, 2.1, 2.133333, 2.166667, 2.2]);
+  expect(movingTimes(clip({ transitionIn: { type: 'zoom', dur: 0.2 } }), ct, from, 2.1, 10, 30)[0]).toBe(2.1);   // from the sticker's start
+  expect(movingTimes(clip({ transitionIn: { type: 'dissolve', dur: 0.2 } }), ct, from, 0, 10, 30)).toEqual([]);
+  // a zoom drawn as a dissolve (this clip not the whole picture) moves nothing
+  expect(movingTimes(clip({ frame: [0, 0, 0.5, 1], transitionIn: { type: 'zoom', dur: 0.2 } }), ct, from, 0, 10, 30)).toEqual([]);
+  // the next clip's push moves this one out; its slide does not
+  const out = (type: string) => ({ out: { type, at: 2.9, dur: 0.1, frame: [0, 0, 1, 1], shaped: false } });
+  expect(movingTimes(clip(), ct, out('push') as any, 0, 10, 30)).toEqual([4.9, 4.933333, 4.966667, 5]);
+  expect(movingTimes(clip(), ct, out('slide') as any, 0, 10, 30)).toEqual([]);
+  expect(spotAt([{ t: 0, x: 0, y: 1, w: 1 }, { t: 1, x: 1, y: 1, w: 3 }], 0.25)).toEqual({ t: 0.25, x: 0.25, y: 1, w: 1.5 });
+  expect(spotAt([{ t: 0, x: 0, y: 1, w: 1 }], 2)).toEqual({ t: 2, x: 0, y: 1, w: 1 });
+});
+
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
 async function portraitCut() {
   const dir = mkdtempSync(join(tmpdir(), 'follow-'));
@@ -68,6 +111,28 @@ test('a sticker that follows the mouth gets a path; a landscape clip in a portra
   expect(resolveTimes(p).get(st)!.start).toBe(1);
   expect(c.notes.some((n) => n.includes('自動對焦到人臉'))).toBe(true);
   expect(c.notes.some((n) => n.includes('跟著 v 的嘴移動'))).toBe(true);
+}, 60000);
+
+test('a sticker on a clip that zooms in stays on the mouth: grown with the clip, a key a frame while the zoom runs', async () => {
+  const c = await portraitCut();
+  c.facesProvider = fakeFaces(() => [face(0.3)]);
+  const keep = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
+  c.clip('v', { from: 0, len: 2, crop: keep });
+  const b = c.clip('v', { from: 3, len: 2, crop: keep, transition: { type: 'zoom', dur: 0.6 } });   // film 1.4–3.4
+  const st = c.effect('common.censor', { at: 1.4, len: 1, follow: 'mouth', clip: b });
+  const p = await c.save();
+  const keys = p.tracks.flatMap((t) => t.items as any[]).find((i) => i.id === st)!.transform.keys as Array<{ t: number; x: number; scale: number }>;
+  // every 0.2 s over the second (6), and every frame of the zoom (1.4–2.0: 19), 4 of them the same times
+  expect(keys.length).toBe(21);
+  const key = (t: number) => keys.find((k) => Math.abs(k.t - t) < 1e-3)!;
+  // the mouth 0.3 across a 1920 × 1080 source covering the 1080 × 1920 film: 3413 px wide, 1167 px off the left, so the mouth
+  // is 143 px in, 683 px left of the centre; grown 1.8× at the start, 1 + 0.8 (5/6)² a sixth of the way and 1.2× halfway
+  const x = (k: number) => (540 - 682.667 * k) / 1080;
+  expect(key(0.1).x - key(0.8).x).toBeCloseTo(x(1 + 0.8 * (5 / 6) ** 2) - x(1), 3);
+  expect(key(0.3).x - key(0.8).x).toBeCloseTo(x(1.2) - x(1), 3);
+  expect(key(0).scale / key(0.8).scale).toBeCloseTo(1.8, 2);
+  // at the start the mouth is off the film's left edge, farther than a move can take the sticker: a frame from its anchor
+  expect(key(0).x).toBe(-1);
 }, 60000);
 
 test('a face cover (common.emoji mode cover) following a face is made bigger than a sticker on it, and raised to the hairline', async () => {

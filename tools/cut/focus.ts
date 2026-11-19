@@ -2,10 +2,10 @@
 // cropped keep the faces in them in frame, and stickers asked to follow a mouth or a face get their transform keys.
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createRegistry, r6, resolveTimes, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
+import { createRegistry, r6, resolveTimes, videoLinks, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
 import { FACE_STEP, faceKey, facesAt, type FacesProvider } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { COVER_LIFT, FOLLOW_SIZE, onFilm, pickFace, smooth, stickerKeys, trackFace, type Who } from './follow.ts';
+import { COVER_LIFT, FOLLOW_SIZE, movingTimes, pickFace, smooth, sourceSpot, spotAt, spotOnFilm, stickerKeys, trackFace, type Who } from './follow.ts';
 import { avoidBurnedMove, spreadMove } from './avoid.ts';
 import type { Rect } from './view.ts';
 import { pictureLen, pictureTimeAt } from './frames.ts';
@@ -119,7 +119,11 @@ export async function resolveFollows(x: FaceCtx, follows: FollowReq[]) {
     if (!fs) continue;   // the detector failed: faces() said so
     const { track, lost } = trackFace(film.map((t) => ({ t, faces: fs.get(faceKey(srcTime(t))) ?? [] })), req.who);
     if (!track.some((s) => s.face)) { x.notes.push(`${req.id}：${clip.source} 這段找不到臉，貼圖留在原本的位置`); continue; }
-    const spots = smooth(track.map((s) => onFilm(s.face!, req.follow, clip, ct, s.t, W, H, src)));
+    // smoothed where the detector found it (in the source's fractions, so a transition's move is not averaged away), then put on
+    // the film as the stage draws the clip, a key a frame where a transition moves or grows it
+    const seen = smooth(track.map((s) => ({ t: s.t, ...sourceSpot(s.face!, req.follow) }))), link = videoLinks(x.p, times).get(clip.id);
+    const when = [...new Set([...film, ...movingTimes(clip, ct, link, film[0], film[film.length - 1], x.p.meta.fps)])].sort((a, b) => a - b);
+    const spots = when.map((t) => spotOnFilm(spotAt(seen, t), clip, ct, W, H, src, link));
     // the block's own anchor (where it draws the sticker) and width, from its params and their defaults
     const defs = registry.item(found.type)?.params ?? [], param = (k: string, d: number) => Number(found.params[k] ?? defs.find((p) => p.key === k)?.default ?? d);
     // a sticker's size is a share of the film's short side; the keys want it as a share of the width

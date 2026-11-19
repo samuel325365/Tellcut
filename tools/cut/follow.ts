@@ -1,6 +1,6 @@
 // A sticker that follows a mouth or a face (toolkit phase 5): the faces of the clip's source over the sticker's time, one face
 // tracked through them, mapped through the clip's crop and frame onto the film, as the sticker's transform keys.
-import { coverPlacement, videoState, type VideoItem } from '@tellcut/engine';
+import { coverPlacement, drawnTransition, videoState, type VideoItem, type VideoLink } from '@tellcut/engine';
 import type { FaceInfo } from '@tellcut/media-node';
 
 export type Who = 'largest' | 'left' | 'right' | 'center';
@@ -56,14 +56,59 @@ export interface FilmSpot { t: number; x: number; y: number; w: number }
 
 /**
  * Where a face in the clip's source shows on the film at film time `t`: through the clip's frame and its crop at that moment
- * (Ken Burns moves included). Fractions of the film's width / height; `w` as a fraction of the film's width.
+ * (Ken Burns moves included), and through what a transition does to the whole frame as the stage draws it: the offset a slide,
+ * push or whip moves it by and the scale a zoom grows it by round the frame's centre. `link` is the clip's entry in the
+ * project's videoLinks (the stage's own): without it a clip's own transition still counts, but not the half of the next clip's
+ * that moves this one out. Fractions of the film's width / height; `w` as a fraction of the film's width.
  */
 export function onFilm(face: FaceInfo, follow: 'mouth' | 'face', clip: VideoItem, clipTimes: { start: number; end: number }, t: number,
-  W: number, H: number, src: { width: number; height: number }): FilmSpot {
-  const s = videoState(clip, clipTimes.start, clipTimes.end, t, W, H, {});
+  W: number, H: number, src: { width: number; height: number }, link?: VideoLink): FilmSpot {
+  return spotOnFilm({ t, ...sourceSpot(face, follow) }, clip, clipTimes, W, H, src, link);
+}
+
+/** The point a sticker follows on a face, in the source's fractions: the mouth (its width) or the face's middle (its width). */
+export function sourceSpot(face: FaceInfo, follow: 'mouth' | 'face') {
+  const [x, y] = follow === 'mouth' ? face.mouth : centre(face);
+  return { x, y, w: follow === 'mouth' ? face.mouthW : face.box[2] };
+}
+
+/** onFilm for a point already in the source's fractions (`p.t` the film time). */
+export function spotOnFilm(p: FilmSpot, clip: VideoItem, clipTimes: { start: number; end: number }, W: number, H: number,
+  src: { width: number; height: number }, link?: VideoLink): FilmSpot {
+  const s = videoState(clip, clipTimes.start, clipTimes.end, p.t, W, H, {}, link);
   const b = coverPlacement(src.width, src.height, s.frame.width, s.frame.height, s.crop);
-  const [sx, sy] = follow === 'mouth' ? face.mouth : centre(face), sw = follow === 'mouth' ? face.mouthW : face.box[2];
-  return { t, x: (s.frame.left + b.left + sx * b.width) / W, y: (s.frame.top + b.top + sy * b.height) / H, w: (sw * b.width) / W };
+  // the point in the frame's own px, then grown round the frame's centre and moved with it
+  const cx = s.frame.width / 2, cy = s.frame.height / 2, fx = b.left + p.x * b.width, fy = b.top + p.y * b.height;
+  return { t: p.t, x: (s.frame.left + s.offsetX + cx + (fx - cx) * s.scale) / W, y: (s.frame.top + s.offsetY + cy + (fy - cy) * s.scale) / H, w: (p.w * b.width * s.scale) / W };
+}
+
+/** the transitions that move or grow the incoming clip's whole frame, and the outgoing one's (a slide leaves A where it is; the
+ *  others move neither) */
+const MOVING: ReadonlySet<string> = new Set(['slide', 'push', 'whip', 'zoom']), MOVING_OUT: ReadonlySet<string> = new Set(['push', 'whip', 'zoom']);
+
+/**
+ * Film times, one a frame, in [from, to] where a transition moves or grows the clip's frame: its own (as drawn: a fallback to a
+ * dissolve does not move it) and, through `link`, the next clip's that moves it out. Keys every FACE_STEP alone would cut a
+ * 0.6 s push or zoom into three straight pieces and leave the sticker beside the face in between.
+ */
+export function movingTimes(clip: VideoItem, clipTimes: { start: number; end: number }, link: VideoLink | undefined, from: number, to: number, fps: number): number[] {
+  const spans: Array<[number, number]> = [];
+  const tr = clip.transitionIn, shaped = !!clip.shape && clip.shape.length >= 3;
+  if (tr && tr.dur > 0 && MOVING.has(drawnTransition(tr.type, clip.frame, shaped, link?.from))) spans.push([clipTimes.start, clipTimes.start + tr.dur]);
+  const o = link?.out;
+  if (o && o.dur > 0 && MOVING_OUT.has(drawnTransition(o.type, o.frame, o.shaped, clip.frame))) spans.push([clipTimes.start + o.at, clipTimes.start + o.at + o.dur]);
+  const out: number[] = [];
+  for (const [a, b] of spans) for (let k = Math.ceil(Math.max(a, from) * fps - 1e-6); k / fps <= Math.min(b, to) + 1e-9; k++) out.push(Math.round((k / fps) * 1e6) / 1e6);
+  return out;
+}
+
+/** The spot at film time t between samples (sorted by t): straight between the two either side, held past either end. */
+export function spotAt(spots: FilmSpot[], t: number): FilmSpot {
+  const i = spots.findIndex((p) => p.t >= t);
+  if (i === 0) return { ...spots[0], t };
+  if (i < 0) return { ...spots[spots.length - 1], t };
+  const a = spots[i - 1], b = spots[i], k = (t - a.t) / (b.t - a.t);
+  return { t, x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, w: a.w + (b.w - a.w) * k };
 }
 
 /** A centred moving average over three samples: a sticker that follows a face should not shiver with the detector. */
@@ -89,5 +134,8 @@ export const COVER_LIFT = 0.1;
  */
 export function stickerKeys(spots: FilmSpot[], itemStart: number, anchor: { x: number; y: number; width: number }, cover: number, lift = 0, aspect = 1) {
   const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
-  return spots.map((p) => ({ t: r4(p.t - itemStart), x: r4(p.x - anchor.x), y: r4(p.y - lift * cover * p.w * aspect - anchor.y), scale: r4(Math.min(10, Math.max(0.05, (cover * p.w) / anchor.width))) }));
+  // a move is at most a frame either way (the schema's range): a face a push or zoom has taken farther off the film leaves the
+  // sticker off it too, a frame from its anchor
+  const move = (v: number) => r4(Math.min(1, Math.max(-1, v)));
+  return spots.map((p) => ({ t: r4(p.t - itemStart), x: move(p.x - anchor.x), y: move(p.y - lift * cover * p.w * aspect - anchor.y), scale: r4(Math.min(10, Math.max(0.05, (cover * p.w) / anchor.width))) }));
 }
