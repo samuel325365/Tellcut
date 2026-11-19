@@ -101,6 +101,7 @@ export const SECTIONS: Section[] = [
     ['Camera keyframes', 'help.6.7'],
     ['Corners / shake / blur', 'help.6.8'],
     ['Stabilize', 'help.6.9'],
+    ['Picture window', 'help.6.10'],
   ] },
   { title: 'Magnetic track', items: [
     ['Turn on', 'help.7.0'],
