@@ -1,6 +1,6 @@
 import { createRegistry, parseProject, type Transcript } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
-import { canvasFxFiles, chosenSpec, flatlayHandOff, transitionNotes, fxChecks, modelChecks, noTranscript, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
+import { canvasFxFiles, chosenSpec, flatlayHandOff, transitionNotes, textShapeShare, windowNotes, fxChecks, modelChecks, noTranscript, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -690,4 +690,51 @@ test('a transition drawn as a dissolve, and a film of more than two kinds of tra
   const two = project([{ id: 'main', kind: 'video', items: [clip('a', 0, 2), clip('b', 1.5, 4, { transitionIn: { type: 'dissolve', dur: 0.5 } }),
     clip('c', 3.6, 6, { shape, transitionIn: { type: 'flash', dur: 0.4 } }), clip('d', 5.5, 8, { transitionIn: { type: 'dissolve', dur: 0.5 } }), clip('e', 7.5, 10, { transitionIn: { type: 'cut', dur: 0 } })] }]);
   expect(transitionNotes(two)).toEqual([]);
+});
+
+test('a picture window with nothing under it is a note, one a stretch; a background, a lower whole clip, a block round it or a strip across is not', () => {
+  const bg = (id: string, start: number, end: number) => ({ id, start, end, type: 'common.backdrop', params: {} });
+  const p = project([{ id: 'bg', kind: 'scene', items: [bg('back', 2, 4)] }, { id: 'main', kind: 'video', items: [
+    clip('a', 0, 4, { frame: [0.2, 0.2, 0.6, 0.6] }), clip('b', 4, 5, { shape: { type: 'circle' } }), clip('b2', 5, 6, { shape: [[0, 0], [1, 0], [1, 1]], outline: {} }),
+    clip('c', 6, 8, { frame: [0, 0.3, 1, 0.4] }), clip('d', 8, 10)] }]);
+  expect(msgs(windowNotes(p))).toEqual([
+    'note 0-2 畫面視窗 a（frame）底下沒有東西，視窗四周會是黑的：在它下面放一個 scene 積木（common.backdrop、common.paper 這類背景），或一段全畫面的影片',
+    'note 4-6 畫面視窗 b（circle 形狀）、b2（多邊形）底下沒有東西，視窗四周會是黑的：在它下面放一個 scene 積木（common.backdrop、common.paper 這類背景），或一段全畫面的影片']);
+  expect(windowNotes(p)[1].ids).toEqual(['b', 'b2']);
+  // a whole clip on a lower track, a block drawn round the window, a film on a colour: nothing to say
+  const lower = project([{ id: 'main', kind: 'video', items: [clip('m', 0, 4)] }, { id: 'v2', kind: 'video', items: [clip('w', 0, 4, { frame: [0.6, 0.6, 0.3, 0.3], shape: { type: 'heart' } })] }]);
+  expect(windowNotes(lower)).toEqual([]);
+  const upper = project([{ id: 'v0', kind: 'video', items: [clip('w', 0, 4, { frame: [0.6, 0.6, 0.3, 0.3] })] }, { id: 'main', kind: 'video', items: [clip('m', 0, 4)] }]);
+  expect(msgs(windowNotes(upper))).toHaveLength(1);                         // the whole clip is above it, not under
+  const duo = project([{ id: 'main', kind: 'video', items: [clip('w', 0, 4, { frame: [0, 0, 0.5, 0.9] })] }, { id: 'o', kind: 'overlay', items: [{ id: 'duo', start: 0, end: 4, type: 'common.duo', params: {} }] }]);
+  expect(windowNotes(duo)).toEqual([]);
+  const coloured = project([{ id: 'main', kind: 'video', items: [clip('w', 0, 4, { shape: { type: 'star' } })] }]);
+  coloured.meta.background = '#f4e9d8';
+  expect(windowNotes(coloured)).toEqual([]);
+});
+
+test('more than one kind of named shape in a film; a text shape too long or too thin', () => {
+  const back = { id: 'bg', kind: 'scene', items: [{ id: 'back', start: 0, end: 20, type: 'common.backdrop', params: {} }] };
+  const p = project([back, { id: 'main', kind: 'video', items: [
+    clip('t', 0, 4, { shape: { type: 'text', text: 'ROMA' } }), clip('a', 4, 6, { shape: { type: 'circle' } }), clip('b', 6, 8, { shape: { type: 'star' } }),
+    clip('p', 8, 10, { shape: [[0, 0], [1, 0], [1, 1]] }), clip('thin', 10, 12, { shape: { type: 'text', text: 'INTERNATIONAL', weight: 900 } }),
+    clip('ok', 12, 14, { frame: [0.1, 0.2, 0.8, 0.6], shape: { type: 'text', text: '3 DAYS\nIN ROME' } })] }], { duration: 20 });
+  expect(msgs(windowNotes(p))).toEqual([
+    'note  這支片用了 3 種形狀視窗（text、circle、star）：形狀視窗是整支片的版面，一支片最多一種（全畫面的片段之外），同一種用到底',
+    'note 0-4 t 的 text 形狀視窗「ROMA」有 4 秒：大字視窗只用在片頭或章節開頭，2 秒左右，超過 3 秒就只是一段看不清的畫面；縮短，或之後換成一般的視窗',
+    'note 10-12 thin 的 text 形狀視窗「INTERNATIONAL」看得到的畫面只有 frame 的約 8%（估計）：字太細、太多或一行太長，字裡幾乎沒有畫面；用粗字（weight 800–900）、少幾個字、分成兩行，或讓 frame 的比例接近字的比例']);
+  expect(windowNotes(p)[0].ids).toEqual(['t', 'a', 'b', 'thin', 'ok']);
+  // one kind, used again and again, and a polygon beside it: nothing
+  const one = project([back, { id: 'main', kind: 'video', items: [clip('a', 0, 2, { shape: { type: 'circle' } }), clip('b', 2, 4, { shape: [[0, 0], [1, 0], [1, 1]] }), clip('c', 4, 6, { shape: { type: 'circle' } })] }]);
+  expect(windowNotes(one)).toEqual([]);
+});
+
+test('a text shape\'s share of its frame is estimated from its letters: heavy short words show the picture, a long thin line does not', () => {
+  const wide = 16 / 9;
+  expect(textShapeShare({ type: 'text', text: 'ROMA' }, wide)).toBeGreaterThan(0.2);
+  expect(textShapeShare({ type: 'text', text: 'ROMA', weight: 300 }, wide)).toBeLessThan(textShapeShare({ type: 'text', text: 'ROMA' }, wide));
+  expect(textShapeShare({ type: 'text', text: 'INTERNATIONAL' }, wide)).toBeLessThan(0.15);
+  expect(textShapeShare({ type: 'text', text: 'INTER\nNATIONAL' }, wide)).toBeGreaterThan(0.15);   // two lines fit a wide frame better
+  expect(textShapeShare({ type: 'text', text: '羅馬' }, wide)).toBeGreaterThan(0.15);
+  expect(textShapeShare({ type: 'text', text: '羅馬假期的第一天' }, wide)).toBeLessThan(textShapeShare({ type: 'text', text: '羅馬' }, wide));
 });

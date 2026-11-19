@@ -1,7 +1,7 @@
 // The model layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 4): what the project file alone
 // tells (parseProject already refuses items that end before they start) — offline material, black frames, items past the end, empty text, music stopping early, captions vs speech.
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
-import { allItems, badParamTypes, envelopeAt, OLD_BLOCKS, OLD_TEXT, overlapPairs, PARAM_TYPES, resolveTimes, soundFiles, transitionFallbacks, type ParamDef, type Project, type Transcript, type VideoItem } from '@tellcut/engine';
+import { allItems, badParamTypes, envelopeAt, isNamedShape, isShaped, OLD_BLOCKS, OLD_TEXT, overlapPairs, PARAM_TYPES, resolveTimes, soundFiles, transitionFallbacks, type ParamDef, type Project, type TextShape, type Transcript, type VideoItem } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { flatlayClip, PANEL_FRAME, parseFly, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { readFly } from '../../packages/plugin-common/src/flatlay.ts';
@@ -354,6 +354,90 @@ export function transitionNotes(p: Project): Finding[] {
   const kinds = [...new Set(clips.map((c) => c.transitionIn!.type))];
   if (kinds.length > 2) out.push({ level: 'note', ids: clips.map((c) => c.id),
     msg: `這支片用了 ${kinds.length} 種轉場（${kinds.join('、')}）：一支片最多兩種（片型風格說整支片用轉場時也一樣），預設直接剪，只在換章節、地點、時間的地方用轉場` });
+  return out;
+}
+
+/** Overlay blocks that draw round a window of their own (a page, a desk, a phone…; the plugin-common *Window helpers): the video
+ *  under such a block plays in its hole, so nothing round the window is black. */
+const SURROUNDS = new Set(['common.casefile', 'common.chat', 'common.comic', 'common.duo', 'common.magazine', 'common.monoframe', 'common.outro',
+  'common.search', 'common.snap', 'common.window', 'common.flatlay', 'common.phone']);
+/** a text shape held longer than this reads as a picture you cannot make out, not as a word */
+export const TEXT_SHAPE_MAX = 3;
+/** a text shape showing less of its frame than this is letters with hardly any picture in them */
+export const TEXT_SHAPE_MIN_SHARE = 0.15;
+
+/**
+ * About how much of its frame a text shape shows, 0–1. The model layer has no fonts, so this is the letters' usual proportions, not
+ * a measurement: each line's ink as wide as its characters' usual advances (a Han or kana character 1 em, a capital or digit 0.68,
+ * a small letter 0.55, a space 0.3) and as tall as capitals (0.72 em; 0.88 for Han and kana), the lines a `line` apart; that box
+ * fitted into the frame as the stage fits it (shapes.ts fitText, on the ink); then the share of the box the strokes fill at the
+ * weight (a 900 about half, a 400 a third). Good to a few points, which is all a 15% rule needs.
+ */
+export function textShapeShare(s: TextShape, aspect: number): number {
+  const lines = s.text.split('\n'), wide = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+  const adv = (ch: string) => (wide.test(ch) ? 1 : ch === ' ' ? 0.3 : /[A-Z0-9]/.test(ch) ? 0.68 : /[a-z]/.test(ch) ? 0.55 : 0.6);
+  const width = Math.max(...lines.map((l) => [...l].reduce((n, ch) => n + adv(ch), 0))), cap = wide.test(s.text) ? 0.88 : 0.72;
+  const height = cap + (lines.length - 1) * (s.line ?? 1), box = width / height;
+  const w = Math.min(900, Math.max(100, s.weight ?? 900)), fill = w <= 400 ? 0.18 + ((w - 100) / 300) * 0.14 : 0.32 + ((w - 400) / 500) * 0.2;
+  return fill * Math.min(box / aspect, aspect / box);
+}
+
+/**
+ * Picture windows (the Cut API's frame, shape, outline, shadow), as gentle notes like the transitions': a window with nothing
+ * under it (no scene block, no lower whole-picture clip, no block drawn round it) shows black round it; a film of more than one
+ * named shape (a shaped window is the film's layout, not a one-shot decoration); a text shape held past TEXT_SHAPE_MAX seconds,
+ * or one whose letters show under TEXT_SHAPE_MIN_SHARE of the frame. A strip across the whole width or height (cinemascope bands,
+ * a letterbox) is a look on black, not a window, and a film on a background colour other than black is not black round anything.
+ */
+export function windowNotes(p: Project): Finding[] {
+  const times = resolveTimes(p), out: Finding[] = [], fps = p.meta.fps, W = p.meta.width, H = p.meta.height;
+  const visible = p.tracks.filter((t) => !t.muted), tracks = visible.filter((t) => t.kind === 'video');
+  const span = (id: string): [number, number] => { const t = times.get(id)!; return [t.start, t.end]; };
+  const whole = (c: VideoItem) => !isShaped(c) && c.frame[0] <= 1e-6 && c.frame[1] <= 1e-6 && c.frame[2] >= 1 - 1e-6 && c.frame[3] >= 1 - 1e-6;
+  const strip = (c: VideoItem) => !isShaped(c) && ((c.frame[0] <= 1e-6 && c.frame[2] >= 1 - 1e-6) || (c.frame[1] <= 1e-6 && c.frame[3] >= 1 - 1e-6));
+  const what = (c: VideoItem) => (isNamedShape(c.shape) ? `${c.shape.type} 形狀` : isShaped(c) ? '多邊形' : 'frame');
+  // what covers the picture round a window: a scene block, a block drawn round a window, a whole-picture clip on a lower track
+  const under = (ti: number) => [
+    ...visible.filter((t) => t.kind === 'scene').flatMap((t) => t.items),
+    ...visible.filter((t) => t.kind === 'overlay').flatMap((t) => t.items).filter((it) => SURROUNDS.has((it as { type: string }).type)),
+    ...tracks.slice(0, ti).flatMap((t) => (t.items as VideoItem[]).filter(whole)),
+  ].map((it) => span(it.id));
+  const black = /^(#0{3}|#0{6}|black)$/i.test(p.meta.background.trim());
+  const bare: Array<{ a: number; b: number; ids: string[] }> = [];
+  if (black) tracks.forEach((t, ti) => {
+    const cover = under(ti).sort((x, y) => x[0] - y[0]);
+    for (const c of t.items as VideoItem[]) {
+      if (whole(c) || strip(c)) continue;
+      let [a] = span(c.id);
+      const [, e] = span(c.id);
+      const gaps: Array<[number, number]> = [];
+      for (const [s0, s1] of cover) { if (s1 <= a) continue; if (s0 >= e) break; if (s0 > a) gaps.push([a, s0]); a = Math.max(a, s1); }
+      if (a < e) gaps.push([a, e]);
+      for (const [g0, g1] of gaps) if (g1 - g0 >= 1 / fps - 1e-6) bare.push({ a: g0, b: g1, ids: [`${c.id}（${what(c)}）`] });
+    }
+  });
+  // one note a stretch: windows next to each other in time are one place to fix
+  bare.sort((x, y) => x.a - y.a);
+  const merged: typeof bare = [];
+  for (const g of bare) {
+    const m = merged.at(-1);
+    if (m && g.a <= m.b + 1 / fps) { m.b = Math.max(m.b, g.b); m.ids.push(...g.ids); } else merged.push({ ...g, ids: [...g.ids] });
+  }
+  for (const m of merged) out.push({ level: 'note', t: [r3(m.a), r3(m.b)], ids: m.ids.map((x) => x.replace(/（.*$/, '')),
+    msg: `畫面視窗 ${m.ids.join('、')}底下沒有東西，視窗四周會是黑的：在它下面放一個 scene 積木（common.backdrop、common.paper 這類背景），或一段全畫面的影片` });
+  const named = tracks.flatMap((t) => t.items as VideoItem[]).filter((c) => isNamedShape(c.shape));
+  const kinds = [...new Set(named.map((c) => (c.shape as { type: string }).type))];
+  if (kinds.length > 1) out.push({ level: 'note', ids: named.map((c) => c.id),
+    msg: `這支片用了 ${kinds.length} 種形狀視窗（${kinds.join('、')}）：形狀視窗是整支片的版面，一支片最多一種（全畫面的片段之外），同一種用到底` });
+  for (const c of named) {
+    const s = c.shape as TextShape;
+    if (s.type !== 'text') continue;
+    const [a, b] = span(c.id), share = textShapeShare(s, (c.frame[2] * W) / (c.frame[3] * H)), words = s.text.replace(/\n/g, ' ');
+    if (b - a > TEXT_SHAPE_MAX + 1e-6) out.push({ level: 'note', t: [r3(a), r3(b)], ids: [c.id],
+      msg: `${c.id} 的 text 形狀視窗「${words}」有 ${r3(b - a)} 秒：大字視窗只用在片頭或章節開頭，2 秒左右，超過 ${TEXT_SHAPE_MAX} 秒就只是一段看不清的畫面；縮短，或之後換成一般的視窗` });
+    if (share < TEXT_SHAPE_MIN_SHARE) out.push({ level: 'note', t: [r3(a), r3(b)], ids: [c.id],
+      msg: `${c.id} 的 text 形狀視窗「${words}」看得到的畫面只有 frame 的約 ${Math.round(share * 100)}%（估計）：字太細、太多或一行太長，字裡幾乎沒有畫面；用粗字（weight 800–900）、少幾個字、分成兩行，或讓 frame 的比例接近字的比例` });
+  }
   return out;
 }
 
