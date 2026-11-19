@@ -202,16 +202,21 @@ export const ZOOM_OUT = 1.4, ZOOM_POW = 1.2, ZOOM_IN = 0.8, ZOOM_FADE: readonly 
 export const WHIP_BLUR = 0.06;
 /** blur: the deviation at its blurriest (the middle), of the frame's short side */
 export const BLUR_MAX = 0.03;
-/** flash: how far the burning picture's brightness goes up (to 1 + FLASH_BRIGHT) as the white comes over it */
-export const FLASH_BRIGHT = 2;
+/** flash: a spike, not a plateau. Its strength s runs straight (no easing) from 0 at the start to 1 at the middle and back to 0
+ *  at the end; the white veil is s^FLASH_VEIL and the picture's brightness 1 + FLASH_BRIGHT × s^FLASH_BURN, so both come on only
+ *  near the middle. An eased ramp and a brightness up to 3× (its first version) burned bright footage to white for two thirds of
+ *  the flash (0.4 s of a 0.6 s one); now a bright picture is white for about 3 frames of a 0.6 s flash at 30 fps, while a dark
+ *  one still peaks white with a bright frame either side (transitions.test.ts measures both). */
+export const FLASH_BRIGHT = 0.35, FLASH_VEIL = 4, FLASH_BURN = 8;
 const VEIL = { dip: '#000', flash: '#fff' } as const;
 
 /** What a transition does to one picture at its progress: multiplied into the opacity and scale, added to the offsets, the larger
  *  streak and the stronger veil kept, the brightness multiplied, the clip-path set (B's reveals only). */
 interface Look { opacity: number; dx: number; dy: number; scale: number; streak: [number, number]; veil: Veil | null; bright: number; clip: string | null }
 const none = (): Look => ({ opacity: 1, dx: 0, dy: 0, scale: 1, streak: [0, 0], veil: null, bright: 1, clip: null });
-/** dip's black veil goes as u, flash's white one as u² (the brightness does the start of the burn) */
-const veilOf = (kind: 'dip' | 'flash', u: number): Veil | null => (u > 0 ? { color: VEIL[kind], opacity: +(kind === 'flash' ? u * u : u).toFixed(4) } : null);
+/** dip's black veil goes as its eased progress u, flash's white one as its straight strength s to the FLASH_VEIL */
+const veilOf = (kind: 'dip' | 'flash', u: number): Veil | null => (u > 0 ? { color: VEIL[kind], opacity: +(kind === 'flash' ? u ** FLASH_VEIL : u).toFixed(4) } : null);
+const burn = (s: number) => 1 + FLASH_BRIGHT * s ** FLASH_BURN;
 const streakAlong = (d: Dir, s: number, w: number, h: number): [number, number] => (d === 'l' || d === 'r' ? [n3(s * w), 0] : [0, n3(s * h)]);
 
 /** the incoming clip B at progress p of its own transition (drawn as `kind`) in a w × h frame; `linked`: A is under it doing its half */
@@ -242,8 +247,9 @@ function incoming(kind: TransitionType, p: number, tr: { dir?: Dir; x?: number; 
   } else if (kind === 'dip' || kind === 'flash') {
     // the first half is A's (going to black or white) and B, under a full veil, is not seen till the middle; unlinked (nothing of
     // its own under it) B itself comes in as the veil's colour over that half
-    if (p < 0.5) { L.opacity = linked ? 0 : eIO3(2 * p); L.veil = veilOf(kind, 1); if (kind === 'flash') L.bright = 1 + FLASH_BRIGHT; }
-    else { const u = 1 - eIO3(2 * p - 1); L.veil = veilOf(kind, u); if (kind === 'flash') L.bright = 1 + FLASH_BRIGHT * u; }
+    if (p < 0.5) { L.opacity = linked ? 0 : eIO3(2 * p); L.veil = veilOf(kind, 1); if (kind === 'flash') L.bright = burn(1); }
+    else if (kind === 'flash') { const s = 1 - clamp(2 * p - 1); L.veil = veilOf(kind, s); L.bright = burn(s); }
+    else L.veil = veilOf(kind, 1 - eIO3(2 * p - 1));
   }
   return L;
 }
@@ -258,11 +264,8 @@ function outgoing(kind: TransitionType, p: number, d: Dir, w: number, h: number)
     L.scale = 1 + ZOOM_OUT * p ** ZOOM_POW;
     const b = n3(ZOOM_BLUR * S * bump(p)); L.streak = [b, b];
   } else if (kind === 'blur') { const b = n3(BLUR_MAX * S * eIO3(clamp(2 * p))); L.streak = [b, b]; }
-  else if (kind === 'dip' || kind === 'flash') {
-    const u = eIO3(clamp(2 * p));
-    L.veil = veilOf(kind, u);
-    if (kind === 'flash') L.bright = 1 + FLASH_BRIGHT * u;
-  }
+  else if (kind === 'flash') { const s = clamp(2 * p); L.veil = veilOf(kind, s); L.bright = burn(s); }
+  else if (kind === 'dip') L.veil = veilOf(kind, eIO3(clamp(2 * p)));
   return L;
 }
 

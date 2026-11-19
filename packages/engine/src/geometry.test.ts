@@ -1,4 +1,4 @@
-import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clockClip, transitionFallback, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
+import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, FLASH_BRIGHT, FLASH_BURN, FLASH_VEIL, clockClip, transitionFallback, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
   WHIP_BLUR, ZOOM_BLUR, ZOOM_IN, ZOOM_OUT, ZOOM_POW } from './geometry.ts';
 import { TRANSITION_TYPES } from './schema.ts';
 import { eIO3, eOut3 } from './util.ts';
@@ -396,13 +396,18 @@ test('dip: A goes to black by the middle; B, unseen before it, comes up from bla
 
 test('flash: A burns out to white by the middle (brighter, then covered); B comes back from white', () => {
   const v = (s: any) => s.veil && [s.veil.color, s.veil.opacity];
-  expect(PS.map((p) => v(A('flash', p)))).toEqual([null, ['#fff', 0.25], ['#fff', 1], ['#fff', 1], null]);
-  expect(PS.map((p) => A('flash', p).filter)).toEqual(['none', 'brightness(2.000)', 'brightness(3.000)', 'brightness(3.000)', 'none']);
-  expect(PS.map((p) => v(B('flash', p)))).toEqual([['#fff', 1], ['#fff', 1], ['#fff', 1], ['#fff', 0.25], null]);
-  expect(PS.map((p) => B('flash', p).filter)).toEqual(['brightness(3.000)', 'brightness(3.000)', 'brightness(3.000)', 'brightness(2.000)', 'none']);
+  const top = `brightness(${(1 + FLASH_BRIGHT).toFixed(3)})`, quarter = `brightness(${(1 + FLASH_BRIGHT * 0.5 ** FLASH_BURN).toFixed(3)})`;
+  expect(PS.map((p) => v(A('flash', p)))).toEqual([null, ['#fff', 0.5 ** FLASH_VEIL], ['#fff', 1], ['#fff', 1], null]);
+  expect(PS.map((p) => A('flash', p).filter)).toEqual(['none', quarter, top, top, 'none']);
+  expect(PS.map((p) => v(B('flash', p)))).toEqual([['#fff', 1], ['#fff', 1], ['#fff', 1], ['#fff', 0.5 ** FLASH_VEIL], null]);
+  expect(PS.map((p) => B('flash', p).filter)).toEqual([top, top, top, quarter, 'none']);
   expect(PS.map((p) => B('flash', p).opacity)).toEqual([0, 0, 1, 1, 1]);
+  // a spike, not a plateau: a tenth of the way either side of the middle the veil is already well under full
+  expect(A('flash', 0.4).veil!.opacity).toBeCloseTo(0.8 ** FLASH_VEIL, 4);
+  expect(B('flash', 0.6).veil!.opacity).toBeCloseTo(0.8 ** FLASH_VEIL, 4);
+  expect(0.8 ** FLASH_VEIL).toBeLessThan(0.5);
   // after a grade
-  expect(videoState(vid({ grade: 'g' }), 0, 4, 3.25, W, H, { g: 'saturate(1.1)' }, outOf('flash')).filter).toBe('saturate(1.1) brightness(2.000)');
+  expect(videoState(vid({ grade: 'g' }), 0, 4, 3.45, W, H, { g: 'saturate(1.1)' }, outOf('flash')).filter).toBe(`saturate(1.1) brightness(${(1 + FLASH_BRIGHT * 0.9 ** FLASH_BURN).toFixed(3)})`);
 });
 
 test('at the end of B\'s transition and after, and outside A\'s, every type leaves the clip exactly as with none', () => {

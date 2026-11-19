@@ -613,9 +613,9 @@ test('dip and flash cover the picture with a veil inside the frame, made once; h
   const q = structuredClone(p);
   q.tracks[0].items[1].transitionIn = { type: 'flash', dur: 1 };
   st.update(q);
-  st.draw(3.25);
+  st.draw(3.45);
   expect(veil('a')!.style.background).toMatch(/^(#fff|rgb\(255, 255, 255\)|white)$/);
-  expect(frame('a').style.filter).toBe('brightness(2.000)');
+  expect(frame('a').style.filter).toBe('brightness(1.151)');
 });
 
 test('a clip stacked under the clip its linked transition comes from is lifted just above it while the transition runs', () => {

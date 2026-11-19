@@ -32,6 +32,11 @@ beforeAll(async () => {
   await halves(join(work, 'media/a.png'), 'red', 'lime');
   await halves(join(work, 'media/b.png'), 'blue', 'yellow');
   for (const k of ['a', 'b']) copyFileSync(join(FIXTURES, `transition-${k}.png`), join(work, `media/p${k}.png`));
+  // bright footage (a sky, a white wall: every channel 180–230) and dark footage (a night street: 20–70)
+  await halves(join(work, 'media/bright-a.png'), '0xC8D2DC', '0xE6D2B4');
+  await halves(join(work, 'media/bright-b.png'), '0xB4C8E6', '0xDCDCC8');
+  await halves(join(work, 'media/dark-a.png'), '0x283040', '0x402818');
+  await halves(join(work, 'media/dark-b.png'), '0x182840', '0x303030');
   host = await openHost();
 }, 120000);
 afterAll(async () => {
@@ -42,10 +47,10 @@ afterAll(async () => {
 
 const crop = { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } };
 /** A (0–1.6 s) then B (1–2 s) with a linked 0.6 s transition: frame 39 (1.3 s) is its middle, where eIO3 is exactly 0.5 */
-const film = (transitionIn: Record<string, unknown>) => parseProject({ version: 1,
+const film = (transitionIn: Record<string, unknown>, pa = 'media/a.png', pb = 'media/b.png') => parseProject({ version: 1,
   meta: { name: 't', width: W, height: H, fps: FPS, duration: 2, plugins: [], background: '#ff00ff',   // magenta: a gap between the pictures shows
     mix: { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } } },
-  sources: { a: { path: 'media/a.png', duration: 1, width: W, height: H, kind: 'image' }, b: { path: 'media/b.png', duration: 1, width: W, height: H, kind: 'image' } },
+  sources: { a: { path: pa, duration: 1, width: W, height: H, kind: 'image' }, b: { path: pb, duration: 1, width: W, height: H, kind: 'image' } },
   media: {}, grids: [],
   tracks: [{ id: 'v', kind: 'video', items: [
     { id: 'A', source: 'a', in: 0, speed: 1, start: 0, end: 1.6, crop },
@@ -80,6 +85,42 @@ test('wipe halfway: B uncovered over A from its dir side, neither picture moved'
   // before B starts and after the wipe: only A, then only B
   near(await sample({ type: 'wipe', dir: 'l' }, 29, POINTS), [RED, GREEN, RED, GREEN]);
   near(await sample({ type: 'wipe', dir: 'l' }, 50, POINTS), [BLUE, YELLOW, BLUE, YELLOW]);
+}, 180000);
+
+/** every frame of film()'s 0.6 s transition (frames 30–48) between two of the media pictures, as {share of white pixels, mean
+ *  of the three channels}; white: every channel at 240 or more */
+const flashFrames = (transitionIn: Record<string, unknown>, pa: string, pb: string) =>
+  withProjectPage({ dir: work, project: film(transitionIn, pa, pb), registry, host }, async (s) => {
+    const out: Array<{ white: number; mean: number }> = [];
+    for (let n = 30; n <= 48; n++) {
+      await s.frame(n);
+      const r = PNG.sync.read(await s.png());
+      let white = 0, sum = 0;
+      for (let i = 0; i < r.data.length; i += 4) {
+        if (r.data[i] >= 240 && r.data[i + 1] >= 240 && r.data[i + 2] >= 240) white++;
+        sum += r.data[i] + r.data[i + 1] + r.data[i + 2];
+      }
+      out.push({ white: white / (r.data.length / 4), mean: sum / ((r.data.length / 4) * 3) });
+    }
+    return out;
+  });
+
+test('flash: on bright footage the frame is white only briefly; on dark footage it still peaks white', async () => {
+  const bright = await flashFrames({ type: 'flash' }, 'media/bright-a.png', 'media/bright-b.png');
+  const dark = await flashFrames({ type: 'flash' }, 'media/dark-a.png', 'media/dark-b.png');
+  // bright: at most 3 frames (0.1 s of the 0.6 s) mostly white, all round the middle (frame 39, index 9); the rest show the
+  // pictures (an eased veil and a 3× brightness had 11 frames all white and two half white)
+  const whiteFrames = bright.flatMap((f, i) => (f.white >= 0.5 ? [i] : []));
+  expect(whiteFrames.length, bright.map((f) => f.white.toFixed(2)).join(' ')).toBeLessThanOrEqual(3);
+  expect(whiteFrames.every((i) => Math.abs(i - 9) <= 1)).toBe(true);
+  expect(bright[9].white).toBe(1);
+  // dark: white at the middle, the frames either side much brighter than the pictures (it reads as a flash, not a blink), the
+  // ends the pictures themselves
+  const base = (dark[0].mean + dark[18].mean) / 2;
+  expect(dark[9].white).toBe(1);
+  for (const i of [8, 10]) expect(dark[i].mean, `frame ${i}`).toBeGreaterThan(3 * base);
+  for (const i of [7, 11]) expect(dark[i].mean, `frame ${i}`).toBeGreaterThan(2 * base);
+  expect(Math.abs(dark[2].mean - dark[0].mean)).toBeLessThan(5);
 }, 180000);
 
 test('push halfway: both pictures moved half a frame, edge to edge with no gap', async () => {
@@ -275,16 +316,15 @@ describe('every transition halfway between two structured pictures', () => {
     }
   }, 180000);
 
-  test('flash: white in the middle; before it A burning out, after it B coming back, neither showing in the other\'s half', async () => {
+  test('flash: white in the middle; before it A, after it B, neither showing in the other\'s half', async () => {
     const [q1, half, q3] = await thirds('flash');
     for (const [x, y] of GRID) {
       expect(Math.min(...px(half, x, y)), `(${x}, ${y})`).toBeGreaterThanOrEqual(243);
-      // brightness ×2 under a quarter of white: still warm before the middle, still cool after it
+      // a quarter of the way the flash has hardly begun (a spike at the middle): A as it is, warm; three quarters of the way
+      // B as it is, cool
       expect(px(q1, x, y)[0] - px(q1, x, y)[2], `A at (${x}, ${y})`).toBeGreaterThan(0);
       expect(px(q3, x, y)[2] - px(q3, x, y)[0], `B at (${x}, ${y})`).toBeGreaterThan(0);
-      // brighter than a plain quarter of white over A would be: the burn
-      const sum = (c: RGB) => c[0] + c[1] + c[2];
-      expect(sum(px(q1, x, y)) - sum(mix(fixA(x, y), [255, 255, 255], 0.25)), `burn at (${x}, ${y})`).toBeGreaterThan(30);
+      expect(nearest(q1, x, y, (dx, dy) => mix(fixA(x + dx, y + dy), [255, 255, 255], 0.0625)), `A at (${x}, ${y})`).toBeLessThanOrEqual(24);
     }
   }, 180000);
 
