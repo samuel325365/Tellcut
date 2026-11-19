@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { parseProject, resolveTimes, type Transcript } from '@tellcut/engine';
 import { analysisFiles, extrasFiles, findPreset, loadProjectFx, playerBuildStale, projectRegistry, readBurned, rebuildPlayer, readTranscript, TELLCUT_ROOT, type Burned } from '@tellcut/media-node';
 import { edgeFindings } from './check/edges.ts';
-import { canvasFxFiles, chosenSpec, fxChecks, fxParamTypeChecks, modelChecks, noTranscript, oldBlocks, flatlayHandOff, transitionNotes, windowNotes, outsideFiles, presetChecks, reportsCanvasText, type Finding } from './check/rules.ts';
+import { canvasFxFiles, chosenSpec, fxChecks, fxParamTypeChecks, modelChecks, noTranscript, oldBlocks, flatlayHandOff, transitionNotes, windowNotes, fadeOutNotes, outsideFiles, presetChecks, reportsCanvasText, type Finding } from './check/rules.ts';
 import { formatReport, isOffline, pageLayer, pageLayerSkip } from './check/report.ts';
 import { renderedChecks, type Drawn } from './check/page.ts';
 import { clipBars, letterboxFindings } from './check/letterbox.ts';
@@ -51,6 +51,7 @@ findings.push(...oldBlocks(p));
 findings.push(...flatlayHandOff(p));
 findings.push(...transitionNotes(p));
 findings.push(...windowNotes(p));
+findings.push(...fadeOutNotes(p));
 // the pictures below come from the built player: an old build would check code that is not the code anymore
 let stale = args.has('--quick') ? null : playerBuildStale();   // --quick renders nothing, so an old build does not matter
 if (stale) {

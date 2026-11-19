@@ -1,4 +1,4 @@
-import { comboProblems, comboSpan, expandCombo, type ComboLookup } from './combos.ts';
+import { comboEnd, comboProblems, comboSpan, expandCombo, type ComboLookup } from './combos.ts';
 import type { Combo, ItemType, SfxType } from './plugin.ts';
 
 const lines = { type: 'fx.lines', params: [{ key: 'count', label: '', type: 'number', min: 8, max: 120, default: 48 }, { key: 'inner', label: '', type: 'number', default: 0.3 }],
@@ -26,6 +26,8 @@ test('comboProblems finds each kind of mistake', () => {
     '組合 Big-Hit：至少要兩層，現在 1 層',
     "組合 Big-Hit：至少要有一層畫面（kind: 'effect'）",
   ]);
+  expect(comboProblems({ ...combo, ending: 1 as never }, lookup)).toEqual(['組合 impact：ending 只能是 true（片尾用的組合）或不寫']);
+  expect(comboProblems({ ...combo, ending: true }, lookup)).toEqual([]);
   expect(comboProblems({ ...combo, parts: [
     part({ name: 'a', template: 'nope' }), part({ name: 'a', len: 0 }), part({ name: 'b', type: 'fx.none' }), part({ name: 'c', params: { count: 200, size: 1 } }),
     part({ name: 'd', kind: 'sfx', type: 'fx.lines', layer: 'top' }), part({ name: 'e', kind: 'shake', type: 'fx.lines', px: 0 }), part({ name: 'f', layer: 'over', gain: -3, hz: 9 }),
@@ -73,4 +75,10 @@ test('comboSpan: a layer before the film\'s start is cut at 0 and keeps its end;
   expect(comboSpan({ at: -0.3, len: 1 }, 2)).toEqual({ start: 1.7, end: 2.7 });
   expect(comboSpan({ at: -0.3, len: 1 }, 0.1)).toEqual({ start: 0, end: 0.8 });
   expect(comboSpan({ at: -0.8, len: 0.5 }, 0.2)).toBeNull();
+});
+
+test('comboEnd: where the last picture or sound of a placed combo is over, the shake aside', () => {
+  expect(comboEnd(combo.parts, 2)).toBe(3.35);   // the hit, 1.4 s from 0.05 s ahead
+  expect(comboEnd(combo.parts.filter((p) => p.kind !== 'sfx'), 2)).toBe(2.7);
+  expect(comboEnd([{ kind: 'shake', at: 0, len: 5 }], 2)).toBe(2);
 });

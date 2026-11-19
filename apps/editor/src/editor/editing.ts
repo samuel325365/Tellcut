@@ -2,7 +2,7 @@
 // and transitions, the cutting keys (Q / W, ↑ / ↓, S, Delete), copy, paste and duplicate, muting, magnetic tracks, dragging on the
 // timeline, adding from the library at the playhead (a combo too), replacing a block, and what is selected. Every edit is one undo step through
 // the editor's apply(); the editor keeps the project, its history, the preview and crop mode.
-import { addItem, addTrack, allItems, attach as attachCmd, CommandError, copyItems, deleteItems, detach as detachCmd, expandCombo, findItem, magneticGaps, magneticTrack, moveTrack as moveTrackCmd,
+import { addItem, addTrack, allItems, attach as attachCmd, CommandError, comboEnd, copyItems, deleteItems, detach as detachCmd, ENDING_SLACK, expandCombo, findItem, magneticGaps, magneticTrack, moveTrack as moveTrackCmd,
   overlapPairs, ownSounds, pasteItems, placeCombo, removeTrack as removeTrackCmd, resolveTimes, restackItem, rippleDelete, setCrossfade, setMagnetic, setTrack as setTrackCmd, split, trimEnd, trimStart,
   updateItem, type Clip, type Combo, type ComboPlaced, type ComboPlacement, type Project, type Registry, type TrackKind } from '@tellcut/engine';
 import type { PlayerBridge } from '../bridge.ts';
@@ -388,7 +388,7 @@ export class TimelineEditing {
 
   /** A combo (engine combos.ts) at the playhead: its layers as ordinary items, all in one undo step, placed by engine placeCombo
    *  (the tracks Cut uses, hung on the main-track clip playing there) and selected together. The shake is the clip's own: with no
-   *  clip at the playhead it is left out, and the notice says so. */
+   *  clip at the playhead it is left out, and the notice says so; so is an ending combo placed with the film going on after it. */
   insertCombo(combo: Combo): boolean {
     const reg = this.reg, p = this.s.project;
     if (!reg || !p) return false;
@@ -403,6 +403,10 @@ export class TimelineEditing {
     if (!this.c.apply((d) => { placed = placeCombo(d, { layers, at, skip }); }) || !placed) return false;
     this.select(Object.values(placed.items), { reveal: false });   // keep the library (or the gallery's tab) in front
     if (layers.some((l) => l.kind === 'shake') && !placed.shaken.length) this.set({ notice: say('ed.comboNoShake') });
+    // an ending combo (closing) with the film going on after it: the footage comes back once it is over. The film's end is the
+    // user's to set, so it is said, not moved
+    const dur = this.s.project?.meta.duration ?? 0, end = Math.min(comboEnd(layers, at), dur);
+    if (combo.ending && end < dur - ENDING_SLACK) this.set({ notice: say('ed.comboNotEnd', { s: (dur - end).toFixed(1) }) });
     return true;
   }
 

@@ -26,6 +26,9 @@ const comboEditor = async () => {
     { name: 'flash', kind: 'effect' as const, type: 'x.flash', at: 0, len: 0.5, layer: 'top' as const },
     { name: 'hit', kind: 'sfx' as const, type: 'x.hit', at: 0, len: 1.4, gain: -6 },
     { name: 'shake', kind: 'shake' as const, at: 0, len: 0.4, px: 28 },
+  ] }, { id: 'bye', label: '再見', doc: 'the end', ending: true as const, parts: [
+    { name: 'lines', kind: 'effect' as const, type: 'x.lines', at: 0, len: 2 },
+    { name: 'hit', kind: 'sfx' as const, type: 'x.hit', at: 0, len: 1 },
   ] }];
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge, registry, combos });
@@ -58,4 +61,15 @@ test('a combo where no clip plays: the shake is left out and the notice says so;
   expect(all(ed).some((i) => i.shake)).toBe(false);
   expect(ed.store.get().notice).toBe('播放頭下沒有主軌片段：鏡頭晃動那一層沒有放（晃動是片段本身的效果）');
   expect(ed.insertCombo('nope')).toBe(false);
+});
+
+test('an ending combo with the film going on after it is placed as asked, and the notice says how long the film goes on; at the end, nothing', async () => {
+  const ed = await comboEditor(), dur = ed.store.get().project!.meta.duration;
+  ed.seek(dur - 5);
+  expect(ed.insertCombo('bye')).toBe(true);
+  expect(ed.store.get().project!.meta.duration).toBe(dur);   // never moved
+  expect(ed.store.get().notice).toBe('這個組合是片尾用的，放完片子還有 3.0 秒，之後畫面會再出現：要收尾就放在片子最後');
+  ed.seek(dur - 1.8);
+  expect(ed.insertCombo('bye')).toBe(true);
+  expect(ed.store.get().notice).toBe('');
 });

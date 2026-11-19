@@ -82,8 +82,9 @@ export const combos: Combo[] = [
   ] },
   // the door starts down at 0.2 s and lands at 1 s, where the rattle's thump (0.55 s into it) and the clunk fall and the sign pops on;
   // from 1.5 s the frame fades to black. (Black rather than the flash's white fade-in: once the door is down a white light would only
-  // hide the sign, and a fade to black is what "that's all for today" ends on)
-  { id: 'closing', label: '收工', doc: '收工、打烊、今天就到這裡、片尾：整個畫面的鐵捲門嘩啦啦拉下來，到底「喀」一聲貼上「今日打烊」，再慢慢暗到全黑', parts: [
+  // hide the sign, and a fade to black is what "that's all for today" ends on). It ends the film (ending): at 2.4 s the door and the
+// black are gone, so anywhere but the end the footage comes back; placing it never moves the film's end, c.combo and check say so
+  { id: 'closing', label: '收工', ending: true, doc: '只放在片尾（放在片子最後 2.4 秒，結束在片尾；放在中間 2.4 秒後畫面會再出現）：收工、打烊、今天就到這裡：整個畫面的鐵捲門嘩啦啦拉下來，到底「喀」一聲貼上「今日打烊」，再慢慢暗到全黑', parts: [
     { name: 'door', kind: 'effect', type: 'common.rolldoor', template: 'shop-close', at: 0, len: 2.4 },
     { name: 'dark', kind: 'effect', type: 'core.flash', params: { fade: 'out', color: '#000000' }, at: 1.5, len: 0.9, layer: 'top' },
     { name: 'rattle', kind: 'sfx', type: 'common.rattle', at: 0.45, len: 0.65, gain: -8 },

@@ -1,6 +1,6 @@
 import { createRegistry, parseProject, type Transcript } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
-import { canvasFxFiles, chosenSpec, flatlayHandOff, transitionNotes, textShapeShare, windowNotes, fxChecks, modelChecks, noTranscript, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
+import { canvasFxFiles, chosenSpec, fadeOutNotes, flatlayHandOff, transitionNotes, textShapeShare, windowNotes, fxChecks, modelChecks, noTranscript, oldBlocks, outsideFiles, presetChecks, reportsCanvasText, visibleWords } from './rules.ts';
 import { formatReport } from './report.ts';
 
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1.6, send: 0.35 } };
@@ -737,4 +737,14 @@ test('a text shape\'s share of its frame is estimated from its letters: heavy sh
   expect(textShapeShare({ type: 'text', text: 'INTER\nNATIONAL' }, wide)).toBeGreaterThan(0.15);   // two lines fit a wide frame better
   expect(textShapeShare({ type: 'text', text: '羅馬' }, wide)).toBeGreaterThan(0.15);
   expect(textShapeShare({ type: 'text', text: '羅馬假期的第一天' }, wide)).toBeLessThan(textShapeShare({ type: 'text', text: '羅馬' }, wide));
+});
+
+test('a fade out over before the film ends (the closing combo in the middle) is a note; at the end, or dipping into a fade in, it is not', () => {
+  const flash = (id: string, start: number, end: number, params: object) => ({ id, start, end, type: 'core.flash', params });
+  const film = (items: object[]) => project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'top', kind: 'overlay', items }]);
+  expect(msgs(fadeOutNotes(film([flash('dark', 4.5, 5.4, { fade: 'out', color: '#000000' })])))).toEqual([
+    'note 4.5-5.4 dark 淡出到 #000000（core.flash fade out），在 5.4 秒就結束了，片長 10 秒：淡出完畫面又一下子回來。淡出是收尾用的（收工 closing 組合也是），放在片尾、結束在片尾；要中間暗一下再回來，結尾接一個 fade in']);
+  expect(fadeOutNotes(film([flash('dark', 9, 9.6, { fade: 'out', color: '#000' })]))).toEqual([]);
+  expect(fadeOutNotes(film([flash('dark', 4, 5, { fade: 'out', color: '#000' }), flash('up', 5, 6, { fade: 'in', color: '#000' })]))).toEqual([]);
+  expect(fadeOutNotes(film([flash('pop', 4, 4.5, { peak: 1 }), flash('in', 0, 1, { fade: 'in' })]))).toEqual([]);
 });

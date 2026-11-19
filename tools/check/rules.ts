@@ -1,7 +1,7 @@
 // The model layer of `npm run check` (toolkit phase 1, spec 2026-10-16-toolkit-phase1 Task 4): what the project file alone
 // tells (parseProject already refuses items that end before they start) — offline material, black frames, items past the end, empty text, music stopping early, captions vs speech.
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
-import { allItems, badParamTypes, envelopeAt, isNamedShape, isShaped, OLD_BLOCKS, OLD_TEXT, overlapPairs, PARAM_TYPES, resolveTimes, soundFiles, transitionFallbacks, type ParamDef, type Project, type TextShape, type Transcript, type VideoItem } from '@tellcut/engine';
+import { allItems, badParamTypes, ENDING_SLACK, envelopeAt, isNamedShape, isShaped, OLD_BLOCKS, OLD_TEXT, overlapPairs, PARAM_TYPES, resolveTimes, soundFiles, transitionFallbacks, type ParamDef, type Project, type TextShape, type Transcript, type VideoItem } from '@tellcut/engine';
 import { RELATIVE_IMPORT, timecode1 } from '@tellcut/media-node';
 import { flatlayClip, PANEL_FRAME, parseFly, templateOf, titleTemplateOf } from '@tellcut/plugin-common';
 import { readFly } from '../../packages/plugin-common/src/flatlay.ts';
@@ -355,6 +355,21 @@ export function transitionNotes(p: Project): Finding[] {
   if (kinds.length > 2) out.push({ level: 'note', ids: clips.map((c) => c.id),
     msg: `這支片用了 ${kinds.length} 種轉場（${kinds.join('、')}）：一支片最多兩種（片型風格說整支片用轉場時也一樣），預設直接剪，只在換章節、地點、時間的地方用轉場` });
   return out;
+}
+
+/** A fade out (core.flash fade out: a film's own ending, the closing combo's fade to black) over more than ENDING_SLACK before the
+ *  film's end: the colour covers the frame by its end, and then it is gone and the footage is back at once. A fade in starting
+ *  where it ends (a dip to a colour and back) is not one. A note: the film still plays. */
+export function fadeOutNotes(p: Project): Finding[] {
+  const times = resolveTimes(p), dur = p.meta.duration;
+  const flashes = allItems(p).filter(({ item }) => (item as { type?: string }).type === 'core.flash')
+    .map(({ item }) => ({ id: item.id, params: (item as { params?: Record<string, unknown> }).params ?? {}, ...times.get(item.id)! }));
+  return flashes.flatMap((f): Finding[] => {
+    if (f.params.fade !== 'out' || f.end >= dur - ENDING_SLACK) return [];
+    if (flashes.some((g) => g.params.fade === 'in' && Math.abs(g.start - f.end) <= 0.2)) return [];
+    const color = typeof f.params.color === 'string' ? f.params.color : '#fff';
+    return [{ level: 'note', t: [r3(f.start), r3(f.end)], ids: [f.id], msg: `${f.id} 淡出到 ${color}（core.flash fade out），在 ${r3(f.end)} 秒就結束了，片長 ${r3(dur)} 秒：淡出完畫面又一下子回來。淡出是收尾用的（收工 closing 組合也是），放在片尾、結束在片尾；要中間暗一下再回來，結尾接一個 fade in` }];
+  });
 }
 
 /** Overlay blocks that draw round a window of their own (a page, a desk, a phone…; the plugin-common *Window helpers): the video

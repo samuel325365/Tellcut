@@ -11,6 +11,8 @@ import { r6 } from './commands/core.ts';
 export const MAX_COMBOS = 16;
 /** a combo id, and a part's name: one lower-case English word */
 export const COMBO_ID = /^[a-z][a-z0-9]*$/;
+/** an ending combo (Combo.ending) over more than this many seconds before the film's end leaves the film going on after it */
+export const ENDING_SLACK = 0.5;
 
 /** what a combo's types are checked against: the registry, or anything that finds item and sound types the same way */
 export type ComboLookup = Pick<Registry, 'item' | 'sfx'>;
@@ -33,6 +35,7 @@ export function comboProblems(c: Combo, lookup: ComboLookup): string[] {
   if (!COMBO_ID.test(id)) out.push(`${name}：id 要是一個小寫英文字（例如 impact）`);
   if (typeof c?.label !== 'string' || !c.label.trim()) out.push(`${name}：沒有 label`);
   if (typeof c?.doc !== 'string' || !c.doc.trim()) out.push(`${name}：沒有 doc（一行：什麼場合用，看起來、聽起來怎樣）`);
+  if (c?.ending !== undefined && c.ending !== true) out.push(`${name}：ending 只能是 true（片尾用的組合）或不寫`);
   const parts = Array.isArray(c?.parts) ? c.parts : [];
   if (parts.length < 2) out.push(`${name}：至少要兩層，現在 ${parts.length} 層`);
   if (!parts.some((p) => p?.kind === 'effect')) out.push(`${name}：至少要有一層畫面（kind: 'effect'）`);
@@ -110,4 +113,9 @@ export function expandCombo(c: Combo, lookup: ComboLookup, o: ComboOptions = {})
 export function comboSpan(p: Pick<ComboPart, 'at' | 'len'>, moment: number): { start: number; end: number } | null {
   const end = r6(moment + p.at + p.len);
   return end > 0 ? { start: r6(Math.max(0, moment + p.at)), end } : null;
+}
+
+/** where the layers of a combo placed at `moment` are over (the shake aside: it is the clip's own), in film seconds */
+export function comboEnd(layers: ReadonlyArray<Pick<ComboPart, 'kind' | 'at' | 'len'>>, moment: number): number {
+  return r6(Math.max(moment, ...layers.filter((l) => l.kind !== 'shake').map((l) => moment + l.at + l.len)));
 }

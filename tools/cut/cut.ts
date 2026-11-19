@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, allItems, applyTemplate, clipAt as mainClipAt, comboSpan, createRegistry, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, TRANSITION_CENTRE_TYPES, TRANSITION_DIR_TYPES, TRANSITION_TYPES, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type TransitionType, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, applyTemplate, clipAt as mainClipAt, comboEnd, comboSpan, createRegistry, ENDING_SLACK, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, TRANSITION_CENTRE_TYPES, TRANSITION_DIR_TYPES, TRANSITION_TYPES, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type TransitionType, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, projectRegistry, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf, withTemplate } from '@tellcut/plugin-common';
@@ -144,6 +144,8 @@ export class Cut {
   private duckOf = new Map<string, boolean | number>();
   /** what save() did on its own (auto-focus, stickers following faces): tools/cut.ts prints it */
   readonly notes: string[] = [];
+  /** the ending combos placed (Combo.ending: closing) and where they are over: save() says when the film goes on after one */
+  private endings: Array<{ call: string; at: number; end: number }> = [];
   /** speechCaptions ran before captionTemplate (its captions have no word times to light up) */
   private plainSpeech = false;
 
@@ -609,7 +611,8 @@ export class Cut {
    * and the clip's shake, each at its offset from the moment, as ordinary items (project.json never names the combo). `sound: false`
    * leaves the sounds out; `parts: { <layer>: false | { …params } }` leaves a layer out or sets its params (a sound's `gain`, the
    * shake's `px` / `hz`). Every item rides on the main-track clip playing at `at`, as c.polaroid's do; with no clip there the shake
-   * is left out and save() says so. A layer that would start before 0 starts at 0. Returns { <layer name>: item id } (not the shake).
+   * is left out and save() says so. A layer that would start before 0 starts at 0. An ending combo (closing) the film goes on after
+   * is placed as asked and save() says so: the film's end is never moved for it. Returns { <layer name>: item id } (not the shake).
    */
   combo(id: string, o: { at?: number; sound?: boolean; parts?: Record<string, false | Record<string, unknown>> } = {}): Record<string, string> {
     const by = idOfHandle(id);
@@ -623,6 +626,7 @@ export class Cut {
     // the clip the moment belongs to, found as the editor's placeCombo finds it (within a dissolve, the clip coming in): every layer
     // rides on it, a layer that starts ahead of the moment too, over the end of the clip before
     const clip = mainClipAt(this.p, at), out: Record<string, string> = {};
+    if (combo.ending) this.endings.push({ call, at, end: comboEnd(layers, at) });
     for (const p of layers) {
       const span = comboSpan(p, at);
       if (!span) continue;
@@ -1044,6 +1048,9 @@ export class Cut {
   async save(): Promise<Project> {
     const duration = r6(Math.max(this.end, 0.5));
     this.p.meta.duration = duration;
+    // an ending combo with the film going on after it: its picture is gone at its end and the footage comes back. The film's end
+    // is the script's to set, so it is said, not moved
+    for (const e of this.endings) if (e.end < duration - ENDING_SLACK) this.notes.push(`${e.call}：片尾用的組合，在 ${e.end} 秒就結束了，片子還有 ${r6(duration - e.end)} 秒（片長 ${duration} 秒）：之後畫面會再出現；要收尾就放在片尾，at: ${r6(duration - (e.end - e.at))}`);
     await this.applyTemplates();
     const faced = await resolveBurnedFaces(this.faceCtx(), this.burnedAsks, this.autoFocus);   // before the focus: it may take a clip's focus over
     await resolveAutoFocus(this.faceCtx(), this.autoFocus);   // the crops first: a sticker follows a face through the final crop, a blur backdrop copies it

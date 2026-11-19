@@ -375,6 +375,7 @@ export const en: Record<Key, string> = {
   'ed.magnetMerge': 'This closes {n} gaps; later clips move up by at most {s} s (can be undone)',
   'ed.atEnd': 'The playhead is at the end of the project, so nothing can be added',
   'ed.comboNoShake': 'No clip on the main track at the playhead: the camera shake was left out (it is the clip’s own effect)',
+  'ed.comboNotEnd': 'This combo ends a film, but the film goes on for {s} s after it and the footage comes back: to end on it, place it at the very end',
   'group.combos': 'Combos',
   'ed.comboTip': 'Several layers at once: Add at playhead places the pictures, sounds and shake together (one undo takes them all back)',
   'ed.comboReplace': 'A combo places several layers; it cannot replace one item',

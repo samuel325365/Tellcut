@@ -75,3 +75,19 @@ test('c.combo at the start of a clip that dissolves in: the moment belongs to th
   expect(items(c, 'text').find((i) => i.id === ids.split).parent).toBe(b);
   expect(items(c, 'text').some((i) => i.parent === a)).toBe(false);
 });
+
+test('an ending combo (closing) that is over before the end of the film: save() says so and where it would end the film; at the end, nothing', async () => {
+  const c = fresh();
+  c.clip('v', { from: 0, len: 8 });
+  c.combo('closing', { at: 3 });
+  await c.save();
+  expect(c.p.meta.duration).toBe(8);   // the film's end never moves
+  expect(c.notes).toEqual(["c.combo('closing')：片尾用的組合，在 5.4 秒就結束了，片子還有 2.6 秒（片長 8 秒）：之後畫面會再出現；要收尾就放在片尾，at: 5.6"]);
+  for (const at of [5.6, 5.2, 7]) {
+    const d = fresh();
+    d.clip('v', { from: 0, len: 8 });
+    d.combo('closing', { at });
+    await d.save();
+    expect(d.notes, `at ${at}`).toEqual([]);
+  }
+});
