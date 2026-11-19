@@ -25,7 +25,10 @@ function touchedIds(before: Project, after: Project, mag: Track): Set<string> {
   const out = new Set<string>(), tb = resolveTimes(before), ta = resolveTimes(after);
   for (const t of after.tracks) for (const it of items(t)) {
     const o = old.get(it.id);
-    if (!o || o.t !== t.id) { out.add(it.id); continue; }
+    // a new item that comes already hung on a clip keeps it: a combo's layer that starts ahead of its moment rides on the clip of
+    // the moment (placeCombo), which hanging it by its start would swap for the clip before
+    if (!o) { if (it.parent === undefined) out.add(it.id); continue; }
+    if (o.t !== t.id) { out.add(it.id); continue; }
     // only a change of place in time counts: attach/detach keep the place, so a hand-made (un)hanging stays
     const a = ta.get(it.id)!, b = tb.get(it.id)!;
     if (Math.abs(a.start - b.start) <= EPS && Math.abs(a.end - b.end) <= EPS) continue;

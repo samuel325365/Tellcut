@@ -1,6 +1,7 @@
 import { parseProject, type Project } from '../schema.ts';
 import type { ComboPlacement } from '../combos.ts';
 import { clipAt, placeCombo } from './combo.ts';
+import { settle } from './magnetic.ts';
 import { fixture, item } from './test-fixture.ts';
 
 // a combo already expanded (expandCombo): a plain picture, one over the captions, one under the video, a sound and the shake
@@ -83,4 +84,16 @@ test('clipAt: the main-track clip under a time, the magnetic track first', () =>
   p.tracks.find((t) => t.id === 'v2')!.items.push({ id: 'm', source: 's', in: 0, speed: 1, start: 0, end: 9, frame: [0, 0, 1, 1], crop: { from: { x: 0.5, y: 0.5, zoom: 1 }, to: { x: 0.5, y: 0.5, zoom: 1 } }, interp: 'none' } as any);
   (p.tracks.find((t) => t.id === 'v2') as any).magnetic = true;
   expect(clipAt(p, 8.5)?.id).toBe('m');
+});
+
+test('on the magnetic track, a layer ahead of a moment at a cut stays on the clip of the moment once the editor settles the edit', () => {
+  const p = fixture(), v: any = p.tracks.find((t) => t.id === 'v')!;
+  v.magnetic = true;
+  delete v.items[1].transitionIn;
+  // the editor runs the command on a draft, then the magnetic rules (history.ts): a new item that comes hung on a clip keeps it
+  const d = structuredClone(p), r = placeCombo(d, { layers: LAYERS, at: 4 });
+  settle(p, d);
+  expect(r.clip).toBe('c2');
+  expect(item(d, r.items.glow)).toMatchObject({ start: -0.2, end: 0.8, parent: 'c2' });
+  for (const id of Object.values(r.items)) expect(item(d, id).parent).toBe('c2');
 });

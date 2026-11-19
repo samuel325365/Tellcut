@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
-import { addItem, allItems, applyTemplate, comboSpan, createRegistry, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, TRANSITION_CENTRE_TYPES, TRANSITION_DIR_TYPES, TRANSITION_TYPES, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type TransitionType, type VideoItem } from '@tellcut/engine';
+import { addItem, allItems, applyTemplate, clipAt as mainClipAt, comboSpan, createRegistry, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, TRANSITION_CENTRE_TYPES, TRANSITION_DIR_TYPES, TRANSITION_TYPES, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type TransitionType, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, projectRegistry, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf, withTemplate } from '@tellcut/plugin-common';
@@ -620,7 +620,9 @@ export class Cut {
     num(at, `${call} 的 at`, { min: 0 });
     let layers;
     try { layers = expandCombo(combo, SHARED, { sound, parts }); } catch (e) { throw new Error(`${call}：${(e as Error).message}`); }
-    const clip = this.clipAt(at), out: Record<string, string> = {};
+    // the clip the moment belongs to, found as the editor's placeCombo finds it (within a dissolve, the clip coming in): every layer
+    // rides on it, a layer that starts ahead of the moment too, over the end of the clip before
+    const clip = mainClipAt(this.p, at), out: Record<string, string> = {};
     for (const p of layers) {
       const span = comboSpan(p, at);
       if (!span) continue;

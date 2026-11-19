@@ -51,3 +51,27 @@ test('c.combo errors name the combo and what it has', () => {
   expect(() => c.combo('impact', { parts: { line: false } })).toThrow("c.combo('impact')：組合 impact 沒有「line」這一層；它有：lines、flash、hit、shake");
   expect(() => c.combo('impact', { at: -1 })).toThrow("c.combo('impact') 的 at 不能小於 0");
 });
+
+test('c.combo at a cut: a layer that starts ahead of the moment still rides on the clip the moment belongs to, as do the others', async () => {
+  const c = fresh();
+  c.clip('v', { from: 0, len: 2 });
+  const b = c.clip('v', { from: 2, len: 4 });
+  const ids = c.combo('glitchcut', { at: 2 });
+  // scan and the scratch start 0.1 s before the cut, over the clip before it, yet hang on the clip after it, 0.1 s ahead of it
+  expect(items(c, 'text').find((i) => i.id === ids.scan)).toMatchObject({ parent: b, start: -0.1, end: 0.4 });
+  expect(items(c, 'text').find((i) => i.id === ids.split)).toMatchObject({ parent: b, start: 0, end: 0.4 });
+  expect(items(c, 'sfx').find((i) => i.id === ids.scratch)).toMatchObject({ parent: b, start: -0.1 });
+  // and still after save() (which hangs what is left on nothing)
+  await c.save();
+  expect(items(c, 'text').find((i) => i.id === ids.scan).parent).toBe(b);
+});
+
+test('c.combo at the start of a clip that dissolves in: the moment belongs to that clip, not to the one fading out under it', () => {
+  const c = fresh();
+  const a = c.clip('v', { from: 0, len: 2 });
+  const b = c.clip('v', { from: 2, len: 4, transition: { type: 'dissolve', dur: 0.5 } });
+  const ids = c.combo('glitchcut', { at: 1.5 });
+  expect(items(c, 'text').find((i) => i.id === ids.scan)).toMatchObject({ parent: b, start: -0.1 });
+  expect(items(c, 'text').find((i) => i.id === ids.split).parent).toBe(b);
+  expect(items(c, 'text').some((i) => i.parent === a)).toBe(false);
+});
