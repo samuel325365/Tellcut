@@ -18,10 +18,10 @@ export type Polygon = Array<[number, number]>;
 /** what c.clip / c.photo / c.beside take as a shape: a polygon, a named shape's type ('circle'), or the named shape itself
  *  ({ type: 'star', points: 6 }); written to project.json as a polygon or a named shape object */
 export type Shape = Polygon | ShapeType | NamedShape;
-/** the line round a window: true for the engine's default (8 px at a 1080 short side, white) */
-export type OutlineIn = true | { width?: number; color?: string };
-/** the soft shadow under a window: true for the engine's default */
-export type ShadowIn = true | { blur?: number; y?: number; opacity?: number };
+/** the line round a window: true for the engine's default (8 px at a 1080 short side, white), false none */
+export type OutlineIn = boolean | { width?: number; color?: string };
+/** the soft shadow under a window: true for the engine's default, false none */
+export type ShadowIn = boolean | { blur?: number; y?: number; opacity?: number };
 
 const listOf = (xs: readonly string[]) => xs.join('、');
 /**
