@@ -2,12 +2,12 @@
 // cropped keep the faces in them in frame, and stickers asked to follow a mouth or a face get their transform keys.
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createRegistry, r6, resolveTimes, videoLinks, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
+import { createRegistry, isNamedShape, r6, resolveTimes, shapeSafe, videoLinks, visibleRegion, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
 import { FACE_STEP, faceKey, facesAt, type FacesProvider } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { COVER_LIFT, FOLLOW_SIZE, movingTimes, pickFace, smooth, sourceSpot, spotAt, spotOnFilm, stickerKeys, trackFace, type Who } from './follow.ts';
 import { avoidBurnedMove, spreadMove } from './avoid.ts';
-import type { Rect } from './view.ts';
+import { viewCrop, type Rect } from './view.ts';
 import { pictureLen, pictureTimeAt } from './frames.ts';
 
 /** what the face passes work on: the project, its folder, the detector (undefined: tellcut/providers.json's) and Cut's notes */
@@ -27,11 +27,53 @@ async function faces(x: FaceCtx, path: string, times: number[], what: string) {
 /** the source file of a clip's source, and its size */
 function sourceOf(x: FaceCtx, id: string) { const s = x.p.sources[id]; return { path: resolve(x.dir, s.path), width: s.width, height: s.height, image: s.kind === 'image' }; }
 
+/** how far the face focus of a shaped window zooms in at most to bring the faces into the part the shape shows: further, the
+ *  picture goes soft (a 720p source in a 1080p film is already 1.5×) */
+export const SHAPE_FOCUS_ZOOM = 2;
+/** the face box is padded by this share of its size on each side: a detector's box is tight round the features, and hair or a
+ *  chin cut by the shape's edge reads as a face cut too */
+const FACE_PAD = 0.12;
+
+/**
+ * The crop that puts `subject` (the faces, [left, top, right, bottom] in fractions of the source) inside `safe`, the part of the
+ * frame a shape certainly shows ([x, y, w, h] in fractions of the frame, shapes.ts shapeSafe), at the least zoom that does it:
+ * the view of a cover crop can move only as far as the picture reaches, so a face near the source's edge or a safe box off the
+ * frame's middle may need a closer view, while a closer view makes the face bigger, so it may then no longer fit. When both cannot
+ * hold (or it would zoom past SHAPE_FOCUS_ZOOM) the faces are made to fit as far as they can and centred in the safe box as far
+ * as the picture allows, and `inside` is false.
+ */
+export function shapedFocus(srcW: number, srcH: number, frameW: number, frameH: number, safe: [number, number, number, number], subject: Rect): { crop: Crop; inside: boolean } {
+  const one = visibleRegion(srcW, srcH, frameW, frameH, { x: 0.5, y: 0.5, zoom: 1 });
+  const pw = (subject[2] - subject[0]) * FACE_PAD, ph = (subject[3] - subject[1]) * FACE_PAD;
+  const face = [Math.max(0, subject[0] - pw), Math.max(0, subject[1] - ph), Math.min(1, subject[2] + pw), Math.min(1, subject[3] + ph)];
+  // per axis: the view (in fractions of the source; one.w / zoom across) must be at most `most` for the faces to be placed inside
+  // the safe box without the view leaving the picture, and at least `least` for them to fit in it
+  const axes = ([0, 1] as const).map((k) => {
+    const a = face[k], b = face[k + 2], s0 = safe[k], s1 = safe[k] + safe[k + 2], v1 = k ? one.h : one.w;
+    const most = Math.min(v1, s0 > 1e-6 ? a / s0 : Infinity, s1 < 1 - 1e-6 ? (1 - b) / (1 - s1) : Infinity), least = (b - a) / (s1 - s0);
+    return { a, b, s0, s1, v1, zNeed: v1 / Math.max(most, 1e-6), zFit: v1 / Math.max(least, 1e-6) };
+  });
+  const need = Math.max(1, ...axes.map((x) => x.zNeed)), fit = Math.min(SHAPE_FOCUS_ZOOM, ...axes.map((x) => x.zFit));
+  const inside = need <= fit + 1e-9, zoom = inside ? need : Math.max(1, Math.min(need, fit));
+  const centre = axes.map(({ a, b, s0, s1, v1 }) => {
+    const v = v1 / zoom, lo = Math.max(0, b - s1 * v), hi = Math.min(1 - v, a - s0 * v);
+    // the view's start: the middle of the starts that keep the faces inside the safe box, else the one that centres them in it
+    const start = lo <= hi ? (lo + hi) / 2 : Math.min(1 - v, Math.max(0, (a + b) / 2 - ((s0 + s1) / 2) * v));
+    return start + v / 2;
+  });
+  const z = Math.round(zoom * 1000) / 1000, crop = viewCrop(srcW, srcH, frameW, frameH, centre[0], centre[1], z), whole = visibleRegion(srcW, srcH, frameW, frameH, { x: 0.5, y: 0.5, zoom: z });
+  // an axis the view spans whole cannot move: any focus there is the same picture, and 0.5 says so (the bisection ends at 0)
+  const at = (v: number, span: number) => (span >= 1 - 1e-6 ? 0.5 : Math.round(v * 1000) / 1000);
+  return { crop: { x: at(crop.x, whole.w), y: at(crop.y, whole.h), zoom: crop.zoom }, inside };
+}
+
 /**
  * Clips without a crop whose picture is another shape than their frame: the crop's focus goes to the middle of the faces in it
  * (the largest face at a quarter, half and three quarters of the clip), not the centre. A picture wider than its frame (a landscape
  * shot in a portrait film) is cropped at the sides, so the focus moves sideways; a taller one (portrait in landscape) moves up or down.
- * Each group is one clip (or the pieces tighten made of it), focused alike.
+ * Each group is one clip (or the pieces tighten made of it), focused alike. A clip cut to a named shape shows less than its frame
+ * (a circle in a wide frame, only its middle): the faces go into the part the shape certainly shows (shapedFocus), even when the
+ * picture fits the frame; a text shape gets no focus at all (letters show no whole face, on purpose).
  */
 export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
   const W = x.p.meta.width, H = x.p.meta.height;
@@ -42,13 +84,29 @@ export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
     const src = sourceOf(x, it.source), [, , fw, fh] = it.frame;
     const frameAr = (fw * W) / (fh * H), fits = Math.abs(src.width / src.height - frameAr) / frameAr < 0.1;
     const axis = src.width / src.height > frameAr ? 'x' : 'y';
-    if (fits || src.image || all.some((c) => c.crop.from[axis] !== 0.5 || c.crop.to[axis] !== 0.5)) continue;
+    const shape = isNamedShape(it.shape) ? it.shape : null;
+    if (shape?.type === 'text' || src.image) continue;
+    const safe = shape && shapeSafe(shape, frameAr);
+    if (safe) {
+      // a crop moved since (avoidBurned's) is left as it is
+      if (all.some((c) => JSON.stringify(c.crop.from) !== JSON.stringify(c.crop.to) || c.crop.from.x !== 0.5 || c.crop.from.y !== 0.5 || c.crop.from.zoom !== 1)) continue;
+    } else if (fits || all.some((c) => c.crop.from[axis] !== 0.5 || c.crop.to[axis] !== 0.5)) continue;
     if (!existsSync(src.path)) continue;   // footage not on this PC
     // a quarter, half and three quarters into the clip (into all its pieces, laid end to end)
     const lens = all.map(pictureLen), whole = lens.reduce((a, b) => a + b, 0);
     const times = [0.25, 0.5, 0.75].map((f) => { let t = f * whole; for (const [i, c] of all.entries()) { if (t <= lens[i] || i === all.length - 1) return c.in + Math.min(t, lens[i]); t -= lens[i]; } return it.in; });
     const found = await faces(x, src.path, times, id);
     if (!found) continue;
+    if (shape && safe) {
+      const boxes = [...found.values()].filter((fs) => fs.length).map((fs) => pickFace(fs, 'largest').box);
+      if (!boxes.length) continue;
+      const subject: Rect = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[0] + b[2])), Math.max(...boxes.map((b) => b[1] + b[3]))];
+      const r = shapedFocus(src.width, src.height, fw * W, fh * H, safe, subject);
+      for (const c of all) c.crop = { ...c.crop, from: { ...r.crop }, to: { ...r.crop } };
+      x.notes.push(r.inside ? `${it.source}（${id}）自動對焦到人臉，放進 ${shape.type} 形狀一定看得到的範圍（x=${r.crop.x}、y=${r.crop.y}、放大 ${r.crop.zoom} 倍）`
+        : `${it.source}（${id}）的人臉放不進 ${shape.type} 形狀一定看得到的範圍（臉太大或太靠邊，放大最多 ${SHAPE_FOCUS_ZOOM} 倍），盡量放進去了（x=${r.crop.x}、y=${r.crop.y}、放大 ${r.crop.zoom} 倍）；考慮放大 frame、換形狀，或自己給 crop`);
+      continue;
+    }
     const k = axis === 'x' ? 0 : 1;
     const vs = [...found.values()].filter((fs) => fs.length).map((fs) => { const f = pickFace(fs, 'largest'); return f.box[k] + f.box[k + 2] / 2; }).sort((a, b) => a - b);
     if (!vs.length) continue;
