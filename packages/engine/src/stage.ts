@@ -59,7 +59,7 @@ function makeTextClip(parent: HTMLElement): TextClip {
   svg.style.position = 'absolute';
   return { url: `url(#${id})`, clip: svgEl('clipPath', { id, clipPathUnits: 'userSpaceOnUse' }, svg), key: '', fit: null };
 }
-/** The outline drawn over a video layer's picture: an SVG the size of the frame, moved, grown and faded with it, holding the line
+/** The outline drawn over a video layer's picture: an SVG the size of the frame, moved and grown with it, holding the line
  *  on the shape's path, the frame's rounded rectangle, or the text shape's letters (whichever the clip has). */
 type Deco = { svg: SVGSVGElement; path: SVGPathElement; rect: SVGRectElement; text: SVGGElement; key: string };
 function decoOf(parent: HTMLElement, under: HTMLElement | null): Deco {
@@ -362,8 +362,11 @@ export class Stage {
           left: `${s.frame.left}px`, top: `${s.frame.top}px`, width: `${s.frame.width}px`, height: `${s.frame.height}px`,
           // the frame grows round its own centre (the default transform-origin)
           transform: s.scale !== 1 ? `${move ? `${move} ` : ''}scale(${s.scale.toFixed(4)})` : move || 'none',
-          opacity: s.opacity.toFixed(3),
         };
+        // The fade is the whole layer's, so the frame and its dressing fade as one picture: a fade on the frame and the outline
+        // each showed the text shape's line (under the picture) through the half-clear letters, a shape's line let the picture
+        // through, and the shadow showed under the frame.
+        cssCamel(L.el, { opacity: s.opacity.toFixed(3) });
         cssCamel(L.frame, { ...box, filter, borderRadius: s.radius ? `${s.radius}px` : '', clipPath: s.text ? this.textClip(L, s) : s.clipPath });
         this.dress(L, s, box);
         // a veil: over the picture inside the frame, so the frame's corners and shape cut it too
@@ -425,7 +428,7 @@ export class Stage {
   }
 
   /** A video layer's dressing: the shadow on the item's own layer (a drop-shadow follows what the layer shows: the frame as its
-   *  shape cuts it, and the outline), the outline over the picture, moved, grown and faded with the frame (`box`). */
+   *  shape cuts it, and the outline), the outline over the picture, moved and grown with the frame (`box`; the fade is the layer's). */
   private dress(L: Extract<Layer, { kind: 'video' }>, s: VideoState, box: Record<string, string>) {
     const sd = s.shadow, n = (v: number) => +v.toFixed(2);
     cssCamel(L.el, { filter: sd ? `drop-shadow(0px ${n(sd.y)}px ${n(sd.blur)}px rgba(0, 0, 0, ${n(sd.opacity)}))` : '' });

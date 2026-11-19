@@ -190,6 +190,32 @@ test('transitions on a shaped clip: the dip\'s veil and the blur are cut by the 
   expect(leaked / n).toBeLessThan(0.02);
 }, 180000);
 
+test('a text shape\'s outline fades with its letters: during a dissolve none of it shows through them', async () => {
+  const fade = { shape: TEXT, transitionIn: { type: 'dissolve', dur: 1 } };
+  // the same letters (an outline makes them smaller) with a line of the stage's own colour, which cannot be seen
+  const [plainHalf, plainWhole] = await shoot([{ ...fade, outline: { ...OUTLINE, color: '#ff00ff' } }], [0.5, 1.5]);
+  const [linedHalf, linedWhole] = await shoot([{ ...fade, outline: OUTLINE }], [0.5, 1.5]);
+  // the letters, 3 px in from their edges (the line under them reaches 10 px in)
+  const letter = (x: number, y: number) => { for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (!isPicture(px(plainWhole, x + dx, y + dy))) return false; return true; };
+  let n = 0, through = 0, worst = 0, line = 0, outside = 0;
+  for (let y = 4; y < H - 4; y += 2) for (let x = 4; x < W - 4; x += 2) {
+    if (letter(x, y)) {
+      n++;
+      const d = far(px(linedHalf, x, y), px(plainHalf, x, y));
+      worst = Math.max(worst, d);
+      if (d > 16) through++;
+    } else if (!isPicture(px(plainWhole, x, y))) { outside++; if (far(px(linedHalf, x, y), MAGENTA) > 60) line++; }
+  }
+  expect(n).toBeGreaterThan(500);
+  expect(through / n, `worst ${worst}`).toBeLessThan(0.002);
+  // the line itself is there outside the letters, faded as they are
+  expect(line / outside).toBeGreaterThan(0.05);
+  // once in, the letters show the picture alone, as without a line
+  let diff = 0;
+  for (let y = 4; y < H - 4; y += 2) for (let x = 4; x < W - 4; x += 2) if (letter(x, y) && far(px(linedWhole, x, y), px(plainWhole, x, y)) > 8) diff++;
+  expect(diff).toBe(0);
+}, 180000);
+
 test('defocus: blurred to the frame\'s very edges with no fringe; a shape and rounded corners still cut it', async () => {
   const soft = { defocus: { from: 0, to: 0, px: 30, px0: 30 } }, mag = (c: RGB) => c[0] > 150 && c[2] > 150 && c[1] < 120;
   const whole = await one(soft);

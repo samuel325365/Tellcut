@@ -48,8 +48,10 @@ test('draw shows only active items and feeds media time', () => {
   const shown = [...root.querySelectorAll<HTMLElement>('.st-item')].filter((e) => e.style.display !== 'none').map((e) => e.dataset.id);
   expect(shown).toEqual(['a', 'b', 'q']);
   expect(media.calls.map((c: any) => [c.ref.in, c.local])).toEqual([[1, 3.5], [5, 0.5]]);
-  const bFrame = root.querySelector<HTMLElement>('[data-id="b"] .st-frame')!;
-  expect(parseFloat(bFrame.style.opacity)).toBeCloseTo(0.5, 3);
+  // the fade is the clip's whole layer's (its frame, outline and shadow fade as one picture), not the frame's
+  const bLayer = root.querySelector<HTMLElement>('.st-item[data-id="b"]')!;
+  expect(parseFloat(bLayer.style.opacity)).toBeCloseTo(0.5, 3);
+  expect(bLayer.querySelector<HTMLElement>('.st-frame')!.style.opacity).toBe('');
 });
 
 test('an item whose end is stored a hair late (38/30 → 1.266667) is gone on frame 38, where the next one starts', () => {
@@ -524,7 +526,7 @@ test('a linked push moves both frames and a wipe clips the incoming one; the out
   st.load(p);
   const frame = (id: string) => root.querySelector<HTMLElement>(`[data-id="${id}"] .st-frame`)!;
   st.draw(3.5);
-  expect([frame('a').style.transform, frame('b').style.transform, frame('b').style.opacity]).toEqual(['translate(50px, 0px)', 'translate(-50px, 0px)', '1']);
+  expect([frame('a').style.transform, frame('b').style.transform, frame('b').parentElement!.style.opacity]).toEqual(['translate(50px, 0px)', 'translate(-50px, 0px)', '1']);
   const a = frame('a');
   const q = structuredClone(p);
   q.tracks[0].items[1].transitionIn = { type: 'wipe', dur: 1, dir: 'l' };
@@ -602,10 +604,10 @@ test('dip and flash cover the picture with a veil inside the frame, made once; h
   st.draw(3.25);
   expect([veil('a')!.style.display, parseFloat(veil('a')!.style.opacity), veil('a')!.style.zIndex]).toEqual(['', 0.5, '1']);
   expect(veil('a')!.style.background).toMatch(/^(#000|rgb\(0, 0, 0\)|black)$/);
-  expect(parseFloat(frame('b').style.opacity)).toBe(0);  // B unseen before the middle
+  expect(parseFloat(frame('b').parentElement!.style.opacity)).toBe(0);  // B unseen before the middle
   st.draw(3.75);
   const v = veil('b')!;
-  expect([parseFloat(v.style.opacity), parseFloat(frame('b').style.opacity), frame('b').style.borderRadius]).toEqual([0.5, 1, '8px']);
+  expect([parseFloat(v.style.opacity), parseFloat(frame('b').parentElement!.style.opacity), frame('b').style.borderRadius]).toEqual([0.5, 1, '8px']);
   st.draw(4.5);
   expect([veil('b'), v.style.display]).toEqual([v, 'none']);
   expect(frame('b').querySelectorAll('.st-veil').length).toBe(1);
@@ -665,6 +667,9 @@ test('a picture window\'s dressing: the outline over the frame, the shadow on th
   expect([...under.querySelectorAll('g text')].map((t) => t.textContent)).toEqual(['ROMA', 'CITY']);
   expect(+under.querySelector('g')!.getAttribute('stroke-width')!).toBeCloseTo(2 * 8 * 50 / 1080, 1);
   expect((b as any)._c.filter).toBe('');
+  // halfway through its dissolve: the layer fades as one, the frame and the line under it stay whole, so the line never shows
+  // through the half-clear letters
+  expect([parseFloat(b.style.opacity), b.querySelector<HTMLElement>('.st-frame')!.style.opacity, (under as unknown as HTMLElement).style.opacity]).toEqual([0.5, '', '']);
   // drawn again with nothing changed: the rows are not made again
   const rows = clip.querySelector('text');
   st.draw(3.6);
