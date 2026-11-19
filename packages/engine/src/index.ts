@@ -4,6 +4,7 @@ export * from './util.ts';
 export * from './block-helpers.ts';
 export { motion, type MotionKit, type Spring, type SpringOpts, type EaseFn } from './motion.ts';
 export * from './geometry.ts';
+export * from './shapes.ts';
 export { transitionFallbacks, videoLinks } from './pairs.ts';
 export * from './plugin.ts';
 export * from './templates.ts';

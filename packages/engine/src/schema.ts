@@ -1,4 +1,5 @@
 import { ThemeZ } from './theme.ts';
+import { NamedShapeZ } from './shapes.ts';
 import { z } from 'zod';
 
 const sec = z.number().finite();
@@ -45,9 +46,12 @@ export const VideoItemZ = z.object({
   defocus: z.object({ from: nonneg, to: nonneg, px: z.number().min(0), px0: z.number().min(0).optional() }).optional(),
   interp: z.enum(['none', 'blend', 'mci']).default('none'),
   opacity: z.number().min(0).max(1).optional(),
+  /** rounded corners of the frame, px; ignored when the clip is cut to a named shape (a polygon keeps it, as it always has) */
   radius: z.number().min(0).optional(),
-  /** cut the picture to this polygon: corners in fractions of the item's own frame (a slanted comic panel, see common.comic's comicShape) */
-  shape: z.array(z.tuple([z.number(), z.number()])).min(3).optional(),
+  /** Cut the picture to a shape inside its frame: a polygon (corners in fractions of the item's own frame: a slanted comic panel,
+   *  see common.comic's comicShape), or a named shape `{ type: 'circle' }`, `{ type: 'star', points: 5 }`… (shapes.ts
+   *  SHAPE_PARAMS lists the types and their parameters). */
+  shape: z.union([z.array(z.tuple([z.number(), z.number()])).min(3), NamedShapeZ]).optional(),
   shake: z.array(ShakeZ).optional(),
   stabilize: StabilizeZ.optional(),
 });

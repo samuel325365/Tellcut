@@ -1,5 +1,6 @@
 import type { Crop, TransitionType, VideoItem } from './schema.ts';
 import { clamp, eIO3, eOut3, eSmooth, lerp, prog } from './util.ts';
+import { isNamedShape, isShaped, shapePath } from './shapes.ts';
 
 export interface Box { left: number; top: number; width: number; height: number }
 
@@ -54,7 +55,7 @@ export function kbMatrix(ax: number, ay: number, zoom: number, cx: number, cy: n
 }
 
 /** offsetX/Y move the whole frame (a slide or push); shakeX/Y move the picture inside the frame (shakeScale grows it so no edge
- *  shows); radius rounds the frame's corners; clipPath is the CSS clip-path of the item's shape, or of a reveal (wipe, iris, clock,
+ *  shows); radius rounds the frame's corners (0 under a named shape); clipPath is the CSS clip-path of the item's shape (shapeClip), or of a reveal (wipe, iris, clock,
  *  bars) while one runs (never both: a shaped clip's reveal is drawn as a dissolve), '' for the whole frame. The last three are a
  *  transition's: `scale` grows the whole frame round its centre (zoom; 1 = none); `streak` blurs the frame's picture by this
  *  deviation (px) along x and along y, drawn by the stage's own SVG filter, which leaves no fringe at the frame's edges ([0, 0] =
@@ -64,12 +65,31 @@ export interface VideoState { frame: Box; offsetX: number; offsetY: number; opac
   scale: number; streak: [number, number]; veil: Veil | null }
 export interface Veil { color: string; opacity: number }
 
-/** a shape (corners in frame fractions) as a CSS clip-path */
+/** a polygon shape (corners in frame fractions) as a CSS clip-path */
 export function shapeClipPath(shape: ReadonlyArray<readonly [number, number]> | undefined): string {
-  if (!shape || shape.length < 3) return '';
+  if (!shape || !Array.isArray(shape) || shape.length < 3) return '';
   const pc = (v: number) => `${Math.round(v * 1e5) / 1e3}%`;
   return `polygon(${shape.map(([x, y]) => `${pc(x)} ${pc(y)}`).join(', ')})`;
 }
+
+/** A clip's shape as the CSS clip-path of its w × h frame at its local second: a polygon as polygon() (as it always was), a named
+ *  shape as path() in px (shapes.ts shapePath; the stage writes it only when it changes, so a still shape is set once per frame
+ *  size), '' for none and for the text shape, which the stage cuts with an SVG clipPath of its own. */
+export function shapeClip(item: Pick<VideoItem, 'shape'>, w: number, h: number, local: number): string {
+  const s = item.shape;
+  if (!isNamedShape(s)) return shapeClipPath(s);
+  // only a wobbling blob changes with time: any other shape's path is worked out once per frame size, not every frame
+  const key = `${JSON.stringify(s)}|${w}|${h}${s.type === 'blob' && s.wobble ? `|${local}` : ''}`;
+  let c = CLIPS.get(key);
+  if (c === undefined) {
+    const d = shapePath(s, w, h, local);
+    c = d ? `path('${d}')` : '';
+    if (CLIPS.size >= 256) CLIPS.clear();
+    CLIPS.set(key, c);
+  }
+  return c;
+}
+const CLIPS = new Map<string, string>();
 
 type Rect = readonly [number, number, number, number];
 type Dir = 'l' | 'r' | 'u' | 'd';
@@ -284,7 +304,7 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
   let look = none();
   const tr = item.transitionIn;
   if (tr && tr.type !== 'cut' && tr.dur > 0) {
-    const kind = drawnTransition(tr.type, item.frame, !!item.shape && item.shape.length >= 3, link?.from);
+    const kind = drawnTransition(tr.type, item.frame, isShaped(item), link?.from);
     look = incoming(kind, prog(local, 0, tr.dur), tr, frame.width, frame.height, !!link?.from);
   }
   // the outgoing side: only while the next clip's linked transition runs
@@ -310,9 +330,10 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
   const shakeScale = amp > 0 ? 1 + (2 * amp) / Math.min(frame.width, frame.height) : 1;
   const crop = cropAt(item.crop, local, end - start);
   const mediaLocal = item.freezeAt != null ? Math.min(local, item.freezeAt) : local;
+  const named = isNamedShape(item.shape);
   const held = item.freezeAt != null && local >= item.freezeAt;
   return { frame, offsetX: look.dx, offsetY: look.dy, opacity: (item.opacity ?? 1) * look.opacity, filter, crop, mediaLocal, held, shakeX, shakeY, shakeScale,
-    radius: item.radius ?? 0, clipPath: look.clip ?? shapeClipPath(item.shape), scale: look.scale, streak: look.streak, veil: look.veil };
+    radius: named ? 0 : item.radius ?? 0, clipPath: look.clip ?? shapeClip(item, frame.width, frame.height, local), scale: look.scale, streak: look.streak, veil: look.veil };
 }
 
 /** The part of the source a frame shows, in 0..1 source coordinates (the inverse view of coverPlacement). */

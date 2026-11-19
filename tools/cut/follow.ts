@@ -1,6 +1,6 @@
 // A sticker that follows a mouth or a face (toolkit phase 5): the faces of the clip's source over the sticker's time, one face
 // tracked through them, mapped through the clip's crop and frame onto the film, as the sticker's transform keys.
-import { coverPlacement, drawnTransition, videoState, type VideoItem, type VideoLink } from '@tellcut/engine';
+import { coverPlacement, drawnTransition, isShaped, videoState, type VideoItem, type VideoLink } from '@tellcut/engine';
 import type { FaceInfo } from '@tellcut/media-node';
 
 export type Who = 'largest' | 'left' | 'right' | 'center';
@@ -93,7 +93,7 @@ const MOVING: ReadonlySet<string> = new Set(['slide', 'push', 'whip', 'zoom']), 
  */
 export function movingTimes(clip: VideoItem, clipTimes: { start: number; end: number }, link: VideoLink | undefined, from: number, to: number, fps: number): number[] {
   const spans: Array<[number, number]> = [];
-  const tr = clip.transitionIn, shaped = !!clip.shape && clip.shape.length >= 3;
+  const tr = clip.transitionIn, shaped = isShaped(clip);
   if (tr && tr.dur > 0 && MOVING.has(drawnTransition(tr.type, clip.frame, shaped, link?.from))) spans.push([clipTimes.start, clipTimes.start + tr.dur]);
   const o = link?.out;
   if (o && o.dur > 0 && MOVING_OUT.has(drawnTransition(o.type, o.frame, o.shaped, clip.frame))) spans.push([clipTimes.start + o.at, clipTimes.start + o.at + o.dur]);

@@ -4,6 +4,7 @@
 import type { AnyItem, Project, Track, TrackKind, TransitionType, VideoItem } from './schema.ts';
 import { r6, resolveTimes, TIME_EPS, type Times } from './time.ts';
 import { transitionFallback, type TransitionFallback, type VideoLink } from './geometry.ts';
+import { isShaped } from './shapes.ts';
 
 export interface OverlapPair { track: string; kind: TrackKind; a: string; b: string; ov: number; linked: boolean; top: 'a' | 'b' }
 const EPS = TIME_EPS;
@@ -42,7 +43,7 @@ export function transitionFallbacks(p: Pick<Project, 'tracks'>, times: Times = r
       const tr = it.transitionIn;
       if (!tr || tr.type === 'cut' || tr.type === 'dissolve') continue;
       links ??= videoLinks(p, times);
-      const why = transitionFallback(tr.type, it.frame, !!it.shape && it.shape.length >= 3, links.get(it.id)?.from);
+      const why = transitionFallback(tr.type, it.frame, isShaped(it), links.get(it.id)?.from);
       if (why) out.set(it.id, { type: tr.type, why });
     }
   }
@@ -64,7 +65,7 @@ export function videoLinks(p: Pick<Project, 'tracks'>, times: Times = resolveTim
     const prev = out.get(w.a)?.out;
     if (prev && prev.at > at) continue;
     out.set(w.a, { ...out.get(w.a), out: { type: tr.type, ...(tr.dir ? { dir: tr.dir } : {}), ...(tr.x != null ? { x: tr.x } : {}), ...(tr.y != null ? { y: tr.y } : {}),
-      at, dur: tr.dur, frame: B.frame, shaped: !!B.shape && B.shape.length >= 3 } });
+      at, dur: tr.dur, frame: B.frame, shaped: isShaped(B) } });
     out.set(w.b, { ...out.get(w.b), from: A.frame, ...(w.top === 'a' ? { lift: w.a } : {}) });
   }
   return out;

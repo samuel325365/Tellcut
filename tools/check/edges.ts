@@ -3,7 +3,7 @@
 // shot changes are in the analysis (cuts.json); a change just after the in point or just before the out point means the
 // clip starts or ends with frames of another shot. A frozen clip holds the frame at its freeze point to the clip's end:
 // a change just before that point puts the next shot on screen for the whole hold (review3 R3-E1).
-import { drawnTransition, videoLinks, type Project, type TransitionType, type VideoItem, type VideoLink } from '@tellcut/engine';
+import { drawnTransition, isShaped, videoLinks, type Project, type TransitionType, type VideoItem, type VideoLink } from '@tellcut/engine';
 import type { Finding } from './rules.ts';
 
 /** a run into the next shot this short at a clip's edge is next to never meant: about ten frames — the food-deep leak was
@@ -28,7 +28,7 @@ const SHOWS_BOTH: ReadonlySet<TransitionType> = new Set<TransitionType>(['slide'
 function transitionSpan(o: VideoItem, links: Map<string, VideoLink>): { hides: number; covers: number } | null {
   const tr = o.transitionIn;
   if (!tr || tr.type === 'cut' || tr.dur <= 0) return null;
-  const drawn = drawnTransition(tr.type, o.frame, !!o.shape && o.shape.length >= 3, links.get(o.id)?.from);
+  const drawn = drawnTransition(tr.type, o.frame, isShaped(o), links.get(o.id)?.from);
   return SHOWS_BOTH.has(drawn) ? { hides: 0, covers: tr.dur } : { hides: tr.dur / 2, covers: tr.dur / 2 };
 }
 type Span = { start: number; end: number };
