@@ -72,6 +72,23 @@ test('a run-in under the faded half of a transition does not show; a longer one 
   expect(f.map((x) => [x.ids, x.t])).toEqual([[['c2'], [6, 6.3]]]);
 });
 
+test('a transition that shows both pictures throughout (wipe, push, iris…) hides no run-in at either clip\'s edge', () => {
+  // the same overlaps as a dissolve hides: c0's last 0.1 s is the next shot, c1's first 0.1 s the shot before
+  const pair = (type: string, o: Record<string, unknown> = {}) => project([
+    { start: 0, end: 3, in: 18 },
+    { start: 2.5, end: 5, in: 39.9, transitionIn: { type, dur: 0.5 }, ...o },
+  ]);
+  const cuts = { a: [20.9, 40] };
+  for (const type of ['dissolve', 'blur', 'zoom', 'dip', 'flash']) expect(run(pair(type), cuts), type).toEqual([]);
+  for (const type of ['wipe', 'push', 'whip', 'slide', 'iris', 'clock', 'bars'])
+    expect(run(pair(type), cuts).map((x) => [x.ids, x.t]), type).toEqual([[['c0'], [2.9, 3]], [['c1'], [2.5, 2.6]]]);
+  // drawn as a dissolve, it hides them as a dissolve does: a wipe on a clip cut to a shape, a push on a clip not the whole picture
+  expect(run(pair('wipe', { shape: [[0, 0], [1, 0], [1, 1], [0, 1]] }), cuts)).toEqual([]);
+  expect(run(pair('push', { frame: [0, 0, 0.5, 1] }), cuts)).toEqual([]);
+  // and a cut (the clips merely overlapping) hides nothing
+  expect(run(pair('cut'), cuts).map((x) => x.ids)).toEqual([['c0'], ['c1']]);
+});
+
 test('a seam where the next clip carries on from the same source second is no edge: the picture runs straight through', () => {
   const p = project([
     { start: 0, end: 2, in: 18 },      // ends at 20.0; the source changes at 19.9, and c1 goes on from 20.0

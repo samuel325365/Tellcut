@@ -3,7 +3,7 @@
 // shot changes are in the analysis (cuts.json); a change just after the in point or just before the out point means the
 // clip starts or ends with frames of another shot. A frozen clip holds the frame at its freeze point to the clip's end:
 // a change just before that point puts the next shot on screen for the whole hold (review3 R3-E1).
-import type { Project, VideoItem } from '@tellcut/engine';
+import { drawnTransition, videoLinks, type Project, type TransitionType, type VideoItem, type VideoLink } from '@tellcut/engine';
 import type { Finding } from './rules.ts';
 
 /** a run into the next shot this short at a clip's edge is next to never meant: about ten frames — the food-deep leak was
@@ -17,8 +17,20 @@ const SAME = 0.05;
 const r2 = (t: number) => Math.round(t * 100) / 100;
 /** m:ss.ss — the suggestion is about a frame or two, a tenth of a second (timecode1) can still leave one in */
 export const tc2 = (t: number) => { const d = r2(t); return `${Math.floor(d / 60)}:${(d % 60).toFixed(2).padStart(5, '0')}`; };
-/** screen seconds into a dissolve/slide during which the clip is still at most half visible */
-const half = (o: VideoItem) => (o.transitionIn && o.transitionIn.type !== 'cut' ? o.transitionIn.dur / 2 : 0);
+/** the transitions that show part of the incoming picture from their first frame and part of the outgoing one to their last: an
+ *  edge moving across (wipe, clock, bars), a circle opening (iris), pictures moving in (slide, push, whip) */
+const SHOWS_BOTH: ReadonlySet<TransitionType> = new Set<TransitionType>(['slide', 'wipe', 'iris', 'clock', 'bars', 'push', 'whip']);
+/** Screen seconds into clip o's transition: `hides`, how long o itself is still hidden, or as good as (at most half there);
+ *  `covers`, from when the clip it comes in over is. Half the length for both with the types that fade or veil the whole picture
+ *  at once (dissolve, blur, zoom, dip, flash), so a run-in under the faded half does not show; with the ones in SHOWS_BOTH, drawn
+ *  as themselves (a reveal or a push that falls back to a dissolve is a dissolve), o shows from the first frame and the other
+ *  clip to the last. null: no transition. `links` from videoLinks. */
+function transitionSpan(o: VideoItem, links: Map<string, VideoLink>): { hides: number; covers: number } | null {
+  const tr = o.transitionIn;
+  if (!tr || tr.type === 'cut' || tr.dur <= 0) return null;
+  const drawn = drawnTransition(tr.type, o.frame, !!o.shape && o.shape.length >= 3, links.get(o.id)?.from);
+  return SHOWS_BOTH.has(drawn) ? { hides: 0, covers: tr.dur } : { hides: tr.dur / 2, covers: tr.dur / 2 };
+}
 type Span = { start: number; end: number };
 /** `to` picks up its source where `from` leaves off, within `tol` (half a frame): the picture runs straight through the seam,
  *  so a shot change next to it is the source's own cut, not a run-in (the 2026-10-22 films split long takes into many clips) */
@@ -27,7 +39,7 @@ const carriesOn = (from: VideoItem, ft: Span, to: VideoItem, tt: Span, tol: numb
   Math.abs(tt.start - ft.end) < tol && Math.abs(to.in - (from.in + (ft.end - ft.start) * from.speed)) < tol * from.speed;
 
 export function edgeFindings(p: Project, times: Map<string, { start: number; end: number }>, cuts: Record<string, number[] | null>): Finding[] {
-  const out: Finding[] = [];
+  const out: Finding[] = [], links = videoLinks(p, times);
   for (const t of p.tracks) if (t.kind === 'video') for (const clip of t.items as VideoItem[]) {
     const ct = times.get(clip.id), src = p.sources[clip.source], shots = cuts[clip.source];
     if (!ct || !src || src.kind === 'image' || !shots?.length) continue;
@@ -39,11 +51,11 @@ export function edgeFindings(p: Project, times: Map<string, { start: number; end
     const secs = (d: number) => (v === 1 ? `${d.toFixed(2)} 秒` : `${(d / v).toFixed(2)} 秒（原片 ${d.toFixed(2)} 秒）`);
     const near = (d: number, lo = SAME) => d > lo && Math.min(d, d / v) <= EDGE;
     // a run-in under the faded half of a transition does not show: this clip's own one at its head, the next clip's (it
-    // overlaps this one's tail, cut.ts startFor) at its tail
-    const shownFrom = ct.start + half(clip);
+    // overlaps this one's tail, cut.ts startFor) at its tail; one that shows both pictures throughout hides neither
+    const shownFrom = ct.start + (transitionSpan(clip, links)?.hides ?? 0);
     const coveredFrom = Math.min(Infinity, ...(t.items as VideoItem[]).flatMap((o) => {
-      const ot = times.get(o.id);
-      return o !== clip && ot && half(o) > 0 && ot.start > ct.start && ot.start < ct.end ? [ot.start + half(o)] : [];
+      const ot = times.get(o.id), span = transitionSpan(o, links);
+      return o !== clip && ot && span && ot.start > ct.start && ot.start < ct.end ? [ot.start + span.covers] : [];
     }));
     const tol = 0.5 / p.meta.fps;
     const seam = (before: boolean) => (t.items as VideoItem[]).some((o) => {
