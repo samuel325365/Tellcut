@@ -83,7 +83,13 @@ test('an ending combo (closing) that is over before the end of the film: save() 
   await c.save();
   expect(c.p.meta.duration).toBe(8);   // the film's end never moves
   expect(c.notes).toEqual(["c.combo('closing')：片尾用的組合，在 5.4 秒就結束了，片子還有 2.6 秒（片長 8 秒）：之後畫面會再出現；要收尾就放在片尾，at: 5.6"]);
-  for (const at of [5.6, 5.2, 7]) {
+  // 0.2 s of the clip back after the fade to black is seen too (an export showed it)
+  const e = fresh();
+  e.clip('v', { from: 0, len: 8 });
+  e.combo('closing', { at: 5.4 });
+  await e.save();
+  expect(e.notes).toHaveLength(1);
+  for (const at of [5.6, 7]) {
     const d = fresh();
     d.clip('v', { from: 0, len: 8 });
     d.combo('closing', { at });

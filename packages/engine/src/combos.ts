@@ -11,8 +11,9 @@ import { r6 } from './commands/core.ts';
 export const MAX_COMBOS = 16;
 /** a combo id, and a part's name: one lower-case English word */
 export const COMBO_ID = /^[a-z][a-z0-9]*$/;
-/** an ending combo (Combo.ending) over more than this many seconds before the film's end leaves the film going on after it */
-export const ENDING_SLACK = 0.5;
+/** an ending combo (Combo.ending) over more than this many seconds before the film's end leaves the film going on after it: only
+ *  rounding, since a single frame of the clip coming back after the fade to black is seen (an export showed 0.2 s of it) */
+export const ENDING_SLACK = 0.01;
 
 /** what a combo's types are checked against: the registry, or anything that finds item and sound types the same way */
 export type ComboLookup = Pick<Registry, 'item' | 'sfx'>;

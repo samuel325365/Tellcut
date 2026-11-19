@@ -744,7 +744,9 @@ test('a fade out over before the film ends (the closing combo in the middle) is 
   const film = (items: object[]) => project([{ id: 'main', kind: 'video', items: [clip('c1', 0, 10)] }, { id: 'top', kind: 'overlay', items }]);
   expect(msgs(fadeOutNotes(film([flash('dark', 4.5, 5.4, { fade: 'out', color: '#000000' })])))).toEqual([
     'note 4.5-5.4 dark 淡出到 #000000（core.flash fade out），在 5.4 秒就結束了，片長 10 秒：淡出完畫面又一下子回來。淡出是收尾用的（收工 closing 組合也是），放在片尾、結束在片尾；要中間暗一下再回來，結尾接一個 fade in']);
-  expect(fadeOutNotes(film([flash('dark', 9, 9.6, { fade: 'out', color: '#000' })]))).toEqual([]);
+  expect(fadeOutNotes(film([flash('dark', 9.1, 10, { fade: 'out', color: '#000' })]))).toEqual([]);
+  // even 0.2 s of the clip back after the black is seen
+  expect(fadeOutNotes(film([flash('dark', 8.9, 9.8, { fade: 'out', color: '#000' })]))).toHaveLength(1);
   expect(fadeOutNotes(film([flash('dark', 4, 5, { fade: 'out', color: '#000' }), flash('up', 5, 6, { fade: 'in', color: '#000' })]))).toEqual([]);
   expect(fadeOutNotes(film([flash('pop', 4, 4.5, { peak: 1 }), flash('in', 0, 1, { fade: 'in' })]))).toEqual([]);
 });
