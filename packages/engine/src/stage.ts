@@ -351,7 +351,7 @@ export class Stage {
         const s = videoState(L.item, tm.start, tm.end, t, W, H, this.registry.grades, this.links.get(L.id));
         if (L.lift) { const z = t < L.lift.until ? L.lift.z : L.lift.base; if (L.el.style.zIndex !== z) L.el.style.zIndex = z; }
         const move = s.offsetX || s.offsetY ? `translate(${s.offsetX}px, ${s.offsetY}px)` : '';
-        // a streak: the layer's own filter after the grade's and defocus's; its deviation written only when it changes
+        // a streak (a transition's blur, a defocus): the layer's own filter after the grade's; its deviation written only when it changes
         let filter = s.filter;
         if (s.streak[0] > 0 || s.streak[1] > 0) {
           const k = (L.streak ??= streakFilter(L.el)), dev = `${s.streak[0]} ${s.streak[1]}`;

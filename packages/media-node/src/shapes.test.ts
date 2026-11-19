@@ -190,6 +190,26 @@ test('transitions on a shaped clip: the dip\'s veil and the blur are cut by the 
   expect(leaked / n).toBeLessThan(0.02);
 }, 180000);
 
+test('defocus: blurred to the frame\'s very edges with no fringe; a shape and rounded corners still cut it', async () => {
+  const soft = { defocus: { from: 0, to: 0, px: 30, px0: 30 } }, mag = (c: RGB) => c[0] > 150 && c[2] > 150 && c[1] < 120;
+  const whole = await one(soft);
+  // the outer two pixels all round: the blurred picture, not the magenta stage (a CSS blur() fades a frame's edge rows into it)
+  for (let i = 0; i < W; i += 3) for (const [x, y] of [[i, 0], [i, 1], [i, H - 1], [i, H - 2]] as Array<[number, number]>) expect(mag(px(whole, x, y)), `(${x}, ${y}) ${px(whole, x, y)}`).toBe(false);
+  for (let j = 0; j < H; j += 3) for (const [x, y] of [[0, j], [1, j], [W - 1, j], [W - 2, j]] as Array<[number, number]>) expect(mag(px(whole, x, y)), `(${x}, ${y}) ${px(whole, x, y)}`).toBe(false);
+  // and blurred: far smoother than the sharp picture
+  const sharp = await plain({ type: 'ellipse' }), step = (s: Shot) => { let t = 0; for (let y = 100; y < 170; y++) for (let x = 160; x < 320; x++) t += far(px(s, x, y), px(s, x + 1, y)); return t; };
+  expect(step(whole)).toBeLessThan(0.3 * step(sharp));
+  // a frame with rounded corners: magenta outside the corner, the picture right up to the straight edges
+  const box = await one({ ...soft, frame: [0.25, 0.25, 0.5, 0.5], radius: 30 });
+  expect(far(px(box, 121, 68.5), MAGENTA)).toBeLessThanOrEqual(30);
+  for (const [x, y] of [[240, 68], [240, 201], [121, 135], [358, 135]]) expect(mag(px(box, x, y)), `(${x}, ${y}) ${px(box, x, y)}`).toBe(false);
+  // a star: the blur stays inside it
+  const star = await one({ ...soft, shape: { type: 'star' } }), outline = await plain({ type: 'star' });
+  let leaked = 0, n = 0;
+  for (let y = 0; y < H; y += 3) for (let x = 0; x < W; x += 3) if (!isPicture(px(outline, x, y))) { n++; if (far(px(star, x, y), MAGENTA) > 40) leaked++; }
+  expect(leaked / n).toBeLessThan(0.02);
+}, 180000);
+
 // The review sheets, only when asked for: TELLCUT_SHAPE_SHEETS=<folder> writes there shapes.png (every type plain, then with a
 // white outline and a shadow, on a paper-coloured stage), shapes-params.png (parameters at work), shapes-text.png (the text shape:
 // one line, two lines, outlined, on a 9:16 frame) and shapes-blob.png (a wobbling blob at three times), 480 × 270 a cell.

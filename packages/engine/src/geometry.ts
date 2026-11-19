@@ -59,8 +59,9 @@ export function kbMatrix(ax: number, ay: number, zoom: number, cx: number, cy: n
  *  bars) while one runs (never both: a shaped clip's reveal is drawn as a dissolve), '' for the whole frame. The last three are a
  *  transition's: `scale` grows the whole frame round its centre (zoom; 1 = none); `streak` blurs the frame's picture by this
  *  deviation (px) along x and along y, drawn by the stage's own SVG filter, which leaves no fringe at the frame's edges ([0, 0] =
- *  none; whip blurs along its travel only, blur and zoom evenly); `veil` covers the picture inside the frame with a colour (dip,
- *  flash; null = none). With no transition running they are 1, [0, 0] and null, and `filter` is the grade and defocus alone.
+ *  none; whip blurs along its travel only, blur and zoom evenly; a defocus is in it too, all round); `veil` covers the picture
+ *  inside the frame with a colour (dip, flash; null = none). With no transition running they are 1, the defocus alone and null,
+ *  and `filter` is the grade alone.
  *  The picture window's dressing: `text` the text shape the stage cuts the frame to itself (fitted inside `inset` px all round);
  *  `outline` the line round the outline, its width in stage px and the path it is stroked on ('' for the frame's own rectangle
  *  with its radius, or the text shape's letters), the clip inset by half its width so the line stays inside the frame (by all of
@@ -328,10 +329,12 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
     look = merge(look, outgoing(drawnTransition(o.type, o.frame, o.shaped, item.frame), prog(local, o.at, o.at + o.dur), o.dir ?? 'l', frame.width, frame.height));
   let filter = item.grade ? grades[item.grade] ?? 'none' : 'none';
   const add = (f: string) => { filter = `${filter === 'none' ? '' : `${filter} `}${f}`; };
+  // a defocus is part of the streak, not a CSS blur(), which fades the frame's edge rows into whatever is under the frame. With a
+  // transition's streak running too, the two are one blur of both deviations (two Gaussian blurs in a row are one of √(a² + b²)).
   if (item.defocus && local >= item.defocus.from) {
     const d = item.defocus, p0 = d.px0 ?? 0;
     const b = p0 + (d.px - p0) * eIO3(prog(local, d.from, d.to));
-    if (b > 0) add(`blur(${b.toFixed(2)}px)`);
+    if (b > 0) look.streak = [n3(Math.hypot(look.streak[0], b)), n3(Math.hypot(look.streak[1], b))];
   }
   if (look.bright !== 1) add(`brightness(${look.bright.toFixed(3)})`);
   let shakeX = 0, shakeY = 0, amp = 0;

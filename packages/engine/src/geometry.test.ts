@@ -47,12 +47,12 @@ test('slide enters from the given side and fades with eOut3', () => {
   expect(l.offsetX).toBeCloseTo(-1080);
 });
 
-test('freezeAt holds the media time; defocus appends blur after it starts', () => {
+test('freezeAt holds the media time; defocus blurs after it starts, as the streak (no fringe), the grade left alone', () => {
   const s = videoState(vid({ freezeAt: 1, grade: 'g', defocus: { from: 2, to: 3, px: 7 } }), 0, 4, 3, 1920, 1080, { g: 'saturate(1.1)' });
   expect(s.mediaLocal).toBe(1);
-  expect(s.filter).toBe('saturate(1.1) blur(7.00px)');
+  expect([s.filter, s.streak]).toEqual(['saturate(1.1)', [7, 7]]);
   const before = videoState(vid({ grade: 'g', defocus: { from: 2, to: 3, px: 7 } }), 0, 4, 1.5, 1920, 1080, { g: 'saturate(1.1)' });
-  expect(before.filter).toBe('saturate(1.1)');
+  expect([before.filter, before.streak]).toEqual(['saturate(1.1)', [0, 0]]);
 });
 
 test('visibleRegion is the part of the source a frame shows', () => {
@@ -129,11 +129,12 @@ test('overlapping shakes add up; different clips shake differently', () => {
 });
 
 test('defocus can start blurred and clear (px0 → px)', () => {
-  const s = (t: number) => videoState(vid({ defocus: { from: 0, to: 2, px: 4, px0: 16 } }), 0, 4, t, 100, 100, {}).filter;
-  expect(s(0)).toBe('blur(16.00px)');
-  expect(s(1)).toBe('blur(10.00px)');
-  expect(s(3)).toBe('blur(4.00px)');
-  expect(videoState(vid({ defocus: { from: 1, to: 2, px: 6 } }), 0, 4, 1.5, 100, 100, {}).filter).toBe('blur(3.00px)');
+  const s = (t: number) => videoState(vid({ defocus: { from: 0, to: 2, px: 4, px0: 16 } }), 0, 4, t, 100, 100, {}).streak;
+  expect(s(0)).toEqual([16, 16]);
+  expect(s(1)).toEqual([10, 10]);
+  expect(s(3)).toEqual([4, 4]);
+  expect(videoState(vid({ defocus: { from: 1, to: 2, px: 6 } }), 0, 4, 1.5, 100, 100, {}).streak).toEqual([3, 3]);
+  expect(videoState(vid({ defocus: { from: 1, to: 2, px: 6 } }), 0, 4, 1.5, 100, 100, {}).filter).toBe('none');
 });
 
 test('radius passes through (0 when absent)', () => {
@@ -370,11 +371,15 @@ test('blur: A blurs up by the middle; B, fully blurred, fades in and is sharp at
   expect(PS.map((p) => B('blur', p).opacity)).toEqual(PS.map(eIO3));
   expect(PS.slice(0, 4).map((p) => A('blur', p).streak)).toEqual([0, M * eIO3(0.5), M, M].map((v) => [+v.toFixed(3), +v.toFixed(3)]));
   expect(A('blur', 0.5).opacity).toBe(1);
-  // the blur is the streak's, never the filter string's: the grade and a running defocus stay as they were
+  // the blur is the streak's, never the filter string's: the grade stays as it was
   const g = { grade: 'g', defocus: { from: 0, to: 1, px: 4 } };
   const withG = (t: number, link?: any, o: any = {}) => videoState(vid({ ...g, ...o }), 0, 4, t, W, H, { g: 'saturate(1.1)' }, link);
   expect(withG(0.5, { from: [0, 0, 1, 1] }, { transitionIn: { type: 'blur', dur: 1 } }).filter).toBe(withG(0.5).filter);
   expect(withG(3.5, outOf('blur')).filter).toBe(withG(3.5).filter);
+  // a running defocus and the transition's blur are one blur of both deviations together (two Gaussians in a row: √(a² + b²))
+  const both = withG(3.5, outOf('blur')).streak, alone = videoState(vid(), 0, 4, 3.5, W, H, {}, outOf('blur')).streak;
+  expect(both[0]).toBeCloseTo(Math.hypot(alone[0], 4), 2);
+  expect(both[1]).toBeCloseTo(Math.hypot(alone[1], 4), 2);
 });
 
 test('dip: A goes to black by the middle; B, unseen before it, comes up from black', () => {

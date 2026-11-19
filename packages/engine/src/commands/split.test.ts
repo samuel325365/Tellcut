@@ -90,7 +90,7 @@ test('splitting after a finished defocus ramp keeps the second half blurred', as
   split(p, { t: 2, ids: ['c1'] });
   const [a, b] = p.tracks[1].items as any[];
   expect(a.defocus).toEqual({ from: 0.5, to: 1, px: 8 });
-  for (const t of [0, 1]) expect(videoState(b, 0, 2, t, 320, 180, {}).filter).toBe('blur(8.00px)');
+  for (const t of [0, 1]) expect(videoState(b, 0, 2, t, 320, 180, {}).streak).toEqual([8, 8]);
 });
 
 test('split refuses a missing t instead of cutting every media item (health10 EC12)', () => {
