@@ -343,12 +343,17 @@ function brush(s: NamedShape, b: Box): string {
 
 /** Slats: the frame cut into `count` parallel strips with gaps between, tilted by `angle` (each strip the frame's rectangle cut by
  *  two parallel lines, so the outer ones of a tilted set are triangles or trapezoids). One subpath each, all drawn the same way
- *  round and not overlapping, so the nonzero rule fills each once. */
+ *  round and not overlapping, so the nonzero rule fills each once.
+ *  Tilted, a gap running into a corner of the frame (or just past it) left slivers there: a notch of background with a spike of
+ *  slat either side, or a foot of slat a few px wide. So the outer two strips may be wider or narrower than the inner ones (which
+ *  stay equal to each other, and may give a little), and the layout is the one nearest the even layout in which every corner of
+ *  the frame lies well inside a slat (or, when none does, the one that comes closest). Upright or lying across (no corner but
+ *  the run's two ends), that is the even layout itself. */
 function slats(s: NamedShape, b: Box): string {
   const n = opt<number>(s, 'count'), a = (opt<number>(s, 'angle') * Math.PI) / 180, nx = Math.cos(a), ny = Math.sin(a);
   const rect: Pt[] = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]], proj = (p: Pt) => p[0] * nx + p[1] * ny;
   const ps = rect.map(proj), lo = Math.min(...ps), L = Math.max(...ps) - lo;
-  const gap = Math.min(opt<number>(s, 'gap') * Math.min(b.w, b.h), (0.8 * L) / Math.max(1, n - 1)), w = (L - (n - 1) * gap) / n;
+  const gap = Math.min(opt<number>(s, 'gap') * Math.min(b.w, b.h), (0.8 * L) / Math.max(1, n - 1)), even = (L - (n - 1) * gap) / n;
   /** a convex polygon cut to the side of the line proj = c where proj·sign ≥ c·sign */
   const cut = (poly: Pt[], c: number, sign: number) => {
     const out: Pt[] = [], inside = (p: Pt) => (proj(p) - c) * sign >= 0;
@@ -359,12 +364,36 @@ function slats(s: NamedShape, b: Box): string {
     });
     return out;
   };
-  let d = '';
-  for (let i = 0; i < n; i++) {
-    const p0 = lo + i * (w + gap), poly = cut(cut(rect, p0, 1), p0 + w, -1);
-    if (poly.length >= 3) d += polyline(poly);
+  /** the strips' [start, end] along the run: the first `w0` wide, the inner ones `w`, the last what is left */
+  type Run = Array<[number, number]>;
+  const layout = (w0: number, w: number): Run => {
+    const out: Run = [];
+    for (let i = 0, at = lo; i < n; i++) { const e = i === n - 1 ? lo + L : at + (i === 0 ? w0 : w); out.push([at, e]); at = e + gap; }
+    return out;
+  };
+  // the frame's corners inside the run (not at its two ends): a cut line near one of them is what leaves a sliver
+  const mids = ps.filter((p) => p - lo > 1e-6 * L && lo + L - p > 1e-6 * L);
+  /** how far every inner corner is into its slat (0 in a gap), in even slat widths; CLEAR is enough */
+  const clearOf = (st: Run) => Math.min(Infinity, ...mids.map((c) => Math.max(0, ...st.map(([p0, p1]) => Math.min(c - p0, p1 - c))) / even));
+  const CLEAR = 0.2;
+  let best = layout(even, even), bestClear = clearOf(best);
+  if (bestClear < CLEAR) {
+    // the outer slats from 0.6 to 1.8 times an even one, the inner ones within 20 %, nearest the even layout first
+    const tries: Array<{ w0: number; w: number; cost: number }> = [];
+    for (let i = -20; i <= 20; i++) for (let j = -40; j <= 80; j++) {
+      if (n === 2 && i !== 0) continue;
+      const w = even * (1 + i / 100), w0 = even * (1 + j / 100), w1 = L - w0 - (n - 2) * w - (n - 1) * gap;
+      if (w1 < 0.6 * even - 1e-9 || w1 > 1.8 * even + 1e-9) continue;
+      tries.push({ w0, w, cost: Math.max(Math.abs(w0 - even), Math.abs(w1 - even)) / even + Math.abs(i) / 100 });
+    }
+    tries.sort((x, y) => x.cost - y.cost);
+    for (const t of tries) {
+      const st = layout(t.w0, t.w), cl = clearOf(st);
+      if (cl > bestClear) { best = st; bestClear = cl; }
+      if (cl >= CLEAR) break;
+    }
   }
-  return d;
+  return best.map(([p0, p1]) => cut(cut(rect, p0, 1), p1, -1)).filter((p) => p.length >= 3).map(polyline).join('');
 }
 
 /**

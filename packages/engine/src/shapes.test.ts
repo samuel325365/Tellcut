@@ -72,6 +72,49 @@ test('shapes keep their own proportion where they have one: a circle in a wide f
   expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(0.85 * 1080, 0);
 });
 
+test('tilted slats leave no slivers at the frame\'s corners: every corner is inside a slat, its two edges running on well past it', () => {
+  type Pt = [number, number];
+  const area = (p: Pt[]) => Math.abs(p.reduce((s, q, i) => { const r = p[(i + 1) % p.length]; return s + q[0] * r[1] - r[0] * q[1]; }, 0)) / 2;
+  const inPoly = (p: Pt[], x: number, y: number) => {
+    let c = false;
+    for (let i = 0, j = p.length - 1; i < p.length; j = i++) if (p[i][1] > y !== p[j][1] > y && x < ((p[j][0] - p[i][0]) * (y - p[i][1])) / (p[j][1] - p[i][1]) + p[i][0]) c = !c;
+    return c;
+  };
+  const bad: string[] = [];
+  for (const [w, h] of [[1000, 562.5], [562.5, 1000], [1000, 1000]]) for (const count of [2, 3, 4, 5, 6, 8, 12]) for (const gap of [0, 0.04, 0.1])
+    for (const angle of [-75, -60, -45, -30, -15, -5, 5, 15, 30, 45, 60, 75]) {
+      const s = { type: 'slats', count, gap, angle } as NamedShape, polys = flattenPath(shapePath(s, w, h)) as Pt[][];
+      const a = (angle * Math.PI) / 180, L = w * Math.abs(Math.cos(a)) + h * Math.abs(Math.sin(a));
+      const g = Math.min(gap * Math.min(w, h), (0.8 * L) / (count - 1)), slat = (L - (count - 1) * g) / count;
+      const tag = `${w}x${h} ${JSON.stringify(s)}`;
+      // gaps wider than half a slat leave no layout clear of every corner (the closest one is drawn): not checked
+      if (g > 0.5 * slat) continue;
+      if (polys.length !== count) { bad.push(`${tag}: ${polys.length} pieces`); continue; }
+      // without gaps the slats are the whole frame: none lost, none overlapping another
+      const total = polys.map(area).reduce((x, y) => x + y, 0);
+      if (gap === 0 && Math.abs(total - w * h) > 0.001 * w * h) bad.push(`${tag}: covers ${(total / (w * h)).toFixed(4)}`);
+      const covered = (x: number, y: number) => polys.some((p) => inPoly(p, x, y));
+      for (const [cx, cy, ux, uy] of [[0, 0, 1, 1], [w, 0, -1, 1], [w, h, -1, -1], [0, h, 1, -1]]) {
+        // each corner's own pixel, then how far along each of its edges the picture runs on before a gap
+        const x0 = cx + ux * 0.5, y0 = cy + uy * 0.5;
+        if (!covered(x0, y0)) { bad.push(`${tag}: corner (${cx}, ${cy}) in a gap`); continue; }
+        for (const [dx, dy] of [[ux, 0], [0, uy]]) {
+          let d = 0;
+          while (d < 0.15 * slat && covered(x0 + dx * d, y0 + dy * d)) d += 0.5;
+          if (d < 0.15 * slat) bad.push(`${tag}: corner (${cx}, ${cy}) runs only ${d} px along ${dx ? 'x' : 'y'} (slat ${slat.toFixed(0)})`);
+        }
+      }
+    }
+  expect(bad).toEqual([]);
+});
+
+test('slats upright or lying across are as they were: even slats and gaps, the frame less the gaps', () => {
+  const xs = (d: string) => flattenPath(d).map((p) => [Math.min(...p.map((q) => q[0])), Math.max(...p.map((q) => q[0]))].map((v) => Math.round(v * 100) / 100));
+  expect(xs(shapePath({ type: 'slats', count: 4, gap: 0.05 }, 1000, 1000))).toEqual([[0, 212.5], [262.5, 475], [525, 737.5], [787.5, 1000]]);
+  const ys = flattenPath(shapePath({ type: 'slats', count: 3, gap: 0.1, angle: 90 }, 1600, 900)).map((p) => Math.round(Math.min(...p.map((q) => q[1]))));
+  expect(ys).toEqual([0, 330, 660]);
+});
+
 test('shapeSafe: the rectangle a shape certainly shows', () => {
   // a circle's inscribed square, in the middle of a wide frame
   const c = shapeSafe({ type: 'circle' }, 16 / 9)!;
