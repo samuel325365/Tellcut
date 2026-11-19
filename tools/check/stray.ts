@@ -8,17 +8,21 @@ import type { Project } from '@tellcut/engine';
 import type { Finding } from './rules.ts';
 
 type Times = Map<string, { start: number; end: number }>;
-type Clip = { id: string; source: string; frame: number[]; defocus?: { px: number } };
+type Clip = { id: string; source: string; frame: number[]; defocus?: { px: number }; shape?: unknown; outline?: unknown };
 
 /** a blurred full-screen copy under a panel (c.panel({ backdrop: 'blur' })): nobody reads it */
 const isBackdrop = (c: Clip) => c.frame.every((n, i) => Math.abs(n - [0, 0, 1, 1][i]) < 1e-6) && (c.defocus?.px ?? 0) > 0;
 /** the clips shown, topmost first (later tracks and items draw over earlier ones; a hidden track draws nothing) */
 const clips = (p: Project) => p.tracks.filter((t) => t.kind === 'video' && !t.muted).flatMap((t) => t.items as unknown as Clip[]).filter((c) => !isBackdrop(c)).reverse();
 
-/** the project with its video tracks only, blurred backdrops left out: what is read in it is the footage's own text */
+/** a clip cut to big letters (a text shape): its window is itself a word */
+const isTextShape = (c: Clip) => (c.shape as { type?: string } | undefined)?.type === 'text';
+/** the project with its video tracks only, blurred backdrops left out: what is read in it is the footage's own text. A text-shaped
+ *  window is read as its plain frame: OCR read its letters, and their edges, as text in the footage cut by the frame. */
 export function videoOnly(p: Project): Project {
   const q = structuredClone(p);
-  q.tracks = q.tracks.filter((t) => t.kind === 'video').map((t) => ({ ...t, items: (t.items as unknown as Clip[]).filter((c) => !isBackdrop(c)) })) as unknown as Project['tracks'];
+  const plain = (c: Clip): Clip => { if (!isTextShape(c)) return c; const { shape: _s, outline: _o, ...rest } = c; return rest; };
+  q.tracks = q.tracks.filter((t) => t.kind === 'video').map((t) => ({ ...t, items: (t.items as unknown as Clip[]).filter((c) => !isBackdrop(c)).map(plain) })) as unknown as Project['tracks'];
   return q;
 }
 

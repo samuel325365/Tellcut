@@ -20,6 +20,16 @@ test('the film is read with its own video only: no overlays, no blurred backdrop
   expect(project().tracks).toHaveLength(3);   // the project itself untouched
 });
 
+test('a text-shaped window is read as its plain frame; other shapes stay', () => {
+  const p = project() as any;
+  p.tracks.push({ id: 'top', kind: 'video', items: [clip('word', 0, 2, { frame: [0.1, 0.1, 0.8, 0.8], shape: { type: 'text', text: 'ROMA' }, outline: {} }),
+    clip('round', 2, 4, { frame: [0.1, 0.1, 0.8, 0.8], shape: { type: 'circle' }, outline: {} })] });
+  const q = videoOnly(parseProject(p)), [word, round] = q.tracks.at(-1)!.items as any[];
+  expect([word.shape, word.outline]).toEqual([undefined, undefined]);
+  expect(round.shape).toEqual({ type: 'circle' });
+  expect(round.outline).toBeDefined();
+});
+
 test('sample times: every second, and one frame inside both ends of each clip, within the film', () => {
   const p = project(), at = strayTimes(p, resolveTimes(p));
   // r3c-baking: a subtitle typing on in a clip's last 0.3 s showed "Cre" one frame before the cut and nothing 0.12 s before it;

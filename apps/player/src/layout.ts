@@ -36,6 +36,9 @@ export function textBoxes(stage: HTMLElement, W: number): TextBox[] {
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
     const el = n.parentElement;
     if (!el || !n.textContent?.trim() || /^(STYLE|SCRIPT|TITLE|DEFS)$/i.test(el.tagName)) continue;
+    // a clip's text shape: the letters of its <clipPath> are never painted, and its outline's are the window's edge, not words
+    // laid over the film (they filled the frame, so every big-letter opening read as text outside the safe area)
+    if (el.closest('clipPath, .st-outline')) continue;
     const item = el.closest<HTMLElement>('[data-id]');
     if (!item?.dataset.id || !shown(el, stage)) continue;
     const range = document.createRange();
