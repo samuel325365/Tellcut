@@ -161,3 +161,23 @@ test('videoState: a named shape is the frame\'s path() clip, the frame\'s own ra
   expect(shapeClip({ shape: { type: 'blob' } }, 640, 360, 1)).toBe(shapeClip({ shape: { type: 'blob' } }, 640, 360, 2));
   expect(shapeClip({ shape: { type: 'blob', wobble: 1 } }, 640, 360, 1)).not.toBe(shapeClip({ shape: { type: 'blob', wobble: 1 } }, 640, 360, 2));
 });
+
+test('videoState: an outline insets the shape by half its width (a text shape by all of it), a shadow is scaled with the stage', () => {
+  // 1080 × 1920: the short side is 1080, so sizes are as written
+  const s = videoState(clipOf({ shape: { type: 'circle' }, outline: { width: 20 }, shadow: true }), 0, 4, 1, 1080, 1920, {});
+  expect(s.outline).toEqual({ width: 20, color: '#ffffff', path: shapePath({ type: 'circle' }, 1080, 1920, 1, 10) });
+  expect([s.inset, s.clipPath]).toEqual([10, `path('${shapePath({ type: 'circle' }, 1080, 1920, 1, 10)}')`]);
+  expect(s.shadow).toEqual({ blur: 30, y: 12, opacity: 0.45 });
+  // half the size on a 540 short side
+  const small = videoState(clipOf({ outline: { width: 20, color: '#000' }, shadow: { blur: 10, opacity: 0.2 }, radius: 24 }), 0, 4, 1, 960, 540, {});
+  expect([small.outline, small.shadow, small.radius, small.clipPath]).toEqual([{ width: 10, color: '#000', path: '' }, { blur: 5, y: 6, opacity: 0.2 }, 24, '']);
+  // a polygon with an outline is a path() inset like the others; without one it stays polygon()
+  const poly = videoState(clipOf({ shape: [[0, 0], [1, 0], [0, 1]], outline: { width: 20 } }), 0, 4, 1, 1080, 1080, {});
+  expect(poly.clipPath).toBe("path('M10 10L1070 10L10 1070Z')");
+  const text = videoState(clipOf({ shape: { type: 'text', text: 'A' }, outline: { width: 20 } }), 0, 4, 1, 1080, 1080, {});
+  expect([text.inset, text.text, text.outline!.path]).toEqual([20, { type: 'text', text: 'A' }, '']);
+  expect(videoState(clipOf({ shadow: false }), 0, 4, 1, 1080, 1080, {}).shadow).toBe(null);
+  // both are strict
+  for (const bad of [{ outline: { width: 0 } }, { outline: { size: 4 } }, { shadow: { x: 3 } }, { shadow: 'yes' }])
+    expect(VideoItemZ.safeParse({ id: 'c', start: 0, end: 4, source: 's', in: 0, speed: 1, crop, ...bad }).success, JSON.stringify(bad)).toBe(false);
+});
