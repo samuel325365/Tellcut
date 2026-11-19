@@ -252,25 +252,40 @@ function bubble(s: NamedShape, b: Box): string {
   return `${d}Z`;
 }
 
-/** The blob's outline: a circle whose radius is a few seeded waves round it (the `lobes` bulges strongest), stretched to fill the
- *  frame. Wobble moves each wave's phase and size slowly with the clip's local time, a few seconds a cycle. */
-function blobPoints(s: NamedShape, local: number): Pt[] {
+/** The blob's outline: the frame's ellipse pushed in and out along its normal by a few seeded waves (the `lobes` bulges strongest),
+ *  then stretched to fill the frame. The waves run along the ellipse's length and push by a share of its short radius, so a lobe at
+ *  the end of a wide frame is as wide and as deep as one along its side (waves round a circle, stretched, came out as points
+ *  there). Wobble moves each wave's phase and size slowly with the clip's local time, a few seconds a cycle. */
+function blobPoints(s: NamedShape, local: number, w: number, h: number): Pt[] {
   const sd = opt<number>(s, 'seed'), lobes = opt<number>(s, 'lobes'), wob = opt<number>(s, 'wobble');
-  const waves = [[lobes, 0.13], [2, 0.06], [3, 0.045], [lobes + 1, 0.035]].map(([k, amp], j) => {
+  // the lobes' wave carries the shape; the low waves (2, 3) only lean it
+  const waves = [[lobes, 0.16], [2, 0.06], [3, 0.05], [lobes + 1, 0.04]].map(([k, amp], j) => {
     const ph = rand(sd, 10 + j) * 2 * Math.PI, hz = 0.12 + 0.12 * rand(sd, 20 + j), ph2 = rand(sd, 30 + j) * 2 * Math.PI;
     return { k, amp: amp * (1 + wob * 0.45 * Math.sin(2 * Math.PI * hz * 0.7 * local + ph2)), ph: ph + wob * 1.1 * Math.sin(2 * Math.PI * hz * local + ph2) };
   });
-  const N = 48;
-  return Array.from({ length: N }, (_, i) => {
-    const a = (2 * Math.PI * i) / N, r = 1 + waves.reduce((t, w) => t + w.amp * Math.cos(w.k * a + w.ph), 0);
-    return [r * Math.cos(a), r * Math.sin(a)];
-  });
+  const rx = w / 2, ry = h / 2, R = Math.min(rx, ry), M = 360, cum = [0];
+  for (let i = 1; i <= M; i++) {
+    const a0 = (2 * Math.PI * (i - 1)) / M, a1 = (2 * Math.PI * i) / M;
+    cum.push(cum[i - 1] + Math.hypot(rx * (Math.cos(a1) - Math.cos(a0)), ry * (Math.sin(a1) - Math.sin(a0))));
+  }
+  const L = cum[M], N = 64, out: Pt[] = [];
+  for (let j = 0, i = 0; j < N; j++) {
+    const at = (L * j) / N;
+    while (cum[i + 1] < at) i++;
+    const a = ((i + (at - cum[i]) / (cum[i + 1] - cum[i] || 1)) * 2 * Math.PI) / M;
+    const nx = Math.cos(a) / rx, ny = Math.sin(a) / ry, nl = Math.hypot(nx, ny);
+    const push = R * waves.reduce((t, wv) => t + wv.amp * Math.cos((wv.k * 2 * Math.PI * at) / L + wv.ph), 0);
+    out.push([rx * Math.cos(a) + (nx / nl) * push, ry * Math.sin(a) + (ny / nl) * push]);
+  }
+  return out;
 }
 
-/** Torn paper: on each torn side the edge runs a little inside the frame, in short irregular steps (fibres) over a slower wander. */
+/** Torn paper: on each torn side the edge runs inside the frame along a slow wander, a little askew to the frame (a tear is never
+ *  parallel to the sheet's edge), roughened by fine fibres. The wander, not the fibres, carries the depth: fibres as deep as the
+ *  edge read as noise, not as a tear. */
 function torn(s: NamedShape, b: Box): string {
   const sd = opt<number>(s, 'seed'), rg = opt<number>(s, 'rough'), sides = opt<string>(s, 'sides');
-  const S = Math.min(b.w, b.h), D = (0.012 + 0.05 * rg) * S, step = 0.014 * S;
+  const S = Math.min(b.w, b.h), D = (0.025 + 0.06 * rg) * S, step = 0.006 * S;
   // clockwise: top (l→r), right (t→b), bottom (r→l), left (b→t); the letter of each and its start corner
   const order = ['t', 'r', 'b', 'l'], corners: Pt[] = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]];
   const depth = (k: number) => (sides.includes(order[k]) ? D : 0);
@@ -283,12 +298,13 @@ function torn(s: NamedShape, b: Box): string {
     pts.push(at(depth((k + 3) % 4) * 0.6, depth(k) * 0.6));
     if (!depth(k)) continue;
     const key = sd * 7 + k * 1013;
+    const skew = (rand(key + 5, 0) * 2 - 1) * 0.35;
     for (let t = step, i = 0; t < len - step; i++) {
-      const wander = noise1(key, t / (0.16 * S)) * 0.5 + noise1(key + 1, t / (0.05 * S)) * 0.3, fibre = rand(key + 2, i) * 2 - 1;
-      // every few steps a deeper notch, as paper tears in little bites
-      const bite = rand(key + 3, i) < 0.12 ? 0.35 : 0;
-      pts.push(at(t, D * Math.min(1, Math.max(0, 0.5 + 0.5 * wander + 0.22 * fibre * rg + bite))));
-      t += step * (0.55 + 0.9 * rand(key + 4, i));
+      const wander = noise1(key, t / (0.3 * S)) * 0.45 + noise1(key + 1, t / (0.07 * S)) * 0.25 + skew * (t / len - 0.5) * 2;
+      // fibres: fine and shallow, a short noise with a little grain on it (grain alone made the edge grass)
+      const fibre = noise1(key + 2, t / (0.015 * S)) * (0.06 + 0.1 * rg) + (rand(key + 3, i) * 2 - 1) * 0.04;
+      pts.push(at(t, D * Math.min(1, Math.max(0, 0.5 + 0.5 * wander + fibre))));
+      t += step * (0.5 + rand(key + 4, i));
     }
   }
   return polyline(pts);
@@ -368,7 +384,7 @@ export function shapePath(shape: ShapeInput, w: number, h: number, local = 0, in
     case 'ngon': return ngon(shape, b);
     case 'stamp': return stamp(shape, b);
     case 'bubble': return bubble(shape, b);
-    case 'blob': return smoothClosed(stretchPoints(blobPoints(shape, local), b), b);
+    case 'blob': return smoothClosed(stretchPoints(blobPoints(shape, local, b.w, b.h), b), b);
     case 'torn': return torn(shape, b);
     case 'brush': return brush(shape, b);
     case 'slats': return slats(shape, b);
