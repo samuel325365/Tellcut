@@ -71,6 +71,15 @@ body.resizing, body.resizing * { user-select: none; } body.resizing iframe { poi
 .field input[type="checkbox"] { width: auto; justify-self: start; }
 .field textarea.json { font-family: Consolas, monospace; font-size: 11px; }
 .field .bad { grid-column: 2; color: var(--off); font-style: normal; font-size: 11px; }
+.field input:disabled { opacity: .45; }
+/* a video clip's picture window: one block between rules; a shape's parameters and the outline's and shadow's settings indented under them */
+.window-group { margin: 8px 0; padding: 6px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.window-group > button { margin: 2px 0 6px 102px; }
+.window-group .sub .field > span { padding-left: 10px; }
+.window-group .hint { margin: 2px 0 6px; font-size: 12px; }
+.edge-boxes { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.edge-boxes label { display: inline-flex; align-items: center; gap: 3px; color: var(--text); }
+.edge-boxes input { width: auto; }
 .notice { color: var(--off); background: rgba(255,69,58,.1); padding: 6px 8px; border-radius: 4px; }
 .hint { color: var(--dim); }
 .crop-buttons { display: flex; gap: 6px; align-items: center; margin-top: 8px; color: var(--dim); }

@@ -322,3 +322,156 @@ test('a transition drawn as a dissolve says so under the menu, and why, in the U
     expect((await note({ type: 'wipe', dur: 0.5 }, shape))![1]).toContain('擦除');
   } finally { setLang('zh'); localStorage.clear(); }
 });
+
+describe('the picture window', () => {
+  const clipOf = (store: any, id = 'c1') => store.get().project.tracks.flatMap((t: any) => t.items).find((i: any) => i.id === id);
+  const show = async (m: ReturnType<typeof mount>, patch: Record<string, unknown> = {}) => {
+    Object.assign(clipOf(m.store), patch);
+    await act(() => render(<PropertiesPanel editor={m.editor} s={{ ...m.store.get() }} />, m.root));
+  };
+  const input = (m: ReturnType<typeof mount>, n: string) => m.root.querySelector<any>(`[data-field="${n}"] input, [data-field="${n}"] select, [data-field="${n}"] textarea`);
+
+  test('the frame: X, Y, W, H kept inside the picture, the typed number kept (a position shrinks the window, a size moves it in); Whole frame puts it back', async () => {
+    const m = mount(['c1']);
+    await show(m, { frame: [0.1, 0.2, 0.5, 0.5] });
+    expect(['frameX', 'frameY', 'frameW', 'frameH'].map((n) => input(m, n).value)).toEqual(['0.1', '0.2', '0.5', '0.5']);
+    expect(m.root.querySelector('[data-field="frameX"] span')!.textContent).toBe('Frame X');
+    change(input(m, 'frameX'), '0.3');
+    change(input(m, 'frameX'), '0.9');           // the window shrinks to stay inside the picture
+    change(input(m, 'frameW'), '0.95');          // a wider window moves back in
+    change(input(m, 'frameH'), '0');             // never 0
+    change(input(m, 'frameY'), '');              // an emptied box changes nothing
+    m.root.querySelector<HTMLButtonElement>('[data-frame-whole]')!.click();
+    expect(m.calls).toEqual([
+      ['update', 'c1', { frame: [0.3, 0.2, 0.5, 0.5] }], ['update', 'c1', { frame: [0.9, 0.2, 0.1, 0.5] }],
+      ['update', 'c1', { frame: [0.05, 0.2, 0.95, 0.5] }], ['update', 'c1', { frame: [0.1, 0.2, 0.5, 0.01] }],
+      ['update', 'c1', { frame: [0, 0, 1, 1] }]]);
+    await show(m, { frame: [0, 0, 1, 1] });
+    expect(m.root.querySelector<HTMLButtonElement>('[data-frame-whole]')!.disabled).toBe(true);
+  });
+
+  test('the shape menu: None, the named shapes in English, a type with its defaults; None clears it', async () => {
+    const { SHAPE_TYPES } = await import('@tellcut/engine');
+    const m = mount(['c1']);
+    await show(m);
+    const opts = [...m.root.querySelectorAll<HTMLOptionElement>('[data-field="shape"] option')];
+    expect(opts.map((o) => o.value)).toEqual(['', ...SHAPE_TYPES]);
+    expect(opts.map((o) => o.textContent).slice(0, 4)).toEqual(['None', 'Circle', 'Ellipse', 'Arch']);
+    expect(input(m, 'shape').value).toBe('');
+    expect(m.root.querySelector('[data-shape-params]')).toBeNull();
+    change(input(m, 'shape'), 'star');
+    change(input(m, 'shape'), 'text');
+    await show(m, { shape: { type: 'circle' } });
+    expect(m.root.querySelector('[data-shape-params]')).toBeNull();     // a circle has no parameters
+    change(input(m, 'shape'), '');
+    expect(m.calls).toEqual([['update', 'c1', { shape: { type: 'star' } }], ['update', 'c1', { shape: { type: 'text', text: '你好' } }], ['update', 'c1', { shape: undefined }]]);
+  });
+
+  test('a shape shows its own parameters only, as the field each kind needs; a number is clamped, emptied puts the default back', async () => {
+    const { SHAPE_PARAMS } = await import('@tellcut/engine');
+    const m = mount(['c1']);
+    const params = () => [...m.root.querySelectorAll<HTMLElement>('[data-shape-params] [data-field]')].map((e) => e.dataset.field);
+    for (const type of ['star', 'ngon', 'stamp', 'bubble', 'blob', 'torn', 'brush', 'slats', 'text'] as const) {
+      await show(m, { shape: type === 'text' ? { type, text: 'ROMA' } : { type } });
+      expect(params()).toEqual(SHAPE_PARAMS[type].map((p) => `shape-${p.key}`));
+    }
+    await show(m, { shape: { type: 'star', points: 7 } });
+    expect([input(m, 'shape-points').value, input(m, 'shape-inner').value, input(m, 'shape-round').value]).toEqual(['7', '0.45', '0']);
+    expect(m.root.querySelector('[data-field="shape-inner"] span')!.textContent).toBe('Inner radius');
+    m.calls.length = 0;
+    change(input(m, 'shape-points'), '40');
+    change(input(m, 'shape-inner'), '0.6');
+    change(input(m, 'shape-points'), '');
+    change(input(m, 'shape-round'), '2.5');
+    expect(m.calls.map((c) => c[2].shape)).toEqual([{ type: 'star', points: 24 }, { type: 'star', points: 7, inner: 0.6 }, { type: 'star' }, { type: 'star', points: 7, round: 1 }]);
+    m.calls.length = 0;
+    await show(m, { shape: { type: 'bubble' } });
+    expect(input(m, 'shape-tail').value).toBe('bottom-left');
+    expect(m.root.querySelector('[data-field="shape-tail"] option[value="top-right"]')!.textContent).toBe('Top right');
+    change(input(m, 'shape-tail'), 'top');
+    await show(m, { shape: { type: 'text', text: 'ROMA' } });
+    change(input(m, 'shape-text'), '  CIAO \r\n\n ROMA ');
+    change(input(m, 'shape-font'), 'body');
+    await show(m, { shape: { type: 'torn', sides: 'tb' } });
+    const edge = (c: string) => m.root.querySelector<HTMLInputElement>(`[data-field="shape-sides"] [data-edge="${c}"] input`)!;
+    expect(['t', 'b', 'l', 'r'].map((c) => edge(c).checked)).toEqual([true, true, false, false]);
+    edge('r').checked = true; edge('r').dispatchEvent(new Event('change'));
+    edge('t').checked = false; edge('t').dispatchEvent(new Event('change'));
+    await show(m, { shape: { type: 'torn', sides: 'l' } });
+    expect(edge('l').disabled).toBe(true);                               // the last torn edge stays
+    expect(m.calls.map((c) => c[2].shape)).toEqual([{ type: 'bubble', tail: 'top' }, { type: 'text', text: 'CIAO\nROMA' }, { type: 'text', text: 'ROMA', font: 'body' },
+      { type: 'torn', sides: 'tbr' }, { type: 'torn', sides: 'b' }]);
+  });
+
+  test('a polygon shows as Custom, not editable; choosing another shape replaces it', async () => {
+    const m = mount(['c1']);
+    await show(m, { shape: [[0, 0], [1, 0.1], [0.9, 1], [0, 1]] });
+    expect(input(m, 'shape').value).toBe('custom');
+    expect(m.root.querySelector('[data-field="shape"] option[value="custom"]')!.textContent).toBe('Custom');
+    expect(m.root.querySelector('[data-shape-custom]')).not.toBeNull();
+    expect(m.root.querySelector('[data-shape-params]')).toBeNull();
+    change(input(m, 'shape'), 'custom');
+    change(input(m, 'shape'), 'heart');
+    expect(m.calls).toEqual([['update', 'c1', { shape: { type: 'heart' } }]]);
+    await show(m, { shape: undefined });
+    expect(m.root.querySelector('[data-field="shape"] option[value="custom"]')).toBeNull();
+  });
+
+  test('outline and shadow, with or without a shape: on with the defaults, their settings, off', async () => {
+    const m = mount(['c1']);
+    await show(m);
+    expect(m.root.querySelector('[data-field="outlineWidth"]')).toBeNull();
+    expect(m.root.querySelector('[data-field="shadowBlur"]')).toBeNull();
+    input(m, 'outline').click();
+    input(m, 'shadow').click();
+    await show(m, { outline: { width: 8, color: '#ffffff' }, shadow: true });
+    expect([input(m, 'outlineWidth').value, input(m, 'outlineColor').value, input(m, 'shadowBlur').value, input(m, 'shadowY').value, input(m, 'shadowOpacity').value])
+      .toEqual(['8', '#ffffff', '30', '12', '0.45']);
+    change(input(m, 'outlineWidth'), '4');
+    change(input(m, 'outlineColor'), '#ff0000');
+    change(input(m, 'shadowBlur'), '50');
+    change(input(m, 'shadowOpacity'), '3');
+    await show(m, { shadow: { blur: 50 } });
+    change(input(m, 'shadowBlur'), '');                                  // nothing of its own left: the default shadow
+    input(m, 'outline').click();
+    input(m, 'shadow').click();
+    expect(m.calls.map((c) => c[2])).toEqual([
+      { outline: { width: 8, color: '#ffffff' } }, { shadow: true },
+      { outline: { width: 4, color: '#ffffff' } }, { outline: { width: 8, color: '#ff0000' } }, { shadow: { blur: 50 } }, { shadow: { opacity: 1 } },
+      { shadow: true }, { outline: undefined }, { shadow: undefined }]);
+  });
+
+  test('the panel runs Frame, Shape and its parameters, Outline, Shadow, Corner radius; a named shape turns the radius off and says why', async () => {
+    const { setLang } = await import('./i18n/lang.ts');
+    try {
+      setLang('en');
+      const m = mount(['c1']);
+      await show(m, { shape: { type: 'star' }, outline: {}, shadow: true, radius: 12 });
+      const order = [...m.root.querySelectorAll<HTMLElement>('[data-group="window"] [data-field]')].map((e) => e.dataset.field);
+      expect(order).toEqual(['frameX', 'frameY', 'frameW', 'frameH', 'shape', 'shape-points', 'shape-inner', 'shape-round', 'outline', 'outlineWidth', 'outlineColor',
+        'shadow', 'shadowBlur', 'shadowY', 'shadowOpacity', 'radius']);
+      expect(input(m, 'radius').disabled).toBe(true);
+      expect(m.root.querySelector('[data-field="radius"] span')!.getAttribute('data-tip')).toContain('Not used with a shape');
+      await show(m, { shape: [[0, 0], [1, 0], [1, 1]] });                  // a polygon keeps its radius, as it always has
+      expect(input(m, 'radius').disabled).toBe(false);
+      await show(m, { shape: undefined });
+      expect(input(m, 'radius').disabled).toBe(false);
+      expect(m.root.querySelector('[data-field="radius"] span')!.getAttribute('data-tip')).toBeNull();
+    } finally { setLang('zh'); localStorage.clear(); }
+  });
+
+  test('a named shape still gets the note that its reveal is drawn as a dissolve', async () => {
+    const m = mount(['c2']);
+    Object.assign(clipOf(m.store, 'c2'), { start: 3.5, transitionIn: { type: 'wipe', dur: 0.5, dir: 'l' }, shape: { type: 'circle' } });
+    await act(() => render(<PropertiesPanel editor={m.editor} s={{ ...m.store.get() }} />, m.root));
+    expect(m.root.querySelector<HTMLElement>('[data-transition-note]')!.dataset.transitionNote).toBe('shape');
+  });
+
+  test('every shape parameter has a hint in each language', async () => {
+    const { SHAPE_PARAMS, SHAPE_TYPES } = await import('@tellcut/engine');
+    const { DICTS } = await import('./i18n/index.ts');
+    const { paramHintKey } = await import('./WindowFields.tsx');
+    for (const type of SHAPE_TYPES) for (const p of SHAPE_PARAMS[type]) for (const lang of ['zh', 'en', 'ja'] as const)
+      expect(DICTS[lang][paramHintKey(type, p.key)], `${lang} ${type}.${p.key}`).toBeTruthy();
+  });
+});

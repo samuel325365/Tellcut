@@ -40,9 +40,9 @@ function useCheckedDraft(value: string, commit: (text: string) => boolean) {
   };
 }
 
-export function NumberField({ label, name, hint, value, step = 0.01, min, max, onCommit }: { label: string; name?: string; hint?: string; value: number | undefined; step?: number; min?: number; max?: number; onCommit: Commit<number | undefined> }) {
+export function NumberField({ label, name, hint, value, step = 0.01, min, max, disabled, onCommit }: { label: string; name?: string; hint?: string; value: number | undefined; step?: number; min?: number; max?: number; disabled?: boolean; onCommit: Commit<number | undefined> }) {
   const box = useDraft(value === undefined ? '' : String(value), (v) => onCommit(v === '' ? undefined : Number(v)));
-  return <Row label={label} name={name} hint={hint}><input type="number" step={step} min={min} max={max} {...box} /></Row>;
+  return <Row label={label} name={name} hint={hint}><input type="number" step={step} min={min} max={max} disabled={disabled} {...box} /></Row>;
 }
 export function TextField({ label, name, hint, value, onCommit }: { label: string; name?: string; hint?: string; value: string | undefined; onCommit: Commit<string> }) {
   const box = useDraft(value ?? '', onCommit);

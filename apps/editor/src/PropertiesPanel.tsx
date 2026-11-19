@@ -10,6 +10,7 @@ import { CheckField, NumberField, ParamField, SelectField, TextField } from './f
 import { CaptionTemplates } from './CaptionTemplates.tsx';
 import { BlockTemplates } from './BlockTemplates.tsx';
 import { fallbackNote, retype, TRANSITION_MENU, usesCentre, usesDir } from './transitions.ts';
+import { WindowFields } from './WindowFields.tsx';
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
@@ -66,7 +67,7 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
         <SelectField label="Slow-mo interpolation" name="interp" value={it.interp} options={[['none', 'None'], ['blend', 'Blend'], ['mci', 'Motion compensated']]} onCommit={up('interp')} />
       </>}
       <NumberField label="Opacity" name="opacity" value={it.opacity ?? 1} step={0.05} min={0} max={1} onCommit={up('opacity')} />
-      <NumberField label="Corner radius (px)" name="radius" value={it.radius ?? 0} min={0} onCommit={(v) => editor.update(id, { radius: v || undefined })} />
+      <WindowFields it={it} update={(patch) => editor.update(id, patch)} />
       {!image && <>
         <CheckField label="Stabilize (applied on export)" name="stabilize" value={!!it.stabilize} onCommit={(v) => editor.update(id, { stabilize: v ? { smoothing: 20, zoom: 3 } : undefined })} />
         {it.stabilize && <>
