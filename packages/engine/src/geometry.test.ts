@@ -1,4 +1,4 @@
-import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, FLASH_BRIGHT, FLASH_BURN, FLASH_VEIL, clockClip, transitionFallback, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
+import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clipShown, FLASH_BRIGHT, FLASH_BURN, FLASH_VEIL, clockClip, transitionFallback, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
   WHIP_BLUR, ZOOM_BLUR, ZOOM_IN, ZOOM_OUT, ZOOM_POW } from './geometry.ts';
 import { TRANSITION_TYPES } from './schema.ts';
 import { eIO3, eOut3 } from './util.ts';
@@ -459,4 +459,34 @@ test('unlinked (the film\'s first clip, or a transition not the overlap\'s lengt
 test('without the link argument a clip draws as before (callers outside the stage)', () => {
   expect(vs({}, 3.5)).toEqual(vs({}, 3.5, {}));
   expect(vs({ transitionIn: { type: 'push', dur: 1, dir: 'l' } }, 0.5).offsetX).toBe(-960);
+});
+
+test('clipShown: what is attached to a clip shows as much as the clip does through its transitions', () => {
+  const W = 1920, H = 1080;
+  // no transition: whole, also outside the clip (a combo layer ahead of its clip shows as it is)
+  expect(clipShown(vid(), 0, 4, 1, W, H)).toBe(1);
+  // coming in by a zoom: nothing of the clip shows at first, so nothing on it either; whole once it is in
+  const z = vid({ transitionIn: { type: 'zoom', dur: 0.6 } }), from = [0, 0, 1, 1] as const;
+  expect(clipShown(z, 0, 4, 0.05, W, H, { from })).toBe(0);
+  expect(clipShown(z, 0, 4, 0.6, W, H, { from })).toBe(1);
+  expect(clipShown(z, 0, 4, -0.1, W, H, { from })).toBe(1);
+  // a dissolve in: as the clip's own fade
+  const d = vid({ transitionIn: { type: 'dissolve', dur: 1 } });
+  expect(clipShown(d, 0, 4, 0.5, W, H, { from })).toBeCloseTo(videoState(d, 0, 4, 0.5, W, H, {}, { from }).opacity, 6);
+  expect(clipShown({ ...d, opacity: 0.5 }, 0, 4, 2, W, H, { from })).toBe(1);   // its own opacity aside
+  // a dip in: nothing under the full black veil, back as the veil lifts
+  const dip = vid({ transitionIn: { type: 'dip', dur: 1 } });
+  expect(clipShown(dip, 0, 4, 0.25, W, H, { from })).toBe(0);
+  expect(clipShown(dip, 0, 4, 0.75, W, H, { from })).toBeGreaterThan(0);
+  expect(clipShown(dip, 0, 4, 0.75, W, H, { from })).toBeLessThan(1);
+  // going out under the next clip: a dissolve onto a full picture covers it; a window, a wipe or a push does not take it away
+  const out = (type: any, frame: any = [0, 0, 1, 1], shaped = false) => ({ out: { type, at: 3, dur: 1, frame, shaped } });
+  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve'))).toBeCloseTo(0.5, 2);
+  expect(clipShown(vid(), 0, 4, 3.95, W, H, out('dissolve'))).toBeLessThan(0.05);
+  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve', [0.25, 0.25, 0.5, 0.5]))).toBe(1);
+  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve', [0, 0, 1, 1], true))).toBe(1);
+  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('wipe'))).toBe(1);
+  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('push'))).toBe(1);
+  // going to black in a dip: fading with the veil
+  expect(clipShown(vid(), 0, 4, 3.45, W, H, out('dip'))).toBeLessThan(0.2);
 });

@@ -3,7 +3,7 @@
 import type { AnyItem, Project, SceneItem, Track, Transform, VideoItem } from './schema.ts';
 import { allItems } from './schema.ts';
 import { activeAt, resolveTimes, type Times } from './time.ts';
-import { coverPlacement, kbMatrix, videoState, type VideoLink, type VideoState } from './geometry.ts';
+import { clipShown, coverPlacement, kbMatrix, videoState, type VideoLink, type VideoState } from './geometry.ts';
 import { fitText, isNamedShape, textFont, type FittedText, type InkBox, type TextShape } from './shapes.ts';
 import { videoLinks } from './pairs.ts';
 import type { ItemCtx, ItemType, MediaRef } from './plugin.ts';
@@ -134,6 +134,7 @@ const MISSING_BG = 'repeating-linear-gradient(45deg, rgba(255,0,80,.35) 0 12px, 
 const VISUAL = new Set(['video', 'scene', 'overlay']);
 /** the project settings that change what the layers look like; the length, the name, the sound and export settings
  *  and the home preset info do not (a magnetic edit changes meta.duration on every drag frame: that must not rebuild every layer) */
+const clipsOf = (p: Project) => new Map(p.tracks.filter((t) => t.kind === 'video').flatMap((t) => (t.items as VideoItem[]).map((it) => [it.id, it] as const)));
 const visualMeta = (p: Project) => { const { duration: _d, name: _n, mix: _m, loudness: _l, cut: _c, preset: _p, ...rest } = p.meta; return JSON.stringify(rest); };
 
 export class Stage {
@@ -141,6 +142,8 @@ export class Stage {
   times!: Times;
   /** the video clips in a linked transition, made with the times: a kept layer A still learns of a new transition on the clip after it */
   private links = new Map<string, VideoLink>();
+  /** every video clip by id: what an item attached to one fades with */
+  private clips = new Map<string, VideoItem>();
   private layers: Layer[] = [];
   /** another registered item type, by id (ctx.types and media()'s third argument) */
   private types = (type: string) => this.registry.item(type);
@@ -170,6 +173,7 @@ export class Stage {
     this.project = p;
     this.times = resolveTimes(p);
     this.links = videoLinks(p, this.times);
+    this.clips = clipsOf(p);
     const { width, height, background } = p.meta;
     this.destroy();
     this.root.innerHTML = '';
@@ -196,6 +200,7 @@ export class Stage {
     this.project = p;
     this.times = resolveTimes(p);
     this.links = videoLinks(p, this.times);
+    this.clips = clipsOf(p);
     this.styles(p);
     const old = new Map(this.layers.map((L) => [L.id, L]));
     const next: Layer[] = [];
@@ -401,6 +406,12 @@ export class Stage {
         // a layer that moves (a sticker following a mouth): its place this frame
         const tf = L.item.transform;
         if (tf?.keys?.length) { const tcss = transformCss(transformAt(tf, t - tm.start), W, H); for (const e of layerEls(L)) cssCamel(e, tcss); cssCamel(L.slot, tcss); }
+        // attached to a clip: as much of it shows as of the clip, through the clip's transitions (a sticker on a face is not there
+        // before the face is, nor over the next clip fading in over it)
+        const par = L.item.parent ? this.clips.get(L.item.parent) : undefined, pt = par && this.times.get(par.id);
+        const shown = par && pt ? clipShown(par, pt.start, pt.end, t, W, H, this.links.get(par.id)) : 1, op = shown < 1 ? shown.toFixed(3) : '';
+        for (const e of layerEls(L)) if (e.style.opacity !== op) e.style.opacity = op;
+        if (L.slot.style.opacity !== op) L.slot.style.opacity = op;
         try { L.type.draw(this.ctx(L.item, L.params, t, L.el, L.slot, L.more), L.state); } catch (e) { L.slot.remove(); this.release(L); this.layers[i] = this.fail(L, L.item, e); }
       }
     });

@@ -362,6 +362,33 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
     text, inset, outline, shadow };
 }
 
+/** the transitions in which B fades in over A where it lies, so that what is left of A is 1 − B's opacity (a reveal, a move or a
+ *  slide covers A only in part, and what is on A moves with it or stays where A still shows) */
+const COVERS: ReadonlySet<TransitionType> = new Set<TransitionType>(['dissolve', 'blur', 'zoom']);
+
+/** How much of a clip is seen at film second t (0–1), for what is attached to it (a sticker on a face, a card on the shot): its own
+ *  transition's fade in, a dip's or flash's veil over it, and the next clip's linked transition fading in over it, when that clip
+ *  fills the picture. Its own `opacity` is left out (a half-clear clip's sticker is not half clear), and so is the time outside the
+ *  clip (a combo's layer that starts ahead of its clip shows as it is). An export showed a sticker on a face whole over the clip
+ *  before, while the zoom it came in by had not shown the face yet. */
+export function clipShown(item: VideoItem, start: number, end: number, t: number, W: number, H: number, link?: VideoLink): number {
+  const local = t - start;
+  if (local < 0 || t >= end) return 1;
+  let shown = 1;
+  const tr = item.transitionIn;
+  if (tr && tr.type !== 'cut' && tr.dur > 0 && local < tr.dur) {
+    const L = incoming(drawnTransition(tr.type, item.frame, isShaped(item), link?.from), prog(local, 0, tr.dur), tr, item.frame[2] * W, item.frame[3] * H, !!link?.from);
+    shown *= L.opacity * (1 - (L.veil?.opacity ?? 0));
+  }
+  const o = link?.out;
+  if (o && o.dur > 0 && local >= o.at && local < o.at + o.dur) {
+    const p = prog(local, o.at, o.at + o.dur), kind = drawnTransition(o.type, o.frame, o.shaped, item.frame);
+    shown *= 1 - (outgoing(kind, p, o.dir ?? 'l', item.frame[2] * W, item.frame[3] * H).veil?.opacity ?? 0);
+    if (COVERS.has(kind) && isFull(o.frame) && !o.shaped) shown *= 1 - incoming(kind, p, o, o.frame[2] * W, o.frame[3] * H, true).opacity;
+  }
+  return clamp(shown);
+}
+
 /** The part of the source a frame shows, in 0..1 source coordinates (the inverse view of coverPlacement). */
 export function visibleRegion(srcW: number, srcH: number, frameW: number, frameH: number, crop: Crop) {
   const b = coverPlacement(srcW, srcH, frameW, frameH, crop);

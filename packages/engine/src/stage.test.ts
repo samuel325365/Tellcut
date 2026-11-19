@@ -675,3 +675,23 @@ test('a picture window\'s dressing: the outline over the frame, the shadow on th
   st.draw(3.6);
   expect(clip.querySelector('text')).toBe(rows);
 });
+
+test('an item attached to a clip fades with the clip through its transitions, and shows as it is outside the clip', () => {
+  const root = document.createElement('div'), p = project();
+  p.tracks[1].items = [
+    { id: 'on', parent: 'b', type: 'core.flash', start: 0, end: 3, params: { peak: 1, rise: 0, hold: 1, fall: 0, power: 1, color: '#fff' } },
+    { id: 'ahead', parent: 'b', type: 'core.flash', start: -0.5, end: 3, params: { peak: 1, rise: 0, hold: 1, fall: 0, power: 1, color: '#fff' } },
+    { id: 'free', type: 'core.flash', start: 3, end: 6, params: { peak: 1, rise: 0, hold: 1, fall: 0, power: 1, color: '#fff' } },
+  ];
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  st.load(p);
+  const op = (id: string) => root.querySelector<HTMLElement>(`.st-item[data-id="${id}"]`)!.style.opacity;
+  st.draw(3.5);   // b half way through its 1 s dissolve
+  expect(parseFloat(op('on'))).toBeCloseTo(0.5, 3);
+  expect(parseFloat(op('ahead'))).toBeCloseTo(0.5, 3);
+  expect(op('free')).toBe('');
+  st.draw(2.75);   // before b starts: the layer ahead of it as it is
+  expect(op('ahead')).toBe('');
+  st.draw(4.5);   // b is in
+  expect(op('on')).toBe('');
+});
