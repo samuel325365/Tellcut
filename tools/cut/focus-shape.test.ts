@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { parseProject, shapeSafe, visibleRegion, type Crop } from '@tellcut/engine';
 import { fakeFaces, run, type FaceInfo } from '@tellcut/media-node';
 import { Cut } from './cut.ts';
-import { SHAPE_FOCUS_ZOOM, shapedFocus, shapedSubject } from './focus.ts';
+import { FACE_SHOWN, faceShown, SHAPE_FOCUS_ZOOM, shapedFocus, shapedSubject } from './focus.ts';
 import type { Inventory } from './inventory.ts';
 import type { Rect } from './view.ts';
 
@@ -124,3 +124,15 @@ test('at save(), a circle clip whose only faces are small passers-by stays centr
   expect(c.notes.filter((n) => n.includes('自動對焦到人臉') || n.includes('放不進'))).toEqual([]);
   expect(c.notes).toContainEqual(expect.stringContaining('臉都太小'));
 }, 60000);
+
+test('a close-up whose box pokes out of the safe square of a circle at its corners shows whole in the circle: the face itself is measured', () => {
+  // a 720p talking head in a circle in a 960 × 864 window of a 1080p film, the face high in the picture (the source cuts the hair)
+  const shape = { type: 'circle' as const }, ar = 960 / 864, safe = shapeSafe(shape, ar)!, face: Rect = [0.4, 0.06, 0.6, 0.5];
+  const r = shapedFocus(1280, 720, 960, 864, safe, face);
+  expect(r.inside).toBe(false);   // its box is not in the inscribed square
+  expect(faceShown(shape, ar, 1280, 720, 960, 864, r.crop, face)).toBeGreaterThanOrEqual(FACE_SHOWN);
+  // a face bigger than the circle is not
+  const edge: Rect = [0.1, 0, 0.9, 1];
+  const e = shapedFocus(1280, 720, 960, 864, safe, edge);
+  expect(faceShown(shape, ar, 1280, 720, 960, 864, e.crop, edge)).toBeLessThan(FACE_SHOWN);
+});

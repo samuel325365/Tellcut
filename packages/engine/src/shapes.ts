@@ -491,6 +491,22 @@ const inside = (poly: Pt[], x: number, y: number) => {
   return c;
 };
 
+/** The share (0–1) of an oval [cx, cy, rx, ry] (fractions of the frame) that a shape drawn in a frame of `aspect` (width over
+ *  height) shows, sampled on a grid over the oval: how much of a face is seen, which its box against shapeSafe's rectangle overstates
+ *  (a face is round, its box's corners are not face). null for the text shape. */
+export function shapeHolds(shape: ShapeInput, aspect: number, oval: readonly [number, number, number, number], local = 0): number | null {
+  if (isNamedShape(shape) && shape.type === 'text') return null;
+  const w = 1000 * aspect, h = 1000, polys = flattenPath(shapePath(shape, w, h, local)), [cx, cy, rx, ry] = oval, N = 24;
+  let all = 0, seen = 0;
+  for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+    const u = (2 * i) / N - 1, v = (2 * j) / N - 1;
+    if (u * u + v * v > 1) continue;
+    all++;
+    if (polys.some((p) => inside(p, (cx + u * rx) * w, (cy + v * ry) * h))) seen++;
+  }
+  return all ? seen / all : 0;
+}
+
 /**
  * The rectangle of the frame a shape certainly shows, as fractions of the frame [x, y, w, h], for framing faces: the largest one of
  * the shape's own proportion centred on (one of) its pieces. `aspect` is the frame's width over its height (a circle in a wide

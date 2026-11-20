@@ -2,7 +2,7 @@
 // cropped keep the faces in them in frame, and stickers asked to follow a mouth or a face get their transform keys.
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createRegistry, isNamedShape, r6, resolveTimes, shapeSafe, videoLinks, visibleRegion, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
+import { createRegistry, isNamedShape, r6, resolveTimes, shapeHolds, shapeSafe, type NamedShape, videoLinks, visibleRegion, type Crop, type Project, type SceneItem, type VideoItem } from '@tellcut/engine';
 import { FACE_STEP, faceKey, facesAt, type FaceInfo, type FacesProvider } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
 import { COVER_LIFT, FOLLOW_SIZE, movingTimes, pickFace, smooth, sourceSpot, spotAt, spotOnFilm, stickerKeys, trackFace, type Who } from './follow.ts';
@@ -56,6 +56,18 @@ export function shapedSubject(samples: FaceInfo[][], srcW: number, srcH: number)
   if (!picks.length) return null;
   const most = Math.max(...picks.map(tall)), boxes = picks.filter((f) => tall(f) >= SHAPE_FACE_SHARE * most).map((f) => f.box);
   return [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[0] + b[2])), Math.max(...boxes.map((b) => b[1] + b[3]))];
+}
+
+/** a face of which at least this share shows in its shape counts as framed, though its box is not inside the safe rectangle (a
+ *  close-up in a circle: the box's corners poke out of the inscribed square while the face, round, is in the circle) */
+export const FACE_SHOWN = 0.97;
+
+/** How much of the faces `subject` (a box in fractions of the source) the shape shows with `crop`: the oval in the box, measured
+ *  against the shape itself (engine shapeHolds); 1 for the text shape (it gets no focus). */
+export function faceShown(shape: NamedShape, aspect: number, srcW: number, srcH: number, frameW: number, frameH: number, crop: Crop, subject: Rect): number {
+  const v = visibleRegion(srcW, srcH, frameW, frameH, crop);
+  const l = (subject[0] - v.x0) / v.w, t = (subject[1] - v.y0) / v.h, r = (subject[2] - v.x0) / v.w, b = (subject[3] - v.y0) / v.h;
+  return shapeHolds(shape, aspect, [(l + r) / 2, (t + b) / 2, (r - l) / 2, (b - t) / 2]) ?? 1;
 }
 
 /**
@@ -129,6 +141,8 @@ export async function resolveAutoFocus(x: FaceCtx, groups: string[][]) {
       const subject = shapedSubject(samples, src.width, src.height);
       if (!subject) { x.notes.push(`${it.source}（${id}）找到的臉都太小（遠處的路人），不對焦，留在 ${shape.type} 形狀的中間`); continue; }
       const r = shapedFocus(src.width, src.height, fw * W, fh * H, safe, subject);
+      // the safe rectangle is strict: a face whose box pokes out of it at the corners may still show whole in the shape
+      if (!r.inside && faceShown(shape, frameAr, src.width, src.height, fw * W, fh * H, r.crop, subject) >= FACE_SHOWN) r.inside = true;
       for (const c of all) c.crop = { ...c.crop, from: { ...r.crop }, to: { ...r.crop } };
       x.notes.push(r.inside ? `${it.source}（${id}）自動對焦到人臉，放進 ${shape.type} 形狀一定看得到的範圍（x=${r.crop.x}、y=${r.crop.y}、放大 ${r.crop.zoom} 倍）`
         : `${it.source}（${id}）的人臉放不進 ${shape.type} 形狀一定看得到的範圍（臉太大或太靠邊，放大最多 ${SHAPE_FOCUS_ZOOM} 倍），盡量放進去了（x=${r.crop.x}、y=${r.crop.y}、放大 ${r.crop.zoom} 倍）；考慮放大 frame、換形狀，或自己給 crop`);
