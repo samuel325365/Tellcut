@@ -1,14 +1,17 @@
 // common.header — a section label at the top: a number chip and a title ("01  開場"); slides in, holds, slides out.
 // look 'kicker' is the podcast-quote short's fx.header: what the film asks, as a headline — a small grey line with an accent dot (the
 // show's name) and a big title under it, wiped open from the left, 【word】 in the accent colour; it stays for as long as the item.
+// slate, flip, side and big (header-looks.ts) are small corner labels with an entrance of their own: a clapperboard, a split-flap
+// board, an upright bookmark at the left edge, a huge outlined number.
 // `shade` (from the true-crime acceptance film's fx.topshade) lays a dark gradient over the top of the frame, fading in and out with
 // the item, so the small grey line still reads over bright footage.
 import { clamp, cssCamel, eOut3, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { TOP_LANE } from './progress.ts';
 import { emParts } from './text.ts';
+import { drawAlt, isAltLook, type Alt } from './header-looks.ts';
 
-interface P { look: 'chip' | 'kicker'; no: string; text: string; kicker: string; y: number; size: number; kickerSize: number; color: string; textColor: string; ink: string; outline: string; muted: string; font: string; shade: number; shadeH: number }
-interface S { shade: HTMLElement; box: HTMLElement; chip: HTMLElement; label: HTMLElement; kick: HTMLElement; dot: HTMLElement; kickText: HTMLElement; key: string }
+interface P { look: 'chip' | 'kicker' | 'slate' | 'flip' | 'side' | 'big'; no: string; text: string; kicker: string; y: number; size: number; kickerSize: number; color: string; textColor: string; ink: string; outline: string; muted: string; font: string; shade: number; shadeH: number }
+interface S { shade: HTMLElement; box: HTMLElement; chip: HTMLElement; label: HTMLElement; kick: HTMLElement; dot: HTMLElement; kickText: HTMLElement; key: string; alt: Alt | null }
 
 /** the label's top (a share of the frame height): `y`, or below 0 under the lane a top progress bar or dots take */
 export const headerTop = (y: number, safeTop: number) => (y >= 0 ? y : safeTop + TOP_LANE);
@@ -30,10 +33,10 @@ export function topShade(shade: number, local: number, dur: number): string | nu
 
 export const header: ItemType<P, S> = {
   type: 'common.header', label: '章節標籤', category: 'chapter', kind: 'overlay',
-  doc: '畫面上緣的章節標籤：色塊編號加標題（01 開場、Step 2…）；教學、清單、分段介紹時標示現在講到哪；look kicker 是一整段都掛著的題目抬頭：上面一行主色圓點加灰色小字（節目名，kickerSize 自訂字級），下面一行粗體題目從左刷開，【詞】變主色（這支片在問什麼：訪談、Podcast、評論）；放不下時小字縮小、題目換行，都留在左右安全區內；shade 在畫面上緣壓一層深色漸層（shadeH 高），亮的畫面上小字也讀得到',
+  doc: '畫面上緣的章節標籤：色塊編號加標題（01 開場、Step 2…）；教學、清單、分段介紹時標示現在講到哪；look kicker 是一整段都掛著的題目抬頭：上面一行主色圓點加灰色小字（節目名，kickerSize 自訂字級），下面一行粗體題目從左刷開，【詞】變主色（這支片在問什麼：訪談、Podcast、評論）；放不下時小字縮小、題目換行，都留在左右安全區內；shade 在畫面上緣壓一層深色漸層（shadeH 高），亮的畫面上小字也讀得到；另有四種角落小標籤：slate 場記板掉下來、拍板拍下（配 common.thud），flip 機場翻牌板一格格翻到編號、再翻開標題牌（配 common.tick），side 畫面左緣一條直立書籤、標題直排（太長縮小再截斷），big 很大的空心描邊編號由下往上露出、標題壓在它下半部（side、big 配 common.whoosh）',
   params: [
-    { key: 'look', label: '樣子（chip 編號色塊、kicker 小字＋大題目）', type: 'enum', options: ['chip', 'kicker'], default: 'chip' },
-    { key: 'no', label: '編號（chip）', type: 'string', default: '01' },
+    { key: 'look', label: '樣子（chip 編號色塊、kicker 小字＋大題目、slate 場記板、flip 翻牌、side 左緣直立書籤、big 巨大空心編號）', type: 'enum', options: ['chip', 'kicker', 'slate', 'flip', 'side', 'big'], default: 'chip' },
+    { key: 'no', label: '編號（kicker 不用）', type: 'string', default: '01' },
     { key: 'text', label: '標題（kicker：【詞】變主色）', type: 'string', default: '開場' },
     { key: 'kicker', label: '題目上面的小字（kicker）', type: 'string', default: 'PODCAST｜午後聊聊' },
     { key: 'y', label: '上緣高度（畫面高比例；-1＝安全區上緣再往下讓出進度條的位置）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
@@ -55,12 +58,19 @@ export const header: ItemType<P, S> = {
     cssCamel(kick, { display: 'none', alignItems: 'center', whiteSpace: 'pre' });
     cssCamel(dot, { flex: 'none', borderRadius: '50%' });
     cssCamel(shade, { position: 'absolute', left: '0', right: '0', top: '0', display: 'none', pointerEvents: 'none' });
-    return { shade, box, chip, label, kick, dot, kickText, key: '' };
+    return { shade, box, chip, label, kick, dot, kickText, key: '', alt: null };
   },
   draw(ctx, s) {
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, px = (p.size / 100) * H;
     const sh = topShade(p.shade ?? 0, ctx.local, ctx.dur);
     cssCamel(s.shade, sh ? { display: 'block', height: `${((p.shadeH ?? 0.3) * H).toFixed(1)}px`, background: sh } : { display: 'none' });
+    if (isAltLook(p.look)) {
+      cssCamel(s.box, { display: 'none' });
+      s.alt = drawAlt(ctx, p, p.look, s.alt, ctx.root, theme.safe.side * W, headerTop(p.y, theme.safe.top) * H);
+      return;
+    }
+    cssCamel(s.box, { display: 'flex' });
+    if (s.alt) cssCamel(s.alt.root, { display: 'none' });
     if (p.look === 'kicker') { drawKicker(ctx, s, k, px); return; }
     const inn = eOut3(prog(ctx.local, 0, 0.35)), out = eOut3(prog(ctx.local, ctx.dur - 0.3, ctx.dur));
     s.chip.textContent = p.no; s.label.textContent = p.text; s.key = '';

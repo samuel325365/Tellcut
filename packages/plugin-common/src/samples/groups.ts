@@ -101,6 +101,18 @@ export const GROUPS: Sample[] = [
   { name: 'wide-bounce', type: 'common.bounce', len: 3, at: [1.2], wide: true, bg: '#4a6b7c' },
   // common.header shade (2026-11-02, the true-crime acceptance film's fx.topshade) over a bright frame; common.headline enter roll and the strike
   { name: 'header-shade', type: 'common.header', params: { look: 'kicker', text: '這件事【到底】怎麼了？', kicker: '節目名｜第 3 集', shade: 0.82 }, at: [1.5], bg: '#e9e4da' },
+  // common.header looks slate, flip, side and big (2026-11-20): the entrance midway and settled, a long title, 16:9, a bright frame
+  { name: 'header-slate', type: 'common.header', params: { look: 'slate', no: '02', text: '醬香雞腿' }, len: 3, at: [0.15, 0.32, 1.5] },
+  { name: 'header-flip', type: 'common.header', params: { look: 'flip', no: '07', text: '夜市小吃' }, len: 3, at: [0.12, 0.3, 1.5] },
+  { name: 'header-side', type: 'common.header', params: { look: 'side', no: '03', text: '老街散步' }, len: 3, at: [0.15, 1.5] },
+  { name: 'header-big', type: 'common.header', params: { look: 'big', no: '04', text: '甜點時間' }, len: 3, at: [0.2, 0.4, 1.5] },
+  { name: 'header-long', type: 'common.header', params: { look: 'slate', no: 'B', text: '從台北車站走到大稻埕的老街和碼頭' }, len: 3, at: [1.5], bg: '#e9e4da' },
+  { name: 'header-side-long', type: 'common.header', params: { look: 'side', no: '12', text: '從台北車站一路走到大稻埕的老街、碼頭和河邊的夕陽，再坐船回到淡水老街吃晚餐' }, len: 3, at: [1.5], bg: '#e9e4da' },
+  { name: 'header-big-paper', type: 'common.header', params: { look: 'big', no: '11', text: 'Night market snacks' }, len: 3, at: [1.5], bg: '#fff8ec' },
+  { name: 'wide-header-slate', type: 'common.header', params: { look: 'slate', no: '02', text: 'Old town walk' }, len: 3, at: [1.5], wide: true },
+  { name: 'wide-header-flip', type: 'common.header', params: { look: 'flip', no: 'A12', text: 'Departures to the coast and the long way round' }, len: 3, at: [0.4, 1.5], wide: true },
+  { name: 'wide-header-side', type: 'common.header', params: { look: 'side', no: '03', text: 'Riverside at dusk and the long way home' }, len: 3, at: [1.5], wide: true },
+  { name: 'wide-header-big', type: 'common.header', params: { look: 'big', no: '04', text: '甜點時間' }, len: 3, at: [1.5], wide: true },
   { name: 'headline-roll', type: 'common.headline', params: { text: '一層一層擀開', sub: '', bg: 'none', rules: false, enter: 'roll' }, at: [0.7, 2.2], bg: '#6b5a48' },
   { name: 'headline-strike', type: 'common.headline', params: { text: '不加人工色素', sub: '第三件事', strikeFrom: 2, strikeAt: 0.6 }, at: [1.1, 2.4], bg: '#6b5a48' },
   // common.leak (2026-11-03, the Egypt photo films' fx.leak / fx.lightleak / fx.glow): the sweep from the top right, a still sun; core.flash fade out
