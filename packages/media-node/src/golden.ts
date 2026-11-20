@@ -16,6 +16,9 @@ import { withProjectPage } from './stills.ts';
 export const GOLDEN_W = 270, GOLDEN_H = 480;
 /** share of pixels allowed to differ (small: a thin bar or a few dots is only a few hundred pixels at this size) (a pixel differs when any channel is off by more than `TOLERANCE`/255) */
 export const GOLDEN_SHARE = 0.003, TOLERANCE = 24;
+/** the most a channel moves between two draws of the same picture (Chrome's anti-aliasing, most of all with several pages drawing
+ *  at once: 1–2 levels on a few dozen pixels); an update keeps the old picture when the new one is no farther from it than this */
+export const GOLDEN_NOISE = 3;
 
 export interface GoldenCase {
   /** file stem: <name>-t<seconds>.png */
@@ -80,6 +83,13 @@ export function diffShare(a: Buffer, b: Buffer, tol = TOLERANCE): number {
   let bad = 0;
   for (let i = 0; i < a.length; i += 3) if (Math.abs(a[i] - b[i]) > tol || Math.abs(a[i + 1] - b[i + 1]) > tol || Math.abs(a[i + 2] - b[i + 2]) > tol) bad++;
   return bad / (a.length / 3);
+}
+
+/** whether two pictures differ only by drawing noise: the same size, no channel off by more than `GOLDEN_NOISE` */
+export function onlyNoise(a: Buffer, b: Buffer): boolean {
+  if (a.length !== b.length || !a.length) return false;
+  for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > GOLDEN_NOISE) return false;
+  return true;
 }
 
 export interface GoldenResult { file: string; status: 'ok' | 'new' | 'changed' | 'updated'; share: number }
@@ -166,8 +176,10 @@ export async function runGolden(cases: GoldenCase[], o: { registry: Registry; go
           if (o.update) { await save(gold); out.push({ file: name, status: 'updated', share: 0 }); } else out.push({ file: name, status: 'new', share: 1 });
           continue;
         }
-        const share = diffShare(await rawOf(fresh, sizeOf(c)), await rawOf(gold, sizeOf(c)));
-        if (o.update) { await save(gold); out.push({ file: name, status: share > 0 ? 'updated' : 'ok', share }); }   // an update keeps the newest picture even when it was within the tolerance
+        const now = await rawOf(fresh, sizeOf(c)), was = await rawOf(gold, sizeOf(c)), share = diffShare(now, was);
+        // an update keeps the newest picture even when it was within the tolerance, but not one that differs only by drawing noise:
+        // rewriting those made every update and every npm run thumbs touch dozens of unrelated pictures
+        if (o.update) { if (onlyNoise(now, was)) out.push({ file: name, status: 'ok', share: 0 }); else { await save(gold); out.push({ file: name, status: share > 0 ? 'updated' : 'ok', share }); } }
         else out.push({ file: name, status: share <= GOLDEN_SHARE ? 'ok' : 'changed', share });
       }
     });

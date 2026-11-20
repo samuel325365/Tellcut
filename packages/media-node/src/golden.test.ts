@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { corePlugin, createRegistry } from '@tellcut/engine';
 import { TELLCUT_ROOT } from './paths.ts';
-import { diffShare, goldenFile, goldenPlatformDir, goldenProject, runGolden, type GoldenCase } from './golden.ts';
+import { diffShare, GOLDEN_NOISE, goldenFile, goldenPlatformDir, goldenProject, onlyNoise, runGolden, type GoldenCase } from './golden.ts';
 
 const registry = createRegistry([corePlugin]);
 const work = join(TELLCUT_ROOT, 'projects/_golden-test');
@@ -21,6 +21,30 @@ test('diffShare counts the pixels that moved beyond the tolerance', () => {
   expect(diffShare(a, b)).toBeCloseTo(0.1);
   expect(diffShare(a, Buffer.alloc(27))).toBe(1);
 });
+
+test('onlyNoise: no channel more than GOLDEN_NOISE apart', () => {
+  const a = Buffer.alloc(30, 100), b = Buffer.from(a);
+  expect(onlyNoise(a, b)).toBe(true);
+  b[5] = 100 + GOLDEN_NOISE; b[6] = 100 - GOLDEN_NOISE;
+  expect(onlyNoise(a, b)).toBe(true);
+  b[7] = 100 + GOLDEN_NOISE + 1;
+  expect(onlyNoise(a, b)).toBe(false);
+  expect(onlyNoise(a, Buffer.alloc(27, 100))).toBe(false);
+  expect(onlyNoise(Buffer.alloc(0), Buffer.alloc(0))).toBe(false);
+});
+
+test('an update keeps the old picture when the new one differs only by drawing noise, and rewrites it past that', async () => {
+  const flash = (color: string): GoldenCase => ({ name: 'flash', type: 'core.flash', params: { color, peak: 1 }, len: 1, at: [0.1] });
+  const o = { registry, goldenDir: dir, work, update: true }, file = join(dir, goldenFile(flash('#fff'), 0.1));
+  await runGolden([flash('#808080')], o);
+  const first = readFileSync(file);
+  // one level off everywhere: noise, the file is left as it was
+  expect((await runGolden([flash('#818181')], o)).map((r) => r.status)).toEqual(['ok']);
+  expect(readFileSync(file).equals(first)).toBe(true);
+  // ten levels: within the tolerance, still a change an update keeps
+  expect((await runGolden([flash('#8a8a8a')], o)).map((r) => r.status)).toEqual(['ok']);
+  expect(readFileSync(file).equals(first)).toBe(false);
+}, 180000);
 
 test('goldenProject is a 1080×1920 film of one item', () => {
   const p = goldenProject({ name: 'x', type: 'core.flash', at: [0], len: 2, theme: { radius: 3 } });
