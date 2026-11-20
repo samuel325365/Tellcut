@@ -263,3 +263,13 @@ test('a clip lifted off the magnetic track hangs on the clip that packing brings
   const q = go(p, trimEnd, { id: 'c1', dt: -2 });
   expect([at(q, 'c3').start, at(q, 'c2').start]).toEqual([2, 2]);
 });
+
+test('a short lead-in onto its clip (a whoosh, a riser, a combo layer ahead of the moment) is not an overrun; a longer one is', async () => {
+  const { overruns } = await import('./magnetic.ts');
+  const p = mag((q) => { q.tracks[1].items.push(
+    { id: 'scan', parent: 'c2', type: 'x.tone', start: -0.1, end: 0.4, params: {} },
+    { id: 'riser', parent: 'c2', type: 'x.tone', start: -0.8, end: 0.2, params: {} },
+    { id: 'left', parent: 'c2', type: 'x.tone', start: -2, end: 0.5, params: {} },
+    { id: 'gone', parent: 'c2', type: 'x.tone', start: -0.6, end: -0.1, params: {} }); });
+  expect(overruns(p).map(([id]) => id).sort()).toEqual(['gone', 'left']);
+});

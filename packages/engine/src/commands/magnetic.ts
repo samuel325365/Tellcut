@@ -172,13 +172,19 @@ export function detach(p: Project, a: { id: string }) {
   delete f.item.parent; f.item.start = r6(r.start); f.item.end = r6(r.end);
 }
 
-/** Items hanging on a magnetic clip that start outside it (left there by a trim): [item id, clip id]. */
+/** how far ahead of its clip an item may start and still be on it: a lead-in into the cut (a whoosh, a riser, a combo's layer ahead
+ *  of its moment, at most 0.8 s), not an item a trim left behind */
+export const LEAD_IN = 1;
+
+/** Items hanging on a magnetic clip that start outside it (left there by a trim): [item id, clip id]. A lead-in (starting at most
+ *  LEAD_IN ahead of the clip and running into it) is not one. */
 export function overruns(p: Project): Array<[string, string]> {
   const mag = magneticTrack(p);
   if (!mag) return [];
   const out: Array<[string, string]> = [];
   for (const c of items(mag)) for (const t of p.tracks) for (const it of items(t)) {
-    if (it.parent === c.id && (it.start < -EPS || it.start >= c.end - c.start - EPS)) out.push([it.id, c.id]);
+    const leadIn = it.start >= -LEAD_IN - EPS && it.end > EPS;
+    if (it.parent === c.id && ((it.start < -EPS && !leadIn) || it.start >= c.end - c.start - EPS)) out.push([it.id, c.id]);
   }
   return out;
 }
