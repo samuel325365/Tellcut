@@ -5,6 +5,12 @@
 // tell such a variant (up to 79 of 255 apart) from two different looks of one block (as close as 4); the edge maps can (see the
 // test for the numbers). Coarse on purpose: a template must change what the picture shows, not a few pixels of it. The pictures
 // are compared after shrinking, so a wide and a tall one can be compared too (both are squeezed into the square).
+//
+// That measure is blind, on purpose, to what the colour-only blocks do (common.grade, common.tone, core.flash's fades: the blocks marked
+// `likeness: 'colour'`), so their templates are also measured by a second one: the colour print, the picture shrunk to 16 × 16 cells,
+// each the cell's mean colour in CIELAB, compared as the mean ΔE (CIE76) of the cells — what colour the picture turns, and how light,
+// where. Only those blocks are measured by it (a template of theirs passes when either measure does); every other block's templates
+// are measured by the edge print alone, so a colour-only variant of a look stays refused.
 import { readFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
 
@@ -67,12 +73,58 @@ export function meanAbsDiff(a: Float32Array, b: Float32Array): number {
 /** How far a sample (its prints, one per sample time) is from another: each of its times is compared with the other's picture at the
  *  nearest sample time (the same moment of the animation, as near as the two samples have one); the largest of those. So a sample
  *  with two times passes when either time does. */
-export function sampleDistance(own: TimedPrint[], other: TimedPrint[]): number {
+export function sampleDistance(own: TimedPrint[], other: TimedPrint[], dist: (a: Float32Array, b: Float32Array) => number = meanAbsDiff): number {
   if (!own.length || !other.length) throw new Error('要比的樣本沒有圖');
   return Math.max(...own.map((a) => {
     const near = Math.min(...other.map((b) => Math.abs(b.t - a.t)));
-    return Math.min(...other.filter((b) => Math.abs(b.t - a.t) - near < 1e-6).map((b) => meanAbsDiff(a.print, b.print)));
+    return Math.min(...other.filter((b) => Math.abs(b.t - a.t) - near < 1e-6).map((b) => dist(a.print, b.print)));
   }));
+}
+
+/** the side of the colour print's square */
+export const COLOUR_SIZE = 16;
+/** how far apart (mean ΔE) the colour prints of two templates of a colour block must be, beside the edge measure (calibrated in
+ *  plugin-common/golden/templates.test.ts) */
+export const COLOUR_LIKENESS = 10;
+
+/** an sRGB level (0–255) in linear light (0–1) */
+const linear = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+const LINEAR = Float64Array.from({ length: 256 }, (_, v) => linear(v));
+/** CIELAB's f, of a value relative to the white point */
+const labF = (t: number) => (t > (6 / 29) ** 3 ? Math.cbrt(t) : t / (3 * (6 / 29) ** 2) + 4 / 29);
+
+/** The picture shrunk to `size` × `size` cells of [L*, a*, b*] (D65): each cell the mean of the source pixels whose centres fall in it,
+ *  averaged in linear light, alpha taken as coverage over black (as the grey square does). */
+export function colourSquare(p: Rgba, size = COLOUR_SIZE): Float32Array {
+  const sum = new Float64Array(size * size * 3), n = new Uint32Array(size * size), d = p.data;
+  for (let y = 0; y < p.height; y++) {
+    const cy = Math.min(size - 1, Math.floor(((y + 0.5) * size) / p.height));
+    for (let x = 0; x < p.width; x++) {
+      const cx = Math.min(size - 1, Math.floor(((x + 0.5) * size) / p.width)), c = cy * size + cx, i = (y * p.width + x) * 4, a = d[i + 3] / 255;
+      sum[c * 3] += LINEAR[d[i]] * a; sum[c * 3 + 1] += LINEAR[d[i + 1]] * a; sum[c * 3 + 2] += LINEAR[d[i + 2]] * a;
+      n[c]++;
+    }
+  }
+  const out = new Float32Array(size * size * 3);
+  for (let c = 0; c < size * size; c++) {
+    const k = n[c] || 1, r = sum[c * 3] / k, g = sum[c * 3 + 1] / k, b = sum[c * 3 + 2] / k;
+    // linear sRGB → XYZ (D65), relative to the white point
+    const X = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047, Y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b, Z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
+    const fx = labF(X), fy = labF(Y), fz = labF(Z);
+    out[c * 3] = 116 * fy - 16; out[c * 3 + 1] = 500 * (fx - fy); out[c * 3 + 2] = 200 * (fy - fz);
+  }
+  return out;
+}
+
+/** the picture's colour print: its colour square */
+export const colourPrintOf = (p: Rgba) => colourSquare(p);
+
+/** the mean ΔE (CIE76: the distance in Lab) of two colour prints' cells */
+export function colourDistance(a: Float32Array, b: Float32Array): number {
+  if (a.length !== b.length || a.length % 3) throw new Error(`兩張色彩縮圖大小不同（${a.length}、${b.length}）`);
+  let s = 0;
+  for (let i = 0; i < a.length; i += 3) s += Math.hypot(a[i] - b[i], a[i + 1] - b[i + 1], a[i + 2] - b[i + 2]);
+  return s / (a.length / 3);
 }
 
 /** a golden PNG file */

@@ -1,4 +1,4 @@
-import { chromaRotate, edgePrint, greySquare, meanAbsDiff, printOf, sampleDistance, tintBy, type Rgba } from './likeness.ts';
+import { chromaRotate, COLOUR_SIZE, colourDistance, colourPrintOf, colourSquare, edgePrint, greySquare, meanAbsDiff, printOf, sampleDistance, tintBy, type Rgba } from './likeness.ts';
 
 /** a w×h picture: `fill(x, y)` gives each pixel's [r, g, b] */
 function pic(w: number, h: number, fill: (x: number, y: number) => [number, number, number]): Rgba {
@@ -43,4 +43,38 @@ test('sampleDistance: each time against the other\'s nearest time; the farthest 
   // two at the same distance: the nearer picture
   expect(sampleDistance([{ t: 1, print: p(0.9) }], [{ t: 0.5, print: p(0) }, { t: 1.5, print: p(1) }])).toBeCloseTo(0.1);
   expect(() => sampleDistance([], other)).toThrow();
+});
+
+test('colourSquare: each cell\'s mean colour in CIELAB (L*, a*, b*), averaged in linear light, alpha as coverage over black', () => {
+  const [L, a, b] = colourSquare(pic(4, 4, () => [255, 255, 255]), 1);
+  expect(L).toBeCloseTo(100, 2); expect(Math.abs(a) + Math.abs(b)).toBeLessThan(0.01);
+  expect(colourSquare(pic(4, 4, () => [0, 0, 0]), 1)[0]).toBeCloseTo(0, 3);
+  // half white and half black averages to the mid of linear light (L* about 76), not to 50
+  expect(colourSquare(pic(2, 1, (x) => (x ? [255, 255, 255] : [0, 0, 0])), 1)[0]).toBeCloseTo(76.07, 1);
+  const clear: Rgba = { width: 1, height: 1, data: new Uint8Array([255, 255, 255, 0]) };
+  expect(colourSquare(clear, 1)[0]).toBeCloseTo(0, 3);
+  expect(colourSquare(pic(300, 200, () => [100, 100, 100])).length).toBe(COLOUR_SIZE * COLOUR_SIZE * 3);
+});
+
+test('colourDistance: the mean ΔE of the cells; it sees what the edge print drops', () => {
+  const white = colourPrintOf(pic(32, 32, () => [255, 255, 255])), black = colourPrintOf(pic(32, 32, () => [0, 0, 0]));
+  expect(colourDistance(white, white)).toBe(0);
+  expect(colourDistance(white, black)).toBeCloseTo(100, 0);
+  // a grey and a red of about its lightness differ in a*, not L*
+  const grey = colourPrintOf(pic(32, 32, () => [128, 128, 128])), red = colourPrintOf(pic(32, 32, () => [200, 90, 90]));
+  expect(Math.abs(grey[0] - red[0])).toBeLessThan(5);
+  expect(colourDistance(grey, red)).toBeGreaterThan(30);
+  // a recoloured disc: the edges alike, the colours far apart
+  const a = disc(40, 40), turned = chromaRotate(a, 180);
+  expect(meanAbsDiff(printOf(a), printOf(turned))).toBeLessThan(0.05);
+  expect(colourDistance(colourPrintOf(a), colourPrintOf(turned))).toBeGreaterThan(5);
+  // a wide picture and a tall one compare (both squeezed into the square)
+  expect(() => colourDistance(colourPrintOf(pic(48, 27, () => [9, 9, 9])), colourPrintOf(pic(27, 48, () => [9, 9, 9])))).not.toThrow();
+  expect(() => colourDistance(new Float32Array(3), new Float32Array(6))).toThrow();
+});
+
+test('sampleDistance takes the measure to compare with, the times paired as before', () => {
+  const w = colourPrintOf(pic(16, 16, () => [255, 255, 255])), k = colourPrintOf(pic(16, 16, () => [0, 0, 0]));
+  expect(sampleDistance([{ t: 1, print: w }], [{ t: 0.9, print: w }, { t: 2, print: k }], colourDistance)).toBe(0);
+  expect(sampleDistance([{ t: 2, print: w }], [{ t: 0.9, print: w }, { t: 2, print: k }], colourDistance)).toBeCloseTo(100, 0);
 });
