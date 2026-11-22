@@ -8,7 +8,7 @@ import { THUMBS_DIR, thumbCases, thumbKey } from './thumbs.ts';
 const IDEOGRAPH = /[぀-ヿ一-鿿]/;
 const CJK = /[　-鿿＀-￯]/;
 /** each block's card (its first sample, or that one over the street) */
-const firsts = () => { const m = new Map<string, (typeof samples)[number]>(); for (const c of samples) if (!m.has(c.type)) m.set(c.type, cardSample(c.type)!); return [...m.values()]; };
+const firsts = () => { const m = new Map<string, (typeof samples)[number]>(); for (const c of samples) if (!c.clips && !m.has(c.type)) m.set(c.type, cardSample(c.type)!); return [...m.values()]; };
 /** the block templates' cards, <block>-tpl-<id> (or over the street): each is a thumbnail too (thumbs.ts thumbCases) */
 const blockTemplates = () => samples.filter((c) => /.-tpl-/.test(c.name) && !c.street).map((c) => cardSample(c.type, c.name.slice(templateSample(c.type, '').length))!);
 

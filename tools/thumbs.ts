@@ -24,9 +24,9 @@ export type ThumbLang = 'en' | 'ja';
 /** the thumbnails that show Chinese, as cases with their words in `lang`, each at the one moment the gallery shows */
 export function thumbCases(lang: ThumbLang): GoldenCase[] {
   const defs = new Map(plugins.flatMap((p) => p.items ?? []).map((t) => [t.type, t.params]));
-  // each block's card, as the server's gallery shows it (cardSample), in the order of the samples
+  // each block's card, as the server's gallery shows it (cardSample), in the order of the samples (a clip effect's card has no words)
   const first = new Map<string, Sample>();
-  for (const c of samples) if (!first.has(c.type)) first.set(c.type, cardSample(c.type)!);
+  for (const c of samples) if (!c.clips && !first.has(c.type)) first.set(c.type, cardSample(c.type)!);
   // a block template's sample (<block>-tpl-<id>) is its card in the gallery's detail: drawn again like a block's first one (its card
   // too: over the street for a block marked over)
   const blockTemplates = samples.filter((c) => /.-tpl-/.test(c.name) && !c.street).map((c) => cardSample(c.type, c.name.slice(templateSample(c.type, '').length))!);

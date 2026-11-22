@@ -14,11 +14,13 @@ import { STYLES } from './samples/styles.ts';
 import { COMBO_SAMPLES } from './samples/combos.ts';
 import { LENS_SAMPLES } from './samples/lens.ts';
 import { PROGRESS_SAMPLES } from './samples/progress.ts';
+import { CLIP_SAMPLES } from './samples/clips.ts';
 import { REF, templateSample, type Sample } from './samples/fixtures.ts';
 
 export type { Sample } from './samples/fixtures.ts';
 export { CAP_EN, CAP_JA, HEAD_EN, HEAD_JA, templateSample } from './samples/fixtures.ts';
 export { comboSample } from './samples/combos.ts';
+export { CLIP_SAMPLES, clipSampleName } from './samples/clips.ts';
 
 /** the blocks whose cards are drawn over the street: they change or blend with the picture under them, or leave a window for it
  *  (an old block the gallery no longer offers, common.wash, has no card) */
@@ -61,6 +63,8 @@ export const samples: Sample[] = [
   ...BLOCKS,
   // derived: the cards of the blocks marked over 'picture' drawn over the street (before the combos', which stay last)
   ...streetSamples(BLOCKS),
+  // the clip effects' cards (transitions, shapes, the shake): no block's, marked by their `clips`
+  ...CLIP_SAMPLES,
   // a block's samples go before the combos', which stay last (combos.test.ts: a new combo's sample goes at the very end)
   ...COMBO_SAMPLES,
 ];

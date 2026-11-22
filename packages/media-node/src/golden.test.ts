@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { corePlugin, createRegistry } from '@tellcut/engine';
+import { CLIP_PREVIEW_FRAME, clipPreviewClips, corePlugin, createRegistry } from '@tellcut/engine';
 import { TELLCUT_ROOT } from './paths.ts';
 import { diffShare, GOLDEN_NOISE, goldenFile, goldenPlatformDir, goldenProject, onlyNoise, runGolden, type GoldenCase } from './golden.ts';
 
@@ -74,6 +74,18 @@ test('goldenProject of several items: under below the others, top above them, ea
     ['scene', ['common.backdrop 0-1']], ['overlay', ['common.speedlines 0-0.8']], ['overlay', ['core.flash 0.1-0.6']],
   ]);
   expect(goldenProject({ name: 'x', type: 'combo:x', at: [0], items: [{ type: 'core.flash', start: 0, end: 1 }] }).tracks).toHaveLength(1);
+});
+
+test('goldenProject of a clip case: its clips alone on a video track, their pictures as long as the case, no block drawn', () => {
+  const sources = { street: { file: 'fixtures/street.png', width: 1080, height: 1920 }, map: { file: 'fixtures/fake-map.png', width: 360, height: 640 }, other: { file: 'fixtures/x.png', width: 1, height: 1 } };
+  const clips = clipPreviewClips({ transitionIn: { type: 'iris', dur: 0.6 } });
+  const p = goldenProject({ name: 'clip-x', type: 'clip.transition.iris', at: [1.5], len: 3, sources, clips });
+  expect(p.tracks.map((t) => t.kind)).toEqual(['video']);
+  expect((p.tracks[0].items as any[]).map((i) => [i.source, i.start, i.end, i.transitionIn?.type ?? null])).toEqual([['street', 0, 1.8, null], ['map', 1.2, 3, 'iris']]);
+  expect([p.sources.street.duration, p.sources.map.duration, p.sources.other.duration]).toEqual([3, 3, 1]);
+  // a shape keeps its window and outline through the schema
+  const s = goldenProject({ name: 'clip-y', type: 'clip.shape.star', at: [1.5], sources, clips: clipPreviewClips({ shape: { type: 'star' }, outline: {} }) });
+  expect(s.tracks[0].items[0]).toMatchObject({ frame: CLIP_PREVIEW_FRAME, shape: { type: 'star' }, outline: {} });
 });
 
 test('a missing golden is new, update writes it, the same picture is ok, a different one is changed, update rewrites it', async () => {

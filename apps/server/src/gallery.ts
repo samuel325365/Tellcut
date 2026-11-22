@@ -12,7 +12,7 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 // each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
 import { cardSample, samples, type Sample } from '@tellcut/plugin-common/samples';
-import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
+import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryClip, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
 
@@ -32,7 +32,9 @@ const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
 const thumbOf = (c: Sample | undefined) => c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`;
 /** each block's thumbnail: its card's picture (cardSample: its first sample, or that one over the street) */
 const THUMBS = new Map<string, string>();
-for (const c of samples) if (!THUMBS.has(c.type)) THUMBS.set(c.type, thumbOf(cardSample(c.type))!);
+for (const c of samples) if (!c.clips && !THUMBS.has(c.type)) THUMBS.set(c.type, thumbOf(cardSample(c.type))!);
+/** each clip effect's card with a preview: its sample clip-<…> (samples/clips.ts), by the effect's key */
+const CLIP_THUMBS: GalleryClip[] = samples.filter((c) => c.clips).map((c) => ({ key: c.type, thumb: thumbOf(c)! }));
 /** a sample's picture at its last moment, by the sample's name */
 const sampleThumb = (name: string) => thumbOf(samples.find((x) => x.name === name));
 /** each caption template's picture: its sample tpl-<id> (samples.ts); a title template's ttl-<id> */
@@ -74,7 +76,7 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
     return { id: c.id, ...(handle ? { handle } : {}), label: c.label, doc: c.doc, frames: COMBO_FRAMES(c.id),
       parts: c.parts.map((x) => ({ name: x.name, kind: x.kind, ...(x.type ? { type: x.type } : {}), ...(x.template ? { template: x.template } : {}), at: x.at, len: x.len, ...(x.layer ? { layer: x.layer } : {}) })) };
   });
-  return { blocks, sfx, styles, recipes, captions, titles, combos };
+  return { blocks, sfx, styles, recipes, captions, titles, combos, clips: CLIP_THUMBS };
 }
 
 /** composes a preview in a child process (score-child.ts), so the server keeps answering meanwhile; a refused one throws its reason */

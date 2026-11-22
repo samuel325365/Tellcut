@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
-import { parseProject, type Project, type Registry, type ThemeInput } from '@tellcut/engine';
+import { parseProject, type PreviewClip, type Project, type Registry, type ThemeInput } from '@tellcut/engine';
 import { ffmpeg, inFile, oneImage } from './ffmpeg.ts';
 import { openHost, type PageHost } from './render.ts';
 import { withProjectPage } from './stills.ts';
@@ -40,6 +40,9 @@ export interface GoldenCase {
   /** a picture of `sources` (its id) under the block, as a main-track clip of the whole case: the colour blocks (common.grade,
    *  common.tone, core.flash's fades) blend with the picture under them, and over the plain `bg` they show nothing of what they do */
   photo?: string;
+  /** a clip effect's case (a transition, a shape, the shake): these video-track clips of `sources` and nothing else, no block
+   *  (`type` is then the effect's clip.<…> key and `params` are not drawn); film seconds, as engine clipPreviewClips lays them out */
+  clips?: PreviewClip[];
 }
 /** one of a several-item case's items, in film seconds */
 export interface GoldenItem { type: string; params?: Record<string, unknown>; start: number; end: number; layer?: 'top' | 'under' }
@@ -57,10 +60,14 @@ const sizeOf = (c: GoldenCase) => (c.wide ? `${GOLDEN_H}:${GOLDEN_W}` : c.square
  *  reverb that never moves when the default sound of a new project is tuned */
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } };
 
-/** the tracks of a case: its one block on an overlay track, or its items under, beside and over each other */
+/** the tracks of a case: its one block on an overlay track, or its items under, beside and over each other; a clip case's clips alone */
 function goldenTracks(c: GoldenCase, len: number) {
+  if (c.clips) return [{ id: 'v', kind: 'video', items: c.clips }];
   return [...photoTrack(c, len), ...blockTracks(c, len)];
 }
+
+/** whether a case's source is a clip's picture over the whole case (its photo, or one its clips play): a picture source as long as the case */
+const wholeCase = (c: GoldenCase, id: string) => id === c.photo || !!c.clips?.some((x) => x.source === id);
 
 /** the case's photo, a clip of the whole case on a video track under everything (none without one) */
 function photoTrack(c: GoldenCase, len: number) {
@@ -82,7 +89,7 @@ export function goldenProject(c: GoldenCase): Project {
   const len = c.len ?? 3;
   return parseProject({ version: 1,
     meta: { name: c.name, width: c.wide ? 1920 : 1080, height: c.wide || c.square ? 1080 : 1920, fps: 30, duration: len, plugins: [], background: c.bg ?? '#3a4256', mix: MIX, ...(c.theme ? { theme: c.theme } : {}) },
-    sources: Object.fromEntries(Object.entries(c.sources ?? {}).map(([id, s]) => [id, { path: sourcePath(id, s.file), duration: id === c.photo ? len : 1, width: s.width, height: s.height, kind: 'image', ...(s.map ? { map: s.map } : {}) }])),
+    sources: Object.fromEntries(Object.entries(c.sources ?? {}).map(([id, s]) => [id, { path: sourcePath(id, s.file), duration: wholeCase(c, id) ? len : 1, width: s.width, height: s.height, kind: 'image', ...(s.map ? { map: s.map } : {}) }])),
     media: {}, grids: [],
     tracks: goldenTracks(c, len) });
 }

@@ -1,5 +1,6 @@
 // The samples' shared pieces (samples.ts is the list): the Sample shape, the palettes, the made-up texts and pictures several
 // samples use, and the caption samples (every look, word effect, entrance, template and exit).
+import type { PreviewClip } from '@tellcut/engine';
 import { TEMPLATES } from '../caption/templates.ts';
 
 export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean; square?: boolean;
@@ -10,7 +11,9 @@ export interface Sample { name: string; type: string; params?: Record<string, un
   photo?: string;
   /** a sibling drawn over the street for the gallery's card (samples.ts streetSamples): the name of the sample it is drawn from,
    *  which its English and Japanese words are looked up by (golden/thumbs.ts) and the admission tests measure instead */
-  street?: string }
+  street?: string;
+  /** a clip effect's card (samples/clips.ts): its clips, drawn alone on a video track (`type` is then the effect's clip.<…> key, not a block) */
+  clips?: PreviewClip[] }
 
 /** A block template's golden sample (engine templates.ts): `<block>-tpl-<template id>`, the block named as its own samples are
  *  (common.leak → leak, core.flash → core-flash). The admission test finds a template's pictures by it, and the gallery its thumbnail. */

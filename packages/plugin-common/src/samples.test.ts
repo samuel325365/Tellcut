@@ -1,14 +1,15 @@
 // The golden samples (samples.ts) only use values their blocks' params allow: the editor refuses a number outside a ParamDef's
 // min / max or an enum value not in its options, so a sample outside them draws a picture (and a gallery card) no one can make.
 // And the cards of the blocks marked over a picture are derived over the street (streetSamples, cardSample).
-import { createRegistry, OLD_BLOCKS, type ItemType } from '@tellcut/engine';
+import { clipPreviewClips, createRegistry, OLD_BLOCKS, type ItemType } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
-import { cardSample, samples, streetSample, streetSamples, templateSample } from './samples.ts';
+import { CLIP_FX } from '@tellcut/protocol';
+import { cardSample, clipSampleName, samples, streetSample, streetSamples, templateSample } from './samples.ts';
 
 test('every sample param is within its ParamDef: numbers inside min / max, enum values among the options', () => {
   const registry = createRegistry(plugins), bad: string[] = [];
-  // a combo's sample draws several blocks: each of its items is checked
-  for (const s of samples) for (const it of s.items ?? [{ type: s.type, params: s.params }]) {
+  // a combo's sample draws several blocks: each of its items is checked; a clip effect's card draws no block
+  for (const s of samples.filter((x) => !x.clips)) for (const it of s.items ?? [{ type: s.type, params: s.params }]) {
     const t = registry.item(it.type);
     if (!t) { bad.push(`${s.name}: no block ${it.type}`); continue; }
     for (const [key, v] of Object.entries(it.params ?? {})) {
@@ -46,6 +47,29 @@ test('a block marked over a picture has its card and each template card drawn ag
   // an unmarked block, an old one (common.wash) and a combo get none
   const marked = new Set(over.map((t) => t.type));
   expect(samples.filter((s) => s.street && !marked.has(s.type)).map((s) => s.name)).toEqual([]);
+});
+
+test('every clip effect with a preview has its card, drawn from the very clips its preview plays; nothing else reads them as a block', () => {
+  const cards = samples.filter((s) => s.clips), reg = createRegistry(plugins);
+  expect(cards.map((s) => s.type)).toEqual(CLIP_FX.filter((f) => f.preview).map((f) => f.key));
+  expect(cards.length).toBe(26);   // 12 transitions, 13 shapes, the shake
+  for (const f of CLIP_FX.filter((x) => x.preview)) {
+    const s = cards.find((x) => x.type === f.key)!;
+    expect(s, f.key).toMatchObject({ name: clipSampleName(f.key), clips: clipPreviewClips(f.preview!), len: 3 });
+    expect(s.name, f.key).toMatch(/^clip-(transition|shape)-[a-z]+$|^clip-shake$/);
+    // no block, no block's fields, at one moment inside the film; and no block of that name exists
+    expect([s.params, s.items, s.photo, s.street, s.combo, reg.item(s.type)], f.key).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
+    expect(s.at.length).toBe(1);
+    expect(s.at[0]).toBeGreaterThan(0); expect(s.at[0]).toBeLessThan(3);
+  }
+  // a transition's card falls inside its overlap, where both pictures show
+  for (const s of cards.filter((x) => x.clips![1]?.transitionIn)) expect(s.at[0] > s.clips![1].start && s.at[0] < s.clips![0].end, s.name).toBe(true);
+  // they come after every block's samples and before the combos'
+  const last = Math.max(...samples.map((s, i) => (!s.clips && !s.combo ? i : -1)));
+  expect(samples.findIndex((s) => s.clips)).toBeGreaterThan(last);
+  expect(samples.findIndex((s) => s.combo)).toBeGreaterThan(samples.length - 1 - [...samples].reverse().findIndex((s) => s.clips));
+  // a block's card is never one of them
+  for (const t of plugins.flatMap((p) => p.items ?? [])) expect(cardSample(t.type)?.clips, t.type).toBeUndefined();
 });
 
 test('streetSample keeps the case but its ground: the sources it reads stay, the street is added', () => {
