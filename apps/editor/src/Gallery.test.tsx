@@ -582,6 +582,33 @@ test('a block\'s detail lists its templates: picking one previews it with their 
   expect(ownBlocks([{ type: 'fx.t', label: 't', kind: 'overlay', params: [], templates: [{ id: 'a', label: 'A', doc: 'd', params: { n: 1 } }] }])[0].templates).toEqual([{ id: 'a', label: 'A', doc: 'd', params: { n: 1 } }]);
 });
 
+test('a block marked over a picture previews over the gallery street, with a template picked and in another theme too; others do not', async () => {
+  const grade = { plugin: 'common', group: '共用積木', type: 'common.grade', label: '單色調色', doc: '整個畫面調成單色', kind: 'overlay' as const, params: [{ key: 'steps', label: '段落', type: 'text' as const, default: '0|mono' }],
+    needsMedia: false, category: 'look', over: 'picture' as const, templates: [{ id: 'sepia', label: '懷舊', doc: '老照片', params: { steps: '0|sepia' } }] };
+  // the film itself: the street on a video track under the block, where the plain film has none
+  const ground = (p: any) => p.tracks[0].kind === 'video' && p.tracks[0].items[0].source === 'street' && 'street' in p.sources;
+  expect(ground(blockProject(grade, {}))).toBe(true);
+  expect(ground(blockProject(grade, { steps: '0|bw' }, 'cool'))).toBe(true);
+  expect(blockProject(G.blocks[1], {}).tracks.map((x) => x.kind)).toEqual(['overlay']);
+  // and what the page sends the player: the first film, a template picked, the theme changed
+  const sent: any[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
+  try {
+    const root = document.createElement('div');
+    await act(async () => { render(<Gallery load={async () => ({ ...G, blocks: [...G.blocks, grade] })} />, root); });
+    await settle();
+    await click(root, '[data-card="common.grade"]');
+    await click(root, '[data-block-template="sepia"]');
+    const theme = root.querySelector('[data-detail="common.grade"] .g-bar select') as HTMLSelectElement;
+    await act(() => { theme.value = 'warm'; theme.dispatchEvent(new Event('change')); });
+    const grades = sent.filter((p) => p.tracks.at(-1).items[0].type === 'common.grade');
+    expect(grades.map((p) => [p.tracks.at(-1).items[0].params.steps, p.meta.theme?.palette.accent ?? null])).toEqual(expect.arrayContaining([['0|sepia', null], ['0|sepia', (THEMES.warm.theme as any).palette.accent]]));
+    expect(grades.every(ground)).toBe(true);
+    expect(sent.filter((p) => p.tracks.at(-1).items[0].type === 'common.slam').some(ground)).toBe(false);
+  } finally { load.mockRestore(); patch.mockRestore(); }
+});
+
 const frames = (id: string, at: string[]) => at.map((x) => `/api/gallery/thumb/combo-${id}-t${x}.png`);
 const C: GalleryIndex = { ...G,
   blocks: G.blocks.map((b) => (b.type === 'common.slam' ? { ...b, templates: [{ id: 'huge', label: '超大', doc: '開場用', params: { size: 14 } }] } : b)),

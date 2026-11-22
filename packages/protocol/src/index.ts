@@ -262,9 +262,12 @@ export interface GalleryBlock { plugin: string; group: string; type: string; lab
   category?: string;
   /** a golden picture of the block (/api/gallery/thumb/…), when it has one */
   thumb?: string;
+  /** engine ItemType.over: the block works on the picture under it, so its preview plays over the gallery's street */
+  over?: 'picture';
   /** its named templates (engine ItemType.templates), each with its golden picture when it has one */
   templates?: GalleryBlockTemplate[] }
-/** a block template in the gallery: its id, names, the params it writes and its golden picture (<block>-tpl-<id>) */
+/** a block template in the gallery: its id, names, the params it writes and its golden picture (<block>-tpl-<id>, or that one drawn
+ *  over the street for a block marked over) */
 export interface GalleryBlockTemplate { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
 export interface GallerySfx { plugin: string; type: string; label: string; doc: string; params: ParamDef[];
   /** an SfxCategory key; none for a sample film's own sounds */

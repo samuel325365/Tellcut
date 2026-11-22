@@ -11,7 +11,7 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 // each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
-import { samples, templateSample } from '@tellcut/plugin-common/samples';
+import { cardSample, samples, type Sample } from '@tellcut/plugin-common/samples';
 import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
@@ -28,15 +28,17 @@ const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
  *  ones, so a card drawn over the street and its preview show the same street. */
 export const GALLERY_IMAGES: Readonly<Record<string, string>> = { street: 'fixtures/street.png', map: 'fixtures/fake-map.png' };
 const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
-/** each block's thumbnail: its first sample at its last moment (the animation settled) */
+/** a sample's picture at its last moment (the animation settled) */
+const thumbOf = (c: Sample | undefined) => c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`;
+/** each block's thumbnail: its card's picture (cardSample: its first sample, or that one over the street) */
 const THUMBS = new Map<string, string>();
-for (const c of samples) if (!THUMBS.has(c.type)) THUMBS.set(c.type, `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`);
+for (const c of samples) if (!THUMBS.has(c.type)) THUMBS.set(c.type, thumbOf(cardSample(c.type))!);
 /** a sample's picture at its last moment, by the sample's name */
-const sampleThumb = (name: string) => { const c = samples.find((x) => x.name === name); return c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`; };
+const sampleThumb = (name: string) => thumbOf(samples.find((x) => x.name === name));
 /** each caption template's picture: its sample tpl-<id> (samples.ts); a title template's ttl-<id> */
 const TEMPLATE_THUMB = (id: string, pre = 'tpl') => sampleThumb(`${pre}-${id}`);
-/** a block template's picture: its sample <block>-tpl-<id> */
-const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => sampleThumb(templateSample(type, id));
+/** a block template's picture: its card (its sample <block>-tpl-<id>, or that one over the street) */
+const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => thumbOf(cardSample(type, id));
 /** a combo's pictures: every moment of its sample combo-<id> (start, peak, end), in time order */
 const COMBO_FRAMES = (id: string) => { const c = samples.find((x) => x.name === `combo-${id}`); return c ? [...c.at].sort((a, b) => a - b).map((t) => `/api/gallery/thumb/${c.name}-t${t.toFixed(2)}.png`) : []; };
 
@@ -47,6 +49,7 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
   // open them); the old core.title / core.caption stay: they sit under the Titles and Captions tabs, which show only templates
   const blocks = sorted.flatMap((p) => (p.items ?? []).filter((t) => !OLD_BLOCKS[t.type] || OLD_TEXT[t.type]).map((t): GalleryBlock => ({
     plugin: p.id, group: GROUP[p.id] ?? '外掛', type: t.type, label: t.label, doc: t.doc ?? '', kind: t.kind, params: t.params, needsMedia: needsMedia(t),
+    ...(t.over ? { over: t.over } : {}),
     ...(t.category ?? CORE_CATEGORY[t.type] ? { category: t.category ?? CORE_CATEGORY[t.type] } : {}), ...(THUMBS.has(t.type) ? { thumb: THUMBS.get(t.type) } : {}),
     ...(t.templates?.length ? { templates: t.templates.map((x) => { const thumb = BLOCK_TEMPLATE_THUMB(t.type, x.id); return { id: x.id, label: x.label, doc: x.doc, params: x.params, ...(thumb ? { thumb } : {}) }; }) } : {}),
   })));

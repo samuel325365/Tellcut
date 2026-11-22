@@ -44,9 +44,10 @@ export const THEMES: Record<string, { theme?: Record<string, unknown> }> = {
 
 export const PREVIEW_LEN = BLOCK_PREVIEW_LEN;
 
-/** A 1080×1920 film of one block, as the golden pictures use (engine blockPreviewProject, shared with a saved block's thumbnail). */
+/** A 1080×1920 film of one block, as the golden pictures use (engine blockPreviewProject, shared with a saved block's thumbnail);
+ *  a block that works on the picture under it (`over`) plays over the gallery's street, the picture its card is drawn over. */
 export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none') {
-  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme: THEMES[themeId]?.theme });
+  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme: THEMES[themeId]?.theme, ...(b.over === 'picture' ? { ground: true } : {}) });
 }
 
 /** One of My blocks as blockProject shows a shared one: its module comes from the entry's folder (the player's project url, libraryPlayer);

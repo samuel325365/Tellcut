@@ -29,15 +29,35 @@ test('the gallery lists every block (core and common first), the sounds, the mus
     expect(g.styles.filter((s: any) => s.origin === 'built-in').map((s: any) => s.id)).toEqual(['pluck', 'lofi', 'cinematic', 'tech', 'playful']);
     expect(g.recipes.map((r: any) => r.id)).toEqual(['travel', 'hook', 'montage']);
     expect(g.recipes[0].example.scenes.length).toBeGreaterThan(0);
-    // a block's templates, each with the golden picture of its sample <block>-tpl-<id>
-    const leak = g.blocks.find((b: any) => b.type === 'common.leak');
-    expect(leak.templates.slice(0, 2).map((x: any) => [x.id, x.thumb])).toEqual([['prism-sweep', '/api/gallery/thumb/leak-tpl-prism-sweep-t1.50.png'], ['bokeh-night', '/api/gallery/thumb/leak-tpl-bokeh-night-t1.50.png']]);
-    for (const x of leak.templates) expect(x.thumb, x.id).toMatch(new RegExp(`^/api/gallery/thumb/leak-tpl-${x.id}-t\\d+\\.\\d\\d\\.png$`));
+    // a block's templates, each with the golden picture of its sample <block>-tpl-<id> (common.leak's are drawn over the street: below)
+    const leak = g.blocks.find((b: any) => b.type === 'common.leak'), lines = g.blocks.find((b: any) => b.type === 'common.speedlines');
+    expect(lines.templates.slice(0, 2).map((x: any) => [x.id, x.thumb])).toEqual([['manga-focus', '/api/gallery/thumb/speedlines-tpl-manga-focus-t1.50.png'], ['rush-right', '/api/gallery/thumb/speedlines-tpl-rush-right-t1.50.png']]);
+    for (const x of lines.templates) expect(x.thumb, x.id).toMatch(new RegExp(`^/api/gallery/thumb/speedlines-tpl-${x.id}-t\\d+\\.\\d\\d\\.png$`));
     expect(leak.templates.length).toBeGreaterThan(2);
     expect(leak.templates[0]).toMatchObject({ label: '彩虹光帶橫掃', params: { look: 'prism' } });
     expect(leak.templates[0].doc.length).toBeGreaterThan(5);
     expect(slam.templates).toBeUndefined();
     expect((await fetch(base + leak.templates[0].thumb)).status).toBe(200);
+  } finally { await app.close(); }
+});
+
+test('a block that works on the picture under it says so, and its cards are drawn over the street unless they already are', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  try {
+    const g = await (await fetch(`${base}/api/gallery`)).json(), block = (type: string) => g.blocks.find((b: any) => b.type === type);
+    const over = g.blocks.filter((b: any) => b.over).map((b: any) => b.type);
+    expect(over).toEqual(expect.arrayContaining(['core.flash', 'common.grade', 'common.glitch', 'common.lens', 'common.panel', 'common.letterbox']));
+    for (const t of ['common.slam', 'common.grid', 'common.flatlay', 'common.magazine']) expect(block(t).over, t).toBeUndefined();
+    // every block of the look category (the grades and textures laid over the video) is one
+    expect(g.blocks.filter((b: any) => b.category === 'look' && !b.over).map((b: any) => b.type)).toEqual([]);
+    // the card and each template's: the sample's street sibling, or the sample itself when it is over the street already
+    expect(block('common.glitch').thumb).toBe('/api/gallery/thumb/glitch-street-t0.20.png');
+    for (const x of block('common.glitch').templates) expect(x.thumb, x.id).toMatch(new RegExp(`^/api/gallery/thumb/glitch-tpl-${x.id}-street-t\\d+\\.\\d\\d\\.png$`));
+    expect(block('common.grade').thumb).toBe('/api/gallery/thumb/grade-photo-t1.00.png');
+    expect(block('common.grade').templates[0].thumb).toMatch(/^\/api\/gallery\/thumb\/grade-tpl-[a-z-]+-t\d\.\d\d\.png$/);
+    expect(block('common.slam').thumb).toMatch(/^\/api\/gallery\/thumb\/slam-t/);
+    for (const b of g.blocks.filter((x: any) => x.over)) for (const u of [b.thumb, ...(b.templates ?? []).map((x: any) => x.thumb)])
+      expect((await fetch(base + u)).status, u).toBe(200);
   } finally { await app.close(); }
 });
 
