@@ -25,7 +25,7 @@ export const isPicture = (v: string): boolean => {
 export const glyphOf = (v: string, fallback: string): string => graphemes(String(v ?? '').trim())[0] ?? fallback;
 
 /** an emoji without its variation selector and skin tone: what FACES_RIGHT lists */
-const bare = (g: string) => g.replace(/[\uFE0F\u{1F3FB}-\u{1F3FF}]/gu, '');
+export const bare = (g: string) => g.replace(/[\uFE0F\u{1F3FB}-\u{1F3FF}]/gu, '');
 const facesRight = (v: string) => {
   if (isPicture(v)) return true;
   const g = bare(glyphOf(v, RUNNER));

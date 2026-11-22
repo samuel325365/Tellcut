@@ -28,4 +28,8 @@ export const PROGRESS_SAMPLES: Sample[] = [
   { name: 'progress-battery', type: 'common.progress', params: { mode: 'battery', position: 'bottom', size: 3, color: '#34c759' }, len: 4, at: [1.5, 3.1] },
   { name: 'progress-battery-low', type: 'common.progress', params: { mode: 'battery', position: 'bottom', size: 3, color: '#34c759', step: 0 }, len: 4, at: [1.1] },
   { name: 'wide-progress-battery', type: 'common.progress', params: { mode: 'battery', position: 'bottom', size: 3, color: '#34c759' }, len: 4, at: [1.5, 3.1], wide: true },
+  // rocket (spec 2026-11-22, progress more modes): climbing the right side, flame lit, and the fireworks round the moon at their fullest
+  { name: 'progress-rocket', type: 'common.progress', params: { mode: 'rocket' }, len: 4, at: [1.6, 3.25] },
+  { name: 'wide-progress-rocket', type: 'common.progress', params: { mode: 'rocket' }, len: 4, at: [1.6, 3.25], wide: true },
+  { name: 'progress-rocket-balloon', type: 'common.progress', params: { mode: 'rocket', runner: '🎈', goal: '☁️', align: 'left' }, len: 4, at: [1.8, 3.25] },
 ];

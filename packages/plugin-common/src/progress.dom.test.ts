@@ -78,8 +78,11 @@ test('switching rocket → bar → ring → fuse → rocket: one root at a time,
   const rocket = ctxOf({ mode: 'rocket' }), s = progress.build(rocket);
   progress.draw(rocket, s);
   expect(s.more!.root.dataset.more).toBe('rocket');
+  expect(css(s.cv).display).toBe('block');   // the flame
   progress.draw(ctxOf({ mode: 'bar' }, 1, rocket.root), s);
   expect(css(s.more!.root).display).toBe('none');
+  expect(css(s.cv).display).toBe('none');
+  expect(s.cv.width).toBe(0);
   expect(css(s.track).display).toBe('block');
   const ring = ctxOf({ mode: 'ring' }, 1, rocket.root);
   progress.draw(ring, s);
@@ -90,7 +93,7 @@ test('switching rocket → bar → ring → fuse → rocket: one root at a time,
   expect(css(s.cv).display).toBe('block');
   progress.draw(rocket, s);
   expect(s.more!.root.dataset.more).toBe('rocket');
-  if (css(s.cv).display === 'none') expect(s.cv.width).toBe(0);
+  expect(css(s.cv).display).toBe('block');
   expect(rocket.root.querySelectorAll(':scope > [data-more]').length).toBe(1);
   for (const el of [s.title, s.count, s.slots]) expect(css(el).display).toBe('none');
 });
@@ -366,4 +369,117 @@ test('battery: the cells light one by one, red while low, all the done colour wh
   progress.draw({ ...ctx, local: 3.5, t: 3.5 }, s);
   expect(s.more!.el.text.textContent).toBe('100%');
   for (const c of s.more!.list) expect(css(c).background).toBe('#0000ff');
+});
+
+// rocket: upright along the side safe edge; the rocket, the goal and every canvas point inside the safe area
+const box4 = (el: HTMLElement) => {
+  const c = css(el), left = parseFloat(c.left), top = parseFloat(c.top), w = parseFloat(c.width), hh = parseFloat(c.height);
+  const sc = Number(/scale\(([\d.]+)\)/.exec(c.transform ?? '')?.[1] ?? 1);
+  return { left: left + (w * (1 - sc)) / 2, right: left + (w * (1 + sc)) / 2, top: top + (hh * (1 - sc)) / 2, bottom: top + (hh * (1 + sc)) / 2 };
+};
+/** every point a recorded canvas call names: path points, arcs and gradients with their radius */
+const canvasBoxes = (log: ReturnType<typeof recorder>) => log.flatMap((c) => {
+  const a = c.args as number[];
+  if (c.op === 'arc') return [[a[0] - a[2], a[1] - a[2]], [a[0] + a[2], a[1] + a[2]]];
+  if (c.op === 'createRadialGradient') return [[a[3] - a[5], a[4] - a[5]], [a[3] + a[5], a[4] + a[5]]];
+  if (['moveTo', 'lineTo', 'quadraticCurveTo', 'bezierCurveTo'].includes(c.op)) return Array.from({ length: a.length / 2 }, (_, i) => [a[2 * i], a[2 * i + 1]]);
+  return [];
+});
+
+test.each([[1080, 1920], [1920, 1080]])('rocket %sx%s: the rocket, the goal and the flame and fireworks inside the safe area, the same twice', (W, H) => {
+  const log = recorder(), ctx = ctxOf({ mode: 'rocket' }, 0, document.createElement('div'), W, H), s = progress.build(ctx), g = s.cv.getContext('2d') as any;
+  const sf = ctx.theme.safe, L = sf.side * W, R = W - sf.side * W, T = sf.top * H, B = H * (1 - sf.bottom);
+  const seqs: Record<number, string> = {};
+  let points = 0;
+  for (const local of [0, 1.5, 3.05, 3.2, 3.4, 3.5, 1.5]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(g.globalAlpha).toBe(1);
+    for (const part of ['runner', 'goal']) {
+      const b = box4(s.more!.el[part]);
+      expect(b.left).toBeGreaterThanOrEqual(L - 0.01);
+      expect(b.right).toBeLessThanOrEqual(R + 0.01);
+      expect(b.top).toBeGreaterThanOrEqual(T - 0.01);
+      expect(b.bottom).toBeLessThanOrEqual(B + 0.01);
+    }
+    for (const [x, y] of canvasBoxes(log)) {
+      points++;
+      expect(x).toBeGreaterThanOrEqual(L - 0.01);
+      expect(x).toBeLessThanOrEqual(R + 0.01);
+      expect(y).toBeGreaterThanOrEqual(T - 0.01);
+      expect(y).toBeLessThanOrEqual(B + 0.01);
+    }
+    const seq = JSON.stringify(log.map((c) => [c.op, c.globalAlpha, c.args])) + s.more!.root.innerHTML;
+    if (local in seqs) expect(seq).toBe(seqs[local]);
+    seqs[local] = seq;
+  }
+  expect(points).toBeGreaterThan(0);
+  // it climbed, against the right edge, and the goal popped and the fireworks went off on arrival
+  progress.draw({ ...ctx, local: 0, t: 0 }, s);
+  const start = box4(s.more!.el.runner);
+  expect(start.right).toBeGreaterThan(W / 2);
+  progress.draw({ ...ctx, local: 3.2, t: 3.2 }, s);
+  const top = box4(s.more!.el.runner);
+  expect(top.top).toBeLessThan(start.top - H * 0.25);
+  expect(top.top).toBeGreaterThanOrEqual(parseFloat(css(s.more!.el.goal).top) + parseFloat(css(s.more!.el.goal).height) - 0.01);
+  expect(css(s.more!.el.goal).transform).toMatch(/scale\(1\.[01]/);
+  log.length = 0;
+  progress.draw({ ...ctx, local: 3.3, t: 3.3 }, s);
+  expect(log.filter((c) => c.op === 'stroke').length).toBeGreaterThan(3);
+  expect(s.more!.el.runnerText.textContent).toBe('🚀');
+  expect(css(s.more!.el.runnerText).transform).toBe('rotate(-45deg)');
+  expect(s.more!.el.goalText.textContent).toBe('🌙');
+});
+
+test('rocket: align left keeps it on the left; another emoji stands unturned with no flame; goal none draws none', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'rocket', align: 'left', runner: '🎈', goal: 'none' }, 1.5), s = progress.build(ctx), side = ctx.theme.safe.side * ctx.W;
+  progress.draw(ctx, s);
+  const b = box4(s.more!.el.runner);
+  expect(b.left).toBeGreaterThanOrEqual(side - 0.01);
+  expect(b.right).toBeLessThan(ctx.W / 2);
+  expect(s.more!.el.goal).toBeUndefined();
+  expect(css(s.more!.el.runnerText).transform).toBe('none');
+  expect(css(s.cv).display).toBe('none');
+  expect(log.length).toBe(0);
+  // flip mirrors it
+  const f = ctxOf({ mode: 'rocket', flip: true }, 1.5), sf = progress.build(f);
+  progress.draw(f, sf);
+  expect(css(sf.more!.el.runner).transform).toBe('scale(-1, 1)');
+});
+
+test('rocket: a picture that fails falls back to an upright 🚀 with its flame', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'rocket', runner: 'media/nope.png' }, 1.5), s = progress.build(ctx);
+  const img = s.more!.root.querySelector('img')!;
+  expect(img.getAttribute('src')).toBe('media/nope.png');
+  Object.defineProperty(img, 'complete', { value: true });
+  Object.defineProperty(img, 'naturalWidth', { value: 0 });
+  progress.draw(ctx, s);
+  expect(css(img).display).toBe('none');
+  expect(css(s.more!.el.runnerText).display).toBe('block');
+  expect(s.more!.el.runnerText.textContent).toBe('🚀');
+  expect(css(s.more!.el.runnerText).transform).toBe('rotate(-45deg)');
+  expect(log.filter((c) => c.op === 'bezierCurveTo').length).toBeGreaterThan(0);
+});
+
+test('rocket: a short wide frame with a big rocket keeps the rocket below the goal and inside the safe area', () => {
+  recorder();
+  for (const params of [{ iconSize: 3 }, { iconSize: 3, thickness: 60 }]) {
+    const ctx = ctxOf({ mode: 'rocket', ...params }, 0, document.createElement('div'), 1920, 1080), s = progress.build(ctx), sf = ctx.theme.safe;
+    for (const local of [0, 1.5, 3.2]) {
+      progress.draw({ ...ctx, local, t: local }, s);
+      const r = box4(s.more!.el.runner);
+      for (const v of [r.left, r.top, r.right, r.bottom]) expect(Number.isFinite(v)).toBe(true);
+      // the rocket under the goal (as drawn, before its pop)
+      expect(r.top).toBeGreaterThanOrEqual(parseFloat(css(s.more!.el.goal).top) + parseFloat(css(s.more!.el.goal).height) - 0.01);
+      expect(r.bottom).toBeLessThanOrEqual(1080 * (1 - sf.bottom) + 0.01);
+      expect(parseFloat(css(s.more!.el.fill).height)).toBeGreaterThanOrEqual(0);
+      expect(parseFloat(css(s.more!.el.track).height)).toBeGreaterThanOrEqual(0);
+    }
+  }
+});
+
+test('rocket: a 0.5 s item draws without throwing', () => {
+  recorder();
+  const ctx = { ...ctxOf({ mode: 'rocket' }), dur: 0.5 }, s = progress.build(ctx);
+  for (const local of [0, 0.1, 0.25, 0.4, 0.5]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
 });
