@@ -741,3 +741,165 @@ test('vine: a 0.5 s item (and one of none) draws without throwing', () => {
     for (const local of [0, 0.1, 0.25, 0.4, 0.5]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
   }
 });
+
+// stamps: a small card in a corner of the safe area, tilted, its box (the tilt's corners and the jump when full included) inside
+const cardBox = (el: HTMLElement) => {
+  const c = css(el), w = parseFloat(c.width), hh = parseFloat(c.height);
+  const ty = Number(/translateY\((-?[\d.]+)px\)/.exec(c.transform ?? '')?.[1] ?? 0), deg = Number(/rotate\((-?[\d.]+)deg\)/.exec(c.transform ?? '')?.[1] ?? 0);
+  const a = (Math.abs(deg) * Math.PI) / 180, bw = w * Math.cos(a) + hh * Math.sin(a), bh = w * Math.sin(a) + hh * Math.cos(a);
+  const cx = parseFloat(c.left) + w / 2, cy = parseFloat(c.top) + hh / 2 + ty;
+  return { L: cx - bw / 2, R: cx + bw / 2, T: cy - bh / 2, B: cy + bh / 2, deg, ty };
+};
+const shown = (s: any) => s.more!.list.map((el: HTMLElement) => css(el).display === 'block' && Number(css(el).opacity) > 0);
+
+test.each([[1080, 1920, 'right', 'bottom'], [1080, 1920, 'left', 'top'], [1920, 1080, 'right', 'bottom'], [1920, 1080, 'center', 'top']])('stamps %sx%s %s %s: the tilted card inside the safe area all along (its jump too), against the corner, no wider than 45% of it, the same twice', (W, H, align, position) => {
+  const ctx = ctxOf({ mode: 'stamps', align, position }, 0, document.createElement('div'), W as number, H as number), s = progress.build(ctx);
+  const sf = ctx.theme.safe, L = sf.side * ctx.W, R = ctx.W - sf.side * ctx.W, T = sf.top * ctx.H, B = ctx.H * (1 - sf.bottom);
+  const seqs: Record<number, string> = {};
+  let jumped = 0;
+  for (const local of [0, 0.7, 1.5, 2.95, 3.05, 3.2, 3.4, 3.6, 3.9, 1.5, 3.4]) {
+    progress.draw({ ...ctx, local, t: local }, s);
+    const b = cardBox(s.more!.el.card);
+    expect(b.deg).toBeCloseTo(-2, 6);
+    expect(b.L).toBeGreaterThanOrEqual(L - 0.01);
+    expect(b.R).toBeLessThanOrEqual(R + 0.01);
+    expect(b.T).toBeGreaterThanOrEqual(T - 0.01);
+    expect(b.B).toBeLessThanOrEqual(B + 0.01);
+    expect(b.R - b.L).toBeLessThanOrEqual((R - L) * 0.45 + 0.01);
+    // the jump goes into the frame: up from the bottom, down from the top
+    if (position === 'bottom') expect(b.ty).toBeLessThanOrEqual(0); else expect(b.ty).toBeGreaterThanOrEqual(0);
+    jumped = Math.max(jumped, Math.abs(b.ty));
+    if (local < 3) {
+      // at rest: against the corner align and position name
+      if (align === 'left') expect(b.L).toBeCloseTo(L, 1); else expect(b.R).toBeCloseTo(R, 1);
+      if (position === 'bottom') expect(b.B).toBeCloseTo(B, 1); else expect(b.T).toBeCloseTo(T, 1);
+    }
+    const seq = s.more!.root.innerHTML;
+    if (local in seqs) expect(seq).toBe(seqs[local]);
+    seqs[local] = seq;
+  }
+  expect(jumped).toBeGreaterThan(0);
+  expect(css(s.cv).display).toBe('none');
+});
+
+test('stamps: one stamp more at each fifth, the newest crisp and the older ones lighter; full turns them all the done colour and the card jumps', () => {
+  const ctx = ctxOf({ mode: 'stamps', position: 'bottom', color: '#00ff00', done: '#0000ff' }), s = progress.build(ctx);
+  expect(s.more!.list).toHaveLength(5);
+  progress.draw({ ...ctx, local: 0.5, t: 0.5 }, s);
+  expect(shown(s)).toEqual([false, false, false, false, false]);
+  progress.draw({ ...ctx, local: 1.5, t: 1.5 }, s);
+  expect(shown(s)).toEqual([true, true, false, false, false]);
+  const [old, newest] = s.more!.list.map((el) => Number(css(el).opacity));
+  expect(newest).toBe(1);
+  expect(old).toBeCloseTo(0.75, 6);
+  for (const el of s.more!.list.slice(0, 2)) expect(css(el).color).toBe('#00ff00');
+  // each stamp turned its own way, fixed by its number
+  const tilts = s.more!.list.map((el) => Number(/rotate\((-?[\d.]+)deg\)/.exec(css(el).transform)?.[1]));
+  for (const t of tilts) expect(Math.abs(t)).toBeLessThanOrEqual(12);
+  expect(new Set(tilts.map((t) => t.toFixed(2))).size).toBeGreaterThan(2);
+  // landing: bigger and fainter just after the progress reaches it
+  progress.draw({ ...ctx, local: 1.85, t: 1.85 }, s);
+  const landing = css(s.more!.list[2]);
+  expect(Number(/scale\(([\d.]+)\)/.exec(landing.transform)?.[1])).toBeGreaterThan(1.1);
+  expect(Number(landing.opacity)).toBeLessThan(1);
+  progress.draw({ ...ctx, local: 3.1, t: 3.1 }, s);
+  expect(shown(s)).toEqual([true, true, true, true, true]);
+  expect(css(s.more!.list[4]).color).toBe('#00ff00');
+  expect(cardBox(s.more!.el.card).ty).toBe(0);
+  progress.draw({ ...ctx, local: 3.4, t: 3.4 }, s);
+  for (const el of s.more!.list) expect(css(el).color).toBe('#0000ff');
+  expect(cardBox(s.more!.el.card).ty).toBeLessThan(0);
+  progress.draw({ ...ctx, local: 3.8, t: 3.8 }, s);
+  expect(cardBox(s.more!.el.card).ty).toBe(0);
+  for (const el of s.more!.list) expect(css(el).color).toBe('#0000ff');
+});
+
+test('stamps: the empty cells are dashed ink circles; twelve make two rows; the drawn stamp is a ring with a star', () => {
+  const ctx = ctxOf({ mode: 'stamps', dots: 12, ink: '#102030' }), s = progress.build(ctx);
+  progress.draw({ ...ctx, local: 1, t: 1 }, s);
+  const cells = Array.from({ length: 12 }, (_, i) => s.more!.el[`cell${i}`]);
+  for (const c of cells) {
+    expect(css(c).borderStyle).toBe('dashed');
+    expect(css(c).borderRadius).toBe('50%');
+    expect(css(c).borderColor).toBe('rgba(16, 32, 48, 0.35)');
+  }
+  expect(new Set(cells.map((c) => css(c).top)).size).toBe(2);
+  const svg = s.more!.list[0].querySelector('svg')!;
+  expect(svg).not.toBeNull();
+  expect(svg.querySelectorAll('circle').length).toBeGreaterThanOrEqual(1);
+  expect(svg.querySelector('polygon, path')).not.toBeNull();
+});
+
+test('stamps: a chapter has the stamps before it down from the start', () => {
+  const ctx = ctxOf({ mode: 'stamps', dots: 5, step: 2 }), s = progress.build(ctx);
+  progress.draw({ ...ctx, local: 0, t: 0 }, s);
+  expect(shown(s)).toEqual([true, true, false, false, false]);
+  progress.draw({ ...ctx, local: 3.5, t: 3.5 }, s);
+  expect(shown(s)).toEqual([true, true, true, false, false]);
+  // not the last chapter: never full, so no jump
+  expect(cardBox(s.more!.el.card).ty).toBe(0);
+  // a step past the last cell is the last chapter
+  const last = ctxOf({ mode: 'stamps', dots: 5, step: 9 }), sl = progress.build(last);
+  progress.draw({ ...last, local: 0, t: 0 }, sl);
+  expect(shown(sl)).toEqual([true, true, true, true, false]);
+});
+
+test('stamps: an emoji stamp is the emoji (not recoloured, not mirrored); a picture that fails gives the drawn stamp back', () => {
+  const ctx = ctxOf({ mode: 'stamps', runner: '⭐' }, 3.5), s = progress.build(ctx);
+  progress.draw(ctx, s);
+  for (let i = 0; i < 5; i++) {
+    expect(s.more!.el[`stamp${i}Text`].textContent).toBe('⭐');
+    expect(css(s.more!.el[`stamp${i}Text`]).display).toBe('block');
+    expect(css(s.more!.el[`ink${i}`]).display).toBe('none');
+    expect(css(s.more!.list[i]).transform).not.toMatch(/scale\(-/);
+  }
+  const p = ctxOf({ mode: 'stamps', runner: 'media/nope.png' }, 3.5), sp = progress.build(p);
+  const imgs = [...sp.more!.root.querySelectorAll('img')];
+  expect(imgs).toHaveLength(5);
+  expect(imgs[0].getAttribute('src')).toBe('media/nope.png');
+  for (const img of imgs) { Object.defineProperty(img, 'complete', { value: true }); Object.defineProperty(img, 'naturalWidth', { value: 0 }); }
+  progress.draw(p, sp);
+  for (let i = 0; i < 5; i++) {
+    expect(css(imgs[i]).display).toBe('none');
+    expect(css(sp.more!.el[`ink${i}`]).display).toBe('block');
+  }
+});
+
+test.each([{ size: 1 }, { size: 8 }, { size: 8, dots: 12 }, { size: 8, dots: 2 }])('stamps %o: inside the safe area at 9:16 and 16:9, no NaN', (params) => {
+  for (const [W, H] of [[1080, 1920], [1920, 1080]]) {
+    const ctx = ctxOf({ mode: 'stamps', position: 'bottom', ...params }, 0, document.createElement('div'), W, H), s = progress.build(ctx), sf = ctx.theme.safe;
+    for (const local of [0, 1.5, 3.2, 3.4, 3.5]) {
+      progress.draw({ ...ctx, local, t: local }, s);
+      const b = cardBox(s.more!.el.card);
+      for (const v of [b.L, b.R, b.T, b.B]) expect(Number.isFinite(v)).toBe(true);
+      expect(b.L).toBeGreaterThanOrEqual(sf.side * W - 0.01);
+      expect(b.R).toBeLessThanOrEqual(W - sf.side * W + 0.01);
+      expect(b.T).toBeGreaterThanOrEqual(sf.top * H - 0.01);
+      expect(b.B).toBeLessThanOrEqual(H * (1 - sf.bottom) + 0.01);
+      expect(b.R - b.L).toBeLessThanOrEqual((W - 2 * sf.side * W) * 0.45 + 0.01);
+      for (const el of s.more!.list) for (const v of [css(el).left, css(el).top, css(el).width]) expect(Number.isFinite(parseFloat(v))).toBe(true);
+    }
+  }
+});
+
+test('stamps: a 0.5 s item (and one of none) draws without throwing', () => {
+  for (const dur of [0.5, 0]) {
+    const ctx = { ...ctxOf({ mode: 'stamps' }), dur }, s = progress.build(ctx);
+    for (const local of [0, 0.1, 0.25, 0.4, 0.5]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
+  }
+});
+
+test('switching stamps → ring → bar → stamps: one root at a time, the old elements hidden', () => {
+  recorder();
+  const st = ctxOf({ mode: 'stamps' }), s = progress.build(st);
+  progress.draw(st, s);
+  expect(s.more!.root.dataset.more).toBe('stamps');
+  progress.draw(ctxOf({ mode: 'ring' }, 1, st.root), s);
+  expect(s.more!.root.dataset.more).toBe('ring');
+  progress.draw(ctxOf({ mode: 'bar' }, 1, st.root), s);
+  expect(css(s.more!.root).display).toBe('none');
+  progress.draw(st, s);
+  expect(s.more!.root.dataset.more).toBe('stamps');
+  expect(css(s.cv).display).toBe('none');
+  expect(st.root.querySelectorAll(':scope > [data-more]').length).toBe(1);
+});

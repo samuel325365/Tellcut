@@ -10,6 +10,7 @@ import { drawRocket } from './rocket.ts';
 import { drawRunner } from './runner.ts';
 import { drawSegments } from './segments.ts';
 import { fadeOut, type Draw, type More, type MoreMode, type MoreParams } from './shared.ts';
+import { drawStamps } from './stamps.ts';
 import { drawStretch } from './stretch.ts';
 import { drawVine } from './vine.ts';
 
@@ -23,6 +24,7 @@ const DRAWS: Partial<Record<MoreMode, Draw>> = {
   rocket: drawRocket,
   ring: drawRing,
   vine: drawVine,
+  stamps: drawStamps,
 };
 
 /** what rebuilds a mode's elements when it changes: the mode itself and the params that decide which elements there are */

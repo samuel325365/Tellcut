@@ -42,4 +42,9 @@ export const PROGRESS_SAMPLES: Sample[] = [
   { name: 'progress-vine', type: 'common.progress', params: { mode: 'vine', position: 'bottom', color: '#4caf50', done: '#ff8fb1' }, len: 4, at: [1.6, 3.55] },
   { name: 'wide-progress-vine', type: 'common.progress', params: { mode: 'vine', position: 'bottom', color: '#4caf50', done: '#ff8fb1' }, len: 4, at: [1.6, 3.55], wide: true },
   { name: 'progress-vine-fruit', type: 'common.progress', params: { mode: 'vine', position: 'bottom', color: '#4caf50', done: '#ff8fb1', goal: '🍓' }, len: 4, at: [1.6, 3.3] },
+  // stamps: a loyalty card in the bottom right corner, the third stamp just down (crisp beside the older two), and full (all
+  // in the done colour, the card at the top of its jump); ten star stamps in two rows, bottom left
+  { name: 'progress-stamps', type: 'common.progress', params: { mode: 'stamps', position: 'bottom', align: 'right' }, len: 4, at: [2.05, 3.4] },
+  { name: 'wide-progress-stamps', type: 'common.progress', params: { mode: 'stamps', position: 'bottom', align: 'right' }, len: 4, at: [2.05, 3.4], wide: true },
+  { name: 'progress-stamps-ten', type: 'common.progress', params: { mode: 'stamps', dots: 10, runner: '⭐', align: 'left', position: 'bottom' }, len: 4, at: [2.1] },
 ];
