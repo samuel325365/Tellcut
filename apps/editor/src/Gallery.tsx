@@ -8,10 +8,10 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { templateName, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
-import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
+import { IconCaptionOut, IconFaceSticker, IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
 import { ThemeToggle } from './theme.tsx';
 import { LangSwitch } from './LangSwitch.tsx';
 import { tip } from './tip.ts';
@@ -143,18 +143,24 @@ function Templates({ b, set, pick }: { b: GalleryBlock; set: Record<string, unkn
   </>;
 }
 
+/** A clip effect: its preview looping (the street, to the map for a transition: clipProject), what it is for and its cut.ts line;
+ *  one the gallery cannot show says why instead of the preview. */
 function ClipDetail({ f }: { f: ClipFx }) {
-  const x = shown(f.key, f);
+  const x = shown(f.key, f), [n, setN] = useState(0), project = clipProject(f);
   return (
     <section class="g-detail" data-detail={f.key}>
       <header class="g-head"><h2>{x.label}</h2><Handle id={f.key} /></header>
+      {project && <><PlayerPreview project={project} playKey={n} /><div class="g-bar"><button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button></div></>}
       <p class="g-doc">{x.doc}</p>
       <h3>{t('gallery.clipCode')} <CopyName name={f.code} /></h3>
       <pre>{f.code}</pre>
-      <p class="dim">{t('gallery.clipNote')}</p>
+      <p class="dim" data-clip-note>{project ? t('gallery.clipNote') : t(`gallery.clipNoPreview.${f.key.slice(5)}` as Key)}</p>
     </section>
   );
 }
+
+/** the mark of a clip effect without a card picture: its own for those that cannot be shown, else the generic one */
+const CLIP_ICON: Record<string, (p: { size?: number }) => preact.JSX.Element> = { 'clip.follow': IconFaceSticker, 'clip.avoidBurned': IconCaptionOut };
 
 function SfxDetail({ s, plays, to }: { s: GallerySfx; plays: number; to?: ToProject }) {
   const [params, setParams] = useParams(s.type), [n, setN] = useState(0), x = shown(s.type, s);
@@ -393,7 +399,9 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   if (!g) return <div class="gallery g-message"><p class="dim">{t('gallery.loading')}</p></div>;
 
   const needle = q.trim().toLowerCase();
-  const clips = CLIP_FX.filter((f) => matches(q, handleOf(f.key), f.label, f.doc, f.code, shown(f.key, f).label, shown(f.key, f).doc));
+  // the clip effects found, in their groups (transitions, shapes, the rest) and the grid's order; their card pictures by key
+  const clips = clipSections(CLIP_FX.filter((f) => clipMatches(f, q))).flatMap((x) => x.clips);
+  const clipThumb = new Map((g.clips ?? []).map((x) => [x.key, x.thumb]));
   const mineBlocks = (lib?.blocks ?? []).filter((b) => matches(q, undefined, b.type, b.name, b.desc)), mineStyles = (lib?.styles ?? []).filter((x) => matches(q, undefined, x.id, x.name, x.desc));
   const ownList = (own?.blocks ?? []).filter((b) => matches(q, undefined, b.type, b.label, b.doc, shown(b.type, b).label));
   const to: ToProject | undefined = project && { project, name: own?.name || project.id };
@@ -437,10 +445,10 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
     <Thumb src={b.thumb ?? undefined} />
     <span class="g-card-body card-lines"><strong data-card-name {...tip(b.name)}>{b.name}</strong><span class="g-sub">{fromLine(b)}</span></span>
   </>, '', true);
-  const clipCard = (f: ClipFx) => card(f.key, shown(f.key, f).doc, <>
-    <span class="g-thumb g-thumb-icon"><IconSpark size={22} /></span>
+  const clipCard = (f: ClipFx) => { const Icon = CLIP_ICON[f.key] ?? IconSpark, src = clipThumb.get(f.key); return card(f.key, shown(f.key, f).doc, <>
+    {src ? <Thumb src={src} /> : <span class="g-thumb g-thumb-icon" data-clip-icon={f.key}><Icon size={22} /></span>}
     <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(f.key, f).label)}>{shown(f.key, f).label}</strong><Handle id={f.key} /><span class="g-sub">{t('gallery.clipSub')}</span></span>
-  </>);
+  </>); };
 
   const detail = () => {
     if (!on) return <p class="dim g-hint">{t('gallery.emptyHint')}</p>;
@@ -488,7 +496,9 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
         {tab === 'blocks' && cat === MINE_CATEGORY ? null : tab === 'blocks' ? sections.map((x) => (
           <section class="g-section" {...(x.key === CLIP_CATEGORY ? { 'data-clip-fx': '' } : {})}>
             {(cat === ALL || x.key === CLIP_CATEGORY) && <h4>{x.label}{x.key === CLIP_CATEGORY && <small>{t('gallery.clipNoteShort')}</small>}</h4>}
-            <ul class="g-grid">{x.blocks.map(blockCard)}{x.clips.map(clipCard)}</ul>
+            {x.key === CLIP_CATEGORY ? clipSections(x.clips).map((s) => <div class="g-clip-group" data-clip-group={s.group}>
+              <h5>{s.label}</h5><ul class="g-grid">{s.clips.map(clipCard)}</ul></div>)
+              : <ul class="g-grid">{x.blocks.map(blockCard)}</ul>}
           </section>
         )) : tab === 'captions' || tab === 'titles' ? <section class="g-section" {...(tab === 'titles' ? { 'data-titles': '' } : { 'data-captions': '' })}>
           {list.length > 0 && <h4>{t(tab === 'titles' ? 'gallery.titleTemplates' : 'gallery.capTemplates')}</h4>}

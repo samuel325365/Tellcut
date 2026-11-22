@@ -5,7 +5,7 @@
 // can be looked up like a type: `catalog MRK-03` (music styles, recipes, clip effects and combos too).
 import { OLD_BLOCKS, templateName, type BlockTemplate, type Combo, type ComboPart, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
-import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
 import { BLOCKS_EN } from '@tellcut/editor/i18n/blocks.en';
 import { describeRecipe } from './cut/recipes/index.ts';
@@ -39,6 +39,19 @@ const mineOf = (plugins: Plugin[]) => { MINE = new Set(plugins.filter((p) => p.i
 const handleCol = (id: string) => (MINE.has(id) ? '我的' : handleOf(id) ?? '').padEnd(10);
 const lineOf = (w: number) => (t: Entry) => `  ${handleCol(t.type)}  ${t.type.padEnd(w)}  ${t.label}${t.doc ? ` — ${t.doc}` : ''}`;
 const numberOf = (h: string) => /\d+$/.exec(h)![0];
+
+/** the clip effects' groups as the catalog names them (the gallery's three headings) */
+const CLIP_GROUP_NAME: Record<ClipGroup, string> = { transition: '轉場（c.clip／c.photo 的 transition，接前一段）', shape: '形狀（clip、photo、beside 的 shape，畫面裁成那個形狀）', motion: '晃動、跟著臉、避開原片字幕' };
+const clipLine = (c: ClipFx) => `  ${handleCol(c.key)}  ${c.label}：${c.code}`;
+/** a clip effect's words for --find: its key, names, doc and cut.ts line in Chinese and English (片段 / clip: those words list them all) */
+const clipText = (c: ClipFx) => ['片段', 'clip', c.key, c.label, c.doc, c.code, BLOCKS_EN[c.key]?.label ?? '', BLOCKS_EN[c.key]?.doc ?? ''].join(' ').toLowerCase();
+/** the clip effects matching every word of `query` (a handle: the one it names) */
+export function findClipFx(query: string): ClipFx[] {
+  const h = normalizeHandle(query);
+  if (h) return CLIP_FX.filter((c) => handleOf(c.key) === h);
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return words.length ? CLIP_FX.filter((c) => words.every((w) => clipText(c).includes(w))) : [];
+}
 
 /** the combos of the plugins (engine combos.ts) */
 const combosOf = (plugins: Plugin[]): Combo[] => plugins.flatMap((p) => p.combos ?? []);
@@ -97,7 +110,10 @@ export function formatCatalog(plugins: Plugin[]): string {
   const grades = ordered.filter((p) => Object.keys(p.grades ?? {}).length).map((p) => `  ${p.id}：${Object.keys(p.grades!).join('、')}`);
   if (grades.length) out.push('調色（畫面項目的 grade 欄位）：', ...grades, '');
   // not blocks but things a clip itself does (toolkit phase 5): said here so they are found where blocks are looked for
-  out.push('片段本身的效果（不是積木，在 cut.ts 裡呼叫）：', ...CLIP_FX.map((c) => `  ${handleCol(c.key)}  ${c.label}：${c.code}`), '');
+  out.push('片段本身的效果（不是積木，寫在片段上，在 cut.ts 裡呼叫）：', ...CLIP_GROUPS.flatMap((g) => {
+    const xs = CLIP_FX.filter((c) => c.group === g);
+    return xs.length ? [` ${CLIP_GROUP_NAME[g]}：`, ...xs.map(clipLine)] : [];
+  }), '');
   const combos = combosOf(ordered);
   if (combos.length) out.push("組合（一個重點時刻的畫面、音效、鏡頭晃動一次放好：c.combo('<id>', { at })；看它有哪幾層：catalog <代號>）：", ...combos.map(comboLine), '');
   out.push(`字幕範本（${TEMPLATES.length} 個，common.caption 的 template）：npm run tellcut -- catalog CAP`, `標題範本（${TITLE_TEMPLATES.length} 個，common.heading 的 template）：npm run tellcut -- catalog TTL`, '');
@@ -121,6 +137,9 @@ export function formatFind(plugins: Plugin[], query: string): string {
   const mineFirst = [...plugins].sort((a, b) => Number(b.id === 'mine') - Number(a.id === 'mine'));
   const hits = findBlocks(mineFirst, query), caps = normalizeHandle(query) ? [] : findTemplates(query), ttls = normalizeHandle(query) ? [] : findTemplates(query, 'title');
   const combos = findCombos(plugins, query), comboLines = combos.length ? [`組合 ${combos.length} 個符合（c.combo('<id>', { at })；看各層：catalog <代號>）：`, ...combos.map(comboLine)] : [];
+  // the clip effects come with the combos: not blocks, but where a transition or a shape is looked for
+  const clips = findClipFx(query);
+  if (clips.length) comboLines.push(`片段本身的效果 ${clips.length} 個符合（不是積木，寫在片段上；看說明：catalog <代號>）：`, ...clips.map(clipLine));
   // caption templates fold into one line: there are many, and they are all the one block
   const capLine = [...(caps.length ? [`字幕範本 ${caps.length} 個符合（${caps.slice(0, 3).map((t) => t.id).join('、')}${caps.length > 3 ? '…' : ''}）：npm run tellcut -- catalog CAP --find ${query}`] : []),
     ...(ttls.length ? [`標題範本 ${ttls.length} 個符合（${ttls.slice(0, 3).map((t) => t.id).join('、')}${ttls.length > 3 ? '…' : ''}）：npm run tellcut -- catalog TTL --find ${query}`] : [])];

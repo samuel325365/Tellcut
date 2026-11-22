@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { BLOCK_CATEGORY, handleOf } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, CLIP_FX, handleOf } from '@tellcut/protocol';
 import { blockPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
 import { Gallery } from './Gallery.tsx';
 import { PlayerBridge } from './bridge.ts';
@@ -20,6 +20,8 @@ const G: GalleryIndex = {
   captions: [{ id: 'clean', label: '清晰描邊', doc: '白字黑描邊', params: { style: 'outline' }, thumb: '/api/gallery/thumb/tpl-clean-t1.50.png' }, { id: 'neon-fill', label: '霓虹逐字點亮', doc: '粉紅霓虹', params: { style: 'neon', wordFx: 'fill' } }],
 };
 
+/** the clip effects as the grid lists them: the transitions, the shapes, then the rest */
+const CLIP_ORDER = (['transition', 'shape', 'motion'] as const).flatMap((g) => CLIP_FX.filter((f) => f.group === g).map((f) => f.key));
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 const click = (root: Element, sel: string) => act(() => { (root.querySelector(sel) as HTMLElement).click(); });
 const cards = (root: Element) => [...root.querySelectorAll('[data-card]')].map((e) => e.getAttribute('data-card'));
@@ -69,7 +71,7 @@ test('the page opens with the first block already showing; cards are pictures, n
   expect(title.querySelector('p')).toBeNull();
   const backdrop = root.querySelector('[data-card="common.backdrop"]')!;
   expect([backdrop.querySelector('img'), !!backdrop.querySelector('svg')]).toEqual([null, true]);
-  expect(cards(root)).toEqual(['common.slam', 'core.title', 'common.backdrop', 'kyoto.photosApp', 'clip.shake', 'clip.follow', 'clip.avoidBurned']);
+  expect(cards(root)).toEqual(['common.slam', 'core.title', 'common.backdrop', 'kyoto.photosApp', ...CLIP_ORDER]);
   await click(root, '[data-card="kyoto.photosApp"]');
   expect(root.querySelector('[data-needs-media]')).not.toBeNull();
   expect(root.querySelector('[data-card="kyoto.photosApp"]')!.textContent).toContain('需要素材');
@@ -81,8 +83,10 @@ test('a category narrows the grid and moves the pick into it; search works insid
   expect(cards(root)).toEqual(['common.backdrop']);
   expect(root.querySelector('[data-detail="common.backdrop"]')).not.toBeNull();
   await click(root, '[data-cat="clip"]');
-  expect(cards(root)).toEqual(['clip.shake', 'clip.follow', 'clip.avoidBurned']);
+  expect(cards(root)).toEqual(CLIP_ORDER);
   expect(root.querySelector('[data-clip-fx]')).not.toBeNull();
+  expect(root.querySelector('[data-detail="clip.transition.dissolve"]')!.textContent).toContain("transition: { type: 'dissolve'");
+  await click(root, '[data-card="clip.shake"]');
   expect(root.querySelector('[data-detail="clip.shake"]')!.textContent).toContain('c.shake(');
   await click(root, '[data-cat="all"]');
   const search = root.querySelector('.g-search') as HTMLInputElement;
@@ -213,6 +217,82 @@ test('handles: each card and detail shows its gallery handle (MRK-03), and the s
   await click(root, '[data-tab="styles"]');
   expect(handle('[data-card="lofi"]')).toBe('MUS-02');
   expect(handle('[data-card="koto"]')).toBeUndefined();
+});
+
+test('clip effects: three groups with their cards, a picture where the server has one, an icon of its own otherwise; counts follow', async () => {
+  const thumbs = CLIP_FX.filter((f) => f.preview).map((f) => ({ key: f.key, thumb: `/api/gallery/thumb/${f.key.replace(/\./g, '-')}-t1.50.png` }));
+  const root = document.createElement('div');
+  await act(async () => { render(<Gallery load={async () => ({ ...G, clips: thumbs })} />, root); });
+  await settle();
+  await click(root, '[data-cat="clip"]');
+  expect([...root.querySelectorAll('[data-clip-group]')].map((x) => [x.getAttribute('data-clip-group'), x.querySelector('h5')!.textContent, x.querySelectorAll('[data-card]').length]))
+    .toEqual([['transition', '轉場', 12], ['shape', '形狀', 13], ['motion', '其他', 3]]);
+  expect(root.querySelector('[data-card="clip.transition.iris"] img')!.getAttribute('src')).toBe('/api/gallery/thumb/clip-transition-iris-t1.50.png');
+  expect(root.querySelector('[data-card="clip.shake"] img')).not.toBeNull();
+  // the two the gallery cannot show: each its own mark, not the shared spark nor each other's
+  const icon = (k: string) => root.querySelector(`[data-card="${k}"] [data-clip-icon] svg`)!.innerHTML;
+  expect(icon('clip.follow')).not.toBe(icon('clip.avoidBurned'));
+  // the counts: the category and All
+  const count = (c: string) => Number(root.querySelector(`[data-cat="${c}"] small`)!.textContent);
+  expect(count('clip')).toBe(CLIP_FX.length);
+  expect(count('all')).toBe(G.blocks.length + CLIP_FX.length);   // every block card plus every clip effect
+});
+
+test('a clip effect\'s detail plays its preview over the gallery\'s pictures; the ones without say why instead', async () => {
+  const sent: any[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
+  try {
+    const root = await page();
+    await click(root, '[data-card="clip.transition.whip"]');
+    const v = sent.at(-1).tracks[0];
+    expect(v.kind).toBe('video');
+    expect(v.items.map((i: any) => [i.source, i.start, i.end, i.transitionIn?.type ?? null])).toEqual([['street', 0, 1.8, null], ['map', 1.2, 3, 'whip']]);
+    expect(Object.keys(sent.at(-1).sources).sort()).toEqual(['map', 'street']);
+    await click(root, '[data-card="clip.shape.heart"]');
+    expect(sent.at(-1).tracks[0].items).toEqual([expect.objectContaining({ source: 'street', shape: { type: 'heart' }, outline: {}, frame: [0.1, 0.22, 0.8, 0.56] })]);
+    await click(root, '[data-card="clip.shake"]');
+    expect(sent.at(-1).tracks[0].items[0].shake).toEqual([expect.objectContaining({ at: 1 })]);
+    expect(root.querySelector('[data-detail="clip.shake"] iframe')).not.toBeNull();
+    expect(root.querySelector('[data-detail="clip.shake"] [data-clip-note]')!.textContent).toContain('街景');
+    for (const k of ['clip.follow', 'clip.avoidBurned']) {
+      await click(root, `[data-card="${k}"]`);
+      expect(root.querySelector(`[data-detail="${k}"] iframe`), k).toBeNull();
+      expect(root.querySelector(`[data-detail="${k}"] [data-clip-note]`)!.textContent, k).toContain('沒有預覽');
+    }
+    expect(root.querySelector('[data-detail="clip.avoidBurned"] pre')!.textContent).toContain('avoidBurned: true');
+  } finally { load.mockRestore(); patch.mockRestore(); }
+});
+
+test('clip effects are found by handle, label, doc and cut.ts line in every language; the English names are the editor\'s', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const { BLOCKS_EN } = await import('./i18n/blocks.en.ts');
+  const { TRANSITION_MENU } = await import('./transitions.ts');
+  const { SHAPE_NAME } = await import('./WindowFields.tsx');
+  const { DICTS } = await import('./i18n/index.ts');
+  // the names the Properties panel's menus say, and the Chinese ones its tooltips say (ed.trans*)
+  for (const [type, name] of TRANSITION_MENU.filter(([x]) => x !== 'cut')) expect(BLOCKS_EN[`clip.transition.${type}`].label, type).toBe(name);
+  for (const [type, name] of Object.entries(SHAPE_NAME)) expect(BLOCKS_EN[`clip.shape.${type}`].label, type).toBe(name);
+  const zhName = (type: string) => (DICTS.zh as Record<string, string>)[`ed.trans${type[0].toUpperCase()}${type.slice(1)}`];
+  for (const f of CLIP_FX.filter((x) => x.group === 'transition')) expect(f.label, f.key).toBe(zhName(f.key.slice(16)));
+  const search = async (root: Element, q: string) => {
+    const box = root.querySelector('.g-search') as HTMLInputElement;
+    await act(() => { box.value = q; box.dispatchEvent(new Event('input')); });
+    return cards(root).filter((c) => c!.startsWith('clip.'));
+  };
+  try {
+    for (const lang of ['zh', 'en', 'ja'] as const) {
+      setLang(lang);
+      const root = await page();
+      expect(await search(root, 'clp-7'), lang).toEqual(['clip.transition.iris']);
+      expect(await search(root, "shape: 'heart'"), lang).toEqual(['clip.shape.heart']);
+      expect(await search(root, 'whip pan'), lang).toEqual(['clip.transition.whip']);     // the editor's English name, in any language
+      const own = { zh: '撕紙', en: 'Torn paper', ja: '破れた紙' }[lang], doc = { zh: '百葉窗', en: 'blinds', ja: 'ブラインド' }[lang];
+      expect(await search(root, own), lang).toEqual(['clip.shape.torn']);
+      expect(await search(root, doc), lang).toEqual(['clip.shape.slats']);
+      render(null, root);
+    }
+  } finally { setLang('zh'); localStorage.clear(); }
 });
 
 test('the gallery speaks the chosen language', async () => {

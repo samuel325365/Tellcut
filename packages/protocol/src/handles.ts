@@ -3,7 +3,7 @@
 // Only for showing and pointing: project.json and cut.ts keep using type ids. A handle is never renumbered or given out again:
 // a removed block's handle moves to RETIRED, a block that changes category keeps its handle (listed in MOVED). tools/handles.test.ts
 // checks it all; npm run promote / promote-style add the next handle of a prefix.
-import type { BlockCategory, SfxCategory } from '@tellcut/engine';
+import type { BlockCategory, ClipPreview, NamedShape, SfxCategory, TransitionType } from '@tellcut/engine';
 
 /** a block category's prefix (core blocks take the gallery's category, CORE_CATEGORY) */
 export const BLOCK_PREFIX: Record<BlockCategory, string> = {
@@ -20,13 +20,63 @@ export const STYLE_PREFIX = 'MUS', RECIPE_PREFIX = 'RCP', CLIP_PREFIX = 'CLP', C
 /** the core blocks have no category of their own (only common blocks need one for the catalog): where the gallery puts them */
 export const CORE_CATEGORY: Record<string, BlockCategory> = { 'core.title': 'title', 'core.caption': 'caption', 'core.lowerThird': 'chapter', 'core.flash': 'moment', 'core.endCard': 'moment' };
 
-/** things a clip itself does (toolkit phase 5): not blocks, but listed with them where people look for effects, with their cut.ts call */
-export const CLIP_FX = [
-  { key: 'clip.shake', label: '鏡頭晃動', code: 'c.shake(1.2, { dur: 0.4, px: 24 })', doc: '那個時間正在播的片段畫面抖一下再慢慢停：爆字、撞擊、笑點。hook 配方的開場要晃，就在 hook 加 shake: true。' },
-  { key: 'clip.follow', label: '貼圖跟著嘴（或臉）', code: "c.effect('common.emoji', { at, len, char: '🤐', follow: 'mouth' })", doc: '任何貼圖都能貼在片段裡那個人的嘴或臉上並跟著動；好幾個人時加 who: left／right／largest／center。消音：censorSpeech(…, { follow: true })。' },
-  { key: 'clip.avoidBurned', label: '避開原片字幕', code: "c.clip(src, { from, len, avoidBurned: true })", doc: '原片燒進去的字幕（分析時偵測到的）落在這段時，自動放大裁切把字幕推出畫面，畫面裡的人臉留在畫面內；放大的上限看素材解析度（再放大會糊），避不開或會裁到人臉就照原樣，把疊在原片字幕上、沒自己給位置的字幕移到畫面上方並提醒。' },
-] as const;
-export type ClipFx = typeof CLIP_FX[number];
+/** a clip effect's group in the gallery: the transitions into a clip, the shapes its picture is cut to, and the rest (motion) */
+export type ClipGroup = 'transition' | 'shape' | 'motion';
+export const CLIP_GROUPS: readonly ClipGroup[] = ['transition', 'shape', 'motion'];
+/** a thing a clip itself does: its key (clip.<name>, the handle's id), group, names, cut.ts call, and, when it can be shown, what
+ *  the gallery's preview puts on its clips (engine ClipPreview: clipPreviewClips lays them out, the golden card clip-<…> too) */
+export interface ClipFx { key: string; group: ClipGroup; label: string; code: string; doc: string; preview?: ClipPreview }
+
+/** the transitions' length in the preview and in the line each one's code shows */
+const TR = 0.6;
+const transition = (type: Exclude<TransitionType, 'cut'>, label: string, doc: string, opts: { dir?: 'l'; x?: number; y?: number } = {}): ClipFx => {
+  const extra = Object.entries(opts).map(([k, v]) => `, ${k}: ${typeof v === 'string' ? `'${v}'` : v}`).join('');
+  return { key: `clip.transition.${type}`, group: 'transition', label, doc, code: `c.clip(src, { from, len, transition: { type: '${type}', dur: ${TR}${extra} } })`,
+    preview: { transitionIn: { type, dur: TR } } };
+};
+/** a shape's code: the window it sits in (the preview's), the shape and a line round it */
+const shape = (s: NamedShape, label: string, doc: string): ClipFx => {
+  const named = Object.keys(s).length === 1 ? `'${s.type}'` : `{ ${Object.entries(s).map(([k, v]) => `${k}: '${v}'`).join(', ')} }`;
+  return { key: `clip.shape.${s.type}`, group: 'shape', label, doc, code: `c.clip(src, { from, len, frame: [0.1, 0.22, 0.8, 0.56], shape: ${named}, outline: true })`,
+    preview: { shape: s, outline: {} } };
+};
+
+/** things a clip itself does (toolkit phase 5): not blocks, but listed with them where people look for effects, with their cut.ts
+ *  call. A new one goes at the end of its group, with the next CLP handle. */
+export const CLIP_FX: readonly ClipFx[] = [
+  { key: 'clip.shake', group: 'motion', label: '鏡頭晃動', code: 'c.shake(1.2, { dur: 0.4, px: 24 })', doc: '那個時間正在播的片段畫面抖一下再慢慢停：爆字、撞擊、笑點。hook 配方的開場要晃，就在 hook 加 shake: true。',
+    preview: { shake: [{ at: 1, dur: 0.6, px: 40 }] } },
+  { key: 'clip.follow', group: 'motion', label: '貼圖跟著嘴（或臉）', code: "c.effect('common.emoji', { at, len, char: '🤐', follow: 'mouth' })", doc: '任何貼圖都能貼在片段裡那個人的嘴或臉上並跟著動；好幾個人時加 who: left／right／largest／center。消音：censorSpeech(…, { follow: true })。' },
+  { key: 'clip.avoidBurned', group: 'motion', label: '避開原片字幕', code: "c.clip(src, { from, len, avoidBurned: true })", doc: '原片燒進去的字幕（分析時偵測到的）落在這段時，自動放大裁切把字幕推出畫面，畫面裡的人臉留在畫面內；放大的上限看素材解析度（再放大會糊），避不開或會裁到人臉就照原樣，把疊在原片字幕上、沒自己給位置的字幕移到畫面上方並提醒。' },
+  // the clip transitions (engine TRANSITION_TYPES but cut), in the engine's order: the transition into the clip from the one before,
+  // overlapping it by its length
+  transition('dissolve', '溶接', '前一段慢慢淡出、這段淡入，兩個畫面疊在一起交換：最安靜的轉場，時間或地點悄悄換過去。'),
+  transition('slide', '滑入', '這段從一邊滑進來蓋住前一段，邊滑邊浮現：換到下一件事、下一個地方。dir 決定從哪邊進來。', { dir: 'l' }),
+  transition('wipe', '擦除', '一條直線掃過畫面，線後面就是這段：清楚的段落切換、前後對照。dir 決定從哪邊掃。', { dir: 'l' }),
+  transition('iris', '圓形打開', '這段從一個圓裡打開，圓越來越大蓋滿畫面：揭曉、聚焦到一點；x、y 是圓心。', { x: 0.5, y: 0.5 }),
+  transition('clock', '時鐘掃', '一根指針從 12 點順時針掃一圈，掃過的地方換成這段：時間過去、倒數、一天後。'),
+  transition('bars', '分條', '畫面切成六條，一條接一條、上下交錯地換成這段：活潑的段落轉換、清單的下一項。dir 決定從哪邊開始。', { dir: 'l' }),
+  transition('push', '推移', '這段把前一段整個推出畫面，兩個畫面邊靠邊一起移動：往下一站、時間軸往前。dir 決定往哪邊推。', { dir: 'l' }),
+  transition('zoom', '穿越放大', '前一段越放越大、帶點模糊衝進去，這段從放大慢慢退回原樣：衝進下一個場景、加速感。'),
+  transition('whip', '甩鏡頭', '像鏡頭快速甩過去：兩段一起高速橫移，中間拖出動態模糊：快節奏剪接、「下一秒就在…」。dir 決定往哪邊甩。', { dir: 'l' }),
+  transition('blur', '模糊溶接', '前一段糊掉，這段從模糊中淡入再慢慢對焦：回憶、夢、恍神。'),
+  transition('dip', '暗場', '前一段暗到全黑，再從黑裡亮起這段：章節之間、時間跳一大段、片尾前。'),
+  transition('flash', '閃白', '中間閃一下白光，前一段亮到白、白光退去就是這段：拍照、回憶閃現、節拍點上的重拍。'),
+  // the named shapes a clip's picture is cut to (engine SHAPE_TYPES), in the engine's order, each at its defaults
+  shape({ type: 'circle' }, '圓形', '畫面裁成正圓，在視窗裡置中：人物介紹、頭像、聚焦一個東西。'),
+  shape({ type: 'ellipse' }, '橢圓', '畫面裁成貼滿視窗的橢圓：老照片、柔和的子母畫面。'),
+  shape({ type: 'arch' }, '拱門', '上半圓、下方方的拱窗，不會比高還寬：窗景、門口望出去、優雅的版面。'),
+  shape({ type: 'heart' }, '愛心', '畫面裁成愛心，在視窗裡置中：喜歡的東西、情侶、慶祝。'),
+  shape({ type: 'star' }, '星形', '五角星，尖角數、內角深度、圓角可調（角多內角高就成爆炸形）：亮點、得獎、驚喜。'),
+  shape({ type: 'ngon' }, '多邊形', '正多邊形（預設六角），邊數、圓角、旋轉可調：三角、菱形、蜂巢格的版面。'),
+  shape({ type: 'stamp' }, '郵票', '四邊有齒孔的郵票邊：旅行、明信片、收藏的一張。'),
+  shape({ type: 'bubble' }, '對話框', '帶尾巴的對話框，tail 決定尾巴指向：誰說了什麼、內心話、反應鏡頭。'),
+  shape({ type: 'blob' }, '色塊', '不規則的圓潤色塊，可以慢慢蠕動（wobble）：可愛、手作感、活潑的版面。'),
+  shape({ type: 'torn' }, '撕紙', '邊緣像撕開的紙，哪幾邊撕開可選：拼貼、手帳、剪報感。'),
+  shape({ type: 'brush' }, '筆刷', '一道毛邊的筆刷，最高是寬的 1:2.6：塗鴉感的標題畫面、藝術感。'),
+  shape({ type: 'slats' }, '窗格', '畫面切成幾條直立（或斜）的窗格，中間留縫：百葉窗、分格展示、時尚感。'),
+  shape({ type: 'text', text: 'HELLO' }, '文字', '畫面在大字裡播（一行或兩行，字少字粗看得最多）：片名、地名、口號。'),
+];
 
 // The handles, one per line, each prefix numbered 01, 02, … with no gaps (the retired ones included). Ids: block and sound
 // effect type ids, style:<id>, recipe:<id>, clip.<name>, caption:<template id>, title:<template id>, combo:<id>.
@@ -233,6 +283,31 @@ export const HANDLES: Readonly<Record<string, string>> = {
   'CLP-01': 'clip.shake',
   'CLP-02': 'clip.follow',
   'CLP-03': 'clip.avoidBurned',
+  'CLP-04': 'clip.transition.dissolve',
+  'CLP-05': 'clip.transition.slide',
+  'CLP-06': 'clip.transition.wipe',
+  'CLP-07': 'clip.transition.iris',
+  'CLP-08': 'clip.transition.clock',
+  'CLP-09': 'clip.transition.bars',
+  'CLP-10': 'clip.transition.push',
+  'CLP-11': 'clip.transition.zoom',
+  'CLP-12': 'clip.transition.whip',
+  'CLP-13': 'clip.transition.blur',
+  'CLP-14': 'clip.transition.dip',
+  'CLP-15': 'clip.transition.flash',
+  'CLP-16': 'clip.shape.circle',
+  'CLP-17': 'clip.shape.ellipse',
+  'CLP-18': 'clip.shape.arch',
+  'CLP-19': 'clip.shape.heart',
+  'CLP-20': 'clip.shape.star',
+  'CLP-21': 'clip.shape.ngon',
+  'CLP-22': 'clip.shape.stamp',
+  'CLP-23': 'clip.shape.bubble',
+  'CLP-24': 'clip.shape.blob',
+  'CLP-25': 'clip.shape.torn',
+  'CLP-26': 'clip.shape.brush',
+  'CLP-27': 'clip.shape.slats',
+  'CLP-28': 'clip.shape.text',
   'CAP-01': 'caption:clean',
   'CAP-02': 'caption:bare',
   'CAP-03': 'caption:darkbox',

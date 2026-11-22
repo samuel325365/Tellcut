@@ -103,6 +103,21 @@ test('handles: every catalog line of a shared block starts with its handle, and 
   expect(findBlocks(plugins, 'Mrk-03').map((t) => t.type)).toEqual(['common.stamp']);
 });
 
+test('clip effects: listed by group in the catalog, found by --find (Chinese, English, the cut.ts line), looked up by handle', async () => {
+  const s = formatCatalog(plugins);
+  expect(s).toMatch(/^ 轉場（[^\n]*\n {2}CLP-04 +溶接：c\.clip\(src, \{ from, len, transition: \{ type: 'dissolve', dur: 0\.6 \} \}\)/m);
+  expect(s).toMatch(/^ 形狀（[^\n]*\n {2}CLP-16 +圓形：[^\n]*shape: 'circle'/m);
+  expect(s).toMatch(/^ 晃動、跟著臉、避開原片字幕：\n {2}CLP-01 +鏡頭晃動/m);
+  expect(formatFind(plugins, '甩鏡頭')).toMatch(/片段本身的效果 1 個符合[\s\S]*CLP-12 +甩鏡頭：/);
+  expect(formatFind(plugins, 'whip pan')).toContain('CLP-12');
+  expect(formatFind(plugins, 'heart')).toMatch(/CLP-19 +愛心：[^\n]*shape: 'heart'/);
+  expect(formatFind(plugins, 'clp-20')).toContain('CLP-20');
+  // with blocks found too, the clip effects come after them
+  const both = formatFind(plugins, '轉場');
+  expect(both.indexOf('片段本身的效果')).toBeGreaterThan(both.indexOf('符合「轉場」的積木'));
+  expect(await formatLookup(plugins, 'CLP-28')).toMatch(/^CLP-28 文字（片段本身的效果，不是積木）[\s\S]*cut\.ts：c\.clip\(src, \{[^\n]*shape: \{ type: 'text', text: 'HELLO' \}/);
+});
+
 test('a block marked onRequest is listed apart in the catalog and left out of the chat index', () => {
   const dog = { type: 'common.fakeDog', label: '假狗', kind: 'overlay', category: 'moment', onRequest: true, params: [], build: () => null, draw: () => {} };
   const badge = { type: 'common.fakeBadge', label: '假徽章', kind: 'overlay', category: 'moment', params: [], build: () => null, draw: () => {} };

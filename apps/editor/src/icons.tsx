@@ -23,6 +23,10 @@ export const IconSun = I(['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M12 2v2M12 20v2
 export const IconMoon = I('M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z');
 export const IconPlay = (p: { size?: number }) => <svg width={p.size ?? 14} height={p.size ?? 14} viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></svg>;
 export const IconCheck = I('M5 12.5l4.5 4.5L19 7.5');
+/** a face with a sticker on its mouth (the gallery's clip.follow) */
+export const IconFaceSticker = I(['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M9 9.5h.01M15 9.5h.01', 'M8.5 13.5h7v4h-7z']);
+/** a frame whose caption lines are pushed out past its bottom edge (the gallery's clip.avoidBurned) */
+export const IconCaptionOut = I(['M4 4h16v12H4z', 'M7 19.5h10', 'M9 22h6', 'M12 8v5', 'M9.5 10.5L12 13l2.5-2.5']);
 export const IconPlug = I(['M9 2v6M15 2v6', 'M6 8h12v4a6 6 0 0 1-12 0z', 'M12 18v4']);
 
 export const kindIcon = (kind: string) => kind === 'dir' ? IconFolder : kind === 'video' ? IconFilm : kind === 'image' ? IconImage : kind === 'audio' ? IconMusic : kind === 'drive' ? IconDrive : IconFile;

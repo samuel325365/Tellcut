@@ -286,7 +286,10 @@ export interface GalleryComboPart { name: string; kind: 'effect' | 'sfx' | 'shak
 /** a combo (engine combos.ts, CMB-xx): its handle, names, layers and the golden pictures of its sample combo-<id>, in time order
  *  (start, peak, end) */
 export interface GalleryCombo { id: string; handle?: string; label: string; doc: string; parts: GalleryComboPart[]; frames: string[] }
-export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[]; titles?: GalleryCaption[]; combos?: GalleryCombo[] }
+/** a clip effect's card (CLIP_FX, the ones with a preview): its key and the golden picture of its sample clip-<…> */
+export interface GalleryClip { key: string; thumb: string }
+export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[]; titles?: GalleryCaption[]; combos?: GalleryCombo[];
+  clips?: GalleryClip[] }
 
 // ---------------------------------------------------------------- the user's own library (spec 2026-10-29-my-library)
 /** where an entry was saved from: the project's id and file, and the project's name now (absent when the project is gone) */

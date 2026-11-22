@@ -1,6 +1,6 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
-import { BLOCK_PREVIEW_LEN, blockPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { BLOCK_CATEGORY, handleOf, normalizeHandle, SFX_CATEGORY, type GalleryBlock, type GalleryBlockTemplate, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { BLOCK_PREVIEW_LEN, blockPreviewProject, clipPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
+import { BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SFX_CATEGORY, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
@@ -91,6 +91,21 @@ export function ownBlocks(items: Array<{ type: string; label: string; doc?: stri
  *  projectPlayer url); the look picked, else the project's own theme. */
 export function ownProject(o: OwnProject, b: GalleryBlock, params: Record<string, unknown>, themeId = 'none') {
   return blockPreviewProject({ type: b.type, kind: b.kind, plugins: o.meta.plugins, params, fx: o.meta.fx ?? [], theme: THEMES[themeId]?.theme ?? o.meta.theme });
+}
+
+/** A clip effect's preview (engine clipPreviewProject): the gallery's street (and map, for a transition) with what the effect puts
+ *  on its clips; null for one the gallery cannot show (no face, no burned-in captions to work on). */
+export const clipProject = (f: ClipFx) => (f.preview ? clipPreviewProject(f.preview, f.key) : null);
+
+/** the clip effects of one group, in CLIP_FX's order, that match the search: handle, names and doc in Chinese, the UI language and
+ *  English (the editor's labels, Properties' Transition and Shape menus, are English in every language), and the cut.ts line */
+export function clipMatches(f: ClipFx, query: string) {
+  const here = shown(f.key, f), en = blockText(f.key, f, 'en');
+  return matches(query, handleOf(f.key), f.key, f.label, f.doc, f.code, here.label, here.doc, en.label, en.doc);
+}
+/** the clip effects in their groups (transitions, shapes, the rest), each group's name in the UI language; empty groups left out */
+export function clipSections(list: readonly ClipFx[]): Array<{ group: ClipGroup; label: string; clips: ClipFx[] }> {
+  return CLIP_GROUPS.map((group) => ({ group, label: t(`gallery.clipGroup.${group}` as Key), clips: list.filter((f) => f.group === group) })).filter((x) => x.clips.length);
 }
 
 /** A silent film with one sound effect a moment in, so the player plays it through the same synthesis the films use. */
