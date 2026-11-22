@@ -298,6 +298,9 @@ export const STYLES: Sample[] = [
   tpl(progress, 'paws', { len: 4, at: [1.55, 3.3] }),
   tpl(progress, 'fuse', { len: 4, at: [0.8, 1.5] }),
   tpl(progress, 'battery', { len: 4, at: [1.5, 3.1] }),
+  tpl(progress, 'rocket', { len: 4, at: [1.6, 3.25] }),
+  tpl(progress, 'vine', { len: 4, at: [1.6, 3.55] }),
+  tpl(progress, 'stamps', { len: 4, at: [1.2, 2.05] }),
   // the colour measure's calibration (golden/templates.test.ts), over the made-up street at one moment: distinct gradings it must set
   // apart (with grade-photo, the mono orange), and a near twin it must not (the half black a little lighter)
   { name: 'colour-cal-photo', type: 'core.flash', ...OVER_REF, params: { peak: 0 }, len: 2, at: [1.0] },
