@@ -2,7 +2,7 @@
 // common.progress pencil: a frame drawn on the canvas kept from the frame before looks the same as one drawn on a fresh canvas.
 import { createRegistry, motion, resolveTheme, Stage, withDefaults, type ItemType } from '@tellcut/engine';
 import { progress, TOP_LANE } from './progress.ts';
-import { MORE_MODES } from './progress/shared.ts';
+import { corner, MORE_MODES } from './progress/shared.ts';
 
 const css = (el: Element) => ((el as any)._c ?? {}) as Record<string, string>;
 
@@ -482,4 +482,150 @@ test('rocket: a 0.5 s item draws without throwing', () => {
   recorder();
   const ctx = { ...ctxOf({ mode: 'rocket' }), dur: 0.5 }, s = progress.build(ctx);
   for (const local of [0, 0.1, 0.25, 0.4, 0.5]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
+});
+
+// ring: a ring in a corner of the safe area; the box it keeps (1.25 diameters) holds the pop and the ripple
+const ringBox = (ctx: any) => {
+  const d = (ctx.params.size * 2.6 / 100) * ctx.H, b = 1.25 * d, { left, top } = corner(ctx, ctx.params, b, b);
+  return { L: left, T: top, R: left + b, B: top + b, cx: left + b / 2, cy: top + b / 2, d };
+};
+const inside = (x: number, y: number, b: { L: number; T: number; R: number; B: number }) => {
+  expect(x).toBeGreaterThanOrEqual(b.L - 0.01);
+  expect(x).toBeLessThanOrEqual(b.R + 0.01);
+  expect(y).toBeGreaterThanOrEqual(b.T - 0.01);
+  expect(y).toBeLessThanOrEqual(b.B + 0.01);
+};
+
+test.each([[1080, 1920, 'center'], [1080, 1920, 'left'], [1920, 1080, 'right'], [1920, 1080, 'left']])('ring %sx%s %s: the ring, its backing, the pop and the ripple inside the box it keeps in a corner of the safe area, the same twice', (W, H, align) => {
+  const log = recorder(), ctx = ctxOf({ mode: 'ring', align }, 0, document.createElement('div'), W as number, H as number), s = progress.build(ctx), g = s.cv.getContext('2d') as any;
+  const sf = ctx.theme.safe, safe = { L: sf.side * ctx.W, R: ctx.W - sf.side * ctx.W, T: sf.top * ctx.H, B: ctx.H * (1 - sf.bottom) }, rb = ringBox(ctx);
+  // the box itself: in the safe area, against the top and the side align says
+  inside(rb.L, rb.T, safe); inside(rb.R, rb.B, safe);
+  expect(rb.T).toBeCloseTo(safe.T, 6);
+  if (align === 'left') expect(rb.L).toBeCloseTo(safe.L, 6);
+  else expect(rb.R).toBeCloseTo(safe.R, 6);
+  const seqs: Record<number, string> = {};
+  let arcs = 0;
+  for (const local of [0, 1.5, 3.05, 3.2, 3.4, 3.6, 1.5, 3.2]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(g.globalAlpha).toBe(1);
+    for (const c of log.filter((c) => c.op === 'arc')) {
+      arcs++;
+      expect((c.args as number[])[2]).toBeGreaterThan(0);
+    }
+    for (const [x, y] of canvasBoxes(log)) inside(x, y, rb);
+    // the dark backing: a circle round the ring's centre, inside the box
+    const back = box4(s.more!.el.back);
+    inside(back.left, back.top, rb); inside(back.right, back.bottom, rb);
+    expect((back.left + back.right) / 2).toBeCloseTo(rb.cx, 1);
+    expect((back.top + back.bottom) / 2).toBeCloseTo(rb.cy, 1);
+    expect(css(s.more!.el.back).background).toBe('rgba(0,0,0,0.38)');
+    // the percentage: centred on the ring, inside the box
+    const t = css(s.more!.el.text), tl = parseFloat(t.left), tw = parseFloat(t.width), tt = parseFloat(t.top), fs = parseFloat(t.fontSize);
+    expect(tl + tw / 2).toBeCloseTo(rb.cx, 1);
+    expect(tt + fs / 2).toBeCloseTo(rb.cy, 0);
+    inside(tl, tt, rb); inside(tl + tw, tt + fs, rb);
+    const seq = JSON.stringify(log.map((c) => [c.op, c.globalAlpha, c.args])) + s.more!.root.innerHTML;
+    if (local in seqs) expect(seq).toBe(seqs[local]);
+    seqs[local] = seq;
+  }
+  expect(arcs).toBeGreaterThan(0);
+  expect(css(s.cv).display).toBe('block');
+});
+
+test('ring: the arc from twelve o\'clock clockwise with round caps; the percentage counts up; full turns the done colour, pops and ripples', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'ring', color: '#00ff00', track: '#222222', done: '#0000ff', paper: '#ffffff' }), s = progress.build(ctx), g = s.cv.getContext('2d') as any;
+  log.length = 0;
+  progress.draw({ ...ctx, local: 0, t: 0 }, s);
+  expect(s.more!.el.text.textContent).toBe('0%');
+  // nothing swept yet: only the track's circle
+  expect(log.filter((c) => c.op === 'arc')).toHaveLength(1);
+  log.length = 0;
+  progress.draw({ ...ctx, local: 1.5, t: 1.5 }, s);
+  expect(s.more!.el.text.textContent).toBe('50%');
+  expect(css(s.more!.el.text).color).toBe('#ffffff');
+  const arcs = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]);
+  expect(arcs).toHaveLength(2);
+  expect(arcs[1][3]).toBeCloseTo(-Math.PI / 2, 9);
+  expect(arcs[1][4]).toBeCloseTo(-Math.PI / 2 + Math.PI, 9);
+  expect(g.lineCap).toBe('round');
+  const size = arcs[1][2];
+  log.length = 0;
+  progress.draw({ ...ctx, local: 3.2, t: 3.2 }, s);
+  expect(s.more!.el.text.textContent).toBe('100%');
+  expect(css(s.more!.el.text).color).toBe('#0000ff');
+  const full = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]);
+  // popped: the ring bigger than before; and the ripple's thin ring outside it
+  expect(full[0][2]).toBeGreaterThan(size * 1.05);
+  expect(Math.max(...full.map((a) => a[2]))).toBeGreaterThan(full[0][2]);
+  log.length = 0;
+  progress.draw({ ...ctx, local: 3.9, t: 3.9 }, s);
+  // settled: one done-coloured circle at the size it had
+  const end = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]);
+  expect(end).toHaveLength(1);
+  expect(end[0][2]).toBeCloseTo(size, 6);
+});
+
+test('ring: position bottom keeps it against the bottom safe edge', () => {
+  recorder();
+  const ctx = ctxOf({ mode: 'ring', position: 'bottom' }, 1.5), s = progress.build(ctx), rb = ringBox(ctx);
+  expect(rb.B).toBeCloseTo(ctx.H * (1 - ctx.theme.safe.bottom), 6);
+  progress.draw(ctx, s);
+  const back = box4(s.more!.el.back);
+  expect((back.top + back.bottom) / 2).toBeCloseTo(rb.cy, 1);
+  expect(rb.cy).toBeGreaterThan(ctx.H / 2);
+});
+
+test('ring: a runner stands in the middle instead of the percentage; a picture that fails gives the percentage back', () => {
+  recorder();
+  const ctx = ctxOf({ mode: 'ring', runner: '🍕' }, 1.5), s = progress.build(ctx), rb = ringBox(ctx);
+  progress.draw(ctx, s);
+  expect(css(s.more!.el.text).display).toBe('none');
+  expect(s.more!.el.text.textContent).toBe('');
+  expect(s.more!.el.runnerText.textContent).toBe('🍕');
+  const r = box4(s.more!.el.runner);
+  expect((r.left + r.right) / 2).toBeCloseTo(rb.cx, 1);
+  expect((r.top + r.bottom) / 2).toBeCloseTo(rb.cy, 1);
+  expect(r.right - r.left).toBeLessThan(rb.d * 0.6);
+  const p = ctxOf({ mode: 'ring', runner: 'media/nope.png' }, 1.5), sp = progress.build(p);
+  const img = sp.more!.root.querySelector('img')!;
+  expect(img.getAttribute('src')).toBe('media/nope.png');
+  Object.defineProperty(img, 'complete', { value: true });
+  Object.defineProperty(img, 'naturalWidth', { value: 0 });
+  progress.draw(p, sp);
+  expect(css(img).display).toBe('none');
+  expect(css(sp.more!.el.text).display).toBe('block');
+  expect(sp.more!.el.text.textContent).toBe('50%');
+  expect(css(sp.more!.el.runner).display).toBe('none');
+});
+
+test('ring: a chapter of four fills a quarter more and never goes full', () => {
+  recorder();
+  const ctx = ctxOf({ mode: 'ring', dots: 4, step: 1 }), s = progress.build(ctx);
+  progress.draw({ ...ctx, local: 0, t: 0 }, s);
+  expect(s.more!.el.text.textContent).toBe('25%');
+  progress.draw({ ...ctx, local: 3.5, t: 3.5 }, s);
+  expect(s.more!.el.text.textContent).toBe('50%');
+});
+
+test.each([{ size: 1, thickness: 60 }, { size: 8, thickness: 60 }, { size: 1, thickness: 2 }])('ring %o draws without throwing, no arc of a negative radius', (params) => {
+  for (const [W, H] of [[1080, 1920], [1920, 1080]]) {
+    const log = recorder(), ctx = ctxOf({ mode: 'ring', ...params }, 0, document.createElement('div'), W, H), s = progress.build(ctx), rb = ringBox(ctx);
+    for (const local of [0, 1.5, 3.2, 3.5]) {
+      log.length = 0;
+      expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
+      for (const c of log.filter((c) => c.op === 'arc')) expect((c.args as number[])[2]).toBeGreaterThan(0);
+      for (const [x, y] of canvasBoxes(log)) inside(x, y, rb);
+      for (const v of Object.values(box4(s.more!.el.back))) expect(Number.isFinite(v)).toBe(true);
+    }
+  }
+});
+
+test('ring: a 0.5 s item (and one of none) draws without throwing', () => {
+  recorder();
+  for (const dur of [0.5, 0]) {
+    const ctx = { ...ctxOf({ mode: 'ring' }), dur }, s = progress.build(ctx);
+    for (const local of [0, 0.1, 0.25, 0.4, 0.5]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
+  }
 });

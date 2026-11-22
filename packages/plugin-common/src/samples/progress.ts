@@ -32,4 +32,9 @@ export const PROGRESS_SAMPLES: Sample[] = [
   { name: 'progress-rocket', type: 'common.progress', params: { mode: 'rocket' }, len: 4, at: [1.6, 3.25] },
   { name: 'wide-progress-rocket', type: 'common.progress', params: { mode: 'rocket' }, len: 4, at: [1.6, 3.25], wide: true },
   { name: 'progress-rocket-balloon', type: 'common.progress', params: { mode: 'rocket', runner: '🎈', goal: '☁️', align: 'left' }, len: 4, at: [1.8, 3.25] },
+  // ring: two thirds round in the top right corner, and just full (the done colour at the top of its pop, the ripple out round it);
+  // the second chapter of four with a pizza in the middle instead of the percentage, bottom left
+  { name: 'progress-ring', type: 'common.progress', params: { mode: 'ring' }, len: 4, at: [2, 3.2] },
+  { name: 'wide-progress-ring', type: 'common.progress', params: { mode: 'ring' }, len: 4, at: [2, 3.2], wide: true },
+  { name: 'progress-ring-step', type: 'common.progress', params: { mode: 'ring', dots: 4, step: 1, runner: '🍕', align: 'left', position: 'bottom' }, len: 4, at: [1.5] },
 ];

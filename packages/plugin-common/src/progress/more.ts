@@ -5,6 +5,7 @@ import { freeCanvas } from '../inkline.ts';
 import { drawBattery } from './battery.ts';
 import { drawFuse } from './fuse.ts';
 import { drawPaws } from './paws.ts';
+import { drawRing } from './ring.ts';
 import { drawRocket } from './rocket.ts';
 import { drawRunner } from './runner.ts';
 import { drawSegments } from './segments.ts';
@@ -19,6 +20,7 @@ const DRAWS: Partial<Record<MoreMode, Draw>> = {
   fuse: drawFuse,
   battery: drawBattery,
   rocket: drawRocket,
+  ring: drawRing,
 };
 
 /** what rebuilds a mode's elements when it changes: the mode itself and the params that decide which elements there are */
