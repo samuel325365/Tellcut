@@ -52,6 +52,8 @@ export function createApp(o: AppOptions) {
   const store = new ProjectStore(o.projectsDir);
   const registry = o.registry ?? createRegistry(plugins);
   const r = router();
+  // first: the gallery player's pictures sit under /api/projects/_gallery/…, which the project and media routes would take
+  galleryRoutes(r, { plugins, projectsDir: o.projectsDir });
   const queue = new JobQueue(2);
   // work outside the queue that a delete must wait for (imports, a preset's poster)
   const holds = new ProjectHolds();
@@ -63,7 +65,6 @@ export function createApp(o: AppOptions) {
   exportRoutes(r, store, queue, async (dir, p) => { if (o.registry) return { registry: o.registry, fxErrors: [] }; const x = await projectRegistry(dir, plugins, p); return { registry: x.registry, fxErrors: x.fx.errors }; });
   const live = liveRoutes(r, store, { timeout: o.liveTimeout });
   requestRoutes(r, store);
-  galleryRoutes(r, { plugins, projectsDir: o.projectsDir });
   const tellcutDir = TELLCUT_ROOT;
   const presetDirs = o.presetDirs ?? { repo: join(tellcutDir, 'guides', 'presets'), user: join(o.projectsDir, '_presets') };
   const libraryThumb = o.libraryThumb ?? ((root: string, slug: string) => makeThumb(root, slug, plugins));

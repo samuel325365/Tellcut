@@ -41,6 +41,25 @@ test('the gallery lists every block (core and common first), the sounds, the mus
   } finally { await app.close(); }
 });
 
+test('the gallery player (id=_gallery) gets its own pictures, street and map, at the URL a project photo has; nothing else', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  try {
+    const fixtures = join(TELLCUT_ROOT, 'packages/plugin-common/golden/fixtures');
+    for (const [name, file] of [['street', 'street.png'], ['map', 'fake-map.png']]) {
+      const r = await fetch(`${base}/api/projects/_gallery/media/image/${name}`);
+      expect(r.status, name).toBe(200);
+      expect(r.headers.get('content-type')).toBe('image/png');
+      expect(Buffer.from(await r.arrayBuffer()).equals(readFileSync(join(fixtures, file))), name).toBe(true);
+    }
+    // only those two: no other file of the folder, no name every object has, and no other kind of media of _gallery
+    for (const path of ['image/colour-ref', 'image/constructor', 'image/..%2Fcolour-ref.png', 'proxy/street', 'still?source=street&t=0'])
+      expect((await fetch(`${base}/api/projects/_gallery/media/${path}`)).status, path).toBeGreaterThanOrEqual(400);
+    // and _gallery stays no project: the list has none, and its folder is not made by the pictures
+    expect((await (await fetch(`${base}/api/projects`)).json()).map((p: any) => p.id)).not.toContain('_gallery');
+    expect(existsSync(join(projectsDir, '_gallery'))).toBe(false);
+  } finally { await app.close(); }
+});
+
 test('a music style preview is generated once and then served from the cache; an unknown style is a 404', async () => {
   const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
   try {

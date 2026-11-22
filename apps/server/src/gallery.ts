@@ -23,6 +23,10 @@ const needsMedia = (t: ItemType) => t.footage !== 'optional' && (t.params.some((
   || /media\.(stillUrl|video|fileUrl)\(/.test(`${t.build}${t.draw}${t.ready ?? ''}`));
 
 const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
+/** The gallery player's own pictures (the player runs with media=api&id=_gallery): what a preview puts on its video track under a
+ *  block that works on the picture under it (engine blockPreviewProject's ground). Made-up pictures kept in git beside the golden
+ *  ones, so a card drawn over the street and its preview show the same street. */
+export const GALLERY_IMAGES: Readonly<Record<string, string>> = { street: 'fixtures/street.png', map: 'fixtures/fake-map.png' };
 const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
 /** each block's thumbnail: its first sample at its last moment (the animation settled) */
 const THUMBS = new Map<string, string>();
@@ -91,6 +95,12 @@ const num = (v: string | null) => (v !== null && v !== '' && Number.isFinite(Num
 export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: string; library?: string }) {
   const composing = new Map<string, Promise<void>>();
   r.get('/api/gallery', async (_req, res) => sendJson(res, 200, await galleryIndex(o.plugins, o.library)));
+  // where the engine's apiResolver asks for a photo source of the project _gallery, which is no project: registered before the
+  // media routes (app.ts), so this answers for it instead of /api/projects/:id/media/image/:source
+  r.get('/api/projects/_gallery/media/image/:name', (req, res, { name }) => {
+    if (!Object.hasOwn(GALLERY_IMAGES, name)) throw new HttpError(404, `No gallery picture "${name}"`);
+    sendFile(req, res, join(GOLDEN_DIR, GALLERY_IMAGES[name]));
+  });
   r.get('/api/gallery/thumb/:file', (req, res, { file }, url) => {
     const f = join(GOLDEN_DIR, file);
     if (!GOLDEN_FILE.test(file) || !existsSync(f)) throw new HttpError(404, 'Not found');
