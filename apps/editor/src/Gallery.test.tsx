@@ -609,6 +609,37 @@ test('a block marked over a picture previews over the gallery street, with a tem
   } finally { load.mockRestore(); patch.mockRestore(); }
 });
 
+test('a block plays on its card\'s ground, a template picked on that card\'s ground and shape; a block marked over keeps the street', async () => {
+  const lines = { plugin: 'common', group: '共用積木', type: 'common.speedlines', label: '速度線', doc: '漫畫速度線', kind: 'overlay' as const, params: [{ key: 'look', label: '樣子', type: 'text' as const, default: 'focus' }],
+    needsMedia: false, category: 'mark', bg: '#ffd9a0', templates: [{ id: 'rush', label: '衝', doc: '往右', params: { look: 'streak' }, bg: '#2f4a66' }, { id: 'same', label: '同底', doc: '卡片在預設底上', params: { look: 'x' } }] };
+  const film = { plugin: 'common', group: '共用積木', type: 'common.film', label: '底片', doc: '顆粒', kind: 'overlay' as const, params: [{ key: 'bars', label: '黑邊', type: 'number' as const, default: 0 }],
+    needsMedia: false, category: 'look', over: 'picture' as const, bg: '#123456', templates: [{ id: 'scope', label: '寬銀幕', doc: '16:9', params: { bars: 2.39 }, aspect: 'wide' as const }] };
+  expect(blockProject(lines, {}).meta.background).toBe('#ffd9a0');
+  expect(blockProject(lines, { look: 'streak' }, 'none', lines.templates[0]).meta.background).toBe('#2f4a66');
+  // a template whose card has no ground of its own: the block's
+  expect(blockProject(lines, { look: 'x' }, 'none', lines.templates[1]).meta.background).toBe('#ffd9a0');
+  // over the street: no plain ground (a stray bg ignored), the template's wide film
+  expect(blockProject(film, {}).meta).toMatchObject({ width: 1080, height: 1920, background: '#3a4256' });
+  expect(blockProject(film, { bars: 2.39 }, 'none', film.templates[0]).meta).toMatchObject({ width: 1920, height: 1080, background: '#3a4256' });
+  expect(blockProject(film, { bars: 2.39 }, 'none', film.templates[0]).tracks[0].items[0]).toMatchObject({ source: 'street' });
+  // the page: what the player is sent as the pick changes (the template's ground while its params are what is set)
+  const sent: any[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
+  try {
+    const root = document.createElement('div');
+    await act(async () => { render(<Gallery load={async () => ({ ...G, blocks: [...G.blocks, lines, film] })} />, root); });
+    await settle();
+    await click(root, '[data-card="common.speedlines"]');
+    expect(sent.at(-1).meta.background).toBe('#ffd9a0');
+    await click(root, '[data-block-template="rush"]');
+    expect(sent.at(-1).meta.background).toBe('#2f4a66');
+    await click(root, '[data-card="common.film"]');
+    await click(root, '[data-block-template="scope"]');
+    expect([sent.at(-1).meta.width, sent.at(-1).meta.height]).toEqual([1920, 1080]);
+  } finally { load.mockRestore(); patch.mockRestore(); }
+});
+
 const frames = (id: string, at: string[]) => at.map((x) => `/api/gallery/thumb/combo-${id}-t${x}.png`);
 const C: GalleryIndex = { ...G,
   blocks: G.blocks.map((b) => (b.type === 'common.slam' ? { ...b, templates: [{ id: 'huge', label: '超大', doc: '開場用', params: { size: 14 } }] } : b)),

@@ -257,7 +257,7 @@ export interface RenderApi {
 }
 
 // ---------------------------------------------------------------- the block gallery (spec 2026-10-17-block-gallery)
-export interface GalleryBlock { plugin: string; group: string; type: string; label: string; doc: string; kind: 'scene' | 'overlay'; params: ParamDef[]; needsMedia: boolean;
+export interface GalleryBlock extends CardGround { plugin: string; group: string; type: string; label: string; doc: string; kind: 'scene' | 'overlay'; params: ParamDef[]; needsMedia: boolean;
   /** a BlockCategory key (the core blocks get one in the gallery); none for a sample film's own blocks */
   category?: string;
   /** a golden picture of the block (/api/gallery/thumb/…), when it has one */
@@ -266,9 +266,13 @@ export interface GalleryBlock { plugin: string; group: string; type: string; lab
   over?: 'picture';
   /** its named templates (engine ItemType.templates), each with its golden picture when it has one */
   templates?: GalleryBlockTemplate[] }
+/** The ground and shape the card's picture was drawn on (its sample's `bg`, `wide`, `square`), so the preview plays on the same:
+ *  `bg` a CSS background (absent: the preview's plain grey-blue, or the street for a block marked over); `aspect` a 16:9 or
+ *  square film (absent: 9:16). */
+export interface CardGround { bg?: string; aspect?: 'wide' | 'square' }
 /** a block template in the gallery: its id, names, the params it writes and its golden picture (<block>-tpl-<id>, or that one drawn
  *  over the street for a block marked over) */
-export interface GalleryBlockTemplate { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
+export interface GalleryBlockTemplate extends CardGround { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
 export interface GallerySfx { plugin: string; type: string; label: string; doc: string; params: ParamDef[];
   /** an SfxCategory key; none for a sample film's own sounds */
   category?: string }

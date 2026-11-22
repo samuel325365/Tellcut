@@ -1,4 +1,4 @@
-import { blockPreviewProject, BLOCK_PREVIEW_LEN, PREVIEW_GROUND } from './preview.ts';
+import { blockPreviewProject, BLOCK_PREVIEW_LEN, PREVIEW_BG, PREVIEW_GROUND } from './preview.ts';
 import { parseProject } from './schema.ts';
 
 test('a block alone: one track of it over the plain ground, no sources', () => {
@@ -6,6 +6,15 @@ test('a block alone: one track of it over the plain ground, no sources', () => {
   expect(p.sources).toEqual({});
   expect(p.tracks).toEqual([{ id: 'g', kind: 'overlay', items: [{ id: 'block', type: 'common.slam', start: 0, end: BLOCK_PREVIEW_LEN, params: { text: 'x' } }] }]);
   expect(() => parseProject(p)).not.toThrow();
+});
+
+test('the card\'s ground and shape: a background string and a wide or square film; none given, the plain tall one', () => {
+  const p = blockPreviewProject({ type: 'common.doodle', kind: 'overlay', plugins: ['common'], background: 'repeating-linear-gradient(90deg, #fff 0px, #000 9px)' });
+  expect(p.meta).toMatchObject({ width: 1080, height: 1920, background: 'repeating-linear-gradient(90deg, #fff 0px, #000 9px)' });
+  expect(parseProject(p).meta.background).toBe('repeating-linear-gradient(90deg, #fff 0px, #000 9px)');
+  expect(blockPreviewProject({ type: 'common.film', kind: 'overlay', plugins: ['common'], aspect: 'wide', ground: true }).meta).toMatchObject({ width: 1920, height: 1080, background: PREVIEW_BG });
+  expect(blockPreviewProject({ type: 'common.masthead', kind: 'overlay', plugins: ['common'], aspect: 'square' }).meta).toMatchObject({ width: 1080, height: 1080 });
+  expect(blockPreviewProject({ type: 'common.slam', kind: 'overlay', plugins: ['common'], background: '' }).meta.background).toBe(PREVIEW_BG);
 });
 
 test('with a ground, the gallery street plays on a video track under the block for the whole film', () => {

@@ -61,6 +61,22 @@ test('a block that works on the picture under it says so, and its cards are draw
   } finally { await app.close(); }
 });
 
+test('each card says the ground and shape it was drawn on, for the preview to play on the same; one over the street says no ground', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  try {
+    const g = await (await fetch(`${base}/api/gallery`)).json(), block = (type: string) => g.blocks.find((b: any) => b.type === type);
+    const tpl = (type: string, id: string) => block(type).templates.find((x: any) => x.id === id);
+    expect([block('common.handwrite').bg, block('common.doodle').bg, block('common.speedlines').bg]).toEqual(['#7a8c6a', '#f4f2ec', '#ffd9a0']);
+    expect([tpl('common.speedlines', 'rush-right').bg, tpl('common.speedlines', 'fall-down').bg]).toEqual(['#ffd9a0', '#ffd9a0']);
+    // the default ground says nothing; neither does a block over the street, nor its templates
+    expect('bg' in block('common.slam')).toBe(false);
+    for (const b of g.blocks.filter((x: any) => x.over)) for (const x of [b, ...(b.templates ?? [])]) expect(x.bg, `${b.type} ${x.id ?? ''}`).toBeUndefined();
+    // the 16:9 look's card is wide; the block itself and its other looks tall
+    expect(tpl('common.film', 'cinema-scope').aspect).toBe('wide');
+    expect([block('common.film').aspect, tpl('common.film', 'super8-home').aspect]).toEqual([undefined, undefined]);
+  } finally { await app.close(); }
+});
+
 test('the gallery player (id=_gallery) gets its own pictures, street and map, at the URL a project photo has; nothing else', async () => {
   const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
   try {

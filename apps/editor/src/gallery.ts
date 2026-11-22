@@ -45,10 +45,19 @@ export const THEMES: Record<string, { theme?: Record<string, unknown> }> = {
 export const PREVIEW_LEN = BLOCK_PREVIEW_LEN;
 
 /** A 1080×1920 film of one block, as the golden pictures use (engine blockPreviewProject, shared with a saved block's thumbnail);
- *  a block that works on the picture under it (`over`) plays over the gallery's street, the picture its card is drawn over. */
-export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none') {
-  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme: THEMES[themeId]?.theme, ...(b.over === 'picture' ? { ground: true } : {}) });
+ *  a block that works on the picture under it (`over`) plays over the gallery's street, the picture its card is drawn over; any
+ *  other plays on its card's ground. `tpl`: the template whose params are what is set, whose card's ground and shape it takes
+ *  then (its ground, else the block's: a template's card drawn on the plain ground keeps the block's own). */
+export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none', tpl?: GalleryBlockTemplate) {
+  const background = tpl?.bg ?? b.bg, aspect = tpl ? tpl.aspect : b.aspect;
+  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme: THEMES[themeId]?.theme, ...(b.over === 'picture' ? { ground: true } : {}),
+    ...(background && b.over !== 'picture' ? { background } : {}), ...(aspect ? { aspect } : {}) });
 }
+
+/** whether two sets of params are the same (key order aside): a template is the one set when its params are exactly what is set */
+export const sameParams = (a: Record<string, unknown>, b: Record<string, unknown>) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
+/** the block's template whose params are exactly what is set, if one is */
+export const pickedTemplate = (b: GalleryBlock, set: Record<string, unknown>) => b.templates?.find((x) => sameParams(x.params, set));
 
 /** One of My blocks as blockProject shows a shared one: its module comes from the entry's folder (the player's project url, libraryPlayer);
  *  the look picked, else the theme of the project it was saved from (spec 2026-10-29-my-library §3.4). */

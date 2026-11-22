@@ -12,7 +12,7 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 // each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
 import { cardSample, samples, type Sample } from '@tellcut/plugin-common/samples';
-import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
+import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
 
@@ -39,6 +39,10 @@ const sampleThumb = (name: string) => thumbOf(samples.find((x) => x.name === nam
 const TEMPLATE_THUMB = (id: string, pre = 'tpl') => sampleThumb(`${pre}-${id}`);
 /** a block template's picture: its card (its sample <block>-tpl-<id>, or that one over the street) */
 const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => thumbOf(cardSample(type, id));
+/** the ground and shape a card was drawn on, for the preview to play on the same: its sample's plain `bg` (not for a block marked
+ *  over, whose preview plays over the street its card is drawn over) and its wide or square film */
+const groundOf = (c: Sample | undefined, over: boolean): CardGround => ({
+  ...(c?.bg && !over ? { bg: c.bg } : {}), ...(c?.wide ? { aspect: 'wide' as const } : c?.square ? { aspect: 'square' as const } : {}) });
 /** a combo's pictures: every moment of its sample combo-<id> (start, peak, end), in time order */
 const COMBO_FRAMES = (id: string) => { const c = samples.find((x) => x.name === `combo-${id}`); return c ? [...c.at].sort((a, b) => a - b).map((t) => `/api/gallery/thumb/${c.name}-t${t.toFixed(2)}.png`) : []; };
 
@@ -51,7 +55,9 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
     plugin: p.id, group: GROUP[p.id] ?? '外掛', type: t.type, label: t.label, doc: t.doc ?? '', kind: t.kind, params: t.params, needsMedia: needsMedia(t),
     ...(t.over ? { over: t.over } : {}),
     ...(t.category ?? CORE_CATEGORY[t.type] ? { category: t.category ?? CORE_CATEGORY[t.type] } : {}), ...(THUMBS.has(t.type) ? { thumb: THUMBS.get(t.type) } : {}),
-    ...(t.templates?.length ? { templates: t.templates.map((x) => { const thumb = BLOCK_TEMPLATE_THUMB(t.type, x.id); return { id: x.id, label: x.label, doc: x.doc, params: x.params, ...(thumb ? { thumb } : {}) }; }) } : {}),
+    ...groundOf(cardSample(t.type), !!t.over),
+    ...(t.templates?.length ? { templates: t.templates.map((x) => { const thumb = BLOCK_TEMPLATE_THUMB(t.type, x.id);
+      return { id: x.id, label: x.label, doc: x.doc, params: x.params, ...(thumb ? { thumb } : {}), ...groundOf(cardSample(t.type, x.id), !!t.over) }; }) } : {}),
   })));
   const sfx = sorted.flatMap((p) => (p.sfx ?? []).map((s): GallerySfx => ({ plugin: p.id, type: s.type, label: s.label, doc: s.doc ?? '', params: s.params, ...(s.category ? { category: s.category } : {}) })));
   const lib = await loadStyles([library]);

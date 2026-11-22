@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { templateName, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, PROJECT_CATEGORY, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -104,7 +104,8 @@ function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: Ow
   return (
     <section class="g-detail" data-detail={id}>
       <Head label={x.label} name={b.type} />
-      {own && to ? <PlayerPreview project={ownProject(own, b, params, theme)} playKey={n} src={projectPlayer(to.project.id)} /> : <PlayerPreview project={blockProject(b, params, theme)} playKey={n} />}
+      {own && to ? <PlayerPreview project={ownProject(own, b, params, theme)} playKey={n} src={projectPlayer(to.project.id)} />
+        : <PlayerPreview project={blockProject(b, params, theme, pickedTemplate(b, set))} playKey={n} />}
       <div class="g-bar">
         <label>{t('gallery.theme')} <select value={theme} onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}>{Object.keys(THEMES).map((k) => <option value={k}>{t(`gallery.theme.${k}` as Key)}</option>)}</select></label>
         <button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button>
@@ -124,7 +125,7 @@ function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: Ow
 /** A block's named templates (engine templates.ts): picking one puts its params in place of what was set, so the preview plays it
  *  and Add to project adds the block with them; the one whose params are exactly what is set is marked. */
 function Templates({ b, set, pick }: { b: GalleryBlock; set: Record<string, unknown>; pick: (params: Record<string, unknown>) => void }) {
-  const same = (p: Record<string, unknown>) => JSON.stringify(Object.entries(p).sort()) === JSON.stringify(Object.entries(set).sort());
+  const same = (p: Record<string, unknown>) => sameParams(p, set);
   return <>
     <h3>{t('gallery.templates')}</h3>
     <ul class="g-templates" data-block-templates>
