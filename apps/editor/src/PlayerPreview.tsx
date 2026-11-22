@@ -5,8 +5,6 @@ import { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
 
 const GALLERY_PLAYER = '/player/index.html?embed=1&media=api&id=_gallery';
-/** how far before its end a preview played once rests: a frame at 30 fps */
-const LAST_FRAME = 1 / 30;
 /** the player for a project's own blocks (its fx load from the project folder) */
 export const projectPlayer = (id: string) => `/player/index.html?embed=1&media=api&id=${encodeURIComponent(id)}`;
 /** the player for an entry of My blocks (its module and fonts load from the entry's folder) */
@@ -31,15 +29,17 @@ export function PlayerPreview({ project, loop = true, playKey, autoplay = true, 
   // loop by starting over just before the end: at the end the player shows the last frame without the block (an item ends there),
   // and a restart takes a moment, which would flash the bare ground
   useEffect(() => {
-    let dur = 0, restarted = false;
+    let dur = 0, restarted = false, shown = 0;
     bridge.onReady = (d) => { dur = d; restarted = false; if (autoplay || wanted.current) bridge.play(0); wanted.current = false; };
     bridge.onTime = (t) => {
+      shown = t;
       if (t < 1) restarted = false;
       else if (loop && dur && !restarted && t >= dur - 0.12) { restarted = true; bridge.play(0); }
     };
-    // played once: rest on its last frame (at the very end every item, the picture under it too, is over and only the bare ground
-    // would show)
-    bridge.onEnded = () => { if (loop) bridge.play(0); else if (dur) bridge.seek(Math.max(0, dur - LAST_FRAME)); };
+    // played once: rest on the last frame it drew (at the very end every item, the picture under it too, is over and only the bare
+    // ground would show). The last time it reported, not the length it was loaded with: a project patched in since (another combo
+    // picked) has its own length, and no new ready says it
+    bridge.onEnded = () => { if (loop) bridge.play(0); else if (shown > 0) bridge.seek(shown); };
   }, [loop]);
   useEffect(() => {
     setError('');

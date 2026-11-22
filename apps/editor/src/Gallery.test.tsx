@@ -812,8 +812,9 @@ test('a combo\'s live preview: the street with its layers, sounds and shake plac
     expect(play).toHaveBeenCalledTimes(2);
     // played once, it rests on its last frame, not on the bare ground the very end shows
     const b = bridges.at(-1)!;
-    act(() => { b.onReady(2.5); b.onEnded(); });
-    expect(seek).toHaveBeenLastCalledWith(2.5 - 1 / 30);
+    // (the last time it drew, not the length it was loaded with: another combo patched in has its own)
+    act(() => { b.onReady(2.5); b.onTime(1.6); b.onTime(1.93); b.onEnded(); });
+    expect(seek).toHaveBeenLastCalledWith(1.93);
     // no layers sent (an older server): the stills alone, no player
     const bare = document.createElement('div');
     await act(async () => { render(<Gallery load={async () => C} />, bare); });
