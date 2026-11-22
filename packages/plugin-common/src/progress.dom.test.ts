@@ -83,6 +83,73 @@ test('changing the dots, runner, goal or look rebuilds the mode, other params do
   expect(first.isConnected).toBe(false);
 });
 
+// runner: the runner and the goal inside the side safe margins all the way, the goal's arrival bounce too
+const box = (el: HTMLElement) => {
+  const c = css(el), left = parseFloat(c.left), width = parseFloat(c.width), sc = Number(/scale\(([\d.]+)/.exec(c.transform ?? '')?.[1] ?? 1);
+  return { left: left + (width * (1 - sc)) / 2, right: left + (width * (1 + sc)) / 2 };
+};
+
+test('runner: the runner and the goal stay inside the side safe margins on 9:16', () => {
+  const ctx = ctxOf({ mode: 'runner' }), s = progress.build(ctx), side = ctx.theme.safe.side * ctx.W;
+  for (const local of [0, 2, 3.1, 3.2, 3.5]) {
+    progress.draw({ ...ctx, local, t: local }, s);
+    for (const part of ['runner', 'goal']) {
+      const b = box(s.more!.el[part]);
+      expect(b.left).toBeGreaterThanOrEqual(side - 0.01);
+      expect(b.right).toBeLessThanOrEqual(ctx.W - side + 0.01);
+    }
+  }
+  // it went somewhere, and the goal bounced on arrival
+  progress.draw({ ...ctx, local: 0, t: 0 }, s);
+  const start = parseFloat(css(s.more!.el.runner).left);
+  progress.draw({ ...ctx, local: 3.2, t: 3.2 }, s);
+  expect(parseFloat(css(s.more!.el.runner).left)).toBeGreaterThan(start + ctx.W * 0.5);
+  expect(css(s.more!.el.goal).transform).toMatch(/scale\(1\.[1-2]/);
+});
+
+test('runner: one time drawn twice is the same', () => {
+  const ctx = ctxOf({ mode: 'runner' }), s = progress.build(ctx);
+  progress.draw({ ...ctx, local: 1.37, t: 1.37 }, s);
+  const once = s.more!.root.innerHTML;
+  progress.draw({ ...ctx, local: 2.9, t: 2.9 }, s);
+  progress.draw({ ...ctx, local: 1.37, t: 1.37 }, s);
+  expect(s.more!.root.innerHTML).toBe(once);
+});
+
+test('runner: goal none draws no goal; an emoji runner shows its first grapheme', () => {
+  const ctx = ctxOf({ mode: 'runner', goal: 'none', runner: '🚗🚕' }), s = progress.build(ctx);
+  progress.draw(ctx, s);
+  expect(s.more!.el.goal).toBeUndefined();
+  expect(s.more!.el.runner.textContent).toBe('🚗');
+});
+
+test('runner: a picture is loading from build on (so ready() can wait for it); one that fails falls back to the dog', () => {
+  const ctx = ctxOf({ mode: 'runner', runner: 'media/nope.png' }), s = progress.build(ctx);
+  const img = s.more!.root.querySelector('img')!;
+  expect(img.getAttribute('src')).toBe('media/nope.png');
+  Object.defineProperty(img, 'complete', { value: true });
+  Object.defineProperty(img, 'naturalWidth', { value: 0 });
+  progress.draw(ctx, s);
+  expect(css(img).display).toBe('none');
+  const text = [...s.more!.el.runner.querySelectorAll('span')].find((e) => css(e).display !== 'none');
+  expect(text?.textContent).toBe('🐕');
+});
+
+test('runner: ready() waits for a picture; one that fails loses its src (the export passes it by) and the dog and flag stand in', async () => {
+  const ctx = ctxOf({ mode: 'runner', runner: 'media/nope.png', goal: 'media/gone.png' }), s = progress.build(ctx);
+  const imgs = [...s.more!.root.querySelectorAll('img')];
+  expect(imgs.map((i) => i.getAttribute('src'))).toEqual(['media/gone.png', 'media/nope.png']);
+  for (const i of imgs) i.decode = () => Promise.reject(new Error('404'));
+  await progress.ready!(s);
+  expect(imgs.map((i) => i.getAttribute('src'))).toEqual([null, null]);
+  progress.draw(ctx, s);
+  expect(css(s.more!.el.runnerText).display).toBe('block');
+  expect(s.more!.el.runnerText.textContent).toBe('🐕');
+  expect(css(s.more!.el.goalText).display).toBe('block');
+  expect(s.more!.el.goalText.textContent).toBe('🏁');
+  expect(css(s.more!.el.goalPole).display).toBe('block');
+});
+
 test.each([0, 0.3, 0.8, 1.19])('a %s s character item draws without throwing', (dur) => {
   for (const mode of ['runner', 'stretch', 'paws', 'segments', 'fuse', 'battery']) {
     const ctx = { ...ctxOf({ mode }), dur }, s = progress.build(ctx);

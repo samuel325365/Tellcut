@@ -13,6 +13,7 @@ import { backOut, handCircle, handFamily, handPath, tick } from './hand.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { fitPx, EMOJI_STACK, graphemes } from './text.ts';
 import { withAlpha } from './color.ts';
+import { picturesReady } from './progress/runner.ts';
 import { isMoreMode, type More } from './progress/shared.ts';
 import { drawMore } from './progress/more.ts';
 
@@ -120,11 +121,15 @@ export const progress: ItemType<P, S> = {
     cssCamel(slots, { position: 'absolute', inset: '0', display: 'none' });
     // osd draws in VT323 on the canvas: ready() loads it (with the words, so a fallback face for other scripts loads too)
     const osd = ctx.params.mode === 'osd' ? `${ctx.params.title} 0123456789/ ${ctx.params.labels}` : '';
-    return { track, fill, dots, row, tabs: [], seps: [], key: '', cv, title, count, slots, skey: '', cards: [], osd, more: null };
+    // a character mode builds its elements now, so a picture runner or goal starts loading and ready() can wait for it
+    const more = isMoreMode(ctx.params.mode) ? drawMore(ctx, ctx.params, null, ctx.root, cv) : null;
+    return { track, fill, dots, row, tabs: [], seps: [], key: '', cv, title, count, slots, skey: '', cards: [], osd, more };
   },
   ready(s) {
     const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-    return s.osd && fonts ? Promise.all(['VT323', 'Noto Sans TC'].map((f) => fonts.load(`60px "${f}"`, s.osd).catch(() => []))).then(() => {}) : Promise.resolve();
+    const font = s.osd && fonts ? Promise.all(['VT323', 'Noto Sans TC'].map((f) => fonts.load(`60px "${f}"`, s.osd).catch(() => []))) : null;
+    // a picture that fails settles too: the mode then draws its default emoji instead
+    return Promise.all([font, picturesReady(s.more?.root)]).then(() => {});
   },
   hide(s) { freeCanvas(s.cv); },
   draw(ctx, s) {

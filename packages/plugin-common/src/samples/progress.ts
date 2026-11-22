@@ -4,4 +4,8 @@
 import type { Sample } from './fixtures.ts';
 
 export const PROGRESS_SAMPLES: Sample[] = [
+  // runner: on its way (mid-hop) and just arrived (the flag at the top of its bounce)
+  { name: 'progress-runner', type: 'common.progress', params: { mode: 'runner', position: 'bottom' }, len: 4, at: [1.4, 3.2] },
+  { name: 'wide-progress-runner', type: 'common.progress', params: { mode: 'runner', position: 'bottom' }, len: 4, at: [1.4, 3.2], wide: true },
+  { name: 'progress-runner-car', type: 'common.progress', params: { mode: 'runner', position: 'bottom', runner: '🚗', goal: '🏠' }, len: 4, at: [1.8, 3.2] },
 ];
