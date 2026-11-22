@@ -53,8 +53,10 @@ test('templateProblems finds each kind of mistake', () => {
 });
 
 test('admission rule 1: no two templates of a block differ only in colour, nor a template from the block\'s defaults', () => {
-  expect(withTemplates.flatMap((t) => colourOnlyPairs(t).map(([a, b]) => `${t.type}: ${a} / ${b}`))).toEqual([]);
-  expect(withTemplates.flatMap((t) => colourOnlyFromDefault(t).map((a) => `${t.type}: ${a} / 預設`))).toEqual([]);
+  // a colour block's templates differ in colour by nature: the colour measure of rule 2 keeps them apart instead
+  const measured = withTemplates.filter((t) => t.likeness !== 'colour');
+  expect(measured.flatMap((t) => colourOnlyPairs(t).map(([a, b]) => `${t.type}: ${a} / ${b}`))).toEqual([]);
+  expect(measured.flatMap((t) => colourOnlyFromDefault(t).map((a) => `${t.type}: ${a} / 預設`))).toEqual([]);
 });
 
 test('rule 1 itself: colour dropped, the look differs or at least two other params do', () => {
@@ -89,4 +91,16 @@ test('every template has its golden sample, <block>-tpl-<id>, drawn with the tem
   expect(bad).toEqual([]);
   expect(templateSample('common.leak', 'prism-sweep')).toBe('leak-tpl-prism-sweep');
   expect(templateSample('core.flash', 'fade-black')).toBe('core-flash-tpl-fade-black');
+});
+
+test('rule 1 leaves out the colour blocks, and only them; a template of only defaults is refused in both', () => {
+  expect(blocks.filter((t) => t.likeness === 'colour').map((t) => t.type).sort()).toEqual(['common.grade', 'common.tone', 'core.flash']);
+  const block = { type: 'fx.t', params: [{ key: 'color', label: '', type: 'color' as const, default: '#fff' }, { key: 'n', label: '', type: 'number' as const, default: 0.5 }] };
+  const tpl = (id: string, params: Record<string, unknown>) => ({ id, label: id, doc: id, params });
+  const t = { ...block, templates: [tpl('red', { color: '#f00' }), tpl('blue', { color: '#00f' })] };
+  // colour-only pairs by the measure, which the admission test above skips on a block marked 'colour'; well formed all the same, while
+  // a template of only defaults is refused whatever the block
+  expect(colourOnlyPairs(t)).toEqual([['red', 'blue']]);
+  expect(templateProblems(t)).toEqual([]);
+  expect(templateProblems({ ...block, templates: [tpl('plain', { color: '#fff' })] })).toEqual(['fx.t/plain：params 全都是預設值，套用它什麼都不會變']);
 });

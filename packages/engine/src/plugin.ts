@@ -107,6 +107,11 @@ export interface ItemType<P = Record<string, any>, S = any> {
    *  At most MAX_TEMPLATES. Never on common.caption / common.heading, whose `template` PARAM is the other kind (caption and title
    *  templates, resolved at draw time). A project's own fx may carry it too. */
   templates?: BlockTemplate[];
+  /** 'colour': what this block does is colour and lightness (common.grade, common.tone, core.flash's fades), so its templates differ
+   *  in colour and strength alone. Its templates skip admission rule 1 (more than colour apart) and pass rule 2 when either the edge
+   *  measure or the colour one (media-node likeness.ts, COLOUR_LIKENESS) sets them apart; its golden samples are drawn over a picture.
+   *  Every other block's templates are measured by the edges alone. */
+  likeness?: 'colour';
   /** CSS mix-blend-mode for the whole item layer against the items below it (layers are otherwise isolated). Several modes: one
    *  layer each, stacked in order at the item's place, each blending with the picture the ones before made (common.grade's deep:
    *  'color', then 'multiply'); the further layers are ctx.layers, which the stage shows, moves and removes with the item. */

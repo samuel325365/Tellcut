@@ -16,7 +16,7 @@ interface GS extends FS { w?: HTMLElement }
 export const grade: ItemType<GP, GS> = {
   // two blend modes, a layer each (the stage's): the colour over the footage, then deep's multiply over the graded picture, as a
   // wash item placed right after the grade did (a fill inside the grade's own layer would only multiply the grade's own fill)
-  type: 'common.grade', label: '單色調色', category: 'look', kind: 'overlay', blend: ['color', 'multiply'],
+  type: 'common.grade', label: '單色調色', category: 'look', kind: 'overlay', blend: ['color', 'multiply'], likeness: 'colour',
   doc: '照拍子換調色：疊在影片上（整支片一個項目），steps「秒|bw／mono／none」（項目內秒數，一行一個）把下面的畫面換成黑白、color 色的單色、或原色（#顏色＝那個顏色的單色）；deep 讓單色更濃：mono 那幾段再乘上一層 tone 淺色（multiply），亮的天空也染色（以前要另外疊一個 common.wash）；字幕、文字積木要放在它之後才不會被染色；運動、單車、旅行的快剪，配 common.viewfinder、common.echo、common.poster',
   params: [
     { key: 'steps', label: '換色（秒|bw／mono／none，一行一個）', type: 'text', default: GRADE_STEPS },

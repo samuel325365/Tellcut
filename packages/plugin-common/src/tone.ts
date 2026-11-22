@@ -7,7 +7,7 @@ interface P { color: string; edge: string; amount: number }
 interface S { el: HTMLElement }
 
 export const tone: ItemType<P, S> = {
-  type: 'common.tone', label: '色調', category: 'look', kind: 'overlay', blend: 'soft-light',
+  type: 'common.tone', label: '色調', category: 'look', kind: 'overlay', blend: 'soft-light', likeness: 'colour',
   doc: '整片調色：柔光（soft-light）疊在影片上，中間一層色光、四周壓暗；預設暖色（街頭小吃、夕陽、懷舊），換成藍色就是冷調；常和 common.film 一起用',
   params: [
     { key: 'color', label: '中間的色光', type: 'color', default: '#ffbe78' },
