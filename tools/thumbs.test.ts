@@ -1,21 +1,23 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { samples } from '@tellcut/plugin-common/samples';
+import { cardSample, samples, templateSample } from '@tellcut/plugin-common/samples';
 import { THUMB_PARAMS } from '../packages/plugin-common/golden/thumbs.ts';
 import { goldenFile } from '@tellcut/media-node';
 import { THUMBS_DIR, thumbCases, thumbKey } from './thumbs.ts';
 
 const IDEOGRAPH = /[぀-ヿ一-鿿]/;
 const CJK = /[　-鿿＀-￯]/;
-const firsts = () => { const m = new Map<string, (typeof samples)[number]>(); for (const c of samples) if (!m.has(c.type)) m.set(c.type, c); return [...m.values()]; };
-/** the block templates' samples, <block>-tpl-<id>: each is a thumbnail too (thumbs.ts thumbCases) */
-const blockTemplates = () => samples.filter((c) => /.-tpl-/.test(c.name));
+/** each block's card (its first sample, or that one over the street) */
+const firsts = () => { const m = new Map<string, (typeof samples)[number]>(); for (const c of samples) if (!m.has(c.type)) m.set(c.type, cardSample(c.type)!); return [...m.values()]; };
+/** the block templates' cards, <block>-tpl-<id> (or over the street): each is a thumbnail too (thumbs.ts thumbCases) */
+const blockTemplates = () => samples.filter((c) => /.-tpl-/.test(c.name) && !c.street).map((c) => cardSample(c.type, c.name.slice(templateSample(c.type, '').length))!);
 
 test('the English thumbnails show no Chinese, and every thumbnail whose case is Chinese has its words in both languages', () => {
   const en = thumbCases('en');
   expect(en.length).toBeGreaterThan(50);
   expect(en.filter((c) => IDEOGRAPH.test(JSON.stringify(c.params))).map((c) => c.name)).toEqual([]);
-  const chinese = [...firsts(), ...blockTemplates()].filter((c) => CJK.test(JSON.stringify(c.params ?? {}))).map((c) => c.name);
+  // the tables name the sample a card is drawn from (a card over the street has its words)
+  const chinese = [...firsts(), ...blockTemplates()].filter((c) => CJK.test(JSON.stringify(c.params ?? {}))).map((c) => c.street ?? c.name);
   for (const lang of ['en', 'ja'] as const) {
     expect(chinese.filter((n) => !THUMB_PARAMS[lang][n])).toEqual([]);
     expect(Object.keys(THUMB_PARAMS[lang]).filter((n) => !chinese.includes(n))).toEqual([]);

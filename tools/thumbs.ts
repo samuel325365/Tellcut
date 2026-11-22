@@ -1,5 +1,6 @@
 // The gallery's thumbnails in English and Japanese (spec 2026-10-30-showcase-films part 2):  npm run thumbs
-// A block's thumbnail is its first sample, a block template's its <block>-tpl-<id> sample, a caption template's its tpl-<id> sample (plugin-common/src/samples.ts), at its last
+// A block's thumbnail is its card, its first sample, a block template's its <block>-tpl-<id> sample (either drawn over the street, its
+// -street sibling, for a block marked over: cardSample, plugin-common/src/samples.ts), a caption template's its tpl-<id> sample, at its last
 // moment; when that shows Chinese words (the case's own, or ones the block starts with), it is drawn again here with them in the other language: the case's params from golden/thumbs.ts, the block's words from
 // apps/editor/src/i18n/values.*.ts. The pictures go to packages/plugin-common/golden/thumbs/<lang>/, with a manifest of what each was
 // drawn from (thumbs.test.ts fails when a table or the block's own golden picture changed and they were not drawn again). Run
@@ -11,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { createRegistry } from '@tellcut/engine';
 import { goldenFile, runGolden, TELLCUT_ROOT, type GoldenCase } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { CAP_EN, CAP_JA, HEAD_EN, HEAD_JA, samples } from '@tellcut/plugin-common/samples';
+import { CAP_EN, CAP_JA, cardSample, HEAD_EN, HEAD_JA, samples, templateSample, type Sample } from '@tellcut/plugin-common/samples';
 import { THUMB_PARAMS } from '../packages/plugin-common/golden/thumbs.ts';
 import { parseArgsOrExit } from './args.ts';
 import { hasCjk, localValues } from '@tellcut/editor/i18n/values';
@@ -23,19 +24,22 @@ export type ThumbLang = 'en' | 'ja';
 /** the thumbnails that show Chinese, as cases with their words in `lang`, each at the one moment the gallery shows */
 export function thumbCases(lang: ThumbLang): GoldenCase[] {
   const defs = new Map(plugins.flatMap((p) => p.items ?? []).map((t) => [t.type, t.params]));
-  const first = new Map<string, GoldenCase>();
-  for (const c of samples as GoldenCase[]) if (!first.has(c.type)) first.set(c.type, c);
-  // a block template's sample (<block>-tpl-<id>) is its card in the gallery's detail: drawn again like a block's first one
-  const blockTemplates = (samples as GoldenCase[]).filter((c) => /.-tpl-/.test(c.name));
+  // each block's card, as the server's gallery shows it (cardSample), in the order of the samples
+  const first = new Map<string, Sample>();
+  for (const c of samples) if (!first.has(c.type)) first.set(c.type, cardSample(c.type)!);
+  // a block template's sample (<block>-tpl-<id>) is its card in the gallery's detail: drawn again like a block's first one (its card
+  // too: over the street for a block marked over)
+  const blockTemplates = samples.filter((c) => /.-tpl-/.test(c.name) && !c.street).map((c) => cardSample(c.type, c.name.slice(templateSample(c.type, '').length))!);
   // every caption template's card (tpl-<id>) and title template's (ttl-<id>) too: the template's own params with the English or
   // Japanese line (or title) in place of the Chinese one
   const line = (name: string) => (name.startsWith('ttl-') ? (lang === 'en' ? HEAD_EN : HEAD_JA) : lang === 'en' ? CAP_EN : CAP_JA);
   const templates = (samples as GoldenCase[]).filter((c) => c.name.startsWith('tpl-') || c.name.startsWith('ttl-')).map((c) => ({ ...c, params: { ...c.params, ...line(c.name) }, at: [c.at[c.at.length - 1]] }));
-  return [...[...first.values(), ...blockTemplates].flatMap((c) => {
-    const params = THUMB_PARAMS[lang][c.name] ?? c.params ?? {};
+  return [...[...first.values(), ...blockTemplates].flatMap((c): GoldenCase[] => {
+    // a card over the street has the words of the sample it is drawn from: the table names that one
+    const params = THUMB_PARAMS[lang][c.street ?? c.name] ?? c.params ?? {};
     const words = Object.fromEntries(Object.entries(localValues(c.type, defs.get(c.type) ?? [], lang)).filter(([k]) => !(k in params)));
     if (!hasCjk(JSON.stringify(c.params ?? {})) && !Object.keys(words).length) return [];
-    return [{ ...c, params: { ...words, ...params }, at: [c.at[c.at.length - 1]] }];
+    return [{ ...(c as GoldenCase), params: { ...words, ...params }, at: [c.at[c.at.length - 1]] }];
   }), ...templates];
 }
 
