@@ -1,13 +1,15 @@
 // Draws colour-ref.png, the made-up street the colour blocks' golden samples are drawn over (golden's `photo`): no real picture,
 // so no licence question. It holds what a grade, a tone or a fade has something to change in, in large patches a 16 × 16 colour
 // print still tells apart: a blue sky with a white cloud, a sunlit warm wall, a cool wall in shade, green leaves, a skin-toned face,
-// a red awning and a yellow sign, a grey street, deep shadow and bright highlights. Rerun from tellcut/:
+// a red awning and a yellow sign, a grey street, deep shadow and bright highlights. It also draws street.png, the same street at
+// 1080 × 1920: the gallery's previews play it under the blocks that work on the picture under them (the server's
+// /api/projects/_gallery/media/image/street), so a card drawn over colour-ref.png and its preview show one street. Rerun from tellcut/:
 //   node packages/plugin-common/golden/fixtures/colour-ref.mjs
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 
-const W = 360, H = 640, SS = 3;   // drawn 3 × 3 per pixel, for soft edges
+const W = 360, H = 640, SS = 3;   // the street is laid out in these units; drawn 3 × 3 per pixel, for soft edges
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * Math.max(0, Math.min(1, t)));
 const inEllipse = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
 const inRect = (x, y, l, t, r, b) => x >= l && x < r && y >= t && y < b;
@@ -48,11 +50,17 @@ function at(u, v) {
   return c;
 }
 
-const png = new PNG({ width: W, height: H });
-for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-  const s = [0, 0, 0];
-  for (let j = 0; j < SS; j++) for (let i = 0; i < SS; i++) { const c = at((x + (i + 0.5) / SS) / W, (y + (j + 0.5) / SS) / H); s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; }
-  const o = (y * W + x) * 4;
-  png.data[o] = Math.round(s[0] / SS / SS); png.data[o + 1] = Math.round(s[1] / SS / SS); png.data[o + 2] = Math.round(s[2] / SS / SS); png.data[o + 3] = 255;
+/** the street drawn `w` × `h` into `file` beside this script */
+function draw(w, h, file) {
+  const png = new PNG({ width: w, height: h });
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const s = [0, 0, 0];
+    for (let j = 0; j < SS; j++) for (let i = 0; i < SS; i++) { const c = at((x + (i + 0.5) / SS) / w, (y + (j + 0.5) / SS) / h); s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; }
+    const o = (y * w + x) * 4;
+    png.data[o] = Math.round(s[0] / SS / SS); png.data[o + 1] = Math.round(s[1] / SS / SS); png.data[o + 2] = Math.round(s[2] / SS / SS); png.data[o + 3] = 255;
+  }
+  writeFileSync(fileURLToPath(new URL(`./${file}`, import.meta.url)), PNG.sync.write(png));
 }
-writeFileSync(fileURLToPath(new URL('./colour-ref.png', import.meta.url)), PNG.sync.write(png));
+
+draw(W, H, 'colour-ref.png');
+draw(W * 3, H * 3, 'street.png');
