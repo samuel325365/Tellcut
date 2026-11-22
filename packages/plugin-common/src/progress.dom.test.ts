@@ -2,16 +2,17 @@
 // common.progress pencil: a frame drawn on the canvas kept from the frame before looks the same as one drawn on a fresh canvas.
 import { createRegistry, motion, resolveTheme, Stage, withDefaults, type ItemType } from '@tellcut/engine';
 import { progress, TOP_LANE } from './progress.ts';
-import { corner, MORE_MODES } from './progress/shared.ts';
+import { band, corner, MORE_MODES } from './progress/shared.ts';
+import { vineSize } from './progress/vine.ts';
 
 const css = (el: Element) => ((el as any)._c ?? {}) as Record<string, string>;
 
 function recorder() {
-  const log: Array<{ op: string; globalAlpha: number; args: unknown[] }> = [];
+  const log: Array<{ op: string; globalAlpha: number; args: unknown[]; fillStyle?: unknown }> = [];
   const st: Record<string, unknown> = { globalAlpha: 1, lineWidth: 1, lineCap: 'butt', lineJoin: 'miter' };
   const g: any = new Proxy({}, {
     get: (_t, k) => (typeof k === 'symbol' ? undefined : k in st ? st[k as string]
-      : (...args: unknown[]) => { log.push({ op: String(k), globalAlpha: st.globalAlpha as number, args }); return k === 'measureText' ? { width: 10 } : /^create\w*Gradient$/.test(String(k)) ? { addColorStop() {} } : undefined; }),
+      : (...args: unknown[]) => { log.push({ op: String(k), globalAlpha: st.globalAlpha as number, args, fillStyle: st.fillStyle }); return k === 'measureText' ? { width: 10 } : /^create\w*Gradient$/.test(String(k)) ? { addColorStop() {} } : undefined; }),
     set: (_t, k, v) => { st[k as string] = v; return true; },
   });
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => g);
@@ -626,6 +627,117 @@ test('ring: a 0.5 s item (and one of none) draws without throwing', () => {
   recorder();
   for (const dur of [0.5, 0]) {
     const ctx = { ...ctxOf({ mode: 'ring' }), dur }, s = progress.build(ctx);
+    for (const local of [0, 0.1, 0.25, 0.4, 0.5]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
+  }
+});
+
+// vine: all on the canvas (a goal emoji or picture aside), inside the side safe margins and the band its size keeps
+const vineBand = (ctx: any) => {
+  const s = vineSize(ctx.params.thickness * Math.min(ctx.W, ctx.H) / 1080), b = band(ctx, ctx.params, s.height);
+  return { L: b.x, R: b.x + b.w, T: b.top, B: b.top + s.height };
+};
+
+test.each([[1080, 1920, 'bottom'], [1920, 1080, 'bottom'], [1080, 1920, 'top']])('vine %sx%s %s: every canvas point inside the side margins and its band, the same twice', (W, H, position) => {
+  const log = recorder(), ctx = ctxOf({ mode: 'vine', position, color: '#4caf50', done: '#ff8fb1' }, 0, document.createElement('div'), W as number, H as number);
+  const s = progress.build(ctx), g = s.cv.getContext('2d') as any, vb = vineBand(ctx), sf = ctx.theme.safe;
+  // the band itself in the safe area, against the edge position names
+  expect(vb.T).toBeGreaterThanOrEqual(sf.top * ctx.H - 0.01);
+  expect(vb.B).toBeLessThanOrEqual(ctx.H * (1 - sf.bottom) + 0.01);
+  if (position === 'bottom') expect(vb.B).toBeCloseTo(ctx.H * (1 - sf.bottom), 6);
+  const seqs: Record<number, string> = {};
+  const counts: number[] = [];
+  for (const local of [0, 0.8, 1.5, 2.9, 3.05, 3.2, 3.5, 3.9, 1.5, 3.2]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(g.globalAlpha).toBe(1);
+    expect(css(s.cv).display).toBe('block');
+    const pts = canvasBoxes(log);
+    expect(pts.length).toBeGreaterThan(20);
+    for (const [x, y] of pts) inside(x, y, vb);
+    for (const c of log.filter((c) => c.op === 'arc')) expect((c.args as number[])[2]).toBeGreaterThan(0);
+    // (the fill colour each fill uses: what is left set from the frame before shows on the other calls)
+    const seq = JSON.stringify(log.map((c) => [c.op, c.globalAlpha, c.args, c.op === 'fill' ? c.fillStyle : null]));
+    if (local in seqs) expect(seq).toBe(seqs[local]);
+    else counts.push(log.filter((c) => c.op === 'fill').length);
+    seqs[local] = seq;
+  }
+  // more drawn as it grows (the leaves come out), and the flower's petals only once arrived
+  expect(counts[3]).toBeGreaterThan(counts[0] + 5);
+  const petals = (local: number) => { log.length = 0; progress.draw({ ...ctx, local, t: local }, s); return log.filter((c) => c.op === 'fill' && c.fillStyle === '#ff8fb1').length; };
+  expect(petals(2.9)).toBe(0);
+  expect(petals(3.6)).toBeGreaterThanOrEqual(5);
+  expect(s.more!.root.children.length).toBe(0);
+});
+
+test('vine: a chapter that is not the last keeps its bud, never opening the flower', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'vine', dots: 4, step: 1, done: '#0000ff' }), s = progress.build(ctx);
+  for (const local of [0, 1.5, 3.2, 3.6]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(log.filter((c) => c.op === 'fill' && c.fillStyle === '#0000ff')).toHaveLength(0);
+  }
+  // the last chapter does open it
+  const last = ctxOf({ mode: 'vine', dots: 4, step: 3, done: '#0000ff' }), sl = progress.build(last);
+  log.length = 0;
+  progress.draw({ ...last, local: 3.6, t: 3.6 }, sl);
+  expect(log.filter((c) => c.op === 'fill' && c.fillStyle === '#0000ff').length).toBeGreaterThanOrEqual(5);
+});
+
+test.each([[1080, 1920], [1920, 1080]])('vine %sx%s: a goal emoji pops out at the end on arrival, inside the safe area, in place of the flower', (W, H) => {
+  const log = recorder(), ctx = ctxOf({ mode: 'vine', position: 'bottom', goal: '🍓', done: '#0000ff' }, 0, document.createElement('div'), W, H), s = progress.build(ctx);
+  const sf = ctx.theme.safe, vb = vineBand(ctx);
+  progress.draw({ ...ctx, local: 2, t: 2 }, s);
+  expect(s.more!.el.goalText.textContent).toBe('🍓');
+  expect(css(s.more!.el.goal).display).toBe('none');
+  for (const local of [3.05, 3.15, 3.3, 3.6]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(css(s.more!.el.goal).display).toBe('block');
+    const b = box4(s.more!.el.goal);
+    expect(b.left).toBeGreaterThanOrEqual(sf.side * W - 0.01);
+    expect(b.right).toBeLessThanOrEqual(W - sf.side * W + 0.01);
+    expect(b.top).toBeGreaterThanOrEqual(vb.T - 0.01);
+    expect(b.bottom).toBeLessThanOrEqual(vb.B + 0.01);
+    expect(log.filter((c) => c.op === 'fill' && c.fillStyle === '#0000ff')).toHaveLength(0);
+  }
+  progress.draw({ ...ctx, local: 3.6, t: 3.6 }, s);
+  expect(css(s.more!.el.goal).transform).toMatch(/scale\(1(\.0+)?\)/);
+});
+
+test('vine: goal none draws neither bud nor flower; a picture goal that fails opens the drawn flower', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'vine', goal: 'none', done: '#0000ff' }), s = progress.build(ctx);
+  for (const local of [1.5, 3.6]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(log.filter((c) => c.op === 'fill' && c.fillStyle === '#0000ff')).toHaveLength(0);
+  }
+  expect(s.more!.el.goal).toBeUndefined();
+  const p = ctxOf({ mode: 'vine', goal: 'media/nope.png', done: '#0000ff' }), sp = progress.build(p);
+  const img = sp.more!.root.querySelector('img')!;
+  expect(img.getAttribute('src')).toBe('media/nope.png');
+  Object.defineProperty(img, 'complete', { value: true });
+  Object.defineProperty(img, 'naturalWidth', { value: 0 });
+  log.length = 0;
+  progress.draw({ ...p, local: 3.6, t: 3.6 }, sp);
+  expect(css(sp.more!.el.goal).display).toBe('none');
+  expect(log.filter((c) => c.op === 'fill' && c.fillStyle === '#0000ff').length).toBeGreaterThanOrEqual(5);
+});
+
+test.each([{ thickness: 2 }, { thickness: 60 }, { thickness: 60, position: 'top' }])('vine %o: draws without throwing, inside its band and the side margins', (params) => {
+  for (const [W, H] of [[1080, 1920], [1920, 1080]]) {
+    const log = recorder(), ctx = ctxOf({ mode: 'vine', ...params }, 0, document.createElement('div'), W, H), s = progress.build(ctx), vb = vineBand(ctx);
+    for (const local of [0, 1.5, 3.2, 3.5]) {
+      log.length = 0;
+      expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
+      for (const [x, y] of canvasBoxes(log)) inside(x, y, vb);
+    }
+  }
+});
+
+test('vine: a 0.5 s item (and one of none) draws without throwing', () => {
+  recorder();
+  for (const dur of [0.5, 0]) {
+    const ctx = { ...ctxOf({ mode: 'vine' }), dur }, s = progress.build(ctx);
     for (const local of [0, 0.1, 0.25, 0.4, 0.5]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
   }
 });

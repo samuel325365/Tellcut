@@ -37,4 +37,9 @@ export const PROGRESS_SAMPLES: Sample[] = [
   { name: 'progress-ring', type: 'common.progress', params: { mode: 'ring' }, len: 4, at: [2, 3.2] },
   { name: 'wide-progress-ring', type: 'common.progress', params: { mode: 'ring' }, len: 4, at: [2, 3.2], wide: true },
   { name: 'progress-ring-step', type: 'common.progress', params: { mode: 'ring', dots: 4, step: 1, runner: '🍕', align: 'left', position: 'bottom' }, len: 4, at: [1.5] },
+  // vine: half grown along the bottom (leaves coming out behind the tendril, the bud waiting), and the flower just open; a
+  // strawberry popping out at the end instead of the flower
+  { name: 'progress-vine', type: 'common.progress', params: { mode: 'vine', position: 'bottom', color: '#4caf50', done: '#ff8fb1' }, len: 4, at: [1.6, 3.55] },
+  { name: 'wide-progress-vine', type: 'common.progress', params: { mode: 'vine', position: 'bottom', color: '#4caf50', done: '#ff8fb1' }, len: 4, at: [1.6, 3.55], wide: true },
+  { name: 'progress-vine-fruit', type: 'common.progress', params: { mode: 'vine', position: 'bottom', color: '#4caf50', done: '#ff8fb1', goal: '🍓' }, len: 4, at: [1.6, 3.3] },
 ];
