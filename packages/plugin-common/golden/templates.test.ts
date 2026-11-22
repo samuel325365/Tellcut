@@ -16,7 +16,7 @@
 // against the default burst) while a colour-only variant went as far as 79 (backdrop sunburst), so grey values are not compared.
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { chromaRotate, meanAbsDiff, printOf, readPng, sampleDistance, TELLCUT_ROOT, TEMPLATE_LIKENESS, tintBy, type Rgba, type TimedPrint } from '@tellcut/media-node';
+import { chromaRotate, COLOUR_LIKENESS, colourDistance, colourPrintOf, meanAbsDiff, printOf, readPng, sampleDistance, TELLCUT_ROOT, TEMPLATE_LIKENESS, tintBy, type Rgba, type TimedPrint } from '@tellcut/media-node';
 import type { ItemType } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
 import { samples, templateSample, type Sample } from '../src/samples.ts';
@@ -98,6 +98,45 @@ describe('the threshold, calibrated on the 2026-11-15 looks', () => {
         // either time apart would let it in: the farthest of its times
         const d = Math.max(...s.at.map((t) => { const p = picture(fileOf(s, t)); return meanAbsDiff(printOf(make(p)), printOf(p)); }));
         if (d >= TEMPLATE_LIKENESS) far.push(`${name} ${v}: ${d.toFixed(3)}`);
+      }
+    }
+    expect(far).toEqual([]);
+  });
+});
+
+// The colour measure (likeness.ts colourDistance, mean ΔE2000 of 16 × 16 cells), for the blocks marked likeness 'colour' only,
+// calibrated 2026-11-22 on the made-up street (golden/fixtures/colour-ref.png) the way the edge measure was, both sides kept true below:
+//   - distinct gradings (the photo alone, mono orange, black and white, mono blue, mono deepened, half black): 15 pairs, the nearest
+//     10.58 (mono against mono deepened), the next 15.16 (the photo against black and white);
+//   - near twins (the half black a little lighter) and each grading nudged in memory (3 % darker or lighter, its hue turned 10° either
+//     way): 25, the farthest 7.44 (mono deepened turned 10° back), the twin 2.56.
+// COLOUR_LIKENESS (9) sits between the two. CIE76 could not: an orange mono turned 8° yellower came 20 apart, farther than two
+// different grades. common.tone takes no part: its soft light changes the street by about 2.4 at the default, below any measure, so
+// it has no templates. The 115 colour-only variants of the 23 looks above would pass this measure; it is never asked about them, as
+// those blocks are not marked.
+describe('the colour measure, calibrated on the gradings of 2026-11-22', () => {
+  const GRADINGS = ['colour-cal-photo', 'grade-photo', 'colour-cal-bw', 'colour-cal-blue', 'colour-cal-deep', 'colour-cal-black'];
+  const TWINS: Array<[string, string]> = [['colour-cal-black', 'colour-cal-black2']];
+  const colourOf = (name: string) => { const s = sample(name); return colourPrintOf(picture(fileOf(s, s.at[0]))); };
+  const nudged = (p: Rgba, k: number): Rgba => ({ ...p, data: Uint8Array.from(p.data, (v, i) => (i % 4 === 3 ? v : Math.max(0, Math.min(255, Math.round(v * k))))) });
+
+  test('distinct gradings are farther apart than COLOUR_LIKENESS', () => {
+    const near: string[] = [];
+    for (let i = 0; i < GRADINGS.length; i++) for (let j = i + 1; j < GRADINGS.length; j++) {
+      const d = colourDistance(colourOf(GRADINGS[i]), colourOf(GRADINGS[j]));
+      if (d <= COLOUR_LIKENESS) near.push(`${GRADINGS[i]} ~ ${GRADINGS[j]}: ${d.toFixed(2)}`);
+    }
+    expect(near).toEqual([]);
+  });
+
+  test('a near twin, and a grading 3 % darker or lighter or turned 10°, stays nearer than COLOUR_LIKENESS', () => {
+    const far: string[] = [];
+    for (const [a, b] of TWINS) { const d = colourDistance(colourOf(a), colourOf(b)); if (d >= COLOUR_LIKENESS) far.push(`${a} ~ ${b}: ${d.toFixed(2)}`); }
+    for (const name of GRADINGS) {
+      const s = sample(name), p = picture(fileOf(s, s.at[0])), own = colourPrintOf(p);
+      for (const [v, q] of [['3 % darker', nudged(p, 0.97)], ['3 % lighter', nudged(p, 1.03)], ['hue +10°', chromaRotate(p, 10)], ['hue −10°', chromaRotate(p, -10)]] as const) {
+        const d = colourDistance(own, colourPrintOf(q));
+        if (d >= COLOUR_LIKENESS) far.push(`${name} ${v}: ${d.toFixed(2)}`);
       }
     }
     expect(far).toEqual([]);

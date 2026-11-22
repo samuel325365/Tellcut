@@ -8,7 +8,7 @@
 //
 // That measure is blind, on purpose, to what the colour-only blocks do (common.grade, common.tone, core.flash's fades: the blocks marked
 // `likeness: 'colour'`), so their templates are also measured by a second one: the colour print, the picture shrunk to 16 × 16 cells,
-// each the cell's mean colour in CIELAB, compared as the mean ΔE (CIE76) of the cells — what colour the picture turns, and how light,
+// each the cell's mean colour in CIELAB, compared as the mean ΔE2000 of the cells — what colour the picture turns, and how light,
 // where. Only those blocks are measured by it (a template of theirs passes when either measure does); every other block's templates
 // are measured by the edge print alone, so a colour-only variant of a look stays refused.
 import { readFileSync } from 'node:fs';
@@ -85,7 +85,7 @@ export function sampleDistance(own: TimedPrint[], other: TimedPrint[], dist: (a:
 export const COLOUR_SIZE = 16;
 /** how far apart (mean ΔE) the colour prints of two templates of a colour block must be, beside the edge measure (calibrated in
  *  plugin-common/golden/templates.test.ts) */
-export const COLOUR_LIKENESS = 10;
+export const COLOUR_LIKENESS = 9;
 
 /** an sRGB level (0–255) in linear light (0–1) */
 const linear = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -119,12 +119,34 @@ export function colourSquare(p: Rgba, size = COLOUR_SIZE): Float32Array {
 /** the picture's colour print: its colour square */
 export const colourPrintOf = (p: Rgba) => colourSquare(p);
 
-/** the mean ΔE (CIE76: the distance in Lab) of two colour prints' cells */
+/** The mean ΔE2000 of two colour prints' cells. Not CIE76 (the plain distance in Lab): that counts a small turn of a strong colour as
+ *  a big change (a grade's mono orange turned 8° yellower came 20 apart, farther than two different grades), where CIEDE2000 weighs
+ *  chroma and hue by how strong the colour is, as the eye does. */
 export function colourDistance(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length || a.length % 3) throw new Error(`兩張色彩縮圖大小不同（${a.length}、${b.length}）`);
   let s = 0;
-  for (let i = 0; i < a.length; i += 3) s += Math.hypot(a[i] - b[i], a[i + 1] - b[i + 1], a[i + 2] - b[i + 2]);
+  for (let i = 0; i < a.length; i += 3) s += deltaE2000(a[i], a[i + 1], a[i + 2], b[i], b[i + 1], b[i + 2]);
   return s / (a.length / 3);
+}
+
+const RAD = Math.PI / 180;
+/** a hue angle in degrees, 0–360 (0 for a grey) */
+const hueOf = (b: number, a: number) => { if (!a && !b) return 0; const h = Math.atan2(b, a) / RAD; return h < 0 ? h + 360 : h; };
+
+/** CIEDE2000 between two Lab colours (Sharma, Wu and Dalal's formulation; kL = kC = kH = 1) */
+export function deltaE2000(L1: number, a1: number, b1: number, L2: number, a2: number, b2: number): number {
+  const Cm = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2, G = 0.5 * (1 - Math.sqrt(Cm ** 7 / (Cm ** 7 + 25 ** 7)));
+  const a1p = (1 + G) * a1, a2p = (1 + G) * a2, C1 = Math.hypot(a1p, b1), C2 = Math.hypot(a2p, b2), h1 = hueOf(b1, a1p), h2 = hueOf(b2, a2p);
+  const grey = C1 * C2 === 0;
+  let dh = grey ? 0 : h2 - h1;
+  if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
+  const dL = L2 - L1, dC = C2 - C1, dH = 2 * Math.sqrt(C1 * C2) * Math.sin((dh / 2) * RAD);
+  const Lm = (L1 + L2) / 2, Cpm = (C1 + C2) / 2;
+  const hm = grey ? h1 + h2 : Math.abs(h1 - h2) > 180 ? (h1 + h2 + (h1 + h2 < 360 ? 360 : -360)) / 2 : (h1 + h2) / 2;
+  const T = 1 - 0.17 * Math.cos((hm - 30) * RAD) + 0.24 * Math.cos(2 * hm * RAD) + 0.32 * Math.cos((3 * hm + 6) * RAD) - 0.2 * Math.cos((4 * hm - 63) * RAD);
+  const SL = 1 + (0.015 * (Lm - 50) ** 2) / Math.sqrt(20 + (Lm - 50) ** 2), SC = 1 + 0.045 * Cpm, SH = 1 + 0.015 * Cpm * T;
+  const RT = -2 * Math.sqrt(Cpm ** 7 / (Cpm ** 7 + 25 ** 7)) * Math.sin(60 * Math.exp(-(((hm - 275) / 25) ** 2)) * RAD);
+  return Math.sqrt((dL / SL) ** 2 + (dC / SC) ** 2 + (dH / SH) ** 2 + RT * (dC / SC) * (dH / SH));
 }
 
 /** a golden PNG file */

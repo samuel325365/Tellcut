@@ -283,6 +283,14 @@ export const STYLES: Sample[] = [
   // core.flash: over the default's plain stage, so the measure sees only what the flash draws
   tpl(flash, 'bloom-pop', { len: 1, at: [0.15, 0.35] }),
   tpl(flash, 'fade-in', { at: [1.2, 2.0] }),
+  // the colour measure's calibration (golden/templates.test.ts), over the made-up street at one moment: distinct gradings it must set
+  // apart (with grade-photo, the mono orange), and a near twin it must not (the half black a little lighter)
+  { name: 'colour-cal-photo', type: 'core.flash', ...OVER_REF, params: { peak: 0 }, len: 2, at: [1.0] },
+  { name: 'colour-cal-bw', type: 'common.grade', ...OVER_REF, params: { steps: '0|bw' }, len: 2, at: [1.0] },
+  { name: 'colour-cal-blue', type: 'common.grade', ...OVER_REF, params: { steps: '0|mono', color: '#3a7bd5' }, len: 2, at: [1.0] },
+  { name: 'colour-cal-deep', type: 'common.grade', ...OVER_REF, params: { steps: '0|mono', deep: true }, len: 2, at: [1.0] },
+  { name: 'colour-cal-black', type: 'core.flash', ...OVER_REF, params: { color: '#000', keys: '0:0.5' }, len: 2, at: [1.0] },
+  { name: 'colour-cal-black2', type: 'core.flash', ...OVER_REF, params: { color: '#000', keys: '0:0.45' }, len: 2, at: [1.0] },
   // common.film's first sample (basics.ts film) drawn 16:9: the default picture the 16:9 template cinema-scope is compared with
   { name: 'wide-film', type: 'common.film', params: { grain: 0.3, vignette: 0.5 }, at: [0.5], wide: true },
 ];

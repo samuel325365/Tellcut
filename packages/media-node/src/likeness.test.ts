@@ -1,4 +1,4 @@
-import { chromaRotate, COLOUR_SIZE, colourDistance, colourPrintOf, colourSquare, edgePrint, greySquare, meanAbsDiff, printOf, sampleDistance, tintBy, type Rgba } from './likeness.ts';
+import { chromaRotate, COLOUR_SIZE, colourDistance, deltaE2000, colourPrintOf, colourSquare, edgePrint, greySquare, meanAbsDiff, printOf, sampleDistance, tintBy, type Rgba } from './likeness.ts';
 
 /** a w×h picture: `fill(x, y)` gives each pixel's [r, g, b] */
 function pic(w: number, h: number, fill: (x: number, y: number) => [number, number, number]): Rgba {
@@ -56,14 +56,14 @@ test('colourSquare: each cell\'s mean colour in CIELAB (L*, a*, b*), averaged in
   expect(colourSquare(pic(300, 200, () => [100, 100, 100])).length).toBe(COLOUR_SIZE * COLOUR_SIZE * 3);
 });
 
-test('colourDistance: the mean ΔE of the cells; it sees what the edge print drops', () => {
+test('colourDistance: the mean ΔE2000 of the cells; it sees what the edge print drops', () => {
   const white = colourPrintOf(pic(32, 32, () => [255, 255, 255])), black = colourPrintOf(pic(32, 32, () => [0, 0, 0]));
   expect(colourDistance(white, white)).toBe(0);
   expect(colourDistance(white, black)).toBeCloseTo(100, 0);
   // a grey and a red of about its lightness differ in a*, not L*
   const grey = colourPrintOf(pic(32, 32, () => [128, 128, 128])), red = colourPrintOf(pic(32, 32, () => [200, 90, 90]));
   expect(Math.abs(grey[0] - red[0])).toBeLessThan(5);
-  expect(colourDistance(grey, red)).toBeGreaterThan(30);
+  expect(colourDistance(grey, red)).toBeGreaterThan(15);
   // a recoloured disc: the edges alike, the colours far apart
   const a = disc(40, 40), turned = chromaRotate(a, 180);
   expect(meanAbsDiff(printOf(a), printOf(turned))).toBeLessThan(0.05);
@@ -77,4 +77,11 @@ test('sampleDistance takes the measure to compare with, the times paired as befo
   const w = colourPrintOf(pic(16, 16, () => [255, 255, 255])), k = colourPrintOf(pic(16, 16, () => [0, 0, 0]));
   expect(sampleDistance([{ t: 1, print: w }], [{ t: 0.9, print: w }, { t: 2, print: k }], colourDistance)).toBe(0);
   expect(sampleDistance([{ t: 2, print: w }], [{ t: 0.9, print: w }, { t: 2, print: k }], colourDistance)).toBeCloseTo(100, 0);
+});
+
+test('deltaE2000 matches the published worked pairs (Sharma, Wu and Dalal 2005)', () => {
+  expect(deltaE2000(50, 2.6772, -79.7751, 50, 0, -82.7485)).toBeCloseTo(2.0425, 3);
+  expect(deltaE2000(50, 2.5, 0, 73, 25, -18)).toBeCloseTo(27.1492, 3);
+  expect(deltaE2000(50, 0, 0, 50, -1, 2)).toBeCloseTo(2.3669, 3);
+  expect(deltaE2000(60.2574, -34.0099, 36.2677, 60.4626, -34.1751, 39.4387)).toBeCloseTo(1.2644, 3);
 });

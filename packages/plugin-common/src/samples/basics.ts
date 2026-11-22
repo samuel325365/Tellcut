@@ -1,9 +1,11 @@
 // Golden samples, in order (samples.ts joins the parts):
 // the core blocks, the library expansion (2026-10-18) and the first promotions from the shorts (2026-10-19).
-import { type Sample, QUOTE, VS, PIC } from './fixtures.ts';
+import { type Sample, QUOTE, VS, PIC, OVER_REF } from './fixtures.ts';
 
 export const BASICS: Sample[] = [
   // the five core blocks: the block gallery's thumbnails come from these pictures (and they keep the core look from drifting)
+  // core-flash-photo first: the default flash over the made-up street (its gallery thumbnail, what its templates are measured against)
+  { name: 'core-flash-photo', type: 'core.flash', ...OVER_REF, at: [0.05] },
   { name: 'core-flash', type: 'core.flash', at: [0.05] },
   { name: 'core-title', type: 'core.title', params: { text: '京都三日', sub: '秋天的第一場旅行' }, at: [1.5] },
   { name: 'core-caption', type: 'core.caption', params: { text: '這家店開了四十年' }, at: [1.5] },
@@ -98,6 +100,7 @@ export const BASICS: Sample[] = [
   { name: 'mystery-long', type: 'common.mystery', len: 8, at: [6.5], bg: '#8a6a4a' },
   { name: 'outro', type: 'common.outro', at: [0.8, 2.95] },
   { name: 'wide-outro', type: 'common.outro', at: [2.95], wide: true },
+  { name: 'tone-photo', type: 'common.tone', ...OVER_REF, at: [1.0] },
   { name: 'tone', type: 'common.tone', at: [1.0], bg: '#7f7f7f' },
   { name: 'caption-pop', type: 'common.caption', params: { text: '真的【超級超級】好吃', animIn: 'pop', hlScale: 1.12, tag: '蔥油餅', position: 'center' }, at: [0.25, 1.5] },
   // promoted from the baking-steps and baking-sin shorts (2026-10-19): the handwritten recipe card kit and the sin meter kit
