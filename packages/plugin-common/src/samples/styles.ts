@@ -13,6 +13,7 @@ import { rolldoor } from '../rolldoor.ts';
 import { backdrop } from '../backdrop.ts';
 import { shader } from '../shader.ts';
 import { grade } from '../grade.ts';
+import { progress } from '../progress.ts';
 import { type Sample, PIC, OVER_REF, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -291,6 +292,12 @@ export const STYLES: Sample[] = [
   tpl(grade, 'mono-punch', { ...OVER_REF, len: 2, at: [0.15, 0.6] }),
   tpl(grade, 'bw-hold', { ...OVER_REF, len: 2, at: [1.0] }),
   tpl(grade, 'sepia', { ...OVER_REF, len: 2, at: [1.0] }),
+  // progress: the character modes' templates (segments has none: a thin bar at the top is too like the default), 9:16 like the block's first sample, on their way and arrived
+  tpl(progress, 'dog', { len: 4, at: [1.4, 3.2] }),
+  tpl(progress, 'sausage', { len: 4, at: [1.5, 3.3] }),
+  tpl(progress, 'paws', { len: 4, at: [1.55, 3.3] }),
+  tpl(progress, 'fuse', { len: 4, at: [0.8, 1.5] }),
+  tpl(progress, 'battery', { len: 4, at: [1.5, 3.1] }),
   // the colour measure's calibration (golden/templates.test.ts), over the made-up street at one moment: distinct gradings it must set
   // apart (with grade-photo, the mono orange), and a near twin it must not (the half black a little lighter)
   { name: 'colour-cal-photo', type: 'core.flash', ...OVER_REF, params: { peak: 0 }, len: 2, at: [1.0] },

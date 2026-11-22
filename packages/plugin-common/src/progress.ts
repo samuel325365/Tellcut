@@ -8,6 +8,9 @@
 // with their keyword as each point is made (`fills`), and can hop with a glow later (`pulses`, a recap); common.slip's `slot` flies a
 // big card into one of them; or osd (the retro-vlog acceptance film's fx.todo): a camcorder-OSD to-do counter in VT323 with a VHS
 // colour fringe, "TO-DO 3/6" over a row of boxes that tick at `fills`, the item just ticked typed under them for `hold` seconds.
+// Six character modes (spec 2026-11-22) are drawn in progress/: runner (an emoji hopping along a track to a flag), stretch (a
+// hand-drawn dachshund, cat or caterpillar whose body is the bar), paws (prints stamped one by one), segments (a stories bar),
+// fuse (a spark burning along a rope to a bomb) and battery (cells charging beside a percentage); each has a template.
 import { clamp, cssCamel, eIO3, eOut3, h, lerp, prog, textEm, type ItemType } from '@tellcut/engine';
 import { backOut, handCircle, handFamily, handPath, tick } from './hand.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
@@ -65,26 +68,33 @@ export const parsePulses = (text: string): Array<[number, number]> => String(tex
 
 export const progress: ItemType<P, S> = {
   type: 'common.progress', label: '進度條', category: 'chapter', kind: 'overlay',
-  doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；或 osd 攝影機 OSD 待辦計數：VT323 像素字帶錄影帶紅藍色邊，「TO-DO 3/6」（title 是前面的字）下面一排方格，到 fills 的秒數就勾起來（done 色）、剛勾的那項（labels）在方格下打字出現 hold 秒，全部勾完計數閃幾下；靠安全區右緣（align left 靠左），配 common.camcorder、common.ding；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用',
+  doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；或 osd 攝影機 OSD 待辦計數：VT323 像素字帶錄影帶紅藍色邊，「TO-DO 3/6」（title 是前面的字）下面一排方格，到 fills 的秒數就勾起來（done 色）、剛勾的那項（labels）在方格下打字出現 hold 秒，全部勾完計數閃幾下；靠安全區右緣（align left 靠左），配 common.camcorder、common.ding；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用；另有六種有角色的樣式（step -1 跟著時間走完全程，進度在結束前最多 1 秒先到終點、留時間演「到了」；step 0 以上是目前第幾章，這個項目裡從章頭走到章尾，一章放一個、dots 給總章數）：runner 角色跑道（角色 runner 預設 🐕，一跳一跳往右跑到終點的 goal，預設 🏁；可以是任何 emoji 或專案裡的圖檔，旅行用 ✈️ 🚗、寵物用 🐕 🐈）；stretch 長條狗（手繪的臘腸狗，身體就是進度條、越走越長，尾巴搖、到終點吐舌頭；look cat 貓、worm 毛毛蟲；color 是毛色，例如 #c98a4b）；paws 腳印（一個個蓋上去，dots 是腳印數，建議 12；runner 換成別的印章 emoji）；segments 分段條（每章一段、目前這段慢慢填滿，dots 是段數，at 給每段開始的秒數）；fuse 引線（火花沿繩子燒向 goal，預設 💣，倒數、鉤子、懸念；color 用 #ffb300）；battery 電量（角落一顆電池一格格充滿、旁邊寫百分比，低於 20% 是紅的、充滿變 done 色閃兩下；color 用 #34c759；align left 靠左）。paws 和 segments 夠扁、可以放上緣；runner、stretch、fuse、battery 比較高，放下緣（position bottom），放上緣時 common.header 要用自己的 y 往下讓',
+  templates: [
+    { id: 'dog', label: '狗狗跑道', doc: '寵物、散步、輕鬆的 Vlog：一隻小狗沿著畫面下緣的跑道一跳一跳往右跑，走過的地方填色，跑到終點的旗子時旗子彈一下；runner 換成別的 emoji 就是別的角色', params: { mode: 'runner', position: 'bottom', thickness: 14, iconSize: 1.4 } },
+    { id: 'sausage', label: '臘腸狗', doc: '寵物、家庭、可愛風的片子：手繪的臘腸狗在畫面下緣，身體就是進度條、越走越長，尾巴一直搖，到終點吐舌頭；look 換成 cat 或 worm', params: { mode: 'stretch', position: 'bottom', thickness: 16, color: '#c98a4b' } },
+    { id: 'paws', label: '一串腳印', doc: '寵物、散步、旅行路上：十二個腳印沿著上緣一個個蓋上去，左右腳交錯，最新的那個最亮', params: { mode: 'paws', dots: 12 } },
+    { id: 'fuse', label: '引線倒數', doc: '鉤子短片、懸念、倒數：火花沿著畫面下緣的繩子燒向炸彈，燒過的剩下灰，燒到時炸彈跳一下；結果在這一刻揭曉', params: { mode: 'fuse', position: 'bottom', color: '#ffb300', track: '#d9b382' } },
+    { id: 'battery', label: '充電中', doc: '開箱、挑戰、健身、一天的行程：左下角一顆電池一格格充滿，旁邊的百分比跟著跳，充滿時變色閃兩下', params: { mode: 'battery', position: 'bottom', align: 'left', size: 3.5, color: '#34c759' } },
+  ],
   params: [
-    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery'], default: 'bar' },
+    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數；runner 角色跑道；stretch 長條狗；paws 腳印；segments 分段條；fuse 引線；battery 電量）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery'], default: 'bar' },
     { key: 'position', label: '位置', type: 'enum', options: ['top', 'bottom'], default: 'top' },
-    { key: 'color', label: '顏色（tabs：目前這章；slots：卡左邊的色塊）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
-    { key: 'track', label: '底色', type: 'color', default: '#ffffff40' },
-    { key: 'thickness', label: '粗細（以 1080 短邊計的 px）', type: 'number', min: 2, max: 60, step: 1, default: 12 },
-    { key: 'dots', label: '點數（dots 樣式）', type: 'number', min: 2, max: 12, step: 1, default: 5 },
-    { key: 'step', label: '停在第幾個點／章（0 起算；-1＝隨時間走完全程；timeline：這一站，-1＝整條畫滿）', type: 'number', min: -1, max: 11, step: 1, default: -1 },
-    { key: 'iconSize', label: '圖示／點的大小倍數', type: 'number', min: 0.5, max: 3, step: 0.05, default: 1 },
+    { key: 'color', label: '顏色（tabs：目前這章；slots：卡左邊的色塊；stretch：毛色；fuse：火花；battery：亮的格子）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
+    { key: 'track', label: '底色（fuse：還沒燒的引線）', type: 'color', default: '#ffffff40' },
+    { key: 'thickness', label: '粗細（以 1080 短邊計的 px；runner 的角色、stretch 的身體跟著它變大；battery：外框線）', type: 'number', min: 2, max: 60, step: 1, default: 12 },
+    { key: 'dots', label: '點數（dots 樣式；paws：腳印數；segments：段數；battery：格數；runner、stretch、fuse 給了 step 時：總章數）', type: 'number', min: 2, max: 12, step: 1, default: 5 },
+    { key: 'step', label: '停在第幾個點／章（0 起算；-1＝隨時間走完全程；timeline：這一站，-1＝整條畫滿；runner 等六種：目前第幾章，這個項目裡走完這一章）', type: 'number', min: -1, max: 11, step: 1, default: -1 },
+    { key: 'iconSize', label: '圖示／點的大小倍數（runner 的角色、paws 的腳印也是）', type: 'number', min: 0.5, max: 3, step: 0.05, default: 1 },
     { key: 'y', label: '高度（畫面高比例；-1＝依「位置」放在安全區上緣或下緣；slots：卡列的中心）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'icons', label: '點上／章名前的圖示（emoji，逗號分隔，空＝一般圓點）', type: 'string', default: '' },
     { key: 'labels', label: '章名（tabs 樣式，逗號分隔；timeline：刻度上的日期；slots：每張卡的關鍵字，幾個就幾張；osd：待辦項目，幾個就幾格）', type: 'string', default: '準備,開始,完成' },
-    { key: 'size', label: '章名字級（tabs、slots、osd，畫面高 %；放不下會自動縮小；slots 的卡高跟著它；osd 的計數字約 1.3 倍）', type: 'number', min: 1, max: 8, step: 0.1, default: 2.4 },
-    { key: 'align', label: '對齊（tabs；osd：left 靠左，其他靠右）', type: 'enum', options: ['left', 'center', 'right'], default: 'center' },
-    { key: 'done', label: '做過的章的底色（tabs；osd：勾和全部完成的計數）', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
-    { key: 'ink', label: '字與外框（tabs；slots：實卡上的字）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
-    { key: 'paper', label: '還沒到的章的底色（tabs；slots：實卡的紙色，空卡的虛線；osd：字和方格）', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
+    { key: 'size', label: '章名字級（tabs、slots、osd，畫面高 %；放不下會自動縮小；slots 的卡高跟著它；osd 的計數字約 1.3 倍；battery：電池和百分比的大小）', type: 'number', min: 1, max: 8, step: 0.1, default: 2.4 },
+    { key: 'align', label: '對齊（tabs；osd、battery：left 靠左，其他靠右）', type: 'enum', options: ['left', 'center', 'right'], default: 'center' },
+    { key: 'done', label: '做過的章的底色（tabs；osd：勾和全部完成的計數；battery：充滿的顏色）', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
+    { key: 'ink', label: '字與外框（tabs；slots：實卡上的字；stretch：線條）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
+    { key: 'paper', label: '還沒到的章的底色（tabs；slots：實卡的紙色，空卡的虛線；osd：字和方格；stretch：肚子和口鼻；battery：外框和字）', type: 'color', default: '#fff8ec', theme: 'palette.paper' },
     { key: 'font', label: '字型（tabs）', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
-    { key: 'at', label: '每步開始的秒數（pencil；逗號分隔，多給一個＝全部完成的時間；空＝平均分配）', type: 'string', default: '' },
+    { key: 'at', label: '每步開始的秒數（pencil；逗號分隔，多給一個＝全部完成的時間；空＝平均分配；segments：每段開始的秒數）', type: 'string', default: '' },
     { key: 'title', label: '左邊的手寫標題（pencil；空＝不顯示；osd：計數前的字，例如 TO-DO）', type: 'string', default: '一分鐘食譜' },
     { key: 'counter', label: '計數字（pencil；開始前|進行中|全部完成，{n}/{N}）', type: 'string', default: '準備中|步驟 {n}／{N}|全部完成' },
     { key: 'counterSize', label: '計數字字級（pencil，畫面高 %；0＝跟著 size，約它的 0.74 倍）', type: 'number', min: 0, max: 8, step: 0.1, default: 0 },

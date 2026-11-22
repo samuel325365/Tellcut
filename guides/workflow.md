@@ -124,6 +124,11 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `glitch/rgb-hit`: A musical downbeat, the instant of a scare: every burst pulls the red and blue plates far apart, harder than look rgb alone.
   - `glitch/data-break`: Tech, hacking, a system error: many tall rectangles of the picture shoved sideways, tinted cyan and magenta.
   - `glitch/soft-tear`: A suspenseful build-up, quiet interference: now and then two or three thin colourless inverted bands flash by without stealing the scene.
+  - `progress/dog`: Pets, walks, easy-going vlogs: a little dog hops to the right along a track at the bottom of the frame, the part behind it filled in, and the flag at the finish bounces when it gets there; set runner to another emoji for another character.
+  - `progress/sausage`: Pets, family, anything cute: a hand-drawn dachshund at the bottom of the frame whose body is the progress bar and grows longer as it goes, tail wagging all the way, tongue out at the finish; set look to cat or worm for another animal.
+  - `progress/paws`: Pets, walks, on the road: twelve paw prints stamped one by one along the top edge, left and right feet alternating, the newest the brightest.
+  - `progress/fuse`: Hook shorts, suspense, countdowns: a spark burns along a rope at the bottom of the frame towards a bomb, leaving ash behind, and the bomb jumps when it gets there; reveal the answer at that moment.
+  - `progress/battery`: Unboxings, challenges, workouts, a day out: a battery in the lower left charges cell by cell, the percentage beside it counting up, and it changes colour and blinks twice when full.
   - `countdown/flip-clock`: A launch countdown, New Year's Eve: a split-flap clock flipping down one card at a time, the last step a number too.
   - `countdown/film-leader`: A retro opening, an old-movie start: a large leader disc almost the frame's width, its hand sweeping a turn each second from 5 down to 0, the last step a number too.
   - `countdown/slant-go`: Sports, the start of a challenge: very large slanted numbers with an arc on the right, ending in GO!
