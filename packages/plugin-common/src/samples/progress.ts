@@ -8,4 +8,10 @@ export const PROGRESS_SAMPLES: Sample[] = [
   { name: 'progress-runner', type: 'common.progress', params: { mode: 'runner', position: 'bottom' }, len: 4, at: [1.4, 3.2] },
   { name: 'wide-progress-runner', type: 'common.progress', params: { mode: 'runner', position: 'bottom' }, len: 4, at: [1.4, 3.2], wide: true },
   { name: 'progress-runner-car', type: 'common.progress', params: { mode: 'runner', position: 'bottom', runner: '🚗', goal: '🏠' }, len: 4, at: [1.8, 3.2] },
+  // stretch: the animal half grown (mid-step) and arrived (the dog's tongue out, the cat's tail up, the caterpillar's antennae
+  // quivering); warm natural colours, so the pictures read as animals
+  { name: 'progress-stretch', type: 'common.progress', params: { mode: 'stretch', position: 'bottom', thickness: 16, color: '#c98a4b' }, len: 4, at: [1.5, 3.3] },
+  { name: 'progress-stretch-cat', type: 'common.progress', params: { mode: 'stretch', position: 'bottom', thickness: 16, look: 'cat', color: '#8d8f98' }, len: 4, at: [1.5, 3.5] },
+  { name: 'progress-stretch-worm', type: 'common.progress', params: { mode: 'stretch', position: 'bottom', thickness: 16, look: 'worm', color: '#8bc34a' }, len: 4, at: [1.5, 3.15] },
+  { name: 'wide-progress-stretch', type: 'common.progress', params: { mode: 'stretch', position: 'bottom', thickness: 16, color: '#c98a4b' }, len: 4, at: [1.5, 3.3], wide: true },
 ];

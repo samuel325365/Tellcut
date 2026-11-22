@@ -4,9 +4,11 @@ import { cssCamel, h, type ItemCtx } from '@tellcut/engine';
 import { freeCanvas } from '../inkline.ts';
 import { drawRunner } from './runner.ts';
 import { fadeOut, type Draw, type More, type MoreMode, type MoreParams } from './shared.ts';
+import { drawStretch } from './stretch.ts';
 
 const DRAWS: Partial<Record<MoreMode, Draw>> = {
   runner: drawRunner,
+  stretch: drawStretch,
 };
 
 /** what rebuilds a mode's elements when it changes: the mode itself and the params that decide which elements there are */

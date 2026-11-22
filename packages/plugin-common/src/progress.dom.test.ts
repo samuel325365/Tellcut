@@ -150,7 +150,30 @@ test('runner: ready() waits for a picture; one that fails loses its src (the exp
   expect(css(s.more!.el.goalPole).display).toBe('block');
 });
 
+// stretch: all on the canvas, shown and faded by the mode itself; the pen's alpha back to 1 after every frame
+test.each(['dog', 'cat', 'worm'])('stretch %s: draws at the start, midway and the end, leaving globalAlpha at 1', (look) => {
+  const log = recorder(), ctx = ctxOf({ mode: 'stretch', look }), s = progress.build(ctx), g = s.cv.getContext('2d') as any;
+  const ops: Record<number, string> = {};
+  for (const local of [0, 1.7, 3.4, 3.85, 4, 1.7]) {
+    log.length = 0;
+    expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
+    expect(log.filter((c) => c.op === 'fill').length).toBeGreaterThan(5);
+    expect(g.globalAlpha).toBe(1);
+    expect(css(s.cv).display).toBe('block');
+    const seq = log.map((c) => `${c.op}@${c.globalAlpha}`).join(' ');
+    if (local in ops) expect(seq).toBe(ops[local]);   // one time drawn twice is the same
+    ops[local] = seq;
+  }
+  progress.draw({ ...ctx, local: 0, t: 0 }, s);
+  expect(Number(css(s.cv).opacity)).toBe(1);
+  progress.draw({ ...ctx, local: 4, t: 4 }, s);
+  expect(Number(css(s.cv).opacity)).toBe(0);
+  // the old modes' elements stay hidden under it
+  expect(css(s.track).display).toBe('none');
+});
+
 test.each([0, 0.3, 0.8, 1.19])('a %s s character item draws without throwing', (dur) => {
+  recorder();   // jsdom has no 2D context of its own: the canvas modes draw on the recorder
   for (const mode of ['runner', 'stretch', 'paws', 'segments', 'fuse', 'battery']) {
     const ctx = { ...ctxOf({ mode }), dur }, s = progress.build(ctx);
     for (const local of [0, dur / 2, dur]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
