@@ -10,7 +10,7 @@ function recorder() {
   const st: Record<string, unknown> = { globalAlpha: 1, lineWidth: 1, lineCap: 'butt', lineJoin: 'miter' };
   const g: any = new Proxy({}, {
     get: (_t, k) => (typeof k === 'symbol' ? undefined : k in st ? st[k as string]
-      : (...args: unknown[]) => { log.push({ op: String(k), globalAlpha: st.globalAlpha as number, args }); return k === 'measureText' ? { width: 10 } : undefined; }),
+      : (...args: unknown[]) => { log.push({ op: String(k), globalAlpha: st.globalAlpha as number, args }); return k === 'measureText' ? { width: 10 } : /^create\w*Gradient$/.test(String(k)) ? { addColorStop() {} } : undefined; }),
     set: (_t, k, v) => { st[k as string] = v; return true; },
   });
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => g);
@@ -255,4 +255,92 @@ test('segments: in the side margins at the bar\'s height and place, filling left
   progress.draw({ ...ctx, local: 1.5, t: 1.5 }, s);
   expect(s.more!.root.innerHTML).toBe(once);
   expect(css(s.cv).display).toBe('none');
+});
+
+// fuse: the rope and spark on the canvas, the bomb (DOM) at the right end inside the margins, popping on arrival
+test('fuse: the bomb stays inside the side safe margins, pops on arrival, and the frame is the same twice', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'fuse' }), s = progress.build(ctx), side = ctx.theme.safe.side * ctx.W, g = s.cv.getContext('2d') as any;
+  const seqs: Record<number, string> = {};
+  for (const local of [0, 1.5, 2.9, 3.05, 3.15, 3.5, 1.5]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(css(s.cv).display).toBe('block');
+    expect(g.globalAlpha).toBe(1);
+    const b = box(s.more!.el.goal);
+    expect(b.left).toBeGreaterThanOrEqual(side - 0.01);
+    expect(b.right).toBeLessThanOrEqual(ctx.W - side + 0.01);
+    const seq = JSON.stringify(log.map((c) => [c.op, c.globalAlpha, c.args])) + s.more!.root.innerHTML;
+    if (local in seqs) expect(seq).toBe(seqs[local]);
+    seqs[local] = seq;
+  }
+  expect(s.more!.el.goalText.textContent).toBe('💣');
+  progress.draw({ ...ctx, local: 3.15, t: 3.15 }, s);
+  expect(css(s.more!.el.goal).transform).toMatch(/scale\(1\.[1-3]/);
+  progress.draw({ ...ctx, local: 3.6, t: 3.6 }, s);
+  expect(css(s.more!.el.goal).transform).toMatch(/scale\(1(\.0+)?\)/);
+  expect(ctxOf({ mode: 'fuse', goal: 'none' }) && (() => { const c2 = ctxOf({ mode: 'fuse', goal: 'none' }), s2 = progress.build(c2); progress.draw(c2, s2); return s2.more!.el.goal; })()).toBeUndefined();
+});
+
+test('fuse: the spark (its glow and rays) stays inside the side margins, and is gone once arrived', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'fuse' }), s = progress.build(ctx), side = ctx.theme.safe.side * ctx.W;
+  const arcs = () => log.filter((c) => c.op === 'arc' || c.op === 'createRadialGradient');
+  for (const local of [0, 1.5, 2.99]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    const at = log.filter((c) => c.op === 'createRadialGradient');
+    expect(at.length).toBeGreaterThan(0);
+    for (const c of at) {
+      const [x, , , , , r] = c.args as number[];
+      expect(x - r).toBeGreaterThanOrEqual(side - 0.01);
+      expect(x + r).toBeLessThanOrEqual(ctx.W - side + 0.01);
+    }
+  }
+  log.length = 0;
+  progress.draw({ ...ctx, local: 3.3, t: 3.3 }, s);
+  expect(arcs().filter((c) => c.op === 'createRadialGradient')).toHaveLength(0);
+});
+
+// battery: DOM in a corner of the safe area, the percentage beside it
+test.each(['right', 'center', 'left'])('battery %s: the battery and its percentage inside the side safe margins, the same twice', (align) => {
+  const ctx = ctxOf({ mode: 'battery', align }), s = progress.build(ctx), side = ctx.theme.safe.side * ctx.W;
+  for (const local of [0, 1.5, 3.2, 3.5]) {
+    progress.draw({ ...ctx, local, t: local }, s);
+    const el = s.more!.el, body = css(el.body), nub = css(el.nub), text = css(el.text);
+    const left = parseFloat(body.left), right = parseFloat(nub.left) + parseFloat(nub.width);
+    expect(left).toBeGreaterThanOrEqual(side - 0.01);
+    expect(right).toBeLessThanOrEqual(ctx.W - side + 0.01);
+    if (align === 'left') {
+      expect(left).toBeCloseTo(side, 1);
+      // the text starts right of the nub
+      expect(parseFloat(text.left)).toBeGreaterThan(right);
+      expect(text.transform ?? 'none').toBe('none');
+    } else {
+      expect(right).toBeCloseTo(ctx.W - side, 1);
+      // the text ends left of the battery
+      expect(text.transform).toBe('translateX(-100%)');
+      expect(parseFloat(text.left)).toBeLessThan(left);
+    }
+    // not the full width
+    expect(right - left).toBeLessThan(ctx.W * 0.3);
+  }
+  progress.draw({ ...ctx, local: 1.37, t: 1.37 }, s);
+  const once = s.more!.root.innerHTML;
+  progress.draw({ ...ctx, local: 3.3, t: 3.3 }, s);
+  progress.draw({ ...ctx, local: 1.37, t: 1.37 }, s);
+  expect(s.more!.root.innerHTML).toBe(once);
+  expect(css(s.cv).display).toBe('none');
+});
+
+test('battery: the cells light one by one, red while low, all the done colour when full; the percentage counts up', () => {
+  const ctx = ctxOf({ mode: 'battery', dots: 5, color: '#00ff00', done: '#0000ff' }), s = progress.build(ctx);
+  expect(s.more!.list).toHaveLength(5);
+  progress.draw({ ...ctx, local: 0.2, t: 0.2 }, s);
+  expect(s.more!.el.text.textContent).toBe('6%');
+  expect(css(s.more!.list[0]).background).toBe('#ff4d4f');
+  progress.draw({ ...ctx, local: 1.5, t: 1.5 }, s);
+  expect(s.more!.el.text.textContent).toBe('50%');
+  expect(s.more!.list.slice(0, 2).map((c) => css(c).background)).toEqual(['#00ff00', '#00ff00']);
+  progress.draw({ ...ctx, local: 3.5, t: 3.5 }, s);
+  expect(s.more!.el.text.textContent).toBe('100%');
+  for (const c of s.more!.list) expect(css(c).background).toBe('#0000ff');
 });

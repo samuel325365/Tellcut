@@ -2,6 +2,8 @@
 // draws nothing (its root stays empty, the canvas hidden and given back).
 import { cssCamel, h, type ItemCtx } from '@tellcut/engine';
 import { freeCanvas } from '../inkline.ts';
+import { drawBattery } from './battery.ts';
+import { drawFuse } from './fuse.ts';
 import { drawPaws } from './paws.ts';
 import { drawRunner } from './runner.ts';
 import { drawSegments } from './segments.ts';
@@ -13,6 +15,8 @@ const DRAWS: Partial<Record<MoreMode, Draw>> = {
   stretch: drawStretch,
   paws: drawPaws,
   segments: drawSegments,
+  fuse: drawFuse,
+  battery: drawBattery,
 };
 
 /** what rebuilds a mode's elements when it changes: the mode itself and the params that decide which elements there are */

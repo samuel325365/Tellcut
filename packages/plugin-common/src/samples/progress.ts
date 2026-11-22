@@ -21,4 +21,11 @@ export const PROGRESS_SAMPLES: Sample[] = [
   // segments: a stories bar at the top, the third of five filling, and all full
   { name: 'progress-segments', type: 'common.progress', params: { mode: 'segments', position: 'top', dots: 5 }, len: 4, at: [1.5, 3.3] },
   { name: 'wide-progress-segments', type: 'common.progress', params: { mode: 'segments', position: 'top', dots: 5 }, len: 4, at: [1.5, 3.3], wide: true },
+  // fuse: the spark half way along a rope to the bomb, and the bomb at the top of its pop just after the spark got there
+  { name: 'progress-fuse', type: 'common.progress', params: { mode: 'fuse', position: 'bottom', color: '#ffb300', track: '#d9b382' }, len: 4, at: [1.5, 3.15] },
+  { name: 'wide-progress-fuse', type: 'common.progress', params: { mode: 'fuse', position: 'bottom', color: '#ffb300', track: '#d9b382' }, len: 4, at: [1.5, 3.15], wide: true },
+  // battery: half charged (the third cell breathing), then full in the done colour; low (the first chapter of five, red)
+  { name: 'progress-battery', type: 'common.progress', params: { mode: 'battery', position: 'bottom', size: 3, color: '#34c759' }, len: 4, at: [1.5, 3.1] },
+  { name: 'progress-battery-low', type: 'common.progress', params: { mode: 'battery', position: 'bottom', size: 3, color: '#34c759', step: 0 }, len: 4, at: [1.1] },
+  { name: 'wide-progress-battery', type: 'common.progress', params: { mode: 'battery', position: 'bottom', size: 3, color: '#34c759' }, len: 4, at: [1.5, 3.1], wide: true },
 ];
