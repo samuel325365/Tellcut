@@ -14,4 +14,11 @@ export const PROGRESS_SAMPLES: Sample[] = [
   { name: 'progress-stretch-cat', type: 'common.progress', params: { mode: 'stretch', position: 'bottom', thickness: 16, look: 'cat', color: '#8d8f98' }, len: 4, at: [1.5, 3.5] },
   { name: 'progress-stretch-worm', type: 'common.progress', params: { mode: 'stretch', position: 'bottom', thickness: 16, look: 'worm', color: '#8bc34a' }, len: 4, at: [1.5, 3.15] },
   { name: 'wide-progress-stretch', type: 'common.progress', params: { mode: 'stretch', position: 'bottom', thickness: 16, color: '#c98a4b' }, len: 4, at: [1.5, 3.3], wide: true },
+  // paws: a trail of twelve prints half way (the newest still landing) and all down; a star stamp instead of the drawn print
+  { name: 'progress-paws', type: 'common.progress', params: { mode: 'paws', dots: 12 }, len: 4, at: [1.55, 3.3] },
+  { name: 'progress-paws-star', type: 'common.progress', params: { mode: 'paws', dots: 12, runner: '⭐' }, len: 4, at: [1.55] },
+  { name: 'wide-progress-paws', type: 'common.progress', params: { mode: 'paws', dots: 12 }, len: 4, at: [1.55, 3.3], wide: true },
+  // segments: a stories bar at the top, the third of five filling, and all full
+  { name: 'progress-segments', type: 'common.progress', params: { mode: 'segments', position: 'top', dots: 5 }, len: 4, at: [1.5, 3.3] },
+  { name: 'wide-progress-segments', type: 'common.progress', params: { mode: 'segments', position: 'top', dots: 5 }, len: 4, at: [1.5, 3.3], wide: true },
 ];

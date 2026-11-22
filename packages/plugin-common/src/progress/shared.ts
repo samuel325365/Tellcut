@@ -8,6 +8,20 @@ export const MORE_MODES = ['runner', 'stretch', 'paws', 'segments', 'fuse', 'bat
 export type MoreMode = (typeof MORE_MODES)[number];
 export const isMoreMode = (m: string): m is MoreMode => (MORE_MODES as readonly string[]).includes(m);
 
+/** the room a progress bar or row of dots at the top takes under the top safe margin (a share of the frame height): a header keeps
+ *  below it. paws and segments fit in it too. */
+export const TOP_LANE = 0.035;
+
+/** pencil mode: chapter starts ("秒,秒,…"; empty = the item shared evenly) → the step that is on (−1 before the first) and whether all are done
+ *  (an extra time after the last start marks "all done") */
+export function pencilState(at: string, n: number, local: number, dur: number): { cur: number; starts: number[]; done: boolean; doneAt: number } {
+  const given = String(at ?? '').split(/[,，]/).map((x) => x.trim()).filter(Boolean).map(Number).filter(Number.isFinite);
+  const starts = given.length ? given.slice(0, n) : Array.from({ length: n }, (_, i) => (i * dur) / n), doneAt = given.length > n ? given[n] : Infinity;
+  let cur = -1;
+  for (let i = 0; i < starts.length; i++) if (local >= starts[i]) cur = i;
+  return { cur, starts, done: local >= doneAt, doneAt };
+}
+
 /** the seconds kept at the end of an item for the arrival (a quarter of it, at most one) */
 export const tail = (dur: number): number => Math.min(1, Math.max(0, dur) * 0.25);
 

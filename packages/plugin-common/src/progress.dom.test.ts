@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 // common.progress pencil: a frame drawn on the canvas kept from the frame before looks the same as one drawn on a fresh canvas.
 import { createRegistry, motion, resolveTheme, Stage, withDefaults, type ItemType } from '@tellcut/engine';
-import { progress } from './progress.ts';
+import { progress, TOP_LANE } from './progress.ts';
 
 const css = (el: Element) => ((el as any)._c ?? {}) as Record<string, string>;
 
 function recorder() {
-  const log: Array<{ op: string; globalAlpha: number }> = [];
+  const log: Array<{ op: string; globalAlpha: number; args: unknown[] }> = [];
   const st: Record<string, unknown> = { globalAlpha: 1, lineWidth: 1, lineCap: 'butt', lineJoin: 'miter' };
   const g: any = new Proxy({}, {
     get: (_t, k) => (typeof k === 'symbol' ? undefined : k in st ? st[k as string]
-      : (..._a: unknown[]) => { log.push({ op: String(k), globalAlpha: st.globalAlpha as number }); return k === 'measureText' ? { width: 10 } : undefined; }),
+      : (...args: unknown[]) => { log.push({ op: String(k), globalAlpha: st.globalAlpha as number, args }); return k === 'measureText' ? { width: 10 } : undefined; }),
     set: (_t, k, v) => { st[k as string] = v; return true; },
   });
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => g);
@@ -178,4 +178,81 @@ test.each([0, 0.3, 0.8, 1.19])('a %s s character item draws without throwing', (
     const ctx = { ...ctxOf({ mode }), dur }, s = progress.build(ctx);
     for (const local of [0, dur / 2, dur]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
   }
+});
+
+// paws: the default prints on the canvas, each placed by a translate to its centre; an emoji stamp is DOM
+const centres = (log: ReturnType<typeof recorder>) => log.filter((c) => c.op === 'translate').map((c) => c.args as [number, number]);
+
+test('paws: the drawn prints stay in the side margins and in the top lane, more of them as it goes, the same twice', () => {
+  const log = recorder(), ctx = ctxOf({ mode: 'paws', dots: 12 }), s = progress.build(ctx), g = s.cv.getContext('2d') as any;
+  const side = ctx.theme.safe.side * ctx.W, top = ctx.theme.safe.top * ctx.H, lane = TOP_LANE * ctx.H;
+  let before = 0;
+  const seqs: Record<number, string> = {};
+  for (const local of [0, 0.5, 1.5, 2.9, 3.5, 1.5]) {
+    log.length = 0;
+    progress.draw({ ...ctx, local, t: local }, s);
+    expect(css(s.cv).display).toBe('block');
+    expect(g.globalAlpha).toBe(1);
+    const at = centres(log);
+    for (const [x, y] of at) {
+      expect(x).toBeGreaterThanOrEqual(side);
+      expect(x).toBeLessThanOrEqual(ctx.W - side);
+      expect(y).toBeGreaterThanOrEqual(top);
+      expect(y).toBeLessThanOrEqual(top + lane);
+    }
+    if (local !== 1.5 || !(1.5 in seqs)) { expect(at.length).toBeGreaterThanOrEqual(before); before = at.length; }
+    const seq = JSON.stringify(log.map((c) => [c.op, c.globalAlpha, c.args]));
+    if (local in seqs) expect(seq).toBe(seqs[local]);
+    seqs[local] = seq;
+  }
+  // all twelve down by the end, on both sides of the line
+  progress.draw({ ...ctx, local: 3.5, t: 3.5 }, s);
+  expect(new Set(centres(log).slice(-12).map(([, y]) => y.toFixed(2))).size).toBe(2);
+  expect(s.more!.root.children.length).toBe(0);
+});
+
+test('paws: an emoji stamp is DOM, not mirrored, inside the side margins, the same twice', () => {
+  const ctx = ctxOf({ mode: 'paws', dots: 6, runner: '⭐' }), s = progress.build(ctx), side = ctx.theme.safe.side * ctx.W;
+  expect(s.more!.list).toHaveLength(6);
+  progress.draw({ ...ctx, local: 3.5, t: 3.5 }, s);
+  expect(css(s.cv).display).toBe('none');
+  for (const el of s.more!.list) {
+    expect(el.textContent).toBe('⭐');
+    expect(css(el).display).toBe('block');
+    expect(css(el).transform).not.toMatch(/scale\(-/);
+    const b = box(el);
+    expect(b.left).toBeGreaterThanOrEqual(side);
+    expect(b.right).toBeLessThanOrEqual(ctx.W - side);
+  }
+  progress.draw({ ...ctx, local: 0, t: 0 }, s);
+  expect(s.more!.list.filter((el) => css(el).display === 'block').length).toBe(0);
+  progress.draw({ ...ctx, local: 1.37, t: 1.37 }, s);
+  const once = s.more!.root.innerHTML;
+  progress.draw({ ...ctx, local: 2.9, t: 2.9 }, s);
+  progress.draw({ ...ctx, local: 1.37, t: 1.37 }, s);
+  expect(s.more!.root.innerHTML).toBe(once);
+});
+
+// segments: DOM, where bar is, one segment filling at a time
+test('segments: in the side margins at the bar\'s height and place, filling left to right, the same twice', () => {
+  const ctx = ctxOf({ mode: 'segments', dots: 5 }), s = progress.build(ctx), side = ctx.theme.safe.side * ctx.W;
+  progress.draw({ ...ctx, local: 1.5, t: 1.5 }, s);
+  const segs = s.more!.list;
+  expect(segs).toHaveLength(5);
+  const bar = ctxOf({ mode: 'bar' }), sb = progress.build(bar);
+  progress.draw(bar, sb);
+  for (const el of segs) {
+    const c = css(el);
+    expect(parseFloat(c.left)).toBeGreaterThanOrEqual(side);
+    expect(parseFloat(c.left) + parseFloat(c.width)).toBeLessThanOrEqual(ctx.W - side + 0.01);
+    expect(c.top).toBe(css(sb.track).top);
+    expect(c.height).toBe(css(sb.track).height);
+  }
+  // 1.5 s of 3: segments 0 and 1 full, 2 half, the rest empty
+  expect(segs.map((el) => css(el.firstElementChild!).width)).toEqual(['100%', '100%', '50%', '0%', '0%']);
+  const once = s.more!.root.innerHTML;
+  progress.draw({ ...ctx, local: 2.9, t: 2.9 }, s);
+  progress.draw({ ...ctx, local: 1.5, t: 1.5 }, s);
+  expect(s.more!.root.innerHTML).toBe(once);
+  expect(css(s.cv).display).toBe('none');
 });

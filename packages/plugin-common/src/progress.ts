@@ -14,7 +14,7 @@ import { canvasAt, freeCanvas } from './inkline.ts';
 import { fitPx, EMOJI_STACK, graphemes } from './text.ts';
 import { withAlpha } from './color.ts';
 import { picturesReady } from './progress/runner.ts';
-import { isMoreMode, type More } from './progress/shared.ts';
+import { isMoreMode, pencilState, TOP_LANE, type More } from './progress/shared.ts';
 import { drawMore } from './progress/more.ts';
 
 interface P {
@@ -34,18 +34,9 @@ export function activeStep(step: number, n: number, local: number, dur: number):
   return { active, since: local - (active * dur) / n };
 }
 
-/** the room a progress bar or row of dots at the top takes under the top safe margin (a share of the frame height): a header keeps below it */
-export const TOP_LANE = 0.035;
+// TOP_LANE and pencilState live in progress/shared.ts: paws and segments read them too, and importing them from here would make a cycle
+export { pencilState, TOP_LANE };
 
-/** pencil mode: chapter starts ("秒,秒,…"; empty = the item shared evenly) → the step that is on (−1 before the first) and whether all are done
- *  (an extra time after the last start marks "all done") */
-export function pencilState(at: string, n: number, local: number, dur: number): { cur: number; starts: number[]; done: boolean; doneAt: number } {
-  const given = String(at ?? '').split(/[,，]/).map((x) => x.trim()).filter(Boolean).map(Number).filter(Number.isFinite);
-  const starts = given.length ? given.slice(0, n) : Array.from({ length: n }, (_, i) => (i * dur) / n), doneAt = given.length > n ? given[n] : Infinity;
-  let cur = -1;
-  for (let i = 0; i < starts.length; i++) if (local >= starts[i]) cur = i;
-  return { cur, starts, done: local >= doneAt, doneAt };
-}
 /** the counter's words: "before|during|done", {n} and {N} filled in */
 export function counterText(tpl: string, cur: number, n: number, done: boolean): string {
   const [before = '', during = '', fin = ''] = String(tpl ?? '').split('|');
