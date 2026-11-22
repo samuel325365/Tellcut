@@ -146,6 +146,10 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `leak/flare-top`: A cinematic opening, a backlit shot, a sci-fi title: a very bright sideways flare streak held near the top right, its ghost discs lined up to the far side of the frame.
   - `leak/warm-corner`: Memories, family, a quiet interview: a soft warm glow resting in the top-left corner, barely moving, there for the whole item.
   - `leak/sweep-fast`: A transition between two shots: a small, bright warm glow sweeping from the left edge all the way out the right.
+  - `grade/bw-to-color`: Back from a memory to now: all black and white at first, the colours coming back at once at 0.6 s.
+  - `grade/mono-punch`: Stressing one moment: in its own colours, then from 0.3 s all one deep colour (deepened), back to its colours at 0.9 s.
+  - `grade/bw-hold`: A memory, a documentary or a serious part: black and white for the whole item.
+  - `grade/sepia`: Old streets, old photos, nostalgia: all one deepened brown, the bright parts toward beige.
   - `lens/spot-zoom`: Pointing out something small in the picture (a price, the words on a sign, a little thing in a hand): a round magnifier smaller than the default with a thin white rim, popping in past full size and settling, 2.5 times inside; it sits at the lower left, so move x and y onto the thing.
   - `lens/scan-glass`: Searching, inspecting, a close look: a round magnifier with a white rim and a glass gleam sweeps across the frame from left to right over the whole item, doubling whatever it passes; move y to the row to scan.
   - `lens/censor`: Hiding what must not be seen (a passer-by's face, a number plate, a logo): a square mosaic of the biggest cells (6% of the frame's short side) that stays put, with no entrance or exit, the same from start to end; move x, y and size onto what to hide.
