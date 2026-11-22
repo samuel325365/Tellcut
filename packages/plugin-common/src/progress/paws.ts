@@ -7,7 +7,7 @@
 import { clamp, cssCamel, eOut3 } from '@tellcut/engine';
 import { canvasAt } from '../inkline.ts';
 import { piece, showPiece, standing } from './runner.ts';
-import { band, fadeOut, tail, TOP_LANE, travel, type Draw } from './shared.ts';
+import { band, fadeOut, sinceAt, TOP_LANE, travel, type Draw } from './shared.ts';
 
 /** seconds a print takes to land */
 const LAND = 0.2;
@@ -28,13 +28,10 @@ export const pawPose = (i: number): { side: -1 | 1; tilt: number } => {
   return { side, tilt: side * 7 + (((i * 7) % 5) - 2) * 1.5 };
 };
 
-/** seconds since `travel` reached print i (of `dots`) at `local`: from travel's inverse, as it is linear in local over
- *  [0, dur − tail]; Infinity when it was there before the item began (or the item has no time to go along in) */
+/** seconds since `travel` reached print i (of `dots`) at `local` (sinceAt at the print's place); Infinity when it was there before
+ *  the item began (or the item has no time to go along in) */
 export function pawSince(step: number, dots: number, i: number, local: number, dur: number): number {
-  const n = Math.max(1, Math.round(dots)), v = (i + 0.5) / n, span = Math.max(0, dur) - tail(dur);
-  const a = travel(step, dots, 0, dur), b = travel(step, dots, span, dur);
-  if (v <= a || !(span > 0) || !(b > a)) return Infinity;
-  return local - (span * (v - a)) / (b - a);
+  return sinceAt(step, dots, (i + 0.5) / Math.max(1, Math.round(dots)), local, dur);
 }
 
 /** one print facing up, `u` px long, centred on the origin: a rounded three-lobed pad behind and four toes in an arc ahead */

@@ -2,6 +2,7 @@
 // common.progress pencil: a frame drawn on the canvas kept from the frame before looks the same as one drawn on a fresh canvas.
 import { createRegistry, motion, resolveTheme, Stage, withDefaults, type ItemType } from '@tellcut/engine';
 import { progress, TOP_LANE } from './progress.ts';
+import { MORE_MODES } from './progress/shared.ts';
 
 const css = (el: Element) => ((el as any)._c ?? {}) as Record<string, string>;
 
@@ -70,6 +71,28 @@ test('a canvas mode before a character mode leaves no picture behind, nor one af
   progress.draw(pencil, s);
   expect(css(s.cv).display).toBe('block');
   expect(css(s.more!.root).display).toBe('none');
+});
+
+test('switching rocket → bar → ring → fuse → rocket: one root at a time, the canvas cleared, the old elements hidden', () => {
+  recorder();
+  const rocket = ctxOf({ mode: 'rocket' }), s = progress.build(rocket);
+  progress.draw(rocket, s);
+  expect(s.more!.root.dataset.more).toBe('rocket');
+  progress.draw(ctxOf({ mode: 'bar' }, 1, rocket.root), s);
+  expect(css(s.more!.root).display).toBe('none');
+  expect(css(s.track).display).toBe('block');
+  const ring = ctxOf({ mode: 'ring' }, 1, rocket.root);
+  progress.draw(ring, s);
+  expect(s.more!.root.dataset.more).toBe('ring');
+  expect(css(s.track).display).toBe('none');
+  // a mode that paints on the canvas, then one that has not painted on it (yet): the picture is given back
+  progress.draw(ctxOf({ mode: 'fuse' }, 1, rocket.root), s);
+  expect(css(s.cv).display).toBe('block');
+  progress.draw(rocket, s);
+  expect(s.more!.root.dataset.more).toBe('rocket');
+  if (css(s.cv).display === 'none') expect(s.cv.width).toBe(0);
+  expect(rocket.root.querySelectorAll(':scope > [data-more]').length).toBe(1);
+  for (const el of [s.title, s.count, s.slots]) expect(css(el).display).toBe('none');
 });
 
 test('changing the dots, runner, goal or look rebuilds the mode, other params do not', () => {
@@ -174,7 +197,7 @@ test.each(['dog', 'cat', 'worm'])('stretch %s: draws at the start, midway and th
 
 test.each([0, 0.3, 0.8, 1.19])('a %s s character item draws without throwing', (dur) => {
   recorder();   // jsdom has no 2D context of its own: the canvas modes draw on the recorder
-  for (const mode of ['runner', 'stretch', 'paws', 'segments', 'fuse', 'battery']) {
+  for (const mode of MORE_MODES) {
     const ctx = { ...ctxOf({ mode }), dur }, s = progress.build(ctx);
     for (const local of [0, dur / 2, dur]) expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
   }

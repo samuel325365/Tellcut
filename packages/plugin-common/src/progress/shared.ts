@@ -4,7 +4,7 @@
 // dispatched by more.ts; progress.ts only hands over to drawMore for these modes.
 import { clamp, prog, type ItemCtx, type Theme } from '@tellcut/engine';
 
-export const MORE_MODES = ['runner', 'stretch', 'paws', 'segments', 'fuse', 'battery'] as const;
+export const MORE_MODES = ['runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps'] as const;
 export type MoreMode = (typeof MORE_MODES)[number];
 export const isMoreMode = (m: string): m is MoreMode => (MORE_MODES as readonly string[]).includes(m);
 
@@ -45,6 +45,14 @@ export function arrived(step: number, dots: number, local: number, dur: number):
   return local >= end ? local - end : -1;
 }
 
+/** seconds since `travel` reached `v` (0…1) at `local`: negative when it has not yet; Infinity when it was there before the item
+ *  began (or the item has no time to go along in). From travel's inverse, as it is linear in local over [0, dur − tail]. */
+export function sinceAt(step: number, dots: number, v: number, local: number, dur: number): number {
+  const span = Math.max(0, dur) - tail(dur), a = travel(step, dots, 0, dur), b = travel(step, dots, span, dur);
+  if (v <= a || !(span > 0) || !(b > a)) return Infinity;
+  return local - (span * (v - a)) / (b - a);
+}
+
 /** 1 → 0 over the last 0.3 s */
 export const fadeOut = (local: number, dur: number): number => 1 - prog(local, dur - 0.3, dur);
 
@@ -58,6 +66,13 @@ export function band(ctx: { W: number; H: number; theme: Theme }, p: MoreParams,
   const { W, H, theme } = ctx, x = theme.safe.side * W, w = Math.max(0, W - 2 * x), hh = Math.max(0, height);
   const top = p.y >= 0 ? p.y * H - hh / 2 : p.position === 'bottom' ? H * (1 - theme.safe.bottom) - hh : theme.safe.top * H;
   return { x, w, top };
+}
+
+/** a box bw × bh in a corner of the safe area: against the left safe edge when p.align is 'left', else the right; vertically by
+ *  band() (y ≥ 0 centred there, else the top or bottom safe edge) */
+export function corner(ctx: { W: number; H: number; theme: Theme }, p: MoreParams, bw: number, bh: number): { left: number; top: number } {
+  const side = ctx.theme.safe.side * ctx.W, { top } = band(ctx, p, bh);
+  return { left: p.align === 'left' ? side : ctx.W - side - Math.max(0, bw), top };
 }
 
 /** one mode's DOM, rebuilt when `key` changes: `root` (made by drawMore, empty at first) holds whatever the mode builds into it the

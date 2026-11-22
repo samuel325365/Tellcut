@@ -1,6 +1,7 @@
 // common.progress's character modes (spec 2026-11-22, progress characters): how far along, when it arrived, the fade, the box.
 import { resolveTheme } from '@tellcut/engine';
-import { arrived, band, fadeOut, isMoreMode, MORE_MODES, tail, travel, type MoreParams } from './shared.ts';
+import { pawSince } from './paws.ts';
+import { arrived, band, corner, fadeOut, isMoreMode, MORE_MODES, sinceAt, tail, travel, type MoreParams } from './shared.ts';
 
 test('tail: a quarter of the item, at most a second', () => {
   expect(tail(4)).toBe(1);
@@ -9,7 +10,8 @@ test('tail: a quarter of the item, at most a second', () => {
   expect(tail(0)).toBe(0);
 });
 
-test('isMoreMode: the six new modes, not the old ones', () => {
+test('isMoreMode: the character modes, not the old ones', () => {
+  expect(MORE_MODES).toEqual(['runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps']);
   for (const m of MORE_MODES) expect(isMoreMode(m)).toBe(true);
   for (const m of ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', '']) expect(isMoreMode(m)).toBe(false);
 });
@@ -77,4 +79,31 @@ test('band: inside the side safe margins; centred on y, or against the top or bo
   expect(b.top).toBeCloseTo(H / 2 - 50, 9);
   expect(band(ctx, params({ y: -1, position: 'top' }), 100).top).toBeCloseTo(theme.safe.top * H, 9);
   expect(band(ctx, params({ y: -1, position: 'bottom' }), 100).top).toBeCloseTo(H * (1 - theme.safe.bottom) - 100, 9);
+});
+
+test('sinceAt: seconds since travel reached v, negative before it, Infinity when it was there before the item began', () => {
+  // step −1 over 4 s (tail 1): span 3, v 0.5 reached at 1.5 s
+  expect(sinceAt(-1, 5, 0.5, 2, 4)).toBeCloseTo(0.5, 12);
+  expect(sinceAt(-1, 5, 0.5, 1, 4)).toBeCloseTo(-0.5, 12);
+  // chapter 2 of 5 starts at 0.4: 0.3 was passed before the item began
+  expect(sinceAt(2, 5, 0.3, 1, 4)).toBe(Infinity);
+  // no time to go along in
+  expect(sinceAt(-1, 5, 0.5, 0, 0)).toBe(Infinity);
+});
+
+test('sinceAt: what pawSince gave for each print', () => {
+  for (let i = 0; i < 12; i++) for (const local of [0, 0.4, 1.3, 2.2, 3, 3.7]) {
+    expect(pawSince(-1, 12, i, local, 4)).toBe(sinceAt(-1, 12, (i + 0.5) / 12, local, 4));
+    expect(pawSince(3, 12, i, local, 4)).toBe(sinceAt(3, 12, (i + 0.5) / 12, local, 4));
+  }
+});
+
+test('corner: against the left or right safe edge; top by band', () => {
+  const W = 1080, H = 1920, theme = resolveTheme(undefined, { width: W, height: H }), ctx = { W, H, theme }, side = theme.safe.side * W;
+  expect(corner(ctx, params({ align: 'left' }), 200, 80).left).toBeCloseTo(side, 9);
+  expect(corner(ctx, params({ align: 'right' }), 200, 80).left).toBeCloseTo(W - side - 200, 9);
+  expect(corner(ctx, params({ align: 'center' }), 200, 80).left).toBeCloseTo(W - side - 200, 9);
+  expect(corner(ctx, params({ position: 'bottom', y: -1 }), 200, 80).top).toBeCloseTo(H * (1 - theme.safe.bottom) - 80, 9);
+  expect(corner(ctx, params({ position: 'top', y: -1 }), 200, 80).top).toBeCloseTo(theme.safe.top * H, 9);
+  expect(corner(ctx, params({ y: 0.5 }), 200, 80).top).toBeCloseTo(H / 2 - 40, 9);
 });

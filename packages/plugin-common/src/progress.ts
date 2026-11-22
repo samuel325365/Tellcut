@@ -21,7 +21,7 @@ import { isMoreMode, pencilState, TOP_LANE, type More } from './progress/shared.
 import { drawMore } from './progress/more.ts';
 
 interface P {
-  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots' | 'osd' | 'runner' | 'stretch' | 'paws' | 'segments' | 'fuse' | 'battery'; hold: number; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; counterSize: number; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
+  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots' | 'osd' | 'runner' | 'stretch' | 'paws' | 'segments' | 'fuse' | 'battery' | 'rocket' | 'ring' | 'vine' | 'stamps'; hold: number; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; counterSize: number; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
   labels: string; size: number; align: 'left' | 'center' | 'right'; done: string; ink: string; paper: string; font: string;
   runner: string; goal: string; look: 'dog' | 'cat' | 'worm'; flip: boolean;
 }
@@ -77,7 +77,7 @@ export const progress: ItemType<P, S> = {
     { id: 'battery', label: '充電中', doc: '開箱、挑戰、健身、一天的行程：左下角一顆電池一格格充滿，旁邊的百分比跟著跳，充滿時變色閃兩下', params: { mode: 'battery', position: 'bottom', align: 'left', size: 3.5, color: '#34c759' } },
   ],
   params: [
-    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數；runner 角色跑道；stretch 長條狗；paws 腳印；segments 分段條；fuse 引線；battery 電量）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery'], default: 'bar' },
+    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數；runner 角色跑道；stretch 長條狗；paws 腳印；segments 分段條；fuse 引線；battery 電量）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps'], default: 'bar' },
     { key: 'position', label: '位置', type: 'enum', options: ['top', 'bottom'], default: 'top' },
     { key: 'color', label: '顏色（tabs：目前這章；slots：卡左邊的色塊；stretch：毛色；fuse：火花；battery：亮的格子）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'track', label: '底色（fuse：還沒燒的引線）', type: 'color', default: '#ffffff40' },
