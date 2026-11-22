@@ -13,12 +13,15 @@ import { backOut, handCircle, handFamily, handPath, tick } from './hand.ts';
 import { canvasAt, freeCanvas } from './inkline.ts';
 import { fitPx, EMOJI_STACK, graphemes } from './text.ts';
 import { withAlpha } from './color.ts';
+import { isMoreMode, type More } from './progress/shared.ts';
+import { drawMore } from './progress/more.ts';
 
 interface P {
-  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots' | 'osd'; hold: number; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; counterSize: number; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
+  mode: 'bar' | 'dots' | 'tabs' | 'pencil' | 'timeline' | 'slots' | 'osd' | 'runner' | 'stretch' | 'paws' | 'segments' | 'fuse' | 'battery'; hold: number; fills: string; pulses: string; from: number; place: string; at: string; title: string; counter: string; counterSize: number; handFont: string; position: 'top' | 'bottom'; color: string; track: string; thickness: number; dots: number; icons: string; iconSize: number; step: number; y: number;
   labels: string; size: number; align: 'left' | 'center' | 'right'; done: string; ink: string; paper: string; font: string;
+  runner: string; goal: string; look: 'dog' | 'cat' | 'worm'; flip: boolean;
 }
-interface S { track: HTMLElement; fill: HTMLElement; dots: HTMLElement[]; row: HTMLElement; tabs: HTMLElement[]; seps: HTMLElement[]; key: string; cv: HTMLCanvasElement; title: HTMLElement; count: HTMLElement; slots: HTMLElement; skey: string; cards: Slot[]; osd: string }
+interface S { track: HTMLElement; fill: HTMLElement; dots: HTMLElement[]; row: HTMLElement; tabs: HTMLElement[]; seps: HTMLElement[]; key: string; cv: HTMLCanvasElement; title: HTMLElement; count: HTMLElement; slots: HTMLElement; skey: string; cards: Slot[]; osd: string; more: More | null }
 interface Slot { box: HTMLElement; glow: HTMLElement; empty: HTMLElement; full: HTMLElement; block: HTMLElement; label: HTMLElement }
 
 const list = (s: string) => String(s).split(/[,，]/).map((x) => x.trim());
@@ -72,7 +75,7 @@ export const progress: ItemType<P, S> = {
   type: 'common.progress', label: '進度條', category: 'chapter', kind: 'overlay',
   doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；或 osd 攝影機 OSD 待辦計數：VT323 像素字帶錄影帶紅藍色邊，「TO-DO 3/6」（title 是前面的字）下面一排方格，到 fills 的秒數就勾起來（done 色）、剛勾的那項（labels）在方格下打字出現 hold 秒，全部勾完計數閃幾下；靠安全區右緣（align left 靠左），配 common.camcorder、common.ding；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用',
   params: [
-    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd'], default: 'bar' },
+    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery'], default: 'bar' },
     { key: 'position', label: '位置', type: 'enum', options: ['top', 'bottom'], default: 'top' },
     { key: 'color', label: '顏色（tabs：目前這章；slots：卡左邊的色塊）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'track', label: '底色', type: 'color', default: '#ffffff40' },
@@ -99,6 +102,10 @@ export const progress: ItemType<P, S> = {
     { key: 'fills', label: '每張卡翻成實卡的秒數（slots；osd：每格勾起來的秒數；逗號分隔，相對開始，沒給的那張一直空著；整欄空＝平均分配）', type: 'string', default: '' },
     { key: 'hold', label: '剛勾的項目在方格下停留的秒數（osd；0＝不打出項目名稱）', type: 'number', min: 0, max: 6, step: 0.1, default: 1.8 },
     { key: 'pulses', label: '卡跳一下發光（slots；「秒|第幾張」逗號分隔，0 起算；回顧時用）', type: 'string', default: '' },
+    { key: 'runner', label: '角色（runner；paws：印章；一個 emoji 或專案裡的圖檔；空＝狗／腳印）', type: 'string', default: '' },
+    { key: 'goal', label: '終點的東西（runner、fuse；emoji 或圖檔；空＝旗子／炸彈，none＝不畫）', type: 'string', default: '' },
+    { key: 'look', label: '動物（stretch）', type: 'enum', options: ['dog', 'cat', 'worm'], default: 'dog' },
+    { key: 'flip', label: '角色左右反過來（runner）', type: 'bool', default: false },
   ],
   build(ctx) {
     const track = h('div', null, null, ctx.root), fill = h('div', null, null, track), row = h('div', null, null, ctx.root);
@@ -113,7 +120,7 @@ export const progress: ItemType<P, S> = {
     cssCamel(slots, { position: 'absolute', inset: '0', display: 'none' });
     // osd draws in VT323 on the canvas: ready() loads it (with the words, so a fallback face for other scripts loads too)
     const osd = ctx.params.mode === 'osd' ? `${ctx.params.title} 0123456789/ ${ctx.params.labels}` : '';
-    return { track, fill, dots, row, tabs: [], seps: [], key: '', cv, title, count, slots, skey: '', cards: [], osd };
+    return { track, fill, dots, row, tabs: [], seps: [], key: '', cv, title, count, slots, skey: '', cards: [], osd, more: null };
   },
   ready(s) {
     const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
@@ -123,6 +130,18 @@ export const progress: ItemType<P, S> = {
   draw(ctx, s) {
     const { mode, position, color, thickness } = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, th = thickness * k;
     const p = clamp(ctx.local / ctx.dur), x = theme.safe.side * W, w = W - 2 * x;
+    // the character modes (progress/): their own elements under s.more, everything of the old modes hidden
+    if (isMoreMode(mode)) {
+      for (const el of [s.track, s.row, s.title, s.count, s.slots, ...s.dots]) cssCamel(el, { display: 'none' });
+      s.more = drawMore(ctx, ctx.params, s.more, ctx.root, s.cv);
+      return;
+    }
+    if (s.more && s.more.root.style.display !== 'none') {
+      // back from a character mode: its root hidden, its picture gone from the canvas (and the canvas's pen reset), the dots back
+      cssCamel(s.more.root, { display: 'none' });
+      freeCanvas(s.cv); cssCamel(s.cv, { display: 'none' });
+      for (const d of s.dots) cssCamel(d, { display: '' });
+    }
     if (mode === 'slots') { for (const el of [s.track, s.row, s.cv, s.title, s.count]) cssCamel(el, { display: 'none' }); drawSlots(ctx, s); return; }
     if (s.slots.style.display !== 'none') cssCamel(s.slots, { display: 'none' });
     if (mode === 'osd') { for (const el of [s.track, s.row, s.title, s.count]) cssCamel(el, { display: 'none' }); drawOsd(ctx, s, x, w); return; }

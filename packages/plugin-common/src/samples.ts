@@ -10,6 +10,7 @@ import { GROUPS } from './samples/groups.ts';
 import { STYLES } from './samples/styles.ts';
 import { COMBO_SAMPLES } from './samples/combos.ts';
 import { LENS_SAMPLES } from './samples/lens.ts';
+import { PROGRESS_SAMPLES } from './samples/progress.ts';
 import type { Sample } from './samples/fixtures.ts';
 
 export type { Sample } from './samples/fixtures.ts';
@@ -23,5 +24,6 @@ export const samples: Sample[] = [
   ...STYLES,
   // a block's samples go before the combos', which stay last (combos.test.ts: a new combo's sample goes at the very end)
   ...LENS_SAMPLES,
+  ...PROGRESS_SAMPLES,
   ...COMBO_SAMPLES,
 ];
