@@ -1,6 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TELLCUT_ROOT } from '@tellcut/media-node';
+import { createRegistry, expandCombo } from '@tellcut/engine';
+import { plugins } from '@tellcut/plugins';
+import { combos } from '@tellcut/plugin-common';
 import { makeProjects, startApp } from './test-utils.ts';
 
 test('the gallery lists every block (core and common first), the sounds, the music styles and the recipes', async () => {
@@ -220,5 +223,11 @@ test('combos: each with its handle, its layers and the three golden pictures of 
       expect(c.frames, c.id).toHaveLength(3);
       for (const f of c.frames) expect((await fetch(base + f)).status, f).toBe(200);
     }
+    // expanded for the live preview: every layer, templates applied, with the plugins their types are in; closing says it ends a film
+    const expanded = (id: string) => expandCombo(combos.find((c) => c.id === id)!, createRegistry(plugins));
+    for (const c of g.combos) expect(c.layers, c.id).toEqual(JSON.parse(JSON.stringify(expanded(c.id))));
+    expect(impact.plugins.sort()).toEqual(['common', 'core']);
+    expect(impact.layers.find((l: any) => l.name === 'shake')).toMatchObject({ kind: 'shake', px: 28 });
+    expect(g.combos.filter((c: any) => c.ending).map((c: any) => c.id)).toEqual(['closing']);
   } finally { await app.close(); }
 });

@@ -1,5 +1,7 @@
-import { blockPreviewProject, BLOCK_PREVIEW_LEN, PREVIEW_BG, PREVIEW_GROUND } from './preview.ts';
-import { parseProject } from './schema.ts';
+import { blockPreviewProject, BLOCK_PREVIEW_LEN, COMBO_PREVIEW_LEAD, COMBO_PREVIEW_TAIL, comboPreviewProject, PREVIEW_BG, PREVIEW_GROUND } from './preview.ts';
+import { parseProject, type VideoItem } from './schema.ts';
+import { resolveTimes } from './time.ts';
+import type { ComboPlacement } from './combos.ts';
 
 test('a block alone: one track of it over the plain ground, no sources', () => {
   const p = blockPreviewProject({ type: 'common.slam', kind: 'overlay', plugins: ['common'], params: { text: 'x' } });
@@ -28,4 +30,44 @@ test('with a ground, the gallery street plays on a video track under the block f
   expect(p.meta).toMatchObject({ width: 1080, height: 1920, duration: BLOCK_PREVIEW_LEN, theme: { palette: { accent: '#ff0000' } } });
   const parsed = parseProject(p);
   expect(parsed.sources[PREVIEW_GROUND].kind).toBe('image');
+});
+
+test('a combo on the street: the moment after the earliest layer\'s lead, placed as Add to timeline places it', () => {
+  const layers: ComboPlacement[] = [
+    { name: 'rise', kind: 'sfx', type: 'x.riser', at: -0.8, len: 0.8, params: {}, gain: -10 },
+    { name: 'glow', kind: 'effect', type: 'x.glow', at: -0.1, len: 1.2, params: { a: 1 } },
+    { name: 'lid', kind: 'effect', type: 'x.lid', at: 0, len: 0.5, params: {}, layer: 'top' },
+    { name: 'floor', kind: 'effect', type: 'x.floor', at: 0, len: 0.5, params: {}, layer: 'under' },
+    { name: 'shake', kind: 'shake', at: 0, len: 1.6, params: {}, px: 28 },
+  ];
+  const p = comboPreviewProject({ layers, plugins: ['x'], name: 'combo:t' });
+  const moment = COMBO_PREVIEW_LEAD + 0.8;
+  // the film: the street the whole length, ending a moment after the last layer (the shake, here)
+  expect(p.meta.duration).toBeCloseTo(moment + 1.6 + COMBO_PREVIEW_TAIL, 6);
+  const ground = p.tracks.find((t) => t.id === 'v')!.items[0] as VideoItem;
+  expect(ground).toMatchObject({ source: PREVIEW_GROUND, start: 0, end: p.meta.duration });
+  expect(p.sources[PREVIEW_GROUND].duration).toBe(p.meta.duration);
+  expect(ground.shake).toEqual([{ at: +moment.toFixed(6), dur: 1.6, px: 28, hz: 18 }]);
+  // every layer on its kind of track, at the moment plus its offset, hung on the street
+  // `at`: the track's place in the stack (later: drawn above)
+  const times = resolveTimes(p), typeOf = (i: unknown) => (i as { type?: string }).type;
+  const where = (type: string) => {
+    const tr = p.tracks.find((t) => (t.items as unknown[]).some((i) => typeOf(i) === type))!, it = (tr.items as Array<{ id: string }>).find((i) => typeOf(i) === type)!;
+    return { kind: tr.kind, at: p.tracks.indexOf(tr), start: times.get(it.id)!.start, parent: (it as { parent?: string }).parent };
+  };
+  expect(where('x.riser')).toMatchObject({ kind: 'sfx', start: COMBO_PREVIEW_LEAD, parent: 'ground' });
+  expect(where('x.glow')).toMatchObject({ kind: 'overlay', parent: 'ground' });
+  expect(where('x.glow').start).toBeCloseTo(moment - 0.1, 6);
+  expect(where('x.floor').kind).toBe('scene');
+  expect(where('x.floor').at).toBeLessThan(p.tracks.findIndex((t) => t.id === 'v'));
+  expect(where('x.lid').at).toBeGreaterThan(where('x.glow').at);
+});
+
+test('an ending combo ends the film with its last picture layer, as it would end a real one', () => {
+  const layers: ComboPlacement[] = [
+    { name: 'door', kind: 'effect', type: 'x.door', at: 0, len: 2.4, params: {} },
+    { name: 'clunk', kind: 'sfx', type: 'x.clunk', at: 1, len: 0.16, params: {} },
+  ];
+  expect(comboPreviewProject({ layers, plugins: ['x'], ending: true }).meta.duration).toBeCloseTo(COMBO_PREVIEW_LEAD + 2.4, 6);
+  expect(comboPreviewProject({ layers, plugins: ['x'] }).meta.duration).toBeCloseTo(COMBO_PREVIEW_LEAD + 2.4 + COMBO_PREVIEW_TAIL, 6);
 });

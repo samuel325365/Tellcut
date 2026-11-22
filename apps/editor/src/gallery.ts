@@ -1,5 +1,5 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
-import { BLOCK_PREVIEW_LEN, blockPreviewProject, clipPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
+import { BLOCK_PREVIEW_LEN, blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
 import { BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SFX_CATEGORY, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
@@ -96,6 +96,10 @@ export function ownProject(o: OwnProject, b: GalleryBlock, params: Record<string
 /** A clip effect's preview (engine clipPreviewProject): the gallery's street (and map, for a transition) with what the effect puts
  *  on its clips; null for one the gallery cannot show (no face, no burned-in captions to work on). */
 export const clipProject = (f: ClipFx) => (f.preview ? clipPreviewProject(f.preview, f.key) : null);
+
+/** A combo's live preview (engine comboPreviewProject): the street with the combo placed on it as Add to timeline places it, its
+ *  sounds and shake included; null when the server sent no layers for it. */
+export const comboProject = (c: GalleryCombo) => (c.layers ? comboPreviewProject({ layers: c.layers, plugins: c.plugins ?? [], name: `combo:${c.id}`, ending: !!c.ending }) : null);
 
 /** the clip effects of one group, in CLIP_FX's order, that match the search: handle, names and doc in Chinese, the UI language and
  *  English (the editor's labels, Properties' Transition and Shape menus, are English in every language), and the cut.ts line */

@@ -1,7 +1,10 @@
 // The film one block is shown in by itself: the gallery's previews in the page and a saved block's thumbnail in Node build it here,
 // so both play it with the same ground, length and mix (the mix of a new project).
-import { DEFAULT_MIX, type TransitionType } from './schema.ts';
+import { DEFAULT_MIX, parseProject, type Project, type TransitionType } from './schema.ts';
 import type { NamedShape } from './shapes.ts';
+import { comboEnd, type ComboPlacement } from './combos.ts';
+import { placeCombo } from './commands/combo.ts';
+import { r6 } from './commands/core.ts';
 
 export const BLOCK_PREVIEW_LEN = 3;
 /** the gallery's own picture a block marked over 'picture' (ItemType.over) is previewed over: a made-up street, 1080×1920, the one
@@ -75,10 +78,11 @@ export function clipPreviewClips(p: ClipPreview): PreviewClip[] {
   return [{ ...clip('a', PREVIEW_GROUND, 0, BLOCK_PREVIEW_LEN), ...(p.shake ? { shake: p.shake } : {}) }];
 }
 
-/** the sources a preview of the gallery's own pictures names (the gallery player asks the server for them by these ids) */
-export const previewSources = (ids: string[]) => Object.fromEntries([...new Set(ids)].map((id) => [id, id === PREVIEW_SECOND
-  ? { path: `${id}.png`, duration: BLOCK_PREVIEW_LEN, width: 360, height: 640, kind: 'image' }
-  : { path: `${id}.png`, duration: BLOCK_PREVIEW_LEN, width: 1080, height: 1920, kind: 'image' }]));
+/** the sources a preview of the gallery's own pictures names (the gallery player asks the server for them by these ids); `len`: the
+ *  film's length, a still lasting as long as the film it is in */
+export const previewSources = (ids: string[], len = BLOCK_PREVIEW_LEN) => Object.fromEntries([...new Set(ids)].map((id) => [id, id === PREVIEW_SECOND
+  ? { path: `${id}.png`, duration: len, width: 360, height: 640, kind: 'image' }
+  : { path: `${id}.png`, duration: len, width: 1080, height: 1920, kind: 'image' }]));
 
 /** A 1080×1920, 3 s film of a clip effect (clipPreviewClips) over the plain ground, with nothing else on it. */
 export function clipPreviewProject(p: ClipPreview, name = 'clip') {
@@ -89,4 +93,29 @@ export function clipPreviewProject(p: ClipPreview, name = 'clip') {
     sources: previewSources(clips.map((c) => c.source)), media: {}, grids: [],
     tracks: [{ id: 'v', kind: 'video', items: clips }],
   };
+}
+
+// ---------------------------------------------------------------- a combo at a moment (engine combos.ts)
+/** the street a combo's preview shows before its first layer comes in, and after its last one is over: long enough to see the
+ *  picture plain, short enough that the combo is most of the film */
+export const COMBO_PREVIEW_LEAD = 0.4, COMBO_PREVIEW_TAIL = 0.5;
+
+/** A 1080×1920 film of a combo placed on the gallery's street as the editor's Add to timeline places it (placeCombo: its pictures
+ *  on the overlay tracks, `top` above and `under` below the video, its sounds on an sfx track, its shake on the street clip, all
+ *  hung on that clip), with the moment just late enough that the earliest layer (one ahead of the moment, a riser, too) starts
+ *  COMBO_PREVIEW_LEAD in. The film runs COMBO_PREVIEW_TAIL past the last layer, the shake's included; an `ending` combo (it fades
+ *  the film out) ends the film with it, as it would end a real one. `layers`: expandCombo's, `plugins`: the ones their types are
+ *  in. */
+export function comboPreviewProject(o: { layers: ComboPlacement[]; plugins: string[]; name?: string; ending?: boolean }): Project {
+  const moment = r6(COMBO_PREVIEW_LEAD + Math.max(0, ...o.layers.map((l) => -l.at)));
+  const last = Math.max(moment, ...o.layers.map((l) => moment + l.at + l.len));
+  const len = r6(o.ending ? comboEnd(o.layers, moment) : last + COMBO_PREVIEW_TAIL), whole = { x: 0.5, y: 0.5, zoom: 1 };
+  const p = parseProject({
+    version: 1,
+    meta: { name: o.name ?? 'combo', width: 1080, height: 1920, fps: 30, duration: len, plugins: o.plugins, background: PREVIEW_BG, mix: DEFAULT_MIX },
+    sources: previewSources([PREVIEW_GROUND], len), media: {}, grids: [],
+    tracks: [{ id: 'v', kind: 'video', items: [{ id: 'ground', source: PREVIEW_GROUND, start: 0, end: len, in: 0, speed: 1, crop: { from: whole, to: whole } }] }],
+  });
+  placeCombo(p, { layers: o.layers, at: moment });
+  return p;
 }

@@ -4,11 +4,11 @@
 // people point with (MRK-03, spec 2026-10-22-block-handles); the search finds either. Opened from a project's editor (gallery-link.ts) it lists
 // that project's own blocks first and each detail offers "Add to project", which adds at the playhead of the tab that opened it
 // (a combo's detail: "Add to timeline", all its layers at once).
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { templateName, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconCaptionOut, IconFaceSticker, IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -236,10 +236,13 @@ function ComboStrip({ c, named = false }: { c: GalleryCombo; named?: boolean }) 
 /** seconds from the moment: +0.1, −0.1, 0 */
 const fromMoment = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
 
-/** A combo (engine combos.ts): its pictures, what it is for, each layer (what it is and when it comes), Add to timeline (every
- *  layer at the playhead, one undo step in the editor) and how cut.ts places it. */
-function ComboDetail({ c, g, to }: { c: GalleryCombo; g: GalleryIndex; to?: ToProject }) {
-  const id = `combo:${c.id}`, x = shown(id, c), code = `c.combo('${c.id}', { at })`;
+/** A combo (engine combos.ts): it played on the street once, with its sounds and shake, then its pictures, what it is for, each layer
+ *  (what it is and when it comes), Add to timeline (every layer at the playhead, one undo step in the editor) and how cut.ts places
+ *  it. The preview plays when the card is picked and on Replay, never by itself: like a sound effect's, opening the tab or typing
+ *  in the search must not make a noise. */
+function ComboDetail({ c, g, to, plays }: { c: GalleryCombo; g: GalleryIndex; to?: ToProject; plays: number }) {
+  const id = `combo:${c.id}`, x = shown(id, c), code = `c.combo('${c.id}', { at })`, [n, setN] = useState(0);
+  const project = useMemo(() => comboProject(c), [c]);
   const what = (p: GalleryCombo['parts'][number]) => {
     if (p.kind === 'shake') return <span>{t('gallery.comboShakeWhat')}</span>;
     if (p.kind === 'sfx') { const s = g.sfx.find((y) => y.type === p.type); return <><span>{s ? shown(s.type, s).label : p.type}</span><code>{p.type}</code></>; }
@@ -250,6 +253,8 @@ function ComboDetail({ c, g, to }: { c: GalleryCombo; g: GalleryIndex; to?: ToPr
   return (
     <section class="g-detail" data-detail={id}>
       <Head label={x.label} name={c.id} id={id} />
+      {project && <div data-combo-preview><PlayerPreview project={project} loop={false} autoplay={false} playKey={n + plays} />
+        <div class="g-bar"><button class="g-play" onClick={() => setN(n + 1)}><IconPlay size={12} /> {t('gallery.replay')}</button></div></div>}
       <ComboStrip c={c} named />
       <AddBar id={id} to={to} add={{ kind: 'combo', type: c.id }} label="gallery.addCombo" tipKey="gallery.comboAddTip" mark="data-combo-add" />
       <p class="g-doc">{x.doc}</p>
@@ -464,7 +469,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       return c && <CaptionDetail c={c} kind={kind} caption={g.blocks.find((b) => b.type === (kind === 'title' ? 'common.heading' : 'common.caption'))} to={to} />;
     }
     if (tab === 'sfx') { const s = g.sfx.find((x) => x.type === on); return s && <SfxDetail s={s} plays={plays} to={to} />; }
-    if (tab === 'combos') { const c = (g.combos ?? []).find((x) => `combo:${x.id}` === on); return c && <ComboDetail c={c} g={g} to={to} />; }
+    if (tab === 'combos') { const c = (g.combos ?? []).find((x) => `combo:${x.id}` === on); return c && <ComboDetail c={c} g={g} to={to} plays={plays} />; }
     if (tab === 'styles') { const s = g.styles.find((x) => x.id === on); return s && <StyleDetail key={s.id} s={s} />; }
     const r = g.recipes.find((x) => x.id === on); return r && <RecipeDetail r={r} />;
   };

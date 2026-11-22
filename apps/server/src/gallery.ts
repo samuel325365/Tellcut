@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, resolve, sep } from 'node:path';
-import { OLD_BLOCKS, OLD_TEXT, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
+import { createRegistry, expandCombo, OLD_BLOCKS, OLD_TEXT, type ComboPlacement, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
 import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_ROOT, STYLES } from '@tellcut/media-node';
 // the recipes are tools code (they drive Cut); the gallery only reads their names, notes and examples. Moving them into a package of
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
@@ -70,11 +70,17 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
   const recipes = Object.values(RECIPES).map((r) => ({ id: r.id, label: r.label, doc: r.doc, notes: r.notes ?? [], example: r.example }));
   const captions = TEMPLATES.map((t) => ({ id: t.id, label: t.label, doc: t.doc, params: t.params, ...(TEMPLATE_THUMB(t.id) ? { thumb: TEMPLATE_THUMB(t.id) } : {}) }));
   const titles = TITLE_TEMPLATES.map((t) => ({ id: t.id, label: t.label, doc: t.doc, params: t.params, ...(TEMPLATE_THUMB(t.id, 'ttl') ? { thumb: TEMPLATE_THUMB(t.id, 'ttl') } : {}) }));
-  // the combos' layers as data (their params stay in the catalog: the card says what each layer is and when it comes)
+  // the combos' layers as data (their params stay in the catalog: the card says what each layer is and when it comes), and expanded
+  // as the editor's Add to timeline expands them (templates applied), with the plugins their types come from, for the live preview
+  const registry = createRegistry(plugins), owner = (type: string) => plugins.find((p) => p.items?.some((x) => x.type === type) || p.sfx?.some((x) => x.type === type))?.id;
   const combos = sorted.flatMap((p) => p.combos ?? []).map((c): GalleryCombo => {
     const handle = handleOf(`combo:${c.id}`);
-    return { id: c.id, ...(handle ? { handle } : {}), label: c.label, doc: c.doc, frames: COMBO_FRAMES(c.id),
-      parts: c.parts.map((x) => ({ name: x.name, kind: x.kind, ...(x.type ? { type: x.type } : {}), ...(x.template ? { template: x.template } : {}), at: x.at, len: x.len, ...(x.layer ? { layer: x.layer } : {}) })) };
+    let layers: ComboPlacement[] | undefined;
+    try { layers = expandCombo(c, registry); } catch { /* a combo that no longer expands keeps its card and stills, without a preview */ }
+    const used = [...new Set((layers ?? []).flatMap((l) => (l.type ? [owner(l.type)] : [])).filter((x): x is string => !!x))];
+    return { id: c.id, ...(handle ? { handle } : {}), label: c.label, doc: c.doc, frames: COMBO_FRAMES(c.id), ...(c.ending ? { ending: true as const } : {}),
+      parts: c.parts.map((x) => ({ name: x.name, kind: x.kind, ...(x.type ? { type: x.type } : {}), ...(x.template ? { template: x.template } : {}), at: x.at, len: x.len, ...(x.layer ? { layer: x.layer } : {}) })),
+      ...(layers ? { layers, plugins: used } : {}) };
   });
   return { blocks, sfx, styles, recipes, captions, titles, combos, clips: CLIP_THUMBS };
 }

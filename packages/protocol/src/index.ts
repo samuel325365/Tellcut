@@ -1,6 +1,6 @@
 // What travels between the Tellcut server, the editor, the player and the Node side that drives it (review B3): the types,
 // constants and few pure functions both ends share, one definition each, so the two ends cannot drift.
-import type { BlockCategory, Op, ParamDef, Project, SfxCategory, Transform } from '@tellcut/engine';
+import type { BlockCategory, ComboPlacement, Op, ParamDef, Project, SfxCategory, Transform } from '@tellcut/engine';
 
 // ---------------------------------------------------------------- chat (spec 2026-10-16-in-editor-chat §3)
 /** what a tool line says, as a code the page words in its language; `label` stays the Chinese text for old pages and old threads */
@@ -284,8 +284,10 @@ export interface GalleryCaption { id: string; label: string; doc: string; params
  *  shake, and its offset from the moment and length in seconds; `layer`: over the captions (top) or under the video (under) */
 export interface GalleryComboPart { name: string; kind: 'effect' | 'sfx' | 'shake'; type?: string; template?: string; at: number; len: number; layer?: 'top' | 'under' }
 /** a combo (engine combos.ts, CMB-xx): its handle, names, layers and the golden pictures of its sample combo-<id>, in time order
- *  (start, peak, end) */
-export interface GalleryCombo { id: string; handle?: string; label: string; doc: string; parts: GalleryComboPart[]; frames: string[] }
+ *  (start, peak, end); `layers`: what placing it makes (expandCombo, templates applied) and `plugins` the ones their types are in,
+ *  for its live preview (engine comboPreviewProject); `ending`: it ends the film (closing) */
+export interface GalleryCombo { id: string; handle?: string; label: string; doc: string; parts: GalleryComboPart[]; frames: string[]; ending?: true;
+  layers?: ComboPlacement[]; plugins?: string[] }
 /** a clip effect's card (CLIP_FX, the ones with a preview): its key and the golden picture of its sample clip-<…> */
 export interface GalleryClip { key: string; thumb: string }
 export interface GalleryIndex { blocks: GalleryBlock[]; sfx: GallerySfx[]; styles: GalleryStyle[]; recipes: GalleryRecipe[]; captions?: GalleryCaption[]; titles?: GalleryCaption[]; combos?: GalleryCombo[];

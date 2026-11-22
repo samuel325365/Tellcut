@@ -2,7 +2,7 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { BLOCK_CATEGORY, CLIP_FX, handleOf } from '@tellcut/protocol';
-import { blockPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
+import { blockPreviewProject, COMBO_PREVIEW_LEAD, comboPreviewProject, DEFAULT_MIX, type ComboPlacement } from '@tellcut/engine';
 import { Gallery } from './Gallery.tsx';
 import { PlayerBridge } from './bridge.ts';
 import { blockProject, filterGallery, galleryCategories, scoreUrl, sfxProject, sfxSections, THEMES, type GalleryIndex } from './gallery.ts';
@@ -768,6 +768,54 @@ test('the Combos tab: a card per combo with its handle and three pictures; the d
     expect(cards(root), q).toEqual(want);
   }
   expect(filterGallery(C, 'combos', 'huge').map((c: any) => c.id)).toEqual(['impact']);
+});
+
+test('a combo\'s live preview: the street with its layers, sounds and shake placed as Add to timeline places them; it plays when a card is picked and on Replay, never on opening the tab or searching', async () => {
+  const layers: ComboPlacement[] = [
+    { name: 'lines', kind: 'effect', type: 'common.slam', at: 0, len: 0.8, params: { size: 14 } },
+    { name: 'flash', kind: 'effect', type: 'core.title', at: 0, len: 0.5, params: {}, layer: 'top' },
+    { name: 'hit', kind: 'sfx', type: 'common.impact', at: 0, len: 1.4, params: {}, gain: -6 },
+    { name: 'shake', kind: 'shake', at: 0, len: 0.4, params: {}, px: 28 },
+  ];
+  const g: GalleryIndex = { ...C, combos: [{ ...C.combos![0], layers, plugins: ['common', 'core'] }, { ...C.combos![1], layers: [
+    { name: 'scan', kind: 'effect', type: 'common.backdrop', at: -0.1, len: 0.5, params: {} },
+    { name: 'scratch', kind: 'sfx', type: 'common.beep', at: -0.1, len: 0.42, params: {} }], plugins: ['common'] }] };
+  const sent: any[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
+  const play = vi.spyOn(PlayerBridge.prototype, 'play').mockImplementation(() => {});
+  try {
+    const root = document.createElement('div');
+    await act(async () => { render(<Gallery load={async () => g} />, root); });
+    await settle();
+    await click(root, '[data-card="common.slam"]');   // a pick on another tab first: its count must not play the combo
+    play.mockClear(); sent.length = 0;
+    await click(root, '[data-tab="combos"]');
+    const d = root.querySelector('[data-detail="combo:impact"]')!;
+    expect(d.querySelector('[data-combo-preview] iframe')).not.toBeNull();
+    // above the three stills
+    expect(d.querySelector('[data-combo-preview]')!.compareDocumentPosition(d.querySelector('[data-combo-frames]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const p = sent.at(-1);
+    expect(p).toEqual(comboPreviewProject({ layers, plugins: ['common', 'core'], name: 'combo:impact' }));
+    const ground = p.tracks.find((t: any) => t.id === 'v').items[0];
+    expect(ground.shake).toEqual([{ at: COMBO_PREVIEW_LEAD, dur: 0.4, px: 28, hz: 18 }]);
+    expect(p.tracks.find((t: any) => t.kind === 'sfx').items).toMatchObject([{ type: 'common.impact', start: COMBO_PREVIEW_LEAD, gain: -6, parent: 'ground' }]);
+    const search = root.querySelector('.g-search') as HTMLInputElement;
+    await act(() => { search.value = 'scan'; search.dispatchEvent(new Event('input')); });
+    expect(root.querySelector('[data-detail="combo:glitchcut"]')).not.toBeNull();
+    expect(sent.at(-1).meta.name).toBe('combo:glitchcut');
+    expect(play).not.toHaveBeenCalled();
+    await click(root, '[data-card="combo:glitchcut"]');
+    expect(play).toHaveBeenCalledTimes(1);
+    await click(root, '[data-detail="combo:glitchcut"] [data-combo-preview] .g-play');
+    expect(play).toHaveBeenCalledTimes(2);
+    // no layers sent (an older server): the stills alone, no player
+    const bare = document.createElement('div');
+    await act(async () => { render(<Gallery load={async () => C} />, bare); });
+    await settle();
+    await click(bare, '[data-tab="combos"]');
+    expect(bare.querySelector('[data-detail="combo:impact"] [data-combo-preview]')).toBeNull();
+  } finally { load.mockRestore(); patch.mockRestore(); play.mockRestore(); }
 });
 
 test('opened from a project, a combo\'s Add to timeline asks the editor for the whole combo and says how it went', async () => {
