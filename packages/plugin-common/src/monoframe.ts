@@ -28,7 +28,7 @@ export function monoWindow(keys: string, local: number, W: number, H: number, bo
 interface FP { text: string; border: number; band: number; angle: number; speed: number; radius: number; win: string; full: boolean; ink: string; paper: string }
 interface FS { c: HTMLCanvasElement; text: string }
 export const monoframe: ItemType<FP, FS> = {
-  type: 'common.monoframe', label: '黑白字框', category: 'frame', kind: 'overlay',
+  type: 'common.monoframe', label: '黑白字框', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '畫面四周一圈黑白斜紋字：一條條斜的帶子，ink 底 paper 字、paper 底 ink 字輪流，text 一直重複、沿著帶子慢慢走（speed），中間一個圓角的窗露出影片（border 框寬，畫面短邊比例）；win 讓窗縮放（一行一個「秒|x,y,寬,高」畫面比例，例如先縮成畫面中間一小條、再放大回滿），full 整個畫面都是字；一章一個項目、換章換字（城市名、主題字、中英文都可以）；配標題範本 mono-cycle、字幕範本 mono-box、common.wipe 的 vortex 換章、common.filmstrip 底片頁；旅行、城市、美食的潮流感短片',
   params: [
     { key: 'text', label: '帶子上的字（會一直重複）', type: 'string', default: 'HONG KONG · 香港 · ' },

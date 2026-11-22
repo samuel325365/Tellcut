@@ -17,7 +17,7 @@ export function windowCentres(shape: string, cx: number, r: number, overlap: num
 interface BP { shape: 'binocular' | 'spyglass'; cx: number; cy: number; r: number; overlap: number; color: string; open: number }
 interface CS { c: HTMLCanvasElement }
 export const binocular: ItemType<BP, CS> = {
-  type: 'common.binocular', label: '望遠鏡', category: 'frame', kind: 'overlay',
+  type: 'common.binocular', label: '望遠鏡', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '透過望遠鏡看：畫面蓋上 color 色（預設黑），只留兩個並排、互相重疊的圓窗（shape binocular 雙筒；spyglass 一個圓、單筒），窗邊柔和，開場 open 秒內從小張開；cx、cy 是中心（畫面比例）、r 半徑（畫面短邊比例）、overlap 兩圓重疊多少（半徑的比例）；圓窗要對準主角：移 cy／cx，比改片段的 crop 好對；字幕放在圓窗下面的黑底上；偷看、發現、遠遠看到（牆上的貓、遠處的鳥、對面的人），故事書風、Wes Anderson 風的旅行片',
   params: [
     { key: 'shape', label: '樣式（binocular 雙筒、spyglass 單筒）', type: 'enum', options: ['binocular', 'spyglass'], default: 'binocular' },

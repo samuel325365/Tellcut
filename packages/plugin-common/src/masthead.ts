@@ -48,7 +48,7 @@ export function mastheadParams(p: MP & { layout?: unknown; issue?: unknown; no?:
   return { ...p, mode, issueR: str(p.issue) ?? p.issueR, issueL: str(p.no) ?? p.issueL, color: (str(p.accent) || undefined) ?? p.color };
 }
 export const masthead: ItemType<MP, MS> = {
-  type: 'common.masthead', label: '雜誌刊頭', category: 'frame', kind: 'overlay',
+  type: 'common.masthead', label: '雜誌刊頭', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '雜誌的封面與封底：mode front 疊在滿版影片上，刊頭（title）一個字一個字打出來、下面拉出一條細線，左右上角兩行期別小字（issueL、issueR），右邊目錄（contents 一行一條）一行行出現，左下斜體一行（script）擦出來；mode back 是封底：color 色的整頁，上方 NEXT ISSUE／SEE YOU AGAIN、刊頭、細線、期別（sub），中間一條相片（source 在 t 秒的畫面），下面斜體一行（script）；旅行、城市、美食的雜誌風開場和結尾，中間配 common.spread 雜誌頁、common.wordbands 字帶、標題範本 didone-full、字幕範本 editorial-bar；影片要在雜誌版面的窗格裡播（內頁、清單、封面加封面標、封底按鈕）用 common.magazine，masthead 是刊頭疊在滿版影片上、封底整頁色；也收 common.magazine 的參數名：layout（cover＝front、back）、issue（右上）、no（左上）、accent（封底底色）',
   params: [
     { key: 'mode', label: '樣式（front 封面、back 封底）', type: 'enum', options: ['front', 'back'], default: 'front' },

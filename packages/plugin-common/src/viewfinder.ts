@@ -13,7 +13,7 @@ export function shotNo(cuts: string, local: number): { n: number; total: number 
 interface VP { title: string; chapters: string; route: string; cuts: string; color: string; ink: string }
 interface CS { c: HTMLCanvasElement }
 export const viewfinder: ItemType<VP, CS & { steps: StepsMemo }> = {
-  type: 'common.viewfinder', label: '取景框', category: 'frame', kind: 'overlay',
+  type: 'common.viewfinder', label: '取景框', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '整支片的取景框：四角 color 色的 L 角（開場長出來）、左上片名（title）和一行章節（chapters「秒|字」，項目內秒數，到點換字）、右上路線（route）和鏡頭計數（cuts 每次換鏡頭的秒數，逗號分隔，顯示「05 / 16」）、左邊一排刻度和一根跟著片子往下走的指針；小字是裝飾，不算字幕；配 common.grade、common.echo',
   params: [
     { key: 'title', label: '左上片名', type: 'string', default: 'EUROPE · 3 PLACES' },

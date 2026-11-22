@@ -39,7 +39,7 @@ export function inBar(top: boolean, y0: number, y1: number, bar: number, H: numb
 }
 
 export const letterbox: ItemType<P, S> = {
-  type: 'common.letterbox', label: '寬銀幕', category: 'frame', kind: 'overlay',
+  type: 'common.letterbox', label: '寬銀幕', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '電影黑邊從上下兩邊滑進來，中間留下 ratio 寬高比的畫面（0＝自動：橫式 2.39、直式正方形），黑邊上有字距拉開的 title 標題和一行小的 sub：直式片兩行都在上方黑邊、平台上方安全區以下（黑邊不夠深就不放字），橫式片標題在下方黑邊中間、小字在上方黑邊；titleAt 字淡入的秒（-1＝黑邊到位時）；outAt 之後黑邊收回去；和 common.film 的 letterbox 參數不同：會動、帶字；電影感開場、章節標題',
   params: [
     { key: 'ratio', label: '中間畫面的寬高比（0＝自動：橫式 2.39、直式 1）', type: 'number', min: 0, max: 4, step: 0.01, default: 0 },

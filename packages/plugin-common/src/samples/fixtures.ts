@@ -7,7 +7,10 @@ export interface Sample { name: string; type: string; params?: Record<string, un
   /** a combo's sample (samples/combos.ts): the combo's id, and its picture layers drawn together (`type` is then combo:<id>, not a block) */
   combo?: string; items?: Array<{ type: string; params?: Record<string, unknown>; start: number; end: number; layer?: 'top' | 'under' }>;
   /** a picture of `sources` drawn under the block (golden's photo): the colour blocks' samples, over REF */
-  photo?: string }
+  photo?: string;
+  /** a sibling drawn over the street for the gallery's card (samples.ts streetSamples): the name of the sample it is drawn from,
+   *  which its English and Japanese words are looked up by (golden/thumbs.ts) and the admission tests measure instead */
+  street?: string }
 
 /** A block template's golden sample (engine templates.ts): `<block>-tpl-<template id>`, the block named as its own samples are
  *  (common.leak → leak, core.flash → core-flash). The admission test finds a template's pictures by it, and the gallery its thumbnail. */

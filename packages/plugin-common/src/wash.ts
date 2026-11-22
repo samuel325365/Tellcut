@@ -6,7 +6,7 @@ import { GRADE_STEPS, deepFill, fill, stepsOf, valueAt, type FS } from './onecol
 interface WP { steps: string; tone: string }
 
 export const wash: ItemType<WP, FS> = {
-  type: 'common.wash', label: '色彩加深', category: 'look', kind: 'overlay', blend: 'multiply',
+  type: 'common.wash', label: '色彩加深', category: 'look', kind: 'overlay', over: 'picture', blend: 'multiply',
   doc: '舊積木（新片用 common.grade 的 deep）：在 steps 的 mono 那幾段把一層淺色乘上去（multiply），亮的地方也染上顏色；疊在 common.grade 之後、用同一份 steps（bw、none 那幾段不動）',
   params: [
     { key: 'steps', label: '換色（跟 common.grade 同一份）', type: 'text', default: GRADE_STEPS },

@@ -92,9 +92,9 @@ describe('the threshold, calibrated on the 2026-11-15 looks', () => {
     'sparkle-confetti', 'sparkle-glint', 'countdown-flip', 'countdown-leader', 'backdrop-halftone', 'backdrop-sunburst', 'backdrop-waves', 'shader-neuro', 'shader-cells',
     'shader-dither', 'wipe-iris', 'wipe-blinds', 'wipe-ink'];
   // the earlier looks of their blocks: the tall samples that are not these looks, nor a variant of one of them (cells shaded, the
-  // ring's long end word), nor a template
+  // ring's long end word), nor a template, nor a card drawn again over the street (its sample is measured already)
   const SAME_LOOK = new Set(['shader-cells-shade', 'countdown-ring-long']);
-  const earlier = (type: string) => samples.filter((s) => s.type === type && !s.wide && !s.square && !LOOKS.includes(s.name) && !SAME_LOOK.has(s.name) && !s.name.includes('-tpl-'));
+  const earlier = (type: string) => samples.filter((s) => s.type === type && !s.wide && !s.square && !LOOKS.includes(s.name) && !SAME_LOOK.has(s.name) && !s.name.includes('-tpl-') && !s.street);
 
   test('each look is farther than the threshold from its siblings and from its block\'s earlier looks', () => {
     const near: string[] = [];

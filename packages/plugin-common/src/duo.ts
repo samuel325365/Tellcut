@@ -120,7 +120,7 @@ export function topicFit(text: string, px: number, room: number, width: (s: stri
 }
 
 export const duo: ItemType<P, S> = {
-  type: 'common.duo', label: '雙人分割對談', category: 'frame', kind: 'overlay',
+  type: 'common.duo', label: '雙人分割對談', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '兩個人的分割畫面框（上下 dir v，或左右 h）：頁首一個色塊小牌＋題目、兩格之間（左右時在下方）一條字幕帶、每格角落一個名牌；segs「起-迄|a／b／ab」說誰在說話：說話的那格亮起來（說話人顏色的外框＋內光、名牌填色、音量條在跳），另一格變灰變暗；兩人的片段 frame 用 duoWindow(\'a\'|\'b\', 同一組參數) 放進兩格（a 用 c.clip，同一刻的 b 用 c.beside(a 的 id, { frame: duoWindow(\'b\', 同一組參數), crop })：同一個雙人鏡頭裁成兩個人，或另一台機器）；題目太長時先縮小、再折成兩行，不會被切掉；size 一起放大縮小頁首和名牌的字；雙人訪談、Podcast、辯論、他說她說；配 common.versus、caption 的 point；mode solo 是單人鏡頭的 Podcast 切片：一個高高的圓角視窗一次一個人，外框光暈跟著說話的人換顏色（segs 決定），窗外深色底帶兩人顏色的霧，窗下緣一層給字幕的暗影（dim），每個人第一次說話時視窗左上角出名牌（最多 2.6 秒，那段說完前消失）；片段 frame 用 duoWindow(\'a\', 同一組參數)，字幕放窗下緣',
   params: [
     { key: 'mode', label: '樣式（split 兩格分割；solo 一格，一次一個人，外框跟著說話的人換顏色）', type: 'enum', options: ['split', 'solo'], default: 'split' },

@@ -234,7 +234,7 @@ function standIn(g: CanvasRenderingContext2D, W: number, H: number, i: number) {
 }
 
 export const camcorder: ItemType<P, S> = {
-  type: 'common.camcorder', label: '攝影機觀景窗', category: 'frame', kind: 'overlay',
+  type: 'common.camcorder', label: '攝影機觀景窗', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '家用攝影機／DV 的觀景窗：mode osd 蓋在影片上——左上 ● REC（每秒閃）／STBY／STOP／PLAY／PAUSE／FF／REW／PHOTO（status「秒|狀態」一行一個），四角框線（popAt 彈出）、中心十字，帶子計數（counter「秒|讀數」設定後依狀態跑：錄影 1 倍、ff／rew spin 倍、其他停住；counterAt top 在右上、bottom 在左下），TAPE 編號（tape「秒|編號」，換帶時一條循軌雜訊帶），電量（battery「秒|格數」，0 格紅色閃），剩餘帶長（remain「秒|分鐘」，1 分鐘以下紅色閃），日期戳（date「秒[-秒]|2004-08-14 10:30[|到日期或倍速]」，dateFormat 排版），地名逐字打出（place「秒-秒|字」，placeAt top 在左上 REC 下面、bottom 左下），W–T 變焦條（zoom「秒-秒|從|到」），TAPE END（end「秒-秒」）；mode ff 是快轉：雪花→藍底 ▶▶、日期大字從 from 翻到 to→雪花；mode rew 是倒帶：stills「素材|秒|x,y,zoom」的靜態圖倒序加速閃過、畫面撕裂、中央 ◀◀（沒素材用畫的示意圖）；mode snow 只有雪花；所有字（REC、TAPE、月份…）在 words 換；回憶、婚禮、家庭錄影帶、Y2K、旅行 DV；配 common.film look vhs、common.beep kind rec／end、common.rewind',
   params: [
     { key: 'mode', label: '模式（osd 觀景窗介面、ff 快轉藍畫面、rew 倒帶撕裂、snow 雪花）', type: 'enum', options: ['osd', 'ff', 'rew', 'snow'], default: 'osd' },

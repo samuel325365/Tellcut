@@ -76,7 +76,7 @@ export function bokehDiscs(p: Pick<P, 'seed' | 'size' | 'from' | 'travel'>, loca
 export const GHOSTS: Array<[number, number, number]> = [[0.55, 0.045, 0], [1.2, 0.09, 1], [1.45, 0.03, 2], [1.75, 0.13, 0], [2.15, 0.06, 1]];
 
 export const leak: ItemType<P, S> = {
-  type: 'common.leak', label: '柔光漏光', category: 'look', kind: 'overlay', blend: 'screen',
+  type: 'common.leak', label: '柔光漏光', category: 'look', kind: 'overlay', over: 'picture', blend: 'screen',
   doc: '暖色柔光（light leak）：一大團暖光加淡色光心、後面拖一團玫瑰色，從一角或一側慢慢掃過畫面再退去（screen 疊色只變亮、沒有顆粒、不閃）；travel 0 停在 (x, y) 淡入淡出、微微呼吸（角落的夕陽）；回憶、旅行相簿、翻頁落地、封面、片頭片尾的暖色過場；color、core、rose 換顏色，換成藍白就是冷光。look 換光的樣子（掃過的路線和亮暗一樣）：prism 一道斜斜的彩虹光帶掃過（掃得比 glow 遠，travel 的 1.8 倍；陽光穿過玻璃、夢幻、青春、音樂）；bokeh 十幾顆失焦的圓形光斑慢慢飄、一明一暗（夜景、節慶、浪漫、溫馨的結尾，seed 換位置）；flare 一條橫向拉長的變形鏡頭光條穿過一個亮點，連著畫面中心的斜線上有幾個小光圈（電影感、科幻、科技、片頭；streak 是光條顏色，預設藍白）',
   params: [
     { key: 'look', label: '樣子（glow 暖色柔光、prism 彩虹光帶、bokeh 失焦光斑、flare 變形鏡頭光條）', type: 'enum', options: ['glow', 'prism', 'bokeh', 'flare'], default: 'glow' },

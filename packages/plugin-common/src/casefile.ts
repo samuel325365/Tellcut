@@ -86,7 +86,7 @@ const sans = (f: string) => `'${f || 'Noto Sans TC'}', 'Noto Sans TC', sans-seri
 const serif = (f: string) => `'${f || 'Noto Serif TC'}', 'Noto Serif TC', serif`;
 
 export const casefile: ItemType<P, S> = {
-  type: 'common.casefile', label: '查核檔案夾', category: 'frame', kind: 'overlay',
+  type: 'common.casefile', label: '查核檔案夾', category: 'frame', kind: 'overlay', over: 'picture',
   doc: '事實查核的檔案夾：牛皮紙卷宗、貼著紙膠帶的影片窗（窗是洞，主軌片段 frame＝casefileWindow(參數) 從洞裡播），標頭寫當事人、說法逐字打出、一排證據欄依 slots「秒|標籤」一格一格蓋章；strikeAt 時說法被紅筆兩筆劃掉、蓋雙框「駁回」章，closeAt 時封蓋從上闔下蓋住影片窗、蓋「結案」章；直式、方形時標頭在上，橫式時在影片窗右邊；所有字都是參數；查核、打臉、說法對照證據、懶人包、判決；配 common.thud、common.whoosh',
   params: [
     { key: 'who', label: '當事人那行（空＝不顯示）', type: 'string', default: '當事人：A 先生' },
