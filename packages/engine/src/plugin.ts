@@ -112,6 +112,11 @@ export interface ItemType<P = Record<string, any>, S = any> {
    *  measure or the colour one (media-node likeness.ts, COLOUR_LIKENESS) sets them apart; its golden samples are drawn over a picture.
    *  Every other block's templates are measured by the edges alone. */
   likeness?: 'colour';
+  /** 'picture': this block changes the picture under it or blends with it (a grade, grain, a glitch, a lens, a fade), or leaves a
+   *  window for the video under it to play in (a frame, a viewfinder, bars); alone on a plain ground it shows little of what it
+   *  does. So the gallery plays its preview over a picture (blockPreviewProject's ground) and draws its card over the made-up street
+   *  (a `-street` sibling of its first sample and of each template's, plugin-common samples.ts). Drawing and export ignore it. */
+  over?: 'picture';
   /** CSS mix-blend-mode for the whole item layer against the items below it (layers are otherwise isolated). Several modes: one
    *  layer each, stacked in order at the item's place, each blending with the picture the ones before made (common.grade's deep:
    *  'color', then 'multiply'); the further layers are ctx.layers, which the stage shows, moves and removes with the item. */
