@@ -46,7 +46,10 @@ const flash: ItemType<FlashP, HTMLElement> = {
   // named sets of these params (templates.ts); their golden samples are core-flash-tpl-<id>
   templates: [
     { id: 'bloom-pop', label: '光暈一閃', doc: '重拍、拍照的一閃：中心的光暈一下蓋滿畫面，再在半秒內縮回一點消失', params: { mode: 'bloom', peak: 1, fall: 0.5 } },
-    { id: 'fade-in', label: '白光淡入', doc: '開場、從回憶醒來：一開始整個畫面是白光，在整個項目裡慢慢退成中間一團光暈再收掉，露出畫面', params: { fade: 'in', mode: 'bloom' } },  ],
+    { id: 'fade-in', label: '白光淡入', doc: '開場、從回憶醒來：一開始整個畫面是白光，在整個項目裡慢慢退成中間一團光暈再收掉，露出畫面', params: { fade: 'in', mode: 'bloom' } },
+    { id: 'fade-out', label: '收黑', doc: '片尾、段落結束：整個項目長度慢慢蓋滿黑色，最後全黑', params: { fade: 'out', color: '#000' } },
+    { id: 'soft-dip', label: '柔光換段', doc: '柔和的換段：畫面只變亮（screen），0.15 秒亮起、停一下，再慢慢退回', params: { blend: 'screen', rise: 0.15, hold: 0.1, fall: 0.6, power: 2 } },
+  ],
   build(ctx) {
     const el = h('div', null, null, ctx.root);
     cssCamel(el, { position: 'absolute', inset: '0', pointerEvents: 'none', background: ctx.params.color });

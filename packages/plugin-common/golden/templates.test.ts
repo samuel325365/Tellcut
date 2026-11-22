@@ -44,24 +44,47 @@ function defaultFor(first: Sample, s: Sample): Sample {
   throw new Error(`${s.name} 的畫面比例和 ${first.name} 不同，沒有同比例的預設樣子可以比`);
 }
 
+/** a sample's golden colour prints, one per time */
+const coloursOf = (s: Sample): TimedPrint[] => (printsOf(s), s.at.map((t) => ({ t, print: colourPrintOf(picture(fileOf(s, t))) })));
+/** Whether two pictures are too alike to be two templates: the edge distance within TEMPLATE_LIKENESS and, for a colour block (marked
+ *  likeness 'colour'), the colour distance within COLOUR_LIKENESS as well; any other block's colour distance is not asked about. */
+const tooNear = (colourBlock: boolean, edge: number, colour: number) => edge <= TEMPLATE_LIKENESS && (!colourBlock || colour <= COLOUR_LIKENESS);
+
 test('admission rule 2: every template\'s picture differs from its block\'s default and from the block\'s other templates', () => {
   const near: string[] = [];
   for (const t of plugins.flatMap((p) => p.items ?? []) as ItemType[]) {
     if (!t.templates?.length) continue;
-    const first = samples.find((s) => s.type === t.type)!;
-    const own = t.templates.map((x) => { const s = sample(templateSample(t.type, x.id)); return { id: x.id, s, prints: printsOf(s) }; });
+    const first = samples.find((s) => s.type === t.type)!, colourBlock = t.likeness === 'colour';
+    const own = t.templates.map((x) => { const s = sample(templateSample(t.type, x.id)); return { id: x.id, s, prints: printsOf(s), colours: colourBlock ? coloursOf(s) : [] }; });
+    /** the two distances of a template from another sample, as the message gives them */
+    const apart = (a: (typeof own)[number], prints: TimedPrint[], colours: () => TimedPrint[]) => {
+      const edge = sampleDistance(a.prints, prints), colour = colourBlock ? sampleDistance(a.colours, colours(), colourDistance) : 0;
+      return { edge, colour, near: tooNear(colourBlock, edge, colour), text: `${edge.toFixed(3)}${colourBlock ? `，色彩 ${colour.toFixed(2)}` : ''}` };
+    };
     for (const a of own) {
-      const base = defaultFor(first, a.s), d = sampleDistance(a.prints, printsOf(base));
-      if (d <= TEMPLATE_LIKENESS) near.push(`${t.type}/${a.id} 和預設的樣子（${base.name}）太像：${d.toFixed(3)}`);
+      const base = defaultFor(first, a.s), d = apart(a, printsOf(base), () => coloursOf(base));
+      if (d.near) near.push(`${t.type}/${a.id} 和預設的樣子（${base.name}）太像：${d.text}`);
       for (const b of own) {
         // two templates drawn in different frames (a 16:9 one beside 9:16 ones) are not compared: the frame alone would set them apart
         if (a === b || shapeOf(a.s) !== shapeOf(b.s)) continue;
-        const e = sampleDistance(a.prints, b.prints);
-        if (e <= TEMPLATE_LIKENESS) near.push(`${t.type}/${a.id} 和 ${b.id} 太像：${e.toFixed(3)}`);
+        const e = apart(a, b.prints, () => b.colours);
+        if (e.near) near.push(`${t.type}/${a.id} 和 ${b.id} 太像：${e.text}`);
       }
     }
   }
   expect(near).toEqual([]);
+});
+
+test('rule 2 asks the colour measure about the colour blocks only: a look merely tinted stays too near for any other block', () => {
+  // film's print look tinted blue (the farthest colour-only variant of the calibration below): far apart by colour, near by edges
+  const p = picture(fileOf(sample('film-print'), sample('film-print').at[0])), tinted = tintBy(p, [0.5, 0.7, 1]);
+  const edge = meanAbsDiff(printOf(p), printOf(tinted)), colour = colourDistance(colourPrintOf(p), colourPrintOf(tinted));
+  expect(colour).toBeGreaterThan(COLOUR_LIKENESS);
+  expect(tooNear(false, edge, colour)).toBe(true);
+  expect(tooNear(true, edge, colour)).toBe(false);
+  // either measure apart is enough for a colour block; neither, too near
+  expect(tooNear(true, TEMPLATE_LIKENESS + 0.01, 0)).toBe(false);
+  expect(tooNear(true, 0, COLOUR_LIKENESS)).toBe(true);
 });
 
 describe('the threshold, calibrated on the 2026-11-15 looks', () => {

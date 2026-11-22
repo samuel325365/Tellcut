@@ -12,6 +12,7 @@ import { wipe } from '../wipe.ts';
 import { rolldoor } from '../rolldoor.ts';
 import { backdrop } from '../backdrop.ts';
 import { shader } from '../shader.ts';
+import { grade } from '../grade.ts';
 import { type Sample, PIC, OVER_REF, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -280,9 +281,16 @@ export const STYLES: Sample[] = [
   tpl(shader, 'dither-retro', { theme: SHADER_THEME, at: [0.5, 2.5] }),
   tpl(shader, 'smoke-slow', { theme: SHADER_THEME, at: [0.5, 2.5] }),
   tpl(shader, 'rays-stage', { theme: SHADER_THEME, at: [0.5, 2.5] }),
-  // core.flash: over the default's plain stage, so the measure sees only what the flash draws
-  tpl(flash, 'bloom-pop', { len: 1, at: [0.15, 0.35] }),
-  tpl(flash, 'fade-in', { at: [1.2, 2.0] }),
+  // core.flash and grade, colour blocks: over the made-up street, as their default pictures are (core-flash-photo, grade-photo); the
+  // grade at a moment of each of its steps, the fades on their way
+  tpl(flash, 'bloom-pop', { ...OVER_REF, len: 1, at: [0.15, 0.35] }),
+  tpl(flash, 'fade-in', { ...OVER_REF, at: [1.2, 2.0] }),
+  tpl(flash, 'fade-out', { ...OVER_REF, at: [0.75, 1.5, 2.25] }),
+  tpl(flash, 'soft-dip', { ...OVER_REF, len: 1, at: [0.2, 0.5] }),
+  tpl(grade, 'bw-to-color', { ...OVER_REF, len: 2, at: [0.3, 1.0] }),
+  tpl(grade, 'mono-punch', { ...OVER_REF, len: 2, at: [0.15, 0.6] }),
+  tpl(grade, 'bw-hold', { ...OVER_REF, len: 2, at: [1.0] }),
+  tpl(grade, 'sepia', { ...OVER_REF, len: 2, at: [1.0] }),
   // the colour measure's calibration (golden/templates.test.ts), over the made-up street at one moment: distinct gradings it must set
   // apart (with grade-photo, the mono orange), and a near twin it must not (the half black a little lighter)
   { name: 'colour-cal-photo', type: 'core.flash', ...OVER_REF, params: { peak: 0 }, len: 2, at: [1.0] },

@@ -24,6 +24,12 @@ export const grade: ItemType<GP, GS> = {
     { key: 'deep', label: '加深（mono 那幾段再乘上 tone，亮的地方也染色）', type: 'bool', default: false },
     { key: 'tone', label: '加深乘上的顏色（deep）', type: 'color', default: '#ffa070' },
   ],
+  templates: [
+    { id: 'bw-to-color', label: '黑白轉彩色', doc: '從回憶回到現在：一開始整片黑白，0.6 秒時一下變回原本的顏色', params: { steps: '0|bw\n0.6|none' } },
+    { id: 'mono-punch', label: '單色強調', doc: '強調一個瞬間：原色開始，0.3 秒起整片染成濃的單色（加深），0.9 秒回到原色', params: { steps: '0|none\n0.3|mono\n0.9|none', deep: true } },
+    { id: 'bw-hold', label: '整段黑白', doc: '回憶、紀實、嚴肅的段落：整個項目都是黑白', params: { steps: '0|bw' } },
+    { id: 'sepia', label: '懷舊棕', doc: '老街、舊照片、懷舊：整段染成加深的棕色單色，亮的地方偏米色', params: { steps: '0|mono', color: '#8a5a2b', deep: true, tone: '#e8c9a0' } },
+  ],
   build: (ctx) => {
     const s: GS = fill(ctx.root), deep = ctx.layers?.[0];
     if (deep) s.w = fill(deep).d;
