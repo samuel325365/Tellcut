@@ -5,7 +5,9 @@ import { TEMPLATES } from '../caption/templates.ts';
 export interface Sample { name: string; type: string; params?: Record<string, unknown>; len?: number; at: number[]; theme?: Record<string, unknown>; bg?: string; wide?: boolean; square?: boolean;
   sources?: Record<string, { file: string; width: number; height: number; map?: { center: [number, number]; zoom: number; credit?: string } }>;
   /** a combo's sample (samples/combos.ts): the combo's id, and its picture layers drawn together (`type` is then combo:<id>, not a block) */
-  combo?: string; items?: Array<{ type: string; params?: Record<string, unknown>; start: number; end: number; layer?: 'top' | 'under' }> }
+  combo?: string; items?: Array<{ type: string; params?: Record<string, unknown>; start: number; end: number; layer?: 'top' | 'under' }>;
+  /** a picture of `sources` drawn under the block (golden's photo): the colour blocks' samples, over REF */
+  photo?: string }
 
 /** A block template's golden sample (engine templates.ts): `<block>-tpl-<template id>`, the block named as its own samples are
  *  (common.leak → leak, core.flash → core-flash). The admission test finds a template's pictures by it, and the gallery its thumbnail. */
@@ -42,6 +44,11 @@ export const CHAT = '0.2|user|小美||到了嗎？|light|who=#d6336c\n0.8|user|�
 
 /** common.album's photos: the made-up map as a picture (twice, two focus points) among painted stand-ins */
 export const PIC = { pic: { file: 'fixtures/fake-map.png', width: 360, height: 640 } };
+/** the made-up street the colour blocks (likeness 'colour': grade, tone, core.flash) are drawn over, so what they do to a picture shows
+ *  (golden/fixtures/colour-ref.png, drawn by colour-ref.mjs beside it): a sample writes { sources: REF, photo: 'ref' } */
+export const REF = { ref: { file: 'fixtures/colour-ref.png', width: 360, height: 640 } };
+/** a sample's photo underlay: REF under the block */
+export const OVER_REF = { sources: REF, photo: 'ref' };
 /** common.chat's messages: every kind on one chat, and a group with names */
 export const CHAT_MEDIA = `-1|sys|以下為情境重現
 0|ch|🛵 出發

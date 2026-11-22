@@ -12,7 +12,7 @@ import { wipe } from '../wipe.ts';
 import { rolldoor } from '../rolldoor.ts';
 import { backdrop } from '../backdrop.ts';
 import { shader } from '../shader.ts';
-import { type Sample, PIC, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
+import { type Sample, PIC, OVER_REF, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
 const GLITCH_BG = 'repeating-linear-gradient(90deg, #e8dcc0 0px, #e8dcc0 90px, #24303c 90px, #24303c 180px)';
@@ -75,6 +75,9 @@ export const STYLES: Sample[] = [
   // Single Color pilot film's fx.grade / fx.deepen / fx.hud / fx.echo / fx.page / fx.tape / fx.count): a one-colour and a grey grade
   // over a blue ground, the wash, the viewfinder, the echo word opening and settled (and white on a one-colour step), a poster page
   // settling and settled, the band, the slanted 3 and 2
+  // grade-photo first: the block's default picture (its gallery thumbnail and what its templates are measured against) over the made-up
+  // street, what a grade does showing; the plain ones after it still guard the drawing
+  { name: 'grade-photo', type: 'common.grade', ...OVER_REF, params: { steps: '0|mono' }, len: 2, at: [1.0] },
   { name: 'grade', type: 'common.grade', params: { steps: '0|mono' }, len: 2, at: [1.0], bg: '#3a7bd5' },
   { name: 'grade-bw', type: 'common.grade', params: { steps: '0|bw' }, len: 2, at: [1.0], bg: '#3a7bd5' },
   { name: 'grade-deep', type: 'common.grade', params: { steps: '0|mono', deep: true }, len: 2, at: [1.0], bg: '#d9d9d9' },

@@ -56,6 +56,16 @@ test('goldenProject is a 1080×1920 film of one item', () => {
   expect([q.meta.width, q.meta.height]).toEqual([1080, 1080]);
 });
 
+test('goldenProject with a photo: the picture as one clip of the whole case on a video track under the block', () => {
+  const ref = { ref: { file: 'fixtures/x.png', width: 360, height: 640 } };
+  const p = goldenProject({ name: 'x', type: 'core.flash', at: [0], len: 2, sources: ref, photo: 'ref' });
+  expect(p.tracks.map((t) => t.kind)).toEqual(['video', 'overlay']);
+  const clips = p.tracks[0].items as Array<{ source: string; start: number; end: number }>;
+  expect(clips.map((i) => [i.source, i.start, i.end])).toEqual([['ref', 0, 2]]);
+  expect(p.sources.ref.duration).toBe(2);
+  expect(() => goldenProject({ name: 'x', type: 'core.flash', at: [0], sources: ref, photo: 'nope' })).toThrow(/nope/);
+});
+
 test('goldenProject of several items: under below the others, top above them, each at its own times', () => {
   const p = goldenProject({ name: 'x', type: 'combo:x', at: [0.2], len: 1, items: [
     { type: 'common.speedlines', start: 0, end: 0.8 }, { type: 'core.flash', params: { peak: 1 }, start: 0.1, end: 0.6, layer: 'top' }, { type: 'common.backdrop', start: 0, end: 1, layer: 'under' },

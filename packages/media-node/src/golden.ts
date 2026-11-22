@@ -37,6 +37,9 @@ export interface GoldenCase {
   /** several items drawn together instead of the one block (a combo's picture layers): `type` and `params` are then not drawn;
    *  'under' goes below the others, 'top' above them, as a cut script places them */
   items?: GoldenItem[];
+  /** a picture of `sources` (its id) under the block, as a main-track clip of the whole case: the colour blocks (common.grade,
+   *  common.tone, core.flash's fades) blend with the picture under them, and over the plain `bg` they show nothing of what they do */
+  photo?: string;
 }
 /** one of a several-item case's items, in film seconds */
 export interface GoldenItem { type: string; params?: Record<string, unknown>; start: number; end: number; layer?: 'top' | 'under' }
@@ -56,6 +59,18 @@ const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01,
 
 /** the tracks of a case: its one block on an overlay track, or its items under, beside and over each other */
 function goldenTracks(c: GoldenCase, len: number) {
+  return [...photoTrack(c, len), ...blockTracks(c, len)];
+}
+
+/** the case's photo, a clip of the whole case on a video track under everything (none without one) */
+function photoTrack(c: GoldenCase, len: number) {
+  if (!c.photo) return [];
+  if (!c.sources?.[c.photo]) throw new Error(`golden 案例 ${c.name} 的 photo「${c.photo}」不在 sources 裡`);
+  const whole = { x: 0.5, y: 0.5, zoom: 1 };
+  return [{ id: 'p', kind: 'video', items: [{ id: 'photo', source: c.photo, start: 0, end: len, in: 0, speed: 1, crop: { from: whole, to: whole } }] }];
+}
+
+function blockTracks(c: GoldenCase, len: number) {
   if (!c.items) return [{ id: 'o', kind: 'overlay', items: [{ id: 'g', type: c.type, start: 0, end: len, params: c.params ?? {} }] }];
   const on = (layer?: 'top' | 'under') => c.items!.map((it, i) => ({ it, i })).filter(({ it }) => it.layer === layer)
     .map(({ it, i }) => ({ id: `g${i}`, type: it.type, start: it.start, end: it.end, params: it.params ?? {} }));
@@ -67,7 +82,7 @@ export function goldenProject(c: GoldenCase): Project {
   const len = c.len ?? 3;
   return parseProject({ version: 1,
     meta: { name: c.name, width: c.wide ? 1920 : 1080, height: c.wide || c.square ? 1080 : 1920, fps: 30, duration: len, plugins: [], background: c.bg ?? '#3a4256', mix: MIX, ...(c.theme ? { theme: c.theme } : {}) },
-    sources: Object.fromEntries(Object.entries(c.sources ?? {}).map(([id, s]) => [id, { path: sourcePath(id, s.file), duration: 1, width: s.width, height: s.height, kind: 'image', ...(s.map ? { map: s.map } : {}) }])),
+    sources: Object.fromEntries(Object.entries(c.sources ?? {}).map(([id, s]) => [id, { path: sourcePath(id, s.file), duration: id === c.photo ? len : 1, width: s.width, height: s.height, kind: 'image', ...(s.map ? { map: s.map } : {}) }])),
     media: {}, grids: [],
     tracks: goldenTracks(c, len) });
 }
