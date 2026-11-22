@@ -5,6 +5,8 @@ import { PlayerBridge } from './bridge.ts';
 import { t } from './i18n/index.ts';
 
 const GALLERY_PLAYER = '/player/index.html?embed=1&media=api&id=_gallery';
+/** how far before its end a preview played once rests: a frame at 30 fps */
+const LAST_FRAME = 1 / 30;
 /** the player for a project's own blocks (its fx load from the project folder) */
 export const projectPlayer = (id: string) => `/player/index.html?embed=1&media=api&id=${encodeURIComponent(id)}`;
 /** the player for an entry of My blocks (its module and fonts load from the entry's folder) */
@@ -35,7 +37,9 @@ export function PlayerPreview({ project, loop = true, playKey, autoplay = true, 
       if (t < 1) restarted = false;
       else if (loop && dur && !restarted && t >= dur - 0.12) { restarted = true; bridge.play(0); }
     };
-    bridge.onEnded = () => { if (loop) bridge.play(0); };
+    // played once: rest on its last frame (at the very end every item, the picture under it too, is over and only the bare ground
+    // would show)
+    bridge.onEnded = () => { if (loop) bridge.play(0); else if (dur) bridge.seek(Math.max(0, dur - LAST_FRAME)); };
   }, [loop]);
   useEffect(() => {
     setError('');

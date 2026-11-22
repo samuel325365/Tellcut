@@ -236,7 +236,7 @@ function ComboStrip({ c, named = false }: { c: GalleryCombo; named?: boolean }) 
 /** seconds from the moment: +0.1, −0.1, 0 */
 const fromMoment = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
 
-/** A combo (engine combos.ts): it played on the street once, with its sounds and shake, then its pictures, what it is for, each layer
+/** A combo (engine combos.ts): its live preview on the street (its sounds and shake too), its pictures, what it is for, each layer
  *  (what it is and when it comes), Add to timeline (every layer at the playhead, one undo step in the editor) and how cut.ts places
  *  it. The preview plays when the card is picked and on Replay, never by itself: like a sound effect's, opening the tab or typing
  *  in the search must not make a noise. */

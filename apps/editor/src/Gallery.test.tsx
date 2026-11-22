@@ -780,10 +780,11 @@ test('a combo\'s live preview: the street with its layers, sounds and shake plac
   const g: GalleryIndex = { ...C, combos: [{ ...C.combos![0], layers, plugins: ['common', 'core'] }, { ...C.combos![1], layers: [
     { name: 'scan', kind: 'effect', type: 'common.backdrop', at: -0.1, len: 0.5, params: {} },
     { name: 'scratch', kind: 'sfx', type: 'common.beep', at: -0.1, len: 0.42, params: {} }], plugins: ['common'] }] };
-  const sent: any[] = [];
-  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const sent: any[] = [], bridges: PlayerBridge[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation(function (this: PlayerBridge, p) { bridges.push(this); sent.push(p); });
   const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
   const play = vi.spyOn(PlayerBridge.prototype, 'play').mockImplementation(() => {});
+  const seek = vi.spyOn(PlayerBridge.prototype, 'seek').mockImplementation(() => {});
   try {
     const root = document.createElement('div');
     await act(async () => { render(<Gallery load={async () => g} />, root); });
@@ -809,13 +810,17 @@ test('a combo\'s live preview: the street with its layers, sounds and shake plac
     expect(play).toHaveBeenCalledTimes(1);
     await click(root, '[data-detail="combo:glitchcut"] [data-combo-preview] .g-play');
     expect(play).toHaveBeenCalledTimes(2);
+    // played once, it rests on its last frame, not on the bare ground the very end shows
+    const b = bridges.at(-1)!;
+    act(() => { b.onReady(2.5); b.onEnded(); });
+    expect(seek).toHaveBeenLastCalledWith(2.5 - 1 / 30);
     // no layers sent (an older server): the stills alone, no player
     const bare = document.createElement('div');
     await act(async () => { render(<Gallery load={async () => C} />, bare); });
     await settle();
     await click(bare, '[data-tab="combos"]');
     expect(bare.querySelector('[data-detail="combo:impact"] [data-combo-preview]')).toBeNull();
-  } finally { load.mockRestore(); patch.mockRestore(); play.mockRestore(); }
+  } finally { load.mockRestore(); patch.mockRestore(); play.mockRestore(); seek.mockRestore(); }
 });
 
 test('opened from a project, a combo\'s Add to timeline asks the editor for the whole combo and says how it went', async () => {
