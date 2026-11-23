@@ -32,6 +32,20 @@ test('with a ground, the gallery street plays on a video track under the block f
   expect(parsed.sources[PREVIEW_GROUND].kind).toBe('image');
 });
 
+test('stand: each source a sample reads a picture from is the gallery street, a photo source on no track, with or without the ground', () => {
+  const p = blockPreviewProject({ type: 'common.magazine', kind: 'overlay', plugins: ['common'], params: { cells: 'pic|0' }, stand: ['pic', 'pic', 'cover'] });
+  const still = { path: `${PREVIEW_GROUND}.png`, duration: BLOCK_PREVIEW_LEN, width: 1080, height: 1920, kind: 'image' };
+  expect(p.sources).toEqual({ pic: still, cover: still });
+  expect(p.tracks.map((t) => t.kind)).toEqual(['overlay']);
+  expect(parseProject(p).sources.pic.kind).toBe('image');
+  // over the street: the ground's source and the stand-ins together, the ground alone on the video track
+  const q = blockPreviewProject({ type: 'common.camcorder', kind: 'overlay', plugins: ['common'], ground: true, stand: ['pic'] });
+  expect(Object.keys(q.sources).sort()).toEqual(['pic', PREVIEW_GROUND].sort());
+  expect(q.tracks[0].items).toEqual([expect.objectContaining({ source: PREVIEW_GROUND })]);
+  // none given, or an empty list: no sources
+  expect(blockPreviewProject({ type: 'common.slam', kind: 'overlay', plugins: ['common'], stand: [] }).sources).toEqual({});
+});
+
 test('a combo on the street: the moment after the earliest layer\'s lead, placed as Add to timeline places it', () => {
   const layers: ComboPlacement[] = [
     { name: 'rise', kind: 'sfx', type: 'x.riser', at: -0.8, len: 0.8, params: {}, gain: -10 },

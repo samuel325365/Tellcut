@@ -1,11 +1,11 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
 import { BLOCK_PREVIEW_LEN, blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SFX_CATEGORY, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SFX_CATEGORY, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 
-export type { GalleryBlock, GalleryBlockTemplate, GalleryCombo, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
+export type { GalleryBlock, GalleryBlockTemplate, GalleryBlockVariant, GalleryCombo, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
 export type Tab = 'blocks' | 'captions' | 'titles' | 'sfx' | 'combos' | 'styles' | 'recipes';
 
 /** the line a caption template is shown with, in the UI language, with its word times (spec 2026-11-04-caption-styles §5) */
@@ -47,17 +47,25 @@ export const PREVIEW_LEN = BLOCK_PREVIEW_LEN;
 /** A 1080×1920 film of one block, as the golden pictures use (engine blockPreviewProject, shared with a saved block's thumbnail);
  *  a block that works on the picture under it (`over`) plays over the gallery's street, the picture its card is drawn over; any
  *  other plays on its card's ground. `tpl`: the template whose params are what is set, whose card's ground and shape it takes
- *  then (its ground, else the block's: a template's card drawn on the plain ground keeps the block's own). */
-export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none', tpl?: GalleryBlockTemplate) {
-  const background = tpl?.bg ?? b.bg, aspect = tpl ? tpl.aspect : b.aspect;
-  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme: THEMES[themeId]?.theme, ...(b.over === 'picture' ? { ground: true } : {}),
-    ...(background && b.over !== 'picture' ? { background } : {}), ...(aspect ? { aspect } : {}) });
+ *  then (its ground, else the block's: a template's card drawn on the plain ground keeps the block's own). `variant`: the variant
+ *  whose sample the params are, whose card's ground and shape it takes (its own: a variant's card on the plain ground is drawn on
+ *  it), and its sample's theme unless the theme menu picks one, and the gallery's street for the sources its sample shows. */
+export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none', tpl?: GalleryBlockTemplate, variant?: GalleryBlockVariant) {
+  const background = variant ? variant.bg : tpl?.bg ?? b.bg, aspect = variant ? variant.aspect : tpl ? tpl.aspect : b.aspect;
+  const theme = THEMES[themeId]?.theme ?? variant?.theme;
+  return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme, ...(b.over === 'picture' ? { ground: true } : {}),
+    ...(background && b.over !== 'picture' ? { background } : {}), ...(aspect ? { aspect } : {}), ...(variant?.stand?.length ? { stand: variant.stand } : {}) });
 }
 
 /** whether two sets of params are the same (key order aside): a template is the one set when its params are exactly what is set */
 export const sameParams = (a: Record<string, unknown>, b: Record<string, unknown>) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 /** the block's template whose params are exactly what is set, if one is */
 export const pickedTemplate = (b: GalleryBlock, set: Record<string, unknown>) => b.templates?.find((x) => sameParams(x.params, set));
+/** the variant whose value is the only thing set ({ [param]: value } exactly), if one is */
+export const pickedVariant = (b: GalleryBlock, set: Record<string, unknown>): GalleryBlockVariant | undefined => {
+  const keys = Object.keys(set), v = b.variants;
+  return v && keys.length === 1 && keys[0] === v.param ? v.list.find((x) => x.value === set[v.param]) : undefined;
+};
 
 /** One of My blocks as blockProject shows a shared one: its module comes from the entry's folder (the player's project url, libraryPlayer);
  *  the look picked, else the theme of the project it was saved from (spec 2026-10-29-my-library §3.4). */
@@ -78,12 +86,14 @@ export const ownModules = (fx: string[] | undefined) => (fx ?? []).filter((m) =>
 
 /** The project's own blocks as cards. Whether one needs footage is told as the server tells it for the shared ones, from its
  *  parameters and media() hook (the server also reads its code, which the page does not). */
-export function ownBlocks(items: Array<{ type: string; label: string; doc?: string; kind: string; params: GalleryBlock['params']; footage?: string; media?: unknown; templates?: GalleryBlockTemplate[] }>): GalleryBlock[] {
+export function ownBlocks(items: Array<{ type: string; label: string; doc?: string; kind: string; params: GalleryBlock['params']; footage?: string; media?: unknown; templates?: GalleryBlockTemplate[];
+  variants?: { param: string; list: Array<{ value: string; label: string; doc: string; sample?: string }> } }>): GalleryBlock[] {
   return items.filter((x) => x.kind === 'scene' || x.kind === 'overlay').map((x) => ({
     plugin: 'fx', group: t('group.fx'), type: x.type, label: x.label, doc: x.doc ?? '', kind: x.kind as GalleryBlock['kind'], params: x.params,
     needsMedia: x.footage !== 'optional' && (x.params.some((d) => d.type === 'source-ref' || d.type === 'media-ref') || typeof x.media === 'function'),
-    // its templates too (no picture: a project's own blocks have no golden ones)
+    // its templates and variants too (no picture: a project's own blocks have no golden ones)
     ...(x.templates?.length ? { templates: x.templates.map(({ id, label, doc, params }) => ({ id, label, doc, params })) } : {}),
+    ...(x.variants?.list.length ? { variants: { param: x.variants.param, list: x.variants.list.map(({ value, label, doc }) => ({ value, label, doc })) } } : {}),
   }));
 }
 

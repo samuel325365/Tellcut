@@ -80,6 +80,47 @@ test('each card says the ground and shape it was drawn on, for the preview to pl
   } finally { await app.close(); }
 });
 
+test('a block with variants lists them with their cards and what their previews play: the sample\'s params, words, theme and pictures', async () => {
+  const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
+  try {
+    const g = await (await fetch(`${base}/api/gallery`)).json(), block = (type: string) => g.blocks.find((b: any) => b.type === type);
+    const variant = (type: string, value: string) => block(type).variants.list.find((v: any) => v.value === value);
+    // every variant, in the options' order, each with its card's picture; the default one's is the block's own card
+    const progress = block('common.progress');
+    expect(progress.variants.param).toBe('mode');
+    expect(progress.variants.list).toHaveLength(17);
+    expect(progress.variants.list.map((v: any) => v.value)).toEqual(progress.params.find((p: any) => p.key === 'mode').options);
+    for (const v of progress.variants.list) {
+      expect(v.thumb, v.value).toMatch(/^\/api\/gallery\/thumb\/progress[a-z0-9-]*-t\d+\.\d\d\.png$/);
+      expect([v.label.length > 0, v.doc.length > 0], v.value).toEqual([true, true]);
+    }
+    expect(progress.variants.list[0].thumb).toBe(progress.thumb);
+    expect(variant('common.progress', 'ring').params).toMatchObject({ mode: 'ring' });
+    // a sample with its own look carries it, for the preview to play in it
+    expect(variant('common.progress', 'dots').theme).toEqual(expect.objectContaining({ palette: expect.any(Object) }));
+    // a block marked over: the street sibling's picture, no plain ground; the preview plays the sample itself
+    const lens = variant('common.lens', 'fisheye');
+    expect(lens.thumb).toBe('/api/gallery/thumb/lens-fisheye-street-t1.50.png');
+    expect(lens.params).toMatchObject({ look: 'fisheye' });
+    expect(lens.bg).toBeUndefined();
+    // a sample that shows a picture from a source: the ids the preview stands the gallery's street in for (not the street ground of a
+    // sample already drawn over it)
+    expect(variant('common.magazine', 'feature').stand).toEqual(['pic']);
+    expect(variant('common.flatlay', 'polaroid').stand).toEqual(['pic']);
+    expect(variant('core.flash', 'flat').stand).toBeUndefined();
+    expect(variant('common.progress', 'ring').stand).toBeUndefined();
+    // the English and Japanese words of a sample that shows Chinese (golden/thumbs.ts), the card's ground and shape
+    const withWords = g.blocks.flatMap((b: any) => b.variants?.list ?? []).filter((v: any) => v.local);
+    expect(withWords.length).toBeGreaterThan(0);
+    for (const v of withWords) expect(Object.keys(v.local).every((k) => k === 'en' || k === 'ja'), v.value).toBe(true);
+    expect(variant('common.grid', 'two').aspect).toBe('wide');
+    // a block without variants has none; every variant's picture is served
+    expect(block('core.title').variants).toBeUndefined();
+    for (const b of g.blocks.filter((x: any) => x.variants)) for (const v of b.variants.list)
+      if (v.thumb) expect((await fetch(base + v.thumb)).status, `${b.type} ${v.value}`).toBe(200);
+  } finally { await app.close(); }
+});
+
 test('the gallery player (id=_gallery) gets its own pictures, street and map, at the URL a project photo has; nothing else', async () => {
   const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
   try {
@@ -90,8 +131,19 @@ test('the gallery player (id=_gallery) gets its own pictures, street and map, at
       expect(r.headers.get('content-type')).toBe('image/png');
       expect(Buffer.from(await r.arrayBuffer()).equals(readFileSync(join(fixtures, file))), name).toBe(true);
     }
-    // only those two: no other file of the folder, no name every object has, and no other kind of media of _gallery
-    for (const path of ['image/colour-ref', 'image/constructor', 'image/..%2Fcolour-ref.png', 'proxy/street', 'still?source=street&t=0'])
+    // a still of one of them (a block's picture window asks for one), and of a source a variant's preview stands the street in for
+    // (`pic`, the variants' stand); the whole picture, whatever width is asked
+    const street = readFileSync(join(fixtures, 'street.png'));
+    for (const path of ['still?source=street&t=0&w=1080', 'still?source=pic&t=0&w=540', 'image/pic']) {
+      const r = await fetch(`${base}/api/projects/_gallery/media/${path}`);
+      expect(r.status, path).toBe(200);
+      expect(Buffer.from(await r.arrayBuffer()).equals(street), path).toBe(true);
+    }
+    expect(Buffer.from(await (await fetch(`${base}/api/projects/_gallery/media/still?source=map&t=0`)).arrayBuffer()).equals(readFileSync(join(fixtures, 'fake-map.png')))).toBe(true);
+    // only those: no other file of the folder, no name every object has, no strip or square crop (the gallery makes none), and no
+    // other kind of media of _gallery
+    for (const path of ['image/colour-ref', 'image/constructor', 'image/..%2Fcolour-ref.png', 'proxy/street', 'still?source=colour-ref&t=0', 'still?source=constructor&t=0',
+      'still?t=0', 'still?source=street&t=0&n=4&dur=2', 'still?source=street&t=0&square=200'])
       expect((await fetch(`${base}/api/projects/_gallery/media/${path}`)).status, path).toBeGreaterThanOrEqual(400);
     // and _gallery stays no project: the list has none, and its folder is not made by the pictures
     expect((await (await fetch(`${base}/api/projects`)).json()).map((p: any) => p.id)).not.toContain('_gallery');

@@ -265,7 +265,22 @@ export interface GalleryBlock extends CardGround { plugin: string; group: string
   /** engine ItemType.over: the block works on the picture under it, so its preview plays over the gallery's street */
   over?: 'picture';
   /** its named templates (engine ItemType.templates), each with its golden picture when it has one */
-  templates?: GalleryBlockTemplate[] }
+  templates?: GalleryBlockTemplate[];
+  /** its looks picked by one enum param (engine ItemType.variants), in the options' order */
+  variants?: { param: string; list: GalleryBlockVariant[] } }
+/** One look of a block in the gallery (engine ItemType.variants): picking it is setting `param` to `value`. Its card's picture and
+ *  ground come from its golden sample (plugin-common variantCard: over the street for a block marked over), and its preview plays
+ *  that sample (variantSample). A project's own block has the names alone. */
+export interface GalleryBlockVariant extends CardGround {
+  value: string; label: string; doc: string;
+  /** its card's picture, when its sample has one */
+  thumb?: string;
+  /** what the preview plays: its sample's params (the picture's own), and in English and Japanese where golden/thumbs.ts has them */
+  params?: Record<string, unknown>; local?: { en?: Record<string, unknown>; ja?: Record<string, unknown> };
+  /** its sample's theme, and the source ids its sample reads a picture from (the preview stands the gallery's street in for each,
+   *  engine blockPreviewProject's `stand`) */
+  theme?: Record<string, unknown>; stand?: string[];
+}
 /** The ground and shape the card's picture was drawn on (its sample's `bg`, `wide`, `square`), so the preview plays on the same:
  *  `bg` a CSS background (absent: the preview's plain grey-blue, or the street for a block marked over); `aspect` a 16:9 or
  *  square film (absent: 9:16). */

@@ -23,15 +23,17 @@ const SIZE: Record<PreviewAspect | 'tall', [number, number]> = { tall: [1080, 19
  *  `ground`: the street (PREVIEW_GROUND) on a video track under the block for the whole film, as golden's photo lies under a
  *  colour block's sample: for a block that works on the picture under it, which shows little over the plain ground.
  *  `background` (a CSS background) and `aspect`: the ground and shape of the block's gallery card (its sample's `bg`, `wide`,
- *  `square`), so the preview shows the block on what it was drawn to read on (dark ink on a light ground, a 16:9 look wide). */
+ *  `square`), so the preview shows the block on what it was drawn to read on (dark ink on a light ground, a 16:9 look wide).
+ *  `stand`: source ids the params read a picture from (a golden sample's own, a variant's in the gallery): each is a photo source
+ *  of the gallery's street, on no track, which the gallery server answers for those ids (as an image and as a still). */
 export function blockPreviewProject(o: { type: string; kind: string; plugins: string[]; params?: Record<string, unknown>; fx?: string[]; theme?: unknown; ground?: boolean;
-  background?: string; aspect?: PreviewAspect }) {
+  background?: string; aspect?: PreviewAspect; stand?: string[] }) {
   const whole = { x: 0.5, y: 0.5, zoom: 1 }, [width, height] = SIZE[o.aspect ?? 'tall'];
   return {
     version: 1,
     meta: { name: o.type, width, height, fps: 30, duration: BLOCK_PREVIEW_LEN, plugins: o.plugins, background: o.background || PREVIEW_BG, mix: DEFAULT_MIX,
       ...(o.fx ? { fx: o.fx } : {}), ...(o.theme ? { theme: o.theme } : {}) },
-    sources: o.ground ? previewSources([PREVIEW_GROUND]) : {},
+    sources: { ...(o.ground ? previewSources([PREVIEW_GROUND]) : {}), ...standSources(o.stand ?? []) },
     media: {}, grids: [],
     tracks: [
       ...(o.ground ? [{ id: 'v', kind: 'video', items: [{ id: 'ground', source: PREVIEW_GROUND, start: 0, end: BLOCK_PREVIEW_LEN, in: 0, speed: 1, crop: { from: whole, to: whole } }] }] : []),
@@ -83,6 +85,11 @@ export function clipPreviewClips(p: ClipPreview): PreviewClip[] {
 export const previewSources = (ids: string[], len = BLOCK_PREVIEW_LEN) => Object.fromEntries([...new Set(ids)].map((id) => [id, id === PREVIEW_SECOND
   ? { path: `${id}.png`, duration: len, width: 360, height: 640, kind: 'image' }
   : { path: `${id}.png`, duration: len, width: 1080, height: 1920, kind: 'image' }]));
+
+/** the gallery's street standing in for other source ids (blockPreviewProject's `stand`): photo sources the street's size, as long
+ *  as the film; the server knows which ids those are (the variants' samples' own) and answers each with the street */
+export const standSources = (ids: string[], len = BLOCK_PREVIEW_LEN) => Object.fromEntries([...new Set(ids)].map((id) => [id,
+  { path: `${PREVIEW_GROUND}.png`, duration: len, width: 1080, height: 1920, kind: 'image' }]));
 
 /** A 1080×1920, 3 s film of a clip effect (clipPreviewClips) over the plain ground, with nothing else on it. */
 export function clipPreviewProject(p: ClipPreview, name = 'clip') {

@@ -11,8 +11,10 @@ import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_RO
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
 import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 // each block's samples are drawn as its golden pictures, kept (and checked) in git: the gallery's cards show them
-import { cardSample, samples, type Sample } from '@tellcut/plugin-common/samples';
-import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryClip, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
+import { cardSample, samples, variantCard, variantSample, type Sample } from '@tellcut/plugin-common/samples';
+// the English and Japanese words of the samples that show Chinese (what `npm run thumbs` draws with): a variant's preview plays them
+import { THUMB_PARAMS } from '@tellcut/plugin-common/thumbs';
+import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryBlockVariant, type GalleryClip, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
 
@@ -27,6 +29,17 @@ const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
  *  block that works on the picture under it (engine blockPreviewProject's ground). Made-up pictures kept in git beside the golden
  *  ones, so a card drawn over the street and its preview show the same street. */
 export const GALLERY_IMAGES: Readonly<Record<string, string>> = { street: 'fixtures/street.png', map: 'fixtures/fake-map.png' };
+/** the source ids a sample reads a picture from, which a variant's preview stands the street in for (engine blockPreviewProject's
+ *  `stand`): its sources but the photo it is drawn over (golden's street ground) and a map (common.mapcam's tiles are no photo) */
+const standOf = (s: Sample | undefined) => Object.entries(s?.sources ?? {}).filter(([id, x]) => id !== s!.photo && !x.map).map(([id]) => id);
+/** The gallery picture a request of the gallery player names: one of GALLERY_IMAGES by its name, or the street for a source id a
+ *  variant's preview stands it in for (`stands`); none for anything else. The files stay where they are: nothing is copied. */
+export function galleryPicture(name: string, stands: ReadonlySet<string>): string | undefined {
+  if (Object.hasOwn(GALLERY_IMAGES, name)) return GALLERY_IMAGES[name];
+  return stands.has(name) ? GALLERY_IMAGES.street : undefined;
+}
+/** every source id the variants of these plugins' blocks stand the street in for */
+const standIds = (plugins: Plugin[]) => new Set(plugins.flatMap((p) => p.items ?? []).flatMap((t) => (t.variants?.list ?? []).flatMap((v) => standOf(variantSample(t.type, v.value)))));
 const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
 /** a sample's picture at its last moment (the animation settled) */
 const thumbOf = (c: Sample | undefined) => c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`;
@@ -46,6 +59,17 @@ const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => thumbOf(cardSample(ty
 const groundOf = (c: Sample | undefined, over: boolean): CardGround => ({
   ...(c?.bg && !over ? { bg: c.bg } : {}), ...(c?.wide ? { aspect: 'wide' as const } : c?.square ? { aspect: 'square' as const } : {}) });
 /** a combo's pictures: every moment of its sample combo-<id> (start, peak, end), in time order */
+/** a block's variants: each one's card (variantCard: its picture, ground and shape, as a template's) and what its preview plays
+ *  (variantSample: the sample's params, theme and the sources it shows a picture from; its English and Japanese words) */
+function variantsOf(t: ItemType): GalleryBlock['variants'] {
+  if (!t.variants?.list.length) return undefined;
+  return { param: t.variants.param, list: t.variants.list.map((v): GalleryBlockVariant => {
+    const s = variantSample(t.type, v.value), card = variantCard(t.type, v.value), thumb = thumbOf(card), stand = standOf(s);
+    const en = s && THUMB_PARAMS.en[s.name], ja = s && THUMB_PARAMS.ja[s.name];
+    return { value: v.value, label: v.label, doc: v.doc, ...(thumb ? { thumb } : {}), ...groundOf(card, !!t.over), ...(s?.params ? { params: s.params } : {}),
+      ...(en || ja ? { local: { ...(en ? { en } : {}), ...(ja ? { ja } : {}) } } : {}), ...(s?.theme ? { theme: s.theme } : {}), ...(stand.length ? { stand } : {}) };
+  }) };
+}
 const COMBO_FRAMES = (id: string) => { const c = samples.find((x) => x.name === `combo-${id}`); return c ? [...c.at].sort((a, b) => a - b).map((t) => `/api/gallery/thumb/${c.name}-t${t.toFixed(2)}.png`) : []; };
 
 export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): Promise<GalleryIndex> {
@@ -60,6 +84,7 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
     ...groundOf(cardSample(t.type), !!t.over),
     ...(t.templates?.length ? { templates: t.templates.map((x) => { const thumb = BLOCK_TEMPLATE_THUMB(t.type, x.id);
       return { id: x.id, label: x.label, doc: x.doc, params: x.params, ...(thumb ? { thumb } : {}), ...groundOf(cardSample(t.type, x.id), !!t.over) }; }) } : {}),
+    ...(t.variants?.list.length ? { variants: variantsOf(t) } : {}),
   })));
   const sfx = sorted.flatMap((p) => (p.sfx ?? []).map((s): GallerySfx => ({ plugin: p.id, type: s.type, label: s.label, doc: s.doc ?? '', params: s.params, ...(s.category ? { category: s.category } : {}) })));
   const lib = await loadStyles([library]);
@@ -114,9 +139,18 @@ export function galleryRoutes(r: Router, o: { plugins: Plugin[]; projectsDir: st
   r.get('/api/gallery', async (_req, res) => sendJson(res, 200, await galleryIndex(o.plugins, o.library)));
   // where the engine's apiResolver asks for a photo source of the project _gallery, which is no project: registered before the
   // media routes (app.ts), so this answers for it instead of /api/projects/:id/media/image/:source
-  r.get('/api/projects/_gallery/media/image/:name', (req, res, { name }) => {
-    if (!Object.hasOwn(GALLERY_IMAGES, name)) throw new HttpError(404, `No gallery picture "${name}"`);
-    sendFile(req, res, join(GOLDEN_DIR, GALLERY_IMAGES[name]));
+  const stands = standIds(o.plugins);
+  const picture = (name: string) => {
+    const file = galleryPicture(name, stands);
+    if (!file) throw new HttpError(404, `No gallery picture "${name}"`);
+    return join(GOLDEN_DIR, file);
+  };
+  r.get('/api/projects/_gallery/media/image/:name', (req, res, { name }) => sendFile(req, res, picture(name)));
+  // and where a block's picture window asks for a still of one (engine apiResolver's still: a variant's sample showing its `pic`):
+  // the whole picture, whatever width is asked (the block covers its window with it); the gallery makes no strips or squares
+  r.get('/api/projects/_gallery/media/still', (req, res, _p, url) => {
+    if (url.searchParams.has('n') || url.searchParams.has('square')) throw new HttpError(404, 'The gallery has no strips or square stills');
+    sendFile(req, res, picture(url.searchParams.get('source') ?? ''));
   });
   r.get('/api/gallery/thumb/:file', (req, res, { file }, url) => {
     const f = join(GOLDEN_DIR, file);
