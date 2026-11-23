@@ -8,6 +8,7 @@ export * from './shapes.ts';
 export { transitionFallbacks, videoLinks } from './pairs.ts';
 export * from './plugin.ts';
 export * from './templates.ts';
+export * from './variants.ts';
 export * from './combos.ts';
 export * from './report.ts';
 export * from './registry.ts';

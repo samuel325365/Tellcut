@@ -87,6 +87,12 @@ export interface ItemCtx<P = Record<string, any>> {
  *  from the defaults (no colour unless the colour is the point: colours come from the theme) */
 export interface BlockTemplate { id: string; label: string; doc: string; params: Record<string, unknown> }
 
+/** one look of a block (variants.ts): an option of the param the block names in `variants.param`. `label` is a short Traditional
+ *  Chinese name, `doc` one sentence on what it looks like, when to use it and the params only it reads (English and Japanese in the
+ *  editor's blocks.en.ts / blocks.ja.ts, keyed `<type>@<value>`); `sample` names the golden sample that shows it, when the rule
+ *  that finds one (plugin-common samples.ts) picks the wrong one. Only the catalog, the gallery and the editor read it. */
+export interface BlockVariant { value: string; label: string; doc: string; sample?: string }
+
 /** a shared block's group in the catalog and in the page chat's block index (names: BLOCK_CATEGORY in @tellcut/protocol) */
 export type BlockCategory = 'caption' | 'title' | 'text' | 'chapter' | 'card' | 'number' | 'travel' | 'frame' | 'photo' | 'phone' | 'mark' | 'background' | 'look' | 'moment';
 
@@ -107,6 +113,10 @@ export interface ItemType<P = Record<string, any>, S = any> {
    *  At most MAX_TEMPLATES. Never on common.caption / common.heading, whose `template` PARAM is the other kind (caption and title
    *  templates, resolved at draw time). A project's own fx may carry it too. */
   templates?: BlockTemplate[];
+  /** the looks one of this block's enum params picks (variants.ts): `list` holds every option of `param`, in the options' order.
+   *  Drawing and export never read it; the catalog searches and lists it, so the block's own doc keeps only what every look shares
+   *  (at most VARIANT_BLOCK_DOC characters). A project's own fx may carry it too. */
+  variants?: { param: string; list: BlockVariant[] };
   /** 'colour': what this block does is colour and lightness (common.grade, common.tone, core.flash's fades), so its templates differ
    *  in colour and strength alone. Its templates skip admission rule 1 (more than colour apart) and pass rule 2 when either the edge
    *  measure or the colour one (media-node likeness.ts, COLOUR_LIKENESS) sets them apart; its golden samples are drawn over a picture.
