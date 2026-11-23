@@ -46,6 +46,29 @@ test('stand: each source a sample reads a picture from is the gallery street, a 
   expect(blockPreviewProject({ type: 'common.slam', kind: 'overlay', plugins: ['common'], stand: [] }).sources).toEqual({});
 });
 
+test('len: the block lasts its sample\'s length, centred on a frame in a film of at least 3 s; the ground and sources last the film', () => {
+  const at = (len?: number) => blockPreviewProject({ type: 'common.wipe', kind: 'overlay', plugins: ['common'], ground: true, stand: ['pic'], ...(len === undefined ? {} : { len }) });
+  const block = (p: ReturnType<typeof at>) => p.tracks.at(-1)!.items[0] as { start: number; end: number };
+  // none, or the default: today's film exactly
+  expect(at(3)).toEqual(at());
+  expect(block(at())).toMatchObject({ start: 0, end: BLOCK_PREVIEW_LEN });
+  // a 1 s moment: on screen from 1.0 to 2.0 of a 3 s film; 0.8 s from 1.1 (frame 33) to 1.9
+  for (const [len, start, end] of [[1, 1, 2], [0.8, 1.1, 1.9], [1.6, 0.7, 2.3]]) {
+    const p = at(len);
+    expect(p.meta.duration).toBe(BLOCK_PREVIEW_LEN);
+    expect(block(p)).toMatchObject({ start, end });
+    expect(Math.round(block(p).start * 30) / 30).toBe(block(p).start);
+  }
+  // longer than 3 s: the film is the block's length, the block over all of it, the ground and stand-ins as long
+  const long = at(4.2);
+  expect(long.meta.duration).toBe(4.2);
+  expect(block(long)).toMatchObject({ start: 0, end: 4.2 });
+  expect(long.tracks[0].items[0]).toMatchObject({ id: 'ground', start: 0, end: 4.2 });
+  expect(Object.values(long.sources).map((s) => s.duration)).toEqual([4.2, 4.2]);
+  expect(parseProject(long).meta.duration).toBe(4.2);
+  expect(Object.values(at(1).sources).map((s) => s.duration)).toEqual([BLOCK_PREVIEW_LEN, BLOCK_PREVIEW_LEN]);
+});
+
 test('a combo on the street: the moment after the earliest layer\'s lead, placed as Add to timeline places it', () => {
   const layers: ComboPlacement[] = [
     { name: 'rise', kind: 'sfx', type: 'x.riser', at: -0.8, len: 0.8, params: {}, gain: -10 },

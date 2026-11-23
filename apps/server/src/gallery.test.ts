@@ -77,6 +77,12 @@ test('each card says the ground and shape it was drawn on, for the preview to pl
     // the 16:9 look's card is wide; the block itself and its other looks tall
     expect(tpl('common.film', 'cinema-scope').aspect).toBe('wide');
     expect([block('common.film').aspect, tpl('common.film', 'super8-home').aspect]).toEqual([undefined, undefined]);
+    // the length its sample plays for, when not the default 3 s: a block's card, a variant's sample, a template's sample
+    const variant = (type: string, value: string) => block(type).variants.list.find((v: any) => v.value === value);
+    expect([variant('common.wipe', 'curl').len, variant('common.wipe', 'hand').len, variant('common.progress', 'rocket').len]).toEqual([1, 0.8, 4]);
+    expect([block('common.quiz').len, block('common.wordbands').len, tpl('common.wipe', 'iris-close').len, tpl('common.progress', 'rocket').len]).toEqual([4.5, 1.6, 1, 4]);
+    // the default says nothing: the wipe's own card, the progress bar, a template drawn for 3 s
+    for (const x of [block('common.wipe'), block('common.slam'), variant('common.progress', 'bar'), tpl('common.leak', 'prism-sweep')]) expect('len' in x, x.type ?? x.value ?? x.id).toBe(false);
   } finally { await app.close(); }
 });
 

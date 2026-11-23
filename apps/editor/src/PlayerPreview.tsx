@@ -16,6 +16,9 @@ export function PlayerPreview({ project, loop = true, playKey, autoplay = true, 
   const frame = useRef<HTMLIFrameElement>(null), bridge = useMemo(() => new PlayerBridge(location.origin), []);
   const [error, setError] = useState('');
   const loaded = useRef(false), lastKey = useRef(playKey), wanted = useRef(false);
+  // the newest project's own length: a patch gets no new ready, and a gallery preview patched to another look may be longer or
+  // shorter (a block plays for its sample's length), so the loop must not keep the length the first load reported
+  const own = useRef(0);
   useEffect(() => {
     const win = frame.current?.contentWindow;
     if (!win) return () => bridge.dispose();
@@ -33,8 +36,9 @@ export function PlayerPreview({ project, loop = true, playKey, autoplay = true, 
     bridge.onReady = (d) => { dur = d; restarted = false; if (autoplay || wanted.current) bridge.play(0); wanted.current = false; };
     bridge.onTime = (t) => {
       shown = t;
+      const end = own.current || dur;
       if (t < 1) restarted = false;
-      else if (loop && dur && !restarted && t >= dur - 0.12) { restarted = true; bridge.play(0); }
+      else if (loop && end && !restarted && t >= end - 0.12) { restarted = true; bridge.play(0); }
     };
     // played once: rest on the last frame it drew (at the very end every item, the picture under it too, is over and only the bare
     // ground would show). The last time it reported, not the length it was loaded with: a project patched in since (another combo
@@ -45,6 +49,8 @@ export function PlayerPreview({ project, loop = true, playKey, autoplay = true, 
     setError('');
     const asked = playKey !== lastKey.current;
     lastKey.current = playKey;
+    const d = (project as { meta?: { duration?: unknown } } | null)?.meta?.duration;
+    own.current = typeof d === 'number' && d > 0 ? d : 0;
     if (!loaded.current) { bridge.load(project); loaded.current = true; }
     else { bridge.patch(project); if (autoplay) bridge.play(0); }
     if (!autoplay && asked) { wanted.current = true; bridge.play(0); }   // not ready yet: played once it is

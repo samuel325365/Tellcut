@@ -19,7 +19,9 @@ export type PreviewAspect = 'wide' | 'square';
 const SIZE: Record<PreviewAspect | 'tall', [number, number]> = { tall: [1080, 1920], wide: [1920, 1080], square: [1080, 1080] };
 
 /** A 1080×1920, 3 s film of one block over a mid grey-blue ground, the block over the whole length (as the golden pictures draw
- *  it). `fx`: the modules to load (a project's own or a saved block's), left out for a shared block; `theme`: the look, if any;
+ *  it). `len`: the length of the sample the card is drawn from (a moment such as a 1 s wipe plays at its own speed, not stretched
+ *  over 3 s): the block lasts `len`, centred on a frame in a film of max(3 s, len); left out, the plain 3 s film above.
+ *  `fx`: the modules to load (a project's own or a saved block's), left out for a shared block; `theme`: the look, if any;
  *  `ground`: the street (PREVIEW_GROUND) on a video track under the block for the whole film, as golden's photo lies under a
  *  colour block's sample: for a block that works on the picture under it, which shows little over the plain ground.
  *  `background` (a CSS background) and `aspect`: the ground and shape of the block's gallery card (its sample's `bg`, `wide`,
@@ -27,17 +29,21 @@ const SIZE: Record<PreviewAspect | 'tall', [number, number]> = { tall: [1080, 19
  *  `stand`: source ids the params read a picture from (a golden sample's own, a variant's in the gallery): each is a photo source
  *  of the gallery's street, on no track, which the gallery server answers for those ids (as an image and as a still). */
 export function blockPreviewProject(o: { type: string; kind: string; plugins: string[]; params?: Record<string, unknown>; fx?: string[]; theme?: unknown; ground?: boolean;
-  background?: string; aspect?: PreviewAspect; stand?: string[] }) {
+  background?: string; aspect?: PreviewAspect; stand?: string[]; len?: number }) {
   const whole = { x: 0.5, y: 0.5, zoom: 1 }, [width, height] = SIZE[o.aspect ?? 'tall'];
+  // never shorter than 3 s: a short moment gets the ground either side, so it reads as one, and the preview's loop (which starts
+  // over a little before the end) never cuts into it
+  const len = o.len && o.len > 0 ? o.len : BLOCK_PREVIEW_LEN, film = Math.max(BLOCK_PREVIEW_LEN, len);
+  const start = r6(Math.round(((film - len) / 2) * 30) / 30), end = r6(start + len);
   return {
     version: 1,
-    meta: { name: o.type, width, height, fps: 30, duration: BLOCK_PREVIEW_LEN, plugins: o.plugins, background: o.background || PREVIEW_BG, mix: DEFAULT_MIX,
+    meta: { name: o.type, width, height, fps: 30, duration: film, plugins: o.plugins, background: o.background || PREVIEW_BG, mix: DEFAULT_MIX,
       ...(o.fx ? { fx: o.fx } : {}), ...(o.theme ? { theme: o.theme } : {}) },
-    sources: { ...(o.ground ? previewSources([PREVIEW_GROUND]) : {}), ...standSources(o.stand ?? []) },
+    sources: { ...(o.ground ? previewSources([PREVIEW_GROUND], film) : {}), ...standSources(o.stand ?? [], film) },
     media: {}, grids: [],
     tracks: [
-      ...(o.ground ? [{ id: 'v', kind: 'video', items: [{ id: 'ground', source: PREVIEW_GROUND, start: 0, end: BLOCK_PREVIEW_LEN, in: 0, speed: 1, crop: { from: whole, to: whole } }] }] : []),
-      { id: 'g', kind: o.kind, items: [{ id: 'block', type: o.type, start: 0, end: BLOCK_PREVIEW_LEN, params: o.params ?? {} }] },
+      ...(o.ground ? [{ id: 'v', kind: 'video', items: [{ id: 'ground', source: PREVIEW_GROUND, start: 0, end: film, in: 0, speed: 1, crop: { from: whole, to: whole } }] }] : []),
+      { id: 'g', kind: o.kind, items: [{ id: 'block', type: o.type, start, end, params: o.params ?? {} }] },
     ],
   };
 }

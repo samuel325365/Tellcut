@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, resolve, sep } from 'node:path';
-import { createRegistry, expandCombo, OLD_BLOCKS, OLD_TEXT, type ComboPlacement, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
+import { BLOCK_PREVIEW_LEN, createRegistry, expandCombo, OLD_BLOCKS, OLD_TEXT, type ComboPlacement, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
 import { libraryRoot, loadStyles, SCORE_LIBRARY, sendFile, stylesDir, TELLCUT_ROOT, STYLES } from '@tellcut/media-node';
 // the recipes are tools code (they drive Cut); the gallery only reads their names, notes and examples. Moving them into a package of
 // their own would split Cut's API in two for that: kept as the one place the server reads from tools/ (review 2)
@@ -55,10 +55,12 @@ const sampleThumb = (name: string) => thumbOf(samples.find((x) => x.name === nam
 const TEMPLATE_THUMB = (id: string, pre = 'tpl') => sampleThumb(`${pre}-${id}`);
 /** a block template's picture: its card (its sample <block>-tpl-<id>, or that one over the street) */
 const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => thumbOf(cardSample(type, id));
-/** the ground and shape a card was drawn on, for the preview to play on the same: its sample's plain `bg` (not for a block marked
- *  over, whose preview plays over the street its card is drawn over) and its wide or square film */
+/** the ground, shape and length a card was drawn with, for the preview to play the same: its sample's plain `bg` (not for a block
+ *  marked over, whose preview plays over the street its card is drawn over), its wide or square film, and its `len` when it is not
+ *  the default (a sample without one is 3 s, golden's length and the preview's; a street sibling keeps its sample's) */
 const groundOf = (c: Sample | undefined, over: boolean): CardGround => ({
-  ...(c?.bg && !over ? { bg: c.bg } : {}), ...(c?.wide ? { aspect: 'wide' as const } : c?.square ? { aspect: 'square' as const } : {}) });
+  ...(c?.bg && !over ? { bg: c.bg } : {}), ...(c?.wide ? { aspect: 'wide' as const } : c?.square ? { aspect: 'square' as const } : {}),
+  ...(c?.len !== undefined && c.len !== BLOCK_PREVIEW_LEN ? { len: c.len } : {}) });
 /** a combo's pictures: every moment of its sample combo-<id> (start, peak, end), in time order */
 /** a block's variants: each one's card (variantCard: its picture, ground and shape, as a template's) and what its preview plays
  *  (variantSample: the sample's params, theme and the sources it shows a picture from; its English and Japanese words) */
