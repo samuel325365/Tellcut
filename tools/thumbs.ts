@@ -1,6 +1,6 @@
 // The gallery's thumbnails in English and Japanese (spec 2026-10-30-showcase-films part 2):  npm run thumbs
 // A block's thumbnail is its card, its first sample, a block template's its <block>-tpl-<id> sample (either drawn over the street, its
-// -street sibling, for a block marked over: cardSample, plugin-common/src/samples.ts), a caption template's its tpl-<id> sample, at its last
+// -street sibling, for a block marked over: cardSample, plugin-common/src/samples.ts), a variant's its variantCard, a caption template's its tpl-<id> sample, at its last
 // moment; when that shows Chinese words (the case's own, or ones the block starts with), it is drawn again here with them in the other language: the case's params from golden/thumbs.ts, the block's words from
 // apps/editor/src/i18n/values.*.ts. The pictures go to packages/plugin-common/golden/thumbs/<lang>/, with a manifest of what each was
 // drawn from (thumbs.test.ts fails when a table or the block's own golden picture changed and they were not drawn again). Run
@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { createRegistry } from '@tellcut/engine';
 import { goldenFile, runGolden, TELLCUT_ROOT, type GoldenCase } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { CAP_EN, CAP_JA, cardSample, HEAD_EN, HEAD_JA, samples, templateSample, type Sample } from '@tellcut/plugin-common/samples';
+import { CAP_EN, CAP_JA, cardSample, HEAD_EN, HEAD_JA, samples, templateSample, variantCard, type Sample } from '@tellcut/plugin-common/samples';
 import { THUMB_PARAMS } from '../packages/plugin-common/golden/thumbs.ts';
 import { parseArgsOrExit } from './args.ts';
 import { hasCjk, localValues } from '@tellcut/editor/i18n/values';
@@ -20,6 +20,17 @@ import { hasCjk, localValues } from '@tellcut/editor/i18n/values';
 const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
 export const THUMBS_DIR = join(GOLDEN_DIR, 'thumbs');
 export type ThumbLang = 'en' | 'ja';
+
+/** every variant's card (variantCard: its sample, or that one over the street), once each, in the order of the blocks and their
+ *  variants (the gallery's small picture of a variant) */
+export function variantCards(): Sample[] {
+  const out = new Map<string, Sample>();
+  for (const t of plugins.flatMap((p) => p.items ?? [])) for (const v of t.variants?.list ?? []) {
+    const c = variantCard(t.type, v.value);
+    if (c && !c.clips && !out.has(c.name)) out.set(c.name, c);
+  }
+  return [...out.values()];
+}
 
 /** the thumbnails that show Chinese, as cases with their words in `lang`, each at the one moment the gallery shows */
 export function thumbCases(lang: ThumbLang): GoldenCase[] {
@@ -30,11 +41,14 @@ export function thumbCases(lang: ThumbLang): GoldenCase[] {
   // a block template's sample (<block>-tpl-<id>) is its card in the gallery's detail: drawn again like a block's first one (its card
   // too: over the street for a block marked over)
   const blockTemplates = samples.filter((c) => /.-tpl-/.test(c.name) && !c.street).map((c) => cardSample(c.type, c.name.slice(templateSample(c.type, '').length))!);
+  // each variant's card (variantCard) too, the ones not already a block's card or a template's
+  const drawn = new Set([...first.values(), ...blockTemplates].map((c) => c.name));
+  const variants = variantCards().filter((c) => !drawn.has(c.name));
   // every caption template's card (tpl-<id>) and title template's (ttl-<id>) too: the template's own params with the English or
   // Japanese line (or title) in place of the Chinese one
   const line = (name: string) => (name.startsWith('ttl-') ? (lang === 'en' ? HEAD_EN : HEAD_JA) : lang === 'en' ? CAP_EN : CAP_JA);
   const templates = (samples as GoldenCase[]).filter((c) => c.name.startsWith('tpl-') || c.name.startsWith('ttl-')).map((c) => ({ ...c, params: { ...c.params, ...line(c.name) }, at: [c.at[c.at.length - 1]] }));
-  return [...[...first.values(), ...blockTemplates].flatMap((c): GoldenCase[] => {
+  return [...[...first.values(), ...blockTemplates, ...variants].flatMap((c): GoldenCase[] => {
     // a card over the street has the words of the sample it is drawn from: the table names that one
     const params = THUMB_PARAMS[lang][c.street ?? c.name] ?? c.params ?? {};
     const words = Object.fromEntries(Object.entries(localValues(c.type, defs.get(c.type) ?? [], lang)).filter(([k]) => !(k in params)));
