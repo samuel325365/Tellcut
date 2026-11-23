@@ -1,6 +1,6 @@
 // Golden samples, in order (samples.ts joins the parts):
 // the hand-drawn kit, the charts and the promotion groups A–E (2026-10-23 on).
-import { type Sample, QUOTE, BOOK, NOTE, MARK, SKETCH, WOOD, RANK, TABLE, MAPS, SQUARE, LEDGER, NOTES, CHAT, PIC, CHAT_MEDIA, CHAT_GROUP, CHAT_OPEN, ALBUM } from './fixtures.ts';
+import { type Sample, QUOTE, BOOK, NOTE, MARK, SKETCH, WOOD, RANK, TABLE, MAPS, SQUARE, LEDGER, NOTES, CHAT, PIC, CHAT_MEDIA, CHAT_GROUP, CHAT_OPEN, ALBUM, OVER_REF } from './fixtures.ts';
 
 export const KITS: Sample[] = [
   // the hand-drawn kit (sketch.ts): pens, crayon fills and grain, the drawn panel frame, the crayon caption band, book and notebook paper,
@@ -67,6 +67,8 @@ export const KITS: Sample[] = [
   { name: 'wide-headline', type: 'common.headline', at: [1.5], wide: true, bg: '#6b5a48' },
   { name: 'film-vhs', type: 'common.film', params: { look: 'vhs', grain: 0.3, tracking: '0.2:1.6:0.85' }, at: [0.5, 1.2], bg: '#7a8a6a' },
   { name: 'core-flash-bloom', type: 'core.flash', params: { mode: 'bloom', rise: 1.3, hold: 1, fall: 0.5, peak: 0.9, y: 0.55 }, at: [0.4, 0.9, 1.5], bg: '#2a2f3a' },
+  // glow: a warm patch of light held over the made-up street (laid on, so it reads over the bright sky), never the whole frame
+  { name: 'core-flash-glow', type: 'core.flash', ...OVER_REF, params: { mode: 'glow', color: '#ffe6a3', rise: 0.3, hold: 1, fall: 0.5, peak: 1, x: 0.45, y: 0.55, size: 0.3 }, len: 2, at: [0.8] },
   // group A2 (2026-10-23): new styles, shapes, looks and modes of existing blocks
   { name: 'caption-bar', type: 'common.caption', params: { text: '海邊的修道院\n一晚只要【35 歐】', style: 'bar', size: 3.2 }, at: [1.5], bg: '#5b7186' },
   { name: 'caption-qa', type: 'common.caption', params: { text: '你為什麼會留在這個小鎮？', style: 'qa', name: 'Q', speaker: 1, size: 3.2 }, at: [1.5], bg: '#6d8a7a' },
@@ -187,6 +189,7 @@ export const KITS: Sample[] = [
   { name: 'camcorder-rew', type: 'common.camcorder', sources: PIC, params: { mode: 'rew', stills: 'pic|0\n-\npic|0|0.3,0.6,1.6\n-' }, at: [0.3, 2.9] },
   { name: 'wide-camcorder', type: 'common.camcorder', params: { place: '0-3|港邊', status: '0|stby' }, at: [1.5], wide: true },
   { name: 'wide-camcorder-ff', type: 'common.camcorder', params: { mode: 'ff' }, at: [1.5], wide: true },
+  { name: 'camcorder-snow', type: 'common.camcorder', params: { mode: 'snow' }, at: [1.5] },
   { name: 'casefile', type: 'common.casefile', at: [0.5, 1.5, 2.8] },
   { name: 'casefile-close', type: 'common.casefile', params: { strikeAt: 0.2, closeAt: 0.6, slots: '0|照片\n0|收據\n0|證人\n0|影片', typeEnd: 0 }, at: [0.75, 1.5] },
   { name: 'wide-casefile', type: 'common.casefile', at: [2.8], wide: true },

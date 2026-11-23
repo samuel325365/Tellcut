@@ -9,6 +9,7 @@
     "./samples": "./src/samples.ts",
     "./speech": "./src/speech.ts",
     "./templates": "./src/caption/templates.ts",
+    "./thumbs": "./golden/thumbs.ts",
     "./title-templates": "./src/heading/templates.ts"
   },
   "dependencies": {

@@ -127,6 +127,7 @@ export const GROUPS: Sample[] = [
   { name: 'comic-four', type: 'common.comic', params: { layout: 'four', times: '0,0.3,0.6,0.9' }, len: 3, at: [2], bg: '#4a6b7c' },
   { name: 'comic-one', type: 'common.comic', params: { layout: 'one', focus: '1|0.5,0.45' }, len: 3, at: [1.5], bg: '#4a6b7c' },
   { name: 'wide-comic', type: 'common.comic', params: { layout: 'side' }, len: 3, at: [2], wide: true, bg: '#4a6b7c' },
+  { name: 'comic-two-flip', type: 'common.comic', params: { layout: 'two-flip' }, len: 3, at: [2], bg: '#4a6b7c' },
   { name: 'onomatopoeia', type: 'common.onomatopoeia', params: { rise: 0.06 }, len: 3, at: [0.12, 1.5], bg: '#4a6b7c' },
   { name: 'onomatopoeia-en', type: 'common.onomatopoeia', params: { text: 'SNIFF', font: 'Bangers', weight: 400, color: '#ffffff', size: 12, stroke: 10, spacing: 1.12, depth: 8, tilt: 6 }, len: 3, at: [1.5], bg: '#4a6b7c' },
 ];

@@ -35,13 +35,28 @@ export function streetSample(s: Sample): Sample {
 }
 
 /** the moments of a street sibling where its sample's last one shows little over the street (the card is the last moment): the
- *  default leak's warm glow, screened over the bright sky, is faint as it fades (2.2 s) and clearest at its peak */
-const STREET_AT: Record<string, number[]> = { leak: [1.5] };
+ *  default leak's warm glow, screened over the bright sky, is faint as it fades (2.2 s) and clearest at its peak; core.flash's
+ *  bloom has filled the frame white by its last moment, and shows spreading over the street early on; glitch's rgb split is over
+ *  by its last one */
+const STREET_AT: Record<string, number[]> = { leak: [1.5], 'core-flash-bloom': [0.4], 'glitch-rgb': [0.3] };
 
-/** The street siblings of `list`: for each block marked over 'picture', its first sample (its card) and its templates' samples
- *  (their cards), each one not drawn over the street already (grade-photo, core.flash's and the grade templates' samples). */
+/** The sample of `list` that shows one variant of block `t` (ItemType.variants): the one the variant names (`sample`), else the
+ *  block's first sample whose value of the variants param (its default when unset) is `value`, its templates' samples and street
+ *  siblings aside. A block's first sample sets the default, so it shows the default variant, as its card shows the block. */
+function variantOf(list: Sample[], t: ItemType, value: string): Sample | undefined {
+  const v = t.variants?.list.find((x) => x.value === value);
+  if (!v) return undefined;
+  if (v.sample) return list.find((s) => s.name === v.sample);
+  const param = t.variants!.param, def = t.params.find((d) => d.key === param)?.default, tpl = templateSample(t.type, '');
+  return list.find((s) => s.type === t.type && !s.street && !s.name.startsWith(tpl) && String(s.params?.[param] ?? def) === value);
+}
+
+/** The street siblings of `list`: for each block marked over 'picture', its first sample (its card), its templates' samples (their
+ *  cards) and its variants' samples (theirs, variantCard), each one once and not drawn over the street already (grade-photo,
+ *  core.flash's and the grade templates' samples). */
 export function streetSamples(list: Sample[], blocks: ItemType[] = OVER): Sample[] {
-  const names = new Set(blocks.flatMap((t) => [list.find((s) => s.type === t.type)?.name, ...(t.templates ?? []).map((x) => templateSample(t.type, x.id))]));
+  const names = new Set(blocks.flatMap((t) => [list.find((s) => s.type === t.type)?.name, ...(t.templates ?? []).map((x) => templateSample(t.type, x.id)),
+    ...(t.variants?.list ?? []).map((v) => variantOf(list, t, v.value)?.name)]));
   return list.filter((s) => names.has(s.name) && !s.photo).map((s) => ({ ...streetSample(s), ...(STREET_AT[s.name] ? { at: STREET_AT[s.name] } : {}) }));
 }
 
@@ -49,14 +64,35 @@ export function streetSamples(list: Sample[], blocks: ItemType[] = OVER): Sample
 const BLOCKS: Sample[] = [...BASICS, ...KITS, ...GROUPS, ...STYLES, ...LENS_SAMPLES, ...PROGRESS_SAMPLES];
 
 const byName = new Map<string, Sample>();
+/** a sample's street sibling when it has one (streetSamples), else the sample */
+function overStreet(own: Sample | undefined): Sample | undefined {
+  if (!byName.size) for (const s of samples) byName.set(s.name, s);
+  const street = own && byName.get(`${own.name}-street`);
+  return street?.street === own?.name ? street : own;
+}
+
 /** The sample the gallery's card of a block is drawn from (or, given `template`, the card of that template): the block's first
  *  sample (the template's <block>-tpl-<id> one), or its street sibling when it has one. The server's gallery and `npm run thumbs`
  *  both ask here, so the card and its English and Japanese copies are the same picture. Undefined when there is no sample. */
 export function cardSample(type: string, template?: string): Sample | undefined {
   if (!byName.size) for (const s of samples) byName.set(s.name, s);
-  const own = template ? byName.get(templateSample(type, template)) : samples.find((s) => s.type === type && !s.street);
-  const street = own && byName.get(`${own.name}-street`);
-  return street?.street === own?.name ? street : own;
+  return overStreet(template ? byName.get(templateSample(type, template)) : samples.find((s) => s.type === type && !s.street));
+}
+
+/** the shared blocks by type, for their variants */
+const ITEMS = new Map(([...corePlugin.items, ...commonItems] as ItemType[]).map((t) => [t.type, t]));
+
+/** The sample that shows one variant of a block (ItemType.variants): the variant's own `sample` when it names one, else the block's
+ *  first sample whose value of the variants param (its default when unset) is `value`, template and street samples aside; the
+ *  default variant's is the block's first sample. What the gallery's preview of the variant plays. Undefined when there is none. */
+export function variantSample(type: string, value: string): Sample | undefined {
+  const t = ITEMS.get(type);
+  return t && variantOf(samples, t, value);
+}
+
+/** The picture of a variant's card: variantSample, or its street sibling for a block marked over 'picture' (streetSamples). */
+export function variantCard(type: string, value: string): Sample | undefined {
+  return overStreet(variantSample(type, value));
 }
 
 export const samples: Sample[] = [

@@ -103,11 +103,14 @@ export const STYLES: Sample[] = [
   { name: 'sticker-bolt', type: 'common.sticker', params: { shape: 'bolt', x: 0.35, y: 0.45, size: 0.3, popAt: 0 }, len: 2, at: [1.5], bg: '#3b4cf0' },
   // 16:9: the sticker is a share of the short side, the size it is at 9:16
   { name: 'wide-sticker', type: 'common.sticker', params: { shape: 'smile', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [1.5], wide: true, bg: '#c6f03a' },
+  { name: 'sticker-star', type: 'common.sticker', params: { shape: 'star', x: 0.5, y: 0.45, size: 0.4, popAt: 0 }, len: 2, at: [1.5], bg: '#ff7a1a' },
   // the frames derived from the library (2026-11-07): common.grid (bento sliding in and settled, four scaling, two side by side on a wide
   // frame), common.slant, common.postage, common.letterbox
   { name: 'grid', type: 'common.grid', sources: PIC, params: { layout: 'bento', shots: 'pic|0||still\npic|0|0.5,0.3,1.6|still\npic|0|0.5,0.7,1.6|still\npic|0|0.5,0.5,1.2|still' }, len: 3, at: [0.3, 1.6] },
   { name: 'grid-four', type: 'common.grid', sources: PIC, params: { layout: 'four', reveal: 'scale', shots: 'pic|0||still\n-\npic|0|0.5,0.4,1.5|still\npic|0|0.5,0.6,1.5|still' }, len: 3, at: [1.5] },
   { name: 'wide-grid', type: 'common.grid', sources: PIC, params: { layout: 'two', shots: 'pic|0||still\npic|0|0.5,0.4,1.5|still' }, len: 3, at: [1.5], wide: true },
+  { name: 'grid-three', type: 'common.grid', sources: PIC, params: { layout: 'three', shots: 'pic|0||still\npic|0|0.5,0.3,1.6|still\npic|0|0.5,0.7,1.6|still' }, len: 3, at: [1.5] },
+  { name: 'grid-six', type: 'common.grid', sources: PIC, params: { layout: 'six', reveal: 'fade', times: '0,0.15,0.3,0.45,0.6,0.75', shots: 'pic|0||still\npic|0|0.5,0.3,1.6|still\n-\npic|0|0.5,0.7,1.6|still\npic|0|0.3,0.5,1.4|still\npic|0|0.7,0.4,1.4|still' }, len: 3, at: [1.6] },
   { name: 'slant', type: 'common.slant', sources: PIC, params: { labels: 'BEFORE,,AFTER', shots: 'pic|0||still\npic|0|0.5,0.35,1.5|still\npic|0|0.5,0.65,1.5|still' }, len: 3, at: [0.2, 1.6] },
   { name: 'slant-two', type: 'common.slant', sources: PIC, params: { count: 2, seam: 0, angle: -10, shots: 'pic|0||still\npic|0|0.5,0.4,1.4|still' }, len: 3, at: [1.5] },
   { name: 'wide-slant', type: 'common.slant', sources: PIC, params: { shots: 'pic|0||still\npic|0|0.5,0.4,1.4|still\npic|0|0.5,0.6,1.4|still' }, len: 3, at: [1.5], wide: true },
@@ -132,9 +135,15 @@ export const STYLES: Sample[] = [
   { name: 'wide-flatlay', type: 'common.flatlay', sources: PIC, len: 3.4, at: [3.2], wide: true, params: { surface: 'linen', side: 'right', objects: JSON.stringify([
     { kind: 'postcard', shot: 'pic|0||still', place: 'Trastevere', year: '2024', at: 0, enter: 'none' }, { kind: 'polaroid', shot: 'pic|0||still', caption: '那年夏天', at: 0.3 },
     { kind: 'card', shot: 'pic|0||still', caption: '再見', at: 0.8 }]) } },
+  // each of the other things alone, picked by kind (no objects): what a variant's Add to project puts on the desk
+  { name: 'flatlay-polaroid', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], params: { kind: 'polaroid', shot: 'pic|0||still', caption: '那年夏天' } },
+  { name: 'flatlay-photo', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], params: { kind: 'photo', shot: 'pic|0||still', caption: '1998', surface: 'marble' } },
+  { name: 'flatlay-tv-alone', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], params: { kind: 'tv', shot: 'pic|0||still', caption: 'Sunrise', surface: 'concrete', warmth: 'morning' } },
+  { name: 'flatlay-card', type: 'common.flatlay', sources: PIC, len: 3, at: [2.6], params: { kind: 'card', shot: 'pic|0||still', caption: '生日快樂', surface: 'velvet', warmth: 'golden' } },
   { name: 'backdrop-words', type: 'common.backdrop', params: { pattern: 'words', word: 'HELLO', color: '#c6f03a', color2: '#ff3ea5', tint: 1, scale: 175, drift: 54, bits: 12 }, at: [0.5] },
   { name: 'wipe-stripes', type: 'common.wipe', params: { mode: 'stripes', colors: '#ff3ea5,#c6f03a,#ff7a1a,#3b4cf0', slant: 1.11, dir: 'left' }, len: 1, at: [0.2, 0.5, 0.75], bg: '#4a6b7c' },
   { name: 'badge-box', type: 'common.badge', params: { shape: 'box', label: 'No.1', plate: '米白休閒', x: 0.08, y: 0.125, size: 26, color: '#111111', textColor: '#ffffff', font: 'Playfair Display' }, at: [1.5], bg: '#3b4cf0' },
+  { name: 'badge-circle', type: 'common.badge', params: { shape: 'circle', label: '03', plate: '第三招' }, at: [1.5] },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title
@@ -217,6 +226,8 @@ export const STYLES: Sample[] = [
   { name: 'backdrop-waves', type: 'common.backdrop', params: { pattern: 'waves', color: '#e9f6f7', color2: '#1f8fb0', tint: 0.5, drift: 40 }, len: 3, at: [0.5, 2.5] },
   { name: 'wide-backdrop-halftone', type: 'common.backdrop', params: { pattern: 'halftone', color: '#14213d', color2: '#fca311', tint: 0.9, scale: 40 }, len: 3, at: [0.5], wide: true },
   { name: 'wide-backdrop-waves', type: 'common.backdrop', params: { pattern: 'waves', color: '#fff4e6', color2: '#ff6b4a', tint: 0.45, drift: 40 }, len: 3, at: [0.5], wide: true },
+  // solid: one plain colour with only the extras on it (a warm pool of light, the bits at the sides)
+  { name: 'backdrop-solid', type: 'common.backdrop', params: { pattern: 'solid', color: '#24384f', pool: 0.35, vignette: 0.35, bits: 10 }, len: 3, at: [0.5] },
   // common.shader's looks (2026-11-15): the glowing web, the cells (plain and shaded, and on 16:9), the dither dots
   ...['neuro', 'cells', 'dither'].map((look): Sample => ({ name: `shader-${look}`, type: 'common.shader', params: { look }, theme: SHADER_THEME, at: [1.5] })),
   { name: 'shader-cells-shade', type: 'common.shader', params: { look: 'cells', grain: 0.6, amount: 1 }, theme: SHADER_THEME, at: [1.5] },
