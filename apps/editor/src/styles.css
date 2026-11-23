@@ -1021,7 +1021,7 @@ body.lib-dragging iframe { pointer-events: none; }
 .look-row img { flex: none; width: 24px; height: 24px; object-fit: contain; border-radius: 3px; background: #111; }
 .look-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .look-caret { flex: none; color: var(--dim); font-size: 10px; }
-.look-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; }
+.look-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; }
 .look-tile { display: grid; gap: 2px; min-width: 0; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px; color: var(--text); }
 .look-tile.on { border-color: var(--accent, #3a86ff); }
 .look-tile:hover, .look-tile:focus-visible { background: var(--line); outline: none; }
