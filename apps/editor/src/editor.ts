@@ -825,6 +825,10 @@ export class Editor {
   loadTemplateThumbs() { return this.library.loadTemplateThumbs(); }
   /** the shared blocks' pictures for the media panel's Effects page, asked for once */
   loadBlockThumbs() { return this.library.loadBlockThumbs(); }
+  /** a shared block's variant's or template's picture (the gallery's, in the zh UI's words), once loadBlockThumbs has them */
+  lookThumb(type: string, kind: 'variant' | 'template', key: string): string | undefined {
+    return this.s.library.blockLooks?.[type]?.[kind === 'variant' ? 'variants' : 'templates'][key];
+  }
 
   /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */
   projectCaptionTemplate(template: string, kind: TemplateKind = 'caption'): boolean { return this.apply((d) => setCaptionTemplate(d, template, kind)); }

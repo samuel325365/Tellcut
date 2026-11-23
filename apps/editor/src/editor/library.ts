@@ -112,14 +112,19 @@ export class LibraryFlow {
   }
   private blockThumbsAsked = false;
   /** the shared blocks' pictures, the gallery's (its golden pictures), for the media panel's Effects page; asked for once (again
-   *  only after a failure). Until then, or without one, a card shows its name. A combo's is its peak picture, under combo:<id>. */
+   *  only after a failure). Until then, or without one, a card shows its name. A combo's is its peak picture, under combo:<id>.
+   *  The same answer gives the Properties panel's look pickers their pictures (blockLooks: each block's variants and templates). */
   async loadBlockThumbs() {
     if (this.lib.blockThumbs || this.blockThumbsAsked || !this.c.api.gallery) return;
     this.blockThumbsAsked = true;
     try {
       const g = await this.c.api.gallery();
       const peak = (g.combos ?? []).flatMap((c) => (c.frames.length ? [[`combo:${c.id}`, c.frames[Math.floor(c.frames.length / 2)]]] : []));
-      this.set({ blockThumbs: Object.fromEntries([...(g.blocks ?? []).flatMap((b) => (b.thumb ? [[b.type, b.thumb]] : [])), ...peak]) });
+      const pics = <T>(l: T[] | undefined, key: (x: T) => string, thumb: (x: T) => string | undefined) =>
+        Object.fromEntries((l ?? []).flatMap((x) => { const src = thumb(x); return src ? [[key(x), src]] : []; }));
+      const blockLooks = Object.fromEntries((g.blocks ?? []).filter((b) => b.variants || b.templates).map((b) => [b.type, {
+        variants: pics(b.variants?.list, (v) => v.value, (v) => v.thumb), templates: pics(b.templates, (x) => x.id, (x) => x.thumb) }]));
+      this.set({ blockThumbs: Object.fromEntries([...(g.blocks ?? []).flatMap((b) => (b.thumb ? [[b.type, b.thumb]] : [])), ...peak]), blockLooks });
     } catch { this.blockThumbsAsked = false; }
   }
 

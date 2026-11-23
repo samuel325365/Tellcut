@@ -239,19 +239,65 @@ test('a block with templates gets a Template row at the top of its params: an ac
   const { root, editor, calls } = mount(['blk']);
   editor.registry = reg;
   editor.applyBlockTemplate = (id: string, x: string) => { calls.push(['template', id, x]); return true; };
+  editor.lookThumb = (type: string, kind: string, key: string) => (type === 'x.block' && kind === 'template' && key === 'big-b' ? '/t/big-b.png' : undefined);
   await act(() => render(<PropertiesPanel editor={editor} s={editor.store.get()} />, root));
-  const row = root.querySelector('[data-field="template"]')!, box = row.querySelector('select')!;
+  const row = root.querySelector('[data-block-templates="x.block"] [data-field="template"]')!, picker = () => row.querySelector<HTMLButtonElement>('[data-look-picker="template"]')!;
   // before the first parameter field
   expect(row.compareDocumentPosition(root.querySelector('[data-param="mode"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(row.querySelector('span')!.textContent).toBe('Template');
-  expect([...box.options].map((o) => [o.value, o.textContent, o.title])).toEqual([['', '套用範本…', ''], ['big-b', '大大的 B', '開場用']]);
-  change(box, 'big-b');
+  expect(row.querySelector('select')).toBeNull();
+  expect(picker().textContent).toContain('套用範本…');
+  await act(() => picker().click());
+  const tile = row.querySelector<HTMLElement>('[data-look-tile="big-b"]')!;
+  expect([tile.textContent, tile.querySelector('img')!.getAttribute('src'), tile.getAttribute('aria-pressed')]).toEqual(['大大的 B', '/t/big-b.png', 'false']);
+  await act(() => tile.click());
   expect(calls).toEqual([['template', 'blk', 'big-b']]);
-  expect(box.value).toBe('');
+  // an action, not a state: back to the placeholder, no tile marked
+  await act(() => render(<PropertiesPanel editor={editor} s={{ ...editor.store.get() }} />, root));
+  expect(picker().textContent).toContain('套用範本…');
+  expect(row.querySelector('[data-look-grid]')).toBeNull();
   // a block without templates has no row
   const plain = mount(['blk']);
   await act(() => render(<PropertiesPanel editor={plain.editor} s={plain.editor.store.get()} />, plain.root));
   expect(plain.root.querySelector('[data-field="template"]')).toBeNull();
+});
+
+describe('a block whose looks one param picks (variants)', () => {
+  const looks = () => createRegistry([corePlugin, { id: 'x', items: [{ type: 'x.block', label: '區塊', kind: 'scene', build: () => null, draw: () => {},
+    params: [{ key: 'mode', label: '模式', type: 'enum', options: ['a', 'b'], default: 'a' }, { key: 't', label: '時間點', type: 'json', default: {} }],
+    variants: { param: 'mode', list: [{ value: 'a', label: '甲', doc: '甲的樣子' }, { value: 'b', label: '乙', doc: '乙的樣子' }] } }] } as any]);
+  const blkOf = (store: any) => store.get().project.tracks.flatMap((t: any) => t.items).find((i: any) => i.id === 'blk');
+
+  test('its field is a picker of the looks, asks for the gallery’s pictures, and a picked tile sets the param', async () => {
+    const { root, editor, calls } = mount(['blk']);
+    editor.registry = looks();
+    editor.loadBlockThumbs = async () => { calls.push(['thumbs']); };
+    editor.lookThumb = (type: string, kind: string, key: string) => (type === 'x.block' && kind === 'variant' && key === 'b' ? '/t/b.png' : undefined);
+    await act(() => render(<PropertiesPanel editor={editor} s={editor.store.get()} />, root));
+    expect(calls).toEqual([['thumbs']]);
+    const field = root.querySelector('[data-param="mode"]')!;
+    expect(field.querySelector('select')).toBeNull();
+    const picker = field.querySelector<HTMLButtonElement>('[data-look-picker]')!;
+    expect(field.querySelector('[data-field="mode"] > span')!.textContent).toBe('模式');   // x.block has no English name: its label as written
+    expect(picker.textContent).toContain('甲');
+    await act(() => picker.click());
+    expect(field.querySelector('[data-look-tile="a"]')!.classList.contains('on')).toBe(true);
+    expect(field.querySelector('[data-look-tile="a"] img')).toBeNull();
+    const b = field.querySelector<HTMLElement>('[data-look-tile="b"]')!;
+    expect(b.querySelector('img')!.getAttribute('src')).toBe('/t/b.png');
+    await act(() => b.click());
+    expect(calls.at(-1)).toEqual(['param', 'blk', 'mode', 'b']);
+    // the other params keep their own fields
+    expect(root.querySelector('[data-param="t"] textarea')).not.toBeNull();
+  });
+
+  test('a value the list does not have (an old project’s) shows as it is', async () => {
+    const { root, editor, store } = mount(['blk']);
+    editor.registry = looks();
+    blkOf(store).params = { mode: 'zzz' };
+    await act(() => render(<PropertiesPanel editor={editor} s={store.get()} />, root));
+    expect(root.querySelector('[data-param="mode"] [data-look-picker]')!.textContent).toContain('zzz');
+  });
 });
 
 test('the transition menu lists every type, cut first; direction only for the types that read it, the centre only for iris', async () => {

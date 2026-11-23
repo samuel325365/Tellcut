@@ -1012,3 +1012,23 @@ body.lib-dragging iframe { pointer-events: none; }
 /* one of mine: the tile and its ✕ in one cell; the ✕ shows on hover and while the keyboard is on either of them */
 .cap-mine-cell { position: relative; display: grid; } .cap-del { position: absolute; top: 0; right: 0; padding: 0 4px; font-size: 10px; display: none; }
 .cap-mine-cell:hover .cap-del, .cap-mine-cell:focus-within .cap-del { display: block; }
+
+/* the properties panel's look picker (LookPicker.tsx): a closed row (the current look's small picture and name) opening in place
+   into a grid of tiles, and under it the tile pointed at, larger, with its sentence. The pictures are whole frames (9:16, 16:9 or
+   square): contained in a dark square, never cut */
+.look-field > .look-grid, .look-field > .look-shown { grid-column: 1 / -1; }
+.look-row { display: flex; align-items: center; gap: 6px; min-width: 0; text-align: left; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--btn-line); border-radius: 4px; padding: 2px 6px; cursor: pointer; }
+.look-row img { flex: none; width: 24px; height: 24px; object-fit: contain; border-radius: 3px; background: #111; }
+.look-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.look-caret { flex: none; color: var(--dim); font-size: 10px; }
+.look-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; }
+.look-tile { display: grid; gap: 2px; min-width: 0; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px; color: var(--text); }
+.look-tile.on { border-color: var(--accent, #3a86ff); }
+.look-tile:hover, .look-tile:focus-visible { background: var(--line); outline: none; }
+.look-tile img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: #111; }
+.look-none { display: grid; place-items: center; aspect-ratio: 1; border-radius: 4px; background: var(--line); font-weight: 700; }
+.look-name { font-size: 10px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.look-shown { display: grid; justify-items: center; gap: 4px; padding: 4px 0 2px; color: var(--text); pointer-events: none; }
+.look-shown img { width: 132px; aspect-ratio: 1; object-fit: contain; border-radius: 8px; background: #111; }
+.look-shown strong { font-size: 12px; }
+.look-shown p { margin: 0; font-size: 11px; line-height: 1.4; color: var(--dim); text-align: center; }

@@ -117,4 +117,15 @@ test('the shared blocks’ pictures (for the media panel’s Effects page) are t
   await f.loadBlockThumbs();
   expect(n).toBe(2);
   expect(s().blockThumbs).toEqual({ 'common.paper': '/api/gallery/thumb/paper.png' });
+  expect(s().blockLooks).toEqual({});
+});
+
+test('the same answer gives each block’s variants and templates their pictures (those that have one), again after a failure', async () => {
+  let n = 0;
+  const progress = { type: 'common.progress', variants: { param: 'mode', list: [{ value: 'rocket', thumb: '/t/r.png' }, { value: 'ring' }] }, templates: [{ id: 'neon', thumb: '/t/n.png' }] };
+  const { f, s } = flow({ gallery: async () => { if (n++ === 0) throw new Error('down'); return { blocks: [progress, { type: 'common.paper', thumb: '/t/p.png' }] }; } });
+  await f.loadBlockThumbs();
+  expect(s().blockLooks).toBeNull();
+  await f.loadBlockThumbs();
+  expect(s().blockLooks).toEqual({ 'common.progress': { variants: { rocket: '/t/r.png' }, templates: { neon: '/t/n.png' } } });
 });

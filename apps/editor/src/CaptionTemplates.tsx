@@ -12,6 +12,7 @@ import { handleOf, TEMPLATE_KINDS, type GalleryBlock, type TemplateKind } from '
 import type { ParamDef, Project } from '@tellcut/engine';
 import type { Editor } from './editor.ts';
 import { PlayerPreview } from './PlayerPreview.tsx';
+import { Pic } from './LookPicker.tsx';
 import { captionProject, matches, thumbIn, titleProject } from './gallery.ts';
 import { myTemplateKey } from './editor/captions.ts';
 import { blockText } from './i18n/blocks.ts';
@@ -24,12 +25,6 @@ const WORDS: Record<TemplateKind, Record<'film' | 'track' | 'filmSet' | 'save' |
   caption: { film: 'ed.capFilmTip', track: 'ed.capTrackTip', filmSet: 'ed.capFilmSetTip', save: 'ed.capSaveTip', del: 'ed.capDeleteTip', ask: 'ed.capDeleteAsk', search: 'ed.capSearch' },
   title: { film: 'ed.ttlFilmTip', track: 'ed.ttlTrackTip', filmSet: 'ed.ttlFilmSetTip', save: 'ed.ttlSaveTip', del: 'ed.ttlDeleteTip', ask: 'ed.ttlDeleteAsk', search: 'ed.ttlSearch' },
 };
-
-/** a template's picture; its name's first letters when it has none (or it fails to load) */
-function Pic({ src }: { src?: string }) {
-  const [broken, setBroken] = useState('');
-  return src && broken !== src ? <img src={src} alt="" loading="lazy" onError={() => setBroken(src)} /> : <span class="cap-none">Aa</span>;
-}
 
 /** Enter or Space on a tile itself (not on a button inside its cell) */
 const pressed = (e: KeyboardEvent) => e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ');
@@ -54,7 +49,7 @@ export function CaptionTemplates({ editor, project, item, track, defs, kind = 'c
   const tile = (id: string, label: string, pic?: string) => (
     <li class={`cap-tile${(own || '') === id ? ' on' : ''}`} data-caption-template={id} role="button" tabIndex={0} aria-pressed={(own || '') === id} {...tip(label)} {...point(id || null)}
       onClick={() => editor.captionTemplateOnItem(item.id, id, kind)} onKeyDown={(e) => { if (pressed(e)) { e.preventDefault(); editor.captionTemplateOnItem(item.id, id, kind); } }}>
-      <Pic src={pic} />
+      <Pic src={pic} none="Aa" />
       <span class="cap-name">{label}</span>
     </li>
   );
