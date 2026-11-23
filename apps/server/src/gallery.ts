@@ -17,6 +17,7 @@ import { THUMB_PARAMS } from '@tellcut/plugin-common/thumbs';
 import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryBlockVariant, type GalleryClip, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
+import { attachCrops } from './look-crops.ts';
 
 /** A block that reads a project's photos, clips or files draws little or nothing here. The sample films pass those as json params
  *  with a null default, so the params alone don't tell: a media() hook or code that asks ctx.media for a picture does, unless the
@@ -89,6 +90,8 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
       return { id: x.id, label: x.label, doc: x.doc, params: x.params, ...(thumb ? { thumb } : {}), ...groundOf(cardSample(t.type, x.id), !!t.over) }; }) } : {}),
     ...(t.variants?.list.length ? { variants: variantsOf(t) } : {}),
   })));
+  // the small pictures of a look that sits in a small part of the frame show that part (look-crops.ts; measured once, then cached)
+  await attachCrops(blocks, GOLDEN_DIR);
   const sfx = sorted.flatMap((p) => (p.sfx ?? []).map((s): GallerySfx => ({ plugin: p.id, type: s.type, label: s.label, doc: s.doc ?? '', params: s.params, ...(s.category ? { category: s.category } : {}) })));
   const lib = await loadStyles([library]);
   const styles: GalleryStyle[] = [

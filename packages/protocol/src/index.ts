@@ -276,6 +276,8 @@ export interface GalleryBlockVariant extends CardGround {
   value: string; label: string; doc: string;
   /** its card's picture, when its sample has one */
   thumb?: string;
+  /** LookCrop: the part of the picture its small pictures show */
+  crop?: LookCrop;
   /** what the preview plays: its sample's params (the picture's own), and in English and Japanese where golden/thumbs.ts has them */
   params?: Record<string, unknown>; local?: { en?: Record<string, unknown>; ja?: Record<string, unknown> };
   /** its sample's theme, and the source ids its sample reads a picture from (the preview stands the gallery's made-up map in for
@@ -289,7 +291,14 @@ export interface GalleryBlockVariant extends CardGround {
 export interface CardGround { bg?: string; aspect?: 'wide' | 'square'; len?: number }
 /** a block template in the gallery: its id, names, the params it writes and its golden picture (<block>-tpl-<id>, or that one drawn
  *  over the street for a block marked over) */
-export interface GalleryBlockTemplate extends CardGround { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
+export interface GalleryBlockTemplate extends CardGround { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string;
+  /** LookCrop: the part of the picture its small pictures show */
+  crop?: LookCrop }
+/** The part of a look's picture its small pictures (the gallery card's strip, the editor's look picker) show: `[x, y, w, h]`, the
+ *  left, top, width and height as fractions (0–1) of the frame, for a look that occupies only a small part of it (where its picture
+ *  differs from the block's other looks': apps/server content-box.ts). Absent: the whole picture. The large pictures (the card's own,
+ *  the preview, the detail) always show the whole frame; the English and Japanese copies of the picture take the same crop. */
+export type LookCrop = [number, number, number, number];
 export interface GallerySfx { plugin: string; type: string; label: string; doc: string; params: ParamDef[];
   /** an SfxCategory key; none for a sample film's own sounds */
   category?: string }

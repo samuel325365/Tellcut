@@ -400,6 +400,8 @@ export const zh = {
   'ed.capSearch': '搜尋字幕範本',
   'ed.tplPick': '套用範本…',
   'ed.tplTip': '選一個就把那組參數寫進這個項目（可以復原）；之後改參數不會變回去，這裡也不記得用了哪個',
+  'ed.lookSearch': '搜尋樣式…',
+  'ed.lookEmpty': '沒有符合的樣式',
   'ed.ttlSearch': '搜尋標題範本',
   'ed.templateName': '我的範本名稱',
   'ed.unique': '「{label}」在專案裡只能有一個',

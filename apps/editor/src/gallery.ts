@@ -1,9 +1,10 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
 import { blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { aliasText, BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SEARCH_ALIASES, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { aliasText, BLOCK_CATEGORY, CLIP_GROUPS, handleOf, idFinder, idLike, normalizeHandle, SEARCH_ALIASES, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
+import { picCrop, type PicCrop } from './pic-crop.ts';
 
 export type { GalleryBlock, GalleryBlockTemplate, GalleryBlockVariant, GalleryCombo, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
 export type Tab = 'blocks' | 'captions' | 'titles' | 'sfx' | 'combos' | 'styles' | 'recipes';
@@ -114,7 +115,7 @@ export const comboProject = (c: GalleryCombo) => (c.layers ? comboPreviewProject
  *  English (the editor's labels, Properties' Transition and Shape menus, are English in every language), and the cut.ts line */
 export function clipMatches(f: ClipFx, query: string) {
   const here = shown(f.key, f), en = blockText(f.key, f, 'en');
-  return matches(query, handleOf(f.key), f.key, f.label, f.doc, f.code, here.label, here.doc, en.label, en.doc);
+  return matches(query, handleOf(f.key), ...idFields(f.key, f.code), f.label, f.doc, here.label, here.doc, en.label, en.doc);
 }
 /** the clip effects in their groups (transitions, shapes, the rest), each group's name in the UI language; empty groups left out */
 export function clipSections(list: readonly ClipFx[]): Array<{ group: ClipGroup; label: string; clips: ClipFx[] }> {
@@ -131,14 +132,22 @@ export function sfxProject(s: GallerySfx, params: Record<string, unknown>) {
   };
 }
 
-/** A card matches when the query is in one of its fields (case does not matter), or names its handle (mrk3 finds MRK-03). A Latin
- *  query that starts with a letter or digit is found only at a word's start, so `ring` finds "ringing" and `common.ring` but not
- *  "during"; any other character in it (CJK) keeps the plain substring test (protocol wordFinder, which catalog --find shares). */
-export function matches(query: string, handle: string | undefined, ...fields: string[]) {
+/** an identifier field of `matches` (a type id, look value, template or combo id, clip key or cut.ts line, option): made by `idFields` */
+export interface IdField { id: string }
+/** identifier fields for `matches`, spread among its prose fields: `matches(q, handle, ...idFields(b.type), b.label, b.doc)` */
+export const idFields = (...xs: string[]): IdField[] => xs.map((id) => ({ id }));
+/** a caption or title template's param values for `matches`: an option, colour or number as an identifier, words as prose (protocol idLike) */
+export const valueFields = (params: Record<string, unknown>): Array<string | IdField> => Object.values(params).map((v) => (idLike(v) ? { id: String(v) } : String(v)));
+/** A card matches when the query is in one of its fields (case does not matter), or names its handle (mrk3 finds MRK-03). In a
+ *  prose field (a string: names, docs, aliases, group names) a Latin query that starts with a letter or digit is found only at a
+ *  word's start, so `ring` finds "ringing" but not "during" (protocol wordFinder); in an identifier field (`idFields`, read in its
+ *  own case) where one of its parts starts, camelCase humps included, so `dur` finds `fadeDur` but `art` not `heart` (protocol
+ *  idFinder); any other character in it (CJK) keeps the plain substring test in both. catalog --find shares both rules. */
+export function matches(query: string, handle: string | undefined, ...fields: Array<string | IdField>) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  const has = wordFinder(q);
-  return [handle ?? '', ...fields].some((f) => has(f.toLowerCase())) || (!!handle && normalizeHandle(q) === handle);
+  const word = wordFinder(q), id = idFinder(q);
+  return [handle ?? '', ...fields].some((f) => (typeof f === 'string' ? word(f.toLowerCase()) : id(f.id))) || (!!handle && normalizeHandle(q) === handle);
 }
 
 /** the shown text of a card: its name and description in the UI language (the Chinese ones when there is no translation) */
@@ -157,33 +166,35 @@ export interface Look {
   doc: string;
   thumb?: string;
   bg?: string;
+  /** the part of its picture its small picture shows (protocol LookCrop), with its frame's shape */
+  crop?: PicCrop;
   set: Record<string, unknown>;
 }
 /** the id a look's English and Japanese texts are kept under: `<type>@<value>`, `<type>#<id>` */
 const lookTextId = (b: GalleryBlock, kind: Look['kind'], id: string) => `${b.type}${kind === 'variant' ? '@' : '#'}${id}`;
 /** a card's looks: its variants in their order, then its templates */
 export function looksOf(b: GalleryBlock): Look[] {
-  const v = b.variants, look = (kind: Look['kind'], id: string, x: { label: string; doc: string; thumb?: string; bg?: string }, set: Record<string, unknown>): Look => {
-    const s = shown(lookTextId(b, kind, id), x);
-    return { key: `${kind}:${id}`, kind, id, label: s.label, doc: s.doc, ...(x.thumb ? { thumb: x.thumb } : {}), ...(x.bg ? { bg: x.bg } : {}), set };
+  const v = b.variants, look = (kind: Look['kind'], id: string, x: GalleryBlockVariant | GalleryBlockTemplate, set: Record<string, unknown>): Look => {
+    const s = shown(lookTextId(b, kind, id), x), crop = x.thumb ? picCrop(x) : undefined;
+    return { key: `${kind}:${id}`, kind, id, label: s.label, doc: s.doc, ...(x.thumb ? { thumb: x.thumb } : {}), ...(x.bg ? { bg: x.bg } : {}), ...(crop ? { crop } : {}), set };
   };
   return [...(v?.list ?? []).map((x) => look('variant', x.value, x, { [v!.param]: x.value })), ...(b.templates ?? []).map((x) => look('template', x.id, x, { ...x.params }))];
 }
 
-/** a block's own fields the search reads: handle, type, names and doc (the original and the UI language's), search aliases
- *  (protocol SEARCH_ALIASES), group */
-const blockMatches = (b: GalleryBlock, query: string) => { const y = shown(b.type, b); return matches(query, handleOf(b.type), b.type, b.label, b.doc, y.label, y.doc, aliasText(b.type), b.group, groupName(b.plugin, b.group)); };
-/** a look's words: its value or id, and its name and doc in Chinese, the UI language and English, and its search aliases one by one
- *  (protocol SEARCH_ALIASES: words for it no text contains, which like its names pick it when typed in full) */
+/** a block's own fields the search reads: handle, type (an identifier), names and doc (the original and the UI language's), search
+ *  aliases (protocol SEARCH_ALIASES), group */
+const blockMatches = (b: GalleryBlock, query: string) => { const y = shown(b.type, b); return matches(query, handleOf(b.type), ...idFields(b.type), b.label, b.doc, y.label, y.doc, aliasText(b.type), b.group, groupName(b.plugin, b.group)); };
+/** a look's words: its value or id (an identifier), and its name and doc in Chinese, the UI language and English, and its search
+ *  aliases one by one (protocol SEARCH_ALIASES: words for it no text contains, which like its names pick it when typed in full) */
 function lookWords(b: GalleryBlock, kind: Look['kind'], id: string, x: { label: string; doc: string }) {
   const key = lookTextId(b, kind, id), here = shown(key, x), en = blockText(key, x, 'en');
-  return { names: [id, x.label, here.label, en.label], docs: [x.doc, here.doc, en.doc], aliases: Object.hasOwn(SEARCH_ALIASES, key) ? [...SEARCH_ALIASES[key]] : [] };
+  return { id, names: [x.label, here.label, en.label], docs: [x.doc, here.doc, en.doc], aliases: Object.hasOwn(SEARCH_ALIASES, key) ? [...SEARCH_ALIASES[key]] : [] };
 }
 const lookSources = (b: GalleryBlock) => [...(b.variants?.list ?? []).map((x) => ({ kind: 'variant' as const, id: x.value, x })), ...(b.templates ?? []).map((x) => ({ kind: 'template' as const, id: x.id, x }))];
 /** the keys of the looks (looksOf) the query is found in */
 export function lookHits(b: GalleryBlock, query: string): string[] {
   if (!query.trim()) return [];
-  return lookSources(b).filter(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return matches(query, undefined, ...w.names, ...w.docs, ...w.aliases); }).map(({ kind, id }) => `${kind}:${id}`);
+  return lookSources(b).filter(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return matches(query, undefined, ...idFields(w.id), ...w.names, ...w.docs, ...w.aliases); }).map(({ kind, id }) => `${kind}:${id}`);
 }
 /** The look a card shows in place of its own picture for this query: the first the query is found in when the block's own fields
  *  do not have it. A look's name typed in full (its value, id or name in any language, or one of its search aliases) is that look
@@ -192,7 +203,7 @@ export function lookHit(b: GalleryBlock, query: string): { variant?: string; tem
   const q = query.trim().toLowerCase();
   if (!q) return undefined;
   const all = lookSources(b), as = (x: { kind: Look['kind']; id: string }) => (x.kind === 'variant' ? { variant: x.id } : { template: x.id });
-  const exact = all.find(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return [...w.names, ...w.aliases].some((n) => n.toLowerCase() === q); });
+  const exact = all.find(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return [w.id, ...w.names, ...w.aliases].some((n) => n.toLowerCase() === q); });
   if (exact) return as(exact);
   if (blockMatches(b, query)) return undefined;
   const hits = lookHits(b, query), first = all.find((x) => hits.includes(`${x.kind}:${x.id}`));
@@ -207,13 +218,13 @@ export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
   const block = (b: GalleryBlock) => blockMatches(b, query) || lookHits(b, query).length > 0;
   if (tab === 'blocks') return g.blocks.filter((b) => !isCaptionBlock(b) && !isTitleBlock(b) && block(b));
-  if (tab === 'titles') return (g.titles ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`title:${c.id}`), c.id, ...fields(`title:${c.id}`, c), ...Object.values(c.params).map(String)));
-  if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), s.type, ...fields(s.type, s)));
-  if (tab === 'styles') return g.styles.filter((s) => matches(query, handleOf(`style:${s.id}`), s.id, ...fields(`style:${s.id}`, s)));
-  // a combo is found by its layers too: their names, blocks and templates
-  if (tab === 'combos') return (g.combos ?? []).filter((c) => matches(query, c.handle ?? handleOf(`combo:${c.id}`), c.id, ...fields(`combo:${c.id}`, c), ...c.parts.flatMap((x) => [x.name, x.type ?? '', x.template ?? ''])));
-  if (tab === 'captions') return (g.captions ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`caption:${c.id}`), c.id, ...fields(`caption:${c.id}`, c), ...Object.values(c.params).map(String)));
-  return g.recipes.filter((r) => matches(query, handleOf(`recipe:${r.id}`), r.id, ...fields(`recipe:${r.id}`, r)));
+  if (tab === 'titles') return (g.titles ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`title:${c.id}`), ...idFields(c.id), ...fields(`title:${c.id}`, c), ...valueFields(c.params)));
+  if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), ...idFields(s.type), ...fields(s.type, s)));
+  if (tab === 'styles') return g.styles.filter((s) => matches(query, handleOf(`style:${s.id}`), ...idFields(s.id), ...fields(`style:${s.id}`, s)));
+  // a combo is found by its layers too: their names (the keys `parts` takes), blocks and templates
+  if (tab === 'combos') return (g.combos ?? []).filter((c) => matches(query, c.handle ?? handleOf(`combo:${c.id}`), ...idFields(c.id, ...c.parts.flatMap((x) => [x.name, x.type ?? '', x.template ?? ''])), ...fields(`combo:${c.id}`, c)));
+  if (tab === 'captions') return (g.captions ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`caption:${c.id}`), ...idFields(c.id), ...fields(`caption:${c.id}`, c), ...valueFields(c.params)));
+  return g.recipes.filter((r) => matches(query, handleOf(`recipe:${r.id}`), ...idFields(r.id), ...fields(`recipe:${r.id}`, r)));
 }
 
 

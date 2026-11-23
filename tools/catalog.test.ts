@@ -88,6 +88,41 @@ test('find: a Latin word only where a word starts (ring is not "during"), as the
   expect(types('度條')).toContain('common.progress');
 });
 
+test('find: identifiers (type id, param keys, options) where one of their parts starts, camelCase humps included', () => {
+  const types = (q: string) => findBlocks(plugins, q).map((t) => t.type);
+  const item = (type: string) => plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).find((t) => t.type === type)!;
+  // an all-lower-case compound type id hides its second word: its search alias gives it (bar finds the health bar)
+  expect(types('bar')).toContain('common.healthbar');
+  // nothing found only inside one lower-case part: art is not heart, start or chart
+  for (const type of ['common.pen', 'common.route', 'common.chart', 'common.sticker', 'common.candles', 'common.desktop']) expect(types('art'), type).not.toContain(type);
+  // a camelCase param key: `dur` finds the pen through drawDur, though nothing of its prose has a word starting with "dur"
+  const pen = item('common.pen');
+  expect(pen.params.map((d) => d.key)).toContain('drawDur');
+  expect(/(^|[^a-z0-9])dur/.test([pen.label, pen.doc ?? '', ...pen.params.map((d) => d.label)].join(' ').toLowerCase())).toBe(false);
+  expect(types('dur')).toContain('common.pen');
+  expect(types('drawdur')).toContain('common.pen');
+  expect(types('ea')).not.toContain('common.healthbar');
+  // an `outline` option, or `outline: true` in a clip shape's cut.ts line, is not `line`
+  expect(formatFind(plugins, 'line')).not.toContain(handleOf('clip.shape.circle')!);
+  // prose keeps the word-start rule: "during" and "coloring" in a doc are not `ring`; an option whose part is ring (earRing) is
+  const fake = [{ id: 'x', items: [
+    { type: 'x.wash', label: 'wash', doc: 'tints the frame during the coloring pass', kind: 'overlay', params: [{ key: 'fadeDur', label: 'fade time', type: 'number', default: 1 }], build: () => null, draw: () => {} },
+    { type: 'x.halo', label: 'halo', doc: 'a glow', kind: 'overlay', params: [{ key: 'shape', label: 'shape', type: 'enum', options: ['disc', 'earRing', 'earring'], default: 'disc' }], build: () => null, draw: () => {} },
+  ] }] as unknown as Plugin[];
+  expect(findBlocks(fake, 'ring').map((t) => t.type)).toEqual(['x.halo']);
+  expect(findBlocks(fake, 'dur').map((t) => t.type)).toEqual(['x.wash']);
+  expect(findBlocks(fake, 'oloring').map((t) => t.type)).toEqual([]);
+  expect(findBlocks(fake, 'coloring').map((t) => t.type)).toEqual(['x.wash']);
+});
+
+test('find: a variant value or template id is an identifier too, its names and docs prose', () => {
+  const v = { value: 'snow-fall', label: '雪', doc: 'flakes during the scene' };
+  const fake = [{ id: 'x', items: [{ type: 'x.sky', label: 'sky', doc: 'weather', kind: 'overlay', variants: { param: 'look', list: [v, { value: 'rain', label: '雨', doc: 'drops' }] },
+    params: [{ key: 'look', label: 'look', type: 'enum', options: ['snow-fall', 'rain'], default: 'rain' }], templates: [{ id: 'nightFall', label: '夜', doc: 'dark', params: { look: 'rain' } }], build: () => null, draw: () => {} }] }] as unknown as Plugin[];
+  expect(formatFind(fake, 'fall')).toMatch(/look: 'snow-fall'[\s\S]*template: 'nightFall'/);
+  expect(formatFind(fake, 'ring')).toContain('找不到');
+});
+
 test("the block index: one line per category with the short names, then the sound effects; guides/workflow.md carries the current one", () => {
   const idx = formatIndex(plugins);
   // a block that moved category keeps its old handle, written whole; the others by number after the category's prefix; a category
@@ -247,10 +282,11 @@ test('combos: the catalog lists them by handle, a handle or combo:<id> shows the
 const aliasKey = (key: string) => { const m = /^([^@#]+)(?:([@#])(.+))?$/.exec(key)!; return { type: m[1], sep: m[2] as '@' | '#' | undefined, id: m[3] }; };
 const sharedItems = plugins.flatMap((p) => p.items ?? []);
 
-test('search aliases: every key names a block offered today, or one of its variants or templates', () => {
+test('search aliases: every key names a block or sound effect offered today, or one of a block\'s variants or templates', () => {
+  const sounds = new Set(plugins.flatMap((p) => p.sfx ?? []).map((x) => x.type));
   for (const key of Object.keys(SEARCH_ALIASES)) {
     const { type, sep, id } = aliasKey(key), t = sharedItems.find((x) => x.type === type);
-    expect([key, !!t && !Object.hasOwn(OLD_BLOCKS, type)]).toEqual([key, true]);
+    expect([key, (!!t || (!sep && sounds.has(type))) && !Object.hasOwn(OLD_BLOCKS, type)]).toEqual([key, true]);
     if (sep === '@') expect([key, !!t!.variants?.list.some((v) => v.value === id)]).toEqual([key, true]);
     if (sep === '#') expect([key, (t!.templates ?? []).some((x) => x.id === id)]).toEqual([key, true]);
   }

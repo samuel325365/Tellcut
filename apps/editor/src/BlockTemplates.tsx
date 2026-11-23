@@ -6,11 +6,13 @@
 import type { BlockTemplate } from '@tellcut/engine';
 import { blockText } from './i18n/blocks.ts';
 import { t } from './i18n/index.ts';
-import { LookPicker } from './LookPicker.tsx';
+import { LookPicker, lookWords } from './LookPicker.tsx';
+import type { PicCrop } from './pic-crop.ts';
 
-export function BlockTemplates({ type, templates, thumb, onApply }: { type: string; templates: BlockTemplate[]; thumb: (id: string) => string | undefined; onApply: (id: string) => void }) {
+export function BlockTemplates({ type, templates, thumb, crop, onApply }: { type: string; templates: BlockTemplate[]; thumb: (id: string) => string | undefined;
+  crop?: (id: string) => PicCrop | undefined; onApply: (id: string) => void }) {
   // the editor's labels are English; the placeholder, the tip and the templates' names follow the UI language
-  const tiles = templates.map((x) => { const s = blockText(`${type}#${x.id}`, x); return { key: x.id, label: s.label, doc: s.doc, thumb: thumb(x.id) }; });
+  const tiles = templates.map((x) => { const id = `${type}#${x.id}`, s = blockText(id, x); return { key: x.id, label: s.label, doc: s.doc, thumb: thumb(x.id), crop: crop?.(x.id), words: lookWords(id, x) }; });
   return (
     <div data-block-templates={type}>
       <LookPicker name="template" label="Template" hint={t('ed.tplTip')} placeholder={t('ed.tplPick')} tiles={tiles} onPick={onApply} />

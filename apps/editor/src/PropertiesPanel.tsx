@@ -10,7 +10,7 @@ import { keyWords } from './platform.ts';
 import { CheckField, NumberField, ParamField, SelectField, TextField } from './fields.tsx';
 import { CaptionTemplates } from './CaptionTemplates.tsx';
 import { BlockTemplates } from './BlockTemplates.tsx';
-import { LookPicker } from './LookPicker.tsx';
+import { LookPicker, lookWords } from './LookPicker.tsx';
 import { blockText } from './i18n/blocks.ts';
 import { paramText } from './i18n/params.ts';
 import { fallbackNote, retype, TRANSITION_MENU, usesCentre, usesDir } from './transitions.ts';
@@ -136,7 +136,7 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
     // stays English as every field's, the looks' names and sentences follow the UI language
     const lookField = (def: any) => {
       const v = it.params?.[def.key] ?? paramDefault(def, resolveTheme(p.meta.theme, p.meta));
-      const tiles = variants.list.map((x: any) => { const w = blockText(`${it.type}@${x.value}`, x); return { key: x.value, label: w.label, doc: w.doc, thumb: editor.lookThumb?.(it.type, 'variant', x.value) }; });
+      const tiles = variants.list.map((x: any) => { const id = `${it.type}@${x.value}`, w = blockText(id, x); return { key: x.value, label: w.label, doc: w.doc, thumb: editor.lookThumb?.(it.type, 'variant', x.value), crop: editor.lookCrop?.(it.type, 'variant', x.value), words: lookWords(id, x) }; });
       return <div data-param={def.key}><LookPicker name={def.key} label={paramText(it.type, def.key, def.label, 'en').name} hint={paramText(it.type, def.key, def.label).hint}
         tiles={tiles} current={String(v)} fallback={String(v)} onPick={(x) => editor.updateParam(id, def.key, x)} /></div>;
     };
@@ -157,7 +157,7 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
       {it.type === 'common.caption' && defs && <CaptionTemplates editor={editor} project={p} item={it} track={track.id} defs={defs} />}
       {it.type === 'common.heading' && defs && <CaptionTemplates key="title" kind="title" editor={editor} project={p} item={it} track={track.id} defs={defs} />}
       {/* a block's named templates (engine templates.ts): at the top of its parameters */}
-      {defs && templates?.length ? <BlockTemplates type={it.type} templates={templates} thumb={(x) => editor.lookThumb?.(it.type, 'template', x)} onApply={(x) => editor.applyBlockTemplate(id, x)} /> : null}
+      {defs && templates?.length ? <BlockTemplates type={it.type} templates={templates} thumb={(x) => editor.lookThumb?.(it.type, 'template', x)} crop={(x) => editor.lookCrop?.(it.type, 'template', x)} onApply={(x) => editor.applyBlockTemplate(id, x)} /> : null}
       {track.kind === 'sfx' && <NumberField label="Volume (dB)" name="gain" value={it.gain} step={0.5} min={-60} max={12} onCommit={up('gain')} />}
       {/* a moving item (following a face): its path decides where it is; the block's own x/y are the path's anchor, so they are not offered */}
       {defs ? defs.filter((def: any) => !(it.transform?.keys?.length && (def.key === 'x' || def.key === 'y'))).map((def: any) => def.key === variants?.param ? lookField(def) : <ParamField def={def} type={it.type} value={it.params?.[def.key]} project={p} onCommit={(v) => editor.updateParam(id, def.key, v)} />)

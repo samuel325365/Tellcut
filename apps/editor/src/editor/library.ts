@@ -8,7 +8,8 @@ import type { ChatSession } from '../chat.ts';
 import type { Layout } from '../layout.ts';
 import type { EditorState, LibraryState, SaveDialog, Store } from '../store.ts';
 import { errText, t as say } from '../i18n/index.ts';
-import { TEMPLATE_KINDS, type GalleryCaption, type LibraryCaptionInfo, type TemplateKind } from '@tellcut/protocol';
+import { TEMPLATE_KINDS, type GalleryBlock, type GalleryCaption, type LibraryCaptionInfo, type TemplateKind } from '@tellcut/protocol';
+import { picCrop } from '../pic-crop.ts';
 
 type LibraryApi = Pick<Api, 'library' | 'projectLibrary' | 'saveBlockPreview' | 'saveBlock' | 'saveStyle' | 'useLibrary'> & Partial<Pick<Api, 'saveCaption' | 'deleteLibrary' | 'gallery'>>;
 export interface LibraryDeps { id: string; api: LibraryApi; store: Store<EditorState>; chat: Pick<ChatSession, 'send' | 'state'>; setLayout: (patch: Partial<Layout>) => void }
@@ -122,8 +123,11 @@ export class LibraryFlow {
       const peak = (g.combos ?? []).flatMap((c) => (c.frames.length ? [[`combo:${c.id}`, c.frames[Math.floor(c.frames.length / 2)]]] : []));
       const pics = <T>(l: T[] | undefined, key: (x: T) => string, thumb: (x: T) => string | undefined) =>
         Object.fromEntries((l ?? []).flatMap((x) => { const src = thumb(x); return src ? [[key(x), src]] : []; }));
-      const blockLooks = Object.fromEntries((g.blocks ?? []).filter((b) => b.variants || b.templates).map((b) => [b.type, {
-        variants: pics(b.variants?.list, (v) => v.value, (v) => v.thumb), templates: pics(b.templates, (x) => x.id, (x) => x.thumb) }]));
+      // a look's crop travels with its picture (the small pictures of a look drawn in a small part of the frame show that part)
+      const crops = (b: GalleryBlock) => Object.fromEntries([...(b.variants?.list ?? []).map((v) => [`variant:${v.value}`, v] as const), ...(b.templates ?? []).map((x) => [`template:${x.id}`, x] as const)]
+        .flatMap(([k, x]) => { const c = x.thumb ? picCrop(x) : undefined; return c ? [[k, c]] : []; }));
+      const blockLooks = Object.fromEntries((g.blocks ?? []).filter((b) => b.variants || b.templates).map((b) => { const c = crops(b); return [b.type, {
+        variants: pics(b.variants?.list, (v) => v.value, (v) => v.thumb), templates: pics(b.templates, (x) => x.id, (x) => x.thumb), ...(Object.keys(c).length ? { crops: c } : {}) }]; }));
       this.set({ blockThumbs: Object.fromEntries([...(g.blocks ?? []).flatMap((b) => (b.thumb ? [[b.type, b.thumb]] : [])), ...peak]), blockLooks });
     } catch { this.blockThumbsAsked = false; }
   }

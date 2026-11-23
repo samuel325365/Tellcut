@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { templateName, variantCode, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, idFields, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconCaptionOut, IconFaceSticker, IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -21,6 +21,8 @@ import { blockText } from './i18n/blocks.ts';
 import { localValues } from './i18n/values.ts';
 import { CLIP_FX, handleOf, type ClipFx, type LibraryBlockInfo, type LibraryIndex, type LibraryStyleInfo, type LibraryUsage } from '@tellcut/protocol';
 import { getLang } from './i18n/lang.ts';
+import { CroppedImg } from './CroppedImg.tsx';
+import type { PicCrop } from './pic-crop.ts';
 
 const TABS: Tab[] = ['blocks', 'captions', 'titles', 'sfx', 'combos', 'styles', 'recipes'];
 const ALL = 'all';
@@ -187,7 +189,7 @@ function CardLooks({ looks, hits, pressed, open, onToggle, onHover, onPick }: { 
           onMouseEnter={() => onHover(l.key)} onMouseLeave={() => onHover(null)} onFocus={() => onHover(l.key)} onBlur={() => onHover(null)}
           onClick={(e) => { e.stopPropagation(); onPick(l); }}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onPick(l); } }}>
-          <LookPic src={thumbIn(l.thumb, lang)} mark={firstChar(l.label)} />
+          <LookPic src={thumbIn(l.thumb, lang)} mark={firstChar(l.label)} crop={l.crop} />
         </span>))}
       {!fits && !found && <button class="g-look g-looks-more" data-looks-more aria-expanded={open} {...tip(open ? t('gallery.looksLess') : t('gallery.looksMore', { n: rest }))}
         onClick={(e) => { e.stopPropagation(); onToggle(); }}>{open ? '−' : `+${rest}`}</button>}
@@ -195,10 +197,12 @@ function CardLooks({ looks, hits, pressed, open, onToggle, onHover, onPick }: { 
   );
 }
 
-/** a look's small picture, whole inside its box; the first letter of its name when it has none (or it fails to load) */
-function LookPic({ src, mark }: { src?: string; mark: string }) {
+/** a look's small picture inside its box: whole, or only where the look is when it has a crop (CroppedImg); the first letter of its
+ *  name when it has none (or it fails to load) */
+function LookPic({ src, mark, crop }: { src?: string; mark: string; crop?: PicCrop }) {
   const [bad, setBad] = useState<string>();
-  return src && bad !== src ? <img src={src} alt="" loading="lazy" onError={() => setBad(src)} /> : <span class="g-look-mark" aria-hidden="true">{mark}</span>;
+  if (!src || bad === src) return <span class="g-look-mark" aria-hidden="true">{mark}</span>;
+  return crop ? <CroppedImg src={src} crop={crop} onError={() => setBad(src)} /> : <img src={src} alt="" loading="lazy" onError={() => setBad(src)} />;
 }
 
 /** A clip effect: its preview looping (the street, to the map for a transition: clipProject), what it is for and its cut.ts line;
@@ -473,8 +477,8 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   // the clip effects found, in their groups (transitions, shapes, the rest) and the grid's order; their card pictures by key
   const clips = clipSections(CLIP_FX.filter((f) => clipMatches(f, q))).flatMap((x) => x.clips);
   const clipThumb = new Map((g.clips ?? []).map((x) => [x.key, x.thumb]));
-  const mineBlocks = (lib?.blocks ?? []).filter((b) => matches(q, undefined, b.type, b.name, b.desc)), mineStyles = (lib?.styles ?? []).filter((x) => matches(q, undefined, x.id, x.name, x.desc));
-  const ownList = (own?.blocks ?? []).filter((b) => matches(q, undefined, b.type, b.label, b.doc, shown(b.type, b).label));
+  const mineBlocks = (lib?.blocks ?? []).filter((b) => matches(q, undefined, ...idFields(b.type), b.name, b.desc)), mineStyles = (lib?.styles ?? []).filter((x) => matches(q, undefined, ...idFields(x.id), x.name, x.desc));
+  const ownList = (own?.blocks ?? []).filter((b) => matches(q, undefined, ...idFields(b.type), b.label, b.doc, shown(b.type, b).label));
   const to: ToProject | undefined = project && { project, name: own?.name || project.id };
   const cats = galleryCategories(g.blocks, CLIP_FX.length, library ? (lib?.blocks.length ?? 0) : undefined, own?.blocks.length ?? 0);
   const showOwn = tab === 'blocks' && (cat === ALL || cat === PROJECT_CATEGORY) && (ownList.length > 0 || !!ownErr);

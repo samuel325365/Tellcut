@@ -5,19 +5,28 @@
 // can be looked up like a type: `catalog MRK-03` (music styles, recipes, clip effects and combos too).
 import { OLD_BLOCKS, templateName, variantCode, type BlockTemplate, type BlockVariant, type Combo, type ComboPart, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
-import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX, aliasText, wordFinder } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX, aliasText, idFinder, idLike, wordFinder } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
 import { BLOCKS_EN } from '@tellcut/editor/i18n/blocks.en';
 import { describeRecipe } from './cut/recipes/index.ts';
 
 type Kind = 'caption' | 'title';
-type Finder = (text: string) => boolean;
-/** the query's words (case does not matter), each as its test: a Latin word is found only where a word starts (`ring` is not
- *  "during"), any other anywhere, as the gallery's search finds them (protocol wordFinder) */
-const findersOf = (query: string): Finder[] => query.toLowerCase().split(/\s+/).filter(Boolean).map(wordFinder);
+/** what --find reads of one thing: its prose (names, docs, aliases, param labels) lower-cased, and its identifiers (type id, param
+ *  keys, options, variant values, template and combo ids) in their own case, which marks their camelCase parts for idFinder */
+type Texts = { prose: string; ids: string };
+type Finder = (x: Texts) => boolean;
+const texts = (prose: string[], ids: string[]): Texts => ({ prose: prose.join(' ').toLowerCase(), ids: ids.join(' ') });
+/** the query's words (case does not matter), each as its test, as the gallery's search finds them: a Latin word is found in prose
+ *  only where a word starts (`ring` is not "during", protocol wordFinder), in an identifier where one of its parts starts
+ *  (`dur` is in `fadeDur`, `art` is not in `heart`, protocol idFinder); any other word anywhere in both */
+const findersOf = (query: string): Finder[] => query.toLowerCase().split(/\s+/).filter(Boolean).map((w) => {
+  const word = wordFinder(w), id = idFinder(w);
+  return (x) => word(x.prose) || id(x.ids);
+});
 const LIST: Record<Kind, CaptionTemplate[]> = { caption: TEMPLATES, title: TITLE_TEMPLATES };
-/** a template's words for --find: its id, names and what it sets */
-const templateText = (t: CaptionTemplate) => [t.id, t.label, t.doc, ...Object.entries(t.params).map(([k, v]) => `${k} ${String(v)}`)].join(' ').toLowerCase();
+/** a template's words for --find: its id, names and what it sets (the keys and identifier-like values as identifiers) */
+const templateText = (t: CaptionTemplate) => { const ps = Object.entries(t.params);
+  return texts([t.label, t.doc, ...ps.filter(([, v]) => !idLike(v)).map(([, v]) => String(v))], [t.id, ...ps.flatMap(([k, v]) => (idLike(v) ? [k, String(v)] : [k]))]); };
 const templateLine = (kind: Kind) => (t: CaptionTemplate) => `  ${(handleOf(`${kind}:${t.id}`) ?? '').padEnd(10)}  ${t.id.padEnd(12)}  ${t.label} — ${t.doc}`;
 /** the caption (or title) templates matching every word of `query` (all of them without one) */
 export function findTemplates(query = '', kind: Kind = 'caption'): CaptionTemplate[] {
@@ -47,8 +56,9 @@ const numberOf = (h: string) => /\d+$/.exec(h)![0];
 /** the clip effects' groups as the catalog names them (the gallery's three headings) */
 const CLIP_GROUP_NAME: Record<ClipGroup, string> = { transition: '轉場（c.clip／c.photo 的 transition，接前一段）', shape: '形狀（clip、photo、beside 的 shape，畫面裁成那個形狀）', motion: '晃動、跟著臉、避開原片字幕' };
 const clipLine = (c: ClipFx) => `  ${handleCol(c.key)}  ${c.label}：${c.code}`;
-/** a clip effect's words for --find: its key, names, doc and cut.ts line in Chinese and English (片段 / clip: those words list them all) */
-const clipText = (c: ClipFx) => ['片段', 'clip', c.key, c.label, c.doc, c.code, BLOCKS_EN[c.key]?.label ?? '', BLOCKS_EN[c.key]?.doc ?? ''].join(' ').toLowerCase();
+/** a clip effect's words for --find: its names and doc in Chinese and English (片段 / clip: those words list them all), its key and
+ *  cut.ts line as identifiers */
+const clipText = (c: ClipFx) => texts(['片段', 'clip', c.label, c.doc, BLOCKS_EN[c.key]?.label ?? '', BLOCKS_EN[c.key]?.doc ?? ''], [c.key, c.code]);
 /** the clip effects matching every word of `query` (a handle: the one it names) */
 export function findClipFx(query: string): ClipFx[] {
   const h = normalizeHandle(query);
@@ -60,8 +70,9 @@ export function findClipFx(query: string): ClipFx[] {
 /** the combos of the plugins (engine combos.ts) */
 const combosOf = (plugins: Plugin[]): Combo[] => plugins.flatMap((p) => p.combos ?? []);
 const comboLine = (c: Combo) => `  ${(handleOf(`combo:${c.id}`) ?? '').padEnd(10)}  ${c.id.padEnd(10)}  ${c.label} — ${c.doc}`;
-/** a combo's words for --find: its id, names, doc and its layers' names, types and templates (and combo / 組合: those words list them all) */
-const comboText = (c: Combo) => ['combo', '組合', c.id, c.label, c.doc, ...c.parts.flatMap((p) => [p.name, p.type ?? '', p.template ?? ''])].join(' ').toLowerCase();
+/** a combo's words for --find: its names and doc (and combo / 組合: those words list them all), its id and its layers' names, types
+ *  and templates as identifiers (a layer's name is the key `parts` takes) */
+const comboText = (c: Combo) => texts(['combo', '組合', c.label, c.doc], [c.id, ...c.parts.flatMap((p) => [p.name, p.type ?? '', p.template ?? ''])]);
 /** the combos matching every word of `query` (a handle: the combo it names) */
 export function findCombos(plugins: Plugin[], query: string): Combo[] {
   const h = normalizeHandle(query);
@@ -125,23 +136,26 @@ export function formatCatalog(plugins: Plugin[]): string {
   return out.join('\n');
 }
 
-const joined = (xs: string[]) => xs.join(' ').toLowerCase();
 /** a param's options as words of its block: not those of the param the block's variants name, which are the variants' own words
  *  (else `--find rocket` would hit the block itself and list no look) */
 const optionWords = (t: Entry, d: ParamDef) => (d.type === 'enum' && d.key !== t.variants?.param ? d.options : []);
-/** the block's own words for --find: its type, label, doc, its search aliases (protocol SEARCH_ALIASES), and its params' keys,
- *  labels and options */
-const blockText = (t: Entry) => joined([t.type, t.label, t.doc ?? '', aliasText(t.type), ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...optionWords(t, d)])]);
+/** the identifiers of a block: its type, its params' keys and options */
+const blockIds = (t: Entry) => [t.type, ...(t.params ?? []).flatMap((d) => [d.key, ...optionWords(t, d)])];
+/** the block's own words for --find: its label, doc, search aliases (protocol SEARCH_ALIASES) and params' labels as prose, its
+ *  identifiers (blockIds) */
+const blockText = (t: Entry) => texts([t.label, t.doc ?? '', aliasText(t.type), ...(t.params ?? []).map((d) => d.label)], blockIds(t));
 /** the block's words a variant or template may lean on for the rest of the query (`--find 計時器 flip`, an alias and a look): as
  *  blockText but without the params' labels, which name the looks one by one (progress' size: 「ring：圓環的大小」), so two words
  *  from two different looks never meet in one */
-const partBase = (t: Entry) => joined([t.type, t.label, t.doc ?? '', aliasText(t.type), ...(t.params ?? []).flatMap((d) => [d.key, ...optionWords(t, d)])]);
-const variantText = (t: Entry, v: BlockVariant) => { const en = BLOCKS_EN[`${t.type}@${v.value}`]; return joined([v.value, v.label, v.doc, en?.label ?? '', en?.doc ?? '', aliasText(`${t.type}@${v.value}`)]); };
-const templatePartText = (t: Entry, x: BlockTemplate) => { const en = BLOCKS_EN[`${t.type}#${x.id}`]; return joined([x.id, x.label, x.doc, en?.label ?? '', en?.doc ?? '', aliasText(`${t.type}#${x.id}`)]); };
+const partBase = (t: Entry) => texts([t.label, t.doc ?? '', aliasText(t.type)], blockIds(t));
+/** a variant's or template's own words: its names, docs and aliases as prose, its value or id as an identifier */
+const partText = (key: string, id: string, x: { label: string; doc: string }) => { const en = BLOCKS_EN[key]; return texts([x.label, x.doc, en?.label ?? '', en?.doc ?? '', aliasText(key)], [id]); };
+const variantText = (t: Entry, v: BlockVariant) => partText(`${t.type}@${v.value}`, v.value, v);
+const templatePartText = (t: Entry, x: BlockTemplate) => partText(`${t.type}#${x.id}`, x.id, x);
 /** a variant or template matches when every word is in its own text or its block's, and at least one is in its own text and is not
  *  just the block's name (`--find 進度條` is the block, not the look whose doc says 進度條) */
-function partHits(t: Entry, finds: Finder[], own: string): boolean {
-  const base = partBase(t), name = joined([t.type, t.label]);
+function partHits(t: Entry, finds: Finder[], own: Texts): boolean {
+  const base = partBase(t), name = texts([t.label], [t.type]);
   return finds.every((has) => has(own) || has(base)) && finds.some((has) => has(own) && !has(name));
 }
 
@@ -152,8 +166,9 @@ export function findParts(t: Entry, query: string): { variants: BlockVariant[]; 
   return { variants: (t.variants?.list ?? []).filter((v) => partHits(t, finds, variantText(t, v))), templates: templatesOf(t).filter((x) => partHits(t, finds, templatePartText(t, x))) };
 }
 
-/** every word (case does not matter) is in the block's type, label, doc or one of its params' key, label or options, or one of its
- *  variants or templates matches (findParts); a handle (mrk-3 as well as MRK-03) finds its block */
+/** every word (case does not matter) is in the block's type, label, doc or one of its params' key, label or options (findersOf:
+ *  prose at a word's start, identifiers where one of their parts starts), or one of its variants or templates matches (findParts); a handle (mrk-3 as
+ *  well as MRK-03) finds its block */
 export function findBlocks(plugins: Plugin[], query: string): Entry[] {
   const h = normalizeHandle(query);
   if (h) return plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => handleOf(t.type) === h);

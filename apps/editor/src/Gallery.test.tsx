@@ -760,6 +760,28 @@ test('a card with variants or templates shows them under its picture, variants f
   } finally { render(null, root); root.remove(); }
 });
 
+test('a look with a crop shows only that part in its small picture; the card\'s picture and the detail show it whole', async () => {
+  // the bar drawn along the top of a tall frame: the top square of it (the server's crop, fractions of the frame)
+  const cropped = { ...PROGRESS, variants: { ...PROGRESS.variants, list: PROGRESS.variants.list.map((v) => (v.value === 'bar' ? { ...v, crop: [0, 0, 1, 0.5625] as [number, number, number, number] } : v)) } };
+  const { root } = await lookPage({ ...G, blocks: [...G.blocks, cropped] });
+  try {
+    const bar = root.querySelector('[data-card="common.progress"] [data-look-variant="bar"]')!;
+    const img = bar.querySelector('[data-cropped] img') as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe(pic('bar'));
+    // the crop and the frame's shape go to the CSS, which places the picture in the box (pic-crop.ts cropView)
+    expect(['--x', '--y', '--w', '--h', '--r'].map((k) => img.style.getPropertyValue(k))).toEqual(['0', '0', '1', '0.5625', '0.5625']);
+    expect(root.querySelector('[data-card="common.progress"] [data-look-variant="dots"] [data-cropped]')).toBeNull();
+    // under the mouse it takes the card's picture whole
+    await act(() => { bar.dispatchEvent(new MouseEvent('mouseenter')); });
+    expect(cardPic(root)).toBe(pic('bar'));
+    expect(root.querySelector('[data-card="common.progress"] > .g-thumb [data-cropped]')).toBeNull();
+    // the detail's Variants list shows it whole too
+    await click(root, '[data-card="common.progress"] [data-look-variant="bar"]');
+    const row = root.querySelector('[data-detail="common.progress"] [data-block-variant="bar"]')!;
+    expect([row.querySelector('img')!.getAttribute('src'), row.querySelector('[data-cropped]')]).toEqual([pic('bar'), null]);
+  } finally { render(null, root); root.remove(); }
+});
+
 test('a look under the mouse or the keyboard takes the card\'s picture and names itself under the card\'s name', async () => {
   const { root } = await lookPage();
   try {

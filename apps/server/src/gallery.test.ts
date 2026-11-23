@@ -5,6 +5,7 @@ import { createRegistry, expandCombo } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
 import { combos } from '@tellcut/plugin-common';
 import { makeProjects, startApp } from './test-utils.ts';
+import { galleryIndex } from './gallery.ts';
 
 test('the gallery lists every block (core and common first), the sounds, the music styles and the recipes', async () => {
   const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
@@ -288,4 +289,33 @@ test('combos: each with its handle, its layers and the three golden pictures of 
     expect(impact.layers.find((l: any) => l.name === 'shake')).toMatchObject({ kind: 'shake', px: 28 });
     expect(g.combos.filter((c: any) => c.ending).map((c: any) => c.id)).toEqual(['closing']);
   } finally { await app.close(); }
+});
+
+test('a look drawn in a small part of the frame has a crop for its small pictures; one that fills the frame has none', async () => {
+  const g = await galleryIndex(plugins);
+  const block = (type: string) => g.blocks.find((b) => b.type === type)!;
+  const variant = (type: string, value: string) => block(type).variants!.list.find((v) => v.value === value)!;
+  // the progress bar is a thin line near the top of a tall frame: a crop as wide as the frame, about half as tall, at the top edge
+  const [x, y, w, h] = variant('common.progress', 'bar').crop!;
+  expect(w).toBeGreaterThan(0.95);
+  expect(h).toBeLessThan(0.6);
+  expect(w / h).toBeGreaterThan(1.5);                 // in fractions of a 9:16 frame (in pixels: square)
+  expect([x, y]).toEqual([0, 0]);
+  // the ring sits in the top right corner: a small crop there
+  const ring = variant('common.progress', 'ring').crop!;
+  expect(ring[0] + ring[2]).toBeGreaterThan(0.9);
+  expect(ring[1] + ring[3]).toBeLessThan(0.3);
+  expect(ring[2]).toBeLessThan(0.4);
+  // every crop is inside the frame
+  for (const b of g.blocks) for (const l of [...(b.variants?.list ?? []), ...(b.templates ?? [])]) if (l.crop) {
+    const [cx, cy, cw, ch] = l.crop;
+    expect(Math.min(cx, cy, cw, ch), b.type).toBeGreaterThanOrEqual(0);
+    expect(Math.max(cx + cw, cy + ch), b.type).toBeLessThanOrEqual(1.0001);
+  }
+  // a shader fills the frame: none of its looks is cropped
+  const shader = block('common.shader');
+  expect([...(shader.variants?.list ?? []), ...(shader.templates ?? [])].filter((l) => l.crop)).toEqual([]);
+  // measured once: the next index gives the same crops from the cache
+  const again = await galleryIndex(plugins);
+  expect(again.blocks.find((b) => b.type === 'common.progress')!.variants!.list.find((v) => v.value === 'bar')!.crop).toEqual([x, y, w, h]);
 });

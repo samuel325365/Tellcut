@@ -20,6 +20,7 @@ import { applyCaptionTemplate, captionLook, captionLookParams, setCaptionTemplat
 import { templateOf } from '@tellcut/plugin-common/templates';
 import { titleTemplateOf } from '@tellcut/plugin-common/title-templates';
 import type { TemplateKind } from '@tellcut/protocol';
+import type { PicCrop } from './pic-crop.ts';
 import { cancelImport, dropFiles, endImports, importMedia, type ImportHost } from './editor/importing.ts';
 import type { DropKind, DropTarget } from './timeline/drop.ts';
 import { AskFlow } from './editor/ask-flow.ts';
@@ -828,6 +829,10 @@ export class Editor {
   /** a shared block's variant's or template's picture (the gallery's, in the zh UI's words), once loadBlockThumbs has them */
   lookThumb(type: string, kind: 'variant' | 'template', key: string): string | undefined {
     return this.s.library.blockLooks?.[type]?.[kind === 'variant' ? 'variants' : 'templates'][key];
+  }
+  /** the part of that look's picture its small pictures show (the gallery's crop), when it is drawn in a small part of the frame */
+  lookCrop(type: string, kind: 'variant' | 'template', key: string): PicCrop | undefined {
+    return this.s.library.blockLooks?.[type]?.crops?.[`${kind}:${key}`];
   }
 
   /** The project's default caption template ('' for none): every caption naming none of its own follows it; one undo step. */

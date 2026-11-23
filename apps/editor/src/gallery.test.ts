@@ -1,7 +1,7 @@
 import { PREVIEW_BG, PREVIEW_GROUND } from '@tellcut/engine';
-import { handleOf } from '@tellcut/protocol';
+import { aliasText, CLIP_FX, handleOf } from '@tellcut/protocol';
 import { plugins } from '@tellcut/plugins';
-import { blockProject, filterGallery, lookHit, lookHits, looksOf, matches, ownBlocks, pickedVariant, THEMES, type GalleryBlock, type GalleryIndex } from './gallery.ts';
+import { blockProject, clipMatches, filterGallery, idFields, lookHit, lookHits, looksOf, matches, ownBlocks, pickedVariant, THEMES, valueFields, type GalleryBlock, type GalleryIndex } from './gallery.ts';
 import { blockText } from './i18n/blocks.ts';
 
 const progress: GalleryBlock = {
@@ -24,7 +24,7 @@ const camcorder: GalleryBlock = {
 };
 const variant = (b: GalleryBlock, value: string) => b.variants!.list.find((v) => v.value === value)!;
 
-test('a Latin query is found only where a word starts; one with any other character anywhere', () => {
+test('a Latin query is found in a prose field only where a word starts; one with any other character anywhere', () => {
   const m = (q: string, ...f: string[]) => matches(q, undefined, ...f);
   for (const f of ['ring', 'a ring in a corner', 'ringing', 'common.ring', '圓環ring', 'Ring', '(ring)', 'x-ring']) expect([f, m('ring', f)]).toEqual([f, true]);
   for (const f of ['during', 'coloring', 'string', 'Spring']) expect([f, m('ring', f)]).toEqual([f, false]);
@@ -44,10 +44,26 @@ test('a Latin query is found only where a word starts; one with any other charac
   expect([matches('mrk3', 'MRK-03', 'x'), matches('mrk-0', 'MRK-03', 'x'), matches('rk', 'MRK-03', 'x')]).toEqual([true, true, false]);
 });
 
-test('searching "ring" over the real blocks no longer finds one only by "during", "appearing" or "scoring"', () => {
+test('an identifier field, read in its own case: a Latin query where one of its parts starts (camelCase humps too); any other anywhere', () => {
+  const id = (q: string, ...f: string[]) => matches(q, undefined, ...idFields(...f));
+  expect([id('dur', 'fadeDur'), id('DUR', 'fadeDur'), id('icon', 'startIcon'), id('bar', 'common.HealthBar'), id('corner', 'ring-corner')]).toEqual([true, true, true, true, true]);
+  // the same text as prose: only where a word starts (the prose field is lower-cased first, so no hump)
+  expect([matches('dur', undefined, 'fadeDur'), matches('bar', undefined, 'common.HealthBar')]).toEqual([false, false]);
+  // not inside one lower-case part
+  expect([id('bar', 'common.healthbar'), id('art', 'heart'), id('ogress', 'common.progress'), id('ar', 'common.healthbar')]).toEqual([false, false, false, false]);
+  expect([id('co', 'common.healthbar'), id('he', 'common.healthbar')]).toEqual([true, true]);
+  // CJK, and a query starting with punctuation: anywhere, as in prose
+  expect([id('環', 'x.圓環'), id('.health', 'common.healthbar')]).toEqual([true, true]);
+  // prose and identifier fields together: either one is enough
+  expect([matches('dur', undefined, 'a meter', ...idFields('fadeDur')), matches('meter', undefined, 'a meter', ...idFields('fadeDur'))]).toEqual([true, true]);
+  // a template's param values: an option or colour is an identifier, words with a space are prose
+  expect(valueFields({ anim: 'popIn', color: '#ff0000', size: 6, text: 'during the day' })).toEqual([{ id: 'popIn' }, { id: '#ff0000' }, { id: '6' }, 'during the day']);
+});
+
+test('searching "ring" over the real blocks no longer finds one only by "during", "appearing" or "scoring"; a compound type by its alias', () => {
   const found = (q: string) => plugins.flatMap((p) => p.items ?? []).filter((i) => {
     const en = blockText(i.type, { label: i.label, doc: i.doc ?? '' }, 'en');
-    return matches(q, handleOf(i.type), i.type, i.label, i.doc ?? '', en.label, en.doc);
+    return matches(q, handleOf(i.type), ...idFields(i.type), i.label, i.doc ?? '', en.label, en.doc, aliasText(i.type));
   }).map((i) => i.type);
   const list = plugins.flatMap((p) => p.items ?? []).find((i) => i.type === 'common.list')!;
   expect(blockText('common.list', { label: list.label, doc: list.doc ?? '' }, 'en').doc).toMatch(/during/);
@@ -55,6 +71,22 @@ test('searching "ring" over the real blocks no longer finds one only by "during"
   expect(found('ring')).not.toContain('common.list');
   expect(found('ring')).not.toContain('common.digits');
   expect(found('dur')).toContain('common.list');
+  // an all-lower-case compound type id hides its second word, which its search alias gives (protocol SEARCH_ALIASES)
+  expect(found('bar')).toContain('common.healthbar');
+  expect(found('ogress')).not.toContain('common.progress');
+});
+
+test('the gallery reads a look\'s value, a combo\'s parts and a clip effect\'s key and cut.ts line as identifiers', () => {
+  // a camelCase variant value by its second part; its prose has no Latin word
+  const slide: GalleryBlock = { ...progress, type: 'fx.slide', variants: { param: 'mode', list: [{ value: 'slideIn', label: '滑入', doc: '滑進來' }, { value: 'dots', label: '圓點', doc: '一排點' }] } };
+  expect([lookHits(slide, 'in'), lookHits(slide, 'ots')]).toEqual([['variant:slideIn'], []]);
+  const g: GalleryIndex = { blocks: [], sfx: [], styles: [], recipes: [], combos: [
+    { id: 'impact', label: '重擊', doc: '打臉', parts: [{ name: 'flash', kind: 'effect', type: 'core.flash', template: 'bloom-pop', at: 0, len: 0.5 }] },
+  ] } as unknown as GalleryIndex;
+  expect([filterGallery(g, 'combos', 'pop'), filterGallery(g, 'combos', 'flash'), filterGallery(g, 'combos', 'loom'), filterGallery(g, 'combos', 'pact')].map((xs) => xs.length)).toEqual([1, 1, 0, 0]);
+  // a transition's cut.ts line says dur: found by "dur" and its key's last part; a shape's `outline: true` is not "line"
+  const dissolve = CLIP_FX.find((f) => /type: 'dissolve'/.test(f.code))!, circle = CLIP_FX.find((f) => f.key === 'clip.shape.circle')!;
+  expect([clipMatches(dissolve, 'dur'), clipMatches(dissolve, 'dissolve'), clipMatches(dissolve, 'issolve'), clipMatches(circle, 'line')]).toEqual([true, true, false, false]);
 });
 
 test('a variant picked: the preview plays on its card\'s ground and shape, in its sample\'s look unless the theme menu picks another', () => {

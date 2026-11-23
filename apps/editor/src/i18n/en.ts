@@ -401,6 +401,8 @@ export const en: Record<Key, string> = {
   'ed.capSearch': 'Search caption templates',
   'ed.tplPick': 'Apply a template…',
   'ed.tplTip': 'Picking one writes its settings into this item (undoable); later edits stay, and the item does not remember which one it was',
+  'ed.lookSearch': 'Search looks…',
+  'ed.lookEmpty': 'Nothing matches',
   'ed.ttlSearch': 'Search title templates',
   'ed.templateName': 'Name of my template',
   'ed.unique': '"{label}" can only appear once in a project',

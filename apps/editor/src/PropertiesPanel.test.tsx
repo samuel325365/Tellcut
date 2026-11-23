@@ -291,12 +291,51 @@ describe('a block whose looks one param picks (variants)', () => {
     expect(root.querySelector('[data-param="t"] textarea')).not.toBeNull();
   });
 
+  test('a look with a crop shows only that part in the closed row and its tile, whole in the larger picture under the grid', async () => {
+    const { root, editor } = mount(['blk']);
+    editor.registry = looks();
+    editor.lookThumb = (_type: string, _kind: string, key: string) => `/t/${key}.png`;
+    editor.lookCrop = (type: string, kind: string, key: string) => (type === 'x.block' && kind === 'variant' && key === 'a' ? { box: [0.5, 0, 0.5, 0.2812], ratio: 9 / 16 } : undefined);
+    await act(() => render(<PropertiesPanel editor={editor} s={editor.store.get()} />, root));
+    const field = root.querySelector('[data-param="mode"]')!, picker = field.querySelector<HTMLButtonElement>('[data-look-picker]')!;
+    expect(picker.querySelector('[data-cropped] img')!.getAttribute('src')).toBe('/t/a.png');
+    await act(() => picker.click());
+    expect(field.querySelector('[data-look-tile="a"] [data-cropped] img')!.getAttribute('src')).toBe('/t/a.png');
+    expect(field.querySelector('[data-look-tile="b"] [data-cropped]')).toBeNull();
+    expect(field.querySelector('[data-look-tile="b"] img')!.getAttribute('src')).toBe('/t/b.png');
+    // the larger picture of the one in use: whole
+    const shown = field.querySelector('[data-look-shown="a"]')!;
+    expect([shown.querySelector('[data-cropped]'), shown.querySelector('img')!.getAttribute('src')]).toEqual([null, '/t/a.png']);
+  });
+
   test('a value the list does not have (an old project’s) shows as it is', async () => {
     const { root, editor, store } = mount(['blk']);
     editor.registry = looks();
     blkOf(store).params = { mode: 'zzz' };
     await act(() => render(<PropertiesPanel editor={editor} s={store.get()} />, root));
     expect(root.querySelector('[data-param="mode"] [data-look-picker]')!.textContent).toContain('zzz');
+  });
+
+  test('a long list gets a search box that also finds a look by its aliases and English name (common.pen: 心形 → heart)', async () => {
+    const kinds = ['circle', 'arrow', 'underline', 'check', 'cross', 'heart', 'star', 'stars', 'burst', 'rays'];
+    const reg = createRegistry([corePlugin, { id: 'common', items: [{ type: 'common.pen', label: '手繪標記', kind: 'overlay', build: () => null, draw: () => {},
+      params: [{ key: 'kind', label: '種類', type: 'enum', options: kinds, default: 'circle' }],
+      variants: { param: 'kind', list: kinds.map((k) => ({ value: k, label: `樣子 ${k}`, doc: '一個記號' })) } }] } as any]);
+    const { root, editor, store, calls } = mount(['blk']);
+    editor.registry = reg;
+    Object.assign(blkOf(store), { type: 'common.pen', params: {} });
+    await act(() => render(<PropertiesPanel editor={editor} s={store.get()} />, root));
+    const field = root.querySelector('[data-param="kind"]')!;
+    await act(() => field.querySelector<HTMLButtonElement>('[data-look-picker]')!.click());
+    const box = field.querySelector<HTMLInputElement>('[data-look-search]')!;
+    const keys = () => [...field.querySelectorAll<HTMLElement>('[data-look-tile]')].map((x) => x.dataset.lookTile);
+    const typeIn = (v: string) => act(() => { box.value = v; box.dispatchEvent(new Event('input', { bubbles: true })); });
+    await typeIn('心形');   // only an alias says it (SEARCH_ALIASES['common.pen@heart'])
+    expect(keys()).toEqual(['heart']);
+    await typeIn('spiky');   // only the English name says it (blocks.en.ts: Spiky halo)
+    expect(keys()).toEqual(['burst']);
+    await act(() => { box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
+    expect(calls.at(-1)).toEqual(['param', 'blk', 'kind', 'burst']);
   });
 });
 

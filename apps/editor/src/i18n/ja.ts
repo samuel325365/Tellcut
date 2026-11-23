@@ -401,6 +401,8 @@ export const ja: Record<Key, string> = {
   'ed.capSearch': '字幕テンプレートを検索',
   'ed.tplPick': 'テンプレートを適用…',
   'ed.tplTip': '選ぶとその設定がこの項目に書き込まれます（元に戻せます）。あとで変えた値はそのまま残り、どれを使ったかは記録されません',
+  'ed.lookSearch': '見た目を検索…',
+  'ed.lookEmpty': '一致するものがありません',
   'ed.ttlSearch': 'タイトルテンプレートを検索',
   'ed.templateName': '自分のテンプレートの名前',
   'ed.unique': '「{label}」はプロジェクトに1つしか置けません',

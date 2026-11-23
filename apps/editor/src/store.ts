@@ -6,6 +6,7 @@ import type { Material } from './audition.ts';
 import { DEFAULT_LAYOUT, type Layout } from './layout.ts';
 import type { LibraryIndex, LibrarySavePreview, ProjectLibraryInfo, TemplateKind } from '@tellcut/protocol';
 import type { PresetDraftView } from './editor/preset-save.ts';
+import type { PicCrop } from './pic-crop.ts';
 import type { DropKind, DropPlan } from './timeline/drop.ts';
 
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
@@ -100,8 +101,10 @@ export interface SaveDialog { kind: 'block' | 'style'; target: string; name: str
 export interface LibraryState { index: LibraryIndex | null; project: ProjectLibraryInfo | null; saving: SaveDialog | null; toast: { name: string } | null; templateThumbs: Record<TemplateKind, Record<string, string>> | null;
   /** the shared blocks' pictures (type → the gallery's thumbnail), fetched once the media panel's Effects page shows */
   blockThumbs: Record<string, string> | null;
-  /** the shared blocks' looks' pictures (type → variant value / template id → the gallery's thumbnail), fetched with blockThumbs */
-  blockLooks: Record<string, { variants: Record<string, string>; templates: Record<string, string> }> | null }
+  /** the shared blocks' looks' pictures (type → variant value / template id → the gallery's thumbnail), fetched with blockThumbs;
+   *  `crops`: the part of each picture a small picture shows, for a look drawn in a small part of the frame (key `variant:<value>`
+   *  or `template:<id>`; absent: every picture whole) */
+  blockLooks: Record<string, { variants: Record<string, string>; templates: Record<string, string>; crops?: Record<string, PicCrop> }> | null }
 
 export const initialState = (id: string): EditorState => ({
   id, project: null, error: null, history: [], restoreError: '', selection: [], playhead: 0, playing: false, playerReady: false, playerError: '',

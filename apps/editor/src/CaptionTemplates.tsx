@@ -13,7 +13,7 @@ import type { ParamDef, Project } from '@tellcut/engine';
 import type { Editor } from './editor.ts';
 import { PlayerPreview } from './PlayerPreview.tsx';
 import { Pic } from './LookPicker.tsx';
-import { captionProject, matches, thumbIn, titleProject } from './gallery.ts';
+import { captionProject, idFields, matches, thumbIn, titleProject, valueFields } from './gallery.ts';
 import { myTemplateKey } from './editor/captions.ts';
 import { blockText } from './i18n/blocks.ts';
 import { getLang } from './i18n/lang.ts';
@@ -44,7 +44,7 @@ export function CaptionTemplates({ editor, project, item, track, defs, kind = 'c
   // the template is gone from the library
   const name = (id: string) => (id.startsWith('my-') ? mine.find((m) => myTemplateKey(m) === id)?.name ?? id.replace(/^my-/, '').replace(/-[^-]*$/, '')
     : blockText(`${kind}:${id}`, ALL.find((x) => x.id === id) ?? { label: id, doc: '' }).label);
-  const list = ALL.filter((x) => matches(q, handleOf(`${kind}:${x.id}`), x.id, x.label, name(x.id), ...Object.values(x.params).map(String)));
+  const list = ALL.filter((x) => matches(q, handleOf(`${kind}:${x.id}`), ...idFields(x.id), x.label, name(x.id), ...valueFields(x.params)));
   const point = (id: string | null) => ({ onMouseEnter: () => setHover(id), onMouseLeave: () => setHover(null), onFocus: () => setHover(id), onBlur: () => setHover(null) });
   const tile = (id: string, label: string, pic?: string) => (
     <li class={`cap-tile${(own || '') === id ? ' on' : ''}`} data-caption-template={id} role="button" tabIndex={0} aria-pressed={(own || '') === id} {...tip(label)} {...point(id || null)}

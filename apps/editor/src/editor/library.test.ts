@@ -129,3 +129,11 @@ test('the same answer gives each block’s variants and templates their pictures
   await f.loadBlockThumbs();
   expect(s().blockLooks).toEqual({ 'common.progress': { variants: { rocket: '/t/r.png' }, templates: { neon: '/t/n.png' } } });
 });
+
+test('a look’s crop travels with its picture, with its frame’s shape (keyed variant:<value> / template:<id>)', async () => {
+  const progress = { type: 'common.progress', variants: { param: 'mode', list: [{ value: 'bar', thumb: '/t/b.png', crop: [0, 0, 1, 0.5625] }, { value: 'ring', thumb: '/t/r.png' }] },
+    templates: [{ id: 'wide', thumb: '/t/w.png', aspect: 'wide', crop: [0.5, 0.5, 0.25, 0.4444] }, { id: 'lost', crop: [0, 0, 0.5, 0.5] }] };
+  const { f, s } = flow({ gallery: async () => ({ blocks: [progress] }) });
+  await f.loadBlockThumbs();
+  expect(s().blockLooks!['common.progress'].crops).toEqual({ 'variant:bar': { box: [0, 0, 1, 0.5625], ratio: 9 / 16 }, 'template:wide': { box: [0.5, 0.5, 0.25, 0.4444], ratio: 16 / 9 } });
+});
