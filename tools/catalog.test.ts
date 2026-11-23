@@ -4,6 +4,7 @@ import { BLOCK_CATEGORY, handleOf } from '@tellcut/protocol';
 import { findBlocks, findCombos, formatCatalog, formatFind, formatIndex, formatLookup, formatType } from './catalog.ts';
 import { GUIDE_FILE, withIndex } from './blocks-index.ts';
 import { plugins } from '@tellcut/plugins';
+import { BLOCKS_EN } from '@tellcut/editor/i18n/blocks.en';
 
 const fake: Plugin[] = [
   { id: 'core', items: [
@@ -64,6 +65,27 @@ test('find: every word in the type, label, doc or a param (options too), sound e
   expect(types('PENCIL')).toContain('common.progress');   // an enum option, any case
   expect(types('  ')).toEqual([]);
   expect(formatFind(plugins, 'zzzz')).toContain('找不到');
+});
+
+test('find: a Latin word only where a word starts (ring is not "during"), as the gallery\'s search; any other word anywhere', () => {
+  const types = (q: string) => findBlocks(plugins, q).map((t) => t.type);
+  expect(types('ring')).toContain('common.progress');
+  expect(formatFind(plugins, 'ring').split('\n')).toContainEqual(expect.stringMatching(/^ {16}mode: 'ring' +圓環 — /));
+  // the gallery's mid-word hits (common.list, common.digits) are not found here either; nor the blocks the catalog used to find
+  // only by a look's English "fringe" (glitch's rgb) or "opening" (search's ask)
+  expect(BLOCKS_EN['common.glitch@rgb'].doc).toMatch(/fringe/);
+  expect(BLOCKS_EN['common.search@ask'].doc).toMatch(/opening/);
+  for (const type of ['common.list', 'common.digits', 'common.glitch', 'common.search']) expect(types('ring'), type).not.toContain(type);
+  // nor a clip effect whose doc says "during"
+  expect(BLOCKS_EN['clip.avoidBurned'].doc).toMatch(/during/);
+  expect(formatFind(plugins, 'ring')).not.toContain(handleOf('clip.avoidBurned')!);
+  // a word typed as far as it goes still finds it, at a word start in any field (the type after its dot too); not from mid-word
+  expect(types('prog')).toContain('common.progress');
+  expect(types('Common.Prog')).toContain('common.progress');
+  expect(types('ogress')).not.toContain('common.progress');
+  // Chinese anywhere, as before
+  expect(types('環')).toContain('common.progress');
+  expect(types('度條')).toContain('common.progress');
 });
 
 test("the block index: one line per category with the short names, then the sound effects; guides/workflow.md carries the current one", () => {

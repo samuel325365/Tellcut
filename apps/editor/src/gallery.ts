@@ -1,6 +1,6 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
-import { BLOCK_PREVIEW_LEN, blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SFX_CATEGORY, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
+import { BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
@@ -42,20 +42,18 @@ export const THEMES: Record<string, { theme?: Record<string, unknown> }> = {
   mono: { theme: { palette: { accent: '#111111', accent2: '#555555', hl: '#ffffff', ink: '#111111', paper: '#f5f5f5' }, radius: 4 } },
 };
 
-export const PREVIEW_LEN = BLOCK_PREVIEW_LEN;
-
 /** A 1080×1920 film of one block, as the golden pictures use (engine blockPreviewProject, shared with a saved block's thumbnail);
  *  a block that works on the picture under it (`over`) plays over the gallery's street, the picture its card is drawn over; any
- *  other plays on its card's ground. `tpl`: the template whose params are what is set, whose card's ground and shape it takes
- *  then (its ground, else the block's: a template's card drawn on the plain ground keeps the block's own). `variant`: the variant
- *  whose sample the params are, whose card's ground and shape it takes (its own: a variant's card on the plain ground is drawn on
- *  it), and its sample's theme unless the theme menu picks one, and a gallery picture for the sources its sample shows (the server
- *  answers them with the made-up map the golden cards show in those windows). */
+ *  other plays on its card's ground. The card it plays as is the picked variant's, else the picked template's, else the block's:
+ *  its shape and length are that card's own (absent: 9:16 and 3 s, as that card's sample was drawn), and so is its ground, but a
+ *  template's card drawn on the plain ground keeps the block's own. `tpl`: the template whose params are what is set. `variant`:
+ *  the variant whose sample the params are, and its sample's theme unless the theme menu picks one, and a gallery picture for the
+ *  sources its sample shows (the server answers them with the made-up map the golden cards show in those windows). */
 export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none', tpl?: GalleryBlockTemplate, variant?: GalleryBlockVariant) {
-  const background = variant ? variant.bg : tpl?.bg ?? b.bg, aspect = variant ? variant.aspect : tpl ? tpl.aspect : b.aspect;
+  const card: CardGround = variant ?? tpl ?? b, background = variant ? variant.bg : tpl?.bg ?? b.bg, { aspect, len } = card;
   const theme = THEMES[themeId]?.theme ?? variant?.theme;
   return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme, ...(b.over === 'picture' ? { ground: true } : {}),
-    ...(background && b.over !== 'picture' ? { background } : {}), ...(aspect ? { aspect } : {}), ...(variant?.stand?.length ? { stand: variant.stand } : {}) });
+    ...(background && b.over !== 'picture' ? { background } : {}), ...(aspect ? { aspect } : {}), ...(len ? { len } : {}), ...(variant?.stand?.length ? { stand: variant.stand } : {}) });
 }
 
 /** whether two sets of params are the same (key order aside): a template is the one set when its params are exactly what is set */
@@ -133,18 +131,14 @@ export function sfxProject(s: GallerySfx, params: Record<string, unknown>) {
   };
 }
 
-/** a query of plain Latin letters, digits and a few joiners: it is matched only where a word starts */
-const LATIN_QUERY = /^[a-z0-9 _.'-]+$/;
-/** whether `q` is in `f` where a word starts: no ASCII letter or digit right before it (a space, punctuation, `.`, a CJK character) */
-const atWordStart = (f: string, q: string) => { for (let i = f.indexOf(q); i >= 0; i = f.indexOf(q, i + 1)) if (i === 0 || !/[a-z0-9]/.test(f[i - 1])) return true; return false; };
 /** A card matches when the query is in one of its fields (case does not matter), or names its handle (mrk3 finds MRK-03). A Latin
  *  query that starts with a letter or digit is found only at a word's start, so `ring` finds "ringing" and `common.ring` but not
- *  "during"; any other character in it (CJK) keeps the plain substring test. */
+ *  "during"; any other character in it (CJK) keeps the plain substring test (protocol wordFinder, which catalog --find shares). */
 export function matches(query: string, handle: string | undefined, ...fields: string[]) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  const word = LATIN_QUERY.test(q) && /^[a-z0-9]/.test(q);
-  return [handle ?? '', ...fields].some((f) => (word ? atWordStart(f.toLowerCase(), q) : f.toLowerCase().includes(q))) || (!!handle && normalizeHandle(q) === handle);
+  const has = wordFinder(q);
+  return [handle ?? '', ...fields].some((f) => has(f.toLowerCase())) || (!!handle && normalizeHandle(q) === handle);
 }
 
 /** the shown text of a card: its name and description in the UI language (the Chinese ones when there is no translation) */

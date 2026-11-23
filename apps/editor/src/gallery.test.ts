@@ -71,6 +71,23 @@ test('a variant picked: the preview plays on its card\'s ground and shape, in it
   expect(blockProject(progress, {}).meta.background).toBe('#203040');
 });
 
+test('the preview plays a block for its card\'s length: the picked variant\'s, else the picked template\'s, else the block\'s', () => {
+  const wipe: GalleryBlock = {
+    plugin: 'common', group: '共用積木', type: 'common.wipe', label: '轉場', doc: '一道轉場', kind: 'overlay', needsMedia: false, category: 'transition', params: [], len: 1.6,
+    templates: [{ id: 'slow', label: '慢', doc: '慢', params: { mode: 'ink' }, len: 4 }, { id: 'plain', label: '普通', doc: '普通', params: { mode: 'iris' } }],
+    variants: { param: 'mode', list: [{ value: 'hand', label: '手', doc: '手', params: { mode: 'hand' }, len: 0.8 }, { value: 'cut', label: '切', doc: '切', params: { mode: 'cut' } }] },
+  };
+  const block = (p: ReturnType<typeof blockProject>) => p.tracks.at(-1)!.items[0] as { start: number; end: number };
+  const [slow, plain] = wipe.templates!, hand = variant(wipe, 'hand'), cut = variant(wipe, 'cut');
+  // the variant over the template over the block, each one's own length: one without a length is its own 3 s sample's
+  expect([blockProject(wipe, {}, 'none', slow, hand), blockProject(wipe, {}, 'none', slow, cut)].map((p) => [p.meta.duration, block(p).start, block(p).end])).toEqual([[3, 1.1, 1.9], [3, 0, 3]]);
+  expect([blockProject(wipe, {}, 'none', slow), blockProject(wipe, {}, 'none', plain)].map((p) => [p.meta.duration, block(p).start, block(p).end])).toEqual([[4, 0, 4], [3, 0, 3]]);
+  const own = blockProject(wipe, {});
+  expect([own.meta.duration, block(own).start, block(own).end]).toEqual([3, 0.7, 2.3]);
+  // a block whose card has no length: the plain 3 s film
+  expect(block(blockProject(progress, {}))).toMatchObject({ start: 0, end: 3 });
+});
+
 test('a variant whose sample shows a picture: the gallery street stands in for its source; over the street, the ground stays too', () => {
   const m = blockProject(magazine, { cells: 'pic|0' }, 'none', undefined, variant(magazine, 'feature'));
   expect(Object.keys(m.sources)).toEqual(['pic']);

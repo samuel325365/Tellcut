@@ -5,20 +5,24 @@
 // can be looked up like a type: `catalog MRK-03` (music styles, recipes, clip effects and combos too).
 import { OLD_BLOCKS, templateName, variantCode, type BlockTemplate, type BlockVariant, type Combo, type ComboPart, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
-import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX, wordFinder } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
 import { BLOCKS_EN } from '@tellcut/editor/i18n/blocks.en';
 import { describeRecipe } from './cut/recipes/index.ts';
 
 type Kind = 'caption' | 'title';
+type Finder = (text: string) => boolean;
+/** the query's words (case does not matter), each as its test: a Latin word is found only where a word starts (`ring` is not
+ *  "during"), any other anywhere, as the gallery's search finds them (protocol wordFinder) */
+const findersOf = (query: string): Finder[] => query.toLowerCase().split(/\s+/).filter(Boolean).map(wordFinder);
 const LIST: Record<Kind, CaptionTemplate[]> = { caption: TEMPLATES, title: TITLE_TEMPLATES };
 /** a template's words for --find: its id, names and what it sets */
 const templateText = (t: CaptionTemplate) => [t.id, t.label, t.doc, ...Object.entries(t.params).map(([k, v]) => `${k} ${String(v)}`)].join(' ').toLowerCase();
 const templateLine = (kind: Kind) => (t: CaptionTemplate) => `  ${(handleOf(`${kind}:${t.id}`) ?? '').padEnd(10)}  ${t.id.padEnd(12)}  ${t.label} — ${t.doc}`;
 /** the caption (or title) templates matching every word of `query` (all of them without one) */
 export function findTemplates(query = '', kind: Kind = 'caption'): CaptionTemplate[] {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return LIST[kind].filter((t) => words.every((w) => templateText(t).includes(w)));
+  const finds = findersOf(query);
+  return LIST[kind].filter((t) => { const text = templateText(t); return finds.every((has) => has(text)); });
 }
 
 /** `catalog CAP [--find <words>]` and `catalog TTL …`: the caption or title templates, one a line (the block's template parameter takes the id) */
@@ -49,8 +53,8 @@ const clipText = (c: ClipFx) => ['片段', 'clip', c.key, c.label, c.doc, c.code
 export function findClipFx(query: string): ClipFx[] {
   const h = normalizeHandle(query);
   if (h) return CLIP_FX.filter((c) => handleOf(c.key) === h);
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return words.length ? CLIP_FX.filter((c) => words.every((w) => clipText(c).includes(w))) : [];
+  const finds = findersOf(query);
+  return finds.length ? CLIP_FX.filter((c) => { const text = clipText(c); return finds.every((has) => has(text)); }) : [];
 }
 
 /** the combos of the plugins (engine combos.ts) */
@@ -62,8 +66,8 @@ const comboText = (c: Combo) => ['combo', '組合', c.id, c.label, c.doc, ...c.p
 export function findCombos(plugins: Plugin[], query: string): Combo[] {
   const h = normalizeHandle(query);
   if (h) return combosOf(plugins).filter((c) => handleOf(`combo:${c.id}`) === h);
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return words.length ? combosOf(plugins).filter((c) => words.every((w) => comboText(c).includes(w))) : [];
+  const finds = findersOf(query);
+  return finds.length ? combosOf(plugins).filter((c) => { const text = comboText(c); return finds.every((has) => has(text)); }) : [];
 }
 const PART_KIND: Record<ComboPart['kind'], string> = { effect: '畫面', sfx: '音效', shake: '鏡頭晃動' };
 /** `catalog CMB-01` / `catalog combo:<id>`: the combo and each of its layers, its times from the moment */
@@ -121,7 +125,6 @@ export function formatCatalog(plugins: Plugin[]): string {
   return out.join('\n');
 }
 
-const wordsOf = (query: string) => query.toLowerCase().split(/\s+/).filter(Boolean);
 const joined = (xs: string[]) => xs.join(' ').toLowerCase();
 /** a param's options as words of its block: not those of the param the block's variants name, which are the variants' own words
  *  (else `--find rocket` would hit the block itself and list no look) */
@@ -135,16 +138,16 @@ const variantText = (t: Entry, v: BlockVariant) => { const en = BLOCKS_EN[`${t.t
 const templatePartText = (t: Entry, x: BlockTemplate) => { const en = BLOCKS_EN[`${t.type}#${x.id}`]; return joined([x.id, x.label, x.doc, en?.label ?? '', en?.doc ?? '']); };
 /** a variant or template matches when every word is in its own text or its block's, and at least one is in its own text and is not
  *  just the block's name (`--find 進度條` is the block, not the look whose doc says 進度條) */
-function partHits(t: Entry, words: string[], own: string): boolean {
+function partHits(t: Entry, finds: Finder[], own: string): boolean {
   const base = partBase(t), name = joined([t.type, t.label]);
-  return words.every((w) => own.includes(w) || base.includes(w)) && words.some((w) => own.includes(w) && !name.includes(w));
+  return finds.every((has) => has(own) || has(base)) && finds.some((has) => has(own) && !has(name));
 }
 
 /** the variants and templates of block `t` that `query` matches (see partHits); none for a handle, which names the block itself */
 export function findParts(t: Entry, query: string): { variants: BlockVariant[]; templates: BlockTemplate[] } {
-  const words = normalizeHandle(query) ? [] : wordsOf(query);
-  if (!words.length) return { variants: [], templates: [] };
-  return { variants: (t.variants?.list ?? []).filter((v) => partHits(t, words, variantText(t, v))), templates: templatesOf(t).filter((x) => partHits(t, words, templatePartText(t, x))) };
+  const finds = normalizeHandle(query) ? [] : findersOf(query);
+  if (!finds.length) return { variants: [], templates: [] };
+  return { variants: (t.variants?.list ?? []).filter((v) => partHits(t, finds, variantText(t, v))), templates: templatesOf(t).filter((x) => partHits(t, finds, templatePartText(t, x))) };
 }
 
 /** every word (case does not matter) is in the block's type, label, doc or one of its params' key, label or options, or one of its
@@ -152,9 +155,9 @@ export function findParts(t: Entry, query: string): { variants: BlockVariant[]; 
 export function findBlocks(plugins: Plugin[], query: string): Entry[] {
   const h = normalizeHandle(query);
   if (h) return plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => handleOf(t.type) === h);
-  const words = wordsOf(query);
-  const hit = (t: Entry) => words.every((x) => blockText(t).includes(x)) || Object.values(findParts(t, query)).some((xs) => xs.length);
-  return words.length ? plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => !OLD_BLOCKS[t.type] && hit(t)) : [];
+  const finds = findersOf(query);
+  const hit = (t: Entry) => { const text = blockText(t); return finds.every((has) => has(text)) || Object.values(findParts(t, query)).some((xs) => xs.length); };
+  return finds.length ? plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => !OLD_BLOCKS[t.type] && hit(t)) : [];
 }
 
 /** after a block's line when none of its parts is listed: how many looks and templates it has and where to see them */

@@ -165,6 +165,7 @@ export const SFX_CATEGORY_EN: Record<SfxCategory, string> = {
 };
 
 export * from './handles.ts';
+export * from './search.ts';
 export * from './templates.ts';
 export * from './upload.ts';
 
@@ -281,10 +282,11 @@ export interface GalleryBlockVariant extends CardGround {
    *  each, the picture its card shows there: engine blockPreviewProject's `stand`) */
   theme?: Record<string, unknown>; stand?: string[];
 }
-/** The ground and shape the card's picture was drawn on (its sample's `bg`, `wide`, `square`), so the preview plays on the same:
- *  `bg` a CSS background (absent: the preview's plain grey-blue, or the street for a block marked over); `aspect` a 16:9 or
- *  square film (absent: 9:16). */
-export interface CardGround { bg?: string; aspect?: 'wide' | 'square' }
+/** The ground, shape and length the card's picture was drawn with (its sample's `bg`, `wide`, `square`, `len`), so the preview
+ *  plays the same: `bg` a CSS background (absent: the preview's plain grey-blue, or the street for a block marked over); `aspect`
+ *  a 16:9 or square film (absent: 9:16); `len` the block's length in seconds (absent: the samples' default 3 s), which the preview
+ *  plays it for (engine blockPreviewProject's `len`: a 1 s wipe at its own speed, not stretched over 3 s). */
+export interface CardGround { bg?: string; aspect?: 'wide' | 'square'; len?: number }
 /** a block template in the gallery: its id, names, the params it writes and its golden picture (<block>-tpl-<id>, or that one drawn
  *  over the street for a block marked over) */
 export interface GalleryBlockTemplate extends CardGround { id: string; label: string; doc: string; params: Record<string, unknown>; thumb?: string }
