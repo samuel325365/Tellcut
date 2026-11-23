@@ -20,7 +20,12 @@ export function rayAt(i: number, n: number, local: number) {
 
 export const burst: ItemType<P, S> = {
   type: 'common.burst', label: '爆炸字卡', category: 'text', kind: 'overlay',
-  doc: '鋸齒爆炸形裡一個大字（彈入、微傾）；「出發！」「超好吃」這種貼紙感的爆字；【詞】變強調色；背後可加 common.speedlines；shadow 給一個顏色是往右下錯開的彩色陰影、dots 給一個顏色是填色上的網點（漫畫的爆炸框，配 common.comic）；mode: blast 是整個畫面爆開：白閃、旋轉的放射光、脈動紅色暗角、雙層描邊的巨大字（爆表、破紀錄、大揭曉）；rays 是咬下去的瞬間：從 (x,y) 射出一圈細放射線、大字（咔滋！）在 (tx,ty) 從大縮回彈出、斜斜的（咬、敲、碎、爆汁）',
+  doc: '一個大字爆出來的字卡；【詞】變強調色；背後可加 common.speedlines。',
+  variants: { param: 'mode', list: [
+    { value: 'sticker', label: '鋸齒貼紙', doc: '鋸齒爆炸形裡一個大字（彈入、微傾，points 是鋸齒數）；「出發！」「超好吃」這種貼紙感的爆字；shadow 給一個顏色是往右下錯開的彩色陰影、dots 給一個顏色是填色上的網點（漫畫的爆炸框，配 common.comic）' },
+    { value: 'blast', label: '全畫面爆開', doc: '整個畫面爆開：白閃、旋轉的放射光、脈動紅色暗角、雙層描邊的巨大字；爆表、破紀錄、大揭曉' },
+    { value: 'rays', label: '放射爆字', doc: '咬下去的瞬間：從 (x,y) 射出一圈細放射線、大字（咔滋！）在 (tx,ty) 從大縮回彈出、斜斜的；咬、敲、碎、爆汁' },
+  ] },
   params: [
     { key: 'mode', label: '樣式（sticker 鋸齒貼紙、blast 整個畫面爆開、rays 放射線＋爆字）', type: 'enum', options: ['sticker', 'blast', 'rays'], default: 'sticker' },
     { key: 'text', label: '文字（【強調】）', type: 'text', default: '出發！' },

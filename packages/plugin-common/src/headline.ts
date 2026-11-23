@@ -56,7 +56,13 @@ function setTyped(el: HTMLElement, lines: string[], n: number) {
 
 export const headline: ItemType<P, S> = {
   type: 'common.headline', label: '明體字卡（劃字、名字片頭）', category: 'text', kind: 'overlay',
-  doc: '片名、章節、地名這類標題用 common.heading（範本 doc-rules 就是上下細線的明體字卡，其他外觀、版面、底和進出場都在那裡，跟著片子的標題範本）；headline 留給 heading 沒有的：strikeFrom／strikeAt 劃掉字、enter roll 擀開、look name 的名字片頭。紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來、enter roll 每個字像被擀開一樣從扁窄展開；strikeFrom＋strikeAt 到時間用一條細線劃掉第幾個字以後的字、那幾個字淡下去（「不加○○」「原本以為…」）；歷史、紀錄片、散文、旅行、品牌片的章節開場；look name 是慶生、婚禮、畢業的名字片頭：斜體襯線的大名字（text；中日韓文字沒有斜體，保持直立）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；片尾的感謝名單用 common.outro 的 look credits',
+  doc: '片名、章節、地名這類標題用 common.heading（範本 doc-rules 就是上下細線的明體字卡，其他外觀、版面、底和進出場都在那裡，跟著片子的標題範本）；headline 留給 heading 沒有的：strikeFrom／strikeAt 劃掉字、enter roll 擀開、look name 的名字片頭。片尾的感謝名單用 common.outro 的 look credits。',
+  variants: { param: 'look', list: [
+    { value: 'doc', label: '紀錄片字卡', doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來、enter roll 每個字像被擀開一樣從扁窄展開；strikeFrom＋strikeAt 到時間用一條細線劃掉第幾個字以後的字、那幾個字淡下去（「不加○○」「原本以為…」）；歷史、紀錄片、散文、旅行、品牌片的章節開場' },
+    { value: 'brand', label: '品牌標語', doc: '品牌片的字：左下角一行一行從模糊變清楚，小字（sub）變成上方的小標，y 是最後一行字的基線（-1 是安全區底部）；品牌片的一句標語、我們做什麼' },
+    { value: 'proof', label: '數字證明', doc: '品牌片的證明：左邊一個往上數的大數字（text，例如 90+），小字（sub）是下方加寬字距的標籤，text 不是數字時照 brand 的大小一行行從模糊變清楚；品牌片列出做到的數量' },
+    { value: 'name', label: '名字片頭', doc: '斜體襯線的大名字（text；中日韓文字沒有斜體，保持直立）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；慶生、婚禮、畢業的名字片頭' },
+  ] },
   params: [
     { key: 'text', label: '大字（可換行）', type: 'text', default: '一座廣場的七百年' },
     { key: 'sub', label: '小字（空＝不顯示）', type: 'text', default: '第一章　規劃' },

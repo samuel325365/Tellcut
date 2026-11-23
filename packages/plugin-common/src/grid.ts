@@ -59,7 +59,14 @@ const shotsOf = (p: Partial<P>, count: number) => { const s = parseCellShots(Str
 
 export const grid: ItemType<P, S> = {
   type: 'common.grid', label: '網格分割', category: 'frame', kind: 'overlay',
-  doc: '乾淨的網格版面：素色底（gutter）上幾個直角、圓角、細縫的格子，每格自己播一段鏡頭，一格一格出現（reveal：fade 淡入、scale 放大、slide 滑入、wipe 擦開，影片跟著格子動）；layout 選版面（two 上下、three 上一下二、four 2×2、bento 一大兩小加一橫條、six 2×3；橫式片自動變左右），boxes 自己寫格子（一行一格「x,y,w,h」畫面比例）；shots 一行一格「素材|素材秒|x,y,zoom|still」（格子出現時從素材秒開始播；still 定格；沒寫的格子是示意圖）；times、from 每格出現的秒和方向（逗號分隔；沒寫的每 0.4 秒一格、左右輪流）；exitAt 之後格子反著收回；格子裡的影片沒有聲音（聲音靠配樂、旁白或軌道上的片段），整頁蓋住時主軌可以不放片段；和漫畫頁不同：沒有黑框線和集中線；合輯、前後比較、清單、一次看好幾個地方',
+  doc: '乾淨的網格版面：素色底（gutter）上幾個直角、圓角、細縫的格子，每格自己播一段鏡頭，一格一格出現（reveal：fade 淡入、scale 放大、slide 滑入、wipe 擦開，影片跟著格子動）；layout 選版面（橫式片自動變左右），boxes 自己寫格子（一行一格「x,y,w,h」畫面比例）；shots 一行一格「素材|素材秒|x,y,zoom|still」（格子出現時從素材秒開始播；still 定格；沒寫的格子是示意圖）；times、from 每格出現的秒和方向（逗號分隔；沒寫的每 0.4 秒一格、左右輪流）；exitAt 之後格子反著收回；格子裡的影片沒有聲音（聲音靠配樂、旁白或軌道上的片段），整頁蓋住時主軌可以不放片段；和漫畫頁不同：沒有黑框線和集中線；合輯、前後比較、清單、一次看好幾個地方',
+  variants: { param: 'layout', list: [
+    { value: 'two', label: '上下兩格', doc: '上下兩格（橫式片是左右兩格）；前後比較、兩個地方對照' },
+    { value: 'three', label: '上一下二', doc: '上面一大格、下面左右兩小格；一個主鏡頭加兩個細節' },
+    { value: 'four', label: '四格', doc: '2×2 四格；四個地方、四樣東西的合輯' },
+    { value: 'bento', label: '便當格', doc: '一大兩小加一橫條：上面一大格、中間兩小格、下面一條橫的；一個主角配幾個細節的合輯' },
+    { value: 'six', label: '六格', doc: '2×3 六格（橫式片是 3×2）；清單、一次看好幾個地方' },
+  ] },
   params: [
     { key: 'layout', label: '版面（two 上下、three 上一下二、four 2×2、bento 一大兩小加一橫條、six 2×3）', type: 'enum', options: ['two', 'three', 'four', 'bento', 'six'], default: 'bento' },
     { key: 'boxes', label: '自己寫格子（一行一格：x,y,w,h，畫面比例；空＝照版面）', type: 'text', default: '' },

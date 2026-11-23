@@ -94,7 +94,13 @@ export function stepTimes(title: string, lines: string[]) {
 
 export const notecard: ItemType<P, S> = {
   type: 'common.notecard', label: '手寫索引卡', category: 'card', kind: 'overlay',
-  doc: '一張橫線索引卡，內容用手寫字一筆一筆寫上去：step（紅筆圈的編號、標題、一兩行說明、「標籤|內容」欄位）、list（核取方塊逐項打勾；size 放大清單字，項目多或字大時排成一欄或兩欄、卡片往上長高；tick 是待辦清單打勾：清單已寫好，卡片從左邊滑進來，前面幾項已打勾、畫了螢光筆，第 tick 項現在打勾、螢光筆劃過，再滑出去；ticked 指定哪幾項已經勾好，strike 打勾後用紅筆劃掉，stamp 全部勾完蓋上紅色印章（清空！），check 關掉只寫上清單不打勾，out 關掉卡片不滑走，addInk 讓「+」開頭的後加項目換一個墨色）、title（大字菜名畫紅線、副標、外文名）、done（「完成！」＋手畫愛心）；食譜、教學、手帳風；card 關掉就寫在 common.paper 畫好的卡上',
+  doc: '一張橫線索引卡，內容用手寫字一筆一筆寫上去，mode 換頁面；食譜、教學、手帳風；card 關掉就寫在 common.paper 畫好的卡上',
+  variants: { param: 'mode', list: [
+    { value: 'step', label: '步驟卡', doc: '紅筆圈的編號（no）、標題、一兩行說明（text）、「標籤|內容」欄位（fields）；食譜、教學的一個步驟' },
+    { value: 'list', label: '打勾清單', doc: '核取方塊逐項打勾；size 放大清單字，項目多或字大時排成一欄或兩欄、卡片往上長高；tick 是待辦清單打勾：清單已寫好，卡片從左邊滑進來，前面幾項已打勾、畫了螢光筆，第 tick 項現在打勾、螢光筆劃過，再滑出去；ticked 指定哪幾項已經勾好，strike 打勾後用紅筆劃掉，stamp 全部勾完蓋上紅色印章（清空！），check 關掉只寫上清單不打勾，out 關掉卡片不滑走，addInk 讓「+」開頭的後加項目換一個墨色；材料清單、待辦清單' },
+    { value: 'title', label: '菜名卡', doc: '大字菜名畫紅線、副標（sub）、外文名（latin）；食譜開頭報上這道菜' },
+    { value: 'done', label: '完成卡', doc: '「完成！」＋手畫愛心（sub 是菜名，latin 外文名，note 最下面一行小字）；做好了的收尾' },
+  ] },
   params: [
     { key: 'mode', label: '頁面', type: 'enum', options: ['step', 'list', 'title', 'done'], default: 'step' },
     { key: 'no', label: '編號（step）', type: 'string', default: '3' },

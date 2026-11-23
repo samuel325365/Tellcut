@@ -51,7 +51,7 @@ describe('block texts', () => {
         expect(d[id]?.label?.trim(), `${lang} label of ${id}`).toBeTruthy();
         expect(d[id]?.doc?.trim(), `${lang} doc of ${id}`).toBeTruthy();
       }
-      expect(CJK.test(`${BLOCKS_EN[id].label}${BLOCKS_EN[id].doc}`), `English of ${id} has CJK`).toBe(false);
+      expect(CJK.test(`${BLOCKS_EN[id].label}${BLOCKS_EN[id].doc}`.replace(/[【】]/g, '')), `English of ${id} has CJK`).toBe(false);
     }
   });
 

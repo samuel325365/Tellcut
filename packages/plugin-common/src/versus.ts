@@ -35,7 +35,12 @@ const div = (parent: HTMLElement, css: Record<string, string> = {}, text?: strin
 
 export const versus: ItemType<P, S> = {
   type: 'common.versus', label: '對決字卡', category: 'card', kind: 'overlay',
-  doc: '兩方對決的字卡（配 common.duo）：mode title 片頭——上下兩格各砸進一個大字（他說／她說）、中間字幕帶 VS 菱形轉進來、兩邊是名字；round 整個畫面的回合卡——兩方顏色從兩邊滑進來斜切對撞、ROUND 1 彈出、題目浮上來（【詞】變黃），最後往上抽走；table 收尾對照表——「a vs b」、兩欄名字、每列一題（題目|a 說的|b 說的|a 小標|b 小標，\\n 換行）一列一列滑進來、最後一句問觀眾；雙人訪談、辯論、兩種做法比較',
+  doc: '兩方對決的字卡（配 common.duo），mode 換用在哪一段；雙人訪談、辯論、兩種做法比較',
+  variants: { param: 'mode', list: [
+    { value: 'title', label: '對決片頭', doc: '上下兩格各砸進一個大字（words，他說／她說）、中間字幕帶 VS 菱形轉進來、兩邊是名字（names）；片頭，dir、top、band、foot 和 common.duo 給一樣的' },
+    { value: 'round', label: '回合卡', doc: '整個畫面的回合卡——兩方顏色從兩邊滑進來斜切對撞、ROUND 1（label）彈出、題目（text）浮上來（【詞】變黃），最後往上抽走；每一題、每一回合開始時' },
+    { value: 'table', label: '對照表', doc: '「a vs b」、兩欄名字、每列一題（rows：題目|a 說的|b 說的|a 小標|b 小標，\\n 換行）一列一列滑進來、最後一句問觀眾（ask）；收尾' },
+  ] },
   params: [
     { key: 'mode', label: '樣式（title 片頭、round 回合卡、table 對照表）', type: 'enum', options: ['title', 'round', 'table'], default: 'round' },
     { key: 'words', label: '兩方的大字（a|b）', type: 'string', default: '他說|她說' },

@@ -48,7 +48,12 @@ export function streakLines(p: Pick<P, 'count' | 'length' | 'angle' | 'seed'>, W
 
 export const speedlines: ItemType<P, S> = {
   type: 'common.speedlines', label: '速度線', category: 'mark', kind: 'overlay',
-  doc: '從一個點向外放射的漫畫速度線（越來越長、微微閃動）；放在爆炸字卡後面或驚訝、衝刺、轉折的瞬間。look 換樣子：focus 是漫畫的集中線，粗黑的楔形從畫面四邊往 (x, y) 收，中間留一圈乾淨的橢圓（inner 是橢圓大小），線會抖（震驚、登場、特寫一張臉、「就是他！」）；streak 是整個畫面平行的速度線，長短粗細不一，朝 angle 的方向一直飛過去（衝刺、趕路、快轉、車窗外；疊在畫面上用白色更好看）',
+  doc: '漫畫的速度線，放在爆炸字卡後面或驚訝、衝刺、轉折的瞬間；look 換樣子：從一點放射、四邊往中心的集中線，或整面平行飛過的速度線。',
+  variants: { param: 'look', list: [
+    { value: 'radial', label: '放射線', doc: '從 (x, y) 一個點向外放射的漫畫速度線，越來越長、微微閃動（inner 是起點半徑、length 是線長）；爆炸字卡後面、驚訝或轉折的那一下' },
+    { value: 'focus', label: '集中線', doc: '漫畫的集中線：粗黑的楔形從畫面四邊往 (x, y) 收，中間留一圈乾淨的橢圓（inner 是橢圓大小），線會抖；震驚、登場、特寫一張臉、「就是他！」' },
+    { value: 'streak', label: '平行速度線', doc: '整個畫面平行的速度線，長短粗細不一，朝 angle 的方向一直飛過去；衝刺、趕路、快轉、車窗外，疊在畫面上用白色更好看' },
+  ] },
   params: [
     { key: 'look', label: '樣子（radial 從一點放射、focus 四邊往中心的集中線、streak 整面平行的速度線）', type: 'enum', options: ['radial', 'focus', 'streak'], default: 'radial' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },

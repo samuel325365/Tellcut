@@ -190,7 +190,12 @@ const artOf = (p: P): Still | null => (p.art ? { source: '', t: 0, file: p.art }
 
 export const audiogram: ItemType<P, S> = {
   type: 'common.audiogram', label: '音波動畫', category: 'number', kind: 'overlay',
-  doc: '跟著講話聲音跳動的音波，Podcast／訪談只有聲音時撐住畫面：look bars 一排上下對稱的長條（中間是現在，往兩側是剛剛）、wave 最近 1.5 秒的音量從右往左流過的平滑曲線、ring 圓形封面四周一圈放射長條（封面跟著音量微微放大）；聲音從素材的分析讀：整段放一個項目，跟著時間軸上音軌正在播的講話（tighten 剪過也對得上；有別的音軌片段時 source 指定素材），只屬於一段片段時掛在那段上：c.attach(c.effect(\'common.audiogram\', { at, len, look }), clipId)，修剪、移動都對得上；at 固定對上 source 的第幾秒；speakers [[從, 到, 第幾位]]（素材秒數，跟 c.speechCaptions 同一種寫法）＋names [\'\', \'A\', \'B\']，換人那一刻音波顏色和名牌一起換（預設主題 accent、accent2，colors 蓋過）；hold 秒數：兩段聲音（或兩位講者）之間短於這麼久的空檔，顏色和名牌留在前一位，不閃回沒人時的顏色；only 第幾位：只在那位講者說話時跳，顏色和名牌固定是他的（兩個人各放一個音波時用）；封面 art（專案裡的檔案）或 artSource＋artT（素材的一格），ring 放在圓心，bars／wave 放在音波上方的圓角方塊；封面不是正方形時等比放大到蓋滿再從正中裁掉多的（ring 裁成圓、bars／wave 裁成正方形），重點要在圖的中間；arts [[從, 到, 檔案], …]（素材秒數，跟 speakers 同一種寫法）依時間換封面，沒對到的時間用 art；x y w h 位置大小；nameX nameY 名牌中心的位置；fadeIn fadeOut 淡入淡出秒數；gain 放大、smooth 平滑秒數；沒有任何音軌時畫示意的音量；背景、節目標題、字幕交給 common.backdrop、common.header、common.caption',
+  doc: '跟著講話聲音跳動的音波，Podcast／訪談只有聲音時撐住畫面；聲音從素材的分析讀：整段放一個項目，跟著時間軸上音軌正在播的講話（tighten 剪過也對得上；有別的音軌片段時 source 指定素材，at 對上它的第幾秒），只屬於一段片段時掛在那段上：c.attach(c.effect(\'common.audiogram\', { at, len, look }), clipId)，修剪、移動都對得上；speakers（寫法同 c.speechCaptions）＋names [\'\', \'A\', \'B\']，換人時音波顏色（colors）和名牌一起換；hold 讓短空檔不閃回沒人時的顏色，only 只跟一位講者（兩人各放一個音波時用）；封面 art 或 artSource＋artT，arts 依時間換；封面不是正方形時蓋滿再從正中裁，重點要在圖的中間；x y w h、nameX nameY、fadeIn fadeOut、gain smooth 見參數；沒有音軌時畫示意的音量；背景、節目標題、字幕用 common.backdrop、common.header、common.caption',
+  variants: { param: 'look', list: [
+    { value: 'bars', label: '對稱長條', doc: '一排上下對稱的長條（中間是現在，往兩側是剛剛），封面放在音波上方的圓角方塊、裁成正方形，count 是長條數（預設 41）；對談、訪談，名牌在音波上方' },
+    { value: 'wave', label: '流動曲線', doc: '最近 1.5 秒的音量從右往左流過的平滑曲線，封面放在音波上方的圓角方塊、裁成正方形；想要比長條更柔和的 Podcast 畫面' },
+    { value: 'ring', label: '圓形封面', doc: '圓形封面四周一圈放射長條（封面跟著音量微微放大），封面放在圓心、裁成圓，count 是長條數（預設 72）；有節目封面或講者照片可以放在中間時' },
+  ] },
   params: [
     { key: 'look', label: '外觀（bars 一排長條，中間是現在；wave 最近 1.5 秒從右往左流過；ring 圓形封面四周一圈長條）', type: 'enum', options: ['bars', 'wave', 'ring'], default: 'bars' },
     { key: 'source', label: '聽哪個素材（空＝音軌上正在播的；掛在片段上時用那段片段）', type: 'source-ref', default: '' },

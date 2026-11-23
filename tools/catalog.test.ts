@@ -164,7 +164,7 @@ test('block variants: --find lists the looks and templates that match under thei
   // the two kinds line up: the code column is as wide as the widest code
   const at = (l: string) => /^ {16}\S+ '[^']+' +/.exec(l)![0].length;
   expect(at(rocket.find((l) => l.includes("mode: 'rocket'"))!)).toBe(at(rocket.find((l) => l.includes("template: 'rocket'"))!));
-  expect(rocket.at(-1)).toBe("看參數和全部樣式：npm run tellcut -- catalog <類型或代號>；縮排的 mode: '…'／template: '…' 是 c.effect 的寫法");
+  expect(rocket.at(-1)).toBe("看參數和全部樣式：npm run tellcut -- catalog <類型或代號>；縮排的那幾行是 c.effect 的寫法（例如 mode: 'rocket'、template: 'rocket'）");
   expect(lines('圓環')).toContainEqual(expect.stringMatching(/^ {16}mode: 'ring' +圓環 — /));
   expect(findBlocks(plugins, '圓環').map((t) => t.type)).toContain('common.progress');
 });
@@ -173,19 +173,22 @@ test('block variants: words only at the block level list no look, only how many 
   const found = formatFind(plugins, '進度條');
   expect(found).not.toMatch(/^ +mode: '/m);
   expect(found).toMatch(/^ {2}CHP-04 +common\.progress +進度條 — [^\n]*（17 種樣式、8 個範本：catalog common\.progress）$/m);
-  expect(found.split('\n').at(-1)).toBe('看參數和全部樣式：npm run tellcut -- catalog <類型或代號>');
+  // other blocks may list a look of theirs that says 進度條 (window's content: 'progress'); progress itself lists none
+  const ls = found.split('\n'), p = ls.findIndex((l) => l.includes('common.progress'));
+  expect(ls[p + 1]).not.toMatch(/^ {16}/);
   expect(formatFind(plugins, '火箭 圓環')).not.toMatch(/^ +(mode|template): '/m);
   // a handle finds the block, never its parts
   expect(formatFind(plugins, 'CHP-04')).toMatch(/（17 種樣式、8 個範本：catalog common\.progress）$/m);
 });
 
 test('block variants: a block without variants or templates is listed as before', () => {
-  const slam = plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.slam')!;
-  expect(slam.variants).toBeUndefined();
-  expect(slam.templates).toBeUndefined();
-  const out = formatFind(plugins, slam.label).split('\n'), line = out.find((l) => l.includes('common.slam'))!;
-  expect(line).toMatch(new RegExp(`^ {2}${handleOf('common.slam')} +common\\.slam +${slam.label} — `));
-  expect(line.endsWith(slam.doc!)).toBe(true);
+  const strike = plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.strike')!;
+  expect(strike.variants).toBeUndefined();
+  expect(strike.templates).toBeUndefined();
+  const out = formatFind(plugins, strike.label).split('\n'), line = out.find((l) => l.includes('common.strike'))!;
+  expect(line).toMatch(new RegExp(`^ {2}${handleOf('common.strike')} +common\\.strike +${strike.label} — `));
+  expect(line.endsWith(strike.doc!)).toBe(true);
+  expect(out.at(-1)).toBe('看參數和全部樣式：npm run tellcut -- catalog <類型或代號>');
 });
 
 test('block variants: catalog <type> has a variants section before the params, and the index a Block variants line', async () => {
@@ -195,7 +198,7 @@ test('block variants: catalog <type> has a variants section before the params, a
   expect(ls.slice(head + 1, head + 18).every((l) => /^ {4}[a-z]+ +\S+ — /.test(l))).toBe(true);
   expect(ls[head + 18]).toMatch(/^ {2}mode（/);
   expect(ls.slice(head + 1, head + 18).map((l) => l.trim().split(/\s+/)[0])).toEqual((plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.progress')!.params.find((d) => d.key === 'mode') as { options: string[] }).options);
-  expect(formatType(plugins, 'common.stamp')).not.toContain('樣式（');
+  expect(formatType(plugins, 'common.strike')).not.toContain('樣式（');
   const idx = formatIndex(plugins).split('\n'), v = idx.findIndex((l) => l.startsWith('- Block variants'));
   expect(v).toBeGreaterThan(0);
   expect(v).toBeLessThan(idx.findIndex((l) => l.startsWith('- Block templates')));

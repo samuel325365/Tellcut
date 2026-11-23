@@ -19,7 +19,12 @@ export const marqueeX = (local: number, speed: number, boxW: number, textW: numb
 
 export const dotmatrix: ItemType<P, S> = {
   type: 'common.dotmatrix', label: '點陣字', category: 'text', kind: 'overlay',
-  doc: '點陣字：任何字（中文也行）縮小點陣化再一點一點畫回來；look led 是黑底跑馬燈招牌（亮點發光、暗點格子），print 是熱感應紙上的墨點；mode still 靜止、marquee 從右往左捲動、type 逐字打出來；招牌、跑馬燈、LED 看板、收據、叫號機',
+  doc: '點陣字：任何字（中文也行）縮小點陣化再一點一點畫回來；look led 是黑底跑馬燈招牌（亮點發光、暗點格子），print 是熱感應紙上的墨點；招牌、跑馬燈、LED 看板、收據、叫號機。',
+  variants: { param: 'mode', list: [
+    { value: 'still', label: '靜止', doc: '靜止的點陣字，看板依字寬、最多 w 寬，放不下時點縮小；招牌、LED 看板' },
+    { value: 'marquee', label: '跑馬燈', doc: '從右往左捲動的跑馬燈，在 w 寬的看板裡一直捲過去（speed 是速度）；跑馬燈、LED 看板' },
+    { value: 'type', label: '逐字打出', doc: '逐字打出來（typeDur 是打完的時間），配 look print 像收據一個字一個字印出來；收據、叫號機' },
+  ] },
   params: [
     { key: 'text', label: '文字', type: 'string', default: '歡迎光臨・今日營業' },
     { key: 'mode', label: '動態（still 靜止、marquee 跑馬燈、type 逐字打出）', type: 'enum', options: ['still', 'marquee', 'type'], default: 'marquee' },

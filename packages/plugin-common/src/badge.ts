@@ -16,7 +16,13 @@ const plateFit = (text: string, px: number, left: number, right: number, padEm: 
 
 export const badge: ItemType<P, S> = {
   type: 'common.badge', label: '編號徽章', category: 'chapter', kind: 'overlay',
-  doc: '星形／鋸齒／圓形徽章裡放編號（No.1、02），旁邊可接一塊店名／標題牌；排行、清單、分段介紹（第幾家、第幾招）；shape box 是一塊微斜的方塊（color 底、textColor 字，粗斜體；字型給 Playfair Display 最像雜誌），標題牌也是同色的小方塊（多巴胺配色的清單，配 common.popcard）',
+  doc: '徽章裡放編號（No.1、02），旁邊可接一塊店名／標題牌（plate）；排行、清單、分段介紹（第幾家、第幾招）。',
+  variants: { param: 'shape', list: [
+    { value: 'star', label: '星形', doc: '黑框的黃色五角星徽章，編號斜斜放在中間，標題牌是粗字底下一道螢光底線（plateColor）；排行的第幾名、清單' },
+    { value: 'burst', label: '鋸齒', doc: '一圈尖角的鋸齒徽章，像爆炸貼紙，編號在中間，標題牌一樣是螢光底線字；熱鬧一點的清單、第幾家' },
+    { value: 'circle', label: '圓形', doc: '黑框的圓形徽章，編號在中間，標題牌一樣是螢光底線字；素一點的分段介紹、第幾招' },
+    { value: 'box', label: '斜方塊', doc: '一塊微斜的方塊（color 底、textColor 字，粗斜體；字型給 Playfair Display 最像雜誌），標題牌也是同色的小方塊，x 是方塊的左緣；多巴胺配色的清單，配 common.popcard' },
+  ] },
   params: [
     { key: 'label', label: '徽章上的字', type: 'string', default: 'No.1' },
     { key: 'plate', label: '旁邊的標題牌（空＝沒有）', type: 'string', default: '' },

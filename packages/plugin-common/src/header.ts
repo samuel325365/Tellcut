@@ -33,7 +33,15 @@ export function topShade(shade: number, local: number, dur: number): string | nu
 
 export const header: ItemType<P, S> = {
   type: 'common.header', label: '章節標籤', category: 'chapter', kind: 'overlay',
-  doc: '畫面上緣的章節標籤：色塊編號加標題（01 開場、Step 2…）；教學、清單、分段介紹時標示現在講到哪；look kicker 是一整段都掛著的題目抬頭：上面一行主色圓點加灰色小字（節目名，kickerSize 自訂字級），下面一行粗體題目從左刷開，【詞】變主色（這支片在問什麼：訪談、Podcast、評論）；放不下時小字縮小、題目換行，都留在左右安全區內；shade 在畫面上緣壓一層深色漸層（shadeH 高），亮的畫面上小字也讀得到；另有四種角落小標籤：slate 場記板掉下來、拍板拍下（配 common.thud），flip 機場翻牌板一格格翻到編號、再翻開標題牌（配 common.tick），side 畫面左緣一條直立書籤、標題直排（太長縮小再截斷），big 很大的空心描邊編號由下往上露出、標題壓在它下半部（side、big 配 common.whoosh）',
+  doc: '章節標籤：教學、清單、分段介紹時標示現在講到哪；shade 在畫面上緣壓一層深色漸層（shadeH 高），亮的畫面上小字也讀得到。',
+  variants: { param: 'look', list: [
+    { value: 'chip', label: '編號色塊', doc: '畫面上緣的色塊編號加標題（01 開場、Step 2…），從左滑進來；一般的章節、步驟' },
+    { value: 'kicker', label: '題目抬頭', doc: '一整段都掛著的題目抬頭：上面一行主色圓點加灰色小字（節目名，kickerSize 自訂字級），下面一行粗體題目從左刷開，【詞】變主色，放不下時小字縮小、題目換行，都留在左右安全區內；這支片在問什麼：訪談、Podcast、評論' },
+    { value: 'slate', label: '場記板', doc: '角落小標籤：場記板掉下來、拍板拍下，板上寫編號和標題（配 common.thud）；有拍片現場感的章節開頭' },
+    { value: 'flip', label: '機場翻牌', doc: '角落小標籤：機場翻牌板一格格翻到編號、再翻開標題牌（配 common.tick）；旅行、出發、行程的下一站' },
+    { value: 'side', label: '直立書籤', doc: '角落小標籤：畫面左緣一條直立書籤，上面色塊編號、標題直排（太長縮小再截斷），配 common.whoosh；不想擋到畫面中間的章節標示' },
+    { value: 'big', label: '巨大編號', doc: '角落小標籤：很大的空心描邊編號由下往上露出、標題壓在它下半部（配 common.whoosh）；雜誌內頁感的章節開場' },
+  ] },
   params: [
     { key: 'look', label: '樣子（chip 編號色塊、kicker 小字＋大題目、slate 場記板、flip 翻牌、side 左緣直立書籤、big 巨大空心編號）', type: 'enum', options: ['chip', 'kicker', 'slate', 'flip', 'side', 'big'], default: 'chip' },
     { key: 'no', label: '編號（kicker 不用）', type: 'string', default: '01' },

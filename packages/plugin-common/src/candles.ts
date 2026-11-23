@@ -769,11 +769,17 @@ const FONTS = () => Promise.all([document.fonts.load('400 60px "Bebas Neue"', '0
 
 export const candles: ItemType<P, S> = {
   type: 'common.candles', label: 'K 線走勢', kind: 'overlay', category: 'number',
-  doc: 'K 線走勢片的一整套（為 9:16 設計），mode 分：chart 黑底發光 K 線圖，鏡頭跟著最新一根往右走、價格範圍（對數）跟著縮放，整個畫面是它的；header 標頭：小標（label）、跳動的收盤大數字（近 20 根漲紅跌綠）、日期、右邊「較前高 −x%」（vs）或「歷史新高」（high）小牌，跌超過 5% 時寫前高日期（prev）；tally 一排方塊數大跌（falls 一行「高點日期|跌破門檻日期|收復日期」：跌破時那格變跌色、收復時變漲色打勾，右邊「n/總數」，左邊 tallyLabel，from 從片中第幾秒起算）；card 事件卡：左邊色槓（color）、類別小牌（tag）＋日期（date）、粗體標題（title）、一行副標（sub），從左滑進、標題故障感進場；big 一個大字（text，數字和百分比會從 0 跳上去；tone up 漲色／down 跌色／white／gold，font num 窄體數字／text 粗黑體，size 字級，align left／center）＋下面一行（sub）。'
+  doc: 'K 線走勢片的一整套（為 9:16 設計），mode 分 chart、header、tally、card、big。'
     + '資料是專案自己的 CSV（data：檔案路徑如 media/data/ndx.csv 或直接貼 CSV 文字；一行「日期,開,高,低,收」，有標題列、多出 Adj Close、Volume 欄都可以，只有「日期,收」時畫成平的 K 棒；空著是一組示意的假資料）；'
     + 'keys 一行「片中秒|日期|視窗天數或 all」決定每一刻畫到哪一天、畫面看得到幾天（chart、header、tally 給同一組，三個就永遠對得上）；keys 和其他所有秒數都是片中的秒，不管項目從第幾秒開始。'
-    + 'chart 另有：band 圖的上下緣（畫面高比例「0.55,0.86」）、tipX 最新一根的位置；sparks 火花時段（一行「秒-秒」）；markers 標記（一行「秒-秒|日期|字」，金色圓點＋字）；refs 參考虛線（一行「秒-秒|日期|字」，前高）；brackets 量測括號（一行「秒-秒|起點日期」，標漲跌幅）；crashes 大跌區段「高點日期|低點日期」＋ glow 時段讓它們亮起來、其他變暗；bolts 閃電劈下的秒數（「秒@日期」劈在那一天）；bursts 煙火；grays 轉黑白（休市那天）；reds 紅色警戒（暗角＋病毒粒子）；hud 警戒框（一行「秒-秒|字」）；pillars 白色光柱（一行「秒-秒|日期」）；walls 成分股磚牆（一行「秒-秒|起點日期|標題」，牆用 wall 的寬表 CSV：「date,AAPL:蘋果,MSFT:微軟,…」每格一檔股票的收盤，取前 12 檔，傾斜的 3D 磚牆，每塊磚寫從起點到走勢畫到那天的漲跌）。'
-    + 'shocks 給同一組秒數，每個模式在那幾秒一起震（整個畫面一起跳，chart 加紅藍殘影和放大）；updown red 紅漲綠跌（台灣）、green 綠漲紅跌；top 是 DOM 模式的上緣（畫面高比例，-1＝各模式自己的位置）。股市、股價、指數、幣價、匯率、長期走勢、K線、股災回顧；配 common.thunder、common.impact、common.explode',
+    + 'shocks 給同一組秒數，每個模式在那幾秒一起震（整個畫面一起跳）；updown red 紅漲綠跌（台灣）、green 綠漲紅跌；top 是 DOM 模式的上緣（畫面高比例，-1＝各模式自己的位置）。股市、股價、指數、幣價、匯率、長期走勢、K線、股災回顧；配 common.thunder、common.impact、common.explode',
+  variants: { param: 'mode', list: [
+    { value: 'chart', label: '走勢圖', doc: '黑底發光 K 線圖，鏡頭跟著最新一根往右走、價格範圍（對數）跟著縮放，整個畫面是它的，shocks 時加紅藍殘影和放大；走勢片的主畫面；另有：band 圖的上下緣（畫面高比例「0.55,0.86」）、tipX 最新一根的位置；sparks 火花時段（一行「秒-秒」）；markers 標記（一行「秒-秒|日期|字」，金色圓點＋字）；refs 參考虛線（一行「秒-秒|日期|字」，前高）；brackets 量測括號（一行「秒-秒|起點日期」，標漲跌幅）；crashes 大跌區段「高點日期|低點日期」＋ glow 時段讓它們亮起來、其他變暗；bolts 閃電劈下的秒數（「秒@日期」劈在那一天）；bursts 煙火；grays 轉黑白（休市那天）；reds 紅色警戒（暗角＋病毒粒子）；hud 警戒框（一行「秒-秒|字」）；pillars 白色光柱（一行「秒-秒|日期」）；walls 成分股磚牆（一行「秒-秒|起點日期|標題」，牆用 wall 的寬表 CSV：「date,AAPL:蘋果,MSFT:微軟,…」每格一檔股票的收盤，取前 12 檔，傾斜的 3D 磚牆，每塊磚寫從起點到走勢畫到那天的漲跌）' },
+    { value: 'header', label: '標頭', doc: '小標（label）、跳動的收盤大數字（近 20 根漲紅跌綠）、日期、右邊「較前高 −x%」（vs）或「歷史新高」（high）小牌，跌超過 5% 時寫前高日期（prev）；放在 chart 上方，給同一組 keys 報出那一刻的價位' },
+    { value: 'tally', label: '大跌計數', doc: '一排方塊數大跌（falls 一行「高點日期|跌破門檻日期|收復日期」：跌破時那格變跌色、收復時變漲色打勾，右邊「n/總數」，左邊 tallyLabel，from 從片中第幾秒起算）；股災回顧數到第幾次、收復了幾次' },
+    { value: 'card', label: '事件卡', doc: '左邊色槓（color）、類別小牌（tag）＋日期（date）、粗體標題（title）、一行副標（sub），從左滑進、標題故障感進場；走勢走到某一天時標出那天發生的事（金融海嘯、雷曼兄弟破產）' },
+    { value: 'big', label: '大字', doc: '一個大字（text，數字和百分比會從 0 跳上去；tone up 漲色／down 跌色／white／gold，font num 窄體數字／text 粗黑體，size 字級，align left／center）＋下面一行（sub）；單日跌幅這種要一眼看到的數字' },
+  ] },
   params: [
     { key: 'mode', label: '模式（chart 走勢圖、header 標頭、tally 大跌計數、card 事件卡、big 大字）', type: 'enum', options: [...CANDLES_MODES], default: 'chart' },
     { key: 'data', label: '資料（CSV 檔案路徑或 CSV 文字；空著＝示意資料）', type: 'string', default: '' },

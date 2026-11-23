@@ -37,7 +37,14 @@ export function stampPx(lines: string[], px: number, room: number, pad: number, 
 
 export const stamp: ItemType<P, S> = {
   type: 'common.stamp', label: '印章', category: 'mark', kind: 'overlay',
-  doc: '一個方框加粗字的印章「蓋」上畫面（先放大再落下、微傾），shape: circle 是雙圈圓章；已驗證、重點、推薦、成品、NG 之類的判定；配 common.thud；shape: card 是貼紙感的立場字卡：主色實心卡、白色粗字（可兩行，【詞】變 hl 色）、黑框硬陰影、邊上一個小標籤（tag），從 1.35 倍彈下來；anchor 讓卡的上緣或下緣貼在 y（對談、辯論裡一個人的立場、一句重點）；shape: double 是判決大章：雙線圓角框、半透明紙色底、柔和陰影（判決、駁回、結案、蓋章認證）；head 在大字上方加一行字距拉開的小字（判決、VERDICT；box、circle、double、ember 都可以）；shape: ember 是炭火烙印的結論字：炭黑圓角牌（ink）上淡淡的斜紋、內圈一道 color 細框，斜體襯線大字從 1.45 倍落下，字像燒紅的烙鐵先發 color 的光、一秒內冷卻成 paper 色（烤肉、燒烤、炭火、好吃、結論）',
+  doc: '一個印章或字卡「蓋」上畫面；已驗證、重點、推薦、成品、NG 之類的判定，配 common.thud。head 在大字上方加一行字距拉開的小字（判決、VERDICT；box、circle、double、ember 都可以）。',
+  variants: { param: 'shape', list: [
+    { value: 'box', label: '方框章', doc: '一個方框加粗字的印章，先放大再落下、微傾，蓋上畫面；一兩個字的判定' },
+    { value: 'circle', label: '雙圈圓章', doc: '雙圈圓章，字在比它略寬的雙圈正中，和 box 一樣先放大再落下；要像真的印章的判定、推薦' },
+    { value: 'card', label: '立場字卡', doc: '貼紙感的立場字卡：主色實心卡、白色粗字（可兩行，【詞】變 hl 色）、黑框硬陰影、邊上一個小標籤（tag），從 1.35 倍彈下來；anchor 讓卡的上緣或下緣貼在 y；對談、辯論裡一個人的立場、一句重點' },
+    { value: 'double', label: '判決大章', doc: '判決大章：雙線圓角框、半透明紙色底（paper）、柔和陰影，和 box 一樣先放大再落下；判決、駁回、結案、蓋章認證' },
+    { value: 'ember', label: '炭火烙印', doc: '炭火烙印的結論字：炭黑圓角牌（ink）上淡淡的斜紋、內圈一道 color 細框，斜體襯線大字從 1.45 倍落下，字像燒紅的烙鐵先發 color 的光、一秒內冷卻成 paper 色；烤肉、燒烤、炭火、好吃、結論' },
+  ] },
   params: [
     { key: 'text', label: '文字（card：可換行，【詞】變色）', type: 'text', default: '重點' },
     { key: 'size', label: '字級（畫面高 %）', type: 'number', min: 2, max: 30, step: 0.5, default: 7 },

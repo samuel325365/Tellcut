@@ -50,7 +50,13 @@ export function leaderFlicker(frame: number, unit: number): { light: number; dx:
 
 export const countdown: ItemType<P, S> = {
   type: 'common.countdown', label: '倒數計時', category: 'number', kind: 'overlay',
-  doc: '大數字從 from 倒數到 to（整個項目平均分），每一下彈一下、外圈一條環跟著跑完；最後一下可以換成字（GO!）；look slant 是粗窄斜體大字（Anton）、斜後方一個空心的影子、右側一道弧線跟著每一下掃開，colors 每一下輪流換色（運動、單色快剪的 3-2-1 開場，配 common.grade）；測驗、挑戰、猜猜看、排行揭曉。look flip 是翻牌鐘：數字印在一張上下兩半的卡片上（卡片 ink 色、數字 color 色），每一下上半片往下翻、露出下一個數字（復古、倒數到開幕、跨年、發表會、「還剩幾天」）；look leader 是老電影片頭的倒數：一個圓盤（color）、十字線、一根指針每一下轉一整圈掃過、中間是數字（ink），整個微微閃、有灰塵，預設黑白（復古片頭、懷舊、家庭錄影、「電影開始」）',
+  doc: '大數字從 from 倒數到 to（整個項目平均分）；最後一下可以換成字（GO!）；測驗、挑戰、猜猜看、排行揭曉',
+  variants: { param: 'look', list: [
+    { value: 'ring', label: '環形倒數', doc: '大數字每一下彈一下、外圈一條環跟著跑完（accent 是環的顏色、ink 是數字描邊，ring 關掉環）；問答、限時任務' },
+    { value: 'slant', label: '斜體大字', doc: '粗窄斜體大字（Anton）、斜後方一個空心的影子、右側一道弧線跟著每一下掃開，colors 每一下輪流換色；運動、單色快剪的 3-2-1 開場，配 common.grade' },
+    { value: 'flip', label: '翻牌鐘', doc: '數字印在一張上下兩半的卡片上（卡片 ink 色、數字 color 色），每一下上半片往下翻、露出下一個數字；復古、倒數到開幕、跨年、發表會、「還剩幾天」' },
+    { value: 'leader', label: '老片頭', doc: '老電影片頭的倒數：一個圓盤（color）、十字線、一根指針每一下轉一整圈掃過、中間是數字（ink），整個微微閃、有灰塵，預設黑白；復古片頭、懷舊、家庭錄影、「電影開始」' },
+  ] },
   params: [
     { key: 'look', label: '樣式（ring 環、slant 斜體大字＋弧線、flip 翻牌鐘、leader 老電影片頭）', type: 'enum', options: ['ring', 'slant', 'flip', 'leader'], default: 'ring' },
     { key: 'colors', label: '每一下的顏色（slant 樣式；逗號分隔輪流；空＝數字顏色；ring 只用數字顏色）', type: 'string', default: '' },

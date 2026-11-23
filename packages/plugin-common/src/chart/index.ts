@@ -80,7 +80,16 @@ const weightOf = (look: Look, w: number) => (look === 'hand' ? (w >= 700 ? 700 :
 
 export const chart: ItemType<ChartP, S> = {
   type: 'common.chart', label: '資料圖表', category: 'number', kind: 'overlay',
-  doc: '資料圖表卡，kind 換圖：bars 長條長出來、數字往上跳（dir h 橫條／v 直條；compare ratio 標「× 6.7」倍數、gap 標差距括號；base 一條基準虛線；stat 一行大數字往上跳）、pie 圓餅一片一片塗上（note 掛在下面的標籤）、people 一排小人一個個翻牌、前 k 個上色被圈起來（10 人中有 4 人）、rank 排名清單、亮起一列並掛「第 12 名」（reveal up 從最後一名往上一列列揭曉、同名次一起、第一名最後；名次相同的列右邊一道括號標 tie 並列）、balance 天秤（兩邊砝碼掉進盤子、往重的那邊傾斜）、table 對照表（線畫出來、格子沿對角線浮上來）、line 一兩條曲線隨時間畫出（播放頭、曲線上的標記、基準線）；data 一行一筆「名稱|數值|顯示的字」，hl 亮哪一筆（max、min 或第幾筆）、mark circle 把它圈起來，title 標題、source 資料來源、時間 at 相對項目開始；look clean 簡潔（theme 色）、hand 手繪（pen 選 marker 麥克筆／crayon 蠟筆／pencil 鉛筆／ballpoint 原子筆，boil 抖動）、woodcut 木刻排線羊皮紙；數據、統計、比較、排名、比例、趨勢',
+  doc: '資料圖表卡，kind 換圖；data 一行一筆「名稱|數值|顯示的字」，hl 亮哪一筆（max、min 或第幾筆）、mark circle 把它圈起來，title 標題、source 資料來源、時間 at 相對項目開始；look clean 簡潔（theme 色）、hand 手繪（pen 選 marker 麥克筆／crayon 蠟筆／pencil 鉛筆／ballpoint 原子筆，boil 抖動）、woodcut 木刻排線羊皮紙；數據、統計、比較、排名、比例、趨勢',
+  variants: { param: 'kind', list: [
+    { value: 'bars', label: '長條圖', doc: '長條長出來、數字往上跳（dir h 橫條／v 直條；compare ratio 標「× 6.7」倍數、gap 標差距括號；base 一條基準虛線；stat 一行大數字往上跳）；比較兩三筆數字誰多誰少' },
+    { value: 'pie', label: '圓餅圖', doc: '圓餅一片一片塗上（note 掛在下面的標籤，colors 是每一片的顏色）；時間、錢這種整體怎麼分' },
+    { value: 'people', label: '人形圖', doc: '一排小人一個個翻牌、前 k 個上色被圈起來（10 人中有 4 人；n 是總人數，stat 空著就寫「N 人中有 K 人」）；「幾個人裡有幾個」的比例' },
+    { value: 'rank', label: '排名表', doc: '排名清單、亮起一列並掛「第 12 名」（data 第三欄是名次；reveal up 從最後一名往上一列列揭曉、同名次一起、第一名最後；名次相同的列右邊一道括號標 tie 並列）；排行榜、名次揭曉' },
+    { value: 'balance', label: '天秤', doc: '天秤（兩邊砝碼掉進盤子、往重的那邊傾斜；note 是上方的字，tag 是天秤盤的顏色）；兩樣東西比輕重' },
+    { value: 'table', label: '對照表', doc: '對照表（線畫出來、格子沿對角線浮上來；data 一行一列「格|格|格」第一行是表頭，hl 寫「列,欄」）；幾家店、幾種東西逐項比一比' },
+    { value: 'line', label: '曲線圖', doc: '一兩條曲線隨時間畫出（播放頭、曲線上的標記、基準線；data 一行一條「名稱|1,3,2,5」，axis 是橫軸兩端，marks 是曲線上的標記，base 是基準線，grow 是播放頭走完全程的時間）；隨時間的變化、趨勢' },
+  ] },
   params: [
     { key: 'kind', label: '圖（bars 長條、pie 圓餅、people 人形圖、rank 排名、balance 天秤、table 對照表、line 曲線）', type: 'enum', options: [...CHART_KINDS], default: 'bars' },
     { key: 'look', label: '樣子（clean 簡潔、hand 手繪、woodcut 木刻排線）', type: 'enum', options: ['clean', 'hand', 'woodcut'], default: 'clean' },

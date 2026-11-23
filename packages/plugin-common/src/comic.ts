@@ -67,7 +67,15 @@ export function comicFocus(text: string): Array<{ panel: number; x: number; y: n
 
 export const comic: ItemType<P, S> = {
   type: 'common.comic', label: '漫畫頁', category: 'frame', kind: 'overlay', over: 'picture',
-  doc: '一頁漫畫，影片在格子裡播：白色格線、黑框的斜格子，格子一格一格滑進來，格內可加漫畫集中線；layout 選版面（one 一格、two 上下兩格、two-flip 斜向相反、three 上一下二、four 四格、side 左右兩格，橫式片用），panels 自己畫格子（一行一格「x,y x,y x,y x,y」畫面比例）；times、from 每格出現的秒和方向（逗號分隔；沒寫的每 0.6 秒一格、左右輪流）；focus 一行一條集中線「第幾格|x,y|秒」；影片放進第 n 格用 frame: comicWindow(n, 同一組參數)、shape: comicShape(n, 同一組參數)（從 @tellcut/plugin-common 匯入；不給 shape 時斜格相鄰兩格的影片會露到對方的角）：主軌一格、其他格用 c.beside；一頁一個項目，換頁時再放一個；配 common.onomatopoeia 狀聲詞、caption 的 comic-narration 旁白框、burst 的網點陰影、glitch 換頁',
+  doc: '一頁漫畫，影片在格子裡播：白色格線、黑框的斜格子，格子一格一格滑進來，格內可加漫畫集中線；layout 選版面，panels 自己畫格子（一行一格「x,y x,y x,y x,y」畫面比例）；times、from 每格出現的秒和方向（逗號分隔；沒寫的每 0.6 秒一格、左右輪流）；focus 一行一條集中線「第幾格|x,y|秒」；影片放進第 n 格用 frame: comicWindow(n, 同一組參數)、shape: comicShape(n, 同一組參數)（從 @tellcut/plugin-common 匯入；不給 shape 時斜格相鄰兩格的影片會露到對方的角）：主軌一格、其他格用 c.beside；一頁一個項目，換頁時再放一個；配 common.onomatopoeia 狀聲詞、caption 的 comic-narration 旁白框、burst 的網點陰影、glitch 換頁',
+  variants: { param: 'layout', list: [
+    { value: 'one', label: '一格', doc: '整頁一大格；一個鏡頭撐一頁的大場面，配集中線（focus）' },
+    { value: 'two', label: '上下兩格', doc: '上下兩格，中間的格線斜向右上；一來一回、前因後果的兩個鏡頭' },
+    { value: 'two-flip', label: '兩格斜向反', doc: '上下兩格，格線斜的方向和 two 相反（斜向右下）；接在 two 那頁後面，連續幾頁的斜線不重複' },
+    { value: 'three', label: '上一下二', doc: '上面一大格、下面左右兩小格，格線都帶點斜；一個主鏡頭加兩個反應或細節' },
+    { value: 'four', label: '四格', doc: '2×2 四格，格線帶點斜；起承轉合、一連串反應' },
+    { value: 'side', label: '左右兩格', doc: '左右兩格，中間的格線斜的；橫式片用' },
+  ] },
   params: [
     { key: 'layout', label: '版面（one 一格、two 上下、two-flip 上下斜向相反、three 上一下二、four 四格、side 左右）', type: 'enum', options: ['one', 'two', 'two-flip', 'three', 'four', 'side'], default: 'two' },
     { key: 'panels', label: '自己畫格子（一行一格：x,y x,y x,y x,y，畫面比例；空＝照版面）', type: 'text', default: '' },

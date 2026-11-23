@@ -47,7 +47,12 @@ export const lineLand = (i: number, local: number, popDur: number, stagger: numb
 
 export const slam: ItemType<P, S> = {
   type: 'common.slam', label: '爆字', category: 'text', kind: 'overlay',
-  doc: '一句超大的字「砸」進畫面（放大彈入、微晃、傾斜），【詞】變強調色（hlScale 放大）；stagger 讓每行依序砸下；上下可加一行小字（kicker／after），enter: press 是從大縮回像印泥暈開、chars 一個字一個字往上彈；bar 在字下面刷開一條強調色槓、drift 落定後極慢放大（對拍字卡）；kickerBg 把上方小字放進色塊從左滑進、shade 在字後面壓一片暗；look led 是黑色 LED 看板裡發光的紅字（定格的真心話）；影片的重點句、驚嘆、鉤子、結論',
+  doc: '一句超大的字「砸」進畫面（放大彈入、微晃、傾斜），【詞】變強調色（hlScale 放大）；stagger 讓每行依序砸下；上下可加一行小字（kicker／after），enter: press 是從大縮回像印泥暈開、chars 一個字一個字往上彈；bar 在字下面刷開一條強調色槓、drift 落定後極慢放大（對拍字卡）；kickerBg 把上方小字放進色塊從左滑進、shade 在字後面壓一片暗；影片的重點句、驚嘆、鉤子、結論。',
+  variants: { param: 'look', list: [
+    { value: 'plain', label: '描邊大字', doc: '描邊的大字（color 字色、outline 描邊，shadow 給顏色是錯位陰影）；什麼重點句都搭' },
+    { value: 'led', label: 'LED 看板', doc: '黑色 LED 看板裡發光的紅字（ledColor 換顏色），字上一層暗點格子；定格的真心話' },
+    { value: 'gold', label: '香檳金', doc: '香檳金漸層的斜體襯線大字，周圍一圈暗暗的柔光，落下時一陣暖光；歡呼、願望、名字' },
+  ] },
   params: [
     { key: 'text', label: '文字（【強調】）', type: 'text', default: '重點！' },
     { key: 'size', label: '字級（畫面高 %）', type: 'number', min: 2, max: 40, step: 0.5, default: 9 },

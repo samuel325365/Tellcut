@@ -103,7 +103,50 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
 - Grades and textures (over the video) (LOK): 04 `glitch`, 05 `film`, 06 `tone`, 09 `leak`, 10 `grade`, 12 `lens`
 - Transitions, suspense and endings (MOM): 01 `mystery`, 02 `outro`, 03 `rolldoor`, 04 `wipe`, 09 `wordbands`
 - Block variants (the param in brackets picks the look; `catalog --find <words>` describes them):
+  - `backdrop` (pattern): gingham, dots, stripes, grid, solid, gradient, diamond, spot, words, halftone, sunburst, waves
+  - `shader` (look): mesh, grain, rays, smoke, warp, swirl, blobs, dots, neuro, cells, dither
+  - `panel` (look): panel, print, bezel, hole, offset, drawn
+  - `badge` (shape): star, burst, circle, box
+  - `tag` (look): pill, label, tape, pin, glass, day, ember
+  - `burst` (mode): sticker, blast, rays
+  - `speedlines` (look): radial, focus, streak
+  - `slam` (look): plain, led, gold
+  - `stamp` (shape): box, circle, card, double, ember
+  - `pen` (kind): circle, arrow, underline, check, cross, heart, star, stars, burst, rays, steam, clock, house, snow, diamond, qmark, thumb, trace
+  - `sparkle` (mode): burst, twinkle, confetti, glint
+  - `emoji` (mode): sticker, rain, float, tap, cover
+  - `header` (look): chip, kicker, slate, flip, side, big
+  - `glitch` (look): tear, scan, rgb, block
   - `progress` (mode): bar, dots, tabs, pencil, timeline, slots, osd, runner, stretch, paws, segments, fuse, battery, rocket, ring, vine, stamps
+  - `meter` (look): center, band, ruler
+  - `countdown` (look): ring, slant, flip, leader
+  - `list` (style): check, pros, number
+  - `outro` (look): cta, credits, episode
+  - `film` (look): grain, vhs, super8, print
+  - `paper` (look): desk, book, grid, print
+  - `notecard` (mode): step, list, title, done
+  - `dotmatrix` (mode): still, marquee, type
+  - `callout` (kind): circle, cross, ban, burst
+  - `wipe` (mode): band, hand, curl, tiles, vortex, stripes, iris, blinds, ink
+  - `versus` (mode): title, round, table
+  - `chart` (kind): bars, pie, people, rank, balance, table, line
+  - `touch` (look): dot, glow, cursor
+  - `headline` (look): doc, brand, proof, name
+  - `story` (kind): poll, slider, timer
+  - `album` (mode): grid, foryou, zoom, swipe, viewer
+  - `search` (mode): home, results, ask, end, bar
+  - `camcorder` (mode): osd, ff, rew, snow
+  - `magazine` (layout): feature, cover, list, back
+  - `audiogram` (look): bars, wave, ring
+  - `leak` (look): glow, prism, bokeh, flare
+  - `comic` (layout): one, two, two-flip, three, four, side
+  - `window` (content): media, search, profile, progress
+  - `sticker` (shape): heart, bolt, star, smile
+  - `grid` (layout): two, three, four, bento, six
+  - `flatlay` (kind): postcard, polaroid, photo, tv, card
+  - `candles` (mode): chart, header, tally, card, big
+  - `lens` (look): magnify, fisheye, mosaic, ripple, streak, prism
+  - `core.flash` (mode): flat, bloom, glow
 - Block templates (`c.effect(type, { template: '<id>' })`: the template's params go in first, the script's own over them):
   - `backdrop/halftone-pop`: Pop art, comics, a sporty feel: denser, stronger halftone dots than the halftone pattern alone, largest at the lower left and shrinking toward the upper right.
   - `backdrop/sunburst-show`: Prize draws, announcements, a variety-show feel: wide two-color rays from the middle, slowly turning.

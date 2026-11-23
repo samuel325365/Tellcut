@@ -23,7 +23,13 @@ interface S { cv: HTMLCanvasElement; sign: HTMLElement; key: string; layer: Grai
 
 export const paper: ItemType<P, S> = {
   type: 'common.paper', label: '紙張桌面', category: 'background', kind: 'scene',
-  doc: '整片紙張底（預設牛皮紙：纖維紋、斑點、暗角），可加一張微斜的橫線索引卡（紅頂線藍橫線、紙膠帶）、鉛筆小塗鴉和一行斜體簽名（預設都沒有：doodles: true 畫塗鴉，doodleSet 選圖案：kitchen 咖啡豆、打蛋器（食譜），journal 星星、愛心、漩渦，travel 紙飛機、虛線航跡、小太陽；doodles: false 不要塗鴉；sign 寫簽名的字（例如 Recipe），空＝不要）；look: book 是繪本內頁（紙色 paper、斑駁紙紋、左邊書脊陰影和縫線、右邊書頁厚度、暗角、底部一條蠟筆草地 meadow）；grid 是方格筆記本（方格 cell、紅色邊線、上緣線圈 binding、暗角）；print 是雜誌紙（平滑米白紙、細斑點、淡纖維、暖色暗角，common.magazine 的紙）；靜態，放在影片之下；手帳、食譜、手寫教學、繪本、筆記本，配 common.notecard（card: false 就寫在這張卡上）',
+  doc: '整片紙張底；靜態，放在影片之下；手帳、食譜、手寫教學、繪本、筆記本，配 common.notecard（card: false 就寫在這張卡上）',
+  variants: { param: 'look', list: [
+    { value: 'desk', label: '牛皮紙桌面', doc: '牛皮紙桌面（纖維紋、斑點、暗角，預設的樣子），可加一張微斜的橫線索引卡（紅頂線藍橫線、紙膠帶）、鉛筆小塗鴉和一行斜體簽名；食譜、手帳、手寫教學；預設都沒有：doodles: true 畫塗鴉，doodleSet 選圖案：kitchen 咖啡豆、打蛋器（食譜），journal 星星、愛心、漩渦，travel 紙飛機、虛線航跡、小太陽；doodles: false 不要塗鴉；sign 寫簽名的字（例如 Recipe），空＝不要' },
+    { value: 'book', label: '繪本內頁', doc: '繪本內頁：斑駁紙紋、左邊書脊陰影和縫線、右邊書頁厚度、暗角、底部一條蠟筆草地；繪本、說故事的片子；紙色 paper，草地 meadow' },
+    { value: 'grid', label: '方格筆記本', doc: '方格筆記本：方格、紅色邊線、上緣線圈、暗角；筆記本、手寫教學；方格 cell，線圈 binding' },
+    { value: 'print', label: '雜誌紙', doc: '雜誌紙：平滑米白紙、細斑點、淡纖維、暖色暗角；雜誌風的版面，common.magazine 的紙' },
+  ] },
   params: [
     { key: 'look', label: '紙（desk 牛皮紙桌面＋索引卡、book 繪本內頁、grid 方格筆記本、print 雜誌紙）', type: 'enum', options: ['desk', 'book', 'grid', 'print'], default: 'desk' },
     { key: 'color', label: '紙色（desk）', type: 'color', default: '#e7d8bd' },

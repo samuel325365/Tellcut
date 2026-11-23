@@ -36,7 +36,12 @@ export function outroLayout(lines: number, W: number, H: number, safe: { top: nu
 
 export const outro: ItemType<P, S> = {
   type: 'common.outro', label: '片尾導流', category: 'moment', kind: 'overlay',
-  doc: '片尾導流卡：紙色底，幾行大字跟著拍子一行一行蓋下來（【詞】放進主色小牌），下面一排編號圓點（最後幾個打問號），手繪箭頭畫向連結並隨拍點彈跳；導去原片、主頁、留言、下一集；look credits 是慶生、婚禮、畢業的片尾感謝名單：lines 每行一拍淡入（*星號包住* 的行是高亮色斜體（中日韓文字保持直立）、_底線包住_ 的行是加寬字距的小字，其他是粗體名字），字後面一層暗色薄紗（cover 調濃淡），y 是名單中心的高度；片頭的名字用 common.headline 的 look name；look episode 是節目（Podcast、訪談、系列）的片尾卡：深色底（ink，cover 調濃淡）上 lines 是襯線大字節目名、主色短線，中間一個圓角 16:9 影片窗加播放鍵（洞，主軌片段 frame＝outroWindow(參數, W, H)），下面 ep 集數、cta 主色按鈕、credit 授權小字，一層一層浮上來；y 是整組的中心',
+  doc: '片尾卡，look 選導流卡（cta）、感謝名單（credits）或節目片尾卡（episode）；大字都寫在 lines，一行一句，cta 和 credits 一拍出來一行（beat 是一拍幾秒）',
+  variants: { param: 'look', list: [
+    { value: 'cta', label: '導流卡', doc: '片尾導流卡：紙色底，幾行大字跟著拍子一行一行蓋下來（【詞】放進主色小牌），下面一排編號圓點（最後幾個打問號），手繪箭頭畫向連結並隨拍點彈跳；導去原片、主頁、留言、下一集；cta 是箭頭旁小字，tipX、tipY 箭頭尖，dots 圓點數、hidden 最後幾個打問號' },
+    { value: 'credits', label: '感謝名單', doc: '片尾感謝名單：lines 每行一拍淡入（*星號包住* 的行是高亮色斜體（中日韓文字保持直立）、_底線包住_ 的行是加寬字距的小字，其他是粗體名字），字後面一層暗色薄紗；慶生、婚禮、畢業的片尾；cover 調薄紗濃淡，y 是名單中心的高度，片頭的名字用 common.headline 的 look name' },
+    { value: 'episode', label: '節目片尾卡', doc: '深色底（ink，cover 調濃淡）上 lines 是襯線大字節目名、主色短線，中間一個圓角 16:9 影片窗加播放鍵（洞，主軌片段 frame＝outroWindow(參數, W, H)），下面 ep 集數、cta 主色按鈕、credit 授權小字，一層一層浮上來；節目（Podcast、訪談、系列）的片尾卡；y 是整組的中心' },
+  ] },
   params: [
     { key: 'lines', label: '大字（每行一句，【詞】強調）', type: 'text', default: '完整路線\n和【6 家店名】\n都在原片' },
     { key: 'cta', label: '箭頭旁小字', type: 'string', default: '點這裡看完整版' },

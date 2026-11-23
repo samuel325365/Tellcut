@@ -27,7 +27,12 @@ export function flashAt(keys: Array<[number, number]>, t: number): number {
  *  glow vanishes. `blend` sets the layer's mix-blend-mode (screen: light, multiply: shade). */
 const flash: ItemType<FlashP, HTMLElement> = {
   type: 'core.flash', label: '閃白', kind: 'overlay', over: 'picture', likeness: 'colour',
-  doc: '整個畫面閃一下顏色（預設白）；重拍、轉場、拍照快門；fade out 是片尾淡出：整個項目長度慢慢蓋滿顏色（color 給 #000 就是淡出到黑），fade in 是片頭從顏色淡入；keys「秒:不透明度」照關鍵影格變（淡入黑、淡出白、閃兩下）；mode bloom 是從一點（x, y）擴散的光暈，越來越大最後蓋滿（隧道盡頭的光、回憶、結尾）；mode glow 是停在 (x, y) 的一團光，大小 size 固定、只有亮度照曲線變，不會蓋滿畫面（慶祝的金光、聚光；blend normal 在亮的畫面上也看得到）；blend 換混合方式（screen 只變亮）',
+  doc: '整個畫面閃一下顏色（預設白）；重拍、轉場、拍照快門；fade out 是片尾淡出：整個項目長度慢慢蓋滿顏色（color 給 #000 就是淡出到黑），fade in 是片頭從顏色淡入；keys「秒:不透明度」照關鍵影格變（淡入黑、淡出白、閃兩下）；mode 選光的形狀；blend 換混合方式（screen 只變亮）',
+  variants: { param: 'mode', list: [
+    { value: 'flat', label: '整片閃', doc: '整個畫面一片均勻的顏色，照曲線亮起再退掉；重拍、轉場、拍照快門的一閃，或配 fade 整段淡入淡出' },
+    { value: 'bloom', label: '擴散光暈', doc: '從一點（x, y）擴散的光暈，越來越大最後蓋滿；隧道盡頭的光、回憶、結尾' },
+    { value: 'glow', label: '一團光', doc: '停在 (x, y) 的一團光，大小 size 固定、只有亮度照曲線變，不會蓋滿畫面；慶祝的金光、聚光；blend normal 在亮的畫面上也看得到' },
+  ] },
   params: [
     { key: 'peak', label: '最大不透明度', type: 'number', min: 0, max: 1, step: 0.05, default: 0.85 },
     { key: 'rise', label: '上升 (s)', type: 'number', min: 0, step: 0.05, default: 0 },

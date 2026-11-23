@@ -21,7 +21,13 @@ export function calloutLabel(x: number, y: number, lx: number, ly: number, lw: n
 
 export const callout: ItemType<P, S> = {
   type: 'common.callout', label: '圈選標註', category: 'mark', kind: 'overlay',
-  doc: '在畫面裡的東西上做記號再拉一條標註線到標籤：circle 手畫圈、cross 打叉、ban 禁止圖示（圓圈斜線，裡面是電話或任何 emoji）、burst 爆汁放射線；記號先畫出、線拉出去、標籤彈出，標籤自動留在安全區；指出食材、做法、「不接電話訂」這種重點',
+  doc: '在畫面裡的東西上做記號再拉一條標註線到標籤；記號先畫出、線拉出去、標籤彈出，標籤自動留在安全區；指出食材、做法這種重點。',
+  variants: { param: 'kind', list: [
+    { value: 'circle', label: '手畫圈', doc: '在目標外手畫一圈（color 色）；指出食材、要看的那一樣' },
+    { value: 'cross', label: '打叉', doc: '在目標上打一個大叉（bad 色）；不要、錯的做法' },
+    { value: 'ban', label: '禁止', doc: '禁止圖示：圓圈斜線（bad 色），裡面是電話（icon phone）或任何 emoji；「不接電話訂」這種不能做的事' },
+    { value: 'burst', label: '爆汁放射線', doc: '目標周圍一圈往外噴的爆汁放射線（color 色）；咬下去爆汁、多汁的那一口' },
+  ] },
   params: [
     { key: 'kind', label: '記號（circle 圈、cross 叉、ban 禁止、burst 放射線）', type: 'enum', options: ['circle', 'cross', 'ban', 'burst'], default: 'circle' },
     { key: 'x', label: '目標 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.42 },

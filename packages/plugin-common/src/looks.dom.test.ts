@@ -74,9 +74,10 @@ test('snap: by default the border frames the whole picture; with a window it goe
 
 test('paper: the doodles can be chosen or left out, the signature changed or left out, and the doc says so', () => {
   expect(paper.params.find((p) => p.key === 'doodleSet')).toMatchObject({ type: 'enum', default: 'kitchen', options: ['kitchen', 'journal', 'travel'] });
-  expect(paper.doc).toMatch(/doodleSet/);
-  expect(paper.doc).toMatch(/doodles: false/);
-  expect(paper.doc).toMatch(/sign 寫簽名的字（例如 Recipe），空＝不要/);
+  const desk = paper.variants!.list.find((v) => v.value === 'desk')!.doc;
+  expect(desk).toMatch(/doodleSet/);
+  expect(desk).toMatch(/doodles: false/);
+  expect(desk).toMatch(/sign 寫簽名的字（例如 Recipe），空＝不要/);
   for (const doodleSet of ['kitchen', 'journal', 'travel']) expect(() => stage('common.paper', { doodleSet })).not.toThrow();
   const sign = (params: Record<string, unknown>) => [...stage('common.paper', params).root.querySelectorAll('div')].filter((d) => d.style.fontStyle === 'italic').pop()!;
   expect([sign({ sign: 'Recipe' }).textContent, sign({ sign: 'Recipe' }).style.display]).toEqual(['Recipe', 'block']);

@@ -147,7 +147,14 @@ const shimmer = (t: number, a: string, b: string, speed = 0.85) => { const s = (
 
 export const search: ItemType<P, S> = {
   type: 'common.search', label: '搜尋頁', category: 'phone', kind: 'overlay',
-  doc: '搜尋引擎的畫面（通用深色介面，不是哪一家：沒有 logo、沒有彩色字母，分頁、相關搜尋、搜尋中…、你是不是要找、精選摘要、完整版等字全是參數），用 mode 分：home 首頁疊在模糊壓暗的主軌片段上（headline hint、搜尋框逐字打字 query、自動完成清單 sugg 一行一個（「前綴|補完」或整行，跟 query 一樣的部分淡、其餘粗）、pick 第幾列 pickAt 秒點下去後框裡換成那一列、out 秒滑走）；results 結果頁（搜尋框打字，erase 先刪舊字；tabs 分頁「全部, 新聞…」底線從 tabFrom 滑到 tab；title 標題、titleSub 旁邊小字、snip 摘要；影片窗是圓角洞，主軌片段給 frame: searchWindow(參數, 寬, 高)；load 秒前蓋著「搜尋中…」載入卡；facts 一行一張「秒|小標|大字|單位」事實卡從影片窗左下彈出；dym 你是不是要找（dymAt 出現、dymHi 第幾個字標橘、dymLead 前面的字）；big 影片窗上的大字；related 相關搜尋「a, b; c」；press 秒按下搜尋框發亮；view full＝影片滿版，上方浮著搜尋框、分頁和 chips 一行一個「秒|字」篩選膠囊依序點亮）；ask 問答展開（qs 一行一題「秒-秒|問題|提示」，提示寫 redact＝答案打碼＋reveal「完整版揭曉」；一題展開成影片窗、收合時清單往上捲一列）；end 結尾（重打 query、自動完成點選，snipAt 精選摘要卡答案打碼（snipTitle、snipLead、snipNote），cardAt 結果卡：縮圖是影片窗、badge 標籤、title 標題、dur 片長、press 秒按下播放鈕）；bar 沒有頁面：畫面上方一條小搜尋列釘在片子上（放大鏡＋query 的問題，typeAt -1＝字已經在框裡），講者回答時一直留著，press 秒右端彈出打勾（barY 中心高度，-1＝貼著上方安全區；最後 out 秒淡出，沒給就 0.3 秒）；時間都從項目開始算；enter 秒從下往上推入；9:16 鋪滿畫面，16:9／1:1 是畫面中間一支手機（device）；手指用 common.touch（位置用 searchPoint(參數, pick/bar/play, 寬, 高)），閃白用 core.flash，字幕用 common.caption，片尾用 common.outro；音效配 common.typing（打字）、common.tick（點）、common.pop（事實卡）',
+  doc: '搜尋引擎的畫面（通用深色介面，不是哪一家：沒有 logo、沒有彩色字母，分頁、相關搜尋、搜尋中…、你是不是要找、精選摘要、完整版等字全是參數），用 mode 分五種畫面；時間都從項目開始算；enter 秒從下往上推入；9:16 鋪滿畫面，16:9／1:1 是畫面中間一支手機（device）；手指用 common.touch（位置用 searchPoint(參數, pick/bar/play, 寬, 高)），閃白用 core.flash，字幕用 common.caption，片尾用 common.outro；音效配 common.typing（打字）、common.tick（點）、common.pop（事實卡）',
+  variants: { param: 'mode', list: [
+    { value: 'home', label: '首頁', doc: '首頁疊在模糊壓暗的主軌片段上：上方一行大字、搜尋框逐字打字、下面跳出自動完成清單；開頭打出要查的事（例如週末去哪玩）；headline hint、搜尋框的字 query、自動完成清單 sugg 一行一個（「前綴|補完」或整行，跟 query 一樣的部分淡、其餘粗）、pick 第幾列 pickAt 秒點下去後框裡換成那一列、out 秒滑走' },
+    { value: 'results', label: '結果頁', doc: '結果頁：搜尋框、分頁列、標題和摘要，中間一個圓角影片窗，事實卡從窗的左下彈出；介紹一個地方或主題、用幾張事實卡講重點；搜尋框打字，erase 先刪舊字；tabs 分頁「全部, 新聞…」底線從 tabFrom 滑到 tab；title 標題、titleSub 旁邊小字、snip 摘要；影片窗是圓角洞，主軌片段給 frame: searchWindow(參數, 寬, 高)；load 秒前蓋著「搜尋中…」載入卡；facts 一行一張「秒|小標|大字|單位」事實卡從影片窗左下彈出；dym 你是不是要找（dymAt 出現、dymHi 第幾個字標橘、dymLead 前面的字）；big 影片窗上的大字；related 相關搜尋「a, b; c」；press 秒按下搜尋框發亮；view full＝影片滿版，上方浮著搜尋框、分頁和 chips 一行一個「秒|字」篩選膠囊依序點亮' },
+    { value: 'ask', label: '問答展開', doc: '問答展開：一列列問題，一題展開成影片窗、收合時清單往上捲一列；一題一題回答常被問的問題，答案可以留到完整版；qs 一行一題「秒-秒|問題|提示」，提示寫 redact＝答案打碼＋reveal「完整版揭曉」' },
+    { value: 'end', label: '結尾', doc: '結尾：重打 query、自動完成點選，接著精選摘要卡（答案打碼）和一張縮圖是影片窗的結果卡；片尾導去完整版；snipAt 精選摘要卡出現（snipTitle、snipLead、snipNote），cardAt 結果卡出現（badge 標籤、title 標題、dur 片長），press 秒按下播放鈕' },
+    { value: 'bar', label: '小搜尋列', doc: '沒有頁面：畫面上方一條小搜尋列釘在片子上（放大鏡＋query 的問題），press 秒右端彈出打勾；講者回答這個問題時一直留著；typeAt -1＝字已經在框裡，barY 中心高度（-1＝貼著上方安全區），最後 out 秒淡出，沒給就 0.3 秒' },
+  ] },
   params: [
     { key: 'mode', label: '畫面（home 首頁、results 結果頁、ask 問答展開、end 結尾的精選摘要和結果卡、bar 畫面上方釘著的一條小搜尋列）', type: 'enum', options: [...SEARCH_MODES], default: 'home' },
     { key: 'view', label: '結果頁的影片（window 影片窗、full 滿版加篩選膠囊）', type: 'enum', options: [...SEARCH_VIEWS], default: 'window' },

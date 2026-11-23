@@ -32,7 +32,15 @@ export function panelFrame(width: number, height: number): [number, number, numb
 
 export const panel: ItemType<P, S> = {
   type: 'common.panel', label: '影片面板外框', category: 'frame', kind: 'overlay', over: 'picture',
-  doc: '縮成矩形的影片外面的粗框（圓角、硬陰影、斜貼膠帶）；look: print 改成白色相紙邊＋柔和陰影＋上緣兩條紙膠帶（手帳、食譜）；bezel 是深色窄框加很深的柔和陰影（嵌在機器、看板裡的螢幕）；hole 把框外整個畫面塗滿深色底（淡光、細斜紋）、框邊一圈 ring 色線（看板版面、叫號機）；offset 沒有框，影片窗後面一塊錯位的色塊（block，往右下錯開 shadow）開場時從窗後滑出來，像印刷錯版（金句海報、訪談）；drawn 是手畫的框：pen 選蠟筆 crayon／麥克筆 marker／鉛筆 pencil／原子筆 ballpoint，開頭在 drawIn 秒內一筆一筆畫出來、線條每秒抖 boil 次，外面再一道 ring 色細線（double），corners 的角貼紙膠帶（繪本、筆記本、塗鴉風）；x,y,w,h 要等於影片的 frame、radius 要等於影片的圓角，放在影片軌之上',
+  doc: '縮成矩形的影片外面的框；x,y,w,h 要等於影片的 frame、radius 要等於影片的圓角，放在影片軌之上',
+  variants: { param: 'look', list: [
+    { value: 'panel', label: '粗框', doc: '粗框（圓角、硬陰影、斜貼膠帶）：border 是框的顏色、shadow 是硬陰影偏移，tapeColor 是膠帶；c.panel() 面板版面預設的框，鉤子短片把影片縮在花紋底上' },
+    { value: 'print', label: '白色相紙', doc: '白色相紙邊＋柔和陰影＋上緣兩條紙膠帶：margin 是相紙邊寬、print 是相紙顏色、tapeColor2 是第二條膠帶；手帳、食譜' },
+    { value: 'bezel', label: '深色窄框', doc: '深色窄框加很深的柔和陰影，像嵌在機器、看板裡的螢幕；border 是框的顏色' },
+    { value: 'hole', label: '框外底色', doc: '把框外整個畫面塗滿深色底（fill；淡光、細斜紋）、框邊一圈 ring 色線；看板版面、叫號機' },
+    { value: 'offset', label: '錯位色塊', doc: '沒有框，影片窗後面一塊錯位的色塊（block，往右下錯開 shadow）開場時從窗後滑出來，像印刷錯版；金句海報、訪談' },
+    { value: 'drawn', label: '手畫框', doc: '手畫的框：pen 選蠟筆 crayon／麥克筆 marker／鉛筆 pencil／原子筆 ballpoint，開頭在 drawIn 秒內一筆一筆畫出來、線條每秒抖 boil 次，外面再一道 ring 色細線（double），corners 的角貼紙膠帶；繪本、筆記本、塗鴉風' },
+  ] },
   params: [
     { key: 'look', label: '樣式（panel 粗框、print 白色相紙邊、bezel 深色窄框、hole 框外整片底色、offset 窗後錯位色塊、drawn 手畫的框）', type: 'enum', options: ['panel', 'print', 'bezel', 'hole', 'offset', 'drawn'], default: 'panel' },
     { key: 'x', label: 'x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: PANEL_FRAME[0] },

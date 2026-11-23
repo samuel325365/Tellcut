@@ -396,10 +396,17 @@ function report(ctx: ItemCtx<FlatlayParams>, s: S) {
 export const flatlay: ItemType<FlatlayParams, S> = {
   type: 'common.flatlay', label: '3D 桌面', category: 'frame', kind: 'overlay', three: true,
   doc: '真的 3D 桌面（three.js）：明信片、拍立得、相框、老電視、卡片放在亞麻、大理石、水泥或絨布上，窗光和樹葉的影子輕輕晃，'
-    + '有柔和的陰影和景深；每樣東西的照片面播它自己的鏡頭（沒有聲音），會落下、滑進、在 3D 裡翻面（明信片背面一字一字寫出來，再蓋郵戳），'
+    + '有柔和的陰影和景深；每樣東西的照片面播它自己的鏡頭（沒有聲音），會落下、滑進、在 3D 裡翻面，'
     + '鏡頭慢慢推近、升到正上方，或飛進某一張照片直到蓋滿畫面。要原音、或飛進去之後接主軌，用 c.flatlayClip 放那個鏡頭對齊好的片段。'
-    + '多樣東西寫 objects（JSON 陣列），x、y 是桌面單位（桌子中央 0，y 朝上；9:16 看得到 ±1.2 × ±2.0，16:9 是 ±3.0 × ±1.6），rot 是弧度（正＝逆時針）；'
+    + '多樣東西寫 objects（JSON 陣列，每樣也用 kind 選東西），x、y 是桌面單位（桌子中央 0，y 朝上；9:16 看得到 ±1.2 × ±2.0，16:9 是 ±3.0 × ±1.6），rot 是弧度（正＝逆時針）；'
     + 'surface none 是透明桌面，疊在影片上',
+  variants: { param: 'kind', list: [
+    { value: 'postcard', label: '明信片', doc: '橫的明信片，照片下一條白邊，左邊斜體地名（place）、右邊年份（year）；翻面（flipAt）時背面有分隔線、地址線和郵票，手寫（back）一字一字寫出來，再蓋郵戳（mark，markAt 落下）；objects 裡給 portrait 就是直的；旅行、到過的地方、寫給某人的一句話' },
+    { value: 'polaroid', label: '拍立得', doc: '白色的拍立得相片，下緣寬白邊上手寫一行（caption）；回憶、那年夏天、生日' },
+    { value: 'photo', label: '相框', doc: '直的木頭相框，白色卡紙框著照片、卡紙下緣手寫一行（caption），有厚度；老照片、某一年的紀念' },
+    { value: 'tv', label: '老電視', doc: '木紋外殼的老電視，左邊 4:3 螢幕播鏡頭、右邊兩顆旋鈕和喇叭網，螢幕下印牌子（caption）；懷舊、以前的錄影和節目' },
+    { value: 'card', label: '卡片', doc: '直的紙卡，上半是照片、下面大片留白手寫一行（caption）；生日、祝福、道別' },
+  ] },
   params: PARAMS,
   build(ctx) {
     const { root, W, H, params: p } = ctx;

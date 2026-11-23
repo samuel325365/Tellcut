@@ -72,7 +72,14 @@ export function coverBox(text: string): [number, number, number, number] | null 
 
 export const emoji: ItemType<P, S> = {
   type: 'common.emoji', label: '表情貼圖', category: 'mark', kind: 'overlay',
-  doc: '一個大 emoji 貼紙彈出並晃動（sticker），或一場 emoji 雨從上面落下（rain，滿版，check 不算它超出安全區）；cover 是遮臉用的（蓋住臉、hide a face）：第一格到最後一格都全尺寸、不透明、不轉，配 follow: face 會自己放大到蓋住下巴到髮線，path 讓它照「秒|x|y|大小」移動，box 只畫在一個框裡（雜誌頁的影片格），backing 在後面墊一塊同色圓底補滿花瓣間的縫；float 是一串愛心和表情從 x、y 往上飄、左右搖（直播、社群的按讚反應，rate 每秒幾個）；tap 是雙擊的大愛心在 x、y 彈出、一圈小愛心炸開、再往上飄走淡掉；float、tap 裡的 ♥ 畫成粉紅色的愛心；情緒、笑點、慶祝、食物吃貨感、按讚',
+  doc: '大大的 emoji（char）：貼紙、雨、往上飄的反應、雙擊愛心，或蓋住一張臉；情緒、笑點、慶祝、食物吃貨感、按讚。float、tap 裡的 ♥ 畫成粉紅色的愛心。',
+  variants: { param: 'mode', list: [
+    { value: 'sticker', label: '貼紙', doc: '一個大 emoji 貼紙在 (x, y) 彈出並晃動；情緒、笑點的一個反應' },
+    { value: 'rain', label: '表情雨', doc: '一場 emoji 雨從上面落下，滿版（check 不算它超出安全區），count 是數量；慶祝、食物吃貨感' },
+    { value: 'float', label: '往上飄', doc: '一串愛心和表情從 x、y 往上飄、左右搖，rate 每秒幾個；直播、社群的按讚反應' },
+    { value: 'tap', label: '雙擊愛心', doc: '雙擊的大愛心在 x、y 彈出、一圈小愛心炸開、再往上飄走淡掉；按讚' },
+    { value: 'cover', label: '遮臉', doc: '遮臉用的大 emoji（蓋住臉、hide a face）：第一格到最後一格都全尺寸、不透明、不轉，配 follow: face 會自己放大到蓋住下巴到髮線，path 讓它照「秒|x|y|大小」移動，box 只畫在一個框裡（雜誌頁的影片格），backing 在後面墊一塊同色圓底補滿花瓣間的縫；不露臉的人' },
+  ] },
   params: [
     { key: 'mode', label: '樣式（float 往上飄、tap 雙擊愛心、cover 遮臉：整段不動、不透明）', type: 'enum', options: ['sticker', 'rain', 'float', 'tap', 'cover'], default: 'sticker' },
     { key: 'char', label: '表情（一個或數個 emoji；float、tap 的 ♥ 是畫的愛心）', type: 'string', default: '🔥' },

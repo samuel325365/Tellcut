@@ -44,7 +44,13 @@ export function windowRectAt(p: WP, local: number, dur: number, W: number, H: nu
 
 export const deskWindow: ItemType<WP, WS> = {
   type: 'common.window', label: '復古視窗', category: 'phone', kind: 'overlay',
-  doc: '復古電腦的視窗：標題列（檔名 title、三顆鈕，bar 是 lav／pink／mint／yellow 或色碼）、深紫外框、硬陰影；content media 播它自己的片段或照片（source、in，cx、cy、zoom 對焦），search 是搜尋框把 text 打出來，profile 是「名稱|值」清單一行一列地出現，progress 是進度條（text「進行中|完成」，progFrom 到 progTo 跑滿）；media 加 progTo 時進度條在片子下面；從小彈出來，結尾 exit：min 縮小飛進工作列第 slot 顆（共 slots 顆，和 common.desktop 的章節一樣）、close 關掉、max 在 maxAt 秒放大到畫面上方（maxH 高、標題列淡掉）、none 留著；一章幾個視窗斜斜疊起來；配 common.desktop、common.popup',
+  doc: '復古電腦的視窗：標題列（檔名 title、三顆鈕，bar 是 lav／pink／mint／yellow 或色碼）、深紫外框、硬陰影，content 選視窗裡放什麼；從小彈出來，結尾 exit：min 縮小飛進工作列第 slot 顆（共 slots 顆，和 common.desktop 的章節一樣）、close 關掉、max 在 maxAt 秒放大到畫面上方（maxH 高、標題列淡掉）、none 留著；一章幾個視窗斜斜疊起來；配 common.desktop、common.popup',
+  variants: { param: 'content', list: [
+    { value: 'media', label: '片段照片', doc: '視窗裡播它自己的片段或照片；秀一張照片或一段片段（例如派對的照片）；source、in，cx、cy、zoom 對焦，加 progTo 時進度條在片子下面' },
+    { value: 'search', label: '搜尋框', doc: '視窗裡一個搜尋框，把 text 一個字一個字打出來；打出一個關鍵字帶出下一段（例如今天的壽星）；typeAt 開始打字' },
+    { value: 'profile', label: '資料清單', doc: '視窗裡「名稱|值」清單一行一列地出現；介紹一個人（名字、年齡、狀態）；text 一行一列' },
+    { value: 'progress', label: '進度條', doc: '視窗裡一條進度條跑滿，上面的字從進行中換成完成；準備中到完成（例如佈置中…到佈置完成）；text「進行中|完成」，progFrom 到 progTo 跑滿' },
+  ] },
   params: [
     { key: 'content', label: '內容（media 片段或照片、search 搜尋框、profile 清單、progress 進度條）', type: 'enum', options: ['media', 'search', 'profile', 'progress'], default: 'media' },
     { key: 'source', label: '素材', type: 'source-ref', default: '' },

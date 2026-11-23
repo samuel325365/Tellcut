@@ -61,7 +61,20 @@ export function shaderFrame(p: P, theme: { palette: Record<string, string> }, lo
 
 export const shader: ItemType<P, S> = {
   type: 'common.shader', label: '動態背景（GPU）', category: 'background', kind: 'scene',
-  doc: '整片會流動的質感背景，GPU 即時畫：mesh 流動漸層、grain 顆粒漸層、rays 光束、smoke 煙圈、warp 扭曲格紋、swirl 漩渦、blobs 流體球、dots 點陣軌道；顏色預設取 theme，放在影片之下（片頭、片尾卡、沒素材的段落、面板底）。neuro 深色底上一張會流動的發光細線網，交叉點特別亮（第一個顏色是線、最後一個是亮點；科技、AI、神經網路、深夜、懸疑的片頭或段落底，amount 越大交叉點越亮）；cells 一格格不規則的色塊（像細胞或彩繪玻璃），慢慢蠕動，格子之間是 back 色的細縫（自然、生物、拼貼、活潑的資訊底，amount 越大格子越歪，grain 給每格一點往內的暗影）；dither 復古點陣：只用第一個顏色和 back 兩色，用規則排列的網點畫出一片流動的扭曲圖樣，像老電腦、Game Boy 的單色螢幕（復古、像素、遊戲、駭客、Lo-fi，amount 是網點大小）',
+  doc: '整片會流動的質感背景，GPU 即時畫；顏色預設取 theme，放在影片之下（片頭、片尾卡、沒素材的段落、面板底）',
+  variants: { param: 'look', list: [
+    { value: 'mesh', label: '流動漸層', doc: '幾個顏色像顏料一樣慢慢流動、互相暈開的柔和漸層；片頭、片尾卡、品牌感的底；amount 越大扭得越多，grain 加一層顆粒' },
+    { value: 'grain', label: '顆粒漸層', doc: 'back 色的底，從角落湧出帶粗顆粒的彩色漸層、慢慢變形；有質感的片頭、沒素材的段落；grain 填 0 是它自己的顆粒量 0.25' },
+    { value: 'rays', label: '光束', doc: 'back 色的底上，從上方一點放射下來的一束束光芒、帶光暈；舞台、宣布、頒獎的底' },
+    { value: 'smoke', label: '煙圈', doc: 'back 色的底中間一圈彩色煙霧繞成的環，邊緣絲絲飄散；品牌、沉靜的段落底' },
+    { value: 'warp', label: '扭曲格紋', doc: '格紋被扭轉、拉扯成大理石般流動的色塊，鋪滿整個畫面（不用 back）；熱鬧、迷幻的片頭或段落底' },
+    { value: 'swirl', label: '漩渦', doc: '幾種顏色和 back 色的寬帶從中心轉出去的漩渦；復古、迷幻的片頭；grain 填 0 是它自己的顆粒量 0.2' },
+    { value: 'blobs', label: '流體球', doc: 'back 色的底上幾顆彩色的流體球融在一起、慢慢變形；簡潔的片頭、片尾卡；amount 越大球越多' },
+    { value: 'dots', label: '點陣軌道', doc: 'back 色的底上滿滿的彩色小圓點，各自繞著軌道轉；熱鬧、派對感的段落底；amount 越大散得越開' },
+    { value: 'neuro', label: '發光神經網', doc: '深色底上一張會流動的發光細線網，交叉點特別亮；科技、AI、神經網路、深夜、懸疑的片頭或段落底；第一個顏色是線、最後一個是亮點，amount 越大交叉點越亮' },
+    { value: 'cells', label: '細胞色塊', doc: '一格格不規則的色塊（像細胞或彩繪玻璃），慢慢蠕動，格子之間是 back 色的細縫；自然、生物、拼貼、活潑的資訊底；amount 越大格子越歪，grain 給每格一點往內的暗影' },
+    { value: 'dither', label: '復古點陣', doc: '復古點陣：只用第一個顏色和 back 兩色，用規則排列的網點畫出一片流動的扭曲圖樣，像老電腦、Game Boy 的單色螢幕；復古、像素、遊戲、駭客、Lo-fi；amount 是網點大小' },
+  ] },
   params: [
     { key: 'look', label: '樣式', type: 'enum', options: [...LOOKS], default: 'mesh' },
     { key: 'colors', label: '顏色（逗號分隔；空白＝theme 的主色、副色、強調色、紙色）', type: 'string', default: '' },

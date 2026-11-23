@@ -83,7 +83,12 @@ function drawCursor(g: CanvasRenderingContext2D, x: number, y: number, z: number
 
 export const touch: ItemType<P, S> = {
   type: 'common.touch', label: '觸控點', category: 'mark', kind: 'overlay',
-  doc: '螢幕錄影的「顯示觸控」圓點：touches 一行一個手勢「秒|tap|x,y」點一下、「秒-秒|drag|x,y>x,y」拖曳（可以很多點）、「秒-秒|pinch|x,y|0.4>0.15」兩指捏合（距離以短邊計，變大就是放大）、「秒-秒|press|x,y」長按；位置是畫面比例；手指落下時一圈漣漪（ripple）；look dot 是手機系統的灰色半透明圓點、glow 是白色發亮的指尖、cursor 是電腦的箭頭游標（一直在畫面上，手勢之間滑過去，tap 就是點一下：游標一縮、冒一圈；color 是填色、edge 是外框，配 common.desktop 復古桌面）；畫在所有項目的最上面；操作手機、App 教學、相簿、聊天、搜尋的螢幕錄影',
+  doc: '螢幕錄影的「顯示觸控」圓點：touches 一行一個手勢「秒|tap|x,y」點一下、「秒-秒|drag|x,y>x,y」拖曳（可以很多點）、「秒-秒|pinch|x,y|0.4>0.15」兩指捏合（距離以短邊計，變大就是放大）、「秒-秒|press|x,y」長按；位置是畫面比例；手指落下時一圈漣漪（ripple）；畫在所有項目的最上面；操作手機、App 教學、相簿、聊天、搜尋的螢幕錄影',
+  variants: { param: 'look', list: [
+    { value: 'dot', label: '灰色圓點', doc: '手機系統的灰色半透明圓點（edge 是外框）；手機操作的螢幕錄影' },
+    { value: 'glow', label: '發亮指尖', doc: '白色發亮的指尖；要讓手指在畫面上更醒目的螢幕錄影' },
+    { value: 'cursor', label: '滑鼠游標', doc: '電腦的箭頭游標，一直在畫面上，手勢之間滑過去，tap 就是點一下：游標一縮、冒一圈；color 是填色、edge 是外框；配 common.desktop 復古桌面' },
+  ] },
   params: [
     { key: 'touches', label: '手勢（一行一個：秒|tap|x,y、秒-秒|drag|x,y>x,y、秒-秒|pinch|x,y|起距離>終距離、秒-秒|press|x,y）', type: 'text', default: '0.5|tap|0.5,0.38\n1.1-1.9|drag|0.3,0.6>0.7,0.6\n2.2-2.8|pinch|0.5,0.5|0.4>0.15' },
     { key: 'look', label: '樣子（dot 系統的灰色圓點、glow 白色發亮的指尖、cursor 滑鼠游標）', type: 'enum', options: ['dot', 'glow', 'cursor'], default: 'dot' },

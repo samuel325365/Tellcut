@@ -136,7 +136,21 @@ export function patternCss(p: Pick<P, 'pattern' | 'color' | 'color2' | 'tint'>, 
 
 export const backdrop: ItemType<P, S> = {
   type: 'common.backdrop', label: '背景圖樣', category: 'background', kind: 'scene',
-  doc: '整片的圖樣背景（格紋、圓點、斜紋、方格、純色、漸層），放在影片之下；影片縮成面板時露出來的底，顏色走 theme；glow 讓底部透出一片光，強度照「秒:強度」變（跟著分數、情緒越來越熱）；diamond 是收銀台止滑墊的菱格紋，pool 加一圈暖光、vignette 壓暗四角（深色收銀台、工作檯）；spot 是深色海報底：上緣透下一片柔光（color2、濃度 tint）、下方漸暗（金句、訪談、Podcast）；words 是多巴胺字牆：整頁一列一列重複 word（外框粗襯線字，color2 色、濃度 tint，列高 scale），相鄰兩列以 drift 反方向滑（段落底色常換：萊姆綠、鈷藍、桃紅、橘，配 common.popcard、common.sticker、標題範本 pop）；bits 在兩側撒幾個小碎片（圓點、四角星、鋸齒線、小叉，theme 的顏色，會閃），任何圖樣都能加；halftone 是網點：45 度的一格格圓點（color2、濃度 tint、間距 scale），左下最大、往右上越來越小到沒有（普普風、漫畫、復古印刷、運動感的底）；sunburst 是從畫面中心放射的兩色光芒（color2、濃度 tint），慢慢轉（scale 越大光芒越少、越寬；drift 是轉速，十分之一度／秒，要給 drift 才會轉，40 剛好）（開獎、宣布、促銷、復古海報、綜藝感）；waves 是四層波浪色帶從下面疊上來（color2，越下面越濃），每層用自己的速度往旁邊滑（scale 是波浪大小；要給 drift 才會動，40 剛好）（海邊、夏天、輕鬆、清爽、音樂）',
+  doc: '整片的圖樣背景，放在影片之下；影片縮成面板時露出來的底，顏色走 theme；glow 讓底部透出一片光，強度照「秒:強度」變（跟著分數、情緒越來越熱）；bits 在兩側撒幾個小碎片（圓點、四角星、鋸齒線、小叉，theme 的顏色，會閃），任何圖樣都能加',
+  variants: { param: 'pattern', list: [
+    { value: 'gingham', label: '格紋', doc: '兩個方向的 color2 寬條交疊成的方格布格紋（濃度 tint、格子大小 scale）；可愛、居家、手作感的段落底' },
+    { value: 'dots', label: '圓點', doc: '一格格排整齊的 color2 小圓點（濃度 tint、間距 scale）；可愛、慶祝、兒童的底' },
+    { value: 'stripes', label: '斜紋', doc: '45 度的 color2 斜條紋，一條實一條空（濃度 tint、一組的寬 scale）；活潑、有節奏感的段落底' },
+    { value: 'grid', label: '方格', doc: 'color2 細線畫成的方格紙（濃度 tint、格子大小 scale）；教學、筆記、資訊感的底' },
+    { value: 'solid', label: '純色', doc: '只有底色 color 的一片純色，沒有圖樣；只要一片乾淨的底，或只想加 glow、pool、bits 時' },
+    { value: 'gradient', label: '漸層', doc: '從上方的 color 斜斜漸變到下方的 color2，沒有圖樣；柔和、乾淨的片頭片尾或面板底' },
+    { value: 'diamond', label: '菱格', doc: '收銀台止滑墊的菱格紋（color2 的細斜線交叉），pool 加一圈暖光、vignette 壓暗四角；深色收銀台、工作檯' },
+    { value: 'spot', label: '聚光', doc: '深色海報底：上緣透下一片柔光（color2、濃度 tint）、下方漸暗；金句、訪談、Podcast' },
+    { value: 'words', label: '字牆', doc: '多巴胺字牆：整頁一列一列重複 word（外框粗襯線字，color2 色、濃度 tint，列高 scale），相鄰兩列以 drift 反方向滑；段落底色常換：萊姆綠、鈷藍、桃紅、橘，配 common.popcard、common.sticker、標題範本 pop' },
+    { value: 'halftone', label: '網點', doc: '45 度的一格格圓點（color2、濃度 tint、間距 scale），左下最大、往右上越來越小到沒有；普普風、漫畫、復古印刷、運動感的底' },
+    { value: 'sunburst', label: '放射光', doc: '從畫面中心放射的兩色光芒（color2、濃度 tint），慢慢轉；開獎、宣布、促銷、復古海報、綜藝感；scale 越大光芒越少、越寬，drift 是轉速（十分之一度／秒），要給 drift 才會轉，40 剛好' },
+    { value: 'waves', label: '波浪', doc: '四層波浪色帶從下面疊上來（color2，越下面越濃），每層用自己的速度往旁邊滑；海邊、夏天、輕鬆、清爽、音樂；scale 是波浪大小，要給 drift 才會動，40 剛好' },
+  ] },
   params: [
     { key: 'pattern', label: '圖樣', type: 'enum', options: ['gingham', 'dots', 'stripes', 'grid', 'solid', 'gradient', 'diamond', 'spot', 'words', 'halftone', 'sunburst', 'waves'], default: 'gingham' },
     { key: 'word', label: '重複的字（words）', type: 'string', default: 'HELLO' },

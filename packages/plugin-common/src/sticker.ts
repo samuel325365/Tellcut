@@ -23,7 +23,13 @@ export const stickerWobble = (local: number, at: number) => (local - at > 0.4 ? 
 
 export const sticker: ItemType<SP, SS> = {
   type: 'common.sticker', label: '扁平貼紙', category: 'mark', kind: 'overlay',
-  doc: '一張扁平的小貼紙：heart 愛心、bolt 閃電、star 星星、smile 笑臉（腮紅、彎彎的嘴），黑色粗框（ink）、往右下錯開的實心影子，從斜斜的小一點彈出來，貼好後輕輕晃；x、y 中心（畫面比例）、size 寬（畫面短邊比例，直式橫式一樣大）；貼在卡片角落、標題旁邊（多巴胺配色的開箱、清單、Vlog，配 common.popcard；有字的爆炸貼紙用 common.burst 的 shadow，游標用 common.touch 的 cursor）',
+  doc: '一張扁平的小貼紙，黑色粗框（ink）、往右下錯開的實心影子，從斜斜的小一點彈出來，貼好後輕輕晃；x、y 中心（畫面比例）、size 寬（畫面短邊比例，直式橫式一樣大）；貼在卡片角落、標題旁邊（多巴胺配色的開箱、清單、Vlog，配 common.popcard；有字的爆炸貼紙用 common.burst 的 shadow，游標用 common.touch 的 cursor）',
+  variants: { param: 'shape', list: [
+    { value: 'heart', label: '愛心', doc: '一顆胖胖的愛心貼紙（color 填色）；喜歡、推薦的東西旁邊' },
+    { value: 'bolt', label: '閃電', doc: '一道斜斜的閃電貼紙；重點、驚喜、有勁的標題旁邊' },
+    { value: 'star', label: '星星', doc: '一顆五角星貼紙；亮點、最愛的那一項' },
+    { value: 'smile', label: '笑臉', doc: '一張圓圓的笑臉貼紙（腮紅、彎彎的嘴）；開心、輕鬆的 Vlog' },
+  ] },
   params: [
     { key: 'shape', label: '形狀（heart 愛心、bolt 閃電、star 星星、smile 笑臉）', type: 'enum', options: ['heart', 'bolt', 'star', 'smile'], default: 'heart' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.8 },

@@ -189,7 +189,7 @@ export function formatFind(plugins: Plugin[], query: string): string {
   if (!hits.length) return `找不到符合「${query}」的積木；換個說法（例如「收據」「路線」「手寫」「計分」），或看整份：npm run tellcut -- catalog`;
   const { lines, parts } = blockLines(hits, query);
   return [`符合「${query}」的積木 ${hits.length} 個：`, ...lines, ...comboLines, ...capLine, '',
-    `看參數和全部樣式：npm run tellcut -- catalog <類型或代號>${parts ? "；縮排的 mode: '…'／template: '…' 是 c.effect 的寫法" : ''}`].join('\n');
+    `看參數和全部樣式：npm run tellcut -- catalog <類型或代號>${parts ? "；縮排的那幾行是 c.effect 的寫法（例如 mode: 'rocket'、template: 'rocket'）" : ''}`].join('\n');
 }
 
 /** one category of the block index: its name, its handle prefix in brackets, then each block as its handle's number and short name,

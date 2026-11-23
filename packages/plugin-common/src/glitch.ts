@@ -77,7 +77,13 @@ const merge = (f: Element, ins: string[], result?: string) => {
 
 export const glitch: ItemType<P, S> = {
   type: 'common.glitch', label: '故障干擾', category: 'look', kind: 'overlay', over: 'picture',
-  doc: '數位干擾，一陣一陣閃（亂數種子決定什麼時候閃）；轉場、驚嚇、科技感、「出事了」的瞬間。look tear（預設）畫面被撕出幾條反相的橫帶；scan 細細的掃描線加一條慢慢往下滾的亮帶，偶爾整個畫面往旁邊跳幾 px（監視器、老電視、駭客畫面）；rgb 底下畫面的紅、藍色版真的分開，平常只有一點色邊，一閃就分很開（音樂、節奏點、訊號不良）；block 底下畫面的幾塊長方形往旁邊錯開、帶青／洋紅色（資料損毀、切換、壞掉的感覺）；shift 是錯位量。rgb、block 和 scan 的跳動要在 Chromium 系瀏覽器（Chrome、Edge）的預覽裡才看得到，輸出一律用 Chrome',
+  doc: '數位干擾，一陣一陣閃（亂數種子決定什麼時候閃）；轉場、驚嚇、科技感、「出事了」的瞬間。shift 是錯位量。rgb、block 和 scan 的跳動要在 Chromium 系瀏覽器（Chrome、Edge）的預覽裡才看得到，輸出一律用 Chrome',
+  variants: { param: 'look', list: [
+    { value: 'tear', label: '反相橫帶', doc: '畫面被撕出幾條反相的橫帶（預設的樣子）；轉場、驚嚇的一瞬間；bands 是條數、maxHeight 是最高多高，tint 帶青／洋紅色' },
+    { value: 'scan', label: '掃描線', doc: '細細的掃描線加一條慢慢往下滾的亮帶，偶爾整個畫面往旁邊跳幾 px；監視器、老電視、駭客畫面' },
+    { value: 'rgb', label: '色版分離', doc: '底下畫面的紅、藍色版真的分開，平常只有一點色邊，一閃就分很開；音樂、節奏點、訊號不良' },
+    { value: 'block', label: '色塊錯位', doc: '底下畫面的幾塊長方形往旁邊錯開、帶青／洋紅色；資料損毀、切換、壞掉的感覺；bands 是色塊數' },
+  ] },
   params: [
     { key: 'look', label: '樣子（tear 反相橫帶、scan 掃描線、rgb 色版分離、block 色塊錯位）', type: 'enum', options: ['tear', 'scan', 'rgb', 'block'], default: 'tear' },
     { key: 'bands', label: '橫帶數量（tear；block 是色塊數）', type: 'number', min: 1, max: 14, step: 1, default: 6 },

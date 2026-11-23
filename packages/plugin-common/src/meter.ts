@@ -49,7 +49,12 @@ export const meterBaseline = (y: number, size: number, safeTop: number) => (y >=
 
 export const meter: ItemType<P, S> = {
   type: 'common.meter', label: '數值計', category: 'number', kind: 'overlay',
-  doc: '一個大數字隨時間跳到各個值（深度、海拔、溫度、次數、排名…），下面標目前的階段名稱和一條刻度尺；主線是「越來越…」的片子用它讓進度看得見；look band 是年代尺：上方一條深色帶，數字靠左、單位小一號，下面一把從 min 到 max 有數字刻度的尺，標記沿尺滑動，pins 在某些值插小旗（accent 主色、hl 高亮色、dashed 虛線空心旗），數字到了某面旗時旁邊出現它的標籤（年份、歷史、時代）；look ruler 是右側直立的量尺（身高、高度、排名）：每到一個數值留下一個箭頭和數字，最新的放大、主色，同一個值的 pin 會加上它的標籤；stops 的第三段寫數字＝那一站自己的跳動時間（和 ambient 共用）',
+  doc: '一個大數字隨時間跳到各個值（深度、海拔、溫度、次數、排名…）；主線是「越來越…」的片子用它讓進度看得見；stops 的第三段寫數字＝那一站自己的跳動時間（和 ambient 共用）',
+  variants: { param: 'look', list: [
+    { value: 'center', label: '置中數字', doc: '置中的大數字，下面標目前的階段名稱和一條刻度尺（stages 是階段、stagePrefix 是階段名稱前的字，ruler 關掉尺、ticks 是尺上的刻度）；深度、海拔、溫度、次數這種一路往上或往下的數值' },
+    { value: 'band', label: '年代尺', doc: '上方一條深色帶，數字靠左、單位小一號，下面一把從 min 到 max 有數字刻度的尺，標記沿尺滑動，pins 在某些值插小旗（accent 主色、hl 高亮色、dashed 虛線空心旗），數字到了某面旗時旁邊出現它的標籤；年份、歷史、時代' },
+    { value: 'ruler', label: '直立量尺', doc: '右側直立的量尺：每到一個數值留下一個箭頭和數字，最新的放大、主色，同一個值的 pin 會加上它的標籤；身高、高度、排名' },
+  ] },
   params: [
     { key: 'stops', label: '數值（秒:值[:s]，逗號分隔；:s＝直接跳，:數字＝這一站的跳動秒數）', type: 'text', default: '0:0, 0.6:500, 1.6:2000' },
     { key: 'ease', label: '跳動時間 (s)', type: 'number', min: 0, max: 3, step: 0.05, default: 0.8 },

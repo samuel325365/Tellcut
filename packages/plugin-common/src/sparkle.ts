@@ -58,7 +58,13 @@ export function glintAt(local: number, dur: number): { size: number; rot: number
 
 export const sparkle: ItemType<P, S> = {
   type: 'common.sparkle', label: '閃光星星', category: 'mark', kind: 'overlay',
-  doc: '四角星星：從一點炸開飛散（burst），或散在畫面上閃爍（twinkle）；慶祝、驚喜、強調、高級感。confetti 是彩色紙片從畫面頂端整片落下，一邊翻一邊左右飄，顏色是 color 加 theme 的 accent、accent2、hl，在項目的時間裡陸續落下（生日、得獎、完成、開獎、派對；x、y、spread 不用，每個 count 是四片紙）；glint 是 (x, y) 一個亮點拉出長長的十字光芒，變大、微微轉、再消失，在項目的第一秒裡（商品、金屬、珠寶、新車、刀鋒「叮」一下的光；count、spread 不用）',
+  doc: '閃光的記號：四角星星炸開或閃爍、彩色紙片落下、十字光芒一閃；慶祝、驚喜、強調、高級感。',
+  variants: { param: 'mode', list: [
+    { value: 'burst', label: '星星炸開', doc: '四角星星從 (x, y) 一點炸開飛散（spread 是飛多遠）；答對、驚喜、強調的那一下' },
+    { value: 'twinkle', label: '星星閃爍', doc: '四角星星散在 (x, y) 周圍（spread 是範圍），整段一閃一閃；高級感、夢幻' },
+    { value: 'confetti', label: '彩色紙片', doc: '彩色紙片從畫面頂端整片落下，一邊翻一邊左右飄，顏色是 color 加 theme 的 accent、accent2、hl，在項目的時間裡陸續落下（x、y、spread 不用，每個 count 是四片紙）；生日、得獎、完成、開獎、派對' },
+    { value: 'glint', label: '十字光芒', doc: '(x, y) 一個亮點拉出長長的十字光芒，變大、微微轉、再消失，在項目的第一秒裡（count、spread 不用）；商品、金屬、珠寶、新車、刀鋒「叮」一下的光' },
+  ] },
   params: [
     { key: 'mode', label: '樣式（burst 炸開、twinkle 閃爍、confetti 彩色紙片落下、glint 十字光芒一閃）', type: 'enum', options: ['burst', 'twinkle', 'confetti', 'glint'], default: 'burst' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },

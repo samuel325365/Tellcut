@@ -41,7 +41,12 @@ export function listBox(x: number, w: number, W: number, side: number): { left: 
 
 export const list: ItemType<P, S> = {
   type: 'common.list', label: '清單卡', category: 'card', kind: 'overlay',
-  doc: '一張卡片：標題加幾行項目，一行一行出現（stagger 固定間隔，或 at 給每一行自己的秒數，對著旁白講到的那一刻）；x、w 放在畫面任何一欄（9:16 也能放大）；check（✓ 打勾）、pros（+ 優點／− 缺點，項目前加 - 算缺點）、number（1. 2. 3.）；評測、教學、三個重點、迷思破解；look: stack 沒有卡片，大字一拍一行砸進來、編號色塊、最新一行螢光色（照片連發時留下每張的名字）',
+  doc: '一張卡片：標題加幾行項目，一行一行出現（stagger 固定間隔，或 at 給每一行自己的秒數，對著旁白講到的那一刻）；x、w 放在畫面任何一欄（9:16 也能放大）；style 換每一行前面的記號；評測、教學、三個重點、迷思破解；look: stack 沒有卡片，大字一拍一行砸進來、編號色塊、最新一行螢光色（照片連發時留下每張的名字）',
+  variants: { param: 'style', list: [
+    { value: 'check', label: '打勾', doc: '每一行前面一個 ✓ 打勾的圓點（good 色）；三個重點、要記得的事' },
+    { value: 'pros', label: '優缺點', doc: '每一行前面 + 優點／− 缺點，項目前加 - 算缺點（優點 good 色、缺點 accent 色）；評測的優缺點' },
+    { value: 'number', label: '編號', doc: '每一行前面一個寫著 1. 2. 3. 編號的圓點；教學的步驟、照順序做的事' },
+  ] },
   params: [
     { key: 'title', label: '標題（空＝沒有）', type: 'string', default: '三個重點' },
     { key: 'items', label: '項目（一行一個，或用 | 分開）', type: 'text', default: '先過篩\n小火慢煎\n翻一次就好' },

@@ -42,7 +42,12 @@ interface S { ph: PhoneEls; card: HTMLElement; q: HTMLElement; opts: Opt[]; trac
 
 export const story: ItemType<P, S> = {
   type: 'common.story', label: '限動貼紙', category: 'phone', kind: 'overlay',
-  doc: '限動的互動貼紙（彈出、照 rot 歪一點，最後 0.2 秒縮掉）：kind poll 投票——問題（text）加兩到四個選項（options 用 | 分開），在 at 投票、每格填到結果百分比（votes 例如 62,38，數字往上跳），pick 那個打勾；slider 表情滑桿——問題下面一條軌道，emoji 從 at 到 end 滑到 value（0–1）；timer 計時——深色貼紙，mm:ss 從 from 秒在 at 到 end 之間跑到 to 秒（等待、倒數都行，icon 是內建圖示或一個 emoji）；x、y 是中心（手機畫面比例）；9:16 用整個畫面，16:9／1:1 跟 common.reels 疊在同一支手機上（device）；地點貼紙用 common.tag 的 label、價格用 common.hangtag、文字貼紙用 common.tag／common.caption、計時環用 common.countdown；音效配 common.pop（出現、投票）、common.tick（計時）',
+  doc: '限動的互動貼紙（彈出、照 rot 歪一點，最後 0.2 秒縮掉），kind 選投票、表情滑桿或計時；x、y 是中心（手機畫面比例）；9:16 用整個畫面，16:9／1:1 跟 common.reels 疊在同一支手機上（device）；地點貼紙用 common.tag 的 label、價格用 common.hangtag、文字貼紙用 common.tag／common.caption、計時環用 common.countdown；音效配 common.pop（出現、投票）、common.tick（計時）',
+  variants: { param: 'kind', list: [
+    { value: 'poll', label: '投票', doc: '白色貼紙上一個問題加兩到四個選項格，投票進來時每格填色到結果百分比、數字往上跳，選中的那格打勾；問觀眾一個要不要、選哪個的問題（例如要不要再去一次）；問題是 text，options 用 | 分開，在 at 投票，votes 是結果（例如 62,38），pick 那個打勾' },
+    { value: 'slider', label: '表情滑桿', doc: '白色貼紙上問題下面一條軌道，一個表情從 at 到 end 滑到 value（0–1）；讓觀眾給一件事打分數、表示有多喜歡（例如這片海有多藍）；emoji 是滑桿上的表情' },
+    { value: 'timer', label: '計時', doc: '深色貼紙，mm:ss 從 from 秒在 at 到 end 之間跑到 to 秒；等待、倒數都行（例如等上菜）；icon 是內建圖示或一個 emoji，text 是時間上面的小字' },
+  ] },
   params: [
     { key: 'kind', label: '種類（poll 投票、slider 表情滑桿、timer 計時）', type: 'enum', options: [...STORY_KINDS], default: 'poll' },
     { key: 'text', label: '問題（poll、slider；timer：時間上面的小字）', type: 'string', default: '要不要再去一次？' },

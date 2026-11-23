@@ -50,7 +50,18 @@ export function handPose(local: number, dur: number): HandPose {
 
 export const wipe: ItemType<P, S> = {
   type: 'common.wipe', label: '斜切色帶轉場', category: 'moment', kind: 'overlay',
-  doc: '轉場：一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；mode hand 是手遮鏡頭：一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開（換場、轉身、不想被拍）；mode curl 是翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；rev 反著播（一頁蓋回來，雜誌闔上）；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh；mode tiles 是格子拼貼：畫面切成 cols × rows 格，紙色（color，兩種深淺）的格子一塊塊蓋上、正中間蓋滿，再一塊塊翻開，格子之間是 edge 色的細縫（剪貼簿、拼貼、相片牆換頁，配 common.slide；換頁後要留著格縫，用 common.scraps 的 grid）；mode vortex 是字的漩渦：一圈圈 color／edge 兩色相間的字環（words），相鄰兩圈反方向轉、整個慢慢放大，頭尾 0.12 秒淡入淡出、中間蓋滿畫面（城市、潮流、黑白字框的換章，配 common.monoframe）；mode stripes 是多色斜條：colors 幾種顏色（逗號分隔）的斜色條一條接一條掃過去，項目正中間最後一條蓋滿畫面，再一條條掃出去露出新畫面；斜度看 slant（上下兩端錯開幾個畫面寬，所以角度跟著畫面比例變：1 在 9:16 約 30 度、1:1 是 45 度、16:9 約 60 度），dir left 從右邊進來（多巴胺配色的換段，最後一個顏色用新段落的底色，配 common.backdrop 的 words）；mode iris 是圓形收光：畫面縮成一個圓，color 色從外面往內收，項目正中間收成 (x, y) 一點、整個畫面蓋滿，再從同一點打開成新畫面，圓的邊上有一圈 edge 色細線（line 粗細）（老電影、默片、卡通的收場和開場、聚焦到一個人或一件東西上：把 x, y 放在那裡）；mode blinds 是百葉窗：畫面分成 rows 條橫的葉片，從上到下一片接一片翻轉關上（翻的時候有明暗），項目正中間全部關上蓋滿畫面，再繼續往同一個方向翻開（居家、室內、早晨、偷看、懸疑的換場）；mode ink 是墨水暈開：幾團 color 色、邊緣微微不規則的墨跡（帶幾滴濺出的小墨點）在畫面各處長大、融在一起，項目正中間蓋滿，再從另外幾個點像被吸掉一樣退開露出新畫面（水墨、書法、手作、藝術、文青的換場；seed 換墨跡的位置）；iris、blinds、ink 不看 dir',
+  doc: '轉場，mode 選九種樣子；剪接點（版面切換、換場）放在項目正中間，放在最上層（layer: top）；配 common.whoosh；band 和 stripes 的斜度看 slant（上下兩端錯開幾個畫面寬，所以角度跟著畫面比例變：1 在 9:16 約 30 度、1:1 是 45 度、16:9 約 60 度）；iris、blinds、ink 不看 dir',
+  variants: { param: 'mode', list: [
+    { value: 'band', label: '斜切色帶', doc: '一條斜切的色帶從左掃到右（dir 可反向），項目正中間那一刻蓋滿整個畫面，前緣帶一條細線；一般的換場、版面切換；color 是色帶，edge 細線顏色、line 粗細' },
+    { value: 'hand', label: '手遮鏡頭', doc: '一隻暗色、邊緣模糊的手掌剪影帶著殘影從右下拍上來，項目正中間完全遮住鏡頭，再往左下滑開；換場、轉身、不想被拍；hand 是手的顏色' },
+    { value: 'curl', label: '翻頁', doc: '翻頁：項目從剪接點開始，一開始整個畫面是舊的那一頁——color 色的紙，或上一個鏡頭的靜態圖（source／t／crop，放在 win 或整個畫面），上面可以疊一個積木停在 artAt（art／artParams，例如 common.magazine 的一頁，靜態圖就放進它的影片格）——接著沿 angle 捲起來：摺線掃過畫面，捲起的部分是鏡像的背面（back 色、摺線旁的反光、隱約透出正面的印刷）並投下陰影，新的一頁上摺線旁有一條陰影；雜誌換頁、筆記本翻頁、章節切換，配 common.whoosh；rev 反著播（一頁蓋回來，雜誌闔上）' },
+    { value: 'tiles', label: '格子拼貼', doc: '畫面切成 cols × rows 格，紙色（color，兩種深淺）的格子一塊塊蓋上、正中間蓋滿，再一塊塊翻開，格子之間是 edge 色的細縫；剪貼簿、拼貼、相片牆換頁，配 common.slide；換頁後要留著格縫，用 common.scraps 的 grid' },
+    { value: 'vortex', label: '字的漩渦', doc: '一圈圈 color／edge 兩色相間的字環（words），相鄰兩圈反方向轉、整個慢慢放大，頭尾 0.12 秒淡入淡出、中間蓋滿畫面；城市、潮流、黑白字框的換章，配 common.monoframe' },
+    { value: 'stripes', label: '多色斜條', doc: '幾種顏色的斜色條一條接一條掃過去，項目正中間最後一條蓋滿畫面，再一條條掃出去露出新畫面；多巴胺配色的換段，最後一個顏色用新段落的底色，配 common.backdrop 的 words；colors 是顏色（逗號分隔），dir left 從右邊進來' },
+    { value: 'iris', label: '圓形收光', doc: '畫面縮成一個圓，color 色從外面往內收，項目正中間收成 (x, y) 一點、整個畫面蓋滿，再從同一點打開成新畫面，圓的邊上有一圈 edge 色細線（line 粗細）；老電影、默片、卡通的收場和開場、聚焦到一個人或一件東西上：把 x, y 放在那裡' },
+    { value: 'blinds', label: '百葉窗', doc: '畫面分成 rows 條橫的葉片，從上到下一片接一片翻轉關上（翻的時候有明暗），項目正中間全部關上蓋滿畫面，再繼續往同一個方向翻開；居家、室內、早晨、偷看、懸疑的換場' },
+    { value: 'ink', label: '墨水暈開', doc: '幾團 color 色、邊緣微微不規則的墨跡（帶幾滴濺出的小墨點）在畫面各處長大、融在一起，項目正中間蓋滿，再從另外幾個點像被吸掉一樣退開露出新畫面；水墨、書法、手作、藝術、文青的換場；seed 換墨跡的位置' },
+  ] },
   params: [
     { key: 'color', label: '色帶顏色', type: 'color', default: '#ff4f2a', theme: 'palette.accent' },
     { key: 'edge', label: '前緣細線顏色', type: 'color', default: '#f4ecdc', theme: 'palette.paper' },
