@@ -493,11 +493,11 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   const pick = (name: string) => { setPicked(name); setPlays(plays + 1); };
   // only Mine's cards can be deleted: a trash button at the corner on hover and the Delete key both pick the card and open its confirmation
   const askDelete = (name: string) => { setPicked(name); setDel((d) => ({ name, n: d.n + 1 })); };
-  const card = (name: string, title: string, body: preact.ComponentChildren, extra = '', deletable = false, attrs: Record<string, string> = {}) => (
-    <li class={`${on === name ? 'on' : ''} ${extra}`} data-card={name} {...attrs} {...tip(title)} role="button" aria-pressed={on === name} tabIndex={0} onClick={() => pick(name)}
+  const card = (name: string, title: string, body: preact.ComponentChildren, extra = '', deletable = false, attrs: Record<string, string> = {}, go: () => void = () => pick(name)) => (
+    <li class={`${on === name ? 'on' : ''} ${extra}`} data-card={name} {...attrs} {...tip(title)} role="button" aria-pressed={on === name} tabIndex={0} onClick={go}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(name); }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
         else if (deletable && e.key === 'Delete') { e.preventDefault(); askDelete(name); }
       }}>{body}
       {deletable && <button class="icon-btn g-card-del" data-card-delete={name} {...tip(t('lib.deleteTip'))}
@@ -507,12 +507,15 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   // the line under its name says which (kept, empty, so nothing moves when one shows); a click picks the card with that look set
   const looksCard = (name: string, b: GalleryBlock, src?: string) => {
     const ls = looksOf(b);
-    if (!ls.length) return { pic: <Thumb src={src} />, line: null, strip: null };
+    if (!ls.length) return { pic: <Thumb src={src} />, line: null, strip: null, go: undefined };
     const found = needle ? lookHit(b, q) : undefined, hits = found ? lookHits(b, q) : [];
     const showing = (hover?.card === name ? ls.find((l) => l.key === hover.key) : undefined) ?? (found ? ls.find((l) => l.key === lookKey(found)) : undefined);
     const set = on === name ? setOn(name) : undefined, v = set && pickedVariant(b, set), tp = set && !v ? pickedTemplate(b, set) : undefined;
     const pressed = v ? `variant:${v.value}` : tp ? `template:${tp.id}` : undefined;
+    // the look a search put on the card is what a click on the card opens (not once something is set on it: those params are the user's)
+    const hit = found && !Object.keys(setOn(name)).length ? ls.find((l) => l.key === lookKey(found)) : undefined;
     return {
+      go: hit ? () => { pick(name); setBlockSet({ name, params: { ...hit.set } }); } : undefined,
       pic: showing ? <Thumb src={thumbIn(showing.thumb, getLang())} mark={firstChar(showing.label)} /> : <Thumb src={src} />,
       line: <span class="g-look-name" data-look-name>{showing?.label ?? ''}</span>,
       strip: <CardLooks looks={ls} hits={hits} pressed={pressed} open={opened.has(name)}
@@ -524,7 +527,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   const blockCard = (b: GalleryBlock) => { const x = looksCard(b.type, b, thumbIn(b.thumb, getLang())); return card(b.type, shown(b.type, b).doc, <>
     {x.pic}{x.strip}
     <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong>{x.line}<Handle id={b.type} /><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
-  </>); };
+  </>, '', false, {}, x.go); };
   // the project's own: no golden picture; the tag says whose it is wherever the card shows
   const ownCard = (b: GalleryBlock) => { const x = looksCard(`own:${b.type}`, b); return card(`own:${b.type}`, shown(b.type, b).doc, <>
     {x.pic}{x.strip}

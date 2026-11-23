@@ -86,8 +86,9 @@ export const previewSources = (ids: string[], len = BLOCK_PREVIEW_LEN) => Object
   ? { path: `${id}.png`, duration: len, width: 360, height: 640, kind: 'image' }
   : { path: `${id}.png`, duration: len, width: 1080, height: 1920, kind: 'image' }]));
 
-/** the gallery's street standing in for other source ids (blockPreviewProject's `stand`): photo sources the street's size, as long
- *  as the film; the server knows which ids those are (the variants' samples' own) and answers each with the street */
+/** a gallery picture standing in for other source ids (blockPreviewProject's `stand`): photo sources of the frame's 9:16 shape, as
+ *  long as the film; the server knows which ids those are (the variants' samples' own) and answers each with its made-up map, the
+ *  picture those samples' golden cards show */
 export const standSources = (ids: string[], len = BLOCK_PREVIEW_LEN) => Object.fromEntries([...new Set(ids)].map((id) => [id,
   { path: `${PREVIEW_GROUND}.png`, duration: len, width: 1080, height: 1920, kind: 'image' }]));
 

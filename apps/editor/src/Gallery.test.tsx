@@ -862,6 +862,10 @@ test('search finds a card by a variant: the card shows that variant and marks ev
     expect([cardPic(root), hits()]).toEqual([pic('tpl-t3'), ['t3']]);
     await search('走法');
     expect([cardPic(root), hits()]).toEqual([pic('card'), []]);
+    // a click on the card itself opens the look the search put on it, as a click on that look would
+    await search('圓環');
+    await click(root, '[data-card="common.progress"]');
+    expect(root.querySelector('[data-detail="common.progress"] [data-block-variants] li.on')?.getAttribute('data-block-variant')).toBe('ring');
   } finally { render(null, root); root.remove(); }
 });
 
