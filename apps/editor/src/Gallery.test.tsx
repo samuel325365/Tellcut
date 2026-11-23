@@ -720,6 +720,185 @@ test('a block plays on its card\'s ground, a template picked on that card\'s gro
   } finally { load.mockRestore(); patch.mockRestore(); }
 });
 
+// ---------------------------------------------------------------- a card's looks: its variants and templates under its picture
+const MODES = ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps'];
+const pic = (name: string) => `/api/gallery/thumb/progress-${name}-t1.50.png`;
+const PROGRESS = { plugin: 'common', group: '共用積木', type: 'common.progress', label: '進度條', doc: '片子走到哪裡；ring 和 bar 的走法相同', kind: 'overlay' as const, needsMedia: false, category: 'chapter',
+  thumb: pic('card'), params: [{ key: 'mode', label: '樣式', type: 'enum' as const, options: MODES, default: 'bar' }, { key: 'size', label: '大小', type: 'number' as const, default: 4 }, { key: 'label', label: '字', type: 'string' as const, default: '' }],
+  variants: { param: 'mode', list: MODES.map((m) => ({ value: m, label: m === 'ring' ? '圓環' : `樣式${m}`, doc: m === 'ring' ? '角落一圈' : `${m} 的長相`, thumb: pic(m),
+    params: m === 'ring' ? { mode: 'ring', label: '第一章' } : { mode: m }, ...(m === 'ring' ? { local: { en: { mode: 'ring', label: 'Part one' } }, bg: '#203040' } : {}) })) },
+  templates: Array.from({ length: 8 }, (_, i) => ({ id: `t${i + 1}`, label: `範本${i + 1}`, doc: `第 ${i + 1} 組`, params: { mode: MODES[i], size: i + 5 }, thumb: pic(`tpl-t${i + 1}`) })) };
+const P: GalleryIndex = { ...G, blocks: [...G.blocks, PROGRESS] };
+const looks = (root: Element, card = 'common.progress') => [...root.querySelectorAll(`[data-card="${card}"] [data-card-looks] [role="button"]`)]
+  .map((e) => (e.hasAttribute('data-look-variant') ? `v:${e.getAttribute('data-look-variant')}` : `t:${e.getAttribute('data-look-template')}`));
+const cardPic = (root: Element, card = 'common.progress') => root.querySelector(`[data-card="${card}"] > .g-thumb img`)?.getAttribute('src');
+const lookName = (root: Element, card = 'common.progress') => root.querySelector(`[data-card="${card}"] [data-look-name]`)!.textContent;
+async function lookPage(g: GalleryIndex = P) {
+  const root = document.body.appendChild(document.createElement('div')), asked: GalleryAdd[] = [], sent: any[] = [];
+  const project = { id: 'trip', load: async () => OWN, add: async (a: GalleryAdd) => { asked.push(a); return { ok: true }; } };
+  await act(async () => { render(<Gallery load={async () => g} project={project} />, root); });
+  await settle();
+  return { root, asked, sent };
+}
+
+test('a card with variants or templates shows them under its picture, variants first, two rows and a +N that opens the rest; others have none', async () => {
+  const { root } = await lookPage();
+  try {
+    expect(root.querySelector('[data-card="core.title"] [data-card-looks]')).toBeNull();
+    // 17 variants and 8 templates: nine shown, the tenth place says how many more
+    expect(looks(root)).toEqual(MODES.slice(0, 9).map((m) => `v:${m}`));
+    const more = root.querySelector('[data-card="common.progress"] [data-looks-more]') as HTMLButtonElement;
+    expect([more.textContent, more.getAttribute('aria-expanded')]).toEqual(['+16', 'false']);
+    expect(root.querySelector('[data-card="common.progress"] [data-look-variant="bar"] img')!.getAttribute('src')).toBe(pic('bar'));
+    await click(root, '[data-card="common.progress"] [data-looks-more]');
+    expect(looks(root)).toEqual([...MODES.map((m) => `v:${m}`), ...Array.from({ length: 8 }, (_, i) => `t:t${i + 1}`)]);
+    expect(root.querySelector('[data-card="common.progress"] [data-looks-more]')!.getAttribute('aria-expanded')).toBe('true');
+    // opening it does not pick the card
+    expect(root.querySelector('[data-card="common.progress"]')!.getAttribute('aria-pressed')).toBe('false');
+    await click(root, '[data-card="common.progress"] [data-looks-more]');
+    expect(looks(root).length).toBe(9);
+  } finally { render(null, root); root.remove(); }
+});
+
+test('a look under the mouse or the keyboard takes the card\'s picture and names itself under the card\'s name', async () => {
+  const { root } = await lookPage();
+  try {
+    const dots = () => root.querySelector('[data-card="common.progress"] [data-look-variant="dots"]')!;
+    expect([cardPic(root), lookName(root)]).toEqual([pic('card'), '']);
+    await act(() => { dots().dispatchEvent(new MouseEvent('mouseenter')); });
+    expect([cardPic(root), lookName(root)]).toEqual([pic('dots'), '樣式dots']);
+    await act(() => { dots().dispatchEvent(new MouseEvent('mouseleave')); });
+    expect([cardPic(root), lookName(root)]).toEqual([pic('card'), '']);
+    await act(() => { (dots() as HTMLElement).focus(); });
+    expect(cardPic(root)).toBe(pic('dots'));
+    await act(() => { (dots() as HTMLElement).blur(); });
+    expect(cardPic(root)).toBe(pic('card'));
+  } finally { render(null, root); root.remove(); }
+});
+
+test('a variant picked from the card: the detail marks it, the preview plays its sample, Add sends the variant alone; another change plays the real params', async () => {
+  const sent: any[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
+  const { root, asked } = await lookPage();
+  try {
+    await click(root, '[data-card="common.progress"] [data-looks-more]');
+    await click(root, '[data-card="common.progress"] [data-look-variant="ring"]');
+    const d = () => root.querySelector('[data-detail="common.progress"]')!;
+    expect(root.querySelector('[data-card="common.progress"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(root.querySelector('[data-card="common.progress"] [data-look-variant="ring"]')!.getAttribute('aria-pressed')).toBe('true');
+    // the detail's Variants, above its Templates, like them: picture, name, the option to write, what it is
+    expect(d().querySelector('[data-block-variants]')!.compareDocumentPosition(d().querySelector('[data-block-templates]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect([...d().querySelectorAll('[data-block-variant]')].map((e) => e.getAttribute('data-block-variant'))).toEqual(MODES);
+    const ring = d().querySelector('[data-block-variant="ring"]')!;
+    expect([ring.getAttribute('aria-pressed'), ring.querySelector('img')!.getAttribute('src')]).toEqual(['true', pic('ring')]);
+    expect(ring.textContent).toContain('圓環');
+    expect(ring.textContent).toContain("mode: 'ring'");
+    expect(ring.textContent).toContain('角落一圈');
+    expect(d().querySelector('[data-block-variant="bar"]')!.getAttribute('aria-pressed')).toBe('false');
+    // the preview: the sample's params on its card's ground
+    const item = (p: any) => p.tracks.at(-1).items[0];
+    expect(item(sent.at(-1)).params).toEqual({ mode: 'ring', label: '第一章' });
+    expect(sent.at(-1).meta.background).toBe('#203040');
+    await click(root, '[data-detail="common.progress"] [data-gallery-add]');
+    await settle();
+    expect(asked.at(-1)).toEqual({ kind: 'block', type: 'common.progress', params: { mode: 'ring' } });
+    // one more param changed: no variant picked, and the preview plays what is set
+    await act(() => {
+      const e = root.querySelector('[data-detail="common.progress"] [data-param="size"] input') as HTMLInputElement;
+      e.value = '7'; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(d().querySelector('[data-block-variant="ring"]')!.getAttribute('aria-pressed')).toBe('false');
+    expect(item(sent.at(-1)).params).toEqual({ mode: 'ring', size: 7 });
+    // the detail's list picks too, and a template from the card sets its params
+    await click(root, '[data-detail="common.progress"] [data-block-variant="dots"]');
+    expect(item(sent.at(-1)).params).toEqual({ mode: 'dots' });
+    await click(root, '[data-card="common.progress"] [data-look-template="t3"]');
+    expect(d().querySelector('[data-block-template="t3"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(item(sent.at(-1)).params).toEqual({ mode: 'tabs', size: 7 });
+    // another card starts from its defaults; coming back by the card itself keeps what was set there
+    await click(root, '[data-card="common.slam"]');
+    expect([item(sent.at(-1)).type, item(sent.at(-1)).params]).toEqual(['common.slam', {}]);
+    await click(root, '[data-card="common.progress"]');
+    expect(d().querySelector('[data-block-template="t3"]')!.getAttribute('aria-pressed')).toBe('true');
+  } finally { render(null, root); root.remove(); load.mockRestore(); patch.mockRestore(); }
+});
+
+test('the English UI previews a variant with its sample\'s English words; Add still sends the variant alone', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const sent: any[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
+  try {
+    setLang('en');
+    const { root, asked } = await lookPage();
+    try {
+      await click(root, '[data-card="common.progress"] [data-looks-more]');
+      await click(root, '[data-card="common.progress"] [data-look-variant="ring"]');
+      expect(sent.at(-1).tracks.at(-1).items[0].params).toEqual({ mode: 'ring', label: 'Part one' });
+      expect(root.querySelector('[data-card="common.progress"] [data-look-variant="ring"] img')!.getAttribute('src')).toBe(`${pic('ring')}?lang=en`);
+      await click(root, '[data-detail="common.progress"] [data-gallery-add]');
+      await settle();
+      expect(asked.at(-1)).toEqual({ kind: 'block', type: 'common.progress', params: { mode: 'ring' } });
+    } finally { render(null, root); root.remove(); }
+  } finally { setLang('zh'); localStorage.clear(); load.mockRestore(); patch.mockRestore(); }
+});
+
+test('search finds a card by a variant: the card shows that variant and marks every look found', async () => {
+  const { root } = await lookPage();
+  try {
+    const search = async (q: string) => { const box = root.querySelector('.g-search') as HTMLInputElement; await act(() => { box.value = q; box.dispatchEvent(new Event('input')); }); };
+    const hits = () => [...root.querySelectorAll('[data-card="common.progress"] [data-card-looks] .hit')].map((e) => e.getAttribute('data-look-variant') ?? e.getAttribute('data-look-template'));
+    await search('圓環');
+    expect(cards(root)).toContain('common.progress');
+    expect([cardPic(root), lookName(root)]).toEqual([pic('ring'), '圓環']);
+    // the hit behind the +N: it shows all
+    expect(hits()).toEqual(['ring']);
+    // the variant's name in full, though the block's doc names it in passing
+    await search('ring');
+    expect(cardPic(root)).toBe(pic('ring'));
+    // a template's doc; the block's own words: its own picture, nothing marked
+    await search('第 3 組');
+    expect([cardPic(root), hits()]).toEqual([pic('tpl-t3'), ['t3']]);
+    await search('走法');
+    expect([cardPic(root), hits()]).toEqual([pic('card'), []]);
+  } finally { render(null, root); root.remove(); }
+});
+
+test('a project\'s own block with variants but no pictures: each look is the first letter of its name, and can be picked', async () => {
+  const own: OwnProject = { ...OWN, blocks: ownBlocks([{ type: 'fx.sign', label: '招牌', doc: '店門口的招牌', kind: 'overlay',
+    params: [{ key: 'look', label: '樣子', type: 'enum', options: ['neon', 'wood'], default: 'neon' }],
+    variants: { param: 'look', list: [{ value: 'neon', label: '霓虹', doc: '會閃' }, { value: 'wood', label: '木頭', doc: '刻字' }] } }]) };
+  const root = document.body.appendChild(document.createElement('div')), asked: GalleryAdd[] = [];
+  const project = { id: 'trip', load: async () => own, add: async (a: GalleryAdd) => { asked.push(a); return { ok: true }; } };
+  try {
+    await act(async () => { render(<Gallery load={async () => G} project={project} />, root); });
+    await settle();
+    expect(looks(root, 'own:fx.sign')).toEqual(['v:neon', 'v:wood']);
+    const wood = root.querySelector('[data-card="own:fx.sign"] [data-look-variant="wood"]')!;
+    expect([wood.querySelector('img'), wood.textContent]).toEqual([null, '木']);
+    await click(root, '[data-card="own:fx.sign"] [data-look-variant="wood"]');
+    const row = root.querySelector('[data-detail="own:fx.sign"] [data-block-variant="wood"]')!;
+    expect([row.getAttribute('aria-pressed'), row.querySelector('img'), row.textContent]).toEqual(['true', null, expect.stringContaining("look: 'wood'")]);
+    await click(root, '[data-detail="own:fx.sign"] [data-gallery-add]');
+    await settle();
+    expect(asked.at(-1)).toEqual({ kind: 'block', type: 'fx.sign', params: { look: 'wood' } });
+  } finally { render(null, root); root.remove(); }
+});
+
+test('the looks answer the keyboard like the template list: Enter or Space on one picks it', async () => {
+  const { root } = await lookPage();
+  try {
+    const dots = root.querySelector('[data-card="common.progress"] [data-look-variant="dots"]')!;
+    expect([dots.getAttribute('tabindex'), dots.getAttribute('aria-pressed')]).toEqual(['0', 'false']);
+    await act(() => { dots.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
+    expect(root.querySelector('[data-detail="common.progress"] [data-block-variant="dots"]')!.getAttribute('aria-pressed')).toBe('true');
+    const tabs = root.querySelector('[data-card="common.progress"] [data-look-variant="tabs"]')!;
+    await act(() => { tabs.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })); });
+    expect(root.querySelector('[data-card="common.progress"] [data-look-variant="tabs"]')!.getAttribute('aria-pressed')).toBe('true');
+  } finally { render(null, root); root.remove(); }
+});
+
 const frames = (id: string, at: string[]) => at.map((x) => `/api/gallery/thumb/combo-${id}-t${x}.png`);
 const C: GalleryIndex = { ...G,
   blocks: G.blocks.map((b) => (b.type === 'common.slam' ? { ...b, templates: [{ id: 'huge', label: '超大', doc: '開場用', params: { size: 14 } }] } : b)),

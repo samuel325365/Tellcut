@@ -103,7 +103,7 @@ test('a block with variants lists them with their cards and what their previews 
     expect(lens.thumb).toBe('/api/gallery/thumb/lens-fisheye-street-t1.50.png');
     expect(lens.params).toMatchObject({ look: 'fisheye' });
     expect(lens.bg).toBeUndefined();
-    // a sample that shows a picture from a source: the ids the preview stands the gallery's street in for (not the street ground of a
+    // a sample that shows a picture from a source: the ids the preview stands the gallery's made-up map in for (not the street ground of a
     // sample already drawn over it)
     expect(variant('common.magazine', 'feature').stand).toEqual(['pic']);
     expect(variant('common.flatlay', 'polaroid').stand).toEqual(['pic']);
@@ -131,13 +131,13 @@ test('the gallery player (id=_gallery) gets its own pictures, street and map, at
       expect(r.headers.get('content-type')).toBe('image/png');
       expect(Buffer.from(await r.arrayBuffer()).equals(readFileSync(join(fixtures, file))), name).toBe(true);
     }
-    // a still of one of them (a block's picture window asks for one), and of a source a variant's preview stands the street in for
-    // (`pic`, the variants' stand); the whole picture, whatever width is asked
-    const street = readFileSync(join(fixtures, 'street.png'));
-    for (const path of ['still?source=street&t=0&w=1080', 'still?source=pic&t=0&w=540', 'image/pic']) {
+    // a still of one of them (a block's picture window asks for one), and of a source a variant's preview stands a picture in for
+    // (`pic`, the variants' stand): the made-up map its golden card shows in that window; the whole picture, whatever width is asked
+    const street = readFileSync(join(fixtures, 'street.png')), map = readFileSync(join(fixtures, 'fake-map.png'));
+    for (const [path, want] of [['still?source=street&t=0&w=1080', street], ['still?source=pic&t=0&w=540', map], ['image/pic', map]] as const) {
       const r = await fetch(`${base}/api/projects/_gallery/media/${path}`);
       expect(r.status, path).toBe(200);
-      expect(Buffer.from(await r.arrayBuffer()).equals(street), path).toBe(true);
+      expect(Buffer.from(await r.arrayBuffer()).equals(want), path).toBe(true);
     }
     expect(Buffer.from(await (await fetch(`${base}/api/projects/_gallery/media/still?source=map&t=0`)).arrayBuffer()).equals(readFileSync(join(fixtures, 'fake-map.png')))).toBe(true);
     // only those: no other file of the folder, no name every object has, no strip or square crop (the gallery makes none), and no

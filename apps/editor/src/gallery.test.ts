@@ -1,5 +1,5 @@
 import { PREVIEW_BG, PREVIEW_GROUND } from '@tellcut/engine';
-import { blockProject, ownBlocks, pickedVariant, THEMES, type GalleryBlock } from './gallery.ts';
+import { blockProject, filterGallery, lookHit, lookHits, looksOf, ownBlocks, pickedVariant, THEMES, type GalleryBlock, type GalleryIndex } from './gallery.ts';
 
 const progress: GalleryBlock = {
   plugin: 'common', group: '共用積木', type: 'common.progress', label: '進度條', doc: '片子走到哪裡', kind: 'overlay', needsMedia: false, category: 'chapter',
@@ -65,4 +65,41 @@ test('a project\'s own block keeps its variants, names and docs only (no picture
     variants: { param: 'look', list: [{ value: 'a', label: 'A', doc: 'one', sample: 'x' }, { value: 'b', label: 'B', doc: 'two' }] } }]);
   expect(b.variants).toEqual({ param: 'look', list: [{ value: 'a', label: 'A', doc: 'one' }, { value: 'b', label: 'B', doc: 'two' }] });
   expect(ownBlocks([{ type: 'fx.u', label: 'u', kind: 'overlay', params: [] }])[0].variants).toBeUndefined();
+});
+
+test('a card\'s looks: its variants first, then its templates, each with what picking it sets', () => {
+  const b: GalleryBlock = { ...progress, templates: [{ id: 'race', label: '賽跑', doc: '一路跑', params: { mode: 'dots', size: 6 }, thumb: '/api/gallery/thumb/progress-tpl-race-t1.50.png' }] };
+  expect(looksOf(b).map((l) => [l.key, l.kind, l.id, l.label, l.thumb, l.set])).toEqual([
+    ['variant:bar', 'variant', 'bar', '長條', '/api/gallery/thumb/progress-t1.50.png', { mode: 'bar' }],
+    ['variant:dots', 'variant', 'dots', '圓點', '/api/gallery/thumb/progress-dots-t1.50.png', { mode: 'dots' }],
+    ['variant:ring', 'variant', 'ring', '圓環', '/api/gallery/thumb/progress-ring-t1.50.png', { mode: 'ring' }],
+    ['template:race', 'template', 'race', '賽跑', '/api/gallery/thumb/progress-tpl-race-t1.50.png', { mode: 'dots', size: 6 }],
+  ]);
+  expect(looksOf(magazine).map((l) => l.key)).toEqual(['variant:feature']);
+  expect(looksOf({ ...magazine, variants: undefined })).toEqual([]);
+});
+
+test('search finds a block by a variant or template; lookHit names the first when the block itself does not match', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const b: GalleryBlock = { ...progress, doc: '片子走到哪裡；ring 和 bar 的走法相同', templates: [{ id: 'race', label: '賽跑', doc: '一路跑到終點', params: { mode: 'dots', size: 6 } }] };
+  const g: GalleryIndex = { blocks: [b, magazine], sfx: [], styles: [], recipes: [] };
+  const found = (q: string) => filterGallery(g, 'blocks', q).map((x: any) => x.type);
+  // a variant's Chinese name and doc, a template's: the block is found, and its card shows the look found
+  expect([found('圓環'), lookHit(b, '圓環')]).toEqual([['common.progress'], { variant: 'ring' }]);
+  expect(lookHit(b, '一排')).toEqual({ variant: 'dots' });
+  expect([found('終點'), lookHit(b, '終點')]).toEqual([['common.progress'], { template: 'race' }]);
+  // its English name and doc, in any UI language (blocks.en.ts has common.progress@ring)
+  expect(lookHit(b, 'percentage')).toEqual({ variant: 'ring' });
+  // every look the query hits is marked; the block's own fields matching: no look shown in its place
+  expect(lookHits(b, '一')).toEqual(['variant:bar', 'variant:dots', 'variant:ring', 'template:race']);
+  expect([found('片子'), lookHit(b, '片子')]).toEqual([['common.progress'], undefined]);
+  // but a look's own name typed in full wins over a block doc that names it in passing
+  expect([lookHit(b, 'ring'), lookHit(b, 'RING'), lookHit(b, 'Ring')]).toEqual([{ variant: 'ring' }, { variant: 'ring' }, { variant: 'ring' }]);
+  expect(lookHit(b, '')).toBeUndefined();
+  expect(found('nothing-like-it')).toEqual([]);
+  try {
+    // the UI language's own names
+    setLang('ja');
+    expect([found('隅の輪'), lookHit(b, '隅の輪')]).toEqual([['common.progress'], { variant: 'ring' }]);
+  } finally { setLang('zh'); }
 });

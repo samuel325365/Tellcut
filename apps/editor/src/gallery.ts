@@ -49,7 +49,8 @@ export const PREVIEW_LEN = BLOCK_PREVIEW_LEN;
  *  other plays on its card's ground. `tpl`: the template whose params are what is set, whose card's ground and shape it takes
  *  then (its ground, else the block's: a template's card drawn on the plain ground keeps the block's own). `variant`: the variant
  *  whose sample the params are, whose card's ground and shape it takes (its own: a variant's card on the plain ground is drawn on
- *  it), and its sample's theme unless the theme menu picks one, and the gallery's street for the sources its sample shows. */
+ *  it), and its sample's theme unless the theme menu picks one, and a gallery picture for the sources its sample shows (the server
+ *  answers them with the made-up map the golden cards show in those windows). */
 export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none', tpl?: GalleryBlockTemplate, variant?: GalleryBlockVariant) {
   const background = variant ? variant.bg : tpl?.bg ?? b.bg, aspect = variant ? variant.aspect : tpl ? tpl.aspect : b.aspect;
   const theme = THEMES[themeId]?.theme ?? variant?.theme;
@@ -143,10 +144,64 @@ export const shown = (id: string, x: { label: string; doc: string }) => blockTex
 /** a plugin group's name in the UI language (core, common, fx have one; a sample film's own keeps its own) */
 export const groupName = (plugin: string, group: string) => (`group.${plugin}` in DICTS.zh ? t(`group.${plugin}` as Key) : group);
 
-/** The cards of a tab whose handle, name, label or doc (in the shown language or the original) matches the query. */
+/** One small picture of a card's strip: a variant of the block or one of its templates, with its name and doc in the UI language
+ *  and what picking it sets (a variant: its option alone; a template: its params). */
+export interface Look {
+  /** `variant:<value>` or `template:<id>` */
+  key: string;
+  kind: 'variant' | 'template';
+  id: string;
+  label: string;
+  doc: string;
+  thumb?: string;
+  bg?: string;
+  set: Record<string, unknown>;
+}
+/** the id a look's English and Japanese texts are kept under: `<type>@<value>`, `<type>#<id>` */
+const lookTextId = (b: GalleryBlock, kind: Look['kind'], id: string) => `${b.type}${kind === 'variant' ? '@' : '#'}${id}`;
+/** a card's looks: its variants in their order, then its templates */
+export function looksOf(b: GalleryBlock): Look[] {
+  const v = b.variants, look = (kind: Look['kind'], id: string, x: { label: string; doc: string; thumb?: string; bg?: string }, set: Record<string, unknown>): Look => {
+    const s = shown(lookTextId(b, kind, id), x);
+    return { key: `${kind}:${id}`, kind, id, label: s.label, doc: s.doc, ...(x.thumb ? { thumb: x.thumb } : {}), ...(x.bg ? { bg: x.bg } : {}), set };
+  };
+  return [...(v?.list ?? []).map((x) => look('variant', x.value, x, { [v!.param]: x.value })), ...(b.templates ?? []).map((x) => look('template', x.id, x, { ...x.params }))];
+}
+
+/** a block's own fields the search reads: handle, type, names and doc (the original and the UI language's), group */
+const blockMatches = (b: GalleryBlock, query: string) => { const y = shown(b.type, b); return matches(query, handleOf(b.type), b.type, b.label, b.doc, y.label, y.doc, b.group, groupName(b.plugin, b.group)); };
+/** a look's words: its value or id, and its name and doc in Chinese, the UI language and English */
+function lookWords(b: GalleryBlock, kind: Look['kind'], id: string, x: { label: string; doc: string }) {
+  const key = lookTextId(b, kind, id), here = shown(key, x), en = blockText(key, x, 'en');
+  return { names: [id, x.label, here.label, en.label], docs: [x.doc, here.doc, en.doc] };
+}
+const lookSources = (b: GalleryBlock) => [...(b.variants?.list ?? []).map((x) => ({ kind: 'variant' as const, id: x.value, x })), ...(b.templates ?? []).map((x) => ({ kind: 'template' as const, id: x.id, x }))];
+/** the keys of the looks (looksOf) the query is found in */
+export function lookHits(b: GalleryBlock, query: string): string[] {
+  if (!query.trim()) return [];
+  return lookSources(b).filter(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return matches(query, undefined, ...w.names, ...w.docs); }).map(({ kind, id }) => `${kind}:${id}`);
+}
+/** The look a card shows in place of its own picture for this query: the first the query is found in when the block's own fields
+ *  do not have it. A look's name typed in full (its value, id or name in any language) is that look even when the block's doc names
+ *  it in passing (progress's doc lists every mode), so searching "ring" shows the ring. */
+export function lookHit(b: GalleryBlock, query: string): { variant?: string; template?: string } | undefined {
+  const q = query.trim().toLowerCase();
+  if (!q) return undefined;
+  const all = lookSources(b), as = (x: { kind: Look['kind']; id: string }) => (x.kind === 'variant' ? { variant: x.id } : { template: x.id });
+  const exact = all.find(({ kind, id, x }) => lookWords(b, kind, id, x).names.some((n) => n.toLowerCase() === q));
+  if (exact) return as(exact);
+  if (blockMatches(b, query)) return undefined;
+  const hits = lookHits(b, query), first = all.find((x) => hits.includes(`${x.kind}:${x.id}`));
+  return first && as(first);
+}
+/** the look's key a lookHit names */
+export const lookKey = (h: { variant?: string; template?: string }) => (h.variant !== undefined ? `variant:${h.variant}` : `template:${h.template}`);
+
+/** The cards of a tab whose handle, name, label or doc (in the shown language or the original) matches the query; a block also by
+ *  one of its variants or templates (lookHits). */
 export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
-  const block = (b: GalleryBlock) => matches(query, handleOf(b.type), b.type, ...fields(b.type, b), b.group, groupName(b.plugin, b.group));
+  const block = (b: GalleryBlock) => blockMatches(b, query) || lookHits(b, query).length > 0;
   if (tab === 'blocks') return g.blocks.filter((b) => !isCaptionBlock(b) && !isTitleBlock(b) && block(b));
   if (tab === 'titles') return (g.titles ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`title:${c.id}`), c.id, ...fields(`title:${c.id}`, c), ...Object.values(c.params).map(String)));
   if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), s.type, ...fields(s.type, s)));

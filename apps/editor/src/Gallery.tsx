@@ -5,10 +5,10 @@
 // that project's own blocks first and each detail offers "Add to project", which adds at the playhead of the tab that opened it
 // (a combo's detail: "Add to timeline", all its layers at once).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { templateName, type Project } from '@tellcut/engine';
+import { templateName, variantCode, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconCaptionOut, IconFaceSticker, IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -95,17 +95,26 @@ function useParams(name: string): [Record<string, unknown>, (p: Record<string, u
   return [set.name === name ? set.params : {}, (params) => setSet({ name, params })];
 }
 
-/** a shared block, or (`own`) one of the project's own, whose modules the preview loads from the project folder */
-function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: OwnProject }) {
+/** the first letter of a name: the small box of a look that has no picture (a project's own block) */
+const firstChar = (s: string) => Array.from(s.trim())[0] ?? '';
+
+/** What the preview plays while a variant is what is set: the block's words in the UI language, under its sample's params in that
+ *  language (the picture its card shows), its option set. Add to project still sends the option alone. */
+const variantPlays = (b: GalleryBlock, v: GalleryBlockVariant, lang: string) =>
+  ({ ...localValues(b.type, b.params), ...((lang === 'en' || lang === 'ja' ? v.local?.[lang] : undefined) ?? v.params ?? {}), [b.variants!.param]: v.value });
+
+/** A shared block, or (`own`) one of the project's own, whose modules the preview loads from the project folder. `set`: what the user
+ *  set on it, held by the page (a card's small pictures set it too). */
+function BlockDetail({ b, to, own, set, setParams }: { b: GalleryBlock; to?: ToProject; own?: OwnProject; set: Record<string, unknown>; setParams: (p: Record<string, unknown>) => void }) {
   const id = own ? `own:${b.type}` : b.type;
-  const [set, setParams] = useParams(id), [theme, setTheme] = useState('none'), [n, setN] = useState(0), x = shown(b.type, b);
+  const [theme, setTheme] = useState('none'), [n, setN] = useState(0), x = shown(b.type, b);
   // the block as it would be added in this UI language: its Chinese words in that language, under what the user changed
-  const params = { ...localValues(b.type, b.params), ...set };
+  const params = { ...localValues(b.type, b.params), ...set }, variant = pickedVariant(b, set);
   return (
     <section class="g-detail" data-detail={id}>
       <Head label={x.label} name={b.type} />
       {own && to ? <PlayerPreview project={ownProject(own, b, params, theme)} playKey={n} src={projectPlayer(to.project.id)} />
-        : <PlayerPreview project={blockProject(b, params, theme, pickedTemplate(b, set))} playKey={n} />}
+        : <PlayerPreview project={blockProject(b, variant ? variantPlays(b, variant, getLang()) : params, theme, pickedTemplate(b, set), variant)} playKey={n} />}
       <div class="g-bar">
         <label>{t('gallery.theme')} <select value={theme} onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}>{Object.keys(THEMES).map((k) => <option value={k}>{t(`gallery.theme.${k}` as Key)}</option>)}</select></label>
         <button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button>
@@ -115,6 +124,7 @@ function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: Ow
       <AddBar id={id} to={to} add={{ kind: 'block', type: b.type, ...(Object.keys(set).length ? { params: set } : {}) }} scene={b.kind === 'scene'} />
       <p class="g-doc">{x.doc || <span class="dim">{t('gallery.noDoc')}</span>}</p>
       {b.needsMedia && <p class="g-warn" data-needs-media>{t('gallery.needsMediaWarn')}</p>}
+      {b.variants?.list.length ? <Variants b={b} picked={variant?.value} pick={(p) => setParams(p)} /> : null}
       {b.templates?.length ? <Templates b={b} set={set} pick={(p) => setParams({ ...p })} /> : null}
       <h3>{t('gallery.params')}</h3>
       <Params type={b.type} defs={b.params} values={params} theme={theme} onChange={(k, v) => setParams({ ...set, [k]: v })} />
@@ -122,25 +132,73 @@ function BlockDetail({ b, to, own }: { b: GalleryBlock; to?: ToProject; own?: Ow
   );
 }
 
+/** a row of the detail's Variants or Templates: its picture (the first letter of its name without one), name, how to write it, doc */
+function LookRow({ on, attrs, tipText, pick, src, label, code, doc }: { on: boolean; attrs: Record<string, string>; tipText: string; pick: () => void; src?: string; label: string; code: string; doc: string }) {
+  return (
+    <li class={on ? 'on' : ''} {...attrs} role="button" tabIndex={0} aria-pressed={on} {...tip(tipText)} onClick={pick}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(); } }}>
+      <Thumb src={src} mark={firstChar(label)} />
+      <span class="g-tpl-text"><strong>{label}</strong><code>{code}</code><small>{doc}</small></span>
+    </li>
+  );
+}
+
+/** A block's variants (engine variants.ts): picking one sets its option alone, so the preview plays its sample and Add to project
+ *  adds the block with just that option; the one that is all that is set is marked. */
+function Variants({ b, picked, pick }: { b: GalleryBlock; picked?: string; pick: (params: Record<string, unknown>) => void }) {
+  const v = b.variants!;
+  return <>
+    <h3>{t('gallery.variants')}</h3>
+    <ul class="g-templates" data-block-variants>
+      {v.list.map((x) => { const s = shown(`${b.type}@${x.value}`, x); return <LookRow on={picked === x.value} attrs={{ 'data-block-variant': x.value }} tipText={t('gallery.variantTip')}
+        pick={() => pick({ [v.param]: x.value })} src={thumbIn(x.thumb, getLang())} label={s.label} code={variantCode(v.param, x.value)} doc={s.doc} />; })}
+    </ul>
+  </>;
+}
+
 /** A block's named templates (engine templates.ts): picking one puts its params in place of what was set, so the preview plays it
  *  and Add to project adds the block with them; the one whose params are exactly what is set is marked. */
 function Templates({ b, set, pick }: { b: GalleryBlock; set: Record<string, unknown>; pick: (params: Record<string, unknown>) => void }) {
-  const same = (p: Record<string, unknown>) => sameParams(p, set);
   return <>
     <h3>{t('gallery.templates')}</h3>
     <ul class="g-templates" data-block-templates>
-      {b.templates!.map((x) => {
-        const s = shown(`${b.type}#${x.id}`, x), on = same(x.params);
-        return (
-          <li class={on ? 'on' : ''} data-block-template={x.id} role="button" tabIndex={0} aria-pressed={on} {...tip(t('gallery.templateTip'))} onClick={() => pick(x.params)}
-            onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(x.params); } }}>
-            <Thumb src={thumbIn(x.thumb, getLang())} />
-            <span class="g-tpl-text"><strong>{s.label}</strong><code>{templateName(b.type, x.id)}</code><small>{s.doc}</small></span>
-          </li>
-        );
-      })}
+      {b.templates!.map((x) => { const s = shown(`${b.type}#${x.id}`, x); return <LookRow on={sameParams(x.params, set)} attrs={{ 'data-block-template': x.id }} tipText={t('gallery.templateTip')}
+        pick={() => pick(x.params)} src={thumbIn(x.thumb, getLang())} label={s.label} code={templateName(b.type, x.id)} doc={s.doc} />; })}
     </ul>
   </>;
+}
+
+/** two rows of five small pictures under a card's own; past that, nine and a +N that opens the rest */
+const LOOK_SLOTS = 10;
+
+/** A card's looks (looksOf): each a small picture (its sample's shape inside a box of one height) that, under the mouse or the
+ *  keyboard, takes the card's picture (`onHover`) and, clicked, picks the card with it set (`onPick`). `hits`: the looks a search
+ *  found, marked; one of them behind the +N shows them all. `pressed`: the look that is what the picked card has set. */
+function CardLooks({ looks, hits, pressed, open, onToggle, onHover, onPick }: { looks: Look[]; hits: string[]; pressed?: string; open: boolean;
+  onToggle: () => void; onHover: (key: string | null) => void; onPick: (l: Look) => void }) {
+  const lang = getLang(), fits = looks.length <= LOOK_SLOTS, rest = looks.length - (LOOK_SLOTS - 1);
+  const found = !fits && hits.some((k) => looks.findIndex((l) => l.key === k) >= LOOK_SLOTS - 1);
+  const list = fits || open || found ? looks : looks.slice(0, LOOK_SLOTS - 1);
+  return (
+    <span class="g-looks" data-card-looks role="group" aria-label={t('gallery.looks')}>
+      {list.map((l) => (
+        <span class={`g-look${l.thumb ? '' : ' g-look-none'}${hits.includes(l.key) ? ' hit' : ''}${pressed === l.key ? ' on' : ''}`} {...{ [l.kind === 'variant' ? 'data-look-variant' : 'data-look-template']: l.id }}
+          role="button" tabIndex={0} aria-pressed={pressed === l.key} {...tip(l.doc)} aria-label={l.label} style={l.thumb && l.bg ? { background: l.bg } : undefined}
+          onMouseEnter={() => onHover(l.key)} onMouseLeave={() => onHover(null)} onFocus={() => onHover(l.key)} onBlur={() => onHover(null)}
+          onClick={(e) => { e.stopPropagation(); onPick(l); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onPick(l); } }}>
+          <LookPic src={thumbIn(l.thumb, lang)} mark={firstChar(l.label)} />
+        </span>))}
+      {!fits && !found && <button class="g-look g-looks-more" data-looks-more aria-expanded={open} {...tip(open ? t('gallery.looksLess') : t('gallery.looksMore', { n: rest }))}
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}>{open ? '−' : `+${rest}`}</button>}
+    </span>
+  );
+}
+
+/** a look's small picture, whole inside its box; the first letter of its name when it has none (or it fails to load) */
+function LookPic({ src, mark }: { src?: string; mark: string }) {
+  const [bad, setBad] = useState<string>();
+  return src && bad !== src ? <img src={src} alt="" loading="lazy" onError={() => setBad(src)} /> : <span class="g-look-mark" aria-hidden="true">{mark}</span>;
 }
 
 /** A clip effect: its preview looping (the street, to the map for a transition: clipProject), what it is for and its cut.ts line;
@@ -377,10 +435,12 @@ function MineStyleDetail({ s, lib, onChanged, navigate, ask, onAsked }: { s: Lib
   );
 }
 
-/** a block's golden picture; the category's mark when it has none (or it fails to load) */
-function Thumb({ src }: { src?: string }) {
-  const [broken, setBroken] = useState(false);
-  return <span class="g-thumb">{src && !broken ? <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} /> : <IconSpark size={22} />}</span>;
+/** a block's golden picture; when it has none (or it fails to load) `mark` (a look's first letter), else the category's mark. Which
+ *  picture failed is kept, so a card whose picture changes (a look under the mouse) tries the new one. */
+function Thumb({ src, mark }: { src?: string; mark?: string }) {
+  const [bad, setBad] = useState<string>();
+  return <span class="g-thumb">{src && bad !== src ? <img src={src} alt="" loading="lazy" onError={() => setBad(src)} />
+    : mark ? <span class="g-thumb-mark" aria-hidden="true">{mark}</span> : <IconSpark size={22} />}</span>;
 }
 
 export function Gallery({ load, library, project, navigate = (u) => location.assign(u) }: { load: () => Promise<GalleryIndex>; library?: GalleryLibrary; project?: GalleryProject; navigate?: (url: string) => void }) {
@@ -388,6 +448,12 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   const [g, setG] = useState<GalleryIndex | null>(null), [err, setErr] = useState('');
   const [tab, setTab] = useState<Tab>('blocks'), [q, setQ] = useState(''), [cat, setCat] = useState(ALL);
   const [picked, setPicked] = useState<string | null>(null), [plays, setPlays] = useState(0);
+  // what is set on a block card's detail, by card name (the detail's own fields and the card's small pictures both set it); another
+  // card starts from its defaults (in the same render: no frame of the old values)
+  const [blockSet, setBlockSet] = useState<{ name: string; params: Record<string, unknown> }>({ name: '', params: {} });
+  const setOn = (name: string) => (blockSet.name === name ? blockSet.params : {});
+  // the look under the mouse or the keyboard (its card shows it), and the cards whose looks are all shown
+  const [hover, setHover] = useState<{ card: string; key: string } | null>(null), [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   // a card of Mine asked to be deleted: which, and a count so asking again on the same card opens the confirmation again;
   // the name is cleared once the confirmation opened (one-shot: a detail mounted again later must not reopen it)
   const [del, setDel] = useState<{ name: string; n: number }>({ name: '', n: 0 });
@@ -437,15 +503,33 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       {deletable && <button class="icon-btn g-card-del" data-card-delete={name} {...tip(t('lib.deleteTip'))}
         onClick={(e) => { e.stopPropagation(); askDelete(name); }}><IconTrash size={14} /></button>}</li>
   );
-  const blockCard = (b: GalleryBlock) => card(b.type, shown(b.type, b).doc, <>
-    <Thumb src={thumbIn(b.thumb, getLang())} />
-    <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong><Handle id={b.type} /><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
-  </>);
+  // a block card's variants and templates: its picture is the one under the mouse, else the one a search found (lookHit), else its own;
+  // the line under its name says which (kept, empty, so nothing moves when one shows); a click picks the card with that look set
+  const looksCard = (name: string, b: GalleryBlock, src?: string) => {
+    const ls = looksOf(b);
+    if (!ls.length) return { pic: <Thumb src={src} />, line: null, strip: null };
+    const found = needle ? lookHit(b, q) : undefined, hits = found ? lookHits(b, q) : [];
+    const showing = (hover?.card === name ? ls.find((l) => l.key === hover.key) : undefined) ?? (found ? ls.find((l) => l.key === lookKey(found)) : undefined);
+    const set = on === name ? setOn(name) : undefined, v = set && pickedVariant(b, set), tp = set && !v ? pickedTemplate(b, set) : undefined;
+    const pressed = v ? `variant:${v.value}` : tp ? `template:${tp.id}` : undefined;
+    return {
+      pic: showing ? <Thumb src={thumbIn(showing.thumb, getLang())} mark={firstChar(showing.label)} /> : <Thumb src={src} />,
+      line: <span class="g-look-name" data-look-name>{showing?.label ?? ''}</span>,
+      strip: <CardLooks looks={ls} hits={hits} pressed={pressed} open={opened.has(name)}
+        onToggle={() => setOpened((s) => { const x = new Set(s); if (!x.delete(name)) x.add(name); return x; })}
+        onHover={(key) => setHover(key ? { card: name, key } : (h) => (h?.card === name ? null : h))}
+        onPick={(l: Look) => { pick(name); setBlockSet({ name, params: { ...l.set } }); }} />,
+    };
+  };
+  const blockCard = (b: GalleryBlock) => { const x = looksCard(b.type, b, thumbIn(b.thumb, getLang())); return card(b.type, shown(b.type, b).doc, <>
+    {x.pic}{x.strip}
+    <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong>{x.line}<Handle id={b.type} /><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
+  </>); };
   // the project's own: no golden picture; the tag says whose it is wherever the card shows
-  const ownCard = (b: GalleryBlock) => card(`own:${b.type}`, shown(b.type, b).doc, <>
-    <Thumb />
-    <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong><span class="tag" data-own-tag>{t('gallery.ownTag')}</span><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
-  </>, 'g-own');
+  const ownCard = (b: GalleryBlock) => { const x = looksCard(`own:${b.type}`, b); return card(`own:${b.type}`, shown(b.type, b).doc, <>
+    {x.pic}{x.strip}
+    <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(b.type, b).label)}>{shown(b.type, b).label}</strong>{x.line}<span class="tag" data-own-tag>{t('gallery.ownTag')}</span><CopyName name={b.type} />{b.needsMedia && <span class="tag">{t('gallery.needsMedia')}</span>}</span>
+  </>, 'g-own'); };
   const mineCard = (b: LibraryBlockInfo) => card(`mine:${b.type}`, b.desc, <>
     <Thumb src={b.thumb ?? undefined} />
     <span class="g-card-body card-lines"><strong data-card-name {...tip(b.name)}>{b.name}</strong><span class="g-sub">{fromLine(b)}</span></span>
@@ -457,12 +541,12 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
 
   const detail = () => {
     if (!on) return <p class="dim g-hint">{t('gallery.emptyHint')}</p>;
-    if (on.startsWith('own:') && own) { const b = own.blocks.find((x) => `own:${x.type}` === on); return b && <BlockDetail b={b} own={own} to={to} />; }
+    if (on.startsWith('own:') && own) { const b = own.blocks.find((x) => `own:${x.type}` === on); return b && <BlockDetail b={b} own={own} to={to} set={setOn(on)} setParams={(p) => setBlockSet({ name: on, params: p })} />; }
     if (on.startsWith('mine:') && library) { const b = lib?.blocks.find((x) => `mine:${x.type}` === on); return b && <MineDetail b={b} all={lib!.blocks} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} to={to} />; }
     if (on.startsWith('mine-style:') && library) { const x = lib?.styles.find((y) => `mine-style:${y.id}` === on); return x && <MineStyleDetail key={on} s={x} lib={library} onChanged={() => void reloadLib()} navigate={navigate} ask={del.name === on ? del.n : 0} onAsked={asked} />; }
     if (tab === 'blocks') {
       const b = g.blocks.find((x) => x.type === on), f = CLIP_FX.find((x) => x.key === on);
-      return b ? <BlockDetail b={b} to={to} /> : f ? <ClipDetail f={f} /> : null;
+      return b ? <BlockDetail b={b} to={to} set={setOn(on)} setParams={(p) => setBlockSet({ name: on, params: p })} /> : f ? <ClipDetail f={f} /> : null;
     }
     if (tab === 'captions' || tab === 'titles') {
       const kind = tab === 'titles' ? 'title' : 'caption', c = ((kind === 'title' ? g.titles : g.captions) ?? []).find((x) => `${kind}:${x.id}` === on);
@@ -488,7 +572,7 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
       <main class="g-browse">
         <div class="g-toolbar">
           <div class="g-tabs" role="tablist">{TABS.map((k) => <button role="tab" aria-selected={tab === k} class={tab === k ? 'on' : ''} data-tab={k} onClick={() => setTab(k)}>{t(`gallery.tab.${k}` as Key)}</button>)}</div>
-          <input class="g-search" type="search" placeholder={t('gallery.search')} value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
+          <input class="g-search" type="search" placeholder={t('gallery.search')} value={q} onInput={(e) => { setQ((e.target as HTMLInputElement).value); setHover(null); }} />
         </div>
         {showOwn && <section class="g-section" data-own-section>
           {cat === ALL && <h4>{t('gallery.ownHead', { name: to?.name ?? '' })}</h4>}

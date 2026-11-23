@@ -277,8 +277,8 @@ export interface GalleryBlockVariant extends CardGround {
   thumb?: string;
   /** what the preview plays: its sample's params (the picture's own), and in English and Japanese where golden/thumbs.ts has them */
   params?: Record<string, unknown>; local?: { en?: Record<string, unknown>; ja?: Record<string, unknown> };
-  /** its sample's theme, and the source ids its sample reads a picture from (the preview stands the gallery's street in for each,
-   *  engine blockPreviewProject's `stand`) */
+  /** its sample's theme, and the source ids its sample reads a picture from (the preview stands the gallery's made-up map in for
+   *  each, the picture its card shows there: engine blockPreviewProject's `stand`) */
   theme?: Record<string, unknown>; stand?: string[];
 }
 /** The ground and shape the card's picture was drawn on (its sample's `bg`, `wide`, `square`), so the preview plays on the same:

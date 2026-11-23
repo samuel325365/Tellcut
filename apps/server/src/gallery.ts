@@ -29,16 +29,17 @@ const GOLDEN_DIR = join(TELLCUT_ROOT, 'packages/plugin-common/golden');
  *  block that works on the picture under it (engine blockPreviewProject's ground). Made-up pictures kept in git beside the golden
  *  ones, so a card drawn over the street and its preview show the same street. */
 export const GALLERY_IMAGES: Readonly<Record<string, string>> = { street: 'fixtures/street.png', map: 'fixtures/fake-map.png' };
-/** the source ids a sample reads a picture from, which a variant's preview stands the street in for (engine blockPreviewProject's
- *  `stand`): its sources but the photo it is drawn over (golden's street ground) and a map (common.mapcam's tiles are no photo) */
+/** the source ids a sample reads a picture from, which a variant's preview stands the made-up map in for (engine
+ *  blockPreviewProject's `stand`): its sources but the photo it is drawn over (golden's street ground) and a map (common.mapcam's tiles are no photo) */
 const standOf = (s: Sample | undefined) => Object.entries(s?.sources ?? {}).filter(([id, x]) => id !== s!.photo && !x.map).map(([id]) => id);
-/** The gallery picture a request of the gallery player names: one of GALLERY_IMAGES by its name, or the street for a source id a
- *  variant's preview stands it in for (`stands`); none for anything else. The files stay where they are: nothing is copied. */
+/** The gallery picture a request of the gallery player names: one of GALLERY_IMAGES by its name, or the made-up map for a source id
+ *  a variant's preview stands it in for (`stands`): the picture the golden cards of those variants show in their windows (the
+ *  samples' `pic`, samples/fixtures.ts PIC), so the preview matches its card; none for anything else. The files stay where they are: nothing is copied. */
 export function galleryPicture(name: string, stands: ReadonlySet<string>): string | undefined {
   if (Object.hasOwn(GALLERY_IMAGES, name)) return GALLERY_IMAGES[name];
-  return stands.has(name) ? GALLERY_IMAGES.street : undefined;
+  return stands.has(name) ? GALLERY_IMAGES.map : undefined;
 }
-/** every source id the variants of these plugins' blocks stand the street in for */
+/** every source id the variants of these plugins' blocks stand the made-up map in for */
 const standIds = (plugins: Plugin[]) => new Set(plugins.flatMap((p) => p.items ?? []).flatMap((t) => (t.variants?.list ?? []).flatMap((v) => standOf(variantSample(t.type, v.value)))));
 const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
 /** a sample's picture at its last moment (the animation settled) */

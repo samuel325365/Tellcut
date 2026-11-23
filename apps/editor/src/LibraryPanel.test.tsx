@@ -120,6 +120,23 @@ test('blocks come in groups (this project, built-in, the shared categories); the
   expect(groups()).toEqual([['block:text', true]]);
 });
 
+test('the Effects search finds a block by one of its variants: value, name and doc, in Chinese, English and Japanese', async () => {
+  const base = initialState('t'), store = createStore({ ...base, project: fixture(), layout: { ...base.layout, mediaTab: 'effects' as const } });
+  const types = [{ type: 'common.progress', label: '進度條', kind: 'overlay', category: 'chapter', doc: '片子走到哪裡',
+    variants: { param: 'mode', list: [{ value: 'bar', label: '長條', doc: '一條細線' }, { value: 'ring', label: '圓環', doc: '角落畫一圈' }] } },
+  { type: 'common.slam', label: '大字', kind: 'overlay', category: 'text', doc: '一個字砸進畫面' }];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [] } };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const shown = () => [...root.querySelectorAll<HTMLElement>('[data-add-overlay]')].map((e) => e.dataset.addOverlay);
+  const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  // blocks.en.ts / blocks.ja.ts have common.progress@ring: "Ring" and 隅の輪
+  for (const q of ['ring', '圓環', '畫一圈', 'percentage', '隅の輪']) {
+    await act(() => { search.value = q; search.dispatchEvent(new Event('input', { bubbles: true })); });
+    expect(shown(), q).toEqual(['common.progress']);
+  }
+});
+
 test('replace: a picked block takes the place of the selected one of the same kind; a background can only replace', async () => {
   const p: any = fixture();
   p.tracks.push({ id: 'ov', kind: 'overlay', items: [{ id: 'a', type: 'core.flash', start: 0, end: 1, params: {} }, { id: 'bg', type: 'x.paper', start: 0, end: 1, params: {} }] });

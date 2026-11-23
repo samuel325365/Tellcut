@@ -641,6 +641,25 @@ body.lib-dragging iframe { pointer-events: none; }
 .g-thumb { display: grid; place-items: center; aspect-ratio: 9 / 16; overflow: hidden; background: #3a342d; color: rgba(255,255,255,.55); }
 .g-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 .g-thumb-icon { background: var(--s-raise-2); color: var(--s-accent-text); }
+.g-thumb-mark { font-size: 20px; font-weight: 600; line-height: 1; }
+/* a card's variants and templates under its picture: two rows of five boxes of one height, each picture whole inside its box on its
+   card's ground; rings drawn with inset shadows, so being hovered, found or picked never moves anything */
+.g-looks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 8px 10px 0; }
+.g-look { position: relative; display: grid; place-items: center; min-width: 0; height: 34px; border-radius: 6px; overflow: hidden; cursor: pointer;
+  background: #3a342d; box-shadow: inset 0 0 0 1px var(--s-line); transition: box-shadow .12s; }
+.g-look img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.g-look:hover { box-shadow: inset 0 0 0 1.5px var(--s-accent-text); }
+.g-look:focus-visible { outline: 2px solid var(--s-ring); outline-offset: 1px; }
+.g-look.hit { box-shadow: inset 0 0 0 1px var(--s-accent); }
+.g-look.hit::after { content: ''; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--s-accent); box-shadow: 0 0 0 1.5px var(--s-raise-2); }
+.g-look.on { box-shadow: inset 0 0 0 1px var(--s-accent), 0 0 0 2px var(--s-accent); }
+.g-look-none { background: var(--s-raise-2); }
+.g-look-mark { font-size: 12.5px; font-weight: 600; line-height: 1; color: var(--s-accent-text); }
+.gallery .g-looks-more { padding: 0; height: 34px; border-radius: 6px; border: 1px dashed var(--s-line-strong); background: var(--s-raise-2); box-shadow: none;
+  color: var(--s-dim); font-size: 11px; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
+.gallery .g-looks-more:hover { color: var(--s-text); }
+/* the name of the look a card shows: its line kept when empty, so a look under the mouse moves nothing */
+.card-lines .g-look-name { display: block; min-height: 18px; font-size: 12px; line-height: 18px; color: var(--s-accent-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .g-card-body { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 8px 10px 10px; min-width: 0; }
 .g-card-body strong { font-size: 13.5px; font-weight: 500; line-height: 1.35; }
 /* name (up to two lines), handle and type id: one per line, long ones cut with an ellipsis (the full text is in the tooltip) */
