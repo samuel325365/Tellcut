@@ -18,7 +18,7 @@ import { startCardDrag } from './media/drag.ts';
 import { droppedFiles, hasFiles } from './media/file-drop.ts';
 import { mediaKindOfName } from '@tellcut/protocol';
 import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
-import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
+import { aliasText, BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { OLD_BLOCKS } from '@tellcut/engine';
 import { t, type Key } from './i18n/index.ts';
 import { matches, thumbIn } from './gallery.ts';
@@ -68,13 +68,13 @@ const segmentsOf = (duration: number, cuts: number[] | undefined): Array<[number
 export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const p = s.project!, reg = editor.registry;
   const tab = s.layout.mediaTab, [qs, setQs] = useState<Record<MediaTab, string>>({ video: '', audio: '', effects: '' }), q = qs.effects, qa = qs.audio;
-  // a block is found by its variants too (their value, name and doc in Chinese, English and Japanese): its own doc says only what
-  // they share
+  // a block is found by its variants too (their value, name and doc in Chinese, English and Japanese, and their search aliases): its
+  // own doc says only what they share
   const variantWords = (d: any) => ((d.variants?.list ?? []) as Array<{ value: string; label: string; doc: string }>).flatMap((v) => {
     const en = blockText(`${d.type}@${v.value}`, v, 'en'), ja = blockText(`${d.type}@${v.value}`, v, 'ja');
-    return [v.value, v.label, v.doc, en.label, en.doc, ja.label, ja.doc];
+    return [v.value, v.label, v.doc, en.label, en.doc, ja.label, ja.doc, aliasText(`${d.type}@${v.value}`)];
   });
-  const hitIn = (query: string) => (d: any) => matches(query, handleOf(d.type), d.type, d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc, ...variantWords(d));
+  const hitIn = (query: string) => (d: any) => matches(query, handleOf(d.type), d.type, d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc, aliasText(d.type), ...variantWords(d));
   // old blocks stay registered so older projects still play, but are not offered for new use (like the gallery and catalog)
   const offered = (reg?.itemTypes() ?? []).filter((d: any) => !Object.hasOwn(OLD_BLOCKS, d.type));
   const blocks = groupsOf(offered.filter(hitIn(q)), Object.keys(BLOCK_CATEGORY), 'block');

@@ -1,6 +1,6 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
 import { blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { aliasText, BLOCK_CATEGORY, CLIP_GROUPS, handleOf, normalizeHandle, SEARCH_ALIASES, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
@@ -170,27 +170,29 @@ export function looksOf(b: GalleryBlock): Look[] {
   return [...(v?.list ?? []).map((x) => look('variant', x.value, x, { [v!.param]: x.value })), ...(b.templates ?? []).map((x) => look('template', x.id, x, { ...x.params }))];
 }
 
-/** a block's own fields the search reads: handle, type, names and doc (the original and the UI language's), group */
-const blockMatches = (b: GalleryBlock, query: string) => { const y = shown(b.type, b); return matches(query, handleOf(b.type), b.type, b.label, b.doc, y.label, y.doc, b.group, groupName(b.plugin, b.group)); };
-/** a look's words: its value or id, and its name and doc in Chinese, the UI language and English */
+/** a block's own fields the search reads: handle, type, names and doc (the original and the UI language's), search aliases
+ *  (protocol SEARCH_ALIASES), group */
+const blockMatches = (b: GalleryBlock, query: string) => { const y = shown(b.type, b); return matches(query, handleOf(b.type), b.type, b.label, b.doc, y.label, y.doc, aliasText(b.type), b.group, groupName(b.plugin, b.group)); };
+/** a look's words: its value or id, and its name and doc in Chinese, the UI language and English, and its search aliases one by one
+ *  (protocol SEARCH_ALIASES: words for it no text contains, which like its names pick it when typed in full) */
 function lookWords(b: GalleryBlock, kind: Look['kind'], id: string, x: { label: string; doc: string }) {
   const key = lookTextId(b, kind, id), here = shown(key, x), en = blockText(key, x, 'en');
-  return { names: [id, x.label, here.label, en.label], docs: [x.doc, here.doc, en.doc] };
+  return { names: [id, x.label, here.label, en.label], docs: [x.doc, here.doc, en.doc], aliases: Object.hasOwn(SEARCH_ALIASES, key) ? [...SEARCH_ALIASES[key]] : [] };
 }
 const lookSources = (b: GalleryBlock) => [...(b.variants?.list ?? []).map((x) => ({ kind: 'variant' as const, id: x.value, x })), ...(b.templates ?? []).map((x) => ({ kind: 'template' as const, id: x.id, x }))];
 /** the keys of the looks (looksOf) the query is found in */
 export function lookHits(b: GalleryBlock, query: string): string[] {
   if (!query.trim()) return [];
-  return lookSources(b).filter(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return matches(query, undefined, ...w.names, ...w.docs); }).map(({ kind, id }) => `${kind}:${id}`);
+  return lookSources(b).filter(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return matches(query, undefined, ...w.names, ...w.docs, ...w.aliases); }).map(({ kind, id }) => `${kind}:${id}`);
 }
 /** The look a card shows in place of its own picture for this query: the first the query is found in when the block's own fields
- *  do not have it. A look's name typed in full (its value, id or name in any language) is that look even when the block's doc names
- *  it in passing (progress's doc lists every mode), so searching "ring" shows the ring. */
+ *  do not have it. A look's name typed in full (its value, id or name in any language, or one of its search aliases) is that look
+ *  even when the block's doc names it in passing (progress's doc lists every mode), so searching "ring" shows the ring. */
 export function lookHit(b: GalleryBlock, query: string): { variant?: string; template?: string } | undefined {
   const q = query.trim().toLowerCase();
   if (!q) return undefined;
   const all = lookSources(b), as = (x: { kind: Look['kind']; id: string }) => (x.kind === 'variant' ? { variant: x.id } : { template: x.id });
-  const exact = all.find(({ kind, id, x }) => lookWords(b, kind, id, x).names.some((n) => n.toLowerCase() === q));
+  const exact = all.find(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return [...w.names, ...w.aliases].some((n) => n.toLowerCase() === q); });
   if (exact) return as(exact);
   if (blockMatches(b, query)) return undefined;
   const hits = lookHits(b, query), first = all.find((x) => hits.includes(`${x.kind}:${x.id}`));

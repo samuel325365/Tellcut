@@ -5,7 +5,7 @@
 // can be looked up like a type: `catalog MRK-03` (music styles, recipes, clip effects and combos too).
 import { OLD_BLOCKS, templateName, variantCode, type BlockTemplate, type BlockVariant, type Combo, type ComboPart, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
-import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX, wordFinder } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX, aliasText, wordFinder } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
 import { BLOCKS_EN } from '@tellcut/editor/i18n/blocks.en';
 import { describeRecipe } from './cut/recipes/index.ts';
@@ -129,13 +129,15 @@ const joined = (xs: string[]) => xs.join(' ').toLowerCase();
 /** a param's options as words of its block: not those of the param the block's variants name, which are the variants' own words
  *  (else `--find rocket` would hit the block itself and list no look) */
 const optionWords = (t: Entry, d: ParamDef) => (d.type === 'enum' && d.key !== t.variants?.param ? d.options : []);
-/** the block's own words for --find: its type, label, doc, and its params' keys, labels and options */
-const blockText = (t: Entry) => joined([t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...optionWords(t, d)])]);
-/** the block's words a variant or template may lean on for the rest of the query: as blockText but without the params' labels,
- *  which name the looks one by one (progress' size: 「ring：圓環的大小」), so two words from two different looks never meet in one */
-const partBase = (t: Entry) => joined([t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, ...optionWords(t, d)])]);
-const variantText = (t: Entry, v: BlockVariant) => { const en = BLOCKS_EN[`${t.type}@${v.value}`]; return joined([v.value, v.label, v.doc, en?.label ?? '', en?.doc ?? '']); };
-const templatePartText = (t: Entry, x: BlockTemplate) => { const en = BLOCKS_EN[`${t.type}#${x.id}`]; return joined([x.id, x.label, x.doc, en?.label ?? '', en?.doc ?? '']); };
+/** the block's own words for --find: its type, label, doc, its search aliases (protocol SEARCH_ALIASES), and its params' keys,
+ *  labels and options */
+const blockText = (t: Entry) => joined([t.type, t.label, t.doc ?? '', aliasText(t.type), ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...optionWords(t, d)])]);
+/** the block's words a variant or template may lean on for the rest of the query (`--find 計時器 flip`, an alias and a look): as
+ *  blockText but without the params' labels, which name the looks one by one (progress' size: 「ring：圓環的大小」), so two words
+ *  from two different looks never meet in one */
+const partBase = (t: Entry) => joined([t.type, t.label, t.doc ?? '', aliasText(t.type), ...(t.params ?? []).flatMap((d) => [d.key, ...optionWords(t, d)])]);
+const variantText = (t: Entry, v: BlockVariant) => { const en = BLOCKS_EN[`${t.type}@${v.value}`]; return joined([v.value, v.label, v.doc, en?.label ?? '', en?.doc ?? '', aliasText(`${t.type}@${v.value}`)]); };
+const templatePartText = (t: Entry, x: BlockTemplate) => { const en = BLOCKS_EN[`${t.type}#${x.id}`]; return joined([x.id, x.label, x.doc, en?.label ?? '', en?.doc ?? '', aliasText(`${t.type}#${x.id}`)]); };
 /** a variant or template matches when every word is in its own text or its block's, and at least one is in its own text and is not
  *  just the block's name (`--find 進度條` is the block, not the look whose doc says 進度條) */
 function partHits(t: Entry, finds: Finder[], own: string): boolean {

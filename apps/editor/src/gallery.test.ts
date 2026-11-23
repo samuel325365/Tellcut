@@ -156,3 +156,26 @@ test('search finds a block by a variant or template; lookHit names the first whe
     expect([found('隅の輪'), lookHit(b, '隅の輪')]).toEqual([['common.progress'], { variant: 'ring' }]);
   } finally { setLang('zh'); }
 });
+
+test('search finds a block by its search aliases and a look by its own; a look\'s alias typed in full shows that look', () => {
+  // protocol SEARCH_ALIASES: common.countdown has 計時器, common.pen@heart 心形 and 紅心, common.pen@thumb 大拇指
+  const pen: GalleryBlock = {
+    plugin: 'common', group: '共用積木', type: 'common.pen', label: '手繪標記', doc: '筆畫上去的標記；紅心、星星都畫得出來', kind: 'overlay', needsMedia: false, category: 'mark',
+    params: [{ key: 'kind', label: '畫什麼', type: 'enum', options: ['circle', 'heart', 'thumb'], default: 'circle' }],
+    variants: { param: 'kind', list: [{ value: 'circle', label: '圈', doc: '一個圈' }, { value: 'heart', label: '愛心', doc: '一顆愛心' }, { value: 'thumb', label: '讚', doc: '比讚的手' }] },
+  };
+  const countdown: GalleryBlock = { plugin: 'common', group: '共用積木', type: 'common.countdown', label: '倒數', doc: '數字往下數', kind: 'overlay', needsMedia: false, category: 'chapter', params: [] };
+  const g: GalleryIndex = { blocks: [progress, pen, countdown], sfx: [], styles: [], recipes: [] };
+  const found = (q: string) => filterGallery(g, 'blocks', q).map((x: any) => x.type);
+  // a block's alias: the block, its own card
+  expect([found('計時器'), lookHit(countdown, '計時器')]).toEqual([['common.countdown'], undefined]);
+  // a look's alias: the block, and its card shows that look
+  expect([found('心形'), lookHits(pen, '心形'), lookHit(pen, '心形')]).toEqual([['common.pen'], ['variant:heart'], { variant: 'heart' }]);
+  expect([found('大拇指'), lookHit(pen, '大拇指')]).toEqual([['common.pen'], { variant: 'thumb' }]);
+  // typed in full it wins over a block doc that says the word in passing, as a look's name does
+  expect([found('紅心'), lookHit(pen, '紅心')]).toEqual([['common.pen'], { variant: 'heart' }]);
+  // a Latin alias is found at a word's start, in any UI language
+  expect([found('stopwatch'), found('stopw'), found('watch')]).toEqual([['common.countdown'], ['common.countdown'], []]);
+  // another block's aliases are not this one's
+  expect(lookHits(progress, '心形')).toEqual([]);
+});

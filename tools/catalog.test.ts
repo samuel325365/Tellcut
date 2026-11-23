@@ -1,6 +1,6 @@
 import { OLD_BLOCKS, type Plugin } from '@tellcut/engine';
 import { readFileSync } from 'node:fs';
-import { BLOCK_CATEGORY, handleOf } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, handleOf, SEARCH_ALIASES } from '@tellcut/protocol';
 import { findBlocks, findCombos, formatCatalog, formatFind, formatIndex, formatLookup, formatType } from './catalog.ts';
 import { GUIDE_FILE, withIndex } from './blocks-index.ts';
 import { plugins } from '@tellcut/plugins';
@@ -241,4 +241,69 @@ test('combos: the catalog lists them by handle, a handle or combo:<id> shows the
   expect(findCombos(plugins, '組合').length).toBe(plugins.flatMap((p) => p.combos ?? []).length);
   expect(formatFind(plugins, 'glitchcut')).toMatch(/^組合 1 個符合[^\n]*\n {2}CMB-02 +glitchcut/);
   expect(formatIndex(plugins)).toMatch(/^- Combos \(CMB\) \(`c\.combo\('<id>', \{ at \}\)`[^\n]*\): 01 `impact`, 02 `glitchcut`, 03 `punchline`, 04 `rewind`, 05 `reveal`, 06 `celebrate`, 07 `leader`, 08 `memory`, 09 `rush`, 10 `closing`, 11 `irisout`, 12 `stage`$/m);
+});
+
+/** a search alias key split into its block type and, for a look, `@value` or `#id` */
+const aliasKey = (key: string) => { const m = /^([^@#]+)(?:([@#])(.+))?$/.exec(key)!; return { type: m[1], sep: m[2] as '@' | '#' | undefined, id: m[3] }; };
+const sharedItems = plugins.flatMap((p) => p.items ?? []);
+
+test('search aliases: every key names a block offered today, or one of its variants or templates', () => {
+  for (const key of Object.keys(SEARCH_ALIASES)) {
+    const { type, sep, id } = aliasKey(key), t = sharedItems.find((x) => x.type === type);
+    expect([key, !!t && !Object.hasOwn(OLD_BLOCKS, type)]).toEqual([key, true]);
+    if (sep === '@') expect([key, !!t!.variants?.list.some((v) => v.value === id)]).toEqual([key, true]);
+    if (sep === '#') expect([key, (t!.templates ?? []).some((x) => x.id === id)]).toEqual([key, true]);
+  }
+});
+
+test('search aliases: each word finds every block it is for, and a look its own line under the block', () => {
+  // what a --find lists: each block line's type, with the part codes indented under it
+  const listed = (q: string) => {
+    const out = new Map<string, string[]>(); let cur: string[] | undefined;
+    for (const l of formatFind(plugins, q).split('\n')) {
+      const part = /^ {16}(\S+ '[^']+')/.exec(l), block = /^ {2}\S+ +(\S+) /.exec(l);
+      if (part && cur) cur.push(part[1]);
+      else if (block) out.set(block[1], (cur = []));
+      else cur = undefined;
+    }
+    return out;
+  };
+  const words: Record<string, string[]> = {
+    心形: ['common.pen@heart', 'common.sticker@heart', 'common.emoji@tap'], 紅心: ['common.pen@heart', 'common.sticker@heart', 'common.emoji@tap'],
+    大拇指: ['common.pen@thumb'], 勾勾: ['common.pen@check', 'common.list@check'], 彩帶: ['common.sparkle@confetti'], 紙花: ['common.sparkle@confetti'],
+    計時器: ['common.countdown', 'common.story@timer'], 碼表: ['common.countdown', 'common.story@timer'],
+    發票: ['common.receipt', 'common.printer'], 帳單: ['common.receipt', 'common.printer'], 折線: ['common.chart@line'],
+    蠟燭: ['common.candles'], K棒: ['common.candles'], 'k 棒': ['common.candles'], 膠卷: ['common.film', 'common.filmstrip'], google: ['common.search'],
+    效果字: ['common.onomatopoeia'], 名言: ['common.quote'], 刪除線: ['common.strike'], 分屏: ['common.grid', 'common.slant', 'common.duo'],
+    訂閱: ['common.outro@cta'], 星等: ['common.rating'], 下雪: ['common.pen@snow'], 霓虹燈: ['common.slam@led'],
+    頭條: ['common.wipe#band-steep', 'common.search@results'], 快訊: ['common.wipe#band-steep', 'common.search@results'],
+    // a few of the English and Japanese ones, several words each matched on its own
+    'split screen': ['common.grid', 'common.slant'], 'film roll': ['common.film', 'common.filmstrip'], stopwatch: ['common.countdown', 'common.story@timer'],
+    ネオン: ['common.slam@led'], 'breaking news': ['common.wipe#band-steep', 'common.search@results'],
+  };
+  for (const [q, targets] of Object.entries(words)) {
+    const got = listed(q), types = findBlocks(plugins, q).map((t) => t.type);
+    for (const key of targets) {
+      const { type, sep, id } = aliasKey(key), t = sharedItems.find((x) => x.type === type)!;
+      expect([q, key, types.includes(type), got.has(type)]).toEqual([q, key, true, true]);
+      if (sep) expect([q, key, got.get(type)]).toEqual([q, key, expect.arrayContaining([sep === '@' ? `${t.variants!.param}: '${id}'` : `template: '${id}'`])]);
+    }
+  }
+  // a block's alias with a look's own word: the look under the block, as 倒數 flip lists it
+  expect(listed('計時器 flip').get('common.countdown')).toEqual(listed('倒數 flip').get('common.countdown'));
+  expect(listed('計時器 flip').get('common.countdown')).toContain("look: 'flip'");
+  // a block alias alone lists the block, not its looks
+  expect(listed('計時器').get('common.countdown')).toEqual([]);
+});
+
+test('search aliases: a word that is no alias finds what it found before', () => {
+  const qs = ['新聞', 'heart', '愛心', '倒數', '收據', 'snow', 'quote'];
+  const withAliases = qs.map((q) => formatFind(plugins, q));
+  const saved = { ...SEARCH_ALIASES };
+  try {
+    for (const k of Object.keys(SEARCH_ALIASES)) delete (SEARCH_ALIASES as Record<string, unknown>)[k];
+    expect(qs.map((q) => formatFind(plugins, q))).toEqual(withAliases);
+    expect(formatFind(plugins, '心形')).toContain('找不到');
+  } finally { Object.assign(SEARCH_ALIASES, saved); }
+  expect(formatFind(plugins, '心形')).not.toContain('找不到');
 });
