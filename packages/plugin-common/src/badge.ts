@@ -26,7 +26,7 @@ export const badge: ItemType<P, S> = {
   params: [
     { key: 'label', label: '徽章上的字', type: 'string', default: 'No.1' },
     { key: 'plate', label: '旁邊的標題牌（空＝沒有）', type: 'string', default: '' },
-    { key: 'shape', label: '形狀（box 微斜的方塊）', type: 'enum', options: ['star', 'burst', 'circle', 'box'], default: 'star' },
+    { key: 'shape', label: '形狀', type: 'enum', options: ['star', 'burst', 'circle', 'box'], default: 'star' },
     { key: 'x', label: '徽章中心 x（畫面寬比例；box 是方塊的左緣）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.14 },
     { key: 'y', label: '徽章中心 y（畫面高比例；-1＝徽章上緣貼齊安全區上緣）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
     { key: 'size', label: '徽章大小（畫面短邊 %）', type: 'number', min: 4, max: 40, step: 0.5, default: 15 },

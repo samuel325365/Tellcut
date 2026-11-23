@@ -68,7 +68,7 @@ export const grid: ItemType<P, S> = {
     { value: 'six', label: '六格', doc: '2×3 六格（橫式片是 3×2）；清單、一次看好幾個地方' },
   ] },
   params: [
-    { key: 'layout', label: '版面（two 上下、three 上一下二、four 2×2、bento 一大兩小加一橫條、six 2×3）', type: 'enum', options: ['two', 'three', 'four', 'bento', 'six'], default: 'bento' },
+    { key: 'layout', label: '版面', type: 'enum', options: ['two', 'three', 'four', 'bento', 'six'], default: 'bento' },
     { key: 'boxes', label: '自己寫格子（一行一格：x,y,w,h，畫面比例；空＝照版面）', type: 'text', default: '' },
     { key: 'shots', label: '每格的鏡頭（一行一格：素材|素材秒|x,y,zoom|still）', type: 'text', default: '' },
     { key: 'times', label: '每格出現的秒（逗號分隔；空＝每 0.4 秒一格）', type: 'string', default: '' },

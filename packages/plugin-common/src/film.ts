@@ -177,7 +177,7 @@ export const film: ItemType<P, S> = {
     { key: 'vignette', label: '暗角強度', type: 'number', min: 0, max: 1, step: 0.05, default: 0.4 },
     { key: 'color', label: '暗角顏色', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'rate', label: '顆粒每秒換幾次', type: 'number', min: 1, max: 30, step: 1, default: 30 },
-    { key: 'look', label: '樣子（grain 底片顆粒、vhs 錄影帶、super8 八釐米家庭電影、print 印刷網點）', type: 'enum', options: ['grain', 'vhs', 'super8', 'print'], default: 'grain' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['grain', 'vhs', 'super8', 'print'], default: 'grain' },
     { key: 'tint', label: '暖色偏（vhs、super8）', type: 'number', min: 0, max: 0.4, step: 0.01, default: 0.07 },
     { key: 'lines', label: '掃描線濃度（vhs）', type: 'number', min: 0, max: 0.6, step: 0.01, default: 0.11 },
     { key: 'tracking', label: '追蹤雜訊帶（「秒:長:強度」逗號分開，相對項目開始；vhs）', type: 'string', default: '' },

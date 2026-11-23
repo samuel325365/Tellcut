@@ -781,7 +781,7 @@ export const candles: ItemType<P, S> = {
     { value: 'big', label: '大字', doc: '一個大字（text，數字和百分比會從 0 跳上去；tone up 漲色／down 跌色／white／gold，font num 窄體數字／text 粗黑體，size 字級，align left／center）＋下面一行（sub）；單日跌幅這種要一眼看到的數字' },
   ] },
   params: [
-    { key: 'mode', label: '模式（chart 走勢圖、header 標頭、tally 大跌計數、card 事件卡、big 大字）', type: 'enum', options: [...CANDLES_MODES], default: 'chart' },
+    { key: 'mode', label: '模式', type: 'enum', options: [...CANDLES_MODES], default: 'chart' },
     { key: 'data', label: '資料（CSV 檔案路徑或 CSV 文字；空著＝示意資料）', type: 'string', default: '' },
     { key: 'keys', label: '時間軸（一行「片中秒|日期|視窗天數或 all」）', type: 'text', default: '0|2000-01-03|120\n1.3|2004-02-03|260\n1.9|2004-02-03|300\n3|2009-12-18|all' },
     { key: 'updown', label: '漲跌顏色（red 紅漲綠跌、green 綠漲紅跌）', type: 'enum', options: ['red', 'green'], default: 'red' },

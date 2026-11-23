@@ -68,7 +68,7 @@ export const wipe: ItemType<P, S> = {
     { key: 'line', label: '細線粗細（以 1080 短邊計的 px，0＝沒有）', type: 'number', min: 0, max: 60, step: 1, default: 10 },
     { key: 'slant', label: '斜度（上下兩端錯開幾個畫面寬）', type: 'number', min: 0, max: 2, step: 0.01, default: 0.35 },
     { key: 'dir', label: '方向（right 從左往右、left 從右往左）', type: 'enum', options: ['right', 'left'], default: 'right' },
-    { key: 'mode', label: '樣式（band 斜切色帶、hand 手遮鏡頭、curl 翻頁、tiles 格子拼貼、vortex 字的漩渦、stripes 多色斜條、iris 圓形收光、blinds 百葉窗、ink 墨水暈開）', type: 'enum', options: [...MODES], default: 'band' },
+    { key: 'mode', label: '樣式', type: 'enum', options: [...MODES], default: 'band' },
     { key: 'hand', label: '手的顏色（hand）', type: 'color', default: '#24140f' },
     { key: 'cols', label: '格子欄數（tiles；橫的那一邊）', type: 'number', min: 2, max: 20, step: 1, default: 5 },
     { key: 'rows', label: '格子列數（tiles；blinds 是葉片數）', type: 'number', min: 2, max: 30, step: 1, default: 9 },

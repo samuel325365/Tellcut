@@ -164,7 +164,7 @@ export const magazine: ItemType<P, S> = {
     { value: 'back', label: '封底', doc: '封底：影片滿版壓暗、刊頭、收尾大字（headline／deck）、紅色播放按鈕（cta）；片尾，告訴觀眾完整版在哪裡' },
   ] },
   params: [
-    { key: 'layout', label: '版型（feature 內頁、cover 封面、list 清單頁、back 封底）', type: 'enum', options: ['feature', 'cover', 'list', 'back'], default: 'feature' },
+    { key: 'layout', label: '版型', type: 'enum', options: ['feature', 'cover', 'list', 'back'], default: 'feature' },
     { key: 'title', label: '刊頭（雜誌名）', type: 'string', default: 'JOURNAL' },
     { key: 'issue', label: '期別（英文小字）', type: 'string', default: 'THE SUMMER ISSUE' },
     { key: 'issueSub', label: '期別（中文）', type: 'string', default: '夏日特刊' },

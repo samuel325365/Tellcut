@@ -229,7 +229,7 @@ export const album: ItemType<P, S> = {
     { value: 'viewer', label: '看大圖介面', doc: '看大圖的上下介面——返回、date、when、action 字、tools 工具列（圖示逗號分隔），中間透出主軌影片；在手機上看一張大圖、按愛心；heart 在 heartAt 跳一下變 heart 色，show「秒|透明度」關鍵影格（影片播一下就淡掉）' },
   ] },
   params: [
-    { key: 'mode', label: '樣式（grid 相片格、foryou 回憶頁、zoom 點開或縮回的飛行、swipe 左右滑、viewer 看大圖的介面）', type: 'enum', options: [...ALBUM_MODES], default: 'grid' },
+    { key: 'mode', label: '樣式', type: 'enum', options: [...ALBUM_MODES], default: 'grid' },
     { key: 'photos', label: '相片（一行一張：素材|秒|角落字|x,y；「# 地點|日期|泡泡字|版型」開一組；素材 - ＝示意色塊）', type: 'text', default: PHOTOS },
     { key: 'scroll', label: '捲動（grid：一行一個 秒|第幾組（從 0 數；end 到底；數字加 px）|緩動 out/inOut/linear/back；zoom 取項目開始時的位置）', type: 'text', default: '0|0\n0.6|0\n2.2|1|out' },
     { key: 'hide', label: '留白的格子（grid：一行一個 秒-秒|第幾張，從 0 數）', type: 'text', default: '' },

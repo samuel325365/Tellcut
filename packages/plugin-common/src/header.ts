@@ -43,7 +43,7 @@ export const header: ItemType<P, S> = {
     { value: 'big', label: '巨大編號', doc: '角落小標籤：很大的空心描邊編號由下往上露出、標題壓在它下半部（配 common.whoosh）；雜誌內頁感的章節開場' },
   ] },
   params: [
-    { key: 'look', label: '樣子（chip 編號色塊、kicker 小字＋大題目、slate 場記板、flip 翻牌、side 左緣直立書籤、big 巨大空心編號）', type: 'enum', options: ['chip', 'kicker', 'slate', 'flip', 'side', 'big'], default: 'chip' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['chip', 'kicker', 'slate', 'flip', 'side', 'big'], default: 'chip' },
     { key: 'no', label: '編號（kicker 不用）', type: 'string', default: '01' },
     { key: 'text', label: '標題（kicker：【詞】變主色）', type: 'string', default: '開場' },
     { key: 'kicker', label: '題目上面的小字（kicker）', type: 'string', default: 'PODCAST｜午後聊聊' },

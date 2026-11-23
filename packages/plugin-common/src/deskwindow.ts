@@ -52,7 +52,7 @@ export const deskWindow: ItemType<WP, WS> = {
     { value: 'progress', label: '進度條', doc: '視窗裡一條進度條跑滿，上面的字從進行中換成完成；準備中到完成（例如佈置中…到佈置完成）；text「進行中|完成」，progFrom 到 progTo 跑滿' },
   ] },
   params: [
-    { key: 'content', label: '內容（media 片段或照片、search 搜尋框、profile 清單、progress 進度條）', type: 'enum', options: ['media', 'search', 'profile', 'progress'], default: 'media' },
+    { key: 'content', label: '內容', type: 'enum', options: ['media', 'search', 'profile', 'progress'], default: 'media' },
     { key: 'source', label: '素材', type: 'source-ref', default: '' },
     { key: 'in', label: '從素材第幾秒', type: 'number', min: 0, max: 99999, step: 0.01, default: 0 },
     { key: 'cx', label: '對焦 x（素材比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },

@@ -24,7 +24,7 @@ import { goboLayers, goboStep, paintGobo, paintSurface, SURFACE_LOOK, type GoboL
 export type { FlatlayParams } from './flatlay/objects.ts';
 
 const PARAMS: ParamDef[] = [
-  { key: 'kind', label: '東西（postcard 明信片、polaroid 拍立得、photo 相框、tv 老電視、card 卡片）', type: 'enum', options: KINDS, default: 'postcard' },
+  { key: 'kind', label: '東西', type: 'enum', options: KINDS, default: 'postcard' },
   { key: 'shot', label: '畫面（素材|素材秒數|x,y,zoom|still；空＝示意圖）', type: 'string', default: '' },
   { key: 'place', label: '地名（明信片下緣）', type: 'string', default: 'Fontana di Trevi' },
   { key: 'year', label: '年份（明信片右下）', type: 'string', default: '2024' },

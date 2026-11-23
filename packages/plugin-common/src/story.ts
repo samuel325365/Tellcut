@@ -49,7 +49,7 @@ export const story: ItemType<P, S> = {
     { value: 'timer', label: '計時', doc: '深色貼紙，mm:ss 從 from 秒在 at 到 end 之間跑到 to 秒；等待、倒數都行（例如等上菜）；icon 是內建圖示或一個 emoji，text 是時間上面的小字' },
   ] },
   params: [
-    { key: 'kind', label: '種類（poll 投票、slider 表情滑桿、timer 計時）', type: 'enum', options: [...STORY_KINDS], default: 'poll' },
+    { key: 'kind', label: '種類', type: 'enum', options: [...STORY_KINDS], default: 'poll' },
     { key: 'text', label: '問題（poll、slider；timer：時間上面的小字）', type: 'string', default: '要不要再去一次？' },
     { key: 'options', label: '選項（poll：兩到四個，用 | 分開；不到兩個就補「是」「否」，問題是英文、日文就補英文、日文）', type: 'string', default: '當然要 😍|下次再說' },
     { key: 'votes', label: '結果（poll：每個選項的票數或百分比，逗號分隔）', type: 'string', default: '72,28' },

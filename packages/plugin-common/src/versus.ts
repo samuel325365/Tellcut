@@ -42,7 +42,7 @@ export const versus: ItemType<P, S> = {
     { value: 'table', label: '對照表', doc: '「a vs b」、兩欄名字、每列一題（rows：題目|a 說的|b 說的|a 小標|b 小標，\\n 換行）一列一列滑進來、最後一句問觀眾（ask）；收尾' },
   ] },
   params: [
-    { key: 'mode', label: '樣式（title 片頭、round 回合卡、table 對照表）', type: 'enum', options: ['title', 'round', 'table'], default: 'round' },
+    { key: 'mode', label: '樣式', type: 'enum', options: ['title', 'round', 'table'], default: 'round' },
     { key: 'words', label: '兩方的大字（a|b）', type: 'string', default: '他說|她說' },
     { key: 'names', label: '兩方的名字（a|b；title 在 VS 兩邊、table 是欄名）', type: 'string', default: '阿明|Mia 教練' },
     { key: 'label', label: '回合（round）', type: 'string', default: 'ROUND 1' },

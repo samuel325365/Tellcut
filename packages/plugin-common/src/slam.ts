@@ -72,7 +72,7 @@ export const slam: ItemType<P, S> = {
     { key: 'shadow', label: '錯位陰影顏色（透明＝沒有）', type: 'color', default: '#00000000' },
     { key: 'bar', label: '字下面刷開的色槓（透明＝沒有）', type: 'color', default: '#00000000' },
     { key: 'drift', label: '落定後慢慢放大（到結束時多幾倍，0＝不動）', type: 'number', min: 0, max: 0.5, step: 0.01, default: 0 },
-    { key: 'look', label: '樣子（plain 描邊大字、led 黑色 LED 看板發光字、gold 香檳金漸層的斜體襯線大字，落下時一陣暖光）', type: 'enum', options: ['plain', 'led', 'gold'], default: 'plain' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['plain', 'led', 'gold'], default: 'plain' },
     { key: 'ledColor', label: 'LED 字的顏色（led）', type: 'color', default: '#ff3b2a' },
     { key: 'kickerBg', label: '上方小字的色塊（透明＝沒有；有色塊時從左滑進）', type: 'color', default: '#00000000' },
     { key: 'shade', label: '字後面壓暗（0–1）', type: 'number', min: 0, max: 1, step: 0.05, default: 0 },

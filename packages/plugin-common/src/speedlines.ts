@@ -55,7 +55,7 @@ export const speedlines: ItemType<P, S> = {
     { value: 'streak', label: '平行速度線', doc: '整個畫面平行的速度線，長短粗細不一，朝 angle 的方向一直飛過去；衝刺、趕路、快轉、車窗外，疊在畫面上用白色更好看' },
   ] },
   params: [
-    { key: 'look', label: '樣子（radial 從一點放射、focus 四邊往中心的集中線、streak 整面平行的速度線）', type: 'enum', options: ['radial', 'focus', 'streak'], default: 'radial' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['radial', 'focus', 'streak'], default: 'radial' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.4 },
     { key: 'count', label: '線的數量', type: 'number', min: 8, max: 120, step: 1, default: 48 },

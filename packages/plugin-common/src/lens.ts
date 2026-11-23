@@ -193,7 +193,7 @@ export const lens: ItemType<P, S> = {
     { value: 'prism', label: '色散', doc: '色散，越靠邊緣紅、青分得越開，中間清楚；夢幻、恍神、科技感' },
   ] },
   params: [
-    { key: 'look', label: '樣子（magnify 放大鏡、fisheye 魚眼、mosaic 馬賽克、ripple 水波、streak 單向模糊、prism 色散）', type: 'enum', options: [...LOOKS], default: 'magnify' },
+    { key: 'look', label: '樣子', type: 'enum', options: [...LOOKS], default: 'magnify' },
     { key: 'shape', label: '範圍（circle 圓形、box 方形、full 整個畫面）', type: 'enum', options: ['circle', 'box', 'full'], default: 'circle' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.45 },

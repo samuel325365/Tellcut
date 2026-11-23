@@ -176,7 +176,7 @@ export const pen: ItemType<P, S> = {
     { value: 'trace', label: '形狀描線', doc: '跨剪接點的形狀描線：在前一個鏡頭描出形狀（from，畫面比例座標的點），到 cut 那一秒跨過剪接點、在 morph 秒內變形到下一個鏡頭的同一個形狀（to），對上時閃一下（不看 style、x、y、w、h）；match cut、形狀接力' },
   ] },
   params: [
-    { key: 'kind', label: '種類（trace 跨剪接點的形狀描線）', type: 'enum', options: [...PEN_KINDS, 'trace'], default: 'circle' },
+    { key: 'kind', label: '種類', type: 'enum', options: [...PEN_KINDS, 'trace'], default: 'circle' },
     { key: 'style', label: '筆（smooth 乾淨的線、ballpoint 原子筆、marker 麥克筆、crayon 蠟筆、pencil 鉛筆）', type: 'enum', options: ['smooth', 'ballpoint', 'marker', 'crayon', 'pencil'], default: 'smooth' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },

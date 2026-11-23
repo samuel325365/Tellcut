@@ -99,7 +99,7 @@ export const progress: ItemType<P, S> = {
     { id: 'stamps', label: '集點卡', doc: '挑戰、打卡、清單型的片子：右下角一張小紙卡，每走完一章蓋一個星星章，集滿時整張卡跳一下、章全部變色；dots 是格數，runner 換成別的章', params: { mode: 'stamps', position: 'bottom', align: 'right', size: 3.2 } },
   ],
   params: [
-    { key: 'mode', label: '樣式（timeline 日期時間軸；slots 編號卡列；osd 攝影機待辦計數；runner 角色跑道；stretch 長條狗；paws 腳印；segments 分段條；fuse 引線；battery 電量；rocket 火箭；ring 圓環；vine 藤蔓；stamps 集點卡）', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps'], default: 'bar' },
+    { key: 'mode', label: '樣式', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps'], default: 'bar' },
     { key: 'position', label: '位置（rocket 不看：它占滿安全區的高度）', type: 'enum', options: ['top', 'bottom'], default: 'top' },
     { key: 'color', label: '顏色（tabs：目前這章；slots：卡左邊的色塊；stretch：毛色；fuse：火花；battery：亮的格子；rocket：走過的軌道；ring：走過的弧；vine：藤和葉；stamps：章）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'track', label: '底色（fuse：還沒燒的引線；rocket、ring：還沒走到的部分；vine：還沒長到的虛線）', type: 'color', default: '#ffffff40' },

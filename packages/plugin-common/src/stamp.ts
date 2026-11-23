@@ -52,7 +52,7 @@ export const stamp: ItemType<P, S> = {
     { key: 'angle', label: '傾斜（度）', type: 'number', min: -45, max: 45, step: 0.5, default: -10 },
     { key: 'color', label: '印泥顏色（card：卡的底色；ember：燒紅的光和內框）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
-    { key: 'shape', label: '形狀（box 方框、circle 雙圈圓章、card 立場字卡、double 雙框判決章、ember 炭火烙印：炭黑牌上的斜體大字先發光再冷卻）', type: 'enum', options: ['box', 'circle', 'card', 'double', 'ember'], default: 'box' },
+    { key: 'shape', label: '形狀', type: 'enum', options: ['box', 'circle', 'card', 'double', 'ember'], default: 'box' },
     { key: 'x', label: '水平位置（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'tag', label: '卡邊的小標籤（card；空＝沒有）', type: 'string', default: '' },
     { key: 'anchor', label: 'y 對齊卡的哪裡（card：center 中間、top 上緣、bottom 下緣）', type: 'enum', options: ['center', 'top', 'bottom'], default: 'center' },

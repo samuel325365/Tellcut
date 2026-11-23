@@ -66,7 +66,7 @@ export const tag: ItemType<P, S> = {
     { key: 'c1', label: '膠囊顏色一', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
     { key: 'c2', label: '膠囊顏色二', type: 'color', default: '#2ec4b6', theme: 'palette.accent2' },
     { key: 'c3', label: '膠囊顏色三', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
-    { key: 'look', label: '樣子（pill 膠囊、label 方塊相連的地點日期標籤、tape 紙膠帶手寫標籤、pin 圖釘標籤、glass 毛玻璃標籤、day 手帳日期標：撕邊小紙條上第一個標籤是斜體大字、第二個是手寫小字、ember 炭火烙印菜名牌：第一個標籤是燙上去的菜名、第二個是小字）', type: 'enum', options: ['pill', 'label', 'tape', 'pin', 'glass', 'day', 'ember'], default: 'pill' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['pill', 'label', 'tape', 'pin', 'glass', 'day', 'ember'], default: 'pill' },
     { key: 'no', label: '紅筆圈起來的號碼（tape：第一條膠帶左邊；空＝沒有）', type: 'string', default: '' },
     { key: 'check', label: '打勾的秒數（pin：相對項目開始；glass：每個標籤出現後幾秒；-1＝不打勾）', type: 'number', min: -1, max: 60, step: 0.05, default: -1 },
     { key: 'step', label: '一個接一個出現的間隔（秒；glass）', type: 'number', min: 0.02, max: 3, step: 0.01, default: 0.12 },

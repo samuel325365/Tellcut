@@ -91,7 +91,7 @@ export const touch: ItemType<P, S> = {
   ] },
   params: [
     { key: 'touches', label: '手勢（一行一個：秒|tap|x,y、秒-秒|drag|x,y>x,y、秒-秒|pinch|x,y|起距離>終距離、秒-秒|press|x,y）', type: 'text', default: '0.5|tap|0.5,0.38\n1.1-1.9|drag|0.3,0.6>0.7,0.6\n2.2-2.8|pinch|0.5,0.5|0.4>0.15' },
-    { key: 'look', label: '樣子（dot 系統的灰色圓點、glow 白色發亮的指尖、cursor 滑鼠游標）', type: 'enum', options: ['dot', 'glow', 'cursor'], default: 'dot' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['dot', 'glow', 'cursor'], default: 'dot' },
     { key: 'size', label: '圓點半徑（以 1080 短邊計的 px）', type: 'number', min: 10, max: 120, step: 1, default: 46 },
     { key: 'color', label: '圓點顏色', type: 'color', default: '#e4e4ea' },
     { key: 'edge', label: '圓點外框顏色（dot）', type: 'color', default: '#3c3c43' },

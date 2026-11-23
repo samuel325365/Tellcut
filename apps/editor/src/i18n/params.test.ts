@@ -30,6 +30,16 @@ test('every shared block parameter has an English and a Japanese name', () => {
   expect(missing).toEqual([]);
 });
 
+test('the param a block\'s variants pick by is named alone: its looks are told by the variants, not by a hint', () => {
+  const bad: string[] = [];
+  for (const p of plugins) for (const i of p.items ?? []) {
+    if (!i.variants) continue;
+    const k = `${i.type}.${i.variants.param}`, d = i.params?.find((x) => x.key === i.variants!.param);
+    if (!d || d.label.includes('（') || PARAMS_EN[k]?.hint || PARAMS_JA[k]?.hint) bad.push(k);
+  }
+  expect(bad).toEqual([]);
+});
+
 test('no entry is left over from a parameter renamed or removed, and English and Japanese have the same keys', () => {
   const keys = new Set<string>();
   for (const p of plugins) for (const o of [...(p.items ?? []), ...(p.sfx ?? [])]) for (const d of o.params ?? []) keys.add(`${o.type}.${d.key}`);

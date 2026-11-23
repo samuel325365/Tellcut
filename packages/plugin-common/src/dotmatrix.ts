@@ -27,7 +27,7 @@ export const dotmatrix: ItemType<P, S> = {
   ] },
   params: [
     { key: 'text', label: '文字', type: 'string', default: '歡迎光臨・今日營業' },
-    { key: 'mode', label: '動態（still 靜止、marquee 跑馬燈、type 逐字打出）', type: 'enum', options: ['still', 'marquee', 'type'], default: 'marquee' },
+    { key: 'mode', label: '動態', type: 'enum', options: ['still', 'marquee', 'type'], default: 'marquee' },
     { key: 'look', label: '樣子（led 黑底發光招牌、print 墨點）', type: 'enum', options: ['led', 'print'], default: 'led' },
     { key: 'cells', label: '字高（點數；越大越細緻）', type: 'number', min: 7, max: 40, step: 1, default: 16 },
     { key: 'pitch', label: '點距（以 1080 短邊計的 px）', type: 'number', min: 1, max: 20, step: 0.1, default: 6.5 },

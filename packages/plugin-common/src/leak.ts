@@ -85,7 +85,7 @@ export const leak: ItemType<P, S> = {
     { value: 'flare', label: '鏡頭光條', doc: '一條橫向拉長的變形鏡頭光條穿過一個亮點，連著畫面中心的斜線上有幾個小光圈；電影感、科幻、科技、片頭；streak 是光條顏色，預設藍白' },
   ] },
   params: [
-    { key: 'look', label: '樣子（glow 暖色柔光、prism 彩虹光帶、bokeh 失焦光斑、flare 變形鏡頭光條）', type: 'enum', options: ['glow', 'prism', 'bokeh', 'flare'], default: 'glow' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['glow', 'prism', 'bokeh', 'flare'], default: 'glow' },
     { key: 'from', label: '從哪裡進來（tl 左上、tr 右上、bl 左下、br 右下、l 左、r 右）', type: 'enum', options: ['tl', 'tr', 'bl', 'br', 'l', 'r'], default: 'tr' },
     { key: 'travel', label: '掃過的距離（畫面比例；0＝停在 x, y）', type: 'number', min: 0, max: 1.5, step: 0.05, default: 0.6 },
     { key: 'x', label: '停留中心 x（travel 0）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.8 },

@@ -41,7 +41,7 @@ const flash: ItemType<FlashP, HTMLElement> = {
     { key: 'power', label: '曲線次方', type: 'number', min: 1, max: 4, step: 1, default: 1 },
     { key: 'color', label: '顏色', type: 'color', default: '#fff' },
     { key: 'keys', label: '不透明度關鍵影格（「秒:不透明度」逗號分開，相對項目開始；給了就取代最大不透明度、上升、停留、衰減）', type: 'string', default: '' },
-    { key: 'mode', label: '樣式（flat 整片一個顏色、bloom 從一點擴散的光暈、glow 停在一點的一團光）', type: 'enum', options: ['flat', 'bloom', 'glow'], default: 'flat' },
+    { key: 'mode', label: '樣式', type: 'enum', options: ['flat', 'bloom', 'glow'], default: 'flat' },
     { key: 'x', label: '光暈中心 x（畫面寬比例；bloom、glow）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '光暈中心 y（畫面高比例；bloom、glow）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'size', label: '光的半徑（畫面長邊比例；glow）', type: 'number', min: 0.05, max: 1.5, step: 0.05, default: 0.5 },

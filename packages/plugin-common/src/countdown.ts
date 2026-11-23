@@ -58,7 +58,7 @@ export const countdown: ItemType<P, S> = {
     { value: 'leader', label: '老片頭', doc: '老電影片頭的倒數：一個圓盤（color）、十字線、一根指針每一下轉一整圈掃過、中間是數字（ink），整個微微閃、有灰塵，預設黑白；復古片頭、懷舊、家庭錄影、「電影開始」' },
   ] },
   params: [
-    { key: 'look', label: '樣式（ring 環、slant 斜體大字＋弧線、flip 翻牌鐘、leader 老電影片頭）', type: 'enum', options: ['ring', 'slant', 'flip', 'leader'], default: 'ring' },
+    { key: 'look', label: '樣式', type: 'enum', options: ['ring', 'slant', 'flip', 'leader'], default: 'ring' },
     { key: 'colors', label: '每一下的顏色（slant 樣式；逗號分隔輪流；空＝數字顏色；ring 只用數字顏色）', type: 'string', default: '' },
     { key: 'from', label: '從', type: 'number', min: 0, max: 99, step: 1, default: 3 },
     { key: 'to', label: '到', type: 'number', min: 0, max: 99, step: 1, default: 0 },

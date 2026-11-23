@@ -61,7 +61,7 @@ export const headline: ItemType<P, S> = {
     { value: 'doc', label: '紀錄片字卡', doc: '紀錄片式的標題卡：明體大字（可多行）加一行小字，上下兩條細線從中間長出來，整張卡浮上來、最後淡出；bg band 是字後面一條暗色橫帶、black 整個畫面變黑（嚴肅的字卡、章節、年代、地名）、none 只有字和陰影；type 讓字一個一個打出來、enter roll 每個字像被擀開一樣從扁窄展開；strikeFrom＋strikeAt 到時間用一條細線劃掉第幾個字以後的字、那幾個字淡下去（「不加○○」「原本以為…」）；歷史、紀錄片、散文、旅行、品牌片的章節開場' },
     { value: 'brand', label: '品牌標語', doc: '品牌片的字：左下角一行一行從模糊變清楚，小字（sub）變成上方的小標，y 是最後一行字的基線（-1 是安全區底部）；品牌片的一句標語、我們做什麼' },
     { value: 'proof', label: '數字證明', doc: '品牌片的證明：左邊一個往上數的大數字（text，例如 90+），小字（sub）是下方加寬字距的標籤，text 不是數字時照 brand 的大小一行行從模糊變清楚；品牌片列出做到的數量' },
-    { value: 'name', label: '名字片頭', doc: '斜體襯線的大名字（text；中日韓文字沒有斜體，保持直立）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從小圓點長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；慶生、婚禮、畢業的名字片頭' },
+    { value: 'name', label: '名字片頭', doc: '斜體襯線的大名字（text；中日韓文字沒有斜體，保持直立）一個字母一個字母浮上來、一道光掃過，下面一條金色細線從中間的小圓點往兩邊長出來，再一行加寬字距的小字（sub，例如 SWEET SIXTEEN）；慶生、婚禮、畢業的名字片頭' },
   ] },
   params: [
     { key: 'text', label: '大字（可換行）', type: 'text', default: '一座廣場的七百年' },
@@ -79,7 +79,7 @@ export const headline: ItemType<P, S> = {
     { key: 'enter', label: '大字怎麼進來（doc；rise 整張卡浮上來、roll 每個字從扁窄擀開到正常寬度）', type: 'enum', options: ['rise', 'roll'], default: 'rise' },
     { key: 'strikeFrom', label: '從第幾個字起劃掉（doc；從 0 數、換行接著數；-1＝不劃）', type: 'number', min: -1, max: 200, step: 1, default: -1 },
     { key: 'strikeAt', label: '幾秒劃掉（strikeFrom；細線用小字的顏色，劃掉的字淡下去）', type: 'number', min: 0, max: 600, step: 0.05, default: 1.4 },
-    { key: 'look', label: '樣子（doc 紀錄片標題卡；brand 品牌片：左下角一行一行從模糊變清楚，小字變成上方的小標；proof 品牌片的證明：左邊一個往上數的大數字，小字是下方加寬字距的標籤；name 慶生、婚禮的名字片頭：斜體襯線大名字一個字母一個字母浮上來、一道光掃過，下面一條細線從中間的小圓點長出來，再一行加寬字距的小字）', type: 'enum', options: ['doc', 'brand', 'proof', 'name'], default: 'doc' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['doc', 'brand', 'proof', 'name'], default: 'doc' },
   ],
   build(ctx) {
     const ground = abs(ctx.root, { left: '0', right: '0', pointerEvents: 'none' });

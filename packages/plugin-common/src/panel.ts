@@ -42,7 +42,7 @@ export const panel: ItemType<P, S> = {
     { value: 'drawn', label: '手畫框', doc: '手畫的框：pen 選蠟筆 crayon／麥克筆 marker／鉛筆 pencil／原子筆 ballpoint，開頭在 drawIn 秒內一筆一筆畫出來、線條每秒抖 boil 次，外面再一道 ring 色細線（double），corners 的角貼紙膠帶；繪本、筆記本、塗鴉風' },
   ] },
   params: [
-    { key: 'look', label: '樣式（panel 粗框、print 白色相紙邊、bezel 深色窄框、hole 框外整片底色、offset 窗後錯位色塊、drawn 手畫的框）', type: 'enum', options: ['panel', 'print', 'bezel', 'hole', 'offset', 'drawn'], default: 'panel' },
+    { key: 'look', label: '樣式', type: 'enum', options: ['panel', 'print', 'bezel', 'hole', 'offset', 'drawn'], default: 'panel' },
     { key: 'x', label: 'x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: PANEL_FRAME[0] },
     { key: 'y', label: 'y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: PANEL_FRAME[1] },
     { key: 'w', label: '寬（畫面寬比例）', type: 'number', min: 0.05, max: 1, step: 0.005, default: PANEL_FRAME[2] },

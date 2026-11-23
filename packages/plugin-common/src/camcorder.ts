@@ -243,7 +243,7 @@ export const camcorder: ItemType<P, S> = {
     { value: 'snow', label: '雪花', doc: '只有雪花，蓋滿整個畫面；換帶、兩段錄影之間的空白' },
   ] },
   params: [
-    { key: 'mode', label: '模式（osd 觀景窗介面、ff 快轉藍畫面、rew 倒帶撕裂、snow 雪花）', type: 'enum', options: ['osd', 'ff', 'rew', 'snow'], default: 'osd' },
+    { key: 'mode', label: '模式', type: 'enum', options: ['osd', 'ff', 'rew', 'snow'], default: 'osd' },
     { key: 'status', label: '狀態「秒|狀態」一行一個（rec 錄影、stby 待機、stop 停止、play 播放、pause 暫停、ff 快轉、rew 倒帶、photo 拍照）', type: 'text', default: '0|rec' },
     { key: 'counter', label: '帶子計數「秒|讀數（0:15:06 或秒）」一行一個；之後依狀態跑（空＝不顯示）', type: 'text', default: '0|0:15:06' },
     { key: 'counterAt', label: '計數的位置（top 右上、bottom 左下）', type: 'enum', options: ['top', 'bottom'], default: 'bottom' },

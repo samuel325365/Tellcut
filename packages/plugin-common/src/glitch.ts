@@ -85,7 +85,7 @@ export const glitch: ItemType<P, S> = {
     { value: 'block', label: '色塊錯位', doc: '底下畫面的幾塊長方形往旁邊錯開、帶青／洋紅色；資料損毀、切換、壞掉的感覺；bands 是色塊數' },
   ] },
   params: [
-    { key: 'look', label: '樣子（tear 反相橫帶、scan 掃描線、rgb 色版分離、block 色塊錯位）', type: 'enum', options: ['tear', 'scan', 'rgb', 'block'], default: 'tear' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['tear', 'scan', 'rgb', 'block'], default: 'tear' },
     { key: 'bands', label: '橫帶數量（tear；block 是色塊數）', type: 'number', min: 1, max: 14, step: 1, default: 6 },
     { key: 'density', label: '出現機率（0–1，越大越常閃）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.6 },
     { key: 'maxHeight', label: '橫帶最大高度（畫面高比例；tear、block）', type: 'number', min: 0.005, max: 0.2, step: 0.005, default: 0.05 },

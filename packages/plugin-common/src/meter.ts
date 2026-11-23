@@ -74,7 +74,7 @@ export const meter: ItemType<P, S> = {
     { key: 'outline', label: '數字描邊（淺色背景上也看得見）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },
     { key: 'accent', label: '強調色（階段、尺、光暈）', type: 'color', default: '#5fe3ff', theme: 'palette.accent' },
     { key: 'glow', label: '光暈（0–1）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.6 },
-    { key: 'look', label: '樣子（center 置中大數字、band 年代尺、ruler 右側直立量尺）', type: 'enum', options: ['center', 'band', 'ruler'], default: 'center' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['center', 'band', 'ruler'], default: 'center' },
     { key: 'min', label: '尺的起點（0＝從 0 起；年份、身高這種不從 0 開始的尺）', type: 'number', min: -1e9, max: 1e9, step: 1, default: 0 },
     { key: 'pins', label: '小旗（值|accent/hl/dashed|標籤|出現秒|淡掉秒，分號或換行分隔；band、ruler）', type: 'text', default: '' },
     { key: 'sep', label: '千分位逗號', type: 'bool', default: true },

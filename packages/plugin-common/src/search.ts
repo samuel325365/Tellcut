@@ -156,7 +156,7 @@ export const search: ItemType<P, S> = {
     { value: 'bar', label: '小搜尋列', doc: '沒有頁面：畫面上方一條小搜尋列釘在片子上（放大鏡＋query 的問題），press 秒右端彈出打勾；講者回答這個問題時一直留著；typeAt -1＝字已經在框裡，barY 中心高度（-1＝貼著上方安全區），最後 out 秒淡出，沒給就 0.3 秒' },
   ] },
   params: [
-    { key: 'mode', label: '畫面（home 首頁、results 結果頁、ask 問答展開、end 結尾的精選摘要和結果卡、bar 畫面上方釘著的一條小搜尋列）', type: 'enum', options: [...SEARCH_MODES], default: 'home' },
+    { key: 'mode', label: '畫面', type: 'enum', options: [...SEARCH_MODES], default: 'home' },
     { key: 'view', label: '結果頁的影片（window 影片窗、full 滿版加篩選膠囊）', type: 'enum', options: [...SEARCH_VIEWS], default: 'window' },
     { key: 'query', label: '搜尋框的字', type: 'string', default: '週末去哪玩' },
     { key: 'erase', label: '先刪掉的舊字（空＝沒有）', type: 'string', default: '' },

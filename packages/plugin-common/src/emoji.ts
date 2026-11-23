@@ -81,7 +81,7 @@ export const emoji: ItemType<P, S> = {
     { value: 'cover', label: '遮臉', doc: '遮臉用的大 emoji（蓋住臉、hide a face）：第一格到最後一格都全尺寸、不透明、不轉，配 follow: face 會自己放大到蓋住下巴到髮線，path 讓它照「秒|x|y|大小」移動，box 只畫在一個框裡（雜誌頁的影片格），backing 在後面墊一塊同色圓底補滿花瓣間的縫；不露臉的人' },
   ] },
   params: [
-    { key: 'mode', label: '樣式（float 往上飄、tap 雙擊愛心、cover 遮臉：整段不動、不透明）', type: 'enum', options: ['sticker', 'rain', 'float', 'tap', 'cover'], default: 'sticker' },
+    { key: 'mode', label: '樣式', type: 'enum', options: ['sticker', 'rain', 'float', 'tap', 'cover'], default: 'sticker' },
     { key: 'char', label: '表情（一個或數個 emoji；float、tap 的 ♥ 是畫的愛心）', type: 'string', default: '🔥' },
     { key: 'x', label: 'x（畫面寬比例，sticker、cover；float 的起點、tap 的中心）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.78 },
     { key: 'y', label: 'y（畫面高比例，sticker、cover；float 的起點、tap 的中心）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.3 },

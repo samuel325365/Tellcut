@@ -58,7 +58,7 @@ export const outro: ItemType<P, S> = {
     { key: 'ink', label: '墨色', type: 'color', default: '#1e1712', theme: 'palette.ink' },
     { key: 'accent', label: '主色（箭頭、小牌、圓點）', type: 'color', default: '#d9442b', theme: 'palette.accent' },
     { key: 'hl', label: '問號顏色（credits：*斜體行* 的顏色）', type: 'color', default: '#f0b429', theme: 'palette.hl' },
-    { key: 'look', label: '樣子（cta 導流卡；credits 慶生、婚禮的片尾名單：每行一拍淡入，*星號包住* 的行是高亮色斜體、_底線包住_ 的行是加寬字距的小字，其他是粗體名字；cover 是字後面暗色薄紗的濃度；episode 節目片尾卡：lines 節目名、16:9 影片窗、ep 集數、cta 按鈕、credit 小字）', type: 'enum', options: ['cta', 'credits', 'episode'], default: 'cta' },
+    { key: 'look', label: '樣子', type: 'enum', options: ['cta', 'credits', 'episode'], default: 'cta' },
     { key: 'y', label: '名單／整組中心的高度（credits、episode；畫面高比例，-1＝安全區正中間）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'ep', label: '集數（episode；影片窗下面一行主色字，空＝沒有）', type: 'string', default: 'Episode 12' },
     { key: 'credit', label: '授權小字（episode；最下面一行，空＝沒有）', type: 'string', default: '' },

@@ -27,7 +27,7 @@ export const burst: ItemType<P, S> = {
     { value: 'rays', label: '放射爆字', doc: '咬下去的瞬間：從 (x,y) 射出一圈細放射線、大字（咔滋！）在 (tx,ty) 從大縮回彈出、斜斜的；咬、敲、碎、爆汁' },
   ] },
   params: [
-    { key: 'mode', label: '樣式（sticker 鋸齒貼紙、blast 整個畫面爆開、rays 放射線＋爆字）', type: 'enum', options: ['sticker', 'blast', 'rays'], default: 'sticker' },
+    { key: 'mode', label: '樣式', type: 'enum', options: ['sticker', 'blast', 'rays'], default: 'sticker' },
     { key: 'text', label: '文字（【強調】）', type: 'text', default: '出發！' },
     { key: 'points', label: '鋸齒數', type: 'number', min: 6, max: 30, step: 1, default: 14 },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },

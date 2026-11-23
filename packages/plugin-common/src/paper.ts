@@ -31,7 +31,7 @@ export const paper: ItemType<P, S> = {
     { value: 'print', label: '雜誌紙', doc: '雜誌紙：平滑米白紙、細斑點、淡纖維、暖色暗角；雜誌風的版面，common.magazine 的紙' },
   ] },
   params: [
-    { key: 'look', label: '紙（desk 牛皮紙桌面＋索引卡、book 繪本內頁、grid 方格筆記本、print 雜誌紙）', type: 'enum', options: ['desk', 'book', 'grid', 'print'], default: 'desk' },
+    { key: 'look', label: '紙', type: 'enum', options: ['desk', 'book', 'grid', 'print'], default: 'desk' },
     { key: 'color', label: '紙色（desk）', type: 'color', default: '#e7d8bd' },
     { key: 'card', label: '索引卡（desk）', type: 'bool', default: true },
     ...cardParams,

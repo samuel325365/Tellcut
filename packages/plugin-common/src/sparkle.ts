@@ -66,7 +66,7 @@ export const sparkle: ItemType<P, S> = {
     { value: 'glint', label: '十字光芒', doc: '(x, y) 一個亮點拉出長長的十字光芒，變大、微微轉、再消失，在項目的第一秒裡（count、spread 不用）；商品、金屬、珠寶、新車、刀鋒「叮」一下的光' },
   ] },
   params: [
-    { key: 'mode', label: '樣式（burst 炸開、twinkle 閃爍、confetti 彩色紙片落下、glint 十字光芒一閃）', type: 'enum', options: ['burst', 'twinkle', 'confetti', 'glint'], default: 'burst' },
+    { key: 'mode', label: '樣式', type: 'enum', options: ['burst', 'twinkle', 'confetti', 'glint'], default: 'burst' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.45 },
     { key: 'count', label: '數量（confetti 每一個是四片紙）', type: 'number', min: 1, max: 80, step: 1, default: 18 },

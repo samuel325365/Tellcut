@@ -197,7 +197,7 @@ export const audiogram: ItemType<P, S> = {
     { value: 'ring', label: '圓形封面', doc: '圓形封面四周一圈放射長條（封面跟著音量微微放大），封面放在圓心、裁成圓，count 是長條數（預設 72）；有節目封面或講者照片可以放在中間時' },
   ] },
   params: [
-    { key: 'look', label: '外觀（bars 一排長條，中間是現在；wave 最近 1.5 秒從右往左流過；ring 圓形封面四周一圈長條）', type: 'enum', options: ['bars', 'wave', 'ring'], default: 'bars' },
+    { key: 'look', label: '外觀', type: 'enum', options: ['bars', 'wave', 'ring'], default: 'bars' },
     { key: 'source', label: '聽哪個素材（空＝音軌上正在播的；掛在片段上時用那段片段）', type: 'source-ref', default: '' },
     { key: 'at', label: '開頭對上素材的第幾秒（要給 source；-1＝跟著時間軸上的片段）', type: 'number', min: -1, max: 36000, step: 0.1, default: -1 },
     { key: 'speakers', label: '誰在說話（[[從, 到, 第幾位], …]，素材秒數）', type: 'json', default: [] },

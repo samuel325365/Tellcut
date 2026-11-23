@@ -91,7 +91,7 @@ export const chart: ItemType<ChartP, S> = {
     { value: 'line', label: '曲線圖', doc: '一兩條曲線隨時間畫出（播放頭、曲線上的標記、基準線；data 一行一條「名稱|1,3,2,5」，axis 是橫軸兩端，marks 是曲線上的標記，base 是基準線，grow 是播放頭走完全程的時間）；隨時間的變化、趨勢' },
   ] },
   params: [
-    { key: 'kind', label: '圖（bars 長條、pie 圓餅、people 人形圖、rank 排名、balance 天秤、table 對照表、line 曲線）', type: 'enum', options: [...CHART_KINDS], default: 'bars' },
+    { key: 'kind', label: '圖', type: 'enum', options: [...CHART_KINDS], default: 'bars' },
     { key: 'look', label: '樣子（clean 簡潔、hand 手繪、woodcut 木刻排線）', type: 'enum', options: ['clean', 'hand', 'woodcut'], default: 'clean' },
     { key: 'pen', label: '手繪的筆（hand；marker 麥克筆、crayon 蠟筆、pencil 鉛筆、ballpoint 原子筆）', type: 'enum', options: ['marker', 'crayon', 'pencil', 'ballpoint'], default: 'crayon' },
     { key: 'boil', label: '手繪線每秒抖幾次（0＝不抖）', type: 'number', min: 0, max: 24, step: 1, default: 8 },

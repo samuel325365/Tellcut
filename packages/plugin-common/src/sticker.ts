@@ -31,7 +31,7 @@ export const sticker: ItemType<SP, SS> = {
     { value: 'smile', label: '笑臉', doc: '一張圓圓的笑臉貼紙（腮紅、彎彎的嘴）；開心、輕鬆的 Vlog' },
   ] },
   params: [
-    { key: 'shape', label: '形狀（heart 愛心、bolt 閃電、star 星星、smile 笑臉）', type: 'enum', options: ['heart', 'bolt', 'star', 'smile'], default: 'heart' },
+    { key: 'shape', label: '形狀', type: 'enum', options: ['heart', 'bolt', 'star', 'smile'], default: 'heart' },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.8 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.7 },
     { key: 'size', label: '大小（畫面短邊比例）', type: 'number', min: 0.02, max: 0.6, step: 0.005, default: 0.12 },

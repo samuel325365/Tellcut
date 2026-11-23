@@ -29,7 +29,7 @@ export const callout: ItemType<P, S> = {
     { value: 'burst', label: '爆汁放射線', doc: '目標周圍一圈往外噴的爆汁放射線（color 色）；咬下去爆汁、多汁的那一口' },
   ] },
   params: [
-    { key: 'kind', label: '記號（circle 圈、cross 叉、ban 禁止、burst 放射線）', type: 'enum', options: ['circle', 'cross', 'ban', 'burst'], default: 'circle' },
+    { key: 'kind', label: '記號', type: 'enum', options: ['circle', 'cross', 'ban', 'burst'], default: 'circle' },
     { key: 'x', label: '目標 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.42 },
     { key: 'y', label: '目標 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: 0.45 },
     { key: 'r', label: '半徑（畫面短邊比例）', type: 'number', min: 0.02, max: 0.5, step: 0.005, default: 0.11 },

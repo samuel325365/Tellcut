@@ -77,7 +77,7 @@ export const comic: ItemType<P, S> = {
     { value: 'side', label: '左右兩格', doc: '左右兩格，中間的格線斜的；橫式片用' },
   ] },
   params: [
-    { key: 'layout', label: '版面（one 一格、two 上下、two-flip 上下斜向相反、three 上一下二、four 四格、side 左右）', type: 'enum', options: ['one', 'two', 'two-flip', 'three', 'four', 'side'], default: 'two' },
+    { key: 'layout', label: '版面', type: 'enum', options: ['one', 'two', 'two-flip', 'three', 'four', 'side'], default: 'two' },
     { key: 'panels', label: '自己畫格子（一行一格：x,y x,y x,y x,y，畫面比例；空＝照版面）', type: 'text', default: '' },
     { key: 'times', label: '每格出現的秒（逗號分隔；空＝每 0.6 秒一格）', type: 'string', default: '' },
     { key: 'from', label: '每格從哪邊滑進（none、left、right、top、bottom，逗號分隔）', type: 'string', default: '' },
