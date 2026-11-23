@@ -1,5 +1,8 @@
 import { PREVIEW_BG, PREVIEW_GROUND } from '@tellcut/engine';
-import { blockProject, filterGallery, lookHit, lookHits, looksOf, ownBlocks, pickedVariant, THEMES, type GalleryBlock, type GalleryIndex } from './gallery.ts';
+import { handleOf } from '@tellcut/protocol';
+import { plugins } from '@tellcut/plugins';
+import { blockProject, filterGallery, lookHit, lookHits, looksOf, matches, ownBlocks, pickedVariant, THEMES, type GalleryBlock, type GalleryIndex } from './gallery.ts';
+import { blockText } from './i18n/blocks.ts';
 
 const progress: GalleryBlock = {
   plugin: 'common', group: '共用積木', type: 'common.progress', label: '進度條', doc: '片子走到哪裡', kind: 'overlay', needsMedia: false, category: 'chapter',
@@ -20,6 +23,39 @@ const camcorder: GalleryBlock = {
   variants: { param: 'mode', list: [{ value: 'rew', label: '倒帶', doc: '倒帶', params: { mode: 'rew' }, stand: ['pic'], bg: '#123456' }] },
 };
 const variant = (b: GalleryBlock, value: string) => b.variants!.list.find((v) => v.value === value)!;
+
+test('a Latin query is found only where a word starts; one with any other character anywhere', () => {
+  const m = (q: string, ...f: string[]) => matches(q, undefined, ...f);
+  for (const f of ['ring', 'a ring in a corner', 'ringing', 'common.ring', '圓環ring', 'Ring', '(ring)', 'x-ring']) expect([f, m('ring', f)]).toEqual([f, true]);
+  for (const f of ['during', 'coloring', 'string', 'Spring']) expect([f, m('ring', f)]).toEqual([f, false]);
+  // a second hit at a word start counts even when the first is inside a word
+  expect(m('ring', 'during the ring')).toBe(true);
+  // typing a word as far as it goes keeps finding it; case does not matter either way
+  expect([m('prog', 'common.progress'), m('PROG', 'common.progress'), m('Common.Prog', 'common.progress'), m('ring', 'RINGS')]).toEqual([true, true, true, true]);
+  expect([m('ogress', 'common.progress'), m('mon.prog', 'common.progress')]).toEqual([false, false]);
+  // several words: the query as a whole at a word start
+  expect([m('a ring', 'draw a ring'), m('a ring', 'a tiara ring'), m("don't", 'I don\'t'), m('step-2', 'go step-2')]).toEqual([true, false, true, true]);
+  // a query starting with punctuation keeps the substring test
+  expect(m('.progress', 'common.progress')).toBe(true);
+  // CJK, or Latin mixed with it: anywhere in the field
+  expect([m('圓環', '角落一個圓環'), m('環', '圓環'), m('圓ring', '大圓ring'), m('é', 'café')]).toEqual([true, true, true, true]);
+  // the empty query matches everything; the handle rule is unchanged (mrk3 finds MRK-03, and so does its prefix)
+  expect([m('', 'x'), m('  ', 'x')]).toEqual([true, true]);
+  expect([matches('mrk3', 'MRK-03', 'x'), matches('mrk-0', 'MRK-03', 'x'), matches('rk', 'MRK-03', 'x')]).toEqual([true, true, false]);
+});
+
+test('searching "ring" over the real blocks no longer finds one only by "during", "appearing" or "scoring"', () => {
+  const found = (q: string) => plugins.flatMap((p) => p.items ?? []).filter((i) => {
+    const en = blockText(i.type, { label: i.label, doc: i.doc ?? '' }, 'en');
+    return matches(q, handleOf(i.type), i.type, i.label, i.doc ?? '', en.label, en.doc);
+  }).map((i) => i.type);
+  const list = plugins.flatMap((p) => p.items ?? []).find((i) => i.type === 'common.list')!;
+  expect(blockText('common.list', { label: list.label, doc: list.doc ?? '' }, 'en').doc).toMatch(/during/);
+  expect(found('ring')).toContain('common.progress');
+  expect(found('ring')).not.toContain('common.list');
+  expect(found('ring')).not.toContain('common.digits');
+  expect(found('dur')).toContain('common.list');
+});
 
 test('a variant picked: the preview plays on its card\'s ground and shape, in its sample\'s look unless the theme menu picks another', () => {
   const dots = blockProject(progress, { mode: 'dots' }, 'none', undefined, variant(progress, 'dots'));
