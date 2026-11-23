@@ -3,7 +3,7 @@
 // guides/workflow.md carries only an index of the shared blocks (formatIndex, kept there by npm run blocks:index); the
 // details are looked up here. Every line starts with the block's handle (MRK-03, spec 2026-10-22-block-handles), and a handle
 // can be looked up like a type: `catalog MRK-03` (music styles, recipes, clip effects and combos too).
-import { OLD_BLOCKS, templateName, type BlockTemplate, type Combo, type ComboPart, type ParamDef, type Plugin } from '@tellcut/engine';
+import { OLD_BLOCKS, templateName, variantCode, type BlockTemplate, type BlockVariant, type Combo, type ComboPart, type ItemType, type ParamDef, type Plugin } from '@tellcut/engine';
 import { loadStyles, SCORE_LIBRARY, STYLES } from '@tellcut/media-node';
 import { BLOCK_CATEGORY, BLOCK_CATEGORY_EN, BLOCK_PREFIX, CLIP_FX, CLIP_GROUPS, type ClipFx, type ClipGroup, handleOf, HANDLES, normalizeHandle, PLUGIN_GROUP as GROUP, SFX_CATEGORY, SFX_CATEGORY_EN, SFX_PREFIX } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES, type CaptionTemplate } from '@tellcut/plugin-common';
@@ -31,7 +31,7 @@ export function formatTemplates(query = '', kind: Kind = 'caption'): string {
       : "看某個範本設了什麼：npm run tellcut -- catalog TTL-01；用法：c.effect('common.heading', { at, len, text, kicker, sub, template: '<id>' })"].join('\n');
 }
 
-type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[]; onRequest?: boolean; templates?: BlockTemplate[] };
+type Entry = { type: string; label: string; doc?: string; category?: string; params?: ParamDef[]; onRequest?: boolean; templates?: BlockTemplate[]; variants?: ItemType['variants'] };
 /** the user's own blocks (the plugin `mine`, spec 2026-10-29-my-library §4.3): no handle, marked 我的 in its place */
 let MINE = new Set<string>();
 const mineOf = (plugins: Plugin[]) => { MINE = new Set(plugins.filter((p) => p.id === 'mine').flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])].map((t) => t.type))); };
@@ -121,15 +121,57 @@ export function formatCatalog(plugins: Plugin[]): string {
   return out.join('\n');
 }
 
-/** every word (case does not matter) is in the block's type, label, doc, one of its params' key, label or options, or one of its
- *  templates' id, label or doc; a handle (mrk-3 as well as MRK-03) finds its block */
+const wordsOf = (query: string) => query.toLowerCase().split(/\s+/).filter(Boolean);
+const joined = (xs: string[]) => xs.join(' ').toLowerCase();
+/** a param's options as words of its block: not those of the param the block's variants name, which are the variants' own words
+ *  (else `--find rocket` would hit the block itself and list no look) */
+const optionWords = (t: Entry, d: ParamDef) => (d.type === 'enum' && d.key !== t.variants?.param ? d.options : []);
+/** the block's own words for --find: its type, label, doc, and its params' keys, labels and options */
+const blockText = (t: Entry) => joined([t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...optionWords(t, d)])]);
+/** the block's words a variant or template may lean on for the rest of the query: as blockText but without the params' labels,
+ *  which name the looks one by one (progress' size: 「ring：圓環的大小」), so two words from two different looks never meet in one */
+const partBase = (t: Entry) => joined([t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, ...optionWords(t, d)])]);
+const variantText = (t: Entry, v: BlockVariant) => { const en = BLOCKS_EN[`${t.type}@${v.value}`]; return joined([v.value, v.label, v.doc, en?.label ?? '', en?.doc ?? '']); };
+const templatePartText = (t: Entry, x: BlockTemplate) => { const en = BLOCKS_EN[`${t.type}#${x.id}`]; return joined([x.id, x.label, x.doc, en?.label ?? '', en?.doc ?? '']); };
+/** a variant or template matches when every word is in its own text or its block's, and at least one is in its own text and is not
+ *  just the block's name (`--find 進度條` is the block, not the look whose doc says 進度條) */
+function partHits(t: Entry, words: string[], own: string): boolean {
+  const base = partBase(t), name = joined([t.type, t.label]);
+  return words.every((w) => own.includes(w) || base.includes(w)) && words.some((w) => own.includes(w) && !name.includes(w));
+}
+
+/** the variants and templates of block `t` that `query` matches (see partHits); none for a handle, which names the block itself */
+export function findParts(t: Entry, query: string): { variants: BlockVariant[]; templates: BlockTemplate[] } {
+  const words = normalizeHandle(query) ? [] : wordsOf(query);
+  if (!words.length) return { variants: [], templates: [] };
+  return { variants: (t.variants?.list ?? []).filter((v) => partHits(t, words, variantText(t, v))), templates: templatesOf(t).filter((x) => partHits(t, words, templatePartText(t, x))) };
+}
+
+/** every word (case does not matter) is in the block's type, label, doc or one of its params' key, label or options, or one of its
+ *  variants or templates matches (findParts); a handle (mrk-3 as well as MRK-03) finds its block */
 export function findBlocks(plugins: Plugin[], query: string): Entry[] {
   const h = normalizeHandle(query);
   if (h) return plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => handleOf(t.type) === h);
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const text = (t: Entry) => [t.type, t.label, t.doc ?? '', ...(t.params ?? []).flatMap((d) => [d.key, d.label, ...(d.type === 'enum' ? d.options : [])]),
-    ...templatesOf(t).flatMap((x) => [x.id, x.label, x.doc])].join(' ').toLowerCase();
-  return words.length ? plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => !OLD_BLOCKS[t.type] && words.every((x) => text(t).includes(x))) : [];
+  const words = wordsOf(query);
+  const hit = (t: Entry) => words.every((x) => blockText(t).includes(x)) || Object.values(findParts(t, query)).some((xs) => xs.length);
+  return words.length ? plugins.flatMap((p) => [...(p.items ?? []), ...(p.sfx ?? [])]).filter((t) => !OLD_BLOCKS[t.type] && hit(t)) : [];
+}
+
+/** after a block's line when none of its parts is listed: how many looks and templates it has and where to see them */
+function partsNote(t: Entry): string {
+  const n = t.variants?.list.length ?? 0, m = templatesOf(t).length;
+  return n || m ? `（${[n ? `${n} 種樣式` : '', m ? `${m} 個範本` : ''].filter(Boolean).join('、')}：catalog ${t.type}）` : '';
+}
+
+/** the found blocks' lines, each followed by its matching variants and templates as the option c.effect takes (mode: 'rocket'),
+ *  the codes padded to one width; `parts` says whether any part line was written */
+function blockLines(hits: Entry[], query: string): { lines: string[]; parts: boolean } {
+  const found = hits.map((t) => findParts(t, query));
+  const rows = hits.map((t, i) => [...found[i].variants.map((v) => ({ code: variantCode(t.variants!.param, v.value), label: v.label, doc: v.doc })),
+    ...found[i].templates.map((x) => ({ code: variantCode('template', x.id), label: x.label, doc: x.doc }))]);
+  const cw = Math.max(0, ...rows.flat().map((r) => r.code.length)), line = lineOf(Math.max(...hits.map((t) => t.type.length)));
+  const lines = hits.flatMap((t, i) => (rows[i].length ? [line(t), ...rows[i].map((r) => `${' '.repeat(16)}${r.code.padEnd(cw)}  ${r.label} — ${r.doc}`)] : [line(t) + partsNote(t)]));
+  return { lines, parts: rows.some((r) => r.length) };
 }
 
 export function formatFind(plugins: Plugin[], query: string): string {
@@ -145,7 +187,9 @@ export function formatFind(plugins: Plugin[], query: string): string {
     ...(ttls.length ? [`標題範本 ${ttls.length} 個符合（${ttls.slice(0, 3).map((t) => t.id).join('、')}${ttls.length > 3 ? '…' : ''}）：npm run tellcut -- catalog TTL --find ${query}`] : [])];
   if (!hits.length && (capLine.length || comboLines.length)) return [...comboLines, ...capLine].join('\n');
   if (!hits.length) return `找不到符合「${query}」的積木；換個說法（例如「收據」「路線」「手寫」「計分」），或看整份：npm run tellcut -- catalog`;
-  return [`符合「${query}」的積木 ${hits.length} 個：`, ...hits.map(lineOf(Math.max(...hits.map((t) => t.type.length)))), ...comboLines, ...capLine, '', '看參數：npm run tellcut -- catalog <類型或代號>'].join('\n');
+  const { lines, parts } = blockLines(hits, query);
+  return [`符合「${query}」的積木 ${hits.length} 個：`, ...lines, ...comboLines, ...capLine, '',
+    `看參數和全部樣式：npm run tellcut -- catalog <類型或代號>${parts ? "；縮排的 mode: '…'／template: '…' 是 c.effect 的寫法" : ''}`].join('\n');
 }
 
 /** one category of the block index: its name, its handle prefix in brackets, then each block as its handle's number and short name,
@@ -171,6 +215,11 @@ export function formatIndex(plugins: Plugin[]): string {
   const items: Entry[] = (common?.items ?? []).filter((t) => !t.onRequest && !OLD_BLOCKS[t.type]), sfx: Entry[] = common?.sfx ?? [];
   const lines = Object.entries(BLOCK_CATEGORY_EN).map(([k, cat]) => ({ cat, p: BLOCK_PREFIX[k as keyof typeof BLOCK_PREFIX], xs: items.filter((t) => t.category === k) }))
     .filter((c) => c.xs.length).map((c) => `- ${indexLine(c.cat, c.xs, c.p)}`);
+  // the looks of the shared blocks, core's too (core.flash), only their values: catalog --find describes each
+  const core = plugins.find((p) => p.id === 'core');
+  const looks: Entry[] = [...(common?.items ?? []), ...(core?.items ?? [])].filter((t) => t.variants?.list.length && !t.onRequest && !OLD_BLOCKS[t.type]);
+  if (looks.length) lines.push('- Block variants (the param in brackets picks the look; `catalog --find <words>` describes them):',
+    ...looks.map((t) => `  - \`${t.type.replace(/^common\./, '')}\` (${t.variants!.param}): ${t.variants!.list.map((v) => v.value).join(', ')}`));
   const tpls = items.flatMap((t) => templatesOf(t).map((x) => ({ type: t.type, x })));
   if (tpls.length) lines.push("- Block templates (`c.effect(type, { template: '<id>' })`: the template's params go in first, the script's own over them):",
     ...tpls.map(({ type, x }) => `  - \`${templateName(type, x.id)}\`: ${BLOCKS_EN[`${type}#${x.id}`]?.doc ?? x.doc}`));
@@ -229,7 +278,10 @@ export function formatType(plugins: Plugin[], type: string): string {
   const old = OLD_BLOCKS[t.type] ? [`  （舊積木，只為了讓舊專案打得開：新片用 ${OLD_BLOCKS[t.type]}）`] : [];
   const tpls = templatesOf(t), named = tpls.length ? [`  範本（c.effect('${t.type}', { at, len, template: '<id>' })；範本的參數先放，自己給的蓋在上面）：`,
     ...tpls.map((x) => `    ${x.id}（${x.label}）— ${x.doc}：${JSON.stringify(x.params)}`)] : [];
-  return [head, ...old, ...(t.params.length ? t.params.map((d) => `  ${d.key}（${d.label}）：${describe(d)}`) : ['  （沒有參數）']), ...named].join('\n');
+  // the looks one param picks (engine variants.ts), each with its value padded to one width
+  const vs = (t as Entry).variants, vw = Math.max(0, ...(vs?.list ?? []).map((v) => v.value.length));
+  const looks = vs?.list.length ? [`  樣式（${vs.param}，c.effect('${t.type}', { at, len, ${vs.param}: '<value>' })）：`, ...vs.list.map((v) => `    ${v.value.padEnd(vw)}  ${v.label} — ${v.doc}`)] : [];
+  return [head, ...old, ...looks, ...(t.params.length ? t.params.map((d) => `  ${d.key}（${d.label}）：${describe(d)}`) : ['  （沒有參數）']), ...named].join('\n');
 }
 
 /** `catalog <類型或代號>`: a type as formatType shows it; a handle (any case, mrk-3 too) as what it names — a block's or sound

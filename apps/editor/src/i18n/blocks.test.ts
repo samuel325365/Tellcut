@@ -12,6 +12,8 @@ const ids = Object.values(HANDLES).filter((id) => !Object.values(RETIRED).includ
 const recipeIds = ids.filter((id) => id.startsWith('recipe:'));
 /** every block template's key, <type>#<template id> (engine templates.ts): templates have no handle, so they are listed here */
 const templateIds = plugins.flatMap((p) => p.items ?? []).flatMap((t) => (t.templates ?? []).map((x) => `${t.type}#${x.id}`));
+/** every block variant's key, <type>@<value> (engine variants.ts): variants have no handle either */
+const variantIds = plugins.flatMap((p) => p.items ?? []).flatMap((t) => (t.variants?.list ?? []).map((v) => `${t.type}@${v.value}`));
 /** every combo's key, combo:<id> (engine combos.ts), the id its handle (CMB-nn) points at */
 const comboIds = plugins.flatMap((p) => p.combos ?? []).map((c) => `combo:${c.id}`);
 
@@ -42,6 +44,17 @@ describe('block texts', () => {
     }
   });
 
+  it('every block variant has an English and a Japanese name and description', () => {
+    expect(variantIds.length).toBeGreaterThan(0);
+    for (const id of variantIds) {
+      for (const [lang, d] of [['en', BLOCKS_EN], ['ja', BLOCKS_JA]] as const) {
+        expect(d[id]?.label?.trim(), `${lang} label of ${id}`).toBeTruthy();
+        expect(d[id]?.doc?.trim(), `${lang} doc of ${id}`).toBeTruthy();
+      }
+      expect(CJK.test(`${BLOCKS_EN[id].label}${BLOCKS_EN[id].doc}`), `English of ${id} has CJK`).toBe(false);
+    }
+  });
+
   it('every combo has an English and a Japanese name and description', () => {
     expect(comboIds.length).toBeGreaterThan(0);
     for (const id of comboIds) {
@@ -55,7 +68,7 @@ describe('block texts', () => {
 
   it('no entry is left over from a block renamed or retired, and English and Japanese have the same keys', () => {
     // an old block that gave its handle up (common.wash) still opens in older projects, under its English and Japanese name
-    const known = new Set([...ids, ...Object.keys(OLD_BLOCKS), ...templateIds, ...comboIds]);
+    const known = new Set([...ids, ...Object.keys(OLD_BLOCKS), ...templateIds, ...variantIds, ...comboIds]);
     expect(Object.keys(BLOCKS_EN).filter((k) => !known.has(k))).toEqual([]);
     expect(Object.keys(BLOCKS_JA).filter((k) => !known.has(k))).toEqual([]);
     expect(Object.keys(BLOCKS_JA).sort()).toEqual(Object.keys(BLOCKS_EN).sort());

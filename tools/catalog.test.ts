@@ -155,6 +155,54 @@ test('block templates: the index lists each as <block>/<id> with its English doc
   expect(findBlocks(plugins, 'bokeh-night').map((x) => x.type)).toEqual(['common.leak']);
 });
 
+test('block variants: --find lists the looks and templates that match under their block, each as the option to pass', () => {
+  const lines = (q: string) => formatFind(plugins, q).split('\n');
+  const rocket = lines('rocket');
+  expect(rocket.some((l) => /common\.progress/.test(l))).toBe(true);
+  expect(rocket).toContainEqual(expect.stringMatching(/^ {16}mode: 'rocket' +火箭 — /));
+  expect(rocket).toContainEqual(expect.stringMatching(/^ {16}template: 'rocket' +火箭升空 — /));
+  // the two kinds line up: the code column is as wide as the widest code
+  const at = (l: string) => /^ {16}\S+ '[^']+' +/.exec(l)![0].length;
+  expect(at(rocket.find((l) => l.includes("mode: 'rocket'"))!)).toBe(at(rocket.find((l) => l.includes("template: 'rocket'"))!));
+  expect(rocket.at(-1)).toBe("看參數和全部樣式：npm run tellcut -- catalog <類型或代號>；縮排的 mode: '…'／template: '…' 是 c.effect 的寫法");
+  expect(lines('圓環')).toContainEqual(expect.stringMatching(/^ {16}mode: 'ring' +圓環 — /));
+  expect(findBlocks(plugins, '圓環').map((t) => t.type)).toContain('common.progress');
+});
+
+test('block variants: words only at the block level list no look, only how many it has; two words in two different looks list neither', () => {
+  const found = formatFind(plugins, '進度條');
+  expect(found).not.toMatch(/^ +mode: '/m);
+  expect(found).toMatch(/^ {2}CHP-04 +common\.progress +進度條 — [^\n]*（17 種樣式、8 個範本：catalog common\.progress）$/m);
+  expect(found.split('\n').at(-1)).toBe('看參數和全部樣式：npm run tellcut -- catalog <類型或代號>');
+  expect(formatFind(plugins, '火箭 圓環')).not.toMatch(/^ +(mode|template): '/m);
+  // a handle finds the block, never its parts
+  expect(formatFind(plugins, 'CHP-04')).toMatch(/（17 種樣式、8 個範本：catalog common\.progress）$/m);
+});
+
+test('block variants: a block without variants or templates is listed as before', () => {
+  const slam = plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.slam')!;
+  expect(slam.variants).toBeUndefined();
+  expect(slam.templates).toBeUndefined();
+  const out = formatFind(plugins, slam.label).split('\n'), line = out.find((l) => l.includes('common.slam'))!;
+  expect(line).toMatch(new RegExp(`^ {2}${handleOf('common.slam')} +common\\.slam +${slam.label} — `));
+  expect(line.endsWith(slam.doc!)).toBe(true);
+});
+
+test('block variants: catalog <type> has a variants section before the params, and the index a Block variants line', async () => {
+  const s = await formatLookup(plugins, 'common.progress'), ls = s.split('\n');
+  const head = ls.findIndex((l) => l.startsWith("  樣式（mode，c.effect('common.progress', { at, len, mode: '<value>' })）："));
+  expect(head).toBeGreaterThan(0);
+  expect(ls.slice(head + 1, head + 18).every((l) => /^ {4}[a-z]+ +\S+ — /.test(l))).toBe(true);
+  expect(ls[head + 18]).toMatch(/^ {2}mode（/);
+  expect(ls.slice(head + 1, head + 18).map((l) => l.trim().split(/\s+/)[0])).toEqual((plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.progress')!.params.find((d) => d.key === 'mode') as { options: string[] }).options);
+  expect(formatType(plugins, 'common.stamp')).not.toContain('樣式（');
+  const idx = formatIndex(plugins).split('\n'), v = idx.findIndex((l) => l.startsWith('- Block variants'));
+  expect(v).toBeGreaterThan(0);
+  expect(v).toBeLessThan(idx.findIndex((l) => l.startsWith('- Block templates')));
+  expect(idx[v]).toBe("- Block variants (the param in brackets picks the look; `catalog --find <words>` describes them):");
+  expect(idx).toContain('  - `progress` (mode): bar, dots, tabs, pencil, timeline, slots, osd, runner, stretch, paws, segments, fuse, battery, rocket, ring, vine, stamps');
+});
+
 test('combos: the catalog lists them by handle, a handle or combo:<id> shows the layers, search and the index find them', async () => {
   expect(formatCatalog(plugins)).toMatch(/^組合（[^\n]*c\.combo\('<id>', \{ at \}\)[^\n]*\n {2}CMB-01 +impact +重擊 — 重擊、打臉/m);
   const one = await formatLookup(plugins, 'cmb1');

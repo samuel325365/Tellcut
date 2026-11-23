@@ -68,7 +68,26 @@ export const parsePulses = (text: string): Array<[number, number]> => String(tex
 
 export const progress: ItemType<P, S> = {
   type: 'common.progress', label: '進度條', category: 'chapter', kind: 'overlay',
-  doc: '沿安全區上緣或下緣的進度條、一排章節點，或一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），或 pencil：左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾），或 timeline 時間軸：一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place），step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾），或 slots 編號卡列：一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；或 osd 攝影機 OSD 待辦計數：VT323 像素字帶錄影帶紅藍色邊，「TO-DO 3/6」（title 是前面的字）下面一排方格，到 fills 的秒數就勾起來（done 色）、剛勾的那項（labels）在方格下打字出現 hold 秒，全部勾完計數閃幾下；靠安全區右緣（align left 靠左），配 common.camcorder、common.ding；三個規則、三個理由、清單型 Podcast 切片；表示影片走到哪裡，鉤子短片、教學片、食譜、旅行日記常用；另有六種有角色的樣式（step -1 跟著時間走完全程，進度在結束前最多 1 秒先到終點、留時間演「到了」；step 0 以上是目前第幾章，這個項目裡從章頭走到章尾，一章放一個、dots 給總章數）：runner 角色跑道（角色 runner 預設 🐕，一跳一跳往右跑到終點的 goal，預設 🏁；可以是任何 emoji 或專案裡的圖檔，旅行用 ✈️ 🚗、寵物用 🐕 🐈）；stretch 長條狗（手繪的臘腸狗，身體就是進度條、越走越長，尾巴搖、到終點吐舌頭；look cat 貓、worm 毛毛蟲；color 是毛色，例如 #c98a4b）；paws 腳印（一個個蓋上去，dots 是腳印數，建議 12；runner 換成別的印章 emoji）；segments 分段條（每章一段、目前這段慢慢填滿，dots 是段數，at 給每段開始的秒數）；fuse 引線（火花沿繩子燒向 goal，預設 💣，倒數、鉤子、懸念；color 用 #ffb300）；battery 電量（角落一顆電池一格格充滿、旁邊寫百分比，低於 20% 是紅的、充滿變 done 色閃兩下；color 用 #34c759；align left 靠左）。paws 和 segments 夠扁、可以放上緣；runner、stretch、fuse、battery 比較高，放下緣（position bottom），放上緣時 common.header 要用自己的 y 往下讓；另有四種，進度的走法相同：rocket 火箭（直的，貼在畫面左邊或右邊、占滿安全區的高度，🚀 拖著尾焰從下往上飛到頂端的 goal，預設 🌙，到了放煙火；align left 貼左邊、其他貼右邊，position 和 y 沒有用；runner 換成 🎈 這類往上的東西；它會經過畫面邊上的整個高度，寬的字幕碰到時換一邊或把 iconSize 調小，直式短影音貼左邊（右邊是平台的按鈕）；發表、成長、挑戰、目標達成）；ring 圓環（角落一個圓環慢慢畫滿、中間寫百分比，滿了變 done 色放大一下；size 是大小，align left 靠左；runner 給 emoji 就放在中間取代百分比；什麼片子都搭）；vine 藤蔓（手繪的藤沿著邊往右長、一路冒葉子，到終點開一朵花；color 要自己給綠色，例如 #4caf50，done 是花瓣，例如 #ff8fb1；goal 給 emoji 就是結出來的東西，例如 🍓；比較高，放下緣；園藝、料理、成長紀錄、親子）；stamps 集點卡（角落一張小紙卡，每走完一章蓋一個章，dots 是格數、超過 6 格排兩列，集滿時整張跳一下、章變 done 色；runner 換成別的章，例如 ⭐；align left 靠左；挑戰、打卡、清單，做完一件蓋一個）',
+  doc: '表示影片走到哪裡的進度條或章節記號，鉤子短片、教學片、食譜、旅行日記常用。runner、stretch、paws、segments、fuse、battery、rocket、ring、vine、stamps 這十種的進度走法相同：step -1 跟著時間走完全程，進度在結束前最多 1 秒先到終點、留時間演「到了」；step 0 以上是目前第幾章，這個項目裡從章頭走到章尾，一章放一個、dots 給總章數。paws 和 segments 夠扁、可以放上緣；runner、stretch、fuse、battery、vine 比較高，放下緣（position bottom），放上緣時 common.header 要用自己的 y 往下讓。',
+  variants: { param: 'mode', list: [
+    { value: 'bar', label: '進度條', doc: '沿安全區上緣或下緣的一條細長進度條，跟著時間由左往右填滿；只要一條低調的進度時用' },
+    { value: 'dots', label: '章節點', doc: '沿安全區上緣或下緣的一排章節點，走到的點填色、目前那顆大一點；dots 是點數，icons 給 emoji 就變成一排圖示（例如一站一道菜）' },
+    { value: 'tabs', label: '章節籤', doc: '沿安全區上緣或下緣的一排章節籤（圖示＋章名，做過的打勾、目前這章亮起來彈一下），labels 是章名、icons 是章名前的圖示；食譜、教學這種分步驟的片子' },
+    { value: 'pencil', label: '手寫步驟', doc: '左邊手寫標題畫紅線、右邊「步驟 3／8」（counterSize 自訂字級）和一排手繪圓圈（目前那顆塗紅、做完的打勾）；食譜、教學一步步做' },
+    { value: 'timeline', label: '日期時間軸', doc: '一條細線串起等距的日期（labels），發光的圓點從第 from 站滑到第 step 站，線下寫大日期和地點（place）；step -1 是整條畫滿、寫「第一天 — 最後一天」（片尾）；旅行日記一站一站走' },
+    { value: 'slots', label: '編號卡列', doc: '一排虛線空卡 01／02／03，講到那一點（fills）時翻成實卡、左邊主色塊上寫編號、右邊寫關鍵字（labels），pulses 讓某張卡之後再跳一下發光（回顧），common.slip 的 slot 讓大卡飛進某一格；三個規則、三個理由、清單型 Podcast 切片' },
+    { value: 'osd', label: '攝影機待辦', doc: '攝影機 OSD 風的待辦計數：VT323 像素字帶錄影帶紅藍色邊，「TO-DO 3/6」（title 是前面的字）下面一排方格，到 fills 的秒數就勾起來（done 色）、剛勾的那項（labels）在方格下打字出現 hold 秒，全部勾完計數閃幾下；靠安全區右緣（align left 靠左），配 common.camcorder、common.ding；復古攝影機風的 Vlog 列一天的待辦' },
+    { value: 'runner', label: '角色跑道', doc: '角色 runner 預設 🐕，一跳一跳往右跑到終點的 goal，預設 🏁；兩個都可以是任何 emoji 或專案裡的圖檔，旅行用 ✈️ 🚗、寵物用 🐕 🐈' },
+    { value: 'stretch', label: '長條狗', doc: '手繪的臘腸狗，身體就是進度條、越走越長，尾巴搖、到終點吐舌頭；look cat 貓、worm 毛毛蟲；color 是毛色，例如 #c98a4b；寵物、家庭、可愛風的片子' },
+    { value: 'paws', label: '腳印', doc: '腳印一個個蓋上去，dots 是腳印數，建議 12；runner 換成別的印章 emoji；寵物、散步、旅行路上' },
+    { value: 'segments', label: '分段條', doc: '像限時動態的分段條：每章一段、目前這段慢慢填滿，dots 是段數，at 給每段開始的秒數；分成幾章的片子' },
+    { value: 'fuse', label: '引線', doc: '火花沿繩子燒向 goal，預設 💣；color 用 #ffb300；倒數、鉤子、懸念' },
+    { value: 'battery', label: '電量', doc: '角落一顆電池一格格充滿、旁邊寫百分比，低於 20% 是紅的、充滿變 done 色閃兩下；color 用 #34c759；align left 靠左；開箱、挑戰、健身、一天的行程' },
+    { value: 'rocket', label: '火箭', doc: '直的，貼在畫面左邊或右邊、占滿安全區的高度，🚀 拖著尾焰從下往上飛到頂端的 goal，預設 🌙，到了放煙火；align left 貼左邊、其他貼右邊，position 和 y 沒有用；runner 換成 🎈 這類往上的東西；它會經過畫面邊上的整個高度，寬的字幕碰到時換一邊或把 iconSize 調小，直式短影音貼左邊（右邊是平台的按鈕）；發表、成長、挑戰、目標達成' },
+    { value: 'ring', label: '圓環', doc: '角落一個圓環慢慢畫滿、中間寫百分比，滿了變 done 色放大一下；size 是大小，align left 靠左；runner 給 emoji 就放在中間取代百分比；什麼片子都搭' },
+    { value: 'vine', label: '藤蔓', doc: '手繪的藤沿著邊往右長、一路冒葉子，到終點開一朵花；color 要自己給綠色，例如 #4caf50，done 是花瓣，例如 #ff8fb1；goal 給 emoji 就是結出來的東西，例如 🍓；園藝、料理、成長紀錄、親子' },
+    { value: 'stamps', label: '集點卡', doc: '角落一張小紙卡，每走完一章蓋一個章，dots 是格數、超過 6 格排兩列，集滿時整張跳一下、章變 done 色；runner 換成別的章，例如 ⭐；align left 靠左；挑戰、打卡、清單，做完一件蓋一個' },
+  ] },
   templates: [
     { id: 'dog', label: '狗狗跑道', doc: '寵物、散步、輕鬆的 Vlog：一隻小狗沿著畫面下緣的跑道一跳一跳往右跑，走過的地方填色，跑到終點的旗子時旗子彈一下；runner 換成別的 emoji 就是別的角色', params: { mode: 'runner', position: 'bottom', thickness: 14, iconSize: 1.4 } },
     { id: 'sausage', label: '臘腸狗', doc: '寵物、家庭、可愛風的片子：手繪的臘腸狗在畫面下緣，身體就是進度條、越走越長，尾巴一直搖，到終點吐舌頭；look 換成 cat 或 worm', params: { mode: 'stretch', position: 'bottom', thickness: 16, color: '#c98a4b' } },
