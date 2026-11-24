@@ -87,8 +87,16 @@ export const STYLES: Sample[] = [
   { name: 'viewfinder', type: 'common.viewfinder', len: 3, at: [1.5], bg: '#4a6b7c' },
   { name: 'echo', type: 'common.echo', params: { word: 'RIDE', label: '01' }, len: 2, at: [0.1, 1.0], bg: '#4a6b7c' },
   { name: 'echo-mono', type: 'common.echo', params: { word: 'WALK', steps: '0|mono' }, len: 2, at: [1.0], bg: '#ff5a1f' },
+  // its looks (2026-11-24): the depth trail, the ripple pushing out and settled, the swaying stack
+  { name: 'echo-trail', type: 'common.echo', params: { look: 'trail', word: 'RIDE' }, len: 2, at: [1.0], bg: '#4a6b7c' },
+  { name: 'echo-zoom', type: 'common.echo', params: { look: 'zoom', word: 'RIDE' }, len: 2, at: [0.15, 1.0], bg: '#4a6b7c' },
+  { name: 'echo-wave', type: 'common.echo', params: { look: 'wave', word: 'RIDE' }, len: 2, at: [1.4], bg: '#4a6b7c' },
   { name: 'poster', type: 'common.poster', sources: PIC, params: { photos: 'pic|0|0.5,0.5', side: 'ROUND · TAIWAN', barcode: 'RIDE · EAT · REPEAT' }, len: 3, at: [0.1, 1.5] },
   { name: 'band', type: 'common.band', len: 2, at: [0.1, 1.0], bg: '#4a6b7c' },
+  // its looks (2026-11-24): the hazard tape, the cross with its second band wiping in and settled, the outline
+  { name: 'band-caution', type: 'common.band', params: { look: 'caution' }, len: 2, at: [1.0], bg: '#4a6b7c' },
+  { name: 'band-cross', type: 'common.band', params: { look: 'cross' }, len: 2, at: [0.25, 1.0], bg: '#4a6b7c' },
+  { name: 'band-outline', type: 'common.band', params: { look: 'outline' }, len: 2, at: [1.0], bg: '#4a6b7c' },
   { name: 'countdown-slant', type: 'common.countdown', params: { look: 'slant', from: 3, to: 1, end: '', colors: '#ff5a1f,#ffffff' }, len: 3, at: [0.2, 1.5], bg: '#4a6b7c' },
   // common.binocular and common.photostack (2026-11-06, the Wes Anderson pilot film's fx.binocular / fx.cards): the windows opening
   // and open, a spyglass; the stack with its first card sliding in and all three settled

@@ -239,12 +239,12 @@ test('block variants: words only at the block level list no look, only how many 
 });
 
 test('block variants: a block without variants or templates is listed as before', () => {
-  const strike = plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.strike')!;
-  expect(strike.variants).toBeUndefined();
-  expect(strike.templates).toBeUndefined();
-  const out = formatFind(plugins, strike.label).split('\n'), line = out.find((l) => l.includes('common.strike'))!;
-  expect(line).toMatch(new RegExp(`^ {2}${handleOf('common.strike')} +common\\.strike +${strike.label} — `));
-  expect(line.endsWith(strike.doc!)).toBe(true);
+  const hangtag = plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.hangtag')!;
+  expect(hangtag.variants).toBeUndefined();
+  expect(hangtag.templates).toBeUndefined();
+  const out = formatFind(plugins, hangtag.label).split('\n'), line = out.find((l) => l.includes('common.hangtag'))!;
+  expect(line).toMatch(new RegExp(`^ {2}${handleOf('common.hangtag')} +common\\.hangtag +${hangtag.label} — `));
+  expect(line.endsWith(hangtag.doc!)).toBe(true);
   expect(out.at(-1)).toBe('看參數和全部樣式：npm run tellcut -- catalog <類型或代號>');
 });
 
@@ -255,7 +255,7 @@ test('block variants: catalog <type> has a variants section before the params, a
   expect(ls.slice(head + 1, head + 18).every((l) => /^ {4}[a-z]+ +\S+ — /.test(l))).toBe(true);
   expect(ls[head + 18]).toMatch(/^ {2}mode（/);
   expect(ls.slice(head + 1, head + 18).map((l) => l.trim().split(/\s+/)[0])).toEqual((plugins.flatMap((p) => p.items ?? []).find((t) => t.type === 'common.progress')!.params.find((d) => d.key === 'mode') as { options: string[] }).options);
-  expect(formatType(plugins, 'common.strike')).not.toContain('樣式（');
+  expect(formatType(plugins, 'common.hangtag')).not.toContain('樣式（');
   const idx = formatIndex(plugins).split('\n'), v = idx.findIndex((l) => l.startsWith('- Block variants'));
   expect(v).toBeGreaterThan(0);
   expect(v).toBeLessThan(idx.findIndex((l) => l.startsWith('- Block templates')));

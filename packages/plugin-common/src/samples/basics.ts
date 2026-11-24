@@ -123,6 +123,10 @@ export const BASICS: Sample[] = [
   { name: 'gauge-rank', type: 'common.gauge', params: { look: 'neutral', max: 30, hits: '0.3:8, 0.9:9, 1.5:10', readout: '第3, 第2, No.1' }, at: [1.2, 2.4], bg: '#170d0a' },
   { name: 'hangtag', type: 'common.hangtag', at: [0.3, 1.5], bg: '#6b4a3a' },
   { name: 'strike', type: 'common.strike', at: [0.5, 2.0], bg: '#4a5a3a' },
+  // its other looks (2026-11-24): the scribble and the bar mid-stroke, all of them struck
+  { name: 'strike-scribble', type: 'common.strike', params: { look: 'scribble' }, at: [1.08, 2.0], bg: '#3a4a5a' },
+  { name: 'strike-cross', type: 'common.strike', params: { look: 'cross' }, at: [2.0], bg: '#5a4a3a' },
+  { name: 'strike-bar', type: 'common.strike', params: { look: 'bar' }, at: [1.1, 2.0], bg: '#4a4a52' },
   { name: 'timelapse', type: 'common.timelapse', at: [1.5], bg: '#5a6a5a' },
   { name: 'progress-pencil', type: 'common.progress', params: { mode: 'pencil', dots: 8, title: '提拉米蘇・一分鐘食譜', at: '0.2,0.5,0.8,1.1,1.4,1.7,2.0,2.3,2.6' }, at: [1.0, 2.75], bg: '#e7d8bd', theme: { palette: { ink: '#4a3a2e', accent: '#c2533b' } } },
   { name: 'panel-print', type: 'common.panel', params: { look: 'print', x: 0.06, y: 0.17, w: 0.88, h: 0.37 }, at: [0.5], bg: '#e7d8bd' },

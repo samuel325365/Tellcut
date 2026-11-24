@@ -110,7 +110,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `tag` (look): pill, label, tape, pin, glass, day, ember
   - `burst` (mode): sticker, blast, rays
   - `speedlines` (look): radial, focus, streak
-  - `slam` (look): plain, led, gold
+  - `slam` (look): plain, led, gold, neon, extrude, box, split
   - `stamp` (shape): box, circle, card, double, ember
   - `pen` (kind): circle, arrow, underline, check, cross, heart, star, stars, burst, rays, steam, clock, house, snow, diamond, qmark, thumb, trace
   - `sparkle` (mode): burst, twinkle, confetti, glint
@@ -125,6 +125,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `film` (look): grain, vhs, super8, print
   - `paper` (look): desk, book, grid, print
   - `notecard` (mode): step, list, title, done
+  - `strike` (look): marker, scribble, cross, bar
   - `dotmatrix` (mode): still, marquee, type
   - `callout` (kind): circle, cross, ban, burst
   - `wipe` (mode): band, hand, curl, tiles, vortex, stripes, iris, blinds, ink
@@ -140,7 +141,10 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `audiogram` (look): bars, wave, ring
   - `leak` (look): glow, prism, bokeh, flare
   - `comic` (layout): one, two, two-flip, three, four, side
+  - `onomatopoeia` (look): pop, shout, tremble, whisper, zoom, rumble, sparkle, bubble, halftone
   - `window` (content): media, search, profile, progress
+  - `echo` (look): stack, trail, zoom, wave
+  - `band` (look): tape, caution, cross, outline
   - `sticker` (shape): heart, bolt, star, smile
   - `grid` (layout): two, three, four, bento, six
   - `flatlay` (kind): postcard, polaroid, photo, tv, card

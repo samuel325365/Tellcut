@@ -45,6 +45,11 @@ export const GROUPS: Sample[] = [
   { name: 'wide-headline-name', type: 'common.headline', params: { look: 'name', text: 'Happy Birthday', sub: 'SWEET SIXTEEN', bg: 'none' }, len: 4, at: [3.0], wide: true, bg: '#6b5a48' },
   { name: 'outro-credits', type: 'common.outro', params: { look: 'credits', lines: '*With love to everyone who came*\nMom & Dad\nGrandma & Grandpa\n*and all the friends*\n_Music: original score_', beat: 0.4 }, len: 4, at: [0.6, 3.0], bg: '#6b5a48' },
   { name: 'slam-gold', type: 'common.slam', params: { look: 'gold', text: 'Surprise!', tilt: 0, size: 8 }, at: [0.15, 1.5], bg: '#3a2f45' },
+  // its later looks (2026-11-24): the neon mid-flicker, the box mid-slide, the split mid-jump, each settled
+  { name: 'slam-neon', type: 'common.slam', params: { look: 'neon', text: '今晚\n【營業中】' }, at: [0.2, 1.5], bg: '#16141f' },
+  { name: 'slam-extrude', type: 'common.slam', params: { look: 'extrude', text: '史上\n【最強】一碗' }, at: [1.5], bg: '#3d7cc9' },
+  { name: 'slam-box', type: 'common.slam', params: { look: 'box', text: '不排隊\n不訂位\n【只收現金】' }, at: [0.25, 1.5], bg: '#8a7a68' },
+  { name: 'slam-split', type: 'common.slam', params: { look: 'split', text: '等等，\n【什麼？】' }, at: [0.15, 1.5], bg: '#23262e' },
   { name: 'notecard-tick', type: 'common.notecard', params: { mode: 'list', title: 'to-do list', items: 'unpack|clean the house|edit videos|workout|returns|grocery shop', tick: 3, count: '', note: '' }, at: [0.2, 0.62, 1.4], bg: '#e7d8bd' },
   { name: 'notecard-added', type: 'common.notecard', params: { mode: 'list', title: '待辦清單', items: '拆行李|打掃家裡|剪片|退貨|+運動|+買菜', tick: 5, ticked: '1,2,3', count: '', addInk: '#2f6f8f' }, at: [1.3], bg: '#e7d8bd' },
   { name: 'notecard-strike', type: 'common.notecard', params: { mode: 'list', title: '待辦清單', items: '回信|繳帳單|買菜|運動|整理書桌|洗衣服', tick: 6, strike: true, stamp: '清空！', count: '', note: '' }, at: [1.15, 2.0], bg: '#e7d8bd' },
@@ -130,4 +135,14 @@ export const GROUPS: Sample[] = [
   { name: 'comic-two-flip', type: 'common.comic', params: { layout: 'two-flip' }, len: 3, at: [2], bg: '#4a6b7c' },
   { name: 'onomatopoeia', type: 'common.onomatopoeia', params: { rise: 0.06 }, len: 3, at: [0.12, 1.5], bg: '#4a6b7c' },
   { name: 'onomatopoeia-en', type: 'common.onomatopoeia', params: { text: 'SNIFF', font: 'Bangers', weight: 400, color: '#ffffff', size: 12, stroke: 10, spacing: 1.12, depth: 8, tilt: 6 }, len: 3, at: [1.5], bg: '#4a6b7c' },
+  // its looks (2026-11-24): each mid-entrance where the entrance is the look, and settled; then a vertical word
+  { name: 'onomatopoeia-shout', type: 'common.onomatopoeia', params: { look: 'shout', text: '啊啊啊！' }, len: 3, at: [0.2, 1.5], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-tremble', type: 'common.onomatopoeia', params: { look: 'tremble', text: '抖抖抖' }, len: 3, at: [1.5], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-whisper', type: 'common.onomatopoeia', params: { look: 'whisper', text: '靜悄悄…', size: 11 }, len: 3, at: [0.6, 2], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-zoom', type: 'common.onomatopoeia', params: { look: 'zoom', text: '咻——！', x: 0.56 }, len: 3, at: [0.12, 1.5], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-rumble', type: 'common.onomatopoeia', params: { look: 'rumble', text: '轟隆隆' }, len: 3, at: [0.2, 1.5], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-sparkle', type: 'common.onomatopoeia', params: { look: 'sparkle', text: '閃亮亮', color: '#ffb300' }, len: 3, at: [1.3], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-bubble', type: 'common.onomatopoeia', params: { look: 'bubble', text: '軟綿綿' }, len: 3, at: [1.4], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-halftone', type: 'common.onomatopoeia', params: { look: 'halftone', text: '砰！', size: 24 }, len: 3, at: [0.1, 1.5], bg: '#4a6b7c' },
+  { name: 'onomatopoeia-vertical', type: 'common.onomatopoeia', params: { look: 'rumble', text: '咚咚咚', vertical: true, rise: 0.12, x: 0.74, y: 0.36, tilt: 6 }, len: 3, at: [1.5], bg: '#4a6b7c' },
 ];

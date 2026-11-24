@@ -6,14 +6,14 @@ import { quote } from './quote.ts';
 import { rating } from './rating.ts';
 import { stations, stationsLayout } from './stations.ts';
 import { marqueeCopies, reels } from './reels.ts';
-import { strike } from './strike.ts';
+import { strike, strikeMarks } from './strike.ts';
 import { stamp } from './stamp.ts';
 import { tableLayout, versus } from './versus.ts';
 import tokenItems from './token.ts';
 import { commonItems } from './index.ts';
 import { route } from './route.ts';
 import { tag } from './tag.ts';
-import { ledBoard, slam } from './slam.ts';
+import { ledBoard, neonLit, slam, SLAM_CYAN, splitShift } from './slam.ts';
 
 const anything: any = new Proxy(function () {}, {
   get: (_t, k) => (k === Symbol.toPrimitive ? () => 0 : k === 'then' ? undefined : k === 'width' ? 10 : anything),
@@ -228,5 +228,91 @@ describe('common.slam look led', () => {
     const { s } = run(slam, { look: 'led', text: 'x', ledColor: '#2a6bff' }, 1);
     expect(css(s.box).background).toBe(b.bg);
     expect(css(s.grid).backgroundImage).toContain(`rgba(${b.dot},.55)`);
+  });
+});
+
+describe('common.slam looks neon, extrude, box and split', () => {
+  const text = '今晚\n【營業中】';
+  /** what a draw left on the box and on each line (and each word of the lines) */
+  const drawnAt = (s: any) => JSON.stringify([css(s.box), ...[...s.text.el.children].flatMap((l: Element) => [css(l), ...[...l.children].map((w) => css(w))])]);
+  test('each draws a pure function of time: a fresh draw and one after another moment agree', () => {
+    for (const look of ['neon', 'extrude', 'box', 'split']) for (const t of [0.1, 0.2, 0.35, 1.5]) {
+      const a = run(slam, { look, text }, t), b = run(slam, { look, text }, 2.5);
+      slam.draw({ ...b.ctx, t, local: t }, b.s);
+      expect([look, t, drawnAt(b.s)]).toEqual([look, t, drawnAt(a.s)]);
+    }
+  });
+  test('plain is drawn as before: the thick outline, no line or word of its own touched', () => {
+    const { s, theme } = run(slam, { text }, 1.5);
+    expect([css(s.box).webkitTextStroke, css(s.box).textShadow, css(s.box).fontWeight]).toEqual([`${theme.stroke * 1.4}px #1a1a1a`, 'none', '900']);
+    expect([...s.text.el.children].map((l: any) => l._c)).toEqual([undefined, undefined]);
+  });
+  test('neon: each line a tube glowing in hl, the 【word】 a cyan one; unlit before it starts, flickering, then steady', () => {
+    const { s } = run(slam, { look: 'neon', text }, 1.5), [l0, l1] = [...s.text.el.children] as HTMLElement[];
+    expect([css(s.box).webkitTextStroke, css(s.box).textShadow]).toEqual(['0', 'none']);
+    expect(css(l0).textShadow).toContain('rgba(255, 77, 79,');
+    expect(css(l1.querySelector('span')!).textShadow).toContain('rgba(37, 216, 255,');
+    expect(neonLit(-0.1, 30)).toBeLessThan(0.1);
+    const early = Array.from({ length: 13 }, (_, f) => neonLit(f / 30, 30));
+    expect(early.some((b) => b < 0.5) && early.some((b) => b > 0.9)).toBe(true);
+    for (const t of [0.5, 1, 2.2]) expect(neonLit(t, 30)).toBeGreaterThan(0.89);
+    // another look on the same state gets plain lines again
+    const { s: n, ctx } = run(slam, { look: 'neon', text }, 1.5);
+    slam.draw({ ...ctx, params: { ...ctx.params, look: 'plain' } }, n);
+    expect([...n.text.el.children].map((l: any) => l._c)).toEqual([undefined, undefined]);
+  });
+  test('extrude: twelve hard steps down-right in the outline colour, or in shadow when it has one', () => {
+    const side = css(run(slam, { look: 'extrude', text }, 1.5).s.box).textShadow.split(', ');
+    expect(side.length).toBe(12);
+    expect(side.every((l) => l.endsWith(' 0 #1a1a1a'))).toBe(true);
+    expect(side[11]).toBe('0.1000em 0.1000em 0 #1a1a1a');
+    expect(css(run(slam, { look: 'extrude', text, shadow: '#e63a2e' }, 1.5).s.box).textShadow).toContain('#e63a2e');
+  });
+  test('box: every line on an outline-coloured block, tipped and slid in from alternate sides', () => {
+    const lines = (t: number) => [...run(slam, { look: 'box', text: 'a\nb\nc' }, t).s.text.el.children].map((l) => css(l));
+    const set = lines(1.5);
+    expect(set.map((c) => c.background)).toEqual(['#1a1a1a', '#1a1a1a', '#1a1a1a']);
+    expect(set.map((c) => c.transform)).toEqual(['translateX(0.0px) rotate(-1.60deg)', 'translateX(0.0px) rotate(1.60deg)', 'translateX(0.0px) rotate(-1.60deg)']);
+    const start = lines(0.05).map((c) => parseFloat(c.transform.slice('translateX('.length)));
+    expect(start[0]).toBeLessThan(-200);
+    expect(start[1]).toBeGreaterThan(200);
+    expect(lines(0.05).map((c) => c.opacity).slice(1)).toEqual(['0', '0']);   // the later lines are not in yet
+  });
+  test('split: the plates jump from frame to frame while landing, then keep one small offset', () => {
+    expect(splitShift(1, 30, 0.6)).toEqual(splitShift(2, 30, 0.6));
+    expect(splitShift(0.1, 30, 0.6)).not.toEqual(splitShift(0.1 + 1 / 30, 30, 0.6));
+    expect(splitShift(0.1, 30, 0.6)).toEqual(splitShift(0.1, 30, 0.6));
+    const [a, b] = splitShift(0.2, 30, 0.6);
+    expect(Math.sign(a[0])).toBe(-Math.sign(b[0]));   // thrown to opposite sides, so both show
+    const sh = css(run(slam, { look: 'split', text }, 1.5).s.box);
+    expect([sh.webkitTextStroke, sh.textShadow.includes(`rgba(37, 216, 255, 0.9)`)]).toEqual(['0', true]);
+    expect(SLAM_CYAN).toBe('#25d8ff');
+  });
+});
+
+describe('common.strike looks', () => {
+  const g = [540, 500, 300, 76, 1] as const;
+  test('nothing before at; scribble, cross and bar each a pure function of time that ends covering the line', () => {
+    for (const look of ['scribble', 'cross', 'bar'] as const) {
+      expect(strikeMarks(look, 0.99, 1, ...g)).toEqual([]);
+      expect(strikeMarks(look, 1.12, 1, ...g)).toEqual(strikeMarks(look, 1.12, 1, ...g));
+    }
+    const sc = strikeMarks('scribble', 2, 1, ...g) as Array<{ pts: Array<[number, number]> }>, xs = sc[0].pts.map((p) => p[0]), ys = sc[0].pts.map((p) => p[1]);
+    expect(Math.min(...xs)).toBeLessThan(540 - 280);
+    expect(Math.max(...xs)).toBeGreaterThan(540 + 280);
+    expect(sc[0].pts.length).toBeGreaterThan(40);   // tight: a turn every ~0.13 em, there and back
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(0.6 * 76);
+    expect(strikeMarks('scribble', 1.1, 1, ...g)[0]).not.toEqual(sc[0]);   // still being drawn at 0.1 s
+    expect(strikeMarks('cross', 1.1, 1, ...g).length).toBe(1);
+    expect(strikeMarks('cross', 2, 1, ...g).length).toBe(2);
+    const bar = (t: number) => (strikeMarks('bar', t, 1, ...g)[0] as { rect: number[] }).rect;
+    expect(bar(1.1)[2]).toBeLessThan(bar(2)[2]);
+    expect(bar(2)).toEqual([540 - 300 + 18, 500 - 0.6 * 76, 600 - 36, 1.16 * 76]);
+  });
+  test('marker draws under the words as before; the other looks over them, the stamp still on top', () => {
+    const m = run(strike, {}, 2).s, b = run(strike, { look: 'bar' }, 2).s;
+    expect([css(m.cv).zIndex, css(m.stamp).zIndex]).toEqual(['', '']);
+    expect([css(b.cv).zIndex, css(b.stamp).zIndex]).toEqual(['1', '2']);
+    expect(strike.variants!.list.map((v) => v.value)).toEqual(['marker', 'scribble', 'cross', 'bar']);
   });
 });
