@@ -277,7 +277,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.progress.mode": {"name":"スタイル"},
   "common.progress.position": {"name":"位置","hint":"rocket は見ない（セーフエリアの高さいっぱいを使う）"},
   "common.progress.color": {"name":"色","hint":"tabs：現在の章。slots：カード左の色ブロック。stretch：毛の色。fuse：火花。battery：点灯したマス。rocket：通った軌道。ring：描かれた弧。vine：つると葉。stamps：スタンプ。stretch、battery、vine は指定しないとテーマ色ではなく自分の色：#c98a4b、#34c759、#4caf50"},
-  "common.progress.track": {"name":"背景色","hint":"fuse：まだ燃えていないロープ。rocket、ring：まだ進んでいない部分。vine：まだ伸びていない点線"},
+  "common.progress.track": {"name":"背景色","hint":"fuse：まだ燃えていないロープ。rocket、ring：まだ進んでいない部分（ring は指定がなければ #ffffffb3）。vine：まだ伸びていない点線"},
   "common.progress.thickness": {"name":"太さ","hint":"1080 の短辺を基準にした px。runner のキャラクター、stretch の胴体、rocket のロケット、vine の葉と花もこれに合わせて大きくなる（vine は指定しないと 16）。battery：枠線。ring：輪の太さ"},
   "common.progress.dots": {"name":"点の数","hint":"dots スタイル。paws：足あとの数。segments：区切りの数。battery：マスの数。stamps：マスの数（6 を超えると 2 段）。runner、stretch、fuse、rocket、ring、vine で step を指定したとき：章の総数"},
   "common.progress.step": {"name":"止まる点／章の番号","hint":"0 始まり。-1＝時間とともに最後まで進む。timeline：この地点、-1＝線を最後まで引く。runner など 10 個：今の章（この項目のあいだにその章を進む）"},

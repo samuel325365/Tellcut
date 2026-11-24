@@ -106,7 +106,7 @@ export const progress: ItemType<P, S> = {
     { key: 'mode', label: '樣式', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps'], default: 'bar' },
     { key: 'position', label: '位置（rocket 不看：它占滿安全區的高度）', type: 'enum', options: ['top', 'bottom'], default: 'top' },
     { key: 'color', label: '顏色（tabs：目前這章；slots：卡左邊的色塊；stretch：毛色；fuse：火花；battery：亮的格子；rocket：走過的軌道；ring：走過的弧；vine：藤和葉；stamps：章；stretch、battery、vine 沒給時用自己的顏色，不跟主題色：#c98a4b、#34c759、#4caf50）', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
-    { key: 'track', label: '底色（fuse：還沒燒的引線；rocket、ring：還沒走到的部分；vine：還沒長到的虛線）', type: 'color', default: '#ffffff40' },
+    { key: 'track', label: '底色（fuse：還沒燒的引線；rocket、ring：還沒走到的部分，ring 沒給時 #ffffffb3；vine：還沒長到的虛線）', type: 'color', default: '#ffffff40' },
     { key: 'thickness', label: '粗細（以 1080 短邊計的 px；runner 的角色、stretch 的身體、rocket 的火箭、vine 的葉和花跟著它變大，vine 沒給時 16；battery：外框線；ring：環的粗細）', type: 'number', min: 2, max: 60, step: 1, default: 12 },
     { key: 'dots', label: '點數（dots 樣式；paws：腳印數；segments：段數；battery：格數；stamps：格數，超過 6 格排兩列；runner、stretch、fuse、rocket、ring、vine 給了 step 時：總章數）', type: 'number', min: 2, max: 12, step: 1, default: 5 },
     { key: 'step', label: '停在第幾個點／章（0 起算；-1＝隨時間走完全程；timeline：這一站，-1＝整條畫滿；runner 等十種：目前第幾章，這個項目裡走完這一章）', type: 'number', min: -1, max: 11, step: 1, default: -1 },

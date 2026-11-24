@@ -952,11 +952,12 @@ test('paws, ring, stamps and battery on a 16:9 frame are as big as on 9:16; fuse
   expect(tallB[0]).toBeCloseTo(0.024 * 1920 * 2.6, 1);
 });
 
-test('defaultsFor: the editor is told the colours stretch, battery and vine draw with when unset, from the table drawing reads', () => {
-  for (const mode of ['stretch', 'battery', 'vine'] as const) expect(progress.defaultsFor!({ mode })).toEqual(MODE_DEFAULTS[mode]);
+test('defaultsFor: the editor is told the colours stretch, battery, vine and ring draw with when unset, from the table drawing reads', () => {
+  for (const mode of ['stretch', 'battery', 'vine', 'ring'] as const) expect(progress.defaultsFor!({ mode })).toEqual(MODE_DEFAULTS[mode]);
   expect(progress.defaultsFor!({ mode: 'vine' })).toMatchObject({ color: '#4caf50', done: '#ff8fb1', thickness: 16 });
   // the other modes, and an item with no mode (bar, the param's default): none of their own
-  for (const set of [{ mode: 'ring' }, { mode: 'bar' }, {}]) expect(progress.defaultsFor!(set)).toEqual({});
+  expect(progress.defaultsFor!({ mode: 'ring' })).toEqual({ track: '#ffffffb3' });
+  for (const set of [{ mode: 'rocket' }, { mode: 'bar' }, {}]) expect(progress.defaultsFor!(set)).toEqual({});
   // what an unset field shows (engine unsetValue) is what withModeDefaults draws with; a set one, or a param the mode has none for, as before
   const theme = resolveTheme({ palette: { accent: '#00ff00' } }, { width: 1080, height: 1920 }), def = (k: string) => progress.params.find((d) => d.key === k)!;
   for (const set of [{ mode: 'battery' }, { mode: 'vine' }, { mode: 'stretch', color: '#123456' }, { mode: 'ring' }] as Array<Record<string, unknown>>) {

@@ -63,16 +63,18 @@ export interface MoreParams { mode: string; position: 'top' | 'bottom'; y: numbe
 /** A mode's own look where the item leaves a param unset: `color` defaults to the theme's accent (a red), which gave a red dog, a
  *  battery that read as always low and a red vine. For these the mode's own value wins over the project theme too (an accent is
  *  rarely a dog's coat or a leaf's green); only a value the item sets itself overrides it. vine's thickness is its template's 16:
- *  at 12 it read thin and sparse. */
-export const MODE_DEFAULTS: Partial<Record<MoreMode, Partial<Pick<MoreParams, 'color' | 'done' | 'thickness'>>>> = {
+ *  at 12 it read thin and sparse. ring's track is brighter than the shared 25% white: on its dark ground the part still to go was
+ *  hard to see. */
+export const MODE_DEFAULTS: Partial<Record<MoreMode, Partial<Pick<MoreParams, 'color' | 'done' | 'thickness' | 'track'>>>> = {
   stretch: { color: '#c98a4b' },
   battery: { color: '#34c759' },
   vine: { color: '#4caf50', done: '#ff8fb1', thickness: 16 },
+  ring: { track: '#ffffffb3' },
 };
 
 /** mode `mode`'s own defaults (MODE_DEFAULTS), a copy; {} for a mode without any. Both the drawing (withModeDefaults) and what the
  *  editor shows for an unset field (common.progress's defaultsFor) read this one table, so the two never disagree. */
-export const modeDefaults = (mode: string): Partial<Pick<MoreParams, 'color' | 'done' | 'thickness'>> =>
+export const modeDefaults = (mode: string): Partial<Pick<MoreParams, 'color' | 'done' | 'thickness' | 'track'>> =>
   (Object.hasOwn(MODE_DEFAULTS, mode) ? { ...MODE_DEFAULTS[mode as MoreMode] } : {});
 
 /** `p` with the mode's own defaults (MODE_DEFAULTS) for the params the item's own `set` (its params as written in project.json,

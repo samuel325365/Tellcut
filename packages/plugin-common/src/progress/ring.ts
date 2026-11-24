@@ -1,6 +1,6 @@
 // common.progress ring (spec 2026-11-22, progress more modes): a ring in a corner of the safe area (`align` left, else right — center
 // counts as right; up and down by `position` / `y`). Its track is a full circle in `track`, the arc gone round is `color`, from twelve
-// o'clock clockwise with round ends, all over a dark ground a little wider than the ring with a soft shadow (canvas, so it lies
+// o'clock clockwise with round ends (the track 70% white unless the item gives one: MODE_DEFAULTS), all over a dark ground a little wider than the ring with a soft shadow (canvas, so it lies
 // under the line: over bright footage the see-through track and a light `done` were lost without it); the percentage in the middle
 // is DOM text with a tight dark edge, so check measures it (at most 99 until full, as battery counts). A `runner` (an emoji or a picture of the project's) stands in the middle instead of
 // the percentage. When full the whole ring turns the `done` colour, pops to 1.12 times and back within 0.4 s, and a thin ring
@@ -15,8 +15,9 @@ import { arrived, corner, fadeOut, landscape, travel, type Draw } from './shared
 const ROOM = 1.25;
 /** the pop when full: up to 1 + POP over POP_S seconds; the ripple: out to ROOM ring radii over RIPPLE_S */
 const POP = 0.12, POP_S = 0.4, RIPPLE_S = 0.6;
-/** the ground under the ring and how far past the ring's outer edge it reaches, in line widths */
-export const BACKING = 'rgba(0,0,0,0.45)';
+/** the ground under the ring and how far past the ring's outer edge it reaches, in line widths. 30% black: at 45% it read as a heavy
+ *  mid-grey disc on a white picture, while the track (then 25% white) all but vanished on it over a dark building */
+export const BACKING = 'rgba(0,0,0,0.3)';
 const GROUND = 0.5;
 /** the per cent sign's size beside the number (em), and how wide "100%" is then (em, Noto Sans TC 700, looked at in Chrome) */
 const PCT = 0.6, WIDE = 2.4;

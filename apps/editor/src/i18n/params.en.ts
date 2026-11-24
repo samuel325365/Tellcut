@@ -277,7 +277,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.progress.mode": {"name":"Style"},
   "common.progress.position": {"name":"Position","hint":"rocket ignores it: it takes the whole height of the safe area"},
   "common.progress.color": {"name":"Color","hint":"tabs: the current chapter; slots: the block on the left of a card; stretch: the coat; fuse: the spark; battery: the lit cells; rocket: the track behind it; ring: the arc drawn so far; vine: the stem and leaves; stamps: the stamps; stretch, battery and vine use their own colour when it is not given, not the theme's: #c98a4b, #34c759, #4caf50"},
-  "common.progress.track": {"name":"Background color","hint":"fuse: the rope not yet burnt; rocket, ring: the part still to go; vine: the dashes not yet grown over"},
+  "common.progress.track": {"name":"Background color","hint":"fuse: the rope not yet burnt; rocket, ring: the part still to go, ring #ffffffb3 when not given; vine: the dashes not yet grown over"},
   "common.progress.thickness": {"name":"Thickness","hint":"px, based on a 1080 short side; runner's character, stretch's body, rocket's rocket and vine's leaves and flower grow with it, vine 16 when not given; battery: the outline; ring: the ring's line"},
   "common.progress.dots": {"name":"Dot count","hint":"dots style; paws: prints; segments: segments; battery: cells; stamps: cells, in two rows above six; runner, stretch, fuse, rocket, ring and vine with a step: the number of chapters"},
   "common.progress.step": {"name":"Stop at dot/chapter","hint":"Counted from 0; -1 = advances over time through the whole way; timeline: this stop, -1 = the whole line drawn out; runner and the other nine: the current chapter, travelled within this item"},
