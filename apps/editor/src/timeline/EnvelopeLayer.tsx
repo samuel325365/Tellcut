@@ -2,12 +2,16 @@
 // the line's hit area come only with `active` (the clip is selected, spec 2026-10-28-timeline-refresh A1): a first click selects.
 import { dbToY, envelopeHandles, envelopeLine, envelopePoints } from './envelope.ts';
 
+/** how far inside the line's top and bottom an outside point's ring is kept: its radius 4, its stroke, and 2 px to spare */
+export const OUT_PAD = 7;
+
 export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: number; pps: number; h: number; active: boolean }) {
   const pts = envelopePoints(item.envelope, len, pps, h), w = len * pps;
   const points = envelopeLine(pts, w).map((p) => `${p.x},${p.y}`).join(' ');
   // 10, not the ring's radius 4: a ring for a point outside the clip sits that far inside the edge, clear of the 6 px trim grip
-  // (styles.css `.item [data-edge]`, above this layer), which covered the ring's centre so a drag there trimmed the clip instead
-  const handles = item.envelope?.length ? envelopeHandles(pts, w, 10) : [];
+  // (styles.css `.item [data-edge]`, above this layer), which covered the ring's centre so a drag there trimmed the clip instead;
+  // and OUT_PAD inside the top and bottom, clear of the selected clip's frame and the 10 px fade handles in the corners
+  const handles = item.envelope?.length ? envelopeHandles(pts, w, 10, h, OUT_PAD) : [];
   const fi = item.fadeIn * pps, fo = w - item.fadeOut * pps, top = dbToY(0, h);
   return (
     <svg class="env" width={w} height={h} style={{ width: `${w}px`, height: `${h}px` }}>
@@ -17,7 +21,7 @@ export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: n
       {active && <>
         <polyline class="env-hit" data-env-line points={points} />
         {/* env-out: a point a trim left outside the clip, drawn as a hollow ring on the line at the nearer edge */}
-        {handles.map((p, i) => <circle data-env-index={i} data-env-out={p.out ? '' : undefined} cx={p.x} cy={p.y} r={4} class={p.out ? 'env-out' : undefined} />)}
+        {handles.map((p, i) => <circle data-env-index={i} data-env-out={p.out ? '' : undefined} data-line-y={p.lineY} cx={p.x} cy={p.y} r={4} class={p.out ? 'env-out' : undefined} />)}
         <path data-fade="in" class="fade-handle" d={`M${fi} 0 l10 0 l-10 10 z`} />
         <path data-fade="out" class="fade-handle" d={`M${fo} 0 l-10 0 l10 10 z`} />
       </>}

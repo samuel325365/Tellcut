@@ -32,13 +32,19 @@ export function envelopeLine(pts: Pt[], w: number): Pt[] {
  *  own level: the line enters the clip at its ramp's height (`envelopeLine`), and a ring at another height would look
  *  detached from it, as if it were a point inside. The drag starts from the ring, so nudging it brings the point in at the
  *  level the line already had there and the line inside barely changes. Several points out on one side share that spot
- *  (stacked rings, each still its own handle). */
-export function envelopeHandles(pts: Pt[], w: number, r: number): Array<Pt & { out: boolean }> {
+ *  (stacked rings, each still its own handle). With the line's height `h`, a ring is kept `pad` px inside its top and bottom
+ *  (where the line runs along the clip's top or bottom it would ride on the selection frame and the fade handles); `lineY` is
+ *  then the line's own height there, which a drag starts from, so the point still enters at the line's level. */
+export function envelopeHandles(pts: Pt[], w: number, r: number, h = Infinity, pad = 0): Array<Pt & { out: boolean; lineY?: number }> {
   const inset = Math.min(r, w / 2), line = envelopeLine(pts, w);
   // the drawn line's height at x (0..w): its xs run from 0 to w in order
   const onLine = (x: number) => {
     const i = line.findIndex((p) => p.x >= x);
     return i <= 0 ? line[Math.max(i, 0)].y : line[i].x === x ? line[i].y : lerp(line[i - 1], line[i], x);
   };
-  return pts.map((p) => (p.x < -1e-6 ? { x: inset, y: onLine(inset), out: true } : p.x > w + 1e-6 ? { x: w - inset, y: onLine(w - inset), out: true } : { ...p, out: false }));
+  const ring = (x: number) => {
+    const y = onLine(x), kept = h >= 2 * pad ? Math.min(h - pad, Math.max(pad, y)) : h / 2;
+    return kept === y ? { x, y, out: true } : { x, y: kept, lineY: y, out: true };
+  };
+  return pts.map((p) => (p.x < -1e-6 ? ring(inset) : p.x > w + 1e-6 ? ring(w - inset) : { ...p, out: false }));
 }

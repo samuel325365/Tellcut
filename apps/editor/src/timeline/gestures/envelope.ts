@@ -31,9 +31,9 @@ export function startEnvelopeDrag(e: MouseEvent, g: GestureCtx): boolean {
   // a point moves by the mouse's offset from the press, starting where its handle is drawn (its cx / cy, both time and level,
   // never the stored point): a press anywhere on the ring does not snap it under the cursor, and a point a trim left outside
   // the clip (its ring drawn just inside the edge, on the line) enters the clip there at the level the line already had,
-  // instead of at the mouse or at its own level
+  // instead of at the mouse or at its own level (a ring kept off the clip's top or bottom names the line's level, data-line-y)
   const sx = box.width && w ? box.width / w : 1, svgH = Number(svg?.getAttribute('height')), sy = box.height && svgH ? box.height / svgH : 1;
-  const hx = box.left + Number(envEl.getAttribute('cx')) * sx, hy = box.top + Number(envEl.getAttribute('cy')) * sy;
+  const hx = box.left + Number(envEl.getAttribute('cx')) * sx, hy = box.top + Number(envEl.getAttribute('data-line-y') ?? envEl.getAttribute('cy')) * sy;
   const pointAt = (m: MouseEvent) => at({ clientX: hx + m.clientX - e.clientX, clientY: hy + m.clientY - e.clientY } as MouseEvent);
   let moved = false;
   const move = (m: MouseEvent) => {

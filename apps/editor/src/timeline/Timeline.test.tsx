@@ -5,6 +5,8 @@ import { fixture } from '@tellcut/engine/test-fixture';
 import { createStore, initialState } from '../store.ts';
 import { Timeline } from './Timeline.tsx';
 import { NumberField } from '../fields.tsx';
+import { OUT_PAD } from './EnvelopeLayer.tsx';
+import { yToDb } from './envelope.ts';
 
 function mount(patch = {}) {
   // the geometry assertions below are in standard track heights
@@ -128,8 +130,9 @@ test('dragging a volume point moves it by the mouse offset from the press, also 
   expect(ring(0).classList.contains('env-out')).toBe(true);
   expect(ring(1).classList.contains('env-out')).toBe(false);
   // the ring sits on the line where the line enters the clip (on the ramp from -40 dB at -2 s to -6 dB at 5 s), not at -40 dB
+  // (drawn OUT_PAD above the bottom when the line runs lower there: data-line-y is the line's own height)
   const lineDb = (t: number) => -40 + (34 * (t + 2)) / 7;
-  const ringDb = Number(((6 - (Number(ring(0).getAttribute('cy')) / h) * 46)).toFixed(1));
+  const ringDb = Number(((6 - (Number(ring(0).getAttribute('data-line-y') ?? ring(0).getAttribute('cy')) / h) * 46)).toFixed(1));
   expect(ringDb).toBeCloseTo(lineDb(10 / 50), 1);
   // a plain click on it, or a move that never leaves the press, changes nothing
   press(0, []);
@@ -145,6 +148,34 @@ test('dragging a volume point moves it by the mouse offset from the press, also 
   expect(Math.abs(db1 - lineDb(t1))).toBeLessThan(0.5);
   // an inside point moves by the offset, not to the cursor (a 3 px / 2 px grab off centre would make it 5.06 s and a lower level)
   expect(after(1, 25, 0)).toEqual([5.5, -6]);
+});
+
+test('a ring outside the clip where the line runs along its bottom or top is kept off the frame, and a drag still starts from the line', async () => {
+  const p = fixture();
+  (p.tracks[3].items[0] as any).envelope = [[-0.1, -40], [5, -6], [10.1, 6]];   // the line enters at the bottom and leaves at the top
+  const { root, editor } = mount({ project: p, selection: ['m1'] });
+  let recipe: any = null;
+  editor.livePreview = (r: any) => { recipe = r; };
+  editor.commitLive = () => {};
+  await act(() => render(<Timeline editor={editor} />, root));
+  const svg = root.querySelector<SVGSVGElement>('[data-item-id="m1"] svg.env')!, w = Number(svg.getAttribute('width')), h = Number(svg.getAttribute('height'));
+  svg.getBoundingClientRect = () => ({ left: 100, top: 50, width: w, height: h, right: 100 + w, bottom: 50 + h, x: 100, y: 50, toJSON() {} }) as DOMRect;
+  const ring = (index: number) => root.querySelector(`[data-item-id="m1"] [data-env-index="${index}"]`)!;
+  const num = (index: number, a: string) => Number(ring(index).getAttribute(a));
+  // kept OUT_PAD inside the bottom and the top, each naming the line's own level there
+  expect([num(0, 'cx'), num(0, 'cy'), num(2, 'cx'), num(2, 'cy')]).toEqual([10, h - OUT_PAD, w - 10, OUT_PAD]);
+  expect(num(0, 'data-line-y')).toBeGreaterThan(h - OUT_PAD);
+  expect(num(2, 'data-line-y')).toBeLessThan(OUT_PAD);
+  // pressed at the ring's centre and nudged by a pixel: the point enters at the line's level, not the ring's
+  const x = 100 + num(0, 'cx'), y = 50 + num(0, 'cy');
+  ring(0).dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: x, clientY: y }));
+  window.dispatchEvent(new MouseEvent('mousemove', { buttons: 1, clientX: x + 1, clientY: y }));
+  window.dispatchEvent(new MouseEvent('mouseup', { clientX: x + 1, clientY: y }));
+  const d = structuredClone(p);
+  recipe(d);
+  const [t, db] = (d.tracks[3].items[0] as any).envelope[0];
+  expect(t).toBe(11 / 50);
+  expect(db).toBeCloseTo(yToDb(num(0, 'data-line-y'), h), 0);
 });
 
 test('track headers mute, solo and set bus gain', async () => {

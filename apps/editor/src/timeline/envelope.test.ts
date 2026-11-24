@@ -59,3 +59,17 @@ test('several points out on one side each keep a handle, stacked on the line at 
   // a clip narrower than two rings (4 px, the ramp crossing it from 26 to 18): both rings in the middle, still on the line
   expect(envelopeHandles(envelopePoints([[-1, -40], [1, 0]], 0.4, 10, 46), 4, 4)).toEqual([{ x: 2, y: 22, out: true }, { x: 2, y: 22, out: true }]);
 });
+
+test('with the line\'s height, an outside ring stays `pad` inside its top and bottom and names the line\'s own level', () => {
+  // the line is at 40.9 (near the bottom of 46) 10 px in from the head and at 0 (the top) 10 px in from the tail
+  const pts = envelopePoints([[-0.05, -40], [2, -30], [8, 6], [10.05, 6]], 10, 10, 46);
+  const hs = envelopeHandles(pts, 100, 10, 46, 7);
+  expect(hs[0]).toMatchObject({ x: 10, y: 39, out: true });
+  expect(hs[0].lineY).toBeGreaterThan(39);
+  expect(hs[3]).toMatchObject({ x: 90, y: 7, lineY: 0, out: true });
+  expect(hs[1]).toEqual({ ...pts[1], out: false });
+  // a ring already clear of both keeps its place on the line, with no lineY
+  expect(envelopeHandles(envelopePoints([[-2, -40], [5, 0], [12, -6]], 10, 10, 46), 100, 4, 46, 7)[0]).toEqual({ x: 4, y: 32.285, out: true });
+  // a line too short for the pad: the middle
+  expect(envelopeHandles(envelopePoints([[-1, -40], [5, 0]], 10, 10, 10), 100, 10, 10, 7)[0]).toMatchObject({ y: 5, lineY: expect.any(Number) });
+});
