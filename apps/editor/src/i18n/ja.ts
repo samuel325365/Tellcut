@@ -634,7 +634,7 @@ export const ja: Record<Key, string> = {
   'gallery.looksLess': '折りたたむ',
   'gallery.noParams': '（パラメータなし）',
   'gallery.clipCode': 'cut.ts での書き方',
-  'gallery.clipSub.transition': 'クリップのトランジション',
+  'gallery.clipSub.transition': 'トランジション',
   'gallery.clipSub.shape': 'クリップの形',
   'gallery.clipSub.motion': 'クリップの効果',
   'gallery.clipNote': 'クリップ自体の効果で、ブロックではありません。クリップに設定するもので（エディターでは Properties で）、別の項目として置くものではありません。プレビューは図鑑の街の画像で見せています（トランジションは地図の画像へ切り替わります）。',
