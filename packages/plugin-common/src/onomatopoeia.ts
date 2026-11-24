@@ -76,10 +76,10 @@ export const onomatopoeia: ItemType<P, S> = {
     { value: 'pop', label: '彈出', doc: '彩色填色、粗黑描邊的字一個一個彈出，每個字往左右各歪一點，停著時輕輕抖（depth 加一層黑色立體陰影）；笑聲、嗅嗅、一般的狀聲詞' },
     { value: 'shout', label: '吶喊', doc: '字一個比一個大、從很大砸下來，黑描邊外再一圈 color2 的白邊和立體陰影，一直用力抖；大叫、轟、啊啊啊、嚇一跳' },
     { value: 'tremble', label: '發抖', doc: 'color2 色的細邊字左右各拖一道 color 色的殘影，每個字不停地抖、歪來歪去；好冷、害怕、緊張、手機震動' },
-    { value: 'whisper', label: '悄悄', doc: '沒有描邊的細字、字距拉開、周圍一圈柔柔的暗影，一個字一個字慢慢浮出來再往上飄；靜…、Zzz、沉默、尷尬、心裡的話' },
+    { value: 'whisper', label: '悄悄', doc: 'color2 色（白）沒有描邊的細字、字距拉開、周圍一圈 ink 色柔柔的暗影，一個字一個字慢慢浮出來再往上飄；靜…、Zzz、沉默、尷尬、心裡的話' },
     { value: 'zoom', label: '咻', doc: '往前傾的斜字從左邊射進來，後面拖著 color 色的殘影和幾道 color2 的速度線；咻、唰、衝、快轉、飛過去' },
     { value: 'rumble', label: '轟隆', doc: 'ink 色的黑字、color 色的細邊和光暈，從上面掉下來壓扁再彈回，之後沉沉地隆隆震動；轟隆、咚、地震、壓迫感、不妙的預感' },
-    { value: 'sparkle', label: '閃亮', doc: '由上到下從 color2 漸層到 color 的字、白邊加柔光，轉著彈開，周圍幾顆四角星一閃一閃；閃亮亮、登場、完成、好漂亮' },
+    { value: 'sparkle', label: '閃亮', doc: '由上到下從 color2 漸層到 color 的字、白邊外一道細墨線加柔光，轉著彈開，周圍幾顆四角星一閃一閃；閃亮亮、登場、完成、好漂亮' },
     { value: 'bubble', label: '軟 Q', doc: '圓體字、厚厚一圈 color2 的白邊，像果凍一樣一個接一個跳，往上拉長、落下壓扁；啾、噗、蹦蹦、咬咬、軟綿綿、可愛的東西' },
     { value: 'halftone', label: '網點', doc: '美式漫畫的字：color 色上面一層 color2 的網點、粗黑描邊、往右下錯開的硬陰影，整個字一起彈出來；砰、POW、BAM、打中、撞上' },
   ] },
@@ -89,8 +89,8 @@ export const onomatopoeia: ItemType<P, S> = {
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.3 },
     { key: 'size', label: '字高（畫面短邊 %）', type: 'number', min: 3, max: 40, step: 0.5, default: 16 },
-    { key: 'color', label: '主色（填色；rumble 是邊和光暈）', type: 'color', default: '#ff7a1a', theme: 'palette.accent' },
-    { key: 'color2', label: '第二色（白邊、亮點、網點、速度線；pop、whisper、rumble 不用）', type: 'color', default: '#ffffff' },
+    { key: 'color', label: '主色（填色；rumble 是邊和光暈，whisper 不用）', type: 'color', default: '#ff7a1a', theme: 'palette.accent' },
+    { key: 'color2', label: '第二色（白邊、亮點、網點、速度線，whisper 的字；pop、rumble 不用）', type: 'color', default: '#ffffff' },
     { key: 'ink', label: '墨色（描邊、陰影；rumble 是字的顏色）', type: 'color', default: '#111111', theme: 'palette.ink' },
     { key: 'stroke', label: '描邊粗細（px，短邊 1080）', type: 'number', min: 0, max: 40, step: 1, default: 14 },
     { key: 'depth', label: '立體陰影（px，0＝不要；shout、halftone 的 0 是它自己的預設）', type: 'number', min: 0, max: 40, step: 1, default: 0 },
@@ -127,7 +127,7 @@ export const onomatopoeia: ItemType<P, S> = {
     const filter = look === 'shout' ? `${ring(p.stroke * 0.7 * u, p.color2)} drop-shadow(${d.toFixed(1)}px ${d.toFixed(1)}px 0 ${p.ink})`
       : look === 'halftone' ? `${ring(p.stroke * 0.6 * u, p.ink)} drop-shadow(${d.toFixed(1)}px ${d.toFixed(1)}px 0 ${p.ink})`
       : look === 'bubble' ? `${ring(3 * u, p.ink)} drop-shadow(0 ${(8 * u).toFixed(1)}px 0 ${withAlpha(p.ink, 0.3)})`
-      : look === 'sparkle' ? `${ring(p.stroke * 0.3 * u, p.color2)} drop-shadow(0 0 ${(3 * u).toFixed(1)}px ${p.ink}) drop-shadow(0 0 ${(18 * u).toFixed(1)}px ${withAlpha(p.color2, 0.7)})` : 'none';
+      : look === 'sparkle' ? `${ring(p.stroke * 0.3 * u, p.color2)} ${ring(2.5 * u, p.ink)} drop-shadow(0 0 ${(18 * u).toFixed(1)}px ${withAlpha(p.color2, 0.7)})` : 'none';
     cssCamel(s.box, { fontFamily: look === 'bubble' ? `'Huninn', ${fonts}` : fonts, fontWeight: String(look === 'whisper' ? Math.min(p.weight, 400) : p.weight), fontSize: `${px.toFixed(1)}px`, opacity: String(out),
       flexDirection: p.vertical ? 'column' : 'row', filter,
       transform: `translate(${(p.x * W).toFixed(1)}px, ${(p.y * H).toFixed(1)}px) translate(-50%, -50%) rotate(${p.tilt}deg) scale(${(1 + (1 - out) * 0.15).toFixed(4)})` });
@@ -138,7 +138,7 @@ export const onomatopoeia: ItemType<P, S> = {
       const clip = look === 'sparkle' || look === 'halftone', dot = 0.085 * px, ghost = (0.05 + 0.03 * Math.sin(local * TAU * 10 + i)) * px;
       const trail = (0.14 + 1.0 * (1 - clamp((local - i * p.gap * 0.6) / 0.22))) * px;
       cssCamel(el, {
-        color: clip ? 'transparent' : look === 'tremble' ? p.color2 : look === 'rumble' ? p.ink : p.color,
+        color: clip ? 'transparent' : look === 'tremble' || look === 'whisper' ? p.color2 : look === 'rumble' ? p.ink : p.color,
         margin: p.vertical ? `${side.toFixed(1)}px 0` : `0 ${side.toFixed(1)}px`,
         webkitTextStroke: look === 'whisper' || clip ? '0' : look === 'tremble' ? `${(sw * 0.45).toFixed(1)}px ${p.ink}` : look === 'rumble' ? `${(sw * 0.4).toFixed(1)}px ${p.color}`
           : look === 'bubble' ? `${sw.toFixed(1)}px ${p.color2}` : `${sw.toFixed(1)}px ${p.ink}`,

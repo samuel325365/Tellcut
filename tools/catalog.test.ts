@@ -311,11 +311,11 @@ test('search aliases: each word finds every block it is for, and a look its own 
     發票: ['common.receipt', 'common.printer'], 帳單: ['common.receipt', 'common.printer'], 折線: ['common.chart@line'],
     蠟燭: ['common.candles'], K棒: ['common.candles'], 'k 棒': ['common.candles'], 膠卷: ['common.film', 'common.filmstrip'], google: ['common.search'],
     效果字: ['common.onomatopoeia'], 名言: ['common.quote'], 刪除線: ['common.strike'], 分屏: ['common.grid', 'common.slant', 'common.duo'],
-    訂閱: ['common.outro@cta'], 星等: ['common.rating'], 下雪: ['common.pen@snow'], 霓虹燈: ['common.slam@led'],
+    訂閱: ['common.outro@cta'], 星等: ['common.rating'], 下雪: ['common.pen@snow'], 霓虹燈: ['common.slam@neon'], 黑板: ['common.handwrite@chalk'], 封鎖線: ['common.band@caution'], 故障: ['common.slam@split'], 擬聲詞: ['common.onomatopoeia'],
     頭條: ['common.wipe#band-steep', 'common.search@results'], 快訊: ['common.wipe#band-steep', 'common.search@results'],
     // a few of the English and Japanese ones, several words each matched on its own
     'split screen': ['common.grid', 'common.slant'], 'film roll': ['common.film', 'common.filmstrip'], stopwatch: ['common.countdown', 'common.story@timer'],
-    ネオン: ['common.slam@led'], 'breaking news': ['common.wipe#band-steep', 'common.search@results'],
+    ネオン: ['common.slam@neon'], highlighter: ['common.handwrite@marker'], 'breaking news': ['common.wipe#band-steep', 'common.search@results'],
   };
   for (const [q, targets] of Object.entries(words)) {
     const got = listed(q), types = findBlocks(plugins, q).map((t) => t.type);

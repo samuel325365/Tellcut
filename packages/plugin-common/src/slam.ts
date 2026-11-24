@@ -38,9 +38,10 @@ export function neonLit(local: number, fps: number, i = 0): number {
   return r() < 0.15 + 1.7 * local ? 1 : 0.08;
 }
 
-/** look neon: the tube's glow in `hl` at brightness `b` (em, so it follows the font size): a white-hot rim, then wider and fainter layers */
+/** look neon: the tube's glow in `hl` at brightness `b` (em, so it follows the font size): a white-hot rim, then wider and fainter layers,
+ *  and under them a steady dark haze so the tube still reads over a bright picture */
 export const neonGlow = (hl: string, b: number) =>
-  `0 0 0.02em ${withAlpha('#ffffff', 0.85 * b)}, 0 0 0.06em ${withAlpha(hl, b)}, 0 0 0.14em ${withAlpha(hl, 0.95 * b)}, 0 0 0.3em ${withAlpha(hl, 0.75 * b)}, 0 0 0.62em ${withAlpha(hl, 0.45 * b)}`;
+  `0 0 0.02em ${withAlpha('#ffffff', 0.85 * b)}, 0 0 0.06em ${withAlpha(hl, b)}, 0 0 0.14em ${withAlpha(hl, 0.95 * b)}, 0 0 0.3em ${withAlpha(hl, 0.75 * b)}, 0 0 0.62em ${withAlpha(hl, 0.45 * b)}, 0 0 0.4em rgba(0,0,0,0.55), 0 0 0.9em rgba(0,0,0,0.35)`;
 
 /** look extrude: twelve hard copies stepping down and to the right, `depth` em in all, in the side's colour */
 export const extrusion = (side: string, depth: number) =>
