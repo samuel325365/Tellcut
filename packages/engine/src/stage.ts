@@ -3,7 +3,7 @@
 import type { AnyItem, Project, SceneItem, Track, Transform, VideoItem } from './schema.ts';
 import { allItems } from './schema.ts';
 import { activeAt, resolveTimes, type Times } from './time.ts';
-import { clipShown, coverPlacement, kbMatrix, videoState, type VideoLink, type VideoState } from './geometry.ts';
+import { clipShown, coverPlacement, kbMatrix, veilFilter, videoState, type VideoLink, type VideoState } from './geometry.ts';
 import { fitText, isNamedShape, textFont, type FittedText, type InkBox, type TextShape } from './shapes.ts';
 import { videoLinks } from './pairs.ts';
 import type { ItemCtx, ItemType, MediaRef } from './plugin.ts';
@@ -450,7 +450,8 @@ export class Stage {
     // outside the letters shows, the outline of the word as read. (A shape's path is one contour: its line goes on top, its inner
     // half covering the picture's cut edge.)
     const d = (L.deco ??= decoOf(L.el, s.text ? L.frame : null)), kind = s.text ? 'text' : o.path ? 'path' : 'rect', w = n(kind === 'text' ? 2 * o.width : o.width);
-    cssCamel(d.svg as unknown as HTMLElement, { display: '', transformOrigin: '50% 50%', ...box });
+    // a dip's or flash's veil darkens or whitens the line with the picture it rings
+    cssCamel(d.svg as unknown as HTMLElement, { display: '', transformOrigin: '50% 50%', ...box, filter: veilFilter(s.veil) });
     attr(d.path, { display: kind === 'path' ? 'inline' : 'none' }); attr(d.rect, { display: kind === 'rect' ? 'inline' : 'none' }); attr(d.text, { display: kind === 'text' ? 'inline' : 'none' });
     const paint = { stroke: o.color, 'stroke-width': w };
     if (kind === 'path') attr(d.path, { d: o.path, ...paint });

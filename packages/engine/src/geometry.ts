@@ -253,6 +253,14 @@ const none = (): Look => ({ opacity: 1, dx: 0, dy: 0, scale: 1, streak: [0, 0], 
 /** dip's black veil goes as its eased progress u, flash's white one as its straight strength s to the FLASH_VEIL */
 const veilOf = (kind: 'dip' | 'flash', u: number): Veil | null => (u > 0 ? { color: VEIL[kind], opacity: +(kind === 'flash' ? u ** FLASH_VEIL : u).toFixed(4) } : null);
 const burn = (s: number) => 1 + FLASH_BRIGHT * s ** FLASH_BURN;
+/** The CSS filter that takes a picture window's outline as far toward the veil's colour as the veil covers the picture ('' when
+ *  there is none): the veil lies inside the frame, so without it the line stood at full strength round a picture gone black, and
+ *  popped in at the middle of a dip into a window. Toward black brightness(1 − v); toward white the same between two inverts. */
+export function veilFilter(veil: Veil | null): string {
+  if (!veil || veil.opacity <= 0) return '';
+  const b = `brightness(${+(1 - veil.opacity).toFixed(4)})`;
+  return veil.color === VEIL.flash ? `invert(1) ${b} invert(1)` : b;
+}
 const streakAlong = (d: Dir, s: number, w: number, h: number): [number, number] => (d === 'l' || d === 'r' ? [n3(s * w), 0] : [0, n3(s * h)]);
 
 /** the incoming clip B at progress p of its own transition (drawn as `kind`) in a w × h frame; `linked`: A is under it doing its half */

@@ -2,6 +2,7 @@
 import { Stage, transformAt } from './stage.ts';
 import { createRegistry } from './registry.ts';
 import { corePlugin } from './core.ts';
+import { veilFilter } from './geometry.ts';
 import type { ItemType } from './plugin.ts';
 
 function fakeMedia(): any {
@@ -674,6 +675,34 @@ test('a picture window\'s dressing: the outline over the frame, the shadow on th
   const rows = clip.querySelector('text');
   st.draw(3.6);
   expect(clip.querySelector('text')).toBe(rows);
+});
+
+test('a dip or flash into a picture window takes its outline with the picture: dark (or white) under a full veil, whole after', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  const p = project();
+  Object.assign(p.tracks[0].items[1], { frame: [0.2, 0.1, 0.6, 0.8], shape: { type: 'circle' }, outline: {}, transitionIn: { type: 'dip', dur: 1 } });
+  st.load(p);
+  const line = () => root.querySelector<HTMLElement>('[data-id="b"] svg.st-outline')! as any;
+  // the middle of the dip: B shows, all black, and so is its line (it used to stand white round the black picture)
+  st.draw(3.5);
+  expect(line()._c.filter).toBe('brightness(0)');
+  st.draw(3.75);
+  expect(line()._c.filter).toMatch(/^brightness\(0\.\d+\)$/);
+  st.draw(4.5);
+  expect(line()._c.filter).toBe('');
+  // flash: toward white
+  const q = structuredClone(p);
+  q.tracks[0].items[1].transitionIn = { type: 'flash', dur: 1 };
+  st.update(q);
+  st.draw(3.5);
+  expect(line()._c.filter).toBe('invert(1) brightness(0) invert(1)');
+});
+
+test('veilFilter: none without a veil, brightness toward black, the same between inverts toward white', () => {
+  expect([veilFilter(null), veilFilter({ color: '#000', opacity: 0 })]).toEqual(['', '']);
+  expect(veilFilter({ color: '#000', opacity: 0.25 })).toBe('brightness(0.75)');
+  expect(veilFilter({ color: '#fff', opacity: 1 })).toBe('invert(1) brightness(0) invert(1)');
 });
 
 test('an item attached to a clip fades with the clip through its transitions, and shows as it is outside the clip', () => {
