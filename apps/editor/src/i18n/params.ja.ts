@@ -512,7 +512,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.film.rate": {"name":"粒状感の更新回数（毎秒）"},
   "common.tone.color": {"name":"中央の色光"},
   "common.tone.edge": {"name":"周辺の色"},
-  "common.tone.amount": {"name":"強さ"},
+  "common.tone.amount": {"name":"強さ","hint":"0〜3。1 より上ではソフトライトをもう一層重ね、色調がよりはっきりする"},
   "common.paper.look": {"name":"紙"},
   "common.paper.color": {"name":"紙の色","hint":"desk"},
   "common.paper.card": {"name":"インデックスカード","hint":"desk"},

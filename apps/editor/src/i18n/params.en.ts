@@ -512,7 +512,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.film.rate": {"name":"Grain changes per second"},
   "common.tone.color": {"name":"Center light"},
   "common.tone.edge": {"name":"Edge color"},
-  "common.tone.amount": {"name":"Strength"},
+  "common.tone.amount": {"name":"Strength","hint":"0–3; over 1 another soft-light pass is laid, so the tone shows more"},
   "common.paper.look": {"name":"Paper"},
   "common.paper.color": {"name":"Paper color","hint":"desk"},
   "common.paper.card": {"name":"Index card","hint":"desk"},

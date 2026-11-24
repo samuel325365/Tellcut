@@ -13,6 +13,7 @@ import { rolldoor } from '../rolldoor.ts';
 import { backdrop } from '../backdrop.ts';
 import { shader } from '../shader.ts';
 import { grade } from '../grade.ts';
+import { tone } from '../tone.ts';
 import { progress } from '../progress.ts';
 import { onomatopoeia } from '../onomatopoeia.ts';
 import { type Sample, PIC, OVER_REF, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
@@ -331,6 +332,10 @@ export const STYLES: Sample[] = [
   tpl(onomatopoeia, 'pow', { len: 3, at: [0.1, 1.5], bg: '#4a6b7c' }),
   tpl(onomatopoeia, 'scream-wide', { len: 3, at: [1.5], bg: '#4a6b7c' }),
   tpl(onomatopoeia, 'tada', { len: 3, at: [1.3], bg: '#4a6b7c' }),
+  tpl(tone, 'golden-hour', { ...OVER_REF, at: [1.0] }),
+  tpl(tone, 'blue-hour', { ...OVER_REF, at: [1.0] }),
+  tpl(tone, 'pink-dream', { ...OVER_REF, at: [1.0] }),
+  tpl(tone, 'teal', { ...OVER_REF, at: [1.0] }),
   // the colour measure's calibration (golden/templates.test.ts), over the made-up street at one moment: distinct gradings it must set
   // apart (with grade-photo, the mono orange), and a near twin it must not (the half black a little lighter)
   { name: 'colour-cal-photo', type: 'core.flash', ...OVER_REF, params: { peak: 0 }, len: 2, at: [1.0] },

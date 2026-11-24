@@ -192,6 +192,10 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `film/print-zine`: Magazine, poster or pop-art passages: the whole picture turned into somewhat coarser print dots, with no vignette.
   - `film/cinema-scope`: For 16:9 films: cinematic travel films and title sequences, with 2.39:1 black bars top and bottom, light grain and a soft vignette (on a vertical frame the bars leave only a thin strip).
   - `film/heavy-grain`: Street photography, documentary, raw passages: very coarse, contrasty grain that changes only 12 times a second, like high-speed film stock.
+  - `tone/golden-hour`: Sunsets, street food, nostalgia: the whole picture a deep orange gold, the edges pressed to dark brown.
+  - `tone/blue-hour`: Night, rain, quiet or lonely parts: the whole picture leaning blue, the edges sinking to deep navy.
+  - `tone/pink-dream`: Dates, cafés, desserts, memories: a pink light, the edges tinted deep purple.
+  - `tone/teal`: The seaside, a city at night, travel: a teal light, the edges pressed to deep blue-green, like a film grade.
   - `rolldoor/shop-close`: The end of the film, the day's work done: a shutter over the whole frame comes slowly down from 0.2 s (down by 0.8 s later), then the "Closed today" sign is taped on.
   - `rolldoor/shop-open`: An opening, a shop opening: the shutter starts closed with an "open for business" sign on it (in Chinese) and rolls up from 0.2 s to show the picture.
   - `wipe/iris-close`: The end of a section, a cartoonish change of scene: the picture shrinks into a circle closing to a point in the middle, then opens again from it, like an old cartoon signing off.
