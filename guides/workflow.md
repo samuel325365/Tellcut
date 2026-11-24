@@ -205,6 +205,12 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `leak/flare-top`: A cinematic opening, a backlit shot, a sci-fi title: a very bright sideways flare streak held near the top right, its ghost discs lined up to the far side of the frame.
   - `leak/warm-corner`: Memories, family, a quiet interview: a soft warm glow resting in the top-left corner, barely moving, there for the whole item.
   - `leak/sweep-fast`: A transition between two shots: a small, bright warm glow sweeping from the left edge all the way out the right.
+  - `onomatopoeia/whoosh-pass`: Something flying past, a transition, time skipping ahead: a slanted word shot in from the left across the lower half, trailing ghosts and speed streaks.
+  - `onomatopoeia/zzz`: Asleep, zoned out, bored: three Zs up in the right corner, each higher than the last, fading in and drifting up.
+  - `onomatopoeia/thud-column`: Footsteps, a knock, a sinking feeling: three dark letters stacked down the right side, dropping one by one, staggered, rumbling.
+  - `onomatopoeia/pow`: A hit, a crash, the punchline: one very large comic word mid-frame, halftone dots and a hard shadow, banged in whole.
+  - `onomatopoeia/scream-wide`: A fright, a meltdown, the bill: a long run of letters growing across the middle of the frame, shaking hard.
+  - `onomatopoeia/tada`: The reveal, an unboxing, the finished look: a golden TA-DA! spinning open among twinkling glints.
   - `grade/bw-to-color`: Back from a memory to now: all black and white at first, the colours coming back at once at 0.6 s.
   - `grade/mono-punch`: Stressing one moment: in its own colours, then from 0.3 s all one deep colour (deepened), back to its colours at 0.9 s.
   - `grade/bw-hold`: A memory, a documentary or a serious part: black and white for the whole item.

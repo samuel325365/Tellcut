@@ -83,6 +83,14 @@ export const onomatopoeia: ItemType<P, S> = {
     { value: 'bubble', label: '軟 Q', doc: '圓體字、厚厚一圈 color2 的白邊，像果凍一樣一個接一個跳，往上拉長、落下壓扁；啾、噗、蹦蹦、咬咬、軟綿綿、可愛的東西' },
     { value: 'halftone', label: '網點', doc: '美式漫畫的字：color 色上面一層 color2 的網點、粗黑描邊、往右下錯開的硬陰影，整個字一起彈出來；砰、POW、BAM、打中、撞上' },
   ] },
+  templates: [
+    { id: 'whoosh-pass', label: '咻地飛過', doc: '東西飛過去、轉場、時間快轉：畫面下半一行斜字從左邊射進來，拖著殘影和速度線', params: { look: 'zoom', text: '咻——！', x: 0.56, y: 0.64, tilt: -4, size: 15 } },
+    { id: 'zzz', label: '睡著了', doc: '睡著、發呆、無聊：右上角三個 Z 一個比一個高，慢慢浮出來往上飄', params: { look: 'whisper', text: 'Zzz', font: 'Bangers', rise: 0.45, tilt: 8, size: 15, x: 0.7, y: 0.2, gap: 0.12 } },
+    { id: 'thud-column', label: '直排重擊', doc: '腳步聲、敲門、心裡一沉：畫面右邊直排的三個黑字，一個一個掉下來、左右錯開，隆隆震動', params: { look: 'rumble', text: '咚咚咚', vertical: true, rise: 0.12, x: 0.8, y: 0.4, tilt: 5, size: 17 } },
+    { id: 'pow', label: '英文 POW', doc: '打中、撞上、吐槽的那一下：畫面中間很大的英文漫畫字，網點加硬陰影，整個彈出來', params: { look: 'halftone', text: 'POW!', font: 'Bangers', weight: 400, spacing: 1.1, size: 30, tilt: -10, y: 0.42 } },
+    { id: 'scream-wide', label: '橫跨畫面的尖叫', doc: '嚇到、崩潰、看到帳單：一長串越來越大的字橫過畫面中間，用力抖', params: { look: 'shout', text: '啊啊啊啊啊！', size: 12, tilt: -5, y: 0.48, spacing: 0.9, shake: 5, stroke: 8 } },
+    { id: 'tada', label: '登場 Ta-da', doc: '成品亮相、開箱、換裝完成：金黃色的 TA-DA! 轉著彈開，周圍星星閃', params: { look: 'sparkle', text: 'TA-DA!', font: 'Bangers', weight: 400, spacing: 1.1, color: '#ffb300', size: 22, tilt: -6, y: 0.4 } },
+  ],
   params: [
     { key: 'text', label: '字', type: 'string', default: '哈哈哈！' },
     { key: 'look', label: '樣子', type: 'enum', options: ['pop', 'shout', 'tremble', 'whisper', 'zoom', 'rumble', 'sparkle', 'bubble', 'halftone'], default: 'pop' },

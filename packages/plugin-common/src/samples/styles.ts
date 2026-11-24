@@ -14,6 +14,7 @@ import { backdrop } from '../backdrop.ts';
 import { shader } from '../shader.ts';
 import { grade } from '../grade.ts';
 import { progress } from '../progress.ts';
+import { onomatopoeia } from '../onomatopoeia.ts';
 import { type Sample, PIC, OVER_REF, HEAD_ZH, CAPTION_SAMPLES, VS, templateSample } from './fixtures.ts';
 
 /** common.glitch's new looks' backdrop: stripes whose edges show the shifts and the colour split */
@@ -324,6 +325,12 @@ export const STYLES: Sample[] = [
   tpl(progress, 'rocket', { len: 4, at: [1.6, 3.25] }),
   tpl(progress, 'vine', { len: 4, at: [1.6, 3.55] }),
   tpl(progress, 'stamps', { len: 4, at: [1.2, 2.05] }),
+  tpl(onomatopoeia, 'whoosh-pass', { len: 3, at: [0.12, 1.5], bg: '#4a6b7c' }),
+  tpl(onomatopoeia, 'zzz', { len: 3, at: [2.2], bg: '#4a6b7c' }),
+  tpl(onomatopoeia, 'thud-column', { len: 3, at: [1.6], bg: '#4a6b7c' }),
+  tpl(onomatopoeia, 'pow', { len: 3, at: [0.1, 1.5], bg: '#4a6b7c' }),
+  tpl(onomatopoeia, 'scream-wide', { len: 3, at: [1.5], bg: '#4a6b7c' }),
+  tpl(onomatopoeia, 'tada', { len: 3, at: [1.3], bg: '#4a6b7c' }),
   // the colour measure's calibration (golden/templates.test.ts), over the made-up street at one moment: distinct gradings it must set
   // apart (with grade-photo, the mono orange), and a near twin it must not (the half black a little lighter)
   { name: 'colour-cal-photo', type: 'core.flash', ...OVER_REF, params: { peak: 0 }, len: 2, at: [1.0] },
