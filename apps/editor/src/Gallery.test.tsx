@@ -229,6 +229,12 @@ test('clip effects: three groups with their cards, a picture where the server ha
     .toEqual([['transition', '轉場', 12], ['shape', '形狀', 13], ['motion', '其他', 3]]);
   expect(root.querySelector('[data-card="clip.transition.iris"] img')!.getAttribute('src')).toBe('/api/gallery/thumb/clip-transition-iris-t1.50.png');
   expect(root.querySelector('[data-card="clip.shake"] img')).not.toBeNull();
+  // the shake's still is drawn shaking: the picture and two ghost copies of it; no other card has them
+  expect([...root.querySelectorAll('[data-clip-shake]')].map((x) => [x.closest('[data-card]')!.getAttribute('data-card'), x.querySelectorAll('img').length, x.querySelectorAll('img.g-ghost').length]))
+    .toEqual([['clip.shake', 3, 2]]);
+  // the line under each name says what kind of clip effect it is
+  const sub = (k: string) => root.querySelector(`[data-card="${k}"] [data-clip-sub]`)!.textContent;
+  expect([sub('clip.transition.iris'), sub('clip.shape.heart'), sub('clip.shake'), sub('clip.follow')]).toEqual(['片段的轉場', '片段的形狀', '片段的效果', '片段的效果']);
   // the two the gallery cannot show: each its own mark, not the shared spark nor each other's
   const icon = (k: string) => root.querySelector(`[data-card="${k}"] [data-clip-icon] svg`)!.innerHTML;
   expect(icon('clip.follow')).not.toBe(icon('clip.avoidBurned'));
@@ -253,6 +259,10 @@ test('a clip effect\'s detail plays its preview over the gallery\'s pictures; th
     expect(sent.at(-1).tracks[0].items).toEqual([expect.objectContaining({ source: 'street', shape: { type: 'heart' }, outline: {}, frame: [0.1, 0.22, 0.8, 0.56] })]);
     await click(root, '[data-card="clip.shake"]');
     expect(sent.at(-1).tracks[0].items[0].shake).toEqual([expect.objectContaining({ at: 1 })]);
+    // its cut.ts line writes the shake the preview plays (and its golden card shows): what one copies is what one saw
+    const s = sent.at(-1).tracks[0].items[0].shake[0];
+    expect(root.querySelector('[data-detail="clip.shake"] pre')!.textContent).toBe(`c.shake(${s.at}, { dur: ${s.dur}, px: ${s.px} })`);
+    expect(s).toEqual({ at: 1, dur: 0.6, px: 40 });   // the golden card clip-shake-t1.00 is drawn from these
     expect(root.querySelector('[data-detail="clip.shake"] iframe')).not.toBeNull();
     expect(root.querySelector('[data-detail="clip.shake"] [data-clip-note]')!.textContent).toContain('街景');
     for (const k of ['clip.follow', 'clip.avoidBurned']) {
@@ -261,6 +271,9 @@ test('a clip effect\'s detail plays its preview over the gallery\'s pictures; th
       expect(root.querySelector(`[data-detail="${k}"] [data-clip-note]`)!.textContent, k).toContain('沒有預覽');
     }
     expect(root.querySelector('[data-detail="clip.avoidBurned"] pre')!.textContent).toContain('avoidBurned: true');
+    // the heading's words are a piece of their own beside the box to copy (styles.css keeps them on one line)
+    const head = root.querySelector('[data-detail="clip.avoidBurned"] h3.g-code-head')!;
+    expect([head.querySelector(':scope > span')!.textContent, head.querySelector('.copy code')!.textContent]).toEqual(['cut.ts 寫法', 'c.clip(src, { from, len, avoidBurned: true })']);
   } finally { load.mockRestore(); patch.mockRestore(); }
 });
 
@@ -796,6 +809,41 @@ test('a look under the mouse or the keyboard takes the card\'s picture and names
     await act(() => { (dots() as HTMLElement).blur(); });
     expect(cardPic(root)).toBe(pic('card'));
   } finally { render(null, root); root.remove(); }
+});
+
+test('with nothing set, a block\'s preview plays what its card is drawn with (GalleryBlock.card); Add sends nothing; a change plays what is set', async () => {
+  const { setLang } = await import('./i18n/lang.ts');
+  const theme = { palette: { accent: '#123456' } };
+  const GRADE = { plugin: 'common', group: '共用積木', type: 'common.grade', label: '單色調色', doc: '照拍子換調色', kind: 'overlay' as const, needsMedia: false, category: 'look', over: 'picture' as const,
+    params: [{ key: 'steps', label: '換色', type: 'text' as const, default: '0|bw\n0.4|mono\n0.8|none' }, { key: 'size', label: '大小', type: 'number' as const, default: 4 }],
+    card: { params: { steps: '0|mono' } } };
+  const WINDOW = { plugin: 'common', group: '共用積木', type: 'common.window', label: '視窗', doc: '一個視窗', kind: 'overlay' as const, needsMedia: false, category: 'look',
+    params: [{ key: 'title', label: '標題', type: 'string' as const, default: '' }],
+    card: { params: { source: 'pic', title: '派對.jpg' }, local: { en: { source: 'pic', title: 'party.jpg' } }, theme, stand: ['pic'] } };
+  const sent: any[] = [];
+  const load = vi.spyOn(PlayerBridge.prototype, 'load').mockImplementation((p) => { sent.push(p); });
+  const patch = vi.spyOn(PlayerBridge.prototype, 'patch').mockImplementation((p) => { sent.push(p); });
+  const { root, asked } = await lookPage({ ...G, blocks: [...G.blocks, GRADE, WINDOW] });
+  const item = () => sent.at(-1).tracks.at(-1).items[0];
+  try {
+    await click(root, '[data-card="common.grade"]');
+    expect(item().params).toEqual({ steps: '0|mono' });                       // the card's one colour, not the defaults' bw → mono → none
+    await click(root, '[data-detail="common.grade"] [data-gallery-add]');
+    await settle();
+    expect(asked.at(-1)).toEqual({ kind: 'block', type: 'common.grade' });   // the sample's params are the card's, not the user's
+    await act(() => {
+      const e = root.querySelector('[data-detail="common.grade"] [data-param="size"] input') as HTMLInputElement;
+      e.value = '7'; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(item().params).toEqual({ size: 7 });                              // what Add would add
+    await click(root, '[data-detail="common.grade"] .g-bar button:last-child');   // reset: the card's again
+    expect(item().params).toEqual({ steps: '0|mono' });
+    // the sample's theme and the picture it shows in its window (the made-up map), and its words in the UI language
+    await click(root, '[data-card="common.window"]');
+    expect([item().params, sent.at(-1).meta.theme, Object.keys(sent.at(-1).sources)]).toEqual([{ source: 'pic', title: '派對.jpg' }, theme, ['pic']]);
+    await act(() => setLang('en'));
+    expect(item().params).toEqual({ source: 'pic', title: 'party.jpg' });
+  } finally { await act(() => setLang('zh')); render(null, root); root.remove(); load.mockRestore(); patch.mockRestore(); }
 });
 
 test('a variant picked from the card: the detail marks it, the preview plays its sample, Add sends the variant alone; another change plays the real params', async () => {

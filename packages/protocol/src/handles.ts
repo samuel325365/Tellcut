@@ -41,11 +41,15 @@ const shape = (s: NamedShape, label: string, doc: string): ClipFx => {
     preview: { shape: s, outline: {} } };
 };
 
+/** The shake the gallery previews, and so the one its card line writes: what one copies is what one saw. Stronger than c.shake's
+ *  own 24 px because the preview plays at about a quarter of the film's size; its golden card (clip-shake) is drawn from it too. */
+const SHAKE_PREVIEW = { at: 1, dur: 0.6, px: 40 };
+
 /** things a clip itself does (toolkit phase 5): not blocks, but listed with them where people look for effects, with their cut.ts
  *  call. A new one goes at the end of its group, with the next CLP handle. */
 export const CLIP_FX: readonly ClipFx[] = [
-  { key: 'clip.shake', group: 'motion', label: '鏡頭晃動', code: 'c.shake(1.2, { dur: 0.4, px: 24 })', doc: '那個時間正在播的片段畫面抖一下再慢慢停：爆字、撞擊、笑點。hook 配方的開場要晃，就在 hook 加 shake: true。',
-    preview: { shake: [{ at: 1, dur: 0.6, px: 40 }] } },
+  { key: 'clip.shake', group: 'motion', label: '鏡頭晃動', code: `c.shake(${SHAKE_PREVIEW.at}, { dur: ${SHAKE_PREVIEW.dur}, px: ${SHAKE_PREVIEW.px} })`, doc: '那個時間正在播的片段畫面抖一下再慢慢停：爆字、撞擊、笑點。hook 配方的開場要晃，就在 hook 加 shake: true。',
+    preview: { shake: [{ ...SHAKE_PREVIEW }] } },
   { key: 'clip.follow', group: 'motion', label: '貼圖跟著嘴（或臉）', code: "c.effect('common.emoji', { at, len, char: '🤐', follow: 'mouth' })", doc: '任何貼圖都能貼在片段裡那個人的嘴或臉上並跟著動；好幾個人時加 who: left／right／largest／center。消音：censorSpeech(…, { follow: true })。' },
   { key: 'clip.avoidBurned', group: 'motion', label: '避開原片字幕', code: "c.clip(src, { from, len, avoidBurned: true })", doc: '原片燒進去的字幕（分析時偵測到的）落在這段時，自動放大裁切把字幕推出畫面，畫面裡的人臉留在畫面內；放大的上限看素材解析度（再放大會糊），避不開或會裁到人臉就照原樣，把疊在原片字幕上、沒自己給位置的字幕移到畫面上方並提醒。' },
   // the clip transitions (engine TRANSITION_TYPES but cut), in the engine's order: the transition into the clip from the one before,

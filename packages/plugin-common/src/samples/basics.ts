@@ -81,7 +81,9 @@ export const BASICS: Sample[] = [
   { name: 'rating', type: 'common.rating', at: [0.8, 2.5] },
   { name: 'rating-bar', type: 'common.rating', params: { style: 'bar', max: 10, rows: '口味:9, 環境:7.5', total: '8.3/10' }, at: [2.5] },
   { name: 'info', type: 'common.info', at: [2.0] },
-  { name: 'polaroid', type: 'common.polaroid', at: [0.1, 2.0] },
+  // the first one is the gallery card: with the made-up map in it, since an empty polaroid is a dark square that says nothing
+  { name: 'polaroid', type: 'common.polaroid', sources: PIC, params: { source: 'pic', t: 0 }, at: [0.1, 2.0] },
+  { name: 'polaroid-empty', type: 'common.polaroid', at: [2.0] },
   { name: 'polaroid-crop', type: 'common.polaroid', sources: PIC, params: { source: 'pic', t: 0, crop: { x: 0.5, y: 0.25, zoom: 1.8 }, font: 'LXGW WenKai TC', caption: '最棒的一刻', flash: false }, at: [2.0] },
   { name: 'wide-info', type: 'common.info', at: [2.0], wide: true },
   // 16:9 (review 2, C4–C6): outlines, corners and sizes go by the short side, margins by the wide frame's safe area

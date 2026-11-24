@@ -128,6 +128,21 @@ test('a block with variants lists them with their cards and what their previews 
   } finally { await app.close(); }
 });
 
+test('a block whose card sample sets params says what it is drawn with, for the preview to play the same; one drawn at its defaults says nothing', async () => {
+  const g = await galleryIndex(plugins), block = (type: string) => g.blocks.find((b) => b.type === type)!;
+  // common.grade's card is one colour throughout (grade-photo); its defaults go back to the original colour at 0.8 s
+  expect(block('common.grade').card).toEqual({ params: { steps: '0|mono' } });
+  // tone's card is the street under its defaults: nothing to send (the index stays small)
+  expect(block('common.tone').card).toBeUndefined();
+  expect(g.blocks.filter((b) => b.card).every((b) => Object.keys(b.card!.params).length > 0)).toBe(true);
+  // a card that shows a picture from a source names it, for the preview to put the made-up map there as the card does; and Chinese
+  // words come with their English and Japanese ones (golden/thumbs.ts)
+  expect(block('common.window').card).toMatchObject({ params: { source: 'pic' }, stand: ['pic'] });
+  const worded = g.blocks.filter((b) => b.card?.local);
+  expect(worded.length).toBeGreaterThan(0);
+  for (const b of worded) expect(Object.keys(b.card!.local!).every((k) => k === 'en' || k === 'ja'), b.type).toBe(true);
+});
+
 test('the gallery player (id=_gallery) gets its own pictures, street and map, at the URL a project photo has; nothing else', async () => {
   const projectsDir = makeProjects(), { app, base } = await startApp({ projectsDir });
   try {

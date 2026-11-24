@@ -268,7 +268,15 @@ export interface GalleryBlock extends CardGround { plugin: string; group: string
   /** its named templates (engine ItemType.templates), each with its golden picture when it has one */
   templates?: GalleryBlockTemplate[];
   /** its looks picked by one enum param (engine ItemType.variants), in the options' order */
-  variants?: { param: string; list: GalleryBlockVariant[] } }
+  variants?: { param: string; list: GalleryBlockVariant[] };
+  /** what its card's sample (plugin-common cardSample) is drawn with, sent only when that sample sets params: those params (in
+   *  English and Japanese where golden/thumbs.ts has them), its theme, and the source ids it reads a picture from (`stand`, as a
+   *  variant's: the preview puts the made-up map there, as the card shows). The preview plays them while nothing is set, so it shows
+   *  what the card shows (common.grade's card is one colour throughout, its defaults go back to the original colour); Add to
+   *  project still sends only what is set. */
+  card?: GalleryBlockCard }
+/** a block card's sample as the preview plays it (GalleryBlock.card) */
+export interface GalleryBlockCard { params: Record<string, unknown>; local?: { en?: Record<string, unknown>; ja?: Record<string, unknown> }; theme?: Record<string, unknown>; stand?: string[] }
 /** One look of a block in the gallery (engine ItemType.variants): picking it is setting `param` to `value`. Its card's picture and
  *  ground come from its golden sample (plugin-common variantCard: over the street for a block marked over), and its preview plays
  *  that sample (variantSample). A project's own block has the names alone. */

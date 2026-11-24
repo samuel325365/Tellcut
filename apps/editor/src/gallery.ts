@@ -1,10 +1,11 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
 import { blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { aliasText, BLOCK_CATEGORY, CLIP_GROUPS, handleOf, idFinder, idLike, normalizeHandle, SEARCH_ALIASES, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { aliasText, BLOCK_CATEGORY, CLIP_GROUPS, handleOf, idFinder, idLike, normalizeHandle, SEARCH_ALIASES, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockCard, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
 import { picCrop, type PicCrop } from './pic-crop.ts';
+import { localValues } from './i18n/values.ts';
 
 export type { GalleryBlock, GalleryBlockTemplate, GalleryBlockVariant, GalleryCombo, GalleryIndex, GalleryRecipe, GallerySfx, GalleryStyle };
 export type Tab = 'blocks' | 'captions' | 'titles' | 'sfx' | 'combos' | 'styles' | 'recipes';
@@ -49,13 +50,19 @@ export const THEMES: Record<string, { theme?: Record<string, unknown> }> = {
  *  its shape and length are that card's own (absent: 9:16 and 3 s, as that card's sample was drawn), and so is its ground, but a
  *  template's card drawn on the plain ground keeps the block's own. `tpl`: the template whose params are what is set. `variant`:
  *  the variant whose sample the params are, and its sample's theme unless the theme menu picks one, and a gallery picture for the
- *  sources its sample shows (the server answers them with the made-up map the golden cards show in those windows). */
-export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none', tpl?: GalleryBlockTemplate, variant?: GalleryBlockVariant) {
+ *  sources its sample shows (the server answers them with the made-up map the golden cards show in those windows). `sample`: with
+ *  nothing picked, the block's card sample (GalleryBlock.card), whose theme and sources play likewise. */
+export function blockProject(b: GalleryBlock, params: Record<string, unknown>, themeId = 'none', tpl?: GalleryBlockTemplate, variant?: GalleryBlockVariant, sample?: GalleryBlockCard) {
   const card: CardGround = variant ?? tpl ?? b, background = variant ? variant.bg : tpl?.bg ?? b.bg, { aspect, len } = card;
-  const theme = THEMES[themeId]?.theme ?? variant?.theme;
+  const plays = variant ?? sample, theme = THEMES[themeId]?.theme ?? plays?.theme;
   return blockPreviewProject({ type: b.type, kind: b.kind, plugins: [b.plugin], params, theme, ...(b.over === 'picture' ? { ground: true } : {}),
-    ...(background && b.over !== 'picture' ? { background } : {}), ...(aspect ? { aspect } : {}), ...(len ? { len } : {}), ...(variant?.stand?.length ? { stand: variant.stand } : {}) });
+    ...(background && b.over !== 'picture' ? { background } : {}), ...(aspect ? { aspect } : {}), ...(len ? { len } : {}), ...(plays?.stand?.length ? { stand: plays.stand } : {}) });
 }
+
+/** What a block's preview plays while nothing is set and it has a card sample (GalleryBlock.card): its words in the UI language
+ *  under that sample's params in that language, so the preview shows what its card shows. Add to project still sends nothing. */
+export const cardPlays = (b: GalleryBlock, card: GalleryBlockCard, lang: string) =>
+  ({ ...localValues(b.type, b.params), ...((lang === 'en' || lang === 'ja' ? card.local?.[lang] : undefined) ?? card.params) });
 
 /** whether two sets of params are the same (key order aside): a template is the one set when its params are exactly what is set */
 export const sameParams = (a: Record<string, unknown>, b: Record<string, unknown>) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());

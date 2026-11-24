@@ -642,6 +642,25 @@ body.lib-dragging iframe { pointer-events: none; }
 .g-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 .g-thumb-icon { background: var(--s-raise-2); color: var(--s-accent-text); }
 .g-thumb-mark { font-size: 20px; font-weight: 600; line-height: 1; }
+/* the camera shake's card (Gallery.tsx ShakeThumb): its still is the street at the shake's start, so the card draws the shake itself.
+   The picture is tilted, and grown so the tilt never shows the card behind it; two faint copies trail it in one direction (copies
+   offset every which way read as a mosaic, not as motion); with motion allowed, the whole jolts and settles once every 2.4 s */
+.g-thumb-shake { place-items: stretch; }
+.g-shake-pic { display: grid; width: 100%; height: 100%; min-height: 0; }
+.g-shake-pic img { grid-area: 1 / 1; transform: scale(1.14) rotate(-2deg); }
+.g-shake-pic img.g-ghost { opacity: .4; transform: scale(1.14) translate(-3.5%, .6%) rotate(-2deg); }
+.g-shake-pic img.g-ghost + img.g-ghost { opacity: .18; transform: scale(1.14) translate(-7%, 1.2%) rotate(-2deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .g-shake-pic { animation: g-shake 2.4s ease-out infinite; }
+}
+@keyframes g-shake {
+  0%, 34%, 100% { transform: none; }
+  4% { transform: translate(-5px, 3px) rotate(-1.4deg); }
+  9% { transform: translate(5px, -3px) rotate(1.2deg); }
+  14% { transform: translate(-3.5px, -2px) rotate(-.8deg); }
+  20% { transform: translate(2.5px, 2px) rotate(.5deg); }
+  27% { transform: translate(-1px, -1px) rotate(-.2deg); }
+}
 /* a card's variants and templates under its picture: two rows of five boxes of one height, each picture whole inside its box on its
    card's ground; rings drawn with inset shadows, so being hovered, found or picked never moves anything */
 .g-looks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 8px 10px 0; }
@@ -687,6 +706,9 @@ body.lib-dragging iframe { pointer-events: none; }
 .g-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 12px; }
 .g-head h2 { margin: 0; font-size: 20px; font-weight: 700; }
 .g-detail h3 { display: flex; align-items: center; gap: 8px; margin: 18px 0 8px; font-size: 13.5px; font-weight: 500; color: var(--s-dim); }
+/* "In cut.ts" and its line to copy: the words stay on one line and the box wraps under them when the two do not fit side by side */
+.g-detail h3.g-code-head { flex-wrap: wrap; gap: 6px 8px; }
+.g-code-head > span { white-space: nowrap; }
 .g-doc { margin: 12px 0 0; line-height: 1.7; color: var(--s-text); }
 .g-detail > p.dim { line-height: 1.6; font-size: 13px; }
 .g-detail > p.g-warn { color: var(--s-warn); font-size: 13px; line-height: 1.6; }

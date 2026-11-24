@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { templateName, variantCode, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, idFields, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, cardPlays, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, idFields, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconCaptionOut, IconFaceSticker, IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -43,6 +43,10 @@ function CopyName({ name }: { name: string }) {
     </button>
   );
 }
+
+/** the heading over a cut.ts line, with the line to copy beside it. The heading's words never break (the copy box squeezed the
+ *  Japanese one to three lines); the box goes under them when both do not fit on one line, cut short with an ellipsis there. */
+const CodeHead = ({ code }: { code: string }) => <h3 class="g-code-head"><span>{t('gallery.clipCode')}</span><CopyName name={code} /></h3>;
 
 /** the handle of a block, sound, style (style:<id>), recipe (recipe:<id>) or clip effect: what people say to Claude; a click copies it */
 function Handle({ id }: { id: string }) {
@@ -111,12 +115,16 @@ function BlockDetail({ b, to, own, set, setParams }: { b: GalleryBlock; to?: ToP
   const id = own ? `own:${b.type}` : b.type;
   const [theme, setTheme] = useState('none'), [n, setN] = useState(0), x = shown(b.type, b);
   // the block as it would be added in this UI language: its Chinese words in that language, under what the user changed
-  const params = { ...localValues(b.type, b.params), ...set }, variant = pickedVariant(b, set);
+  const params = { ...localValues(b.type, b.params), ...set }, variant = pickedVariant(b, set), tpl = pickedTemplate(b, set);
+  // with nothing set, the preview plays what the card is drawn with (its sample's params, theme and sources), so the two agree;
+  // once anything is set it plays what Add to project would add
+  const sample = !Object.keys(set).length ? b.card : undefined;
+  const plays = variant ? variantPlays(b, variant, getLang()) : sample ? cardPlays(b, sample, getLang()) : params;
   return (
     <section class="g-detail" data-detail={id}>
       <Head label={x.label} name={b.type} />
       {own && to ? <PlayerPreview project={ownProject(own, b, params, theme)} playKey={n} src={projectPlayer(to.project.id)} />
-        : <PlayerPreview project={blockProject(b, variant ? variantPlays(b, variant, getLang()) : params, theme, pickedTemplate(b, set), variant)} playKey={n} />}
+        : <PlayerPreview project={blockProject(b, plays, theme, tpl, variant, sample)} playKey={n} />}
       <div class="g-bar">
         <label>{t('gallery.theme')} <select value={theme} onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}>{Object.keys(THEMES).map((k) => <option value={k}>{t(`gallery.theme.${k}` as Key)}</option>)}</select></label>
         <button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button>
@@ -214,7 +222,7 @@ function ClipDetail({ f }: { f: ClipFx }) {
       <header class="g-head"><h2>{x.label}</h2><Handle id={f.key} /></header>
       {project && <><PlayerPreview project={project} playKey={n} /><div class="g-bar"><button onClick={() => setN(n + 1)}>{t('gallery.replay')}</button></div></>}
       <p class="g-doc">{x.doc}</p>
-      <h3>{t('gallery.clipCode')} <CopyName name={f.code} /></h3>
+      <CodeHead code={f.code} />
       <pre>{f.code}</pre>
       <p class="dim" data-clip-note>{project ? t('gallery.clipNote') : t(`gallery.clipNoPreview.${f.key.slice(5)}` as Key)}</p>
     </section>
@@ -326,7 +334,7 @@ function ComboDetail({ c, g, to, plays }: { c: GalleryCombo; g: GalleryIndex; to
           <span class="g-combo-kind">{t(`gallery.comboKind.${p.kind}` as Key)}</span>
           <span class="g-tpl-text"><strong>{p.name}</strong>{what(p)}<small>{t('gallery.comboWhen', { at: fromMoment(p.at), len: p.len })}</small></span>
         </li>))}</ul>
-      <h3>{t('gallery.clipCode')} <CopyName name={code} /></h3>
+      <CodeHead code={code} />
       <pre>{code}</pre>
       <p class="dim">{t('gallery.comboNote')}</p>
     </section>
@@ -447,6 +455,18 @@ function Thumb({ src, mark }: { src?: string; mark?: string }) {
     : mark ? <span class="g-thumb-mark" aria-hidden="true">{mark}</span> : <IconSpark size={22} />}</span>;
 }
 
+/** A shaking clip's card. Its golden picture is the street where the shake starts, which alone reads as a still photo: tilted, with
+ *  two faint copies trailing it, it draws the motion, and (unless the system asks for reduced motion: styles.css) the
+ *  picture jolts and settles every few seconds, as the shake does. */
+function ShakeThumb({ src }: { src: string }) {
+  const [bad, setBad] = useState(false);
+  if (bad) return <Thumb />;
+  return <span class="g-thumb g-thumb-shake" data-clip-shake><span class="g-shake-pic">
+    <img src={src} alt="" loading="lazy" onError={() => setBad(true)} />
+    <img class="g-ghost" src={src} alt="" aria-hidden="true" loading="lazy" /><img class="g-ghost" src={src} alt="" aria-hidden="true" loading="lazy" />
+  </span></span>;
+}
+
 export function Gallery({ load, library, project, navigate = (u) => location.assign(u) }: { load: () => Promise<GalleryIndex>; library?: GalleryLibrary; project?: GalleryProject; navigate?: (url: string) => void }) {
   useLang();   // the language switch re-renders the whole page
   const [g, setG] = useState<GalleryIndex | null>(null), [err, setErr] = useState('');
@@ -541,9 +561,10 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
     <Thumb src={b.thumb ?? undefined} />
     <span class="g-card-body card-lines"><strong data-card-name {...tip(b.name)}>{b.name}</strong><span class="g-sub">{fromLine(b)}</span></span>
   </>, '', true);
+  // the line under a clip card's name says what kind of thing it is (a transition, a shape, another clip effect)
   const clipCard = (f: ClipFx) => { const Icon = CLIP_ICON[f.key] ?? IconSpark, src = clipThumb.get(f.key); return card(f.key, shown(f.key, f).doc, <>
-    {src ? <Thumb src={src} /> : <span class="g-thumb g-thumb-icon" data-clip-icon={f.key}><Icon size={22} /></span>}
-    <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(f.key, f).label)}>{shown(f.key, f).label}</strong><Handle id={f.key} /><span class="g-sub">{t('gallery.clipSub')}</span></span>
+    {src ? (f.preview?.shake ? <ShakeThumb src={src} /> : <Thumb src={src} />) : <span class="g-thumb g-thumb-icon" data-clip-icon={f.key}><Icon size={22} /></span>}
+    <span class="g-card-body card-lines"><strong data-card-name {...tip(shown(f.key, f).label)}>{shown(f.key, f).label}</strong><Handle id={f.key} /><span class="g-sub" data-clip-sub>{t(`gallery.clipSub.${f.group}` as Key)}</span></span>
   </>); };
 
   const detail = () => {

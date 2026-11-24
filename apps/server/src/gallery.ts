@@ -14,7 +14,7 @@ import { RECIPES } from '../../../tools/cut/recipes/index.ts';
 import { cardSample, samples, variantCard, variantSample, type Sample } from '@tellcut/plugin-common/samples';
 // the English and Japanese words of the samples that show Chinese (what `npm run thumbs` draws with): a variant's preview plays them
 import { THUMB_PARAMS } from '@tellcut/plugin-common/thumbs';
-import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryBlockVariant, type GalleryClip, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
+import { CORE_CATEGORY, handleOf, PLUGIN_GROUP as GROUP, type CardGround, type GalleryBlock, type GalleryBlockCard, type GalleryBlockVariant, type GalleryClip, type GalleryCombo, type GalleryIndex, type GallerySfx, type GalleryStyle } from '@tellcut/protocol';
 import { TEMPLATES, TITLE_TEMPLATES } from '@tellcut/plugin-common';
 import { HttpError, sendJson, type Router } from './http.ts';
 import { attachCrops } from './look-crops.ts';
@@ -40,8 +40,9 @@ export function galleryPicture(name: string, stands: ReadonlySet<string>): strin
   if (Object.hasOwn(GALLERY_IMAGES, name)) return GALLERY_IMAGES[name];
   return stands.has(name) ? GALLERY_IMAGES.map : undefined;
 }
-/** every source id the variants of these plugins' blocks stand the made-up map in for */
-const standIds = (plugins: Plugin[]) => new Set(plugins.flatMap((p) => p.items ?? []).flatMap((t) => (t.variants?.list ?? []).flatMap((v) => standOf(variantSample(t.type, v.value)))));
+/** every source id the variants and cards (cardOf) of these plugins' blocks stand the made-up map in for */
+const standIds = (plugins: Plugin[]) => new Set(plugins.flatMap((p) => p.items ?? []).flatMap((t) => [...standOf(cardSample(t.type)),
+  ...(t.variants?.list ?? []).flatMap((v) => standOf(variantSample(t.type, v.value)))]));
 const GOLDEN_FILE = /^[a-z0-9-]+-t\d+\.\d{2}\.png$/;
 /** a sample's picture at its last moment (the animation settled) */
 const thumbOf = (c: Sample | undefined) => c && `/api/gallery/thumb/${c.name}-t${c.at[c.at.length - 1].toFixed(2)}.png`;
@@ -62,7 +63,6 @@ const BLOCK_TEMPLATE_THUMB = (type: string, id: string) => thumbOf(cardSample(ty
 const groundOf = (c: Sample | undefined, over: boolean): CardGround => ({
   ...(c?.bg && !over ? { bg: c.bg } : {}), ...(c?.wide ? { aspect: 'wide' as const } : c?.square ? { aspect: 'square' as const } : {}),
   ...(c?.len !== undefined && c.len !== BLOCK_PREVIEW_LEN ? { len: c.len } : {}) });
-/** a combo's pictures: every moment of its sample combo-<id> (start, peak, end), in time order */
 /** a block's variants: each one's card (variantCard: its picture, ground and shape, as a template's) and what its preview plays
  *  (variantSample: the sample's params, theme and the sources it shows a picture from; its English and Japanese words) */
 function variantsOf(t: ItemType): GalleryBlock['variants'] {
@@ -74,6 +74,17 @@ function variantsOf(t: ItemType): GalleryBlock['variants'] {
       ...(en || ja ? { local: { ...(en ? { en } : {}), ...(ja ? { ja } : {}) } } : {}), ...(s?.theme ? { theme: s.theme } : {}), ...(stand.length ? { stand } : {}) };
   }) };
 }
+/** What a block's card is drawn with (cardSample), for its preview to play while nothing is set: only when that sample sets params
+ *  (most cards are the defaults, and the index stays small). Its English and Japanese words are looked up under the sample a street
+ *  sibling was derived from, as `npm run thumbs` does. */
+export function cardOf(type: string): GalleryBlockCard | undefined {
+  const c = cardSample(type);
+  if (!c?.params) return undefined;
+  const own = c.street ?? c.name, en = THUMB_PARAMS.en[own], ja = THUMB_PARAMS.ja[own], stand = standOf(c);
+  return { params: c.params, ...(en || ja ? { local: { ...(en ? { en } : {}), ...(ja ? { ja } : {}) } } : {}), ...(c.theme ? { theme: c.theme } : {}), ...(stand.length ? { stand } : {}) };
+}
+const withCard = (type: string) => { const card = cardOf(type); return card ? { card } : {}; };
+/** a combo's pictures: every moment of its sample combo-<id> (start, peak, end), in time order */
 const COMBO_FRAMES = (id: string) => { const c = samples.find((x) => x.name === `combo-${id}`); return c ? [...c.at].sort((a, b) => a - b).map((t) => `/api/gallery/thumb/${c.name}-t${t.toFixed(2)}.png`) : []; };
 
 export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): Promise<GalleryIndex> {
@@ -89,6 +100,7 @@ export async function galleryIndex(plugins: Plugin[], library = SCORE_LIBRARY): 
     ...(t.templates?.length ? { templates: t.templates.map((x) => { const thumb = BLOCK_TEMPLATE_THUMB(t.type, x.id);
       return { id: x.id, label: x.label, doc: x.doc, params: x.params, ...(thumb ? { thumb } : {}), ...groundOf(cardSample(t.type, x.id), !!t.over) }; }) } : {}),
     ...(t.variants?.list.length ? { variants: variantsOf(t) } : {}),
+    ...withCard(t.type),
   })));
   // the small pictures of a look that sits in a small part of the frame show that part (look-crops.ts; measured once, then cached)
   await attachCrops(blocks, GOLDEN_DIR);
