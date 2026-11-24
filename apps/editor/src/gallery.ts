@@ -226,6 +226,15 @@ export function blockFinder(list: readonly SearchBlock[], query: string): (b: Se
  *  the order it had (a stable sort); `then` orders within each */
 export const foundFirst = (found: (b: SearchBlock) => 'block' | 'param' | undefined, then: (a: SearchBlock, b: SearchBlock) => number = () => 0) =>
   (a: SearchBlock, b: SearchBlock) => (found(a) === 'param' ? 1 : 0) - (found(b) === 'param' ? 1 : 0) || then(a, b);
+/** One of My blocks as the search reads it: its name and description in place of a block's label and doc, and its params (an
+ *  entry carries no looks). */
+export const libraryBlock = (b: LibraryBlockInfo): SearchBlock => ({ type: b.type, label: b.name, doc: b.desc, params: b.params });
+/** What a search (`found`, a blockFinder) finds of a list that is not made of SearchBlocks itself (My blocks: libraryBlock), each read
+ *  once as `as` says, in foundFirst's order: so My blocks and a project's own are found as the shared blocks are, by the same finder. */
+export function foundIn<T>(list: readonly T[], found: (b: SearchBlock) => 'block' | 'param' | undefined, as: (x: T) => SearchBlock): T[] {
+  const first = foundFirst(found);
+  return list.map((x) => ({ x, s: as(x) })).filter((y) => found(y.s)).sort((a, b) => first(a.s, b.s)).map((y) => y.x);
+}
 /** a look's words: its value or id (an identifier), and its names and docs in every language (allTexts), and its search aliases one
  *  by one (protocol SEARCH_ALIASES: words for it no text contains, which like its names pick it when typed in full) */
 function lookWords(b: SearchBlock, kind: Look['kind'], id: string, x: { label: string; doc: string }) {

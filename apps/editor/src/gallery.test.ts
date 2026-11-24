@@ -1,7 +1,7 @@
 import { OLD_BLOCKS, PREVIEW_BG, PREVIEW_GROUND } from '@tellcut/engine';
 import { aliasText, CLIP_FX, handleOf } from '@tellcut/protocol';
 import { plugins } from '@tellcut/plugins';
-import { blockFinder, blockProject, clipMatches, filterGallery, idFields, lookHit, lookHits, looksOf, matches, ownBlocks, pickedVariant, THEMES, valueFields, type GalleryBlock, type GalleryIndex, type SearchBlock } from './gallery.ts';
+import { blockFinder, blockProject, foundIn, libraryBlock, clipMatches, filterGallery, idFields, lookHit, lookHits, looksOf, matches, ownBlocks, pickedVariant, THEMES, valueFields, type GalleryBlock, type GalleryIndex, type SearchBlock } from './gallery.ts';
 import { blockText } from './i18n/blocks.ts';
 
 const progress: GalleryBlock = {
@@ -234,6 +234,21 @@ test('search finds a block by a param: a key\'s part or a whole name, listed aft
   expect(found('dur', 'sfx')).toEqual(['fx.tick']);
   // no query: everything, in order
   expect(found('')).toEqual(g.blocks.map((b) => b.type));
+});
+
+test('My blocks are found by the shared blocks\' finder: name, description, type, a param (after the others); a list keeps its own entries', () => {
+  const entry = (type: string, name: string, desc: string, params: Array<{ key: string; label: string }>) =>
+    ({ slug: 'x', type, name, desc, kind: 'overlay' as const, params: params.map((d) => ({ ...d, type: 'number' as const, default: 1 })), main: 'fx/x.js', thumb: null, from: { project: 'p', file: 'fx/x.js' }, savedAt: '', version: '1', group: [] });
+  const chalk = entry('fx.chalk', '粉筆標題卡', '黑板上的標題', [{ key: 'outDur', label: '退場秒數' }]);
+  const line = entry('fx.chalkLine', '粉筆底線', 'dur 寫在說明裡', []);
+  expect(libraryBlock(chalk)).toEqual({ type: 'fx.chalk', label: '粉筆標題卡', doc: '黑板上的標題', params: chalk.params });
+  const shared: SearchBlock[] = [{ type: 'common.slam', label: '大字', doc: '', params: [] }];
+  const find = (q: string) => foundIn([chalk, line], blockFinder(shared, q), libraryBlock);
+  // the entries themselves come back (not their search forms), those found only by a param last
+  expect(find('dur')).toEqual([line, chalk]);
+  expect([find('黑板'), find('退場秒數'), find('chalk'), find('Line'), find('粉筆')].map((xs) => xs.map((x) => x.type)))
+    .toEqual([['fx.chalk'], ['fx.chalk'], ['fx.chalk', 'fx.chalkLine'], ['fx.chalkLine'], ['fx.chalk', 'fx.chalkLine']]);
+  expect([find('退場'), find('ur'), find('')].map((xs) => xs.length)).toEqual([0, 0, 2]);
 });
 
 test('param search on the real blocks: dur finds the …Dur params, and size, color, x add only a few blocks to what their words find', () => {

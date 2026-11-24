@@ -569,6 +569,30 @@ test('opened from a project, its own blocks come first, tagged as the project’
   expect(cards(root).some((c) => c!.startsWith('own:'))).toBe(false);
 });
 
+test('one search across the project’s own blocks, Mine and the shared ones: a param-only hit after the others in each, a look finds its block', async () => {
+  const p = (key: string, label: string) => ({ key, label, type: 'number' as const, default: 1 });
+  const own: OwnProject = { ...OWN, blocks: ownBlocks([
+    { type: 'fx.ticket', label: '車票', doc: '一張車票滑進來', kind: 'overlay', params: [p('outDur', '退場秒數')] },
+    { type: 'fx.board', label: '看板', doc: 'dur 寫在說明裡', kind: 'overlay', params: [] },
+    { type: 'fx.sign', label: '招牌', doc: '', kind: 'overlay', params: [{ key: 'look', label: '樣子', type: 'enum', options: ['neon', 'wood'], default: 'neon' }],
+      variants: { param: 'look', list: [{ value: 'neon', label: '霓虹', doc: '會閃' }, { value: 'wood', label: '木頭', doc: '刻字' }] } }]) };
+  const lib: LibraryIndex = { ...LIB, blocks: [{ ...LIB.blocks[0], params: [p('inDur', '進場秒數')] }, { ...LIB.blocks[1], desc: 'dur 也在這裡' }] };
+  const root = document.createElement('div'), x = libApi(lib);
+  await act(async () => { render(<Gallery load={async () => G} library={x.api} project={{ id: 'trip', load: async () => own, add: async () => ({ ok: true }) }} />, root); });
+  await settle();
+  const search = async (q: string) => { const box = root.querySelector('.g-search') as HTMLInputElement; await act(() => { box.value = q; box.dispatchEvent(new Event('input')); }); };
+  await search('dur');
+  // (the clip effects found by their own words follow, in their category)
+  expect(cards(root).filter((c) => !c!.startsWith('clip.'))).toEqual(['own:fx.board', 'own:fx.ticket', 'mine:fx.chalk-line', 'mine:fx.chalk']);
+  // a whole param name; a look's name
+  await search('進場秒數');
+  expect(cards(root)).toEqual(['mine:fx.chalk']);
+  await search('霓虹');
+  expect(cards(root)).toEqual(['own:fx.sign']);
+  await search('木頭');
+  expect(root.querySelector('[data-card="own:fx.sign"] [data-look-name]')?.textContent).toBe('木頭');
+});
+
 test('"Add to project" asks the editor with the values changed here and says how it went; a background cannot be added', async () => {
   let reply = { ok: true } as { ok: boolean; notice?: string };
   const { root, asked } = await projectPage(async () => reply);

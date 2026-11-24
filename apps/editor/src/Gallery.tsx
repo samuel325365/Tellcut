@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { templateName, variantCode, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, cardPlays, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, foundFirst, galleryFinder, idFields, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, cardPlays, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, foundFirst, foundIn, galleryFinder, idFields, libraryBlock, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconCaptionOut, IconFaceSticker, IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -497,15 +497,17 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   // the clip effects found, in their groups (transitions, shapes, the rest) and the grid's order; their card pictures by key
   const clips = clipSections(CLIP_FX.filter((f) => clipMatches(f, q))).flatMap((x) => x.clips);
   const clipThumb = new Map((g.clips ?? []).map((x) => [x.key, x.thumb]));
-  const mineBlocks = (lib?.blocks ?? []).filter((b) => matches(q, undefined, ...idFields(b.type), b.name, b.desc)), mineStyles = (lib?.styles ?? []).filter((x) => matches(q, undefined, ...idFields(x.id), x.name, x.desc));
-  const ownList = (own?.blocks ?? []).filter((b) => matches(q, undefined, ...idFields(b.type), b.label, b.doc, shown(b.type, b).label));
+  // the Captions and Titles tabs show only their templates: the blocks under them (common.caption / common.heading, and the old
+  // core.caption / core.title kept for older projects) would be a second, look-alike card for the same thing (2026-11-05)
+  const list = filterGallery(g, tab, q), found = galleryFinder(g, q);
+  // My blocks and the project's own are searched by the shared blocks' finder (their names, docs, looks, params; those found only
+  // by a param last), so one query finds the same way in every section
+  const mineBlocks = foundIn(lib?.blocks ?? [], found, libraryBlock), mineStyles = (lib?.styles ?? []).filter((x) => matches(q, undefined, ...idFields(x.id), x.name, x.desc));
+  const ownList = foundIn(own?.blocks ?? [], found, (b) => b);
   const to: ToProject | undefined = project && { project, name: own?.name || project.id };
   const cats = galleryCategories(g.blocks, CLIP_FX.length, library ? (lib?.blocks.length ?? 0) : undefined, own?.blocks.length ?? 0);
   const showOwn = tab === 'blocks' && (cat === ALL || cat === PROJECT_CATEGORY) && (ownList.length > 0 || !!ownErr);
   const showMine = !!library && tab === 'blocks' && (cat === ALL || cat === MINE_CATEGORY);
-  // the Captions and Titles tabs show only their templates: the blocks under them (common.caption / common.heading, and the old
-  // core.caption / core.title kept for older projects) would be a second, look-alike card for the same thing (2026-11-05)
-  const list = filterGallery(g, tab, q), found = galleryFinder(g, q);
   // what the grid shows, in order: blocks (by category, or one category; in each, those found only by a param last) then clip
   // effects; or the tab's list
   const sections = tab !== 'blocks' ? [] : cats.filter((c) => cat === ALL || c.key === cat).map((c) => ({ ...c,

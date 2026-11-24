@@ -189,6 +189,24 @@ test('the Effects and sound searches find a block by a param name, after those t
   expect([...root.querySelectorAll<HTMLElement>('[data-add-sfx]')].map((e) => e.dataset.addSfx)).toEqual(['x.tap']);
 });
 
+test('My blocks are searched as the others are: by name, description or a param, those found only by a param last', async () => {
+  const base = initialState('t'), entry = (type: string, name: string, desc: string, params: any[] = []) =>
+    ({ slug: type, type, name, desc, kind: 'overlay', params, thumb: null, from: { project: 'other' } });
+  const index = { blocks: [entry('fx.chalk', '粉筆標題卡', '黑板上的標題', [{ key: 'outDur', label: '退場秒數', type: 'number', default: 0.3 }]), entry('fx.line', '底線', 'dur 寫在說明裡')], styles: [] };
+  const store = createStore({ ...base, project: fixture(), layout: { ...base.layout, mediaTab: 'effects' as MediaTab }, library: { ...base.library, index } as any });
+  const types = [{ type: 'fx.mine', label: '我的特效', kind: 'overlay', params: [{ key: 'fadeDur', label: '淡出', type: 'number', default: 1 }] }];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [] } };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  const shown = async (q: string) => { await act(() => { search.value = q; search.dispatchEvent(new Event('input', { bubbles: true })); });
+    return [...root.querySelectorAll<HTMLElement>('[data-add-overlay], [data-add-mine]')].map((e) => e.dataset.addOverlay ?? `mine:${e.dataset.addMine}`); };
+  expect(await shown('dur')).toEqual(['fx.mine', 'mine:fx.line', 'mine:fx.chalk']);
+  expect(await shown('退場秒數')).toEqual(['mine:fx.chalk']);
+  expect(await shown('黑板')).toEqual(['mine:fx.chalk']);
+  expect(await shown('退場')).toEqual([]);
+});
+
 test('replace: a picked block takes the place of the selected one of the same kind; a background can only replace', async () => {
   const p: any = fixture();
   p.tracks.push({ id: 'ov', kind: 'overlay', items: [{ id: 'a', type: 'core.flash', start: 0, end: 1, params: {} }, { id: 'bg', type: 'x.paper', start: 0, end: 1, params: {} }] });

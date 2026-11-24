@@ -21,7 +21,7 @@ import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
 import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { OLD_BLOCKS } from '@tellcut/engine';
 import { t, type Key } from './i18n/index.ts';
-import { blockFinder, foundFirst, idFields, lookHit, matches, thumbIn } from './gallery.ts';
+import { blockFinder, foundFirst, foundIn, idFields, libraryBlock, lookHit, matches, thumbIn } from './gallery.ts';
 import { getLang } from './i18n/lang.ts';
 import { galleryUrl } from './gallery-link.ts';
 import { blockText } from './i18n/blocks.ts';
@@ -74,7 +74,9 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const found = (list: any[], query: string) => { const f = blockFinder(list, query); return list.filter((d) => f(d)).sort(foundFirst(f)); };
   // old blocks stay registered so older projects still play, but are not offered for new use (like the gallery and catalog)
   const offered = (reg?.itemTypes() ?? []).filter((d: any) => !Object.hasOwn(OLD_BLOCKS, d.type));
-  const blocks = groupsOf(found(offered, q), Object.keys(BLOCK_CATEGORY), 'block');
+  // one finder for every block of the page: the registry's (this project's fx among them) and My blocks not in it yet
+  const blockFind = blockFinder(offered, q);
+  const blocks = groupsOf(foundIn(offered, blockFind, (d: any) => d), Object.keys(BLOCK_CATEGORY), 'block');
   const sfx = groupsOf(found(reg?.sfxTypes() ?? [], qa), Object.keys(SFX_CATEGORY), 'sfx');
   // the variant or template a search found a block by (gallery.ts lookHit): its card shows that look's picture and name, and adding
   // it sets that look (a variant's option, a template's params), as a click on the gallery's card opens it
@@ -98,7 +100,7 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const lib = s.library, links = liveLinks(s);
   const savedHere = new Set((lib.index?.blocks ?? []).filter((b) => b.from.project === s.id).map((b) => b.type));
   const linkOf = (type: string) => links.find((l) => l.types.includes(type));
-  const mine = (lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)).filter((b) => matches(q, undefined, ...idFields(b.type), b.name, b.desc));
+  const mine = foundIn((lib.index?.blocks ?? []).filter((b) => !reg?.item(b.type) && !linkOf(b.type)), blockFind, libraryBlock);
   const star = (type: string) => (
     <button class={`lib-star${savedHere.has(type) ? ' on' : ''}`} data-save-block={type} {...tip(t(savedHere.has(type) ? 'lib.savedTip' : 'lib.saveTip'))}
       onClick={() => editor.openSaveBlock(type)}>{savedHere.has(type) ? '★' : '☆'}</button>
