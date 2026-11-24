@@ -129,7 +129,9 @@ export const outro: ItemType<P, S> = {
       cssCamel(el, { display: q > 0 ? 'block' : 'none', left: `${x}px`, top: `${y + 2 * u}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${42 * u}px`,
         color: hid ? p.hl : '#ffffff', transform: `translate(-50%, -50%) scale(${Math.max(0.01, eBack(q, 1.9))})` });
       if (q <= 0) continue;
-      if (i > 0) { g.strokeStyle = withAlpha(p.ink, 0.35); g.lineWidth = 5 * u; g.setLineDash([10 * u, 10 * u]); g.beginPath(); g.moveTo(x - gap + 40 * u, y); g.lineTo(x - 40 * u, y); g.stroke(); g.setLineDash([]); }
+      // round caps said here: they used to come from the arrow's penPath of the frame drawn before (draw is not a pure function of
+      // t otherwise: a page's first draw got square dashes, a later one round ones)
+      if (i > 0) { g.strokeStyle = withAlpha(p.ink, 0.35); g.lineWidth = 5 * u; g.lineCap = 'round'; g.lineJoin = 'round'; g.setLineDash([10 * u, 10 * u]); g.beginPath(); g.moveTo(x - gap + 40 * u, y); g.lineTo(x - 40 * u, y); g.stroke(); g.setLineDash([]); }
       g.fillStyle = hid ? p.ink : p.accent; g.beginPath(); g.arc(x, y, 38 * u * eBack(q, 1.9), 0, Math.PI * 2); g.fill();
     }
     // the arrow: from beside the call to action down to the link, then a little hop on every beat
