@@ -3,14 +3,19 @@
 // red vignette and a giant word with a double outline, bouncing.
 // mode 'rays' (the food-deep short's fx.crunch, the bite): thin rays shooting out from the point (x, y) and the word (咔滋！) popping
 // down from big at (tx, ty), tilted, in the highlight colour with a hard ink outline.
-import { clamp, cssCamel, eBack, eOut3, h, prog, type ItemType } from '@tellcut/engine';
+// 2026-11-24: three more sticker shapes: cloud (a puffy scalloped cloud popping in softly with a wobble), star (a fat five-pointed
+// star with soft corners spinning in a quarter turn) and splat (a paint splat with drips and drops thrown out, no ink outline).
+import { clamp, cssCamel, eBack, eOut3, h, prog, textEm, type ItemType } from '@tellcut/engine';
 import { layoutMarkup } from './markup.ts';
-import { polygonSvg, setPolygon, spikePoints, SVG_NS } from './shapes.ts';
+import { circlePath, cloudPath, polygonSvg, roundedPath, setPolygon, smoothPath, spikePoints, splatShape, SVG_NS } from './shapes.ts';
 import { runBox, setRuns, type RunBox } from './runs.ts';
-import { withAlpha } from './color.ts';
+import { luma, withAlpha } from './color.ts';
 
-interface P { tx: number; ty: number; mode: 'sticker' | 'blast' | 'rays'; text: string; points: number; x: number; y: number; size: number; fill: string; ink: string; textColor: string; hl: string; tilt: number; font: string; seed: number; outDur: number; shadow: string; dots: string }
-interface S { box: HTMLElement; svg: SVGSVGElement; poly: SVGPolygonElement; under: SVGPolygonElement; halftone: SVGPolygonElement; dot: SVGCircleElement; pattern: SVGPatternElement; text: RunBox; flash: HTMLElement; rays: HTMLElement; vig: HTMLElement; back: RunBox; lines: SVGSVGElement }
+export type BurstMode = 'sticker' | 'blast' | 'rays' | 'cloud' | 'star' | 'splat';
+interface P { tx: number; ty: number; mode: BurstMode; text: string; points: number; x: number; y: number; size: number; fill: string; ink: string; textColor: string; hl: string; tilt: number; font: string; seed: number; outDur: number; shadow: string; dots: string }
+interface S { box: HTMLElement; svg: SVGSVGElement; poly: SVGPolygonElement; under: SVGPolygonElement; halftone: SVGPolygonElement; dot: SVGCircleElement; pattern: SVGPatternElement; text: RunBox; flash: HTMLElement; rays: HTMLElement; vig: HTMLElement; back: RunBox; lines: SVGSVGElement;
+  /** the cloud, star and splat: the shape as a path, its shadow and its halftone (the sticker's polygons stay for the sticker) */
+  shape: SVGPathElement; shapeUnder: SVGPathElement; shapeDots: SVGPathElement }
 
 /** ray i of n (mode rays) at `local`: its angle and inner / outer radius as shares of the burst's radius */
 export function rayAt(i: number, n: number, local: number) {
@@ -25,11 +30,14 @@ export const burst: ItemType<P, S> = {
     { value: 'sticker', label: '鋸齒貼紙', doc: '鋸齒爆炸形裡一個大字（彈入、微傾，points 是鋸齒數）；「出發！」「超好吃」這種貼紙感的爆字；shadow 給一個顏色是往右下錯開的彩色陰影、dots 給一個顏色是填色上的網點（漫畫的爆炸框，配 common.comic）' },
     { value: 'blast', label: '全畫面爆開', doc: '整個畫面爆開：白閃、旋轉的放射光、脈動紅色暗角、雙層描邊的巨大字；爆表、破紀錄、大揭曉' },
     { value: 'rays', label: '放射爆字', doc: '咬下去的瞬間：從 (x,y) 射出一圈細放射線、大字（咔滋！）在 (tx,ty) 從大縮回彈出、斜斜的；咬、敲、碎、爆汁' },
+    { value: 'cloud', label: '雲朵框', doc: '胖胖的雲朵框裡一個大字（fill 填色、ink 外框，points 是圓弧數、seed 換圓弧大小），軟軟地彈出來、晃一晃才停；可愛、開心的話：「好吃」「耶」「好幸福」；shadow、dots 和 sticker 一樣' },
+    { value: 'star', label: '星形章', doc: '圓角的胖五角星裡一個字，轉四分之一圈一邊放大、落定（fill 填色、ink 外框；字短一點才放得下）；評分、贏了、「No.1」「推薦」；shadow、dots 和 sticker 一樣' },
+    { value: 'splat', label: '潑漆', doc: '一灘 fill 色的潑漆（形狀看 seed，沒有外框）幾條往下流的漆和噴出去的小漆點，大字用 textColor（太接近 fill 時自動換黑或白），從小一下砸出來、漆點晚一點飛出去；亂、吵、「慘了」「爆雷」' },
   ] },
   params: [
-    { key: 'mode', label: '樣式', type: 'enum', options: ['sticker', 'blast', 'rays'], default: 'sticker' },
+    { key: 'mode', label: '樣式', type: 'enum', options: ['sticker', 'blast', 'rays', 'cloud', 'star', 'splat'], default: 'sticker' },
     { key: 'text', label: '文字（【強調】）', type: 'text', default: '出發！' },
-    { key: 'points', label: '鋸齒數', type: 'number', min: 6, max: 30, step: 1, default: 14 },
+    { key: 'points', label: '鋸齒數（cloud 是圓弧數）', type: 'number', min: 6, max: 30, step: 1, default: 14 },
     { key: 'x', label: '中心 x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.5 },
     { key: 'y', label: '中心 y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.01, default: 0.4 },
     { key: 'size', label: '直徑（畫面短邊 %）', type: 'number', min: 10, max: 120, step: 1, default: 62 },
@@ -40,9 +48,9 @@ export const burst: ItemType<P, S> = {
     { key: 'tilt', label: '傾斜（度）', type: 'number', min: -30, max: 30, step: 0.5, default: -6 },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'outDur', label: '出場時間 (s)（縮小並淡出）', type: 'number', min: 0, max: 2, step: 0.05, default: 0.2 },
-    { key: 'shadow', label: '錯位陰影顏色（sticker；空＝不要）', type: 'color', default: '' },
-    { key: 'dots', label: '網點顏色（sticker；空＝不要）', type: 'color', default: '' },
-    { key: 'seed', label: '鋸齒亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 4 },
+    { key: 'shadow', label: '錯位陰影顏色（sticker、cloud、star、splat；空＝不要）', type: 'color', default: '' },
+    { key: 'dots', label: '網點顏色（sticker、cloud、star、splat；空＝不要）', type: 'color', default: '' },
+    { key: 'seed', label: '形狀亂數種子（鋸齒、雲朵的圓弧、潑漆的形狀）', type: 'number', min: 1, max: 9999, step: 1, default: 4 },
     { key: 'tx', label: '字的中心 x（rays；畫面寬比例，-1＝放射中心右上方）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
     { key: 'ty', label: '字的中心 y（rays；畫面高比例，-1＝放射中心上方）', type: 'number', min: -1, max: 1, step: 0.01, default: -1 },
   ],
@@ -56,6 +64,10 @@ export const burst: ItemType<P, S> = {
     pattern.appendChild(dot); defs.appendChild(pattern);
     under.setAttribute('stroke-linejoin', 'round'); halftone.setAttribute('stroke', 'none');
     svg.insertBefore(under, poly); svg.insertBefore(defs, under); svg.appendChild(halftone);
+    // the cloud, star and splat: the same three layers as paths, hidden while the sticker (or another mode) draws
+    const path = () => { const e = document.createElementNS(SVG_NS, 'path') as SVGPathElement; e.setAttribute('stroke-linejoin', 'round'); e.style.display = 'none'; return e; };
+    const shapeUnder = path(), shape = path(), shapeDots = path();
+    svg.insertBefore(shapeUnder, poly); svg.insertBefore(shape, halftone); svg.appendChild(shapeDots);
     cssCamel(box, { position: 'absolute' });
     const t = h('div', null, null, box);
     cssCamel(t, { position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'pre', lineHeight: '1.1', fontWeight: '900' });
@@ -68,7 +80,7 @@ export const burst: ItemType<P, S> = {
     cssCamel(lines as unknown as HTMLElement, { position: 'absolute', left: '0', top: '0', overflow: 'visible', display: 'none' });
     for (let i = 0; i < 14; i++) { const l = document.createElementNS(SVG_NS, 'line'); l.setAttribute('stroke-linecap', 'round'); lines.appendChild(l); }
     ctx.root.appendChild(box);   // the word stays on top of the blast layers
-    return { box, svg, poly, under, halftone, dot, pattern, text: runBox(t), flash, rays, vig, back: runBox(bk), lines };
+    return { box, svg, poly, under, halftone, dot, pattern, text: runBox(t), flash, rays, vig, back: runBox(bk), lines, shape, shapeUnder, shapeDots };
   },
   draw(ctx, s) {
     cssCamel(s.lines as unknown as HTMLElement, { display: ctx.params.mode === 'rays' ? 'block' : 'none' });
@@ -77,6 +89,9 @@ export const burst: ItemType<P, S> = {
     if (s.flash.style.display !== 'none') { for (const el of [s.flash, s.rays, s.vig, s.back.el.parentElement!]) cssCamel(el, { display: 'none' }); cssCamel(s.svg as unknown as HTMLElement, { display: '' }); cssCamel(s.text.el.parentElement!, { position: 'absolute', inset: '0', webkitTextStroke: '0' }); }
     const p = ctx.params, { W, H, theme } = ctx, k = Math.min(W, H) / 1080, size = (p.size / 100) * Math.min(W, H), r = size / 2, stroke = theme.stroke * k;
     cssCamel(s.text.el.parentElement!, { position: 'absolute', inset: '0', textShadow: 'none' });   // back from rays
+    if (p.mode === 'cloud' || p.mode === 'star' || p.mode === 'splat') { drawShape(ctx, s, size, stroke); return; }
+    for (const e of [s.shape, s.shapeUnder, s.shapeDots]) e.style.display = 'none';
+    s.poly.style.display = '';
     const pts = spikePoints(p.points, r - stroke, (r - stroke) * 0.68, 0, 1, p.seed);
     setPolygon(s.svg, s.poly, size, pts, p.fill, p.ink, stroke);
     drawComicLook(s, pts, size, stroke, p);
@@ -87,6 +102,96 @@ export const burst: ItemType<P, S> = {
     cssCamel(s.box, { left: `${p.x * W - r}px`, top: `${p.y * H - r}px`, width: `${size}px`, height: `${size}px`, opacity: String(Math.min(1, pop * 4) * out), transform: `rotate(${p.tilt}deg) scale(${pop * (0.7 + 0.3 * out)})` });
   },
 };
+
+type ShapeMode = 'cloud' | 'star' | 'splat';
+
+/** cloud, star and splat: how the shape comes in at `local` (s), its scale and its turn (degrees, added to the tilt). cloud: a soft
+ *  pop with a small overshoot and a wobble that dies away within about a second; star: growing from nothing while it turns a quarter
+ *  turn back to its tilt over 0.55 s, settling with a little overshoot; splat: from a fifth of its size to full in 0.16 s, overshooting hard */
+export function shapeEntrance(mode: ShapeMode, local: number): { scale: number; turn: number } {
+  if (mode === 'cloud') {
+    const q = prog(local, 0, 0.5);
+    return { scale: 0.3 + 0.7 * eBack(q, 1.6), turn: local > 0 ? 6 * Math.sin(local * 12) * Math.exp(-4 * local) : 0 };
+  }
+  if (mode === 'star') { const q = prog(local, 0, 0.55); return { scale: eBack(q, 1.8), turn: -90 * (1 - eBack(q, 1.3)) }; }
+  return { scale: 0.2 + 0.8 * eBack(prog(local, 0, 0.16), 3), turn: 0 };
+}
+
+/** splat at `local`, its blob filling a circle of radius `R` (the fingers, drips and drops reach past it): the blob with a bead at
+ *  each finger's end, its drips running a little further down over the first second or so (each with a round bead at its end) and
+ *  the drops, thrown out from halfway 0.06–0.53 s in; all clockwise subpaths of one path, so they fill as one. `unit`: px a unit of
+ *  splatShape */
+export function splatPath(seed: number, R: number, local: number): { d: string; unit: number } {
+  const g = splatShape(seed), s = R * 0.95, f = (v: number) => (v * s).toFixed(2), grow = eOut3(prog(local, 0.12, 1.3));
+  let d = smoothPath(g.outline, s);
+  for (const b of g.beads) d += ` ${circlePath(b.x * s, b.y * s, b.r * s)}`;
+  for (const dr of g.drips) {
+    const hw = dr.w / 2, y1 = g.edge(dr.x) + dr.len * (0.3 + 0.7 * grow);
+    d += ` M${f(dr.x + hw)},${f(0.3)} L${f(dr.x + hw)},${f(y1)} A${f(hw)},${f(hw)} 0 0 1 ${f(dr.x - hw)},${f(y1)} L${f(dr.x - hw)},${f(0.3)} Z ${circlePath(dr.x * s, y1 * s, dr.w * 0.72 * s)}`;
+  }
+  g.drops.forEach((o, i) => {
+    const q = eOut3(prog(local, 0.06 + 0.025 * i, 0.38 + 0.025 * i)), at = 0.5 + 0.5 * q;
+    if (q > 0) d += ` ${circlePath(o.x * s * at, o.y * s * at, o.r * s * (0.6 + 0.4 * q))}`;
+  });
+  return { d, unit: s };
+}
+
+/** the word's colour on a splat, which has no outline to hold it: textColor, or near-black or white (whichever stands out) when its
+ *  lightness is too close to the fill's */
+export function readableOn(text: string, fill: string): string {
+  const a = luma(text), b = luma(fill);
+  if (a === null || b === null || Math.abs(a - b) >= 0.35) return text;
+  return b > 0.5 ? '#1a1a1a' : '#ffffff';
+}
+
+/** cloud, star, splat: the shape as a path (with the sticker's shadow and dots), the word fitted inside it, the entrance */
+function drawShape(ctx: Parameters<typeof burst.draw>[0], s: S, size: number, stroke: number) {
+  const p = ctx.params, { W, H, local, dur } = ctx, r = size / 2, mode = p.mode as ShapeMode;
+  for (const e of [s.poly, s.under, s.halftone]) e.style.display = 'none';
+  s.svg.setAttribute('width', String(size)); s.svg.setAttribute('height', String(size)); s.svg.setAttribute('viewBox', `${-r} ${-r} ${size} ${size}`);
+  // the path, the room the words fit in (px, width and height) and the word's size before fitting
+  let d: string, room: [number, number], px: number, lines = 3, line = stroke, textColor = p.textColor;
+  if (mode === 'cloud') {
+    const c = cloudPath(p.points, r - stroke, p.seed);
+    d = c.d; room = [c.rx * 1.72, c.ry * 1.6]; px = size * 0.17;
+  } else if (mode === 'star') {
+    const R = r - stroke;
+    d = roundedPath(spikePoints(5, R, R * 0.56), R * 0.16); room = [R * 0.98, R * 0.72]; px = size * 0.24; lines = 2;
+  } else {
+    const sp = splatPath(p.seed, r, local);
+    d = sp.d; room = [sp.unit * 1.3, sp.unit * 1.05]; px = size * 0.2; line = 0; textColor = readableOn(p.textColor, p.fill);
+  }
+  s.shape.setAttribute('d', d); s.shape.setAttribute('fill', p.fill);
+  s.shape.setAttribute('stroke', line ? p.ink : 'none'); s.shape.setAttribute('stroke-width', String(line));
+  s.shape.style.display = '';
+  if (p.shadow) {
+    s.shapeUnder.setAttribute('d', d); s.shapeUnder.setAttribute('transform', `translate(${(size * 0.07).toFixed(2)} ${(size * 0.07).toFixed(2)})`);
+    s.shapeUnder.setAttribute('fill', p.shadow); s.shapeUnder.setAttribute('stroke', line ? p.ink : 'none'); s.shapeUnder.setAttribute('stroke-width', String(line));
+    s.shapeUnder.style.display = '';
+  } else s.shapeUnder.style.display = 'none';
+  if (p.dots) {
+    setDots(s, size, p.dots);
+    s.shapeDots.setAttribute('d', d); s.shapeDots.setAttribute('fill', `url(#${s.pattern.id})`); s.shapeDots.setAttribute('stroke', 'none');
+    s.shapeDots.style.display = '';
+  } else s.shapeDots.style.display = 'none';
+  // a short word stays on one line, a little smaller, rather than leaving its last character alone on a second
+  const one = layoutMarkup(p.text, room[0] / px, 1), fit = one.lines.length === 1 && one.scale >= 0.75 ? one : layoutMarkup(p.text, room[0] / px, lines);
+  // and a line that could not break (a word with its punctuation) still fits across
+  const widest = Math.max(0.5, ...fit.lines.map((l) => textEm(l.map((x) => x.t).join('')))), fs = Math.min(room[0] / widest, px * fit.scale, room[1] / (Math.max(1, fit.lines.length) * 1.1));
+  setRuns(s.text, fit.lines, p.hl);
+  cssCamel(s.text.el.parentElement!, { color: textColor, fontSize: `${fs}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif` });
+  const e = shapeEntrance(mode, local), out = p.outDur > 0 ? 1 - prog(local, dur - p.outDur, dur) : 1;
+  const show = mode === 'splat' ? clamp(local / 0.03) : Math.min(1, prog(local, 0, mode === 'cloud' ? 0.5 : 0.55) * 4);
+  cssCamel(s.box, { left: `${p.x * W - r}px`, top: `${p.y * H - r}px`, width: `${size}px`, height: `${size}px`, opacity: String(show * out),
+    transform: `rotate(${(p.tilt + e.turn).toFixed(3)}deg) scale(${(e.scale * (0.7 + 0.3 * out)).toFixed(4)})` });
+}
+
+/** the halftone pattern: dots 6% of the size apart, a quarter of that across, in `color` */
+function setDots(s: Pick<S, 'dot' | 'pattern'>, size: number, color: string) {
+  const d = size * 0.06;
+  s.pattern.setAttribute('width', d.toFixed(2)); s.pattern.setAttribute('height', d.toFixed(2));
+  s.dot.setAttribute('cx', (d / 2).toFixed(2)); s.dot.setAttribute('cy', (d / 2).toFixed(2)); s.dot.setAttribute('r', (d * 0.26).toFixed(2)); s.dot.setAttribute('fill', color);
+}
 
 let dotsId = 0;
 /** the sticker's comic look: the shadow, the same spikes shifted down-right by 7% of the size in its own colour with the same ink

@@ -153,6 +153,10 @@ export const STYLES: Sample[] = [
   { name: 'badge-box', type: 'common.badge', params: { shape: 'box', label: 'No.1', plate: '米白休閒', x: 0.08, y: 0.125, size: 26, color: '#111111', textColor: '#ffffff', font: 'Playfair Display' }, at: [1.5], bg: '#3b4cf0' },
   { name: 'badge-circle', type: 'common.badge', params: { shape: 'circle', label: '03', plate: '第三招' }, at: [1.5] },
   { name: 'burst-comic', type: 'common.burst', params: { text: '3歲\n生日！', fill: '#ffe14d', textColor: '#ff3f9a', shadow: '#ff3f9a', dots: '#ffb300', tilt: 8, points: 16 }, at: [1.5], bg: '#4a6b7c' },
+  // its later shapes (2026-11-24): the cloud settled, the star mid-spin and settled, the splat as it hits and settled
+  { name: 'burst-cloud', type: 'common.burst', params: { mode: 'cloud', text: '好好吃～', fill: '#fffaf2', textColor: '#ff5a7a', ink: '#3b2a33', shadow: '#ffb8c8', points: 11, tilt: -4 }, at: [1.5], bg: '#6fa8c9' },
+  { name: 'burst-star', type: 'common.burst', params: { mode: 'star', text: 'No.1', fill: '#ffd23f', tilt: -8 }, at: [0.12, 1.5], bg: '#3a4a6b' },
+  { name: 'burst-splat', type: 'common.burst', params: { mode: 'splat', text: '慘了！', fill: '#ff3b5c', textColor: '#ffffff' }, at: [0.14, 1.5], bg: '#e9e4da' },
   ...CAPTION_SAMPLES,
   // common.heading (spec 2026-11-05-title-templates): every layout, every backing, an English and a Japanese title
   ...['center', 'top', 'bottom', 'lower', 'left', 'corner', 'full'].map((layout): Sample => ({ name: `heading-${layout}`, type: 'common.heading', params: { ...HEAD_ZH, layout, ...(layout === 'full' ? { text: '七百年', kicker: '', sub: '' } : {}) }, at: [1.5], bg: '#4a5a52' })),

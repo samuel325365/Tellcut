@@ -2,7 +2,9 @@
 // Blocks q–z sized to their room: lines that would run off the frame or the card shrink (or fit), short ones are drawn as before.
 // jsdom has no layout and no 2D context: the tests read what cssCamel last wrote (`_c`) and the canvas is a stand-in.
 import { resolveTheme, textEm, withDefaults, type ItemType } from '@tellcut/engine';
-import { quote } from './quote.ts';
+import { blockFit, quote, quoteChars, quoteMeasure, typeCursor, typeTimes, TYPE_START } from './quote.ts';
+import { burst, readableOn, shapeEntrance } from './burst.ts';
+import { cloudPath, splatShape } from './shapes.ts';
 import { rating } from './rating.ts';
 import { stations, stationsLayout } from './stations.ts';
 import { marqueeCopies, reels } from './reels.ts';
@@ -314,5 +316,131 @@ describe('common.strike looks', () => {
     expect([css(m.cv).zIndex, css(m.stamp).zIndex]).toEqual(['', '']);
     expect([css(b.cv).zIndex, css(b.stamp).zIndex]).toEqual(['1', '2']);
     expect(strike.variants!.list.map((v) => v.value)).toEqual(['marker', 'scribble', 'cross', 'bar']);
+  });
+});
+
+describe('common.burst looks cloud, star and splat', () => {
+  /** what a draw left on the box, the word and the shape's three paths */
+  const drawnAt = (s: any) => JSON.stringify([css(s.box), css(s.text.el.parentElement), ...[s.shape, s.shapeUnder, s.shapeDots].map((e: SVGElement) => [e.getAttribute('d'), e.getAttribute('transform'), e.style.display])]);
+  const comic = { shadow: '#ff3f9a', dots: '#ffb300' };
+  test('each draws a pure function of time: a fresh draw and one after another moment agree', () => {
+    for (const mode of ['cloud', 'star', 'splat']) for (const t of [0.05, 0.12, 0.3, 0.8, 1.5]) {
+      const a = run(burst, { mode, ...comic }, t), b = run(burst, { mode, ...comic }, 2.5);
+      burst.draw({ ...b.ctx, t, local: t }, b.s);
+      expect([mode, t, drawnAt(b.s)]).toEqual([mode, t, drawnAt(a.s)]);
+    }
+  });
+  test('the sticker is drawn as before (its polygons, none of the paths), also after another mode on the same state', () => {
+    const fresh = run(burst, {}, 1.5).s, { s, ctx } = run(burst, { mode: 'splat', ...comic }, 1.5);
+    burst.draw({ ...ctx, params: { ...ctx.params, mode: 'sticker', shadow: '', dots: '' } }, s);
+    for (const x of [fresh, s]) {
+      expect([x.poly.style.display, x.shape.style.display, x.shapeUnder.style.display, x.shapeDots.style.display]).toEqual(['', 'none', 'none', 'none']);
+      expect(css(x.box).transform).toBe('rotate(-6deg) scale(1)');
+    }
+    expect(s.poly.getAttribute('points')).toBe(fresh.poly.getAttribute('points'));
+    expect(burst.variants!.list.map((v) => v.value)).toEqual(['sticker', 'blast', 'rays', 'cloud', 'star', 'splat']);
+  });
+  test('cloud: one bump an arc, inside its circle; the word fits the inner ellipse; it pops in softly and its wobble dies away', () => {
+    const c = cloudPath(9, 300, 4), arcs = c.d.match(/A/g)!.length, ends = [...c.d.matchAll(/ (-?[\d.]+),(-?[\d.]+)(?= |$)/g)].map((m) => Math.hypot(+m[1], +m[2]));
+    expect(arcs).toBe(9);
+    expect(Math.max(...ends)).toBeLessThan(300);
+    expect(c.rx).toBeGreaterThan(c.ry);
+    expect(cloudPath(9, 300, 4)).toEqual(c);
+    expect(cloudPath(9, 300, 5).d).not.toBe(c.d);
+    const { s, ctx } = run(burst, { mode: 'cloud' }, 1.5), fs = px(css(s.text.el.parentElement).fontSize), size = 0.62 * 1080;
+    expect(fs * textEm('出發！')).toBeLessThan(size * 0.8);
+    expect([s.poly.style.display, s.shape.getAttribute('stroke')]).toEqual(['none', ctx.params.ink]);
+    expect(shapeEntrance('cloud', 0).scale).toBeCloseTo(0.3, 6);
+    expect(Math.abs(shapeEntrance('cloud', 0.15).turn)).toBeGreaterThan(1);
+    expect(Math.abs(shapeEntrance('cloud', 1.5).turn)).toBeLessThan(0.05);
+  });
+  test('star: five rounded tips; a quarter turn back to the tilt while growing from nothing, then settled', () => {
+    const { s } = run(burst, { mode: 'star', text: 'No.1' }, 1.5);
+    expect(s.shape.getAttribute('d')!.match(/Q/g)!.length).toBe(10);
+    const [a, b] = [shapeEntrance('star', 0), shapeEntrance('star', 1.5)];
+    expect([a.scale, a.turn + 90, b.scale - 1, b.turn].map((x) => Math.abs(x) < 1e-9)).toEqual([true, true, true, true]);
+    expect(css(run(burst, { mode: 'star' }, 0.1).s.box).transform).toMatch(/^rotate\(-[3-9]\d\.\d+deg\)/);
+    expect(css(s.box).transform).toBe('rotate(-6.000deg) scale(1.0000)');
+  });
+  test('splat: no outline, seeded; the drops fly out after the hit; the word switches to black or white when it would vanish', () => {
+    const subpaths = (t: number) => run(burst, { mode: 'splat' }, t).s.shape.getAttribute('d')!.match(/M/g)!.length;
+    expect(run(burst, { mode: 'splat' }, 1.5).s.shape.getAttribute('stroke')).toBe('none');
+    expect(subpaths(1.5)).toBe(subpaths(0.04) + 7);   // the seven drops, none yet at the hit
+    const geo = (seed: number) => { const { edge: _edge, ...g } = splatShape(seed); return g; };
+    expect(geo(9)).toEqual(geo(9));
+    expect(splatShape(9).outline).not.toEqual(splatShape(10).outline);
+    expect(readableOn('#1a1a1a', '#ffe14d')).toBe('#1a1a1a');
+    expect(readableOn('#ffffff', '#ff3b5c')).toBe('#ffffff');
+    expect(readableOn('#ffe14d', '#ffe14d')).toBe('#1a1a1a');
+    expect(readableOn('#1a1a1a', '#202020')).toBe('#ffffff');
+    expect(css(run(burst, { mode: 'splat', fill: '#222222' }, 1.5).s.text.el.parentElement).color).toBe('#ffffff');
+  });
+});
+
+describe('common.quote looks type and block', () => {
+  const drawnAt = (s: any) => JSON.stringify([css(s.alt), css(s.cursor), css(s.altKick), css(s.altBy), ...s.altRows.map((r: Element) => [css(r), ...[...r.children].map((c) => css(c))])]);
+  test('each draws a pure function of time: a fresh draw and one after another moment agree', () => {
+    for (const mode of ['type', 'block']) for (const t of [0, 0.3, 0.7, 1.4, 2.6, 3.9]) {
+      const a = run(quote, { mode }, t), b = run(quote, { mode }, 3.5);
+      quote.draw({ ...b.ctx, t, local: t }, b.s);
+      expect([mode, t, drawnAt(b.s)]).toEqual([mode, t, drawnAt(a.s)]);
+    }
+  });
+  test('words and card are drawn as before; after type on the same state words gets its own layer back', () => {
+    const { s, ctx } = run(quote, { mode: 'type' }, 2);
+    expect([css(s.wrap).display, css(s.alt).display]).toEqual(['none', 'block']);
+    quote.draw({ ...ctx, params: { ...ctx.params, mode: 'words' } }, s);
+    expect([css(s.wrap).display, css(s.alt).display]).toEqual(['', 'none']);
+    const w = run(quote, {}, 3).s;
+    expect([css(w.alt).display, w.altRows.length]).toEqual(['none', 0]);
+    expect(quote.variants!.list.map((v) => v.value)).toEqual(['words', 'card', 'type', 'block']);
+  });
+  test('the accent: the 【marked】 characters when there are any, else the hit line; block drops a closing ，。 and blank lines', () => {
+    const hl = (l: Array<{ c: string; hl: boolean }>) => l.filter((x) => x.hl).map((x) => x.c).join('');
+    expect(quoteChars('但 如果\n去睡吧', -1).map(hl)).toEqual(['', '去睡吧']);
+    expect(quoteChars('人生 太短\n【早起】 吧', -1).map(hl)).toEqual(['', '早起']);
+    expect(quoteChars('stay 【foolish】.', -1)[0].map((x) => x.c).join('')).toBe('stay foolish.');
+    expect(quoteChars('人生 太短，\n\n不要。', -1, true).map((l) => l.map((x) => x.c).join(''))).toEqual(['人生太短', '不要']);
+  });
+  test('type: characters appear on their times, finishing at 60 % of the item; the cursor is steady while typing, then blinks', () => {
+    const { at, step, done } = typeTimes([20, 0, 20], 5);
+    expect(at[0][0]).toBe(TYPE_START);
+    expect(done).toBeCloseTo(0.6 * 5, 5);
+    expect(at[2][0] - at[0][19]).toBeCloseTo(9 * step, 5);   // two line breaks (one a blank line), four characters' time each
+    expect(typeTimes([200], 3).step).toBe(0.03);
+    expect(typeTimes([2], 10).step).toBe(0.1);
+    const text = '老實說，\n我 從來 沒有', { s, ctx } = run(quote, { mode: 'type', text }, 1.0), t = typeTimes([4, 5], ctx.dur);
+    const shown = s.altChars.flat().filter((sp: HTMLElement) => css(sp).visibility === 'visible').length;
+    expect(shown).toBe(t.at.flat().filter((x) => x <= 1.0).length);
+    expect(shown).toBeGreaterThan(0);
+    expect(shown).toBeLessThan(10);
+    expect(s.altChars[1].map((sp: HTMLElement) => css(sp).width)).toEqual(Array(5).fill('1em'));
+    expect(typeCursor(t.at, t.step, t.done, 1.0).on).toBe(true);
+    const blinks = [0.1, 0.6, 1.2, 1.7].map((u) => typeCursor(t.at, t.step, t.done, t.done + t.step + u).on);
+    expect(blinks).toEqual([true, false, true, false]);
+    expect(typeCursor(t.at, t.step, t.done, 3.9)).toMatchObject({ line: 1, col: 5 });
+    expect(typeCursor(t.at, t.step, t.done, t.at[0][3] + 0.001)).toMatchObject({ line: 0, col: 4 });
+    expect(typeCursor(t.at, t.step, t.done, t.at[1][0] - t.step)).toMatchObject({ line: 1, col: 0 });
+  });
+  test('block: every line is drawn exactly as wide as the block, stacked top to bottom, landing one after another', () => {
+    const ink = (text: string) => ({ w: textEm(text) * 100, left: 2, up: 88, down: 12, asc: 116, desc: 29 });
+    const spy = vi.spyOn(quoteMeasure, 'ink').mockImplementation((text) => ink(text));
+    try {
+      const text = '人生 太短，\n不要 浪費 在\n你 討厭 的\n【早起】', { s, theme } = run(quote, { mode: 'block', text }, 3.5);
+      const lines = ['人生太短', '不要浪費在', '你討厭的', '早起'], widths = s.altRows.map((r: HTMLElement, i: number) => px(css(r).fontSize) * textEm(lines[i]));
+      expect(s.altRows.map((r: HTMLElement) => r.textContent)).toEqual(lines);
+      for (const w of widths) expect(w).toBeCloseTo(widths[0], 6);
+      expect(widths[0]).toBeLessThanOrEqual(1080 * (1 - 2 * theme.safe.side) + 1e-6);
+      const tops = s.altRows.map((r: HTMLElement) => px(css(r).top));
+      expect(tops).toEqual([...tops].sort((a, b) => a - b));
+      expect(s.altRows[3].querySelector('span')!.style.color).toBeTruthy();   // 【早起】 in the accent
+      const early = run(quote, { mode: 'block', text }, 0.15).s.altRows.map((r: HTMLElement) => +css(r).opacity);
+      expect(early[0]).toBeGreaterThan(0);
+      expect(early.slice(1)).toEqual([0, 0, 0]);
+      // too tall for the frame: the whole block narrows instead of a line breaking
+      const fit = blockFit([ink('一'), ink('二'), ink('三')], 1000, 600);
+      expect(fit.width).toBeLessThan(1000);
+      expect(fit.height).toBeCloseTo(600, 6);
+    } finally { spy.mockRestore(); }
   });
 });

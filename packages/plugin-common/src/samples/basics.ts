@@ -116,6 +116,10 @@ export const BASICS: Sample[] = [
   { name: 'handwrite', type: 'common.handwrite', at: [0.8, 2.4], bg: '#7a8c6a' },
   { name: 'handwrite-note', type: 'common.handwrite', params: { paper: 'note', small: '等待的時候……', lines: '0.3|朱槿從四月開到現在', align: 'left', x: 0.42, y: 0.4, tilt: -1.4, halo: 0 }, at: [2.0], bg: '#7a8c6a' },
   { name: 'handwrite-stack', type: 'common.handwrite', params: { mode: 'stack', align: 'left', y: 0.3, lines: '0.1|親愛的你：\n0.9|倫敦今天又下雨了\n1.8|但咖啡很好喝' }, at: [2.8], bg: '#f3e9d6' },
+  // its other pens (2026-11-24): each mid-writing and written; chalk on a blackboard, marker in a notebook, crayon on drawing paper
+  { name: 'handwrite-chalk', type: 'common.handwrite', params: { look: 'chalk', mode: 'stack', align: 'left', y: 0.3, size: 6.4, lines: '0.1|今日特餐\n0.8|番茄燉牛肉飯\n1.7|附湯和甜點 180 元' }, len: 4, at: [1.1, 3.0], bg: '#1d2a24' },
+  { name: 'handwrite-marker', type: 'common.handwrite', params: { look: 'marker', mode: 'stack', align: 'left', y: 0.35, lines: '0.1|期末考重點\n0.9|光合作用在葉綠體進行' }, len: 4, at: [1.4, 3.0], bg: '#eee8da' },
+  { name: 'handwrite-crayon', type: 'common.handwrite', params: { look: 'crayon', mode: 'stack', align: 'left', y: 0.3, lines: '0.1|今天去動物園\n0.9|看到長頸鹿\n1.7|還有好多猴子' }, len: 4, at: [1.2, 3.0], bg: '#f6efe0' },
   { name: 'gauge', type: 'common.gauge', at: [0.2, 1.6, 2.6], bg: '#170d0a' },
   { name: 'gauge-guilt', type: 'common.gauge', params: { look: 'guilt' }, at: [0.2, 1.6, 2.6], bg: '#170d0a' },
   { name: 'gauge-boot', type: 'common.gauge', params: { look: 'guilt', scramble: 0.8, boot: 1.2, danger: -1, boom: -1, hits: '2.1:12', countLabel: '罪狀 #{n}' }, at: [0.4, 1.6, 2.8], bg: '#170d0a' },
@@ -203,6 +207,9 @@ export const BASICS: Sample[] = [
   { name: 'quote-ghost', type: 'common.quote', params: { text: '\n\n\n那 就 別起。\n去睡吧', pre: '\n討厭早起，\n又沒有理由？', ghost: true, kicker: '睡眠教練給討厭早起的人' }, at: [0.5], theme: QUOTE, bg: '#121015' },
   { name: 'quote-card', type: 'common.quote', params: { mode: 'card', text: '討厭早起、又沒有理由？\n那就算了，去睡吧。\n長大的好處就是：作息可以自己決定。', hit: 1, sizes: '64,92,48', serif: '2', who: 'Mia 教練', kicker: 'PODCAST｜午後聊聊' }, at: [0.3, 2.0], theme: QUOTE },
   { name: 'wide-quote', type: 'common.quote', at: [2.8], wide: true, theme: QUOTE, bg: '#121015' },
+  // its later looks (2026-11-24): the typewriter mid-line and done, the stacked block with its lines landing and settled
+  { name: 'quote-type', type: 'common.quote', params: { mode: 'type', text: '老實說，\n我 從來 沒有\n喜歡過 早起。', kicker: '凌晨兩點的告白', who: 'Mia' }, len: 4, at: [1.3, 3.2], theme: QUOTE, bg: '#121015' },
+  { name: 'quote-block', type: 'common.quote', params: { mode: 'block', text: '人生 太短，\n不要 浪費 在\n你 討厭 的\n【早起】', kicker: '睡眠教練說', who: 'Mia' }, at: [0.45, 2.6], theme: QUOTE, bg: '#121015' },
   { name: 'wipe', type: 'common.wipe', at: [0.6, 1.5, 2.4], theme: QUOTE, bg: '#2a6b8f' },
   { name: 'duo', type: 'common.duo', at: [0.6, 2.2], theme: VS, bg: '#3f9a5c' },
   { name: 'wide-duo', type: 'common.duo', params: { dir: 'h', top: 0.12, band: 0.16, foot: 0.03 }, at: [0.6], wide: true, theme: VS, bg: '#3f9a5c' },

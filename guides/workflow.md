@@ -108,7 +108,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `panel` (look): panel, print, bezel, hole, offset, drawn
   - `badge` (shape): star, burst, circle, box
   - `tag` (look): pill, label, tape, pin, glass, day, ember
-  - `burst` (mode): sticker, blast, rays
+  - `burst` (mode): sticker, blast, rays, cloud, star, splat
   - `speedlines` (look): radial, focus, streak
   - `slam` (look): plain, led, gold, neon, extrude, box, split
   - `stamp` (shape): box, circle, card, double, ember
@@ -125,9 +125,11 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `film` (look): grain, vhs, super8, print
   - `paper` (look): desk, book, grid, print
   - `notecard` (mode): step, list, title, done
+  - `handwrite` (look): pen, chalk, marker, crayon
   - `strike` (look): marker, scribble, cross, bar
   - `dotmatrix` (mode): still, marquee, type
   - `callout` (kind): circle, cross, ban, burst
+  - `quote` (mode): words, card, type, block
   - `wipe` (mode): band, hand, curl, tiles, vortex, stripes, iris, blinds, ink
   - `versus` (mode): title, round, table
   - `chart` (kind): bars, pie, people, rank, balance, table, line
