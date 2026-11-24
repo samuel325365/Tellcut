@@ -50,6 +50,14 @@ export function withDefaults(defs: ParamDef[], params: Record<string, unknown> =
   return { ...Object.fromEntries(defs.map((d) => [d.key, theme ? paramDefault(d, theme) : d.default])), ...params };
 }
 
+/** What param `def` of an item draws with when the item leaves it unset: the block's own default for it given the item's other
+ *  params (ItemType.defaultsFor: progress's battery is green, not the theme's accent), else its theme field or ParamDef default
+ *  (paramDefault). `set`: the item's own params. */
+export function unsetValue(type: Pick<ItemType, 'defaultsFor'> | undefined, def: ParamDef, set: Record<string, unknown> | undefined, theme: Theme): unknown {
+  const own = type?.defaultsFor?.(set ?? {}) as Record<string, unknown> | undefined;
+  return own && Object.hasOwn(own, def.key) && own[def.key] !== undefined ? own[def.key] : paramDefault(def, theme);
+}
+
 /** Whether the project draws with three.js: an item on a track that is not muted is of a type marked `three`, or names one in a
  *  parameter (a block that hosts another, such as common.card's picture window). The player loads three only then. */
 export function usesThree(p: Project, r: Registry): boolean {

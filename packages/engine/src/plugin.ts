@@ -131,6 +131,12 @@ export interface ItemType<P = Record<string, any>, S = any> {
    *  layer each, stacked in order at the item's place, each blending with the picture the ones before made (common.grade's deep:
    *  'color', then 'multiply'); the further layers are ctx.layers, which the stage shows, moves and removes with the item. */
   blend?: string | string[];
+  /** The block's own defaults for some params, given what the item itself sets (`set`: its params as written in project.json, before
+   *  the theme and the ParamDef defaults fill them), where those beat the theme and ParamDef default: common.progress's stretch,
+   *  battery and vine modes have their own colours, since the theme's accent is rarely a dog's coat or a leaf's green. The block's
+   *  draw applies them itself (only to keys `set` leaves out); this hook only tells the editor's Properties panel what an unset
+   *  field really draws with (registry `unsetValue`). Must be pure; return {} when nothing applies. */
+  defaultsFor?(set: Record<string, unknown>): Partial<P>;
   /** The layer is built on fixed element ids (styled by #id): only one item of this type per project. */
   unique?: boolean;
   /** draws with three.js: the player loads ThreeKit before building it; ctx.three is set */

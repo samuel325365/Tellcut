@@ -6,15 +6,16 @@
 // `shade` (from the true-crime acceptance film's fx.topshade) lays a dark gradient over the top of the frame, fading in and out with
 // the item, so the small grey line still reads over bright footage.
 import { clamp, cssCamel, eOut3, h, prog, textEm, type ItemType } from '@tellcut/engine';
-import { TOP_LANE } from './progress.ts';
+import { topLane } from './progress.ts';
 import { emParts } from './text.ts';
 import { drawAlt, isAltLook, type Alt } from './header-looks.ts';
 
 interface P { look: 'chip' | 'kicker' | 'slate' | 'flip' | 'side' | 'big'; no: string; text: string; kicker: string; y: number; size: number; kickerSize: number; color: string; textColor: string; ink: string; outline: string; muted: string; font: string; shade: number; shadeH: number }
 interface S { shade: HTMLElement; box: HTMLElement; chip: HTMLElement; label: HTMLElement; kick: HTMLElement; dot: HTMLElement; kickText: HTMLElement; key: string; alt: Alt | null }
 
-/** the label's top (a share of the frame height): `y`, or below 0 under the lane a top progress bar or dots take */
-export const headerTop = (y: number, safeTop: number) => (y >= 0 ? y : safeTop + TOP_LANE);
+/** the label's top (a share of the frame height): `y`, or below 0 under the lane a top progress bar, dots or paws take on a W × H
+ *  frame (progress topLane: deeper on landscape, where paws are drawn at their 9:16 size) */
+export const headerTop = (y: number, safeTop: number, W: number, H: number) => (y >= 0 ? y : safeTop + topLane(W, H));
 
 /** look 'kicker': the small line's font size in px — `kickerSize` (% of the frame height) or 0.44 × the title's — shrunk (to half at
  *  most) so the line with its dot fits in `room` px; past that the line wraps */
@@ -74,7 +75,7 @@ export const header: ItemType<P, S> = {
     cssCamel(s.shade, sh ? { display: 'block', height: `${((p.shadeH ?? 0.3) * H).toFixed(1)}px`, background: sh } : { display: 'none' });
     if (isAltLook(p.look)) {
       cssCamel(s.box, { display: 'none' });
-      s.alt = drawAlt(ctx, p, p.look, s.alt, ctx.root, theme.safe.side * W, headerTop(p.y, theme.safe.top) * H);
+      s.alt = drawAlt(ctx, p, p.look, s.alt, ctx.root, theme.safe.side * W, headerTop(p.y, theme.safe.top, W, H) * H);
       return;
     }
     cssCamel(s.box, { display: 'flex' });
@@ -90,7 +91,7 @@ export const header: ItemType<P, S> = {
     cssCamel(s.label, { clipPath: 'none', whiteSpace: 'pre-wrap', maxWidth: `${Math.max(px, W - 2 * left - chipW)}px` });
     cssCamel(s.box, {
       flexDirection: 'row', alignItems: 'center', gap: '0.5em', whiteSpace: 'pre', maxWidth: 'none',
-      left: `${left}px`, top: `${headerTop(p.y, theme.safe.top) * H}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`,
+      left: `${left}px`, top: `${headerTop(p.y, theme.safe.top, W, H) * H}px`, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`,
       color: p.ink, webkitTextStroke: `${theme.stroke * 0.75 * k}px ${p.outline}`, paintOrder: 'stroke fill', opacity: String(inn * (1 - out)), textShadow: `0 ${2 * k}px ${10 * k}px rgba(0,0,0,.6)`,
       transform: `translateX(${-(1 - inn) * W * 0.12 - out * W * 0.12}px)`,
     });
@@ -110,7 +111,7 @@ function drawKicker(ctx: Parameters<typeof header.draw>[0], s: S, k: number, px:
   const a = eOut3(prog(local, 0, 0.4)), left = theme.safe.side * W, room = W - 2 * left, kpx = kickerPx(p.kicker, p.kickerSize ?? 0, px, H, k, room);
   cssCamel(s.chip, { display: 'none' });
   // kept between the side safe margins: a title too long for one line wraps (it used to run off the right edge)
-  cssCamel(s.box, { left: `${left}px`, top: `${headerTop(p.y, theme.safe.top) * H}px`, flexDirection: 'column', alignItems: 'flex-start', gap: `${6 * k}px`, whiteSpace: 'pre-wrap', maxWidth: `${room}px`,
+  cssCamel(s.box, { left: `${left}px`, top: `${headerTop(p.y, theme.safe.top, W, H) * H}px`, flexDirection: 'column', alignItems: 'flex-start', gap: `${6 * k}px`, whiteSpace: 'pre-wrap', maxWidth: `${room}px`,
     fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${px}px`, color: p.ink, webkitTextStroke: '0', textShadow: 'none', transform: 'none',
     opacity: String(Math.min(prog(local, 0, 0.01), prog(dur - local, 0, 0.12))) });
   cssCamel(s.kick, { display: p.kicker ? 'flex' : 'none', whiteSpace: 'pre-wrap', gap: `${12 * k}px`, fontSize: `${kpx}px`, fontWeight: '700', letterSpacing: `${3 * k}px`, lineHeight: '1.3', color: p.muted,

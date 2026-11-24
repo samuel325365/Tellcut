@@ -8,8 +8,8 @@ export const MORE_MODES = ['runner', 'stretch', 'paws', 'segments', 'fuse', 'bat
 export type MoreMode = (typeof MORE_MODES)[number];
 export const isMoreMode = (m: string): m is MoreMode => (MORE_MODES as readonly string[]).includes(m);
 
-/** the room a progress bar or row of dots at the top takes under the top safe margin (a share of the frame height): a header keeps
- *  below it. paws and segments fit in it too. */
+/** the room a progress bar or row of dots at the top takes under the top safe margin (a share of the frame height, on portrait and
+ *  square frames): a header keeps below it. paws and segments fit in it too. On a landscape frame read topLane(). */
 export const TOP_LANE = 0.035;
 
 /** pencil mode: chapter starts ("秒,秒,…"; empty = the item shared evenly) → the step that is on (−1 before the first) and whether all are done
@@ -70,20 +70,29 @@ export const MODE_DEFAULTS: Partial<Record<MoreMode, Partial<Pick<MoreParams, 'c
   vine: { color: '#4caf50', done: '#ff8fb1', thickness: 16 },
 };
 
+/** mode `mode`'s own defaults (MODE_DEFAULTS), a copy; {} for a mode without any. Both the drawing (withModeDefaults) and what the
+ *  editor shows for an unset field (common.progress's defaultsFor) read this one table, so the two never disagree. */
+export const modeDefaults = (mode: string): Partial<Pick<MoreParams, 'color' | 'done' | 'thickness'>> =>
+  (Object.hasOwn(MODE_DEFAULTS, mode) ? { ...MODE_DEFAULTS[mode as MoreMode] } : {});
+
 /** `p` with the mode's own defaults (MODE_DEFAULTS) for the params the item's own `set` (its params as written in project.json,
  *  before the theme and the block defaults fill them) leaves out; `p` itself when there is nothing to change */
 export function withModeDefaults<T extends MoreParams>(p: T, set: Record<string, unknown> | undefined): T {
-  const own = MODE_DEFAULTS[p.mode as MoreMode];
-  if (!own) return p;
+  const own = modeDefaults(p.mode);
   const missing = Object.entries(own).filter(([key]) => !(set && Object.hasOwn(set, key) && set[key] !== undefined));
   return missing.length ? { ...p, ...Object.fromEntries(missing) } : p;
 }
 
-/** how much larger paws, fuse, ring and stamps draw on a landscape frame, so they read about as well as on 9:16: W / H there (at
+/** how much larger paws, fuse, ring, stamps and battery draw on a landscape frame, so they read about as well as on 9:16: W / H there (at
  *  most 16:9's), 1 on portrait and square frames (their pictures unchanged). Ring and stamps are sized from the frame height and
- *  paws is held to the top lane, a share of it: on 16:9 that height is the 9:16 frame's width, so they came out 1.78 times smaller
+ *  paws is held to the top lane, a share of it (and battery's size is one too): on 16:9 that height is the 9:16 frame's width, so they came out 1.78 times smaller
  *  than on 9:16; times this they are the size they are there. */
 export const landscape = (W: number, H: number): number => (W > H && H > 0 ? Math.min(W / H, 16 / 9) : 1);
+
+/** the top lane on a W × H frame, a share of its height: TOP_LANE times landscape(), so on 16:9 it is as many px as on 9:16 of the
+ *  same short side. paws, enlarged on landscape to its 9:16 size, fits in it again, and common.header (headerTop) keeps below
+ *  it: with the 9:16 share the prints ran into a header at its default place. Portrait and square frames: TOP_LANE itself. */
+export const topLane = (W: number, H: number): number => TOP_LANE * landscape(W, H);
 
 /** the box a mode `height` px tall takes: left edge and width inside the side safe margins, and its top (y ≥ 0: centred there; else
  *  against the top or bottom safe edge) */

@@ -1,4 +1,4 @@
-import { aliasText, idFinder, SEARCH_ALIASES, wordFinder } from './search.ts';
+import { aliasText, COMMON_PARAM_MIN, COMMON_PARAM_SHARE, commonParamKeys, idFinder, PARAM_QUERY_MIN, paramFinder, SEARCH_ALIASES, wordFinder } from './search.ts';
 
 test('aliasText joins an id\'s aliases into one string a search reads, and is empty for an id with none', () => {
   expect(aliasText('common.pen@heart')).toBe(SEARCH_ALIASES['common.pen@heart'].join(' '));
@@ -44,4 +44,28 @@ test("an all-lower-case compound type's buried word: not found in the id, found 
     expect([key, idFinder(w)(key)]).toEqual([key, false]);
     expect([key, wordFinder(w)(aliasText(key).toLowerCase())]).toEqual([key, true]);
   }
+});
+
+test('commonParamKeys: the keys more than a tenth of the blocks, and more than five, have, each block counted once', () => {
+  const blocks = Array.from({ length: 80 }, (_, i) => ({ params: [{ key: 'size' }, { key: 'size' }, ...(i < 8 ? [{ key: 'fadeDur' }] : []), ...(i < 9 ? [{ key: 'gap' }] : [])] }));
+  // size: all 80; gap: 9 of 81 (over a tenth); fadeDur: 8 of 81 (not over 8.1); a block with no params counts too
+  expect([...commonParamKeys([...blocks, {}])].sort()).toEqual(['gap', 'size']);
+  // a short list: a key on every one of five blocks is still no common key
+  expect([...commonParamKeys(blocks.slice(70, 75))]).toEqual([]);
+  expect([...commonParamKeys(blocks.slice(70, 76))]).toEqual(['size']);
+  expect(commonParamKeys([]).size).toBe(0);
+  expect([COMMON_PARAM_SHARE, COMMON_PARAM_MIN]).toEqual([0.1, 5]);
+});
+
+test('paramFinder: a key where one of its parts starts (3 characters or more), a name only whole; the common keys never', () => {
+  const params = [{ key: 'fadeDur', label: '淡出秒數' }, { key: 'size', label: '大小' }, { key: 'tiltAngle', label: '傾斜' }];
+  const names = (d: { label: string }) => [d.label, d.label === '傾斜' ? 'Tilt' : ''];
+  const has = (q: string, common: string[] = []) => paramFinder(q, new Set(common))(params, names);
+  expect([has('dur'), has('DUR'), has('fadedur'), has('angle'), has('size')]).toEqual([true, true, true, true, true]);
+  // inside a part, too short, or only a common key: no
+  expect([has('ade'), has('fa'), has('t'), has('size', ['size']), has(''), has('  ')]).toEqual([false, false, false, false, false, false]);
+  // a name typed whole (any case, around spaces), not a word inside it
+  expect([has('淡出秒數'), has('tilt'), has(' Tilt '), has('淡出'), has('大小', ['size'])]).toEqual([true, true, true, false, false]);
+  expect(paramFinder('dur', new Set())<{ key: string; label: string }>(undefined, names)).toBe(false);
+  expect(PARAM_QUERY_MIN).toBe(3);
 });

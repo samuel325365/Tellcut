@@ -2,7 +2,8 @@
 // docs, aliases, group names) a Latin word only where a word starts, so `ring` finds "ringing" but not "during"; in an
 // identifier (a type id, param key, enum option, variant value, template or combo id) where one of its parts starts, camelCase
 // humps included (`dur` finds `fadeDur`, `art` does not find `heart`); any other word (CJK) anywhere in both. An all-lower-case
-// compound type id (`common.healthbar`) gets its buried word as a search alias below.
+// compound type id (`common.healthbar`) gets its buried word as a search alias below. The gallery and the library read param
+// names too, with limits catalog does not need (paramFinder).
 
 /** a query of plain Latin letters, digits and a few joiners: it is matched only where a word starts */
 const LATIN_QUERY = /^[a-z0-9 _.'-]+$/;
@@ -104,3 +105,28 @@ export const SEARCH_ALIASES: Record<string, readonly string[]> = {
 
 /** the aliases of `id` (a key of SEARCH_ALIASES) as one string for a search to read ('' when it has none) */
 export const aliasText = (id: string): string => (Object.hasOwn(SEARCH_ALIASES, id) ? SEARCH_ALIASES[id] : []).join(' ');
+
+/** A param key more than this share of the blocks searched have (size, color, x, y, font, text…) says nothing about any one of
+ *  them: the gallery's and the editor library's search by param name skip it, or `size` would list half the blocks. catalog
+ *  --find, read in full by an agent that ands several words, keeps every key. */
+export const COMMON_PARAM_SHARE = 0.1;
+/** and more blocks than this, so a short list (a few sounds, a test's handful) keeps every key */
+export const COMMON_PARAM_MIN = 5;
+/** the shortest query those searches read in param keys: one or two letters start a part of too many keys (`t`, `at`, `in`) */
+export const PARAM_QUERY_MIN = 3;
+/** the keys more than COMMON_PARAM_SHARE of `blocks`, and more than COMMON_PARAM_MIN of them, have, each block counted once */
+export function commonParamKeys(blocks: Iterable<{ params?: ReadonlyArray<{ key: string }> }>): Set<string> {
+  const n = new Map<string, number>();
+  let total = 0;
+  for (const b of blocks) { total++; for (const k of new Set((b.params ?? []).map((d) => d.key))) n.set(k, (n.get(k) ?? 0) + 1); }
+  return new Set([...n].filter(([, c]) => c > Math.max(total * COMMON_PARAM_SHARE, COMMON_PARAM_MIN)).map(([k]) => k));
+}
+/** The test of one query against a block's params, for the gallery and the editor's library: a key not in `common` is found where
+ *  one of its parts starts (idFinder, as catalog --find: `dur` finds `fadeDur`), for a query of PARAM_QUERY_MIN characters or
+ *  more; a param's name (`names(param)`: its names in any language) only when the query is that whole name (字級, Font size),
+ *  since a word inside a name (顏色, length) is in dozens of them. */
+export function paramFinder(query: string, common: ReadonlySet<string>): <P extends { key: string }>(params: ReadonlyArray<P> | undefined, names: (p: P) => string[]) => boolean {
+  const q = query.trim().toLowerCase();
+  const id = q.length >= PARAM_QUERY_MIN ? idFinder(q) : undefined;
+  return (params, names) => !!q && (params ?? []).some((d) => !common.has(d.key) && (!!id?.(d.key) || names(d).some((n) => n.trim().toLowerCase() === q)));
+}

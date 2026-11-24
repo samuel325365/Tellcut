@@ -285,7 +285,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.progress.y": {"name":"高さ","hint":"画面の高さに対する比率。-1＝「位置」に応じてセーフエリアの上端または下端に置く。slots：列の中心。rocket は見ない"},
   "common.progress.icons": {"name":"点の上／章名の前のアイコン","hint":"絵文字、カンマ区切り。空欄＝通常の丸い点"},
   "common.progress.labels": {"name":"章の名前","hint":"tabs スタイル、カンマ区切り。timeline：線上の日付。slots：各カードのキーワード（1つにつき1枚）。osd：To-Do の項目（1つにつき1マス）"},
-  "common.progress.size": {"name":"章名の文字サイズ","hint":"tabs、slots、osd、画面の高さの %。収まらないときは自動で縮小。slots のカードの高さもこれで決まる。osd のカウントは約 1.3 倍。battery：電池とパーセントの大きさ。ring：輪の大きさ。stamps：1 マスの大きさ。ring と stamps は横長の画面では縦横比を掛け、縦長と同じ大きさ"},
+  "common.progress.size": {"name":"章名の文字サイズ","hint":"tabs、slots、osd、画面の高さの %。収まらないときは自動で縮小。slots のカードの高さもこれで決まる。osd のカウントは約 1.3 倍。battery：電池とパーセントの大きさ。ring：輪の大きさ。stamps：1 マスの大きさ。battery、ring、stamps は横長の画面では縦横比を掛け、縦長と同じ大きさ"},
   "common.progress.align": {"name":"配置","hint":"tabs。osd、battery、ring、stamps：left は左寄せ、それ以外は右寄せ。rocket：left は左端、それ以外は右端"},
   "common.progress.done": {"name":"完了した章の背景色","hint":"tabs。osd：チェックと全部済んだときのカウント。battery：満タンの色。ring：満タンの色。vine：花びら（指定しないと #ff8fb1）。stamps：全部たまったあとのスタンプ"},
   "common.progress.ink": {"name":"文字と枠線","hint":"tabs。slots：実カードの文字。stretch：線。stamps：空きマスの点線の丸"},

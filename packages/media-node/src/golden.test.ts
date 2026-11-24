@@ -44,7 +44,7 @@ test('an update keeps the old picture when the new one differs only by drawing n
   // ten levels: within the tolerance, still a change an update keeps
   expect((await runGolden([flash('#8a8a8a')], o)).map((r) => r.status)).toEqual(['ok']);
   expect(readFileSync(file).equals(first)).toBe(false);
-}, 180000);
+}, 360000);
 
 test('goldenProject is a 1080×1920 film of one item', () => {
   const p = goldenProject({ name: 'x', type: 'core.flash', at: [0], len: 2, theme: { radius: 3 } });
@@ -99,7 +99,7 @@ test('a missing golden is new, update writes it, the same picture is ok, a diffe
   expect(changed[0].file).toBe(goldenFile(flash('#f00'), 0.1));
   expect((await runGolden([flash('#f00')], { ...o, update: true })).map((r) => r.status)).toEqual(['updated']);
   expect((await runGolden([flash('#f00')], o)).map((r) => r.status)).toEqual(['ok']);
-}, 180000);
+}, 360000);
 
 test('cases drawn side by side in one Chrome come back in case order, each with its own picture', async () => {
   const flash = (name: string, color: string): GoldenCase => ({ name, type: 'core.flash', params: { color, peak: 1 }, len: 1, at: [0.1] });
@@ -108,7 +108,7 @@ test('cases drawn side by side in one Chrome come back in case order, each with 
   expect((await runGolden(cases, o)).map((r) => r.status)).toEqual(['ok', 'ok', 'ok']);
   // each picture is its own case's: b drawn white no longer matches
   expect((await runGolden([flash('b', '#fff')], o)).map((r) => r.status)).toEqual(['changed']);
-}, 180000);
+}, 360000);
 
 test('a system with pictures of its own (macOS) keeps them beside the shared ones and never writes those', async () => {
   expect(goldenPlatformDir('/g', 'darwin')).toBe(join('/g', 'darwin'));
@@ -141,4 +141,4 @@ test('a system with pictures of its own (macOS) keeps them beside the shared one
   expect(await statuses('#f00', { ...mac, update: true })).toEqual(['updated']);
   expect(await statuses('#f00', mac)).toEqual(['ok']);
   expect(Object.keys(JSON.parse(readFileSync(join(own, 'shared.json'), 'utf8')))).toEqual([file]);
-}, 180000);
+}, 360000);

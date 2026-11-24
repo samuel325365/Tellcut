@@ -560,3 +560,33 @@ describe('the picture window', () => {
       expect(DICTS[lang][paramHintKey(type, p.key)], `${lang} ${type}.${p.key}`).toBeTruthy();
   });
 });
+
+test('an unset field shows what the block really draws with (its defaultsFor, e.g. a mode\'s own colour); setting writes, clearing goes back', async () => {
+  const leaf = { type: 'x.leaf', label: '葉', kind: 'overlay', build: () => null, draw: () => {},
+    // like common.progress's vine: its own green and thickness where the item sets none, over the theme's accent and the ParamDef default
+    defaultsFor: (set: Record<string, unknown>) => (set.mode === 'vine' ? { color: '#4caf50', thickness: 16 } : {}),
+    params: [{ key: 'mode', label: '模式', type: 'enum', options: ['bar', 'vine'], default: 'bar' }, { key: 'color', label: '顏色', type: 'color', default: '#ff4d4f', theme: 'palette.accent' },
+      { key: 'thickness', label: '粗細', type: 'number', default: 12 }] };
+  const reg = createRegistry([corePlugin, { id: 'x', items: [leaf] } as any]);
+  const shown = async (params: Record<string, unknown>) => {
+    const project = fixture();
+    (project.tracks.find((tr) => tr.id === 'sc')!.items[0] as any).type = 'x.leaf';
+    (project.tracks.find((tr) => tr.id === 'sc')!.items[0] as any).params = params;
+    const { root, editor, calls } = mount(['blk'], '', project);
+    editor.registry = reg;
+    await act(() => render(<PropertiesPanel editor={editor} s={editor.store.get()} />, root));
+    const color = root.querySelector<HTMLInputElement>('[data-param="color"] input')!, thick = root.querySelector<HTMLInputElement>('[data-param="thickness"] input')!;
+    return { color, thick, calls };
+  };
+  const vine = await shown({ mode: 'vine' });
+  expect([vine.color.value, vine.thick.value]).toEqual(['#4caf50', '16']);
+  // setting writes the value; an emptied number goes back to unset (updateParam's undefined), which shows the mode's 16 again
+  change(vine.color, '#123456');
+  change(vine.thick, '');
+  expect(vine.calls).toEqual([['param', 'blk', 'color', '#123456'], ['param', 'blk', 'thickness', undefined]]);
+  // a value the item sets wins; another mode shows the theme's accent and the ParamDef default as before
+  const own = await shown({ mode: 'vine', color: '#abcdef' });
+  expect(own.color.value).toBe('#abcdef');
+  const bar = await shown({ mode: 'bar' });
+  expect([bar.color.value, bar.thick.value]).toEqual(['#ff4d4f', '12']);
+});

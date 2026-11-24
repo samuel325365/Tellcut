@@ -5,7 +5,9 @@ import { dbToY, envelopeHandles, envelopeLine, envelopePoints } from './envelope
 export function EnvelopeLayer({ item, len, pps, h, active }: { item: any; len: number; pps: number; h: number; active: boolean }) {
   const pts = envelopePoints(item.envelope, len, pps, h), w = len * pps;
   const points = envelopeLine(pts, w).map((p) => `${p.x},${p.y}`).join(' ');
-  const handles = item.envelope?.length ? envelopeHandles(pts, w, 4) : [];
+  // 10, not the ring's radius 4: a ring for a point outside the clip sits that far inside the edge, clear of the 6 px trim grip
+  // (styles.css `.item [data-edge]`, above this layer), which covered the ring's centre so a drag there trimmed the clip instead
+  const handles = item.envelope?.length ? envelopeHandles(pts, w, 10) : [];
   const fi = item.fadeIn * pps, fo = w - item.fadeOut * pps, top = dbToY(0, h);
   return (
     <svg class="env" width={w} height={h} style={{ width: `${w}px`, height: `${h}px` }}>

@@ -3,7 +3,7 @@ import { DEFAULT_THEME, defaultSafe, resolveTheme, withDefaults } from '@tellcut
 import { ambient } from './ambient.ts';
 import { badge, badgeCenter } from './badge.ts';
 import { header, headerTop } from './header.ts';
-import { progress, TOP_LANE } from './progress.ts';
+import { progress, TOP_LANE, topLane } from './progress.ts';
 import { keyedLevelAt, parseLevels } from './levels.ts';
 import { meter, meterBaseline } from './meter.ts';
 import { list } from './list.ts';
@@ -40,10 +40,23 @@ test('header: by default it sits under a progress bar or row of dots at the top,
     const k = Math.min(W, H) / 1080, safeTop = defaultSafe(W, H).top;
     // the biggest default top progress: dots with emoji, the current one 1.35× (progress.ts), centred on the bar line
     const dotsBottom = safeTop * H + (th * k) / 2 + (th * k * 3.2 * iconSize * 1.35) / 2;
-    expect(headerTop(def(header, 'y').default as number, safeTop) * H).toBeGreaterThan(dotsBottom);
+    expect(headerTop(def(header, 'y').default as number, safeTop, W, H) * H).toBeGreaterThan(dotsBottom);
   }
-  expect(headerTop(0.4, 0.115)).toBe(0.4);
+  expect(headerTop(0.4, 0.115, 1920, 1080)).toBe(0.4);
   expect(TOP_LANE).toBeLessThan(0.05);
+});
+
+test('header: by default it keeps below a row of paws at the top, which landscape frames draw at their 9:16 size; portrait unchanged', () => {
+  const th = def(progress, 'thickness').default as number, iconSize = def(progress, 'iconSize').default as number;
+  for (const [W, H] of [[1080, 1920], [1920, 1080], [1080, 1080], [2560, 1080]]) {
+    const k = Math.min(W, H) / 1080, safeTop = defaultSafe(W, H).top;
+    // paws.ts: a print is 3.5 thicknesses, held to the lane (topLane) over its row's 1.5 prints; the row starts at the top safe edge
+    const ps = Math.min(th * 3.5 * k, (topLane(W, H) * H) / 1.5) * iconSize, rowBottom = safeTop * H + ps * 1.5;
+    expect([W, H, headerTop(-1, safeTop, W, H) * H >= rowBottom - 1e-6]).toEqual([W, H, true]);
+  }
+  // the lane is TOP_LANE on portrait and square frames (their pictures as before), TOP_LANE × 16/9 on 16:9 and wider
+  expect([topLane(1080, 1920), topLane(1080, 1080), topLane(1920, 1080), topLane(2560, 1080)]).toEqual([TOP_LANE, TOP_LANE, TOP_LANE * 16 / 9, TOP_LANE * 16 / 9]);
+  expect(headerTop(-1, 0.1, 1080, 1920)).toBe(0.1 + TOP_LANE);
 });
 
 test('badge: by default its top touches the top safe margin on any frame shape; a y of its own wins', () => {

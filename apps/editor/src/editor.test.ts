@@ -411,7 +411,7 @@ test('a restarted preview (the Layout button moves it) is not ready until it say
 test('a block template is written into the item as one undo step, keeping the params it does not mention', async () => {
   const registry = createRegistry([corePlugin, { id: 'x', items: [{ type: 'x.block', label: '區塊', kind: 'scene', build: () => null, draw: () => {},
     params: [{ key: 'mode', label: '模式', type: 'enum', options: ['a', 'b'], default: 'a' }, { key: 'n', label: 'n', type: 'number', default: 1 }, { key: 'k', label: 'k', type: 'string', default: '' }],
-    templates: [{ id: 'big-b', label: '大', doc: '某個場合', params: { mode: 'b', n: 3 } }] }] } as any]);
+    templates: [{ id: 'big-b', label: '大', doc: '某個場合', params: { mode: 'b', n: 3 } }, { id: 'plain', label: '素', doc: '另一個場合', params: { n: 5 } }] }] } as any]);
   const { api, bridge } = fakes();
   const ed = new Editor('demo', { api, bridge, registry });
   await ed.open();
@@ -420,6 +420,10 @@ test('a block template is written into the item as one undo step, keeping the pa
   ed.updateParam('blk', 'n', 2);
   expect(ed.applyBlockTemplate('blk', 'big-b')).toBe(true);
   expect(params()).toEqual({ k: 'mine', n: 3, mode: 'b' });
+  // another template after it: what the first set and this one does not (mode) is gone, not piled up; the user's own k stays
+  expect(ed.applyBlockTemplate('blk', 'plain')).toBe(true);
+  expect(params()).toEqual({ k: 'mine', n: 5 });
+  ed.undo();
   ed.undo();
   expect(params()).toEqual({ k: 'mine', n: 2 });
   // an id the block does not have: refused, with the ids it has

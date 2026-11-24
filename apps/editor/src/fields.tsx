@@ -150,9 +150,11 @@ function ArrayField({ label, hint, value, multiline, onCommit }: { label: string
 
 /** One field per ParamDef (spec §2.1: the panel is generated from the plugin's parameter definitions).
  *  `type`: the block / sound the definition belongs to, so its name can be translated; the gallery shows the name in the page's language,
- *  the properties panel (editor labels are always English) in English with the hint, in the page's language, as a tooltip. Without `type` the label is shown as written. */
-export function ParamField({ def, value, project, type, surface = 'editor', onCommit }: { def: ParamDef; value: unknown; project: Project; type?: string; surface?: 'gallery' | 'editor'; onCommit: Commit<unknown> }) {
-  const v = value ?? paramDefault(def, resolveTheme(project.meta.theme, project.meta));
+ *  the properties panel (editor labels are always English) in English with the hint, in the page's language, as a tooltip. Without `type` the label is shown as written.
+ *  `unset`: what the field shows while `value` is unset, when the block draws with something other than the param's theme field or
+ *  default (engine unsetValue: a block's defaultsFor); absent, that theme field or default. */
+export function ParamField({ def, value, unset, project, type, surface = 'editor', onCommit }: { def: ParamDef; value: unknown; unset?: unknown; project: Project; type?: string; surface?: 'gallery' | 'editor'; onCommit: Commit<unknown> }) {
+  const v = value ?? unset ?? paramDefault(def, resolveTheme(project.meta.theme, project.meta));
   const shown = type ? paramText(type, def.key, def.label, surface === 'gallery' ? getLang() : 'en') : { name: def.label };
   const hint = type && surface === 'editor' ? paramText(type, def.key, def.label).hint : shown.hint;
   const label = shown.name;

@@ -4,7 +4,9 @@ import { act } from 'preact/test-utils';
 import { fixture } from '@tellcut/engine/test-fixture';
 import { createStore, initialState } from './store.ts';
 import { LibraryPanel } from './LibraryPanel.tsx';
+import type { MediaTab } from './media-order.ts';
 import { t } from './i18n/index.ts';
+import { blockText } from './i18n/blocks.ts';
 
 test('lists sources with their scene segments, every sound effect and block; click picks, double-click auditions, the button adds', async () => {
   const p = fixture();
@@ -135,6 +137,56 @@ test('the Effects search finds a block by one of its variants: value, name and d
     await act(() => { search.value = q; search.dispatchEvent(new Event('input', { bubbles: true })); });
     expect(shown(), q).toEqual(['common.progress']);
   }
+});
+
+test('the Effects search finds a block by a template as the gallery does: the card shows that template and adding sets its params', async () => {
+  const base = initialState('t'), store = createStore({ ...base, project: fixture(), layout: { ...base.layout, mediaTab: 'effects' as const } });
+  // common.wipe's band-steep has the search aliases 頭條, 快訊 and headline (protocol SEARCH_ALIASES), and its English name
+  const types = [{ type: 'common.wipe', label: '轉場色塊', kind: 'overlay', category: 'moment', doc: '色塊掃過畫面',
+    templates: [{ id: 'band-steep', label: '斜帶', doc: '一條陡斜的色帶', params: { pattern: 'band', angle: 60 } }] },
+  { type: 'common.slam', label: '大字', kind: 'overlay', category: 'text', doc: '一個字砸進畫面' }];
+  const calls: any[] = [];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t), sfxTypes: () => [] },
+    lookThumb: (type: string, kind: string, id: string) => (type === 'common.wipe' && kind === 'template' && id === 'band-steep' ? '/api/gallery/thumb/wipe-tpl-band-steep.png' : undefined),
+    addMaterial: (m: any) => calls.push(m), audition() {} };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  const card = () => root.querySelector<HTMLElement>('[data-add-overlay="common.wipe"]');
+  for (const q of ['頭條', '快訊', 'headline']) {
+    await act(() => { search.value = q; search.dispatchEvent(new Event('input', { bubbles: true })); });
+    expect([q, [...root.querySelectorAll<HTMLElement>('[data-add-overlay]')].map((e) => e.dataset.addOverlay)]).toEqual([q, ['common.wipe']]);
+    // the template's English name under the block's (blocks.en.ts common.wipe#band-steep)
+    expect([q, card()!.querySelector('[data-look-name]')?.textContent]).toEqual([q, blockText('common.wipe#band-steep', types[0].templates![0], 'en').label]);
+  }
+  await act(() => { card()!.click(); });
+  await act(() => { root.querySelector<HTMLButtonElement>('[data-add-picked]')!.click(); });
+  expect(calls).toEqual([{ kind: 'overlay', type: 'common.wipe', params: { pattern: 'band', angle: 60 } }]);
+  // with the block's own words found, no look is named and adding sets nothing
+  await act(() => { search.value = '色塊'; search.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect(card()!.querySelector('[data-look-name]')).toBeNull();
+  await act(() => { card()!.click(); });
+  await act(() => { root.querySelector<HTMLButtonElement>('[data-add-picked]')!.click(); });
+  expect(calls[1]).toEqual({ kind: 'overlay', type: 'common.wipe' });
+});
+
+test('the Effects and sound searches find a block by a param name, after those their own words find', async () => {
+  const base = initialState('t'), store = createStore({ ...base, project: fixture(), layout: { ...base.layout, mediaTab: 'effects' as MediaTab } });
+  const types = [{ type: 'common.burst', label: '爆開', kind: 'overlay', category: 'text', doc: '一團', params: [{ key: 'outDur', label: '退場秒數', type: 'number', default: 0.3 }] },
+    { type: 'common.slam', label: '大字', kind: 'overlay', category: 'text', doc: 'dur 這個字寫在說明裡', params: [] }];
+  const editor: any = { store, registry: { itemTypes: () => types, item: (t: string) => types.find((x) => x.type === t),
+    sfxTypes: () => [{ type: 'x.tap', label: '點', params: [{ key: 'fadeDur', label: '淡出', type: 'number', default: 1 }] }, { type: 'y.boom', label: '爆', params: [] }] } };
+  const root = document.createElement('div');
+  await act(() => render(<LibraryPanel editor={editor} s={store.get()} />, root));
+  const search = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  await act(() => { search.value = 'dur'; search.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect([...root.querySelectorAll<HTMLElement>('[data-add-overlay]')].map((e) => e.dataset.addOverlay)).toEqual(['common.slam', 'common.burst']);
+  await act(() => { search.value = 'ur'; search.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect(root.querySelector('[data-add-overlay="common.burst"]')).toBeNull();
+  await act(() => { store.set({ layout: { ...store.get().layout, mediaTab: 'audio' as MediaTab } }); render(<LibraryPanel editor={editor} s={store.get()} />, root); });
+  const audioSearch = root.querySelector<HTMLInputElement>('[data-lib-search]')!;
+  await act(() => { audioSearch.value = 'dur'; audioSearch.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect([...root.querySelectorAll<HTMLElement>('[data-add-sfx]')].map((e) => e.dataset.addSfx)).toEqual(['x.tap']);
 });
 
 test('replace: a picked block takes the place of the selected one of the same kind; a background can only replace', async () => {

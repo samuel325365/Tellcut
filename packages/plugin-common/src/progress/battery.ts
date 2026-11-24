@@ -3,10 +3,11 @@
 // `dots` cells inside with small gaps between them: they light one by one in `color`, the one charging breathes, and while the charge
 // is under 20% the lit cells are red. When full, the whole battery turns the `done` colour and its cells blink twice within 0.8 s.
 // The percentage beside it (on the inner side, counting 0–100) is DOM text `size` % of the frame height tall, so check measures it.
-// All DOM; the battery is `size × 2.6` wide and `size × 1.2` tall in frame-height %.
+// All DOM; the battery is `size × 2.6` wide and `size × 1.2` tall in frame-height %, times landscape() on a landscape frame (as
+// ring: sized from the frame height, it came out 1.78 times smaller on 16:9 than on 9:16).
 import { abs, clamp, cssCamel } from '@tellcut/engine';
 import { withAlpha } from '../color.ts';
-import { arrived, band, travel, type Draw } from './shared.ts';
+import { arrived, band, landscape, travel, type Draw } from './shared.ts';
 
 const LOW = '#ff4d4f';
 /** seconds of each of the two blinks when full (off for the second half of each) */
@@ -32,7 +33,7 @@ export const drawBattery: Draw = (ctx, p, m) => {
     for (let i = 0; i < n; i++) m.list.push(abs(m.root));
     m.el.text = abs(m.root, { whiteSpace: 'pre', lineHeight: '1', fontWeight: '700', fontFamily: "'Noto Sans TC', sans-serif", fontVariantNumeric: 'tabular-nums' }, 'span');
   }
-  const size = Math.max(0.1, p.size) / 100 * H, bw = size * 2.6, bh = size * 1.2, fs = size, lw = Math.max(2, p.thickness * 0.25 * k);
+  const size = (Math.max(0.1, p.size) / 100) * H * landscape(W, H), bw = size * 2.6, bh = size * 1.2, fs = size, lw = Math.max(2, p.thickness * 0.25 * k);
   const nw = Math.max(lw * 1.5, bh * 0.11), nh = bh * 0.44, height = Math.max(bh, fs * 1.15);
   const { x, w, top } = band(ctx, p, height), cy = top + height / 2, left = p.align === 'left';
   const bx = left ? x : x + w - nw - bw, by = cy - bh / 2;

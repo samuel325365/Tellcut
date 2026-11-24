@@ -48,7 +48,8 @@ test('a preview plays with the mix of a new project, in the film a saved block i
 
 test('search matches name, label, doc or group; the score url carries the choices', () => {
   expect(filterGallery(G, 'blocks', '大標題').map((b: any) => b.type)).toEqual(['core.title']);
-  expect(filterGallery(G, 'blocks', 'COMMON').length).toBe(2);
+  // the two in the common group, and core.title, whose English doc (read in every UI language) names common.heading
+  expect(filterGallery(G, 'blocks', 'COMMON').map((b: any) => b.type).sort()).toEqual(['common.backdrop', 'common.slam', 'core.title']);
   expect(filterGallery(G, 'styles', '古箏').map((s: any) => s.id)).toEqual(['koto']);
   expect(scoreUrl('lofi', { seed: 2, bpm: 90, key: 'F#m' })).toBe('/api/gallery/score/lofi.wav?seed=2&bpm=90&key=F%23m');
   expect(scoreUrl('lofi', { seed: 1 })).toBe('/api/gallery/score/lofi.wav?seed=1');

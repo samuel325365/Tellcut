@@ -1,7 +1,7 @@
-import { PREVIEW_BG, PREVIEW_GROUND } from '@tellcut/engine';
+import { OLD_BLOCKS, PREVIEW_BG, PREVIEW_GROUND } from '@tellcut/engine';
 import { aliasText, CLIP_FX, handleOf } from '@tellcut/protocol';
 import { plugins } from '@tellcut/plugins';
-import { blockProject, clipMatches, filterGallery, idFields, lookHit, lookHits, looksOf, matches, ownBlocks, pickedVariant, THEMES, valueFields, type GalleryBlock, type GalleryIndex } from './gallery.ts';
+import { blockFinder, blockProject, clipMatches, filterGallery, idFields, lookHit, lookHits, looksOf, matches, ownBlocks, pickedVariant, THEMES, valueFields, type GalleryBlock, type GalleryIndex, type SearchBlock } from './gallery.ts';
 import { blockText } from './i18n/blocks.ts';
 
 const progress: GalleryBlock = {
@@ -210,4 +210,47 @@ test('search finds a block by its search aliases and a look by its own; a look\'
   expect([found('stopwatch'), found('stopw'), found('watch')]).toEqual([['common.countdown'], ['common.countdown'], []]);
   // another block's aliases are not this one's
   expect(lookHits(progress, '心形')).toEqual([]);
+});
+
+test('search finds a block by a param: a key\'s part or a whole name, listed after the blocks found by their own words; common keys never', () => {
+  const p = (key: string, label: string) => ({ key, label, type: 'number' as const, default: 1 });
+  const card = (type: string, label: string, doc: string, params: ReturnType<typeof p>[]): GalleryBlock =>
+    ({ plugin: 'common', group: '共用積木', type, label, doc, kind: 'overlay', needsMedia: false, category: 'text', params });
+  // ten blocks with `size`, so it is a key more than a tenth, and more than five, of them have (nothing finds them by it)
+  const filler = Array.from({ length: 10 }, (_, i) => card(`fx.filler${i}`, `填充${i}`, '', [p('size', '大小')]));
+  const burst = card('fx.burst', '爆炸', '一團煙', [p('outDur', '退場秒數'), p('size', '大小')]);
+  const dur = card('fx.durable', '耐久', 'dur 寫在名字裡', []);
+  const g: GalleryIndex = { blocks: [burst, dur, ...filler], sfx: [{ plugin: 'common', type: 'fx.tick', label: '滴答', doc: '', params: [p('fadeDur', '淡出')] }], styles: [], recipes: [] };
+  const found = (q: string, tab: 'blocks' | 'sfx' = 'blocks') => filterGallery(g, tab, q).map((x: any) => x.type);
+  // a key's part (outDur): found, after the one whose own words have it
+  expect(found('dur')).toEqual(['fx.durable', 'fx.burst']);
+  expect(blockFinder(g.blocks, 'dur')(burst)).toBe('param');
+  expect(blockFinder(g.blocks, 'dur')(dur)).toBe('block');
+  // a whole param name; not a word inside one, nor a key's inside, nor a query too short
+  expect([found('退場秒數'), found('退場'), found('ut'), found('ou')]).toEqual([['fx.burst'], [], [], []]);
+  // `size` is on more than a tenth of them: it finds none by the key or its name
+  expect([found('size'), found('大小')]).toEqual([[], []]);
+  // the Sounds tab too
+  expect(found('dur', 'sfx')).toEqual(['fx.tick']);
+  // no query: everything, in order
+  expect(found('')).toEqual(g.blocks.map((b) => b.type));
+});
+
+test('param search on the real blocks: dur finds the …Dur params, and size, color, x add only a few blocks to what their words find', () => {
+  const blocks = plugins.flatMap((pl) => pl.items ?? []).filter((t) => !Object.hasOwn(OLD_BLOCKS, t.type)) as SearchBlock[];
+  const count = (q: string) => { const f = blockFinder(blocks, q); return { block: blocks.filter((b) => f(b) === 'block').length, param: blocks.filter((b) => f(b) === 'param').length }; };
+  const dur = blockFinder(blocks, 'dur');
+  for (const b of blocks.filter((x) => x.params?.some((d) => /Dur$/.test(d.key)))) expect([b.type, dur(b)]).not.toEqual([b.type, undefined]);
+  // the keys most blocks have are skipped: x and y add nothing, size and color a fifth of the list at most
+  for (const q of ['x', 'y', 'size', 'color']) expect([q, count(q).param <= blocks.length / 5]).toEqual([q, true]);
+  expect([count('x').param, count('y').param]).toEqual([0, 0]);
+});
+
+test('a template is found the same in the gallery and in the editor library\'s registry types: 頭條 finds common.wipe by band-steep', () => {
+  const wipe = plugins.flatMap((pl) => pl.items ?? []).find((t) => t.type === 'common.wipe')! as SearchBlock;
+  expect(wipe.templates?.some((x) => x.id === 'band-steep')).toBe(true);
+  for (const q of ['頭條', '快訊', 'headline']) {
+    expect([q, blockFinder([wipe], q)(wipe)]).toEqual([q, 'block']);
+    expect([q, lookHit(wipe, q)]).toEqual([q, { template: 'band-steep' }]);
+  }
 });

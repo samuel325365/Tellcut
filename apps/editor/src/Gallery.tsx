@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { templateName, variantCode, type Project } from '@tellcut/engine';
 import { libraryPlayer, PlayerPreview, projectPlayer } from './PlayerPreview.tsx';
 import { ParamField } from './fields.tsx';
-import { blockCategory, blockProject, byHandle, cardPlays, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, idFields, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
+import { blockCategory, blockProject, byHandle, cardPlays, captionProject, clipMatches, clipProject, clipSections, comboProject, isCaptionBlock, isTitleBlock, titleProject, CLIP_CATEGORY, filterGallery, foundFirst, galleryFinder, idFields, matches, galleryCategories, lookHit, lookHits, lookKey, looksOf, MINE_CATEGORY, mineProject, ownProject, pickedTemplate, pickedVariant, PROJECT_CATEGORY, sameParams, scoreUrl, sfxProject, sfxSections, shown, THEMES, thumbIn, type GalleryBlock, type GalleryBlockVariant, type GalleryCombo, type Look, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type OwnProject, type Tab } from './gallery.ts';
 import type { GalleryCaption } from '@tellcut/protocol';
 import type { AddAnswer, GalleryAdd } from './gallery-link.ts';
 import { IconCaptionOut, IconFaceSticker, IconMusic, IconPlay, IconSpark, IconTrash } from './icons.tsx';
@@ -505,10 +505,11 @@ export function Gallery({ load, library, project, navigate = (u) => location.ass
   const showMine = !!library && tab === 'blocks' && (cat === ALL || cat === MINE_CATEGORY);
   // the Captions and Titles tabs show only their templates: the blocks under them (common.caption / common.heading, and the old
   // core.caption / core.title kept for older projects) would be a second, look-alike card for the same thing (2026-11-05)
-  const list = filterGallery(g, tab, q);
-  // what the grid shows, in order: blocks (by category, or one category) then clip effects; or the tab's list
+  const list = filterGallery(g, tab, q), found = galleryFinder(g, q);
+  // what the grid shows, in order: blocks (by category, or one category; in each, those found only by a param last) then clip
+  // effects; or the tab's list
   const sections = tab !== 'blocks' ? [] : cats.filter((c) => cat === ALL || c.key === cat).map((c) => ({ ...c,
-    blocks: c.key === CLIP_CATEGORY ? [] : (list as GalleryBlock[]).filter((b) => blockCategory(b) === c.key).sort((a, b) => byHandle(a.type, b.type)),
+    blocks: c.key === CLIP_CATEGORY ? [] : (list as GalleryBlock[]).filter((b) => blockCategory(b) === c.key).sort(foundFirst(found, (a, b) => byHandle(a.type, b.type))),
     clips: c.key === CLIP_CATEGORY ? clips : [] })).filter((x) => x.blocks.length || x.clips.length);
   const names = tab === 'blocks' ? [...(showOwn ? ownList.map((b) => `own:${b.type}`) : []), ...(showMine ? mineBlocks.map((b) => `mine:${b.type}`) : []), ...sections.flatMap((x) => [...x.blocks.map((b) => b.type), ...x.clips.map((f) => f.key)])]
     : tab === 'captions' || tab === 'titles' ? [...(list as GalleryCaption[]).map((c) => `${tab === 'titles' ? 'title' : 'caption'}:${c.id}`)]

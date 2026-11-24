@@ -1,9 +1,10 @@
 // The block gallery's data side (spec 2026-10-17-block-gallery): what /api/gallery returns, the tiny projects a preview plays, the filter.
 import { blockPreviewProject, clipPreviewProject, comboPreviewProject, DEFAULT_MIX } from '@tellcut/engine';
-import { aliasText, BLOCK_CATEGORY, CLIP_GROUPS, handleOf, idFinder, idLike, normalizeHandle, SEARCH_ALIASES, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockCard, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
+import { aliasText, BLOCK_CATEGORY, CLIP_GROUPS, commonParamKeys, handleOf, idFinder, idLike, normalizeHandle, paramFinder, SEARCH_ALIASES, SFX_CATEGORY, wordFinder, type CardGround, type ClipFx, type ClipGroup, type GalleryBlock, type GalleryBlockCard, type GalleryBlockTemplate, type GalleryBlockVariant, type GalleryCaption, type GalleryCombo, type GalleryIndex, type GalleryRecipe, type GallerySfx, type GalleryStyle, type LibraryBlockInfo } from '@tellcut/protocol';
 
 import { t, DICTS, type Key } from './i18n/index.ts';
 import { blockText } from './i18n/blocks.ts';
+import { paramText, splitLabel } from './i18n/params.ts';
 import { picCrop, type PicCrop } from './pic-crop.ts';
 import { localValues } from './i18n/values.ts';
 
@@ -178,7 +179,7 @@ export interface Look {
   set: Record<string, unknown>;
 }
 /** the id a look's English and Japanese texts are kept under: `<type>@<value>`, `<type>#<id>` */
-const lookTextId = (b: GalleryBlock, kind: Look['kind'], id: string) => `${b.type}${kind === 'variant' ? '@' : '#'}${id}`;
+const lookTextId = (b: { type: string }, kind: Look['kind'], id: string) => `${b.type}${kind === 'variant' ? '@' : '#'}${id}`;
 /** a card's looks: its variants in their order, then its templates */
 export function looksOf(b: GalleryBlock): Look[] {
   const v = b.variants, look = (kind: Look['kind'], id: string, x: GalleryBlockVariant | GalleryBlockTemplate, set: Record<string, unknown>): Look => {
@@ -188,25 +189,59 @@ export function looksOf(b: GalleryBlock): Look[] {
   return [...(v?.list ?? []).map((x) => look('variant', x.value, x, { [v!.param]: x.value })), ...(b.templates ?? []).map((x) => look('template', x.id, x, { ...x.params }))];
 }
 
-/** a block's own fields the search reads: handle, type (an identifier), names and doc (the original and the UI language's), search
- *  aliases (protocol SEARCH_ALIASES), group */
-const blockMatches = (b: GalleryBlock, query: string) => { const y = shown(b.type, b); return matches(query, handleOf(b.type), ...idFields(b.type), b.label, b.doc, y.label, y.doc, aliasText(b.type), b.group, groupName(b.plugin, b.group)); };
-/** a look's words: its value or id (an identifier), and its name and doc in Chinese, the UI language and English, and its search
- *  aliases one by one (protocol SEARCH_ALIASES: words for it no text contains, which like its names pick it when typed in full) */
-function lookWords(b: GalleryBlock, kind: Look['kind'], id: string, x: { label: string; doc: string }) {
-  const key = lookTextId(b, kind, id), here = shown(key, x), en = blockText(key, x, 'en');
-  return { id, names: [x.label, here.label, en.label], docs: [x.doc, here.doc, en.doc], aliases: Object.hasOwn(SEARCH_ALIASES, key) ? [...SEARCH_ALIASES[key]] : [] };
+/** What the search reads of a block or sound: a gallery card, or an item or sound type of the editor's registry (the media panel's
+ *  Effects and Audio pages search with these same functions, so the two never disagree). */
+export interface SearchBlock {
+  type: string; label: string; doc?: string; plugin?: string; group?: string;
+  params?: ReadonlyArray<{ key: string; label: string }>;
+  variants?: { param: string; list: ReadonlyArray<{ value: string; label: string; doc: string }> };
+  templates?: ReadonlyArray<{ id: string; label: string; doc: string; params: Record<string, unknown> }>;
 }
-const lookSources = (b: GalleryBlock) => [...(b.variants?.list ?? []).map((x) => ({ kind: 'variant' as const, id: x.value, x })), ...(b.templates ?? []).map((x) => ({ kind: 'template' as const, id: x.id, x }))];
+/** a block's or look's names and docs in every language (the original Chinese, English and Japanese, whichever the UI shows): a
+ *  search reads them all, as it reads every language's search aliases, so a word typed in another language still finds it (and the
+ *  editor's labels are English in every language) */
+const allTexts = (id: string, x: { label: string; doc: string }) => { const en = blockText(id, x, 'en'), ja = blockText(id, x, 'ja');
+  return { names: [x.label, en.label, ja.label], docs: [x.doc, en.doc, ja.doc] }; };
+/** a block's own fields the search reads: handle, type (an identifier), names and docs in every language (allTexts), search aliases
+ *  (protocol SEARCH_ALIASES), group */
+const blockMatches = (b: SearchBlock, query: string) => {
+  const w = allTexts(b.type, { label: b.label, doc: b.doc ?? '' });
+  return matches(query, handleOf(b.type), ...idFields(b.type), ...w.names, ...w.docs, aliasText(b.type), ...(b.group ? [b.group, groupName(b.plugin ?? '', b.group)] : []));
+};
+/** a param's names the search reads: the Chinese one (its label before the hint), the English and Japanese ones */
+const paramNames = (type: string) => (d: { key: string; label: string }) => [splitLabel(d.label).name, paramText(type, d.key, d.label, 'en').name, paramText(type, d.key, d.label, 'ja').name];
+/** How a list's search finds each of its blocks: 'block' by its own words or one of its looks', 'param' only by one of its params
+ *  (protocol paramFinder: a key's part, a param's whole name; the keys a tenth of `list` share skipped), listed after the others;
+ *  undefined when the query is not in it. `list` is every block the search may show (the commonness is counted over it). */
+export function blockFinder(list: readonly SearchBlock[], query: string): (b: SearchBlock) => 'block' | 'param' | undefined {
+  if (!query.trim()) return () => 'block';
+  const param = paramFinder(query, commonParamKeys(list)), seen = new Map<SearchBlock, 'block' | 'param' | undefined>();
+  // remembered per block: a sort by foundFirst asks for each block many times
+  return (b) => {
+    if (!seen.has(b)) seen.set(b, blockMatches(b, query) || lookHits(b, query).length > 0 ? 'block' : param(b.params, paramNames(b.type)) ? 'param' : undefined);
+    return seen.get(b);
+  };
+}
+/** the order a search shows what it found in: those found by their own words first, then those found only by a param, each kept in
+ *  the order it had (a stable sort); `then` orders within each */
+export const foundFirst = (found: (b: SearchBlock) => 'block' | 'param' | undefined, then: (a: SearchBlock, b: SearchBlock) => number = () => 0) =>
+  (a: SearchBlock, b: SearchBlock) => (found(a) === 'param' ? 1 : 0) - (found(b) === 'param' ? 1 : 0) || then(a, b);
+/** a look's words: its value or id (an identifier), and its names and docs in every language (allTexts), and its search aliases one
+ *  by one (protocol SEARCH_ALIASES: words for it no text contains, which like its names pick it when typed in full) */
+function lookWords(b: SearchBlock, kind: Look['kind'], id: string, x: { label: string; doc: string }) {
+  const key = lookTextId(b, kind, id), w = allTexts(key, x);
+  return { id, ...w, aliases: Object.hasOwn(SEARCH_ALIASES, key) ? [...SEARCH_ALIASES[key]] : [] };
+}
+const lookSources = (b: SearchBlock) => [...(b.variants?.list ?? []).map((x) => ({ kind: 'variant' as const, id: x.value, x })), ...(b.templates ?? []).map((x) => ({ kind: 'template' as const, id: x.id, x }))];
 /** the keys of the looks (looksOf) the query is found in */
-export function lookHits(b: GalleryBlock, query: string): string[] {
+export function lookHits(b: SearchBlock, query: string): string[] {
   if (!query.trim()) return [];
   return lookSources(b).filter(({ kind, id, x }) => { const w = lookWords(b, kind, id, x); return matches(query, undefined, ...idFields(w.id), ...w.names, ...w.docs, ...w.aliases); }).map(({ kind, id }) => `${kind}:${id}`);
 }
 /** The look a card shows in place of its own picture for this query: the first the query is found in when the block's own fields
  *  do not have it. A look's name typed in full (its value, id or name in any language, or one of its search aliases) is that look
  *  even when the block's doc names it in passing (progress's doc lists every mode), so searching "ring" shows the ring. */
-export function lookHit(b: GalleryBlock, query: string): { variant?: string; template?: string } | undefined {
+export function lookHit(b: SearchBlock, query: string): { variant?: string; template?: string } | undefined {
   const q = query.trim().toLowerCase();
   if (!q) return undefined;
   const all = lookSources(b), as = (x: { kind: Look['kind']; id: string }) => (x.kind === 'variant' ? { variant: x.id } : { template: x.id });
@@ -219,14 +254,19 @@ export function lookHit(b: GalleryBlock, query: string): { variant?: string; tem
 /** the look's key a lookHit names */
 export const lookKey = (h: { variant?: string; template?: string }) => (h.variant !== undefined ? `variant:${h.variant}` : `template:${h.template}`);
 
+/** the Blocks tab's blocks (not the caption and title blocks, shown with their templates) */
+export const tabBlocks = (g: GalleryIndex) => g.blocks.filter((b) => !isCaptionBlock(b) && !isTitleBlock(b));
+/** how the Blocks tab's search finds each block (blockFinder over that tab's blocks): the grid lists those found only by a param
+ *  after the others of their category */
+export const galleryFinder = (g: GalleryIndex, query: string) => blockFinder(tabBlocks(g), query);
+
 /** The cards of a tab whose handle, name, label or doc (in the shown language or the original) matches the query; a block also by
- *  one of its variants or templates (lookHits). */
+ *  one of its variants or templates (lookHits), a block or sound also by a param (blockFinder: listed after the others). */
 export function filterGallery(g: GalleryIndex, tab: Tab, query: string) {
   const fields = (id: string, x: { label: string; doc: string }) => { const y = shown(id, x); return [x.label, x.doc, y.label, y.doc]; };
-  const block = (b: GalleryBlock) => blockMatches(b, query) || lookHits(b, query).length > 0;
-  if (tab === 'blocks') return g.blocks.filter((b) => !isCaptionBlock(b) && !isTitleBlock(b) && block(b));
+  if (tab === 'blocks') { const found = galleryFinder(g, query); return tabBlocks(g).filter((b) => found(b)).sort(foundFirst(found)); }
   if (tab === 'titles') return (g.titles ?? []).filter((c: GalleryCaption) => matches(query, handleOf(`title:${c.id}`), ...idFields(c.id), ...fields(`title:${c.id}`, c), ...valueFields(c.params)));
-  if (tab === 'sfx') return g.sfx.filter((s) => matches(query, handleOf(s.type), ...idFields(s.type), ...fields(s.type, s)));
+  if (tab === 'sfx') { const found = blockFinder(g.sfx, query); return g.sfx.filter((s) => found(s)).sort(foundFirst(found)); }
   if (tab === 'styles') return g.styles.filter((s) => matches(query, handleOf(`style:${s.id}`), ...idFields(s.id), ...fields(`style:${s.id}`, s)));
   // a combo is found by its layers too: their names (the keys `parts` takes), blocks and templates
   if (tab === 'combos') return (g.combos ?? []).filter((c) => matches(query, c.handle ?? handleOf(`combo:${c.id}`), ...idFields(c.id, ...c.parts.flatMap((x) => [x.name, x.type ?? '', x.template ?? ''])), ...fields(`combo:${c.id}`, c)));

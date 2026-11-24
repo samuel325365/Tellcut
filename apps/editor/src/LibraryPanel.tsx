@@ -2,7 +2,7 @@
 // double-click auditions it in the preview (audition.ts); the buttons at the bottom add the pick at the playhead, or put a
 // picked block or sound in place of the one selected on the timeline. Blocks and sounds are every one the project can use
 // (its own fx, the built-in ones, the shared library by category, then the combos: several layers placed at once), with a search
-// over names, handles and descriptions.
+// over names, handles and descriptions, looks and params (the gallery's, gallery.ts blockFinder).
 // Media follows the film by default (media-order.ts): sources in the order the timeline first uses them, the unused ones apart, the
 // stretches on the timeline marked, the selected clip's source lit; a downloaded one goes by its title. Narration is apart from music.
 // Three pages (Video, Audio: music, narration and sound effects, Effects), each with its own search; all three stay rendered, the
@@ -18,13 +18,14 @@ import { startCardDrag } from './media/drag.ts';
 import { droppedFiles, hasFiles } from './media/file-drop.ts';
 import { mediaKindOfName } from '@tellcut/protocol';
 import { musicLength, replaceProblem, uniqueBlock } from './editor/editing.ts';
-import { aliasText, BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
+import { BLOCK_CATEGORY, handleOf, SFX_CATEGORY } from '@tellcut/protocol';
 import { OLD_BLOCKS } from '@tellcut/engine';
 import { t, type Key } from './i18n/index.ts';
-import { idFields, matches, thumbIn } from './gallery.ts';
+import { blockFinder, foundFirst, idFields, lookHit, matches, thumbIn } from './gallery.ts';
 import { getLang } from './i18n/lang.ts';
 import { galleryUrl } from './gallery-link.ts';
 import { blockText } from './i18n/blocks.ts';
+import { localValues } from './i18n/values.ts';
 import { tip } from './tip.ts';
 import { ImportDialog } from './ImportDialog.tsx';
 import { liveLinks } from './editor/library.ts';
@@ -68,17 +69,27 @@ const segmentsOf = (duration: number, cuts: number[] | undefined): Array<[number
 export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
   const p = s.project!, reg = editor.registry;
   const tab = s.layout.mediaTab, [qs, setQs] = useState<Record<MediaTab, string>>({ video: '', audio: '', effects: '' }), q = qs.effects, qa = qs.audio;
-  // a block is found by its variants too (their value, an identifier, and their name and doc in Chinese, English and Japanese, and
-  // their search aliases): its own doc says only what they share
-  const variantWords = (d: any) => ((d.variants?.list ?? []) as Array<{ value: string; label: string; doc: string }>).flatMap((v) => {
-    const en = blockText(`${d.type}@${v.value}`, v, 'en'), ja = blockText(`${d.type}@${v.value}`, v, 'ja');
-    return [...idFields(v.value), v.label, v.doc, en.label, en.doc, ja.label, ja.doc, aliasText(`${d.type}@${v.value}`)];
-  });
-  const hitIn = (query: string) => (d: any) => matches(query, handleOf(d.type), ...idFields(d.type), d.label ?? '', d.doc ?? '', blockName(d), blockText(d.type, { label: d.label ?? '', doc: d.doc ?? '' }).doc, aliasText(d.type), ...variantWords(d));
+  // the gallery's search (gallery.ts blockFinder): a block by its own words, its variants and templates (their names, docs and
+  // search aliases) or a param, those found only by a param after the others in their group
+  const found = (list: any[], query: string) => { const f = blockFinder(list, query); return list.filter((d) => f(d)).sort(foundFirst(f)); };
   // old blocks stay registered so older projects still play, but are not offered for new use (like the gallery and catalog)
   const offered = (reg?.itemTypes() ?? []).filter((d: any) => !Object.hasOwn(OLD_BLOCKS, d.type));
-  const blocks = groupsOf(offered.filter(hitIn(q)), Object.keys(BLOCK_CATEGORY), 'block');
-  const sfx = groupsOf((reg?.sfxTypes() ?? []).filter(hitIn(qa)), Object.keys(SFX_CATEGORY), 'sfx');
+  const blocks = groupsOf(found(offered, q), Object.keys(BLOCK_CATEGORY), 'block');
+  const sfx = groupsOf(found(reg?.sfxTypes() ?? [], qa), Object.keys(SFX_CATEGORY), 'sfx');
+  // the variant or template a search found a block by (gallery.ts lookHit): its card shows that look's picture and name, and adding
+  // it sets that look (a variant's option, a template's params), as a click on the gallery's card opens it
+  const lookOf = (d: any) => {
+    const h = q.trim() ? lookHit(d, q) : undefined;
+    if (!h) return undefined;
+    const v = h.variant !== undefined ? d.variants?.list.find((x: any) => x.value === h.variant) : undefined, tp = v ? undefined : d.templates?.find((x: any) => x.id === h.template);
+    const x = v ?? tp;
+    if (!x) return undefined;
+    const kind = v ? 'variant' as const : 'template' as const, id: string = v ? v.value : tp.id;
+    // over the words the block starts with in the UI language: a material with params of its own auditions with those alone
+    const set: Record<string, unknown> = v ? { [d.variants.param]: v.value } : { ...tp.params };
+    return { key: `${kind}:${id}`, label: blockText(`${d.type}${v ? '@' : '#'}${id}`, x, 'en').label, thumb: editor.lookThumb?.(d.type, kind, id) as string | undefined,
+      params: { ...localValues(d.type, d.params ?? []), ...set } };
+  };
   // the combos (engine combos.ts): a card each, added at the playhead with all their layers (no audition, no drag)
   const combos = ((editor.combos ?? []) as Array<{ id: string; label: string; doc: string }>).filter((c) => { const id = `combo:${c.id}`;
     return matches(q, handleOf(id), ...idFields(c.id), c.label, c.doc, blockText(id, c, 'en').label, blockText(id, c).doc); });
@@ -218,14 +229,15 @@ export function LibraryPanel({ editor, s }: { editor: any; s: EditorState }) {
           <BlockCard name={b.name} thumb={b.thumb ?? undefined} cls={a.class} attrs={{ 'data-add-mine': b.type, ...tip(t('lib.mineTip')), onClick: a.onClick, onDblClick: a.onDblClick }}
             onPress={(e) => startCardDrag(e, editor, { lib: x })} />
         ); }) : g.list.map((d: any) => {
-          const why = uniqueBlock(reg, p, d.type), m: Material = { kind: 'overlay', type: d.type }, a = pick(`overlay:${d.type}`, m);
+          const look = lookOf(d), why = uniqueBlock(reg, p, d.type), m: Material = { kind: 'overlay', type: d.type, ...(look ? { params: look.params } : {}) };
+          const a = pick(`overlay:${d.type}${look ? `|${look.key}` : ''}`, m);
           // this project's own: ☆ saves it to My blocks; a copy from My blocks says so, and offers a newer version
           const link = g.key === 'fx' ? linkOf(d.type) : undefined;
           const corner = g.key !== 'fx' ? undefined : <>
             {link && <span class="lib-tag" data-from-mine={link.slug} {...tip(t(link.gone ? 'lib.goneTip' : 'lib.fromMineTip'))}>from My blocks</span>}
             {link?.outdated && <button class="lib-update" data-update-block={link.slug} {...tip(t('lib.updateTip'))} onClick={() => void editor.updateLibraryBlock(link.slug)}>Update</button>}
             {!link && star(d.type)}</>;
-          return <BlockCard name={blockName(d)} thumb={blockThumb(d.type)} cls={a.class} disabled={!!why} corner={corner}
+          return <BlockCard name={blockName(d)} look={look?.label} thumb={thumbIn(look?.thumb, getLang()) ?? blockThumb(d.type)} cls={a.class} disabled={!!why} corner={corner}
             attrs={{ 'data-add-overlay': d.type, ...tip(why || withHandle(d.type, d.kind === 'scene' ? t('ed.sceneTip') : t('ed.dblWatch'))), onClick: a.onClick, onDblClick: a.onDblClick }}
             onPress={(e) => startCardDrag(e, editor, m)} />;
         })}</div>

@@ -17,7 +17,7 @@ import { canvasAt, freeCanvas } from './inkline.ts';
 import { fitPx, EMOJI_STACK, graphemes } from './text.ts';
 import { withAlpha } from './color.ts';
 import { picturesReady } from './progress/runner.ts';
-import { isMoreMode, pencilState, TOP_LANE, type More } from './progress/shared.ts';
+import { isMoreMode, modeDefaults, pencilState, TOP_LANE, topLane, type More } from './progress/shared.ts';
 import { drawMore } from './progress/more.ts';
 
 interface P {
@@ -37,8 +37,9 @@ export function activeStep(step: number, n: number, local: number, dur: number):
   return { active, since: local - (active * dur) / n };
 }
 
-// TOP_LANE and pencilState live in progress/shared.ts: paws and segments read them too, and importing them from here would make a cycle
-export { pencilState, TOP_LANE };
+// TOP_LANE, topLane and pencilState live in progress/shared.ts: paws and segments read them too, and importing them from here would
+// make a cycle
+export { pencilState, TOP_LANE, topLane };
 
 /** the counter's words: "before|during|done", {n} and {N} filled in */
 export function counterText(tpl: string, cur: number, n: number, done: boolean): string {
@@ -68,7 +69,7 @@ export const parsePulses = (text: string): Array<[number, number]> => String(tex
 
 export const progress: ItemType<P, S> = {
   type: 'common.progress', label: '進度條', category: 'chapter', kind: 'overlay',
-  doc: '表示影片走到哪裡的進度條或章節記號，鉤子短片、教學片、食譜、旅行日記常用。runner、stretch、paws、segments、fuse、battery、rocket、ring、vine、stamps 這十種的進度走法相同：step -1 跟著時間走完全程，進度在結束前最多 1 秒先到終點、留時間演「到了」；step 0 以上是目前第幾章，這個項目裡從章頭走到章尾，一章放一個、dots 給總章數。paws（直式、方形畫面）和 segments 夠扁、可以放上緣；runner、stretch、fuse、battery、vine 比較高，放下緣（position bottom），放上緣時 common.header 要用自己的 y 往下讓。',
+  doc: '表示影片走到哪裡的進度條或章節記號，鉤子短片、教學片、食譜、旅行日記常用。runner、stretch、paws、segments、fuse、battery、rocket、ring、vine、stamps 這十種的進度走法相同：step -1 跟著時間走完全程，進度在結束前最多 1 秒先到終點、留時間演「到了」；step 0 以上是目前第幾章，這個項目裡從章頭走到章尾，一章放一個、dots 給總章數。paws 和 segments 夠扁、可以放上緣；runner、stretch、fuse、battery、vine 比較高，放下緣（position bottom），放上緣時 common.header 要用自己的 y 往下讓。',
   variants: { param: 'mode', list: [
     { value: 'bar', label: '進度條', doc: '沿安全區上緣或下緣的一條細長進度條，跟著時間由左往右填滿；只要一條低調的進度時用' },
     { value: 'dots', label: '章節點', doc: '沿安全區上緣或下緣的一排章節點，走到的點填色、目前那顆大一點；dots 是點數，icons 給 emoji 就變成一排圖示（例如一站一道菜）' },
@@ -98,6 +99,9 @@ export const progress: ItemType<P, S> = {
     { id: 'vine', label: '藤蔓開花', doc: '園藝、料理、成長紀錄、親子：手繪的藤沿著畫面下緣往右長，一路冒出葉子，長到終點時花苞打開成一朵花；goal 換成 🍓 就是結出果子', params: { mode: 'vine', position: 'bottom', thickness: 16, color: '#4caf50', done: '#ff8fb1' } },
     { id: 'stamps', label: '集點卡', doc: '挑戰、打卡、清單型的片子：右下角一張小紙卡，每走完一章蓋一個星星章，集滿時整張卡跳一下、章全部變色；dots 是格數，runner 換成別的章', params: { mode: 'stamps', position: 'bottom', align: 'right', size: 3.2 } },
   ],
+  // the colours (and vine's thickness) stretch, battery and vine draw with where the item sets none: the editor shows them in the
+  // unset fields instead of the theme's accent; the mode is the item's own, else the param's default (bar, which has none)
+  defaultsFor: (set) => modeDefaults(String(set.mode ?? progress.params.find((d) => d.key === 'mode')!.default)),
   params: [
     { key: 'mode', label: '樣式', type: 'enum', options: ['bar', 'dots', 'tabs', 'pencil', 'timeline', 'slots', 'osd', 'runner', 'stretch', 'paws', 'segments', 'fuse', 'battery', 'rocket', 'ring', 'vine', 'stamps'], default: 'bar' },
     { key: 'position', label: '位置（rocket 不看：它占滿安全區的高度）', type: 'enum', options: ['top', 'bottom'], default: 'top' },
@@ -110,7 +114,7 @@ export const progress: ItemType<P, S> = {
     { key: 'y', label: '高度（畫面高比例；-1＝依「位置」放在安全區上緣或下緣；slots：卡列的中心；rocket 不看）', type: 'number', min: -1, max: 1, step: 0.005, default: -1 },
     { key: 'icons', label: '點上／章名前的圖示（emoji，逗號分隔，空＝一般圓點）', type: 'string', default: '' },
     { key: 'labels', label: '章名（tabs 樣式，逗號分隔；timeline：刻度上的日期；slots：每張卡的關鍵字，幾個就幾張；osd：待辦項目，幾個就幾格）', type: 'string', default: '準備,開始,完成' },
-    { key: 'size', label: '章名字級（tabs、slots、osd，畫面高 %；放不下會自動縮小；slots 的卡高跟著它；osd 的計數字約 1.3 倍；battery：電池和百分比的大小；ring：圓環的大小；stamps：一格的大小；ring、stamps 在橫式畫面再乘寬高比，和直式一樣大）', type: 'number', min: 1, max: 8, step: 0.1, default: 2.4 },
+    { key: 'size', label: '章名字級（tabs、slots、osd，畫面高 %；放不下會自動縮小；slots 的卡高跟著它；osd 的計數字約 1.3 倍；battery：電池和百分比的大小；ring：圓環的大小；stamps：一格的大小；battery、ring、stamps 在橫式畫面再乘寬高比，和直式一樣大）', type: 'number', min: 1, max: 8, step: 0.1, default: 2.4 },
     { key: 'align', label: '對齊（tabs；osd、battery、ring、stamps：left 靠左，其他靠右；rocket：left 貼左邊，其他貼右邊）', type: 'enum', options: ['left', 'center', 'right'], default: 'center' },
     { key: 'done', label: '做過的章的底色（tabs；osd：勾和全部完成的計數；battery：充滿的顏色；ring：畫滿的顏色；vine：花瓣，沒給時 #ff8fb1；stamps：集滿後的章）', type: 'color', default: '#ffe14d', theme: 'palette.hl' },
     { key: 'ink', label: '字與外框（tabs；slots：實卡上的字；stretch：線條；stamps：空格的虛線圈）', type: 'color', default: '#1a1a1a', theme: 'palette.ink' },

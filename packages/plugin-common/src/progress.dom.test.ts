@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // common.progress pencil: a frame drawn on the canvas kept from the frame before looks the same as one drawn on a fresh canvas.
-import { createRegistry, motion, resolveTheme, Stage, withDefaults, type ItemType } from '@tellcut/engine';
+import { createRegistry, motion, resolveTheme, Stage, unsetValue, withDefaults, type ItemType } from '@tellcut/engine';
 import { progress, TOP_LANE } from './progress.ts';
-import { band, corner, landscape, MORE_MODES, withModeDefaults } from './progress/shared.ts';
+import { band, corner, landscape, MODE_DEFAULTS, MORE_MODES, withModeDefaults } from './progress/shared.ts';
 import { BACKING } from './progress/ring.ts';
 import { vineSize } from './progress/vine.ts';
 
@@ -927,7 +927,7 @@ test("stretch, battery and vine: their own colours where the item gives none, ov
   expect(tall(thick)).toBeGreaterThan(tall(thin) * 1.2);
 });
 
-test('paws, ring and stamps on a 16:9 frame are as big as on 9:16; fuse grows by the square root of 16:9', () => {
+test('paws, ring, stamps and battery on a 16:9 frame are as big as on 9:16; fuse grows by the square root of 16:9', () => {
   const log = recorder();
   const at = (params: Record<string, unknown>, W: number, H: number) => { const ctx = ctxOf(params, 2, document.createElement('div'), W, H), s = progress.build(ctx); log.length = 0; progress.draw(ctx, s); return s; };
   // ring: the ground's radius
@@ -944,4 +944,24 @@ test('paws, ring and stamps on a 16:9 frame are as big as on 9:16; fuse grows by
   // fuse: the bomb's box
   const bomb = (s: any) => parseFloat(css(s.more!.el.goal).width);
   expect(bomb(at({ mode: 'fuse' }, 1920, 1080)) / bomb(at({ mode: 'fuse' }, 1080, 1920))).toBeCloseTo(4 / 3, 3);
+  // battery: its outline and the percentage's size
+  const battery = (s: any) => [parseFloat(css(s.more!.el.body).width), parseFloat(css(s.more!.el.body).height), parseFloat(css(s.more!.el.text).fontSize)];
+  const wide = battery(at({ mode: 'battery', position: 'bottom' }, 1920, 1080)), tallB = battery(at({ mode: 'battery', position: 'bottom' }, 1080, 1920));
+  wide.forEach((v, i) => expect(v).toBeCloseTo(tallB[i], 1));
+  // on 9:16 it is size % of the frame height, as before: 2.4 % of 1920 tall, 2.6 times that wide
+  expect(tallB[0]).toBeCloseTo(0.024 * 1920 * 2.6, 1);
+});
+
+test('defaultsFor: the editor is told the colours stretch, battery and vine draw with when unset, from the table drawing reads', () => {
+  for (const mode of ['stretch', 'battery', 'vine'] as const) expect(progress.defaultsFor!({ mode })).toEqual(MODE_DEFAULTS[mode]);
+  expect(progress.defaultsFor!({ mode: 'vine' })).toMatchObject({ color: '#4caf50', done: '#ff8fb1', thickness: 16 });
+  // the other modes, and an item with no mode (bar, the param's default): none of their own
+  for (const set of [{ mode: 'ring' }, { mode: 'bar' }, {}]) expect(progress.defaultsFor!(set)).toEqual({});
+  // what an unset field shows (engine unsetValue) is what withModeDefaults draws with; a set one, or a param the mode has none for, as before
+  const theme = resolveTheme({ palette: { accent: '#00ff00' } }, { width: 1080, height: 1920 }), def = (k: string) => progress.params.find((d) => d.key === k)!;
+  for (const set of [{ mode: 'battery' }, { mode: 'vine' }, { mode: 'stretch', color: '#123456' }, { mode: 'ring' }] as Array<Record<string, unknown>>) {
+    const drawn = withModeDefaults(withDefaults(progress.params, set, theme) as any, set);
+    for (const k of ['color', 'done', 'thickness', 'track']) if (!(k in set)) expect([set, k, unsetValue(progress, def(k), set, theme)]).toEqual([set, k, drawn[k]]);
+  }
+  expect(unsetValue(progress, def('color'), { mode: 'ring' }, theme)).toBe('#00ff00');
 });

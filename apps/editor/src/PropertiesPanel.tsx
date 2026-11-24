@@ -1,6 +1,6 @@
 // Right-hand panel (spec §4.1): fields of the one selected item; plugin params come from their ParamDefs.
 import { useEffect } from 'preact/hooks';
-import { allItems, paramDefault, resolveTheme, resolveTimes, restackTarget, soundFilePath, transitionFallbacks, type AnyItem, type Track } from '@tellcut/engine';
+import { allItems, resolveTheme, resolveTimes, restackTarget, soundFilePath, transitionFallbacks, unsetValue, type AnyItem, type Track } from '@tellcut/engine';
 import { handleOf } from '@tellcut/protocol';
 import type { EditorState } from './store.ts';
 import { liveLinks } from './editor/library.ts';
@@ -132,10 +132,14 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
     const defs = track.kind === 'sfx' ? editor.registry?.sfx(it.type)?.params : editor.registry?.item(it.type)?.params;
     const templates = track.kind === 'sfx' ? undefined : editor.registry?.item(it.type)?.templates;
     const variants = track.kind === 'sfx' ? undefined : editor.registry?.item(it.type)?.variants;
+    // what an unset field shows: what the block really draws with (a block's defaultsFor, e.g. progress's green battery), else the
+    // theme's or the param's default; setting the field writes the value, clearing it goes back to this
+    const theme = resolveTheme(p.meta.theme, p.meta), own = track.kind === 'sfx' ? undefined : editor.registry?.item(it.type);
+    const unset = (def: any) => unsetValue(own, def, it.params, theme);
     // the param that picks the block's look (engine variants.ts): a picker of its looks' pictures instead of a plain menu; the label
     // stays English as every field's, the looks' names and sentences follow the UI language
     const lookField = (def: any) => {
-      const v = it.params?.[def.key] ?? paramDefault(def, resolveTheme(p.meta.theme, p.meta));
+      const v = it.params?.[def.key] ?? unset(def);
       const tiles = variants.list.map((x: any) => { const id = `${it.type}@${x.value}`, w = blockText(id, x); return { key: x.value, label: w.label, doc: w.doc, thumb: editor.lookThumb?.(it.type, 'variant', x.value), crop: editor.lookCrop?.(it.type, 'variant', x.value), words: lookWords(id, x) }; });
       return <div data-param={def.key}><LookPicker name={def.key} label={paramText(it.type, def.key, def.label, 'en').name} hint={paramText(it.type, def.key, def.label).hint}
         tiles={tiles} current={String(v)} fallback={String(v)} onPick={(x) => editor.updateParam(id, def.key, x)} /></div>;
@@ -160,7 +164,7 @@ export function PropertiesPanel({ editor, s }: { editor: any; s: EditorState }) 
       {defs && templates?.length ? <BlockTemplates type={it.type} templates={templates} thumb={(x) => editor.lookThumb?.(it.type, 'template', x)} crop={(x) => editor.lookCrop?.(it.type, 'template', x)} onApply={(x) => editor.applyBlockTemplate(id, x)} /> : null}
       {track.kind === 'sfx' && <NumberField label="Volume (dB)" name="gain" value={it.gain} step={0.5} min={-60} max={12} onCommit={up('gain')} />}
       {/* a moving item (following a face): its path decides where it is; the block's own x/y are the path's anchor, so they are not offered */}
-      {defs ? defs.filter((def: any) => !(it.transform?.keys?.length && (def.key === 'x' || def.key === 'y'))).map((def: any) => def.key === variants?.param ? lookField(def) : <ParamField def={def} type={it.type} value={it.params?.[def.key]} project={p} onCommit={(v) => editor.updateParam(id, def.key, v)} />)
+      {defs ? defs.filter((def: any) => !(it.transform?.keys?.length && (def.key === 'x' || def.key === 'y'))).map((def: any) => def.key === variants?.param ? lookField(def) : <ParamField def={def} type={it.type} value={it.params?.[def.key]} unset={unset(def)} project={p} onCommit={(v) => editor.updateParam(id, def.key, v)} />)
         : track.kind === 'sfx' && soundFilePath(it) ? <p class="hint" data-sound-file>{t('ed.soundFile', { path: soundFilePath(it) ?? '' })}</p>
         : <p class="hint">{t('ed.unknownType', { type: it.type })}</p>}
     </>;

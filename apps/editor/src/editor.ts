@@ -243,14 +243,17 @@ export class Editor {
 
   /** A validated field edit from the properties panel. */
   update(id: string, patch: Record<string, unknown>) { return this.apply((d) => updateItem(d, { id, patch })); }
-  /** A block template (engine templates.ts) on one item: its params written over the item's, the others kept; one undo step. The
-   *  item keeps no template name. */
+  /** A block template (engine templates.ts) on one item: its params written over the item's; one undo step. The item keeps no
+   *  template name, so what an earlier template set cannot be told from what the user set: the params any of the block's templates
+   *  sets are cleared first (else picking templates one after another piled them up: paws kept the dachshund's colour and place),
+   *  and the params no template touches (the words) are kept. */
   applyBlockTemplate(id: string, template: string): boolean {
     const it = this.s.project && (allItems(this.s.project).find((x) => x.item.id === id)?.item as { type?: string; params?: Record<string, unknown> } | undefined);
     const type = it?.type ? this.registry?.item(it.type) : undefined;
     if (!it || !type) return false;
     let params: Record<string, unknown>;
-    try { params = { ...it.params, ...applyTemplate(type, template) }; } catch (e) { this.set({ notice: errText(e) }); return false; }
+    const theirs = new Set((type.templates ?? []).flatMap((x) => Object.keys(x.params)));
+    try { params = { ...Object.fromEntries(Object.entries(it.params ?? {}).filter(([k]) => !theirs.has(k))), ...applyTemplate(type, template) }; } catch (e) { this.set({ notice: errText(e) }); return false; }
     return this.update(id, { params });
   }
   /** One plugin parameter: the whole params object is replaced (old values plus the new one). */
@@ -707,7 +710,7 @@ export class Editor {
       case 'clip': return this.addClip(m.source, m.from, m.len);
       case 'music': return this.addMusic(m.media);
       case 'sfx': return this.addSfx(m.type);
-      case 'overlay': return this.addOverlay(m.type);
+      case 'overlay': return this.addOverlay(m.type, m.params);   // a card found by a look or template carries its params
     }
   }
 

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { createRegistry } from './registry.ts';
+import { createRegistry, unsetValue } from './registry.ts';
+import { resolveTheme } from './theme.ts';
 import { corePlugin } from './core.ts';
 
 test('registers items, sfx, grades and css; rejects duplicates', () => {
@@ -95,4 +96,14 @@ test('SVG filter ids written in single quotes are checked too; core fonts includ
   expect(() => createRegistry([{ id: 'red', svg: "<filter id='dawn'></filter>" }])).toThrow(/red.*dawn/);
   expect(createRegistry([{ id: 'red', svg: "<filter id='red-dawn'></filter>" }]).svgById.red).toContain('red-dawn');
   expect(corePlugin.fonts).toContain('Noto Serif TC:wght@400;500;700');
+});
+
+test('unsetValue: an unset param shows the block\'s own default for it given the item\'s params, else the theme field or plain default', async () => {
+  const theme = resolveTheme({ palette: { accent: '#00ff00' } }, { width: 1080, height: 1920 });
+  const color = { key: 'color', label: '顏色', type: 'color' as const, default: '#ff0000', theme: 'palette.accent' };
+  const size = { key: 'size', label: '大小', type: 'number' as const, default: 4 };
+  const type = { defaultsFor: (set: Record<string, unknown>) => (set.mode === 'leaf' ? { color: '#4caf50' } : {}) };
+  expect([unsetValue(type, color, { mode: 'leaf' }, theme), unsetValue(type, color, { mode: 'other' }, theme), unsetValue(type, color, undefined, theme)]).toEqual(['#4caf50', '#00ff00', '#00ff00']);
+  // a param the hook says nothing of, a block with no hook, no block: the theme field or the ParamDef default
+  expect([unsetValue(type, size, { mode: 'leaf' }, theme), unsetValue({}, color, {}, theme), unsetValue(undefined, size, {}, theme)]).toEqual([4, '#00ff00', 4]);
 });
