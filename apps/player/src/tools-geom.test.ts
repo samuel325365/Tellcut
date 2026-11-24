@@ -1,4 +1,4 @@
-import { movedTransform, pickAt, rankHits, scaledTransform, textParamFor, union } from './tools-geom.ts';
+import { movedTransform, paintsBox, pickAt, rankHits, scaledTransform, shows, textParamFor, union } from './tools-geom.ts';
 
 test('union of rects; empty is null', () => {
   expect(union([{ left: 0, top: 5, right: 10, bottom: 8 }, { left: 4, top: 1, right: 6, bottom: 20 }])).toEqual({ left: 0, top: 1, right: 10, bottom: 20 });
@@ -47,4 +47,20 @@ test('items hit only by a full-frame layer (particles, glows) rank after items h
   const stage = { left: 0, top: 0, right: 100, bottom: 100 };
   const hits = [{ id: 'dust', rects: [{ left: 0, top: 0, right: 100, bottom: 100 }] }, { id: 'title', rects: [{ left: 10, top: 10, right: 40, bottom: 20 }] }];
   expect(rankHits(hits, stage)).toEqual(['title', 'dust']);
+});
+
+test('a colour shows unless it is transparent or its alpha is 0', () => {
+  for (const c of ['rgb(0, 0, 0)', 'rgba(0, 0, 0, 0.38)', '#fff', 'red', 'rgb(0 0 0 / 0.5)', 'color(srgb 1 0 0)']) expect(shows(c)).toBe(true);
+  for (const c of ['rgba(0, 0, 0, 0)', 'transparent', '', 'rgb(0 0 0 / 0)', 'color(srgb 1 0 0 / 0)', 'hsla(0, 0%, 0%, 0)']) expect(shows(c)).toBe(false);
+});
+
+test('a box painted with a background or a border that shows counts as drawn; a bare wrapper does not', () => {
+  const bare = { backgroundColor: 'rgba(0, 0, 0, 0)', backgroundImage: 'none' };
+  expect(paintsBox(bare)).toBe(false);
+  expect(paintsBox({ ...bare, backgroundColor: 'rgba(0, 0, 0, 0.38)' })).toBe(true);   // battery's body
+  expect(paintsBox({ ...bare, backgroundImage: 'linear-gradient(red, blue)' })).toBe(true);
+  expect(paintsBox({ ...bare, borderTopWidth: '2px', borderTopStyle: 'dashed', borderTopColor: 'rgba(17, 17, 17, 0.35)' })).toBe(true);   // stamps' cell
+  expect(paintsBox({ ...bare, borderTopWidth: '2px', borderTopStyle: 'none', borderTopColor: 'rgb(0, 0, 0)' })).toBe(false);
+  expect(paintsBox({ ...bare, borderLeftWidth: '0px', borderLeftStyle: 'solid', borderLeftColor: 'rgb(0, 0, 0)' })).toBe(false);
+  expect(paintsBox({ ...bare, borderLeftWidth: '3px', borderLeftStyle: 'solid', borderLeftColor: 'rgba(0, 0, 0, 0)' })).toBe(false);
 });

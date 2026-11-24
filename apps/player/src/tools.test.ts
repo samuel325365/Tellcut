@@ -168,3 +168,20 @@ test('a selected item that draws nothing just now (faded out) is neither dragged
   expect(() => box.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100 }))).not.toThrow();
   expect(sent.filter((m) => m.type === 'transformChange')).toEqual([]);
 });
+test('the selection box takes in boxes the item paints (an outline, a filled cell), not its bare wrappers or a full-frame plate', () => {
+  const { tools, viewport } = setup();
+  const layer = viewport.querySelector('[data-id="t"]')!;
+  const add = (style: Partial<CSSStyleDeclaration>, r: ReturnType<typeof rect>) => {
+    const e = document.createElement('div');
+    Object.assign(e.style, style);
+    e.getBoundingClientRect = r;
+    layer.appendChild(e);
+  };
+  add({ background: 'rgba(0, 0, 0, 0.38)' }, rect(150, 5, 60, 30));   // a battery's body, right of the text
+  add({ borderStyle: 'dashed', borderWidth: '2px', borderColor: 'rgb(17, 17, 17)' }, rect(10, 40, 20, 50));   // a stamp's cell, below it
+  add({}, rect(0, 0, 300, 170));   // a bare wrapper: draws nothing
+  add({ background: 'rgba(0, 0, 0, 0.3)' }, rect(0, 0, 320, 180));   // a dimmer over the whole frame
+  tools.select('t');
+  const box = viewport.querySelector<HTMLElement>('.sel-box')!;
+  expect([box.style.left, box.style.top, box.style.width, box.style.height]).toEqual(['10px', '5px', '200px', '85px']);
+});

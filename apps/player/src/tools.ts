@@ -1,6 +1,6 @@
 // Preview tools in the editor (embed mode): click to select, drag the box to move, drag a corner or wheel to scale.
 import { resolveTheme, withDefaults, type Project, type Registry, type SceneItem, type Transform } from '@tellcut/engine';
-import { inside, isFullFrame, movedTransform, pickAt, rankHits, scaledTransform, textParamFor, union, type Rect } from './tools-geom.ts';
+import { inside, isFullFrame, movedTransform, paintsBox, pickAt, rankHits, scaledTransform, textParamFor, union, type Rect } from './tools-geom.ts';
 import type { PlayerTexts, ToolMsg } from '@tellcut/protocol';
 
 export type { ToolMsg };
@@ -36,14 +36,17 @@ export class StageTools {
       .filter((e) => e.style.display !== 'none').sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex));
   }
 
-  /** Screen rects of what an item visibly draws (text, images, svg, canvas, video); with `at`, only those under that point.
-   *  The cheap rect test runs before the computed-style check (Kyoto scenes have hundreds of elements). */
+  /** Screen rects of what an item visibly draws (text, images, svg, canvas, video, and boxes painted with a background or border);
+   *  with `at`, only those under that point. A painted box over (nearly) the whole frame is a dimmer or a plate behind everything,
+   *  not something the item draws in one place, and is left out. The cheap rect test runs before the computed-style checks (Kyoto
+   *  scenes have hundreds of elements). */
   rectsOf(id: string, at?: { x: number; y: number }): Rect[] {
     const roots = [...this.stageEl.querySelectorAll<HTMLElement>(`[data-id="${CSS.escape(id)}"]`)];
+    const stage = toRect(this.stageEl.getBoundingClientRect());
     return roots.flatMap((r) => [...r.querySelectorAll('*')])
-      .filter((e) => e.matches(CONTENT) || ownText(e))
       .map((e) => ({ e, r: toRect(e.getBoundingClientRect()) }))
-      .filter(({ e, r }) => r.right - r.left > 0 && r.bottom - r.top > 0 && (!at || inside(r, at.x, at.y)) && this.visible(e))
+      .filter(({ e, r }) => r.right - r.left > 0 && r.bottom - r.top > 0 && (!at || inside(r, at.x, at.y))
+        && (e.matches(CONTENT) || ownText(e) || (!isFullFrame(r, stage) && paintsBox(getComputedStyle(e)))) && this.visible(e))
       .map(({ r }) => r);
   }
 

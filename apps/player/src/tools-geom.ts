@@ -9,6 +9,27 @@ export function union(rs: Rect[]): Rect | null {
 }
 export const inside = (r: Rect, x: number, y: number) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 
+/** a computed colour that shows: not `transparent`, and an alpha (rgba's fourth number, or after a slash) above 0 */
+export function shows(color: string): boolean {
+  const c = color.trim().toLowerCase();
+  if (!c || c === 'transparent' || c === 'none') return false;
+  const m = /\(([^)]*)\)/.exec(c);
+  if (!m) return true;
+  const parts = m[1].split(/[\s,/]+/).filter(Boolean), slash = m[1].includes('/');
+  // the alpha: after a slash (rgb(0 0 0 / 0.5), color(srgb 1 0 0 / 0)), or the fourth of rgba() / hsla() with commas
+  const alpha = slash || (/^(rgba|hsla)/.test(c) && parts.length === 4) ? parts.at(-1)! : null;
+  return alpha === null || parseFloat(alpha) > 0;
+}
+
+type BoxStyle = Pick<CSSStyleDeclaration, 'backgroundColor' | 'backgroundImage'> & Partial<Record<`border${'Top' | 'Right' | 'Bottom' | 'Left'}${'Width' | 'Style' | 'Color'}`, string>>;
+/** An element that paints its own box: a background colour or picture, or a border that shows. A block drawn in styled boxes
+ *  (common.progress battery's outline and cells, stamps' card) draws nothing a text or picture rule would find. */
+export function paintsBox(s: BoxStyle): boolean {
+  if (shows(s.backgroundColor) || (s.backgroundImage && s.backgroundImage !== 'none')) return true;
+  return (['Top', 'Right', 'Bottom', 'Left'] as const).some((side) => parseFloat(s[`border${side}Width`] ?? '0') > 0
+    && !['none', 'hidden'].includes(s[`border${side}Style`] ?? 'none') && shows(s[`border${side}Color`] ?? ''));
+}
+
 /** ids = items under the pointer, topmost first. Alt+click (cycle) steps below the current selection. */
 export function pickAt(ids: string[], current: string | null, cycle: boolean): string | null {
   if (!ids.length) return null;
