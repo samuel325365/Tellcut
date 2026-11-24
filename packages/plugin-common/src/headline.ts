@@ -83,7 +83,9 @@ export const headline: ItemType<P, S> = {
   ],
   build(ctx) {
     const ground = abs(ctx.root, { left: '0', right: '0', pointerEvents: 'none' });
-    const box = abs(ctx.root, { left: '0', right: '0', textAlign: 'center', willChange: 'transform' });
+    // no will-change: a layer of its own kept the words rastered as they were when it was made, so a frame looked a fraction of a
+    // pixel off depending on what the page had drawn before (the gallery thumbnails came out one of two pictures)
+    const box = abs(ctx.root, { left: '0', right: '0', textAlign: 'center' });
     const r1 = h('div', null, null, box), main = h('div', null, null, box), sub = h('div', null, null, box), r2 = h('div', null, null, box);
     for (const r of [r1, r2]) cssCamel(r, { margin: '0 auto' });
     cssCamel(main, { whiteSpace: 'pre', fontWeight: '900', lineHeight: '1.15' });
