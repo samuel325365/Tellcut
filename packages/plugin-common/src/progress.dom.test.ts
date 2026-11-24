@@ -2,7 +2,8 @@
 // common.progress pencil: a frame drawn on the canvas kept from the frame before looks the same as one drawn on a fresh canvas.
 import { createRegistry, motion, resolveTheme, Stage, withDefaults, type ItemType } from '@tellcut/engine';
 import { progress, TOP_LANE } from './progress.ts';
-import { band, corner, MORE_MODES } from './progress/shared.ts';
+import { band, corner, landscape, MORE_MODES, withModeDefaults } from './progress/shared.ts';
+import { BACKING } from './progress/ring.ts';
 import { vineSize } from './progress/vine.ts';
 
 const css = (el: Element) => ((el as any)._c ?? {}) as Record<string, string>;
@@ -38,7 +39,7 @@ test('pencil: the title underline is drawn opaque on the next frame too, after a
 // the character modes (spec 2026-11-22, progress characters): their own elements under S.more, the old modes' hidden meanwhile
 const ctxOf = (params: Record<string, unknown>, local = 1, root = document.createElement('div'), W = 1080, H = 1920) => {
   const theme = resolveTheme(undefined, { width: W, height: H });
-  return { t: local, local, dur: 4, W, H, theme, root, motion, media, reportText: () => {}, params: withDefaults(progress.params, params, theme) } as any;
+  return { t: local, local, dur: 4, W, H, theme, root, motion, media, reportText: () => {}, item: { id: 'p', type: 'common.progress', start: 0, end: 4, params }, params: withDefaults(progress.params, params, theme) } as any;
 };
 
 test('runner hides the old modes, bar hides runner, and back again', () => {
@@ -439,7 +440,8 @@ test('rocket: align left keeps it on the left; another emoji stands unturned wit
   expect(b.left).toBeGreaterThanOrEqual(side - 0.01);
   expect(b.right).toBeLessThan(ctx.W / 2);
   expect(s.more!.el.goal).toBeUndefined();
-  expect(css(s.more!.el.runnerText).transform).toBe('none');
+  // unturned: only 🎈 nudged left inside its box, onto the track (its string hangs to the left)
+  expect(css(s.more!.el.runnerText).transform).toMatch(/^translateX\(-[\d.]+px\)$/);
   expect(css(s.cv).display).toBe('none');
   expect(log.length).toBe(0);
   // flip mirrors it
@@ -487,7 +489,7 @@ test('rocket: a 0.5 s item draws without throwing', () => {
 
 // ring: a ring in a corner of the safe area; the box it keeps (1.25 diameters) holds the pop and the ripple
 const ringBox = (ctx: any) => {
-  const d = (ctx.params.size * 2.6 / 100) * ctx.H, b = 1.25 * d, { left, top } = corner(ctx, ctx.params, b, b);
+  const d = (ctx.params.size * 2.6 / 100) * ctx.H * landscape(ctx.W, ctx.H), b = 1.25 * d, { left, top } = corner(ctx, ctx.params, b, b);
   return { L: left, T: top, R: left + b, B: top + b, cx: left + b / 2, cy: top + b / 2, d };
 };
 const inside = (x: number, y: number, b: { L: number; T: number; R: number; B: number }) => {
@@ -516,12 +518,12 @@ test.each([[1080, 1920, 'center'], [1080, 1920, 'left'], [1920, 1080, 'right'], 
       expect((c.args as number[])[2]).toBeGreaterThan(0);
     }
     for (const [x, y] of canvasBoxes(log)) inside(x, y, rb);
-    // the dark backing: a circle round the ring's centre, inside the box
-    const back = box4(s.more!.el.back);
-    inside(back.left, back.top, rb); inside(back.right, back.bottom, rb);
-    expect((back.left + back.right) / 2).toBeCloseTo(rb.cx, 1);
-    expect((back.top + back.bottom) / 2).toBeCloseTo(rb.cy, 1);
-    expect(css(s.more!.el.back).background).toBe('rgba(0,0,0,0.38)');
+    // the dark ground: the first thing drawn, a disc round the ring's centre (inside the box: canvasBoxes above), under the line
+    const ground = log.find((c) => c.op === 'arc')!.args as number[];
+    expect(ground[0]).toBeCloseTo(rb.cx, 1);
+    expect(ground[1]).toBeCloseTo(rb.cy, 1);
+    expect(log.find((c) => c.op === 'fill')!.fillStyle).toBe(BACKING);
+    expect(log.findIndex((c) => c.op === 'fill')).toBeLessThan(log.findIndex((c) => c.op === 'stroke'));
     // the percentage: centred on the ring, inside the box
     const t = css(s.more!.el.text), tl = parseFloat(t.left), tw = parseFloat(t.width), tt = parseFloat(t.top), fs = parseFloat(t.fontSize);
     expect(tl + tw / 2).toBeCloseTo(rb.cx, 1);
@@ -540,13 +542,14 @@ test('ring: the arc from twelve o\'clock clockwise with round caps; the percenta
   log.length = 0;
   progress.draw({ ...ctx, local: 0, t: 0 }, s);
   expect(s.more!.el.text.textContent).toBe('0%');
-  // nothing swept yet: only the track's circle
-  expect(log.filter((c) => c.op === 'arc')).toHaveLength(1);
+  // nothing swept yet: only the ground and the track's circle
+  expect(log.filter((c) => c.op === 'arc')).toHaveLength(2);
   log.length = 0;
   progress.draw({ ...ctx, local: 1.5, t: 1.5 }, s);
   expect(s.more!.el.text.textContent).toBe('50%');
   expect(css(s.more!.el.text).color).toBe('#ffffff');
-  const arcs = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]);
+  // (the ground's disc first, then the line's)
+  const arcs = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]).slice(1);
   expect(arcs).toHaveLength(2);
   expect(arcs[1][3]).toBeCloseTo(-Math.PI / 2, 9);
   expect(arcs[1][4]).toBeCloseTo(-Math.PI / 2 + Math.PI, 9);
@@ -556,25 +559,24 @@ test('ring: the arc from twelve o\'clock clockwise with round caps; the percenta
   progress.draw({ ...ctx, local: 3.2, t: 3.2 }, s);
   expect(s.more!.el.text.textContent).toBe('100%');
   expect(css(s.more!.el.text).color).toBe('#0000ff');
-  const full = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]);
+  const full = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]).slice(1);
   // popped: the ring bigger than before; and the ripple's thin ring outside it
   expect(full[0][2]).toBeGreaterThan(size * 1.05);
   expect(Math.max(...full.map((a) => a[2]))).toBeGreaterThan(full[0][2]);
   log.length = 0;
   progress.draw({ ...ctx, local: 3.9, t: 3.9 }, s);
   // settled: one done-coloured circle at the size it had
-  const end = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]);
+  const end = log.filter((c) => c.op === 'arc').map((c) => c.args as number[]).slice(1);
   expect(end).toHaveLength(1);
   expect(end[0][2]).toBeCloseTo(size, 6);
 });
 
 test('ring: position bottom keeps it against the bottom safe edge', () => {
-  recorder();
+  const log = recorder();
   const ctx = ctxOf({ mode: 'ring', position: 'bottom' }, 1.5), s = progress.build(ctx), rb = ringBox(ctx);
   expect(rb.B).toBeCloseTo(ctx.H * (1 - ctx.theme.safe.bottom), 6);
   progress.draw(ctx, s);
-  const back = box4(s.more!.el.back);
-  expect((back.top + back.bottom) / 2).toBeCloseTo(rb.cy, 1);
+  expect((log.find((c) => c.op === 'arc')!.args as number[])[1]).toBeCloseTo(rb.cy, 1);
   expect(rb.cy).toBeGreaterThan(ctx.H / 2);
 });
 
@@ -618,7 +620,7 @@ test.each([{ size: 1, thickness: 60 }, { size: 8, thickness: 60 }, { size: 1, th
       expect(() => progress.draw({ ...ctx, local, t: local }, s)).not.toThrow();
       for (const c of log.filter((c) => c.op === 'arc')) expect((c.args as number[])[2]).toBeGreaterThan(0);
       for (const [x, y] of canvasBoxes(log)) inside(x, y, rb);
-      for (const v of Object.values(box4(s.more!.el.back))) expect(Number.isFinite(v)).toBe(true);
+      for (const v of log.find((c) => c.op === 'arc')!.args as number[]) expect(Number.isFinite(v)).toBe(true);
     }
   }
 });
@@ -633,7 +635,7 @@ test('ring: a 0.5 s item (and one of none) draws without throwing', () => {
 
 // vine: all on the canvas (a goal emoji or picture aside), inside the side safe margins and the band its size keeps
 const vineBand = (ctx: any) => {
-  const s = vineSize(ctx.params.thickness * Math.min(ctx.W, ctx.H) / 1080), b = band(ctx, ctx.params, s.height);
+  const p = withModeDefaults(ctx.params, ctx.item?.params), s = vineSize(p.thickness * Math.min(ctx.W, ctx.H) / 1080), b = band(ctx, p, s.height);
   return { L: b.x, R: b.x + b.w, T: b.top, B: b.top + s.height };
 };
 
@@ -791,7 +793,7 @@ test('stamps: one stamp more at each fifth, the newest crisp and the older ones 
   expect(shown(s)).toEqual([true, true, false, false, false]);
   const [old, newest] = s.more!.list.map((el) => Number(css(el).opacity));
   expect(newest).toBe(1);
-  expect(old).toBeCloseTo(0.75, 6);
+  expect(old).toBeCloseTo(0.9, 6);
   for (const el of s.more!.list.slice(0, 2)) expect(css(el).color).toBe('#00ff00');
   // each stamp turned its own way, fixed by its number
   const tilts = s.more!.list.map((el) => Number(/rotate\((-?[\d.]+)deg\)/.exec(css(el).transform)?.[1]));
@@ -902,4 +904,44 @@ test('switching stamps → ring → bar → stamps: one root at a time, the old 
   expect(s.more!.root.dataset.more).toBe('stamps');
   expect(css(s.cv).display).toBe('none');
   expect(st.root.querySelectorAll(':scope > [data-more]').length).toBe(1);
+});
+
+// a mode's own colours (withModeDefaults): stretch, battery and vine, where the item gives none, over the project theme's accent too
+test("stretch, battery and vine: their own colours where the item gives none, over the theme's accent; the item's own colour wins", () => {
+  const log = recorder(), theme = resolveTheme({ palette: { accent: '#00ff00' } }, { width: 1080, height: 1920 });
+  const themed = (params: Record<string, unknown>, local = 1.5) => ({ ...ctxOf(params, local), theme, params: withDefaults(progress.params, params, theme) });
+  const fills = (ctx: any) => { const s = progress.build(ctx); log.length = 0; progress.draw(ctx, s); return new Set(log.filter((c) => c.op === 'fill').map((c) => c.fillStyle)); };
+  const dog = themed({ mode: 'stretch' });
+  expect(dog.params.color).toBe('#00ff00');
+  expect(fills(dog).has('#c98a4b')).toBe(true);
+  expect(fills(dog).has('#00ff00')).toBe(false);
+  expect(fills(themed({ mode: 'stretch', color: '#123456' })).has('#123456')).toBe(true);
+  const bat = themed({ mode: 'battery' }), sb = progress.build(bat);
+  progress.draw(bat, sb);
+  expect(css(sb.more!.list[0]).background).toBe('#34c759');
+  const vine = fills(themed({ mode: 'vine' }, 3.6));
+  for (const c of ['#4caf50', '#ff8fb1']) expect(vine.has(c)).toBe(true);
+  // vine: as thick as its template, 16, unless the item gives a thickness
+  const thick = themed({ mode: 'vine' }, 3.6), thin = themed({ mode: 'vine', thickness: 12 }, 3.6);
+  const tall = (ctx: any) => { const s = progress.build(ctx); log.length = 0; progress.draw(ctx, s); const ys = canvasBoxes(log).map(([, y]) => y); return Math.max(...ys) - Math.min(...ys); };
+  expect(tall(thick)).toBeGreaterThan(tall(thin) * 1.2);
+});
+
+test('paws, ring and stamps on a 16:9 frame are as big as on 9:16; fuse grows by the square root of 16:9', () => {
+  const log = recorder();
+  const at = (params: Record<string, unknown>, W: number, H: number) => { const ctx = ctxOf(params, 2, document.createElement('div'), W, H), s = progress.build(ctx); log.length = 0; progress.draw(ctx, s); return s; };
+  // ring: the ground's radius
+  const ground = () => (log.find((c) => c.op === 'arc')!.args as number[])[2];
+  at({ mode: 'ring' }, 1080, 1920); const tall = ground();
+  at({ mode: 'ring' }, 1920, 1080); expect(ground()).toBeCloseTo(tall, 6);
+  // stamps: the card's width
+  const card = (s: any) => parseFloat(css(s.more!.el.card).width);
+  expect(card(at({ mode: 'stamps' }, 1920, 1080))).toBeCloseTo(card(at({ mode: 'stamps' }, 1080, 1920)), 6);
+  // paws: a toe's size
+  const toe = () => (log.find((c) => c.op === 'ellipse')!.args as number[])[2];
+  at({ mode: 'paws', dots: 12 }, 1080, 1920); const pt = toe();
+  at({ mode: 'paws', dots: 12 }, 1920, 1080); expect(toe()).toBeCloseTo(pt, 6);
+  // fuse: the bomb's box
+  const bomb = (s: any) => parseFloat(css(s.more!.el.goal).width);
+  expect(bomb(at({ mode: 'fuse' }, 1920, 1080)) / bomb(at({ mode: 'fuse' }, 1080, 1920))).toBeCloseTo(4 / 3, 3);
 });

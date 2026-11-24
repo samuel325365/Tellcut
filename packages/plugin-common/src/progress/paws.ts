@@ -7,7 +7,7 @@
 import { clamp, cssCamel, eOut3 } from '@tellcut/engine';
 import { canvasAt } from '../inkline.ts';
 import { piece, showPiece, standing } from './runner.ts';
-import { band, fadeOut, sinceAt, TOP_LANE, travel, type Draw } from './shared.ts';
+import { band, fadeOut, landscape, sinceAt, TOP_LANE, travel, type Draw } from './shared.ts';
 
 /** seconds a print takes to land */
 const LAND = 0.2;
@@ -55,8 +55,10 @@ const ROW = 1.5, OFFSET = 0.26;
 export const drawPaws: Draw = (ctx, p, m, cv) => {
   const { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, n = Math.max(1, Math.round(p.dots)), stamp = String(p.runner ?? '').trim();
   if (stamp && !m.list.length) for (let i = 0; i < n; i++) { piece(m, `paw${i}`, stamp, '🐾', (f) => ctx.media.fileUrl(f)); m.list.push(m.el[`paw${i}`]); }
-  // a print's length: three and a half thicknesses, but never so big that the row would leave the top lane (at iconSize 1)
-  const ps = Math.min(p.thickness * 3.5 * k, (TOP_LANE * H) / ROW) * Math.max(0.1, p.iconSize);
+  // a print's length: three and a half thicknesses, but never so big that the row would leave the top lane (at iconSize 1); on a
+  // landscape frame the lane is a share of its short height, and that cap left the prints at 25 px: there it is landscape() times
+  // as roomy, which gives the prints their 9:16 size (and the row is taller than the lane: a header under it takes its own y)
+  const ps = Math.min(p.thickness * 3.5 * k, (TOP_LANE * H * landscape(W, H)) / ROW) * Math.max(0.1, p.iconSize);
   const { x, w, top } = band(ctx, p, ps * ROW), cy = top + (ps * ROW) / 2;
   const st = pawStates(n, travel(p.step, p.dots, local, dur), (i) => pawSince(p.step, p.dots, i, local, dur));
   const at = (i: number) => {

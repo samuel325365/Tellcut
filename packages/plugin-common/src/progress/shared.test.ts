@@ -1,7 +1,7 @@
 // common.progress's character modes (spec 2026-11-22, progress characters): how far along, when it arrived, the fade, the box.
 import { resolveTheme } from '@tellcut/engine';
 import { pawSince } from './paws.ts';
-import { arrived, band, corner, fadeOut, isMoreMode, MORE_MODES, sinceAt, tail, travel, type MoreParams } from './shared.ts';
+import { arrived, band, corner, fadeOut, isMoreMode, landscape, MORE_MODES, sinceAt, tail, travel, withModeDefaults, type MoreParams } from './shared.ts';
 
 test('tail: a quarter of the item, at most a second', () => {
   expect(tail(4)).toBe(1);
@@ -106,4 +106,28 @@ test('corner: against the left or right safe edge; top by band', () => {
   expect(corner(ctx, params({ position: 'bottom', y: -1 }), 200, 80).top).toBeCloseTo(H * (1 - theme.safe.bottom) - 80, 9);
   expect(corner(ctx, params({ position: 'top', y: -1 }), 200, 80).top).toBeCloseTo(theme.safe.top * H, 9);
   expect(corner(ctx, params({ y: 0.5 }), 200, 80).top).toBeCloseTo(H / 2 - 40, 9);
+});
+
+test('withModeDefaults: stretch, battery and vine take their own colours (vine its thickness and petals) only where the item sets none', () => {
+  const base = { mode: 'stretch', color: '#ff4d4f', done: '#ffe14d', thickness: 12 } as MoreParams;
+  expect(withModeDefaults(base, {}).color).toBe('#c98a4b');
+  expect(withModeDefaults(base, undefined).color).toBe('#c98a4b');
+  // a colour the item gives wins; one the theme gave (in p, not in the item's own params) does not
+  expect(withModeDefaults({ ...base, color: '#123456' }, { color: '#123456' }).color).toBe('#123456');
+  expect(withModeDefaults({ ...base, color: '#abcdef' }, {}).color).toBe('#c98a4b');
+  expect(withModeDefaults({ ...base, mode: 'battery' }, {}).color).toBe('#34c759');
+  const vine = withModeDefaults({ ...base, mode: 'vine', thickness: 20 }, { thickness: 20 });
+  expect(vine).toMatchObject({ color: '#4caf50', done: '#ff8fb1', thickness: 20 });
+  expect(withModeDefaults({ ...base, mode: 'vine' }, {}).thickness).toBe(16);
+  // other modes: untouched, the same object
+  for (const mode of ['bar', 'fuse', 'ring', 'runner']) { const p = { ...base, mode } as MoreParams; expect(withModeDefaults(p, {})).toBe(p); }
+});
+
+test('landscape: 1 on portrait and square frames, W / H on landscape ones up to 16:9', () => {
+  expect(landscape(1080, 1920)).toBe(1);
+  expect(landscape(1080, 1080)).toBe(1);
+  expect(landscape(1920, 1080)).toBeCloseTo(16 / 9, 9);
+  expect(landscape(1440, 1080)).toBeCloseTo(4 / 3, 9);
+  expect(landscape(2560, 1080)).toBeCloseTo(16 / 9, 9);
+  expect(landscape(100, 0)).toBe(1);
 });

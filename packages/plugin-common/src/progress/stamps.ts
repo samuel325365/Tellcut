@@ -2,18 +2,20 @@
 // else right — center counts as right; up and down by `position` / `y`), tilted 2 degrees, in `paper` with rounded corners and a
 // soft shadow. On it `dots` cells, dashed `ink` circles: one row up to six, else two (the upper holding the larger half). Cell i is
 // stamped once the progress reaches (i + 1) / dots — from 1.5 times its size down to 1 and fading in over 0.2 s, each stamp turned
-// and set a little off centre by its number; the newest is solid, the older ones settle at 0.75. The default stamp is drawn (an
+// and set a little off centre by its number; the newest is solid, the older ones settle at 0.9 (an emoji or picture at 0.75; any
+// lighter and the drawn red read pink on the cream). The default stamp is drawn (an
 // inline SVG: a double ring round a star in `color`, roughened and speckled by an SVG filter seeded by its number, so it reads as
 // inked on and stays the same every frame); `runner` stamps an emoji (never recoloured or mirrored) or a picture of the project's
-// instead, placed the same way, and a picture that fails gives the drawn stamp back. When full the stamps all turn the `done`
+// instead, placed the same way, and a picture that fails gives the drawn stamp back. Only the drawn stamp is multiplied into the
+// paper like ink; an emoji multiplied came out dark. When full the stamps all turn the `done`
 // colour, solid again, the drawn ones ringed in `ink` (the default yellow is lost on the cream paper without it), and the card
 // jumps once into the frame (up from the bottom, down from the top) within 0.4 s. The box the card keeps in the
 // corner holds its tilted corners and that jump, so all of it stays in the safe area. A cell is `size` (frame-height %) across;
 // the card is never wider than 45% of the safe area (the cells shrink), so it stays a corner piece clear of the captions. All DOM.
 import { abs, clamp, cssCamel, eOut3 } from '@tellcut/engine';
-import { withAlpha } from '../color.ts';
+import { shade, withAlpha } from '../color.ts';
 import { piece, showPiece } from './runner.ts';
-import { arrived, corner, sinceAt, travel, type Draw } from './shared.ts';
+import { arrived, corner, landscape, sinceAt, travel, type Draw } from './shared.ts';
 
 /** seconds a stamp takes to land; the card's jump when full: from LAND to LAND + JUMP_S seconds after arriving, JUMP cells high */
 const LAND = 0.2, JUMP_S = 0.4, JUMP = 0.4;
@@ -67,7 +69,6 @@ const shapes = (e: number) => `<circle r="43" stroke-width="${7 + 2 * e}"/>${e ?
 /** how much wider the rim is than the face, each side (viewBox units) */
 const RIM = 1.3;
 
-let uid = 0;
 /** the drawn stamp: the face in currentColor over a rim (the same shapes a little wider, hidden until the mode shows it in `ink`:
  *  a light `done` colour such as the default yellow is lost on cream paper without it). One filter for both roughens the edges a
  *  little (a slow noise pushing them about) and knocks small specks out of the ink (a fine noise as a mask) — seeded by the stamp's
@@ -90,7 +91,8 @@ export const drawStamps: Draw = (ctx, p, m) => {
     const card = (m.el.card = abs(m.root, { boxSizing: 'border-box', transformOrigin: '50% 50%' }));
     m.el.rule = abs(card, { boxSizing: 'border-box', borderStyle: 'solid' });
     for (let i = 0; i < n; i++) m.el[`cell${i}`] = abs(card, { boxSizing: 'border-box', borderStyle: 'dashed', borderRadius: '50%' });
-    const id = `tc-stamp-${++uid}`;
+    // the filters' ids from the item's: the same every time the item is built (a counter gave other DOM ids after reopening)
+    const id = `tc-stamp-${String(ctx.item?.id ?? 'x').replace(/[^\w-]/g, '_')}`;
     for (let i = 0; i < n; i++) {
       let box: HTMLElement;
       if (stamp) {
@@ -99,7 +101,7 @@ export const drawStamps: Draw = (ctx, p, m) => {
         card.appendChild(box);
         if (m.el[`stamp${i}Img`]) cssCamel(m.el[`stamp${i}Img`], { objectPosition: '50% 50%' });
       } else box = m.el[`stamp${i}`] = abs(card);
-      cssCamel(box, { transformOrigin: '50% 50%', mixBlendMode: 'multiply' });
+      cssCamel(box, { transformOrigin: '50% 50%' });
       const ink = (m.el[`ink${i}`] = abs(box, { left: '0', top: '0', width: '100%', height: '100%' }));
       ink.innerHTML = inked(`${id}-${i}`, i + 1);
       m.el[`rim${i}`] = ink.querySelector('g') as unknown as HTMLElement;
@@ -111,7 +113,8 @@ export const drawStamps: Draw = (ctx, p, m) => {
   const safeW = W * (1 - 2 * theme.safe.side), safeH = H * (1 - theme.safe.top - theme.safe.bottom), maxW = MAX_W * safeW;
   const a = (Math.abs(TILT) * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
   const outline = (c: { w: number; h: number; cell: number }) => ({ bw: c.w * cos + c.h * sin, bh: c.w * sin + c.h * cos, jump: JUMP * c.cell });
-  let card = stampCard(n, (Math.max(0.1, p.size) / 100) * H, maxW), o = outline(card);
+  // (a cell is `size` of the frame height, times landscape(): on 16:9 as big as on 9:16)
+  let card = stampCard(n, (Math.max(0.1, p.size) / 100) * H * landscape(W, H), maxW), o = outline(card);
   const fit = Math.min(o.bw > 0 ? maxW / o.bw : 1, o.bh + o.jump > 0 ? safeH / (o.bh + o.jump) : 1);
   if (fit < 1) { card = stampCard(n, card.cell * fit * (1 - 1e-9), Infinity); o = outline(card); }
   const c = card.cell, at = corner(ctx, p, o.bw, o.bh + o.jump), up = p.y >= 0 ? p.y >= 0.5 : p.position === 'bottom';
@@ -131,17 +134,19 @@ export const drawStamps: Draw = (ctx, p, m) => {
   // (the printed circle goes under its stamp as the stamp lands: through the ink's specks it looked smudged)
   card.centres.forEach((q, i) => cssCamel(m.el[`cell${i}`], { opacity: (1 - st[i].in).toFixed(3), left: `${(q.x - c / 2).toFixed(2)}px`, top: `${(q.y - c / 2).toFixed(2)}px`, width: `${c.toFixed(2)}px`, height: `${c.toFixed(2)}px`,
     borderWidth: bwid, borderColor: dash }));
-  const d = STAMP * c, colour = full ? p.done : p.color;
+  // (the drawn stamp inks a shade deeper than the colour: multiplied into the cream and speckled, the default red read pink; the
+  // `done` colour of a full card keeps its own light shade, ringed in ink instead — deepened, the yellow turned olive)
+  const d = STAMP * c, colour = full ? p.done : p.color, deep = full ? colour : shade(colour, 0.86);
   m.list.forEach((box, i) => {
     // every stamp styled every frame, down or not, so one time drawn twice is the same DOM whatever came between
     const s = st[i], q = card.centres[i], { tilt, dx, dy } = pose(i), next = st[i + 1];
-    // (once full they are all solid again: a light done colour at 0.75 faded into the paper)
-    const alpha = !s.in ? 0 : s.newest ? s.in : full ? 1 : 0.75 + 0.25 * (1 - (next?.in ?? 1)), sc = 1.5 - 0.5 * eOut3(s.in);
-    cssCamel(box, { display: s.in ? 'block' : 'none', left: `${(q.x + dx * c - d / 2).toFixed(2)}px`, top: `${(q.y + dy * c - d / 2).toFixed(2)}px`, width: `${d.toFixed(2)}px`, height: `${d.toFixed(2)}px`,
-      opacity: alpha.toFixed(3), color: colour, transform: `rotate(${tilt.toFixed(2)}deg) scale(${sc.toFixed(4)})` });
     // the drawn stamp, unless an emoji or a picture stamps instead (a picture that failed gives it back)
-    const drawn = stamp ? showPiece(m, `stamp${i}`).failed : true;
-    cssCamel(m.el[`ink${i}`], { display: drawn ? 'block' : 'none' });
+    const drawn = stamp ? showPiece(m, `stamp${i}`).failed : true, rest = drawn ? 0.9 : 0.75;
+    // (once full they are all solid again: a light done colour at 0.75 faded into the paper)
+    const alpha = !s.in ? 0 : s.newest ? s.in : full ? 1 : rest + (1 - rest) * (1 - (next?.in ?? 1)), sc = 1.5 - 0.5 * eOut3(s.in);
+    cssCamel(box, { display: s.in ? 'block' : 'none', left: `${(q.x + dx * c - d / 2).toFixed(2)}px`, top: `${(q.y + dy * c - d / 2).toFixed(2)}px`, width: `${d.toFixed(2)}px`, height: `${d.toFixed(2)}px`,
+      opacity: alpha.toFixed(3), color: colour, mixBlendMode: drawn ? 'multiply' : 'normal', transform: `rotate(${tilt.toFixed(2)}deg) scale(${sc.toFixed(4)})` });
+    cssCamel(m.el[`ink${i}`], { display: drawn ? 'block' : 'none', color: deep });
     // full: an ink rim round the done colour, which may be as light as the paper
     cssCamel(m.el[`rim${i}`], { color: p.ink, opacity: full ? '0.7' : '0' });
     const text = m.el[`stamp${i}Text`];

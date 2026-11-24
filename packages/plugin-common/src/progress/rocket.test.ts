@@ -11,8 +11,9 @@ test('rocketLane, 9:16: against the right safe edge, the goal below the top marg
   expect(l.goalTop).toBeGreaterThanOrEqual(safe.top * H);
   expect(l.from).toBeLessThanOrEqual(H * (1 - safe.bottom));
   expect(l.to).toBeLessThan(l.from);
-  // at 1 the rocket's top touches the goal's bottom
-  expect(l.to - size).toBeCloseTo(l.goalTop + size, 9);
+  // at 1 the rocket's top stops a little under the goal's bottom (the turned 🚀 reaches past its box, 🌙 past its own)
+  expect(l.to - size).toBeGreaterThan(l.goalTop + size);
+  expect(l.to - size).toBeLessThan(l.goalTop + size * 1.2);
   const left = rocketLane(W, H, safe, size, false);
   expect(left.cx - size / 2 - 0.06 * size).toBeGreaterThanOrEqual(safe.side * W - 1e-9);
   expect(left.from).toBe(l.from);

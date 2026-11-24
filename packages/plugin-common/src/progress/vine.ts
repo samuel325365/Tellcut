@@ -28,8 +28,14 @@ const STEM = 0.5, LEAF = 3.9, GAP = 4, FLOWER = 7.8, TENDRIL = 4.4;
  *  between TURN0 and TURN0 + TURN1), its size (by its number, between 1 − SIZE_VAR and 1 + SIZE_VAR), its sway, and how much of the
  *  stem's slope it follows */
 const PETIOLE = 0.16, WIDTH = 0.33, TURN0 = 0.45, TURN1 = 0.32, SIZE_VAR = 0.1, SWAY = 0.07, FOLLOW = 0.5;
-/** the seedling's leaves at the foot, in blade lengths */
-const SPROUT = 0.5;
+/** the least a leaf turns away from the stem (radians): following half the stem's slope, a leaf on the outside of a steep stretch
+ *  lay along the stem, half under it */
+const MIN_OFF = 0.5;
+/** the seedling's leaves at the foot, in blade lengths, their turns (a V leaning back and up, leaving the tip's way clear: the
+ *  tendril curled into the one that pointed ahead and was lost in it at the start) and their sizes */
+const SPROUT = 0.5, SPROUTS: Array<[number, number]> = [[-1.95, 0.85], [-1.15, 1]];
+/** the seedling leaves' sway (radians) */
+const SPROUT_SWAY = 0.04;
 /** the tendril's coil: how far it turns in all (radians) and how much that breathes */
 const CURL = 2.5 * Math.PI, CURL_BREATH = 0.1;
 
@@ -40,6 +46,33 @@ export const vineWave = (x: number, th: number): number => {
   const a = (2 * Math.PI * x) / (th * PERIOD);
   return th * AMP * (0.8 * Math.sin(a) + 0.2 * Math.sin(2 * a + 0.7));
 };
+/** a leaf's turn (screen radians) on side `side` where the stem's slope is `slope` (dy/dx), `h` (0…1) its own share of the turn:
+ *  FOLLOW of the stem's angle plus TURN0…TURN0 + TURN1 to its side, never nearer the stem than MIN_OFF */
+export function leafAngle(slope: number, side: -1 | 1, h: number): number {
+  const s = Math.atan(Number.isFinite(slope) ? slope : 0), a = FOLLOW * s + side * (TURN0 + TURN1 * clamp(h));
+  return side * (a - s) < MIN_OFF ? s + side * MIN_OFF : a;
+}
+
+/** where the stem starts settling onto the centre line before the flower, px along a stem `L` long (`th` px thick): the crest or
+ *  trough of its wave nearest `want` px along, and at least `least` px before the end; 0 when there is none (the whole stem
+ *  settles). From a crest the settling only ever comes down to the line: fading the wave out from a fixed place, where it was still
+ *  heading away from the line, left a dent just before the flower. */
+export function settleAt(L: number, want: number, least: number, th: number): number {
+  const last = L - Math.max(0, least);
+  if (!(th > 0) || !(last > 0) || !Number.isFinite(last)) return 0;
+  const step = th * 0.25;
+  let best = 0, gap = Infinity;
+  for (let a = 0; a < last; a += step) {
+    const b = Math.min(last, a + step);
+    if (Math.sign(waveSlope(a, th)) === Math.sign(waveSlope(b, th))) continue;
+    let lo = a, hi = b;
+    for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (Math.sign(waveSlope(mid, th)) === Math.sign(waveSlope(lo, th))) lo = mid; else hi = mid; }
+    const x = (lo + hi) / 2;
+    if (Math.abs(x - want) < gap) { gap = Math.abs(x - want); best = x; }
+  }
+  return best;
+}
+
 /** the wave's slope (dy/dx) at `x` */
 const waveSlope = (x: number, th: number): number => {
   if (!(th > 0) || !Number.isFinite(x)) return 0;
@@ -100,17 +133,23 @@ function tendrilPts(at: Pt, h0: number, len: number, breath: number): Pt[] {
 const REACH = (() => {
   let leaf = 0, tendril = 0, ahead = 0;
   for (let i = 0; i < 96; i++) {
-    const x = (i / 96) * PERIOD, y0 = vineWave(x, 1), slope = Math.atan(waveSlope(x, 1));
+    const x = (i / 96) * PERIOD, y0 = vineWave(x, 1), slope = waveSlope(x, 1), angle = Math.atan(slope);
     for (const env of [0, 1]) {
-      for (let j = 0; j <= 8; j++) for (const side of [-1, 1]) for (const sway of [-1, -0.5, 0, 0.5, 1]) {
-        const L = leafShape([0, y0 * env], FOLLOW * slope + side * (TURN0 + (TURN1 * j) / 8) + SWAY * sway, LEAF * (1 + SIZE_VAR), -side);
+      for (let j = 0; j <= 8; j++) for (const side of [-1, 1] as const) for (const sway of [-1, -0.5, 0, 0.5, 1]) {
+        const L = leafShape([0, y0 * env], leafAngle(slope, side, j / 8) + SWAY * sway, LEAF * (1 + SIZE_VAR), -side);
         for (const [, y] of [...L.outline, ...L.half, ...L.rib, ...L.veins.flat(), ...L.stalk]) leaf = Math.max(leaf, Math.abs(y));
       }
-      for (const b of [-1, 1]) for (const [px, y] of tendrilPts([0, y0 * env], slope, TENDRIL, b)) { tendril = Math.max(tendril, Math.abs(y)); ahead = Math.max(ahead, px); }
+      for (const b of [-1, 1]) for (const [px, y] of tendrilPts([0, y0 * env], angle, TENDRIL, b)) { tendril = Math.max(tendril, Math.abs(y)); ahead = Math.max(ahead, px); }
     }
   }
+  // how far the seedling's leaves lean back past the foot
+  let back = 0;
+  for (const [a, size] of SPROUTS) for (const sway of [-1, 0, 1]) {
+    const L = leafShape([0, 0], a + SPROUT_SWAY * sway, LEAF * SPROUT * size, a < -Math.PI / 2 ? -1 : 1);
+    for (const [x] of [...L.outline, ...L.half, ...L.stalk]) back = Math.max(back, -x);
+  }
   // a little over, for the turns between those looked at
-  return { leaf: leaf * 1.02, tendril: tendril * 1.02, ahead: ahead * 1.02 };
+  return { leaf: leaf * 1.02, tendril: tendril * 1.02, ahead: ahead * 1.02, back: back * 1.02 + 0.1 };
 })();
 
 /** the vine's sizes for a vine `th` px thick (thickness × k): the stem's width, a leaf's blade, the gap between leaves, the flower's
@@ -215,9 +254,13 @@ export const drawVine: Draw = (ctx, p, m, cv) => {
   const { x, w, top } = band(ctx, p, S.height), cy = top + S.height / 2, R = S.flower / 2;
   // the stem runs from its foot (in from the left edge by the stem, or by the seedling's leaves leaning back a little) to the
   // flower's centre (half a flower in from the right edge), or with no flower to where its tendril still has room
-  const x0 = x + Math.max(S.stem, SPROUT * S.leaf * 0.4), end = none ? x + w - REACH.ahead * th - S.stem : x + w - R, L = Math.max(0, end - x0);
-  // the wave flattens over the last 1.6 flowers, so the bud and the flower sit on the centre line
-  const flat = none ? 0 : 1.6 * S.flower, yAt = (px: number) => cy + vineWave(px - x0, th) * (flat > 0 ? eIO3(clamp((end - px) / flat)) : 1);
+  const x0 = x + Math.max(S.stem, REACH.back * th), end = none ? x + w - REACH.ahead * th - S.stem : x + w - R, L = Math.max(0, end - x0);
+  // the wave settles onto the centre line from a crest about 1.6 flowers before the end (a flower at least), so the bud and the
+  // flower sit on it
+  const xs = none ? L : settleAt(L, L - 1.6 * S.flower, S.flower, th), ys = vineWave(xs, th);
+  const yAt = (px: number) => { const d = px - x0; return cy + (d <= xs ? vineWave(d, th) : ys * (1 - eIO3(clamp((d - xs) / Math.max(1e-9, L - xs))))); };
+  // the drawn line's slope (the wave's own, or the settling's)
+  const slopeAt = (px: number) => (px - x0 <= xs ? waveSlope(px - x0, th) : (yAt(px + 0.5) - yAt(px - 0.5)));
   const u = travel(p.step, p.dots, local, dur), since = arrived(p.step, p.dots, local, dur), tip = x0 + L * u;
   // the goal: popping out at the end on arrival, in place of the flower; a picture that failed gives the flower back
   const shown = m.el.goal ? showPiece(m, 'goal') : null, drawn = !none && (!shown || shown.failed);
@@ -251,11 +294,11 @@ export const drawVine: Draw = (ctx, p, m, cv) => {
     const grow = leafGrow(sinceAt(p.step, p.dots, lf.at, local, dur));
     if (grow <= 0.01) continue;
     const lx = x0 + lf.at * L, h1 = 0.5 + 0.5 * Math.sin(i * 2.71 + 0.3);
-    const a = FOLLOW * Math.atan(waveSlope(lx - x0, th)) + lf.side * (TURN0 + TURN1 * h1) + SWAY * Math.sin(local * 1.7 + i * 1.3) * grow;
+    const a = leafAngle(slopeAt(lx), lf.side, h1) + SWAY * Math.sin(local * 1.7 + i * 1.3) * grow;
     leaf(I, [lx, yAt(lx)], a, S.leaf * (1 + SIZE_VAR * Math.sin(i * 1.93 + 0.4)) * grow, -lf.side, 200 + i);
   }
   // the seedling's two little leaves at the foot, there from the start
-  for (const [j, a] of [-1.25, -0.4].entries()) leaf(I, [x0, yAt(x0)], a + 0.04 * Math.sin(local * 1.5 + j), S.leaf * SPROUT * (j ? 1 : 0.85), j ? 1 : -1, 190 + j);
+  for (const [j, [a, size]] of SPROUTS.entries()) leaf(I, [x0, yAt(x0)], a + SPROUT_SWAY * Math.sin(local * 1.5 + j), S.leaf * SPROUT * size, a < -Math.PI / 2 ? -1 : 1, 190 + j);
   // the stem: its dark edge, then the stem, then a light shine along its top
   if (tip - x0 > 0.5) {
     const pts = along(x0, tip), amp = 0.04 * th;
@@ -270,8 +313,11 @@ export const drawVine: Draw = (ctx, p, m, cv) => {
   // the tendril at the tip, curling into the bud as the tip nears it; gone once the flower opens
   const room = none ? 1 : clamp((end - tip - 0.3 * R) / (0.5 * R + S.tendril));
   if (room > 0.02 && (none || since < 0)) {
-    const pts = tendrilPts([tip, yAt(tip)], Math.atan(waveSlope(tip - x0, th)), S.tendril * room, Math.sin(local * 2.3));
-    g.strokeStyle = I.deep; g.lineWidth = Math.max(1.2, 0.2 * th);
+    const pts = tendrilPts([tip, yAt(tip)], Math.atan(slopeAt(tip)), S.tendril * room, Math.sin(local * 2.3)), lw = Math.max(1.2, 0.2 * th);
+    // a dark edge under it, as the stem has: over a leaf of the same green it was lost
+    g.strokeStyle = I.dark; g.lineWidth = lw + Math.max(1, 0.1 * th);
+    strokePts(g, pts);
+    g.strokeStyle = I.deep; g.lineWidth = lw;
     strokePts(g, pts);
   }
   if (none) { g.globalAlpha = 1; return; }

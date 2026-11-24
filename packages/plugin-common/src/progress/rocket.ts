@@ -15,19 +15,26 @@ const RUNNER = '🚀', GOAL = '🌙';
 const SIZE = 6;
 /** shares of the rocket's size: the sway's amplitude, the room kept for it at the side, the flame's longest */
 const SWAY = 0.05, ROOM = 0.06, FLAME = 0.7;
-/** the goal's pop on arrival: up to 1 + POP within 0.4 s, grown from its centre (POP / 2 of a goal each side: inside ROOM) */
+/** the goal's pop on arrival: up to 1 + POP within 0.4 s, grown up from its foot (POP / 2 of a goal each side: inside ROOM; POP above
+ *  it: inside the half goal kept there) — grown from its centre, its lower edge came down over the rocket's nose */
 const POP = 0.12;
+/** the gap left between the rocket's box and the goal's at the top, in rocket sizes: the turned 🚀 reaches a little above its box
+ *  and 🌙 a little below its own, so boxes that touched drew the nose into the moon */
+const GAP = 0.12;
+/** emoji drawn off their box's centre (Segoe UI Emoji, looked at on Windows), in sizes to move the glyph by so it sits on the track:
+ *  🎈's string hangs to the left, its balloon right of the middle */
+const NUDGE: Record<string, number> = { '🎈': -0.06 };
 /** the turned 🚀's font size (a share of its box: Segoe UI Emoji draws the rocket along the em box's diagonal, so upright it is
  *  about 0.92 of the box tall and a third of it wide) and how far up from the box's bottom its nozzle is (looked at on Windows) */
 const TURNED_FONT = 0.9, NOZZLE = 0.12;
 
 /** the lane a rocket `size` px tall flies in: its centre x (against the right safe edge, or the left), the goal's top (half a goal
  *  below the top safe edge), and the rocket's bottom y at progress 0 (a flame's length above the bottom safe edge) and at 1 (its top
- *  touching the goal's bottom); to ≤ from, and to === from when there is no room */
+ *  GAP sizes under the goal's bottom); to ≤ from, and to === from when there is no room */
 export function rocketLane(W: number, H: number, safe: { top: number; bottom: number; side: number }, size: number, right: boolean): { cx: number; goalTop: number; from: number; to: number } {
   const s = Math.max(0, Number.isFinite(size) ? size : 0), side = safe.side * W, edge = (0.5 + ROOM) * s;
   const cx = right ? W - side - edge : side + edge, goalTop = safe.top * H + s / 2;
-  const from = Math.max(0, H * (1 - safe.bottom) - FLAME * s), to = Math.min(from, goalTop + 2 * s);
+  const from = Math.max(0, H * (1 - safe.bottom) - FLAME * s), to = Math.min(from, goalTop + (2 + GAP) * s);
   return { cx, goalTop, from, to };
 }
 
@@ -67,21 +74,23 @@ export const drawRocket: Draw = (ctx, p, m, cv) => {
   }
   // the rocket's size, never so big that the goal, the rocket and the room kept for them leave the safe area
   const safeH = H * (1 - safe.top - safe.bottom), safeW = W * (1 - 2 * safe.side);
-  const s = Math.max(1, Math.min(p.thickness * SIZE * Math.max(0.1, p.iconSize) * k, safeH / (0.5 + 2 + FLAME), safeW / (1 + 2 * ROOM)));
+  const s = Math.max(1, Math.min(p.thickness * SIZE * Math.max(0.1, p.iconSize) * k, safeH / (0.5 + 2 + GAP + FLAME), safeW / (1 + 2 * ROOM)));
   const lane = rocketLane(W, H, safe, s, right), goalBottom = lane.goalTop + s;
   // with no goal the run ends where the goal's top would be
   const end = m.el.goal ? lane.to : Math.min(lane.from, lane.goalTop + s), u = travel(p.step, p.dots, local, dur), since = arrived(p.step, p.dots, local, dur);
-  const bottom = lane.from + (end - lane.from) * u, sway = SWAY * s * Math.sin(local * 2.3) * Math.cos(local * 0.9), rx = lane.cx + sway;
   const { failed } = showPiece(m, 'runner'), who = failed ? RUNNER : String(p.runner ?? ''), turn = uprightTurn(who), fire = turn !== 0;
+  const bottom = lane.from + (end - lane.from) * u, sway = SWAY * s * Math.sin(local * 2.3) * Math.cos(local * 0.9), rx = lane.cx + sway;
   // the flame: a sum of sines, never longer than the room kept for it; it dies down to a glow once arrived
   const settle = since >= 0 ? 1 - 0.45 * clamp(since / 0.4) : 1;
   const flick = clamp(0.8 + 0.1 * Math.sin(local * 31) + 0.09 * Math.sin(local * 47.3 + 1.3) + 0.05 * Math.sin(local * 71.9 + 2.1)) * settle;
   const fy = bottom - NOZZLE * s, flen = FLAME * s * flick;
-  // the track from the start up to the goal (or the run's end); filled below the flame's shortest tip, plain above the rocket's middle
+  // the track from the start up to the goal (or the run's end); filled below the flame's shortest tip (shorter as it dies down, so
+  // no gap opens under it once arrived), plain above the rocket's middle — that plain part fading over the last 4% of the run: an
+  // emoji that does not fill its box (🎈, ☁️) left a stub of it showing between them on arrival
   const tw = Math.max(2, p.thickness * 0.5 * k), tx = lane.cx - tw / 2, trackTop = m.el.goal ? goalBottom : end - s;
-  const fillTop = Math.min(lane.from, fire ? fy + FLAME * s * 0.6 : bottom), restBottom = Math.max(trackTop, bottom - s / 2);
+  const fillTop = Math.min(lane.from, fire ? fy + FLAME * s * 0.6 * settle : bottom), restBottom = Math.max(trackTop, bottom - s / 2);
   cssCamel(m.el.track, { left: `${tx.toFixed(2)}px`, top: `${trackTop.toFixed(2)}px`, width: `${tw.toFixed(2)}px`, height: `${Math.max(0, restBottom - trackTop).toFixed(2)}px`,
-    borderRadius: `${(tw / 2).toFixed(2)}px`, background: p.track });
+    borderRadius: `${(tw / 2).toFixed(2)}px`, background: p.track, opacity: clamp((1 - u) / 0.04).toFixed(3) });
   cssCamel(m.el.fill, { left: `${tx.toFixed(2)}px`, top: `${fillTop.toFixed(2)}px`, width: `${tw.toFixed(2)}px`, height: `${Math.max(0, lane.from - fillTop).toFixed(2)}px`,
     borderRadius: `${(tw / 2).toFixed(2)}px`, background: p.color });
   if (m.el.goal) {
@@ -89,7 +98,7 @@ export const drawRocket: Draw = (ctx, p, m, cv) => {
     standing(m.el.goalText, s);
     const pop = since >= 0 ? 1 + POP * Math.sin(Math.PI * clamp(since / 0.4)) : 1;
     cssCamel(m.el.goal, { left: `${(lane.cx - s / 2).toFixed(2)}px`, top: `${lane.goalTop.toFixed(2)}px`, width: `${s.toFixed(2)}px`, height: `${s.toFixed(2)}px`,
-      transformOrigin: '50% 50%', transform: `scale(${pop.toFixed(4)})` });
+      transformOrigin: '50% 100%', transform: `scale(${pop.toFixed(4)})` });
   }
   // the rocket: 🚀 turned upright about its middle; anything else stands on the box's bottom as drawn. `flip` mirrors either.
   const text = m.el.runnerText;
@@ -98,8 +107,10 @@ export const drawRocket: Draw = (ctx, p, m, cv) => {
     cssCamel(text, { top: '50%', bottom: 'auto', left: '-50%', width: '200%', textAlign: 'center', fontSize: `${fs.toFixed(2)}px`, marginTop: `${(-fs / 2).toFixed(2)}px`,
       transformOrigin: '50% 50%', transform: `rotate(${turn}deg)` });
   } else {
+    // (the nudge moves the glyph inside its box, which keeps to the lane; a flip mirrors it with the glyph)
+    const nudge = isPicture(who) ? 0 : (NUDGE[bare(glyphOf(who, RUNNER))] ?? 0) * s;
     standing(text, s);
-    cssCamel(text, { marginTop: '0px', transform: 'none' });
+    cssCamel(text, { marginTop: '0px', transform: nudge ? `translateX(${nudge.toFixed(2)}px)` : 'none' });
   }
   cssCamel(m.el.runner, { left: `${(rx - s / 2).toFixed(2)}px`, top: `${(bottom - s).toFixed(2)}px`, width: `${s.toFixed(2)}px`, height: `${s.toFixed(2)}px`,
     transform: p.flip ? 'scale(-1, 1)' : 'none' });

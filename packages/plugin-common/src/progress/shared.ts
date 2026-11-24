@@ -60,6 +60,31 @@ export const fadeOut = (local: number, dur: number): number => 1 - prog(local, d
 export interface MoreParams { mode: string; position: 'top' | 'bottom'; y: number; color: string; track: string; thickness: number; dots: number; step: number;
   iconSize: number; size: number; align: string; done: string; ink: string; paper: string; at: string; runner: string; goal: string; look: 'dog' | 'cat' | 'worm'; flip: boolean }
 
+/** A mode's own look where the item leaves a param unset: `color` defaults to the theme's accent (a red), which gave a red dog, a
+ *  battery that read as always low and a red vine. For these the mode's own value wins over the project theme too (an accent is
+ *  rarely a dog's coat or a leaf's green); only a value the item sets itself overrides it. vine's thickness is its template's 16:
+ *  at 12 it read thin and sparse. */
+export const MODE_DEFAULTS: Partial<Record<MoreMode, Partial<Pick<MoreParams, 'color' | 'done' | 'thickness'>>>> = {
+  stretch: { color: '#c98a4b' },
+  battery: { color: '#34c759' },
+  vine: { color: '#4caf50', done: '#ff8fb1', thickness: 16 },
+};
+
+/** `p` with the mode's own defaults (MODE_DEFAULTS) for the params the item's own `set` (its params as written in project.json,
+ *  before the theme and the block defaults fill them) leaves out; `p` itself when there is nothing to change */
+export function withModeDefaults<T extends MoreParams>(p: T, set: Record<string, unknown> | undefined): T {
+  const own = MODE_DEFAULTS[p.mode as MoreMode];
+  if (!own) return p;
+  const missing = Object.entries(own).filter(([key]) => !(set && Object.hasOwn(set, key) && set[key] !== undefined));
+  return missing.length ? { ...p, ...Object.fromEntries(missing) } : p;
+}
+
+/** how much larger paws, fuse, ring and stamps draw on a landscape frame, so they read about as well as on 9:16: W / H there (at
+ *  most 16:9's), 1 on portrait and square frames (their pictures unchanged). Ring and stamps are sized from the frame height and
+ *  paws is held to the top lane, a share of it: on 16:9 that height is the 9:16 frame's width, so they came out 1.78 times smaller
+ *  than on 9:16; times this they are the size they are there. */
+export const landscape = (W: number, H: number): number => (W > H && H > 0 ? Math.min(W / H, 16 / 9) : 1);
+
 /** the box a mode `height` px tall takes: left edge and width inside the side safe margins, and its top (y ≥ 0: centred there; else
  *  against the top or bottom safe edge) */
 export function band(ctx: { W: number; H: number; theme: Theme }, p: MoreParams, height: number): { x: number; w: number; top: number } {

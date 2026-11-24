@@ -163,10 +163,11 @@ function drawDog(P: Pose) {
   g.restore();
   // on arrival the mouth opens and the tongue hangs out of it, swinging a little
   if (since >= 0) {
-    const out = eOut3(clamp(since / 0.25)), tl = 0.34 * U * out, tx = hx + 0.94 * U, ty = hy + 0.44 * U, sway = Math.sin(local * 9) * 0.05 * U;
+    // (long and wide enough to read in a gallery thumbnail: at a third of a body height it was a pink dot there)
+    const out = eOut3(clamp(since / 0.25)), tl = 0.56 * U * out, tx = hx + 0.94 * U, ty = hy + 0.44 * U, sway = Math.sin(local * 9) * 0.07 * U;
     if (tl > 0.5) {
-      g.fillStyle = shade(TONGUE, 0.45); g.beginPath(); g.ellipse(tx + 0.04 * U, ty - 0.02 * U, 0.22 * U, 0.09 * U * out, -0.1, 0, Math.PI * 2); g.fill();
-      shape(pen, tube([[tx, ty - 0.04 * U], [tx + sway * 0.5, ty + tl * 0.5], [tx + sway, ty + tl]], 0.3 * U, 0.36 * U), TONGUE, 61);
+      g.fillStyle = shade(TONGUE, 0.45); g.beginPath(); g.ellipse(tx + 0.04 * U, ty - 0.02 * U, 0.26 * U, 0.11 * U * out, -0.1, 0, Math.PI * 2); g.fill();
+      shape(pen, tube([[tx, ty - 0.04 * U], [tx + sway * 0.5, ty + tl * 0.5], [tx + sway, ty + tl]], 0.36 * U, 0.44 * U), TONGUE, 61);
       line(pen, [[tx, ty + 0.02 * U], [tx + sway * 0.6, ty + tl * 0.7]], shade(TONGUE, 0.72), pen.lw * 0.6, 62);
     }
   }
@@ -187,7 +188,8 @@ function drawCat(P: Pose) {
   const { pen, U, bx0, bx1, top, local, since, color, paper } = P, g = pen.g, far = shade(color, 0.8), dark = shade(color, 0.7);
   const bob = bobOf(P, 0.04), feet = frontFeet(P, 0.22 * U, 0.18 * U), lw = 0.29 * U;
   const hx = bx1 + 0.36 * U, hy = top - 0.34 * U + bob, hrx = 0.8 * U, hry = 0.7 * U;
-  blob(pen, [leg(P, bx0 + 0.36 * U, -0.05 * U, 0, lw), leg(P, bx1 - 0.62 * U, feet[1].off, feet[1].lift, lw)], far, 71);
+  // the legs splay a little, near and far pairs apart: straight and overlapping, each pair read as one thick pillar at the start
+  blob(pen, [leg(P, bx0 + 0.36 * U, -0.13 * U, 0, lw), leg(P, bx1 - 0.62 * U, feet[1].off - 0.09 * U, feet[1].lift, lw)], far, 71);
   // the tail: a long S that sways slowly; on arrival it stands straight up with a little hook at the tip
   const sway = wagAt(local * 0.22), up = since >= 0 ? eOut3(clamp(since / 0.35)) : 0;
   const a0 = 2.75 + sway * 0.18 + (4.62 - 2.75 - sway * 0.18) * up, bend = 1.95 + sway * 0.55 + (0.55 - 1.95 - sway * 0.55) * up;
@@ -197,7 +199,7 @@ function drawCat(P: Pose) {
   const ear = (a: number, wide: number): Pt[] => [[hx + Math.cos(a - wide) * hrx * 0.92, hy + Math.sin(a - wide) * hry * 0.92],
     [hx + Math.cos(a) * 1.22 * U, hy + Math.sin(a) * 1.16 * U], [hx + Math.cos(a + wide) * hrx * 0.92, hy + Math.sin(a + wide) * hry * 0.92]];
   const ears = [ear(-2.22, 0.36), ear(-1.0, 0.36)];
-  blob(pen, [tube(tailLine, 0.26 * U, 0.22 * U), body, leg(P, bx0 + 0.6 * U, 0.04 * U, 0, lw), leg(P, bx1 - 0.38 * U, feet[0].off, feet[0].lift, lw),
+  blob(pen, [tube(tailLine, 0.26 * U, 0.22 * U), body, leg(P, bx0 + 0.6 * U, 0.08 * U, 0, lw), leg(P, bx1 - 0.38 * U, feet[0].off + 0.1 * U, feet[0].lift, lw),
     ell(bx1 - 0.06 * U, top + 0.18 * U + bob * 0.5, 0.42 * U, 0.44 * U, 20), ...ears, ell(hx, hy, hrx, hry, 30)], color, 81);
   // the ears' pink insides
   ears.forEach((e, i) => {
@@ -225,7 +227,9 @@ function drawCat(P: Pose) {
   line(pen, [[nx - 0.12 * U, ny + 0.13 * U], [nx - 0.05 * U, ny + 0.16 * U], [nx, ny + 0.07 * U], [nx + 0.05 * U, ny + 0.16 * U], [nx + 0.12 * U, ny + 0.13 * U]], pen.ink, pen.lw * 0.6, 93);
   for (const [i, d] of [-0.09, 0.02, 0.13].entries()) {
     line(pen, [[hx + 0.62 * U, hy + (0.22 + d * 0.5) * U], [hx + 1.2 * U, hy + (0.12 + d * 1.6) * U]], pen.ink, pen.lw * 0.5, 94 + i);
-    line(pen, [[hx - 0.1 * U, hy + (0.22 + d * 0.5) * U], [hx - 0.66 * U, hy + (0.14 + d * 1.6) * U]], pen.ink, pen.lw * 0.5, 97 + i);
+    // the far cheek's whiskers start at the face's edge (turned three-quarters, the far side of the muzzle is hidden): drawn from the
+    // muzzle they crossed the cheek and its blush and ended inside the face
+    line(pen, [[hx - 0.7 * U, hy + (0.2 + d * 0.6) * U], [hx - 1.12 * U, hy + (0.12 + d * 1.6) * U]], pen.ink, pen.lw * 0.5, 97 + i);
   }
 }
 

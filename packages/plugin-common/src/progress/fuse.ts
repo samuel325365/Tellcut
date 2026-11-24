@@ -9,7 +9,7 @@ import { withAlpha } from '../color.ts';
 import { handPath } from '../hand.ts';
 import { canvasAt } from '../inkline.ts';
 import { piece, showPiece, standing } from './runner.ts';
-import { arrived, band, fadeOut, travel, type Draw } from './shared.ts';
+import { arrived, band, fadeOut, landscape, travel, type Draw } from './shared.ts';
 
 type G = CanvasRenderingContext2D;
 type Pt = [number, number];
@@ -52,7 +52,9 @@ function ropePoints(xs: number, xe: number, y: number, amp: number, step: number
 }
 
 export const drawFuse: Draw = (ctx, p, m, cv) => {
-  const { W, H, local, dur } = ctx, k = Math.min(W, H) / 1080, th = Math.max(1, p.thickness * k);
+  // sized from the short side as on 9:16, but strung across a frame 1.78 times as wide on 16:9, where it read thin: there the
+  // rope and the bomb are the square root of landscape() larger (the whole of it made the band a quarter of the frame tall)
+  const { W, H, local, dur } = ctx, k = (Math.min(W, H) / 1080) * Math.sqrt(landscape(W, H)), th = Math.max(1, p.thickness * k);
   const goal = String(p.goal ?? '').trim();
   if (!m.el.goal && goal.toLowerCase() !== 'none') piece(m, 'goal', goal, GOAL, (f) => ctx.media.fileUrl(f));
   const gw = p.thickness * GOAL_SIZE * Math.max(0.1, p.iconSize) * k, R = RAY * gw, A = WAVE * gw, rw = Math.max(3, th * 0.75);

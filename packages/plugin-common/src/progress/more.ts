@@ -9,7 +9,7 @@ import { drawRing } from './ring.ts';
 import { drawRocket } from './rocket.ts';
 import { drawRunner } from './runner.ts';
 import { drawSegments } from './segments.ts';
-import { fadeOut, type Draw, type More, type MoreMode, type MoreParams } from './shared.ts';
+import { fadeOut, withModeDefaults, type Draw, type More, type MoreMode, type MoreParams } from './shared.ts';
 import { drawStamps } from './stamps.ts';
 import { drawStretch } from './stretch.ts';
 import { drawVine } from './vine.ts';
@@ -32,7 +32,8 @@ export function moreKey(p: MoreParams): string {
   return [p.mode, p.dots, p.runner, p.goal, p.look].join('|');
 }
 
-/** builds (or reuses) the mode's root under `parent`, calls its Draw; a mode not yet written draws nothing */
+/** builds (or reuses) the mode's root under `parent`, calls its Draw with the mode's own defaults where the item sets none
+ *  (withModeDefaults); a mode not yet written draws nothing */
 export function drawMore(ctx: ItemCtx<MoreParams>, p: MoreParams, old: More | null, parent: HTMLElement, cv: HTMLCanvasElement): More {
   const key = moreKey(p);
   let m = old;
@@ -48,7 +49,7 @@ export function drawMore(ctx: ItemCtx<MoreParams>, p: MoreParams, old: More | nu
   }
   cssCamel(m.root, { display: 'block', opacity: fadeOut(ctx.local, ctx.dur).toFixed(3) });
   cssCamel(cv, { display: 'none' });
-  DRAWS[p.mode as MoreMode]?.(ctx, p, m, cv);
+  DRAWS[p.mode as MoreMode]?.(ctx, withModeDefaults(p, ctx.item?.params), m, cv);
   if (cv.style.display === 'none' && cv.width) freeCanvas(cv);
   return m;
 }
