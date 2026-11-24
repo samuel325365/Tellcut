@@ -119,8 +119,11 @@ test('withModeDefaults: stretch, battery and vine take their own colours (vine i
   const vine = withModeDefaults({ ...base, mode: 'vine', thickness: 20 }, { thickness: 20 });
   expect(vine).toMatchObject({ color: '#4caf50', done: '#ff8fb1', thickness: 20 });
   expect(withModeDefaults({ ...base, mode: 'vine' }, {}).thickness).toBe(16);
+  // ring: a brighter track over its own ground, unless the item gives one
+  expect(withModeDefaults({ ...base, mode: 'ring', track: '#ffffff40' }, {}).track).toBe('#ffffffb3');
+  expect(withModeDefaults({ ...base, mode: 'ring', track: '#000000' }, { track: '#000000' }).track).toBe('#000000');
   // other modes: untouched, the same object
-  for (const mode of ['bar', 'fuse', 'ring', 'runner']) { const p = { ...base, mode } as MoreParams; expect(withModeDefaults(p, {})).toBe(p); }
+  for (const mode of ['bar', 'fuse', 'runner']) { const p = { ...base, mode } as MoreParams; expect(withModeDefaults(p, {})).toBe(p); }
 });
 
 test('landscape: 1 on portrait and square frames, W / H on landscape ones up to 16:9', () => {
