@@ -106,7 +106,9 @@ export const quote: ItemType<P, S> = {
     mark.textContent = '「';
     const who = abs(wrap), whoKick = h('div', null, null, who), whoName = h('div', null, null, who);
     const credit = abs(wrap, { display: 'flex', alignItems: 'center', whiteSpace: 'pre' }), dash = h('div', null, null, credit), creditText = h('div', null, null, credit);
-    const body = abs(wrap, { inset: '0', willChange: 'transform' }), flash = abs(wrap, { inset: '0', pointerEvents: 'none', opacity: '0' }), foot = abs(wrap, { whiteSpace: 'pre' });
+    // no will-change on the body: a layer of its own stays rastered as it was first drawn and later transforms only move it, so the same
+    // moment could come out a fraction of a pixel apart depending on what the page drew before (as common.headline's did)
+    const body = abs(wrap, { inset: '0' }), flash = abs(wrap, { inset: '0', pointerEvents: 'none', opacity: '0' }), foot = abs(wrap, { whiteSpace: 'pre' });
     for (const e of [whoKick, whoName]) cssCamel(e, { whiteSpace: 'pre' });
     const alt = abs(ctx.root, { inset: '0', display: 'none' }), altKick = abs(alt, { whiteSpace: 'pre' }), altBy = abs(alt, { whiteSpace: 'pre' }), cursor = abs(alt);
     return { bg, wrap, mark, who, whoKick, whoName, dash, credit: creditText, foot, body, flash, rows: [], toks: [], key: '', alt, altRows: [], altChars: [], altKey: '', cursor, altKick, altBy };
