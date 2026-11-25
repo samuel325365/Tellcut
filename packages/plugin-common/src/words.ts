@@ -84,4 +84,6 @@ export const WORDS = {
   slipPoint: { zh: '重點', en: 'POINT', ja: 'ポイント' },
   /** common.story's answers when fewer than two are given */
   yesNo: { zh: ['是', '否'], en: ['Yes', 'No'], ja: ['はい', 'いいえ'] },
+  /** common.rolldoor's sign when it is unset (closed) or one of its own Chinese words (the shop-open template's open) */
+  shopSign: { closed: { zh: '今日打烊', en: 'Closed today', ja: '本日閉店' }, open: { zh: '營業中', en: 'Open', ja: '営業中' } },
 } as const;

@@ -197,7 +197,7 @@ What My blocks, the library and tuned blocks cannot do, or not well enough, is w
   - `tone/pink-dream`: Dates, cafés, desserts, memories: a pink light, the edges tinted deep purple.
   - `tone/teal`: The seaside, a city at night, travel: a teal light, the edges pressed to deep blue-green, like a film grade.
   - `rolldoor/shop-close`: The end of the film, the day's work done: a shutter over the whole frame comes slowly down from 0.2 s (down by 0.8 s later), then the "Closed today" sign is taped on.
-  - `rolldoor/shop-open`: An opening, a shop opening: the shutter starts closed with an "open for business" sign on it (in Chinese) and rolls up from 0.2 s to show the picture.
+  - `rolldoor/shop-open`: An opening, a shop opening: the shutter starts closed with an "Open" sign on it (in the film's language) and rolls up from 0.2 s to show the picture.
   - `wipe/iris-close`: The end of a section, a cartoonish change of scene: the picture shrinks into a circle closing to a point in the middle, then opens again from it, like an old cartoon signing off.
   - `wipe/blinds-turn`: Business, presentation-like scene changes: 12 narrower horizontal slats turn shut one after another from top to bottom, then turn on round to open.
   - `wipe/ink-spread`: Culture, ink painting, tea and books: blots of ink spread across the frame and merge, then draw back as if soaked up.

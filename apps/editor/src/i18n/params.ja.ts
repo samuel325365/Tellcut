@@ -850,7 +850,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.rolldoor.at": {"name":"引き始める時間","hint":"秒"},
   "common.rolldoor.dur": {"name":"引き下ろしにかかる時間","hint":"秒"},
   "common.rolldoor.dir": {"name":"方向","hint":"down 引き下ろす、up 巻き上げて開く"},
-  "common.rolldoor.sign": {"name":"プラカードの文字","hint":"空欄＝プラカードなし"},
+  "common.rolldoor.sign": {"name":"プラカードの文字","hint":"空欄＝プラカードなし。今日打烊・營業中は動画の言語で書かれる"},
   "common.rolldoor.font": {"name":"フォント"},
   "common.rolldoor.signColor": {"name":"プラカードの文字色"},
   "common.rolldoor.signPaper": {"name":"プラカードの色"},

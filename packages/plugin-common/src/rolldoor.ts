@@ -3,6 +3,7 @@
 import { abs, clamp, cssCamel, eBack, eOut3 as eOut, type ItemType, prog } from '@tellcut/engine';
 import { PANEL_FRAME, PANEL_RADIUS } from './panel.ts';
 import { fitPx } from './text.ts';
+import { WORDS, wordsLang, type WordsLang } from './words.ts';
 
 interface P { x: number; y: number; w: number; h: number; radius: number; at: number; dur: number; dir: 'down' | 'up'; sign: string; font: string; signColor: string; signPaper: string; steel: string }
 interface S { win: HTMLElement; door: HTMLElement; bar: HTMLElement; handle: HTMLElement; sign: HTMLElement; tape: HTMLElement; word: HTMLElement }
@@ -13,9 +14,17 @@ export const doorAt = (local: number, at: number, dur: number, dir: 'down' | 'up
   return dir === 'up' ? 1 - q : q;
 };
 
+/** the sign's words: the item's own, except when unset (closed) or one of the block's own Chinese words (the default, the
+ *  shop-open template's), which are drawn in the film's language: a film made by cut.ts never gets the editor's values.en/ja, and
+ *  c.combo's closing has no words of its own to pass */
+export function signOf(own: unknown, lang: WordsLang): string | undefined {
+  const { closed, open } = WORDS.shopSign;
+  return own === undefined || own === closed.zh ? closed[lang] : own === open.zh ? open[lang] : undefined;
+}
+
 export const rolldoor: ItemType<P, S> = {
   type: 'common.rolldoor', label: '鐵捲門', category: 'moment', kind: 'overlay',
-  doc: '鐵捲門：一片片鋼板從上往下拉下來蓋住一個框（通常是影片窗），拉到底後貼上一張紙牌（今日打烊）彈出來；dir up 是一開始關著、到時間往上捲開；收工、結尾、打烊、下集待續；配 common.rattle 音效',
+  doc: '鐵捲門：一片片鋼板從上往下拉下來蓋住一個框（通常是影片窗），拉到底後貼上一張紙牌（今日打烊；沒設 sign 時跟著片子的語言）彈出來；dir up 是一開始關著、到時間往上捲開；收工、結尾、打烊、下集待續；配 common.rattle 音效',
   params: [
     { key: 'x', label: 'x（畫面寬比例）', type: 'number', min: 0, max: 1, step: 0.005, default: PANEL_FRAME[0] },
     { key: 'y', label: 'y（畫面高比例）', type: 'number', min: 0, max: 1, step: 0.005, default: PANEL_FRAME[1] },
@@ -25,7 +34,7 @@ export const rolldoor: ItemType<P, S> = {
     { key: 'at', label: '開始拉的時間（秒）', type: 'number', min: 0, max: 600, step: 0.05, default: 0.3 },
     { key: 'dur', label: '拉下來要多久（秒）', type: 'number', min: 0.05, max: 5, step: 0.05, default: 0.6 },
     { key: 'dir', label: '方向（down 拉下、up 捲開）', type: 'enum', options: ['down', 'up'], default: 'down' },
-    { key: 'sign', label: '紙牌上的字（空＝沒有紙牌）', type: 'string', default: '今日打烊' },
+    { key: 'sign', label: '紙牌上的字（空＝沒有紙牌；今日打烊、營業中照片子的語言寫）', type: 'string', default: '今日打烊' },
     { key: 'font', label: '字型', type: 'string', default: 'Noto Sans TC', theme: 'fonts.display' },
     { key: 'signColor', label: '紙牌字色', type: 'color', default: '#d4213a', theme: 'palette.accent' },
     { key: 'signPaper', label: '紙牌顏色', type: 'color', default: '#fbf7ee' },
@@ -34,7 +43,7 @@ export const rolldoor: ItemType<P, S> = {
   // named sets of these params (engine templates.ts); their golden samples are rolldoor-tpl-<id>
   templates: [
     { id: 'shop-close', label: '打烊拉下', doc: '片尾、今天收工：整個畫面的鐵捲門從 0.2 秒起慢慢拉下來（0.8 秒拉到底），再貼上「今日打烊」，整支片就此打烊', params: { x: 0, y: 0, w: 1, h: 1, radius: 0, at: 0.2, dur: 0.8 } },
-    { id: 'shop-open', label: '開店捲起', doc: '開場、開店：一開始鐵捲門關著、貼著「營業中」，0.2 秒起往上捲開露出畫面', params: { dir: 'up', sign: '營業中', at: 0.2 } },
+    { id: 'shop-open', label: '開店捲起', doc: '開場、開店：一開始鐵捲門關著、貼著「營業中」（照片子的語言），0.2 秒起往上捲開露出畫面', params: { dir: 'up', sign: '營業中', at: 0.2 } },
   ],
   build(ctx) {
     const win = abs(ctx.root), door = abs(win), bar = abs(door), handle = abs(door), sign = abs(ctx.root), tape = abs(sign), word = abs(sign);
@@ -55,10 +64,11 @@ export const rolldoor: ItemType<P, S> = {
     // the sign, taped on once the door is down (and gone the moment it starts to roll up)
     const down = p.dir === 'down' ? p.at + p.dur : 0, shown = !!p.sign && cl >= 1 && (p.dir === 'down' ? local >= down : local < p.at);
     const q = p.dir === 'down' ? eBack(clamp((local - down) / 0.3), 1.9) : 1, sw = Math.min(460 * k, w * 0.8), sh = 156 * k * (sw / (460 * k));
-    s.word.textContent = p.sign;
+    const sign = p.sign && (signOf(ctx.item?.params?.sign, wordsLang([], ctx)) ?? p.sign);
+    s.word.textContent = sign;
     cssCamel(s.sign, { display: shown ? 'flex' : 'none', left: `${x + w / 2 - sw / 2}px`, top: `${y + hh * 0.45 - sh / 2}px`, width: `${sw}px`, height: `${sh}px`, background: p.signPaper,
       boxShadow: `0 ${6 * k}px ${14 * k}px rgba(0,0,0,0.35)`, transform: `rotate(-3deg) scale(${Math.max(0.01, q).toFixed(4)})`, opacity: String(out) });
     cssCamel(s.tape, { left: '50%', top: `${-16 * k}px`, width: `${120 * k}px`, height: `${30 * k}px`, marginLeft: `${-60 * k}px`, background: 'rgba(230,200,120,0.75)' });
-    cssCamel(s.word, { color: p.signColor, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${fitPx(p.sign, Math.min(92 * k, sh * 0.6), sw - 50 * k)}px`, top: `${6 * k}px` });
+    cssCamel(s.word, { color: p.signColor, fontFamily: `'${p.font}', 'Noto Sans TC', sans-serif`, fontSize: `${fitPx(sign, Math.min(92 * k, sh * 0.6), sw - 50 * k)}px`, top: `${6 * k}px` });
   },
 };

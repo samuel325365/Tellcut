@@ -850,7 +850,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.rolldoor.at": {"name":"Pull start time","hint":"Seconds"},
   "common.rolldoor.dur": {"name":"Pull duration","hint":"Seconds"},
   "common.rolldoor.dir": {"name":"Direction","hint":"down (pull down), up (roll open)"},
-  "common.rolldoor.sign": {"name":"Sign text","hint":"Blank = no sign"},
+  "common.rolldoor.sign": {"name":"Sign text","hint":"Blank = no sign; the block's own closed and open words follow the film's language"},
   "common.rolldoor.font": {"name":"Font"},
   "common.rolldoor.signColor": {"name":"Sign text color"},
   "common.rolldoor.signPaper": {"name":"Sign color"},
