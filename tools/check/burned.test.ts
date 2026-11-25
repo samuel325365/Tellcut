@@ -1,6 +1,6 @@
 import { parseProject, resolveTimes, type VideoItem } from '@tellcut/engine';
 import type { Burned } from '@tellcut/media-node';
-import { burnedChecks, burnedRectAt } from './burned.ts';
+import { bottomBarRect, burnedChecks, burnedRectAt } from './burned.ts';
 
 const onlyWarn = (...a: Parameters<typeof burnedChecks>) => burnedChecks(...a).filter((f) => f.level !== 'note');   // the note about a caption merely showing is tested below
 const MIX = { master: 0.9, compressor: { threshold: -14, ratio: 3, attack: 0.01, release: 0.2 }, reverb: { seconds: 1, send: 0 } };
@@ -95,4 +95,22 @@ test('a clip on a hidden video track shows no caption', () => {
   const p = proj();
   p.tracks[0].muted = true;
   expect(burnedChecks(p, { v: burned }, [{ t: 3, boxes: [boxAt(at(proj(), 3)!.y, at(proj(), 3)!.h)] }])).toEqual([]);
+});
+
+test('a progress bar on the bottom margin over the footage caption is a warning; at the top, or while no caption shows, it is not', () => {
+  const withBar = (params: Record<string, unknown>) => {
+    const p = proj();
+    (p.tracks[1].items as any[]).push({ id: 'bar', type: 'common.progress', start: 0, end: 10, params });
+    return p;
+  };
+  // a tall caption row (0.6–0.9 of the source): the bottom safe margin is above the usual one on a 9:16 film
+  const row: Burned = { ...burned, caption: { ...burned.caption!, rect: [0.08, 0.6, 0.84, 0.3] } };
+  const bottom = withBar({ position: 'bottom' });
+  expect(bottomBarRect(bottom, { position: 'bottom' })!.h).toBeCloseTo(0.035 * 1920, 6);
+  const f = onlyWarn(bottom, { v: row }, [{ t: 3, boxes: [] }, { t: 4, boxes: [] }]);
+  expect(f.map((x) => x.ids![0])).toEqual(['bar']);
+  expect(f[0].msg).toContain('進度條壓在原片自己燒進畫面的字幕上');
+  expect(onlyWarn(withBar({}), { v: row }, [{ t: 3, boxes: [] }])).toEqual([]);                          // the top margin
+  expect(onlyWarn(withBar({ position: 'bottom', y: 0.5 }), { v: row }, [{ t: 3, boxes: [] }])).toEqual([]);  // placed by its author
+  expect(onlyWarn(bottom, { v: row }, [{ t: 1, boxes: [] }])).toEqual([]);                                // no caption then
 });
