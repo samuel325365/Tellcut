@@ -8,10 +8,10 @@
 // Chromium only: other browsers show the preview without the shift (scan still draws its lines); the export always uses Chrome.
 // The layer must not be blended for these (a blended layer is a backdrop root, and the filter would see nothing under it).
 // Bursts: time is cut into windows of half a second; each window (seeded) holds one burst of 2–5 frames with chance `density`.
-import { attr, cssCamel, frameOf, h, rng, type ItemType } from '@tellcut/engine';
+import { attr, clamp, cssCamel, frameOf, h, rng, type ItemType } from '@tellcut/engine';
 
 type Look = 'tear' | 'scan' | 'rgb' | 'block';
-interface P { look: Look; bands: number; density: number; maxHeight: number; seed: number; tint: boolean; shift: number }
+interface P { look: Look; bands: number; density: number; maxHeight: number; seed: number; tint: boolean; shift: number; lines: number }
 interface S { bars: HTMLElement[]; look: Look; back?: HTMLElement; filter?: string; nodes: SVGElement[][]; lines?: HTMLElement; roll?: HTMLElement }
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -92,6 +92,7 @@ export const glitch: ItemType<P, S> = {
     { key: 'seed', label: '亂數種子', type: 'number', min: 1, max: 9999, step: 1, default: 5 },
     { key: 'tint', label: '帶青／洋紅色（tear、block）', type: 'bool', default: true },
     { key: 'shift', label: '錯位量（畫面短邊 %；rgb 一閃時紅、藍各移開約一半，block 錯開 2.5–6 倍，scan 跳動約一半）', type: 'number', min: 0, max: 5, step: 0.1, default: 1 },
+    { key: 'lines', label: '掃描線深淺（scan；0–1，0.2 是淡淡的一層，0.5 以上放在素材上才明顯）', type: 'number', min: 0, max: 1, step: 0.05, default: 0.2 },
   ],
   // named sets of these params (engine templates.ts); their golden samples are glitch-tpl-<id>
   templates: [
@@ -174,7 +175,8 @@ export const glitch: ItemType<P, S> = {
     } else {
       // scan: one dark line every 3 px (at 1080), a soft bright band rolling down the frame in 6 s, the jump in a burst
       const gap = Math.max(2, Math.round(3 * k)), lh = Math.max(1, Math.round(1.2 * k)), dx = scanJump(n, ctx.fps, p, k);
-      cssCamel(s.lines!, { background: `repeating-linear-gradient(180deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) ${lh}px, transparent ${lh}px, transparent ${gap}px)` });
+      const dark = `rgba(0,0,0,${clamp(Number(p.lines ?? 0.2))})`;
+      cssCamel(s.lines!, { background: `repeating-linear-gradient(180deg, ${dark} 0px, ${dark} ${lh}px, transparent ${lh}px, transparent ${gap}px)` });
       const bh = 0.14 * H, ph = rng(p.seed * 17 + 5)(), y = (((ctx.local / 6 + ph) % 1) * (H + bh)) - bh;
       cssCamel(s.roll!, { top: `${y.toFixed(1)}px`, height: `${bh.toFixed(1)}px`, background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.16) 85%, rgba(255,255,255,0) 100%)' });
       attr(s.nodes[0][0], { dx });

@@ -14,9 +14,10 @@ export const combos: Combo[] = [
     { name: 'shake', kind: 'shake', at: 0, len: 0.4, px: 28 },
   ] },
   // across a cut: the scan lines and their sideways jump start just before it, the colour split hits right after; the seeds put
-  // each one's burst there (a glitch bursts on seeded frames, glitch.ts glitchBurst)
+  // each one's burst there (a glitch bursts on seeded frames, glitch.ts glitchBurst). The scan lines are darker than the look's own
+  // faint layer (lines 0.2), which over footage, once encoded, barely showed
   { id: 'glitchcut', label: '故障切換', doc: '話題急轉、出事了、跳到另一個場景：剪接點前後畫面帶著掃描線往旁邊跳，接著紅藍色版分開，配刮唱片的「嘰——」', parts: [
-    { name: 'scan', kind: 'effect', type: 'common.glitch', template: 'signal-loss', params: { seed: 6 }, at: -0.1, len: 0.5 },
+    { name: 'scan', kind: 'effect', type: 'common.glitch', template: 'signal-loss', params: { seed: 6, lines: 0.55 }, at: -0.1, len: 0.5 },
     { name: 'split', kind: 'effect', type: 'common.glitch', template: 'rgb-hit', params: { seed: 9 }, at: 0, len: 0.4 },
     { name: 'scratch', kind: 'sfx', type: 'common.scratch', at: -0.1, len: 0.42, gain: -8 },
   ] },
@@ -79,15 +80,17 @@ export const combos: Combo[] = [
     { name: 'ffwd', kind: 'sfx', type: 'common.ffwd', params: { dur: 0.9 }, at: 0, len: 0.9, gain: -12 },
     { name: 'shake', kind: 'shake', at: 0, len: 0.4, px: 10 },
   ] },
-  // the door starts down at 0.2 s and lands at 1 s, where the rattle's thump (0.55 s into it) and the clunk fall and the sign pops on;
+  // the door starts down at 0.2 s; it eases out, so it looks down by about 0.8 s (98 % of the way), and that is where the rattle's
+  // thump (0.55 s into it) and the clunk fall, the rattle running under the door's whole fall; the sign pops on at 1 s, when it is all
+  // the way down;
   // from 1.5 s the frame fades to black. (Black rather than the flash's white fade-in: once the door is down a white light would only
   // hide the sign, and a fade to black is what "that's all for today" ends on). It ends the film (ending): at 2.4 s the door and the
 // black are gone, so anywhere but the end the footage comes back; placing it never moves the film's end, c.combo and check say so
   { id: 'closing', label: '收工', ending: true, doc: '只放在片尾（放在片子最後 2.4 秒，結束在片尾；放在中間 2.4 秒後畫面會再出現）：收工、打烊、今天就到這裡：整個畫面的鐵捲門嘩啦啦拉下來，到底「喀」一聲貼上「今日打烊」，再慢慢暗到全黑', parts: [
     { name: 'door', kind: 'effect', type: 'common.rolldoor', template: 'shop-close', at: 0, len: 2.4 },
     { name: 'dark', kind: 'effect', type: 'core.flash', params: { fade: 'out', color: '#000000' }, at: 1.5, len: 0.9, layer: 'top' },
-    { name: 'rattle', kind: 'sfx', type: 'common.rattle', at: 0.45, len: 0.65, gain: -8 },
-    { name: 'clunk', kind: 'sfx', type: 'common.clunk', at: 1, len: 0.16, gain: -6 },
+    { name: 'rattle', kind: 'sfx', type: 'common.rattle', at: 0.25, len: 0.65, gain: -8 },
+    { name: 'clunk', kind: 'sfx', type: 'common.clunk', at: 0.8, len: 0.16, gain: -6 },
   ] },
   // the iris closes over 0.6 s to a point in the middle at the moment and opens again over the next 0.6 s, black as an old cartoon's;
   // the stars burst from that point at the moment, above the iris, on the xylophone

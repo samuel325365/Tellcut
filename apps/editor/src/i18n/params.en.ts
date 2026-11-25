@@ -273,6 +273,7 @@ export const PARAMS_EN: Record<string, { name: string; hint?: string }> = {
   "common.glitch.maxHeight": {"name":"Band max height","hint":"Fraction of frame height; tear, block"},
   "common.glitch.seed": {"name":"Random seed"},
   "common.glitch.tint": {"name":"Cyan/magenta tint","hint":"tear, block"},
+  "common.glitch.lines": {"name":"Scan line darkness","hint":"scan; 0–1: 0.2 is a faint layer, 0.5 and up shows clearly over footage"},
   "common.glitch.shift": {"name":"Shift","hint":"% of the frame's short side; in a burst rgb moves red and blue about half of it each way, block 2.5–6 times it, scan jumps about half of it"},
   "common.progress.mode": {"name":"Style"},
   "common.progress.position": {"name":"Position","hint":"rocket ignores it: it takes the whole height of the safe area"},

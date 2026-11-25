@@ -273,6 +273,7 @@ export const PARAMS_JA: Record<string, { name: string; hint?: string }> = {
   "common.glitch.maxHeight": {"name":"帯の最大の高さ","hint":"画面の高さに対する比率。tear、block"},
   "common.glitch.seed": {"name":"乱数シード"},
   "common.glitch.tint": {"name":"シアン／マゼンタの色味","hint":"tear、block"},
+  "common.glitch.lines": {"name":"走査線の濃さ","hint":"scan。0〜1：0.2 はうっすら、0.5 以上で映像の上でもはっきり見える"},
   "common.glitch.shift": {"name":"ずれの量","hint":"画面の短辺の %。走ったとき rgb は赤と青がそれぞれ約半分ずれ、block はその 2.5〜6 倍、scan は約半分跳ぶ"},
   "common.progress.mode": {"name":"スタイル"},
   "common.progress.position": {"name":"位置","hint":"rocket は見ない（セーフエリアの高さいっぱいを使う）"},
