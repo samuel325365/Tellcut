@@ -1,4 +1,4 @@
-import { movedTransform, paintsBox, pickAt, rankHits, scaledTransform, shows, textParamFor, union } from './tools-geom.ts';
+import { inkBounds, inkRect, movedTransform, paintsBox, pickAt, rankHits, scaledTransform, shows, textParamFor, union } from './tools-geom.ts';
 
 test('union of rects; empty is null', () => {
   expect(union([{ left: 0, top: 5, right: 10, bottom: 8 }, { left: 4, top: 1, right: 6, bottom: 20 }])).toEqual({ left: 0, top: 1, right: 10, bottom: 20 });
@@ -63,4 +63,16 @@ test('a box painted with a background or a border that shows counts as drawn; a 
   expect(paintsBox({ ...bare, borderTopWidth: '2px', borderTopStyle: 'none', borderTopColor: 'rgb(0, 0, 0)' })).toBe(false);
   expect(paintsBox({ ...bare, borderLeftWidth: '0px', borderLeftStyle: 'solid', borderLeftColor: 'rgb(0, 0, 0)' })).toBe(false);
   expect(paintsBox({ ...bare, borderLeftWidth: '3px', borderLeftStyle: 'solid', borderLeftColor: 'rgba(0, 0, 0, 0)' })).toBe(false);
+});
+
+test('inkBounds: the cells a picture has drawn on; inkRect maps them onto the canvas box with a cell of slack', () => {
+  const w = 10, h = 8, px = new Uint8ClampedArray(w * h * 4), ink = (x: number, y: number, a = 255) => { px[(y * w + x) * 4 + 3] = a; };
+  expect(inkBounds(px, w, h)).toBeNull();
+  ink(7, 1); ink(8, 2); ink(2, 6, 4);                    // a faint cell (alpha 4) is not ink
+  expect(inkBounds(px, w, h)).toEqual([7, 1, 9, 3]);
+  ink(0, 7);
+  expect(inkBounds(px, w, h)).toEqual([0, 1, 9, 8]);
+  // a 100 × 80 box at (10, 20): cells of 10 px, one more round them, never past the box
+  expect(inkRect({ left: 10, top: 20, right: 110, bottom: 100 }, [7, 1, 9, 3], w, h)).toEqual({ left: 70, top: 20, right: 110, bottom: 60 });
+  expect(inkRect({ left: 10, top: 20, right: 110, bottom: 100 }, [0, 0, 10, 8], w, h)).toEqual({ left: 10, top: 20, right: 110, bottom: 100 });
 });

@@ -75,6 +75,18 @@ export function textParamFor(texts: string[], params: Array<{ key: string; value
 /** Topmost-first ids; an item whose only hits cover ≥ 90% of the stage (particles, glows, vignettes) goes after the rest. */
 const area = (r: Rect) => Math.max(0, r.right - r.left) * Math.max(0, r.bottom - r.top);
 /** Covers ≥ 90% of the stage: a background (video frame, full scene, particles), not something a click aims at. */
+/** The cells of a w × h RGBA picture (a canvas scaled down) whose alpha reaches `min`: their bounds as [x0, y0, x1, y1) in cells,
+ *  null when there are none. */
+export function inkBounds(data: ArrayLike<number>, w: number, h: number, min = 8): [number, number, number, number] | null {
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (data[(y * w + x) * 4 + 3] >= min) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; y1 = y; }
+  return x1 < 0 ? null : [x0, y0, x1 + 1, y1 + 1];
+}
+/** `r` cut to the cells `b` of a picture `w` × `h` cells drawn over it, one cell of slack round them (the scaling smears an edge) */
+export function inkRect(r: Rect, b: [number, number, number, number], w: number, h: number): Rect {
+  const sx = (r.right - r.left) / w, sy = (r.bottom - r.top) / h;
+  return { left: r.left + Math.max(0, b[0] - 1) * sx, top: r.top + Math.max(0, b[1] - 1) * sy, right: r.left + Math.min(w, b[2] + 1) * sx, bottom: r.top + Math.min(h, b[3] + 1) * sy };
+}
 export const isFullFrame = (r: Rect, stage: Rect) => area(r) >= area(stage) * 0.9;
 export function rankHits(hits: Array<{ id: string; rects: Rect[] }>, stage: Rect): string[] {
   const solid = hits.filter((h) => h.rects.some((r) => !isFullFrame(r, stage))), bg = hits.filter((h) => !solid.includes(h));

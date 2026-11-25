@@ -1,6 +1,6 @@
 // Preview tools in the editor (embed mode): click to select, drag the box to move, drag a corner or wheel to scale.
 import { resolveTheme, withDefaults, type Project, type Registry, type SceneItem, type Transform } from '@tellcut/engine';
-import { inside, isFullFrame, movedTransform, paintsBox, pickAt, rankHits, scaledTransform, textParamFor, union, type Rect } from './tools-geom.ts';
+import { inkBounds, inkRect, inside, isFullFrame, movedTransform, paintsBox, pickAt, rankHits, scaledTransform, textParamFor, union, type Rect } from './tools-geom.ts';
 import type { PlayerTexts, ToolMsg } from '@tellcut/protocol';
 
 export type { ToolMsg };
@@ -9,6 +9,27 @@ type Deps = { project: () => Project | null; registry: Registry; busy: () => boo
 const CONTENT = 'video, img, svg, canvas, .st-frame';
 export const ownText = (e: Element) => [...e.childNodes].some((n) => n.nodeType === 3 && !!n.textContent?.trim());
 const toRect = (r: DOMRect): Rect => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+
+/** the long side, in cells, a canvas is scaled down to before its pixels are read: a few screen px a cell in the preview */
+const INK_CELLS = 256;
+let inkCanvas: HTMLCanvasElement | null = null;
+/** The part of a canvas's box `r` it has drawn on (a progress ring in a corner of a frame-sized canvas): the canvas scaled down
+ *  and read for cells that are not clear. The whole box when that cannot be told: nothing drawn yet, a WebGL canvas that keeps
+ *  no picture, a canvas the page may not read. */
+function canvasInk(c: HTMLCanvasElement, r: Rect): Rect {
+  const cw = c.width, ch = c.height;
+  if (!cw || !ch) return r;
+  const k = Math.min(1, INK_CELLS / Math.max(cw, ch)), w = Math.max(1, Math.round(cw * k)), h = Math.max(1, Math.round(ch * k));
+  try {
+    inkCanvas ??= document.createElement('canvas');
+    if (inkCanvas.width !== w || inkCanvas.height !== h) { inkCanvas.width = w; inkCanvas.height = h; }
+    const g = inkCanvas.getContext('2d', { willReadFrequently: true });
+    if (!g) return r;
+    g.clearRect(0, 0, w, h); g.drawImage(c, 0, 0, w, h);
+    const b = inkBounds(g.getImageData(0, 0, w, h).data, w, h);
+    return b ? inkRect(r, b, w, h) : r;
+  } catch { return r; }
+}
 
 export class StageTools {
   private sel: string | null = null;
@@ -47,7 +68,9 @@ export class StageTools {
       .map((e) => ({ e, r: toRect(e.getBoundingClientRect()) }))
       .filter(({ e, r }) => r.right - r.left > 0 && r.bottom - r.top > 0 && (!at || inside(r, at.x, at.y))
         && (e.matches(CONTENT) || ownText(e) || (!isFullFrame(r, stage) && paintsBox(getComputedStyle(e)))) && this.visible(e))
-      .map(({ r }) => r);
+      // a canvas: only the part it has drawn on (blocks that paint on a frame-sized canvas were selected anywhere in the frame)
+      .map(({ e, r }) => (e instanceof HTMLCanvasElement ? canvasInk(e, r) : r))
+      .filter((r) => !at || inside(r, at.x, at.y));
   }
 
   /** Visible: computed visibility (inherited, so the element itself is enough), and no ancestor faded below 5% opacity. */
