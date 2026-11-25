@@ -1,4 +1,4 @@
-import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clipShown, FLASH_BRIGHT, FLASH_BURN, FLASH_VEIL, clockClip, transitionFallback, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
+import { BAR_GAP, BAR_LEN, BARS, BLUR_MAX, clipShown, FLASH_BRIGHT, FLASH_BURN, FLASH_VEIL, clockClip, transitionFallback, coverPlacement, cropAt, cropForWindow, drawnTransition, irisClip, kbMatrix, leaving, lerpCrop, moveViewfinder, shapeClipPath, videoState, visibleRegion,
   WHIP_BLUR, ZOOM_BLUR, ZOOM_IN, ZOOM_OUT, ZOOM_POW } from './geometry.ts';
 import { TRANSITION_TYPES } from './schema.ts';
 import { eIO3, eOut3 } from './util.ts';
@@ -439,7 +439,7 @@ test('fallbacks: a shaped clip\'s reveal and a zoom or whip of a frame not whole
       expect(parts(s)).toEqual({ ...STILL, opacity: eIO3(0.25) });
     }
     expect(parts(vs({ frame: half }, 3.5, outOf(type, 'l')))).toEqual(STILL);   // A not whole
-    expect(parts(vs({}, 3.5, outOf(type, 'l', { frame: half })))).toEqual(STILL); // B not whole
+    expect(parts(vs({}, 3.5, outOf(type, 'l', { frame: half })))).toEqual({ ...STILL, opacity: leaving('dissolve', 0.5) }); // B not whole: A goes as it comes in
   }
   // blur, dip and flash work on any frame
   expect(B('blur', 0.5, { frame: half }).streak[0]).toBeGreaterThan(0);
@@ -479,14 +479,27 @@ test('clipShown: what is attached to a clip shows as much as the clip does throu
   expect(clipShown(dip, 0, 4, 0.25, W, H, { from })).toBe(0);
   expect(clipShown(dip, 0, 4, 0.75, W, H, { from })).toBeGreaterThan(0);
   expect(clipShown(dip, 0, 4, 0.75, W, H, { from })).toBeLessThan(1);
-  // going out under the next clip: a dissolve onto a full picture covers it; a window, a wipe or a push does not take it away
+  // going out under the next clip: a dissolve onto a full picture covers it; one into a window takes it away slowly (the clip
+  // goes round the window); a wipe or a push does not
   const out = (type: any, frame: any = [0, 0, 1, 1], shaped = false) => ({ out: { type, at: 3, dur: 1, frame, shaped } });
   expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve'))).toBeCloseTo(0.5, 2);
   expect(clipShown(vid(), 0, 4, 3.95, W, H, out('dissolve'))).toBeLessThan(0.05);
-  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve', [0.25, 0.25, 0.5, 0.5]))).toBe(1);
-  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve', [0, 0, 1, 1], true))).toBe(1);
+  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve', [0.25, 0.25, 0.5, 0.5]))).toBeCloseTo(0.75, 6);
+  expect(clipShown(vid(), 0, 4, 3.5, W, H, out('dissolve', [0, 0, 1, 1], true))).toBeCloseTo(0.75, 6);
   expect(clipShown(vid(), 0, 4, 3.5, W, H, out('wipe'))).toBe(1);
   expect(clipShown(vid(), 0, 4, 3.5, W, H, out('push'))).toBe(1);
   // going to black in a dip: fading with the veil
   expect(clipShown(vid(), 0, 4, 3.45, W, H, out('dip'))).toBeLessThan(0.2);
+});
+
+test('a linked transition into a clip that will not cover this one (a window, a shape) takes this one away; one that covers it does not', () => {
+  const out = (type: any, frame: any, shaped = false, aFrame: any = [0, 0, 1, 1]) => videoState(vid({ frame: aFrame }), 0, 4, 3.5, W, H, {}, { out: { type, at: 3, dur: 1, frame, shaped } }).opacity;
+  const win: [number, number, number, number] = [0.2, 0.1, 0.6, 0.8];
+  expect(out('dissolve', win)).toBeCloseTo(0.75, 6);                     // 1 − p² at the middle
+  expect(out('dissolve', [0, 0, 1, 1], true)).toBeCloseTo(0.75, 6);      // shaped
+  expect(out('dissolve', [0, 0, 1, 1])).toBe(1);                        // covered: as before
+  expect(out('dissolve', win, false, [0.3, 0.2, 0.4, 0.5])).toBe(1);     // a small window inside B's: covered
+  expect(out('dip', win)).toBe(1);                                      // a dip or flash: from the middle on
+  expect(videoState(vid(), 0, 4, 3.75, W, H, {}, { out: { type: 'dip', at: 3, dur: 1, frame: win, shaped: false } }).opacity).toBeCloseTo(0.5, 6);
+  expect([leaving('dissolve', 0), leaving('dissolve', 1), leaving('flash', 0.4), leaving('flash', 1)]).toEqual([1, 0, 1, 0]);
 });

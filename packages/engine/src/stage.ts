@@ -3,7 +3,7 @@
 import type { AnyItem, Project, SceneItem, Track, Transform, VideoItem } from './schema.ts';
 import { allItems } from './schema.ts';
 import { activeAt, resolveTimes, type Times } from './time.ts';
-import { clipShown, coverPlacement, kbMatrix, veilFilter, videoState, type VideoLink, type VideoState } from './geometry.ts';
+import { clipShown, coverPlacement, kbMatrix, veilFilter, veilShadow, videoState, type VideoLink, type VideoState } from './geometry.ts';
 import { fitText, isNamedShape, textFont, type FittedText, type InkBox, type TextShape } from './shapes.ts';
 import { videoLinks } from './pairs.ts';
 import type { ItemCtx, ItemType, MediaRef } from './plugin.ts';
@@ -441,8 +441,9 @@ export class Stage {
   /** A video layer's dressing: the shadow on the item's own layer (a drop-shadow follows what the layer shows: the frame as its
    *  shape cuts it, and the outline), the outline over the picture, moved and grown with the frame (`box`; the fade is the layer's). */
   private dress(L: Extract<Layer, { kind: 'video' }>, s: VideoState, box: Record<string, string>) {
-    const sd = s.shadow, n = (v: number) => +v.toFixed(2);
-    cssCamel(L.el, { filter: sd ? `drop-shadow(0px ${n(sd.y)}px ${n(sd.blur)}px rgba(0, 0, 0, ${n(sd.opacity)}))` : '' });
+    // a flash's white veil takes the shadow away with the picture (veilShadow)
+    const sd = s.shadow, n = (v: number) => +v.toFixed(2), so = sd ? n(sd.opacity * veilShadow(s.veil)) : 0;
+    cssCamel(L.el, { filter: sd && so > 0 ? `drop-shadow(0px ${n(sd.y)}px ${n(sd.blur)}px rgba(0, 0, 0, ${so}))` : '' });
     const o = s.outline;
     if (!o) { if (L.deco) cssCamel(L.deco.svg as unknown as HTMLElement, { display: 'none' }); return; }
     // A text shape's line goes under the picture, twice as wide: a font's glyphs are often drawn as overlapping contours (an A's

@@ -2,7 +2,7 @@
 import { Stage, transformAt } from './stage.ts';
 import { createRegistry } from './registry.ts';
 import { corePlugin } from './core.ts';
-import { veilFilter } from './geometry.ts';
+import { veilFilter, veilShadow } from './geometry.ts';
 import type { ItemType } from './plugin.ts';
 
 function fakeMedia(): any {
@@ -697,6 +697,30 @@ test('a dip or flash into a picture window takes its outline with the picture: d
   st.update(q);
   st.draw(3.5);
   expect(line()._c.filter).toBe('invert(1) brightness(0) invert(1)');
+});
+
+test('a flash into a picture window takes its shadow with the picture; a dip leaves it', () => {
+  const root = document.createElement('div');
+  const st = new Stage(root, createRegistry([corePlugin]), fakeMedia());
+  const p = project();
+  Object.assign(p.tracks[0].items[1], { frame: [0.2, 0.1, 0.6, 0.8], shape: { type: 'circle' }, shadow: true, transitionIn: { type: 'flash', dur: 1 } });
+  st.load(p);
+  const shadow = () => (root.querySelector<HTMLElement>('[data-id="b"]') as any)._c.filter as string;
+  // the middle of the flash: all white, no shadow (it used to stand at full strength round the white circle)
+  st.draw(3.5);
+  expect(shadow()).toBe('');
+  st.draw(3.75);
+  const mid = +shadow().match(/rgba\(0, 0, 0, ([\d.]+)\)/)![1];
+  expect(mid).toBeGreaterThan(0); expect(mid).toBeLessThan(0.45);
+  st.draw(4.5);
+  expect(shadow()).toMatch(/rgba\(0, 0, 0, 0\.45\)\)$/);
+  // a dip: the shadow stays at full strength round the black picture
+  const q = structuredClone(p);
+  q.tracks[0].items[1].transitionIn = { type: 'dip', dur: 1 };
+  st.update(q);
+  st.draw(3.5);
+  expect(shadow()).toMatch(/rgba\(0, 0, 0, 0\.45\)\)$/);
+  expect([veilShadow(null), veilShadow({ color: '#000', opacity: 1 }), veilShadow({ color: '#fff', opacity: 0.25 })]).toEqual([1, 1, 0.75]);
 });
 
 test('veilFilter: none without a veil, brightness toward black, the same between inverts toward white', () => {

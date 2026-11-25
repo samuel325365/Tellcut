@@ -261,6 +261,10 @@ export function veilFilter(veil: Veil | null): string {
   const b = `brightness(${+(1 - veil.opacity).toFixed(4)})`;
   return veil.color === VEIL.flash ? `invert(1) ${b} invert(1)` : b;
 }
+/** How much of a picture window's shadow shows under a veil: a flash's white one takes it away as it whitens the picture (at the
+ *  flash's middle a full-strength shadow stood round an all-white window); a dip's black one leaves it, a dark shadow round a
+ *  picture gone black being what a dark window casts. */
+export const veilShadow = (veil: Veil | null): number => (veil && veil.color === VEIL.flash ? Math.max(0, 1 - veil.opacity) : 1);
 const streakAlong = (d: Dir, s: number, w: number, h: number): [number, number] => (d === 'l' || d === 'r' ? [n3(s * w), 0] : [0, n3(s * h)]);
 
 /** the incoming clip B at progress p of its own transition (drawn as `kind`) in a w × h frame; `linked`: A is under it doing its half */
@@ -313,6 +317,16 @@ function outgoing(kind: TransitionType, p: number, d: Dir, w: number, h: number)
   return L;
 }
 
+/** whether the incoming clip B (frame `b`, cut to a shape: `shaped`) covers all of the outgoing clip A's frame `a` once it is in */
+const coversFrame = (b: Rect, shaped: boolean, a: Rect) => !shaped && b[0] <= a[0] + 1e-6 && b[1] <= a[1] + 1e-6 && b[0] + b[2] >= a[0] + a[2] - 1e-6 && b[1] + b[3] >= a[1] + a[3] - 1e-6;
+/** How much of the outgoing clip A is left at progress p of a linked transition into a clip B that will not cover it (a full-frame
+ *  shot going into one in a window): A goes from the picture over the transition, so round the window the background comes in with
+ *  B instead of all at once on the last frame. Slow at first (1 − p²), so inside the window B fades in over A as before and the
+ *  background shows through little; a dip or flash, whose A is all black or white from the middle on, over the second half. */
+export function leaving(kind: TransitionType, p: number): number {
+  return kind === 'dip' || kind === 'flash' ? 1 - clamp(2 * p - 1) : 1 - clamp(p) ** 2;
+}
+
 /** a clip that is B of one transition and A of the next while both run (a clip shorter than the two) */
 const merge = (a: Look, b: Look): Look => ({
   opacity: a.opacity * b.opacity, dx: a.dx + b.dx, dy: a.dy + b.dy, scale: a.scale * b.scale,
@@ -333,8 +347,12 @@ export function videoState(item: VideoItem, start: number, end: number, t: numbe
   }
   // the outgoing side: only while the next clip's linked transition runs
   const o = link?.out;
-  if (o && o.dur > 0 && local >= o.at && local < o.at + o.dur)
-    look = merge(look, outgoing(drawnTransition(o.type, o.frame, o.shaped, item.frame), prog(local, o.at, o.at + o.dur), o.dir ?? 'l', frame.width, frame.height));
+  if (o && o.dur > 0 && local >= o.at && local < o.at + o.dur) {
+    const kind = drawnTransition(o.type, o.frame, o.shaped, item.frame), p = prog(local, o.at, o.at + o.dur);
+    look = merge(look, outgoing(kind, p, o.dir ?? 'l', frame.width, frame.height));
+    // into a clip that will not cover this one: this one goes, round it the background comes in with it
+    if (!coversFrame(o.frame, o.shaped, item.frame)) look.opacity *= leaving(kind, p);
+  }
   let filter = item.grade ? grades[item.grade] ?? 'none' : 'none';
   const add = (f: string) => { filter = `${filter === 'none' ? '' : `${filter} `}${f}`; };
   // a defocus is part of the streak, not a CSS blur(), which fades the frame's edge rows into whatever is under the frame. With a
@@ -393,6 +411,7 @@ export function clipShown(item: VideoItem, start: number, end: number, t: number
     const p = prog(local, o.at, o.at + o.dur), kind = drawnTransition(o.type, o.frame, o.shaped, item.frame);
     shown *= 1 - (outgoing(kind, p, o.dir ?? 'l', item.frame[2] * W, item.frame[3] * H).veil?.opacity ?? 0);
     if (COVERS.has(kind) && isFull(o.frame) && !o.shaped) shown *= 1 - incoming(kind, p, o, o.frame[2] * W, o.frame[3] * H, true).opacity;
+    if (!coversFrame(o.frame, o.shaped, item.frame)) shown *= leaving(kind, p);
   }
   return clamp(shown);
 }
