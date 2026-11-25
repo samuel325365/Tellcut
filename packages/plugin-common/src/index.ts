@@ -154,3 +154,4 @@ export const commonPlugin: Plugin = { id: 'common', items: commonItems, sfx: com
 // Huninn (jf open 粉圓): the rounded face of the phone blocks (notify's accent cards, lockscreen's title, story's questions); Inter 300: lockscreen's thin clock; VT323: common.camcorder's viewfinder characters; Playfair Display: common.magazine's masthead, kickers and numbers;
 // Space Grotesk (geometric, technical) and Nunito (rounded, friendly): display type for a brand film's type feel (2026-10-28);
 // Noto Serif TC 500/700: the postmarks and stamps (900: the printer's rubber stamp); JetBrains Mono: the numbers of routeboard, mapjump, ticket, snap, stations and list stack
+export { topRoom } from './top-room.ts';

@@ -2,6 +2,8 @@
 // past the footage's resolution, or clearing it would cut a face), our captions sitting on that row over the clip move to the top
 // of the frame instead of being drawn on top of it. Only what really sits on it moves: a caption the author placed never does, nor
 // one whose top place is taken (a title, the hook's tags, a header) or would land on the row as well (a clip in a window up there).
+// Something thin up there (a progress bar on the top margin, a one-line chapter header: whatever `roomOf` can say the lower edge
+// of) does not take it: the caption goes just under it, as long as that is still near the top (TOP_PUSH).
 // Pure: Cut.save() hands the items in and applies what comes back.
 import { coverPlacement, type Crop } from '@tellcut/engine';
 import { isCaption, placedByAuthor, type CaptionItem } from './under-panel.ts';
@@ -10,6 +12,12 @@ import { isCaption, placedByAuthor, type CaptionItem } from './under-panel.ts';
 export type Span = [number, number];
 /** where a source's caption row lands on the film over one clip */
 export interface BurnedZone { x: Span; y: Span }
+
+/** how far below the top safe margin a caption may be pushed by what sits up there (a share of the frame height): a bar and a
+ *  one-line header fit; more than that and the top is taken */
+export const TOP_PUSH = 0.12;
+/** the air between what sits at the top and a caption pushed under it (a share of the frame height) */
+const TOP_GAP = 0.01;
 
 const crosses = (a: Span, b: Span) => a[0] < b[1] - 1e-6 && b[0] < a[1] - 1e-6;
 const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
@@ -61,7 +69,7 @@ export interface GaveUpClip { id: string; start: number; end: number; zone: Burn
 /** a caption on the timeline, its film times and its params as drawn (defaults and template filled in) */
 export interface TimedCaption extends CaptionItem { start: number; end: number; eff: Record<string, unknown> }
 /** another overlay item over the same time: whether it sits at the top is asked with sitsAtTop */
-export interface TimedItem { id: string; start: number; end: number; eff: Record<string, unknown>; defs: ParamInfo[] }
+export interface TimedItem { id: string; type?: string; start: number; end: number; eff: Record<string, unknown>; defs: ParamInfo[] }
 /** where a caption moves (for the clip whose row it sat on): params merged into its own (common.caption) or a transform (core.caption, moved from the bottom margin) */
 export type TopMove = { id: string; clip: string } & ({ params: Record<string, unknown> } | { transform: { x: number; y: number; scale: number } });
 /** why a caption over the row stayed: the author placed it, the top is taken (or is on the row too), the clip said `avoidBurned: 'crop'` */
@@ -70,10 +78,11 @@ export type Stay = 'placed' | 'taken' | 'crop';
 /**
  * The captions over clips avoidBurned gave up on that sit on the caption row (their two-line height at the place they are drawn
  * crossing the row), and where each goes: to the top of the frame (inside `safe.top`), or nowhere and why. `heightOf`: a caption's
- * height with two lines (captionHeight); `hung`: captions the panel layout hung under the panel (off the picture: left alone).
+ * height with two lines (captionHeight); `hung`: captions the panel layout hung under the panel (off the picture: left alone);
+ * `roomOf`: the lower edge of an item at the top when it can be told (plugin-common topRoom), else null: the top is taken.
  * Each caption answers to the first clip (in film order) whose row it sits on.
  */
-export function planCaptionsTop(caps: TimedCaption[], o: { clips: GaveUpClip[]; others: TimedItem[]; safe: { top: number; bottom: number; side: number }; heightOf: (it: TimedCaption) => number; hung: Set<string> }) {
+export function planCaptionsTop(caps: TimedCaption[], o: { clips: GaveUpClip[]; others: TimedItem[]; safe: { top: number; bottom: number; side: number }; heightOf: (it: TimedCaption) => number; hung: Set<string>; roomOf?: (x: TimedItem) => number | null }) {
   const moves: TopMove[] = [], stays: Array<{ id: string; why: Stay; clip: string }> = [];
   const over: Array<{ it: TimedCaption; clip: GaveUpClip; h: number; hits: GaveUpClip[] }> = [];
   const clips = [...o.clips].sort((a, b) => a.start - b.start), across: Span = [o.safe.side, 1 - o.safe.side];
@@ -96,12 +105,17 @@ export function planCaptionsTop(caps: TimedCaption[], o: { clips: GaveUpClip[]; 
   const moving = new Set(over.map((x) => x.it.id));
   for (const { it, clip, h, hits } of over) {
     if (!clip.move) { stays.push({ id: it.id, why: 'crop', clip: clip.id }); continue; }
-    const top: Span = [o.safe.top, o.safe.top + h];
-    // the top band is taken by something else up there over the same time, or a clip shows its row up there as well
-    const taken = hits.some((c) => crosses(top, c.zone.y) && crosses(across, c.zone.x))
-      || o.others.some((x) => !moving.has(x.id) && crosses([it.start, it.end], [x.start, x.end]) && sitsAtTop(x.eff, x.defs, top[1]));
+    // what else sits at the top over the same time: a thin thing whose lower edge is known pushes the caption under it, anything
+    // else takes the top
+    const up = o.others.filter((x) => !moving.has(x.id) && crosses([it.start, it.end], [x.start, x.end]) && sitsAtTop(x.eff, x.defs, o.safe.top + h));
+    const rooms = up.map((x) => o.roomOf?.(x) ?? null), from = rooms.length ? Math.max(o.safe.top, ...rooms.map((r) => (r === null ? Infinity : r + TOP_GAP))) : o.safe.top;
+    const top: Span = [from, from + h];
+    // the top band is taken (by something it cannot go under), or a clip shows its row up there as well
+    const taken = from - o.safe.top > TOP_PUSH + 1e-9 || hits.some((c) => crosses(top, c.zone.y) && crosses(across, c.zone.x));
     if (taken) { stays.push({ id: it.id, why: 'taken', clip: clip.id }); continue; }
     if (it.type === 'core.caption') moves.push({ id: it.id, clip: clip.id, transform: { x: 0, y: r4(top[1] - (1 - o.safe.bottom)), scale: 1 } });
+    // under something at the top: its lower edge given, the box under it
+    else if (from > o.safe.top) moves.push({ id: it.id, clip: clip.id, params: { y: r4(top[1]) } });
     else {
       // position 'top' puts the box's top edge on the margin; a name or tag chip drawn above the box would then stick out above it,
       // so a caption with one gets its lower edge at the margin plus its whole height instead

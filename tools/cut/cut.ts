@@ -6,7 +6,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { addItem, allItems, applyTemplate, clipAt as mainClipAt, comboEnd, comboSpan, createRegistry, ENDING_SLACK, expandCombo, OLD_BLOCKS, deleteItems, magneticGaps, parseProject, r6, resolveTheme, resolveTimes, SOUND_FILE, split, TRANSITION_CENTRE_TYPES, TRANSITION_DIR_TYPES, TRANSITION_TYPES, trimEnd, trimStart, type Crop, type Project, type ThemeInput, type TransitionType, type VideoItem } from '@tellcut/engine';
 import { loadAllStyles, timecode1, parseNarration, phraseParts, probeDurationSync, projectRegistry, STYLES, voiceFiles, wavDuration, writeProjectFile, type FacesProvider, type VoiceInfo } from '@tellcut/media-node';
 import { plugins } from '@tellcut/plugins';
-import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf, withTemplate } from '@tellcut/plugin-common';
+import { lineColorKey, PANEL_RADIUS, panelFrame, templateOf, titleTemplateOf, topRoom, withTemplate } from '@tellcut/plugin-common';
 import { handleOf, idOfHandle, normalizeHandle } from '@tellcut/protocol';
 import { avoidBurnedMove, BURNED_PAD, burnedZoomCap } from './avoid.ts';
 import type { Who } from './follow.ts';
@@ -286,7 +286,7 @@ export class Cut {
     // the panel layout's own frame spans the film and is not something at the top
     const all = this.p.tracks.filter((t) => t.kind === 'overlay' && t.id !== 'panel').flatMap((t) => t.items as unknown as Array<CaptionItem & { params?: Record<string, unknown> }>)
       .map((it) => ({ ...it, params: it.params ?? {}, ...times.get(it.id)!, eff: drawn(it.type, it.params ?? {}), defs: reg.item(it.type)?.params ?? [] })) as Array<TimedCaption & TimedItem>;
-    const plan = planCaptionsTop(all.filter((it) => isCaption(it.type)), { clips, others: all, safe: theme.safe, hung, heightOf: (it) => captionHeight(it.type, it.eff, W, H, theme.stroke) });
+    const plan = planCaptionsTop(all.filter((it) => isCaption(it.type)), { clips, others: all, safe: theme.safe, hung, heightOf: (it) => captionHeight(it.type, it.eff, W, H, theme.stroke), roomOf: (x) => (x.type ? topRoom(x.type, x.eff, W, H, theme.safe) : null) });
     for (const m of plan.moves) {
       const it = this.p.tracks.flatMap((t) => t.items as Array<{ id: string; params?: Record<string, unknown>; transform?: unknown }>).find((x) => x.id === m.id)!;
       if ('params' in m) it.params = { ...(it.params ?? {}), ...m.params }; else it.transform = { ox: 0.5, oy: 0.5, ...m.transform };

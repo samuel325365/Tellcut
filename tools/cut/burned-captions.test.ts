@@ -1,7 +1,7 @@
 // avoidBurned's fallback: our captions over a clip it could not crop clear of the footage's own caption row move to the top.
 import { createRegistry } from '@tellcut/engine';
 import { plugins } from '@tellcut/plugins';
-import { burnedZone, planCaptionsTop, sitsAtTop, type GaveUpClip, type TimedCaption } from './burned-captions.ts';
+import { burnedZone, planCaptionsTop, sitsAtTop, TOP_PUSH, type GaveUpClip, type TimedCaption } from './burned-captions.ts';
 import { fresh, items } from './cut-test-kit.ts';
 
 /** a 1280×720 source in the 1920×1080 film: avoidBurned may zoom it 1.25× only, too little for a row from 0.75 down */
@@ -65,6 +65,36 @@ test('the top taken (a title laid out at the top, the hook\'s tags) keeps the ca
   const note = c.notes.find((n) => n.startsWith('avoidBurned：v '))!;
   expect(note).toContain('1 張字幕自動移到畫面上方');
   expect(note).toContain(`2 張上方同時已經有別的東西（標題、標籤…）或原片的字也在上方：${a}、${b}，沒有移`);
+});
+
+test('a thin bar or a one-line header at the top does not take it: the caption goes just under it; a big look still does', async () => {
+  const c = capped();
+  c.clip('v', { from: 1, len: 6, avoidBurned: true });
+  const underBar = c.caption('進度條下面', { at: 1.2, len: 1 });
+  const underHeader = c.caption('標頭下面', { at: 3.2, len: 1 });
+  const stays = c.caption('大編號', { at: 5.2, len: 1 });
+  c.effect('common.progress', { at: 0, len: 2.5 });                        // bar on the top margin
+  c.effect('common.header', { at: 3, len: 1.5, no: '01', text: '開場' });  // chip under the top lane
+  c.effect('common.header', { at: 5, len: 1.5, look: 'big', no: '02', text: '下一站' });
+  await c.save();
+  const y = (id: string) => item(c, id).params.y as number, safeTop = 0.06;
+  // under the bar (12 px of 1080, on the margin), and under the header (lane + one line of 3 % type), both near the top
+  expect(y(underBar)).toBeGreaterThan(safeTop + 12 / 1080);
+  expect(y(underHeader)).toBeGreaterThan(y(underBar));
+  expect(y(underHeader) - safeTop).toBeLessThan(0.3);
+  expect(item(c, stays).params.y).toBeUndefined();
+  expect(item(c, stays).params.position).toBeUndefined();
+});
+
+test('planCaptionsTop: pushed under what sits at the top by its lower edge, as far as TOP_PUSH; unknown things take the top', () => {
+  const clip: GaveUpClip = { id: 'c', start: 0, end: 5, zone: { x: [0.1, 0.9], y: [0.78, 0.95] }, move: true };
+  const cap: TimedCaption = { id: 'a', type: 'common.caption', params: {}, start: 1, end: 2, eff: { position: 'bottom' } };
+  const safe = { top: 0.06, bottom: 0.12, side: 0.05 }, heightOf = () => 0.1;
+  const bar = { id: 'p', type: 'common.progress', start: 0, end: 5, eff: { position: 'top', y: -1 }, defs: [] };
+  const plan = (roomOf: (x: any) => number | null) => planCaptionsTop([cap], { clips: [clip], others: [bar], safe, heightOf, hung: new Set(), roomOf });
+  expect(plan(() => 0.075).moves).toEqual([{ id: 'a', clip: 'c', params: { y: 0.185 } }]);    // 0.075 + gap 0.01 + 0.1
+  expect(plan(() => 0.06 + TOP_PUSH + 0.01).stays).toEqual([{ id: 'a', why: 'taken', clip: 'c' }]);
+  expect(plan(() => null).stays).toEqual([{ id: 'a', why: 'taken', clip: 'c' }]);
 });
 
 test("avoidBurned: 'crop' only crops: our captions stay, and the note names them", async () => {
