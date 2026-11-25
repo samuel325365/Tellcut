@@ -1,4 +1,5 @@
 // common.gauge: a readout in words and a neutral look (acceptance films 2026-11-01, F1: a ranking, not a score)
+import { resolveTheme, unsetValue } from '@tellcut/engine';
 import { gauge, gaugeLook, GUILT_ZONES, ledCells, neutralOf, readoutText } from './gauge.ts';
 
 const P = Object.fromEntries(gauge.params.map((d) => [d.key, d.default])) as any;
@@ -50,4 +51,15 @@ test('zones are empty by default (the editor no longer shows guilt words on a ne
   const G = { ...P, look: 'guilt' };
   expect(['zh', 'en', 'ja'].map((l) => gaugeLook(G, {}, l as never).zones)).toEqual(GUILT_ZONES);
   expect(gaugeLook({ ...P, look: 'neutral' }, { zones: '' }).zones).toBe(neutralOf(100).zones);
+});
+
+test('defaultsFor: an unset halo, danger or boom shows what the look draws with (neutral: off; guilt: the defaults)', () => {
+  const theme = resolveTheme(undefined), def = (k: string) => gauge.params.find((d) => d.key === k)!;
+  for (const set of [{}, { look: 'neutral' }, { look: 'neutral', boom: 3 }] as Array<Record<string, unknown>>) {
+    const drawn = gaugeLook({ ...P, ...set }, set) as any;
+    for (const k of ['halo', 'danger', 'boom']) if (!(k in set)) expect([set, k, unsetValue(gauge, def(k), set, theme)]).toEqual([set, k, drawn[k]]);
+  }
+  expect(unsetValue(gauge, def('halo'), { look: 'guilt' }, theme)).toBe(true);
+  expect(unsetValue(gauge, def('boom'), { look: 'guilt' }, theme)).toBe(2.3);
+  expect(unsetValue(gauge, def('zones'), {}, theme)).toBe('');
 });

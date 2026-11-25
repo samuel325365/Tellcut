@@ -94,6 +94,12 @@ export function gaugeBox(p: Pick<P, 'x' | 'y' | 'size'>, W: number, H: number, s
 
 export const gauge: ItemType<P, S> = {
   type: 'common.gauge', label: '儀表計量表', category: 'number', kind: 'overlay',
+  // what an unset halo, danger or boom really draws with, for the editor's fields: neutral's off, not the guilt meter's defaults
+  // (zones stays empty: empty is "the look's own", which the field says)
+  defaultsFor: (set) => {
+    const { zones: _, ...off } = neutralOf(100);
+    return (set.look ?? gauge.params.find((d) => d.key === 'look')!.default) === 'neutral' ? off : {};
+  },
   doc: '半圓速度表：色區（起點:名稱）沿著刻度帶、彈簧指針、LED 數字讀數和目前色區名稱，光環漸漸變成惡魔角；hits「秒:加分」每筆讓指針彈一下；可開場亂跳、開機掃一次、警報紅燈、最後爆表（指針撞到底、玻璃裂）；readout 讓 LED 顯示字而不是數字（名次 No.1、一個詞；逗號分開就每筆加分換下一個，{v}＝目前分數）；預設 look: neutral 是中性的量表（色區只留顏色不寫名稱、沒有光環、警報、爆表；自己給的 zones、halo、danger、boom 照樣算，例如自己給 zones 就有色區名稱）；要「罪惡指數」的樣子（清白…地獄級的色區，跟著片子的語言；光環、警報、爆表）用 look: guilt；guilt 下不要這些就自己給 zones 並設 halo: false、danger: -1、boom: -1；罪惡指數、辣度、心動指數、熱度、分數、名次',
   params: [
     { key: 'hits', label: '加分（秒:分數，逗號分隔）', type: 'text', default: '0.3:12, 0.7:15, 1.1:20, 1.5:26, 1.9:24' },
